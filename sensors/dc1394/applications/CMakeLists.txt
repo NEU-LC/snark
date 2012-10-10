@@ -1,0 +1,6 @@
+ADD_EXECUTABLE( fire-cat fire-cat.cpp )
+TARGET_LINK_LIBRARIES( fire-cat snarkdc1394 snark_imaging tbb boost_program_options )
+
+INSTALL( TARGETS fire-cat
+         RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/${snark_INSTALL_BIN_DIR}
+         COMPONENT Runtime )

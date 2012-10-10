@@ -112,6 +112,10 @@ ENDIF( snark_BUILD_TESTS )
 OPTION( snark_build_graphics "build graphics" ON )
 OPTION( snark_build_point_cloud "build point cloud" ON )
 OPTION( snark_build_imaging "build imaging" ON )
+OPTION( snark_build_sensors "build sensors" ON )
+
+INCLUDE( CMakeDependentOption )
+CMAKE_DEPENDENT_OPTION( snark_build_sensors_dc1394 "build dc1394 components" ON "snark_build_sensors" OFF )
 
 IF( snark_build_imaging )
     SET( OpenCV_FIND_REQUIRED )
@@ -180,3 +184,9 @@ if( snark_build_imaging )
     ADD_SUBDIRECTORY( tbb )
     ADD_SUBDIRECTORY( imaging )
 endif( snark_build_imaging )
+
+if( snark_build_sensors )
+    ADD_SUBDIRECTORY( sensors )
+endif( snark_build_sensors )
+
+ADD_SUBDIRECTORY( timing )
