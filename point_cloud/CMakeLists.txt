@@ -1,0 +1,27 @@
+SET( PROJECT "point_cloud" )
+SET( TARGET_NAME snark_${PROJECT} )
+SET( DIR ${SOURCE_CODE_BASE_DIR}/${PROJECT} )
+
+FILE( GLOB source ${DIR}/*.cpp)
+FILE( GLOB includes ${DIR}/*.h)
+FILE( GLOB impl_includes ${DIR}/impl/*.h )
+
+SOURCE_GROUP( ${PROJECT} FILES ${source} ${includes} ${impl_includes} )
+ADD_LIBRARY( ${TARGET_NAME} ${source} ${includes} ${impl_includes} )
+SET_TARGET_PROPERTIES( ${TARGET_NAME} PROPERTIES ${snark_LIBRARY_PROPERTIES} )
+
+INSTALL( FILES ${includes} DESTINATION ${CMAKE_INSTALL_PREFIX}/${snark_INSTALL_INCLUDE_DIR}/${PROJECT} )
+INSTALL( FILES ${impl_includes} DESTINATION ${CMAKE_INSTALL_PREFIX}/${snark_INSTALL_INCLUDE_DIR}/${PROJECT}/impl )
+INSTALL(
+    TARGETS ${TARGET_NAME}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/${snark_INSTALL_BIN_DIR} COMPONENT Runtime     # .exe, .dll
+    LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/${snark_INSTALL_LIB_DIR} COMPONENT Runtime     # .so, mod.dll
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_PREFIX}/${snark_INSTALL_LIB_DIR} COMPONENT Development # .a, .lib
+)
+
+#ADD_SUBDIRECTORY( applications )
+
+IF( BUILD_TESTS )
+    ADD_SUBDIRECTORY( test )
+ENDIF( BUILD_TESTS )
+

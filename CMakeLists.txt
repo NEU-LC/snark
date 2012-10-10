@@ -109,10 +109,19 @@ IF( snark_BUILD_TESTS )
 ENDIF( snark_BUILD_TESTS )
 
 OPTION( snark_build_graphics "build graphics" ON )
+OPTION( snark_build_point_cloud "build point cloud" ON )
 
 FIND_PACKAGE( comma PATHS ${comma_DIR} /usr/local/CMakeFiles )
 
-#SET( snark_ALL_LIBRARIES ... )
+if( snark_build_graphics )
+    SET( snark_ALL_LIBRARIES debug snark_graphics-d
+                             optimized snark_graphics )
+endif( snark_build_graphics )
+
+if( snark_build_point_cloud )
+    SET( snark_ALL_LIBRARIES debug snark_point_cloud-d
+                             optimized snark_point_cloud )
+endif( snark_build_point_cloud )
 
 IF(WIN32)
     SET( snark_ALL_EXTERNAL_LIBRARIES Ws2_32.lib )
@@ -144,3 +153,8 @@ INSTALL( FILES ${snark_PACKAGE_CMAKEFILES}
 if( snark_build_graphics )
     ADD_SUBDIRECTORY( graphics )
 endif( snark_build_graphics )
+
+if( snark_build_point_cloud )
+    ADD_SUBDIRECTORY( point_cloud )
+endif( snark_build_point_cloud )
+
