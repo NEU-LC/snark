@@ -25,10 +25,10 @@
 namespace snark { namespace graphics {
 
 template < typename T >
-class Queue : public impl::renderable< T >
+class queue : public impl::renderable< T >
 {
     public:
-        Queue( std::size_t capacity ) : impl::renderable< T >( capacity ), m_end( 0, capacity ) {}
+        queue( std::size_t capacity ) : impl::renderable< T >( capacity ), m_end( 0, capacity ) {}
 
         std::size_t capacity() const { return this->m_storage.capacity(); }
 
@@ -45,7 +45,7 @@ class Queue : public impl::renderable< T >
 };
 
 template < typename T >
-inline void Queue< T >::push( const T& t )
+inline void queue< T >::push( const T& t )
 {
     if( size() == capacity() )
     {

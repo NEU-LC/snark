@@ -85,6 +85,7 @@ FIND_PACKAGE( Boost COMPONENTS thread filesystem system date_time )
 INCLUDE_DIRECTORIES( ${Boost_INCLUDE_DIRS} )
 LINK_DIRECTORIES( ${Boost_LIBRARY_DIRS} )
 
+
 IF( WIN32 )
     # improve later
     #FIND_PATH( Eigen_INCLUDE_DIR NAMES Eigen/CMakeLists.txt PATHS $ENV{EIGEN_ROOT} )
@@ -109,6 +110,12 @@ IF( snark_BUILD_TESTS )
 ENDIF( snark_BUILD_TESTS )
 
 OPTION( snark_build_graphics "build graphics" ON )
+OPTION( snark_build_imaging "build imaging" ON )
+
+IF( snark_build_imaging )
+    SET( OpenCV_FIND_REQUIRED )
+    FIND_PACKAGE(OpenCV REQUIRED)
+ENDIF( snark_build_imaging )
 
 FIND_PACKAGE( comma PATHS ${comma_DIR} /usr/local/CMakeFiles )
 
@@ -117,6 +124,12 @@ FIND_PACKAGE( comma PATHS ${comma_DIR} /usr/local/CMakeFiles )
 IF(WIN32)
     SET( snark_ALL_EXTERNAL_LIBRARIES Ws2_32.lib )
 ENDIF(WIN32)
+
+IF( WIN32 )
+    INCLUDE( CMakeFiles/FindTBB.cmake REQUIRED )
+    INCLUDE_DIRECTORIES(${TBB_INCLUDE_DIRS})
+    LINK_DIRECTORIES(${TBB_LIBRARY_DIRS})
+ENDIF( WIN32 )
 
 IF(UNIX AND NOT QNXNTO AND NOT APPLE)
     SET( snark_ALL_EXTERNAL_LIBRARIES rt pthread )
@@ -141,6 +154,12 @@ SET( snark_PACKAGE_CMAKEFILES ${snark_PACKAGE_CMAKEFILES} ${PROJECT_BINARY_DIR}/
 INSTALL( FILES ${snark_PACKAGE_CMAKEFILES}
          DESTINATION ${CMAKE_INSTALL_PREFIX}/${snark_INSTALL_PACKAGE_DIR} )
 
-if( snark_build_graphics )
+IF( snark_build_graphics )
     ADD_SUBDIRECTORY( graphics )
-endif( snark_build_graphics )
+ENDIF( snark_build_graphics )
+
+IF( snark_build_imaging )
+    ADD_SUBDIRECTORY( tbb )
+    ADD_SUBDIRECTORY( imaging )
+ENDIF( snark_build_imaging )
+

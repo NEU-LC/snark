@@ -33,8 +33,8 @@ namespace impl {
 template< typename K, typename T, std::size_t D, typename Compare = std::less< T > >
 struct MultidimensionalMapimpl : public std::map< K, MultidimensionalMapimpl< K, T, D - 1, Compare >, Compare >
 {
-    typedef MultidimensionalMapimpl< K, T, D - 1, Compare > BaseValueType;
-    typedef std::map< K, BaseValueType, Compare > Base;
+    typedef MultidimensionalMapimpl< K, T, D - 1, Compare > Basevalue_type;
+    typedef std::map< K, Basevalue_type, Compare > Base;
     
     template < typename P >
     std::vector< T* > find( const P& p )
@@ -93,7 +93,7 @@ struct MultidimensionalMapimpl : public std::map< K, MultidimensionalMapimpl< K,
             en.get( key, value );
         }
         typename Base::iterator it;
-        typename BaseValueType::Enumerator en;
+        typename Basevalue_type::Enumerator en;
         MultidimensionalMapimpl* map;
     };
     
