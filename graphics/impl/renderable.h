@@ -27,7 +27,7 @@ template < typename T >
 class renderable
 {
     public:
-        typedef T ValueType;
+        typedef T value_type;
 
         renderable( std::size_t capacity ) : m_storage( capacity ) {}
 

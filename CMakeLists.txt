@@ -85,6 +85,7 @@ FIND_PACKAGE( Boost COMPONENTS thread filesystem system date_time )
 INCLUDE_DIRECTORIES( ${Boost_INCLUDE_DIRS} )
 LINK_DIRECTORIES( ${Boost_LIBRARY_DIRS} )
 
+
 IF( WIN32 )
     # improve later
     #FIND_PATH( Eigen_INCLUDE_DIR NAMES Eigen/CMakeLists.txt PATHS $ENV{EIGEN_ROOT} )
@@ -110,6 +111,12 @@ ENDIF( snark_BUILD_TESTS )
 
 OPTION( snark_build_graphics "build graphics" ON )
 OPTION( snark_build_point_cloud "build point cloud" ON )
+OPTION( snark_build_imaging "build imaging" ON )
+
+IF( snark_build_imaging )
+    SET( OpenCV_FIND_REQUIRED )
+    FIND_PACKAGE(OpenCV REQUIRED)
+ENDIF( snark_build_imaging )
 
 FIND_PACKAGE( comma PATHS ${comma_DIR} /usr/local/CMakeFiles )
 
@@ -123,9 +130,20 @@ if( snark_build_point_cloud )
                              optimized snark_point_cloud )
 endif( snark_build_point_cloud )
 
+if( snark_build_imaging )
+    SET( snark_ALL_LIBRARIES debug snark_imaging-d
+                             optimized snark_imaging )
+endif( snark_build_imaging )
+
 IF(WIN32)
     SET( snark_ALL_EXTERNAL_LIBRARIES Ws2_32.lib )
 ENDIF(WIN32)
+
+IF( WIN32 )
+    INCLUDE( CMakeFiles/FindTBB.cmake REQUIRED )
+    INCLUDE_DIRECTORIES(${TBB_INCLUDE_DIRS})
+    LINK_DIRECTORIES(${TBB_LIBRARY_DIRS})
+ENDIF( WIN32 )
 
 IF(UNIX AND NOT QNXNTO AND NOT APPLE)
     SET( snark_ALL_EXTERNAL_LIBRARIES rt pthread )
@@ -158,3 +176,7 @@ if( snark_build_point_cloud )
     ADD_SUBDIRECTORY( point_cloud )
 endif( snark_build_point_cloud )
 
+if( snark_build_imaging )
+    ADD_SUBDIRECTORY( tbb )
+    ADD_SUBDIRECTORY( imaging )
+endif( snark_build_imaging )
