@@ -227,8 +227,8 @@ int main( int ac, char** av )
             verbose && std::cerr << "points-track-partitions: block " << accumulated.block() << ": extents: " << extents.min().x() << "," << extents.min().y() << "," << extents.min().z() << " to " << extents.max().x() << "," << extents.max().y() << "," << extents.max().z() << std::endl;
             Eigen::Vector3d floor = extents.min() - resolution / 2;
             Eigen::Vector3d ceil = extents.min() + resolution / 2;
-            extents.add( Eigen::Vector3d( snark::Math::floor( floor.x() ), snark::Math::floor( floor.y() ), snark::Math::floor( floor.z() ) ) );
-            extents.add( Eigen::Vector3d( snark::Math::ceil( ceil.x() ), snark::Math::ceil( ceil.y() ), snark::Math::ceil( ceil.z() ) ) );
+            extents.add( Eigen::Vector3d( snark::math::floor( floor.x() ), snark::math::floor( floor.y() ), snark::math::floor( floor.z() ) ) );
+            extents.add( Eigen::Vector3d( snark::math::ceil( ceil.x() ), snark::math::ceil( ceil.y() ), snark::math::ceil( ceil.z() ) ) );
             voxels.second.reset( new snark::voxel_grid< voxel >( extents, resolution ) );
             for( snark::Comms::Csv::Accumulated< pointWithId >::List::const_iterator it = list.begin(); it != list.end(); ++it )
             {

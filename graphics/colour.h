@@ -139,7 +139,7 @@ namespace impl {
 template < typename T >
 inline void validate( T t )
 {
-    if( Math::less( t, colour_traits< T >::min() ) || Math::less( colour_traits< T >::max(), t ) )
+    if( math::less( t, colour_traits< T >::min() ) || math::less( colour_traits< T >::max(), t ) )
     {
         COMMA_THROW( comma::exception, "expected value in [" << colour_traits< T >::min() << ", " << colour_traits< T >::max() << "], got " << t );
     }
