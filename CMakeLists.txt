@@ -116,6 +116,7 @@ OPTION( snark_build_sensors "build sensors" ON )
 
 INCLUDE( CMakeDependentOption )
 CMAKE_DEPENDENT_OPTION( snark_build_sensors_dc1394 "build dc1394 components" ON "snark_build_sensors" OFF )
+CMAKE_DEPENDENT_OPTION( snark_build_sensors_gige "build gige components" ON "snark_build_sensors" OFF )
 
 IF( snark_build_imaging )
     SET( OpenCV_FIND_REQUIRED )
