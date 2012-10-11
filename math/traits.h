@@ -16,7 +16,7 @@ struct traits
 };
 
 template < typename T, int Rows, int Columns >
-struct Traits< ::Eigen::Matrix< T, Rows, Columns > >
+struct traits< ::Eigen::Matrix< T, Rows, Columns > >
 {
     enum { rows = Rows, columns = Columns, size = rows * columns };
     
