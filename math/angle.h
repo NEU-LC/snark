@@ -56,8 +56,8 @@ class angle : public comma::math::cyclic< T >
         angle( const angle& rhs ) : comma::math::cyclic< T >( rhs.interval(), rhs() ) {}
     
         /// accessors
-        T asdegrees() const { return comma::math::cyclic< T >::operator()(); }
-        double asradians() const { return math::radians( degrees(comma::math::cyclic< T >::operator()()) ).value; }
+        T as_degrees() const { return comma::math::cyclic< T >::operator()(); }
+        double as_radians() const { return math::radians( degrees(comma::math::cyclic< T >::operator()()) ).value; }
     
         /// operators
         const angle& operator+=( const angle& rhs ) { comma::math::cyclic< T >::operator+=( rhs ); return *this; }
