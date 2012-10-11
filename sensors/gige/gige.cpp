@@ -16,8 +16,8 @@ static const char *pv_error_to_string_( tPvErr error )
     switch( error )
     {
         case ePvErrSuccess: return "ePvErrSuccess";
-        case ePvErrCameraFault: return "ePvErrCameraFault";
-        case ePvErrInternalFault: return "ePvErrInternalFault";
+        case ePvErrCameraFault: return "ePvErrCameraFault"; 
+        case ePvErrInternalFault: return "ePvErrInternalFault"; 
         case ePvErrBadHandle: return "ePvErrBadHandle";
         case ePvErrBadParameter: return "ePvErrBadParameter";
         case ePvErrBadSequence: return "ePvErrBadSequence";
@@ -353,7 +353,7 @@ class gige::callback::Impl_
         ~Impl_()
         {
             is_shutdown = true;
-            PvCommandRun( handle, "AcquisitionStop" );
+            PvCommandRun( handle, "Acquisitionstop" );
             PvCaptureQueueClear( handle );
             PvCaptureEnd( handle );
         }

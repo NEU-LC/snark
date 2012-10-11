@@ -1,12 +1,12 @@
 #ifndef SNARK_SENSORS_GIGE_H_
 #define SNARK_SENSORS_GIGE_H_
 
+#include <PvApi.h>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/function.hpp>
 
 #include <opencv2/core/core.hpp>
 
-#include <PvApi.h>
 
 namespace snark{ namespace camera{
 
