@@ -7,7 +7,7 @@
 namespace snark{ namespace math{
 
 template < typename T >
-struct Traits
+struct traits
 {
     enum { size = 1 };
     T zero() { return T( 0 ); }
@@ -34,7 +34,7 @@ struct Traits< ::Eigen::Matrix< T, Rows, Columns > >
 };
 
 template < typename T, std::size_t Size >
-class Traits< boost::array< T, Size > >
+class traits< boost::array< T, Size > >
 {
     public:
         enum { size = Size };
