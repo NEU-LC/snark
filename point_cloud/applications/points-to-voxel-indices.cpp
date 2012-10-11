@@ -8,14 +8,14 @@
 #include <comma/csv/ascii.h>
 #include <comma/csv/stream.h>
 #include <comma/csv/impl/program_options.h>
-#include <snark/Visiting/Eigen.h>
 #include <comma/string/string.h>
 #include <comma/visiting/traits.h>
 #include <snark/point_cloud/voxel_map.h>
+#include <snark/visiting/eigen.h>
 
 typedef Eigen::Vector3d input_point;
 
-typedef boost::array< int, 3 > index;
+typedef snark::voxel_map< input_point, 3 >::index_type index_type;
 
 int main( int argc, char** argv )
 {
@@ -61,7 +61,7 @@ int main( int argc, char** argv )
             {
                 const input_point* point = istream.read();
                 if( !point ) { break; }
-                index index = snark::voxel_map< input_point, 3 >::index_of( *point, origin, resolution );
+                index_type index = snark::voxel_map< input_point, 3 >::index_of( *point, origin, resolution );
                 std::cout.write( istream.binary().last(), csv.format().size() );
                 std::cout.write( reinterpret_cast< const char* >( &index[0] ), 3 * sizeof( comma::int32 ) );
                 std::cout.flush();
@@ -73,7 +73,7 @@ int main( int argc, char** argv )
             {
                 const input_point* point = istream.read();
                 if( !point ) { break; }
-                index index = snark::voxel_map< input_point, 3 >::index_of( *point, origin, resolution );
+                index_type index = snark::voxel_map< input_point, 3 >::index_of( *point, origin, resolution );
                 std::cout << comma::join( istream.ascii().last(), csv.delimiter )
                           << csv.delimiter << index[0]
                           << csv.delimiter << index[1]
