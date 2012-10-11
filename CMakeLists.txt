@@ -173,21 +173,23 @@ SET( snark_PACKAGE_CMAKEFILES ${snark_PACKAGE_CMAKEFILES} ${PROJECT_BINARY_DIR}/
 INSTALL( FILES ${snark_PACKAGE_CMAKEFILES}
          DESTINATION ${CMAKE_INSTALL_PREFIX}/${snark_INSTALL_PACKAGE_DIR} )
 
-if( snark_build_graphics )
+IF( snark_build_graphics )
     ADD_SUBDIRECTORY( graphics )
-endif( snark_build_graphics )
+ENDIF( snark_build_graphics )
 
-if( snark_build_point_cloud )
+IF( snark_build_point_cloud )
     ADD_SUBDIRECTORY( point_cloud )
-endif( snark_build_point_cloud )
+ENDIF( snark_build_point_cloud )
 
-if( snark_build_imaging )
+IF( snark_build_imaging )
     ADD_SUBDIRECTORY( tbb )
     ADD_SUBDIRECTORY( imaging )
-endif( snark_build_imaging )
+ENDIF( snark_build_imaging )
 
-if( snark_build_sensors )
+ADD_SUBDIRECTORY( math )
+
+IF( snark_build_sensors )
     ADD_SUBDIRECTORY( sensors )
-endif( snark_build_sensors )
+ENDIF( snark_build_sensors )
 
 ADD_SUBDIRECTORY( timing )
