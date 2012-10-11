@@ -10,7 +10,7 @@
 #include <comma/csv/impl/program_options.h>
 #include <comma/visiting/traits.h>
 #include <snark/visiting/eigen.h>
-#include <snark/visiting/point_cloud/voxel_map.h>
+#include <snark/point_cloud/voxel_map.h>
 
 struct input_point
 {

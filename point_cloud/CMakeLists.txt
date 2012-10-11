@@ -19,7 +19,7 @@ INSTALL(
     ARCHIVE DESTINATION ${CMAKE_INSTALL_PREFIX}/${snark_INSTALL_LIB_DIR} COMPONENT Development # .a, .lib
 )
 
-#ADD_SUBDIRECTORY( applications )
+ADD_SUBDIRECTORY( applications )
 
 IF( BUILD_TESTS )
     ADD_SUBDIRECTORY( test )
