@@ -146,6 +146,9 @@ if( snark_build_imaging )
                              optimized snark_imaging )
 endif( snark_build_imaging )
 
+SET( snark_ALL_LIBRARIES debug snark_math-d
+                         optimized snark_math )
+
 IF(WIN32)
     SET( snark_ALL_EXTERNAL_LIBRARIES Ws2_32.lib )
 ENDIF(WIN32)
