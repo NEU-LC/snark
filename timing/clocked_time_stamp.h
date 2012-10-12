@@ -1,4 +1,4 @@
-// This file is part of Ark, a generic and flexible library 
+// This file is part of snark, a generic and flexible library 
 // for robotics research.
 //
 // Copyright (C) 2011 The University of Sydney
