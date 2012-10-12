@@ -4,7 +4,7 @@
 #include <comma/application/signal_flag.h>
 #include <comma/base/exception.h>
 #include <comma/csv/stream.h>
-#include <Ark/Visiting/Eigen.h>
+#include <snark/visiting/eigen.h>
 #include <comma/name_value/map.h>
 #include <Ark/Point/Conversions.h>
 #include <Ark/Point/PointRBE.h>

@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #endif
 #include <snark/sensors/velodyne/stream.h>
-#include <Ark/Visiting/Eigen.h>
+#include <snark/visiting/eigen.h>
 
 namespace snark {
 

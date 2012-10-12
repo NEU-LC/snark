@@ -1,5 +1,5 @@
 SET( PROJECT "dc1394" )
-SET( TARGET_NAME snark${PROJECT} )
+SET( TARGET_NAME snark_${PROJECT} )
 
 FILE( GLOB source ${SOURCE_CODE_BASE_DIR}/sensors/${PROJECT}/*.cpp )
 FILE( GLOB includes ${SOURCE_CODE_BASE_DIR}/sensors/${PROJECT}/*.h )

@@ -3,7 +3,7 @@
 #include <comma/application/signal_flag.h>
 #include <comma/csv/stream.h>
 #include <comma/string/string.h>
-#include <Ark/Visiting/Eigen.h>
+#include <snark/visiting/eigen.h>
 #include <snark/sensors/velodyne/impl/pcap_reader.h>
 #include <snark/sensors/velodyne/stream.h>
 
