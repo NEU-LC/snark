@@ -13,6 +13,7 @@
 #include <comma/math/compare.h>
 #include <comma/name_value/parser.h>
 #include <comma/string/string.h>
+#include <snark/timing/time.h>
 #include <snark/sensors/velodyne/stream.h>
 #include <snark/sensors/velodyne/thin/thin.h>
 #include <snark/sensors/velodyne/impl/pcap_reader.h>
@@ -52,16 +53,6 @@ static void usage()
     std::cerr << "                        output 80% points in the focus region and 20% the rest" << std::endl;
     std::cerr << "                        --focus=\"sector;range=10;bearing=0;ken=30;ratio=0.8\"" << std::endl;
     std::cerr << "                        todo: currently only \"sector\" type implemented" << std::endl;
-    std::cerr << "    --subtract-by-age <options>: subtract background at given rate, e.g." << std::endl;
-    std::cerr << "                        show background only:" << std::endl;
-    std::cerr << "                        --subtract-by-age=\"foreground=0.0;background=1.0\"" << std::endl;
-    std::cerr << "                        show 20% of foreground points and 5% of background points:" << std::endl;
-    std::cerr << "                        --subtract-by-age=\"foreground=0.2;background=0.05\"" << std::endl;
-    std::cerr << "                        important: works for stationary velodyne only!" << std::endl;
-    std::cerr << "    --subtract-max-range <options>: subtract background at given rate, e.g." << std::endl;
-    std::cerr << "                        show foreground only, tolerance of distance to background 2cm:" << std::endl;
-    std::cerr << "                        --subtract-max-range=\"foreground=1.0;background=0.0;epsilon=0.02\"" << std::endl;
-    std::cerr << "    --subtract <filename>: load background from file" << std::endl;
     std::cerr << std::endl;
     exit( -1 );
 }
@@ -72,10 +63,7 @@ static boost::optional< float > rate;
 static boost::optional< double > scanRate;
 static boost::optional< double > angularSpeed_;
 static boost::optional< velodyne::db > db;
-static boost::scoped_ptr< velodyne::thin::Focus > focus;
-static boost::scoped_ptr< velodyne::thin::Background > background;
-static boost::scoped_ptr< velodyne::thin::MaxRangeBackground > maxRangeBackground;
-static boost::scoped_ptr< velodyne::thin::FixedBackground > fixedBackground;
+static boost::scoped_ptr< velodyne::thin::focus > focus;
 static velodyne::thin::scan scan;
 static boost::scoped_ptr< comma::io::publisher > publisher;
 
@@ -83,65 +71,20 @@ static double angularSpeed( const snark::velodyne::packet& packet )
 {
     if( angularSpeed_ ) { return *angularSpeed_; }
     double da = double( packet.blocks[0].rotation() - packet.blocks[11].rotation() ) / 100;
-    double dt = double( ( snark::velodyne::impl::timeOffset( 0, 0 ) - snark::velodyne::impl::timeOffset( 11, 0 ) ).total_microseconds() ) / 1e6;
+    double dt = double( ( snark::velodyne::impl::time_offset( 0, 0 ) - snark::velodyne::impl::time_offset( 11, 0 ) ).total_microseconds() ) / 1e6;
     return da / dt;
 }
 
-static velodyne::thin::Focus* makeFocus( const std::string& options, double rate ) // quick and dirty
+static velodyne::thin::focus* makefocus( const std::string& options, double rate ) // quick and dirty
 {
     std::string type = comma::name_value::map( options, "type" ).value< std::string >( "type" );
     double ratio = comma::name_value::map( options ).value( "ratio", 1.0 );
     velodyne::thin::region* region;
-    if( type == "sector" ) { region = new velodyne::thin::Sector( comma::name_value::parser().get< velodyne::thin::Sector >( options ) ); }
+    if( type == "sector" ) { region = new velodyne::thin::sector( comma::name_value::parser().get< velodyne::thin::sector >( options ) ); }
     else { COMMA_THROW( comma::exception, "expected type (sector), got " << type ); }
-    velodyne::thin::Focus* focus = new velodyne::thin::Focus( rate, ratio );
+    velodyne::thin::focus* focus = new velodyne::thin::focus( rate, ratio );
     focus->insert( 0, region );
     return focus;
-}
-
-static velodyne::thin::Background* makeBackground( const std::string& options ) // quick and dirty
-{
-    float backgroundRate = comma::name_value::map( options ).value( "background", 0.0 );
-    float foregroundRate = comma::name_value::map( options ).value( "foreground", 1.0 );
-    boost::posix_time::time_duration age = boost::posix_time::milliseconds( static_cast< int >( comma::name_value::map( options ).value( "age", 10.0 ) * 1000 ) );
-    boost::posix_time::time_duration threshold = boost::posix_time::milliseconds( static_cast< int >( comma::name_value::map( options ).value( "threshold", 1.0 ) * 1000 ) );
-    if( comma::math::less( 1.0, backgroundRate + foregroundRate ) ) { COMMA_THROW( comma::exception, "expected fore- and background rates sum of which less than 1, got " << options ); }
-    return new velodyne::thin::Background( age, threshold, foregroundRate, backgroundRate );
-}
-
-static velodyne::thin::MaxRangeBackground* makeMaxRangeBackground( const std::string& options ) // quick and dirty
-{
-    float backgroundRate = comma::name_value::map( options ).value( "background", 0.0 );
-    float foregroundRate = comma::name_value::map( options ).value( "foreground", 1.0 );
-    unsigned int epsilon = comma::name_value::map( options ).value( "epsilon", 0.0 ) * 500;
-    if( comma::math::less( 1.0, backgroundRate + foregroundRate ) ) { COMMA_THROW( comma::exception, "expected fore- and background rates sum of which less than 1, got " << options ); }
-    return new velodyne::thin::MaxRangeBackground( epsilon, foregroundRate, backgroundRate );
-}
-
-
-static velodyne::thin::FixedBackground* makeFixedBackground( const std::string& filename ) // quick and dirty
-{
-    velodyne::thin::FixedBackground* background = new velodyne::thin::FixedBackground( rate ? *rate : 1.0 );
-    snark::proprietary_reader stream( filename );
-    while( true )
-    {
-        const char* p = stream.read();
-        if( p == NULL ) { break; }
-        const velodyne::packet& packet = *( reinterpret_cast< const velodyne::packet* >( p ) );
-        bool upper = true;
-        for( unsigned int block = 0; block < packet.blocks.size(); ++block, upper = !upper )
-        {
-            double rotation = double( packet.blocks[block].rotation() ) / 100;
-            for( unsigned int laser = 0; laser < packet.blocks[block].lasers.size(); ++laser )
-            {
-                unsigned int id = upper ? laser : laser + packet.blocks[block].lasers.size();
-                comma::uint16 angle = velodyne::impl::azimuth( rotation, laser, angularSpeed( packet ) ) * 100;
-                comma::uint16 range = packet.blocks[block].lasers[laser].range(); //double range = db.lasers[r.id].range( r.range );
-                background->update( id, range, angle );
-            }
-        }
-    }
-    return background;
 }
 
 template < typename S >
@@ -157,7 +100,7 @@ void run( S* stream )
     comma::signal_flag isShutdown;
     while( !isShutdown && std::cin.good() && !std::cin.eof() && std::cout.good() && !std::cout.eof() )
     {
-        const char* p = velodyne::impl::streamTraits< S >::read( *stream, sizeof( velodyne::packet ) );
+        const char* p = velodyne::impl::stream_traits< S >::read( *stream, sizeof( velodyne::packet ) );
         if( p == NULL ) { break; }
         ::memcpy( &packet, p, velodyne::packet::size );
         boost::posix_time::ptime timestamp = stream->timestamp();
@@ -165,9 +108,6 @@ void run( S* stream )
         if( !scan.empty() )
         {
             if( focus ) { velodyne::thin::thin( packet, *focus, *db, angularSpeed( packet ), random ); }
-            else if( background ) { velodyne::thin::thin( packet, timestamp, *background, *db, angularSpeed( packet ), random ); }
-            else if( fixedBackground ) { velodyne::thin::thin( packet, *fixedBackground, *db, angularSpeed( packet ), random ); }
-            else if( maxRangeBackground ) { velodyne::thin::thin( packet, *maxRangeBackground, *db, angularSpeed( packet ), random ); }
             else if( rate ) { velodyne::thin::thin( packet, *rate, random ); }
         }
         const boost::posix_time::ptime base( snark::timing::epoch );
@@ -237,20 +177,8 @@ int main( int ac, char** av )
         }
         if( options.exists( "--focus" ) )
         {
-            focus.reset( makeFocus( options.value< std::string >( "--focus" ), rate ? *rate : 1.0 ) );
-            std::cerr << "velodyne-thin: rate in focus: " << focus->rateInFocus() << "; rate out of focus: " << focus->rateOutOfFocus() << "; coverage: " << focus->coverage() << std::endl;
-        }
-        else if( options.exists( "--subtract-by-age" ) )
-        {
-            background.reset( makeBackground( options.value< std::string >( "--subtract-by-age" ) ) );
-        }
-        else if( options.exists( "--subtract-max-range" ) )
-        {
-            maxRangeBackground.reset( makeMaxRangeBackground( options.value< std::string >( "--subtract-max-range" ) ) );
-        }
-        else if( options.exists( "--subtract" ) )
-        {
-            fixedBackground.reset( makeFixedBackground( options.value< std::string >( "--subtract" ) ) );
+            focus.reset( makefocus( options.value< std::string >( "--focus" ), rate ? *rate : 1.0 ) );
+            std::cerr << "velodyne-thin: rate in focus: " << focus->rate_in_focus() << "; rate out of focus: " << focus->rate_out_of_focus() << "; coverage: " << focus->coverage() << std::endl;
         }
         verbose = options.exists( "--verbose,-v" );
         #ifdef WIN32

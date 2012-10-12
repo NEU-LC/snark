@@ -6,8 +6,7 @@
 #include <comma/csv/stream.h>
 #include <snark/visiting/eigen.h>
 #include <comma/name_value/map.h>
-#include <Ark/Point/Conversions.h>
-#include <Ark/Point/PointRBE.h>
+#include <snark/math/range_bearing_elevation.h>
 #include <comma/string/string.h>
 #include <snark/timing/ntp.h>
 #include <comma/visiting/traits.h>
@@ -19,7 +18,7 @@ struct csv_point
 {
     boost::posix_time::ptime timestamp;
     ::Eigen::Matrix< double, 3, 1 > cartesian;
-    Ark::pointRBE< double > polar;
+    snark::range_bearing_elevation polar;
     comma::uint32 layer;
     comma::uint32 echo;
     comma::uint32 what;
@@ -99,28 +98,28 @@ int main( int ac, char** av )
         if( options.exists( "--format" ) ) { std::cout << csv.format().string(); return 0; }
         csv.full_xpath = false;
         comma::csv::output_stream< csv_point > ostream( std::cout, csv );
-        sick::ldmrs::protocol protocol( std::cin );
+        snark::sick::ldmrs::protocol protocol( std::cin );
         comma::signal_flag isShutdown;
         while( !std::cin.eof() )
         {
             if( isShutdown ) { std::cerr << "sick-ldmrs-to-csv: caught signal, exit" << std::endl; return -1; }
-            const sick::ldmrs::scan_packet* p = protocol.readscan();
+            const snark::sick::ldmrs::scan_packet* p = protocol.readscan();
             if( p == NULL ) { std::cerr << "sick-ldmrs-to-csv: done" << std::endl; return 0; }
-            std::size_t count = p->scan.header.points_count();
-            sick::ldmrs::scan::timestamps timestamps( p->scan );
+            std::size_t count = p->packet_scan.scan_header.points_count();
+            snark::sick::ldmrs::scan::timestamps timestamps( p->packet_scan );
             csv_point point;
-            point.scan = p->scan.header.measurement_number();
+            point.scan = p->packet_scan.scan_header.measurement_number();
             for( std::size_t i = 0; i < count; ++i )
             {
-                point.echo = p->scan.points()[i].id.echo();
+                point.echo = p->packet_scan.points()[i].id.echo();
                 if( point.echo > threshold ) { continue; }
-                point.polar.range( double( p->scan.points()[i].range() ) / 100 );
-                point.polar.bearing( p->scan.angle_as_radians( p->scan.points()[i] ) );
-                point.polar.elevation( p->scan.points()[i].elevation() );
-                point.cartesian = Ark::toCartesianEigen( point.polar );
-                point.layer = p->scan.points()[i].id.layer();
-                point.what = p->scan.points()[i].flags();
-                point.width = double( p->scan.points()[i].echo_pulse_width() ) / 100;
+                point.polar.range( double( p->packet_scan.points()[i].range() ) / 100 );
+                point.polar.bearing( p->packet_scan.angle_as_radians( p->packet_scan.points()[i] ) );
+                point.polar.elevation( p->packet_scan.points()[i].elevation() );
+                point.cartesian = point.polar.to_cartesian();
+                point.layer = p->packet_scan.points()[i].id.layer();
+                point.what = p->packet_scan.points()[i].flags();
+                point.width = double( p->packet_scan.points()[i].echo_pulse_width() ) / 100;
                 point.timestamp = timestamps[i];
                 ostream.write( point );
             }
