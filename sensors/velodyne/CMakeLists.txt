@@ -33,4 +33,8 @@ INSTALL(
 )
 
 ADD_SUBDIRECTORY( applications )
-ADD_SUBDIRECTORY( test )
+
+if( BUILD_TESTS )
+    ADD_SUBDIRECTORY( test )
+endif( BUILD_TESTS )
+
