@@ -202,3 +202,4 @@ IF( snark_build_sensors )
 ENDIF( snark_build_sensors )
 
 ADD_SUBDIRECTORY( timing )
+ADD_SUBDIRECTORY( visiting )
