@@ -30,14 +30,14 @@ inline bool less( const Eigen::Matrix< T, 3, 1 >& lhs, const Eigen::Matrix< T, 3
     return ( ( lhs.array() < rhs.array() ).all() );
 }
 
-template < typename T >
-inline Eigen::Matrix< T, 3, 1 > min( const Eigen::Matrix< T, 3, 1 >& rhs, const Eigen::Matrix< T, 3, 1 >& lhs )
+template < typename T, int N >
+inline Eigen::Matrix< T, N, 1 > min( const Eigen::Matrix< T, N, 1 >& rhs, const Eigen::Matrix< T, N, 1 >& lhs )
 {
     return rhs.array().min( lhs.array() );
 }
 
-template < typename T >
-inline Eigen::Matrix< T, 3, 1 > max( const Eigen::Matrix< T, 3, 1 >& rhs, const Eigen::Matrix< T, 3, 1 >& lhs )
+template < typename T, int N >
+inline Eigen::Matrix< T, N, 1 > max( const Eigen::Matrix< T, N, 1 >& rhs, const Eigen::Matrix< T, N, 1 >& lhs )
 {
     return rhs.array().max( lhs.array() );
 }
