@@ -22,6 +22,8 @@
 #include <boost/optional.hpp>
 #include <Eigen/Core>
 #include <comma/base/types.h>
+#include <snark/math/math.h>
+#include <comma/math/interval.h>
 #include <snark/point_cloud/voxel_grid.h>
 
 namespace snark {
@@ -29,7 +31,7 @@ namespace snark {
 class partition
 {
     public:
-        typedef std::pair< Eigen::Vector3d, Eigen::Vector3d > extents_type;
+        typedef comma::math::interval< Eigen::Vector3d > extents_type;
         partition( const extents_type& extents
                  , const Eigen::Vector3d& resolution
                  , std::size_t min_points_per_voxel = 1 );

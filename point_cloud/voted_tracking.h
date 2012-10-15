@@ -24,7 +24,7 @@
 #include <map>
 #include <boost/optional.hpp>
 
-namespace snark { namespace Robotics {
+namespace snark { 
     
 /// A common problem:
 ///
@@ -46,7 +46,7 @@ namespace snark { namespace Robotics {
 ///
 ///  See unit test for usage example
 template < typename It, typename Id, typename F >
-Id votedTracking( It begin, It end, F GetPreviousId, Id vacantId );
+Id voted_tracking( It begin, It end, F GetPreviousId, Id vacantId );
 
 namespace impl {
 
@@ -55,7 +55,7 @@ template < typename P > inline bool comparePairs( const P& i, const P& j ) { ret
 } // namespace impl {
 
 template < typename It, typename Id, typename F >
-inline Id votedTracking( It begin, It end, F getPreviousId, Id vacantId )
+inline Id voted_tracking( It begin, It end, F getPreviousId, Id vacantId )
 {
     typedef std::map< Id, std::size_t > Map;
     typedef std::pair< Id, std::size_t > Pair;
@@ -71,6 +71,6 @@ inline Id votedTracking( It begin, It end, F getPreviousId, Id vacantId )
                        : std::max_element( ids.begin(), ids.end(), impl::comparePairs< Pair > )->first;
 }
     
-} } // namespace snark { namespace Robotics {
+} // namespace snark { 
 
 #endif // #ifndef SNARK_PERCEPTION_ALGORITHMS_ALGORITHMS_VOTEDTRACKING_HEADER_GUARD_

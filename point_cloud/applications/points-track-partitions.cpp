@@ -179,7 +179,7 @@ static void match() // todo: refactor this bloody mess, once voxel grid is refac
     IdMap ids;
     for( partitionMap::iterator it = partitions.begin(); it != partitions.end(); ++it )
     {
-        comma::uint32 id = snark::votedTracking( it->second.begin(), it->second.end(), getPreviousId, vacant );
+        comma::uint32 id = snark::voted_tracking( it->second.begin(), it->second.end(), getPreviousId, vacant );
         if( id == vacant ) { ++vacant; }
         ids.insert( std::make_pair( id, IdElement( id, &( it->second ) ) ) );
     }

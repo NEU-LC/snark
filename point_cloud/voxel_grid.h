@@ -24,7 +24,8 @@
 #include <boost/none_t.hpp>
 #include <Eigen/Core>
 #include <boost/optional.hpp>
-#include <comma/math/compare.h>
+#include <snark/math/math.h>
+#include <comma/math/interval.h>
 #include <snark/point_cloud/impl/pin_screen.h>
 
 namespace snark {
@@ -42,18 +43,18 @@ class voxel_grid : public pin_screen< V >
         typedef typename pin_screen< V >::index_type index_type;
         typedef typename pin_screen< V >::size_type size_type;
         typedef typename pin_screen< V >::column_type column_type;
-        typedef std::pair< P, P > extents_type;
+        typedef comma::math::interval< P > interval_type;
         
         /// constructor
         /// @note if adjusted, the actual extents will be
         ///       extents - resolution / 2, extents + resolution / 2
         /// @todo get rid of "adjusted", it's just ugly
-        voxel_grid( const extents_type& extents
+        voxel_grid( const interval_type& extents
                   , const point_type& resolution
                   , bool adjusted = false );
 
         /// return extents
-        const extents_type& extents() const;
+        const interval_type& extents() const;
 
         /// return resolution
         const point_type& resolution() const;
@@ -86,30 +87,30 @@ class voxel_grid : public pin_screen< V >
         using pin_screen< voxel_type >::column;
 
     private:
-        extents_type extents_;
+        interval_type extents_;
         point_type resolution_;
 };
 
 namespace detail {
 
 template < typename P >
-inline static std::pair< P, P > extents( const std::pair< P, P >& e, const P& r, bool adjusted = true )
+inline static comma::math::interval< P > extents( const comma::math::interval< P >& e, const P& r, bool adjusted = true )
 {
-    return adjusted ? std::pair< P, P >( e.first - r / 2, e.second + r / 2 ) : e;
+    return adjusted ? comma::math::interval< P >( e.min() - r / 2, e.max() + r / 2 ) : e;
 }
 
 template < typename P >
-inline static Eigen::Matrix< std::size_t, 1, 2 > size( const std::pair< P, P >& e, const P& r, bool adjusted = true )
+inline static Eigen::Matrix< std::size_t, 1, 2 > size( const comma::math::interval< P >& e, const P& r, bool adjusted = true )
 {
-    std::pair< P, P > f = extents( e, r, adjusted );
-    P diff = f.second - f.first;
+    comma::math::interval< P > f = extents( e, r, adjusted );
+    P diff = f.max() - f.min();
     return Eigen::Matrix< std::size_t, 1, 2 >( std::ceil( diff.x() / r.x() ), std::ceil( diff.y() / r.y() ) );
 }
 
 } // namespace detail {
 
 template < typename V, typename P >
-inline voxel_grid< V, P >::voxel_grid( const typename voxel_grid< V, P >::extents_type& extents
+inline voxel_grid< V, P >::voxel_grid( const typename voxel_grid< V, P >::interval_type& extents
                                 , const typename voxel_grid< V, P >::point_type& resolution
                                 , bool adjusted )
     : pin_screen< V >( detail::size( extents, resolution, adjusted ) )
@@ -119,7 +120,7 @@ inline voxel_grid< V, P >::voxel_grid( const typename voxel_grid< V, P >::extent
 }
 
 template < typename V, typename P >
-inline const std::pair< P, P >& voxel_grid< V, P >::extents() const { return extents_; }
+inline const comma::math::interval< P >& voxel_grid< V, P >::extents() const { return extents_; }
 
 template < typename V, typename P >
 inline const P& voxel_grid< V, P >::resolution() const { return resolution_; }
@@ -127,20 +128,15 @@ inline const P& voxel_grid< V, P >::resolution() const { return resolution_; }
 template < typename V, typename P >
 inline typename voxel_grid< V, P >::index_type voxel_grid< V, P >::index_of( const P& p ) const
 {
-    return index_type( std::floor( ( p.x() - extents_.first.x() ) / resolution_.x() )
-                     , std::floor( ( p.y() - extents_.first.y() ) / resolution_.y() )
-                     , std::floor( ( p.z() - extents_.first.z() ) / resolution_.z() ) );
+    return index_type( std::floor( ( p.x() - extents_.min().x() ) / resolution_.x() )
+                     , std::floor( ( p.y() - extents_.min().y() ) / resolution_.y() )
+                     , std::floor( ( p.z() - extents_.min().z() ) / resolution_.z() ) );
 }
 
 template < typename V, typename P >
 inline bool voxel_grid< V, P >::covers( const P& p ) const
 {
-    for( int i = 0; i < extents_.first.rows(); ++i ) // // quick and dirty: use traits, if decoupling from eigen needed
-    {
-        if( comma::math::less( p.array()[i], extents_.first.array()[i] ) ) { return false; }
-        if( comma::math::less( extents_.second.array()[i], p.array()[i] ) ) { return false; }
-    }
-    return true;
+    return extents_.contains( p );
 }
 
 template < typename V, typename P >
@@ -162,7 +158,7 @@ template < typename V, typename P >
 inline P voxel_grid< V, P >::origin( const index_type& i ) const
 {
     P p( resolution_[0] * i[0], resolution_[1] * i[1], resolution_[2] * i[2] );
-    return extents_.first + p;
+    return extents_.min() + p;
 }
 
 template < typename V, typename P >

@@ -25,7 +25,7 @@ namespace snark { namespace Robotics { namespace Test {
 
 typedef Eigen::Vector3d point;
 typedef Eigen::Matrix< std::size_t, 1, 3 > index_type;
-typedef std::pair< point, point > extents_type;
+typedef comma::math::interval< point > extents_type;
     
 TEST( voxel_grid, construction )
 {

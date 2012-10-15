@@ -107,8 +107,8 @@ class partition::impl_
         
         partition::extents_type expanded_( const partition::extents_type& extents, const Eigen::Vector3d& resolution )
         {
-            Eigen::Vector3d floor = extents.first - resolution / 2;
-            Eigen::Vector3d ceil = extents.second + resolution / 2;
+            Eigen::Vector3d floor = extents.min() - resolution / 2;
+            Eigen::Vector3d ceil = extents.max() + resolution / 2;
             return partition::extents_type( Eigen::Vector3d( std::floor( floor.x() ), std::floor( floor.y() ), std::floor( floor.z() ) )
                                           , Eigen::Vector3d( std::ceil( ceil.x() ), std::ceil( ceil.y() ), std::ceil( ceil.z() ) ) );
         }
