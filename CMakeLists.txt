@@ -117,6 +117,7 @@ OPTION( snark_build_graphics "build graphics" ON )
 OPTION( snark_build_point_cloud "build point cloud" ON )
 OPTION( snark_build_imaging "build imaging" ON )
 OPTION( snark_build_sensors "build sensors" ON )
+OPTION( snark_build_actuators "build actuators" ON )
 
 INCLUDE( CMakeDependentOption )
 CMAKE_DEPENDENT_OPTION( snark_build_sensors_dc1394 "build dc1394 components" ON "snark_build_sensors" OFF )
@@ -181,6 +182,11 @@ CONFIGURE_FILE( ${PROJECT_SOURCE_DIR}/CMakeFiles/use_${PROJECT_NAME}.cmake.in
 SET( snark_PACKAGE_CMAKEFILES ${snark_PACKAGE_CMAKEFILES} ${PROJECT_BINARY_DIR}/CMakeFiles/use_${PROJECT_NAME}.cmake )
 INSTALL( FILES ${snark_PACKAGE_CMAKEFILES}
          DESTINATION ${CMAKE_INSTALL_PREFIX}/${snark_INSTALL_PACKAGE_DIR} )
+
+IF( snark_build_actuators )
+    ADD_SUBDIRECTORY( actuators )
+ENDIF( snark_build_actuators )
+
 
 IF( snark_build_graphics )
     ADD_SUBDIRECTORY( graphics )

@@ -170,10 +170,10 @@ static cv::Mat pv_as_cvmat_( const tPvFrame& frame )
     return cv::Mat( frame.Height, frame.Width, type, frame.ImageBuffer );
 }
 
-class gige::Impl_
+class gige::impl
 {
     public:
-        Impl_( unsigned int id, const attributes_type& attributes ) :
+        impl( unsigned int id, const attributes_type& attributes ) :
             started_( false ),
             timeOut_( 1000 )
         {
@@ -236,7 +236,7 @@ class gige::Impl_
             timeOut_ *= timeOutFactor;
         }
 
-        ~Impl_() { close(); }
+        ~impl() { close(); }
 
         void close()
         {
@@ -299,7 +299,7 @@ class gige::Impl_
                 retries++;
             }
             if( success ) { return pair; }
-            COMMA_THROW( comma::exception, "got lots of missing frames or timeouts" << std::endl << std::endl << "it is likely that MTU size on your machine is less than packet size" << std::endl << "check PacketSize attribute (gige-cat --list-attributes)" << std::endl << "set packet size (e.g. gige-cat --set=PacketSize=1500)" << std::endl << "or increase MTU size on your machine" );
+            COMMA_THROW( comma::exception, "got lots of missing frames or timeouts" << std::endl << std::endl << "it is likely that MTU size on your machine is less than packet size" << std::endl << "check packetSize attribute (gige-cat --list-attributes)" << std::endl << "set packet size (e.g. gige-cat --set=packetSize=1500)" << std::endl << "or increase MTU size on your machine" );
         }
         
         const tPvHandle& handle() const { return handle_; }
@@ -330,7 +330,7 @@ class gige::Impl_
         }
         
     private:
-        friend class gige::callback::Impl_;
+        friend class gige::callback::impl;
         tPvHandle handle_;
         tPvFrame frame_;
         std::vector< char > buffer_;
@@ -345,12 +345,12 @@ class gige::Impl_
         }
 };
 
-class gige::callback::Impl_
+class gige::callback::impl
 {
     public:
         typedef boost::function< void ( const std::pair< boost::posix_time::ptime, cv::Mat >& ) > OnFrame;
         
-        Impl_( gige& gige, OnFrame on_frame )
+        impl( gige& gige, OnFrame on_frame )
             : on_frame( on_frame )
             , handle( gige.pimpl_->handle() )
             , frame( gige.pimpl_->frame_ )
@@ -368,7 +368,7 @@ class gige::callback::Impl_
             if( result != ePvErrSuccess ) { COMMA_THROW( comma::exception, "failed to start acquisition on camera " << gige.pimpl_->id() << ": " << pv_error_to_string_( result ) << " (" << result << ")" ); }
         }
 
-        ~Impl_()
+        ~impl()
         {
             is_shutdown = true;
             PvCommandRun( handle, "Acquisitionstop" );
@@ -387,7 +387,7 @@ class gige::callback::Impl_
 
 static void PVDECL pv_callback_( tPvFrame *frame )
 {
-    snark::camera::gige::callback::Impl_* c = reinterpret_cast< snark::camera::gige::callback::Impl_* >( frame->Context[0] );
+    snark::camera::gige::callback::impl* c = reinterpret_cast< snark::camera::gige::callback::impl* >( frame->Context[0] );
     if( c->is_shutdown ) { return; }
     std::pair< boost::posix_time::ptime, cv::Mat > m( boost::posix_time::microsec_clock::universal_time(), cv::Mat() );
     if( frame ) { m.second = snark::camera::pv_as_cvmat_( *frame ); }
@@ -398,7 +398,7 @@ static void PVDECL pv_callback_( tPvFrame *frame )
 
 namespace snark{ namespace camera{
 
-gige::gige( unsigned int id, const gige::attributes_type& attributes ) : pimpl_( new Impl_( id, attributes ) ) {}
+gige::gige( unsigned int id, const gige::attributes_type& attributes ) : pimpl_( new impl( id, attributes ) ) {}
 
 gige::~gige() { delete pimpl_; }
 
@@ -406,7 +406,7 @@ std::pair< boost::posix_time::ptime, cv::Mat > gige::read() { return pimpl_->rea
 
 void gige::close() { pimpl_->close(); }
 
-std::vector< tPvCameraInfo > gige::list_cameras() { return gige::Impl_::list_cameras(); }
+std::vector< tPvCameraInfo > gige::list_cameras() { return gige::impl::list_cameras(); }
 
 unsigned int gige::id() const { return pimpl_->id(); }
 
@@ -415,7 +415,7 @@ unsigned long gige::total_bytes_per_frame() const { return pimpl_->total_bytes_p
 gige::attributes_type gige::attributes() const { return pv_attributes_( pimpl_->handle() ); }
 
 gige::callback::callback( gige& gige, boost::function< void ( std::pair< boost::posix_time::ptime, cv::Mat > ) > on_frame )
-    : pimpl_( new callback::Impl_( gige, on_frame ) )
+    : pimpl_( new callback::impl( gige, on_frame ) )
 {
 }
 

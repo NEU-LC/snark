@@ -70,20 +70,20 @@ class gige
                 ~callback();
                 
                 /// implementation class, a hack: has to be public to use pvAPI callback, sigh...
-                class Impl_;
+                class impl;
                 
                 /// return true, if callback status is ok
                 bool good() const;
                 
             private:
                 friend class gige;
-                Impl_* pimpl_;
+                impl* pimpl_;
         };
         
     private:
-        friend class callback::Impl_;
-        class Impl_;
-        Impl_* pimpl_;
+        friend class callback::impl;
+        class impl;
+        impl* pimpl_;
 };
 
 } } // namespace snark{ namespace camera{
