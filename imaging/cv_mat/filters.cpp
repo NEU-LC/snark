@@ -169,8 +169,8 @@ class undistort_impl_
         filters::value_type operator()( filters::value_type m )
         {
             init_map_( m.second.rows, m.second.cols );
-            filters::value_type n( m.first, cv::Mat( m.second.size(), m.second.type() ) );
-            cv::remap( m.second, n.second, x_, y_, cv::INTER_LINEAR );
+            filters::value_type n( m.first, cv::Mat( m.second.size(), m.second.type(), cv::Scalar::all(0) ) );
+            cv::remap( m.second, n.second, x_, y_, cv::INTER_LINEAR, cv::BORDER_TRANSPARENT );
             return n;
         }
         
