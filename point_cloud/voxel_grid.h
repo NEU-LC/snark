@@ -24,8 +24,7 @@
 #include <boost/none_t.hpp>
 #include <Eigen/Core>
 #include <boost/optional.hpp>
-#include <snark/math/math.h>
-#include <comma/math/interval.h>
+#include <snark/math/interval.h>
 #include <snark/point_cloud/impl/pin_screen.h>
 
 namespace snark {
@@ -43,7 +42,7 @@ class voxel_grid : public pin_screen< V >
         typedef typename pin_screen< V >::index_type index_type;
         typedef typename pin_screen< V >::size_type size_type;
         typedef typename pin_screen< V >::column_type column_type;
-        typedef comma::math::interval< P > interval_type;
+        typedef snark::math::interval< typename P::Scalar, P::RowsAtCompileTime > interval_type;
         
         /// constructor
         /// @note if adjusted, the actual extents will be
@@ -94,15 +93,15 @@ class voxel_grid : public pin_screen< V >
 namespace detail {
 
 template < typename P >
-inline static comma::math::interval< P > extents( const comma::math::interval< P >& e, const P& r, bool adjusted = true )
+inline static math::interval< typename P::Scalar, P::RowsAtCompileTime > extents( const math::interval< typename P::Scalar, P::RowsAtCompileTime >& e, const P& r, bool adjusted = true )
 {
-    return adjusted ? comma::math::interval< P >( e.min() - r / 2, e.max() + r / 2 ) : e;
+    return adjusted ? math::interval< typename P::Scalar, P::RowsAtCompileTime >( e.min() - r / 2, e.max() + r / 2 ) : e;
 }
 
 template < typename P >
-inline static Eigen::Matrix< std::size_t, 1, 2 > size( const comma::math::interval< P >& e, const P& r, bool adjusted = true )
+inline static Eigen::Matrix< std::size_t, 1, 2 > size( const math::interval< typename P::Scalar, P::RowsAtCompileTime >& e, const P& r, bool adjusted = true )
 {
-    comma::math::interval< P > f = extents( e, r, adjusted );
+    math::interval< typename P::Scalar, P::RowsAtCompileTime > f = extents( e, r, adjusted );
     P diff = f.max() - f.min();
     return Eigen::Matrix< std::size_t, 1, 2 >( std::ceil( diff.x() / r.x() ), std::ceil( diff.y() / r.y() ) );
 }
@@ -120,7 +119,7 @@ inline voxel_grid< V, P >::voxel_grid( const typename voxel_grid< V, P >::interv
 }
 
 template < typename V, typename P >
-inline const comma::math::interval< P >& voxel_grid< V, P >::extents() const { return extents_; }
+inline const typename voxel_grid< V, P >::interval_type& voxel_grid< V, P >::extents() const { return extents_; }
 
 template < typename V, typename P >
 inline const P& voxel_grid< V, P >::resolution() const { return resolution_; }
