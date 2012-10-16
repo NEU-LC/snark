@@ -21,7 +21,7 @@
 #include <gtest/gtest.h>
 #include <snark/point_cloud/voxel_grid.h>
 
-namespace snark { namespace Robotics { namespace Test {
+namespace snark { namespace test {
 
 typedef Eigen::Vector3d point;
 typedef Eigen::Matrix< std::size_t, 1, 3 > index_type;
@@ -85,7 +85,7 @@ TEST( voxel_grid, test )
     }
 }
 
-} } } // namespace snark { namespace Robotics { namespace Test {
+} } // namespace snark {  namespace test {
 
 int main(int argc, char *argv[])
 {
