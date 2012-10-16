@@ -16,8 +16,8 @@
 // You should have received a copy of the GNU Lesser General Public
 // License along with snark. If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef COMMA_MATH_INTERVAL_H_
-#define COMMA_MATH_INTERVAL_H_
+#ifndef SNARK_MATH_INTERVAL_H_
+#define SNARK_MATH_INTERVAL_H_
 
 #include <iostream>
 #include <comma/base/exception.h>
@@ -78,4 +78,4 @@ class interval
 
 } } // namespace snark { namespace math {
 
-#endif // COMMA_MATH_INTERVAL_H_
+#endif // SNARK_MATH_INTERVAL_H_
