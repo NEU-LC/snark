@@ -61,7 +61,7 @@ C config_from_ini( const std::string& filename, const std::string& name = "", co
         }
         else
         {
-            comma::from_ptree v( tree, name );
+            comma::from_ptree v( tree, name, true );
             comma::visiting::apply( v, config );
         }
     }
