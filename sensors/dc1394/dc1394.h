@@ -48,9 +48,16 @@ public:
         // TODO framerate is not used in format7, as the way to set the framerate is different.
         // see http://damien.douxchamps.net/ieee1394/libdc1394/v2.x/faq/#How_do_I_set_the_frame_rate
         dc1394framerate_t frame_rate;
+        unsigned int relative_shutter;
+        unsigned int relative_gain;
+        float shutter; // 0 means do not change
+        float gain;
         uint64_t guid;
     };
 
+// DC1394_FEATURE_SHUTTER,
+//   DC1394_FEATURE_GAIN,
+    
     dc1394( const config& config = config(), unsigned int format7_width = 0, unsigned int format7_height = 0, unsigned int format7_size = 8160, unsigned int exposure = 0 );
     ~dc1394();
 
@@ -63,6 +70,8 @@ private:
     void init_camera();
     void setup_camera();
     void setup_camera_format7();
+    void set_exposure( float shutter, float gain );
+    void set_exposure( unsigned int shutter, unsigned int gain );
     
     config m_config;
     dc1394camera_t* m_camera;
@@ -122,7 +131,11 @@ template <> struct traits< snark::camera::dc1394::config >
         c.operation_mode = snark::camera::operation_mode_from_string( operation_mode );
         c.iso_speed = snark::camera::iso_speed_from_string( iso_speed );
         c.frame_rate = snark::camera::frame_rate_from_string( frame_rate );
-        
+
+        v.apply( "relative-shutter", c.relative_shutter );
+        v.apply( "relative-gain", c.relative_gain );
+        v.apply( "shutter", c.shutter );
+        v.apply( "gain", c.gain );
         v.apply( "guid", c.guid );
     }
 
@@ -153,6 +166,10 @@ template <> struct traits< snark::camera::dc1394::config >
         v.apply( "operation-mode", operation_mode );
         v.apply( "iso-speed", iso_speed );
         v.apply( "frame-rate", frame_rate );
+        v.apply( "relative-shutter", c.relative_shutter );
+        v.apply( "relative-gain", c.relative_gain );
+        v.apply( "shutter", c.shutter );
+        v.apply( "gain", c.gain );
         v.apply( "guid", c.guid );
     }
 };

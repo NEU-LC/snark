@@ -32,6 +32,10 @@ dc1394::config::config():
     operation_mode( DC1394_OPERATION_MODE_LEGACY ),
     iso_speed( DC1394_ISO_SPEED_400 ),
     frame_rate( DC1394_FRAMERATE_MAX ),
+    relative_shutter( 0 ),
+    relative_gain( 0 ),
+    shutter( 0 ),
+    gain( 0 ),
     guid( 0 )
 {
     
@@ -69,6 +73,15 @@ dc1394::dc1394( const snark::camera::dc1394::config& config, unsigned int format
     
     init_camera();
 
+    if( m_config.relative_shutter != 0 )
+    {
+        set_exposure( m_config.relative_shutter, m_config.relative_gain );
+    }
+    if( std::fabs( m_config.shutter ) > 1e-5 )
+    {
+        set_exposure( m_config.shutter, m_config.gain );
+    }
+
     if( m_config.output == config::Raw )
     {
         dc1394color_coding_t colorCoding;
@@ -97,21 +110,13 @@ dc1394::dc1394( const snark::camera::dc1394::config& config, unsigned int format
     {
         setup_camera_format7();
     }
-        
+
     if ( dc1394_capture_setup( m_camera, 4, DC1394_CAPTURE_FLAGS_DEFAULT) != DC1394_SUCCESS )
     {
         COMMA_THROW( comma::exception, "could not setup the camera" );
     }
 
     m_image = cv::Mat( m_height, m_width, m_config.type() );
-
-//     m_fd = dc1394_capture_get_fileno( m_camera );
-//     m_select.read().add( m_fd );
-//     dc1394framerate_t framerate;
-//     dc1394_video_get_framerate( m_camera, &framerate );
-//     float fps;
-//     dc1394_framerate_as_float( framerate, &fps );
-//     m_frame_duration = boost::posix_time::microseconds( 1e6 / fps );
     
     if ( dc1394_video_set_transmission( m_camera, DC1394_ON ) != DC1394_SUCCESS )
     {
@@ -392,7 +397,50 @@ void dc1394::setup_camera_format7()
     {
         COMMA_THROW( comma::exception, "could not set roi" );
     }
-
 }
+
+/// set absolute shutter and gain
+void dc1394::set_exposure( float shutter, float gain )
+{
+    dc1394error_t err;
+
+    /* 1. Turn exposure off */
+    err = dc1394_feature_set_power(m_camera, DC1394_FEATURE_EXPOSURE, DC1394_OFF);
+    DC1394_ERR(err, "Failed to set exposure power");
+
+    /* 2. Set gain to manual mode (and ideally minimum gain) */
+    err = dc1394_feature_set_mode(m_camera, DC1394_FEATURE_GAIN, DC1394_FEATURE_MODE_MANUAL);
+    DC1394_ERR(err, "Failed to set gain mode");
+    err = dc1394_feature_set_absolute_control(m_camera, DC1394_FEATURE_GAIN, DC1394_ON);
+    DC1394_ERR(err, "Failed to set gain absolute control mode");
+    err = dc1394_feature_set_absolute_value(m_camera, DC1394_FEATURE_GAIN, gain);
+    DC1394_ERR(err, "Failed to set absolute gain value");
+
+    /* 3. Set the shutter to manual mode, and then the requested value. */
+    err = dc1394_feature_set_mode(m_camera, DC1394_FEATURE_SHUTTER, DC1394_FEATURE_MODE_MANUAL);
+    DC1394_ERR(err, "Failed to set shutter mode");
+    err = dc1394_feature_set_absolute_control(m_camera, DC1394_FEATURE_SHUTTER, DC1394_ON);
+    DC1394_ERR(err, "Failed to set shutter absolute control mode");
+    err = dc1394_feature_set_absolute_value(m_camera, DC1394_FEATURE_SHUTTER, shutter);
+    DC1394_ERR(err, "Failed to set absolute shutter value");
+}
+
+/// set relative shutter and gain
+void dc1394::set_exposure( unsigned int shutter, unsigned int gain )
+{    
+    dc1394error_t err;
+
+    unsigned int value;
+    err = dc1394_feature_get_value(m_camera, DC1394_FEATURE_SHUTTER, &value);
+    DC1394_ERR(err, "Failed to get shutter value");
+    err = dc1394_feature_get_value(m_camera, DC1394_FEATURE_GAIN, &value);
+    DC1394_ERR(err, "Failed to get gain value");    
+
+    err = dc1394_feature_set_value(m_camera, DC1394_FEATURE_SHUTTER, shutter);
+    DC1394_ERR(err, "Failed to set shutter value");
+    err = dc1394_feature_set_value(m_camera, DC1394_FEATURE_GAIN, gain);
+    DC1394_ERR(err, "Failed to set gain value");
+}
+
 
 } } // namespace snark { namespace camera {
