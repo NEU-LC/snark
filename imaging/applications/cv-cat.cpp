@@ -107,10 +107,11 @@ int main( int argc, char** argv )
         boost::program_options::notify( vm );
         if ( vm.count( "help" ) || vm.count( "long-help" ) )
         {
-            std::cerr << "acquire images using opencv" << std::endl;
+            std::cerr << "acquire images using opencv, apply filters and output with header" << std::endl;
             if( !vm.count( "long-help" ) ) { std::cerr << "see long-help for filters usage" << std::endl; }
             std::cerr << std::endl;
-            std::cerr << "usage: cv-cat [options] [<filters>]" << std::endl;
+            std::cerr << "usage: cv-cat [options] [<filters>]\n" << std::endl;
+            std::cerr << "output header format: fields: t,cols,rows,type; binary: t,3uw\n" << std::endl;
             std::cerr << description << std::endl;
             std::cerr << std::endl;
             std::cerr << "examples" << std::endl;

@@ -58,7 +58,8 @@ int main( int argc, char** argv )
         {
             std::cerr << "acquire images from a prosilica gige camera" << std::endl;
             std::cerr << "output to stdout as serialized cv::Mat" << std::endl;
-            std::cerr << "usage: gige-cat [<options>] [<filters>]" << std::endl;
+            std::cerr << "usage: gige-cat [<options>] [<filters>]\n" << std::endl;
+            std::cerr << "output header format: fields: t,cols,rows,type; binary: t,3uw\n" << std::endl;
             std::cerr << description << std::endl;
             std::cerr << snark::cv_mat::filters::usage() << std::endl;
             return 1;
