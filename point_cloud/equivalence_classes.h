@@ -16,6 +16,8 @@
 // You should have received a copy of the GNU Lesser General Public
 // License along with snark. If not, see <http://www.gnu.org/licenses/>.
 
+/// @author vsevolod vlaskine
+
 #ifndef SNARK_PERCEPTION_EQUIVALENCECLASSES_HEADER_GUARD_
 #define SNARK_PERCEPTION_EQUIVALENCECLASSES_HEADER_GUARD_
 

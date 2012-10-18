@@ -16,6 +16,8 @@
 // You should have received a copy of the GNU Lesser General Public
 // License along with snark. If not, see <http://www.gnu.org/licenses/>.
 
+/// @author vsevolod vlaskine
+
 #ifdef WIN32
 #include <stdio.h>
 #include <fcntl.h>
@@ -91,7 +93,7 @@ static void usage()
     exit( -1 );
 }
 
-class stopwatch_type // quick and dirty
+class stopwatch_type // quick and dirty (and ugly)
 {
     public:
         stopwatch_type( bool verbose ) : m_verbose( verbose ) { reset(); }
@@ -106,8 +108,8 @@ class stopwatch_type // quick and dirty
 };
 
 static bool verbose;
-static boost::mutex logMutex; // real quick and dirty
-#define STDERR verbose && boost::mutex::scoped_lock( logMutex ) && std::cerr
+static boost::mutex log_mutex; // real quick and dirty
+#define STDERR verbose && boost::mutex::scoped_lock( log_mutex ) && std::cerr
 
 static std::size_t min_points_per_voxel = 1;
 static std::size_t min_voxels_per_partition = 1;
@@ -115,7 +117,7 @@ static std::size_t min_points_per_partition = 1;
 static Eigen::Vector3d resolution;
 static bool delta;
 comma::csv::options csv;
-static comma::uint32 minId;
+static comma::uint32 min_id;
 static bool discard;
 
 struct voxel
@@ -132,9 +134,9 @@ struct methods // quick and dirty
     static bool skip( const voxel& e ) { return e.count < min_points_per_voxel; }
     static bool same( const voxel& lhs, const voxel& rhs ) { return true; }
     static bool visited( const voxel& e ) { return e.visited; }
-    static void setVisited( voxel& e, bool v ) { e.visited = v; }
+    static void set_visited( voxel& e, bool v ) { e.visited = v; }
     static comma::uint32 id( const voxel& e ) { return e.id; }
-    static void setId( voxel& e, comma::uint32 id ) { e.id = id; }
+    static void set_id( voxel& e, comma::uint32 id ) { e.id = id; }
 };
 
 namespace points_to_partitions {
@@ -143,10 +145,21 @@ struct point
 {
     Eigen::Vector3d point;
     bool flag;
+    comma::uint32 block;
     mutable voxel* voxel;
 
     point() : point( 0, 0, 0 ), voxel( NULL ) {}
     comma::uint32 id() const { return voxel == NULL ? std::numeric_limits< comma::uint32 >::max() : voxel->id; }
+};
+
+struct block // quick and dirty, no optimization for now
+{
+    typedef std::pair< point, std::string > pair_t;
+    typedef std::deque< pair_t > pairs_t;
+    pairs_t pairs;
+    comma::uint32 id;
+    
+    block() : id( 0 ) {}
 };
 
 } // namespace points_to_partitions {
@@ -159,12 +172,14 @@ template <> struct traits< points_to_partitions::point >
     {
         v.apply( "point", p.point );
         v.apply( "flag", p.flag );
+        v.apply( "block", p.block );
     }
 
     template < typename K, typename V > static void visit( const K&, const points_to_partitions::point& p, V& v )
     {
         v.apply( "point", p.point );
         v.apply( "flag", p.flag );
+        v.apply( "block", p.block );
     }
 };
 
@@ -218,25 +233,25 @@ static void partition( const List& r, comma::uint32 block )
     typedef std::map< comma::uint32, std::list< voxel_grid< voxel >::iterator > > partitions;
     typedef voxel_grid< voxel >::iterator It;
     typedef voxel_grid< voxel >::neighbourhood_iterator nit_type;
-    const partitions& partitions = snark::equivalence_classes< It, nit_type, methods >( voxels.begin(), voxels.end(), minId );
+    const partitions& partitions = snark::equivalence_classes< It, nit_type, methods >( voxels.begin(), voxels.end(), min_id );
     stopwatch.stop();
     STDERR << "points-to-partitions: block: " << block << "; partitioned; elapsed: " << stopwatch.elapsed() << " seconds" << std::endl;
     STDERR << "points-to-partitions: block: " << block << "; found " << partitions.size() << " partitions; elapsed: " << stopwatch.elapsed() << " seconds" << std::endl;
     if( partitions.empty() ) { return; }
     STDERR << "points-to-partitions: block: " << block << "; outputting partitions" << "..." << std::endl;
     stopwatch.reset();
-    std::deque< bool > discarded( partitions.rbegin()->first - minId + 1, false );
+    std::deque< bool > discarded( partitions.rbegin()->first - min_id + 1, false );
     for( partitions::const_iterator i = partitions.begin(); i != partitions.end(); ++i )
     {
         if( i->second.size() < min_voxels_per_partition )
         {
-            discarded[ i->first - minId ] = true;
+            discarded[ i->first - min_id ] = true;
         }
         else if( min_points_per_partition > min_voxels_per_partition * min_points_per_voxel ) // watch performance
         {
             std::size_t size = 0;
             for( set_type::const_iterator j = i->second.begin(); j != i->second.end(); size += ( *j++ )->count );
-            if( size < min_points_per_partition ) { discarded[ i->first - minId ] = true; }
+            if( size < min_points_per_partition ) { discarded[ i->first - min_id ] = true; }
         }
     }
     for( List::const_iterator it = r.begin(); it != r.end(); ++it )
@@ -244,7 +259,7 @@ static void partition( const List& r, comma::uint32 block )
         comma::uint32 id = it->value.id();
         if(    it->value.voxel == NULL
             || it->value.voxel->count < min_points_per_voxel
-            || discarded[ it->value.voxel->id - minId ] )
+            || discarded[ it->value.voxel->id - min_id ] )
         {
             id = std::numeric_limits< comma::uint32 >::max();
             if( discard ) { continue; }
@@ -301,7 +316,7 @@ int main( int ac, char** av )
         resolution = Eigen::Vector3d( r, r, r );
         bool realtime = options.exists( "--discard,-d" );
         delta = options.exists( "--delta" );
-        minId = options.value( "--min-id", 0 );
+        min_id = options.value( "--min-id", 0 );
         discard = options.exists( "--discard-points" );
         std::vector< std::string > v = comma::split( csv.fields, ',' );
         flag_present = std::find( v.begin(), v.end(), "flag" ) != v.end();

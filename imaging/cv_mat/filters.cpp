@@ -155,11 +155,6 @@ static filters::value_type timestamp_impl_( filters::value_type m )
     return m;
 }
 
-static filters::value_type empty_impl_( filters::value_type m )
-{
-    return m;
-}
-
 static filters::value_type text_impl_( filters::value_type m, const std::string& s, const cv::Point& origin, const cv::Scalar& colour )
 {
     cv::putText( m.second, s, origin, cv::FONT_HERSHEY_SIMPLEX, 1.0, colour, 1, CV_AA );
@@ -307,10 +302,6 @@ std::vector< filter > filters::make( const std::string& how )
         {
             f.push_back( filter( &timestamp_impl_ ) );
         }
-        else if( e[0] == "empty" )
-        {
-            f.push_back( filter( &empty_impl_ ) );
-        }
         else if( e[0] == "transpose" )
         {
             f.push_back( filter( &transpose_impl_ ) );
@@ -369,7 +360,6 @@ static std::string usage_impl_()
     oss << "        crop=[<x>,<y>],<width>,<height>: crop the portion of the image starting at x,y with size width x height" << std::endl;
     oss << "        crop-tile=[<x>,<y>],<num-tile-x>,<num-tile-y>: divide the image in num-tile-x x num-tile-y tiles, and crop the tile x,y" << std::endl;
     oss << "        cross[=<x>,<y>]: draw cross-hair at x,y; default: at image centre" << std::endl;
-    oss << "        empty: do nothing; convenient for debugging or data formatting" << std::endl;
     oss << "        flip: flip vertically" << std::endl;
     oss << "        flop: flip horizontally" << std::endl;
     oss << "        text=<text>[,x,y][,colour]: print text; default x,y: 10,10; default colour: yellow" << std::endl;
