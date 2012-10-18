@@ -204,6 +204,9 @@ int main( int ac, char** av )
             if( verbose ) { std::cerr << "sick-ldmrs-stream: started scanning" << std::endl; }
             bool first = true;
             comma::signal_flag is_shutdown;
+#ifdef WIN32
+            _setmode( _fileno( stdout ), _O_BINARY ); 
+#endif
             while( !is_shutdown )
             {
                 update_timestamp();

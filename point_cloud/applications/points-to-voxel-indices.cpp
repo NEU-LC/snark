@@ -75,6 +75,9 @@ int main( int argc, char** argv )
         comma::signal_flag is_shutdown;
         if( csv.binary() )
         {
+#ifdef WIN32
+            _setmode( _fileno( stdout ), _O_BINARY ); 
+#endif
             while( !is_shutdown && !std::cin.eof() && std::cin.good() )
             {
                 const input_point* point = istream.read();
