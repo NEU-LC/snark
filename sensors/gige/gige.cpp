@@ -299,7 +299,7 @@ class gige::impl
                 retries++;
             }
             if( success ) { return pair; }
-            COMMA_THROW( comma::exception, "got lots of missing frames or timeouts" << std::endl << std::endl << "it is likely that MTU size on your machine is less than packet size" << std::endl << "check packetSize attribute (gige-cat --list-attributes)" << std::endl << "set packet size (e.g. gige-cat --set=packetSize=1500)" << std::endl << "or increase MTU size on your machine" );
+            COMMA_THROW( comma::exception, "got lots of missing frames or timeouts" << std::endl << std::endl << "it is likely that MTU size on your machine is less than packet size" << std::endl << "check PacketSize attribute (gige-cat --list-attributes)" << std::endl << "set packet size (e.g. gige-cat --set=PacketSize=1500)" << std::endl << "or increase MTU size on your machine" );
         }
         
         const tPvHandle& handle() const { return handle_; }
