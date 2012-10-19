@@ -23,7 +23,6 @@
 #include <comma/base/types.h>
 #include <comma/csv/options.h>
 #include <snark/graphics/impl/extents.h>
-#include <snark/graphics/vector.h>
 #include <snark/graphics/qt3d/vertex_buffer.h>
 #include "./PointMap.h"
 #include "./PointWithId.h"

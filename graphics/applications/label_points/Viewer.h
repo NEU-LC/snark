@@ -34,7 +34,6 @@
 #include <boost/scoped_ptr.hpp>
 #include <boost/optional.hpp>
 #include <comma/string/string.h>
-#include <snark/graphics/vector.h>
 
 #include <snark/graphics/qt3d/view.h>
 

@@ -33,7 +33,6 @@
 #include <comma/io/stream.h>
 #include <comma/sync/synchronized.h>
 #include <snark/graphics/impl/extents.h>
-#include <snark/graphics/queue.h>
 #include "./Coloured.h"
 #include "./PointWithId.h"
 #include <snark/graphics/qt3d/vertex_buffer.h>
