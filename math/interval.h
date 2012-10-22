@@ -48,10 +48,10 @@ class interval
         const std::pair< vector_type, vector_type >& operator()() const { return m_interval; }
 
         /// return left boundary (convenience method)
-        vector_type min() const { return m_interval.first; }
+        const vector_type& min() const { return m_interval.first; }
 
         /// return right boundary (convenience method)
-        vector_type max() const { return m_interval.second; }
+        const vector_type& max() const { return m_interval.second; }
 
         /// return true, if variable belongs to the interval
         bool contains( const vector_type& t ) const { return ( ( m_interval.first.isApprox( t ) || less( m_interval.first, t ) ) && ( ( m_interval.second.isApprox( t ) || less( t, m_interval.second ) ) ) ); }
