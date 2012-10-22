@@ -91,10 +91,11 @@ void Viewer::reload()
 
 void Viewer::setCamera()
 {
-    snark::graphics::extents< Eigen::Vector3d > extents;
-    for( std::size_t i = 0; i < m_datasets.size(); ++i ) { extents.add( m_datasets[i]->extents() ); }
-    extents.add( extents.min() - Eigen::Vector3d( 10, 10, 10 ) ); // expand a bit
-    extents.add( extents.max() + Eigen::Vector3d( 10, 10, 10 ) ); // expand a bit
+    assert( !m_datasets.empty() );
+    snark::math::interval< double, 3 > extents = m_datasets[0]->extents();
+    for( std::size_t i = 0; i < m_datasets.size(); ++i ) { extents = extents.hull( m_datasets[i]->extents() ); }
+    extents = extents.hull( extents.min() - Eigen::Vector3d( 10, 10, 10 ) ); // expand a bit
+    extents = extents.hull( extents.max() + Eigen::Vector3d( 10, 10, 10 ) ); // expand a bit
     Eigen::Vector3d minCorner = extents.min() - m_datasets[0]->offset();
     Eigen::Vector3d maxCorner = extents.max() - m_datasets[0]->offset();
     QVector3D min( minCorner.x(), minCorner.y(), minCorner.z() );
@@ -176,9 +177,7 @@ boost::optional< std::pair< Eigen::Vector3d, comma::uint32 > > Viewer::pointSele
         }
         std::cerr << " clicked point " << p.transpose() << std::endl;
 
-        snark::graphics::extents< Eigen::Vector3d > e;
-        e.add( p - Eigen::Vector3d::Ones() );
-        e.add( p + Eigen::Vector3d::Ones() );
+        snark::math::interval< double, 3 > e( p - Eigen::Vector3d::Ones(), p + Eigen::Vector3d::Ones() );
         double minDistanceSquare = std::numeric_limits< double >::max();
         for( std::size_t i = 0; i < m_datasets.size(); ++i )
         {

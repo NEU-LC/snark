@@ -8,9 +8,7 @@ INCLUDE( ${QT_USE_FILE} )
 
 SET( dir ${SOURCE_CODE_BASE_DIR}/${PROJECT} )
 FILE( GLOB includes ${dir}/*.h )
-FILE( GLOB impl_includes ${dir}/impl/*.h )
 INSTALL( FILES ${includes} DESTINATION ${CMAKE_INSTALL_PREFIX}/${snark_INSTALL_INCLUDE_DIR}/${PROJECT} )
-INSTALL( FILES ${impl_includes} DESTINATION ${CMAKE_INSTALL_PREFIX}/${snark_INSTALL_INCLUDE_DIR}/${PROJECT}/impl )
 
 if( snark_BUILD_APPLICATIONS )
     ADD_SUBDIRECTORY( applications )

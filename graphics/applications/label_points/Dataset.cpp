@@ -43,14 +43,13 @@ void BasicDataset::visible( bool visible ) { m_visible = visible; }
 
 bool BasicDataset::visible() const { return m_visible; }
 
-const snark::graphics::extents< Eigen::Vector3d >& BasicDataset::extents() const { return m_extents; }
+const snark::math::interval< double, 3 >& BasicDataset::extents() const { return *m_extents; }
 
 void BasicDataset::clear()
 {
     m_points.clear();
     m_partitions.clear();
     m_vertices.reset();
-    m_extents = snark::graphics::extents< Eigen::Vector3d >();
 }
 
 void BasicDataset::init()
@@ -92,7 +91,14 @@ void BasicDataset::insert( const BasicDataset::Points& m ) // quick and dirty
     for( Points::ConstEnumerator en = m.begin(); !en.end(); ++en )
     {
         m_partitions[ en.value().id ].insert( en.key(), en.value() );
-        m_extents.add( en.key() ); // quick and dirty: erase will screw it, but no other way...
+        if( m_extents )
+        {
+            m_extents = m_extents->hull( en.key() ); // quick and dirty: erase will screw it, but no other way...
+        }
+        else
+        {
+            m_extents = snark::math::interval< double, 3 >( en.key() );
+        }
     }
     init();
 }
@@ -206,7 +212,14 @@ void Dataset::load()
             {
                 m_deque.push_back( std::make_pair( *p, comma::join( ascii->last(), m_options.delimiter ) ) );
             }
-            m_extents.add( p->point );
+            if( m_extents )
+            {
+                m_extents = m_extents->hull( p->point ); 
+            }
+            else
+            {
+                m_extents = snark::math::interval< double, 3 >( p->point );
+            }
             if( ++count % 10000 == 0 ) { std::cerr << "\rlabel-points: loaded " << count << " lines from " << m_filename << "             "; }
         }
         m_selection.reset( new BasicDataset( *m_offset ) );

@@ -16,6 +16,8 @@
 // You should have received a copy of the GNU Lesser General Public
 // License along with snark. If not, see <http://www.gnu.org/licenses/>.
 
+/// @author Cedric Wohlleber
+
 #ifndef SNARK_MATH_INTERVAL_H_
 #define SNARK_MATH_INTERVAL_H_
 
@@ -32,38 +34,39 @@ class interval
 {
     public:
         typedef Eigen::Matrix< T, N, 1 > vector_type;
-        /// copy constructor
-        interval( const interval& rhs ) { this->operator=( rhs ); }
 
         /// constructor
-        interval( const vector_type& min, const vector_type& max ) : interval_( get_min( min, max ), get_max( min, max ) ) { if( less( max, min ) ) { COMMA_THROW( comma::exception, "invalid interval" ); } }
+        interval(): m_interval( std::make_pair( vector_type::Zero(), vector_type::Zero() ) ) {}
+        
+        /// constructor
+        interval( const vector_type& min, const vector_type& max ) : m_interval( get_min( min, max ), get_max( min, max ) ) { if( less( max, min ) ) { COMMA_THROW( comma::exception, "invalid interval" ); } }
 
         /// constructor
-        interval( const vector_type& min ) : interval_( min, min ) { }
+        interval( const vector_type& min ) : m_interval( min, min ) { }
 
         /// return value
-        const std::pair< vector_type, vector_type >& operator()() const { return interval_; }
+        const std::pair< vector_type, vector_type >& operator()() const { return m_interval; }
 
         /// return left boundary (convenience method)
-        vector_type min() const { return interval_.first; }
+        vector_type min() const { return m_interval.first; }
 
         /// return right boundary (convenience method)
-        vector_type max() const { return interval_.second; }
+        vector_type max() const { return m_interval.second; }
 
         /// return true, if variable belongs to the interval
-        bool contains( const vector_type& t ) const { return ( ( interval_.first.isApprox( t ) || less( interval_.first, t ) ) && ( ( interval_.second.isApprox( t ) || less( t, interval_.second ) ) ) ); }
+        bool contains( const vector_type& t ) const { return ( ( m_interval.first.isApprox( t ) || less( m_interval.first, t ) ) && ( ( m_interval.second.isApprox( t ) || less( t, m_interval.second ) ) ) ); }
 
         /// return true, if variable belongs to the interval
-        bool contains( const interval& rhs ) const { return !( less( rhs().first, interval_.first ) || less( interval_.second, rhs().second ) ); }
+        bool contains( const interval& rhs ) const { return !( less( rhs().first, m_interval.first ) || less( m_interval.second, rhs().second ) ); }
 
         /// compute the hull of the interval and [x]
-        interval< T, N > hull( const vector_type& x ) { return interval( get_min( interval_.first, x ), get_max( interval_.second, x ) ); }
+        interval< T, N > hull( const vector_type& x ) { return interval( get_min( m_interval.first, x ), get_max( m_interval.second, x ) ); }
 
         /// compute the hull of 2 intervals
-        interval< T, N > hull( const interval& rhs ) { return interval( get_min( interval_.first, rhs.min() ), get_max( interval_.second, rhs.max() ) ); }
+        interval< T, N > hull( const interval& rhs ) { return interval( get_min( m_interval.first, rhs.min() ), get_max( m_interval.second, rhs.max() ) ); }
 
         /// equality
-        bool operator==( const interval& rhs ) const { return interval_.first.isApprox( rhs().first ) && interval_.second.isApprox( rhs().second ); }
+        bool operator==( const interval& rhs ) const { return m_interval.first.isApprox( rhs().first ) && m_interval.second.isApprox( rhs().second ); }
 
         /// unequality
         bool operator!=( const interval& rhs ) const { return !operator==( rhs ); }
@@ -73,7 +76,7 @@ class interval
         static vector_type get_min( const vector_type& lhs, const vector_type& rhs ) { return rhs.array().min( lhs.array() ); }
         static vector_type get_max( const vector_type& lhs, const vector_type& rhs ) { return rhs.array().max( lhs.array() ); }
         
-        std::pair< vector_type, vector_type > interval_;
+        std::pair< vector_type, vector_type > m_interval;
 };
 
 } } // namespace snark { namespace math {

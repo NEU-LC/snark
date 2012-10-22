@@ -16,6 +16,8 @@
 // You should have received a copy of the GNU Lesser General Public
 // License along with snark. If not, see <http://www.gnu.org/licenses/>.
 
+/// @author Vsevolod Vlaskine, Cedric Wohlleber
+
 #ifndef WIN32
 #include <sys/stat.h>
 #include <fcntl.h>

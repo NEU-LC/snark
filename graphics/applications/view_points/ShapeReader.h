@@ -16,6 +16,8 @@
 // You should have received a copy of the GNU Lesser General Public
 // License along with snark. If not, see <http://www.gnu.org/licenses/>.
 
+/// @author Vsevolod Vlaskine, Cedric Wohlleber
+
 #ifndef SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_SHAPE_READER_H_
 #define SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_SHAPE_READER_H_
 
@@ -68,7 +70,6 @@ ShapeReader< S >::ShapeReader( QGLView& viewer, comma::csv::options& options, st
 template< typename S >
 inline void ShapeReader< S >::start()
 {
-    m_extents = snark::graphics::extents< Eigen::Vector3f >();
     m_thread.reset( new boost::thread( boost::bind( &Reader::read, boost::ref( *this ) ) ) );
 }
 

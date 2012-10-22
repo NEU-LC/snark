@@ -16,6 +16,8 @@
 // You should have received a copy of the GNU Lesser General Public
 // License along with snark. If not, see <http://www.gnu.org/licenses/>.
 
+/// @author Vsevolod Vlaskine
+
 #ifndef SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_MAINWINDOW_H_
 #define SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_MAINWINDOW_H_
 

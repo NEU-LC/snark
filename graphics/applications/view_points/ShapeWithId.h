@@ -16,6 +16,8 @@
 // You should have received a copy of the GNU Lesser General Public
 // License along with snark. If not, see <http://www.gnu.org/licenses/>.
 
+/// @author Vsevolod Vlaskine, Cedric Wohlleber
+
 #ifndef SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_SHAPEWITHID_H_
 #define SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_SHAPEWITHID_H_
 
@@ -23,7 +25,7 @@
 #include <boost/optional.hpp>
 #include <comma/base/types.h>
 #include <comma/visiting/traits.h>
-#include <snark/graphics/impl/extents.h>
+#include <snark/math/interval.h>
 #include <snark/graphics/qt3d/rotation_matrix.h>
 #include <snark/graphics/qt3d/vertex_buffer.h>
 #include <Qt3D/qglnamespace.h>
@@ -54,13 +56,17 @@ struct Shapetraits< Eigen::Vector3d >
     static const QGL::DrawingMode drawingMode = QGL::Points;
     static const unsigned int size = 1;
     
-    static void update( const Eigen::Vector3d& p, const Eigen::Vector3d& offset, const QColor4ub& color, unsigned int block, qt3d::vertex_buffer& buffer, boost::optional< snark::graphics::extents< Eigen::Vector3f > >& extents  )
+    static void update( const Eigen::Vector3d& p, const Eigen::Vector3d& offset, const QColor4ub& color, unsigned int block, qt3d::vertex_buffer& buffer, boost::optional< snark::math::interval< float, 3 > >& extents  )
     {
         Eigen::Vector3d point = p - offset;
         buffer.addVertex( QVector3D( point.x(), point.y(), point.z() ), color, block );
         if( extents )
         {
-            extents->add( point.cast< float >() );
+            extents = extents->hull( point.cast< float >() );
+        }
+        else
+        {
+            extents = snark::math::interval< float, 3 >( point.cast< float >() );
         }
     }
 
@@ -75,10 +81,10 @@ struct Shapetraits< Eigen::Vector3d >
 };
 
 template<>
-struct Shapetraits< snark::graphics::extents< Eigen::Vector3d > >
+struct Shapetraits< snark::math::interval< double, 3 > >
 {
     static const unsigned int size = 8;
-    static void update( const snark::graphics::extents< Eigen::Vector3d >& e, const Eigen::Vector3d& offset, const QColor4ub& color, unsigned int block, qt3d::vertex_buffer& buffer, boost::optional< snark::graphics::extents< Eigen::Vector3f > >& extents  )
+    static void update( const snark::math::interval< double, 3 >& e, const Eigen::Vector3d& offset, const QColor4ub& color, unsigned int block, qt3d::vertex_buffer& buffer, boost::optional< snark::math::interval< float, 3 > >& extents  )
     {
         Eigen::Vector3f min = ( e.min() - offset ).cast< float >();
         Eigen::Vector3f max = ( e.max() - offset ).cast< float >();
@@ -93,8 +99,11 @@ struct Shapetraits< snark::graphics::extents< Eigen::Vector3d > >
         
         if( extents )
         {
-            extents->add( min );
-            extents->add( max );
+            extents = extents->hull( snark::math::interval< float, 3 >( min, max ) );
+        }
+        else
+        {
+            extents = snark::math::interval< float, 3 >( min, max );
         }
     }
 
@@ -117,16 +126,16 @@ struct Shapetraits< snark::graphics::extents< Eigen::Vector3d > >
         }
     }
     
-    static const Eigen::Vector3d& somePoint( const snark::graphics::extents< Eigen::Vector3d >& extents ) { return extents.min(); }
+    static const Eigen::Vector3d& somePoint( const snark::math::interval< double, 3 >& extents ) { return extents.min(); }
     
-    static Eigen::Vector3d centre( const snark::graphics::extents< Eigen::Vector3d >& extents ) { return ( extents.min() + extents.max() ) / 2; }
+    static Eigen::Vector3d centre( const snark::math::interval< double, 3 >& extents ) { return ( extents.min() + extents.max() ) / 2; }
 };
 
 template<>
 struct Shapetraits< std::pair< Eigen::Vector3d, Eigen::Vector3d > >
 {
     static const unsigned int size = 2;
-    static void update( const std::pair< Eigen::Vector3d, Eigen::Vector3d >& p, const Eigen::Vector3d& offset, const QColor4ub& color, unsigned int block, qt3d::vertex_buffer& buffer, boost::optional< snark::graphics::extents< Eigen::Vector3f > >& extents  )
+    static void update( const std::pair< Eigen::Vector3d, Eigen::Vector3d >& p, const Eigen::Vector3d& offset, const QColor4ub& color, unsigned int block, qt3d::vertex_buffer& buffer, boost::optional< snark::math::interval< float, 3 > >& extents  )
     {
         Eigen::Vector3f first = ( p.first - offset ).cast< float >();
         Eigen::Vector3f second = ( p.second - offset ).cast< float >();
@@ -134,8 +143,11 @@ struct Shapetraits< std::pair< Eigen::Vector3d, Eigen::Vector3d > >
         buffer.addVertex( QVector3D( second.x(), second.y(), second.z() ), color, block );
         if( extents )
         {
-            extents->add( first );
-            extents->add( second );
+            extents = extents->hull( snark::math::interval< float, 3 >( first, second ) );
+        }
+        else
+        {
+            extents = snark::math::interval< float, 3 >( first, second );
         }
     }
 
@@ -162,7 +174,7 @@ template < std::size_t Size >
 struct Shapetraits< Ellipse< Size > >
 {
     static const unsigned int size = Size;
-    static void update( const Ellipse< Size >& ellipse, const Eigen::Vector3d& offset, const QColor4ub& color, unsigned int block, qt3d::vertex_buffer& buffer, boost::optional< snark::graphics::extents< Eigen::Vector3f > >& extents  )
+    static void update( const Ellipse< Size >& ellipse, const Eigen::Vector3d& offset, const QColor4ub& color, unsigned int block, qt3d::vertex_buffer& buffer, boost::optional< snark::math::interval< float, 3 > >& extents  )
     {
         Eigen::Vector3d c = ellipse.centre - offset;
         const Eigen::Matrix3d& r = rotation_matrix::rotation( ellipse.orientation );
@@ -177,7 +189,11 @@ struct Shapetraits< Ellipse< Size > >
             buffer.addVertex( QVector3D( point.x(), point.y(), point.z() ), color, block );
             if( extents )
             {
-                extents->add( point );
+                extents = extents->hull( point );
+            }
+            else
+            {
+                extents = snark::math::interval< float, 3 >( point );
             }
         }
     }
@@ -268,6 +284,26 @@ template < std::size_t Size > struct traits< snark::graphics::View::Ellipse< Siz
         v.apply( "orientation", p.orientation );
         v.apply( "major", p.major );
         v.apply( "minor", p.minor );
+    }
+};
+
+template < typename T > struct traits< snark::math::interval< T, 3 > >
+{
+    template < typename Key, class Visitor >
+    static void visit( Key, snark::math::interval< T, 3 >& p, Visitor& v )
+    {
+        Eigen::Matrix< T, 3, 1 > min;
+        Eigen::Matrix< T, 3, 1 > max;
+        v.apply( "min", min );
+        v.apply( "max", max );
+        p = snark::math::interval< T, 3 >( min, max );
+    }
+
+    template < typename Key, class Visitor >
+    static void visit( Key, const snark::math::interval< T, 3 >& p, Visitor& v )
+    {
+        v.apply( "min", p.min() );
+        v.apply( "max", p.max() );
     }
 };
 

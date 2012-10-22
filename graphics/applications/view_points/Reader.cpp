@@ -16,6 +16,8 @@
 // You should have received a copy of the GNU Lesser General Public
 // License along with snark. If not, see <http://www.gnu.org/licenses/>.
 
+/// @author Vsevolod Vlaskine, Cedric Wohlleber
+
 #ifndef WIN32
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -43,6 +45,7 @@ Reader::Reader( QGLView& viewer, comma::csv::options& options, std::size_t size,
     , pointSize( pointSize )
     , options( options )
     , m_viewer( viewer )
+    , m_num_points( 0 )
     , m_colored( c )
     , m_shutdown( false )
     , m_show( true )
@@ -68,7 +71,10 @@ bool Reader::show() const { return m_show; }
 
 void Reader::read()
 {
-    while( !m_shutdown && readOnce() );
+    while( !m_shutdown && readOnce() )
+    {
+        m_num_points++;
+    }
     std::cerr << "view-points: end of " << options.filename << std::endl;
     m_shutdown = true;
 }

@@ -26,7 +26,7 @@
 #include <qevent.h>
 #include <qobject.h>
 #include <comma/base/types.h>
-#include <snark/graphics/impl/extents.h>
+#include <snark/math/interval.h>
 #include <Eigen/Core>
 #include <Qt3D/qcolor4ub.h>
 #include <Qt3D/qglpainter.h>

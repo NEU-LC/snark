@@ -16,6 +16,8 @@
 // You should have received a copy of the GNU Lesser General Public
 // License along with snark. If not, see <http://www.gnu.org/licenses/>.
 
+/// @author Cedric Wohlleber
+
 #ifndef SNARK_GRAPHICS_GL_VIEW_H_
 #define SNARK_GRAPHICS_GL_VIEW_H_
 

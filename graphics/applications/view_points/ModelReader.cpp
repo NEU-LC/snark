@@ -16,6 +16,8 @@
 // You should have received a copy of the GNU Lesser General Public
 // License along with snark. If not, see <http://www.gnu.org/licenses/>.
 
+/// @author Cedric Wohlleber
+
 #include <Eigen/Core>
 #include <snark/graphics/qt3d/rotation_matrix.h>
 #include "./ModelReader.h"
@@ -48,7 +50,6 @@ void ModelReader::start()
     {
         m_scene = QGLAbstractScene::loadScene( QLatin1String( m_file.c_str() ) );
     }
-    m_extents = snark::graphics::extents< Eigen::Vector3f >();
 
     m_thread.reset( new boost::thread( boost::bind( &Reader::read, boost::ref( *this ) ) ) );
 }

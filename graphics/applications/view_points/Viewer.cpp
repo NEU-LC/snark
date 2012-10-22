@@ -16,6 +16,8 @@
 // You should have received a copy of the GNU Lesser General Public
 // License along with snark. If not, see <http://www.gnu.org/licenses/>.
 
+/// @author Vsevolod Vlaskine, Cedric Wohlleber
+
 #ifndef WIN32
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -109,7 +111,7 @@ void Viewer::read()
             setCameraPosition( position, orientation );
         }
     }
-    else if( readers[0]->m_extents && readers[0]->m_extents->size() > 0 && ( m_shutdown || readers[0]->m_extents->size() >= readers[0]->size / 10 ) )
+    else if( readers[0]->m_extents && readers[0]->m_num_points > 0 && ( m_shutdown || readers[0]->m_num_points >= readers[0]->size / 10 ) )
     {
         QVector3D min( readers[0]->m_extents->min().x(), readers[0]->m_extents->min().y(), readers[0]->m_extents->min().z() );
         QVector3D max( readers[0]->m_extents->max().x(), readers[0]->m_extents->max().y(), readers[0]->m_extents->max().z() );

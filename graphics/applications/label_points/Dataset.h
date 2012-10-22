@@ -22,7 +22,7 @@
 #include <deque>
 #include <comma/base/types.h>
 #include <comma/csv/options.h>
-#include <snark/graphics/impl/extents.h>
+#include <snark/math/interval.h>
 #include <snark/graphics/qt3d/vertex_buffer.h>
 #include "./PointMap.h"
 #include "./PointWithId.h"
@@ -48,7 +48,7 @@ class BasicDataset
         const Points& points() const;
         const Partitions& partitions() const;
         const Eigen::Vector3d& offset() const;
-        const graphics::extents< Eigen::Vector3d >& extents() const;
+        const math::interval< double, 3 >& extents() const;
         void init();
         void draw( QGLPainter* painter ) const;
         void visible( bool visible );
@@ -63,7 +63,7 @@ class BasicDataset
         Partitions m_partitions;
         boost::scoped_ptr< qt3d::vertex_buffer > m_vertices;
         boost::optional< Eigen::Vector3d > m_offset;
-        graphics::extents< Eigen::Vector3d > m_extents;
+        boost::optional< math::interval< double, 3 > > m_extents;
         void insert( const Eigen::Vector3d& p, const Data& data );
 };
 

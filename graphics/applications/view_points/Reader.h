@@ -16,6 +16,8 @@
 // You should have received a copy of the GNU Lesser General Public
 // License along with snark. If not, see <http://www.gnu.org/licenses/>.
 
+/// @author Vsevolod Vlaskine, Cedric Wohlleber
+
 #ifndef SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_READER_H_
 #define SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_READER_H_
 
@@ -32,7 +34,7 @@
 #include <comma/io/file_descriptor.h>
 #include <comma/io/stream.h>
 #include <comma/sync/synchronized.h>
-#include <snark/graphics/impl/extents.h>
+#include <snark/math/interval.h>
 #include "./Coloured.h"
 #include "./PointWithId.h"
 #include <snark/graphics/qt3d/vertex_buffer.h>
@@ -75,7 +77,8 @@ class Reader
         
         friend class Viewer;
         QGLView& m_viewer;
-        boost::optional< snark::graphics::extents< Eigen::Vector3f > > m_extents;
+        boost::optional< snark::math::interval< float, 3 > > m_extents;
+        unsigned int m_num_points;
         boost::scoped_ptr< coloured > m_colored;
         bool m_shutdown;
         bool m_show;

@@ -208,7 +208,7 @@ boost::shared_ptr< snark::graphics::View::Reader > makeReader( QGLView& viewer
     csv.full_xpath = true;
     if( shape == "extents" )
     {
-        return boost::shared_ptr< snark::graphics::View::Reader >( new snark::graphics::View::ShapeReader< snark::graphics::extents< Eigen::Vector3d > >( viewer, csv, size, coloured, pointSize, label ) );
+        return boost::shared_ptr< snark::graphics::View::Reader >( new snark::graphics::View::ShapeReader< snark::math::interval< double, 3 > >( viewer, csv, size, coloured, pointSize, label ) );
     }
     else if( shape == "line" )
     {
