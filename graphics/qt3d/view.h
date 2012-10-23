@@ -23,7 +23,6 @@
 
 #include <boost/optional.hpp>
 #include <boost/thread.hpp>
-#include <snark/graphics/exception.h>
 #include <Eigen/Core>
 #include <Qt3D/qglview.h>
 #include <QMouseEvent>
