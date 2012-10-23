@@ -175,7 +175,7 @@ boost::shared_ptr< snark::graphics::View::Reader > makeReader( QGLView& viewer
         std::vector< std::string > v = comma::split( shape, '.' );
         if( v.size() < 2 )
         {
-            COMMA_THROW( snark::graphics::exception, "expected shape, got \"" << shape << "\"" ); 
+            COMMA_THROW( comma::exception, "expected shape, got \"" << shape << "\"" ); 
         }
         if( csv.fields == "" ) { csv.fields="point,orientation"; }
         if( v[1] == "png" || v[1] == "jpg" || v[1] == "jpeg" || v[1] == "bmp" || v[1] == "gif" )
@@ -184,7 +184,7 @@ boost::shared_ptr< snark::graphics::View::Reader > makeReader( QGLView& viewer
             std::vector< std::string > sizeVector = comma::split( size, ',' );
             if( v.size() != 2 )
             {
-                COMMA_THROW( snark::graphics::exception, "expected image size as width,height" );
+                COMMA_THROW( comma::exception, "expected image size as width,height" );
             }
             double width = boost::lexical_cast< double >( sizeVector[0] );
             double height = boost::lexical_cast< double >( sizeVector[0] );            
@@ -218,7 +218,7 @@ boost::shared_ptr< snark::graphics::View::Reader > makeReader( QGLView& viewer
     {
         return boost::shared_ptr< snark::graphics::View::Reader >( new snark::graphics::View::ShapeReader< snark::graphics::View::Ellipse< 25 > >( viewer, csv, size, coloured, pointSize, label ) );
     }
-    COMMA_THROW( snark::graphics::exception, "expected shape, got \"" << shape << "\"" ); // never here
+    COMMA_THROW( comma::exception, "expected shape, got \"" << shape << "\"" ); // never here
 }
 
 int main( int argc, char** argv ) 
