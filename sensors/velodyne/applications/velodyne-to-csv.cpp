@@ -33,6 +33,7 @@
 #include <snark/sensors/velodyne/impl/proprietary_reader.h>
 #include <snark/sensors/velodyne/impl/thin_reader.h>
 #include <snark/sensors/velodyne/impl/udp_reader.h>
+#include <snark/sensors/velodyne/impl/stdin_reader.h>
 #include <snark/sensors/velodyne/impl/velodyne_stream.h>
 
 //#include <google/profiler.h>
@@ -50,6 +51,7 @@ static void usage()
     std::cerr << "    --pcap : if present, velodyne data is read from pcap packets" << std::endl;
     std::cerr << "    --thin : if present, velodyne data is thinned (e.g. by velodyne-thin)" << std::endl;
     std::cerr << "    --udp-port <port> : read velodyne data directly from udp port" << std::endl;
+    std::cerr << "    --raw : read velodyne data directly from stdin" << std::endl;
     std::cerr << "    default input format: a proprietary format:" << std::endl;
     std::cerr << "        <header, 16 bytes><timestamp, 12 bytes><packet, 1206 bytes><footer, 4 bytes>" << std::endl;
     std::cerr << std::endl;
@@ -167,6 +169,11 @@ int main( int ac, char** av )
         else if( options.exists( "--udp-port" ) )
         {
             velodyne_stream< snark::udp_reader > v( options.value< unsigned short >( "--udp-port" ), db, outputInvalidpoints, from, to );
+            run( v, csv, min_range );
+        }
+        else if( options.exists( "--raw" ) )
+        {
+            velodyne_stream< snark::stdin_reader > v( db, outputInvalidpoints, from, to );
             run( v, csv, min_range );
         }
         else

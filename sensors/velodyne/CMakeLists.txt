@@ -12,7 +12,7 @@ FILE( GLOB includes ${SOURCE_CODE_BASE_DIR}/sensors/${PROJECT}/*.h )
 FILE( GLOB impl_source ${SOURCE_CODE_BASE_DIR}/sensors/${PROJECT}/impl/*.cpp )
 FILE( GLOB impl_includes ${SOURCE_CODE_BASE_DIR}/sensors/${PROJECT}/impl/*.h )
 FILE( GLOB thin_source ${SOURCE_CODE_BASE_DIR}/sensors/${PROJECT}/thin/*.cpp )
-FILE( GLOB thin_includes ${SOURCE_CODE_BASE_DIR}/sensors/${PROJECT}/thin/*.h )
+FILE( GLOB thin_includes ${SOURCE_CODE_BASE_DIR}/sensors/${PROJECT}/thin/*.h ) 
 
 SOURCE_GROUP( ${TARGET_NAME} FILES ${source} ${includes}
                                    ${impl_source} ${impl_includes}
