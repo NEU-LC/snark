@@ -42,7 +42,7 @@ class stdin_reader
 
     private:
         enum{ timestampSize = 12, payload_size = 1206 };        
-        boost::array< char, payload_size > packet_; // way greater than velodyne packet
+        boost::array< char, timestampSize + payload_size > packet_; // way greater than velodyne packet
         boost::posix_time::ptime timestamp_;
 };
 
