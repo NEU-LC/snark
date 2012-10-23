@@ -22,8 +22,8 @@
 #include <fstream>
 #include <cstring>
 #include <iostream>
-#include <snark/graphics/exception.h>
 #include <boost/lexical_cast.hpp>
+#include <comma/base/exception.h>
 
 namespace snark { namespace graphics { namespace View {
 
@@ -34,7 +34,7 @@ PlyLoader::PlyLoader( const std::string& file )
     stream.getline( line, 255 );
     if( std::strcmp(line, "ply" ) != 0 )
     {
-        COMMA_THROW( exception, "expected ply file: " << file );
+        COMMA_THROW( comma::exception, "expected ply file: " << file );
     }
     std::string vertex = "element vertex";
     std::string face = "element face";
@@ -100,7 +100,7 @@ PlyLoader::PlyLoader( const std::string& file )
             stream >> vertexPerFace >> v1 >> v2 >> v3;
             if( vertexPerFace != 3 )
             {
-                COMMA_THROW( exception, "only triangles supported" );
+                COMMA_THROW( comma::exception, "only triangles supported" );
             }
             geometry.appendIndices( v1, v2, v3 );
         }
