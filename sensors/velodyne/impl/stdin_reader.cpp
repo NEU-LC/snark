@@ -18,28 +18,31 @@
 
 #include <comma/base/exception.h>
 #include "./stdin_reader.h"
+#include <snark/timing/time.h>
 
 namespace snark {
 
-stdin_reader::stdin_reader()
+stdin_reader::stdin_reader():
+    m_epoch( timing::epoch )
 {
 }
 
 const char* stdin_reader::read()
 {
-    std::cin.read( packet_.data(), payload_size );
+    std::cin.read( reinterpret_cast< char* >( &m_microseconds ), sizeof( m_microseconds ) );
+    std::cin.read( m_packet.data(), payload_size );
     if( std::cin.eof() )
     {
         return NULL;        
     }
-    timestamp_ = boost::posix_time::microsec_clock::universal_time();
-    return &packet_[0];
+    m_timestamp = m_epoch + boost::posix_time::microseconds( m_microseconds );
+    return &m_packet[0];
 }
 
 
 const boost::posix_time::ptime& stdin_reader::timestamp() const
 {
-    return timestamp_;    
+    return m_timestamp;    
 }
 
 } // namespace snark {

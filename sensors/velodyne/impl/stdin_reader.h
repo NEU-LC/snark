@@ -22,8 +22,9 @@
 #ifndef WIN32
 #include <stdlib.h>
 #endif
-#include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/array.hpp>
+#include <comma/base/types.h>
+#include <boost/date_time/posix_time/posix_time.hpp>
 
 namespace snark {
 
@@ -41,9 +42,11 @@ class stdin_reader
         const boost::posix_time::ptime& timestamp() const;
 
     private:
-        enum{ timestampSize = 12, payload_size = 1206 };        
-        boost::array< char, timestampSize + payload_size > packet_; // way greater than velodyne packet
-        boost::posix_time::ptime timestamp_;
+        enum{ payload_size = 1206 };
+        comma::uint64 m_microseconds;
+        boost::array< char, payload_size > m_packet;
+        boost::posix_time::ptime m_timestamp;
+        boost::posix_time::ptime m_epoch;
 };
 
 } // namespace snark {
