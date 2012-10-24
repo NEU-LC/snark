@@ -1,4 +1,4 @@
-SET( dir ${SOURCE_CODE_BASE_DIR}/imaging/Applications )
+SET( dir ${SOURCE_CODE_BASE_DIR}/imaging/applications )
 FILE( GLOB source   ${dir}/*.cpp)
 FILE( GLOB includes ${dir}/*.h)
 SOURCE_GROUP( ${TARGET_NAME} FILES ${source} ${includes} )

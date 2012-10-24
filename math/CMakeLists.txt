@@ -37,3 +37,6 @@ ADD_SUBDIRECTORY( gaussian_process )
 IF( BUILD_TESTS )
     ADD_SUBDIRECTORY( test )
 ENDIF( BUILD_TESTS )
+
+ADD_SUBDIRECTORY( applications )
+

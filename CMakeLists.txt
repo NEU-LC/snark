@@ -147,6 +147,11 @@ if( snark_build_imaging )
                              optimized snark_imaging )
 endif( snark_build_imaging )
 
+IF( snark_build_sensors_velodyne )
+    SET( snark_ALL_LIBRARIES debug snark_velodyne-d
+                             optimized snark_velodyne )
+ENDIF( snark_build_sensors_velodyne )
+
 SET( snark_ALL_LIBRARIES debug snark_math-d
                          optimized snark_math )
 
