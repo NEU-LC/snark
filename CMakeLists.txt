@@ -133,26 +133,26 @@ ENDIF( snark_build_imaging )
 FIND_PACKAGE( comma PATHS ${comma_DIR} /usr/local/CMakeFiles )
 
 if( snark_build_graphics )
-    SET( snark_ALL_LIBRARIES debug snark_graphics-d
-                             optimized snark_graphics )
+    SET( snark_ALL_LIBRARIES ${snark_ALL_LIBRARIES} debug snark_graphics_qt3d-d
+                             optimized snark_graphics_qt3d )
 endif( snark_build_graphics )
 
 if( snark_build_point_cloud )
-    SET( snark_ALL_LIBRARIES debug snark_point_cloud-d
+    SET( snark_ALL_LIBRARIES ${snark_ALL_LIBRARIES} debug snark_point_cloud-d
                              optimized snark_point_cloud )
 endif( snark_build_point_cloud )
 
 if( snark_build_imaging )
-    SET( snark_ALL_LIBRARIES debug snark_imaging-d
+    SET( snark_ALL_LIBRARIES ${snark_ALL_LIBRARIES} debug snark_imaging-d
                              optimized snark_imaging )
 endif( snark_build_imaging )
 
 IF( snark_build_sensors_velodyne )
-    SET( snark_ALL_LIBRARIES debug snark_velodyne-d
+    SET( snark_ALL_LIBRARIES ${snark_ALL_LIBRARIES} debug snark_velodyne-d
                              optimized snark_velodyne )
 ENDIF( snark_build_sensors_velodyne )
 
-SET( snark_ALL_LIBRARIES debug snark_math-d
+SET( snark_ALL_LIBRARIES ${snark_ALL_LIBRARIES} debug snark_math-d
                          optimized snark_math )
 
 IF(WIN32)
