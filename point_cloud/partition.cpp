@@ -46,13 +46,13 @@ class partition::impl_
                    , std::size_t min_points_per_partition = 1
                    , comma::uint32 min_id = 0 )
         {
-            std::size_t pc = 0;
-            std::size_t vc = 0;
+            std::size_t point_count = 0;
+            std::size_t voxel_count = 0;
             for( voxels_type_::iterator it = voxels_.begin(); it != voxels_.end(); ++it )
             {
                 if( it->count < min_points_per_voxel_ ) { it->count = 0; }
-                ++vc;
-                pc += it->count;
+                ++voxel_count;
+                point_count += it->count;
             }
             typedef std::list< voxels_type_::iterator > Set;
             typedef std::map< comma::uint32, Set > partitions;

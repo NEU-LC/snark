@@ -16,6 +16,12 @@
 // You should have received a copy of the GNU Lesser General Public
 // License along with snark. If not, see <http://www.gnu.org/licenses/>.
 
+#ifdef WIN32
+#include <stdio.h>
+#include <fcntl.h>
+#include <io.h>
+#endif
+
 #include <deque>
 #include <iostream>
 #include <map>
@@ -25,8 +31,8 @@
 #include <comma/application/signal_flag.h>
 #include <comma/base/types.h>
 #include <comma/csv/stream.h>
-#include <snark/Visiting/Eigen.h>
-#include <snark/Math/Extents.h>
+#include <snark/visiting/eigen.h>
+#include <snark/math/interval.h>
 #include <comma/visiting/traits.h>
 #include <snark/Comms/Accumulated.h>
 #include <snark/point_cloud/VotedTracking.h>
@@ -222,6 +228,9 @@ int main( int ac, char** av )
         Eigen::Vector3d resolution( r, r, r );
         csv = comma::csv::options( options );
         if( csv.fields == "" ) { csv.fields = "x,y,z,block,id"; }
+        #ifdef WIN32
+            if( csv.binary() ) { _setmode( _fileno( stdin ), _O_BINARY ); }
+        #endif
         snark::Comms::Csv::Accumulated< pointWithId > accumulated( std::cin, csv, false );
         comma::csv::output_stream< pointWithId > ostream( std::cout, csv );
         comma::signal_flag isShutdown;

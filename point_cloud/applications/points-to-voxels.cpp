@@ -96,7 +96,6 @@ int main( int argc, char** argv )
 {
     try
     {
-        std::string binary;        
         std::string origin_string;
         std::string resolution_string;
         boost::program_options::options_description description( "options" );
