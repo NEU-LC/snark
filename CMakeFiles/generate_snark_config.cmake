@@ -14,10 +14,10 @@ SET(snark_RUNTIME_LIBRARY_DIRS_CONFIG ${LIBRARY_OUTPUT_PATH})
 SET(snark_EXECUTABLE_DIRS_CONFIG ${EXECUTABLE_OUTPUT_PATH})
 
 #-----------------------------------------------------------------------------
-# Configure snark-config.cmake for the build tree.
+# Configure snark_config.cmake for the build tree.
 
-CONFIGURE_FILE( ${snark_SOURCE_DIR}/CMakeFiles/snark-config.cmake.in
-                ${snark_BINARY_DIR}/CMakeFiles/snark-config.cmake @ONLY IMMEDIATE )
+CONFIGURE_FILE( ${snark_SOURCE_DIR}/CMakeFiles/snark_config.cmake.in
+                ${snark_BINARY_DIR}/CMakeFiles/snark_config.cmake @ONLY IMMEDIATE )
 
 #-----------------------------------------------------------------------------
 # Settings specific to the install tree.
@@ -54,7 +54,7 @@ IF(WIN32)
 ENDIF(WIN32)
 
 #-----------------------------------------------------------------------------
-# Configure snark-config.cmake for the install tree.
+# Configure snark_config.cmake for the install tree.
 
 # Construct the proper number of GET_FILENAME_COMPONENT(... PATH)
 # calls to compute the installation prefix from snark_DIR.
@@ -78,8 +78,8 @@ IF(CMAKE_CONFIGURATION_TYPES)
   # QConfig.cmake for each configuration.
   FOREACH(config ${CMAKE_CONFIGURATION_TYPES})
     SET(snark_BUILD_TYPE_CONFIG ${config})
-    CONFIGURE_FILE(${snark_SOURCE_DIR}/CMakeFiles/snark-config.cmake.in
-                   ${snark_BINARY_DIR}/Utilities/${config}/snark-config.cmake
+    CONFIGURE_FILE(${snark_SOURCE_DIR}/CMakeFiles/snark_config.cmake.in
+                   ${snark_BINARY_DIR}/Utilities/${config}/snark_config.cmake
                    @ONLY IMMEDIATE)
   ENDFOREACH(config)
 
@@ -88,20 +88,20 @@ IF(CMAKE_CONFIGURATION_TYPES)
   # will be set while CMake is processing the install files.
   INSTALL(
     FILES
-      "${snark_BINARY_DIR}/Utilities/\${BUILD_TYPE}/snark-config.cmake"
+      "${snark_BINARY_DIR}/Utilities/\${BUILD_TYPE}/snark_config.cmake"
     DESTINATION ${snark_INSTALL_PACKAGE_DIR}
   )
 
 ELSE(CMAKE_CONFIGURATION_TYPES)
   # There is only one build configuration.  Configure one QConfig.cmake.
   SET(snark_BUILD_TYPE_CONFIG ${CMAKE_BUILD_TYPE})
-  CONFIGURE_FILE(${snark_SOURCE_DIR}/CMakeFiles/snark-config.cmake.in
-                 ${snark_BINARY_DIR}/Utilities/snark-config.cmake @ONLY IMMEDIATE)
+  CONFIGURE_FILE(${snark_SOURCE_DIR}/CMakeFiles/snark_config.cmake.in
+                 ${snark_BINARY_DIR}/Utilities/snark_config.cmake @ONLY IMMEDIATE)
 
   # Setup an install rule for the config file.
   INSTALL(
     FILES
-      "${snark_BINARY_DIR}/Utilities/snark-config.cmake"
+      "${snark_BINARY_DIR}/Utilities/snark_config.cmake"
     DESTINATION ${snark_INSTALL_PACKAGE_DIR}
   )
 ENDIF(CMAKE_CONFIGURATION_TYPES)
