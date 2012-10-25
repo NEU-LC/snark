@@ -114,7 +114,7 @@ int main( int argc, char** argv )
         {
             std::cerr << "acquire images from a firewire camera using libdc1394 and output them to std::out in OpenCV format" << std::endl;
             std::cerr << "Usage: fire-cat [options] [<filters>]\n" << std::endl;
-            std::cerr << "output header format: fields: t,cols,rows,type; binary: t,3uw\n" << std::endl;
+            std::cerr << "output header format: fields: t,cols,rows,type; binary: t,3ui\n" << std::endl;
             std::cerr << description << std::endl;
             std::cerr << snark::cv_mat::filters::usage() << std::endl;
 
