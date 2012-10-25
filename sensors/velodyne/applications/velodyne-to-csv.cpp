@@ -52,7 +52,7 @@ static void usage()
     std::cerr << "    --thin : if present, velodyne data is thinned (e.g. by velodyne-thin)" << std::endl;
     std::cerr << "    --udp-port <port> : read velodyne data directly from udp port" << std::endl;
     std::cerr << "    --raw : read velodyne data directly from stdin ( default )" << std::endl;
-    std::cerr << "    --proprietary : read velodyne data directly from stdin using the proprietary protocol" << std::endl;
+    std::cerr << "    --proprietary,-q : read velodyne data directly from stdin using the proprietary protocol" << std::endl;
     std::cerr << "    default input format: a proprietary format:" << std::endl;
     std::cerr << "        <header, 16 bytes><timestamp, 12 bytes><packet, 1206 bytes><footer, 4 bytes>" << std::endl;
     std::cerr << std::endl;
@@ -172,7 +172,7 @@ int main( int ac, char** av )
             velodyne_stream< snark::udp_reader > v( options.value< unsigned short >( "--udp-port" ), db, outputInvalidpoints, from, to );
             run( v, csv, min_range );
         }
-        else if( options.exists( "--proprietary" ) )
+        else if( options.exists( "--proprietary,-q" ) )
         {
             velodyne_stream< snark::proprietary_reader > v( db, outputInvalidpoints, from, to );
             run( v, csv, min_range );
