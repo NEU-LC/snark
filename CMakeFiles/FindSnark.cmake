@@ -63,12 +63,12 @@ ENDIF ( NOT snark_DIR )
 # If snark was found, load the configuration file to get the rest of the
 # settings.
 IF(snark_DIR)
-  # Make sure the snark_config.cmake file exists in the directory provided.
-  IF(EXISTS ${snark_DIR}/snark_config.cmake)
+  # Make sure the snark-config.cmake file exists in the directory provided.
+  IF(EXISTS ${snark_DIR}/snark-config.cmake)
     # We found snark.  Load the settings.
     SET(snark_FOUND 1)
-    INCLUDE(${snark_DIR}/snark_config.cmake)
-  ENDIF(EXISTS ${snark_DIR}/snark_config.cmake)
+    INCLUDE(${snark_DIR}/snark-config.cmake)
+  ENDIF(EXISTS ${snark_DIR}/snark-config.cmake)
 ELSE(snark_DIR)
   # We did not find snark_.
   SET(snark_FOUND 0)

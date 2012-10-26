@@ -1,6 +1,6 @@
 #-----------------------------------------------------------------------------
 #
-# snark_config.cmake - snark CMake configuration file for external projects.
+# snark-config.cmake - snark CMake configuration file for external projects.
 #
 # This file is configured by snark and used by the use_snark.cmake module
 # to load snark's settings for an external project.
