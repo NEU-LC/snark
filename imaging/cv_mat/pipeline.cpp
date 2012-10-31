@@ -69,7 +69,7 @@ void pipeline::setup_pipeline_( const std::string& filters )
     }
     else
     {
-        ::tbb::filter_t< pair, pair > allfilters;
+        ::tbb::filter_t< pair, pair > all_filters;
         bool has_null = false;
         for( std::size_t i = 0; i < m_filters.size(); ++i )
         {
@@ -80,9 +80,9 @@ void pipeline::setup_pipeline_( const std::string& filters )
             }
             if( !m_filters[i].filter_function ) { has_null = true; break; }
             ::tbb::filter_t< pair, pair > filter( mode, boost::bind( m_filters[i].filter_function, _1 ) );
-            allfilters = i == 0 ? filter : ( allfilters & filter );
+            all_filters = i == 0 ? filter : ( all_filters & filter );
         }
-        m_filter = allfilters & ::tbb::filter_t< pair, void >( ::tbb::filter::serial_in_order, boost::bind( has_null ? &pipeline::null_ : &pipeline::write_, this, _1 ) );
+        m_filter = all_filters & ::tbb::filter_t< pair, void >( ::tbb::filter::serial_in_order, boost::bind( has_null ? &pipeline::null_ : &pipeline::write_, this, _1 ) );
     }
 }
 

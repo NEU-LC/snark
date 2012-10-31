@@ -8,7 +8,7 @@ SOURCE_GROUP( ${TARGET_NAME} FILES ${source} ${includes} )
 ADD_EXECUTABLE( points-to-voxels points-to-voxels.cpp )
 ADD_EXECUTABLE( points-to-voxel-indices points-to-voxel-indices.cpp )
 
-#TARGET_LINK_LIBRARIES ( points-to-partitions ${comma_ALL_LIBRARIES} )
+#TARGET_LINK_LIBRARIES ( points-to-partitions ${comma_ALL_LIBRARIES} tbb )
 #TARGET_LINK_LIBRARIES ( points-track-partitions ${comma_ALL_LIBRARIES} )
 TARGET_LINK_LIBRARIES ( points-to-voxels snark_point_cloud ${comma_ALL_LIBRARIES} ${snark_ALL_EXTERNAL_LIBRARIES} )
 TARGET_LINK_LIBRARIES ( points-to-voxel-indices snark_point_cloud ${comma_ALL_LIBRARIES} ${snark_ALL_EXTERNAL_LIBRARIES} )
