@@ -90,8 +90,7 @@ void Viewer::read()
     m_shutdown = true;
     for( unsigned int i = 0; m_shutdown && i < readers.size(); ++i )
     {
-        m_shutdown &= readers[i]->isShutdown();
-        // TODO std in is always opened 
+        m_shutdown &= readers[i]->isShutdown() || ( readers.size() > 1 && readers[i]->isStdIn() );
     }
 
     if( !m_cameraReader && m_cameraposition )
