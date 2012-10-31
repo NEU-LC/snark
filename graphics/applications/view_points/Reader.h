@@ -67,6 +67,7 @@ class Reader
         void show( bool s );
         bool show() const;
         bool isShutdown() const;
+        bool isStdIn() const { return m_isStdIn; }
         void shutdown();
         void read();
 
@@ -81,6 +82,7 @@ class Reader
         unsigned int m_num_points;
         boost::scoped_ptr< coloured > m_colored;
         bool m_shutdown;
+        bool m_isStdIn;
         bool m_show;
         comma::io::istream m_istream;
         boost::scoped_ptr< boost::thread > m_thread;
