@@ -205,6 +205,8 @@ IF( snark_build_point_cloud )
     ADD_SUBDIRECTORY( point_cloud )
 ENDIF( snark_build_point_cloud )
 
+ADD_SUBDIRECTORY( doc )
+
 IF( snark_build_imaging )
     ADD_SUBDIRECTORY( tbb )
     ADD_SUBDIRECTORY( imaging )
