@@ -54,7 +54,7 @@ class interval
         const vector_type& max() const { assert( m_interval ); return m_interval->second; }
 
         /// return true, if variable belongs to the interval
-        bool contains( const vector_type& rhs ) const { assert( m_interval ); return ( ( m_interval->first.isApprox( rhs ) || less( m_interval->first, rhs ) ) && ( ( m_interval->second.isApprox( rhs ) || less( rhs, m_interval->second ) ) ) ); }
+        bool contains( const vector_type& rhs ) const { assert( m_interval ); return less_or_equal( m_interval->first, rhs ) && less_or_equal( rhs, m_interval->second ); }
 
         /// return true, if the whole rhs interval belongs to the interval
         bool contains( const interval& rhs ) const { assert( m_interval && rhs ); return contains( rhs.min() ) && contains( rhs.max() ); }
@@ -78,7 +78,7 @@ class interval
         bool operator!=( const interval& rhs ) const { assert( m_interval && rhs ); return !operator==( rhs ); }
 
     private:
-        static bool less( const vector_type& lhs, const vector_type& rhs ) { return ( ( lhs.array() < rhs.array() ).all() ); }
+        static bool less_or_equal( const vector_type& lhs, const vector_type& rhs ) { return ( ( lhs.array() <= rhs.array() ).all() ); }
         static vector_type get_min( const vector_type& lhs, const vector_type& rhs ) { return rhs.array().min( lhs.array() ); }
         static vector_type get_max( const vector_type& lhs, const vector_type& rhs ) { return rhs.array().max( lhs.array() ); }
         

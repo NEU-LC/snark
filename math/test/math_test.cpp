@@ -66,7 +66,17 @@ TEST( math, interval_contains )
     EXPECT_TRUE( i.contains( Eigen::Vector3d( 0, 1, 1 ) ) );
     EXPECT_TRUE( i.contains( Eigen::Vector3d( 1, 0, 1 ) ) );
     EXPECT_TRUE( i.contains( Eigen::Vector3d( 1, 1, 0 ) ) );
-    EXPECT_TRUE( i.contains( Eigen::Vector3d( 1, 1, 1 ) )  );    
+    EXPECT_TRUE( i.contains( Eigen::Vector3d( 1, 1, 1 ) ) );
+    EXPECT_TRUE( i.contains( Eigen::Vector3d( 0, 0, 0 ) ) );
+    EXPECT_TRUE( i.contains( Eigen::Vector3d( 0, 0, 5 ) ) );
+    EXPECT_TRUE( i.contains( Eigen::Vector3d( 0, 10, 0 ) ) );
+    EXPECT_TRUE( i.contains( Eigen::Vector3d( 0, 10, 5 ) ) );
+    EXPECT_TRUE( i.contains( Eigen::Vector3d( 10, 0, 0 ) ) );
+    EXPECT_TRUE( i.contains( Eigen::Vector3d( 10, 0, 5 ) ) );
+    EXPECT_TRUE( i.contains( Eigen::Vector3d( 10, 10, 0 ) ) );
+    EXPECT_TRUE( i.contains( Eigen::Vector3d( 10, 10, 5 ) ) );
+    
+    EXPECT_TRUE( i.contains( Eigen::Vector3d( 1, 0, 0 ) ) );
 }
 
 } }
