@@ -29,20 +29,22 @@
 #include <map>
 #include <sstream>
 #include <vector>
+#include <tbb/pipeline.h>
+#include <tbb/task_scheduler_init.h>
+#include <boost/array.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/scoped_ptr.hpp>
-#include <boost/thread.hpp>
-#include <boost/thread/condition.hpp>
 #include <boost/thread/mutex.hpp>
 #include <comma/application/command_line_options.h>
 #include <comma/application/signal_flag.h>
 #include <comma/base/types.h>
-#include <comma/csv/options.h>
 #include <comma/csv/stream.h>
 #include <comma/string/string.h>
 #include <comma/sync/synchronized.h>
 #include <comma/visiting/traits.h>
+#include <snark/math/interval.h>
 #include <snark/point_cloud/partition.h>
+#include <snark/tbb/bursty_reader.h>
 #include <snark/visiting/eigen.h>
 
 #ifdef PROFILE
@@ -74,7 +76,7 @@ static void usage()
     std::cerr << "    required fields: x,y,z" << std::endl;
     std::cerr << "    default: \"x,y,z\"" << std::endl;
     std::cerr << "    block: data block id, if present, accumulate and partition each data block separately" << std::endl;
-    std::cerr << "           supports delta input, see --delta field description" << std::endl;
+    std::cerr << "           if absent, read until the end of file/stream and then partition" << std::endl;
     std::cerr << "    flag: if present, partition only the points with this field equal 1" << std::endl;
     std::cerr << "          skipped points will have partition id as max int32" << std::endl;
     std::cerr << std::endl;
@@ -88,7 +90,7 @@ static void usage()
     std::cerr << "    cat points.csv | points-to-partitions --fields=\",x,y,z,,,block\" > partitions.csv" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    partition a point stream that gives delta only from a socket, if too slow, drop points:" << std::endl;
-    std::cerr << "    netcat localhost 1234 | points-to-partitions --fields=\",x,y,z,,,block\" --delta --discard > partitions.csv" << std::endl;
+    std::cerr << "    netcat localhost 1234 | points-to-partitions --fields=\",x,y,z,,,block\" --discard > partitions.csv" << std::endl;
     std::cerr << std::endl;
     exit( -1 );
 }
@@ -115,10 +117,11 @@ static std::size_t min_points_per_voxel = 1;
 static std::size_t min_voxels_per_partition = 1;
 static std::size_t min_points_per_partition = 1;
 static Eigen::Vector3d resolution;
-static bool delta;
-comma::csv::options csv;
+static comma::csv::options csv;
 static comma::uint32 min_id;
 static bool discard;
+static bool discard_points;
+static boost::scoped_ptr< snark::partition > partition;
 
 struct voxel
 {
@@ -152,16 +155,6 @@ struct point
     comma::uint32 id() const { return voxel == NULL ? std::numeric_limits< comma::uint32 >::max() : voxel->id; }
 };
 
-struct block // quick and dirty, no optimization for now
-{
-    typedef std::pair< point, std::string > pair_t;
-    typedef std::deque< pair_t > pairs_t;
-    pairs_t pairs;
-    comma::uint32 id;
-    
-    block() : id( 0 ) {}
-};
-
 } // namespace points_to_partitions {
 
 namespace comma { namespace visiting {
@@ -171,32 +164,130 @@ template <> struct traits< points_to_partitions::point >
     template < typename K, typename V > static void visit( const K&, points_to_partitions::point& p, V& v )
     {
         v.apply( "point", p.point );
-        v.apply( "flag", p.flag );
         v.apply( "block", p.block );
+        v.apply( "flag", p.flag );
     }
 
     template < typename K, typename V > static void visit( const K&, const points_to_partitions::point& p, V& v )
     {
         v.apply( "point", p.point );
-        v.apply( "flag", p.flag );
         v.apply( "block", p.block );
+        v.apply( "flag", p.flag );
     }
 };
 
 } } // namespace ark { namespace visiting {
 
-typedef Comms::Csv::detail::Delta< points_to_partitions::point >::Data pointData; // real quick and dirty
-typedef Comms::Csv::Accumulated< points_to_partitions::point > accumulated_type;
-static comma::uint32 listBlock;
-typedef accumulated_type::List List;
-static List list;
-static boost::condition listReady;
-static boost::mutex mutex;
-static bool is_shutdown = false;
-typedef comma::synchronized< boost::scoped_ptr< accumulated_type > > synchronized_type;
-static synchronized_type accumulated;
-static boost::scoped_ptr< accumulated_type > accumulated_helper;
-static bool flag_present;
+struct block // quick and dirty, no optimization for now
+{
+    typedef std::pair< point, std::string > pair_t;
+    typedef std::deque< pair_t > pairs_t;
+    
+    pairs_t points;
+    comma::uint32 id;
+    bool empty;
+    boost::scoped_ptr< snark::partition > partition;
+    
+    block() : id( 0 ) {}
+    void clear() { partition.reset(); points.clear(); empty = true; }
+};
+
+static boost::array< block, 3 > blocks;
+static bool has_flag;
+static comma::signal_flag shutdown_flag;
+
+static unsigned int read_block_( ::tbb::flow_control& flow )
+{
+    static boost::optional< block::pair_t > last;
+    static comma::uint32 block_id = 0;
+    static unsigned int index = 0;
+    for( unsigned int i = 0; i < blocks.size(); ++i ) { if( blocks[i].empty ) { index = i; break; } }
+    blocks[index].clear();
+    static comma::csv::input_stream< points_to_partitions::point > istream( std::cin, csv );
+    while( !shutdown_flag && std::cout.good() )
+    {
+        if( shutdown_flag || std::cout.bad() || std::cin.bad() || std::cin.eof() ) { flow.stop(); break; }
+        if( last )
+        {
+            blocks[index].id = block_id;
+            blocks[index].points.push_back( *last );
+        }
+        const points_to_partitions::point* p = istream.read();
+        if( !p ) { flow.stop(); break; }
+        std::string line;
+        if( csv.binary() )
+        {
+            line.resize( csv.format().size() );
+            ::memcpy( &line[0], istream.binary().last(), csv.format().size() );
+        }
+        else
+        { 
+            line = comma::join( istream.ascii().last(), csv.delimiter );
+        }
+        last = std::make_pair( *p, line );
+        if( p->block != block_id ) { break; }
+    }
+    return index;
+}
+
+static void write_block_( unsigned int index )
+{
+
+}
+
+static unsigned int partition_( unsigned int index )
+{
+    STDERR << "velodyne-to-mesh-ground: partitioning..." << std::endl;
+    boost::optional< snark::math::interval< double, 3 > > extents;
+    for( std::size_t i = 0; i < blocks[index].points.size(); ++i )
+    {
+        if( points[i].label && points[i].label == Ark::Robotics::MeshGround::Label::non_ground )
+        {
+            if( !extents )
+            {
+                extents = snark::math::interval< double, 3 >( points[i].point );
+            }
+            else
+            {
+                extents = extents->hull( points[i].point );
+            }
+        }
+    }
+    snark::partition partition( *extents, resolution, min_points_per_voxel );
+    for( std::size_t i = 0; i < points.size(); ++i )
+    {
+        if( points[i].label && points[i].label == Ark::Robotics::MeshGround::Label::non_ground )
+        {
+            points[i].partition = &partition.insert( points[i].point );
+        }
+    }
+    partition.commit( min_voxels_per_partition, min_points_per_partition, output_ground ? 1 : 0 );
+    if( verbose ) { stop = boost::posix_time::microsec_clock::universal_time(); }
+    if( verbose ) { std::cerr << "velodyne-to-mesh-ground: partitioned; elapsed " << double( ( stop - start ).total_microseconds() ) / 1000000 << " seconds" << std::endl; }
+    if( verbose ) { std::cerr << "velodyne-to-mesh-ground: outputting partitions..." << std::endl; }
+    for( std::size_t i = 0; i < points.size(); ++i )
+    {
+        const InputPoint& point = points[i];
+        bool is_ground = output_ground && point.element && point.element->value.label == Ark::Robotics::MeshGround::Label::ground;
+        if( !( point.partition && *point.partition ) && !( output_ground && is_ground ) ) { continue; }
+        comma::uint32 id = is_ground ? 0 : **point.partition;
+        if( csv.binary() )
+        {
+            ostream->write( point );
+            std::cout.write( reinterpret_cast< const char* >( &id ), sizeof( comma::uint32 ) );
+        }
+        else
+        {
+            std::string s;
+            ostream->ascii().ascii().put( point, s );
+            std::cout << s << csv.delimiter << id << std::endl;
+        }
+    }
+    std::cout.flush();
+    STDERR << "velodyne-to-mesh-ground: outputting partitions done" << std::endl;
+    
+    
+}
 
 static void partition( const List& r, comma::uint32 block )
 {
@@ -262,7 +353,7 @@ static void partition( const List& r, comma::uint32 block )
             || discarded[ it->value.voxel->id - min_id ] )
         {
             id = std::numeric_limits< comma::uint32 >::max();
-            if( discard ) { continue; }
+            if( discard_points ) { continue; }
         }
         std::string s( it->key.length(), '\0' ); // quick and dirty
         it->key.copy( &s[0], it->key.length() );
@@ -276,22 +367,9 @@ static void partition( const List& r, comma::uint32 block )
         {
             std::cout << s << csv.delimiter << id << std::endl; // quick and dirty
         }
-        if( std::cout.bad() || std::cout.eof() ) { is_shutdown = true; }
     }
     stopwatch.stop();
     STDERR << "points-to-partitions: block: " << block << "; partitions output: elapsed " << stopwatch.elapsed() << " seconds" << std::endl;
-}
-
-static void run()
-{
-    boost::mutex::scoped_lock lock( mutex );
-    while( !is_shutdown )
-    {
-        listReady.wait( lock );
-        if( is_shutdown ) { break; }
-        partition( list, listBlock );
-        list.clear();
-    }
 }
 
 int main( int ac, char** av )
@@ -299,12 +377,9 @@ int main( int ac, char** av )
     try
     {
         #ifdef WIN32
-        _setmode( _fileno( stdin ), _O_BINARY );
         _setmode( _fileno( stdout ), _O_BINARY );
         #endif
-
         comma::command_line_options options( ac, av );
-        comma::signal_flag shutdown_flag;
         if( options.exists( "--help,-h" ) ) { usage(); }
         csv = comma::csv::options( options, "x,y,z" );
         min_points_per_voxel = options.value( "--min-points-per-voxel", 1u );
@@ -314,77 +389,32 @@ int main( int ac, char** av )
         verbose = options.exists( "--verbose,-v" );
         double r = options.value( "--resolution", double( 0.2 ) );
         resolution = Eigen::Vector3d( r, r, r );
-        bool realtime = options.exists( "--discard,-d" );
-        delta = options.exists( "--delta" );
+        discard = options.exists( "--discard,-d" );
         min_id = options.value( "--min-id", 0 );
-        discard = options.exists( "--discard-points" );
-        std::vector< std::string > v = comma::split( csv.fields, ',' );
-        flag_present = std::find( v.begin(), v.end(), "flag" ) != v.end();
-        if( delta && std::find( v.begin(), v.end(), "block" ) == v.end() )
-        {
-            std::cerr << "points-to-partitions: --delta specified, thus expected \"block\" field present, got \"" << csv.fields << "\"" << std::endl;
-            usage();
-        }
-        {
-            synchronized_type::scoped_transaction t( accumulated );
-            t->reset( new accumulated_type( std::cin, csv, delta ) );
-        }
-        accumulated_helper.reset( new accumulated_type( std::cin, csv, delta ) ); // quick and dirty
-        boost::scoped_ptr< boost::thread > thread;
-        if( realtime ) { thread.reset( new boost::thread( &run ) ); }
-        stopwatch stopwatch( verbose );
-        // todo: refactor, using snark::ConsumerOf
+        discard_points = options.exists( "--discard-points" );
+        has_flag = csv.has_field( "flag" );        
+        ::tbb::filter_t< unsigned int, unsigned int > partition_filter( ::tbb::filter::serial_in_order, &partition_ );
+        ::tbb::filter_t< unsigned int, void > write_filter( ::tbb::filter::serial_in_order, &write_block_ );
         #ifdef PROFILE
         ProfilerStart( "points-to-partitions.prof" ); {
         #endif
-        while( !shutdown_flag
-               && std::cin.good() && !std::cin.eof()
-               && std::cout.good() && !std::cout.eof() )
+        if( discard )
+        { 
+            snark::tbb::bursty_reader< unsigned int > read_filter( &read_block_ );
+            ::tbb::filter_t< void, void > filters = read_filter.filter() & partition_filter & write_filter;
+            while( read_filter.wait() ) { ::tbb::parallel_pipeline( 3, filters ); }
+        }
+        else
         {
-            const List* r;
-            comma::uint32 block;
-            {
-                synchronized_type::scoped_transaction t( accumulated );
-                if( !delta ) { ( *t )->clear(); }
-                STDERR << "points-to-partitions: reading block..." << std::endl;
-                stopwatch.reset();
-                r = ( *t )->read();
-                stopwatch.stop();
-                if( shutdown_flag ) { STDERR << "points-to-partitions: interrupted with signal" << std::endl; break; }
-                if( !r || r->empty() ) { STDERR << "points-to-partitions: end of data" << std::endl; break; }
-                block = ( *t )->block();
-                STDERR << "points-to-partitions: read block " << block << " of " << r->size() << " points: elapsed " << stopwatch.elapsed() << " seconds" << std::endl;
-            }
-            if( !realtime ) { partition( *r, block ); continue; }
-            boost::mutex::scoped_try_lock lock( mutex );
-            if( !lock )
-            {
-                STDERR << "points-to-partitions: skipped block " << block << " of " << r->size() << " points: elapsed " << stopwatch.elapsed() << " seconds" << std::endl;
-                continue;
-            }
-            STDERR << "points-to-partitions: copying block " << block << " of " << r->size() << " points..." << std::endl;
-            stopwatch.reset();
-            listBlock = block;
-            list.clear();
-            list.insert( list.end(), r->begin(), r->end() );
-            stopwatch.stop();
-            STDERR << "points-to-partitions: copied block " << block << " of " << r->size() << " points: elapsed " << stopwatch.elapsed() << " seconds" << std::endl;
-            listReady.notify_one();
+            ::tbb::filter_t< void, unsigned int > read_filter( ::tbb::filter::serial_in_order, &read_block_ );
+            ::tbb::filter_t< void, void > filters = read_filter & partition_filter & write_filter;
+            ::tbb::parallel_pipeline( 3, filters );
         }
         #ifdef PROFILE
         ProfilerStop(); }
         #endif
         if( shutdown_flag ) { STDERR << "points-to-partitions: caught signal" << std::endl; }
         else { STDERR << "points-to-partitions: no more data" << std::endl; }
-        if( realtime )
-        {
-            STDERR << "points-to-partitions: shutting down thread..." << std::endl;
-            is_shutdown = true;
-            listReady.notify_one();
-            thread->join();
-            STDERR << std::cerr << "points-to-partitions: done" << std::endl;
-        }
-        //if( csv->binary() ) { binary::flush(); }
         return 0;
     }
     catch( std::exception& ex ) { std::cerr << "points-to-partitions: " << ex.what() << std::endl; }

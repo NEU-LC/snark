@@ -21,7 +21,6 @@
 
 #include <tbb/task_scheduler_init.h>
 #include <tbb/pipeline.h>
-#include <boost/thread.hpp>
 #include <snark/tbb/bursty_reader.h>
 
 namespace snark { namespace tbb {

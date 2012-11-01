@@ -37,9 +37,46 @@ TEST( math, interval )
     EXPECT_EQ( i.min(), Eigen::Vector3d( -1, 1, 2 ) );
     EXPECT_EQ( i.max(), Eigen::Vector3d( 3, 4, 5 ) );
 
-     i = i.hull( Eigen::Vector3d ( 0, 10, 3 ) );
+    i = i.hull( Eigen::Vector3d ( 0, 10, 3 ) );
     EXPECT_EQ( i.min(), Eigen::Vector3d( -1, 1, 2 ) );
     EXPECT_EQ( i.max(), Eigen::Vector3d( 3, 10, 5 ) );
+}
+
+TEST( math, interval_set_hull )
+{
+    {
+        interval< double, 3 > i;
+        i.set_hull( Eigen::Vector3d ( 1, 2, 3 ) );
+        EXPECT_EQ( i.min(), Eigen::Vector3d( 1, 2, 3 ) );
+        EXPECT_EQ( i.max(), Eigen::Vector3d( 1, 2, 3 ) );
+    }
+    {
+        interval< double, 3 > i;
+        i.set_hull( interval< double, 3 >( Eigen::Vector3d( 10, -10, 10 ), Eigen::Vector3d ( -10, 10, 10 ) ) );
+        EXPECT_EQ( i.min(), Eigen::Vector3d( -10, -10, 10 ) );
+        EXPECT_EQ( i.max(), Eigen::Vector3d( 10, 10, 10 ) );    
+    }
+}
+
+TEST( math, interval_contains )
+{
+    snark::math::interval< double, 3 > i( Eigen::Vector3d( 0, 0, 0 ), Eigen::Vector3d( 10, 10, 5 ) );
+    EXPECT_TRUE( i.contains( Eigen::Vector3d( 10, 1, 1 ) ) );
+    EXPECT_TRUE( i.contains( Eigen::Vector3d( 1, 1, 5 ) ) );
+    EXPECT_TRUE( i.contains( Eigen::Vector3d( 0, 1, 1 ) ) );
+    EXPECT_TRUE( i.contains( Eigen::Vector3d( 1, 0, 1 ) ) );
+    EXPECT_TRUE( i.contains( Eigen::Vector3d( 1, 1, 0 ) ) );
+    EXPECT_TRUE( i.contains( Eigen::Vector3d( 1, 1, 1 ) ) );
+    EXPECT_TRUE( i.contains( Eigen::Vector3d( 0, 0, 0 ) ) );
+    EXPECT_TRUE( i.contains( Eigen::Vector3d( 0, 0, 5 ) ) );
+    EXPECT_TRUE( i.contains( Eigen::Vector3d( 0, 10, 0 ) ) );
+    EXPECT_TRUE( i.contains( Eigen::Vector3d( 0, 10, 5 ) ) );
+    EXPECT_TRUE( i.contains( Eigen::Vector3d( 10, 0, 0 ) ) );
+    EXPECT_TRUE( i.contains( Eigen::Vector3d( 10, 0, 5 ) ) );
+    EXPECT_TRUE( i.contains( Eigen::Vector3d( 10, 10, 0 ) ) );
+    EXPECT_TRUE( i.contains( Eigen::Vector3d( 10, 10, 5 ) ) );
+    
+    EXPECT_TRUE( i.contains( Eigen::Vector3d( 1, 0, 0 ) ) );
 }
 
 } }
