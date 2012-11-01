@@ -72,7 +72,7 @@ void usage()
     std::cerr << "                   specifies the angle resolution" << std::endl;
     std::cerr << "                   e.g. for block size 1000, angle precision will be 2 * pi / 1000 in the image" << std::endl;
     std::cerr << "                   see --size option" << std::endl;
-    std::cerr << "        values: vector of vectors of doubles" << std::endl;
+    std::cerr << "        values: vector values" << std::endl;
     std::cerr << "        default: block,row,values" << std::endl;
     std::cerr << "    --fps=<value>: if present, update image <value> frames per second" << std::endl;
     std::cerr << "                   if absent, update on every new revolution (then revolution and sweep fields have to be present)" << std::endl;

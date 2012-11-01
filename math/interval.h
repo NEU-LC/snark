@@ -78,6 +78,7 @@ class interval
         bool operator!=( const interval& rhs ) const { assert( m_interval && rhs ); return !operator==( rhs ); }
 
     private:
+        // todo: use epsilon from <limits> for comparison
         static bool less_or_equal( const vector_type& lhs, const vector_type& rhs ) { return ( ( lhs.array() <= rhs.array() ).all() ); }
         static vector_type get_min( const vector_type& lhs, const vector_type& rhs ) { return rhs.array().min( lhs.array() ); }
         static vector_type get_max( const vector_type& lhs, const vector_type& rhs ) { return rhs.array().max( lhs.array() ); }
