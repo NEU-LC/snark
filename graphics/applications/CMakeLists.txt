@@ -26,6 +26,6 @@ ADD_EXECUTABLE( ${view_points} view-points.cpp  ${source} ${include} ${view_poin
 TARGET_LINK_LIBRARIES( ${view_points} ${QT_LIBRARIES} ${Qt3D_LIB} snark_graphics_qt3d ${comma_ALL_LIBRARIES} ${OPENGL_LIBRARY} ) #profiler )
 
 INSTALL( TARGETS ${view_points} ${label_points}
-        RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/${snark_INSTALL_BIN_DIR}
+        RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR}
         COMPONENT Runtime )
 

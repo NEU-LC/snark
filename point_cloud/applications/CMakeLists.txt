@@ -21,5 +21,5 @@ INSTALL( TARGETS #points-to-partitions
                  #points-track-partitions
                  points-to-voxels
                  points-to-voxel-indices
-         RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/${snark_INSTALL_BIN_DIR}
+         RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR}
          COMPONENT Runtime )

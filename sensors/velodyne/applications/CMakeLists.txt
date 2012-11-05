@@ -11,5 +11,5 @@ ADD_EXECUTABLE( velodyne-thin velodyne-thin.cpp )
 TARGET_LINK_LIBRARIES( velodyne-thin snark_velodyne ${snark_ALL_EXTERNAL_LIBRARIES} )
 
 INSTALL( TARGETS velodyne-to-csv velodyne-thin
-         RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/${snark_INSTALL_BIN_DIR}
+         RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR}
          COMPONENT Runtime )

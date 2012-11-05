@@ -19,5 +19,5 @@ ADD_EXECUTABLE( frequency-demo frequency-demo.cpp )
 TARGET_LINK_LIBRARIES( frequency-demo snark_imaging ${comma_ALL_LIBRARIES} ${comma_ALL_LIBRARIES} ${OpenCV_LIBS} )
 
 INSTALL( TARGETS image-undistort-map cv-cat image-accumulate
-         RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/${snark_INSTALL_BIN_DIR}
+         RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR}
          COMPONENT Runtime )
