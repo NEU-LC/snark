@@ -16,5 +16,5 @@ ADD_EXECUTABLE( points-frame frame.cpp points-frame.cpp )
 TARGET_LINK_LIBRARIES( points-frame ${comma_ALL_LIBRARIES} ${snark_ALL_LIBRARIES} )
 
 INSTALL( TARGETS math-deg2rad math-rad2deg math-rotation-convert points-frame
-         RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/${snark_INSTALL_BIN_DIR}
+         RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR}
          COMPONENT Runtime )

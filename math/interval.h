@@ -36,7 +36,7 @@ class interval
         typedef Eigen::Matrix< T, N, 1 > vector_type;
 
         /// constructor
-        interval( const vector_type& min, const vector_type& max ) : m_interval( std::make_pair( get_min( min, max ), get_max( min, max ) ) ) { if( less( max, min ) ) { COMMA_THROW( comma::exception, "invalid interval" ); } }
+        interval( const vector_type& min, const vector_type& max ) : m_interval( std::make_pair( get_min( min, max ), get_max( min, max ) ) ) { if( !less_or_equal( min, max ) ) { COMMA_THROW( comma::exception, "invalid interval" ); } }
 
         /// constructor
         interval( const vector_type& rhs ) : m_interval( std::make_pair( rhs, rhs ) ) {}

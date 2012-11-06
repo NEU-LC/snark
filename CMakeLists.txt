@@ -190,7 +190,7 @@ CONFIGURE_FILE( ${PROJECT_SOURCE_DIR}/CMakeFiles/use_${PROJECT_NAME}.cmake.in
 
 SET( snark_PACKAGE_CMAKEFILES ${snark_PACKAGE_CMAKEFILES} ${PROJECT_BINARY_DIR}/CMakeFiles/use_${PROJECT_NAME}.cmake )
 INSTALL( FILES ${snark_PACKAGE_CMAKEFILES}
-         DESTINATION ${CMAKE_INSTALL_PREFIX}/${snark_INSTALL_PACKAGE_DIR} )
+         DESTINATION ${snark_INSTALL_PACKAGE_DIR} )
 
 IF( snark_build_actuators )
     ADD_SUBDIRECTORY( actuators )
@@ -204,6 +204,8 @@ ENDIF( snark_build_graphics )
 IF( snark_build_point_cloud )
     ADD_SUBDIRECTORY( point_cloud )
 ENDIF( snark_build_point_cloud )
+
+ADD_SUBDIRECTORY( doc )
 
 IF( snark_build_imaging )
     ADD_SUBDIRECTORY( tbb )

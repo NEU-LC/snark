@@ -1,0 +1,7 @@
+<HTML>
+    <HEAD>
+      <TITLE>$projectname</TITLE>
+      <LINK HREF="doxygen.css" REL="stylesheet" TYPE="text/css">
+    <link href="$relpath$tabs.css" rel="stylesheet" type="text/css">
+    </HEAD>
+    <BODY BGCOLOR="#FFFFFF">

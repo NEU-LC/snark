@@ -7,7 +7,7 @@ FILE( GLOB includes ${dir}/*.h )
 
 SOURCE_GROUP( ${TARGET_NAME} FILES ${source} ${includes} )
 
-INSTALL( FILES ${includes} DESTINATION ${CMAKE_INSTALL_PREFIX}/${snark_INSTALL_INCLUDE_DIR}/math/${PROJECT} )
+INSTALL( FILES ${includes} DESTINATION ${snark_INSTALL_INCLUDE_DIR}/math/${PROJECT} )
 
 IF( BUILD_TESTS )
     ADD_SUBDIRECTORY( test )

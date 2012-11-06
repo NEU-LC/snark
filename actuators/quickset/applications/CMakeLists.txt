@@ -7,5 +7,5 @@ ADD_EXECUTABLE( quickset-pantilt-from-console quickset-pantilt-from-console.cpp 
 TARGET_LINK_LIBRARIES( quickset-pantilt-from-console ${snark_ALL_EXTERNAL_LIBRARIES} )
 
 INSTALL( TARGETS quickset-pantilt-from-console quickset-pantilt-control
-         RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/${snark_INSTALL_BIN_DIR}
+         RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR}
          COMPONENT Runtime )
