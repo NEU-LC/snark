@@ -58,7 +58,7 @@ struct packet : public comma::packed::packed_struct< packet, 1206 >
         {
             comma::packed::string< 2 > padding;
             comma::packed::uint16 counter;
-            comma::packed::uint16 version;
+            comma::packed::uint16 number;
             bool valid() const { return ::memcmp( data() + 2, "DegC", 4 ) != 0; }
         };
     
