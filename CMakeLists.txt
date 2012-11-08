@@ -222,3 +222,26 @@ ENDIF( snark_build_sensors )
 
 ADD_SUBDIRECTORY( timing )
 ADD_SUBDIRECTORY( visiting )
+
+# Package
+IF( WIN32 )
+    #TODO: need to add third party dlls (boost, opencv, tbb, qt...)
+    # without this, apps that require a missing dll will not work, unless the user has those dlls separately in their path already.
+    # solution looks something like the following, but it's not trivial to set ${TBB_BINARY_DIRS} or even better, ${TBB_DLLS}}:    
+    #FILE( GLOB snark_PACKAGE_DLLS ${TBB_BINARY_DIRS}/*.dll )
+    #INSTALL(FILES ${snark_PACKAGE_DLLS} DESTINATION bin )
+    
+    #the following set up optional parameters for cpack
+    SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "This is a description of snark. It's great!")
+    SET(CPACK_PACKAGE_VENDOR "ACFR")
+    SET(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/COPYING")
+    SET(CPACK_PACKAGE_VERSION_MAJOR "1")
+    SET(CPACK_PACKAGE_VERSION_MINOR "0")
+    SET(CPACK_PACKAGE_VERSION_PATCH "0")
+
+    #this line finds the appropriate compiler dlls, e.g. Visual Studio DLLS in windows. Maybe it would find other dlls if a different build tool were used.
+    INCLUDE( InstallRequiredSystemLibraries )
+
+    #this line does all the work. Actually, even if this is the only line, you get all but the dlls...
+    INCLUDE( CPACK )
+ENDIF( WIN32 )
