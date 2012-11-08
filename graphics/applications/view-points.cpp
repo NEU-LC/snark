@@ -82,7 +82,7 @@ void usage()
     std::cerr << "                     \"line\": e.g. --shape=line --fields=,,first,second,,," << std::endl;
     std::cerr << "                     \"label\": e.g. --shape=label --fields=,x,y,z,,,label" << std::endl;
     std::cerr << "    --z-is-up : z-axis is pointing up, default: pointing down ( north-east-down system )" << std::endl;
-    std::cerr << "    -d: do not read from stdin" << std::endl;
+    std::cerr << "    --no-stdin: do not read from stdin" << std::endl;
     std::cerr << comma::csv::options::usage() << std::endl;
     std::cerr << std::endl;
     std::cerr << "    fields:" << std::endl;
@@ -229,7 +229,7 @@ int main( int argc, char** argv )
         comma::command_line_options options( argc, argv );
         if( options.exists( "--help" ) || options.exists( "-h" ) ) { usage(); }
         comma::csv::options csvOptions( argc, argv );
-        std::vector< std::string > properties = options.unnamed( "--z-is-up,--orthographic"
+        std::vector< std::string > properties = options.unnamed( "--z-is-up,--orthographic,--no-stdin"
                 , "--binary,--bin,-b,--fields,--size,--delimiter,-d,--colour,-c,--point-size,--image-size,--background-colour,--shape,--label,--camera,--camera-position,--fov,--model,--full-xpath" );
         QColor4ub backgroundcolour( QColor( QString( options.value< std::string >( "--background-colour", "#000000" ).c_str() ) ) );
         boost::optional< comma::csv::options > camera_csv; 
@@ -300,7 +300,7 @@ int main( int argc, char** argv )
             if( comma::split( properties[i], ';' )[0] == "-" ) { stdinAdded = true; }
             viewer->readers.push_back( makeReader( *viewer, options, csvOptions, properties[i] ) );
         }
-        if( !stdinAdded && !options.exists( "-d" ) )
+        if( !stdinAdded && !options.exists( "--no-stdin" ) )
         {  
             csvOptions.filename = "-";
             viewer->readers.push_back( makeReader( *viewer, options, csvOptions ) );
