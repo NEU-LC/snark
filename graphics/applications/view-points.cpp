@@ -81,6 +81,7 @@ void usage()
     std::cerr << "                     \"extents\": e.g. --shape=extents --fields=,,min,max,,," << std::endl;
     std::cerr << "                     \"line\": e.g. --shape=line --fields=,,first,second,,," << std::endl;
     std::cerr << "                     \"label\": e.g. --shape=label --fields=,x,y,z,,,label" << std::endl;
+    std::cerr << "                     \"<model file ( obj, ply... )>\": e.g. --shape=vehicle.obj" << std::endl;
     std::cerr << "    --z-is-up : z-axis is pointing up, default: pointing down ( north-east-down system )" << std::endl;
     std::cerr << "    -d: do not read from stdin" << std::endl;
     std::cerr << comma::csv::options::usage() << std::endl;

@@ -153,7 +153,9 @@ IF( snark_build_sensors_velodyne )
 ENDIF( snark_build_sensors_velodyne )
 
 SET( snark_ALL_LIBRARIES ${snark_ALL_LIBRARIES} debug snark_math-d
-                         optimized snark_math )
+                         optimized snark_math
+                         debug snark_timing-d
+                         optimized snark_timing )
 
 IF(WIN32)
     SET( snark_ALL_EXTERNAL_LIBRARIES Ws2_32.lib )
