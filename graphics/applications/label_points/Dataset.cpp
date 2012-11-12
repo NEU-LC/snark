@@ -224,6 +224,7 @@ void Dataset::load()
         m_selection.reset( new BasicDataset( *m_offset ) );
         commit();
         std::cerr << "\rlabel-points: loaded " << count << " lines from " << m_filename << "             " << std::endl;
+        if( count == 0 ) { std::cerr << "label-points: empty file does not make sense; exit" << std::endl; return; }
         m_valid = true;
         return;
     }
