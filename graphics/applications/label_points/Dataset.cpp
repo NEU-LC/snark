@@ -194,6 +194,7 @@ void Dataset::load()
     if( m_options.binary() ) { binary.reset( new comma::csv::binary_input_stream< PointWithId >( ifs, m_options.format().string(), m_options.fields, false ) ); }
     else { ascii.reset( new comma::csv::ascii_input_stream< PointWithId >( ifs, m_options.fields, m_options.delimiter, false ) ); }
     std::size_t count = 0;
+    m_valid = false;
     try
     {
         bool first = true;
@@ -221,10 +222,10 @@ void Dataset::load()
             }
             if( ++count % 10000 == 0 ) { std::cerr << "\rlabel-points: loaded " << count << " lines from " << m_filename << "             "; }
         }
+        if( count == 0 ) { std::cerr << "label-points: empty file does not make sense" << std::endl; return; }
         m_selection.reset( new BasicDataset( *m_offset ) );
         commit();
         std::cerr << "\rlabel-points: loaded " << count << " lines from " << m_filename << "             " << std::endl;
-        if( count == 0 ) { std::cerr << "label-points: empty file does not make sense; exit" << std::endl; return; }
         m_valid = true;
         return;
     }

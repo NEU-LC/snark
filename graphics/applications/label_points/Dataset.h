@@ -74,7 +74,6 @@ class Dataset : public BasicDataset
         Dataset( const std::string& filename, const comma::csv::options& options, const Eigen::Vector3d& offset, bool relabelDuplicated );
         void save();
         void saveAs( const std::string& f );
-        void load();
         void backup();
         void label( const Eigen::Vector3d& p, comma::uint32 id );
         void label( const Points& p, comma::uint32 id );
@@ -90,6 +89,7 @@ class Dataset : public BasicDataset
         static void repair( const comma::csv::options& options );
     
     private:
+        void load();
         void insert( const Points& m );
         void erase( const Points& m );
         void clear();
