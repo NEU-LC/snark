@@ -142,10 +142,10 @@ inline bool ShapeReader< S >::readOnce()
             return false;            
         }
         ShapeWithId< S > v = *p;
-        Eigen::Vector3d centre = Shapetraits< S >::centre( v.shape );
+        Eigen::Vector3d center = Shapetraits< S >::center( v.shape );
         if( !v.label.empty() )
         {
-            m_labels[ m_labelIndex ] = std::make_pair( QVector3D( centre.x(), centre.y(), centre.z() ) , v.label );
+            m_labels[ m_labelIndex ] = std::make_pair( QVector3D( center.x(), center.y(), center.z() ) , v.label );
             m_labelIndex++;
             if( m_labelSize < m_labels.size() )
             {
@@ -156,7 +156,7 @@ inline bool ShapeReader< S >::readOnce()
                 m_labelIndex = 0;
             }
         }
-        v.color = m_colored->color( centre, p->id, p->scalar, p->color );
+        v.color = m_colored->color( center, p->id, p->scalar, p->color );
         boost::mutex::scoped_lock lock( m_mutex );
         m_deque.push_back( v );
         m_point = Shapetraits< S >::somePoint( v.shape );

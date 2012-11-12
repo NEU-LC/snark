@@ -77,7 +77,7 @@ struct Shapetraits< Eigen::Vector3d >
     
     static const Eigen::Vector3d& somePoint( const Eigen::Vector3d& point ) { return point; }
     
-    static const Eigen::Vector3d& centre( const Eigen::Vector3d& point ) { return point; }
+    static const Eigen::Vector3d& center( const Eigen::Vector3d& point ) { return point; }
 };
 
 template<>
@@ -128,7 +128,7 @@ struct Shapetraits< snark::math::interval< double, 3 > >
     
     static const Eigen::Vector3d& somePoint( const snark::math::interval< double, 3 >& extents ) { return extents.min(); }
     
-    static Eigen::Vector3d centre( const snark::math::interval< double, 3 >& extents ) { return ( extents.min() + extents.max() ) / 2; }
+    static Eigen::Vector3d center( const snark::math::interval< double, 3 >& extents ) { return ( extents.min() + extents.max() ) / 2; }
 };
 
 template<>
@@ -158,13 +158,13 @@ struct Shapetraits< std::pair< Eigen::Vector3d, Eigen::Vector3d > >
     
     static const Eigen::Vector3d& somePoint( const std::pair< Eigen::Vector3d, Eigen::Vector3d >& line ) { return line.first; }
     
-    static Eigen::Vector3d centre( const std::pair< Eigen::Vector3d, Eigen::Vector3d >& line ) { return ( line.first + line.second ) / 2; }
+    static Eigen::Vector3d center( const std::pair< Eigen::Vector3d, Eigen::Vector3d >& line ) { return ( line.first + line.second ) / 2; }
 };
 
 template < std::size_t Size >
 struct Ellipse
 {
-    Eigen::Vector3d centre;
+    Eigen::Vector3d center;
     Eigen::Vector3d orientation;
     double major;
     double minor;
@@ -176,7 +176,7 @@ struct Shapetraits< Ellipse< Size > >
     static const unsigned int size = Size;
     static void update( const Ellipse< Size >& ellipse, const Eigen::Vector3d& offset, const QColor4ub& color, unsigned int block, qt3d::vertex_buffer& buffer, boost::optional< snark::math::interval< float, 3 > >& extents  )
     {
-        Eigen::Vector3d c = ellipse.centre - offset;
+        Eigen::Vector3d c = ellipse.center - offset;
         const Eigen::Matrix3d& r = rotation_matrix::rotation( ellipse.orientation );
         static const double step = 3.14159265358979323846l * 2 / Size;
         double angle = 0;
@@ -206,9 +206,9 @@ struct Shapetraits< Ellipse< Size > >
         }
     }
     
-    static const Eigen::Vector3d& somePoint( const Ellipse< Size >& ellipse ) { return ellipse.centre; }
+    static const Eigen::Vector3d& somePoint( const Ellipse< Size >& ellipse ) { return ellipse.center; }
 
-    static Eigen::Vector3d centre( const Ellipse< Size >& ellipse ) { return ellipse.centre; }
+    static Eigen::Vector3d center( const Ellipse< Size >& ellipse ) { return ellipse.center; }
 };
 
 } } }
@@ -271,7 +271,7 @@ template < std::size_t Size > struct traits< snark::graphics::View::Ellipse< Siz
     template < typename Key, class Visitor >
     static void visit( Key, snark::graphics::View::Ellipse< Size >& p, Visitor& v )
     {
-        v.apply( "centre", p.centre );
+        v.apply( "center", p.center );
         v.apply( "orientation", p.orientation );
         v.apply( "major", p.major );
         v.apply( "minor", p.minor );
@@ -280,7 +280,7 @@ template < std::size_t Size > struct traits< snark::graphics::View::Ellipse< Siz
     template < typename Key, class Visitor >
     static void visit( Key, const snark::graphics::View::Ellipse< Size >& p, Visitor& v )
     {
-        v.apply( "centre", p.centre );
+        v.apply( "center", p.center );
         v.apply( "orientation", p.orientation );
         v.apply( "major", p.major );
         v.apply( "minor", p.minor );
