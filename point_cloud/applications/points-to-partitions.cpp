@@ -238,14 +238,14 @@ static void write_block_( unsigned int index )
 static unsigned int partition_( unsigned int index )
 {
     STDERR << "velodyne-to-mesh-ground: partitioning..." << std::endl;
-    boost::optional< snark::math::interval< double, 3 > > extents;
+    boost::optional< snark::math::closed_interval< double, 3 > > extents;
     for( std::size_t i = 0; i < blocks[index].points.size(); ++i )
     {
         if( points[i].label && points[i].label == Ark::Robotics::MeshGround::Label::non_ground )
         {
             if( !extents )
             {
-                extents = snark::math::interval< double, 3 >( points[i].point );
+                extents = snark::math::closed_interval< double, 3 >( points[i].point );
             }
             else
             {

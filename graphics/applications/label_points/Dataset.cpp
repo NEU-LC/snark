@@ -42,7 +42,7 @@ void BasicDataset::visible( bool visible ) { m_visible = visible; }
 
 bool BasicDataset::visible() const { return m_visible; }
 
-const snark::math::interval< double, 3 >& BasicDataset::extents() const { return *m_extents; }
+const snark::math::closed_interval< double, 3 >& BasicDataset::extents() const { return *m_extents; }
 
 void BasicDataset::clear()
 {
@@ -96,7 +96,7 @@ void BasicDataset::insert( const BasicDataset::Points& m ) // quick and dirty
         }
         else
         {
-            m_extents = snark::math::interval< double, 3 >( en.key() );
+            m_extents = snark::math::closed_interval< double, 3 >( en.key() );
         }
     }
     init();
@@ -218,7 +218,7 @@ void Dataset::load()
             }
             else
             {
-                m_extents = snark::math::interval< double, 3 >( p->point );
+                m_extents = snark::math::closed_interval< double, 3 >( p->point );
             }
             if( ++count % 10000 == 0 ) { std::cerr << "\rlabel-points: loaded " << count << " lines from " << m_filename << "             "; }
         }

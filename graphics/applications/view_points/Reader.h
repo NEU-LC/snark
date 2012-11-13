@@ -78,7 +78,7 @@ class Reader
         
         friend class Viewer;
         QGLView& m_viewer;
-        boost::optional< snark::math::interval< float, 3 > > m_extents;
+        boost::optional< snark::math::closed_interval< float, 3 > > m_extents;
         unsigned int m_num_points;
         boost::scoped_ptr< coloured > m_colored;
         bool m_shutdown;

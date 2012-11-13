@@ -30,19 +30,19 @@ namespace snark { namespace math {
 
 /// multi-dimensional interval
 template < typename T, int N >
-class interval
+class closed_interval
 {
     public:
         typedef Eigen::Matrix< T, N, 1 > vector_type;
 
         /// constructor
-        interval( const vector_type& min, const vector_type& max ) : m_interval( std::make_pair( get_min( min, max ), get_max( min, max ) ) ) { if( !less_or_equal( min, max ) ) { COMMA_THROW( comma::exception, "invalid interval" ); } }
+        closed_interval( const vector_type& min, const vector_type& max ) : m_interval( std::make_pair( get_min( min, max ), get_max( min, max ) ) ) { if( !less_or_equal( min, max ) ) { COMMA_THROW( comma::exception, "invalid interval" ); } }
 
         /// constructor
-        interval( const vector_type& rhs ) : m_interval( std::make_pair( rhs, rhs ) ) {}
+        closed_interval( const vector_type& rhs ) : m_interval( std::make_pair( rhs, rhs ) ) {}
         
         /// default constructor
-        interval() {} //interval(): m_interval( std::make_pair( vector_type::Zero(), vector_type::Zero() ) ) {}
+        closed_interval() {} //interval(): m_interval( std::make_pair( vector_type::Zero(), vector_type::Zero() ) ) {}
 
         /// return value
         const std::pair< vector_type, vector_type >& operator()() const { assert( m_interval ); return m_interval; }
@@ -57,25 +57,25 @@ class interval
         bool contains( const vector_type& rhs ) const { assert( m_interval ); return less_or_equal( m_interval->first, rhs ) && less_or_equal( rhs, m_interval->second ); }
 
         /// return true, if the whole rhs interval belongs to the interval
-        bool contains( const interval& rhs ) const { assert( m_interval && rhs ); return contains( rhs.min() ) && contains( rhs.max() ); }
+        bool contains( const closed_interval& rhs ) const { assert( m_interval && rhs ); return contains( rhs.min() ) && contains( rhs.max() ); }
 
         /// compute the hull of the interval and [rhs]
-        interval< T, N > hull( const vector_type& rhs ) const { return interval( get_min( m_interval->first, rhs ), get_max( m_interval->second, rhs ) ); }
+        closed_interval< T, N > hull( const vector_type& rhs ) const { return closed_interval( get_min( m_interval->first, rhs ), get_max( m_interval->second, rhs ) ); }
 
         /// compute the hull of 2 intervals
-        interval< T, N > hull( const interval& rhs ) const { return interval( get_min( m_interval->first, rhs.min() ), get_max( m_interval->second, rhs.max() ) ); }
+        closed_interval< T, N > hull( const closed_interval& rhs ) const { return closed_interval( get_min( m_interval->first, rhs.min() ), get_max( m_interval->second, rhs.max() ) ); }
         
         /// compute and assign the hull of the interval and [rhs]
-        const interval< T, N >& set_hull( const vector_type& rhs ) { *this = m_interval ? hull( rhs ) : interval( rhs ); return *this; }
+        const closed_interval< T, N >& set_hull( const vector_type& rhs ) { *this = m_interval ? hull( rhs ) : closed_interval( rhs ); return *this; }
 
         /// compute and assign the hull of 2 intervals
-        const interval< T, N >& set_hull( const interval& rhs ) { *this = m_interval ? hull( rhs ) : interval( rhs ); return *this; }
+        const closed_interval< T, N >& set_hull( const closed_interval& rhs ) { *this = m_interval ? hull( rhs ) : closed_interval( rhs ); return *this; }
 
         /// equality
-        bool operator==( const interval& rhs ) const { assert( m_interval && rhs ); return m_interval->first.isApprox( rhs().first ) && m_interval->second.isApprox( rhs().second ); }
+        bool operator==( const closed_interval& rhs ) const { assert( m_interval && rhs ); return m_interval->first.isApprox( rhs().first ) && m_interval->second.isApprox( rhs().second ); }
 
         /// unequality
-        bool operator!=( const interval& rhs ) const { assert( m_interval && rhs ); return !operator==( rhs ); }
+        bool operator!=( const closed_interval& rhs ) const { assert( m_interval && rhs ); return !operator==( rhs ); }
 
     private:
         // todo: use epsilon from <limits> for comparison

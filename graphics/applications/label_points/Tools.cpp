@@ -246,7 +246,7 @@ void SelectClip::onMouseRelease( QMouseEvent* e )
     {
         for( std::size_t i = 0; i < m_viewer.datasets().size(); ++i ) { m_viewer.dataset( i ).selection().clear(); }
     }
-    snark::math::interval< double, 3 > extents( m_centre - m_radius, m_centre + m_radius );
+    snark::math::closed_interval< double, 3 > extents( m_centre - m_radius, m_centre + m_radius );
     for( std::size_t i = 0; i < m_viewer.datasets().size(); ++i )
     {
         if( !erase && !m_viewer.dataset( i ).visible() ) { continue; }
@@ -267,7 +267,7 @@ void SelectClip::draw( QGLPainter* painter )
     {
         center -= *m_viewer.m_offset;
     }
-    snark::math::interval< double, 3 > extents( center - m_radius, center + m_radius );
+    snark::math::closed_interval< double, 3 > extents( center - m_radius, center + m_radius );
 
     QVector3D a( extents.min().x(), extents.min().y(), extents.min().z() );
     QVector3D b( extents.min().x(), extents.min().y(), extents.max().z() );

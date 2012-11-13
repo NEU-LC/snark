@@ -25,7 +25,7 @@ namespace snark { namespace test {
 
 typedef Eigen::Vector3d point;
 typedef Eigen::Matrix< std::size_t, 1, 3 > index_type;
-typedef snark::math::interval< double, 3 > extents_type;
+typedef snark::math::closed_interval< double, 3 > extents_type;
     
 TEST( voxel_grid, construction )
 {

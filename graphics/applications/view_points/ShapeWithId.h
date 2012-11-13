@@ -56,7 +56,7 @@ struct Shapetraits< Eigen::Vector3d >
     static const QGL::DrawingMode drawingMode = QGL::Points;
     static const unsigned int size = 1;
     
-    static void update( const Eigen::Vector3d& p, const Eigen::Vector3d& offset, const QColor4ub& color, unsigned int block, qt3d::vertex_buffer& buffer, boost::optional< snark::math::interval< float, 3 > >& extents  )
+    static void update( const Eigen::Vector3d& p, const Eigen::Vector3d& offset, const QColor4ub& color, unsigned int block, qt3d::vertex_buffer& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents  )
     {
         Eigen::Vector3d point = p - offset;
         buffer.addVertex( QVector3D( point.x(), point.y(), point.z() ), color, block );
@@ -66,7 +66,7 @@ struct Shapetraits< Eigen::Vector3d >
         }
         else
         {
-            extents = snark::math::interval< float, 3 >( point.cast< float >() );
+            extents = snark::math::closed_interval< float, 3 >( point.cast< float >() );
         }
     }
 
@@ -81,10 +81,10 @@ struct Shapetraits< Eigen::Vector3d >
 };
 
 template<>
-struct Shapetraits< snark::math::interval< double, 3 > >
+struct Shapetraits< snark::math::closed_interval< double, 3 > >
 {
     static const unsigned int size = 8;
-    static void update( const snark::math::interval< double, 3 >& e, const Eigen::Vector3d& offset, const QColor4ub& color, unsigned int block, qt3d::vertex_buffer& buffer, boost::optional< snark::math::interval< float, 3 > >& extents  )
+    static void update( const snark::math::closed_interval< double, 3 >& e, const Eigen::Vector3d& offset, const QColor4ub& color, unsigned int block, qt3d::vertex_buffer& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents  )
     {
         Eigen::Vector3f min = ( e.min() - offset ).cast< float >();
         Eigen::Vector3f max = ( e.max() - offset ).cast< float >();
@@ -99,11 +99,11 @@ struct Shapetraits< snark::math::interval< double, 3 > >
         
         if( extents )
         {
-            extents = extents->hull( snark::math::interval< float, 3 >( min, max ) );
+            extents = extents->hull( snark::math::closed_interval< float, 3 >( min, max ) );
         }
         else
         {
-            extents = snark::math::interval< float, 3 >( min, max );
+            extents = snark::math::closed_interval< float, 3 >( min, max );
         }
     }
 
@@ -126,16 +126,16 @@ struct Shapetraits< snark::math::interval< double, 3 > >
         }
     }
     
-    static const Eigen::Vector3d& somePoint( const snark::math::interval< double, 3 >& extents ) { return extents.min(); }
+    static const Eigen::Vector3d& somePoint( const snark::math::closed_interval< double, 3 >& extents ) { return extents.min(); }
     
-    static Eigen::Vector3d centre( const snark::math::interval< double, 3 >& extents ) { return ( extents.min() + extents.max() ) / 2; }
+    static Eigen::Vector3d centre( const snark::math::closed_interval< double, 3 >& extents ) { return ( extents.min() + extents.max() ) / 2; }
 };
 
 template<>
 struct Shapetraits< std::pair< Eigen::Vector3d, Eigen::Vector3d > >
 {
     static const unsigned int size = 2;
-    static void update( const std::pair< Eigen::Vector3d, Eigen::Vector3d >& p, const Eigen::Vector3d& offset, const QColor4ub& color, unsigned int block, qt3d::vertex_buffer& buffer, boost::optional< snark::math::interval< float, 3 > >& extents  )
+    static void update( const std::pair< Eigen::Vector3d, Eigen::Vector3d >& p, const Eigen::Vector3d& offset, const QColor4ub& color, unsigned int block, qt3d::vertex_buffer& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents  )
     {
         Eigen::Vector3f first = ( p.first - offset ).cast< float >();
         Eigen::Vector3f second = ( p.second - offset ).cast< float >();
@@ -143,11 +143,11 @@ struct Shapetraits< std::pair< Eigen::Vector3d, Eigen::Vector3d > >
         buffer.addVertex( QVector3D( second.x(), second.y(), second.z() ), color, block );
         if( extents )
         {
-            extents = extents->hull( snark::math::interval< float, 3 >( first, second ) );
+            extents = extents->hull( snark::math::closed_interval< float, 3 >( first, second ) );
         }
         else
         {
-            extents = snark::math::interval< float, 3 >( first, second );
+            extents = snark::math::closed_interval< float, 3 >( first, second );
         }
     }
 
@@ -174,7 +174,7 @@ template < std::size_t Size >
 struct Shapetraits< Ellipse< Size > >
 {
     static const unsigned int size = Size;
-    static void update( const Ellipse< Size >& ellipse, const Eigen::Vector3d& offset, const QColor4ub& color, unsigned int block, qt3d::vertex_buffer& buffer, boost::optional< snark::math::interval< float, 3 > >& extents  )
+    static void update( const Ellipse< Size >& ellipse, const Eigen::Vector3d& offset, const QColor4ub& color, unsigned int block, qt3d::vertex_buffer& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents  )
     {
         Eigen::Vector3d c = ellipse.centre - offset;
         const Eigen::Matrix3d& r = rotation_matrix::rotation( ellipse.orientation );
@@ -193,7 +193,7 @@ struct Shapetraits< Ellipse< Size > >
             }
             else
             {
-                extents = snark::math::interval< float, 3 >( point );
+                extents = snark::math::closed_interval< float, 3 >( point );
             }
         }
     }
@@ -287,20 +287,20 @@ template < std::size_t Size > struct traits< snark::graphics::View::Ellipse< Siz
     }
 };
 
-template < typename T > struct traits< snark::math::interval< T, 3 > >
+template < typename T > struct traits< snark::math::closed_interval< T, 3 > >
 {
     template < typename Key, class Visitor >
-    static void visit( Key, snark::math::interval< T, 3 >& p, Visitor& v )
+    static void visit( Key, snark::math::closed_interval< T, 3 >& p, Visitor& v )
     {
         Eigen::Matrix< T, 3, 1 > min;
         Eigen::Matrix< T, 3, 1 > max;
         v.apply( "min", min );
         v.apply( "max", max );
-        p = snark::math::interval< T, 3 >( min, max );
+        p = snark::math::closed_interval< T, 3 >( min, max );
     }
 
     template < typename Key, class Visitor >
-    static void visit( Key, const snark::math::interval< T, 3 >& p, Visitor& v )
+    static void visit( Key, const snark::math::closed_interval< T, 3 >& p, Visitor& v )
     {
         v.apply( "min", p.min() );
         v.apply( "max", p.max() );
