@@ -224,7 +224,7 @@ ADD_SUBDIRECTORY( timing )
 ADD_SUBDIRECTORY( visiting )
 
 # Package (so far works on linux, too)
-#IF( WIN32 )
+IF( WIN32 )
     SET(snark_PACKAGE_DLLS ${TBB_DLL_DIR}/tbb.dll)
     INSTALL(FILES ${snark_PACKAGE_DLLS} DESTINATION bin )
     
@@ -241,4 +241,4 @@ ADD_SUBDIRECTORY( visiting )
 
     #this line does all the work. Actually, even if this is the only line, you get all but the dlls...
     INCLUDE( CPack )
-#ENDIF( WIN32 )
+ENDIF( WIN32 )
