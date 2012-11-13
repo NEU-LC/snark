@@ -223,8 +223,8 @@ ENDIF( snark_build_sensors )
 ADD_SUBDIRECTORY( timing )
 ADD_SUBDIRECTORY( visiting )
 
-# Package
-IF( WIN32 )
+# Package (so far works on linux, too)
+#IF( WIN32 )
     #TODO: need to add third party dlls (boost, opencv, tbb, qt...)
     # without this, apps that require a missing dll will not work, unless the user has those dlls separately in their path already.
     # solution looks something like the following, but it's not trivial to set ${TBB_BINARY_DIRS} or even better, ${TBB_DLLS}}:    
@@ -243,5 +243,5 @@ IF( WIN32 )
     INCLUDE( InstallRequiredSystemLibraries )
 
     #this line does all the work. Actually, even if this is the only line, you get all but the dlls...
-    INCLUDE( CPACK )
-ENDIF( WIN32 )
+    INCLUDE( CPack )
+#ENDIF( WIN32 )
