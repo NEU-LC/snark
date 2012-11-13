@@ -221,7 +221,7 @@ void SelectClip::onMousePress( QMouseEvent* e )
     boost::optional< std::pair< Eigen::Vector3d, comma::uint32 > > picked = m_viewer.pointSelection( e->pos() );
     if( !picked ) { return; }
     m_rectangle = QRect( e->pos(), e->pos() );
-    m_centre = picked->first;
+    m_center = picked->first;
     m_radius = Eigen::Vector3d();
 }
 
@@ -246,7 +246,8 @@ void SelectClip::onMouseRelease( QMouseEvent* e )
     {
         for( std::size_t i = 0; i < m_viewer.datasets().size(); ++i ) { m_viewer.dataset( i ).selection().clear(); }
     }
-    snark::math::closed_interval< double, 3 > extents( m_centre - m_radius, m_centre + m_radius );
+    snark::math::closed_interval< double, 3 > extents( m_center - m_radius );
+    extents = extents.hull( m_center + m_radius );
     for( std::size_t i = 0; i < m_viewer.datasets().size(); ++i )
     {
         if( !erase && !m_viewer.dataset( i ).visible() ) { continue; }
@@ -262,12 +263,13 @@ void SelectClip::onMouseRelease( QMouseEvent* e )
 void SelectClip::draw( QGLPainter* painter )
 {
     if( !m_rectangle ) { return; }
-    Eigen::Vector3d center = m_centre;
+    Eigen::Vector3d center = m_center;
     if( m_viewer.m_offset )
     {
         center -= *m_viewer.m_offset;
     }
-    snark::math::closed_interval< double, 3 > extents( center - m_radius, center + m_radius );
+    snark::math::closed_interval< double, 3 > extents( center - m_radius);
+    extents = extents.hull( center + m_radius );
 
     QVector3D a( extents.min().x(), extents.min().y(), extents.min().z() );
     QVector3D b( extents.min().x(), extents.min().y(), extents.max().z() );

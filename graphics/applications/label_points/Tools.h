@@ -107,7 +107,7 @@ class SelectClip : public Tool
         
     private:
         boost::optional< QRect > m_rectangle;
-        Eigen::Vector3d m_centre;
+        Eigen::Vector3d m_center;
         Eigen::Vector3d m_radius;
 };
 

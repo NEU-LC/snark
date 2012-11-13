@@ -335,44 +335,44 @@ class pin_screen< T >::neighbourhood_iterator : public pin_screen< T >::iterator
         /// increment
         const neighbourhood_iterator& operator++();
 
-        /// return neighbourhood centre
-        //const iterator& Centre() const { return m_centre; }
+        /// return neighbourhood center
+        //const iterator& Centre() const { return m_center; }
 
         /// return begin
-        static neighbourhood_iterator begin( const typename pin_screen< T >::iterator& centre );
+        static neighbourhood_iterator begin( const typename pin_screen< T >::iterator& center );
 
         /// return end
-        static neighbourhood_iterator end( const typename pin_screen< T >::iterator& centre );
+        static neighbourhood_iterator end( const typename pin_screen< T >::iterator& center );
 
     private:
-        //iterator m_centre;
-        index_type m_centre;
+        //iterator m_center;
+        index_type m_center;
         index_type m_begin;
         index_type m_end;
         using pin_screen< T >::iterator::m_grid;
         using pin_screen< T >::iterator::m_column;
         using pin_screen< T >::iterator::m_it;
-        void Init( const typename pin_screen< T >::iterator& centre );
+        void Init( const typename pin_screen< T >::iterator& center );
 };
 
 template < typename T >
-inline void pin_screen< T >::neighbourhood_iterator::Init( const typename pin_screen< T >::iterator& centre )
+inline void pin_screen< T >::neighbourhood_iterator::Init( const typename pin_screen< T >::iterator& center )
 {
-    m_grid = centre.m_grid;
-    m_centre = centre();
-    m_begin[0] = m_centre[0] - ( m_centre[0] > 0 ? 1 : 0 );
-    m_begin[1] = m_centre[1] - ( m_centre[1] > 0 ? 1 : 0 );
-    m_begin[2] = m_centre[2] - ( m_centre[2] > 0 ? 1 : 0 );
-    m_end[0] = m_centre[0] + 1 + ( m_centre[0] < std::size_t( m_grid->rows() ) - 1 ? 1 : 0 );
-    m_end[1] = m_centre[1] + 1 + ( m_centre[1] < std::size_t( m_grid->cols() ) - 1 ? 1 : 0 );
-    m_end[2] = m_centre[2] + 1 + 1; // pin screen can grow upwards without limits
+    m_grid = center.m_grid;
+    m_center = center();
+    m_begin[0] = m_center[0] - ( m_center[0] > 0 ? 1 : 0 );
+    m_begin[1] = m_center[1] - ( m_center[1] > 0 ? 1 : 0 );
+    m_begin[2] = m_center[2] - ( m_center[2] > 0 ? 1 : 0 );
+    m_end[0] = m_center[0] + 1 + ( m_center[0] < std::size_t( m_grid->rows() ) - 1 ? 1 : 0 );
+    m_end[1] = m_center[1] + 1 + ( m_center[1] < std::size_t( m_grid->cols() ) - 1 ? 1 : 0 );
+    m_end[2] = m_center[2] + 1 + 1; // pin screen can grow upwards without limits
 }
 
 template < typename T >
 inline const typename pin_screen< T >::neighbourhood_iterator& pin_screen< T >::neighbourhood_iterator::operator++()
 {
     if( m_it != ( *m_grid )( m_column[0], m_column[1] ).end() && m_it->first < m_end[2] ) { ++m_it; }
-    while( m_it == ( *m_grid )( m_column[0], m_column[1] ).end() || m_it->first >= m_end[2] || this->operator()() == m_centre )
+    while( m_it == ( *m_grid )( m_column[0], m_column[1] ).end() || m_it->first >= m_end[2] || this->operator()() == m_center )
     {
         ++m_column[1];
         if( m_column[1] >= m_end[1] )
@@ -393,10 +393,10 @@ inline const typename pin_screen< T >::neighbourhood_iterator& pin_screen< T >::
 }
 
 template < typename T >
-inline typename pin_screen< T >::neighbourhood_iterator pin_screen< T >::neighbourhood_iterator::begin( const typename pin_screen< T >::iterator& centre )
+inline typename pin_screen< T >::neighbourhood_iterator pin_screen< T >::neighbourhood_iterator::begin( const typename pin_screen< T >::iterator& center )
 {
     neighbourhood_iterator it;
-    it.Init( centre );
+    it.Init( center );
     for( it.m_column[0] = it.m_begin[0]; it.m_column[0] < it.m_end[0]; ++it.m_column[0] )
     {
         for( it.m_column[1] = it.m_begin[1]; it.m_column[1] < it.m_end[1]; ++it.m_column[1] )
@@ -411,7 +411,7 @@ inline typename pin_screen< T >::neighbourhood_iterator pin_screen< T >::neighbo
             }
             for( ; it.m_it != ( *( it.m_grid ) )( it.m_column[0], it.m_column[1] ).end() && it.m_it->first < it.m_end[2]; ++it.m_it )
             {
-                if( it() != it.m_centre ) { return it; }
+                if( it() != it.m_center ) { return it; }
             }
         }
     }
@@ -420,10 +420,10 @@ inline typename pin_screen< T >::neighbourhood_iterator pin_screen< T >::neighbo
 }
 
 template < typename T >
-inline typename pin_screen< T >::neighbourhood_iterator pin_screen< T >::neighbourhood_iterator::end( const typename pin_screen< T >::iterator& centre )
+inline typename pin_screen< T >::neighbourhood_iterator pin_screen< T >::neighbourhood_iterator::end( const typename pin_screen< T >::iterator& center )
 {
     neighbourhood_iterator it;
-    it.Init( centre );
+    it.Init( center );
     it.m_column[0] = it.m_end[0];
     it.m_column[1] = it.m_end[1];
     it.m_it = ( *( it.m_grid ) )( it.m_end[0] - 1, it.m_end[1] - 1 ).end();

@@ -159,10 +159,10 @@ void Viewer::setCameraPosition ( const Eigen::Vector3d& position, const Eigen::V
     double sin_pitch = std::sin( orientation.y() );
     double cos_pitch = std::cos( orientation.y() );
     Eigen::Vector3d direction( cos_pitch * cos_yaw, cos_pitch * sin_yaw, sin_pitch ); // todo: quick and dirty, forget about roll for now
-    Eigen::Vector3d scene_centre = p + direction * 50; // quick and dirty
+    Eigen::Vector3d scene_center = p + direction * 50; // quick and dirty
     Eigen::Vector3d where = p + direction;
     camera()->setCenter( QVector3D( where.x(), where.y(), where.z() ) );
-    m_sceneCenter = QVector3D( scene_centre.x(), scene_centre.y(), scene_centre.z() );
+    m_sceneCenter = QVector3D( scene_center.x(), scene_center.y(), scene_center.z() );
 }
 
 

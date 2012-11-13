@@ -61,7 +61,7 @@ void usage()
     std::cerr << "    --no-stdin: do not read from stdin" << std::endl;
     std::cerr << "    --point-size <point size>: default: 1" << std::endl;
     std::cerr << "    --shape <shape>: \"point\", \"extents\", \"line\", \"label\"; default \"point\"" << std::endl;
-    std::cerr << "                     \"ellipse\": e.g. --shape=ellipse --fields=,,centre,orientation,minor,major," << std::endl;
+    std::cerr << "                     \"ellipse\": e.g. --shape=ellipse --fields=,,center,orientation,minor,major," << std::endl;
     std::cerr << "                                  default orientation: in x,y plane" << std::endl;
     std::cerr << "                     \"extents\": e.g. --shape=extents --fields=,,min,max,,," << std::endl;
     std::cerr << "                     \"line\": e.g. --shape=line --fields=,,first,second,,," << std::endl;
@@ -160,11 +160,11 @@ boost::shared_ptr< snark::graphics::View::Reader > makeReader( QGLView& viewer
     }
     else if( shape == "ellipse" )
     {
-        if( csv.fields == "" ) { csv.fields="centre,orientation,major,minor"; }
+        if( csv.fields == "" ) { csv.fields="center,orientation,major,minor"; }
         std::vector< std::string > v = comma::split( csv.fields, ',' );
         for( std::size_t i = 0; i < v.size(); ++i )
         {
-            if( v[i] == "x" || v[i] == "y" || v[i] == "z" ) { v[i] = "centre/" + v[i]; }
+            if( v[i] == "x" || v[i] == "y" || v[i] == "z" ) { v[i] = "center/" + v[i]; }
             else if( v[i] == "roll" || v[i] == "pitch" || v[i] == "yaw" ) { v[i] = "orientation/" + v[i]; }
         }
         csv.fields = comma::join( v, ',' );

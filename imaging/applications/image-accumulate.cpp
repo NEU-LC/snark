@@ -82,7 +82,7 @@ void usage()
     std::cerr << "                 dial-colour=<value>: see --dial-colour" << std::endl;
     std::cerr << "                 default: values defined in command line options" << std::endl;
     std::cerr << "    --row-number-offset,--offset=<value>: row number offset; default: 0" << std::endl;
-    std::cerr << "    --offset-from-centre=<pixels>: polar only: offset all values by <pixels> from centre" << std::endl;
+    std::cerr << "    --offset-from-center=<pixels>: polar only: offset all values by <pixels> from center" << std::endl;
     std::cerr << "    --output=<options>: see cv-cat --help for output options; default: no-header;rows=<r>;cols=<v>" << std::endl;
     std::cerr << "    --polar: if present, convert to polar coordinates; default: output waterfall" << std::endl;
     std::cerr << "    --scale=<from>,<to>: min and max for black-to-white gradation; default: 0-255" << std::endl;
@@ -272,7 +272,7 @@ static bool done = false;
 static comma::signal_flag is_shutdown;
 static snark::cv_mat::serialization::options output_options;
 static unsigned int pixel_size;
-static unsigned int offset_from_centre; // quick and dirty
+static unsigned int offset_from_center; // quick and dirty
 
 static std::vector< std::pair< double, double > > precomputed_sin_cos_()
 {
@@ -293,7 +293,7 @@ static void output_once_( const boost::posix_time::ptime& t )
     std::pair< boost::posix_time::ptime, cv::Mat > output;
     if( polar )
     {
-        static unsigned int polar_size = ( row_size + offset_from_centre ) * 2 + 1;
+        static unsigned int polar_size = ( row_size + offset_from_center ) * 2 + 1;
         static unsigned int type = output_options.get_header().type;
         static cv::Mat polar_image( polar_size, polar_size * ids.size(), type );
         ::memset( polar_image.datastart, 0, polar_image.dataend - polar_image.datastart );
@@ -305,10 +305,10 @@ static void output_once_( const boost::posix_time::ptime& t )
             {
                 double x_step = sin_cos[row].second; 
                 double y_step = sin_cos[row].first * sign;
-                double x = row_size + offset_from_centre + polar_offset; 
-                double y = row_size + offset_from_centre;
-                x += sin_cos[row].second * offset_from_centre;
-                y += sin_cos[row].first * sign * offset_from_centre;
+                double x = row_size + offset_from_center + polar_offset; 
+                double y = row_size + offset_from_center;
+                x += sin_cos[row].second * offset_from_center;
+                y += sin_cos[row].first * sign * offset_from_center;
                 for( unsigned int column = 0; column < row_size; ++column, x += x_step, y += y_step )
                 {
                     ::memcpy( polar_image.datastart + ( int( y ) * ( polar_image.cols ) + int( x ) ) * pixel_size
@@ -353,14 +353,14 @@ class channel
             std::string colourmap;
             std::string dial_colour;
             bool do_not_clean;
-            //unsigned int offset_from_centre; // quick and dirty
+            //unsigned int offset_from_center; // quick and dirty
             
             options( const comma::command_line_options& options )
                 : scale( comma::csv::ascii< std::pair< double, double > >().get( options.value< std::string >( "--scale", "0,255" ) ) )
                 , colourmap( options.value< std::string >( "--colour-map,--colourmap,--colour", "0,255,0" ) )
                 , dial_colour( options.value< std::string >( "--dial-colour", "white" ) )
                 , do_not_clean( options.exists( "--dirty,--do-not-clean" ) )
-                //, offset_from_centre( options.value( "--offset-from-centre", 0 ) )
+                //, offset_from_center( options.value( "--offset-from-center", 0 ) )
             {
             }
         };
@@ -509,7 +509,7 @@ template <> struct traits< channel::options >
         t.scale = comma::csv::ascii< std::pair< double, double > >().get( scale );
         v.apply( "colourmap", t.colourmap );
         v.apply( "dial-colour", t.dial_colour );
-        //v.apply( "offset-from-centre", t.offset_from_centre );
+        //v.apply( "offset-from-center", t.offset_from_center );
     }
 };
     
@@ -529,7 +529,7 @@ int main( int ac, char** av )
         polar = options.exists( "--polar" );
         as_radians = !options.exists( "--degrees" );
         clockwise = options.exists( "--clockwise" );
-        offset_from_centre = options.value( "--offset-from-centre", 0 ); // quick and dirty
+        offset_from_center = options.value( "--offset-from-center", 0 ); // quick and dirty
         z_up = options.value< std::string >( "--z", "up" ) == "up";
         sign = ( z_up && !clockwise ) || ( !z_up && clockwise ) ? 1 : -1;
         if( options.exists( "--fps" ) ) { dial_size = options.value( "--dial-size,--dial", 0 ); }
