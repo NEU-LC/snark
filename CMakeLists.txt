@@ -242,6 +242,27 @@ ADD_SUBDIRECTORY( visiting )
     #this line finds the appropriate compiler dlls, e.g. Visual Studio DLLS in windows. Maybe it would find other dlls if a different build tool were used.
     INCLUDE( InstallRequiredSystemLibraries )
 
+IF( WIN32 )
+    # not so easy, but something along these lines:
+    #
+    # just for packaging, install all the libraries
+    # and cmake will pick them up
+    #
+    # not on linux, because the libraries come with
+    # their paths, but it actually may work on windows
+    # since there you have to specify the path to each
+    # library anyway
+    #
+    # also, you probably don't want to install the
+    # third-parth libraries on windows all the time,
+    # but only for packaging; i am not sure how to do
+    # it with the line below
+    #
+    #install( TARGETS ${snark_ALL_EXTERNAL_LIBRARIES}
+    #         ARCHIVE
+    #         DESTINATION bin )
+ENDIF( WIN32 )
+
     #this line does all the work. Actually, even if this is the only line, you get all but the dlls...
     INCLUDE( CPack )
 #ENDIF( WIN32 )
