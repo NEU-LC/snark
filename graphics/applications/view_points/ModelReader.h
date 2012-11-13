@@ -46,7 +46,6 @@ class ModelReader : public Reader
         boost::scoped_ptr< comma::csv::input_stream< PointWithId > > m_stream;
         const std::string m_file;
         QGLAbstractScene* m_scene;
-        bool m_z_up; // z-axis points up
         boost::optional< PlyLoader > m_plyLoader;
 };
 

@@ -34,8 +34,7 @@ namespace snark { namespace graphics { namespace View {
 /// @param label text displayed as label
 ModelReader::ModelReader( QGLView& viewer, comma::csv::options& options, const std::string& file, bool z_up, snark::graphics::View::coloured* c, const std::string& label )
     : Reader( viewer, options, 1, c, 1, label, QVector3D( 0, 1, 1 ) ), // TODO make offset configurable ?
-      m_file( file ),
-      m_z_up( z_up )
+      m_file( file )
 {
 }
 
@@ -75,10 +74,6 @@ void ModelReader::render( QGLPainter* painter )
     painter->modelViewMatrix().push();
     painter->modelViewMatrix().translate( m_translation );
     painter->modelViewMatrix().rotate( m_quaternion );
-    if( !m_z_up )
-    {
-        painter->modelViewMatrix().rotate( 180, 1, 0, 0 );
-    }
     if( m_plyLoader )
     {
         m_plyLoader->draw( painter );
