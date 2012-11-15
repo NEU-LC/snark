@@ -76,6 +76,9 @@ if (WIN32)
     endif(MSVC10)
     # Todo: add other Windows compilers such as ICL.
     set(_TBB_ARCHITECTURE ${TBB_ARCHITECTURE})
+    if(NOT TBB_ARCHITECTURE)
+            set(_TBB_ARCHITECTURE "ia32")
+    endif(NOT TBB_ARCHITECTURE)
 endif (WIN32)
 
 if (UNIX)
@@ -257,6 +260,7 @@ if (TBB_INCLUDE_DIR)
         set (TBB_DEBUG_LIBRARIES ${TBB_LIBRARY_DEBUG} ${TBB_MALLOC_LIBRARY_DEBUG} ${TBB_DEBUG_LIBRARIES})
         set (TBB_INCLUDE_DIRS ${TBB_INCLUDE_DIR} CACHE PATH "TBB include directory" FORCE)
         set (TBB_LIBRARY_DIRS ${TBB_LIBRARY_DIR} CACHE PATH "TBB library directory" FORCE)
+	set (TBB_DLL_DIR  ${_TBB_INSTALL_DIR}/bin/${_TBB_ARCHITECTURE}/${_TBB_COMPILER} )
         # Jiri: Self-built TBB stores the debug libraries in a separate directory.
         set (TBB_DEBUG_LIBRARY_DIRS ${TBB_LIBRARY_DEBUG_DIR} CACHE PATH "TBB debug library directory" FORCE)
         mark_as_advanced(TBB_INCLUDE_DIRS TBB_LIBRARY_DIRS TBB_DEBUG_LIBRARY_DIRS TBB_LIBRARIES TBB_DEBUG_LIBRARIES)
