@@ -223,9 +223,13 @@ ENDIF( snark_build_sensors )
 ADD_SUBDIRECTORY( timing )
 ADD_SUBDIRECTORY( visiting )
 
-# Package (so far works on linux, too)
+# Package 
 IF( WIN32 )
-    SET(snark_PACKAGE_DLLS ${TBB_DLL_DIR}/tbb.dll)
+    FILE( GLOB OpenCV_DLLS ${OpenCV_DIR}/bin/Release/*.dll )
+    GET_FILENAME_COMPONENT( QT_BIN_DIR ${QT_QMAKE_EXECUTABLE} PATH )
+    FILE( GLOB QT_DLLS ${QT_BIN_DIR}/*.dll )
+
+    SET(snark_PACKAGE_DLLS ${TBB_DLL_DIR}/tbb.dll ${OpenCV_DLLS} ${QT_DLLS})
     INSTALL(FILES ${snark_PACKAGE_DLLS} DESTINATION bin )
     
     #the following set up optional parameters for cpack
