@@ -92,7 +92,7 @@ int main( int argc, char** argv )
         snark::camera::gige camera( id, attributes );
         if( verbose ) { std::cerr << "gige-cat: connected to camera " << camera.id() << std::endl; }
         if( verbose ) { std::cerr << "gige-cat: total bytes per frame: " << camera.total_bytes_per_frame() << std::endl; }
-        if( !attributes.empty() ) { return 0; }
+        if( vm.count( "set" ) ) { return 0; }
         if( vm.count( "list-attributes" ) )
         {
             attributes = camera.attributes(); // quick and dirty
