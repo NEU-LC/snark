@@ -1,2 +1,0 @@
-ADD_SUBDIRECTORY( applications )
-ADD_SUBDIRECTORY( ptcr )
