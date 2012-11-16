@@ -67,7 +67,7 @@ void usage()
     std::cerr << "                     \"line\": e.g. --shape=line --fields=,,first,second,,," << std::endl;
     std::cerr << "                     \"label\": e.g. --shape=label --fields=,x,y,z,,,label" << std::endl;
     std::cerr << "                     \"<model file ( obj, ply... )>\": e.g. --shape=vehicle.obj" << std::endl;
-    std::cerr << "                     \"<model file ( obj, ply... ),flip>\": flip the model around the x-axis" << std::endl;
+    std::cerr << "                     \"<model file ( obj, ply... );flip>\": flip the model around the x-axis" << std::endl;
     std::cerr << "    --size <size> : render last <size> points (or other shapes)" << std::endl;
     std::cerr << "                    default 2000000 for points, for 200000 for other shapes" << std::endl;
     std::cerr << std::endl;
@@ -200,7 +200,7 @@ boost::shared_ptr< snark::graphics::View::Reader > makeReader( QGLView& viewer
         }
         else
         {
-            std::vector< std::string > shapeSplit = comma::split( shape, ',' );
+            std::vector< std::string > shapeSplit = comma::split( shape, ';' );
             bool flip = false;
             if( shapeSplit.size() > 1 )
             {
