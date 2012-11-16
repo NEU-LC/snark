@@ -2,9 +2,54 @@
 
 @mainpage snark library
 
-@n
+@section motivation motivation
+We slowly release into snark library parts of the large code base created over years in ACFR, Australian Centre for Field Robotics at Sydney University. snark contains the stuff that may be missing in other robotics and math libraries like opencv, Eigen, PCL, etc: algorithms, tools, sensor and actuator adaptors, etc.
+@subsection why why snark⸮
+
+    snark is an unseen creature that can move on the land and in the water - that's what we work on in ACFR, too
+    like comma used as a name for our other library, snark is a punctuation mark: ⸮
+
+@section library library overview
+
+-   actuators: actuator adaptors
+-       quickset: quickset pantilt control
+-   graphics: classes and utilities for editing and viewing 3d data, both realtime streaming and offline; requires qt4 and qt3d
+-   imaging: classes and utilities for realtime and offline image processing; requires opencv, tbb
+-   math: generic utilities and algorithms
+-   point_cloud: 3d point cloud algorithms; requires eigen3
+-   sensors: adaptors for lidars, cameras, etc
+-       dc1394: firewire camera adaptor and streaming application; requires libdc1394, opencv, tbb
+-       gige: prosilica gige camera adaptor and streaming application; requires proprietary prosilica libAVI, opencv, tbb
+-       sick: ldmrs sick lidar adaptors and streaming application; requires eigen3
+-       velodyne: velodyne lidar adaptors and streaming application; requires eigen3, pcap
+-   tbb: wrappers for intel tbb
+-   timing: time utilities
+-   visiting: visiting traits (for more info on visiting see https://github.com/acfr/comma/wiki/visiting)
+
+@section applications applications overview
+
+-   quickset-pantilt-control: control quickset pantilt
+-   quickset-pantilt-from-console: convert console key presses to pantilt control commands
+-   view-points: view multiple point cloud streams in realtime and offline
+-   label-points: manually label multiple point clouds
+-   cv-cat: transform, filter, and view cv::Mat-style images on the fly
+-   image-accumulate: accumulate cv::Mat-style images from the streams of numbers
+-   math points-frame: transform a stream of 3d points into a different coordinate frame (e.g. georeferencing)
+-   math math-deg2rad: convert degrees to radians
+-   math math-rad2deg: convert radians to degrees
+-   math math-rotation-convert: convert between roll-pitch-yaw and quaternions
+-   points-to-voxels: take a stream of points, output voxel indices and centroids
+-   points-to-voxel-indices: take a stream of points, decorate with voxel indices
+-   fire-cat: stream image data from a firewire camera
+-   gige-cat: stream image data from a prosilica gige camera
+-   sick-ldmrs-stream: configure and stream lidar data from sick ldmrs lidar
+-   sick-ldmrs-to-csv: convert a stream sick ldmrs lidar data to 3d points in csv format
+-   velodyne-to-csv: convert velodyne data stream to 3d points in csv format
+-   velodyne-thin: thin down and compress velodyne data on the fly
+
+
 @section installation Installation
-@n
+
 @subsection linux Linux
 
 Let's call this directory 'source_dir' (where this INSTALL file is).
