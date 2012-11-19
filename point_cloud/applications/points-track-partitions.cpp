@@ -209,13 +209,11 @@ static void read_block_() // todo: implement generic reading block
         if( last )
         {
             block_id = last->first.block;
+            snark::voxel_map< voxel, 3 >::iterator it = voxels.second->touch_at( last->first.point );
+            it->second.add( last->first );
+            last->first.voxel = &it->second;
             points.push_back( *last );
             last.reset();
-            
-            // todo: add point to voxel_map
-            
-            // todo: set point voxel
-            
         }
         if( is_shutdown || std::cout.bad() || std::cin.bad() || std::cin.eof() ) { break; }
         const input_t* p = istream.read();
