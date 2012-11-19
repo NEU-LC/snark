@@ -178,7 +178,7 @@ static unsigned int read_block_impl_( ::tbb::flow_control* flow = NULL )
     blocks[index].clear();
     blocks[index].empty = false;
     static comma::csv::input_stream< input_t > istream( std::cin, csv );
-    while( !shutdown_flag )
+    while( true )
     {
         if( last )
         {
@@ -226,6 +226,7 @@ static void write_block_( unsigned int index )
 
 static unsigned int partition_( unsigned int index )
 {
+    if( blocks[index].points.empty() ) { return index; }
     snark::math::closed_interval< double, 3 > extents;
     for( std::size_t i = 0; i < blocks[index].points.size(); ++i ) { extents.set_hull( blocks[index].points[i].first.point ); }
     blocks[index].partition.reset( new snark::partition( extents, resolution, min_points_per_voxel ) );
@@ -283,5 +284,5 @@ int main( int ac, char** av )
     }
     catch( std::exception& ex ) { std::cerr << "points-to-partitions: " << ex.what() << std::endl; }
     catch( ... ) { std::cerr << "points-to-partitions: unknown exception" << std::endl; }
-    usage();
+    return 1;
 }
