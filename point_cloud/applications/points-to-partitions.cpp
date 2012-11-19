@@ -93,24 +93,7 @@ static void usage()
     exit( -1 );
 }
 
-class stopwatch_type // quick and dirty (and ugly)
-{
-    public:
-        stopwatch_type( bool verbose ) : m_verbose( verbose ) { reset(); }
-        void stop() { if( m_verbose ) { m_stop = boost::posix_time::microsec_clock::local_time(); } }
-        void reset() { if( m_verbose ) { m_start = m_stop = boost::posix_time::microsec_clock::local_time(); } }
-        boost::posix_time::time_duration elapsedDuration() const { return m_stop - m_start; }
-        double elapsed() const { return double( elapsedDuration().total_microseconds() ) / 1000000; }
-    private:
-        bool m_verbose;
-        boost::posix_time::ptime m_start;
-        boost::posix_time::ptime m_stop;
-};
-
 static bool verbose;
-static boost::mutex log_mutex; // real quick and dirty
-#define STDERR verbose && boost::mutex::scoped_lock( log_mutex ) && std::cerr
-
 static std::size_t min_points_per_voxel = 1;
 static std::size_t min_voxels_per_partition = 1;
 static std::size_t min_points_per_partition = 1;
@@ -278,8 +261,8 @@ int main( int ac, char** av )
         #ifdef PROFILE
         ProfilerStop(); }
         #endif
-        if( shutdown_flag ) { STDERR << "points-to-partitions: caught signal" << std::endl; }
-        else { STDERR << "points-to-partitions: no more data" << std::endl; }
+        if( shutdown_flag ) { std::cerr << "points-to-partitions: caught signal" << std::endl; }
+        else { std::cerr << "points-to-partitions: end of stream" << std::endl; }
         return 0;
     }
     catch( std::exception& ex ) { std::cerr << "points-to-partitions: " << ex.what() << std::endl; }
