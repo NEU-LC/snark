@@ -31,6 +31,7 @@ class partition
 {
     public:
         typedef snark::math::closed_interval< double, 3 > extents_type;
+        
         partition( const extents_type& extents
                  , const Eigen::Vector3d& resolution
                  , std::size_t min_points_per_voxel = 1 );

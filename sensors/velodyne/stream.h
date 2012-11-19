@@ -49,7 +49,7 @@ class stream : public boost::noncopyable
 
         /// skip given number of scans including the current one
         /// @todo: the same for packets and points, once needed
-        void skipscan();
+        void skip_scan();
 
         /// return current scan number
         unsigned int scan() const;
@@ -160,7 +160,7 @@ template < typename S >
 inline void stream< S >::close() { m_closed = true; impl::stream_traits< S >::close( *m_stream ); }
 
 template < typename S >
-inline void stream< S >::skipscan() // todo: reuse the code of read() better; test as well...
+inline void stream< S >::skip_scan() // todo: reuse the code of read() better; test as well...
 {
     while( !m_closed )
     {
