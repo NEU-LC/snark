@@ -162,7 +162,7 @@ struct block // quick and dirty, no optimization for now
     bool empty;
     boost::scoped_ptr< snark::partition > partition;
     
-    block() : id( 0 ) {}
+    block() : id( 0 ), empty( true ) {}
     void clear() { partition.reset(); points.clear(); empty = true; }
 };
 
@@ -202,8 +202,7 @@ static unsigned int read_block_impl_( ::tbb::flow_control* flow = NULL )
         }
         last = std::make_pair( *p, line );
         if( p->block != block_id ) { break; }
-    }
-    std::cerr << "--> got block: index: " << index << " id: " << block_id << " size: " << blocks[index].points.size() << std::endl; 
+    } 
     return index;
 }
 
@@ -212,7 +211,6 @@ static unsigned int read_block_bursty_() { return read_block_impl_(); }
 
 static void write_block_( unsigned int index )
 {
-    std::cerr << "--> write" << std::endl;
     for( std::size_t i = 0; i < blocks[index].points.size(); ++i )
     {
         const block::pair_t& p = blocks[index].points[i];
@@ -228,7 +226,6 @@ static void write_block_( unsigned int index )
 
 static unsigned int partition_( unsigned int index )
 {
-    std::cerr << "--> partition" << std::endl;
     snark::math::closed_interval< double, 3 > extents;
     for( std::size_t i = 0; i < blocks[index].points.size(); ++i ) { extents.set_hull( blocks[index].points[i].first.point ); }
     blocks[index].partition.reset( new snark::partition( extents, resolution, min_points_per_voxel ) );
