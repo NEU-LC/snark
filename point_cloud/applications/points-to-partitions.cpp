@@ -60,16 +60,14 @@ static void usage()
     std::cerr << std::endl;
     std::cerr << "<options>" << std::endl;
     std::cerr << "    partitioning options:" << std::endl;
-    std::cerr << "        --discard-points: if present, discard points from voxels having less than --min-points-per-voxel" << std::endl;
     std::cerr << "        --min-id: minimum partition id; default 0" << std::endl;
     std::cerr << "        --min-points-per-voxel <n>: min number of points in a non-empty voxel; default 1" << std::endl;
     std::cerr << "        --min-voxels-per-partition <n>: min number of voxels in a partition; default 1" << std::endl;
     std::cerr << "        --min-points-per-partition <n>: min number of points in a partition; default 1" << std::endl;
     std::cerr << "        --resolution <resolution>: default: 0.2 metres" << std::endl;
     std::cerr << "    data flow options:" << std::endl;
-    std::cerr << "        --delta: if present, input is delta (points added and removed)" << std::endl;
-    std::cerr << "                 if absent, clear points after partitioning a data block" << std::endl;
     std::cerr << "        --discard,-d: if present, partition as many points as possible, discard the rest" << std::endl;
+    std::cerr << "        --output-all: output all points, even non-partitioned; the latter with id: max uint32" << std::endl;
     std::cerr << "        --verbose, -v: output progress info" << std::endl;
     std::cerr << std::endl;
     std::cerr << "<fields>" << std::endl;
@@ -78,7 +76,7 @@ static void usage()
     std::cerr << "    block: data block id, if present, accumulate and partition each data block separately" << std::endl;
     std::cerr << "           if absent, read until the end of file/stream and then partition" << std::endl;
     std::cerr << "    flag: if present, partition only the points with this field equal 1" << std::endl;
-    std::cerr << "          skipped points will have partition id as max int32" << std::endl;
+    std::cerr << "          if --output-all specified; skipped points will have partition id as max uint32" << std::endl;
     std::cerr << std::endl;
     std::cerr << comma::csv::options::usage() << std::endl;
     std::cerr << std::endl;
@@ -95,24 +93,7 @@ static void usage()
     exit( -1 );
 }
 
-class stopwatch_type // quick and dirty (and ugly)
-{
-    public:
-        stopwatch_type( bool verbose ) : m_verbose( verbose ) { reset(); }
-        void stop() { if( m_verbose ) { m_stop = boost::posix_time::microsec_clock::local_time(); } }
-        void reset() { if( m_verbose ) { m_start = m_stop = boost::posix_time::microsec_clock::local_time(); } }
-        boost::posix_time::time_duration elapsedDuration() const { return m_stop - m_start; }
-        double elapsed() const { return double( elapsedDuration().total_microseconds() ) / 1000000; }
-    private:
-        bool m_verbose;
-        boost::posix_time::ptime m_start;
-        boost::posix_time::ptime m_stop;
-};
-
 static bool verbose;
-static boost::mutex log_mutex; // real quick and dirty
-#define STDERR verbose && boost::mutex::scoped_lock( log_mutex ) && std::cerr
-
 static std::size_t min_points_per_voxel = 1;
 static std::size_t min_voxels_per_partition = 1;
 static std::size_t min_points_per_partition = 1;
@@ -120,55 +101,31 @@ static Eigen::Vector3d resolution;
 static comma::csv::options csv;
 static comma::uint32 min_id;
 static bool discard;
-static bool discard_points;
+static bool output_all;
 static boost::scoped_ptr< snark::partition > partition;
 
-struct voxel
-{
-    bool visited;
-    comma::uint32 id;
-    std::size_t count;
-
-    voxel() : visited( false ), id( 0 ), count( 0 ) {}
-};
-
-struct methods // quick and dirty
-{
-    static bool skip( const voxel& e ) { return e.count < min_points_per_voxel; }
-    static bool same( const voxel& lhs, const voxel& rhs ) { return true; }
-    static bool visited( const voxel& e ) { return e.visited; }
-    static void set_visited( voxel& e, bool v ) { e.visited = v; }
-    static comma::uint32 id( const voxel& e ) { return e.id; }
-    static void set_id( voxel& e, comma::uint32 id ) { e.id = id; }
-};
-
-namespace points_to_partitions {
-
-struct point
+struct input_t
 {
     Eigen::Vector3d point;
     bool flag;
     comma::uint32 block;
-    mutable voxel* voxel;
+    const boost::optional< comma::uint32 >* id;
 
-    point() : point( 0, 0, 0 ), voxel( NULL ) {}
-    comma::uint32 id() const { return voxel == NULL ? std::numeric_limits< comma::uint32 >::max() : voxel->id; }
+    input_t() : point( 0, 0, 0 ), flag( true ), id( NULL ) {}
 };
-
-} // namespace points_to_partitions {
 
 namespace comma { namespace visiting {
 
-template <> struct traits< points_to_partitions::point >
+template <> struct traits< input_t >
 {
-    template < typename K, typename V > static void visit( const K&, points_to_partitions::point& p, V& v )
+    template < typename K, typename V > static void visit( const K&, input_t& p, V& v )
     {
         v.apply( "point", p.point );
         v.apply( "block", p.block );
         v.apply( "flag", p.flag );
     }
 
-    template < typename K, typename V > static void visit( const K&, const points_to_partitions::point& p, V& v )
+    template < typename K, typename V > static void visit( const K&, const input_t& p, V& v )
     {
         v.apply( "point", p.point );
         v.apply( "block", p.block );
@@ -180,7 +137,7 @@ template <> struct traits< points_to_partitions::point >
 
 struct block // quick and dirty, no optimization for now
 {
-    typedef std::pair< point, std::string > pair_t;
+    typedef std::pair< input_t, std::string > pair_t;
     typedef std::deque< pair_t > pairs_t;
     
     pairs_t points;
@@ -188,32 +145,34 @@ struct block // quick and dirty, no optimization for now
     bool empty;
     boost::scoped_ptr< snark::partition > partition;
     
-    block() : id( 0 ) {}
+    block() : id( 0 ), empty( true ) {}
     void clear() { partition.reset(); points.clear(); empty = true; }
 };
 
 static boost::array< block, 3 > blocks;
-static bool has_flag;
 static comma::signal_flag shutdown_flag;
 
-static unsigned int read_block_( ::tbb::flow_control& flow )
+static unsigned int read_block_impl_( ::tbb::flow_control* flow = NULL )
 {
     static boost::optional< block::pair_t > last;
     static comma::uint32 block_id = 0;
     static unsigned int index = 0;
     for( unsigned int i = 0; i < blocks.size(); ++i ) { if( blocks[i].empty ) { index = i; break; } }
     blocks[index].clear();
-    static comma::csv::input_stream< points_to_partitions::point > istream( std::cin, csv );
-    while( !shutdown_flag && std::cout.good() )
+    blocks[index].empty = false;
+    static comma::csv::input_stream< input_t > istream( std::cin, csv );
+    while( true )
     {
-        if( shutdown_flag || std::cout.bad() || std::cin.bad() || std::cin.eof() ) { flow.stop(); break; }
         if( last )
         {
+            block_id = last->first.block;
             blocks[index].id = block_id;
             blocks[index].points.push_back( *last );
+            last.reset();
         }
-        const points_to_partitions::point* p = istream.read();
-        if( !p ) { flow.stop(); break; }
+        if( shutdown_flag || std::cout.bad() || std::cin.bad() || std::cin.eof() ) { if( flow ) { flow->stop(); } break; }
+        const input_t* p = istream.read();
+        if( !p ) { break; }
         std::string line;
         if( csv.binary() )
         {
@@ -226,150 +185,40 @@ static unsigned int read_block_( ::tbb::flow_control& flow )
         }
         last = std::make_pair( *p, line );
         if( p->block != block_id ) { break; }
-    }
+    } 
     return index;
 }
 
+static unsigned int read_block_( ::tbb::flow_control& flow ) { return read_block_impl_( &flow ); }
+static unsigned int read_block_bursty_() { return read_block_impl_(); }
+
 static void write_block_( unsigned int index )
 {
-
+    for( std::size_t i = 0; i < blocks[index].points.size(); ++i )
+    {
+        const block::pair_t& p = blocks[index].points[i];
+        if( !p.first.id && !output_all ) { continue; }
+        comma::uint32 id = p.first.id && *p.first.id ? **p.first.id : std::numeric_limits< comma::uint32 >::max();
+        std::cout.write( &p.second[0], p.second.size() );
+        if( csv.binary() ) { std::cout.write( reinterpret_cast< const char* >( &id ), sizeof( comma::uint32 ) ); }
+        else { std::cout << csv.delimiter << id << std::endl; }
+    }
+    std::cout.flush();
+    blocks[index].clear();
 }
 
 static unsigned int partition_( unsigned int index )
 {
-    STDERR << "velodyne-to-mesh-ground: partitioning..." << std::endl;
-    boost::optional< snark::math::closed_interval< double, 3 > > extents;
+    if( blocks[index].points.empty() ) { return index; }
+    snark::math::closed_interval< double, 3 > extents;
+    for( std::size_t i = 0; i < blocks[index].points.size(); ++i ) { extents.set_hull( blocks[index].points[i].first.point ); }
+    blocks[index].partition.reset( new snark::partition( extents, resolution, min_points_per_voxel ) );
     for( std::size_t i = 0; i < blocks[index].points.size(); ++i )
-    {
-        if( points[i].label && points[i].label == Ark::Robotics::MeshGround::Label::non_ground )
-        {
-            if( !extents )
-            {
-                extents = snark::math::closed_interval< double, 3 >( points[i].point );
-            }
-            else
-            {
-                extents = extents->hull( points[i].point );
-            }
-        }
+    { 
+        if( blocks[index].points[i].first.flag ) { blocks[index].points[i].first.id = &blocks[index].partition->insert( blocks[index].points[i].first.point ); }
     }
-    snark::partition partition( *extents, resolution, min_points_per_voxel );
-    for( std::size_t i = 0; i < points.size(); ++i )
-    {
-        if( points[i].label && points[i].label == Ark::Robotics::MeshGround::Label::non_ground )
-        {
-            points[i].partition = &partition.insert( points[i].point );
-        }
-    }
-    partition.commit( min_voxels_per_partition, min_points_per_partition, output_ground ? 1 : 0 );
-    if( verbose ) { stop = boost::posix_time::microsec_clock::universal_time(); }
-    if( verbose ) { std::cerr << "velodyne-to-mesh-ground: partitioned; elapsed " << double( ( stop - start ).total_microseconds() ) / 1000000 << " seconds" << std::endl; }
-    if( verbose ) { std::cerr << "velodyne-to-mesh-ground: outputting partitions..." << std::endl; }
-    for( std::size_t i = 0; i < points.size(); ++i )
-    {
-        const InputPoint& point = points[i];
-        bool is_ground = output_ground && point.element && point.element->value.label == Ark::Robotics::MeshGround::Label::ground;
-        if( !( point.partition && *point.partition ) && !( output_ground && is_ground ) ) { continue; }
-        comma::uint32 id = is_ground ? 0 : **point.partition;
-        if( csv.binary() )
-        {
-            ostream->write( point );
-            std::cout.write( reinterpret_cast< const char* >( &id ), sizeof( comma::uint32 ) );
-        }
-        else
-        {
-            std::string s;
-            ostream->ascii().ascii().put( point, s );
-            std::cout << s << csv.delimiter << id << std::endl;
-        }
-    }
-    std::cout.flush();
-    STDERR << "velodyne-to-mesh-ground: outputting partitions done" << std::endl;
-    
-    
-}
-
-static void partition( const List& r, comma::uint32 block )
-{
-    snark::Extents< Eigen::Vector3d > extents;
-    stopwatch_type stopwatch( verbose );
-    STDERR << "points-to-partitions: block: " << block << "; got list to partition, list size = " << r.size() << std::endl;
-    stopwatch.reset();
-    for( List::const_iterator it = r.begin(); it != r.end(); ++it )
-    {
-        if( it->value.flag ) { extents.add( it->value.point ); }
-    }
-    stopwatch.stop();
-    STDERR << "points-to-partitions: block: " << block << "; extents calculated: (" << extents.min().x() << "," << extents.min().y() << "," << extents.min().z() << ") to (" << extents.max().x() << "," << extents.max().y() << "," << extents.max().z() << "): elapsed " << stopwatch.elapsed() << " seconds" << std::endl;
-    Eigen::Vector3d floor = extents.min() - resolution / 2;
-    Eigen::Vector3d ceil = extents.max() + resolution / 2;
-    extents.add( Eigen::Vector3d( std::floor( floor.x() ), std::floor( floor.y() ), std::floor( floor.z() ) ) );
-    extents.add( Eigen::Vector3d( std::ceil( ceil.x() ), std::ceil( ceil.y() ), std::ceil( ceil.z() ) ) );
-    voxel_grid< voxel > voxels( extents, resolution );
-    STDERR << "points-to-partitions: block: " << block << "; filling voxel grid..." << std::endl; // todo: parallelize with a double buffer, if it becomes a bottleneck
-    stopwatch.reset();
-    for( List::const_iterator i = r.begin(); i != r.end(); ++i )
-    {
-        if( !i->value.flag ) { continue; }
-        voxel* voxel = voxels.touch_at( i->value.point );
-        i->value.voxel = voxel;
-        if( !voxel ) { continue; }
-        ++voxel->count;
-    }
-    stopwatch.stop();
-    STDERR << "points-to-partitions: block: " << block << "; voxel grid filled: elapsed " << stopwatch.elapsed() << " seconds" << std::endl;
-    STDERR << "points-to-partitions: block: " << block << "; partitioning voxel grid..." << std::endl;
-    stopwatch.reset();
-    typedef std::list< voxel_grid< voxel >::iterator > set_type;
-    typedef std::map< comma::uint32, std::list< voxel_grid< voxel >::iterator > > partitions;
-    typedef voxel_grid< voxel >::iterator It;
-    typedef voxel_grid< voxel >::neighbourhood_iterator nit_type;
-    const partitions& partitions = snark::equivalence_classes< It, nit_type, methods >( voxels.begin(), voxels.end(), min_id );
-    stopwatch.stop();
-    STDERR << "points-to-partitions: block: " << block << "; partitioned; elapsed: " << stopwatch.elapsed() << " seconds" << std::endl;
-    STDERR << "points-to-partitions: block: " << block << "; found " << partitions.size() << " partitions; elapsed: " << stopwatch.elapsed() << " seconds" << std::endl;
-    if( partitions.empty() ) { return; }
-    STDERR << "points-to-partitions: block: " << block << "; outputting partitions" << "..." << std::endl;
-    stopwatch.reset();
-    std::deque< bool > discarded( partitions.rbegin()->first - min_id + 1, false );
-    for( partitions::const_iterator i = partitions.begin(); i != partitions.end(); ++i )
-    {
-        if( i->second.size() < min_voxels_per_partition )
-        {
-            discarded[ i->first - min_id ] = true;
-        }
-        else if( min_points_per_partition > min_voxels_per_partition * min_points_per_voxel ) // watch performance
-        {
-            std::size_t size = 0;
-            for( set_type::const_iterator j = i->second.begin(); j != i->second.end(); size += ( *j++ )->count );
-            if( size < min_points_per_partition ) { discarded[ i->first - min_id ] = true; }
-        }
-    }
-    for( List::const_iterator it = r.begin(); it != r.end(); ++it )
-    {
-        comma::uint32 id = it->value.id();
-        if(    it->value.voxel == NULL
-            || it->value.voxel->count < min_points_per_voxel
-            || discarded[ it->value.voxel->id - min_id ] )
-        {
-            id = std::numeric_limits< comma::uint32 >::max();
-            if( discard_points ) { continue; }
-        }
-        std::string s( it->key.length(), '\0' ); // quick and dirty
-        it->key.copy( &s[0], it->key.length() );
-        accumulated_helper->setBlock( s, block ); // quick and dirty, hideous
-        if( csv.binary() ) // quick and dirty
-        {
-            std::cout.write( &s[0], s.length() ); // Binary::output( s ); // quick and dirty
-            std::cout.write( ( const char* )( &id ), sizeof( comma::uint32 ) );
-        }
-        else
-        {
-            std::cout << s << csv.delimiter << id << std::endl; // quick and dirty
-        }
-    }
-    stopwatch.stop();
-    STDERR << "points-to-partitions: block: " << block << "; partitions output: elapsed " << stopwatch.elapsed() << " seconds" << std::endl;
+    blocks[index].partition->commit( min_voxels_per_partition, min_points_per_partition, min_id );
+    return index;
 }
 
 int main( int ac, char** av )
@@ -391,8 +240,7 @@ int main( int ac, char** av )
         resolution = Eigen::Vector3d( r, r, r );
         discard = options.exists( "--discard,-d" );
         min_id = options.value( "--min-id", 0 );
-        discard_points = options.exists( "--discard-points" );
-        has_flag = csv.has_field( "flag" );        
+        output_all = options.exists( "--output-all" );
         ::tbb::filter_t< unsigned int, unsigned int > partition_filter( ::tbb::filter::serial_in_order, &partition_ );
         ::tbb::filter_t< unsigned int, void > write_filter( ::tbb::filter::serial_in_order, &write_block_ );
         #ifdef PROFILE
@@ -400,7 +248,7 @@ int main( int ac, char** av )
         #endif
         if( discard )
         { 
-            snark::tbb::bursty_reader< unsigned int > read_filter( &read_block_ );
+            snark::tbb::bursty_reader< unsigned int > read_filter( &read_block_bursty_ );
             ::tbb::filter_t< void, void > filters = read_filter.filter() & partition_filter & write_filter;
             while( read_filter.wait() ) { ::tbb::parallel_pipeline( 3, filters ); }
         }
@@ -413,11 +261,11 @@ int main( int ac, char** av )
         #ifdef PROFILE
         ProfilerStop(); }
         #endif
-        if( shutdown_flag ) { STDERR << "points-to-partitions: caught signal" << std::endl; }
-        else { STDERR << "points-to-partitions: no more data" << std::endl; }
+        if( shutdown_flag ) { std::cerr << "points-to-partitions: caught signal" << std::endl; }
+        else { std::cerr << "points-to-partitions: end of stream" << std::endl; }
         return 0;
     }
     catch( std::exception& ex ) { std::cerr << "points-to-partitions: " << ex.what() << std::endl; }
     catch( ... ) { std::cerr << "points-to-partitions: unknown exception" << std::endl; }
-    usage();
+    return 1;
 }

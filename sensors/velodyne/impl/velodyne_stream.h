@@ -73,7 +73,7 @@ velodyne_stream< S >::velodyne_stream ( const velodyne::db& db, bool outputInval
     m_db( db ),
     m_to( to )
 {
-    if( from ) { while( m_stream.scan() < *from ) { m_stream.skipscan(); } }
+    if( from ) { while( m_stream.scan() < *from ) { m_stream.skip_scan(); } }
 }
 
 template < typename S >
@@ -85,7 +85,7 @@ velodyne_stream< S >::velodyne_stream ( const P& p, const velodyne::db& db, bool
     m_db( db ),
     m_to( to )
 {
-    if( from ) { while( m_stream.scan() < *from ) { m_stream.skipscan(); } }
+    if( from ) { while( m_stream.scan() < *from ) { m_stream.skip_scan(); } }
 }
 
 /// read and convert one point from the stream
@@ -93,13 +93,8 @@ velodyne_stream< S >::velodyne_stream ( const P& p, const velodyne::db& db, bool
 template < typename S >
 bool velodyne_stream< S >::read()
 {
-    if( m_to && m_stream.scan() > *m_to )
-    {
-        return false;
-    }
-
+    if( m_to && m_stream.scan() > *m_to ) { return false; }
     const velodyne::laser_return* r = m_stream.read();
-
     if( r == NULL ) { return false; }
     m_point.timestamp = r->timestamp;
     m_point.id = r->id;
