@@ -27,9 +27,8 @@
 #include <comma/math/compare.h>
 #include <snark/sensors/velodyne/db.h>
 #include <snark/sensors/velodyne/laser_return.h>
-#include <snark/sensors/velodyne/packet.h>
 #include <snark/sensors/velodyne/impl/stream_traits.h>
-#include <snark/sensors/velodyne/impl/get_laser_return.h>
+#include <snark/sensors/velodyne/scan_tick.h>
 
 namespace snark {  namespace velodyne {
 
@@ -89,7 +88,7 @@ class stream : public boost::noncopyable
         };
         index m_index;
         unsigned int m_scan;
-        unsigned int m_count;
+        scan_tick m_tick;
         bool m_closed;
         laser_return m_laserReturn;
         double angularSpeed();
@@ -102,7 +101,6 @@ inline stream< S >::stream( S* stream, unsigned int rpm, bool outputInvalid, boo
     , m_outputRaw( outputRaw )
     , m_stream( stream )
     , m_scan( 0 )
-    , m_count( 0 )
     , m_closed( false )
 {
     m_index.idx = m_size;
@@ -114,7 +112,6 @@ inline stream< S >::stream( S* stream, bool outputInvalid, bool outputRaw )
     , m_outputRaw( outputRaw )
     , m_stream( stream )
     , m_scan( 0 )
-    , m_count( 0 )
     , m_closed( false )
 {
     m_index.idx = m_size;
@@ -139,15 +136,16 @@ inline laser_return* stream< S >::read()
             m_index = index();
             m_packet = reinterpret_cast< const packet* >( impl::stream_traits< S >::read( *m_stream, sizeof( packet ) ) );
             if( m_packet == NULL ) { return NULL; }
+            if( m_tick.get( *m_packet ) )
+            {
+                m_scan++;
+            }
             m_timestamp = impl::stream_traits< S >::timestamp( *m_stream );
-            // velodyne status spin counter does not work: if( m_packet->status.as< status::version >().valid() ) { m_scan = m_packet->status.as< status::version >().counter(); }
-            ++m_count;
         }
         // todo: scan number will be slightly different, depending on m_outputRaw value
         m_laserReturn = impl::getlaser_return( *m_packet, m_index.block, m_index.laser, m_timestamp, angularSpeed(), m_outputRaw );
         ++m_index;
         bool valid = !comma::math::equal( m_laserReturn.range, 0 );
-        if( m_count > 100 && valid && m_laserReturn.azimuth < 5 ) { ++m_scan; m_count = 0; } // quick and dirty
         if( valid || m_outputInvalid ) { return &m_laserReturn; }
     }
     return NULL;
@@ -167,19 +165,9 @@ inline void stream< S >::skipscan() // todo: reuse the code of read() better; te
         m_index = index();
         m_packet = reinterpret_cast< const packet* >( impl::stream_traits< S >::read( *m_stream, sizeof( packet ) ) );
         if( m_packet == NULL ) { return; }
-        m_timestamp = impl::stream_traits< S >::timestamp( *m_stream );
-        // velodyne status spin counter does not work: if( m_packet->status.as< status::version >().valid() ) { m_scan = m_packet->status.as< status::version >().counter(); }
-        ++m_count;
-        if( m_count < 100 ) { continue; }
-        while( m_index.idx < m_size )
+        if( m_tick.get( *m_packet ) )
         {
-            m_laserReturn = impl::getlaser_return( *m_packet, m_index.block, m_index.laser, m_timestamp, angularSpeed(), m_outputRaw );
-            ++m_index;
-            if( comma::math::equal( m_laserReturn.range, 0 ) ) { continue; }
-            if( m_laserReturn.azimuth > 5 ) { break; }
-            m_count = 0;
-            ++m_scan;
-            m_index = index();
+            m_scan++;
             return;
         }
     }
