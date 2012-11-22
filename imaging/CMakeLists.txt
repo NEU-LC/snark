@@ -2,8 +2,8 @@ SET( PROJECT "imaging" )
 SET( TARGET_NAME snark_${PROJECT} )
 SET( DIR ${SOURCE_CODE_BASE_DIR}/${PROJECT} )
 
-FILE( GLOB source ${SOURCE_CODE_BASE_DIR}/${PROJECT}/*.cpp )
-FILE( GLOB includes ${SOURCE_CODE_BASE_DIR}/${PROJECT}/*.h )
+FILE( GLOB source ${SOURCE_CODE_BASE_DIR}/${PROJECT}/*.cpp ${SOURCE_CODE_BASE_DIR}/${PROJECT}/stereo/*.cpp )
+FILE( GLOB includes ${SOURCE_CODE_BASE_DIR}/${PROJECT}/*.h ${SOURCE_CODE_BASE_DIR}/${PROJECT}/stereo/*.h )
 
 FILE( GLOB cvmat_source ${SOURCE_CODE_BASE_DIR}/${PROJECT}/cv_mat/*.cpp )
 FILE( GLOB cvmat_includes ${SOURCE_CODE_BASE_DIR}/${PROJECT}/cv_mat/*.h )
