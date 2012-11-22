@@ -12,11 +12,6 @@ TARGET_LINK_LIBRARIES( cv-cat snark_imaging ${comma_ALL_LIBRARIES} ${OpenCV_LIBS
 ADD_EXECUTABLE( image-accumulate image-accumulate.cpp )
 TARGET_LINK_LIBRARIES( image-accumulate snark_imaging ${comma_ALL_LIBRARIES} ${comma_ALL_LIBRARIES} ${OpenCV_LIBS} tbb )
 
-ADD_EXECUTABLE( regionprops-demo regionprops-demo.cpp )
-TARGET_LINK_LIBRARIES( regionprops-demo snark_imaging ${comma_ALL_LIBRARIES} ${comma_ALL_LIBRARIES} ${OpenCV_LIBS} )
-
-ADD_EXECUTABLE( frequency-demo frequency-demo.cpp )
-TARGET_LINK_LIBRARIES( frequency-demo snark_imaging ${comma_ALL_LIBRARIES} ${comma_ALL_LIBRARIES} ${OpenCV_LIBS} )
 
 INSTALL( TARGETS image-undistort-map cv-cat image-accumulate
          RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR}
