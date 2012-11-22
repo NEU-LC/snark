@@ -28,6 +28,7 @@ scan_tick::scan_tick():
 
 }
 
+/// @return true if a new scan has started
 bool scan_tick::get ( const packet& packet )
 {
     bool tick = false;
@@ -44,3 +45,4 @@ bool scan_tick::get ( const packet& packet )
 
     
 } }
+

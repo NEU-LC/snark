@@ -36,6 +36,7 @@
 #include <snark/sensors/velodyne/thin/thin.h>
 #include <snark/sensors/velodyne/impl/pcap_reader.h>
 #include <snark/sensors/velodyne/impl/proprietary_reader.h>
+#include <snark/sensors/velodyne/impl/stdin_reader.h>
 #include <snark/sensors/velodyne/impl/stream_traits.h>
 #include <snark/sensors/velodyne/impl/udp_reader.h>
 #include <snark/sensors/velodyne/thin/scan.h>
@@ -57,6 +58,9 @@ static void usage()
     std::cerr << "    --output-raw: if present, output uncompressed thinned packets" << std::endl;
     std::cerr << "    --pcap: if present, velodyne data is read from pcap packets" << std::endl;
     std::cerr << "             e.g: cat velo.pcap | velodyne-thin <options> --pcap" << std::endl;
+    std::cerr << "    --proprietary,-q : read velodyne data directly from stdin using the proprietary protocol" << std::endl;
+    std::cerr << "        <header, 16 bytes><timestamp, 12 bytes><packet, 1206 bytes><footer, 4 bytes>" << std::endl;
+    std::cerr << "    default input format: <timestamp, 8 bytes><packet, 1206 bytes>" << std::endl;
     std::cerr << "    --publish=<address>: if present, publish on given address (see io-publish -h for address syntax)" << std::endl;
     std::cerr << "    --verbose,-v" << std::endl;
     std::cerr << std::endl;
@@ -203,11 +207,19 @@ int main( int ac, char** av )
         _setmode( _fileno( stdin ), _O_BINARY );
         _setmode( _fileno( stdout ), _O_BINARY );
         #endif
-        options.assert_mutually_exclusive( "--pcap,--udp-port" );
+        options.assert_mutually_exclusive( "--pcap,--udp-port,--proprietary,-q" );
         boost::optional< unsigned short > port = options.optional< unsigned short >( "--udp-port" );
         if( port ) { run( new snark::udp_reader( *port ) ); }
         else if( options.exists( "--pcap" ) ) { run( new snark::pcap_reader ); }
-        else { run( new snark::proprietary_reader ); }
+        else if( options.exists( "--proprietary,-q" ) )
+        {
+            run( new snark::proprietary_reader );
+            
+        }
+        else
+        {
+            run( new snark::stdin_reader );
+        }
         return 0;
     }
     catch( std::exception& ex ) { std::cerr << "velodyne-thin: " << ex.what() << std::endl; }

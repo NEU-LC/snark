@@ -19,7 +19,7 @@
 #ifndef SNARK_SENSORS_VELODYNE_THIN_SCAN
 #define SNARK_SENSORS_VELODYNE_THIN_SCAN
 
-#include <snark/sensors/velodyne/packet.h>
+#include <snark/sensors/velodyne/scan_tick.h>
 
 namespace snark {  namespace velodyne { namespace thin {
 
@@ -54,7 +54,7 @@ private:
         bool operator==( const index& rhs ) const { return idx == rhs.idx; }
     };
     unsigned int m_scan;
-    unsigned int m_count;
+    scan_tick m_tick;
     bool m_closed;
     unsigned int m_output;
     bool m_outputCurrentscan;

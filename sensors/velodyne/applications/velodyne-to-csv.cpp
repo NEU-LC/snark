@@ -53,8 +53,8 @@ static void usage()
     std::cerr << "    --udp-port <port> : read velodyne data directly from udp port" << std::endl;
     std::cerr << "    --raw : read velodyne data directly from stdin ( default )" << std::endl;
     std::cerr << "    --proprietary,-q : read velodyne data directly from stdin using the proprietary protocol" << std::endl;
-    std::cerr << "    default input format: a proprietary format:" << std::endl;
     std::cerr << "        <header, 16 bytes><timestamp, 12 bytes><packet, 1206 bytes><footer, 4 bytes>" << std::endl;
+    std::cerr << "    default input format: <timestamp, 8 bytes><packet, 1206 bytes>" << std::endl;
     std::cerr << std::endl;
     std::cerr << "output options:" << std::endl;
     std::cerr << "    --binary: if present, output in binary equivalent of csv" << std::endl;
@@ -155,7 +155,7 @@ int main( int ac, char** av )
         csv.fields = fields;
         csv.full_xpath = true;
         if( options.exists( "--binary" ) ) { csv.format( format.string() ); }
-        options.assert_mutually_exclusive( "--pcap,--thin,--udp-port" );
+        options.assert_mutually_exclusive( "--pcap,--thin,--udp-port,--proprietary,-q" );
         double min_range = options.value( "--min-range", 0.0 );
         if( options.exists( "--pcap" ) )
         {

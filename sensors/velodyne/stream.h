@@ -158,7 +158,7 @@ template < typename S >
 inline void stream< S >::close() { m_closed = true; impl::stream_traits< S >::close( *m_stream ); }
 
 template < typename S >
-inline void stream< S >::skip_scan() // todo: reuse the code of read() better; test as well...
+inline void stream< S >::skip_scan()
 {
     while( !m_closed )
     {
