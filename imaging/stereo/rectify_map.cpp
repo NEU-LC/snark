@@ -17,22 +17,22 @@
 // License along with snark. If not, see <http://www.gnu.org/licenses/>.
 
 #include <snark/imaging/stereo/rectify_map.h>
-#include "rectify_map.h"
 #include <opencv2/core/eigen.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
+#include <iostream>
 
 namespace snark { namespace imaging {
 
 /// constructor    
-rectify_map::rectify_map ( const Eigen::Matrix3d& leftCamera, const Eigen::Vector4d& leftDistortion, const Eigen::Matrix3d& rightCamera, const Eigen::Vector4d& rightDistortion,
-                           const Eigen::Vector2i imageSize, const Eigen::Matrix3d& rotation, const Eigen::Vector3d& translation )
+rectify_map::rectify_map ( const Eigen::Matrix3d& leftCamera, const Vector5d& leftDistortion, const Eigen::Matrix3d& rightCamera, const Vector5d& rightDistortion,
+                           unsigned int imageWidth, unsigned int imageHeight, const Eigen::Matrix3d& rotation, const Eigen::Vector3d& translation )
 {
     cv::eigen2cv( leftCamera, m_leftCamera );
     cv::eigen2cv( leftDistortion, m_leftDistortion );
     cv::eigen2cv( rightCamera, m_rightCamera );
     cv::eigen2cv( rightDistortion, m_rightDistortion );
-    m_imageSize.width = imageSize.x();
-    m_imageSize.height = imageSize.y();
+    m_imageSize.width = imageWidth;
+    m_imageSize.height = imageHeight;
     cv::eigen2cv( rotation, m_rotation );
     cv::eigen2cv( translation, m_translation );
     

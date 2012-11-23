@@ -28,8 +28,11 @@ namespace snark { namespace imaging {
 class rectify_map
 {
 public:
-    rectify_map( const Eigen::Matrix3d& leftCamera, const Eigen::Vector4d& leftDistortion, const Eigen::Matrix3d& rightCamera, const Eigen::Vector4d& rightDistortion,
-                 const Eigen::Vector2i imageSize, const Eigen::Matrix3d& rotation, const Eigen::Vector3d& translation );
+
+    typedef Eigen::Matrix< double, 5, 1 > Vector5d;
+    
+    rectify_map( const Eigen::Matrix3d& leftCamera, const Vector5d& leftDistortion, const Eigen::Matrix3d& rightCamera, const Vector5d& rightDistortion,
+                 unsigned int imageWidth, unsigned int imageHeight, const Eigen::Matrix3d& rotation, const Eigen::Vector3d& translation );
 
     /// return the Q matrix
     const cv::Mat& Q() const { return m_Q; }

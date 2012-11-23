@@ -29,7 +29,7 @@ class point_cloud
 public:
     point_cloud( const cv::Mat& Q, unsigned int channels = 3 );
 
-    cv::Mat get( const cv::Mat& right, const cv::Mat& left );
+    cv::Mat get( const cv::Mat& left, const cv::Mat& right );
     const cv::Mat& disparity() const { return m_disparity; }
     
 private:
