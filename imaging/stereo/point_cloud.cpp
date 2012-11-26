@@ -42,13 +42,19 @@ point_cloud::point_cloud ( const cv::Mat& Q, unsigned int channels ):
 
 cv::Mat point_cloud::get ( const cv::Mat& left, const cv::Mat& right )
 {
-    m_sgbm.numberOfDisparities = ((left.cols/8) + 15) & -16;
-    m_sgbm( left, right, m_disparity );
+    m_disparity = get_disparity( left, right );
     cv::Mat points;
     cv::reprojectImageTo3D( m_disparity, points, m_Q, true);
     return points;
 }
 
+cv::Mat point_cloud::get_disparity ( const cv::Mat& left, const cv::Mat& right )
+{
+    cv::Mat disparity;
+    m_sgbm.numberOfDisparities = ((left.cols/8) + 15) & -16;
+    m_sgbm( left, right, disparity );
+    return disparity;
+}
 
 
 

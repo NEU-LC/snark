@@ -37,19 +37,25 @@ int main( int ac, char** av )
     cv::Mat right = cv::imread( av[2], 0 );
 
     Eigen::Matrix3d leftCamera;
-    leftCamera << 1632,   0,      631,
-                  0,      1630.9, 474.2,
-                  0,      0,      1;
+//     leftCamera << 1632,   0,      631,
+//                   0,      1630.9, 474.2,
+//                   0,      0,      1;
+    leftCamera << 5.3471311032432391e+02, 0., 3.3513838135674735e+02, 0.,
+       5.3471311032432391e+02, 2.4020578137651341e+02, 0., 0., 1;
                   
     Eigen::Matrix< double, 5, 1 > leftDistortion;
-    leftDistortion << -0.43938, 0.21826, -0.00001, 0.00076, 0;
+//     leftDistortion << -0.43938, 0.21826, -0.00001, 0.00076, 0;
+    leftDistortion << -2.7456815913629645e-01, -1.8329019064962277e-02, 0., 0., 0.;
     Eigen::Matrix3d rightCamera;
-    rightCamera << 1635.7, 0,      651.9,
-                  0,      1633.9, 463.4,
-                  0,      0,      1;
-                  
+//     rightCamera << 1635.7, 0,      651.9,
+//                   0,      1633.9, 463.4,
+//                   0,      0,      1;
+
+    rightCamera << 5.3471311032432391e+02, 0., 3.3401518911545526e+02, 0.,
+       5.3471311032432391e+02, 2.4159041667844363e+02, 0., 0., 1.;
     Eigen::Matrix< double, 5, 1 > rightDistortion;
-    rightDistortion <<  -0.44416, 0.23526, 0.00127, -0.00017, 0;
+    rightDistortion << -2.8073450162365271e-01, 9.3000165783151290e-02, 0., 0., 0.;
+//     rightDistortion <<  -0.44416, 0.23526, 0.00127, -0.00017, 0;
 
 
 //     Eigen::Vector3d leftPosition( 0.2229,-0.1283,-0.772 );
@@ -64,7 +70,15 @@ int main( int ac, char** av )
 //     Eigen::Vector3d translation = leftRotation.rotation().transpose() * ( rightPosition - leftPosition );
     
     Eigen::Matrix3d rotation =  Eigen::Matrix3d::Identity();
+    rotation << 9.9975845371004723e-01, 5.2938494283307751e-03,
+       -2.1330949194199030e-02, -4.9128856780201336e-03,
+       9.9982820089904900e-01, 1.7872667436219597e-02,
+       2.1421899766595000e-02, -1.7763553844914078e-02,
+       9.9961270418356973e-01 ;
+       
     Eigen::Vector3d translation( 0.24005, 0, 0 );
+    translation <<  -3.3385325916025859e+00, 4.8752483611573305e-02,
+       -1.0621381929002180e-01;
 
     snark::imaging::rectify_map rectify( leftCamera, leftDistortion, rightCamera, rightDistortion, left.cols, left.rows, rotation, translation );
 
@@ -73,29 +87,34 @@ int main( int ac, char** av )
 
     cv::imshow( "left", leftRectified );
     cv::imshow( "right", rightRectified );
+    cv::imwrite( "left-rectified.png", leftRectified );
+    cv::imwrite( "right-rectified.png", rightRectified );
     
     snark::imaging::point_cloud cloud( rectify.Q(), left.channels() );
     cv::Mat points = cloud.get( leftRectified, rightRectified );
 
-    for( unsigned int i = 0; i < points.rows; i++ )
+    for( int i = 0; i < points.rows; i++ )
     {
-       for( unsigned int j = 0; j < points.cols; j++ )
+       for( int j = 0; j < points.cols; j++ )
        {
             cv::Point3f point = points.at< cv::Point3f >( i, j );
             if( point.z < 100 )
             {
-                std::cout << point.x << "," << point.y << "," << point.z << std::endl;
+                cv::Vec3b color = leftRectified.at< cv::Vec3b >( i, j );
+                std::cout << point.x << "," << point.y << "," << point.z << "," << (unsigned int)color[0] << "," << (unsigned int)color[1] << "," << (unsigned int)color[2] << std::endl;
             }
        }
     }
 
     cv::Mat disparity = cloud.disparity();
+    std::cerr << " Q " << std::endl << rectify.Q() << std::endl;
 
     cv::Mat disparity8;
     unsigned int numberOfDisparities = 80;
     numberOfDisparities = ((left.cols/8) + 15) & -16;
     disparity.convertTo( disparity8, CV_8U, 255 / ( numberOfDisparities *16.0 ) );
     cv::imshow( "disparity", disparity8 );
+    cv::imwrite( "disparity.png", disparity8 );
     cv::waitKey();
     
     return 0;

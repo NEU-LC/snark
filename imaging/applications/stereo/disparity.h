@@ -16,29 +16,30 @@
 // You should have received a copy of the GNU Lesser General Public
 // License along with snark. If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef SNARK_IMAGING_STEREO_POINT_CLOUD_H
-#define SNARK_IMAGING_STEREO_POINT_CLOUD_H
+#ifndef SNARK_IMAGING_APPLICATIONS_STEREO_DISPARITY_H
+#define SNARK_IMAGING_APPLICATIONS_STEREO_DISPARITY_H
 
-#include <opencv2/calib3d/calib3d.hpp>
+#include <snark/imaging/stereo/rectify_map.h>
+#include <snark/imaging/stereo/point_cloud.h>
+#include <snark/imaging/cv_mat/serialization.h>
+#include "parameters.h"
 
 namespace snark { namespace imaging {
 
-/// get point cloud from rectified stereo images
-class point_cloud
+class disparity
 {
 public:
-    point_cloud( const cv::Mat& Q, unsigned int channels = 3 );
+    disparity( const camera_parser& left, const camera_parser& right, unsigned int width, unsigned int height, const comma::csv::options& csv );
 
-    cv::Mat get( const cv::Mat& left, const cv::Mat& right );
-    cv::Mat get_disparity( const cv::Mat& left, const cv::Mat& right );
-    const cv::Mat& disparity() const { return m_disparity; }
-    
+    void process( const cv::Mat& left, const cv::Mat& right );
 private:
-    cv::Mat m_Q;
-    cv::StereoSGBM m_sgbm;
-    cv::Mat m_disparity;
+    Eigen::Matrix3d m_rotation;
+    Eigen::Vector3d m_translation;
+    rectify_map m_rectify;
+    cv_mat::serialization m_serialization;
 };
 
 } }
 
-#endif // SNARK_IMAGING_STEREO_POINT_CLOUD_H
+
+#endif // SNARK_IMAGING_APPLICATIONS_STEREO_DISPARITY_H
