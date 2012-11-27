@@ -17,6 +17,7 @@
 // License along with snark. If not, see <http://www.gnu.org/licenses/>.
 
 #include "disparity.h"
+#include <boost/thread/thread_time.hpp>
 
 namespace snark { namespace imaging {
 
@@ -29,7 +30,7 @@ disparity::disparity ( const snark::imaging::camera_parser& left, const snark::i
 
 }
 
-void disparity::process( const cv::Mat& left, const cv::Mat& right )
+void disparity::process( const cv::Mat& left, const cv::Mat& right, boost::posix_time::ptime time )
 {
     cv::Mat leftRectified = m_rectify.remap_left( left );
     cv::Mat rightRectified = m_rectify.remap_right( right );
@@ -41,7 +42,7 @@ void disparity::process( const cv::Mat& left, const cv::Mat& right )
     unsigned int numberOfDisparities = ((left.cols/8) + 15) & -16;
     disparity.convertTo( disparity8, CV_8U, 255 / ( numberOfDisparities *16.0 ) );
 
-    m_serialization.write( std::cout, std::make_pair( boost::posix_time::ptime(), disparity8 ) );
+    m_serialization.write( std::cout, std::make_pair( time, disparity8 ) );
 }
 
 } }

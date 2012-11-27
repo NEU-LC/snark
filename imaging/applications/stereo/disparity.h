@@ -31,7 +31,7 @@ class disparity
 public:
     disparity( const camera_parser& left, const camera_parser& right, unsigned int width, unsigned int height, const comma::csv::options& csv );
 
-    void process( const cv::Mat& left, const cv::Mat& right );
+    void process( const cv::Mat& left, const cv::Mat& right, boost::posix_time::ptime time = boost::posix_time::ptime() );
 private:
     Eigen::Matrix3d m_rotation;
     Eigen::Vector3d m_translation;

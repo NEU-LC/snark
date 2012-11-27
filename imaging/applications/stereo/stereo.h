@@ -28,8 +28,8 @@ namespace snark { namespace imaging {
 
 struct colored_point
 {
-    colored_point() : x( 0 ), y( 0 ), z( 0 ), red( 0 ), green( 0 ), blue( 0 ) {}
-    colored_point( double xx, double yy, double zz, unsigned char r, unsigned char g, unsigned char b ) : x( xx ), y( yy ), z( zz ), red( r ), green( g ), blue( b ) {}
+    colored_point() : x( 0 ), y( 0 ), z( 0 ), red( 0 ), green( 0 ), blue( 0 ), block( 0 ) {}
+    colored_point( double xx, double yy, double zz, unsigned char r, unsigned char g, unsigned char b ) : x( xx ), y( yy ), z( zz ), red( r ), green( g ), blue( b ), block( 0 ) {}
     boost::posix_time::ptime time;
     double x;
     double y;
@@ -37,8 +37,10 @@ struct colored_point
     unsigned char red;
     unsigned char green;
     unsigned char blue;
+    unsigned int block;
 };
 
+/// output point cloud to stdout from stereo pair
 class stereo
 {
 public:
@@ -53,6 +55,7 @@ private:
     boost::scoped_ptr< comma::csv::ascii< colored_point > > m_ascii;
     boost::scoped_ptr< comma::csv::binary< colored_point > > m_binary;
     std::vector< char > m_output;
+    unsigned int m_frame_counter;
 };
 
 } }
@@ -71,6 +74,7 @@ template <> struct traits< snark::imaging::colored_point >
         v.apply( "r", p.red );
         v.apply( "g", p.green );
         v.apply( "b", p.blue );
+        v.apply( "block", p.block );
     }
 
     template < typename Key, class Visitor >
@@ -83,6 +87,7 @@ template <> struct traits< snark::imaging::colored_point >
         v.apply( "r", p.red );
         v.apply( "g", p.green );
         v.apply( "b", p.blue );
+        v.apply( "block", p.block );
     }
 };
 

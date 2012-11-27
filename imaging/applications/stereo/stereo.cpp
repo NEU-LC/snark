@@ -24,7 +24,8 @@ namespace snark { namespace imaging {
 stereo::stereo ( const snark::imaging::camera_parser& left, const snark::imaging::camera_parser& right, unsigned int width, unsigned int height, const comma::csv::options& csv ):
     m_rotation( right.rotation() * left.rotation().transpose() ),
     m_translation( right.translation() - left.translation() ),
-    m_rectify ( left.camera(), left.distortion(), right.camera(), right.distortion(), width, height, m_rotation, m_translation )
+    m_rectify ( left.camera(), left.distortion(), right.camera(), right.distortion(), width, height, m_rotation, m_translation ),
+    m_frame_counter( 0 )
 {
     if( csv.binary() )
     {
@@ -58,8 +59,9 @@ void stereo::process( const cv::Mat& left, const cv::Mat& right, boost::posix_ti
             if( point.z < 100 )
             {
                 cv::Vec3b color = leftRectified.at< cv::Vec3b >( i, j );
-                colored_point point_color( point.x, point.y, point.z, color[0], color[1], color[2] );
+                colored_point point_color( point.x, point.y, point.z, color[2], color[1], color[1] );
                 point_color.time = time;
+                point_color.block = m_frame_counter;
                 if( m_binary )
                 {
                     m_binary->put( point_color, &m_output[0] );
@@ -75,7 +77,8 @@ void stereo::process( const cv::Mat& left, const cv::Mat& right, boost::posix_ti
             }
        }
     }
-        cv::Mat disparity = cloud.disparity();
+    m_frame_counter++;
+    cv::Mat disparity = cloud.disparity();
 
     cv::Mat disparity8;
     unsigned int numberOfDisparities = 80;
