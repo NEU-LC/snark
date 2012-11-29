@@ -26,6 +26,7 @@
 
 namespace snark { namespace imaging {
 
+/// output disparity image to stdout from stereo pair
 class disparity
 {
 public:
