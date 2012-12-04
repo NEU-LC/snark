@@ -297,7 +297,6 @@ int main( int argc, char *argv[] )
    // do stereo processing
    TriclopsError e;
    TriclopsContext triclops;
-   triclopsSetResolution( triclops, 960, 1280 );
    printf( "Getting TriclopsContext from camera (slowly)... \n" );
    e = getTriclopsContextFromCamera( &stereoCamera, &triclops );
    if ( e != TriclopsErrorOk )
@@ -309,6 +308,7 @@ int main( int argc, char *argv[] )
    printf( "...done\n" );
 
    // make sure we are in subpixel mode
+    triclopsSetResolution( triclops, 960, 1280 );
    
    triclopsSetSubpixelInterpolation( triclops, 1 );
    e = triclopsRectify( triclops, &input );
