@@ -19,7 +19,6 @@ ENDIF( snark_build_imaging_ptgrey )
 
 ADD_LIBRARY( ${TARGET_NAME} ${source} ${includes} ${cvmat_source} ${cvmat_includes} ${stereo_source} ${stereo_includes} ${stereo_ptgrey_source} ${stereo_ptgrey_includes} )
 SET_TARGET_PROPERTIES( ${TARGET_NAME} PROPERTIES ${snark_LIBRARY_PROPERTIES} )
-message ( " pgrey ${pgrey_libs} " )
 TARGET_LINK_LIBRARIES( ${TARGET_NAME} ${comma_ALL_LIBRARIES} ${comma_ALL_EXTERNAL_LIBRARIES} ${OpenCV_LIBS} tbb ${pgrey_libs} )
 
 INSTALL( FILES ${includes} DESTINATION ${snark_INSTALL_INCLUDE_DIR}/${PROJECT} )
