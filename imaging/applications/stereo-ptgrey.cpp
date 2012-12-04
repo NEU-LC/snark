@@ -340,20 +340,21 @@ int main( int argc, char *argv[] )
    triclopsSaveImage16( &image16, "disparity.pgm" );
    printf( "wrote 'disparity.pgm'\n" );
 
-   float remap[image.nrows][ image.ncols][2][2];
+   FILE* remapFile = fopen( "remap.bin", "w" );
     for ( int r = 0; r <  image.nrows; r++ )
     {
         for ( int c = 0; c <  image.ncols; c++ )
         {
             float rawr, rawc;
             triclopsUnrectifyPixel( triclops, TriCam_RIGHT, r, c, &rawr, &rawc );
-            remap[r][c][0][0] = rawr;
-            remap[r][c][0][1] = rawc;
+            fwrite( &rawr, 1, sizeof( float ), remapFile );
+            fwrite( &rawc, 1, sizeof( float ), remapFile );
             triclopsUnrectifyPixel( triclops, TriCam_LEFT, r, c, &rawr, &rawc );
-            remap[r][c][1][0] = rawr;
-            remap[r][c][1][1] = rawc;
+            fwrite( &rawr, 1, sizeof( float ), remapFile );
+            fwrite( &rawc, 1, sizeof( float ), remapFile );
         }
     }
+    fclose( remapFile );
 
    printf( "Stop transmission\n" );
    //  Stop data transmission
