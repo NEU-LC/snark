@@ -302,49 +302,49 @@ int main( int argc, char *argv[] )
    printf( "...done\n" );
 
    // make sure we are in subpixel mode
-   triclopsSetSubpixelInterpolation( triclops, 1 );
-   e = triclopsRectify( triclops, &input );
-   if ( e != TriclopsErrorOk )
-   {
-      fprintf( stderr, "triclopsRectify failed!\n" );
-      triclopsDestroyContext( triclops );
-      cleanup_and_exit( camera );
-      return 1;
-   }
+//    triclopsSetSubpixelInterpolation( triclops, 1 );
+//    e = triclopsRectify( triclops, &input );
+//    if ( e != TriclopsErrorOk )
+//    {
+//       fprintf( stderr, "triclopsRectify failed!\n" );
+//       triclopsDestroyContext( triclops );
+//       cleanup_and_exit( camera );
+//       return 1;
+//    }
+// 
+//    e = triclopsStereo( triclops );
+//    if ( e != TriclopsErrorOk )
+//    {
+//       fprintf( stderr, "triclopsStereo failed!\n" );
+//       triclopsDestroyContext( triclops );
+//       cleanup_and_exit( camera );
+//       return 1;
+//    }
+//    
+//    // get and save the rectified and disparity images
+//    TriclopsImage image;
+//    triclopsGetImage( triclops, TriImg_RECTIFIED, TriCam_REFERENCE, &image );
+//    triclopsSaveImage( &image, "rectified.pgm" );
+//    printf( "wrote 'rectified.pgm'\n" );
+//    TriclopsImage16 image16;
+//    triclopsGetImage16( triclops, TriImg16_DISPARITY, TriCam_REFERENCE, &image16 );
+//    triclopsSaveImage16( &image16, "disparity.pgm" );
+//    printf( "wrote 'disparity.pgm'\n" );
+// 
+//    printf( "Stop transmission\n" );
+//    //  Stop data transmission
+//    if ( dc1394_video_set_transmission( stereoCamera.camera, DC1394_OFF ) != DC1394_SUCCESS ) 
+//    {
+//       fprintf( stderr, "Couldn't stop the camera?\n" );
+//    }
 
-   e = triclopsStereo( triclops );
-   if ( e != TriclopsErrorOk )
-   {
-      fprintf( stderr, "triclopsStereo failed!\n" );
-      triclopsDestroyContext( triclops );
-      cleanup_and_exit( camera );
-      return 1;
-   }
-   
-   // get and save the rectified and disparity images
-   TriclopsImage image;
-   triclopsGetImage( triclops, TriImg_RECTIFIED, TriCam_REFERENCE, &image );
-   triclopsSaveImage( &image, "rectified.pgm" );
-   printf( "wrote 'rectified.pgm'\n" );
-   TriclopsImage16 image16;
-   triclopsGetImage16( triclops, TriImg16_DISPARITY, TriCam_REFERENCE, &image16 );
-   triclopsSaveImage16( &image16, "disparity.pgm" );
-   printf( "wrote 'disparity.pgm'\n" );
-
-   printf( "Stop transmission\n" );
-   //  Stop data transmission
-   if ( dc1394_video_set_transmission( stereoCamera.camera, DC1394_OFF ) != DC1394_SUCCESS ) 
-   {
-      fprintf( stderr, "Couldn't stop the camera?\n" );
-   }
-
-
+/*
    delete[] pucDeInterlacedBuffer;
    if ( pucRGBBuffer )
       delete[] pucRGBBuffer;
    if ( pucGreenBuffer )
       delete[] pucGreenBuffer;
-   
+   */
    // close camera
    cleanup_and_exit( camera );
    
