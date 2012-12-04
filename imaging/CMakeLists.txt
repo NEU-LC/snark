@@ -14,7 +14,7 @@ FILE( GLOB stereo_includes ${SOURCE_CODE_BASE_DIR}/${PROJECT}/stereo/*.h )
 IF( snark_build_imaging_ptgrey )
     FILE( GLOB stereo_ptgrey_source ${SOURCE_CODE_BASE_DIR}/${PROJECT}/stereo/ptgrey/*.cpp )
     FILE( GLOB stereo_ptgrey_includes ${SOURCE_CODE_BASE_DIR}/${PROJECT}/stereo/ptgrey/*.h )
-    SET( pgrey_libs triclops pnmutils )
+    SET( pgrey_libs triclops pnmutils pthread )
 ENDIF( snark_build_imaging_ptgrey )
 
 ADD_LIBRARY( ${TARGET_NAME} ${source} ${includes} ${cvmat_source} ${cvmat_includes} ${stereo_source} ${stereo_includes} ${stereo_ptgrey_source} ${stereo_ptgrey_includes} )
