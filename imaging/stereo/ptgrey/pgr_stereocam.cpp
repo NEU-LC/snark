@@ -1,5 +1,5 @@
 //=============================================================================
-// Copyright © 2007 Point Grey Research, Inc. All Rights Reserved.
+// Copyright © 2008 Point Grey Research, Inc. All Rights Reserved.
 // 
 // This software is the confidential and proprietary information of Point
 // Grey Research, Inc. ("Confidential Information").  You shall not
@@ -25,14 +25,14 @@
 //=============================================================================
 // System Includes
 //=============================================================================
-#include <dc1394/log.h>
 #include <stdio.h>
+#include <string.h>
+#include <unistd.h>
 #include <errno.h>
+#include <dc1394/log.h>
 #include <dc1394/utils.h>
 #include <dc1394/register.h>
 #include <dc1394/control.h>
-#include <cstring>
-#include <unistd.h>
 
 //=============================================================================
 // PGR Includes
@@ -334,28 +334,38 @@ setStereoVideoCapture( PGRStereoCamera_t* stereoCamera )
 	    return err;
 	 }
 
-	 // NOTE: this code will always only set up the wide-baseline pair
-	 // To change to the inner baseline pair you need to set the PAN
-	 // register to 1.
-	 // PAN = 0 is the wide baseline pair which is set by default.
-	 // To change to all 3 images being transmitted you need to change
-	 // modes to "coding	= DC1394_COLOR_CODING_RGB8;"
-	 //
 
-	 // set 16-bit transmission to be PGR-default little endian mode
-	 err = setEndian( stereoCamera->camera, false );
-	 if ( err != DC1394_SUCCESS ) 
+	 if ( stereoCamera->nBytesPerPixel == 2 )
 	 {
-	    fprintf( stderr, "Can't set Bumblebee2 into little-endian mode\n" );
-	    return err;
+	    // run in 2 camera mode
+
+	    // NOTE: this code will always only set up the wide-baseline pair
+	    // To change to the inner baseline pair you need to set the PAN
+	    // register to 1.
+	    // PAN = 0 is the wide baseline pair which is set by default.
+	    // To change to all 3 images being transmitted you need to change
+	    // modes to "coding	= DC1394_COLOR_CODING_RGB8;"
+	    //
+
+	    // set 16-bit transmission to be PGR-default little endian mode
+	    err = setEndian( stereoCamera->camera, false );
+	    if ( err != DC1394_SUCCESS ) 
+	    {
+	       fprintf( stderr, "Can't set Bumblebee2 into little-endian mode\n" );
+	       return err;
+	    }
+
+	    // color cameras transmit in "RAW16", mono cameras in "MONO16"
+	    coding	= DC1394_COLOR_CODING_MONO16;
+	    if ( stereoCamera->bColor )
+	       coding = DC1394_COLOR_CODING_RAW16;
+	 }
+	 else
+	 {
+	    // 3 camera mode transmits in RGB8
+	    coding	= DC1394_COLOR_CODING_RGB8;
 	 }
 
-	 // color cameras transmit in "RAW16", mono cameras in "MONO16"
-	 coding	= DC1394_COLOR_CODING_MONO16;
-	 if ( stereoCamera->bColor )
-	    coding = DC1394_COLOR_CODING_RAW16;
-	 
-	 
 	 // assume the XB is plugged into a 1394B network
 	 // XB3 can work with a 1394A bus but code changes will be required
 	 dc1394_video_set_operation_mode( stereoCamera->camera, DC1394_OPERATION_MODE_1394B );
@@ -429,7 +439,7 @@ startTransmission( PGRStereoCamera_t* stereoCamera )
 
    for ( int i = 0; i <= 5; i++ )
    {
-      ::usleep(50000);
+      usleep(50000);
       err = dc1394_video_get_transmission( stereoCamera->camera, &status );
       if ( err != DC1394_SUCCESS ) 
       {
@@ -634,10 +644,10 @@ writeTriclopsConfigFromCameraToFile( dc1394camera_t* camera,
    dc1394error_t err;
    uint32_t 	ulQuadlet;
 
-   err = dc1394_get_register( camera, REG_CONFIG_LENGTH, &ulQuadlet );
+   err = dc1394_get_control_register( camera, REG_CONFIG_LENGTH, &ulQuadlet );
    if ( err != DC1394_SUCCESS )
    {
-      fprintf(stderr, "GetCameraControlRegister(REG_CONFIG_LENGTH) failed\n");
+      fprintf(stderr, "dc1394_get_control_register(REG_CONFIG_LENGTH) failed\n");
       return err;
    }
    
@@ -660,7 +670,7 @@ writeTriclopsConfigFromCameraToFile( dc1394camera_t* camera,
    // while fixing endianness.
    for( unsigned long offset = 0 ; offset < ulFileSizeBytes; offset += 4 )
    {
-      err = dc1394_get_register( camera,
+      err = dc1394_get_control_register( camera,
 				      REG_CONFIG_DATA + offset, 
 				      &ulQuadlet );
       
@@ -710,3 +720,151 @@ getTriclopsContextFromCamera( PGRStereoCamera_t* stereoCamera,
    return tErr;
 }
 
+//=============================================================================
+// extractImagesColor()
+//
+// De-interleave the stereo images into single bayer patterns.
+// De-bayer those images into color images.
+// Construct a TriclopsInput for stereo processing from these images.
+//
+void
+extractImagesColorXB3( PGRStereoCamera_t* 	 stereoCamera, 
+		       dc1394bayer_method_t bayerMethod,
+		       unsigned char* 	pucDeInterleaved,
+		       unsigned char* 	pucRGB,
+		       unsigned char* 	pucGreen,
+		       unsigned char** 	ppucRightRGB,
+		       unsigned char** 	ppucLeftRGB,
+		       unsigned char** 	ppucCenterRGB,
+		       TriclopsInput*  	pShortInput,
+		       TriclopsInput* 	pWideInput  ) 
+{
+
+   dc1394error_t err; 
+   dc1394video_frame_t* frame;
+   err = dc1394_capture_dequeue( stereoCamera->camera,
+				 DC1394_CAPTURE_POLICY_WAIT,
+				 &frame );
+   if ( err != DC1394_SUCCESS )
+   {
+      fprintf( stderr, "extractImagesColor - cannot dequeue image!\n" );
+      return;
+   }
+
+   unsigned char* pucGrabBuffer = frame->image;
+
+   dc1394_deinterlace_rgb( pucGrabBuffer,
+			   pucDeInterleaved,
+			   stereoCamera->nCols,
+			   3*stereoCamera->nRows );
+   // extract color from the bayer tile image
+   // note: this will alias colors on the top and bottom rows
+   dc1394_bayer_decoding_8bit( pucDeInterleaved,
+			       pucRGB,
+			       stereoCamera->nCols,
+			       3*stereoCamera->nRows,
+			       stereoCamera->bayerTile,
+			       bayerMethod );
+   // now deinterlace the RGB Buffer
+   dc1394_deinterlace_green( pucRGB,
+			     pucGreen,
+			     stereoCamera->nCols,
+			     9*stereoCamera->nRows );
+   // NOTE: this code needs to be double checked.
+   // Currently 3-bytes-per-pixel is not activatable in this example
+   int iOneBufferPixels = stereoCamera->nRows * stereoCamera->nCols;
+   *ppucLeftRGB 	= pucRGB;
+   *ppucCenterRGB 	= pucRGB + 3 * iOneBufferPixels;
+   *ppucRightRGB 	= pucRGB + 6 * iOneBufferPixels;
+      
+   pShortInput->inputType 	= TriInp_RGB;
+   pShortInput->nrows		= stereoCamera->nRows;
+   pShortInput->ncols		= stereoCamera->nCols;
+   pShortInput->rowinc		= stereoCamera->nCols;
+   pShortInput->u.rgb.red   	= pucGreen + 2*iOneBufferPixels; 
+   pShortInput->u.rgb.green 	= pucGreen + iOneBufferPixels;
+   pShortInput->u.rgb.blue  	= pShortInput->u.rgb.green;
+
+   pWideInput->inputType 	= TriInp_RGB;
+   pWideInput->nrows		= stereoCamera->nRows;
+   pWideInput->ncols		= stereoCamera->nCols;
+   pWideInput->rowinc		= stereoCamera->nCols;
+   pWideInput->u.rgb.red   	= pucGreen + 2*iOneBufferPixels; 
+   pWideInput->u.rgb.green 	= pucGreen;
+   pWideInput->u.rgb.blue  	= pWideInput->u.rgb.green;
+
+   // return buffer for use
+   dc1394_capture_enqueue( stereoCamera->camera, frame );
+   return;
+}
+
+//=============================================================================
+// extractImagesMono()
+//
+// De-interleave the stereo images into single images
+// Construct a TriclopsInput for stereo processing from these images.
+//
+void
+extractImagesMonoXB3( PGRStereoCamera_t* 	stereoCamera, 
+		      unsigned char* 	pucDeInterleaved,
+		      unsigned char** 	ppucRightMono8,
+		      unsigned char** 	ppucLeftMono8,
+		      unsigned char** 	ppucCenterMono8,
+		      TriclopsInput*  	pShortInput,
+		      TriclopsInput* 	pWideInput ) 
+{
+
+   dc1394error_t err;
+   // RC7
+   dc1394video_frame_t* frame;
+   err = dc1394_capture_dequeue( stereoCamera->camera,
+				 DC1394_CAPTURE_POLICY_WAIT,
+				 &frame );
+   if ( err != DC1394_SUCCESS )
+   {
+      fprintf( stderr, "extractImagesColor - cannot dequeue image!\n" );
+      return;
+   }
+
+   unsigned char* pucGrabBuffer = frame->image;
+
+   unsigned char* right;
+   unsigned char* left;
+   unsigned char* center;
+
+   dc1394_deinterlace_rgb( pucGrabBuffer,
+			   pucDeInterleaved,
+			   stereoCamera->nCols,
+			   3*stereoCamera->nRows );
+   
+   // NOTE: this code needs to be double checked.
+   // Currently 3-bytes-per-pixel is not activatable in this example
+   left 	= pucDeInterleaved;
+   center  	= pucDeInterleaved + stereoCamera->nRows * stereoCamera->nCols;
+   right	= pucDeInterleaved + 2 * stereoCamera->nRows * stereoCamera->nCols;
+      
+   *ppucRightMono8 	= right;
+   *ppucLeftMono8 	= left;
+   *ppucCenterMono8 	= center;
+
+   pShortInput->inputType 	= TriInp_RGB;
+   pShortInput->nrows		= stereoCamera->nRows;
+   pShortInput->ncols		= stereoCamera->nCols;
+   pShortInput->rowinc		= stereoCamera->nCols;
+   pShortInput->u.rgb.red   	= right;
+   pShortInput->u.rgb.green 	= center;
+   pShortInput->u.rgb.blue  	= center;
+
+   pWideInput->inputType 	= TriInp_RGB;
+   pWideInput->nrows		= stereoCamera->nRows;
+   pWideInput->ncols		= stereoCamera->nCols;
+   pWideInput->rowinc		= stereoCamera->nCols;
+   pWideInput->u.rgb.red   	= right;
+   pWideInput->u.rgb.green 	= left;
+   pWideInput->u.rgb.blue  	= left;
+
+   // return buffer for use
+   dc1394_capture_enqueue( stereoCamera->camera, frame );
+
+   return;
+}

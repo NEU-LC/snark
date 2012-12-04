@@ -2,7 +2,7 @@
 #define PGR_CONVERSIONS_H
 
 //=============================================================================
-// Copyright © 2007 Point Grey Research, Inc. All Rights Reserved.
+// Copyright © 2008 Point Grey Research, Inc. All Rights Reserved.
 // 
 // This software is the confidential and proprietary information of Point
 // Grey Research, Inc. ("Confidential Information").  You shall not
@@ -28,7 +28,6 @@
 //=============================================================================
 // System Includes
 //=============================================================================
-#include <dc1394/log.h>
 #include <dc1394/control.h>
 #include <dc1394/conversions.h>
 

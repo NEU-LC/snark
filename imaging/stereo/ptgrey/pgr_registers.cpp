@@ -1,12 +1,12 @@
 //=============================================================================
-// Copyright Â© 2006 Point Grey Research, Inc. All Rights Reserved.
-// 
+// Copyright © 2008 Point Grey Research, Inc. All Rights Reserved.
+//
 // This software is the confidential and proprietary information of Point
 // Grey Research, Inc. ("Confidential Information").  You shall not
 // disclose such Confidential Information and shall use it only in
 // accordance with the terms of the license agreement you entered into
 // with Point Grey Research Inc.
-// 
+//
 // PGR MAKES NO REPRESENTATIONS OR WARRANTIES ABOUT THE SUITABILITY OF THE
 // SOFTWARE, EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
 // IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
@@ -25,9 +25,9 @@
 //=============================================================================
 // System Includes
 //=============================================================================
-#include <dc1394/log.h>
 #include <stdio.h>
 #include <errno.h>
+#include <dc1394/log.h>
 #include <dc1394/utils.h>
 #include <dc1394/register.h>
 #include <dc1394/control.h>
@@ -47,7 +47,7 @@
 // Query the PGR specific register that indicates the Bayer tile pattern
 // color coding for this camera.
 //
-// For more information check the PGR IEEE-1394 Digital Camera Register 
+// For more information check the PGR IEEE-1394 Digital Camera Register
 // Reference
 //
 dc1394error_t
@@ -61,12 +61,12 @@ getBayerTile( dc1394camera_t* camera,
    // query register 0x1040
    // This register is an advanced PGR register called BAYER_TILE_MAPPING
    // For more information check the PGR IEEE-1394 Digital Camera Register Reference
-   err = dc1394_get_register( camera, BAYER_TILE_MAPPING_REGISTER, &value );
+   err = dc1394_get_control_register( camera, BAYER_TILE_MAPPING_REGISTER, &value );
    if ( err != DC1394_SUCCESS )
    {
       return err;
    }
-   
+
    // Ascii R = 52 G = 47 B = 42 Y = 59
    switch( value )
    {
@@ -97,7 +97,7 @@ getBayerTile( dc1394camera_t* camera,
 // Set the endian-ness of 16-bit data coming from the camera.
 //
 // This is a PGR camera specific register
-// For more information check the PGR IEEE-1394 Digital Camera Register 
+// For more information check the PGR IEEE-1394 Digital Camera Register
 // Reference
 //
 dc1394error_t
@@ -118,9 +118,9 @@ setEndian( dc1394camera_t* camera,
       // use 16-bit modes in little endian (pgr default) format
       value = 0x80000000;
    }
-      
 
-   err = dc1394_set_register( camera,
+
+   err = dc1394_set_control_register( camera,
 				   IMAGE_DATA_FORMAT_REGISTER,
 				   value );
    return err;
@@ -134,7 +134,7 @@ setEndian( dc1394camera_t* camera,
 // register
 //
 // This is a PGR camera specific register
-// For more information check the PGR IEEE-1394 Digital Camera Register 
+// For more information check the PGR IEEE-1394 Digital Camera Register
 // Reference
 //
 dc1394error_t
@@ -148,7 +148,7 @@ getSensorInfo( dc1394camera_t* 	camera,
    dc1394error_t err;
 
    // This register is an advanced PGR register called SENSOR_BOARD_INFO
-   err = dc1394_get_register( camera, SENSOR_BOARD_INFO_REGISTER, &value );
+   err = dc1394_get_control_register( camera, SENSOR_BOARD_INFO_REGISTER, &value );
    if ( err != DC1394_SUCCESS )
    {
       return err;
@@ -196,5 +196,5 @@ getSensorInfo( dc1394camera_t* 	camera,
 
    return err;
 }
-			
+
 

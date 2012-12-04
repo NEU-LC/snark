@@ -2,7 +2,7 @@
 #define PGR_STEREOCAM_H
 
 //=============================================================================
-// Copyright © 2007 Point Grey Research, Inc. All Rights Reserved.
+// Copyright © 2008 Point Grey Research, Inc. All Rights Reserved.
 // 
 // This software is the confidential and proprietary information of Point
 // Grey Research, Inc. ("Confidential Information").  You shall not
@@ -28,7 +28,6 @@
 //=============================================================================
 // System Includes
 //=============================================================================
-#include <dc1394/log.h>
 #include <dc1394/control.h>
 #include <dc1394/conversions.h>
 
@@ -250,7 +249,29 @@ TriclopsError
 getTriclopsContextFromCamera( PGRStereoCamera_t* camera,
 			      TriclopsContext* pTriclops );
 
-#endif
 
+
+void
+extractImagesColorXB3( PGRStereoCamera_t* 	stereoCamera, 
+		       dc1394bayer_method_t bayerMethod,
+		       unsigned char* 	pucDeInterleaved,
+		       unsigned char* 	pucRGB,
+		       unsigned char* 	pucGreen,
+		       unsigned char** 	ppucRightRGB,
+		       unsigned char** 	ppucLeftRGB,
+		       unsigned char** 	ppucCenterRGB,
+		       TriclopsInput*  	pShortInput,
+		       TriclopsInput* pWideInput );
+
+void
+extractImagesMonoXB3( PGRStereoCamera_t* 	stereoCamera, 
+		   unsigned char* 	pucDeInterleaved,
+		   unsigned char** 	ppucRightMono8,
+		   unsigned char** 	ppucLeftMono8,
+		   unsigned char** 	ppucCenterMono8,
+		   TriclopsInput*  	pShortInput,
+		      TriclopsInput* pWideInput );
+
+#endif
   
 
