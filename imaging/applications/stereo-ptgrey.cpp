@@ -335,25 +335,28 @@ int main( int argc, char *argv[] )
    triclopsSaveImage( &image, "rectified.pgm" );
    fprintf( stderr, "rectified, %d x %d \n", image.nrows, image.ncols );
    printf( "wrote 'rectified.pgm'\n" );
-   TriclopsImage16 image16;
-   triclopsGetImage16( triclops, TriImg16_DISPARITY, TriCam_REFERENCE, &image16 );
-   triclopsSaveImage16( &image16, "disparity.pgm" );
+//    TriclopsImage16 image16;
+//    triclopsGetImage16( triclops, TriImg16_DISPARITY, TriCam_REFERENCE, &image16 );
+//    triclopsSaveImage16( &image16, "disparity.pgm" );
+   TriclopsImage image8;
+    triclopsGetImage( triclops, TriImg_DISPARITY, TriCam_REFERENCE, &image8 );
+   triclopsSaveImage( &image8, "disparity.pgm" );
    printf( "wrote 'disparity.pgm'\n" );
 
-   float remap[image.nrows][ image.ncols][2][2];
-    for ( int r = 0; r <  image.nrows; r++ )
-    {
-        for ( int c = 0; c <  image.ncols; c++ )
-        {
-            float rawr, rawc;
-            triclopsUnrectifyPixel( triclops, TriCam_RIGHT, r, c, &rawr, &rawc );
-            remap[r][c][0][0] = rawr;
-            remap[r][c][0][1] = rawc;
-            triclopsUnrectifyPixel( triclops, TriCam_LEFT, r, c, &rawr, &rawc );
-            remap[r][c][1][0] = rawr;
-            remap[r][c][1][1] = rawc;
-        }
-    }
+//    float remap[image.nrows][ image.ncols][2][2];
+//     for ( int r = 0; r <  image.nrows; r++ )
+//     {
+//         for ( int c = 0; c <  image.ncols; c++ )
+//         {
+//             float rawr, rawc;
+//             triclopsUnrectifyPixel( triclops, TriCam_RIGHT, r, c, &rawr, &rawc );
+//             remap[r][c][0][0] = rawr;
+//             remap[r][c][0][1] = rawc;
+//             triclopsUnrectifyPixel( triclops, TriCam_LEFT, r, c, &rawr, &rawc );
+//             remap[r][c][1][0] = rawr;
+//             remap[r][c][1][1] = rawc;
+//         }
+//     }
 
    printf( "Stop transmission\n" );
    //  Stop data transmission
