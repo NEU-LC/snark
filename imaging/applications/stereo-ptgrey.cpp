@@ -227,10 +227,6 @@ int main( int argc, char *argv[] )
       cleanup_and_exit( stereoCamera.camera );
    }
 
-   // give the auto-gain algorithms a chance to catch up
-   printf( "Giving auto-gain algorithm a chance to stabilize\n" );
-   sleep( 5 );
-
    // Allocate all the buffers.
    // Unfortunately color processing is a bit inefficient because of the number of
    // data copies.  Color data needs to be
@@ -334,27 +330,41 @@ int main( int argc, char *argv[] )
    triclopsGetImage( triclops, TriImg_RECTIFIED, TriCam_REFERENCE, &image );
    triclopsSaveImage( &image, "rectified.pgm" );
    fprintf( stderr, "rectified, %d x %d \n", image.nrows, image.ncols );
+
+   float focalLength;
+   triclopsGetFocalLength( triclops, &focalLength );
+   float centerX;
+   float centerY;
+   triclopsGetImageCenter( triclops, &centerY, &centerX );
+   fprintf( stderr, "focal length: %f, center: %f x %f \n", focalLength, centerX, centerY );
+   
    printf( "wrote 'rectified.pgm'\n" );
    TriclopsImage16 image16;
    triclopsGetImage16( triclops, TriImg16_DISPARITY, TriCam_REFERENCE, &image16 );
    triclopsSaveImage16( &image16, "disparity.pgm" );
    printf( "wrote 'disparity.pgm'\n" );
 
-   FILE* remapFile = fopen( "remap.bin", "w" );
+   FILE* leftX = fopen( "bumblebee-left-x.bin", "w" );
+   FILE* leftY = fopen( "bumblebee-left-y.bin", "w" );
+   FILE* rightX = fopen( "bumblebee-right-x.bin", "w" );
+   FILE* rightY = fopen( "bumblebee-right-y.bin", "w" );
     for ( int r = 0; r <  image.nrows; r++ )
     {
         for ( int c = 0; c <  image.ncols; c++ )
         {
             float rawr, rawc;
-            triclopsUnrectifyPixel( triclops, TriCam_RIGHT, r, c, &rawr, &rawc );
-            fwrite( &rawr, 1, sizeof( float ), remapFile );
-            fwrite( &rawc, 1, sizeof( float ), remapFile );
             triclopsUnrectifyPixel( triclops, TriCam_LEFT, r, c, &rawr, &rawc );
-            fwrite( &rawr, 1, sizeof( float ), remapFile );
-            fwrite( &rawc, 1, sizeof( float ), remapFile );
+            fwrite( &rawc, 1, sizeof( float ), leftX );
+            fwrite( &rawr, 1, sizeof( float ), leftY );
+            triclopsUnrectifyPixel( triclops, TriCam_RIGHT, r, c, &rawr, &rawc );
+            fwrite( &rawc, 1, sizeof( float ), rightX );
+            fwrite( &rawr, 1, sizeof( float ), rightY );
         }
     }
-    fclose( remapFile );
+    fclose( leftX );
+    fclose( leftY );
+    fclose( rightX );
+    fclose( rightY );
 
    printf( "Stop transmission\n" );
    //  Stop data transmission
