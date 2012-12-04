@@ -186,6 +186,14 @@ int main( int argc, char *argv[] )
 
    PGRStereoCamera_t stereoCamera;
    stereoCamera.camera = camera;
+   stereoCamera->model = getCameraModel( camera );
+   if ( stereoCamera->model == UNKNOWN_CAMERA )
+   {
+      printf( "invalid camera\n" );
+      return 0;
+   }
+   stereoCamera->nRows = 960;
+    stereoCamera->nCols = 1280;
 
 //    // query information about this stereo camera
 //    err = queryStereoCamera( camera, &stereoCamera );
