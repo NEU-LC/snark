@@ -308,7 +308,7 @@ int main( int argc, char *argv[] )
    printf( "...done\n" );
 
    // make sure we are in subpixel mode
-    triclopsSetResolution( triclops, 960, 1280 );
+    triclopsSetResolutionAndPrepare( triclops, 960, 1280, 960, 1280 );
    
    triclopsSetSubpixelInterpolation( triclops, 1 );
    e = triclopsRectify( triclops, &input );
