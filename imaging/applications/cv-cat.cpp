@@ -153,7 +153,16 @@ int main( int argc, char** argv )
         if( vm.count( "file" ) + vm.count( "camera" ) + vm.count( "id" ) > 1 ) { std::cerr << "cv-cat: --file, --camera, and --id are mutually exclusive" << std::endl; return 1; }        
         if( vm.count( "discard" ) ) { discard = 1; }
         snark::cv_mat::serialization::options input_options = comma::name_value::parser( ';', '=' ).get< snark::cv_mat::serialization::options >( input_options_string );
-        snark::cv_mat::serialization::options output_options = comma::name_value::parser( ';', '=' ).get< snark::cv_mat::serialization::options >( output_options_string, input_options );
+        snark::cv_mat::serialization::options output_options;
+        if( output_options_string.empty() )
+        {
+            output_options = input_options;
+        }
+        else
+        {
+            output_options = comma::name_value::parser( ';', '=' ).get< snark::cv_mat::serialization::options >( output_options_string );
+        }
+
         std::vector< std::string > filterStrings = boost::program_options::collect_unrecognized( parsed.options, boost::program_options::include_positional );
         std::string filters;
         if( filterStrings.size() == 1 ) { filters = filterStrings[0]; }
