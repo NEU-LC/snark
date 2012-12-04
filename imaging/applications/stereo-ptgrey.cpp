@@ -185,107 +185,108 @@ int main( int argc, char *argv[] )
    dc1394_camera_free_list( list );
 
    PGRStereoCamera_t stereoCamera;
+   stereoCamera.camera = camera;
 
-   // query information about this stereo camera
-   err = queryStereoCamera( camera, &stereoCamera );
-   if ( err != DC1394_SUCCESS )
-   {
-      fprintf( stderr, "Cannot query all information from camera\n" );
-      cleanup_and_exit( camera );
-   }
-
-   if ( stereoCamera.nBytesPerPixel != 2 )
-   {
-      // can't handle XB3 3 bytes per pixel
-      fprintf( stderr, 
-	       "Example has not been updated to work with XB3 in 3 camera mode yet!\n" );
-      cleanup_and_exit( stereoCamera.camera );
-   }
-   
-   // set the capture mode
-   printf( "Setting stereo video capture mode\n" );
-   err = setStereoVideoCapture( &stereoCamera );
-   if ( err != DC1394_SUCCESS )
-   {
-      fprintf( stderr, "Could not set up video capture mode\n" );
-      cleanup_and_exit( stereoCamera.camera );
-   }
-
-   // have the camera start sending us data
-   printf( "Start transmission\n" );
-   err = startTransmission( &stereoCamera );
-   if ( err != DC1394_SUCCESS ) 
-   {
-      fprintf( stderr, "Unable to start camera iso transmission\n" );
-      cleanup_and_exit( stereoCamera.camera );
-   }
-   
-   // give the auto-gain algorithms a chance to catch up
-   printf( "Giving auto-gain algorithm a chance to stabilize\n" );
-   sleep( 5 );
-
-   // Allocate all the buffers.  
-   // Unfortunately color processing is a bit inefficient because of the number of 
-   // data copies.  Color data needs to be 
-   // - de-interleaved into separate bayer tile images
-   // - color processed into RGB images
-   // - de-interleaved to extract the green channel for stereo (or other mono conversion)
-
-   // size of buffer for all images at mono8
-   unsigned int   nBufferSize = stereoCamera.nRows * 
-                                stereoCamera.nCols * 
-                                stereoCamera.nBytesPerPixel;
-   // allocate a buffer to hold the de-interleaved images
-   unsigned char* pucDeInterlacedBuffer = new unsigned char[ nBufferSize ];
-   unsigned char* pucRGBBuffer = NULL;;
-   unsigned char* pucGreenBuffer = NULL;
-   
-   TriclopsInput input;
-   if ( stereoCamera.bColor )
-   {
-      unsigned char* pucRGBBuffer 	= new unsigned char[ 3 * nBufferSize ];
-      unsigned char* pucGreenBuffer 	= new unsigned char[ nBufferSize ];
-      unsigned char* pucRightRGB	= NULL;
-      unsigned char* pucLeftRGB		= NULL;
-      unsigned char* pucCenterRGB	= NULL;
-
-      // get the images from the capture buffer and do all required processing
-      // note: produces a TriclopsInput that can be used for stereo processing
-      extractImagesColor( &stereoCamera,
-			  DC1394_BAYER_METHOD_NEAREST,
-			  pucDeInterlacedBuffer,
-			  pucRGBBuffer,
-			  pucGreenBuffer,
-			  &pucRightRGB,
-			  &pucLeftRGB,
-			  &pucCenterRGB,
-			  &input );
-
-      if ( !writePpm( "right.ppm", pucRightRGB, stereoCamera.nCols, stereoCamera.nRows ) )
-	 printf( "wrote right.ppm\n" );
-      if ( !writePpm( "left.ppm", pucLeftRGB, stereoCamera.nCols, stereoCamera.nRows ) )
-	 printf( "wrote left.ppm\n" );
-   }
-   else
-   {
-      unsigned char* pucRightMono	= NULL;
-      unsigned char* pucLeftMono	= NULL;
-      unsigned char* pucCenterMono	= NULL;
-      // get the images from the capture buffer and do all required processing
-      // note: produces a TriclopsInput that can be used for stereo processing
-      extractImagesMono( &stereoCamera,
-			  pucDeInterlacedBuffer,
-			  &pucRightMono,
-			  &pucLeftMono,
-			  &pucCenterMono,
-			  &input );
-			 
-      
-      if ( !writePgm( "right.pgm", pucRightMono, stereoCamera.nCols, stereoCamera.nRows ) )
-	 printf( "wrote right.pgm\n" );
-      if ( !writePgm( "left.pgm", pucLeftMono, stereoCamera.nCols, stereoCamera.nRows ) )
-	 printf( "wrote left.pgm\n" );
-   }
+//    // query information about this stereo camera
+//    err = queryStereoCamera( camera, &stereoCamera );
+//    if ( err != DC1394_SUCCESS )
+//    {
+//       fprintf( stderr, "Cannot query all information from camera\n" );
+//       cleanup_and_exit( camera );
+//    }
+// 
+//    if ( stereoCamera.nBytesPerPixel != 2 )
+//    {
+//       // can't handle XB3 3 bytes per pixel
+//       fprintf( stderr, 
+// 	       "Example has not been updated to work with XB3 in 3 camera mode yet!\n" );
+//       cleanup_and_exit( stereoCamera.camera );
+//    }
+//    
+//    // set the capture mode
+//    printf( "Setting stereo video capture mode\n" );
+//    err = setStereoVideoCapture( &stereoCamera );
+//    if ( err != DC1394_SUCCESS )
+//    {
+//       fprintf( stderr, "Could not set up video capture mode\n" );
+//       cleanup_and_exit( stereoCamera.camera );
+//    }
+// 
+//    // have the camera start sending us data
+//    printf( "Start transmission\n" );
+//    err = startTransmission( &stereoCamera );
+//    if ( err != DC1394_SUCCESS ) 
+//    {
+//       fprintf( stderr, "Unable to start camera iso transmission\n" );
+//       cleanup_and_exit( stereoCamera.camera );
+//    }
+//    
+//    // give the auto-gain algorithms a chance to catch up
+//    printf( "Giving auto-gain algorithm a chance to stabilize\n" );
+//    sleep( 5 );
+// 
+//    // Allocate all the buffers.  
+//    // Unfortunately color processing is a bit inefficient because of the number of 
+//    // data copies.  Color data needs to be 
+//    // - de-interleaved into separate bayer tile images
+//    // - color processed into RGB images
+//    // - de-interleaved to extract the green channel for stereo (or other mono conversion)
+// 
+//    // size of buffer for all images at mono8
+//    unsigned int   nBufferSize = stereoCamera.nRows * 
+//                                 stereoCamera.nCols * 
+//                                 stereoCamera.nBytesPerPixel;
+//    // allocate a buffer to hold the de-interleaved images
+//    unsigned char* pucDeInterlacedBuffer = new unsigned char[ nBufferSize ];
+//    unsigned char* pucRGBBuffer = NULL;;
+//    unsigned char* pucGreenBuffer = NULL;
+//    
+//    TriclopsInput input;
+//    if ( stereoCamera.bColor )
+//    {
+//       unsigned char* pucRGBBuffer 	= new unsigned char[ 3 * nBufferSize ];
+//       unsigned char* pucGreenBuffer 	= new unsigned char[ nBufferSize ];
+//       unsigned char* pucRightRGB	= NULL;
+//       unsigned char* pucLeftRGB		= NULL;
+//       unsigned char* pucCenterRGB	= NULL;
+// 
+//       // get the images from the capture buffer and do all required processing
+//       // note: produces a TriclopsInput that can be used for stereo processing
+//       extractImagesColor( &stereoCamera,
+// 			  DC1394_BAYER_METHOD_NEAREST,
+// 			  pucDeInterlacedBuffer,
+// 			  pucRGBBuffer,
+// 			  pucGreenBuffer,
+// 			  &pucRightRGB,
+// 			  &pucLeftRGB,
+// 			  &pucCenterRGB,
+// 			  &input );
+// 
+//       if ( !writePpm( "right.ppm", pucRightRGB, stereoCamera.nCols, stereoCamera.nRows ) )
+// 	 printf( "wrote right.ppm\n" );
+//       if ( !writePpm( "left.ppm", pucLeftRGB, stereoCamera.nCols, stereoCamera.nRows ) )
+// 	 printf( "wrote left.ppm\n" );
+//    }
+//    else
+//    {
+//       unsigned char* pucRightMono	= NULL;
+//       unsigned char* pucLeftMono	= NULL;
+//       unsigned char* pucCenterMono	= NULL;
+//       // get the images from the capture buffer and do all required processing
+//       // note: produces a TriclopsInput that can be used for stereo processing
+//       extractImagesMono( &stereoCamera,
+// 			  pucDeInterlacedBuffer,
+// 			  &pucRightMono,
+// 			  &pucLeftMono,
+// 			  &pucCenterMono,
+// 			  &input );
+// 			 
+//       
+//       if ( !writePgm( "right.pgm", pucRightMono, stereoCamera.nCols, stereoCamera.nRows ) )
+// 	 printf( "wrote right.pgm\n" );
+//       if ( !writePgm( "left.pgm", pucLeftMono, stereoCamera.nCols, stereoCamera.nRows ) )
+// 	 printf( "wrote left.pgm\n" );
+//    }
 
    // do stereo processing
    TriclopsError e;
