@@ -297,6 +297,7 @@ int main( int argc, char *argv[] )
    // do stereo processing
    TriclopsError e;
    TriclopsContext triclops;
+   triclopsSetResolution( triclops, 960, 1280 );
    printf( "Getting TriclopsContext from camera (slowly)... \n" );
    e = getTriclopsContextFromCamera( &stereoCamera, &triclops );
    if ( e != TriclopsErrorOk )
@@ -308,7 +309,6 @@ int main( int argc, char *argv[] )
    printf( "...done\n" );
 
    // make sure we are in subpixel mode
-    triclopsSetResolution( triclops, 960, 1280 );
    
    triclopsSetSubpixelInterpolation( triclops, 1 );
    e = triclopsRectify( triclops, &input );
@@ -335,12 +335,9 @@ int main( int argc, char *argv[] )
    triclopsSaveImage( &image, "rectified.pgm" );
    fprintf( stderr, "rectified, %d x %d \n", image.nrows, image.ncols );
    printf( "wrote 'rectified.pgm'\n" );
-//    TriclopsImage16 image16;
-//    triclopsGetImage16( triclops, TriImg16_DISPARITY, TriCam_REFERENCE, &image16 );
-//    triclopsSaveImage16( &image16, "disparity.pgm" );
-   TriclopsImage image8;
-    triclopsGetImage( triclops, TriImg_DISPARITY, TriCam_REFERENCE, &image8 );
-   triclopsSaveImage( &image8, "disparity.pgm" );
+   TriclopsImage16 image16;
+   triclopsGetImage16( triclops, TriImg16_DISPARITY, TriCam_REFERENCE, &image16 );
+   triclopsSaveImage16( &image16, "disparity.pgm" );
    printf( "wrote 'disparity.pgm'\n" );
 
 //    float remap[image.nrows][ image.ncols][2][2];
