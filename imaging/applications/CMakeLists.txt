@@ -19,11 +19,6 @@ TARGET_LINK_LIBRARIES( image-accumulate snark_imaging ${comma_ALL_LIBRARIES} ${c
 ADD_EXECUTABLE( stereo-to-points stereo-to-points.cpp ${stereo_source}  )
 TARGET_LINK_LIBRARIES( stereo-to-points ${snark_ALL_LIBRARIES} ${comma_ALL_LIBRARIES} ${OpenCV_LIBS} ${Boost_LIBRARIES} )
 
-IF( snark_build_imaging_ptgrey )
-    ADD_EXECUTABLE( stereo-ptgrey stereo-ptgrey.cpp ${stereo_source}  )
-    TARGET_LINK_LIBRARIES( stereo-ptgrey ${snark_ALL_LIBRARIES} ${comma_ALL_LIBRARIES} ${OpenCV_LIBS} ${Boost_LIBRARIES} dc1394 )
-ENDIF( snark_build_imaging_ptgrey )
-
 INSTALL( TARGETS image-undistort-map cv-cat image-accumulate stereo-to-points 
          RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR}
          COMPONENT Runtime )
