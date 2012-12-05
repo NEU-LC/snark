@@ -109,8 +109,16 @@ int main( int argc, char** argv )
             std::cerr << " | view-points --fields t,x,y,z,r,g,b,block --binary t,3d,3ub,ui" << std::endl;
             std::cerr << std::endl;
             std::cerr << " output and view disparity from 2 image files: " << std::endl;
-            std::cerr << " stereo-to-points --left left.bmp --right right.bmp --config bumblebee.config --left-path left --right-path right --binary t,3d,3ub,ui \\" << std::endl;
+            std::cerr << " stereo-to-points --left left.bmp --right right.bmp --config bumblebee.config --left-path left --right-path right \\" << std::endl;
             std::cerr << " --disparity | cv-cat --output=no-header encode=ppm | display" << std::endl;
+            std::cerr << std::endl;
+            std::cerr << " stream data in qlib log format and output disparity: " << std::endl;
+            std::cerr << " cat BumblebeeVideo*.bin | q-cat | cv-cat bayer=4 | stereo-to-points --config /usr/local/etc/shrimp.config --left-path bumblebee/camera-left\\" << std::endl;
+            std::cerr << " --right-path bumblebee/camera-right --roi 0,1920,0,0,1280,960 --disparity | cv-cat view" << std::endl;
+            std::cerr << std::endl;
+            std::cerr << " stream data in qlib log format and output point cloud: " << std::endl;
+            std::cerr << " cat BumblebeeVideo*.bin | q-cat | cv-cat bayer=4 | stereo-to-points --config /usr/local/etc/shrimp.config --left-path bumblebee/camera-left\\" << std::endl;
+            std::cerr << " --right-path bumblebee/camera-right --roi 0,1920,0,0,1280,960 --binary t,3d,3ub,ui | view-points --fields t,x,y,z,r,g,b,block --binary t,3d,3ub,ui" << std::endl;
             std::cerr << std::endl;
             return 1;
         }

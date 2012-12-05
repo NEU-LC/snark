@@ -37,7 +37,7 @@ point_cloud::point_cloud ( const cv::Mat& Q, unsigned int channels ):
     m_sgbm.speckleRange = 16; //32; // victor has 16
     m_sgbm.disp12MaxDiff = 1;
     m_sgbm.preFilterCap = 63;
-    m_sgbm.fullDP = false; // victor has true    
+    m_sgbm.fullDP = true; //false; // victor has true    
 }
 
 cv::Mat point_cloud::get ( const cv::Mat& left, const cv::Mat& right )

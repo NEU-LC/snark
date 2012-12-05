@@ -115,7 +115,7 @@ void usage()
     std::cerr << "    view-points --colour merry $(ls labeled.*.csv)" << std::endl;
     std::cerr << "    cat file.csv | view-points --fields=\"x,y,z,r,g,b\"" << std::endl;
     std::cerr << "    view-points \"raw.csv;colour=0:20\" \"partitioned.csv;fields=x,y,z,id\";point-size=2" << std::endl;
-    std::cerr << "    echo \"0,0,0\" | ./bin/view-points-qt --shape /usr/local/etc/segway.shrimp.obj --z-is-up --orthographic" << std::endl;
+    std::cerr << "    echo \"0,0,0\" | view-points --shape /usr/local/etc/segway.shrimp.obj --z-is-up --orthographic" << std::endl;
     std::cerr << std::endl;
     exit( -1 );
 }

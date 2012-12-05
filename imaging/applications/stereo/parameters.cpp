@@ -34,7 +34,7 @@ camera_parser::camera_parser ( const std::string& file, const std::string& path 
     }
     boost::property_tree::ptree tree;
     comma::property_tree::from_name_value( ifs, tree, '=', ' ' );
-    comma::from_ptree from_ptree( tree, path );
+    comma::from_ptree from_ptree( tree, path, true );
     camera_parameters parameters;
     comma::visiting::apply( from_ptree, parameters );
 

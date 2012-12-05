@@ -78,6 +78,7 @@ void stereo::process( const cv::Mat& left, const cv::Mat& right, boost::posix_ti
             cv::Point3f point = points.at< cv::Point3f >( i, j );
             if( point.z < 100 )
             {
+                point *= 16.0; // disparity has a factor 16
                 cv::Vec3b color = leftRectified.at< cv::Vec3b >( i, j );
                 colored_point point_color( point.x, point.y, point.z, color[2], color[1], color[1] );
                 point_color.time = time;
@@ -98,12 +99,12 @@ void stereo::process( const cv::Mat& left, const cv::Mat& right, boost::posix_ti
        }
     }
     m_frame_counter++;
-    cv::Mat disparity = cloud.disparity();
-
-    cv::Mat disparity8;
-    unsigned int numberOfDisparities = 80;
-    numberOfDisparities = ((left.cols/8) + 15) & -16;
-    disparity.convertTo( disparity8, CV_8U, 255 / ( numberOfDisparities *16.0 ) );
+//     cv::Mat disparity = cloud.disparity();
+// 
+//     cv::Mat disparity8;
+//     unsigned int numberOfDisparities = 80;
+//     numberOfDisparities = ((left.cols/8) + 15) & -16;
+//     disparity.convertTo( disparity8, CV_8U, 255 / ( numberOfDisparities *16.0 ) );
 //     cv::imshow( "disparity", disparity8 );
 //     cv::imwrite( "disparity.png", disparity8 );
 //     cv::waitKey();
