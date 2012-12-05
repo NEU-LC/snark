@@ -108,9 +108,9 @@ int main( int argc, char** argv )
             std::cerr << " stereo-to-points --left left.bmp --right right.bmp --config bumblebee.config --left-path left --right-path right --binary t,3d,3ub,ui \\" << std::endl;
             std::cerr << " | view-points --fields t,x,y,z,r,g,b,block --binary t,3d,3ub,ui" << std::endl;
             std::cerr << std::endl;
-            std::cerr << " output disparity as ppm from 2 image files: " << std::endl;
+            std::cerr << " output and view disparity from 2 image files: " << std::endl;
             std::cerr << " stereo-to-points --left left.bmp --right right.bmp --config bumblebee.config --left-path left --right-path right --binary t,3d,3ub,ui \\" << std::endl;
-            std::cerr << " --disparity | cv-cat --output=no-header encode=ppm > disparity.ppm" << std::endl;
+            std::cerr << " --disparity | cv-cat --output=no-header encode=ppm | display" << std::endl;
             std::cerr << std::endl;
             return 1;
         }

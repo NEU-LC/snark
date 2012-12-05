@@ -77,7 +77,7 @@ template <> struct traits< snark::imaging::camera_parameters >
         v.apply( "distortion", c.distortion );
         v.apply( "rotation", c.rotation );
         v.apply( "translation", c.translation );
-        v.apply( "size", c.size );
+        v.apply( "image-size", c.size );
         v.apply( "map-x", c.map_x );
         v.apply( "map-y", c.map_y );
     }
@@ -90,7 +90,7 @@ template <> struct traits< snark::imaging::camera_parameters >
         v.apply( "distortion", c.distortion );
         v.apply( "rotation", c.rotation );
         v.apply( "translation", c.translation );
-        v.apply( "size", c.size );
+        v.apply( "image-size", c.size );
         v.apply( "map-x", c.map_x );
         v.apply( "map-y", c.map_y );
     }
