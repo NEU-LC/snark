@@ -97,8 +97,21 @@ int main( int argc, char** argv )
         boost::program_options::notify( vm );
         if ( vm.count( "help" ) || vm.count( "long-help" ) )
         {
-            std::cerr << "acquire image" << std::endl;
+            std::cerr << "read stereo images from files or stdin, outputs point cloud or disparity image to stdout" << std::endl;
             std::cerr << description << std::endl;
+            std::cerr << std::endl;
+            std::cerr << " output format: t,x,y,z,r,g,b,block for point cloud " << std::endl;
+            std::cerr << "                t,rows,cols,type for disparity image " << std::endl;
+            std::cerr << std::endl;
+            std::cerr << " examples: " << std::endl;
+            std::cerr << " output and view point cloud from 2 image files: " << std::endl;
+            std::cerr << " stereo-to-points --left left.bmp --right right.bmp --config bumblebee.config --left-path left --right-path right --binary t,3d,3ub,ui \\" << std::endl;
+            std::cerr << " | view-points --fields t,x,y,z,r,g,b,block --binary t,3d,3ub,ui" << std::endl;
+            std::cerr << std::endl;
+            std::cerr << " output disparity as ppm from 2 image files: " << std::endl;
+            std::cerr << " stereo-to-points --left left.bmp --right right.bmp --config bumblebee.config --left-path left --right-path right --binary t,3d,3ub,ui \\" << std::endl;
+            std::cerr << " --disparity | cv-cat --output=no-header encode=ppm > disparity.ppm" << std::endl;
+            std::cerr << std::endl;
             return 1;
         }
 

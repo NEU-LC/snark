@@ -63,10 +63,10 @@ void stereo::process( const cv::Mat& left, const cv::Mat& right, boost::posix_ti
     cv::Mat leftRectified = m_rectify.remap_left( left );
     cv::Mat rightRectified = m_rectify.remap_right( right );
 
-    cv::imshow( "left", leftRectified );
-    cv::imshow( "right", rightRectified );
-    cv::imwrite( "left-rectified.png", leftRectified );
-    cv::imwrite( "right-rectified.png", rightRectified );
+//     cv::imshow( "left", leftRectified );
+//     cv::imshow( "right", rightRectified );
+//     cv::imwrite( "left-rectified.png", leftRectified );
+//     cv::imwrite( "right-rectified.png", rightRectified );
     
     snark::imaging::point_cloud cloud( m_rectify.Q(), left.channels() );
     cv::Mat points = cloud.get( leftRectified, rightRectified );
@@ -104,9 +104,9 @@ void stereo::process( const cv::Mat& left, const cv::Mat& right, boost::posix_ti
     unsigned int numberOfDisparities = 80;
     numberOfDisparities = ((left.cols/8) + 15) & -16;
     disparity.convertTo( disparity8, CV_8U, 255 / ( numberOfDisparities *16.0 ) );
-    cv::imshow( "disparity", disparity8 );
-    cv::imwrite( "disparity.png", disparity8 );
-    cv::waitKey();
+//     cv::imshow( "disparity", disparity8 );
+//     cv::imwrite( "disparity.png", disparity8 );
+//     cv::waitKey();
 }
 
     

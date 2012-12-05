@@ -49,11 +49,11 @@ void disparity::process( const cv::Mat& left, const cv::Mat& right, boost::posix
     snark::imaging::point_cloud cloud( m_rectify.Q(), left.channels() );
 
     cv::Mat disparity = cloud.get_disparity( leftRectified, rightRectified );
-    cv::Mat disparity8;
+    cv::Mat disparity16;
     unsigned int numberOfDisparities = ((left.cols/8) + 15) & -16;
-    disparity.convertTo( disparity8, CV_8U, 255 / ( numberOfDisparities *16.0 ) );
+    disparity.convertTo( disparity16, CV_16U, 65535 / ( numberOfDisparities *16.0 ) );
 
-    m_serialization.write( std::cout, std::make_pair( time, disparity8 ) );
+    m_serialization.write( std::cout, std::make_pair( time, disparity16 ) );
 }
 
 } }
