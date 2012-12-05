@@ -27,14 +27,14 @@ static const unsigned int numberOfDisparities = 80; // TODO config ?
 point_cloud::point_cloud ( const cv::Mat& Q, unsigned int channels ):
     m_Q( Q )
 {
-    m_sgbm.SADWindowSize = 3; // victor has 5
+    m_sgbm.SADWindowSize = 5; //3; // victor has 5
     m_sgbm.minDisparity = 0;
     m_sgbm.P1 = 8*channels*m_sgbm.SADWindowSize*m_sgbm.SADWindowSize;
     m_sgbm.P2 = 32*channels*m_sgbm.SADWindowSize*m_sgbm.SADWindowSize;
     m_sgbm.numberOfDisparities = numberOfDisparities;
     m_sgbm.uniquenessRatio = 10;
-    m_sgbm.speckleWindowSize = 100; // victor has 1000
-    m_sgbm.speckleRange = 32; // victor has 16
+    m_sgbm.speckleWindowSize = 1000; //100; // victor has 1000
+    m_sgbm.speckleRange = 16; //32; // victor has 16
     m_sgbm.disp12MaxDiff = 1;
     m_sgbm.preFilterCap = 63;
     m_sgbm.fullDP = false; // victor has true    

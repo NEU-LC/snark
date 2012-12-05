@@ -32,6 +32,10 @@ public:
     stereo_stream( const camera_parser& left, const camera_parser& right, const boost::array< unsigned int, 6 > roi,
                    const comma::csv::options& input_csv, const comma::csv::options& output_csv );
 
+    stereo_stream( const camera_parser& left, const camera_parser& right, const boost::array< unsigned int, 6 > roi,
+            const cv::Mat& left_x, const cv::Mat& left_y, const cv::Mat& right_x, const cv::Mat& right_y,
+            const comma::csv::options& input_csv, const comma::csv::options& output_csv );
+
     void read();
 private:
     cv::Rect m_left;
@@ -46,6 +50,19 @@ inline stereo_stream< T >::stereo_stream ( const camera_parser& left, const came
     m_left( roi[0], roi[1], roi[4], roi[5] ),
     m_right( roi[2], roi[3], roi[4], roi[5] ),
     m_stereo( left, right, m_left.width, m_left.height, output_csv ),
+    m_input( input_csv.fields, input_csv.format() )
+{
+    assert( m_left.width == m_right.width );
+    assert( m_left.height == m_right.height );
+}
+
+template< typename T >
+inline stereo_stream< T >::stereo_stream ( const camera_parser& left, const camera_parser& right, const boost::array< unsigned int, 6 > roi,
+                                           const cv::Mat& left_x, const cv::Mat& left_y, const cv::Mat& right_x, const cv::Mat& right_y,
+                                           const comma::csv::options& input_csv, const comma::csv::options& output_csv ):
+    m_left( roi[0], roi[1], roi[4], roi[5] ),
+    m_right( roi[2], roi[3], roi[4], roi[5] ),
+    m_stereo( left, right, left_x, left_y, right_x, right_y, output_csv ),
     m_input( input_csv.fields, input_csv.format() )
 {
     assert( m_left.width == m_right.width );

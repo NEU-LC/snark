@@ -33,6 +33,9 @@ struct camera_parameters
     std::string distortion;
     std::string rotation;
     std::string translation;
+    std::string size;
+    std::string map_x;
+    std::string map_y;
 };
 
 /// parse camera parameters from config file
@@ -47,12 +50,17 @@ public:
     const Vector5d& distortion() const { return m_distortion; }
     const Eigen::Matrix3d& rotation() const { return m_rotation; }
     const Eigen::Vector3d& translation() const { return m_translation; }
+    const cv::Mat& map_x() const { return m_map_x; }
+    const cv::Mat& map_y() const { return m_map_y; }
+    bool has_map() const { return ( m_map_x.cols != 0 ); }
     
 private:
     Eigen::Matrix3d m_camera;
     Vector5d m_distortion;
     Eigen::Matrix3d m_rotation;
     Eigen::Vector3d m_translation;
+    cv::Mat m_map_x;
+    cv::Mat m_map_y;
 };
 
 } }
@@ -69,6 +77,9 @@ template <> struct traits< snark::imaging::camera_parameters >
         v.apply( "distortion", c.distortion );
         v.apply( "rotation", c.rotation );
         v.apply( "translation", c.translation );
+        v.apply( "size", c.size );
+        v.apply( "map-x", c.map_x );
+        v.apply( "map-y", c.map_y );
     }
 
     template < typename Key, class Visitor >
@@ -79,6 +90,9 @@ template <> struct traits< snark::imaging::camera_parameters >
         v.apply( "distortion", c.distortion );
         v.apply( "rotation", c.rotation );
         v.apply( "translation", c.translation );
+        v.apply( "size", c.size );
+        v.apply( "map-x", c.map_x );
+        v.apply( "map-y", c.map_y );
     }
 };
 

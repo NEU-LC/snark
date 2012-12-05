@@ -45,6 +45,9 @@ class stereo
 {
 public:
     stereo( const camera_parser& left, const camera_parser& right, unsigned int width, unsigned int height, const comma::csv::options& csv );
+    stereo( const camera_parser& left, const camera_parser& right,
+            const cv::Mat& left_x, const cv::Mat& left_y, const cv::Mat& right_x, const cv::Mat& right_y,
+            const comma::csv::options& csv );
 
     void process( const cv::Mat& left, const cv::Mat& right, boost::posix_time::ptime time = boost::posix_time::ptime() );
 private:

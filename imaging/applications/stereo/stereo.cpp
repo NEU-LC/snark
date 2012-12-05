@@ -38,6 +38,26 @@ stereo::stereo ( const snark::imaging::camera_parser& left, const snark::imaging
     }
 }
 
+stereo::stereo ( const camera_parser& left, const camera_parser& right,
+                 const cv::Mat& left_x, const cv::Mat& left_y, const cv::Mat& right_x, const cv::Mat& right_y,
+                 const comma::csv::options& csv ):
+    m_rotation( Eigen::Matrix3d::Identity() ),
+    m_translation( right.translation() - left.translation() ),
+    m_rectify ( left.camera(), right.camera(), m_translation, left_x, left_y, right_x, right_y ),
+    m_frame_counter( 0 )
+{
+    if( csv.binary() )
+    {
+        m_binary.reset( new comma::csv::binary< colored_point >( csv ) );
+        m_output.resize( csv.format().size() );
+    }
+    else
+    {
+        m_ascii.reset( new comma::csv::ascii< colored_point >( csv ) );
+    }
+}
+
+
 void stereo::process( const cv::Mat& left, const cv::Mat& right, boost::posix_time::ptime time )
 {
     cv::Mat leftRectified = m_rectify.remap_left( left );

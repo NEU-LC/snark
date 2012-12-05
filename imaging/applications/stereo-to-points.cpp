@@ -30,18 +30,43 @@ template< typename T >
 void run( const snark::imaging::camera_parser& left_parameters, const snark::imaging::camera_parser& right_parameters,
           unsigned int width, unsigned int height, const comma::csv::options& csv, const cv::Mat& left, const cv::Mat& right )
 {
-    T stereoPipeline( left_parameters, right_parameters, width, height, csv );
-    stereoPipeline.process( left, right );
+    if( left_parameters.has_map() )
+    {
+        T stereoPipeline( left_parameters, right_parameters,
+                          left_parameters.map_x(), left_parameters.map_y(),
+                          right_parameters.map_x(), right_parameters.map_y(),
+                          csv );
+        stereoPipeline.process( left, right );
+    }
+    else
+    {
+        T stereoPipeline( left_parameters, right_parameters, width, height, csv );
+        stereoPipeline.process( left, right );
+    }
 }
 
 template< typename T >
 void run_stream( const snark::imaging::camera_parser& left_parameters, const snark::imaging::camera_parser& right_parameters,
           const boost::array< unsigned int, 6 > roi, const comma::csv::options& input_csv, const comma::csv::options& output_csv )
 {
-    snark::imaging::stereo_stream< T > stream( left_parameters, right_parameters, roi, input_csv, output_csv );
-    while( std::cin.good() && !std::cin.eof() )
+    if( left_parameters.has_map() )
     {
-        stream.read();
+        snark::imaging::stereo_stream< T > stream( left_parameters, right_parameters, roi,
+                          left_parameters.map_x(), left_parameters.map_y(),
+                          right_parameters.map_x(), right_parameters.map_y(),
+                          input_csv, output_csv );
+        while( std::cin.good() && !std::cin.eof() )
+        {
+            stream.read();
+        }
+    }
+    else
+    {
+        snark::imaging::stereo_stream< T > stream( left_parameters, right_parameters, roi, input_csv, output_csv );
+        while( std::cin.good() && !std::cin.eof() )
+        {
+            stream.read();
+        }
     }
 }
 
@@ -64,7 +89,7 @@ int main( int argc, char** argv )
             ( "left", boost::program_options::value< std::string >( &leftImage ), "left image" )
             ( "right", boost::program_options::value< std::string >( &rightImage ), "right image" )
             ( "roi", boost::program_options::value< std::string >( &roi ), "left and right images roi in pixel, arg=<left-pos-x,left-pos-y,right-pos-x,right-pos-y,width,height>" )
-            ( "disparity,d", "output disparity image instead of point cloud" );
+            ( "disparity", "output disparity image instead of point cloud" );
         description.add( comma::csv::program_options::description( "t,x,y,z,r,g,b,block" ) );
         boost::program_options::variables_map vm;
         boost::program_options::store( boost::program_options::parse_command_line( argc, argv, description), vm );

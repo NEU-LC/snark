@@ -30,6 +30,17 @@ disparity::disparity ( const snark::imaging::camera_parser& left, const snark::i
 
 }
 
+disparity::disparity ( const camera_parser& left, const camera_parser& right,
+                 const cv::Mat& left_x, const cv::Mat& left_y, const cv::Mat& right_x, const cv::Mat& right_y,
+                 const comma::csv::options& csv ):
+    m_rotation( Eigen::Matrix3d::Identity() ),
+    m_translation( right.translation() - left.translation() ),
+    m_rectify ( left.camera(), right.camera(), m_translation, left_x, left_y, right_x, right_y ),
+    m_serialization( csv.fields, csv.format() )
+{
+    
+}
+
 void disparity::process( const cv::Mat& left, const cv::Mat& right, boost::posix_time::ptime time )
 {
     cv::Mat leftRectified = m_rectify.remap_left( left );
@@ -37,7 +48,7 @@ void disparity::process( const cv::Mat& left, const cv::Mat& right, boost::posix
 
     snark::imaging::point_cloud cloud( m_rectify.Q(), left.channels() );
 
-    cv::Mat disparity = cloud.get_disparity( left, right );
+    cv::Mat disparity = cloud.get_disparity( leftRectified, rightRectified );
     cv::Mat disparity8;
     unsigned int numberOfDisparities = ((left.cols/8) + 15) & -16;
     disparity.convertTo( disparity8, CV_8U, 255 / ( numberOfDisparities *16.0 ) );
