@@ -126,6 +126,10 @@ int main( int argc, char** argv )
                 std::cerr << "\toperation-mode: dc1394 operation mode" << std::endl;
                 std::cerr << "\tiso-speed: dc1394 iso speed" << std::endl;
                 std::cerr << "\tframe-rate: dc1394 frame rate" << std::endl;
+                std::cerr << "\tshutter: camera shutter speed (absolute)" << std::endl;
+                std::cerr << "\tgain: camera gain (absolute)" << std::endl;
+                std::cerr << "\trelative-shutter: camera shutter speed (relative)" << std::endl;
+                std::cerr << "\trelative-gain: camera gain (relative)" << std::endl;
                 std::cerr << std::endl << "allowed output types: " << std::endl;
                 std::cerr << "\tRGB: convert the camera output to RGB8 using dc1394_convert_frames" << std::endl;
                 std::cerr << "\tBGR: convert the camera output to BGR8 using dc1394_convert_frames" << std::endl;

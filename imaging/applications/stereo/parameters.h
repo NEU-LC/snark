@@ -28,14 +28,15 @@ namespace snark { namespace imaging {
 
 struct camera_parameters
 {
+    camera_parameters() : focal_length("0,0"),center("0,0"),distortion("0,0,0,0,0"),rotation("0,0,0"),translation("0,0,0"),size("0,0"){}
+    
     std::string focal_length;
     std::string center;
     std::string distortion;
     std::string rotation;
     std::string translation;
     std::string size;
-    std::string map_x;
-    std::string map_y;
+    std::string map;
 };
 
 /// parse camera parameters from config file
@@ -78,8 +79,7 @@ template <> struct traits< snark::imaging::camera_parameters >
         v.apply( "rotation", c.rotation );
         v.apply( "translation", c.translation );
         v.apply( "image-size", c.size );
-        v.apply( "map-x", c.map_x );
-        v.apply( "map-y", c.map_y );
+        v.apply( "map", c.map );
     }
 
     template < typename Key, class Visitor >
@@ -91,8 +91,7 @@ template <> struct traits< snark::imaging::camera_parameters >
         v.apply( "rotation", c.rotation );
         v.apply( "translation", c.translation );
         v.apply( "image-size", c.size );
-        v.apply( "map-x", c.map_x );
-        v.apply( "map-y", c.map_y );
+        v.apply( "map", c.map );
     }
 };
 

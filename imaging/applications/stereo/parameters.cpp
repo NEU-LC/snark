@@ -77,47 +77,37 @@ camera_parser::camera_parser ( const std::string& file, const std::string& path 
     m_rotation = rotation.rotation();    
     m_translation << tX, tY, tZ;
 
-    if( !parameters.map_x.empty() )
+    if( !parameters.map.empty() )
     {
         v = comma::split( parameters.size, ',' );
         assert( v.size() == 2 );
         unsigned int width = boost::lexical_cast< unsigned int >( v[0] );
         unsigned int height = boost::lexical_cast< unsigned int >( v[1] );
-        std::ifstream streamX( parameters.map_x.c_str() );
-        if( !streamX )
+        std::ifstream stream( parameters.map.c_str() );
+        if( !stream )
         {
-            COMMA_THROW( comma::exception, "failed to open undistort map in \"" << parameters.map_x << "\"" );            
+            COMMA_THROW( comma::exception, "failed to open undistort map in \"" << parameters.map << "\"" );
         }
         std::size_t size = width * height * 4;
         std::vector< char > buffer( size );
         
-        streamX.read( &buffer[0], size );
-        if( streamX.gcount() < 0 || std::size_t( streamX.gcount() ) != size )
+        stream.read( &buffer[0], size );
+        if( stream.gcount() < 0 || std::size_t( stream.gcount() ) != size )
         {
-            COMMA_THROW( comma::exception, "failed to read \"" << parameters.map_x << "\"" );            
+            COMMA_THROW( comma::exception, "failed to read \"" << parameters.map << "\"" );
         }
         m_map_x = cv::Mat( height, width, CV_32FC1, &buffer[0] ).clone();
-        streamX.peek(); 
-        if( !streamX.eof() )
-        {
-            COMMA_THROW( comma::exception, "expected " << ( size * 2 ) << " bytes in \"" << parameters.map_x << "\", got more" );            
-        }
 
-        std::ifstream streamY( parameters.map_y.c_str() );
-        if( !streamY )
+        stream.read( &buffer[0], size );
+        if( stream.gcount() < 0 || std::size_t( stream.gcount() ) != size )
         {
-            COMMA_THROW( comma::exception, "failed to open undistort map in \"" << parameters.map_y << "\"" );
-        }
-        streamY.read( &buffer[0], size );
-        if( streamY.gcount() < 0 || std::size_t( streamY.gcount() ) != size )
-        {
-            COMMA_THROW( comma::exception, "failed to read \"" << parameters.map_y << "\"" );
+            COMMA_THROW( comma::exception, "failed to read \"" << parameters.map << "\"" );
         }
         m_map_y = cv::Mat( height, width, CV_32FC1, &buffer[0] ).clone();
-        streamY.peek();
-        if( !streamY.eof() )
+        stream.peek();
+        if( !stream.eof() )
         {
-            COMMA_THROW( comma::exception, "expected " << ( size * 2 ) << " bytes in \"" << parameters.map_y << "\", got more" );
+            COMMA_THROW( comma::exception, "expected " << ( size * 2 ) << " bytes in \"" << parameters.map << "\", got more" );
         }
     }
 }
