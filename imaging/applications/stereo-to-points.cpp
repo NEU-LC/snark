@@ -114,11 +114,21 @@ int main( int argc, char** argv )
             std::cerr << std::endl;
             std::cerr << " stream data in qlib log format and output disparity: " << std::endl;
             std::cerr << " cat BumblebeeVideo*.bin | q-cat | cv-cat bayer=4 | stereo-to-points --config /usr/local/etc/shrimp.config --left-path bumblebee/camera-left\\" << std::endl;
-            std::cerr << " --right-path bumblebee/camera-right --roi 0,1920,0,0,1280,960 --disparity | cv-cat view" << std::endl;
+            std::cerr << " --right-path bumblebee/camera-right --roi 0,1920,0,0,1280,960 --disparity | cv-cat \"resize=640,480;view\" > /dev/null" << std::endl;
             std::cerr << std::endl;
             std::cerr << " stream data in qlib log format and output point cloud: " << std::endl;
             std::cerr << " cat BumblebeeVideo*.bin | q-cat | cv-cat bayer=4 | stereo-to-points --config /usr/local/etc/shrimp.config --left-path bumblebee/camera-left\\" << std::endl;
             std::cerr << " --right-path bumblebee/camera-right --roi 0,1920,0,0,1280,960 --binary t,3d,3ub,ui | view-points --fields t,x,y,z,r,g,b,block --binary t,3d,3ub,ui" << std::endl;
+            std::cerr << std::endl;
+            std::cerr << " view disparity live from shrimp: " << std::endl;
+            std::cerr << " netcat shrimp.server 55003 | cv-cat \"split;bayer=4\" | ../bin/stereo-to-points --config /usr/local/etc/shrimp.config \\" << std::endl;
+            std::cerr << "--left-path bumblebee/camera-left --right-path bumblebee/camera-right --roi 0,1920,0,0,1280,960 --disparity  \\" << std::endl;
+            std::cerr << " | cv-cat \"resize=640,480;view\" > /dev/null" << std::endl;
+            std::cerr << std::endl;
+            std::cerr << " view point cloud live from shrimp: " << std::endl;
+            std::cerr << " netcat shrimp.server 55003 | cv-cat \"split;bayer=4\" | ../bin/stereo-to-points --config /usr/local/etc/shrimp.config \\" << std::endl;
+            std::cerr << "--left-path bumblebee/camera-left --right-path bumblebee/camera-right --roi 0,1920,0,0,1280,960 --binary t,3d,3ub,ui  \\" << std::endl;
+            std::cerr << " | view-points --fields t,x,y,z,r,g,b,block --binary t,3d,3ub,ui" << std::endl;
             std::cerr << std::endl;
             return 1;
         }
