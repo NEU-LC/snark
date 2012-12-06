@@ -90,8 +90,8 @@ int main( int ac, char** av )
     cv::imwrite( "left-rectified.png", leftRectified );
     cv::imwrite( "right-rectified.png", rightRectified );
     
-    snark::imaging::point_cloud cloud( rectify.Q(), left.channels() );
-    cv::Mat points = cloud.get( leftRectified, rightRectified );
+    snark::imaging::point_cloud cloud( left.channels() );
+    cv::Mat points = cloud.get( rectify.Q(), leftRectified, rightRectified );
 
     for( int i = 0; i < points.rows; i++ )
     {

@@ -58,27 +58,22 @@ stereo::stereo ( const camera_parser& left, const camera_parser& right,
 }
 
 
-void stereo::process( const cv::Mat& left, const cv::Mat& right, boost::posix_time::ptime time )
+void stereo::process( const cv::Mat& left, const cv::Mat& right, const cv::StereoSGBM& sgbm, boost::posix_time::ptime time )
 {
     cv::Mat leftRectified = m_rectify.remap_left( left );
     cv::Mat rightRectified = m_rectify.remap_right( right );
-
-//     cv::imshow( "left", leftRectified );
-//     cv::imshow( "right", rightRectified );
-//     cv::imwrite( "left-rectified.png", leftRectified );
-//     cv::imwrite( "right-rectified.png", rightRectified );
     
-    snark::imaging::point_cloud cloud( m_rectify.Q(), left.channels() );
-    cv::Mat points = cloud.get( leftRectified, rightRectified );
+    snark::imaging::point_cloud cloud( sgbm );
+    cv::Mat points = cloud.get( m_rectify.Q(), leftRectified, rightRectified );
 
     for( int i = 0; i < points.rows; i++ )
     {
        for( int j = 0; j < points.cols; j++ )
        {
             cv::Point3f point = points.at< cv::Point3f >( i, j );
-            if( point.z < 100 )
+            point *= 16.0; // disparity has a factor 16
+            if( std::fabs( point.z ) < 20 ) // TODO config
             {
-                point *= 16.0; // disparity has a factor 16
                 cv::Vec3b color = leftRectified.at< cv::Vec3b >( i, j );
                 colored_point point_color( point.x, point.y, point.z, color[2], color[1], color[1] );
                 point_color.time = time;
@@ -99,15 +94,6 @@ void stereo::process( const cv::Mat& left, const cv::Mat& right, boost::posix_ti
        }
     }
     m_frame_counter++;
-//     cv::Mat disparity = cloud.disparity();
-// 
-//     cv::Mat disparity8;
-//     unsigned int numberOfDisparities = 80;
-//     numberOfDisparities = ((left.cols/8) + 15) & -16;
-//     disparity.convertTo( disparity8, CV_8U, 255 / ( numberOfDisparities *16.0 ) );
-//     cv::imshow( "disparity", disparity8 );
-//     cv::imwrite( "disparity.png", disparity8 );
-//     cv::waitKey();
 }
 
     

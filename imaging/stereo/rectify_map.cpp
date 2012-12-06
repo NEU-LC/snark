@@ -64,6 +64,7 @@ rectify_map::rectify_map ( const Eigen::Matrix3d& leftCamera, const Eigen::Matri
 
     cv::stereoRectify( m_leftCamera, m_leftDistortion, m_rightCamera, m_rightDistortion, m_imageSize, m_rotation, m_translation,
                        m_R1, m_R2, m_P1, m_P2, m_Q );
+    
 }
 
 

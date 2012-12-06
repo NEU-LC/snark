@@ -41,12 +41,12 @@ disparity::disparity ( const camera_parser& left, const camera_parser& right,
     
 }
 
-void disparity::process( const cv::Mat& left, const cv::Mat& right, boost::posix_time::ptime time )
+void disparity::process( const cv::Mat& left, const cv::Mat& right, const cv::StereoSGBM& sgbm, boost::posix_time::ptime time )
 {
     cv::Mat leftRectified = m_rectify.remap_left( left );
     cv::Mat rightRectified = m_rectify.remap_right( right );
 
-    snark::imaging::point_cloud cloud( m_rectify.Q(), left.channels() );
+    snark::imaging::point_cloud cloud( sgbm );
 
     cv::Mat disparity = cloud.get_disparity( leftRectified, rightRectified );
     cv::Mat disparity16;

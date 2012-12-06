@@ -49,7 +49,7 @@ public:
             const cv::Mat& left_x, const cv::Mat& left_y, const cv::Mat& right_x, const cv::Mat& right_y,
             const comma::csv::options& csv );
 
-    void process( const cv::Mat& left, const cv::Mat& right, boost::posix_time::ptime time = boost::posix_time::ptime() );
+    void process( const cv::Mat& left, const cv::Mat& right, const cv::StereoSGBM& sgbm, boost::posix_time::ptime time = boost::posix_time::ptime() );
 private:
     
     Eigen::Matrix3d m_rotation;

@@ -24,8 +24,7 @@ namespace snark { namespace imaging {
 static const unsigned int numberOfDisparities = 80; // TODO config ?
 
     
-point_cloud::point_cloud ( const cv::Mat& Q, unsigned int channels ):
-    m_Q( Q )
+point_cloud::point_cloud ( unsigned int channels )
 {
     m_sgbm.SADWindowSize = 5; //3; // victor has 5
     m_sgbm.minDisparity = 0;
@@ -40,18 +39,26 @@ point_cloud::point_cloud ( const cv::Mat& Q, unsigned int channels ):
     m_sgbm.fullDP = true; //false; // victor has true    
 }
 
-cv::Mat point_cloud::get ( const cv::Mat& left, const cv::Mat& right )
+point_cloud::point_cloud ( const cv::StereoSGBM& sgbm ):
+    m_sgbm( sgbm )
+{
+
+}
+
+
+cv::Mat point_cloud::get ( const cv::Mat& Q, const cv::Mat& left, const cv::Mat& right )
 {
     m_disparity = get_disparity( left, right );
     cv::Mat points;
-    cv::reprojectImageTo3D( m_disparity, points, m_Q, true);
+    cv::reprojectImageTo3D( m_disparity, points, Q, true);
     return points;
 }
 
 cv::Mat point_cloud::get_disparity ( const cv::Mat& left, const cv::Mat& right )
 {
     cv::Mat disparity;
-    m_sgbm.numberOfDisparities = ((left.cols/8) + 15) & -16;
+    m_sgbm.P1 = 8*left.channels()*m_sgbm.SADWindowSize*m_sgbm.SADWindowSize;
+    m_sgbm.P2 = 32*left.channels()*m_sgbm.SADWindowSize*m_sgbm.SADWindowSize;
     m_sgbm( left, right, disparity );
     return disparity;
 }

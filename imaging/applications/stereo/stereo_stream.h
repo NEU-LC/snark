@@ -36,7 +36,7 @@ public:
             const cv::Mat& left_x, const cv::Mat& left_y, const cv::Mat& right_x, const cv::Mat& right_y,
             const comma::csv::options& input_csv, const comma::csv::options& output_csv );
 
-    void read();
+    void read( const cv::StereoSGBM& sgbm );
 private:
     cv::Rect m_left;
     cv::Rect m_right;
@@ -70,10 +70,10 @@ inline stereo_stream< T >::stereo_stream ( const camera_parser& left, const came
 }
 
 template< typename T >
-inline void stereo_stream< T >::read()
+inline void stereo_stream< T >::read( const cv::StereoSGBM& sgbm )
 {
     std::pair< boost::posix_time::ptime, cv::Mat > image = m_input.read( std::cin );
-    m_stereo.process( image.second( m_left ), image.second( m_right ), image.first );
+    m_stereo.process( image.second( m_left ), image.second( m_right ), sgbm, image.first );
 }
 
 

@@ -27,9 +27,10 @@ namespace snark { namespace imaging {
 class point_cloud
 {
 public:
-    point_cloud( const cv::Mat& Q, unsigned int channels = 3 );
+    point_cloud( unsigned int channels = 3 );
+    point_cloud( const cv::StereoSGBM& sgbm );
 
-    cv::Mat get( const cv::Mat& left, const cv::Mat& right );
+    cv::Mat get( const cv::Mat& Q, const cv::Mat& left, const cv::Mat& right );
     cv::Mat get_disparity( const cv::Mat& left, const cv::Mat& right );
     const cv::Mat& disparity() const { return m_disparity; }
     
