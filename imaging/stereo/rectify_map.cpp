@@ -39,8 +39,16 @@ rectify_map::rectify_map ( const Eigen::Matrix3d& leftCamera, const Vector5d& le
     cv::stereoRectify( m_leftCamera, m_leftDistortion, m_rightCamera, m_rightDistortion, m_imageSize, m_rotation, m_translation,
                        m_R1, m_R2, m_P1, m_P2, m_Q );
 
-    cv::initUndistortRectifyMap( m_leftCamera, m_leftDistortion, m_R1, m_P1, m_imageSize, CV_16SC2, m_map11, m_map12 );
-    cv::initUndistortRectifyMap( m_rightCamera, m_rightDistortion, m_R2, m_P2, m_imageSize, CV_16SC2, m_map21, m_map22);
+
+    if( leftDistortion.norm() > 1e-5 || rightDistortion.norm() > 1e-5 || !rotation.isApprox( Eigen::Matrix3d::Identity() ) )
+    {
+        cv::initUndistortRectifyMap( m_leftCamera, m_leftDistortion, m_R1, m_P1, m_imageSize, CV_16SC2, m_map11, m_map12 );
+        cv::initUndistortRectifyMap( m_rightCamera, m_rightDistortion, m_R2, m_P2, m_imageSize, CV_16SC2, m_map21, m_map22);
+    }
+    else
+    {
+//     no rectification is needed ( pre-rectified images ), only compute Q
+    }
 }
 
 /// constructor from maps
@@ -67,21 +75,34 @@ rectify_map::rectify_map ( const Eigen::Matrix3d& leftCamera, const Eigen::Matri
     
 }
 
-
 /// remap left image
-cv::Mat rectify_map::remap_left ( const cv::Mat left ) const
+cv::Mat rectify_map::remap_left ( const cv::Mat& left ) const
 {
-    cv::Mat result;
-    cv::remap( left, result, m_map11, m_map12, cv::INTER_LINEAR );
-    return result;
+    if( m_map11.cols != 0 )
+    {
+        cv::Mat result;
+        cv::remap( left, result, m_map11, m_map12, cv::INTER_LINEAR );
+        return result;
+    }
+    else
+    {
+        return left;
+    }
 }
 
 /// remap right image
-cv::Mat rectify_map::remap_right ( const cv::Mat right ) const
+cv::Mat rectify_map::remap_right ( const cv::Mat& right ) const
 {
-    cv::Mat result;
-    cv::remap( right, result, m_map21, m_map22, cv::INTER_LINEAR );
-    return result;
+    if( m_map21.cols != 0 )
+    {
+        cv::Mat result;
+        cv::remap( right, result, m_map21, m_map22, cv::INTER_LINEAR );
+        return result;
+    }
+    else
+    {
+        return right;
+    }
 }
 
     

@@ -2,6 +2,14 @@ SET( PROJECT "math" )
 SET( TARGET_NAME snark_${PROJECT} )
 SET( dir ${SOURCE_CODE_BASE_DIR}/${PROJECT} )
 
+IF( CMAKE_SIZEOF_VOID_P EQUAL 4 )
+    # disable eigen vectorization on 32 bit machines
+    # see http://eigen.tuxfamily.org/index.php?title=FAQ#Vectorization
+    ADD_DEFINITIONS( -DEIGEN_DONT_VECTORIZE )
+    ADD_DEFINITIONS( -DEIGEN_DISABLE_UNALIGNED_ARRAY_ASSERT )
+    ADD_DEFINITIONS( -DEIGEN_DONT_ALIGN_STATICALLY )
+ENDIF()
+
 FILE( GLOB filter_source ${dir}/filter/*.cpp )
 FILE( GLOB filter_includes ${dir}/filter/*.h )
 FILE( GLOB fft_source ${dir}/fft/*.cpp )

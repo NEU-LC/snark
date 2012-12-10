@@ -45,8 +45,8 @@ public:
     const cv::Mat& map21() const { return m_map21; };
     const cv::Mat& map22() const { return m_map22; };
 
-    cv::Mat remap_left( const cv::Mat left ) const;
-    cv::Mat remap_right( const cv::Mat right ) const;
+    cv::Mat remap_left( const cv::Mat& left ) const;
+    cv::Mat remap_right( const cv::Mat& right ) const;
 
 private:
     cv::Mat m_leftCamera;

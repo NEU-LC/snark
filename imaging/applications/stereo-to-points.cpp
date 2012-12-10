@@ -101,7 +101,7 @@ int main( int argc, char** argv )
             ( "speckle-range,r", boost::program_options::value< int >( &sgbm.speckleRange )->default_value(16), "sgbm speckleRange" )
             ( "disp12-max", boost::program_options::value< int >( &sgbm.disp12MaxDiff )->default_value(1), "sgbm disp12MaxDiff" )
             ( "pre-filter-cap", boost::program_options::value< int >( &sgbm.preFilterCap )->default_value(63), "sgbm preFilterCap" )
-            ( "full-dp,f", "use fullDP" );
+            ( "full-dp,f", "use fullDP, uses a lot of memory" );
         description.add( comma::csv::program_options::description( "t,x,y,z,r,g,b,block" ) );
         boost::program_options::variables_map vm;
         boost::program_options::store( boost::program_options::parse_command_line( argc, argv, description), vm );
@@ -152,6 +152,14 @@ int main( int argc, char** argv )
             std::cerr << "    netcat shrimp.server 55003 | cv-cat \"split;bayer=4\" | stereo-to-points --config /usr/local/etc/shrimp.config \\" << std::endl;
             std::cerr << "    --left-path bumblebee/camera-left --right-path bumblebee/camera-right --roi 0,1920,0,0,1280,960 --binary t,3d,3ub,ui  \\" << std::endl;
             std::cerr << "    | view-points --fields t,x,y,z,r,g,b,block --binary t,3d,3ub,ui" << std::endl;
+            std::cerr << std::endl;
+            std::cerr << "  batch process images from files, assuming you have ppm images with the same names in left/ and right/ directories: " << std::endl;
+            std::cerr << "    disparity: " << std::endl;
+            std::cerr << "    find left -name '*.ppm' | sort | parallel  'stereo-to-points --left left/{/} --right right/{/} --config bumblebee.config \\" << std::endl;;
+            std::cerr << "    --left-path left --right-path right --disparity --full-dp | cv-cat --output=no-header encode=ppm > disparity-{/}'" << std::endl;
+            std::cerr << "    point cloud: " << std::endl;
+            std::cerr << "    find left -name '*.ppm' | sort | parallel  'stereo-to-points --left left/{/} --right right/{/} --config bumblebee.config \\" << std::endl;;
+            std::cerr << "    --left-path left --right-path right --binary t,3d,3ub,ui --full-dp > cloud-{/.}.bin" << std::endl;
             std::cerr << std::endl;
             return 1;
         }

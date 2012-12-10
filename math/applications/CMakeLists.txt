@@ -12,6 +12,14 @@ TARGET_LINK_LIBRARIES( math-rad2deg ${comma_ALL_LIBRARIES} )
 ADD_EXECUTABLE( math-rotation-convert math-rotation-convert.cpp )
 TARGET_LINK_LIBRARIES( math-rotation-convert snark_math ${comma_ALL_LIBRARIES} )
 
+IF( CMAKE_SIZEOF_VOID_P EQUAL 4 )
+    # disable eigen vectorization on 32 bit machines
+    # see http://eigen.tuxfamily.org/index.php?title=FAQ#Vectorization
+    ADD_DEFINITIONS( -DEIGEN_DONT_VECTORIZE )
+    ADD_DEFINITIONS( -DEIGEN_DISABLE_UNALIGNED_ARRAY_ASSERT )
+    ADD_DEFINITIONS( -DEIGEN_DONT_ALIGN_STATICALLY )
+ENDIF()
+
 ADD_EXECUTABLE( points-frame frame.cpp points-frame.cpp )
 TARGET_LINK_LIBRARIES( points-frame ${comma_ALL_LIBRARIES} ${snark_ALL_LIBRARIES} )
 
