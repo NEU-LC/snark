@@ -89,11 +89,12 @@ int main( int argc, char** argv )
             ( "config", boost::program_options::value< std::string >( &configFile ), "camera config file" )
             ( "left-path", boost::program_options::value< std::string >( &leftPath ), "left camera config file path" )
             ( "right-path", boost::program_options::value< std::string >( &rightPath ), "right camera config file path" )
-            ( "left", boost::program_options::value< std::string >( &leftImage ), "left image" )
-            ( "right", boost::program_options::value< std::string >( &rightImage ), "right image" )
-            ( "roi", boost::program_options::value< std::string >( &roi ), "left and right images roi in pixel, arg=<left-pos-x,left-pos-y,right-pos-x,right-pos-y,width,height>" )
+            ( "left", boost::program_options::value< std::string >( &leftImage ), "left image file name (file input only)" )
+            ( "right", boost::program_options::value< std::string >( &rightImage ), "right image file name (file input only)" )
+            ( "roi", boost::program_options::value< std::string >( &roi ),
+              "left and right images roi in pixel (stdin input only), arg=<left-pos-x,left-pos-y,right-pos-x,right-pos-y,width,height>" )
             ( "disparity", "output disparity image instead of point cloud" )
-            ( "window-size,w", boost::program_options::value< int >( &sgbm.SADWindowSize )->default_value(5), "sgbm SADWindowSize" )
+            ( "window-size,w", boost::program_options::value< int >( &sgbm.SADWindowSize )->default_value(5), "sgbm SADWindowSize (see OpenCV documentation)" )
             ( "min-disparity,m", boost::program_options::value< int >( &sgbm.minDisparity )->default_value(0), "sgbm minDisparity" )
             ( "num-disparity,n", boost::program_options::value< int >( &sgbm.numberOfDisparities )->default_value(80), "sgbm numberOfDisparities" )
             ( "uniqueness,u", boost::program_options::value< int >( &sgbm.uniquenessRatio )->default_value(10), "sgbm uniquenessRatio" )
@@ -115,13 +116,13 @@ int main( int argc, char** argv )
             std::cerr << "output format: t,x,y,z,r,g,b,block for point cloud " << std::endl;
             std::cerr << "               t,rows,cols,type for disparity image " << std::endl;
             std::cerr << std::endl;
-            std::cerr << "example config file with pre-computed rectify maps:\n" << std::endl;
+            std::cerr << "example config file with pre-computed rectify maps (eg. with the bumblebee camera factory calibration):\n" << std::endl;
             std::cerr << "left=\n{\n    focal-length=\"1604.556763,1604.556763\"\n    centre=\"645.448181,469.367188\"\n    image-size=\"1280,960\"" << std::endl;
             std::cerr << "    map=/usr/local/etc/shrimp.bumblebee-left.bin\n}\nright=\n{\n    focal-length=\"1604.556763,1604.556763\"" << std::endl;
             std::cerr << "    centre=\"645.448181,469.367188\"\n    translation=\"-0.239928,0,0\"\n    image-size=\"1280,960\"" << std::endl;
             std::cerr << "    map=/usr/local/etc/shrimp.bumblebee-right.bin\n}\n" << std::endl;
             std::cerr << std::endl;
-            std::cerr << "example config file with intrinsic parameters:\n" << std::endl;
+            std::cerr << "example config file with intrinsic parameters (eg. from the matlab calibration toolbox):\n" << std::endl;
             std::cerr << "left=\n{\n    focal-length=\"534.7,534.7\"\n    centre=\"335.1,240.2\"\n    distortion=\"-0.274568,-0.018329,0,0,0\"\n}\n";
             std::cerr << "right=\n{\n    focal-length=\"534.7,534.7\"\n    centre=\"334,241.6\"\n    distortion=\"-0.274568,0.093,0,0,0\"\n";
             std::cerr << "    rotation=\"-0.0177686,-0.0214235,-0.00491403\"\n    translation=\"0.21,0,0\"\n}\n";
@@ -148,7 +149,7 @@ int main( int argc, char** argv )
             std::cerr << "    --left-path bumblebee/camera-left --right-path bumblebee/camera-right --roi 0,1920,0,0,1280,960 --disparity  \\" << std::endl;
             std::cerr << "    | cv-cat \"resize=640,480;view\" > /dev/null" << std::endl;
             std::cerr << std::endl;
-            std::cerr << "  view point cloud live from shrimp: " << std::endl;
+            std::cerr << "  view point cloud live from shrimp: ( does not seem to work on shrimp, maybe due to OpenCV 2.3, works with OpenCV 2.4 )" << std::endl;
             std::cerr << "    netcat shrimp.server 55003 | cv-cat \"split;bayer=4\" | stereo-to-points --config /usr/local/etc/shrimp.config \\" << std::endl;
             std::cerr << "    --left-path bumblebee/camera-left --right-path bumblebee/camera-right --roi 0,1920,0,0,1280,960 --binary t,3d,3ub,ui  \\" << std::endl;
             std::cerr << "    | view-points --fields t,x,y,z,r,g,b,block --binary t,3d,3ub,ui" << std::endl;
@@ -160,6 +161,8 @@ int main( int argc, char** argv )
             std::cerr << "    point cloud: " << std::endl;
             std::cerr << "    find left -name '*.ppm' | sort | parallel  'stereo-to-points --left left/{/} --right right/{/} --config bumblebee.config \\" << std::endl;;
             std::cerr << "    --left-path left --right-path right --binary t,3d,3ub,ui --full-dp > cloud-{/.}.bin" << std::endl;
+            std::cerr << std::endl;
+            std::cerr << "  known bugs: point cloud doesn't seem to work with opencv 2.3 ( e.g. on shrimp ), works with opencv 2.4 " << std::endl;
             std::cerr << std::endl;
             return 1;
         }
@@ -186,6 +189,11 @@ int main( int argc, char** argv )
                 std::cerr << argv[0] << ": need both --left and --right" << std::endl;
                 return 1;
             }
+            if( vm.count( "roi" ) )
+            {
+                std::cerr << argv[0] << ": specify either --roi when reading from stdin, or --left and --right when reading from files" << std::endl;
+                return 1;
+            }
             if( vm.count( "disparity" ) == 0 )
             {
                 run< snark::imaging::stereo >( leftParameters, rightParameters, left.cols, left.rows, csv, left, right );
@@ -200,7 +208,7 @@ int main( int argc, char** argv )
             // read from std in
             if( !vm.count( "roi" ) )
             {
-                std::cerr << argv[0] << ": please specify --roi" << std::endl;
+                std::cerr << argv[0] << ": please specify --roi to read from stdin or --left and --right to read from files" << std::endl;
                 return 1;
             }
             std::vector< std::string > v = comma::split( roi, ',' );

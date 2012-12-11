@@ -32,6 +32,7 @@ public:
 
     cv::Mat get( const cv::Mat& Q, const cv::Mat& left, const cv::Mat& right );
     cv::Mat get_disparity( const cv::Mat& left, const cv::Mat& right );
+    /// get disparity after computing the point cloud
     const cv::Mat& disparity() const { return m_disparity; }
     
 private:

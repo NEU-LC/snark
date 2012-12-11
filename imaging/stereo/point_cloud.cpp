@@ -23,29 +23,33 @@ namespace snark { namespace imaging {
 
 static const unsigned int numberOfDisparities = 80; // TODO config ?
 
-    
+/// default constructor
 point_cloud::point_cloud ( unsigned int channels )
 {
-    m_sgbm.SADWindowSize = 5; //3; // victor has 5
+    m_sgbm.SADWindowSize = 5; 
     m_sgbm.minDisparity = 0;
     m_sgbm.P1 = 8*channels*m_sgbm.SADWindowSize*m_sgbm.SADWindowSize;
     m_sgbm.P2 = 32*channels*m_sgbm.SADWindowSize*m_sgbm.SADWindowSize;
     m_sgbm.numberOfDisparities = numberOfDisparities;
     m_sgbm.uniquenessRatio = 10;
-    m_sgbm.speckleWindowSize = 1000; //100; // victor has 1000
-    m_sgbm.speckleRange = 16; //32; // victor has 16
+    m_sgbm.speckleWindowSize = 1000; 
+    m_sgbm.speckleRange = 16;
     m_sgbm.disp12MaxDiff = 1;
     m_sgbm.preFilterCap = 63;
-    m_sgbm.fullDP = true; //false; // victor has true    
+    m_sgbm.fullDP = true; 
 }
 
+/// constructor from pre-configured sgbm struct
 point_cloud::point_cloud ( const cv::StereoSGBM& sgbm ):
     m_sgbm( sgbm )
 {
 
 }
 
-
+/// compute disparity and point cloud
+/// @param Q Q matrix computed with stereo recfity
+/// @param left rectified left image
+/// @param right rectified right image
 cv::Mat point_cloud::get ( const cv::Mat& Q, const cv::Mat& left, const cv::Mat& right )
 {
     m_disparity = get_disparity( left, right );
@@ -54,6 +58,9 @@ cv::Mat point_cloud::get ( const cv::Mat& Q, const cv::Mat& left, const cv::Mat&
     return points;
 }
 
+/// compute disparity only
+/// @param left rectified left image
+/// @param right rectified right image
 cv::Mat point_cloud::get_disparity ( const cv::Mat& left, const cv::Mat& right )
 {
     cv::Mat disparity;
