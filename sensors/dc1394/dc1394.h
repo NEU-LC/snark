@@ -71,8 +71,10 @@ private:
     void init_camera();
     void setup_camera();
     void setup_camera_format7();
-    void set_exposure( float shutter, float gain );
-    void set_exposure( unsigned int shutter, unsigned int gain );
+
+    void set_absolute_shutter_gain( float shutter, float gain );
+    void set_relative_shutter_gain( unsigned int shutter, unsigned int gain );
+    void set_exposure( unsigned int exposure );
     
     config m_config;
     dc1394camera_t* m_camera;
