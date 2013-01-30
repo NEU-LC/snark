@@ -65,6 +65,7 @@ public:
     boost::posix_time::ptime time() const { return m_time; }
     bool poll();
     static void list_cameras();
+    void list_attributes();
 
 private:
     void init_camera();

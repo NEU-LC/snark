@@ -442,5 +442,13 @@ void dc1394::set_exposure( unsigned int shutter, unsigned int gain )
     DC1394_ERR(err, "Failed to set gain value");
 }
 
+/// list all the dc1394 features of the camera
+void dc1394::list_attributes()
+{
+    dc1394featureset_t featureset;
+    dc1394_feature_get_all(m_camera, &featureset);
+    dc1394_feature_print_all(&featureset, stderr);
+}
+
 
 } } // namespace snark { namespace camera {

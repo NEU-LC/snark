@@ -84,6 +84,7 @@ int main( int argc, char** argv )
             ( "help,h", "display help message" )
             ( "long-help", "display long help message" )
             ( "list", "list cameras on the bus with guids" )
+            ( "list-attributes", "output current camera attributes" )
             ( "discard,d", "discard frames, if cannot keep up; same as --buffer=1" )
             ( "config,c", boost::program_options::value< std::string >( &config_string )->default_value( "fire-cat.ini" ), "configuration file for the camera or semicolon-separated name=value string, see long help for details" )
             ( "buffer", boost::program_options::value< unsigned int >( &discard )->default_value( 0 ), "maximum buffer size before discarding frames, default: unlimited" )
@@ -213,6 +214,13 @@ int main( int argc, char** argv )
             config = parser.get< snark::camera::dc1394::config >( config_string );
         }
         snark::camera::dc1394 camera( config, format7_width, format7_height, format7_size, exposure );
+        
+        if( vm.count( "list-attributes" ) )
+        {
+            camera.list_attributes();    
+            return 0;
+        }
+
         snark::tbb::bursty_reader< Pair > reader( boost::bind( &capture, boost::ref( camera ) ), discard );
         snark::imaging::applications::pipeline pipeline( *serialization, filters, reader );
         pipeline.run();
