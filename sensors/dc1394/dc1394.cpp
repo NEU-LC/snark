@@ -36,6 +36,7 @@ dc1394::config::config():
     relative_gain( 0 ),
     shutter( 0 ),
     gain( 0 ),
+    exposure( 0 ),
     guid( 0 )
 {
     
@@ -56,18 +57,13 @@ int dc1394::config::type() const
 
 /// constructor
 /// @param config camera config
-dc1394::dc1394( const snark::camera::dc1394::config& config, unsigned int format7_width, unsigned int format7_height, unsigned int format7_size, unsigned int exposure ):
+dc1394::dc1394( const snark::camera::dc1394::config& config, unsigned int format7_width, unsigned int format7_height, unsigned int format7_size ):
     m_config( config ),
     m_epoch( timing::epoch ),
     m_format7_width( format7_height ),
     m_format7_height( format7_height ),
     m_format7_size( format7_size )
 {
-    if( exposure != 0 )
-    {
-        m_auto_exposure = exposure;
-    }    
-    
     memset( &m_output_frame, 0, sizeof( m_output_frame ) );
     m_output_frame.color_coding = DC1394_COLOR_CODING_RGB8;
     
@@ -84,7 +80,7 @@ dc1394::dc1394( const snark::camera::dc1394::config& config, unsigned int format
         set_absolute_shutter_gain( m_config.shutter, m_config.gain );
     }
     else {
-        set_exposure(exposure);
+        set_exposure(m_config.exposure);
     }
 
     if( m_config.output == config::Raw )
@@ -185,39 +181,6 @@ const cv::Mat& dc1394::read()
     //Get the time from the frame timestamp
     m_time = m_epoch + boost::posix_time::microseconds( m_frame->timestamp );
     dc1394_capture_enqueue( m_camera, m_frame ); // release the frame
-    
-    //if( m_auto_exposure )
-    //{
-        //// adjust auto exposure if some points are too bright in the image
-        //if( !m_adjusted_exposure )
-        //{
-            //m_adjusted_exposure = *m_auto_exposure;
-        //}
-        
-        //double mean = cv::norm( cv::mean( m_image ) );       
-        
-        //if( m_last_shutter_update.is_not_a_date_time() || ( m_last_shutter_update < m_time - boost::posix_time::milliseconds( 200 ) ) )
-        //{
-            //unsigned int shutter;
-            //dc1394_feature_get_value( m_camera, DC1394_FEATURE_SHUTTER, &shutter );
-            //m_last_shutter_update = m_time;
-            //if( ( mean < *m_adjusted_exposure - 1 ) && ( shutter < 500 ) )
-            //{
-////                 std::cerr << " too dark " << std::endl;
-                //shutter++;
-            //}
-            //else if( ( mean > *m_adjusted_exposure + 1 ) && ( shutter > 5 ) )
-            //{
-////                 std::cerr << " too bright " << std::endl;
-                //shutter--;
-            //}
-////             std::cerr << " shutter " << shutter << " exposure " << *m_exposure << " target " << *m_adjusted_exposure <<  std::endl;
-            //if( dc1394_feature_set_value( m_camera, DC1394_FEATURE_SHUTTER, shutter ) != DC1394_SUCCESS )
-            //{
-                //COMMA_THROW( comma::exception, "could not set shutter speed" );
-            //}
-        //}
-    //}
     
     return m_image;
 }
