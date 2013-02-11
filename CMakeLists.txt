@@ -123,6 +123,9 @@ CMAKE_DEPENDENT_OPTION( snark_build_sensors_sick "build sick components" ON "sna
 CMAKE_DEPENDENT_OPTION( snark_build_sensors_velodyne "build velodyne components" ON "snark_build_sensors" OFF )
 
 IF( snark_build_imaging )
+    IF( WIN32 )
+        SET( OpenCV_STATIC OFF )
+    ENDIF( WIN32 )
     SET( OpenCV_FIND_REQUIRED )
     FIND_PACKAGE(OpenCV REQUIRED)
 ENDIF( snark_build_imaging )

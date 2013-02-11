@@ -76,6 +76,11 @@ int main( int argc, char** argv )
 {
     try
     {
+        #ifdef WIN32
+        _setmode( _fileno( stdin ), _O_BINARY );
+        _setmode( _fileno( stdout ), _O_BINARY );
+        #endif
+
         boost::program_options::options_description description( "options" );
         std::string configFile;
         std::string leftPath;

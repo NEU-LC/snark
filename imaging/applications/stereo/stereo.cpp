@@ -71,11 +71,12 @@ void stereo::process( const cv::Mat& left, const cv::Mat& right, const cv::Stere
        for( int j = 0; j < points.cols; j++ )
        {
             cv::Point3f point = points.at< cv::Point3f >( i, j );
-            point *= 16.0; // disparity has a factor 16
-            if( std::fabs( point.z ) < 20 ) // TODO config max distance ?
+            
+            if( std::fabs( point.z ) < 10000 ) // CV uses 10,000 as invalid. TODO config max distance ?
             {
+                point *= 16.0; // disparity has a factor 16
                 cv::Vec3b color = leftRectified.at< cv::Vec3b >( i, j );
-                colored_point point_color( point.x, point.y, point.z, color[2], color[1], color[1] );
+                colored_point point_color( point.x, point.y, point.z, color[2], color[1], color[0] );
                 point_color.time = time;
                 point_color.block = m_frame_counter;
                 if( m_binary )
