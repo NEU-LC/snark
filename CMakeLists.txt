@@ -225,7 +225,8 @@ ADD_SUBDIRECTORY( visiting )
 
 # Package 
 IF( WIN32 )
-    FILE( GLOB OpenCV_DLLS ${OpenCV_DIR}/bin/Release/*.dll )
+    FILE( GLOB OpenCV_DLLS ${OpenCV_LIB_PATH}/../bin/*.dll ) #from opencv version 2.4
+            
     GET_FILENAME_COMPONENT( QT_BIN_DIR ${QT_QMAKE_EXECUTABLE} PATH )
     FILE( GLOB QT_DLLS ${QT_BIN_DIR}/*.dll )
 
