@@ -358,10 +358,11 @@ static std::string usage_impl_()
     oss << "    cv::Mat image filters usage (';'-separated):" << std::endl;
     oss << "        bayer=<mode>: convert from bayer, <mode>=1-4" << std::endl;
     oss << "        crop=[<x>,<y>],<width>,<height>: crop the portion of the image starting at x,y with size width x height" << std::endl;
-    oss << "        crop-tile=[<x>,<y>],<num-tile-x>,<num-tile-y>: divide the image in num-tile-x x num-tile-y tiles, and crop the tile x,y" << std::endl;
+    oss << "        crop-tile=[<x>,<y>],<num-tile-x>,<num-tile-y>: divide the image in num-tile-x x num-tile-y tiles, and crop the tile x,y (count from zero)" << std::endl;
     oss << "        cross[=<x>,<y>]: draw cross-hair at x,y; default: at image center" << std::endl;
     oss << "        flip: flip vertically" << std::endl;
     oss << "        flop: flip horizontally" << std::endl;
+    oss << "        split: split r,g,b channels into a 3x1 gray image" << std::endl;
     oss << "        text=<text>[,x,y][,colour]: print text; default x,y: 10,10; default colour: yellow" << std::endl;
     oss << "        null: same as linux /dev/null (since windows does not have it)" << std::endl;
     oss << "        resize=<width>,<height>: resize" << std::endl;
