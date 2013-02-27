@@ -157,43 +157,51 @@ static block_t* read_block_impl_( ::tbb::flow_control* flow = NULL )
 {
     static boost::optional< block_t::pair_t > last;
     static comma::uint32 block_id = 0;
-    static block_t dummy_block;
-    block_t* block = &dummy_block; // quick and dirty, only if --discard
-    for( unsigned int i = 0; i < blocks.size(); ++i ) { if( blocks[i].empty ) { block = &blocks[i]; break; } }
-    block->clear();
-    block->empty = false;
-    static comma::csv::input_stream< input_t > istream( std::cin, csv );
-    while( true )
+    block_t* block = NULL;
+    while( !block ) // quick and dirty, only if --discard
     {
-        if( last )
-        {
-            block_id = last->first.block;
-            block->id = block_id;
-            block->points.push_back( *last );
-            last.reset();
-        }
-        if( is_shutdown || std::cout.bad() || std::cin.bad() || std::cin.eof() )
-        {
-            if( bursty_reader ) { bursty_reader->stop(); } // quick and dirty, it sucks...
-            if( flow ) { flow->stop(); }
-            break;
-        }
-        const input_t* p = istream.read();
-        if( !p ) { break; }
-        std::string line;
-        if( csv.binary() )
-        {
-            line.resize( csv.format().size() );
-            ::memcpy( &line[0], istream.binary().last(), csv.format().size() );
-        }
-        else
+        for( unsigned int i = 0; i < blocks.size(); ++i )
         { 
-            line = comma::join( istream.ascii().last(), csv.delimiter );
+            if( blocks[i].empty )
+            { 
+                block = &blocks[i];
+                block->clear();
+                block->empty = false;
+                break;
+            }
         }
-        last = std::make_pair( *p, line );
-        if( p->block != block_id ) { break; }
+        static comma::csv::input_stream< input_t > istream( std::cin, csv );
+        while( true )
+        {
+            if( last )
+            {
+                block_id = last->first.block;
+                if( block ) { block->id = block_id; block->points.push_back( *last ); }
+                last.reset();
+            }
+            if( is_shutdown || std::cout.bad() || std::cin.bad() || std::cin.eof() )
+            {
+                if( bursty_reader ) { bursty_reader->stop(); } // quick and dirty, it sucks...
+                if( flow ) { flow->stop(); }
+                break;
+            }
+            const input_t* p = istream.read();
+            if( !p ) { break; }
+            std::string line;
+            if( csv.binary() )
+            {
+                line.resize( csv.format().size() );
+                ::memcpy( &line[0], istream.binary().last(), csv.format().size() );
+            }
+            else
+            { 
+                line = comma::join( istream.ascii().last(), csv.delimiter );
+            }
+            last = std::make_pair( *p, line );
+            if( p->block != block_id ) { break; }
+        }
     }
-    return block == &dummy_block ? NULL : block; // quick and dirty, only if --discard
+    return block;
 }
 
 static block_t* read_block_( ::tbb::flow_control& flow ) { return read_block_impl_( &flow ); }
