@@ -135,42 +135,49 @@ template <> struct traits< input_t >
 
 } } // namespace ark { namespace visiting {
 
-struct block // quick and dirty, no optimization for now
+struct block_t // quick and dirty, no optimization for now
 {
     typedef std::pair< input_t, std::string > pair_t;
     typedef std::deque< pair_t > pairs_t;
     
     pairs_t points;
     comma::uint32 id;
-    bool empty;
+    volatile bool empty;
     boost::scoped_ptr< snark::partition > partition;
     
-    block() : id( 0 ), empty( true ) {}
+    block_t() : id( 0 ), empty( true ) {}
     void clear() { partition.reset(); points.clear(); empty = true; }
 };
 
-static boost::array< block, 3 > blocks;
-static comma::signal_flag shutdown_flag;
+static boost::array< block_t, 3 > blocks;
+static comma::signal_flag is_shutdown;
+static boost::scoped_ptr< snark::tbb::bursty_reader< block_t* > > bursty_reader;
 
-static unsigned int read_block_impl_( ::tbb::flow_control* flow = NULL )
+static block_t* read_block_impl_( ::tbb::flow_control* flow = NULL )
 {
-    static boost::optional< block::pair_t > last;
+    static boost::optional< block_t::pair_t > last;
     static comma::uint32 block_id = 0;
-    static unsigned int index = 0;
-    for( unsigned int i = 0; i < blocks.size(); ++i ) { if( blocks[i].empty ) { index = i; break; } }
-    blocks[index].clear();
-    blocks[index].empty = false;
+    static block_t dummy_block;
+    block_t* block = &dummy_block; // quick and dirty, only if --discard
+    for( unsigned int i = 0; i < blocks.size(); ++i ) { if( blocks[i].empty ) { block = &blocks[i]; break; } }
+    block->clear();
+    block->empty = false;
     static comma::csv::input_stream< input_t > istream( std::cin, csv );
     while( true )
     {
         if( last )
         {
             block_id = last->first.block;
-            blocks[index].id = block_id;
-            blocks[index].points.push_back( *last );
+            block->id = block_id;
+            block->points.push_back( *last );
             last.reset();
         }
-        if( shutdown_flag || std::cout.bad() || std::cin.bad() || std::cin.eof() ) { if( flow ) { flow->stop(); } break; }
+        if( is_shutdown || std::cout.bad() || std::cin.bad() || std::cin.eof() )
+        {
+            if( bursty_reader ) { bursty_reader->stop(); } // quick and dirty, it sucks...
+            if( flow ) { flow->stop(); }
+            break;
+        }
         const input_t* p = istream.read();
         if( !p ) { break; }
         std::string line;
@@ -185,18 +192,19 @@ static unsigned int read_block_impl_( ::tbb::flow_control* flow = NULL )
         }
         last = std::make_pair( *p, line );
         if( p->block != block_id ) { break; }
-    } 
-    return index;
+    }
+    return block == &dummy_block ? NULL : block; // quick and dirty, only if --discard
 }
 
-static unsigned int read_block_( ::tbb::flow_control& flow ) { return read_block_impl_( &flow ); }
-static unsigned int read_block_bursty_() { return read_block_impl_(); }
+static block_t* read_block_( ::tbb::flow_control& flow ) { return read_block_impl_( &flow ); }
+static block_t* read_block_bursty_() { return read_block_impl_(); }
 
-static void write_block_( unsigned int index )
+static void write_block_( block_t* block )
 {
-    for( std::size_t i = 0; i < blocks[index].points.size(); ++i )
+    if( !block ) { return; } // quick and dirty for now, only if --discard
+    for( std::size_t i = 0; i < block->points.size(); ++i )
     {
-        const block::pair_t& p = blocks[index].points[i];
+        const block_t::pair_t& p = block->points[i];
         if( !p.first.id && !output_all ) { continue; }
         comma::uint32 id = p.first.id && *p.first.id ? **p.first.id : std::numeric_limits< comma::uint32 >::max();
         std::cout.write( &p.second[0], p.second.size() );
@@ -204,21 +212,22 @@ static void write_block_( unsigned int index )
         else { std::cout << csv.delimiter << id << std::endl; }
     }
     std::cout.flush();
-    blocks[index].clear();
+    block->clear();
 }
 
-static unsigned int partition_( unsigned int index )
+static block_t* partition_( block_t* block )
 {
-    if( blocks[index].points.empty() ) { return index; }
+    if( !block ) { return NULL; } // quick and dirty for now, only if --discard
+    if( block->points.empty() ) { return block; }
     snark::math::closed_interval< double, 3 > extents;
-    for( std::size_t i = 0; i < blocks[index].points.size(); ++i ) { extents.set_hull( blocks[index].points[i].first.point ); }
-    blocks[index].partition.reset( new snark::partition( extents, resolution, min_points_per_voxel ) );
-    for( std::size_t i = 0; i < blocks[index].points.size(); ++i )
+    for( std::size_t i = 0; i < block->points.size(); ++i ) { extents.set_hull( block->points[i].first.point ); }
+    block->partition.reset( new snark::partition( extents, resolution, min_points_per_voxel ) );
+    for( std::size_t i = 0; i < block->points.size(); ++i )
     { 
-        if( blocks[index].points[i].first.flag ) { blocks[index].points[i].first.id = &blocks[index].partition->insert( blocks[index].points[i].first.point ); }
+        if( block->points[i].first.flag ) { block->points[i].first.id = &block->partition->insert( block->points[i].first.point ); }
     }
-    blocks[index].partition->commit( min_voxels_per_partition, min_points_per_partition, min_id );
-    return index;
+    block->partition->commit( min_voxels_per_partition, min_points_per_partition, min_id );
+    return block;
 }
 
 int main( int ac, char** av )
@@ -241,27 +250,28 @@ int main( int ac, char** av )
         discard = options.exists( "--discard,-d" );
         min_id = options.value( "--min-id", 0 );
         output_all = options.exists( "--output-all" );
-        ::tbb::filter_t< unsigned int, unsigned int > partition_filter( ::tbb::filter::serial_in_order, &partition_ );
-        ::tbb::filter_t< unsigned int, void > write_filter( ::tbb::filter::serial_in_order, &write_block_ );
+        ::tbb::filter_t< block_t*, block_t* > partition_filter( ::tbb::filter::serial_in_order, &partition_ );
+        ::tbb::filter_t< block_t*, void > write_filter( ::tbb::filter::serial_in_order, &write_block_ );
         #ifdef PROFILE
         ProfilerStart( "points-to-partitions.prof" ); {
         #endif
         if( discard )
         { 
-            snark::tbb::bursty_reader< unsigned int > read_filter( &read_block_bursty_ );
-            ::tbb::filter_t< void, void > filters = read_filter.filter() & partition_filter & write_filter;
-            while( read_filter.wait() ) { ::tbb::parallel_pipeline( 3, filters ); }
+            bursty_reader.reset( new snark::tbb::bursty_reader< block_t* >( &read_block_bursty_ ) );
+            ::tbb::filter_t< void, void > filters = bursty_reader->filter() & partition_filter & write_filter;
+            while( bursty_reader->wait() ) { ::tbb::parallel_pipeline( 3, filters ); }
+            bursty_reader->join();
         }
         else
         {
-            ::tbb::filter_t< void, unsigned int > read_filter( ::tbb::filter::serial_in_order, &read_block_ );
+            ::tbb::filter_t< void, block_t* > read_filter( ::tbb::filter::serial_in_order, &read_block_ );
             ::tbb::filter_t< void, void > filters = read_filter & partition_filter & write_filter;
             ::tbb::parallel_pipeline( 3, filters );
         }
         #ifdef PROFILE
         ProfilerStop(); }
         #endif
-        if( shutdown_flag ) { std::cerr << "points-to-partitions: caught signal" << std::endl; }
+        if( is_shutdown ) { std::cerr << "points-to-partitions: caught signal" << std::endl; }
         else { std::cerr << "points-to-partitions: end of stream" << std::endl; }
         return 0;
     }
