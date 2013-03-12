@@ -22,7 +22,7 @@
 #include <Eigen/Core>
 #include <comma/math/compare.h>
 
-namespace snark{ 
+namespace snark {
 
 /// polar point definition (range-bearing-elevation)
 class range_bearing_elevation
@@ -34,8 +34,8 @@ public:
 
     /// return coordinates
     double range() const { return m_rbe[0]; }
-    double bearing() const { return m_rbe[0]; }
-    double elevation() const { return m_rbe[0]; }
+    double bearing() const { return m_rbe[1]; }
+    double elevation() const { return m_rbe[2]; }
 
     /// for brevity's sake
     double r() const { return range(); }
@@ -48,7 +48,9 @@ public:
     void elevation( double t );
 
     Eigen::Vector3d to_cartesian() const;
-    
+    static range_bearing_elevation from_cartesian( double x, double y, double z );
+    static range_bearing_elevation from_cartesian( Eigen::Vector3d xyz );
+
 private:
     Eigen::Vector3d m_rbe;
 };
@@ -110,37 +112,38 @@ Eigen::Vector3d range_bearing_elevation::to_cartesian() const
                                     , range() * std::sin( elevation() ) );
 }
 
-} 
-
-namespace comma { namespace visiting {
-
-/// visiting traits
-template <>
-struct traits< snark::range_bearing_elevation >
+range_bearing_elevation range_bearing_elevation::from_cartesian( Eigen::Vector3d xyz )
 {
-    /// const visiting
-    template < typename Key, class Visitor >
-    static void visit( const Key&, const snark::range_bearing_elevation& p, Visitor& v )
+    return from_cartesian( xyz[0], xyz[1], xyz[2] );
+}
+
+range_bearing_elevation range_bearing_elevation::from_cartesian( double x, double y, double z )
+{
+    long double projectionSquare ( x*x +  y*y );
+    if ( comma::math::equal( projectionSquare, 0 ) )
     {
-        v.apply( "range", p.range() );
-        v.apply( "bearing", p.bearing() );
-        v.apply( "elevation", p.elevation() );
+        if ( comma::math::equal( z, 0 ) ) { return range_bearing_elevation(); }
+        return range_bearing_elevation( std::abs( z ), 0, comma::math::less( z, 0 ) ? -M_PI / 2 : M_PI / 2 );
+    }
+    long double rangeSquare( projectionSquare + z * z );
+    long double range( std::sqrt( rangeSquare ) );
+    long double elevation = 0;
+    if ( !comma::math::equal( z, 0 ) )
+    {
+        long double r = z / range;
+        if ( comma::math::less( ( long double )( 1.0 ), r ) ) { r = 1; }
+        else if ( comma::math::less( r, ( long double ) ( -1.0 ) ) ) { r = -1; }
+        elevation = std::asin( r );
     }
 
-    /// visiting
-    template < typename Key, class Visitor >
-    static void visit( Key, snark::range_bearing_elevation& p, Visitor& v )
-    {
-        double r;
-        double b;
-        double e;
-        v.apply( "range", r );
-        v.apply( "bearing", b );
-        v.apply( "elevation", e );
-        p = snark::range_bearing_elevation( r, b, e );
-    }
-};
+    long double r = x / std::sqrt( projectionSquare );
+    if ( comma::math::less( ( long double )( 1.0 ), r ) ) { r = 1; }
+    else if ( comma::math::less( r, ( long double ) ( -1.0 ) ) ) { r = -1; }
+    long double bearing = std::acos( r );
+    if ( comma::math::less( y, 0 ) ) { bearing = M_PI * 2 - bearing; }
+    return range_bearing_elevation( range, bearing, elevation );
+}
 
-} } // namespace comma { namespace visiting {
-  
+} // namespace snark {
+
 #endif // SNARK_MATH_RBE_H
