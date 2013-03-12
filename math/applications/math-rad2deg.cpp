@@ -16,6 +16,7 @@
 // You should have received a copy of the GNU Lesser General Public
 // License along with snark. If not, see <http://www.gnu.org/licenses/>.
 
+#include <cmath>
 #include <iostream>
 #include <boost/lexical_cast.hpp>
 #include <comma/string/string.h>
