@@ -23,6 +23,9 @@
 
 namespace snark { namespace math {
 
+const double point::earth_radius_km = 6367.435;
+const double point::reasonable_distance_precision = 0.0001;
+
 point::point(double _x, double _y, double _z)
 : x(_x), y(_y), z(_z)
 {

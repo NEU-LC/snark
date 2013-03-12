@@ -73,7 +73,7 @@ TEST( spherical_polygon, simple )
     points.push_back(q);
     points.push_back(r);
     math::spherical_polygon poly(points);
-    math::point e = math::point::from_deg_lat_lon(60, 60, 2*math::point::EARTH_RADIUS_KM);
+    math::point e = math::point::from_deg_lat_lon(60, 60, 2*math::point::earth_radius_km);
     poly.set_external_point(e);
 
     EXPECT_FALSE( poly.contains (e) );

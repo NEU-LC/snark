@@ -39,12 +39,12 @@ public:
     /**
      * average radius of the earth (km)
      */
-    static const double EARTH_RADIUS_KM = 6367.435;
+    static const double earth_radius_km;
 
     /**
      * magic number to check if one point is approximately equal to another point
      */
-    static const double REASONABLE_DISTANCE_PRECISION = 0.0001;
+    static const double reasonable_distance_precision;
 
     point( double _x=0, double _y=0, double _z=0 );
     point( const Eigen::Vector3d& v );
@@ -53,7 +53,7 @@ public:
      * equality test and approximate equality test
      */
     bool operator == (const point& p);
-    bool approx_equal (const point& p, double precision = REASONABLE_DISTANCE_PRECISION );
+    bool approx_equal (const point& p, double precision = reasonable_distance_precision );
 
     /**
      * @return the norm-square of this point relative to a given point p
@@ -69,8 +69,8 @@ public:
     /**
      * conversion from Spherical coordinate representation of the point (degree/radian)
      */
-    static point from_deg_lat_lon(double deg_lat, double deg_lon, double radius = EARTH_RADIUS_KM);
-    static point from_rad_lat_lon(double rad_lat, double rad_lon, double radius = EARTH_RADIUS_KM);
+    static point from_deg_lat_lon(double deg_lat, double deg_lon, double radius = earth_radius_km);
+    static point from_rad_lat_lon(double rad_lat, double rad_lon, double radius = earth_radius_km);
 
     /**
      * conversion to Spherical coordinate representation (degree/radian)

@@ -44,7 +44,7 @@ public:
     //   the angle of transformation is chosen randomly, repeat until reach non-zero parameters.
     // - solve intersection points in 3D Cartesian coordinate system.
     // - inverse transform points back to original coordinate frame.
-    bool intersects( const great_circle& other, double radius = point::EARTH_RADIUS_KM );
+    bool intersects( const great_circle& other, double radius = point::earth_radius_km );
 
 protected:
     void init_cartesian_plane_params();
