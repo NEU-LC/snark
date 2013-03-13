@@ -22,13 +22,14 @@
 #include <comma/application/signal_flag.h>
 #include <comma/base/exception.h>
 #include <comma/csv/stream.h>
-#include <snark/visiting/eigen.h>
 #include <comma/name_value/map.h>
-#include <snark/math/range_bearing_elevation.h>
 #include <comma/string/string.h>
-#include <snark/timing/ntp.h>
 #include <comma/visiting/traits.h>
+#include <snark/math/range_bearing_elevation.h>
 #include <snark/sensors/sick/protocol.h>
+#include <snark/timing/ntp.h>
+#include <snark/visiting/eigen.h>
+#include <snark/visiting/traits.h>
 
 #include <fcntl.h>
 

@@ -1,10 +1,10 @@
 SET( PROJECT "spherical_polygon" )
 SET( TARGET_NAME snark_${PROJECT} )
 
-FILE( GLOB source ${SOURCE_CODE_BASE_DIR}/math/${PROJECT}/*.cpp)
-FILE( GLOB includes ${SOURCE_CODE_BASE_DIR}/math/${PROJECT}/*.h)
+FILE( GLOB source ${SOURCE_CODE_BASE_DIR}/math/${PROJECT}/*.cpp )
+FILE( GLOB includes ${SOURCE_CODE_BASE_DIR}/math/${PROJECT}/*.h )
 
-SOURCE_GROUP( ${TARGET_NAME} FILES ${source} ${includes} ${detailIncludes} )
+SOURCE_GROUP( ${TARGET_NAME} FILES ${source} ${includes} )
 
 INSTALL( FILES ${includes} DESTINATION ${snark_INSTALL_INCLUDE_DIR}/math/${PROJECT} )
 
