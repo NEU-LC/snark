@@ -19,9 +19,10 @@
 #ifndef SNARK_VISITING_TRAITS_H_
 #define SNARK_VISITING_TRAITS_H_
 
-#include <snark/math/range_bearing_elevation.h>
 #include <comma/visiting/apply.h>
 #include <comma/visiting/visit.h>
+#include <snark/math/range_bearing_elevation.h>
+#include <snark/visiting/eigen.h>
 
 namespace comma { namespace visiting {
 
@@ -42,9 +43,9 @@ struct traits< snark::range_bearing_elevation >
     template < typename Key, class Visitor >
     static void visit( Key, snark::range_bearing_elevation& p, Visitor& v )
     {
-        double r;
-        double b;
-        double e;
+        double r = p.r();
+        double b = p.b();
+        double e = p.e();
         v.apply( "range", r );
         v.apply( "bearing", b );
         v.apply( "elevation", e );

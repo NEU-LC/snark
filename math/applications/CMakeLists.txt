@@ -23,6 +23,17 @@ ENDIF()
 ADD_EXECUTABLE( points-frame frame.cpp points-frame.cpp )
 TARGET_LINK_LIBRARIES( points-frame ${comma_ALL_LIBRARIES} ${snark_ALL_LIBRARIES} )
 
-INSTALL( TARGETS math-deg2rad math-rad2deg math-rotation-convert points-frame
+ADD_EXECUTABLE( points-to-cartesian points-to-cartesian.cpp )
+TARGET_LINK_LIBRARIES( points-to-cartesian snark_math ${comma_ALL_LIBRARIES} )
+
+ADD_EXECUTABLE( points-to-polar points-to-polar.cpp )
+TARGET_LINK_LIBRARIES( points-to-polar snark_math ${comma_ALL_LIBRARIES} )
+
+INSTALL( TARGETS math-deg2rad
+                 math-rad2deg
+                 math-rotation-convert
+                 points-frame
+                 points-to-cartesian
+                 points-to-polar
          RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR}
          COMPONENT Runtime )

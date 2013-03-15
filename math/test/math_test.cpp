@@ -18,6 +18,7 @@
 
 #include <gtest/gtest.h>
 #include <snark/math/interval.h>
+#include <snark/math/range_bearing_elevation.h>
 
 namespace snark { namespace math {
 
@@ -89,6 +90,11 @@ TEST( math, closed_interval_contains )
     EXPECT_TRUE( i.contains( Eigen::Vector3d( 10, 10, 5 ) ) );
     
     EXPECT_TRUE( i.contains( Eigen::Vector3d( 1, 0, 0 ) ) );
+}
+
+TEST( math, range_bearing_elevation )
+{
+    // todo
 }
 
 } }

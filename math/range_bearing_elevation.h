@@ -48,8 +48,8 @@ public:
     void elevation( double t );
 
     Eigen::Vector3d to_cartesian() const;
-    static range_bearing_elevation from_cartesian( double x, double y, double z );
-    static range_bearing_elevation from_cartesian( Eigen::Vector3d xyz );
+    const range_bearing_elevation& from_cartesian( double x, double y, double z );
+    const range_bearing_elevation& from_cartesian( const Eigen::Vector3d& xyz );
 
 private:
     Eigen::Vector3d m_rbe;

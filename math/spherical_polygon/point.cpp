@@ -126,7 +126,8 @@ point point::from_deg_lat_lon(double deg_lat, double deg_lon, double radius)
 
 double point::to_rad_lat_lon(double& rad_lat, double& rad_lon)
 {
-    snark::range_bearing_elevation rbe = snark::range_bearing_elevation::from_cartesian( x, y, z );
+    snark::range_bearing_elevation rbe;
+    rbe.from_cartesian( x, y, z );
     rad_lat = rbe.elevation();
     rad_lon = rbe.bearing();
     return rbe.range();
