@@ -224,6 +224,8 @@ struct Shapetraits< arc< Size > >
         // todo: calculate orientation
         // todo: calculate end
 
+        // see: http://en.wikipedia.org/wiki/Circumscribed_circle
+
         double radius;
         Eigen::Vector3d centre; // todo
         Eigen::Vector3d orientation; // todo

@@ -53,7 +53,7 @@ void usage( bool long_help = false )
     std::cerr << "    --long-help: more help" << std::endl;
     std::cerr << "    --range-threshold,-r=<value>: if present, output only the points" << std::endl;
     std::cerr << "                                  that have reference points nearer than range + range-threshold" << std::endl;
-    std::cerr << "    --threshold=<value>: angular radius in radians" << std::endl;
+    std::cerr << "    --angle-threshold,-a=<value>: angular radius in radians" << std::endl;
     std::cerr << "    --verbose,-v: more debug output" << std::endl;
     std::cerr << std::endl;
     std::cerr << "fields: r,b,e: range, bearing, elevation; default: r,b,e" << std::endl;
@@ -240,9 +240,9 @@ int main( int argc, char** argv )
         }
         csv.fields = comma::join( v, ',' );
         csv.full_xpath = false;
-        double threshold = options.value< double >( "--threshold" );
+        double threshold = options.value< double >( "--angle-threshold,-a" );
         boost::optional< double > range_threshold = options.optional< double >( "--range-threshold,-r" );
-        std::vector< std::string > unnamed = options.unnamed( "--verbose,-v", "--binary,-b,--delimiter,-d,--fields,-f,--range-threshold,-f,--threshold" );
+        std::vector< std::string > unnamed = options.unnamed( "--verbose,-v", "--binary,-b,--delimiter,-d,--fields,-f,--range-threshold,-r,--angle-threshold,-a" );
         if( unnamed.empty() ) { std::cerr << "points-detect-change: please specify file with the reference point cloud" << std::endl; return 1; }
         if( unnamed.size() > 1 ) { std::cerr << "points-detect-change: expected file with the reference point cloud, got: " << comma::join( unnamed, ' ' ) << std::endl; return 1; }
         #ifdef WIN32
