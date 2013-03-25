@@ -55,7 +55,7 @@ struct Shapetraits< Eigen::Vector3d >
 {
     static const QGL::DrawingMode drawingMode = QGL::Points;
     static const unsigned int size = 1;
-    
+
     static void update( const Eigen::Vector3d& p, const Eigen::Vector3d& offset, const QColor4ub& color, unsigned int block, qt3d::vertex_buffer& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents  )
     {
         Eigen::Vector3d point = p - offset;
@@ -74,9 +74,9 @@ struct Shapetraits< Eigen::Vector3d >
     {
         painter->draw( QGL::Points, size, index );
     }
-    
+
     static const Eigen::Vector3d& somePoint( const Eigen::Vector3d& point ) { return point; }
-    
+
     static const Eigen::Vector3d& center( const Eigen::Vector3d& point ) { return point; }
 };
 
@@ -96,7 +96,7 @@ struct Shapetraits< snark::math::closed_interval< double, 3 > >
         buffer.addVertex( QVector3D( max.x(), min.y(), max.z() ), color, block );
         buffer.addVertex( QVector3D( max.x(), max.y(), max.z() ), color, block );
         buffer.addVertex( QVector3D( max.x(), max.y(), min.z() ), color, block );
-        
+
         if( extents )
         {
             extents = extents->hull( snark::math::closed_interval< float, 3 >( min, max ) );
@@ -125,9 +125,9 @@ struct Shapetraits< snark::math::closed_interval< double, 3 > >
             painter->draw( QGL::Lines, &lineIndices[0], 8 );
         }
     }
-    
+
     static const Eigen::Vector3d& somePoint( const snark::math::closed_interval< double, 3 >& extents ) { return extents.min(); }
-    
+
     static Eigen::Vector3d center( const snark::math::closed_interval< double, 3 >& extents ) { return ( extents.min() + extents.max() ) / 2; }
 };
 
@@ -155,9 +155,9 @@ struct Shapetraits< std::pair< Eigen::Vector3d, Eigen::Vector3d > >
     {
         painter->draw( QGL::Lines, size, index );
     }
-    
+
     static const Eigen::Vector3d& somePoint( const std::pair< Eigen::Vector3d, Eigen::Vector3d >& line ) { return line.first; }
-    
+
     static Eigen::Vector3d center( const std::pair< Eigen::Vector3d, Eigen::Vector3d >& line ) { return ( line.first + line.second ) / 2; }
 };
 
@@ -187,14 +187,7 @@ struct Shapetraits< Ellipse< Size > >
             Eigen::Vector3d p( v.x(), v.y(), v.z() );
             Eigen::Vector3f point = ( p + c ).cast< float >();
             buffer.addVertex( QVector3D( point.x(), point.y(), point.z() ), color, block );
-            if( extents )
-            {
-                extents = extents->hull( point );
-            }
-            else
-            {
-                extents = snark::math::closed_interval< float, 3 >( point );
-            }
+            extents = extents ? extents->hull( point ) : snark::math::closed_interval< float, 3 >( point );
         }
     }
 
@@ -205,10 +198,61 @@ struct Shapetraits< Ellipse< Size > >
             painter->draw( QGL::LineLoop, Size, index + i );
         }
     }
-    
+
     static const Eigen::Vector3d& somePoint( const Ellipse< Size >& ellipse ) { return ellipse.center; }
 
     static Eigen::Vector3d center( const Ellipse< Size >& ellipse ) { return ellipse.center; }
+};
+
+template < std::size_t Size >
+struct arc // todo: quick and dirty; generalize for ellipse; and maybe get rid of ellipse class
+{
+    Eigen::Vector3d begin;
+    Eigen::Vector3d middle;
+    Eigen::Vector3d end;
+};
+
+template < std::size_t Size >
+struct Shapetraits< arc< Size > >
+{
+    static const unsigned int size = Size;
+    static void update( const arc< Size >& a, const Eigen::Vector3d& offset, const QColor4ub& color, unsigned int block, qt3d::vertex_buffer& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents  )
+    {
+
+        // todo: calculate centre based on begin
+        // todo: calculate radius
+        // todo: calculate orientation
+        // todo: calculate end
+
+        double radius;
+        Eigen::Vector3d centre; // todo
+        Eigen::Vector3d orientation; // todo
+        Eigen::Vector3d c = centre - offset;
+        const Eigen::Matrix3d& r = rotation_matrix::rotation( orientation );
+        static const double step = 3.14159265358979323846l * 2 / Size;
+        unsigned int size; // todo
+        double angle = 0;
+        for( std::size_t i = 0; i < size; ++i, angle += step ) // todo: use native opengl rotation and normals instead
+        {
+            Eigen::Vector3d v = r * Eigen::Vector3d( std::cos( angle ) * radius, std::sin( angle ) * radius, 0 );
+            Eigen::Vector3d p( v.x(), v.y(), v.z() );
+            Eigen::Vector3f point = ( p + c ).cast< float >();
+            buffer.addVertex( QVector3D( point.x(), point.y(), point.z() ), color, block );
+            extents = extents ? extents->hull( point ) : snark::math::closed_interval< float, 3 >( point );
+        }
+    }
+
+    static void draw( QGLPainter* painter, unsigned int size, unsigned int index )
+    {
+        for( unsigned int i = 0; i < size; i += Size ) // todo
+        {
+            painter->draw( QGL::Lines, size, index + i ); // todo: is it rubbish?
+        }
+    }
+
+    static const Eigen::Vector3d& somePoint( const arc< Size >& a ) { return a.begin; }
+
+    static Eigen::Vector3d center( const arc< Size >& a ) { return a.middle; } // quick and dirty
 };
 
 } } }
@@ -240,7 +284,7 @@ template <> struct traits< QColor4ub >
         v.apply( "a", p.alpha() );
     }
 };
-    
+
 template < typename S > struct traits< snark::graphics::View::ShapeWithId< S > >
 {
     template < typename Key, class Visitor >
