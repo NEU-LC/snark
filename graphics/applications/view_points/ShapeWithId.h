@@ -226,16 +226,14 @@ struct Shapetraits< arc< Size > >
         double beta = -end_begin.squaredNorm() * middle_end.dot( begin_middle ) / k;
         double gamma = -begin_middle.squaredNorm() * end_begin.dot( middle_end ) / k;
         Eigen::Vector3d centre = a.begin * alpha + a.middle * beta + a.end * gamma;
-        Eigen::Vector3d orientation = a.begin - centre; // todo
+        Eigen::Vector3d orientation = a.begin - centre; // or should it be the normal? then use cross products...
         double radius = ( a.begin - centre ).norm();
         orientation /= radius;
         Eigen::Vector3d c = centre - offset;
         const Eigen::Matrix3d& r = rotation_matrix::rotation( orientation );
-        static const double step = 3.14159265358979323846l * 2 / Size;
-        unsigned int size = ( std::asin( end_begin.norm() / ( radius * 2 ) ) / M_PI ) * Size;
-        if( size == 0 ) { size = 1; }
+        double step = ( std::asin( end_begin.norm() / ( radius * 2 ) ) * 2 ) / Size;
         double angle = 0;
-        for( std::size_t i = 0; i < size; ++i, angle += step ) // todo: use native opengl rotation and normals instead
+        for( std::size_t i = 0; i < Size; ++i, angle += step ) // todo: use native opengl rotation and normals instead
         {
             Eigen::Vector3d v = r * Eigen::Vector3d( std::cos( angle ) * radius, std::sin( angle ) * radius, 0 );
             Eigen::Vector3d p( v.x(), v.y(), v.z() );
