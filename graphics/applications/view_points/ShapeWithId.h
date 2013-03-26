@@ -23,6 +23,7 @@
 
 #include <boost/foreach.hpp>
 #include <boost/optional.hpp>
+#include <boost/static_assert.hpp>
 #include <comma/base/types.h>
 #include <comma/visiting/traits.h>
 #include <snark/math/interval.h>
@@ -216,21 +217,31 @@ template < std::size_t Size >
 struct Shapetraits< arc< Size > >
 {
     static const unsigned int size = Size;
+
+    BOOST_STATIC_ASSERT( Size % 2 == 0 ); // quick and dirty: for simplicity support only only even sizes
+
     static void update( const arc< Size >& a, const Eigen::Vector3d& offset, const QColor4ub& color, unsigned int block, qt3d::vertex_buffer& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents  )
     {
         Eigen::Vector3d begin_middle = a.begin - a.middle;
         Eigen::Vector3d middle_end = a.middle - a.end;
         Eigen::Vector3d end_begin = a.end - a.begin;
-        double k = begin_middle.cross( middle_end ).squaredNorm() * 2;
+        Eigen::Vector3d product = begin_middle.cross( middle_end );
+        double k = product.squaredNorm() * 2;
         double alpha = -middle_end.squaredNorm() * begin_middle.dot( end_begin ) / k;
         double beta = -end_begin.squaredNorm() * middle_end.dot( begin_middle ) / k;
         double gamma = -begin_middle.squaredNorm() * end_begin.dot( middle_end ) / k;
         Eigen::Vector3d centre = a.begin * alpha + a.middle * beta + a.end * gamma;
-        Eigen::Vector3d orientation = a.begin - centre; // or should it be the normal? then use cross products...
         double radius = ( a.begin - centre ).norm();
-        orientation /= radius;
         Eigen::Vector3d c = centre - offset;
-        const Eigen::Matrix3d& r = rotation_matrix::rotation( orientation );
+
+
+        Eigen::Vector3d w( 0, 0, 1 );
+        Eigen::Vector3d v = w.cross( product - centre );
+        v.normalize();
+        double cos = 1.0 - ( v - w ).squaredNorm() / 2.0;
+        if( cos > 1 ) { cos = 1; } else if( cos < -1 ) { cos = -1; }
+
+        const Eigen::Matrix3d& r = rotation_matrix( Eigen::Quaternion< double >( std::acos( cos ), v.x(), v.y(), v.z() ) ).rotation();
         double step = ( std::asin( end_begin.norm() / ( radius * 2 ) ) * 2 ) / Size;
         double angle = 0;
         for( std::size_t i = 0; i < Size; ++i, angle += step ) // todo: use native opengl rotation and normals instead
@@ -245,9 +256,10 @@ struct Shapetraits< arc< Size > >
 
     static void draw( QGLPainter* painter, unsigned int size, unsigned int index )
     {
-        for( unsigned int i = 0; i < size; i += Size ) // todo
+        for( unsigned int i = 0; i < size; i += Size )
         {
-            painter->draw( QGL::Lines, size, index + i ); // todo: is it rubbish?
+            painter->draw( QGL::Lines, Size, index + i );
+            painter->draw( QGL::Lines, Size - 1, index + i + 1 );
         }
     }
 
@@ -329,6 +341,25 @@ template < std::size_t Size > struct traits< snark::graphics::View::Ellipse< Siz
         v.apply( "orientation", p.orientation );
         v.apply( "major", p.major );
         v.apply( "minor", p.minor );
+    }
+};
+
+template < std::size_t Size > struct traits< snark::graphics::View::arc< Size > >
+{
+    template < typename Key, class Visitor >
+    static void visit( Key, snark::graphics::View::arc< Size >& p, Visitor& v )
+    {
+        v.apply( "begin", p.begin );
+        v.apply( "middle", p.middle );
+        v.apply( "end", p.end );
+    }
+
+    template < typename Key, class Visitor >
+    static void visit( Key, const snark::graphics::View::arc< Size >& p, Visitor& v )
+    {
+        v.apply( "begin", p.begin );
+        v.apply( "middle", p.middle );
+        v.apply( "end", p.end );
     }
 };
 

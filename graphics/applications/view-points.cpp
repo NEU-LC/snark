@@ -62,7 +62,8 @@ void usage()
     std::cerr << "    --point-size <point size>: default: 1" << std::endl;
     std::cerr << "    --shape <shape>: \"point\", \"extents\", \"line\", \"label\"; default \"point\"" << std::endl;
     std::cerr << "                     \"ellipse\": e.g. --shape=ellipse --fields=,,center,orientation,minor,major," << std::endl;
-    std::cerr << "                                  default orientation: in x,y plane" << std::endl;
+    std::cerr << "                                  orientation: roll,pitch,yaw; default: in x,y plane" << std::endl;
+    // todo arc
     std::cerr << "                     \"extents\": e.g. --shape=extents --fields=,,min,max,,," << std::endl;
     std::cerr << "                     \"line\": e.g. --shape=line --fields=,,first,second,,," << std::endl;
     std::cerr << "                     \"label\": e.g. --shape=label --fields=,x,y,z,,,label" << std::endl;
@@ -170,6 +171,11 @@ boost::shared_ptr< snark::graphics::View::Reader > makeReader( QGLView& viewer
         }
         csv.fields = comma::join( v, ',' );
     }
+    else if( shape == "arc" )
+    {
+        if( csv.fields == "" ) { csv.fields="begin,middle,end"; }
+        std::vector< std::string > v = comma::split( csv.fields, ',' );
+    }
     else if( shape == "extents" )
     {
         if( csv.fields == "" ) { csv.fields="min,max"; }
@@ -183,7 +189,7 @@ boost::shared_ptr< snark::graphics::View::Reader > makeReader( QGLView& viewer
         std::vector< std::string > v = comma::split( shape, '.' );
         if( v.size() < 2 )
         {
-            COMMA_THROW( comma::exception, "expected shape, got \"" << shape << "\"" ); 
+            COMMA_THROW( comma::exception, "expected shape, got \"" << shape << "\"" );
         }
         if( csv.fields == "" ) { csv.fields="point,orientation"; }
         if( v[1] == "png" || v[1] == "jpg" || v[1] == "jpeg" || v[1] == "bmp" || v[1] == "gif" )
@@ -195,7 +201,7 @@ boost::shared_ptr< snark::graphics::View::Reader > makeReader( QGLView& viewer
                 COMMA_THROW( comma::exception, "expected image size as width,height" );
             }
             double width = boost::lexical_cast< double >( sizeVector[0] );
-            double height = boost::lexical_cast< double >( sizeVector[0] );            
+            double height = boost::lexical_cast< double >( sizeVector[0] );
             return boost::shared_ptr< snark::graphics::View::Reader >( new snark::graphics::View::TextureReader( viewer, csv, shape, width, height ) );
         }
         else
@@ -239,10 +245,14 @@ boost::shared_ptr< snark::graphics::View::Reader > makeReader( QGLView& viewer
     {
         return boost::shared_ptr< snark::graphics::View::Reader >( new snark::graphics::View::ShapeReader< snark::graphics::View::Ellipse< 25 > >( viewer, csv, size, coloured, pointSize, label ) );
     }
+    else if( shape == "arc" )
+    {
+        return boost::shared_ptr< snark::graphics::View::Reader >( new snark::graphics::View::ShapeReader< snark::graphics::View::arc< 20 > >( viewer, csv, size, coloured, pointSize, label ) );
+    }
     COMMA_THROW( comma::exception, "expected shape, got \"" << shape << "\"" ); // never here
 }
 
-int main( int argc, char** argv ) 
+int main( int argc, char** argv )
 {
     try
     {
@@ -252,7 +262,7 @@ int main( int argc, char** argv )
         std::vector< std::string > properties = options.unnamed( "--z-is-up,--orthographic,--no-stdin"
                 , "--binary,--bin,-b,--fields,--size,--delimiter,-d,--colour,-c,--point-size,--image-size,--background-colour,--shape,--label,--camera,--camera-position,--fov,--model,--full-xpath" );
         QColor4ub backgroundcolour( QColor( QString( options.value< std::string >( "--background-colour", "#000000" ).c_str() ) ) );
-        boost::optional< comma::csv::options > camera_csv; 
+        boost::optional< comma::csv::options > camera_csv;
         boost::optional< Eigen::Vector3d > cameraposition;
         boost::optional< Eigen::Vector3d > cameraorientation;
 
@@ -321,7 +331,7 @@ int main( int argc, char** argv )
             viewer->readers.push_back( makeReader( *viewer, options, csvOptions, properties[i] ) );
         }
         if( !stdinAdded && !options.exists( "--no-stdin" ) )
-        {  
+        {
             csvOptions.filename = "-";
             viewer->readers.push_back( makeReader( *viewer, options, csvOptions ) );
         }
