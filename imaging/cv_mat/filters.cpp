@@ -34,7 +34,7 @@
 namespace snark{ namespace cv_mat {
 
 static filters::value_type cvt_color_impl_( filters::value_type m, unsigned int which )
-{    
+{
     filters::value_type n;
     n.first = m.first;
     if( m.second.channels() == 3 )
@@ -55,7 +55,7 @@ static filters::value_type crop_impl_( filters::value_type m, unsigned int x, un
 static filters::value_type crop_tile_impl_( filters::value_type m, unsigned int x, unsigned int y, unsigned int w, unsigned int h )
 {
     unsigned int tileWidth = m.second.cols / w;
-    unsigned int tileHeight = m.second.rows / h;    
+    unsigned int tileHeight = m.second.rows / h;
     unsigned int cropX = x * tileWidth;
     unsigned int cropY = y * tileHeight;
     return filters::value_type( m.first, cv::Mat( m.second, cv::Rect( cropX, cropY, tileWidth, tileHeight ) ) );
@@ -69,11 +69,11 @@ static filters::value_type flip_impl_( filters::value_type m, int how )
     return n;
 }
 
-static filters::value_type resize_impl_( filters::value_type m, unsigned int width, unsigned int height )
+static filters::value_type resize_impl_( filters::value_type m, unsigned int width, unsigned int height, double w, double h )
 {
     filters::value_type n;
     n.first = m.first;
-    cv::resize( m.second, n.second, cv::Size( width, height ) );
+    cv::resize( m.second, n.second, cv::Size( width ? width : m.second.cols * w, height ? height : m.second.rows * h ) );
     return n;
 }
 
@@ -173,7 +173,7 @@ class undistort_impl_
             cv::remap( m.second, n.second, x_, y_, cv::INTER_LINEAR, cv::BORDER_TRANSPARENT );
             return n;
         }
-        
+
     private:
         std::string filename_;
         std::vector< char > xbuf_;
@@ -265,7 +265,7 @@ std::vector< filter > filters::make( const std::string& how )
                 center->y() = boost::lexical_cast< unsigned int >( s[1] );
             }
             f.push_back( filter( boost::bind( &cross_impl_, _1, center ) ) );
-        }        
+        }
         else if( e[0] == "flip" )
         {
             f.push_back( filter( boost::bind( &flip_impl_, _1, 0 ) ) );
@@ -281,7 +281,7 @@ std::vector< filter > filters::make( const std::string& how )
             cv::Point p( 10, 10 );
             if( w.size() >= 3 ) { p = cv::Point( boost::lexical_cast< unsigned int >( w[1] ), boost::lexical_cast< unsigned int >( w[2] ) ); }
             cv::Scalar s( 0, 255, 255 );
-            if( w.size() >= 4 ) 
+            if( w.size() >= 4 )
             {
                 if( w[3] == "red" ) { s = cv::Scalar( 0, 0, 255 ); }
                 else if( w[3] == "green" ) { s = cv::Scalar( 0, 255, 0 ); }
@@ -295,8 +295,28 @@ std::vector< filter > filters::make( const std::string& how )
         }
         else if( e[0] == "resize" )
         {
-            std::pair< unsigned int, unsigned int > p = comma::csv::ascii< std::pair< unsigned int, unsigned int > >().get( e[1] );
-            f.push_back( filter( boost::bind( &resize_impl_, _1, p.first, p.second ) ) );
+            unsigned int width = 0;
+            unsigned int height = 0;
+            double w = 0;
+            double h = 0;
+            std::vector< std::string > r = comma::split( e[1], ',' );
+            switch( r.size() )
+            {
+                case 1:
+                    if( r[0].empty() ) { COMMA_THROW( comma::exception, "expected resize=<width>,<height>, got: \"" << e[1] << "\"" ); }
+                    try { width = height = boost::lexical_cast< unsigned int >( r[0] ); }
+                    catch( ... ) { w = h = boost::lexical_cast< double >( r[0] ); }
+                    break;
+                case 2:
+                    try { width = boost::lexical_cast< unsigned int >( r[0] ); }
+                    catch ( ... ) { w = boost::lexical_cast< double >( r[0] ); }
+                    try { height = boost::lexical_cast< unsigned int >( r[1] ); }
+                    catch ( ... ) { h = boost::lexical_cast< double >( r[1] ); }
+                    break;
+                default:
+                    COMMA_THROW( comma::exception, "expected resize=<width>,<height>, got: \"" << e[1] << "\"" );
+            }
+            f.push_back( filter( boost::bind( &resize_impl_, _1, width, height, w, h ) ) );
         }
         else if( e[0] == "timestamp" )
         {
@@ -365,14 +385,20 @@ static std::string usage_impl_()
     oss << "        split: split r,g,b channels into a 3x1 gray image" << std::endl;
     oss << "        text=<text>[,x,y][,colour]: print text; default x,y: 10,10; default colour: yellow" << std::endl;
     oss << "        null: same as linux /dev/null (since windows does not have it)" << std::endl;
-    oss << "        resize=<width>,<height>: resize" << std::endl;
+    oss << "        resize=<width>,<height>: e.g:" << std::endl;
+    oss << "            resize=512,1024 : resize to 512x1024 pixels" << std::endl;
+    oss << "            resize=0.2,0.4 : resize to 20% of width and 40% of height" << std::endl;
+    oss << "            resize=0.5 : resize proportionally to 50%" << std::endl;
+    oss << "            resize=0.5,1024 : 50% of width; heigth 1024 pixels" << std::endl;
+    oss << "            note: if no decimal dot '.', size is in pixels; if decimal dot present, size as a fraction" << std::endl;
+    oss << "                  i.e. 5 means 5 pixels; 5.0 means 5 times" << std::endl;
     oss << "        timestamp: write timestamp on images" << std::endl;
     oss << "        transpose: transpose the image (swap rows and columns)" << std::endl;
-    oss << "        undistort=<map file>: undistort" << std::endl;    
+    oss << "        undistort=<map file>: undistort" << std::endl;
     oss << "        view[=<wait-interval>]: view image; press <space> to save image (timestamp or system time as filename); <esc>: to close" << std::endl;
     oss << "                                <wait-interval>: a hack for now; milliseconds to wait for image display and key press; default 1" << std::endl;
-    oss << "        encode=<format>: encode images to the specified format. <format>=jpg|ppm|png|tiff..., make sure to use --no-header" << std::endl;
-    oss << "        file=<format>: write images to files with timestamp as name in the specified format. <format>=jpg|ppm|png|tiff...; if no timestamp, system time used" << std::endl;
+    oss << "        encode=<format>: encode images to the specified format. <format>: jpg|ppm|png|tiff..., make sure to use --no-header" << std::endl;
+    oss << "        file=<format>: write images to files with timestamp as name in the specified format. <format>: jpg|ppm|png|tiff...; if no timestamp, system time used" << std::endl;
     return oss.str();
 }
 
