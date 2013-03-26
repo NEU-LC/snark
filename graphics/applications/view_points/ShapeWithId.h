@@ -218,21 +218,22 @@ struct Shapetraits< arc< Size > >
     static const unsigned int size = Size;
     static void update( const arc< Size >& a, const Eigen::Vector3d& offset, const QColor4ub& color, unsigned int block, qt3d::vertex_buffer& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents  )
     {
-
-        // todo: calculate centre based on begin
-        // todo: calculate radius
-        // todo: calculate orientation
-        // todo: calculate end
-
-        // see: http://en.wikipedia.org/wiki/Circumscribed_circle
-
-        double radius;
-        Eigen::Vector3d centre; // todo
-        Eigen::Vector3d orientation; // todo
+        Eigen::Vector3d begin_middle = a.begin - a.middle;
+        Eigen::Vector3d middle_end = a.middle - a.end;
+        Eigen::Vector3d end_begin = a.end - a.begin;
+        double k = begin_middle.cross( middle_end ).squaredNorm() * 2;
+        double alpha = -middle_end.squaredNorm() * begin_middle.dot( end_begin ) / k;
+        double beta = -end_begin.squaredNorm() * middle_end.dot( begin_middle ) / k;
+        double gamma = -begin_middle.squaredNorm() * end_begin.dot( middle_end ) / k;
+        Eigen::Vector3d centre = a.begin * alpha + a.middle * beta + a.end * gamma;
+        Eigen::Vector3d orientation = a.begin - centre; // todo
+        double radius = ( a.begin - centre ).norm();
+        orientation /= radius;
         Eigen::Vector3d c = centre - offset;
         const Eigen::Matrix3d& r = rotation_matrix::rotation( orientation );
         static const double step = 3.14159265358979323846l * 2 / Size;
-        unsigned int size; // todo
+        unsigned int size = ( std::asin( end_begin.norm() / ( radius * 2 ) ) / M_PI ) * Size;
+        if( size == 0 ) { size = 1; }
         double angle = 0;
         for( std::size_t i = 0; i < size; ++i, angle += step ) // todo: use native opengl rotation and normals instead
         {
