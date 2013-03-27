@@ -32,11 +32,11 @@
 
 namespace snark { namespace graphics { namespace View {
 
-template< typename S >    
+template< typename S >
 class ShapeReader : public Reader
 {
     public:
-        ShapeReader( QGLView& viewer, comma::csv::options& options, std::size_t size, coloured* c, unsigned int pointSize, const std::string& label );
+        ShapeReader( QGLView& viewer, comma::csv::options& options, std::size_t size, coloured* c, unsigned int pointSize, const std::string& label, const S& sample = S() );
 
         void start();
         void update( const Eigen::Vector3d& offset );
@@ -45,7 +45,7 @@ class ShapeReader : public Reader
         void render( QGLPainter *painter = NULL );
         bool empty() const;
 
-    private:        
+    private:
         typedef std::deque< ShapeWithId< S > > DequeType;
         DequeType m_deque;
         mutable boost::mutex m_mutex;
@@ -54,16 +54,18 @@ class ShapeReader : public Reader
         std::vector< std::pair< QVector3D, std::string > > m_labels;
         unsigned int m_labelIndex;
         unsigned int m_labelSize;
+        ShapeWithId< S > sample_;
 };
 
 
-template< typename S >    
-ShapeReader< S >::ShapeReader( QGLView& viewer, comma::csv::options& options, std::size_t size, coloured* c, unsigned int pointSize, const std::string& label  ):
+template< typename S >
+ShapeReader< S >::ShapeReader( QGLView& viewer, comma::csv::options& options, std::size_t size, coloured* c, unsigned int pointSize, const std::string& label, const S& sample  ):
     Reader( viewer, options, size, c, pointSize, label ),
     m_buffer( size * Shapetraits< S >::size ),
     m_labels( size ),
     m_labelIndex( 0 ),
-    m_labelSize( 0 )
+    m_labelSize( 0 ),
+    sample_( sample )
 {
 }
 
@@ -131,15 +133,15 @@ inline bool ShapeReader< S >::readOnce()
                 // HACK poll on blocking pipe
                 ::usleep( 1000 );
 #endif
-                return true;                
+                return true;
             }
-            m_stream.reset( new comma::csv::input_stream< ShapeWithId< S > >( *m_istream(), options ) );
+            m_stream.reset( new comma::csv::input_stream< ShapeWithId< S > >( *m_istream(), options, sample_ ) );
         }
         const ShapeWithId< S >* p = m_stream->read();
         if( p == NULL )
         {
             m_shutdown = true;
-            return false;            
+            return false;
         }
         ShapeWithId< S > v = *p;
         Eigen::Vector3d center = Shapetraits< S >::center( v.shape );

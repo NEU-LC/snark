@@ -39,6 +39,7 @@ struct ShapeWithId // quick and dirty
 {
     typedef S Shape;
     ShapeWithId() : id( 0 ), block( 0 ) {}
+    ShapeWithId( const S& shape ) : shape( shape ), id( 0 ), block( 0 ) {}
     S shape;
     comma::uint32 id;
     comma::uint32 block;
@@ -209,8 +210,9 @@ template < std::size_t Size >
 struct arc // todo: quick and dirty; generalize for ellipse; and maybe get rid of ellipse class
 {
     Eigen::Vector3d begin;
-    Eigen::Vector3d middle;
+    boost::optional< Eigen::Vector3d > middle;
     Eigen::Vector3d end;
+    Eigen::Vector3d centre;
 };
 
 template < std::size_t Size >
@@ -223,15 +225,25 @@ struct Shapetraits< arc< Size > >
     static void update( const arc< Size >& a, const Eigen::Vector3d& offset, const QColor4ub& color, unsigned int block, qt3d::vertex_buffer& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents  )
     {
         // get centre
-        Eigen::Vector3d begin_middle = a.begin - a.middle;
-        Eigen::Vector3d middle_end = a.middle - a.end;
-        Eigen::Vector3d end_begin = a.end - a.begin;
-        Eigen::Vector3d normal = begin_middle.cross( middle_end );
-        double k = normal.squaredNorm() * 2;
-        double alpha = -middle_end.squaredNorm() * begin_middle.dot( end_begin ) / k;
-        double beta = -end_begin.squaredNorm() * middle_end.dot( begin_middle ) / k;
-        double gamma = -begin_middle.squaredNorm() * end_begin.dot( middle_end ) / k;
-        Eigen::Vector3d centre = a.begin * alpha + a.middle * beta + a.end * gamma;
+        Eigen::Vector3d centre;
+        Eigen::Vector3d normal;
+        if( a.middle )
+        {
+            Eigen::Vector3d begin_middle = a.begin - *a.middle;
+            Eigen::Vector3d middle_end = *a.middle - a.end;
+            Eigen::Vector3d end_begin = a.end - a.begin;
+            normal = begin_middle.cross( middle_end );
+            double k = normal.squaredNorm() * 2;
+            double alpha = -middle_end.squaredNorm() * begin_middle.dot( end_begin ) / k;
+            double beta = -end_begin.squaredNorm() * middle_end.dot( begin_middle ) / k;
+            double gamma = -begin_middle.squaredNorm() * end_begin.dot( middle_end ) / k;
+            centre = a.begin * alpha + *a.middle * beta + a.end * gamma;
+        }
+        else
+        {
+            centre = a.centre;
+            normal = ( a.begin - a.centre ).cross( a.end - a.centre );
+        }
         // get rotation from begin to end with Size steps
         Eigen::Vector3d b = a.begin - centre;
         Eigen::Vector3d e = a.end - centre;
@@ -259,7 +271,8 @@ struct Shapetraits< arc< Size > >
 
     static const Eigen::Vector3d& somePoint( const arc< Size >& a ) { return a.begin; }
 
-    static Eigen::Vector3d center( const arc< Size >& a ) { return a.middle; } // quick and dirty
+    static Eigen::Vector3d center( const arc< Size >& a ) { return a.middle ? *a.middle : a.centre; } // quick and dirty
+    //static Eigen::Vector3d center( const arc< Size >& a ) { return a.middle; } // quick and dirty
 };
 
 } } }
@@ -344,16 +357,18 @@ template < std::size_t Size > struct traits< snark::graphics::View::arc< Size > 
     static void visit( Key, snark::graphics::View::arc< Size >& p, Visitor& v )
     {
         v.apply( "begin", p.begin );
-        v.apply( "middle", p.middle );
+        if( p.middle ) { v.apply( "middle", *p.middle ); } // quick and dirty
         v.apply( "end", p.end );
+        v.apply( "centre", p.centre );
     }
 
     template < typename Key, class Visitor >
     static void visit( Key, const snark::graphics::View::arc< Size >& p, Visitor& v )
     {
         v.apply( "begin", p.begin );
-        v.apply( "middle", p.middle );
+        if( p.middle ) { v.apply( "middle", *p.middle ); } // quick and dirty
         v.apply( "end", p.end );
+        v.apply( "centre", p.centre );
     }
 };
 

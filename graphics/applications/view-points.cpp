@@ -173,7 +173,7 @@ boost::shared_ptr< snark::graphics::View::Reader > makeReader( QGLView& viewer
     }
     else if( shape == "arc" )
     {
-        if( csv.fields == "" ) { csv.fields="begin,middle,end"; }
+        if( csv.fields == "" ) { csv.fields="begin,end"; }
         std::vector< std::string > v = comma::split( csv.fields, ',' );
     }
     else if( shape == "extents" )
@@ -247,7 +247,9 @@ boost::shared_ptr< snark::graphics::View::Reader > makeReader( QGLView& viewer
     }
     else if( shape == "arc" )
     {
-        return boost::shared_ptr< snark::graphics::View::Reader >( new snark::graphics::View::ShapeReader< snark::graphics::View::arc< 20 > >( viewer, csv, size, coloured, pointSize, label ) );
+        snark::graphics::View::arc< 20 > sample; // quick and dirty
+        if( csv.has_field( "middle" ) || csv.has_field( "middle/x" ) || csv.has_field( "middle/y" ) || csv.has_field( "middle/z" ) ) { sample.middle = Eigen::Vector3d(); }
+        return boost::shared_ptr< snark::graphics::View::Reader >( new snark::graphics::View::ShapeReader< snark::graphics::View::arc< 20 > >( viewer, csv, size, coloured, pointSize, label, sample ) );
     }
     COMMA_THROW( comma::exception, "expected shape, got \"" << shape << "\"" ); // never here
 }
