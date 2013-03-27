@@ -213,6 +213,7 @@ struct arc // todo: quick and dirty; generalize for ellipse; and maybe get rid o
     boost::optional< Eigen::Vector3d > middle;
     Eigen::Vector3d end;
     Eigen::Vector3d centre;
+    arc() : centre( 0, 0, 0 ) {}
 };
 
 template < std::size_t Size >
@@ -244,6 +245,7 @@ struct Shapetraits< arc< Size > >
             centre = a.centre;
             normal = ( a.begin - a.centre ).cross( a.end - a.centre );
         }
+        normal.normalize();
         // get rotation from begin to end with Size steps
         Eigen::Vector3d b = a.begin - centre;
         Eigen::Vector3d e = a.end - centre;
