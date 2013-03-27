@@ -222,33 +222,27 @@ struct Shapetraits< arc< Size > >
 
     static void update( const arc< Size >& a, const Eigen::Vector3d& offset, const QColor4ub& color, unsigned int block, qt3d::vertex_buffer& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents  )
     {
+        // get centre
         Eigen::Vector3d begin_middle = a.begin - a.middle;
         Eigen::Vector3d middle_end = a.middle - a.end;
         Eigen::Vector3d end_begin = a.end - a.begin;
-        Eigen::Vector3d product = begin_middle.cross( middle_end );
-        double k = product.squaredNorm() * 2;
+        Eigen::Vector3d normal = begin_middle.cross( middle_end );
+        double k = normal.squaredNorm() * 2;
         double alpha = -middle_end.squaredNorm() * begin_middle.dot( end_begin ) / k;
         double beta = -end_begin.squaredNorm() * middle_end.dot( begin_middle ) / k;
         double gamma = -begin_middle.squaredNorm() * end_begin.dot( middle_end ) / k;
         Eigen::Vector3d centre = a.begin * alpha + a.middle * beta + a.end * gamma;
-        double radius = ( a.begin - centre ).norm();
+        // get rotation from begin to end with Size steps
+        Eigen::Vector3d b = a.begin - centre;
+        Eigen::Vector3d e = a.end - centre;
+        Eigen::AngleAxis< double > aa( Eigen::Quaternion< double >::FromTwoVectors( b, e ) );
+        Eigen::AngleAxis< double > nn( aa.angle() / ( Size - 1 ), normal );
+        const Eigen::Matrix3d& r = nn.toRotationMatrix();
         Eigen::Vector3d c = centre - offset;
-
-
-        Eigen::Vector3d w( 0, 0, 1 );
-        Eigen::Vector3d v = w.cross( product - centre );
-        v.normalize();
-        double cos = 1.0 - ( v - w ).squaredNorm() / 2.0;
-        if( cos > 1 ) { cos = 1; } else if( cos < -1 ) { cos = -1; }
-
-        const Eigen::Matrix3d& r = rotation_matrix( Eigen::Quaternion< double >( std::acos( cos ), v.x(), v.y(), v.z() ) ).rotation();
-        double step = ( std::asin( end_begin.norm() / ( radius * 2 ) ) * 2 ) / Size;
-        double angle = 0;
-        for( std::size_t i = 0; i < Size; ++i, angle += step ) // todo: use native opengl rotation and normals instead
+        Eigen::Vector3d v = b;
+        for( std::size_t i = 0; i < Size; ++i, v = r * v ) // todo: use native opengl rotation and normals instead
         {
-            Eigen::Vector3d v = r * Eigen::Vector3d( std::cos( angle ) * radius, std::sin( angle ) * radius, 0 );
-            Eigen::Vector3d p( v.x(), v.y(), v.z() );
-            Eigen::Vector3f point = ( p + c ).cast< float >();
+            Eigen::Vector3f point = ( v + c ).cast< float >();
             buffer.addVertex( QVector3D( point.x(), point.y(), point.z() ), color, block );
             extents = extents ? extents->hull( point ) : snark::math::closed_interval< float, 3 >( point );
         }
