@@ -1,4 +1,4 @@
-// This file is part of snark, a generic and flexible library 
+// This file is part of snark, a generic and flexible library
 // for robotics research.
 //
 // Copyright (C) 2011 The University of Sydney
@@ -10,7 +10,7 @@
 //
 // snark is distributed in the hope that it will be useful, but WITHOUT ANY
 // WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-// FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License 
+// FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License
 // for more details.
 //
 // You should have received a copy of the GNU Lesser General Public
@@ -85,14 +85,15 @@ void Viewer::read()
     if( !m_offset ) { return; }
     for( unsigned int i = 0; i < readers.size(); ++i )
     {
-        readers[i]->update( *m_offset );        
+        readers[i]->update( *m_offset );
     }
     m_shutdown = true;
+    bool ready_to_look = true;
     for( unsigned int i = 0; m_shutdown && i < readers.size(); ++i )
     {
-        m_shutdown &= readers[i]->isShutdown() || ( readers.size() > 1 && readers[i]->isStdIn() );
+        m_shutdown = m_shutdown && readers[i]->isShutdown();
+        ready_to_look = ready_to_look && ( readers[i]->isShutdown() || ( readers.size() > 1 && readers[i]->isStdIn() ) );
     }
-
     if( !m_cameraReader && m_cameraposition )
     {
         setCameraPosition( *m_cameraposition, *m_cameraorientation );
@@ -110,7 +111,7 @@ void Viewer::read()
             setCameraPosition( position, orientation );
         }
     }
-    else if( readers[0]->m_extents && readers[0]->m_num_points > 0 && ( m_shutdown || readers[0]->m_num_points >= readers[0]->size / 10 ) )
+    else if( readers[0]->m_extents && readers[0]->m_num_points > 0 && ( m_shutdown || ready_to_look || readers[0]->m_num_points >= readers[0]->size / 10 ) )
     {
         QVector3D min( readers[0]->m_extents->min().x(), readers[0]->m_extents->min().y(), readers[0]->m_extents->min().z() );
         QVector3D max( readers[0]->m_extents->max().x(), readers[0]->m_extents->max().y(), readers[0]->m_extents->max().z() );
@@ -121,15 +122,12 @@ void Viewer::read()
             lookAtCenter();
         }
     }
-    if( !m_shutdown )
-    {
-        update();
-    }
+    if( !m_shutdown ) { update(); }
 }
 
 
 void Viewer::paintGL( QGLPainter *painter )
-{    
+{
     for( unsigned int i = 0; i < readers.size(); ++i )
     {
         if( !readers[i]->show() ) { continue; }
@@ -138,21 +136,13 @@ void Viewer::paintGL( QGLPainter *painter )
         readers[i]->render( painter );
         if( readers[i]->pointSize > 1 ) { ::glDisable( GL_POINT_SMOOTH ); }
     }
-        
     draw_coordinates( painter );
 }
 
 void Viewer::setCameraPosition ( const Eigen::Vector3d& position, const Eigen::Vector3d& orientation )
 {
     Eigen::Vector3d p = position - *m_offset;
-    if( m_z_up )
-    {
-        camera()->setUpVector( QVector3D( 0, 0, 1 ) );
-    }
-    else
-    {
-        camera()->setUpVector( QVector3D( 0, 0, -1 ) );
-    }
+    camera()->setUpVector( QVector3D( 0, 0, m_z_up ? 1 : -1 ) );
     camera()->setEye( QVector3D( p.x(), p.y(), p.z() ) );
     double cos_yaw = std::cos( orientation.z() );
     double sin_yaw = std::sin( orientation.z() );
@@ -164,6 +154,5 @@ void Viewer::setCameraPosition ( const Eigen::Vector3d& position, const Eigen::V
     camera()->setCenter( QVector3D( where.x(), where.y(), where.z() ) );
     m_sceneCenter = QVector3D( scene_center.x(), scene_center.y(), scene_center.z() );
 }
-
 
 } } } // namespace snark { namespace graphics { namespace View {

@@ -1,4 +1,4 @@
-// This file is part of snark, a generic and flexible library 
+// This file is part of snark, a generic and flexible library
 // for robotics research.
 //
 // Copyright (C) 2011 The University of Sydney
@@ -10,7 +10,7 @@
 //
 // snark is distributed in the hope that it will be useful, but WITHOUT ANY
 // WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-// FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License 
+// FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License
 // for more details.
 //
 // You should have received a copy of the GNU Lesser General Public
@@ -23,7 +23,6 @@
 
 #ifdef WIN32
 #include <winsock2.h>
-
 //#include <windows.h>
 #endif
 
@@ -38,30 +37,30 @@ namespace snark { namespace graphics { namespace View {
 class Viewer : public qt3d::view
 {
     Q_OBJECT
-public:
-    std::vector< boost::shared_ptr< Reader > > readers;
-    Viewer( const QColor4ub& background_color, double fov, bool z_up, bool orthographic = false,
-            boost::optional< comma::csv::options > cameracsv = boost::optional< comma::csv::options >(),
-            boost::optional< Eigen::Vector3d > cameraposition = boost::optional< Eigen::Vector3d >(),
-            boost::optional< Eigen::Vector3d > cameraorientation = boost::optional< Eigen::Vector3d >()
-          );
-    void shutdown();
+    public:
+        std::vector< boost::shared_ptr< Reader > > readers;
 
-private slots:
-    void read();
+        Viewer( const QColor4ub& background_color, double fov, bool z_up, bool orthographic = false
+            , boost::optional< comma::csv::options > cameracsv = boost::optional< comma::csv::options >()
+            , boost::optional< Eigen::Vector3d > cameraposition = boost::optional< Eigen::Vector3d >()
+            , boost::optional< Eigen::Vector3d > cameraorientation = boost::optional< Eigen::Vector3d >() );
 
-private:
-    
-    void initializeGL( QGLPainter *painter );
-    void paintGL( QGLPainter *painter );
-    void setCameraPosition( const Eigen::Vector3d& position, const Eigen::Vector3d& orientation );
-    
-    bool m_shutdown;
-    bool m_lookAt;
-    boost::scoped_ptr< CameraReader > m_cameraReader;
-    boost::optional< Eigen::Vector3d > m_cameraposition;
-    boost::optional< Eigen::Vector3d > m_cameraorientation;
-    bool m_cameraFixed;
+        void shutdown();
+
+    private slots:
+        void read();
+
+    private:
+        void initializeGL( QGLPainter *painter );
+        void paintGL( QGLPainter *painter );
+        void setCameraPosition( const Eigen::Vector3d& position, const Eigen::Vector3d& orientation );
+
+        bool m_shutdown;
+        bool m_lookAt;
+        boost::scoped_ptr< CameraReader > m_cameraReader;
+        boost::optional< Eigen::Vector3d > m_cameraposition;
+        boost::optional< Eigen::Vector3d > m_cameraorientation;
+        bool m_cameraFixed;
 };
 
 } } } // namespace snark { namespace graphics { namespace View {
