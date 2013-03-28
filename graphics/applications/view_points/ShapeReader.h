@@ -32,7 +32,7 @@
 
 namespace snark { namespace graphics { namespace View {
 
-template< typename S >
+template< typename S, typename How = how_t::points >
 class ShapeReader : public Reader
 {
     public:
@@ -58,10 +58,10 @@ class ShapeReader : public Reader
 };
 
 
-template< typename S >
-ShapeReader< S >::ShapeReader( QGLView& viewer, comma::csv::options& options, std::size_t size, coloured* c, unsigned int pointSize, const std::string& label, const S& sample  ):
+template< typename S, typename How >
+ShapeReader< S, How >::ShapeReader( QGLView& viewer, comma::csv::options& options, std::size_t size, coloured* c, unsigned int pointSize, const std::string& label, const S& sample  ):
     Reader( viewer, options, size, c, pointSize, label ),
-    m_buffer( size * Shapetraits< S >::size ),
+    m_buffer( size * Shapetraits< S, How >::size ),
     m_labels( size ),
     m_labelIndex( 0 ),
     m_labelSize( 0 ),
@@ -69,47 +69,47 @@ ShapeReader< S >::ShapeReader( QGLView& viewer, comma::csv::options& options, st
 {
 }
 
-template< typename S >
-inline void ShapeReader< S >::start()
+template< typename S, typename How >
+inline void ShapeReader< S, How >::start()
 {
     m_thread.reset( new boost::thread( boost::bind( &Reader::read, boost::ref( *this ) ) ) );
 }
 
-template< typename S >
-inline void ShapeReader< S >::update( const Eigen::Vector3d& offset )
+template< typename S, typename How >
+inline void ShapeReader< S, How >::update( const Eigen::Vector3d& offset )
 {
     boost::mutex::scoped_lock lock( m_mutex );
     for( typename DequeType::iterator it = m_deque.begin(); it != m_deque.end(); ++it )
     {
-        Shapetraits< S >::update( it->shape, offset, it->color, it->block, m_buffer, m_extents );
+        Shapetraits< S, How >::update( it->shape, offset, it->color, it->block, m_buffer, m_extents );
     }
     m_deque.clear();
     updatePoint( offset );
 }
 
-template< typename S >
-inline bool ShapeReader< S >::empty() const
+template< typename S, typename How >
+inline bool ShapeReader< S, How >::empty() const
 {
     boost::mutex::scoped_lock lock( m_mutex );
     return m_deque.empty();
 }
 
-template< typename S >
-inline const Eigen::Vector3d& ShapeReader< S >::somePoint() const
+template< typename S, typename How >
+inline const Eigen::Vector3d& ShapeReader< S, How >::somePoint() const
 {
     boost::mutex::scoped_lock lock( m_mutex );
-    return Shapetraits< S >::somePoint( m_deque.front().shape );
+    return Shapetraits< S, How >::somePoint( m_deque.front().shape );
 }
 
-template< typename S >
-inline void ShapeReader< S >::render( QGLPainter* painter )
+template< typename S, typename How >
+inline void ShapeReader< S, How >::render( QGLPainter* painter )
 {
     painter->setStandardEffect(QGL::FlatPerVertexColor);
     painter->clearAttributes();
     painter->setVertexAttribute(QGL::Position, m_buffer.points() );
     painter->setVertexAttribute(QGL::Color, m_buffer.color() );
 
-    Shapetraits< S >::draw( painter, m_buffer.size(), m_buffer.index() );
+    Shapetraits< S, How >::draw( painter, m_buffer.size(), m_buffer.index() );
     for( unsigned int i = 0; i < m_labelSize; i++ )
     {
         drawLabel( painter, m_labels[ i ].first, m_labels[ i ].second );
@@ -120,8 +120,8 @@ inline void ShapeReader< S >::render( QGLPainter* painter )
     }
 }
 
-template< typename S >
-inline bool ShapeReader< S >::readOnce()
+template< typename S, typename How >
+inline bool ShapeReader< S, How >::readOnce()
 {
     try
     {
@@ -144,7 +144,7 @@ inline bool ShapeReader< S >::readOnce()
             return false;
         }
         ShapeWithId< S > v = *p;
-        Eigen::Vector3d center = Shapetraits< S >::center( v.shape );
+        Eigen::Vector3d center = Shapetraits< S, How >::center( v.shape );
         if( !v.label.empty() )
         {
             m_labels[ m_labelIndex ] = std::make_pair( QVector3D( center.x(), center.y(), center.z() ) , v.label );
@@ -161,7 +161,7 @@ inline bool ShapeReader< S >::readOnce()
         v.color = m_colored->color( center, p->id, p->scalar, p->color );
         boost::mutex::scoped_lock lock( m_mutex );
         m_deque.push_back( v );
-        m_point = Shapetraits< S >::somePoint( v.shape );
+        m_point = Shapetraits< S, How >::somePoint( v.shape );
         m_color = v.color;
         return true;
     }

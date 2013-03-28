@@ -48,34 +48,10 @@ struct ShapeWithId // quick and dirty
     double scalar;
 };
 
+struct how_t { struct points; struct connected; struct loop; }; // quick and dirty; for points only
 
-template < class S >
+template < class S, typename How = how_t::points >
 struct Shapetraits {}; // quick and dirty
-
-template<>
-struct Shapetraits< Eigen::Vector3d >
-{
-    static const QGL::DrawingMode drawingMode = QGL::Points;
-    static const unsigned int size = 1;
-
-    static void update( const Eigen::Vector3d& p, const Eigen::Vector3d& offset, const QColor4ub& color, unsigned int block, qt3d::vertex_buffer& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents  )
-    {
-        Eigen::Vector3d point = p - offset;
-        buffer.addVertex( QVector3D( point.x(), point.y(), point.z() ), color, block );
-        extents = extents
-                ? extents->hull( point.cast< float >() )
-                : snark::math::closed_interval< float, 3 >( point.cast< float >() );
-    }
-
-    static void draw( QGLPainter* painter, unsigned int size, unsigned int index )
-    {
-        painter->draw( QGL::Points, size, index );
-    }
-
-    static const Eigen::Vector3d& somePoint( const Eigen::Vector3d& point ) { return point; }
-
-    static const Eigen::Vector3d& center( const Eigen::Vector3d& point ) { return point; }
-};
 
 template<>
 struct Shapetraits< snark::math::closed_interval< double, 3 > >
@@ -260,6 +236,64 @@ struct Shapetraits< arc< Size > >
 
     static Eigen::Vector3d center( const arc< Size >& a ) { return a.middle ? *a.middle : a.centre; } // quick and dirty
     //static Eigen::Vector3d center( const arc< Size >& a ) { return a.middle; } // quick and dirty
+};
+
+template < typename How > struct draw_traits_;
+
+template <> struct draw_traits_< how_t::points >
+{
+    static const QGL::DrawingMode drawing_mode = QGL::Points;
+
+    static void draw( QGLPainter* painter, unsigned int size, unsigned int index )
+    {
+        painter->draw( QGL::Points, size, index );
+    }
+};
+
+template <> struct draw_traits_< how_t::loop >
+{
+    static const QGL::DrawingMode drawing_mode = QGL::DrawingMode();
+
+    static void draw( QGLPainter* painter, unsigned int size, unsigned int index )
+    {
+        painter->draw( QGL::LineLoop, size, index );
+    }
+};
+
+template <> struct draw_traits_< how_t::connected >
+{
+    static const QGL::DrawingMode drawing_mode = QGL::DrawingMode();
+
+    static void draw( QGLPainter* painter, unsigned int size, unsigned int index )
+    {
+        painter->draw( QGL::Lines, size, index );
+        if( size > 1 ) { painter->draw( QGL::Lines, size - 1, index + 1 ); }
+    }
+};
+
+template< typename How >
+struct Shapetraits< Eigen::Vector3d, How >
+{
+    static const QGL::DrawingMode drawingMode = draw_traits_< How >::drawing_mode;
+    static const unsigned int size = 1;
+
+    static void update( const Eigen::Vector3d& p, const Eigen::Vector3d& offset, const QColor4ub& color, unsigned int block, qt3d::vertex_buffer& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents  )
+    {
+        Eigen::Vector3d point = p - offset;
+        buffer.addVertex( QVector3D( point.x(), point.y(), point.z() ), color, block );
+        extents = extents
+                ? extents->hull( point.cast< float >() )
+                : snark::math::closed_interval< float, 3 >( point.cast< float >() );
+    }
+
+    static void draw( QGLPainter* painter, unsigned int size, unsigned int index )
+    {
+        draw_traits_< How >::draw( painter, size, index );
+    }
+
+    static const Eigen::Vector3d& somePoint( const Eigen::Vector3d& point ) { return point; }
+
+    static const Eigen::Vector3d& center( const Eigen::Vector3d& point ) { return point; }
 };
 
 } } }

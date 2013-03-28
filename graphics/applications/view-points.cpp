@@ -59,13 +59,18 @@ void usage()
     std::cerr << "            default: stretched by elevation from cyan to magenta from 0:1" << std::endl;
     std::cerr << "    --label <label>: text label displayed next to the latest point" << std::endl;
     std::cerr << "    --no-stdin: do not read from stdin" << std::endl;
-    std::cerr << "    --point-size <point size>: default: 1" << std::endl;
+    std::cerr << "    --point-size,--weight <point size>: default: 1" << std::endl;
     std::cerr << "    --shape <shape>: \"point\", \"extents\", \"line\", \"label\"; default \"point\"" << std::endl;
+    std::cerr << "                     \"arc\": e.g: --shape=arc --fields=,,begin,end,centre," << std::endl;
+    std::cerr << "                               or: --shape=arc --fields=,,begin,middle,end,,," << std::endl;
+    std::cerr << "                                   where 'begin' and 'end' are x,y,z points" << std::endl;
+    std::cerr << "                                   and 'middle' is a point between begin and end on the arc" << std::endl;
+    std::cerr << "                                   default: 'begin,end', with centre 0,0,0" << std::endl;
     std::cerr << "                     \"ellipse\": e.g. --shape=ellipse --fields=,,center,orientation,minor,major," << std::endl;
     std::cerr << "                                  orientation: roll,pitch,yaw; default: in x,y plane" << std::endl;
-    // todo arc
     std::cerr << "                     \"extents\": e.g. --shape=extents --fields=,,min,max,,," << std::endl;
     std::cerr << "                     \"line\": e.g. --shape=line --fields=,,first,second,,," << std::endl;
+    std::cerr << "                     \"loop\": connect all points of a block; fields same as for 'point'" << std::endl;
     std::cerr << "                     \"label\": e.g. --shape=label --fields=,x,y,z,,,label" << std::endl;
     std::cerr << "                     \"<model file ( obj, ply... )>\": e.g. --shape=vehicle.obj" << std::endl;
     std::cerr << "                     \"<model file ( obj, ply... );flip>\": flip the model around the x-axis" << std::endl;
@@ -123,15 +128,15 @@ void usage()
 
 // quick and dirty, todo: a proper structure, as well as a visitor for command line options
 boost::shared_ptr< snark::graphics::View::Reader > makeReader( QGLView& viewer
-                                                           , const comma::command_line_options& options
-                                                           , const comma::csv::options& csvOptions
-                                                           , const std::string& properties = "" )
+                                                             , const comma::command_line_options& options
+                                                             , const comma::csv::options& csvOptions
+                                                             , const std::string& properties = "" )
 {
     QColor4ub backgroundcolour( QColor( QString( options.value< std::string >( "--background-colour", "#000000" ).c_str() ) ) );
     comma::csv::options csv = csvOptions;
     std::string shape = options.value< std::string >( "--shape", "point" );
     std::size_t size = options.value< std::size_t >( "--size", shape == "point" ? 2000000 : 200000 );
-    unsigned int pointSize = options.value( "--point-size", 1u );
+    unsigned int pointSize = options.value( "--point-size,--weight", 1u );
     std::string colour = options.exists( "--colour" ) ? options.value< std::string >( "--colour" ) : options.value< std::string >( "-c", "-10:10" );
     std::string label = options.value< std::string >( "--label", "" );
     if( properties != "" )
@@ -141,6 +146,7 @@ boost::shared_ptr< snark::graphics::View::Reader > makeReader( QGLView& viewer
         comma::name_value::map m( properties, "filename", ';', '=' );
         size = m.value( "size", size );
         pointSize = m.value( "point-size", pointSize );
+        pointSize = m.value( "weight", pointSize );
         shape = m.value( "shape", shape );
         if( m.exists( "colour" ) ) { colour = m.value( "colour", colour ); }
         else if( m.exists( "color" ) ) { colour = m.value( "color", colour ); }
@@ -154,6 +160,22 @@ boost::shared_ptr< snark::graphics::View::Reader > makeReader( QGLView& viewer
         bool has_orientation = false;
         for( unsigned int i = 0; !has_orientation && i < v.size(); ++i ) { has_orientation = v[i] == "roll" || v[i] == "pitch" || v[i] == "yaw"; }
         return boost::shared_ptr< snark::graphics::View::Reader >( new snark::graphics::View::ShapeReader< Eigen::Vector3d >( viewer, csv, size, coloured, pointSize, label ) );
+    }
+    if( shape == "loop" )
+    {
+        if( csv.fields == "" ) { csv.fields="x,y,z"; }
+        std::vector< std::string > v = comma::split( csv.fields, ',' );
+        bool has_orientation = false;
+        for( unsigned int i = 0; !has_orientation && i < v.size(); ++i ) { has_orientation = v[i] == "roll" || v[i] == "pitch" || v[i] == "yaw"; }
+        return boost::shared_ptr< snark::graphics::View::Reader >( new snark::graphics::View::ShapeReader< Eigen::Vector3d, snark::graphics::View::how_t::loop >( viewer, csv, size, coloured, pointSize, label ) );
+    }
+    if( shape == "lines" ) // todo: get a better name
+    {
+        if( csv.fields == "" ) { csv.fields="x,y,z"; }
+        std::vector< std::string > v = comma::split( csv.fields, ',' );
+        bool has_orientation = false;
+        for( unsigned int i = 0; !has_orientation && i < v.size(); ++i ) { has_orientation = v[i] == "roll" || v[i] == "pitch" || v[i] == "yaw"; }
+        return boost::shared_ptr< snark::graphics::View::Reader >( new snark::graphics::View::ShapeReader< Eigen::Vector3d, snark::graphics::View::how_t::connected >( viewer, csv, size, coloured, pointSize, label ) );
     }
     if( shape == "label" )
     {
@@ -262,7 +284,7 @@ int main( int argc, char** argv )
         if( options.exists( "--help" ) || options.exists( "-h" ) ) { usage(); }
         comma::csv::options csvOptions( argc, argv );
         std::vector< std::string > properties = options.unnamed( "--z-is-up,--orthographic,--no-stdin"
-                , "--binary,--bin,-b,--fields,--size,--delimiter,-d,--colour,-c,--point-size,--image-size,--background-colour,--shape,--label,--camera,--camera-position,--fov,--model,--full-xpath" );
+                , "--binary,--bin,-b,--fields,--size,--delimiter,-d,--colour,-c,--point-size,--weight,--image-size,--background-colour,--shape,--label,--camera,--camera-position,--fov,--model,--full-xpath" );
         QColor4ub backgroundcolour( QColor( QString( options.value< std::string >( "--background-colour", "#000000" ).c_str() ) ) );
         boost::optional< comma::csv::options > camera_csv;
         boost::optional< Eigen::Vector3d > cameraposition;
