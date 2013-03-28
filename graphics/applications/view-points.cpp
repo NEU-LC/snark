@@ -70,6 +70,7 @@ void usage()
     std::cerr << "                                  orientation: roll,pitch,yaw; default: in x,y plane" << std::endl;
     std::cerr << "                     \"extents\": e.g. --shape=extents --fields=,,min,max,,," << std::endl;
     std::cerr << "                     \"line\": e.g. --shape=line --fields=,,first,second,,," << std::endl;
+    std::cerr << "                     \"lines\": connect all points of a block from first to the last; fields same as for 'point'" << std::endl;
     std::cerr << "                     \"loop\": connect all points of a block; fields same as for 'point'" << std::endl;
     std::cerr << "                     \"label\": e.g. --shape=label --fields=,x,y,z,,,label" << std::endl;
     std::cerr << "                     \"<model file ( obj, ply... )>\": e.g. --shape=vehicle.obj" << std::endl;
@@ -164,17 +165,11 @@ boost::shared_ptr< snark::graphics::View::Reader > makeReader( QGLView& viewer
     if( shape == "loop" )
     {
         if( csv.fields == "" ) { csv.fields="x,y,z"; }
-        std::vector< std::string > v = comma::split( csv.fields, ',' );
-        bool has_orientation = false;
-        for( unsigned int i = 0; !has_orientation && i < v.size(); ++i ) { has_orientation = v[i] == "roll" || v[i] == "pitch" || v[i] == "yaw"; }
         return boost::shared_ptr< snark::graphics::View::Reader >( new snark::graphics::View::ShapeReader< Eigen::Vector3d, snark::graphics::View::how_t::loop >( viewer, csv, size, coloured, pointSize, label ) );
     }
     if( shape == "lines" ) // todo: get a better name
     {
         if( csv.fields == "" ) { csv.fields="x,y,z"; }
-        std::vector< std::string > v = comma::split( csv.fields, ',' );
-        bool has_orientation = false;
-        for( unsigned int i = 0; !has_orientation && i < v.size(); ++i ) { has_orientation = v[i] == "roll" || v[i] == "pitch" || v[i] == "yaw"; }
         return boost::shared_ptr< snark::graphics::View::Reader >( new snark::graphics::View::ShapeReader< Eigen::Vector3d, snark::graphics::View::how_t::connected >( viewer, csv, size, coloured, pointSize, label ) );
     }
     if( shape == "label" )
