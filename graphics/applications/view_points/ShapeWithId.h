@@ -62,14 +62,9 @@ struct Shapetraits< Eigen::Vector3d >
     {
         Eigen::Vector3d point = p - offset;
         buffer.addVertex( QVector3D( point.x(), point.y(), point.z() ), color, block );
-        if( extents )
-        {
-            extents = extents->hull( point.cast< float >() );
-        }
-        else
-        {
-            extents = snark::math::closed_interval< float, 3 >( point.cast< float >() );
-        }
+        extents = extents
+                ? extents->hull( point.cast< float >() )
+                : snark::math::closed_interval< float, 3 >( point.cast< float >() );
     }
 
     static void draw( QGLPainter* painter, unsigned int size, unsigned int index )
@@ -98,15 +93,9 @@ struct Shapetraits< snark::math::closed_interval< double, 3 > >
         buffer.addVertex( QVector3D( max.x(), min.y(), max.z() ), color, block );
         buffer.addVertex( QVector3D( max.x(), max.y(), max.z() ), color, block );
         buffer.addVertex( QVector3D( max.x(), max.y(), min.z() ), color, block );
-
-        if( extents )
-        {
-            extents = extents->hull( snark::math::closed_interval< float, 3 >( min, max ) );
-        }
-        else
-        {
-            extents = snark::math::closed_interval< float, 3 >( min, max );
-        }
+        extents = extents
+                ? extents->hull( snark::math::closed_interval< float, 3 >( min, max ) )
+                : snark::math::closed_interval< float, 3 >( min, max );
     }
 
     static void draw( QGLPainter* painter, unsigned int size, unsigned int index )
@@ -143,14 +132,10 @@ struct Shapetraits< std::pair< Eigen::Vector3d, Eigen::Vector3d > >
         Eigen::Vector3f second = ( p.second - offset ).cast< float >();
         buffer.addVertex( QVector3D( first.x(), first.y(), first.z() ), color, block );
         buffer.addVertex( QVector3D( second.x(), second.y(), second.z() ), color, block );
-        if( extents )
-        {
-            extents = extents->hull( snark::math::closed_interval< float, 3 >( first, second ) );
-        }
-        else
-        {
-            extents = snark::math::closed_interval< float, 3 >( first, second );
-        }
+        extents = extents
+                ? extents->hull( snark::math::closed_interval< float, 3 >( first ) )
+                : snark::math::closed_interval< float, 3 >( first );
+        extents = extents->hull( snark::math::closed_interval< float, 3 >( second ) );
     }
 
     static void draw( QGLPainter* painter, unsigned int size, unsigned int index )
