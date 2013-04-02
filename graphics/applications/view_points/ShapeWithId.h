@@ -186,6 +186,18 @@ struct Shapetraits< arc< Size > >
 
     static void update( const arc< Size >& a, const Eigen::Vector3d& offset, const QColor4ub& color, unsigned int block, qt3d::vertex_buffer& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents  )
     {
+        if( ( a.begin - a.end ).squaredNorm() < ( 0.001 * 0.001 ) ) // real quick and dirty: if begin and end coincide
+        {
+            Eigen::Vector3d v = a.begin;
+            Eigen::Vector3d step = ( a.end - a.begin ) / Size;
+            for( std::size_t i = 0; i < Size; ++i, v += step ) // just to make the gl buffer sizes right
+            {
+                Eigen::Vector3f point = ( v - offset ).cast< float >();
+                buffer.addVertex( QVector3D( point.x(), point.y(), point.z() ), color, block );
+                extents = extents ? extents->hull( point ) : snark::math::closed_interval< float, 3 >( point );
+            }
+            return;
+        }
         // get centre
         Eigen::Vector3d centre;
         Eigen::Vector3d normal;
