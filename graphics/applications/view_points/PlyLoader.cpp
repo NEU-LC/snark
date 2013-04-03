@@ -35,11 +35,8 @@ struct ply_vertex
 {
     Eigen::Vector3d point;
     Eigen::Vector3d normal; // todo: make normals boost::optional
-    unsigned char r;
-    unsigned char g;
-    unsigned char b;
-    unsigned char a;
-    ply_vertex() : point( 0, 0, 0 ), normal( 0, 0, 0 ), r( 255 ), g( 255 ), b( 255 ), a( 255 ) {}
+    QColor4ub color;
+    ply_vertex() : point( 0, 0, 0 ), normal( 0, 0, 0 ), color( 255, 255, 255, 255 ) {} //ply_vertex() : point( 0, 0, 0 ), normal( 0, 0, 0 ), r( 0 ), g( 0 ), b( 0 ), a( 255 ) {}
 };
 
 } } } // namespace snark { namespace graphics { namespace View {
@@ -52,20 +49,28 @@ template <> struct traits< snark::graphics::View::ply_vertex >
     {
         v.apply( "point", p.point );
         v.apply( "normal", p.normal );
-        v.apply( "r", p.r );
-        v.apply( "g", p.g );
-        v.apply( "b", p.b );
-        v.apply( "a", p.a );
+        unsigned int i = p.color.red();
+        v.apply( "r", i );
+        p.color.setRed( i );
+        i = p.color.green();
+        v.apply( "g", i );
+        p.color.setGreen( i );
+        i = p.color.blue();
+        v.apply( "b", i );
+        p.color.setBlue( i );
+        i = p.color.alpha();
+        v.apply( "a", i );
+        p.color.setAlpha( i );
     }
 
     template < typename Key, class Visitor > static void visit( const Key&, const snark::graphics::View::ply_vertex& p, Visitor& v )
     {
         v.apply( "point", p.point );
         v.apply( "normal", p.normal );
-        v.apply( "r", p.r );
-        v.apply( "g", p.g );
-        v.apply( "b", p.b );
-        v.apply( "a", p.a );
+        v.apply( "r", p.color.red() );
+        v.apply( "g", p.color.green() );
+        v.apply( "b", p.color.blue() );
+        v.apply( "a", p.color.alpha() );
     }
 };
 
@@ -73,7 +78,7 @@ template <> struct traits< snark::graphics::View::ply_vertex >
 
 namespace snark { namespace graphics { namespace View {
 
-PlyLoader::PlyLoader( const std::string& file )
+PlyLoader::PlyLoader( const std::string& file, boost::optional< QColor4ub > color ) : color_( color )
 {
     std::ifstream stream( file.c_str() );
     char line[255];
@@ -110,6 +115,11 @@ PlyLoader::PlyLoader( const std::string& file )
         else if( std::strcmp(line, "property uchar blue" ) == 0 ) { fields.push_back( "b" ); }
         else if( std::strcmp(line, "property uchar alpha" ) == 0 ) { fields.push_back( "a" ); }
     }
+    std::cerr << "==> ply loader: " << ( color_ ? "color" : "no color" ) << std::endl;
+    std::cerr << "==> r: " << color_->red() << std::endl;
+    std::cerr << "==> g: " << color_->green() << std::endl;
+    std::cerr << "==> b: " << color_->blue() << std::endl;
+    std::cerr << "==> a: " << color_->alpha() << std::endl;
     comma::csv::options csv;
     csv.fields = comma::join( fields, ',' );
     csv.full_xpath = true;
@@ -124,18 +134,19 @@ PlyLoader::PlyLoader( const std::string& file )
         std::string s;
         while( s.empty() && !stream.eof() ) { std::getline( stream, s ); }
         ply_vertex v;
+        if( color_ ) { v.color = *color_; } // quick and dirty
         ascii.get( v, s );
         if( numFace > 0 )
         {
             geometry.appendVertex( QVector3D( v.point.x(), v.point.y(), v.point.z() ) );
             if( has_normals ) { geometry.appendNormal( QVector3D( v.normal.x(), v.normal.y(), v.normal.z() ) ); }
-            geometry.appendColor( QColor4ub( v.r, v.g, v.b, v.a ) );
+            geometry.appendColor( v.color );
         }
         else
         {
             vertices.append( QVector3D( v.point.x(), v.point.y(), v.point.z() ) );
             // todo: normals?
-            colors.append( QColor4ub( v.r, v.g, v.b, v.a ) );
+            colors.append( v.color );
         }
     }
     if( numFace > 0 )

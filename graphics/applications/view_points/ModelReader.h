@@ -29,7 +29,7 @@ class QGLAbstractScene;
 
 namespace snark { namespace graphics { namespace View {
 
-/// display 3d models ( obj or 3ds ), set its position from an input csv stream       
+/// display 3d models ( obj or 3ds ), set its position from an input csv stream
 class ModelReader : public Reader
 {
     public:
@@ -46,8 +46,9 @@ class ModelReader : public Reader
         boost::scoped_ptr< comma::csv::input_stream< PointWithId > > m_stream;
         const std::string m_file;
         QGLAbstractScene* m_scene;
-        bool m_flip; 
+        bool m_flip;
         boost::optional< PlyLoader > m_plyLoader;
+        const coloured* coloured_;
 };
 
 } } } // namespace snark { namespace graphics { namespace View {

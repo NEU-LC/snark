@@ -33,9 +33,10 @@ namespace snark { namespace graphics { namespace View {
 /// @param c color used for the label
 /// @param label text displayed as label
 ModelReader::ModelReader( QGLView& viewer, comma::csv::options& options, const std::string& file, bool flip, snark::graphics::View::coloured* c, const std::string& label )
-    : Reader( viewer, options, 1, c, 1, label, QVector3D( 0, 1, 1 ) ), // TODO make offset configurable ?
-      m_file( file ),
-      m_flip( flip )
+    : Reader( viewer, options, 1, c, 1, label, QVector3D( 0, 1, 1 ) ) // TODO make offset configurable ?
+    , m_file( file )
+    , m_flip( flip )
+    , coloured_( c )
 {
 }
 
@@ -43,9 +44,11 @@ void ModelReader::start()
 {
     if( m_file.substr( m_file.size() - 3, 3 ) == "ply" )
     {
-        m_plyLoader = PlyLoader( m_file );
+        boost::optional< QColor4ub > color;
+        if( dynamic_cast< const Fixed* >( coloured_ ) ) { color = coloured_->color( Eigen::Vector3d( 0, 0, 0 ), 0, 0, QColor4ub() ); } // quick and dirty
+        m_plyLoader = PlyLoader( m_file, color );
     }
-    
+
     if( !m_plyLoader )
     {
         m_scene = QGLAbstractScene::loadScene( QLatin1String( m_file.c_str() ) );
@@ -114,4 +117,3 @@ bool ModelReader::readOnce()
 
 
 } } } // namespace snark { namespace graphics { namespace View {
-    

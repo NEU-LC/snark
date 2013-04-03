@@ -21,6 +21,8 @@
 #ifndef SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_PLY_LOADER_H_
 #define SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_PLY_LOADER_H_
 
+#include <boost/optional.hpp>
+#include <Qt3D/qcolor4ub.h>
 #include <Qt3D/qgeometrydata.h>
 #include <Qt3D/qglbuilder.h>
 #include <Qt3D/qglpainter.h>
@@ -31,11 +33,12 @@ namespace snark { namespace graphics { namespace View {
 class PlyLoader
 {
 public:
-    PlyLoader( const std::string& file );
+    PlyLoader( const std::string& file, boost::optional< QColor4ub > color );
     void draw( QGLPainter* painter );
 private:
     QGLSceneNode* m_sceneNode;
     QGLVertexBundle m_vertices;
+    boost::optional< QColor4ub > color_;
 };
 
 } } } // namespace snark { namespace graphics { namespace View {
