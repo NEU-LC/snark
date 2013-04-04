@@ -32,24 +32,24 @@
 
 namespace snark { namespace graphics { namespace View {
 
-Viewer::Viewer( const QColor4ub& background_color, double fov, bool z_up, bool orthographic,
-                boost::optional< comma::csv::options > camera_csv, boost::optional< Eigen::Vector3d > cameraposition,
-                boost::optional< Eigen::Vector3d > cameraorientation ) :
-    qt3d::view( background_color, fov, z_up, orthographic ),
-    m_lookAt( false ),
-    m_cameraposition( cameraposition ),
-    m_cameraorientation( cameraorientation )
+Viewer::Viewer( const QColor4ub& background_color
+              , double fov
+              , bool z_up
+              , bool orthographic
+              , boost::optional< comma::csv::options > camera_csv, boost::optional< Eigen::Vector3d > cameraposition
+              , boost::optional< Eigen::Vector3d > cameraorientation
+              , boost::optional< double > scene_radius )
+    : qt3d::view( background_color, fov, z_up, orthographic, scene_radius )
+    , m_lookAt( false )
+    , m_cameraposition( cameraposition )
+    , m_cameraorientation( cameraorientation )
 {
     QTimer* timer = new QTimer( this );
     timer->start( 40 );
     connect( timer, SIGNAL( timeout() ), this, SLOT( read() ) );
-    if( camera_csv )
-    {
-        m_cameraReader.reset( new CameraReader( *camera_csv ) );
-    }
+    if( camera_csv ) { m_cameraReader.reset( new CameraReader( *camera_csv ) ); }
     m_cameraFixed = m_cameraposition || m_cameraReader;
 }
-
 
 void Viewer::shutdown()
 {

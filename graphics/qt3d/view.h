@@ -30,12 +30,16 @@
 
 namespace snark { namespace graphics { namespace qt3d {
 
-/// base class for 3d viewers with mouse navigation    
+/// base class for 3d viewers with mouse navigation
 class view : public QGLView
 {
     Q_OBJECT
 public:
-    view( const QColor4ub& background_color, double fov,bool z_up, bool orthographic = false );
+    view( const QColor4ub& background_color
+        , double fov
+        , bool z_up
+        , bool orthographic = false
+        , boost::optional< double > scene_radius = boost::optional< double >() );
     virtual ~view() {}
 
 private slots:
@@ -53,16 +57,17 @@ protected:
     QVector3D unproject( float x, float y, float depth );
     boost::optional< QVector3D > getPoint( const QPoint& point2d );
     void mouseDoubleClickEvent( QMouseEvent *e );
-    
+
     const QColor4ub m_background_color;
     QVector3D m_sceneCenter;
     bool m_z_up;
     boost::optional< Eigen::Vector3d > m_offset;
-    
+
 private:
     boost::optional< QPoint > m_startPan;
     boost::optional< QPoint > m_startRotate;
-    double m_sceneRadius;
+    double scene_radius_;
+    bool scene_radius_fixed_;
     QVector3D m_revolve;
     boost::optional< coordinates > m_coordinates;
     bool m_show_coordinates;

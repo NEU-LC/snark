@@ -36,6 +36,12 @@ void usage()
     std::cerr << "view points from given files/streams and stdin" << std::endl;
     std::cerr << "(see examples below for a quick start)" << std::endl;
     std::cerr << std::endl;
+    std::cerr << "note: scene radius and point of view will be decided" << std::endl;
+    std::cerr << "      depending on the extents of the first data source" << std::endl;
+    std::cerr << "      (if you want it to be stdin, specify \"-\" as the" << std::endl;
+    std::cerr << "      explicitly as the first data source); see also" << std::endl;
+    std::cerr << "      --scene-radius option and examples" << std::endl;
+    std::cerr << std::endl;
     std::cerr << "usage: view-points [<options>] [<filenames>]" << std::endl;
     std::cerr << std::endl;
     std::cerr << "input data options" << std::endl;
@@ -94,6 +100,8 @@ void usage()
     std::cerr << std::endl;
     std::cerr << "more options" << std::endl;
     std::cerr << "    --background-colour <colour> : e.g. #ff0000, default: #000000 (black)" << std::endl;
+    std::cerr << "    --scene-radius,--radius=<value>: fixed scene radius in metres, since sometimes it is hard to imply" << std::endl;
+    std::cerr << "                            scene size from the dataset (e.g. for streams)" << std::endl;
     std::cerr << "    --z-is-up : z-axis is pointing up, default: pointing down ( north-east-down system )" << std::endl;
     std::cerr << std::endl;
     std::cerr << "csv options" << std::endl;
@@ -116,13 +124,33 @@ void usage()
     std::cerr << "    most of the options can be set for individual files (see examples)" << std::endl;
     std::cerr << std::endl;
     std::cerr << "Examples:" << std::endl;
-    std::cerr << "    view-points scan.csv" << std::endl;
-    std::cerr << "    cat $(ls *.csv) | view-points --size=200000" << std::endl;
-    std::cerr << "    cat $(ls *.bin) | view-points --size=200000 --binary \"%d%d%d\"" << std::endl;
-    std::cerr << "    view-points --colour merry $(ls labeled.*.csv)" << std::endl;
-    std::cerr << "    cat file.csv | view-points --fields=\"x,y,z,r,g,b\"" << std::endl;
-    std::cerr << "    view-points \"raw.csv;colour=0:20\" \"partitioned.csv;fields=x,y,z,id\";point-size=2" << std::endl;
-    std::cerr << "    echo \"0,0,0\" | view-points --shape /usr/local/etc/segway.shrimp.obj --z-is-up --orthographic" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    view points from file:" << std::endl;
+    std::cerr << "        view-points xyz.csv" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    hint that the file contains not more than 200000 points" << std::endl;
+    std::cerr << "        cat $(ls *.csv) | view-points --size=200000" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    view points from all the binary files in the directory" << std::endl;
+    std::cerr << "        cat $(ls *.bin) | view-points --size=200000 --binary \"%d%d%d\"" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    colour points" << std::endl;
+    std::cerr << "        view-points --colour blue $(ls labeled.*.csv)" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    each point has an individual color:" << std::endl;
+    std::cerr << "        cat xyzrgb.csv | view-points --fields=\"x,y,z,r,g,b\"" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    view multiple files" << std::endl;
+    std::cerr << "        view-points \"raw.csv;colour=0:20\" \"partitioned.csv;fields=x,y,z,id\";point-size=2" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    view a cad model" << std::endl;
+    std::cerr << "        echo \"0,0,0\" | view-points --shape /usr/local/etc/segway.shrimp.obj --z-is-up --orthographic" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    use stdin as the primary source for scene radius:" << std::endl;
+    std::cerr << "        cat xyz.csv | view-points \"-\" scan.csv" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    specify fixed scene radius explicitly:" << std::endl;
+    std::cerr << "        cat xyz.csv | view-points --scene-radius=100" << std::endl;
     std::cerr << std::endl;
     exit( -1 );
 }
@@ -279,7 +307,7 @@ int main( int argc, char** argv )
         if( options.exists( "--help" ) || options.exists( "-h" ) ) { usage(); }
         comma::csv::options csvOptions( argc, argv );
         std::vector< std::string > properties = options.unnamed( "--z-is-up,--orthographic,--no-stdin"
-                , "--binary,--bin,-b,--fields,--size,--delimiter,-d,--colour,-c,--point-size,--weight,--image-size,--background-colour,--shape,--label,--camera,--camera-position,--fov,--model,--full-xpath" );
+                , "--binary,--bin,-b,--fields,--size,--delimiter,-d,--colour,-c,--point-size,--weight,--image-size,--background-colour,--scene-radius,--radius,--shape,--label,--camera,--camera-position,--fov,--model,--full-xpath" );
         QColor4ub backgroundcolour( QColor( QString( options.value< std::string >( "--background-colour", "#000000" ).c_str() ) ) );
         boost::optional< comma::csv::options > camera_csv;
         boost::optional< Eigen::Vector3d > cameraposition;
@@ -334,15 +362,13 @@ int main( int argc, char** argv )
                     std::cerr << " parse " << position << std::endl;
                     camera_csv = parser.get< comma::csv::options >( position );
                     camera_csv->full_xpath = false;
-                    if( camera_csv->fields.empty() )
-                    {
-                        camera_csv->fields = "x,y,z,roll,pitch,yaw";
-                    }
+                    if( camera_csv->fields.empty() ) { camera_csv->fields = "x,y,z,roll,pitch,yaw"; }
                 }
                 catch( ... ) {}
             }
         }
-        snark::graphics::View::Viewer* viewer = new snark::graphics::View::Viewer( backgroundcolour, fieldOfView, z_up, cameraOrthographic, camera_csv, cameraposition, cameraorientation );
+        boost::optional< double > scene_radius = options.optional< double >( "--scene-radius,--radius" );
+        snark::graphics::View::Viewer* viewer = new snark::graphics::View::Viewer( backgroundcolour, fieldOfView, z_up, cameraOrthographic, camera_csv, cameraposition, cameraorientation, scene_radius );
         bool stdinAdded = false;
         for( unsigned int i = 0; i < properties.size(); ++i )
         {

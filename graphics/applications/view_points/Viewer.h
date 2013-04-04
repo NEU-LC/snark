@@ -40,10 +40,14 @@ class Viewer : public qt3d::view
     public:
         std::vector< boost::shared_ptr< Reader > > readers;
 
-        Viewer( const QColor4ub& background_color, double fov, bool z_up, bool orthographic = false
-            , boost::optional< comma::csv::options > cameracsv = boost::optional< comma::csv::options >()
-            , boost::optional< Eigen::Vector3d > cameraposition = boost::optional< Eigen::Vector3d >()
-            , boost::optional< Eigen::Vector3d > cameraorientation = boost::optional< Eigen::Vector3d >() );
+        Viewer( const QColor4ub& background_color
+              , double fov
+              , bool z_up
+              , bool orthographic = false
+              , boost::optional< comma::csv::options > cameracsv = boost::optional< comma::csv::options >()
+              , boost::optional< Eigen::Vector3d > cameraposition = boost::optional< Eigen::Vector3d >()
+              , boost::optional< Eigen::Vector3d > cameraorientation = boost::optional< Eigen::Vector3d >()
+              , boost::optional< double > scene_radius = boost::optional< double >() );
 
         void shutdown();
 

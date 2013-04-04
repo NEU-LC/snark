@@ -25,47 +25,54 @@
 
 namespace snark { namespace graphics { namespace qt3d {
 
+static const double default_scene_radius = 10;
+
 /// constructor
 /// @param background_color background color
 /// @param fov camera field of view in degrees
 /// @param z_up if true, the z-axis is pointing up, if false it is pointing down
 /// @param orthographic use orthographic projection instead of perspective
-view::view( const QColor4ub& background_color, double fov, bool z_up, bool orthographic ) :
-    m_background_color( background_color ),
-    m_sceneCenter( 0, 0, 0 ),
-    m_z_up( z_up ),
-    m_sceneRadius( 10 ),
-    m_revolve( 0, 0, 0 ),
-    m_show_coordinates( false )
+view::view( const QColor4ub& background_color
+          , double fov
+          , bool z_up
+          , bool orthographic
+          , boost::optional< double > scene_radius )
+    : m_background_color( background_color )
+    , m_sceneCenter( 0, 0, 0 )
+    , m_z_up( z_up )
+    , scene_radius_( scene_radius ? *scene_radius : default_scene_radius )
+    , scene_radius_fixed_( scene_radius )
+    , m_revolve( 0, 0, 0 )
+    , m_show_coordinates( false )
 {
     camera()->setFieldOfView( fov );
     camera()->setNearPlane( 0.1 );
     if( orthographic )
     {
         camera()->setProjectionType( QGLCamera::Orthographic );
-        camera()->setViewSize( QSize( m_sceneRadius, m_sceneRadius ) );
+        camera()->setViewSize( QSize( scene_radius_, scene_radius_ ) );
     }
 }
 
 /// update the position of the far plane so that the full scene is displayed
 void view::updateZFar()
 {
-    double zFar = ( camera()->eye() - camera()->center() ).length() + 2 * m_sceneRadius;
+    double zFar = ( camera()->eye() - camera()->center() ).length() + 2 * scene_radius_;
     camera()->setFarPlane( zFar );
 }
 
 /// update the scene radius and center to display the region between @param min and @param max
 void view::updateView( const QVector3D& min, const QVector3D& max )
-{    
-    m_sceneRadius = 0.5 * ( max - min ).length();
-    m_sceneCenter = 0.5*( min + max );
+{
+    if( !scene_radius_fixed_ ) { scene_radius_ = 0.5 * ( max - min ).length(); }
+    m_sceneCenter = 0.5 * ( min + max );
     updateZFar();
 }
 
 /// setup the camera to look at the scene center
 void view::lookAtCenter()
 {
-    double r = 1.5 * m_sceneRadius;
+    double r = 1.5 * scene_radius_;
     double zEye;
     QVector3D upVector( 0, 0, 1 );
     if( m_z_up )
@@ -80,7 +87,7 @@ void view::lookAtCenter()
 
     if( camera()->projectionType() == QGLCamera::Orthographic )
     {
-        camera()->setViewSize( QSizeF( m_sceneRadius, m_sceneRadius ) );
+        camera()->setViewSize( QSizeF( scene_radius_, scene_radius_ ) );
     }
     camera()->setCenter( m_sceneCenter );
     m_revolve = m_sceneCenter;
@@ -163,7 +170,7 @@ void view::mouseMoveEvent( QMouseEvent *e )
             else
             {
                 // HACK for the case where the camera center has been moved by zooming in
-                deltaF *= 0.5 * m_sceneRadius / width();
+                deltaF *= 0.5 * scene_radius_ / width();
             }
         }
         m_startPan = e->pos();
@@ -245,7 +252,7 @@ void view::wheelEvent( QWheelEvent *e )
             camera()->setCenter( camera()->center() - 5 * viewVector.normalized() );
             distance = ( camera()->eye() - camera()->center() ).length();
         }
-        const qreal coef = qMax( distance, 0.2 * m_sceneRadius );
+        const qreal coef = qMax( distance, 0.2 * scene_radius_ );
         qreal zoomIncrement = -0.001 * e->delta() * coef;
         if ( !qFuzzyIsNull( zoomIncrement ) )
         {
@@ -326,4 +333,3 @@ void view::mouseDoubleClickEvent( QMouseEvent *e )
 
 
 } } } // namespace snark { namespace graphics { namespace qt3d {
-   
