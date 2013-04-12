@@ -1,20 +1,36 @@
-// This file is part of snark, a generic and flexible library
-// for robotics research.
+// This file is part of snark, a generic and flexible library for robotics research
+// Copyright (c) 2011 The University of Sydney
+// All rights reserved.
 //
-// Copyright (C) 2011 The University of Sydney
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+// 1. Redistributions of source code must retain the above copyright
+//    notice, this list of conditions and the following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright
+//    notice, this list of conditions and the following disclaimer in the
+//    documentation and/or other materials provided with the distribution.
+// 3. All advertising materials mentioning features or use of this software
+//    must display the following acknowledgement:
+//    This product includes software developed by the The University of Sydney.
+// 4. Neither the name of the The University of Sydney nor the
+//    names of its contributors may be used to endorse or promote products
+//    derived from this software without specific prior written permission.
 //
-// snark is free software; you can redistribute it and/or
-// modify it under the terms of the GNU Lesser General Public
-// License as published by the Free Software Foundation; either
-// version 3 of the License, or (at your option) any later version.
-//
-// snark is distributed in the hope that it will be useful, but WITHOUT ANY
-// WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-// FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License
-// for more details.
-//
-// You should have received a copy of the GNU Lesser General Public
-// License along with snark. If not, see <http://www.gnu.org/licenses/>.
+// NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
+// GRANTED BY THIS LICENSE.  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
+// HOLDERS AND CONTRIBUTORS \"AS IS\" AND ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+// BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+// OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
+// IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/// @author vsevolod vlaskine
 
 #include <cmath>
 #include <fstream>
@@ -39,7 +55,7 @@ db::db( const std::string& filename )
 
 db::laser_data::angle::angle() : value( 0 ), sin( 0 ), cos( 1 ) {}
 
-db::laser_data::angle::angle( const angle& rhs ) { operator=( rhs ); } 
+db::laser_data::angle::angle( const angle& rhs ) { operator=( rhs ); }
 
 db::laser_data::angle::angle( double v )
     : value( v )
@@ -61,7 +77,7 @@ db::laser_data::laser_data(   comma::uint32 id
     //: id( id )
     : horizontal_offset( horizOffsetCorrection )
     , vertical_offset( vertOffsetCorrection )
-    , distance_correction( distCorrection )              
+    , distance_correction( distCorrection )
 {
     correction_angles.rotational = rotCorrection;
     correction_angles.vertical = vertCorrection;
@@ -75,10 +91,10 @@ db::laser_data::laser_data(   comma::uint32 id
 double db::laser_data::range( double range ) const
 {
     return range + distance_correction;
-} 
+}
 
 double db::laser_data::azimuth( double azimuth ) const
-{ 
+{
     double a = azimuth + correction_angles.rotational.value;
     if( a > 360 ) { a -= 360; } else if( a < 0 ) { a += 360; }
     return a;
@@ -98,7 +114,7 @@ std::pair< ::Eigen::Vector3d, ::Eigen::Vector3d > db::laser_data::ray( double di
 
     double correctedangleCos( angleCos * correction_angles.rotational.cos - angleSin * correction_angles.rotational.sin );
     double correctedangleSin( angleSin * correction_angles.rotational.cos + angleCos * correction_angles.rotational.sin );
-    std::pair< ::Eigen::Vector3d, ::Eigen::Vector3d > ray;    
+    std::pair< ::Eigen::Vector3d, ::Eigen::Vector3d > ray;
     // laser position
     double vertical_offsetXYProjection( vertical_offset * correction_angles.vertical.sin );
     ray.first.x() = static_cast< double >( -horizontal_offset * correctedangleSin - vertical_offsetXYProjection * correctedangleCos );
@@ -120,7 +136,7 @@ static db::laser_data laserDataFromSerializable( const impl::serializable_db& se
     // x axis: pointing from us, if we look from the back of velodyne
     // y axis: 90 degrees clockwise from x axis
     // z axis: vertical, pointing down
-    // positive rotation angle: clockwise (from x to y)    
+    // positive rotation angle: clockwise (from x to y)
     db::laser_data laser(   i
                          // velodyne: from velodyne source code snippet, positive seems to be to the left
                          // ours: positive it to the right
@@ -135,8 +151,8 @@ static db::laser_data laserDataFromSerializable( const impl::serializable_db& se
                          , db::laser_data::angle( -serializable.points_()[ i ].px.rotCorrection_ )
                          // velodyne: positive is upwards, if seen from the back of the laser
                          // ours: positive is downwards
-                         , db::laser_data::angle( -serializable.points_()[ i ].px.vertCorrection_ ) );    
-    return laser;    
+                         , db::laser_data::angle( -serializable.points_()[ i ].px.vertCorrection_ ) );
+    return laser;
 }
 
 bool db::is_upper( unsigned int laser ) { return laser < 32; }
