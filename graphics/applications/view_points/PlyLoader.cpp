@@ -175,11 +175,11 @@ PlyLoader::PlyLoader( const std::string& file, boost::optional< QColor4ub > colo
             switch( vertices_per_face )
             {
                 case 3:
-                    for( unsigned int i = 1; i < n; ++i ) { indices.append( boost::lexical_cast< unsigned int >( v[i] ) ); }
+                    for( unsigned int i = 0; i < 3; ++i ) { indices.append( boost::lexical_cast< unsigned int >( v[i+1] ) ); }
                     break;
                 case 4: // quick and dirty for now: triangulate
                     boost::array< unsigned int, 4 > a;
-                    for( unsigned int i = 1; i < 4; ++i ) { a[i] = boost::lexical_cast< unsigned int >( v[i] ); }
+                    for( unsigned int i = 0; i < 4; ++i ) { a[i] = boost::lexical_cast< unsigned int >( v[i+1] ); }
                     indices.append( a[0] );
                     indices.append( a[1] );
                     indices.append( a[2] );
