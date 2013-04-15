@@ -130,11 +130,6 @@ PlyLoader::PlyLoader( const std::string& file, boost::optional< QColor4ub > colo
         else if( std::strcmp(line, "property uchar blue" ) == 0 ) { fields.push_back( "b" ); }
         else if( std::strcmp(line, "property uchar alpha" ) == 0 ) { fields.push_back( "a" ); }
     }
-    std::cerr << "==> ply loader: " << ( color_ ? "color" : "no color" ) << std::endl;
-    std::cerr << "==> r: " << color_->red() << std::endl;
-    std::cerr << "==> g: " << color_->green() << std::endl;
-    std::cerr << "==> b: " << color_->blue() << std::endl;
-    std::cerr << "==> a: " << color_->alpha() << std::endl;
     comma::csv::options csv;
     csv.fields = comma::join( fields, ',' );
     csv.full_xpath = true;
