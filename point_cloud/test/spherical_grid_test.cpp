@@ -30,67 +30,48 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include <gtest/gtest.h>
+#include <cmath>
+#include <snark/point_cloud/spherical_grid.h>
 
-/// @author Cedric Wohlleber
+namespace snark {
 
-#ifndef SNARK_GRAPHICS_GL_VIEW_H_
-#define SNARK_GRAPHICS_GL_VIEW_H_
-
-#include <boost/optional.hpp>
-#include <boost/thread.hpp>
-#include <Eigen/Core>
-#include <Qt3D/qglview.h>
-#include <QMouseEvent>
-#include "./coordinates.h"
-
-namespace snark { namespace graphics { namespace qt3d {
-
-/// base class for 3d viewers with mouse navigation
-class view : public QGLView
+TEST( spherical_grid, bearing_elevation_index_usage_example )
 {
-    Q_OBJECT
-public:
-    view( const QColor4ub& background_color
-        , double fov
-        , bool z_up
-        , bool orthographic = false
-        , boost::optional< double > scene_radius = boost::optional< double >() );
+    rbe begin( 1, -M_PI, -M_PI / 2 );
+    rbe resolution( 1, 0.1, 0.02 );
+    bearing_elevation_grid::index index( begin, resolution );
+    bearing_elevation_grid::index::type size = index( rbe( 1, 1.2, 0.6 ) );
+    boost::multi_array< std::string, 2 > grid( boost::extents[size[0]][size[1]] );
+    bearing_elevation_grid::index::type some_point = index( rbe( 1, 1.1, 0.5 ) );
+    grid( some_point ) = "hello world";
+}
 
-    virtual ~view() {}
+const double one_degree = M_PI / 180;
 
-    double scene_radius() const;
+TEST( spherical_grid, construction )
+{
+    // todo
+}
 
-private slots:
-    void hide_coordinates() { m_show_coordinates = false; update(); }
+TEST( spherical_grid, bearing_index )
+{
+    for( int i = -180; i < 180; ++i )
+    {
+        EXPECT_EQ( i + 180, bearing_elevation_grid::index( one_degree )( one_degree * i, 0 )[0] );
+        EXPECT_EQ( i + 180, bearing_elevation_grid::index( one_degree )( one_degree * ( 0.5 + i ), 0 )[0] );
+    }
+    // todo: test with arbitrary begin
+}
 
-protected:
-    void updateZFar();
-    void updateView( const QVector3D& min, const QVector3D& max );
-    void lookAtCenter();
-    void draw_coordinates( QGLPainter* painter );
-    void mousePressEvent( QMouseEvent *e );
-    void mouseReleaseEvent( QMouseEvent *e );
-    void mouseMoveEvent( QMouseEvent *e );
-    void wheelEvent( QWheelEvent *e );
-    QVector3D unproject( float x, float y, float depth );
-    boost::optional< QVector3D > getPoint( const QPoint& point2d );
-    void mouseDoubleClickEvent( QMouseEvent *e );
+TEST( spherical_grid, elevation_index )
+{
+    for( int i = -90; i < 90; ++i )
+    {
+        EXPECT_EQ( i + 90, bearing_elevation_grid::index( one_degree )( 0, one_degree * i )[1] );
+        EXPECT_EQ( i + 90, bearing_elevation_grid::index( one_degree )( 0, one_degree * ( 0.5 + i ) )[1] );
+    }
+    // todo: test with arbitrary begin
+}
 
-    const QColor4ub m_background_color;
-    QVector3D m_sceneCenter;
-    bool m_z_up;
-    boost::optional< Eigen::Vector3d > m_offset;
-
-private:
-    boost::optional< QPoint > m_startPan;
-    boost::optional< QPoint > m_startRotate;
-    double scene_radius_;
-    bool scene_radius_fixed_;
-    QVector3D m_revolve;
-    boost::optional< coordinates > m_coordinates;
-    bool m_show_coordinates;
-};
-
-} } } // namespace snark { namespace graphics { namespace gt3d {
-
-#endif /*SNARK_GRAPHICS_GL_VIEW_H_*/
+} // namespace snark {

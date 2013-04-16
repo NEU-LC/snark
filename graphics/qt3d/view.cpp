@@ -84,6 +84,8 @@ void view::updateView( const QVector3D& min, const QVector3D& max )
     updateZFar();
 }
 
+double view::scene_radius() const { return scene_radius_; }
+
 /// setup the camera to look at the scene center
 void view::lookAtCenter()
 {

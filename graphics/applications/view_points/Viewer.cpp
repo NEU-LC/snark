@@ -95,7 +95,7 @@ void Viewer::read()
         if( readers[i]->empty() ) { continue; }
         Eigen::Vector3d p = readers[i]->somePoint();
         m_offset = std::fabs( p.x() ) > 1000 || std::fabs( p.y() ) > 1000 || std::fabs( p.z() ) > 1000 ? p : Eigen::Vector3d( 0, 0, 0 );
-        std::cerr << "view-points: " << i << " scene offset (" << m_offset->transpose() << ")" << std::endl;
+        std::cerr << "view-points: reader no. " << i << " scene offset (" << m_offset->transpose() << "); scene radius: " << scene_radius() << std::endl;
     }
     if( !m_offset ) { return; }
     for( unsigned int i = 0; i < readers.size(); ++i )

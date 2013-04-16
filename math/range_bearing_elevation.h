@@ -52,15 +52,18 @@ public:
     double bearing() const { return m_rbe[1]; }
     double elevation() const { return m_rbe[2]; }
 
-    /// for brevity's sake
-    double r() const { return range(); }
-    double b() const { return bearing(); }
-    double e() const { return elevation(); }
-
     /// set coordinates
     void range( double t );
     void bearing( double t );
     void elevation( double t );
+
+    /// for brevity's sake
+    double r() const { return range(); }
+    double b() const { return bearing(); }
+    double e() const { return elevation(); }
+    void r( double t ) { range( t ); }
+    void b( double t ) { bearing( t ); }
+    void e( double t ) { elevation( t ); }
 
     Eigen::Vector3d to_cartesian() const;
     const range_bearing_elevation& from_cartesian( double x, double y, double z );
@@ -69,6 +72,9 @@ public:
 private:
     Eigen::Vector3d m_rbe;
 };
+
+/// a short-hand for lazy
+typedef range_bearing_elevation rbe;
 
 } // namespace snark {
 
