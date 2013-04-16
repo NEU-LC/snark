@@ -16,8 +16,8 @@
 // You should have received a copy of the GNU Lesser General Public
 // License along with snark. If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef SNARK_IMAGING_APPLICATIONS_STEREO_DISPARITY_H
-#define SNARK_IMAGING_APPLICATIONS_STEREO_DISPARITY_H
+#ifndef SNARK_IMAGING_APPLICATIONS_STEREO_RECTIFIED_H
+#define SNARK_IMAGING_APPLICATIONS_STEREO_RECTIFIED_H
 
 #include <snark/imaging/stereo/rectify_map.h>
 #include <snark/imaging/stereo/point_cloud.h>
@@ -27,15 +27,16 @@
 namespace snark { namespace imaging {
 
 /// output disparity image to stdout from stereo pair
-class disparity
+class rectified
 {
 public:
-    disparity( const camera_parser& left, const camera_parser& right, unsigned int width, unsigned int height, const comma::csv::options& csv, bool input_rectified );
-    disparity( const camera_parser& left, const camera_parser& right,
+    rectified( const camera_parser& left, const camera_parser& right, unsigned int width, unsigned int height, const comma::csv::options& csv, bool input_rectified );
+    rectified( const camera_parser& left, const camera_parser& right,
             const cv::Mat& left_x, const cv::Mat& left_y, const cv::Mat& right_x, const cv::Mat& right_y,
             const comma::csv::options& csv, bool input_rectified );
 
     void process( const cv::Mat& left, const cv::Mat& right, const cv::StereoSGBM& sgbm, boost::posix_time::ptime time = boost::posix_time::ptime() );
+    cv::Mat concatenate( const cv::Mat& left, const cv::Mat& right );
 private:
     Eigen::Matrix3d m_rotation;
     Eigen::Vector3d m_translation;
@@ -47,4 +48,4 @@ private:
 } }
 
 
-#endif // SNARK_IMAGING_APPLICATIONS_STEREO_DISPARITY_H
+#endif // SNARK_IMAGING_APPLICATIONS_STEREO_RECTIFIED_H
