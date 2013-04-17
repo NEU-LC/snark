@@ -57,9 +57,25 @@ static QColor4ub color_from_name( const std::string& name )
     else if( name == "orange" ) { return QColor4ub( 255, 128, 0 ); }
     else if( name == "salad" ) { return QColor4ub( 128, 255, 128 ); }
     else if( name == "sky" ) { return QColor4ub( 128, 128, 255 ); }
-    else { COMMA_THROW( comma::exception, "expected color, got " << name ); } // todo: add arbitrary color
+    else
+    {
+        const std::vector< std::string >& v = comma::split( name, ',' );
+        try
+        {
+            switch( v.size() )
+            {
+                case 3: return QColor4ub( boost::lexical_cast< unsigned int >( v[0] ), boost::lexical_cast< unsigned int >( v[1] ), boost::lexical_cast< unsigned int >( v[2] ) );
+                case 4: return QColor4ub( boost::lexical_cast< unsigned int >( v[0] ), boost::lexical_cast< unsigned int >( v[1] ), boost::lexical_cast< unsigned int >( v[2] ), boost::lexical_cast< unsigned int >( v[3] ) );
+                default: COMMA_THROW( comma::exception, "expected color, got " << name );
+            }
+        }
+        catch( ... )
+        {
+            COMMA_THROW( comma::exception, "expected color, got " << name );
+        }
+    }
 }
-    
+
 static QColor4ub multiply( const QColor4ub& color, double scalar )
 {
     double red = scalar * color.redF();
@@ -195,7 +211,7 @@ ById::ById( const QColor4ub& backgroundcolour )
     , m_hasScalar( false )
 {
 }
-    
+
 ById::ById( const QColor4ub& backgroundcolour
           , double from
           , double to )
