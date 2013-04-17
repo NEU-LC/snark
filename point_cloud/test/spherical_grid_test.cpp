@@ -38,12 +38,12 @@ namespace snark {
 
 TEST( spherical_grid, bearing_elevation_index_usage_example )
 {
-    rbe begin( 1, -M_PI, -M_PI / 2 );
-    rbe resolution( 1, 0.1, 0.02 );
+    bearing_elevation begin( -M_PI, -M_PI / 2 );
+    bearing_elevation resolution( 0.1, 0.02 );
     bearing_elevation_grid::index index( begin, resolution );
-    bearing_elevation_grid::index::type size = index( rbe( 1, 1.2, 0.6 ) );
+    bearing_elevation_grid::index::type size = index( bearing_elevation( 1.2, 0.6 ) );
     boost::multi_array< std::string, 2 > grid( boost::extents[size[0]][size[1]] );
-    bearing_elevation_grid::index::type some_point = index( rbe( 1, 1.1, 0.5 ) );
+    bearing_elevation_grid::index::type some_point = index( bearing_elevation( 1.1, 0.5 ) );
     grid( some_point ) = "hello world";
 }
 

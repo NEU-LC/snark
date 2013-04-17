@@ -8,49 +8,49 @@
 namespace snark {
 
 
-bearing_elevation_grid::index::index( const snark::rbe& begin, const snark::rbe& resolution )
+bearing_elevation_grid::index::index( const snark::bearing_elevation& begin, const snark::bearing_elevation& resolution )
     : begin_( begin )
     , resolution_( resolution )
 {
 }
 
-bearing_elevation_grid::index::index( const snark::rbe& resolution )
-    : begin_( 1, -M_PI, -M_PI / 2 )
+bearing_elevation_grid::index::index( const snark::bearing_elevation& resolution )
+    : begin_( -M_PI, -M_PI / 2 )
     , resolution_( resolution )
 {
 }
 
 bearing_elevation_grid::index::index( double bearing_begin, double elevation_begin, double bearing_resolution, double elevation_resolution )
-    : begin_( 1, bearing_begin, elevation_begin )
-    , resolution_( 1, bearing_resolution, elevation_resolution )
+    : begin_( bearing_begin, elevation_begin )
+    , resolution_( bearing_resolution, elevation_resolution )
 {
 }
 
 bearing_elevation_grid::index::index( double bearing_begin, double elevation_begin, double resolution )
-    : begin_( 1, bearing_begin, elevation_begin )
-    , resolution_( 1, resolution, resolution )
+    : begin_( bearing_begin, elevation_begin )
+    , resolution_( resolution, resolution )
 {
 }
 
 bearing_elevation_grid::index::index( double bearing_resolution, double elevation_resolution )
-    : begin_( 1, -M_PI, -M_PI / 2 )
-    , resolution_( 1, bearing_resolution, elevation_resolution )
+    : begin_( -M_PI, -M_PI / 2 )
+    , resolution_( bearing_resolution, elevation_resolution )
 {
 }
 
 bearing_elevation_grid::index::index( double resolution )
-    : begin_( 1, -M_PI, -M_PI / 2 )
-    , resolution_( 1, resolution, resolution )
+    : begin_( -M_PI, -M_PI / 2 )
+    , resolution_( resolution, resolution )
 {
 }
 
-const snark::rbe& bearing_elevation_grid::index::begin() const { return begin_; }
+const snark::bearing_elevation& bearing_elevation_grid::index::begin() const { return begin_; }
 
-const snark::rbe& bearing_elevation_grid::index::resolution() const { return resolution_; }
+const snark::bearing_elevation& bearing_elevation_grid::index::resolution() const { return resolution_; }
 
 bearing_elevation_grid::index::type bearing_elevation_grid::index::operator()( double bearing, double elevation ) const
 {
-    return operator()( snark::rbe( 1, bearing, elevation ) );
+    return operator()( snark::bearing_elevation( bearing, elevation ) );
 }
 
 static std::size_t rounded( double d )
@@ -59,7 +59,7 @@ static std::size_t rounded( double d )
     return static_cast< std::size_t >( ( c - d ) < 1e-6 ? c : std::floor( d ) );
 }
 
-bearing_elevation_grid::index::type bearing_elevation_grid::index::operator()( const snark::rbe& v ) const
+bearing_elevation_grid::index::type bearing_elevation_grid::index::operator()( const snark::bearing_elevation& v ) const
 {
     double db = v.b() - begin_.b();
     if( comma::math::less( db, 0 ) ) { db += M_PI * 2; } // quick and dirty
@@ -69,11 +69,9 @@ bearing_elevation_grid::index::type bearing_elevation_grid::index::operator()( c
     return i;
 }
 
-snark::rbe bearing_elevation_grid::index::range_bearing_elevation( const type& i ) const
+snark::bearing_elevation bearing_elevation_grid::index::bearing_elevation( const type& i ) const
 {
-    return snark::rbe( 1, begin_.b() + resolution_.b() * i[0], begin_.e() + resolution_.e() * i[1] );
+    return snark::bearing_elevation( begin_.b() + resolution_.b() * i[0], begin_.e() + resolution_.e() * i[1] );
 }
-
-snark::rbe bearing_elevation_grid::index::rbe( const type& i ) const { return bearing_elevation_grid::index::range_bearing_elevation( i ); }
 
 } // namespace snark {

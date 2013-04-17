@@ -21,30 +21,29 @@ struct bearing_elevation_grid
             index( double bearing_begin, double elevation_begin, double resolution );
             index( double bearing_resolution, double elevation_resolution );
             index( double resolution );
-            index( const snark::rbe& begin, const snark::rbe& resolution );
+            index( const snark::bearing_elevation& begin, const snark::bearing_elevation& resolution );
 
             /// constructor for full spherical grid with given resolution (range ignored)
-            index( const snark::rbe& resolution );
+            index( const snark::bearing_elevation& resolution );
 
             /// @return index relative to begin with given resolution
             type operator()( double bearing, double elevation ) const;
 
             /// @return index relative to begin with given resolution
-            type operator()( const snark::rbe& v ) const;
+            type operator()( const snark::bearing_elevation& v ) const;
 
             /// @return bearing, elevation for given index (range will be set to 1)
-            snark::rbe range_bearing_elevation( const type& i ) const;
-            snark::rbe rbe( const type& i ) const;
+            snark::bearing_elevation bearing_elevation( const type& i ) const;
 
             /// @return begin
-            const snark::rbe& begin() const;
+            const snark::bearing_elevation& begin() const;
 
             /// @return resolution
-            const snark::rbe& resolution() const;
+            const snark::bearing_elevation& resolution() const;
 
         private:
-            snark::rbe begin_;
-            snark::rbe resolution_;
+            snark::bearing_elevation begin_;
+            snark::bearing_elevation resolution_;
     };
 };
 
