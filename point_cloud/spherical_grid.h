@@ -45,6 +45,33 @@ struct bearing_elevation_grid
             snark::bearing_elevation begin_;
             snark::bearing_elevation resolution_;
     };
+
+    /// a convenience wrapper around boost::multi_array
+    /// nothing prevents you from using other containers
+    /// in conjunction with bearing_elevation_index
+    template < typename T >
+    class type : public boost::multi_array< T, 2 >
+    {
+        public:
+            /// types
+            typedef typename bearing_elevation_grid::index index_t;
+            typedef boost::multi_array< T, 2 > base_t;
+
+            /// constructors
+            type( const index_t& i, const snark::bearing_elevation& end ) : base_t( boost::extents[ i( end )[0] ][ i( end )[1] ] ), index_( i ) {}
+            type( const index_t& i, const typename index_t::type size ) : base_t( boost::extents[ size[0] ][ size[1] ] ), index_( i ) {}
+            type( const index_t& i, std::size_t bearing_size, std::size_t elevation_size ) : base_t( boost::extents[ bearing_size ][ elevation_size ] ), index_( i ) {}
+
+            /// accessors
+            T& operator()( double bearing, double elevation ) { return this->base_t::operator()( index_( bearing, elevation ) ); }
+            const T& operator()( double bearing, double elevation ) const { return this->base_t::operator()( index_( bearing, elevation ) ); }
+
+            /// @return index
+            const index_t& index() const { return index_; }
+
+        private:
+            index_t index_;
+    };
 };
 
 /// spherical grid based on range-bearing-elevation coordinates

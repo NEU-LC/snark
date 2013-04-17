@@ -47,11 +47,14 @@ TEST( spherical_grid, bearing_elevation_index_usage_example )
     grid( some_point ) = "hello world";
 }
 
-const double one_degree = M_PI / 180;
+static const double one_degree = M_PI / 180;
 
-TEST( spherical_grid, construction )
+TEST( spherical_grid, bearing_elevation_gid_usage_example )
 {
-    // todo
+    bearing_elevation_grid::type< std::string > grid( bearing_elevation_grid::index( one_degree ), 360, 180 );
+    grid( 20 * one_degree, 30 * one_degree ) = "hello world";
+    EXPECT_EQ( "hello world", grid( 20 * one_degree, 30 * one_degree ) );
+    EXPECT_EQ( "", grid( 19.5 * one_degree, 30 * one_degree ) );
 }
 
 TEST( spherical_grid, bearing_index )
