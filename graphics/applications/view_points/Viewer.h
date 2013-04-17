@@ -62,6 +62,7 @@ class Viewer : public qt3d::view
               , boost::optional< comma::csv::options > cameracsv = boost::optional< comma::csv::options >()
               , boost::optional< Eigen::Vector3d > cameraposition = boost::optional< Eigen::Vector3d >()
               , boost::optional< Eigen::Vector3d > cameraorientation = boost::optional< Eigen::Vector3d >()
+              , boost::optional< Eigen::Vector3d > scene_center = boost::optional< Eigen::Vector3d >()
               , boost::optional< double > scene_radius = boost::optional< double >() );
 
         void shutdown();

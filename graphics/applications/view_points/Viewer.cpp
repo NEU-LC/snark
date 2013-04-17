@@ -53,8 +53,17 @@ Viewer::Viewer( const QColor4ub& background_color
               , bool orthographic
               , boost::optional< comma::csv::options > camera_csv, boost::optional< Eigen::Vector3d > cameraposition
               , boost::optional< Eigen::Vector3d > cameraorientation
+              , boost::optional< Eigen::Vector3d > scene_center
               , boost::optional< double > scene_radius )
-    : qt3d::view( background_color, fov, z_up, orthographic, scene_radius )
+    : qt3d::view( background_color
+                , fov
+                , z_up
+                , orthographic
+                , scene_center ? boost::optional< QVector3D >( QVector3D( scene_center->x()
+                                                                        , scene_center->y()
+                                                                        , scene_center->z() ) )
+                               : boost::optional< QVector3D >()
+                , scene_radius )
     , m_lookAt( false )
     , m_cameraposition( cameraposition )
     , m_cameraorientation( cameraorientation )
