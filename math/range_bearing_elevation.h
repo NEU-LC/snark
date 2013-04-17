@@ -39,36 +39,85 @@
 
 namespace snark {
 
+/// bearing mapped to [-pi, pi)
+class bearing_elevation
+{
+    public:
+        /// constructors
+        bearing_elevation();
+        bearing_elevation( double b, double e );
+
+        /// accessors
+        double bearing() const;
+        double elevation() const;
+        double b() const;
+        double e() const;
+
+        double bearing( double b );
+        double elevation( double e );
+        double b( double b );
+        double e( double e );
+
+    private:
+        double bearing_;
+        double elevation_;
+};
+
+/// elevation mapped to [-pi/2, pi/2]
+class elevation
+{
+    public:
+        /// constructor
+        elevation( double e = 0 );
+
+        /// @return current value
+        double operator()() const;
+
+        /// @param e new value to set
+        /// @return new value
+        double operator()( double e );
+
+    private:
+        double value_;
+};
+
 /// polar point definition (range-bearing-elevation)
 class range_bearing_elevation
 {
 public:
     /// constructors
     range_bearing_elevation(){}
-    range_bearing_elevation( double r, double b, double e ): m_rbe( r, b, e ) {}
+    range_bearing_elevation( double r, double b, double e );
 
     /// return coordinates
-    double range() const { return m_rbe[0]; }
-    double bearing() const { return m_rbe[1]; }
-    double elevation() const { return m_rbe[2]; }
+    double range() const { return range_; }
+    double bearing() const { return bearing_elevation_.b(); }
+    double elevation() const { return bearing_elevation_.e(); }
+
+    /// set coordinates
+    double range( double t );
+    double bearing( double t ) { return bearing_elevation_.bearing( t ); }
+    double elevation( double t ) { return bearing_elevation_.elevation( t ); }
 
     /// for brevity's sake
     double r() const { return range(); }
     double b() const { return bearing(); }
     double e() const { return elevation(); }
-
-    /// set coordinates
-    void range( double t );
-    void bearing( double t );
-    void elevation( double t );
+    double r( double t ) { return range( t ); }
+    double b( double t ) { return bearing( t ); }
+    double e( double t ) { return elevation( t ); }
 
     Eigen::Vector3d to_cartesian() const;
     const range_bearing_elevation& from_cartesian( double x, double y, double z );
     const range_bearing_elevation& from_cartesian( const Eigen::Vector3d& xyz );
 
 private:
-    Eigen::Vector3d m_rbe;
+    double range_;
+    bearing_elevation bearing_elevation_;
 };
+
+/// a short-hand for lazy
+typedef range_bearing_elevation rbe;
 
 } // namespace snark {
 
