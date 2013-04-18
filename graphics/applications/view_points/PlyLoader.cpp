@@ -166,7 +166,7 @@ PlyLoader::PlyLoader( const std::string& file, boost::optional< QColor4ub > colo
         {
             std::string s;
             while( s.empty() && !stream.eof() ) { std::getline( stream, s ); }
-            std::vector< std::string > v = comma::split( s, ' ' );
+            std::vector< std::string > v = comma::split( comma::strip( s ), ' ' );
             unsigned int n = boost::lexical_cast< unsigned int >( v[0] );
             if( ( n + 1 ) != v.size() ) { COMMA_THROW( comma::exception, "invalid line \"" << s << "\"" ); }
             if( vertices_per_face && n != vertices_per_face ) { COMMA_THROW( comma::exception, "only equal number of vertices per face supported" ); }

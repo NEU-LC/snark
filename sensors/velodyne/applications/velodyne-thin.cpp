@@ -89,6 +89,7 @@ static void usage()
     std::cerr << "                        0 degrees 30 degrees wide not farther than 10 metres" << std::endl;
     std::cerr << "                        output 80% points in the focus region and 20% the rest" << std::endl;
     std::cerr << "                        --focus=\"sector;range=10;bearing=0;ken=30;ratio=0.8\"" << std::endl;
+    std::cerr << "                                 default: bearing: 0, ken: 360" << std::endl;
     std::cerr << "                        todo: currently only \"sector\" type implemented" << std::endl;
     std::cerr << std::endl;
     exit( -1 );
@@ -229,7 +230,7 @@ int main( int ac, char** av )
         else if( options.exists( "--proprietary,-q" ) )
         {
             run( new snark::proprietary_reader );
-            
+
         }
         else
         {

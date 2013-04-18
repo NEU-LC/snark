@@ -52,7 +52,7 @@ class focus
         double coverage() const;
         void insert( std::size_t id, region* r );
         void erase( std::size_t id );
-        
+
     private:
         typedef std::map< std::size_t, boost::shared_ptr< region > > Map;
         double m_rate;
