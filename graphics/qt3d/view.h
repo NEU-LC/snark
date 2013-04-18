@@ -54,6 +54,7 @@ public:
         , double fov
         , bool z_up
         , bool orthographic = false
+        , boost::optional< QVector3D > scene_center = boost::optional< QVector3D >()
         , boost::optional< double > scene_radius = boost::optional< double >() );
 
     virtual ~view() {}
@@ -78,6 +79,7 @@ protected:
 
     const QColor4ub m_background_color;
     QVector3D m_sceneCenter;
+    bool scene_center_fixed_;
     bool m_z_up;
     boost::optional< Eigen::Vector3d > m_offset;
 

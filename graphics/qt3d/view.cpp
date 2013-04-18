@@ -51,9 +51,11 @@ view::view( const QColor4ub& background_color
           , double fov
           , bool z_up
           , bool orthographic
+          , boost::optional< QVector3D > scene_center
           , boost::optional< double > scene_radius )
     : m_background_color( background_color )
-    , m_sceneCenter( 0, 0, 0 )
+    , m_sceneCenter( scene_center ? *scene_center : QVector3D( 0, 0, 0 ) )
+    , scene_center_fixed_( scene_center )
     , m_z_up( z_up )
     , scene_radius_( scene_radius ? *scene_radius : default_scene_radius )
     , scene_radius_fixed_( scene_radius )
@@ -80,7 +82,7 @@ void view::updateZFar()
 void view::updateView( const QVector3D& min, const QVector3D& max )
 {
     if( !scene_radius_fixed_ ) { scene_radius_ = 0.5 * ( max - min ).length(); }
-    m_sceneCenter = 0.5 * ( min + max );
+    if( !scene_center_fixed_ ) { m_sceneCenter = 0.5 * ( min + max ); }
     updateZFar();
 }
 

@@ -51,7 +51,7 @@ void usage()
     std::cerr << "view points from given files/streams and stdin" << std::endl;
     std::cerr << "(see examples below for a quick start)" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "note: scene radius and point of view will be decided" << std::endl;
+    std::cerr << "note: scene radius, centre and point of view will be decided" << std::endl;
     std::cerr << "      depending on the extents of the first data source" << std::endl;
     std::cerr << "      (if you want it to be stdin, specify \"-\" as the" << std::endl;
     std::cerr << "      explicitly as the first data source); see also" << std::endl;
@@ -115,6 +115,7 @@ void usage()
     std::cerr << std::endl;
     std::cerr << "more options" << std::endl;
     std::cerr << "    --background-colour <colour> : e.g. #ff0000, default: #000000 (black)" << std::endl;
+    std::cerr << "    --scene-center,--center=<value>: fixed scene center as \"x,y,z\"" << std::endl;
     std::cerr << "    --scene-radius,--radius=<value>: fixed scene radius in metres, since sometimes it is hard to imply" << std::endl;
     std::cerr << "                            scene size from the dataset (e.g. for streams)" << std::endl;
     std::cerr << "    --z-is-up : z-axis is pointing up, default: pointing down ( north-east-down system )" << std::endl;
@@ -322,7 +323,7 @@ int main( int argc, char** argv )
         if( options.exists( "--help" ) || options.exists( "-h" ) ) { usage(); }
         comma::csv::options csvOptions( argc, argv );
         std::vector< std::string > properties = options.unnamed( "--z-is-up,--orthographic,--no-stdin"
-                , "--binary,--bin,-b,--fields,--size,--delimiter,-d,--colour,-c,--point-size,--weight,--image-size,--background-colour,--scene-radius,--radius,--shape,--label,--camera,--camera-position,--fov,--model,--full-xpath" );
+                , "--binary,--bin,-b,--fields,--size,--delimiter,-d,--colour,-c,--point-size,--weight,--image-size,--background-colour,--scene-center,--center,--scene-radius,--radius,--shape,--label,--camera,--camera-position,--fov,--model,--full-xpath" );
         QColor4ub backgroundcolour( QColor( QString( options.value< std::string >( "--background-colour", "#000000" ).c_str() ) ) );
         boost::optional< comma::csv::options > camera_csv;
         boost::optional< Eigen::Vector3d > cameraposition;
@@ -383,7 +384,18 @@ int main( int argc, char** argv )
             }
         }
         boost::optional< double > scene_radius = options.optional< double >( "--scene-radius,--radius" );
-        snark::graphics::View::Viewer* viewer = new snark::graphics::View::Viewer( backgroundcolour, fieldOfView, z_up, cameraOrthographic, camera_csv, cameraposition, cameraorientation, scene_radius );
+        boost::optional< Eigen::Vector3d > scene_center;
+        boost::optional< std::string > s = options.optional< std::string >( "--scene-center,--center" );
+        if( s ) { scene_center = comma::csv::ascii< Eigen::Vector3d >( "x,y,z", ',' ).get( *s ); }
+        snark::graphics::View::Viewer* viewer = new snark::graphics::View::Viewer( backgroundcolour
+                                                                                 , fieldOfView
+                                                                                 , z_up
+                                                                                 , cameraOrthographic
+                                                                                 , camera_csv
+                                                                                 , cameraposition
+                                                                                 , cameraorientation
+                                                                                 , scene_center
+                                                                                 , scene_radius );
         bool stdinAdded = false;
         for( unsigned int i = 0; i < properties.size(); ++i )
         {
