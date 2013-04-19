@@ -37,9 +37,11 @@
 #include <comma/math/compare.h>
 #include "./focus.h"
 
+#include <iostream>
+
 namespace snark {  namespace velodyne { namespace thin {
 
-sector::sector() : bearing( comma::math::interval< double >( -180.0, 180.0 ), 0.0 ), ken( 0 ), range( 0 ) {}
+sector::sector() : bearing( comma::math::interval< double >( -180.0, 180.0 ), 0.0 ), ken( 360 ), range( 0 ) {}
 
 sector::sector( double bearing, double ken, double range )
     : bearing( comma::math::interval< double >( -180.0, 180.0 ), bearing )
