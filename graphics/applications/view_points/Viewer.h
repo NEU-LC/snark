@@ -41,7 +41,9 @@
 //#include <windows.h>
 #endif
 
+#include <vector>
 #include <boost/optional.hpp>
+#include <boost/property_tree/ptree.hpp>
 #include <boost/thread.hpp>
 #include <snark/graphics/qt3d/view.h>
 #include "./CameraReader.h"
@@ -55,6 +57,7 @@ class Viewer : public qt3d::view
     public:
         std::vector< boost::shared_ptr< Reader > > readers;
 
+        /// @todo split into several constructors; make camera configuration a separate class
         Viewer( const QColor4ub& background_color
               , double fov
               , bool z_up
@@ -62,8 +65,10 @@ class Viewer : public qt3d::view
               , boost::optional< comma::csv::options > cameracsv = boost::optional< comma::csv::options >()
               , boost::optional< Eigen::Vector3d > cameraposition = boost::optional< Eigen::Vector3d >()
               , boost::optional< Eigen::Vector3d > cameraorientation = boost::optional< Eigen::Vector3d >()
+              , boost::property_tree::ptree* camera_config = NULL // massively quick and dirty
               , boost::optional< Eigen::Vector3d > scene_center = boost::optional< Eigen::Vector3d >()
-              , boost::optional< double > scene_radius = boost::optional< double >() );
+              , boost::optional< double > scene_radius = boost::optional< double >()
+              , bool output_camera_position = false );
 
         void shutdown();
 
@@ -81,6 +86,18 @@ class Viewer : public qt3d::view
         boost::optional< Eigen::Vector3d > m_cameraposition;
         boost::optional< Eigen::Vector3d > m_cameraorientation;
         bool m_cameraFixed;
+        class camera_position_output // quick and dirty
+        {
+            public:
+                camera_position_output( const Viewer& viewer );
+                void write();
+
+            private:
+                const Viewer& viewer_;
+                std::vector< char > last_;
+        };
+        friend class camera_position_output;
+        boost::scoped_ptr< camera_position_output > camera_position_output_;
 };
 
 } } } // namespace snark { namespace graphics { namespace View {

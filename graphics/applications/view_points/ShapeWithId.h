@@ -36,7 +36,6 @@
 #ifndef SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_SHAPEWITHID_H_
 #define SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_SHAPEWITHID_H_
 
-#include <boost/foreach.hpp>
 #include <boost/optional.hpp>
 #include <boost/static_assert.hpp>
 #include <comma/base/types.h>
@@ -100,10 +99,7 @@ struct Shapetraits< snark::math::closed_interval< double, 3 > >
 
             // 4 lines
             boost::array< unsigned short, 8  > lineIndices = baseIndices;
-            BOOST_FOREACH( unsigned short& j, lineIndices )
-            {
-                j += index + i;
-            }
+            for( unsigned int k = 0; k < lineIndices.size(); ++k ) { lineIndices[k] += index + i; }
             painter->draw( QGL::Lines, &lineIndices[0], 8 );
         }
     }

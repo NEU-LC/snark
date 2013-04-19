@@ -31,6 +31,8 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/json_parser.hpp>
 #include <comma/application/command_line_options.h>
 #include <comma/base/types.h>
 #include <comma/csv/options.h>
@@ -106,6 +108,7 @@ void usage()
     std::cerr << "          <type>: orthographic | perspective" << std::endl;
     std::cerr << "              default: perspective" << std::endl;
     std::cerr << "    --fov=<fov>: set camera field of view in degrees" << std::endl;
+    std::cerr << "    --camera-config=<filename>: camera config in json; to see an example, run --output-camera-config" << std::endl;
     std::cerr << "    --camera-position=\"<options>\"" << std::endl;
     std::cerr << "          <options>: <position>|<stream>" << std::endl;
     std::cerr << "          <position>: <x>,<y>,<z>,<roll>,<pitch>,<yaw>" << std::endl;
@@ -115,6 +118,7 @@ void usage()
     std::cerr << std::endl;
     std::cerr << "more options" << std::endl;
     std::cerr << "    --background-colour <colour> : e.g. #ff0000, default: #000000 (black)" << std::endl;
+    std::cerr << "    --output-camera-config,--output-camera: output camera position as t,x,y,z,r,p,y to stdout" << std::endl;
     std::cerr << "    --scene-center,--center=<value>: fixed scene center as \"x,y,z\"" << std::endl;
     std::cerr << "    --scene-radius,--radius=<value>: fixed scene radius in metres, since sometimes it is hard to imply" << std::endl;
     std::cerr << "                            scene size from the dataset (e.g. for streams)" << std::endl;
@@ -322,8 +326,8 @@ int main( int argc, char** argv )
         comma::command_line_options options( argc, argv );
         if( options.exists( "--help" ) || options.exists( "-h" ) ) { usage(); }
         comma::csv::options csvOptions( argc, argv );
-        std::vector< std::string > properties = options.unnamed( "--z-is-up,--orthographic,--no-stdin"
-                , "--binary,--bin,-b,--fields,--size,--delimiter,-d,--colour,-c,--point-size,--weight,--image-size,--background-colour,--scene-center,--center,--scene-radius,--radius,--shape,--label,--camera,--camera-position,--fov,--model,--full-xpath" );
+        std::vector< std::string > properties = options.unnamed( "--z-is-up,--orthographic,--no-stdin,--output-camera-config,--output-camera"
+                , "--binary,--bin,-b,--fields,--size,--delimiter,-d,--colour,-c,--point-size,--weight,--image-size,--background-colour,--scene-center,--center,--scene-radius,--radius,--shape,--label,--camera,--camera-position,--camera-config,--fov,--model,--full-xpath" );
         QColor4ub backgroundcolour( QColor( QString( options.value< std::string >( "--background-colour", "#000000" ).c_str() ) ) );
         boost::optional< comma::csv::options > camera_csv;
         boost::optional< Eigen::Vector3d > cameraposition;
@@ -387,6 +391,8 @@ int main( int argc, char** argv )
         boost::optional< Eigen::Vector3d > scene_center;
         boost::optional< std::string > s = options.optional< std::string >( "--scene-center,--center" );
         if( s ) { scene_center = comma::csv::ascii< Eigen::Vector3d >( "x,y,z", ',' ).get( *s ); }
+        boost::property_tree::ptree camera_config; // quick and dirty
+        if( options.exists( "--camera-config" ) ) { boost::property_tree::read_json( options.value< std::string >( "--camera-config" ), camera_config ); }
         snark::graphics::View::Viewer* viewer = new snark::graphics::View::Viewer( backgroundcolour
                                                                                  , fieldOfView
                                                                                  , z_up
@@ -394,8 +400,10 @@ int main( int argc, char** argv )
                                                                                  , camera_csv
                                                                                  , cameraposition
                                                                                  , cameraorientation
+                                                                                 , options.exists( "--camera-config" ) ? &camera_config : NULL
                                                                                  , scene_center
-                                                                                 , scene_radius );
+                                                                                 , scene_radius
+                                                                                 , options.exists( "--output-camera-config,--output-camera" ) );
         bool stdinAdded = false;
         for( unsigned int i = 0; i < properties.size(); ++i )
         {

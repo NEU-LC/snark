@@ -41,6 +41,7 @@
 #include <Eigen/Core>
 #include <Qt3D/qglview.h>
 #include <QMouseEvent>
+#include <comma/visiting/traits.h> // quick and dirty
 #include "./coordinates.h"
 
 namespace snark { namespace graphics { namespace qt3d {
@@ -94,5 +95,90 @@ private:
 };
 
 } } } // namespace snark { namespace graphics { namespace gt3d {
+
+namespace comma { namespace visiting {
+
+template <> struct traits< QVector3D >
+{
+    template < typename Key, class Visitor >
+    static void visit( Key, QVector3D& p, Visitor& v )
+    {
+        double d;
+        d= p.x(); v.apply( "x", d ); p.setX( d );
+        d = p.y(); v.apply( "y", d ); p.setY( d );
+        d = p.z(); v.apply( "z", d ); p.setZ( d );
+    }
+
+    template < typename Key, class Visitor >
+    static void visit( Key, const QVector3D& p, Visitor& v )
+    {
+        v.apply( "x", p.x() );
+        v.apply( "y", p.y() );
+        v.apply( "z", p.z() );
+    }
+};
+
+template <> struct traits< QSizeF >
+{
+    template < typename Key, class Visitor >
+    static void visit( Key, QSizeF& p, Visitor& v )
+    {
+        double d;
+        d = p.width(); v.apply( "width", d ); p.setWidth( d );
+        d = p.height(); v.apply( "height", d ); p.setHeight( d );
+    }
+
+    template < typename Key, class Visitor >
+    static void visit( Key, const QSizeF& p, Visitor& v )
+    {
+        v.apply( "width", p.width() );
+        v.apply( "height", p.height() );
+    }
+};
+
+template <> struct traits< QGLCamera >
+{
+    template < typename Key, class Visitor >
+    static void visit( Key, QGLCamera& p, Visitor& v )
+    {
+        bool b = p.adjustForAspectRatio(); v.apply( "adjust_for_aspect_ratio", b ); p.setAdjustForAspectRatio( b );
+        QVector3D w;
+        w = p.center(); v.apply( "center", w ); p.setCenter( w );
+        w = p.eye(); v.apply( "eye", w ); p.setEye( w );
+        double d;
+        d = p.eyeSeparation(); v.apply( "eye-separation", d ); p.setEyeSeparation( d );
+        d = p.farPlane(); v.apply( "far-plane", d ); p.setFarPlane( d );
+        d = p.fieldOfView(); v.apply( "field-of-view", d ); p.setFieldOfView( d );
+        QSizeF s;
+        s = p.minViewSize(); v.apply( "min-view-size", s ); p.setMinViewSize( s );
+        w = p.motionAdjustment(); v.apply( "motion-adjustment", w ); p.setMotionAdjustment( w );
+        d = p.nearPlane(); v.apply( "near-plane", d ); p.setNearPlane( d );
+        int i;
+        i = p.projectionType(); v.apply( "projection-type", i ); p.setProjectionType( static_cast< QGLCamera::ProjectionType >( i ) );
+        i = p.screenRotation(); v.apply( "screen-rotation", i ); p.setScreenRotation( i );
+        w = p.upVector(); v.apply( "up-vector", w ); p.setUpVector( w );
+        s = p.viewSize(); v.apply( "view-size", s ); p.setViewSize( s );
+    }
+
+    template < typename Key, class Visitor >
+    static void visit( Key, const QGLCamera& p, Visitor& v )
+    {
+        v.apply( "adjust_for_aspect_ratio", p.adjustForAspectRatio() );
+        v.apply( "center", p.center() );
+        v.apply( "eye", p.eye() );
+        v.apply( "eye-separation", p.eyeSeparation() );
+        v.apply( "far-plane", p.farPlane() );
+        v.apply( "field-of-view", p.fieldOfView() );
+        v.apply( "min-view-size", p.minViewSize() );
+        v.apply( "motion-adjustment", p.motionAdjustment() );
+        v.apply( "near-plane", p.nearPlane() );
+        v.apply( "projection-type", static_cast< int >( p.projectionType() ) );
+        v.apply( "screen-rotation", p.screenRotation() );
+        v.apply( "up-vector", p.upVector() );
+        v.apply( "view-size", p.viewSize() );
+    }
+};
+
+} } // namespace comma { namespace visiting {
 
 #endif /*SNARK_GRAPHICS_GL_VIEW_H_*/

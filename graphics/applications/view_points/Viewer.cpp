@@ -41,11 +41,25 @@
 #include <signal.h>
 #endif
 #include <boost/filesystem/operations.hpp>
+#include <boost/property_tree/json_parser.hpp>
 #include <boost/thread/thread_time.hpp>
+#include <comma/csv/stream.h>
+#include <comma/name_value/ptree.h>
+#include <comma/visiting/apply.h>
 #include "./Viewer.h"
 #include <QTimer>
 
 namespace snark { namespace graphics { namespace View {
+
+Viewer::camera_position_output::camera_position_output( const Viewer& viewer ) : viewer_( viewer ) {}
+
+void Viewer::camera_position_output::write()
+{
+    boost::property_tree::ptree p;
+    comma::to_ptree to_ptree( p );
+    comma::visiting::apply( to_ptree ).to( *viewer_.camera() );
+    boost::property_tree::write_json( std::cout, p );
+}
 
 Viewer::Viewer( const QColor4ub& background_color
               , double fov
@@ -53,8 +67,10 @@ Viewer::Viewer( const QColor4ub& background_color
               , bool orthographic
               , boost::optional< comma::csv::options > camera_csv, boost::optional< Eigen::Vector3d > cameraposition
               , boost::optional< Eigen::Vector3d > cameraorientation
+              , boost::property_tree::ptree* camera_config
               , boost::optional< Eigen::Vector3d > scene_center
-              , boost::optional< double > scene_radius )
+              , boost::optional< double > scene_radius
+              , bool output_camera_position )
     : qt3d::view( background_color
                 , fov
                 , z_up
@@ -68,11 +84,22 @@ Viewer::Viewer( const QColor4ub& background_color
     , m_cameraposition( cameraposition )
     , m_cameraorientation( cameraorientation )
 {
+    if( output_camera_position ) { camera_position_output_.reset( new camera_position_output( *this ) ); }
     QTimer* timer = new QTimer( this );
     timer->start( 40 );
     connect( timer, SIGNAL( timeout() ), this, SLOT( read() ) );
     if( camera_csv ) { m_cameraReader.reset( new CameraReader( *camera_csv ) ); }
-    m_cameraFixed = m_cameraposition || m_cameraReader;
+    if( camera_config )
+    {
+        comma::from_ptree from_ptree( *camera_config, true );
+        comma::visiting::apply( from_ptree ).to( *camera() );
+        //boost::property_tree::ptree p;
+        //comma::to_ptree to_ptree( p );
+        //comma::visiting::apply( to_ptree ).to( *camera() );
+        //std::cerr << "view-points: camera set to:" << std::endl;
+        //boost::property_tree::write_json( std::cerr, p );
+    }
+    m_cameraFixed = m_cameraposition || m_cameraReader || camera_config;
 }
 
 void Viewer::shutdown()
@@ -149,7 +176,6 @@ void Viewer::read()
     if( !m_shutdown ) { update(); }
 }
 
-
 void Viewer::paintGL( QGLPainter *painter )
 {
     for( unsigned int i = 0; i < readers.size(); ++i )
@@ -161,6 +187,7 @@ void Viewer::paintGL( QGLPainter *painter )
         if( readers[i]->pointSize > 1 ) { ::glDisable( GL_POINT_SMOOTH ); }
     }
     draw_coordinates( painter );
+    if( camera_position_output_ ) { camera_position_output_->write(); }
 }
 
 void Viewer::setCameraPosition ( const Eigen::Vector3d& position, const Eigen::Vector3d& orientation )

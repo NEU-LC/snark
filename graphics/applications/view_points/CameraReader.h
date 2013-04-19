@@ -52,9 +52,10 @@ struct point_with_orientation // quick and dirty
 {
     Eigen::Vector3d point;
     Eigen::Vector3d orientation;
+    bool operator==( const point_with_orientation& rhs ) const { return point == rhs.point && orientation == rhs.orientation; }
+    bool operator!=( const point_with_orientation& rhs ) const { return !operator==( rhs ); }
 };
 
-    
 class CameraReader
 {
     public:
@@ -110,5 +111,5 @@ template <> struct traits< snark::graphics::View::point_with_orientation >
 };
 
 } } // namespace comma { namespace visiting {
-    
+
 #endif /*SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_CAMERAREADER_H_*/
