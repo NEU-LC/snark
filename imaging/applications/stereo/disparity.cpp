@@ -36,10 +36,11 @@
 
 namespace snark { namespace imaging {
 
-disparity::disparity ( const snark::imaging::camera_parser& left, const snark::imaging::camera_parser& right, unsigned int width, unsigned int height, const comma::csv::options& csv ):
+disparity::disparity ( const snark::imaging::camera_parser& left, const snark::imaging::camera_parser& right, unsigned int width, unsigned int height, const comma::csv::options& csv, bool input_rectified ):
     m_rotation( right.rotation() * left.rotation().transpose() ),
     m_translation( right.translation() - left.translation() ),
-    m_rectify ( left.camera(), left.distortion(), right.camera(), right.distortion(), width, height, m_rotation, m_translation ),
+    m_rectify( left.camera(), left.distortion(), right.camera(), right.distortion(), width, height, m_rotation, m_translation, input_rectified ),
+    m_input_rectified( input_rectified ),
     m_serialization( csv.fields, csv.format() )
 {
 
@@ -47,10 +48,11 @@ disparity::disparity ( const snark::imaging::camera_parser& left, const snark::i
 
 disparity::disparity ( const camera_parser& left, const camera_parser& right,
                  const cv::Mat& left_x, const cv::Mat& left_y, const cv::Mat& right_x, const cv::Mat& right_y,
-                 const comma::csv::options& csv ):
+                 const comma::csv::options& csv, bool input_rectified ):
     m_rotation( Eigen::Matrix3d::Identity() ),
     m_translation( right.translation() - left.translation() ),
-    m_rectify ( left.camera(), right.camera(), m_translation, left_x, left_y, right_x, right_y ),
+    m_rectify( left.camera(), right.camera(), m_translation, left_x, left_y, right_x, right_y, input_rectified ),
+    m_input_rectified( input_rectified ),
     m_serialization( csv.fields, csv.format() )
 {
     
@@ -58,12 +60,20 @@ disparity::disparity ( const camera_parser& left, const camera_parser& right,
 
 void disparity::process( const cv::Mat& left, const cv::Mat& right, const cv::StereoSGBM& sgbm, boost::posix_time::ptime time )
 {
-    cv::Mat leftRectified = m_rectify.remap_left( left );
-    cv::Mat rightRectified = m_rectify.remap_right( right );
-
     snark::imaging::point_cloud cloud( sgbm );
 
-    cv::Mat disparity = cloud.get_disparity( leftRectified, rightRectified );
+    cv::Mat disparity;
+    if (!m_input_rectified)
+    {
+        cv::Mat leftRectified = m_rectify.remap_left( left );
+        cv::Mat rightRectified = m_rectify.remap_right( right );
+        disparity = cloud.get_disparity( leftRectified, rightRectified );
+    }
+    else
+    {
+        disparity = cloud.get_disparity( left, right );
+    }
+
     cv::Mat disparity16;
     unsigned int numberOfDisparities = ((left.cols/8) + 15) & -16;
     disparity.convertTo( disparity16, CV_16U, 65535 / ( numberOfDisparities *16.0 ) );

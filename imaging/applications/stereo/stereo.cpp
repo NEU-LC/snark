@@ -36,10 +36,11 @@
 
 namespace snark { namespace imaging {
 
-stereo::stereo ( const snark::imaging::camera_parser& left, const snark::imaging::camera_parser& right, unsigned int width, unsigned int height, const comma::csv::options& csv ):
+stereo::stereo ( const snark::imaging::camera_parser& left, const snark::imaging::camera_parser& right, unsigned int width, unsigned int height, const comma::csv::options& csv, bool input_rectified ):
     m_rotation( right.rotation() * left.rotation().transpose() ),
     m_translation( right.translation() - left.translation() ),
-    m_rectify ( left.camera(), left.distortion(), right.camera(), right.distortion(), width, height, m_rotation, m_translation ),
+    m_rectify( left.camera(), left.distortion(), right.camera(), right.distortion(), width, height, m_rotation, m_translation, input_rectified ),
+    m_input_rectified( input_rectified ),
     m_frame_counter( 0 )
 {
     if( csv.binary() )
@@ -55,10 +56,11 @@ stereo::stereo ( const snark::imaging::camera_parser& left, const snark::imaging
 
 stereo::stereo ( const camera_parser& left, const camera_parser& right,
                  const cv::Mat& left_x, const cv::Mat& left_y, const cv::Mat& right_x, const cv::Mat& right_y,
-                 const comma::csv::options& csv ):
+                 const comma::csv::options& csv, bool input_rectified ):
     m_rotation( Eigen::Matrix3d::Identity() ),
     m_translation( right.translation() - left.translation() ),
-    m_rectify ( left.camera(), right.camera(), m_translation, left_x, left_y, right_x, right_y ),
+    m_rectify( left.camera(), right.camera(), m_translation, left_x, left_y, right_x, right_y, input_rectified ),
+    m_input_rectified( input_rectified ),
     m_frame_counter( 0 )
 {
     if( csv.binary() )
@@ -75,11 +77,21 @@ stereo::stereo ( const camera_parser& left, const camera_parser& right,
 
 void stereo::process( const cv::Mat& left, const cv::Mat& right, const cv::StereoSGBM& sgbm, boost::posix_time::ptime time )
 {
-    cv::Mat leftRectified = m_rectify.remap_left( left );
-    cv::Mat rightRectified = m_rectify.remap_right( right );
-    
     snark::imaging::point_cloud cloud( sgbm );
-    cv::Mat points = cloud.get( m_rectify.Q(), leftRectified, rightRectified );
+
+    cv::Mat points;
+    cv::Mat leftRectified;
+    if (!m_input_rectified)
+    {
+        leftRectified = m_rectify.remap_left( left );
+        cv::Mat rightRectified = m_rectify.remap_right( right );
+        points = cloud.get( m_rectify.Q(), leftRectified, rightRectified );
+    }
+    else
+    {
+        leftRectified = left;
+        points = cloud.get( m_rectify.Q(), left, right );
+    }
 
     for( int i = 0; i < points.rows; i++ )
     {
@@ -112,7 +124,7 @@ void stereo::process( const cv::Mat& left, const cv::Mat& right, const cv::Stere
     m_frame_counter++;
 }
 
-    
+
 } }
 
 

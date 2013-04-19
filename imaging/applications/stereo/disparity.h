@@ -45,16 +45,17 @@ namespace snark { namespace imaging {
 class disparity
 {
 public:
-    disparity( const camera_parser& left, const camera_parser& right, unsigned int width, unsigned int height, const comma::csv::options& csv );
+    disparity( const camera_parser& left, const camera_parser& right, unsigned int width, unsigned int height, const comma::csv::options& csv, bool input_rectified );
     disparity( const camera_parser& left, const camera_parser& right,
             const cv::Mat& left_x, const cv::Mat& left_y, const cv::Mat& right_x, const cv::Mat& right_y,
-            const comma::csv::options& csv );
+            const comma::csv::options& csv, bool input_rectified );
 
     void process( const cv::Mat& left, const cv::Mat& right, const cv::StereoSGBM& sgbm, boost::posix_time::ptime time = boost::posix_time::ptime() );
 private:
     Eigen::Matrix3d m_rotation;
     Eigen::Vector3d m_translation;
     rectify_map m_rectify;
+    bool m_input_rectified;
     cv_mat::serialization m_serialization;
 };
 

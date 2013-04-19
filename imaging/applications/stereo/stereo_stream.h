@@ -45,11 +45,11 @@ class stereo_stream
 {
 public:
     stereo_stream( const camera_parser& left, const camera_parser& right, const boost::array< unsigned int, 6 > roi,
-                   const comma::csv::options& input_csv, const comma::csv::options& output_csv );
+                   const comma::csv::options& input_csv, const comma::csv::options& output_csv, bool input_rectified = false );
 
     stereo_stream( const camera_parser& left, const camera_parser& right, const boost::array< unsigned int, 6 > roi,
             const cv::Mat& left_x, const cv::Mat& left_y, const cv::Mat& right_x, const cv::Mat& right_y,
-            const comma::csv::options& input_csv, const comma::csv::options& output_csv );
+            const comma::csv::options& input_csv, const comma::csv::options& output_csv, bool input_rectified = false );
 
     void read( const cv::StereoSGBM& sgbm );
 private:
@@ -61,10 +61,10 @@ private:
 
 template< typename T >
 inline stereo_stream< T >::stereo_stream ( const camera_parser& left, const camera_parser& right, const boost::array< unsigned int, 6 > roi,
-                               const comma::csv::options& input_csv, const comma::csv::options& output_csv ):
+                               const comma::csv::options& input_csv, const comma::csv::options& output_csv, bool input_rectified ):
     m_left( roi[0], roi[1], roi[4], roi[5] ),
     m_right( roi[2], roi[3], roi[4], roi[5] ),
-    m_stereo( left, right, m_left.width, m_left.height, output_csv ),
+    m_stereo( left, right, m_left.width, m_left.height, output_csv, input_rectified ),
     m_input( input_csv.fields, input_csv.format() )
 {
     assert( m_left.width == m_right.width );
@@ -74,10 +74,10 @@ inline stereo_stream< T >::stereo_stream ( const camera_parser& left, const came
 template< typename T >
 inline stereo_stream< T >::stereo_stream ( const camera_parser& left, const camera_parser& right, const boost::array< unsigned int, 6 > roi,
                                            const cv::Mat& left_x, const cv::Mat& left_y, const cv::Mat& right_x, const cv::Mat& right_y,
-                                           const comma::csv::options& input_csv, const comma::csv::options& output_csv ):
+                                           const comma::csv::options& input_csv, const comma::csv::options& output_csv, bool input_rectified ):
     m_left( roi[0], roi[1], roi[4], roi[5] ),
     m_right( roi[2], roi[3], roi[4], roi[5] ),
-    m_stereo( left, right, left_x, left_y, right_x, right_y, output_csv ),
+    m_stereo( left, right, left_x, left_y, right_x, right_y, output_csv, input_rectified ),
     m_input( input_csv.fields, input_csv.format() )
 {
     assert( m_left.width == m_right.width );

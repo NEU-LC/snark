@@ -40,7 +40,7 @@ namespace snark { namespace imaging {
 
 /// constructor from parameters
 rectify_map::rectify_map ( const Eigen::Matrix3d& leftCamera, const Vector5d& leftDistortion, const Eigen::Matrix3d& rightCamera, const Vector5d& rightDistortion,
-                           unsigned int imageWidth, unsigned int imageHeight, const Eigen::Matrix3d& rotation, const Eigen::Vector3d& translation )
+                           unsigned int imageWidth, unsigned int imageHeight, const Eigen::Matrix3d& rotation, const Eigen::Vector3d& translation, bool rectified )
 {
     cv::eigen2cv( leftCamera, m_leftCamera );
     cv::eigen2cv( leftDistortion, m_leftDistortion );
@@ -50,12 +50,11 @@ rectify_map::rectify_map ( const Eigen::Matrix3d& leftCamera, const Vector5d& le
     m_imageSize.height = imageHeight;
     cv::eigen2cv( rotation, m_rotation );
     cv::eigen2cv( translation, m_translation );
-    
+
     cv::stereoRectify( m_leftCamera, m_leftDistortion, m_rightCamera, m_rightDistortion, m_imageSize, m_rotation, m_translation,
                        m_R1, m_R2, m_P1, m_P2, m_Q );
 
-
-    if( leftDistortion.norm() > 1e-5 || rightDistortion.norm() > 1e-5 || !rotation.isApprox( Eigen::Matrix3d::Identity() ) )
+    if ( !rectified && ( leftDistortion.norm() > 1e-5 || rightDistortion.norm() > 1e-5 || !rotation.isApprox( Eigen::Matrix3d::Identity() ) ) )
     {
         cv::initUndistortRectifyMap( m_leftCamera, m_leftDistortion, m_R1, m_P1, m_imageSize, CV_16SC2, m_map11, m_map12 );
         cv::initUndistortRectifyMap( m_rightCamera, m_rightDistortion, m_R2, m_P2, m_imageSize, CV_16SC2, m_map21, m_map22);
@@ -68,7 +67,7 @@ rectify_map::rectify_map ( const Eigen::Matrix3d& leftCamera, const Vector5d& le
 
 /// constructor from maps
 rectify_map::rectify_map ( const Eigen::Matrix3d& leftCamera, const Eigen::Matrix3d& rightCamera, const Eigen::Vector3d& translation,
-                           const cv::Mat& left_x, const cv::Mat& left_y, const cv::Mat& right_x, const cv::Mat& right_y ):
+                           const cv::Mat& left_x, const cv::Mat& left_y, const cv::Mat& right_x, const cv::Mat& right_y, bool rectified ):
     m_map11( left_x ),
     m_map12( left_y ),
     m_map21( right_x ),
@@ -87,7 +86,6 @@ rectify_map::rectify_map ( const Eigen::Matrix3d& leftCamera, const Eigen::Matri
 
     cv::stereoRectify( m_leftCamera, m_leftDistortion, m_rightCamera, m_rightDistortion, m_imageSize, m_rotation, m_translation,
                        m_R1, m_R2, m_P1, m_P2, m_Q );
-    
 }
 
 /// remap left image
@@ -120,5 +118,4 @@ cv::Mat rectify_map::remap_right ( const cv::Mat& right ) const
     }
 }
 
-    
 } }

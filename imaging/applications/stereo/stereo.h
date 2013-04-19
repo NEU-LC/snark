@@ -59,10 +59,10 @@ struct colored_point
 class stereo
 {
 public:
-    stereo( const camera_parser& left, const camera_parser& right, unsigned int width, unsigned int height, const comma::csv::options& csv );
+    stereo( const camera_parser& left, const camera_parser& right, unsigned int width, unsigned int height, const comma::csv::options& csv, bool input_rectified );
     stereo( const camera_parser& left, const camera_parser& right,
             const cv::Mat& left_x, const cv::Mat& left_y, const cv::Mat& right_x, const cv::Mat& right_y,
-            const comma::csv::options& csv );
+            const comma::csv::options& csv, bool input_rectified );
 
     void process( const cv::Mat& left, const cv::Mat& right, const cv::StereoSGBM& sgbm, boost::posix_time::ptime time = boost::posix_time::ptime() );
 private:
@@ -70,6 +70,7 @@ private:
     Eigen::Matrix3d m_rotation;
     Eigen::Vector3d m_translation;
     rectify_map m_rectify;
+    bool m_input_rectified;
     boost::scoped_ptr< comma::csv::ascii< colored_point > > m_ascii;
     boost::scoped_ptr< comma::csv::binary< colored_point > > m_binary;
     std::vector< char > m_output;
