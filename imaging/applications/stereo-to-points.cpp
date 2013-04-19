@@ -229,7 +229,7 @@ int main( int argc, char** argv )
             {
                 if( vm.count( "disparity" ) )
                     run< snark::imaging::disparity >( leftParameters, rightParameters, left.cols, left.rows, csv, left, right, vm.count( "input-rectified" ) );
-                if( vm.count( "rectified" ) )
+                if( vm.count( "output-rectified" ) )
                     run< snark::imaging::rectified >( leftParameters, rightParameters, left.cols, left.rows, csv, left, right, vm.count( "input-rectified" ) );
             }
         }

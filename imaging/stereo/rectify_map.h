@@ -47,10 +47,10 @@ public:
     typedef Eigen::Matrix< double, 5, 1 > Vector5d;
     
     rectify_map( const Eigen::Matrix3d& leftCamera, const Vector5d& leftDistortion, const Eigen::Matrix3d& rightCamera, const Vector5d& rightDistortion,
-                 unsigned int imageWidth, unsigned int imageHeight, const Eigen::Matrix3d& rotation, const Eigen::Vector3d& translation );
+                 unsigned int imageWidth, unsigned int imageHeight, const Eigen::Matrix3d& rotation, const Eigen::Vector3d& translation, bool rectified = false );
 
     rectify_map( const Eigen::Matrix3d& leftCamera, const Eigen::Matrix3d& rightCamera, const Eigen::Vector3d& translation,
-                 const cv::Mat& left_x, const cv::Mat& left_y, const cv::Mat& right_x, const cv::Mat& right_y );
+                 const cv::Mat& left_x, const cv::Mat& left_y, const cv::Mat& right_x, const cv::Mat& right_y, bool rectified = false );
 
     /// return the Q matrix
     const cv::Mat& Q() const { return m_Q; }
@@ -83,7 +83,7 @@ private:
     cv::Mat m_map21;
     cv::Mat m_map22;
 };
-    
+
 } }
 
 #endif // SNARK_IMAGING_STEREO_RECTIFY_MAP_H

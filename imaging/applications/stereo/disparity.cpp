@@ -39,7 +39,7 @@ namespace snark { namespace imaging {
 disparity::disparity ( const snark::imaging::camera_parser& left, const snark::imaging::camera_parser& right, unsigned int width, unsigned int height, const comma::csv::options& csv, bool input_rectified ):
     m_rotation( right.rotation() * left.rotation().transpose() ),
     m_translation( right.translation() - left.translation() ),
-    m_rectify( left.camera(), left.distortion(), right.camera(), right.distortion(), width, height, m_rotation, m_translation ),
+    m_rectify( left.camera(), left.distortion(), right.camera(), right.distortion(), width, height, m_rotation, m_translation, input_rectified ),
     m_input_rectified( input_rectified ),
     m_serialization( csv.fields, csv.format() )
 {
@@ -51,7 +51,7 @@ disparity::disparity ( const camera_parser& left, const camera_parser& right,
                  const comma::csv::options& csv, bool input_rectified ):
     m_rotation( Eigen::Matrix3d::Identity() ),
     m_translation( right.translation() - left.translation() ),
-    m_rectify( left.camera(), right.camera(), m_translation, left_x, left_y, right_x, right_y ),
+    m_rectify( left.camera(), right.camera(), m_translation, left_x, left_y, right_x, right_y, input_rectified ),
     m_input_rectified( input_rectified ),
     m_serialization( csv.fields, csv.format() )
 {
