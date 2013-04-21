@@ -72,7 +72,7 @@ static void usage()
     std::cerr << "    default input format: <timestamp, 8 bytes><packet, 1206 bytes>" << std::endl;
     std::cerr << std::endl;
     std::cerr << "output options:" << std::endl;
-    std::cerr << "    --binary: if present, output in binary equivalent of csv" << std::endl;
+    std::cerr << "    --binary,-b[=<format>]: if present, output in binary equivalent of csv" << std::endl;
     std::cerr << "    --fields <fields>: e.g. t,x,y,z,scan" << std::endl;
     std::cerr << "    --format: output full binary format and exit (see examples)" << std::endl;
     std::cerr << "    --min-range=<value>: do not output points closer than <value>; default 0" << std::endl;
@@ -118,40 +118,48 @@ inline static void run( velodyne_stream< S >& v, const comma::csv::options& csv,
     else { std::cerr << "velodyne-to-csv: done, no more data" << std::endl; }
 }
 
+static std::string fields_( const std::string& s ) // parsing fields, quick and dirty
+{
+    if( s == "" ) { return s; }
+    std::vector< std::string > v = comma::split( s, ',' );
+    for( std::size_t i = 0; i < v.size(); ++i )
+    {
+        if( v[i] == "x" ) { v[i] = "ray/second/x"; }
+        else if( v[i] == "y" ) { v[i] = "ray/second/y"; }
+        else if( v[i] == "z" ) { v[i] = "ray/second/z"; }
+    }
+    return comma::join( v, ',' );
+}
+
+static comma::csv::format format_( const std::string& s, const std::string& fields )
+{
+    if( !s.empty() ) { try { return comma::csv::format( s ); } catch( ... ) {} }
+    if( fields.empty() ) { return comma::csv::format::value< velodyne_point >(); }
+    std::vector< std::string > v = comma::split( fields, ',' );
+    comma::csv::format format;
+    for( std::size_t i = 0; i < v.size(); ++i )
+    {
+        if( v[i] == "t" ) { format += "t"; }
+        else if( v[i] == "id" ) { format += "ui"; }
+        else if( v[i] == "intensity" ) { format += "ui"; }
+        else if( v[i] == "valid" ) { format += "b"; }
+        else if( v[i] == "scan" ) { format += "ui"; }
+        else if( v[i] == "ray" ) { format += "6d"; }
+        else if( v[i] == "ray/first" ) { format += "3d"; }
+        else if( v[i] == "ray/second" ) { format += "3d"; }
+        else { format += "d"; }
+    }
+    return format;
+}
+
 int main( int ac, char** av )
 {
     try
     {
-        // get options
         comma::command_line_options options( ac, av );
         if( options.exists( "--help" ) || options.exists( "-h" ) ) { usage(); }
-        // handle fields, quick and dirty
-        std::string fields = options.value< std::string >( "--fields", "" );
-        comma::csv::format format;
-        if( fields != "" ) // parsing fields, quick and dirty
-        {
-            std::vector< std::string > v = comma::split( fields, ',' );
-            for( std::size_t i = 0; i < v.size(); ++i )
-            {
-                if( v[i] == "t" ) { format += "t"; }
-                else if( v[i] == "id" ) { format += "ui"; }
-                else if( v[i] == "intensity" ) { format += "ui"; }
-                else if( v[i] == "valid" ) { format += "b"; }
-                else if( v[i] == "scan" ) { format += "ui"; }
-                else if( v[i] == "x" ) { v[i] = "ray/second/x"; format += "d"; }
-                else if( v[i] == "y" ) { v[i] = "ray/second/y"; format += "d"; }
-                else if( v[i] == "z" ) { v[i] = "ray/second/z"; format += "d"; }
-                else if( v[i] == "ray" ) { format += "6d"; }
-                else if( v[i] == "ray/first" ) { format += "3d"; }
-                else if( v[i] == "ray/second" ) { format += "3d"; }
-                else { format += "d"; }
-            }
-            fields = comma::join( v, ',' );
-        }
-        else
-        {
-            format = comma::csv::format::value< velodyne_point >();
-        }
+        std::string fields = fields_( options.value< std::string >( "--fields", "" ) );
+        comma::csv::format format = format_( options.value< std::string >( "--binary,-b", "" ), fields );
         if( options.exists( "--format" ) ) { std::cout << format.string(); exit( 0 ); }
         velodyne::db db( options.value< std::string >( "--db", "/usr/local/etc/db.xml" ) );
         bool outputInvalidpoints = options.exists( "--output-invalid-points" );
@@ -169,7 +177,7 @@ int main( int ac, char** av )
         comma::csv::options csv;
         csv.fields = fields;
         csv.full_xpath = true;
-        if( options.exists( "--binary" ) ) { csv.format( format.string() ); }
+        if( options.exists( "--binary,-b" ) ) { csv.format( format ); }
         options.assert_mutually_exclusive( "--pcap,--thin,--udp-port,--proprietary,-q" );
         double min_range = options.value( "--min-range", 0.0 );
         if( options.exists( "--pcap" ) )
