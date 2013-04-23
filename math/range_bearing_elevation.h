@@ -119,6 +119,11 @@ private:
 /// a short-hand for lazy
 typedef range_bearing_elevation rbe;
 
+/// return great circle distance for a unit radius
+/// since there are two arcs connecting rhs and lhs, return the shorter one
+/// a convenience function
+double great_circle_distance( const bearing_elevation& lhs, const bearing_elevation& rhs );
+
 } // namespace snark {
 
 #endif // SNARK_MATH_RBE_H

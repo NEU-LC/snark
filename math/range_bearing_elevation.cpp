@@ -30,9 +30,8 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include <Eigen/Geometry>
 #include <snark/math/range_bearing_elevation.h>
-
-#include <iostream>
 
 namespace snark {
 
@@ -160,6 +159,13 @@ const range_bearing_elevation& range_bearing_elevation::from_cartesian( double x
     bearing( bearing_ );
     elevation( elevation_ );
     return *this;
+}
+
+double great_circle_distance( const bearing_elevation& lhs, const bearing_elevation& rhs )
+{
+    Eigen::Vector3d a = rbe( 1, lhs.bearing(), lhs.elevation() ).to_cartesian();
+    Eigen::Vector3d b = rbe( 1, rhs.bearing(), rhs.elevation() ).to_cartesian();
+    return Eigen::AngleAxis< double >( Eigen::Quaternion< double >::FromTwoVectors( a, b ) ).angle();
 }
 
 } // namespace snark {
