@@ -169,7 +169,7 @@ PlyLoader::PlyLoader( const std::string& file, boost::optional< QColor4ub > colo
             std::vector< std::string > v = comma::split( comma::strip( s ), ' ' );
             unsigned int n = boost::lexical_cast< unsigned int >( v[0] );
             if( ( n + 1 ) != v.size() ) { COMMA_THROW( comma::exception, "invalid line \"" << s << "\"" ); }
-            if( vertices_per_face && n != vertices_per_face ) { COMMA_THROW( comma::exception, "only equal number of vertices per face supported" ); }
+            //if( vertices_per_face && n != vertices_per_face ) { COMMA_THROW( comma::exception, "only equal number of vertices per face supported" ); }
             vertices_per_face = n;
             QGL::IndexArray indices;
             switch( vertices_per_face )
