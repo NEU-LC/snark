@@ -112,13 +112,13 @@ TEST( math, range_bearing_elevation )
     // todo
 }
 
-TEST( math, great_circle_distance )
+TEST( math, great_circle_angle_axis )
 {
-    EXPECT_NEAR( 0, great_circle_distance( bearing_elevation( 0, 0 ), bearing_elevation( 0, 0 ) ), 0.000001 );
-    EXPECT_NEAR( 1, great_circle_distance( bearing_elevation( 0, 0 ), bearing_elevation( 0, 1 ) ), 0.000001 );
-    EXPECT_NEAR( 1, great_circle_distance( bearing_elevation( 0, 0 ), bearing_elevation( 1, 0 ) ), 0.000001 );
-    EXPECT_NEAR( M_PI, great_circle_distance( bearing_elevation( 0, 0 ), bearing_elevation( M_PI, 0 ) ), 0.000001 );
-    EXPECT_NEAR( M_PI / 2, great_circle_distance( bearing_elevation( 0, 0 ), bearing_elevation( 0, M_PI / 2 ) ), 0.000001 );
+    EXPECT_NEAR( 0, great_circle_angle_axis( bearing_elevation( 0, 0 ), bearing_elevation( 0, 0 ) ).angle(), 0.000001 );
+    EXPECT_NEAR( 1, great_circle_angle_axis( bearing_elevation( 0, 0 ), bearing_elevation( 0, 1 ) ).angle(), 0.000001 );
+    EXPECT_NEAR( 1, great_circle_angle_axis( bearing_elevation( 0, 0 ), bearing_elevation( 1, 0 ) ).angle(), 0.000001 );
+    EXPECT_NEAR( M_PI, great_circle_angle_axis( bearing_elevation( 0, 0 ), bearing_elevation( M_PI, 0 ) ).angle(), 0.000001 );
+    EXPECT_NEAR( M_PI / 2, great_circle_angle_axis( bearing_elevation( 0, 0 ), bearing_elevation( 0, M_PI / 2 ) ).angle(), 0.000001 );
     // todo: certainly more testing...
 }
 

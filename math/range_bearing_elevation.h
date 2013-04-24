@@ -35,6 +35,7 @@
 #define SNARK_MATH_RBE_H
 
 #include <Eigen/Core>
+#include <Eigen/Geometry>
 #include <comma/math/compare.h>
 
 namespace snark {
@@ -123,7 +124,7 @@ typedef range_bearing_elevation rbe;
 /// return great circle distance for a unit radius
 /// since there are two arcs connecting rhs and lhs, return the shorter one
 /// a convenience function
-double great_circle_distance( const bearing_elevation& lhs, const bearing_elevation& rhs );
+Eigen::AngleAxis< double > great_circle_angle_axis( const bearing_elevation& lhs, const bearing_elevation& rhs );
 
 } // namespace snark {
 
