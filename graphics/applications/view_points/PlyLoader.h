@@ -48,12 +48,15 @@ namespace snark { namespace graphics { namespace View {
 class PlyLoader
 {
 public:
-    PlyLoader( const std::string& file, boost::optional< QColor4ub > color );
+    PlyLoader( const std::string& file
+             , boost::optional< QColor4ub > color
+             , double scale = 1 );
     void draw( QGLPainter* painter );
 private:
     QGLSceneNode* m_sceneNode;
     QGLVertexBundle m_vertices;
     boost::optional< QColor4ub > color_;
+    double scale_;
 };
 
 } } } // namespace snark { namespace graphics { namespace View {

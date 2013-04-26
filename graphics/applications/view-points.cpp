@@ -96,8 +96,10 @@ void usage()
     std::cerr << "                     \"lines\": connect all points of a block from first to the last; fields same as for 'point'" << std::endl;
     std::cerr << "                     \"loop\": connect all points of a block; fields same as for 'point'" << std::endl;
     std::cerr << "                     \"label\": e.g. --shape=label --fields=,x,y,z,,,label" << std::endl;
-    std::cerr << "                     \"<model file ( obj, ply... )>\": e.g. --shape=vehicle.obj" << std::endl;
-    std::cerr << "                     \"<model file ( obj, ply... );flip>\": flip the model around the x-axis" << std::endl;
+    std::cerr << "                     \"<model file ( obj, ply... )>[,<options>]\": e.g. --shape=vehicle.obj" << std::endl;
+    std::cerr << "                     \"     <options>" << std::endl;
+    std::cerr << "                     \"         flip\": flip the model around the x-axis" << std::endl;
+    std::cerr << "                     \"         scale=<value>\": resize model (ply only, todo), e.g. show model half-size: scale=0.5" << std::endl;
     std::cerr << "    --size <size> : render last <size> points (or other shapes)" << std::endl;
     std::cerr << "                    default 2000000 for points, for 200000 for other shapes" << std::endl;
     std::cerr << std::endl;
@@ -174,6 +176,35 @@ void usage()
     std::cerr << std::endl;
     exit( -1 );
 }
+
+struct model_options
+{
+    std::string filename;
+    bool flip;
+    double scale;
+    model_options() : flip( false ), scale( 1.0 ) {}
+};
+
+namespace comma { namespace visiting {
+
+template <> struct traits< model_options >
+{
+    template < typename Key, class Visitor > static void visit( Key, model_options& p, Visitor& v )
+    {
+        v.apply( "filename", p.filename );
+        v.apply( "flip", p.flip );
+        v.apply( "scale", p.scale );
+    }
+
+    template < typename Key, class Visitor > static void visit( Key, const model_options& p, Visitor& v )
+    {
+        v.apply( "filename", p.filename );
+        v.apply( "flip", p.flip );
+        v.apply( "scale", p.scale );
+    }
+};
+
+} } // namespace comma { namespace visiting {
 
 // quick and dirty, todo: a proper structure, as well as a visitor for command line options
 boost::shared_ptr< snark::graphics::View::Reader > makeReader( QGLView& viewer
@@ -261,30 +292,15 @@ boost::shared_ptr< snark::graphics::View::Reader > makeReader( QGLView& viewer
         {
             std::string size = options.value< std::string >( "--image-size", "3,3" );
             std::vector< std::string > sizeVector = comma::split( size, ',' );
-            if( v.size() != 2 )
-            {
-                COMMA_THROW( comma::exception, "expected image size as width,height" );
-            }
+            if( v.size() != 2 ) { COMMA_THROW( comma::exception, "expected image size as width,height" ); }
             double width = boost::lexical_cast< double >( sizeVector[0] );
             double height = boost::lexical_cast< double >( sizeVector[0] );
             return boost::shared_ptr< snark::graphics::View::Reader >( new snark::graphics::View::TextureReader( viewer, csv, shape, width, height ) );
         }
         else
         {
-            std::vector< std::string > shapeSplit = comma::split( shape, ';' );
-            bool flip = false;
-            if( shapeSplit.size() > 1 )
-            {
-                if( shapeSplit[1] == "flip" )
-                {
-                    flip = true;
-                }
-                else
-                {
-                    COMMA_THROW_STREAM( comma::exception, "expected model file name, got: " << shape );
-                }
-            }
-            return boost::shared_ptr< snark::graphics::View::Reader >( new snark::graphics::View::ModelReader( viewer, csv, shapeSplit[0], flip, coloured, label ) );
+            model_options m = comma::name_value::parser( "filename", ',' ).get< model_options >( shape );
+            return boost::shared_ptr< snark::graphics::View::Reader >( new snark::graphics::View::ModelReader( viewer, csv, m.filename, m.flip, m.scale, coloured, label ) );
         }
     }
     std::vector< std::string > v = comma::split( csv.fields, ',' );

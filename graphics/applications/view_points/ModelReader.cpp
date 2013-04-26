@@ -47,10 +47,17 @@ namespace snark { namespace graphics { namespace View {
 /// @param flip flip model around the x-axis
 /// @param c color used for the label
 /// @param label text displayed as label
-ModelReader::ModelReader( QGLView& viewer, comma::csv::options& options, const std::string& file, bool flip, snark::graphics::View::coloured* c, const std::string& label )
+ModelReader::ModelReader( QGLView& viewer
+                        , comma::csv::options& options
+                        , const std::string& file
+                        , bool flip
+                        , double scale
+                        , snark::graphics::View::coloured* c
+                        , const std::string& label )
     : Reader( viewer, options, 1, c, 1, label, QVector3D( 0, 1, 1 ) ) // TODO make offset configurable ?
     , m_file( file )
     , m_flip( flip )
+    , scale_( scale )
     , coloured_( c )
 {
 }
@@ -61,14 +68,13 @@ void ModelReader::start()
     {
         boost::optional< QColor4ub > color;
         if( dynamic_cast< const Fixed* >( coloured_ ) ) { color = coloured_->color( Eigen::Vector3d( 0, 0, 0 ), 0, 0, QColor4ub() ); } // quick and dirty
-        m_plyLoader = PlyLoader( m_file, color );
+        m_plyLoader = PlyLoader( m_file, color, scale_ );
     }
-
     if( !m_plyLoader )
     {
+        if( !comma::math::equal( scale_, 1.0 ) ) { std::cerr << "view-points: warning: --scale supported only for ply models; others: todo" << std::endl; }
         m_scene = QGLAbstractScene::loadScene( QLatin1String( m_file.c_str() ) );
     }
-
     m_thread.reset( new boost::thread( boost::bind( &Reader::read, boost::ref( *this ) ) ) );
 }
 

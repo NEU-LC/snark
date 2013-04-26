@@ -48,7 +48,13 @@ namespace snark { namespace graphics { namespace View {
 class ModelReader : public Reader
 {
     public:
-        ModelReader( QGLView& viewer, comma::csv::options& options, const std::string& file, bool flip, coloured* c, const std::string& label );
+        ModelReader( QGLView& viewer
+                   , comma::csv::options& options
+                   , const std::string& file
+                   , bool flip
+                   , double scale
+                   , coloured* c
+                   , const std::string& label );
 
         void start();
         void update( const Eigen::Vector3d& offset );
@@ -62,6 +68,7 @@ class ModelReader : public Reader
         const std::string m_file;
         QGLAbstractScene* m_scene;
         bool m_flip;
+        double scale_;
         boost::optional< PlyLoader > m_plyLoader;
         const coloured* coloured_;
 };

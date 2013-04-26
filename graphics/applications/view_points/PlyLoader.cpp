@@ -93,42 +93,38 @@ template <> struct traits< snark::graphics::View::ply_vertex >
 
 namespace snark { namespace graphics { namespace View {
 
-PlyLoader::PlyLoader( const std::string& file, boost::optional< QColor4ub > color ) : color_( color )
+PlyLoader::PlyLoader( const std::string& file, boost::optional< QColor4ub > color, double scale ) : color_( color ), scale_( scale )
 {
     std::ifstream stream( file.c_str() );
-    char line[255];
-    stream.getline( line, 255 );
-    if( std::strcmp(line, "ply" ) != 0 ) { COMMA_THROW( comma::exception, "expected ply file; got \"" << line << "\" in " << file ); }
-    std::string vertex = "element vertex";
-    std::string face = "element face";
+    std::string line;
+    std::getline( stream, line );
+    if( line != "ply" ) { COMMA_THROW( comma::exception, "expected ply file; got \"" << line << "\" in " << file ); }
     unsigned int numVertex = 0;
     unsigned int numFace = 0;
     bool has_normals = false;
 
     std::vector< std::string > fields;
-    while( std::strcmp(line, "end_header" ) != 0 )
+    while( stream.good() && !stream.eof() && line != "end_header" )
     {
-        stream.getline( line, 255 );
-        if( std::memcmp( line, &vertex[0], vertex.size() ) == 0 )
+        std::getline( stream, line );
+        if( line.empty() ) { continue; }
+        std::vector< std::string > v = comma::split( comma::strip( line ), ' ' );
+        if( v[0] == "element" ) // quick and dirty
         {
-            std::string num( line + vertex.size() + 1 );
-            numVertex = boost::lexical_cast< unsigned int >( num );
+            if( v[1] == "vertex" ) { numVertex = boost::lexical_cast< unsigned int >( v[2] ); }
+            else if( v[1] == "face" ) { numFace = boost::lexical_cast< unsigned int >( v[2] ); }
         }
-        else if( std::memcmp( line, &face[0], face.size() ) == 0 )
-        {
-            std::string num( line + face.size() + 1 );
-            numFace = boost::lexical_cast< unsigned int >( num );
-        }
-        else if( std::strcmp(line, "property float x" ) == 0 ) { fields.push_back( "point/x" ); }
-        else if( std::strcmp(line, "property float y" ) == 0 ) { fields.push_back( "point/y" ); }
-        else if( std::strcmp(line, "property float z" ) == 0 ) { fields.push_back( "point/z" ); }
-        else if( std::strcmp(line, "property float nx" ) == 0 ) { fields.push_back( "normal/x" ); has_normals = true; }
-        else if( std::strcmp(line, "property float ny" ) == 0 ) { fields.push_back( "normal/y" ); }
-        else if( std::strcmp(line, "property float nz" ) == 0 ) { fields.push_back( "normal/z" ); }
-        else if( std::strcmp(line, "property uchar red" ) == 0 ) { fields.push_back( "r" ); }
-        else if( std::strcmp(line, "property uchar green" ) == 0 ) { fields.push_back( "g" ); }
-        else if( std::strcmp(line, "property uchar blue" ) == 0 ) { fields.push_back( "b" ); }
-        else if( std::strcmp(line, "property uchar alpha" ) == 0 ) { fields.push_back( "a" ); }
+        else if( v[0] == "format" && v[1] != "ascii" ) { COMMA_THROW( comma::exception, "only ascii supported; got: " << v[1] ); }
+        else if( line == "property float x" ) { fields.push_back( "point/x" ); }
+        else if( line == "property float y" ) { fields.push_back( "point/y" ); }
+        else if( line == "property float z" ) { fields.push_back( "point/z" ); }
+        else if( line == "property float nx" ) { fields.push_back( "normal/x" ); has_normals = true; }
+        else if( line == "property float ny" ) { fields.push_back( "normal/y" ); }
+        else if( line == "property float nz" ) { fields.push_back( "normal/z" ); }
+        else if( line == "property uchar red" ) { fields.push_back( "r" ); }
+        else if( line == "property uchar green" ) { fields.push_back( "g" ); }
+        else if( line == "property uchar blue" ) { fields.push_back( "b" ); }
+        else if( line == "property uchar alpha" ) { fields.push_back( "a" ); }
     }
     comma::csv::options csv;
     csv.fields = comma::join( fields, ',' );
@@ -148,7 +144,7 @@ PlyLoader::PlyLoader( const std::string& file, boost::optional< QColor4ub > colo
         ascii.get( v, s );
         if( numFace > 0 )
         {
-            geometry.appendVertex( QVector3D( v.point.x(), v.point.y(), v.point.z() ) );
+            geometry.appendVertex( QVector3D( v.point.x() * scale_, v.point.y() * scale_, v.point.z() * scale_ ) );
             if( has_normals ) { geometry.appendNormal( QVector3D( v.normal.x(), v.normal.y(), v.normal.z() ) ); }
             geometry.appendColor( v.color );
         }
