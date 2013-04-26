@@ -96,7 +96,7 @@ void usage()
     std::cerr << "                     \"lines\": connect all points of a block from first to the last; fields same as for 'point'" << std::endl;
     std::cerr << "                     \"loop\": connect all points of a block; fields same as for 'point'" << std::endl;
     std::cerr << "                     \"label\": e.g. --shape=label --fields=,x,y,z,,,label" << std::endl;
-    std::cerr << "                     \"<model file ( obj, ply... )>[,<options>]\": e.g. --shape=vehicle.obj" << std::endl;
+    std::cerr << "                     \"<model file ( obj, ply... )>[;<options>]\": e.g. --shape=vehicle.obj" << std::endl;
     std::cerr << "                     \"     <options>" << std::endl;
     std::cerr << "                     \"         flip\": flip the model around the x-axis" << std::endl;
     std::cerr << "                     \"         scale=<value>\": resize model (ply only, todo), e.g. show model half-size: scale=0.5" << std::endl;
@@ -179,7 +179,6 @@ void usage()
 
 struct model_options
 {
-    std::string filename;
     bool flip;
     double scale;
     model_options() : flip( false ), scale( 1.0 ) {}
@@ -191,14 +190,12 @@ template <> struct traits< model_options >
 {
     template < typename Key, class Visitor > static void visit( Key, model_options& p, Visitor& v )
     {
-        v.apply( "filename", p.filename );
         v.apply( "flip", p.flip );
         v.apply( "scale", p.scale );
     }
 
     template < typename Key, class Visitor > static void visit( Key, const model_options& p, Visitor& v )
     {
-        v.apply( "filename", p.filename );
         v.apply( "flip", p.flip );
         v.apply( "scale", p.scale );
     }
@@ -283,11 +280,8 @@ boost::shared_ptr< snark::graphics::View::Reader > makeReader( QGLView& viewer
     else
     {
         std::vector< std::string > v = comma::split( shape, '.' );
-        if( v.size() < 2 )
-        {
-            COMMA_THROW( comma::exception, "expected shape, got \"" << shape << "\"" );
-        }
-        if( csv.fields == "" ) { csv.fields="point,orientation"; }
+        if( v.size() < 2 ) { COMMA_THROW( comma::exception, "expected shape, got \"" << shape << "\"" ); }
+        if( csv.fields == "" ) { csv.fields="point,orientation"; csv.full_xpath = true; }
         if( v[1] == "png" || v[1] == "jpg" || v[1] == "jpeg" || v[1] == "bmp" || v[1] == "gif" )
         {
             std::string size = options.value< std::string >( "--image-size", "3,3" );
@@ -299,8 +293,8 @@ boost::shared_ptr< snark::graphics::View::Reader > makeReader( QGLView& viewer
         }
         else
         {
-            model_options m = comma::name_value::parser( "filename", ',' ).get< model_options >( shape );
-            return boost::shared_ptr< snark::graphics::View::Reader >( new snark::graphics::View::ModelReader( viewer, csv, m.filename, m.flip, m.scale, coloured, label ) );
+            model_options m = comma::name_value::parser( ';', '=' ).get< model_options >( properties );
+            return boost::shared_ptr< snark::graphics::View::Reader >( new snark::graphics::View::ModelReader( viewer, csv, shape, m.flip, m.scale, coloured, label ) );
         }
     }
     std::vector< std::string > v = comma::split( csv.fields, ',' );

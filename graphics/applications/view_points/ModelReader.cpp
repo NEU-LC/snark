@@ -72,7 +72,7 @@ void ModelReader::start()
     }
     if( !m_plyLoader )
     {
-        if( !comma::math::equal( scale_, 1.0 ) ) { std::cerr << "view-points: warning: --scale supported only for ply models; others: todo" << std::endl; }
+        if( !comma::math::equal( scale_, 1.0 ) ) { std::cerr << "view-points: warning: scale supported only for ply models; others: todo" << std::endl; }
         m_scene = QGLAbstractScene::loadScene( QLatin1String( m_file.c_str() ) );
     }
     m_thread.reset( new boost::thread( boost::bind( &Reader::read, boost::ref( *this ) ) ) );

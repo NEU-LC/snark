@@ -138,7 +138,9 @@ PlyLoader::PlyLoader( const std::string& file, boost::optional< QColor4ub > colo
     for( unsigned int i = 0; i < numVertex; i++ )
     {
         std::string s;
-        while( s.empty() && !stream.eof() ) { std::getline( stream, s ); }
+        if( stream.eof() ) { break; }
+        std::getline( stream, s );
+        if( s.empty() ) { continue; }
         ply_vertex v;
         if( color_ ) { v.color = *color_; } // quick and dirty
         ascii.get( v, s );
@@ -150,23 +152,22 @@ PlyLoader::PlyLoader( const std::string& file, boost::optional< QColor4ub > colo
         }
         else
         {
-            vertices.append( QVector3D( v.point.x(), v.point.y(), v.point.z() ) );
+            vertices.append( QVector3D( v.point.x() * scale_, v.point.y() * scale_, v.point.z() * scale_ ) );
             // todo: normals?
             colors.append( v.color );
         }
     }
     if( numFace > 0 )
     {
-        unsigned int vertices_per_face = 0;
         for( unsigned int i = 0; i < numFace; i++ ) // quick and dirty
         {
             std::string s;
-            while( s.empty() && !stream.eof() ) { std::getline( stream, s ); }
+            if( stream.eof() ) { break; }
+            std::getline( stream, s );
+            if( s.empty() ) { continue; }
             std::vector< std::string > v = comma::split( comma::strip( s ), ' ' );
-            unsigned int n = boost::lexical_cast< unsigned int >( v[0] );
-            if( ( n + 1 ) != v.size() ) { COMMA_THROW( comma::exception, "invalid line \"" << s << "\"" ); }
-            //if( vertices_per_face && n != vertices_per_face ) { COMMA_THROW( comma::exception, "only equal number of vertices per face supported" ); }
-            vertices_per_face = n;
+            unsigned int vertices_per_face = boost::lexical_cast< unsigned int >( v[0] );
+            if( ( vertices_per_face + 1 ) != v.size() ) { COMMA_THROW( comma::exception, "invalid line \"" << s << "\"" ); }
             QGL::IndexArray indices;
             switch( vertices_per_face )
             {
