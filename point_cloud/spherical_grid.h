@@ -22,8 +22,6 @@ struct bearing_elevation_grid
             index( double bearing_resolution, double elevation_resolution );
             index( double resolution );
             index( const snark::bearing_elevation& begin, const snark::bearing_elevation& resolution );
-
-            /// constructor for full spherical grid with given resolution (range ignored)
             index( const snark::bearing_elevation& resolution );
 
             /// @return index relative to begin with given resolution
@@ -32,7 +30,7 @@ struct bearing_elevation_grid
             /// @return index relative to begin with given resolution
             type operator()( const snark::bearing_elevation& v ) const;
 
-            /// @return bearing, elevation for given index (range will be set to 1)
+            /// @return bearing, elevation for given index
             snark::bearing_elevation bearing_elevation( const type& i ) const;
 
             /// @return begin
@@ -71,6 +69,48 @@ struct bearing_elevation_grid
 
         private:
             index_t index_;
+    };
+
+    /// bearing index; quick and dirty; required for some applications
+    class bearing_index
+    {
+        public:
+            /// constructors
+            bearing_index( double begin, double resolution ) : index_( begin, 0, resolution, resolution ) {}
+            bearing_index( double resolution ) : index_( resolution, resolution ) {}
+
+            /// @return index relative to begin with given resolution
+            std::size_t operator()( double bearing ) const { return index_( bearing, 0 )[0]; }
+
+            /// @return begin
+            double begin() const { return index_.begin().bearing(); }
+
+            /// @return resolution
+            double resolution() const { return index_.resolution().bearing(); }
+
+        private:
+            bearing_elevation_grid::index index_;
+    };
+
+    /// elevation index; quick and dirty; required for some applications
+    class elevation_index
+    {
+        public:
+            /// constructors
+            elevation_index( double begin, double resolution ) : index_( 0, begin, resolution, resolution ) {}
+            elevation_index( double resolution ) : index_( resolution, resolution ) {}
+
+            /// @return index relative to begin with given resolution
+            std::size_t operator()( double elevation ) const { return index_( 0, elevation )[1]; }
+
+            /// @return begin
+            double begin() const { return index_.begin().elevation(); }
+
+            /// @return resolution
+            double resolution() const { return index_.resolution().elevation(); }
+
+        private:
+            bearing_elevation_grid::index index_;
     };
 };
 
