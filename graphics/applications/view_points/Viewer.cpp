@@ -126,9 +126,11 @@ void Viewer::initializeGL( QGLPainter *painter )
 
 void Viewer::read()
 {
+    bool need_update = false;
     for( unsigned int i = 0; !m_offset && i < readers.size(); ++i )
     {
         if( readers[i]->empty() ) { continue; }
+        need_update = true;
         Eigen::Vector3d p = readers[i]->somePoint();
         m_offset = std::fabs( p.x() ) > 1000 || std::fabs( p.y() ) > 1000 || std::fabs( p.z() ) > 1000 ? p : Eigen::Vector3d( 0, 0, 0 );
         std::cerr << "view-points: reader no. " << i << " scene offset (" << m_offset->transpose() << "); scene radius: " << scene_radius() << std::endl;
@@ -173,7 +175,7 @@ void Viewer::read()
             lookAtCenter();
         }
     }
-    if( !m_shutdown ) { update(); }
+    if( need_update ) { update(); }
 }
 
 void Viewer::paintGL( QGLPainter *painter )
