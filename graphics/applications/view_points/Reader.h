@@ -73,7 +73,7 @@ class Reader
         virtual ~Reader() {}
 
         virtual void start() = 0;
-        virtual void update( const Eigen::Vector3d& offset ) = 0;
+        virtual std::size_t update( const Eigen::Vector3d& offset ) = 0;
         virtual const Eigen::Vector3d& somePoint() const = 0;
         virtual bool readOnce() = 0;
         virtual void render( QGLPainter *painter ) = 0;
@@ -87,10 +87,10 @@ class Reader
         void read();
 
     protected:
-        void updatePoint( const Eigen::Vector3d& offset );
+        bool updatePoint( const Eigen::Vector3d& offset );
         void drawLabel( QGLPainter* painter, const QVector3D& position, const std::string& label );
         void drawLabel( QGLPainter* painter, const QVector3D& position );
-        
+
         friend class Viewer;
         QGLView& m_viewer;
         boost::optional< snark::math::closed_interval< float, 3 > > m_extents;
@@ -103,6 +103,7 @@ class Reader
         boost::scoped_ptr< boost::thread > m_thread;
         mutable boost::mutex m_mutex;
         boost::optional< Eigen::Vector3d > m_point;
+        bool updated_; // quick and dirty, terrible
         boost::optional< Eigen::Vector3d > m_orientation;
         QColor4ub m_color;
         QVector3D m_translation;
@@ -113,7 +114,7 @@ class Reader
     private:
         void drawText( QGLPainter *painter, const QString& string, const QColor4ub& color );
 };
-    
+
 } } } // namespace snark { namespace graphics { namespace View {
 
 #endif /*SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_READER_H_*/

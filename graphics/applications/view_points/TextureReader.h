@@ -42,14 +42,14 @@
 
 namespace snark { namespace graphics { namespace View {
 
-/// display an image as a texture, set its position from an input csv stream   
+/// display an image as a texture, set its position from an input csv stream
 class TextureReader : public Reader
 {
     public:
         TextureReader( QGLView& viewer, comma::csv::options& options, const std::string& file, double width, double height );
 
         void start();
-        void update( const Eigen::Vector3d& offset );
+        std::size_t update( const Eigen::Vector3d& offset );
         const Eigen::Vector3d& somePoint() const;
         bool readOnce();
         void render( QGLPainter *painter );

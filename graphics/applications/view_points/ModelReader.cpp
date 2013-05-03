@@ -78,9 +78,9 @@ void ModelReader::start()
     m_thread.reset( new boost::thread( boost::bind( &Reader::read, boost::ref( *this ) ) ) );
 }
 
-void ModelReader::update( const Eigen::Vector3d& offset )
+std::size_t ModelReader::update( const Eigen::Vector3d& offset )
 {
-    updatePoint( offset );
+    return updatePoint( offset ) ? 1 : 0;
 }
 
 bool ModelReader::empty() const
@@ -133,6 +133,7 @@ bool ModelReader::readOnce()
     m_point = p->point;
     m_orientation = p->orientation;
     m_color = m_colored->color( p->point, p->id, p->scalar, p->color );
+    updated_ = true;
     return true;
 }
 

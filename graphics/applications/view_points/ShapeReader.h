@@ -54,7 +54,7 @@ class ShapeReader : public Reader
         ShapeReader( QGLView& viewer, comma::csv::options& options, std::size_t size, coloured* c, unsigned int pointSize, const std::string& label, const S& sample = S() );
 
         void start();
-        void update( const Eigen::Vector3d& offset );
+        std::size_t update( const Eigen::Vector3d& offset );
         const Eigen::Vector3d& somePoint() const;
         bool readOnce();
         void render( QGLPainter *painter = NULL );
@@ -91,15 +91,18 @@ inline void ShapeReader< S, How >::start()
 }
 
 template< typename S, typename How >
-inline void ShapeReader< S, How >::update( const Eigen::Vector3d& offset )
+inline std::size_t ShapeReader< S, How >::update( const Eigen::Vector3d& offset )
 {
     boost::mutex::scoped_lock lock( m_mutex );
     for( typename DequeType::iterator it = m_deque.begin(); it != m_deque.end(); ++it )
     {
         Shapetraits< S, How >::update( it->shape, offset, it->color, it->block, m_buffer, m_extents );
     }
+    std::size_t s = m_deque.size();
     m_deque.clear();
+    updated_ = true;
     updatePoint( offset );
+    return s;
 }
 
 template< typename S, typename How >
