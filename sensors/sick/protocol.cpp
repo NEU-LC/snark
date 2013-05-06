@@ -59,7 +59,7 @@ class protocol::impl
             , m_synchronized( false )
         {
         }
-        
+
         void reset_dsp()
         {
             m_commandId.reset();
@@ -92,7 +92,7 @@ class protocol::impl
                     COMMA_THROW( comma::exception, "expected scan data, got packet of unknown type (0x" << std::hex << m_header->type() << std::dec );
             }
         }
-        
+
         boost::optional< fault > last_fault()
         {
             boost::optional< fault > f = m_fault;
@@ -109,7 +109,7 @@ class protocol::impl
         const header* m_header;
         char* m_payload;
         bool m_synchronized;
-        
+
         template < typename command >
         void sendcommand( const command& c )
         {
@@ -120,7 +120,7 @@ class protocol::impl
             m_ostream->flush();
             if( m_ostream->bad() ) { COMMA_THROW( comma::exception, "failed to send command (0x" << std::hex << command::id << std::dec ); }
         }
-        
+
         template < typename command >
         typename command::response readresponse()
         {
@@ -135,7 +135,7 @@ class protocol::impl
                     case header::response_type:
                     {
                         unsigned int id = reinterpret_cast< const commands::response_header* >( m_payload )->id() & 0x3fff;
-                        if( id != *m_commandId ) { COMMA_THROW( comma::exception, "expected response to command 0x" << std::hex << *m_commandId << ", got 0x" << id << std::dec ); }
+                        if( int( id ) != *m_commandId ) { COMMA_THROW( comma::exception, "expected response to command 0x" << std::hex << *m_commandId << ", got 0x" << id << std::dec ); }
                         m_commandId.reset();
                         return *( reinterpret_cast< typename command::response* >( m_payload ) );
                     }
@@ -144,7 +144,7 @@ class protocol::impl
                 }
             }
         }
-        
+
         bool readpacket() // watch performance, if bad, optimize with chunk reading
         {
             std::size_t offset = 0;
@@ -178,7 +178,7 @@ class protocol::impl
             return true;
         }
 };
-    
+
 protocol::protocol( std::iostream& stream ) : m_pimpl( new impl( stream ) ) {}
 
 protocol::protocol( std::istream& stream ) : m_pimpl( new impl( stream ) ) {}
