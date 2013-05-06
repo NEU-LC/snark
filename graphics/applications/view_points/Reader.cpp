@@ -66,6 +66,7 @@ Reader::Reader( QGLView& viewer, comma::csv::options& options, std::size_t size,
     , m_isStdIn( options.filename == "-" )
     , m_show( true )
     , m_istream( options.filename, options.binary() ? comma::io::mode::binary : comma::io::mode::ascii, comma::io::mode::non_blocking )
+    , updated_( false )
     , m_label( label )
     , m_offset( offset )
 {
@@ -95,18 +96,19 @@ void Reader::read()
     m_shutdown = true;
 }
 
-void Reader::updatePoint( const Eigen::Vector3d& offset )
+bool Reader::updatePoint( const Eigen::Vector3d& offset )
 {
-    if( m_point )
+    if( !m_point ) { return false; } // is it safe to do it without locking the mutex?
+    boost::mutex::scoped_lock lock( m_mutex );
+    if( !updated_ ) { return false; }
+    m_translation = QVector3D( m_point->x() - offset.x(), m_point->y() - offset.y(), m_point->z() - offset.z() );
+    if( m_orientation )
     {
-        boost::mutex::scoped_lock lock( m_mutex );
-        m_translation = QVector3D( m_point->x() - offset.x(), m_point->y() - offset.y(), m_point->z() - offset.z() );
-        if( m_orientation )
-        {
-            const Eigen::Quaterniond& q = snark::rotation_matrix( *m_orientation ).quaternion();
-            m_quaternion = QQuaternion( q.w(), q.x(), q.y(), q.z() );
-        }
+        const Eigen::Quaterniond& q = snark::rotation_matrix( *m_orientation ).quaternion();
+        m_quaternion = QQuaternion( q.w(), q.x(), q.y(), q.z() );
     }
+    updated_ = false;
+    return true;
 }
 
 void Reader::drawLabel( QGLPainter *painter, const QVector3D& position, const std::string& label )

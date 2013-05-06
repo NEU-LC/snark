@@ -57,7 +57,7 @@ class ModelReader : public Reader
                    , const std::string& label );
 
         void start();
-        void update( const Eigen::Vector3d& offset );
+        std::size_t update( const Eigen::Vector3d& offset );
         const Eigen::Vector3d& somePoint() const;
         bool readOnce();
         void render( QGLPainter *painter );

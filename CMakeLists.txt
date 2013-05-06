@@ -114,11 +114,11 @@ OPTION( snark_build_graphics "build graphics" ON )
 OPTION( snark_build_point_cloud "build point cloud" ON )
 OPTION( snark_build_imaging "build imaging" ON )
 OPTION( snark_build_sensors "build sensors" ON )
-OPTION( snark_build_actuators "build actuators" ON )
+OPTION( snark_build_actuators "build actuators" OFF )
 
 INCLUDE( CMakeDependentOption )
 CMAKE_DEPENDENT_OPTION( snark_build_sensors_dc1394 "build dc1394 components" ON "snark_build_sensors" OFF )
-CMAKE_DEPENDENT_OPTION( snark_build_sensors_gige "build gige components" ON "snark_build_sensors" OFF )
+CMAKE_DEPENDENT_OPTION( snark_build_sensors_gige "build gige components" OFF "snark_build_sensors" OFF )
 CMAKE_DEPENDENT_OPTION( snark_build_sensors_sick "build sick components" ON "snark_build_sensors" OFF )
 CMAKE_DEPENDENT_OPTION( snark_build_sensors_velodyne "build velodyne components" ON "snark_build_sensors" OFF )
 
@@ -223,16 +223,16 @@ ENDIF( snark_build_sensors )
 ADD_SUBDIRECTORY( timing )
 ADD_SUBDIRECTORY( visiting )
 
-# Package 
+# Package
 IF( WIN32 )
     FILE( GLOB OpenCV_DLLS ${OpenCV_LIB_PATH}/../bin/*.dll ) #from opencv version 2.4
-            
+
     GET_FILENAME_COMPONENT( QT_BIN_DIR ${QT_QMAKE_EXECUTABLE} PATH )
     FILE( GLOB QT_DLLS ${QT_BIN_DIR}/*.dll )
 
     SET(snark_PACKAGE_DLLS ${TBB_DLL_DIR}/tbb.dll ${OpenCV_DLLS} ${QT_DLLS})
     INSTALL(FILES ${snark_PACKAGE_DLLS} DESTINATION bin )
-    
+
     #the following set up optional parameters for cpack
     SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "This is a description of snark. It's great!")
     SET(CPACK_PACKAGE_VENDOR "ACFR")

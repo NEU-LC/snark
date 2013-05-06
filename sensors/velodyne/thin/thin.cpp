@@ -47,7 +47,7 @@ void thin( velodyne::packet& packet, float rate )
 {
     boost::uniform_real< float > distribution( 0, 1 ); // watch performance
     boost::variate_generator< boost::mt19937&, boost::uniform_real< float > > random( generator, distribution );
-    thin( packet, rate, random );
+    thin::thin( packet, rate, random );
 }
 
 static void set( char* ids, unsigned int i, bool value = true )

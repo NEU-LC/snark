@@ -47,7 +47,7 @@ namespace snark { namespace graphics { namespace View {
 /// @param width image width in meters to be displayed in the scene
 /// @param height image height in meters to be displayed in the scene
 TextureReader::TextureReader( QGLView& viewer, comma::csv::options& options, const std::string& file, double width, double height )
-    : Reader( viewer, options, 1, NULL, 1, "", QVector3D( 0, 1, 1 ) ), 
+    : Reader( viewer, options, 1, NULL, 1, "", QVector3D( 0, 1, 1 ) ),
       m_file( file ),
       m_image( file.c_str() )
 {
@@ -70,13 +70,13 @@ TextureReader::TextureReader( QGLView& viewer, comma::csv::options& options, con
 }
 
 void TextureReader::start()
-{        
+{
     m_thread.reset( new boost::thread( boost::bind( &Reader::read, boost::ref( *this ) ) ) );
 }
 
-void TextureReader::update( const Eigen::Vector3d& offset )
+std::size_t TextureReader::update( const Eigen::Vector3d& offset )
 {
-    updatePoint( offset );
+    return updatePoint( offset ) ? 1 : 0;
 }
 
 bool TextureReader::empty() const
@@ -96,7 +96,6 @@ void TextureReader::render( QGLPainter* painter )
     painter->modelViewMatrix().push();
     painter->modelViewMatrix().translate( m_translation );
     painter->modelViewMatrix().rotate( m_quaternion );
-    
     m_node->draw(painter);
     painter->modelViewMatrix().pop();
 }
@@ -113,9 +112,10 @@ bool TextureReader::readOnce()
     boost::mutex::scoped_lock lock( m_mutex );
     m_point = p->point;
     m_orientation = p->orientation;
+    updated_ = true;
     return true;
 }
 
 
 } } } // namespace snark { namespace graphics { namespace View {
-    
+
