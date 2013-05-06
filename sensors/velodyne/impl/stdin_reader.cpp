@@ -34,23 +34,29 @@
 #include <comma/base/exception.h>
 #include "./stdin_reader.h"
 #include <snark/timing/time.h>
+#ifdef WIN32
+#include <fcntl.h>
+#include <io.h>
+#endif
 
 namespace snark {
 
 stdin_reader::stdin_reader():
     m_epoch( timing::epoch )
 {
+    #ifdef WIN32
+    _setmode( _fileno( stdin ), _O_BINARY );
+    #endif
 }
 
 const char* stdin_reader::read()
 {
     std::cin.read( reinterpret_cast< char* >( &m_microseconds ), sizeof( m_microseconds ) );
     std::cin.read( m_packet.data(), payload_size );
-    if( std::cin.eof() )
-    {
-        return NULL;        
-    }
-    m_timestamp = m_epoch + boost::posix_time::microseconds( m_microseconds );
+    if( std::cin.eof() ) { return NULL; }
+    comma::uint64 seconds = m_microseconds / 1000000; //to avoid time overflow on 32bit systems with boost::posix_time::microseconds( m_microseconds ), apparently due to a bug in boost
+    comma::uint64 microseconds = m_microseconds % 1000000;
+    m_timestamp = m_epoch + boost::posix_time::seconds( seconds ) + boost::posix_time::microseconds( microseconds );
     return &m_packet[0];
 }
 
