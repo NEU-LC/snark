@@ -41,12 +41,12 @@
 
 namespace snark {  namespace velodyne { namespace impl {
 
-laser_return getlaser_return( const packet& packet
-                        , unsigned int block
-                        , unsigned int laser
-                        , const boost::posix_time::ptime& timestamp
-                        , double angularSpeed
-                        , bool raw = false );
+laser_return get_laser_return( const packet& packet
+                             , unsigned int block
+                             , unsigned int laser
+                             , const boost::posix_time::ptime& timestamp
+                             , double angularSpeed
+                             , bool raw = false );
 
 boost::posix_time::time_duration time_offset( unsigned int block, unsigned int laser );
 

@@ -31,27 +31,40 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-#ifndef SNARK_SENSORS_VELODYNE_SCAN_TICK_H_
-#define SNARK_SENSORS_VELODYNE_SCAN_TICK_H_
+#include <snark/sensors/velodyne/impl/thin_reader.h>
 
-#include <boost/optional.hpp>
-#include <snark/sensors/velodyne/packet.h>
-#include <snark/sensors/velodyne/impl/get_laser_return.h>
+namespace snark {
 
-namespace snark {  namespace velodyne {
+snark::thin_reader::thin_reader() : is_new_scan_( true ) {}
 
-class scan_tick
+const char* thin_reader::read()
 {
-    public:
-        bool is_new_scan( const packet& packet );
+    if( !std::cin.good() || std::cin.eof() ) { return NULL; }
+    comma::uint16 size;
+    std::cin.read( reinterpret_cast< char* >( &size ), 2 );
+    if( std::cin.gcount() < 2 ) { return NULL; }
+    std::cin.read( m_buf, size );
+    if( std::cin.gcount() < size ) { return NULL; }
+    comma::int64 seconds;
+    comma::int32 nanoseconds;
+    ::memcpy( &seconds, m_buf, sizeof( comma::int64 ) );
+    ::memcpy( &nanoseconds, m_buf + sizeof( comma::int64 ), sizeof( comma::int32 ) );
+    m_timestamp = boost::posix_time::ptime( snark::timing::epoch, boost::posix_time::seconds( static_cast< long >( seconds ) ) + boost::posix_time::microseconds( nanoseconds / 1000 ) );
+    comma::uint32 scan = velodyne::thin::deserialize( m_packet, m_buf + timeSize );
+    is_new_scan_ = is_new_scan_ || !last_scan_ || *last_scan_ != scan; // quick and dirty; keep it set until we clear it in is_new_scan()
+    last_scan_ = scan;
+    return reinterpret_cast< char* >( &m_packet );
+}
 
-        static bool is_new_scan( const packet& packet, unsigned int last_angle );
+void thin_reader::close() {}
 
-    private:
-        unsigned int angle_;
-        boost::optional< unsigned int > last_angle_;
-};
+boost::posix_time::ptime thin_reader::timestamp() const { return m_timestamp; }
 
-} } // namespace snark {  namespace velodyne {
+bool thin_reader::is_new_scan()
+{
+    bool r = is_new_scan_;
+    is_new_scan_ = false;
+    return r;
+}
 
-#endif /*SNARK_SENSORS_VELODYNE_STREAM_H_*/
+} // namespace snark {

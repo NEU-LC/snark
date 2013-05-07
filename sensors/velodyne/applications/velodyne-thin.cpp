@@ -136,14 +136,17 @@ void run( S* stream )
     double compression = 0;
     velodyne::packet packet;
     comma::signal_flag isShutdown;
+    velodyne::scan_tick tick;
+    comma::uint32 scan_id = 0;
     while( !isShutdown && std::cin.good() && !std::cin.eof() && std::cout.good() && !std::cout.eof() )
     {
         const char* p = velodyne::impl::stream_traits< S >::read( *stream, sizeof( velodyne::packet ) );
         if( p == NULL ) { break; }
         ::memcpy( &packet, p, velodyne::packet::size );
+        if( tick.is_new_scan( packet ) ) { ++scan_id; } // quick and dirty
         boost::posix_time::ptime timestamp = stream->timestamp();
         if( scanRate ) { scan.thin( packet, *scanRate, angularSpeed( packet ) ); }
-        if( !scan.empty() )
+        if( !scanRate || !scan.empty() )
         {
             if( focus ) { velodyne::thin::thin( packet, *focus, *db, angularSpeed( packet ), random ); }
             else if( rate ) { velodyne::thin::thin( packet, *rate, random ); }
@@ -162,30 +165,18 @@ void run( S* stream )
             ::memcpy( &buf[0] + 16, &seconds, 8 );
             ::memcpy( &buf[0] + 16 + 8, &nanoseconds, 4 );
             ::memcpy( &buf[0] + 16 + 8 + 4, &packet, velodyne::packet::size );
-            if( publisher )
-            {
-                publisher->write( &buf[0], buf.size() );
-            }
-            else
-            {
-                std::cout.write( &buf[0], buf.size() );
-            }
+            if( publisher ) { publisher->write( &buf[0], buf.size() ); }
+            else { std::cout.write( &buf[0], buf.size() ); }
         }
         else
         {
             static char buf[ timeSize + sizeof( comma::uint16 ) + velodyne::thin::maxBufferSize ];
-            comma::uint16 size = timeSize + velodyne::thin::serialize( packet, buf + timeSize + sizeof( comma::uint16 ) );
+            comma::uint16 size = timeSize + velodyne::thin::serialize( packet, buf + timeSize + sizeof( comma::uint16 ), scan_id );
             ::memcpy( buf, &size, sizeof( comma::uint16 ) );
             ::memcpy( buf + sizeof( comma::uint16 ), &seconds, sizeof( comma::int64 ) );
             ::memcpy( buf + sizeof( comma::uint16 ) + sizeof( comma::int64 ), &nanoseconds, sizeof( comma::int32 ) );
-            if( publisher )
-            {
-                publisher->write( buf, size + sizeof( comma::uint16 ) );
-            }
-            else
-            {
-                std::cout.write( buf, size + sizeof( comma::uint16 ) );
-            }
+            if( publisher ) { publisher->write( buf, size + sizeof( comma::uint16 ) ); }
+            else { std::cout.write( buf, size + sizeof( comma::uint16 ) ); }
             if( verbose )
             {
                 ++count;

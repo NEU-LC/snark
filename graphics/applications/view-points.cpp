@@ -119,7 +119,7 @@ void usage()
     std::cerr << "    --orthographic: use orthographic projection instead of perspective" << std::endl;
     std::cerr << std::endl;
     std::cerr << "more options" << std::endl;
-    std::cerr << "    --background-colour <colour> : e.g. #ff0000, default: #000000 (black)" << std::endl;
+    std::cerr << "    --background-colour <colour> : default: black" << std::endl;
     std::cerr << "    --output-camera-config,--output-camera: output camera position as t,x,y,z,r,p,y to stdout" << std::endl;
     std::cerr << "    --scene-center,--center=<value>: fixed scene center as \"x,y,z\"" << std::endl;
     std::cerr << "    --scene-radius,--radius=<value>: fixed scene radius in metres, since sometimes it is hard to imply" << std::endl;

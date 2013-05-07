@@ -151,14 +151,12 @@ inline laser_return* stream< S >::read()
             m_index = index();
             m_packet = reinterpret_cast< const packet* >( impl::stream_traits< S >::read( *m_stream, sizeof( packet ) ) );
             if( m_packet == NULL ) { return NULL; }
-            if( m_tick.get( *m_packet ) )
-            {
-                m_scan++;
-            }
+            //if( m_tick.is_new_scan( *m_packet ) ) { ++m_scan; }
+            if( impl::stream_traits< S >::is_new_scan( m_tick, *m_stream, *m_packet ) ) { ++m_scan; }
             m_timestamp = impl::stream_traits< S >::timestamp( *m_stream );
         }
         // todo: scan number will be slightly different, depending on m_outputRaw value
-        m_laserReturn = impl::getlaser_return( *m_packet, m_index.block, m_index.laser, m_timestamp, angularSpeed(), m_outputRaw );
+        m_laserReturn = impl::get_laser_return( *m_packet, m_index.block, m_index.laser, m_timestamp, angularSpeed(), m_outputRaw );
         ++m_index;
         bool valid = !comma::math::equal( m_laserReturn.range, 0 );
         if( valid || m_outputInvalid ) { return &m_laserReturn; }
@@ -180,11 +178,8 @@ inline void stream< S >::skip_scan()
         m_index = index();
         m_packet = reinterpret_cast< const packet* >( impl::stream_traits< S >::read( *m_stream, sizeof( packet ) ) );
         if( m_packet == NULL ) { return; }
-        if( m_tick.get( *m_packet ) )
-        {
-            m_scan++;
-            return;
-        }
+        if( m_tick.is_new_scan( *m_packet ) ) { ++m_scan; return; }
+        if( impl::stream_traits< S >::is_new_scan( m_tick, *m_stream, *m_packet ) ) { ++m_scan; return; }
     }
 }
 

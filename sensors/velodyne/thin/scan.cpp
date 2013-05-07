@@ -51,7 +51,7 @@ void scan::thin ( velodyne::packet& packet, double rate, double angularSpeed )
     {
         bool valid = packet.blocks[i.block].lasers[i.laser].range() > 0;
         if( !valid ) { continue; }
-        if( m_tick.get( packet ) )
+        if( m_tick.is_new_scan( packet ) )
         {
             ++m_scan;
             m_outputCurrentscan = ( m_output == 0 ) || ( m_output < rate * m_scan );

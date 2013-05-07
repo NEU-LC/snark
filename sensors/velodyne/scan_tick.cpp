@@ -35,29 +35,21 @@
 
 namespace snark {  namespace velodyne {
 
-scan_tick::scan_tick():
-    m_first( true ),
-    m_angle( 0 ),
-    m_last_angle( 0 )
+bool scan_tick::is_new_scan( const packet& packet, unsigned int last_angle )
 {
-
+    unsigned int angle = packet.blocks[0].rotation() + 9000; // 0 = behind the vehicle
+    if( angle > 36000 ) { angle -= 36000; }
+    return angle < last_angle;
 }
 
-/// @return true if a new scan has started
-bool scan_tick::get ( const packet& packet )
+bool scan_tick::is_new_scan( const packet& packet )
 {
     bool tick = false;
-    m_angle = packet.blocks[0].rotation() + 9000; // 0 = behind the vehicle
-    if( m_angle > 36000 ){ m_angle -= 36000; }
-    if( m_angle < m_last_angle || m_first ) // new scan?
-    {
-        m_first = false;
-        tick = true;
-    }
-    m_last_angle = m_angle;
+    unsigned int angle = packet.blocks[0].rotation() + 9000; // seriously quick and dirty: 0 = behind the vehicle
+    if( angle > 36000 ) { angle -= 36000; }
+    if( !last_angle_ || angle < *last_angle_ ) { tick = true; }
+    last_angle_ = angle;
     return tick;
 }
 
-    
-} }
-
+} } // namespace snark {  namespace velodyne {

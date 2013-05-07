@@ -34,9 +34,12 @@
 #ifndef SNARK_SENSORS_VELODYNE_IMPL_STREAMTRAITS_H_
 #define SNARK_SENSORS_VELODYNE_IMPL_STREAMTRAITS_H_
 
+#include <boost/optional.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
+#include "snark/sensors/velodyne/scan_tick.h"
 #include "./pcap_reader.h"
 #include "./proprietary_reader.h"
+#include "./thin_reader.h"
 
 namespace snark {  namespace velodyne { namespace impl {
 
@@ -45,21 +48,25 @@ struct stream_traits
 {
     //static const char* read( S& s, std::size_t size ) { return s.read( size ); }
     static const char* read( S& s, std::size_t size ) { return s.read(); }
-    
+
     //static boost::posix_time::ptime timestamp( const S& ) { return boost::posix_time::microsec_clock::local_time(); }
     static boost::posix_time::ptime timestamp( const S& s ) { return s.timestamp(); }
-    
+
     static void close( S& s ) { s.close(); }
+
+    static bool is_new_scan( scan_tick& tick, const S&, const packet& p ) { return tick.is_new_scan( p ); }
 };
 
 template <>
 struct stream_traits< proprietary_reader >
 {
     static const char* read( proprietary_reader& s, std::size_t ) { return s.read(); }
-    
+
     static boost::posix_time::ptime timestamp( const proprietary_reader& s ) { return s.timestamp(); }
-    
+
     static void close( proprietary_reader& s ) { s.close(); }
+
+    static bool is_new_scan( scan_tick& tick, const proprietary_reader&, const packet& p ) { return tick.is_new_scan( p ); }
 };
 
 template <>
@@ -71,10 +78,25 @@ struct stream_traits< pcap_reader >
         if( r == NULL ) { return NULL; }
         return r + 42; // skip UDP header
     }
-    
+
     static boost::posix_time::ptime timestamp( const pcap_reader& s ) { return s.timestamp(); }
-    
+
     static void close( pcap_reader& s ) { s.close(); }
+
+    static bool is_new_scan( scan_tick& tick, const pcap_reader&, const packet& p ) { return tick.is_new_scan( p ); }
+};
+
+template <> struct stream_traits< thin_reader >
+{
+    //static const char* read( S& s, std::size_t size ) { return s.read( size ); }
+    static const char* read( thin_reader& s, std::size_t size ) { return s.read(); }
+
+    //static boost::posix_time::ptime timestamp( const S& ) { return boost::posix_time::microsec_clock::local_time(); }
+    static boost::posix_time::ptime timestamp( const thin_reader& s ) { return s.timestamp(); }
+
+    static void close( thin_reader& s ) { s.close(); }
+
+    static bool is_new_scan( const scan_tick&, thin_reader& r, const packet& ) { return r.is_new_scan(); }
 };
 
 } } } // namespace snark {  namespace velodyne { namespace impl {

@@ -37,6 +37,7 @@
 #include <comma/base/types.h>
 #include <comma/base/exception.h>
 #include <snark/sensors/velodyne/packet.h>
+#include <snark/sensors/velodyne/scan_tick.h>
 #include "./thin.h"
 
 namespace snark {  namespace velodyne { namespace thin {
@@ -91,9 +92,12 @@ static std::size_t serialize( const velodyne::packet::laser_block& upper, const 
     return modified ? buf - begin : 0;
 }
 
-std::size_t serialize( const velodyne::packet& packet, char* buf ) // quick and dirty, dirties the buffer
+// quick and dirty, dirties the buffer
+std::size_t serialize( const velodyne::packet& packet, char* buf, comma::uint32 scan )
 {
     char* begin = buf;
+    ::memcpy( buf, &scan, sizeof( comma::uint32 ) );
+    buf += sizeof( comma::uint32 );
     char& ids = *buf++;
     ids = 0x00;
     for( unsigned int i = 0; i < packet.blocks.size(); i += 2 )
@@ -133,22 +137,26 @@ static std::size_t deserialize( velodyne::packet::laser_block& upper, velodyne::
     return buf - begin;
 }
 
-void deserialize( velodyne::packet& packet, const char* buf )
+comma::uint32 deserialize( velodyne::packet& packet, const char* buf )
 {
     ::memset( &packet, 0, velodyne::packet::size );
+    comma::uint32 scan;
+    memcpy( &scan, buf, sizeof( comma::uint32 ) );
+    buf += sizeof( comma::uint32 );
     const char& ids = *buf++;
     for( unsigned int i = 0; i < packet.blocks.size(); i += 2 )
     {
         if( !( ids & ( 1 << ( i >> 1 ) ) ) ) { continue; }
         buf += deserialize( packet.blocks[i], packet.blocks[ i + 1 ], buf );
     }
+    return scan;
 }
 
-velodyne::packet deserialize( const char* buf )
+std::pair< velodyne::packet, comma::uint32 > deserialize( const char* buf )
 {
-    velodyne::packet packet;
-    deserialize( packet, buf );
-    return packet;
+    std::pair< velodyne::packet, comma::uint32 > p;
+    p.second = deserialize( p.first, buf );
+    return p;
 }
 
 } } } // namespace snark {  namespace velodyne { namespace thin {

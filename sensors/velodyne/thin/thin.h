@@ -54,13 +54,15 @@ template < typename Random >
 void thin( velodyne::packet& packet, const focus& focus, const db& db, Random& random );
 
 /// write packet to thin buffer
-std::size_t serialize( const velodyne::packet& packet, char* buf );
+std::size_t serialize( const velodyne::packet& packet, char* buf, comma::uint32 scan );
 
 /// refill packet from thin buffer
-velodyne::packet deserialize( const char* buf );
+/// @return velodyne packet and scan id
+std::pair< velodyne::packet, comma::uint32 > deserialize( const char* buf );
 
 /// refill given packet from thin buffer
-void deserialize( velodyne::packet& packet, const char* buf );
+/// @return scan id
+comma::uint32 deserialize( velodyne::packet& packet, const char* buf );
 
 /// max block buffer size
 enum { maxBlockBufferSize = 64 * 2 + 2 + 64 / 8 + 1 };
@@ -88,7 +90,7 @@ void thin( velodyne::packet& packet, const focus& focus, const velodyne::db& db,
     {
         for( unsigned int laser = 0; laser < packet.blocks[block].lasers.size(); ++laser )
         {
-            velodyne::laser_return r = impl::getlaser_return( packet, block, laser, boost::posix_time::not_a_date_time, angularSpeed );
+            velodyne::laser_return r = impl::get_laser_return( packet, block, laser, boost::posix_time::not_a_date_time, angularSpeed );
             double azimuth = db.lasers[r.id].azimuth( r.azimuth );
             double range = db.lasers[r.id].range( r.range );
             if( !focus.has( range, azimuth, 0, random ) ) { packet.blocks[block].lasers[laser].range = 0; }

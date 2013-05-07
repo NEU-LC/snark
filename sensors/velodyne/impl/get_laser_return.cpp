@@ -42,26 +42,26 @@ struct timestamps
 {
     // time offsets of the laser blocks
     static const double offsets[];
-    
+
     // time offset of the laser return written to packet first (see velodyne HDL-64E S2 Manual, Appendix D)
     static const double first;
-    
+
     // time offset of the laser return written to packet last (see velodyne HDL-64E S2 Manual, Appendix D)
     static const double last;
-    
+
     // time elapsed between first and last laser returns
     static const double elapsed;
-    
+
     // number of steps between first and last laser returns
     // ( upper and lower blocks are fired at the same time, see velodyne HDL-64E S2 Manual, Appendix D)
     static const std::size_t size;
-    
+
     // step size between two laser returns (a convenience definition)
     static const double step;
-    
+
     // step size between two laser returns
     static const double ethernetOutputDuration;
-    
+
     // return laser return offset in a laser block
     static double offsetInBlock( std::size_t laser ) { return step * laser; }
 };
@@ -120,12 +120,12 @@ double azimuth( const packet& packet, unsigned int block, unsigned int laser, do
 
 static bool is_upper( unsigned int block ) { return ( block & 0x1 ) == 0; }
 
-laser_return getlaser_return( const packet& packet
-                          , unsigned int block
-                          , unsigned int laser
-                          , const boost::posix_time::ptime& timestamp
-                          , double angularSpeed
-                          , bool raw )
+laser_return get_laser_return( const packet& packet
+                             , unsigned int block
+                             , unsigned int laser
+                             , const boost::posix_time::ptime& timestamp
+                             , double angularSpeed
+                             , bool raw )
 {
     laser_return r;
     r.id = laser + ( is_upper( block ) ? 0 : 32 );

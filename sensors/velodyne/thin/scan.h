@@ -46,7 +46,7 @@ public:
     bool empty() const { return m_empty; }
 private:
     enum { m_size = 12 * 32 };
-    struct index 
+    struct index
     {
         unsigned int idx;
         unsigned int block;
