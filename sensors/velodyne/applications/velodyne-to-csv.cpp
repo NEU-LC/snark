@@ -62,11 +62,13 @@ static void usage()
     std::cerr << "Usage: cat velodyne*.bin | velodyne-to-csv <options>" << std::endl;
     std::cerr << std::endl;
     std::cerr << "input options" << std::endl;
+    std::cerr << "    default : read velodyne data directly from stdin in the format: <timestamp><packet>" << std::endl;
+    std::cerr << "              <timestamp>: 8-byte unsigned int, microseconds from linux epoch" << std::endl;
+    std::cerr << "              <packet>: regular velodyne 1206-byte packet" << std::endl;
     std::cerr << "    --db <db.xml file> ; default /usr/local/etc/db.xml" << std::endl;
     std::cerr << "    --pcap : if present, velodyne data is read from pcap packets" << std::endl;
     std::cerr << "    --thin : if present, velodyne data is thinned (e.g. by velodyne-thin)" << std::endl;
     std::cerr << "    --udp-port <port> : read velodyne data directly from udp port" << std::endl;
-    std::cerr << "    --raw : read velodyne data directly from stdin ( default )" << std::endl;
     std::cerr << "    --proprietary,-q : read velodyne data directly from stdin using the proprietary protocol" << std::endl;
     std::cerr << "        <header, 16 bytes><timestamp, 12 bytes><packet, 1206 bytes><footer, 4 bytes>" << std::endl;
     std::cerr << "    default input format: <timestamp, 8 bytes><packet, 1206 bytes>" << std::endl;
