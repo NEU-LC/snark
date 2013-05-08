@@ -129,6 +129,9 @@ static std::string fields_( const std::string& s ) // parsing fields, quick and 
         if( v[i] == "x" ) { v[i] = "ray/second/x"; }
         else if( v[i] == "y" ) { v[i] = "ray/second/y"; }
         else if( v[i] == "z" ) { v[i] = "ray/second/z"; }
+        else if( v[i] == "r" ) { v[i] = "range"; } // convenience renaming
+        else if( v[i] == "bearing" || v[i] == "b" ) { v[i] = "azimuth"; } // convenience renaming
+        else if( v[i] == "block" ) { v[i] = "scan"; } // convenience renaming
     }
     return comma::join( v, ',' );
 }
