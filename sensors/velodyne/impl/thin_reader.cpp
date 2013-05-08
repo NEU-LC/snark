@@ -30,12 +30,20 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
+#ifdef WIN32
+#include <fcntl.h>
+#include <io.h>
+#endif
 #include <snark/sensors/velodyne/impl/thin_reader.h>
 
 namespace snark {
 
-snark::thin_reader::thin_reader() : is_new_scan_( true ) {}
+snark::thin_reader::thin_reader() : is_new_scan_( true )
+{
+    #ifdef WIN32
+    _setmode( _fileno( stdin ), _O_BINARY );
+    #endif
+}
 
 const char* thin_reader::read()
 {
