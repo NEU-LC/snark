@@ -37,6 +37,7 @@
 #ifndef WIN32
 #include <stdlib.h>
 #endif
+#include <boost/noncopyable.hpp>
 #include <boost/optional.hpp>
 #include <snark/sensors/velodyne/thin/thin.h>
 #include <snark/timing/time.h>
