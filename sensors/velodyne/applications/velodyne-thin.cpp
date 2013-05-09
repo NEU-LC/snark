@@ -104,7 +104,7 @@ static void usage()
 static bool verbose = false;
 static bool outputRaw = false;
 static boost::optional< float > rate;
-static boost::optional< double > scanRate;
+static boost::optional< double > scan_rate;
 static boost::optional< double > angularSpeed_;
 static boost::optional< velodyne::db > db;
 static boost::scoped_ptr< velodyne::thin::focus > focus;
@@ -152,11 +152,11 @@ void run( S* stream )
         ::memcpy( &packet, p, velodyne::packet::size );
         if( tick.is_new_scan( packet ) ) { ++scan_id; } // quick and dirty
         boost::posix_time::ptime timestamp = stream->timestamp();
-        if( scanRate ) { scan.thin( packet, *scanRate, angularSpeed( packet ) ); }
-        if( !scanRate || !scan.empty() )
+        if( scan_rate ) { scan.thin( packet, *scan_rate, angularSpeed( packet ) ); }
+        if( !scan_rate || !scan.empty() )
         {
             if( focus ) { velodyne::thin::thin( packet, *focus, *db, angularSpeed( packet ), random ); }
-            else if( rate ) { velodyne::thin::thin( packet, *rate, random ); }
+            if( rate ) { velodyne::thin::thin( packet, *rate, random ); }
         }
         const boost::posix_time::ptime base( snark::timing::epoch );
         const boost::posix_time::time_duration d = timestamp - base;
@@ -204,7 +204,7 @@ int main( int ac, char** av )
         if( options.exists( "--help,-h" ) ) { usage(); }
         outputRaw = options.exists( "--output-raw" );
         rate = options.optional< float >( "--rate" );
-        scanRate = options.optional< double >( "--scan-rate" );
+        scan_rate = options.optional< double >( "--scan-rate" );
         if( options.exists( "--publish" ) ) { publisher.reset( new comma::io::publisher( options.value< std::string >( "--publish" ), comma::io::mode::binary ) ); }
         options.assert_mutually_exclusive( "--focus,--subtract-by-age,--subtract-max-range,--subtract" );
         if( options.exists( "--focus,--subtract-by-age,--subtract-max-range,--subtract" ) )
