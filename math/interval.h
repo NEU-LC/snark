@@ -44,7 +44,7 @@
 namespace snark { namespace math {
 
 /// multi-dimensional interval
-template < typename T, int N >
+template < typename T, unsigned int N >
 class closed_interval
 {
     public:
@@ -55,9 +55,12 @@ class closed_interval
 
         /// constructor
         closed_interval( const vector_type& rhs ) : m_interval( std::make_pair( rhs, rhs ) ) {}
-        
+
         /// default constructor
         closed_interval() {} //interval(): m_interval( std::make_pair( vector_type::Zero(), vector_type::Zero() ) ) {}
+
+        /// return true, if initialized
+        operator bool() const { return m_interval; }
 
         /// return value
         const std::pair< vector_type, vector_type >& operator()() const { assert( m_interval ); return m_interval; }
@@ -79,7 +82,7 @@ class closed_interval
 
         /// compute the hull of 2 intervals
         closed_interval< T, N > hull( const closed_interval& rhs ) const { return closed_interval( get_min( m_interval->first, rhs.min() ), get_max( m_interval->second, rhs.max() ) ); }
-        
+
         /// compute and assign the hull of the interval and [rhs]
         const closed_interval< T, N >& set_hull( const vector_type& rhs ) { *this = m_interval ? hull( rhs ) : closed_interval( rhs ); return *this; }
 
@@ -97,7 +100,7 @@ class closed_interval
         static bool less_or_equal( const vector_type& lhs, const vector_type& rhs ) { return ( ( lhs.array() <= rhs.array() ).all() ); }
         static vector_type get_min( const vector_type& lhs, const vector_type& rhs ) { return rhs.array().min( lhs.array() ); }
         static vector_type get_max( const vector_type& lhs, const vector_type& rhs ) { return rhs.array().max( lhs.array() ); }
-        
+
         boost::optional< std::pair< vector_type, vector_type > > m_interval;
 };
 

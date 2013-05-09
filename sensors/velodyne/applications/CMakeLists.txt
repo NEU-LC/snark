@@ -8,7 +8,7 @@ TARGET_LINK_LIBRARIES( velodyne-to-csv snark_velodyne ${snark_ALL_EXTERNAL_LIBRA
 
 SOURCE_GROUP( velodyne-thin FILES velodyne-thin.cpp )
 ADD_EXECUTABLE( velodyne-thin velodyne-thin.cpp )
-TARGET_LINK_LIBRARIES( velodyne-thin snark_velodyne ${snark_ALL_EXTERNAL_LIBRARIES} )
+TARGET_LINK_LIBRARIES( velodyne-thin snark_velodyne snark_math ${snark_ALL_EXTERNAL_LIBRARIES} )
 
 INSTALL( TARGETS velodyne-to-csv velodyne-thin
          RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR}

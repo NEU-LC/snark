@@ -34,8 +34,10 @@
 #ifndef SNARK_SENSORS_VELODYNE_THIN_REGION
 #define SNARK_SENSORS_VELODYNE_THIN_REGION
 
+#include <Eigen/Core>
 #include <comma/math/cyclic.h>
 #include <comma/visiting/traits.h>
+#include <snark/math/interval.h>
 
 namespace snark {  namespace velodyne { namespace thin {
 
@@ -57,6 +59,17 @@ struct sector : public region
     comma::math::cyclic< double > bearing;
     double ken;
     double range;
+};
+
+/// extents, quick and dirty
+struct extents : public region
+{
+    extents();
+    extents( const Eigen::Vector3d& min, const Eigen::Vector3d& max );
+    extents( const math::closed_interval< double, 3 >& interval );
+    bool has( double range, double bearing, double elevation ) const;
+    double coverage() const;
+    math::closed_interval< double, 3 > interval;
 };
 
 } } } // namespace snark {  namespace velodyne { namespace thin {
@@ -84,6 +97,21 @@ template <> struct traits< snark::velodyne::thin::sector >
         v.apply( "range", p.range );
     }
 };
+
+// template <> struct traits< snark::velodyne::thin::extents > // quick and dirty
+// {
+//     template < typename Key, class Visitor >
+//     static void visit( const Key& key, const snark::velodyne::thin::extents& p, Visitor& v )
+//     {
+//         traits< snark::math::closed_interval< double, 3 > >::visit( key, p.interval, v );
+//     }
+//
+//     template < typename Key, class Visitor >
+//     static void visit( const Key& key, snark::velodyne::thin::extents& p, Visitor& v )
+//     {
+//         traits< snark::math::closed_interval< double, 3 > >::visit( key, p.interval, v );
+//     }
+// };
 
 } } // namespace comma { namespace visiting {
 

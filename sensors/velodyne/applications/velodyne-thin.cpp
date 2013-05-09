@@ -42,6 +42,7 @@
 #include <comma/application/signal_flag.h>
 #include <comma/base/exception.h>
 #include <comma/base/types.h>
+#include <comma/csv/ascii.h>
 #include <comma/io/publisher.h>
 #include <comma/math/compare.h>
 #include <comma/name_value/parser.h>
@@ -55,6 +56,7 @@
 #include <snark/sensors/velodyne/impl/stream_traits.h>
 #include <snark/sensors/velodyne/impl/udp_reader.h>
 #include <snark/sensors/velodyne/thin/scan.h>
+#include <snark/visiting/traits.h>
 
 using namespace snark;
 
@@ -85,12 +87,16 @@ static void usage()
     std::cerr << "                    default 1: send all valid datapoints" << std::endl;
     std::cerr << "    --scan-rate <rate>: scan thin rate between 0 and 1" << std::endl;
     std::cerr << "    --focus <options>: focus on particular region" << std::endl;
-    std::cerr << "                        e.g. at choosen --rate in the direction of" << std::endl;
-    std::cerr << "                        0 degrees 30 degrees wide not farther than 10 metres" << std::endl;
-    std::cerr << "                        output 80% points in the focus region and 20% the rest" << std::endl;
-    std::cerr << "                        --focus=\"sector;range=10;bearing=0;ken=30;ratio=0.8\"" << std::endl;
-    std::cerr << "                                 default: bearing: 0, ken: 360" << std::endl;
-    std::cerr << "                        todo: currently only \"sector\" type implemented" << std::endl;
+    std::cerr << "        <options>" << std::endl;
+    std::cerr << "            sector: e.g: sector;range=10;bearing=0;ken=30" << std::endl;
+    std::cerr << "                    default: bearing: 0, ken: 360" << std::endl;
+    std::cerr << "            extents;<min>,<max>: e.g: extents;0,0,0,10,10,5" << std::endl;
+    std::cerr << "        examples" << std::endl;
+    std::cerr << "            e.g. at choosen --rate in the direction of" << std::endl;
+    std::cerr << "            0 degrees 30 degrees wide not farther than 10 metres" << std::endl;
+    std::cerr << "            output 80% points in the focus region and 20% the rest" << std::endl;
+    std::cerr << "            --focus=\"sector;range=10;bearing=0;ken=30;ratio=0.8\"" << std::endl;
+
     std::cerr << std::endl;
     exit( -1 );
 }
@@ -113,12 +119,13 @@ static double angularSpeed( const snark::velodyne::packet& packet )
     return da / dt;
 }
 
-static velodyne::thin::focus* makefocus( const std::string& options, double rate ) // quick and dirty
+static velodyne::thin::focus* make_focus( const std::string& options, double rate ) // quick and dirty
 {
     std::string type = comma::name_value::map( options, "type" ).value< std::string >( "type" );
     double ratio = comma::name_value::map( options ).value( "ratio", 1.0 );
     velodyne::thin::region* region;
     if( type == "sector" ) { region = new velodyne::thin::sector( comma::name_value::parser().get< velodyne::thin::sector >( options ) ); }
+    else if( type == "extents" ) { region = new velodyne::thin::extents( comma::csv::ascii< snark::math::closed_interval< double, 3 > >().get( comma::split( options, ';' )[1] ) ); }
     else { COMMA_THROW( comma::exception, "expected type (sector), got " << type ); }
     velodyne::thin::focus* focus = new velodyne::thin::focus( rate, ratio );
     focus->insert( 0, region );
@@ -206,7 +213,7 @@ int main( int ac, char** av )
         }
         if( options.exists( "--focus" ) )
         {
-            focus.reset( makefocus( options.value< std::string >( "--focus" ), rate ? *rate : 1.0 ) );
+            focus.reset( make_focus( options.value< std::string >( "--focus" ), rate ? *rate : 1.0 ) );
             std::cerr << "velodyne-thin: rate in focus: " << focus->rate_in_focus() << "; rate out of focus: " << focus->rate_out_of_focus() << "; coverage: " << focus->coverage() << std::endl;
         }
         verbose = options.exists( "--verbose,-v" );
