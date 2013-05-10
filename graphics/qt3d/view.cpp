@@ -121,6 +121,7 @@ void view::draw_coordinates( QGLPainter *painter )
 {
     if( m_coordinates && m_show_coordinates )
     {
+        m_show_coordinates = false; // show once
         painter->modelViewMatrix().translate( m_revolve );
         m_coordinates->node()->draw( painter );
     }
@@ -129,28 +130,16 @@ void view::draw_coordinates( QGLPainter *painter )
 /// handle mouse press
 void view::mousePressEvent( QMouseEvent *e )
 {
-    if( e->button() == Qt::RightButton )
-    {
-        m_startPan = e->pos();
-    }
-    else if( e->button() == Qt::LeftButton )
-    {
-        m_startRotate = e->pos();
-    }
+    if( e->button() == Qt::RightButton ) { m_startPan = e->pos(); }
+    else if( e->button() == Qt::LeftButton ) { m_startRotate = e->pos(); }
     QGLView::mousePressEvent(e);
 }
 
 /// handle mouse release
 void view::mouseReleaseEvent( QMouseEvent *e )
 {
-    if( e->button() == Qt::RightButton )
-    {
-        m_startPan.reset();
-    }
-    else if( e->button() == Qt::LeftButton )
-    {
-        m_startRotate.reset();
-    }
+    if( e->button() == Qt::RightButton ) { m_startPan.reset(); }
+    else if( e->button() == Qt::LeftButton ) { m_startRotate.reset(); }
     QGLView::mouseReleaseEvent(e);
 }
 
