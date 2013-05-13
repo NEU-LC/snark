@@ -98,7 +98,7 @@ camera_parser::camera_parser ( const std::string& file, const std::string& path 
         assert( v.size() == 2 );
         unsigned int width = boost::lexical_cast< unsigned int >( v[0] );
         unsigned int height = boost::lexical_cast< unsigned int >( v[1] );
-        std::ifstream stream( parameters.map.c_str() );
+        std::ifstream stream( parameters.map.c_str(), std::ios::binary );
         if( !stream )
         {
             COMMA_THROW( comma::exception, "failed to open undistort map in \"" << parameters.map << "\"" );
@@ -109,7 +109,7 @@ camera_parser::camera_parser ( const std::string& file, const std::string& path 
         stream.read( &buffer[0], size );
         if( stream.gcount() < 0 || std::size_t( stream.gcount() ) != size )
         {
-            COMMA_THROW( comma::exception, "failed to read \"" << parameters.map << "\"" );
+            COMMA_THROW( comma::exception, "failed to read \"" << parameters.map << "\"" << " stream.gcount():" <<stream.gcount() );
         }
         m_map_x = cv::Mat( height, width, CV_32FC1, &buffer[0] ).clone();
 
