@@ -165,7 +165,7 @@ int main( int argc, char** argv )
             std::cerr << std::endl;
             std::cerr <<  " split the stereo processing pipeline into two parts " << std::endl;
             std::cerr <<  "   cat 20130319T052306.593000.bin | cv-cat \"split;bayer=4\" | " << std::endl;
-            std::cerr <<  "   stereo-to-points --config=bb.matlab.config --left-path=left --right-path=right --roi=\"0,0,0,1920,1280,960\" --output-rectified | \\ " << std::endl;
+            std::cerr <<  "   stereo-to-points --config=bb.matlab.config --left-path=left --right-path=right --roi=\"0,1920,0,0,1280,960\" --output-rectified | \\ " << std::endl;
             std::cerr <<  "   stereo-to-points --config=bb.matlab.config --left-path=left --right-path=right --roi=\"0,0,1280,0,1280,960\" --input-rectified --binary t,3d,3ub,ui | \\ " << std::endl;
             std::cerr <<  "   csv-select --binary=t,3d,3ub,ui --fields=,,,,,,,block --to=0 --sorted > pointcloud.bin" << std::endl;
 
