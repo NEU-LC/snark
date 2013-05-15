@@ -36,7 +36,7 @@ namespace snark {
 
 bearing_elevation::bearing_elevation() : bearing_( 0 ), elevation_( 0 ) {}
 
-bearing_elevation::bearing_elevation( double b, double e ) : bearing_( b ), elevation_( e ) {}
+bearing_elevation::bearing_elevation( double b, double e ) : bearing_( bearing( b ) ), elevation_( elevation( e ) ) {}
 
 double bearing_elevation::bearing() const { return bearing_; }
 

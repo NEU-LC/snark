@@ -79,10 +79,12 @@ TEST( spherical_grid, bearing_elevation_grid_elevation_index )
 
 TEST( bearing_index, usage_example )
 {
-    double step = 1.25 * one_degree;
-    bearing_elevation_grid::bearing_index index( step );
-    unsigned int i = 0;
-    for( double angle = -M_PI; angle < M_PI; ++i, angle += step ) { EXPECT_EQ( i, index( angle ) ); }
+    {
+        double step = 1.25 * one_degree;
+        bearing_elevation_grid::bearing_index index( step );
+        unsigned int i = 0;
+        for( double angle = -M_PI; angle < M_PI; ++i, angle += step ) { EXPECT_EQ( i, index( angle ) ); }
+    }
 }
 
 TEST( elevation_index, usage_example )
