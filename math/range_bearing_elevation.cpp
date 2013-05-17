@@ -123,7 +123,7 @@ const range_bearing_elevation& range_bearing_elevation::from_cartesian( const Ei
 }
 
 const range_bearing_elevation& range_bearing_elevation::from_cartesian( double x, double y, double z )
-{
+{ // todo: use rotation matrices instead!
     long double projection_square ( x * x +  y * y );
     if ( comma::math::equal( projection_square, 0 ) )
     {

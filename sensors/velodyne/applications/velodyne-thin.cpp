@@ -115,6 +115,7 @@ static boost::scoped_ptr< comma::io::publisher > publisher;
 static boost::scoped_ptr< boost::asio::io_service > publisher_udp_service;
 static boost::scoped_ptr< boost::asio::ip::udp::socket > publisher_udp_socket;
 static unsigned int udp_port;
+boost::asio::ip::udp::endpoint udp_destination;
 
 static double angularSpeed( const snark::velodyne::packet& packet )
 {
@@ -145,6 +146,7 @@ void run( S* stream )
     boost::uniform_real< float > distribution( 0, 1 );
     boost::variate_generator< boost::mt19937&, boost::uniform_real< float > > random( generator, distribution );
     comma::uint64 count = 0;
+    comma::uint64 dropped_count = 0;
     double compression = 0;
     velodyne::packet packet;
     comma::signal_flag isShutdown;
@@ -178,30 +180,35 @@ void run( S* stream )
             ::memcpy( &buf[0] + 16 + 8, &nanoseconds, 4 );
             ::memcpy( &buf[0] + 16 + 8 + 4, &packet, velodyne::packet::size );
             if( publisher ) { publisher->write( &buf[0], buf.size() ); }
-            else if( publisher_udp_socket ) {
-                boost::asio::ip::udp::endpoint destination( boost::asio::ip::address_v4::broadcast(), udp_port);               
-                publisher_udp_socket->send_to( boost::asio::buffer( &buf[0], buf.size() ), destination );
-            }
+            else if( publisher_udp_socket ) { publisher_udp_socket->send_to( boost::asio::buffer( &buf[0], buf.size() ), udp_destination ); }
             else { std::cout.write( &buf[0], buf.size() ); }
         }
         else
         {
+            // todo: certainly rewrite with the proper header using comma::packed
             static char buf[ timeSize + sizeof( comma::uint16 ) + velodyne::thin::maxBufferSize ];
-            comma::uint16 size = timeSize + velodyne::thin::serialize( packet, buf + timeSize + sizeof( comma::uint16 ), scan_id );
-            ::memcpy( buf, &size, sizeof( comma::uint16 ) );
-            ::memcpy( buf + sizeof( comma::uint16 ), &seconds, sizeof( comma::int64 ) );
-            ::memcpy( buf + sizeof( comma::uint16 ) + sizeof( comma::int64 ), &nanoseconds, sizeof( comma::int32 ) );
-            if( publisher ) { publisher->write( buf, size + sizeof( comma::uint16 ) ); }
-            else if( publisher_udp_socket ) {
-                boost::asio::ip::udp::endpoint destination( boost::asio::ip::address_v4::broadcast(),  udp_port);
-                publisher_udp_socket->send_to( boost::asio::buffer(buf, size + sizeof( comma::uint16 )  ), destination );
+            comma::uint16 size = velodyne::thin::serialize( packet, buf + timeSize + sizeof( comma::uint16 ), scan_id );
+            bool empty = size == ( sizeof( comma::uint32 ) + 1 ); // todo: atrocious... i.e. packet is not empty; refactor!!!
+            if( !empty )
+            {
+                size += timeSize;
+                ::memcpy( buf, &size, sizeof( comma::uint16 ) );
+                size += sizeof( comma::uint16 );
+                ::memcpy( buf + sizeof( comma::uint16 ), &seconds, sizeof( comma::int64 ) );
+                ::memcpy( buf + sizeof( comma::uint16 ) + sizeof( comma::int64 ), &nanoseconds, sizeof( comma::int32 ) );
+                if( publisher ) { publisher->write( buf, size ); }
+                else if( publisher_udp_socket ) { publisher_udp_socket->send_to( boost::asio::buffer( buf, size ), udp_destination ); }
+                else { std::cout.write( buf, size ); }
             }
-            else { std::cout.write( buf, size + sizeof( comma::uint16 ) ); }
+            else
+            {
+                ++dropped_count;
+            }
             if( verbose )
             {
                 ++count;
-                compression = 0.9 * compression + 0.1 * ( double( size + sizeof( comma::int16 ) ) / ( velodyne::packet::size + timeSize ) );
-                if( count % 10000 == 0 ) { std::cerr << "velodyne-thin: processed " << count << " packets; compression rate " << compression << std::endl; }
+                compression = 0.9 * compression + 0.1 * ( empty ? 0.0 : double( size + sizeof( comma::int16 ) ) / ( velodyne::packet::size + timeSize ) );
+                if( count % 10000 == 0 ) { std::cerr << "velodyne-thin: processed " << count << " packets; dropped " << ( double( dropped_count ) * 100. / count ) << "% full packets; compression rate " << compression << std::endl; }
             }
         }
     }
@@ -221,12 +228,11 @@ int main( int ac, char** av )
         scan_rate = options.optional< double >( "--scan-rate" );
 
         if( options.exists( "--publish" ) )
-        { 
+        {
             std::string how = options.value< std::string >( "--publish" );
             if( comma::split( how, ':' )[0] == "udp" ) // quick and dirty
             {
                 udp_port = boost::lexical_cast< unsigned short >( comma::split( how, ':' )[1] );
-               
                 publisher_udp_service.reset( new boost::asio::io_service() );
                 publisher_udp_socket.reset( new boost::asio::ip::udp::socket ( *publisher_udp_service, boost::asio::ip::udp::v4() ) );
                 boost::system::error_code error;
@@ -234,6 +240,7 @@ int main( int ac, char** av )
                 if( error ) { std::cerr << "velodyne-thin: failed to set broadcast option on port " << udp_port << std::endl; return 1; }
                 publisher_udp_socket->set_option( boost::asio::ip::udp::socket::reuse_address( true ), error );
                 if( error ) { std::cerr << "velodyne-thin: failed to set reuse address option on port " << udp_port << std::endl; return 1; }
+                udp_destination = boost::asio::ip::udp::endpoint( boost::asio::ip::address_v4::broadcast(), udp_port );
             }
             else
             {
