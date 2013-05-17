@@ -20,7 +20,7 @@ SOURCE_GROUP( ${TARGET_NAME} FILES ${source} ${includes}
 
 ADD_LIBRARY( ${TARGET_NAME} ${source} ${includes} ${impl_source} ${impl_includes} ${thin_source} ${thin_includes} )
 SET_TARGET_PROPERTIES( ${TARGET_NAME} PROPERTIES ${snark_LIBRARY_PROPERTIES} )
-TARGET_LINK_LIBRARIES( ${TARGET_NAME} ${snark_ALL_EXTERNAL_LIBRARIES} )
+TARGET_LINK_LIBRARIES( ${TARGET_NAME} snark_math ${snark_ALL_EXTERNAL_LIBRARIES} )
 
 INSTALL( FILES ${includes} DESTINATION ${snark_INSTALL_INCLUDE_DIR}/sensors/${PROJECT} )
 INSTALL( FILES ${impl_includes} DESTINATION ${snark_INSTALL_INCLUDE_DIR}/sensors/${PROJECT}/impl )

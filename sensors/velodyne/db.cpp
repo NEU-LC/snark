@@ -81,6 +81,8 @@ db::laser_data::laser_data(   comma::uint32 id
 {
     correction_angles.rotational = rotCorrection;
     correction_angles.vertical = vertCorrection;
+    elevation = std::asin( vertical_offset * correction_angles.vertical.cos
+                         + distance_correction * correction_angles.vertical.sin );
 }
 
 ::Eigen::Vector3d db::laser_data::point( double distance, double angle ) const

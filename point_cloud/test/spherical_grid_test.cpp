@@ -57,7 +57,7 @@ TEST( spherical_grid, bearing_elevation_gid_usage_example )
     EXPECT_EQ( "", grid( 19.5 * one_degree, 30 * one_degree ) );
 }
 
-TEST( spherical_grid, bearing_index )
+TEST( spherical_grid, bearing_elevation_grid_bearing_index )
 {
     for( int i = -180; i < 180; ++i )
     {
@@ -67,7 +67,7 @@ TEST( spherical_grid, bearing_index )
     // todo: test with arbitrary begin
 }
 
-TEST( spherical_grid, elevation_index )
+TEST( spherical_grid, bearing_elevation_grid_elevation_index )
 {
     for( int i = -90; i < 90; ++i )
     {
@@ -75,6 +75,24 @@ TEST( spherical_grid, elevation_index )
         EXPECT_EQ( i + 90, bearing_elevation_grid::index( one_degree )( 0, one_degree * ( 0.5 + i ) )[1] );
     }
     // todo: test with arbitrary begin
+}
+
+TEST( bearing_index, usage_example )
+{
+    {
+        double step = 1.25 * one_degree;
+        bearing_elevation_grid::bearing_index index( step );
+        unsigned int i = 0;
+        for( double angle = -M_PI; angle < M_PI; ++i, angle += step ) { EXPECT_EQ( i, index( angle ) ); }
+    }
+}
+
+TEST( elevation_index, usage_example )
+{
+    double step = 1.25 * one_degree;
+    bearing_elevation_grid::elevation_index index( step );
+    unsigned int i = 0;
+    for( double angle = -M_PI / 2; angle < M_PI / 2; ++i, angle += step ) { EXPECT_EQ( i, index( angle ) ); }
 }
 
 } // namespace snark {

@@ -72,6 +72,8 @@ struct db
 
         corrention_angles_type correction_angles;
 
+        double elevation;
+
         laser_data();
 
         laser_data( comma::uint32 id, double horizOffsetCorrection, double vertOffsetCorrection, double distCorrection, angle rotCorrection, angle vertCorrection );

@@ -93,7 +93,7 @@ void thin( velodyne::packet& packet, const focus& focus, const velodyne::db& db,
             velodyne::laser_return r = impl::get_laser_return( packet, block, laser, boost::posix_time::not_a_date_time, angularSpeed );
             double azimuth = db.lasers[r.id].azimuth( r.azimuth );
             double range = db.lasers[r.id].range( r.range );
-            if( !focus.has( range, azimuth, 0, random ) ) { packet.blocks[block].lasers[laser].range = 0; }
+            if( !focus.has( range, azimuth, db.lasers[r.id].elevation, random ) ) { packet.blocks[block].lasers[laser].range = 0; }
         }
     }
 }

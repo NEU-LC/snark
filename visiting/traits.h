@@ -36,6 +36,7 @@
 
 #include <comma/visiting/apply.h>
 #include <comma/visiting/visit.h>
+#include <snark/math/interval.h>
 #include <snark/math/range_bearing_elevation.h>
 #include <snark/visiting/eigen.h>
 
@@ -56,7 +57,7 @@ struct traits< snark::range_bearing_elevation >
 
     /// visiting
     template < typename Key, class Visitor >
-    static void visit( Key, snark::range_bearing_elevation& p, Visitor& v )
+    static void visit( const Key&, snark::range_bearing_elevation& p, Visitor& v )
     {
         double r = p.r();
         double b = p.b();
@@ -65,6 +66,31 @@ struct traits< snark::range_bearing_elevation >
         v.apply( "bearing", b );
         v.apply( "elevation", e );
         p = snark::range_bearing_elevation( r, b, e );
+    }
+};
+
+template < typename T, unsigned int D >
+struct traits< snark::math::closed_interval< T, D > >
+{
+    /// const visiting
+    template < typename Key, class Visitor >
+    static void visit( const Key&, const snark::math::closed_interval< T, D >& p, Visitor& v )
+    {
+        v.apply( "min", p ? p.min() : Eigen::Matrix< T, D, 1 >() ); // quick and dirty
+        v.apply( "max", p ? p.max() : Eigen::Matrix< T, D, 1 >() ); // quick and dirty
+    }
+
+    /// visiting
+    template < typename Key, class Visitor >
+    static void visit( const Key&, snark::math::closed_interval< T, D >& p, Visitor& v )
+    {
+        Eigen::Matrix< T, D, 1 > min;
+        if( p ) { min = p.min(); } // quick and dirty
+        v.apply( "min", min );
+        Eigen::Matrix< T, D, 1 > max;
+        if( p ) { max = p.max(); } // quick and dirty
+        v.apply( "max", max );
+        p = snark::math::closed_interval< T, D >( min, max );
     }
 };
 

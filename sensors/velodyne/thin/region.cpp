@@ -30,11 +30,13 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+/// @author vsevolod vlaskine
 
 #include <cassert>
 #include <cmath>
 #include <comma/base/exception.h>
 #include <comma/math/compare.h>
+#include <snark/math/range_bearing_elevation.h>
 #include "./focus.h"
 
 #include <iostream>
@@ -59,5 +61,22 @@ bool sector::has( double r, double b, double ) const
 }
 
 double sector::coverage() const { return comma::math::equal( range, 0 ) ? ken / 360 : ( range / 30 ) * ( ken / 360 ); } // quick and dirty
+
+extents::extents( const Eigen::Vector3d& min, const Eigen::Vector3d& max ) : interval( min, max ) {}
+
+extents::extents( const math::closed_interval< double, 3 >& interval ) : interval( interval ) {}
+
+bool extents::has( double range, double bearing, double elevation ) const // quick and dirty, watch performance
+{
+    //std::cerr << "xyz: " << range_bearing_elevation( range, bearing, elevation ).to_cartesian().transpose() << std::endl;
+    return interval.contains( range_bearing_elevation( range, bearing, elevation ).to_cartesian() );
+}
+
+double extents::coverage() const // todo: quick and dirty; by right need to take cross-section of the extents with a conic section
+{
+    double roughly_radius = ( interval.max() - interval.min() ).norm() / 2;
+    static const double max_radius = 60; // quick and dirty: 60 metres
+    return std::pow( roughly_radius / max_radius, 3 );
+}
 
 } } } // namespace snark {  namespace velodyne { namespace thin {

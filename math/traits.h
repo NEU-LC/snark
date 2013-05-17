@@ -52,13 +52,13 @@ template < typename T, int Rows, int Columns >
 struct traits< ::Eigen::Matrix< T, Rows, Columns > >
 {
     enum { rows = Rows, columns = Columns, size = rows * columns };
-    
+
     static const ::Eigen::Matrix< T, Rows, Columns >& zero()
     {
         static ::Eigen::Matrix< T, Rows, Columns > z = ::Eigen::Matrix< T, Rows, Columns >::Zero();
-        return z;        
+        return z;
     }
-    
+
     static const ::Eigen::Matrix< T, Rows, Columns >& indentity()
     {
         static ::Eigen::Matrix< T, Rows, Columns > i = ::Eigen::Matrix< T, Rows, Columns >::Identity();
@@ -73,7 +73,7 @@ class traits< boost::array< T, Size > >
         enum { size = Size };
 
         static const boost::array< T, Size >& zero() { static boost::array< T, Size > z = zero_(); return z; }
-        
+
     private:
         static boost::array< T, Size > zero_()
         {

@@ -117,8 +117,9 @@ void Viewer::shutdown()
 void Viewer::initializeGL( QGLPainter *painter )
 {
     (void) painter;
-    glEnable(GL_BLEND);
-//     glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    ::glEnable( GL_BLEND );
+    //::glEnable( GL_LIGHTING );
+    //::glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
     qglClearColor( m_background_color.toColor() );
     if( m_cameraReader ) { m_cameraReader->start(); }
     for( unsigned int i = 0; i < readers.size(); ++i ) { readers[i]->start(); }

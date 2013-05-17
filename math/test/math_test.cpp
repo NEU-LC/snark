@@ -109,7 +109,11 @@ TEST( math, closed_interval_contains )
 
 TEST( math, range_bearing_elevation )
 {
-    // todo
+    EXPECT_NEAR( -M_PI, snark::bearing_elevation( M_PI, 0 ).b(), 1e-6 );
+    EXPECT_NEAR( 0, snark::bearing_elevation( M_PI * 2, 0 ).b(), 1e-6 );
+    EXPECT_NEAR( -M_PI / 2, snark::bearing_elevation( M_PI * 1.5, 0 ).b(), 1e-6 );
+    EXPECT_NEAR( 0, snark::bearing_elevation( M_PI * 20, 0 ).b(), 1e-6 );
+    // todo: certainly more testing
 }
 
 TEST( math, great_circle_angle_axis )
