@@ -30,9 +30,9 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
 #include <pcap.h>
 #include <boost/array.hpp>
+#include <boost/asio/ip/udp.hpp>
 #include <boost/optional.hpp>
 #include <boost/random/mersenne_twister.hpp>
 #include <boost/random/uniform_real.hpp>
@@ -84,7 +84,7 @@ static void usage()
     std::cerr << "    --rate <rate>: thinning rate between 0 and 1" << std::endl;
     std::cerr << "                    default 1: send all valid datapoints" << std::endl;
     std::cerr << "    --scan-rate <rate>: scan thin rate between 0 and 1" << std::endl;
-    std::cerr << "    --focus <options>: focus on particular region" << std::endl;
+    std::cerr << "    --focus,--region <options>: focus on particular region" << std::endl;
     std::cerr << "                        e.g. at choosen --rate in the direction of" << std::endl;
     std::cerr << "                        0 degrees 30 degrees wide not farther than 10 metres" << std::endl;
     std::cerr << "                        output 80% points in the focus region and 20% the rest" << std::endl;
@@ -104,6 +104,11 @@ static boost::optional< velodyne::db > db;
 static boost::scoped_ptr< velodyne::thin::focus > focus;
 static velodyne::thin::scan scan;
 static boost::scoped_ptr< comma::io::publisher > publisher;
+
+// todo: quick and dirty
+static boost::scoped_ptr< boost::asio::io_service > publisher_udp_service;
+static boost::scoped_ptr< boost::asio::ip::udp::socket > publisher_udp_socket;
+static unsigned int udp_port;
 
 static double angularSpeed( const snark::velodyne::packet& packet )
 {
@@ -166,6 +171,10 @@ void run( S* stream )
             ::memcpy( &buf[0] + 16 + 8, &nanoseconds, 4 );
             ::memcpy( &buf[0] + 16 + 8 + 4, &packet, velodyne::packet::size );
             if( publisher ) { publisher->write( &buf[0], buf.size() ); }
+            else if( publisher_udp_socket ) {
+                boost::asio::ip::udp::endpoint destination( boost::asio::ip::address_v4::broadcast(), udp_port);               
+                publisher_udp_socket->send_to( boost::asio::buffer( &buf[0], buf.size() ), destination );
+            }
             else { std::cout.write( &buf[0], buf.size() ); }
         }
         else
@@ -176,6 +185,10 @@ void run( S* stream )
             ::memcpy( buf + sizeof( comma::uint16 ), &seconds, sizeof( comma::int64 ) );
             ::memcpy( buf + sizeof( comma::uint16 ) + sizeof( comma::int64 ), &nanoseconds, sizeof( comma::int32 ) );
             if( publisher ) { publisher->write( buf, size + sizeof( comma::uint16 ) ); }
+            else if( publisher_udp_socket ) {
+                boost::asio::ip::udp::endpoint destination( boost::asio::ip::address_v4::broadcast(),  udp_port);
+                publisher_udp_socket->send_to( boost::asio::buffer(buf, size + sizeof( comma::uint16 )  ), destination );
+            }
             else { std::cout.write( buf, size + sizeof( comma::uint16 ) ); }
             if( verbose )
             {
@@ -198,15 +211,34 @@ int main( int ac, char** av )
         outputRaw = options.exists( "--output-raw" );
         rate = options.optional< float >( "--rate" );
         scanRate = options.optional< double >( "--scan-rate" );
-        if( options.exists( "--publish" ) ) { publisher.reset( new comma::io::publisher( options.value< std::string >( "--publish" ), comma::io::mode::binary ) ); }
-        options.assert_mutually_exclusive( "--focus,--subtract-by-age,--subtract-max-range,--subtract" );
-        if( options.exists( "--focus,--subtract-by-age,--subtract-max-range,--subtract" ) )
+        if( options.exists( "--publish" ) )
+        { 
+            std::string how = options.value< std::string >( "--publish" );
+            if( comma::split( how, ':' )[0] == "udp" ) // quick and dirty
+            {
+                udp_port = boost::lexical_cast< unsigned short >( comma::split( how, ':' )[1] );
+               
+                publisher_udp_service.reset( new boost::asio::io_service() );
+                publisher_udp_socket.reset( new boost::asio::ip::udp::socket ( *publisher_udp_service, boost::asio::ip::udp::v4() ) );
+                boost::system::error_code error;
+                publisher_udp_socket->set_option( boost::asio::ip::udp::socket::broadcast( true ), error );
+                if( error ) { std::cerr << "velodyne-thin: failed to set broadcast option on port " << udp_port << std::endl; return 1; }
+                publisher_udp_socket->set_option( boost::asio::ip::udp::socket::reuse_address( true ), error );
+                if( error ) { std::cerr << "velodyne-thin: failed to set reuse address option on port " << udp_port << std::endl; return 1; }
+            }
+            else
+            {
+                publisher.reset( new comma::io::publisher( how, comma::io::mode::binary ) );
+            }
+        }
+        options.assert_mutually_exclusive( "--focus,--region,--subtract-by-age,--subtract-max-range,--subtract" );
+        if( options.exists( "--focus,--region,--subtract-by-age,--subtract-max-range,--subtract" ) )
         {
             db = velodyne::db( options.value< std::string >( "--db", "/usr/local/etc/db.xml" ) );
         }
-        if( options.exists( "--focus" ) )
+        if( options.exists( "--focus,--region" ) )
         {
-            focus.reset( makefocus( options.value< std::string >( "--focus" ), rate ? *rate : 1.0 ) );
+            focus.reset( makefocus( options.value< std::string >( "--focus,--region" ), rate ? *rate : 1.0 ) );
             std::cerr << "velodyne-thin: rate in focus: " << focus->rate_in_focus() << "; rate out of focus: " << focus->rate_out_of_focus() << "; coverage: " << focus->coverage() << std::endl;
         }
         verbose = options.exists( "--verbose,-v" );
@@ -221,7 +253,6 @@ int main( int ac, char** av )
         else if( options.exists( "--proprietary,-q" ) )
         {
             run( new snark::proprietary_reader );
-
         }
         else
         {
