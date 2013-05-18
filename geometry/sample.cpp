@@ -28,14 +28,10 @@ coordinates pretty_uniform_sample( const region& r, const circle& c )
     static const unsigned int attempts = 100000;
     for( std::size_t i = 0; i < attempts; ++i )
     {
-        double b = ( impl::random() * 2.0 - 1 ) * c.radius * M_PI;
-        double e = ( impl::random() * 2.0 - 1 ) * c.radius * M_PI;
-        const Eigen::Vector3d& s = snark::range_bearing_elevation( 1, b, e ).to_cartesian();
-        const Eigen::Vector3d& v = r1 * s;
-
-        // todo: check for the poles!
-
-        const Eigen::Matrix3d& r2 = Eigen::AngleAxis< double >( c.centre.latitude, v.cross( Eigen::Vector3d( 0, 0, 1 ) ) ).toRotationMatrix();
+        double a = ( impl::random() * 2 - 1 ) * c.radius; // double a = impl::random() * M_PI * 2;
+        double b = ( impl::random() * 2 - 1 ) * c.radius; // double b = std::sqrt( impl::random() ) * c.radius;
+        const Eigen::Vector3d& s = snark::range_bearing_elevation( 1, a, b ).to_cartesian(); // const Eigen::Vector3d& s = snark::range_bearing_elevation( 1, b * std::cos( a ), b * std::sin( a ) ).to_cartesian();
+        const Eigen::Matrix3d& r2 = Eigen::AngleAxis< double >( c.centre.latitude, Eigen::Vector3d( 0, -1, 0 ) ).toRotationMatrix();
         coordinates p( r2 * r1 * s );
         if( r.includes( p ) ) { return p; }
     }
