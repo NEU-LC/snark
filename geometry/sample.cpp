@@ -21,6 +21,8 @@ boost::variate_generator< boost::mt19937&, boost::uniform_real< double > > rando
 
 coordinates pretty_uniform_sample( const region& r, const coordinates& centre, double radius ) { return pretty_uniform_sample( r, circle( centre, radius ) ); }
 
+coordinates pretty_uniform_sample( const region& r ) { return pretty_uniform_sample( r, r.containing_circle() ); }
+
 coordinates pretty_uniform_sample( const region& r, const circle& c )
 {
     if( c.radius >= M_PI ) { COMMA_THROW( comma::exception, "support containing circle radius less than pi; got " << c.radius ); }
