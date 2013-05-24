@@ -45,7 +45,7 @@
 #include <comma/string/string.h>
 #include "snark/graphics/applications/label_points/MainWindow.h"
 
-void usage()
+void usage( bool verbose )
 {
     std::cerr << std::endl;
     std::cerr << "simple tool for manual labeling of point clouds" << std::endl;
@@ -53,6 +53,7 @@ void usage()
     std::cerr << "usage: label-points [<options>] <filenames>" << std::endl;
     std::cerr << std::endl;
     std::cerr << "<options>" << std::endl;
+    std::cerr << "    --help,-h : show help; --help --verbose: show more help" << std::endl;
     std::cerr << "    --background-colour <colour> : e.g. #ff0000, default: #000000 (black)" << std::endl;
     std::cerr << "    --fix-duplicated : if present, re-label with the same id all duplicated points" << std::endl;
     std::cerr << "    --orthographic : if present, use orthographic projection instead of perspective projection" << std::endl;
@@ -61,7 +62,11 @@ void usage()
     std::cerr << "               currently only re-label duplicated points" << std::endl;
     std::cerr << "    --verbose,-v : more info, e.g. show x,y,z,id of selected points" << std::endl;
     std::cerr << "                   warning: can be lots of output on large files" << std::endl;
-    std::cerr << comma::csv::options::usage() << std::endl;
+    if( verbose )
+    {
+        std::cerr << "csv options" << std::endl;
+        std::cerr << comma::csv::options::usage() << std::endl;
+    }
     std::cerr << std::endl;
     std::cerr << "<fields>" << std::endl;
     std::cerr << "    required fields: x,y,z,id" << std::endl;
@@ -81,13 +86,14 @@ int main( int argc, char** argv )
     try
     {
         comma::command_line_options options( argc, argv );
-        if( argc == 1 || options.exists( "--help" ) || options.exists( "-h" ) ) { usage(); }
         bool verbose = options.exists( "--verbose,-v" );
+        if( argc == 1 || options.exists( "--help" ) || options.exists( "-h" ) ) { usage( verbose ); }
         comma::csv::options csvOptions( argc, argv );
         QColor4ub backgroundcolour( QColor( QString( options.value< std::string >( "--background-colour", "#000000" ).c_str() ) ) );
         if( csvOptions.fields == "" ) { csvOptions.fields = "x,y,z,id"; }
         std::vector< std::string > files = options.unnamed( "--repair,--fix-duplicated,--verbose,-v",
                                                             "--binary,--bin,-b,--fields,--delimiter,-d,--background-colour,--precision,--orthographic,--fov" );
+        if( files.empty() ) { std::cerr << "label-points: please specify input files" << std::endl; return 1; }
         std::vector< comma::csv::options > dataset_csv_options;
         bool fixDuplicated = options.exists( "--fix-duplicated" );
         for( std::size_t i = 0; i < files.size(); ++i )
