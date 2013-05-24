@@ -68,8 +68,7 @@ void usage( bool verbose )
         std::cerr << comma::csv::options::usage() << std::endl;
     }
     std::cerr << std::endl;
-    std::cerr << "<fields>" << std::endl;
-    std::cerr << "    required fields: x,y,z,id" << std::endl;
+    std::cerr << "<fields>: x,y,z,id" << std::endl;
     std::cerr << "    default: x,y,z,id" << std::endl;
     std::cerr << std::endl;
     std::cerr << "examples" << std::endl;
