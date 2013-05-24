@@ -5,7 +5,7 @@
 #include <snark/math/range_bearing_elevation.h>
 
 namespace snark {
-
+    
 /// a simple 2d bearing-elevation grid
 struct bearing_elevation_grid
 {
@@ -17,6 +17,7 @@ struct bearing_elevation_grid
             typedef boost::array< std::size_t, 2 > type;
 
             /// constructors
+            index() {}
             index( double bearing_begin, double elevation_begin, double bearing_resolution, double elevation_resolution );
             index( double bearing_begin, double elevation_begin, double resolution );
             index( double bearing_resolution, double elevation_resolution );
@@ -70,12 +71,22 @@ struct bearing_elevation_grid
         private:
             index_t index_;
     };
+    
+    /// Required by bearing_index and elevation_index for interpolation support
+    struct bounds
+    {
+        int lower_index;
+        int upper_index;
+        double weight;
+    };
 
     /// bearing index; quick and dirty; required for some applications
     class bearing_index
     {
         public:
+            typedef double key_t;
             /// constructors
+            bearing_index() {}
             bearing_index( double begin, double resolution ) : index_( begin, 0, resolution, resolution ) {}
             bearing_index( double resolution ) : index_( resolution, resolution ) {}
 
@@ -88,6 +99,10 @@ struct bearing_elevation_grid
             /// @return resolution
             double resolution() const { return index_.resolution().bearing(); }
 
+            /// @return the lower and upper index between which value
+            /// lies and corresponding weight from lower_index
+            bounds get_bounds( const double value ) const;
+
         private:
             bearing_elevation_grid::index index_;
     };
@@ -96,7 +111,9 @@ struct bearing_elevation_grid
     class elevation_index
     {
         public:
+            typedef double key_t;
             /// constructors
+            elevation_index() {}
             elevation_index( double begin, double resolution ) : index_( 0, begin, resolution, resolution ) {}
             elevation_index( double resolution ) : index_( resolution, resolution ) {}
 
@@ -108,6 +125,10 @@ struct bearing_elevation_grid
 
             /// @return resolution
             double resolution() const { return index_.resolution().elevation(); }
+
+            /// @return the lower and upper index between which value
+            /// lies and corresponding weight from lower_index
+            bounds get_bounds( const double value ) const;
 
         private:
             bearing_elevation_grid::index index_;

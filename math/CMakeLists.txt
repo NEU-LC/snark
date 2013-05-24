@@ -16,13 +16,11 @@ FILE( GLOB fft_source ${dir}/fft/*.cpp )
 FILE( GLOB fft_includes ${dir}/fft/*.h )
 FILE( GLOB gaussian_process_source ${dir}/gaussian_process/*.cpp )
 FILE( GLOB gaussian_process_includes ${dir}/gaussian_process/*.h )
-FILE( GLOB spherical_polygon_source ${dir}/spherical_polygon/*.cpp )
-FILE( GLOB spherical_polygon_includes ${dir}/spherical_polygon/*.h )
 FILE( GLOB math_source ${dir}/*.cpp )
 FILE( GLOB math_includes ${dir}/*.h )
 
-SET( source ${math_source} ${filter_source} ${gaussian_process_source} ${fft_source} ${spherical_polygon_source} )
-SET( includes ${math_includes} ${filter_includes} ${gaussian_process_includes} ${fft_includes} ${spherical_polygon_include} )
+SET( source ${math_source} ${filter_source} ${gaussian_process_source} ${fft_source} )
+SET( includes ${math_includes} ${filter_includes} ${gaussian_process_includes} ${fft_includes} )
 
 ADD_LIBRARY( ${TARGET_NAME} ${source} ${includes} )
 SET_TARGET_PROPERTIES( ${TARGET_NAME} PROPERTIES ${snark_LIBRARY_PROPERTIES} )
@@ -31,7 +29,6 @@ TARGET_LINK_LIBRARIES( ${TARGET_NAME} ${snark_ALL_EXTERNAL_LIBRARIES} )
 INSTALL( FILES ${filter_includes} DESTINATION ${snark_INSTALL_INCLUDE_DIR}/${PROJECT}/filter )
 INSTALL( FILES ${fft_includes} DESTINATION ${snark_INSTALL_INCLUDE_DIR}/${PROJECT}/fft )
 INSTALL( FILES ${gaussian_process_includes} DESTINATION ${snark_INSTALL_INCLUDE_DIR}/${PROJECT}/gaussian_process )
-INSTALL( FILES ${spherical_polygon_includes} DESTINATION ${snark_INSTALL_INCLUDE_DIR}/${PROJECT}/spherical_polygon )
 INSTALL( FILES ${math_includes} DESTINATION ${snark_INSTALL_INCLUDE_DIR}/${PROJECT} )
 
 INSTALL(
@@ -44,7 +41,6 @@ INSTALL(
 ADD_SUBDIRECTORY( filter )
 ADD_SUBDIRECTORY( fft )
 ADD_SUBDIRECTORY( gaussian_process )
-ADD_SUBDIRECTORY( spherical_polygon )
 
 IF( BUILD_TESTS )
     ADD_SUBDIRECTORY( test )
