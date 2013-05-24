@@ -146,6 +146,13 @@ void SelectPartition::onMousePress( QMouseEvent* e )
             if( erase ) { m_viewer.dataset( i ).selection().erase( it->second ); }
             else { m_viewer.dataset( i ).selection().insert( it->second ); }
             std::cerr << "label-points: partition id " << picked->second << " with " << it->second.size() << " point(s) in " << m_viewer.dataset( i ).filename() << ( erase ? " removed from selection" : append ? " added to selection" : " selected" ) << std::endl;
+            if( m_viewer.verbose() )
+            {
+                for( Dataset::Points::ConstEnumerator en = it->second.begin(); !en.end(); ++en )
+                {
+                    std::cerr << en.key().x() << "," << en.key().y() << "," << en.key().z() << "," << en.value().id << std::endl;
+                }
+            }
             break;
         }
     }
@@ -179,6 +186,13 @@ void SelectId::onMousePress( QMouseEvent* e )
             if( erase ) { m_viewer.dataset( i ).selection().erase( it->second ); }
             else { m_viewer.dataset( i ).selection().insert( it->second ); }
             std::cerr << "label-points: partition id " << picked->second << " with " << it->second.size() << " point(s) in " << m_viewer.dataset( i ).filename() << ( erase ? " removed from selection" : append ? " added to selection" : " selected" ) << std::endl;
+            if( m_viewer.verbose() )
+            {
+                for( Dataset::Points::ConstEnumerator en = it->second.begin(); !en.end(); ++en )
+                {
+                    std::cerr << en.key().x() << "," << en.key().y() << "," << en.key().z() << "," << en.value().id << std::endl;
+                }
+            }
         }
     }
     m_viewer.update();
