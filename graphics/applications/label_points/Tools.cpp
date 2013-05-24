@@ -227,7 +227,7 @@ void Fill::onMousePress( QMouseEvent* e )
 
 SelectClip::SelectClip( Viewer& viewer ) : Tool( viewer, new QCursor )
 {
-    m_cursor->setShape( Qt::ArrowCursor );    
+    m_cursor->setShape( Qt::ArrowCursor );
 }
 
 void SelectClip::onMousePress( QMouseEvent* e )
@@ -246,7 +246,7 @@ void SelectClip::onMouseMove( QMouseEvent* e )
     m_rectangle->setBottomRight( e->pos() );
     double factor = ( m_viewer.camera()->eye() - m_viewer.camera()->center() ).length() / 1000;
     double h = factor * m_rectangle->height();
-    double w = factor * m_rectangle->width();    
+    double w = factor * m_rectangle->width();
     m_radius = Eigen::Vector3d( w, h, ( h + w ) / 2 );
     m_viewer.update();
 
@@ -270,6 +270,13 @@ void SelectClip::onMouseRelease( QMouseEvent* e )
         if( erase ) { m_viewer.dataset( i ).selection().erase( m ); }
         else { m_viewer.dataset( i ).selection().insert( m ); }
         std::cerr << "label-points: " << m.size() << " point(s) from " << m_viewer.dataset( i ).filename() << ( erase ? " removed from selection" : append ? " added to selection" : " selected" ) << std::endl;
+        if( m_viewer.verbose() )
+        {
+            for( Dataset::Points::ConstEnumerator en = m.begin(); !en.end(); ++en )
+            {
+                std::cerr << en.key().x() << "," << en.key().y() << "," << en.key().z() << "," << en.value().id << std::endl;
+            }
+        }
     }
     m_rectangle = boost::optional< QRect >();
     m_viewer.update();

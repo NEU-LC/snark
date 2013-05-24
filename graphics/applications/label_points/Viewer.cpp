@@ -33,8 +33,8 @@
 
 #include <cmath>
 #include <vector>
-#include <boost/array.hpp> 
-#include <boost/lexical_cast.hpp> 
+#include <boost/array.hpp>
+#include <boost/lexical_cast.hpp>
 #include <comma/math/compare.h>
 #include "./Viewer.h"
 
@@ -43,7 +43,9 @@ namespace snark { namespace graphics { namespace View {
 Viewer::Viewer( const std::vector< comma::csv::options >& options
               , bool labelDuplicated
               , const QColor4ub& background_color
-              , bool orthographic, double fieldOfView )
+              , bool orthographic
+              , double fieldOfView
+              , bool verbose )
     : qt3d::view( background_color, fieldOfView, false, orthographic )
     , navigate( *this )
     , pickId( *this )
@@ -54,12 +56,12 @@ Viewer::Viewer( const std::vector< comma::csv::options >& options
     , m_currentTool( &navigate )
     , m_options( options )
     , m_labelDuplicated( labelDuplicated )
+    , verbose_( verbose )
 {
-
 }
-              
+
 void Viewer::saveStateToFile() {}
-              
+
 void Viewer::show( std::size_t i, bool visible )
 {
     m_datasets[i]->visible( visible );
@@ -82,7 +84,7 @@ void Viewer::save()
 const std::vector< boost::shared_ptr< Dataset > >& Viewer::datasets() const { return m_datasets; }
 
 Dataset& Viewer::dataset( std::size_t index ) { return *m_datasets[index]; }
-    
+
 const Dataset& Viewer::dataset( std::size_t index ) const { return *m_datasets[index]; }
 
 void Viewer::reload()
@@ -164,7 +166,7 @@ void Viewer::paintGL( QGLPainter *painter )
 void Viewer::mousePressEvent( QMouseEvent* e )
 {
     m_currentTool->onMousePress( e );
-//     GL::View::mousePressEvent( e );  
+//     GL::View::mousePressEvent( e );
 }
 
 void Viewer::mouseReleaseEvent( QMouseEvent* e )
@@ -186,36 +188,31 @@ boost::optional< std::pair< Eigen::Vector3d, comma::uint32 > > Viewer::pointSele
     if( point3d )
     {
         Eigen::Vector3d p(  point3d->x(), point3d->y(), point3d->z() );
-        if( m_offset )
-        {
-            p += *m_offset;
-        }
+        if( m_offset ) { p += *m_offset; }
         std::cerr << " clicked point " << p.transpose() << std::endl;
-
         snark::math::closed_interval< double, 3 > e( p - Eigen::Vector3d::Ones(), p + Eigen::Vector3d::Ones() );
         double minDistanceSquare = std::numeric_limits< double >::max();
         for( std::size_t i = 0; i < m_datasets.size(); ++i )
         {
             if( !m_datasets[i]->visible() || ( writableOnly && !m_datasets[i]->writable() ) ) { continue; }
             Dataset::Points m = m_datasets[i]->points().find( e.min(), e.max() );
-            std::cerr << " found " << m.size() << " points " << std::endl;
+            if( verbose_ ) { std::cerr << " found " << m.size() << " point(s) in the neighbourhood" << std::endl; }
             for( Dataset::Points::ConstEnumerator en = m.begin(); !en.end(); ++en )
             {
-                double norm = ( en.key() - p ).squaredNorm();
-                if( norm < minDistanceSquare )
+                double squared_norm = ( en.key() - p ).squaredNorm();
+                if( squared_norm < minDistanceSquare )
                 {
-                    minDistanceSquare = norm;
+                    minDistanceSquare = squared_norm;
                     result = std::make_pair( en.key(), en.value().id );
                 }
             }
             if( minDistanceSquare <= 0.01 )
             {
-                std::cerr << " found point " << result->first << " , id " << result->second << std::endl;
+                if( verbose_ ) { std::cerr << " found point: " << result->first.transpose() << "; id: " << result->second << std::endl; }
                 return result;
             }
         }
     }
-    
     return boost::optional< std::pair< Eigen::Vector3d, comma::uint32 > >();
 }
 

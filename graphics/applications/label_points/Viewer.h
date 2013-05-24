@@ -58,8 +58,8 @@
 
 namespace snark { namespace graphics { namespace View {
 
-static const long double pi_ = 3.14159265358979323846l;    
-    
+static const long double pi_ = 3.14159265358979323846l;
+
 class Viewer : public qt3d::view
 {
     Q_OBJECT
@@ -69,13 +69,15 @@ class Viewer : public qt3d::view
         Tools::PickId pickId;
         Tools::SelectPartition selectPartition;
         Tools::SelectId selectId;
-        Tools::SelectClip selectClip; 
+        Tools::SelectClip selectClip;
         Tools::Fill fill;
 
         Viewer( const std::vector< comma::csv::options >& options
               , bool labelDuplicated
               , const QColor4ub& background_color
-              , bool orthographic = false, double fieldOfView = pi_ / 4 );
+              , bool orthographic = false
+              , double fieldOfView = pi_ / 4
+              , bool verbose = false );
 
         void show( std::size_t i, bool visible ); // quick and dirty
         void setWritable( std::size_t i, bool writable ); // quick and dirty
@@ -84,6 +86,7 @@ class Viewer : public qt3d::view
         const std::vector< boost::shared_ptr< Dataset > >& datasets() const;
         Dataset& dataset( std::size_t index ); // quick and dirty
         const Dataset& dataset( std::size_t index ) const; // quick and dirty
+        bool verbose() const { return verbose_; }
 
     public slots:
         void handleId( comma::uint32 id );
@@ -108,7 +111,7 @@ class Viewer : public qt3d::view
         friend class Tools::SelectClip; // quick and dirty
         friend struct Tools::Fill; // quick and dirty
         void setCamera();
-                
+
         Tools::Tool* m_currentTool;
         std::vector< boost::shared_ptr< Dataset > > m_datasets;
         boost::optional< comma::uint32 > m_id;
@@ -120,6 +123,7 @@ class Viewer : public qt3d::view
         boost::optional< QPoint > m_startPan;
         boost::optional< QPoint > m_startRotate;
         double m_sceneRadius;
+        bool verbose_;
 };
 
 } } } // namespace snark { namespace graphics { namespace View {

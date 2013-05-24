@@ -59,6 +59,8 @@ void usage()
     std::cerr << "    --fov <fov> : set camera field of view to <fov>, in degrees. Only has effect for perspective projection. Default: 45 degrees" << std::endl;
     std::cerr << "    --repair : if present, repair and save files without bringing up gui;" << std::endl;
     std::cerr << "               currently only re-label duplicated points" << std::endl;
+    std::cerr << "    --verbose,-v : more info, e.g. show x,y,z,id of selected points" << std::endl;
+    std::cerr << "                   warning: can be lots of output on large files" << std::endl;
     std::cerr << comma::csv::options::usage() << std::endl;
     std::cerr << std::endl;
     std::cerr << "<fields>" << std::endl;
@@ -80,13 +82,14 @@ int main( int argc, char** argv )
     {
         comma::command_line_options options( argc, argv );
         if( argc == 1 || options.exists( "--help" ) || options.exists( "-h" ) ) { usage(); }
+        bool verbose = options.exists( "--verbose,-v" );
         comma::csv::options csvOptions( argc, argv );
         QColor4ub backgroundcolour( QColor( QString( options.value< std::string >( "--background-colour", "#000000" ).c_str() ) ) );
         if( csvOptions.fields == "" ) { csvOptions.fields = "x,y,z,id"; }
-        std::vector< std::string > files = options.unnamed( "--repair,--fix-duplicated",
+        std::vector< std::string > files = options.unnamed( "--repair,--fix-duplicated,--verbose,-v",
                                                             "--binary,--bin,-b,--fields,--delimiter,-d,--background-colour,--precision,--orthographic,--fov" );
         std::vector< comma::csv::options > dataset_csv_options;
-        bool fixDuplicated = options.exists( "--fix-duplicated" );        
+        bool fixDuplicated = options.exists( "--fix-duplicated" );
         for( std::size_t i = 0; i < files.size(); ++i )
         {
             dataset_csv_options.push_back( comma::name_value::parser( "filename" ).get( files[i], csvOptions ) );
@@ -101,7 +104,7 @@ int main( int argc, char** argv )
             QApplication application( argc, argv );
             bool orthographic = options.exists( "--orthographic" );
             double fieldOfView = options.value< double >( "--fov", 45 );
-            boost::scoped_ptr< snark::graphics::View::Viewer > viewer( new snark::graphics::View::Viewer( dataset_csv_options, fixDuplicated, backgroundcolour, orthographic, fieldOfView ) );
+            boost::scoped_ptr< snark::graphics::View::Viewer > viewer( new snark::graphics::View::Viewer( dataset_csv_options, fixDuplicated, backgroundcolour, orthographic, fieldOfView, verbose ) );
             snark::graphics::View::MainWindow mainWindow( comma::join( argv, argc, ' ' ), viewer.get() );
             mainWindow.show();
             /*return*/ application.exec();
