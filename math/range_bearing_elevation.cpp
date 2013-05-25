@@ -30,7 +30,11 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include <Eigen/Geometry>
+#include <comma/math/compare.h>
 #include <snark/math/range_bearing_elevation.h>
+
+#include <iostream>
 
 namespace snark {
 
@@ -117,48 +121,67 @@ Eigen::Vector3d range_bearing_elevation::to_cartesian() const
                                     , range() * std::sin( elevation() ) );
 }
 
-const range_bearing_elevation& range_bearing_elevation::from_cartesian( const Eigen::Vector3d& xyz )
+const range_bearing_elevation& range_bearing_elevation::from_cartesian( double x, double y, double z )
 {
-    return from_cartesian( xyz[0], xyz[1], xyz[2] );
+    return from_cartesian( Eigen::Vector3d( x, y, z ) );
 }
 
-const range_bearing_elevation& range_bearing_elevation::from_cartesian( double x, double y, double z )
-{ // todo: use rotation matrices instead!
-    long double projection_square ( x * x +  y * y );
-    if ( comma::math::equal( projection_square, 0 ) )
-    {
-        if ( comma::math::equal( z, 0 ) )
-        {
-            range_ = 0;
-            bearing_elevation_.bearing( 0 );
-            bearing_elevation_.elevation( 0 );
-            return *this;
-        }
-        range_ = std::abs( z );
-        bearing_elevation_.bearing( 0 );
-        elevation( comma::math::less( z, 0 ) ? -M_PI / 2 : M_PI / 2 );
-        return *this;
-    }
-    long double range_square( projection_square + z * z );
-    long double lr( std::sqrt( range_square ) );
-    long double elevation_ = 0;
-    if ( !comma::math::equal( z, 0 ) )
-    {
-        long double r = z / lr;
-        if ( comma::math::less( ( long double )( 1.0 ), r ) ) { r = 1; }
-        else if ( comma::math::less( r, ( long double ) ( -1.0 ) ) ) { r = -1; }
-        elevation_ = std::asin( r );
-    }
-    long double r = x / std::sqrt( projection_square );
-    if ( comma::math::less( ( long double )( 1.0 ), r ) ) { r = 1; }
-    else if ( comma::math::less( r, ( long double ) ( -1.0 ) ) ) { r = -1; }
-    long double bearing_ = std::acos( r );
-    if ( comma::math::less( y, 0 ) ) { bearing_ = M_PI * 2 - bearing_; }
-    range_ = lr;
-    bearing( bearing_ );
-    elevation( elevation_ );
+const range_bearing_elevation& range_bearing_elevation::from_cartesian( const Eigen::Vector3d& v )
+{
+    range_ = v.norm();
+    if( comma::math::equal( range_, 0 ) ) { bearing_elevation_ = bearing_elevation( 0, 0 ); return *this; }
+    const Eigen::AngleAxis< double >& a =  Eigen::AngleAxis< double >( Eigen::Quaternion< double >::FromTwoVectors( v, Eigen::Vector3d( 0, 0, 1 ) ) );
+    double e = M_PI / 2 - a.angle();
+    Eigen::AngleAxis< double > c( -e, a.axis() );
+    const Eigen::Matrix3d& r = c.toRotationMatrix();
+    double b =  Eigen::AngleAxis< double >( Eigen::Quaternion< double >::FromTwoVectors( Eigen::Vector3d( 1, 0, 0 ), r * v ) ).angle();
+    bearing_elevation_.bearing( b );
+    bearing_elevation_.elevation( e );
     return *this;
 }
+
+// const range_bearing_elevation& range_bearing_elevation::from_cartesian( const Eigen::Vector3d& xyz )
+// {
+//     return from_cartesian( xyz[0], xyz[1], xyz[2] );
+// }
+//
+// const range_bearing_elevation& range_bearing_elevation::from_cartesian( double x, double y, double z )
+// { // todo: use rotation matrices instead!
+//     long double projection_square ( x * x +  y * y );
+//     if ( comma::math::equal( projection_square, 0 ) )
+//     {
+//         if ( comma::math::equal( z, 0 ) )
+//         {
+//             range_ = 0;
+//             bearing_elevation_.bearing( 0 );
+//             bearing_elevation_.elevation( 0 );
+//             return *this;
+//         }
+//         range_ = std::abs( z );
+//         bearing_elevation_.bearing( 0 );
+//         elevation( comma::math::less( z, 0 ) ? -M_PI / 2 : M_PI / 2 );
+//         return *this;
+//     }
+//     long double range_square( projection_square + z * z );
+//     long double lr( std::sqrt( range_square ) );
+//     long double elevation_ = 0;
+//     if ( !comma::math::equal( z, 0 ) )
+//     {
+//         long double r = z / lr;
+//         if ( comma::math::less( ( long double )( 1.0 ), r ) ) { r = 1; }
+//         else if ( comma::math::less( r, ( long double ) ( -1.0 ) ) ) { r = -1; }
+//         elevation_ = std::asin( r );
+//     }
+//     long double r = x / std::sqrt( projection_square );
+//     if ( comma::math::less( ( long double )( 1.0 ), r ) ) { r = 1; }
+//     else if ( comma::math::less( r, ( long double ) ( -1.0 ) ) ) { r = -1; }
+//     long double bearing_ = std::acos( r );
+//     if ( comma::math::less( y, 0 ) ) { bearing_ = M_PI * 2 - bearing_; }
+//     range_ = lr;
+//     bearing( bearing_ );
+//     elevation( elevation_ );
+//     return *this;
+// }
 
 Eigen::AngleAxis< double > great_circle_angle_axis( const bearing_elevation& lhs, const bearing_elevation& rhs )
 {

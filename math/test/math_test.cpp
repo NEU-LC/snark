@@ -113,6 +113,12 @@ TEST( math, range_bearing_elevation )
     EXPECT_NEAR( 0, snark::bearing_elevation( M_PI * 2, 0 ).b(), 1e-6 );
     EXPECT_NEAR( -M_PI / 2, snark::bearing_elevation( M_PI * 1.5, 0 ).b(), 1e-6 );
     EXPECT_NEAR( 0, snark::bearing_elevation( M_PI * 20, 0 ).b(), 1e-6 );
+
+    //snark::range_bearing_elevation rbe;
+    //rbe.from_cartesian( Eigen::Vector3d( -0.907717, -0.160055, -0.0673507 ) );
+    //static const double radian = M_PI / 180;
+    //std::cout << "==================" << std::endl;
+    //std::cout << "==> " << rbe.r() << "," << ( rbe.b() / radian ) << "," << ( rbe.e() / radian ) << std::endl;
     // todo: certainly more testing
 }
 
