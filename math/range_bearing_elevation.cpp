@@ -134,8 +134,8 @@ const range_bearing_elevation& range_bearing_elevation::from_cartesian( const Ei
     double e = M_PI / 2 - a.angle();
     Eigen::AngleAxis< double > c( -e, a.axis() );
     const Eigen::Matrix3d& r = c.toRotationMatrix();
-    double b =  Eigen::AngleAxis< double >( Eigen::Quaternion< double >::FromTwoVectors( Eigen::Vector3d( 1, 0, 0 ), r * v ) ).angle();
-    bearing_elevation_.bearing( b );
+    Eigen::AngleAxis< double > d( Eigen::Quaternion< double >::FromTwoVectors( Eigen::Vector3d( 1, 0, 0 ), r * v ) );
+    bearing_elevation_.bearing( d.angle() * ( d.axis().z() < 0 ? -1 : 1 ) );
     bearing_elevation_.elevation( e );
     return *this;
 }
