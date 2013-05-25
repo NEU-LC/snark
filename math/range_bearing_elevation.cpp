@@ -34,8 +34,6 @@
 #include <comma/math/compare.h>
 #include <snark/math/range_bearing_elevation.h>
 
-#include <iostream>
-
 namespace snark {
 
 bearing_elevation::bearing_elevation() : bearing_( 0 ), elevation_( 0 ) {}
