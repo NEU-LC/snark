@@ -18,20 +18,23 @@
 static void usage( bool more = false )
 {
     std::cerr << std::endl;
-    std::cerr << "make a random sample of points in a region on a sphere" << std::endl;
+    std::cerr << "make filter or sample of points in a region on a sphere" << std::endl;
     std::cerr << std::endl;
     std::cerr << "usage: sphere-sample <options> [<output csv options>] > sample.csv" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    --more-help,--long-help: more help output" << std::endl;
-    std::cerr << "    --resolution,--radius,-r=<degrees>: sample will be taken on grid of given resolution" << std::endl;
-    std::cerr << "                                        which gives slightly more uniform distribution" << std::endl;
     std::cerr << "    --region=<what><region options>" << std::endl;
     std::cerr << "        <what>" << std::endl;
     std::cerr << "            circle;<centre lat>,<centre long>,<radius>" << std::endl;
     std::cerr << "            ellipse;<focus1 lat>,<focus1 long>,<focus2 lat>,<focus2 long>,<major axis>" << std::endl;
     std::cerr << "            polygon;<point inside: lat>,<point inside: long>;<filename>[;<csv options>]" << std::endl;
-    std::cerr << "    --region=<what><region options>" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "sampling options" << std::endl;
+    std::cerr << "    if no options given, take latitude,longitude points on stdin" << std::endl;
+    std::cerr << "     and output them to stdout, if they are inside of the region" << std::endl;
+    std::cerr << "    --resolution,--radius,-r=<degrees>: sample will be taken on grid of given resolution" << std::endl;
+    std::cerr << "                                        which gives slightly more uniform distribution" << std::endl;
     std::cerr << "    --size,-s: if no --resolution given, sample size (number of random)" << std::endl;
     std::cerr << "               if --resolution given, sample size per each cell; default: 1" << std::endl;
     std::cerr << std::endl;
@@ -135,7 +138,7 @@ int main( int ac, char** av )
                 }
             }
         }
-        else
+        else if( options.exists( "--size,-s" ) )
         {
             std::size_t size = options.value< std::size_t >( "--size,-s" );
             for( std::size_t i = 0; !is_shutdown && i < size; ++i )
@@ -148,6 +151,18 @@ int main( int ac, char** av )
                     if( r.includes( c ) ) { ostream.write( c ); break; }
                 }
                 if( !attempts ) { std::cerr << "sphere-sample: failed to get random sample after " << max_attempts << std::endl; return 1; }
+            }
+        }
+        else
+        {
+            comma::csv::input_stream< aero::coordinates > istream( std::cin, csv );
+            while( !is_shutdown && ( istream.ready() || ( std::cin.good() && !std::cin.eof() ) ) )
+            {
+                const aero::coordinates* c = istream.read();
+                if( !c ) { break; }
+                if( !r.includes( *c ) ) { continue; }
+                if( csv.binary() ) { std::cout.write( istream.binary().last(), istream.binary().binary().format().size() ); }
+                else { std::cout << comma::join( istream.ascii().last(), csv.delimiter ) << std::endl; }
             }
         }
         return 0;
