@@ -60,34 +60,26 @@ int main( int ac, char** av )
         }
         if( random )
         {
-            boost::mt19937 generator;
-            boost::uniform_real< double > distribution( 0, 1 );
-            boost::variate_generator< boost::mt19937&, boost::uniform_real< double > > r( generator, distribution );
+            //boost::mt19937 generator;
+            //boost::uniform_real< double > distribution( 0, 1 );
+            //boost::variate_generator< boost::mt19937&, boost::uniform_real< double > > r( generator, distribution );
             aero::coordinates from( -M_PI / 2, -M_PI );
             aero::coordinates to( M_PI / 2, M_PI );
             for( aero::coordinates c( from ); !is_shutdown && c.latitude < to.latitude; c.latitude += resolution )
             {
-                double step = resolution / std::abs( std::cos( c.latitude ) );
-                std::size_t size = M_PI * 2 / step;
-                for( std::size_t i = 0; i < size; ++i )
+                for( c.longitude = from.longitude; c.longitude < to.longitude; c.longitude += resolution )
                 {
-                    ostream.write( aero::pretty_uniform_sample( aero::coordinates( c.latitude, ( r() * 2 - 1 ) * M_PI ), resolution ) );
+                    ostream.write( aero::pretty_uniform_sample( c, resolution ) );
                 }
+
+//                 double radius = std::abs( std::cos( c.latitude ) );
+//                 if( radius == 0 ) { continue; }
+//                 std::size_t steps = M_PI * 2 / ( resolution / radius );
+//                 for( std::size_t i = 0; i < steps; ++i )
+//                 {
+//                     ostream.write( aero::pretty_uniform_sample( aero::coordinates( c.latitude, ( r() * 2 - 1 ) * M_PI ), resolution ) );
+//                 }
             }
-
-
-//             for( std::size_t i = 0; i < size; ++i )
-//             {
-//                 double z = r() * 2 - 1;
-//                 double s = density * std::sqrt( 1 - z * z );
-//                 double n = M_PI * 2.0 / s;
-//                 double q =
-//                 double a = ( r() / s * 2 - 1 ) * M_PI;
-//                 snark::range_bearing_elevation rbe( Eigen::Vector3d( std::cos( a ), std::sin( a ), z ) );
-//                 ostream.write( aero::coordinates( rbe.e(), rbe.b() ) );
-//                 //snark::range_bearing_elevation rbe( Eigen::Vector3d( r() * 2 - 1, r() * 2 - 1, r() * 2 - 1 ) );
-//                 //ostream.write( aero::coordinates( rbe.e(), rbe.b() ) );
-//             }
         }
     }
     catch( std::exception& ex )
