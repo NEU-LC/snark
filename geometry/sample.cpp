@@ -29,7 +29,8 @@ coordinates pretty_uniform_sample( const circle& c )
     double b = ( impl::random() * 2 - 1 ) * c.radius; // double b = std::sqrt( impl::random() ) * c.radius;
     const Eigen::Vector3d& s = snark::range_bearing_elevation( 1, a, b ).to_cartesian(); // const Eigen::Vector3d& s = snark::range_bearing_elevation( 1, b * std::cos( a ), b * std::sin( a ) ).to_cartesian();
     const Eigen::Matrix3d& r2 = Eigen::AngleAxis< double >( c.centre.latitude, Eigen::Vector3d( 0, -1, 0 ) ).toRotationMatrix();
-    return coordinates( r2 * r1 * s );
+    //return coordinates( r2 * r1 * s );
+    return coordinates( r1 * r2 * s );
 }
 
 } } // namespace acfr { namespace aero {
