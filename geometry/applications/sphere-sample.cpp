@@ -19,6 +19,7 @@ static void usage( bool verbose )
     std::cerr << "options" << std::endl;
     std::cerr << "    --random: random uniform sample" << std::endl;
     std::cerr << "    --regular: regular grid sample" << std::endl;
+    std::cerr << "    --regular-uniform,--uniform: regular, but pretty uniform" << std::endl;
     std::cerr << "    --resolution,-r=<value>: regular sample resolution in degrees" << std::endl;
     if( verbose )
     {
@@ -45,7 +46,8 @@ int main( int ac, char** av )
         options.assert_mutually_exclusive( "--random,--regular" );
         bool regular = options.exists( "--regular" );
         bool random = options.exists( "--random" );
-        if( !regular && !random ) { std::cerr << "sphere-sample: expected sample type (--random or --regular)" << std::endl; return 1; }
+        bool regular_uniform = options.exists( "--regular-uniform,--uniform" );
+        if( !regular && !random && !regular_uniform ) { std::cerr << "sphere-sample: expected sample type (--random or --regular)" << std::endl; return 1; }
         if( regular )
         {
             aero::coordinates from( -M_PI / 2, -M_PI );
@@ -58,27 +60,23 @@ int main( int ac, char** av )
                 }
             }
         }
-        if( random )
+        if( random || regular_uniform )
         {
-            //boost::mt19937 generator;
-            //boost::uniform_real< double > distribution( 0, 1 );
-            //boost::variate_generator< boost::mt19937&, boost::uniform_real< double > > r( generator, distribution );
+            boost::mt19937 generator;
+            boost::uniform_real< double > distribution( 0, 1 );
+            boost::variate_generator< boost::mt19937&, boost::uniform_real< double > > r( generator, distribution );
             aero::coordinates from( -M_PI / 2, -M_PI );
             aero::coordinates to( M_PI / 2, M_PI );
             for( aero::coordinates c( from ); !is_shutdown && c.latitude < to.latitude; c.latitude += resolution )
             {
-                for( c.longitude = from.longitude; c.longitude < to.longitude; c.longitude += resolution )
+                double radius = std::abs( std::cos( c.latitude ) );
+                if( radius == 0 ) { continue; }
+                double step = resolution / radius;
+                double offset = random ? ( r() * 2 - 1 ) * step : 0.0;
+                for( c.longitude = from.longitude + offset; c.longitude < to.longitude + offset; c.longitude += step )
                 {
-                    ostream.write( aero::pretty_uniform_sample( c, resolution ) );
+                    ostream.write( regular_uniform ? c : aero::pretty_uniform_sample( c, resolution / 2 ) );
                 }
-
-//                 double radius = std::abs( std::cos( c.latitude ) );
-//                 if( radius == 0 ) { continue; }
-//                 std::size_t steps = M_PI * 2 / ( resolution / radius );
-//                 for( std::size_t i = 0; i < steps; ++i )
-//                 {
-//                     ostream.write( aero::pretty_uniform_sample( aero::coordinates( c.latitude, ( r() * 2 - 1 ) * M_PI ), resolution ) );
-//                 }
             }
         }
     }
