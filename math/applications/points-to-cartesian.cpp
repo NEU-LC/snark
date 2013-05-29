@@ -81,15 +81,17 @@ int main( int ac, char** av )
         if( input_options.fields == "" ) { input_options.fields = "r,b,e"; }
         std::vector< std::string > fields = comma::split( input_options.fields, input_options.delimiter );
         std::vector< std::string > output_fields = fields;
+        bool fields_set = false;
         for( std::size_t i = 0; i < fields.size(); ++i )
         {
             if( fields[i] == "r" ) { fields[i] = "range"; }
             else if( fields[i] == "b" ) { fields[i] = "bearing"; }
             else if( fields[i] == "e" ) { fields[i] = "elevation"; }
-            if( fields[i] == "range" ) { output_fields[i] = "x"; }
-            else if( fields[i] == "bearing" ) { output_fields[i] = "y"; }
-            else if( fields[i] == "elevation" ) { output_fields[i] = "z"; }
+            if( fields[i] == "range" ) { output_fields[i] = "x"; fields_set = true; }
+            else if( fields[i] == "bearing" ) { output_fields[i] = "y"; fields_set = true; }
+            else if( fields[i] == "elevation" ) { output_fields[i] = "z"; fields_set = true; }
         }
+        if( !fields_set ) { std::cerr << "points-to-cartesian: expected some of the fields: " << comma::join( comma::csv::names< snark::range_bearing_elevation >(), ',' ) << ", got none in: " << input_options.fields << std::endl; return 1; }
         input_options.fields = comma::join( fields, ',' );
         output_options.fields = comma::join( output_fields, ',' );
         if( input_options.binary() )

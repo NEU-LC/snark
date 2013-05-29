@@ -68,12 +68,14 @@ int main( int ac, char** av )
         if( input_options.fields == "" ) { input_options.fields = "x,y,z"; }
         std::vector< std::string > fields = comma::split( input_options.fields, input_options.delimiter );
         std::vector< std::string > output_fields = fields;
+        bool fields_set = false;
         for( std::size_t i = 0; i < fields.size(); ++i )
         {
-            if( fields[i] == "x" ) { output_fields[i] = "range"; }
-            else if( fields[i] == "y" ) { output_fields[i] = "bearing"; }
-            else if( fields[i] == "z" ) { output_fields[i] = "elevation"; }
+            if( fields[i] == "x" ) { output_fields[i] = "range"; fields_set = true; }
+            else if( fields[i] == "y" ) { output_fields[i] = "bearing"; fields_set = true; }
+            else if( fields[i] == "z" ) { output_fields[i] = "elevation"; fields_set = true; }
         }
+        if( !fields_set ) { std::cerr << "points-to-polar: expected some of the fields: " << comma::join( comma::csv::names< Eigen::Vector3d >(), ',' ) << ", got none in: " << input_options.fields << std::endl; return 1; }
         input_options.fields = comma::join( fields, ',' );
         output_options.fields = comma::join( output_fields, ',' );
         comma::csv::input_stream< Eigen::Vector3d > is( std::cin, input_options );
