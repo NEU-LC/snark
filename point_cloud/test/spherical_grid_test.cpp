@@ -94,7 +94,7 @@ TEST( bearing_index, bearing_wraparound_mapping )
     EXPECT_EQ( 0, index( 3 * M_PI) );
     EXPECT_EQ( 144, index( 4 * M_PI) );
     EXPECT_EQ( 0, index( 5 * M_PI) );
-    
+
 }
 
 TEST( elevation_index, elevation_wraparound_mapping )
@@ -103,18 +103,18 @@ TEST( elevation_index, elevation_wraparound_mapping )
     bearing_elevation_grid::elevation_index index( step );
     unsigned int i = 0;
     for( double angle = -M_PI / 2; angle < M_PI / 2; ++i, angle += step ) { EXPECT_EQ( i, index( angle ) ); }
-    
+
     EXPECT_EQ( 1, index( -M_PI/2 - step ) );
     EXPECT_EQ( 0, index( -M_PI/2 ) );
     EXPECT_EQ( 1, index( -M_PI/2 + step ) );
-    
+
     EXPECT_EQ( 72, index( 0 ) );
-    
+
     EXPECT_EQ( 143, index( M_PI/2 - step ) );
     EXPECT_EQ( 144, index( M_PI/2 ) );
     EXPECT_EQ( 143, index( M_PI/2 + step ) ); /// Wrapping around
     EXPECT_EQ( 142, index( M_PI/2 + 2*step ) );
-    
+
 }
 
 TEST( bearing_index, get_bounds )
@@ -125,7 +125,7 @@ TEST( bearing_index, get_bounds )
         bearing_elevation_grid::bearing_index index(-M_PI, step );
         bearing_elevation_grid::bounds b;
         unsigned int i = 0;
-        
+
         /// First, check that the range [-PI, PI) correctly
         /// maps to bearing_index values 0 to 287
         for( double angle = -M_PI ; angle < M_PI ; angle = -M_PI + step * ++i )
@@ -133,78 +133,78 @@ TEST( bearing_index, get_bounds )
             b = index.get_bounds(angle);
             EXPECT_EQ( i, b.lower_index);
             EXPECT_EQ( i, b.upper_index);
-            EXPECT_NEAR( 0, b.weight, epsilon);
+            EXPECT_NEAR( 0, b.scaled_distance, epsilon);
         }
-        
+
         /// Verify that longitudes equivalent to -PI
-        /// have a lower index and upper index of 0.    
+        /// have a lower index and upper index of 0.
        for( double angle = -M_PI * 5 ; angle <= M_PI * 5; angle += M_PI * 2 )
         {
             b = index.get_bounds(angle);
             EXPECT_EQ( 0, b.lower_index);
             EXPECT_EQ( 0, b.upper_index);
-            EXPECT_NEAR( 0, b.weight, epsilon);
-        }     
-        
+            EXPECT_NEAR( 0, b.scaled_distance, epsilon);
+        }
+
         /// Border conditions around M_PI follow
         b = index.get_bounds( M_PI - step);
         EXPECT_EQ( 287, b.lower_index);
         EXPECT_EQ( 287, b.upper_index);
-        EXPECT_NEAR( 0, b.weight, epsilon);
-        
+        EXPECT_NEAR( 0, b.scaled_distance, epsilon);
+
         b = index.get_bounds( M_PI + step);
         EXPECT_EQ( 1, b.lower_index);
         EXPECT_EQ( 1, b.upper_index);
-        EXPECT_NEAR( 0, b.weight, epsilon);
-        
+        EXPECT_NEAR( 0, b.scaled_distance, epsilon);
+
         b = index.get_bounds( M_PI - epsilon);
         EXPECT_EQ( 287, b.lower_index);
         EXPECT_EQ( 0, b.upper_index);
-        EXPECT_NEAR( 0.999954, b.weight, epsilon);
-        
+        EXPECT_NEAR( 0.999954, b.scaled_distance, epsilon);
+
         b = index.get_bounds( M_PI + epsilon);
         EXPECT_EQ( 0, b.lower_index);
         EXPECT_EQ( 1, b.upper_index);
-        EXPECT_NEAR( 0.000046, b.weight, epsilon);
-        
+        EXPECT_NEAR( 0.000046, b.scaled_distance, epsilon);
+
         b = index.get_bounds( M_PI + step/2);
         EXPECT_EQ( 0, b.lower_index);
         EXPECT_EQ( 1, b.upper_index);
-        EXPECT_NEAR( 0.5, b.weight, epsilon);
-        
+        EXPECT_NEAR( 0.5, b.scaled_distance, epsilon);
+
         b = index.get_bounds( M_PI - step/2);
         EXPECT_EQ( 287, b.lower_index);
         EXPECT_EQ( 0, b.upper_index);
-        EXPECT_NEAR( 0.5, b.weight, epsilon);
- 
-        
+        EXPECT_NEAR( 0.5, b.scaled_distance, epsilon);
+
+
         /// Border conditions around -M_PI follow
         b = index.get_bounds( -M_PI - step);
         EXPECT_EQ( 287, b.lower_index);
         EXPECT_EQ( 287, b.upper_index);
-        EXPECT_NEAR( 0, b.weight, epsilon);
-        
+        EXPECT_NEAR( 0, b.scaled_distance, epsilon);
+
         b = index.get_bounds( -M_PI + step);
         EXPECT_EQ( 1, b.lower_index);
         EXPECT_EQ( 1, b.upper_index);
-        EXPECT_NEAR( 0, b.weight, epsilon);
-        
+        EXPECT_NEAR( 0, b.scaled_distance, epsilon);
+
         b = index.get_bounds( -M_PI - epsilon);
         EXPECT_EQ( 287, b.lower_index);
         EXPECT_EQ( 0, b.upper_index);
-        EXPECT_NEAR( 0.999954, b.weight, epsilon);
-        
+        EXPECT_NEAR( 0.999954, b.scaled_distance, epsilon);
+
         b = index.get_bounds( -M_PI + epsilon);
         EXPECT_EQ( 0, b.lower_index);
         EXPECT_EQ( 1, b.upper_index);
-        EXPECT_NEAR( 0.000046, b.weight, epsilon);
+        EXPECT_NEAR( 0.000046, b.scaled_distance, epsilon);
     }
     {
         bearing_elevation_grid::bearing_index index(-M_PI, one_degree );
         bearing_elevation_grid::bounds b = index.get_bounds( -M_PI - 0.00001 );
         EXPECT_EQ( 359, b.lower_index );
         EXPECT_EQ( 0, b.upper_index );
-        EXPECT_NEAR( ( one_degree - 0.00001 ) / one_degree, b.weight, epsilon );
+        EXPECT_NEAR( ( one_degree - 0.00001 ) / one_degree, b.scaled_distance, epsilon );
     }
 }
 
@@ -219,7 +219,7 @@ TEST( elevation_index, get_bounds )
         bearing_elevation_grid::elevation_index index(begin, step );
         bearing_elevation_grid::bounds b;
         unsigned int i = 0;
-        
+
         /// First, check that the range [-PI/2, PI/2] correctly
         /// maps to elevation_index values [0, 144]
         for( double angle = -M_PI / 2; angle <= M_PI / 2; angle = -M_PI/2 + step * ++i )
@@ -227,114 +227,114 @@ TEST( elevation_index, get_bounds )
             b = index.get_bounds(angle);
             EXPECT_EQ( i, b.lower_index);
             EXPECT_EQ( i, b.upper_index);
-            EXPECT_NEAR( 0, b.weight, epsilon);
+            EXPECT_NEAR( 0, b.scaled_distance, epsilon);
         }
 
         /// Latitudes equivalent to 0 follow
-        
+
         b = index.get_bounds( 0.0 );
         EXPECT_EQ( 72, b.lower_index);
         EXPECT_EQ( 72, b.upper_index);
-        EXPECT_NEAR( 0, b.weight, epsilon);
-        
+        EXPECT_NEAR( 0, b.scaled_distance, epsilon);
+
         b = index.get_bounds( M_PI );
         EXPECT_EQ( 72, b.lower_index);
-        EXPECT_EQ( 72, b.upper_index); 
-        EXPECT_NEAR( 0, b.weight, epsilon);
-        
+        EXPECT_EQ( 72, b.upper_index);
+        EXPECT_NEAR( 0, b.scaled_distance, epsilon);
+
         b = index.get_bounds( -M_PI );
         EXPECT_EQ( 72, b.lower_index);
-        EXPECT_EQ( 72, b.upper_index); 
-        EXPECT_NEAR( 0, b.weight, epsilon);
-        
+        EXPECT_EQ( 72, b.upper_index);
+        EXPECT_NEAR( 0, b.scaled_distance, epsilon);
+
         b = index.get_bounds( M_PI * 2 );
         EXPECT_EQ( 72, b.lower_index);
-        EXPECT_EQ( 72, b.upper_index); 
-        EXPECT_NEAR( 0, b.weight, epsilon);
-        
+        EXPECT_EQ( 72, b.upper_index);
+        EXPECT_NEAR( 0, b.scaled_distance, epsilon);
+
         b = index.get_bounds( 0.0 + epsilon );
         EXPECT_EQ( 72, b.lower_index);
         EXPECT_EQ( 73, b.upper_index);
-        EXPECT_NEAR( 0.000046, b.weight, epsilon);
-        
+        EXPECT_NEAR( 0.000046, b.scaled_distance, epsilon);
+
         b = index.get_bounds( M_PI - epsilon );
         EXPECT_EQ( 72, b.lower_index);
         EXPECT_EQ( 73, b.upper_index);
-        EXPECT_NEAR( 0.000046, b.weight, epsilon);
-        
+        EXPECT_NEAR( 0.000046, b.scaled_distance, epsilon);
+
         /// Border conditions around M_PI/2 follow
 
         b = index.get_bounds( M_PI/2 );
         EXPECT_EQ( 144, b.lower_index);
         EXPECT_EQ( 144, b.upper_index);
-        EXPECT_NEAR( 0, b.weight, epsilon);
+        EXPECT_NEAR( 0, b.scaled_distance, epsilon);
 
         b = index.get_bounds( M_PI/2 - epsilon);
         EXPECT_EQ( 143, b.lower_index);
         EXPECT_EQ( 144, b.upper_index);
-        EXPECT_NEAR( 0.999954, b.weight, epsilon);
+        EXPECT_NEAR( 0.999954, b.scaled_distance, epsilon);
 
         b = index.get_bounds( M_PI/2 + epsilon);
         EXPECT_EQ( 143, b.lower_index);
         EXPECT_EQ( 144, b.upper_index);
-        EXPECT_NEAR( 0.999954, b.weight, epsilon);
+        EXPECT_NEAR( 0.999954, b.scaled_distance, epsilon);
 
         b = index.get_bounds( M_PI/2 - step);
         EXPECT_EQ( 143, b.lower_index);
         EXPECT_EQ( 143, b.upper_index);
-        EXPECT_NEAR( 0, b.weight, epsilon);
-        
+        EXPECT_NEAR( 0, b.scaled_distance, epsilon);
+
         b = index.get_bounds( M_PI/2 + step);
         EXPECT_EQ( 143, b.lower_index);
-        EXPECT_EQ( 143, b.upper_index); 
-        EXPECT_NEAR( 0, b.weight, epsilon);
-        
+        EXPECT_EQ( 143, b.upper_index);
+        EXPECT_NEAR( 0, b.scaled_distance, epsilon);
+
         /// Border conditions around -M_PI/2 follow
 
         b = index.get_bounds( -M_PI/2 );
         EXPECT_EQ( 0, b.lower_index);
         EXPECT_EQ( 0, b.upper_index);
-        EXPECT_NEAR( 0, b.weight, epsilon);
+        EXPECT_NEAR( 0, b.scaled_distance, epsilon);
 
         b = index.get_bounds( -M_PI/2 - epsilon);
         EXPECT_EQ( 0, b.lower_index);
         EXPECT_EQ( 1, b.upper_index);
-        EXPECT_NEAR( 0.000046, b.weight, epsilon);
+        EXPECT_NEAR( 0.000046, b.scaled_distance, epsilon);
 
         b = index.get_bounds( -M_PI/2 + epsilon);
         EXPECT_EQ( 0, b.lower_index);
         EXPECT_EQ( 1, b.upper_index);
-        EXPECT_NEAR( 0.000046, b.weight, epsilon);
+        EXPECT_NEAR( 0.000046, b.scaled_distance, epsilon);
 
         b = index.get_bounds( -M_PI/2 - step);
         EXPECT_EQ( 1, b.lower_index);
         EXPECT_EQ( 1, b.upper_index);
-        EXPECT_NEAR( 0, b.weight, epsilon);
-        
+        EXPECT_NEAR( 0, b.scaled_distance, epsilon);
+
         b = index.get_bounds( -M_PI/2 + step);
         EXPECT_EQ( 1, b.lower_index);
-        EXPECT_EQ( 1, b.upper_index); 
-        EXPECT_NEAR( 0, b.weight, epsilon);
+        EXPECT_EQ( 1, b.upper_index);
+        EXPECT_NEAR( 0, b.scaled_distance, epsilon);
 
         b = index.get_bounds( -M_PI/2 + step/2);
         EXPECT_EQ( 0, b.lower_index);
         EXPECT_EQ( 1, b.upper_index);
-        EXPECT_NEAR( 0.5, b.weight, epsilon);
+        EXPECT_NEAR( 0.5, b.scaled_distance, epsilon);
 
         b = index.get_bounds( -M_PI/2 + step/2 - epsilon);
         EXPECT_EQ( 0, b.lower_index);
         EXPECT_EQ( 1, b.upper_index);
-        EXPECT_NEAR( 0.499954, b.weight, epsilon);
+        EXPECT_NEAR( 0.499954, b.scaled_distance, epsilon);
 
         b = index.get_bounds( -M_PI/2 + step/2 + epsilon);
         EXPECT_EQ( 0, b.lower_index);
         EXPECT_EQ( 1, b.upper_index);
-        EXPECT_NEAR( 0.500045, b.weight, epsilon);
+        EXPECT_NEAR( 0.500045, b.scaled_distance, epsilon);
 
         b = index.get_bounds( -M_PI/2 + step/4);
         EXPECT_EQ( 0, b.lower_index);
         EXPECT_EQ( 1, b.upper_index);
-        EXPECT_NEAR( 0.25, b.weight, epsilon);
+        EXPECT_NEAR( 0.25, b.scaled_distance, epsilon);
     }
 }
 

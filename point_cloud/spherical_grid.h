@@ -5,7 +5,7 @@
 #include <snark/math/range_bearing_elevation.h>
 
 namespace snark {
-    
+
 /// a simple 2d bearing-elevation grid
 struct bearing_elevation_grid
 {
@@ -71,13 +71,13 @@ struct bearing_elevation_grid
         private:
             index_t index_;
     };
-    
+
     /// Required by bearing_index and elevation_index for interpolation support
     struct bounds
     {
         int lower_index;
         int upper_index;
-        double weight;
+        double scaled_distance;
     };
 
     /// bearing index; quick and dirty; required for some applications
