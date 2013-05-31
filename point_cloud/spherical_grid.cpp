@@ -85,7 +85,13 @@ bearing_elevation_grid::bounds bearing_elevation_grid::bearing_index::get_bounds
 
     bounds b;
     b.lower_index = operator()( bearing );
-    double lower = b.lower_index * resolution() + begin();
+    
+    /// Normalised lower value
+    double lower(std::fmod(b.lower_index * resolution() + begin(), (double)(M_PI * 2)));
+    if (lower >= M_PI)
+        lower -= (M_PI * 2);
+    else if (lower < -M_PI)
+        lower += (M_PI * 2);
 
     if ( std::fabs(bearing - lower) <= 2*std::numeric_limits< double >::epsilon())
     {
@@ -97,6 +103,7 @@ bearing_elevation_grid::bounds bearing_elevation_grid::bearing_index::get_bounds
         b.upper_index = operator()( bearing + resolution());
         b.scaled_distance = ( bearing - lower ) / resolution();
     }
+
     return b;
 }
 

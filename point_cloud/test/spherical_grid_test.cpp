@@ -199,12 +199,46 @@ TEST( bearing_index, get_bounds )
         EXPECT_EQ( 1, b.upper_index);
         EXPECT_NEAR( 0.000046, b.scaled_distance, epsilon);
     }
+    
+    /// Test bearing_index using a step of one degree rather than 1.25 degree
     {
         bearing_elevation_grid::bearing_index index(-M_PI, one_degree );
         bearing_elevation_grid::bounds b = index.get_bounds( -M_PI - 0.00001 );
         EXPECT_EQ( 359, b.lower_index );
         EXPECT_EQ( 0, b.upper_index );
         EXPECT_NEAR( ( one_degree - 0.00001 ) / one_degree, b.scaled_distance, epsilon );
+    }
+    
+    /// Test bearing_index that has a begin value of 0 rather than -PI
+    {
+        double step = 1.25 * one_degree;
+        bearing_elevation_grid::bearing_index index(0, step );
+        bearing_elevation_grid::bounds b;
+        unsigned int i = 0;
+
+        for( double angle = 0 ; angle < M_PI * 2 ; angle = 0 + step * ++i )
+        {
+            b = index.get_bounds(angle);
+            EXPECT_EQ( i, b.lower_index);
+            EXPECT_EQ( i, b.upper_index);
+            EXPECT_NEAR( 0, b.scaled_distance, epsilon);
+        }
+    }
+    
+    /// Test bearing_index that has a begin value of PI/2 rather than -PI
+    {
+        double step = 1.25 * one_degree;
+        bearing_elevation_grid::bearing_index index(M_PI/2, step );
+        bearing_elevation_grid::bounds b;
+        unsigned int i = 0;
+
+        for( double angle = M_PI/2 ; angle < M_PI * 2 +  M_PI/2; angle = M_PI/2 + step * ++i )
+        {
+            b = index.get_bounds(angle);
+            EXPECT_EQ( i, b.lower_index);
+            EXPECT_EQ( i, b.upper_index);
+            EXPECT_NEAR( 0, b.scaled_distance, epsilon);
+        }
     }
 }
 
