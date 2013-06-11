@@ -137,8 +137,8 @@ void usage()
     std::cerr << "        r,g,b: if present, specify RGB colour (0-255; %uc in binary)" << std::endl;
     std::cerr << "        a: if present, specifies colour transparency (0-255, %uc in binary); default 255" << std::endl;
     std::cerr << "        scalar: if present, colour by scalar" << std::endl;
-    std::cerr << "                  use --colour=<from>:<to>[:<from colour>:<to colour>]" << std::endl;
-    std::cerr << "                  default: 0:1:red:blue" << std::endl;
+    std::cerr << "                  use --colour=<from>:<to>[,<from colour>:<to colour>]" << std::endl;
+    std::cerr << "                  default: 0:1,red:blue" << std::endl;
     std::cerr << "                  todo: implement for shapes (currently works only for points)" << std::endl;
     std::cerr << "        label: text label (currenly implemented for ascii only)" << std::endl;
     std::cerr << "        roll,pitch,yaw: if present, show orientation" << std::endl;
