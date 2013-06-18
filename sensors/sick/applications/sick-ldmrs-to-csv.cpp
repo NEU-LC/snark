@@ -111,7 +111,7 @@ template <> struct traits< csv_point >
 } } // namespace comma { namespace visiting {
 
 int main( int ac, char** av )
-{    
+{
     try
     {
         comma::command_line_options options( ac, av );
@@ -132,6 +132,9 @@ int main( int ac, char** av )
         if( options.exists( "--format" ) ) { std::cout << csv.format().string(); return 0; }
         csv.full_xpath = false;
         comma::csv::output_stream< csv_point > ostream( std::cout, csv );
+        #ifdef WIN32
+            _setmode( _fileno( stdin ), _O_BINARY );
+        #endif
         snark::sick::ldmrs::protocol protocol( std::cin );
         comma::signal_flag isShutdown;
         while( !std::cin.eof() )
