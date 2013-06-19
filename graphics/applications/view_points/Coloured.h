@@ -38,6 +38,7 @@
 
 #include <string>
 #include <Qt3D/qcolor4ub.h>
+#include "./colour_map.h"
 #include "./PointWithId.h"
 
 namespace snark { namespace graphics { namespace View {
@@ -74,30 +75,39 @@ struct ByHeight : public coloured // todo: refactor and merge with byscalar
             , bool cyclic = false
             , bool linear = true
             , bool sharp = false );
-    
+
     double from, to, sum, diff, middle;
     QColor4ub from_color, to_color, average_color;
     bool cyclic, linear, sharp;
-    
+
     QColor4ub color( const Eigen::Vector3d& point
                      , comma::uint32 id
                      , double scalar
                      , const QColor4ub& c ) const;
 };
 
-struct ByScalar : public coloured
+class ByScalar : public coloured
 {
-    ByScalar( double from = 0
-            , double to = 1
-            , const QColor4ub& from_color = QColor4ub( 255, 0, 0 )
-            , const QColor4ub& to_color = QColor4ub( 0, 0, 255 ) );
-    double from, to, diff;
-    QColor4ub from_color;
-    QColor4ub to_color;
-    QColor4ub color( const Eigen::Vector3d& point
-                     , comma::uint32 id
-                     , double scalar
-                     , const QColor4ub& c ) const;
+    public:
+        ByScalar( double from
+                , double to
+                , const QColor4ub& from_color
+                , const QColor4ub& to_color );
+
+        ByScalar( double from
+                , double to
+                , const colour_map::values& map );
+
+        QColor4ub color( const Eigen::Vector3d& point
+                       , comma::uint32 id
+                       , double scalar
+                       , const QColor4ub& c ) const;
+
+    protected:
+        double from, to, diff;
+        boost::optional< colour_map::values > map;
+        QColor4ub from_color;
+        QColor4ub to_color;
 };
 
 class ById : public coloured
@@ -109,9 +119,9 @@ class ById : public coloured
             , double from
             , double to );
         QColor4ub color( const Eigen::Vector3d& point
-                         , comma::uint32 id
-                         , double scalar
-                         , const QColor4ub& c ) const;
+                       , comma::uint32 id
+                       , double scalar
+                       , const QColor4ub& c ) const;
     private:
         const QColor4ub m_background;
         bool m_hasScalar;

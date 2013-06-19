@@ -183,13 +183,30 @@ QColor4ub ByHeight::color( const Eigen::Vector3d& point, comma::uint32, double, 
 }
 
 ByScalar::ByScalar( double from, double to, const QColor4ub& from_color, const QColor4ub& to_color )
-    : from( from ), to( to ), diff( to - from ), from_color( from_color ), to_color( to_color ) {}
+    : from( from )
+    , to( to )
+    , diff( to - from )
+    , from_color( from_color )
+    , to_color( to_color )
+{
+}
+
+ByScalar::ByScalar( double from, double to, const colour_map::values& map )
+    : from( from )
+    , to( to )
+    , diff( to - from )
+    , map( map )
+{
+}
+
 QColor4ub ByScalar::color( const Eigen::Vector3d& point, comma::uint32, double scalar, const QColor4ub& ) const
 {
     (void)point;
     double v = ( scalar - from ) / diff;
     v = ( v < 0 ? 0 : v > 1 ? 1 : v );
-    return add( multiply( from_color, 1 - v ), multiply( to_color, v ) );
+    if( !map ) { return add( multiply( from_color, 1 - v ), multiply( to_color, v ) ); }
+    unsigned int i = v * 255;
+    return QColor4ub( ( *map )[i][0], ( *map )[i][1], ( *map )[i][2], 255 );
 }
 
 namespace impl {
@@ -300,6 +317,7 @@ coloured* colourFromString( const std::string& s, const std::string& fields, con
             QColor4ub to_color = color_from_name( "cyan" );
             double from = 0;
             double to = 1;
+            boost::optional< colour_map::values > map;
             if( s != "" )
             {
                 std::vector< std::string > v = comma::split( s, ',' );
@@ -308,15 +326,29 @@ coloured* colourFromString( const std::string& s, const std::string& fields, con
                     case 1:
                     {
                         std::vector< std::string > w = comma::split( v[0], ':' );
-                        if( w[0][0] >= 'a' && w[0][0] <= 'z' )
+                        switch( w.size() )
                         {
-                            from_color = color_from_name( w[0] );
-                            to_color = color_from_name( w[1] );
-                        }
-                        else
-                        {
-                            from = boost::lexical_cast< double >( w[0] );
-                            to = boost::lexical_cast< double >( w[1] );
+                            case 1:
+                                if( w[0] == "green" ) { map = colour_map::constant( 0, 255, 0 ); }
+                                else if( w[0] == "red" ) { map = colour_map::constant( 255, 0, 0 ); }
+                                else if( w[0] == "hot" ) { map = colour_map::temperature( 96, 96 ); }
+                                else if( w[0] == "jet" ) { map = colour_map::jet(); }
+                                else { COMMA_THROW( comma::exception, "expected colour map, got: " << s ); }
+                                break;
+                            case 2:
+                                if( w[0][0] >= 'a' && w[0][0] <= 'z' )
+                                {
+                                    from_color = color_from_name( w[0] );
+                                    to_color = color_from_name( w[1] );
+                                }
+                                else
+                                {
+                                    from = boost::lexical_cast< double >( w[0] );
+                                    to = boost::lexical_cast< double >( w[1] );
+                                }
+                                break;
+                            default:
+                                COMMA_THROW( comma::exception, "expected range (e.g. -5:20,red:blue or 3:10), or colour map name, got " << s );
                         }
                         break;
                     }
@@ -326,15 +358,30 @@ coloured* colourFromString( const std::string& s, const std::string& fields, con
                         from = boost::lexical_cast< double >( w[0] );
                         to = boost::lexical_cast< double >( w[1] );
                         w = comma::split( v[1], ':' );
-                        from_color = color_from_name( w[0] );
-                        to_color = color_from_name( w[1] );
+                        switch( w.size() )
+                        {
+                            case 1:
+                                if( w[0] == "green" ) { map = colour_map::constant( 0, 255, 0 ); }
+                                else if( w[0] == "red" ) { map = colour_map::constant( 255, 0, 0 ); }
+                                else if( w[0] == "hot" ) { map = colour_map::temperature( 96, 96 ); }
+                                else if( w[0] == "jet" ) { map = colour_map::jet(); }
+                                else { COMMA_THROW( comma::exception, "expected colour map, got: " << s ); }
+                                break;
+                            case 2:
+                                from_color = color_from_name( w[0] );
+                                to_color = color_from_name( w[1] );
+                                break;
+                            default:
+                                COMMA_THROW( comma::exception, "expected range (e.g. -5:20,red:blue or 3:10), or colour map name, got " << s );
+                        }
                         break;
                     }
                     default:
-                        COMMA_THROW( comma::exception, "expected range (e.g. -5:20,red:blue or 3:10), got " << s );
+                        COMMA_THROW( comma::exception, "expected range (e.g. -5:20,red:blue or 3:10), or colour map name, got " << s );
                 }
             }
-            c = new snark::graphics::View::ByScalar( from, to, from_color, to_color );
+            c = map ? new snark::graphics::View::ByScalar( from, to, *map )
+                    : new snark::graphics::View::ByScalar( from, to, from_color, to_color );
         }
         else
         {
