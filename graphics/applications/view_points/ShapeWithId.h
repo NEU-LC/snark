@@ -117,6 +117,9 @@ struct Shapetraits< std::pair< Eigen::Vector3d, Eigen::Vector3d > >
     {
         Eigen::Vector3f first = ( p.first - offset ).cast< float >();
         Eigen::Vector3f second = ( p.second - offset ).cast< float >();
+        //if(    comma::math::equal( first.x(), second.x() )
+        //    && comma::math::equal( first.y(), second.y() )
+        //    && comma::math::equal( first.z(), second.z() ) ) { return; } // todo: draw a point instead?
         buffer.addVertex( QVector3D( first.x(), first.y(), first.z() ), color, block );
         buffer.addVertex( QVector3D( second.x(), second.y(), second.z() ), color, block );
         extents = extents

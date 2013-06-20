@@ -51,7 +51,7 @@ class closed_interval
         typedef Eigen::Matrix< T, N, 1 > vector_type;
 
         /// constructor
-        closed_interval( const vector_type& min, const vector_type& max ) : m_interval( std::make_pair( get_min( min, max ), get_max( min, max ) ) ) { if( !less_or_equal( min, max ) ) { COMMA_THROW( comma::exception, "invalid interval" ); } }
+        closed_interval( const vector_type& min, const vector_type& max ) : m_interval( std::make_pair( get_min( min, max ), get_max( min, max ) ) ) { if( !less_or_equal( min, max ) ) { COMMA_THROW( comma::exception, "invalid interval on: min: " << min.transpose() << ", max: " << max.transpose() ); } }
 
         /// constructor
         closed_interval( const vector_type& rhs ) : m_interval( std::make_pair( rhs, rhs ) ) {}
