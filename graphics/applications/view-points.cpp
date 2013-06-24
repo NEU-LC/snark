@@ -91,6 +91,7 @@ void usage()
     std::cerr << std::endl;
     std::cerr << "            default: stretched by elevation from cyan to magenta from 0:1" << std::endl;
     std::cerr << std::endl;
+    std::cerr << "      hide: e.g. \"test.csv;hide\": hide the source, when shown first time (useful, when there are very many inputs" << std::endl;
     std::cerr << "    --label <label>: text label displayed next to the latest point" << std::endl;
     std::cerr << "    --no-stdin: do not read from stdin" << std::endl;
     std::cerr << "    --point-size,--weight <point size>: default: 1" << std::endl;
@@ -227,6 +228,7 @@ boost::shared_ptr< snark::graphics::View::Reader > makeReader( QGLView& viewer
     unsigned int pointSize = options.value( "--point-size,--weight", 1u );
     std::string colour = options.exists( "--colour" ) ? options.value< std::string >( "--colour" ) : options.value< std::string >( "-c", "-10:10" );
     std::string label = options.value< std::string >( "--label", "" );
+    bool show = true;
     if( properties != "" )
     {
         comma::name_value::parser nameValue( "filename", ';', '=', false );
@@ -239,7 +241,9 @@ boost::shared_ptr< snark::graphics::View::Reader > makeReader( QGLView& viewer
         if( m.exists( "colour" ) ) { colour = m.value( "colour", colour ); }
         else if( m.exists( "color" ) ) { colour = m.value( "color", colour ); }
         label = m.value( "label", label );
+        show = !m.exists( "hide" );
     }
+    if( !show ) { std::cerr << "view-points: " << csv.filename << " will be hidden on startup; tick the box next to filename to make it visible" << std::endl; }
     snark::graphics::View::coloured* coloured = snark::graphics::View::colourFromString( colour, csv.fields, backgroundcolour );
     if( shape == "point" )
     {
@@ -247,17 +251,23 @@ boost::shared_ptr< snark::graphics::View::Reader > makeReader( QGLView& viewer
         std::vector< std::string > v = comma::split( csv.fields, ',' );
         bool has_orientation = false;
         for( unsigned int i = 0; !has_orientation && i < v.size(); ++i ) { has_orientation = v[i] == "roll" || v[i] == "pitch" || v[i] == "yaw"; }
-        return boost::shared_ptr< snark::graphics::View::Reader >( new snark::graphics::View::ShapeReader< Eigen::Vector3d >( viewer, csv, size, coloured, pointSize, label ) );
+        boost::shared_ptr< snark::graphics::View::Reader > reader( new snark::graphics::View::ShapeReader< Eigen::Vector3d >( viewer, csv, size, coloured, pointSize, label ) );
+        reader->show( show );
+        return reader;
     }
     if( shape == "loop" )
     {
         if( csv.fields == "" ) { csv.fields="x,y,z"; }
-        return boost::shared_ptr< snark::graphics::View::Reader >( new snark::graphics::View::ShapeReader< Eigen::Vector3d, snark::graphics::View::how_t::loop >( viewer, csv, size, coloured, pointSize, label ) );
+        boost::shared_ptr< snark::graphics::View::Reader > reader( new snark::graphics::View::ShapeReader< Eigen::Vector3d, snark::graphics::View::how_t::loop >( viewer, csv, size, coloured, pointSize, label ) );
+        reader->show( show );
+        return reader;
     }
     if( shape == "lines" ) // todo: get a better name
     {
         if( csv.fields == "" ) { csv.fields="x,y,z"; }
-        return boost::shared_ptr< snark::graphics::View::Reader >( new snark::graphics::View::ShapeReader< Eigen::Vector3d, snark::graphics::View::how_t::connected >( viewer, csv, size, coloured, pointSize, label ) );
+        boost::shared_ptr< snark::graphics::View::Reader > reader( new snark::graphics::View::ShapeReader< Eigen::Vector3d, snark::graphics::View::how_t::connected >( viewer, csv, size, coloured, pointSize, label ) );
+        reader->show( show );
+        return reader;
     }
     if( shape == "label" )
     {
@@ -300,12 +310,16 @@ boost::shared_ptr< snark::graphics::View::Reader > makeReader( QGLView& viewer
             if( v.size() != 2 ) { COMMA_THROW( comma::exception, "expected image size as width,height" ); }
             double width = boost::lexical_cast< double >( sizeVector[0] );
             double height = boost::lexical_cast< double >( sizeVector[0] );
-            return boost::shared_ptr< snark::graphics::View::Reader >( new snark::graphics::View::TextureReader( viewer, csv, shape, width, height ) );
+            boost::shared_ptr< snark::graphics::View::Reader > reader( new snark::graphics::View::TextureReader( viewer, csv, shape, width, height ) );
+            reader->show( show );
+            return reader;
         }
         else
         {
             model_options m = comma::name_value::parser( ';', '=' ).get< model_options >( properties );
-            return boost::shared_ptr< snark::graphics::View::Reader >( new snark::graphics::View::ModelReader( viewer, csv, shape, m.flip, m.scale, coloured, label ) );
+            boost::shared_ptr< snark::graphics::View::Reader > reader( new snark::graphics::View::ModelReader( viewer, csv, shape, m.flip, m.scale, coloured, label ) );
+            reader->show( show );
+            return reader;
         }
     }
     std::vector< std::string > v = comma::split( csv.fields, ',' );
@@ -321,21 +335,29 @@ boost::shared_ptr< snark::graphics::View::Reader > makeReader( QGLView& viewer
     csv.full_xpath = true;
     if( shape == "extents" )
     {
-        return boost::shared_ptr< snark::graphics::View::Reader >( new snark::graphics::View::ShapeReader< snark::math::closed_interval< double, 3 > >( viewer, csv, size, coloured, pointSize, label ) );
+        boost::shared_ptr< snark::graphics::View::Reader > reader( new snark::graphics::View::ShapeReader< snark::math::closed_interval< double, 3 > >( viewer, csv, size, coloured, pointSize, label ) );
+        reader->show( show );
+        return reader;
     }
     else if( shape == "line" )
     {
-        return boost::shared_ptr< snark::graphics::View::Reader >( new snark::graphics::View::ShapeReader< std::pair< Eigen::Vector3d, Eigen::Vector3d > >( viewer, csv, size, coloured, pointSize, label ) );
+        boost::shared_ptr< snark::graphics::View::Reader > reader( new snark::graphics::View::ShapeReader< std::pair< Eigen::Vector3d, Eigen::Vector3d > >( viewer, csv, size, coloured, pointSize, label ) );
+        reader->show( show );
+        return reader;
     }
     else if( shape == "ellipse" )
     {
-        return boost::shared_ptr< snark::graphics::View::Reader >( new snark::graphics::View::ShapeReader< snark::graphics::View::Ellipse< 25 > >( viewer, csv, size, coloured, pointSize, label ) );
+        boost::shared_ptr< snark::graphics::View::Reader > reader( new snark::graphics::View::ShapeReader< snark::graphics::View::Ellipse< 25 > >( viewer, csv, size, coloured, pointSize, label ) );
+        reader->show( show );
+        return reader;
     }
     else if( shape == "arc" )
     {
         snark::graphics::View::arc< 20 > sample; // quick and dirty
         if( csv.has_field( "middle" ) || csv.has_field( "middle/x" ) || csv.has_field( "middle/y" ) || csv.has_field( "middle/z" ) ) { sample.middle = Eigen::Vector3d(); }
-        return boost::shared_ptr< snark::graphics::View::Reader >( new snark::graphics::View::ShapeReader< snark::graphics::View::arc< 20 > >( viewer, csv, size, coloured, pointSize, label, sample ) );
+        boost::shared_ptr< snark::graphics::View::Reader > reader( new snark::graphics::View::ShapeReader< snark::graphics::View::arc< 20 > >( viewer, csv, size, coloured, pointSize, label, sample ) );
+        reader->show( show );
+        return reader;
     }
     COMMA_THROW( comma::exception, "expected shape, got \"" << shape << "\"" ); // never here
 }

@@ -53,7 +53,7 @@ MainWindow::MainWindow( const std::string& title, Viewer* viewer )
 {
     QMenu* fileMenu = menuBar()->addMenu( "File" );
     menuBar()->addMenu( fileMenu );
-    
+
     m_fileFrame = new QFrame;
     m_fileFrame->setFrameStyle( QFrame::Plain | QFrame::NoFrame );
     m_fileFrame->setFixedWidth( 300 );
@@ -61,7 +61,7 @@ MainWindow::MainWindow( const std::string& title, Viewer* viewer )
     m_fileLayout = new QGridLayout;
     m_fileLayout->setSpacing( 0 );
     m_fileLayout->setContentsMargins( 5, 5, 5, 0 );
-    
+
     QLabel* filenameLabel = new QLabel( "<b>filename</b>" );
     QLabel* visibleLabel = new QLabel( "<b>view</b>" );
     m_fileLayout->addWidget( filenameLabel, 0, 0, Qt::AlignLeft | Qt::AlignTop );
@@ -70,7 +70,7 @@ MainWindow::MainWindow( const std::string& title, Viewer* viewer )
     m_fileLayout->setColumnStretch( 0, 10 ); // quick and dirty
     m_fileLayout->setColumnStretch( 1, 1 );
     m_fileFrame->setLayout( m_fileLayout );
-        
+
     QFrame* frame = new QFrame;
     frame->setFrameStyle( QFrame::Plain | QFrame::NoFrame );
     frame->setContentsMargins( 0, 0, 0, 0 );
@@ -84,7 +84,7 @@ MainWindow::MainWindow( const std::string& title, Viewer* viewer )
     frame->setLayout( layout );
     setCentralWidget( frame );
     resize( 640, 480 );
-        
+
     m_viewMenu = menuBar()->addMenu( "View" );
     ToggleAction* action = new ToggleAction( "File Panel", boost::bind( &MainWindow::toggleFileFrame, this, _1 ) );
     action->setChecked( m_fileFrameVisible );
@@ -146,7 +146,7 @@ void MainWindow::updateFileFrame() // quick and dirty
         if( !sameFields ) { filename += ": \"" + m_viewer.readers[i]->options.fields + "\""; }
         m_fileLayout->addWidget( new QLabel( filename.c_str() ), i + 1, 0, Qt::AlignLeft | Qt::AlignTop );
         CheckBox* viewBox = new CheckBox( boost::bind( &Reader::show, boost::ref( *m_viewer.readers[i] ), _1 ) );
-        viewBox->setCheckState( Qt::Checked );
+        viewBox->setCheckState( m_viewer.readers[i]->show() ? Qt::Checked : Qt::Unchecked );
         connect( viewBox, SIGNAL( toggled( bool ) ), &m_viewer, SLOT( update() ) ); // redraw when box is toggled
         viewBox->setToolTip( ( std::string( "check to make " ) + filename + " visible" ).c_str() );
         m_fileLayout->addWidget( viewBox, i + 1, 1, Qt::AlignRight | Qt::AlignTop );
