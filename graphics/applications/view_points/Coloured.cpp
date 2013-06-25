@@ -178,7 +178,7 @@ QColor4ub ByHeight::color( const Eigen::Vector3d& point, comma::uint32, double, 
     {
         double v = ( point.z() - from ) / diff;
         v = ( v < 0 ? 0 : v > 1 ? 1 : v );
-        return add( multiply( from_color, v ), multiply( to_color, 1 - v ) );
+        return add( multiply( from_color, 1 - v ), multiply( to_color, v ) );
     }
 }
 
