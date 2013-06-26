@@ -15,14 +15,19 @@ TARGET_LINK_LIBRARIES ( points-track-partitions ${comma_ALL_LIBRARIES} )
 TARGET_LINK_LIBRARIES ( points-to-voxels snark_point_cloud ${comma_ALL_LIBRARIES} ${snark_ALL_EXTERNAL_LIBRARIES} )
 TARGET_LINK_LIBRARIES ( points-to-voxel-indices snark_point_cloud ${comma_ALL_LIBRARIES} ${snark_ALL_EXTERNAL_LIBRARIES} )
 
+ADD_EXECUTABLE( points-slice points-slice.cpp )
+TARGET_LINK_LIBRARIES ( points-slice ${snark_ALL_LIBRARIES} ${comma_ALL_LIBRARIES} )
+
 if( PROFILE )
     TARGET_LINK_LIBRARIES ( points-to-partitions profiler )
 endif( PROFILE )
 
 INSTALL( TARGETS points-detect-change
+                 points-slice
                  points-to-partitions
                  points-track-partitions
                  points-to-voxels
                  points-to-voxel-indices
          RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR}
          COMPONENT Runtime )
+
