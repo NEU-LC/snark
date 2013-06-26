@@ -7,8 +7,6 @@
 #include "aero/geometry/circle.h"
 #include "aero/geometry/sample.h"
 
-#include <iostream>
-
 namespace acfr { namespace aero {
 
 namespace impl {
