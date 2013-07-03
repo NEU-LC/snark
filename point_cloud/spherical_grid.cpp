@@ -77,21 +77,17 @@ snark::bearing_elevation bearing_elevation_grid::index::bearing_elevation( const
 bearing_elevation_grid::bounds bearing_elevation_grid::bearing_index::get_bounds( const double value ) const
 {
     /// Normalise the input bearing
-    double bearing(std::fmod(value, (double)(M_PI * 2)));
-    if (bearing >= M_PI)
-        bearing -= (M_PI * 2);
-    else if (bearing < -M_PI)
-        bearing += (M_PI * 2);
+    double bearing(std::fmod(value, double(M_PI * 2)));
+    if (bearing >= M_PI) { bearing -= ( M_PI * 2 ); }
+    else if (bearing < -M_PI) { bearing += ( M_PI * 2 ); }
 
     bounds b;
     b.lower_index = operator()( bearing );
-    
+
     /// Normalised lower value
     double lower(std::fmod(b.lower_index * resolution() + begin(), (double)(M_PI * 2)));
-    if (lower >= M_PI)
-        lower -= (M_PI * 2);
-    else if (lower < -M_PI)
-        lower += (M_PI * 2);
+    if (lower >= M_PI) { lower -= (M_PI * 2); }
+    else if (lower < -M_PI) { lower += (M_PI * 2); }
 
     if ( std::fabs(bearing - lower) <= 2*std::numeric_limits< double >::epsilon())
     {
@@ -107,14 +103,22 @@ bearing_elevation_grid::bounds bearing_elevation_grid::bearing_index::get_bounds
     return b;
 }
 
+double bearing_elevation_grid::bearing_index::value( int index ) const // quick and dirty
+{
+    return bearing_elevation( index_.begin().bearing() + index_.resolution().bearing() * index, 0 ).bearing();
+}
+
+double bearing_elevation_grid::elevation_index::value( int index ) const // quick and dirty
+{
+    return bearing_elevation( 0, index_.begin().elevation() + index_.resolution().elevation() * index ).elevation();
+}
+
 bearing_elevation_grid::bounds bearing_elevation_grid::elevation_index::get_bounds( const double value ) const
 {
     /// Normalise the input elevation
-    double elevation(std::fmod(value, (double)(M_PI * 2)));
-    if (elevation > M_PI/2)
-        elevation = M_PI - elevation;
-    else if (elevation < -M_PI/2)
-        elevation = -M_PI - elevation;
+    double elevation( std::fmod( value, double( M_PI * 2 ) ) );
+    if( elevation > M_PI / 2 ) { elevation = M_PI - elevation; }
+    else if ( elevation < -M_PI / 2 ) { elevation = -M_PI - elevation; }
 
     bounds b;
     b.lower_index = operator()(elevation);

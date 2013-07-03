@@ -99,6 +99,9 @@ struct bearing_elevation_grid
             /// @return resolution
             double resolution() const { return index_.resolution().bearing(); }
 
+            /// @return value for given index
+            double value( int index ) const;
+
             /// @return the lower and upper index between which value
             /// lies and corresponding weight from lower_index
             bounds get_bounds( const double value ) const;
@@ -125,6 +128,9 @@ struct bearing_elevation_grid
 
             /// @return resolution
             double resolution() const { return index_.resolution().elevation(); }
+
+            /// @return value for given index
+            double value( int index ) const;
 
             /// @return the lower and upper index between which value
             /// lies and corresponding weight from lower_index
