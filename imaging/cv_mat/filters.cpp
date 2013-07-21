@@ -170,6 +170,14 @@ static filters::value_type timestamp_impl_( filters::value_type m )
     return m;
 }
 
+static filters::value_type invert_impl_( filters::value_type m )
+{
+    unsigned int c = ( m.second.dataend - m.second.datastart ) / ( m.second.rows * m.second.cols );
+    if( c != 3 && c != 1 ) { COMMA_THROW( comma::exception, "expected 1 or 3 channels, got: " << c ); } // quick and dirty
+    for( unsigned char* c = m.second.datastart; c < m.second.dataend; *c = 255 - *c, ++c );
+    return m;
+}
+
 static filters::value_type text_impl_( filters::value_type m, const std::string& s, const cv::Point& origin, const cv::Scalar& colour )
 {
     cv::putText( m.second, s, origin, cv::FONT_HERSHEY_SIMPLEX, 1.0, colour, 1, CV_AA );
@@ -349,6 +357,10 @@ std::vector< filter > filters::make( const std::string& how )
         {
             f.push_back( filter( undistort_impl_( e[1] ) ) );
         }
+        else if( e[0] == "invert" )
+        {
+            f.push_back( filter( &invert_impl_ ) );
+        }
         else if( e[0] == "view" )
         {
             unsigned int delay = e.size() == 1 ? 1 : boost::lexical_cast< unsigned int >( e[1] );
@@ -397,6 +409,7 @@ static std::string usage_impl_()
     oss << "        cross[=<x>,<y>]: draw cross-hair at x,y; default: at image center" << std::endl;
     oss << "        flip: flip vertically" << std::endl;
     oss << "        flop: flip horizontally" << std::endl;
+    oss << "        invert: invert image (to negative)" << std::endl;
     oss << "        split: split r,g,b channels into a 3x1 gray image" << std::endl;
     oss << "        text=<text>[,x,y][,colour]: print text; default x,y: 10,10; default colour: yellow" << std::endl;
     oss << "        null: same as linux /dev/null (since windows does not have it)" << std::endl;
