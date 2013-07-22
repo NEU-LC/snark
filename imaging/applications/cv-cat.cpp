@@ -33,7 +33,7 @@
 
 #ifdef WIN32
 #include <winsock2.h>
-#include <windows.h> 
+#include <windows.h>
 #endif
 #include <iostream>
 #include <boost/program_options.hpp>
@@ -54,7 +54,7 @@ class rate_limit /// timer class, sleeping if faster than the specified fps
 {
     public:
         rate_limit( double fps ) { if( fps > 1e-5 ) { m_period = boost::posix_time::microseconds( 1e6 / fps ); } }
-        
+
         void wait()
         {
             if( m_period.is_not_a_date_time() ) { return; }
@@ -65,7 +65,7 @@ class rate_limit /// timer class, sleeping if faster than the specified fps
             }
             m_lastOutput = now;
         }
-        
+
     private:
         boost::posix_time::time_duration m_period;
         boost::posix_time::ptime m_lastOutput;
@@ -106,24 +106,24 @@ int main( int argc, char** argv )
         boost::program_options::options_description description( "options" );
         description.add_options()
             ( "help,h", "display help message" )
-            ( "long-help", "display long help message" )
+            ( "verbose,v", "more output; --help --verbose: more help" )
             ( "discard,d", "discard frames, if cannot keep up; same as --buffer=1" )
             ( "camera", "use first available opencv-supported camera" )
             ( "file", boost::program_options::value< std::string >( &name ), "video file name" )
             ( "id", boost::program_options::value< int >( &device ), "specify specific device by id ( OpenCV-supported camera )" )
             ( "buffer", boost::program_options::value< unsigned int >( &discard )->default_value( 0 ), "maximum buffer size before discarding frames, default: unlimited" )
             ( "fps", boost::program_options::value< double >( &fps )->default_value( 0 ), "specify max fps ( useful for files, may block if used with cameras ) " )
-            ( "input", boost::program_options::value< std::string >( &input_options_string ), "input options, when reading from stdin (see --long-help)" )
-            ( "output", boost::program_options::value< std::string >( &output_options_string ), "output options (see --long-help); default: same as --input" )
+            ( "input", boost::program_options::value< std::string >( &input_options_string ), "input options, when reading from stdin (see --help --verbose)" )
+            ( "output", boost::program_options::value< std::string >( &output_options_string ), "output options (see --help --verbose); default: same as --input" )
             ( "stay", "do not close at end of stream" );
         boost::program_options::variables_map vm;
         boost::program_options::store( boost::program_options::parse_command_line( argc, argv, description), vm );
         boost::program_options::parsed_options parsed = boost::program_options::command_line_parser(argc, argv).options( description ).allow_unregistered().run();
         boost::program_options::notify( vm );
-        if ( vm.count( "help" ) || vm.count( "long-help" ) )
+        if ( vm.count( "help" ) || vm.count( "verbose" ) )
         {
             std::cerr << "acquire images using opencv, apply filters and output with header" << std::endl;
-            if( !vm.count( "long-help" ) ) { std::cerr << "see long-help for filters usage" << std::endl; }
+            if( !vm.count( "verbose" ) ) { std::cerr << "see --help --verbose for filters usage" << std::endl; }
             std::cerr << std::endl;
             std::cerr << "usage: cv-cat [options] [<filters>]\n" << std::endl;
             std::cerr << "output header format: fields: t,rows,cols,type; binary: t,3ui\n" << std::endl;
@@ -155,7 +155,7 @@ int main( int argc, char** argv )
             std::cerr << "    create a video ( -b: bitrate, -r: input/output framerate:" << std::endl;
             std::cerr << "    gige-cat | cv-cat \"encode=ppm\" --output=no-header | avconv -y -f image2pipe -vcodec ppm -r 25 -i pipe: -vcodec libx264  -threads 0 -b 2000k -r 25 video.mkv" << std::endl;
             std::cerr << std::endl;
-            if ( vm.count( "long-help" ) )
+            if( vm.count( "verbose" ) )
             {
                 std::cerr << std::endl;
                 std::cerr << snark::cv_mat::serialization::options::usage() << std::endl;
@@ -165,7 +165,7 @@ int main( int argc, char** argv )
             std::cerr << std::endl;
             return 1;
         }
-        if( vm.count( "file" ) + vm.count( "camera" ) + vm.count( "id" ) > 1 ) { std::cerr << "cv-cat: --file, --camera, and --id are mutually exclusive" << std::endl; return 1; }        
+        if( vm.count( "file" ) + vm.count( "camera" ) + vm.count( "id" ) > 1 ) { std::cerr << "cv-cat: --file, --camera, and --id are mutually exclusive" << std::endl; return 1; }
         if( vm.count( "discard" ) ) { discard = 1; }
         snark::cv_mat::serialization::options input_options = comma::name_value::parser( ';', '=' ).get< snark::cv_mat::serialization::options >( input_options_string );
         snark::cv_mat::serialization::options output_options;
@@ -188,20 +188,20 @@ int main( int argc, char** argv )
         }
         if( vm.count( "camera" ) ) { device = 0; }
         rate_limit rate( fps );
-        cv::VideoCapture videoCapture;
+        cv::VideoCapture video_capture;
         snark::cv_mat::serialization input( input_options );
-        snark::cv_mat::serialization output( output_options );        
+        snark::cv_mat::serialization output( output_options );
         boost::scoped_ptr< bursty_reader< pair > > reader;
         static const unsigned int defaultCapacity = 16;
         if( vm.count( "file" ) )
         {
-            videoCapture.open( name );
-            reader.reset( new bursty_reader< pair >( boost::bind( &capture, boost::ref( videoCapture ), boost::ref( rate ) ), discard, defaultCapacity ) );
+            video_capture.open( name );
+            reader.reset( new bursty_reader< pair >( boost::bind( &capture, boost::ref( video_capture ), boost::ref( rate ) ), discard, defaultCapacity ) );
         }
         else if( vm.count( "camera" ) || vm.count( "id" ) )
         {
-            videoCapture.open( device );
-            reader.reset( new bursty_reader< pair >( boost::bind( &capture, boost::ref( videoCapture ), boost::ref( rate ) ), discard ) );
+            video_capture.open( device );
+            reader.reset( new bursty_reader< pair >( boost::bind( &capture, boost::ref( video_capture ), boost::ref( rate ) ), discard ) );
         }
         else
         {

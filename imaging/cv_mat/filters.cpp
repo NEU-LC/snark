@@ -32,9 +32,11 @@
 
 
 #include <fstream>
+#include <queue>
 #include <sstream>
 #include <boost/bind.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/thread/recursive_mutex.hpp>
 #include <comma/base/exception.h>
 #include <comma/csv/ascii.h>
 #include <comma/string/string.h>
@@ -104,7 +106,7 @@ static filters::value_type split_impl_( filters::value_type m )
 {
     filters::value_type n;
     n.first = m.first;
-    n.second = cv::Mat( m.second.rows * 3, m.second.cols, CV_8UC1 );
+    n.second = cv::Mat( m.second.rows * 3, m.second.cols, CV_8UC1 ); // todo: check number of channels!
     std::vector< cv::Mat > channels;
     channels.reserve( 3 );
     channels.push_back( cv::Mat( n.second, cv::Rect( 0, 0, m.second.cols, m.second.rows ) ) );
@@ -174,8 +176,11 @@ static filters::value_type invert_impl_( filters::value_type m )
 {
     unsigned int c = ( m.second.dataend - m.second.datastart ) / ( m.second.rows * m.second.cols );
     if( c != 3 && c != 1 ) { COMMA_THROW( comma::exception, "expected 1 or 3 channels, got: " << c ); } // quick and dirty
-    for( unsigned char* c = m.second.datastart; c < m.second.dataend; *c = 255 - *c, ++c );
-    return m;
+    filters::value_type n;
+    n.first = m.first;
+    m.second.copyTo( n.second );
+    for( unsigned char* c = n.second.datastart; c < n.second.dataend; *c = 255 - *c, ++c );
+    return n;
 }
 
 static filters::value_type text_impl_( filters::value_type m, const std::string& s, const cv::Point& origin, const cv::Scalar& colour )
@@ -220,6 +225,36 @@ class undistort_impl_
             x_ = cv::Mat( rows, cols, CV_32FC1, &xbuf_[0] );
             y_ = cv::Mat( rows, cols, CV_32FC1, &ybuf_[0] );
         }
+};
+
+class max_impl_ // experimental, to debug
+{
+    public:
+        max_impl_( unsigned int size ) : size_( size ) {}
+
+        filters::value_type operator()( filters::value_type m )
+        {
+            boost::recursive_mutex::scoped_lock lock( mutex() );
+            if( deque_.size() == size_ ) { deque_.pop_front(); }
+            deque_.push_back( filters::value_type() );
+            m.second.copyTo( deque_.back().second );
+            filters::value_type s( m.first, cv::Mat( m.second.rows, m.second.cols, m.second.type() ) );
+            ::memset( m.second.datastart, 0, m.second.dataend - m.second.datastart );
+            static unsigned int count = 0;
+            for( unsigned int i = 0; i < deque_.size(); ++i )
+            {
+                unsigned char* p = deque_[i].second.datastart;
+                for( unsigned char* q = s.second.datastart; q < s.second.dataend; *q = std::max( *p, *q ), ++p, ++q );
+            }
+            ++count;
+            return s;
+        }
+
+        static boost::recursive_mutex& mutex() { static boost::recursive_mutex m; return m; } // quick and dirty
+
+    private:
+        unsigned int size_;
+        std::deque< filters::value_type > deque_; // use vector?
 };
 
 std::vector< filter > filters::make( const std::string& how )
@@ -340,6 +375,11 @@ std::vector< filter > filters::make( const std::string& how )
                     COMMA_THROW( comma::exception, "expected resize=<width>,<height>, got: \"" << e[1] << "\"" );
             }
             f.push_back( filter( boost::bind( &resize_impl_, _1, width, height, w, h ) ) );
+        }
+        else if( e[0] == "max" )
+        {
+            max_impl_::mutex(); // quick and dirty, touch mutex
+            f.push_back( filter( max_impl_( boost::lexical_cast< unsigned int >( e[1] ) ) ) );
         }
         else if( e[0] == "timestamp" )
         {
