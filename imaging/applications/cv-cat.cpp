@@ -103,6 +103,8 @@ int main( int argc, char** argv )
         double fps;
         std::string input_options_string;
         std::string output_options_string;
+        unsigned int capacity = 16;
+        unsigned int number_of_threads = 0;
         boost::program_options::options_description description( "options" );
         description.add_options()
             ( "help,h", "display help message" )
@@ -115,6 +117,8 @@ int main( int argc, char** argv )
             ( "fps", boost::program_options::value< double >( &fps )->default_value( 0 ), "specify max fps ( useful for files, may block if used with cameras ) " )
             ( "input", boost::program_options::value< std::string >( &input_options_string ), "input options, when reading from stdin (see --help --verbose)" )
             ( "output", boost::program_options::value< std::string >( &output_options_string ), "output options (see --help --verbose); default: same as --input" )
+            ( "capacity", boost::program_options::value< unsigned int >( &capacity )->default_value( 16 ), "maximum input queue size before the reader thread blocks" )
+            ( "threads", boost::program_options::value< unsigned int >( &number_of_threads )->default_value( 0 ), "number of threads; default: 0 (auto)" )
             ( "stay", "do not close at end of stream" );
         boost::program_options::variables_map vm;
         boost::program_options::store( boost::program_options::parse_command_line( argc, argv, description), vm );
@@ -192,11 +196,10 @@ int main( int argc, char** argv )
         snark::cv_mat::serialization input( input_options );
         snark::cv_mat::serialization output( output_options );
         boost::scoped_ptr< bursty_reader< pair > > reader;
-        static const unsigned int defaultCapacity = 16;
         if( vm.count( "file" ) )
         {
             video_capture.open( name );
-            reader.reset( new bursty_reader< pair >( boost::bind( &capture, boost::ref( video_capture ), boost::ref( rate ) ), discard, defaultCapacity ) );
+            reader.reset( new bursty_reader< pair >( boost::bind( &capture, boost::ref( video_capture ), boost::ref( rate ) ), discard, capacity ) );
         }
         else if( vm.count( "camera" ) || vm.count( "id" ) )
         {
@@ -205,9 +208,9 @@ int main( int argc, char** argv )
         }
         else
         {
-            reader.reset( new bursty_reader< pair >( boost::bind( &read, boost::ref( input ), boost::ref( rate ) ), discard, defaultCapacity ) );
+            reader.reset( new bursty_reader< pair >( boost::bind( &read, boost::ref( input ), boost::ref( rate ) ), discard, capacity ) );
         }
-        snark::imaging::applications::pipeline pipeline( output, filters, *reader );
+        snark::imaging::applications::pipeline pipeline( output, filters, *reader, number_of_threads );
         pipeline.run();
         if( vm.count( "stay" ) )
         {

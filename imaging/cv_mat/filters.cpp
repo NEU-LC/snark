@@ -230,7 +230,7 @@ class undistort_impl_
 class max_impl_ // experimental, to debug
 {
     public:
-        max_impl_( unsigned int size ) : size_( size ) {}
+        max_impl_( unsigned int size, bool is_max ) : size_( size ), is_max_( is_max ) {}
 
         filters::value_type operator()( filters::value_type m )
         {
@@ -244,7 +244,7 @@ class max_impl_ // experimental, to debug
             for( unsigned int i = 0; i < deque_.size(); ++i )
             {
                 unsigned char* p = deque_[i].second.datastart;
-                for( unsigned char* q = s.second.datastart; q < s.second.dataend; *q = std::max( *p, *q ), ++p, ++q );
+                for( unsigned char* q = s.second.datastart; q < s.second.dataend; *q = is_max_ ? std::max( *p, *q ) : std::min( *p, *q ), ++p, ++q );
             }
             ++count;
             return s;
@@ -254,6 +254,7 @@ class max_impl_ // experimental, to debug
 
     private:
         unsigned int size_;
+        bool is_max_;
         std::deque< filters::value_type > deque_; // use vector?
 };
 
@@ -376,10 +377,15 @@ std::vector< filter > filters::make( const std::string& how )
             }
             f.push_back( filter( boost::bind( &resize_impl_, _1, width, height, w, h ) ) );
         }
-        else if( e[0] == "max" )
+        else if( e[0] == "max" ) // todo: remove this filter; not thread-safe, should be run with --threads=1
+        {
+            max_impl_::mutex(); // quick and dirty, touch mutex;
+            f.push_back( filter( max_impl_( boost::lexical_cast< unsigned int >( e[1] ), true ) ) );
+        }
+        else if( e[0] == "min" ) // todo: remove this filter; not thread-safe, should be run with --threads=1
         {
             max_impl_::mutex(); // quick and dirty, touch mutex
-            f.push_back( filter( max_impl_( boost::lexical_cast< unsigned int >( e[1] ) ) ) );
+            f.push_back( filter( max_impl_( boost::lexical_cast< unsigned int >( e[1] ), false ) ) );
         }
         else if( e[0] == "timestamp" )
         {

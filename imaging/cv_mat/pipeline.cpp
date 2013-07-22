@@ -43,9 +43,13 @@ namespace snark{ namespace imaging { namespace applications {
 /// @param filters string describing the filters
 /// @param size max buffer size
 /// @param mode output mode
-pipeline::pipeline( cv_mat::serialization& output, const std::string& filters, tbb::bursty_reader< pair >& reader ):
-    m_output( output ),
-    m_reader( reader )
+pipeline::pipeline( cv_mat::serialization& output
+                  , const std::string& filters
+                  , tbb::bursty_reader< pair >& reader
+                  , unsigned int number_of_threads )
+    : m_output( output )
+    , m_reader( reader )
+    , m_pipeline( number_of_threads )
 {
     setup_pipeline_( filters );
 }

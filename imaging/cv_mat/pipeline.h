@@ -45,7 +45,7 @@
 #include <snark/imaging/cv_mat/filters.h>
 
 namespace snark {
-    
+
 namespace tbb {
 
 template<>
@@ -63,10 +63,13 @@ class pipeline
 {
 public:
     typedef std::pair< boost::posix_time::ptime, cv::Mat > pair;
-    pipeline( cv_mat::serialization& output, const std::string& filters, tbb::bursty_reader< pair >& reader );
+    pipeline( cv_mat::serialization& output
+            , const std::string& filters
+            , tbb::bursty_reader< pair >& reader
+            , unsigned int number_of_threads = 0 );
 
     void run();
-    
+
 protected:
     void write_( pair p );
     void null_( pair p );
@@ -81,6 +84,6 @@ protected:
 };
 
 
-} } } 
+} } }
 
 #endif // SNARK_IMAGING_APPLICATIONS_PIPELINE_H_
