@@ -36,7 +36,6 @@
 #include <sstream>
 #include <boost/bind.hpp>
 #include <boost/lexical_cast.hpp>
-#include <boost/thread/recursive_mutex.hpp>
 #include <comma/base/exception.h>
 #include <comma/csv/ascii.h>
 #include <comma/string/string.h>
@@ -234,7 +233,6 @@ class max_impl_ // experimental, to debug
 
         filters::value_type operator()( filters::value_type m )
         {
-            boost::recursive_mutex::scoped_lock lock( mutex() );
             if( deque_.size() == size_ ) { deque_.pop_front(); }
             deque_.push_back( filters::value_type() );
             m.second.copyTo( deque_.back().second );
@@ -249,8 +247,6 @@ class max_impl_ // experimental, to debug
             ++count;
             return s;
         }
-
-        static boost::recursive_mutex& mutex() { static boost::recursive_mutex m; return m; } // quick and dirty
 
     private:
         unsigned int size_;
@@ -379,13 +375,11 @@ std::vector< filter > filters::make( const std::string& how )
         }
         else if( e[0] == "max" ) // todo: remove this filter; not thread-safe, should be run with --threads=1
         {
-            max_impl_::mutex(); // quick and dirty, touch mutex;
-            f.push_back( filter( max_impl_( boost::lexical_cast< unsigned int >( e[1] ), true ) ) );
+            f.push_back( filter( max_impl_( boost::lexical_cast< unsigned int >( e[1] ), true ), false ) );
         }
         else if( e[0] == "min" ) // todo: remove this filter; not thread-safe, should be run with --threads=1
         {
-            max_impl_::mutex(); // quick and dirty, touch mutex
-            f.push_back( filter( max_impl_( boost::lexical_cast< unsigned int >( e[1] ), false ) ) );
+            f.push_back( filter( max_impl_( boost::lexical_cast< unsigned int >( e[1] ), false ), false ) );
         }
         else if( e[0] == "timestamp" )
         {
