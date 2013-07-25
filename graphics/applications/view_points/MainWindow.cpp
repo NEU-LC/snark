@@ -38,7 +38,12 @@
 #include <boost/bind.hpp>
 #include <boost/filesystem/path.hpp>
 #include <boost/lexical_cast.hpp>
+#include "qglobal.h"
+#if QT_VERSION >= 0x050000
+#include <QtWidgets>
+#else
 #include <QtGui>
+#endif
 #include <QFrame>
 #include <QLabel>
 #include <QLayout>
@@ -78,7 +83,11 @@ MainWindow::MainWindow( const std::string& title, Viewer* viewer )
     layout->setContentsMargins( 0, 0, 0, 0 );
     layout->setSpacing( 0 );
     layout->addWidget( m_fileFrame, 0, 0 );
-    layout->addWidget( viewer, 0, 1 );
+#if QT_VERSION >= 0x050000
+    layout->addWidget( QWidget::createWindowContainer( viewer ), 0, 1 );
+#else
+  layout->addWidget( viewer, 0, 1 );
+#endif
     layout->setColumnStretch( 0, 0 );
     layout->setColumnStretch( 1, 1 );
     frame->setLayout( layout );

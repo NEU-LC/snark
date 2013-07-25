@@ -120,7 +120,9 @@ void Viewer::initializeGL( QGLPainter *painter )
     ::glEnable( GL_BLEND );
     //::glEnable( GL_LIGHTING );
     //::glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
-    qglClearColor( m_background_color.toColor() );
+#if QT_VERSION < 0x050000
+    qglClearColor( m_background_color.toColor() ); // TODO QGLView does not derive from QGLWidget anymore in Qt5, use straight OpenGL ?
+#endif
     if( m_cameraReader ) { m_cameraReader->start(); }
     for( unsigned int i = 0; i < readers.size(); ++i ) { readers[i]->start(); }
 }

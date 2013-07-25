@@ -5,13 +5,21 @@ SET( dir ${SOURCE_CODE_BASE_DIR}/graphics/${PROJECT} )
 FILE( GLOB source   ${dir}/*.cpp )
 FILE( GLOB includes ${dir}/*.h )
 
-QT4_WRAP_CPP( snark_graphics_qt3d_moc ${dir}/view.h OPTIONS -DBOOST_TT_HAS_OPERATOR_HPP_INCLUDED )
+IF(Qt5Widgets_FOUND)
+  QT5_WRAP_CPP( snark_graphics_qt3d_moc ${dir}/view.h OPTIONS -DBOOST_TT_HAS_OPERATOR_HPP_INCLUDED )
+ELSE(Qt5Widgets_FOUND)
+  QT4_WRAP_CPP( snark_graphics_qt3d_moc ${dir}/view.h OPTIONS -DBOOST_TT_HAS_OPERATOR_HPP_INCLUDED )
+ENDIF(Qt5Widgets_FOUND)
 
 SOURCE_GROUP( ${TARGET_NAME} FILES ${source} ${includes} ${snark_graphics_qt3d_moc} )
 
 ADD_LIBRARY( ${TARGET_NAME} ${source} ${includes} ${snark_graphics_qt3d_moc} )
 SET_TARGET_PROPERTIES( ${TARGET_NAME} PROPERTIES ${snark_LIBRARY_PROPERTIES} )
-TARGET_LINK_LIBRARIES( ${TARGET_NAME} ${QT_LIBRARIES} ${Qt3D_LIB} ${snark_ALL_EXTERNAL_LIBRARIES} )
+IF(Qt5Widgets_FOUND)
+  TARGET_LINK_LIBRARIES( ${TARGET_NAME} Qt5::Widgets ${Qt3D_LIB} ${snark_ALL_EXTERNAL_LIBRARIES} )
+ELSE(Qt5Widgets_FOUND)
+  TARGET_LINK_LIBRARIES( ${TARGET_NAME} ${QT_LIBRARIES} ${Qt3D_LIB} ${snark_ALL_EXTERNAL_LIBRARIES} )
+ENDIF(Qt5Widgets_FOUND)
 
 INSTALL( FILES ${includes} DESTINATION ${snark_INSTALL_INCLUDE_DIR}/${PROJECT} )
 INSTALL(
