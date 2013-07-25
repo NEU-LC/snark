@@ -105,6 +105,7 @@ class Reader
         boost::optional< Eigen::Vector3d > m_point;
         bool updated_; // quick and dirty, terrible
         boost::optional< Eigen::Vector3d > m_orientation;
+        comma::uint32 id_; // todo: quick and dirty; replace m_point, m_orientation, etc with PointWithId point_;
         QColor4ub m_color;
         QVector3D m_translation;
         QQuaternion m_quaternion;

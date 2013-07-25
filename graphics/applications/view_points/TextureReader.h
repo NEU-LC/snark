@@ -36,7 +36,8 @@
 #ifndef SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_TEXTURE_READER_H_
 #define SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_TEXTURE_READER_H_
 
-
+#include <vector>
+#include <boost/ptr_container/ptr_vector.hpp>
 #include "./Reader.h"
 #include <Qt3D/qglbuilder.h>
 
@@ -46,7 +47,16 @@ namespace snark { namespace graphics { namespace View {
 class TextureReader : public Reader
 {
     public:
-        TextureReader( QGLView& viewer, comma::csv::options& options, const std::string& file, double width, double height );
+        struct image_options
+        {
+            std::string filename;
+            comma::uint32 width;
+            comma::uint32 height;
+            image_options() : width( 1 ), height( 1 ) {}
+            image_options( const std::string& filename, comma::uint32 width = 1, comma::uint32 height = 1 ) : filename( filename ), width( width ), height( height ) {}
+        };
+
+        TextureReader( QGLView& viewer, comma::csv::options& csv, const std::vector< image_options >& io );
 
         void start();
         std::size_t update( const Eigen::Vector3d& offset );
@@ -57,13 +67,18 @@ class TextureReader : public Reader
 
     protected:
         boost::scoped_ptr< comma::csv::input_stream< PointWithId > > m_stream;
-        const std::string m_file;
-        QGeometryData m_geometry;
-        QGLBuilder m_builder;
-        QGLSceneNode* m_node;
-        QGLTexture2D m_texture;
-        QImage m_image;
-        QGLMaterial m_material;
+        struct image_
+        {
+            QImage image;
+            QGeometryData geometry;
+            QGLBuilder builder;
+            QGLSceneNode* node;
+            QGLTexture2D texture;
+            QGLMaterial material;
+
+            image_( const image_options& o );
+        };
+        boost::ptr_vector< image_ > images_;
 };
 
 } } } // namespace snark { namespace graphics { namespace View {

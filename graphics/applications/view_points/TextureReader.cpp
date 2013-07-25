@@ -30,7 +30,6 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
 /// @author Cedric Wohlleber
 
 #include <Eigen/Core>
@@ -38,35 +37,36 @@
 #include "./TextureReader.h"
 #include "./Texture.h"
 
+#include <iostream>
+
 namespace snark { namespace graphics { namespace View {
 
-/// constructor
-/// @param viewer reference to the viewer
-/// @param options csv options for the position input
-/// @param file image filename
-/// @param width image width in meters to be displayed in the scene
-/// @param height image height in meters to be displayed in the scene
-TextureReader::TextureReader( QGLView& viewer, comma::csv::options& options, const std::string& file, double width, double height )
-    : Reader( viewer, options, 1, NULL, 1, "", QVector3D( 0, 1, 1 ) ),
-      m_file( file ),
-      m_image( file.c_str() )
+TextureReader::image_::image_( const TextureReader::image_options& o )
+    : image( &o.filename[0] )
 {
-    m_texture.setImage( m_image );
-    m_material.setTexture( &m_texture );
-
+    texture.setImage( image );
+    material.setTexture( &texture );
     QVector3D a( 0, 0, 0 );
-    QVector3D b( width, 0, 0 );
-    QVector3D c( width, height, 0 );
-    QVector3D d( 0, height, 0 );
+    QVector3D b( o.width, 0, 0 );
+    QVector3D c( o.width, o.height, 0 );
+    QVector3D d( 0, o.height, 0 );
     QVector2D ta( 0, 0 );
     QVector2D tb( 1, 0 );
     QVector2D tc( 1, 1 );
     QVector2D td( 0, 1 );
-    m_geometry.appendVertex( a, b, c, d );
-    m_geometry.appendTexCoord(ta, tb, tc, td);
-    m_builder.addQuads( m_geometry );
-    m_node = m_builder.finalizedSceneNode();
-    m_node->setMaterial( &m_material );
+    geometry.appendVertex( a, b, c, d );
+    geometry.appendTexCoord(ta, tb, tc, td);
+    builder.addQuads( geometry );
+    node = builder.finalizedSceneNode();
+    node->setMaterial( &material );
+}
+
+TextureReader::TextureReader( QGLView& viewer
+                            , comma::csv::options& csv
+                            , const std::vector< image_options >& io )
+    : Reader( viewer, csv, 1, NULL, 1, "", QVector3D( 0, 1, 1 ) )
+{
+    for( unsigned int i = 0; i < io.size(); ++i ) { images_.push_back( new image_( io[i] ) ); }
 }
 
 void TextureReader::start()
@@ -79,10 +79,7 @@ std::size_t TextureReader::update( const Eigen::Vector3d& offset )
     return updatePoint( offset ) ? 1 : 0;
 }
 
-bool TextureReader::empty() const
-{
-    return !m_point;
-}
+bool TextureReader::empty() const { return !m_point; }
 
 const Eigen::Vector3d& TextureReader::somePoint() const
 {
@@ -92,11 +89,14 @@ const Eigen::Vector3d& TextureReader::somePoint() const
 
 void TextureReader::render( QGLPainter* painter )
 {
+    if( !m_point ) { return; }
+    comma::uint32 id = id_;
+    if( id > images_.size() ) { COMMA_THROW( comma::exception, "expected index less than " << images_.size() << "; got: " << id_ ); }
     painter->setStandardEffect( QGL::FlatReplaceTexture2D );
     painter->modelViewMatrix().push();
     painter->modelViewMatrix().translate( m_translation );
     painter->modelViewMatrix().rotate( m_quaternion );
-    m_node->draw(painter);
+    images_[id].node->draw( painter );
     painter->modelViewMatrix().pop();
 }
 
@@ -112,6 +112,7 @@ bool TextureReader::readOnce()
     boost::mutex::scoped_lock lock( m_mutex );
     m_point = p->point;
     m_orientation = p->orientation;
+    id_ = p->id;
     updated_ = true;
     return true;
 }

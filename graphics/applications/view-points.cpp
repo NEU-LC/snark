@@ -109,9 +109,14 @@ void usage()
     std::cerr << "                     \"loop\": connect all points of a block; fields same as for 'point'" << std::endl;
     std::cerr << "                     \"label\": e.g. --shape=label --fields=,x,y,z,,,label" << std::endl;
     std::cerr << "                     \"<model file ( obj, ply... )>[;<options>]\": e.g. --shape=vehicle.obj" << std::endl;
-    std::cerr << "                     \"     <options>" << std::endl;
-    std::cerr << "                     \"         flip\": flip the model around the x-axis" << std::endl;
-    std::cerr << "                     \"         scale=<value>\": resize model (ply only, todo), e.g. show model half-size: scale=0.5" << std::endl;
+    std::cerr << "                     \"    <options>" << std::endl;
+    std::cerr << "                     \"        flip\": flip the model around the x-axis" << std::endl;
+    std::cerr << "                     \"        scale=<value>\": resize model (ply only, todo), e.g. show model half-size: scale=0.5" << std::endl;
+    std::cerr << "                     \"<image file>[,<width>,<height>],<image file>[,<width>,<height>]\": show image, e.g. --shape=\"vehicle-lights-on.jpg,vehicle-lights-off.jpg\"" << std::endl;
+    std::cerr << "                            <width>: image width in meters when displaying images in the scene; default: 1" << std::endl;
+    std::cerr << "                            <height>: image height in meters when displaying images in the scene; default: 1" << std::endl;
+    std::cerr << "                            note 1: just like for the cad models, the images will be pinned to the latest point in the stream" << std::endl;
+    std::cerr << "                            note 2: specify id in fields to switch between multiple images, see examples below" << std::endl;
     std::cerr << "    --size <size> : render last <size> points (or other shapes)" << std::endl;
     std::cerr << "                    default 2000000 for points, for 200000 for other shapes" << std::endl;
     std::cerr << std::endl;
@@ -127,7 +132,6 @@ void usage()
     std::cerr << "          <options>: <position>|<stream>" << std::endl;
     std::cerr << "          <position>: <x>,<y>,<z>,<roll>,<pitch>,<yaw>" << std::endl;
     std::cerr << "          <stream>: position csv stream with options; default fields: x,y,z,roll,pitch,yaw" << std::endl;
-    std::cerr << "    --image-size <width>,<height>: image size in meters when displaying images in the scene" << std::endl;
     std::cerr << "    --orthographic: use orthographic projection instead of perspective" << std::endl;
     std::cerr << std::endl;
     std::cerr << "more options" << std::endl;
@@ -157,8 +161,9 @@ void usage()
     std::cerr << std::endl;
     std::cerr << "    most of the options can be set for individual files (see examples)" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "Examples:" << std::endl;
+    std::cerr << "examples" << std::endl;
     std::cerr << std::endl;
+    std::cerr << "basics" << std::endl;
     std::cerr << "    view points from file:" << std::endl;
     std::cerr << "        view-points xyz.csv" << std::endl;
     std::cerr << std::endl;
@@ -186,11 +191,27 @@ void usage()
     std::cerr << "    specify fixed scene radius explicitly:" << std::endl;
     std::cerr << "        cat xyz.csv | view-points --scene-radius=100" << std::endl;
     std::cerr << std::endl;
+    std::cerr << "using images" << std::endl;
+    std::cerr << "    show image with given position" << std::endl;
+    std::cerr << "        echo 0,0,0 | view-points \"-;shape=image.jpg\"" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    show resized image" << std::endl;
+    std::cerr << "        echo 0,0,0 | view-points \"-;shape=image.jpg,3,4\"" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    show image with given position and orientation" << std::endl;
+    std::cerr << "        echo 0,0,0,0,0,0 | view-points \"-;shape=image.jpg;fields=x,y,z,roll,pitch,yaw\"" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    switch between images by their index" << std::endl;
+    std::cerr << "        echo 0,0,0,0 > points.csv" << std::endl;
+    std::cerr << "        echo 0,0,0,1 >> points.csv" << std::endl;
+    std::cerr << "        echo 0,0,0,2 >> points.csv" << std::endl;
+    std::cerr << "        echo points.csv | view-points \"-;shape=image1.jpg,image2.jpg,image3.jpg;fields=x,y,z,id\"" << std::endl;
     exit( -1 );
 }
 
 struct model_options
 {
+    std::string filename;
     bool flip;
     double scale;
     model_options() : flip( false ), scale( 1.0 ) {}
@@ -202,14 +223,33 @@ template <> struct traits< model_options >
 {
     template < typename Key, class Visitor > static void visit( Key, model_options& p, Visitor& v )
     {
+        v.apply( "filename", p.filename );
         v.apply( "flip", p.flip );
         v.apply( "scale", p.scale );
     }
 
     template < typename Key, class Visitor > static void visit( Key, const model_options& p, Visitor& v )
     {
+        v.apply( "filename", p.filename );
         v.apply( "flip", p.flip );
         v.apply( "scale", p.scale );
+    }
+};
+
+template <> struct traits< snark::graphics::View::TextureReader::image_options >
+{
+    template < typename Key, class Visitor > static void visit( Key, snark::graphics::View::TextureReader::image_options& p, Visitor& v )
+    {
+        v.apply( "filename", p.filename );
+        v.apply( "width", p.width );
+        v.apply( "height", p.height );
+    }
+
+    template < typename Key, class Visitor > static void visit( Key, const snark::graphics::View::TextureReader::image_options& p, Visitor& v )
+    {
+        v.apply( "filename", p.filename );
+        v.apply( "width", p.width );
+        v.apply( "height", p.height );
     }
 };
 
@@ -300,24 +340,32 @@ boost::shared_ptr< snark::graphics::View::Reader > makeReader( QGLView& viewer
     }
     else
     {
-        std::vector< std::string > v = comma::split( shape, '.' );
-        if( v.size() < 2 ) { COMMA_THROW( comma::exception, "expected shape, got \"" << shape << "\"" ); }
         if( csv.fields == "" ) { csv.fields="point,orientation"; csv.full_xpath = true; }
-        if( v[1] == "png" || v[1] == "jpg" || v[1] == "jpeg" || v[1] == "bmp" || v[1] == "gif" )
+        std::vector< snark::graphics::View::TextureReader::image_options > image_options;
+        std::vector< std::string > v = comma::split( shape, ',' );
+        for( unsigned int i = 0; i < v.size(); )
         {
-            std::string size = options.value< std::string >( "--image-size", "3,3" );
-            std::vector< std::string > sizeVector = comma::split( size, ',' );
-            if( v.size() != 2 ) { COMMA_THROW( comma::exception, "expected image size as width,height" ); }
-            double width = boost::lexical_cast< double >( sizeVector[0] );
-            double height = boost::lexical_cast< double >( sizeVector[0] );
-            boost::shared_ptr< snark::graphics::View::Reader > reader( new snark::graphics::View::TextureReader( viewer, csv, shape, width, height ) );
+            std::string e = comma::split( v[i], '.' ).back();
+            if( e != "png" && e != "jpg" && e != "jpeg" && e != "bmp" && e != "gif" ) { break; }
+            std::vector< std::string > w; // quick and dirty, ugly
+            do { w.push_back( v[i++] ); } while( i < v.size() && comma::split( v[i], '.' ).size() < 2 );
+            switch( w.size() )
+            {
+                case 1: image_options.push_back( snark::graphics::View::TextureReader::image_options( w[0] ) ); break;
+                case 3: image_options.push_back( snark::graphics::View::TextureReader::image_options( w[0], boost::lexical_cast< unsigned int >( w[1] ), boost::lexical_cast< unsigned int >( w[2] ) ) ); break;
+                default: COMMA_THROW( comma::exception, "expected <image>[,<width>,<height>], got: " << shape );
+            }
+        }
+        if( image_options.empty() )
+        {
+            model_options m = comma::name_value::parser( ';', '=' ).get< model_options >( properties );
+            boost::shared_ptr< snark::graphics::View::Reader > reader( new snark::graphics::View::ModelReader( viewer, csv, shape, m.flip, m.scale, coloured, label ) );
             reader->show( show );
             return reader;
         }
         else
         {
-            model_options m = comma::name_value::parser( ';', '=' ).get< model_options >( properties );
-            boost::shared_ptr< snark::graphics::View::Reader > reader( new snark::graphics::View::ModelReader( viewer, csv, shape, m.flip, m.scale, coloured, label ) );
+            boost::shared_ptr< snark::graphics::View::Reader > reader( new snark::graphics::View::TextureReader( viewer, csv, image_options ) );
             reader->show( show );
             return reader;
         }
@@ -370,13 +418,13 @@ int main( int argc, char** argv )
         if( options.exists( "--help" ) || options.exists( "-h" ) ) { usage(); }
         comma::csv::options csvOptions( argc, argv );
         std::vector< std::string > properties = options.unnamed( "--z-is-up,--orthographic,--no-stdin,--output-camera-config,--output-camera"
-                , "--binary,--bin,-b,--fields,--size,--delimiter,-d,--colour,-c,--point-size,--weight,--image-size,--background-colour,--scene-center,--center,--scene-radius,--radius,--shape,--label,--camera,--camera-position,--camera-config,--fov,--model,--full-xpath" );
+                , "--binary,--bin,-b,--fields,--size,--delimiter,-d,--colour,-c,--point-size,--weight,--background-colour,--scene-center,--center,--scene-radius,--radius,--shape,--label,--camera,--camera-position,--camera-config,--fov,--model,--full-xpath" );
         QColor4ub backgroundcolour( QColor( QString( options.value< std::string >( "--background-colour", "#000000" ).c_str() ) ) );
         boost::optional< comma::csv::options > camera_csv;
         boost::optional< Eigen::Vector3d > cameraposition;
         boost::optional< Eigen::Vector3d > cameraorientation;
 
-        bool cameraOrthographic = options.exists( "--orthographic" );
+        bool camera_orthographic = options.exists( "--orthographic" );
         double fieldOfView = options.value< double >( "--fov" , 45 );
         if( options.exists( "--camera" ) )
         {
@@ -386,11 +434,11 @@ int main( int argc, char** argv )
             {
                 if( v[i] == "orthographic" )
                 {
-                    cameraOrthographic = true;
+                    camera_orthographic = true;
                 }
                 else if( v[i] == "perspective" )
                 {
-                    cameraOrthographic = false;
+                    camera_orthographic = false;
                 }
                 else
                 {
@@ -439,7 +487,7 @@ int main( int argc, char** argv )
         snark::graphics::View::Viewer* viewer = new snark::graphics::View::Viewer( backgroundcolour
                                                                                  , fieldOfView
                                                                                  , z_up
-                                                                                 , cameraOrthographic
+                                                                                 , camera_orthographic
                                                                                  , camera_csv
                                                                                  , cameraposition
                                                                                  , cameraorientation

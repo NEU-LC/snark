@@ -67,6 +67,7 @@ Reader::Reader( QGLView& viewer, comma::csv::options& options, std::size_t size,
     , m_show( true )
     , m_istream( options.filename, options.binary() ? comma::io::mode::binary : comma::io::mode::ascii, comma::io::mode::non_blocking )
     , updated_( false )
+    , id_( 0 )
     , m_label( label )
     , m_offset( offset )
 {
