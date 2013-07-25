@@ -125,7 +125,10 @@ bool ModelReader::readOnce()
     if( !m_stream ) // quick and dirty: handle named pipes
     {
         if( !m_istream() ) { return true; }
-        m_stream.reset( new comma::csv::input_stream< PointWithId >( *m_istream(), options ) );
+        PointWithId default_point;
+        default_point.point = Eigen::Vector3d( 0, 0, 0 );
+        default_point.orientation = Eigen::Vector3d( 0, 0, 0 );
+        m_stream.reset( new comma::csv::input_stream< PointWithId >( *m_istream(), options, default_point ) );
     }
     const PointWithId* p = m_stream->read();
     if( p == NULL ) { m_shutdown = true; return false; }
