@@ -33,23 +33,24 @@
 /// @author Cedric Wohlleber
 
 #include <Eigen/Core>
+#include <comma/base/exception.h>
 #include <snark/graphics/qt3d/rotation_matrix.h>
 #include "./TextureReader.h"
-#include "./Texture.h"
-
-#include <iostream>
 
 namespace snark { namespace graphics { namespace View {
 
-TextureReader::image_::image_( const TextureReader::image_options& o )
-    : image( &o.filename[0] )
+TextureReader::image_::image_( const TextureReader::image_options& o ) : image( &o.filename[0] )
 {
     texture.setImage( image );
     material.setTexture( &texture );
+    comma::uint32 width = o.pixel_size ? *o.pixel_size * image.width() : o.width;
+    comma::uint32 height = o.pixel_size ? *o.pixel_size * image.height() : o.height;
+    if( width == 0 ) { COMMA_THROW( comma::exception, "got zero width for image " << o.filename ); }
+    if( height == 0 ) { COMMA_THROW( comma::exception, "got zero height for image " << o.filename ); }
     QVector3D a( 0, 0, 0 );
-    QVector3D b( o.width, 0, 0 );
-    QVector3D c( o.width, o.height, 0 );
-    QVector3D d( 0, o.height, 0 );
+    QVector3D b( width, 0, 0 );
+    QVector3D c( width, height, 0 );
+    QVector3D d( 0, height, 0 );
     QVector2D ta( 0, 0 );
     QVector2D tb( 1, 0 );
     QVector2D tc( 1, 1 );

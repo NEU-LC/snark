@@ -30,7 +30,7 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
+#include <boost/filesystem.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <comma/application/command_line_options.h>
@@ -112,9 +112,10 @@ void usage()
     std::cerr << "                     \"    <options>" << std::endl;
     std::cerr << "                     \"        flip\": flip the model around the x-axis" << std::endl;
     std::cerr << "                     \"        scale=<value>\": resize model (ply only, todo), e.g. show model half-size: scale=0.5" << std::endl;
-    std::cerr << "                     \"<image file>[,<width>,<height>],<image file>[,<width>,<height>]\": show image, e.g. --shape=\"vehicle-lights-on.jpg,vehicle-lights-off.jpg\"" << std::endl;
-    std::cerr << "                            <width>: image width in meters when displaying images in the scene; default: 1" << std::endl;
-    std::cerr << "                            <height>: image height in meters when displaying images in the scene; default: 1" << std::endl;
+    std::cerr << "                     \"<image file>[,<image options>]:<image file>[,<image options>]\": show image, e.g. --shape=\"vehicle-lights-on.jpg,vehicle-lights-off.jpg\"" << std::endl;
+    std::cerr << "                            <image options>: <width>,<height> or <pixel-size>" << std::endl;
+    std::cerr << "                                <width>,<height>: image width and height in meters when displaying images in the scene; default: 1,1" << std::endl;
+    std::cerr << "                                <pixel size>: single pixel size in metres" << std::endl;
     std::cerr << "                            note 1: just like for the cad models, the images will be pinned to the latest point in the stream" << std::endl;
     std::cerr << "                            note 2: specify id in fields to switch between multiple images, see examples below" << std::endl;
     std::cerr << "    --size <size> : render last <size> points (or other shapes)" << std::endl;
@@ -236,23 +237,6 @@ template <> struct traits< model_options >
     }
 };
 
-template <> struct traits< snark::graphics::View::TextureReader::image_options >
-{
-    template < typename Key, class Visitor > static void visit( Key, snark::graphics::View::TextureReader::image_options& p, Visitor& v )
-    {
-        v.apply( "filename", p.filename );
-        v.apply( "width", p.width );
-        v.apply( "height", p.height );
-    }
-
-    template < typename Key, class Visitor > static void visit( Key, const snark::graphics::View::TextureReader::image_options& p, Visitor& v )
-    {
-        v.apply( "filename", p.filename );
-        v.apply( "width", p.width );
-        v.apply( "height", p.height );
-    }
-};
-
 } } // namespace comma { namespace visiting {
 
 // quick and dirty, todo: a proper structure, as well as a visitor for command line options
@@ -342,23 +326,24 @@ boost::shared_ptr< snark::graphics::View::Reader > makeReader( QGLView& viewer
     {
         if( csv.fields == "" ) { csv.fields="point,orientation"; csv.full_xpath = true; }
         std::vector< snark::graphics::View::TextureReader::image_options > image_options;
-        std::vector< std::string > v = comma::split( shape, ',' );
-        for( unsigned int i = 0; i < v.size(); )
+        std::vector< std::string > v = comma::split( shape, ':' );
+        for( unsigned int i = 0; i < v.size(); ++i )
         {
-            std::string e = comma::split( v[i], '.' ).back();
+            std::vector< std::string > w = comma::split( v[i], ',' );
+            std::string e = comma::split( w[0], '.' ).back();
             if( e != "png" && e != "jpg" && e != "jpeg" && e != "bmp" && e != "gif" ) { break; }
-            std::vector< std::string > w; // quick and dirty, ugly
-            do { w.push_back( v[i++] ); } while( i < v.size() && comma::split( v[i], '.' ).size() < 2 );
             switch( w.size() )
             {
                 case 1: image_options.push_back( snark::graphics::View::TextureReader::image_options( w[0] ) ); break;
-                case 3: image_options.push_back( snark::graphics::View::TextureReader::image_options( w[0], boost::lexical_cast< unsigned int >( w[1] ), boost::lexical_cast< unsigned int >( w[2] ) ) ); break;
-                default: COMMA_THROW( comma::exception, "expected <image>[,<width>,<height>], got: " << shape );
+                case 2: image_options.push_back( snark::graphics::View::TextureReader::image_options( w[0], boost::lexical_cast< double >( w[1] ) ) ); break;
+                case 3: image_options.push_back( snark::graphics::View::TextureReader::image_options( w[0], boost::lexical_cast< double >( w[1] ), boost::lexical_cast< double >( w[2] ) ) ); break;
+                default: COMMA_THROW( comma::exception, "expected <image>[,<width>,<height>]; got: " << shape );
             }
         }
         if( image_options.empty() )
         {
             model_options m = comma::name_value::parser( ';', '=' ).get< model_options >( properties );
+            if( !boost::filesystem::exists( m.filename ) ) { COMMA_THROW( comma::exception, "file does not exist: " << m.filename ); }
             boost::shared_ptr< snark::graphics::View::Reader > reader( new snark::graphics::View::ModelReader( viewer, csv, shape, m.flip, m.scale, coloured, label ) );
             reader->show( show );
             return reader;

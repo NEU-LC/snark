@@ -37,6 +37,7 @@
 #define SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_TEXTURE_READER_H_
 
 #include <vector>
+#include <boost/optional.hpp>
 #include <boost/ptr_container/ptr_vector.hpp>
 #include "./Reader.h"
 #include <Qt3D/qglbuilder.h>
@@ -50,10 +51,13 @@ class TextureReader : public Reader
         struct image_options
         {
             std::string filename;
-            comma::uint32 width;
-            comma::uint32 height;
+            double width;
+            double height;
+            boost::optional< double > pixel_size;
             image_options() : width( 1 ), height( 1 ) {}
-            image_options( const std::string& filename, comma::uint32 width = 1, comma::uint32 height = 1 ) : filename( filename ), width( width ), height( height ) {}
+            image_options( const std::string& filename ) : filename( filename ), width( 1 ), height( 1 ) {}
+            image_options( const std::string& filename, double pixel_size ) : filename( filename ), width( 0 ), height( 0 ), pixel_size( pixel_size ) {}
+            image_options( const std::string& filename, double width, double height ) : filename( filename ), width( width ), height( height ) {}
         };
 
         TextureReader( QGLView& viewer, comma::csv::options& csv, const std::vector< image_options >& io );
