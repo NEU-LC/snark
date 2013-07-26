@@ -92,7 +92,7 @@ void TextureReader::render( QGLPainter* painter )
 {
     if( !m_point ) { return; }
     comma::uint32 id = id_;
-    if( id > images_.size() ) { COMMA_THROW( comma::exception, "expected index less than " << images_.size() << "; got: " << id_ ); }
+    if( id >= images_.size() ) { return; }
     painter->setStandardEffect( QGL::FlatReplaceTexture2D );
     painter->modelViewMatrix().push();
     painter->modelViewMatrix().translate( m_translation );

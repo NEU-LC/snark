@@ -346,6 +346,7 @@ boost::shared_ptr< snark::graphics::View::Reader > makeReader( QGLView& viewer
         if( image_options.empty() )
         {
             model_options m = comma::name_value::parser( ';', '=' ).get< model_options >( properties );
+            m.filename = shape;
             if( !boost::filesystem::exists( m.filename ) ) { COMMA_THROW( comma::exception, "file does not exist: " << m.filename ); }
             boost::shared_ptr< snark::graphics::View::Reader > reader( new snark::graphics::View::ModelReader( viewer, csv, shape, m.flip, m.scale, coloured, label ) );
             reader->show( show );
