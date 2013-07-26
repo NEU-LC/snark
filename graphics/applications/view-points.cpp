@@ -199,6 +199,9 @@ void usage()
     std::cerr << "    show resized image" << std::endl;
     std::cerr << "        echo 0,0,0 | view-points \"-;shape=image.jpg,3,4\"" << std::endl;
     std::cerr << std::endl;
+    std::cerr << "    specify pixel size instead of image size" << std::endl;
+    std::cerr << "        echo 0,0,0 | view-points \"-;shape=image.jpg,0.1\"" << std::endl;
+    std::cerr << std::endl;
     std::cerr << "    show image with given position and orientation" << std::endl;
     std::cerr << "        echo 0,0,0,0,0,0 | view-points \"-;shape=image.jpg;fields=x,y,z,roll,pitch,yaw\"" << std::endl;
     std::cerr << std::endl;
