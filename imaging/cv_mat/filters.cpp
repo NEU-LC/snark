@@ -358,9 +358,7 @@ std::vector< filter > filters::make( const std::string& how )
             switch( r.size() )
             {
                 case 1:
-                    if( r[0].empty() ) { COMMA_THROW( comma::exception, "expected resize=<width>,<height>, got: \"" << e[1] << "\"" ); }
-                    try { width = height = boost::lexical_cast< unsigned int >( r[0] ); }
-                    catch( ... ) { w = h = boost::lexical_cast< double >( r[0] ); }
+                    w = h = boost::lexical_cast< double >( r[0] );
                     break;
                 case 2:
                     try { width = boost::lexical_cast< unsigned int >( r[0] ); }
