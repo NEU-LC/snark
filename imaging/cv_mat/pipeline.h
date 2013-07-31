@@ -38,7 +38,7 @@
 #include <winsock2.h>
 #endif
 
-#include <comma/application/signal_flag.h>
+//#include <comma/application/signal_flag.h>
 #include <snark/tbb/bursty_reader.h>
 #include <snark/imaging/cv_mat/bursty_pipeline.h>
 #include <snark/imaging/cv_mat/serialization.h>
@@ -80,7 +80,7 @@ protected:
     std::vector< cv_mat::filter > m_filters;
     tbb::bursty_reader< pair >& m_reader;
     tbb::bursty_pipeline< pair > m_pipeline;
-    comma::signal_flag is_shutdown_;
+    //comma::signal_flag is_shutdown_; // todo: tear it down, if cv-cat, gige-cat, and fire-cat work
 };
 
 

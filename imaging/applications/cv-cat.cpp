@@ -71,7 +71,7 @@ class rate_limit /// timer class, sleeping if faster than the specified fps
         boost::posix_time::ptime m_lastOutput;
 };
 
-static comma::signal_flag is_shutdown;
+static comma::signal_flag is_shutdown( comma::signal_flag::hard );
 
 static pair capture( cv::VideoCapture& capture, rate_limit& rate )
 {

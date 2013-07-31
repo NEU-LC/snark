@@ -50,6 +50,7 @@ pipeline::pipeline( cv_mat::serialization& output
     : m_output( output )
     , m_reader( reader )
     , m_pipeline( number_of_threads )
+    //, is_shutdown_( comma::signal_flag::hard )
 {
     setup_pipeline_( filters );
 }
@@ -62,7 +63,7 @@ void pipeline::write_( pair p )
         m_reader.stop();
         return;
     }
-    if( std::cout.bad() || !std::cout.good() || is_shutdown_ )
+    if( std::cout.bad() || !std::cout.good() ) // if( std::cout.bad() || !std::cout.good() || is_shutdown_ )
     {
         m_reader.stop();
     }
@@ -71,7 +72,7 @@ void pipeline::write_( pair p )
 
 void pipeline::null_( pair p )
 {
-    if( p.second.size().width == 0 || std::cout.bad() || !std::cout.good() || is_shutdown_ )
+    if( p.second.size().width == 0 || std::cout.bad() || !std::cout.good() ) // if( p.second.size().width == 0 || std::cout.bad() || !std::cout.good() || is_shutdown_ )
     {
         m_reader.stop();
     }
