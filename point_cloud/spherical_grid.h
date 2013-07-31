@@ -85,6 +85,7 @@ struct bearing_elevation_grid
     {
         public:
             typedef double key_t;
+            typedef bounds bounds_t;
             /// constructors
             bearing_index() {}
             bearing_index( double begin, double resolution ) : index_( begin, 0, resolution, resolution ) {}
@@ -115,6 +116,7 @@ struct bearing_elevation_grid
     {
         public:
             typedef double key_t;
+            typedef bounds bounds_t;
             /// constructors
             elevation_index() {}
             elevation_index( double begin, double resolution ) : index_( 0, begin, resolution, resolution ) {}
