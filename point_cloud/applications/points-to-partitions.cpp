@@ -76,9 +76,10 @@ static void usage()
     std::cerr << "<options>" << std::endl;
     std::cerr << "    partitioning options:" << std::endl;
     std::cerr << "        --min-id: minimum partition id; default 0" << std::endl;
-    std::cerr << "        --min-points-per-voxel <n>: min number of points in a non-empty voxel; default 1" << std::endl;
-    std::cerr << "        --min-voxels-per-partition <n>: min number of voxels in a partition; default 1" << std::endl;
-    std::cerr << "        --min-points-per-partition <n>: min number of points in a partition; default 1" << std::endl;
+    std::cerr << "        --min-density: min partition density, i.e: number of points in partition / number of voxels in partition; default: 0" << std::endl;
+    std::cerr << "        --min-points-per-voxel <n>: min number of points in a non-empty voxel; default: 1" << std::endl;
+    std::cerr << "        --min-voxels-per-partition <n>: min number of voxels in a partition; default: 1" << std::endl;
+    std::cerr << "        --min-points-per-partition <n>: min number of points in a partition; default: 1" << std::endl;
     std::cerr << "        --resolution <resolution>: default: 0.2 metres" << std::endl;
     std::cerr << "    data flow options:" << std::endl;
     std::cerr << "        --discard,-d: if present, partition as many points as possible, discard the rest" << std::endl;
@@ -112,6 +113,7 @@ static bool verbose;
 static std::size_t min_points_per_voxel = 1;
 static std::size_t min_voxels_per_partition = 1;
 static std::size_t min_points_per_partition = 1;
+static double min_density;
 static Eigen::Vector3d resolution;
 static comma::csv::options csv;
 static comma::uint32 min_id;
@@ -154,12 +156,12 @@ struct block_t // quick and dirty, no optimization for now
 {
     typedef std::pair< input_t, std::string > pair_t;
     typedef std::deque< pair_t > pairs_t;
-    
+
     boost::scoped_ptr< pairs_t > points;
     comma::uint32 id;
     volatile bool empty;
     boost::scoped_ptr< snark::partition > partition;
-    
+
     block_t() : id( 0 ), empty( true ) {}
     void clear() { partition.reset(); points.reset(); empty = true; }
 };
@@ -200,14 +202,14 @@ static block_t* read_block_impl_( ::tbb::flow_control* flow = NULL )
                 ::memcpy( &line[0], istream.binary().last(), csv.format().size() );
             }
             else
-            { 
+            {
                 line = comma::join( istream.ascii().last(), csv.delimiter );
             }
             last = std::make_pair( *p, line );
             if( p->block != block_id ) { break; }
         }
         for( unsigned int i = 0; i < blocks.size(); ++i )
-        { 
+        {
             if( !blocks[i].empty ) { continue; }
             blocks[i].clear();
             blocks[i].id = block_id;
@@ -215,7 +217,6 @@ static block_t* read_block_impl_( ::tbb::flow_control* flow = NULL )
             blocks[i].empty = false;
             return &blocks[i];
         }
-        std::cerr << "==> discarded" << std::endl;
     }
 }
 
@@ -228,7 +229,7 @@ static void write_block_( block_t* block )
     for( std::size_t i = 0; i < block->points->size(); ++i )
     {
         const block_t::pair_t& p = block->points->operator[]( i );
-        if( !p.first.id && !output_all ) { continue; }
+        if( !( p.first.id && *p.first.id ) && !output_all ) { continue; }
         comma::uint32 id = p.first.id && *p.first.id ? **p.first.id : std::numeric_limits< comma::uint32 >::max();
         std::cout.write( &p.second[0], p.second.size() );
         if( csv.binary() ) { std::cout.write( reinterpret_cast< const char* >( &id ), sizeof( comma::uint32 ) ); }
@@ -250,7 +251,7 @@ static block_t* partition_( block_t* block )
         block_t::pair_t& p = block->points->operator[]( i );
         if( p.first.flag ) { p.first.id = &block->partition->insert( p.first.point ); }
     }
-    block->partition->commit( min_voxels_per_partition, min_points_per_partition, min_id );
+    block->partition->commit( min_voxels_per_partition, min_points_per_partition, min_id, min_density );
     return block;
 }
 
@@ -267,6 +268,7 @@ int main( int ac, char** av )
         min_points_per_voxel = options.value( "--min-points-per-voxel", 1u );
         min_voxels_per_partition = options.value( "--min-voxels-per-partition", 1u );
         min_points_per_partition = options.value( "--min-points-per-partition", 1u );
+        min_density = options.value( "--min-density", 0.0 );
         if( min_points_per_voxel == 0 ) { std::cerr << "points-to-partitions: expected minimum number of points in a non-empty voxel, got zero" << std::endl; usage(); }
         verbose = options.exists( "--verbose,-v" );
         double r = options.value( "--resolution", double( 0.2 ) );

@@ -30,6 +30,7 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+/// @author vsevolod vlaskine
 
 #include <cmath>
 #include <snark/point_cloud/equivalence_classes.h>
@@ -48,7 +49,7 @@ class partition::impl_
             , min_points_per_voxel_( min_points_per_voxel )
         {
         }
-        
+
         const boost::optional< comma::uint32 >& insert( const Eigen::Vector3d& point )
         {
             voxel_* voxel = voxels_.touch_at( point );
@@ -57,9 +58,10 @@ class partition::impl_
             return voxel->id;
         }
 
-        void commit( std::size_t min_voxels_per_partition = 1
-                   , std::size_t min_points_per_partition = 1
-                   , comma::uint32 min_id = 0 )
+        void commit( std::size_t min_voxels_per_partition
+                   , std::size_t min_points_per_partition
+                   , comma::uint32 min_id
+                   , double min_density )
         {
             std::size_t point_count = 0;
             std::size_t voxel_count = 0;
@@ -74,7 +76,7 @@ class partition::impl_
             typedef voxels_type_::iterator It;
             typedef voxels_type_::neighbourhood_iterator Nit;
             const partitions& parts = snark::equivalence_classes< It, Nit, Methods_ >( voxels_.begin(), voxels_.end(), min_id );
-            bool check_points_per_partitions = min_points_per_partition > min_voxels_per_partition * min_points_per_voxel_;
+            bool check_points_per_partitions = min_density > 0 || ( min_points_per_partition > min_voxels_per_partition * min_points_per_voxel_ );
             for( partitions::const_iterator it = parts.begin(); it != parts.end(); ++it )
             {
                 bool remove = false;
@@ -86,7 +88,7 @@ class partition::impl_
                 {
                     std::size_t size = 0;
                     for( Set::const_iterator j = it->second.begin(); j != it->second.end(); size += ( *j++ )->count );
-                    if( size < min_points_per_partition ) { remove = true; }
+                    remove = size < min_points_per_partition || ( double( size ) / it->second.size() ) < min_density;
                 }
                 if( remove )
                 {
@@ -119,7 +121,7 @@ class partition::impl_
         voxels_type_ voxels_;
         boost::optional< comma::uint32 > none_;
         std::size_t min_points_per_voxel_;
-        
+
         partition::extents_type expanded_( const partition::extents_type& extents, const Eigen::Vector3d& resolution )
         {
             Eigen::Vector3d floor = extents.min() - resolution / 2;
@@ -137,17 +139,23 @@ partition::partition( const partition::extents_type& extents
 }
 
 partition::~partition() { delete pimpl_; }
-    
+
 const boost::optional< comma::uint32 >& partition::insert( const Eigen::Vector3d& point )
 {
     return pimpl_->insert( point );
 }
 
+void partition::commit()
+{
+    pimpl_->commit( 1, 1, 0, 0 );
+}
+
 void partition::commit( std::size_t min_voxels_per_partition
                       , std::size_t min_points_per_partition
-                      , comma::uint32 min_id )
+                      , comma::uint32 min_id
+                      , double min_density )
 {
-    pimpl_->commit( min_voxels_per_partition, min_points_per_partition, min_id );
+    pimpl_->commit( min_voxels_per_partition, min_points_per_partition, min_id, min_density );
 }
 
 } // namespace snark {
