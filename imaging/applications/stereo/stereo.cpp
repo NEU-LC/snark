@@ -80,23 +80,26 @@ void stereo::process( const cv::Mat& left, const cv::Mat& right, const cv::Stere
     snark::imaging::point_cloud cloud( sgbm );
 
     cv::Mat points;
-    cv::Mat leftRectified;
+    cv::Mat leftRectified, rightRectified;
     if (!m_input_rectified)
     {
         leftRectified = m_rectify.remap_left( left );
-        cv::Mat rightRectified = m_rectify.remap_right( right );
+        rightRectified = m_rectify.remap_right( right );
         points = cloud.get( m_rectify.Q(), leftRectified, rightRectified );
     }
     else
     {
         leftRectified = left;
+        rightRectified = right;
         points = cloud.get( m_rectify.Q(), left, right );
     }
+
     for( int i = 0; i < points.rows; i++ )
     {
        for( int j = 0; j < points.cols; j++ )
        {
             cv::Point3f point = points.at< cv::Point3f >( i, j );
+
             if( std::fabs( point.z ) < 10000 ) // CV uses 10,000 as invalid. TODO config max distance ?
             {
                 point *= 16.0; // disparity has a factor 16
@@ -117,7 +120,7 @@ void stereo::process( const cv::Mat& left, const cv::Mat& right, const cv::Stere
                     std::cout << line << std::endl;
                 }
             }
-       }
+        }
     }
     m_frame_counter++;
 }
