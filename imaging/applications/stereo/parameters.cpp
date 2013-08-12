@@ -45,7 +45,7 @@ camera_parser::camera_parser ( const std::string& file, const std::string& path 
     std::ifstream ifs( file.c_str() ); // todo: config stream instead?
     if( !ifs.is_open() )
     {
-        COMMA_THROW_STREAM( comma::exception, "failed to open file: " << file );
+        COMMA_THROW_STREAM( comma::exception, "failed to open camera config file: " << file );
     }
     boost::property_tree::ptree tree;
     comma::property_tree::from_name_value( ifs, tree, '=', ' ' );
@@ -53,35 +53,45 @@ camera_parser::camera_parser ( const std::string& file, const std::string& path 
     camera_parameters parameters;
     comma::visiting::apply( from_ptree, parameters );
 
+    if( parameters.focal_length == "0,0" ) { std::cerr << "stereo-to-points: warning: " << path << ": focal-length set to default (\"0,0\")" << std::endl; }
     std::vector< std::string > v = comma::split( parameters.focal_length, ',' );
-    assert( v.size() == 2 );
+    if ( v.size() != 2 ) COMMA_THROW_STREAM( comma::exception, " unexpected input for " << path << " focal-length : " << parameters.focal_length );
     double fX = boost::lexical_cast< double >( v[0] );
     double fY = boost::lexical_cast< double >( v[1] );
+    // std::cerr << parameters.focal_length << " ( " << fX << "," << fY << " ) " << std::endl;
 
+    if( parameters.center == "0,0" ) { std::cerr << "stereo-to-points: warning: " << path << ": center set to default (\"0,0\")" << std::endl; }
     v = comma::split( parameters.center, ',' );
-    assert( v.size() == 2 );
+    if ( v.size() != 2 ) COMMA_THROW_STREAM( comma::exception, " unexpected input for " << path << " center : " << parameters.center );
     double cX = boost::lexical_cast< double >( v[0] );
     double cY = boost::lexical_cast< double >( v[1] );
+    // std::cerr << parameters.center << " ( " << cX << "," << cY << " ) " << std::endl;
 
+    if( parameters.distortion == "0,0,0,0,0" ) { std::cerr << "stereo-to-points: warning: " << path << ": distortion set to default (\"0,0,0,0,0\")" << std::endl; }
     v = comma::split( parameters.distortion, ',' );
-    assert( v.size() == 5 );
+    if ( v.size() != 5 ) COMMA_THROW_STREAM( comma::exception, " unexpected input for " << path << " distortion : " << parameters.distortion );
     double k1 = boost::lexical_cast< double >( v[0] );
     double k2 = boost::lexical_cast< double >( v[1] );
     double p1 = boost::lexical_cast< double >( v[2] );
     double p2 = boost::lexical_cast< double >( v[3] );
     double k3 = boost::lexical_cast< double >( v[4] );
+    // std::cerr << parameters.distortion << " ( " << k1 << "," << k2 << "," << p1 << "," << p2 << "," << k3 << " ) " << std::endl;
     
+    if( parameters.rotation == "0,0,0" ) { std::cerr << "stereo-to-points: warning: " << path << ": rotation set to default (\"0,0,0\")" << std::endl; }
     v = comma::split( parameters.rotation, ',' );
-    assert( v.size() == 3 );
+    if ( v.size() != 3 ) COMMA_THROW_STREAM( comma::exception, " unexpected input for " << path << " rotation : " << parameters.rotation );
     double roll = boost::lexical_cast< double >( v[0] );
     double pitch = boost::lexical_cast< double >( v[1] );
     double yaw = boost::lexical_cast< double >( v[2] );
+    // std::cerr << parameters.rotation << " ( " << roll << "," << pitch << "," << yaw << " ) " << std::endl;
 
+    if( parameters.translation == "0,0" ) { std::cerr << "stereo-to-points: warning: " << path << ": translation set to default (\"0,0,0\")" << std::endl; }
     v = comma::split( parameters.translation, ',' );
-    assert( v.size() == 3 );
+    if ( v.size() != 3 ) COMMA_THROW_STREAM( comma::exception, " unexpected input for " << path << " translation : " << parameters.translation );
     double tX = boost::lexical_cast< double >( v[0] );
     double tY = boost::lexical_cast< double >( v[1] );
     double tZ = boost::lexical_cast< double >( v[2] );
+    // std::cerr << parameters.translation << " ( " << tX << "," << tY << "," << tZ << " ) " << std::endl;
 
     m_camera << fX, 0,  cX,
                  0, fY, cY,
@@ -95,7 +105,7 @@ camera_parser::camera_parser ( const std::string& file, const std::string& path 
     if( !parameters.map.empty() )
     {
         v = comma::split( parameters.size, ',' );
-        assert( v.size() == 2 );
+        if ( v.size() != 2 ) COMMA_THROW_STREAM( comma::exception, " unexpected input for " << path << " map size : " << parameters.size );
         unsigned int width = boost::lexical_cast< unsigned int >( v[0] );
         unsigned int height = boost::lexical_cast< unsigned int >( v[1] );
         std::ifstream stream( parameters.map.c_str(), std::ios::binary );
@@ -127,7 +137,7 @@ camera_parser::camera_parser ( const std::string& file, const std::string& path 
     }
 }
 
-    
+
 
 } }
 
