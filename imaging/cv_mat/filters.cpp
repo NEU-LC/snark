@@ -129,6 +129,15 @@ static filters::value_type view_impl_( filters::value_type m, std::string name, 
     return m;
 }
 
+static filters::value_type thumb_impl_( filters::value_type m, std::string name, unsigned int cols = 100, unsigned int delay = 1 )
+{
+    filters::value_type n;
+    cv::resize( m.second, n.second, cv::Size( cols, m.second.rows * ( double( cols ) / m.second.cols ) ) );
+    cv::imshow( name.c_str(), n.second );
+    char c = cv::waitKey( delay );
+    return c == 27 ? filters::value_type() : m; // HACK to notify application to exit
+}
+
 static filters::value_type cross_impl_( filters::value_type m, boost::optional< Eigen::Vector2i > xy )
 {
     if( !xy )
@@ -404,6 +413,15 @@ std::vector< filter > filters::make( const std::string& how )
             unsigned int delay = e.size() == 1 ? 1 : boost::lexical_cast< unsigned int >( e[1] );
             f.push_back( filter( boost::bind( &view_impl_, _1, name, delay ), false ) );
         }
+        else if( e[0] == "thumb" )
+        {
+            switch( e.size() )
+            {
+                case 1: f.push_back( filter( boost::bind( &thumb_impl_, _1, name, 1, 100 ), false ) ); break;
+                case 2: f.push_back( filter( boost::bind( &thumb_impl_, _1, name, 1, boost::lexical_cast< unsigned int >( e[1] ) ), false ) ); break;
+                default: f.push_back( filter( boost::bind( &thumb_impl_, _1, name, boost::lexical_cast< unsigned int >( e[1] ), boost::lexical_cast< unsigned int >( e[2] ) ), false ) ); break;
+            }
+        }
         else if( e[0] == "encode" )
         {
             if( e.size() < 2 ) { COMMA_THROW( comma::exception, "expected encoding type like jpg, ppm, etc" ); }
@@ -458,6 +476,9 @@ static std::string usage_impl_()
     oss << "            resize=0.5,1024 : 50% of width; heigth 1024 pixels" << std::endl;
     oss << "            note: if no decimal dot '.', size is in pixels; if decimal dot present, size as a fraction" << std::endl;
     oss << "                  i.e. 5 means 5 pixels; 5.0 means 5 times" << std::endl;
+    oss << "        thumb[=<cols>[,<wait-interval>]]: view resized image; a convenience for debugging and filter pipeline monitoring" << std::endl;
+    oss << "                                          <cols>: image width in pixels; default: 100" << std::endl;
+    oss << "                                          <wait-interval>: a hack for now; milliseconds to wait for image display and key press; default: 1" << std::endl;
     oss << "        timestamp: write timestamp on images" << std::endl;
     oss << "        transpose: transpose the image (swap rows and columns)" << std::endl;
     oss << "        undistort=<map file>: undistort" << std::endl;
