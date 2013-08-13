@@ -79,16 +79,23 @@ TEST( spherical_grid, bearing_elevation_grid_elevation_index )
 
 TEST( bearing_index, bearing_wraparound_mapping )
 {
-    double step = 1.25 * one_degree;
+    const double step = 1.25 * one_degree;
+    const double epsilon = 0.000001;
     bearing_elevation_grid::bearing_index index( step );
-    unsigned int i = 0;
-    for( double angle = -M_PI; angle < M_PI; ++i, angle += step ) { EXPECT_EQ( i, index( angle ) ); }
+    unsigned int size = 360 / 1.25;
+    double angle = -M_PI;
+    for( unsigned int i = 0; i < size; ++i, angle += step ) { EXPECT_EQ( i, index( angle ) ); }
 
     EXPECT_EQ( 0, index( -M_PI ) );
+    EXPECT_EQ( 0, index( -M_PI + epsilon ) );
     EXPECT_EQ( 1, index( -M_PI + step ) );
+    EXPECT_EQ( 143, index( 0 - epsilon ) );
     EXPECT_EQ( 144, index( 0 ) );
+    EXPECT_EQ( 144, index( 0 + epsilon ) );
     EXPECT_EQ( 287, index( M_PI - step ) );
+    EXPECT_EQ( 287, index( M_PI - epsilon ) );
     EXPECT_EQ( 0, index( M_PI ) );
+    EXPECT_EQ( 0, index( M_PI + epsilon ) );
     EXPECT_EQ( 1, index( M_PI + step ) ); /// Wrapping around
     EXPECT_EQ( 144, index( 2 * M_PI) );
     EXPECT_EQ( 0, index( 3 * M_PI) );
@@ -199,7 +206,7 @@ TEST( bearing_index, get_bounds )
         EXPECT_EQ( 1, b.upper_index);
         EXPECT_NEAR( 0.000046, b.scaled_distance, epsilon);
     }
-    
+
     /// Test bearing_index using a step of one degree rather than 1.25 degree
     {
         bearing_elevation_grid::bearing_index index(-M_PI, one_degree );
@@ -208,7 +215,7 @@ TEST( bearing_index, get_bounds )
         EXPECT_EQ( 0, b.upper_index );
         EXPECT_NEAR( ( one_degree - 0.00001 ) / one_degree, b.scaled_distance, epsilon );
     }
-    
+
     /// Test bearing_index that has a begin value of 0 rather than -PI
     {
         double step = 1.25 * one_degree;
@@ -224,7 +231,7 @@ TEST( bearing_index, get_bounds )
             EXPECT_NEAR( 0, b.scaled_distance, epsilon);
         }
     }
-    
+
     /// Test bearing_index that has a begin value of PI/2 rather than -PI
     {
         double step = 1.25 * one_degree;

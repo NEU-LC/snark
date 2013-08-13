@@ -56,7 +56,8 @@ bearing_elevation_grid::index::type bearing_elevation_grid::index::operator()( d
 static std::size_t rounded( double d )
 {
     double c = std::ceil( d );
-    return static_cast< std::size_t >( ( c - d ) < 1e-6 ? c : std::floor( d ) );
+    return static_cast< std::size_t >( ( c - d ) < 1e-6 ? c : std::floor( d ) ); // quick and dirty; epsilon should be sufficient for practical reasons
+    //return static_cast< std::size_t >( ( c - d ) < std::numeric_limits< double >::epsilon() ? c : std::floor( d ) );
 }
 
 bearing_elevation_grid::index::type bearing_elevation_grid::index::operator()( const snark::bearing_elevation& v ) const
@@ -66,6 +67,8 @@ bearing_elevation_grid::index::type bearing_elevation_grid::index::operator()( c
     double de = v.e() - begin_.e();
     if( comma::math::less( de, 0 ) ) { COMMA_THROW( comma::exception, "expected elevation greater than " << begin_.e() << "; got " << v.e() ); }
     index::type i = {{ rounded( db / resolution_.b() ), rounded( de / resolution_.e() ) }};
+    std::size_t max_bearing_index = M_PI * 2 / resolution_.b();
+    if( i[0] >= max_bearing_index ) { i[0] -= max_bearing_index; } // quick and dirty
     return i;
 }
 

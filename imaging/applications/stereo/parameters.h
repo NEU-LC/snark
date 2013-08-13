@@ -44,7 +44,7 @@ namespace snark { namespace imaging {
 struct camera_parameters
 {
     camera_parameters() : focal_length("0,0"),center("0,0"),distortion("0,0,0,0,0"),rotation("0,0,0"),translation("0,0,0"),size("0,0"){}
-    
+
     std::string focal_length;
     std::string center;
     std::string distortion;
@@ -59,7 +59,7 @@ class camera_parser
 {
 public:
     typedef Eigen::Matrix< double, 5, 1 > Vector5d;
-    
+
     camera_parser( const std::string& file, const std::string& path );
 
     const Eigen::Matrix3d& camera() const { return m_camera; }
@@ -69,7 +69,7 @@ public:
     const cv::Mat& map_x() const { return m_map_x; }
     const cv::Mat& map_y() const { return m_map_y; }
     bool has_map() const { return ( m_map_x.cols != 0 ); }
-    
+
 private:
     Eigen::Matrix3d m_camera;
     Vector5d m_distortion;
