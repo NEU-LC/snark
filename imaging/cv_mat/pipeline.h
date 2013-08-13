@@ -61,28 +61,33 @@ namespace imaging { namespace applications {
 /// base class for video processing, capture images in a serarate thread, apply filters, serialize to stdout
 class pipeline
 {
-public:
-    typedef std::pair< boost::posix_time::ptime, cv::Mat > pair;
-    pipeline( cv_mat::serialization& output
-            , const std::string& filters
-            , tbb::bursty_reader< pair >& reader
-            , unsigned int number_of_threads = 0 );
+    public:
+        typedef std::pair< boost::posix_time::ptime, cv::Mat > pair;
+        
+        pipeline( cv_mat::serialization& output
+                , const std::string& filters
+                , tbb::bursty_reader< pair >& reader
+                , unsigned int number_of_threads = 0 );
+        
+        pipeline( cv_mat::serialization& output
+                , const std::vector< cv_mat::filter >& filters
+                , tbb::bursty_reader< pair >& reader
+                , unsigned int number_of_threads = 0 );
 
-    void run();
+        void run();
 
-protected:
-    void write_( pair p );
-    void null_( pair p );
-    void setup_pipeline_( const std::string& filters );
+    protected:
+        void write_( pair p );
+        void null_( pair p );
+        void setup_pipeline_();
 
-    cv_mat::serialization& m_output;
-    ::tbb::filter_t< pair, void > m_filter;
-    std::vector< cv_mat::filter > m_filters;
-    tbb::bursty_reader< pair >& m_reader;
-    tbb::bursty_pipeline< pair > m_pipeline;
-    //comma::signal_flag is_shutdown_; // todo: tear it down, if cv-cat, gige-cat, and fire-cat work
-};
-
+        cv_mat::serialization& m_output;
+        ::tbb::filter_t< pair, void > m_filter;
+        std::vector< cv_mat::filter > m_filters;
+        tbb::bursty_reader< pair >& m_reader;
+        tbb::bursty_pipeline< pair > m_pipeline;
+        //comma::signal_flag is_shutdown_; // todo: tear it down, if cv-cat, gige-cat, and fire-cat work
+    };
 
 } } }
 

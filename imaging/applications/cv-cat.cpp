@@ -172,16 +172,9 @@ int main( int argc, char** argv )
         if( vm.count( "file" ) + vm.count( "camera" ) + vm.count( "id" ) > 1 ) { std::cerr << "cv-cat: --file, --camera, and --id are mutually exclusive" << std::endl; return 1; }
         if( vm.count( "discard" ) ) { discard = 1; }
         snark::cv_mat::serialization::options input_options = comma::name_value::parser( ';', '=' ).get< snark::cv_mat::serialization::options >( input_options_string );
-        snark::cv_mat::serialization::options output_options;
-        if( output_options_string.empty() )
-        {
-            output_options = input_options;
-        }
-        else
-        {
-            output_options = comma::name_value::parser( ';', '=' ).get< snark::cv_mat::serialization::options >( output_options_string );
-        }
-
+        snark::cv_mat::serialization::options output_options = output_options_string.empty()
+                                                             ? input_options
+                                                             : comma::name_value::parser( ';', '=' ).get< snark::cv_mat::serialization::options >( output_options_string );
         std::vector< std::string > filterStrings = boost::program_options::collect_unrecognized( parsed.options, boost::program_options::include_positional );
         std::string filters;
         if( filterStrings.size() == 1 ) { filters = filterStrings[0]; }
@@ -210,7 +203,8 @@ int main( int argc, char** argv )
         {
             reader.reset( new bursty_reader< pair >( boost::bind( &read, boost::ref( input ), boost::ref( rate ) ), discard, capacity ) );
         }
-        snark::imaging::applications::pipeline pipeline( output, filters, *reader, number_of_threads );
+        const unsigned int default_delay = vm.count( "file" ) == 0 ? 1 : 200; // HACK to make view work on single files
+        snark::imaging::applications::pipeline pipeline( output, snark::cv_mat::filters::make( filters, default_delay ), *reader, number_of_threads );
         pipeline.run();
         if( vm.count( "stay" ) )
         {

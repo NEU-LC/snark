@@ -117,7 +117,7 @@ static filters::value_type split_impl_( filters::value_type m )
 
 static filters::value_type view_impl_( filters::value_type m, std::string name, unsigned int delay )
 {
-    cv::imshow( name.c_str(), m.second );
+    cv::imshow( &name[0], m.second );
     char c = cv::waitKey( delay );
     if( c == 27 ) { return filters::value_type(); } // HACK to notify application to exit
     if( c == ' ' )
@@ -131,9 +131,11 @@ static filters::value_type view_impl_( filters::value_type m, std::string name, 
 
 static filters::value_type thumb_impl_( filters::value_type m, std::string name, unsigned int cols = 100, unsigned int delay = 1 )
 {
-    filters::value_type n;
-    cv::resize( m.second, n.second, cv::Size( cols, m.second.rows * ( double( cols ) / m.second.cols ) ) );
-    cv::imshow( name.c_str(), n.second );
+    cv::Mat n;
+    unsigned int rows = m.second.rows * ( double( cols ) / m.second.cols );
+    if( rows == 0 ) { rows = 1; }
+    cv::resize( m.second, n, cv::Size( cols, rows ) );
+    cv::imshow( &name[0], n );
     char c = cv::waitKey( delay );
     return c == 27 ? filters::value_type() : m; // HACK to notify application to exit
 }
@@ -263,7 +265,7 @@ class max_impl_ // experimental, to debug
         std::deque< filters::value_type > deque_; // use vector?
 };
 
-std::vector< filter > filters::make( const std::string& how )
+std::vector< filter > filters::make( const std::string& how, unsigned int default_delay )
 {
     std::vector< std::string > v = comma::split( how, ';' );
     std::vector< filter > f;
@@ -410,17 +412,20 @@ std::vector< filter > filters::make( const std::string& how )
         }
         else if( e[0] == "view" )
         {
-            unsigned int delay = e.size() == 1 ? 1 : boost::lexical_cast< unsigned int >( e[1] );
+            unsigned int delay = e.size() == 1 ? default_delay : boost::lexical_cast< unsigned int >( e[1] );
             f.push_back( filter( boost::bind( &view_impl_, _1, name, delay ), false ) );
         }
         else if( e[0] == "thumb" )
         {
-            switch( e.size() )
+            unsigned int cols = 200;
+            unsigned int delay = default_delay;
+            if( e.size() > 1 )
             {
-                case 1: f.push_back( filter( boost::bind( &thumb_impl_, _1, name, 100, 1 ), false ) ); break;
-                case 2: f.push_back( filter( boost::bind( &thumb_impl_, _1, name, boost::lexical_cast< unsigned int >( e[1] ), 1 ), false ) ); break;
-                default: f.push_back( filter( boost::bind( &thumb_impl_, _1, name, boost::lexical_cast< unsigned int >( e[1] ), boost::lexical_cast< unsigned int >( e[2] ) ), false ) ); break;
-            }
+                std::vector< std::string > v = comma::split( e[1], ',' );
+                if( v.size() >= 1 ) { cols = boost::lexical_cast< unsigned int >( v[0] ); }
+                if( v.size() >= 2 ) { delay = boost::lexical_cast< unsigned int >( v[1] ); }
+            }   
+            f.push_back( filter( boost::bind( &thumb_impl_, _1, name, cols, delay ), false ) );
         }
         else if( e[0] == "encode" )
         {
@@ -438,6 +443,7 @@ std::vector< filter > filters::make( const std::string& how )
         else if( e[0] == "null" )
         {
             if( ( i + 1 ) != v.size() ) { COMMA_THROW( comma::exception, "expected 'null' as the last filter, got \"" << how << "\"" ); }
+            if( i == 0 ) { COMMA_THROW( comma::exception, "'null' as the only filter is not supported; use cv-cat > /dev/null, if you need" ); }
             f.push_back( filter( NULL ) );
         }
         else

@@ -48,11 +48,23 @@ pipeline::pipeline( cv_mat::serialization& output
                   , tbb::bursty_reader< pair >& reader
                   , unsigned int number_of_threads )
     : m_output( output )
+    , m_filters( snark::cv_mat::filters::make( filters ) )
     , m_reader( reader )
     , m_pipeline( number_of_threads )
-    //, is_shutdown_( comma::signal_flag::hard )
 {
-    setup_pipeline_( filters );
+    setup_pipeline_();
+}
+
+pipeline::pipeline( cv_mat::serialization& output
+                  , const std::vector< cv_mat::filter >& filters
+                  , tbb::bursty_reader< pair >& reader
+                  , unsigned int number_of_threads )
+    : m_output( output )
+    , m_filters( filters )
+    , m_reader( reader )
+    , m_pipeline( number_of_threads )
+{
+    setup_pipeline_();
 }
 
 /// write frame to std out
@@ -80,9 +92,8 @@ void pipeline::null_( pair p )
 
 /// setup the pipeline
 /// @param filters name-value string describing the filters
-void pipeline::setup_pipeline_( const std::string& filters )
+void pipeline::setup_pipeline_()
 {
-    m_filters = snark::cv_mat::filters::make( filters );
     if( m_filters.empty() )
     {
         m_filter = ::tbb::filter_t< pair, void >( ::tbb::filter::serial_in_order, boost::bind( &pipeline::write_, this, _1 ) );
@@ -107,10 +118,7 @@ void pipeline::setup_pipeline_( const std::string& filters )
 }
 
 /// run the pipeline
-void pipeline::run()
-{
-    m_pipeline.run( m_reader, m_filter );
-}
+void pipeline::run() { m_pipeline.run( m_reader, m_filter ); }
 
 } } }
 
