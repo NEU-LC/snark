@@ -417,8 +417,8 @@ std::vector< filter > filters::make( const std::string& how )
         {
             switch( e.size() )
             {
-                case 1: f.push_back( filter( boost::bind( &thumb_impl_, _1, name, 1, 100 ), false ) ); break;
-                case 2: f.push_back( filter( boost::bind( &thumb_impl_, _1, name, 1, boost::lexical_cast< unsigned int >( e[1] ) ), false ) ); break;
+                case 1: f.push_back( filter( boost::bind( &thumb_impl_, _1, name, 100, 1 ), false ) ); break;
+                case 2: f.push_back( filter( boost::bind( &thumb_impl_, _1, name, boost::lexical_cast< unsigned int >( e[1] ), 1 ), false ) ); break;
                 default: f.push_back( filter( boost::bind( &thumb_impl_, _1, name, boost::lexical_cast< unsigned int >( e[1] ), boost::lexical_cast< unsigned int >( e[2] ) ), false ) ); break;
             }
         }
