@@ -444,7 +444,7 @@ std::vector< filter > filters::make( const std::string& how )
         {
             COMMA_THROW( comma::exception, "expected filter, got \"" << v[i] << "\"" );
         }
-        modified = ( v[i] != "view" && v[i] != "split" );
+        modified = ( v[i] != "view" && v[i] != "thumb" && v[i] != "split" );
     }
     return f;
 }
