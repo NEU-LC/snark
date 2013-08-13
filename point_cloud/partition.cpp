@@ -63,14 +63,7 @@ class partition::impl_
                    , comma::uint32 min_id
                    , double min_density )
         {
-            for( voxels_type_::iterator it = voxels_.begin(); it != voxels_.end(); ++it )
-            { 
-                if( it->count < min_points_per_voxel_ )
-                { 
-                    it->count = 0;
-                    it->id.reset();
-                }
-            }
+            for( voxels_type_::iterator it = voxels_.begin(); it != voxels_.end(); ++it ) { if( it->count < min_points_per_voxel_ ) { it->count = 0; } }
             typedef std::list< voxels_type_::iterator > Set;
             typedef std::map< comma::uint32, Set > partitions;
             typedef voxels_type_::iterator It;
@@ -101,7 +94,7 @@ class partition::impl_
             std::size_t count;
             bool visited;
 
-            voxel_() : id( 0 ), count( 0 ), visited( false ) {}
+            voxel_() : count( 0 ), visited( false ) {}
         };
 
         struct Methods_
