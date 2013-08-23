@@ -105,8 +105,7 @@ int main( int ac, char** av )
             if( !input ) { break; }
             Line output = *input; // quick and dirty
             for( unsigned int i = 0; i < count; output.values[i] = ratio * output.values[i], ++i );
-            if( csv.binary() ) { ostream.binary().write( output, istream.binary().last() ); }
-            else { ostream.ascii().write( output, istream.ascii().last() ); }
+            ostream.write( output, istream );
         }
     }
     else

@@ -117,7 +117,7 @@ static filters::value_type split_impl_( filters::value_type m )
 
 static filters::value_type view_impl_( filters::value_type m, std::string name, unsigned int delay )
 {
-    cv::imshow( name.c_str(), m.second );
+    cv::imshow( &name[0], m.second );
     char c = cv::waitKey( delay );
     if( c == 27 ) { return filters::value_type(); } // HACK to notify application to exit
     if( c == ' ' )
@@ -127,6 +127,17 @@ static filters::value_type view_impl_( filters::value_type m, std::string name, 
         cv::imwrite( filename.str(), m.second );
     }
     return m;
+}
+
+static filters::value_type thumb_impl_( filters::value_type m, std::string name, unsigned int cols = 100, unsigned int delay = 1 )
+{
+    cv::Mat n;
+    unsigned int rows = m.second.rows * ( double( cols ) / m.second.cols );
+    if( rows == 0 ) { rows = 1; }
+    cv::resize( m.second, n, cv::Size( cols, rows ) );
+    cv::imshow( &name[0], n );
+    char c = cv::waitKey( delay );
+    return c == 27 ? filters::value_type() : m; // HACK to notify application to exit
 }
 
 static filters::value_type cross_impl_( filters::value_type m, boost::optional< Eigen::Vector2i > xy )
@@ -254,7 +265,7 @@ class max_impl_ // experimental, to debug
         std::deque< filters::value_type > deque_; // use vector?
 };
 
-std::vector< filter > filters::make( const std::string& how )
+std::vector< filter > filters::make( const std::string& how, unsigned int default_delay )
 {
     std::vector< std::string > v = comma::split( how, ';' );
     std::vector< filter > f;
@@ -401,8 +412,20 @@ std::vector< filter > filters::make( const std::string& how )
         }
         else if( e[0] == "view" )
         {
-            unsigned int delay = e.size() == 1 ? 1 : boost::lexical_cast< unsigned int >( e[1] );
+            unsigned int delay = e.size() == 1 ? default_delay : boost::lexical_cast< unsigned int >( e[1] );
             f.push_back( filter( boost::bind( &view_impl_, _1, name, delay ), false ) );
+        }
+        else if( e[0] == "thumb" )
+        {
+            unsigned int cols = 200;
+            unsigned int delay = default_delay;
+            if( e.size() > 1 )
+            {
+                std::vector< std::string > v = comma::split( e[1], ',' );
+                if( v.size() >= 1 ) { cols = boost::lexical_cast< unsigned int >( v[0] ); }
+                if( v.size() >= 2 ) { delay = boost::lexical_cast< unsigned int >( v[1] ); }
+            }   
+            f.push_back( filter( boost::bind( &thumb_impl_, _1, name, cols, delay ), false ) );
         }
         else if( e[0] == "encode" )
         {
@@ -420,13 +443,14 @@ std::vector< filter > filters::make( const std::string& how )
         else if( e[0] == "null" )
         {
             if( ( i + 1 ) != v.size() ) { COMMA_THROW( comma::exception, "expected 'null' as the last filter, got \"" << how << "\"" ); }
+            if( i == 0 ) { COMMA_THROW( comma::exception, "'null' as the only filter is not supported; use cv-cat > /dev/null, if you need" ); }
             f.push_back( filter( NULL ) );
         }
         else
         {
             COMMA_THROW( comma::exception, "expected filter, got \"" << v[i] << "\"" );
         }
-        modified = ( v[i] != "view" && v[i] != "split" );
+        modified = ( v[i] != "view" && v[i] != "thumb" && v[i] != "split" );
     }
     return f;
 }
@@ -458,6 +482,9 @@ static std::string usage_impl_()
     oss << "            resize=0.5,1024 : 50% of width; heigth 1024 pixels" << std::endl;
     oss << "            note: if no decimal dot '.', size is in pixels; if decimal dot present, size as a fraction" << std::endl;
     oss << "                  i.e. 5 means 5 pixels; 5.0 means 5 times" << std::endl;
+    oss << "        thumb[=<cols>[,<wait-interval>]]: view resized image; a convenience for debugging and filter pipeline monitoring" << std::endl;
+    oss << "                                          <cols>: image width in pixels; default: 100" << std::endl;
+    oss << "                                          <wait-interval>: a hack for now; milliseconds to wait for image display and key press; default: 1" << std::endl;
     oss << "        timestamp: write timestamp on images" << std::endl;
     oss << "        transpose: transpose the image (swap rows and columns)" << std::endl;
     oss << "        undistort=<map file>: undistort" << std::endl;

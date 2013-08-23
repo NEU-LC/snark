@@ -57,7 +57,7 @@ struct filters
     typedef std::pair< boost::posix_time::ptime, cv::Mat > value_type;
 
     /// return filters from name-value string
-    static std::vector< filter > make( const std::string& how );
+    static std::vector< filter > make( const std::string& how, unsigned int default_delay = 1 );
 
     /// apply filters (a helper)
     static value_type apply( std::vector< filter >& filters, value_type m );

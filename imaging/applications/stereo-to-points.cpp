@@ -206,6 +206,17 @@ int main( int argc, char** argv )
 
         sgbm.fullDP = ( vm.count( "full-dp" ) );
         
+        if( !vm.count( "config" ) )
+        {
+            std::cerr << argv[0] << ": please specify --config file to read configuration parameters" << std::endl;
+            return 1;
+        }
+        if( !vm.count( "left-path" ) || !vm.count( "right-path" ) )
+        {
+            std::cerr << argv[0] << ": please specify --left-path and --right-path to read camera configuration parameters" << std::endl;
+            return 1;
+        }
+
         snark::imaging::camera_parser leftParameters( configFile, leftPath );
         snark::imaging::camera_parser rightParameters( configFile, rightPath );
 
