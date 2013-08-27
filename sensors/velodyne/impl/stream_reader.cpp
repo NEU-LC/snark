@@ -31,40 +31,50 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-#ifndef SNARK_SENSORS_VELODYNE_STDIN_READER_H_
-#define SNARK_SENSORS_VELODYNE_STDIN_READER_H_
-
-#ifndef WIN32
-#include <stdlib.h>
+#include <comma/base/exception.h>
+#include "./stream_reader.h"
+#include <snark/timing/time.h>
+#ifdef WIN32
+#include <fcntl.h>
+#include <io.h>
 #endif
-#include <boost/array.hpp>
-#include <comma/base/types.h>
-#include <boost/date_time/posix_time/posix_time.hpp>
 
 namespace snark {
 
-/// stdin reader
-class stdin_reader
+stream_reader::stream_reader( std::istream& is ) : istream_( is ), m_epoch( timing::epoch )
 {
-    public:
-        /// constructor
-        stdin_reader();
+    #ifdef WIN32
+    if( is == std::cin ) { _setmode( _fileno( stdin ), _O_BINARY ); }
+    #endif
+}
 
-        /// read and return pointer to the current packet; NULL, if end of file
-        const char* read();
-        
-        /// return current timestamp
-        const boost::posix_time::ptime& timestamp() const;
+stream_reader::stream_reader( const std::string& filename )
+    : ifstream_( new std::ifstream( &filename[0], std::ios::binary ) )
+    , istream_( *ifstream_ )
+    , m_epoch( timing::epoch )
+{
+    #ifdef WIN32
+    if( &is == &std::cin ) { _setmode( _fileno( stdin ), _O_BINARY ); }
+    #endif
+}
 
-    private:
-        enum{ payload_size = 1206 };
-        comma::uint64 m_microseconds;
-        boost::array< char, payload_size > m_packet;
-        boost::posix_time::ptime m_timestamp;
-        boost::posix_time::ptime m_epoch;
-};
+stream_reader::~stream_reader() { if( ifstream_ ) { ifstream_->close(); } }
+
+const char* stream_reader::read()
+{
+    istream_.read( reinterpret_cast< char* >( &m_microseconds ), sizeof( m_microseconds ) );
+    istream_.read( m_packet.data(), payload_size );
+    if( istream_.bad() || istream_.eof() ) { return NULL; }
+    comma::uint64 seconds = m_microseconds / 1000000; //to avoid time overflow on 32bit systems with boost::posix_time::microseconds( m_microseconds ), apparently due to a bug in boost
+    comma::uint64 microseconds = m_microseconds % 1000000;
+    m_timestamp = m_epoch + boost::posix_time::seconds( seconds ) + boost::posix_time::microseconds( microseconds );
+    return &m_packet[0];
+}
+
+const boost::posix_time::ptime& stream_reader::timestamp() const
+{
+    return m_timestamp;
+}
 
 } // namespace snark {
-
-#endif /*SNARK_SENSORS_VELODYNE_STDIN_READER_H_*/
 

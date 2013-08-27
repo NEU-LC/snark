@@ -53,7 +53,7 @@
 #include <snark/sensors/velodyne/thin/thin.h>
 #include <snark/sensors/velodyne/impl/pcap_reader.h>
 #include <snark/sensors/velodyne/impl/proprietary_reader.h>
-#include <snark/sensors/velodyne/impl/stdin_reader.h>
+#include <snark/sensors/velodyne/impl/stream_reader.h>
 #include <snark/sensors/velodyne/impl/stream_traits.h>
 #include <snark/sensors/velodyne/impl/udp_reader.h>
 #include <snark/sensors/velodyne/thin/scan.h>
@@ -272,7 +272,7 @@ int main( int ac, char** av )
         }
         else
         {
-            run( new snark::stdin_reader );
+            run( new snark::stream_reader );
         }
         return 0;
     }
