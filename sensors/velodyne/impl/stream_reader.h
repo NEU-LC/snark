@@ -31,40 +31,51 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-#include <comma/base/exception.h>
-#include "./stdin_reader.h"
-#include <snark/timing/time.h>
-#ifdef WIN32
-#include <fcntl.h>
-#include <io.h>
+#ifndef SNARK_SENSORS_VELODYNE_STREAM_READER_H_
+#define SNARK_SENSORS_VELODYNE_STREAM_READER_H_
+
+#ifndef WIN32
+#include <stdlib.h>
 #endif
+#include <fstream>
+#include <iostream>
+#include <boost/array.hpp>
+#include <boost/scoped_ptr.hpp>
+#include <comma/base/types.h>
+#include <boost/date_time/posix_time/posix_time.hpp>
 
 namespace snark {
 
-stdin_reader::stdin_reader():
-    m_epoch( timing::epoch )
+/// stream reader
+class stream_reader
 {
-    #ifdef WIN32
-    _setmode( _fileno( stdin ), _O_BINARY );
-    #endif
-}
+    public:
+        /// constructor
+        stream_reader( std::istream& is = std::cin );
 
-const char* stdin_reader::read()
-{
-    std::cin.read( reinterpret_cast< char* >( &m_microseconds ), sizeof( m_microseconds ) );
-    std::cin.read( m_packet.data(), payload_size );
-    if( std::cin.eof() ) { return NULL; }
-    comma::uint64 seconds = m_microseconds / 1000000; //to avoid time overflow on 32bit systems with boost::posix_time::microseconds( m_microseconds ), apparently due to a bug in boost
-    comma::uint64 microseconds = m_microseconds % 1000000;
-    m_timestamp = m_epoch + boost::posix_time::seconds( seconds ) + boost::posix_time::microseconds( microseconds );
-    return &m_packet[0];
-}
+        /// constructor
+        stream_reader( const std::string& filename );
 
+        /// destructor
+        ~stream_reader();
 
-const boost::posix_time::ptime& stdin_reader::timestamp() const
-{
-    return m_timestamp;    
-}
+        /// read and return pointer to the current packet; NULL, if end of file
+        const char* read();
+
+        /// return current timestamp
+        const boost::posix_time::ptime& timestamp() const;
+
+    private:
+        boost::scoped_ptr< std::ifstream > ifstream_;
+        std::istream& istream_;
+        enum{ payload_size = 1206 };
+        comma::uint64 m_microseconds;
+        boost::array< char, payload_size > m_packet;
+        boost::posix_time::ptime m_timestamp;
+        boost::posix_time::ptime m_epoch;
+};
 
 } // namespace snark {
+
+#endif /*SNARK_SENSORS_VELODYNE_STREAM_READER_H_*/
 

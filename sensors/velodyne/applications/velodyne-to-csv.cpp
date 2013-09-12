@@ -48,7 +48,7 @@
 #include <snark/sensors/velodyne/impl/proprietary_reader.h>
 #include <snark/sensors/velodyne/impl/thin_reader.h>
 #include <snark/sensors/velodyne/impl/udp_reader.h>
-#include <snark/sensors/velodyne/impl/stdin_reader.h>
+#include <snark/sensors/velodyne/impl/stream_reader.h>
 #include <snark/sensors/velodyne/impl/velodyne_stream.h>
 
 //#include <google/profiler.h>
@@ -207,7 +207,7 @@ int main( int ac, char** av )
         }
         else
         {
-            velodyne_stream< snark::stdin_reader > v( db, outputInvalidpoints, from, to );
+            velodyne_stream< snark::stream_reader > v( db, outputInvalidpoints, from, to );
             run( v, csv, min_range );
         }
         return 0;
