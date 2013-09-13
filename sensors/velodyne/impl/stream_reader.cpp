@@ -53,9 +53,6 @@ stream_reader::stream_reader( const std::string& filename )
     , istream_( *ifstream_ )
     , m_epoch( timing::epoch )
 {
-    #ifdef WIN32
-    if( &is == &std::cin ) { _setmode( _fileno( stdin ), _O_BINARY ); }
-    #endif
 }
 
 stream_reader::~stream_reader() { if( ifstream_ ) { ifstream_->close(); } }
