@@ -1,8 +1,8 @@
-#include "transforms.h"
+#include <snark/math/frame_transforms.h>
 
-namespace snark{
+namespace snark { namespace frame_transforms {
 
-Eigen::Matrix4d inverse_transform(Eigen::Matrix4d& T)
+Eigen::Matrix4d inverse_transform(const Eigen::Matrix4d& T)
 {
     return homogeneous_transform(T.topLeftCorner(3,3).transpose(),-T.topLeftCorner(3,3).transpose()*T.topRightCorner(3,1));
 }
@@ -16,14 +16,14 @@ Eigen::Matrix4d homogeneous_transform(const Eigen::Matrix3d& R, const Eigen::Vec
     return _T;
 }
 
-Eigen::Matrix4d dh_to_matrix(dh_transform T_dh)
+Eigen::Matrix4d dh_to_matrix(const dh_transform& T_dh)
 {
     Eigen::Matrix4d T;
     T<<cos(T_dh.theta), -sin(T_dh.theta)*cos(T_dh.alpha), sin(T_dh.theta)*sin(T_dh.alpha), T_dh.r*cos(T_dh.theta), sin(T_dh.theta), cos(T_dh.theta)*cos(T_dh.alpha), -cos(T_dh.theta)*sin(T_dh.alpha), T_dh.r*sin(T_dh.theta), 0,  sin(T_dh.alpha), cos(T_dh.alpha), T_dh.d, 0, 0, 0, 1;
     return T;
 }
 
-tr_transform dh_to_tr(dh_transform T_dh)
+tr_transform dh_to_tr(const dh_transform& T_dh)
 {
     tr_transform T;
     double alpha=T_dh.alpha;
@@ -38,4 +38,4 @@ tr_transform dh_to_tr(dh_transform T_dh)
     return T;
 }
 
-}
+} } // namespace snark { namespace frame_transforms {

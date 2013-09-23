@@ -1,9 +1,9 @@
 #include <iostream>
 #include <gtest/gtest.h>
-#include "../transforms.h"
+#include "../frame_transforms.h"
 #include <boost/math/constants/constants.hpp>
 
-using namespace snark;
+using namespace snark::frame_transforms;
 
 TEST(transforms, dh_to_matrix)
 {

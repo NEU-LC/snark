@@ -4,9 +4,9 @@
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 
-namespace snark{
+namespace snark { namespace frame_transforms {
 
-///D-H transform for robotic link
+///Denavit-Hartenberg parameters for robotic link
 struct dh_transform
 {
     dh_transform() : d(0), theta(0), r(0), alpha(0) {}
@@ -24,17 +24,17 @@ struct tr_transform
 };
 
 /// inverts a homogeneous transform using transpose formula
-Eigen::Matrix4d inverse_transform(Eigen::Matrix4d& T);
+Eigen::Matrix4d inverse_transform(const Eigen::Matrix4d& T);
 
 /// provides the homogeneous transform from rotation matrix and translation vector
 Eigen::Matrix4d homogeneous_transform(const Eigen::Matrix3d& R, const Eigen::Vector3d& t);
 
 /// provides the homogeneous transform from the dh parameters
-Eigen::Matrix4d dh_to_matrix(dh_transform T_dh);
+Eigen::Matrix4d dh_to_matrix(const dh_transform& T_dh);
 
 /// dh to tr
-tr_transform dh_to_tr(dh_transform T_dh);
+tr_transform dh_to_tr(const dh_transform& T_dh);
 
-}
+} } // namespace snark { namespace frame_transforms {
 
 #endif // TRANSFORMS_H
