@@ -110,6 +110,7 @@ IF( snark_BUILD_TESTS )
     SET( GTEST_BOTH_LIBRARIES gtest gtest_main )
 ENDIF( snark_BUILD_TESTS )
 
+OPTION( snark_build_comms "build comms" ON )
 OPTION( snark_build_graphics "build graphics" ON )
 OPTION( snark_build_point_cloud "build point cloud" ON )
 OPTION( snark_build_imaging "build imaging" ON )
@@ -121,6 +122,7 @@ CMAKE_DEPENDENT_OPTION( snark_build_sensors_dc1394 "build dc1394 components" ON 
 CMAKE_DEPENDENT_OPTION( snark_build_sensors_gige "build gige components" OFF "snark_build_sensors" OFF )
 CMAKE_DEPENDENT_OPTION( snark_build_sensors_sick "build sick components" ON "snark_build_sensors" OFF )
 CMAKE_DEPENDENT_OPTION( snark_build_sensors_velodyne "build velodyne components" ON "snark_build_sensors" OFF )
+CMAKE_DEPENDENT_OPTION( snark_build_comms_pcan "build pcan components" ON "snark_build_comms" ON )
 
 IF( snark_build_imaging )
     IF( WIN32 )
@@ -198,6 +200,9 @@ IF( snark_build_actuators )
     ADD_SUBDIRECTORY( actuators )
 ENDIF( snark_build_actuators )
 
+IF( snark_build_comms )
+    ADD_SUBDIRECTORY( comms )
+ENDIF( snark_build_comms )
 
 IF( snark_build_graphics )
     ADD_SUBDIRECTORY( graphics )
