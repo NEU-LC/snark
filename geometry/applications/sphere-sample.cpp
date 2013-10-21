@@ -6,27 +6,38 @@
 #include <comma/application/signal_flag.h>
 #include <comma/csv/stream.h>
 #include <snark/math/range_bearing_elevation.h>
+#include <ctime>
 #include "aero/geometry/sample.h"
 #include "aero/geometry/traits.h"
 
 static void usage( bool verbose )
 {
-    std::cerr << std::endl;
-    std::cerr << "generate a sample on the whole sphere" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "usage: sphere-sample <options> > sample.csv"<< std::endl;
-    std::cerr << std::endl;
-    std::cerr << "options" << std::endl;
-    std::cerr << "    --random: random uniform sample" << std::endl;
-    std::cerr << "    --regular: regular grid sample" << std::endl;
-    std::cerr << "    --regular-uniform,--uniform: regular, but pretty uniform" << std::endl;
-    std::cerr << "    --resolution,-r=<value>: regular sample resolution in degrees" << std::endl;
+    std::cerr
+        << "Usage: sphere-sample"
+        <<      " [-h|--help [-v|--verbose]]"
+        <<      " (--random|--regular|--regular-uniform|--uniform)"
+        <<      " -r|--resolution=<value>"
+        <<      " [-t|--seed-time] "
+        <<      " [-s|--seed=<random-seed>]\n"
+        << "\n"
+        << "Generates a sample ever the whole sphere. Option --random or --regular[-uniform] must be specified,"
+        << " as well as option -r|--resolution.\n"
+        << "\n"
+        << "Options:\n"
+        << "\n"
+        << "    -h|--help                       Show this help (-v|--verbose to show csv options)\n"
+        << "    --random                        Random uniform sample\n"
+        << "    --regular                       Regular grid sample\n"
+        << "    --regular-uniform,--uniform     Regular, but pretty uniform\n"
+        << "    -r|--resolution=<value>         Sample resolution in degrees\n"
+        << "    -t|--seed-time                  Use current time as randum number seed\n"
+        << "    -s|--seed=<random-seed>         Specify randum number seed (an integer)\n";
+
     if( verbose )
     {
-        std::cerr << std::endl;
-        std::cerr << "csv options" << std::endl;
-        std::cerr << comma::csv::options::usage() << std::endl;
+        std::cerr << "\nCsv options:\n\n" << comma::csv::options::usage() << std::endl;
     }
+
     std::cerr << std::endl;
     exit( 1 );
 }
@@ -63,6 +74,21 @@ int main( int ac, char** av )
         if( random || regular_uniform )
         {
             boost::mt19937 generator;
+            boost::optional< unsigned long > seed;
+
+            if( options.exists( "--seed,-s" ) )
+            {
+                try { seed = options.value< unsigned long >( "--seed,-s" ); }
+                catch ( ... )
+                {
+                    std::cerr << av[0] << ": expected integer value for --seed\n";
+                    exit( 1 );
+                }
+            }
+            else
+            if ( options.exists( "--seed-time,-t" ) ) { seed = (unsigned long) std::time( 0 ); }
+
+            if ( seed ) { generator.seed( *seed ); }
             boost::uniform_real< double > distribution( 0, 1 );
             boost::variate_generator< boost::mt19937&, boost::uniform_real< double > > r( generator, distribution );
             aero::coordinates from( -M_PI / 2, -M_PI );
