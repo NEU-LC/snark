@@ -4,8 +4,8 @@
 #include <Eigen/Geometry>
 #include <comma/base/exception.h>
 #include <snark/math/range_bearing_elevation.h>
-#include "aero/geometry/circle.h"
-#include "aero/geometry/sample.h"
+#include "circle.h"
+#include "sample.h"
 
 namespace acfr { namespace aero {
 
