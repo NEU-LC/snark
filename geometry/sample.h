@@ -1,7 +1,7 @@
 #ifndef ACFR_AERO_GEOMETRY_SAMPLE_H_
 #define ACFR_AERO_GEOMETRY_SAMPLE_H_
 
-#include "aero/geometry/circle.h"
+#include "circle.h"
 
 namespace acfr { namespace aero {
 
