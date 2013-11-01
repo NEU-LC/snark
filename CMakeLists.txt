@@ -122,7 +122,6 @@ CMAKE_DEPENDENT_OPTION( snark_build_sensors_dc1394 "build dc1394 components" ON 
 CMAKE_DEPENDENT_OPTION( snark_build_sensors_gige "build gige components" OFF "snark_build_sensors" OFF )
 CMAKE_DEPENDENT_OPTION( snark_build_sensors_sick "build sick components" ON "snark_build_sensors" OFF )
 CMAKE_DEPENDENT_OPTION( snark_build_sensors_velodyne "build velodyne components" ON "snark_build_sensors" OFF )
-CMAKE_DEPENDENT_OPTION( snark_build_comms_pcan "build pcan components" ON "snark_build_comms" ON )
 
 IF( snark_build_imaging )
     IF( WIN32 )
