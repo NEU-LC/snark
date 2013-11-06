@@ -243,7 +243,7 @@ IF( WIN32 )
     SET(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/COPYING")
     SET(CPACK_PACKAGE_VERSION_MAJOR "1")
     SET(CPACK_PACKAGE_VERSION_MINOR "0")
-    SET(CPACK_PACKAGE_VERSION_PATCH "2")
+    SET(CPACK_PACKAGE_VERSION_PATCH "3")
 
     #this line finds the appropriate compiler dlls, e.g. Visual Studio DLLS in windows. Maybe it would find other dlls if a different build tool were used.
     INCLUDE( InstallRequiredSystemLibraries )
