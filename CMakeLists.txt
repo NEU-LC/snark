@@ -82,7 +82,7 @@ SET(snark_BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS})
 IF( NOT BUILD_SHARED_LIBS )
     SET( Boost_USE_STATIC_LIBS ON )
 ENDIF( NOT BUILD_SHARED_LIBS )
-FIND_PACKAGE( Boost COMPONENTS thread filesystem system serialization date_time )
+FIND_PACKAGE( Boost COMPONENTS thread filesystem system serialization date_time program_options )
 INCLUDE_DIRECTORIES( ${Boost_INCLUDE_DIRS} )
 LINK_DIRECTORIES( ${Boost_LIBRARY_DIRS} )
 
@@ -122,7 +122,6 @@ CMAKE_DEPENDENT_OPTION( snark_build_sensors_dc1394 "build dc1394 components" ON 
 CMAKE_DEPENDENT_OPTION( snark_build_sensors_gige "build gige components" OFF "snark_build_sensors" OFF )
 CMAKE_DEPENDENT_OPTION( snark_build_sensors_sick "build sick components" ON "snark_build_sensors" OFF )
 CMAKE_DEPENDENT_OPTION( snark_build_sensors_velodyne "build velodyne components" ON "snark_build_sensors" OFF )
-CMAKE_DEPENDENT_OPTION( snark_build_comms_pcan "build pcan components" ON "snark_build_comms" ON )
 
 IF( snark_build_imaging )
     IF( WIN32 )
@@ -173,7 +172,7 @@ IF(UNIX AND NOT QNXNTO AND NOT APPLE)
     SET( snark_ALL_EXTERNAL_LIBRARIES rt pthread )
 ENDIF(UNIX AND NOT QNXNTO AND NOT APPLE)
 
-SET( snark_ALL_EXTERNAL_LIBRARIES ${snark_ALL_EXTERNAL_LIBRARIES} ${comma_ALL_LIBRARIES} ${Boost_LIBRARIES} )
+SET( snark_ALL_EXTERNAL_LIBRARIES ${snark_ALL_EXTERNAL_LIBRARIES} ${comma_ALL_LIBRARIES} ${comma_ALL_EXTERNAL_LIBRARIES} ${Boost_LIBRARIES} )
 SET( snark_ALL_EXTERNAL_LIBRARIES ${snark_ALL_EXTERNAL_LIBRARIES} )
 SET( snark_ALL_LIBRARIES ${snark_ALL_LIBRARIES} ${snark_ALL_LIBRARIES} ${snark_ALL_EXTERNAL_LIBRARIES} ) # as gcc parses library list only once
 SET( snark_EXTERNAL_INCLUDES ${Boost_INCLUDE_DIRS} ${Eigen_INCLUDE_DIR} )
@@ -244,7 +243,7 @@ IF( WIN32 )
     SET(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/COPYING")
     SET(CPACK_PACKAGE_VERSION_MAJOR "1")
     SET(CPACK_PACKAGE_VERSION_MINOR "0")
-    SET(CPACK_PACKAGE_VERSION_PATCH "2")
+    SET(CPACK_PACKAGE_VERSION_PATCH "3")
 
     #this line finds the appropriate compiler dlls, e.g. Visual Studio DLLS in windows. Maybe it would find other dlls if a different build tool were used.
     INCLUDE( InstallRequiredSystemLibraries )
