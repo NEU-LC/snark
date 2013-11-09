@@ -157,6 +157,10 @@ SET( snark_ALL_LIBRARIES ${snark_ALL_LIBRARIES} debug snark_math-d
                          optimized snark_math
                          debug snark_timing-d
                          optimized snark_timing )
+IF( snark_build_actuators )
+SET( snark_ALL_LIBRARIES ${snark_ALL_LIBRARIES} debug snark_wheels-d
+                         optimized snark_wheels )
+ENDIF( snark_build_actuators )
 
 IF(WIN32)
     SET( snark_ALL_EXTERNAL_LIBRARIES Ws2_32.lib )

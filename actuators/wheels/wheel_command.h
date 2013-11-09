@@ -24,8 +24,6 @@ inline double rad2deg(double theta)
 }
 
 const double yaw_rate_tol = 0.1; // rad/s
-const double velocity_max = 10; //m/s
-const double yaw_rate_max = 90; //deg/s
 
 struct steer_command
 {
@@ -39,6 +37,7 @@ struct wheel_command
     double yaw;
 };
 
+/// returned yaw angle is in degrees
 wheel_command compute_wheel_command( const steer_command& desired , Eigen::Matrix4d wheel_pose_, double wheel_offset = 0 );
 
 }}//namespace snark{ namespace wheels{
