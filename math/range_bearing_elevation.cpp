@@ -52,9 +52,15 @@ double bearing_elevation::b( double b ) { return bearing( b ); }
 
 double bearing_elevation::e( double e ) { return elevation( e ); }
 
+static double mod_( double t, double m ) // quick and dirty, because std::fmod is ridiculously slow
+{
+    int r = std::abs( t / m );
+    return comma::math::less( t, 0 ) ? ( t + m * r ) : ( t - m * r );
+}
+
 double bearing_elevation::bearing( double t )
 {
-    double b( std::fmod( t, ( double )( M_PI * 2 ) ) );
+    double b( mod_( t, ( double )( M_PI * 2 ) ) ); //double b( std::fmod( t, ( double )( M_PI * 2 ) ) );
     if( !comma::math::less( b, M_PI ) ) { b -= ( M_PI * 2 ); }
     else if( comma::math::less( b, -M_PI ) ) { b += ( M_PI * 2 ); }
     bearing_ = b;
@@ -63,7 +69,7 @@ double bearing_elevation::bearing( double t )
 
 double bearing_elevation::elevation( double t )
 {
-    double e( std::fmod( t, ( double )( M_PI * 2 ) ) );
+    double e( mod_( t, ( double )( M_PI * 2 ) ) ); //double e( std::fmod( t, ( double )( M_PI * 2 ) ) );
     if( comma::math::less( e, 0 ) ) { e += M_PI * 2; }
     if( !comma::math::less( e, M_PI / 2 ) )
     {
