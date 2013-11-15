@@ -13,7 +13,9 @@ TEST(wheels, wheel_command_test)
     desired.velocity.y()=0;
     desired.yaw=10;
     wheel_command wheel_command_=compute_wheel_command(desired,wheel_pose);
-    std::cout<< "Front left wheel command for velocity: "<<desired.velocity.x()<<", "<<desired.velocity.y()<<" and turn rate "<<desired.yaw<<" is: "<<wheel_command_.velocity<<", "<<wheel_command_.yaw<<std::endl;
+
+    EXPECT_LT(fabs(wheel_command_.velocity+0.905587),1e-3);
+    EXPECT_LT(fabs(wheel_command_.yaw+52.7586),1e-3);
 }
 
 int main(int argc, char *argv[])

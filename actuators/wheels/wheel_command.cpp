@@ -7,15 +7,6 @@ using namespace frame_transforms;
 snark::wheels::wheel_command compute_wheel_command(const steer_command &desired , Eigen::Matrix4d wheel_pose_, double wheel_offset)
 {
     wheel_command command_;
-    if(desired.velocity.norm()>velocity_max)
-    {
-        COMMA_THROW( comma::exception,  "velocity must be between: " << -velocity_max << " and " << velocity_max << ", input value was: " << desired.velocity.norm());
-    }
-
-    if(fabs(desired.yaw)>yaw_rate_max)
-    {
-        COMMA_THROW( comma::exception, "yaw rate must be between " << -yaw_rate_max << " and " << yaw_rate_max << ", input value was: " << desired.yaw );
-    }
 
     //convert to radians first
     double yaw_rate=deg2rad(desired.yaw);
