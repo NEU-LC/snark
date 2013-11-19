@@ -157,7 +157,8 @@ class protocol::impl
                     if( first && m_istream->eof() ) { return false; }
                     first = false;
                     if( m_istream->eof() || m_istream->bad() ) { COMMA_THROW( comma::exception, "failed to synchronize, bad stream" ); }
-                    offset = m_header->data()[offset] == header::sentinel_value[offset] ? offset + 1 : 0;
+                    unsigned char header_byte = reinterpret_cast<const unsigned char*>( m_header->data() )[offset];
+                    offset = header_byte == header::sentinel_value[offset] ? offset + 1 : 0;
                 }
                 m_synchronized = true; // quick and dirty: synchronize once, should be enough
             }
