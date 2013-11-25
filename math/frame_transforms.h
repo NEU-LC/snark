@@ -30,6 +30,9 @@ Eigen::Matrix4d inverse_transform(const Eigen::Matrix4d& T);
 /// provides the homogeneous transform from rotation matrix and translation vector
 Eigen::Matrix4d homogeneous_transform(const Eigen::Matrix3d& R, const Eigen::Vector3d& t);
 
+/// converts homogeneous transform to tr
+tr_transform matrix_to_tr(const Eigen::Matrix4d& T);
+
 /// provides the homogeneous transform from the dh parameters
 Eigen::Matrix4d dh_to_matrix(const dh_transform& T_dh);
 
