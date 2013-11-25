@@ -82,7 +82,7 @@ dc1394::dc1394( const snark::camera::dc1394::config& config, unsigned int format
     m_format7_size( format7_size )
 {
     memset( &m_output_frame, 0, sizeof( m_output_frame ) );
-    m_output_frame.color_coding = DC1394_COLOR_CODING_MONO8;
+    m_output_frame.color_coding = DC1394_COLOR_CODING_RGB8;
     
     init_camera();
 
