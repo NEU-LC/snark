@@ -169,6 +169,37 @@ std::string frame_rate_to_string ( dc1394framerate_t frame_rate )
     }
 }
 
+std::string color_coding_to_string( dc1394color_coding_t color_coding )
+{
+    switch( color_coding )
+    {
+        case DC1394_COLOR_CODING_MONO8:
+            return "DC1394_COLOR_CODING_MONO8";
+        case DC1394_COLOR_CODING_YUV411:
+            return "DC1394_COLOR_CODING_YUV411";
+        case DC1394_COLOR_CODING_YUV422:
+            return "DC1394_COLOR_CODING_YUV422";
+        case DC1394_COLOR_CODING_YUV444:
+            return "DC1394_COLOR_CODING_YUV444";
+        case DC1394_COLOR_CODING_RGB8:
+            return "DC1394_COLOR_CODING_RGB8";
+        case DC1394_COLOR_CODING_MONO16:
+            return "DC1394_COLOR_CODING_MONO16";
+        case DC1394_COLOR_CODING_RGB16:
+            return "DC1394_COLOR_CODING_RGB16";
+        case DC1394_COLOR_CODING_MONO16S:
+            return "DC1394_COLOR_CODING_MONO16S";
+        case DC1394_COLOR_CODING_RGB16S:
+            return "DC1394_COLOR_CODING_RGB16S";
+        case DC1394_COLOR_CODING_RAW8:
+            return "DC1394_COLOR_CODING_RAW8";
+        case DC1394_COLOR_CODING_RAW16:
+            return "DC1394_COLOR_CODING_RAW16";
+        default:
+            COMMA_THROW( comma::exception, "invalid color coding");
+    }
+}
+
 dc1394video_mode_t video_mode_from_string ( const std::string& mode )
 {
     if( mode == "DC1394_VIDEO_MODE_160x120_YUV444" )
@@ -393,6 +424,58 @@ dc1394framerate_t frame_rate_from_string ( const std::string& frame_rate )
     }
 }
 
+dc1394color_coding_t color_coding_from_string( const std::string& color_coding )
+{
+    if( color_coding == "DC1394_COLOR_CODING_MONO8" )
+    {
+        return DC1394_COLOR_CODING_MONO8;
+    }
+    else if( color_coding == "DC1394_COLOR_CODING_YUV411" )
+    {
+        return DC1394_COLOR_CODING_YUV411;
+    }
+    else if( color_coding == "DC1394_COLOR_CODING_YUV422" )
+    {
+        return DC1394_COLOR_CODING_YUV422;
+    }
+    else if( color_coding == "DC1394_COLOR_CODING_YUV444" )
+    {
+        return DC1394_COLOR_CODING_YUV444;
+    }
+    else if( color_coding == "DC1394_COLOR_CODING_RGB8" )
+    {
+        return DC1394_COLOR_CODING_RGB8;
+    }
+    else if( color_coding == "DC1394_COLOR_CODING_MONO16" )
+    {
+        return DC1394_COLOR_CODING_MONO16;
+    }
+    else if( color_coding == "DC1394_COLOR_CODING_RGB16" )
+    {
+        return DC1394_COLOR_CODING_RGB16;
+    }
+    else if( color_coding == "DC1394_COLOR_CODING_MONO16S" )
+    {
+        return DC1394_COLOR_CODING_MONO16S;
+    }
+    else if( color_coding == "DC1394_COLOR_CODING_RGB16S" )
+    {
+        return DC1394_COLOR_CODING_RGB16S;
+    }
+    else if( color_coding == "DC1394_COLOR_CODING_RAW8" )
+    {
+        return DC1394_COLOR_CODING_RAW8;
+    }
+    else if( color_coding == "DC1394_COLOR_CODING_RAW16" )
+    {
+        return DC1394_COLOR_CODING_RAW16;
+    }
+    else
+    {
+        COMMA_THROW( comma::exception, "invalid color coding");
+    }
+}
+
 void print_video_modes()
 {
     for( unsigned int mode = DC1394_VIDEO_MODE_MIN; mode < DC1394_VIDEO_MODE_MAX; mode++  )
@@ -423,7 +506,12 @@ void print_frame_rates()
     }
 }
 
-
-
+void print_color_coding()
+{
+    for( unsigned int color_coding = DC1394_COLOR_CODING_MIN; color_coding < DC1394_COLOR_CODING_MAX; color_coding++  )
+    {
+        std::cerr << "\t" << color_coding_to_string( static_cast< dc1394color_coding_t >( color_coding ) ) << std::endl;
+    }
+}
 
 } } // namespace snark { namespace camera {

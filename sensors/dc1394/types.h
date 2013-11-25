@@ -43,16 +43,19 @@ std::string video_mode_to_string( dc1394video_mode_t mode );
 std::string operation_mode_to_string( dc1394operation_mode_t mode );
 std::string iso_speed_to_string( dc1394speed_t speed );
 std::string frame_rate_to_string( dc1394framerate_t frame_rate );
+std::string color_coding_to_string( dc1394color_coding_t coding );
 
 dc1394video_mode_t video_mode_from_string( const std::string& mode );
 dc1394operation_mode_t operation_mode_from_string( const std::string& mode );
 dc1394speed_t iso_speed_from_string( const std::string& speed );
 dc1394framerate_t frame_rate_from_string( const std::string& frame_rate );
+dc1394color_coding_t color_coding_from_string( const std::string& coding );
 
 void print_video_modes();
 void print_operation_modes();
 void print_iso_speeds();
 void print_frame_rates();
+void print_color_coding();
 
 } } // namespace snark { namespace camera {
 

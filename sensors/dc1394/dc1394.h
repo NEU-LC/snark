@@ -63,6 +63,7 @@ public:
         // TODO framerate is not used in format7, as the way to set the framerate is different.
         // see http://damien.douxchamps.net/ieee1394/libdc1394/v2.x/faq/#How_do_I_set_the_frame_rate
         dc1394framerate_t frame_rate;
+        dc1394color_coding_t color_coding;
         unsigned int relative_shutter;
         unsigned int relative_gain;
         float shutter; // 0 means do not change
@@ -74,7 +75,7 @@ public:
 // DC1394_FEATURE_SHUTTER,
 //   DC1394_FEATURE_GAIN,
     
-    dc1394( const config& config = config(), unsigned int format7_width = 0, unsigned int format7_height = 0, unsigned int format7_size = 8160);
+    dc1394( const config& config = config(), unsigned int format7_left = 0, unsigned int format7_top = 0, unsigned int format7_width = 0, unsigned int format7_height = 0, unsigned int format7_size = 8160);
     ~dc1394();
 
     const cv::Mat& read();
@@ -96,6 +97,7 @@ private:
     dc1394camera_t* m_camera;
     dc1394video_frame_t* m_frame;
     dc1394video_frame_t m_output_frame;
+    dc1394color_coding_t m_color_coding;
     cv::Mat m_image;
     const boost::posix_time::ptime m_epoch;
     boost::posix_time::ptime m_time;
@@ -104,6 +106,8 @@ private:
     boost::posix_time::time_duration m_frame_duration;
     unsigned int m_width;
     unsigned int m_height;
+    unsigned int m_format7_left;
+    unsigned int m_format7_top;
     unsigned int m_format7_width;
     unsigned int m_format7_height;
     unsigned int m_format7_size;
@@ -137,15 +141,18 @@ template <> struct traits< snark::camera::dc1394::config >
         std::string operation_mode;
         std::string iso_speed;
         std::string frame_rate;
+        std::string color_coding;
         v.apply( "video-mode", video_mode );
         v.apply( "operation-mode", operation_mode );
         v.apply( "iso-speed", iso_speed );
         v.apply( "frame-rate", frame_rate );
+        v.apply( "color-coding", color_coding );
 
         c.video_mode = snark::camera::video_mode_from_string( video_mode );
         c.operation_mode = snark::camera::operation_mode_from_string( operation_mode );
         c.iso_speed = snark::camera::iso_speed_from_string( iso_speed );
         c.frame_rate = snark::camera::frame_rate_from_string( frame_rate );
+        c.color_coding = snark::camera::color_coding_from_string( color_coding );
 
         v.apply( "relative-shutter", c.relative_shutter );
         v.apply( "relative-gain", c.relative_gain );
@@ -177,11 +184,13 @@ template <> struct traits< snark::camera::dc1394::config >
         std::string operation_mode = snark::camera::operation_mode_to_string( c.operation_mode );
         std::string iso_speed = snark::camera::iso_speed_to_string( c.iso_speed );
         std::string frame_rate = snark::camera::frame_rate_to_string( c.frame_rate );
+        std::string color_coding = snark::camera::color_coding_to_string( c.color_coding );
 
         v.apply( "video-mode", video_mode );
         v.apply( "operation-mode", operation_mode );
         v.apply( "iso-speed", iso_speed );
         v.apply( "frame-rate", frame_rate );
+        v.apply( "color-coding", color_coding );
         v.apply( "relative-shutter", c.relative_shutter );
         v.apply( "relative-gain", c.relative_gain );
         v.apply( "shutter", c.shutter );
