@@ -146,13 +146,13 @@ template <> struct traits< snark::camera::dc1394::config >
         v.apply( "operation-mode", operation_mode );
         v.apply( "iso-speed", iso_speed );
         v.apply( "frame-rate", frame_rate );
-        v.apply( "color-coding", color_coding );
+        // v.apply( "color-coding", color_coding );
 
         c.video_mode = snark::camera::video_mode_from_string( video_mode );
         c.operation_mode = snark::camera::operation_mode_from_string( operation_mode );
         c.iso_speed = snark::camera::iso_speed_from_string( iso_speed );
         c.frame_rate = snark::camera::frame_rate_from_string( frame_rate );
-        c.color_coding = snark::camera::color_coding_from_string( color_coding );
+        // c.color_coding = snark::camera::color_coding_from_string( color_coding );
 
         v.apply( "relative-shutter", c.relative_shutter );
         v.apply( "relative-gain", c.relative_gain );
@@ -184,13 +184,13 @@ template <> struct traits< snark::camera::dc1394::config >
         std::string operation_mode = snark::camera::operation_mode_to_string( c.operation_mode );
         std::string iso_speed = snark::camera::iso_speed_to_string( c.iso_speed );
         std::string frame_rate = snark::camera::frame_rate_to_string( c.frame_rate );
-        std::string color_coding = snark::camera::color_coding_to_string( c.color_coding );
+        // std::string color_coding = snark::camera::color_coding_to_string( c.color_coding );
 
         v.apply( "video-mode", video_mode );
         v.apply( "operation-mode", operation_mode );
         v.apply( "iso-speed", iso_speed );
         v.apply( "frame-rate", frame_rate );
-        v.apply( "color-coding", color_coding );
+        // v.apply( "color-coding", color_coding );
         v.apply( "relative-shutter", c.relative_shutter );
         v.apply( "relative-gain", c.relative_gain );
         v.apply( "shutter", c.shutter );

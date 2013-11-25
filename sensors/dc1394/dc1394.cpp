@@ -342,9 +342,12 @@ void dc1394::setup_camera_format7()
         COMMA_THROW( comma::exception, "could not set video mode" );
     }
     
+    dc1394color_coding_t color;
+    dc1394_format7_get_color_coding( m_camera, m_config.video_mode, &color );
+
     if( m_format7_width != 0 )
     {
-        dc1394color_coding_t roi_color_coding = DC1394_COLOR_CODING_RAW8;
+        dc1394color_coding_t roi_color_coding = color;
         unsigned int roi_packet_size = m_format7_size;
         unsigned int roi_left = m_format7_left;
         unsigned int roi_top = m_format7_top;
@@ -388,8 +391,6 @@ void dc1394::setup_camera_format7()
     {
         COMMA_THROW( comma::exception, "could not get packet size" );
     }
-    dc1394color_coding_t color;
-    dc1394_format7_get_color_coding( m_camera, m_config.video_mode, &color );
     // HACK packet sizes higher than 8160 don't seem to work with the ladybug
     // setting it to 8160 by hand works but the frame rate is only about 5 fps
     // TODO fix to be able to set DC1394_QUERY_FROM_CAMERA again and maybe higher framerate
