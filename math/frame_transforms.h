@@ -3,7 +3,6 @@
 
 #include <Eigen/Core>
 #include <Eigen/Geometry>
-#include <comma/visiting/traits.h>
 
 namespace snark { namespace frame_transforms {
 
@@ -38,24 +37,5 @@ Eigen::Matrix4d dh_to_matrix(const dh_transform& T_dh);
 tr_transform dh_to_tr(const dh_transform& T_dh);
 
 }} // namespace snark { namespace frame_transforms {
-
-namespace comma { namespace visiting {
-
-template <> struct traits< snark::frame_transforms::tr_transform >
-{
-    template< typename K, typename V > static void visit( const K& k, snark::frame_transforms::tr_transform& t, V& v )
-    {
-        v.apply( "translation", t.translation );
-        v.apply( "rotation", t.rotation );
-    }
-
-    template< typename K, typename V > static void visit( const K& k, const snark::frame_transforms::tr_transform& t, V& v )
-    {
-        v.apply( "translation", t.translation );
-        v.apply( "rotation", t.rotation );
-    }
-};
-
-}} // namespace comma { namespace visiting {
 
 #endif // TRANSFORMS_H
