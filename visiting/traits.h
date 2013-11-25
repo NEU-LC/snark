@@ -38,6 +38,7 @@
 #include <comma/visiting/visit.h>
 #include <snark/math/interval.h>
 #include <snark/math/range_bearing_elevation.h>
+#include <snark/math/frame_transforms.h>
 #include <snark/visiting/eigen.h>
 
 namespace comma { namespace visiting {
@@ -91,6 +92,21 @@ struct traits< snark::math::closed_interval< T, D > >
         if( p ) { max = p.max(); } // quick and dirty
         v.apply( "max", max );
         p = snark::math::closed_interval< T, D >( min, max );
+    }
+};
+
+template <> struct traits< snark::frame_transforms::tr_transform >
+{
+    template< typename K, typename V > static void visit( const K& k, snark::frame_transforms::tr_transform& t, V& v )
+    {
+        v.apply( "translation", t.translation );
+        v.apply( "rotation", t.rotation );
+    }
+
+    template< typename K, typename V > static void visit( const K& k, const snark::frame_transforms::tr_transform& t, V& v )
+    {
+        v.apply( "translation", t.translation );
+        v.apply( "rotation", t.rotation );
     }
 };
 
