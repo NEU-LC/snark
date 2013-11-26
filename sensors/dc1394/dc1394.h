@@ -50,6 +50,7 @@ namespace snark { namespace camera {
 class dc1394
 {
 public:
+
     struct config
     {
         enum output_type{ RGB, BGR, Raw };
@@ -63,19 +64,25 @@ public:
         // TODO framerate is not used in format7, as the way to set the framerate is different.
         // see http://damien.douxchamps.net/ieee1394/libdc1394/v2.x/faq/#How_do_I_set_the_frame_rate
         dc1394framerate_t frame_rate;
-        dc1394color_coding_t color_coding;
         unsigned int relative_shutter;
         unsigned int relative_gain;
         float shutter; // 0 means do not change
         float gain;
         unsigned int exposure;
         uint64_t guid;
+
+        unsigned int format7_left;
+        unsigned int format7_top;
+        unsigned int format7_width;
+        unsigned int format7_height;
+        unsigned int format7_packet_size;
+        dc1394color_coding_t format7_color_coding;
     };
 
 // DC1394_FEATURE_SHUTTER,
 //   DC1394_FEATURE_GAIN,
     
-    dc1394( const config& config = config(), unsigned int format7_left = 0, unsigned int format7_top = 0, unsigned int format7_width = 0, unsigned int format7_height = 0, unsigned int format7_size = 8160);
+    dc1394( const config& config = config() );
     ~dc1394();
 
     const cv::Mat& read();
@@ -106,11 +113,6 @@ private:
     boost::posix_time::time_duration m_frame_duration;
     unsigned int m_width;
     unsigned int m_height;
-    unsigned int m_format7_left;
-    unsigned int m_format7_top;
-    unsigned int m_format7_width;
-    unsigned int m_format7_height;
-    unsigned int m_format7_size;
 };
 
 } } // namespace snark { namespace camera {
@@ -141,18 +143,23 @@ template <> struct traits< snark::camera::dc1394::config >
         std::string operation_mode;
         std::string iso_speed;
         std::string frame_rate;
-        std::string color_coding;
+        // std::string color_coding;
         v.apply( "video-mode", video_mode );
         v.apply( "operation-mode", operation_mode );
         v.apply( "iso-speed", iso_speed );
         v.apply( "frame-rate", frame_rate );
         // v.apply( "color-coding", color_coding );
+        v.apply( "left", c.format7_left );
+        v.apply( "top", c.format7_top );
+        v.apply( "width", c.format7_width );
+        v.apply( "height", c.format7_height );
+        v.apply( "packet-size", c.format7_packet_size );
 
         c.video_mode = snark::camera::video_mode_from_string( video_mode );
         c.operation_mode = snark::camera::operation_mode_from_string( operation_mode );
         c.iso_speed = snark::camera::iso_speed_from_string( iso_speed );
         c.frame_rate = snark::camera::frame_rate_from_string( frame_rate );
-        // c.color_coding = snark::camera::color_coding_from_string( color_coding );
+        // c.format7_color_coding = snark::camera::color_coding_from_string( color_coding );
 
         v.apply( "relative-shutter", c.relative_shutter );
         v.apply( "relative-gain", c.relative_gain );
@@ -184,13 +191,19 @@ template <> struct traits< snark::camera::dc1394::config >
         std::string operation_mode = snark::camera::operation_mode_to_string( c.operation_mode );
         std::string iso_speed = snark::camera::iso_speed_to_string( c.iso_speed );
         std::string frame_rate = snark::camera::frame_rate_to_string( c.frame_rate );
-        // std::string color_coding = snark::camera::color_coding_to_string( c.color_coding );
+        // std::string color_coding = snark::camera::color_coding_to_string( c.format7_color_coding );
 
         v.apply( "video-mode", video_mode );
         v.apply( "operation-mode", operation_mode );
         v.apply( "iso-speed", iso_speed );
         v.apply( "frame-rate", frame_rate );
         // v.apply( "color-coding", color_coding );
+        v.apply( "left", c.format7_left );
+        v.apply( "top", c.format7_top );
+        v.apply( "width", c.format7_width );
+        v.apply( "height", c.format7_height );
+        v.apply( "packet-size", c.format7_packet_size );
+
         v.apply( "relative-shutter", c.relative_shutter );
         v.apply( "relative-gain", c.relative_gain );
         v.apply( "shutter", c.shutter );

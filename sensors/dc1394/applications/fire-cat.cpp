@@ -90,11 +90,6 @@ int main( int argc, char** argv )
         std::string config_string; 
         std::string fields;
         unsigned int discard;
-        unsigned int format7_left;
-        unsigned int format7_top;
-        unsigned int format7_width;
-        unsigned int format7_height;
-        unsigned int format7_size;
         boost::program_options::options_description description( "options" );
         description.add_options()
             ( "help,h", "display help message" )
@@ -106,12 +101,7 @@ int main( int argc, char** argv )
             ( "buffer", boost::program_options::value< unsigned int >( &discard )->default_value( 0 ), "maximum buffer size before discarding frames, default: unlimited" )
             ( "fields,f", boost::program_options::value< std::string >( &fields )->default_value( "t,rows,cols,type" ), "header fields, possible values: t,rows,cols,type,size" )
             ( "header", "output header only" )
-            ( "no-header", "output image data only" )
-            ( "left", boost::program_options::value< unsigned int >( &format7_left )->default_value( 0 ), "set horizontal offset (from left) in format7 mode, default: 0 " )
-            ( "top", boost::program_options::value< unsigned int >( &format7_top )->default_value( 0 ), "set vertical offset (from top) in format7 mode, default: 0 " )
-            ( "width", boost::program_options::value< unsigned int >( &format7_width )->default_value( 0 ), "set width in format7 mode, default: 0 = maximum supported" )
-            ( "height", boost::program_options::value< unsigned int >( &format7_height )->default_value( 0 ), "set height in format7 mode, default: 0 = maximum supported" )
-            ( "packet-size", boost::program_options::value< unsigned int >( &format7_size )->default_value( 8160 ), "set packet size in format7 mode" );
+            ( "no-header", "output image data only" );
 
         boost::program_options::variables_map vm;
         boost::program_options::store( boost::program_options::parse_command_line( argc, argv, description), vm );
@@ -170,6 +160,12 @@ int main( int argc, char** argv )
                 std::cerr << "--------------------------------------------" << std::endl;
                 std::cerr << "output-type=Raw\nvideo-mode=DC1394_VIDEO_MODE_FORMAT7_0\noperation-mode=DC1394_OPERATION_MODE_1394B\n";
                 std::cerr << "iso-speed=DC1394_ISO_SPEED_800\nframe-rate=DC1394_FRAMERATE_240\nguid=49712223530115149" << std::endl;
+                std::cerr << "--------------------------------------------" << std::endl;
+                std::cerr << std::endl << "ini file example for pika2 on shrimp:" << std::endl;
+                std::cerr << "--------------------------------------------" << std::endl;
+                std::cerr << "output-type=Raw\nvideo-mode=DC1394_VIDEO_MODE_FORMAT7_2\noperation-mode=DC1394_OPERATION_MODE_1394B\n";
+                std::cerr << "iso-speed=DC1394_ISO_SPEED_800\nframe-rate=DC1394_FRAMERATE_240\nguid=49712223534632451\n";
+                std::cerr << "left=0\ntop=0\nwidth=640\nheight=240\n" << std::endl;
                 std::cerr << "--------------------------------------------" << std::endl;
             }
 
@@ -231,7 +227,7 @@ int main( int argc, char** argv )
             comma::name_value::parser parser( ';', '=' );
             config = parser.get< snark::camera::dc1394::config >( config_string );
         }
-        snark::camera::dc1394 camera( config, format7_left, format7_top, format7_width, format7_height, format7_size);
+        snark::camera::dc1394 camera( config );
         
         if( vm.count( "list-attributes" ) )
         {
