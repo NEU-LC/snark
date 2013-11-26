@@ -93,7 +93,7 @@ int main( int argc, char** argv )
         boost::program_options::options_description description( "options" );
         description.add_options()
             ( "help,h", "display help message" )
-            ( "long-help", "display long help message" )
+            ( "verbose,v", "more output; --help --verbose: more help message" )
             ( "list", "list cameras on the bus with guids" )
             ( "list-attributes", "output current camera attributes" )
             ( "discard,d", "discard frames, if cannot keep up; same as --buffer=1" )
@@ -118,7 +118,7 @@ int main( int argc, char** argv )
             COMMA_THROW( comma::exception, "--fields and --no-header are mutually exclusive" );
         }
 
-        if ( vm.count( "help" ) || vm.count( "long-help" ) )
+        if ( vm.count( "help" ) || vm.count( "verbose" ) )
         {
             std::cerr << "acquire images from a firewire camera using libdc1394 and output them to std::out in OpenCV format" << std::endl;
             std::cerr << "Usage: fire-cat [options] [<filters>]\n" << std::endl;
@@ -126,7 +126,7 @@ int main( int argc, char** argv )
             std::cerr << description << std::endl;
             std::cerr << snark::cv_mat::filters::usage() << std::endl;
 
-            if ( vm.count( "long-help" ) )
+            if ( vm.count( "verbose" ) )
             {
                 std::cerr << std::endl << "config file options:" << std::endl;
                 std::cerr << "\toutput-type: output image type" << std::endl;
@@ -138,7 +138,13 @@ int main( int argc, char** argv )
                 std::cerr << "\tgain: camera gain (absolute)" << std::endl;
                 std::cerr << "\trelative-shutter: camera shutter speed (relative)" << std::endl;
                 std::cerr << "\trelative-gain: camera gain (relative)" << std::endl;
+                std::cerr << "\t(shutter and gain work as a pair, a non-zero shutter activates its corresponding gain)" << std::endl;
                 std::cerr << "\texposure: camera exposure" << std::endl;
+                std::cerr << "\twidth: format7 image width (default 0 : maximum width in given video-mode)" << std::endl;
+                std::cerr << "\theight: format7 image height (default 0 : maximum height in given video-mode)" << std::endl;
+                std::cerr << "\tleft: format7 horizontal offset from left (default 0)" << std::endl;
+                std::cerr << "\ttop: format7 vertical offset from top (default 0)" << std::endl;
+                std::cerr << "\tpacket-size: format7 data packet size (default 8160)" << std::endl;
                 std::cerr << std::endl << "allowed output types: " << std::endl;
                 std::cerr << "\tRGB: convert the camera output to RGB8 using dc1394_convert_frames" << std::endl;
                 std::cerr << "\tBGR: convert the camera output to BGR8 using dc1394_convert_frames" << std::endl;

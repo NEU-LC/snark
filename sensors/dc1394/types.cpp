@@ -478,7 +478,7 @@ dc1394color_coding_t color_coding_from_string( const std::string& color_coding )
 
 void print_video_modes()
 {
-    for( unsigned int mode = DC1394_VIDEO_MODE_MIN; mode < DC1394_VIDEO_MODE_MAX; mode++  )
+    for( unsigned int mode = DC1394_VIDEO_MODE_MIN; mode <= DC1394_VIDEO_MODE_MAX; mode++  )
     {
         std::cerr << "\t" << video_mode_to_string( static_cast< dc1394video_mode_t >( mode ) ) << std::endl;
     }
@@ -492,7 +492,7 @@ void print_operation_modes()
 
 void print_iso_speeds()
 {
-    for( unsigned int speed = DC1394_ISO_SPEED_MIN; speed < DC1394_ISO_SPEED_MAX; speed++  )
+    for( unsigned int speed = DC1394_ISO_SPEED_MIN; speed <= DC1394_ISO_SPEED_MAX; speed++  )
     {
         std::cerr << "\t" << iso_speed_to_string( static_cast< dc1394speed_t >( speed ) ) << std::endl;
     }
@@ -500,7 +500,7 @@ void print_iso_speeds()
 
 void print_frame_rates()
 {
-    for( unsigned int rate = DC1394_FRAMERATE_MIN; rate < DC1394_FRAMERATE_MAX; rate++  )
+    for( unsigned int rate = DC1394_FRAMERATE_MIN; rate <= DC1394_FRAMERATE_MAX; rate++  )
     {
         std::cerr << "\t" << frame_rate_to_string( static_cast< dc1394framerate_t >( rate ) ) << std::endl;
     }
@@ -508,7 +508,7 @@ void print_frame_rates()
 
 void print_color_coding()
 {
-    for( unsigned int color_coding = DC1394_COLOR_CODING_MIN; color_coding < DC1394_COLOR_CODING_MAX; color_coding++  )
+    for( unsigned int color_coding = DC1394_COLOR_CODING_MIN; color_coding <= DC1394_COLOR_CODING_MAX; color_coding++  )
     {
         std::cerr << "\t" << color_coding_to_string( static_cast< dc1394color_coding_t >( color_coding ) ) << std::endl;
     }
