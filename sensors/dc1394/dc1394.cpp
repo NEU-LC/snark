@@ -77,13 +77,13 @@ dc1394::dc1394( const snark::camera::dc1394::config& config, unsigned int format
     m_epoch( timing::epoch ),
     m_format7_left( format7_left ),
     m_format7_top( format7_top ),
-    m_format7_width( format7_height ),
+    m_format7_width( format7_width ),
     m_format7_height( format7_height ),
     m_format7_size( format7_size )
 {
     memset( &m_output_frame, 0, sizeof( m_output_frame ) );
     m_output_frame.color_coding = DC1394_COLOR_CODING_RGB8;
-    
+ 
     init_camera();
 
     /* First check if relative shutter has been set, if not check absolute
@@ -342,17 +342,15 @@ void dc1394::setup_camera_format7()
         COMMA_THROW( comma::exception, "could not set video mode" );
     }
     
-    dc1394color_coding_t color;
-    dc1394_format7_get_color_coding( m_camera, m_config.video_mode, &color );
-
     if( m_format7_width != 0 )
     {
-        dc1394color_coding_t roi_color_coding = color;
+        dc1394color_coding_t roi_color_coding = DC1394_COLOR_CODING_MONO8;
         unsigned int roi_packet_size = m_format7_size;
         unsigned int roi_left = m_format7_left;
         unsigned int roi_top = m_format7_top;
         unsigned int roi_width = m_format7_width;
         unsigned int roi_height = m_format7_height;
+        std::cerr << " set roi " << roi_color_coding << " , " << roi_left << " , " << roi_top << " , " << roi_width << " , " << roi_height << " , " << roi_packet_size << std::endl;
         if ( dc1394_format7_set_roi( m_camera, m_config.video_mode, roi_color_coding, roi_packet_size, roi_left, roi_top, roi_width, roi_height ) != DC1394_SUCCESS )
         {
             COMMA_THROW( comma::exception, "could not set roi" );
@@ -361,7 +359,7 @@ void dc1394::setup_camera_format7()
         {
             COMMA_THROW( comma::exception, "could not get roi" );
         }
-        std::cerr << " roi " << roi_color_coding << " , " << roi_left << " , " << roi_top << " , " << roi_width << " , " << roi_height << " , " << roi_packet_size << std::endl;
+        std::cerr << " got roi " << roi_color_coding << " , " << roi_left << " , " << roi_top << " , " << roi_width << " , " << roi_height << " , " << roi_packet_size << std::endl;
 
         if (dc1394_format7_set_image_size( m_camera, m_config.video_mode, m_format7_width, m_format7_height ) != DC1394_SUCCESS )
         {
@@ -371,7 +369,7 @@ void dc1394::setup_camera_format7()
         {
             COMMA_THROW( comma::exception, "could not get image size" );
         }
-        std::cerr << " size " << m_width << " , " << m_height << std::endl;
+        std::cerr << " got size " << m_width << " , " << m_height << std::endl;
     }
     else
     {    
@@ -391,6 +389,8 @@ void dc1394::setup_camera_format7()
     {
         COMMA_THROW( comma::exception, "could not get packet size" );
     }
+    dc1394color_coding_t color;
+    dc1394_format7_get_color_coding( m_camera, m_config.video_mode, &color );
     // HACK packet sizes higher than 8160 don't seem to work with the ladybug
     // setting it to 8160 by hand works but the frame rate is only about 5 fps
     // TODO fix to be able to set DC1394_QUERY_FROM_CAMERA again and maybe higher framerate
