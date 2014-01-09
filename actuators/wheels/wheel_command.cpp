@@ -15,7 +15,13 @@ snark::wheels::wheel_command compute_wheel_command(const steer_command &desired 
     if(fabs(yaw_rate)<yaw_rate_tol)
     {
         command_.velocity=desired.velocity.norm();
-        command_.yaw=atan2(desired.velocity.y(),desired.velocity.x());
+        //get angle in wheel pose
+        Eigen::Vector4d forward,origin;
+        forward<<desired.velocity.x(),desired.velocity.y(),0,1;
+        origin<<0,0,0,1;
+        origin=inverse_transform(wheel_pose_)*origin;
+        forward=inverse_transform(wheel_pose_)*forward;
+        command_.yaw=atan2(forward(2)-origin(2),forward(0)-origin(0));
         //limit movement to -pi/2 and pi/2
         if(command_.yaw>boost_constants::pi<double>()/2)
         {
