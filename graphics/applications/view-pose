@@ -43,7 +43,7 @@ function usage_
 	echo "view-pose: displays a static pose of a group of shape objects"
 	echo "options:"
 	echo "        --model-list=<model list file>"
-#	echo "        --pose=<poses file>"
+	echo "        --binary : binary input"
 	echo "        --verbose : view-points command shown"
 }
 
@@ -53,62 +53,35 @@ trap bye_ INT TERM
 VERBOSE="false"
 for arg in $@ ; do
 	if [[ "${arg#--model-list=}" != "$arg" ]] ; then MODEL_FILE="${arg#--model-list=}"
-#	elif [[ "${arg#--pose=}" != "$arg" ]] ; then POSE_FILE="${arg#--pose=}"
 	elif [[ "$arg" == "--help" ]] ; then usage_ ; exit
 	elif [[ "$arg" == "--verbose" ]] ; then VERBOSE="true"
+	elif [[ "$arg" == "--binary" ]] ; then BINARY="--binary"
 	else
 		FORWARD_ARGS="$FORWARD_ARGS $arg"
 	fi
 done
 
 echo "view-pose: reading from config file: $MODEL_FILE"
-#echo "view-pose: Reading from pose file: $POSE_FILE"
 
-# get object list
 OBJ_LIST=$( cat "$MODEL_FILE" | tr -d " \"" ) # remove white space and quotes
-
-#OBJ_IDS=$( echo "$OBJ_LIST" | cut -f1 -d',' )
-#OBJS=( $( echo "$OBJ_LIST" | tr -d "\"" | cut -f2 -d',' ) )
-
-# read pose input
-#POSE_LIST=$( cat "$POSE_FILE" )
-#POSE_LIST=$( echo "$POSE_LIST" | tr -d " " ) # remove white spaces
-
-#POSE_IDS=$( echo "$POSE_LIST" | cut -f2 -d',' )
-
-# create pose files
-#TEMP_DIR=$( mktemp -d )
-#( cd "$TEMP_DIR" ; echo "$POSE_LIST" | csv-split --fields=,id ) # run in separate shell
-
-#for pose_id in $POSE_IDS ; do
-#	obj_ind=$( expr $( echo "$OBJ_IDS" | grep -nw "$pose_id" | cut -f1 -d':' ) - 1 )
-#	if [[ "$obj_ind" != "" ]] ; then
-#		VIEW_DATA+=( "local:${TEMP_DIR}/view_${pose_id};shape=${OBJS[$obj_ind]};fields=t,id,x,y,z,roll,pitch,yaw" )
-#		PUBLISH_DATA+=( "local:${TEMP_DIR}/publish_${pose_id}" )
-#		netcat -Ul "${TEMP_DIR}/publish_${pose_id}" | csv-select --fields=,t --equals="$pose_id" | io-publish --no-discard "local:${TEMP_DIR}/view_${pose_id}" &
-#	fi
-#done
 
 TEMP_DIR=$( mktemp -d )
 
-socat -u unix-listen:"${TEMP_DIR}/pose_1" - | csv-play | io-publish --no-discard "local:${TEMP_DIR}/pose_2" &
+if [[ "$BINARY" != "" ]] ; then
+	FORMAT="t,uw,6d"
+	SIZE="-s $( csv-size $FORMAT )"
+	VIEW_BINARY=";binary=$FORMAT"
+fi
+
+socat -u unix-listen:"${TEMP_DIR}/pose_1" - | csv-play $BINARY $FORMAT | io-publish --no-discard "local:${TEMP_DIR}/pose_2" $SIZE &
 
 wait_ "${TEMP_DIR}/pose_2"
-
-#for pose_id in $POSE_IDS ; do
-#	obj_ind=$( expr $( echo "$OBJ_IDS" | grep -nw "$pose_id" | cut -f1 -d':' ) - 1 )
-#	if [[ "$obj_ind" != "" ]] ; then
-#		VIEW_DATA+=( "local:${TEMP_DIR}/${pose_id};shape=${OBJS[$obj_ind]};fields=t,id,x,y,z,roll,pitch,yaw" )
-#		netcat -U "${TEMP_DIR}/pose" | csv-select --fields=,t --equals="$pose_id" | io-publish --no-discard "local:${TEMP_DIR}/${pose_id}" &
-#		wait_ "${TEMP_DIR}/${pose_id}"
-#	fi
-#done
 
 for obj in $OBJ_LIST ; do
 	obj_id=$( echo "$obj" | cut -f1 -d',' )
 	obj_name=$( echo "$obj" | cut -f2 -d',' )
-	VIEW_DATA+=( "local:${TEMP_DIR}/${obj_id};shape=${obj_name};fields=t,id,x,y,z,roll,pitch,yaw" )
-	socat -u unix:"${TEMP_DIR}/pose_2" - | csv-select --fields=,id --equals="$obj_id" | io-publish --no-discard "local:${TEMP_DIR}/${obj_id}" &
+	VIEW_DATA+=( "local:${TEMP_DIR}/${obj_id};shape=${obj_name};fields=t,id,x,y,z,roll,pitch,yaw${VIEW_BINARY}" )
+	socat -u unix:"${TEMP_DIR}/pose_2" - | csv-select --fields=,id $BINARY $FORMAT --equals="$obj_id" | io-publish --no-discard "local:${TEMP_DIR}/${obj_id}" $SIZE &
 	wait_ "${TEMP_DIR}/${obj_id}"
 done
 
