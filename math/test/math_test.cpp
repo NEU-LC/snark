@@ -110,6 +110,13 @@ TEST( math, closed_interval_contains )
 TEST( math, bearing )
 {
     {
+        double radians = 0 * M_PI / 180;
+        Eigen::Vector2d c = snark::bearing::to_cartesian( radians, 1 );
+        EXPECT_NEAR( 0, c.x(), 1e-6 );
+        EXPECT_NEAR( 1, c.y(), 1e-6 );
+    }
+
+    {
         double radians = 30 * M_PI / 180;
         Eigen::Vector2d c = snark::bearing::to_cartesian( radians, 1 );
         EXPECT_NEAR( 0.5, c.x(), 1e-6 );
@@ -137,6 +144,14 @@ TEST( math, bearing )
         EXPECT_NEAR( 0.5, c.y(), 1e-6 );
     }
 
+    {
+        double radians = 360 * M_PI / 180;
+        Eigen::Vector2d c = snark::bearing::to_cartesian( radians, 1 );
+        EXPECT_NEAR( 0, c.x(), 1e-6 );
+        EXPECT_NEAR( 1, c.y(), 1e-6 );
+    }
+
+    EXPECT_NEAR(   0 * M_PI / 180, snark::bearing::from_cartesian( 0, 1 ), 1e-6 );
     EXPECT_NEAR(  30 * M_PI / 180, snark::bearing::from_cartesian( 0.5, 0.866025404 ), 1e-6 );
     EXPECT_NEAR( 120 * M_PI / 180, snark::bearing::from_cartesian( 0.866025404, -0.5 ), 1e-6 );
     EXPECT_NEAR( 210 * M_PI / 180, snark::bearing::from_cartesian( -0.5, -0.866025404 ), 1e-6 );
