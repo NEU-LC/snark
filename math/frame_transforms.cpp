@@ -16,6 +16,15 @@ Eigen::Matrix4d homogeneous_transform(const Eigen::Matrix3d& R, const Eigen::Vec
     return _T;
 }
 
+tr_transform matrix_to_tr(const Eigen::Matrix4d& T)
+{
+    tr_transform t;
+    t.translation=T.topRightCorner(3,1);
+    Eigen::Matrix3d rotation_matrix=T.topLeftCorner(3,3);
+    t.rotation=Eigen::Quaterniond(rotation_matrix);
+    return t;
+}
+
 Eigen::Matrix4d dh_to_matrix(const dh_transform& T_dh)
 {
     Eigen::Matrix4d T;

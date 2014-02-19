@@ -76,9 +76,22 @@ Eigen::Vector3d rotation_matrix::roll_pitch_yaw() const
 Eigen::Vector3d rotation_matrix::roll_pitch_yaw( const ::Eigen::Matrix3d& m )
 {
     Eigen::Vector3d rpy;
-    rpy << std::atan2( m(2,1) , m(2,2) ),
-           std::asin( -m(2,0) ),
-           std::atan2( m(1,0), m(0,0) );
+    double roll;
+    double pitch=std::asin( -m(2,0) );
+    double yaw;
+    if( m(2,0)==1 || m(2,0)==-1 )
+    {
+        roll=0;
+        yaw=std::atan2( m(1,2), m(0,2) );
+    }
+    else
+    {
+        roll=std::atan2( m(2,1), m(2,2) );
+        yaw=std::atan2( m(1,0), m(0,0) );
+    }
+    rpy << roll,
+           pitch,
+           yaw;
     return rpy;
 }
 

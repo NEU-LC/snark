@@ -52,9 +52,15 @@ dc1394::config::config():
     shutter( 0 ),
     gain( 0 ),
     exposure( 0 ),
-    guid( 0 )
+    guid( 0 ),
+    format7_left( 0 ),
+    format7_top( 0 ),
+    format7_width( 0 ),
+    format7_height( 0 ),
+    format7_packet_size( 8160 ),
+    format7_color_coding( DC1394_COLOR_CODING_MONO8 )
 {
-    
+ 
 }
 
 /// get OpenCV type from color coding
@@ -72,16 +78,13 @@ int dc1394::config::type() const
 
 /// constructor
 /// @param config camera config
-dc1394::dc1394( const snark::camera::dc1394::config& config, unsigned int format7_width, unsigned int format7_height, unsigned int format7_size ):
+dc1394::dc1394( const snark::camera::dc1394::config& config ):
     m_config( config ),
-    m_epoch( timing::epoch ),
-    m_format7_width( format7_height ),
-    m_format7_height( format7_height ),
-    m_format7_size( format7_size )
+    m_epoch( timing::epoch )
 {
     memset( &m_output_frame, 0, sizeof( m_output_frame ) );
     m_output_frame.color_coding = DC1394_COLOR_CODING_RGB8;
-    
+ 
     init_camera();
 
     /* First check if relative shutter has been set, if not check absolute
@@ -340,9 +343,24 @@ void dc1394::setup_camera_format7()
         COMMA_THROW( comma::exception, "could not set video mode" );
     }
     
-    if( m_format7_width != 0 )
+    if( m_config.format7_width != 0 )
     {
-        if (dc1394_format7_set_image_size( m_camera, m_config.video_mode, m_format7_width, m_format7_height ) != DC1394_SUCCESS )
+        dc1394color_coding_t roi_color_coding = m_config.format7_color_coding;
+        unsigned int roi_packet_size = m_config.format7_packet_size;
+        unsigned int roi_left = m_config.format7_left;
+        unsigned int roi_top = m_config.format7_top;
+        unsigned int roi_width = m_config.format7_width;
+        unsigned int roi_height = m_config.format7_height;
+        if ( dc1394_format7_set_roi( m_camera, m_config.video_mode, roi_color_coding, roi_packet_size, roi_left, roi_top, roi_width, roi_height ) != DC1394_SUCCESS )
+        {
+            COMMA_THROW( comma::exception, "could not set roi" );
+        }
+        if ( dc1394_format7_get_roi( m_camera, m_config.video_mode, &roi_color_coding, &roi_packet_size, &roi_left, &roi_top, &roi_width, &roi_height ) != DC1394_SUCCESS )
+        {
+            COMMA_THROW( comma::exception, "could not get roi" );
+        }
+
+        if (dc1394_format7_set_image_size( m_camera, m_config.video_mode, m_config.format7_width, m_config.format7_height ) != DC1394_SUCCESS )
         {
             COMMA_THROW( comma::exception, "could not set image size" );
         }
@@ -350,7 +368,6 @@ void dc1394::setup_camera_format7()
         {
             COMMA_THROW( comma::exception, "could not get image size" );
         }
-        std::cerr << " size " << m_width << " , " << m_height << std::endl;
     }
     else
     {    
@@ -376,7 +393,7 @@ void dc1394::setup_camera_format7()
     // setting it to 8160 by hand works but the frame rate is only about 5 fps
     // TODO fix to be able to set DC1394_QUERY_FROM_CAMERA again and maybe higher framerate
     // this is fine for other cameras with lower packet size ( e.g. bumblebee ), as it will be set to the next possible value
-    if ( dc1394_format7_set_roi( m_camera, m_config.video_mode, color, m_format7_size, 0, 0, m_width, m_height ) != DC1394_SUCCESS )
+    if ( dc1394_format7_set_roi( m_camera, m_config.video_mode, color, m_config.format7_packet_size, 0, 0, m_width, m_height ) != DC1394_SUCCESS )
     {
         COMMA_THROW( comma::exception, "could not set roi" );
     }

@@ -1,0 +1,98 @@
+#!/bin/bash
+
+function stop_
+{
+    echo "view-pose: stopping..."
+
+    pids=$( ps -eo ppid:1,pid:1 | grep "^$$" | cut -f2 -d' ' )
+    for pid in $pids ; do kill -INT $pid &> /dev/null ; done
+	# rosbag needs INT to finalise recording
+
+	sleep 2
+
+	# for stubborn local processes
+    pids=$( ps -eo ppid:1,pid:1 | grep "^$$" | cut -f2 -d' ' )
+    for pid in $pids ; do kill -KILL $pid &> /dev/null ; done
+
+	sleep 1
+
+    echo "view-pose: stopped"
+}
+
+function clean_
+{
+	rm -rf "$TEMP_DIR"
+}
+
+function bye_
+{
+    echo "demo-view: caught signal"
+	clean_
+    stop_
+    is_shutdown="true"
+    exit 1
+}
+
+function wait_
+{
+    while [[ ! -S "$1" ]] ; do sleep 0.1 ; done
+}
+
+function usage_
+{
+	echo "view-pose: displays a static pose of a group of shape objects"
+	echo "options:"
+	echo "        --model-list=<model list file>"
+	echo "        --binary : binary input"
+	echo "        --verbose : view-points command shown"
+}
+
+
+trap bye_ INT TERM
+
+VERBOSE="false"
+for arg in $@ ; do
+	if [[ "${arg#--model-list=}" != "$arg" ]] ; then MODEL_FILE="${arg#--model-list=}"
+	elif [[ "$arg" == "--help" ]] ; then usage_ ; exit
+	elif [[ "$arg" == "--verbose" ]] ; then VERBOSE="true"
+	elif [[ "$arg" == "--binary" ]] ; then BINARY="--binary"
+	else
+		FORWARD_ARGS="$FORWARD_ARGS $arg"
+	fi
+done
+
+echo "view-pose: reading from config file: $MODEL_FILE"
+
+OBJ_LIST=$( cat "$MODEL_FILE" | tr -d " \"" ) # remove white space and quotes
+
+TEMP_DIR=$( mktemp -d )
+
+if [[ "$BINARY" != "" ]] ; then
+	FORMAT="t,uw,6d"
+	SIZE="-s $( csv-size $FORMAT )"
+	VIEW_BINARY=";binary=$FORMAT"
+fi
+
+socat -u unix-listen:"${TEMP_DIR}/pose_1" - | csv-play $BINARY $FORMAT | io-publish --no-discard "local:${TEMP_DIR}/pose_2" $SIZE &
+
+wait_ "${TEMP_DIR}/pose_2"
+
+for obj in $OBJ_LIST ; do
+	obj_id=$( echo "$obj" | cut -f1 -d',' )
+	obj_name=$( echo "$obj" | cut -f2 -d',' )
+	VIEW_DATA+=( "local:${TEMP_DIR}/${obj_id};shape=${obj_name};fields=t,id,x,y,z,roll,pitch,yaw${VIEW_BINARY}" )
+	socat -u unix:"${TEMP_DIR}/pose_2" - | csv-select --fields=,id $BINARY $FORMAT --equals="$obj_id" | io-publish --no-discard "local:${TEMP_DIR}/${obj_id}" $SIZE &
+	wait_ "${TEMP_DIR}/${obj_id}"
+done
+
+if [[ "$VERBOSE" == "true" ]] ; then
+	echo "view-points ${VIEW_DATA[*]}"
+fi
+
+view-points ${VIEW_DATA[*]} $FORWARD_ARGS &
+
+sleep 2 # wait for view-points to connect to sockets
+
+socat -u - unix:"${TEMP_DIR}/pose_1"
+
+while [[ "$is_shutdown" != "true" ]] ; do sleep 0.5 ; done

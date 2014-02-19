@@ -90,13 +90,10 @@ int main( int argc, char** argv )
         std::string config_string; 
         std::string fields;
         unsigned int discard;
-        unsigned int format7_width;
-        unsigned int format7_height;
-        unsigned int format7_size;
         boost::program_options::options_description description( "options" );
         description.add_options()
             ( "help,h", "display help message" )
-            ( "long-help", "display long help message" )
+            ( "verbose,v", "more output; --help --verbose: more help message" )
             ( "list", "list cameras on the bus with guids" )
             ( "list-attributes", "output current camera attributes" )
             ( "discard,d", "discard frames, if cannot keep up; same as --buffer=1" )
@@ -104,10 +101,7 @@ int main( int argc, char** argv )
             ( "buffer", boost::program_options::value< unsigned int >( &discard )->default_value( 0 ), "maximum buffer size before discarding frames, default: unlimited" )
             ( "fields,f", boost::program_options::value< std::string >( &fields )->default_value( "t,rows,cols,type" ), "header fields, possible values: t,rows,cols,type,size" )
             ( "header", "output header only" )
-            ( "no-header", "output image data only" )
-            ( "width", boost::program_options::value< unsigned int >( &format7_width )->default_value( 0 ), "set width in format7 mode, default: 0 = maximum supported" )
-            ( "height", boost::program_options::value< unsigned int >( &format7_height )->default_value( 0 ), "set height in format7 mode, default: 0 = maximum supported" )
-            ( "packet-size", boost::program_options::value< unsigned int >( &format7_size )->default_value( 8160 ), "set packet size in format7 mode" );
+            ( "no-header", "output image data only" );
 
         boost::program_options::variables_map vm;
         boost::program_options::store( boost::program_options::parse_command_line( argc, argv, description), vm );
@@ -124,7 +118,7 @@ int main( int argc, char** argv )
             COMMA_THROW( comma::exception, "--fields and --no-header are mutually exclusive" );
         }
 
-        if ( vm.count( "help" ) || vm.count( "long-help" ) )
+        if ( vm.count( "help" ) || vm.count( "verbose" ) )
         {
             std::cerr << "acquire images from a firewire camera using libdc1394 and output them to std::out in OpenCV format" << std::endl;
             std::cerr << "Usage: fire-cat [options] [<filters>]\n" << std::endl;
@@ -132,7 +126,7 @@ int main( int argc, char** argv )
             std::cerr << description << std::endl;
             std::cerr << snark::cv_mat::filters::usage() << std::endl;
 
-            if ( vm.count( "long-help" ) )
+            if ( vm.count( "verbose" ) )
             {
                 std::cerr << std::endl << "config file options:" << std::endl;
                 std::cerr << "\toutput-type: output image type" << std::endl;
@@ -144,7 +138,13 @@ int main( int argc, char** argv )
                 std::cerr << "\tgain: camera gain (absolute)" << std::endl;
                 std::cerr << "\trelative-shutter: camera shutter speed (relative)" << std::endl;
                 std::cerr << "\trelative-gain: camera gain (relative)" << std::endl;
+                std::cerr << "\t(shutter and gain work as a pair, a non-zero shutter activates its corresponding gain)" << std::endl;
                 std::cerr << "\texposure: camera exposure" << std::endl;
+                std::cerr << "\twidth: format7 image width (default 0 : maximum width in given video-mode)" << std::endl;
+                std::cerr << "\theight: format7 image height (default 0 : maximum height in given video-mode)" << std::endl;
+                std::cerr << "\tleft: format7 horizontal offset from left (default 0)" << std::endl;
+                std::cerr << "\ttop: format7 vertical offset from top (default 0)" << std::endl;
+                std::cerr << "\tpacket-size: format7 data packet size (default 8160)" << std::endl;
                 std::cerr << std::endl << "allowed output types: " << std::endl;
                 std::cerr << "\tRGB: convert the camera output to RGB8 using dc1394_convert_frames" << std::endl;
                 std::cerr << "\tBGR: convert the camera output to BGR8 using dc1394_convert_frames" << std::endl;
@@ -166,6 +166,12 @@ int main( int argc, char** argv )
                 std::cerr << "--------------------------------------------" << std::endl;
                 std::cerr << "output-type=Raw\nvideo-mode=DC1394_VIDEO_MODE_FORMAT7_0\noperation-mode=DC1394_OPERATION_MODE_1394B\n";
                 std::cerr << "iso-speed=DC1394_ISO_SPEED_800\nframe-rate=DC1394_FRAMERATE_240\nguid=49712223530115149" << std::endl;
+                std::cerr << "--------------------------------------------" << std::endl;
+                std::cerr << std::endl << "ini file example for pika2 on shrimp:" << std::endl;
+                std::cerr << "--------------------------------------------" << std::endl;
+                std::cerr << "output-type=Raw\nvideo-mode=DC1394_VIDEO_MODE_FORMAT7_2\noperation-mode=DC1394_OPERATION_MODE_1394B\n";
+                std::cerr << "iso-speed=DC1394_ISO_SPEED_800\nframe-rate=DC1394_FRAMERATE_240\nguid=49712223534632451\n";
+                std::cerr << "left=0\ntop=0\nwidth=640\nheight=240\n" << std::endl;
                 std::cerr << "--------------------------------------------" << std::endl;
             }
 
@@ -227,7 +233,7 @@ int main( int argc, char** argv )
             comma::name_value::parser parser( ';', '=' );
             config = parser.get< snark::camera::dc1394::config >( config_string );
         }
-        snark::camera::dc1394 camera( config, format7_width, format7_height, format7_size);
+        snark::camera::dc1394 camera( config );
         
         if( vm.count( "list-attributes" ) )
         {

@@ -30,11 +30,23 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include <cmath>
 #include <Eigen/Geometry>
 #include <comma/math/compare.h>
 #include <snark/math/range_bearing_elevation.h>
 
 namespace snark {
+
+Eigen::Vector2d bearing::to_cartesian( const double radians, const double radius )
+{
+    return Eigen::Vector2d( radius * std::sin( radians ), radius * std::cos( radians ) );
+}
+
+double bearing::from_cartesian( const double x, const double y )
+{
+    double radians = ( M_PI / 2 ) - std::atan2( y, x );
+    return radians < 0 ? radians + 2 * M_PI : radians;
+}
 
 bearing_elevation::bearing_elevation() : bearing_( 0 ), elevation_( 0 ) {}
 
@@ -52,9 +64,15 @@ double bearing_elevation::b( double b ) { return bearing( b ); }
 
 double bearing_elevation::e( double e ) { return elevation( e ); }
 
+static double mod_( double t, double m ) // quick and dirty, because std::fmod is ridiculously slow
+{
+    int r = std::abs( t / m );
+    return comma::math::less( t, 0 ) ? ( t + m * r ) : ( t - m * r );
+}
+
 double bearing_elevation::bearing( double t )
 {
-    double b( std::fmod( t, ( double )( M_PI * 2 ) ) );
+    double b( mod_( t, ( double )( M_PI * 2 ) ) ); //double b( std::fmod( t, ( double )( M_PI * 2 ) ) );
     if( !comma::math::less( b, M_PI ) ) { b -= ( M_PI * 2 ); }
     else if( comma::math::less( b, -M_PI ) ) { b += ( M_PI * 2 ); }
     bearing_ = b;
@@ -63,7 +81,7 @@ double bearing_elevation::bearing( double t )
 
 double bearing_elevation::elevation( double t )
 {
-    double e( std::fmod( t, ( double )( M_PI * 2 ) ) );
+    double e( mod_( t, ( double )( M_PI * 2 ) ) ); //double e( std::fmod( t, ( double )( M_PI * 2 ) ) );
     if( comma::math::less( e, 0 ) ) { e += M_PI * 2; }
     if( !comma::math::less( e, M_PI / 2 ) )
     {

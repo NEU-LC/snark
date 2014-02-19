@@ -53,11 +53,14 @@ bearing_elevation_grid::index::type bearing_elevation_grid::index::operator()( d
     return operator()( snark::bearing_elevation( bearing, elevation ) );
 }
 
-static std::size_t rounded( double d )
+static std::size_t rough_floor_( double d ) // quick and dirty, std::ceil, std::floor are ridiculously slow
 {
-    double c = std::ceil( d );
-    return static_cast< std::size_t >( ( c - d ) < 1e-6 ? c : std::floor( d ) ); // quick and dirty; epsilon should be sufficient for practical reasons
-    //return static_cast< std::size_t >( ( c - d ) < std::numeric_limits< double >::epsilon() ? c : std::floor( d ) );
+    assert( d >= 0 );
+    std::size_t i = d;
+    static const double epsilon = 1e-6; // quick and dirty; epsilon should be sufficient for practical reasons
+    return ( double( i + 1 ) - d ) < epsilon ? i + 1 : i;
+    //double c = std::ceil( d );
+    //return static_cast< std::size_t >( ( c - d ) < 1e-6 ? c : std::floor( d ) ); // quick and dirty; epsilon should be sufficient for practical reasons
 }
 
 bearing_elevation_grid::index::type bearing_elevation_grid::index::operator()( const snark::bearing_elevation& v ) const
@@ -66,7 +69,7 @@ bearing_elevation_grid::index::type bearing_elevation_grid::index::operator()( c
     if( comma::math::less( db, 0 ) ) { db += M_PI * 2; } // quick and dirty
     double de = v.e() - begin_.e();
     if( comma::math::less( de, 0 ) ) { COMMA_THROW( comma::exception, "expected elevation greater than " << begin_.e() << "; got " << v.e() ); }
-    index::type i = {{ rounded( db / resolution_.b() ), rounded( de / resolution_.e() ) }};
+    index::type i = {{ rough_floor_( db / resolution_.b() ), rough_floor_( de / resolution_.e() ) }};
     std::size_t max_bearing_index = M_PI * 2 / resolution_.b();
     if( i[0] >= max_bearing_index ) { i[0] -= max_bearing_index; } // quick and dirty
     return i;
@@ -77,22 +80,28 @@ snark::bearing_elevation bearing_elevation_grid::index::bearing_elevation( const
     return snark::bearing_elevation( begin_.b() + resolution_.b() * i[0], begin_.e() + resolution_.e() * i[1] );
 }
 
+static double mod_( double t, double m ) // quick and dirty, because std::fmod is ridiculously slow
+{
+    int r = std::abs( t / m );
+    return comma::math::less( t, 0 ) ? ( t + m * r ) : ( t - m * r );
+}
+
 bearing_elevation_grid::bounds bearing_elevation_grid::bearing_index::get_bounds( const double value ) const
 {
     /// Normalise the input bearing
-    double bearing(std::fmod(value, double(M_PI * 2)));
-    if (bearing >= M_PI) { bearing -= ( M_PI * 2 ); }
-    else if (bearing < -M_PI) { bearing += ( M_PI * 2 ); }
+    double bearing = mod_( value, M_PI * 2 ); //double bearing(std::fmod(value, double(M_PI * 2)));
+    if( bearing >= M_PI ) { bearing -= ( M_PI * 2 ); }
+    else if ( bearing < -M_PI ) { bearing += ( M_PI * 2 ); }
 
     bounds b;
     b.lower_index = operator()( bearing );
 
     /// Normalised lower value
-    double lower(std::fmod(b.lower_index * resolution() + begin(), (double)(M_PI * 2)));
-    if (lower >= M_PI) { lower -= (M_PI * 2); }
-    else if (lower < -M_PI) { lower += (M_PI * 2); }
+    double lower = mod_( b.lower_index * resolution() + begin(), M_PI * 2 ); // double lower(std::fmod(b.lower_index * resolution() + begin(), (double)(M_PI * 2)));
+    if( lower >= M_PI ) { lower -= ( M_PI * 2 ); }
+    else if( lower < -M_PI ) { lower += ( M_PI * 2 ); }
 
-    if ( std::fabs(bearing - lower) <= 2*std::numeric_limits< double >::epsilon())
+    if ( std::fabs( bearing - lower ) <= 2*std::numeric_limits< double >::epsilon())
     {
         b.upper_index = b.lower_index;
         b.scaled_distance = 0;
@@ -102,7 +111,6 @@ bearing_elevation_grid::bounds bearing_elevation_grid::bearing_index::get_bounds
         b.upper_index = operator()( bearing + resolution());
         b.scaled_distance = ( bearing - lower ) / resolution();
     }
-
     return b;
 }
 
@@ -119,7 +127,7 @@ double bearing_elevation_grid::elevation_index::value( int index ) const // quic
 bearing_elevation_grid::bounds bearing_elevation_grid::elevation_index::get_bounds( const double value ) const
 {
     /// Normalise the input elevation
-    double elevation( std::fmod( value, double( M_PI * 2 ) ) );
+    double elevation( mod_( value, double( M_PI * 2 ) ) ); // double elevation( std::fmod( value, double( M_PI * 2 ) ) );
     if( elevation > M_PI / 2 ) { elevation = M_PI - elevation; }
     else if ( elevation < -M_PI / 2 ) { elevation = -M_PI - elevation; }
 

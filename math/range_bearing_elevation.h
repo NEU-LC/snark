@@ -40,6 +40,16 @@
 
 namespace snark {
 
+/// bearing: angle in a clockwise direction from north
+class bearing
+{
+    public:
+        static Eigen::Vector2d to_cartesian( const double radians, const double radius );
+
+        /// returns bearing in radians between 0 and 2*pi
+        static double from_cartesian( const double x, const double y );
+};
+
 /// bearing mapped to [-pi, pi)
 class bearing_elevation
 {

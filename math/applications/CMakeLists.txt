@@ -21,7 +21,7 @@ IF( CMAKE_SIZEOF_VOID_P EQUAL 4 )
 ENDIF()
 
 ADD_EXECUTABLE( points-frame frame.cpp points-frame.cpp )
-TARGET_LINK_LIBRARIES( points-frame ${comma_ALL_LIBRARIES} ${snark_ALL_LIBRARIES} )
+TARGET_LINK_LIBRARIES( points-frame snark_math ${comma_ALL_LIBRARIES} )
 
 ADD_EXECUTABLE( points-to-cartesian points-to-cartesian.cpp )
 TARGET_LINK_LIBRARIES( points-to-cartesian snark_math ${comma_ALL_LIBRARIES} )

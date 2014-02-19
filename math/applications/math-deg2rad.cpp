@@ -98,8 +98,7 @@ int main( int ac, char** av )
         csv.fields = comma::join( v, ',' );
         comma::csv::input_stream< Line > istream( std::cin, csv );
         comma::csv::output_stream< Line > ostream( std::cout, csv );
-        comma::signal_flag is_shutdown;
-        while( !is_shutdown && std::cin.good() && !std::cin.eof() )
+        while( std::cin.good() )
         {
             const Line* input = istream.read();
             if( !input ) { break; }
