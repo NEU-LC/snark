@@ -51,7 +51,7 @@ wheel_command compute_wheel_command( const steer_command &desired , Eigen::Matri
         Eigen::Vector4d forward( desired.velocity.x(), desired.velocity.y(), 0, 1 );
         forward = frame_transforms::inverse_transform( wheel_pose ) * forward;
 
-        command.turnrate = std::atan2( forward(2) - origin(2), forward(0) - origin(0) );
+        command.turnrate = - std::atan2( forward(2) - origin(2), forward(0) - origin(0) );
 
         // limit movement to -pi / 2 and pi / 2
         if( command.turnrate > M_PI / 2 )
