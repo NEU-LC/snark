@@ -36,13 +36,13 @@ TEST(wheels, wheel_command_rear_left)
     }
 
     {
-        steer_command desired( 0, 0, 0.1 );
+        steer_command desired( 0, 0, -0.1 );
         wheel_command wheel_command_ = compute_wheel_command( desired, wheel_pose );
         std::cout << "turn CW:  velocity: " << wheel_command_.velocity << ", angle: " << wheel_command_.turnrate << std::endl;
     }
 
     {
-        steer_command desired( 0, 0, -0.1 );
+        steer_command desired( 0, 0, 0.1 );
         wheel_command wheel_command_ = compute_wheel_command( desired, wheel_pose );
         std::cout << "turn CCW:  velocity: " << wheel_command_.velocity << ", angle: " << wheel_command_.turnrate << std::endl;
     }
@@ -67,13 +67,13 @@ TEST(wheels, wheel_command_front_left)
     }
 
     {
-        steer_command desired( 0, 0, 0.1 );
+        steer_command desired( 0, 0, -0.1 );
         wheel_command wheel_command_ = compute_wheel_command( desired, wheel_pose );
         std::cout << "turn CW:  velocity: " << wheel_command_.velocity << ", angle: " << wheel_command_.turnrate << std::endl;
     }
 
     {
-        steer_command desired( 0, 0, -0.1 );
+        steer_command desired( 0, 0, 0.1 );
         wheel_command wheel_command_ = compute_wheel_command( desired, wheel_pose );
         std::cout << "turn CCW:  velocity: " << wheel_command_.velocity << ", angle: " << wheel_command_.turnrate << std::endl;
     }
@@ -98,13 +98,13 @@ TEST(wheels, wheel_command_front_right)
     }
 
     {
-        steer_command desired( 0, 0, 0.1 );
+        steer_command desired( 0, 0, -0.1 );
         wheel_command wheel_command_ = compute_wheel_command( desired, wheel_pose );
         std::cout << "turn CW:  velocity: " << wheel_command_.velocity << ", angle: " << wheel_command_.turnrate << std::endl;
     }
 
     {
-        steer_command desired( 0, 0, -0.1 );
+        steer_command desired( 0, 0, 0.1 );
         wheel_command wheel_command_ = compute_wheel_command( desired, wheel_pose );
         std::cout << "turn CCW:  velocity: " << wheel_command_.velocity << ", angle: " << wheel_command_.turnrate << std::endl;
     }
@@ -129,13 +129,13 @@ TEST(wheels, wheel_command_rear_right)
     }
 
     {
-        steer_command desired( 0, 0, 0.1 );
+        steer_command desired( 0, 0, -0.1 );
         wheel_command wheel_command_ = compute_wheel_command( desired, wheel_pose );
         std::cout << "turn CW:  velocity: " << wheel_command_.velocity << ", angle: " << wheel_command_.turnrate << std::endl;
     }
 
     {
-        steer_command desired( 0, 0, -0.1 );
+        steer_command desired( 0, 0, 0.1 );
         wheel_command wheel_command_ = compute_wheel_command( desired, wheel_pose );
         std::cout << "turn CCW:  velocity: " << wheel_command_.velocity << ", angle: " << wheel_command_.turnrate << std::endl;
     }
