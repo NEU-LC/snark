@@ -80,18 +80,18 @@ wheel_command compute_wheel_command( const steer_command &desired , Eigen::Matri
         // distance from wheel to ICR
         double d = std::sqrt( std::pow( icr_position(0), 2 ) + std::pow( icr_position(2), 2 ) );
 
-        command.velocity = desired.turnrate * ( d - wheel_offset );
+        command.velocity = desired.turnrate * ( d + wheel_offset );
 
         // limit movement to -pi / 2 and pi / 2
         if( comma::math::less( M_PI / 2, command.turnrate, 1e-9 ) )
         {
             command.turnrate -= M_PI;
-            command.velocity = -desired.turnrate * ( d + wheel_offset );
+            command.velocity = -desired.turnrate * ( d - wheel_offset );
         }
         else if( comma::math::less( command.turnrate, -M_PI / 2, 1e-9 ) )
         {
             command.turnrate += M_PI;
-            command.velocity = -desired.turnrate * ( d + wheel_offset );
+            command.velocity = -desired.turnrate * ( d - wheel_offset );
         }
     }
 
