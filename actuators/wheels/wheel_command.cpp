@@ -78,7 +78,7 @@ wheel_command compute_wheel_command( const steer_command &desired , Eigen::Matri
         command.turnrate = -std::atan2( icr_position(0), icr_position(2) ); // take x and z positions only
 
         // distance from wheel to ICR
-        double d = std::sqrt( std::pow( icr_position(0), 2 ) + std::pow( icr_position(2), 2 ) );
+        double d = Eigen::Vector3d( icr_position(0), 0, icr_position(2) ).norm();
 
         command.velocity = desired.turnrate * ( d + wheel_offset );
 
