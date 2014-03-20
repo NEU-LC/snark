@@ -233,7 +233,6 @@ ADD_SUBDIRECTORY( visiting )
 
 # Package
 #the following set up optional parameters for cpack
-INCLUDE( CPack )
 SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "This is a description of snark. It's great!")
 SET(CPACK_PACKAGE_VENDOR "ACFR")
 SET(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/COPYING")
@@ -255,3 +254,5 @@ IF( WIN32 )
     #this line finds the appropriate compiler dlls, e.g. Visual Studio DLLS in windows. Maybe it would find other dlls if a different build tool were used.
     INCLUDE( InstallRequiredSystemLibraries )
 ENDIF( WIN32 )
+INCLUDE( CPack )
+# End Packaging
