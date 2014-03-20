@@ -31,6 +31,7 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <cmath>
+#include <comma/math/compare.h>
 #include "wheel_command.h"
 
 namespace snark { namespace wheels {
@@ -54,12 +55,12 @@ wheel_command compute_wheel_command( const steer_command &desired , Eigen::Matri
         command.turnrate = std::atan2( forward(2) - origin(2), forward(0) - origin(0) );
 
         // limit movement to -pi / 2 and pi / 2
-        if( command.turnrate > M_PI / 2 )
+        if( comma::math::less( M_PI / 2, command.turnrate, 1e-9 ) )
         {
             command.turnrate -= M_PI;
             command.velocity = -command.velocity;
         }
-        else if( command.turnrate < -M_PI / 2 )
+        else if( comma::math::less( command.turnrate, -M_PI / 2, 1e-9 ) )
         {
             command.turnrate += M_PI;
             command.velocity = -command.velocity;
@@ -74,19 +75,23 @@ wheel_command compute_wheel_command( const steer_command &desired , Eigen::Matri
         icr_position = frame_transforms::inverse_transform( wheel_pose ) * icr_position;
 
         // transform ICR to wheel coordinates
-        command.turnrate = std::atan2( icr_position(0), icr_position(2) ); // take x and z positions only
-        command.velocity = desired.turnrate * ( icr_position.norm() - wheel_offset );
+        command.turnrate = -std::atan2( icr_position(0), icr_position(2) ); // take x and z positions only
+
+        // distance from wheel to ICR
+        double d = Eigen::Vector3d( icr_position(0), 0, icr_position(2) ).norm();
+
+        command.velocity = desired.turnrate * ( d + wheel_offset );
 
         // limit movement to -pi / 2 and pi / 2
-        if( command.turnrate > M_PI / 2 )
+        if( comma::math::less( M_PI / 2, command.turnrate, 1e-9 ) )
         {
             command.turnrate -= M_PI;
-            command.velocity = -desired.turnrate * ( icr_position.norm() + wheel_offset );
+            command.velocity = -desired.turnrate * ( d - wheel_offset );
         }
-        else if( command.turnrate < -M_PI / 2 )
+        else if( comma::math::less( command.turnrate, -M_PI / 2, 1e-9 ) )
         {
             command.turnrate += M_PI;
-            command.velocity = -desired.turnrate * ( icr_position.norm() + wheel_offset );
+            command.velocity = -desired.turnrate * ( d - wheel_offset );
         }
     }
 
