@@ -150,7 +150,7 @@ void SelectPartition::onMousePress( QMouseEvent* e )
             {
                 for( Dataset::Points::ConstEnumerator en = it->second.begin(); !en.end(); ++en )
                 {
-                    std::cerr << en.key().x() << "," << en.key().y() << "," << en.key().z() << "," << en.value().id << std::endl;
+                    std::cerr << std::setprecision( 12 ) << en.key().x() << "," << en.key().y() << "," << en.key().z() << "," << en.value().id << std::endl;
                 }
             }
             break;
@@ -190,7 +190,7 @@ void SelectId::onMousePress( QMouseEvent* e )
             {
                 for( Dataset::Points::ConstEnumerator en = it->second.begin(); !en.end(); ++en )
                 {
-                    std::cerr << en.key().x() << "," << en.key().y() << "," << en.key().z() << "," << en.value().id << std::endl;
+                    std::cerr << std::setprecision( 12 ) << en.key().x() << "," << en.key().y() << "," << en.key().z() << "," << en.value().id << std::endl;
                 }
             }
         }

@@ -129,7 +129,7 @@ void BasicDataset::erase( const BasicDataset::Points& m ) // quick and dirty
         if( it->second.empty() ) { m_partitions.erase( it ); }
     }
     init();
-} 
+}
 
 Dataset::Dataset( const std::string& filename, const comma::csv::options& options, bool relabelDuplicated )
     : m_filename( filename )
@@ -203,7 +203,7 @@ void Dataset::load()
     m_selection.reset();
     this->BasicDataset::clear();
     std::ifstream ifs( m_filename.c_str(), m_options.binary() ? std::ios::binary | std::ios::in : std::ios::in );
-    if( !ifs.good() ) { COMMA_THROW( comma::exception, "failed to open \"" << m_filename << "\"" ); }
+    if( !ifs.is_open() || !ifs.good() ) { COMMA_THROW( comma::exception, "failed to open \"" << m_filename << "\"" ); }
     boost::scoped_ptr< comma::csv::ascii_input_stream< PointWithId > > ascii;
     boost::scoped_ptr< comma::csv::binary_input_stream< PointWithId > > binary;
     if( m_options.binary() ) { binary.reset( new comma::csv::binary_input_stream< PointWithId >( ifs, m_options.format().string(), m_options.fields, false ) ); }
@@ -229,7 +229,7 @@ void Dataset::load()
             }
             if( m_extents )
             {
-                m_extents = m_extents->hull( p->point ); 
+                m_extents = m_extents->hull( p->point );
             }
             else
             {
