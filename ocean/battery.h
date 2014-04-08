@@ -8,56 +8,11 @@
 #include <vector>
 #include <iomanip>
 #include <iostream>
+#include "hex_value.h"
 
 namespace snark { namespace ocean {
 
 typedef unsigned char uint8;
-
-struct battery_t
-{
-    battery_t();
-    battery_t( uint8 id );
-    uint8 id;
-    volt_t voltage;
-    current_t current;
-    temperature_t temperature;  
-    double chargePc; // Charge percentage
-    
-    
-    
-};
-
-template < int N >
-struct controller_t
-{
-    struct state_t {
-        enum { AC, FC, FD, NG };
-    };
-    
-    controller_t();
-    controller_t( uint8 id_ );
-    uint8 id;
-    state_t state;
-    boost::array< battery_t, N > batteries;
-    
-    
-    power_t total_power;
-    current_t total_current;
-    boost::posix_time::time_duration time_to_empty;
-    double avgCharge; // percentage
-};
-
-/// Wraps a fundamental type so that is can be serialise/deserialised to/from hex CSV string
-template < typename T >
-struct hex_value_t
-{
-    hex_value_t();
-    hex_value_t( T v );
-    comma::uint16 byte() { return comma::uint16( value & 0x000000ff ); }
-    
-    T value;
-};
-
 
 /// A pair of data ( 1 byte) address and value ( 2 bytes )
 /// See universal Smart Battery Specification doc
@@ -82,13 +37,36 @@ struct hex_data_t
     std::vector< data_t > values;
 };
 
-/// For lexical_cast
-template < typename T >
-std::ostream& operator<<( std::ostream& ostream, const hex_value_t< T >& val );
+struct battery_t
+{
+    battery_t();
+    battery_t( uint8 id );
+    uint8 id;
+    volt_t voltage;
+    current_t current;
+    temperature_t temperature;  
+    double chargePc; // Charge percentage
+};
 
-/// For lexical_cast
-template < typename T >
-std::istream& operator>>( std::istream& istream, hex_value_t< T >& val );
+template < int N >
+struct controller_t
+{
+    struct state_t {
+        enum { AC, FC, FD, NG };
+    };
+    
+    controller_t();
+    controller_t( uint8 id_ );
+    uint8 id;
+    state_t state;
+    boost::array< battery_t, N > batteries;
+    
+    
+    power_t total_power;
+    current_t total_current;
+    boost::posix_time::time_duration time_to_empty;
+    double avgCharge; // percentage
+};
 
 } } // namespace snark { namespace ocean {
 

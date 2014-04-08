@@ -4,6 +4,7 @@
 #include <comma/string/string.h>
 #include <boost/lexical_cast.hpp>
 #include "battery.h"
+#include "hex_value.h"
 
 namespace boost {
     

@@ -47,21 +47,6 @@ comma::csv::ascii< T >& ascii() {
 }
 
 typedef hex_value_t< comma::uint16 > hex_uint16;
-/// For lexical_cast
-template < typename T >
-std::ostream& operator<<( std::ostream& ostream, const hex_value_t< T >& val )
-{
-    ostream << std::hex << val.value;
-    return ostream;
-}
-
-/// For lexical_cast
-template < typename T >
-std::istream& operator>>( std::istream& istream, hex_value_t< T >& val )
-{
-    istream >> std::hex >> val.value;
-    return istream;
-}
 
 TEST(time, ocean_raw_hex_data)
 {
