@@ -116,6 +116,7 @@ OPTION( snark_build_point_cloud "build point cloud" ON )
 OPTION( snark_build_imaging "build imaging" ON )
 OPTION( snark_build_sensors "build sensors" ON )
 OPTION( snark_build_actuators "build actuators" OFF )
+OPTION( snark_build_ocean "build ocean smart batteries" OFF )
 
 INCLUDE( CMakeDependentOption )
 CMAKE_DEPENDENT_OPTION( snark_build_sensors_dc1394 "build dc1394 components" ON "snark_build_sensors" OFF )
@@ -227,6 +228,10 @@ ADD_SUBDIRECTORY( math )
 IF( snark_build_sensors )
     ADD_SUBDIRECTORY( sensors )
 ENDIF( snark_build_sensors )
+
+IF( snark_build_ocean )
+    ADD_SUBDIRECTORY( ocean )
+ENDIF( snark_build_ocean )
 
 ADD_SUBDIRECTORY( timing )
 ADD_SUBDIRECTORY( visiting )

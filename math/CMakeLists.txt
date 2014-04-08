@@ -24,6 +24,7 @@ SET( includes ${math_includes} ${filter_includes} ${gaussian_process_includes} $
 
 ADD_LIBRARY( ${TARGET_NAME} ${source} ${includes} )
 SET_TARGET_PROPERTIES( ${TARGET_NAME} PROPERTIES ${snark_LIBRARY_PROPERTIES} )
+MESSAGE( STATUS "snark all external: ${snark_ALL_EXTERNAL_LIBRARIES}" )
 TARGET_LINK_LIBRARIES( ${TARGET_NAME} ${snark_ALL_EXTERNAL_LIBRARIES} )
 
 INSTALL( FILES ${filter_includes} DESTINATION ${snark_INSTALL_INCLUDE_DIR}/${PROJECT}/filter )
