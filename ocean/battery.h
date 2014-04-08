@@ -56,13 +56,8 @@ struct hex_value_t
     comma::uint16 value;
     
     
-    bool operator==( const hex_value_t& rhs ) { return value == rhs.value; }
-    
 };
 
-std::ostream& operator<<( std::ostream& ostream, const hex_value_t& val );
-
-std::istream& operator>>( std::istream& istream, hex_value_t& val );
 
 /// A pair of data ( 1 byte) address and value ( 2 bytes )
 /// See universal Smart Battery Specification doc

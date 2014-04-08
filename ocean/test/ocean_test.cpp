@@ -40,39 +40,34 @@
 
 namespace snark { namespace ocean {
 
+template < typename T >
+comma::csv::ascii< T >& ascii() { 
+    static comma::csv::ascii< T > ascii_;
+    return ascii_;
+}
+/// For lexical_cast
 std::ostream& operator<<( std::ostream& ostream, const hex_value_t& val )
 {
     ostream << std::hex << val.value;
     return ostream;
 }
 
+/// For lexical_cast
 std::istream& operator>>( std::istream& istream, hex_value_t& val )
 {
     istream >> std::hex >> val.value;
     return istream;
 }
 
-template < typename T >
-comma::csv::ascii< T >& ascii() { 
-    static comma::csv::ascii< T > ascii_;
-    return ascii_;
-}
-TEST(time, lexical_casting_hex)
-{
-    hex_value_t val = boost::lexical_cast< hex_value_t >("0x010");
-    
-    EXPECT_EQ( 16, val.value );
-}
-
 TEST(time, ocean_raw_hex_data)
 {
-//     std::string source = "0x10,0x197C";
-//     
-//     data_t pair;
-//     ascii< data_t >().get( pair, source );
-//     
-//     EXPECT_EQ( 15, pair.address );
-//     EXPECT_EQ( 6524, pair.value );
+    std::string source = "10,197C";
+    
+    data_t pair;
+    ascii< data_t >().get( pair, source );
+    
+    EXPECT_EQ( 16, pair.address.value );
+    EXPECT_EQ( 6524, pair.value.value );
     
 }
 

@@ -5,12 +5,20 @@
 #include <boost/lexical_cast.hpp>
 #include "battery.h"
 
+namespace boost {
+    
+/// Make hex_value_t a fundamental type so far as visiting is concerned
+/// It is lexical_cast able from/to hex string
+template <> struct is_fundamental< snark::ocean::hex_value_t > : public true_type {};
+
+}
 
 namespace comma { namespace visiting {
 using snark::ocean::data_t;
 using snark::ocean::hex_value_t;
 using snark::ocean::hex_data_t;
 using snark::ocean::uint8;
+
 
 template <> struct traits< data_t >
 {
@@ -29,19 +37,6 @@ template <> struct traits< data_t >
     {
         v.apply("address", t.address );
         v.apply("value", t.value );
-    }
-};
-
-template <> struct traits< hex_value_t >
-{
-    template< typename K, typename V > static void visit( const K& k, hex_value_t& t, V& v )
-    {
-        v.apply("value", t);
-    }
-
-    template< typename K, typename V > static void visit( const K& k, const hex_value_t& t, V& v )
-    {
-        v.apply("value", t);
     }
 };
     
