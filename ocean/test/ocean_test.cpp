@@ -45,15 +45,19 @@ comma::csv::ascii< T >& ascii() {
     static comma::csv::ascii< T > ascii_;
     return ascii_;
 }
+
+typedef hex_value_t< comma::uint16 > hex_uint16;
 /// For lexical_cast
-std::ostream& operator<<( std::ostream& ostream, const hex_value_t& val )
+template < typename T >
+std::ostream& operator<<( std::ostream& ostream, const hex_value_t< T >& val )
 {
     ostream << std::hex << val.value;
     return ostream;
 }
 
 /// For lexical_cast
-std::istream& operator>>( std::istream& istream, hex_value_t& val )
+template < typename T >
+std::istream& operator>>( std::istream& istream, hex_value_t< T >& val )
 {
     istream >> std::hex >> val.value;
     return istream;

@@ -47,15 +47,15 @@ struct controller_t
     double avgCharge; // percentage
 };
 
+/// Wraps a fundamental type so that is can be serialise/deserialised to/from hex CSV string
+template < typename T >
 struct hex_value_t
 {
     hex_value_t();
-    hex_value_t( comma::uint16 v );
-    comma::uint16 byte() { return value & 0x00ff; }
+    hex_value_t( T v );
+    comma::uint16 byte() { return comma::uint16( value & 0x000000ff ); }
     
-    comma::uint16 value;
-    
-    
+    T value;
 };
 
 
@@ -64,9 +64,10 @@ struct hex_value_t
 struct data_t
 {
     data_t();
-    hex_value_t address;
-    hex_value_t value;
+    hex_value_t< comma::uint16 > address;
+    hex_value_t< comma::uint16 > value;
 };
+
 
 struct hex_data_t
 {
@@ -81,6 +82,13 @@ struct hex_data_t
     std::vector< data_t > values;
 };
 
+/// For lexical_cast
+template < typename T >
+std::ostream& operator<<( std::ostream& ostream, const hex_value_t< T >& val );
+
+/// For lexical_cast
+template < typename T >
+std::istream& operator>>( std::istream& istream, hex_value_t< T >& val );
 
 } } // namespace snark { namespace ocean {
 

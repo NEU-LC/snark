@@ -9,7 +9,7 @@ namespace boost {
     
 /// Make hex_value_t a fundamental type so far as visiting is concerned
 /// It is lexical_cast able from/to hex string
-template <> struct is_fundamental< snark::ocean::hex_value_t > : public true_type {};
+template < typename T > struct is_fundamental< snark::ocean::hex_value_t< T > > : public true_type {};
 
 }
 
@@ -24,11 +24,6 @@ template <> struct traits< data_t >
 {
     template< typename K, typename V > static void visit( const K& k, data_t& t, V& v )
     {
-//         std::string addr, val;
-//         v.apply("address", addr);
-//         v.apply("value", val);
-//         t.address = boost::lexical_cast< uint8 >( addr );
-//         t.value = boost::lexical_cast< comma::uint16 >( addr );
         v.apply("address", t.address);
         v.apply("value", t.value);
     }
