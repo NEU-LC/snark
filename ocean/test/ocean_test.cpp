@@ -69,7 +69,19 @@ TEST(time, ocean_raw_hex_data)
     EXPECT_EQ( 16, pair.address.value );
     EXPECT_EQ( 6524, pair.value.value );
     
+    source = "B14,17,0026,18,19c8,19,3840,1a,0010,1b,302f,1C,00cc";
+    
+    hex_data_t data;
+    ascii< hex_data_t >().get( data, source );
+    
+    std::string temp;
+    ascii< hex_data_t >().put( data, temp );
+    
+    
+    EXPECT_EQ( "\"B14\",17,26,18,19c8,19,3840,1a,10,1b,302f,1c,cc", temp );
+    
 }
+
 
 } } // namespace snark { namespace ocean {
 

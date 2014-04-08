@@ -35,7 +35,7 @@ data_t::data_t() : address(0), value(0)
 
 }
 
-hex_data_t::hex_data_t() : controller_id(0), battery_id(0), values(7)
+hex_data_t::hex_data_t() : controller_id(0), battery_id(0), values(6)
 {
 }
 
