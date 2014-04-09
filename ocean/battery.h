@@ -12,30 +12,6 @@
 
 namespace snark { namespace ocean {
 
-typedef unsigned char uint8;
-
-/// A pair of data ( 1 byte) address and value ( 2 bytes )
-/// See universal Smart Battery Specification doc
-struct data_t
-{
-    data_t();
-    hex_value_t< comma::uint16 > address;
-    hex_value_t< comma::uint16 > value;
-};
-
-
-struct hex_data_t
-{
-    hex_data_t();
-    
-    static const char battery_char = 'B';
-    static const char setup_char = 'S';
-    uint8 controller_id;   // packed controller ID and battery ID
-    uint8 battery_id;
-    std::string id_packed;
-    /// Pairs of address identifying data and raw value
-    std::vector< data_t > values;
-};
 
 struct battery_t
 {

@@ -36,15 +36,15 @@ template <> struct traits< data_t >
     }
 };
     
-template <> struct traits< hex_data_t >
+template < int N > struct traits< hex_data_t< N > >
 {
-    template< typename K, typename V > static void visit( const K& k, hex_data_t& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, hex_data_t< N >& t, V& v )
     {
         v.apply("controller_id", t.id_packed);
         v.apply("values", t.values);
     }
 
-    template< typename K, typename V > static void visit( const K& k, const hex_data_t& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, const hex_data_t< N >& t, V& v )
     {
         v.apply("id_packed", boost::lexical_cast< std::string >( t.id_packed ) );
         v.apply("values", t.values);
