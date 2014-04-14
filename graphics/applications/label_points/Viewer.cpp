@@ -34,6 +34,7 @@
 #include <cmath>
 #include <vector>
 #include <boost/array.hpp>
+#include <boost/filesystem/operations.hpp>
 #include <boost/lexical_cast.hpp>
 #include <comma/math/compare.h>
 #include "./Viewer.h"
@@ -58,6 +59,11 @@ Viewer::Viewer( const std::vector< comma::csv::options >& options
     , m_labelDuplicated( labelDuplicated )
     , verbose_( verbose )
 {
+    // quick and dirty, since otherwise dataset construction throws on a separate thread on non-existing file and then segfaults on exit
+    for( std::size_t i = 0; i < m_options.size(); ++i )
+    {
+        if( !boost::filesystem::exists( m_options[i].filename ) ) { COMMA_THROW( comma::exception, "file " << m_options[i].filename << " does not exist" ); }
+    }
 }
 
 void Viewer::saveStateToFile() {}
@@ -189,7 +195,7 @@ boost::optional< std::pair< Eigen::Vector3d, comma::uint32 > > Viewer::pointSele
     {
         Eigen::Vector3d p(  point3d->x(), point3d->y(), point3d->z() );
         if( m_offset ) { p += *m_offset; }
-        std::cerr << " clicked point " << p.transpose() << std::endl;
+        std::cerr << " clicked point " << std::setprecision( 12 ) << p.transpose() << std::endl;
         snark::math::closed_interval< double, 3 > e( p - Eigen::Vector3d::Ones(), p + Eigen::Vector3d::Ones() );
         double minDistanceSquare = std::numeric_limits< double >::max();
         for( std::size_t i = 0; i < m_datasets.size(); ++i )
@@ -208,7 +214,7 @@ boost::optional< std::pair< Eigen::Vector3d, comma::uint32 > > Viewer::pointSele
             }
             if( minDistanceSquare <= 0.01 )
             {
-                if( verbose_ ) { std::cerr << " found point: " << result->first.transpose() << "; id: " << result->second << std::endl; }
+                if( verbose_ ) { std::cerr << " found point: " << std::setprecision( 12 ) << result->first.transpose() << "; id: " << result->second << std::endl; }
                 return result;
             }
         }
