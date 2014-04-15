@@ -116,7 +116,7 @@ bool Reader::updatePoint( const Eigen::Vector3d& offset )
 void Reader::drawLabel( QGLPainter *painter, const QVector3D& position, const std::string& label )
 {
     painter->modelViewMatrix().push();
-    painter->modelViewMatrix().translate( position );
+    painter->modelViewMatrix().translate( position - m_offset ); //painter->modelViewMatrix().translate( position );
     QMatrix4x4 world = painter->modelViewMatrix().top();
     Eigen::Matrix3d R;
     R << world( 0, 0 ) , world( 0, 1 ), world( 0, 2 ),
@@ -126,7 +126,7 @@ void Reader::drawLabel( QGLPainter *painter, const QVector3D& position, const st
     snark::rotation_matrix rotation( R );
     Eigen::Quaterniond q = rotation.quaternion();
     painter->modelViewMatrix().rotate( QQuaternion( q.w(), q.x(), q.y(), q.z() ) );
-    painter->modelViewMatrix().translate( m_offset );
+    //painter->modelViewMatrix().translate( m_offset );
     double scale = 1.0 / double( m_viewer.height() );
     scale *= m_viewer.camera()->projectionType() == QGLCamera::Orthographic
            ? ( 0.25 * m_viewer.camera()->viewSize().width() )
