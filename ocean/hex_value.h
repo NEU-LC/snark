@@ -28,9 +28,9 @@ struct hex_value_t
     {
 
     }
-    comma::uint16 byte() { return comma::uint16( value & 0x000000ff ); }
+    comma::uint16 byte() const  { return comma::uint16( value & 0x000000ff ); }
     
-    T operator()() { return value; }
+    T operator()() const { return value; }
     
     T value;
 };
@@ -74,6 +74,7 @@ struct hex_data_t
     std::string id_packed;
     /// Pairs of address identifying data and raw value
     boost::array< data_t, N > values;
+    typedef typename boost::array< data_t, N >::iterator value_iter;
 };
 
 } } // namespace snark { namespace ocean {
