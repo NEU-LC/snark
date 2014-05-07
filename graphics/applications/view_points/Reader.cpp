@@ -103,6 +103,7 @@ bool Reader::updatePoint( const Eigen::Vector3d& offset )
     boost::mutex::scoped_lock lock( m_mutex );
     if( !updated_ ) { return false; }
     m_translation = QVector3D( m_point->x() - offset.x(), m_point->y() - offset.y(), m_point->z() - offset.z() );
+    m_offset = QVector3D( offset.x(), offset.y(), offset.z() );
     if( m_orientation )
     {
         const Eigen::Quaterniond& q = snark::rotation_matrix( *m_orientation ).quaternion();
@@ -115,30 +116,23 @@ bool Reader::updatePoint( const Eigen::Vector3d& offset )
 void Reader::drawLabel( QGLPainter *painter, const QVector3D& position, const std::string& label )
 {
     painter->modelViewMatrix().push();
-    painter->modelViewMatrix().translate( position );
-
+    painter->modelViewMatrix().translate( position - m_offset ); //painter->modelViewMatrix().translate( position );
     QMatrix4x4 world = painter->modelViewMatrix().top();
     Eigen::Matrix3d R;
     R << world( 0, 0 ) , world( 0, 1 ), world( 0, 2 ),
-            world( 1, 0 ) , world( 1, 1 ), world( 1, 2 ),
-            world( 2, 0 ) , world( 2, 1 ), world( 2, 2 );
+         world( 1, 0 ) , world( 1, 1 ), world( 1, 2 ),
+         world( 2, 0 ) , world( 2, 1 ), world( 2, 2 );
     R.transposeInPlace();
     snark::rotation_matrix rotation( R );
     Eigen::Quaterniond q = rotation.quaternion();
     painter->modelViewMatrix().rotate( QQuaternion( q.w(), q.x(), q.y(), q.z() ) );
-    painter->modelViewMatrix().translate( m_offset );
-    double scale = 1 / ( double ) m_viewer.height();
-    if( m_viewer.camera()->projectionType() == QGLCamera::Orthographic )
-    {
-        scale *= 0.25 * m_viewer.camera()->viewSize().width();
-    }
-    else
-    {
-        Eigen::Vector3d t( world( 0, 3 ) , world( 1, 3 ), world( 2, 3 ) );
-        scale *= 0.2 * t.norm();
-    }
+    //painter->modelViewMatrix().translate( m_offset );
+    double scale = 1.0 / double( m_viewer.height() );
+    scale *= m_viewer.camera()->projectionType() == QGLCamera::Orthographic
+           ? ( 0.25 * m_viewer.camera()->viewSize().width() )
+           : ( 0.2 * Eigen::Vector3d( world( 0, 3 ) , world( 1, 3 ), world( 2, 3 ) ).norm() );
     painter->modelViewMatrix().scale( scale ); // TODO make size configurable ?
-    drawText( painter, label.c_str(), m_color );
+    drawText( painter, &label[0], m_color );
     painter->modelViewMatrix().pop();
 }
 
