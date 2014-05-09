@@ -12,6 +12,12 @@ namespace snark { namespace ocean {
     
 typedef unsigned char uint8;
 
+template < typename T > struct signed_type;
+template < > struct signed_type< comma::uint16 >
+{
+    typedef comma::int16 type;
+};
+
 
 /// Wraps a fundamental type so that is can be serialise/deserialised to/from hex CSV string
 template < typename T >
@@ -29,8 +35,10 @@ struct hex_value_t
 
     }
     comma::uint16 byte() const  { return comma::uint16( value & 0x000000ff ); }
+    typename signed_type< T >::type cast() const { return typename signed_type< T >::type(value); }
     
     T operator()() const { return value; }
+
     
     T value;
 };

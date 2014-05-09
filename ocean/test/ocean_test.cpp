@@ -121,8 +121,7 @@ TEST( ocean, setting_hex_data )
     for( std::size_t i=0; i<inputs.size(); ++i )
     {
         std::string& line = inputs[i];
-        line = line.substr( 1, line.find_first_of('%') - 1 );
-        std::vector< std::string > v = comma::split( line, ',');
+        std::vector< std::string > v = comma::split( ocean::strip( line ), ',');
         
         switch( v.size() )
         {
