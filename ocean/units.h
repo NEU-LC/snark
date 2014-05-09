@@ -26,7 +26,6 @@ const power_t::unit_type watt = boost::units::si::watt;
 //const boost::units::celsius::degree_instance_t<>&  celcius = boost::units::celsius::degree;
 const temperature_t::unit_type kelvin = boost::units::si::kelvin;
     
-
 } } // namespace snark { namespace ocean {
     
 

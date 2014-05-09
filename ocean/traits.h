@@ -56,8 +56,8 @@ template < int N > struct traits< hex_data_t< N > >
     template< typename K, typename V > static void visit( const K& k, hex_data_t< N >& t, V& v )
     {
         v.apply("controller_id", t.id_packed);
-        t.battery_id = boost::lexical_cast< comma::uint16 >( t.id_packed[2] );
-        t.controller_id = boost::lexical_cast< comma::uint16 >( t.id_packed[1] );
+        t.battery_id = boost::lexical_cast< comma::uint16 >( boost::lexical_cast< comma::uint32 >( t.id_packed[2] ) );
+        t.controller_id = boost::lexical_cast< comma::uint16 >( boost::lexical_cast< comma::uint32 >( t.id_packed[1] ) );
         v.apply("values", t.values);
     }
 
@@ -79,7 +79,7 @@ template <> struct traits< battery_t >
         v.apply("temperature", t.temperature.value() );
         v.apply("remaining_capacity", t.remaining_capacity.value() );
         v.apply("chargePc", t.chargePc );
-        v.apply("time_to_empty", t.time_to_empty.total_seconds() );
+        v.apply("time_to_empty", t.time_to_empty.total_seconds() / 3600.0 );
     }
 };
 

@@ -13,12 +13,12 @@ battery_t::battery_t( uint8 id_ ) : id( id_ ), chargePc(-999) {}
 
 
 template < int N >
-controller_t< N >::controller_t() : id(0), avgCharge(-999)
+controller_t< N >::controller_t() : id(0), state( state_t::unknown ), avgCharge(-999)
 {
 
 }
 template < int N >
-controller_t< N >::controller_t( uint8 id_ ) : id( id_ ), avgCharge(-999) {}
+controller_t< N >::controller_t( uint8 id_ ) : id( id_ ), state( state_t::unknown ), avgCharge(-999) {}
 
 
 void battery_t::operator&(const data_t& data)
@@ -28,27 +28,27 @@ void battery_t::operator&(const data_t& data)
         case address::temperature:
         {
             static const double unit = 0.1; // Kelvin
-            temperature = data.value() * unit * kelvin;
+            temperature = data.value() * unit * kelvin; // 0.1k unit
             break;
         }
         case address::voltage:
         {
-            voltage = 1000.0 * data.value() * volt; // millivolts to volts
+            voltage = data.value() / 1000.0 * volt; // millivolts to volts
             break;
         }
         case address::current:
         {
-            current = 1000.0 * data.value() * current; //mAmp to Amps
+            current = data.value() / 1000.0 * current; //mAmp to Amps
             break;
         }
         case address::avg_current:
         {
-            avg_current = 1000.0 * data.value() * current; //mAmp to Amps
+            avg_current = data.value() / 1000.0 * current; //mAmp to Amps
             break;
         }
         case address::remaining_capacity:
         {
-            remaining_capacity = 100.0 * data.value() * watt; // unit is 10mWh
+            remaining_capacity = data.value() / 100.0 * watt; // unit is 10mWh
         }
         case address::rel_state_of_charge:
         {

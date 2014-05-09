@@ -66,37 +66,58 @@ TEST(ocean, ocean_raw_hex_data)
     EXPECT_EQ( 16, pair.address.value );
     EXPECT_EQ( 6524, pair.value.value );
     
-    source = "B14,17,0026,18,19c8,19,3840,1a,0010,1b,302f,1C,00cc";
+    source = "B15,17,0026,18,19c8,19,3840,1a,0010,1b,302f,1C,00cc";
     
     hex_data_t< 6 > data;
     ascii< hex_data_t< 6 > >().get( data, source );
     
     
-    EXPECT_EQ( 4, data.battery_id );
+    EXPECT_EQ( 5, data.battery_id );
     EXPECT_EQ( 1, data.controller_id );
     
     std::string temp;
     ascii< hex_data_t< 6 > >().put( data, temp );
     
     
-    EXPECT_EQ( "\"B14\",17,26,18,19c8,19,3840,1a,10,1b,302f,1c,cc", temp );
+    EXPECT_EQ( "\"B15\",17,26,18,19c8,19,3840,1a,10,1b,302f,1c,cc", temp );
+
+    EXPECT_EQ( 23,      data.values[0].address() );
+    EXPECT_EQ( 38,      data.values[0].value() );
+    EXPECT_EQ( 24,      data.values[1].address() );
+    EXPECT_EQ( 6600,    data.values[1].value() );
+    EXPECT_EQ( 25,      data.values[2].address() );
+    EXPECT_EQ( 14400,   data.values[2].value() );
     
+    // boost::property_tree::ptree t;
+    // comma::to_ptree to_ptree( t );
+    // comma::visiting::apply( to_ptree ).to( data );
+    // std::ostringstream oss;
+    // boost::property_tree::write_json( oss, t );    
+ 
+    // EXPECT_EQ("json", oss.str() );
 }
 
 TEST( ocean, setting_hex_data )
 {
     std::vector< std::string > inputs;
-    inputs.push_back( "$B11,02,000A,01,0294,03,0080,08,0B94,09,4115,0A,FFEC,0B,FEC3%3D" );
-    inputs.push_back( "$B11,0C,000A,0D,0060,0E,0062,0F,1952,10,1A45,11,4B67,12,0519%33" );
-    inputs.push_back( "$B11,13,FFFF,14,0000,15,41A0,16,00E0,17,0022,18,19C8,19,3840%3C" );
-    inputs.push_back( "$B11,1A,0010,1B,2F56,1C,00B2%35" );
-    inputs.push_back( "$B12,10,1999,11,FFFF,12,0533,13,FFFF,14,0000,15,41A0,16,00E0%4B" );
-    inputs.push_back( "$B12,17,003B,18,19C8,19,3840,1A,0010,1B,2F56,1C,009A%34" );
-    inputs.push_back( "$B13,10,19A4,11,FFFF,12,03E0,13,FFFF,14,0000,15,41A0,16,00E0%4C" );
-    inputs.push_back( "$B13,17,0035,18,19C8,19,3840,1A,0010,1B,2F56,1C,009E%46" );
+    inputs.push_back( "$B11,02,000A,01,0294,03,0001,08,0B96,09,415E,0A,0000,0B,0000%37" );
+    inputs.push_back( "$B11,0C,0005,0D,0064,0E,0078,0F,1EE6,10,1EE6,11,FFFF,12,FFFF%4C" );
+    inputs.push_back( "$B11,13,FFFF,14,0000,15,41A0,16,40E0,17,000B,18,19C8,19,3840%4A" );
+    inputs.push_back( "$B11,1A,0031,1B,40E9,1C,0478%42" );
+    inputs.push_back( "$B12,02,000A,01,0294,03,0001,08,0B95,09,4169,0A,0000,0B,0000%48" );
+    inputs.push_back( "$B12,0C,0001,0D,0064,0E,0062,0F,190D,10,190D,11,FFFF,12,FFFF%40" );
+    inputs.push_back( "$B12,13,FFFF,14,0000,15,41A0,16,40E0,17,000B,18,19C8,19,3840%49" );
+    inputs.push_back( "$B12,1A,0031,1B,4350,1C,26D9%49" );
+    inputs.push_back( "$B13,02,000A,01,0294,03,0001,08,0B99,09,407A,0A,0000,0B,0000%3D" );
+    inputs.push_back( "$B13,0C,0001,0D,0064,0E,0061,0F,18C3,10,18E7,11,FFFF,12,FFFF%40" );
+    inputs.push_back( "$B13,13,FFFF,14,0000,15,41A0,16,40E0,17,000A,18,19C8,19,3840%4B" );
+    inputs.push_back( "$B13,1A,0031,1B,4350,1C,26BD%33" );
+
     
-    ocean::controller_t< 3 > controller; // controller with three batteries
+    ocean::controller_t< 3 > controller( 1 ); // controller with three batteries
     
+    EXPECT_EQ( 10, address::current );
+
     for( std::size_t i=0; i<inputs.size(); ++i )
     {
         std::string& line = inputs[i];
@@ -133,14 +154,19 @@ TEST( ocean, setting_hex_data )
             }
         }
     }
-    controller.consolidate();
-    boost::property_tree::ptree t;
-    comma::to_ptree to_ptree( t );
-    comma::visiting::apply( to_ptree ).to( controller );
-    std::ostringstream oss;
-    boost::property_tree::write_json( oss, t );    
+
+    std::string line;
+    ascii< controller_t< 3 > >().put( controller, line );
+    EXPECT_EQ( "1,-1,0,0,0,0,16.734,0,0,296.6,79.1,7910,1092.25,0,16.745,0,0,296.5,64.13,6413,1092.25,0,16.506,0,0,296.9,63.39,6339,1092.25,-999", line );
+
+    // controller.consolidate();
+    // boost::property_tree::ptree t;
+    // comma::to_ptree to_ptree( t );
+    // comma::visiting::apply( to_ptree ).to( controller );
+    // std::ostringstream oss;
+    // boost::property_tree::write_json( oss, t );    
  
-    EXPECT_EQ("json", oss.str() );
+    // EXPECT_EQ("json", oss.str() );
 }
 
 

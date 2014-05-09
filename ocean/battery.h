@@ -45,7 +45,7 @@ template < int N >
 struct controller_t
 {
     struct state_t {
-        enum { AC, FC, FD, NG };
+        enum { unknown=-1, AC, FC, FD, NG };
     };
     
     controller_t();
@@ -75,7 +75,7 @@ struct controller_t
             std::cerr << "battery " << line_data.battery_id  << "is not on controller " << int(id) << std::endl;
             return;
         }
-        
+
         batteries[ line_data.battery_id - 1 ] & line_data;
         
 //         for( typename hex_data_t< P >::value_iter it=line_data.begin(); it!=line_data.end(); ++it ) { *this & ( *it ); } 
