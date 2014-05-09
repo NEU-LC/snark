@@ -51,7 +51,7 @@ struct controller_t
     controller_t();
     controller_t( uint8 id_ );
     uint8 id;
-    state_t state;
+    int state;
     boost::array< battery_t, N > batteries;
     typedef typename boost::array< battery_t, N >::const_iterator const_iter;
     

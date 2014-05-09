@@ -38,6 +38,14 @@
 #include "../battery.h"
 #include "../traits.h"
 
+#include <comma/base/types.h>
+#include <comma/visiting/apply.h>
+#include <comma/name_value/ptree.h>
+#include <comma/csv/stream.h>
+#include <comma/name_value/parser.h>
+#include <comma/io/stream.h>
+#include <boost/property_tree/json_parser.hpp>
+
 namespace snark { namespace ocean {
 
 template < typename T >
@@ -97,7 +105,7 @@ TEST( ocean, setting_hex_data )
         
         switch( v.size() )
         {
-            case 15u: // 7 pairs of address & value pairs, 7*2 + 1 = 15
+            case 15u: // 7 address & value pairs, 7*2 + 1 = 15
             {
                 hex_data_t< 7 > data;
                 ascii< hex_data_t< 7 > >().get( data, v );
@@ -125,6 +133,14 @@ TEST( ocean, setting_hex_data )
             }
         }
     }
+    controller.consolidate();
+    boost::property_tree::ptree t;
+    comma::to_ptree to_ptree( t );
+    comma::visiting::apply( to_ptree ).to( controller );
+    std::ostringstream oss;
+    boost::property_tree::write_json( oss, t );    
+ 
+    EXPECT_EQ("json", oss.str() );
 }
 
 

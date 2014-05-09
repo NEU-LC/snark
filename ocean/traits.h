@@ -19,6 +19,8 @@ using snark::ocean::data_t;
 using snark::ocean::hex_value_t;
 using snark::ocean::hex_data_t;
 using snark::ocean::uint8;
+using snark::ocean::battery_t;
+using snark::ocean::controller_t;
 
 
 template <> struct traits< data_t >
@@ -33,6 +35,19 @@ template <> struct traits< data_t >
     {
         v.apply("address", t.address );
         v.apply("value", t.value );
+    }
+};
+
+template < int N > struct traits< boost::array< int, N > >
+{
+    template< typename K, typename V > static void visit( const K& k, boost::array< int, N >& t, V& v )
+    {
+        for( std::size_t i=0; i<N; ++i ) { v.apply( boost::lexical_cast< std::string >( i ), t[i] ); }
+    }
+
+    template< typename K, typename V > static void visit( const K& k, const boost::array< int, N >& t, V& v )
+    {
+        for( std::size_t i=0; i<N; ++i ) { v.apply( boost::lexical_cast< std::string >( i ), t[i] ); }
     }
 };
     
@@ -52,7 +67,37 @@ template < int N > struct traits< hex_data_t< N > >
         v.apply("values", t.values);
     }
 };
-    
+
+template <> struct traits< battery_t >
+{
+    template< typename K, typename V > static void visit( const K& k, const battery_t& t, V& v )
+    {
+        v.apply("id", int(t.id) );
+        v.apply("voltage", t.voltage.value() );
+        v.apply("current", t.current.value() );
+        v.apply("avg_current", t.avg_current.value() );
+        v.apply("temperature", t.temperature.value() );
+        v.apply("remaining_capacity", t.remaining_capacity.value() );
+        v.apply("chargePc", t.chargePc );
+        v.apply("time_to_empty", t.time_to_empty.total_seconds() );
+    }
+};
+
+template < int N > struct traits< controller_t< N > >
+{
+    template< typename K, typename V > static void visit( const K& k, const controller_t< N >& t, V& v )
+    {
+        v.apply("id", int(t.id) );
+        v.apply("state", int( t.state ) );
+        v.apply("total_power", t.total_power.value() );
+        v.apply("total_current", t.total_current.value() );
+        v.apply("avg_voltage", t.avg_voltage.value() );
+        v.apply("batteries", t.batteries );
+        v.apply("avgCharge", t.avgCharge );
+    }
+};   
+
+
 } } // namespace comma { namespace visiting {
 
 #endif // SNARK_OCEAN_TRAITS_H
