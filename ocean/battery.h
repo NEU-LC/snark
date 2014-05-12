@@ -45,6 +45,7 @@ struct battery_t
 
 void operator&(const data_t& data)
 {
+    // std::cerr << " address " << data.address() << std::endl;
     switch( data.address() )
     {
         case address::temperature:
@@ -56,12 +57,12 @@ void operator&(const data_t& data)
         case address::voltage:
         {
             voltage = data.value() / 1000.0 * volt; // millivolts to volts
-            // std::cerr << "got current: " << data.value() << " Amps" << std::endl;
             break;
         }
         case address::current:
         {
             current = data.value.cast() / 1000.0 * ampere; //mAmp to Amps
+            // std::cerr << "got current: " << current.value() << std::endl;
             break;
         }
         case address::avg_current:
@@ -127,6 +128,9 @@ struct controller_t
     template < int P >
     void operator&( const hex_data_t< P >& line_data )
     {
+        // std::cerr << "controller update: " << int( line_data.controller_id ) << " - Battery: " <<
+        //     int( line_data.battery_id ) << std::endl;
+
         if( line_data.controller_id != id ) { 
             return; 
         }
