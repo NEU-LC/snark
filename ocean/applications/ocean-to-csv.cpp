@@ -171,7 +171,7 @@ int main( int ac, char** av )
         int controller_id =  options.value< int >( "--controller-id,-C" );
         float beat = options.value< float >( "--beat,-B" );
 
-        std::cerr << "controller id: " << controller_id << std::endl;
+        std::cerr << name() << ": controller id is " << controller_id << std::endl;
 
         std::string line;
         // Set it to report status immediately if no command is received

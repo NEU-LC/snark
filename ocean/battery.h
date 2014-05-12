@@ -15,13 +15,42 @@ namespace snark { namespace ocean {
 
 struct address {
     enum { temperature = 0x08, voltage = 0x09, current = 0x0a, avg_current=0x0b, rel_state_of_charge=0x0d, remaining_capacity=0x0f,
-           run_time_to_empty=0x11
+           run_time_to_empty=0x11, status=0x16
     };
     
+};
+struct battery_state {
+        enum { charging=0x00, fully_discharged=0x10, fully_charged=0x20, discharging=0x40, initialised=0x80, uninitialised };
 };
 
 struct battery_t
 {
+
+    static std::string state_to_string( int st ) {
+        switch( st )
+        {
+            case battery_state::initialised:
+                return "initialised";
+                break;
+            case battery_state::uninitialised:
+                return "un-initialised";
+                break;
+            case battery_state::fully_discharged:
+                return "fully_discharged";
+                break;
+            case battery_state::fully_charged:
+                return "fully_charged";
+                break;
+            case battery_state::discharging:
+                return "discharging";
+                break;
+            default:
+                return "charging";
+                break;
+
+        }
+    }
+
     uint8 id;
     voltage_t voltage;
     current_t current;
@@ -30,6 +59,7 @@ struct battery_t
     power_t remaining_capacity;
     double chargePc; // Charge percentage
     boost::posix_time::time_duration time_to_empty;
+    int state;
     
     // void operator&( const data_t& data );
     
@@ -39,8 +69,8 @@ struct battery_t
         for( typename boost::array< data_t, P >::const_iterator it=line_data.values.begin(); it!=line_data.values.end(); ++it ) { *this & ( *it ); } 
     }
 
-    battery_t() : id(0), chargePc(-999) {}
-    battery_t( uint8 id_ ) : id( id_ ), chargePc(-999) {}
+    battery_t() : id(0), chargePc(-999), state( battery_state::uninitialised ) {}
+    battery_t( uint8 id_ ) : id( id_ ), chargePc(-999), state( battery_state::uninitialised ) {}
 
 
 void operator&(const data_t& data)
@@ -83,6 +113,32 @@ void operator&(const data_t& data)
         {
             time_to_empty = boost::posix_time::minutes( data.value() );
         }
+        case address::status:
+        {
+            if( !(data.value() &  battery_state::initialised) ) 
+            {
+                state = battery_state::uninitialised;
+                return;
+            }
+            comma::uint16 val = data.value() & 0x0070;  // masks out everything including 'initialised' flag
+            switch( val )
+            {
+                case battery_state::discharging:
+                    state = battery_state::discharging;
+                    break;
+                case battery_state::fully_charged:
+                    state = battery_state::fully_charged;
+                    break;
+                case battery_state::fully_discharged:
+                    state = battery_state::fully_discharged;
+                    break;
+                default:
+                    state = battery_state::charging;
+                    break;
+            }
+            std::cerr << "battery: " << int(id) <<  " state: " << state << " value: " << data.value() << " val: " << val << std::endl;
+            break;
+        }
         default:
         {
             return;
@@ -102,9 +158,9 @@ std::string& strip( std::string& line )
 template < int N >
 struct controller_t
 {
-    struct state_t {
-        enum { unknown=-1, AC, FC, FD, NG };
-    };
+    // struct state_t {
+    //     enum { unknown=-1, AC, FC, FD, NG };
+    // };
     
     uint8 id;
     int state;
@@ -118,8 +174,8 @@ struct controller_t
     double avgCharge; // percentage
 
 
-    controller_t() : id(0), state( state_t::unknown ), avgCharge(-999) { set_battery_id(); }
-    controller_t( uint8 id_ ) : id( id_ ), state( state_t::unknown ), avgCharge(-999) { set_battery_id(); }
+    controller_t() : id(0), state( battery_state::initialised ), avgCharge(-999) { set_battery_id(); }
+    controller_t( uint8 id_ ) : id( id_ ), state( battery_state::initialised ), avgCharge(-999) { set_battery_id(); }
 
     void set_battery_id()
     {
@@ -165,6 +221,7 @@ struct controller_t
         //avg_voltage = ( avg_voltage.value()/N ) * volt;
         avg_voltage /= N;
         avgCharge /= N;
+        state = batteries.front().state;
     }
 };
 

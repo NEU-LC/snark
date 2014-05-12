@@ -88,7 +88,7 @@ template < int N > struct traits< controller_t< N > >
     template< typename K, typename V > static void visit( const K& k, const controller_t< N >& t, V& v )
     {
         v.apply("id", int(t.id) );
-        v.apply("state", int( t.state ) );
+        v.apply("state", battery_t::state_to_string(t.state) );
         v.apply("total_power", t.total_power.value() );
         v.apply("total_current", t.total_current.value() );
         v.apply("avg_voltage", t.avg_voltage.value() );
