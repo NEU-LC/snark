@@ -36,6 +36,28 @@ using snark::ocean::controller_t;
 
 typedef controller_t< BATTERY_NUM > controller_b;
 
+struct stats_t
+{
+    boost::posix_time::ptime time;
+    controller_b controller;
+
+    stats_t( int id=1 ) : controller( id ) {}
+};
+
+namespace comma { namespace visiting { 
+
+template <> struct traits< stats_t >
+{
+    template< typename K, typename V > static void visit( const K& k, const stats_t& t, V& v )
+    {
+        v.apply("time", t.time );
+        v.apply("controller", t.controller );
+    }
+};
+
+} } // namespace comma { namespace visiting { 
+
+
 void usage(int code=1)
 {
     std::cerr << std::endl;
@@ -157,7 +179,7 @@ int main( int ac, char** av )
         using boost::posix_time::seconds;
         using boost::posix_time::ptime;
         ptime future = microsec_clock::universal_time();
-        controller_b controller( controller_id );
+        stats_t stats( controller_id );
         while( std::cin.good() )
         {
             std::getline( std::cin, line );
@@ -169,32 +191,33 @@ int main( int ac, char** av )
 
             if( line[0] != 'B' ) continue; // TODO: parse $C line???
 
-            update_controller( controller, line );
+            update_controller( stats.controller, line );
 
             if( beat > 0 && microsec_clock::universal_time() >= future )
             {
-                controller.consolidate();
+                stats.time = microsec_clock::universal_time();
+                stats.controller.consolidate();
 
                 if( is_binary )
                 {
-                    static comma::csv::binary< controller_b > binary("","",true, controller );
+                    static comma::csv::binary< stats_t > binary("","",true, stats );
                     static std::vector<char> line( binary.format().size() );
-                    binary.put( controller, line.data() );
+                    binary.put( stats, line.data() );
                     std::cout.write( line.data(), line.size());
                 }
                 else if( status_in_json )
                 {
                     boost::property_tree::ptree t;
                     comma::to_ptree to_ptree( t );
-                    comma::visiting::apply( to_ptree ).to( controller );
+                    comma::visiting::apply( to_ptree ).to( stats );
                     boost::property_tree::write_json( std::cout, t );    
                     // *stream << char(4) << char(3); // End of Transmition
 
                 }
                 else
                 {
-                    comma::csv::output_stream< controller_b > ss( std::cout );
-                    ss.write( controller );
+                    comma::csv::output_stream< stats_t > ss( std::cout );
+                    ss.write( stats );
                     std::cout.flush();
                 }
                 future = microsec_clock::universal_time() + seconds( beat );

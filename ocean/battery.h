@@ -118,9 +118,13 @@ struct controller_t
     double avgCharge; // percentage
 
 
-    controller_t() : id(0), state( state_t::unknown ), avgCharge(-999) {}
-    controller_t( uint8 id_ ) : id( id_ ), state( state_t::unknown ), avgCharge(-999) {}
+    controller_t() : id(0), state( state_t::unknown ), avgCharge(-999) { set_battery_id(); }
+    controller_t( uint8 id_ ) : id( id_ ), state( state_t::unknown ), avgCharge(-999) { set_battery_id(); }
 
+    void set_battery_id()
+    {
+        for( std::size_t i=0; i<=N; ++i ) { batteries[i].id = i + 1; }
+    }
     
     void operator&( const data_t& data );
     
