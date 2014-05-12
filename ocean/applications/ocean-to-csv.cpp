@@ -4,9 +4,10 @@
 #include <comma/base/types.h>
 #include <comma/visiting/apply.h>
 #include <comma/name_value/ptree.h>
-#include <comma/csv/stream.h>
 #include <comma/name_value/parser.h>
 #include <comma/io/stream.h>
+#include <comma/csv/stream.h>
+#include <boost/property_tree/json_parser.hpp>
 #include "../units.h"
 #include "../battery.h"
 #include "../traits.h"
@@ -42,6 +43,8 @@ void usage(int code=1)
     std::cerr << "options:" << std::endl;
     std::cerr << "    --status-json           - Data output in JSON format with End of Text delimiter char." << std::endl;
     std::cerr << "    --binary                - Data output in binary, default is ascii CSV." << std::endl;
+    std::cerr << "*   --beat=|-C=             - Minium second/s between status update, floating point e.g. 0.5." << std::endl;
+    std::cerr << "*   --controller-id=|-C=    - Controller's ID: 1-9." << std::endl;
     std::cerr << "    --fields="  << comma::join( comma::csv::names< controller_b >(), ',' ) << std::endl;
     std::cerr << std::endl;
     exit ( code );
@@ -142,6 +145,7 @@ int main( int ac, char** av )
     try
     {
         bool is_binary = options.exists( "--binary,-b" );
+        bool status_in_json = options.exists( "--status-json" );
         int controller_id =  options.value< int >( "--controller-id,-C" );
         float beat = options.value< float >( "--beat,-B" );
 
@@ -152,7 +156,7 @@ int main( int ac, char** av )
         using boost::posix_time::microsec_clock;
         using boost::posix_time::seconds;
         using boost::posix_time::ptime;
-        ptime future = microsec_clock::universal_time() + seconds( 5 );
+        ptime future = microsec_clock::universal_time();
         controller_b controller( controller_id );
         while( std::cin.good() )
         {
@@ -177,6 +181,15 @@ int main( int ac, char** av )
                     static std::vector<char> line( binary.format().size() );
                     binary.put( controller, line.data() );
                     std::cout.write( line.data(), line.size());
+                }
+                else if( status_in_json )
+                {
+                    boost::property_tree::ptree t;
+                    comma::to_ptree to_ptree( t );
+                    comma::visiting::apply( to_ptree ).to( controller );
+                    boost::property_tree::write_json( std::cout, t );    
+                    // *stream << char(4) << char(3); // End of Transmition
+
                 }
                 else
                 {
