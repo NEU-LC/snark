@@ -38,7 +38,6 @@
 
 #ifdef WIN32
 #include <winsock2.h>
-
 //#include <windows.h>
 #endif
 
@@ -128,14 +127,8 @@ inline void ShapeReader< S, How >::render( QGLPainter* painter )
     painter->setVertexAttribute(QGL::Color, m_buffer.color() );
 
     Shapetraits< S, How >::draw( painter, m_buffer.size(), m_buffer.index() );
-    for( unsigned int i = 0; i < m_labelSize; i++ )
-    {
-        drawLabel( painter, m_labels[ i ].first, m_labels[ i ].second );
-    }
-    if( !m_label.empty() )
-    {
-        drawLabel( painter, m_translation );
-    }
+    for( unsigned int i = 0; i < m_labelSize; i++ ) { drawLabel( painter, m_labels[ i ].first, m_labels[ i ].second ); }
+    if( !m_label.empty() ) { drawLabel( painter, m_translation ); }
 }
 
 template< typename S, typename How >
@@ -166,15 +159,9 @@ inline bool ShapeReader< S, How >::readOnce()
         if( !v.label.empty() )
         {
             m_labels[ m_labelIndex ] = std::make_pair( QVector3D( center.x(), center.y(), center.z() ) , v.label );
-            m_labelIndex++;
-            if( m_labelSize < m_labels.size() )
-            {
-                m_labelSize++;
-            }
-            if( m_labelIndex > m_labels.size() )
-            {
-                m_labelIndex = 0;
-            }
+            ++m_labelIndex;
+            if( m_labelSize < m_labels.size() ) { ++m_labelSize; }
+            if( m_labelIndex > m_labels.size() ) { m_labelIndex = 0; }
         }
         v.color = m_colored->color( center, p->id, p->scalar, p->color );
         boost::mutex::scoped_lock lock( m_mutex );
