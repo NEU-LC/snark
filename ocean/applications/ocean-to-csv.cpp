@@ -67,7 +67,10 @@ void usage(int code=1)
     std::cerr << "    --binary                - Data output in binary, default is ascii CSV." << std::endl;
     std::cerr << "*   --beat=|-C=             - Minium second/s between status update, floating point e.g. 0.5." << std::endl;
     std::cerr << "*   --controller-id=|-C=    - Controller's ID: 1-9." << std::endl;
-    std::cerr << "    --fields="  << comma::join( comma::csv::names< controller_b >(), ',' ) << std::endl;
+    std::cerr << "    --fields="  << comma::join( comma::csv::names< stats_t >(), ',' ) << std::endl;
+    comma::csv::binary< stats_t > binary;
+    std::cerr << "    --format="  << binary.format().string()
+              << "  total binary size is "  << binary.format().size()  << std::endl;
     std::cerr << std::endl;
     exit ( code );
 }
@@ -173,8 +176,8 @@ void output( const stats_t& stats )
      {
          comma::csv::output_stream< stats_t > ss( std::cout );
          ss.write( stats );
-         std::cout.flush();
      }
+     std::cout.flush();
 }
 
 int main( int ac, char** av )
@@ -212,6 +215,7 @@ int main( int ac, char** av )
             stats.controller.consolidate();
             while(1)
             {
+                stats.time = microsec_clock::universal_time();
                 output( stats );
                 sleep( beat );
             }

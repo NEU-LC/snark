@@ -30,22 +30,22 @@ struct battery_t
         switch( st )
         {
             case battery_state::initialised:
-                return "initialised";
+                return "IN";
                 break;
             case battery_state::uninitialised:
-                return "un-initialised";
+                return "UN";
                 break;
             case battery_state::fully_discharged:
-                return "fully_discharged";
+                return "FD";
                 break;
             case battery_state::fully_charged:
-                return "fully_charged";
+                return "FC";
                 break;
             case battery_state::discharging:
-                return "discharging";
+                return "DC";
                 break;
             default:
-                return "charging";
+                return "CH";
                 break;
 
         }
