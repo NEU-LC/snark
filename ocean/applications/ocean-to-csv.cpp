@@ -9,6 +9,7 @@
 #include <comma/csv/stream.h>
 #include <boost/property_tree/json_parser.hpp>
 #include "../units.h"
+#include "../commands.h"
 #include "../battery.h"
 #include "../traits.h"
 #include <boost/property_tree/json_parser.hpp>

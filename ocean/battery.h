@@ -1,7 +1,6 @@
 #ifndef SNARK_OCEAN_BATTERY_H
 #define SNARK_OCEAN_BATTERY_H
 #include <comma/base/types.h>
-#include <boost/graph/graph_concepts.hpp>
 #include <boost/date_time/posix_time/ptime.hpp>
 #include <boost/date_time/posix_time/posix_time_duration.hpp>
 #include <boost/array.hpp>
@@ -10,13 +9,22 @@
 #include <iostream>
 #include "hex_value.h"
 #include "units.h"
+#include "commands.h"
 
 namespace snark { namespace ocean {
 
 struct address {
-    enum { temperature = 0x08, voltage = 0x09, current = 0x0a, avg_current=0x0b, rel_state_of_charge=0x0d, remaining_capacity=0x0f,
-           run_time_to_empty=0x11, status=0x16
-    };
+    static const ocean8 temperature = 0x08;
+    static const ocean8 voltage =     0x09;
+    static const ocean8 current = 0x0a;
+    static const ocean8 avg_current = 0x0b;
+    static const ocean8 rel_state_of_charge = 0x0d;
+    static const ocean8 remaining_capacity = 0x0f;
+    static const ocean8 run_time_to_empty = 0x011;
+    static const ocean8 status = 0x016;
+//     enum { voltage = 0x09, current = 0x0a, avg_current=0x0b, rel_state_of_charge=0x0d, remaining_capacity=0x0f,
+//            run_time_to_empty=0x11, status=0x16
+//     };
     
 };
 struct battery_state {
