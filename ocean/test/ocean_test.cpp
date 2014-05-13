@@ -56,6 +56,19 @@ comma::csv::ascii< T >& ascii() {
 
 typedef hex_value_t< comma::uint16 > hex_uint16;
 
+TEST(ocean, ocean_test_strip )
+{
+    std::string source = "$B15,17,0026,18,19c8,19,3840,1a,0010,1b,302f,1C,00cc%11";
+    ocean::strip( source );
+    // std::cerr << "size: " << source.size() << " " << source[ source.size() - 3 ] << std::endl;
+    EXPECT_EQ("B15,17,0026,18,19c8,19,3840,1a,0010,1b,302f,1C,00cc", source);
+
+    source = "$B15,17,0026,18,19c8,19,3840,1a,0010,1b,302f,1C,00cc";
+    ocean::strip( source );
+    EXPECT_EQ("B15,17,0026,18,19c8,19,3840,1a,0010,1b,302f,1C,00cc", source);
+
+}
+
 TEST(ocean, ocean_raw_hex_data)
 {
     std::string source = "10,197C";
@@ -66,8 +79,9 @@ TEST(ocean, ocean_raw_hex_data)
     EXPECT_EQ( 16, pair.address.value );
     EXPECT_EQ( 6524, pair.value.value );
     
-    source = "B15,17,0026,18,19c8,19,3840,1a,0010,1b,302f,1C,00cc";
-    
+    source = "$B15,17,0026,18,19c8,19,3840,1a,0010,1b,302f,1C,00cc%11";
+    ocean::strip( source );
+
     hex_data_t< 6 > data;
     ascii< hex_data_t< 6 > >().get( data, source );
     
@@ -154,18 +168,19 @@ TEST( ocean, setting_hex_data )
         }
     }
 
+    controller.consolidate();
+
     std::string line;
     ascii< controller_t< 3 > >().put( controller, line );
-    EXPECT_EQ( "1,-1,0,0,0,0,16.734,0,0,296.6,79.1,7910,1092.25,0,16.745,0,0,296.5,64.13,6413,1092.25,0,16.506,0,0,296.9,63.39,6339,1092.25,-999", line );
+    const std::string expected = "1,\"charging\",206.62,0,16.6617,1,16.734,0,0,296.6,79.1,7910,1092.25,2,16.745,0,0,296.5,64.13,6413,1092.25,3,16.506,0,0,296.9,63.39,6339,1092.25,6887.33";
+    EXPECT_EQ( expected, line );
 
-    // controller.consolidate();
     // boost::property_tree::ptree t;
     // comma::to_ptree to_ptree( t );
     // comma::visiting::apply( to_ptree ).to( controller );
     // std::ostringstream oss;
     // boost::property_tree::write_json( oss, t );    
- 
-    // EXPECT_EQ("json", oss.str() );
+    // std::cerr << oss.str() << std::endl;
 }
 
 

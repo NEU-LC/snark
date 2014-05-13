@@ -220,6 +220,7 @@ int main( int ac, char** av )
                     ss.write( stats );
                     std::cout.flush();
                 }
+
                 future = microsec_clock::universal_time() + seconds( beat );
             }
         }

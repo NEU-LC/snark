@@ -136,7 +136,7 @@ void operator&(const data_t& data)
                     state = battery_state::charging;
                     break;
             }
-            std::cerr << "battery: " << int(id) <<  " state: " << state << " value: " << data.value() << " val: " << val << std::endl;
+            // std::cerr << "battery: " << int(id) <<  " state: " << state << " value: " << data.value() << " val: " << val << std::endl;
             break;
         }
         default:
@@ -150,7 +150,9 @@ void operator&(const data_t& data)
 // Removes checksum wrappers, TODO throws exception on incorrect checksum
 std::string& strip( std::string& line )
 {
-    if( line[0] == '$' ) { line = line.substr( 1, line.find_first_of('%') - 1 ); }
+    /// '$B15,....,FF00%B2' becomes B15,....,FF00
+    std::size_t pos = line[ line.size() - 3 ] == '%' ? line.find_last_of('%')-1 : std::string::npos;
+    line = line.substr( 1, pos);
     return line;
 }
 
@@ -174,8 +176,8 @@ struct controller_t
     double avgCharge; // percentage
 
 
-    controller_t() : id(0), state( battery_state::initialised ), avgCharge(-999) { set_battery_id(); }
-    controller_t( uint8 id_ ) : id( id_ ), state( battery_state::initialised ), avgCharge(-999) { set_battery_id(); }
+    controller_t() : id(0), state( battery_state::uninitialised ), avgCharge(-999) { set_battery_id(); }
+    controller_t( uint8 id_ ) : id( id_ ), state( battery_state::uninitialised ), avgCharge(-999) { set_battery_id(); }
 
     void set_battery_id()
     {
@@ -215,7 +217,7 @@ struct controller_t
         { 
             total_current += it->avg_current;
             total_power += it->remaining_capacity;
-            avg_voltage == it->voltage;
+            avg_voltage += it->voltage;
             avgCharge += it->chargePc;
         } 
         //avg_voltage = ( avg_voltage.value()/N ) * volt;

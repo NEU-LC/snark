@@ -56,14 +56,14 @@ template < int N > struct traits< hex_data_t< N > >
     template< typename K, typename V > static void visit( const K& k, hex_data_t< N >& t, V& v )
     {
         v.apply("controller_id", t.id_packed);
-        t.battery_id = boost::lexical_cast< comma::uint16 >( boost::lexical_cast< comma::uint32 >( t.id_packed[2] ) );
-        t.controller_id = boost::lexical_cast< comma::uint16 >( boost::lexical_cast< comma::uint32 >( t.id_packed[1] ) );
+        t.battery_id = boost::lexical_cast< comma::uint16 >( t.id_packed[2] );
+        t.controller_id = boost::lexical_cast< comma::uint16 >( t.id_packed[1] );
         v.apply("values", t.values);
     }
 
     template< typename K, typename V > static void visit( const K& k, const hex_data_t< N >& t, V& v )
     {
-        v.apply("id_packed", boost::lexical_cast< std::string >( t.id_packed ) );
+        v.apply("id_packed", t.id_packed );
         v.apply("values", t.values);
     }
 };
