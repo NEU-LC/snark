@@ -148,6 +148,35 @@ void update_controller( controller_t< B >& controller, const std::string& line )
 
 }
 
+static bool is_binary = false;
+static bool status_in_json = false;
+
+void output( const stats_t& stats )
+{
+     if( is_binary )
+     {
+         static comma::csv::binary< stats_t > binary("","",true, stats );
+         static std::vector<char> line( binary.format().size() );
+         binary.put( stats, line.data() );
+         std::cout.write( line.data(), line.size());
+     }
+     else if( status_in_json )
+     {
+         boost::property_tree::ptree t;
+         comma::to_ptree to_ptree( t );
+         comma::visiting::apply( to_ptree ).to( stats );
+         boost::property_tree::write_json( std::cout, t );    
+         // *stream << char(4) << char(3); // End of Transmition
+
+     }
+     else
+     {
+         comma::csv::output_stream< stats_t > ss( std::cout );
+         ss.write( stats );
+         std::cout.flush();
+     }
+}
+
 int main( int ac, char** av )
 {
 #ifdef SERVO_VERBOSE
@@ -162,22 +191,36 @@ int main( int ac, char** av )
         usage( 1 ); 
     }
 
+    using boost::posix_time::microsec_clock;
+    using boost::posix_time::seconds;
+    using boost::posix_time::ptime;
 
 
     try
     {
-        bool is_binary = options.exists( "--binary,-b" );
-        bool status_in_json = options.exists( "--status-json" );
+        is_binary = options.exists( "--binary,-b" );
+        status_in_json = options.exists( "--status-json" );
         int controller_id =  options.value< int >( "--controller-id,-C" );
         float beat = options.value< float >( "--beat,-B" );
 
         std::cerr << name() << ": controller id is " << controller_id << std::endl;
+        
+        if( options.exists( "--sample" ) )
+        {
+            stats_t stats;
+            stats.time = microsec_clock::universal_time();
+            stats.controller.consolidate();
+            while(1)
+            {
+                output( stats );
+                sleep( beat );
+            }
+            
+            return 0;
+        }
 
         std::string line;
         // Set it to report status immediately if no command is received
-        using boost::posix_time::microsec_clock;
-        using boost::posix_time::seconds;
-        using boost::posix_time::ptime;
         ptime future = microsec_clock::universal_time();
         stats_t stats( controller_id );
         while( std::cin.good() )
@@ -198,28 +241,7 @@ int main( int ac, char** av )
                 stats.time = microsec_clock::universal_time();
                 stats.controller.consolidate();
 
-                if( is_binary )
-                {
-                    static comma::csv::binary< stats_t > binary("","",true, stats );
-                    static std::vector<char> line( binary.format().size() );
-                    binary.put( stats, line.data() );
-                    std::cout.write( line.data(), line.size());
-                }
-                else if( status_in_json )
-                {
-                    boost::property_tree::ptree t;
-                    comma::to_ptree to_ptree( t );
-                    comma::visiting::apply( to_ptree ).to( stats );
-                    boost::property_tree::write_json( std::cout, t );    
-                    // *stream << char(4) << char(3); // End of Transmition
-
-                }
-                else
-                {
-                    comma::csv::output_stream< stats_t > ss( std::cout );
-                    ss.write( stats );
-                    std::cout.flush();
-                }
+                output( stats );
 
                 future = microsec_clock::universal_time() + seconds( beat );
             }
