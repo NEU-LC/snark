@@ -68,7 +68,8 @@ void usage(int code=1)
     std::cerr << "    --binary                - Data output in binary, default is ascii CSV." << std::endl;
     std::cerr << "*   --beat=|-C=             - Minium second/s between status update, floating point e.g. 0.5." << std::endl;
     std::cerr << "*   --controller-id=|-C=    - Controller's ID: 1-9." << std::endl;
-    std::cerr << "    --fields="  << comma::join( comma::csv::names< stats_t >(), ',' ) << std::endl;
+    std::vector< std::string > names = comma::csv::names< stats_t >();
+    std::cerr << "    --fields="  << comma::join( names, ',' ) << " total num of fields: " << names.size() << std::endl;
     comma::csv::binary< stats_t > binary;
     std::cerr << "    --format="  << binary.format().string()
               << "  total binary size is "  << binary.format().size()  << std::endl;

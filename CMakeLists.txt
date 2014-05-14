@@ -118,6 +118,12 @@ OPTION( snark_build_sensors "build sensors" ON )
 OPTION( snark_build_actuators "build actuators" OFF )
 OPTION( snark_build_ocean "build ocean smart batteries" OFF )
 
+
+
+SET(OCEAN_BATTERY_NUM "8" CACHE STRING "Number of batteries for the Ocean controller")
+SET_PROPERTY(CACHE OCEAN_BATTERY_NUM PROPERTY STRINGS 8 4) 
+ADD_DEFINITIONS( -DBATTERY_NUM=${OCEAN_BATTERY_NUM} )
+
 INCLUDE( CMakeDependentOption )
 CMAKE_DEPENDENT_OPTION( snark_build_sensors_dc1394 "build dc1394 components" ON "snark_build_sensors" OFF )
 CMAKE_DEPENDENT_OPTION( snark_build_sensors_gige "build gige components" OFF "snark_build_sensors" OFF )
