@@ -233,7 +233,7 @@ int main( int ac, char** av )
             std::getline( std::cin, line );
             if( line.empty() ) { continue; }
 
-            // std::cerr << "a: " << line <<std::endl;
+            //std::cerr << "a: " << line <<std::endl;
             snark::ocean::strip( line );
             std::cerr << "d: " << line <<std::endl;
 

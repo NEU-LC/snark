@@ -14,17 +14,17 @@
 namespace snark { namespace ocean {
 
 struct address {
-    static const ocean8 temperature = 0x08;
-    static const ocean8 voltage =     0x09;
-    static const ocean8 current = 0x0a;
-    static const ocean8 avg_current = 0x0b;
-    static const ocean8 rel_state_of_charge = 0x0d;
-    static const ocean8 remaining_capacity = 0x0f;
-    static const ocean8 run_time_to_empty = 0x011;
-    static const ocean8 status = 0x016;
-//     enum { voltage = 0x09, current = 0x0a, avg_current=0x0b, rel_state_of_charge=0x0d, remaining_capacity=0x0f,
-//            run_time_to_empty=0x11, status=0x16
-//     };
+//    static const ocean8 temperature = 0x08;
+//    static const ocean8 voltage =     0x09;
+//    static const ocean8 current = 0x0a;
+//    static const ocean8 avg_current = 0x0b;
+//    static const ocean8 rel_state_of_charge = 0x0d;
+//    static const ocean8 remaining_capacity = 0x0f;
+//    static const ocean8 run_time_to_empty = 0x011;
+//    static const ocean8 status = 0x016;
+     enum { temperature = 0x08, voltage = 0x09, current = 0x0a, avg_current=0x0b, rel_state_of_charge=0x0d, remaining_capacity=0x0f,
+            run_time_to_empty=0x11, status=0x16
+     };
     
 };
 struct battery_state {
@@ -159,7 +159,10 @@ void operator&(const data_t& data)
 std::string& strip( std::string& line )
 {
     /// '$B15,....,FF00%B2' becomes B15,....,FF00
-    std::size_t pos = line[ line.size() - 3 ] == '%' ? line.find_last_of('%')-1 : std::string::npos;
+    //std::size_t pos = ( line[ line.size() - 3 ] == '%' ? line.size()-4 : std::string::npos );
+    std::size_t pos = line.find_first_of( '%', line.size() - 4 );
+    if( pos != std::string::npos ) { --pos; }
+    //std::cerr << "char: " << line[ line.size() - 3 ] << std::endl;
     line = line.substr( 1, pos);
     return line;
 }
