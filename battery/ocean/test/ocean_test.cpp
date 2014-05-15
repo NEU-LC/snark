@@ -35,10 +35,6 @@
 #include <comma/csv/stream.h>
 #include <comma/csv/ascii.h>
 #include <comma/visiting/traits.h>
-#include "../battery.h"
-#include "../traits.h"
-#include <snark/ocean/io_query.h>
-
 #include <comma/base/types.h>
 #include <comma/visiting/apply.h>
 #include <comma/name_value/ptree.h>
@@ -46,6 +42,10 @@
 #include <comma/name_value/parser.h>
 #include <comma/io/stream.h>
 #include <boost/property_tree/json_parser.hpp>
+#include "../battery.h"
+#include "../traits.h"
+#include "../io_query.h"
+
 
 namespace snark { namespace ocean {
 
