@@ -89,8 +89,9 @@ comma::csv::binary< T >& binary() {
     return binary_;
 }
 
+/// update the controller with recieved data, returns the battery ID of the data in line 
 template < int B >
-void update_controller( controller_t< B >& controller, const std::string& line )
+int update_controller( controller_t< B >& controller, const std::string& line )
 {
     std::vector< std::string > v = comma::split( line, ',');
     switch( v.size() )
@@ -100,54 +101,53 @@ void update_controller( controller_t< B >& controller, const std::string& line )
             hex_data_t< 7 > data;
             ascii< hex_data_t< 7 > >().get( data, v );
             controller & data;
-            break;
+            return data.battery_id;
         }
         case 13u:
         {
             hex_data_t< 6 > data;
             ascii< hex_data_t< 6 > >().get( data, v );
             controller & data;
-            break;
+            return data.battery_id;
         }
         case 11u:
         {
             hex_data_t< 5 > data;
             ascii< hex_data_t< 5 > >().get( data, v );
             controller & data;
-            break;
+            return data.battery_id;
         }
         case 9u:
         {
             hex_data_t< 4 > data;
             ascii< hex_data_t< 4 > >().get( data, v );
             controller & data;
-            break;
+            return data.battery_id;
         }
         case 7u:
         {
             hex_data_t< 3 > data;
             ascii< hex_data_t< 3 > >().get( data, v );
             controller & data;
-            break;
+            return data.battery_id;
         }
         case 5u:
         {
             hex_data_t< 2 > data;
             ascii< hex_data_t< 2 > >().get( data, v );
             controller & data;
-            break;
+            return data.battery_id;
         }
         case 3u:
         {
             hex_data_t< 1 > data;
             ascii< hex_data_t< 1 > >().get( data, v );
             controller & data;
-            break;
+            return data.battery_id;
         }
         default:
         {
             COMMA_THROW( comma::exception, "unknown number of hex value pairs found" );
-            break;
         }
     }
 
@@ -240,9 +240,10 @@ int main( int ac, char** av )
 
             if( line[0] != 'B' ) continue; // TODO: parse $C line???
 
-            update_controller( stats.controller, line );
-
-            if( beat > 0 && microsec_clock::universal_time() >= future )
+            // get the battery ID of the data just updated
+            int battery_id = update_controller( stats.controller, line );
+            // if battery ID is one it means we have updated all batteries
+            if( beat > 0 && battery_id == 1 && microsec_clock::universal_time() >= future )
             {
                 stats.time = microsec_clock::universal_time();
                 stats.controller.consolidate();
