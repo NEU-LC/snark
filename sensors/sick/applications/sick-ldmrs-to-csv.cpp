@@ -126,20 +126,21 @@ int main( int ac, char** av )
             else if( v[i] == "b" ) { v[i] = "bearing"; }
             else if( v[i] == "e" ) { v[i] = "elevation"; }
             else if( v[i] == "id" ) { v[i] = "layer"; }
+            else if( v[i] == "block" ) { v[i] = "scan"; }
         }
         csv.fields = comma::join( v, ',' );
-        if( options.exists( "--binary,-b" ) || options.exists( "--format" ) ) { csv.format( comma::csv::format::value< csv_point >( csv.fields, false ) ); }
-        if( options.exists( "--format" ) ) { std::cout << csv.format().string(); return 0; }
         csv.full_xpath = false;
+        if( options.exists( "--format" ) ) { std::cout << comma::csv::format::value< csv_point >( csv.fields, false ) << std::endl; return 0; }
+        if( options.exists( "--binary,-b" ) ) { csv.format( comma::csv::format::value< csv_point >( csv.fields, false ) ); }
         comma::csv::output_stream< csv_point > ostream( std::cout, csv );
         #ifdef WIN32
-            _setmode( _fileno( stdin ), _O_BINARY );
+        _setmode( _fileno( stdin ), _O_BINARY );
         #endif
         snark::sick::ldmrs::protocol protocol( std::cin );
-        comma::signal_flag isShutdown;
+        comma::signal_flag is_shutdown;
         while( !std::cin.eof() )
         {
-            if( isShutdown ) { std::cerr << "sick-ldmrs-to-csv: caught signal, exit" << std::endl; return -1; }
+            if( is_shutdown ) { std::cerr << "sick-ldmrs-to-csv: caught signal, exit" << std::endl; return 1; }
             const snark::sick::ldmrs::scan_packet* p = protocol.readscan();
             if( p == NULL ) { std::cerr << "sick-ldmrs-to-csv: done" << std::endl; return 0; }
             std::size_t count = p->packet_scan.scan_header.points_count();
