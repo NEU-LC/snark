@@ -75,8 +75,14 @@ struct controller
     static const char battery_data_char = 'B';
     static const char controller_data_char = 'C';
 
-    controller() : id(0), state( battery_state::uninitialised ), average_charge(-999) { set_battery_id(); }
-    controller( uint8 id_ ) : id( id_ ), state( battery_state::uninitialised ), average_charge(-999) { set_battery_id(); }
+    controller() : id(0), state( battery_state::uninitialised ), average_charge( OCEAN_NAN ) 
+    { 
+        // One controller to 8 batteries only
+        BOOST_STATIC_ASSERT_MSG( ( N > 0 && N <= 8 ), " T must be integral type" );
+        set_battery_id(); 
+        
+    }
+    controller( uint8 id_ ) : id( id_ ), state( battery_state::uninitialised ), average_charge( OCEAN_NAN ) { set_battery_id(); }
 
     void set_battery_id()
     {
@@ -91,13 +97,10 @@ struct controller
     {
         // std::cerr << "controller update: " << int( line_data.controller_id ) << " - Battery: " <<
         //     int( line_data.battery_id ) << std::endl;
-
-        if( line_data.controller_id != id ) { 
-            return; 
-        }
+        if( line_data.controller_id != id ) {  return;  }
         if( line_data.battery_id > N ) 
         {
-            std::cerr << "battery " << line_data.battery_id  << "is not on controller " << int(id) << std::endl;
+            std::cerr << "ocean: battery " << line_data.battery_id  << "is not on controller " << int(id) << std::endl;
             return;
         }
 

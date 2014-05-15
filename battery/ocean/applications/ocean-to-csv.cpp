@@ -29,8 +29,9 @@ std::string str(T t) { return boost::lexical_cast< std::string > ( t ); }
     
 }
 
+// This is set by a cmake option
 #ifndef BATTERY_NUM
-#define BATTERY_NUM (4)
+#define BATTERY_NUM (8)
 #endif
 
 using snark::ocean::hex_data_t;
