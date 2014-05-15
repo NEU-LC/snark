@@ -116,7 +116,7 @@ OPTION( snark_build_point_cloud "build point cloud" ON )
 OPTION( snark_build_imaging "build imaging" ON )
 OPTION( snark_build_sensors "build sensors" ON )
 OPTION( snark_build_actuators "build actuators" OFF )
-OPTION( snark_build_ocean "build ocean smart batteries" OFF )
+OPTION( snark_build_battery "build battery" OFF )
 
 
 
@@ -235,9 +235,9 @@ IF( snark_build_sensors )
     ADD_SUBDIRECTORY( sensors )
 ENDIF( snark_build_sensors )
 
-IF( snark_build_ocean )
-    ADD_SUBDIRECTORY( ocean )
-ENDIF( snark_build_ocean )
+IF( snark_build_battery )
+    ADD_SUBDIRECTORY( battery )
+ENDIF( snark_build_battery )
 
 ADD_SUBDIRECTORY( timing )
 ADD_SUBDIRECTORY( visiting )

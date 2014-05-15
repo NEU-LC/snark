@@ -1,0 +1,7 @@
+IF( snark_BUILD_APPLICATIONS )
+    ADD_SUBDIRECTORY( applications )
+ENDIF( snark_BUILD_APPLICATIONS )
+
+IF( snark_BUILD_TESTS )
+    ADD_SUBDIRECTORY( test )
+ENDIF( snark_BUILD_TESTS )
