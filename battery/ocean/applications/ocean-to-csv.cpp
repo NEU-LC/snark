@@ -32,8 +32,9 @@ std::string str(T t) { return boost::lexical_cast< std::string > ( t ); }
 using snark::ocean::hex_data_t;
 using snark::ocean::controller;
 
-// BATTERY_NUM is set by a cmake option, range 1-8
-typedef controller< BATTERY_NUM > controller_b;
+// Always have 8 batteries for controller but some of them may not be present
+// Use option --num-of-batteries=<no.> so that the average and total values on the controller is calculated correctly
+typedef controller< 8 > controller_b;
 
 struct stats_t
 {
@@ -66,6 +67,7 @@ void usage(int code=1)
     std::cerr << "    --binary                - Data output in binary, default is ascii CSV." << std::endl;
     std::cerr << "*   --beat=|-C=             - Minium second/s between status update, floating point e.g. 0.5." << std::endl;
     std::cerr << "*   --controller-id=|-C=    - Controller's ID: 1-9." << std::endl;
+    std::cerr << "    [--num-of-batteries=]   - The number of batteries for this controller" << std::endl;
     std::vector< std::string > names = comma::csv::names< stats_t >();
     std::cerr << "    --fields="  << comma::join( names, ',' ) << " total num of fields: " << names.size() << std::endl;
     comma::csv::binary< stats_t > binary;
@@ -206,13 +208,16 @@ int main( int ac, char** av )
         int controller_id =  options.value< int >( "--controller-id,-C" );
         float beat = options.value< float >( "--beat,-B" );
 
+        int num_of_batteries = 8;
+        if( options.exists( "--num-of-batteries" ) ) { num_of_batteries = options.value< int >( "--num-of-batteries" ); }
+
         std::cerr << name() << ": controller id is " << controller_id << std::endl;
         
         if( options.exists( "--sample" ) )
         {
             stats_t stats;
             stats.time = microsec_clock::universal_time();
-            stats.controller.consolidate();
+            stats.controller.consolidate( num_of_batteries );
             while(1)
             {
                 stats.time = microsec_clock::universal_time();

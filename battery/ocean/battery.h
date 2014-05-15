@@ -50,8 +50,8 @@ struct battery_t
 *it ); } 
     }
 
-    battery_t() : id(0), charge_pc( OCEAN_NAN ), state( battery_state::uninitialised ) {}
-    battery_t( uint8 id_ ) : id( id_ ), charge_pc( OCEAN_NAN ), state( battery_state::uninitialised ) {}
+    battery_t() : id(0), charge_pc( 0 ), state( battery_state::uninitialised ) {}
+    battery_t( uint8 id_ ) : id( id_ ), charge_pc( 0 ), state( battery_state::uninitialised ) {}
 
     // update battery with new data
     void operator&(const data_t& data);
@@ -109,7 +109,7 @@ struct controller
         batteries[ line_data.battery_id - 1 ] & line_data;
     }
     /// Get consolidated values from the batteries, e.g. total power or total current
-    void consolidate()
+    void consolidate( std::size_t num = N)
     {
         total_current = 0*ampere;
         total_power = 0*watt;
@@ -123,8 +123,8 @@ struct controller
             average_charge += it->charge_pc;
         } 
         //average_voltage = ( average_voltage.value()/N ) * volt;
-        average_voltage /= N;
-        average_charge /= N;
+        average_voltage /= num;
+        average_charge /= num;
         state = batteries.front().state;
     }
 };

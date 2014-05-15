@@ -73,6 +73,7 @@ template <> struct traits< battery_t >
     template< typename K, typename V > static void visit( const K& k, const battery_t& t, V& v )
     {
         v.apply("id", int(t.id) );
+        v.apply("state", battery_t::state_to_string(t.state) );
         v.apply("voltage", t.voltage.value() );
         v.apply("current", t.current.value() );
         v.apply("average_current", t.average_current.value() );
