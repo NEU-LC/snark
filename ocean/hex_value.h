@@ -64,6 +64,7 @@ std::istream& operator>>( std::istream& istream, hex_value_t< T >& val )
 struct data_t
 {
     data_t() : address( 0 ), value( 0 ) {}
+    data_t( comma::uint16 addr, comma::uint16 val ) : address( addr ), value( val ) {}
     hex_value_t< comma::uint16 > address;
     hex_value_t< comma::uint16 > value;
 };

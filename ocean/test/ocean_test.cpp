@@ -37,6 +37,7 @@
 #include <comma/visiting/traits.h>
 #include "../battery.h"
 #include "../traits.h"
+#include <snark/ocean/io_query.h>
 
 #include <comma/base/types.h>
 #include <comma/visiting/apply.h>
@@ -69,6 +70,35 @@ TEST(ocean, ocean_test_strip )
 
 }
 
+/// namespace ocean { namespace packets {
+/// 
+/// struct type : public comma::packed::packed_struct< ... >
+/// {
+///     comma::packed::fixed_string< 1, '$' > start;
+///     comma::packed::casted< unsigned int, 1 > category;
+///     comma::packed::casted< unsigned int, 1 > id;
+///     comma::packed::casted< unsigned int, 1 > type;
+/// };
+/// 
+/// struct element : public comma::packed::packed_struct< ... >
+/// {
+///     comma::packed::fixed_string< 1, ',' > comma1;
+///     comma::packed::string< 2 > address; // todo: comma::packed::ascii_hex< 1 > address;
+///     comma::packed::fixed_string< 1, ',' > comma2;
+///     comma::packed::string< 4 > this->value; // todo: comma::packed::ascii_hex< 2 > value;
+/// };
+/// 
+/// template < std::size_t N >
+/// struct packet
+/// {
+///     ocean::packets::type type;
+///     boost::array< ocean::packets::element, N > elements;
+///     comma::packed::fixed_string< 1, '%' > padding;
+///     comma::packed::string< 2 > crc;
+/// };
+/// 
+/// } }
+
 TEST(ocean, ocean_raw_hex_data)
 {
     std::string source = "10,197C";
@@ -80,6 +110,9 @@ TEST(ocean, ocean_raw_hex_data)
     EXPECT_EQ( 6524, pair.value.value );
     
     source = "$B15,17,0026,18,19c8,19,3840,1a,0010,1b,302f,1C,00cc%11";
+///     const ocean::packets::packet< 6 >* packet = reinterpret_cast< const ocean::packets::packet< 6 >* >( &source[0] );
+///     packet->type.category()...
+    
     ocean::strip( source );
 
     hex_data_t< 6 > data;
@@ -175,6 +208,84 @@ TEST( ocean, setting_hex_data )
     const std::string expected = "1,\"CH\",206.62,0,16.6617,1,16.734,0,0,296.6,79.1,7910,1092.25,2,16.745,0,0,296.5,64.13,6413,1092.25,3,16.506,0,0,296.9,63.39,6339,1092.25,6887.33";
     EXPECT_EQ( expected, line );
 
+    // boost::property_tree::ptree t;
+    // comma::to_ptree to_ptree( t );
+    // comma::visiting::apply( to_ptree ).to( controller );
+    // std::ostringstream oss;
+    // boost::property_tree::write_json( oss, t );    
+    // std::cerr << oss.str() << std::endl;
+}
+
+namespace impl_ {
+    
+class stdio_stub 
+{
+public:
+    ocean8 read()
+    {
+        //char c;
+        //std::cin.read( &c, 1u );
+        //return c;
+        
+        if( last_written != 0 ) // return first byte
+        {
+            return ocean8( value & 0xff );
+        }
+        else    // return second byte
+        {
+            // return MSB byte
+            return ocean8( (value & 0xff00) >> 8 );
+        }
+    }
+    
+    void write( ocean8 value )
+    {
+        //std::cout.write( (const char*) &value, 1u );
+        last_written = value;
+        if ( value != 0 ) { address = value & BOOST_BINARY( 11111 ); }
+        else { return; }
+        
+        switch( address )
+        {
+            case ocean::address::current:
+                this->value = 0x00ff;
+                break;
+            case ocean::address::avg_current:
+                this->value = 0x00ff;
+                break;
+            case ocean::address::temperature:
+                this->value = comma::uint16( 0x0B96 );
+                break;
+            case ocean::address::voltage:
+                this->value = comma::uint16( 0x415E );
+                break;
+            default:
+                this->value = 0;
+                break;
+        }
+    };
+    
+private:
+    ocean8 address;
+    comma::uint16 value; // value to write out
+    ocean8 last_written; // last written value, eighter 'addrees' or 0
+};
+
+} //namespace impl_ {
+
+TEST(ocean, ocean_binary_query )
+{
+    data_t current = query< 4, ocean::address::current, impl_::stdio_stub >();
+    EXPECT_EQ( 0xff, current.value() );
+    EXPECT_EQ( 0x0a, current.address() );
+    
+    data_t temperature = query< 4, ocean::address::temperature, impl_::stdio_stub >();
+    EXPECT_EQ( 0x0B96, temperature.value() );
+    EXPECT_EQ( 0x08, temperature.address() );
+    
+    controller_t< 4 > controller;
+    query< 4, impl_::stdio_stub >( controller );
+    
     // boost::property_tree::ptree t;
     // comma::to_ptree to_ptree( t );
     // comma::visiting::apply( to_ptree ).to( controller );

@@ -11,6 +11,7 @@
 #include "../units.h"
 #include "../commands.h"
 #include "../battery.h"
+#include "../io_query.h"
 #include "../traits.h"
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/numeric/conversion/cast.hpp>

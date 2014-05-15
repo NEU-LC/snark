@@ -81,78 +81,78 @@ struct battery_t
     battery_t( uint8 id_ ) : id( id_ ), chargePc(-999), state( battery_state::uninitialised ) {}
 
 
-void operator&(const data_t& data)
-{
-    // std::cerr << " address " << data.address() << std::endl;
-    switch( data.address() )
+    void operator&(const data_t& data)
     {
-        case address::temperature:
+        // std::cerr << " address " << data.address() << std::endl;
+        switch( data.address() )
         {
-            static const double unit = 0.1; // Kelvin
-            temperature = data.value() * unit * kelvin; // 0.1k unit
-            break;
-        }
-        case address::voltage:
-        {
-            voltage = data.value() / 1000.0 * volt; // millivolts to volts
-            break;
-        }
-        case address::current:
-        {
-            current = data.value.cast() / 1000.0 * ampere; //mAmp to Amps
-            // std::cerr << "got current: " << current.value() << std::endl;
-            break;
-        }
-        case address::avg_current:
-        {
-            avg_current = data.value.cast() / 1000.0 * ampere; //mAmp to Amps
-            break;
-        }
-        case address::remaining_capacity:
-        {
-            remaining_capacity = data.value.cast() / 100.0 * watt; // unit is 10mWh
-        }
-        case address::rel_state_of_charge:
-        {
-            chargePc = data.value();    // percentage, unit is %
-            break;
-        }
-        case address::run_time_to_empty:
-        {
-            time_to_empty = boost::posix_time::minutes( data.value() );
-        }
-        case address::status:
-        {
-            if( !(data.value() &  battery_state::initialised) ) 
+            case address::temperature:
             {
-                state = battery_state::uninitialised;
+                static const double unit = 0.1; // Kelvin
+                temperature = data.value() * unit * kelvin; // 0.1k unit
+                break;
+            }
+            case address::voltage:
+            {
+                voltage = data.value() / 1000.0 * volt; // millivolts to volts
+                break;
+            }
+            case address::current:
+            {
+                current = data.value.cast() / 1000.0 * ampere; //mAmp to Amps
+                // std::cerr << "got current: " << current.value() << std::endl;
+                break;
+            }
+            case address::avg_current:
+            {
+                avg_current = data.value.cast() / 1000.0 * ampere; //mAmp to Amps
+                break;
+            }
+            case address::remaining_capacity:
+            {
+                remaining_capacity = data.value.cast() / 100.0 * watt; // unit is 10mWh
+            }
+            case address::rel_state_of_charge:
+            {
+                chargePc = data.value();    // percentage, unit is %
+                break;
+            }
+            case address::run_time_to_empty:
+            {
+                time_to_empty = boost::posix_time::minutes( data.value() );
+            }
+            case address::status:
+            {
+                if( !(data.value() &  battery_state::initialised) ) 
+                {
+                    state = battery_state::uninitialised;
+                    return;
+                }
+                comma::uint16 val = data.value() & 0x0070;  // masks out everything including 'initialised' flag
+                switch( val )
+                {
+                    case battery_state::discharging:
+                        state = battery_state::discharging;
+                        break;
+                    case battery_state::fully_charged:
+                        state = battery_state::fully_charged;
+                        break;
+                    case battery_state::fully_discharged:
+                        state = battery_state::fully_discharged;
+                        break;
+                    default:
+                        state = battery_state::charging;
+                        break;
+                }
+                // std::cerr << "battery: " << int(id) <<  " state: " << state << " value: " << data.value() << " val: " << val <<std::endl;
+                break;
+            }
+            default:
+            {
                 return;
             }
-            comma::uint16 val = data.value() & 0x0070;  // masks out everything including 'initialised' flag
-            switch( val )
-            {
-                case battery_state::discharging:
-                    state = battery_state::discharging;
-                    break;
-                case battery_state::fully_charged:
-                    state = battery_state::fully_charged;
-                    break;
-                case battery_state::fully_discharged:
-                    state = battery_state::fully_discharged;
-                    break;
-                default:
-                    state = battery_state::charging;
-                    break;
-            }
-            // std::cerr << "battery: " << int(id) <<  " state: " << state << " value: " << data.value() << " val: " << val << std::endl;
-            break;
-        }
-        default:
-        {
-            return;
         }
     }
-}
 };
 
 // Removes checksum wrappers, TODO throws exception on incorrect checksum
