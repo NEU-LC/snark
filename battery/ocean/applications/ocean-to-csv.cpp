@@ -34,9 +34,9 @@ std::string str(T t) { return boost::lexical_cast< std::string > ( t ); }
 #endif
 
 using snark::ocean::hex_data_t;
-using snark::ocean::controller_t;
+using snark::ocean::controller;
 
-typedef controller_t< BATTERY_NUM > controller_b;
+typedef controller< BATTERY_NUM > controller_b;
 
 struct stats_t
 {
@@ -92,7 +92,7 @@ comma::csv::binary< T >& binary() {
 
 /// update the controller with recieved data, returns the battery ID of the data in line 
 template < int B >
-int update_controller( controller_t< B >& controller, const std::string& line )
+int update_controller( controller< B >& controller, const std::string& line )
 {
     std::vector< std::string > v = comma::split( line, ',');
     switch( v.size() )

@@ -61,7 +61,7 @@ struct battery_t
 
 
 template < int N >
-struct controller_t
+struct controller
 {
     uint8 id;
     int state;
@@ -75,8 +75,8 @@ struct controller_t
     static const char battery_data_char = 'B';
     static const char controller_data_char = 'C';
 
-    controller_t() : id(0), state( battery_state::uninitialised ), average_charge(-999) { set_battery_id(); }
-    controller_t( uint8 id_ ) : id( id_ ), state( battery_state::uninitialised ), average_charge(-999) { set_battery_id(); }
+    controller() : id(0), state( battery_state::uninitialised ), average_charge(-999) { set_battery_id(); }
+    controller( uint8 id_ ) : id( id_ ), state( battery_state::uninitialised ), average_charge(-999) { set_battery_id(); }
 
     void set_battery_id()
     {

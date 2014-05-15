@@ -20,7 +20,7 @@ using snark::ocean::hex_value_t;
 using snark::ocean::hex_data_t;
 using snark::ocean::uint8;
 using snark::ocean::battery_t;
-using snark::ocean::controller_t;
+using snark::ocean::controller;
 
 
 template <> struct traits< data_t >
@@ -83,9 +83,9 @@ template <> struct traits< battery_t >
     }
 };
 
-template < int N > struct traits< controller_t< N > >
+template < int N > struct traits< controller< N > >
 {
-    template< typename K, typename V > static void visit( const K& k, const controller_t< N >& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, const controller< N >& t, V& v )
     {
         v.apply("id", int(t.id) );
         static std::string tmp = battery_t::state_to_string(t.state);

@@ -61,7 +61,7 @@ namespace impl_ {
 template < int B, int N, typename IO >
 struct update_controller
 {
-    static void update( controller_t< N >& controller )
+    static void update( controller< N >& controller )
     {
         controller.batteries[B-1] & query< B, address::current, IO >();
         controller.batteries[B-1] & query< B, address::average_current, IO >();
@@ -79,14 +79,14 @@ struct update_controller
 template < int N, typename IO >
 struct update_controller< 0, N, IO >
 {
-    static void update( controller_t< N >& controller ) {}
+    static void update( controller< N >& controller ) {}
 };
     
 } //namespace impl_ {
 
     
 template < int N, typename IO >
-bool query( controller_t< N >& controller )
+bool query( controller< N >& controller )
 {
     impl_::update_controller< N, N, IO >::update( controller );
     return true;

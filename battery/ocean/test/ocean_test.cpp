@@ -161,7 +161,7 @@ TEST( ocean, setting_hex_data )
     inputs.push_back( "$B13,1A,0031,1B,4350,1C,26BD%33" );
 
     
-    ocean::controller_t< 3 > controller( 1 ); // controller with three batteries
+    ocean::controller< 3 > controller( 1 ); // controller with three batteries
     
     EXPECT_EQ( 10, address::current );
 
@@ -204,7 +204,7 @@ TEST( ocean, setting_hex_data )
     controller.consolidate();
 
     std::string line;
-    ascii< controller_t< 3 > >().put( controller, line );
+    ascii< ocean::controller< 3 > >().put( controller, line );
     const std::string expected = "1,\"CH\",206.62,0,16.6617,1,16.734,0,0,296.6,79.1,7910,1092.25,2,16.745,0,0,296.5,64.13,6413,1092.25,3,16.506,0,0,296.9,63.39,6339,1092.25,6887.33";
     EXPECT_EQ( expected, line );
 
@@ -283,7 +283,7 @@ TEST(ocean, ocean_binary_query )
     EXPECT_EQ( 0x0B96, temperature.value() );
     EXPECT_EQ( 0x08, temperature.address() );
     
-    controller_t< 4 > controller;
+    controller< 4 > controller;
     query< 4, impl_::stdio_stub >( controller );
     
     // boost::property_tree::ptree t;
