@@ -40,12 +40,13 @@ comma::uint16 cmd_query( )
     io.write( ocean8(0) );
     comma::uint16 msbyte = io.read();
     
-    comma::uint16 result = ( ( msbyte << 8 )  | lsbyte );
+    return comma::uint16( ( msbyte << 8 )  | lsbyte );
+//     comma::uint16 result = ( ( msbyte << 8 )  | lsbyte );
     
 //     std::cerr << "query " << B << " address: " << int(ADDR) 
 //               << " lsb: " << int( lsbyte ) << " msb: " << int( msbyte )
 //               << " value: " << result << std::endl;
-    return result;
+//     return result;
 }
 
 template < int B, ocean8 ADDR, typename IO >

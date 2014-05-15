@@ -29,14 +29,10 @@ std::string str(T t) { return boost::lexical_cast< std::string > ( t ); }
     
 }
 
-// This is set by a cmake option
-#ifndef BATTERY_NUM
-#define BATTERY_NUM (8)
-#endif
-
 using snark::ocean::hex_data_t;
 using snark::ocean::controller;
 
+// BATTERY_NUM is set by a cmake option, range 1-8
 typedef controller< BATTERY_NUM > controller_b;
 
 struct stats_t
@@ -65,7 +61,7 @@ void usage(int code=1)
 {
     std::cerr << std::endl;
     std::cerr << "Reads commands from standard input, process and returns a reply to standard output" << std::endl;
-    std::cerr << "options:" << std::endl;
+    std::cerr << name() << " options:" << std::endl;
     std::cerr << "    --status-json           - Data output in JSON format with End of Text delimiter char." << std::endl;
     std::cerr << "    --binary                - Data output in binary, default is ascii CSV." << std::endl;
     std::cerr << "*   --beat=|-C=             - Minium second/s between status update, floating point e.g. 0.5." << std::endl;
@@ -187,7 +183,7 @@ void output( const stats_t& stats )
 int main( int ac, char** av )
 {
 #ifdef SERVO_VERBOSE
-    std::cerr << "Status daemon started:" << std::endl;
+    std::cerr << name() << " Application started:" << std::endl;
 #endif
     
     comma::command_line_options options( ac, av );
@@ -238,7 +234,7 @@ int main( int ac, char** av )
 
             //std::cerr << "a: " << line <<std::endl;
             snark::ocean::battery_t::strip( line );
-            std::cerr << "d: " << line <<std::endl;
+            std::cerr << name() << "d: " << line <<std::endl;
 
             if( line[0] != controller_b::battery_data_char ) continue; // TODO: parse $C line???
 

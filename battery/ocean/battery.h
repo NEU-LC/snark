@@ -1,6 +1,7 @@
 #ifndef SNARK_OCEAN_BATTERY_H
 #define SNARK_OCEAN_BATTERY_H
 #include <comma/base/types.h>
+#include <comma/base/exception.h>
 #include <boost/date_time/posix_time/ptime.hpp>
 #include <boost/date_time/posix_time/posix_time_duration.hpp>
 #include <boost/array.hpp>
@@ -100,8 +101,9 @@ struct controller
         if( line_data.controller_id != id ) {  return;  }
         if( line_data.battery_id > N ) 
         {
-            std::cerr << "ocean: battery " << line_data.battery_id  << "is not on controller " << int(id) << std::endl;
-            return;
+            std::ostringstream ss;
+            ss << "battery " << line_data.battery_id  << "is not on controller " << int(id) << std::endl;
+            COMMA_THROW( comma::exception, ss.str() );
         }
 
         batteries[ line_data.battery_id - 1 ] & line_data;
