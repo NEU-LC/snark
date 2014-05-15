@@ -239,7 +239,7 @@ int main( int ac, char** av )
             snark::ocean::battery_t::strip( line );
             std::cerr << "d: " << line <<std::endl;
 
-            if( line[0] != 'B' ) continue; // TODO: parse $C line???
+            if( line[0] != controller_b::battery_data_char ) continue; // TODO: parse $C line???
 
             // get the battery ID of the data just updated
             int battery_id = update_controller( stats.controller, line );

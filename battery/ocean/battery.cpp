@@ -62,9 +62,9 @@ void battery_t::operator&(const data_t& data)
             // std::cerr << "got current: " << current.value() << std::endl;
             break;
         }
-        case address::avg_current:
+        case address::average_current:
         {
-            avg_current = data.value.cast() / 1000.0 * ampere; //mAmp to Amps
+            average_current = data.value.cast() / 1000.0 * ampere; //mAmp to Amps
             break;
         }
         case address::remaining_capacity:
@@ -73,7 +73,7 @@ void battery_t::operator&(const data_t& data)
         }
         case address::rel_state_of_charge:
         {
-            chargePc = data.value();    // percentage, unit is %
+            charge_pc = data.value();    // percentage, unit is %
             break;
         }
         case address::run_time_to_empty:

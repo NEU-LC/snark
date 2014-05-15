@@ -12,9 +12,11 @@
 #include "commands.h"
 
 namespace snark { namespace ocean {
+    
+static const int OCEAN_NAN = -999;
 
 struct address {
-     enum { temperature = 0x08, voltage = 0x09, current = 0x0a, avg_current=0x0b, rel_state_of_charge=0x0d, remaining_capacity=0x0f,
+     enum { temperature = 0x08, voltage = 0x09, current = 0x0a, average_current=0x0b, rel_state_of_charge=0x0d, remaining_capacity=0x0f,
             run_time_to_empty=0x11, status=0x16
      };
     
@@ -31,10 +33,10 @@ struct battery_t
     uint8 id;
     voltage_t voltage;
     current_t current;
-    current_t avg_current;
+    current_t average_current;
     temperature_t temperature;  
     power_t remaining_capacity;
-    double chargePc; // Charge percentage
+    double charge_pc; // Charge percentage
     boost::posix_time::time_duration time_to_empty;
     int state;
     
@@ -43,11 +45,12 @@ struct battery_t
     template < int P >
     void operator&( const hex_data_t< P >& line_data )
     {
-        for( typename boost::array< data_t, P >::const_iterator it=line_data.values.begin(); it!=line_data.values.end(); ++it ) { *this & ( *it ); } 
+        for( typename boost::array< data_t, P >::const_iterator it=line_data.values.begin(); it!=line_data.values.end(); ++it ) { *this & ( 
+*it ); } 
     }
 
-    battery_t() : id(0), chargePc(-999), state( battery_state::uninitialised ) {}
-    battery_t( uint8 id_ ) : id( id_ ), chargePc(-999), state( battery_state::uninitialised ) {}
+    battery_t() : id(0), charge_pc( OCEAN_NAN ), state( battery_state::uninitialised ) {}
+    battery_t( uint8 id_ ) : id( id_ ), charge_pc( OCEAN_NAN ), state( battery_state::uninitialised ) {}
 
     // update battery with new data
     void operator&(const data_t& data);
@@ -66,12 +69,14 @@ struct controller_t
     typedef typename boost::array< battery_t, N >::const_iterator const_iter;
     power_t total_power;
     current_t total_current;
-    voltage_t avg_voltage;
-    double avgCharge; // percentage
+    voltage_t average_voltage;
+    double average_charge; // percentage
 
+    static const char battery_data_char = 'B';
+    static const char controller_data_char = 'C';
 
-    controller_t() : id(0), state( battery_state::uninitialised ), avgCharge(-999) { set_battery_id(); }
-    controller_t( uint8 id_ ) : id( id_ ), state( battery_state::uninitialised ), avgCharge(-999) { set_battery_id(); }
+    controller_t() : id(0), state( battery_state::uninitialised ), average_charge(-999) { set_battery_id(); }
+    controller_t( uint8 id_ ) : id( id_ ), state( battery_state::uninitialised ), average_charge(-999) { set_battery_id(); }
 
     void set_battery_id()
     {
@@ -97,26 +102,24 @@ struct controller_t
         }
 
         batteries[ line_data.battery_id - 1 ] & line_data;
-        
-//         for( typename hex_data_t< P >::value_iter it=line_data.begin(); it!=line_data.end(); ++it ) { *this & ( *it ); } 
     }
     /// Get consolidated values from the batteries, e.g. total power or total current
     void consolidate()
     {
         total_current = 0*ampere;
         total_power = 0*watt;
-        avg_voltage = 0*volt;
-        avgCharge = 0;
+        average_voltage = 0*volt;
+        average_charge = 0;
         for( const_iter it=batteries.begin(); it!=batteries.end(); ++it ) 
         { 
-            total_current += it->avg_current;
+            total_current += it->average_current;
             total_power += it->remaining_capacity;
-            avg_voltage += it->voltage;
-            avgCharge += it->chargePc;
+            average_voltage += it->voltage;
+            average_charge += it->charge_pc;
         } 
-        //avg_voltage = ( avg_voltage.value()/N ) * volt;
-        avg_voltage /= N;
-        avgCharge /= N;
+        //average_voltage = ( average_voltage.value()/N ) * volt;
+        average_voltage /= N;
+        average_charge /= N;
         state = batteries.front().state;
     }
 };

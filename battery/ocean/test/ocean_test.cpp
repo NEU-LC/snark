@@ -250,7 +250,7 @@ public:
             case ocean::address::current:
                 this->value = 0x00ff;
                 break;
-            case ocean::address::avg_current:
+            case ocean::address::average_current:
                 this->value = 0x00ff;
                 break;
             case ocean::address::temperature:

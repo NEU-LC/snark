@@ -75,10 +75,10 @@ template <> struct traits< battery_t >
         v.apply("id", int(t.id) );
         v.apply("voltage", t.voltage.value() );
         v.apply("current", t.current.value() );
-        v.apply("avg_current", t.avg_current.value() );
+        v.apply("average_current", t.average_current.value() );
         v.apply("temperature", t.temperature.value() );
         v.apply("remaining_capacity", t.remaining_capacity.value() );
-        v.apply("chargePc", t.chargePc );
+        v.apply("charge_pc", t.charge_pc );
         v.apply("time_to_empty", t.time_to_empty.total_seconds() / 3600.0 );
     }
 };
@@ -92,9 +92,9 @@ template < int N > struct traits< controller_t< N > >
         v.apply("state", tmp );
         v.apply("total_power", t.total_power.value() );
         v.apply("total_current", t.total_current.value() );
-        v.apply("avg_voltage", t.avg_voltage.value() );
+        v.apply("average_voltage", t.average_voltage.value() );
         v.apply("batteries", t.batteries );
-        v.apply("avgCharge", t.avgCharge );
+        v.apply("average_charge", t.average_charge );
     }
 };   
 

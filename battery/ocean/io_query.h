@@ -64,7 +64,7 @@ struct update_controller
     static void update( controller_t< N >& controller )
     {
         controller.batteries[B-1] & query< B, address::current, IO >();
-        controller.batteries[B-1] & query< B, address::avg_current, IO >();
+        controller.batteries[B-1] & query< B, address::average_current, IO >();
         controller.batteries[B-1] & query< B, address::temperature, IO >();
         controller.batteries[B-1] & query< B, address::voltage, IO >();
         controller.batteries[B-1] & query< B, address::rel_state_of_charge, IO >();
