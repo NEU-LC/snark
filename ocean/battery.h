@@ -14,14 +14,6 @@
 namespace snark { namespace ocean {
 
 struct address {
-//    static const ocean8 temperature = 0x08;
-//    static const ocean8 voltage =     0x09;
-//    static const ocean8 current = 0x0a;
-//    static const ocean8 avg_current = 0x0b;
-//    static const ocean8 rel_state_of_charge = 0x0d;
-//    static const ocean8 remaining_capacity = 0x0f;
-//    static const ocean8 run_time_to_empty = 0x011;
-//    static const ocean8 status = 0x016;
      enum { temperature = 0x08, voltage = 0x09, current = 0x0a, avg_current=0x0b, rel_state_of_charge=0x0d, remaining_capacity=0x0f,
             run_time_to_empty=0x11, status=0x16
      };
@@ -34,30 +26,7 @@ struct battery_state {
 struct battery_t
 {
 
-    static std::string state_to_string( int st ) {
-        switch( st )
-        {
-            case battery_state::initialised:
-                return "IN";
-                break;
-            case battery_state::uninitialised:
-                return "UN";
-                break;
-            case battery_state::fully_discharged:
-                return "FD";
-                break;
-            case battery_state::fully_charged:
-                return "FC";
-                break;
-            case battery_state::discharging:
-                return "DC";
-                break;
-            default:
-                return "CH";
-                break;
-
-        }
-    }
+    static std::string state_to_string( int st );
 
     uint8 id;
     voltage_t voltage;
@@ -80,107 +49,21 @@ struct battery_t
     battery_t() : id(0), chargePc(-999), state( battery_state::uninitialised ) {}
     battery_t( uint8 id_ ) : id( id_ ), chargePc(-999), state( battery_state::uninitialised ) {}
 
-
-    void operator&(const data_t& data)
-    {
-        // std::cerr << " address " << data.address() << std::endl;
-        switch( data.address() )
-        {
-            case address::temperature:
-            {
-                static const double unit = 0.1; // Kelvin
-                temperature = data.value() * unit * kelvin; // 0.1k unit
-                break;
-            }
-            case address::voltage:
-            {
-                voltage = data.value() / 1000.0 * volt; // millivolts to volts
-                break;
-            }
-            case address::current:
-            {
-                current = data.value.cast() / 1000.0 * ampere; //mAmp to Amps
-                // std::cerr << "got current: " << current.value() << std::endl;
-                break;
-            }
-            case address::avg_current:
-            {
-                avg_current = data.value.cast() / 1000.0 * ampere; //mAmp to Amps
-                break;
-            }
-            case address::remaining_capacity:
-            {
-                remaining_capacity = data.value.cast() / 100.0 * watt; // unit is 10mWh
-            }
-            case address::rel_state_of_charge:
-            {
-                chargePc = data.value();    // percentage, unit is %
-                break;
-            }
-            case address::run_time_to_empty:
-            {
-                time_to_empty = boost::posix_time::minutes( data.value() );
-            }
-            case address::status:
-            {
-                if( !(data.value() &  battery_state::initialised) ) 
-                {
-                    state = battery_state::uninitialised;
-                    return;
-                }
-                comma::uint16 val = data.value() & 0x0070;  // masks out everything including 'initialised' flag
-                switch( val )
-                {
-                    case battery_state::discharging:
-                        state = battery_state::discharging;
-                        break;
-                    case battery_state::fully_charged:
-                        state = battery_state::fully_charged;
-                        break;
-                    case battery_state::fully_discharged:
-                        state = battery_state::fully_discharged;
-                        break;
-                    default:
-                        state = battery_state::charging;
-                        break;
-                }
-                // std::cerr << "battery: " << int(id) <<  " state: " << state << " value: " << data.value() << " val: " << val <<std::endl;
-                break;
-            }
-            default:
-            {
-                return;
-            }
-        }
-    }
+    // update battery with new data
+    void operator&(const data_t& data);
+    // Removes checksum wrappers, TODO throws exception on incorrect checksum
+    static std::string& strip( std::string& line );
 };
 
-// Removes checksum wrappers, TODO throws exception on incorrect checksum
-std::string& strip( std::string& line )
-{
-    /// '$B15,....,FF00%B2' becomes B15,....,FF00
-    //std::size_t pos = ( line[ line.size() - 3 ] == '%' ? line.size()-4 : std::string::npos );
-    std::size_t pos = line.find_first_of( '%', line.size() - 4 );
-    if( pos != std::string::npos ) { --pos; }
-    //std::cerr << "char: " << line[ line.size() - 3 ] << std::endl;
-    line = line.substr( 1, pos);
-    return line;
-}
 
 
 template < int N >
 struct controller_t
 {
-    // struct state_t {
-    //     enum { unknown=-1, AC, FC, FD, NG };
-    // };
-    
     uint8 id;
     int state;
     boost::array< battery_t, N > batteries;
     typedef typename boost::array< battery_t, N >::const_iterator const_iter;
-    
-    
     power_t total_power;
     current_t total_current;
     voltage_t avg_voltage;

@@ -60,12 +60,12 @@ typedef hex_value_t< comma::uint16 > hex_uint16;
 TEST(ocean, ocean_test_strip )
 {
     std::string source = "$B15,17,0026,18,19c8,19,3840,1a,0010,1b,302f,1C,00cc%11";
-    ocean::strip( source );
+    ocean::battery_t::strip( source );
     // std::cerr << "size: " << source.size() << " " << source[ source.size() - 3 ] << std::endl;
     EXPECT_EQ("B15,17,0026,18,19c8,19,3840,1a,0010,1b,302f,1C,00cc", source);
 
     source = "$B15,17,0026,18,19c8,19,3840,1a,0010,1b,302f,1C,00cc";
-    ocean::strip( source );
+    ocean::battery_t::strip( source );
     EXPECT_EQ("B15,17,0026,18,19c8,19,3840,1a,0010,1b,302f,1C,00cc", source);
 
 }
@@ -113,7 +113,7 @@ TEST(ocean, ocean_raw_hex_data)
 ///     const ocean::packets::packet< 6 >* packet = reinterpret_cast< const ocean::packets::packet< 6 >* >( &source[0] );
 ///     packet->type.category()...
     
-    ocean::strip( source );
+    ocean::battery_t::strip( source );
 
     hex_data_t< 6 > data;
     ascii< hex_data_t< 6 > >().get( data, source );
@@ -168,7 +168,7 @@ TEST( ocean, setting_hex_data )
     for( std::size_t i=0; i<inputs.size(); ++i )
     {
         std::string& line = inputs[i];
-        std::vector< std::string > v = comma::split( ocean::strip( line ), ',');
+        std::vector< std::string > v = comma::split( ocean::battery_t::strip( line ), ',');
         
         switch( v.size() )
         {

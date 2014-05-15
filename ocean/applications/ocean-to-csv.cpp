@@ -236,7 +236,7 @@ int main( int ac, char** av )
             if( line.empty() ) { continue; }
 
             //std::cerr << "a: " << line <<std::endl;
-            snark::ocean::strip( line );
+            snark::ocean::battery_t::strip( line );
             std::cerr << "d: " << line <<std::endl;
 
             if( line[0] != 'B' ) continue; // TODO: parse $C line???
