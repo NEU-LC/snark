@@ -64,8 +64,8 @@ boost::posix_time::ptime from_ntp_time( std::pair< comma::uint32, comma::uint32 
 boost::posix_time::ptime from_ntp_time( comma::uint32 seconds, comma::uint32 fractions )
 {
     boost::posix_time::ptime t = ntp_base + boost::posix_time::microseconds( static_cast< comma::uint64 >( fractions * ntp_microsec_coeff ) );
-    static const comma::int32 step = 2000000000; // quick and dirty: to avoid overflow in boost::posix_time::seconds(long)
-    for( comma::int32 s = seconds; s > 0; t += boost::posix_time::seconds( std::min( s, step ) ), s -= step );
+    static const comma::int64 step = 2000000000; // quick and dirty: to avoid overflow in boost::posix_time::seconds(long)
+    for( comma::int64 s = seconds; s > 0; t += boost::posix_time::seconds( std::min( s, step ) ), s -= step );
     return t;
 }
 
