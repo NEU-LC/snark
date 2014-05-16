@@ -49,7 +49,7 @@ typedef unsigned char ocean8;
 /// Gives you an ocean command where the bits 7-5 is battery number, 4-0 is the register address 
 template < ocean8 B, ocean8 ADDR > struct command_bits {
     static const ocean8 address_mask = BOOST_BINARY( 11111 );
-    static const ocean8 value = ( B << 5 ) | ( ADDR & address_mask );    
+    static const ocean8 value = ocean8( B << 5 ) | ( ADDR & address_mask );    
 };
 
 

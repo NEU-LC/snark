@@ -283,7 +283,7 @@ TEST(ocean, ocean_binary_query )
     EXPECT_EQ( 0x08, temperature.address() );
     
     controller< 4 > controller;
-    query< 4, impl_::stdio_stub >( controller );
+    query< impl_::stdio_stub >( controller );
     
     // boost::property_tree::ptree t;
     // comma::to_ptree to_ptree( t );

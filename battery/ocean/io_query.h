@@ -91,10 +91,10 @@ namespace impl_ {
 
 /// Looping through each battery for N to 1, B=N initially
 /// N is total number of battery, B is battery number
-template < int B, int N, typename IO >
+template < int B, typename CONTROLLER, typename IO >
 struct update_controller
 {
-    static void update( controller< N >& controller )
+    static void update( CONTROLLER& controller )
     {
         controller.batteries[B-1] & query< B, address::current, IO >();
         controller.batteries[B-1] & query< B, address::average_current, IO >();
@@ -105,24 +105,37 @@ struct update_controller
         controller.batteries[B-1] & query< B, address::run_time_to_empty, IO >();
         controller.batteries[B-1] & query< B, address::status, IO >();
         
-        update_controller< B - 1, N, IO >::update( controller );
+        update_controller< B - 1, CONTROLLER, IO >::update( controller );
     }
 };
 
-template < int N, typename IO >
-struct update_controller< 0, N, IO >
+template < typename CONTROLLER, typename IO >
+struct update_controller< 0, CONTROLLER, IO >
 {
-    static void update( controller< N >& controller ) {}
+    static void update( CONTROLLER& controller ) {}
 };
     
 } //namespace impl_ {
 
     
-template < int N, typename IO >
-bool query( controller< N >& controller )
+///
+/// Query the HW controller via IO type and populate the controller< N > with data for up to a specified number of batteries.
+///  num_of_batteries is the number of batteries to query e.g. 4 for querying batteries 1-4
+template < typename IO, int N >
+void query( controller< N >& controller, char num_of_batteries=N )
 {
-    impl_::update_controller< N, N, IO >::update( controller );
-    return true;
+    typedef  ocean::controller< N > controller_t;
+    switch( num_of_batteries )
+    {
+        case 8:  { impl_::update_controller< 8, controller_t, IO >::update( controller ); break; }
+        case 7:  { impl_::update_controller< 7, controller_t, IO >::update( controller ); break; }
+        case 6:  { impl_::update_controller< 6, controller_t, IO >::update( controller ); break; }
+        case 5:  { impl_::update_controller< 5, controller_t, IO >::update( controller ); break; }
+        case 4:  { impl_::update_controller< 4, controller_t, IO >::update( controller ); break; }
+        case 3:  { impl_::update_controller< 3, controller_t, IO >::update( controller ); break; }
+        case 2:  { impl_::update_controller< 2, controller_t, IO >::update( controller ); break; }
+        default: { impl_::update_controller< 1, controller_t, IO >::update( controller ); break; }
+    }
 }
     
 } } // namespace snark { namespace ocean {

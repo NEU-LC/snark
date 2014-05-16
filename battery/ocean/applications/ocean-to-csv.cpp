@@ -239,6 +239,8 @@ int main( int ac, char** av )
         status_in_json = options.exists( "--status-json" );
         int controller_id =  options.value< int >( "--controller-id,-C" );
         float beat = options.value< float >( "--beat,-B" );
+        
+        bool is_query_mode = options.exists( "--query-mode" );
 
         int num_of_batteries = 8;
         if( options.exists( "--num-of-batteries" ) ) { num_of_batteries = options.value< int >( "--num-of-batteries" ); }
@@ -266,26 +268,43 @@ int main( int ac, char** av )
         stats_t stats( controller_id );
         while( std::cin.good() )
         {
-            std::getline( std::cin, line );
-            if( line.empty() ) { continue; }
-
-            //std::cerr << "a: " << line <<std::endl;
-            snark::ocean::battery_t::strip( line );
-            std::cerr << name() << "d: " << line <<std::endl;
-
-            if( line[0] != controller_b::battery_data_char ) continue; // TODO: parse $C line???
-
-            // get the battery ID of the data just updated
-            int battery_id = update_controller( stats.controller, line );
-            // if battery ID is num_of_batteries it means we have updated all batteries
-            if( beat > 0 && battery_id == num_of_batteries && microsec_clock::universal_time() >= future )
+            if( is_query_mode )
             {
+                /// query the controller for all batteries
+                snark::ocean::query< snark::ocean::stdio_query >( stats.controller, num_of_batteries );
+                
                 stats.time = microsec_clock::universal_time();
                 stats.controller.consolidate( num_of_batteries );
 
                 output( stats );
 
                 future = microsec_clock::universal_time() + seconds( beat );
+                
+                continue;
+            }
+            else
+            {
+                std::getline( std::cin, line );
+                if( line.empty() ) { continue; }
+    
+                //std::cerr << "a: " << line <<std::endl;
+                snark::ocean::battery_t::strip( line );
+                std::cerr << name() << "d: " << line <<std::endl;
+    
+                if( line[0] != controller_b::battery_data_char ) continue; // TODO: parse $C line???
+    
+                // get the battery ID of the data just updated
+                int battery_id = update_controller( stats.controller, line );
+                // if battery ID is num_of_batteries it means we have updated all batteries
+                if( beat > 0 && battery_id == num_of_batteries && microsec_clock::universal_time() >= future )
+                {
+                    stats.time = microsec_clock::universal_time();
+                    stats.controller.consolidate( num_of_batteries );
+    
+                    output( stats );
+    
+                    future = microsec_clock::universal_time() + seconds( beat );
+                }
             }
         }
 
