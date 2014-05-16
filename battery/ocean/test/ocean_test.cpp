@@ -204,7 +204,7 @@ TEST( ocean, setting_hex_data )
 
     std::string line;
     ascii< ocean::controller< 3 > >().put( controller, line );
-    const std::string expected = "1,\"CH\",206.62,0,16.6617,1,16.734,0,0,296.6,79.1,7910,1092.25,2,16.745,0,0,296.5,64.13,6413,1092.25,3,16.506,0,0,296.9,63.39,6339,1092.25,6887.33";
+    const std::string expected = "1,\"CH\",206.62,0,16.6617,1,\"CH\",16.734,0,0,296.6,79.1,7910,1092.25,2,\"CH\",16.745,0,0,296.5,64.13,6413,1092.25,3,\"CH\",16.506,0,0,296.9,63.39,6339,1092.25,6887.33";
     EXPECT_EQ( expected, line );
 
     // boost::property_tree::ptree t;
