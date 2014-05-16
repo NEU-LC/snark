@@ -40,6 +40,7 @@
 #include <iostream>
 #include <boost/static_assert.hpp>
 #include <boost/type_traits.hpp>
+#include "packed_data.h"
 
 namespace snark { namespace ocean {
     
@@ -102,15 +103,6 @@ struct data_t
     hex_value_t< comma::uint16 > value;
 };
 
-struct type_info : public comma::packed::packed_struct< type_info, 4 >
-{
-    comma::packed::string< 1, '$' > start;
-    comma::packed::string< 1, '0' > category;
-    comma::packed::casted< unsigned int, 1 > controller_id;
-    comma::packed::casted< unsigned int, 1 > battery_id;
-};
-
-
 /// Store values pushed from the Ocean controller
 /// N is the number of data value pairs
 template < int N >
@@ -120,7 +112,7 @@ struct hex_data_t
     
     static const char battery_char = 'B';
     static const char setup_char = 'S';
-    type_info type;
+    ocean::packed::type_info type;
     /// Pairs of address identifying data and raw value
     boost::array< data_t, N > values;
     typedef typename boost::array< data_t, N >::iterator value_iter;

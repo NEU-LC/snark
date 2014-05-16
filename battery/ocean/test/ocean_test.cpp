@@ -44,6 +44,7 @@
 #include "../battery.h"
 #include "../traits.h"
 #include "../io_query.h"
+#include "../packed_data.h"
 
 
 namespace snark { namespace ocean {
@@ -97,6 +98,21 @@ TEST(ocean, ocean_test_strip )
 /// };
 /// 
 /// } }
+TEST(ocean, ocean_packed_data_test )
+{
+    std::string source = "$B15,17,0026,18,19c8,19,3840,1a,0010,1b,302f,1C,00cc%11";
+    
+    const packed::packet< 6 >* data = reinterpret_cast< const packed::packet< 6 >* >( &source[0] );
+    EXPECT_EQ( 5, data->type.battery_id() );
+    EXPECT_EQ( 1, data->type.controller_id() );
+    EXPECT_EQ( 23,      data->values[0].address() );
+    EXPECT_EQ( 38,      data->values[0].value() );
+    EXPECT_EQ( 24,      data->values[1].address() );
+    EXPECT_EQ( 6600,    data->values[1].value() );
+    EXPECT_EQ( 25,      data->values[2].address() );
+    EXPECT_EQ( 14400,   data->values[2].value() );
+    EXPECT_EQ( 17,   data->crc() );
+}
 
 TEST(ocean, ocean_raw_hex_data)
 {
