@@ -30,7 +30,6 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
 #include <gtest/gtest.h>
 #include <comma/csv/stream.h>
 #include <comma/csv/ascii.h>
