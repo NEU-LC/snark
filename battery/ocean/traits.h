@@ -87,9 +87,6 @@ template < int N > struct traits< hex_data_t< N > >
 {
     template< typename K, typename V > static void visit( const K& k, hex_data_t< N >& t, V& v )
     {
-//         v.apply("controller_id", t.id_packed);
-//         t.battery_id = boost::lexical_cast< comma::uint16 >( t.id_packed[2] );
-//         t.controller_id = boost::lexical_cast< comma::uint16 >( t.id_packed[1] );
         using snark::ocean::packed::type_info;
         std::string type;
         v.apply("type", type );

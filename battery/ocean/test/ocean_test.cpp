@@ -59,9 +59,8 @@ typedef hex_value_t< comma::uint16 > hex_uint16;
 
 TEST(ocean, ocean_test_strip )
 {
-    std::string source = "$B15,17,0026,18,19c8,19,3840,1a,0010,1b,302f,1C,00cc%11";
+    std::string source = "$B15,17,0026,18,19c8,19,3840,1a,0010,1b,302f,1C,00cc%11\r";
     ocean::battery_t::strip( source );
-    // std::cerr << "size: " << source.size() << " " << source[ source.size() - 3 ] << std::endl;
     EXPECT_EQ("$B15,17,0026,18,19c8,19,3840,1a,0010,1b,302f,1C,00cc", source);
 
     source = "$B15,17,0026,18,19c8,19,3840,1a,0010,1b,302f,1C,00cc";
@@ -70,34 +69,6 @@ TEST(ocean, ocean_test_strip )
 
 }
 
-/// namespace ocean { namespace packets {
-/// 
-/// struct type : public comma::packed::packed_struct< ... >
-/// {
-///     comma::packed::fixed_string< 1, '$' > start;
-///     comma::packed::casted< unsigned int, 1 > category;
-///     comma::packed::casted< unsigned int, 1 > id;
-///     comma::packed::casted< unsigned int, 1 > type;
-/// };
-/// 
-/// struct element : public comma::packed::packed_struct< ... >
-/// {
-///     comma::packed::fixed_string< 1, ',' > comma1;
-///     comma::packed::string< 2 > address; // todo: comma::packed::ascii_hex< 1 > address;
-///     comma::packed::fixed_string< 1, ',' > comma2;
-///     comma::packed::string< 4 > this->value; // todo: comma::packed::ascii_hex< 2 > value;
-/// };
-/// 
-/// template < std::size_t N >
-/// struct packet
-/// {
-///     ocean::packets::type type;
-///     boost::array< ocean::packets::element, N > elements;
-///     comma::packed::fixed_string< 1, '%' > padding;
-///     comma::packed::string< 2 > crc;
-/// };
-/// 
-/// } }
 TEST(ocean, ocean_packed_data_test )
 {
     std::string source = "$B15,17,0026,18,19c8,19,3840,1a,0010,1b,302f,1C,00cc%11";
@@ -125,8 +96,6 @@ TEST(ocean, ocean_raw_hex_data)
     EXPECT_EQ( 6524, pair.value.value );
     
     source = "$B15,17,0026,18,19c8,19,3840,1a,0010,1b,302f,1C,00cc%11";
-///     const ocean::packets::packet< 6 >* packet = reinterpret_cast< const ocean::packets::packet< 6 >* >( &source[0] );
-///     packet->type.category()...
     
     ocean::battery_t::strip( source );
 

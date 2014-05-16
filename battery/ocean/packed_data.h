@@ -54,9 +54,9 @@ struct type_info : public comma::packed::packed_struct< type_info, 4 >
 struct element : public comma::packed::packed_struct< element, 8 >
 {
     comma::packed::string< 1, ',' > comma1;
-    comma::packed::ascii_hex< comma::uint16, 2 > address; // todo: comma::packed::ascii_hex< 1 > address;
+    comma::packed::ascii_hex< comma::uint16, 2 > address;
     comma::packed::string< 1, ',' > comma2;
-    comma::packed::ascii_hex< comma::uint16, 4 > value; // todo: comma::packed::ascii_hex< 2 > value;
+    comma::packed::ascii_hex< comma::uint16, 4 > value;
 };
 
 template < std::size_t N >
