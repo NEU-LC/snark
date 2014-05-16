@@ -277,11 +277,11 @@ int main( int ac, char** av )
 
             // get the battery ID of the data just updated
             int battery_id = update_controller( stats.controller, line );
-            // if battery ID is one it means we have updated all batteries
-            if( beat > 0 && battery_id == 1 && microsec_clock::universal_time() >= future )
+            // if battery ID is num_of_batteries it means we have updated all batteries
+            if( beat > 0 && battery_id == num_of_batteries && microsec_clock::universal_time() >= future )
             {
                 stats.time = microsec_clock::universal_time();
-                stats.controller.consolidate();
+                stats.controller.consolidate( num_of_batteries );
 
                 output( stats );
 

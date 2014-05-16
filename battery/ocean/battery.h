@@ -47,84 +47,85 @@
 namespace snark { namespace ocean {
     
 static const int OCEAN_NAN = -999;
-
+/// Addresses of different values according to Specifications
 struct address {
      enum { temperature = 0x08, voltage = 0x09, current = 0x0a, average_current=0x0b, rel_state_of_charge=0x0d, remaining_capacity=0x0f,
             run_time_to_empty=0x11, status=0x16
      };
     
 };
+/// Battery states enumerations where the value corresponds to a bit flag of each state.
 struct battery_state {
         enum { charging=0x00, fully_discharged=0x10, fully_charged=0x20, discharging=0x40, initialised=0x80, uninitialised };
 };
-
+///
+/// The battery with attributes according to the Smart Battery Specifications doc.
+///     
 struct battery_t
 {
-
+    /// Change state member into a 2 char fixed string enum
     static std::string state_to_string( int st );
 
-    uint8 id;
-    voltage_t voltage;
-    current_t current;
-    current_t average_current;
-    temperature_t temperature;  
+    uint8 id;   /// ID of battery 1-8 range
+    voltage_t voltage;  /// voltage using boost units
+    current_t current;  /// current, see addresses
+    current_t average_current;  // average_current, see addresses and specs
+    temperature_t temperature;  /// temp in SI unit eg Kelvins
     power_t remaining_capacity;
     double charge_pc; // Charge percentage
-    boost::posix_time::time_duration time_to_empty;
-    int state;
+    boost::posix_time::time_duration time_to_empty;     /// duration to empty
+    int state;  /// state of battery, see above enum, initialised is not used
     
-    // void operator&( const data_t& data );
-    
+    /// Given pairs of address and value, update the battery.
     template < int P >
     void operator&( const hex_data_t< P >& line_data )
     {
         for( typename boost::array< data_t, P >::const_iterator it=line_data.values.begin(); it!=line_data.values.end(); ++it ) { *this & ( 
 *it ); } 
     }
-
+    /// ctors: default state is uninitialised until otherwise updated.
     battery_t() : id(0), charge_pc( 0 ), state( battery_state::uninitialised ) {}
     battery_t( uint8 id_ ) : id( id_ ), charge_pc( 0 ), state( battery_state::uninitialised ) {}
 
-    // update battery with new data
+    /// Update battery with new data given an address and value pair
     void operator&(const data_t& data);
-    // Removes checksum wrappers, TODO throws exception on incorrect checksum
+    /// Removes checksum wrappers, TODO throws exception on incorrect checksum
     static std::string& strip( std::string& line );
 };
 
-
-
+///
+/// A controller for batteries where there can be up to eight, it calculates average and totals e.g. total power.
+///   N is the number of batteries in 'batteries' array member
+///   It is serialisable via comma::csv
 template < int N >
 struct controller
 {
-    uint8 id;
-    int state;
-    boost::array< battery_t, N > batteries;
+    uint8 id;   /// controller's ID 
+    int state;  /// Controller's state - same as of battery 1
+    boost::array< battery_t, N > batteries; /// This is the batteries being controlled
     typedef typename boost::array< battery_t, N >::const_iterator const_iter;
-    power_t total_power;
-    current_t total_current;
-    voltage_t average_voltage;
-    double average_charge; // percentage
+    power_t total_power;    /// of all batteries
+    current_t total_current;    /// " " "
+    voltage_t average_voltage;  /// " " "
+    double average_charge; // average percentage of all batteries
 
-    static const char battery_data_char = 'B';
-    static const char controller_data_char = 'C';
-
+    static const char battery_data_char = 'B';      /// Character to identify controller broadcasted data for a single battery.
+    static const char controller_data_char = 'C';   /// Summary broadcasted data for controller.
+    /// ctor
     controller() : id(0), state( battery_state::uninitialised ), average_charge( OCEAN_NAN ) 
     { 
         // One controller to 8 batteries only
-        BOOST_STATIC_ASSERT_MSG( ( N > 0 && N <= 8 ), " T must be integral type" );
+        BOOST_STATIC_ASSERT_MSG( ( N > 0 && N <= 8 ), " N must be between 1 and 8 inclusive" );
         set_battery_id(); 
         
     }
     controller( uint8 id_ ) : id( id_ ), state( battery_state::uninitialised ), average_charge( OCEAN_NAN ) { set_battery_id(); }
-
-    void set_battery_id()
-    {
-        for( std::size_t i=0; i<=N; ++i ) { batteries[i].id = i + 1; }
-    }
+    /// set battery ID on startup
+    void set_battery_id() { for( std::size_t i=1; i<=N; ++i ) { batteries[i-1].id = i; } }
     
-    void operator&( const data_t& data );
     
-    /// Populate the controller and controller's batteries with hex data ( pushed data from controller )
+    /// Populate the controller and controller's batteries with hex data ( pushed data from controller ).
+    ///  If the controller ID does not match controller's, no update is done. Like wise if battery ID is not present.
     template < int P >
     void operator&( const hex_data_t< P >& line_data )
     {
@@ -137,10 +138,14 @@ struct controller
             ss << "battery " << line_data.battery_id  << "is not on controller " << int(id) << std::endl;
             COMMA_THROW( comma::exception, ss.str() );
         }
-
+        /// update the battery
         batteries[ line_data.battery_id - 1 ] & line_data;
     }
-    /// Get consolidated values from the batteries, e.g. total power or total current
+    ///
+    /// Calculate consolidated values using the batteries' values, eg total power or total current.
+    ///  Where num is the number of batteries present in the controller, a controller< 8 > may in hardware reality
+    ///  only have 4 batteries, so only four of them are ever updated by broadcasted data. However you may use
+    ///  controller< 4 > or controller< 8 > type.
     void consolidate( std::size_t num = N)
     {
         total_current = 0*ampere;
@@ -154,7 +159,6 @@ struct controller
             average_voltage += it->voltage;
             average_charge += it->charge_pc;
         } 
-        //average_voltage = ( average_voltage.value()/N ) * volt;
         average_voltage /= num;
         average_charge /= num;
         state = batteries.front().state;

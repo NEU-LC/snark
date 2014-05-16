@@ -101,7 +101,7 @@ void battery_t::operator&(const data_t& data)
         }
         case address::remaining_capacity:
         {
-            remaining_capacity = data.value.cast() / 100.0 * watt; // unit is 10mWh
+            remaining_capacity = data.value.cast() / 100.0 * watt; // eacho unit is 10mWh - to Watts
         }
         case address::rel_state_of_charge:
         {
