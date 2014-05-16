@@ -60,6 +60,7 @@ public:
     void write( ocean8 value )
     {
         std::cout.write( (const char*) &value, 1u );
+        std::cout.flush();
     };
 };
 

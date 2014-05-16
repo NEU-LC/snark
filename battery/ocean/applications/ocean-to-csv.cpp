@@ -93,11 +93,14 @@ template <> struct traits< stats_t >
 void usage(int code=1)
 {
     std::cerr << std::endl;
-    std::cerr << "Reads commands from standard input, process and returns a reply to standard output" << std::endl;
+    std::cerr << "Accepts or reads Ocean battery data and output them as a status structure - see below." << std::endl;
+    std::cerr << "Usage:" << std::endl;
+    std::cerr << "  e.g. socat -u /dev/ttyO1,b19200,raw - | ocean-to-csv --controller-id 1 --beat 0.5 [--status-json|--binary]" << std::endl;
+    std::cerr << "  e.g. socat /dev/ttyO1,b19200,raw EXEC:\"ocean-to-csv --query-mode --controller-id 1 --beat 0.5 [--status-json|--binary] 2>results\" ( testing needed )" << std::endl;
     std::cerr << name() << " options:" << std::endl;
     std::cerr << "    --status-json           - Data output in JSON format with End of Text delimiter char." << std::endl;
     std::cerr << "    --binary                - Data output in binary, default is ascii CSV." << std::endl;
-    std::cerr << "*   --beat=|-C=             - Minium second/s between status update, floating point e.g. 0.5." << std::endl;
+    std::cerr << "*   --beat=|-C=             - Minium second/s between status update - 1Hz/beat, floating point e.g. 0.5." << std::endl;
     std::cerr << "*   --controller-id=|-C=    - Controller's ID: 1-9." << std::endl;
     std::cerr << "    [--num-of-batteries=]   - The number of batteries for this controller" << std::endl;
     std::vector< std::string > names = comma::csv::names< stats_t >();
@@ -188,30 +191,30 @@ int update_controller( controller< B >& controller, const std::string& line )
 static bool is_binary = false;
 static bool status_in_json = false;
 
-void output( const stats_t& stats )
+void output( const stats_t& stats, std::ostream& oss=std::cout )
 {
      if( is_binary )
      {
          static comma::csv::binary< stats_t > binary("","",true, stats );
          static std::vector<char> line( binary.format().size() );
          binary.put( stats, line.data() );
-         std::cout.write( line.data(), line.size());
+         oss.write( line.data(), line.size());
      }
      else if( status_in_json )
      {
          boost::property_tree::ptree t;
          comma::to_ptree to_ptree( t );
          comma::visiting::apply( to_ptree ).to( stats );
-         boost::property_tree::write_json( std::cout, t );    
+         boost::property_tree::write_json( oss, t );    
          // *stream << char(4) << char(3); // End of Transmition
 
      }
      else
      {
-         comma::csv::output_stream< stats_t > ss( std::cout );
+         comma::csv::output_stream< stats_t > ss( oss );
          ss.write( stats );
      }
-     std::cout.flush();
+     oss.flush();
 }
 
 int main( int ac, char** av )
@@ -245,7 +248,7 @@ int main( int ac, char** av )
         int num_of_batteries = 8;
         if( options.exists( "--num-of-batteries" ) ) { num_of_batteries = options.value< int >( "--num-of-batteries" ); }
 
-        std::cerr << name() << ": controller id is " << controller_id << std::endl;
+        if( !is_query_mode ) { std::cerr << name() << ": controller id is " << controller_id << std::endl; }
         
         if( options.exists( "--sample" ) )
         {
@@ -276,7 +279,7 @@ int main( int ac, char** av )
                 stats.time = microsec_clock::universal_time();
                 stats.controller.consolidate( num_of_batteries );
 
-                output( stats );
+                output( stats, std::cerr );
 
                 usleep( beat * 1000000u );
                 
