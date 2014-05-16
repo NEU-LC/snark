@@ -270,7 +270,7 @@ int main( int ac, char** av )
         {
             if( is_query_mode )
             {
-                /// query the controller for all batteries
+                /// query the controller for battery 1 to num_of_batteries
                 snark::ocean::query< snark::ocean::stdio_query >( stats.controller, num_of_batteries );
                 
                 stats.time = microsec_clock::universal_time();
@@ -278,7 +278,7 @@ int main( int ac, char** av )
 
                 output( stats );
 
-                future = microsec_clock::universal_time() + seconds( beat );
+                usleep( beat * 1000000u );
                 
                 continue;
             }
@@ -289,7 +289,7 @@ int main( int ac, char** av )
     
                 //std::cerr << "a: " << line <<std::endl;
                 snark::ocean::battery_t::strip( line );
-                std::cerr << name() << "d: " << line <<std::endl;
+                std::cerr << name() << ": " << line <<std::endl;
     
                 if( line[0] != controller_b::battery_data_char ) continue; // TODO: parse $C line???
     
