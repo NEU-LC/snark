@@ -61,11 +61,11 @@ TEST(ocean, ocean_test_strip )
     std::string source = "$B15,17,0026,18,19c8,19,3840,1a,0010,1b,302f,1C,00cc%11";
     ocean::battery_t::strip( source );
     // std::cerr << "size: " << source.size() << " " << source[ source.size() - 3 ] << std::endl;
-    EXPECT_EQ("B15,17,0026,18,19c8,19,3840,1a,0010,1b,302f,1C,00cc", source);
+    EXPECT_EQ("$B15,17,0026,18,19c8,19,3840,1a,0010,1b,302f,1C,00cc", source);
 
     source = "$B15,17,0026,18,19c8,19,3840,1a,0010,1b,302f,1C,00cc";
     ocean::battery_t::strip( source );
-    EXPECT_EQ("B15,17,0026,18,19c8,19,3840,1a,0010,1b,302f,1C,00cc", source);
+    EXPECT_EQ( source, source);
 
 }
 
@@ -118,14 +118,14 @@ TEST(ocean, ocean_raw_hex_data)
     ascii< hex_data_t< 6 > >().get( data, source );
     
     
-    EXPECT_EQ( 5, data.battery_id );
-    EXPECT_EQ( 1, data.controller_id );
+    EXPECT_EQ( 5, data.type.battery_id() );
+    EXPECT_EQ( 1, data.type.controller_id() );
     
     std::string temp;
     ascii< hex_data_t< 6 > >().put( data, temp );
     
     
-    EXPECT_EQ( "\"B15\",17,26,18,19c8,19,3840,1a,10,1b,302f,1c,cc", temp );
+    EXPECT_EQ( "\"$B15\",17,26,18,19c8,19,3840,1a,10,1b,302f,1c,cc", temp );
 
     EXPECT_EQ( 23,      data.values[0].address() );
     EXPECT_EQ( 38,      data.values[0].value() );

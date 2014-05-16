@@ -66,9 +66,9 @@ std::string& battery_t::strip( std::string& line )
     /// '$B15,....,FF00%B2' becomes B15,....,FF00
     //std::size_t pos = ( line[ line.size() - 3 ] == '%' ? line.size()-4 : std::string::npos );
     std::size_t pos = line.find_first_of( '%', line.size() - 4 );
-    if( pos != std::string::npos ) { --pos; }
+    if( pos != std::string::npos ) { line = line.substr( 0, pos); }
     //std::cerr << "char: " << line[ line.size() - 3 ] << std::endl;
-    line = line.substr( 1, pos);
+    ///line = line.substr( 0, pos);
     return line;
 }
 

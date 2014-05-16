@@ -131,15 +131,15 @@ struct controller
     {
         // std::cerr << "controller update: " << int( line_data.controller_id ) << " - Battery: " <<
         //     int( line_data.battery_id ) << std::endl;
-        if( line_data.controller_id != id ) {  return;  }
-        if( line_data.battery_id > N ) 
+        if( line_data.type.controller_id() != id ) {  return;  }
+        if( line_data.type.battery_id() > N ) 
         {
             std::ostringstream ss;
-            ss << "battery " << line_data.battery_id  << "is not on controller " << int(id) << std::endl;
+            ss << "battery " << line_data.type.battery_id()  << "is not on controller " << int(id) << std::endl;
             COMMA_THROW( comma::exception, ss.str() );
         }
         /// update the battery
-        batteries[ line_data.battery_id - 1 ] & line_data;
+        batteries[ line_data.type.battery_id() - 1 ] & line_data;
     }
     ///
     /// Calculate consolidated values using the batteries' values, eg total power or total current.

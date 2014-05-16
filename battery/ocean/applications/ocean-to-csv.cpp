@@ -136,49 +136,49 @@ int update_controller( controller< B >& controller, const std::string& line )
             hex_data_t< 7 > data;
             ascii< hex_data_t< 7 > >().get( data, v );
             controller & data;
-            return data.battery_id;
+            return data.type.battery_id();
         }
         case 13u:
         {
             hex_data_t< 6 > data;
             ascii< hex_data_t< 6 > >().get( data, v );
             controller & data;
-            return data.battery_id;
+            return data.type.battery_id();
         }
         case 11u:
         {
             hex_data_t< 5 > data;
             ascii< hex_data_t< 5 > >().get( data, v );
             controller & data;
-            return data.battery_id;
+            return data.type.battery_id();
         }
         case 9u:
         {
             hex_data_t< 4 > data;
             ascii< hex_data_t< 4 > >().get( data, v );
             controller & data;
-            return data.battery_id;
+            return data.type.battery_id();
         }
         case 7u:
         {
             hex_data_t< 3 > data;
             ascii< hex_data_t< 3 > >().get( data, v );
             controller & data;
-            return data.battery_id;
+            return data.type.battery_id();
         }
         case 5u:
         {
             hex_data_t< 2 > data;
             ascii< hex_data_t< 2 > >().get( data, v );
             controller & data;
-            return data.battery_id;
+            return data.type.battery_id();
         }
         case 3u:
         {
             hex_data_t< 1 > data;
             ascii< hex_data_t< 1 > >().get( data, v );
             controller & data;
-            return data.battery_id;
+            return data.type.battery_id();
         }
         default:
         {
@@ -294,7 +294,7 @@ int main( int ac, char** av )
                 snark::ocean::battery_t::strip( line );
                 std::cerr << name() << ": " << line <<std::endl;
     
-                if( line[0] != controller_b::battery_data_char ) continue; // TODO: parse $C line???
+                if( line[1] != controller_b::battery_data_char ) continue; // TODO: parse $C line???
     
                 // get the battery ID of the data just updated
                 int battery_id = update_controller( stats.controller, line );

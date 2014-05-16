@@ -83,19 +83,24 @@ template < int N > struct traits< boost::array< int, N > >
     }
 };
     
+using snark::ocean::type_info;
 template < int N > struct traits< hex_data_t< N > >
 {
     template< typename K, typename V > static void visit( const K& k, hex_data_t< N >& t, V& v )
     {
-        v.apply("controller_id", t.id_packed);
-        t.battery_id = boost::lexical_cast< comma::uint16 >( t.id_packed[2] );
-        t.controller_id = boost::lexical_cast< comma::uint16 >( t.id_packed[1] );
+//         v.apply("controller_id", t.id_packed);
+//         t.battery_id = boost::lexical_cast< comma::uint16 >( t.id_packed[2] );
+//         t.controller_id = boost::lexical_cast< comma::uint16 >( t.id_packed[1] );
+        std::string type;
+        v.apply("type", type );
+        const type_info* info = reinterpret_cast< type_info* >( &type[0] );
+        t.type = *info;
         v.apply("values", t.values);
     }
 
     template< typename K, typename V > static void visit( const K& k, const hex_data_t< N >& t, V& v )
     {
-        v.apply("id_packed", t.id_packed );
+        v.apply("type", std::string( t.type.data(), t.type.size ) );
         v.apply("values", t.values);
     }
 };

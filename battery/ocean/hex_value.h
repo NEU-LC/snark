@@ -33,6 +33,7 @@
 #ifndef SNARK_OCEAN_HEX_VALUE
 #define SNARK_OCEAN_HEX_VALUE
 #include <comma/base/types.h>
+#include <comma/packed/packed.h>
 #include <boost/array.hpp>
 #include <vector>
 #include <iomanip>
@@ -101,21 +102,30 @@ struct data_t
     hex_value_t< comma::uint16 > value;
 };
 
+struct type_info : public comma::packed::packed_struct< type_info, 4 >
+{
+    comma::packed::string< 1, '$' > start;
+    comma::packed::string< 1, '0' > category;
+    comma::packed::casted< unsigned int, 1 > controller_id;
+    comma::packed::casted< unsigned int, 1 > battery_id;
+};
+
+
 /// Store values pushed from the Ocean controller
 /// N is the number of data value pairs
 template < int N >
 struct hex_data_t
 {
-    hex_data_t() : controller_id(0), battery_id(0) {} 
+///    hex_data_t() : controller_id(0), battery_id(0) {} 
     
     static const char battery_char = 'B';
     static const char setup_char = 'S';
-    uint8 controller_id;   // packed controller ID and battery ID
-    uint8 battery_id;
-    std::string id_packed;
+    type_info type;
     /// Pairs of address identifying data and raw value
     boost::array< data_t, N > values;
     typedef typename boost::array< data_t, N >::iterator value_iter;
+    
+    bool is_battery_data() const { return type.category()[0] == battery_char; }
 };
 
 } } // namespace snark { namespace ocean {
