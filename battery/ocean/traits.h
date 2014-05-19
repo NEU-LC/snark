@@ -123,13 +123,12 @@ template < int N > struct traits< controller< N > >
     template< typename K, typename V > static void visit( const K& k, const controller< N >& t, V& v )
     {
         v.apply("id", int(t.id) );
-        static std::string tmp = battery_t::state_to_string(t.state);
-        v.apply("state", tmp );
+        v.apply("state", battery_t::state_to_string(t.state) );
         v.apply("total_power", t.total_power.value() );
         v.apply("total_current", t.total_current.value() );
         v.apply("average_voltage", t.average_voltage.value() );
-        v.apply("batteries", t.batteries );
         v.apply("average_charge", t.average_charge );
+        v.apply("batteries", t.batteries );
     }
 };   
 

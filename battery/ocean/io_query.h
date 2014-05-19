@@ -43,7 +43,6 @@
 #include <iostream>
 #include "commands.h"
 #include "battery.h"
-#include <aero/navigation/applications/wmm/GeomagnetismHeader.h>
 
 namespace snark { namespace ocean {
     
@@ -52,13 +51,15 @@ class stdio_query
 public:
     ocean8 read()
     {
-        char c;
-        std::cin.read( &c, 1u );
+        ocean8 c;
+        std::cin.read( (char*) &c, 1u );
+        // std::cerr << "Read bin char: " << int( c ) << std::endl;
         return c;
     }
     
     void write( ocean8 value )
     {
+        // std::cerr << "Writing bin char: " << int( value ) << std::endl;
         std::cout.write( (const char*) &value, 1u );
         std::cout.flush();
     };
@@ -69,17 +70,17 @@ comma::uint16 cmd_query( )
 {
     IO io;
     io.write( command_bits< ocean8( B ), ADDR >::value );
-    ocean8 lsbyte = io.read();
+    comma::uint16 lsbyte = io.read();
     io.write( ocean8(0) );
     comma::uint16 msbyte = io.read();
     
-    return comma::uint16( ( msbyte << 8 )  | lsbyte );
-//     comma::uint16 result = ( ( msbyte << 8 )  | lsbyte );
-    
-//     std::cerr << "query " << B << " address: " << int(ADDR) 
-//               << " lsb: " << int( lsbyte ) << " msb: " << int( msbyte )
-//               << " value: " << result << std::endl;
-//     return result;
+    // return comma::uint16( ( msbyte << 8 )  | lsbyte );
+    comma::uint16 result = ( ( msbyte << 8 )  | lsbyte );
+ 
+    // std::cerr << "query " << B << " address: " << int(ADDR) 
+    //           << " lsb: " << int( lsbyte ) << " msb: " << int( msbyte )
+    //           << " value: " << result << std::endl;
+    return result;
 }
 
 template < int B, ocean8 ADDR, typename IO >

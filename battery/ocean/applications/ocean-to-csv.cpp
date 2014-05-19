@@ -96,7 +96,7 @@ void usage(int code=1)
     std::cerr << "Accepts or reads Ocean battery data and output them as a status structure - see below." << std::endl;
     std::cerr << "Usage:" << std::endl;
     std::cerr << "  e.g. socat -u /dev/ttyO1,b19200,raw - | ocean-to-csv --controller-id 1 --beat 0.5 [--status-json|--binary]" << std::endl;
-    std::cerr << "  e.g. socat /dev/ttyO1,b19200,raw EXEC:\"ocean-to-csv --query-mode --controller-id 1 --beat 0.5 [--status-json|--binary] 2>results\" ( testing needed )" << std::endl;
+    std::cerr << "  e.g. socat /dev/ttyO1,b19200,raw,flusho=1 EXEC:\"ocean-to-csv --query-mode --controller-id 1 --beat 0.5 [--status-json|--binary] 2>results\"" << std::endl;
     std::cerr << name() << " options:" << std::endl;
     std::cerr << "    --status-json           - Data output in JSON format with End of Text delimiter char." << std::endl;
     std::cerr << "    --binary                - Data output in binary, default is ascii CSV." << std::endl;
@@ -264,8 +264,8 @@ int main( int ac, char** av )
             
             return 0;
         }
-
         std::string line;
+
         // Set it to report status immediately if no command is received
         ptime future = microsec_clock::universal_time();
         stats_t stats( controller_id );

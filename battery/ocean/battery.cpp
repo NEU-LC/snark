@@ -81,11 +81,13 @@ void battery_t::operator&(const data_t& data)
         {
             static const double unit = 0.1; // Kelvin
             temperature = data.value() * unit * kelvin; // 0.1k unit
+            // std::cerr << "got temperature: " << temperature.value() << std::endl;
             break;
         }
         case address::voltage:
         {
             voltage = data.value() / 1000.0 * volt; // millivolts to volts
+            // std::cerr << "got voltage: " << voltage.value() << std::endl;
             break;
         }
         case address::current:
@@ -97,6 +99,7 @@ void battery_t::operator&(const data_t& data)
         case address::average_current:
         {
             average_current = data.value.cast() / 1000.0 * ampere; //mAmp to Amps
+            // std::cerr << "got average_current: " << average_current.value() << std::endl;
             break;
         }
         case address::remaining_capacity:
