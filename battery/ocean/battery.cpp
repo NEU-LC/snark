@@ -60,15 +60,12 @@ std::string battery_t::state_to_string( int st )
 
     }
 }
-// Removes checksum wrappers, TODO throws exception on incorrect checksum
+// Removes checksum wrapper, TODO: throws exception on incorrect checksum
 std::string& battery_t::strip( std::string& line )
 {
-    /// '$B15,....,FF00%B2' becomes B15,....,FF00
-    //std::size_t pos = ( line[ line.size() - 3 ] == '%' ? line.size()-4 : std::string::npos );
+    /// '$B15,....,FF00%B2' becomes $B15,....,FF00
     std::size_t pos = line.find_first_of( '%', line.size() - 4 );
     if( pos != std::string::npos ) { line = line.substr( 0, pos); }
-    //std::cerr << "char: " << line[ line.size() - 3 ] << std::endl;
-    ///line = line.substr( 0, pos);
     return line;
 }
 
@@ -102,18 +99,20 @@ void battery_t::operator&(const data_t& data)
             // std::cerr << "got average_current: " << average_current.value() << std::endl;
             break;
         }
-        case address::remaining_capacity:
-        {
-            remaining_capacity = data.value.cast() / 100.0 * watt; // eacho unit is 10mWh - to Watts
-        }
         case address::rel_state_of_charge:
         {
             charge_pc = data.value();    // percentage, unit is %
             break;
         }
+        case address::remaining_capacity:
+        {
+            remaining_capacity = data.value.cast() / 100.0 * watt; // eacho unit is 10mWh - to Watts
+            break;
+        }
         case address::run_time_to_empty:
         {
             time_to_empty = boost::posix_time::minutes( data.value() );
+            break;
         }
         case address::status:
         {
