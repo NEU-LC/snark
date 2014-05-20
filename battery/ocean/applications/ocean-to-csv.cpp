@@ -31,6 +31,11 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <stdint.h>
+#include <boost/property_tree/json_parser.hpp>
+#include <boost/numeric/conversion/cast.hpp>
+#include <boost/date_time/posix_time/ptime.hpp>
+#include <boost/date_time/posix_time/posix_time_duration.hpp>
+#include <boost/optional.hpp>
 #include <comma/application/command_line_options.h>
 #include <comma/csv/stream.h>
 #include <comma/base/types.h>
@@ -38,17 +43,13 @@
 #include <comma/name_value/ptree.h>
 #include <comma/name_value/parser.h>
 #include <comma/io/stream.h>
+#include <comma/io/publisher.h>
 #include <comma/csv/stream.h>
-#include <boost/property_tree/json_parser.hpp>
 #include "../units.h"
 #include "../commands.h"
 #include "../battery.h"
 #include "../io_query.h"
 #include "../traits.h"
-#include <boost/property_tree/json_parser.hpp>
-#include <boost/numeric/conversion/cast.hpp>
-#include <boost/date_time/posix_time/ptime.hpp>
-#include <boost/date_time/posix_time/posix_time_duration.hpp>
 
 static const char* name() {
     return "ocean-to-csv";
@@ -63,6 +64,7 @@ std::string str(T t) { return boost::lexical_cast< std::string > ( t ); }
 
 using snark::ocean::hex_data_t;
 using snark::ocean::controller;
+using comma::io::publisher;
 
 // Always have 8 batteries for controller but some of them may not be present
 // Use option --num-of-batteries=<no.> so that the average and total values on the controller is calculated correctly
@@ -100,6 +102,8 @@ void usage(int code=1)
     std::cerr << name() << " options:" << std::endl;
     std::cerr << "    --status-json           - Data output in JSON format with End of Text delimiter char." << std::endl;
     std::cerr << "    --binary                - Data output in binary, default is ascii CSV." << std::endl;
+    std::cerr << "    --query-mode            - Alternative mode, query controller for data in message mode." << std::endl;
+    std::cerr << "    --publish=              - Do not write to stdout or stderr for --query-mode but publish, options: file|pipe|tcp:<port>." << std::endl;
     std::cerr << "*   --beat=|-C=             - Minium second/s between status update - 1Hz/beat, floating point e.g. 0.5." << std::endl;
     std::cerr << "*   --controller-id=|-C=    - Controller's ID: 1-9." << std::endl;
     std::cerr << "    [--num-of-batteries=]   - The number of batteries for this controller" << std::endl;
@@ -191,6 +195,23 @@ int update_controller( controller< B >& controller, const std::string& line )
 static bool is_binary = false;
 static bool status_in_json = false;
 
+void publish_status( const stats_t& stats, publisher& oss )
+{
+     if( is_binary )
+     {
+         static comma::csv::binary< stats_t > binary("","",true, stats );
+         static std::vector<char> line( binary.format().size() );
+         binary.put( stats, line.data() );
+         oss.write( line.data(), line.size());
+     }
+     else
+     {
+	 static std::string out;
+         ascii< stats_t >().put( stats, out );
+         oss << out << '\n';
+     }
+}
+
 void output( const stats_t& stats, std::ostream& oss=std::cout )
 {
      if( is_binary )
@@ -211,7 +232,7 @@ void output( const stats_t& stats, std::ostream& oss=std::cout )
      }
      else
      {
-         comma::csv::output_stream< stats_t > ss( oss );
+         static comma::csv::output_stream< stats_t > ss( oss );
          ss.write( stats );
      }
      oss.flush();
@@ -242,8 +263,15 @@ int main( int ac, char** av )
         status_in_json = options.exists( "--status-json" );
         int controller_id =  options.value< int >( "--controller-id,-C" );
         float beat = options.value< float >( "--beat,-B" );
-        
         bool is_query_mode = options.exists( "--query-mode" );
+	bool has_publish_stream = options.exists( "--publish" );
+	
+	boost::scoped_ptr< publisher > publish;
+	if( has_publish_stream )
+	{
+	    publish.reset( new publisher( options.value< std::string >( "--publish" ), 
+					  is_binary ? comma::io::mode::binary : comma::io::mode::ascii ) );
+	}
 
         int num_of_batteries = 8;
         if( options.exists( "--num-of-batteries" ) ) { num_of_batteries = options.value< int >( "--num-of-batteries" ); }
@@ -279,7 +307,8 @@ int main( int ac, char** av )
                 stats.time = microsec_clock::universal_time();
                 stats.controller.consolidate( num_of_batteries );
 
-                output( stats, std::cerr );
+		if( !has_publish_stream ) { output( stats, std::cerr ); }
+		else { publish_status( stats, *publish ); }
 
                 usleep( beat * 1000000u );
                 
@@ -304,7 +333,8 @@ int main( int ac, char** av )
                     stats.time = microsec_clock::universal_time();
                     stats.controller.consolidate( num_of_batteries );
     
-                    output( stats );
+		    if( !has_publish_stream ) { output( stats ); }
+		    else { publish_status( stats, *publish ); }
     
                     future = microsec_clock::universal_time() + seconds( beat );
                 }

@@ -77,9 +77,10 @@ comma::uint16 cmd_query( )
     // return comma::uint16( ( msbyte << 8 )  | lsbyte );
     comma::uint16 result = ( ( msbyte << 8 )  | lsbyte );
  
-    // std::cerr << "query " << B << " address: " << int(ADDR) << " command: " <<  int( command_bits< ocean8( B ), ADDR >::value )
-    //           << " lsb: " << int( lsbyte ) << " msb: " << int( msbyte )
-    //           << " value: " << result << std::endl;
+//     std::cerr << "query " << B << " address: " << int(ADDR) 
+// 	      << " command: " <<  int( command_bits< ocean8( B ), ADDR >::value )
+//               << " lsb: " << int( lsbyte ) << " msb: " << int( msbyte )
+//               << " value: " << result << std::endl;
     return result;
 }
 
