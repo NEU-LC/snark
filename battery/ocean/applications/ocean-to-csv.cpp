@@ -240,9 +240,6 @@ void output( const stats_t& stats, std::ostream& oss=std::cout )
 
 int main( int ac, char** av )
 {
-#ifdef SERVO_VERBOSE
-    std::cerr << name() << " Application started:" << std::endl;
-#endif
     
     comma::command_line_options options( ac, av );
     if( options.exists( "-h,--help" ) ) { usage( 0 ); }
@@ -264,14 +261,14 @@ int main( int ac, char** av )
         int controller_id =  options.value< int >( "--controller-id,-C" );
         float beat = options.value< float >( "--beat,-B" );
         bool is_query_mode = options.exists( "--query-mode" );
-	bool has_publish_stream = options.exists( "--publish" );
+        bool has_publish_stream = options.exists( "--publish" );
 	
-	boost::scoped_ptr< publisher > publish;
-	if( has_publish_stream )
-	{
-	    publish.reset( new publisher( options.value< std::string >( "--publish" ), 
+        boost::scoped_ptr< publisher > publish;
+        if( has_publish_stream )
+        {
+            publish.reset( new publisher( options.value< std::string >( "--publish" ), 
 					  is_binary ? comma::io::mode::binary : comma::io::mode::ascii ) );
-	}
+        }
 
         int num_of_batteries = 8;
         if( options.exists( "--num-of-batteries" ) ) { num_of_batteries = options.value< int >( "--num-of-batteries" ); }
@@ -297,6 +294,24 @@ int main( int ac, char** av )
         // Set it to report status immediately if no command is received
         ptime future = microsec_clock::universal_time();
         stats_t stats( controller_id );
+	
+        // comma::io::select select;
+        // select.read().add( comma::io::stdin_fd );
+        // if( is_query_mode )
+        // {
+        //     std::cout.write( " ", 1u );
+        //     std::cout.write( "M", 1u );
+        //     std::cout.flush();
+        //     sleep( 2 );
+        //     char tmp; 
+        //     select.wait( 0 );
+        //     while( select.read().ready( comma::io::stdin_fd ) )
+        //     { 
+        //         std::cin.read( &tmp, 1u ); 
+        //         select.wait( 0 );
+        //     }
+        // }
+        // std::cerr << name() << ": Done setting up. " << std::endl;
         while( std::cin.good() )
         {
             if( is_query_mode )
@@ -307,8 +322,8 @@ int main( int ac, char** av )
                 stats.time = microsec_clock::universal_time();
                 stats.controller.consolidate( num_of_batteries );
 
-		if( !has_publish_stream ) { output( stats, std::cerr ); }
-		else { publish_status( stats, *publish ); }
+                if( !has_publish_stream ) { output( stats, std::cerr ); }
+                else { publish_status( stats, *publish ); }
 
                 usleep( beat * 1000000u );
                 
@@ -333,8 +348,8 @@ int main( int ac, char** av )
                     stats.time = microsec_clock::universal_time();
                     stats.controller.consolidate( num_of_batteries );
     
-		    if( !has_publish_stream ) { output( stats ); }
-		    else { publish_status( stats, *publish ); }
+                    if( !has_publish_stream ) { output( stats ); }
+                    else { publish_status( stats, *publish ); }
     
                     future = microsec_clock::universal_time() + seconds( beat );
                 }
