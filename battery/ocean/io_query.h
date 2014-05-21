@@ -65,6 +65,7 @@ template < int B, ocean8 ADDR, typename IO >
 comma::uint16 cmd_query( IO& io )
 {
     io.write( command_bits< ocean8( B ), ADDR >::value );
+    // std::cerr << "Readding..." << std::endl;
     comma::uint16 lsbyte ( io.read() );
     io.write( ocean8(0) );
     comma::uint16 msbyte ( io.read() );
@@ -72,10 +73,10 @@ comma::uint16 cmd_query( IO& io )
     // return comma::uint16( ( msbyte << 8 )  | lsbyte );
     comma::uint16 result = ( ( msbyte << 8 )  | lsbyte );
  
-    std::cerr << "query " << B << " address: " << int(ADDR) 
-              << " command: " <<  int( command_bits< ocean8( B ), ADDR >::value )
-              << " lsb: " << int( lsbyte ) << " msb: " << int( msbyte )
-              << " value: " << result << std::endl;
+    // std::cerr << "query " << B << " address: " << int(ADDR) 
+    //           << " command: " <<  int( command_bits< ocean8( B ), ADDR >::value )
+    //           << " lsb: " << int( lsbyte ) << " msb: " << int( msbyte )
+    //           << " value: " << result << std::endl;
     return result;
 }
 
@@ -94,14 +95,14 @@ struct update_controller
 {
     static void update( CONTROLLER& controller, IO& io )
     {
-        // controller.batteries[B-1] & query< B, address::current >( io );
-        // controller.batteries[B-1] & query< B, address::average_current >( io );
-        // controller.batteries[B-1] & query< B, address::temperature >( io );
-        // controller.batteries[B-1] & query< B, address::voltage >( io );
+        controller.batteries[B-1] & query< B, address::current >( io );
+        controller.batteries[B-1] & query< B, address::average_current >( io );
+        controller.batteries[B-1] & query< B, address::temperature >( io );
+        controller.batteries[B-1] & query< B, address::voltage >( io );
         controller.batteries[B-1] & query< B, address::rel_state_of_charge >( io );
-        // controller.batteries[B-1] & query< B, address::remaining_capacity >( io );
-        // controller.batteries[B-1] & query< B, address::run_time_to_empty >( io );
-        // controller.batteries[B-1] & query< B, address::status >( io );
+        controller.batteries[B-1] & query< B, address::remaining_capacity >( io );
+        controller.batteries[B-1] & query< B, address::run_time_to_empty >( io );
+        controller.batteries[B-1] & query< B, address::status >( io );
         
         update_controller< B - 1, CONTROLLER, IO >::update( controller, io );
     }
