@@ -57,6 +57,15 @@ comma::csv::ascii< T >& ascii() {
 
 typedef hex_value_t< comma::uint16 > hex_uint16;
 
+TEST(ocean, ocean_bin_query )
+{
+    snark::ocean::stdio_query io;
+
+    comma::uint16 value = cmd_query< 1, address::rel_state_of_charge > ( io );
+
+    EXPECT_EQ( 99, value );
+}
+
 TEST(ocean, ocean_test_strip )
 {
     std::string source = "$B15,17,0026,18,19c8,19,3840,1a,0010,1b,302f,1C,00cc%11\r";
@@ -189,7 +198,7 @@ TEST( ocean, setting_hex_data )
 
     std::string line;
     ascii< ocean::controller< 3 > >().put( controller, line );
-    const std::string expected = "1,\"CH\",206.62,0,16.6617,1,\"CH\",16.734,0,0,296.6,79.1,7910,1092.25,2,\"CH\",16.745,0,0,296.5,64.13,6413,1092.25,3,\"CH\",16.506,0,0,296.9,63.39,6339,1092.25,6887.33";
+    const std::string expected = "1,\"CH\",206.62,0,16.6617,100,1,\"CH\",16.734,0,0,296.6,79.1,100,1092.25,2,\"CH\",16.745,0,0,296.5,64.13,100,1092.25,3,\"CH\",16.506,0,0,296.9,63.39,100,1092.25";
     EXPECT_EQ( expected, line );
 
     // boost::property_tree::ptree t;
@@ -259,16 +268,17 @@ private:
 
 TEST(ocean, ocean_binary_query )
 {
-    data_t current = query< 4, ocean::address::current, impl_::stdio_stub >();
+    impl_::stdio_stub io;
+    data_t current = query< 4, ocean::address::current >( io );
     EXPECT_EQ( 0xff, current.value() );
     EXPECT_EQ( 0x0a, current.address() );
     
-    data_t temperature = query< 4, ocean::address::temperature, impl_::stdio_stub >();
+    data_t temperature = query< 4, ocean::address::temperature >( io );
     EXPECT_EQ( 0x0B96, temperature.value() );
     EXPECT_EQ( 0x08, temperature.address() );
     
     controller< 4 > controller;
-    query< impl_::stdio_stub >( controller );
+    query< impl_::stdio_stub >( controller, io );
     
     // boost::property_tree::ptree t;
     // comma::to_ptree to_ptree( t );

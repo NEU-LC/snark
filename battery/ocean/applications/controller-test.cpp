@@ -241,123 +241,51 @@ void output( const stats_t& stats, std::ostream& oss=std::cout )
 int main( int ac, char** av )
 {
     
-    comma::command_line_options options( ac, av );
-    if( options.exists( "-h,--help" ) ) { usage( 0 ); }
-    
-    if( options.exists( "-b,--binary" ) && options.exists( "--status-json") ) { 
-        std::cerr << name() << ": --binary|-b cannot be used with --status-json!" << std::endl;
-        usage( 1 ); 
-    }
-
     using boost::posix_time::microsec_clock;
     using boost::posix_time::seconds;
     using boost::posix_time::ptime;
+    using namespace snark::ocean;
 
 
     try
     {
-        is_binary = options.exists( "--binary,-b" );
-        status_in_json = options.exists( "--status-json" );
-        int controller_id =  options.value< int >( "--controller-id,-C" );
-        float beat = options.value< float >( "--beat,-B" );
-        bool is_query_mode = options.exists( "--query-mode" );
-        bool has_publish_stream = options.exists( "--publish" );
-	
-        boost::scoped_ptr< publisher > publish;
-        if( has_publish_stream )
-        {
-            publish.reset( new publisher( options.value< std::string >( "--publish" ), 
-					  is_binary ? comma::io::mode::binary : comma::io::mode::ascii ) );
-        }
+        ocean8 cmd = command_bits< 2, address::rel_state_of_charge >::value;
+        std::cerr << "writing: " << int(cmd) << std::endl;
+        char buf[2];
+        buf[0] = cmd;
+        buf[1] = '\n';
+        std::cout.write( (char*) &buf, 1u );
+        std::cout.flush();
+        usleep( 400000 );
+        ocean8 lsb = std::cin.get();
+        if( !std::cin.good() ) { std::cerr << " got EOF " << std::endl; }
+        // std::cin.read( (char*) &lsb, 1u );
+        std::cerr << "read lsb: " << int(lsb) << std::endl;
+        static const ocean8 z = 0;
+        std::cout.write( (char*) &z, 1u );
+        std::cout.flush();
+        usleep( 400000 );
+        ocean8 msb = std::cin.get();
+        if( !std::cin.good() ) { std::cerr << " got EOF " << std::endl; }
+        std::cerr << "read msb: " << int(msb) << std::endl;
 
-        int num_of_batteries = 8;
-        if( options.exists( "--num-of-batteries" ) ) { num_of_batteries = options.value< int >( "--num-of-batteries" ); }
+        usleep( 400000 );
 
-        if( !is_query_mode ) { std::cerr << name() << ": controller id is " << controller_id << std::endl; }
-        
-        if( options.exists( "--sample" ) )
-        {
-            stats_t stats;
-            stats.time = microsec_clock::universal_time();
-            stats.controller.consolidate( num_of_batteries );
-            while(1)
-            {
-                stats.time = microsec_clock::universal_time();
-                output( stats );
-                sleep( beat );
-            }
-            
-            return 0;
-        }
-        std::string line;
+        cmd = command_bits< 2, address::temperature >::value;
+        std::cerr << "writing: " << int(cmd) << std::endl;
+        std::cout.write( (char*) &cmd, 1u );
 
-        // Set it to report status immediately if no command is received
-        ptime future = microsec_clock::universal_time();
-        stats_t stats( controller_id );
-	
-        // comma::io::select select;
-        // select.read().add( comma::io::stdin_fd );
-        // if( is_query_mode )
-        // {
-        //     std::cout.write( " ", 1u );
-        //     std::cout.write( "M", 1u );
-        //     std::cout.flush();
-        //     sleep( 2 );
-        //     char tmp; 
-        //     select.wait( 0 );
-        //     while( select.read().ready( comma::io::stdin_fd ) )
-        //     { 
-        //         std::getline( std::cin, line );
-        //         select.wait( 0 );
-        //     }
-        // }
-        // std::cerr << name() << ": Done setting up. " << std::endl;
+        lsb = std::cin.get();
+        if( !std::cin.good() ) { std::cerr << " got EOF " << std::endl; }
+        std::cerr << "read lsb: " << int(lsb) << std::endl;
+        std::cout.write( (char*)&z, 1u );
+       
+        msb = std::cin.get();
+        if( !std::cin.good() ) { std::cerr << " got EOF " << std::endl; }
+        std::cerr << "read msb: " << int(msb) << std::endl;
 
-        snark::ocean::stdio_query io;
-        while( std::cin.good() )
-        {
-            if( is_query_mode )
-            {
-                /// query the controller for battery 1 to num_of_batteries
-                snark::ocean::query< snark::ocean::stdio_query >( stats.controller, io, num_of_batteries );
-                
-                stats.time = microsec_clock::universal_time();
-                stats.controller.consolidate( num_of_batteries );
-
-                if( !has_publish_stream ) { output( stats, std::cerr ); }
-                else { publish_status( stats, *publish ); }
-
-                usleep( beat * 1000000u );
-                
-                continue;
-            }
-            else
-            {
-                std::getline( std::cin, line );
-                if( line.empty() ) { continue; }
-    
-                //std::cerr << "a: " << line <<std::endl;
-                snark::ocean::battery_t::strip( line );
-                std::cerr << name() << ": " << line <<std::endl;
-    
-                if( line[1] != controller_b::battery_data_char ) continue; // TODO: parse $C line???
-    
-                // get the battery ID of the data just updated
-                int battery_id = update_controller( stats.controller, line );
-                // if battery ID is num_of_batteries it means we have updated all batteries
-                if( beat > 0 && battery_id == num_of_batteries && microsec_clock::universal_time() >= future )
-                {
-                    stats.time = microsec_clock::universal_time();
-                    stats.controller.consolidate( num_of_batteries );
-    
-                    if( !has_publish_stream ) { output( stats ); }
-                    else { publish_status( stats, *publish ); }
-    
-                    future = microsec_clock::universal_time() + seconds( beat );
-                }
-            }
-        }
-
+        stdio_query io;
+        std::cerr << " cmd_query: " << cmd << " val: " << cmd_query< 2 , address::rel_state_of_charge >( io );
         
     }
     catch( comma::exception& ce ) { std::cerr << name() << ": exception thrown: " << ce.what() << std::endl; return 1; }

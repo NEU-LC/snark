@@ -162,6 +162,11 @@ IF( snark_build_actuators )
 SET( snark_ALL_LIBRARIES ${snark_ALL_LIBRARIES} debug snark_wheels-d
                          optimized snark_wheels )
 ENDIF( snark_build_actuators )
+if( snark_build_battery )
+    SET( snark_ALL_LIBRARIES ${snark_ALL_LIBRARIES} debug snark_ocean-d
+                             optimized snark_ocean )
+endif( snark_build_battery )
+
 
 IF(WIN32)
     SET( snark_ALL_EXTERNAL_LIBRARIES Ws2_32.lib )

@@ -37,7 +37,6 @@
 #include <boost/date_time/posix_time/posix_time_duration.hpp>
 #include <boost/array.hpp>
 #include <boost/utility/binary.hpp>
-#include <boost/graph/graph_concepts.hpp>
 #include <vector>
 #include <iomanip>
 #include <iostream>
@@ -51,10 +50,7 @@ class stdio_query
 public:
     ocean8 read()
     {
-        ocean8 c;
-        std::cin.read( (char*) &c, 1u );
-        // std::cerr << "Read bin char: " << int( c ) << std::endl;
-        return c;
+        return std::cin.get();
     }
     
     void write( ocean8 value )
@@ -66,28 +62,27 @@ public:
 };
 
 template < int B, ocean8 ADDR, typename IO >
-comma::uint16 cmd_query( )
+comma::uint16 cmd_query( IO& io )
 {
-    IO io;
     io.write( command_bits< ocean8( B ), ADDR >::value );
-    comma::uint16 lsbyte = io.read();
+    comma::uint16 lsbyte ( io.read() );
     io.write( ocean8(0) );
-    comma::uint16 msbyte = io.read();
+    comma::uint16 msbyte ( io.read() );
     
     // return comma::uint16( ( msbyte << 8 )  | lsbyte );
     comma::uint16 result = ( ( msbyte << 8 )  | lsbyte );
  
-    // std::cerr << "query " << B << " address: " << int(ADDR) 
-	   //        << " command: " <<  int( command_bits< ocean8( B ), ADDR >::value )
-    //           << " lsb: " << int( lsbyte ) << " msb: " << int( msbyte )
-    //           << " value: " << result << std::endl;
+    std::cerr << "query " << B << " address: " << int(ADDR) 
+              << " command: " <<  int( command_bits< ocean8( B ), ADDR >::value )
+              << " lsb: " << int( lsbyte ) << " msb: " << int( msbyte )
+              << " value: " << result << std::endl;
     return result;
 }
 
 template < int B, ocean8 ADDR, typename IO >
-data_t query()
+data_t query( IO & io )
 {
-    return data_t( ADDR, cmd_query< B, ADDR, IO >() );
+    return data_t( ADDR, cmd_query< B, ADDR >( io ) );
 }
 
 namespace impl_ {
@@ -97,25 +92,25 @@ namespace impl_ {
 template < int B, typename CONTROLLER, typename IO >
 struct update_controller
 {
-    static void update( CONTROLLER& controller )
+    static void update( CONTROLLER& controller, IO& io )
     {
-        controller.batteries[B-1] & query< B, address::current, IO >();
-        controller.batteries[B-1] & query< B, address::average_current, IO >();
-        controller.batteries[B-1] & query< B, address::temperature, IO >();
-        controller.batteries[B-1] & query< B, address::voltage, IO >();
-        controller.batteries[B-1] & query< B, address::rel_state_of_charge, IO >();
-        controller.batteries[B-1] & query< B, address::remaining_capacity, IO >();
-        controller.batteries[B-1] & query< B, address::run_time_to_empty, IO >();
-        controller.batteries[B-1] & query< B, address::status, IO >();
+        // controller.batteries[B-1] & query< B, address::current >( io );
+        // controller.batteries[B-1] & query< B, address::average_current >( io );
+        // controller.batteries[B-1] & query< B, address::temperature >( io );
+        // controller.batteries[B-1] & query< B, address::voltage >( io );
+        controller.batteries[B-1] & query< B, address::rel_state_of_charge >( io );
+        // controller.batteries[B-1] & query< B, address::remaining_capacity >( io );
+        // controller.batteries[B-1] & query< B, address::run_time_to_empty >( io );
+        // controller.batteries[B-1] & query< B, address::status >( io );
         
-        update_controller< B - 1, CONTROLLER, IO >::update( controller );
+        update_controller< B - 1, CONTROLLER, IO >::update( controller, io );
     }
 };
 
 template < typename CONTROLLER, typename IO >
 struct update_controller< 0, CONTROLLER, IO >
 {
-    static void update( CONTROLLER& controller ) {}
+    static void update( CONTROLLER& controller, IO& io ) {}
 };
     
 } //namespace impl_ {
@@ -125,19 +120,19 @@ struct update_controller< 0, CONTROLLER, IO >
 /// Query the HW controller via IO type and populate the controller< N > with data for up to a specified number of batteries.
 ///  num_of_batteries is the number of batteries to query e.g. 4 for querying batteries 1-4
 template < typename IO, int N >
-void query( controller< N >& controller, char num_of_batteries=N )
+void query( controller< N >& controller, IO& io, char num_of_batteries=N )
 {
     typedef  ocean::controller< N > controller_t;
     switch( num_of_batteries )
     {
-        case 8:  { impl_::update_controller< 8, controller_t, IO >::update( controller ); break; }
-        case 7:  { impl_::update_controller< 7, controller_t, IO >::update( controller ); break; }
-        case 6:  { impl_::update_controller< 6, controller_t, IO >::update( controller ); break; }
-        case 5:  { impl_::update_controller< 5, controller_t, IO >::update( controller ); break; }
-        case 4:  { impl_::update_controller< 4, controller_t, IO >::update( controller ); break; }
-        case 3:  { impl_::update_controller< 3, controller_t, IO >::update( controller ); break; }
-        case 2:  { impl_::update_controller< 2, controller_t, IO >::update( controller ); break; }
-        default: { impl_::update_controller< 1, controller_t, IO >::update( controller ); break; }
+        case 8:  { impl_::update_controller< 8, controller_t, IO >::update( controller, io ); break; }
+        case 7:  { impl_::update_controller< 7, controller_t, IO >::update( controller, io ); break; }
+        case 6:  { impl_::update_controller< 6, controller_t, IO >::update( controller, io ); break; }
+        case 5:  { impl_::update_controller< 5, controller_t, IO >::update( controller, io ); break; }
+        case 4:  { impl_::update_controller< 4, controller_t, IO >::update( controller, io ); break; }
+        case 3:  { impl_::update_controller< 3, controller_t, IO >::update( controller, io ); break; }
+        case 2:  { impl_::update_controller< 2, controller_t, IO >::update( controller, io ); break; }
+        default: { impl_::update_controller< 1, controller_t, IO >::update( controller, io ); break; }
     }
 }
     
