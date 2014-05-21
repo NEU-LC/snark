@@ -189,7 +189,7 @@ int main( int ac, char** av )
                 else if( v[i] == "port" ) { command.index = sick::ldmrs::commands::set::tcp_port; }
                 else { COMMA_THROW( comma::exception, "expected parameter, got " << v[i] ); }
                 response = protocol->write( command );
-                if( response.ok() ) { std::cout << comma << response; }
+                if( response.ok() ) { std::cout << comma << response << std::endl; }
                 comma = ",";
                 clear_fault();
             }
@@ -197,8 +197,8 @@ int main( int ac, char** av )
         else if( options.exists( "--get-status" ) )
         {
             sick::ldmrs::commands::get_status::response response = protocol->write( sick::ldmrs::commands::get_status() );
-			ok = response.ok();
-			if( ok ) { std::cout << response; }
+            ok = response.ok();
+            if( ok ) { std::cout << response << std::endl; }
             clear_fault();
         }
         else if( options.exists( "--start" ) )
