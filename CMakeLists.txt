@@ -116,6 +116,7 @@ OPTION( snark_build_point_cloud "build point cloud" ON )
 OPTION( snark_build_imaging "build imaging" ON )
 OPTION( snark_build_sensors "build sensors" ON )
 OPTION( snark_build_actuators "build actuators" OFF )
+OPTION( snark_build_battery "build battery" OFF )
 
 INCLUDE( CMakeDependentOption )
 CMAKE_DEPENDENT_OPTION( snark_build_sensors_dc1394 "build dc1394 components" ON "snark_build_sensors" OFF )
@@ -161,6 +162,11 @@ IF( snark_build_actuators )
 SET( snark_ALL_LIBRARIES ${snark_ALL_LIBRARIES} debug snark_wheels-d
                          optimized snark_wheels )
 ENDIF( snark_build_actuators )
+if( snark_build_battery )
+    SET( snark_ALL_LIBRARIES ${snark_ALL_LIBRARIES} debug snark_ocean-d
+                             optimized snark_ocean )
+endif( snark_build_battery )
+
 
 IF(WIN32)
     SET( snark_ALL_EXTERNAL_LIBRARIES Ws2_32.lib )
@@ -227,6 +233,10 @@ ADD_SUBDIRECTORY( math )
 IF( snark_build_sensors )
     ADD_SUBDIRECTORY( sensors )
 ENDIF( snark_build_sensors )
+
+IF( snark_build_battery )
+    ADD_SUBDIRECTORY( battery )
+ENDIF( snark_build_battery )
 
 ADD_SUBDIRECTORY( timing )
 ADD_SUBDIRECTORY( visiting )

@@ -30,43 +30,44 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#ifndef SNARK_OCEAN_PACKED_DATA
+#define SNARK_OCEAN_PACKED_DATA
+#include <comma/base/types.h>
+#include <comma/packed/packed.h>
+#include <boost/array.hpp>
+#include <vector>
+#include <iomanip>
+#include <iostream>
+#include <boost/static_assert.hpp>
+#include <boost/type_traits.hpp>
 
-#include <comma/base/exception.h>
-#include <snark/timing/ntp.h>
-
-namespace snark{ namespace timing {
-
-static boost::posix_time::ptime ntp_base( boost::posix_time::from_iso_string( "19000101T000000" ) );
-static boost::posix_time::ptime epoch_time( timing::epoch );
-static comma::int64 ntp_diff = 2208988800ul;
-static double ntp_microsec_coeff = ( 1000000.0 / 0x10000 ) / 0x10000; // to avoid overflow error
-
-std::pair< comma::uint32, comma::uint32 > to_ntp_time( boost::posix_time::ptime t )
+namespace snark { namespace ocean { namespace packed {
+    
+struct type_info : public comma::packed::packed_struct< type_info, 4 >
 {
-    if( t < ntp_base ) { COMMA_THROW_STREAM( comma::exception, "cannot convert to ntp time: " << t << ", which is less than NTP time base " << ntp_base ); }
-    comma::int32 s = ( t - epoch_time ).total_seconds(); // 32 bit signed int in boost and posix
-    comma::int32 m = t.time_of_day().total_microseconds() % 1000000;
-    if( t >= epoch_time || m == 0 )
-    {
-        return std::pair< comma::uint32, comma::uint32 >( static_cast< comma::uint32 >( ntp_diff + s ), static_cast< comma::uint32 >( m / ntp_microsec_coeff ) );
-    }
-    else
-    {
-        return std::pair< comma::uint32, comma::uint32 >( static_cast< comma::uint32 >( ntp_diff + s - 1 ), static_cast< comma::uint32 >( m / ntp_microsec_coeff ) );
-    }
-}
-
-boost::posix_time::ptime from_ntp_time( std::pair< comma::uint32, comma::uint32 > ntp )
+    comma::packed::string< 1, '$' > start;
+    comma::packed::string< 1, '0' > category;
+    comma::packed::casted< unsigned int, 1 > controller_id;
+    comma::packed::casted< unsigned int, 1 > battery_id;
+};
+    
+struct element : public comma::packed::packed_struct< element, 8 >
 {
-    return from_ntp_time( ntp.first, ntp.second );
-}
+    comma::packed::string< 1, ',' > comma1;
+    comma::packed::ascii_hex< comma::uint16, 2 > address;
+    comma::packed::string< 1, ',' > comma2;
+    comma::packed::ascii_hex< comma::uint16, 4 > value;
+};
 
-boost::posix_time::ptime from_ntp_time( comma::uint32 seconds, comma::uint32 fractions )
+template < std::size_t N >
+struct packet
 {
-    boost::posix_time::ptime t = ntp_base + boost::posix_time::microseconds( static_cast< comma::uint64 >( fractions * ntp_microsec_coeff ) );
-    static const comma::int64 step = 2000000000; // quick and dirty: to avoid overflow in boost::posix_time::seconds(long)
-    for( comma::int64 s = seconds; s > 0; t += boost::posix_time::seconds( std::min( s, step ) ), s -= step );
-    return t;
-}
+    ocean::packed::type_info type;
+    boost::array< ocean::packed::element, N > values;
+    comma::packed::string< 1, '%' > padding;
+    comma::packed::ascii_hex< comma::uint16, 2 > crc;
+};
 
-} } // namespace snark{ namespace timing
+} } } // namespace snark { namespace ocean { namespace packed {
+
+#endif //  SNARK_OCEAN_PACKED_DATA

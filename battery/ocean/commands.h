@@ -30,43 +30,29 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#ifndef SNARK_OCEAN_COMMANDS_H
+#define SNARK_OCEAN_COMMANDS_H
+#include <comma/base/types.h>
+#include <boost/date_time/posix_time/ptime.hpp>
+#include <boost/date_time/posix_time/posix_time_duration.hpp>
+#include <boost/array.hpp>
+#include <boost/utility/binary.hpp>
+#include <vector>
+#include <iomanip>
+#include <iostream>
+#include "hex_value.h"
 
-#include <comma/base/exception.h>
-#include <snark/timing/ntp.h>
+namespace snark { namespace ocean {
 
-namespace snark{ namespace timing {
+typedef unsigned char ocean8;    
 
-static boost::posix_time::ptime ntp_base( boost::posix_time::from_iso_string( "19000101T000000" ) );
-static boost::posix_time::ptime epoch_time( timing::epoch );
-static comma::int64 ntp_diff = 2208988800ul;
-static double ntp_microsec_coeff = ( 1000000.0 / 0x10000 ) / 0x10000; // to avoid overflow error
+/// Gives you an ocean command where the bits 7-5 is battery number, 4-0 is the register address 
+template < ocean8 B, ocean8 ADDR > struct command_bits {
+    static const ocean8 address_mask = BOOST_BINARY( 11111 );
+    static const ocean8 value = ocean8( (B-1) << 5 ) | ( ADDR & address_mask );    
+};
 
-std::pair< comma::uint32, comma::uint32 > to_ntp_time( boost::posix_time::ptime t )
-{
-    if( t < ntp_base ) { COMMA_THROW_STREAM( comma::exception, "cannot convert to ntp time: " << t << ", which is less than NTP time base " << ntp_base ); }
-    comma::int32 s = ( t - epoch_time ).total_seconds(); // 32 bit signed int in boost and posix
-    comma::int32 m = t.time_of_day().total_microseconds() % 1000000;
-    if( t >= epoch_time || m == 0 )
-    {
-        return std::pair< comma::uint32, comma::uint32 >( static_cast< comma::uint32 >( ntp_diff + s ), static_cast< comma::uint32 >( m / ntp_microsec_coeff ) );
-    }
-    else
-    {
-        return std::pair< comma::uint32, comma::uint32 >( static_cast< comma::uint32 >( ntp_diff + s - 1 ), static_cast< comma::uint32 >( m / ntp_microsec_coeff ) );
-    }
-}
 
-boost::posix_time::ptime from_ntp_time( std::pair< comma::uint32, comma::uint32 > ntp )
-{
-    return from_ntp_time( ntp.first, ntp.second );
-}
+} } // namespace snark { namespace ocean {
 
-boost::posix_time::ptime from_ntp_time( comma::uint32 seconds, comma::uint32 fractions )
-{
-    boost::posix_time::ptime t = ntp_base + boost::posix_time::microseconds( static_cast< comma::uint64 >( fractions * ntp_microsec_coeff ) );
-    static const comma::int64 step = 2000000000; // quick and dirty: to avoid overflow in boost::posix_time::seconds(long)
-    for( comma::int64 s = seconds; s > 0; t += boost::posix_time::seconds( std::min( s, step ) ), s -= step );
-    return t;
-}
-
-} } // namespace snark{ namespace timing
+#endif // SNARK_OCEAN_COMMANDS_H

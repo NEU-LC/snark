@@ -30,43 +30,35 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#ifndef SNARK_OCEAN_UTIL_UNITS_H
+#define SNARK_OCEAN_UTIL_UNITS_H
+#include <boost/units/quantity.hpp>
+#include <boost/units/base_unit.hpp>
+#include <boost/concept_check.hpp>
+#include <boost/units/systems/si/time.hpp>
 
-#include <comma/base/exception.h>
-#include <snark/timing/ntp.h>
+#include <boost/units/systems/si/current.hpp>
+#include <boost/units/systems/si/electric_potential.hpp>
+#include <boost/units/systems/si/power.hpp>
+#include <boost/units/systems/si/temperature.hpp>
+#include <boost/units/systems/temperature/celsius.hpp>
+#include <boost/units/systems/si/temperature.hpp>
+#include <boost/units/systems/si/io.hpp>
 
-namespace snark{ namespace timing {
+namespace snark { namespace ocean {
+    
+typedef boost::units::quantity< boost::units::si::electric_potential > voltage_t;
+typedef boost::units::quantity< boost::units::si::current > current_t;
+typedef boost::units::quantity< boost::units::si::power > power_t;
+typedef boost::units::quantity< boost::units::si::temperature > temperature_t;
 
-static boost::posix_time::ptime ntp_base( boost::posix_time::from_iso_string( "19000101T000000" ) );
-static boost::posix_time::ptime epoch_time( timing::epoch );
-static comma::int64 ntp_diff = 2208988800ul;
-static double ntp_microsec_coeff = ( 1000000.0 / 0x10000 ) / 0x10000; // to avoid overflow error
+const voltage_t::unit_type volt = boost::units::si::volt;
+const current_t::unit_type ampere = boost::units::si::ampere;
+const power_t::unit_type watt = boost::units::si::watt;
+//const boost::units::celsius::degree_instance_t<>&  celcius = boost::units::celsius::degree;
+const temperature_t::unit_type kelvin = boost::units::si::kelvin;
+    
+} } // namespace snark { namespace ocean {
+    
 
-std::pair< comma::uint32, comma::uint32 > to_ntp_time( boost::posix_time::ptime t )
-{
-    if( t < ntp_base ) { COMMA_THROW_STREAM( comma::exception, "cannot convert to ntp time: " << t << ", which is less than NTP time base " << ntp_base ); }
-    comma::int32 s = ( t - epoch_time ).total_seconds(); // 32 bit signed int in boost and posix
-    comma::int32 m = t.time_of_day().total_microseconds() % 1000000;
-    if( t >= epoch_time || m == 0 )
-    {
-        return std::pair< comma::uint32, comma::uint32 >( static_cast< comma::uint32 >( ntp_diff + s ), static_cast< comma::uint32 >( m / ntp_microsec_coeff ) );
-    }
-    else
-    {
-        return std::pair< comma::uint32, comma::uint32 >( static_cast< comma::uint32 >( ntp_diff + s - 1 ), static_cast< comma::uint32 >( m / ntp_microsec_coeff ) );
-    }
-}
-
-boost::posix_time::ptime from_ntp_time( std::pair< comma::uint32, comma::uint32 > ntp )
-{
-    return from_ntp_time( ntp.first, ntp.second );
-}
-
-boost::posix_time::ptime from_ntp_time( comma::uint32 seconds, comma::uint32 fractions )
-{
-    boost::posix_time::ptime t = ntp_base + boost::posix_time::microseconds( static_cast< comma::uint64 >( fractions * ntp_microsec_coeff ) );
-    static const comma::int64 step = 2000000000; // quick and dirty: to avoid overflow in boost::posix_time::seconds(long)
-    for( comma::int64 s = seconds; s > 0; t += boost::posix_time::seconds( std::min( s, step ) ), s -= step );
-    return t;
-}
-
-} } // namespace snark{ namespace timing
+#endif // ACFR_ROVER_UNITS_H
