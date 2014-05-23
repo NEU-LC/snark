@@ -141,7 +141,9 @@ int main( int ac, char** av )
         while( !std::cin.eof() )
         {
             if( is_shutdown ) { std::cerr << "sick-ldmrs-to-csv: caught signal, exit" << std::endl; return 1; }
-            const snark::sick::ldmrs::scan_packet* p = protocol.readscan();
+            const snark::sick::ldmrs::scan_packet* p;
+            try { p = protocol.readscan(); }
+            catch( snark::sick::ldmrs::protocol::faultException& ex ) { continue; }
             if( p == NULL ) { std::cerr << "sick-ldmrs-to-csv: done" << std::endl; return 0; }
             std::size_t count = p->packet_scan.scan_header.points_count();
             snark::sick::ldmrs::scan::timestamps timestamps( p->packet_scan );
