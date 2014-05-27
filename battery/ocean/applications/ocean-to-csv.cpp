@@ -202,7 +202,7 @@ void publish_status( const stats_t& stats, publisher& oss )
      if( is_binary )
      {
          static comma::csv::binary< stats_t > binary("","",true, stats );
-         static std::vector<char> line( binary.forsocat /dev/ttyO1,b19200,raw,flusho=1 EXEC:"ocean-to-csv --query-mode --controller-id 1 --beat 0.3 --all-interval 5"mat().size() );
+         static std::vector<char> line( binary.format().size() );
          binary.put( stats, line.data() );
          oss.write( line.data(), line.size());
      }
