@@ -98,14 +98,16 @@ void usage(int code=1)
     std::cerr << "Accepts or reads Ocean battery data and output them as a status structure - see below." << std::endl;
     std::cerr << "Usage:" << std::endl;
     std::cerr << "  e.g. socat -u /dev/ttyO1,b19200,raw - | ocean-to-csv --controller-id 1 --beat 0.5 [--status-json|--binary]" << std::endl;
-    std::cerr << "  e.g. socat /dev/ttyO1,b19200,raw,flusho=1 EXEC:\"ocean-to-csv --query-mode --controller-id 1 --beat 0.5 [--status-json|--binary] 2>results\"" << std::endl;
+    std::cerr << "  e.g. socat /dev/ttyO1,b19200,raw EXEC:\"ocean-to-csv --query-mode --controller-id 1 --beat 0.5 [--status-json|--binary] 2>results\"" << std::endl;
     std::cerr << name() << " options:" << std::endl;
     std::cerr << "    --status-json           - Data output in JSON format with End of Text delimiter char." << std::endl;
     std::cerr << "    --binary                - Data output in binary, default is ascii CSV." << std::endl;
     std::cerr << "    --query-mode            - Alternative mode, query controller for data in message mode." << std::endl;
+    std::cerr << "     Note: the streams may need to be cleared first e.g. 'socat -T 0.5 /dev/ttyO1,b19200,raw -' run and stopped." << std::endl;
     std::cerr << "    --publish=              - Do not write to stdout or stderr for --query-mode but publish, options: file|pipe|tcp:<port>." << std::endl;
     std::cerr << "*   --beat=|-C=             - Minium second/s between status update - 1Hz/beat, floating point e.g. 0.5." << std::endl;
     std::cerr << "*   --controller-id=|-C=    - Controller's ID: 1-9." << std::endl;
+    std::cerr << "*   --all-interval=<num>    - How many iteration of querying currents only before, querying everything. Use with --query-mode only." << std::endl;
     std::cerr << "    [--num-of-batteries=]   - The number of batteries for this controller" << std::endl;
     std::vector< std::string > names = comma::csv::names< stats_t >();
     std::cerr << "    --fields="  << comma::join( names, ',' ) << " total num of fields: " << names.size() << std::endl;
@@ -200,7 +202,7 @@ void publish_status( const stats_t& stats, publisher& oss )
      if( is_binary )
      {
          static comma::csv::binary< stats_t > binary("","",true, stats );
-         static std::vector<char> line( binary.format().size() );
+         static std::vector<char> line( binary.forsocat /dev/ttyO1,b19200,raw,flusho=1 EXEC:"ocean-to-csv --query-mode --controller-id 1 --beat 0.3 --all-interval 5"mat().size() );
          binary.put( stats, line.data() );
          oss.write( line.data(), line.size());
      }
@@ -314,12 +316,17 @@ int main( int ac, char** av )
         // std::cerr << name() << ": Done setting up. " << std::endl;
 
         snark::ocean::stdio_query io;
+        comma::uint16 modulo = 3;
+        if( options.exists( "--all-interval" ) ) { modulo = options.value< comma::uint16 >( "--all-interval" ); }
+        comma::uint16 counter = modulo;
         while( std::cin.good() )
         {
             if( is_query_mode )
             {
+                ++counter;
+                bool update_all = ( (counter % modulo) == 0 );
                 /// query the controller for battery 1 to num_of_batteries
-                snark::ocean::query< snark::ocean::stdio_query >( stats.controller, io, num_of_batteries );
+                snark::ocean::query< snark::ocean::stdio_query >( stats.controller, io, update_all, num_of_batteries );
                 
                 stats.time = microsec_clock::universal_time();
                 stats.controller.consolidate( num_of_batteries );

@@ -93,25 +93,28 @@ namespace impl_ {
 template < int B, typename CONTROLLER, typename IO >
 struct update_controller
 {
-    static void update( CONTROLLER& controller, IO& io )
+    static void update( CONTROLLER& controller, IO& io, bool update_all=true )
     {
         controller.batteries[B-1] & query< B, address::current >( io );
-        controller.batteries[B-1] & query< B, address::average_current >( io );
-        controller.batteries[B-1] & query< B, address::temperature >( io );
-        controller.batteries[B-1] & query< B, address::voltage >( io );
-        controller.batteries[B-1] & query< B, address::rel_state_of_charge >( io );
-        controller.batteries[B-1] & query< B, address::remaining_capacity >( io );
-        controller.batteries[B-1] & query< B, address::run_time_to_empty >( io );
-        controller.batteries[B-1] & query< B, address::status >( io );
+        if( update_all )
+        {
+            controller.batteries[B-1] & query< B, address::average_current >( io );
+            controller.batteries[B-1] & query< B, address::temperature >( io );
+            controller.batteries[B-1] & query< B, address::voltage >( io );
+            controller.batteries[B-1] & query< B, address::rel_state_of_charge >( io );
+            controller.batteries[B-1] & query< B, address::remaining_capacity >( io );
+            controller.batteries[B-1] & query< B, address::run_time_to_empty >( io );
+            controller.batteries[B-1] & query< B, address::status >( io );
+        }
         
-        update_controller< B - 1, CONTROLLER, IO >::update( controller, io );
+        update_controller< B - 1, CONTROLLER, IO >::update( controller, io, update_all );
     }
 };
 
 template < typename CONTROLLER, typename IO >
 struct update_controller< 0, CONTROLLER, IO >
 {
-    static void update( CONTROLLER& controller, IO& io ) {}
+    static void update( CONTROLLER& controller, IO& io, bool update_all=true ) {}
 };
     
 } //namespace impl_ {
@@ -121,19 +124,19 @@ struct update_controller< 0, CONTROLLER, IO >
 /// Query the HW controller via IO type and populate the controller< N > with data for up to a specified number of batteries.
 ///  num_of_batteries is the number of batteries to query e.g. 4 for querying batteries 1-4
 template < typename IO, int N >
-void query( controller< N >& controller, IO& io, char num_of_batteries=N )
+void query( controller< N >& controller, IO& io, bool update_all=true, char num_of_batteries=N )
 {
     typedef  ocean::controller< N > controller_t;
     switch( num_of_batteries )
     {
-        case 8:  { impl_::update_controller< 8, controller_t, IO >::update( controller, io ); break; }
-        case 7:  { impl_::update_controller< 7, controller_t, IO >::update( controller, io ); break; }
-        case 6:  { impl_::update_controller< 6, controller_t, IO >::update( controller, io ); break; }
-        case 5:  { impl_::update_controller< 5, controller_t, IO >::update( controller, io ); break; }
-        case 4:  { impl_::update_controller< 4, controller_t, IO >::update( controller, io ); break; }
-        case 3:  { impl_::update_controller< 3, controller_t, IO >::update( controller, io ); break; }
-        case 2:  { impl_::update_controller< 2, controller_t, IO >::update( controller, io ); break; }
-        default: { impl_::update_controller< 1, controller_t, IO >::update( controller, io ); break; }
+        case 8:  { impl_::update_controller< 8, controller_t, IO >::update( controller, io, update_all ); break; }
+        case 7:  { impl_::update_controller< 7, controller_t, IO >::update( controller, io, update_all ); break; }
+        case 6:  { impl_::update_controller< 6, controller_t, IO >::update( controller, io, update_all ); break; }
+        case 5:  { impl_::update_controller< 5, controller_t, IO >::update( controller, io, update_all ); break; }
+        case 4:  { impl_::update_controller< 4, controller_t, IO >::update( controller, io, update_all ); break; }
+        case 3:  { impl_::update_controller< 3, controller_t, IO >::update( controller, io, update_all ); break; }
+        case 2:  { impl_::update_controller< 2, controller_t, IO >::update( controller, io, update_all ); break; }
+        default: { impl_::update_controller< 1, controller_t, IO >::update( controller, io, update_all ); break; }
     }
 }
     
