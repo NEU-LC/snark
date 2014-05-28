@@ -110,8 +110,15 @@ bool Reader::updatePoint( const Eigen::Vector3d& offset )
     return true;
 }
 
-void Reader::drawLabel( QGLPainter *painter, const QVector3D& position, const std::string& label )
+void Reader::draw_label( QGLPainter *painter, const QVector3D& position, const std::string& label ) { draw_label( painter, position, m_color, label ); }
+
+void Reader::draw_label( QGLPainter *painter, const QVector3D& position, const QColor4ub& color ) { draw_label( painter, position, color, m_label ); }
+
+void Reader::draw_label( QGLPainter *painter, const QVector3D& position ) { draw_label( painter, position, m_color, m_label ); }
+
+void Reader::draw_label( QGLPainter *painter, const QVector3D& position, const QColor4ub& color, const std::string& label )
 {
+    if( label.empty() ) { return; }
     painter->modelViewMatrix().push();
     painter->modelViewMatrix().translate( position - m_offset ); //painter->modelViewMatrix().translate( position );
     QMatrix4x4 world = painter->modelViewMatrix().top();
@@ -129,15 +136,9 @@ void Reader::drawLabel( QGLPainter *painter, const QVector3D& position, const st
            ? ( 0.25 * m_viewer.camera()->viewSize().width() )
            : ( 0.2 * Eigen::Vector3d( world( 0, 3 ) , world( 1, 3 ), world( 2, 3 ) ).norm() );
     painter->modelViewMatrix().scale( scale ); // TODO make size configurable ?
-    drawText( painter, &label[0], m_color );
+    drawText( painter, &label[0], color );
     painter->modelViewMatrix().pop();
 }
-
-void Reader::drawLabel( QGLPainter *painter, const QVector3D& position )
-{
-    drawLabel( painter, position, m_label );
-}
-
 
 void Reader::drawText( QGLPainter *painter, const QString& string, const QColor4ub& color )
 {

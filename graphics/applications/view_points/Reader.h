@@ -88,8 +88,10 @@ class Reader
 
     protected:
         bool updatePoint( const Eigen::Vector3d& offset );
-        void drawLabel( QGLPainter* painter, const QVector3D& position, const std::string& label );
-        void drawLabel( QGLPainter* painter, const QVector3D& position );
+        void draw_label( QGLPainter* painter, const QVector3D& position, const std::string& label );
+        void draw_label( QGLPainter* painter, const QVector3D& position, const QColor4ub& color, const std::string& label );
+        void draw_label( QGLPainter* painter, const QVector3D& position );
+        void draw_label( QGLPainter* painter, const QVector3D& position, const QColor4ub& color );
 
         friend class Viewer;
         QGLView& m_viewer;

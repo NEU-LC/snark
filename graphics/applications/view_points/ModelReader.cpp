@@ -108,7 +108,7 @@ void ModelReader::render( QGLPainter* painter )
         node->draw(painter);
     }
     painter->modelViewMatrix().pop();
-    if( !m_label.empty() ) { drawLabel( painter, m_translation ); }
+    if( !m_label.empty() ) { draw_label( painter, m_translation ); }
 }
 
 bool ModelReader::read_once()

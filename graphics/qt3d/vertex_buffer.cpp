@@ -78,9 +78,9 @@ const QVector3DArray& vertex_buffer::points() const { return points_; }
 
 const QArray< QColor4ub >& vertex_buffer::color() const { return color_; }
 
-const unsigned int vertex_buffer::size() const { return read_size_; }
+unsigned int vertex_buffer::size() const { return read_size_; }
 
-const unsigned int vertex_buffer::index() const { return read_index_; }
+unsigned int vertex_buffer::index() const { return read_index_; }
 
 
 

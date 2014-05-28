@@ -30,31 +30,32 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+/// @author Vsevolod Vlaskine
 
-/// @author Cedric Wohlleber
+#ifndef SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_BLOCK_BUFFER_H_
+#define SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_BLOCK_BUFFER_H_
 
-#ifndef SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_VERTEX_BUFFER_H_
-#define SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_VERTEX_BUFFER_H_
+#include <vector>
+#include <boost/array.hpp>
 
-#include <Qt3D/qvector3darray.h>
-#include <Qt3D/qcolor4ub.h>
+namespace snark { namespace graphics {
 
-namespace snark { namespace graphics { namespace qt3d {
-
-/// circular double buffer for vertices and color
-/// accumulating points blockwise
-/// once the block is complete
-class vertex_buffer
+/// circular double buffer accumulating values blockwise
+/// until the block is complete, then it becomes available for reading
+///
+/// @todo reuse for qt3d::vertex_buffer
+template < typename T, typename Storage = std::vector< T > >
+class block_buffer
 {
     public:
         /// constructor
-        vertex_buffer( std::size_t size );
+        block_buffer( std::size_t size );
 
-        /// add vertex
+        /// add value
         /// @param point vertex coordinates
         /// @param color vertex color
-        /// @param block id of a block of vertices; on change of block id, double buffer toggles
-        void add_vertex( const QVector3D& point, const QColor4ub& color, unsigned int block = 0 );
+        /// @param block id of a block of values (e.g. vertices); on change of block id, double buffer toggles
+        void add( const T& point, unsigned int block = 0 );
 
         /// toggle double buffer, so that the buffer currently accumulating (the "write" buffer)
         /// becomes available for reading
@@ -67,11 +68,8 @@ class vertex_buffer
         ///       properly visualized
         void toggle();
 
-        /// return points buffer
-        const QVector3DArray& points() const;
-
-        /// return colour buffer
-        const QArray<QColor4ub>& color() const;
+        /// return current buffer
+        const Storage& values() const;
 
         /// return current size of the buffer that is ready for reading
         unsigned int size() const;
@@ -84,12 +82,57 @@ class vertex_buffer
         unsigned int write_index_;
         unsigned int read_size_;
         unsigned int write_size_;
-        unsigned int buffer_size_;
         unsigned int block_;
-        QVector3DArray points_;
-        QArray<QColor4ub> color_;
+        boost::array< Storage, 2 > values_;
 };
 
-} } } // namespace snark { namespace graphics { namespace qt3d {
+template < typename T, typename Storage >
+inline block_buffer< T, Storage >::block_buffer( std::size_t size )
+    : read_index_( 0 )
+    , write_index_( 0 )
+    , read_size_( 0 )
+    , write_size_( 0 )
+    , block_( 0 )
+{
+    values_[0].resize( size );
+    values_[1].resize( size );
+}
 
-#endif /*SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_VERTEX_BUFFER_H_*/
+template < typename T, typename Storage >
+inline void block_buffer< T, Storage >::add( const T& t, unsigned int block )
+{
+    if( block != block_ ) { toggle(); }
+    block_ = block;
+    values_[write_index_][write_size_] = t;
+    ++write_size_;
+    if( read_index_ == write_index_ ) { ++read_size_; }
+    if( write_size_ < values_[0].size() ) { return; }
+    write_size_ = 0;
+    read_size_ = values_[0].size();
+}
+
+template < typename T, typename Storage >
+inline void block_buffer< T, Storage >::toggle()
+{
+    if( write_size_ == 0 ) { return; }
+    write_index_ = 1 - write_index_;
+    if( read_index_ == write_index_ )
+    {
+        read_index_ = 1 - read_index_;
+        read_size_ = write_size_;
+    }
+    write_size_ = 0;
+}
+
+template < typename T, typename Storage >
+inline const Storage& block_buffer< T, Storage >::values() const { return values_[read_index_]; }
+
+template < typename T, typename Storage >
+inline unsigned int block_buffer< T, Storage >::size() const { return read_size_; }
+
+template < typename T, typename Storage >
+inline unsigned int block_buffer< T, Storage >::index() const { return read_index_; }
+
+} } // namespace snark { namespace graphics {
+
+#endif // SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_BLOCK_BUFFER_H_
