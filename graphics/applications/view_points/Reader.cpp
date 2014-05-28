@@ -89,11 +89,8 @@ bool Reader::show() const { return m_show; }
 
 void Reader::read()
 {
-    while( !m_shutdown && readOnce() )
-    {
-        m_num_points++;
-    }
-    std::cerr << "view-points: end of " << options.filename << std::endl;
+    for( ; !m_shutdown && read_once(); ++m_num_points );
+    std::cerr << "view-points: end of " << options.filename << "; read " << m_num_points << " record(s)" << std::endl;
     m_shutdown = true;
 }
 

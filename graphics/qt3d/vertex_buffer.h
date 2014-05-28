@@ -42,27 +42,52 @@
 namespace snark { namespace graphics { namespace qt3d {
 
 /// circular double buffer for vertices and color
+/// accumulating points blockwise
+/// once the block is complete
 class vertex_buffer
 {
     public:
+        /// constructor
         vertex_buffer( std::size_t size );
 
-        void addVertex( const QVector3D& point, const QColor4ub& color, unsigned int block = 0 );
+        /// add vertex
+        /// @param point vertex coordinates
+        /// @param color vertex color
+        /// @param block id of a block of vertices; on change of block id, double buffer toggles
+        void add_vertex( const QVector3D& point, const QColor4ub& color, unsigned int block = 0 );
 
+        /// toggle double buffer, so that the buffer currently accumulating (the "write" buffer)
+        /// becomes available for reading
+        ///
+        /// adding vertices after this call may produce strange results
+        ///
+        /// @note should be done on the last block, since otherwise
+        ///       there is no way to determine that the last block has
+        ///       been finished and thus the last block will not be
+        ///       properly visualized
+        void toggle();
+
+        /// return points buffer
         const QVector3DArray& points() const;
+
+        /// return colour buffer
         const QArray<QColor4ub>& color() const;
+
+        /// return current size of the buffer that is ready for reading
         const unsigned int size() const;
+
+        /// return current offset in the buffer that is ready for reading
         const unsigned int index() const;
 
     protected:
-        QVector3DArray m_points;
-        QArray<QColor4ub> m_color;
-        unsigned int m_readIndex;
-        unsigned int m_writeIndex;
-        unsigned int m_readSize;
-        unsigned int m_writeSize;
-        unsigned int m_bufferSize;
-        unsigned int m_block;
+        unsigned int read_index_;
+        unsigned int write_index_;
+        unsigned int read_size_;
+        unsigned int write_size_;
+        unsigned int buffer_size_;
+        unsigned int block_;
+        QVector3DArray points_;
+        QArray<QColor4ub> color_;
 };
 
 } } } // namespace snark { namespace graphics { namespace qt3d {

@@ -75,7 +75,7 @@ class Reader
         virtual void start() = 0;
         virtual std::size_t update( const Eigen::Vector3d& offset ) = 0;
         virtual const Eigen::Vector3d& somePoint() const = 0;
-        virtual bool readOnce() = 0;
+        virtual bool read_once() = 0;
         virtual void render( QGLPainter *painter ) = 0;
         virtual bool empty() const = 0;
 

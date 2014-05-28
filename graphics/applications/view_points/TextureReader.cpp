@@ -101,7 +101,7 @@ void TextureReader::render( QGLPainter* painter )
     painter->modelViewMatrix().pop();
 }
 
-bool TextureReader::readOnce()
+bool TextureReader::read_once()
 {
     if( !m_stream ) // quick and dirty: handle named pipes
     {

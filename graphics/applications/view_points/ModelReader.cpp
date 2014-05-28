@@ -99,14 +99,8 @@ void ModelReader::render( QGLPainter* painter )
     painter->modelViewMatrix().push();
     painter->modelViewMatrix().translate( m_translation );
     painter->modelViewMatrix().rotate( m_quaternion );
-    if( m_flip )
-    {
-        painter->modelViewMatrix().rotate( 180, 1, 0, 0 );
-    }
-    if( m_plyLoader )
-    {
-        m_plyLoader->draw( painter );
-    }
+    if( m_flip ) { painter->modelViewMatrix().rotate( 180, 1, 0, 0 ); }
+    if( m_plyLoader ) { m_plyLoader->draw( painter ); }
     else
     {
         QGLSceneNode* node = m_scene->mainNode();
@@ -114,13 +108,10 @@ void ModelReader::render( QGLPainter* painter )
         node->draw(painter);
     }
     painter->modelViewMatrix().pop();
-    if( !m_label.empty() )
-    {
-        drawLabel( painter, m_translation );
-    }
+    if( !m_label.empty() ) { drawLabel( painter, m_translation ); }
 }
 
-bool ModelReader::readOnce()
+bool ModelReader::read_once()
 {
     if( !m_stream ) // quick and dirty: handle named pipes
     {

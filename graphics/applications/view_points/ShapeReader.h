@@ -55,13 +55,13 @@ class ShapeReader : public Reader
         void start();
         std::size_t update( const Eigen::Vector3d& offset );
         const Eigen::Vector3d& somePoint() const;
-        bool readOnce();
+        bool read_once();
         void render( QGLPainter *painter = NULL );
         bool empty() const;
 
     private:
-        typedef std::deque< ShapeWithId< S > > DequeType;
-        DequeType m_deque;
+        typedef std::deque< ShapeWithId< S > > deque_t_;
+        deque_t_ m_deque;
         mutable boost::mutex m_mutex;
         boost::scoped_ptr< comma::csv::input_stream< ShapeWithId< S > > > m_stream;
         qt3d::vertex_buffer m_buffer;
@@ -93,10 +93,11 @@ template< typename S, typename How >
 inline std::size_t ShapeReader< S, How >::update( const Eigen::Vector3d& offset )
 {
     boost::mutex::scoped_lock lock( m_mutex );
-    for( typename DequeType::iterator it = m_deque.begin(); it != m_deque.end(); ++it )
+    for( typename deque_t_::iterator it = m_deque.begin(); it != m_deque.end(); ++it )
     {
         Shapetraits< S, How >::update( it->shape, offset, it->color, it->block, m_buffer, m_extents );
     }
+    if( m_shutdown && !m_deque.empty() ) { m_buffer.toggle(); }
     std::size_t s = m_deque.size();
     m_deque.clear();
     updated_ = true;
@@ -132,7 +133,7 @@ inline void ShapeReader< S, How >::render( QGLPainter* painter )
 }
 
 template< typename S, typename How >
-inline bool ShapeReader< S, How >::readOnce()
+inline bool ShapeReader< S, How >::read_once()
 {
     try
     {
