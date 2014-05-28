@@ -49,6 +49,7 @@
 #include "../commands.h"
 #include "../battery.h"
 #include "../io_query.h"
+#include "../serial_io.h"
 #include "../traits.h"
 
 static const char* name() {
@@ -98,16 +99,17 @@ void usage(int code=1)
     std::cerr << "Accepts or reads Ocean battery data and output them as a status structure - see below." << std::endl;
     std::cerr << "Usage:" << std::endl;
     std::cerr << "  e.g. socat -u /dev/ttyO1,b19200,raw - | ocean-to-csv --controller-id 1 --beat 0.5 [--status-json|--binary]" << std::endl;
-    std::cerr << "  e.g. socat /dev/ttyO1,b19200,raw EXEC:\"ocean-to-csv --query-mode --controller-id 1 --beat 0.5 [--status-json|--binary] 2>results\"" << std::endl;
+    std::cerr << "  e.g. socat /dev/ttyO1,b19200,raw EXEC:\"ocean-to-csv --query-mode --controller-id 1 --beat 0.5 [--status-json|--binary] --publish 'tcp:11002'\"" << std::endl;
     std::cerr << name() << " options:" << std::endl;
     std::cerr << "    --status-json           - Data output in JSON format with End of Text delimiter char." << std::endl;
     std::cerr << "    --binary                - Data output in binary, default is ascii CSV." << std::endl;
     std::cerr << "    --query-mode            - Alternative mode, query controller for data in message mode." << std::endl;
     std::cerr << "     Note: the streams may need to be cleared first e.g. 'socat -T 0.5 /dev/ttyO1,b19200,raw -' run and stopped." << std::endl;
-    std::cerr << "    --publish=              - Do not write to stdout or stderr for --query-mode but publish, options: file|pipe|tcp:<port>." << std::endl;
+    std::cerr << "    --publish=              - Do not write to stdout (or stderr for --query-mode) but publish to file|pipe|tcp:<port>." << std::endl;
     std::cerr << "*   --beat=|-C=             - Minium second/s between status update - 1Hz/beat, floating point e.g. 0.5." << std::endl;
     std::cerr << "*   --controller-id=|-C=    - Controller's ID: 1-9." << std::endl;
-    std::cerr << "*   --all-interval=<num>    - How many iteration of querying currents only before, querying everything. Use with --query-mode only." << std::endl;
+    std::cerr << "    --update-all-interval=<num>|-I=<num>" << std::endl;
+    std::cerr << "                            - How many iteration of querying currents only before, querying everything. Use with --query-mode only." << std::endl;
     std::cerr << "    [--num-of-batteries=]   - The number of batteries for this controller" << std::endl;
     std::vector< std::string > names = comma::csv::names< stats_t >();
     std::cerr << "    --fields="  << comma::join( names, ',' ) << " total num of fields: " << names.size() << std::endl;
@@ -297,23 +299,24 @@ int main( int ac, char** av )
         ptime future = microsec_clock::universal_time();
         stats_t stats( controller_id );
 	
-        // comma::io::select select;
-        // select.read().add( comma::io::stdin_fd );
-        // if( is_query_mode )
-        // {
-        //     std::cout.write( " ", 1u );
-        //     std::cout.write( "M", 1u );
-        //     std::cout.flush();
-        //     sleep( 2 );
-        //     char tmp; 
-        //     select.wait( 0 );
-        //     while( select.read().ready( comma::io::stdin_fd ) )
-        //     { 
-        //         std::getline( std::cin, line );
-        //         select.wait( 0 );
-        //     }
-        // }
-        // std::cerr << name() << ": Done setting up. " << std::endl;
+        if( is_query_mode )
+        {
+            std::cout.flush();
+            comma::io::select select;
+            select.read().add( comma::io::stdin_fd );
+            std::cout.write( " ", 1u );
+            std::cout.write( "M", 1u );
+            std::cout.flush();
+            sleep( 2 );
+            char tmp; 
+            select.wait( 0 );
+            while( select.read().ready( comma::io::stdin_fd ) && std::cin.good() )
+            { 
+                std::getline( std::cin, line );
+                select.wait( 0 );
+            }
+            std::cerr << name() << ": Done setting up. " << std::endl;
+        }
 
         snark::ocean::stdio_query io;
         comma::uint16 modulo = 3;

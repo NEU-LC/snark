@@ -163,6 +163,9 @@ struct controller
             average_voltage += it->voltage;
             average_charge += it->charge_pc;
         } 
+        
+        if( num_active_batteries == 0 ) { return; }
+        
         average_voltage /= num_active_batteries;
         average_charge /= num_active_batteries;
         state = batteries.front().state;
