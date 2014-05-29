@@ -64,7 +64,7 @@ class CameraReader
         CameraReader( comma::csv::options& options );
 
         void start();
-        bool readOnce();
+        bool read_once();
         bool ready() const { return m_stream->ready(); }
         void render();
 

@@ -35,71 +35,53 @@
 
 #include "./vertex_buffer.h"
 
-
 namespace snark { namespace graphics { namespace qt3d {
 
-vertex_buffer::vertex_buffer ( std::size_t size ):
-    m_readIndex( 0 ),
-    m_writeIndex( 0 ),
-    m_readSize( 0 ),
-    m_writeSize( 0 ),
-    m_bufferSize( size ),
-    m_block( 0 )
+vertex_buffer::vertex_buffer( std::size_t size )
+    : read_index_( 0 )
+    , write_index_( 0 )
+    , read_size_( 0 )
+    , write_size_( 0 )
+    , buffer_size_( size )
+    , block_( 0 )
+    , points_( 2 * size )
+    , color_( 2 * size )
 {
-    m_points.resize( 2 * size );
-    m_color.resize( 2 * size );
 }
 
-void vertex_buffer::addVertex ( const QVector3D& point, const QColor4ub& color, unsigned int block )
+void vertex_buffer::add_vertex( const QVector3D& point, const QColor4ub& color, unsigned int block )
 {
-    if( block != m_block )
+    if( block != block_ ) { toggle(); }
+    block_ = block;
+    points_[ write_index_ + write_size_ ] = point;
+    color_[ write_index_ + write_size_ ] = color;
+    ++write_size_;
+    if( read_index_ == write_index_ ) { ++read_size_; }
+    if( write_size_ < buffer_size_ ) { return; }
+    write_size_ = 0;
+    read_size_ = buffer_size_;
+}
+
+void vertex_buffer::toggle()
+{
+    if( write_size_ == 0 ) { return; }
+    write_index_ = buffer_size_ - write_index_;
+    if( read_index_ == write_index_ )
     {
-        m_block = block;
-
-        m_writeIndex += m_bufferSize;
-        m_writeIndex %= 2 * m_bufferSize;
-        if( m_readIndex == m_writeIndex )
-        {
-            m_readIndex+= m_bufferSize;
-            m_readIndex %= 2 * m_bufferSize;
-            m_readSize = m_writeSize;
-        }
-        m_writeSize = 0;
+        read_index_ = buffer_size_ - read_index_;
+        read_size_ = write_size_;
     }
-    m_points[ m_writeIndex + m_writeSize ] = point;
-    m_color[ m_writeIndex + m_writeSize ] = color;
-    m_writeSize++;
-    if( block == 0 )
-    {
-        m_readSize++;
-    }
-    if( m_writeSize > m_bufferSize )
-    {
-        m_writeSize = 0;
-        m_readSize = m_bufferSize;
-    }
+    write_size_ = 0;
 }
 
-const QVector3DArray& vertex_buffer::points() const
-{
-    return m_points;
-}
+const QVector3DArray& vertex_buffer::points() const { return points_; }
 
-const QArray< QColor4ub >& vertex_buffer::color() const
-{
-    return m_color;
-}
+const QArray< QColor4ub >& vertex_buffer::color() const { return color_; }
 
-const unsigned int vertex_buffer::size() const
-{
-    return m_readSize;
-}
+unsigned int vertex_buffer::size() const { return read_size_; }
 
-const unsigned int vertex_buffer::index() const
-{
-    return m_readIndex;
-}
+unsigned int vertex_buffer::index() const { return read_index_; }
 
 
-    
+
 } } } // namespace snark { namespace graphics { namespace qt3d {

@@ -76,7 +76,7 @@ void BasicDataset::init()
         Eigen::Vector3d pointXYZ =  en.key() - *m_offset;
         QVector3D point( pointXYZ.x(), pointXYZ.y(), pointXYZ.z() );
         QColor4ub color = Tools::colorFromId( en.value().id );
-        m_vertices->addVertex( point, color );
+        m_vertices->add_vertex( point, color );
     }
 }
 
