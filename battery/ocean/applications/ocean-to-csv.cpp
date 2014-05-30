@@ -306,46 +306,51 @@ int main( int ac, char** av )
         snark::ocean::stdio_query io;
         static const boost::posix_time::seconds timeout( 1 );
         io.set_timeout( timeout );
+        
         snark::ocean::serial_query uart;
-        if( is_query_mode && serial_conn )
+        if( is_query_mode )
         {
-            std::vector< std::string > v = comma::split( *serial_conn, ',' );
-            if( v.size() < 2 || v[0].empty() || v[1].empty() ) { std::cerr << name() << ": --serial <device>,<baud needed> needed." << std::endl; usage(1); }
-            comma::uint32 baud = 0;
-            try{ baud = boost::lexical_cast< comma::uint32 >( v[1] ); } catch(...) { COMMA_THROW( comma::exception, "baud rate must be a positive number." ); }
-            uart.open( v[0],  baud );
-            uart.serial.set_timeout( timeout );
+            if( serial_conn )
+            {
+                std::vector< std::string > v = comma::split( *serial_conn, ',' );
+                if( v.size() < 2 || v[0].empty() || v[1].empty() ) { std::cerr << name() << ": --serial <device>,<baud needed> needed." << std::endl; usage(1); }
+                comma::uint32 baud = 0;
+                try{ baud = boost::lexical_cast< comma::uint32 >( v[1] ); } catch(...) { COMMA_THROW( comma::exception, "baud rate must be a positive number." ); }
+                uart.open( v[0],  baud );
+                uart.serial.set_timeout( timeout );
+            }
+            
+            // try updating one battery, and get the controller in sync with the application
+            // TODO: Find out why
+            try 
+            { 
+                std::cout.flush();
+                comma::io::select select;
+                select.read().add( comma::io::stdin_fd );
+                select.wait( 1 );
+                while( select.read().ready( comma::io::stdin_fd ) && std::cin.good() )
+                { 
+                    std::getline( std::cin, line, char(4) );
+                    select.wait( 1 );
+                }
+                if( serial_conn )
+                    snark::ocean::query( stats.controller, uart, false /* update_all */ , 1 /*num_of_batteries*/ ); 
+                else
+                    snark::ocean::query( stats.controller, io, false /* update_all */ , 1 /*num_of_batteries*/ ); 
+            }
+            catch( std::exception& e ) {
+                std::cerr << name() << " initiating error." << std::endl;
+            }
         }
 
-        try 
-        { 
-            // try updating one battery, and get the controller in sync with the application
-            std::cout.flush();
-            comma::io::select select;
-            select.read().add( comma::io::stdin_fd );
-            select.wait( 1 );
-            while( select.read().ready( comma::io::stdin_fd ) && std::cin.good() )
-            { 
-                std::getline( std::cin, line, char(4) );
-                select.wait( 1 );
-            }
-            if( serial_conn )
-                snark::ocean::query( stats.controller, uart, false /* update_all */ , 1 /*num_of_batteries*/ ); 
-            else
-                snark::ocean::query( stats.controller, io, false /* update_all */ , 1 /*num_of_batteries*/ ); 
-        }
-        catch( std::exception& e ) {
-            std::cerr << name() << " initiating error." << std::endl;
-        }
         
         comma::uint16 modulo = 3;
         if( options.exists( "--all-interval" ) ) { modulo = options.value< comma::uint16 >( "--all-interval" ); }
-        comma::uint16 counter = modulo-1;
+        comma::uint16 counter = modulo; // For update all on first iteration
         while( std::cin.good() )
         {
             if( is_query_mode )
             {
-                ++counter;
                 bool update_all = ( (counter % modulo) == 0 );
                 /// query the controller for battery 1 to num_of_batteries
                 if( serial_conn ) { 
@@ -361,6 +366,8 @@ int main( int ac, char** av )
                 if( !has_publish_stream ) { output( stats, std::cerr ); }
                 else { publish_status( stats, *publish ); }
 
+                ++counter;
+                
                 usleep( beat * 1000000u );
                 
                 continue;
