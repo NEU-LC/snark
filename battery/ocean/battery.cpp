@@ -77,7 +77,7 @@ void battery_t::operator&(const data_t& data)
         case address::temperature:
         {
             static const double unit = 0.1; // Kelvin
-            temperature = data.value() * unit * kelvin; // 0.1k unit
+            temperature =  static_cast< celcius_t >( data.value() * unit * kelvin ); // 0.1k unit
             // std::cerr << "got temperature: " << temperature.value() << std::endl;
             break;
         }

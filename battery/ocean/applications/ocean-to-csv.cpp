@@ -108,8 +108,8 @@ void usage(int code=1)
     std::cerr << "    --binary                - Data output in binary, default is ascii CSV." << std::endl;
     std::cerr << "    --query-mode            - Alternative mode, query controller for data in message mode. " << std::endl;
     std::cerr << "       The Ocean controller must be in Message mode (M)." << std::endl;
-    std::cerr << "    --serial '<device>,<baud rate>'" << std::endl;
-    std::cerr << "                            - Optional, for --query-mode e.g. --serial '/dev/ttyO1,19200'." << std::endl;
+    std::cerr << "    --serial '<device>:<baud rate>'" << std::endl;
+    std::cerr << "                            - Optional, for --query-mode e.g. --serial '/dev/ttyO1:19200'." << std::endl;
     std::cerr << "    --publish=              - Do not write to stdout (or stderr for --query-mode) but publish to file|pipe|tcp:<port>." << std::endl;
     std::cerr << "    --verbose               - Output each line received from Ocean Controller, (X) hexadecimal mode only." << std::endl;
     std::cerr << "*   --beat=|-C=             - Minium second/s between status update - 1Hz/beat, floating point e.g. 0.5." << std::endl;
@@ -317,10 +317,12 @@ int main( int ac, char** av )
         {
             if( serial_conn )
             {
-                std::vector< std::string > v = comma::split( *serial_conn, ',' );
-                if( v.size() < 2 || v[0].empty() || v[1].empty() ) { std::cerr << name() << ": --serial <device>,<baud needed> needed." << std::endl; usage(1); }
+                std::vector< std::string > v = comma::split( *serial_conn, ':' );
+                if( v.size() < 2 || v[0].empty() || v[1].empty() ) { std::cerr << name() << ": --serial <device>:<baud needed> needed." << std::endl; usage(1); }
                 comma::uint32 baud = 0;
-                try{ baud = boost::lexical_cast< comma::uint32 >( v[1] ); } catch(...) { COMMA_THROW( comma::exception, "baud rate must be a positive number." ); }
+                try{ baud = boost::lexical_cast< comma::uint32 >( v[1] ); } catch( std::exception& ee ) {
+                    COMMA_THROW( comma::exception, "baud rate must be a positive number, got: " + v[1] + " : " + ee.what() ); 
+                }
                 uart.open( v[0],  baud );
                 uart.serial.set_timeout( timeout );
             }
@@ -352,7 +354,7 @@ int main( int ac, char** av )
         comma::uint16 modulo = 3;
         if( options.exists( "--all-interval" ) ) { modulo = options.value< comma::uint16 >( "--all-interval" ); }
         comma::uint16 counter = modulo; // For update all on first iteration
-        while( std::cin.good() )
+        while( std::cin.good() || serial_conn ) // If using serial connection then std::cin is not read
         {
             if( is_query_mode )
             {

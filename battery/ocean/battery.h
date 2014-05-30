@@ -70,7 +70,7 @@ struct battery_t
     voltage_t voltage;  /// voltage using boost units
     current_t current;  /// current, see addresses
     current_t average_current;  // average_current, see addresses and specs
-    temperature_t temperature;  /// temp in SI unit eg Kelvins
+    celcius_t temperature;  /// temp in celcius
     power_t remaining_capacity;
     double charge_pc; // Charge percentage
     boost::posix_time::time_duration time_to_empty;     /// duration to empty
