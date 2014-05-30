@@ -98,16 +98,20 @@ void usage(int code=1)
     std::cerr << std::endl;
     std::cerr << "Accepts or reads Ocean battery data and output them as a status structure - see below." << std::endl;
     std::cerr << "Usage:" << std::endl;
+    std::cerr << "  The Ocean controller must be in Hexadecimal mode (X)." << std::endl;
     std::cerr << "  e.g. socat -u /dev/ttyO1,b19200,raw - | ocean-to-csv --controller-id 1 --beat 0.5 [--status-json|--binary]" << std::endl;
+    std::cerr << "  The Ocean controller must be in Message mode (M):" << std::endl;
     std::cerr << "  e.g. ocean-to-csv --query-mode --serial '/dev/ttyO1,19200' --controller-id 1 --beat 0.5 [--status-json|--binary] --publish 'tcp:11002'\"" << std::endl;
-    std::cerr << "  e.g. socat /dev/ttyO1,b19200,raw EXEC:\"ocean-to-csv --query-mode --controller-id 1 --beat 0.5 [--status-json|--binary] --publish 'tcp:11002'\"" << std::endl;
+    //std::cerr << "  e.g. socat /dev/ttyO1,b19200,raw EXEC:\"ocean-to-csv --query-mode --controller-id 1 --beat 0.5 [--status-json|--binary] --publish 'tcp:11002'\"" << std::endl;
     std::cerr << name() << " options:" << std::endl;
     std::cerr << "    --status-json           - Data output in JSON format with End of Text delimiter char." << std::endl;
     std::cerr << "    --binary                - Data output in binary, default is ascii CSV." << std::endl;
-    std::cerr << "    --query-mode            - Alternative mode, query controller for data in message mode." << std::endl;
+    std::cerr << "    --query-mode            - Alternative mode, query controller for data in message mode. " << std::endl;
+    std::cerr << "       The Ocean controller must be in Message mode (M)." << std::endl;
     std::cerr << "    --serial '<device>,<baud rate>'" << std::endl;
     std::cerr << "                            - Optional, for --query-mode e.g. --serial '/dev/ttyO1,19200'." << std::endl;
     std::cerr << "    --publish=              - Do not write to stdout (or stderr for --query-mode) but publish to file|pipe|tcp:<port>." << std::endl;
+    std::cerr << "    --verbose               - Output each line received from Ocean Controller, (X) hexadecimal mode only." << std::endl;
     std::cerr << "*   --beat=|-C=             - Minium second/s between status update - 1Hz/beat, floating point e.g. 0.5." << std::endl;
     std::cerr << "*   --controller-id=|-C=    - Controller's ID: 1-9." << std::endl;
     std::cerr << "    --update-all-interval=<num>|-I=<num>" << std::endl;
@@ -268,6 +272,7 @@ int main( int ac, char** av )
         float beat = options.value< float >( "--beat,-B" );
         bool is_query_mode = options.exists( "--query-mode" );
         bool has_publish_stream = options.exists( "--publish" );
+        bool verbose = options.exists( "--verbose" );
         boost::optional< std::string > serial_conn; 
         if( options.exists( "--serial" ) ) { serial_conn = options.value< std::string  >( "--serial" ); }
 	
@@ -377,9 +382,8 @@ int main( int ac, char** av )
                 std::getline( std::cin, line );
                 if( line.empty() ) { continue; }
     
-                //std::cerr << "a: " << line <<std::endl;
                 snark::ocean::battery_t::strip( line );
-                std::cerr << name() << ": " << line <<std::endl;
+                if( verbose ) { std::cerr << name() << ": " << line <<std::endl; }
     
                 if( line[1] != controller_b::battery_data_char ) continue; // TODO: parse $C line???
     

@@ -131,6 +131,8 @@ void serial_io::read(char *data,  size_t size)
                 port_.cancel();
                 throw(boost::system::system_error(boost::system::error_code(),
                         "Error while reading"));
+            case  result_in_progress:
+                continue;
             default:
                 continue;
             //if  result_in_progress remain in the loop
@@ -243,6 +245,10 @@ std::string serial_io::read_string_until(const std::string& delim)
                 port_.cancel();
                 throw(boost::system::system_error(boost::system::error_code(),
                         "Error while reading"));
+            case  result_in_progress:
+                continue;
+            default:
+                continue;
             //if  result_in_progress remain in the loop
         }
     }
