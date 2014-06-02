@@ -98,14 +98,20 @@ void usage(int code=1)
     std::cerr << std::endl;
     std::cerr << "Accepts or reads Ocean battery data and output them as a status structure - see below." << std::endl;
     std::cerr << "Usage:" << std::endl;
+    std::cerr << "  The Ocean controller must be in Hexadecimal mode (X)." << std::endl;
     std::cerr << "  e.g. socat -u /dev/ttyO1,b19200,raw - | ocean-to-csv --controller-id 1 --beat 0.5 [--status-json|--binary]" << std::endl;
-    std::cerr << "  e.g. socat /dev/ttyO1,b19200,raw EXEC:\"ocean-to-csv --query-mode --controller-id 1 --beat 0.5 [--status-json|--binary] --publish 'tcp:11002'\"" << std::endl;
+    std::cerr << "  The Ocean controller must be in Message mode (M):" << std::endl;
+    std::cerr << "  e.g. ocean-to-csv --query-mode --serial '/dev/ttyO1,19200' --controller-id 1 --beat 0.5 [--status-json|--binary] --publish 'tcp:11002'\"" << std::endl;
+    //std::cerr << "  e.g. socat /dev/ttyO1,b19200,raw EXEC:\"ocean-to-csv --query-mode --controller-id 1 --beat 0.5 [--status-json|--binary] --publish 'tcp:11002'\"" << std::endl;
     std::cerr << name() << " options:" << std::endl;
     std::cerr << "    --status-json           - Data output in JSON format with End of Text delimiter char." << std::endl;
     std::cerr << "    --binary                - Data output in binary, default is ascii CSV." << std::endl;
-    std::cerr << "    --query-mode            - Alternative mode, query controller for data in message mode." << std::endl;
-    std::cerr << "     Note: the streams may need to be cleared first e.g. 'socat -T 0.5 /dev/ttyO1,b19200,raw -' run and stopped." << std::endl;
+    std::cerr << "    --query-mode            - Alternative mode, query controller for data in message mode. " << std::endl;
+    std::cerr << "       The Ocean controller must be in Message mode (M)." << std::endl;
+    std::cerr << "    --serial '<device>:<baud rate>'" << std::endl;
+    std::cerr << "                            - Optional, for --query-mode e.g. --serial '/dev/ttyO1:19200'." << std::endl;
     std::cerr << "    --publish=              - Do not write to stdout (or stderr for --query-mode) but publish to file|pipe|tcp:<port>." << std::endl;
+    std::cerr << "    --verbose               - Output each line received from Ocean Controller, (X) hexadecimal mode only." << std::endl;
     std::cerr << "*   --beat=|-C=             - Minium second/s between status update - 1Hz/beat, floating point e.g. 0.5." << std::endl;
     std::cerr << "*   --controller-id=|-C=    - Controller's ID: 1-9." << std::endl;
     std::cerr << "    --update-all-interval=<num>|-I=<num>" << std::endl;
@@ -266,6 +272,9 @@ int main( int ac, char** av )
         float beat = options.value< float >( "--beat,-B" );
         bool is_query_mode = options.exists( "--query-mode" );
         bool has_publish_stream = options.exists( "--publish" );
+        bool verbose = options.exists( "--verbose" );
+        boost::optional< std::string > serial_conn; 
+        if( options.exists( "--serial" ) ) { serial_conn = options.value< std::string  >( "--serial" ); }
 	
         boost::scoped_ptr< publisher > publish;
         if( has_publish_stream )
@@ -298,38 +307,65 @@ int main( int ac, char** av )
         // Set it to report status immediately if no command is received
         ptime future = microsec_clock::universal_time();
         stats_t stats( controller_id );
-	
-        if( is_query_mode )
-        {
-            std::cout.flush();
-            comma::io::select select;
-            select.read().add( comma::io::stdin_fd );
-            std::cout.write( " ", 1u );
-            std::cout.write( "M", 1u );
-            std::cout.flush();
-            sleep( 2 );
-            char tmp; 
-            select.wait( 0 );
-            while( select.read().ready( comma::io::stdin_fd ) && std::cin.good() )
-            { 
-                std::getline( std::cin, line );
-                select.wait( 0 );
-            }
-            std::cerr << name() << ": Done setting up. " << std::endl;
-        }
 
         snark::ocean::stdio_query io;
+        static const boost::posix_time::seconds timeout( 1 );
+        io.set_timeout( timeout );
+        
+        snark::ocean::serial_query uart;
+        if( is_query_mode )
+        {
+            if( serial_conn )
+            {
+                std::vector< std::string > v = comma::split( *serial_conn, ':' );
+                if( v.size() < 2 || v[0].empty() || v[1].empty() ) { std::cerr << name() << ": --serial <device>:<baud needed> needed." << std::endl; usage(1); }
+                comma::uint32 baud = 0;
+                try{ baud = boost::lexical_cast< comma::uint32 >( v[1] ); } catch( std::exception& ee ) {
+                    COMMA_THROW( comma::exception, "baud rate must be a positive number, got: " + v[1] + " : " + ee.what() ); 
+                }
+                uart.open( v[0],  baud );
+                uart.serial.set_timeout( timeout );
+            }
+            
+            // try updating one battery, and get the controller in sync with the application
+            // TODO: Find out why
+            try 
+            { 
+                std::cout.flush();
+                comma::io::select select;
+                select.read().add( comma::io::stdin_fd );
+                select.wait( 1 );
+                while( select.read().ready( comma::io::stdin_fd ) && std::cin.good() )
+                { 
+                    std::getline( std::cin, line, char(4) );
+                    select.wait( 1 );
+                }
+                if( serial_conn )
+                    snark::ocean::query( stats.controller, uart, false /* update_all */ , 1 /*num_of_batteries*/ ); 
+                else
+                    snark::ocean::query( stats.controller, io, false /* update_all */ , 1 /*num_of_batteries*/ ); 
+            }
+            catch( std::exception& e ) {
+                std::cerr << name() << " initiating error." << std::endl;
+            }
+        }
+
+        
         comma::uint16 modulo = 3;
         if( options.exists( "--all-interval" ) ) { modulo = options.value< comma::uint16 >( "--all-interval" ); }
-        comma::uint16 counter = modulo;
-        while( std::cin.good() )
+        comma::uint16 counter = modulo; // For update all on first iteration
+        while( std::cin.good() || serial_conn ) // If using serial connection then std::cin is not read
         {
             if( is_query_mode )
             {
-                ++counter;
                 bool update_all = ( (counter % modulo) == 0 );
                 /// query the controller for battery 1 to num_of_batteries
-                snark::ocean::query< snark::ocean::stdio_query >( stats.controller, io, update_all, num_of_batteries );
+                if( serial_conn ) { 
+                    snark::ocean::query( stats.controller, uart, update_all, num_of_batteries );
+                }
+                else {
+                    snark::ocean::query( stats.controller, io, update_all, num_of_batteries );
+                }
                 
                 stats.time = microsec_clock::universal_time();
                 stats.controller.consolidate( num_of_batteries );
@@ -337,6 +373,8 @@ int main( int ac, char** av )
                 if( !has_publish_stream ) { output( stats, std::cerr ); }
                 else { publish_status( stats, *publish ); }
 
+                ++counter;
+                
                 usleep( beat * 1000000u );
                 
                 continue;
@@ -346,9 +384,8 @@ int main( int ac, char** av )
                 std::getline( std::cin, line );
                 if( line.empty() ) { continue; }
     
-                //std::cerr << "a: " << line <<std::endl;
                 snark::ocean::battery_t::strip( line );
-                std::cerr << name() << ": " << line <<std::endl;
+                if( verbose ) { std::cerr << name() << ": " << line <<std::endl; }
     
                 if( line[1] != controller_b::battery_data_char ) continue; // TODO: parse $C line???
     

@@ -51,11 +51,12 @@ typedef boost::units::quantity< boost::units::si::electric_potential > voltage_t
 typedef boost::units::quantity< boost::units::si::current > current_t;
 typedef boost::units::quantity< boost::units::si::power > power_t;
 typedef boost::units::quantity< boost::units::si::temperature > temperature_t;
+typedef boost::units::quantity< boost::units::celsius::temperature > celcius_t;
 
 const voltage_t::unit_type volt = boost::units::si::volt;
 const current_t::unit_type ampere = boost::units::si::ampere;
 const power_t::unit_type watt = boost::units::si::watt;
-//const boost::units::celsius::degree_instance_t<>&  celcius = boost::units::celsius::degree;
+const celcius_t::unit_type celcius = boost::units::celsius::degree;
 const temperature_t::unit_type kelvin = boost::units::si::kelvin;
     
 } } // namespace snark { namespace ocean {

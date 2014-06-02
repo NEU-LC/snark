@@ -33,6 +33,7 @@
 #ifndef SNARK_OCEAN_IO_QUERY_H
 #define SNARK_OCEAN_IO_QUERY_H
 #include <comma/base/types.h>
+#include <comma/io/select.h>
 #include <boost/date_time/posix_time/ptime.hpp>
 #include <boost/date_time/posix_time/posix_time_duration.hpp>
 #include <boost/array.hpp>
@@ -42,23 +43,93 @@
 #include <iostream>
 #include "commands.h"
 #include "battery.h"
+#include "serial_io.h"
 
 namespace snark { namespace ocean {
-    
-class stdio_query 
+
+template < typename Derived >
+struct query_io
 {
-public:
-    ocean8 read()
-    {
-        return std::cin.get();
+    void set_timeout( const boost::posix_time::time_duration& duration )  {  
+        return static_cast< Derived* >( this )->set_timeout_impl( duration );
+    }
+
+    ocean8 read() {
+        return static_cast< Derived* >( this )->read_impl();
     }
     
-    void write( ocean8 value )
+    void write( ocean8 value ) {
+        return static_cast< Derived* >( this )->write_impl( value );
+    };
+
+};
+    
+class stdio_query : public query_io< stdio_query > 
+{
+public:
+    stdio_query() : select_(), timeout_( boost::posix_time::milliseconds( 0 ) ) 
+    { 
+        select_.read().add( comma::io::stdin_fd ); 
+        select_write_.write().add( comma::io::stdout_fd ); 
+    }
+
+    void set_timeout_impl( const boost::posix_time::time_duration& duration ) { timeout_ = duration; }
+
+    ocean8 read_impl()
+    {
+        select_.wait( timeout_ );
+        if( select_.read().ready( comma::io::stdin_fd ) ) 
+        { 
+            return std::cin.get();
+            // ocean8 c( std::cin.get() ); 
+            // std::cerr << "Reading bin char: " << int( c ) << std::endl;
+            // return c;
+        }
+        else { COMMA_THROW( comma::exception, "reading from stdin timed out" ); }
+
+        return ocean8(0);
+    }
+    
+    void write_impl( ocean8 value )
     {
         // std::cerr << "Writing bin char: " << int( value ) << std::endl;
+        select_write_.wait( timeout_ );
+        if( !( select_write_.write().ready( comma::io::stdout_fd ) ) )
+            { COMMA_THROW( comma::exception, "write from stdout timed out" ); }
+
         std::cout.write( (const char*) &value, 1u );
         std::cout.flush();
     };
+
+private:
+    comma::io::select select_;
+    comma::io::select select_write_;
+    boost::posix_time::time_duration timeout_;
+};
+
+struct serial_query : public query_io< serial_query >
+{
+    serial_query() {}
+    serial_query( const std::string& device, comma::uint32 baud ) : serial( device, baud ) {}
+    void set_timeout_impl( boost::posix_time::time_duration duration ) { serial.set_timeout( duration ); }
+
+    void open( const std::string& device, comma::uint32 baud ){ serial.open( device, baud );}
+    
+    ocean8 read_impl() 
+    {
+        ocean8 c; 
+        serial.read( (char*) &c, 1u );
+        // std::cerr << "read: " << int(c) << std::endl;
+        return c; 
+    }
+    
+    void write_impl( ocean8 value )
+    {
+        // std::cerr << "write: " << int(value) << std::endl;
+        serial.write( (const char*) &value, 1u ); 
+    }
+    
+    serial_io serial;
 };
 
 template < int B, ocean8 ADDR, typename IO >
