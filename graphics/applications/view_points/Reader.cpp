@@ -99,7 +99,7 @@ bool Reader::updatePoint( const Eigen::Vector3d& offset )
     if( !m_point ) { return false; } // is it safe to do it without locking the mutex?
     boost::mutex::scoped_lock lock( m_mutex );
     if( !updated_ ) { return false; }
-    m_translation = QVector3D( m_point->x() - offset.x(), m_point->y() - offset.y(), m_point->z() - offset.z() );
+    m_translation = QVector3D( m_point->x(), m_point->y(), m_point->z() );
     m_offset = QVector3D( offset.x(), offset.y(), offset.z() );
     if( m_orientation )
     {
@@ -120,7 +120,7 @@ void Reader::draw_label( QGLPainter *painter, const QVector3D& position, const Q
 {
     if( label.empty() ) { return; }
     painter->modelViewMatrix().push();
-    painter->modelViewMatrix().translate( position - m_offset ); //painter->modelViewMatrix().translate( position );
+    painter->modelViewMatrix().translate( position - m_offset ); // painter->modelViewMatrix().translate( position );
     QMatrix4x4 world = painter->modelViewMatrix().top();
     Eigen::Matrix3d R;
     R << world( 0, 0 ) , world( 0, 1 ), world( 0, 2 ),
