@@ -31,30 +31,22 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-#ifndef SNARK_BATTERY_OCEAN_IO_H
-#define SNARK_BATTERY_OCEAN_IO_H
-
-namespace snark { namespace ocean {
-
-template < typename Derived >
-struct query_io
-{
-    void set_timeout( const boost::posix_time::time_duration& duration )  {  
-        return static_cast< Derived* >( this )->set_timeout_impl( duration );
-    }
-
-    ocean8 read() {
-        return static_cast< Derived* >( this )->read_impl();
-    }
-    
-    void write( ocean8 value ) {
-        return static_cast< Derived* >( this )->write_impl( value );
-    };
-
-};
+#include "commands.h"
 
 
-} } // namespace snark { namespace ocean {
+namespace snark { namespace robot_arm {
 
 
-#endif // SNARK_BATTERY_OCEAN_IO_H
+// basic::result waypoint::check_inputs_impl()
+// {
+// 	if( point.x < min || point.x > max ) {
+// 		return basic::result( "point.x exceeds limit", command_errors::exceed_limit );
+// 	}
+// 	if( point.y < min || point.y > max ) {
+// 		return basic::result( "point.y exceeds limit", command_errors::exceed_limit );
+// 	}
+
+// 	return basic::result();
+// }
+
+} } // namespace snark { namespace robot_arm {

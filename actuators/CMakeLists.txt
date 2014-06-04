@@ -1,2 +1,3 @@
 ADD_SUBDIRECTORY( quickset )
 ADD_SUBDIRECTORY( wheels )
+ADD_SUBDIRECTORY( robot_arm )

@@ -161,6 +161,8 @@ SET( snark_ALL_LIBRARIES ${snark_ALL_LIBRARIES} debug snark_math-d
 IF( snark_build_actuators )
 SET( snark_ALL_LIBRARIES ${snark_ALL_LIBRARIES} debug snark_wheels-d
                          optimized snark_wheels )
+SET( snark_ALL_LIBRARIES ${snark_ALL_LIBRARIES} debug snark_robot_arm-d
+                         optimized snark_robot_arm )
 ENDIF( snark_build_actuators )
 if( snark_build_battery )
     SET( snark_ALL_LIBRARIES ${snark_ALL_LIBRARIES} debug snark_ocean-d

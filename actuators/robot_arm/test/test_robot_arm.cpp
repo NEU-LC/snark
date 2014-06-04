@@ -30,31 +30,40 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include <gtest/gtest.h>
+#include <comma/csv/stream.h>
+#include <comma/csv/ascii.h>
+#include <comma/visiting/traits.h>
+#include <comma/base/types.h>
+#include <comma/visiting/apply.h>
+#include <comma/name_value/ptree.h>
+#include <comma/csv/stream.h>
+#include <comma/name_value/parser.h>
+#include <comma/io/stream.h>
+#include <boost/property_tree/json_parser.hpp>
 
-#ifndef SNARK_BATTERY_OCEAN_IO_H
-#define SNARK_BATTERY_OCEAN_IO_H
 
-namespace snark { namespace ocean {
+namespace snark { namespace robot_arm {
 
-template < typename Derived >
-struct query_io
+template < typename T >
+comma::csv::ascii< T >& ascii() { 
+    static comma::csv::ascii< T > ascii_;
+    return ascii_;
+}
+
+
+TEST( robot_arm, ocean_test_strip )
 {
-    void set_timeout( const boost::posix_time::time_duration& duration )  {  
-        return static_cast< Derived* >( this )->set_timeout_impl( duration );
-    }
 
-    ocean8 read() {
-        return static_cast< Derived* >( this )->read_impl();
-    }
-    
-    void write( ocean8 value ) {
-        return static_cast< Derived* >( this )->write_impl( value );
-    };
-
-};
+}
 
 
-} } // namespace snark { namespace ocean {
 
+} } // namespace snark { namespace robot_arm {
 
-#endif // SNARK_BATTERY_OCEAN_IO_H
+int main( int argc, char* argv[] )
+{
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
+    return 0;
+}

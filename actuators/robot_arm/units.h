@@ -30,31 +30,28 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#ifndef SNARK_ACTUATORS_ROBOT_ARM_UNITS_H
+#define SNARK_ACTUATORS_ROBOT_ARM_UNITS_H
+#include <boost/units/quantity.hpp>
+#include <boost/units/base_unit.hpp>
+#include <boost/concept_check.hpp>
+#include <boost/units/systems/si/time.hpp>
+#include <boost/units/systems/si/length.hpp>
+#include <boost/units/systems/si/plane_angle.hpp>
+#include <boost/units/systems/angle/degrees.hpp>
 
-#ifndef SNARK_BATTERY_OCEAN_IO_H
-#define SNARK_BATTERY_OCEAN_IO_H
 
-namespace snark { namespace ocean {
+namespace snark { namespace robot_arm {
 
-template < typename Derived >
-struct query_io
-{
-    void set_timeout( const boost::posix_time::time_duration& duration )  {  
-        return static_cast< Derived* >( this )->set_timeout_impl( duration );
-    }
+typedef boost::units::quantity< boost::units::si::plane_angle > plane_angle_t;
+typedef boost::units::quantity< boost::units::degree::plane_angle > plane_angle_degrees_t;
+typedef boost::units::quantity< boost::units::si::length > length_t;
 
-    ocean8 read() {
-        return static_cast< Derived* >( this )->read_impl();
-    }
+const plane_angle_t::unit_type radian = boost::units::si::radian;
+const plane_angle_degrees_t::unit_type degrees = boost::units::degree::degrees;
+const length_t::unit_type meter = boost::units::si::meter;
+
+} } // namespace snark { namespace robot_arm {
     
-    void write( ocean8 value ) {
-        return static_cast< Derived* >( this )->write_impl( value );
-    };
 
-};
-
-
-} } // namespace snark { namespace ocean {
-
-
-#endif // SNARK_BATTERY_OCEAN_IO_H
+#endif //  SNARK_ACTUATORS_ROBOT_ARM_UNITS_H
