@@ -114,8 +114,8 @@ void usage(int code=1)
     std::cerr << "    --verbose               - Output each line received from Ocean Controller, (X) hexadecimal mode only." << std::endl;
     std::cerr << "*   --beat=|-C=             - Minium second/s between status update - 1Hz/beat, floating point e.g. 0.5." << std::endl;
     std::cerr << "*   --controller-id=|-C=    - Controller's ID: 1-9." << std::endl;
-    std::cerr << "    --update-all-interval=<num>|-I=<num>" << std::endl;
-    std::cerr << "                            - How many iteration of querying currents only before, querying everything. Use with --query-mode only." << std::endl;
+    std::cerr << "    --update-all-iteration=<num>|-I=<num>" << std::endl;
+    std::cerr << "                            - The <num> th iteration will be query all data - slower than just querying current values. Use with --query-mode only." << std::endl;
     std::cerr << "    [--num-of-batteries=]   - The number of batteries for this controller" << std::endl;
     std::vector< std::string > names = comma::csv::names< stats_t >();
     std::cerr << "    --fields="  << comma::join( names, ',' ) << " total num of fields: " << names.size() << std::endl;
@@ -138,7 +138,8 @@ comma::csv::binary< T >& binary() {
     return binary_;
 }
 
-/// update the controller with recieved data, returns the battery ID of the data in line 
+/// update the controller with recieved data, returns the battery ID of updated battery
+/// For(X) Hexadecimal mode
 template < int B >
 int update_controller( controller< B >& controller, const std::string& line )
 {
@@ -205,6 +206,7 @@ int update_controller( controller< B >& controller, const std::string& line )
 static bool is_binary = false;
 static bool status_in_json = false;
 
+/// Write status to oss publisher
 void publish_status( const stats_t& stats, publisher& oss )
 {
      if( is_binary )
@@ -221,7 +223,7 @@ void publish_status( const stats_t& stats, publisher& oss )
          oss << out << '\n';
      }
 }
-
+/// Write status to 'oss' stream
 void output( const stats_t& stats, std::ostream& oss=std::cout )
 {
      if( is_binary )
@@ -288,6 +290,7 @@ int main( int ac, char** av )
 
         if( !is_query_mode ) { std::cerr << name() << ": controller id is " << controller_id << std::endl; }
         
+        /// For testing of externl pipe line, produce output in th correct format
         if( options.exists( "--sample" ) )
         {
             stats_t stats;
@@ -308,13 +311,15 @@ int main( int ac, char** av )
         ptime future = microsec_clock::universal_time();
         stats_t stats( controller_id );
 
-        snark::ocean::stdio_query io;
+        snark::ocean::stdio_query_wrapper io;
         static const boost::posix_time::seconds timeout( 1 );
         io.set_timeout( timeout );
         
         snark::ocean::serial_query uart;
         if( is_query_mode )
         {
+            /// If no serial connection, the program is bound by socat with stdin and stdout
+            /// e.g. socat /dev/ttyO1,b19200,raw EXEC:"ocean-to-csv --query-mode -C 1 -B 1" TODO : out of sync problem
             if( serial_conn )
             {
                 std::vector< std::string > v = comma::split( *serial_conn, ':' );
@@ -351,8 +356,8 @@ int main( int ac, char** av )
         }
 
         
-        comma::uint16 modulo = 3;
-        if( options.exists( "--all-interval" ) ) { modulo = options.value< comma::uint16 >( "--all-interval" ); }
+        comma::uint16 modulo = 5;
+        if( options.exists( "--update-all-iteration" ) ) { modulo = options.value< comma::uint16 >( "--update-all-iteration" ); }
         comma::uint16 counter = modulo; // For update all on first iteration
         while( std::cin.good() || serial_conn ) // If using serial connection then std::cin is not read
         {
