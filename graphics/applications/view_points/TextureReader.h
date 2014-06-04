@@ -65,7 +65,7 @@ class TextureReader : public Reader
         void start();
         std::size_t update( const Eigen::Vector3d& offset );
         const Eigen::Vector3d& somePoint() const;
-        bool readOnce();
+        bool read_once();
         void render( QGLPainter *painter );
         bool empty() const;
 

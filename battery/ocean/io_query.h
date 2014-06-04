@@ -33,6 +33,7 @@
 #ifndef SNARK_OCEAN_IO_QUERY_H
 #define SNARK_OCEAN_IO_QUERY_H
 #include <comma/base/types.h>
+#include <comma/io/select.h>
 #include <boost/date_time/posix_time/ptime.hpp>
 #include <boost/date_time/posix_time/posix_time_duration.hpp>
 #include <boost/array.hpp>
@@ -42,23 +43,60 @@
 #include <iostream>
 #include "commands.h"
 #include "battery.h"
+#include "io_interface.h"
+#include "serial_io.h"
+#include "stdio_query.h"
 
 namespace snark { namespace ocean {
     
-class stdio_query 
+class stdio_query_wrapper : public query_io< stdio_query_wrapper > 
 {
 public:
-    ocean8 read()
+    stdio_query_wrapper() : timeout_( boost::posix_time::milliseconds( 1000 ) )  {}
+
+    void set_timeout_impl( const boost::posix_time::time_duration& duration ) { timeout_ = duration; }
+
+    ocean8 read_impl()
     {
-        return std::cin.get();
+        std::string data( 1u, '\0' );
+        io_.receive( data, timeout_ ); // throws on timeout( cancel error code ) or failure
+
+        return data[0];
     }
     
-    void write( ocean8 value )
+    void write_impl( ocean8 value )
     {
-        // std::cerr << "Writing bin char: " << int( value ) << std::endl;
-        std::cout.write( (const char*) &value, 1u );
+        io_.write( (const char*) &value, 1u );
         std::cout.flush();
     };
+
+    boost::posix_time::time_duration timeout_;
+    stdio_query io_;
+};
+
+struct serial_query : public query_io< serial_query >
+{
+    serial_query() {}
+    serial_query( const std::string& device, comma::uint32 baud ) : serial( device, baud ) {}
+    void set_timeout_impl( boost::posix_time::time_duration duration ) { serial.set_timeout( duration ); }
+
+    void open( const std::string& device, comma::uint32 baud ){ serial.open( device, baud );}
+    
+    ocean8 read_impl() 
+    {
+        ocean8 c; 
+        serial.read( (char*) &c, 1u );
+        // std::cerr << "read: " << int(c) << std::endl;
+        return c; 
+    }
+    
+    void write_impl( ocean8 value )
+    {
+        // std::cerr << "write: " << int(value) << std::endl;
+        serial.write( (const char*) &value, 1u ); 
+    }
+    
+    serial_io serial;
 };
 
 template < int B, ocean8 ADDR, typename IO >
@@ -93,25 +131,28 @@ namespace impl_ {
 template < int B, typename CONTROLLER, typename IO >
 struct update_controller
 {
-    static void update( CONTROLLER& controller, IO& io )
+    static void update( CONTROLLER& controller, IO& io, bool update_all=true )
     {
         controller.batteries[B-1] & query< B, address::current >( io );
-        controller.batteries[B-1] & query< B, address::average_current >( io );
-        controller.batteries[B-1] & query< B, address::temperature >( io );
-        controller.batteries[B-1] & query< B, address::voltage >( io );
-        controller.batteries[B-1] & query< B, address::rel_state_of_charge >( io );
-        controller.batteries[B-1] & query< B, address::remaining_capacity >( io );
-        controller.batteries[B-1] & query< B, address::run_time_to_empty >( io );
-        controller.batteries[B-1] & query< B, address::status >( io );
+        if( update_all )
+        {
+            controller.batteries[B-1] & query< B, address::average_current >( io );
+            controller.batteries[B-1] & query< B, address::temperature >( io );
+            controller.batteries[B-1] & query< B, address::voltage >( io );
+            controller.batteries[B-1] & query< B, address::rel_state_of_charge >( io );
+            controller.batteries[B-1] & query< B, address::remaining_capacity >( io );
+            controller.batteries[B-1] & query< B, address::run_time_to_empty >( io );
+            controller.batteries[B-1] & query< B, address::status >( io );
+        }
         
-        update_controller< B - 1, CONTROLLER, IO >::update( controller, io );
+        update_controller< B - 1, CONTROLLER, IO >::update( controller, io, update_all );
     }
 };
 
 template < typename CONTROLLER, typename IO >
 struct update_controller< 0, CONTROLLER, IO >
 {
-    static void update( CONTROLLER& controller, IO& io ) {}
+    static void update( CONTROLLER& controller, IO& io, bool update_all=true ) {}
 };
     
 } //namespace impl_ {
@@ -121,19 +162,19 @@ struct update_controller< 0, CONTROLLER, IO >
 /// Query the HW controller via IO type and populate the controller< N > with data for up to a specified number of batteries.
 ///  num_of_batteries is the number of batteries to query e.g. 4 for querying batteries 1-4
 template < typename IO, int N >
-void query( controller< N >& controller, IO& io, char num_of_batteries=N )
+void query( controller< N >& controller, IO& io, bool update_all=true, char num_of_batteries=N )
 {
     typedef  ocean::controller< N > controller_t;
     switch( num_of_batteries )
     {
-        case 8:  { impl_::update_controller< 8, controller_t, IO >::update( controller, io ); break; }
-        case 7:  { impl_::update_controller< 7, controller_t, IO >::update( controller, io ); break; }
-        case 6:  { impl_::update_controller< 6, controller_t, IO >::update( controller, io ); break; }
-        case 5:  { impl_::update_controller< 5, controller_t, IO >::update( controller, io ); break; }
-        case 4:  { impl_::update_controller< 4, controller_t, IO >::update( controller, io ); break; }
-        case 3:  { impl_::update_controller< 3, controller_t, IO >::update( controller, io ); break; }
-        case 2:  { impl_::update_controller< 2, controller_t, IO >::update( controller, io ); break; }
-        default: { impl_::update_controller< 1, controller_t, IO >::update( controller, io ); break; }
+        case 8:  { impl_::update_controller< 8, controller_t, IO >::update( controller, io, update_all ); break; }
+        case 7:  { impl_::update_controller< 7, controller_t, IO >::update( controller, io, update_all ); break; }
+        case 6:  { impl_::update_controller< 6, controller_t, IO >::update( controller, io, update_all ); break; }
+        case 5:  { impl_::update_controller< 5, controller_t, IO >::update( controller, io, update_all ); break; }
+        case 4:  { impl_::update_controller< 4, controller_t, IO >::update( controller, io, update_all ); break; }
+        case 3:  { impl_::update_controller< 3, controller_t, IO >::update( controller, io, update_all ); break; }
+        case 2:  { impl_::update_controller< 2, controller_t, IO >::update( controller, io, update_all ); break; }
+        default: { impl_::update_controller< 1, controller_t, IO >::update( controller, io, update_all ); break; }
     }
 }
     

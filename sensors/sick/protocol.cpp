@@ -165,7 +165,11 @@ class protocol::impl
             m_istream->read( &m_buf[0] + offset, header::size - offset );
             if( m_istream->gcount() == 0 ) { return false; }
             if( m_istream->eof() || m_istream->bad() || m_istream->gcount() != static_cast< int >( header::size - offset ) ) { COMMA_THROW( comma::exception, "failed to read packet header" ); }
-            if( !m_header->valid() ) { COMMA_THROW( comma::exception, "invalid header (stream from laser went out of sync)" ); }
+            if( !m_header->valid() )
+            {
+                m_synchronized = false;
+                COMMA_THROW( comma::exception, "invalid header (stream from laser went out of sync)" );
+            }
             const std::size_t size = m_header->payload_size();
             if( m_buf.size() < size + header::size )
             {

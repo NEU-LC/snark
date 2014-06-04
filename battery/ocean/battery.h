@@ -70,7 +70,7 @@ struct battery_t
     voltage_t voltage;  /// voltage using boost units
     current_t current;  /// current, see addresses
     current_t average_current;  // average_current, see addresses and specs
-    temperature_t temperature;  /// temp in SI unit eg Kelvins
+    celcius_t temperature;  /// temp in celcius
     power_t remaining_capacity;
     double charge_pc; // Charge percentage
     boost::posix_time::time_duration time_to_empty;     /// duration to empty
@@ -146,21 +146,28 @@ struct controller
     ///  Where num is the number of batteries present in the controller, a controller< 8 > may in hardware reality
     ///  only have 4 batteries, so only four of them are ever updated by broadcasted data. However you may use
     ///  controller< 4 > or controller< 8 > type.
-    void consolidate( std::size_t num = N)
+    void consolidate( std::size_t num = N )
     {
         total_current = 0*ampere;
         total_power = 0*watt;
         average_voltage = 0*volt;
         average_charge = 0;
+        char num_active_batteries = 0;
         for( const_iter it=batteries.begin(); it!=batteries.end(); ++it ) 
         { 
+            if( it->state == battery_state::uninitialised ) { continue; }
+
+            ++num_active_batteries;
             total_current += it->average_current;
             total_power += it->remaining_capacity;
             average_voltage += it->voltage;
             average_charge += it->charge_pc;
         } 
-        average_voltage /= num;
-        average_charge /= num;
+        
+        if( num_active_batteries == 0 ) { return; }
+        
+        average_voltage /= num_active_batteries;
+        average_charge /= num_active_batteries;
         state = batteries.front().state;
     }
 };

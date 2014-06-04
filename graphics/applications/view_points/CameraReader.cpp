@@ -70,7 +70,7 @@ bool CameraReader::isShutdown() const { return m_shutdown; }
 
 void CameraReader::read()
 {
-    while( !m_shutdown && readOnce() );
+    while( !m_shutdown && read_once() );
     std::cerr << "view-points: end of camera stream " << options.filename << std::endl;
     m_shutdown = true;
 }
@@ -80,7 +80,7 @@ void CameraReader::start()
     m_thread.reset( new boost::thread( boost::bind( &CameraReader::read, boost::ref( *this ) ) ) );
 }
 
-bool CameraReader::readOnce()
+bool CameraReader::read_once()
 {
     try
     {

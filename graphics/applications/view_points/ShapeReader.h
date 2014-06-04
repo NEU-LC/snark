@@ -41,6 +41,7 @@
 //#include <windows.h>
 #endif
 
+#include "./block_buffer.h"
 #include "./Reader.h"
 #include "./ShapeWithId.h"
 
@@ -55,31 +56,34 @@ class ShapeReader : public Reader
         void start();
         std::size_t update( const Eigen::Vector3d& offset );
         const Eigen::Vector3d& somePoint() const;
-        bool readOnce();
+        bool read_once();
         void render( QGLPainter *painter = NULL );
         bool empty() const;
 
     private:
-        typedef std::deque< ShapeWithId< S > > DequeType;
-        DequeType m_deque;
+        typedef std::deque< ShapeWithId< S > > deque_t_;
+        deque_t_ m_deque;
         mutable boost::mutex m_mutex;
         boost::scoped_ptr< comma::csv::input_stream< ShapeWithId< S > > > m_stream;
-        qt3d::vertex_buffer m_buffer;
-        std::vector< std::pair< QVector3D, std::string > > m_labels;
-        unsigned int m_labelIndex;
-        unsigned int m_labelSize;
+        qt3d::vertex_buffer buffer_;
+        struct label_t_ // quick and dirty
+        {
+            QVector3D position;
+            QColor4ub color;
+            std::string text;
+            label_t_() {}
+            label_t_( const QVector3D& position, const QColor4ub& color, const std::string& text ) : position( position ), color( color ), text( text ) {}
+        };
+        block_buffer< label_t_ > labels_;
         ShapeWithId< S > sample_;
 };
 
-
 template< typename S, typename How >
-ShapeReader< S, How >::ShapeReader( QGLView& viewer, comma::csv::options& options, std::size_t size, coloured* c, unsigned int pointSize, const std::string& label, const S& sample  ):
-    Reader( viewer, options, size, c, pointSize, label ),
-    m_buffer( size * Shapetraits< S, How >::size ),
-    m_labels( size ),
-    m_labelIndex( 0 ),
-    m_labelSize( 0 ),
-    sample_( sample )
+ShapeReader< S, How >::ShapeReader( QGLView& viewer, comma::csv::options& options, std::size_t size, coloured* c, unsigned int pointSize, const std::string& label, const S& sample  )
+    : Reader( viewer, options, size, c, pointSize, label )
+    , buffer_( size * Shapetraits< S, How >::size )
+    , labels_( size )
+    , sample_( sample )
 {
 }
 
@@ -93,9 +97,16 @@ template< typename S, typename How >
 inline std::size_t ShapeReader< S, How >::update( const Eigen::Vector3d& offset )
 {
     boost::mutex::scoped_lock lock( m_mutex );
-    for( typename DequeType::iterator it = m_deque.begin(); it != m_deque.end(); ++it )
+    for( typename deque_t_::iterator it = m_deque.begin(); it != m_deque.end(); ++it )
     {
-        Shapetraits< S, How >::update( it->shape, offset, it->color, it->block, m_buffer, m_extents );
+        Shapetraits< S, How >::update( it->shape, offset, it->color, it->block, buffer_, m_extents );
+        const Eigen::Vector3d& center = Shapetraits< S, How >::center( it->shape );
+        labels_.add( label_t_( QVector3D( center.x(), center.y(), center.z() ), it->color, it->label ), it->block );
+    }
+    if( m_shutdown )
+    {
+        buffer_.toggle();
+        labels_.toggle();
     }
     std::size_t s = m_deque.size();
     m_deque.clear();
@@ -123,16 +134,16 @@ inline void ShapeReader< S, How >::render( QGLPainter* painter )
 {
     painter->setStandardEffect(QGL::FlatPerVertexColor);
     painter->clearAttributes();
-    painter->setVertexAttribute(QGL::Position, m_buffer.points() );
-    painter->setVertexAttribute(QGL::Color, m_buffer.color() );
+    painter->setVertexAttribute(QGL::Position, buffer_.points() );
+    painter->setVertexAttribute(QGL::Color, buffer_.color() );
 
-    Shapetraits< S, How >::draw( painter, m_buffer.size(), m_buffer.index() );
-    for( unsigned int i = 0; i < m_labelSize; i++ ) { drawLabel( painter, m_labels[ i ].first, m_labels[ i ].second ); }
-    if( !m_label.empty() ) { drawLabel( painter, m_translation ); }
+    Shapetraits< S, How >::draw( painter, buffer_.size(), buffer_.index() );
+    for( unsigned int i = 0; i < labels_.size(); i++ ) { draw_label( painter, labels_.values()[i].position, labels_.values()[i].color, labels_.values()[i].text ); }
+    if( !m_label.empty() ) { draw_label( painter, m_translation ); }
 }
 
 template< typename S, typename How >
-inline bool ShapeReader< S, How >::readOnce()
+inline bool ShapeReader< S, How >::read_once()
 {
     try
     {
@@ -155,14 +166,7 @@ inline bool ShapeReader< S, How >::readOnce()
             return false;
         }
         ShapeWithId< S > v = *p;
-        Eigen::Vector3d center = Shapetraits< S, How >::center( v.shape );
-        if( !v.label.empty() )
-        {
-            m_labels[ m_labelIndex ] = std::make_pair( QVector3D( center.x(), center.y(), center.z() ) , v.label );
-            ++m_labelIndex;
-            if( m_labelSize < m_labels.size() ) { ++m_labelSize; }
-            if( m_labelIndex > m_labels.size() ) { m_labelIndex = 0; }
-        }
+        const Eigen::Vector3d& center = Shapetraits< S, How >::center( v.shape );
         v.color = m_colored->color( center, p->id, p->scalar, p->color );
         boost::mutex::scoped_lock lock( m_mutex );
         m_deque.push_back( v );

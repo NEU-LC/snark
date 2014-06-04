@@ -57,15 +57,6 @@ comma::csv::ascii< T >& ascii() {
 
 typedef hex_value_t< comma::uint16 > hex_uint16;
 
-TEST(ocean, ocean_bin_query )
-{
-    snark::ocean::stdio_query io;
-
-    comma::uint16 value = cmd_query< 1, address::rel_state_of_charge > ( io );
-
-    EXPECT_EQ( 99, value );
-}
-
 TEST(ocean, ocean_test_strip )
 {
     std::string source = "$B15,17,0026,18,19c8,19,3840,1a,0010,1b,302f,1C,00cc%11\r";

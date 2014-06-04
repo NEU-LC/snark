@@ -75,7 +75,7 @@ class Reader
         virtual void start() = 0;
         virtual std::size_t update( const Eigen::Vector3d& offset ) = 0;
         virtual const Eigen::Vector3d& somePoint() const = 0;
-        virtual bool readOnce() = 0;
+        virtual bool read_once() = 0;
         virtual void render( QGLPainter *painter ) = 0;
         virtual bool empty() const = 0;
 
@@ -88,8 +88,10 @@ class Reader
 
     protected:
         bool updatePoint( const Eigen::Vector3d& offset );
-        void drawLabel( QGLPainter* painter, const QVector3D& position, const std::string& label );
-        void drawLabel( QGLPainter* painter, const QVector3D& position );
+        void draw_label( QGLPainter* painter, const QVector3D& position, const std::string& label );
+        void draw_label( QGLPainter* painter, const QVector3D& position, const QColor4ub& color, const std::string& label );
+        void draw_label( QGLPainter* painter, const QVector3D& position );
+        void draw_label( QGLPainter* painter, const QVector3D& position, const QColor4ub& color );
 
         friend class Viewer;
         QGLView& m_viewer;
