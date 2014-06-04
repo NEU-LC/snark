@@ -47,6 +47,7 @@
 #include <comma/csv/stream.h>
 #include "../traits.h"
 #include "../commands.h"
+#include "../inputs.h"
 
 static const char* name() {
     return "robot-arm-daemon: ";
@@ -64,16 +65,13 @@ void usage(int code=1)
 {
     std::cerr << std::endl;
     std::cerr << name() << std::endl;
-    std::cerr << "example: " << name() << " --rover-id=5 --linear 192.168.1.100:7000:5000 --sleep=0.05 --dxl 192.168.1.100:9000:9100" << std::endl;
+    std::cerr << "example: " << name() << " " << std::endl;
     std::cerr << "options:" << std::endl;
-    std::cerr << "   --rover-id=<5>   - Specifies the Mammoth rover's ID." << std::endl;
-    std::cerr << "   --sleep=<0.1>    - The sleep time between simulink steps, set to 0 for no sleep time." << std::endl;
-    std::cerr << "                    - On DXL read/write error, do not exit but wait until success, afterwards it waits 24 steps before processing commands." << std::endl;
-    std::cerr << "   --debug          - Debug: Use when running servo stubs and no rover-base backend." << std::endl;
-    std::cerr << "   --buffering      - Debug: Turns on input command buffering, default is off." << std::endl;
     std::cerr << std::endl;
     exit ( code );
 }
+
+namespace arm = snark::robot_arm;
 
 int main( int ac, char** av )
 {
@@ -86,9 +84,32 @@ int main( int ac, char** av )
     using boost::posix_time::ptime;
 
 
+
     try
     {
         std::cerr << name() << "started" << std::endl;
+        comma::uint16 rover_id = options.value< comma::uint16 >( "--rover-id" );
+        double sleep = options.value< double >( "--sleep" );
+
+        arm::inputs inputs( rover_id );
+
+        typedef std::vector< std::string > command_vector;
+
+        const comma::uint32 usec( sleep * 1000000u );
+        while( std::cin.good() )
+        {
+            inputs.read();
+            if( !inputs.is_empty() )
+            {
+                const command_vector& v = inputs.front();
+                std::cerr << name() << " got " << comma::join( v, ',' ) << std::endl;
+
+                inputs.pop();
+            }
+
+            usleep( usec );
+        }
+
 
         
     }
