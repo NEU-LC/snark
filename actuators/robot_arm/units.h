@@ -48,7 +48,7 @@ typedef boost::units::quantity< boost::units::degree::plane_angle > plane_angle_
 typedef boost::units::quantity< boost::units::si::length > length_t;
 
 const plane_angle_t::unit_type radian = boost::units::si::radian;
-const plane_angle_degrees_t::unit_type degrees = boost::units::degree::degrees;
+const plane_angle_degrees_t::unit_type degree = boost::units::degree::degrees;
 const length_t::unit_type meter = boost::units::si::meter;
 
 } } // namespace snark { namespace robot_arm {

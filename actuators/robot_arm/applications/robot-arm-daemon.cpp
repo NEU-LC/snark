@@ -73,6 +73,49 @@ void usage(int code=1)
 
 namespace arm = snark::robot_arm;
 
+void output( const std::string& msg, std::ostream& os=std::cout )
+{
+    os << msg << std::endl;
+}
+
+template < typename C >
+std::string handle( const std::vector< std::string >& line )
+{
+    C c;
+    try
+    {
+        c = C::ascii().get( line );
+    }
+    catch( boost::bad_lexical_cast& le ) {
+        std::ostringstream ss;
+        ss << '<' << comma::join( line, ',' ) << ',' << impl_::str( arm::errors::format_error )
+           << ",\"command format error, wrong field type/s, fields: " << c.names() << " - types: "  << c.serialise() << "\";";
+        return ss.str();
+    }
+    catch( comma::exception& ce ) {
+        std::ostringstream ss;
+        ss << '<' << comma::join( line, ',' ) << ',' << impl_::str( arm::errors::format_error )
+           << ",\"command format error, wrong field/s or field type/s, fields: " << c.names() << " - types: "  << c.serialise() << "\";";
+        return ss.str();
+    }
+    catch( ... ) { COMMA_THROW( comma::exception, "unknown error is parsing: " + comma::join( line , ',' ) ); }
+       
+    
+    return "error!!!!!";
+    // basics::result ret = action< C >::run( c, rover );
+    // std::ostringstream ss;
+    // ss << '<' << c.serialise() << ',' << ret.code << ",\"" << ret.message << "\";";
+    // return ss.str();
+}
+
+void process_command( const std::vector< std::string >& v )
+{
+    if( v[2] == "WAYPOINT" ) { output( handle< arm::move_cam >( v ) ); }
+    if( v[2] == "STOP" )     { output( handle< arm::move_joints >( v ) ); }
+    else { output( comma::join( v, v.size(), ',' ) + ',' + 
+        impl_::str( arm::errors::unknown_command ) + ",\"unknown command found: '" + v[2] + "'\"" ); return; }
+}
+
 int main( int ac, char** av )
 {
     
@@ -83,7 +126,7 @@ int main( int ac, char** av )
     using boost::posix_time::seconds;
     using boost::posix_time::ptime;
 
-
+    char batch_size = 10; // number of commands to process
 
     try
     {
@@ -99,7 +142,7 @@ int main( int ac, char** av )
         while( std::cin.good() )
         {
             inputs.read();
-            if( !inputs.is_empty() )
+            for( std::size_t i=0; !inputs.is_empty() && i<batch_size; ++i )
             {
                 const command_vector& v = inputs.front();
                 std::cerr << name() << " got " << comma::join( v, ',' ) << std::endl;

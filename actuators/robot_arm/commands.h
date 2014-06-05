@@ -46,6 +46,11 @@
 
 namespace snark { namespace robot_arm {
 
+struct errors {
+    enum error_code { success=0, unknown_command=401, format_error=402, incorrrect_operation=403 };
+};
+
+
 template < typename Derived > 
 struct serialiser
 {
@@ -85,8 +90,8 @@ struct command_base : public serialiser< Derived >
 struct move_cam : command_base< move_cam >
 {
     // static const char* name_str = "MOVE_CAM";
-    plane_angle_t pan;
-    plane_angle_t tilt;
+    plane_angle_degrees_t pan;
+    plane_angle_degrees_t tilt;
     length_t    height;
 };
 
@@ -96,7 +101,7 @@ struct move_joints : command_base< move_joints >
     static const char joint_num = 6;
 
     /// angle for each joint
-    std::vector< plane_angle_t > joints;
+    std::vector< plane_angle_degrees_t > joints;
 
     move_joints() : joints( joint_num ) {}
 };
@@ -112,9 +117,9 @@ struct move_effector : command_base< move_effector >
 {
     // static const char* name_str = "MOVEF";
     position offset;    // position offset from base of arm
-    plane_angle_t pan;
-    plane_angle_t tilt;
-    plane_angle_t roll;
+    plane_angle_degrees_t pan;
+    plane_angle_degrees_t tilt;
+    plane_angle_degrees_t roll;
 
 };
 

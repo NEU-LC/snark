@@ -1,6 +1,5 @@
 #ifndef SNARK_ACTUATORS_ROBOT_ARM_TRAITS_H
 #define SNARK_ACTUATORS_ROBOT_ARM_TRAITS_H
-
 // This file is part of snark, a generic and flexible library for robotics research
 // Copyright (c) 2011 The University of Sydney
 // All rights reserved.
@@ -36,6 +35,33 @@
 
 #include "commands.h"
 #include <comma/visiting/traits.h>
+#include "units.h"
+
+// namespace boost {
+    
+// /// Make quantity a fundamental type so far as visiting is concerned
+// // template <  > struct boost::units::quantity< snark::robot_arm::plane_angle_degrees_t > : public true_type {};
+// template <  typename T > struct is_fundamental< boost::units::quantity< T > > : public true_type {};
+
+// }
+
+// /// For lexical_cast
+// template < typename T >
+// std::ostream& operator<<( std::ostream& ostream, const boost::units::quantity< T >& val )
+// {
+//     ostream << val.value();
+//     return ostream;
+// }
+
+// /// For lexical_cast
+// template < typename T >
+// std::istream& operator>>( std::istream& istream, boost::units::quantity< T >& val )
+// {
+//     double d;
+//     istream >> d;
+//     val = d * boost::units::quantity< T >::unit_type;
+//     return istream;
+// }
 
 namespace comma { namespace visiting {
     
@@ -64,17 +90,21 @@ template <> struct traits< robot_arm::move_cam >
     template< typename K, typename V > static void visit( const K& k, robot_arm::move_cam& t, V& v )
     {
     	traits< command_base < robot_arm::move_cam > >::visit(k, t, v);
-        v.apply( "pan", t.pan );
-        v.apply( "tilt", t.tilt );
-        v.apply( "height", t.height );
+        double p, l, h;
+        v.apply( "pan", p );
+        t.pan = p * robot_arm::degree;
+        v.apply( "tilt", l );
+        t.tilt = l * robot_arm::degree;
+        v.apply( "height", h );
+        t.height = h * robot_arm::meter;
     }
 
     template< typename K, typename V > static void visit( const K& k, const robot_arm::move_cam& t, V& v )
     {
     	traits< command_base < robot_arm::move_cam > >::visit(k, t, v);
-        v.apply( "pan", t.pan );
-        v.apply( "tilt", t.tilt );
-        v.apply( "height", t.height );
+        v.apply( "pan", t.pan.value() );
+        v.apply( "tilt", t.tilt.value() );
+        v.apply( "height", t.height.value() );
     }
 };
 
@@ -101,18 +131,40 @@ template <> struct traits< robot_arm::move_effector >
     {
         traits< command_base < robot_arm::move_effector > >::visit(k, t, v);
         v.apply( "offset", t.offset );
-        v.apply( "pan", t.pan );
-        v.apply( "tilt", t.tilt );
-        v.apply( "roll", t.roll );
+        double p, l, r;
+        v.apply( "pan", p );
+        t.pan = p * robot_arm::degree;
+        v.apply( "tilt", l );
+        t.tilt = l * robot_arm::degree;
+        v.apply( "roll", r );
+        t.roll = r * robot_arm::degree;
     }
 
     template< typename K, typename V > static void visit( const K& k, const robot_arm::move_effector& t, V& v )
     {
         traits< command_base < robot_arm::move_effector > >::visit(k, t, v);
         v.apply( "offset", t.offset );
-        v.apply( "pan", t.pan );
-        v.apply( "tilt", t.tilt );
-        v.apply( "roll", t.roll );
+        v.apply( "pan", t.pan.value() );
+        v.apply( "tilt", t.tilt.value() );
+        v.apply( "roll", t.roll.value() );
+    }
+};
+template <> struct traits< std::vector< robot_arm::plane_angle_degrees_t > >
+{
+    template< typename K, typename V > static void visit( const K& k, std::vector< robot_arm::plane_angle_degrees_t >& t, V& v )
+    {
+        for( std::size_t i=0; i<t.size(); ++i ) {
+            double d = 0;
+            v.apply( boost::lexical_cast< std::string >( i ).c_str(), d );
+            t[i] = d * robot_arm::degree;
+        }
+    }
+
+    template< typename K, typename V > static void visit( const K& k, const std::vector< robot_arm::plane_angle_degrees_t >& t, V& v )
+    {
+        for( std::size_t i=0; i<t.size(); ++i ) {
+            v.apply( boost::lexical_cast< std::string >( i ).c_str(), t[i].value() );
+        }
     }
 };
 
