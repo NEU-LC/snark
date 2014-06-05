@@ -36,6 +36,7 @@
 #include <boost/date_time/posix_time/ptime.hpp>
 #include <boost/date_time/posix_time/posix_time_duration.hpp>
 #include <boost/optional.hpp>
+#include <boost/algorithm/string.hpp>
 #include <comma/application/command_line_options.h>
 #include <comma/csv/stream.h>
 #include <comma/base/types.h>
@@ -78,6 +79,22 @@ void output( const std::string& msg, std::ostream& os=std::cout )
     os << msg << std::endl;
 }
 
+template < typename T > struct action;
+
+template < > struct action< arm::move_cam > {
+    static void run( const arm::move_cam& cam )
+    {
+        std::cerr << name() << " running " << cam.serialise() << std::endl; 
+    }  
+};
+
+template < > struct action< arm::move_joints > {
+    static void run( const arm::move_joints& joints )
+    {
+        std::cerr << name() << " running " << joints.serialise() << std::endl; 
+    }  
+};
+
 template < typename C >
 std::string handle( const std::vector< std::string >& line )
 {
@@ -100,18 +117,18 @@ std::string handle( const std::vector< std::string >& line )
     }
     catch( ... ) { COMMA_THROW( comma::exception, "unknown error is parsing: " + comma::join( line , ',' ) ); }
        
-    
-    return "error!!!!!";
-    // basics::result ret = action< C >::run( c, rover );
-    // std::ostringstream ss;
-    // ss << '<' << c.serialise() << ',' << ret.code << ",\"" << ret.message << "\";";
-    // return ss.str();
+    // perform action
+    action< C >::run( c );
+    // always successful for now
+    std::ostringstream ss;
+    ss << '<' << c.serialise() << ',' << 0 << ",\"success\";";
+    return ss.str();
 }
 
 void process_command( const std::vector< std::string >& v )
 {
-    if( v[2] == "WAYPOINT" ) { output( handle< arm::move_cam >( v ) ); }
-    if( v[2] == "STOP" )     { output( handle< arm::move_joints >( v ) ); }
+    if( boost::iequals( v[2], "move_cam" ) )    { output( handle< arm::move_cam >( v ) ); }
+    else if( boost::iequals( v[2], "movej" ) )  { output( handle< arm::move_joints >( v ) ); }
     else { output( comma::join( v, v.size(), ',' ) + ',' + 
         impl_::str( arm::errors::unknown_command ) + ",\"unknown command found: '" + v[2] + "'\"" ); return; }
 }
@@ -146,6 +163,7 @@ int main( int ac, char** av )
             {
                 const command_vector& v = inputs.front();
                 std::cerr << name() << " got " << comma::join( v, ',' ) << std::endl;
+                process_command( v );
 
                 inputs.pop();
             }
