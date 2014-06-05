@@ -43,68 +43,35 @@
 #include <iostream>
 #include "commands.h"
 #include "battery.h"
+#include "io_interface.h"
 #include "serial_io.h"
+#include "stdio_query.h"
 
 namespace snark { namespace ocean {
-
-template < typename Derived >
-struct query_io
-{
-    void set_timeout( const boost::posix_time::time_duration& duration )  {  
-        return static_cast< Derived* >( this )->set_timeout_impl( duration );
-    }
-
-    ocean8 read() {
-        return static_cast< Derived* >( this )->read_impl();
-    }
     
-    void write( ocean8 value ) {
-        return static_cast< Derived* >( this )->write_impl( value );
-    };
-
-};
-    
-class stdio_query : public query_io< stdio_query > 
+class stdio_query_wrapper : public query_io< stdio_query_wrapper > 
 {
 public:
-    stdio_query() : select_(), timeout_( boost::posix_time::milliseconds( 0 ) ) 
-    { 
-        select_.read().add( comma::io::stdin_fd ); 
-        select_write_.write().add( comma::io::stdout_fd ); 
-    }
+    stdio_query_wrapper() : timeout_( boost::posix_time::milliseconds( 1000 ) )  {}
 
     void set_timeout_impl( const boost::posix_time::time_duration& duration ) { timeout_ = duration; }
 
     ocean8 read_impl()
     {
-        select_.wait( timeout_ );
-        if( select_.read().ready( comma::io::stdin_fd ) ) 
-        { 
-            return std::cin.get();
-            // ocean8 c( std::cin.get() ); 
-            // std::cerr << "Reading bin char: " << int( c ) << std::endl;
-            // return c;
-        }
-        else { COMMA_THROW( comma::exception, "reading from stdin timed out" ); }
+        std::string data( 1u, '\0' );
+        io_.receive( data, timeout_ ); // throws on timeout( cancel error code ) or failure
 
-        return ocean8(0);
+        return data[0];
     }
     
     void write_impl( ocean8 value )
     {
-        // std::cerr << "Writing bin char: " << int( value ) << std::endl;
-        select_write_.wait( timeout_ );
-        if( !( select_write_.write().ready( comma::io::stdout_fd ) ) )
-            { COMMA_THROW( comma::exception, "write from stdout timed out" ); }
-
-        std::cout.write( (const char*) &value, 1u );
+        io_.write( (const char*) &value, 1u );
         std::cout.flush();
     };
 
-private:
-    comma::io::select select_;
-    comma::io::select select_write_;
     boost::posix_time::time_duration timeout_;
+    stdio_query io_;
 };
 
 struct serial_query : public query_io< serial_query >

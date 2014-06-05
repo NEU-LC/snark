@@ -166,6 +166,13 @@ static filters::value_type encode_impl_( filters::value_type m, const std::strin
     return p;
 }
 
+static filters::value_type grab_impl_( filters::value_type m, const std::string& type )
+{
+    std::string filename = boost::posix_time::to_iso_string( m.first.is_not_a_date_time() ? boost::posix_time::microsec_clock::universal_time() : m.first );
+    filename += "." + type;
+    cv::imwrite( filename, m.second );
+    return filters::value_type(); // HACK to notify application to exit
+}
 
 static filters::value_type file_impl_( filters::value_type m, const std::string& type )
 {
@@ -434,6 +441,12 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
             f.push_back( filter( boost::bind( &encode_impl_, _1, s ) ) );
             last = true;
         }
+        else if( e[0] == "grab" )
+        {
+            if( e.size() < 2 ) { COMMA_THROW( comma::exception, "expected encoding type like jpg, ppm, etc" ); }
+            std::string s = e[1];
+            f.push_back( filter( boost::bind( &grab_impl_, _1, s ) ) );
+        }
         else if( e[0] == "file" )
         {
             if( e.size() < 2 ) { COMMA_THROW( comma::exception, "expected file type like jpg, ppm, etc" ); }
@@ -491,7 +504,8 @@ static std::string usage_impl_()
     oss << "        view[=<wait-interval>]: view image; press <space> to save image (timestamp or system time as filename); <esc>: to close" << std::endl;
     oss << "                                <wait-interval>: a hack for now; milliseconds to wait for image display and key press; default 1" << std::endl;
     oss << "        encode=<format>: encode images to the specified format. <format>: jpg|ppm|png|tiff..., make sure to use --no-header" << std::endl;
-    oss << "        file=<format>: write images to files with timestamp as name in the specified format. <format>: jpg|ppm|png|tiff...; if no timestamp, system time used" << std::endl;
+    oss << "        grab=<format>: write an image to file with timestamp as name in the specified format. <format>: jpg|ppm|png|tiff..., if no timestamp, system time is used" << std::endl;
+    oss << "        file=<format>: write images to files with timestamp as name in the specified format. <format>: jpg|ppm|png|tiff...; if no timestamp, system time is used" << std::endl;
     return oss.str();
 }
 
