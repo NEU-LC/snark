@@ -35,8 +35,13 @@
 #include <iostream>
 #include <sstream>
 #include <comma/application/command_line_options.h>
+#include <comma/application/contact_info.h>
 #include <comma/csv/stream.h>
+#include <comma/name_value/to_xml.h>
+#include <comma/visiting/apply.h>
 #include <comma/visiting/traits.h>
+#include <snark/kml/document.h>
+#include <snark/kml/traits.h>
 
 void usage( bool verbose = false )
 {
@@ -44,19 +49,21 @@ void usage( bool verbose = false )
     std::cerr << "usage: cat points.csv | csv-to-kml [<what>] [<options>] > points.kml" << std::endl;
     std::cerr << std::endl;
     std::cerr << "what" << std::endl;
-    std::cerr << "    header: output kml header" << std::endl;
+    std::cerr << "    header: output kml document header" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "    footer: output kml footer" << std::endl;
+    std::cerr << "    footer: output kml document footer" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "    points: output points (todo)" << std::endl;
-    std::cerr << "        fields: latitude,longitude,altitude; default: latitude,longitude" << std::endl;
+    std::cerr << "    points,placemarks: output placemarks" << std::endl;
+    std::cerr << "        fields: latitude,longitude,name,style; default: latitude,longitude" << std::endl;
+    std::cerr << "                values of any other non-empty field names will be added to" << std::endl;
+    std::cerr << "                the text baloon" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "    trajectory: output trajectory as line" << std::endl;
+    std::cerr << "    line-string,trajectory: output trajectory as line" << std::endl;
     std::cerr << "        fields: latitude,longitude,altitude; default: latitude,longitude,altitude" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    --name=<name>; name" << std::endl;
-    std::cerr << "    --style=<style url>; style url" << std::endl;
+    std::cerr << "    --style-url,--style=<style url>; style url" << std::endl;
     std::cerr << "    --altitude-mode=<how>; absolute | relative; default: relative" << std::endl;
     std::cerr << std::endl;
     std::cerr << "examples" << std::endl;
@@ -75,102 +82,37 @@ void usage( bool verbose = false )
     std::cerr << "EOF" << std::endl;
     std::cerr << "    csv-to-kml footer >> test.kml" << std::endl;
     std::cerr << std::endl;
+    std::cerr << comma::contact_info << std::endl;
+    std::cerr << std::endl;
 }
-
-namespace snark { namespace kml {
-
-struct coordinates
-{
-    double latitude;
-    double longitude;
-
-    coordinates() : latitude( 0 ), longitude( 0 ) {}
-};
-
-struct position
-{
-    kml::coordinates coordinates;
-    double altitude;
-
-    position() : altitude( 0 ) {}
-};
-
-} } // namespace snark { namespace kml {
 
 struct input
 {
     snark::kml::position position;
+    std::string name;
+    std::string style;
 };
 
 namespace comma { namespace visiting {
-
-template <> struct traits< snark::kml::coordinates > // quick and dirty?
-{
-    template< typename K, typename V > static void visit( const K&, snark::kml::coordinates& t, V& v )
-    {
-        v.apply( "latitude", t.latitude );
-        v.apply( "longitude", t.longitude );
-    }
-
-    template< typename K, typename V > static void visit( const K&, const snark::kml::coordinates& t, V& v )
-    {
-        v.apply( "latitude", t.latitude );
-        v.apply( "longitude", t.longitude );
-    }
-};
-
-template <> struct traits< snark::kml::position > // quick and dirty?
-{
-    template< typename K, typename V > static void visit( const K&, snark::kml::position& t, V& v )
-    {
-        v.apply( "coordinates", t.coordinates );
-        v.apply( "altitude", t.altitude );
-    }
-
-    template< typename K, typename V > static void visit( const K&, const snark::kml::position& t, V& v )
-    {
-        v.apply( "coordinates", t.coordinates );
-        v.apply( "altitude", t.altitude );
-    }
-};
 
 template <> struct traits< input > // quick and dirty?
 {
     template< typename K, typename V > static void visit( const K&, input& t, V& v )
     {
         v.apply( "position", t.position );
+        v.apply( "name", t.name );
+        v.apply( "style", t.style );
     }
 
     template< typename K, typename V > static void visit( const K&, const input& t, V& v )
     {
         v.apply( "position", t.position );
+        v.apply( "name", t.name );
+        v.apply( "style", t.style );
     }
 };
 
 } } // namespace comma { namespace visiting {
-
-static const std::string header = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-                                  "<kml xmlns=\"http://www.opengis.net/kml/2.2\" xmlns:gx=\"http://www.google.com/kml/ext/2.2\" xmlns:kml=\"http://www.opengis.net/kml/2.2\">\n"
-                                  "<Document>";
-
-static const std::string footer = "</Document>\n"
-                                  "</kml>";
-
-static std::string trajectory_placemark_header( const std::string& name, const std::string& style, const std::string& altitude_mode )
-{
-    std::ostringstream oss;
-    oss << "<Placemark>\n";
-    if( !name.empty() ) { oss << "    <name>" << name << "</name>\n"; }
-    if( !style.empty() ) { oss << "    <styleUrl>" << style << "</styleUrl>\n"; }
-    oss << "    <LineString>\n";
-    oss << "        <altitudeMode>" << altitude_mode << "</altitudeMode>\n";
-    oss << "        <coordinates>";
-    return oss.str();
-}
-
-static const std::string trajectory_placemark_footer = "        </coordinates>\n"
-                                                       "    </LineString>\n"
-                                                       "</Placemark>";
 
 int main( int ac, char** av )
 {
@@ -182,39 +124,50 @@ int main( int ac, char** av )
         if( unnamed.size() > 1 ) { std::cerr << "csv-to-kml: expected one operation name; got " << comma::join( unnamed, ' ' ) << std::endl; return 1; }
         std::string what = "points";
         if( !unnamed.empty() ) { what = unnamed[0]; }
-        if( what == "points" )
+        if( what == "trajectory" || what == "line-string" )
         {
-            std::cerr << "csv-to-kml: todo" << std::endl;
-            return 1;
-        }
-        else if( what == "trajectory" )
-        {
-            std::string name = options.value< std::string >( "--name", "" );
-            std::string style = options.value< std::string >( "--style", "" );
-            std::string altitude_mode = options.value< std::string >( "--altitude-mode", "relative" );
-
-            // todo: any non-zero fields -> cdata
-
-            std::cout << trajectory_placemark_header( name, style, altitude_mode ) << std::endl;
+            snark::kml::document document;
+            document.placemarks.resize( 1 );
+            snark::kml::placemark& placemark = document.placemarks[0];
+            placemark.name = options.optional< std::string >( "--name" );
+            placemark.style_url = options.optional< std::string >( "--style-url,--style" );
+            placemark.line_string = snark::kml::line_string();
+            placemark.line_string->altitude_mode = options.optional< std::string >( "--altitude-mode" );
+            if( csv.fields.empty() ) { csv.fields = "latitude,longitude,altitude"; }
             comma::csv::input_stream< input > istream( std::cin, csv );
             while( std::cin.good() )
             {
                 const input* p = istream.read();
                 if( !p ) { break; }
-                std::cout << "            " << p->position.coordinates.longitude << "," << p->position.coordinates.latitude << "," << p->position.altitude << std::endl;
+                placemark.line_string->coordinates.push_back( p->position );
             }
-            std::cout << trajectory_placemark_footer << std::endl;
+            comma::to_xml x( std::cout, 4, 1 );
+            comma::visiting::apply( x ).to( document );
             return 0;
         }
-        else if( what == "header" )
+        else if( what == "placemarks" || what == "points" )
         {
-            std::cout << header << std::endl;
+//             std::string name = options.value< std::string >( "--name", "" );
+//             std::string style = options.value< std::string >( "--style-url,--style", "" );
+//             if( csv.fields.empty() ) { csv.fields = "latitude,longitude"; }
+//             comma::csv::input_stream< input > istream( std::cin, csv );
+//             while( std::cin.good() )
+//             {
+//                 const input* p = istream.read();
+//                 if( !p ) { break; }
+//                 std::cout << placemark_header( name, style ) << std::endl;
+//                 std::cout <<
+//                 // todo
+//
+//                 std::cout << placemark_footer << std::endl;
+//                 std::cout << std::endl;
+//             }
+            return 0;
         }
-        else if( what == "footer" )
-        {
-            std::cout << footer << std::endl;
-        }
-        return 0;
+        if( what == "header" ) { std::cout << snark::kml::header(); return 0; }
+        if( what == "footer" ) { std::cout << snark::kml::footer(); return 0; }
+        std::cerr << "csv-to-kml: expected an operation; got: \"" << what << "\"" << std::endl;
+        return 1;
     }
     catch( std::exception& ex )
     {
