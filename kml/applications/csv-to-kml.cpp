@@ -37,6 +37,7 @@
 #include <comma/application/command_line_options.h>
 #include <comma/application/contact_info.h>
 #include <comma/csv/stream.h>
+#include <comma/name_value/parser.h>
 #include <comma/name_value/to_xml.h>
 #include <comma/visiting/apply.h>
 #include <comma/visiting/traits.h>
@@ -59,7 +60,7 @@ void usage( bool verbose = false )
     std::cerr << "                the text baloon" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    line-string,trajectory: output trajectory as line" << std::endl;
-    std::cerr << "        fields: latitude,longitude,altitude; default: latitude,longitude,altitude" << std::endl;
+    std::cerr << "        fields: latitude,longitude,altitude; default: latitude,longitude" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    --name=<name>; name" << std::endl;
@@ -114,6 +115,34 @@ template <> struct traits< input > // quick and dirty?
 
 } } // namespace comma { namespace visiting {
 
+static std::vector< std::string > exclude_fields( const std::string& fields, const std::string& excluded )
+{
+    std::vector< std::string > v = comma::split( fields, ',' );
+    std::vector< std::string > e = comma::split( excluded, ',' );
+    for( std::size_t i = 0; i < e.size(); ++i )
+    {
+        for( std::size_t j = 0; j < v.size(); ++j ) { if( v[j] == e[i] ) { v[j] = ""; } }
+    }
+    bool empty = true;
+    for( std::size_t j = 0; j < v.size() && empty; empty = v[j].empty(), ++j );
+    if( empty ) { v.clear(); }
+    return v;
+}
+
+static std::string description( const std::vector< std::string >& fields, const std::vector< std::string >& values )
+{
+    std::ostringstream oss;
+    oss << "<![CDATA[" << std::endl;
+    oss << "    <table>" << std::endl;
+    for( std::size_t i = 0; i < fields.size(); ++i )
+    {
+        if( !fields[i].empty() ) { oss << "        <tr><td><b>" << fields[i] << ":</b></td><td>" << values[i] << "</td></tr>" << std::endl; }
+    }
+    oss << "    </table>" << std::endl;
+    oss << "]]>" << std::endl;
+    return oss.str();
+}
+
 int main( int ac, char** av )
 {
     try
@@ -133,7 +162,7 @@ int main( int ac, char** av )
             placemark.style_url = options.optional< std::string >( "--style-url,--style" );
             placemark.line_string = snark::kml::line_string();
             placemark.line_string->altitude_mode = options.optional< std::string >( "--altitude-mode" );
-            if( csv.fields.empty() ) { csv.fields = "latitude,longitude,altitude"; }
+            if( csv.fields.empty() ) { csv.fields = "latitude,longitude"; }
             comma::csv::input_stream< input > istream( std::cin, csv );
             while( std::cin.good() )
             {
@@ -147,21 +176,32 @@ int main( int ac, char** av )
         }
         else if( what == "placemarks" || what == "points" )
         {
-//             std::string name = options.value< std::string >( "--name", "" );
-//             std::string style = options.value< std::string >( "--style-url,--style", "" );
-//             if( csv.fields.empty() ) { csv.fields = "latitude,longitude"; }
-//             comma::csv::input_stream< input > istream( std::cin, csv );
-//             while( std::cin.good() )
-//             {
-//                 const input* p = istream.read();
-//                 if( !p ) { break; }
-//                 std::cout << placemark_header( name, style ) << std::endl;
-//                 std::cout <<
-//                 // todo
-//
-//                 std::cout << placemark_footer << std::endl;
-//                 std::cout << std::endl;
-//             }
+            snark::kml::document default_document;
+            default_document.placemarks.resize( 1 );
+            default_document.placemarks[0].name = options.optional< std::string >( "--name" );
+            default_document.placemarks[0].style_url = options.optional< std::string >( "--style-url,--style" );
+            default_document.placemarks[0].altitude_mode = options.optional< std::string >( "--altitude-mode" );
+            if( csv.fields.empty() ) { csv.fields = "latitude,longitude"; }
+            const std::vector< std::string > description_fields = exclude_fields( csv.fields, "latitude,longitude,altitude,name,style" );
+            comma::csv::input_stream< input > istream( std::cin, csv );
+            while( std::cin.good() ) // we could collect placemarks in a single document, but on large files streaming is more memory-efficient
+            {
+                const input* p = istream.read();
+                if( !p ) { break; }
+                snark::kml::document document = default_document;
+                document.placemarks[0].point.coordinates = p->position;
+                if( !p->name.empty() ) { document.placemarks[0].name = p->name; }
+                if( !p->style.empty() ) { document.placemarks[0].style_url = p->style; }
+                if( !description_fields.empty() )
+                {
+                    document.placemarks[0].description = description( description_fields
+                                                                    , csv.binary()
+                                                                    ? comma::split( csv.format().bin_to_csv( istream.binary().last() ), ',' )
+                                                                    : istream.ascii().last() );
+                }
+                comma::to_xml x( std::cout, 4, 1 );
+                comma::visiting::apply( x ).to( document );
+            }
             return 0;
         }
         if( what == "header" ) { std::cout << snark::kml::header(); return 0; }

@@ -8,6 +8,7 @@
 #include "./document.h"
 #include "./line_string.h"
 #include "./placemark.h"
+#include "./point.h"
 
 namespace comma { namespace visiting {
 
@@ -16,10 +17,19 @@ template <> struct traits< snark::kml::placemark >
     template< typename K, typename V > static void visit( const K&, const snark::kml::placemark& t, V& v )
     {
         v.apply( "name", t.name );
+        v.apply( "description", t.description );
         v.apply( "styleUrl", t.style_url );
         v.apply( "altitude_mode", t.altitude_mode );
-        if( t.coordinates ) { v.apply( "coordinates", snark::kml::as_string( *t.coordinates ) ); }
+        v.apply( "Point", t.point );
         v.apply( "LineString", t.line_string );
+    }
+};
+
+template <> struct traits< snark::kml::point >
+{
+    template< typename K, typename V > static void visit( const K&, const snark::kml::point& t, V& v )
+    {
+        v.apply( "coordinates", snark::kml::as_string( t.coordinates ) );
     }
 };
 
