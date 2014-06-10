@@ -240,6 +240,7 @@ IF( snark_build_battery )
     ADD_SUBDIRECTORY( battery )
 ENDIF( snark_build_battery )
 
+ADD_SUBDIRECTORY( kml )
 ADD_SUBDIRECTORY( timing )
 ADD_SUBDIRECTORY( visiting )
 
