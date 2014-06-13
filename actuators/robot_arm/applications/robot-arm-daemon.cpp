@@ -46,6 +46,7 @@
 #include <comma/io/stream.h>
 #include <comma/io/publisher.h>
 #include <comma/csv/stream.h>
+#include <comma/application/signal_flag.h>
 #include "../traits.h"
 #include "../commands.h"
 #include "../inputs.h"
@@ -136,6 +137,8 @@ void process_command( const std::vector< std::string >& v )
 int main( int ac, char** av )
 {
     
+    comma::signal_flag signaled;
+    
     comma::command_line_options options( ac, av );
     if( options.exists( "-h,--help" ) ) { usage( 0 ); }
     
@@ -145,9 +148,9 @@ int main( int ac, char** av )
 
     char batch_size = 10; // number of commands to process
 
+    std::cerr << name() << "started" << std::endl;
     try
     {
-        std::cerr << name() << "started" << std::endl;
         comma::uint16 rover_id = options.value< comma::uint16 >( "--rover-id" );
         double sleep = options.value< double >( "--sleep" );
 
@@ -156,10 +159,10 @@ int main( int ac, char** av )
         typedef std::vector< std::string > command_vector;
 
         const comma::uint32 usec( sleep * 1000000u );
-        while( std::cin.good() )
+        while( !signaled && std::cin.good() )
         {
             inputs.read();
-            for( std::size_t i=0; !inputs.is_empty() && i<batch_size; ++i )
+            for( std::size_t i=0; !signaled && !inputs.is_empty() && i<batch_size; ++i )
             {
                 const command_vector& v = inputs.front();
                 std::cerr << name() << " got " << comma::join( v, ',' ) << std::endl;

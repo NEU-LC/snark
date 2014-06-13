@@ -79,7 +79,6 @@ struct command_base : public serialiser< Derived >
     comma::uint16 rover_id;         /// The rover's ID number
     comma::int32 sequence_number;   /// Command seuqence number
     std::string name;   /// Command name e.g. STEER
-    // std::string values; /// store values to be returned by command
     command_base() : rover_id(0), sequence_number(0) {}
     command_base( comma::uint16 id, comma::int32 seq_no, const char* name_ ) :
         rover_id( id ), sequence_number( seq_no ), name( name_ ) {}
