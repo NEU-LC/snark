@@ -49,6 +49,7 @@
 #include <comma/io/stream.h>
 #include <comma/io/publisher.h>
 #include <comma/csv/stream.h>
+#include <comma/string/string.h>
 #include <comma/application/signal_flag.h>
 #include "../traits.h"
 #include "../commands.h"
@@ -157,6 +158,18 @@ template < > struct action< arm::move_joints > {
     }  
 };
 
+template < > struct action< arm::set_position > {
+    static void run( const arm::set_position& pos )
+    {
+        Arm_Controller_U.motion_primitive = input_primitive::set_position;
+        
+        Arm_Controller_U.Input_1 = pos.position == "giraffe" ? 
+                arm::set_position::giraffe : arm::set_position::home;
+//         std::cerr << name() << " running " << pos.serialise()  << " pos_input: " << Arm_Controller_U.Input_1 
+//             << " tag: " << pos.position << std::endl; 
+    }  
+};
+
 template < typename C >
 std::string handle( const std::vector< std::string >& line )
 {
@@ -190,6 +203,7 @@ std::string handle( const std::vector< std::string >& line )
 void process_command( const std::vector< std::string >& v )
 {
     if( boost::iequals( v[2], "move_cam" ) )    { output( handle< arm::move_cam >( v ) ); }
+    else if( boost::iequals( v[2], "set_pos" ) )  { output( handle< arm::set_position >( v ) ); }
     else if( boost::iequals( v[2], "movej" ) )  { output( handle< arm::move_joints >( v ) ); }
     else { output( comma::join( v, v.size(), ',' ) + ',' + 
         impl_::str( arm::errors::unknown_command ) + ",\"unknown command found: '" + v[2] + "'\"" ); return; }
@@ -207,8 +221,6 @@ int main( int ac, char** av )
     using boost::posix_time::seconds;
     using boost::posix_time::ptime;
 
-    char batch_size = 10; // number of commands to process
-    
     double acc = 0.5;
     double vel = 0.1;
     arm_output output( acc * accelleration_t::unit_type(), vel * velocity_t::unit_type(),
@@ -218,7 +230,8 @@ int main( int ac, char** av )
     try
     {
         comma::uint16 rover_id = options.value< comma::uint16 >( "--rover-id" );
-        double sleep = options.value< double >( "--sleep" );
+        double sleep = 0.2; // seconds
+        if( options.exists( "--sleep" ) ) { sleep = options.value< double >( "--sleep" ); };
 
         arm::inputs inputs( rover_id );
 
@@ -244,8 +257,8 @@ int main( int ac, char** av )
                 std::cout << output.serialise() << std::endl;
                 std::cout.flush();
                 
-                Arm_Controller_U.motion_primitive = real_T( input_primitive::no_action );
             }
+            Arm_Controller_U.motion_primitive = real_T( input_primitive::no_action );
 
             usleep( usec );
         }

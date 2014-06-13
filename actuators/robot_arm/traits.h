@@ -183,6 +183,21 @@ template <> struct traits< robot_arm::move_joints >
     }
 };
 
+template <> struct traits< robot_arm::set_position >
+{
+    template< typename K, typename V > static void visit( const K& k, robot_arm::set_position& t, V& v )
+    {
+        traits< command_base < robot_arm::set_position > >::visit(k, t, v);
+        v.apply( "position", t.position );
+    }
+
+    template< typename K, typename V > static void visit( const K& k, const robot_arm::set_position& t, V& v )
+    {
+        traits< command_base < robot_arm::set_position > >::visit(k, t, v);
+        v.apply( "position", t.position );
+    }
+};
+
 
 }} // namespace comma { namespace visiting {
 

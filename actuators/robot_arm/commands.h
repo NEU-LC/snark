@@ -105,6 +105,17 @@ struct move_joints : command_base< move_joints >
     move_joints() : joints( joint_num ) {}
 };
 
+/// For setting known pose: 'home' or 'giraffe'
+struct set_position : command_base< set_position >
+{
+    std::string position;
+    
+//     set_position(comma::uint16 id, comma::int32 seq_no, const char* name_);
+    set_position() : position( "home" ) {}
+    
+    enum { home=1, giraffe=2 };
+};
+
 struct position
 {
     double x;
