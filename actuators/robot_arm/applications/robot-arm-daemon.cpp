@@ -40,6 +40,7 @@
 #include <boost/units/systems/si/acceleration.hpp>
 #include <boost/units/systems/si/velocity.hpp>
 #include <boost/units/quantity.hpp>
+#include <boost/asio.hpp>
 #include <comma/application/command_line_options.h>
 #include <comma/csv/stream.h>
 #include <comma/base/types.h>
@@ -81,8 +82,13 @@ void usage(int code=1)
 {
     std::cerr << std::endl;
     std::cerr << name() << std::endl;
-    std::cerr << "example: " << name() << " " << std::endl;
+    std::cerr << "example: socat tcp-listen:9999,reuseaddr EXEC:\"robot-arm-daemon --id 7 -ip 127.0.0.1 -p 8888\" " << name() << " " << std::endl;
     std::cerr << "options:" << std::endl;
+    std::cerr << "    --help,-h: show this message" << std::endl;
+    std::cerr << "*   --id=: ID to identify commands, eg. ><ID>,999,set_pos,home;" << std::endl;
+    std::cerr << "*   --address=|-ip=: TCP IP address of the robot arm." << std::endl;
+    std::cerr << "*   --port=|-p=: TCP port number of robot arm" << std::endl;
+    std::cerr << "    --sleep=: loop sleep value in seconds, default to 0.2 if not specified." << std::endl;
     std::cerr << std::endl;
     exit ( code );
 }
@@ -220,6 +226,7 @@ int main( int ac, char** av )
     using boost::posix_time::microsec_clock;
     using boost::posix_time::seconds;
     using boost::posix_time::ptime;
+    using boost::asio::ip::tcp;
 
     double acc = 0.5;
     double vel = 0.1;
@@ -229,9 +236,21 @@ int main( int ac, char** av )
     std::cerr << name() << "started" << std::endl;
     try
     {
-        comma::uint16 rover_id = options.value< comma::uint16 >( "--rover-id" );
+        comma::uint16 rover_id = options.value< comma::uint16 >( "--id" );
         double sleep = 0.2; // seconds
         if( options.exists( "--sleep" ) ) { sleep = options.value< double >( "--sleep" ); };
+        
+        std::string arm_ip = options.value< std::string >( "--address,-ip" );
+        comma::uint16 port = options.value< comma::uint16 >( "--port,-p" );
+        
+        tcp::iostream robot_arm;
+        tcp::endpoint endpoint( boost::asio::ip::address::from_string( arm_ip ), port );
+        robot_arm.connect( endpoint );
+        
+        if( !robot_arm.good() ) {
+            std::cerr << name() << "failed to connect to robot arm at " << arm_ip << ':' << port << std::endl;
+            exit( 1 );
+        }
 
         arm::inputs inputs( rover_id );
 
@@ -254,9 +273,9 @@ int main( int ac, char** av )
             // We we need to send command to arm
             if( Arm_Controller_Y.command_flag > 0 )
             {
-                std::cout << output.serialise() << std::endl;
-                std::cout.flush();
-                
+//                 std::cerr << name() << "outputting " << std::endl;
+                robot_arm << output.serialise() << std::endl;
+                robot_arm.flush();
             }
             Arm_Controller_U.motion_primitive = real_T( input_primitive::no_action );
 
