@@ -37,6 +37,9 @@
 #include <boost/date_time/posix_time/posix_time_duration.hpp>
 #include <boost/optional.hpp>
 #include <boost/algorithm/string.hpp>
+#include <boost/units/systems/si/acceleration.hpp>
+#include <boost/units/systems/si/velocity.hpp>
+#include <boost/units/quantity.hpp>
 #include <comma/application/command_line_options.h>
 #include <comma/csv/stream.h>
 #include <comma/base/types.h>
@@ -50,6 +53,16 @@
 #include "../traits.h"
 #include "../commands.h"
 #include "../inputs.h"
+extern "C" {
+    #include "../simulink/Arm_Controller.h"
+}
+#include "../simulink/traits.h"
+
+/* External inputs (root inport signals with auto storage) */
+extern ExtU_Arm_Controller_T Arm_Controller_U;
+
+/* External outputs (root outports fed by signals with auto storage) */
+extern ExtY_Arm_Controller_T Arm_Controller_Y;
 
 static const char* name() {
     return "robot-arm-daemon: ";
@@ -75,10 +88,54 @@ void usage(int code=1)
 
 namespace arm = snark::robot_arm;
 
+template < typename T > 
+comma::csv::ascii< T >& ascii( )
+{
+    static comma::csv::ascii< T > ascii_;
+    return ascii_;
+}
+
+typedef boost::units::quantity< boost::units::si::acceleration > accelleration_t;
+typedef boost::units::quantity< boost::units::si::velocity > velocity_t;
+
+
+class arm_output
+{
+    
+    accelleration_t acceleration;
+    velocity_t velocity;
+    ExtY_Arm_Controller_T& joints;
+public:
+    arm_output( const accelleration_t& ac, const velocity_t& vel,
+                ExtY_Arm_Controller_T& output ) : 
+                acceleration( ac ), velocity( vel ), joints( output ) {}
+                
+   std::string serialise()
+   {
+       static std::string tmp;
+       std::ostringstream ss;
+       ss << "movej([" << ascii< ExtY_Arm_Controller_T >( ).put( joints, tmp )
+          << "],a=" << acceleration.value() << ','
+          << "v=" << velocity.value() << ')';
+       return ss.str();
+   }
+                
+};
+
+
 void output( const std::string& msg, std::ostream& os=std::cout )
 {
     os << msg << std::endl;
 }
+
+struct input_primitive
+{
+    enum {
+        no_action = 0,
+        move_cam = 1,
+        set_position = 2
+    };
+};
 
 template < typename T > struct action;
 
@@ -86,6 +143,10 @@ template < > struct action< arm::move_cam > {
     static void run( const arm::move_cam& cam )
     {
         std::cerr << name() << " running " << cam.serialise() << std::endl; 
+        Arm_Controller_U.motion_primitive = real_T( input_primitive::move_cam );
+        Arm_Controller_U.Input_1 = cam.pan.value();
+        Arm_Controller_U.Input_2 = cam.tilt.value();
+        Arm_Controller_U.Input_3 = cam.height.value();
     }  
 };
 
@@ -147,6 +208,11 @@ int main( int ac, char** av )
     using boost::posix_time::ptime;
 
     char batch_size = 10; // number of commands to process
+    
+    double acc = 0.5;
+    double vel = 0.1;
+    arm_output output( acc * accelleration_t::unit_type(), vel * velocity_t::unit_type(),
+                       Arm_Controller_Y );
 
     std::cerr << name() << "started" << std::endl;
     try
@@ -162,13 +228,23 @@ int main( int ac, char** av )
         while( !signaled && std::cin.good() )
         {
             inputs.read();
-            for( std::size_t i=0; !signaled && !inputs.is_empty() && i<batch_size; ++i )
+            if( !inputs.is_empty() )
             {
                 const command_vector& v = inputs.front();
                 std::cerr << name() << " got " << comma::join( v, ',' ) << std::endl;
                 process_command( v );
 
                 inputs.pop();
+            }
+            
+            Arm_Controller_step();
+            // We we need to send command to arm
+            if( Arm_Controller_Y.command_flag > 0 )
+            {
+                std::cout << output.serialise() << std::endl;
+                std::cout.flush();
+                
+                Arm_Controller_U.motion_primitive = real_T( input_primitive::no_action );
             }
 
             usleep( usec );
