@@ -10,6 +10,10 @@ namespace snark { namespace kml {
 struct document
 {
     std::vector< kml::placemark > placemarks;
+
+    static const std::string tag() { return "<Document>\n"; } // quick and dirty
+
+    static const std::string gat() { return "</Document>\n"; } // quick and dirty
 };
 
 const std::string& header();

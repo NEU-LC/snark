@@ -30,6 +30,7 @@ template <> struct traits< snark::kml::point >
     template< typename K, typename V > static void visit( const K&, const snark::kml::point& t, V& v )
     {
         v.apply( "coordinates", snark::kml::as_string( t.coordinates ) );
+        v.apply( "extrude", t.extrude );
     }
 };
 
