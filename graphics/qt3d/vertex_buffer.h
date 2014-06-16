@@ -38,12 +38,16 @@
 
 #include <Qt3D/qvector3darray.h>
 #include <Qt3D/qcolor4ub.h>
+#include "./block_buffer.h"
 
 namespace snark { namespace graphics { namespace qt3d {
 
 /// circular double buffer for vertices and color
 /// accumulating points blockwise
 /// once the block is complete
+///
+/// @todo terribly coupled; use generic vertex_buffer implementation in view-points
+///       it is easy to refactor, just a bit fiddly, since it is used in label-points, too
 class vertex_buffer
 {
     public:
@@ -83,6 +87,7 @@ class vertex_buffer
         unsigned int read_index_;
         unsigned int write_index_;
         unsigned int read_size_;
+        unsigned int write_end_;
         unsigned int write_size_;
         unsigned int buffer_size_;
         unsigned int block_;

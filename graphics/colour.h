@@ -77,10 +77,10 @@ class colour : public comma::Point< T, 4 >
 //         /// conversion constructor
 //         template < typename S >
 //         colour( const colour< S >& rhs );
-// 
+//
 //         /// assignment
 //         const colour< T >& operator=( const colour& rhs );
-// 
+//
 //         /// conversion assignment
 //         template < typename S >
 //         const colour< T >& operator=( const colour< S >& rhs );
@@ -202,14 +202,14 @@ inline colour< T >::colour( T r, T g, T b, T a )
 // template < typename T >
 // template < typename S >
 // inline colour< T >::colour( const colour< S >& rhs ) { operator=( rhs ); }
-// 
+//
 // template < typename T >
 // inline const colour< T >& colour< T >::operator=( const colour& rhs )
 // {
 //     this->comma::Point< T, 4 >::operator=( rhs );
 //     return *this;
 // }
-// 
+//
 // template < typename T >
 // template < typename S >
 // inline const colour< T >& colour< T >::operator=( const colour< S >& rhs )
@@ -309,7 +309,7 @@ T colour< T >::brightness() const
 
 } } // namespace snark { namespace graphics {
 
-namespace snark { namespace Visiting {
+namespace comma { namespace visiting {
 
 /// visiting traits
 template < typename T > struct traits< snark::graphics::colour< T > >
@@ -340,6 +340,6 @@ template < typename T > struct traits< snark::graphics::colour< T > >
     }
 };
 
-} } // namespace snark { namespace Visiting {
+} } // namespace comma { namespace visiting {
 
 #endif /*SNARK_GRAPHICS_COLOUR_HEADER_GUARD_*/

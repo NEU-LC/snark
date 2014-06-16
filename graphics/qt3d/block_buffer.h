@@ -37,6 +37,7 @@
 
 #include <vector>
 #include <boost/array.hpp>
+#include <boost/concept_check.hpp>
 
 namespace snark { namespace graphics {
 
@@ -78,9 +79,10 @@ class block_buffer
         unsigned int index() const;
 
     protected:
-        unsigned int read_index_;
-        unsigned int write_index_;
+        unsigned int read_block_;
+        unsigned int write_block_;
         unsigned int read_size_;
+        unsigned int write_end_;
         unsigned int write_size_;
         unsigned int block_;
         boost::array< Storage, 2 > values_;
@@ -88,9 +90,10 @@ class block_buffer
 
 template < typename T, typename Storage >
 inline block_buffer< T, Storage >::block_buffer( std::size_t size )
-    : read_index_( 0 )
-    , write_index_( 0 )
+    : read_block_( 0 )
+    , write_block_( 0 )
     , read_size_( 0 )
+    , write_end_( 0 )
     , write_size_( 0 )
     , block_( 0 )
 {
@@ -103,35 +106,35 @@ inline void block_buffer< T, Storage >::add( const T& t, unsigned int block )
 {
     if( block != block_ ) { toggle(); }
     block_ = block;
-    values_[write_index_][write_size_] = t;
-    ++write_size_;
-    if( read_index_ == write_index_ ) { ++read_size_; }
-    if( write_size_ < values_[0].size() ) { return; }
-    write_size_ = 0;
-    read_size_ = values_[0].size();
+    values_[write_block_][write_end_] = t;
+    if( write_size_ < values_[0].size() ) { ++write_size_; }
+    if( read_block_ == write_block_ ) { read_size_ = write_size_; }
+    ++write_end_;
+    if( write_end_ == values_[0].size() ) { write_end_ = 0; }
 }
 
 template < typename T, typename Storage >
 inline void block_buffer< T, Storage >::toggle()
 {
     if( write_size_ == 0 ) { return; }
-    write_index_ = 1 - write_index_;
-    if( read_index_ == write_index_ )
+    write_block_ = 1 - write_block_;
+    if( read_block_ == write_block_ )
     {
-        read_index_ = 1 - read_index_;
+        read_block_ = 1 - read_block_;
         read_size_ = write_size_;
     }
+    write_end_ = 0;
     write_size_ = 0;
 }
 
 template < typename T, typename Storage >
-inline const Storage& block_buffer< T, Storage >::values() const { return values_[read_index_]; }
+inline const Storage& block_buffer< T, Storage >::values() const { return values_[read_block_]; }
 
 template < typename T, typename Storage >
 inline unsigned int block_buffer< T, Storage >::size() const { return read_size_; }
 
 template < typename T, typename Storage >
-inline unsigned int block_buffer< T, Storage >::index() const { return read_index_; }
+inline unsigned int block_buffer< T, Storage >::index() const { return read_block_; }
 
 } } // namespace snark { namespace graphics {
 
