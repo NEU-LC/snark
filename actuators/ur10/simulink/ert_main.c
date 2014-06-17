@@ -3,9 +3,9 @@
  *
  * Code generated for Simulink model 'Arm_Controller'.
  *
- * Model version                  : 1.92
+ * Model version                  : 1.129
  * Simulink Coder version         : 8.6 (R2014a) 27-Dec-2013
- * C/C++ source code generated on : Fri Jun 13 11:52:31 2014
+ * C/C++ source code generated on : Tue Jun 17 15:45:59 2014
  *
  * Target selection: ert.tlc
  * Embedded hardware selection: 32-bit Generic
@@ -76,7 +76,7 @@ int_T main(int_T argc, const char *argv[])
   Arm_Controller_initialize();
 
   /* Attach rt_OneStep to a timer or interrupt service routine with
-   * period 0.2 seconds (the model's base sample time) here.  The
+   * period 1.0 seconds (the model's base sample time) here.  The
    * call syntax for rt_OneStep is
    *
    *  rt_OneStep();

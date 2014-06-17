@@ -116,6 +116,12 @@ struct set_position : command_base< set_position >
     enum { home=1, giraffe=2 };
 };
 
+/// Reads arm current joint positions and save as home position
+struct set_home : command_base< set_home >
+{
+    set_home() : command_base< set_home >( 0, 0, "set_home" ) {}
+};
+
 struct position
 {
     double x;
