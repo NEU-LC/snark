@@ -1,5 +1,5 @@
-SET( PROJECT "robot_arm" )
-SET( DIR "actuators/robot_arm" )
+SET( PROJECT "ur10" )
+SET( DIR "actuators/ur10" )
 SET( TARGET_NAME snark_${PROJECT} )
 
 FILE( GLOB source   ${SOURCE_CODE_BASE_DIR}/${DIR}/*.cpp)
