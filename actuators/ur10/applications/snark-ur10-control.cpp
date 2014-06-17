@@ -215,6 +215,27 @@ void process_command( const std::vector< std::string >& v )
         impl_::str( arm::errors::unknown_command ) + ",\"unknown command found: '" + v[2] + "'\"" ); return; }
 }
 
+namespace ip = boost::asio::ip;
+/// Connect to the TCP server within the allowed timeout
+/// Needed because comma::io::iostream is not available
+bool tcp_connect( const std::string& conn_str, 
+                  const boost::posix_time::time_duration& timeout, ip::tcp::iostream& io )
+{
+    using boost::asio::ip::tcp;
+    std::vector< std::string > v = comma::split( conn_str, ':' );
+    boost::asio::io_service service;
+    tcp::resolver resolver( service );
+    tcp::resolver::query query( v[0] == "localhost" ? "127.0.0.1" : v[0], v[1] );
+    tcp::resolver::iterator it = resolver.resolve( query );
+    
+    io.expires_from_now( timeout );
+    io.connect( it->endpoint() );
+    
+    io.expires_at( boost::posix_time::pos_infin );
+    
+    return io.error() == 0;
+} 
+
 int main( int ac, char** av )
 {
     
@@ -240,15 +261,12 @@ int main( int ac, char** av )
         double sleep = 0.2; // seconds
         if( options.exists( "--sleep" ) ) { sleep = options.value< double >( "--sleep" ); };
         
-        std::string arm_ip = options.value< std::string >( "--address,-ip" );
-        comma::uint16 port = options.value< comma::uint16 >( "--port,-p" );
-        
+        std::string arm_conn = options.value< std::string >( "--robot-arm" );
         tcp::iostream robot_arm;
-        tcp::endpoint endpoint( boost::asio::ip::address::from_string( arm_ip ), port );
-        robot_arm.connect( endpoint );
-        
-        if( !robot_arm.good() ) {
-            std::cerr << name() << "failed to connect to robot arm at " << arm_ip << ':' << port << std::endl;
+        if( !tcp_connect( arm_conn, boost::posix_time::seconds(1), robot_arm ) ) 
+        {
+            std::cerr << name() << "failed to connect to robot arm at " 
+                      << arm_conn << " - " << robot_arm.error().message() << std::endl;
             exit( 1 );
         }
 
