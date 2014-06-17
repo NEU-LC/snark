@@ -41,6 +41,7 @@ vertex_buffer::vertex_buffer( std::size_t size )
     : read_index_( 0 )
     , write_index_( 0 )
     , read_size_( 0 )
+    , write_end_( 0 )
     , write_size_( 0 )
     , buffer_size_( size )
     , block_( 0 )
@@ -53,13 +54,12 @@ void vertex_buffer::add_vertex( const QVector3D& point, const QColor4ub& color, 
 {
     if( block != block_ ) { toggle(); }
     block_ = block;
-    points_[ write_index_ + write_size_ ] = point;
-    color_[ write_index_ + write_size_ ] = color;
-    ++write_size_;
-    if( read_index_ == write_index_ ) { ++read_size_; }
-    if( write_size_ < buffer_size_ ) { return; }
-    write_size_ = 0;
-    read_size_ = buffer_size_;
+    points_[ write_index_ + write_end_ ] = point;
+    color_[ write_index_ + write_end_ ] = color;
+    if( write_size_ < buffer_size_ ) { ++write_size_; }
+    if( read_index_ == write_index_ ) { read_size_ = write_size_; }
+    ++write_end_;
+    if( write_end_ == buffer_size_ ) { write_end_ = 0; }
 }
 
 void vertex_buffer::toggle()
@@ -69,8 +69,9 @@ void vertex_buffer::toggle()
     if( read_index_ == write_index_ )
     {
         read_index_ = buffer_size_ - read_index_;
-        read_size_ = write_size_;
+        read_size_ = write_end_;
     }
+    write_end_ = 0;
     write_size_ = 0;
 }
 

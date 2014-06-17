@@ -14,7 +14,7 @@ struct placemark
     boost::optional< std::string > description;
     boost::optional< std::string > style_url;
     boost::optional< std::string > altitude_mode;
-    kml::point point;
+    boost::optional< kml::point > point;
     boost::optional< kml::line_string > line_string;
 };
 

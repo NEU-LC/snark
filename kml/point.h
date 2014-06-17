@@ -10,6 +10,9 @@ namespace snark { namespace kml {
 struct point
 {
     kml::position coordinates;
+    bool extrude;
+
+    point() : extrude( false ) {}
 };
 
 } } // namespace snark { namespace kml {
