@@ -311,9 +311,8 @@ int main( int ac, char** av )
         ptime future = microsec_clock::universal_time();
         stats_t stats( controller_id );
 
-        snark::ocean::stdio_query_wrapper io;
+        boost::scoped_ptr< snark::ocean::stdio_query_wrapper > io;
         static const boost::posix_time::seconds timeout( 1 );
-        io.set_timeout( timeout );
         
         snark::ocean::serial_query uart;
         if( is_query_mode )
@@ -330,6 +329,11 @@ int main( int ac, char** av )
                 }
                 uart.open( v[0],  baud );
                 uart.serial.set_timeout( timeout );
+            }
+            else
+            {
+                io.reset( new snark::ocean::stdio_query_wrapper() );
+                io->set_timeout( timeout );
             }
             
             // try updating one battery, and get the controller in sync with the application
@@ -348,7 +352,7 @@ int main( int ac, char** av )
                 if( serial_conn )
                     snark::ocean::query( stats.controller, uart, false /* update_all */ , 1 /*num_of_batteries*/ ); 
                 else
-                    snark::ocean::query( stats.controller, io, false /* update_all */ , 1 /*num_of_batteries*/ ); 
+                    snark::ocean::query( stats.controller, *io, false /* update_all */ , 1 /*num_of_batteries*/ ); 
             }
             catch( std::exception& e ) {
                 std::cerr << name() << " initiating error." << std::endl;
@@ -369,7 +373,7 @@ int main( int ac, char** av )
                     snark::ocean::query( stats.controller, uart, update_all, num_of_batteries );
                 }
                 else {
-                    snark::ocean::query( stats.controller, io, update_all, num_of_batteries );
+                    snark::ocean::query( stats.controller, *io, update_all, num_of_batteries );
                 }
                 
                 stats.time = microsec_clock::universal_time();

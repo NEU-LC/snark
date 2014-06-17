@@ -31,58 +31,22 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-/// @author Cedric Wohlleber
-
-#include "./vertex_buffer.h"
-
-namespace snark { namespace graphics { namespace qt3d {
-
-vertex_buffer::vertex_buffer( std::size_t size )
-    : read_index_( 0 )
-    , write_index_( 0 )
-    , read_size_( 0 )
-    , write_end_( 0 )
-    , write_size_( 0 )
-    , buffer_size_( size )
-    , block_( 0 )
-    , points_( 2 * size )
-    , color_( 2 * size )
-{
-}
-
-void vertex_buffer::add_vertex( const QVector3D& point, const QColor4ub& color, unsigned int block )
-{
-    if( block != block_ ) { toggle(); }
-    block_ = block;
-    points_[ write_index_ + write_end_ ] = point;
-    color_[ write_index_ + write_end_ ] = color;
-    if( write_size_ < buffer_size_ ) { ++write_size_; }
-    if( read_index_ == write_index_ ) { read_size_ = write_size_; }
-    ++write_end_;
-    if( write_end_ == buffer_size_ ) { write_end_ = 0; }
-}
-
-void vertex_buffer::toggle()
-{
-    if( write_size_ == 0 ) { return; }
-    write_index_ = buffer_size_ - write_index_;
-    if( read_index_ == write_index_ )
-    {
-        read_index_ = buffer_size_ - read_index_;
-        read_size_ = write_end_;
-    }
-    write_end_ = 0;
-    write_size_ = 0;
-}
-
-const QVector3DArray& vertex_buffer::points() const { return points_; }
-
-const QArray< QColor4ub >& vertex_buffer::color() const { return color_; }
-
-unsigned int vertex_buffer::size() const { return read_size_; }
-
-unsigned int vertex_buffer::index() const { return read_index_; }
+#include "commands.h"
 
 
+namespace snark { namespace robot_arm {
 
-} } } // namespace snark { namespace graphics { namespace qt3d {
+
+// basic::result waypoint::check_inputs_impl()
+// {
+// 	if( point.x < min || point.x > max ) {
+// 		return basic::result( "point.x exceeds limit", command_errors::exceed_limit );
+// 	}
+// 	if( point.y < min || point.y > max ) {
+// 		return basic::result( "point.y exceeds limit", command_errors::exceed_limit );
+// 	}
+
+// 	return basic::result();
+// }
+
+} } // namespace snark { namespace robot_arm {

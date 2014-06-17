@@ -30,59 +30,28 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
-/// @author Cedric Wohlleber
-
-#include "./vertex_buffer.h"
-
-namespace snark { namespace graphics { namespace qt3d {
-
-vertex_buffer::vertex_buffer( std::size_t size )
-    : read_index_( 0 )
-    , write_index_( 0 )
-    , read_size_( 0 )
-    , write_end_( 0 )
-    , write_size_( 0 )
-    , buffer_size_( size )
-    , block_( 0 )
-    , points_( 2 * size )
-    , color_( 2 * size )
-{
-}
-
-void vertex_buffer::add_vertex( const QVector3D& point, const QColor4ub& color, unsigned int block )
-{
-    if( block != block_ ) { toggle(); }
-    block_ = block;
-    points_[ write_index_ + write_end_ ] = point;
-    color_[ write_index_ + write_end_ ] = color;
-    if( write_size_ < buffer_size_ ) { ++write_size_; }
-    if( read_index_ == write_index_ ) { read_size_ = write_size_; }
-    ++write_end_;
-    if( write_end_ == buffer_size_ ) { write_end_ = 0; }
-}
-
-void vertex_buffer::toggle()
-{
-    if( write_size_ == 0 ) { return; }
-    write_index_ = buffer_size_ - write_index_;
-    if( read_index_ == write_index_ )
-    {
-        read_index_ = buffer_size_ - read_index_;
-        read_size_ = write_end_;
-    }
-    write_end_ = 0;
-    write_size_ = 0;
-}
-
-const QVector3DArray& vertex_buffer::points() const { return points_; }
-
-const QArray< QColor4ub >& vertex_buffer::color() const { return color_; }
-
-unsigned int vertex_buffer::size() const { return read_size_; }
-
-unsigned int vertex_buffer::index() const { return read_index_; }
+#ifndef SNARK_ACTUATORS_ROBOT_ARM_UNITS_H
+#define SNARK_ACTUATORS_ROBOT_ARM_UNITS_H
+#include <boost/units/quantity.hpp>
+#include <boost/units/base_unit.hpp>
+#include <boost/concept_check.hpp>
+#include <boost/units/systems/si/time.hpp>
+#include <boost/units/systems/si/length.hpp>
+#include <boost/units/systems/si/plane_angle.hpp>
+#include <boost/units/systems/angle/degrees.hpp>
 
 
+namespace snark { namespace robot_arm {
 
-} } } // namespace snark { namespace graphics { namespace qt3d {
+typedef boost::units::quantity< boost::units::si::plane_angle > plane_angle_t;
+typedef boost::units::quantity< boost::units::degree::plane_angle > plane_angle_degrees_t;
+typedef boost::units::quantity< boost::units::si::length > length_t;
+
+const plane_angle_t::unit_type radian = boost::units::si::radian;
+const plane_angle_degrees_t::unit_type degree = boost::units::degree::degrees;
+const length_t::unit_type meter = boost::units::si::meter;
+
+} } // namespace snark { namespace robot_arm {
+    
+
+#endif //  SNARK_ACTUATORS_ROBOT_ARM_UNITS_H

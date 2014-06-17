@@ -30,59 +30,40 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include <gtest/gtest.h>
+#include <comma/csv/stream.h>
+#include <comma/csv/ascii.h>
+#include <comma/visiting/traits.h>
+#include <comma/base/types.h>
+#include <comma/visiting/apply.h>
+#include <comma/name_value/ptree.h>
+#include <comma/csv/stream.h>
+#include <comma/name_value/parser.h>
+#include <comma/io/stream.h>
+#include <boost/property_tree/json_parser.hpp>
 
-/// @author Cedric Wohlleber
 
-#include "./vertex_buffer.h"
+namespace snark { namespace robot_arm {
 
-namespace snark { namespace graphics { namespace qt3d {
-
-vertex_buffer::vertex_buffer( std::size_t size )
-    : read_index_( 0 )
-    , write_index_( 0 )
-    , read_size_( 0 )
-    , write_end_( 0 )
-    , write_size_( 0 )
-    , buffer_size_( size )
-    , block_( 0 )
-    , points_( 2 * size )
-    , color_( 2 * size )
-{
+template < typename T >
+comma::csv::ascii< T >& ascii() { 
+    static comma::csv::ascii< T > ascii_;
+    return ascii_;
 }
 
-void vertex_buffer::add_vertex( const QVector3D& point, const QColor4ub& color, unsigned int block )
+
+TEST( robot_arm, ocean_test_strip )
 {
-    if( block != block_ ) { toggle(); }
-    block_ = block;
-    points_[ write_index_ + write_end_ ] = point;
-    color_[ write_index_ + write_end_ ] = color;
-    if( write_size_ < buffer_size_ ) { ++write_size_; }
-    if( read_index_ == write_index_ ) { read_size_ = write_size_; }
-    ++write_end_;
-    if( write_end_ == buffer_size_ ) { write_end_ = 0; }
+
 }
 
-void vertex_buffer::toggle()
+
+
+} } // namespace snark { namespace robot_arm {
+
+int main( int argc, char* argv[] )
 {
-    if( write_size_ == 0 ) { return; }
-    write_index_ = buffer_size_ - write_index_;
-    if( read_index_ == write_index_ )
-    {
-        read_index_ = buffer_size_ - read_index_;
-        read_size_ = write_end_;
-    }
-    write_end_ = 0;
-    write_size_ = 0;
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
+    return 0;
 }
-
-const QVector3DArray& vertex_buffer::points() const { return points_; }
-
-const QArray< QColor4ub >& vertex_buffer::color() const { return color_; }
-
-unsigned int vertex_buffer::size() const { return read_size_; }
-
-unsigned int vertex_buffer::index() const { return read_index_; }
-
-
-
-} } } // namespace snark { namespace graphics { namespace qt3d {
