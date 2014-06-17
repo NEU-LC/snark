@@ -37,8 +37,8 @@
 #include <boost/date_time/posix_time/posix_time_duration.hpp>
 #include <boost/optional.hpp>
 #include <boost/algorithm/string.hpp>
-#include <boost/units/systems/si/acceleration.hpp>
-#include <boost/units/systems/si/velocity.hpp>
+#include <boost/units/systems/si/angular_velocity.hpp>
+#include <boost/units/systems/si/angular_acceleration.hpp>
 #include <boost/units/quantity.hpp>
 #include <boost/asio.hpp>
 #include <comma/application/command_line_options.h>
@@ -102,22 +102,37 @@ comma::csv::ascii< T >& ascii( )
     return ascii_;
 }
 
-typedef boost::units::quantity< boost::units::si::acceleration > accelleration_t;
-typedef boost::units::quantity< boost::units::si::velocity > velocity_t;
+typedef boost::units::quantity< boost::units::si::angular_acceleration > angular_acceleration_t;
+typedef boost::units::quantity< boost::units::si::angular_velocity > angular_velocity_t;
 
 
 class arm_output
 {
     
-    accelleration_t acceleration;
-    velocity_t velocity;
+    angular_acceleration_t acceleration;
+    angular_velocity_t velocity;
     ExtY_Arm_Controller_T& joints;
 public:
-    arm_output( const accelleration_t& ac, const velocity_t& vel,
+    arm_output( const angular_acceleration_t& ac, const angular_velocity_t& vel,
                 ExtY_Arm_Controller_T& output ) : 
                 acceleration( ac ), velocity( vel ), joints( output ) {}
                 
-   std::string serialise()
+   std::string debug_in_degrees() const
+   {
+       std::ostringstream ss;
+       ss << "debug: movej([";
+       for(std::size_t i=0; i<6u; ++i) 
+       {
+          ss << static_cast< arm::plane_angle_degrees_t >( joints.joint_angle_vector[i] * arm::radian ).value();
+          if( i < 5 ) { ss << ','; }
+       }
+       ss << "],a=" << acceleration.value() << ','
+          << "v=" << velocity.value() << ')';
+          
+          
+       return ss.str();
+   }
+   std::string serialise() const
    {
        static std::string tmp;
        std::ostringstream ss;
@@ -140,8 +155,10 @@ struct input_primitive
     enum {
         no_action = 0,
         move_cam = 1,
-        set_position = 2
-    };
+        set_position = 2,
+        set_home=3,      // define home position, internal usage
+        movej=4
+    };  
 };
 
 template < typename T > struct action;
@@ -173,6 +190,13 @@ template < > struct action< arm::set_position > {
                 arm::set_position::giraffe : arm::set_position::home;
 //         std::cerr << name() << " running " << pos.serialise()  << " pos_input: " << Arm_Controller_U.Input_1 
 //             << " tag: " << pos.position << std::endl; 
+    }  
+};
+
+template < > struct action< arm::set_home > {
+    static void run( const arm::set_home& h )
+    {
+        Arm_Controller_U.motion_primitive = input_primitive::set_home;
     }  
 };
 
@@ -210,10 +234,32 @@ void process_command( const std::vector< std::string >& v )
 {
     if( boost::iequals( v[2], "move_cam" ) )    { output( handle< arm::move_cam >( v ) ); }
     else if( boost::iequals( v[2], "set_pos" ) )  { output( handle< arm::set_position >( v ) ); }
+    else if( boost::iequals( v[2], "set_home" ) )  { output( handle< arm::set_home >( v ) ); }
     else if( boost::iequals( v[2], "movej" ) )  { output( handle< arm::move_joints >( v ) ); }
     else { output( comma::join( v, v.size(), ',' ) + ',' + 
         impl_::str( arm::errors::unknown_command ) + ",\"unknown command found: '" + v[2] + "'\"" ); return; }
 }
+
+namespace ip = boost::asio::ip;
+/// Connect to the TCP server within the allowed timeout
+/// Needed because comma::io::iostream is not available
+bool tcp_connect( const std::string& conn_str, 
+                  const boost::posix_time::time_duration& timeout, ip::tcp::iostream& io )
+{
+    using boost::asio::ip::tcp;
+    std::vector< std::string > v = comma::split( conn_str, ':' );
+    boost::asio::io_service service;
+    tcp::resolver resolver( service );
+    tcp::resolver::query query( v[0] == "localhost" ? "127.0.0.1" : v[0], v[1] );
+    tcp::resolver::iterator it = resolver.resolve( query );
+    
+    io.expires_from_now( timeout );
+    io.connect( it->endpoint() );
+    
+    io.expires_at( boost::posix_time::pos_infin );
+    
+    return io.error() == 0;
+} 
 
 int main( int ac, char** av )
 {
@@ -230,7 +276,7 @@ int main( int ac, char** av )
 
     double acc = 0.5;
     double vel = 0.1;
-    arm_output output( acc * accelleration_t::unit_type(), vel * velocity_t::unit_type(),
+    arm_output output( acc * angular_acceleration_t::unit_type(), vel * angular_velocity_t::unit_type(),
                        Arm_Controller_Y );
 
     std::cerr << name() << "started" << std::endl;
@@ -240,15 +286,12 @@ int main( int ac, char** av )
         double sleep = 0.2; // seconds
         if( options.exists( "--sleep" ) ) { sleep = options.value< double >( "--sleep" ); };
         
-        std::string arm_ip = options.value< std::string >( "--address,-ip" );
-        comma::uint16 port = options.value< comma::uint16 >( "--port,-p" );
-        
+        std::string arm_conn = options.value< std::string >( "--robot-arm" );
         tcp::iostream robot_arm;
-        tcp::endpoint endpoint( boost::asio::ip::address::from_string( arm_ip ), port );
-        robot_arm.connect( endpoint );
-        
-        if( !robot_arm.good() ) {
-            std::cerr << name() << "failed to connect to robot arm at " << arm_ip << ':' << port << std::endl;
+        if( !tcp_connect( arm_conn, boost::posix_time::seconds(1), robot_arm ) ) 
+        {
+            std::cerr << name() << "failed to connect to robot arm at " 
+                      << arm_conn << " - " << robot_arm.error().message() << std::endl;
             exit( 1 );
         }
 
@@ -273,10 +316,12 @@ int main( int ac, char** av )
             // We we need to send command to arm
             if( Arm_Controller_Y.command_flag > 0 )
             {
-//                 std::cerr << name() << "outputting " << std::endl;
+                std::cerr << name() << output.debug_in_degrees() << std::endl;
                 robot_arm << output.serialise() << std::endl;
                 robot_arm.flush();
             }
+            // reset inputs
+            memset( &Arm_Controller_U, 0, sizeof( ExtU_Arm_Controller_T ) );
             Arm_Controller_U.motion_primitive = real_T( input_primitive::no_action );
 
             usleep( usec );

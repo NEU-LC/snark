@@ -37,32 +37,6 @@
 #include <comma/visiting/traits.h>
 #include "units.h"
 
-// namespace boost {
-    
-// /// Make quantity a fundamental type so far as visiting is concerned
-// // template <  > struct boost::units::quantity< snark::robot_arm::plane_angle_degrees_t > : public true_type {};
-// template <  typename T > struct is_fundamental< boost::units::quantity< T > > : public true_type {};
-
-// }
-
-// /// For lexical_cast
-// template < typename T >
-// std::ostream& operator<<( std::ostream& ostream, const boost::units::quantity< T >& val )
-// {
-//     ostream << val.value();
-//     return ostream;
-// }
-
-// /// For lexical_cast
-// template < typename T >
-// std::istream& operator>>( std::istream& istream, boost::units::quantity< T >& val )
-// {
-//     double d;
-//     istream >> d;
-//     val = d * boost::units::quantity< T >::unit_type;
-//     return istream;
-// }
-
 namespace comma { namespace visiting {
     
 namespace robot_arm = snark::robot_arm;
@@ -195,6 +169,19 @@ template <> struct traits< robot_arm::set_position >
     {
         traits< command_base < robot_arm::set_position > >::visit(k, t, v);
         v.apply( "position", t.position );
+    }
+};
+
+template <> struct traits< robot_arm::set_home >
+{
+    template< typename K, typename V > static void visit( const K& k, robot_arm::set_home& t, V& v )
+    {
+        traits< command_base < robot_arm::set_home > >::visit(k, t, v);
+    }
+
+    template< typename K, typename V > static void visit( const K& k, const robot_arm::set_home& t, V& v )
+    {
+        traits< command_base < robot_arm::set_home > >::visit(k, t, v);
     }
 };
 
