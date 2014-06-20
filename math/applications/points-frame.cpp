@@ -67,6 +67,7 @@ static void usage()
     std::cerr << "    --max-gap <seconds> : max valid time gap between two successive nav solutions;" << std::endl;
     std::cerr << "                          if exceeded, input points between those two timestamps" << std::endl;
     std::cerr << "                          will be discarded, thus use --discard, too; default: infinity" << std::endl;
+    std::cerr << "    --no-interpolate: don't interpolate, use nearest point instead" << std::endl;
     std::cerr << "    --output-frame : output each frame for each point" << std::endl;
     std::cerr << "                     can be individually specified for a frame, e.g.:" << std::endl;
     std::cerr << "                     --from \"novatel.csv;output-frame\"" << std::endl;
