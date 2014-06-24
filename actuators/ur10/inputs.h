@@ -85,7 +85,6 @@ private:
     /// The buffer of commands
     rover_commands my_commands;
     snark::ocean::stdio_query io_;
-    // char buffer_[ MAX_BUFFER ];
     std::string buffer_;
     boost::asio::mutable_buffer mutable_buffer_;
     boost::asio::streambuf streambuf_; ///< Holds eventual read but not consumed

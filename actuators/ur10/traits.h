@@ -32,10 +32,11 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
-#include "commands.h"
+#include <boost/units/quantity.hpp>
 #include <comma/visiting/traits.h>
+#include "commands.h"
 #include "units.h"
+#include "config.h"
 
 namespace comma { namespace visiting {
     
@@ -182,6 +183,19 @@ template <> struct traits< robot_arm::set_home >
     template< typename K, typename V > static void visit( const K& k, const robot_arm::set_home& t, V& v )
     {
         traits< command_base < robot_arm::set_home > >::visit(k, t, v);
+    }
+};
+
+template <> struct traits< robot_arm::config >
+{
+    template< typename K, typename V > static void visit( const K& k, robot_arm::config& t, V& v )
+    {
+        v.apply( "home_position", t.home_position );
+    }
+
+    template< typename K, typename V > static void visit( const K& k, const robot_arm::config& t, V& v )
+    {
+        v.apply( "home_position", t.home_position );
     }
 };
 
