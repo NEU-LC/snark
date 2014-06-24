@@ -52,6 +52,6 @@ const plane_angle_degrees_t::unit_type degree = boost::units::degree::degrees;
 const length_t::unit_type meter = boost::units::si::meter;
 
 } } // namespace snark { namespace robot_arm {
-    
+
 
 #endif //  SNARK_ACTUATORS_ROBOT_ARM_UNITS_H

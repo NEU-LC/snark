@@ -191,7 +191,7 @@ template < > struct action< arm::move_cam > {
         static const arm::plane_angle_degrees_t min_pan = -45.0 * arm::degree;
         static const arm::plane_angle_degrees_t max_tilt = 90.0 * arm::degree;
         static const arm::plane_angle_degrees_t min_tilt = -90.0 * arm::degree;
-        static const arm::length_t min_height = 0.1 * arm::meter;
+        static const arm::length_t min_height = 0.2 * arm::meter;
         static const arm::length_t max_height = 0.5 * arm::meter;
         
         
@@ -289,7 +289,6 @@ std::string handle( const std::vector< std::string >& line )
        
     // perform action
     result ret = action< C >::run( c );
-    // always successful for now
     std::ostringstream ss;
     ss << '<' << c.serialise() << ',' << ret.get_message() << ';';
     return ss.str();
