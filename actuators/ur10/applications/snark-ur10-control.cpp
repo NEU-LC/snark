@@ -161,42 +161,107 @@ struct input_primitive
     };  
 };
 
+struct result
+{
+    struct error { enum { success=0, invalid_input=1 }; };
+    int code;
+    std::string message;
+    
+    result( const std::string& msg, int code_ ) : code( code_ ), message( msg ) {}
+    result() : code( error::success ), message( "success" ) {}
+    
+    std::string get_message() const 
+    {
+        std::ostringstream ss;
+        ss << code << ',' << '"' << message << '"';
+        return ss.str();
+    }
+    bool is_success() const { return code == error::success; }
+};
+
 template < typename T > struct action;
 
 template < > struct action< arm::move_cam > {
-    static void run( const arm::move_cam& cam )
+    static result run( const arm::move_cam& cam )
     {
+#ifdef MAMMOTH_VERBOSE
         std::cerr << name() << " running " << cam.serialise() << std::endl; 
+#endif        
+        static const arm::plane_angle_degrees_t max_pan = 45.0 * arm::degree;
+        static const arm::plane_angle_degrees_t min_pan = -45.0 * arm::degree;
+        static const arm::plane_angle_degrees_t max_tilt = 90.0 * arm::degree;
+        static const arm::plane_angle_degrees_t min_tilt = -90.0 * arm::degree;
+        static const arm::length_t min_height = 0.1 * arm::meter;
+        static const arm::length_t max_height = 0.5 * arm::meter;
+        
+        
+        if( cam.pan < min_pan ) { return result( "pan angle is below minimum limit of -45.0", result::error::invalid_input ); }
+        if( cam.pan > max_pan ) { return result( "pan angle is above minimum limit of 45.0", result::error::invalid_input ); }
+        if( cam.tilt < min_tilt ) { return result( "tilt angle is below minimum limit of -90.0", result::error::invalid_input ); }
+        if( cam.tilt > max_tilt ) { return result( "tilt angle is above minimum limit of 90.0", result::error::invalid_input ); }
+        if( cam.height < min_height ) { return result( "height value is below minimum limit of 0.1m", result::error::invalid_input ); }
+        if( cam.height > max_height ) { return result( "height value is above minimum limit of 0.5m", result::error::invalid_input ); }
+        
+        static double zero_tilt = 90.0;
         Arm_Controller_U.motion_primitive = real_T( input_primitive::move_cam );
         Arm_Controller_U.Input_1 = cam.pan.value();
-        Arm_Controller_U.Input_2 = cam.tilt.value();
+        Arm_Controller_U.Input_2 = zero_tilt - cam.tilt.value();
         Arm_Controller_U.Input_3 = cam.height.value();
+        
+        
+        return result();
     }  
 };
 
 template < > struct action< arm::move_joints > {
-    static void run( const arm::move_joints& joints )
+    static result run( const arm::move_joints& joints )
     {
+#ifdef MAMMOTH_VERBOSE
         std::cerr << name() << " running " << joints.serialise() << std::endl; 
+#endif
+        static const arm::plane_angle_degrees_t min = 0.0 * arm::degree;
+        static const arm::plane_angle_degrees_t max = 360.0 * arm::degree;
+        for( std::size_t i=0; i<joints.joints.size(); ++i )
+        {
+            if( joints.joints[i] < min || joints.joints[0] > max ) { return result( "joint angle must be 0-360 degrees", result::error::invalid_input ); }
+        }
+        
+        Arm_Controller_U.motion_primitive = real_T( input_primitive::movej );
+        Arm_Controller_U.Input_1 = joints.joints[0].value();
+        Arm_Controller_U.Input_2 = joints.joints[1].value();
+        Arm_Controller_U.Input_3 = joints.joints[2].value();
+        Arm_Controller_U.Input_4 = joints.joints[3].value();
+        Arm_Controller_U.Input_5 = joints.joints[4].value();
+        Arm_Controller_U.Input_6 = joints.joints[5].value();
+        
+        
+        
+        return result();
     }  
 };
 
 template < > struct action< arm::set_position > {
-    static void run( const arm::set_position& pos )
+    static result run( const arm::set_position& pos )
     {
         Arm_Controller_U.motion_primitive = input_primitive::set_position;
         
         Arm_Controller_U.Input_1 = pos.position == "giraffe" ? 
                 arm::set_position::giraffe : arm::set_position::home;
+                
+        if( pos.position == "giraffe" ) { Arm_Controller_U.Input_1 = arm::set_position::giraffe; }
+        else if( pos.position == "home" ) { Arm_Controller_U.Input_1 = arm::set_position::home; }
+        else { return result("unknown position type", int(result::error::invalid_input) ); }
 //         std::cerr << name() << " running " << pos.serialise()  << " pos_input: " << Arm_Controller_U.Input_1 
 //             << " tag: " << pos.position << std::endl; 
+        return result();
     }  
 };
 
 template < > struct action< arm::set_home > {
-    static void run( const arm::set_home& h )
+    static result run( const arm::set_home& h )
     {
         Arm_Controller_U.motion_primitive = input_primitive::set_home;
+        return result();
     }  
 };
 
@@ -223,10 +288,10 @@ std::string handle( const std::vector< std::string >& line )
     catch( ... ) { COMMA_THROW( comma::exception, "unknown error is parsing: " + comma::join( line , ',' ) ); }
        
     // perform action
-    action< C >::run( c );
+    result ret = action< C >::run( c );
     // always successful for now
     std::ostringstream ss;
-    ss << '<' << c.serialise() << ',' << 0 << ",\"success\";";
+    ss << '<' << c.serialise() << ',' << ret.get_message() << ';';
     return ss.str();
 }
 
@@ -306,7 +371,7 @@ int main( int ac, char** av )
             if( !inputs.is_empty() )
             {
                 const command_vector& v = inputs.front();
-                std::cerr << name() << " got " << comma::join( v, ',' ) << std::endl;
+                //std::cerr << name() << " got " << comma::join( v, ',' ) << std::endl;
                 process_command( v );
 
                 inputs.pop();
