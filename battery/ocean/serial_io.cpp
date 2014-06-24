@@ -55,7 +55,7 @@ void serial_io::open(const std::string& devname, unsigned int baud_rate,
     port_.set_option(opt_csize);
     port_.set_option(opt_flow);
     port_.set_option(opt_stop);
-    
+
 }
 serial_io::~serial_io() {}
 
@@ -101,7 +101,7 @@ void serial_io::read(char *data,  size_t size)
         size-=toRead;
         if(size==0) return;//If read data was enough,  just return
     }
-    
+
     setup_parameters_ = read_setup_parameters(data, size);
     perform_read_setup( setup_parameters_ );
 
@@ -109,10 +109,10 @@ void serial_io::read(char *data,  size_t size)
     //request for no timeout_ is translated into a very long timeout_
     if(timeout_!=posix_time::seconds(0)) timer_.expires_from_now(timeout_);
     else timer_.expires_from_now(posix_time::hours(100000));
-    
+
     timer_.async_wait(boost::bind(&serial_io::timeout_expired, this,
                 asio::placeholders::error));
-    
+
     result_ = result_in_progress;
     bytes_transferred_=0;
     for(;;)
@@ -295,7 +295,7 @@ void serial_io::read_completed(const boost::system::error_code& error,
     {
         //Bug on OS X, it might be necessary to repeat the setup
         //http://osdir.com/ml/lib.boost.asio.user/2008-08/msg00004.html
-        perform_read_setup(setup_parameters);
+        perform_read_setup(setup_parameters_);
         return;
     }
     #else //Linux
