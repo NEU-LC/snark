@@ -3,9 +3,9 @@
  *
  * Code generated for Simulink model 'Arm_Controller'.
  *
- * Model version                  : 1.129
+ * Model version                  : 1.133
  * Simulink Coder version         : 8.6 (R2014a) 27-Dec-2013
- * C/C++ source code generated on : Tue Jun 17 15:45:59 2014
+ * C/C++ source code generated on : Thu Jun 26 15:25:05 2014
  *
  * Target selection: ert.tlc
  * Embedded hardware selection: 32-bit Generic
@@ -57,9 +57,8 @@ typedef struct {
 typedef struct {
   real_T command_flag;                 /* '<Root>/command_flag' */
   real_T joint_angle_vector[6];        /* '<Root>/joint_angle_vector' */
-  real_T status_movecam;               /* '<Root>/status_movecam' */
-  real_T status_setpos;                /* '<Root>/status_setpos' */
-  real_T status_setpos1;               /* '<Root>/status_setpos1' */
+  real_T arm_status;                   /* '<Root>/arm_status' */
+  real_T arm_position[6];              /* '<Root>/arm_position' */
 } ExtY_Arm_Controller_T;
 
 /* Parameters (auto storage) */
