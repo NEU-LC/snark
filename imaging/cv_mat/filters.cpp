@@ -93,6 +93,14 @@ static filters::value_type resize_impl_( filters::value_type m, unsigned int wid
     return n;
 }
 
+static filters::value_type brightness_impl_( filters::value_type m, double scale, double offset )
+{
+    filters::value_type n;
+    n.first = m.first;
+    n.second = (m.second * scale) + offset;
+    return n;
+}
+
 static filters::value_type transpose_impl_( filters::value_type m )
 {
     filters::value_type n;
@@ -459,6 +467,14 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
             if( i == 0 ) { COMMA_THROW( comma::exception, "'null' as the only filter is not supported; use cv-cat > /dev/null, if you need" ); }
             f.push_back( filter( NULL ) );
         }
+        else if( e[0] == "brightness" )
+        {
+            double scale, offset;
+            std::vector< std::string > s = comma::split( e[1], ',' );
+            scale = boost::lexical_cast< double >( s[0] );
+            offset = boost::lexical_cast< double >( s[1] );
+            f.push_back( filter( boost::bind( &brightness_impl_, _1, scale, offset ) ) );
+        }
         else
         {
             COMMA_THROW( comma::exception, "expected filter, got \"" << v[i] << "\"" );
@@ -485,6 +501,7 @@ static std::string usage_impl_()
     oss << "        flip: flip vertically" << std::endl;
     oss << "        flop: flip horizontally" << std::endl;
     oss << "        invert: invert image (to negative)" << std::endl;
+    oss << "        brightness=<scale>,<offset>: output=(scale*input)+offset" << std::endl;
     oss << "        split: split r,g,b channels into a 3x1 gray image" << std::endl;
     oss << "        text=<text>[,x,y][,colour]: print text; default x,y: 10,10; default colour: yellow" << std::endl;
     oss << "        null: same as linux /dev/null (since windows does not have it)" << std::endl;

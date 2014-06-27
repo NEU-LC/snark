@@ -36,6 +36,14 @@
 
 namespace snark { namespace ocean { 
 
+stdio_query::~stdio_query()
+{
+    boost::system::error_code ec;
+    deadline_.cancel( ec );
+    input_.cancel( ec );
+
+}
+
 
 std::size_t stdio_query::write(const char* buf, std::size_t size)
 {

@@ -3,9 +3,9 @@
  *
  * Code generated for Simulink model 'Arm_Controller'.
  *
- * Model version                  : 1.129
+ * Model version                  : 1.133
  * Simulink Coder version         : 8.6 (R2014a) 27-Dec-2013
- * C/C++ source code generated on : Tue Jun 17 15:45:59 2014
+ * C/C++ source code generated on : Thu Jun 26 15:25:05 2014
  *
  * Target selection: ert.tlc
  * Embedded hardware selection: 32-bit Generic
@@ -32,6 +32,7 @@ RT_MODEL_Arm_Controller_T *const Arm_Controller_M = &Arm_Controller_M_;
 /* Model step function */
 void Arm_Controller_step(void)
 {
+  real_T j4;
   static const int8_T b[6] = { 0, -90, 0, -90, 0, 0 };
 
   boolean_T p;
@@ -40,10 +41,11 @@ void Arm_Controller_step(void)
   real_T rtb_writehome;
   real_T rtb_MultiportSwitch2[6];
   int32_T rtb_portoutput;
-  real_T rtb_statusflag_movecam;
+  int32_T rtb_write_pos;
+  int32_T rtb_statusflag_movej;
   real_T rtb_TmpSignalConversionAtSFunct[6];
   real_T rtb_outputs[6];
-  real_T rtb_jointangles_g[6];
+  real_T rtb_jointangles_h[6];
   real_T rtb_jointangles[6];
   int32_T i;
   int8_T rtb_enableflags_idx_0;
@@ -209,37 +211,37 @@ void Arm_Controller_step(void)
 
     /* calculates the elbow joint angle needed to reach the required height. works properly */
     /* '<S4>:1:20' */
-    rtb_statusflag_movecam = ((rtb_outputs[1] - 83.740000000000009) -
-      (6.2599999999999909 + rtb_writehome)) + 180.0;
+    j4 = ((rtb_outputs[1] - 83.740000000000009) - (6.2599999999999909 +
+           rtb_writehome)) + 180.0;
 
     /* joint angle to apply to achieve target tilt position. works properly */
     /* assumption. good assumption */
     /* not important at the moment */
     /* very basic check to see if the robot will collide with itself */
-    if ((rtb_statusflag_movecam > 205.0) || (180.0 - (6.2599999999999909 +
-          rtb_writehome) > 155.0) || (90.0 + rtb_outputs[0] > 140.0)) {
+    if ((j4 > 205.0) || (180.0 - (6.2599999999999909 + rtb_writehome) > 155.0) ||
+        (90.0 + rtb_outputs[0] > 140.0)) {
       /* '<S4>:1:25' */
       /* found these upper limits by observation */
       /* disp('Movement will cause collision') */
       /* '<S4>:1:27' */
-      rtb_statusflag_movecam = -1.0;
+      rtb_writehome = -1.0;
     } else {
       /* '<S4>:1:31' */
       rtb_TmpSignalConversionAtSFunct[0] = -37.93;
       rtb_TmpSignalConversionAtSFunct[1] = -173.74;
       rtb_TmpSignalConversionAtSFunct[2] = 180.0 - (6.2599999999999909 +
         rtb_writehome);
-      rtb_TmpSignalConversionAtSFunct[3] = -rtb_statusflag_movecam;
+      rtb_TmpSignalConversionAtSFunct[3] = -j4;
       rtb_TmpSignalConversionAtSFunct[4] = 90.0 + rtb_outputs[0];
       rtb_TmpSignalConversionAtSFunct[5] = 0.0;
 
       /* adjusts the calculated joint angles so it matches the current robot configuration */
       /* '<S4>:1:32' */
-      rtb_statusflag_movecam = 1.0;
+      rtb_writehome = 1.0;
     }
   } else {
     /* '<S4>:1:35' */
-    rtb_statusflag_movecam = 0.0;
+    rtb_writehome = 0.0;
 
     /* no movement carried out */
     /* '<S4>:1:36' */
@@ -274,12 +276,9 @@ void Arm_Controller_step(void)
       rtb_jointangles[5] = 57.295779513082323 * Arm_Controller_DW.home_position
         [5];
 
-      /* Outport: '<Root>/status_setpos' incorporates:
-       *  DataStoreRead: '<S1>/Data Store Read3'
-       */
       /* jointangles = [0 0 0 0 0 0]; %need to read some sort of internal memory */
       /* '<S7>:1:10' */
-      Arm_Controller_Y.status_setpos = 1.0;
+      j4 = 1.0;
     } else if (rtb_outputs[0] == 2.0) {
       /* '<S7>:1:11' */
       /* move to giraffe position- replace with integer */
@@ -288,14 +287,12 @@ void Arm_Controller_step(void)
         rtb_jointangles[i] = b[i];
       }
 
-      /* Outport: '<Root>/status_setpos' */
       /* '<S7>:1:13' */
-      Arm_Controller_Y.status_setpos = 1.0;
+      j4 = 1.0;
     } else {
-      /* Outport: '<Root>/status_setpos' */
       /* output error message */
       /* '<S7>:1:16' */
-      Arm_Controller_Y.status_setpos = -3.0;
+      j4 = -3.0;
 
       /* invalid argument */
       /* '<S7>:1:17' */
@@ -306,9 +303,8 @@ void Arm_Controller_step(void)
       /* interpreted at do nothing */
     }
   } else {
-    /* Outport: '<Root>/status_setpos' */
     /* '<S7>:1:20' */
-    Arm_Controller_Y.status_setpos = 0.0;
+    j4 = 0.0;
 
     /* function not executed */
     /* '<S7>:1:21' */
@@ -321,39 +317,38 @@ void Arm_Controller_step(void)
 
   /* MATLAB Function: '<S1>/MATLAB Function' */
   /* MATLAB Function 'Arm_Controller/MATLAB Function': '<S2>:1' */
-  /* '<S2>:1:3' */
+  /* need to implement some collision checking */
+  /* '<S2>:1:4' */
   for (i = 0; i < 6; i++) {
-    rtb_jointangles_g[i] = 0.0;
+    rtb_jointangles_h[i] = 0.0;
   }
 
   if (rtb_enableflags_idx_3 == 1) {
-    /* Outport: '<Root>/status_setpos1' */
-    /* '<S2>:1:5' */
+    /* '<S2>:1:6' */
     /* check collisions */
-    /* '<S2>:1:7' */
-    Arm_Controller_Y.status_setpos1 = 1.0;
-
     /* '<S2>:1:8' */
-    rtb_jointangles_g[0] = rtb_outputs[0];
+    rtb_statusflag_movej = 1;
 
     /* '<S2>:1:9' */
-    rtb_jointangles_g[1] = rtb_outputs[1];
+    rtb_jointangles_h[0] = rtb_outputs[0];
 
     /* '<S2>:1:10' */
-    rtb_jointangles_g[2] = rtb_outputs[2];
+    rtb_jointangles_h[1] = rtb_outputs[1];
 
     /* '<S2>:1:11' */
-    rtb_jointangles_g[3] = rtb_outputs[3];
+    rtb_jointangles_h[2] = rtb_outputs[2];
 
     /* '<S2>:1:12' */
-    rtb_jointangles_g[4] = rtb_outputs[4];
+    rtb_jointangles_h[3] = rtb_outputs[3];
 
     /* '<S2>:1:13' */
-    rtb_jointangles_g[5] = rtb_outputs[5];
+    rtb_jointangles_h[4] = rtb_outputs[4];
+
+    /* '<S2>:1:14' */
+    rtb_jointangles_h[5] = rtb_outputs[5];
   } else {
-    /* Outport: '<Root>/status_setpos1' */
-    /* '<S2>:1:15' */
-    Arm_Controller_Y.status_setpos1 = 0.0;
+    /* '<S2>:1:16' */
+    rtb_statusflag_movej = 0;
   }
 
   /* MATLAB Function 'Arm_Controller/sendcommand': '<S5>:1' */
@@ -363,7 +358,7 @@ void Arm_Controller_step(void)
   /* '<S5>:1:6' */
   for (i = 0; i < 6; i++) {
     /* MATLAB Function: '<S1>/sendcommand' */
-    rtb_TmpSignalConversionAtSFun_h = rtb_jointangles_g[i];
+    rtb_TmpSignalConversionAtSFun_h = rtb_jointangles_h[i];
 
     /* MultiPortSwitch: '<S1>/Multiport Switch' */
     switch (rtb_portoutput) {
@@ -380,7 +375,7 @@ void Arm_Controller_step(void)
 
     /* MATLAB Function: '<S1>/sendcommand' */
     rtb_TmpSignalConversionAtSFun_h *= 0.017453292519943295;
-    rtb_jointangles_g[i] = rtb_TmpSignalConversionAtSFun_h;
+    rtb_jointangles_h[i] = rtb_TmpSignalConversionAtSFun_h;
   }
 
   /* End of MATLAB Function: '<S1>/MATLAB Function' */
@@ -392,7 +387,7 @@ void Arm_Controller_step(void)
   i = 0;
   exitg1 = false;
   while ((!exitg1) && (i < 6)) {
-    if (!(rtb_jointangles_g[i] == 0.0)) {
+    if (!(rtb_jointangles_h[i] == 0.0)) {
       b_p = false;
       exitg1 = true;
     } else {
@@ -410,42 +405,69 @@ void Arm_Controller_step(void)
     Arm_Controller_Y.command_flag = 0.0;
 
     /* '<S5>:1:11' */
-    rtb_writehome = 2.0;
+    rtb_write_pos = 2;
   } else {
     /* Outport: '<Root>/command_flag' */
     /* '<S5>:1:13' */
     Arm_Controller_Y.command_flag = 1.0;
 
     /* '<S5>:1:14' */
-    rtb_writehome = 1.0;
+    rtb_write_pos = 1;
   }
 
-  /* Outport: '<Root>/status_movecam' */
-  Arm_Controller_Y.status_movecam = rtb_statusflag_movecam;
   for (i = 0; i < 6; i++) {
     /* MultiPortSwitch: '<S1>/Multiport Switch1' incorporates:
      *  Memory: '<S1>/Memory'
      */
-    if (rtb_writehome == 1.0) {
-      rtb_TmpSignalConversionAtSFun_h = rtb_jointangles_g[i];
+    if (rtb_write_pos == 1) {
+      rtb_TmpSignalConversionAtSFun_h = rtb_jointangles_h[i];
     } else {
       rtb_TmpSignalConversionAtSFun_h = Arm_Controller_DW.Memory_PreviousInput[i];
     }
 
-    /* End of MultiPortSwitch: '<S1>/Multiport Switch1' */
-
     /* DataStoreWrite: '<S1>/Data Store Write1' */
     Arm_Controller_DW.current_position[i] = rtb_TmpSignalConversionAtSFun_h;
 
+    /* MultiPortSwitch: '<S1>/Multiport Switch1' */
+    rtb_TmpSignalConversionAtSFunct[i] = rtb_TmpSignalConversionAtSFun_h;
+  }
+
+  /* MultiPortSwitch: '<S1>/Multiport Switch3' */
+  switch (rtb_portoutput) {
+   case 1:
+    /* Outport: '<Root>/arm_status' */
+    Arm_Controller_Y.arm_status = rtb_writehome;
+    break;
+
+   case 2:
+    /* Outport: '<Root>/arm_status' */
+    Arm_Controller_Y.arm_status = j4;
+    break;
+
+   default:
+    /* Outport: '<Root>/arm_status' */
+    Arm_Controller_Y.arm_status = rtb_statusflag_movej;
+    break;
+  }
+
+  for (i = 0; i < 6; i++) {
     /* Outport: '<Root>/joint_angle_vector' */
-    Arm_Controller_Y.joint_angle_vector[i] = rtb_jointangles_g[i];
+    Arm_Controller_Y.joint_angle_vector[i] = rtb_jointangles_h[i];
+
+    /* Outport: '<Root>/arm_position' incorporates:
+     *  DataStoreRead: '<S1>/Data Store Read1'
+     */
+    Arm_Controller_Y.arm_position[i] = Arm_Controller_DW.current_position[i];
 
     /* Update for Memory: '<S1>/Memory1' */
     Arm_Controller_DW.Memory1_PreviousInput[i] = rtb_MultiportSwitch2[i];
 
     /* Update for Memory: '<S1>/Memory' */
-    Arm_Controller_DW.Memory_PreviousInput[i] = rtb_TmpSignalConversionAtSFun_h;
+    Arm_Controller_DW.Memory_PreviousInput[i] =
+      rtb_TmpSignalConversionAtSFunct[i];
   }
+
+  /* End of MultiPortSwitch: '<S1>/Multiport Switch3' */
 }
 
 /* Model initialize function */

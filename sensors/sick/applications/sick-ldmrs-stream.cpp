@@ -41,6 +41,10 @@
 #include <comma/string/string.h>
 #include <snark/timing/ntp.h>
 #include <snark/sensors/sick/protocol.h>
+#ifdef WIN32
+#include <fcntl.h>
+#include <io.h>
+#endif
 
 using namespace snark;
 

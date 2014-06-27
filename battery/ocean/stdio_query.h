@@ -66,6 +66,7 @@ class stdio_query
         
 public:
     stdio_query(); 
+    ~stdio_query(); 
     
     std::size_t write( const char* buf, std::size_t size );
     
