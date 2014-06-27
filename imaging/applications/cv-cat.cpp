@@ -157,7 +157,7 @@ int main( int argc, char** argv )
             std::cerr << std::endl;
             std::cerr << "        gige-cat --output=\"header-only;fields=rows,cols,size,type\" | csv-from-bin 4ui | head" << std::endl;
             std::cerr << "    create a video ( -b: bitrate, -r: input/output framerate:" << std::endl;
-            std::cerr << "    gige-cat | cv-cat \"encode=ppm\" --output=no-header | avconv -y -f image2pipe -vcodec ppm -r 25 -i pipe: -vcodec libx264  -threads 0 -b 2000k -r 25 video.mkv" << std::endl;
+            std::cerr << "        gige-cat | cv-cat \"encode=ppm\" --output=no-header | avconv -y -f image2pipe -vcodec ppm -r 25 -i pipe: -vcodec libx264  -threads 0 -b 2000k -r 25 video.mkv" << std::endl;
             std::cerr << std::endl;
             if( vm.count( "verbose" ) )
             {
