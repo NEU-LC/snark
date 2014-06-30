@@ -87,6 +87,7 @@ void usage(int code=1)
     std::cerr << "    --help,-h: show this message" << std::endl;
     std::cerr << "*   --id=: ID to identify commands, eg. ><ID>,999,set_pos,home;" << std::endl;
     std::cerr << "*   --address=|-ip=: TCP IP address of the robot arm." << std::endl;
+    std::cerr << "*   --status-port=|-sp=: TCP service port the robot arm status will be broadcasted on. Binary, one byte of -1, 0 or 1 value." << std::endl;
     std::cerr << "*   --port=|-p=: TCP port number of robot arm" << std::endl;
     std::cerr << "    --sleep=: loop sleep value in seconds, default to 0.2 if not specified." << std::endl;
     std::cerr << std::endl;
@@ -349,6 +350,8 @@ int main( int ac, char** av )
         comma::uint16 rover_id = options.value< comma::uint16 >( "--id" );
         double sleep = 0.2; // seconds
         if( options.exists( "--sleep" ) ) { sleep = options.value< double >( "--sleep" ); };
+
+        comma::uint32 listen_port = options.value< comma::uint32 >( "--status-port,-sp" );
         
         std::string arm_conn = options.value< std::string >( "--robot-arm" );
         tcp::iostream robot_arm;
@@ -358,6 +361,11 @@ int main( int ac, char** av )
                       << arm_conn << " - " << robot_arm.error().message() << std::endl;
             exit( 1 );
         }
+
+        // create tcp server for broadcasting status
+        std::ostringstream ss;
+        ss << "tcp:" << listen_port;
+        comma::io::publisher publisher( ss.str(), comma::io::mode::binary );
 
         arm::inputs inputs( rover_id );
 
@@ -383,10 +391,13 @@ int main( int ac, char** av )
                 std::cerr << name() << output.debug_in_degrees() << std::endl;
                 robot_arm << output.serialise() << std::endl;
                 robot_arm.flush();
+                Arm_Controller_U.motion_primitive = real_T( input_primitive::no_action );
             }
             // reset inputs
             memset( &Arm_Controller_U, 0, sizeof( ExtU_Arm_Controller_T ) );
-            Arm_Controller_U.motion_primitive = real_T( input_primitive::no_action );
+            // write a byte indicating the status
+            char status( Arm_Controller_Y.arm_status );
+            publisher.write( &status, 1u );
 
             usleep( usec );
         }
