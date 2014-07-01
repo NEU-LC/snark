@@ -116,14 +116,18 @@ typedef boost::units::quantity< boost::units::si::angular_velocity > angular_vel
 
 class arm_output
 {
-    
+public:
+    typedef snark::robot_arm::current_positions current_positions_t;
+private:
     angular_acceleration_t acceleration;
     angular_velocity_t velocity;
     ExtY_Arm_Controller_T& joints;
+    current_positions_t& current_positions;
 public:
     arm_output( const angular_acceleration_t& ac, const angular_velocity_t& vel,
                 ExtY_Arm_Controller_T& output ) : 
-                acceleration( ac ), velocity( vel ), joints( output ) {}
+                acceleration( ac ), velocity( vel ), joints( output ), 
+                current_positions( static_cast< current_positions_t& >( output ) ) {}
                 
    std::string debug_in_degrees() const
    {
@@ -148,6 +152,15 @@ public:
           << "],a=" << acceleration.value() << ','
           << "v=" << velocity.value() << ')';
        return ss.str();
+   }
+   
+   void write_arm_status( comma::io::publisher& publisher )
+   {
+       // write a byte indicating the status, and joint positions
+       static comma::csv::binary< current_positions_t > binary("","",true, current_positions );
+       static std::vector<char> line( binary.format().size() );
+       binary.put( current_positions, line.data() );
+       publisher.write( line.data(), line.size());
    }
                 
 };
@@ -377,10 +390,6 @@ int main( int ac, char** av )
         arm::inputs inputs( rover_id );
 
         typedef std::vector< std::string > command_vector;
-
-        typedef snark::robot_arm::current_positions current_positions_t;
-        current_positions_t& current_positions = static_cast< current_positions_t& >( Arm_Controller_Y );
-            
         const comma::uint32 usec( sleep * 1000000u );
         while( !signaled && std::cin.good() )
         {
@@ -405,11 +414,8 @@ int main( int ac, char** av )
             }
             // reset inputs
             memset( &Arm_Controller_U, 0, sizeof( ExtU_Arm_Controller_T ) );
-            // write a byte indicating the status, and joint positions
-            static comma::csv::binary< current_positions_t > binary("","",true, current_positions );
-            static std::vector<char> line( binary.format().size() );
-            binary.put( current_positions, line.data() );
-            publisher.write( line.data(), line.size());
+            
+            output.write_arm_status( publisher );
 
             usleep( usec );
         }
