@@ -259,7 +259,7 @@ int main( int ac, char** av )
                 document.placemarks[0].point->coordinates = p->position;
                 if( !p->name.empty() ) { document.placemarks[0].name = p->name; }
                 if( !p->style.empty() ) { document.placemarks[0].style_url = p->style; }
-                if( !description_fields.empty() )
+                if( !description_fields.empty() || !p->image.empty() )
                 {
                     document.placemarks[0].description = description( description_fields
                                                                     , csv.binary()
