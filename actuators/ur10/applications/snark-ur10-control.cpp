@@ -90,6 +90,12 @@ void usage(int code=1)
     std::cerr << "*   --status-port=|-sp=: TCP service port the robot arm status will be broadcasted on. Binary, one byte of -1, 0 or 1 value." << std::endl;
     std::cerr << "*   --port=|-p=: TCP port number of robot arm" << std::endl;
     std::cerr << "    --sleep=: loop sleep value in seconds, default to 0.2 if not specified." << std::endl;
+    typedef snark::robot_arm::current_positions current_positions_t;
+    comma::csv::binary< current_positions_t > binary;
+    std::cerr << "UR10's status:" << std::endl;
+    std::cerr << "   format: " << binary.format().string() << " total size is " << binary.format().size() << " bytes" << std::endl;
+    std::vector< std::string > names = comma::csv::names< current_positions_t >();
+    std::cerr << "   fields: " << comma::join( names, ','  ) << " number of fields: " << names.size() << std::endl;
     std::cerr << std::endl;
     exit ( code );
 }
@@ -371,6 +377,9 @@ int main( int ac, char** av )
 
         typedef std::vector< std::string > command_vector;
 
+        typedef snark::robot_arm::current_positions current_positions_t;
+        current_positions_t& current_positions = static_cast< current_positions_t& >( Arm_Controller_Y );
+            
         const comma::uint32 usec( sleep * 1000000u );
         while( !signaled && std::cin.good() )
         {
@@ -395,9 +404,11 @@ int main( int ac, char** av )
             }
             // reset inputs
             memset( &Arm_Controller_U, 0, sizeof( ExtU_Arm_Controller_T ) );
-            // write a byte indicating the status
-            char status( Arm_Controller_Y.arm_status );
-            publisher.write( &status, 1u );
+            // write a byte indicating the status, and joint positions
+            static comma::csv::binary< current_positions_t > binary("","",true, current_positions );
+            static std::vector<char> line( binary.format().size() );
+            binary.put( current_positions, line.data() );
+            publisher.write( line.data(), line.size());
 
             usleep( usec );
         }
