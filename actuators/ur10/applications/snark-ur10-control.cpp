@@ -82,14 +82,15 @@ void usage(int code=1)
 {
     std::cerr << std::endl;
     std::cerr << name() << std::endl;
-    std::cerr << "example: socat tcp-listen:9999,reuseaddr EXEC:\"robot-arm-daemon --id 7 -ip 127.0.0.1 -p 8888\" " << name() << " " << std::endl;
+    std::cerr << "example: socat tcp-listen:9999,reuseaddr EXEC:\"snark-ur10-control --id 7 -ip 192.168.0.10 -p 8888\" " << name() << " " << std::endl;
+    std::cerr << "          Listens for commands from TCP port 9999, process command and send control string to 192.168.0.10:8888" << std::endl;
     std::cerr << "options:" << std::endl;
     std::cerr << "    --help,-h: show this message" << std::endl;
     std::cerr << "*   --id=: ID to identify commands, eg. ><ID>,999,set_pos,home;" << std::endl;
     std::cerr << "*   --address=|-ip=: TCP IP address of the robot arm." << std::endl;
-    std::cerr << "*   --status-port=|-sp=: TCP service port the robot arm status will be broadcasted on. Binary, one byte of -1, 0 or 1 value." << std::endl;
     std::cerr << "*   --port=|-p=: TCP port number of robot arm" << std::endl;
-    std::cerr << "    --sleep=: loop sleep value in seconds, default to 0.2 if not specified." << std::endl;
+    std::cerr << "    --sleep=: loop sleep value in seconds, default is 0.2s if not specified." << std::endl;
+    std::cerr << "*   --status-port=|-sp=: TCP service port the robot arm status will be broadcasted on. See below." << std::endl;
     typedef snark::robot_arm::current_positions current_positions_t;
     comma::csv::binary< current_positions_t > binary;
     std::cerr << "UR10's status:" << std::endl;
