@@ -89,7 +89,7 @@ void usage(int code=1)
     std::cerr << "    --versbose,-v:        show messages to the robot arm - angles are changed to degrees." << std::endl;
     std::cerr << "*   --id=:                ID to identify commands, eg. ><ID>,999,set_pos,home;" << std::endl;
     std::cerr << "*   --status-port=|-sp=:  TCP service port the statuses will be broadcasted on. See below." << std::endl;
-    std::cerr << "*   --robot-arm=:         Host name or IP of the robot arm." << std::endl;
+    std::cerr << "*   --robot-arm-host=:         Host name or IP of the robot arm." << std::endl;
     std::cerr << "*   --robot-arm-port=:    TCP Port number of the robot arm." << std::endl;
     std::cerr << "    --sleep=:             loop sleep value in seconds, default is 0.2s if not specified." << std::endl;
     typedef snark::robot_arm::current_positions current_positions_t;
@@ -128,7 +128,11 @@ public:
     arm_output( const angular_acceleration_t& ac, const angular_velocity_t& vel,
                 ExtY_Arm_Controller_T& output ) : 
                 acceleration( ac ), velocity( vel ), joints( output ), 
-                current_positions( static_cast< current_positions_t& >( output ) ) {}
+                current_positions( static_cast< current_positions_t& >( output ) ) 
+                {
+                    Arm_Controller_initialize();
+                }
+   ~arm_output() { Arm_Controller_terminate(); }
                 
    std::string debug_in_degrees() const
    {
@@ -213,8 +217,8 @@ template < > struct action< arm::move_cam > {
         static const arm::plane_angle_degrees_t min_pan = -45.0 * arm::degree;
         static const arm::plane_angle_degrees_t max_tilt = 90.0 * arm::degree;
         static const arm::plane_angle_degrees_t min_tilt = -90.0 * arm::degree;
-        static const arm::length_t min_height = 0.2 * arm::meter;
-        static const arm::length_t max_height = 0.5 * arm::meter;
+        static const arm::length_t min_height = 0.1 * arm::meter;
+        static const arm::length_t max_height = 0.8 * arm::meter;
         
         
         if( cam.pan < min_pan ) { return result( "pan angle is below minimum limit of -45.0", result::error::invalid_input ); }
@@ -263,9 +267,6 @@ template < > struct action< arm::set_position > {
     {
         Arm_Controller_U.motion_primitive = input_primitive::set_position;
         
-        Arm_Controller_U.Input_1 = pos.position == "giraffe" ? 
-                arm::set_position::giraffe : arm::set_position::home;
-                
         if( pos.position == "giraffe" ) { Arm_Controller_U.Input_1 = arm::set_position::giraffe; }
         else if( pos.position == "home" ) { Arm_Controller_U.Input_1 = arm::set_position::home; }
         else { return result("unknown position type", int(result::error::invalid_input) ); }
@@ -356,12 +357,13 @@ int main( int ac, char** av )
 
     double acc = 0.5;
     double vel = 0.1;
-    arm_output output( acc * angular_acceleration_t::unit_type(), vel * angular_velocity_t::unit_type(),
-                       Arm_Controller_Y );
 
     std::cerr << name() << "started" << std::endl;
     try
     {
+        arm_output output( acc * angular_acceleration_t::unit_type(), vel * angular_velocity_t::unit_type(),
+                       Arm_Controller_Y );
+    
         comma::uint16 rover_id = options.value< comma::uint16 >( "--id" );
         double sleep = 0.2; // seconds
         if( options.exists( "--sleep" ) ) { sleep = options.value< double >( "--sleep" ); };
