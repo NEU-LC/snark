@@ -85,12 +85,13 @@ void usage(int code=1)
     std::cerr << "example: socat tcp-listen:9999,reuseaddr EXEC:\"snark-ur10-control --id 7 -ip 192.168.0.10 -p 8888\" " << name() << " " << std::endl;
     std::cerr << "          Listens for commands from TCP port 9999, process command and send control string to 192.168.0.10:8888" << std::endl;
     std::cerr << "options:" << std::endl;
-    std::cerr << "    --help,-h: show this message" << std::endl;
-    std::cerr << "*   --id=: ID to identify commands, eg. ><ID>,999,set_pos,home;" << std::endl;
-    std::cerr << "*   --address=|-ip=: TCP IP address of the robot arm." << std::endl;
-    std::cerr << "*   --port=|-p=: TCP port number of robot arm" << std::endl;
-    std::cerr << "    --sleep=: loop sleep value in seconds, default is 0.2s if not specified." << std::endl;
-    std::cerr << "*   --status-port=|-sp=: TCP service port the robot arm status will be broadcasted on. See below." << std::endl;
+    std::cerr << "    --help,-h:            show this message" << std::endl;
+    std::cerr << "    --versbose,-v:        show messages to the robot arm - angles are changed to degrees." << std::endl;
+    std::cerr << "*   --id=:                ID to identify commands, eg. ><ID>,999,set_pos,home;" << std::endl;
+    std::cerr << "*   --status-port=|-sp=:  TCP service port the statuses will be broadcasted on. See below." << std::endl;
+    std::cerr << "*   --robot-arm=:         Host name or IP of the robot arm." << std::endl;
+    std::cerr << "*   --robot-arm-port=:    TCP Port number of the robot arm." << std::endl;
+    std::cerr << "    --sleep=:             loop sleep value in seconds, default is 0.2s if not specified." << std::endl;
     typedef snark::robot_arm::current_positions current_positions_t;
     comma::csv::binary< current_positions_t > binary;
     std::cerr << "UR10's status:" << std::endl;
@@ -229,7 +230,6 @@ template < > struct action< arm::move_cam > {
         Arm_Controller_U.Input_2 = zero_tilt - cam.tilt.value();
         Arm_Controller_U.Input_3 = cam.height.value();
         
-        
         return result();
     }  
 };
@@ -254,9 +254,6 @@ template < > struct action< arm::move_joints > {
         Arm_Controller_U.Input_4 = joints.joints[3].value();
         Arm_Controller_U.Input_5 = joints.joints[4].value();
         Arm_Controller_U.Input_6 = joints.joints[5].value();
-        
-        
-        
         return result();
     }  
 };
@@ -328,19 +325,17 @@ void process_command( const std::vector< std::string >& v )
 namespace ip = boost::asio::ip;
 /// Connect to the TCP server within the allowed timeout
 /// Needed because comma::io::iostream is not available
-bool tcp_connect( const std::string& conn_str, 
+bool tcp_connect( const std::string& host, const std::string& port, 
                   const boost::posix_time::time_duration& timeout, ip::tcp::iostream& io )
 {
     using boost::asio::ip::tcp;
-    std::vector< std::string > v = comma::split( conn_str, ':' );
     boost::asio::io_service service;
     tcp::resolver resolver( service );
-    tcp::resolver::query query( v[0] == "localhost" ? "127.0.0.1" : v[0], v[1] );
+    tcp::resolver::query query( host == "localhost" ? "127.0.0.1" : host, port );
     tcp::resolver::iterator it = resolver.resolve( query );
-    
+    // Connect and find out if successful or not quickly using timeout
     io.expires_from_now( timeout );
     io.connect( it->endpoint() );
-    
     io.expires_at( boost::posix_time::pos_infin );
     
     return io.error() == 0;
@@ -373,12 +368,15 @@ int main( int ac, char** av )
 
         comma::uint32 listen_port = options.value< comma::uint32 >( "--status-port,-sp" );
         
-        std::string arm_conn = options.value< std::string >( "--robot-arm" );
+        bool verbose = options.exists( "--verbose,-v" );
+        
+        std::string arm_conn_host = options.value< std::string >( "--robot-arm-host" );
+        std::string arm_conn_port = options.value< std::string >( "--robot-arm-port" );
         tcp::iostream robot_arm;
-        if( !tcp_connect( arm_conn, boost::posix_time::seconds(1), robot_arm ) ) 
+        if( !tcp_connect( arm_conn_host, arm_conn_port, boost::posix_time::seconds(1), robot_arm ) ) 
         {
             std::cerr << name() << "failed to connect to robot arm at " 
-                      << arm_conn << " - " << robot_arm.error().message() << std::endl;
+                      << arm_conn_host << ':' << arm_conn_port << " - " << robot_arm.error().message() << std::endl;
             exit( 1 );
         }
 
@@ -394,6 +392,7 @@ int main( int ac, char** av )
         while( !signaled && std::cin.good() )
         {
             inputs.read();
+            // Process commands into inputs into the system
             if( !inputs.is_empty() )
             {
                 const command_vector& v = inputs.front();
@@ -402,26 +401,28 @@ int main( int ac, char** av )
 
                 inputs.pop();
             }
-            
+            // Run simulink code
             Arm_Controller_step();
+            
             // We we need to send command to arm
             if( Arm_Controller_Y.command_flag > 0 )
             {
-                std::cerr << name() << output.debug_in_degrees() << std::endl;
+                if( verbose ) { std::cerr << name() << output.debug_in_degrees() << std::endl; }
                 robot_arm << output.serialise() << std::endl;
                 robot_arm.flush();
                 Arm_Controller_U.motion_primitive = real_T( input_primitive::no_action );
             }
+            
             // reset inputs
             memset( &Arm_Controller_U, 0, sizeof( ExtU_Arm_Controller_T ) );
-            
+            // send out arm's current status: code and joint positions
             output.write_arm_status( publisher );
 
             usleep( usec );
         }
-
-
         
+        robot_arm.close();
+        publisher.close();
     }
     catch( comma::exception& ce ) { std::cerr << name() << ": exception thrown: " << ce.what() << std::endl; return 1; }
     catch( std::exception& e ) { std::cerr << name() << ": unknown exception caught: " << e.what() << std::endl; return 1; }
