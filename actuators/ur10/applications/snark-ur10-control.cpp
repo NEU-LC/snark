@@ -132,7 +132,14 @@ public:
                 {
                     Arm_Controller_initialize();
                 }
-   ~arm_output() { Arm_Controller_terminate(); }
+   ~arm_output() 
+    { 
+        Arm_Controller_terminate(); 
+        std::cout.flush(); 
+        close(STDIN_FILENO);
+        close(STDOUT_FILENO);
+        close(STDERR_FILENO);
+    }
                 
    std::string debug_in_degrees() const
    {

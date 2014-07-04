@@ -37,6 +37,7 @@
 #include "commands.h"
 #include "units.h"
 #include "config.h"
+#include "data.h"
 
 namespace comma { namespace visiting {
     
@@ -199,6 +200,43 @@ template <> struct traits< robot_arm::config >
     }
 };
 
+template < > struct traits< boost::array< comma::packed::big_endian_double, 6 > >
+{
+    template< typename K, typename V > static void visit( const K& k, const boost::array< comma::packed::big_endian_double, 6 >& t, V& v )
+    {
+        std::size_t i = 0;
+        for( const comma::packed::big_endian_double* iter=t.cbegin(); iter!=t.cend(); ++iter ) { 
+            v.apply( boost::lexical_cast< std::string >( i ).c_str(), (*iter)() ); 
+            ++i;
+        }
+    }
+};
+template < > struct traits< robot_arm::cartesian >
+{
+    template< typename K, typename V > static void visit( const K& k, const robot_arm::cartesian& t, V& v )
+    {
+        v.apply( "x", t.x() );
+        v.apply( "y", t.y() );
+        v.apply( "z", t.z() );
+    }
+};
+
+template <> struct traits< robot_arm::fixed_status >
+{
+    template< typename K, typename V > static void visit( const K& k, const  robot_arm::fixed_status& t, V& v )
+    {
+        v.apply( "length", t.length() );
+        v.apply( "time_since_boot", t.time_since_boot() );
+        v.apply( "positions", t.positions );
+        v.apply( "velocities", t.velocities );
+        v.apply( "currents", t.currents );
+        v.apply( "coordinates", t.translation );
+        v.apply( "rotation", t.rotation );
+        v.apply( "temperatures", t.temperatures );
+        v.apply( "robot_mode", t.robot_mode() );
+        v.apply( "joint_modes", t.joint_modes );
+    }
+};
 
 }} // namespace comma { namespace visiting {
 
