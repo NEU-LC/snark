@@ -77,7 +77,7 @@ void usage(int code=1)
     std::cerr << "    A stop is sent when application closes." << std::endl;
     std::cerr << "options:" << std::endl;
     std::cerr << "    --help,-h:            show this message" << std::endl;
-    std::cerr << "    --sleep:              Loop sleep in seconds, defaults to 0.02s." << std::endl;
+    std::cerr << "    --sleep:              Loop sleep in seconds, defaults to 0.02s, this should ALWAYS be smaller than --time-step." << std::endl;
     std::cerr << "    --host:               Robot arm's hostname or IP." << std::endl;
     std::cerr << "    --port,-p:            Robot arm's port for fixed size binary status, defaults is 30003." << std::endl;
     std::cerr << "    --versbose,-v:        show messages to the robot arm - angles are changed to degrees." << std::endl;
@@ -209,12 +209,14 @@ int main( int ac, char** av )
     
     double sleep = 0.01;
     if( options.exists("--sleep") ) { sleep = options.value< double >("--sleep");  }
-    const comma::uint64 usec = 1000000u * sleep;
+    const comma::int64 usec = 1000000u * sleep;
     
     
     if( options.exists("-v,--velocity") ) { velocity = options.value< double >("-v,--velocity") * arm::rad_per_sec;  }
     if( options.exists("-a,--acceleration") ) { acceleration = options.value< double >("-a,--acceleration") * arm::rad_per_s2;  }
     if( options.exists("-s,--time-step") ) { duration_step = boost::posix_time::millisec(  std::size_t(options.value< double >("-s,--time-step") * 1000u) );  }
+    
+    if( usec > duration_step.total_microseconds() ) { COMMA_THROW( comma::exception, "--sleep must be smaller or equals to --time-step" ); }
     
     std::cerr << name() << "duration step: " << duration_step.total_milliseconds() << "ms" << std::endl;
     std::cerr << name() << "velocity: " << velocity.value() << "rad/ms"<< std::endl;
