@@ -87,10 +87,11 @@ comma::csv::ascii< T >& ascii( )
     return ascii_;
 }
 
+bool is_single_line_json = false;
+
 
 int main( int ac, char** av )
 {
-    
     comma::signal_flag signaled;
     
     comma::command_line_options options( ac, av );
@@ -106,6 +107,7 @@ int main( int ac, char** av )
     std::cerr << name() << "started" << std::endl;
     
     bool is_json = options.exists( "--json,-j" );
+    bool is_single_line_json = options.exists( "--compact-json,-cj" );
     bool is_binary = options.exists( "--binary,-b" );
     
     try
@@ -125,12 +127,12 @@ int main( int ac, char** av )
                 binary.put( *pstatus, line.data() );
                 std::cout.write( line.data(), line.size());
             }
-            else if ( is_json )
+            else if ( is_json || is_single_line_json )
             {
                 boost::property_tree::ptree t;
                 comma::to_ptree to_ptree( t );
                 comma::visiting::apply( to_ptree ).to( *pstatus );
-                boost::property_tree::write_json( std::cout, t );    
+                boost::property_tree::write_json( std::cout, t, !is_single_line_json );    
             }
             else { std::cout << ascii< status >().put( *pstatus, line ) << std::endl; }
         }

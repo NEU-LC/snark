@@ -37,9 +37,6 @@
 #include <boost/date_time/posix_time/posix_time_duration.hpp>
 #include <boost/optional.hpp>
 #include <boost/algorithm/string.hpp>
-#include <boost/units/systems/si/angular_velocity.hpp>
-#include <boost/units/systems/si/angular_acceleration.hpp>
-#include <boost/units/quantity.hpp>
 #include <boost/asio.hpp>
 #include <comma/application/command_line_options.h>
 #include <comma/csv/stream.h>

@@ -39,6 +39,8 @@
 #include <boost/units/systems/si/length.hpp>
 #include <boost/units/systems/si/plane_angle.hpp>
 #include <boost/units/systems/angle/degrees.hpp>
+#include <boost/units/systems/si/angular_velocity.hpp>
+#include <boost/units/systems/si/angular_acceleration.hpp>
 
 
 namespace snark { namespace robot_arm {
@@ -46,10 +48,14 @@ namespace snark { namespace robot_arm {
 typedef boost::units::quantity< boost::units::si::plane_angle > plane_angle_t;
 typedef boost::units::quantity< boost::units::degree::plane_angle > plane_angle_degrees_t;
 typedef boost::units::quantity< boost::units::si::length > length_t;
+typedef boost::units::quantity< boost::units::si::angular_acceleration > angular_acceleration_t;
+typedef boost::units::quantity< boost::units::si::angular_velocity > angular_velocity_t;
 
 const plane_angle_t::unit_type radian = boost::units::si::radian;
 const plane_angle_degrees_t::unit_type degree = boost::units::degree::degrees;
 const length_t::unit_type meter = boost::units::si::meter;
+const angular_acceleration_t::unit_type rad_per_s2 = angular_acceleration_t::unit_type();
+const angular_velocity_t::unit_type rad_per_sec = angular_velocity_t::unit_type();
 
 } } // namespace snark { namespace robot_arm {
 

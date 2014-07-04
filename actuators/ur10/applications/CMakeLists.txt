@@ -11,3 +11,7 @@ ADD_EXECUTABLE( snark-ur10-status snark-ur10-status.cpp )
 TARGET_LINK_LIBRARIES( snark-ur10-status snark_ur10 snark_ur10_simulink snark_ocean boost_system ${comma_ALL_LIBRARIES} )
 INSTALL( TARGETS snark-ur10-status RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
 
+ADD_EXECUTABLE( snark-ur10-from-console snark-ur10-from-console.cpp )
+TARGET_LINK_LIBRARIES( snark-ur10-from-console snark_ur10 snark_ur10_simulink snark_ocean boost_system ${comma_ALL_LIBRARIES} )
+INSTALL( TARGETS snark-ur10-from-console RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
+
