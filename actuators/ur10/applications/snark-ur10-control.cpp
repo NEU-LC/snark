@@ -63,6 +63,8 @@ extern ExtU_Arm_Controller_T Arm_Controller_U;
 /* External outputs (root outports fed by signals with auto storage) */
 extern ExtY_Arm_Controller_T Arm_Controller_Y;
 
+#include "action.h"
+
 static const char* name() {
     return "robot-arm-daemon: ";
 }
@@ -100,6 +102,9 @@ void usage(int code=1)
 }
 
 namespace arm = snark::robot_arm;
+using arm::input_primitive;
+using arm::result;
+
 
 template < typename T > 
 comma::csv::ascii< T >& ascii( )
@@ -180,116 +185,9 @@ void output( const std::string& msg, std::ostream& os=std::cout )
     os << msg << std::endl;
 }
 
-struct input_primitive
-{
-    enum {
-        no_action = 0,
-        move_cam = 1,
-        set_position = 2,
-        set_home=3,      // define home position, internal usage
-        movej=4
-    };  
-};
-
-struct result
-{
-    struct error { enum { success=0, invalid_input=1 }; };
-    int code;
-    std::string message;
-    
-    result( const std::string& msg, int code_ ) : code( code_ ), message( msg ) {}
-    result() : code( error::success ), message( "success" ) {}
-    
-    std::string get_message() const 
-    {
-        std::ostringstream ss;
-        ss << code << ',' << '"' << message << '"';
-        return ss.str();
-    }
-    bool is_success() const { return code == error::success; }
-};
-
-template < typename T > struct action;
-
-template < > struct action< arm::move_cam > {
-    static result run( const arm::move_cam& cam )
-    {
-#ifdef MAMMOTH_VERBOSE
-        std::cerr << name() << " running " << cam.serialise() << std::endl; 
-#endif        
-        static const arm::plane_angle_degrees_t max_pan = 45.0 * arm::degree;
-        static const arm::plane_angle_degrees_t min_pan = -45.0 * arm::degree;
-        static const arm::plane_angle_degrees_t max_tilt = 90.0 * arm::degree;
-        static const arm::plane_angle_degrees_t min_tilt = -90.0 * arm::degree;
-        static const arm::length_t min_height = 0.1 * arm::meter;
-        static const arm::length_t max_height = 0.8 * arm::meter;
-        
-        
-        if( cam.pan < min_pan ) { return result( "pan angle is below minimum limit of -45.0", result::error::invalid_input ); }
-        if( cam.pan > max_pan ) { return result( "pan angle is above minimum limit of 45.0", result::error::invalid_input ); }
-        if( cam.tilt < min_tilt ) { return result( "tilt angle is below minimum limit of -90.0", result::error::invalid_input ); }
-        if( cam.tilt > max_tilt ) { return result( "tilt angle is above minimum limit of 90.0", result::error::invalid_input ); }
-        if( cam.height < min_height ) { return result( "height value is below minimum limit of 0.1m", result::error::invalid_input ); }
-        if( cam.height > max_height ) { return result( "height value is above minimum limit of 0.5m", result::error::invalid_input ); }
-        
-        static double zero_tilt = 90.0;
-        Arm_Controller_U.motion_primitive = real_T( input_primitive::move_cam );
-        Arm_Controller_U.Input_1 = cam.pan.value();
-        Arm_Controller_U.Input_2 = zero_tilt - cam.tilt.value();
-        Arm_Controller_U.Input_3 = cam.height.value();
-        
-        return result();
-    }  
-};
-
-template < > struct action< arm::move_joints > {
-    static result run( const arm::move_joints& joints )
-    {
-#ifdef MAMMOTH_VERBOSE
-        std::cerr << name() << " running " << joints.serialise() << std::endl; 
-#endif
-        static const arm::plane_angle_degrees_t min = 0.0 * arm::degree;
-        static const arm::plane_angle_degrees_t max = 360.0 * arm::degree;
-        for( std::size_t i=0; i<joints.joints.size(); ++i )
-        {
-            if( joints.joints[i] < min || joints.joints[0] > max ) { return result( "joint angle must be 0-360 degrees", result::error::invalid_input ); }
-        }
-        
-        Arm_Controller_U.motion_primitive = real_T( input_primitive::movej );
-        Arm_Controller_U.Input_1 = joints.joints[0].value();
-        Arm_Controller_U.Input_2 = joints.joints[1].value();
-        Arm_Controller_U.Input_3 = joints.joints[2].value();
-        Arm_Controller_U.Input_4 = joints.joints[3].value();
-        Arm_Controller_U.Input_5 = joints.joints[4].value();
-        Arm_Controller_U.Input_6 = joints.joints[5].value();
-        return result();
-    }  
-};
-
-template < > struct action< arm::set_position > {
-    static result run( const arm::set_position& pos )
-    {
-        Arm_Controller_U.motion_primitive = input_primitive::set_position;
-        
-        if( pos.position == "giraffe" ) { Arm_Controller_U.Input_1 = arm::set_position::giraffe; }
-        else if( pos.position == "home" ) { Arm_Controller_U.Input_1 = arm::set_position::home; }
-        else { return result("unknown position type", int(result::error::invalid_input) ); }
-//         std::cerr << name() << " running " << pos.serialise()  << " pos_input: " << Arm_Controller_U.Input_1 
-//             << " tag: " << pos.position << std::endl; 
-        return result();
-    }  
-};
-
-template < > struct action< arm::set_home > {
-    static result run( const arm::set_home& h )
-    {
-        Arm_Controller_U.motion_primitive = input_primitive::set_home;
-        return result();
-    }  
-};
 
 template < typename C >
-std::string handle( const std::vector< std::string >& line )
+std::string handle( const std::vector< std::string >& line, std::ostream& os )
 {
     C c;
     try
@@ -311,18 +209,25 @@ std::string handle( const std::vector< std::string >& line )
     catch( ... ) { COMMA_THROW( comma::exception, "unknown error is parsing: " + comma::join( line , ',' ) ); }
        
     // perform action
-    result ret = action< C >::run( c );
+    result ret = arm::action< C >::run( c, os );
     std::ostringstream ss;
     ss << '<' << c.serialise() << ',' << ret.get_message() << ';';
     return ss.str();
 }
 
-void process_command( const std::vector< std::string >& v )
+void process_command( const std::vector< std::string >& v, std::ostream& os )
 {
-    if( boost::iequals( v[2], "move_cam" ) )    { output( handle< arm::move_cam >( v ) ); }
-    else if( boost::iequals( v[2], "set_pos" ) )  { output( handle< arm::set_position >( v ) ); }
-    else if( boost::iequals( v[2], "set_home" ) )  { output( handle< arm::set_home >( v ) ); }
-    else if( boost::iequals( v[2], "movej" ) )  { output( handle< arm::move_joints >( v ) ); }
+    if( boost::iequals( v[2], "move_cam" ) )    { output( handle< arm::move_cam >( v, os ) ); }
+    else if( boost::iequals( v[2], "set_pos" ) )  { output( handle< arm::set_position >( v, os ) ); }
+    else if( boost::iequals( v[2], "set_home" ) )  { output( handle< arm::set_home >( v, os ) ); }
+    else if( boost::iequals( v[2], "enable" ) ) { output( handle< arm::enable >( v, os )); }  
+    else if( boost::iequals( v[2], "release_brakes" ) ) { output( handle< arm::release_brakes >( v, os )); }  
+    else if( boost::iequals( v[2], "auto_init" ) ) { output( handle< arm::auto_init >( v, os )); }  
+    else if( boost::iequals( v[2], "movej" ) )  
+    { 
+        if( v.size() == arm::move_joints::fields ) { output( handle< arm::move_joints >( v, os ) ); }
+        else { output( handle< arm::joint_move >( v, os ) ); }
+    }
     else { output( comma::join( v, v.size(), ',' ) + ',' + 
         impl_::str( arm::errors::unknown_command ) + ",\"unknown command found: '" + v[2] + "'\"" ); return; }
 }
@@ -345,6 +250,7 @@ bool tcp_connect( const std::string& host, const std::string& port,
     
     return io.error() == 0;
 } 
+
 
 int main( int ac, char** av )
 {
@@ -385,6 +291,7 @@ int main( int ac, char** av )
                       << arm_conn_host << ':' << arm_conn_port << " - " << robot_arm.error().message() << std::endl;
             exit( 1 );
         }
+        
 
         // create tcp server for broadcasting status
         std::ostringstream ss;
@@ -403,7 +310,7 @@ int main( int ac, char** av )
             {
                 const command_vector& v = inputs.front();
                 //std::cerr << name() << " got " << comma::join( v, ',' ) << std::endl;
-                process_command( v );
+                process_command( v, robot_arm );
 
                 inputs.pop();
             }

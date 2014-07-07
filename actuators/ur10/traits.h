@@ -159,6 +159,53 @@ template <> struct traits< robot_arm::move_joints >
     }
 };
 
+template <> struct traits< robot_arm::joint_move >
+{
+    template< typename K, typename V > static void visit( const K& k, robot_arm::joint_move& t, V& v )
+    {
+        traits< command_base < robot_arm::joint_move > >::visit(k, t, v);
+        v.apply( "joint_id", t.joint_id );
+        v.apply( "dir", t.dir );
+    }
+
+    template< typename K, typename V > static void visit( const K& k, const robot_arm::joint_move& t, V& v )
+    {
+        traits< command_base < robot_arm::joint_move > >::visit(k, t, v);
+        v.apply( "joint_id", t.joint_id );
+        v.apply( "dir", t.dir );
+    }
+};
+
+template <> struct traits< robot_arm::auto_init >
+{
+    template< typename K, typename V > static void visit( const K& k, robot_arm::auto_init& t, V& v ) {
+        traits< command_base < robot_arm::auto_init > >::visit(k, t, v);
+    }
+    template< typename K, typename V > static void visit( const K& k, const robot_arm::auto_init& t, V& v ) {
+        traits< command_base < robot_arm::auto_init > >::visit(k, t, v);
+    }
+};
+
+template <> struct traits< robot_arm::enable >
+{
+    template< typename K, typename V > static void visit( const K& k, robot_arm::enable& t, V& v ) {
+        traits< command_base < robot_arm::enable > >::visit(k, t, v);
+    }
+    template< typename K, typename V > static void visit( const K& k, const robot_arm::enable& t, V& v ) {
+        traits< command_base < robot_arm::enable > >::visit(k, t, v);
+    }
+};
+
+template <> struct traits< robot_arm::release_brakes >
+{
+    template< typename K, typename V > static void visit( const K& k, robot_arm::release_brakes& t, V& v ) {
+        traits< command_base < robot_arm::release_brakes > >::visit(k, t, v);
+    }
+    template< typename K, typename V > static void visit( const K& k, const robot_arm::release_brakes& t, V& v ) {
+        traits< command_base < robot_arm::release_brakes > >::visit(k, t, v);
+    }
+};
+
 template <> struct traits< robot_arm::set_position >
 {
     template< typename K, typename V > static void visit( const K& k, robot_arm::set_position& t, V& v )

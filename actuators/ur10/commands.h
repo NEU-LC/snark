@@ -98,6 +98,7 @@ struct move_joints : command_base< move_joints >
 {
     // static const char* name_str = "MOVEJ";
     static const char joint_num = 6;
+    static const unsigned char fields = 9; /// number of fields for command
 
     /// angle for each joint
     std::vector< plane_angle_degrees_t > joints;
@@ -137,6 +138,18 @@ struct move_effector : command_base< move_effector >
     plane_angle_degrees_t tilt;
     plane_angle_degrees_t roll;
 
+};
+
+/// Send to trigger auto initialisation on startup.
+struct auto_init : command_base< auto_init > {};
+struct enable : command_base< enable > {};
+struct release_brakes : command_base< release_brakes > {};
+
+/// Move an single joint at set speed in a given direction e.g. for initialisation.
+struct joint_move : command_base< joint_move > {
+    static const unsigned char fields = 5; /// number of fields for command
+    comma::uint16 joint_id;
+    bool dir;
 };
 
 } } // namespace snark { namespace robot_arm {

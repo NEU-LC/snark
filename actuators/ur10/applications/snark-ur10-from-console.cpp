@@ -70,7 +70,7 @@ void usage(int code=1)
     std::cerr << "example: socat -u STDIN,raw STDOUT | snark-ur10-from-console --host robot-arm --status-port 30003 | socat -u - tcp:robot-arm:30002 " << name() << " " << std::endl;
     std::cerr << "         The program expects raw binary input hence 'STDIN,raw', when used in ascii mode a CR must be hit after each keypress." << std::endl;
     std::cerr << "Interactive:" << std::endl;
-    std::cerr << "    Input char 1-6 for switching joint to initialise, defaults to joint 6 on startup." << std::endl;
+    std::cerr << "    Input char 0-5 for switching joint to initialise, defaults to joint index 5 (6th joint) on startup." << std::endl;
     std::cerr << "    Press/hold char k for positive velocity." << std::endl;
     std::cerr << "    Press/hold char j for negative velocity." << std::endl;
     std::cerr << "    Press/hold ' ' or any other key to stop any movement." << std::endl;
@@ -108,16 +108,12 @@ class current_joint
     static const char max = 5;
     
     struct data {
-        data( ) : speeds( max+1 ) {
-            for( std::size_t i=0; i<max+1; ++i ) { speeds[i] = 0; }
-        }
-        data( char joint_index, double vel ) : speeds( max+1 )
+        data( ) : speeds( max+1, 0.0 ) {}
+        data( char joint_index, double vel ) : speeds( max+1, 0.0 )
         {
-            for( std::size_t i=0; i<max+1; ++i ) { speeds[i] = 0; }
             speeds[ joint_index ] = vel;
         }
         std::vector< double > speeds;
-        
     };
 public:
     current_joint( char num, 
@@ -139,12 +135,12 @@ public:
             case char(37):
                 sign = -1;
                 break;
+            case '0':
             case '1':
             case '2':
             case '3':
             case '4':
             case '5':
-            case '6':
                 current_ = boost::lexical_cast< comma::uint16 >( c ) - 1;
                 // TODO: check if joint is in init mode
                 status();
