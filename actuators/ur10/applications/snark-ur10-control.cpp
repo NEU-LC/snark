@@ -251,6 +251,34 @@ bool tcp_connect( const std::string& host, const std::string& port,
     return io.error() == 0;
 } 
 
+bool ready( comma::io::istream& is )
+{
+    std::cerr << "avail: " << is->rdbuf()->in_avail() << std::endl;
+    return is->rdbuf()->in_avail() > 0;
+}
+
+/// Return null if no status
+const arm::fixed_status* read_status( comma::io::istream& iss )
+{
+    static const std::size_t max_buf = sizeof( arm::fixed_status );
+    static char buffer[ max_buf ];
+    
+    // std::cerr << "rdbuf" << std::endl;
+
+    iss->read( buffer, max_buf );
+    if( !iss->good() ) {
+        std::cerr  << "not good" << std::endl;
+        return NULL;
+    }
+
+    while( ready( iss ) )
+    {
+        iss->read( buffer, max_buf );
+        std::cerr << "ready again read" << std::endl;
+    }
+
+    return reinterpret_cast< const arm::fixed_status* >( &buffer[0] );
+}
 
 int main( int ac, char** av )
 {
@@ -275,7 +303,7 @@ int main( int ac, char** av )
                        Arm_Controller_Y );
     
         comma::uint16 rover_id = options.value< comma::uint16 >( "--id" );
-        double sleep = 0.2; // seconds
+        double sleep = 0.1; // seconds
         if( options.exists( "--sleep" ) ) { sleep = options.value< double >( "--sleep" ); };
 
         comma::uint32 listen_port = options.value< comma::uint32 >( "--status-port,-sp" );
@@ -284,6 +312,7 @@ int main( int ac, char** av )
         
         std::string arm_conn_host = options.value< std::string >( "--robot-arm-host" );
         std::string arm_conn_port = options.value< std::string >( "--robot-arm-port" );
+        std::string arm_status_port = options.value< std::string >( "--robot-arm-status" );
         tcp::iostream robot_arm;
         if( !tcp_connect( arm_conn_host, arm_conn_port, boost::posix_time::seconds(1), robot_arm ) ) 
         {
@@ -292,7 +321,6 @@ int main( int ac, char** av )
             exit( 1 );
         }
         
-
         // create tcp server for broadcasting status
         std::ostringstream ss;
         ss << "tcp:" << listen_port;
@@ -302,8 +330,37 @@ int main( int ac, char** av )
 
         typedef std::vector< std::string > command_vector;
         const comma::uint32 usec( sleep * 1000000u );
+        
+        // status from the arm
+        const arm::fixed_status* pstatus = NULL;
+        
+        std::string status_conn = "tcp:" + arm_conn_host + ':' + arm_status_port;
+        std::cerr << "aaa: " << status_conn << std::endl;
+        comma::io::istream status_stream( status_conn, comma::io::mode::binary, comma::io::mode::non_blocking );
+        comma::io::select select;
+        select.read().add( status_stream.fd() );
+
         while( !signaled && std::cin.good() )
         {
+            select.check();
+            if( ready( status_stream ) || select.read().ready( status_stream.fd() ) ) 
+            {
+                std::cerr << "bbb" << std::endl;
+                pstatus = read_status( status_stream );
+                if( pstatus ) 
+                { 
+                    // COMMA_THROW( comma::exception, "error in reading robot arm's fixed size status" ); 
+
+                    boost::property_tree::ptree t;
+                    comma::to_ptree to_ptree( t );
+                    comma::visiting::apply( to_ptree ).to( *pstatus );
+                    boost::property_tree::write_json( std::cerr, t, false );    
+                    std::cerr << "ccc1" << std::endl;
+                }
+                
+                std::cerr << "ccc" << std::endl;
+            }
+            
             inputs.read();
             // Process commands into inputs into the system
             if( !inputs.is_empty() )
