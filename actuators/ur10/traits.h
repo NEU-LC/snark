@@ -284,6 +284,7 @@ template <> struct traits< robot_arm::fixed_status >
 {
     template< typename K, typename V > static void visit( const K& k, const  robot_arm::fixed_status& t, V& v )
     {
+        v.apply( "time", boost::posix_time::microsec_clock::local_time() );
         v.apply( "length", t.length() );
         v.apply( "time_since_boot", t.time_since_boot() );
         
