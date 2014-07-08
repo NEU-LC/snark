@@ -141,7 +141,7 @@ public:
             case '3':
             case '4':
             case '5':
-                current_ = boost::lexical_cast< comma::uint16 >( c ) - 1;
+                current_ = boost::lexical_cast< comma::uint16 >( c );
                 // TODO: check if joint is in init mode
                 status();
                 return;
