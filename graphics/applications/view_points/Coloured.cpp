@@ -307,7 +307,7 @@ coloured* colourFromString( const std::string& s, const std::string& fields, con
                 c = new snark::graphics::View::ById( backgroundcolour );
             }
         }
-        else if( ( r && g && b ) || a )
+        else if( r || g || b || a )
         {
             c = new snark::graphics::View::ByRGB;
         }
