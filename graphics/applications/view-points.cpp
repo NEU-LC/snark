@@ -367,7 +367,13 @@ boost::shared_ptr< snark::graphics::View::Reader > makeReader( QGLView& viewer
             && v[i] != "colour"
             && v[i] != "label"
             && v[i] != "scalar"
-            && v[i] != "" ) { v[i] = "shape/" + v[i]; } }
+            && v[i] != "r"
+            && v[i] != "g"
+            && v[i] != "b"
+            && v[i] != "a"
+            && v[i] != "" ) { v[i] = "shape/" + v[i]; }
+        if( v[i] == "r" || v[i] == "g" || v[i] == "b" || v[i] == "a" ) { v[i] = "colour/" + v[i]; }
+    }
     csv.fields = comma::join( v, ',' );
     csv.full_xpath = true;
     if( shape == "extents" )
