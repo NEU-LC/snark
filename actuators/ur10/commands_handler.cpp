@@ -8,7 +8,7 @@ static const char* name() {
 
 void commands_handler::handle( arm::power& p )
 {
-    std::cerr << name() << "running power" << std::endl;
+    std::cerr << name() << "powering robot arm " << ( p.is_on ? "on" : "off" ) << std::endl;
     os << "power " << ( p.is_on ? "on" : "off" ) << std::endl;
     os.flush();
     ret = result();
@@ -19,7 +19,7 @@ void commands_handler::handle( arm::brakes& b )
     std::cerr << name() << "running brakes: " << b.enable  << std::endl;
     os << "stopj([0,0,0,0,0,0])" << std::endl;
     os.flush();
-    if( b.enable ) {
+    if( !b.enable ) {
         os << "set robotmode run" <<std::endl;
         os.flush();
     }
@@ -35,6 +35,12 @@ void commands_handler::handle( arm::auto_init& a )
 void commands_handler::handle( arm::move_cam& cam )
 {
     std::cerr << name() << " running move_cam" << std::endl; 
+
+    if( !is_running() ) {
+    	ret = result( "cannot move (camera) as rover is not in running mode", result::error::invalid_robot_state );
+    	return;
+    }
+
     static const plane_angle_degrees_t max_pan = 45.0 * degree;
     static const plane_angle_degrees_t min_pan = -45.0 * degree;
     static const plane_angle_degrees_t max_tilt = 90.0 * degree;
@@ -61,6 +67,11 @@ void commands_handler::handle( arm::move_cam& cam )
 
 void commands_handler::handle( arm::move_joints& joints )
 {
+    if( !is_running() ) {
+    	ret = result( "cannot move (joints) as rover is not in running mode", result::error::invalid_robot_state );
+    	return;
+    }
+
     std::cerr << name() << " running move joints"  << std::endl; 
     static const plane_angle_degrees_t min = 0.0 * degree;
     static const plane_angle_degrees_t max = 360.0 * degree;
@@ -84,6 +95,11 @@ void commands_handler::handle( arm::move_joints& joints )
 
 void commands_handler::handle( arm::joint_move& joint )
 {
+    if( !is_initialising() ) {
+    	ret = result( "cannot initialise joint as rover is not in initialisation mode", result::error::invalid_robot_state );
+    	return;
+    }
+
     static const unsigned char min_id = 0;
     static const unsigned char max_id = 5;
     std::cerr << name() << "dummy move joint: " << int(joint.joint_id) << " dir: " << joint.dir << std::endl;
@@ -131,6 +147,31 @@ void commands_handler::handle( arm::set_position& pos )
 
 void commands_handler::handle( arm::move_effector& e )
 {
+}
+
+bool commands_handler::is_powered() const {
+	return (status_.robot_mode() != robotmode::no_power);
+}
+
+bool commands_handler::is_running() const 
+{
+	if(status_.robot_mode() != robotmode::running) { return false; }
+
+	for( std::size_t i=0; i<joints_num; ++i ) {
+		if( status_.joint_modes[i]() != jointmode::running ) { return false; }
+	}
+
+	return true;
+}
+bool commands_handler::is_initialising() const 
+{
+	if(status_.robot_mode() != robotmode::running) { return false; }
+
+	for( std::size_t i=0; i<joints_num; ++i ) {
+		if( status_.joint_modes[i]() != jointmode::initializing ) { return false; }
+	}
+
+	return true;
 }
 
 

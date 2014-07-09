@@ -278,17 +278,17 @@ const arm::fixed_status* read_status( comma::io::istream& iss )
     // std::cerr << "rdbuf" << std::endl;
     iss->read( buffer, max_buf );
     if( !iss->good() ) {
-        std::cerr  << "not good" << std::endl;
+        // std::cerr  << "not good" << std::endl;
         return NULL;
     }
-
+    // Keep reading to get latest data
     while( ready( iss ) )
     {
         iss->read( buffer, max_buf );
-        std::cerr << "ready again read" << std::endl;
+        // std::cerr << "ready again read" << std::endl;
     }
 
-    return reinterpret_cast< const arm::fixed_status* >( &buffer[0] );
+    return &arm_status;
 }
 
 int main( int ac, char** av )
@@ -345,7 +345,7 @@ int main( int ac, char** av )
         const arm::fixed_status* pstatus = NULL;
         
         std::string status_conn = "tcp:" + arm_conn_host + ':' + arm_status_port;
-        std::cerr << "aaa: " << status_conn << std::endl;
+        std::cerr << name() << "status connection to robot arm: " << status_conn << std::endl;
         comma::io::istream status_stream( status_conn, comma::io::mode::binary, comma::io::mode::non_blocking );
         comma::io::select select;
         select.read().add( status_stream.fd() );
@@ -355,20 +355,14 @@ int main( int ac, char** av )
             select.check();
             if( ready( status_stream ) || select.read().ready( status_stream.fd() ) ) 
             {
-                std::cerr << "bbb" << std::endl;
                 pstatus = read_status( status_stream );
                 if( pstatus ) 
                 { 
-                    // COMMA_THROW( comma::exception, "error in reading robot arm's fixed size status" ); 
-
-                    boost::property_tree::ptree t;
-                    comma::to_ptree to_ptree( t );
-                    comma::visiting::apply( to_ptree ).to( *pstatus );
-                    boost::property_tree::write_json( std::cerr, t, false );    
-                    std::cerr << "ccc1" << std::endl;
+                    // boost::property_tree::ptree t;
+                    // comma::to_ptree to_ptree( t );
+                    // comma::visiting::apply( to_ptree ).to( *pstatus );
+                    // boost::property_tree::write_json( std::cerr, t, false );    
                 }
-                
-                std::cerr << "ccc" << std::endl;
             }
             
             inputs.read();

@@ -15,6 +15,18 @@ extern "C" {
     #include "simulink/Arm_Controller.h"
 }
 
+
+namespace snark { namespace robot_arm {
+
+struct robotmode {
+    enum mode { running, freedrive, ready, initializing, security_stopped, estopped, fatal_error, no_power, not_connected, shutdown, safeguard_stop };
+};
+struct jointmode {
+    enum mode { power_off=239, error=242, freedrive=243, calibration=250, stopped=251, running=253, initializing=254, idle=255 };
+};
+
+} }  // namespace snark { namespace robot_arm {
+
 namespace snark { namespace robot_arm { namespace handlers {
 
 namespace arm = robot_arm;
@@ -32,7 +44,7 @@ struct input_primitive
 
 struct result
 {
-    struct error { enum { success=0, invalid_input=1 }; };
+    struct error { enum { success=0, invalid_input=1, invalid_robot_state }; };
     int code;
     std::string message;
     
@@ -79,6 +91,10 @@ private:
 	ExtU_Arm_Controller_T& inputs_; /// inputs into simulink engine 
 	const fixed_status& status_;
 	std::ostream& os;		/// output stream to robot arm
+
+	bool is_powered() const;
+	bool is_initialising() const;
+	bool is_running() const; 
 };
 
 } } } // namespace snark { namespace robot_arm { namespace handlers {
