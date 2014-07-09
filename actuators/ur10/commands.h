@@ -41,6 +41,7 @@
 #include <boost/lexical_cast.hpp>
 #include <comma/base/types.h>
 #include <comma/csv/ascii.h>
+#include <comma/dispatch/dispatched.h>
 #include "units.h"
 
 
@@ -74,7 +75,7 @@ struct serialiser
 };
 
 template < typename Derived >
-struct command_base : public serialiser< Derived >
+struct command_base : public serialiser< Derived >, public comma::dispatch::dispatched< Derived >
 {
     comma::uint16 rover_id;         /// The rover's ID number
     comma::int32 sequence_number;   /// Command seuqence number
@@ -142,8 +143,12 @@ struct move_effector : command_base< move_effector >
 
 /// Send to trigger auto initialisation on startup.
 struct auto_init : command_base< auto_init > {};
-struct enable : command_base< enable > {};
-struct release_brakes : command_base< release_brakes > {};
+struct power : command_base< power > {
+    bool is_on;
+};
+struct brakes : command_base< brakes > {
+    bool enable;
+};
 
 /// Move an single joint at set speed in a given direction e.g. for initialisation.
 struct joint_move : command_base< joint_move > {

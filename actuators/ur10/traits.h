@@ -186,23 +186,27 @@ template <> struct traits< robot_arm::auto_init >
     }
 };
 
-template <> struct traits< robot_arm::enable >
+template <> struct traits< robot_arm::power >
 {
-    template< typename K, typename V > static void visit( const K& k, robot_arm::enable& t, V& v ) {
-        traits< command_base < robot_arm::enable > >::visit(k, t, v);
+    template< typename K, typename V > static void visit( const K& k, robot_arm::power& t, V& v ) {
+        traits< command_base < robot_arm::power > >::visit(k, t, v);
+        v.apply( "is_on", t.is_on );
     }
-    template< typename K, typename V > static void visit( const K& k, const robot_arm::enable& t, V& v ) {
-        traits< command_base < robot_arm::enable > >::visit(k, t, v);
+    template< typename K, typename V > static void visit( const K& k, const robot_arm::power& t, V& v ) {
+        traits< command_base < robot_arm::power > >::visit(k, t, v);
+        v.apply( "is_on", t.is_on );
     }
 };
 
-template <> struct traits< robot_arm::release_brakes >
+template <> struct traits< robot_arm::brakes >
 {
-    template< typename K, typename V > static void visit( const K& k, robot_arm::release_brakes& t, V& v ) {
-        traits< command_base < robot_arm::release_brakes > >::visit(k, t, v);
+    template< typename K, typename V > static void visit( const K& k, robot_arm::brakes& t, V& v ) {
+        traits< command_base < robot_arm::brakes > >::visit(k, t, v);
+        v.apply( "enable", t.enable );
     }
-    template< typename K, typename V > static void visit( const K& k, const robot_arm::release_brakes& t, V& v ) {
-        traits< command_base < robot_arm::release_brakes > >::visit(k, t, v);
+    template< typename K, typename V > static void visit( const K& k, const robot_arm::brakes& t, V& v ) {
+        traits< command_base < robot_arm::brakes > >::visit(k, t, v);
+        v.apply( "enable", t.enable );
     }
 };
 

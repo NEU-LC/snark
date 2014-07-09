@@ -51,6 +51,7 @@
 #include <comma/application/signal_flag.h>
 #include "../traits.h"
 #include "../commands.h"
+#include "../commands_handler.h"
 #include "../inputs.h"
 extern "C" {
     #include "../simulink/Arm_Controller.h"
@@ -62,8 +63,6 @@ extern ExtU_Arm_Controller_T Arm_Controller_U;
 
 /* External outputs (root outports fed by signals with auto storage) */
 extern ExtY_Arm_Controller_T Arm_Controller_Y;
-
-#include "action.h"
 
 static const char* name() {
     return "robot-arm-daemon: ";
@@ -102,8 +101,8 @@ void usage(int code=1)
 }
 
 namespace arm = snark::robot_arm;
-using arm::input_primitive;
-using arm::result;
+using arm::handlers::input_primitive;
+using arm::handlers::result;
 
 
 template < typename T > 
@@ -185,6 +184,20 @@ void output( const std::string& msg, std::ostream& os=std::cout )
     os << msg << std::endl;
 }
 
+/// Buffer is the big endian stream of data for status
+static const std::size_t max_buf = sizeof( arm::fixed_status );
+static char buffer[ max_buf ];
+static arm::fixed_status& arm_status = *( reinterpret_cast< arm::fixed_status* >( buffer ) );
+/// Stream to command robot arm
+namespace ip = boost::asio::ip;
+static ip::tcp::iostream robot_arm;
+
+arm::handlers::commands_handler& commands_handler()
+{
+    static arm::handlers::commands_handler handler_( Arm_Controller_U, arm_status, robot_arm  );
+    return handler_;
+}
+
 
 template < typename C >
 std::string handle( const std::vector< std::string >& line, std::ostream& os )
@@ -208,10 +221,13 @@ std::string handle( const std::vector< std::string >& line, std::ostream& os )
     }
     catch( ... ) { COMMA_THROW( comma::exception, "unknown error is parsing: " + comma::join( line , ',' ) ); }
        
+    comma::dispatch::handler& h_ref( commands_handler() );
+    comma::dispatch::dispatched_base& ref( c );
+    ref.dispatch_to( h_ref );
     // perform action
-    result ret = arm::action< C >::run( c, os );
+    // result ret = arm::action< C >::run( c, os );
     std::ostringstream ss;
-    ss << '<' << c.serialise() << ',' << ret.get_message() << ';';
+    ss << '<' << c.serialise() << ',' << commands_handler().ret.get_message() << ';';
     return ss.str();
 }
 
@@ -220,8 +236,8 @@ void process_command( const std::vector< std::string >& v, std::ostream& os )
     if( boost::iequals( v[2], "move_cam" ) )    { output( handle< arm::move_cam >( v, os ) ); }
     else if( boost::iequals( v[2], "set_pos" ) )  { output( handle< arm::set_position >( v, os ) ); }
     else if( boost::iequals( v[2], "set_home" ) )  { output( handle< arm::set_home >( v, os ) ); }
-    else if( boost::iequals( v[2], "enable" ) ) { output( handle< arm::enable >( v, os )); }  
-    else if( boost::iequals( v[2], "release_brakes" ) ) { output( handle< arm::release_brakes >( v, os )); }  
+    else if( boost::iequals( v[2], "power" ) ) { output( handle< arm::power >( v, os )); }  
+    else if( boost::iequals( v[2], "brakes" ) ) { output( handle< arm::brakes >( v, os )); }  
     else if( boost::iequals( v[2], "auto_init" ) ) { output( handle< arm::auto_init >( v, os )); }  
     else if( boost::iequals( v[2], "movej" ) )  
     { 
@@ -232,7 +248,6 @@ void process_command( const std::vector< std::string >& v, std::ostream& os )
         impl_::str( arm::errors::unknown_command ) + ",\"unknown command found: '" + v[2] + "'\"" ); return; }
 }
 
-namespace ip = boost::asio::ip;
 /// Connect to the TCP server within the allowed timeout
 /// Needed because comma::io::iostream is not available
 bool tcp_connect( const std::string& host, const std::string& port, 
@@ -253,18 +268,14 @@ bool tcp_connect( const std::string& host, const std::string& port,
 
 bool ready( comma::io::istream& is )
 {
-    std::cerr << "avail: " << is->rdbuf()->in_avail() << std::endl;
+    // std::cerr << "avail: " << is->rdbuf()->in_avail() << std::endl;
     return is->rdbuf()->in_avail() > 0;
 }
 
 /// Return null if no status
 const arm::fixed_status* read_status( comma::io::istream& iss )
 {
-    static const std::size_t max_buf = sizeof( arm::fixed_status );
-    static char buffer[ max_buf ];
-    
     // std::cerr << "rdbuf" << std::endl;
-
     iss->read( buffer, max_buf );
     if( !iss->good() ) {
         std::cerr  << "not good" << std::endl;
@@ -313,7 +324,6 @@ int main( int ac, char** av )
         std::string arm_conn_host = options.value< std::string >( "--robot-arm-host" );
         std::string arm_conn_port = options.value< std::string >( "--robot-arm-port" );
         std::string arm_status_port = options.value< std::string >( "--robot-arm-status" );
-        tcp::iostream robot_arm;
         if( !tcp_connect( arm_conn_host, arm_conn_port, boost::posix_time::seconds(1), robot_arm ) ) 
         {
             std::cerr << name() << "failed to connect to robot arm at " 

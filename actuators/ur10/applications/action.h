@@ -12,40 +12,20 @@ extern "C" {
 namespace snark { namespace robot_arm {
     
 static std::ostream& ostream = std::cout;
-    
+
+/// This state is used as 
+
+struct robotmode {
+    enum mode { running, freedrive, ready, initializing, security_stopped, estopped, fatal_error, no_power, not_connected, shutdown, safeguard_stop };
+};
+struct jointmode {
+    enum mode { power_off=239, error=242, freedrive=243, calibration=250, stopped=251, running=253, initializing=254, idle=255 };
+};
+
 static const char* name() {
     return "robot-arm-daemon: ";
 }
     
-struct input_primitive
-{
-    enum {
-        no_action = 0,
-        move_cam = 1,
-        set_position = 2,
-        set_home=3,      // define home position, internal usage
-        movej=4
-    };  
-};
-
-struct result
-{
-    struct error { enum { success=0, invalid_input=1 }; };
-    int code;
-    std::string message;
-    
-    result( const std::string& msg, int code_ ) : code( code_ ), message( msg ) {}
-    result() : code( error::success ), message( "success" ) {}
-    
-    std::string get_message() const 
-    {
-        std::ostringstream ss;
-        ss << code << ',' << '"' << message << '"';
-        return ss.str();
-    }
-    bool is_success() const { return code == error::success; }
-};
-
 template < typename T > struct action;
 
 template < > struct action< move_cam > {
@@ -125,18 +105,26 @@ template < > struct action< set_home > {
     }  
 };
     
-template < > struct action< enable > {
-    static result run( const enable& h, std::ostream& os )
+template < > struct action< power > {
+    static result run( const power& p, std::ostream& os )
     {
-        std::cerr << name() << "dummy enable" << std::endl;
+        std::cerr << name() << "running power" << std::endl;
+        os << "power " << ( p.is_on ? "on" : "off" ) << std::endl;
+        os.flush();
         return result();
     }  
 };
     
-template < > struct action< release_brakes > {
-    static result run( const release_brakes& h, std::ostream& os )
+template < > struct action< brakes > {
+    static result run( const brakes& b, std::ostream& os )
     {
-        std::cerr << name() << "dummy release brakes" << std::endl;
+        std::cerr << name() << "running brakes: " << b.enable  << std::endl;
+        os << "stopj([0,0,0,0,0,0])" << std::endl;
+        os.flush();
+        if( b.enable ) {
+            os << "set robotmode run" <<std::endl;
+            os.flush();
+        }
         return result();
     }  
 };
