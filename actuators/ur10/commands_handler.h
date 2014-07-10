@@ -25,6 +25,10 @@ struct jointmode {
     enum mode { power_off=239, error=242, freedrive=243, calibration=250, stopped=251, running=253, initializing=254, idle=255 };
 };
 
+const char* robotmode_str( robotmode::mode mode );
+
+const char* jointmode_str( jointmode::mode mode );
+
 } }  // namespace snark { namespace robot_arm {
 
 namespace snark { namespace robot_arm { namespace handlers {

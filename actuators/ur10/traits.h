@@ -35,6 +35,7 @@
 #include <boost/units/quantity.hpp>
 #include <comma/visiting/traits.h>
 #include "commands.h"
+#include "commands_handler.h"
 #include "units.h"
 #include "config.h"
 #include "data.h"
@@ -293,13 +294,15 @@ template <> struct traits< robot_arm::fixed_status >
         v.apply( "time_since_boot", t.time_since_boot() );
         
         robot_arm::joints_in_degrees positions( t.positions );
+        // robot_arm::robotmode::mode mode(  );
+        std::string robot_mode = robot_arm::robotmode_str( snark::robot_arm::robotmode::mode( (int)(t.robot_mode()) ) );
         v.apply( "positions", positions );
         v.apply( "velocities", t.velocities );
         v.apply( "currents", t.currents );
         v.apply( "coordinates", t.translation );
         v.apply( "rotation", t.rotation );
         v.apply( "temperatures", t.temperatures );
-        v.apply( "robot_mode", t.robot_mode() );
+        v.apply( "robot_mode",  robot_mode );
         v.apply( "joint_modes", t.joint_modes );
     }
 };
