@@ -127,6 +127,10 @@ CMAKE_DEPENDENT_OPTION( snark_build_sensors_gige "build gige components" OFF "sn
 CMAKE_DEPENDENT_OPTION( snark_build_sensors_sick "build sick components" ON "snark_build_sensors" OFF )
 CMAKE_DEPENDENT_OPTION( snark_build_sensors_velodyne "build velodyne components" ON "snark_build_sensors" OFF )
 
+CMAKE_DEPENDENT_OPTION( snark_build_actuators_quickset "build quickset components" ON "snark_build_actuators" OFF )
+CMAKE_DEPENDENT_OPTION( snark_build_actuators_wheels "build wheels components" ON "snark_build_actuators" OFF )
+CMAKE_DEPENDENT_OPTION( snark_build_actuators_robotic_arm "build robotic_arm components" ON "snark_build_actuators" OFF )
+
 IF( snark_build_imaging )
     IF( WIN32 )
         SET( OpenCV_STATIC OFF )
@@ -161,12 +165,22 @@ SET( snark_ALL_LIBRARIES ${snark_ALL_LIBRARIES} debug snark_math-d
                          optimized snark_math
                          debug snark_timing-d
                          optimized snark_timing )
-IF( snark_build_actuators )
-SET( snark_ALL_LIBRARIES ${snark_ALL_LIBRARIES} debug snark_wheels-d
+IF( snark_build_actuators_quickset )
+  SET( snark_ALL_LIBRARIES ${snark_ALL_LIBRARIES} debug snark_quickset_ptcr-d
+                         optimized snark_quickset_ptcr )
+ENDIF( snark_build_actuators_quickset )
+
+IF( snark_build_actuators_wheels )
+  SET( snark_ALL_LIBRARIES ${snark_ALL_LIBRARIES} debug snark_wheels-d
                          optimized snark_wheels )
-SET( snark_ALL_LIBRARIES ${snark_ALL_LIBRARIES} debug snark_ur10-d
-                         optimized snark_ur10 )
-ENDIF( snark_build_actuators )
+ENDIF( snark_build_actuators_wheels )
+
+IF( snark_build_actuators_robotic_arm )
+  SET( snark_ALL_LIBRARIES ${snark_ALL_LIBRARIES} debug snark_robotic_arm-d
+                         optimized snark_robotic_arm )
+
+  SET( snark_build_battery ON )
+ENDIF( snark_build_actuators_robotic_arm )
 
 if( snark_build_battery )
     SET( snark_ALL_LIBRARIES ${snark_ALL_LIBRARIES} debug snark_ocean-d
