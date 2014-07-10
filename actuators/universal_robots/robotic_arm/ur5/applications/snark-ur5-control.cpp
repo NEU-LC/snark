@@ -49,14 +49,14 @@
 #include <comma/csv/stream.h>
 #include <comma/string/string.h>
 #include <comma/application/signal_flag.h>
-#include "../traits.h"
-#include "../commands.h"
-#include "../commands_handler.h"
-#include "../inputs.h"
+#include "../../traits.h"
+#include "../../commands.h"
+#include "../../commands_handler.h"
+#include "../../inputs.h"
 extern "C" {
-    #include "../simulink/Arm_Controller.h"
+    #include "../../simulink/Arm_Controller.h"
 }
-#include "../simulink/traits.h"
+#include "../../simulink/traits.h"
 
 /* External inputs (root inport signals with auto storage) */
 extern ExtU_Arm_Controller_T Arm_Controller_U;
