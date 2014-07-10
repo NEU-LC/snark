@@ -1,5 +1,5 @@
-SET( PROJECT "ur10_simulink" )
-SET( PROJECT_PATH "actuators/ur10/simulink" )
+SET( PROJECT "robotic_arm_simulink" )
+SET( PROJECT_PATH "actuators/universal_robots/robotic_arm/simulink" )
 SET( TARGET_NAME snark_${PROJECT} )
 
 FILE( GLOB includes ${SOURCE_CODE_BASE_DIR}/${PROJECT_PATH}/*.h )

@@ -45,7 +45,7 @@
 #include <boost/shared_ptr.hpp>
 #include <comma/io/select.h>
 #include <comma/base/types.h>
-#include "../../battery/ocean/stdio_query.h"
+#include "../../../battery/ocean/stdio_query.h"
 
 
 namespace snark { namespace robot_arm {

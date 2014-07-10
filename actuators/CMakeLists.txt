@@ -1,3 +1,3 @@
 ADD_SUBDIRECTORY( quickset )
 ADD_SUBDIRECTORY( wheels )
-ADD_SUBDIRECTORY( ur10 )
+ADD_SUBDIRECTORY( universal_robots )
