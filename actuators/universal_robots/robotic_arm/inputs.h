@@ -31,8 +31,8 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-#ifndef SNARK_ACTUATORS_ROBOT_ARM_INPUTS_H
-#define SNARK_ACTUATORS_ROBOT_ARM_INPUTS_H
+#ifndef SNARK_ACTUATORS_UR_ROBOTIC_ARM_INPUTS_H
+#define SNARK_ACTUATORS_UR_ROBOTIC_ARM_INPUTS_H
 #include <vector>
 #include <queue>
 #include <string>
@@ -48,7 +48,7 @@
 #include "../../../battery/ocean/stdio_query.h"
 
 
-namespace snark { namespace robot_arm {
+namespace snark { namespace ur { namespace robotic_arm {
 /// Buffers inputs by the user, reads from std::cin
 /// It reads all user input before the rover starts to process them 
 /// Allows the rover to process a small batch of commands at a time but reads all of them
@@ -91,5 +91,5 @@ private:
 
 };
 
-}} // namespace acfr { namespace robot_arm {
-#endif // SNARK_ACTUATORS_ROBOT_ARM_INPUTS_H
+} } } // namespace acfr { namespace ur { namespace robotic_arm {
+#endif // SNARK_ACTUATORS_UR_ROBOTIC_ARM_INPUTS_H

@@ -60,7 +60,7 @@ std::string str(T t) { return boost::lexical_cast< std::string > ( t ); }
     
 } // namespace impl_ {
 
-namespace arm = snark::robot_arm;
+namespace arm = snark::ur::robotic_arm;
 typedef arm::fixed_status status_t;
 
 void usage(int code=1)

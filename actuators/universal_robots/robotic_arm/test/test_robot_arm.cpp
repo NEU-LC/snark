@@ -44,7 +44,7 @@
 #include <boost/property_tree/json_parser.hpp>
 
 
-namespace snark { namespace robot_arm {
+namespace snark { namespace ur { namespace robotic_arm {
 
 template < typename T >
 comma::csv::ascii< T >& ascii() { 
@@ -89,7 +89,7 @@ TEST( robot_arm, robot_arm_config )
 
 
 
-} } // namespace snark { namespace robot_arm {
+} } // namespace snark { namespace ur { namespace robotic_arm {
 
 int main( int argc, char* argv[] )
 {

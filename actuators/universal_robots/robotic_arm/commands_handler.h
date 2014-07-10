@@ -16,7 +16,7 @@ extern "C" {
 }
 
 
-namespace snark { namespace robot_arm {
+namespace snark { namespace ur { namespace robotic_arm {
 
 struct robotmode {
     enum mode { running, freedrive, ready, initializing, security_stopped, estopped, fatal_error, no_power, not_connected, shutdown, safeguard_stop };
@@ -29,11 +29,11 @@ const char* robotmode_str( robotmode::mode mode );
 
 const char* jointmode_str( jointmode::mode mode );
 
-} }  // namespace snark { namespace robot_arm {
+} } }  // namespace snark { namespace ur { namespace robotic_arm {
 
-namespace snark { namespace robot_arm { namespace handlers {
+namespace snark { namespace ur { namespace robotic_arm { namespace handlers {
 
-namespace arm = robot_arm;
+namespace arm = robotic_arm;
 
 struct input_primitive
 {
@@ -101,7 +101,7 @@ private:
 	bool is_running() const; 
 };
 
-} } } // namespace snark { namespace robot_arm { namespace handlers {
+} } } } // namespace snark { namespace ur { namespace robotic_arm { namespace handlers {
 
 
 #endif // SNARK_ACTUATORS_UNIVERISAL_ROBOTS_COMMANDS_HANDLER_H

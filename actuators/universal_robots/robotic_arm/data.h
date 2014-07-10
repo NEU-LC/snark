@@ -1,5 +1,5 @@
-#ifndef SNARK_ACTUATORS_UR10_DATA_H 
-#define SNARK_ACTUATORS_UR10_DATA_H 
+#ifndef SNARK_ACTUATORS_UR_ROBOTIC_ARM_DATA_H 
+#define SNARK_ACTUATORS_UR_ROBOTIC_ARM_DATA_H 
 #include <comma/packed/packed.h>
 #include "units.h"
 
@@ -51,7 +51,7 @@ typedef big_endian_64< float > big_endian_float;
 
 } } // namespace comma { namespace packed {
 
-namespace snark { namespace robot_arm {
+namespace snark { namespace ur { namespace robotic_arm { 
     
 struct cartesian {
     comma::packed::big_endian_double x;
@@ -134,6 +134,6 @@ typedef boost::array< comma::packed::big_endian_float, joints_num > joints_net_f
 //     boost::array< joint_data, joints_num > joints;
 // };
 
-} } //namespace snark { namespace robot_arm {
+} } } //namespace snark { namespace ur { namespace robotic_arm { 
 
-#endif // SNARK_ACTUATORS_UR10_DATA_H 
+#endif // SNARK_ACTUATORS_UR_ROBOTIC_ARM_DATA_H 

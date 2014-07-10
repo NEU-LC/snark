@@ -76,6 +76,10 @@ std::string str(T t) { return boost::lexical_cast< std::string > ( t ); }
 } // namespace impl_ {
 
 
+namespace arm = snark::ur::robotic_arm;
+using arm::handlers::input_primitive;
+using arm::handlers::result;
+
 void usage(int code=1)
 {
     std::cerr << std::endl;
@@ -90,7 +94,7 @@ void usage(int code=1)
     std::cerr << "*   --robot-arm-host=:         Host name or IP of the robot arm." << std::endl;
     std::cerr << "*   --robot-arm-port=:    TCP Port number of the robot arm." << std::endl;
     std::cerr << "    --sleep=:             loop sleep value in seconds, default is 0.2s if not specified." << std::endl;
-    typedef snark::robot_arm::current_positions current_positions_t;
+    typedef arm::current_positions current_positions_t;
     comma::csv::binary< current_positions_t > binary;
     std::cerr << "UR10's status:" << std::endl;
     std::cerr << "   format: " << binary.format().string() << " total size is " << binary.format().size() << " bytes" << std::endl;
@@ -99,10 +103,6 @@ void usage(int code=1)
     std::cerr << std::endl;
     exit ( code );
 }
-
-namespace arm = snark::robot_arm;
-using arm::handlers::input_primitive;
-using arm::handlers::result;
 
 
 template < typename T > 
@@ -119,7 +119,7 @@ typedef boost::units::quantity< boost::units::si::angular_velocity > angular_vel
 class arm_output
 {
 public:
-    typedef snark::robot_arm::current_positions current_positions_t;
+    typedef arm::current_positions current_positions_t;
 private:
     angular_acceleration_t acceleration;
     angular_velocity_t velocity;
@@ -184,9 +184,6 @@ void output( const std::string& msg, std::ostream& os=std::cout )
     os << msg << std::endl;
 }
 
-/// Buffer is the big endian stream of data for status
-static const std::size_t max_buf = sizeof( arm::fixed_status );
-static char buffer[ max_buf ];
 //static arm::fixed_status& arm_status = *( reinterpret_cast< arm::fixed_status* >( buffer ) );
 static arm::fixed_status arm_status;
 /// Stream to command robot arm
@@ -355,9 +352,6 @@ int main( int ac, char** av )
 
         typedef std::vector< std::string > command_vector;
         const comma::uint32 usec( sleep * 1000000u );
-        
-        // status from the arm
-        const arm::fixed_status* pstatus = NULL;
         
         std::string status_conn = "tcp:" + arm_conn_host + ':' + arm_status_port;
         std::cerr << name() << "status connection to robot arm: " << status_conn << std::endl;

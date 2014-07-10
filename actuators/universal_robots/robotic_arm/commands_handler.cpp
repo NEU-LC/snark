@@ -1,6 +1,6 @@
 #include "commands_handler.h"
 
-namespace snark { namespace robot_arm {
+namespace snark { namespace ur { namespace robotic_arm {
 
 const char* robotmode_str( robotmode::mode mode )
 {
@@ -59,9 +59,9 @@ const char* jointmode_str( jointmode::mode mode )
 			return "other_mode"; // some other mode not converted to string
 	}
 }
-} } // namespace snark { namespace robot_arm {
+} } } // namespace snark { namespace ur { namespace robotic_arm {
 
-namespace snark { namespace robot_arm { namespace handlers {
+namespace snark { namespace ur { namespace robotic_arm { namespace handlers {
 
 static const char* name() {
     return "robot-arm-daemon: ";
@@ -264,4 +264,4 @@ bool commands_handler::is_initialising() const
 }
 
 
-} } } // namespace snark { namespace robot_arm { namespace handlers {
+} } } } // namespace snark { namespace ur { namespace robotic_arm { namespace handlers {

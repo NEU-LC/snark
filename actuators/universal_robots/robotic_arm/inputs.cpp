@@ -37,7 +37,7 @@
 #include <comma/string/split.h>
 #include <comma/string/string.h>
 
-namespace snark { namespace robot_arm {
+namespace snark { namespace ur { namespace robotic_arm {
     
 inputs::inputs( char rover_id_ ) 
         : rover_id( rover_id_ ), buffer_( MAX_BUFFER, '\0' ), mutable_buffer_( &buffer_[0], MAX_BUFFER-1 )
@@ -118,4 +118,4 @@ void inputs::read()
 
 
 
-} }  // namespace snark { namespace robot_arm {
+} }  } // namespace snark { namespace ur { namespace robotic_arm {
