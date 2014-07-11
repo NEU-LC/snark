@@ -57,8 +57,18 @@ struct wheel_command
     double turnrate; // radians
 };
 
+struct limit
+{
+    double min;
+    double max;
+
+    limit() : min(0), max(0) { }
+    limit( const double m ) : min(-m), max(m) { }
+    limit( const double min, const double max ) : min(min), max(max) { }
+};
+
 /// returned turnrate is in radians
-wheel_command compute_wheel_command( const steer_command& desired, Eigen::Matrix4d wheel_pose, double wheel_offset = 0 );
+wheel_command compute_wheel_command( const steer_command& desired, Eigen::Matrix4d wheel_pose, double wheel_offset = 0, boost::optional< limit > angle_limit = boost::optional< limit >(), boost::optional< double > current_angle = boost::optional< double >() );
 
 } } // namespace snark { namespace wheels {
 
