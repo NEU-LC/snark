@@ -186,8 +186,6 @@ void output( const std::string& msg, std::ostream& os=std::cout )
     os << msg << std::endl;
 }
 
-static char buffer[ arm::fixed_status::size ];
-// static arm::fixed_status& arm_status = *( reinterpret_cast< arm::fixed_status* >( buffer ) );
 static arm::fixed_status arm_status; // = *( reinterpret_cast< arm::fixed_status* >( buffer ) );
 /// Stream to command robot arm
 namespace ip = boost::asio::ip;
@@ -277,7 +275,7 @@ bool ready( comma::io::istream& is )
 bool read_status( comma::io::istream& iss )
 {
     // std::cerr << "rdbuf" << std::endl;
-    iss->read( buffer, arm::fixed_status::size );
+    iss->read( arm_status.data(), arm::fixed_status::size );
     if( !iss->good() ) {
         // std::cerr  << "not good" << std::endl;
         return false;
@@ -285,11 +283,10 @@ bool read_status( comma::io::istream& iss )
     // Keep reading to get latest data
     while( ready( iss ) )
     {
-        iss->read( buffer, arm::fixed_status::size );
+        iss->read( arm_status.data(), arm::fixed_status::size );
         // std::cerr << "ready again read" << std::endl;
     }
 
-    arm_status = *(  reinterpret_cast< const arm::fixed_status* >( buffer )  );
 
     return true;
 }
@@ -331,7 +328,7 @@ int main( int ac, char** av )
                        Arm_Controller_Y );
     
         comma::uint16 rover_id = options.value< comma::uint16 >( "--id" );
-        double sleep = 0; // seconds
+        double sleep = 0.1; // seconds
         if( options.exists( "--sleep" ) ) { sleep = options.value< double >( "--sleep" ); };
 
         comma::uint32 listen_port = options.value< comma::uint32 >( "--status-port,-sp" );
