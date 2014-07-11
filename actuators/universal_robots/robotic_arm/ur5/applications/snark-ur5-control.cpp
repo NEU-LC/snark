@@ -91,8 +91,10 @@ void usage(int code=1)
     std::cerr << "    --versbose,-v:        show messages to the robot arm - angles are changed to degrees." << std::endl;
     std::cerr << "*   --id=:                ID to identify commands, eg. ><ID>,999,set_pos,home;" << std::endl;
     std::cerr << "*   --status-port=|-sp=:  TCP service port the statuses will be broadcasted on. See below." << std::endl;
-    std::cerr << "*   --robot-arm-host=:         Host name or IP of the robot arm." << std::endl;
+    std::cerr << "*   --robot-arm-host=:    Host name or IP of the robot arm." << std::endl;
     std::cerr << "*   --robot-arm-port=:    TCP Port number of the robot arm." << std::endl;
+    std::cerr << "*   --feedback-host=:     Host name or IP of the robot arm's feedback." << std::endl;
+    std::cerr << "*   --feedback-port=:     TCP Port number of the robot arm's feedback." << std::endl;
     std::cerr << "    --sleep=:             loop sleep value in seconds, default is 0.2s if not specified." << std::endl;
     typedef arm::current_positions current_positions_t;
     comma::csv::binary< current_positions_t > binary;
@@ -184,8 +186,9 @@ void output( const std::string& msg, std::ostream& os=std::cout )
     os << msg << std::endl;
 }
 
-//static arm::fixed_status& arm_status = *( reinterpret_cast< arm::fixed_status* >( buffer ) );
-static arm::fixed_status arm_status;
+static char buffer[ arm::fixed_status::size ];
+// static arm::fixed_status& arm_status = *( reinterpret_cast< arm::fixed_status* >( buffer ) );
+static arm::fixed_status arm_status; // = *( reinterpret_cast< arm::fixed_status* >( buffer ) );
 /// Stream to command robot arm
 namespace ip = boost::asio::ip;
 static ip::tcp::iostream robot_arm;
@@ -274,7 +277,7 @@ bool ready( comma::io::istream& is )
 bool read_status( comma::io::istream& iss )
 {
     // std::cerr << "rdbuf" << std::endl;
-    iss->read( arm_status.data(), arm::fixed_status::size );
+    iss->read( buffer, arm::fixed_status::size );
     if( !iss->good() ) {
         // std::cerr  << "not good" << std::endl;
         return false;
@@ -282,9 +285,11 @@ bool read_status( comma::io::istream& iss )
     // Keep reading to get latest data
     while( ready( iss ) )
     {
-        iss->read( arm_status.data(), arm::fixed_status::size );
+        iss->read( buffer, arm::fixed_status::size );
         // std::cerr << "ready again read" << std::endl;
     }
+
+    arm_status = *(  reinterpret_cast< const arm::fixed_status* >( buffer )  );
 
     return true;
 }
@@ -326,7 +331,7 @@ int main( int ac, char** av )
                        Arm_Controller_Y );
     
         comma::uint16 rover_id = options.value< comma::uint16 >( "--id" );
-        double sleep = 0.1; // seconds
+        double sleep = 0; // seconds
         if( options.exists( "--sleep" ) ) { sleep = options.value< double >( "--sleep" ); };
 
         comma::uint32 listen_port = options.value< comma::uint32 >( "--status-port,-sp" );
@@ -335,7 +340,8 @@ int main( int ac, char** av )
         
         std::string arm_conn_host = options.value< std::string >( "--robot-arm-host" );
         std::string arm_conn_port = options.value< std::string >( "--robot-arm-port" );
-        std::string arm_status_port = options.value< std::string >( "--robot-arm-status" );
+        std::string arm_feedback_host = options.value< std::string >( "--feedback-host" );
+        std::string arm_feedback_port = options.value< std::string >( "--feedback-port" );
         if( !tcp_connect( arm_conn_host, arm_conn_port, boost::posix_time::seconds(1), robot_arm ) ) 
         {
             std::cerr << name() << "failed to connect to robot arm at " 
@@ -353,8 +359,8 @@ int main( int ac, char** av )
         typedef std::vector< std::string > command_vector;
         const comma::uint32 usec( sleep * 1000000u );
         
-        std::string status_conn = "tcp:" + arm_conn_host + ':' + arm_status_port;
-        std::cerr << name() << "status connection to robot arm: " << status_conn << std::endl;
+        std::string status_conn = "tcp:" + arm_feedback_host + ':' + arm_feedback_port;
+        std::cerr << name() << "status connection to feedback status: " << status_conn << std::endl;
         comma::io::istream status_stream( status_conn, comma::io::mode::binary );
         comma::io::select select;
         select.read().add( status_stream.fd() );
@@ -367,10 +373,11 @@ int main( int ac, char** av )
             {
                 if( read_status( status_stream ) )
                 { 
-                    boost::property_tree::ptree t;
-                    comma::to_ptree to_ptree( t );
-                    comma::visiting::apply( to_ptree ).to( arm_status );
-                    boost::property_tree::write_json( std::cerr, t, false );    
+                    // std::cerr << name() << "robotmode: " << arm_status.robot_mode() << std::endl;
+                    // boost::property_tree::ptree t;
+                    // comma::to_ptree to_ptree( t );
+                    // comma::visiting::apply( to_ptree ).to( arm_status );
+                    // boost::property_tree::write_json( std::cerr, t, false );    
                 }
             }
             
@@ -402,7 +409,7 @@ int main( int ac, char** av )
             // send out arm's current status: code and joint positions
             output.write_arm_status( publisher );
 
-            usleep( usec );
+            if( sleep > 0 ) usleep( usec );
         }
 
         std::cerr << name() << "exiting" << std::endl;

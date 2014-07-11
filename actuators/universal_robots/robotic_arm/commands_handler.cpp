@@ -233,8 +233,6 @@ bool commands_handler::is_powered() const {
 
 bool commands_handler::is_running() const 
 {
-    std::cerr << "robot mode " << status_.robot_mode() << " expected: " << robotmode::running << std::endl;
-    return true;
 	if(status_.robot_mode() != robotmode::running) { 
 		std::cerr << "robot mode " << status_.robot_mode() << " expected: " << robotmode::running << std::endl;
 		return false; 
