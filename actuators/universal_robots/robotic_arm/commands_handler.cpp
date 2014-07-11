@@ -175,7 +175,7 @@ void commands_handler::handle( arm::joint_move& joint )
     static const unsigned char min_id = 0;
     static const unsigned char max_id = 5;
     std::cerr << name() << "move joint: " << int(joint.joint_id) << " dir: " << joint.dir << std::endl;
-    static const angular_velocity_t velocity = 0.05 * rad_per_sec;
+    static const angular_velocity_t velocity = 0.1 * rad_per_sec;
     static const angular_acceleration_t acceleration = 0.05 * rad_per_s2;
     static const boost::posix_time::time_duration duration = boost::posix_time::milliseconds( 20 );
     
@@ -185,6 +185,7 @@ void commands_handler::handle( arm::joint_move& joint )
     }
     
     double vel = ( joint.dir ? velocity.value() : -velocity.value() );
+    if( joint.joint_id < 2 ) { vel /= 2; }
     
     std::ostringstream ss;
     ss << "speedj_init([";
@@ -232,6 +233,8 @@ bool commands_handler::is_powered() const {
 
 bool commands_handler::is_running() const 
 {
+    std::cerr << "robot mode " << status_.robot_mode() << " expected: " << robotmode::running << std::endl;
+    return true;
 	if(status_.robot_mode() != robotmode::running) { 
 		std::cerr << "robot mode " << status_.robot_mode() << " expected: " << robotmode::running << std::endl;
 		return false; 
