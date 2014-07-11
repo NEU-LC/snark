@@ -31,20 +31,22 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <cmath>
+#include <comma/base/exception.h>
 #include <comma/math/compare.h>
 #include "wheel_command.h"
 
 namespace snark { namespace wheels {
 
-wheel_command compute_wheel_command( const steer_command &desired , Eigen::Matrix4d wheel_pose, double wheel_offset )
+wheel_command compute_wheel_command( const steer_command &desired, Eigen::Matrix4d wheel_pose, double wheel_offset, boost::optional< limit > angle_limit, boost::optional< double > current_angle )
 {
     wheel_command command;
+
+    double positive_velocity;
+    double negative_velocity;
 
     // a very small non zero turnrate will cause calculation errors
     if( std::fabs( desired.turnrate ) < turnrate_tolerance )
     {
-        command.velocity = desired.velocity.norm();
-        
         // get angle in wheel pose
         Eigen::Vector4d origin( 0, 0, 0, 1 );
         origin = frame_transforms::inverse_transform( wheel_pose ) * origin;
@@ -54,17 +56,8 @@ wheel_command compute_wheel_command( const steer_command &desired , Eigen::Matri
 
         command.turnrate = std::atan2( forward(2) - origin(2), forward(0) - origin(0) );
 
-        // limit movement to -pi / 2 and pi / 2
-        if( comma::math::less( M_PI / 2, command.turnrate, 1e-9 ) )
-        {
-            command.turnrate -= M_PI;
-            command.velocity = -command.velocity;
-        }
-        else if( comma::math::less( command.turnrate, -M_PI / 2, 1e-9 ) )
-        {
-            command.turnrate += M_PI;
-            command.velocity = -command.velocity;
-        }
+        positive_velocity = desired.velocity.norm();
+        negative_velocity = -positive_velocity;
     }
     else
     {
@@ -80,20 +73,79 @@ wheel_command compute_wheel_command( const steer_command &desired , Eigen::Matri
         // distance from wheel to ICR
         double d = Eigen::Vector3d( icr_position(0), 0, icr_position(2) ).norm();
 
-        command.velocity = desired.turnrate * ( d + wheel_offset );
+        positive_velocity = desired.turnrate * ( d + wheel_offset );
+        negative_velocity = -desired.turnrate * ( d - wheel_offset );
+    }
 
-        // limit movement to -pi / 2 and pi / 2
-        if( comma::math::less( M_PI / 2, command.turnrate, 1e-9 ) )
+    bool positive_direction = true;
+
+    // minimize change to new angle if current angle is known
+    if( current_angle )
+    {
+        // reduce current angle to [-180,180]
+        double current = std::fmod( *current_angle, 2 * M_PI );
+        if( current > M_PI ) { current -= 2 * M_PI; }
+        else if( current < -M_PI ) { current += 2 * M_PI; }
+
+        double delta = command.turnrate - current;
+
+        // reduce delta to [-90,270)
+        if( !comma::math::less( std::abs( delta ), M_PI * 1.5, 1e-9 ) ) // [270,360]
+        {
+            delta = delta > 0 ? delta - 2 * M_PI : delta + 2 * M_PI;
+        }
+
+        // reduce delta to [-90,90]
+        if( comma::math::less( M_PI/2, std::abs( delta ), 1e-9 ) ) // (90,270)
+        {
+            delta = delta > 0 ? delta - M_PI : delta + M_PI;
+            positive_direction = !positive_direction;
+        }
+
+        // if |delta| > 60 then bias towards keeping wheel on the "outside"
+        if( comma::math::less( M_PI/3, std::abs( delta ), 1e-9 ) ) // (60,90]
+        {
+            int sign = wheel_pose( 0, 3 ) * wheel_pose( 1, 3 ) < 0 ? 1 : -1;
+            int preferred_direction = current > sign * M_PI/4 ? -1 : 1;
+            if( delta > 0 && preferred_direction == -1 )
+            {
+                delta -= M_PI;
+                positive_direction = !positive_direction;
+            }
+            else if ( delta < 0 && preferred_direction == 1 )
+            {
+                delta += M_PI;
+                positive_direction = !positive_direction;
+            }
+        }
+        command.turnrate = *current_angle + delta;
+    }
+
+    // apply angle limit if specified
+    if( angle_limit )
+    {
+        // reduce new angle to (-360,360)
+        command.turnrate = std::fmod( command.turnrate, 2 * M_PI );
+
+        if( comma::math::less( angle_limit->max, command.turnrate, 1e-9 ) )
         {
             command.turnrate -= M_PI;
-            command.velocity = -desired.turnrate * ( d - wheel_offset );
+            positive_direction = !positive_direction;
         }
-        else if( comma::math::less( command.turnrate, -M_PI / 2, 1e-9 ) )
+        else if( comma::math::less( command.turnrate, angle_limit->min, 1e-9 ) )
         {
             command.turnrate += M_PI;
-            command.velocity = -desired.turnrate * ( d - wheel_offset );
+            positive_direction = !positive_direction;
+        }
+
+        if( comma::math::less( angle_limit->max, command.turnrate, 1e-9 ) ||
+            comma::math::less( command.turnrate, angle_limit->min, 1e-9 ) )
+        {
+            COMMA_THROW( comma::exception, "angle is outside limit of " << angle_limit->min << " and " << angle_limit->max );
         }
     }
+
+    command.velocity = positive_direction ? positive_velocity : negative_velocity;
 
     return command;
 }

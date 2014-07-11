@@ -1,5 +1,5 @@
-SET( PROJECT "ur10" )
-SET( DIR "actuators/ur10" )
+SET( PROJECT "robotic_arm" )
+SET( DIR "actuators/universal_robots/robotic_arm" )
 SET( TARGET_NAME snark_${PROJECT} )
 
 FILE( GLOB source   ${SOURCE_CODE_BASE_DIR}/${DIR}/*.cpp)
@@ -19,9 +19,7 @@ INSTALL(
     ARCHIVE DESTINATION ${snark_INSTALL_LIB_DIR} COMPONENT Development # .a, .lib
 )
 
-IF( snark_BUILD_APPLICATIONS )
-    ADD_SUBDIRECTORY( applications )
-ENDIF( snark_BUILD_APPLICATIONS )
+ADD_SUBDIRECTORY( ur5 )
 
 IF( snark_BUILD_TESTS )
     ADD_SUBDIRECTORY( test )

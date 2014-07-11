@@ -1,6 +1,67 @@
 #include "commands_handler.h"
 
-namespace snark { namespace robot_arm { namespace handlers {
+namespace snark { namespace ur { namespace robotic_arm {
+
+const char* robotmode_str( robotmode::mode mode )
+{
+	switch( mode )
+	{
+		case robotmode::running:
+			return "running_mode";
+		case robotmode::freedrive:
+			return "freedrive_mode";
+		case robotmode::ready:
+			return "ready_mode";
+		case robotmode::initializing:
+			return "initializing_mode";
+		case robotmode::security_stopped:
+			return "security_stopped_mode";
+		case robotmode::estopped:
+			return "estopped_mode";
+		case robotmode::fatal_error:
+			return "fatal_error_mode";
+		case robotmode::no_power:
+			return "no_power_mode";
+		case robotmode::not_connected:
+			return "not_connected_mode";
+		case robotmode::shutdown:
+			return "shutdown_mode";
+		case robotmode::safeguard_stop:
+			return "safeguard_stop_mode";
+		default:
+			std::cerr << "unknown robot mode: " << int(mode) << std::endl;
+			COMMA_THROW( comma::exception, "unknown robot mode" );
+			return "";
+	}
+}
+
+const char* jointmode_str( jointmode::mode mode )
+{
+	switch( mode )
+	{
+		case jointmode::power_off:
+			return "power_off_mode";
+		case jointmode::error:
+			return "error_mode";
+		case jointmode::freedrive:
+			return "freedrive_mode";
+		case jointmode::calibration:
+			return "calibration_mode";
+		case jointmode::stopped:
+			return "stopped_mode";
+		case jointmode::running:
+			return "running_mode";
+		case jointmode::initializing:
+			return "initializing_mode";
+		case jointmode::idle:
+			return "idle_mode";
+		default:
+			return "other_mode"; // some other mode not converted to string
+	}
+}
+} } } // namespace snark { namespace ur { namespace robotic_arm {
+
+namespace snark { namespace ur { namespace robotic_arm { namespace handlers {
 
 static const char* name() {
     return "robot-arm-daemon: ";
@@ -17,12 +78,13 @@ void commands_handler::handle( arm::power& p )
 void commands_handler::handle( arm::brakes& b )
 {
     std::cerr << name() << "running brakes: " << b.enable  << std::endl;
-    os << "stopj([0,0,0,0,0,0])" << std::endl;
-    os.flush();
     if( !b.enable ) {
         os << "set robotmode run" <<std::endl;
-        os.flush();
     }
+    else {
+    	os << "stopj([0,0,0,0,0,0])" << std::endl;
+    }
+    os.flush();
     ret = result();
 }
 
@@ -99,11 +161,21 @@ void commands_handler::handle( arm::joint_move& joint )
     	ret = result( "cannot initialise joint as rover is not in initialisation mode", result::error::invalid_robot_state );
     	return;
     }
+    /// command can be use if in running or initialising mode
+    int index = joint.joint_id;
+	if( status_.robot_mode() != robotmode::initializing && 
+		status_.robot_mode() != robotmode::running &&  
+		status_.joint_modes[index]() != jointmode::initializing && 
+		status_.joint_modes[index]() != jointmode::running ) 
+	{ 
+        ret = result( "robot and joint must be running or initializing mode", result::error::invalid_robot_state );
+		return; 
+	}
 
     static const unsigned char min_id = 0;
     static const unsigned char max_id = 5;
-    std::cerr << name() << "dummy move joint: " << int(joint.joint_id) << " dir: " << joint.dir << std::endl;
-    static const angular_velocity_t velocity = 0.1 * rad_per_sec;
+    std::cerr << name() << "move joint: " << int(joint.joint_id) << " dir: " << joint.dir << std::endl;
+    static const angular_velocity_t velocity = 0.05 * rad_per_sec;
     static const angular_acceleration_t acceleration = 0.05 * rad_per_s2;
     static const boost::posix_time::time_duration duration = boost::posix_time::milliseconds( 20 );
     
@@ -136,6 +208,11 @@ void commands_handler::handle( arm::set_home& h )
 
 void commands_handler::handle( arm::set_position& pos )
 {
+    if( !is_running() ) {
+    	ret = result( "cannot set position as rover is not in running mode", result::error::invalid_robot_state );
+    	return;
+    }
+
     inputs_.motion_primitive = input_primitive::set_position;
     
 	ret = result();
@@ -155,9 +232,13 @@ bool commands_handler::is_powered() const {
 
 bool commands_handler::is_running() const 
 {
-	if(status_.robot_mode() != robotmode::running) { return false; }
+	if(status_.robot_mode() != robotmode::running) { 
+		std::cerr << "robot mode " << status_.robot_mode() << " expected: " << robotmode::running << std::endl;
+		return false; 
+	}
 
 	for( std::size_t i=0; i<joints_num; ++i ) {
+		std::cerr << "joint " << i << " mode " << status_.joint_modes[i]() << " expected: " << jointmode::running << std::endl;
 		if( status_.joint_modes[i]() != jointmode::running ) { return false; }
 	}
 
@@ -165,14 +246,22 @@ bool commands_handler::is_running() const
 }
 bool commands_handler::is_initialising() const 
 {
-	if(status_.robot_mode() != robotmode::running) { return false; }
+	if( status_.robot_mode() != robotmode::initializing ) { 
+		// std::cerr << "robot mode " << status_.robot_mode() << " expected: " << robotmode::initializing << std::endl;
+		return false; 
+	}
 
-	for( std::size_t i=0; i<joints_num; ++i ) {
-		if( status_.joint_modes[i]() != jointmode::initializing ) { return false; }
+	for( std::size_t i=0; i<joints_num; ++i ) 
+	{
+		// std::cerr << "joint " << i << " mode " << status_.joint_modes[i]() << " expected: " << jointmode::running << std::endl;
+		if( status_.joint_modes[i]() != jointmode::initializing && 
+			status_.joint_modes[i]() != jointmode::running ) { 
+			return false; 
+		}
 	}
 
 	return true;
 }
 
 
-} } } // namespace snark { namespace robot_arm { namespace handlers {
+} } } } // namespace snark { namespace ur { namespace robotic_arm { namespace handlers {

@@ -49,14 +49,14 @@
 #include <comma/csv/stream.h>
 #include <comma/string/string.h>
 #include <comma/application/signal_flag.h>
-#include "../traits.h"
-#include "../commands.h"
-#include "../commands_handler.h"
-#include "../inputs.h"
+#include "../../traits.h"
+#include "../../commands.h"
+#include "../../commands_handler.h"
+#include "../../inputs.h"
 extern "C" {
-    #include "../simulink/Arm_Controller.h"
+    #include "../../simulink/Arm_Controller.h"
 }
-#include "../simulink/traits.h"
+#include "../../simulink/traits.h"
 
 /* External inputs (root inport signals with auto storage) */
 extern ExtU_Arm_Controller_T Arm_Controller_U;
@@ -76,6 +76,10 @@ std::string str(T t) { return boost::lexical_cast< std::string > ( t ); }
 } // namespace impl_ {
 
 
+namespace arm = snark::ur::robotic_arm;
+using arm::handlers::input_primitive;
+using arm::handlers::result;
+
 void usage(int code=1)
 {
     std::cerr << std::endl;
@@ -90,7 +94,7 @@ void usage(int code=1)
     std::cerr << "*   --robot-arm-host=:         Host name or IP of the robot arm." << std::endl;
     std::cerr << "*   --robot-arm-port=:    TCP Port number of the robot arm." << std::endl;
     std::cerr << "    --sleep=:             loop sleep value in seconds, default is 0.2s if not specified." << std::endl;
-    typedef snark::robot_arm::current_positions current_positions_t;
+    typedef arm::current_positions current_positions_t;
     comma::csv::binary< current_positions_t > binary;
     std::cerr << "UR10's status:" << std::endl;
     std::cerr << "   format: " << binary.format().string() << " total size is " << binary.format().size() << " bytes" << std::endl;
@@ -99,10 +103,6 @@ void usage(int code=1)
     std::cerr << std::endl;
     exit ( code );
 }
-
-namespace arm = snark::robot_arm;
-using arm::handlers::input_primitive;
-using arm::handlers::result;
 
 
 template < typename T > 
@@ -119,7 +119,7 @@ typedef boost::units::quantity< boost::units::si::angular_velocity > angular_vel
 class arm_output
 {
 public:
-    typedef snark::robot_arm::current_positions current_positions_t;
+    typedef arm::current_positions current_positions_t;
 private:
     angular_acceleration_t acceleration;
     angular_velocity_t velocity;
@@ -184,10 +184,8 @@ void output( const std::string& msg, std::ostream& os=std::cout )
     os << msg << std::endl;
 }
 
-/// Buffer is the big endian stream of data for status
-static const std::size_t max_buf = sizeof( arm::fixed_status );
-static char buffer[ max_buf ];
-static arm::fixed_status& arm_status = *( reinterpret_cast< arm::fixed_status* >( buffer ) );
+//static arm::fixed_status& arm_status = *( reinterpret_cast< arm::fixed_status* >( buffer ) );
+static arm::fixed_status arm_status;
 /// Stream to command robot arm
 namespace ip = boost::asio::ip;
 static ip::tcp::iostream robot_arm;
@@ -273,23 +271,37 @@ bool ready( comma::io::istream& is )
 }
 
 /// Return null if no status
-const arm::fixed_status* read_status( comma::io::istream& iss )
+bool read_status( comma::io::istream& iss )
 {
     // std::cerr << "rdbuf" << std::endl;
-    iss->read( buffer, max_buf );
+    iss->read( arm_status.data(), arm::fixed_status::size );
     if( !iss->good() ) {
         // std::cerr  << "not good" << std::endl;
-        return NULL;
+        return false;
     }
     // Keep reading to get latest data
     while( ready( iss ) )
     {
-        iss->read( buffer, max_buf );
+        iss->read( arm_status.data(), arm::fixed_status::size );
         // std::cerr << "ready again read" << std::endl;
     }
 
-    return &arm_status;
+    return true;
 }
+
+class stop_on_exit
+{
+    ip::tcp::iostream& os_;
+public:
+    stop_on_exit( ip::tcp::iostream& oss ) : os_(oss) {}
+    ~stop_on_exit() 
+    {
+        os_ << "stopj([0.1,0.1,0.1,0.1,0.1,0.1])\n";
+        os_.flush();
+        os_.close();
+    }
+
+};
 
 int main( int ac, char** av )
 {
@@ -330,7 +342,7 @@ int main( int ac, char** av )
                       << arm_conn_host << ':' << arm_conn_port << " - " << robot_arm.error().message() << std::endl;
             exit( 1 );
         }
-        
+
         // create tcp server for broadcasting status
         std::ostringstream ss;
         ss << "tcp:" << listen_port;
@@ -341,31 +353,29 @@ int main( int ac, char** av )
         typedef std::vector< std::string > command_vector;
         const comma::uint32 usec( sleep * 1000000u );
         
-        // status from the arm
-        const arm::fixed_status* pstatus = NULL;
-        
         std::string status_conn = "tcp:" + arm_conn_host + ':' + arm_status_port;
         std::cerr << name() << "status connection to robot arm: " << status_conn << std::endl;
-        comma::io::istream status_stream( status_conn, comma::io::mode::binary, comma::io::mode::non_blocking );
+        comma::io::istream status_stream( status_conn, comma::io::mode::binary );
         comma::io::select select;
         select.read().add( status_stream.fd() );
 
         while( !signaled && std::cin.good() )
         {
+
             select.check();
             if( ready( status_stream ) || select.read().ready( status_stream.fd() ) ) 
             {
-                pstatus = read_status( status_stream );
-                if( pstatus ) 
+                if( read_status( status_stream ) )
                 { 
-                    // boost::property_tree::ptree t;
-                    // comma::to_ptree to_ptree( t );
-                    // comma::visiting::apply( to_ptree ).to( *pstatus );
-                    // boost::property_tree::write_json( std::cerr, t, false );    
+                    boost::property_tree::ptree t;
+                    comma::to_ptree to_ptree( t );
+                    comma::visiting::apply( to_ptree ).to( arm_status );
+                    boost::property_tree::write_json( std::cerr, t, false );    
                 }
             }
             
-            inputs.read();
+            try { inputs.read(); }
+            catch(...) { COMMA_THROW( comma::exception, "reading from stdcin failed." ); }
             // Process commands into inputs into the system
             if( !inputs.is_empty() )
             {
@@ -394,7 +404,10 @@ int main( int ac, char** av )
 
             usleep( usec );
         }
-        
+
+        std::cerr << name() << "exiting" << std::endl;
+        robot_arm << "stopj([0.1,0.1,0.1,0.1,0.1,0.1])\n";
+        robot_arm.flush();
         robot_arm.close();
         publisher.close();
     }

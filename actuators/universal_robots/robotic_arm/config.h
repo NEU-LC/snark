@@ -1,11 +1,11 @@
-#ifndef SNARK_ACTUATORS_UR10_CONFIG_H
-#define SNARK_ACTUATORS_UR10_CONFIG_H
+#ifndef SNARK_ACTUATORS_UR_ROBOTIC_ARM_CONFIG_H
+#define SNARK_ACTUATORS_UR_ROBOTIC_ARM_CONFIG_H
 #include <comma/base/types.h>
 #include <boost/concept_check.hpp>
 #include <vector>
 #include "units.h"
 
-namespace snark { namespace robot_arm {
+namespace snark { namespace ur { namespace robotic_arm { 
     
 struct config {
     config() : home_position( 6 ) {} // position of six joints
@@ -15,6 +15,6 @@ struct config {
     bool operator==( const config& rhs ) const { return home_position == rhs.home_position; }
 };
     
-} } //namespace snark { namespace robot_arm {
+} }  } //namespace snark { namespace ur { namespace robotic_arm { 
 
-#endif // SNARK_ACTUATORS_UR10_CONFIG_H
+#endif // SNARK_ACTUATORS_UR_ROBOTIC_ARM_CONFIG_H

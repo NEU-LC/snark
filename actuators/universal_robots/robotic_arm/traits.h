@@ -1,5 +1,5 @@
-#ifndef SNARK_ACTUATORS_ROBOT_ARM_TRAITS_H
-#define SNARK_ACTUATORS_ROBOT_ARM_TRAITS_H
+#ifndef SNARK_ACTUATORS_UR_ROBOTIC_ARM_TRAITS_H
+#define SNARK_ACTUATORS_UR_ROBOTIC_ARM_TRAITS_H
 // This file is part of snark, a generic and flexible library for robotics research
 // Copyright (c) 2011 The University of Sydney
 // All rights reserved.
@@ -35,14 +35,15 @@
 #include <boost/units/quantity.hpp>
 #include <comma/visiting/traits.h>
 #include "commands.h"
+#include "commands_handler.h"
 #include "units.h"
 #include "config.h"
 #include "data.h"
 
 namespace comma { namespace visiting {
     
-namespace robot_arm = snark::robot_arm;
-using snark::robot_arm::command_base;
+namespace arm = snark::ur::robotic_arm;
+using arm::command_base;
 
 // Commands
 template <typename C> struct traits< command_base< C > >
@@ -61,39 +62,39 @@ template <typename C> struct traits< command_base< C > >
     }
 };
 
-template <> struct traits< robot_arm::move_cam >
+template <> struct traits< arm::move_cam >
 {
-    template< typename K, typename V > static void visit( const K& k, robot_arm::move_cam& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, arm::move_cam& t, V& v )
     {
-    	traits< command_base < robot_arm::move_cam > >::visit(k, t, v);
+    	traits< command_base < arm::move_cam > >::visit(k, t, v);
         double p, l, h;
         v.apply( "pan", p );
-        t.pan = p * robot_arm::degree;
+        t.pan = p * arm::degree;
         v.apply( "tilt", l );
-        t.tilt = l * robot_arm::degree;
+        t.tilt = l * arm::degree;
         v.apply( "height", h );
-        t.height = h * robot_arm::meter;
+        t.height = h * arm::meter;
     }
 
-    template< typename K, typename V > static void visit( const K& k, const robot_arm::move_cam& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, const arm::move_cam& t, V& v )
     {
-    	traits< command_base < robot_arm::move_cam > >::visit(k, t, v);
+    	traits< command_base < arm::move_cam > >::visit(k, t, v);
         v.apply( "pan", t.pan.value() );
         v.apply( "tilt", t.tilt.value() );
         v.apply( "height", t.height.value() );
     }
 };
 
-template <> struct traits< robot_arm::position >
+template <> struct traits< arm::position >
 {
-    template< typename K, typename V > static void visit( const K& k, robot_arm::position& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, arm::position& t, V& v )
     {
         v.apply( "x", t.x );
         v.apply( "y", t.y );
         v.apply( "z", t.z );
     }
 
-    template< typename K, typename V > static void visit( const K& k, const robot_arm::position& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, const arm::position& t, V& v )
     {
         v.apply( "x", t.x );
         v.apply( "y", t.y );
@@ -101,42 +102,42 @@ template <> struct traits< robot_arm::position >
     }
 };
 
-template <> struct traits< robot_arm::move_effector >
+template <> struct traits< arm::move_effector >
 {
-    template< typename K, typename V > static void visit( const K& k, robot_arm::move_effector& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, arm::move_effector& t, V& v )
     {
-        traits< command_base < robot_arm::move_effector > >::visit(k, t, v);
+        traits< command_base < arm::move_effector > >::visit(k, t, v);
         v.apply( "offset", t.offset );
         double p, l, r;
         v.apply( "pan", p );
-        t.pan = p * robot_arm::degree;
+        t.pan = p * arm::degree;
         v.apply( "tilt", l );
-        t.tilt = l * robot_arm::degree;
+        t.tilt = l * arm::degree;
         v.apply( "roll", r );
-        t.roll = r * robot_arm::degree;
+        t.roll = r * arm::degree;
     }
 
-    template< typename K, typename V > static void visit( const K& k, const robot_arm::move_effector& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, const arm::move_effector& t, V& v )
     {
-        traits< command_base < robot_arm::move_effector > >::visit(k, t, v);
+        traits< command_base < arm::move_effector > >::visit(k, t, v);
         v.apply( "offset", t.offset );
         v.apply( "pan", t.pan.value() );
         v.apply( "tilt", t.tilt.value() );
         v.apply( "roll", t.roll.value() );
     }
 };
-template <> struct traits< std::vector< robot_arm::plane_angle_degrees_t > >
+template <> struct traits< std::vector< arm::plane_angle_degrees_t > >
 {
-    template< typename K, typename V > static void visit( const K& k, std::vector< robot_arm::plane_angle_degrees_t >& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, std::vector< arm::plane_angle_degrees_t >& t, V& v )
     {
         for( std::size_t i=0; i<t.size(); ++i ) {
             double d = 0;
             v.apply( boost::lexical_cast< std::string >( i ).c_str(), d );
-            t[i] = d * robot_arm::degree;
+            t[i] = d * arm::degree;
         }
     }
 
-    template< typename K, typename V > static void visit( const K& k, const std::vector< robot_arm::plane_angle_degrees_t >& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, const std::vector< arm::plane_angle_degrees_t >& t, V& v )
     {
         for( std::size_t i=0; i<t.size(); ++i ) {
             v.apply( boost::lexical_cast< std::string >( i ).c_str(), t[i].value() );
@@ -144,108 +145,108 @@ template <> struct traits< std::vector< robot_arm::plane_angle_degrees_t > >
     }
 };
 
-template <> struct traits< robot_arm::move_joints >
+template <> struct traits< arm::move_joints >
 {
-    template< typename K, typename V > static void visit( const K& k, robot_arm::move_joints& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, arm::move_joints& t, V& v )
     {
-        traits< command_base < robot_arm::move_joints > >::visit(k, t, v);
+        traits< command_base < arm::move_joints > >::visit(k, t, v);
         v.apply( "joints", t.joints );
     }
 
-    template< typename K, typename V > static void visit( const K& k, const robot_arm::move_joints& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, const arm::move_joints& t, V& v )
     {
-        traits< command_base < robot_arm::move_joints > >::visit(k, t, v);
+        traits< command_base < arm::move_joints > >::visit(k, t, v);
         v.apply( "joints", t.joints );
     }
 };
 
-template <> struct traits< robot_arm::joint_move >
+template <> struct traits< arm::joint_move >
 {
-    template< typename K, typename V > static void visit( const K& k, robot_arm::joint_move& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, arm::joint_move& t, V& v )
     {
-        traits< command_base < robot_arm::joint_move > >::visit(k, t, v);
+        traits< command_base < arm::joint_move > >::visit(k, t, v);
         v.apply( "joint_id", t.joint_id );
         v.apply( "dir", t.dir );
     }
 
-    template< typename K, typename V > static void visit( const K& k, const robot_arm::joint_move& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, const arm::joint_move& t, V& v )
     {
-        traits< command_base < robot_arm::joint_move > >::visit(k, t, v);
+        traits< command_base < arm::joint_move > >::visit(k, t, v);
         v.apply( "joint_id", t.joint_id );
         v.apply( "dir", t.dir );
     }
 };
 
-template <> struct traits< robot_arm::auto_init >
+template <> struct traits< arm::auto_init >
 {
-    template< typename K, typename V > static void visit( const K& k, robot_arm::auto_init& t, V& v ) {
-        traits< command_base < robot_arm::auto_init > >::visit(k, t, v);
+    template< typename K, typename V > static void visit( const K& k, arm::auto_init& t, V& v ) {
+        traits< command_base < arm::auto_init > >::visit(k, t, v);
     }
-    template< typename K, typename V > static void visit( const K& k, const robot_arm::auto_init& t, V& v ) {
-        traits< command_base < robot_arm::auto_init > >::visit(k, t, v);
+    template< typename K, typename V > static void visit( const K& k, const arm::auto_init& t, V& v ) {
+        traits< command_base < arm::auto_init > >::visit(k, t, v);
     }
 };
 
-template <> struct traits< robot_arm::power >
+template <> struct traits< arm::power >
 {
-    template< typename K, typename V > static void visit( const K& k, robot_arm::power& t, V& v ) {
-        traits< command_base < robot_arm::power > >::visit(k, t, v);
+    template< typename K, typename V > static void visit( const K& k, arm::power& t, V& v ) {
+        traits< command_base < arm::power > >::visit(k, t, v);
         v.apply( "is_on", t.is_on );
     }
-    template< typename K, typename V > static void visit( const K& k, const robot_arm::power& t, V& v ) {
-        traits< command_base < robot_arm::power > >::visit(k, t, v);
+    template< typename K, typename V > static void visit( const K& k, const arm::power& t, V& v ) {
+        traits< command_base < arm::power > >::visit(k, t, v);
         v.apply( "is_on", t.is_on );
     }
 };
 
-template <> struct traits< robot_arm::brakes >
+template <> struct traits< arm::brakes >
 {
-    template< typename K, typename V > static void visit( const K& k, robot_arm::brakes& t, V& v ) {
-        traits< command_base < robot_arm::brakes > >::visit(k, t, v);
+    template< typename K, typename V > static void visit( const K& k, arm::brakes& t, V& v ) {
+        traits< command_base < arm::brakes > >::visit(k, t, v);
         v.apply( "enable", t.enable );
     }
-    template< typename K, typename V > static void visit( const K& k, const robot_arm::brakes& t, V& v ) {
-        traits< command_base < robot_arm::brakes > >::visit(k, t, v);
+    template< typename K, typename V > static void visit( const K& k, const arm::brakes& t, V& v ) {
+        traits< command_base < arm::brakes > >::visit(k, t, v);
         v.apply( "enable", t.enable );
     }
 };
 
-template <> struct traits< robot_arm::set_position >
+template <> struct traits< arm::set_position >
 {
-    template< typename K, typename V > static void visit( const K& k, robot_arm::set_position& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, arm::set_position& t, V& v )
     {
-        traits< command_base < robot_arm::set_position > >::visit(k, t, v);
+        traits< command_base < arm::set_position > >::visit(k, t, v);
         v.apply( "position", t.position );
     }
 
-    template< typename K, typename V > static void visit( const K& k, const robot_arm::set_position& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, const arm::set_position& t, V& v )
     {
-        traits< command_base < robot_arm::set_position > >::visit(k, t, v);
+        traits< command_base < arm::set_position > >::visit(k, t, v);
         v.apply( "position", t.position );
     }
 };
 
-template <> struct traits< robot_arm::set_home >
+template <> struct traits< arm::set_home >
 {
-    template< typename K, typename V > static void visit( const K& k, robot_arm::set_home& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, arm::set_home& t, V& v )
     {
-        traits< command_base < robot_arm::set_home > >::visit(k, t, v);
+        traits< command_base < arm::set_home > >::visit(k, t, v);
     }
 
-    template< typename K, typename V > static void visit( const K& k, const robot_arm::set_home& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, const arm::set_home& t, V& v )
     {
-        traits< command_base < robot_arm::set_home > >::visit(k, t, v);
+        traits< command_base < arm::set_home > >::visit(k, t, v);
     }
 };
 
-template <> struct traits< robot_arm::config >
+template <> struct traits< arm::config >
 {
-    template< typename K, typename V > static void visit( const K& k, robot_arm::config& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, arm::config& t, V& v )
     {
         v.apply( "home_position", t.home_position );
     }
 
-    template< typename K, typename V > static void visit( const K& k, const robot_arm::config& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, const arm::config& t, V& v )
     {
         v.apply( "home_position", t.home_position );
     }
@@ -263,20 +264,20 @@ template < > struct traits< boost::array< comma::packed::big_endian_double, 6 > 
     }
 };
 
-template < > struct traits< robot_arm::joints_in_degrees >
+template < > struct traits< arm::joints_in_degrees >
 {
-    template< typename K, typename V > static void visit( const K& k, const robot_arm::joints_in_degrees& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, const arm::joints_in_degrees& t, V& v )
     {
-        for( std::size_t i=0; i<robot_arm::joints_num; ++i ) { 
+        for( std::size_t i=0; i<arm::joints_num; ++i ) { 
             double d = t.joints[i].value();
             v.apply( boost::lexical_cast< std::string >( i ).c_str(), d ); 
         }
     }
 };
 
-template < > struct traits< robot_arm::cartesian >
+template < > struct traits< arm::cartesian >
 {
-    template< typename K, typename V > static void visit( const K& k, const robot_arm::cartesian& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, const arm::cartesian& t, V& v )
     {
         v.apply( "x", t.x() );
         v.apply( "y", t.y() );
@@ -284,26 +285,28 @@ template < > struct traits< robot_arm::cartesian >
     }
 };
 
-template <> struct traits< robot_arm::fixed_status >
+template <> struct traits< arm::fixed_status >
 {
-    template< typename K, typename V > static void visit( const K& k, const  robot_arm::fixed_status& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, const  arm::fixed_status& t, V& v )
     {
         v.apply( "time", boost::posix_time::microsec_clock::local_time() );
         v.apply( "length", t.length() );
         v.apply( "time_since_boot", t.time_since_boot() );
         
-        robot_arm::joints_in_degrees positions( t.positions );
+        arm::joints_in_degrees positions( t.positions );
+        // arm::robotmode::mode mode(  );
+        std::string robot_mode = arm::robotmode_str( arm::robotmode::mode( (int)(t.robot_mode()) ) );
         v.apply( "positions", positions );
         v.apply( "velocities", t.velocities );
         v.apply( "currents", t.currents );
         v.apply( "coordinates", t.translation );
         v.apply( "rotation", t.rotation );
         v.apply( "temperatures", t.temperatures );
-        v.apply( "robot_mode", t.robot_mode() );
+        v.apply( "robot_mode",  robot_mode );
         v.apply( "joint_modes", t.joint_modes );
     }
 };
 
 }} // namespace comma { namespace visiting {
 
-#endif // SNARK_ACTUATORS_ROBOT_ARM_TRAITS_H
+#endif // SNARK_ACTUATORS_UR_ROBOTIC_ARM_TRAITS_H

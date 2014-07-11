@@ -31,8 +31,8 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-#ifndef SNARK_ACTUATORS_ROBOT_ARM_COMMANDS_H
-#define SNARK_ACTUATORS_ROBOT_ARM_COMMANDS_H
+#ifndef SNARK_ACTUATORS_UR_ROBOTIC_ARM_COMMANDS_H
+#define SNARK_ACTUATORS_UR_ROBOTIC_ARM_COMMANDS_H
 
 #include <string>
 #include <vector>
@@ -45,7 +45,7 @@
 #include "units.h"
 
 
-namespace snark { namespace robot_arm {
+namespace snark { namespace ur { namespace robotic_arm {
 
 struct errors {
     enum error_code { success=0, unknown_command=401, format_error=402, incorrrect_operation=403 };
@@ -157,6 +157,6 @@ struct joint_move : command_base< joint_move > {
     bool dir;
 };
 
-} } // namespace snark { namespace robot_arm {
+} } } // namespace snark { namespace ur { namespace robotic_arm {
 
-#endif // SNARK_ACTUATORS_ROBOT_ARM_COMMANDS_H
+#endif // SNARK_ACTUATORS_UR_ROBOTIC_ARM_COMMANDS_H

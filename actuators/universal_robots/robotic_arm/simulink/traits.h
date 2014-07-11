@@ -1,5 +1,5 @@
-#ifndef SNARK_ACTUATORS_ROBOT_ARM_SIMULINK_TRAITS_H
-#define SNARK_ACTUATORS_ROBOT_ARM_SIMULINK_TRAITS_H
+#ifndef SNARK_ACTUATORS_UR_ROBOTIC_ARM_SIMULINK_TRAITS_H
+#define SNARK_ACTUATORS_UR_ROBOTIC_ARM_SIMULINK_TRAITS_H
 #include <string>
 #include <boost/lexical_cast.hpp>
 #include <boost/units/quantity.hpp>
@@ -12,11 +12,11 @@ extern "C" {
     #include "Arm_Controller.h"
 }
 
-namespace snark { namespace robot_arm {
+namespace snark { namespace ur { namespace robotic_arm {
 
 struct current_positions : public ExtY_Arm_Controller_T {};    
     
-} } // namespace snark { namespace robot_arm {
+} } } // namespace snark { namespace ur { namespace robotic_arm {
 
 namespace comma { namespace visiting  {
     
@@ -42,10 +42,10 @@ template <> struct traits< ExtY_Arm_Controller_T >
     }
 };
     
-template <> struct traits< snark::robot_arm::current_positions >
+template <> struct traits< snark::ur::robotic_arm::current_positions >
 {
     // output in degrees
-    template< typename K, typename V > static void visit( const K& k, const snark::robot_arm::current_positions& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, const snark::ur::robotic_arm::current_positions& t, V& v )
     {
         typedef boost::units::quantity< boost::units::degree::plane_angle > plane_angle_degrees_t;
         v.apply( "status_code", char(t.arm_status) );
@@ -58,9 +58,9 @@ template <> struct traits< snark::robot_arm::current_positions >
     }
 };
     
-} } // namespace comma { namespace visiting  {
+} }  // namespace comma { namespace visiting  {
     
     
 
 
-#endif // SNARK_ACTUATORS_ROBOT_ARM_SIMULINK_TRAITS_H
+#endif // SNARK_ACTUATORS_UR_ROBOTIC_ARM_SIMULINK_TRAITS_H

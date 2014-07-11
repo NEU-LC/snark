@@ -30,8 +30,8 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef SNARK_ACTUATORS_ROBOT_ARM_UNITS_H
-#define SNARK_ACTUATORS_ROBOT_ARM_UNITS_H
+#ifndef SNARK_ACTUATORS_UR_ROBOTIC_ARM_UNITS_H
+#define SNARK_ACTUATORS_UR_ROBOTIC_ARM_UNITS_H
 #include <boost/units/quantity.hpp>
 #include <boost/units/base_unit.hpp>
 #include <boost/concept_check.hpp>
@@ -43,7 +43,7 @@
 #include <boost/units/systems/si/angular_acceleration.hpp>
 
 
-namespace snark { namespace robot_arm {
+namespace snark { namespace ur { namespace robotic_arm {
 
 typedef boost::units::quantity< boost::units::si::plane_angle > plane_angle_t;
 typedef boost::units::quantity< boost::units::degree::plane_angle > plane_angle_degrees_t;
@@ -57,7 +57,7 @@ const length_t::unit_type meter = boost::units::si::meter;
 const angular_acceleration_t::unit_type rad_per_s2 = angular_acceleration_t::unit_type();
 const angular_velocity_t::unit_type rad_per_sec = angular_velocity_t::unit_type();
 
-} } // namespace snark { namespace robot_arm {
+} } } // namespace snark { namespace ur { namespace robotic_arm {
 
 
-#endif //  SNARK_ACTUATORS_ROBOT_ARM_UNITS_H
+#endif //  SNARK_ACTUATORS_UR_ROBOTIC_ARM_UNITS_H
