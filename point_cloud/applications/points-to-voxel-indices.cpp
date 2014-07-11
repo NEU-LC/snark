@@ -66,7 +66,7 @@ int main( int argc, char** argv )
             ( "begin", boost::program_options::value< std::string >( &origin_string )->default_value( "0,0,0" ), "an alias for --origin; voxel map origin" )
             ( "extents", boost::program_options::value< std::string >( &extents_string ), "voxel map extents, e.g. 10,10,10; needed only if --enumerate is present" )
             ( "end", boost::program_options::value< std::string >( &extents_string ), "an alias for --extents" )
-            ( "enumerate", "append voxel id in a grid with given origin and extents; note that only voxels inside of extents are guaranteed to be enumerated correctly" );
+            ( "enumerate", "append voxel id in a grid with given origin and extents; note that only voxels inside of the box defined by origin and extents are guaranteed to be enumerated correctly" );
         description.add( comma::csv::program_options::description( "x,y,z" ) );
         boost::program_options::variables_map vm;
         boost::program_options::store( boost::program_options::parse_command_line( argc, argv, description), vm );
