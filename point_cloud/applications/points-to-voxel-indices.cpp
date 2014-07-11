@@ -94,7 +94,7 @@ int main( int argc, char** argv )
         }
         if( vm.count( "resolution" ) == 0 ) { std::cerr << "points-to-voxel-indices: please specify --resolution" << std::endl; return 1; }
         bool output_number = vm.count( "enumerate" );
-        if( output_number && !vm.count( "extents" ) ) { std::cerr << "points-to-voxel-indices: if using --enumerate, please specify --extents" << std::endl; return 1; }
+        if( output_number && extents_string.empty() ) { std::cerr << "points-to-voxel-indices: if using --enumerate, please specify --extents" << std::endl; return 1; }
         comma::csv::options csv = comma::csv::program_options::get( vm );
         Eigen::Vector3d origin;
         Eigen::Vector3d resolution;
