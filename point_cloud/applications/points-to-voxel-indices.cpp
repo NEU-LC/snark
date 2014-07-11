@@ -63,8 +63,10 @@ int main( int argc, char** argv )
             ( "help,h", "display help message" )
             ( "resolution", boost::program_options::value< std::string >( &resolution_string ), "voxel map resolution, e.g. \"0.2\" or \"0.2,0.2,0.5\"" )
             ( "origin", boost::program_options::value< std::string >( &origin_string )->default_value( "0,0,0" ), "voxel map origin" )
-            ( "extents", boost::program_options::value< std::string >( &extents_string ), "voxel map extents, needed only if --number is present" )
-            ( "enumerate", "append voxel id in a grid with given origin and extents; note that only voxels inside of extents are guaranteed to be enumerated correctly" );
+            ( "begin", boost::program_options::value< std::string >( &origin_string )->default_value( "0,0,0" ), "an alias for --origin; voxel map origin" )
+            ( "extents", boost::program_options::value< std::string >( &extents_string ), "voxel map extents, e.g. 10,10,10; needed only if --enumerate is present" )
+            ( "end", boost::program_options::value< std::string >( &extents_string ), "an alias for --extents" )
+            ( "enumerate", "append voxel id in a grid with given origin and extents; note that only voxels inside of the box defined by origin and extents are guaranteed to be enumerated correctly" );
         description.add( comma::csv::program_options::description( "x,y,z" ) );
         boost::program_options::variables_map vm;
         boost::program_options::store( boost::program_options::parse_command_line( argc, argv, description), vm );
@@ -80,11 +82,19 @@ int main( int argc, char** argv )
             std::cerr << std::endl;
             std::cerr << description << std::endl;
             std::cerr << std::endl;
+            std::cerr << "examples (try them)" << std::endl;
+            std::cerr << "    echo -e 0,0,0\\\\n1,1,1\\\\n1.1,1.1,1.1 | points-to-voxel-indices --enumerate --origin 0,0,0 --extents 10,10,10 --resolution 1" << std::endl;
+            std::cerr << "    0,0,0,0,0,0,0" << std::endl;
+            std::cerr << "    1,1,1,1,1,1,111" << std::endl;
+            std::cerr << "    1.1,1.1,1.1,1,1,1,111" << std::endl;
+            std::cerr << std::endl;
+            std::cerr << "    todo: more examples" << std::endl;
+            std::cerr << std::endl;
             return 1;
         }
         if( vm.count( "resolution" ) == 0 ) { std::cerr << "points-to-voxel-indices: please specify --resolution" << std::endl; return 1; }
         bool output_number = vm.count( "enumerate" );
-        if( output_number && !vm.count( "extents" ) ) { std::cerr << "points-to-voxel-indices: if using --enumerate, please specify --extents" << std::endl; return 1; }
+        if( output_number && extents_string.empty() ) { std::cerr << "points-to-voxel-indices: if using --enumerate, please specify --extents" << std::endl; return 1; }
         comma::csv::options csv = comma::csv::program_options::get( vm );
         Eigen::Vector3d origin;
         Eigen::Vector3d resolution;
