@@ -79,6 +79,12 @@ wheel_command compute_wheel_command( const steer_command &desired, Eigen::Matrix
 
     bool positive_direction = true;
 
+    if( comma::math::equal( std::abs( command.turnrate ), M_PI, 1e-9 ) )
+    {
+        command.turnrate = 0;
+        positive_direction = !positive_direction;
+    }
+
     // minimize change to new angle if current angle is known
     if( current_angle )
     {
