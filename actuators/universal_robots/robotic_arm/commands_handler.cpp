@@ -163,14 +163,16 @@ void commands_handler::handle( arm::joint_move& joint )
     }
     /// command can be use if in running or initialising mode
     int index = joint.joint_id;
-	if( status_.robot_mode() != robotmode::initializing && 
-		status_.robot_mode() != robotmode::running &&  
-		status_.joint_modes[index]() != jointmode::initializing && 
-		status_.joint_modes[index]() != jointmode::running ) 
-	{ 
-        ret = result( "robot and joint must be running or initializing mode", result::error::invalid_robot_state );
-		return; 
-	}
+    if( status_.robot_mode() != robotmode::initializing && 
+        status_.joint_modes[index]() != jointmode::initializing )
+    { 
+        std::ostringstream ss;
+        ss << "robot and  joint (" << index << ") must be initializing state. However current robot mode is '" 
+           << arm::robotmode_str( (arm::robotmode::mode)int(status_.robot_mode()) ) 
+           << "' and joint mode is '" << arm::jointmode_str( (arm::jointmode::mode)int(status_.joint_modes[index]()) ) << '\'' << std::endl;
+        ret = result( ss.str(), result::error::invalid_robot_state );
+        return; 
+    }
 
     static const unsigned char min_id = 0;
     static const unsigned char max_id = 5;
@@ -185,7 +187,8 @@ void commands_handler::handle( arm::joint_move& joint )
     }
     
     double vel = ( joint.dir ? velocity.value() : -velocity.value() );
-    if( joint.joint_id < 2 ) { vel /= 2; }
+    if( joint.joint_id == 2 ) { vel /= 2; }
+    else if( joint.joint_id < 1 ) { vel /= 3; }
     
     std::ostringstream ss;
     ss << "speedj_init([";

@@ -238,11 +238,8 @@ void process_command( const std::vector< std::string >& v, std::ostream& os )
     else if( boost::iequals( v[2], "power" ) ) { output( handle< arm::power >( v, os )); }  
     else if( boost::iequals( v[2], "brakes" ) ) { output( handle< arm::brakes >( v, os )); }  
     else if( boost::iequals( v[2], "auto_init" ) ) { output( handle< arm::auto_init >( v, os )); }  
-    else if( boost::iequals( v[2], "movej" ) )  
-    { 
-        if( v.size() == arm::move_joints::fields ) { output( handle< arm::move_joints >( v, os ) ); }
-        else { output( handle< arm::joint_move >( v, os ) ); }
-    }
+    else if( boost::iequals( v[2], "initj" ) ) { output( handle< arm::joint_move >( v, os )); }  
+    else if( boost::iequals( v[2], "movej" ) ) {} //  { output( handle< arm::move_joints >( v, os ) ); }
     else { output( comma::join( v, v.size(), ',' ) + ',' + 
         impl_::str( arm::errors::unknown_command ) + ",\"unknown command found: '" + v[2] + "'\"" ); return; }
 }
@@ -286,8 +283,6 @@ bool read_status( comma::io::istream& iss )
         iss->read( arm_status.data(), arm::fixed_status::size );
         // std::cerr << "ready again read" << std::endl;
     }
-
-
     return true;
 }
 
