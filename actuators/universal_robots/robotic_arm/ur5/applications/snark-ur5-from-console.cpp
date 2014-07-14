@@ -67,7 +67,7 @@ void usage(int code=1)
 {
     std::cerr << std::endl;
     std::cerr << name() << std::endl;
-    std::cerr << "example: socat -u STDIN,raw STDOUT | snark-ur10-from-console --host robot-arm --status-port 30003 | socat -u - tcp:robot-arm:30002 " << name() << " " << std::endl;
+    std::cerr << "example: socat -u STDIN,raw,escape=81 STDOUT | snark-ur10-from-console --host robot-arm --status-port 30003 | socat -u - tcp:robot-arm:30002 " << name() << " " << std::endl;
     std::cerr << "         The program expects raw binary input hence 'STDIN,raw', when used in ascii mode a CR must be hit after each keypress." << std::endl;
     std::cerr << "Interactive:" << std::endl;
     std::cerr << "    Input char 0-5 for switching joint to initialise, defaults to joint index 5 (6th joint) on startup." << std::endl;
@@ -97,6 +97,16 @@ comma::csv::ascii< T >& ascii( )
 
 std::ostream& ostream = std::cout;
 
+struct is_in_initialise
+{
+    bool operator()( const comma::packed::big_endian_double& state ) { return state() == arm::jointmode::initializing; }
+};
+
+struct is_not_in_running
+{
+    bool operator()( const comma::packed::big_endian_double& state ) { return state() != arm::jointmode::running; }
+};
+
 /// Stores the current joint being initialised, it handles key press to move the single joint.
 class current_joint
 {
@@ -122,6 +132,15 @@ public:
                    const boost::posix_time::time_duration& duration=boost::posix_time::seconds(0.1) ) : current_( num ), 
         velocity_( vel ), acceleration_( acc ), time_( duration ) {}
     ~current_joint() { stop(); }
+    
+    char index() const { return current_; }
+    void set_current( char id )
+    {
+        if( id > (arm::joints_num-1) || id < 0 ) { COMMA_THROW( comma::exception, "joint index out of range" ); }
+        current_ = id;
+        
+        status();
+    }
     
     void handle( char c )
     {
@@ -165,7 +184,7 @@ public:
     }
     void stop()
     {
-        static std::string stop = "speedj_init([0,0,0,0,0,0],0,0)";
+        static std::string stop = "speedj_init([0,0,0,0,0,0],0.1,0.1)";
         ostream << stop << std::endl;
         ostream.flush();
         std::cerr << name() << "sent stop command." << std::endl;
@@ -212,6 +231,15 @@ int main( int ac, char** av )
     if( options.exists("-a,--acceleration") ) { acceleration = options.value< double >("-a,--acceleration") * arm::rad_per_s2;  }
     if( options.exists("-s,--time-step") ) { duration_step = boost::posix_time::millisec(  std::size_t(options.value< double >("-s,--time-step") * 1000u) );  }
     
+    std::string feedback_host = options.value< std::string >( "--feedback-host" );
+    std::string feedback_port = options.value< std::string >( "--feedback-port" );
+    
+    std::string status_conn = "tcp:" + feedback_host + ':' + feedback_port;
+    std::cerr << name() << "status connection to feedback status: " << status_conn << std::endl;
+    comma::io::istream status_stream( status_conn, comma::io::mode::binary );
+    comma::io::select select;
+    select.read().add( status_stream.fd() );
+   
     if( usec > duration_step.total_microseconds() ) { COMMA_THROW( comma::exception, "--sleep must be smaller or equals to --time-step" ); }
     
     std::cerr << name() << "duration step: " << duration_step.total_milliseconds() << "ms" << std::endl;
@@ -221,8 +249,10 @@ int main( int ac, char** av )
     std::cerr << name() << "started" << std::endl;
     std::cerr.flush();
     
-    comma::io::select select;
     select.read().add( 0 );
+    
+    // arm's status
+    arm::fixed_status arm_status; 
     
     try
     {
@@ -230,6 +260,12 @@ int main( int ac, char** av )
         while( !signaled && std::cin.good() )
         {
             select.check();
+            // If we have status data, read till the latest data
+            while( status_stream->rdbuf()->in_avail() > 0 ||  select.read().ready( status_stream.fd() ) )
+            {
+                status_stream->read( arm_status.data(), arm::fixed_status::size );
+                if( !status_stream->good() ) { COMMA_THROW( comma::exception, "failure on connection/read for robotic arm's status" ); } 
+            }
             
             if( select.read().ready( 0 ) )
             {
@@ -237,6 +273,26 @@ int main( int ac, char** av )
                 std::cin.read( &c, 1u );
                 if( std::cin.gcount() != 1 ) { break; }
                 joint.handle( c );
+            }
+            
+            if( arm_status.joint_modes[ joint.index() ] == arm::jointmode::initializing ) { }
+            else
+            {
+                arm::joints_net_t::const_iterator iter = std::find_if( arm_status.joint_modes.cbegin(), 
+                                                                       arm_status.joint_modes.cend(), 
+                                                                       is_in_initialise() );
+                if( iter == arm_status.joint_modes.cend() ) // no more in initialize state
+                {
+                    iter = std::find_if( arm_status.joint_modes.cbegin(), 
+                                         arm_status.joint_modes.cend(), 
+                                         is_not_in_running() );
+                    
+                    if( iter == arm_status.joint_modes.cend() ) { 
+                        std::cerr << name() << "finished - initialisation completed for all joints." << std::endl; return 0; 
+                    } // all initialised 
+                    else { std::cerr << name() << "error - initialisation completed with joint/s not in running state." << std::endl; return 1; }
+                }
+                else { joint.set_current( iter - arm_status.joint_modes.cbegin() ); } // go to next joint in initializing state
             }
             
             // This is to not flood the robot arm controller.
