@@ -249,6 +249,7 @@ int main( int ac, char** av )
     std::cerr << name() << "started" << std::endl;
     std::cerr.flush();
     
+    // Listens for commands.
     select.read().add( 0 );
     
     // arm's status
@@ -275,24 +276,29 @@ int main( int ac, char** av )
                 joint.handle( c );
             }
             
-            if( arm_status.joint_modes[ joint.index() ] == arm::jointmode::initializing ) { }
-            else
+            // find first joint in initialization state, descending order joint 5-0
+            if( arm_status.joint_modes[ joint.index() ] != arm::jointmode::initializing ) 
             {
-                arm::joints_net_t::const_iterator iter = std::find_if( arm_status.joint_modes.cbegin(), 
-                                                                       arm_status.joint_modes.cend(), 
-                                                                       is_in_initialise() );
-                if( iter == arm_status.joint_modes.cend() ) // no more in initialize state
+                typedef arm::joints_net_t::const_reverse_iterator reverse_iter;
+                typedef arm::joints_net_t::const_iterator const_iter;
+                reverse_iter iter = std::find_if( arm_status.joint_modes.crbegin(), 
+                                                  arm_status.joint_modes.crend(), is_in_initialise() );
+                if( iter == arm_status.joint_modes.crend() ) // no more in initialize state
                 {
-                    iter = std::find_if( arm_status.joint_modes.cbegin(), 
-                                         arm_status.joint_modes.cend(), 
-                                         is_not_in_running() );
+                    const_iter iter = std::find_if( arm_status.joint_modes.cbegin(), 
+                                                        arm_status.joint_modes.cend(), is_not_in_running() );
                     
                     if( iter == arm_status.joint_modes.cend() ) { 
                         std::cerr << name() << "finished - initialisation completed for all joints." << std::endl; return 0; 
                     } // all initialised 
                     else { std::cerr << name() << "error - initialisation completed with joint/s not in running state." << std::endl; return 1; }
                 }
-                else { joint.set_current( iter - arm_status.joint_modes.cbegin() ); } // go to next joint in initializing state
+                else 
+                { 
+                    // TODO test and confirm index range
+                    // go to next joint in initializing state
+                    joint.set_current ( std::distance(iter, arm_status.joint_modes.crend()) - 1 ); 
+                } 
             }
             
             // This is to not flood the robot arm controller.
