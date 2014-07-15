@@ -130,7 +130,9 @@ public:
                    const arm::angular_velocity_t& vel, 
                    const arm::angular_acceleration_t& acc, 
                    const boost::posix_time::time_duration& duration=boost::posix_time::seconds(0.1) ) : current_( num ), 
-        velocity_( vel ), acceleration_( acc ), time_( duration ) {}
+        velocity_( vel ), acceleration_( acc ), time_( duration ) {
+            status();
+        }
     ~current_joint() { stop(); }
     
     char index() const { return current_; }
@@ -254,6 +256,8 @@ int main( int ac, char** av )
     
     // arm's status
     arm::fixed_status arm_status; 
+
+    usleep( 0.5 * 1000000u );
     
     try
     {
@@ -262,20 +266,19 @@ int main( int ac, char** av )
         {
             select.check();
             // If we have status data, read till the latest data
-            while( status_stream->rdbuf()->in_avail() > 0 ||  select.read().ready( status_stream.fd() ) )
+            if( select.read().ready( status_stream.fd() ) )
             {
                 status_stream->read( arm_status.data(), arm::fixed_status::size );
                 if( !status_stream->good() ) { COMMA_THROW( comma::exception, "failure on connection/read for robotic arm's status" ); } 
+
+                while( status_stream->rdbuf()->in_avail() > 0 )
+                {
+                    status_stream->read( arm_status.data(), arm::fixed_status::size );
+                    if( !status_stream->good() ) { COMMA_THROW( comma::exception, "failure on connection/read for robotic arm's status" ); } 
+                }
             }
-            
-            if( select.read().ready( 0 ) )
-            {
-                char c;
-                std::cin.read( &c, 1u );
-                if( std::cin.gcount() != 1 ) { break; }
-                joint.handle( c );
-            }
-            
+
+            int joint_inited = 0;
             // find first joint in initialization state, descending order joint 5-0
             if( arm_status.joint_modes[ joint.index() ] != arm::jointmode::initializing ) 
             {
@@ -285,22 +288,66 @@ int main( int ac, char** av )
                                                   arm_status.joint_modes.crend(), is_in_initialise() );
                 if( iter == arm_status.joint_modes.crend() ) // no more in initialize state
                 {
-                    const_iter iter = std::find_if( arm_status.joint_modes.cbegin(), 
+                    const_iter irun = std::find_if( arm_status.joint_modes.cbegin(), 
                                                         arm_status.joint_modes.cend(), is_not_in_running() );
                     
-                    if( iter == arm_status.joint_modes.cend() ) { 
-                        std::cerr << name() << "finished - initialisation completed for all joints." << std::endl; return 0; 
+                    if( irun == arm_status.joint_modes.cend() ) { 
+                        std::cerr << name() << "finished - initialisation completed for all joints." << std::endl; 
+                        return 0; 
                     } // all initialised 
-                    else { std::cerr << name() << "error - initialisation completed with joint/s not in running state." << std::endl; return 1; }
+                    else 
+                    { 
+                        std::cerr << name() << "error - initialisation completed with joint/s not in running state, joint: "
+                                  << ( irun - arm_status.joint_modes.cbegin() ) << " mode: " << (*irun)() << std::endl; 
+                        // boost::property_tree::ptree t;
+                        // comma::to_ptree to_ptree( t );
+                        // comma::visiting::apply( to_ptree ).to( arm_status );
+                        // boost::property_tree::write_json( std::cerr, t, false );    
+                        return 1; 
+                    }
                 }
                 else 
                 { 
-                    // TODO test and confirm index range
+                    /// This works but is a bit dangerous as it move to next joint but the user pressed many movement for previous joint
                     // go to next joint in initializing state
-                    joint.set_current ( std::distance(iter, arm_status.joint_modes.crend()) - 1 ); 
+                    //joint.set_current ( std::distance(iter, arm_status.joint_modes.crend()) - 1 ); 
+
+                    // This alternative way means you are moving the same joint.
+                    joint_inited = std::distance(iter, arm_status.joint_modes.crend()) - 1;
                 } 
             }
             
+            // std::cerr << name() << "waiting for input" << std::endl;
+            if( select.read().ready( 0 ) )
+            {
+                char c;
+                std::cin.read( &c, 1u );
+                if( std::cin.gcount() != 1 ) { break; }
+
+                if( joint_inited )
+                {
+                    switch( c )
+                    {
+                        case '0':
+                        case '1':
+                        case '2':
+                        case '3':
+                        case '4':
+                        case '5':
+                            break;
+                        default:
+                        {
+                            std::cerr << name() << "joint " << int( joint.index() ) 
+                                << " is initialised, please change to joint id (" 
+                                << joint_inited << ')' << std::endl;
+                            break;
+                        }
+                    }
+                }
+
+                joint.handle( c );
+            }
+
             // This is to not flood the robot arm controller.
             usleep( usec );
         }
