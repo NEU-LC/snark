@@ -172,10 +172,14 @@ public:
                 return;
         }
         
+        double vel = sign*velocity_.value();
+        if( current_ <= 2 ) { vel /= 2.0; }
         current_joint::data data( current_, sign*velocity_.value() );
         static std::string line;
+
+        double time = (time_.total_milliseconds()/1000.0) * ( (current_+1)/3.0 ); // scale time from 1/3 to 2.0 for joint 0-5
         ostream << "speedj_init([" << ascii< current_joint::data >().put( data, line )
-                << "]," << acceleration_.value() << ',' << (time_.total_milliseconds()/1000.0) << ')' << std::endl;
+                << "]," << acceleration_.value() << ',' << time << ')' << std::endl;
         ostream.flush();
     }
     
@@ -278,7 +282,7 @@ int main( int ac, char** av )
                 }
             }
 
-            int joint_inited = 0;
+            int joint_inited = -1;
             // find first joint in initialization state, descending order joint 5-0
             if( arm_status.joint_modes[ joint.index() ] != arm::jointmode::initializing ) 
             {
@@ -324,7 +328,7 @@ int main( int ac, char** av )
                 std::cin.read( &c, 1u );
                 if( std::cin.gcount() != 1 ) { break; }
 
-                if( joint_inited )
+                if( joint_inited >= 0 )
                 {
                     switch( c )
                     {

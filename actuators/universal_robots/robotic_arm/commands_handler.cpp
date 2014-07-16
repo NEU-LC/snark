@@ -241,6 +241,8 @@ void commands_handler::handle( arm::set_position_giraffe& giraffe )
         return; 
     }
 
+    std::cerr << "giraffe pan tilt" << std::endl;
+
     inputs_.motion_primitive = input_primitive::set_position;
     inputs_.Input_1 = set_position::giraffe;
     inputs_.Input_2 = giraffe.pan.value();    // zero pan for giraffe
