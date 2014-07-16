@@ -218,13 +218,31 @@ void commands_handler::handle( arm::set_position& pos )
     }
 
     inputs_.motion_primitive = input_primitive::set_position;
-    
-	ret = result();
 
     if( pos.position == "giraffe" ) { inputs_.Input_1 = set_position::giraffe; }
     else if( pos.position == "home" ) { inputs_.Input_1 = set_position::home; }
     else { ret = result("unknown position type", int(result::error::invalid_input) ); }
+
+    inputs_.Input_2 = 0;    // zero pan for giraffe
+    inputs_.Input_3 = 0;    // zero tilt for giraffe
+    
+    ret = result();
 }
+void commands_handler::handle( arm::set_position_giraffe& giraffe )
+{
+    if( !is_running() ) {
+        ret = result( "cannot set giraffe position as rover is not in running mode", result::error::invalid_robot_state );
+        return;
+    }
+
+    inputs_.motion_primitive = input_primitive::set_position;
+    inputs_.Input_1 = set_position::giraffe;
+    inputs_.Input_2 = giraffe.pan.value();    // zero pan for giraffe
+    inputs_.Input_3 = giraffe.tilt.value();    // zero tilt for giraffe
+    
+    ret = result();
+}
+
 
 void commands_handler::handle( arm::move_effector& e )
 {

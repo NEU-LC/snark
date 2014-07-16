@@ -3,9 +3,9 @@
  *
  * Code generated for Simulink model 'Arm_Controller'.
  *
- * Model version                  : 1.140
+ * Model version                  : 1.148
  * Simulink Coder version         : 8.6 (R2014a) 27-Dec-2013
- * C/C++ source code generated on : Wed Jul 02 10:56:01 2014
+ * C/C++ source code generated on : Wed Jul 16 10:35:35 2014
  *
  * Target selection: ert.tlc
  * Embedded hardware selection: 32-bit Generic
@@ -199,69 +199,86 @@ void Arm_Controller_step(void)
     /* statusflag = -2; %out of target height */
     /* height = max_height; */
     /* end */
-    /* '<S4>:1:21' */
-    /* max possible height of the end effector */
-    if (rtb_outputs[2] > 0.8105432950301884) {
+    if (rtb_outputs[2] == 1.0) {
+      /* '<S4>:1:20' */
+      /* they want the giraffe position */
       /* '<S4>:1:22' */
-      /* catch invalid height */
-      /* '<S4>:1:23' */
-      rtb_writehome = 0.8105432950301884;
+      /* '<S4>:1:24' */
+      rtb_TmpSignalConversionAtSFunct[0] = 0.0;
+      rtb_TmpSignalConversionAtSFunct[1] = -90.0;
+      rtb_TmpSignalConversionAtSFunct[2] = 0.0;
+      rtb_TmpSignalConversionAtSFunct[3] = -rtb_outputs[1];
+      rtb_TmpSignalConversionAtSFunct[4] = 90.0 + rtb_outputs[0];
+      rtb_TmpSignalConversionAtSFunct[5] = 0.0;
+
+      /* '<S4>:1:25' */
+      rtb_writehome = 1.0;
     } else {
-      if (rtb_outputs[2] < 0.1) {
-        /* '<S4>:1:24' */
-        /* '<S4>:1:25' */
-        rtb_writehome = 0.1;
+      /* they want standard height control */
+      /* '<S4>:1:28' */
+      /* max possible height of the end effector */
+      if (rtb_outputs[2] > 0.8105432950301884) {
+        /* '<S4>:1:29' */
+        /* catch invalid height */
+        /* '<S4>:1:30' */
+        rtb_writehome = 0.8105432950301884;
+      } else {
+        if (rtb_outputs[2] < 0.1) {
+          /* '<S4>:1:31' */
+          /* '<S4>:1:32' */
+          rtb_writehome = 0.1;
+        }
       }
+
+      /* j3 = 90 - j2 + asind((height - 0.425*cosd(j2))/0.392);  %calculates the elbow joint angle needed to reach the required height. works properly */
+      /* j4 = tilt_angle - j2 - j3 + 180; %joint angle to apply to achieve target tilt position. works properly */
+      /* j5 = pan_angle; %assumption. good assumption */
+      /* j6 = 0; %not important at the moment */
+      if (rtb_writehome < 0.41854329503018839) {
+        /* '<S4>:1:40' */
+        /* '<S4>:1:41' */
+        /* '<S4>:1:42' */
+        /* '<S4>:1:43' */
+        rtb_writehome = -(asin((0.41854329503018839 - rtb_writehome) / 0.392) *
+                          57.295779513082323 + 100.0);
+      } else {
+        /* '<S4>:1:45' */
+        /* '<S4>:1:46' */
+        /* '<S4>:1:47' */
+        rtb_writehome = -((180.0 - asin((rtb_writehome - 0.41854329503018839) /
+          0.392) * 57.295779513082323) - 80.0);
+      }
+
+      /* with arm pitching forward */
+      /* '<S4>:1:51' */
+      /* with arm pitching back */
+      /* j4 = j2 - j3 - 90 - tilt_angle; */
+      /* assumption */
+      /* very basic check to see if the robot will collide with itself */
+      /* if (j4 > 205)||((180-j3) > 155)||((90+j5) > 140), %found these upper limits by observation */
+      /* disp('Movement will cause collision') */
+      /* statusflag_movecam = -1; */
+      /* return; */
+      /* end */
+      /* jointangles = [-37.93 -173.74 180-j3 -j4 90+j5 0]; %adjusts the calculated joint angles so it matches the current robot configuration */
+      /* '<S4>:1:66' */
+      rtb_TmpSignalConversionAtSFunct[0] = -0.0;
+      rtb_TmpSignalConversionAtSFunct[1] = -80.0;
+      rtb_TmpSignalConversionAtSFunct[2] = rtb_writehome;
+      rtb_TmpSignalConversionAtSFunct[3] = ((80.0 - rtb_writehome) - 90.0) -
+        rtb_outputs[1];
+      rtb_TmpSignalConversionAtSFunct[4] = 90.0 + rtb_outputs[0];
+      rtb_TmpSignalConversionAtSFunct[5] = 0.0;
+
+      /* '<S4>:1:67' */
+      rtb_writehome = 1.0;
     }
-
-    /* j3 = 90 - j2 + asind((height - 0.425*cosd(j2))/0.392);  %calculates the elbow joint angle needed to reach the required height. works properly */
-    /* j4 = tilt_angle - j2 - j3 + 180; %joint angle to apply to achieve target tilt position. works properly */
-    /* j5 = pan_angle; %assumption. good assumption */
-    /* j6 = 0; %not important at the moment */
-    if (rtb_writehome < 0.41854329503018839) {
-      /* '<S4>:1:33' */
-      /* '<S4>:1:34' */
-      /* '<S4>:1:35' */
-      /* '<S4>:1:36' */
-      rtb_writehome = -(asin((0.41854329503018839 - rtb_writehome) / 0.392) *
-                        57.295779513082323 + 100.0);
-    } else {
-      /* '<S4>:1:38' */
-      /* '<S4>:1:39' */
-      /* '<S4>:1:40' */
-      rtb_writehome = -((180.0 - asin((rtb_writehome - 0.41854329503018839) /
-        0.392) * 57.295779513082323) - 80.0);
-    }
-
-    /* with arm pitching forward */
-    /* '<S4>:1:44' */
-    /* with arm pitching back */
-    /* j4 = j2 - j3 - 90 - tilt_angle; */
-    /* assumption */
-    /* very basic check to see if the robot will collide with itself */
-    /* if (j4 > 205)||((180-j3) > 155)||((90+j5) > 140), %found these upper limits by observation */
-    /* disp('Movement will cause collision') */
-    /* statusflag_movecam = -1; */
-    /* return; */
-    /* end */
-    /* jointangles = [-37.93 -173.74 180-j3 -j4 90+j5 0]; %adjusts the calculated joint angles so it matches the current robot configuration */
-    /* '<S4>:1:59' */
-    rtb_TmpSignalConversionAtSFunct[0] = -0.0;
-    rtb_TmpSignalConversionAtSFunct[1] = -80.0;
-    rtb_TmpSignalConversionAtSFunct[2] = rtb_writehome;
-    rtb_TmpSignalConversionAtSFunct[3] = ((80.0 - rtb_writehome) - 90.0) -
-      rtb_outputs[1];
-    rtb_TmpSignalConversionAtSFunct[4] = 90.0 + rtb_outputs[0];
-    rtb_TmpSignalConversionAtSFunct[5] = 0.0;
-
-    /* '<S4>:1:60' */
-    rtb_writehome = 1.0;
   } else {
-    /* '<S4>:1:63' */
+    /* '<S4>:1:70' */
     rtb_writehome = 0.0;
 
     /* no movement carried out */
-    /* '<S4>:1:64' */
+    /* '<S4>:1:71' */
     for (i = 0; i < 6; i++) {
       rtb_TmpSignalConversionAtSFunct[i] = 0.0;
     }

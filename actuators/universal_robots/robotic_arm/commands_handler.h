@@ -73,6 +73,7 @@ class commands_handler : public comma::dispatch::handler_of< power >,
                                   public comma::dispatch::handler_of< move_joints >,
                                   public comma::dispatch::handler_of< joint_move >,
                                   public comma::dispatch::handler_of< set_position >,
+                                  public comma::dispatch::handler_of< set_position_giraffe >,
                                   public comma::dispatch::handler_of< move_effector >
 {
 public:
@@ -84,6 +85,7 @@ public:
     void handle( move_joints& js );
     void handle( set_home& h );
     void handle( set_position& p );
+    void handle( set_position_giraffe& p );
     void handle( joint_move& j );
     
     commands_handler( ExtU_Arm_Controller_T& simulink_inputs, 

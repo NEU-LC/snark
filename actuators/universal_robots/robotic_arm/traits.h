@@ -226,6 +226,28 @@ template <> struct traits< arm::set_position >
     }
 };
 
+template <> struct traits< arm::set_position_giraffe >
+{
+    template< typename K, typename V > static void visit( const K& k, arm::set_position_giraffe& t, V& v )
+    {
+        traits< command_base < arm::set_position_giraffe > >::visit(k, t, v);
+        v.apply( "position", t.position );
+        double p, l;
+        v.apply( "pan", p );
+        t.pan = p * arm::degree;
+        v.apply( "tilt", l );
+        t.tilt = l * arm::degree;
+    }
+
+    template< typename K, typename V > static void visit( const K& k, const arm::set_position_giraffe& t, V& v )
+    {
+        traits< command_base < arm::set_position_giraffe > >::visit(k, t, v);
+        v.apply( "position", t.position );
+        v.apply( "pan", t.pan.value() );
+        v.apply( "tilt", t.tilt.value() );
+    }
+};
+
 template <> struct traits< arm::set_home >
 {
     template< typename K, typename V > static void visit( const K& k, arm::set_home& t, V& v )

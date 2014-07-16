@@ -232,14 +232,19 @@ std::string handle( const std::vector< std::string >& line, std::ostream& os )
 
 void process_command( const std::vector< std::string >& v, std::ostream& os )
 {
-    if( boost::iequals( v[2], "move_cam" ) )    { output( handle< arm::move_cam >( v, os ) ); }
-    else if( boost::iequals( v[2], "set_pos" ) )  { output( handle< arm::set_position >( v, os ) ); }
-    else if( boost::iequals( v[2], "set_home" ) )  { output( handle< arm::set_home >( v, os ) ); }
-    else if( boost::iequals( v[2], "power" ) ) { output( handle< arm::power >( v, os )); }  
-    else if( boost::iequals( v[2], "brakes" ) ) { output( handle< arm::brakes >( v, os )); }  
-    else if( boost::iequals( v[2], "auto_init" ) ) { output( handle< arm::auto_init >( v, os )); }  
-    else if( boost::iequals( v[2], "initj" ) ) { output( handle< arm::joint_move >( v, os )); }  
-    else if( boost::iequals( v[2], "movej" ) ) {} //  { output( handle< arm::move_joints >( v, os ) ); }
+    if( boost::iequals( v[2], "move_cam" ) )        { output( handle< arm::move_cam >( v, os ) ); }
+    else if( boost::iequals( v[2], "set_pos" ) )  
+    {
+        if( v.size() == arm::set_position::fields ) 
+             { output( handle< arm::set_position >( v, os ) ); } 
+        else { output( handle< arm::set_position_giraffe >( v, os ) ); } 
+    }
+    else if( boost::iequals( v[2], "set_home" ) )   { output( handle< arm::set_home >( v, os ) ); }
+    else if( boost::iequals( v[2], "power" ) )      { output( handle< arm::power >( v, os )); }  
+    else if( boost::iequals( v[2], "brakes" ) )     { output( handle< arm::brakes >( v, os )); }  
+    else if( boost::iequals( v[2], "auto_init" ) )  { output( handle< arm::auto_init >( v, os )); }  
+    else if( boost::iequals( v[2], "initj" ) )      { output( handle< arm::joint_move >( v, os )); }  
+    // else if( boost::iequals( v[2], "movej" ) )      { output( handle< arm::move_joints >( v, os ) ); }
     else { output( comma::join( v, v.size(), ',' ) + ',' + 
         impl_::str( arm::errors::unknown_command ) + ",\"unknown command found: '" + v[2] + "'\"" ); return; }
 }
