@@ -94,6 +94,11 @@ void commands_handler::handle( arm::auto_init& a )
     ret = result();
 }
 
+static const plane_angle_degrees_t max_pan = 45.0 * degree;
+static const plane_angle_degrees_t min_pan = -45.0 * degree;
+static const plane_angle_degrees_t max_tilt = 90.0 * degree;
+static const plane_angle_degrees_t min_tilt = -90.0 * degree;
+
 void commands_handler::handle( arm::move_cam& cam )
 {
     std::cerr << name() << " running move_cam" << std::endl; 
@@ -103,12 +108,8 @@ void commands_handler::handle( arm::move_cam& cam )
     	return;
     }
 
-    static const plane_angle_degrees_t max_pan = 45.0 * degree;
-    static const plane_angle_degrees_t min_pan = -45.0 * degree;
-    static const plane_angle_degrees_t max_tilt = 90.0 * degree;
-    static const plane_angle_degrees_t min_tilt = -90.0 * degree;
     static const length_t min_height = 0.1 * meter;
-    static const length_t max_height = 0.8 * meter;
+    static const length_t max_height = 1.0 * meter;
     
     
     if( cam.pan < min_pan ) { ret = result( "pan angle is below minimum limit of -45.0", result::error::invalid_input ); return; }
@@ -116,7 +117,7 @@ void commands_handler::handle( arm::move_cam& cam )
     if( cam.tilt < min_tilt ) { ret = result( "tilt angle is below minimum limit of -90.0", result::error::invalid_input ); return; }
     if( cam.tilt > max_tilt ) { ret = result( "tilt angle is above minimum limit of 90.0", result::error::invalid_input ); return; }
     if( cam.height < min_height ) { ret = result( "height value is below minimum limit of 0.1m", result::error::invalid_input ); return; }
-    if( cam.height > max_height ) { ret = result( "height value is above minimum limit of 0.5m", result::error::invalid_input ); return; }
+    if( cam.height > max_height ) { ret = result( "height value is above minimum limit of 1.0m", result::error::invalid_input ); return; }
     
     static double zero_tilt = 90.0;
     inputs_.motion_primitive = real_T( input_primitive::move_cam );
@@ -240,13 +241,18 @@ void commands_handler::handle( arm::set_position_giraffe& giraffe )
                      int(result::error::invalid_input) );
         return; 
     }
+    if( giraffe.pan < min_pan ) { ret = result( "pan angle is below minimum limit of -45.0", result::error::invalid_input ); return; }
+    if( giraffe.pan > max_pan ) { ret = result( "pan angle is above minimum limit of 45.0", result::error::invalid_input ); return; }
+    if( giraffe.tilt < min_tilt ) { ret = result( "tilt angle is below minimum limit of -90.0", result::error::invalid_input ); return; }
+    if( giraffe.tilt > max_tilt ) { ret = result( "tilt angle is above minimum limit of 90.0", result::error::invalid_input ); return; }
 
     std::cerr << "giraffe pan tilt" << std::endl;
 
-    inputs_.motion_primitive = input_primitive::set_position;
-    inputs_.Input_1 = set_position::giraffe;
-    inputs_.Input_2 = giraffe.pan.value();    // zero pan for giraffe
-    inputs_.Input_3 = giraffe.tilt.value();    // zero tilt for giraffe
+    static double zero_tilt = 90.0;
+    inputs_.motion_primitive = input_primitive::move_cam;
+    inputs_.Input_1 = giraffe.pan.value();    // zero pan for giraffe
+    inputs_.Input_2 = zero_tilt - giraffe.tilt.value();    // zero tilt for giraffe
+    inputs_.Input_3 = 1.0; // height of 1m
     
     ret = result();
 }
