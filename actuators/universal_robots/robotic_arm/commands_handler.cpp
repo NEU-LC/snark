@@ -221,7 +221,7 @@ void commands_handler::handle( arm::set_position& pos )
 
     if( pos.position == "giraffe" ) { inputs_.Input_1 = set_position::giraffe; }
     else if( pos.position == "home" ) { inputs_.Input_1 = set_position::home; }
-    else { ret = result("unknown position type", int(result::error::invalid_input) ); }
+    else { ret = result("unknown position type", int(result::error::invalid_input) ); return; }
 
     inputs_.Input_2 = 0;    // zero pan for giraffe
     inputs_.Input_3 = 0;    // zero tilt for giraffe
@@ -233,6 +233,12 @@ void commands_handler::handle( arm::set_position_giraffe& giraffe )
     if( !is_running() ) {
         ret = result( "cannot set giraffe position as rover is not in running mode", result::error::invalid_robot_state );
         return;
+    }
+
+    if( giraffe.position != "giraffe" ) { 
+        ret = result("unknown position type: expected 'giraffe' when spcifying pan and tilt angles", 
+                     int(result::error::invalid_input) );
+        return; 
     }
 
     inputs_.motion_primitive = input_primitive::set_position;
