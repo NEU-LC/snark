@@ -459,6 +459,24 @@ TEST_F( wheels_test_180, spot_turn )
     }
 }
 
+TEST_F( wheels_test_no_limit, crab_north )
+{
+    steer_command steer( 1, 0, 0 );
+    boost::optional< double > current_angle;
+    wheel_command rear_left = compute_wheel_command( steer, rear_left_pose, wheel_offset, angle_limit, current_angle );
+    wheel_command front_left = compute_wheel_command( steer, front_left_pose, wheel_offset, angle_limit, current_angle );
+    wheel_command front_right = compute_wheel_command( steer, front_right_pose, wheel_offset, angle_limit, current_angle );
+    wheel_command rear_right = compute_wheel_command( steer, rear_right_pose, wheel_offset, angle_limit, current_angle );
+    EXPECT_NEAR(  0, rear_left.turnrate, 1e-9 );
+    EXPECT_NEAR( -1, rear_left.velocity, 1e-9 );
+    EXPECT_NEAR(  0, front_left.turnrate, 1e-9 );
+    EXPECT_NEAR( -1, front_left.velocity, 1e-9 );
+    EXPECT_NEAR(  0, front_right.turnrate, 1e-9 );
+    EXPECT_NEAR(  1, front_right.velocity, 1e-9 );
+    EXPECT_NEAR(  0, rear_right.turnrate, 1e-9 );
+    EXPECT_NEAR(  1, rear_right.velocity, 1e-9 );
+}
+
 TEST_F( wheels_test_no_limit, crab_nearest_south_west )
 {
     steer_command steer( -1, 1, 0 );
@@ -509,7 +527,7 @@ TEST_F( wheels_test_no_limit, crab_nearest_south_west )
     }
 }
 
-TEST_F( wheels_test_no_limit, spot_turn )
+TEST_F( wheels_test_no_limit, spot_turn_nearest )
 {
     steer_command steer( 0, 0, 1 );
     {
