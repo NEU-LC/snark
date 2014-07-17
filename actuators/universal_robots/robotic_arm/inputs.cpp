@@ -59,8 +59,8 @@ void inputs::read()
     {
         std::string line;
         std::getline( *istream_, line ); 
-        std::cerr << "size: " << istream_->rdbuf()->in_avail() << std::endl;
-        std::cerr << "line: " << line << std::endl;
+        // std::cerr << "size: " << istream_->rdbuf()->in_avail() << std::endl;
+        // std::cerr << "line: " << line << std::endl;
         if( line.empty() ) continue;
 
         // now process received line
@@ -96,7 +96,7 @@ void inputs::read()
                 my_commands = rover_commands();
             }
             
-            std::cerr << "pushed line: " << line << std::endl;
+            // std::cerr << "pushed line: " << line << std::endl;
             my_commands.push( command );
         } 
         
