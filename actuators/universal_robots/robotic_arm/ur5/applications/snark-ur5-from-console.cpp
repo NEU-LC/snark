@@ -174,7 +174,7 @@ public:
         
         double vel = sign*velocity_.value();
         if( current_ <= 2 ) { vel /= 2.0; }
-        current_joint::data data( current_, sign*velocity_.value() );
+        current_joint::data data( current_, vel );
         static std::string line;
 
         double time = (time_.total_milliseconds()/1000.0) * ( (current_+1)/3.0 ); // scale time from 1/3 to 2.0 for joint 0-5

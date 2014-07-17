@@ -1,66 +1,5 @@
 #include "commands_handler.h"
 
-namespace snark { namespace ur { namespace robotic_arm {
-
-const char* robotmode_str( robotmode::mode mode )
-{
-	switch( mode )
-	{
-		case robotmode::running:
-			return "running_mode";
-		case robotmode::freedrive:
-			return "freedrive_mode";
-		case robotmode::ready:
-			return "ready_mode";
-		case robotmode::initializing:
-			return "initializing_mode";
-		case robotmode::security_stopped:
-			return "security_stopped_mode";
-		case robotmode::estopped:
-			return "estopped_mode";
-		case robotmode::fatal_error:
-			return "fatal_error_mode";
-		case robotmode::no_power:
-			return "no_power_mode";
-		case robotmode::not_connected:
-			return "not_connected_mode";
-		case robotmode::shutdown:
-			return "shutdown_mode";
-		case robotmode::safeguard_stop:
-			return "safeguard_stop_mode";
-		default:
-			std::cerr << "unknown robot mode: " << int(mode) << std::endl;
-			COMMA_THROW( comma::exception, "unknown robot mode" );
-			return "";
-	}
-}
-
-const char* jointmode_str( jointmode::mode mode )
-{
-	switch( mode )
-	{
-		case jointmode::power_off:
-			return "power_off_mode";
-		case jointmode::error:
-			return "error_mode";
-		case jointmode::freedrive:
-			return "freedrive_mode";
-		case jointmode::calibration:
-			return "calibration_mode";
-		case jointmode::stopped:
-			return "stopped_mode";
-		case jointmode::running:
-			return "running_mode";
-		case jointmode::initializing:
-			return "initializing_mode";
-		case jointmode::idle:
-			return "idle_mode";
-		default:
-			return "other_mode"; // some other mode not converted to string
-	}
-}
-} } } // namespace snark { namespace ur { namespace robotic_arm {
-
 namespace snark { namespace ur { namespace robotic_arm { namespace handlers {
 
 static const char* name() {
@@ -88,8 +27,77 @@ void commands_handler::handle( arm::brakes& b )
     ret = result();
 }
 
+void commands_handler::read_status()
+{
+    comma::uint32 sleep_usec = 0.04 * 1000000u; 
+    unsigned char loops = 3;
+
+    for( std::size_t i=0; i<loops; ++i )
+    {
+        select_.check();
+
+        if( select_.read().ready( iss_.fd() ) )
+        {
+            iss_->read( status_.data(), fixed_status::size );
+            // read all buffered data
+            while( iss_->rdbuf()->in_avail() > 0 ) { iss_->read( status_.data(), fixed_status::size ); }
+        }
+
+        usleep( sleep_usec );
+    }
+    std::cerr << name() << "failed to read status in auto init" << std::endl;
+    COMMA_THROW( comma::exception, "failed to read status in auto_init" );
+}
+
 void commands_handler::handle( arm::auto_init& a )
 {
+
+    std::map< char, std::string > initj;
+    // snark-ur10-from-console: Initialising joint (5)
+    initj[5] = "speedj_init([0,0,0,0,0,-0.1],0.05,0.04)";
+    // snark-ur10-from-console: Initialising joint (4)
+    initj[4] = "speedj_init([0,0,0,0,-0.1,0],0.05,0.0333333)";
+    // snark-ur10-from-console: Initialising joint (3)
+    initj[3] = "speedj_init([0,0,0,-0.1,0,0],0.05,0.0266667)";
+    // snark-ur10-from-console: Initialising joint (2)
+    initj[2] = "speedj_init([0,0,0.05,0,0,0],0.05,0.02)";
+    // snark-ur10-from-console: Initialising joint (1)
+    initj[1] = "speedj_init([0,-0.05,0,0,0,0],0.05,0.0133333)";
+    // snark-ur10-from-console: Initialising joint (0)
+    initj[0] = "speedj_init([0.05,0,0,0,0,0],0.05,0.00666667)";
+
+    static const comma::uint32 retries = 5;
+    // try for two joints right now
+    for( int joint_id=5; joint_id > 4; ++joint_id )
+    {
+        while( status_.joint_modes[joint_id]() == jointmode::initializing )
+        {
+            os << initj[ joint_id ] << std::endl;
+            os.flush();
+
+            // wait tilt joint stopped
+            for( std::size_t k=0; k<retries; ++k ) 
+            {
+                if( status_.velocities[ joint_id ]() == 0 ) break;
+
+                usleep( 0.01 * 1000000u );
+                read_status();
+            }
+        }
+
+        // todo check force also
+        if( status_.joint_modes[joint_id]() == jointmode::running ) {
+            std::cerr << name() << "joint " << joint_id << " initialised" << std::endl;
+        }
+        else 
+        {
+            std::cerr << name() << "failed to initialise joint: " << joint_id << std::endl;
+            ret = result( "failed to auto initialise a joint", result::error::failure );
+            return;
+        }
+    }
+
+
     std::cerr << name() << "dummy auto init" << std::endl;
     ret = result();
 }

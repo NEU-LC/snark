@@ -186,17 +186,12 @@ void output( const std::string& msg, std::ostream& os=std::cout )
     os << msg << std::endl;
 }
 
-static arm::fixed_status arm_status; // = *( reinterpret_cast< arm::fixed_status* >( buffer ) );
+static arm::fixed_status arm_status; 
 /// Stream to command robot arm
 namespace ip = boost::asio::ip;
-static ip::tcp::iostream robot_arm;
-
-arm::handlers::commands_handler& commands_handler()
-{
-    static arm::handlers::commands_handler handler_( Arm_Controller_U, arm_status, robot_arm  );
-    return handler_;
-}
-
+typedef arm::handlers::commands_handler commands_handler_t;
+typedef boost::shared_ptr< commands_handler_t > commands_handler_shared;
+static commands_handler_shared commands_handler;
 
 template < typename C >
 std::string handle( const std::vector< std::string >& line, std::ostream& os )
@@ -220,13 +215,13 @@ std::string handle( const std::vector< std::string >& line, std::ostream& os )
     }
     catch( ... ) { COMMA_THROW( comma::exception, "unknown error is parsing: " + comma::join( line , ',' ) ); }
        
-    comma::dispatch::handler& h_ref( commands_handler() );
+    comma::dispatch::handler& h_ref( *commands_handler );
     comma::dispatch::dispatched_base& ref( c );
     ref.dispatch_to( h_ref );
     // perform action
     // result ret = arm::action< C >::run( c, os );
     std::ostringstream ss;
-    ss << '<' << c.serialise() << ',' << commands_handler().ret.get_message() << ';';
+    ss << '<' << c.serialise() << ',' << commands_handler->ret.get_message() << ';';
     return ss.str();
 }
 
@@ -335,6 +330,7 @@ int main( int ac, char** av )
         
         bool verbose = options.exists( "--verbose,-v" );
         
+        ip::tcp::iostream robot_arm;
         std::string arm_conn_host = options.value< std::string >( "--robot-arm-host" );
         std::string arm_conn_port = options.value< std::string >( "--robot-arm-port" );
         std::string arm_feedback_host = options.value< std::string >( "--feedback-host" );
@@ -361,6 +357,8 @@ int main( int ac, char** av )
         comma::io::istream status_stream( status_conn, comma::io::mode::binary );
         comma::io::select select;
         select.read().add( status_stream.fd() );
+
+        commands_handler.reset( new commands_handler_t( Arm_Controller_U, arm_status, robot_arm, status_stream, select ) );
 
         while( !signaled && std::cin.good() )
         {

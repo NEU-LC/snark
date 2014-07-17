@@ -325,7 +325,8 @@ template <> struct traits< arm::fixed_status >
         v.apply( "rotation", t.rotation );
         v.apply( "temperatures", t.temperatures );
         v.apply( "robot_mode",  robot_mode );
-        v.apply( "joint_modes", t.joint_modes );
+        arm::joint_modes_t jmodes( t.joint_modes );
+        v.apply( "joint_modes", jmodes.modes );
     }
 };
 
