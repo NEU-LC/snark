@@ -9,6 +9,7 @@
 #include <comma/io/stream.h>
 #include <comma/io/select.h>
 #include <comma/base/exception.h>
+#include <comma/application/signal_flag.h>
 #include <boost/optional.hpp>
 #include "data.h"
 #include "commands.h"
@@ -75,9 +76,10 @@ public:
     
     commands_handler( ExtU_Arm_Controller_T& simulink_inputs, 
     				  arm::fixed_status& status, std::ostream& robot, 
-                      comma::io::istream& status_iss, comma::io::select& select ) : 
+                      comma::io::istream& status_iss, comma::io::select& select,
+                      comma::signal_flag& signaled ) : 
     	inputs_(simulink_inputs), status_( status ), os( robot ),
-        iss_(status_iss), select_( select ) {}
+        iss_(status_iss), select_( select ), signaled_( signaled ) {}
     
     result ret;  /// Indicate if command succeed
 private:
@@ -86,6 +88,7 @@ private:
 	std::ostream& os;		/// output stream to robot arm
     comma::io::istream& iss_; // for reading the status
     comma::io::select& select_;
+    comma::signal_flag& signaled_;
     // read from status stream for latest status
     void read_status();
 

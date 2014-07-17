@@ -115,6 +115,11 @@ struct fixed_status : public comma::packed::packed_struct< fixed_status, 812  >
     comma::packed::big_endian_double robot_mode;
     joints_net_t joint_modes; ///  joint modes - see documents
 
+    robotmode::mode mode() const { return  robotmode::mode( (int)this->robot_mode() ); }
+    jointmode::mode jmode( int id ) const { return jointmode::mode( int(joint_modes[id]()) ); }
+
+    std::string mode_str() const { return robotmode_str( mode() ); }
+    std::string jmode_str( int id ) const { return jointmode_str( jmode( id ) ); }
 };
 
 template < typename T > struct packed_buffer {
