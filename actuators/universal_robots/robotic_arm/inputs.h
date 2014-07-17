@@ -44,6 +44,7 @@
 #include <boost/log/sinks/text_file_backend.hpp>
 #include <boost/shared_ptr.hpp>
 #include <comma/io/select.h>
+#include <comma/io/stream.h>
 #include <comma/base/types.h>
 #include "../../../battery/ocean/stdio_query.h"
 
@@ -82,13 +83,11 @@ private:
     /// rover's ID
     char rover_id;
     
+    comma::io::istream istream_;
+    comma::io::select select_;
+    
     /// The buffer of commands
     rover_commands my_commands;
-    snark::ocean::stdio_query io_;
-    std::string buffer_;
-    boost::asio::mutable_buffer mutable_buffer_;
-    boost::asio::streambuf streambuf_; ///< Holds eventual read but not consumed
-
 };
 
 } } } // namespace acfr { namespace ur { namespace robotic_arm {

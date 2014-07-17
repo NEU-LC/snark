@@ -40,38 +40,31 @@
 namespace snark { namespace ur { namespace robotic_arm {
     
 inputs::inputs( char rover_id_ ) 
-        : rover_id( rover_id_ ), buffer_( MAX_BUFFER, '\0' ), mutable_buffer_( &buffer_[0], MAX_BUFFER-1 )
-{
-    io_.async_receive( mutable_buffer_, boost::posix_time::pos_infin );
-}
+        : rover_id( rover_id_ ), istream_( "-", comma::io::mode::ascii ) {
+            select_.read().add( istream_.fd() );
+        }
 
+
+typedef std::vector< std::string > vector_s;
 
 void inputs::read()
 {
-    io_.ioservice().poll();
-    if( io_.code_would_block() ) { return; }
+    if( !istream_->good() ) { COMMA_THROW( comma::exception, "inputs - input stream not good()" ); }
 
-    if( !io_.code_success() ) { 
+    select_.check();
 
-        std::ostringstream oss;
-        oss << "stdin receive failed with error: " << io_.error_code().value() 
-            << " category: " << io_.error_code().category().name() << " - " << io_.error_code().message() << std::endl;
-        COMMA_THROW( comma::exception, oss.str() ); 
-    }
+    if( !select_.read().ready( istream_.fd() ) ) { return; }
 
-    // std::cerr << "got sommething: " << io_.received_length() << std::endl;
-    typedef std::vector< std::string > vector_s;
-
-    std::string data = comma::strip( buffer_.substr( 0, io_.received_length() ), ";\n" );
-    vector_s lines = comma::split( data, '\n' );
-
-    for( vector_s::const_iterator iline=lines.begin(); iline!=lines.end(); ++iline ) 
+    do
     {
-        // std::cerr << "line: " << *iline << std::endl;
-        if( iline->empty() ) continue;
+        std::string line;
+        std::getline( *istream_, line ); 
+        std::cerr << "size: " << istream_->rdbuf()->in_avail() << std::endl;
+        std::cerr << "line: " << line << std::endl;
+        if( line.empty() ) continue;
 
         // now process received line
-        vector_s cmds = comma::split( *iline, ";");
+        vector_s cmds = comma::split( line, ";");
         for( vector_s::const_iterator c=cmds.begin(); c!=cmds.end(); ++c ) 
         { 
             // std::cerr << "cmd: " << *c << std::endl;
@@ -92,7 +85,7 @@ void inputs::read()
             }
             // Not for this rover
             if( id != rover_id ) { 
-                std::cerr << "discarding command because of ID mismatch: " << *iline << " " << int(rover_id) << " to " << id << std::endl;
+                std::cerr << "discarding command because of ID mismatch: " << line << " " << int(rover_id) << " to " << id << std::endl;
                 continue;
             }
             
@@ -103,17 +96,12 @@ void inputs::read()
                 my_commands = rover_commands();
             }
             
+            std::cerr << "pushed line: " << line << std::endl;
             my_commands.push( command );
         } 
-
-    }
-
-    // set up listening again
-    buffer_.resize( MAX_BUFFER, '\0' );
-    mutable_buffer_ = boost::asio::mutable_buffer( &buffer_[0], MAX_BUFFER-1 );
-    io_.async_receive( mutable_buffer_, boost::posix_time::pos_infin );
-
-
+        
+    } 
+    while( istream_->rdbuf()->in_avail() > 0 );
 }
 
 
