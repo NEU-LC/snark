@@ -126,6 +126,7 @@ CMAKE_DEPENDENT_OPTION( snark_build_sensors_dc1394 "build dc1394 components" ON 
 CMAKE_DEPENDENT_OPTION( snark_build_sensors_gige "build gige components" OFF "snark_build_sensors" OFF )
 CMAKE_DEPENDENT_OPTION( snark_build_sensors_sick "build sick components" ON "snark_build_sensors" OFF )
 CMAKE_DEPENDENT_OPTION( snark_build_sensors_velodyne "build velodyne components" ON "snark_build_sensors" OFF )
+CMAKE_DEPENDENT_OPTION( snark_build_sensors_hokuyo "build hokuyo components" ON "snark_build_sensors" OFF )
 
 CMAKE_DEPENDENT_OPTION( snark_build_actuators_quickset "build quickset components" ON "snark_build_actuators" OFF )
 CMAKE_DEPENDENT_OPTION( snark_build_actuators_wheels "build wheels components" ON "snark_build_actuators" OFF )
@@ -160,6 +161,11 @@ IF( snark_build_sensors_velodyne )
     SET( snark_ALL_LIBRARIES ${snark_ALL_LIBRARIES} debug snark_velodyne-d
                              optimized snark_velodyne )
 ENDIF( snark_build_sensors_velodyne )
+
+IF( snark_build_sensors_hokuyo )
+    SET( snark_ALL_LIBRARIES ${snark_ALL_LIBRARIES} debug snark_hokuyo-d
+                             optimized snark_hokuyo )
+ENDIF( snark_build_sensors_hokuyo )
 
 SET( snark_ALL_LIBRARIES ${snark_ALL_LIBRARIES} debug snark_math-d
                          optimized snark_math
