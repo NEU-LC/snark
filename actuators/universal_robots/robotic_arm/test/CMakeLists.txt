@@ -1,4 +1,4 @@
-SET(KIT actuators/ur10 )
+SET(KIT actuators/universal_robots/robotic_arm )
 
 FILE( GLOB source ${SOURCE_CODE_BASE_DIR}/${KIT}/test/test_*.cpp )
 FILE( GLOB extras ${SOURCE_CODE_BASE_DIR}/${KIT}/test/*.cpp

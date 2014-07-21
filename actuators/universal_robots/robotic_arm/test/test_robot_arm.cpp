@@ -89,7 +89,7 @@ TEST( robot_arm, robot_arm_config )
 
 
 
-} } // namespace snark { namespace ur { namespace robotic_arm {
+} } } // namespace snark { namespace ur { namespace robotic_arm {
 
 int main( int argc, char* argv[] )
 {
