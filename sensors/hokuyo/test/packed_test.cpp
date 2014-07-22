@@ -60,27 +60,34 @@ TEST( hokuyo_packed, header )
 
 TEST( hokuyo_encoding, scip_format )
 {
-	const std::string data( "1Dh");
+    const std::string data( "1Dh");
 
-	const packed::scip_3chars_t* h3 = reinterpret_cast< const packed::scip_3chars_t* >( &data[0] );
+    const packed::scip_3chars_t* h3 = reinterpret_cast< const packed::scip_3chars_t* >( &data[0] );
 
-	comma::uint32 value = 5432;
-	EXPECT_EQ( value, (*h3)() );
-	packed::scip_3chars_t h3_data;
-	h3_data = value;
-	std::string out( h3_data.data(), 3 );
-	EXPECT_EQ( data, out );
+    comma::uint32 value = 5432;
+    EXPECT_EQ( value, (*h3)() );
+    packed::scip_3chars_t h3_data;
+    h3_data = value;
+    std::string out( h3_data.data(), 3 );
+    EXPECT_EQ( data, out );
 
 
-	const std::string data4 = "11Dh";
-	const comma::uint32 value4 = 267576;
-	const packed::scip_4chars_t* h4 = reinterpret_cast< const packed::scip_4chars_t* >( &data4[0] );
-	EXPECT_EQ( value4, (*h4)() );
+    const std::string data4 = "m2@0";
+    const comma::uint32 value4 = 16000000;
+    const packed::scip_4chars_t* h4 = reinterpret_cast< const packed::scip_4chars_t* >( &data4[0] );
+    EXPECT_EQ( value4, (*h4)() );
 
-	packed::scip_4chars_t h4_data;
-	h4_data = value4;
-	std::string out4( h4_data.data(), 4 );
-	EXPECT_EQ( data4, out4 );
+    packed::scip_4chars_t h4_data;
+    h4_data = value4;
+    std::string out4( h4_data.data(), 4 );
+    EXPECT_EQ( data4, out4 );
 }
 
+TEST( hokuyo, strip_checksum )
+{
+    hok::distance_data< 4 > data;
+    hok::distance_data< 4 >::rays points;
+    
+    data.get_values( points );
+}
 

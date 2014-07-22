@@ -76,6 +76,8 @@ typedef header sensor_to_host;
     
 typedef comma::packed::const_byte< '\n' > line_feed_t; /// Final terminating line feed
 
+static const unsigned char mask = BOOST_BINARY( 111111 );
+
 /// This is the string ID of request, making it '<cmd><seq num>'
 struct sequence_string : comma::packed::packed_struct< sequence_string, 11 >
 {
@@ -106,7 +108,18 @@ struct distance_data {
     static const unsigned char num_of_sums = (STEPS*encoding_num)/64; // 64 bytes per sum check value
     static const comma::uint16 value = STEPS*encoding_num + num_of_sums*(size_of_sum + 1); /// adding one for line feed
 
-    // comma::packed::string< value > data;
+    static const comma::uint16 data_only_size = STEPS*encoding_num; // Has distance and intensity data
+    
+    typedef boost::array< comma::packed::scip_3chars_t, STEPS > points_t;
+    comma::packed::string< value > raw_data;   /// data mixed with checksums and linefeeds
+    
+    struct rays : public comma::packed::packed_struct< rays, data_only_size >
+    {
+        points_t steps;
+    };
+    
+    void get_values( rays& points ); 
+    
 };
 
 template < int STEPS >
@@ -117,7 +130,16 @@ struct di_data {
     static const unsigned char num_of_sums = (data_only_size)/64; // 64 bytes per sum check value
     static const comma::uint16 value = STEPS*encoding_num + num_of_sums*(size_of_sum + 1); /// adding one for line feed
 
-    // comma::packed::string< value > data;
+    /// Store an array of contiguous character data - encoded data
+    typedef boost::array< comma::packed::scip_3chars_t, STEPS > points_t;
+    comma::packed::string< value > raw_data;   
+    
+    struct rays : public comma::packed::packed_struct< rays, data_only_size >
+    {
+        points_t steps;
+    };
+    
+    void get_values( rays& points ); 
 };
 
 /// Depends on how many steps, always 3 character encoding
@@ -131,7 +153,7 @@ struct reply_gd : comma::packed::packed_struct< reply_gd< STEPS >, reply_header_
     line_feed_t lf1;
 
     static const int data_size = distance_data< STEPS >::value;
-    comma::packed::string< data_size > data;   
+    distance_data< STEPS > data;
     line_feed_t lf_end; /// Final terminating line feed
 };
 
@@ -145,7 +167,8 @@ struct reply_ge : comma::packed::packed_struct< reply_ge< STEPS >, reply_header_
     line_feed_t lf1;
 
     static const int data_size = di_data< STEPS >::value;
-    comma::packed::string< data_size > data;   /// each sum value is followed by a line feed char
+    /// each sum value is followed by a line feed char
+    di_data< STEPS > data;
     line_feed_t lf_end; /// Final terminating line feed
 };
 
@@ -177,7 +200,7 @@ struct reply_md_data : comma::packed::packed_struct< reply_md_data< STEPS >, req
     line_feed_t lf1;
 
     static const int data_size = distance_data< STEPS >::value;
-    comma::packed::string< data_size > data;   /// each sum value is followed by a line feed char
+    distance_data< STEPS > data;
     line_feed_t lf_end; /// Final terminating line feed
 };
 
@@ -191,7 +214,7 @@ struct reply_me_data : comma::packed::packed_struct< reply_me_data< STEPS >, req
     line_feed_t lf1;
 
     static const int data_size = di_data< STEPS >::value;
-    comma::packed::string< data_size > data;   /// each sum value is followed by a line feed char
+    di_data< STEPS > data;
     line_feed_t lf_end; /// Final terminating line feed
 };
 
