@@ -151,7 +151,7 @@ int main( int argc, char** argv )
                 snark::camera::print_operation_modes();
                 std::cerr << std::endl << "allowed iso speeds: " << std::endl;
                 snark::camera::print_iso_speeds();
-                std::cerr << std::endl << "allowed frame rates (note: format7 ignores this, use packet size for f7 framerate: " << std::endl;
+                std::cerr << std::endl << "allowed frame rates (note: format7 ignores this, use packet-size to control format7 framerate): " << std::endl;
                 snark::camera::print_frame_rates();
                 std::cerr << std::endl << "allowed color codings for format7 op modes: " << std::endl;
                 snark::camera::print_color_coding();
@@ -163,13 +163,12 @@ int main( int argc, char** argv )
                 std::cerr << std::endl << "ini file example for ladybug on shrimp:" << std::endl;
                 std::cerr << "--------------------------------------------" << std::endl;
                 std::cerr << "video-mode=DC1394_VIDEO_MODE_FORMAT7_0\noperation-mode=DC1394_OPERATION_MODE_1394B\n";
-                std::cerr << "iso-speed=DC1394_ISO_SPEED_800\nframe-rate=DC1394_FRAMERATE_240\ncolor-coding=DC1394_COLOR_CODING_RAW8\nguid=49712223530115149" << std::endl;
+                std::cerr << "iso-speed=DC1394_ISO_SPEED_800\nframe-rate=DC1394_FRAMERATE_240\ncolor-coding=DC1394_COLOR_CODING_RAW8\npacket-size=8160\nguid=49712223530115149" << std::endl;
                 std::cerr << "--------------------------------------------" << std::endl;
                 std::cerr << std::endl << "ini file example for pika2 on shrimp:" << std::endl;
                 std::cerr << "--------------------------------------------" << std::endl;
                 std::cerr << "video-mode=DC1394_VIDEO_MODE_FORMAT7_2\noperation-mode=DC1394_OPERATION_MODE_1394B\n";
-                std::cerr << "iso-speed=DC1394_ISO_SPEED_800\nframe-rate=DC1394_FRAMERATE_240\ncolor-coding=DC1394_COLOR_CODING_MONO16\nguid=49712223534632451\n";
-                std::cerr << "left=0\ntop=0\nwidth=640\nheight=240\n" << std::endl;
+                std::cerr << "iso-speed=DC1394_ISO_SPEED_800\nframe-rate=DC1394_FRAMERATE_240\ncolor-coding=DC1394_COLOR_CODING_MONO16\nguid=49712223534632451\n" << std::endl;
                 std::cerr << "--------------------------------------------" << std::endl;
             }
 
