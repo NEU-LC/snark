@@ -1,7 +1,64 @@
 #ifndef SNARK_SENSORS_HOKUYO_MESSAGE_H
 #define SNARK_SENSORS_HOKUYO_MESSAGE_H
+#include <boost/utility/binary.hpp>
 #include <comma/base/types.h>
 #include <comma/packed/packed.h>
+
+namespace comma { namespace packed {
+
+/// The character encoding used by SCIP 
+template < int N >
+class scip_encoding : public comma::packed::field< scip_encoding< N >, comma::uint32, N >
+{
+public:
+    enum { size = N };
+    
+    typedef comma::uint32 type;
+    
+    typedef comma::packed::field< scip_encoding< N >, comma::uint32, size > base_type;
+    
+    static type default_value() { return 0; }
+
+    static const unsigned char mask = BOOST_BINARY( 111111 );
+    static const unsigned char offset = 0x30;
+    
+    static void pack( char* storage, type value )
+    {
+        for( int i=0; i<N; ++i )
+        {
+            int bits_shift = 6 * (N - (i+1));
+            char c = ( ( value & ( mask << bits_shift ) ) >> bits_shift ) + offset; 
+            // std::cerr << "byte: " << i << " to " << char(int(c)) << " int: " << int(c) << std::endl;
+            storage[i] = c;
+        }
+    }
+    
+    static type unpack( const char* storage )
+    {
+        comma::uint32 value = 0;
+        for( int i=0; i<N; ++i )
+        {
+
+            // std::cerr << "hokuyo char: " << storage[i]; 
+            comma::uint32 part( storage[i] );
+            int bits_shift = 6 * (N - (i+1));
+            // std::cerr << " int: " << part << " shift: " << bits_shift;
+            value |= ( ( ( part - offset ) & mask ) << bits_shift );
+            // comma::uint32 bits = ( ( part - offset ) & mask );
+            // std::cerr << " bits: " << bits << " value: " << value << std::endl;
+        }
+        return value;
+    }
+    
+    const scip_encoding< N >& operator=( const scip_encoding< N >& rhs ) { return base_type::operator=( rhs ); }
+    
+    const scip_encoding< N >& operator=( type rhs ) { return base_type::operator=( rhs ); }
+};
+
+typedef scip_encoding< 3 > scip_3chars_t;
+typedef scip_encoding< 4 > scip_4chars_t;
+
+} } // namespace comma { namespace packed {
 
 namespace snark { namespace hokuyo {
     
@@ -14,8 +71,8 @@ struct header : public comma::packed::packed_struct< header, 12  > {
     comma::packed::casted< char, 2, '0' > cluster_count;
 };
 
-struct host_to_sensor : public header {};
-struct sensor_to_host : public header {};
+typedef header host_to_sensor;
+typedef header sensor_to_host;
     
 typedef comma::packed::const_byte< '\n' > line_feed_t; /// Final terminating line feed
 
@@ -48,6 +105,8 @@ struct distance_data {
     static const char encoding_num = 3; // 3 character encoding
     static const unsigned char num_of_sums = (STEPS*encoding_num)/64; // 64 bytes per sum check value
     static const comma::uint16 value = STEPS*encoding_num + num_of_sums*(size_of_sum + 1); /// adding one for line feed
+
+    // comma::packed::string< value > data;
 };
 
 template < int STEPS >
@@ -57,6 +116,8 @@ struct di_data {
     static const comma::uint16 data_only_size = STEPS*encoding_num*2; // Has distance and intensity data
     static const unsigned char num_of_sums = (data_only_size)/64; // 64 bytes per sum check value
     static const comma::uint16 value = STEPS*encoding_num + num_of_sums*(size_of_sum + 1); /// adding one for line feed
+
+    // comma::packed::string< value > data;
 };
 
 /// Depends on how many steps, always 3 character encoding
