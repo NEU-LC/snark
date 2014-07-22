@@ -52,6 +52,16 @@ typedef big_endian_64< float > big_endian_float;
 } } // namespace comma { namespace packed {
 
 namespace snark { namespace ur { namespace robotic_arm { 
+
+struct robotmode {
+    enum mode { running, freedrive, ready, initializing, security_stopped, estopped, fatal_error, no_power, not_connected, shutdown, safeguard_stop };
+};
+struct jointmode {
+    enum mode { power_off=239, error=242, freedrive=243, calibration=250, stopped=251, running=253, initializing=254, idle=255 };
+};
+
+const char* robotmode_str( robotmode::mode mode );
+const char* jointmode_str( jointmode::mode mode );
     
 struct cartesian {
     comma::packed::big_endian_double x;
@@ -61,6 +71,17 @@ struct cartesian {
 
 static const unsigned char joints_num = 6;
 typedef boost::array< comma::packed::big_endian_double, joints_num > joints_net_t;
+
+struct joint_modes_t 
+{
+    joint_modes_t( const joints_net_t& joints )
+    {
+        for( std::size_t i=0; i<robotic_arm::joints_num; ++i )  { 
+            modes.push_back( robotic_arm::jointmode_str( robotic_arm::jointmode::mode( (int)(joints[i]()) ) ) );
+        }
+    }
+    std::vector< std::string > modes;
+};
 
 struct joints_in_degrees {
     joints_in_degrees() {}
@@ -94,6 +115,11 @@ struct fixed_status : public comma::packed::packed_struct< fixed_status, 812  >
     comma::packed::big_endian_double robot_mode;
     joints_net_t joint_modes; ///  joint modes - see documents
 
+    robotmode::mode mode() const { return  robotmode::mode( (int)this->robot_mode() ); }
+    jointmode::mode jmode( int id ) const { return jointmode::mode( int(joint_modes[id]()) ); }
+
+    std::string mode_str() const { return robotmode_str( mode() ); }
+    std::string jmode_str( int id ) const { return jointmode_str( jmode( id ) ); }
 };
 
 template < typename T > struct packed_buffer {

@@ -112,29 +112,27 @@ int main( int ac, char** av )
     
     try
     {
-        char buffer[ status::size ];
+        arm::fixed_status arm_status;
         while( !signaled && std::cin.good() )
         {
-            std::cin.read( buffer, status::size );
-            
-            const status* pstatus = reinterpret_cast< const status* >( buffer );
+            std::cin.read( arm_status.data(), status::size );
             
             static std::string line;
             if( is_binary )
             {
-                static comma::csv::binary< status > binary("","",true, *pstatus );
+                static comma::csv::binary< status > binary("","",true, arm_status );
                 static std::vector<char> line( binary.format().size() );
-                binary.put( *pstatus, line.data() );
+                binary.put( arm_status, line.data() );
                 std::cout.write( line.data(), line.size());
             }
             else if ( is_json || is_single_line_json )
             {
                 boost::property_tree::ptree t;
                 comma::to_ptree to_ptree( t );
-                comma::visiting::apply( to_ptree ).to( *pstatus );
+                comma::visiting::apply( to_ptree ).to( arm_status );
                 boost::property_tree::write_json( std::cout, t, !is_single_line_json );    
             }
-            else { std::cout << ascii< status >().put( *pstatus, line ) << std::endl; }
+            else { std::cout << ascii< status >().put( arm_status, line ) << std::endl; }
         }
         
     }

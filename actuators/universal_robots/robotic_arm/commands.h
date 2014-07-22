@@ -110,6 +110,7 @@ struct move_joints : command_base< move_joints >
 /// For setting known pose: 'home' or 'giraffe'
 struct set_position : command_base< set_position >
 {
+    static const char fields = 4;
     std::string position;
     
 //     set_position(comma::uint16 id, comma::int32 seq_no, const char* name_);
@@ -117,6 +118,17 @@ struct set_position : command_base< set_position >
     
     enum { home=1, giraffe=2 };
 };
+struct set_position_giraffe : command_base< set_position_giraffe >
+{
+    static const char fields = 6;
+    std::string position;
+    plane_angle_degrees_t pan;
+    plane_angle_degrees_t tilt;
+    set_position_giraffe() : position( "giraffe" ) {}
+    
+    enum { home=1, giraffe=2 };
+};
+
 
 /// Reads arm current joint positions and save as home position
 struct set_home : command_base< set_home >

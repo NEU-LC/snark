@@ -226,6 +226,28 @@ template <> struct traits< arm::set_position >
     }
 };
 
+template <> struct traits< arm::set_position_giraffe >
+{
+    template< typename K, typename V > static void visit( const K& k, arm::set_position_giraffe& t, V& v )
+    {
+        traits< command_base < arm::set_position_giraffe > >::visit(k, t, v);
+        v.apply( "position", t.position );
+        double p, l;
+        v.apply( "pan", p );
+        t.pan = p * arm::degree;
+        v.apply( "tilt", l );
+        t.tilt = l * arm::degree;
+    }
+
+    template< typename K, typename V > static void visit( const K& k, const arm::set_position_giraffe& t, V& v )
+    {
+        traits< command_base < arm::set_position_giraffe > >::visit(k, t, v);
+        v.apply( "position", t.position );
+        v.apply( "pan", t.pan.value() );
+        v.apply( "tilt", t.tilt.value() );
+    }
+};
+
 template <> struct traits< arm::set_home >
 {
     template< typename K, typename V > static void visit( const K& k, arm::set_home& t, V& v )
@@ -294,16 +316,15 @@ template <> struct traits< arm::fixed_status >
         v.apply( "time_since_boot", t.time_since_boot() );
         
         arm::joints_in_degrees positions( t.positions );
-        // arm::robotmode::mode mode(  );
-        std::string robot_mode = arm::robotmode_str( arm::robotmode::mode( (int)(t.robot_mode()) ) );
         v.apply( "positions", positions );
         v.apply( "velocities", t.velocities );
         v.apply( "currents", t.currents );
         v.apply( "coordinates", t.translation );
         v.apply( "rotation", t.rotation );
         v.apply( "temperatures", t.temperatures );
-        v.apply( "robot_mode",  robot_mode );
-        v.apply( "joint_modes", t.joint_modes );
+        v.apply( "robot_mode",  t.mode_str() );
+        arm::joint_modes_t jmodes( t.joint_modes );
+        v.apply( "joint_modes", jmodes.modes );
     }
 };
 

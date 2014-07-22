@@ -14,6 +14,10 @@ IF( snark_build_sensors_velodyne )
     ADD_SUBDIRECTORY( velodyne )
 ENDIF( snark_build_sensors_velodyne )
 
+IF( snark_build_sensors_hokuyo )
+    add_subdirectory(hokuyo)
+ENDIF( snark_build_sensors_hokuyo )
+
 IF( snark_build_sensors_gobi )
     ADD_SUBDIRECTORY( gobi )
 ENDIF( snark_build_sensors_gobi )

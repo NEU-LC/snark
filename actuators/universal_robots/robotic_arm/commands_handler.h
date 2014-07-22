@@ -6,30 +6,16 @@
 #include <functional>
 #include <comma/base/types.h>
 #include <comma/dispatch/dispatched.h>
-#include <comma/csv/stream.h>
+#include <comma/io/stream.h>
+#include <comma/io/select.h>
 #include <comma/base/exception.h>
+#include <comma/application/signal_flag.h>
 #include <boost/optional.hpp>
 #include "data.h"
 #include "commands.h"
 extern "C" {
     #include "simulink/Arm_Controller.h"
 }
-
-
-namespace snark { namespace ur { namespace robotic_arm {
-
-struct robotmode {
-    enum mode { running, freedrive, ready, initializing, security_stopped, estopped, fatal_error, no_power, not_connected, shutdown, safeguard_stop };
-};
-struct jointmode {
-    enum mode { power_off=239, error=242, freedrive=243, calibration=250, stopped=251, running=253, initializing=254, idle=255 };
-};
-
-const char* robotmode_str( robotmode::mode mode );
-
-const char* jointmode_str( jointmode::mode mode );
-
-} } }  // namespace snark { namespace ur { namespace robotic_arm {
 
 namespace snark { namespace ur { namespace robotic_arm { namespace handlers {
 
@@ -48,7 +34,7 @@ struct input_primitive
 
 struct result
 {
-    struct error { enum { success=0, invalid_input=1, invalid_robot_state }; };
+    struct error { enum { success=0, invalid_input=1, invalid_robot_state, failure }; };
     int code;
     std::string message;
     
@@ -73,6 +59,7 @@ class commands_handler : public comma::dispatch::handler_of< power >,
                                   public comma::dispatch::handler_of< move_joints >,
                                   public comma::dispatch::handler_of< joint_move >,
                                   public comma::dispatch::handler_of< set_position >,
+                                  public comma::dispatch::handler_of< set_position_giraffe >,
                                   public comma::dispatch::handler_of< move_effector >
 {
 public:
@@ -84,17 +71,26 @@ public:
     void handle( move_joints& js );
     void handle( set_home& h );
     void handle( set_position& p );
+    void handle( set_position_giraffe& p );
     void handle( joint_move& j );
     
     commands_handler( ExtU_Arm_Controller_T& simulink_inputs, 
-    				  const arm::fixed_status& status, std::ostream& robot ) : 
-    	inputs_(simulink_inputs), status_( status ), os( robot ) {}
+    				  arm::fixed_status& status, std::ostream& robot, 
+                      comma::io::istream& status_iss, comma::io::select& select,
+                      comma::signal_flag& signaled ) : 
+    	inputs_(simulink_inputs), status_( status ), os( robot ),
+        iss_(status_iss), select_( select ), signaled_( signaled ) {}
     
     result ret;  /// Indicate if command succeed
 private:
 	ExtU_Arm_Controller_T& inputs_; /// inputs into simulink engine 
-	const fixed_status& status_;
+	fixed_status& status_;
 	std::ostream& os;		/// output stream to robot arm
+    comma::io::istream& iss_; // for reading the status
+    comma::io::select& select_;
+    comma::signal_flag& signaled_;
+    // read from status stream for latest status
+    void read_status();
 
 	bool is_powered() const;
 	bool is_initialising() const;

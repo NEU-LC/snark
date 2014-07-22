@@ -91,8 +91,10 @@ void usage(int code=1)
     std::cerr << "    --versbose,-v:        show messages to the robot arm - angles are changed to degrees." << std::endl;
     std::cerr << "*   --id=:                ID to identify commands, eg. ><ID>,999,set_pos,home;" << std::endl;
     std::cerr << "*   --status-port=|-sp=:  TCP service port the statuses will be broadcasted on. See below." << std::endl;
-    std::cerr << "*   --robot-arm-host=:         Host name or IP of the robot arm." << std::endl;
+    std::cerr << "*   --robot-arm-host=:    Host name or IP of the robot arm." << std::endl;
     std::cerr << "*   --robot-arm-port=:    TCP Port number of the robot arm." << std::endl;
+    std::cerr << "*   --feedback-host=:     Host name or IP of the robot arm's feedback." << std::endl;
+    std::cerr << "*   --feedback-port=:     TCP Port number of the robot arm's feedback." << std::endl;
     std::cerr << "    --sleep=:             loop sleep value in seconds, default is 0.2s if not specified." << std::endl;
     typedef arm::current_positions current_positions_t;
     comma::csv::binary< current_positions_t > binary;
@@ -184,18 +186,12 @@ void output( const std::string& msg, std::ostream& os=std::cout )
     os << msg << std::endl;
 }
 
-//static arm::fixed_status& arm_status = *( reinterpret_cast< arm::fixed_status* >( buffer ) );
-static arm::fixed_status arm_status;
+static arm::fixed_status arm_status; 
 /// Stream to command robot arm
 namespace ip = boost::asio::ip;
-static ip::tcp::iostream robot_arm;
-
-arm::handlers::commands_handler& commands_handler()
-{
-    static arm::handlers::commands_handler handler_( Arm_Controller_U, arm_status, robot_arm  );
-    return handler_;
-}
-
+typedef arm::handlers::commands_handler commands_handler_t;
+typedef boost::shared_ptr< commands_handler_t > commands_handler_shared;
+static commands_handler_shared commands_handler;
 
 template < typename C >
 std::string handle( const std::vector< std::string >& line, std::ostream& os )
@@ -219,50 +215,52 @@ std::string handle( const std::vector< std::string >& line, std::ostream& os )
     }
     catch( ... ) { COMMA_THROW( comma::exception, "unknown error is parsing: " + comma::join( line , ',' ) ); }
        
-    comma::dispatch::handler& h_ref( commands_handler() );
+    comma::dispatch::handler& h_ref( *commands_handler );
     comma::dispatch::dispatched_base& ref( c );
     ref.dispatch_to( h_ref );
     // perform action
     // result ret = arm::action< C >::run( c, os );
     std::ostringstream ss;
-    ss << '<' << c.serialise() << ',' << commands_handler().ret.get_message() << ';';
+    ss << '<' << c.serialise() << ',' << commands_handler->ret.get_message() << ';';
     return ss.str();
 }
 
 void process_command( const std::vector< std::string >& v, std::ostream& os )
 {
-    if( boost::iequals( v[2], "move_cam" ) )    { output( handle< arm::move_cam >( v, os ) ); }
-    else if( boost::iequals( v[2], "set_pos" ) )  { output( handle< arm::set_position >( v, os ) ); }
-    else if( boost::iequals( v[2], "set_home" ) )  { output( handle< arm::set_home >( v, os ) ); }
-    else if( boost::iequals( v[2], "power" ) ) { output( handle< arm::power >( v, os )); }  
-    else if( boost::iequals( v[2], "brakes" ) ) { output( handle< arm::brakes >( v, os )); }  
-    else if( boost::iequals( v[2], "auto_init" ) ) { output( handle< arm::auto_init >( v, os )); }  
-    else if( boost::iequals( v[2], "movej" ) )  
-    { 
-        if( v.size() == arm::move_joints::fields ) { output( handle< arm::move_joints >( v, os ) ); }
-        else { output( handle< arm::joint_move >( v, os ) ); }
+    if( boost::iequals( v[2], "move_cam" ) )        { output( handle< arm::move_cam >( v, os ) ); }
+    else if( boost::iequals( v[2], "set_pos" ) )  
+    {
+        if( v.size() == arm::set_position::fields ) 
+             { output( handle< arm::set_position >( v, os ) ); } 
+        else { output( handle< arm::set_position_giraffe >( v, os ) ); } 
     }
+    else if( boost::iequals( v[2], "set_home" ) )   { output( handle< arm::set_home >( v, os ) ); }
+    else if( boost::iequals( v[2], "power" ) )      { output( handle< arm::power >( v, os )); }  
+    else if( boost::iequals( v[2], "brakes" ) )     { output( handle< arm::brakes >( v, os )); }  
+    else if( boost::iequals( v[2], "auto_init" ) )  { output( handle< arm::auto_init >( v, os )); }  
+    else if( boost::iequals( v[2], "initj" ) )      { output( handle< arm::joint_move >( v, os )); }  
+    // else if( boost::iequals( v[2], "movej" ) )      { output( handle< arm::move_joints >( v, os ) ); }
     else { output( comma::join( v, v.size(), ',' ) + ',' + 
         impl_::str( arm::errors::unknown_command ) + ",\"unknown command found: '" + v[2] + "'\"" ); return; }
 }
 
-/// Connect to the TCP server within the allowed timeout
-/// Needed because comma::io::iostream is not available
-bool tcp_connect( const std::string& host, const std::string& port, 
-                  const boost::posix_time::time_duration& timeout, ip::tcp::iostream& io )
-{
-    using boost::asio::ip::tcp;
-    boost::asio::io_service service;
-    tcp::resolver resolver( service );
-    tcp::resolver::query query( host == "localhost" ? "127.0.0.1" : host, port );
-    tcp::resolver::iterator it = resolver.resolve( query );
-    // Connect and find out if successful or not quickly using timeout
-    io.expires_from_now( timeout );
-    io.connect( it->endpoint() );
-    io.expires_at( boost::posix_time::pos_infin );
-    
-    return io.error() == 0;
-} 
+// /// Connect to the TCP server within the allowed timeout
+// /// Needed because comma::io::iostream is not available
+// bool tcp_connect( const std::string& host, const std::string& port, 
+//                   const boost::posix_time::time_duration& timeout, ip::tcp::iostream& io )
+// {
+//     using boost::asio::ip::tcp;
+//     boost::asio::io_service service;
+//     tcp::resolver resolver( service );
+//     tcp::resolver::query query( host == "localhost" ? "127.0.0.1" : host, port );
+//     tcp::resolver::iterator it = resolver.resolve( query );
+//     // Connect and find out if successful or not quickly using timeout
+//     io.expires_from_now( timeout );
+//     io.connect( it->endpoint() );
+//     io.expires_at( boost::posix_time::pos_infin );
+//     
+//     return io.error() == 0;
+// } 
 
 bool ready( comma::io::istream& is )
 {
@@ -285,7 +283,6 @@ bool read_status( comma::io::istream& iss )
         iss->read( arm_status.data(), arm::fixed_status::size );
         // std::cerr << "ready again read" << std::endl;
     }
-
     return true;
 }
 
@@ -335,13 +332,11 @@ int main( int ac, char** av )
         
         std::string arm_conn_host = options.value< std::string >( "--robot-arm-host" );
         std::string arm_conn_port = options.value< std::string >( "--robot-arm-port" );
-        std::string arm_status_port = options.value< std::string >( "--robot-arm-status" );
-        if( !tcp_connect( arm_conn_host, arm_conn_port, boost::posix_time::seconds(1), robot_arm ) ) 
-        {
-            std::cerr << name() << "failed to connect to robot arm at " 
-                      << arm_conn_host << ':' << arm_conn_port << " - " << robot_arm.error().message() << std::endl;
-            exit( 1 );
-        }
+        std::string arm_feedback_host = options.value< std::string >( "--feedback-host" );
+        std::string arm_feedback_port = options.value< std::string >( "--feedback-port" );
+        
+        comma::io::ostream robot_arm( "tcp:" + arm_conn_host + ':' + arm_conn_port, 
+                                      comma::io::mode::ascii, comma::io::mode::non_blocking );
 
         // create tcp server for broadcasting status
         std::ostringstream ss;
@@ -353,11 +348,13 @@ int main( int ac, char** av )
         typedef std::vector< std::string > command_vector;
         const comma::uint32 usec( sleep * 1000000u );
         
-        std::string status_conn = "tcp:" + arm_conn_host + ':' + arm_status_port;
-        std::cerr << name() << "status connection to robot arm: " << status_conn << std::endl;
+        std::string status_conn = "tcp:" + arm_feedback_host + ':' + arm_feedback_port;
+        std::cerr << name() << "status connection to feedback status: " << status_conn << std::endl;
         comma::io::istream status_stream( status_conn, comma::io::mode::binary );
         comma::io::select select;
         select.read().add( status_stream.fd() );
+
+        commands_handler.reset( new commands_handler_t( Arm_Controller_U, arm_status, *robot_arm, status_stream, select, signaled ) );
 
         while( !signaled && std::cin.good() )
         {
@@ -367,10 +364,11 @@ int main( int ac, char** av )
             {
                 if( read_status( status_stream ) )
                 { 
-                    boost::property_tree::ptree t;
-                    comma::to_ptree to_ptree( t );
-                    comma::visiting::apply( to_ptree ).to( arm_status );
-                    boost::property_tree::write_json( std::cerr, t, false );    
+                    // std::cerr << name() << "robotmode: " << arm_status.robot_mode() << std::endl;
+                    // boost::property_tree::ptree t;
+                    // comma::to_ptree to_ptree( t );
+                    // comma::visiting::apply( to_ptree ).to( arm_status );
+                    // boost::property_tree::write_json( std::cerr, t, false );    
                 }
             }
             
@@ -381,7 +379,7 @@ int main( int ac, char** av )
             {
                 const command_vector& v = inputs.front();
                 //std::cerr << name() << " got " << comma::join( v, ',' ) << std::endl;
-                process_command( v, robot_arm );
+                process_command( v, *robot_arm );
 
                 inputs.pop();
             }
@@ -392,8 +390,8 @@ int main( int ac, char** av )
             if( Arm_Controller_Y.command_flag > 0 )
             {
                 if( verbose ) { std::cerr << name() << output.debug_in_degrees() << std::endl; }
-                robot_arm << output.serialise() << std::endl;
-                robot_arm.flush();
+                *robot_arm << output.serialise() << std::endl;
+                robot_arm->flush();
                 Arm_Controller_U.motion_primitive = real_T( input_primitive::no_action );
             }
             
@@ -402,13 +400,12 @@ int main( int ac, char** av )
             // send out arm's current status: code and joint positions
             output.write_arm_status( publisher );
 
-            usleep( usec );
+            if( sleep > 0 ) usleep( usec );
         }
 
         std::cerr << name() << "exiting" << std::endl;
-        robot_arm << "stopj([0.1,0.1,0.1,0.1,0.1,0.1])\n";
-        robot_arm.flush();
-        robot_arm.close();
+        *robot_arm << "stopj([0.1,0.1,0.1,0.1,0.1,0.1])\n";
+        robot_arm->flush();
         publisher.close();
     }
     catch( comma::exception& ce ) { std::cerr << name() << ": exception thrown: " << ce.what() << std::endl; return 1; }
