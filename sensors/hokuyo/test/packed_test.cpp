@@ -50,12 +50,50 @@ TEST( hokuyo_packed, header )
     hok::sequence_string msg_id;
 
     hok::request_gd gd;
+    hok::request_gd ge( true );
     hok::request_md md;
+    hok::request_md me( true );
     hok::reply_gd< 1080 > gd_data;
     hok::reply_ge< 1080 > ge_data;
-    hok::reply_md md_reponse;
+    hok::reply_md md_response;
     hok::reply_md_data< 1080 > md_data;
     hok::reply_me_data< 1080 > me_data;
+    
+    gd.header.start_step = 0;
+    gd.header.end_step = 100;
+    gd.message_id.seq_num = 999;
+    
+    const std::string gd_request( "GD0000010000;GD00000999\n" );
+    
+    std::string result( gd.data(), hok::request_gd::size );
+    EXPECT_EQ( gd_request, result );
+
+    const std::string ge_request( "GE0000108000;GE00001111\n" );
+    ge.header.start_step = 0;
+    ge.header.end_step = 1080;
+    ge.message_id.seq_num = 1111;
+    result = std::string( ge.data(), hok::request_gd::size );
+    EXPECT_EQ( ge_request, result );
+    
+    md.header.start_step = 5;
+    md.header.end_step = 10;
+    md.num_of_scans = 2; // two scans only
+    md.message_id.seq_num = 222;
+    result = std::string( md.data(), hok::request_md::size );
+    EXPECT_EQ( "MD0005001000002;MD00000222\n", result );
+    
+    me.header.start_step = 5;
+    me.header.end_step = 10;
+    me.num_of_scans = 2; // two scans only
+    me.message_id.seq_num = 222;
+    result = std::string( me.data(), hok::request_md::size );
+    EXPECT_EQ( "ME0005001000002;ME00000222\n", result );
+    
+    md_response.request = md;
+    md_response.status.sum = 'P';
+    result = std::string( md_response.data(), hok::reply_md::size );
+    EXPECT_EQ( "MD0005001000002;MD00000222\n00P\n\n", result );
+    
 }
 
 TEST( hokuyo_encoding, scip_format )

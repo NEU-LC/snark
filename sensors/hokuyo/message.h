@@ -3,6 +3,7 @@
 #include <boost/utility/binary.hpp>
 #include <comma/base/types.h>
 #include <comma/packed/packed.h>
+#include <iomanip>
 
 namespace comma { namespace packed {
 
@@ -58,6 +59,33 @@ public:
 typedef scip_encoding< 3 > scip_3chars_t;
 typedef scip_encoding< 4 > scip_4chars_t;
 
+template < typename T, std::size_t S, char Padding = ' ' >
+class casted_left_fill : public packed::field< casted_left_fill< T, S, Padding >, T, S >
+{
+public:
+    enum { size = S };
+    
+    typedef T Type;
+    
+    typedef packed::field< casted_left_fill< T, S, Padding >, T, S > base_type;
+    
+    static T default_value() { return 0; }
+    
+    static void pack( char* storage, const T& value )
+    {
+        std::ostringstream ss;
+        ss << std::setfill(Padding) << std::setw (S) << value;
+        ::memcpy( storage, &(ss.str()[0]), size );
+    }
+    
+    static T unpack( const char* storage )
+    {
+        return boost::lexical_cast< T >( comma::strip( std::string( storage, size ), Padding ) );
+    }
+    
+    const casted_left_fill& operator=( const T& rhs ) { return base_type::operator=( rhs ); }
+};
+
 } } // namespace comma { namespace packed {
 
 namespace snark { namespace hokuyo {
@@ -75,12 +103,12 @@ typedef comma::packed::const_byte< ';' > semi_colon_t; /// Final terminating lin
 /// CMD(2) + Start Step(4) + End Step(4) + Cluster Count(2)
 struct header : public comma::packed::packed_struct< header, 12  > {
     
-    header() {}
+    header() { }
     header( const std::string& tag ) { cmd = tag; }
     comma::packed::string< 2 > cmd;
-    comma::packed::casted< comma::uint16, 4, '0' > start_step;
-    comma::packed::casted< comma::uint16, 4, '0' > end_step;
-    comma::packed::casted< char, 2, '0' > cluster_count;
+    comma::packed::casted_left_fill< comma::uint16, 4, '0' > start_step;
+    comma::packed::casted_left_fill< comma::uint16, 4, '0' > end_step;
+    comma::packed::casted_left_fill< comma::uint16, 2, '0' > cluster_count;
 };
 
 typedef header host_to_sensor;
@@ -97,7 +125,7 @@ struct sequence_string : comma::packed::packed_struct< sequence_string, 12 >
     sequence_string( const std::string& cmd, comma::uint16 seq )  { tag = cmd; seq_num = seq; }
     semi_colon_t sc;
     comma::packed::string< 2 > tag; // e.g. GD or MD
-    comma::packed::casted< comma::uint16, 8, '0' > seq_num;
+    comma::packed::casted_left_fill< comma::uint16, 8, '0' > seq_num;
     line_feed_t lf;
 };
 
@@ -117,7 +145,7 @@ struct state_reply : public comma::packed::packed_struct< state_reply, 17 >
 {
     comma::packed::string< 2 > cmd;
     sequence_string message_id;
-    comma::packed::casted< char, 2, '0' > status;
+    comma::packed::casted_left_fill< char, 2, '0' > status;
     char sum;
     line_feed_t lf;
     line_feed_t lf_end; /// TODO: does it work for PP reply?
@@ -130,7 +158,7 @@ static const int reply_header_size = sensor_to_host::size + sequence_string::siz
 struct request_gd : public comma::packed::packed_struct< request_gd, reply_header_size  >
 {
     
-    request_gd( bool is_ge=false ) : header( is_ge ? "GD" : "GE"  ), message_id( is_ge ? "GD" : "GE", ++sequence )  {}
+    request_gd( bool is_ge=false ) : header( is_ge ? "GE" : "GD"  ), message_id( is_ge ? "GE" : "GD", ++sequence )  {}
     host_to_sensor header;
     sequence_string message_id;
 };
@@ -193,14 +221,14 @@ struct status_t
 {
     static const std::size_t size = 3;
     
-    comma::packed::casted< char, 2, '0' > status;
+    comma::packed::casted_left_fill< comma::uint16, 2, '0' > status;
     char sum;
 };
 
 struct timestamp_t
 {
     static const std::size_t size = 5;
-    comma::packed::casted< comma::uint16, 4, '0' > timestamp; // just a count from 0
+    comma::packed::casted_left_fill< comma::uint16, 4, '0' > timestamp; // just a count from 0
     char sum;
 };
 
@@ -241,10 +269,10 @@ struct reply_ge : comma::packed::packed_struct< reply_ge< STEPS >, reply_size + 
 /// Can be used for MD or ME request
 struct request_md : comma::packed::packed_struct< request_md, reply_header_size + 1 + 2 >
 {
-    request_md( bool is_me=false ) : header( is_me ? "MD" : "ME" ), message_id( is_me ? "MD" : "ME", ++sequence ) {}
+    request_md( bool is_me=false ) : header( is_me ? "ME" : "MD" ), message_id( is_me ? "ME" : "MD", ++sequence ) {}
     host_to_sensor header;
     comma::packed::const_byte< '0' > scan_interval; // skips nothing
-    comma::packed::casted< char, 2, '0' > num_of_scans;
+    comma::packed::casted_left_fill< comma::uint16, 2, '0' > num_of_scans;
     sequence_string message_id;
 };
 
