@@ -30,12 +30,44 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
+#include <opencv2/core/core.hpp>
+#include <opencv2/core/core_c.h>
 #include <snark/sensors/dc1394/types.h>
 #include <comma/base/exception.h>
 #include <iostream>
 
 namespace snark { namespace camera {
+
+int dc1394color_coding_to_cv_type(dc1394color_coding_t color_coding)
+{
+    //std::cerr << "Color coding: " << color_coding_to_string( color_coding ) << std::endl;
+    switch( color_coding )
+    {
+        case DC1394_COLOR_CODING_MONO8:
+            return CV_8UC1;
+        case DC1394_COLOR_CODING_RGB8:
+            return CV_8UC3;
+        case DC1394_COLOR_CODING_MONO16:
+            return CV_16UC1;
+        case DC1394_COLOR_CODING_RGB16:
+            return CV_16UC3;
+        case DC1394_COLOR_CODING_MONO16S:
+            return CV_16SC1;
+        case DC1394_COLOR_CODING_RGB16S:
+            return CV_16SC3;
+        case DC1394_COLOR_CODING_RAW8:
+            return CV_8UC1;
+        case DC1394_COLOR_CODING_RAW16:
+            return CV_16UC1;
+        case DC1394_COLOR_CODING_YUV411:
+        case DC1394_COLOR_CODING_YUV422:
+        case DC1394_COLOR_CODING_YUV444:
+            COMMA_THROW( comma::exception, "unsupported color coding: " << color_coding);
+        default:
+            COMMA_THROW( comma::exception, "invalid color coding: " << color_coding);
+    }
+}
+
 
 std::string video_mode_to_string ( dc1394video_mode_t mode )
 {
@@ -106,7 +138,7 @@ std::string video_mode_to_string ( dc1394video_mode_t mode )
         case DC1394_VIDEO_MODE_FORMAT7_7:
             return "DC1394_VIDEO_MODE_FORMAT7_7";
         default:
-            COMMA_THROW( comma::exception, "invalid video mode");
+            COMMA_THROW( comma::exception, "invalid video mode: " << mode);
     }
 }
 
@@ -119,7 +151,7 @@ std::string operation_mode_to_string ( dc1394operation_mode_t mode )
         case DC1394_OPERATION_MODE_1394B:
             return "DC1394_OPERATION_MODE_1394B";
         default:
-            COMMA_THROW( comma::exception, "invalid operation mode");
+            COMMA_THROW( comma::exception, "invalid operation mode: " << mode);
     }
 }
 
@@ -140,7 +172,7 @@ std::string iso_speed_to_string ( dc1394speed_t speed )
         case DC1394_ISO_SPEED_3200:
             return "DC1394_ISO_SPEED_3200";
         default:
-            COMMA_THROW( comma::exception, "invalid iso speed");
+            COMMA_THROW( comma::exception, "invalid iso speed: " << speed );
     }
 }
 
@@ -165,7 +197,7 @@ std::string frame_rate_to_string ( dc1394framerate_t frame_rate )
         case DC1394_FRAMERATE_240:
             return "DC1394_FRAMERATE_240";
         default:
-            COMMA_THROW( comma::exception, "invalid frame rate");
+            COMMA_THROW( comma::exception, "invalid frame rate: " << frame_rate);
     }
 }
 
@@ -196,7 +228,7 @@ std::string color_coding_to_string( dc1394color_coding_t color_coding )
         case DC1394_COLOR_CODING_RAW16:
             return "DC1394_COLOR_CODING_RAW16";
         default:
-            COMMA_THROW( comma::exception, "invalid color coding");
+            COMMA_THROW( comma::exception, "invalid color coding: " << color_coding );
     }
 }
 
@@ -332,7 +364,7 @@ dc1394video_mode_t video_mode_from_string ( const std::string& mode )
     }
     else
     {
-        COMMA_THROW( comma::exception, "invalid video mode");
+        COMMA_THROW( comma::exception, "invalid video mode: " << mode);
     }
 }
 
@@ -348,7 +380,7 @@ dc1394operation_mode_t operation_mode_from_string ( const std::string& mode )
     }
     else
     {
-        COMMA_THROW( comma::exception, "invalid operation mode");
+        COMMA_THROW( comma::exception, "invalid operation mode: " << mode );
     }
 }
 
@@ -380,7 +412,7 @@ dc1394speed_t iso_speed_from_string ( const std::string& speed )
     }
     else
     {
-        COMMA_THROW( comma::exception, "invalid iso speed");
+        COMMA_THROW( comma::exception, "invalid iso speed: " << speed );
     }
 }
 
@@ -420,7 +452,7 @@ dc1394framerate_t frame_rate_from_string ( const std::string& frame_rate )
     }
     else
     {
-        COMMA_THROW( comma::exception, "invalid frame rate");
+        COMMA_THROW( comma::exception, "invalid frame rate: " << frame_rate);
     }
 }
 
@@ -472,7 +504,7 @@ dc1394color_coding_t color_coding_from_string( const std::string& color_coding )
     }
     else
     {
-        COMMA_THROW( comma::exception, "invalid color coding");
+        COMMA_THROW( comma::exception, "invalid color coding: \"" << color_coding << "\"" );
     }
 }
 
@@ -512,6 +544,7 @@ void print_color_coding()
     {
         std::cerr << "\t" << color_coding_to_string( static_cast< dc1394color_coding_t >( color_coding ) ) << std::endl;
     }
+    std::cerr << "\t" << "Note: support for YUV modes not yet implemented" << std::endl;
 }
 
 } } // namespace snark { namespace camera {

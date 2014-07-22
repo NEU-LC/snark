@@ -39,6 +39,8 @@
 
 namespace snark { namespace camera {
 
+int dc1394color_coding_to_cv_type(dc1394color_coding_t dc);
+
 std::string video_mode_to_string( dc1394video_mode_t mode );
 std::string operation_mode_to_string( dc1394operation_mode_t mode );
 std::string iso_speed_to_string( dc1394speed_t speed );
