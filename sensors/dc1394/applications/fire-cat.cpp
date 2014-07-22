@@ -129,7 +129,6 @@ int main( int argc, char** argv )
             if ( vm.count( "verbose" ) )
             {
                 std::cerr << std::endl << "config file options:" << std::endl;
-                std::cerr << "\toutput-type: output image type" << std::endl;
                 std::cerr << "\tvideo-mode: dc1394 video mode" << std::endl;
                 std::cerr << "\toperation-mode: dc1394 operation mode" << std::endl;
                 std::cerr << "\tiso-speed: dc1394 iso speed" << std::endl;
@@ -140,37 +139,36 @@ int main( int argc, char** argv )
                 std::cerr << "\trelative-gain: camera gain (relative)" << std::endl;
                 std::cerr << "\t(shutter and gain work as a pair, a non-zero shutter activates its corresponding gain)" << std::endl;
                 std::cerr << "\texposure: camera exposure" << std::endl;
+                std::cerr << "\twidth and height default to 0, meaning no ROI is used" << std::endl;
                 std::cerr << "\twidth: format7 image width (default 0 : maximum width in given video-mode)" << std::endl;
                 std::cerr << "\theight: format7 image height (default 0 : maximum height in given video-mode)" << std::endl;
-                std::cerr << "\tleft: format7 horizontal offset from left (default 0)" << std::endl;
-                std::cerr << "\ttop: format7 vertical offset from top (default 0)" << std::endl;
-                std::cerr << "\tpacket-size: format7 data packet size (default 8160)" << std::endl;
-                std::cerr << std::endl << "allowed output types: " << std::endl;
-                std::cerr << "\tRGB: convert the camera output to RGB8 using dc1394_convert_frames" << std::endl;
-                std::cerr << "\tBGR: convert the camera output to BGR8 using dc1394_convert_frames" << std::endl;
-                std::cerr << "\tRaw: no conversion, memcpy the camera output to cv::Mat, only 8 or 24 bits per pixel supported" << std::endl;
+                std::cerr << "\tleft: format7 horizontal offset from left, must have non-zero width and height (default 0)" << std::endl;
+                std::cerr << "\ttop: format7 vertical offset from top, must have non-zero width height (default 0)" << std::endl;
+                std::cerr << "\tpacket-size: format7 data packet size (default 0 : maximum available)" << std::endl;
                 std::cerr << std::endl << "allowed video modes, use coriander to see what your camera supports: " << std::endl;
                 snark::camera::print_video_modes();
                 std::cerr << std::endl << "allowed operation modes: " << std::endl;
                 snark::camera::print_operation_modes();
                 std::cerr << std::endl << "allowed iso speeds: " << std::endl;
                 snark::camera::print_iso_speeds();
-                std::cerr << std::endl << "allowed frame rates: " << std::endl;
+                std::cerr << std::endl << "allowed frame rates (note: format7 ignores this, use packet size for f7 framerate: " << std::endl;
                 snark::camera::print_frame_rates();
+                std::cerr << std::endl << "allowed color codings for format7 op modes: " << std::endl;
+                snark::camera::print_color_coding();
                 std::cerr << std::endl << "ini file example for bumblebee on shrimp:" << std::endl;
                 std::cerr << "--------------------------------------------" << std::endl;
-                std::cerr << "output-type=RGB\nvideo-mode=DC1394_VIDEO_MODE_FORMAT7_3\noperation-mode=DC1394_OPERATION_MODE_1394B\n";
-                std::cerr << "iso-speed=DC1394_ISO_SPEED_800\nframe-rate=DC1394_FRAMERATE_240\nguid=49712223529993963" << std::endl;
+                std::cerr << "video-mode=DC1394_VIDEO_MODE_FORMAT7_3\noperation-mode=DC1394_OPERATION_MODE_1394B\n";
+                std::cerr << "iso-speed=DC1394_ISO_SPEED_800\nframe-rate=DC1394_FRAMERATE_240\ncolor-coding=DC1394_COLOR_CODING_RGB8\nguid=49712223529993963" << std::endl;
                 std::cerr << "--------------------------------------------" << std::endl;
                 std::cerr << std::endl << "ini file example for ladybug on shrimp:" << std::endl;
                 std::cerr << "--------------------------------------------" << std::endl;
-                std::cerr << "output-type=Raw\nvideo-mode=DC1394_VIDEO_MODE_FORMAT7_0\noperation-mode=DC1394_OPERATION_MODE_1394B\n";
-                std::cerr << "iso-speed=DC1394_ISO_SPEED_800\nframe-rate=DC1394_FRAMERATE_240\nguid=49712223530115149" << std::endl;
+                std::cerr << "video-mode=DC1394_VIDEO_MODE_FORMAT7_0\noperation-mode=DC1394_OPERATION_MODE_1394B\n";
+                std::cerr << "iso-speed=DC1394_ISO_SPEED_800\nframe-rate=DC1394_FRAMERATE_240\ncolor-coding=DC1394_COLOR_CODING_RAW8\nguid=49712223530115149" << std::endl;
                 std::cerr << "--------------------------------------------" << std::endl;
                 std::cerr << std::endl << "ini file example for pika2 on shrimp:" << std::endl;
                 std::cerr << "--------------------------------------------" << std::endl;
-                std::cerr << "output-type=Raw\nvideo-mode=DC1394_VIDEO_MODE_FORMAT7_2\noperation-mode=DC1394_OPERATION_MODE_1394B\n";
-                std::cerr << "iso-speed=DC1394_ISO_SPEED_800\nframe-rate=DC1394_FRAMERATE_240\nguid=49712223534632451\n";
+                std::cerr << "video-mode=DC1394_VIDEO_MODE_FORMAT7_2\noperation-mode=DC1394_OPERATION_MODE_1394B\n";
+                std::cerr << "iso-speed=DC1394_ISO_SPEED_800\nframe-rate=DC1394_FRAMERATE_240\ncolor-coding=DC1394_COLOR_CODING_MONO16\nguid=49712223534632451\n";
                 std::cerr << "left=0\ntop=0\nwidth=640\nheight=240\n" << std::endl;
                 std::cerr << "--------------------------------------------" << std::endl;
             }
@@ -244,6 +242,7 @@ int main( int argc, char** argv )
         snark::tbb::bursty_reader< Pair > reader( boost::bind( &capture, boost::ref( camera ) ), discard );
         snark::imaging::applications::pipeline pipeline( *serialization, filters, reader );
         pipeline.run();
+        std::cerr <<"here" <<std::endl;
         return 0;
     }
     catch( std::exception& ex )

@@ -40,9 +40,9 @@
 
 namespace snark { namespace camera {
 
+
 /// default constructor    
 dc1394::config::config():
-    output( BGR ),
     video_mode( DC1394_VIDEO_MODE_640x480_YUV422 ),
     operation_mode( DC1394_OPERATION_MODE_LEGACY ),
     iso_speed( DC1394_ISO_SPEED_400 ),
@@ -57,24 +57,12 @@ dc1394::config::config():
     format7_top( 0 ),
     format7_width( 0 ),
     format7_height( 0 ),
-    format7_packet_size( 8160 ),
+    format7_packet_size( 0 ),
     format7_color_coding( DC1394_COLOR_CODING_MONO8 )
 {
  
 }
 
-/// get OpenCV type from color coding
-int dc1394::config::type() const
-{
-    if( output == RGB || output == BGR )
-    {
-        return CV_8UC3;
-    }
-    else
-    {
-        return CV_8UC1;
-    }
-}
 
 /// constructor
 /// @param config camera config
@@ -82,44 +70,26 @@ dc1394::dc1394( const snark::camera::dc1394::config& config ):
     m_config( config ),
     m_epoch( timing::epoch )
 {
-    memset( &m_output_frame, 0, sizeof( m_output_frame ) );
-    m_output_frame.color_coding = DC1394_COLOR_CODING_RGB8;
+    //memset( &m_output_frame, 0, sizeof( m_output_frame ) );
+    //m_output_frame.color_coding = DC1394_COLOR_CODING_RGB8;
  
     init_camera();
 
     /* First check if relative shutter has been set, if not check absolute
      * shutter. If neither of those are set, use the exposure */
-    if( m_config.relative_shutter != 0 )
+    if( m_config.relative_shutter > 1e-8 )
     {
         set_relative_shutter_gain( m_config.relative_shutter, m_config.relative_gain );
     }
-    else if( std::fabs( m_config.shutter ) > 1e-5 )
+    else if( std::fabs( m_config.shutter ) > 1e-8 )
     {
         set_absolute_shutter_gain( m_config.shutter, m_config.gain );
     }
-    else {
+    else
+    {
         set_exposure(m_config.exposure);
     }
 
-    if( m_config.output == config::Raw )
-    {
-        dc1394color_coding_t colorCoding;
-        dc1394_get_color_coding_from_video_mode( m_camera, m_config.video_mode, &colorCoding );
-        unsigned int numBits;
-        dc1394_get_color_coding_bit_size( colorCoding, &numBits );
-        if( numBits != 8 )
-        {
-            COMMA_THROW( comma::exception, "only 8 bits per pixel supported in raw output mode, color coding has " << numBits << " bits per pixel " );
-        }
-    }
-
-    dc1394video_modes_t video_modes;
-    if ( dc1394_video_get_supported_modes( m_camera, &video_modes ) != DC1394_SUCCESS )
-    {
-        COMMA_THROW( comma::exception, "cannot get video modes" );
-    }    
-
-    dc1394_get_image_size_from_video_mode( m_camera, m_config.video_mode, &m_width, &m_height );
         
     if ( !dc1394_is_video_mode_scalable( m_config.video_mode ) )
     {
@@ -135,7 +105,7 @@ dc1394::dc1394( const snark::camera::dc1394::config& config ):
         COMMA_THROW( comma::exception, "could not setup the camera" );
     }
 
-    m_image = cv::Mat( m_height, m_width, m_config.type() );
+    m_image = cv::Mat( m_height, m_width, dc1394color_coding_to_cv_type(m_color_coding) );
     
     if ( dc1394_video_set_transmission( m_camera, DC1394_ON ) != DC1394_SUCCESS )
     {
@@ -153,7 +123,7 @@ dc1394::dc1394( const snark::camera::dc1394::config& config ):
         }
         if( i == 10 )
         {
-            COMMA_THROW( comma::exception, "camera does not start" );
+            COMMA_THROW( comma::exception, "camera could not start" );
         }
         i++;
     }
@@ -180,22 +150,20 @@ const cv::Mat& dc1394::read()
         COMMA_THROW( comma::exception, "frame corrupted" );
     }
 
-    if( ( m_config.output == config::Raw ) || ( m_output_frame.color_coding == m_frame->color_coding ) )
+    //convert dc big endian to little endian for 16bit modes
+    // NOTE: not sure if it's mode or camera dependent
+    //   Pika2 (Point Grey Flea2) = MONO16, needs swab
+    //   Point Grey Ladybug2 = RAW16, needs memcpy
+    //   adjust logic as future cameras dictate
+    if( m_color_coding == DC1394_COLOR_CODING_MONO16 || m_color_coding == DC1394_COLOR_CODING_RGB16 || m_color_coding == DC1394_COLOR_CODING_MONO16S || m_color_coding == DC1394_COLOR_CODING_RGB16S )
     {
-        memcpy( m_image.data, m_frame->image, m_frame->image_bytes );
+        swab( m_frame->image, m_image.data, m_frame->image_bytes );
     }
-    else
+    else //direct copy 
     {
-        if( dc1394_convert_frames( m_frame, &m_output_frame ) != DC1394_SUCCESS )
-        {
-            COMMA_THROW( comma::exception, "error converting frame, conversion probably not supported" );
-        }
-        memcpy( m_image.data, m_output_frame.image, m_output_frame.image_bytes );
-        if( m_config.output == config::BGR )
-        {
-            cv::cvtColor( m_image, m_image, CV_RGB2BGR );
-        }
+        memcpy( m_image.data, m_frame->image, m_frame->image_bytes ); //todo: assert sizes reported as equal
     }
+
     //Get the time from the frame timestamp
     m_time = m_epoch + boost::posix_time::microseconds( m_frame->timestamp );
     dc1394_capture_enqueue( m_camera, m_frame ); // release the frame
@@ -274,15 +242,50 @@ void dc1394::init_camera()
 /// setup the camera capture for non-format7 modes
 void dc1394::setup_camera()
 {
+    //set operation mode and check
     if( dc1394_video_set_operation_mode( m_camera, m_config.operation_mode ) != DC1394_SUCCESS )
     {
         COMMA_THROW( comma::exception, "could not set operation mode" );
     }
+    if( dc1394_video_get_operation_mode( m_camera, &m_operation_mode ) != DC1394_SUCCESS )
+    {
+        COMMA_THROW( comma::exception, "could not get operation mode" );
+    }
+    if( m_operation_mode != m_config.operation_mode )
+    {
+        COMMA_THROW( comma::exception, "operation mode not set correctly" );
+    }
+
+    //set iso speed and check
     if( dc1394_video_set_iso_speed( m_camera, m_config.iso_speed ) != DC1394_SUCCESS )
     {
         COMMA_THROW( comma::exception, "could not set iso speed" );
     }
+    if( dc1394_video_get_iso_speed( m_camera, &m_iso_speed ) != DC1394_SUCCESS )
+    {
+        COMMA_THROW( comma::exception, "could not get iso speed" );
+    }
+    if( m_iso_speed != m_config.iso_speed )
+    {
+        COMMA_THROW( comma::exception, "iso speed not set correctly" );
+    }
 
+    //set and check video mode
+    if ( dc1394_video_set_mode( m_camera, m_config.video_mode ) != DC1394_SUCCESS )
+    {
+        COMMA_THROW( comma::exception, "could not set video mode" );
+    }
+    if ( dc1394_video_get_mode( m_camera, &m_video_mode ) != DC1394_SUCCESS )
+    {
+        COMMA_THROW( comma::exception, "could not get video mode" );
+    }
+    if( m_video_mode != m_config.video_mode )
+    {
+        COMMA_THROW( comma::exception, "iso speed not set correctly" );
+    }
+
+
+    //calculate framerate
     dc1394framerate_t framerate;
     dc1394framerates_t framerates;
     if ( dc1394_video_get_supported_framerates( m_camera, m_config.video_mode, &framerates ) != DC1394_SUCCESS )
@@ -314,88 +317,184 @@ void dc1394::setup_camera()
         }
     }
 
-    if ( dc1394_video_set_mode( m_camera, m_config.video_mode ) != DC1394_SUCCESS )
-    {
-        COMMA_THROW( comma::exception, "could not set video mode" );
-    }
 
+    //set and check framerate
     if ( dc1394_video_set_framerate( m_camera, framerate ) != DC1394_SUCCESS )
     {
         COMMA_THROW( comma::exception, "could not set framerate" );
     }
+    if ( dc1394_video_get_framerate( m_camera, &m_framerate ) != DC1394_SUCCESS )
+    {
+        COMMA_THROW( comma::exception, "could not get framerate" );
+    }
+    if( m_framerate != framerate )
+    {
+        COMMA_THROW( comma::exception, "framerate not set correctly" );
+    }
+
+    //in this mode, colour coding must come from video mode
+    if ( dc1394_get_color_coding_from_video_mode( m_camera, m_config.video_mode, &m_color_coding ) != DC1394_SUCCESS )
+    {
+        COMMA_THROW( comma::exception, "could not get color coding from video mode" );
+    }
+
+    //todo THROW or warn if any format7 settings were given, as these are ignored in this mode
 }
 
 /// setup camera capture for format7 modes
 void dc1394::setup_camera_format7()
-{    
-    if (dc1394_video_set_operation_mode( m_camera, m_config.operation_mode ) != DC1394_SUCCESS )
+{
+    //set operation mode and check
+    if( dc1394_video_set_operation_mode( m_camera, m_config.operation_mode ) != DC1394_SUCCESS )
     {
-        COMMA_THROW( comma::exception, "could not set iso mode" );
+        COMMA_THROW( comma::exception, "could not set operation mode" );
+    }
+    if( dc1394_video_get_operation_mode( m_camera, &m_operation_mode ) != DC1394_SUCCESS )
+    {
+        COMMA_THROW( comma::exception, "could not get operation mode" );
+    }
+    if( m_operation_mode != m_config.operation_mode )
+    {
+        COMMA_THROW( comma::exception, "operation mode not set correctly" );
     }
 
-    if ( dc1394_video_set_iso_speed( m_camera, m_config.iso_speed ) != DC1394_SUCCESS )
+    //set iso speed and check
+    if( dc1394_video_set_iso_speed( m_camera, m_config.iso_speed ) != DC1394_SUCCESS )
     {
         COMMA_THROW( comma::exception, "could not set iso speed" );
     }
+    if( dc1394_video_get_iso_speed( m_camera, &m_iso_speed ) != DC1394_SUCCESS )
+    {
+        COMMA_THROW( comma::exception, "could not get iso speed" );
+    }
+    if( m_iso_speed != m_config.iso_speed )
+    {
+        COMMA_THROW( comma::exception, "iso speed not set correctly" );
+    }
 
-    if( dc1394_video_set_mode( m_camera, m_config.video_mode ) != DC1394_SUCCESS )
+    //set and check video mode
+    if ( dc1394_video_set_mode( m_camera, m_config.video_mode ) != DC1394_SUCCESS )
     {
         COMMA_THROW( comma::exception, "could not set video mode" );
     }
-    
-    if( m_config.format7_width != 0 )
+    if ( dc1394_video_get_mode( m_camera, &m_video_mode ) != DC1394_SUCCESS )
     {
-        dc1394color_coding_t roi_color_coding = m_config.format7_color_coding;
-        unsigned int roi_packet_size = m_config.format7_packet_size;
-        unsigned int roi_left = m_config.format7_left;
-        unsigned int roi_top = m_config.format7_top;
-        unsigned int roi_width = m_config.format7_width;
-        unsigned int roi_height = m_config.format7_height;
-        if ( dc1394_format7_set_roi( m_camera, m_config.video_mode, roi_color_coding, roi_packet_size, roi_left, roi_top, roi_width, roi_height ) != DC1394_SUCCESS )
-        {
-            COMMA_THROW( comma::exception, "could not set roi" );
-        }
-        if ( dc1394_format7_get_roi( m_camera, m_config.video_mode, &roi_color_coding, &roi_packet_size, &roi_left, &roi_top, &roi_width, &roi_height ) != DC1394_SUCCESS )
-        {
-            COMMA_THROW( comma::exception, "could not get roi" );
-        }
-
-        if (dc1394_format7_set_image_size( m_camera, m_config.video_mode, m_config.format7_width, m_config.format7_height ) != DC1394_SUCCESS )
-        {
-            COMMA_THROW( comma::exception, "could not set image size" );
-        }
-        if ( dc1394_format7_get_image_size( m_camera, m_config.video_mode, &m_width, &m_height ) != DC1394_SUCCESS )
-        {
-            COMMA_THROW( comma::exception, "could not get image size" );
-        }
+        COMMA_THROW( comma::exception, "could not get video mode" );
     }
-    else
-    {    
-        if( dc1394_format7_get_max_image_size( m_camera, m_config.video_mode, &m_width, &m_height) != DC1394_SUCCESS )
-        {
-            COMMA_THROW( comma::exception, "could not get max image size" );
-        }
-        if (dc1394_format7_set_image_size( m_camera, m_config.video_mode, m_width, m_height) != DC1394_SUCCESS )
-        {
-            COMMA_THROW( comma::exception, "could not set image size" );
-        }
+    if( m_video_mode != m_config.video_mode )
+    {
+        COMMA_THROW( comma::exception, "iso speed not set correctly" );
     }
 
-    unsigned int minBytes;
-    unsigned int maxBytes;
-    if ( dc1394_format7_get_packet_parameters( m_camera, m_config.video_mode, &minBytes, &maxBytes) != DC1394_SUCCESS)
+    //set and check color coding
+    if( dc1394_format7_set_color_coding( m_camera, m_config.video_mode, m_config.format7_color_coding ) != DC1394_SUCCESS )
+    {
+        COMMA_THROW( comma::exception, "could not set format7 color coding" );
+    } 
+    if( dc1394_format7_get_color_coding( m_camera, m_config.video_mode, &m_color_coding ) != DC1394_SUCCESS )
+    {
+        COMMA_THROW( comma::exception, "could not get format7 color coding" );
+    }
+    if( m_color_coding != m_config.format7_color_coding )
+    {
+        COMMA_THROW( comma::exception, "color coding not set correctly" );
+    }
+
+    //calculate packet-size
+    unsigned int packet_size=0, min_size=0, max_size=0;
+    if( dc1394_format7_get_packet_parameters( m_camera, m_config.video_mode, &min_size, &max_size) != DC1394_SUCCESS )
     {
         COMMA_THROW( comma::exception, "could not get packet size" );
     }
-    dc1394color_coding_t color;
-    dc1394_format7_get_color_coding( m_camera, m_config.video_mode, &color );
-    // HACK packet sizes higher than 8160 don't seem to work with the ladybug
-    // setting it to 8160 by hand works but the frame rate is only about 5 fps
-    // TODO fix to be able to set DC1394_QUERY_FROM_CAMERA again and maybe higher framerate
-    // this is fine for other cameras with lower packet size ( e.g. bumblebee ), as it will be set to the next possible value
-    if ( dc1394_format7_set_roi( m_camera, m_config.video_mode, color, m_config.format7_packet_size, 0, 0, m_width, m_height ) != DC1394_SUCCESS )
+    if( m_config.format7_packet_size == 0 )
+    {
+        //std::cerr << "packet size set to max available: " << max_size << std::endl;
+        packet_size=max_size;
+    }
+    else if( m_config.format7_packet_size > max_size )
+    {
+        //std::cerr << "warning: packet size (" << m_config.format7_packet_size << ") set to max available (" << max_size << ")" << std::endl;
+        packet_size=max_size;
+    }
+    else if( m_config.format7_packet_size < min_size )
+    {
+        //std::cerr << "warning: packet size (" << m_config.format7_packet_size << ") set to min available (" << min_size << ")" << std::endl;
+        packet_size=min_size;
+    }
+    else
+    {
+        packet_size=m_config.format7_packet_size;
+    }
+    //std::cerr << "pack size min, max, selected: " << min_size << ", " << max_size << ", " << packet_size << std::endl;
+
+
+    //calculate based on ROI from config - if width && height ==0, then not using ROI
+    unsigned int width=0,height=0,top=0,left=0;
+    if( m_config.format7_width == 0 && m_config.format7_height == 0  )
+    {
+        if( m_config.format7_left!=0 || m_config.format7_top!=0 )
+        {
+            COMMA_THROW( comma::exception, "non-zero top or left, but width and height are both 0 (default), meaning no ROI." );
+        }
+        if( dc1394_format7_get_max_image_size( m_camera, m_config.video_mode, &width, &height) != DC1394_SUCCESS )
+        {
+            COMMA_THROW( comma::exception, "could not get max image size" );
+        }
+        if( width==0 || height==0 )
+        {
+            COMMA_THROW( comma::exception, "max image width or height returned 0" );
+        }
+    }
+    else if( m_config.format7_width == 0 || m_config.format7_height == 0  )
+    {
+        COMMA_THROW( comma::exception, "ROI width and height must both be non zero, or both equal to 0 (default) for no ROI" );
+    }
+    else
+    {
+        top=m_config.format7_top;
+        left=m_config.format7_left;
+        width=m_config.format7_width;
+        height=m_config.format7_height;
+    }
+
+
+    //set and check ROI
+    if (dc1394_format7_set_roi( m_camera, m_config.video_mode, m_config.format7_color_coding, packet_size, left, top, width, height ) != DC1394_SUCCESS)
     {
         COMMA_THROW( comma::exception, "could not set roi" );
+    }
+    if (dc1394_format7_get_roi( m_camera, m_config.video_mode, &m_color_coding, &m_packet_size, &m_left, &m_top, &m_width, &m_height ) != DC1394_SUCCESS)
+    {
+        COMMA_THROW( comma::exception, "could not get roi" );
+    }
+    if (m_left != left || m_top != top || m_width != width || m_height != height)
+    {
+        //std::cerr << "left: " << left << " top: " << top << " width: " << width << " height: " << height << std::endl;
+        //std::cerr << "left: " << m_left << " top: " << m_top << " width: " << m_width << " height: " << m_height << std::endl;
+        COMMA_THROW( comma::exception, "ROI not set correctly" );
+    }
+    if (m_packet_size != packet_size)
+    {
+        COMMA_THROW( comma::exception, "packet size not set correctly" );
+    }
+    if (m_color_coding != m_config.format7_color_coding)
+    {
+        COMMA_THROW( comma::exception, "color coding not set correctly" );
+    }
+
+
+    //set and check image size
+    if (dc1394_format7_set_image_size( m_camera, m_config.video_mode, width, height ) != DC1394_SUCCESS)
+    {
+        COMMA_THROW( comma::exception, "could not set image size" );
+    }
+    if (dc1394_format7_get_image_size( m_camera, m_config.video_mode, &m_width, &m_height ) != DC1394_SUCCESS)
+    {
+        COMMA_THROW( comma::exception, "could not get image size" );
+    }
+    if (width != m_width || height != m_height)
+    {
+        COMMA_THROW( comma::exception, "image width and height not set correctly" );
     }
 }
 

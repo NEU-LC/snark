@@ -53,11 +53,8 @@ public:
 
     struct config
     {
-        enum output_type{ RGB, BGR, Raw };
         config();
-        int type() const;
         
-        output_type output;
         dc1394video_mode_t  video_mode;
         dc1394operation_mode_t operation_mode;
         dc1394speed_t iso_speed;
@@ -79,8 +76,6 @@ public:
         dc1394color_coding_t format7_color_coding;
     };
 
-// DC1394_FEATURE_SHUTTER,
-//   DC1394_FEATURE_GAIN,
     
     dc1394( const config& config = config() );
     ~dc1394();
@@ -99,20 +94,29 @@ private:
     void set_absolute_shutter_gain( float shutter, float gain );
     void set_relative_shutter_gain( unsigned int shutter, unsigned int gain );
     void set_exposure( unsigned int exposure );
-    
+
     config m_config;
+    
     dc1394camera_t* m_camera;
     dc1394video_frame_t* m_frame;
-    dc1394video_frame_t m_output_frame;
+    
+    dc1394operation_mode_t m_operation_mode;
+    dc1394speed_t m_iso_speed;
+    dc1394video_mode_t m_video_mode;
+    dc1394framerate_t m_framerate;
     dc1394color_coding_t m_color_coding;
+    unsigned int m_width;
+    unsigned int m_height;
+    unsigned int m_top;
+    unsigned int m_left;
+    unsigned int m_packet_size;
+    
     cv::Mat m_image;
     const boost::posix_time::ptime m_epoch;
     boost::posix_time::ptime m_time;
     int m_fd;
     comma::io::select m_select;
     boost::posix_time::time_duration m_frame_duration;
-    unsigned int m_width;
-    unsigned int m_height;
 };
 
 } } // namespace snark { namespace camera {
@@ -124,31 +128,16 @@ template <> struct traits< snark::camera::dc1394::config >
     template < typename Key, class Visitor >
     static void visit( const Key&, snark::camera::dc1394::config& c, Visitor& v )
     {
-        std::string outputType;
-        v.apply( "output-type", outputType );
-        if( outputType == "RGB" || outputType == "rgb" )
-        {
-            c.output = snark::camera::dc1394::config::RGB;
-        }
-        else if( outputType == "BGR" || outputType == "brg" )
-        {
-            c.output = snark::camera::dc1394::config::BGR;
-        }
-        else 
-        {
-            c.output = snark::camera::dc1394::config::Raw;
-        }
-
         std::string video_mode;
         std::string operation_mode;
         std::string iso_speed;
         std::string frame_rate;
-        // std::string color_coding;
+        std::string color_coding="DC1394_COLOR_CODING_MONO8";
         v.apply( "video-mode", video_mode );
         v.apply( "operation-mode", operation_mode );
         v.apply( "iso-speed", iso_speed );
         v.apply( "frame-rate", frame_rate );
-        // v.apply( "color-coding", color_coding );
+        v.apply( "color-coding", color_coding );
         v.apply( "left", c.format7_left );
         v.apply( "top", c.format7_top );
         v.apply( "width", c.format7_width );
@@ -159,7 +148,7 @@ template <> struct traits< snark::camera::dc1394::config >
         c.operation_mode = snark::camera::operation_mode_from_string( operation_mode );
         c.iso_speed = snark::camera::iso_speed_from_string( iso_speed );
         c.frame_rate = snark::camera::frame_rate_from_string( frame_rate );
-        // c.format7_color_coding = snark::camera::color_coding_from_string( color_coding );
+        c.format7_color_coding = snark::camera::color_coding_from_string( color_coding );
 
         v.apply( "relative-shutter", c.relative_shutter );
         v.apply( "relative-gain", c.relative_gain );
@@ -172,32 +161,17 @@ template <> struct traits< snark::camera::dc1394::config >
     template < typename Key, class Visitor >
     static void visit( const Key&, const snark::camera::dc1394::config& c, Visitor& v )
     {
-        std::string outputType;
-        if( c.output == snark::camera::dc1394::config::RGB )
-        {
-            outputType = "RGB";
-        }
-        else if( c.output == snark::camera::dc1394::config::BGR )
-        {
-            outputType = "BGR";
-        }
-        else
-        {
-            outputType = "Raw";
-        }
-        v.apply( "output-type", outputType );
-
         std::string video_mode = snark::camera::video_mode_to_string( c.video_mode );
         std::string operation_mode = snark::camera::operation_mode_to_string( c.operation_mode );
         std::string iso_speed = snark::camera::iso_speed_to_string( c.iso_speed );
         std::string frame_rate = snark::camera::frame_rate_to_string( c.frame_rate );
-        // std::string color_coding = snark::camera::color_coding_to_string( c.format7_color_coding );
+        std::string color_coding = snark::camera::color_coding_to_string( c.format7_color_coding );
 
         v.apply( "video-mode", video_mode );
         v.apply( "operation-mode", operation_mode );
         v.apply( "iso-speed", iso_speed );
         v.apply( "frame-rate", frame_rate );
-        // v.apply( "color-coding", color_coding );
+        v.apply( "color-coding", color_coding );
         v.apply( "left", c.format7_left );
         v.apply( "top", c.format7_top );
         v.apply( "width", c.format7_width );

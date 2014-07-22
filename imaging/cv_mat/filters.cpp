@@ -192,7 +192,7 @@ static filters::value_type file_impl_( filters::value_type m, const std::string&
 
 static filters::value_type timestamp_impl_( filters::value_type m )
 {
-    cv::rectangle( m.second, cv::Point( 5, 5 ), cv::Point( 228, 25 ), cv::Scalar( 240, 240, 240 ), CV_FILLED, CV_AA );
+    cv::rectangle( m.second, cv::Point( 5, 5 ), cv::Point( 228, 25 ), cv::Scalar( 0xffff, 0xffff, 0xffff ), CV_FILLED, CV_AA );
     cv::putText( m.second, boost::posix_time::to_iso_string( m.first ), cv::Point( 10, 20 ), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar( 0, 0, 0 ), 1, CV_AA );
     return m;
 }

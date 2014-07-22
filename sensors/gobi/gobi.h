@@ -31,35 +31,70 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-#ifndef SNARK_SENSORS_DC1394_TYPES_H_
-#define SNARK_SENSORS_DC1394_TYPES_H_
+#ifndef SNARK_SENSORS_GOBI_H_
+#define SNARK_SENSORS_GOBI_H_
 
-#include <dc1394/dc1394.h>
-#include <string>
+#include <XCamera.h>
+#include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/function.hpp>
 
-namespace snark { namespace camera {
+#include <opencv2/core/core.hpp>
 
-int dc1394color_coding_to_cv_type(dc1394color_coding_t dc);
+namespace snark{ namespace camera{
 
-std::string video_mode_to_string( dc1394video_mode_t mode );
-std::string operation_mode_to_string( dc1394operation_mode_t mode );
-std::string iso_speed_to_string( dc1394speed_t speed );
-std::string frame_rate_to_string( dc1394framerate_t frame_rate );
-std::string color_coding_to_string( dc1394color_coding_t coding );
+class gobi
+{
+    public:
+        typedef std::map< std::string, std::string > attributes_type;
+        
+        gobi( std::string address, const attributes_type& attributes = attributes_type() );
 
-dc1394video_mode_t video_mode_from_string( const std::string& mode );
-dc1394operation_mode_t operation_mode_from_string( const std::string& mode );
-dc1394speed_t iso_speed_from_string( const std::string& speed );
-dc1394framerate_t frame_rate_from_string( const std::string& frame_rate );
-dc1394color_coding_t color_coding_from_string( const std::string& coding );
+        ~gobi();
 
-void print_video_modes();
-void print_operation_modes();
-void print_iso_speeds();
-void print_frame_rates();
-void print_color_coding();
+        attributes_type attributes() const;
+        
+        void set( const attributes_type& attributes );
 
-} } // namespace snark { namespace camera {
+        std::pair< boost::posix_time::ptime, cv::Mat > read();
 
+        std::string address() const;
 
-#endif // SNARK_SENSORS_DC1394_TYPES_H_
+        /// return total bytes per frame
+//        unsigned long total_bytes_per_frame() const;
+
+        void close();
+
+        static std::vector< XDeviceInformation > list_cameras();
+        
+        static std::string format_camera_info(const XDeviceInformation& device);
+/*
+        class callback
+        {
+            public:
+                /// constructor: start capture, call callback on frame update
+                callback( gobi& gobi, boost::function< void ( std::pair< boost::posix_time::ptime, cv::Mat > ) > on_frame );
+
+                /// destructor: stop capture
+                ~callback();
+                
+                /// implementation class, a hack: has to be public to use pvAPI callback, sigh...
+                class impl;
+                
+                /// return true, if callback status is ok
+                bool good() const;
+                
+            private:
+                friend class gobi;
+                impl* pimpl_;
+        };
+*/        
+        
+    private:
+//        friend class callback::impl;
+        class impl;
+        impl* pimpl_;
+};
+
+} } // namespace snark{ namespace camera{
+
+#endif // SNARK_SENSORS_GOBI_H_
