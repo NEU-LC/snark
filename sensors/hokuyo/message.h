@@ -131,7 +131,14 @@ struct di_data {
     static const comma::uint16 value = STEPS*encoding_num + num_of_sums*(size_of_sum + 1); /// adding one for line feed
 
     /// Store an array of contiguous character data - encoded data
-    typedef boost::array< comma::packed::scip_3chars_t, STEPS > points_t;
+    
+    struct pair_t 
+    {
+        comma::packed::scip_3chars_t distance;
+        comma::packed::scip_3chars_t intensity;
+    };
+    
+    typedef boost::array< pair_t, STEPS > points_t;
     comma::packed::string< value > raw_data;   
     
     struct rays : public comma::packed::packed_struct< rays, data_only_size >

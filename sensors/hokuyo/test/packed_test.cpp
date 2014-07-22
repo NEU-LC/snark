@@ -89,5 +89,10 @@ TEST( hokuyo, strip_checksum )
     hok::distance_data< 4 >::rays points;
     
     data.get_values( points );
+    
+    hok::di_data< 4 > data2;
+    hok::di_data< 4 >::rays points2;
+    
+    data2.get_values( points2 );
 }
 
