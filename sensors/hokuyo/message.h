@@ -69,6 +69,7 @@ struct status {
            stopped_min=21, stopped_max=49, hardware_min=50, hardware_max=97, resuming_after_stop=98 };
 };
 
+typedef comma::packed::const_byte< ';' > semi_colon_t; /// Final terminating line feed
     
 /// This is the header for host to sensor message
 /// CMD(2) + Start Step(4) + End Step(4) + Cluster Count(2)
@@ -90,10 +91,11 @@ typedef comma::packed::const_byte< '\n' > line_feed_t; /// Final terminating lin
 static const unsigned char mask = BOOST_BINARY( 111111 );
 
 /// This is the string ID of request, making it '<cmd><seq num>'
-struct sequence_string : comma::packed::packed_struct< sequence_string, 11 >
+struct sequence_string : comma::packed::packed_struct< sequence_string, 12 >
 {
     sequence_string() {}
     sequence_string( const std::string& cmd, comma::uint16 seq )  { tag = cmd; seq_num = seq; }
+    semi_colon_t sc;
     comma::packed::string< 2 > tag; // e.g. GD or MD
     comma::packed::casted< comma::uint16, 8, '0' > seq_num;
     line_feed_t lf;
@@ -103,7 +105,7 @@ struct sequence_string : comma::packed::packed_struct< sequence_string, 11 >
 static comma::uint16 sequence = 0;
 
 /// For BM, PP or RB command
-struct state_command : public comma::packed::packed_struct< state_command, 14 >
+struct state_command : public comma::packed::packed_struct< state_command, 15 >
 {
     state_command( const std::string& cmd_ ) : message_id( cmd_, ++sequence ) { cmd = cmd_; }
     comma::packed::string< 2 > cmd;
@@ -111,7 +113,7 @@ struct state_command : public comma::packed::packed_struct< state_command, 14 >
     line_feed_t lf_end;
 };
 
-struct state_reply : public comma::packed::packed_struct< state_reply, 16 >
+struct state_reply : public comma::packed::packed_struct< state_reply, 17 >
 {
     comma::packed::string< 2 > cmd;
     sequence_string message_id;
@@ -187,14 +189,33 @@ struct di_data {
     void get_values( rays& points ); 
 };
 
+struct status_t
+{
+    static const std::size_t size = 3;
+    
+    comma::packed::casted< char, 2, '0' > status;
+    char sum;
+};
+
+struct timestamp_t
+{
+    static const std::size_t size = 5;
+    comma::packed::casted< comma::uint16, 4, '0' > timestamp; // just a count from 0
+    char sum;
+};
+
+static const int reply_size = reply_header_size + status_t::size + timestamp_t::size + 2; // two line feeds, after status and timestamp
+
+static const int status_timestamp_size = status_t::size + timestamp_t::size + 2; // two line feeds, after status and timestamp
+
 /// Depends on how many steps, always 3 character encoding
 template < int STEPS >
-struct reply_gd : comma::packed::packed_struct< reply_gd< STEPS >, reply_header_size + 8 + distance_data< STEPS >::value + 1 > /// 1 for last line feed char
+struct reply_gd : comma::packed::packed_struct< reply_gd< STEPS >, reply_size + distance_data< STEPS >::value + 1 > /// 1 for last line feed char
 {
     request_gd request;
-    comma::packed::casted< char, 2, '0' > status;
+    status_t status;
     line_feed_t lf;
-    comma::packed::casted< comma::uint16, 4, '0' > timestamp; // just a count from 0
+    timestamp_t timestamp;
     line_feed_t lf1;
 
     static const int data_size = distance_data< STEPS >::value;
@@ -203,12 +224,12 @@ struct reply_gd : comma::packed::packed_struct< reply_gd< STEPS >, reply_header_
 };
 
 template < int STEPS >
-struct reply_ge : comma::packed::packed_struct< reply_ge< STEPS >, reply_header_size + 8 + di_data< STEPS >::value + 1 > /// 1 for last line feed char
+struct reply_ge : comma::packed::packed_struct< reply_ge< STEPS >, reply_size + di_data< STEPS >::value + 1 > /// 1 for last line feed char
 {
     request_gd request;
-    comma::packed::casted< char, 2, '0' > status;
+    status_t status;
     line_feed_t lf;
-    comma::packed::casted< comma::uint16, 4, '0' > timestamp; // just a count from 0
+    timestamp_t timestamp;
     line_feed_t lf1;
 
     static const int data_size = di_data< STEPS >::value;
@@ -228,22 +249,22 @@ struct request_md : comma::packed::packed_struct< request_md, reply_header_size 
 };
 
 /// This is a reply as an acknowledgement of request - no data
-struct reply_md : comma::packed::packed_struct< reply_md, request_md::size + 2 + 2 > /// 1 for last line feed char
+struct reply_md : comma::packed::packed_struct< reply_md, request_md::size + status_t::size + 2 > /// 1 for last line feed char
 {
     request_md request;
-    comma::packed::casted< char, 2, '0' > status;   /// Should be '00'
+    status_t status;
     line_feed_t lf;
     line_feed_t lf_end;
 };
 
 /// Depends on how many steps, always 3 character encoding
 template < int STEPS >
-struct reply_md_data : comma::packed::packed_struct< reply_md_data< STEPS >, request_md::size + 8 + distance_data< STEPS >::value + 1 > /// 1 for last line feed char
+struct reply_md_data : comma::packed::packed_struct< reply_md_data< STEPS >, request_md::size + status_timestamp_size + distance_data< STEPS >::value + 1 > /// 1 for last line feed char
 {
     request_md request;
-    comma::packed::casted< char, 2, '0' > status;
+    status_t status;
     line_feed_t lf;
-    comma::packed::casted< comma::uint16, 4, '0' > timestamp; // just a count from 0
+    timestamp_t timestamp;
     line_feed_t lf1;
 
     static const int data_size = distance_data< STEPS >::value;
@@ -252,12 +273,12 @@ struct reply_md_data : comma::packed::packed_struct< reply_md_data< STEPS >, req
 };
 
 template < int STEPS >
-struct reply_me_data : comma::packed::packed_struct< reply_me_data< STEPS >, request_md::size + 8 + di_data< STEPS >::value + 1 > /// 1 for last line feed char
+struct reply_me_data : comma::packed::packed_struct< reply_me_data< STEPS >, request_md::size + status_timestamp_size + di_data< STEPS >::value + 1 > /// 1 for last line feed char
 {
     request_md request;
-    comma::packed::casted< char, 2, '0' > status;
+    status_t status;
     line_feed_t lf;
-    comma::packed::casted< comma::uint16, 4, '0' > timestamp; // just a count from 0
+    timestamp_t timestamp;
     line_feed_t lf1;
 
     static const int data_size = di_data< STEPS >::value;
