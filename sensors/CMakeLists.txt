@@ -13,3 +13,7 @@ ENDIF( snark_build_sensors_sick )
 IF( snark_build_sensors_velodyne )
     ADD_SUBDIRECTORY( velodyne )
 ENDIF( snark_build_sensors_velodyne )
+
+IF( snark_build_sensors_hokuyo )
+    add_subdirectory(hokuyo)
+ENDIF( snark_build_sensors_hokuyo )

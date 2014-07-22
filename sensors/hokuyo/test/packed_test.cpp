@@ -30,70 +30,31 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+
+#ifndef WIN32
+#include <stdlib.h>
+#endif
+
+#include <iostream>
+#include <snark/timing/time.h>
 #include <gtest/gtest.h>
-#include <comma/csv/stream.h>
-#include <comma/csv/ascii.h>
-#include <comma/visiting/traits.h>
-#include <comma/base/types.h>
-#include <comma/visiting/apply.h>
-#include <comma/name_value/ptree.h>
-#include <comma/csv/stream.h>
-#include <comma/name_value/parser.h>
-#include <comma/io/stream.h>
-#include "../traits.h"
-#include <boost/property_tree/json_parser.hpp>
+#include "../message.h"
+
+namespace hok = snark::hokuyo;
 
 
-namespace snark { namespace ur { namespace robotic_arm {
-
-template < typename T >
-comma::csv::ascii< T >& ascii() { 
-    static comma::csv::ascii< T > ascii_;
-    return ascii_;
-}
-
-
-TEST( robot_arm, robot_arm_config )
+TEST( hokuyo_packed, header )
 {
-    config cfg;
-    cfg.home_position[0] = 1.11;
-    cfg.home_position[1] = 2.22322;
-    cfg.home_position[5] = 6.0;
+    hok::header header;
+    hok::sequence_string msg_id;
 
-    std::string line;
-    EXPECT_EQ( "1.11,2.22322,0,0,0,6", ascii< config >().put( cfg, line ) );
-
-    const std::string expected = "{\n    \"home_position\":\n    {\n        \"0\": \"1.11\",\n        \"1\": \"2.22322\",\n        \"2\": \"0\",\n        \"3\": \"0\",\n        \"4\": \"0\",\n        \"5\": \"6\"\n    }\n}\n";
-	{
-        std::ostringstream oss;
-        boost::property_tree::ptree t;
-        comma::to_ptree to_ptree( t );
-        comma::visiting::apply( to_ptree ).to( cfg );
-        boost::property_tree::write_json( oss, t );    
-        EXPECT_EQ( expected, oss.str() );
-	}
-	{
-		std::istringstream iss( expected );
-        boost::property_tree::ptree t;
-        comma::from_ptree( t, true );
-        boost::property_tree::read_json( iss, t );
-        comma::from_ptree from_ptree( t, true );
-        config conf;
-        comma::visiting::apply( from_ptree ).to( conf );
-
-        EXPECT_EQ( cfg.home_position[0], conf.home_position[0] );
-        EXPECT_EQ( cfg.home_position[1], conf.home_position[1] );
-        EXPECT_EQ( cfg, conf );
-    }
+    hok::request_gd gd;
+    hok::request_md md;
+    hok::reply_gd< 1080 > gd_data;
+    hok::reply_ge< 1080 > ge_data;
+    hok::reply_md md_reponse;
+    hok::reply_md_data< 1080 > md_data;
+    hok::reply_me_data< 1080 > me_data;
 }
 
 
-
-} } } // namespace snark { namespace ur { namespace robotic_arm {
-
-int main( int argc, char* argv[] )
-{
-    ::testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
-    return 0;
-}
