@@ -62,9 +62,20 @@ typedef scip_encoding< 4 > scip_4chars_t;
 
 namespace snark { namespace hokuyo {
     
+struct status {
+    /// stopped and hardware errors is a range of values, only 0 is success - else error.
+    enum { success=0, start_step_format=1, end_step_format=2, cluster_count_format=3, 
+           end_step_range=4, end_step_small=5, scan_interval_format=6, num_of_scan_format=7,
+           stopped_min=21, stopped_max=49, hardware_min=50, hardware_max=97, resuming_after_stop=98 };
+};
+
+    
 /// This is the header for host to sensor message
 /// CMD(2) + Start Step(4) + End Step(4) + Cluster Count(2)
 struct header : public comma::packed::packed_struct< header, 12  > {
+    
+    header() {}
+    header( const std::string& tag ) { cmd = tag; }
     comma::packed::string< 2 > cmd;
     comma::packed::casted< comma::uint16, 4, '0' > start_step;
     comma::packed::casted< comma::uint16, 4, '0' > end_step;
@@ -81,20 +92,47 @@ static const unsigned char mask = BOOST_BINARY( 111111 );
 /// This is the string ID of request, making it '<cmd><seq num>'
 struct sequence_string : comma::packed::packed_struct< sequence_string, 11 >
 {
+    sequence_string() {}
+    sequence_string( const std::string& cmd, comma::uint16 seq )  { tag = cmd; seq_num = seq; }
     comma::packed::string< 2 > tag; // e.g. GD or MD
     comma::packed::casted< comma::uint16, 8, '0' > seq_num;
     line_feed_t lf;
 };
 
-static const int id_size = sequence_string::size;
+/// This is used to pair the request with the reply, it can roll over
+static comma::uint16 sequence = 0;
+
+/// For BM, PP or RB command
+struct state_command : public comma::packed::packed_struct< state_command, 14 >
+{
+    state_command( const std::string& cmd_ ) : message_id( cmd_, ++sequence ) { cmd = cmd_; }
+    comma::packed::string< 2 > cmd;
+    sequence_string message_id;
+    line_feed_t lf_end;
+};
+
+struct state_reply : public comma::packed::packed_struct< state_reply, 16 >
+{
+    comma::packed::string< 2 > cmd;
+    sequence_string message_id;
+    comma::packed::casted< char, 2, '0' > status;
+    char sum;
+    line_feed_t lf;
+    line_feed_t lf_end; /// TODO: does it work for PP reply?
+};
+
+
 static const int reply_header_size = sensor_to_host::size + sequence_string::size;
 
 /// Can be used for MD or GD request, just change the 'cmd' member
 struct request_gd : public comma::packed::packed_struct< request_gd, reply_header_size  >
 {
+    
+    request_gd( bool is_ge=false ) : header( is_ge ? "GD" : "GE"  ), message_id( is_ge ? "GD" : "GE", ++sequence )  {}
     host_to_sensor header;
     sequence_string message_id;
 };
+
 
 /// TODO find out this value
 static const char size_of_sum = 1;
@@ -182,6 +220,7 @@ struct reply_ge : comma::packed::packed_struct< reply_ge< STEPS >, reply_header_
 /// Can be used for MD or ME request
 struct request_md : comma::packed::packed_struct< request_md, reply_header_size + 1 + 2 >
 {
+    request_md( bool is_me=false ) : header( is_me ? "MD" : "ME" ), message_id( is_me ? "MD" : "ME", ++sequence ) {}
     host_to_sensor header;
     comma::packed::const_byte< '0' > scan_interval; // skips nothing
     comma::packed::casted< char, 2, '0' > num_of_scans;
@@ -189,10 +228,11 @@ struct request_md : comma::packed::packed_struct< request_md, reply_header_size 
 };
 
 /// This is a reply as an acknowledgement of request - no data
-struct reply_md : comma::packed::packed_struct< reply_md, request_md::size + 2 + 1 > /// 1 for last line feed char
+struct reply_md : comma::packed::packed_struct< reply_md, request_md::size + 2 + 2 > /// 1 for last line feed char
 {
     request_md request;
     comma::packed::casted< char, 2, '0' > status;   /// Should be '00'
+    line_feed_t lf;
     line_feed_t lf_end;
 };
 

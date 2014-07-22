@@ -2,6 +2,8 @@
 
 namespace snark { namespace hokuyo {
     
+// comma::uint32 request_gd::sequence = 0;
+    
 namespace details {
 
 void strip_checksum( std::size_t raw_size, char* target, const char* raw )
@@ -29,8 +31,8 @@ void strip_checksum( std::size_t raw_size, char* target, const char* raw )
     
     if( size > 0 )
     {
-        // if size is 1 or 2, then it is an error
-        memcpy( target, raw, size-2 );
+        // if size is 1, 2 or 3, then it is an error
+        memcpy( target, raw, size-3 ); // it ends in triplet <sum, lf, lf>
     }
 }
     
