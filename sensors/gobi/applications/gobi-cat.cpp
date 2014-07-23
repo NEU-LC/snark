@@ -60,7 +60,7 @@ int main( int argc, char** argv )
             ( "buffer", boost::program_options::value< unsigned int >( &discard )->default_value( 0 ), "maximum buffer size before discarding frames, default: unlimited" )
             ( "fields,f", boost::program_options::value< std::string >( &fields )->default_value( "t,rows,cols,type" ), "header fields, possible values: t,rows,cols,type,size" )
             ( "list-attributes", "output current camera attributes" )
-            ( "list-cameras", "list all cameras and exit" )
+            ( "list-cameras", "list all cameras" )
             ( "header", "output header only" )
             ( "no-header", "output image data only" )
             ( "verbose,v", "be more verbose" );

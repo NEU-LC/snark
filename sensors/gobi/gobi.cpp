@@ -40,7 +40,9 @@
 namespace snark{ namespace camera{
 
 static const unsigned int xenicsPropertyMaxLen = 128;    
-    
+static const boost::posix_time::time_duration xenicsTimeout = boost::posix_time::seconds( 5 );
+static const boost::posix_time::time_duration xenicsSleepDuration = boost::posix_time::milliseconds( 100 );
+
 static const char *xenics_error_to_string_( ErrCode error )
 {
     switch( error )
@@ -81,7 +83,7 @@ static void xenics_set_attribute_( XCHANDLE& handle, const std::string& property
     XPropType property_type;
     if( XC_GetPropertyType(handle, property_name.c_str(), &property_type) != I_OK ) 
     { 
-        COMMA_THROW( comma::exception, "failed to get property type for \"" << property_name << "\" in xenics_set_attribute_ (or " << property_name << " is unavailable)" ); 
+        COMMA_THROW( comma::exception, "failed to get property type for \"" << property_name << "\" (or " << property_name << " is unavailable)" ); 
     }
     ErrCode error_code;
     switch( property_type & XType_Base_Mask )
@@ -113,7 +115,7 @@ static std::string xenics_get_attribute_( XCHANDLE& handle, const char* property
     XPropType property_type;
     if( XC_GetPropertyType(handle, property_name, &property_type) != I_OK ) 
     { 
-        COMMA_THROW( comma::exception, "failed to get property type for \"" << property_name << "\" in xenics_get_attribute_ (or " << property_name << " is unavailable)" ); 
+        COMMA_THROW( comma::exception, "failed to get property type for \"" << property_name << "\" (or " << property_name << " is unavailable)" ); 
     }
     switch( property_type & XType_Base_Mask )
     {
@@ -173,7 +175,7 @@ static cv::Mat xenics_to_cvmat_( unsigned long height, unsigned long width, Fram
             break;
         case FT_32_BPP_RGB:
         case FT_32_BPP_BGR:
-            opencv_type = CV_8UC3; // this case needs to be verified (3 channels with 8bits each need 24 bits but this type takes 32 bits)
+            opencv_type = CV_8UC3; // this case needs to be verified (3 channels with 8bits each need 24 bits but these types takes 32 bits)
             break;
         case FT_32_BPP_RGBA:
         case FT_32_BPP_BGRA:
@@ -191,49 +193,15 @@ class gobi::impl
         impl( std::string address, const attributes_type& attributes ) :
             address_( address )
         {
-            if( address_.empty() ) { COMMA_THROW( comma::exception, "expected camera address, got empty string" ); }
-/*
-            static const boost::posix_time::time_duration timeout = boost::posix_time::seconds( 5 ); // quick and dirty; make configurable?           
+            if( address_.empty() ) { COMMA_THROW( comma::exception, "expected camera address, got empty string" ); }    
+            std::string camera_name = "gev://" + address_;
             boost::posix_time::ptime now = boost::posix_time::microsec_clock::universal_time();
-            boost::posix_time::ptime end = now + timeout;
-            unsigned int size = 0;
+            boost::posix_time::ptime end = now + xenicsTimeout;             
             for( ; now < end; now = boost::posix_time::microsec_clock::universal_time() )
             {
-                const std::vector< XDeviceInformation >& list = list_cameras();
-                size = list.size();
-                for( unsigned int i = 0; i < list.size(); ++i ) 
-                {
-                    if( std::string(list[i].transport) == "GigEVision"
-                        && list[i].state == XDS_Available
-                        && ( address.empty() || address == list[i].address ) )
-                    {
-                        address_ = list[i].address;
-                        break;
-                    }
-                }
-                if( address_ ) { break; }
-            }
-            if( !address_ ) { COMMA_THROW( comma::exception, "timeout; camera not found" ); }
-            if( address.empty() && size > 1 )
-            {
-                const std::vector< XDeviceInformation >& list = list_cameras();
-                std::stringstream stream;
-                for( std::size_t i = 0; i < list.size(); ++i ) // todo: serialize properly with name-value
-                {
-                    stream << "id=" << list[i].pid << "," << "name=\"" << list[i].name << "\"" << "," << "serial=\"" << list[i].serial << "\"" << "," << "address=\"" << list[i].address << "\"" << std::endl;
-                }
-                COMMA_THROW( comma::exception, "no address provided and multiple cameras found: would pick up a random one\n\tavailable cameras:\n" << stream.str() );
-            } 
-*/
-            static const boost::posix_time::time_duration timeout = boost::posix_time::seconds( 5 ); // quick and dirty; make configurable?
-            boost::posix_time::ptime now = boost::posix_time::microsec_clock::universal_time();
-            boost::posix_time::ptime end = now + timeout;           
-            std::string camera_name = "gev://" + address_;
-            handle_ = XC_OpenCamera( camera_name.c_str() );
-            for( ; ( !XC_IsInitialised(handle_) ) && ( now < end ); now = boost::posix_time::microsec_clock::universal_time() )
-            {
-                boost::thread::sleep( now + boost::posix_time::milliseconds( 10 ) );
                 handle_ = XC_OpenCamera( camera_name.c_str() );
+                if( XC_IsInitialised( handle_ ) ) break;
+                boost::this_thread::sleep( xenicsSleepDuration );
             }
             if( !XC_IsInitialised(handle_) ) { close(); COMMA_THROW( comma::exception, "failed to open gobi camera " + camera_name ); }
             set( attributes );
@@ -257,7 +225,14 @@ class gobi::impl
         void close()
         {
             address_ = "";
-            if( XC_IsCapturing( handle_ ) ) XC_StopCapture( handle_ );
+            if( XC_IsCapturing( handle_ ) ) 
+            {
+                ErrCode error_code = XC_StopCapture( handle_ );
+                if( error_code != I_OK )
+                {
+                    COMMA_THROW( comma::exception, "failed to stop capturing frames from xenics camera at " << address_ << ": " << xenics_error_to_string_( error_code ) << "(" << error_code << ")" );
+                }
+            }
             if( XC_IsInitialised( handle_ ) ) XC_CloseCamera( handle_ );
         }
         
@@ -268,7 +243,7 @@ class gobi::impl
                 ErrCode error_code = XC_StartCapture( handle_ );
                 if( error_code != I_OK )
                 {
-                    COMMA_THROW( comma::exception, "failed to start capture from xenics camera at " << address_ << ": " << xenics_error_to_string_( error_code ) << "(" << error_code << ")" );
+                    COMMA_THROW( comma::exception, "failed to start frame capture from xenics camera at " << address_ << ": " << xenics_error_to_string_( error_code ) << "(" << error_code << ")" );
                 }
             }
             std::pair< boost::posix_time::ptime, cv::Mat > pair;
@@ -296,31 +271,31 @@ class gobi::impl
 
         static std::vector< XDeviceInformation > list_cameras()
         {
-            static const boost::posix_time::time_duration timeout = boost::posix_time::seconds( 5 );
+            std::vector< XDeviceInformation > list;
             boost::posix_time::ptime now = boost::posix_time::microsec_clock::universal_time();
-            boost::posix_time::ptime end = now + timeout;
-            std::vector< XDeviceInformation > devices;
+            boost::posix_time::ptime end = now + xenicsTimeout;
             for( ; now < end; now = boost::posix_time::microsec_clock::universal_time() )
             {
-                unsigned int device_count = 0;
-                XCD_EnumerateDevices(NULL, &device_count, XEF_GigEVision);
-                if (device_count == 0) { break; }
-                devices.resize( device_count );
-                XCD_EnumerateDevices(&devices[0], &device_count, XEF_UseCached);
-                boost::thread::sleep( now + boost::posix_time::milliseconds( 10 ) );
+                unsigned int camera_count = 0;
+                if( XCD_EnumerateDevices(NULL, &camera_count, XEF_GigEVision) == I_OK && camera_count != 0)
+                {
+                    list.resize( camera_count );
+                    if( XCD_EnumerateDevices(&list[0], &camera_count, XEF_UseCached) == I_OK ) break;
+                }
+                boost::this_thread::sleep( xenicsSleepDuration );
             }
-            return devices;
+            return list;
         }
         
-        static std::string format_camera_info(const XDeviceInformation& device)
+        static std::string format_camera_info(const XDeviceInformation& camera_info)
         {
-            std::string state = device.state == XDS_Available ? "Available" : device.state == XDS_Busy ? "Busy" : "Unreachable";
+            std::string state = camera_info.state == XDS_Available ? "Available" : camera_info.state == XDS_Busy ? "Busy" : "Unreachable";
             std::stringstream output;
-            output << "id=" << device.pid << "," 
-                   << "name=\"" << device.name << "\"" << "," 
-                   << "serial=\"" << device.serial << "\"" << "," 
-                   << "address=\"" << device.address << "\"" << ","
-                   << "transport=\"" << device.transport << "\"" << "," 
+            output << "id=" << camera_info.pid << "," 
+                   << "name=\"" << camera_info.name << "\"" << "," 
+                   << "serial=\"" << camera_info.serial << "\"" << "," 
+                   << "address=\"" << camera_info.address << "\"" << ","
+                   << "transport=\"" << camera_info.transport << "\"" << "," 
                    << "state=\"" << state << "\"";
             return output.str();
         }
@@ -348,7 +323,7 @@ void gobi::close() { pimpl_->close(); }
 
 std::vector< XDeviceInformation > gobi::list_cameras() { return gobi::impl::list_cameras(); }
 
-std::string gobi::format_camera_info( const XDeviceInformation& device ) { return gobi::impl::format_camera_info( device ); }
+std::string gobi::format_camera_info( const XDeviceInformation& camera_info ) { return gobi::impl::format_camera_info( camera_info ); }
 
 std::string gobi::address() const { return pimpl_->address(); }
 

@@ -65,7 +65,7 @@ class gobi
 
         static std::vector< XDeviceInformation > list_cameras();
         
-        static std::string format_camera_info(const XDeviceInformation& device);      
+        static std::string format_camera_info(const XDeviceInformation& camera_info);
         
     private:
         class impl;
