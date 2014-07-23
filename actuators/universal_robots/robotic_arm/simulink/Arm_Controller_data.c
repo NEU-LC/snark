@@ -3,9 +3,9 @@
  *
  * Code generated for Simulink model 'Arm_Controller'.
  *
- * Model version                  : 1.148
+ * Model version                  : 1.157
  * Simulink Coder version         : 8.6 (R2014a) 27-Dec-2013
- * C/C++ source code generated on : Wed Jul 16 10:35:35 2014
+ * C/C++ source code generated on : Tue Jul 22 17:15:32 2014
  *
  * Target selection: ert.tlc
  * Embedded hardware selection: 32-bit Generic
@@ -33,10 +33,10 @@ P_Arm_Controller_T Arm_Controller_P = {
    */
   { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 },
 
-  /*  Expression: [0 -1.396 -2.694 0.949 1.57 0]
+  /*  Expression: [0 -1.396 -2.611 0.8658 1.571 0]
    * Referenced by: '<S1>/home_pos'
    */
-  { 0.0, -1.396, -2.694, 0.949, 1.57, 0.0 }
+  { 0.0, -1.396, -2.611, 0.8658, 1.571, 0.0 }
 };
 
 /*

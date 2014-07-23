@@ -266,11 +266,13 @@ template <> struct traits< arm::config >
     template< typename K, typename V > static void visit( const K& k, arm::config& t, V& v )
     {
         v.apply( "home_position", t.home_position );
+        v.apply( "is_home_file", t.is_home_file );
     }
 
     template< typename K, typename V > static void visit( const K& k, const arm::config& t, V& v )
     {
         v.apply( "home_position", t.home_position );
+        v.apply( "is_home_file", t.is_home_file );
     }
 };
 

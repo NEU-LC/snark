@@ -38,6 +38,8 @@
 #include <boost/optional.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/asio.hpp>
+#include <boost/filesystem/operations.hpp>
+#include <boost/filesystem/convenience.hpp>
 #include <comma/application/command_line_options.h>
 #include <comma/csv/stream.h>
 #include <comma/base/types.h>
@@ -95,7 +97,8 @@ void usage(int code=1)
     std::cerr << "*   --robot-arm-port=:    TCP Port number of the robot arm." << std::endl;
     std::cerr << "*   --feedback-host=:     Host name or IP of the robot arm's feedback." << std::endl;
     std::cerr << "*   --feedback-port=:     TCP Port number of the robot arm's feedback." << std::endl;
-    std::cerr << "    --sleep=:             loop sleep value in seconds, default is 0.2s if not specified." << std::endl;
+    std::cerr << "    --sleep=:             Loop sleep value in seconds, default is 0.2s if not specified." << std::endl;
+    std::cerr << "*   --config=:            Config file for robot arm." << std::endl;
     typedef arm::current_positions current_positions_t;
     comma::csv::binary< current_positions_t > binary;
     std::cerr << "UR10's status:" << std::endl;
@@ -286,6 +289,8 @@ bool read_status( comma::io::istream& iss )
     return true;
 }
 
+static arm::config config;
+
 class stop_on_exit
 {
     ip::tcp::iostream& os_;
@@ -299,6 +304,20 @@ public:
     }
 
 };
+
+void load_config( const std::string& filepath )
+{
+    std::ifstream config_ifs( filepath.c_str() );
+    if( !config_ifs.is_open() ) { COMMA_THROW( comma::exception, "failed to open file: " + filepath ); }
+
+    boost::property_tree::ptree t;
+    comma::from_ptree( t, true );
+    boost::property_tree::read_json( config_ifs, t );
+    comma::from_ptree from_ptree( t, true );
+    comma::visiting::apply( from_ptree ).to( config );
+}
+
+namespace fs = boost::filesystem;
 
 int main( int ac, char** av )
 {
@@ -329,6 +348,9 @@ int main( int ac, char** av )
         comma::uint32 listen_port = options.value< comma::uint32 >( "--status-port,-sp" );
         
         bool verbose = options.exists( "--verbose,-v" );
+
+        std::string config_file = options.value< std::string >( "--config" );
+        load_config( config_file );
         
         std::string arm_conn_host = options.value< std::string >( "--robot-arm-host" );
         std::string arm_conn_port = options.value< std::string >( "--robot-arm-port" );

@@ -1,24 +1,23 @@
 /*
- * rt_nonfinite.c
+ * File: rt_nonfinite.c
  *
- * Code generation for model "Arm_Controller".
+ * Code generated for Simulink model 'Arm_Controller'.
  *
- * Model version              : 1.78
- * Simulink Coder version : 8.6 (R2014a) 27-Dec-2013
- * C source code generated on : Thu Jun 12 14:57:58 2014
+ * Model version                  : 1.157
+ * Simulink Coder version         : 8.6 (R2014a) 27-Dec-2013
+ * C/C++ source code generated on : Tue Jul 22 17:15:32 2014
  *
- * Target selection: grt.tlc
- * Note: GRT includes extra infrastructure and instrumentation for prototyping
+ * Target selection: ert.tlc
  * Embedded hardware selection: 32-bit Generic
  * Code generation objectives: Unspecified
  * Validation result: Not run
  */
+
 /*
  * Abstract:
  *      Function to intialize non-finites,
  *      (Inf, NaN and -Inf).
  */
-
 #include "rt_nonfinite.h"
 #include "rtGetNaN.h"
 #include "rtGetInf.h"
@@ -68,3 +67,9 @@ boolean_T rtIsNaNF(real32_T value)
 {
   return (boolean_T)(((value!=value) ? 1U : 0U));
 }
+
+/*
+ * File trailer for generated code.
+ *
+ * [EOF]
+ */

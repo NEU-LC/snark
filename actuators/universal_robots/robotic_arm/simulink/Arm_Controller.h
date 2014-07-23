@@ -3,9 +3,9 @@
  *
  * Code generated for Simulink model 'Arm_Controller'.
  *
- * Model version                  : 1.148
+ * Model version                  : 1.157
  * Simulink Coder version         : 8.6 (R2014a) 27-Dec-2013
- * C/C++ source code generated on : Wed Jul 16 10:35:35 2014
+ * C/C++ source code generated on : Tue Jul 22 17:15:32 2014
  *
  * Target selection: ert.tlc
  * Embedded hardware selection: 32-bit Generic
@@ -15,6 +15,7 @@
 
 #ifndef RTW_HEADER_Arm_Controller_h_
 #define RTW_HEADER_Arm_Controller_h_
+#include <float.h>
 #include <math.h>
 #include <stddef.h>
 #include <string.h>
@@ -24,6 +25,9 @@
 #endif                                 /* Arm_Controller_COMMON_INCLUDES_ */
 
 #include "Arm_Controller_types.h"
+#include "rtGetNaN.h"
+#include "rt_nonfinite.h"
+#include "rtGetInf.h"
 
 /* Macros for accessing real-time model data structure */
 #ifndef rtmGetErrorStatus
@@ -72,7 +76,7 @@ struct P_Arm_Controller_T_ {
   real_T current_pos_InitialValue[6];  /* Expression: [0 0 0 0 0 0]
                                         * Referenced by: '<S1>/current_pos'
                                         */
-  real_T home_pos_InitialValue[6];     /* Expression: [0 -1.396 -2.694 0.949 1.57 0]
+  real_T home_pos_InitialValue[6];     /* Expression: [0 -1.396 -2.611 0.8658 1.571 0]
                                         * Referenced by: '<S1>/home_pos'
                                         */
 };
