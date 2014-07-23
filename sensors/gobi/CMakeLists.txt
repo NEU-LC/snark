@@ -4,8 +4,7 @@ SET( TARGET_NAME snark_${PROJECT} )
 INCLUDE( ${SOURCE_CODE_BASE_DIR}/CMakeFiles/FindXenicsGobi640GigE.cmake REQUIRED )
 INCLUDE_DIRECTORIES( ${XenicsGobi640GigE_INCLUDE_DIR} )
 LINK_DIRECTORIES( ${XenicsGobi640GigE_LINK_DIRECTORIES} )
-# copy-pasted from qdevices; do we need it at all?
-# Assume we are using x64 architecture with xenics
+
 ADD_DEFINITIONS( -D_x64 )
 if( UNIX )
     add_definitions( -D_LINUX )

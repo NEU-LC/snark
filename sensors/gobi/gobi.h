@@ -45,7 +45,7 @@ namespace snark{ namespace camera{
 class gobi
 {
     public:
-        typedef std::map< std::string, std::string > attributes_type;
+        typedef std::map< std::string, std::string > attributes_type;       
         
         gobi( std::string address, const attributes_type& attributes = attributes_type() );
 
@@ -59,38 +59,15 @@ class gobi
 
         std::string address() const;
 
-        /// return total bytes per frame
-//        unsigned long total_bytes_per_frame() const;
-
+        unsigned long total_bytes_per_frame() const;
+        
         void close();
 
         static std::vector< XDeviceInformation > list_cameras();
         
-        static std::string format_camera_info(const XDeviceInformation& device);
-/*
-        class callback
-        {
-            public:
-                /// constructor: start capture, call callback on frame update
-                callback( gobi& gobi, boost::function< void ( std::pair< boost::posix_time::ptime, cv::Mat > ) > on_frame );
-
-                /// destructor: stop capture
-                ~callback();
-                
-                /// implementation class, a hack: has to be public to use pvAPI callback, sigh...
-                class impl;
-                
-                /// return true, if callback status is ok
-                bool good() const;
-                
-            private:
-                friend class gobi;
-                impl* pimpl_;
-        };
-*/        
+        static std::string format_camera_info(const XDeviceInformation& device);      
         
     private:
-//        friend class callback::impl;
         class impl;
         impl* pimpl_;
 };

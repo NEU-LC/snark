@@ -37,13 +37,8 @@
 #include <comma/base/exception.h>
 #include "./gobi.h"
 
-//static void PVDECL pv_callback_( tPvFrame *frame );
-
 namespace snark{ namespace camera{
 
-//static const unsigned int timeOutFactor = 3;
-//static const unsigned int maxRetries = 15; 
-    
 static const unsigned int xenicsPropertyMaxLen = 128;    
     
 static const char *xenics_error_to_string_( ErrCode error )
@@ -161,54 +156,44 @@ gobi::attributes_type xenics_attributes_( XCHANDLE& handle )
     }
     return attributes;    
 }
-
-/*
-static cv::Mat pv_as_cvmat_( const tPvFrame& frame )
+        
+static cv::Mat xenics_to_cvmat_( unsigned long height, unsigned long width, FrameType frame_type, std::vector< byte >& frame_buffer )
 {
-    if( frame.Status != ePvErrSuccess ) { return cv::Mat(); }
-    int type;
-    switch( frame.Format )
+    int opencv_type;
+    switch( frame_type )
     {
-        case ePvFmtMono8:
-        case ePvFmtBayer8:
-            type = CV_8UC1;
+        case FT_8_BPP_GRAY:
+            opencv_type = CV_8UC1;
             break;
-        case ePvFmtBayer16:
-        case ePvFmtMono16:
-            type = CV_16UC1;
+        case FT_16_BPP_GRAY:
+            opencv_type = CV_16UC1;
             break;
-        case ePvFmtRgb24:
-        case ePvFmtBgr24:
-            type = CV_8UC3;
+        case FT_32_BPP_GRAY:
+            opencv_type = CV_32SC1; // this case needs to be verified (opencv does not support CV_32UC1 but the camera uses unsigned 32 bit type)
             break;
-        case ePvFmtRgba32:
-        case ePvFmtBgra32:
-            type = CV_8UC4;
+        case FT_32_BPP_RGB:
+        case FT_32_BPP_BGR:
+            opencv_type = CV_8UC3; // this case needs to be verified (3 channels with 8bits each need 24 bits but this type takes 32 bits)
             break;
-        case ePvFmtRgb48:
-            type = CV_16UC3;
+        case FT_32_BPP_RGBA:
+        case FT_32_BPP_BGRA:
+            opencv_type = CV_8UC4;
             break;
-        case ePvFmtYuv411:
-        case ePvFmtYuv422:
-        case ePvFmtYuv444:
-            COMMA_THROW( comma::exception, "unsupported format " << frame.Format );
         default:
-            COMMA_THROW( comma::exception, "unknown format " << frame.Format );
-    };
-    return cv::Mat( frame.Height, frame.Width, type, frame.ImageBuffer );
+            COMMA_THROW( comma::exception, "unknown frame type " << frame_type );
+    }
+    return cv::Mat(height, width, opencv_type, &frame_buffer[0] );
 }
-*/
 
 class gobi::impl
 {
     public:
         impl( std::string address, const attributes_type& attributes ) :
-            address_( address ),
-            started_( false ),
-            timeOut_( 1000 )
+            address_( address )
         {
             if( address_.empty() ) { COMMA_THROW( comma::exception, "expected camera address, got empty string" ); }
-/*            static const boost::posix_time::time_duration timeout = boost::posix_time::seconds( 5 ); // quick and dirty; make configurable?           
+/*
+            static const boost::posix_time::time_duration timeout = boost::posix_time::seconds( 5 ); // quick and dirty; make configurable?           
             boost::posix_time::ptime now = boost::posix_time::microsec_clock::universal_time();
             boost::posix_time::ptime end = now + timeout;
             unsigned int size = 0;
@@ -251,22 +236,12 @@ class gobi::impl
                 handle_ = XC_OpenCamera( camera_name.c_str() );
             }
             if( !XC_IsInitialised(handle_) ) { close(); COMMA_THROW( comma::exception, "failed to open gobi camera " + camera_name ); }
-
             set( attributes );
-/*
-            PvAttrEnumSet( handle_, "AcquisitionMode", "Continuous" );
-            PvAttrEnumSet( handle_, "FrameStartTriggerMode", "FixedRate" );
-            ::memset( &frame_, 0, sizeof( tPvFrame ) ); // voodoo
-            result = PvAttrUint32Get( handle_, "TotalBytesPerFrame", &total_bytes_per_frame_ );
-            if( result != ePvErrSuccess ) { close(); COMMA_THROW( comma::exception, "failed to get TotalBytesPerFrame from gobi camera " << *id_ << ": " << xenics_error_to_string_( result ) << " (" << result << ")" ); }
-            buffer_.resize( total_bytes_per_frame_ );
-            frame_.ImageBuffer = &buffer_[0];
-            frame_.ImageBufferSize = total_bytes_per_frame_;
-            float frameRate;
-            PvAttrFloat32Get( handle_, "FrameRate", &frameRate);
-            timeOut_ = 1000 / frameRate;
-            timeOut_ *= timeOutFactor;
-*/
+            height_ = boost::lexical_cast< unsigned long >( XC_GetHeight( handle_ ) );
+            width_ = boost::lexical_cast< unsigned long >( XC_GetWidth( handle_ ) );
+            frame_type_ = XC_GetFrameType( handle_ );            
+            total_bytes_per_frame_ = boost::lexical_cast< unsigned long >( XC_GetFrameSize( handle_ ) );
+            frame_buffer_.resize( total_bytes_per_frame_ );
         }
         
         void set( const attributes_type& attributes )
@@ -282,66 +257,34 @@ class gobi::impl
         void close()
         {
             address_ = "";
-            if( XC_IsInitialised(handle_)  ) { XC_CloseCamera( handle_ ); }
+            if( XC_IsCapturing( handle_ ) ) XC_StopCapture( handle_ );
+            if( XC_IsInitialised( handle_ ) ) XC_CloseCamera( handle_ );
         }
         
         std::pair< boost::posix_time::ptime, cv::Mat > read()
         {
-            std::pair< boost::posix_time::ptime, cv::Mat > pair;
-            bool success = false;
-/*          
-            unsigned int retries = 0;
-            while( !success && retries < maxRetries )
+            if( !XC_IsCapturing( handle_ ) )
             {
-                tPvErr result = ePvErrSuccess;
-                if( !started_ )
+                ErrCode error_code = XC_StartCapture( handle_ );
+                if( error_code != I_OK )
                 {
-                    result = PvCaptureStart( handle_ );
+                    COMMA_THROW( comma::exception, "failed to start capture from xenics camera at " << address_ << ": " << xenics_error_to_string_( error_code ) << "(" << error_code << ")" );
                 }
-                if( result == ePvErrSuccess )
-                {
-                    result = PvCaptureQueueFrame( handle_, &frame_, 0 );
-                    if( result == ePvErrSuccess )
-                    {
-                        if( !started_ )
-                        {
-                            result = PvCommandRun( handle_, "AcquisitionStart" );
-                            started_ = true;
-                        }
-                        if( result == ePvErrSuccess )
-                        {
-                            result = PvCaptureWaitForFrameDone( handle_, &frame_, timeOut_ );
-                            if( result == ePvErrSuccess )
-                            {
-                                result = frame_.Status;
-                            }
-                            pair.first = boost::posix_time::microsec_clock::universal_time();
-                        }
-                    }
-                }
-                if( result == ePvErrSuccess )
-                {
-                    pair.second = pv_as_cvmat_( frame_ );
-                    success = true;
-                }
-                else if( result == ePvErrDataMissing || result == ePvErrTimeout )
-                {
-                    PvCaptureQueueClear( handle_ );
-                    PvCommandRun( handle_, "AcquisitionStop" );
-                    PvCaptureEnd( handle_ );
-                    started_ = false;
-                }
-                else
-                {
-                    COMMA_THROW( comma::exception, "got frame with invalid status on camera " << *id_ << ": " << xenics_error_to_string_( result ) << "(" << result << ")" );
-                    close();                    
-                }
-                retries++;
             }
-*/            
-            if( success ) { return pair; }
-            COMMA_THROW( comma::exception, "got lots of missing frames or timeouts" << std::endl << std::endl << "it is likely that MTU size on your machine is less than packet size" << std::endl << "check PacketSize attribute (gobi-cat --list-attributes)" << std::endl << "set packet size (e.g. gobi-cat --set=PacketSize=1500)" << std::endl << "or increase MTU size on your machine" );
-        }
+            std::pair< boost::posix_time::ptime, cv::Mat > pair;
+            ErrCode error_code = XC_GetFrame( handle_, FT_NATIVE, XGF_Blocking | XGF_NoConversion, &frame_buffer_[0], total_bytes_per_frame_ );
+            if( error_code == I_OK)
+            {
+                pair.first = boost::posix_time::microsec_clock::universal_time();
+                pair.second = xenics_to_cvmat_( height_, width_, frame_type_, frame_buffer_ );
+            }
+            else
+            {
+                COMMA_THROW( comma::exception, "failed to get a frame from xenics camera at address " << address_ << ": " << xenics_error_to_string_( error_code ) << "(" << error_code << ")" );
+                close();                    
+            }      
+            return pair;
+        }                
 
         const XCHANDLE& handle() const { return handle_; }
         
@@ -349,11 +292,11 @@ class gobi::impl
 
         std::string address() const { return address_; }
 
-//        unsigned long total_bytes_per_frame() const { return total_bytes_per_frame_; }
+        unsigned long total_bytes_per_frame() const { return total_bytes_per_frame_; }
 
         static std::vector< XDeviceInformation > list_cameras()
         {
-            static const boost::posix_time::time_duration timeout = boost::posix_time::seconds( 5 ); // quick and dirty; make configurable?
+            static const boost::posix_time::time_duration timeout = boost::posix_time::seconds( 5 );
             boost::posix_time::ptime now = boost::posix_time::microsec_clock::universal_time();
             boost::posix_time::ptime end = now + timeout;
             std::vector< XDeviceInformation > devices;
@@ -382,72 +325,16 @@ class gobi::impl
             return output.str();
         }
     private:
-//        friend class gobi::callback::impl;
         XCHANDLE handle_;
-//        tPvFrame frame_;
-//        std::vector< char > buffer_;
+        unsigned long height_;
+        unsigned long width_;
+        FrameType frame_type_;
+        unsigned long total_bytes_per_frame_;
+        std::vector< byte > frame_buffer_;
         std::string address_;
-//        boost::optional< std::string > address_;
-//        boost::optional< unsigned int > id_;
-//        unsigned long total_bytes_per_frame_;
-        bool started_;
-        unsigned int timeOut_; // milliseconds        
 };
-
-/*
-class gobi::callback::impl
-{
-    public:
-        typedef boost::function< void ( const std::pair< boost::posix_time::ptime, cv::Mat >& ) > OnFrame;
-        
-        impl( gobi& gobi, OnFrame on_frame )
-            : on_frame( on_frame )
-            , handle( gobi.pimpl_->handle() )
-            , frame( gobi.pimpl_->frame_ )
-            , good( true )
-            , is_shutdown( false )
-        {
-            tPvErr result;
-            PvCaptureQueueClear( handle );
-            frame.Context[0] = this;
-            result = PvCaptureStart( handle );
-            if( result != ePvErrSuccess ) { COMMA_THROW( comma::exception, "failed to start capturing on camera " << gobi.pimpl_->id() << ": " << xenics_error_to_string_( result ) << " (" << result << ")" ); }
-            result = PvCaptureQueueFrame( handle, &frame, pv_callback_ );
-            if( result != ePvErrSuccess ) { COMMA_THROW( comma::exception, "failed to set capture queue frame on camera " << gobi.pimpl_->id() << ": " << xenics_error_to_string_( result ) << " (" << result << ")" ); }
-            result = PvCommandRun( handle, "AcquisitionStart" );
-            if( result != ePvErrSuccess ) { COMMA_THROW( comma::exception, "failed to start acquisition on camera " << gobi.pimpl_->id() << ": " << xenics_error_to_string_( result ) << " (" << result << ")" ); }
-        }
-
-        ~impl()
-        {
-            is_shutdown = true;
-            PvCommandRun( handle, "Acquisitionstop" );
-            PvCaptureQueueClear( handle );
-            PvCaptureEnd( handle );
-        }
-
-        OnFrame on_frame;
-        tPvHandle& handle;
-        tPvFrame& frame;
-        bool good;
-        bool is_shutdown;
-};
-*/
 
 } } // namespace snark{ namespace camera{
-
-/*
-static void PVDECL pv_callback_( tPvFrame *frame )
-{
-    snark::camera::gobi::callback::impl* c = reinterpret_cast< snark::camera::gobi::callback::impl* >( frame->Context[0] );
-    if( c->is_shutdown ) { return; }
-    std::pair< boost::posix_time::ptime, cv::Mat > m( boost::posix_time::microsec_clock::universal_time(), cv::Mat() );
-    if( frame ) { m.second = snark::camera::pv_as_cvmat_( *frame ); }
-    c->on_frame( m );
-    tPvErr result = PvCaptureQueueFrame( c->handle, &c->frame, pv_callback_ );
-    if( result != ePvErrSuccess ) { c->good = false; }
-}
-*/
 
 namespace snark{ namespace camera{
 
@@ -465,19 +352,10 @@ std::string gobi::format_camera_info( const XDeviceInformation& device ) { retur
 
 std::string gobi::address() const { return pimpl_->address(); }
 
-//unsigned long gobi::total_bytes_per_frame() const { return pimpl_->total_bytes_per_frame(); }
+unsigned long gobi::total_bytes_per_frame() const { return pimpl_->total_bytes_per_frame(); }
 
 gobi::attributes_type gobi::attributes() const { return xenics_attributes_( pimpl_->handle() ); }
 
-/*
-gobi::callback::callback( gobi& gobi, boost::function< void ( std::pair< boost::posix_time::ptime, cv::Mat > ) > on_frame )
-    : pimpl_( new callback::impl( gobi, on_frame ) )
-{
-}
-*/
-
-//gobi::callback::~callback() { delete pimpl_; }
-
-//bool gobi::callback::good() const { return pimpl_->good; }
+void gobi::set(const gobi::attributes_type& attributes ) { pimpl_->set( attributes ); }
 
 } } // namespace snark{ namespace camera{
