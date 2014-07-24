@@ -321,6 +321,7 @@ template <> struct traits< arm::fixed_status >
         v.apply( "positions", positions );
         v.apply( "velocities", t.velocities );
         v.apply( "currents", t.currents );
+        v.apply( "forces", t.forces );
         v.apply( "coordinates", t.translation );
         v.apply( "rotation", t.rotation );
         v.apply( "temperatures", t.temperatures );

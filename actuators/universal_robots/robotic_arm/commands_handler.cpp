@@ -21,7 +21,7 @@ void commands_handler::handle( arm::brakes& b )
         os << "set robotmode run" <<std::endl;
     }
     else {
-    	os << "stopj([0,0,0,0,0,0])" << std::endl;
+    	os << "stopj([0.1,0.1,0.1,0.1,0.1,0.1])" << std::endl;
     }
     os.flush();
     ret = result();
@@ -150,10 +150,10 @@ void commands_handler::handle( arm::move_cam& cam )
     if( cam.height < min_height ) { ret = result( "height value is below minimum limit of 0.1m", result::error::invalid_input ); return; }
     if( cam.height > max_height ) { ret = result( "height value is above minimum limit of 1.0m", result::error::invalid_input ); return; }
     
-    //static double zero_tilt = 90.0;
+    static double zero_tilt = 90.0;
     inputs_.motion_primitive = real_T( input_primitive::move_cam );
     inputs_.Input_1 = cam.pan.value();
-    inputs_.Input_2 = cam.tilt.value();
+    inputs_.Input_2 = cam.height.value() != 1.0 ? -cam.tilt.value() : zero_tilt - cam.tilt.value();
     inputs_.Input_3 = cam.height.value();
     
     ret = result();
@@ -220,6 +220,7 @@ void commands_handler::handle( arm::joint_move& joint )
     
     double vel = ( joint.dir ? velocity.value() : -velocity.value() );
     if( joint.joint_id == 2 ) { vel /= 2; }
+    else if( joint.joint_id == 1 ) { vel /= 2.5; }
     else if( joint.joint_id < 1 ) { vel /= 3; }
     
     std::ostringstream ss;
@@ -279,10 +280,9 @@ void commands_handler::handle( arm::set_position_giraffe& giraffe )
 
     std::cerr << "giraffe pan tilt" << std::endl;
 
-    static double zero_tilt = 90.0;
     inputs_.motion_primitive = input_primitive::move_cam;
     inputs_.Input_1 = giraffe.pan.value();    // zero pan for giraffe
-    inputs_.Input_2 = zero_tilt - giraffe.tilt.value();    // zero tilt for giraffe
+    inputs_.Input_2 = -giraffe.tilt.value();    // zero tilt for giraffe
     inputs_.Input_3 = 1.0; // height of 1m
     
     ret = result();

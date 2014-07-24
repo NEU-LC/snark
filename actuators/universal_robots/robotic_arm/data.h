@@ -106,7 +106,9 @@ struct fixed_status : public comma::packed::packed_struct< fixed_status, 812  >
     joints_net_t positions; /// actual joint positions
     joints_net_t velocities; /// actual joint velocities
     joints_net_t currents; /// actual joint currents - Amps
-    comma::packed::string< 192 > dummy2;
+    comma::packed::string< 120 > dummy2;
+    joints_net_t forces;    /// Force (Newton) on each joint
+    comma::packed::string< 24 > dummy5;
     cartesian  translation;       ///  coordinates
     cartesian  rotation;       ///  rotation
     comma::packed::string< 56 > dummy3;

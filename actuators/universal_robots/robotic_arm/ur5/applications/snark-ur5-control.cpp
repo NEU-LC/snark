@@ -239,7 +239,8 @@ void process_command( const std::vector< std::string >& v, std::ostream& os )
     }
     else if( boost::iequals( v[2], "set_home" ) )   { output( handle< arm::set_home >( v, os ) ); }
     else if( boost::iequals( v[2], "power" ) )      { output( handle< arm::power >( v, os )); }  
-    else if( boost::iequals( v[2], "brakes" ) )     { output( handle< arm::brakes >( v, os )); }  
+    else if( boost::iequals( v[2], "brakes" ) || 
+             boost::iequals( v[2], "stop" ) )       { output( handle< arm::brakes >( v, os )); }  
     else if( boost::iequals( v[2], "auto_init" ) )  { output( handle< arm::auto_init >( v, os )); }  
     else if( boost::iequals( v[2], "initj" ) )      { output( handle< arm::joint_move >( v, os )); }  
     // else if( boost::iequals( v[2], "movej" ) )      { output( handle< arm::move_joints >( v, os ) ); }
@@ -351,7 +352,7 @@ int main( int ac, char** av )
 
         std::string config_file = options.value< std::string >( "--config" );
         load_config( config_file );
-        
+
         std::string arm_conn_host = options.value< std::string >( "--robot-arm-host" );
         std::string arm_conn_port = options.value< std::string >( "--robot-arm-port" );
         std::string arm_feedback_host = options.value< std::string >( "--feedback-host" );
