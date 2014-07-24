@@ -118,15 +118,10 @@ struct set_position : command_base< set_position >
     
     enum { home=1, giraffe=2 };
 };
-struct set_position_giraffe : command_base< set_position_giraffe >
+struct auto_init_force : command_base< auto_init_force >
 {
-    static const char fields = 6;
-    std::string position;
-    plane_angle_degrees_t pan;
-    plane_angle_degrees_t tilt;
-    set_position_giraffe() : position( "giraffe" ) {}
-    
-    enum { home=1, giraffe=2 };
+    static const char fields = 4;
+    bool force;
 };
 
 

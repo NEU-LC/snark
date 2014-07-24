@@ -1,8 +1,11 @@
 #include "auto_initialization.h"
+#include <boost/filesystem.hpp>
 
 namespace snark { namespace ur { namespace robotic_arm { namespace handlers {
 
 namespace arm = robotic_arm;
+
+const char* auto_initialization::filename = "ur5-in-home-position";
 
 void auto_initialization::read_status()
 {
@@ -30,7 +33,7 @@ void auto_initialization::read_status()
 
 
 
-result auto_initialization::run()
+result auto_initialization::run( bool force )
 {
     std::cerr << name() << "command auto init" << std::endl;
 
@@ -52,6 +55,10 @@ result auto_initialization::run()
         std::cerr << name() << "auto_init failed because robotic arm mode is " << status_.mode_str() << std::endl;
         return result( "cannot auto initialise robot if robot mode is not set to initializing", result::error::failure );
     }
+    namespace fs = boost::filesystem;
+    fs::path file( home_filepath_ );
+    /// If not forcing auto_init, and it is not in home position ( no existen of home position file ), fail
+    if( !force && !fs::exists( file ) && !fs::is_regular_file( file ) ) { return result( "the robot arm is not in the home position, auto_init dis-allowed.", result::error::failure ); }
 
     static const comma::uint32 retries = 50;
     // try for two joints right now
@@ -85,7 +92,6 @@ result auto_initialization::run()
             inputs_.read();
         }
 
-        // todo check force also
         if( status_.jmode( joint_id ) == jointmode::running ) {
             std::cerr << name() << "joint " << joint_id << " initialised" << std::endl;
             continue;
@@ -97,7 +103,7 @@ result auto_initialization::run()
             return result( "failed to auto initialise a joint", result::error::failure );
         }
     }
-    if( signaled_  ) {
+    if( signaled_ || !inputs_.is_empty()  ) {
         os << "speedj_init([0,0,0,0,0,0],0.05,0.0133333)" << std::endl;
         os.flush();
     }

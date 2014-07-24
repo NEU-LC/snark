@@ -52,24 +52,29 @@ class auto_initialization
     /// This is the value of force limit on arm before failing auto initialisation.
     /// Should not be 0 as there is a laszer mount?
     double force_max_; // newtons
+    std::string home_filepath_;
     
     const std::string& name() const { return name_; }
     /// Get the latest status from the arm
     void read_status(); 
     
+    static const char* filename;
+    
 public:
     auto_initialization( arm::fixed_status& status, std::ostream& robot, 
                          comma::io::istream& status_iss, comma::io::select& select,
-                         comma::signal_flag& signaled, arm::inputs& inputs ) : 
+                         comma::signal_flag& signaled, arm::inputs& inputs, const std::string& work_dir ) : 
         status_( status ), os( robot ),
         iss_(status_iss), select_( select ), signaled_( signaled ),
-        inputs_( inputs ), force_max_( 0.0 ) {}
+        inputs_( inputs ), force_max_( 0.0 ), home_filepath_( work_dir + '/' + filename ) {}
     
     void set_app_name( const char* name ) { name_ = name; }
+    
+    const std::string& home_filepath() const { return home_filepath_; }
     /// Performs auto initialisation but also listens for new commands.
     /// If a new command arrives or a signal is received run() returns immediately.
     /// result: shows wether success or failure.
-    result run();
+    result run( bool force );
 };
 
 

@@ -11,7 +11,7 @@ struct config {
     config() : home_position( 6 ) {} // position of six joints
     // vector of plane_angle_degrees_t does not work with boost::ptree
     std::vector< double > home_position;	
-    std::string is_home_file;
+    std::string work_directory;
 
     bool operator==( const config& rhs ) const { return home_position == rhs.home_position; }
 };

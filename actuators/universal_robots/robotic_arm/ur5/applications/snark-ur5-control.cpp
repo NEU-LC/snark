@@ -38,6 +38,7 @@
 #include <boost/optional.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/asio.hpp>
+#include <boost/filesystem.hpp>
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/convenience.hpp>
 #include <comma/application/command_line_options.h>
@@ -230,19 +231,20 @@ std::string handle( const std::vector< std::string >& line, std::ostream& os )
 
 void process_command( const std::vector< std::string >& v, std::ostream& os )
 {
-    if( boost::iequals( v[2], "move_cam" ) )        { output( handle< arm::move_cam >( v, os ) ); }
-    else if( boost::iequals( v[2], "set_pos" ) )  
-    {
-        if( v.size() == arm::set_position::fields ) 
-             { output( handle< arm::set_position >( v, os ) ); } 
-        else { output( handle< arm::set_position_giraffe >( v, os ) ); } 
-    }
-    else if( boost::iequals( v[2], "set_home" ) )   { output( handle< arm::set_home >( v, os ) ); }
-    else if( boost::iequals( v[2], "power" ) )      { output( handle< arm::power >( v, os )); }  
+    if( boost::iequals( v[2], "move_cam" ) )         { output( handle< arm::move_cam >( v, os ) ); }
+    else if( boost::iequals( v[2], "set_pos" ) )     { output( handle< arm::set_position >( v, os ) ); }
+    else if( boost::iequals( v[2], "set_home" ) )    { output( handle< arm::set_home >( v, os ) ); }
+    else if( boost::iequals( v[2], "power" ) )       { output( handle< arm::power >( v, os )); }  
     else if( boost::iequals( v[2], "brakes" ) || 
-             boost::iequals( v[2], "stop" ) )       { output( handle< arm::brakes >( v, os )); }  
-    else if( boost::iequals( v[2], "auto_init" ) )  { output( handle< arm::auto_init >( v, os )); }  
-    else if( boost::iequals( v[2], "initj" ) )      { output( handle< arm::joint_move >( v, os )); }  
+             boost::iequals( v[2], "stop" ) )        { output( handle< arm::brakes >( v, os )); }  
+    else if( boost::iequals( v[2], "auto_init" ) )  
+    { 
+        if( v.size() == arm::auto_init_force::fields ) 
+                                                     { output( handle< arm::auto_init_force >( v, os )); }
+        else                                         { output( handle< arm::auto_init >( v, os )); } 
+    }  
+    else if( boost::iequals( v[2], "initj" ) )       { output( handle< arm::joint_move >( v, os )); 
+    }  
     // else if( boost::iequals( v[2], "movej" ) )      { output( handle< arm::move_joints >( v, os ) ); }
     else { output( comma::join( v, v.size(), ',' ) + ',' + 
         impl_::str( arm::errors::unknown_command ) + ",\"unknown command found: '" + v[2] + "'\"" ); return; }
@@ -320,6 +322,15 @@ void load_config( const std::string& filepath )
 
 namespace fs = boost::filesystem;
 
+/// Create a home position file if arm is running and is in home position
+void home_position_check( arm::handlers::commands_handler& handler, const arm::fixed_status& status )
+{
+    if( handler.is_running() )
+    {
+        // TODO, either create or delete the home position file
+    }
+}
+
 int main( int ac, char** av )
 {
     
@@ -352,6 +363,11 @@ int main( int ac, char** av )
 
         std::string config_file = options.value< std::string >( "--config" );
         load_config( config_file );
+        
+        /// home position file
+        if( config.work_directory.empty() ) { std::cerr << name() << "cannot find home position directory! exiting!" <<std::endl; return 1; }
+        fs::path dir( config.work_directory );
+        if( !fs::exists( dir ) || !fs::is_directory( dir ) ) { std::cerr << name() << "work_directory must exists: " << config.work_directory << std::endl; return 1; }
 
         std::string arm_conn_host = options.value< std::string >( "--robot-arm-host" );
         std::string arm_conn_port = options.value< std::string >( "--robot-arm-port" );
@@ -377,7 +393,7 @@ int main( int ac, char** av )
         comma::io::select select;
         select.read().add( status_stream.fd() );
 
-        arm::handlers::auto_initialization auto_init( arm_status, *robot_arm, status_stream, select, signaled, inputs );
+        arm::handlers::auto_initialization auto_init( arm_status, *robot_arm, status_stream, select, signaled, inputs, config.work_directory );
         auto_init.set_app_name( name() );
         commands_handler.reset( new commands_handler_t( Arm_Controller_U, arm_status, *robot_arm, auto_init ) );
 
@@ -394,6 +410,7 @@ int main( int ac, char** av )
                     // comma::to_ptree to_ptree( t );
                     // comma::visiting::apply( to_ptree ).to( arm_status );
                     // boost::property_tree::write_json( std::cerr, t, false );    
+                    home_position_check( *commands_handler, arm_status );
                 }
             }
             

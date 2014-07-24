@@ -1,5 +1,6 @@
 #include "commands_handler.h"
 #include "auto_initialization.h"
+#include <fstream>
 
 namespace snark { namespace ur { namespace robotic_arm { namespace handlers {
 
@@ -58,34 +59,36 @@ void commands_handler::handle( arm::move_cam& cam )
     inputs_.Input_2 = cam.height.value() != 1.0 ? -cam.tilt.value() : zero_tilt - cam.tilt.value();
     inputs_.Input_3 = cam.height.value();
     
+    fs::remove( home_filepath_ );
+    
     ret = result();
 }
 
 void commands_handler::handle( arm::move_joints& joints )
 {
-    if( !is_running() ) {
-        ret = result( "cannot move (joints) as rover is not in running mode", result::error::invalid_robot_state );
-        return;
-    }
-
-    std::cerr << name() << " running move joints"  << std::endl; 
-    static const plane_angle_degrees_t min = 0.0 * degree;
-    static const plane_angle_degrees_t max = 360.0 * degree;
-    for( std::size_t i=0; i<joints.joints.size(); ++i )
-    {
-        if( joints.joints[i] < min || joints.joints[0] > max ) { 
-            ret = result( "joint angle must be 0-360 degrees", result::error::invalid_input ); 
-            return;
-        }
-    }
-    
-    inputs_.motion_primitive = real_T( input_primitive::movej );
-    inputs_.Input_1 = joints.joints[0].value();
-    inputs_.Input_2 = joints.joints[1].value();
-    inputs_.Input_3 = joints.joints[2].value();
-    inputs_.Input_4 = joints.joints[3].value();
-    inputs_.Input_5 = joints.joints[4].value();
-    inputs_.Input_6 = joints.joints[5].value();
+//     if( !is_running() ) {
+//         ret = result( "cannot move (joints) as rover is not in running mode", result::error::invalid_robot_state );
+//         return;
+//     }
+// 
+//     std::cerr << name() << " running move joints"  << std::endl; 
+//     static const plane_angle_degrees_t min = 0.0 * degree;
+//     static const plane_angle_degrees_t max = 360.0 * degree;
+//     for( std::size_t i=0; i<joints.joints.size(); ++i )
+//     {
+//         if( joints.joints[i] < min || joints.joints[0] > max ) { 
+//             ret = result( "joint angle must be 0-360 degrees", result::error::invalid_input ); 
+//             return;
+//         }
+//     }
+//     
+//     inputs_.motion_primitive = real_T( input_primitive::movej );
+//     inputs_.Input_1 = joints.joints[0].value();
+//     inputs_.Input_2 = joints.joints[1].value();
+//     inputs_.Input_3 = joints.joints[2].value();
+//     inputs_.Input_4 = joints.joints[3].value();
+//     inputs_.Input_5 = joints.joints[4].value();
+//     inputs_.Input_6 = joints.joints[5].value();
     ret = result();
 }
 
@@ -134,7 +137,9 @@ void commands_handler::handle( arm::joint_move& joint )
     }
     ss << "],"  << acceleration.value() << ',' << (duration.total_milliseconds()/1000.0) << ')' << std::endl;
     os << ss.str();
-    os.flush();
+    os.flush(); 
+    
+    fs::remove( home_filepath_ );
     
     ret = result();
 }
@@ -154,38 +159,16 @@ void commands_handler::handle( arm::set_position& pos )
 
     inputs_.motion_primitive = input_primitive::set_position;
 
-    if( pos.position == "giraffe" ) { inputs_.Input_1 = set_position::giraffe; }
-    else if( pos.position == "home" ) { inputs_.Input_1 = set_position::home; }
+    if( pos.position == "giraffe" ) { inputs_.Input_1 = set_position::giraffe; fs::remove( home_filepath_ ); }
+    else if( pos.position == "home" ) { inputs_.Input_1 = set_position::home; std::ofstream( home_filepath_.c_str(), std::ios::out | std::ios::trunc ); }
     else { ret = result("unknown position type", int(result::error::invalid_input) ); return; }
 
     inputs_.Input_2 = 0;    // zero pan for giraffe
     inputs_.Input_3 = 0;    // zero tilt for giraffe
     
-    ret = result();
-}
-void commands_handler::handle( arm::set_position_giraffe& giraffe )
-{
-    if( !is_running() ) {
-        ret = result( "cannot set giraffe position as rover is not in running mode", result::error::invalid_robot_state );
-        return;
-    }
-
-    if( giraffe.position != "giraffe" ) { 
-        ret = result("unknown position type: expected 'giraffe' when spcifying pan and tilt angles", 
-                     int(result::error::invalid_input) );
-        return; 
-    }
-    if( giraffe.pan < min_pan ) { ret = result( "pan angle is below minimum limit of -45.0", result::error::invalid_input ); return; }
-    if( giraffe.pan > max_pan ) { ret = result( "pan angle is above minimum limit of 45.0", result::error::invalid_input ); return; }
-    if( giraffe.tilt < min_tilt ) { ret = result( "tilt angle is below minimum limit of -90.0", result::error::invalid_input ); return; }
-    if( giraffe.tilt > max_tilt ) { ret = result( "tilt angle is above minimum limit of 90.0", result::error::invalid_input ); return; }
-
-    std::cerr << "giraffe pan tilt" << std::endl;
-
-    inputs_.motion_primitive = input_primitive::move_cam;
-    inputs_.Input_1 = giraffe.pan.value();    // zero pan for giraffe
-    inputs_.Input_2 = -giraffe.tilt.value();    // zero tilt for giraffe
-    inputs_.Input_3 = 1.0; // height of 1m
+//     if( pos.position == set_position::giraffe ) {  } 
+//     else { std::ofstream file( home_filepath_.c_str(), std::ios::out | std::ios::trunc ); } 
+    // TODO only create file if in home position ??
     
     ret = result();
 }
@@ -234,7 +217,11 @@ bool commands_handler::is_initialising() const
 
 void commands_handler::handle(auto_init& a)
 {
-    ret = init_.run();
+    ret = init_.run( false );
+}
+void commands_handler::handle( arm::auto_init_force& init )
+{
+    ret = init_.run( init.force );
 }
 
 

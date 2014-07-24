@@ -187,6 +187,21 @@ template <> struct traits< arm::auto_init >
     }
 };
 
+template <> struct traits< arm::auto_init_force >
+{
+    template< typename K, typename V > static void visit( const K& k, arm::auto_init_force& t, V& v )
+    {
+        traits< command_base < arm::auto_init_force > >::visit(k, t, v);
+        v.apply( "force", t.force );
+    }
+
+    template< typename K, typename V > static void visit( const K& k, const arm::auto_init_force& t, V& v )
+    {
+        traits< command_base < arm::auto_init_force > >::visit(k, t, v);
+        v.apply( "force", t.force );
+    }
+};
+
 template <> struct traits< arm::power >
 {
     template< typename K, typename V > static void visit( const K& k, arm::power& t, V& v ) {
@@ -226,28 +241,6 @@ template <> struct traits< arm::set_position >
     }
 };
 
-template <> struct traits< arm::set_position_giraffe >
-{
-    template< typename K, typename V > static void visit( const K& k, arm::set_position_giraffe& t, V& v )
-    {
-        traits< command_base < arm::set_position_giraffe > >::visit(k, t, v);
-        v.apply( "position", t.position );
-        double p, l;
-        v.apply( "pan", p );
-        t.pan = p * arm::degree;
-        v.apply( "tilt", l );
-        t.tilt = l * arm::degree;
-    }
-
-    template< typename K, typename V > static void visit( const K& k, const arm::set_position_giraffe& t, V& v )
-    {
-        traits< command_base < arm::set_position_giraffe > >::visit(k, t, v);
-        v.apply( "position", t.position );
-        v.apply( "pan", t.pan.value() );
-        v.apply( "tilt", t.tilt.value() );
-    }
-};
-
 template <> struct traits< arm::set_home >
 {
     template< typename K, typename V > static void visit( const K& k, arm::set_home& t, V& v )
@@ -266,13 +259,13 @@ template <> struct traits< arm::config >
     template< typename K, typename V > static void visit( const K& k, arm::config& t, V& v )
     {
         v.apply( "home_position", t.home_position );
-        v.apply( "is_home_file", t.is_home_file );
+        v.apply( "work_directory", t.work_directory );
     }
 
     template< typename K, typename V > static void visit( const K& k, const arm::config& t, V& v )
     {
         v.apply( "home_position", t.home_position );
-        v.apply( "is_home_file", t.is_home_file );
+        v.apply( "work_directory", t.work_directory );
     }
 };
 
