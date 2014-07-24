@@ -56,6 +56,7 @@ public:
     const scip_encoding< N >& operator=( type rhs ) { return base_type::operator=( rhs ); }
 };
 
+typedef scip_encoding< 2 > scip_2chars_t;
 typedef scip_encoding< 3 > scip_3chars_t;
 typedef scip_encoding< 4 > scip_4chars_t;
 
@@ -167,16 +168,19 @@ struct request_gd : public comma::packed::packed_struct< request_gd, reply_heade
 /// TODO find out this value
 static const char size_of_sum = 1;
 
+/// Verify checksum of the data given that the last byte is the checksum.
+/// Value of checksum is the last 6 bits of the sum of the data bytes
+bool scip_verify_checksum( const std::string& line );
+
 
 /// For calculating the size of the data mixed with checksum and line feeds
 template < int STEPS >
 struct distance_data {
     /// The data is mixed with check sum every 64 bytes
     static const char encoding_num = 3; // 3 character encoding
-    static const unsigned char num_of_sums = (STEPS*encoding_num)/64; // 64 bytes per sum check value
-    static const comma::uint16 value = STEPS*encoding_num + num_of_sums*(size_of_sum + 1); /// adding one for line feed
-
     static const comma::uint16 data_only_size = STEPS*encoding_num; // Has distance and intensity data
+    static const unsigned char num_of_sums = ( (data_only_size)/64 ) + ( data_only_size % 64 > 0 ? 1: 0 ); 
+    static const comma::uint16 value = STEPS*encoding_num + num_of_sums*(size_of_sum + 1); /// adding one for line feed
     
     typedef boost::array< comma::packed::scip_3chars_t, STEPS > points_t;
     comma::packed::string< value > raw_data;   /// data mixed with checksums and linefeeds
@@ -186,7 +190,7 @@ struct distance_data {
         points_t steps;
     };
     
-    void get_values( rays& points ); 
+    void get_values( rays& points ) const; 
     
 };
 
@@ -195,7 +199,8 @@ struct di_data {
     /// The data is mixed with check sum every 64 bytes
     static const char encoding_num = 3; // 3 character encoding
     static const comma::uint16 data_only_size = STEPS*encoding_num*2; // Has distance and intensity data
-    static const unsigned char num_of_sums = (data_only_size)/64; // 64 bytes per sum check value
+    // 64 bytes per sum check value, plus one checksum for remaining bytes
+    static const unsigned char num_of_sums = ( (data_only_size)/64 ) + ( data_only_size % 64 > 0 ? 1: 0 ); 
     static const comma::uint16 value = STEPS*encoding_num + num_of_sums*(size_of_sum + 1); /// adding one for line feed
 
     /// Store an array of contiguous character data - encoded data
@@ -214,21 +219,20 @@ struct di_data {
         points_t steps;
     };
     
-    void get_values( rays& points ); 
+    void get_values( rays& points ) const; 
 };
 
-struct status_t
+struct status_t : comma::packed::packed_struct< status_t, 3 >
 {
-    static const std::size_t size = 3;
-    
-    comma::packed::casted_left_fill< comma::uint16, 2, '0' > status;
+    //comma::packed::casted_left_fill< comma::uint16, 2, '0' > status;
+    comma::packed::scip_2chars_t status;
     char sum;
 };
 
-struct timestamp_t
+struct timestamp_t : comma::packed::packed_struct< timestamp_t, 5 >
 {
     static const std::size_t size = 5;
-    comma::packed::casted_left_fill< comma::uint16, 4, '0' > timestamp; // just a count from 0
+    comma::packed::scip_4chars_t timestamp; // just a count from 0
     char sum;
 };
 
@@ -276,7 +280,7 @@ struct request_md : comma::packed::packed_struct< request_md, reply_header_size 
     sequence_string message_id;
 };
 
-/// This is a reply as an acknowledgement of request - no data
+/// This is a reply as an acknowledgement of reques     t - no data
 struct reply_md : comma::packed::packed_struct< reply_md, request_md::size + status_t::size + 2 > /// 1 for last line feed char
 {
     request_md request;
