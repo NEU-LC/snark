@@ -200,51 +200,6 @@ void serialization::write( std::ostream& os, const std::pair< boost::posix_time:
     os.flush();
 }
 
-static const std::string cvmat_usage_impl_()
-{
-    std::ostringstream oss;
-    oss << "    image fields:" << std::endl;
-    oss << "        t: timestamp" << std::endl;
-    oss << "        rows: number of rows" << std::endl;
-    oss << "        cols: number of columns" << std::endl;
-    oss << "        type: image type, see opencv cv::Mat and cxtypes.hpp:" << std::endl;
-    oss << "            CV_8UC1 (" << CV_8UC1 << ")" << std::endl;
-    oss << "            CV_8UC2 (" << CV_8UC2 << ")" << std::endl;
-    oss << "            CV_8UC3 (" << CV_8UC3 << ")" << std::endl;
-    oss << "            CV_8UC4 (" << CV_8UC4 << ")" << std::endl;
-    oss << "            CV_8SC1 (" << CV_8SC1 << ")" << std::endl;
-    oss << "            CV_8SC2 (" << CV_8SC2 << ")" << std::endl;
-    oss << "            CV_8SC3 (" << CV_8SC3 << ")" << std::endl;
-    oss << "            CV_8SC4 (" << CV_8SC4 << ")" << std::endl;
-    oss << "            CV_16UC1 (" << CV_16UC1 << ")" << std::endl;
-    oss << "            CV_16UC2 (" << CV_16UC2 << ")" << std::endl;
-    oss << "            CV_16UC3 (" << CV_16UC3 << ")" << std::endl;
-    oss << "            CV_16UC4 (" << CV_16UC4 << ")" << std::endl;
-    oss << "            CV_16SC1 (" << CV_16SC1 << ")" << std::endl;
-    oss << "            CV_16SC2 (" << CV_16SC2 << ")" << std::endl;
-    oss << "            CV_16SC3 (" << CV_16SC3 << ")" << std::endl;
-    oss << "            CV_16SC4 (" << CV_16SC4 << ")" << std::endl;
-    oss << "            CV_32SC1 (" << CV_32SC1 << ")" << std::endl;
-    oss << "            CV_32SC2 (" << CV_32SC2 << ")" << std::endl;
-    oss << "            CV_32SC3 (" << CV_32SC3 << ")" << std::endl;
-    oss << "            CV_32SC4 (" << CV_32SC4 << ")" << std::endl;
-    oss << "            CV_32FC1 (" << CV_32FC1 << ")" << std::endl;
-    oss << "            CV_32FC2 (" << CV_32FC2 << ")" << std::endl;
-    oss << "            CV_32FC3 (" << CV_32FC3 << ")" << std::endl;
-    oss << "            CV_32FC4 (" << CV_32FC4 << ")" << std::endl;
-    oss << "            CV_64FC1 (" << CV_64FC1 << ")" << std::endl;
-    oss << "            CV_64FC2 (" << CV_64FC2 << ")" << std::endl;
-    oss << "            CV_64FC3 (" << CV_64FC3 << ")" << std::endl;
-    oss << "            CV_64FC4 (" << CV_64FC4 << ")" << std::endl;
-    return oss.str();
-}
-
-const std::string& serialization::usage()
-{
-    static std::string s = cvmat_usage_impl_();
-    return s;
-}
-
 unsigned int type_from_string_( const std::string& t )
 {
     if( t == "CV_8UC1" || t == "ub" ) { return CV_8UC1; }
@@ -305,35 +260,35 @@ std::string serialization::options::usage()
 std::string serialization::options::type_usage()
 {
     std::stringstream stream;
-    stream << "image types:" << std::endl;
-    stream << "        CV_8UC1 or ub" << std::endl;
-    stream << "        CV_8UC2 or 2ub" << std::endl;
-    stream << "        CV_8UC3 or 3ub" << std::endl;
-    stream << "        CV_8UC4 or 4ub" << std::endl;
-    stream << "        CV_8SC1 or b" << std::endl;
-    stream << "        CV_8SC2 or 2b" << std::endl;
-    stream << "        CV_8SC3 or 3b" << std::endl;
-    stream << "        CV_8SC4 or 4b" << std::endl;
-    stream << "        CV_16UC1 or uw" << std::endl;
-    stream << "        CV_16UC2 or 2uw" << std::endl;
-    stream << "        CV_16UC3 or 3uw" << std::endl;
-    stream << "        CV_16UC4 or 4uw" << std::endl;
-    stream << "        CV_16SC1 or w" << std::endl;
-    stream << "        CV_16SC2 or 2w" << std::endl;
-    stream << "        CV_16SC3 or 3w" << std::endl;
-    stream << "        CV_16SC4 or 4w" << std::endl;
-    stream << "        CV_32SC1 or i" << std::endl;
-    stream << "        CV_32SC2 or 2i" << std::endl;
-    stream << "        CV_32SC3 or 3i" << std::endl;
-    stream << "        CV_32SC4 or 4i" << std::endl;
-    stream << "        CV_32FC1 or f" << std::endl;
-    stream << "        CV_32FC2 or 2f" << std::endl;
-    stream << "        CV_32FC3 or 3f" << std::endl;
-    stream << "        CV_32FC4 or 4f" << std::endl;
-    stream << "        CV_64FC1 or d" << std::endl;
-    stream << "        CV_64FC2 or 2d" << std::endl;
-    stream << "        CV_64FC3 or 3d" << std::endl;
-    stream << "        CV_64FC4 or 4d" << std::endl;
+    stream << "    image types (see opencv cv::Mat and cxtypes.hpp):" << std::endl;
+    stream << "        CV_8UC1  or ub  (" << CV_8UC1 << ")" << std::endl;
+    stream << "        CV_8UC2  or 2ub (" << CV_8UC2 << ")" << std::endl;
+    stream << "        CV_8UC3  or 3ub (" << CV_8UC3 << ")" << std::endl;
+    stream << "        CV_8UC4  or 4ub (" << CV_8UC4 << ")" << std::endl;
+    stream << "        CV_8SC1  or b   (" << CV_8SC1 << ")" << std::endl;
+    stream << "        CV_8SC2  or 2b  (" << CV_8SC2 << ")" << std::endl;
+    stream << "        CV_8SC3  or 3b  (" << CV_8SC3 << ")" << std::endl;
+    stream << "        CV_8SC4  or 4b  (" << CV_8SC4 << ")" << std::endl;
+    stream << "        CV_16UC1 or uw  (" << CV_16UC1 << ")" << std::endl;
+    stream << "        CV_16UC2 or 2uw (" << CV_16UC2 << ")" << std::endl;
+    stream << "        CV_16UC3 or 3uw (" << CV_16UC3 << ")" << std::endl;
+    stream << "        CV_16UC4 or 4uw (" << CV_16UC4 << ")" << std::endl;
+    stream << "        CV_16SC1 or w   (" << CV_16SC1 << ")" << std::endl;
+    stream << "        CV_16SC2 or 2w  (" << CV_16SC2 << ")" << std::endl;
+    stream << "        CV_16SC3 or 3w  (" << CV_16SC3 << ")" << std::endl;
+    stream << "        CV_16SC4 or 4w  (" << CV_16SC4 << ")" << std::endl;
+    stream << "        CV_32SC1 or i   (" << CV_32SC1 << ")" << std::endl;
+    stream << "        CV_32SC2 or 2i  (" << CV_32SC2 << ")" << std::endl;
+    stream << "        CV_32SC3 or 3i  (" << CV_32SC3 << ")" << std::endl;
+    stream << "        CV_32SC4 or 4i  (" << CV_32SC4 << ")" << std::endl;
+    stream << "        CV_32FC1 or f   (" << CV_32FC1 << ")" << std::endl;
+    stream << "        CV_32FC2 or 2f  (" << CV_32FC2 << ")" << std::endl;
+    stream << "        CV_32FC3 or 3f  (" << CV_32FC3 << ")" << std::endl;
+    stream << "        CV_32FC4 or 4f  (" << CV_32FC4 << ")" << std::endl;
+    stream << "        CV_64FC1 or d   (" << CV_64FC1 << ")" << std::endl;
+    stream << "        CV_64FC2 or 2d  (" << CV_64FC2 << ")" << std::endl;
+    stream << "        CV_64FC3 or 3d  (" << CV_64FC3 << ")" << std::endl;
+    stream << "        CV_64FC4 or 4d  (" << CV_64FC4 << ")" << std::endl;
     return stream.str();
 }
 

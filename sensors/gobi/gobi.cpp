@@ -37,15 +37,12 @@
 #include <comma/base/exception.h>
 #include "./gobi.h"
 
-//static void PVDECL pv_callback_( tPvFrame *frame );
-
 namespace snark{ namespace camera{
 
-//static const unsigned int timeOutFactor = 3;
-//static const unsigned int maxRetries = 15; 
-    
 static const unsigned int xenicsPropertyMaxLen = 128;    
-    
+static const boost::posix_time::time_duration xenicsTimeout = boost::posix_time::seconds( 5 );
+static const boost::posix_time::time_duration xenicsSleepDuration = boost::posix_time::milliseconds( 100 );
+
 static const char *xenics_error_to_string_( ErrCode error )
 {
     switch( error )
@@ -81,12 +78,12 @@ static const char *xenics_error_to_string_( ErrCode error )
 }
 
 
-static void xenics_set_attribute_( XCHANDLE& handle, const std::string& property_name, const std::string& value )
+static void xenics_set_attribute_( XCHANDLE& handle, const std::string& name, const std::string& value )
 {
     XPropType property_type;
-    if( XC_GetPropertyType(handle, property_name.c_str(), &property_type) != I_OK ) 
+    if( XC_GetPropertyType(handle, name.c_str(), &property_type) != I_OK ) 
     { 
-        COMMA_THROW( comma::exception, "failed to get property type for \"" << property_name << "\" in xenics_set_attribute_ (or " << property_name << " is unavailable)" ); 
+        COMMA_THROW( comma::exception, "failed to get property type for \"" << name << "\" (or " << name << " is unavailable)" ); 
     }
     ErrCode error_code;
     switch( property_type & XType_Base_Mask )
@@ -94,31 +91,31 @@ static void xenics_set_attribute_( XCHANDLE& handle, const std::string& property
         case XType_Base_Number:
             // xenics API cannot tell if the property value is long or double, so
             // value is interpreted as double if it has a decimal point, otherwise it is interpreted as long
-            if( !( value.find('.') == std::string::npos ) ) error_code = XC_SetPropertyValueF(handle, property_name.c_str(), boost::lexical_cast< double >( value ), "");
-            else error_code = XC_SetPropertyValueL(handle, property_name.c_str(), boost::lexical_cast< long >( value ), "");
+            if( !( value.find('.') == std::string::npos ) ) error_code = XC_SetPropertyValueF(handle, name.c_str(), boost::lexical_cast< double >( value ), "");
+            else error_code = XC_SetPropertyValueL(handle, name.c_str(), boost::lexical_cast< long >( value ), "");
             break;
         case XType_Base_Enum:
         case XType_Base_Bool:
         {
-            error_code = XC_SetPropertyValueL(handle, property_name.c_str(), boost::lexical_cast< long >( value ), "");
+            error_code = XC_SetPropertyValueL(handle, name.c_str(), boost::lexical_cast< long >( value ), "");
             break;
         }
         case XType_Base_String:
-            error_code = XC_SetPropertyValue(handle, property_name.c_str(), value.c_str(), "");
+            error_code = XC_SetPropertyValue(handle, name.c_str(), value.c_str(), "");
             break;
         case XType_Base_Blob:
         default:
-            COMMA_THROW( comma::exception, "unknown (or blob) property type for attribute \"" << property_name << "\"" );
+            COMMA_THROW( comma::exception, "unknown (or blob) property type for attribute \"" << name << "\"" );
     };
-    if( error_code != I_OK ) { COMMA_THROW( comma::exception, "failed to set attribute \"" << property_name << "\": " << xenics_error_to_string_( error_code ) << " (" << error_code << ")" ); }
+    if( error_code != I_OK ) { COMMA_THROW( comma::exception, "failed to set attribute \"" << name << "\": " << xenics_error_to_string_( error_code ) << " (" << error_code << ")" ); }
 }
 
-static std::string xenics_get_attribute_( XCHANDLE& handle, const char* property_name )
+static std::string xenics_get_attribute_( XCHANDLE& handle, const std::string& name )
 {
     XPropType property_type;
-    if( XC_GetPropertyType(handle, property_name, &property_type) != I_OK ) 
+    if( XC_GetPropertyType(handle, name.c_str(), &property_type) != I_OK ) 
     { 
-        COMMA_THROW( comma::exception, "failed to get property type for \"" << property_name << "\" in xenics_get_attribute_ (or " << property_name << " is unavailable)" ); 
+        COMMA_THROW( comma::exception, "failed to get property type for \"" << name << "\" (or " << name << " is unavailable)" ); 
     }
     switch( property_type & XType_Base_Mask )
     {
@@ -126,20 +123,20 @@ static std::string xenics_get_attribute_( XCHANDLE& handle, const char* property
         {
             // using floating point version for all properties since xenics API does not tell if the property value is long or double (XC_GetPropertyValueL can be used if value is an integer)
             double f = 0;
-            XC_GetPropertyValueF(handle, property_name, &f);
+            XC_GetPropertyValueF(handle, name.c_str(), &f);
             return boost::lexical_cast< std::string >( f );          
         }
         case XType_Base_Enum:
         case XType_Base_Bool:
         {
             long n = 0;
-            XC_GetPropertyValueL(handle, property_name, &n);
+            XC_GetPropertyValueL(handle, name.c_str(), &n);
             return boost::lexical_cast< std::string >( n );
         }
         case XType_Base_String:
         {
             char buf[xenicsPropertyMaxLen];
-            XC_GetPropertyValue(handle, property_name, buf, xenicsPropertyMaxLen);
+            XC_GetPropertyValue(handle, name.c_str(), buf, xenicsPropertyMaxLen);
             return std::string( buf );
         }        
         case XType_Base_Blob:
@@ -154,126 +151,80 @@ gobi::attributes_type xenics_attributes_( XCHANDLE& handle )
     int property_count = XC_GetPropertyCount( handle );
     for( int i = 0; i < property_count; ++i ) 
     {
-        char property_name[xenicsPropertyMaxLen];
-        ErrCode error_code = XC_GetPropertyName(handle, i, &property_name[0], xenicsPropertyMaxLen);
+        char name[xenicsPropertyMaxLen];
+        ErrCode error_code = XC_GetPropertyName(handle, i, &name[0], xenicsPropertyMaxLen);
         if( error_code != I_OK ) { COMMA_THROW( comma::exception, "failed to get property name for i=" << i <<" in xenics_attributes_: " << xenics_error_to_string_( error_code ) << " (" << error_code << ")" ); }     
-        attributes.insert( std::make_pair( property_name, xenics_get_attribute_( handle, property_name ) ) ); 
+        std::string value = xenics_get_attribute_( handle, std::string( name ) );
+        attributes.insert( std::make_pair( name, value ) ); 
     }
     return attributes;    
 }
-
-/*
-static cv::Mat pv_as_cvmat_( const tPvFrame& frame )
+        
+static cv::Mat xenics_to_cvmat_( unsigned long height, unsigned long width, FrameType frame_type, std::vector< byte >& frame_buffer )
 {
-    if( frame.Status != ePvErrSuccess ) { return cv::Mat(); }
-    int type;
-    switch( frame.Format )
+    int opencv_type;
+    switch( frame_type )
     {
-        case ePvFmtMono8:
-        case ePvFmtBayer8:
-            type = CV_8UC1;
+        case FT_8_BPP_GRAY:
+            opencv_type = CV_8UC1;
             break;
-        case ePvFmtBayer16:
-        case ePvFmtMono16:
-            type = CV_16UC1;
+        case FT_16_BPP_GRAY:
+            opencv_type = CV_16UC1;
             break;
-        case ePvFmtRgb24:
-        case ePvFmtBgr24:
-            type = CV_8UC3;
+        case FT_32_BPP_GRAY:
+            opencv_type = CV_32SC1; // this case needs to be verified (opencv does not support CV_32UC1 but the camera uses unsigned 32 bit type)
             break;
-        case ePvFmtRgba32:
-        case ePvFmtBgra32:
-            type = CV_8UC4;
+        case FT_32_BPP_RGB:
+        case FT_32_BPP_BGR:
+            opencv_type = CV_8UC3; // this case needs to be verified (3 channels with 8bits each need 24 bits but these types takes 32 bits)
             break;
-        case ePvFmtRgb48:
-            type = CV_16UC3;
+        case FT_32_BPP_RGBA:
+        case FT_32_BPP_BGRA:
+            opencv_type = CV_8UC4;
             break;
-        case ePvFmtYuv411:
-        case ePvFmtYuv422:
-        case ePvFmtYuv444:
-            COMMA_THROW( comma::exception, "unsupported format " << frame.Format );
         default:
-            COMMA_THROW( comma::exception, "unknown format " << frame.Format );
-    };
-    return cv::Mat( frame.Height, frame.Width, type, frame.ImageBuffer );
+            COMMA_THROW( comma::exception, "unknown frame type " << frame_type );
+    }
+    return cv::Mat(height, width, opencv_type, &frame_buffer[0] );
 }
-*/
 
 class gobi::impl
 {
     public:
         impl( std::string address, const attributes_type& attributes ) :
-            address_( address ),
-            started_( false ),
-            timeOut_( 1000 )
+            address_( address )
         {
-            if( address_.empty() ) { COMMA_THROW( comma::exception, "expected camera address, got empty string" ); }
-/*            static const boost::posix_time::time_duration timeout = boost::posix_time::seconds( 5 ); // quick and dirty; make configurable?           
+            if( address_.empty() ) { COMMA_THROW( comma::exception, "expected camera address, got empty string" ); }    
+            std::string camera_name = "gev://" + address_;
             boost::posix_time::ptime now = boost::posix_time::microsec_clock::universal_time();
-            boost::posix_time::ptime end = now + timeout;
-            unsigned int size = 0;
+            boost::posix_time::ptime end = now + xenicsTimeout;             
             for( ; now < end; now = boost::posix_time::microsec_clock::universal_time() )
             {
-                const std::vector< XDeviceInformation >& list = list_cameras();
-                size = list.size();
-                for( unsigned int i = 0; i < list.size(); ++i ) 
-                {
-                    if( std::string(list[i].transport) == "GigEVision"
-                        && list[i].state == XDS_Available
-                        && ( address.empty() || address == list[i].address ) )
-                    {
-                        address_ = list[i].address;
-                        break;
-                    }
-                }
-                if( address_ ) { break; }
-            }
-            if( !address_ ) { COMMA_THROW( comma::exception, "timeout; camera not found" ); }
-            if( address.empty() && size > 1 )
-            {
-                const std::vector< XDeviceInformation >& list = list_cameras();
-                std::stringstream stream;
-                for( std::size_t i = 0; i < list.size(); ++i ) // todo: serialize properly with name-value
-                {
-                    stream << "id=" << list[i].pid << "," << "name=\"" << list[i].name << "\"" << "," << "serial=\"" << list[i].serial << "\"" << "," << "address=\"" << list[i].address << "\"" << std::endl;
-                }
-                COMMA_THROW( comma::exception, "no address provided and multiple cameras found: would pick up a random one\n\tavailable cameras:\n" << stream.str() );
-            } 
-*/
-            static const boost::posix_time::time_duration timeout = boost::posix_time::seconds( 5 ); // quick and dirty; make configurable?
-            boost::posix_time::ptime now = boost::posix_time::microsec_clock::universal_time();
-            boost::posix_time::ptime end = now + timeout;           
-            std::string camera_name = "gev://" + address_;
-            handle_ = XC_OpenCamera( camera_name.c_str() );
-            for( ; ( !XC_IsInitialised(handle_) ) && ( now < end ); now = boost::posix_time::microsec_clock::universal_time() )
-            {
-                boost::thread::sleep( now + boost::posix_time::milliseconds( 10 ) );
                 handle_ = XC_OpenCamera( camera_name.c_str() );
+                if( XC_IsInitialised( handle_ ) ) break;
+                boost::this_thread::sleep( xenicsSleepDuration );
             }
             if( !XC_IsInitialised(handle_) ) { close(); COMMA_THROW( comma::exception, "failed to open gobi camera " + camera_name ); }
-
             set( attributes );
-/*
-            PvAttrEnumSet( handle_, "AcquisitionMode", "Continuous" );
-            PvAttrEnumSet( handle_, "FrameStartTriggerMode", "FixedRate" );
-            ::memset( &frame_, 0, sizeof( tPvFrame ) ); // voodoo
-            result = PvAttrUint32Get( handle_, "TotalBytesPerFrame", &total_bytes_per_frame_ );
-            if( result != ePvErrSuccess ) { close(); COMMA_THROW( comma::exception, "failed to get TotalBytesPerFrame from gobi camera " << *id_ << ": " << xenics_error_to_string_( result ) << " (" << result << ")" ); }
-            buffer_.resize( total_bytes_per_frame_ );
-            frame_.ImageBuffer = &buffer_[0];
-            frame_.ImageBufferSize = total_bytes_per_frame_;
-            float frameRate;
-            PvAttrFloat32Get( handle_, "FrameRate", &frameRate);
-            timeOut_ = 1000 / frameRate;
-            timeOut_ *= timeOutFactor;
-*/
+            height_ = boost::lexical_cast< unsigned long >( XC_GetHeight( handle_ ) );
+            width_ = boost::lexical_cast< unsigned long >( XC_GetWidth( handle_ ) );
+            frame_type_ = XC_GetFrameType( handle_ );            
+            total_bytes_per_frame_ = boost::lexical_cast< unsigned long >( XC_GetFrameSize( handle_ ) );
+            frame_buffer_.resize( total_bytes_per_frame_ );
         }
         
         void set( const attributes_type& attributes )
         {
-             for( attributes_type::const_iterator i = attributes.begin(); i != attributes.end(); ++i )
+            for( attributes_type::const_iterator i = attributes.begin(); i != attributes.end(); ++i )
             {
-                xenics_set_attribute_( handle_, i->first, i->second );
+                std::string name = i->first;
+                std::string value = i->second;
+                xenics_set_attribute_( handle_, name, value );
+                std::string returned_value = xenics_get_attribute_( handle_, name );
+                if( returned_value != value)
+                {
+                    COMMA_THROW( comma::exception, "failed to set " << name << " to " << value << " (the camera returns " << returned_value << ")" );
+                }
             }     
         }
         
@@ -282,66 +233,41 @@ class gobi::impl
         void close()
         {
             address_ = "";
-            if( XC_IsInitialised(handle_)  ) { XC_CloseCamera( handle_ ); }
+            if( XC_IsCapturing( handle_ ) ) 
+            {
+                ErrCode error_code = XC_StopCapture( handle_ );
+                if( error_code != I_OK )
+                {
+                    COMMA_THROW( comma::exception, "failed to stop capturing frames from xenics camera at " << address_ << ": " << xenics_error_to_string_( error_code ) << "(" << error_code << ")" );
+                }
+            }
+            if( XC_IsInitialised( handle_ ) ) XC_CloseCamera( handle_ );
         }
         
         std::pair< boost::posix_time::ptime, cv::Mat > read()
         {
-            std::pair< boost::posix_time::ptime, cv::Mat > pair;
-            bool success = false;
-/*          
-            unsigned int retries = 0;
-            while( !success && retries < maxRetries )
+            if( !XC_IsCapturing( handle_ ) )
             {
-                tPvErr result = ePvErrSuccess;
-                if( !started_ )
+                ErrCode error_code = XC_StartCapture( handle_ );
+                if( error_code != I_OK )
                 {
-                    result = PvCaptureStart( handle_ );
+                    COMMA_THROW( comma::exception, "failed to start frame capture from xenics camera at " << address_ << ": " << xenics_error_to_string_( error_code ) << "(" << error_code << ")" );
                 }
-                if( result == ePvErrSuccess )
-                {
-                    result = PvCaptureQueueFrame( handle_, &frame_, 0 );
-                    if( result == ePvErrSuccess )
-                    {
-                        if( !started_ )
-                        {
-                            result = PvCommandRun( handle_, "AcquisitionStart" );
-                            started_ = true;
-                        }
-                        if( result == ePvErrSuccess )
-                        {
-                            result = PvCaptureWaitForFrameDone( handle_, &frame_, timeOut_ );
-                            if( result == ePvErrSuccess )
-                            {
-                                result = frame_.Status;
-                            }
-                            pair.first = boost::posix_time::microsec_clock::universal_time();
-                        }
-                    }
-                }
-                if( result == ePvErrSuccess )
-                {
-                    pair.second = pv_as_cvmat_( frame_ );
-                    success = true;
-                }
-                else if( result == ePvErrDataMissing || result == ePvErrTimeout )
-                {
-                    PvCaptureQueueClear( handle_ );
-                    PvCommandRun( handle_, "AcquisitionStop" );
-                    PvCaptureEnd( handle_ );
-                    started_ = false;
-                }
-                else
-                {
-                    COMMA_THROW( comma::exception, "got frame with invalid status on camera " << *id_ << ": " << xenics_error_to_string_( result ) << "(" << result << ")" );
-                    close();                    
-                }
-                retries++;
             }
-*/            
-            if( success ) { return pair; }
-            COMMA_THROW( comma::exception, "got lots of missing frames or timeouts" << std::endl << std::endl << "it is likely that MTU size on your machine is less than packet size" << std::endl << "check PacketSize attribute (gobi-cat --list-attributes)" << std::endl << "set packet size (e.g. gobi-cat --set=PacketSize=1500)" << std::endl << "or increase MTU size on your machine" );
-        }
+            std::pair< boost::posix_time::ptime, cv::Mat > pair;
+            ErrCode error_code = XC_GetFrame( handle_, FT_NATIVE, XGF_Blocking | XGF_NoConversion, &frame_buffer_[0], total_bytes_per_frame_ );
+            if( error_code == I_OK)
+            {
+                pair.first = boost::posix_time::microsec_clock::universal_time();
+                pair.second = xenics_to_cvmat_( height_, width_, frame_type_, frame_buffer_ );
+            }
+            else
+            {
+                COMMA_THROW( comma::exception, "failed to get a frame from xenics camera at address " << address_ << ": " << xenics_error_to_string_( error_code ) << "(" << error_code << ")" );
+                close();                    
+            }      
+            return pair;
+        }                
 
         const XCHANDLE& handle() const { return handle_; }
         
@@ -349,105 +275,49 @@ class gobi::impl
 
         std::string address() const { return address_; }
 
-//        unsigned long total_bytes_per_frame() const { return total_bytes_per_frame_; }
+        unsigned long total_bytes_per_frame() const { return total_bytes_per_frame_; }
 
         static std::vector< XDeviceInformation > list_cameras()
         {
-            static const boost::posix_time::time_duration timeout = boost::posix_time::seconds( 5 ); // quick and dirty; make configurable?
+            std::vector< XDeviceInformation > list;
             boost::posix_time::ptime now = boost::posix_time::microsec_clock::universal_time();
-            boost::posix_time::ptime end = now + timeout;
-            std::vector< XDeviceInformation > devices;
+            boost::posix_time::ptime end = now + xenicsTimeout;
             for( ; now < end; now = boost::posix_time::microsec_clock::universal_time() )
             {
-                unsigned int device_count = 0;
-                XCD_EnumerateDevices(NULL, &device_count, XEF_GigEVision);
-                if (device_count == 0) { break; }
-                devices.resize( device_count );
-                XCD_EnumerateDevices(&devices[0], &device_count, XEF_UseCached);
-                boost::thread::sleep( now + boost::posix_time::milliseconds( 10 ) );
+                unsigned int camera_count = 0;
+                if( XCD_EnumerateDevices(NULL, &camera_count, XEF_GigEVision) == I_OK && camera_count != 0)
+                {
+                    list.resize( camera_count );
+                    if( XCD_EnumerateDevices(&list[0], &camera_count, XEF_UseCached) == I_OK ) break;
+                }
+                boost::this_thread::sleep( xenicsSleepDuration );
             }
-            return devices;
+            return list;
         }
         
-        static std::string format_camera_info(const XDeviceInformation& device)
+        static std::string format_camera_info(const XDeviceInformation& camera_info)
         {
-            std::string state = device.state == XDS_Available ? "Available" : device.state == XDS_Busy ? "Busy" : "Unreachable";
+            std::string state = camera_info.state == XDS_Available ? "Available" : camera_info.state == XDS_Busy ? "Busy" : "Unreachable";
             std::stringstream output;
-            output << "id=" << device.pid << "," 
-                   << "name=\"" << device.name << "\"" << "," 
-                   << "serial=\"" << device.serial << "\"" << "," 
-                   << "address=\"" << device.address << "\"" << ","
-                   << "transport=\"" << device.transport << "\"" << "," 
+            output << "id=" << camera_info.pid << "," 
+                   << "name=\"" << camera_info.name << "\"" << "," 
+                   << "serial=\"" << camera_info.serial << "\"" << "," 
+                   << "address=\"" << camera_info.address << "\"" << ","
+                   << "transport=\"" << camera_info.transport << "\"" << "," 
                    << "state=\"" << state << "\"";
             return output.str();
         }
     private:
-//        friend class gobi::callback::impl;
         XCHANDLE handle_;
-//        tPvFrame frame_;
-//        std::vector< char > buffer_;
+        unsigned long height_;
+        unsigned long width_;
+        FrameType frame_type_;
+        unsigned long total_bytes_per_frame_;
+        std::vector< byte > frame_buffer_;
         std::string address_;
-//        boost::optional< std::string > address_;
-//        boost::optional< unsigned int > id_;
-//        unsigned long total_bytes_per_frame_;
-        bool started_;
-        unsigned int timeOut_; // milliseconds        
 };
-
-/*
-class gobi::callback::impl
-{
-    public:
-        typedef boost::function< void ( const std::pair< boost::posix_time::ptime, cv::Mat >& ) > OnFrame;
-        
-        impl( gobi& gobi, OnFrame on_frame )
-            : on_frame( on_frame )
-            , handle( gobi.pimpl_->handle() )
-            , frame( gobi.pimpl_->frame_ )
-            , good( true )
-            , is_shutdown( false )
-        {
-            tPvErr result;
-            PvCaptureQueueClear( handle );
-            frame.Context[0] = this;
-            result = PvCaptureStart( handle );
-            if( result != ePvErrSuccess ) { COMMA_THROW( comma::exception, "failed to start capturing on camera " << gobi.pimpl_->id() << ": " << xenics_error_to_string_( result ) << " (" << result << ")" ); }
-            result = PvCaptureQueueFrame( handle, &frame, pv_callback_ );
-            if( result != ePvErrSuccess ) { COMMA_THROW( comma::exception, "failed to set capture queue frame on camera " << gobi.pimpl_->id() << ": " << xenics_error_to_string_( result ) << " (" << result << ")" ); }
-            result = PvCommandRun( handle, "AcquisitionStart" );
-            if( result != ePvErrSuccess ) { COMMA_THROW( comma::exception, "failed to start acquisition on camera " << gobi.pimpl_->id() << ": " << xenics_error_to_string_( result ) << " (" << result << ")" ); }
-        }
-
-        ~impl()
-        {
-            is_shutdown = true;
-            PvCommandRun( handle, "Acquisitionstop" );
-            PvCaptureQueueClear( handle );
-            PvCaptureEnd( handle );
-        }
-
-        OnFrame on_frame;
-        tPvHandle& handle;
-        tPvFrame& frame;
-        bool good;
-        bool is_shutdown;
-};
-*/
 
 } } // namespace snark{ namespace camera{
-
-/*
-static void PVDECL pv_callback_( tPvFrame *frame )
-{
-    snark::camera::gobi::callback::impl* c = reinterpret_cast< snark::camera::gobi::callback::impl* >( frame->Context[0] );
-    if( c->is_shutdown ) { return; }
-    std::pair< boost::posix_time::ptime, cv::Mat > m( boost::posix_time::microsec_clock::universal_time(), cv::Mat() );
-    if( frame ) { m.second = snark::camera::pv_as_cvmat_( *frame ); }
-    c->on_frame( m );
-    tPvErr result = PvCaptureQueueFrame( c->handle, &c->frame, pv_callback_ );
-    if( result != ePvErrSuccess ) { c->good = false; }
-}
-*/
 
 namespace snark{ namespace camera{
 
@@ -461,23 +331,14 @@ void gobi::close() { pimpl_->close(); }
 
 std::vector< XDeviceInformation > gobi::list_cameras() { return gobi::impl::list_cameras(); }
 
-std::string gobi::format_camera_info( const XDeviceInformation& device ) { return gobi::impl::format_camera_info( device ); }
+std::string gobi::format_camera_info( const XDeviceInformation& camera_info ) { return gobi::impl::format_camera_info( camera_info ); }
 
 std::string gobi::address() const { return pimpl_->address(); }
 
-//unsigned long gobi::total_bytes_per_frame() const { return pimpl_->total_bytes_per_frame(); }
+unsigned long gobi::total_bytes_per_frame() const { return pimpl_->total_bytes_per_frame(); }
 
 gobi::attributes_type gobi::attributes() const { return xenics_attributes_( pimpl_->handle() ); }
 
-/*
-gobi::callback::callback( gobi& gobi, boost::function< void ( std::pair< boost::posix_time::ptime, cv::Mat > ) > on_frame )
-    : pimpl_( new callback::impl( gobi, on_frame ) )
-{
-}
-*/
-
-//gobi::callback::~callback() { delete pimpl_; }
-
-//bool gobi::callback::good() const { return pimpl_->good; }
+void gobi::set(const gobi::attributes_type& attributes ) { pimpl_->set( attributes ); }
 
 } } // namespace snark{ namespace camera{

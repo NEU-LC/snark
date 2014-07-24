@@ -1,9 +1,10 @@
 # - Try to find Xenics Gobi640GigE SDK library installation
-# the library for Linux 64-bit can be downloaded from www.xenics.com/files/support/Linux_SDK_25.zip
+# the library for 64-bit Linux can be downloaded from www.xenics.com/files/support/Linux_SDK_25.zip
 #
 # The following variables are searched for defaults
 #  XenicsGobi640GigE_DIR:         Base directory of Xenics Gobi640GigE SDK tree to use.
-#  Note that Xeneth SDK version 2.5 (Linux 64-bit release 409) provides only the dynamic library, which is placed in /usr/lib64. The headers are placed in /usr/share/xeneth
+#
+#  Note that Xeneth SDK version 2.5 (64-bit Linux release 409) provides only the dynamic library, which is placed in /usr/lib64. The headers are placed in /usr/share/xeneth
 #
 # The following are set after configuration is done:
 #  XenicsGobi640GigE_FOUND
@@ -27,7 +28,7 @@ FIND_PATH (XenicsGobi640GigE_INCLUDE_DIR
 ################################
 # Find the Library Directory
 
-# - /usr/lib64 on Linux 64-bit
+# /usr/lib64 on Linux 64-bit
 FIND_PATH (XenicsGobi640GigE_LINK_DIRECTORIES
   NAMES
   # Windows SDK (prefer static lib)

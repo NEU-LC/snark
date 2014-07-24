@@ -48,7 +48,6 @@ int main( int argc, char** argv )
     try
     {
         std::string fields;
-        unsigned int id;
         std::string address;
         std::string setattributes;
         unsigned int discard;
@@ -56,14 +55,12 @@ int main( int argc, char** argv )
         description.add_options()
             ( "help,h", "display help message" )
             ( "set", boost::program_options::value< std::string >( &setattributes ), "set camera attributes as semicolon-separated name-value pairs" )
-            ( "set-and-exit", "set camera attributes specified in --set and exit" )
-            ( "id", boost::program_options::value< unsigned int >( &id )->default_value( 0 ), "this option is ignored (use --address to specify the ip address of the camera)" )
             ( "address", boost::program_options::value< std::string >( &address )->default_value( "" ), "ip address of the camera" )
             ( "discard", "discard frames, if cannot keep up; same as --buffer=1" )
             ( "buffer", boost::program_options::value< unsigned int >( &discard )->default_value( 0 ), "maximum buffer size before discarding frames, default: unlimited" )
             ( "fields,f", boost::program_options::value< std::string >( &fields )->default_value( "t,rows,cols,type" ), "header fields, possible values: t,rows,cols,type,size" )
             ( "list-attributes", "output current camera attributes" )
-            ( "list-cameras", "list all cameras and exit" )
+            ( "list-cameras", "list all cameras" )
             ( "header", "output header only" )
             ( "no-header", "output image data only" )
             ( "verbose,v", "be more verbose" );
@@ -106,11 +103,11 @@ int main( int argc, char** argv )
         if( verbose ) { std::cerr << "gobi-cat: connecting..." << std::endl; }
         snark::camera::gobi camera( address, attributes );
         if( verbose ) { std::cerr << "gobi-cat: connected to a xenics camera at address " << camera.address() << std::endl; }
-//        if( verbose ) { std::cerr << "gobi-cat: total bytes per frame: " << camera.total_bytes_per_frame() << std::endl; }
-        if( vm.count( "set-and-exit" ) ) { return 0; }
+        if( verbose ) { std::cerr << "gobi-cat: total bytes per frame: " << camera.total_bytes_per_frame() << std::endl; }
+        if( vm.count( "set" ) ) { return 0; }
         if( vm.count( "list-attributes" ) )
         {
-            attributes = camera.attributes(); // quick and dirty
+            attributes = camera.attributes();
             for( snark::camera::gobi::attributes_type::const_iterator it = attributes.begin(); it != attributes.end(); ++it )
             {
                 if( it != attributes.begin() ) { std::cout << std::endl; }
@@ -120,7 +117,7 @@ int main( int argc, char** argv )
             std::cout << std::endl;
             return 0;
         }
-
+               
         std::vector< std::string > v = comma::split( fields, "," );
         comma::csv::format format;
         for( unsigned int i = 0; i < v.size(); ++i )
@@ -142,8 +139,8 @@ int main( int argc, char** argv )
             serialization.reset( new snark::cv_mat::serialization( fields, format, vm.count( "header" ) ) );
         }
         snark::tbb::bursty_reader< Pair > reader( boost::bind( &capture, boost::ref( camera ) ), discard );
-//        snark::imaging::applications::pipeline pipeline( *serialization, filters, reader );
-//        pipeline.run();
+        snark::imaging::applications::pipeline pipeline( *serialization, filters, reader );
+        pipeline.run();
         return 0;
     }
     catch( std::exception& ex )
