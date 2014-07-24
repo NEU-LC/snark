@@ -9,9 +9,9 @@ bool scip_verify_checksum(const std::string& line)
 
     comma::uint32 sum = 0;
     for( std::size_t i=0; i<line.size()-1; ++i ) { sum += line[i]; } 
-    std::cerr  << "sum of " << line.substr( 0, line.size()-1 ) << " (" << line.size()-1 << "bytes)" << " is " << sum << std::endl;
+//     std::cerr  << "sum of " << line.substr( 0, line.size()-1 ) << " (" << line.size()-1 << "bytes)" << " is " << sum << std::endl;
     sum = (sum & hokuyo::mask) + 0x30;
-    std::cerr  << "after mask " << sum << std::endl;
+//     std::cerr  << "after mask " << sum << std::endl;
     return ( sum == comma::uint32( line[ line.size()-1 ] ) );
 }
 
@@ -68,7 +68,9 @@ template class di_data< 11 >;
 template class distance_data< 101 >;    
 template class di_data< 101 >;    
 
-template class distance_data< 1080 >;    
-template class di_data< 1080 >;    
+template class distance_data< 1081 >;    
+template class distance_data< 271 >;    
+template class di_data< 1081 >;    
+template class di_data< 271 >;    
 
 } } // namespace snark { namespace hokuyo {

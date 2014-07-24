@@ -47,6 +47,31 @@ namespace hok = snark::hokuyo;
 namespace packed = comma::packed;
 
 
+TEST( hokuyo_encoding, scip_format )
+{
+    const std::string data( "1Dh");
+
+    const packed::scip_3chars_t* h3 = reinterpret_cast< const packed::scip_3chars_t* >( &data[0] );
+
+    comma::uint32 value = 5432;
+    EXPECT_EQ( value, (*h3)() );
+    packed::scip_3chars_t h3_data;
+    h3_data = value;
+    std::string out( h3_data.data(), 3 );
+    EXPECT_EQ( data, out );
+
+
+    const std::string data4 = "m2@0";
+    const comma::uint32 value4 = 16000000;
+    const packed::scip_4chars_t* h4 = reinterpret_cast< const packed::scip_4chars_t* >( &data4[0] );
+    EXPECT_EQ( value4, (*h4)() );
+
+    packed::scip_4chars_t h4_data;
+    h4_data = value4;
+    std::string out4( h4_data.data(), 4 );
+    EXPECT_EQ( data4, out4 );
+}
+
 TEST( hokuyo_packed, requests )
 {
     hok::header header;
@@ -100,7 +125,7 @@ TEST( hokuyo_packed, requests )
     
 }
 
-TEST( hokuyo_packed, scip_response )
+TEST( hokuyo_packed, scip_gd_response )
 {
     hok::request_gd gd;
     gd.header.start_step = 0;
@@ -172,41 +197,141 @@ TEST( hokuyo_packed, scip_response )
 
 }
 
-TEST( hokuyo_encoding, scip_format )
+TEST( hokuyo_packed, scip_me_response )
 {
-    const std::string data( "1Dh");
-
-    const packed::scip_3chars_t* h3 = reinterpret_cast< const packed::scip_3chars_t* >( &data[0] );
-
-    comma::uint32 value = 5432;
-    EXPECT_EQ( value, (*h3)() );
-    packed::scip_3chars_t h3_data;
-    h3_data = value;
-    std::string out( h3_data.data(), 3 );
-    EXPECT_EQ( data, out );
-
-
-    const std::string data4 = "m2@0";
-    const comma::uint32 value4 = 16000000;
-    const packed::scip_4chars_t* h4 = reinterpret_cast< const packed::scip_4chars_t* >( &data4[0] );
-    EXPECT_EQ( value4, (*h4)() );
-
-    packed::scip_4chars_t h4_data;
-    h4_data = value4;
-    std::string out4( h4_data.data(), 4 );
-    EXPECT_EQ( data4, out4 );
+    // asks for three scans
+//  const char* request = "ME0100011000003;ME00000222\n";
+    
+    const char* me_response = "ME0100011000003;ME00000222\n"
+    "00P\n";
+    
+    /// Note not showing one scan here - because we asked for 3 scans
+    
+    /// Note the 01 before the ';' means that remaining number of scans is 1
+    const char* me_data = "ME0100011000001;ME00000222\n"
+        "99b\n"
+        "iSH[O\n"
+        "0Id06k0J:06l0IY064?om000?om0000K10670Kd06G0M@06K0Mg06f0M^06X0Mh0G\n"
+        "6Hn\n\n";
+      
+    const hok::reply_md* me = reinterpret_cast< const hok::reply_md* >( me_response ); 
+    EXPECT_EQ( "00P", std::string( me->status.data(), hok::status_t::size ) );
+    EXPECT_TRUE( hok::scip_verify_checksum( std::string( me->status.data(), hok::status_t::size ) ) );
+    
+    
+    const hok::reply_me_data< 11 >* results = reinterpret_cast< const hok::reply_me_data< 11 >* >( me_data );
+    EXPECT_EQ( 1, results->request.num_of_scans() ); // 2nd scan of 3
+    
+    hok::di_data< 11 >::rays rays;
+    results->data.get_values( rays);
+    
+    {
+        std::ostringstream ss;
+        for( std::size_t i=0; i<11; ++i )
+        {
+            ss << rays.steps[i].distance() << ':' << rays.steps[i].intensity() << ' ';
+        }
+        // pairs of distance(mm) and intensity 
+        EXPECT_EQ( "1652:443 1674:444 1641:388 65533:0 65533:0 1729:391 1780:407 1872:411 1911:438 1902:424 1912:384 ", ss.str() );
+    }
+    
+    /// Note the 00 before the ';' means that remaining number of scans is 0
+    me_data = "ME0100011000000;ME00000222\n"
+        "99b\n"
+        "9D7cG\n"
+        "0Il0770Ij06e0J306<?om000?om000?om000?om0000ME06R0M\\06V0M_06X0Me0W\n"
+        "6T:\n\n";
+    results = reinterpret_cast< const hok::reply_me_data< 11 >* >( me_data );
+    EXPECT_EQ( 0, results->request.num_of_scans() ); // 2nd scan of 3
+    results->data.get_values( rays);
+    
+    {
+        std::ostringstream ss;
+        for( std::size_t i=0; i<11; ++i )
+        {
+            ss << rays.steps[i].distance() << ':' << rays.steps[i].intensity() << ' ';
+        }
+        // pairs of distance(mm) and intensity 
+        EXPECT_EQ( "1660:455 1658:437 1667:396 65533:0 65533:0 65533:0 65533:0 1877:418 1900:422 1903:424 1909:384 ", ss.str() );
+    }
+}
+TEST( hokuyo_packed, scip_md_response )
+{
+    // asks for two scans
+    // const char* request = "MD0100011000002;MD00000222\n"
+    
+    /// Note the 01 before the ';' means that remaining number of scans is 1
+    const char* md_data = "MD0100011000001;MD00000222\n"
+    "99b\n"
+    "Cl21B\n"
+    "?om?om?om?om?om?om?om?om?om0JH0JJi\n\n"
+    ;
+      
+    
+    const hok::reply_md_data< 11 >* results = reinterpret_cast< const hok::reply_md_data< 11 >* >( md_data );
+    EXPECT_EQ( 1, results->request.num_of_scans() ); // 1st scan of 2
+    
+    hok::distance_data< 11 >::rays rays;
+    results->data.get_values( rays);
+    
+    {
+        std::ostringstream ss;
+        for( std::size_t i=0; i<11; ++i )
+        {
+            ss << rays.steps[i]() << ' ';
+        }
+        // distance data, 65533 is error
+        EXPECT_EQ( "65533 65533 65533 65533 65533 65533 65533 65533 65533 1688 1664 ", ss.str() );
+    }
+    
+    /// Note the 00 before the ';' means that remaining number of scans is 0
+    md_data = "MD0100011000000;MD00000222\n"
+        "99b\n"
+        "Cl2J[\n"
+        "?om?om?om?om?om?om?om?om?om0JI0JCc\n\n";
+        
+    results = reinterpret_cast< const hok::reply_md_data< 11 >* >( md_data );
+    EXPECT_EQ( 0, results->request.num_of_scans() ); // 2nd scan of 3
+    results->data.get_values( rays);
+    
+    {
+        std::ostringstream ss;
+        for( std::size_t i=0; i<11; ++i )
+        {
+            ss << rays.steps[i]() << ' ';
+        }
+        // pairs of distance(mm) and intensity 
+        EXPECT_EQ( "65533 65533 65533 65533 65533 65533 65533 65533 65533 1689 1664 ", ss.str() );
+    }
 }
 
-TEST( hokuyo, strip_checksum )
+TEST( hokuyo_packed, scip_ge_response )
 {
-//     hok::distance_data< 4 > data;
-//     hok::distance_data< 4 >::rays points;
-//     
-//     data.get_values( points );
-//     
-//     hok::di_data< 4 > data2;
-//     hok::di_data< 4 >::rays points2;
-//     
-//     data2.get_values( points2 );
+    hok::request_gd ge( true );
+    ge.header.start_step = 0;
+    ge.header.end_step = 10;
+    ge.message_id.seq_num = 1111;
+    
+//     const char* request = "GE0000001000;GE00001111";
+    
+    const char* reply = "GE0000001000;GE00001111\n"
+    "00P\n"
+    "`mK3;\n"
+    "0NC0<O0Mg0<Y0Je0<d0I[0<I0I90;00H]0:P0HD0:30H109l0H50;F0H40;X0Gj0^\n"
+    ":cM\n\n";
+    
+    EXPECT_TRUE( hok::scip_verify_checksum( std::string( "`mK3;" ) ) );
+    EXPECT_TRUE( hok::scip_verify_checksum( std::string( "0NC0<O0Mg0<Y0Je0<d0I[0<I0I90;00H]0:P0HD0:30H109l0H50;F0H40;X0Gj0^" ) ) );
+    EXPECT_TRUE( hok::scip_verify_checksum( std::string( ":cM" ) ) );
+
+    const hok::reply_ge< 11 >* ge_reply = reinterpret_cast< const hok::reply_ge< 11 >* >( reply );
+    EXPECT_EQ( "00P", std::string( ge_reply->status.data(), hok::status_t::size ) );
+    EXPECT_EQ( 0, ge_reply->status.status() );
+
+    typedef hok::di_data< 11 > data_t;
+    data_t::rays rays;
+    ge_reply->data.get_values( rays );
+    
+    
 }
 

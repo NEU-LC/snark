@@ -81,7 +81,9 @@ public:
     
     static T unpack( const char* storage )
     {
-        return boost::lexical_cast< T >( comma::strip( std::string( storage, size ), Padding ) );
+        // do not strip if Padding is '0' e.g. representing of '00'
+        std::string value_str = Padding == '0' ? std::string( storage, size ) : comma::strip( std::string( storage, size ), Padding );
+        return boost::lexical_cast< T >( value_str );
     }
     
     const casted_left_fill& operator=( const T& rhs ) { return base_type::operator=( rhs ); }
@@ -180,7 +182,7 @@ struct distance_data {
     static const char encoding_num = 3; // 3 character encoding
     static const comma::uint16 data_only_size = STEPS*encoding_num; // Has distance and intensity data
     static const unsigned char num_of_sums = ( (data_only_size)/64 ) + ( data_only_size % 64 > 0 ? 1: 0 ); 
-    static const comma::uint16 value = STEPS*encoding_num + num_of_sums*(size_of_sum + 1); /// adding one for line feed
+    static const comma::uint16 value = data_only_size + num_of_sums*(size_of_sum + 1); /// adding one for line feed
     
     typedef boost::array< comma::packed::scip_3chars_t, STEPS > points_t;
     comma::packed::string< value > raw_data;   /// data mixed with checksums and linefeeds
@@ -200,8 +202,8 @@ struct di_data {
     static const char encoding_num = 3; // 3 character encoding
     static const comma::uint16 data_only_size = STEPS*encoding_num*2; // Has distance and intensity data
     // 64 bytes per sum check value, plus one checksum for remaining bytes
-    static const unsigned char num_of_sums = ( (data_only_size)/64 ) + ( data_only_size % 64 > 0 ? 1: 0 ); 
-    static const comma::uint16 value = STEPS*encoding_num + num_of_sums*(size_of_sum + 1); /// adding one for line feed
+    static const unsigned char num_of_sums = ( (data_only_size)/64 ) + ( data_only_size % 64 > 0 ? 1 : 0 ); 
+    static const comma::uint16 value = data_only_size + num_of_sums*(size_of_sum + 1); /// adding one for line feed
 
     /// Store an array of contiguous character data - encoded data
     
@@ -224,8 +226,9 @@ struct di_data {
 
 struct status_t : comma::packed::packed_struct< status_t, 3 >
 {
-    //comma::packed::casted_left_fill< comma::uint16, 2, '0' > status;
-    comma::packed::scip_2chars_t status;
+    // TODO: this maybe SCIP encoding
+    comma::packed::casted_left_fill< comma::uint16, 2, '0' > status;
+    //comma::packed::scip_2chars_t status;
     char sum;
 };
 
