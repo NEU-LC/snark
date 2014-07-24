@@ -49,6 +49,9 @@ class auto_initialization
     comma::signal_flag& signaled_;  /// Check if signal received
     arm::inputs& inputs_;   // to check if new command/s are received
     std::string name_;  // name of the executable running this
+    /// This is the value of force limit on arm before failing auto initialisation.
+    /// Should not be 0 as there is a laszer mount?
+    double force_max_; // newtons
     
     const std::string& name() const { return name_; }
     /// Get the latest status from the arm
@@ -60,7 +63,7 @@ public:
                          comma::signal_flag& signaled, arm::inputs& inputs ) : 
         status_( status ), os( robot ),
         iss_(status_iss), select_( select ), signaled_( signaled ),
-        inputs_( inputs ) {}
+        inputs_( inputs ), force_max_( 0.0 ) {}
     
     void set_app_name( const char* name ) { name_ = name; }
     /// Performs auto initialisation but also listens for new commands.
