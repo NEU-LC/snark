@@ -78,12 +78,12 @@ static const char *xenics_error_to_string_( ErrCode error )
 }
 
 
-static void xenics_set_attribute_( XCHANDLE& handle, const std::string& property_name, const std::string& value )
+static void xenics_set_attribute_( XCHANDLE& handle, const std::string& name, const std::string& value )
 {
     XPropType property_type;
-    if( XC_GetPropertyType(handle, property_name.c_str(), &property_type) != I_OK ) 
+    if( XC_GetPropertyType(handle, name.c_str(), &property_type) != I_OK ) 
     { 
-        COMMA_THROW( comma::exception, "failed to get property type for \"" << property_name << "\" (or " << property_name << " is unavailable)" ); 
+        COMMA_THROW( comma::exception, "failed to get property type for \"" << name << "\" (or " << name << " is unavailable)" ); 
     }
     ErrCode error_code;
     switch( property_type & XType_Base_Mask )
@@ -91,31 +91,31 @@ static void xenics_set_attribute_( XCHANDLE& handle, const std::string& property
         case XType_Base_Number:
             // xenics API cannot tell if the property value is long or double, so
             // value is interpreted as double if it has a decimal point, otherwise it is interpreted as long
-            if( !( value.find('.') == std::string::npos ) ) error_code = XC_SetPropertyValueF(handle, property_name.c_str(), boost::lexical_cast< double >( value ), "");
-            else error_code = XC_SetPropertyValueL(handle, property_name.c_str(), boost::lexical_cast< long >( value ), "");
+            if( !( value.find('.') == std::string::npos ) ) error_code = XC_SetPropertyValueF(handle, name.c_str(), boost::lexical_cast< double >( value ), "");
+            else error_code = XC_SetPropertyValueL(handle, name.c_str(), boost::lexical_cast< long >( value ), "");
             break;
         case XType_Base_Enum:
         case XType_Base_Bool:
         {
-            error_code = XC_SetPropertyValueL(handle, property_name.c_str(), boost::lexical_cast< long >( value ), "");
+            error_code = XC_SetPropertyValueL(handle, name.c_str(), boost::lexical_cast< long >( value ), "");
             break;
         }
         case XType_Base_String:
-            error_code = XC_SetPropertyValue(handle, property_name.c_str(), value.c_str(), "");
+            error_code = XC_SetPropertyValue(handle, name.c_str(), value.c_str(), "");
             break;
         case XType_Base_Blob:
         default:
-            COMMA_THROW( comma::exception, "unknown (or blob) property type for attribute \"" << property_name << "\"" );
+            COMMA_THROW( comma::exception, "unknown (or blob) property type for attribute \"" << name << "\"" );
     };
-    if( error_code != I_OK ) { COMMA_THROW( comma::exception, "failed to set attribute \"" << property_name << "\": " << xenics_error_to_string_( error_code ) << " (" << error_code << ")" ); }
+    if( error_code != I_OK ) { COMMA_THROW( comma::exception, "failed to set attribute \"" << name << "\": " << xenics_error_to_string_( error_code ) << " (" << error_code << ")" ); }
 }
 
-static std::string xenics_get_attribute_( XCHANDLE& handle, const char* property_name )
+static std::string xenics_get_attribute_( XCHANDLE& handle, const std::string& name )
 {
     XPropType property_type;
-    if( XC_GetPropertyType(handle, property_name, &property_type) != I_OK ) 
+    if( XC_GetPropertyType(handle, name.c_str(), &property_type) != I_OK ) 
     { 
-        COMMA_THROW( comma::exception, "failed to get property type for \"" << property_name << "\" (or " << property_name << " is unavailable)" ); 
+        COMMA_THROW( comma::exception, "failed to get property type for \"" << name << "\" (or " << name << " is unavailable)" ); 
     }
     switch( property_type & XType_Base_Mask )
     {
@@ -123,20 +123,20 @@ static std::string xenics_get_attribute_( XCHANDLE& handle, const char* property
         {
             // using floating point version for all properties since xenics API does not tell if the property value is long or double (XC_GetPropertyValueL can be used if value is an integer)
             double f = 0;
-            XC_GetPropertyValueF(handle, property_name, &f);
+            XC_GetPropertyValueF(handle, name.c_str(), &f);
             return boost::lexical_cast< std::string >( f );          
         }
         case XType_Base_Enum:
         case XType_Base_Bool:
         {
             long n = 0;
-            XC_GetPropertyValueL(handle, property_name, &n);
+            XC_GetPropertyValueL(handle, name.c_str(), &n);
             return boost::lexical_cast< std::string >( n );
         }
         case XType_Base_String:
         {
             char buf[xenicsPropertyMaxLen];
-            XC_GetPropertyValue(handle, property_name, buf, xenicsPropertyMaxLen);
+            XC_GetPropertyValue(handle, name.c_str(), buf, xenicsPropertyMaxLen);
             return std::string( buf );
         }        
         case XType_Base_Blob:
@@ -151,10 +151,11 @@ gobi::attributes_type xenics_attributes_( XCHANDLE& handle )
     int property_count = XC_GetPropertyCount( handle );
     for( int i = 0; i < property_count; ++i ) 
     {
-        char property_name[xenicsPropertyMaxLen];
-        ErrCode error_code = XC_GetPropertyName(handle, i, &property_name[0], xenicsPropertyMaxLen);
+        char name[xenicsPropertyMaxLen];
+        ErrCode error_code = XC_GetPropertyName(handle, i, &name[0], xenicsPropertyMaxLen);
         if( error_code != I_OK ) { COMMA_THROW( comma::exception, "failed to get property name for i=" << i <<" in xenics_attributes_: " << xenics_error_to_string_( error_code ) << " (" << error_code << ")" ); }     
-        attributes.insert( std::make_pair( property_name, xenics_get_attribute_( handle, property_name ) ) ); 
+        std::string value = xenics_get_attribute_( handle, std::string( name ) );
+        attributes.insert( std::make_pair( name, value ) ); 
     }
     return attributes;    
 }
@@ -214,9 +215,16 @@ class gobi::impl
         
         void set( const attributes_type& attributes )
         {
-             for( attributes_type::const_iterator i = attributes.begin(); i != attributes.end(); ++i )
+            for( attributes_type::const_iterator i = attributes.begin(); i != attributes.end(); ++i )
             {
-                xenics_set_attribute_( handle_, i->first, i->second );
+                std::string name = i->first;
+                std::string value = i->second;
+                xenics_set_attribute_( handle_, name, value );
+                std::string returned_value = xenics_get_attribute_( handle_, name );
+                if( returned_value != value)
+                {
+                    COMMA_THROW( comma::exception, "failed to set " << name << " to " << value << " (the camera returns " << returned_value << ")" );
+                }
             }     
         }
         
