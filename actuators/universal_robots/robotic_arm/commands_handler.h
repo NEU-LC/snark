@@ -13,6 +13,7 @@
 #include <boost/optional.hpp>
 #include "data.h"
 #include "commands.h"
+#include "auto_initialization.h"
 extern "C" {
     #include "simulink/Arm_Controller.h"
 }
@@ -32,23 +33,6 @@ struct input_primitive
     };  
 };
 
-struct result
-{
-    struct error { enum { success=0, invalid_input=1, invalid_robot_state, failure }; };
-    int code;
-    std::string message;
-    
-    result( const std::string& msg, int code_ ) : code( code_ ), message( msg ) {}
-    result() : code( error::success ), message( "success" ) {}
-    
-    std::string get_message() const 
-    {
-        std::ostringstream ss;
-        ss << code << ',' << '"' << message << '"';
-        return ss.str();
-    }
-    bool is_success() const { return code == error::success; }
-};
 
 
 class commands_handler : public comma::dispatch::handler_of< power >,
@@ -75,26 +59,19 @@ public:
     void handle( joint_move& j );
     
     commands_handler( ExtU_Arm_Controller_T& simulink_inputs, 
-    				  arm::fixed_status& status, std::ostream& robot, 
-                      comma::io::istream& status_iss, comma::io::select& select,
-                      comma::signal_flag& signaled ) : 
-    	inputs_(simulink_inputs), status_( status ), os( robot ),
-        iss_(status_iss), select_( select ), signaled_( signaled ) {}
+                      arm::fixed_status& status, std::ostream& robot, auto_initialization& init ) : 
+        inputs_(simulink_inputs), status_( status ), os( robot ), init_(init) {}
     
     result ret;  /// Indicate if command succeed
 private:
-	ExtU_Arm_Controller_T& inputs_; /// inputs into simulink engine 
-	fixed_status& status_;
-	std::ostream& os;		/// output stream to robot arm
-    comma::io::istream& iss_; // for reading the status
-    comma::io::select& select_;
-    comma::signal_flag& signaled_;
-    // read from status stream for latest status
-    void read_status();
+    ExtU_Arm_Controller_T& inputs_; /// inputs into simulink engine 
+    fixed_status& status_;
+    std::ostream& os;
+    auto_initialization init_;
 
-	bool is_powered() const;
-	bool is_initialising() const;
-	bool is_running() const; 
+    bool is_powered() const;
+    bool is_initialising() const;
+    bool is_running() const; 
 };
 
 } } } } // namespace snark { namespace ur { namespace robotic_arm { namespace handlers {

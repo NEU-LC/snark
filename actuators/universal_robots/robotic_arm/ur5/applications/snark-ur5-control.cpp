@@ -377,7 +377,9 @@ int main( int ac, char** av )
         comma::io::select select;
         select.read().add( status_stream.fd() );
 
-        commands_handler.reset( new commands_handler_t( Arm_Controller_U, arm_status, *robot_arm, status_stream, select, signaled ) );
+        arm::handlers::auto_initialization auto_init( arm_status, *robot_arm, status_stream, select, signaled, inputs );
+        auto_init.set_app_name( name() );
+        commands_handler.reset( new commands_handler_t( Arm_Controller_U, arm_status, *robot_arm, auto_init ) );
 
         while( !signaled && std::cin.good() )
         {

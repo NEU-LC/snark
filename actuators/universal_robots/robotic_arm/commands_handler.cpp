@@ -1,4 +1,5 @@
 #include "commands_handler.h"
+#include "auto_initialization.h"
 
 namespace snark { namespace ur { namespace robotic_arm { namespace handlers {
 
@@ -21,110 +22,11 @@ void commands_handler::handle( arm::brakes& b )
         os << "set robotmode run" <<std::endl;
     }
     else {
-    	os << "stopj([0.1,0.1,0.1,0.1,0.1,0.1])" << std::endl;
+        os << "stopj([0.1,0.1,0.1,0.1,0.1,0.1])" << std::endl;
     }
     os.flush();
     ret = result();
 }
-
-void commands_handler::read_status()
-{
-    comma::uint32 sleep_usec = 0.03 * 1000000u; 
-    unsigned char loops = 3;
-
-    for( std::size_t i=0; i<loops; ++i )
-    {
-        select_.check();
-
-        if( select_.read().ready( iss_.fd() ) )
-        {
-            iss_->read( status_.data(), fixed_status::size );
-            // read all buffered data
-            while( iss_->rdbuf()->in_avail() > 0 ) { iss_->read( status_.data(), fixed_status::size ); }
-
-            return;
-        }
-
-        usleep( sleep_usec );
-    }
-    std::cerr << name() << "failed to read status in auto init" << std::endl;
-    COMMA_THROW( comma::exception, "failed to read status in auto_init" );
-}
-
-void commands_handler::handle( arm::auto_init& a )
-{
-    std::cerr << name() << "command auto init" << std::endl;
-
-    std::map< char, std::string > initj;
-    // snark-ur10-from-console: Initialising joint (5)
-    initj[5] = "speedj_init([0,0,0,0,0,-0.1],0.05,0.04)";
-    // snark-ur10-from-console: Initialising joint (4)
-    initj[4] = "speedj_init([0,0,0,0,-0.1,0],0.05,0.0333333)";
-    // snark-ur10-from-console: Initialising joint (3)
-    initj[3] = "speedj_init([0,0,0,-0.1,0,0],0.05,0.0266667)";
-    // snark-ur10-from-console: Initialising joint (2)
-    initj[2] = "speedj_init([0,0,0.05,0,0,0],0.05,0.02)";
-    // snark-ur10-from-console: Initialising joint (1)
-    initj[1] = "speedj_init([0,-0.05,0,0,0,0],0.05,0.0133333)";
-    // snark-ur10-from-console: Initialising joint (0)
-    initj[0] = "speedj_init([0.05,0,0,0,0,0],0.05,0.00666667)";
-
-    if( status_.mode() != robotmode::initializing ) {
-        std::cerr << name() << "auto_init failed because robotic arm mode is " << status_.mode_str() << std::endl;
-        ret = result( "cannot auto initialise robot if robot mode is not set to initializing", result::error::failure );
-        return;
-    }
-
-    static const comma::uint32 retries = 50;
-    // try for two joints right now
-    for( int joint_id=5; joint_id >=0 && !signaled_; --joint_id )
-    {
-
-        while( !signaled_ )
-        {
-            if( status_.joint_modes[joint_id]() != jointmode::initializing ) { break; }
-
-            os << initj[ joint_id ] << std::endl;
-            os.flush();
-
-            // std::cerr << "joint " << joint_id << " is in initializing " << std::endl;
-            std::cerr.flush();
-
-            // wait tilt joint stopped
-            for( std::size_t k=0; k<retries; ++k ) 
-            {
-                usleep( 0.01 * 1000000u );
-                // std::cerr << "reading status" << std::endl;
-                read_status();
-
-                double vel = status_.velocities[ joint_id ]();
-                if( std::fabs( vel ) <= 0.03 ) break;
-            }
-        }
-
-        // todo check force also
-        if( status_.jmode( joint_id ) == jointmode::running ) {
-            std::cerr << name() << "joint " << joint_id << " initialised" << std::endl;
-            continue;
-        }
-        else 
-        {
-            std::cerr << name() << "failed to initialise joint: " << joint_id 
-                      << ", joint mode: " << status_.jmode_str( joint_id ) << std::endl;
-            ret = result( "failed to auto initialise a joint", result::error::failure );
-            return;
-        }
-    }
-    if( signaled_  ) {
-        os << "speedj_init([0,0,0,0,0,0],0.05,0.0133333)" << std::endl;
-        os.flush();
-    }
-
-
-    std::cerr << name() << "command auto init completed" << std::endl;
-    ret = result();
-}
-
 static const plane_angle_degrees_t max_pan = 45.0 * degree;
 static const plane_angle_degrees_t min_pan = -45.0 * degree;
 static const plane_angle_degrees_t max_tilt = 90.0 * degree;
@@ -135,8 +37,8 @@ void commands_handler::handle( arm::move_cam& cam )
     std::cerr << name() << " running move_cam" << std::endl; 
 
     if( !is_running() ) {
-    	ret = result( "cannot move (camera) as rover is not in running mode", result::error::invalid_robot_state );
-    	return;
+        ret = result( "cannot move (camera) as rover is not in running mode", result::error::invalid_robot_state );
+        return;
     }
 
     static const length_t min_height = 0.1 * meter;
@@ -162,8 +64,8 @@ void commands_handler::handle( arm::move_cam& cam )
 void commands_handler::handle( arm::move_joints& joints )
 {
     if( !is_running() ) {
-    	ret = result( "cannot move (joints) as rover is not in running mode", result::error::invalid_robot_state );
-    	return;
+        ret = result( "cannot move (joints) as rover is not in running mode", result::error::invalid_robot_state );
+        return;
     }
 
     std::cerr << name() << " running move joints"  << std::endl; 
@@ -172,8 +74,8 @@ void commands_handler::handle( arm::move_joints& joints )
     for( std::size_t i=0; i<joints.joints.size(); ++i )
     {
         if( joints.joints[i] < min || joints.joints[0] > max ) { 
-        	ret = result( "joint angle must be 0-360 degrees", result::error::invalid_input ); 
-        	return;
+            ret = result( "joint angle must be 0-360 degrees", result::error::invalid_input ); 
+            return;
         }
     }
     
@@ -190,8 +92,8 @@ void commands_handler::handle( arm::move_joints& joints )
 void commands_handler::handle( arm::joint_move& joint )
 {
     if( !is_initialising() ) {
-    	ret = result( "cannot initialise joint as rover is not in initialisation mode", result::error::invalid_robot_state );
-    	return;
+        ret = result( "cannot initialise joint as rover is not in initialisation mode", result::error::invalid_robot_state );
+        return;
     }
     /// command can be use if in running or initialising mode
     int index = joint.joint_id;
@@ -240,14 +142,14 @@ void commands_handler::handle( arm::joint_move& joint )
 void commands_handler::handle( arm::set_home& h )
 {
     inputs_.motion_primitive = input_primitive::set_home;
-	ret = result();
+    ret = result();
 }
 
 void commands_handler::handle( arm::set_position& pos )
 {
     if( !is_running() ) {
-    	ret = result( "cannot set position as rover is not in running mode", result::error::invalid_robot_state );
-    	return;
+        ret = result( "cannot set position as rover is not in running mode", result::error::invalid_robot_state );
+        return;
     }
 
     inputs_.motion_primitive = input_primitive::set_position;
@@ -294,40 +196,45 @@ void commands_handler::handle( arm::move_effector& e )
 }
 
 bool commands_handler::is_powered() const {
-	return (status_.robot_mode() != robotmode::no_power);
+    return (status_.robot_mode() != robotmode::no_power);
 }
 
 bool commands_handler::is_running() const 
 {
-	if(status_.robot_mode() != robotmode::running) { 
-		std::cerr << "robot mode " << status_.robot_mode() << " expected: " << robotmode::running << std::endl;
-		return false; 
-	}
+    if(status_.robot_mode() != robotmode::running) { 
+        std::cerr << "robot mode " << status_.robot_mode() << " expected: " << robotmode::running << std::endl;
+        return false; 
+    }
 
-	for( std::size_t i=0; i<joints_num; ++i ) {
-		std::cerr << "joint " << i << " mode " << status_.joint_modes[i]() << " expected: " << jointmode::running << std::endl;
-		if( status_.joint_modes[i]() != jointmode::running ) { return false; }
-	}
+    for( std::size_t i=0; i<joints_num; ++i ) {
+        std::cerr << "joint " << i << " mode " << status_.joint_modes[i]() << " expected: " << jointmode::running << std::endl;
+        if( status_.joint_modes[i]() != jointmode::running ) { return false; }
+    }
 
-	return true;
+    return true;
 }
 bool commands_handler::is_initialising() const 
 {
-	if( status_.robot_mode() != robotmode::initializing ) { 
-		// std::cerr << "robot mode " << status_.robot_mode() << " expected: " << robotmode::initializing << std::endl;
-		return false; 
-	}
+    if( status_.robot_mode() != robotmode::initializing ) { 
+        // std::cerr << "robot mode " << status_.robot_mode() << " expected: " << robotmode::initializing << std::endl;
+        return false; 
+    }
 
-	for( std::size_t i=0; i<joints_num; ++i ) 
-	{
-		// std::cerr << "joint " << i << " mode " << status_.joint_modes[i]() << " expected: " << jointmode::running << std::endl;
-		if( status_.joint_modes[i]() != jointmode::initializing && 
-			status_.joint_modes[i]() != jointmode::running ) { 
-			return false; 
-		}
-	}
+    for( std::size_t i=0; i<joints_num; ++i ) 
+    {
+        // std::cerr << "joint " << i << " mode " << status_.joint_modes[i]() << " expected: " << jointmode::running << std::endl;
+        if( status_.joint_modes[i]() != jointmode::initializing && 
+            status_.joint_modes[i]() != jointmode::running ) { 
+            return false; 
+        }
+    }
 
-	return true;
+    return true;
+}
+
+void commands_handler::handle(auto_init& a)
+{
+    ret = init_.run();
 }
 
 
