@@ -151,12 +151,15 @@ TEST( hokuyo_packed, scip_gd_response )
     hok::distance_data< 11 >::rays rays;
     gd_reply->data.get_values( rays );
     
-    // std::cerr << "11 values are : ";
-    // for( std::size_t i=0; i<rays.steps.size(); ++i )
-    // {
-    //     std::cerr << rays.steps[i]() << ' ';
-    // }
-    // std::cerr << std::endl;
+    {
+        std::ostringstream ss;
+        for( std::size_t i=0; i<rays.steps.size(); ++i )
+        {
+            ss << rays.steps[i]() << ' ';
+        }
+        // distances in mm
+        EXPECT_EQ( "387 410 431 452 454 449 441 441 441 453 448 ", ss.str() );
+    }
     
     /// Why fails checksum
     //     std::cerr << "11 values are : ";
