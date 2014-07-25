@@ -123,6 +123,7 @@ comma::csv::ascii< T >& ascii( )
     return ascii_;
 }
 
+
 typedef boost::units::quantity< boost::units::si::angular_acceleration > angular_acceleration_t;
 typedef boost::units::quantity< boost::units::si::angular_velocity > angular_velocity_t;
 
@@ -301,14 +302,14 @@ static arm::config config;
 
 class stop_on_exit
 {
-    ip::tcp::iostream& os_;
+    std::ostream& os_;
 public:
-    stop_on_exit( ip::tcp::iostream& oss ) : os_(oss) {}
+    stop_on_exit( std::ostream& oss ) : os_(oss) {}
     ~stop_on_exit() 
     {
         os_ << "stopj([0.1,0.1,0.1,0.1,0.1,0.1])\n";
+        os_ << "power off\n"; // power off too
         os_.flush();
-        os_.close();
     }
 
 };
@@ -419,6 +420,8 @@ int main( int ac, char** av )
         comma::io::ostream robot_arm( "tcp:" + arm_conn_host + ':' + arm_conn_port, 
                                       comma::io::mode::ascii, comma::io::mode::non_blocking );
 
+        stop_on_exit on_exit( *robot_arm );
+
         // create tcp server for broadcasting status
         std::ostringstream ss;
         ss << "tcp:" << listen_port;
@@ -490,8 +493,8 @@ int main( int ac, char** av )
         }
 
         std::cerr << name() << "exiting" << std::endl;
-        *robot_arm << "stopj([0.1,0.1,0.1,0.1,0.1,0.1])\n";
-        robot_arm->flush();
+        // *robot_arm << "stopj([0.1,0.1,0.1,0.1,0.1,0.1])\n";
+        // robot_arm->flush();
         publisher.close();
     }
     catch( comma::exception& ce ) { std::cerr << name() << ": exception thrown: " << ce.what() << std::endl; return 1; }
