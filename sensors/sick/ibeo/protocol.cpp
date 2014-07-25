@@ -35,7 +35,7 @@
 #include <comma/base/exception.h>
 #include "./protocol.h"
 
-namespace snark {  namespace sick { namespace ldmrs {
+namespace snark {  namespace sick { namespace ibeo {
 
 class protocol::impl
 {
@@ -205,8 +205,8 @@ template commands::set_ntp_fractions::response protocol::write< commands::set_nt
 template < typename command >
 typename command::response protocol::write( const command& c ) { return m_pimpl->write( c ); }
 
-const ldmrs::scan_packet* protocol::readscan() { return m_pimpl->readscan(); }
+const ibeo::scan_packet* protocol::readscan() { return m_pimpl->readscan(); }
 
 boost::optional< fault > protocol::last_fault() { return m_pimpl->last_fault(); }
 
-} } } // namespace snark {  namespace sick { namespace ldmrs {
+} } } // namespace snark {  namespace sick { namespace ibeo {

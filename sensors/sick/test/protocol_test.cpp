@@ -38,7 +38,7 @@
 #include <iostream>
 #include <boost/asio/ip/tcp.hpp>
 #include <comma/application/signal_flag.h>
-#include <snark/sensors/sick/protocol.h>
+#include <snark/sensors/sick/ibeo/protocol.h>
 #include <gtest/gtest.h>
 
 TEST( sick, protocol )

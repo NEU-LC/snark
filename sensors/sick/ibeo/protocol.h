@@ -44,7 +44,7 @@
 #include <boost/optional.hpp>
 #include <snark/sensors/sick/ibeo/packets.h>
 
-namespace snark {  namespace sick { namespace ldmrs {
+namespace snark {  namespace sick { namespace ibeo {
 
 class protocol : public boost::noncopyable
 {
@@ -79,6 +79,6 @@ class protocol : public boost::noncopyable
         impl* m_pimpl;
 };
 
-} } } // namespace snark {  namespace sick { namespace ldmrs {
-
+} } } // namespace snark {  namespace sick { namespace ibeo {
+    
 #endif // #ifndef SNARK_SENSORS_SICK_PROTOCOL_H_
