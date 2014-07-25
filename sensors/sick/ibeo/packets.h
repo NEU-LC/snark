@@ -31,8 +31,8 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-#ifndef SNARK_SENSORS_SICK_PACKET_H_
-#define SNARK_SENSORS_SICK_PACKET_H_
+#ifndef SNARK_SENSORS_SICK_IBEO_PACKETS_H_
+#define SNARK_SENSORS_SICK_IBEO_PACKETS_H_
 
 /// @file packets.h
 /// sick (ibeo) ldmrs laser communication packet layout
@@ -422,4 +422,4 @@ std::ostream& operator<<( std::ostream& os, const commands::get::response& rhs )
 
 namespace snark {  namespace sick { namespace ldmrs = ibeo; } }
     
-#endif // #ifndef SNARK_SENSORS_SICK_PACKET_H_
+#endif // #ifndef SNARK_SENSORS_SICK_IBEO_PACKETS_H_
