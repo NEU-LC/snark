@@ -62,6 +62,8 @@ class gobi
         unsigned long total_bytes_per_frame() const;
         
         void close();
+        
+        bool closed() const;
 
         static std::vector< XDeviceInformation > list_cameras();
         

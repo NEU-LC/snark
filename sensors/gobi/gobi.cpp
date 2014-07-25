@@ -76,8 +76,7 @@ static const char *xenics_error_to_string_( ErrCode error )
         default : return "unknown error";
     };
 }
-
-
+  
 static void xenics_set_attribute_( XCHANDLE& handle, const std::string& name, const std::string& value )
 {
     XPropType property_type;
@@ -86,28 +85,46 @@ static void xenics_set_attribute_( XCHANDLE& handle, const std::string& name, co
         COMMA_THROW( comma::exception, "failed to get property type for \"" << name << "\" (or " << name << " is unavailable)" ); 
     }
     ErrCode error_code;
+    bool mismatched = false;
+    std::string returned_value;    
     switch( property_type & XType_Base_Mask )
     {
         case XType_Base_Number:
-            // xenics API cannot tell if the property value is long or double, so
-            // value is interpreted as double if it has a decimal point, otherwise it is interpreted as long
-            if( !( value.find('.') == std::string::npos ) ) error_code = XC_SetPropertyValueF(handle, name.c_str(), boost::lexical_cast< double >( value ), "");
-            else error_code = XC_SetPropertyValueL(handle, name.c_str(), boost::lexical_cast< long >( value ), "");
-            break;
         case XType_Base_Enum:
-        case XType_Base_Bool:
-        {
-            error_code = XC_SetPropertyValueL(handle, name.c_str(), boost::lexical_cast< long >( value ), "");
+        case XType_Base_Bool:           
+            // there is no way in xenics API to determine if a property value is long or double, so value is interpreted as double if it has a decimal point, otherwise it is interpreted as long
+            if( !( value.find('.') == std::string::npos ) )
+            {
+                double f = boost::lexical_cast< double >( value );
+                error_code = XC_SetPropertyValueF(handle, name.c_str(), f, "");
+                double returned_f = 0;
+                XC_GetPropertyValueF(handle, name.c_str(), &returned_f);
+                mismatched = ( f != returned_f );
+                returned_value = boost::lexical_cast< std::string >( returned_f );                      
+            }
+            else 
+            {    
+                long n = boost::lexical_cast< long >( value );
+                error_code = XC_SetPropertyValueL(handle, name.c_str(), n, "");
+                long returned_n = 0;
+                XC_GetPropertyValueL(handle, name.c_str(), &returned_n);
+                mismatched = ( n != returned_n );
+                returned_value = boost::lexical_cast< std::string >( returned_n );        
+            }
             break;
-        }
         case XType_Base_String:
             error_code = XC_SetPropertyValue(handle, name.c_str(), value.c_str(), "");
+            char buf[xenicsPropertyMaxLen];
+            XC_GetPropertyValue(handle, name.c_str(), buf, xenicsPropertyMaxLen);
+            returned_value = buf;
+            mismatched = ( value != returned_value );
             break;
         case XType_Base_Blob:
         default:
             COMMA_THROW( comma::exception, "unknown (or blob) property type for attribute \"" << name << "\"" );
     };
     if( error_code != I_OK ) { COMMA_THROW( comma::exception, "failed to set attribute \"" << name << "\": " << xenics_error_to_string_( error_code ) << " (" << error_code << ")" ); }
+    if( mismatched ) { COMMA_THROW( comma::exception, "failed to set " << name << " to " << value << " (the camera returns " << returned_value << ")" ); }
 }
 
 static std::string xenics_get_attribute_( XCHANDLE& handle, const std::string& name )
@@ -193,6 +210,7 @@ class gobi::impl
     public:
         impl( std::string address, const attributes_type& attributes ) :
             address_( address )
+            , closed_( false )
         {
             if( address_.empty() ) { COMMA_THROW( comma::exception, "expected camera address, got empty string" ); }    
             std::string camera_name = "gev://" + address_;
@@ -220,11 +238,6 @@ class gobi::impl
                 std::string name = i->first;
                 std::string value = i->second;
                 xenics_set_attribute_( handle_, name, value );
-                std::string returned_value = xenics_get_attribute_( handle_, name );
-                if( returned_value != value)
-                {
-                    COMMA_THROW( comma::exception, "failed to set " << name << " to " << value << " (the camera returns " << returned_value << ")" );
-                }
             }     
         }
         
@@ -232,16 +245,13 @@ class gobi::impl
 
         void close()
         {
-            address_ = "";
             if( XC_IsCapturing( handle_ ) ) 
             {
-                ErrCode error_code = XC_StopCapture( handle_ );
-                if( error_code != I_OK )
-                {
-                    COMMA_THROW( comma::exception, "failed to stop capturing frames from xenics camera at " << address_ << ": " << xenics_error_to_string_( error_code ) << "(" << error_code << ")" );
-                }
+                if( XC_StopCapture( handle_ ) != I_OK ) { return; }
             }
             if( XC_IsInitialised( handle_ ) ) XC_CloseCamera( handle_ );
+            closed_ = true;
+            //std::cerr << "close() has finished" << std::endl;
         }
         
         std::pair< boost::posix_time::ptime, cv::Mat > read()
@@ -264,7 +274,6 @@ class gobi::impl
             else
             {
                 COMMA_THROW( comma::exception, "failed to get a frame from xenics camera at address " << address_ << ": " << xenics_error_to_string_( error_code ) << "(" << error_code << ")" );
-                close();                    
             }      
             return pair;
         }                
@@ -274,6 +283,8 @@ class gobi::impl
         XCHANDLE& handle() { return handle_; }
 
         std::string address() const { return address_; }
+        
+        bool closed() const { return closed_; }
 
         unsigned long total_bytes_per_frame() const { return total_bytes_per_frame_; }
 
@@ -315,6 +326,7 @@ class gobi::impl
         unsigned long total_bytes_per_frame_;
         std::vector< byte > frame_buffer_;
         std::string address_;
+        bool closed_;
 };
 
 } } // namespace snark{ namespace camera{
@@ -328,6 +340,8 @@ gobi::~gobi() { delete pimpl_; }
 std::pair< boost::posix_time::ptime, cv::Mat > gobi::read() { return pimpl_->read(); }
 
 void gobi::close() { pimpl_->close(); }
+
+bool gobi::closed() const { return pimpl_->closed(); }
 
 std::vector< XDeviceInformation > gobi::list_cameras() { return gobi::impl::list_cameras(); }
 
