@@ -32,6 +32,7 @@
 
 
 #include <boost/program_options.hpp>
+#include <boost/scoped_ptr.hpp>
 #include <comma/application/signal_flag.h>
 #include <comma/base/exception.h>
 #include <comma/csv/stream.h>
@@ -41,16 +42,13 @@
 
 typedef std::pair< boost::posix_time::ptime, cv::Mat > Pair;
 
-static Pair capture( snark::camera::gobi& camera ) { return camera.read(); }
-
-/*
-static Pair capture( snark::camera::gobi& camera ), ::tbb::flow_control& flow )
+boost::scoped_ptr< snark::tbb::bursty_reader< Pair > > reader;
+static Pair capture( snark::camera::gobi& camera )
 { 
     static comma::signal_flag is_shutdown;
-    if( is_shutdown ) { flow.stop(); return Pair(); }
+    if( is_shutdown ) { reader->stop(); }
     return camera.read();    
 }
-*/
 
 int main( int argc, char** argv )
 {
@@ -77,7 +75,7 @@ int main( int argc, char** argv )
         std::ostringstream shutter_message;
         shutter_message << "    default behaviour of mechanical shutter:" << std::endl;
         shutter_message << "        by default the shutter is activated every time the detector's temperature changes by 0,5°C"  << std::endl;
-        shutter_message << "        or after a set period of time since last calibration in order to obtain a reference image and correct for pixel drifts" << std::endl;
+        shutter_message << "        or after a set period of time (in seconds) since last calibration in order to obtain a reference image and correct for pixel drifts" << std::endl;
         shutter_message << "            AutoCorrectionDeltaTemperature=0.5" << std::endl;
         shutter_message << "            AutoCorrectionDeltaTime=150 (the actual time of recalibration is observed to be about 30% longer)" << std::endl;
         shutter_message << "            AutoCorrectionEnabled=1" << std::endl;
@@ -157,8 +155,8 @@ int main( int argc, char** argv )
         {
             serialization.reset( new snark::cv_mat::serialization( fields, format, vm.count( "header" ) ) );
         }
-        snark::tbb::bursty_reader< Pair > reader( boost::bind( &capture, boost::ref( camera ) ), discard );
-        snark::imaging::applications::pipeline pipeline( *serialization, filters, reader );
+        reader.reset( new snark::tbb::bursty_reader< Pair >( boost::bind( &capture, boost::ref( camera ) ), discard ) );
+        snark::imaging::applications::pipeline pipeline( *serialization, filters, *reader );
         pipeline.run();
         return 0;
     }
