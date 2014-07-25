@@ -254,18 +254,31 @@ template <> struct traits< arm::set_home >
     }
 };
 
-template <> struct traits< arm::config >
+template <> struct traits< arm::continuum_t >
 {
-    template< typename K, typename V > static void visit( const K& k, arm::config& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, arm::continuum_t& t, V& v )
     {
         v.apply( "home_position", t.home_position );
         v.apply( "work_directory", t.work_directory );
     }
 
-    template< typename K, typename V > static void visit( const K& k, const arm::config& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, const arm::continuum_t& t, V& v )
     {
         v.apply( "home_position", t.home_position );
         v.apply( "work_directory", t.work_directory );
+    }
+};
+
+template <> struct traits< arm::config >
+{
+    template< typename K, typename V > static void visit( const K& k, arm::config& t, V& v )
+    {
+        v.apply( "continuum", t.continuum );
+    }
+
+    template< typename K, typename V > static void visit( const K& k, const arm::config& t, V& v )
+    {
+        v.apply( "continuum", t.continuum );
     }
 };
 

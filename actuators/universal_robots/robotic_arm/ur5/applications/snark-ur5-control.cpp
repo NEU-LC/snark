@@ -44,6 +44,7 @@
 #include <comma/application/command_line_options.h>
 #include <comma/csv/stream.h>
 #include <comma/base/types.h>
+#include <comma/math/compare.h>
 #include <comma/visiting/apply.h>
 #include <comma/name_value/ptree.h>
 #include <comma/name_value/parser.h>
@@ -56,6 +57,7 @@
 #include "../../commands.h"
 #include "../../commands_handler.h"
 #include "../../inputs.h"
+#include "../../units.h"
 extern "C" {
     #include "../../simulink/Arm_Controller.h"
 }
@@ -99,7 +101,10 @@ void usage(int code=1)
     std::cerr << "*   --feedback-host=:     Host name or IP of the robot arm's feedback." << std::endl;
     std::cerr << "*   --feedback-port=:     TCP Port number of the robot arm's feedback." << std::endl;
     std::cerr << "    --sleep=:             Loop sleep value in seconds, default is 0.2s if not specified." << std::endl;
-    std::cerr << "*   --config=:            Config file for robot arm." << std::endl;
+    std::cerr << "*   --config=:            Config file for robot arm, see --output-config." << std::endl;
+    std::cerr << "    --output-config=:     Print config format in json." << std::endl;
+    std::cerr << "    --init-force-limit,-ifl:" << std::endl;
+    std::cerr << "                          Force (Newtons) limit when auto initializing, if exceeded then stop auto init." << std::endl;
     typedef arm::current_positions current_positions_t;
     comma::csv::binary< current_positions_t > binary;
     std::cerr << "UR10's status:" << std::endl;
@@ -323,11 +328,34 @@ void load_config( const std::string& filepath )
 namespace fs = boost::filesystem;
 
 /// Create a home position file if arm is running and is in home position
-void home_position_check( arm::handlers::commands_handler& handler, const arm::fixed_status& status )
+void home_position_check( arm::handlers::commands_handler& handler, 
+        const arm::fixed_status& status, const std::string& homefile )
 {
+    static std::vector< arm::plane_angle_t > home_position; /// store home joint positions in radian
+    static const fs::path path( homefile );
+
+    if( home_position.empty() )
+    {
+        home_position.push_back( static_cast< arm::plane_angle_t >( config.continuum.home_position[0] * arm::degree ) );
+        home_position.push_back( static_cast< arm::plane_angle_t >( config.continuum.home_position[1] * arm::degree ) );
+        home_position.push_back( static_cast< arm::plane_angle_t >( config.continuum.home_position[2] * arm::degree ) );
+        home_position.push_back( static_cast< arm::plane_angle_t >( config.continuum.home_position[3] * arm::degree ) );
+        home_position.push_back( static_cast< arm::plane_angle_t >( config.continuum.home_position[4] * arm::degree ) );
+        home_position.push_back( static_cast< arm::plane_angle_t >( config.continuum.home_position[5] * arm::degree ) );
+    }
+
+    static const arm::plane_angle_t epsilon = static_cast< arm::plane_angle_t >( 2.0 * arm::degree );
+
     if( handler.is_running() )
     {
         // TODO, either create or delete the home position file
+        bool is_home = true;
+        for( std::size_t i=0; i<=arm::joints_num; ++i ) {
+            if( !comma::math::equal( status.positions[i]() * arm::radian, home_position[i], epsilon ) ){ is_home=false; break; }
+        }
+
+        if( is_home ){ std::ofstream( homefile.c_str(), std::ios::out | std::ios::trunc ); } // create
+        else { fs::remove( path ); } // remove
     }
 }
 
@@ -338,6 +366,14 @@ int main( int ac, char** av )
     
     comma::command_line_options options( ac, av );
     if( options.exists( "-h,--help" ) ) { usage( 0 ); }
+
+    if( options.exists( "--output-config") )
+    {
+        boost::property_tree::ptree t;
+        comma::to_ptree to_ptree( t );
+        comma::visiting::apply( to_ptree ).to( config );
+        boost::property_tree::write_json( std::cout, t );  
+    }
     
     using boost::posix_time::microsec_clock;
     using boost::posix_time::seconds;
@@ -365,9 +401,15 @@ int main( int ac, char** av )
         load_config( config_file );
         
         /// home position file
-        if( config.work_directory.empty() ) { std::cerr << name() << "cannot find home position directory! exiting!" <<std::endl; return 1; }
-        fs::path dir( config.work_directory );
-        if( !fs::exists( dir ) || !fs::is_directory( dir ) ) { std::cerr << name() << "work_directory must exists: " << config.work_directory << std::endl; return 1; }
+        const arm::continuum_t& continuum = config.continuum;
+        if( continuum.work_directory.empty() ) { std::cerr << name() << "cannot find home position directory! exiting!" <<std::endl; return 1; }
+        fs::path dir( continuum.work_directory );
+        if( !fs::exists( dir ) || !fs::is_directory( dir ) ) { std::cerr << name() << "work_directory must exists: " << continuum.work_directory << std::endl; return 1; }
+
+        for( std::size_t j=0; j<arm::joints_num; ++j )
+        {
+            std::cerr << name() << "home joint " << j << " - " << continuum.home_position[j] << std::endl;
+        }
 
         std::string arm_conn_host = options.value< std::string >( "--robot-arm-host" );
         std::string arm_conn_port = options.value< std::string >( "--robot-arm-port" );
@@ -393,12 +435,14 @@ int main( int ac, char** av )
         comma::io::select select;
         select.read().add( status_stream.fd() );
 
-        arm::handlers::auto_initialization auto_init( arm_status, *robot_arm, status_stream, select, signaled, inputs, config.work_directory );
+        arm::handlers::auto_initialization auto_init( arm_status, *robot_arm, status_stream, select, signaled, inputs, continuum.work_directory );
         auto_init.set_app_name( name() );
+        if( options.exists( "--init-force-limit,-ifl" ) ){ auto_init.set_force_limit( options.value< double >( "--init-force-limit,-ifl" ) ); }
         commands_handler.reset( new commands_handler_t( Arm_Controller_U, arm_status, *robot_arm, auto_init ) );
 
         while( !signaled && std::cin.good() )
         {
+            if( !status_stream->good() ) { COMMA_THROW( comma::exception, "status connection to robot arm failed." ); }
 
             select.check();
             if( ready( status_stream ) || select.read().ready( status_stream.fd() ) ) 
@@ -410,7 +454,7 @@ int main( int ac, char** av )
                     // comma::to_ptree to_ptree( t );
                     // comma::visiting::apply( to_ptree ).to( arm_status );
                     // boost::property_tree::write_json( std::cerr, t, false );    
-                    home_position_check( *commands_handler, arm_status );
+                    home_position_check( *commands_handler, arm_status, auto_init.home_filepath() );
                 }
             }
             
@@ -419,11 +463,11 @@ int main( int ac, char** av )
             // Process commands into inputs into the system
             if( !inputs.is_empty() )
             {
-                const command_vector& v = inputs.front();
+                const command_vector v = inputs.front();
+                inputs.pop();
                 //std::cerr << name() << " got " << comma::join( v, ',' ) << std::endl;
                 process_command( v, *robot_arm );
 
-                inputs.pop();
             }
             // Run simulink code
             Arm_Controller_step();

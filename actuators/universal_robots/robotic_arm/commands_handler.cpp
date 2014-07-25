@@ -56,7 +56,8 @@ void commands_handler::handle( arm::move_cam& cam )
     static double zero_tilt = 90.0;
     inputs_.motion_primitive = real_T( input_primitive::move_cam );
     inputs_.Input_1 = cam.pan.value();
-    inputs_.Input_2 = cam.height.value() != 1.0 ? -cam.tilt.value() : zero_tilt - cam.tilt.value();
+    // inputs_.Input_2 = cam.height.value() != 1.0 ? -cam.tilt.value() : zero_tilt - cam.tilt.value();
+    inputs_.Input_2 = cam.height.value() != 1.0 ? -cam.tilt.value() : -cam.tilt.value();
     inputs_.Input_3 = cam.height.value();
     
     fs::remove( home_filepath_ );
@@ -160,7 +161,7 @@ void commands_handler::handle( arm::set_position& pos )
     inputs_.motion_primitive = input_primitive::set_position;
 
     if( pos.position == "giraffe" ) { inputs_.Input_1 = set_position::giraffe; fs::remove( home_filepath_ ); }
-    else if( pos.position == "home" ) { inputs_.Input_1 = set_position::home; std::ofstream( home_filepath_.c_str(), std::ios::out | std::ios::trunc ); }
+    else if( pos.position == "home" ) { inputs_.Input_1 = set_position::home; }
     else { ret = result("unknown position type", int(result::error::invalid_input) ); return; }
 
     inputs_.Input_2 = 0;    // zero pan for giraffe
@@ -185,12 +186,12 @@ bool commands_handler::is_powered() const {
 bool commands_handler::is_running() const 
 {
     if(status_.robot_mode() != robotmode::running) { 
-        std::cerr << "robot mode " << status_.robot_mode() << " expected: " << robotmode::running << std::endl;
+        // std::cerr << "robot mode " << status_.robot_mode() << " expected: " << robotmode::running << std::endl;
         return false; 
     }
 
     for( std::size_t i=0; i<joints_num; ++i ) {
-        std::cerr << "joint " << i << " mode " << status_.joint_modes[i]() << " expected: " << jointmode::running << std::endl;
+        // std::cerr << "joint " << i << " mode " << status_.joint_modes[i]() << " expected: " << jointmode::running << std::endl;
         if( status_.joint_modes[i]() != jointmode::running ) { return false; }
     }
 

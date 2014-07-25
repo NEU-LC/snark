@@ -6,14 +6,18 @@
 #include "units.h"
 
 namespace snark { namespace ur { namespace robotic_arm { 
-    
-struct config {
-    config() : home_position( 6 ) {} // position of six joints
+
+struct continuum_t 
+{
+    continuum_t() : home_position( 6 ) {} // position of six joints
     // vector of plane_angle_degrees_t does not work with boost::ptree
     std::vector< double > home_position;	
     std::string work_directory;
 
-    bool operator==( const config& rhs ) const { return home_position == rhs.home_position; }
+};
+    
+struct config {
+	continuum_t continuum;
 };
     
 } }  } //namespace snark { namespace ur { namespace robotic_arm { 
