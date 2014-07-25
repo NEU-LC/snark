@@ -448,10 +448,12 @@ int main( int ac, char** av )
         if( options.exists( "--init-force-limit,-ifl" ) ){ auto_init.set_force_limit( options.value< double >( "--init-force-limit,-ifl" ) ); }
         commands_handler.reset( new commands_handler_t( Arm_Controller_U, arm_status, *robot_arm, auto_init ) );
 
+        bool first_loop = true;
         while( !signaled && std::cin.good() )
         {
-            if( !status_stream->good() ) { COMMA_THROW( comma::exception, "status connection to robot arm failed." ); }
+            if( !first_loop && !status_stream->good() ) { COMMA_THROW( comma::exception, "status connection to robot arm failed." ); }
 
+            first_loop = false;
             select.check();
             if( ready( status_stream ) || select.read().ready( status_stream.fd() ) ) 
             {
@@ -488,6 +490,9 @@ int main( int ac, char** av )
                 robot_arm->flush();
                 Arm_Controller_U.motion_primitive = real_T( input_primitive::no_action );
             }
+            else if( Arm_Controller_Y.command_flag < 0 ) {
+                std::cerr << name() << "command cannot execute as it will cause a collision!" << std::endl;
+            }
             
             // reset inputs
             memset( &Arm_Controller_U, 0, sizeof( ExtU_Arm_Controller_T ) );
@@ -498,8 +503,8 @@ int main( int ac, char** av )
         }
 
         std::cerr << name() << "exiting" << std::endl;
-        // *robot_arm << "stopj([0.1,0.1,0.1,0.1,0.1,0.1])\n";
-        // robot_arm->flush();
+        *robot_arm << "power off\n";
+        robot_arm->flush();
         publisher.close();
     }
     catch( comma::exception& ce ) { std::cerr << name() << ": exception thrown: " << ce.what() << std::endl; return 1; }

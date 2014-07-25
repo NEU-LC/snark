@@ -28,8 +28,8 @@ void commands_handler::handle( arm::brakes& b )
     os.flush();
     ret = result();
 }
-static const plane_angle_degrees_t max_pan = 45.0 * degree;
-static const plane_angle_degrees_t min_pan = -45.0 * degree;
+static const plane_angle_degrees_t max_pan = 90.0 * degree;
+static const plane_angle_degrees_t min_pan = -90.0 * degree;
 static const plane_angle_degrees_t max_tilt = 90.0 * degree;
 static const plane_angle_degrees_t min_tilt = -90.0 * degree;
 

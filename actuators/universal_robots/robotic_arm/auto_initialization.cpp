@@ -85,7 +85,7 @@ result auto_initialization::run( bool force )
                 // std::cerr << "reading status" << std::endl;
                 read_status();
 
-                if( std::fabs( status_.forces[joint_id]() ) > force_max_ ) { return  result( "cannot moe joint because of joint force > 0", result::error::failure ); }
+                // if( std::fabs( status_.forces[joint_id]() ) > force_max_ ) { return  result( "cannot moe joint because of joint force > 0", result::error::failure ); }
 
                 double vel = status_.velocities[ joint_id ]();
                 if( std::fabs( vel ) <= 0.03 ) break;

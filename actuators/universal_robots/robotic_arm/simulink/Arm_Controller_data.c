@@ -21,7 +21,7 @@ P_Arm_Controller_T Arm_Controller_P = {
   /*  Expression: [0 -1.396 -2.694 0.949 1.57 0]
    * Referenced by: '<S1>/Memory1'
    */
-  { 0.0, -1.396, -2.694, 0.949, 1.57, 0.0 },
+  { 0.0, -1.396, -2.611, 0.8658, 1.571, 0.0 },
 
   /*  Expression: [0 0 0 0 0 0]
    * Referenced by: '<S1>/Memory'
