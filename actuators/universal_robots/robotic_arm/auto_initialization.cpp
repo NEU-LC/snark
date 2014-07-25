@@ -14,6 +14,7 @@ void auto_initialization::read_status()
 
     for( std::size_t i=0; i<loops; ++i )
     {
+        if( !iss_->good() ) { COMMA_THROW( comma::exception, "status stream failed in auto_initialization." ); }
         select_.check();
 
         if( select_.read().ready( iss_.fd() ) )
@@ -60,6 +61,8 @@ result auto_initialization::run( bool force )
     /// If not forcing auto_init, and it is not in home position ( no existen of home position file ), fail
     if( !force && !fs::exists( file ) && !fs::is_regular_file( file ) ) { return result( "the robot arm is not in the home position, auto_init dis-allowed.", result::error::failure ); }
 
+    fs::remove( file ); // Remove file before doing auto_init
+
     static const comma::uint32 retries = 50;
     // try for two joints right now
     for( int joint_id=5; joint_id >=0 && !signaled_ && inputs_.is_empty(); --joint_id )
@@ -81,8 +84,8 @@ result auto_initialization::run( bool force )
                 usleep( 0.01 * 1000000u );
                 // std::cerr << "reading status" << std::endl;
                 read_status();
-                
-                if( std::fabs( status_.forces[joint_id]() ) > force_max_ ) { return  result( "cannot moe joint because of joint force > 0", result::error::failure ); }
+
+                // if( std::fabs( status_.forces[joint_id]() ) > force_max_ ) { return  result( "cannot moe joint because of joint force > 0", result::error::failure ); }
 
                 double vel = status_.velocities[ joint_id ]();
                 if( std::fabs( vel ) <= 0.03 ) break;

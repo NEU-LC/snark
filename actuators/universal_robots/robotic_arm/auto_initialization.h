@@ -66,9 +66,10 @@ public:
                          comma::signal_flag& signaled, arm::inputs& inputs, const std::string& work_dir ) : 
         status_( status ), os( robot ),
         iss_(status_iss), select_( select ), signaled_( signaled ),
-        inputs_( inputs ), force_max_( 0.0 ), home_filepath_( work_dir + '/' + filename ) {}
+        inputs_( inputs ), force_max_( 13.0 ), home_filepath_( work_dir + '/' + filename ) {}
     
     void set_app_name( const char* name ) { name_ = name; }
+    void set_force_limit( double newtons ){ force_max_ = newtons; }
     
     const std::string& home_filepath() const { return home_filepath_; }
     /// Performs auto initialisation but also listens for new commands.

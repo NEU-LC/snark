@@ -116,6 +116,14 @@ int main( int ac, char** av )
         while( !signaled && std::cin.good() )
         {
             std::cin.read( arm_status.data(), status::size );
+
+            // sanity check on the status
+            if( arm_status.length() != arm::fixed_status::size ||
+                arm_status.robot_mode() < arm::robotmode::running || 
+                arm_status.robot_mode() > arm::robotmode::safeguard_stop ) {
+                std::cerr << name() << "failed sanity check, data is not aligned, exiting now..." << std::endl;
+                return 1;
+            }
             
             static std::string line;
             if( is_binary )

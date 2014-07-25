@@ -43,6 +43,15 @@ typedef std::pair< boost::posix_time::ptime, cv::Mat > Pair;
 
 static Pair capture( snark::camera::gobi& camera ) { return camera.read(); }
 
+/*
+static Pair capture( snark::camera::gobi& camera ), ::tbb::flow_control& flow )
+{ 
+    static comma::signal_flag is_shutdown;
+    if( is_shutdown ) { flow.stop(); return Pair(); }
+    return camera.read();    
+}
+*/
+
 int main( int argc, char** argv )
 {
     try
@@ -64,6 +73,15 @@ int main( int argc, char** argv )
             ( "header", "output header only" )
             ( "no-header", "output image data only" )
             ( "verbose,v", "be more verbose" );
+            
+        std::ostringstream shutter_message;
+        shutter_message << "    default behaviour of mechanical shutter:" << std::endl;
+        shutter_message << "        by default the shutter is activated every time the detector's temperature changes by 0,5°C"  << std::endl;
+        shutter_message << "        or after a set period of time since last calibration in order to obtain a reference image and correct for pixel drifts" << std::endl;
+        shutter_message << "            AutoCorrectionDeltaTemperature=0.5" << std::endl;
+        shutter_message << "            AutoCorrectionDeltaTime=150 (the actual time of recalibration is observed to be about 30% longer)" << std::endl;
+        shutter_message << "            AutoCorrectionEnabled=1" << std::endl;
+
 
         boost::program_options::variables_map vm;
         boost::program_options::store( boost::program_options::parse_command_line( argc, argv, description), vm );
@@ -76,6 +94,7 @@ int main( int argc, char** argv )
             std::cerr << "usage: gobi-cat [<options>] [<filters>]\n" << std::endl;
             std::cerr << "output header format: fields: t,cols,rows,type; binary: t,3ui\n" << std::endl;
             std::cerr << description << std::endl;
+            std::cerr << shutter_message.str() << std::endl;
             std::cerr << snark::cv_mat::filters::usage() << std::endl;
             return 1;
         }

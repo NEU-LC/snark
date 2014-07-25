@@ -56,9 +56,10 @@ comma::csv::ascii< T >& ascii() {
 TEST( robot_arm, robot_arm_config )
 {
     config cfg;
-    cfg.home_position[0] = 1.11;
-    cfg.home_position[1] = 2.22322;
-    cfg.home_position[5] = 6.0;
+    continuum_t& continuum = cfg.continuum;
+    continuum.home_position[0] = 1.11;
+    continuum.home_position[1] = 2.22322;
+    continuum.home_position[5] = 6.0;
 
     std::string line;
     EXPECT_EQ( "1.11,2.22322,0,0,0,6", ascii< config >().put( cfg, line ) );
@@ -81,9 +82,9 @@ TEST( robot_arm, robot_arm_config )
         config conf;
         comma::visiting::apply( from_ptree ).to( conf );
 
-        EXPECT_EQ( cfg.home_position[0], conf.home_position[0] );
-        EXPECT_EQ( cfg.home_position[1], conf.home_position[1] );
-        EXPECT_EQ( cfg, conf );
+        EXPECT_EQ( continuum.home_position[0], conf.continuum.home_position[0] );
+        EXPECT_EQ( continuum.home_position[1], conf.continuum.home_position[1] );
+        EXPECT_EQ( continuum, conf.continuum );
     }
 }
 
