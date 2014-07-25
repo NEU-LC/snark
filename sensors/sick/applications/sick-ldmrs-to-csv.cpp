@@ -41,7 +41,7 @@
 #include <comma/string/string.h>
 #include <comma/visiting/traits.h>
 #include <snark/math/range_bearing_elevation.h>
-#include <snark/sensors/sick/protocol.h>
+#include <snark/sensors/sick/ibeo/protocol.h>
 #include <snark/timing/ntp.h>
 #include <snark/visiting/eigen.h>
 #include <snark/visiting/traits.h>

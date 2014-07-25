@@ -40,7 +40,7 @@
 #include <comma/name_value/map.h>
 #include <comma/string/string.h>
 #include <snark/timing/ntp.h>
-#include <snark/sensors/sick/protocol.h>
+#include <snark/sensors/sick/ibeo/protocol.h>
 #ifdef WIN32
 #include <fcntl.h>
 #include <io.h>

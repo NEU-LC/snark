@@ -42,7 +42,7 @@
 #include <string>
 #include <boost/noncopyable.hpp>
 #include <boost/optional.hpp>
-#include <snark/sensors/sick/packets.h>
+#include <snark/sensors/sick/ibeo/packets.h>
 
 namespace snark {  namespace sick { namespace ldmrs {
 
