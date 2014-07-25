@@ -295,6 +295,11 @@ bool read_status( comma::io::istream& iss )
         iss->read( arm_status.data(), arm::fixed_status::size );
         // std::cerr << "ready again read" << std::endl;
     }
+
+    if( arm_status.length() != arm::fixed_status::size ) {
+        std::cerr << name() << "status data alignment check failed" << std::endl; 
+        COMMA_THROW( comma::exception, "status data alignment check failed" ); 
+    }
     return true;
 }
 
