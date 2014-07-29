@@ -49,43 +49,52 @@ const char* name() { return "hokuyo-to-csv: "; }
 
 namespace hok = snark::hokuyo;
 
-
+/// On exit just send a QT command, although it does not seem to be needed.
 class app_exit
 {
     std::ostream& oss_;
+    comma::io::publisher& publisher_;
 public:
-    app_exit( std::ostream& oss ) : oss_( oss ) {}
+    app_exit( std::ostream& oss, comma::io::publisher& publisher ) : oss_( oss ), publisher_( publisher ) {}
     ~app_exit()
     {
+        publisher_.close();
+        
         const hok::state_command stop( "QT" );
         oss_.write( stop.data(), hok::state_command::size );
         oss_.flush();
     }
 };
 
+/// Represent a point relative to the laser's coordinate frame.
+/// Note z and elevation are always zero as laser shoots out horizontally.
 struct data_point
 {
     data_point() : timestamp( boost::posix_time::microsec_clock::local_time() ), 
-        x(0), y(0), z(0), intensity(0), bearing(0), elevation(0) {}
+        x(0), y(0), z(0), range(0), intensity(0), bearing(0), elevation(0) {}
     
     bool is_nan() const { return ( x == 0 && y == 0 && z == 0 ); }
     
     /// Set the data point
     /// distance in meters, bearing in (radians)
-    void set( double distance, double intensity, double bearing );
+    void set( double distance, comma::uint32 intensity, double bearing );
     
     boost::posix_time::ptime timestamp;
     double x;
     double y;
     double z;
-    double distance; // meters
-    double intensity;   
+    double range; // meters
+/// Intensity is the reflected strength of the laser.
+/// The reflected laser intensity value is represented by 18- bit data. It is a relative number without a unit.
+/// Intensity may differ depending upon the distance, material and detection angle of the object. Therefore, users
+/// should check the detection capability verification test.
+    comma::uint32 intensity;   /// This is a relative, unit less number that is 18-bit
     double bearing; //radians
     double elevation;   // radians
 };
 
-
-void data_point::set(double distance, double intensity, double bearing)
+/// This is for setting acquired data for the point while keeping timestamp the same.
+void data_point::set(double distance, comma::uint32 intensity, double bearing)
 {
     if( distance == hok::ust_10lx::distance_nan || distance <= ( hok::ust_10lx::distance_min / 1000.0 ) )
     {
@@ -95,16 +104,16 @@ void data_point::set(double distance, double intensity, double bearing)
         z = 0; 
         intensity = 0;
         bearing = 0;
-        elevation = 0;
+//         elevation = 0;
         return;
     }
     
-    this->distance = distance;
-    this->intensity = intensity;
+    this->range = distance;
+    this->intensity = intensity;    
     this->bearing = bearing;
     // timestamp stays the same
-    x = distance / std::sin( bearing );
-    y = distance / std::cos( bearing );
+    x = distance * std::sin( bearing );
+    y = distance * std::cos( bearing );
     // z = 0;
 }
 
@@ -120,7 +129,7 @@ template < > struct traits< data_point >
         v.apply( "x", t.x );
         v.apply( "y", t.y );
         v.apply( "z", t.z );
-        v.apply( "distance", t.distance );
+        v.apply( "range", t.range );
         v.apply( "intensity", t.intensity );
         v.apply( "bearing", t.bearing );
         v.apply( "elevation", t.elevation );
@@ -145,8 +154,10 @@ static void usage()
     std::cerr << "        t: timestamp" << std::endl;
     std::cerr << "        x,y,z: cartesian coordinates in sensor frame, where <0,0,0> is no data" << std::endl;
     std::cerr << "        i: intensity of the data point." << std::endl;
-    std::cerr << "        range,bearing or r,b: polar coordinates in sensor frame" << std::endl;
+    std::cerr << "        range,bearing, elevation or r,b,e: polar coordinates in sensor frame" << std::endl;
     std::cerr << "    --format: output binary format for given fields to stdout and exit" << std::endl;
+    std::cerr << "    --start-step=<0-890>: Scan starting at a start step and go to (step+270) wich covers 67.75\" which is 270\"/4." << std::endl;
+    std::cerr << "                          Does not perform a full 270\" scan." << std::endl;
     std::cerr << std::endl;
     std::cerr << "Output format:" << std::endl;
     comma::csv::binary< data_point > binary( "", "" );
@@ -163,7 +174,7 @@ static void usage()
 
 static bool is_binary = false;
 static std::string output_fields = "";
-
+/// Write the data to the publisher in CSV ascii or binary formats, with selectable fields from --fields=
 void output_data( const data_point& point, comma::io::publisher& publisher )
 {
     if( is_binary )
@@ -174,7 +185,7 @@ void output_data( const data_point& point, comma::io::publisher& publisher )
         for( std::size_t i = 0; i < v.size(); ++i ) // convenience shortcuts
         {
             if( v[i] == "i" ) { v[i] = "intensity"; }
-            else if( v[i] == "d" ) { v[i] = "distance"; }
+            else if( v[i] == "r" ) { v[i] = "range"; }
             else if( v[i] == "b" ) { v[i] = "bearing"; }
             else if( v[i] == "e" ) { v[i] = "elevation"; }
             else if( v[i] == "t" ) { v[i] = "timestamp"; }
@@ -197,90 +208,121 @@ void output_data( const data_point& point, comma::io::publisher& publisher )
     }
 }
 
+template < int STEPS >
+void scanning( int start_step, comma::signal_flag& signaled,
+               comma::io::istream& input, comma::io::ostream& output, 
+               comma::io::publisher& publisher )
+{
+    hok::request_md me( true );
+    me.header.start_step = start_step;
+    me.header.end_step = start_step + STEPS-1;
+    
+    output->write( me.data(), hok::request_md::size );
+    output->flush();
+    
+    hok::reply_md state;
+    input->read( state.data(), hok::reply_md::size );
+    
+    if( state.request.message_id != me.message_id ) { COMMA_THROW( comma::exception, "message id mismatch for ME status reply" ); }
+    if( state.status.status() != 0 ) 
+    { 
+        std::ostringstream ss;
+        ss << "status reply to ME request is not success: " << state.status.status(); // to change to string
+        COMMA_THROW( comma::exception, ss.str() ); 
+    }
+    
+    hok::reply_me_data< STEPS > response; // reply with data
+    typename hok::di_data< STEPS >::rays rays;
+//     std::cerr << "steps: " << STEPS << " size: " << hok::reply_me_data< STEPS >::size << std::endl;
+    while( !signaled && std::cin.good() )
+    {
+        // TODO just read the status response first, or timeout on read()
+        input->read( response.data(), hok::reply_me_data< STEPS >::size );
+        if( response.request.message_id != me.message_id ) { COMMA_THROW( comma::exception, "message id mismatch for ME status reply" ); }
+        if( response.status.status() != hok::status::data_success ) 
+        { 
+            std::ostringstream ss;
+            ss << "data reply to ME request is not success: " << response.status.status(); // to change to string
+            COMMA_THROW( comma::exception, ss.str() ); 
+        }
+        
+//      std::cerr << "got: " << std::endl << std::string( response.data(), hok::reply_me_data< STEPS >::size );
+//      std::cerr.flush();
+        
+        response.encoded.get_values( rays );
+//      std::cerr << "some data here:" << rays.steps[0].distance() << ',' << rays.steps[1].distance() << std::endl;
+        data_point point3d;
+        for( std::size_t i=0; i<STEPS; ++i )
+        {
+            point3d.set( rays.steps[i].distance() / 1000.0, 
+                         rays.steps[i].intensity(), 
+                         hok::ust_10lx::step_to_bearing( i + start_step ) );
+            output_data( point3d, publisher );
+        }
+    
+    }
+    
+}
+
 int main( int ac, char** av )
 {
     comma::signal_flag signaled;
-
     comma::command_line_options options( ac, av );
-    
-    comma::io::istream input( "-", comma::io::mode::binary );
-    comma::io::ostream output( "-", comma::io::mode::binary );
-    
-    
     if( options.exists( "--help,-h" ) ) { usage(); }
     
     try
     {
+        /// Read and write to stdin and stdout
+        comma::io::istream input( "-", comma::io::mode::binary );
+        comma::io::ostream output( "-", comma::io::mode::binary );
+        /// Write data on --publish=
         comma::io::publisher publisher( options.value< std::string >( "--publish" ), 
                                         is_binary ? comma::io::mode::binary : comma::io::mode::ascii );
         
         if( options.exists( "--fields,-f" ) ) { output_fields = options.value< std::string >( "--fields,-f" ); }
         is_binary = options.exists( "--binary,-b" );
         
-        hok::state_command start( "BM" ); // starts transmission
-        hok::state_reply start_reply;
+        // Let put the laser into scanning mode
+        {
+            hok::state_command start( "BM" ); // starts transmission
+            hok::state_reply start_reply;
     
-        output->write( start.data(), hok::state_command::size  );
-        input->read( start_reply.data(), hok::state_reply::size  );
+            output->write( start.data(), hok::state_command::size  );
+            
+            comma::io::select select;
+            select.read().add( output.fd() );
+            
+            select.wait( 1 ); // wait one select for reply, it can be much smaller
+            if( !select.read().ready( output.fd() ) ) { COMMA_THROW( comma::exception, "no reply received from laser scanner after a startup (BM) command" ); }
+            input->read( start_reply.data(), hok::state_reply::size  );
 //         std::cerr << name() << "received " << start_reply.data();
 //         std::cerr << name() << "starting status of " << start_reply.status() << " request " << start.data() << std::endl;
+            
+            if( start_reply.status() != 0 && start_reply.status() != 2 ) { 
+                COMMA_THROW( comma::exception, std::string("Starting laser with BM command failed, status: ") + std::string( start_reply.status.data(), 2 ) ); 
+            }
+        }
     
     
         {
-            app_exit onexit( *output );
-            
-            if( start_reply.status() != 0 && start_reply.status() != 2 ) { 
-                COMMA_THROW( comma::exception, std::string("Starting laser with BM command failed, status: ") + start_reply.data() ); 
-            }
+            app_exit onexit( *output, publisher );
         
-            static const int STEPS = 1081;
-            hok::request_md me( true );
-            me.header.start_step = 0;
-            me.header.end_step = 1080;
+            // it is higher than 1080 because 0 is a step
+            static const int MAX_STEPS = 1081;
             
             comma::uint32 start_encoder_step = 0;
-            
-            output->write( me.data(), hok::request_md::size );
-            output->flush();
-            
-            hok::reply_md state;
-            input->read( state.data(), hok::reply_md::size );
-            
-            if( state.request.message_id != me.message_id ) { COMMA_THROW( comma::exception, "message id mismatch for ME status reply" ); }
-            if( state.status.status() != 0 ) 
+            if( options.exists( "--start-step" ) ) 
             { 
-                std::ostringstream ss;
-                ss << "status reply to ME request is not success: " << state.status.status(); // to change to string
-                COMMA_THROW( comma::exception, ss.str() ); 
+                static const int SMALL_STEPS = 271;
+                start_encoder_step = options.value< comma::uint32 >( "--start-step", 0 );
+                if( start_encoder_step >= ( hok::ust_10lx::step_max - SMALL_STEPS ) ) { COMMA_THROW( comma::exception, "start step is too high" ); }
+                scanning< SMALL_STEPS >( start_encoder_step, signaled, input, output, publisher );
             }
-            
-            hok::reply_me_data< STEPS > response; // reply with data
-            hok::di_data< STEPS >::rays rays;
-            while( !signaled && std::cin.good() )
-            {
-                // TODO just read the status response first, or timeout on read()
-                input->read( response.data(), hok::reply_me_data< STEPS >::size );
-                if( response.request.message_id != me.message_id ) { COMMA_THROW( comma::exception, "message id mismatch for ME status reply" ); }
-                if( response.status.status() != hok::status::data_success ) 
-                { 
-                    std::ostringstream ss;
-                    ss << "data reply to ME request is not success: " << response.status.status(); // to change to string
-                    COMMA_THROW( comma::exception, ss.str() ); 
-                }
-                
-                response.encoded.get_values( rays );
-                
-//                 std::cerr << "some data here:" << rays.steps[0].distance() << ',' << rays.steps[1].distance() << std::endl;
-                data_point point3d;
-                for( std::size_t i=0; i<STEPS; ++i )
-                {
-                    point3d.set( rays.steps[i].distance() / 1000.0, 
-                                 rays.steps[i].intensity(), 
-                                 hok::ust_10lx::step_to_bearing( i + start_encoder_step ) );
-                    output_data( point3d, publisher );
-                }
-            
+            else {
+                scanning< MAX_STEPS >( start_encoder_step, signaled, input, output, publisher );
             }
+    
+            
         }
     }
     catch( std::exception& ex )

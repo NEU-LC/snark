@@ -110,6 +110,11 @@ int main( int ac, char** av )
     bool is_single_line_json = options.exists( "--compact-json,-cj" );
     bool is_binary = options.exists( "--binary,-b" );
     
+    comma::csv::options csv;
+    csv.fields = options.value< std::string >( "--fields", "" );
+    csv.full_xpath = false;
+    if( is_binary ) { csv.format( comma::csv::format::value< arm::fixed_status >( csv.fields, false ) ); }
+    
     try
     {
         arm::fixed_status arm_status;
@@ -125,22 +130,18 @@ int main( int ac, char** av )
                 return 1;
             }
             
-            static std::string line;
-            if( is_binary )
-            {
-                static comma::csv::binary< status > binary("","",true, arm_status );
-                static std::vector<char> line( binary.format().size() );
-                binary.put( arm_status, line.data() );
-                std::cout.write( line.data(), line.size());
-            }
-            else if ( is_json || is_single_line_json )
+            if ( is_json || is_single_line_json )
             {
                 boost::property_tree::ptree t;
                 comma::to_ptree to_ptree( t );
                 comma::visiting::apply( to_ptree ).to( arm_status );
                 boost::property_tree::write_json( std::cout, t, !is_single_line_json );    
             }
-            else { std::cout << ascii< status >().put( arm_status, line ) << std::endl; }
+            else 
+            { 
+                static comma::csv::output_stream< arm::fixed_status > oss( std::cout, csv );
+                oss.write( arm_status );
+            }
         }
         
     }

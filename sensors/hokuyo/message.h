@@ -87,7 +87,7 @@ public:
 };
 
 typedef scip_encoding< 2, comma::uint16 > scip_2chars_t;
-typedef scip_encoding< 3, comma::uint16 > scip_3chars_t;
+typedef scip_encoding< 3 > scip_3chars_t;
 typedef scip_encoding< 4 > scip_4chars_t;
 
 template < typename T, std::size_t S, char Padding = ' ' >
@@ -201,8 +201,6 @@ struct request_gd : public comma::packed::packed_struct< request_gd, reply_heade
     sequence_string message_id;
 };
 
-
-/// TODO find out this value
 static const char size_of_sum = 1;
 
 /// Verify checksum of the data given that the last byte is the checksum.

@@ -41,6 +41,7 @@ struct ust_10lx {
     static const comma::int32 distance_nan = 65533;
     static const comma::int32 distance_min = 4; // millimeters
     static const comma::int32 zero_degree_step = 540;
+    static const comma::uint32 step_max = 1080;
     // Encoder step to bearing in radian
     static double step_to_bearing( comma::int32 step ) {
         return ( ( ( zero_degree_step - step ) * 0.25 * M_PI ) / 180.0 ); // to radian
