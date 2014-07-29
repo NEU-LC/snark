@@ -48,27 +48,43 @@ namespace packed = comma::packed;
 
 TEST( hokuyo_encoding, format )
 {
-    const std::string data( "1Dh");
-
-    const packed::scip_3chars_t* h3 = reinterpret_cast< const packed::scip_3chars_t* >( &data[0] );
-
-    comma::uint32 value = 5432;
-    EXPECT_EQ( value, (*h3)() );
-    packed::scip_3chars_t h3_data;
-    h3_data = value;
-    std::string out( h3_data.data(), 3 );
-    EXPECT_EQ( data, out );
-
-
-    const std::string data4 = "m2@0";
-    const comma::uint32 value4 = 16000000;
-    const packed::scip_4chars_t* h4 = reinterpret_cast< const packed::scip_4chars_t* >( &data4[0] );
-    EXPECT_EQ( value4, (*h4)() );
-
-    packed::scip_4chars_t h4_data;
-    h4_data = value4;
-    std::string out4( h4_data.data(), 4 );
-    EXPECT_EQ( data4, out4 );
+    {
+        const std::string data( "1Dh");
+    
+        const packed::scip_3chars_t* h3 = reinterpret_cast< const packed::scip_3chars_t* >( &data[0] );
+    
+        comma::uint32 value = 5432;
+        EXPECT_EQ( value, (*h3)() );
+        packed::scip_3chars_t h3_data;
+        h3_data = value;
+        std::string out( h3_data.data(), 3 );
+        EXPECT_EQ( data, out );
+    
+    
+        const std::string data4 = "m2@0";
+        const comma::uint32 value4 = 16000000;
+        const packed::scip_4chars_t* h4 = reinterpret_cast< const packed::scip_4chars_t* >( &data4[0] );
+        EXPECT_EQ( value4, (*h4)() );
+    
+        packed::scip_4chars_t h4_data;
+        h4_data = value4;
+        std::string out4( h4_data.data(), 4 );
+        EXPECT_EQ( data4, out4 );
+    }
+    
+    {
+        const std::string data( "06H");
+    
+        const packed::scip_3chars_t* h3 = reinterpret_cast< const packed::scip_3chars_t* >( &data[0] );
+    
+        comma::uint32 value = 408;
+        EXPECT_EQ( value, (*h3)() );
+        packed::scip_3chars_t h3_data;
+        h3_data = value;
+        std::string out( h3_data.data(), 3 );
+        EXPECT_EQ( data, out );
+        
+    }
 }
 
 TEST( hokuyo_packed, requests )
@@ -225,6 +241,8 @@ TEST( hokuyo_packed, scip_me_response )
     EXPECT_EQ( 1, results->request.num_of_scans() ); // 2nd scan of 3
     
     hok::di_data< 11 >::rays rays;
+//     std::cerr << " steps 11 size: " << hok::reply_me_data< 11 >::size << std::endl;
+//     std::cerr << " steps 11 data only size: " << hok::di_data< 11 >::value << std::endl;
     results->encoded.get_values( rays);
     
     {
@@ -234,7 +252,7 @@ TEST( hokuyo_packed, scip_me_response )
             ss << rays.steps[i].distance() << ':' << rays.steps[i].intensity() << ' ';
         }
         // pairs of distance(mm) and intensity 
-        EXPECT_EQ( "1652:443 1674:444 1641:388 65533:0 65533:0 1729:391 1780:407 1872:411 1911:438 1902:424 1912:384 ", ss.str() );
+        EXPECT_EQ( "1652:443 1674:444 1641:388 65533:0 65533:0 1729:391 1780:407 1872:411 1911:438 1902:424 1912:408 ", ss.str() );
     }
     
     /// Note the 00 before the ';' means that remaining number of scans is 0
@@ -254,7 +272,7 @@ TEST( hokuyo_packed, scip_me_response )
             ss << rays.steps[i].distance() << ':' << rays.steps[i].intensity() << ' ';
         }
         // pairs of distance(mm) and intensity 
-        EXPECT_EQ( "1660:455 1658:437 1667:396 65533:0 65533:0 65533:0 65533:0 1877:418 1900:422 1903:424 1909:384 ", ss.str() );
+        EXPECT_EQ( "1660:455 1658:437 1667:396 65533:0 65533:0 65533:0 65533:0 1877:418 1900:422 1903:424 1909:420 ", ss.str() );
     }
 }
 TEST( hokuyo_packed, scip_md_response )
@@ -283,7 +301,7 @@ TEST( hokuyo_packed, scip_md_response )
             ss << rays.steps[i]() << ' ';
         }
         // distance data, 65533 is error
-        EXPECT_EQ( "65533 65533 65533 65533 65533 65533 65533 65533 65533 1688 1664 ", ss.str() );
+        EXPECT_EQ( "65533 65533 65533 65533 65533 65533 65533 65533 65533 1688 1690 ", ss.str() );
     }
     
     /// Note the 00 before the ';' means that remaining number of scans is 0
@@ -303,7 +321,7 @@ TEST( hokuyo_packed, scip_md_response )
             ss << rays.steps[i]() << ' ';
         }
         // pairs of distance(mm) and intensity 
-        EXPECT_EQ( "65533 65533 65533 65533 65533 65533 65533 65533 65533 1689 1664 ", ss.str() );
+        EXPECT_EQ( "65533 65533 65533 65533 65533 65533 65533 65533 65533 1689 1683 ", ss.str() );
     }
 }
 

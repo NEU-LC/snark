@@ -201,8 +201,6 @@ struct request_gd : public comma::packed::packed_struct< request_gd, reply_heade
     sequence_string message_id;
 };
 
-
-/// TODO find out this value
 static const char size_of_sum = 1;
 
 /// Verify checksum of the data given that the last byte is the checksum.
