@@ -226,9 +226,11 @@ class gobi::impl
             set( attributes );
             height_ = boost::lexical_cast< unsigned long >( XC_GetHeight( handle_ ) );
             width_ = boost::lexical_cast< unsigned long >( XC_GetWidth( handle_ ) );
-            frame_type_ = XC_GetFrameType( handle_ );            
+            frame_type_ = XC_GetFrameType( handle_ );
             total_bytes_per_frame_ = boost::lexical_cast< unsigned long >( XC_GetFrameSize( handle_ ) );
-            frame_buffer_.resize( total_bytes_per_frame_ );
+            frame_footer_size_ = boost::lexical_cast< unsigned long >( XC_GetFrameFooterLength( handle_ ) );
+            frame_buffer_.resize( total_bytes_per_frame_ + frame_footer_size_);
+            footer_ = ( XPFF_GENERIC* )( &frame_buffer_[0] + total_bytes_per_frame_ );
         }
         
         void set( const attributes_type& attributes )
@@ -265,10 +267,23 @@ class gobi::impl
                 }
             }
             std::pair< boost::posix_time::ptime, cv::Mat > pair;
-            ErrCode error_code = XC_GetFrame( handle_, FT_NATIVE, XGF_Blocking | XGF_NoConversion, &frame_buffer_[0], total_bytes_per_frame_ );
+            ErrCode error_code = XC_GetFrame( handle_, FT_NATIVE, XGF_Blocking | XGF_NoConversion | XGF_FetchPFF, &frame_buffer_[0], total_bytes_per_frame_ );
             if( error_code == I_OK)
             {
-                pair.first = boost::posix_time::microsec_clock::universal_time();
+                long long time_of_reception_in_microseconds_since_epoch = footer_->tft;
+                boost::posix_time::ptime time_of_reception = ptime_( time_of_reception_in_microseconds_since_epoch );
+                boost::posix_time::ptime utc = boost::posix_time::microsec_clock::universal_time();
+                long time_delay = ( utc - time_of_reception ).total_microseconds();
+                if ( time_delay < 0 )
+                {
+                    COMMA_THROW( comma::exception, "difference between utc and time_of_reception is negative: time of reception = " << time_of_reception << ", utc = " << utc );
+                }
+                const long max_allowed_time_delay = 1000000l;
+                if ( time_delay > max_allowed_time_delay)
+                {
+                    COMMA_THROW( comma::exception, "difference between utc and time_of_reception is greater than " << max_allowed_time_delay << " microseconds: time of reception = " << time_of_reception << ", utc = " << utc );
+                }
+                pair.first = time_of_reception;
                 pair.second = xenics_to_cvmat_( height_, width_, frame_type_, frame_buffer_ );
             }
             else
@@ -324,9 +339,15 @@ class gobi::impl
         unsigned long width_;
         FrameType frame_type_;
         unsigned long total_bytes_per_frame_;
+        unsigned long frame_footer_size_;
         std::vector< byte > frame_buffer_;
         std::string address_;
         bool closed_;
+        XPFF_GENERIC* footer_;
+        boost::posix_time::ptime ptime_( long long microseconds_since_epoch )
+        {
+            return boost::posix_time::time_from_string("1970-01-01 00:00:00.000") + boost::posix_time::microseconds( microseconds_since_epoch );
+        }
 };
 
 } } // namespace snark{ namespace camera{

@@ -35,6 +35,7 @@
 #define SNARK_SENSORS_GOBI_H_
 
 #include <XCamera.h>
+#include <XFooters.h>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/function.hpp>
 
