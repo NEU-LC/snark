@@ -181,7 +181,7 @@ void output_data( const data_point& point, comma::io::publisher& publisher )
         for( std::size_t i = 0; i < v.size(); ++i ) // convenience shortcuts
         {
             if( v[i] == "i" ) { v[i] = "intensity"; }
-            else if( v[i] == "d" ) { v[i] = "distance"; }
+            else if( v[i] == "r" ) { v[i] = "range"; }
             else if( v[i] == "b" ) { v[i] = "bearing"; }
             else if( v[i] == "e" ) { v[i] = "elevation"; }
             else if( v[i] == "t" ) { v[i] = "timestamp"; }
