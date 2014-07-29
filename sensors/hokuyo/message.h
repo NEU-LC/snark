@@ -38,20 +38,20 @@
 #include <iomanip>
 
 namespace comma { namespace packed {
-
-/// The character encoding used by SCIP 
-template < int N >
-class scip_encoding : public comma::packed::field< scip_encoding< N >, comma::uint32, N >
+    
+/// The character encoding used by Hokuyo with SCIP 
+template < int N, typename T=comma::uint32 >
+class scip_encoding : public comma::packed::field< scip_encoding< N >, T, N >
 {
 public:
     enum { size = N };
     
-    typedef comma::uint32 type;
+    typedef T type;
     
-    typedef comma::packed::field< scip_encoding< N >, comma::uint32, size > base_type;
+    typedef comma::packed::field< scip_encoding< N >, type, size > base_type;
     
     static type default_value() { return 0; }
-
+    
     static const unsigned char mask = BOOST_BINARY( 111111 );
     static const unsigned char offset = 0x30;
     
@@ -61,18 +61,16 @@ public:
         {
             int bits_shift = 6 * (N - (i+1));
             char c = ( ( value & ( mask << bits_shift ) ) >> bits_shift ) + offset; 
-            // std::cerr << "byte: " << i << " to " << char(int(c)) << " int: " << int(c) << std::endl;
             storage[i] = c;
         }
     }
     
     static type unpack( const char* storage )
     {
-        comma::uint32 value = 0;
+        type value = 0;
         for( int i=0; i<N; ++i )
         {
-
-            // std::cerr << "hokuyo char: " << storage[i]; 
+            
             comma::uint32 part( storage[i] );
             int bits_shift = 6 * (N - (i+1));
             // std::cerr << " int: " << part << " shift: " << bits_shift;
@@ -88,8 +86,8 @@ public:
     const scip_encoding< N >& operator=( type rhs ) { return base_type::operator=( rhs ); }
 };
 
-typedef scip_encoding< 2 > scip_2chars_t;
-typedef scip_encoding< 3 > scip_3chars_t;
+typedef scip_encoding< 2, comma::uint16 > scip_2chars_t;
+typedef scip_encoding< 3, comma::uint16 > scip_3chars_t;
 typedef scip_encoding< 4 > scip_4chars_t;
 
 template < typename T, std::size_t S, char Padding = ' ' >
@@ -129,7 +127,9 @@ struct status {
     /// stopped and hardware errors is a range of values, only 0 is success - else error.
     enum { success=0, start_step_format=1, end_step_format=2, cluster_count_format=3, 
            end_step_range=4, end_step_small=5, scan_interval_format=6, num_of_scan_format=7,
-           stopped_min=21, stopped_max=49, hardware_min=50, hardware_max=97, resuming_after_stop=98 };
+           stopped_min=21, stopped_max=49, hardware_min=50, hardware_max=97, resuming_after_stop=98,
+           data_success=99
+    };
 };
 
 typedef comma::packed::const_byte< ';' > semi_colon_t; /// Final terminating line feed
@@ -162,10 +162,14 @@ struct sequence_string : comma::packed::packed_struct< sequence_string, 12 >
     comma::packed::string< 2 > tag; // e.g. GD or MD
     comma::packed::casted_left_fill< comma::uint16, 8, '0' > seq_num;
     line_feed_t lf;
+    
+    const std::string str() const { return tag() + std::string( seq_num.data(), 8 ); }
 };
 
 /// This is used to pair the request with the reply, it can roll over
 static comma::uint16 sequence = 0;
+
+static const int reply_header_size = sensor_to_host::size + sequence_string::size;
 
 /// For BM, PP or RB command
 struct state_command : public comma::packed::packed_struct< state_command, 15 >
@@ -176,18 +180,17 @@ struct state_command : public comma::packed::packed_struct< state_command, 15 >
     line_feed_t lf_end;
 };
 
-struct state_reply : public comma::packed::packed_struct< state_reply, 17 >
+struct state_reply : public comma::packed::packed_struct< state_reply, state_command::size - 1 + 5 >
 {
     comma::packed::string< 2 > cmd;
     sequence_string message_id;
-    comma::packed::casted_left_fill< char, 2, '0' > status;
+    comma::packed::casted_left_fill< comma::uint16, 2, '0' > status;
     char sum;
     line_feed_t lf;
     line_feed_t lf_end; /// TODO: does it work for PP reply?
 };
 
 
-static const int reply_header_size = sensor_to_host::size + sequence_string::size;
 
 /// Can be used for MD or GD request, just change the 'cmd' member
 struct request_gd : public comma::packed::packed_struct< request_gd, reply_header_size  >
@@ -206,10 +209,9 @@ static const char size_of_sum = 1;
 /// Value of checksum is the last 6 bits of the sum of the data bytes
 bool scip_verify_checksum( const std::string& line );
 
-
 /// For calculating the size of the data mixed with checksum and line feeds
 template < int STEPS >
-struct distance_data {
+struct distance_data { 
     /// The data is mixed with check sum every 64 bytes
     static const char encoding_num = 3; // 3 character encoding
     static const comma::uint16 data_only_size = STEPS*encoding_num; // Has distance and intensity data
@@ -286,7 +288,7 @@ struct reply_gd : comma::packed::packed_struct< reply_gd< STEPS >, reply_size + 
     line_feed_t lf1;
 
     static const int data_size = distance_data< STEPS >::value;
-    distance_data< STEPS > data;
+    distance_data< STEPS > encoded;
     line_feed_t lf_end; /// Final terminating line feed
 };
 
@@ -301,7 +303,7 @@ struct reply_ge : comma::packed::packed_struct< reply_ge< STEPS >, reply_size + 
 
     static const int data_size = di_data< STEPS >::value;
     /// each sum value is followed by a line feed char
-    di_data< STEPS > data;
+    di_data< STEPS > encoded;
     line_feed_t lf_end; /// Final terminating line feed
 };
 
@@ -335,7 +337,7 @@ struct reply_md_data : comma::packed::packed_struct< reply_md_data< STEPS >, req
     line_feed_t lf1;
 
     static const int data_size = distance_data< STEPS >::value;
-    distance_data< STEPS > data;
+    distance_data< STEPS > encoded;
     line_feed_t lf_end; /// Final terminating line feed
 };
 
@@ -349,10 +351,9 @@ struct reply_me_data : comma::packed::packed_struct< reply_me_data< STEPS >, req
     line_feed_t lf1;
 
     static const int data_size = di_data< STEPS >::value;
-    di_data< STEPS > data;
+    di_data< STEPS > encoded;
     line_feed_t lf_end; /// Final terminating line feed
 };
-
     
 } } // namespace snark { namespace hokuyo {
     

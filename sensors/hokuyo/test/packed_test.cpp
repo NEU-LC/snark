@@ -46,8 +46,7 @@
 namespace hok = snark::hokuyo;
 namespace packed = comma::packed;
 
-
-TEST( hokuyo_encoding, scip_format )
+TEST( hokuyo_encoding, format )
 {
     const std::string data( "1Dh");
 
@@ -146,10 +145,10 @@ TEST( hokuyo_packed, scip_gd_response )
     EXPECT_EQ( 6216486, gd_reply->timestamp.timestamp() );
     EXPECT_EQ( 'F', gd_reply->timestamp.sum );
     /// Line feeds are included in the data, remove it to verify checksum, as that value is the last 'n'
-    EXPECT_EQ( "06306J06_07407607106i06i06i075070n", std::string( gd_reply->data.raw_data.data(), hok::distance_data< 11 >::value-1 ) );
+    EXPECT_EQ( "06306J06_07407607106i06i06i075070n", std::string( gd_reply->encoded.raw_data.data(), hok::distance_data< 11 >::value-1 ) );
     
     hok::distance_data< 11 >::rays rays;
-    gd_reply->data.get_values( rays );
+    gd_reply->encoded.get_values( rays );
     
     {
         std::ostringstream ss;
@@ -189,7 +188,7 @@ TEST( hokuyo_packed, scip_gd_response )
     EXPECT_TRUE( hok::scip_verify_checksum( "om?om0I\\0IR0I[0I\\0I`?om?om?om?om?om0J60J60In0Ie5" ) );
 
     hok::distance_data< 101 >::rays rays101;
-    reply->data.get_values( rays101 );
+    reply->encoded.get_values( rays101 );
     
     // std::cerr << "11 values are : ";
     // for( std::size_t i=0; i<rays101.steps.size(); ++i )
@@ -226,7 +225,7 @@ TEST( hokuyo_packed, scip_me_response )
     EXPECT_EQ( 1, results->request.num_of_scans() ); // 2nd scan of 3
     
     hok::di_data< 11 >::rays rays;
-    results->data.get_values( rays);
+    results->encoded.get_values( rays);
     
     {
         std::ostringstream ss;
@@ -246,7 +245,7 @@ TEST( hokuyo_packed, scip_me_response )
         "6T:\n\n";
     results = reinterpret_cast< const hok::reply_me_data< 11 >* >( me_data );
     EXPECT_EQ( 0, results->request.num_of_scans() ); // 2nd scan of 3
-    results->data.get_values( rays);
+    results->encoded.get_values( rays);
     
     {
         std::ostringstream ss;
@@ -275,7 +274,7 @@ TEST( hokuyo_packed, scip_md_response )
     EXPECT_EQ( 1, results->request.num_of_scans() ); // 1st scan of 2
     
     hok::distance_data< 11 >::rays rays;
-    results->data.get_values( rays);
+    results->encoded.get_values( rays);
     
     {
         std::ostringstream ss;
@@ -295,7 +294,7 @@ TEST( hokuyo_packed, scip_md_response )
         
     results = reinterpret_cast< const hok::reply_md_data< 11 >* >( md_data );
     EXPECT_EQ( 0, results->request.num_of_scans() ); // 2nd scan of 3
-    results->data.get_values( rays);
+    results->encoded.get_values( rays);
     
     {
         std::ostringstream ss;
@@ -333,8 +332,21 @@ TEST( hokuyo_packed, scip_ge_response )
 
     typedef hok::di_data< 11 > data_t;
     data_t::rays rays;
-    ge_reply->data.get_values( rays );
+    ge_reply->encoded.get_values( rays );
     
+}
+
+TEST( hokuyo, state_commands )
+{
+    hok::state_command start( "BM" ); // starts transmission
+    start.message_id.seq_num = 11;
+    EXPECT_EQ( "BM;BM00000011\n\n", std::string( start.data(), hok::state_command::size ) );
+    
+    const char* reply = "BM;BM00000011\n00P\n\n";
+    const hok::state_reply* state = reinterpret_cast< const hok::state_reply* >( reply );
+    EXPECT_EQ( "BM00000011", state->message_id.str() );
+    EXPECT_EQ( "00", std::string( state->status.data(), 2 ) );
+    EXPECT_EQ( 0, state->status() );
     
 }
 
