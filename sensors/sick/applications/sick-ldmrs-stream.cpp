@@ -40,7 +40,7 @@
 #include <comma/name_value/map.h>
 #include <comma/string/string.h>
 #include <snark/timing/ntp.h>
-#include <snark/sensors/sick/protocol.h>
+#include <snark/sensors/sick/ibeo/protocol.h>
 #ifdef WIN32
 #include <fcntl.h>
 #include <io.h>
@@ -83,11 +83,11 @@ static void usage()
 }
 
 static bool verbose = false;
-boost::scoped_ptr< sick::ldmrs::protocol > protocol;
+boost::scoped_ptr< sick::ibeo::protocol > protocol;
 
 static bool clear_fault()
 {
-    boost::optional< sick::ldmrs::fault > fault = protocol->last_fault();
+    boost::optional< sick::ibeo::fault > fault = protocol->last_fault();
     if( !fault ) { return true; }
     std::cerr << "sick-ldmrs-stream: " << *fault << std::endl;
     return !fault->fatal();
@@ -102,9 +102,9 @@ static void update_timestamp( bool force = false )
     if( verbose ) { std::cerr << "sick-ldmrs-stream: setting time to " << boost::posix_time::to_iso_string( now ) << "..." << std::endl; }
     std::pair< comma::uint32, comma::uint32 > ntp = snark::timing::to_ntp_time( now );
     clear_fault();
-    if( !protocol->write( sick::ldmrs::commands::set_ntp_seconds( ntp.first ) ).ok() ) { COMMA_THROW( comma::exception, "failed to set NTP seconds" ); }
+    if( !protocol->write( sick::ibeo::commands::set_ntp_seconds( ntp.first ) ).ok() ) { COMMA_THROW( comma::exception, "failed to set NTP seconds" ); }
     clear_fault();
-    if( !protocol->write( sick::ldmrs::commands::set_ntp_fractions( ntp.second ) ).ok() ) { COMMA_THROW( comma::exception, "failed to set NTP fractions" ); }
+    if( !protocol->write( sick::ibeo::commands::set_ntp_fractions( ntp.second ) ).ok() ) { COMMA_THROW( comma::exception, "failed to set NTP fractions" ); }
     last = now;
     if( verbose ) { std::cerr << "sick-ldmrs-stream: set time to " << boost::posix_time::to_iso_string( now ) << std::endl; }
 }
@@ -130,12 +130,12 @@ int main( int ac, char** av )
         stream.reset( new boost::asio::ip::tcp::iostream( it->endpoint() ) );
         if( !( *stream ) ) { COMMA_THROW( comma::exception, "failed to connect to " << address << ":" << port ); }
         if( verbose ) { std::cerr << "sick-ldmrs-stream: connected to " << address << ":" << port << std::endl; }
-        protocol.reset( new sick::ldmrs::protocol( *stream ) );
+        protocol.reset( new sick::ibeo::protocol( *stream ) );
         options.assert_mutually_exclusive( "--get,--get-status,--reset,--set,--reset-dsp,--start,--stop" );
         bool ok = true;
         if( options.exists( "--reset" ) )
         {
-            sick::ldmrs::commands::reset::response response = protocol->write( sick::ldmrs::commands::reset() );
+            sick::ibeo::commands::reset::response response = protocol->write( sick::ibeo::commands::reset() );
             ok = response.ok();
             if( ok ) { if( verbose ) { std::cerr << "sick-ldmrs-stream: reset to factory settings; next time connect to the default ip address" << std::endl; } }
             clear_fault();
@@ -148,12 +148,12 @@ int main( int ac, char** av )
         else if( options.exists( "--set" ) )
         {
             comma::name_value::map m( options.value< std::string >( "--set" ), ',' );
-            sick::ldmrs::commands::set command;
+            sick::ibeo::commands::set command;
             for( comma::name_value::map::map_type::const_iterator it = m.get().begin(); ok && it != m.get().end(); ++it )
             {
                 if( it->first == "address" )
                 { 
-                    command.index = sick::ldmrs::commands::set::ip_address;
+                    command.index = sick::ibeo::commands::set::ip_address;
                     std::vector< std::string > bytes = comma::split( it->second, '.' );
                     if( bytes.size() != 4 ) { COMMA_THROW( comma::exception, "expected ip address, got " << it->second ); }
                     command.value.data()[0] = boost::lexical_cast< unsigned int >( bytes[3] ); // little endian
@@ -163,7 +163,7 @@ int main( int ac, char** av )
                 }
                 else if( it->first == "port" )
                 {
-                    command.index = sick::ldmrs::commands::set::tcp_port;
+                    command.index = sick::ibeo::commands::set::tcp_port;
                     command.value = boost::lexical_cast< unsigned short >( it->second ); // todo: sort out endianness!
                 }
                 else
@@ -176,7 +176,7 @@ int main( int ac, char** av )
             }
             if( ok )
             {
-                ok = protocol->write( sick::ldmrs::commands::save_configuration() ).ok();
+                ok = protocol->write( sick::ibeo::commands::save_configuration() ).ok();
                 if( !ok ) { std::cerr << "sick-ldmrs-stream: failed to save configuration" << std::endl; }
                 else if( verbose ) { std::cerr << "sick-ldmrs-stream: saved configuration for " << options.value< std::string >( "--set" ) << std::endl; }
             }   
@@ -184,13 +184,13 @@ int main( int ac, char** av )
         else if( options.exists( "--get" ) )
         {
             std::vector< std::string > v = comma::split( options.value< std::string >( "--get" ), ',' );
-            sick::ldmrs::commands::get command;
-            sick::ldmrs::commands::get::response response;
+            sick::ibeo::commands::get command;
+            sick::ibeo::commands::get::response response;
             std::string comma;
             for( std::size_t i = 0; ok && i < v.size(); ++i, ok = ok && response.ok() )
             {
-                if( v[i] == "address" ) { command.index = sick::ldmrs::commands::set::ip_address; }
-                else if( v[i] == "port" ) { command.index = sick::ldmrs::commands::set::tcp_port; }
+                if( v[i] == "address" ) { command.index = sick::ibeo::commands::set::ip_address; }
+                else if( v[i] == "port" ) { command.index = sick::ibeo::commands::set::tcp_port; }
                 else { COMMA_THROW( comma::exception, "expected parameter, got " << v[i] ); }
                 response = protocol->write( command );
                 if( response.ok() ) { std::cout << comma << response << std::endl; }
@@ -200,26 +200,26 @@ int main( int ac, char** av )
         }
         else if( options.exists( "--get-status" ) )
         {
-            sick::ldmrs::commands::get_status::response response = protocol->write( sick::ldmrs::commands::get_status() );
+            sick::ibeo::commands::get_status::response response = protocol->write( sick::ibeo::commands::get_status() );
             ok = response.ok();
             if( ok ) { std::cout << response << std::endl; }
             clear_fault();
         }
         else if( options.exists( "--start" ) )
         {
-            ok = protocol->write( sick::ldmrs::commands::start() ).ok();
+            ok = protocol->write( sick::ibeo::commands::start() ).ok();
             clear_fault();
         }
         else if( options.exists( "--stop" ) )
         {
-            ok = protocol->write( sick::ldmrs::commands::stop() ).ok();
+            ok = protocol->write( sick::ibeo::commands::stop() ).ok();
             clear_fault();
         }
         else
         {
             update_timestamp( true );
             if( verbose ) { std::cerr << "sick-ldmrs-stream: starting scanning..." << std::endl; }
-            if( !protocol->write( sick::ldmrs::commands::start() ).ok() ) { COMMA_THROW( comma::exception, "failed to start scanning" ); }
+            if( !protocol->write( sick::ibeo::commands::start() ).ok() ) { COMMA_THROW( comma::exception, "failed to start scanning" ); }
             if( verbose ) { std::cerr << "sick-ldmrs-stream: started scanning" << std::endl; }
             bool first = true;
             comma::signal_flag is_shutdown;
@@ -230,13 +230,13 @@ int main( int ac, char** av )
             {
                 update_timestamp();
                 clear_fault();
-                const sick::ldmrs::scan_packet* scan;
+                const sick::ibeo::scan_packet* scan;
                 try { scan = protocol->readscan(); }
-                catch( sick::ldmrs::protocol::faultException& ex ) { continue; }
+                catch( sick::ibeo::protocol::faultException& ex ) { continue; }
                 if( scan == NULL ) { break; }
                 if( verbose && first ) { std::cerr << "sick-ldmrs-stream: got first scan" << std::endl; first = false; }
                 if( !scan->packet_header.valid() ) { COMMA_THROW( comma::exception, "invalid scan" ); }
-                std::cout.write( scan->data(), sick::ldmrs::header::size + scan->packet_header.payload_size() );
+                std::cout.write( scan->data(), sick::ibeo::header::size + scan->packet_header.payload_size() );
                 if( verbose && ( scan->packet_scan.scan_header.measurement_number() % 10 == 0 ) )
                 {
                     std::cerr << "sick-ldmrs-stream: got " << scan->packet_scan.scan_header.measurement_number() << " scans              \r";

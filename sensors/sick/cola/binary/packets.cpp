@@ -30,47 +30,29 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+/// @author andrew hill
+/// @author vsevolod vlaskine (v.vlaskine@acfr.usyd.edu.au)
 
-#ifndef WIN32
-#include <stdlib.h>
-#endif
+#include <string.h>
+#include <boost/array.hpp>
+#include "./packets.h"
 
-#include <iostream>
-#include <boost/asio/ip/tcp.hpp>
-#include <comma/application/signal_flag.h>
-#include <snark/sensors/sick/ibeo/protocol.h>
-#include <gtest/gtest.h>
+namespace snark { namespace sick { namespace cola { namespace binary {
 
-TEST( sick, protocol )
+static const boost::array< char, 4 > sentinel_ = {{ 0x02, 0x02, 0x02, 0x02 }};
+    
+bool header::valid() const { return ::memcmp( sentinel.data(), &sentinel_[0], sentinel_.size() ) == 0; }
+
+std::string header::type() const
 {
-    boost::asio::ip::tcp::endpoint e( boost::asio::ip::address::from_string( "127.0.0.1" ), 1234 );
-
-    boost::asio::ip::tcp::iostream stream( e );
-    if( !stream ) { std::cerr << "---> connect failed" << std::endl; exit( -1 ); }
-    std::cerr << "---> connected" << std::endl;
-    if( !stream.good() || stream.eof() ) { std::cerr << "---> stream bad" << std::endl; exit( -1 ); }
-    
-    stream << "hello world" << std::endl;
-    stream.flush();
-    std::cerr << "---> hello" << std::endl;
-    
-    stream.write( "goodbye moon\n", ::strlen( "goodbye moon\n" ) );
-    std::cerr << "---> bye" << std::endl;
-    
-    comma::signal_flag flag;
-    
-    std::string line( 1024, 0 );
-    
-    std::cerr << "---> reading..." << std::endl;
-    stream.read( &line[0], 6 );
-    std::cerr << "---> signal flag is " << ( flag ? "" : "not " ) << "set" << std::endl;
-    
-    std::cerr << "---> got " << stream.gcount() << " byte(s): " << line << std::endl;    
+    const unsigned int command_type_size = 4; // quick and dirty
+    const char* begin = reinterpret_cast< const char* >( this ) + header::size + command_type_size;
+    const char* end = begin + length() - command_type_size;
+    const char* p = begin;
+    for( ; *p != ' ' && p < end; ++p );
+    return std::string( begin, p - begin );
 }
 
-int main( int argc, char* argv[] )
-{
-    ::testing::InitGoogleTest( &argc, argv );
-    return RUN_ALL_TESTS();
-    return 0;
-}
+std::string header::type( const char* packet ) { return reinterpret_cast< const header* >( packet )->type(); }
+    
+} } } } // namespace snark { namespace sick { namespace cola { namespace binary {

@@ -30,47 +30,39 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+/// @author andrew hill
+/// @author vsevolod vlaskine (v.vlaskine@acfr.usyd.edu.au)
 
-#ifndef WIN32
-#include <stdlib.h>
-#endif
+#include <comma/base/exception.h>
+#include "./protocol.h"
 
-#include <iostream>
-#include <boost/asio/ip/tcp.hpp>
-#include <comma/application/signal_flag.h>
-#include <snark/sensors/sick/ibeo/protocol.h>
-#include <gtest/gtest.h>
+namespace snark { namespace sick { namespace cola { namespace binary {
 
-TEST( sick, protocol )
+void protocol::read_packet( std::istream& is, std::vector< char >& buf )
 {
-    boost::asio::ip::tcp::endpoint e( boost::asio::ip::address::from_string( "127.0.0.1" ), 1234 );
-
-    boost::asio::ip::tcp::iostream stream( e );
-    if( !stream ) { std::cerr << "---> connect failed" << std::endl; exit( -1 ); }
-    std::cerr << "---> connected" << std::endl;
-    if( !stream.good() || stream.eof() ) { std::cerr << "---> stream bad" << std::endl; exit( -1 ); }
-    
-    stream << "hello world" << std::endl;
-    stream.flush();
-    std::cerr << "---> hello" << std::endl;
-    
-    stream.write( "goodbye moon\n", ::strlen( "goodbye moon\n" ) );
-    std::cerr << "---> bye" << std::endl;
-    
-    comma::signal_flag flag;
-    
-    std::string line( 1024, 0 );
-    
-    std::cerr << "---> reading..." << std::endl;
-    stream.read( &line[0], 6 );
-    std::cerr << "---> signal flag is " << ( flag ? "" : "not " ) << "set" << std::endl;
-    
-    std::cerr << "---> got " << stream.gcount() << " byte(s): " << line << std::endl;    
+    //while( true ) // todo: resync
+    { 
+        buf.resize( header::size );
+        is.read( &buf[0], header::size ); // todo: if resync required, read 4 bytes first
+        const header* h = reinterpret_cast< const header* >( &buf[0] );
+        if( !h->valid() ) { COMMA_THROW( comma::exception, "resync: todo" ); }
+        buf.resize( header::size + h->length() + 1 );
+        is.read( &buf[0] + header::size, buf.size() - header::size );
+        // todo: if crc invalid, resync
+        return;
+    }
 }
 
-int main( int argc, char* argv[] )
+template <> void protocol::handle_< payloads::set_access_mode::request >( const cola::binary::packet< payloads::set_access_mode::request >& p )
 {
-    ::testing::InitGoogleTest( &argc, argv );
-    return RUN_ALL_TESTS();
-    return 0;
+    // todo
 }
+
+void protocol::handle_packet( const char* p )
+{
+    const std::string& type = reinterpret_cast< const cola::binary::header* >( p )->type();
+    if( type == "SetAccessType" ) { handle_< payloads::set_access_mode::request >( p ); }
+    // etc
+}
+    
+} } } } // namespace snark {  namespace sick { namespace cola { namespace binary {

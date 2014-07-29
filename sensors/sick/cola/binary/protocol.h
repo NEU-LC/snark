@@ -30,47 +30,28 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+/// @author andrew hill
+/// @author vsevolod vlaskine (v.vlaskine@acfr.usyd.edu.au)
 
-#ifndef WIN32
-#include <stdlib.h>
-#endif
+#ifndef SNARK_SENSORS_SICK_COLA_BINARY_PROTOCOL_H_
+#define SNARK_SENSORS_SICK_COLA_BINARY_PROTOCOL_H_
 
 #include <iostream>
-#include <boost/asio/ip/tcp.hpp>
-#include <comma/application/signal_flag.h>
-#include <snark/sensors/sick/ibeo/protocol.h>
-#include <gtest/gtest.h>
+#include "./packets.h"
 
-TEST( sick, protocol )
+namespace snark { namespace sick { namespace cola { namespace binary {
+
+class protocol
 {
-    boost::asio::ip::tcp::endpoint e( boost::asio::ip::address::from_string( "127.0.0.1" ), 1234 );
-
-    boost::asio::ip::tcp::iostream stream( e );
-    if( !stream ) { std::cerr << "---> connect failed" << std::endl; exit( -1 ); }
-    std::cerr << "---> connected" << std::endl;
-    if( !stream.good() || stream.eof() ) { std::cerr << "---> stream bad" << std::endl; exit( -1 ); }
+    public:
+        static void read_packet( std::istream& is, std::vector< char >& buf );
+        void handle_packet( const char* p );
+        
+    private:
+        template < typename P > void handle_( const char* p ) { handle_( *reinterpret_cast< const cola::binary::packet< P >* >( p ) ); }
+        template < typename P > void handle_( const cola::binary::packet< P >& p );
+};
     
-    stream << "hello world" << std::endl;
-    stream.flush();
-    std::cerr << "---> hello" << std::endl;
+} } } } // namespace snark {  namespace sick { namespace cola { namespace binary {
     
-    stream.write( "goodbye moon\n", ::strlen( "goodbye moon\n" ) );
-    std::cerr << "---> bye" << std::endl;
-    
-    comma::signal_flag flag;
-    
-    std::string line( 1024, 0 );
-    
-    std::cerr << "---> reading..." << std::endl;
-    stream.read( &line[0], 6 );
-    std::cerr << "---> signal flag is " << ( flag ? "" : "not " ) << "set" << std::endl;
-    
-    std::cerr << "---> got " << stream.gcount() << " byte(s): " << line << std::endl;    
-}
-
-int main( int argc, char* argv[] )
-{
-    ::testing::InitGoogleTest( &argc, argv );
-    return RUN_ALL_TESTS();
-    return 0;
-}
+#endif // #ifndef SNARK_SENSORS_SICK_COLA_BINARY_PROTOCOL_H_

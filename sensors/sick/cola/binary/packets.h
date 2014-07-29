@@ -30,55 +30,69 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
-#ifndef SNARK_SENSORS_SICK_PROTOCOL_H_
-#define SNARK_SENSORS_SICK_PROTOCOL_H_
-
-/// @file protocol.h
-/// sick (ibeo) ldmrs laser communication protocol
+/// @author andrew hill
 /// @author vsevolod vlaskine (v.vlaskine@acfr.usyd.edu.au)
 
-#include <iostream>
-#include <string>
-#include <boost/noncopyable.hpp>
-#include <boost/optional.hpp>
-#include <snark/sensors/sick/packets.h>
+#ifndef SNARK_SENSORS_SICK_COLA_BINARY_PACKETS_H_
+#define SNARK_SENSORS_SICK_COLA_BINARY_PACKETS_H_
 
-namespace snark {  namespace sick { namespace ldmrs {
+#include <boost/array.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
+#include <comma/packed/byte.h>
+#include <comma/packed/little_endian.h>
+#include <comma/packed/big_endian.h>
+#include <comma/packed/string.h>
+#include <comma/packed/struct.h>
 
-class protocol : public boost::noncopyable
+namespace snark { namespace sick { namespace cola { namespace binary {
+
+struct header : public comma::packed::packed_struct< header, 8 >
 {
-    public:
-        /// constructor for two-way communication with sensor
-        protocol( std::iostream& stream );
-
-        /// constructor for reading only (scans, warnings, etc)
-        protocol( std::istream& stream );
-        
-        /// destructor
-        ~protocol();
-        
-        /// reset sensor (send reset DSP)
-        void reset_dsp();
-        
-        /// send command
-        template < typename command > typename command::response write( const command& c );
-        
-        /// read scan data packet
-        /// @note once scanning started, call readscan() often to flush receive buffer
-        const scan_packet* readscan();
-        
-        /// return last fault, if any
-        boost::optional< fault > last_fault();
-        
-        /// fault exception, quick and dirty (since comma::exception is so difficult to inherit from)
-        struct faultException : public std::exception {};
-        
-    private:
-        class impl;
-        impl* m_pimpl;
+    comma::packed::string< 4 > sentinel;
+    comma::packed::net_uint32 length;
+    
+    bool valid() const;
+    std::string type() const;
+    static std::string type( const char* packet );
 };
 
-} } } // namespace snark {  namespace sick { namespace ldmrs {
+template < typename P >
+struct body : public comma::packed::packed_struct< body< P >, 4 + P::type_field_size + 1 + P::size >
+{
+    comma::packed::string< 3 > command_type;
+    comma::packed::const_byte< ' ' > space1;
+    comma::packed::string< P::type_field_size, ' ' > type;
+    comma::packed::const_byte< ' ' > space2;
+    P payload;
+};
 
-#endif // #ifndef SNARK_SENSORS_SICK_PROTOCOL_H_
+template < typename P >
+struct packet : public comma::packed::packed_struct< packet< P >, header::size + body< P >::size + 1 >
+{
+    binary::header header;
+    binary::body< P > body;
+    comma::packed::byte crc;
+    
+    bool valid() const;
+};
+
+namespace payloads {
+
+struct set_access_mode
+{
+    struct request : public comma::packed::packed_struct< request, 5 >
+    {
+        enum { type_field_size = 13 };
+        static const char* type() { return "SetAccessMode"; }
+        comma::packed::byte user_level;
+        comma::packed::net_uint32 password_hash;
+    };
+    
+    struct response; // todo
+};
+    
+} // namespace payloads {
+    
+} } } } // namespace snark {  namespace sick { namespace cola { namespace binary {
+    
+#endif // #ifndef SNARK_SENSORS_SICK_COLA_BINARY_PACKETS_H_

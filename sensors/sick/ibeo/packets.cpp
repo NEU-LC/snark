@@ -36,7 +36,7 @@
 #include <snark/timing/ntp.h>
 #include "./packets.h"
 
-namespace snark {  namespace sick { namespace ldmrs {
+namespace snark {  namespace sick { namespace ibeo {
     
 boost::array< unsigned char, 4 > header::sentinel_value = { { 0xAF, 0xFE, 0xC0, 0xC2 } };
 
@@ -174,4 +174,4 @@ commands::set_ntp_fractions::set_ntp_fractions() {}
 
 commands::set_ntp_fractions::set_ntp_fractions( comma::uint32 f ) { fractions = f; }
 
-} } } // namespace snark {  namespace sick { namespace ldmrs {
+} } } // namespace snark {  namespace sick { namespace ibeo {

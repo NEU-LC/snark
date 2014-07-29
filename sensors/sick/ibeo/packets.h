@@ -31,8 +31,8 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-#ifndef SNARK_SENSORS_SICK_PACKET_H_
-#define SNARK_SENSORS_SICK_PACKET_H_
+#ifndef SNARK_SENSORS_SICK_IBEO_PACKETS_H_
+#define SNARK_SENSORS_SICK_IBEO_PACKETS_H_
 
 /// @file packets.h
 /// sick (ibeo) ldmrs laser communication packet layout
@@ -45,7 +45,7 @@
 #include <comma/packed/big_endian.h>
 #include <comma/packed/struct.h>
 
-namespace snark {  namespace sick { namespace ldmrs {
+namespace snark {  namespace sick { namespace ibeo {
 
 /// NTP timestamp
 struct timestamp : public comma::packed::packed_struct< timestamp, 8 >
@@ -398,19 +398,19 @@ struct commands
 
     /// command packet
     template < typename C >
-    struct packet : public comma::packed::packed_struct< packet< C >, ldmrs::header::size + C::size >
+    struct packet : public comma::packed::packed_struct< packet< C >, ibeo::header::size + C::size >
     {
-        ldmrs::header header;
+        ibeo::header header;
         C command;
-        packet() { header.type = ldmrs::header::command_type; header.payload_size = C::size; }
-        packet( const C& command ) : command( command ) { header.type = ldmrs::header::command_type; header.payload_size = C::size; }
+        packet() { header.type = ibeo::header::command_type; header.payload_size = C::size; }
+        packet( const C& command ) : command( command ) { header.type = ibeo::header::command_type; header.payload_size = C::size; }
 
-        struct response : public comma::packed::packed_struct< response, ldmrs::header::size + C::response::size >
+        struct response : public comma::packed::packed_struct< response, ibeo::header::size + C::response::size >
         {
-            ldmrs::header header;
+            ibeo::header header;
             typename C::response body;
-            response() { header.type = ldmrs::header::response_type; header.payload_size = C::response::size; }
-            response( const typename C::response& body ) : body( body ) { header.type = ldmrs::header::response_type; header.payload_size = C::response::size; }
+            response() { header.type = ibeo::header::response_type; header.payload_size = C::response::size; }
+            response( const typename C::response& body ) : body( body ) { header.type = ibeo::header::response_type; header.payload_size = C::response::size; }
         };
     };
 };
@@ -418,6 +418,8 @@ struct commands
 std::ostream& operator<<( std::ostream& os, const commands::get_status::response& rhs );
 std::ostream& operator<<( std::ostream& os, const commands::get::response& rhs );
 
-} } } // namespace snark {  namespace sick { namespace ldmrs {
+} } } // namespace snark {  namespace sick { namespace ibeo {
 
-#endif // #ifndef SNARK_SENSORS_SICK_PACKET_H_
+namespace snark {  namespace sick { namespace ldmrs = ibeo; } }
+    
+#endif // #ifndef SNARK_SENSORS_SICK_IBEO_PACKETS_H_

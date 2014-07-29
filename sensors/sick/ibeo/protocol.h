@@ -31,46 +31,54 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-#ifndef WIN32
-#include <stdlib.h>
-#endif
+#ifndef SNARK_SENSORS_SICK_PROTOCOL_H_
+#define SNARK_SENSORS_SICK_PROTOCOL_H_
+
+/// @file protocol.h
+/// sick (ibeo) ldmrs laser communication protocol
+/// @author vsevolod vlaskine (v.vlaskine@acfr.usyd.edu.au)
 
 #include <iostream>
-#include <boost/asio/ip/tcp.hpp>
-#include <comma/application/signal_flag.h>
-#include <snark/sensors/sick/ibeo/protocol.h>
-#include <gtest/gtest.h>
+#include <string>
+#include <boost/noncopyable.hpp>
+#include <boost/optional.hpp>
+#include <snark/sensors/sick/ibeo/packets.h>
 
-TEST( sick, protocol )
+namespace snark {  namespace sick { namespace ibeo {
+
+class protocol : public boost::noncopyable
 {
-    boost::asio::ip::tcp::endpoint e( boost::asio::ip::address::from_string( "127.0.0.1" ), 1234 );
+    public:
+        /// constructor for two-way communication with sensor
+        protocol( std::iostream& stream );
 
-    boost::asio::ip::tcp::iostream stream( e );
-    if( !stream ) { std::cerr << "---> connect failed" << std::endl; exit( -1 ); }
-    std::cerr << "---> connected" << std::endl;
-    if( !stream.good() || stream.eof() ) { std::cerr << "---> stream bad" << std::endl; exit( -1 ); }
-    
-    stream << "hello world" << std::endl;
-    stream.flush();
-    std::cerr << "---> hello" << std::endl;
-    
-    stream.write( "goodbye moon\n", ::strlen( "goodbye moon\n" ) );
-    std::cerr << "---> bye" << std::endl;
-    
-    comma::signal_flag flag;
-    
-    std::string line( 1024, 0 );
-    
-    std::cerr << "---> reading..." << std::endl;
-    stream.read( &line[0], 6 );
-    std::cerr << "---> signal flag is " << ( flag ? "" : "not " ) << "set" << std::endl;
-    
-    std::cerr << "---> got " << stream.gcount() << " byte(s): " << line << std::endl;    
-}
+        /// constructor for reading only (scans, warnings, etc)
+        protocol( std::istream& stream );
+        
+        /// destructor
+        ~protocol();
+        
+        /// reset sensor (send reset DSP)
+        void reset_dsp();
+        
+        /// send command
+        template < typename command > typename command::response write( const command& c );
+        
+        /// read scan data packet
+        /// @note once scanning started, call readscan() often to flush receive buffer
+        const scan_packet* readscan();
+        
+        /// return last fault, if any
+        boost::optional< fault > last_fault();
+        
+        /// fault exception, quick and dirty (since comma::exception is so difficult to inherit from)
+        struct faultException : public std::exception {};
+        
+    private:
+        class impl;
+        impl* m_pimpl;
+};
 
-int main( int argc, char* argv[] )
-{
-    ::testing::InitGoogleTest( &argc, argv );
-    return RUN_ALL_TESTS();
-    return 0;
-}
+} } } // namespace snark {  namespace sick { namespace ibeo {
+    
+#endif // #ifndef SNARK_SENSORS_SICK_PROTOCOL_H_

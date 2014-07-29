@@ -37,10 +37,10 @@
 
 #include <iostream>
 #include <snark/timing/time.h>
-#include <snark/sensors/sick/packets.h>
+#include <snark/sensors/sick/ibeo/packets.h>
 #include <gtest/gtest.h>
 
-using namespace snark::sick::ldmrs;
+using namespace snark::sick::ibeo;
 
 template < typename command >
 static void testcommand()

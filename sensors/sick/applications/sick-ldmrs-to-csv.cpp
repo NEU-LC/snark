@@ -41,7 +41,7 @@
 #include <comma/string/string.h>
 #include <comma/visiting/traits.h>
 #include <snark/math/range_bearing_elevation.h>
-#include <snark/sensors/sick/protocol.h>
+#include <snark/sensors/sick/ibeo/protocol.h>
 #include <snark/timing/ntp.h>
 #include <snark/visiting/eigen.h>
 #include <snark/visiting/traits.h>
@@ -136,18 +136,18 @@ int main( int ac, char** av )
         #ifdef WIN32
         _setmode( _fileno( stdin ), _O_BINARY );
         #endif
-        snark::sick::ldmrs::protocol protocol( std::cin );
+        snark::sick::ibeo::protocol protocol( std::cin );
         comma::signal_flag is_shutdown;
         while( !std::cin.eof() )
         {
             if( is_shutdown ) { std::cerr << "sick-ldmrs-to-csv: caught signal, exit" << std::endl; return 1; }
-            const snark::sick::ldmrs::scan_packet* p;
+            const snark::sick::ibeo::scan_packet* p;
             try { p = protocol.readscan(); }
-            catch( snark::sick::ldmrs::protocol::faultException& ex ) { std::cerr << "sick-ldmrs-to-csv: " << ex.what() << std::endl; continue; }
+            catch( snark::sick::ibeo::protocol::faultException& ex ) { std::cerr << "sick-ldmrs-to-csv: " << ex.what() << std::endl; continue; }
             catch( comma::exception& ex ) { std::cerr << "sick-ldmrs-to-csv: " << ex.what() << std::endl; continue; }
             if( p == NULL ) { std::cerr << "sick-ldmrs-to-csv: done" << std::endl; return 0; }
             std::size_t count = p->packet_scan.scan_header.points_count();
-            snark::sick::ldmrs::scan::timestamps timestamps( p->packet_scan );
+            snark::sick::ibeo::scan::timestamps timestamps( p->packet_scan );
             csv_point point;
             point.scan = p->packet_scan.scan_header.measurement_number();
             for( std::size_t i = 0; i < count; ++i )

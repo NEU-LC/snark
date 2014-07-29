@@ -251,7 +251,7 @@ class gobi::impl
             }
             if( XC_IsInitialised( handle_ ) ) XC_CloseCamera( handle_ );
             closed_ = true;
-            //std::cerr << "close() has finished" << std::endl;
+            // std::cerr << "close() has finished" << std::endl;
         }
         
         std::pair< boost::posix_time::ptime, cv::Mat > read()
