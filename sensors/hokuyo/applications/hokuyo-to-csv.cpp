@@ -112,8 +112,8 @@ void data_point::set(double distance, comma::uint32 intensity, double bearing)
     this->intensity = intensity;    
     this->bearing = bearing;
     // timestamp stays the same
-    x = distance * std::sin( bearing );
-    y = distance * std::cos( bearing );
+    x = distance * -std::cos( bearing );
+    y = distance * std::sin( bearing );
     // z = 0;
 }
 

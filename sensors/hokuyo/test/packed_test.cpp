@@ -176,6 +176,13 @@ TEST( hokuyo_packed, scip_gd_response )
         EXPECT_EQ( "387 410 431 452 454 449 441 441 441 453 448 ", ss.str() );
     }
     
+    {
+        std::string line;
+        static comma::csv::ascii< hok::distance_data< 11 >::points_t > ascii;
+        EXPECT_EQ( "387,410,431,452,454,449,441,441,441,453,448", ascii.put( rays.steps, line ) );
+        
+    }
+    
     /// Why fails checksum
     //     std::cerr << "11 values are : ";
     //     comma::csv::output_stream< hok::distance_data< 11 > > oss( std::cerr );

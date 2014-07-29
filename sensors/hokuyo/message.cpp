@@ -33,6 +33,7 @@
 #include "message.h"
 #include <iostream>
 
+
 namespace snark { namespace hokuyo {
     
 bool scip_verify_checksum(const std::string& line)

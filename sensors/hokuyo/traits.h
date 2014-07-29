@@ -37,30 +37,21 @@
 namespace hok = snark::hokuyo;
 
 namespace comma { namespace visiting {
-/*    
-template < > struct traits< comma::packed::scip_3chars_t >
-{
-    template< typename K, typename V > static void visit( const K& k, const comma::packed::scip_3chars_t& t, V& v )
-    {
-        v.apply( "value", t() );
-    }
-}; */
-    
-template < int N > 
-struct traits< hok::distance_data< N > >
+
+/// Does not work when template is partialially specialised with < int N >
+template <  > 
+struct traits< boost::array< typename comma::packed::scip_3chars_t, 11 > >
 {
 
-    template< typename K, typename V > static void visit( const K& k, const hok::distance_data< N >& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, const boost::array< comma::packed::scip_3chars_t, 11 >& t, V& v )
     {
-        typename hok::distance_data< N >::rays rays;
-        t.get_values( rays );
-        for( std::size_t i=0; i<rays.steps.size(); ++i )
+        for( std::size_t i=0; i<11; ++i )
         {
-            v.apply( boost::lexical_cast< std::string >( i ).c_str(), (rays.steps[i])() ); 
+            v.apply( boost::lexical_cast< std::string >( i ).c_str(), (t[i])() ); 
         }
     }
 };
-    
+
     
 } } // namespace comma { namespace visitting {
 
