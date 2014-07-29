@@ -14,6 +14,10 @@ struct continuum_t
     std::vector< double > home_position;	
     std::string work_directory;
 
+    bool operator==( const continuum_t& rhs ) const {
+    	return ( home_position == rhs.home_position && work_directory == rhs.work_directory );
+    }
+
 };
     
 struct config {
