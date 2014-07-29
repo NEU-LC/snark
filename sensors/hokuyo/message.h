@@ -87,7 +87,7 @@ public:
 };
 
 typedef scip_encoding< 2, comma::uint16 > scip_2chars_t;
-typedef scip_encoding< 3, comma::uint16 > scip_3chars_t;
+typedef scip_encoding< 3 > scip_3chars_t;
 typedef scip_encoding< 4 > scip_4chars_t;
 
 template < typename T, std::size_t S, char Padding = ' ' >

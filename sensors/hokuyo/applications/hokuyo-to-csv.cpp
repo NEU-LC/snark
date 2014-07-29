@@ -77,20 +77,24 @@ struct data_point
     
     /// Set the data point
     /// distance in meters, bearing in (radians)
-    void set( double distance, double intensity, double bearing );
+    void set( double distance, comma::uint32 intensity, double bearing );
     
     boost::posix_time::ptime timestamp;
     double x;
     double y;
     double z;
     double range; // meters
-    double intensity;   
+/// Intensity is the reflected strength of the laser.
+/// The reflected laser intensity value is represented by 18- bit data. It is a relative number without a unit.
+/// Intensity may differ depending upon the distance, material and detection angle of the object. Therefore, users
+/// should check the detection capability verification test.
+    comma::uint32 intensity;   /// This is a relative, unit less number that is 18-bit
     double bearing; //radians
     double elevation;   // radians
 };
 
 /// This is for setting acquired data for the point while keeping timestamp the same.
-void data_point::set(double distance, double intensity, double bearing)
+void data_point::set(double distance, comma::uint32 intensity, double bearing)
 {
     if( distance == hok::ust_10lx::distance_nan || distance <= ( hok::ust_10lx::distance_min / 1000.0 ) )
     {
@@ -105,7 +109,7 @@ void data_point::set(double distance, double intensity, double bearing)
     }
     
     this->range = distance;
-    this->intensity = intensity;
+    this->intensity = intensity;    
     this->bearing = bearing;
     // timestamp stays the same
     x = distance * std::sin( bearing );
@@ -242,12 +246,11 @@ void scanning( int start_step, comma::signal_flag& signaled,
             COMMA_THROW( comma::exception, ss.str() ); 
         }
         
-//         std::cerr << "got: " << std::endl << std::string( response.data(), hok::reply_me_data< STEPS >::size );
-//         std::cerr.flush();
+//      std::cerr << "got: " << std::endl << std::string( response.data(), hok::reply_me_data< STEPS >::size );
+//      std::cerr.flush();
         
         response.encoded.get_values( rays );
-        
-//                 std::cerr << "some data here:" << rays.steps[0].distance() << ',' << rays.steps[1].distance() << std::endl;
+//      std::cerr << "some data here:" << rays.steps[0].distance() << ',' << rays.steps[1].distance() << std::endl;
         data_point point3d;
         for( std::size_t i=0; i<STEPS; ++i )
         {
