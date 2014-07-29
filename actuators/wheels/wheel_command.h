@@ -39,7 +39,7 @@
 
 namespace snark { namespace wheels {
 
-const double turnrate_tolerance = 0.01; // rad/s
+const double turnrate_tolerance = 0.001; // rad/s
 
 struct steer_command
 {
