@@ -152,7 +152,7 @@ static void usage()
     std::cerr << "        i: intensity of the data point." << std::endl;
     std::cerr << "        range,bearing, elevation or r,b,e: polar coordinates in sensor frame" << std::endl;
     std::cerr << "    --format: output binary format for given fields to stdout and exit" << std::endl;
-    std::cerr << "    --start-step=<0-890>: Scan starting at a start step and go to (step+270) wich covers 67.5\" which is 270\"/4." << std::endl;
+    std::cerr << "    --start-step=<0-890>: Scan starting at a start step and go to (step+270) wich covers 67.75\" which is 270\"/4." << std::endl;
     std::cerr << "                          Does not perform a full 270\" scan." << std::endl;
     std::cerr << std::endl;
     std::cerr << "Output format:" << std::endl;
