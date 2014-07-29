@@ -158,6 +158,7 @@ static void usage()
     std::cerr << "    --format: output binary format for given fields to stdout and exit" << std::endl;
     std::cerr << "    --start-step=<0-890>: Scan starting at a start step and go to (step+270) wich covers 67.75\" which is 270\"/4." << std::endl;
     std::cerr << "                          Does not perform a full 270\" scan." << std::endl;
+    std::cerr << "    --reboot-on-error: if failed to put scanner into scanning mode, reboot the scanner." << std::endl;
     std::cerr << std::endl;
     std::cerr << "Output format:" << std::endl;
     comma::csv::binary< data_point > binary( "", "" );
@@ -282,6 +283,8 @@ int main( int ac, char** av )
         if( options.exists( "--fields,-f" ) ) { output_fields = options.value< std::string >( "--fields,-f" ); }
         is_binary = options.exists( "--binary,-b" );
         
+        bool reboot_on_error = options.exists( "--reboot-on-error" );
+        
         // Let put the laser into scanning mode
         {
             hok::state_command start( "BM" ); // starts transmission
@@ -298,7 +301,14 @@ int main( int ac, char** av )
 //         std::cerr << name() << "received " << start_reply.data();
 //         std::cerr << name() << "starting status of " << start_reply.status() << " request " << start.data() << std::endl;
             
-            if( start_reply.status() != 0 && start_reply.status() != 2 ) { 
+            if( start_reply.status() != 0 && start_reply.status() != 2 ) 
+            {
+                if( reboot_on_error )
+                {
+                    // it must be sent twice within one second
+                    *output << "RB\n"; output->flush();
+                    *output << "RB\n"; output->flush();
+                }
                 COMMA_THROW( comma::exception, std::string("Starting laser with BM command failed, status: ") + std::string( start_reply.status.data(), 2 ) ); 
             }
         }
