@@ -266,18 +266,7 @@ int main( int ac, char** av )
         // Sets up output data options
         comma::csv::options csv;
         csv.fields = options.value< std::string >( "--fields", "" );
-        std::vector< std::string > v = comma::split( csv.fields, ',' );
-        for( std::size_t i = 0; i < v.size(); ++i ) // convenience shortcuts
-        {
-            if( v[i] == "i" ) { v[i] = "intensity"; }
-            else if( v[i] == "r" ) { v[i] = "range"; }
-            else if( v[i] == "b" ) { v[i] = "bearing"; }
-            else if( v[i] == "e" ) { v[i] = "elevation"; }
-            else if( v[i] == "t" ) { v[i] = "timestamp"; }
-        }
-        csv.fields = comma::join( v, ',' );
         csv.full_xpath = false;
-        // see sick-ldmrs-to-csv
         if( options.exists( "--binary,-b" ) ) csv.format( comma::csv::format::value< stats_t >( csv.fields, false ) );
         
         is_binary = options.exists( "--binary,-b" );
