@@ -53,7 +53,6 @@ void commands_handler::handle( arm::move_cam& cam )
     if( cam.height < min_height ) { ret = result( "height value is below minimum limit of 0.1m", result::error::invalid_input ); return; }
     if( cam.height > max_height ) { ret = result( "height value is above minimum limit of 1.0m", result::error::invalid_input ); return; }
     
-    static double zero_tilt = 90.0;
     inputs_.motion_primitive = real_T( input_primitive::move_cam );
     inputs_.Input_1 = cam.pan.value();
     inputs_.Input_2 = cam.tilt.value();

@@ -3,9 +3,9 @@
  *
  * Code generated for Simulink model 'Arm_Controller'.
  *
- * Model version                  : 1.162
+ * Model version                  : 1.167
  * Simulink Coder version         : 8.6 (R2014a) 27-Dec-2013
- * C/C++ source code generated on : Fri Jul 25 14:29:36 2014
+ * C/C++ source code generated on : Tue Jul 29 17:02:52 2014
  *
  * Target selection: ert.tlc
  * Embedded hardware selection: 32-bit Generic
