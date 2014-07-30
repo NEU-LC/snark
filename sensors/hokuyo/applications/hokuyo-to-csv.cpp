@@ -33,6 +33,7 @@
 
 #include <boost/lexical_cast.hpp>
 #include <boost/scoped_ptr.hpp>
+#include <boost/asio.hpp>
 #include <comma/application/command_line_options.h>
 #include <comma/application/signal_flag.h>
 #include <comma/base/exception.h>
@@ -49,20 +50,19 @@ const char* name() { return "hokuyo-to-csv: "; }
 
 namespace hok = snark::hokuyo;
 
+namespace ip = boost::asio::ip;
 /// On exit just send a QT command, although it does not seem to be needed.
 class app_exit
 {
-    std::ostream& oss_;
-    comma::io::publisher& publisher_;
+    ip::tcp::iostream& oss_;
 public:
-    app_exit( std::ostream& oss, comma::io::publisher& publisher ) : oss_( oss ), publisher_( publisher ) {}
+    app_exit( ip::tcp::iostream& oss ) : oss_( oss ) {}
     ~app_exit()
     {
-        publisher_.close();
-        
         const hok::state_command stop( "QT" );
         oss_.write( stop.data(), hok::state_command::size );
         oss_.flush();
+        oss_.close();
     }
 };
 
@@ -71,7 +71,7 @@ public:
 struct data_point
 {
     data_point() : timestamp( boost::posix_time::microsec_clock::local_time() ), 
-        x(0), y(0), z(0), range(0), intensity(0), bearing(0), elevation(0) {}
+        x(0), y(0), z(0), range(0), bearing(0), elevation(0), intensity(0) {}
     
     bool is_nan() const { return ( x == 0 && y == 0 && z == 0 ); }
     
@@ -84,13 +84,13 @@ struct data_point
     double y;
     double z;
     double range; // meters
+    double bearing; //radians
+    double elevation;   // radians
 /// Intensity is the reflected strength of the laser.
 /// The reflected laser intensity value is represented by 18- bit data. It is a relative number without a unit.
 /// Intensity may differ depending upon the distance, material and detection angle of the object. Therefore, users
 /// should check the detection capability verification test.
     comma::uint32 intensity;   /// This is a relative, unit less number that is 18-bit
-    double bearing; //radians
-    double elevation;   // radians
 };
 
 /// This is for setting acquired data for the point while keeping timestamp the same.
@@ -112,8 +112,8 @@ void data_point::set(double distance, comma::uint32 intensity, double bearing)
     this->intensity = intensity;    
     this->bearing = bearing;
     // timestamp stays the same
-    x = distance * -std::cos( bearing );
-    y = distance * std::sin( bearing );
+    x = distance * std::cos( bearing );
+    y = distance * -std::sin( bearing );
     // z = 0;
 }
 
@@ -144,17 +144,18 @@ static void usage()
     std::cerr << "turns on the laser scanner and broad cast laser data." << std::endl;
     std::cerr << std::endl;
     std::cerr << "usage" << std::endl;
-    std::cerr << "    socat tcp:hokuyo-laser:port EXEC:\"hokuyo-to-csv --publish <tcp:port|pipe> [ --fields t,x,y,z,intensity,range,bearing ]\"" << std::endl;
+    std::cerr << "    hokuyo-to-csv --laser <host:port> [ --fields t,x,y,z,intensity,range,bearing ]\"" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
+    std::cerr << "*   --laser=: give the TCP connection to the laser <host:port>" << std::endl;
     std::cerr << "    --help,-h: show this message" << std::endl;
     std::cerr << "    --binary,-b: output binary equivalent of csv" << std::endl;
     std::cerr << "    --fields=<fields>: output only given fields" << std::endl;
 //     std::cerr << "        default: " << comma::join( comma::csv::names< csv_point >( false ), ',' ) << " (" << comma::csv::format::value< csv_point >() << ")" << std::endl;
     std::cerr << "        t: timestamp" << std::endl;
     std::cerr << "        x,y,z: cartesian coordinates in sensor frame, where <0,0,0> is no data" << std::endl;
-    std::cerr << "        i: intensity of the data point." << std::endl;
     std::cerr << "        range,bearing, elevation or r,b,e: polar coordinates in sensor frame" << std::endl;
+    std::cerr << "        i: intensity of the data point." << std::endl;
     std::cerr << "    --format: output binary format for given fields to stdout and exit" << std::endl;
     std::cerr << "    --start-step=<0-890>: Scan starting at a start step and go to (step+270) wich covers 67.75\" which is 270\"/4." << std::endl;
     std::cerr << "                          Does not perform a full 270\" scan." << std::endl;
@@ -172,57 +173,19 @@ static void usage()
     exit( -1 );
 }
 
-
-static bool is_binary = false;
-static std::string output_fields = "";
-/// Write the data to the publisher in CSV ascii or binary formats, with selectable fields from --fields=
-void output_data( const data_point& point, comma::io::publisher& publisher )
-{
-    if( is_binary )
-    {
-        comma::csv::options csv;
-        csv.fields = output_fields;
-        std::vector< std::string > v = comma::split( csv.fields, ',' );
-        for( std::size_t i = 0; i < v.size(); ++i ) // convenience shortcuts
-        {
-            if( v[i] == "i" ) { v[i] = "intensity"; }
-            else if( v[i] == "r" ) { v[i] = "range"; }
-            else if( v[i] == "b" ) { v[i] = "bearing"; }
-            else if( v[i] == "e" ) { v[i] = "elevation"; }
-            else if( v[i] == "t" ) { v[i] = "timestamp"; }
-        }
-        csv.fields = comma::join( v, ',' );
-        csv.full_xpath = false;
-        // see sick-ldmrs-to-csv
-        csv.format( comma::csv::format::value< data_point >( csv.fields, false ) );
-        
-        static comma::csv::binary< data_point > binary( csv );
-        static std::vector<char> line( binary.format().size() );
-        binary.put( point, line.data() );
-        publisher.write( line.data(), line.size());
-    }
-    else
-    {
-        static std::string tmp;
-        static comma::csv::ascii< data_point > ascii( output_fields );
-        publisher << ( ascii.put( point, tmp ) + "\n" );
-    }
-}
-
 template < int STEPS >
 void scanning( int start_step, comma::signal_flag& signaled,
-               comma::io::istream& input, comma::io::ostream& output, 
-               comma::io::publisher& publisher )
+               std::iostream& iostream, comma::csv::output_stream< data_point >& output )
 {
     hok::request_md me( true );
     me.header.start_step = start_step;
     me.header.end_step = start_step + STEPS-1;
     
-    output->write( me.data(), hok::request_md::size );
-    output->flush();
+    iostream.write( me.data(), hok::request_md::size );
+    iostream.flush();
     
     hok::reply_md state;
-    input->read( state.data(), hok::reply_md::size );
+    iostream.read( state.data(), hok::reply_md::size );
     
     if( state.request.message_id != me.message_id ) { COMMA_THROW( comma::exception, "message id mismatch for ME status reply" ); }
     if( state.status.status() != 0 ) 
@@ -238,7 +201,7 @@ void scanning( int start_step, comma::signal_flag& signaled,
     while( !signaled && std::cin.good() )
     {
         // TODO just read the status response first, or timeout on read()
-        input->read( response.data(), hok::reply_me_data< STEPS >::size );
+        iostream.read( response.data(), hok::reply_me_data< STEPS >::size );
         if( response.request.message_id != me.message_id ) { COMMA_THROW( comma::exception, "message id mismatch for ME status reply" ); }
         if( response.status.status() != hok::status::data_success ) 
         { 
@@ -258,12 +221,33 @@ void scanning( int start_step, comma::signal_flag& signaled,
             point3d.set( rays.steps[i].distance() / 1000.0, 
                          rays.steps[i].intensity(), 
                          hok::ust_10lx::step_to_bearing( i + start_step ) );
-            output_data( point3d, publisher );
+            output.write( point3d );
         }
     
     }
     
 }
+
+/// Connect to the TCP server within the allowed timeout
+/// Needed because comma::io::iostream is not available
+bool tcp_connect( const std::string& conn_str, 
+                  ip::tcp::iostream& io, 
+                  const boost::posix_time::time_duration& timeout=boost::posix_time::seconds(1)
+)
+{
+    std::vector< std::string > v = comma::split( conn_str, ':' );
+    boost::asio::io_service service;
+    ip::tcp::resolver resolver( service );
+    ip::tcp::resolver::query query( v[0] == "localhost" ? "127.0.0.1" : v[0], v[1] );
+    ip::tcp::resolver::iterator it = resolver.resolve( query );
+    
+    io.expires_from_now( timeout );
+    io.connect( it->endpoint() );
+    
+    io.expires_at( boost::posix_time::pos_infin );
+    
+    return io.error() == 0;
+} 
 
 int main( int ac, char** av )
 {
@@ -273,15 +257,29 @@ int main( int ac, char** av )
     
     try
     {
-        /// Read and write to stdin and stdout
-        comma::io::istream input( "-", comma::io::mode::binary );
-        comma::io::ostream output( "-", comma::io::mode::binary );
-        /// Write data on --publish=
-        comma::io::publisher publisher( options.value< std::string >( "--publish" ), 
-                                        is_binary ? comma::io::mode::binary : comma::io::mode::ascii );
+        // Sets up output data
+        comma::csv::options csv;
+        csv.fields = options.value< std::string >( "--fields", "" );
+        std::vector< std::string > v = comma::split( csv.fields, ',' );
+        for( std::size_t i = 0; i < v.size(); ++i ) // convenience shortcuts
+        {
+            if( v[i] == "i" ) { v[i] = "intensity"; }
+            else if( v[i] == "r" ) { v[i] = "range"; }
+            else if( v[i] == "b" ) { v[i] = "bearing"; }
+            else if( v[i] == "e" ) { v[i] = "elevation"; }
+            else if( v[i] == "t" ) { v[i] = "timestamp"; }
+        }
+        csv.fields = comma::join( v, ',' );
+        csv.full_xpath = false;
+        // see sick-ldmrs-to-csv
+        if( options.exists( "--binary,-b" ) ) csv.format( comma::csv::format::value< data_point >( csv.fields, false ) );
+        comma::csv::output_stream< data_point > output( std::cout, csv );  
         
-        if( options.exists( "--fields,-f" ) ) { output_fields = options.value< std::string >( "--fields,-f" ); }
-        is_binary = options.exists( "--binary,-b" );
+        /// Connect to the laser
+        ip::tcp::iostream iostream;
+        if( !tcp_connect( options.value< std::string >( "--laser" ), iostream ) ) {
+            COMMA_THROW( comma::exception, "failed to connect to the hokuyo laser at: " << options.value< std::string >( "--laser" ) );
+        }
         
         bool reboot_on_error = options.exists( "--reboot-on-error" );
         
@@ -290,14 +288,15 @@ int main( int ac, char** av )
             hok::state_command start( "BM" ); // starts transmission
             hok::state_reply start_reply;
     
-            output->write( start.data(), hok::state_command::size  );
+            iostream.write( start.data(), hok::state_command::size  );
+            iostream.flush();
             
             comma::io::select select;
-            select.read().add( output.fd() );
+            select.read().add( iostream.rdbuf()->native() );
             
             select.wait( 1 ); // wait one select for reply, it can be much smaller
-            if( !select.read().ready( output.fd() ) ) { COMMA_THROW( comma::exception, "no reply received from laser scanner after a startup (BM) command" ); }
-            input->read( start_reply.data(), hok::state_reply::size  );
+            if( !select.read().ready( iostream.rdbuf()->native() ) ) { COMMA_THROW( comma::exception, "no reply received from laser scanner after a startup (BM) command" ); }
+            iostream.read( start_reply.data(), hok::state_reply::size  );
 //         std::cerr << name() << "received " << start_reply.data();
 //         std::cerr << name() << "starting status of " << start_reply.status() << " request " << start.data() << std::endl;
             
@@ -306,8 +305,8 @@ int main( int ac, char** av )
                 if( reboot_on_error )
                 {
                     // it must be sent twice within one second
-                    *output << "RB\n"; output->flush();
-                    *output << "RB\n"; output->flush();
+                    iostream << "RB\n"; iostream.flush();
+                    iostream << "RB\n"; iostream.flush();
                 }
                 COMMA_THROW( comma::exception, std::string("Starting laser with BM command failed, status: ") + std::string( start_reply.status.data(), 2 ) ); 
             }
@@ -315,7 +314,7 @@ int main( int ac, char** av )
     
     
         {
-            app_exit onexit( *output, publisher );
+            app_exit onexit( iostream );
         
             // it is higher than 1080 because 0 is a step
             static const int MAX_STEPS = 1081;
@@ -326,10 +325,10 @@ int main( int ac, char** av )
                 static const int SMALL_STEPS = 271;
                 start_encoder_step = options.value< comma::uint32 >( "--start-step", 0 );
                 if( start_encoder_step >= ( hok::ust_10lx::step_max - SMALL_STEPS ) ) { COMMA_THROW( comma::exception, "start step is too high" ); }
-                scanning< SMALL_STEPS >( start_encoder_step, signaled, input, output, publisher );
+                scanning< SMALL_STEPS >( start_encoder_step, signaled, iostream, output );
             }
             else {
-                scanning< MAX_STEPS >( start_encoder_step, signaled, input, output, publisher );
+                scanning< MAX_STEPS >( start_encoder_step, signaled, iostream, output );
             }
     
             

@@ -62,12 +62,11 @@ void strip_checksum( std::size_t raw_size, char* target, const char* raw )
     {
         memcpy( target, raw, data_size );
         
-        if( raw[block-1] != '\n' ) { COMMA_THROW( comma::exception, "failed to find line feed after 64 data bytes and checksum byte" ); }
+        if( raw[block-1] != '\n' ) { COMMA_THROW( comma::exception, "failed to find line feed after 64 data bytes and checksum byte, data block: " << std::string( raw, block )  ); }
         // verify checksum
         
         // todo: more informative expression
-        
-        if( !scip_verify_checksum( std::string( raw, block-1 ) ) ) { COMMA_THROW( comma::exception, "checksum of data failed in 64 bytes block." );  }
+        if( !scip_verify_checksum( std::string( raw, block-1 ) ) ) { COMMA_THROW( comma::exception, "checksum of data failed in 64 bytes data block (65th byte is checksum): " << std::string( raw, block-1 ) );  }
         raw += block;
         target += data_size; // advance pointer pass data, checksum and line feed
         
@@ -78,13 +77,7 @@ void strip_checksum( std::size_t raw_size, char* target, const char* raw )
     {
 //         std::cerr << "final block: '" << std::string( raw, size-1 ) << '\'' << std::endl; 
         if( !scip_verify_checksum( std::string( raw, size-1 ) ) ) { 
-            
-            
-            // todo: more informative expression
-            
-            
-            COMMA_THROW( comma::exception, "checksum of data failed at final odd block." );  
-            
+            COMMA_THROW( comma::exception, "checksum of data failed at final odd data block: " << std::string( raw, size-1 ) );  
         }
         // if size is 1, 2 or 3, then it is an error
         memcpy( target, raw, size-2 ); // it ends in triplet <sum, lf>
