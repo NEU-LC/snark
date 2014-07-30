@@ -153,13 +153,13 @@ TEST( hokuyo_packed, scip_gd_response )
     
     const hok::reply_gd< 11 >* gd_reply = reinterpret_cast< const hok::reply_gd< 11 >* >( &response[0] );
     
-    EXPECT_EQ( "00P", std::string( gd_reply->status.data(), hok::status_t::size ) );
-    EXPECT_TRUE( hok::scip_verify_checksum( std::string( gd_reply->status.data(), hok::status_t::size ) ) );
-    EXPECT_EQ( "00", std::string( gd_reply->status.status.data(), 2 ) );
-    EXPECT_EQ( "G]\\VF", std::string( gd_reply->timestamp.data(), hok::timestamp_t::size ) );
-//     EXPECT_EQ( 0, gd_reply->status.status() );
-    EXPECT_EQ( 6216486, gd_reply->timestamp.timestamp() );
-    EXPECT_EQ( 'F', gd_reply->timestamp.sum );
+    EXPECT_EQ( "00P", std::string( gd_reply->header.status.data(), hok::status_t::size ) );
+    EXPECT_TRUE( hok::scip_verify_checksum( std::string( gd_reply->header.status.data(), hok::status_t::size ) ) );
+    EXPECT_EQ( "00", std::string( gd_reply->header.status.status.data(), 2 ) );
+    EXPECT_EQ( "G]\\VF", std::string( gd_reply->header.timestamp.data(), hok::timestamp_t::size ) );
+//     EXPECT_EQ( 0, gd_reply->header.status.status() );
+    EXPECT_EQ( 6216486, gd_reply->header.timestamp() );
+    EXPECT_EQ( 'F', gd_reply->header.timestamp.sum );
     /// Line feeds are included in the data, remove it to verify checksum, as that value is the last 'n'
     EXPECT_EQ( "06306J06_07407607106i06i06i075070n", std::string( gd_reply->encoded.raw_data.data(), hok::distance_data< 11 >::value-1 ) );
     
@@ -200,10 +200,10 @@ TEST( hokuyo_packed, scip_gd_response )
     
     
     const hok::reply_gd< 101 >* reply = reinterpret_cast< const hok::reply_gd< 101 >* >( reply101 );
-    EXPECT_EQ( "00P", std::string( reply->status.data(), hok::status_t::size ) );
-    EXPECT_TRUE( hok::scip_verify_checksum( std::string( reply->status.data(), hok::status_t::size ) ) );
-    EXPECT_EQ( "00", std::string( reply->status.status.data(), 2 ) );
-    EXPECT_EQ( "\\0[Vm", std::string( reply->timestamp.data(), hok::timestamp_t::size ) );
+    EXPECT_EQ( "00P", std::string( reply->header.status.data(), hok::status_t::size ) );
+    EXPECT_TRUE( hok::scip_verify_checksum( std::string( reply->header.status.data(), hok::status_t::size ) ) );
+    EXPECT_EQ( "00", std::string( reply->header.status.status.data(), 2 ) );
+    EXPECT_EQ( "\\0[Vm", std::string( reply->header.timestamp.data(), hok::timestamp_t::size ) );
     EXPECT_TRUE( hok::scip_verify_checksum( "0Mm0MV0Jc0If0I30HX0HL0H;0G`0Gb0Gm0GV0GT0G;0FQ0FB0F<0F40Eo0En0E`0a" ) );
     EXPECT_TRUE( hok::scip_verify_checksum( "EW0ER0ER0E40E90E40E80E<0E90E90E=0E>0E>0ED0EI0EQ0EX0EX0EW0EY0E_0Ef" ) );
     EXPECT_TRUE( hok::scip_verify_checksum( "g0F80F>0FA0FC0FA0F?0FK0FN0F[0F^0F[0Fa0G50Gb?om?om?om?om?om?om?omi" ) );
@@ -245,7 +245,7 @@ TEST( hokuyo_packed, scip_me_response )
     
     
     const hok::reply_me_data< 11 >* results = reinterpret_cast< const hok::reply_me_data< 11 >* >( me_data );
-    EXPECT_EQ( 1, results->request.num_of_scans() ); // 2nd scan of 3
+    EXPECT_EQ( 1, results->header.request.num_of_scans() ); // 2nd scan of 3
     
     hok::di_data< 11 >::rays rays;
 //     std::cerr << " steps 11 size: " << hok::reply_me_data< 11 >::size << std::endl;
@@ -269,7 +269,7 @@ TEST( hokuyo_packed, scip_me_response )
         "0Il0770Ij06e0J306<?om000?om000?om000?om0000ME06R0M\\06V0M_06X0Me0W\n"
         "6T:\n\n";
     results = reinterpret_cast< const hok::reply_me_data< 11 >* >( me_data );
-    EXPECT_EQ( 0, results->request.num_of_scans() ); // 2nd scan of 3
+    EXPECT_EQ( 0, results->header.request.num_of_scans() ); // 2nd scan of 3
     results->encoded.get_values( rays);
     
     {
@@ -296,7 +296,7 @@ TEST( hokuyo_packed, scip_md_response )
       
     
     const hok::reply_md_data< 11 >* results = reinterpret_cast< const hok::reply_md_data< 11 >* >( md_data );
-    EXPECT_EQ( 1, results->request.num_of_scans() ); // 1st scan of 2
+    EXPECT_EQ( 1, results->header.request.num_of_scans() ); // 1st scan of 2
     
     hok::distance_data< 11 >::rays rays;
     results->encoded.get_values( rays);
@@ -318,7 +318,7 @@ TEST( hokuyo_packed, scip_md_response )
         "?om?om?om?om?om?om?om?om?om0JI0JCc\n\n";
         
     results = reinterpret_cast< const hok::reply_md_data< 11 >* >( md_data );
-    EXPECT_EQ( 0, results->request.num_of_scans() ); // 2nd scan of 3
+    EXPECT_EQ( 0, results->header.request.num_of_scans() ); // 2nd scan of 3
     results->encoded.get_values( rays);
     
     {
@@ -352,8 +352,8 @@ TEST( hokuyo_packed, scip_ge_response )
     EXPECT_TRUE( hok::scip_verify_checksum( std::string( ":cM" ) ) );
 
     const hok::reply_ge< 11 >* ge_reply = reinterpret_cast< const hok::reply_ge< 11 >* >( reply );
-    EXPECT_EQ( "00P", std::string( ge_reply->status.data(), hok::status_t::size ) );
-    EXPECT_EQ( 0, ge_reply->status.status() );
+    EXPECT_EQ( "00P", std::string( ge_reply->header.status.data(), hok::status_t::size ) );
+    EXPECT_EQ( 0, ge_reply->header.status() );
 
     typedef hok::di_data< 11 > data_t;
     data_t::rays rays;

@@ -267,6 +267,7 @@ struct status_t : comma::packed::packed_struct< status_t, 3 >
     comma::packed::casted_left_fill< comma::uint16, 2, '0' > status;
     //comma::packed::scip_2chars_t status;
     char sum;
+    comma::uint32 operator()() const { return this->status(); }
 };
 
 struct timestamp_t : comma::packed::packed_struct< timestamp_t, 5 >
@@ -274,54 +275,13 @@ struct timestamp_t : comma::packed::packed_struct< timestamp_t, 5 >
     static const std::size_t size = 5;
     comma::packed::scip_4chars_t timestamp; // just a count from 0
     char sum;
+    
+    comma::uint32 operator()() const { return this->timestamp(); }
 };
 
 static const int reply_size = reply_header_size + status_t::size + timestamp_t::size + 2; // two line feeds, after status and timestamp
 
 static const int status_timestamp_size = status_t::size + timestamp_t::size + 2; // two line feeds, after status and timestamp
-
-struct reply
-{
-    struct header
-    {
-        // todo
-//         request_gd request;
-//         status_t status;
-//         line_feed_t lf;
-//         timestamp_t timestamp;
-//         line_feed_t lf1;        
-    };
-};
-
-/// Depends on how many steps, always 3 character encoding
-template < int STEPS >
-struct reply_gd : comma::packed::packed_struct< reply_gd< STEPS >, reply_size + distance_data< STEPS >::value + 1 > /// 1 for last line feed char
-{
-    request_gd request;
-    status_t status;
-    line_feed_t lf;
-    timestamp_t timestamp;
-    line_feed_t lf1;
-
-    static const int data_size = distance_data< STEPS >::value;
-    distance_data< STEPS > encoded;
-    line_feed_t lf_end; /// Final terminating line feed
-};
-
-template < int STEPS >
-struct reply_ge : comma::packed::packed_struct< reply_ge< STEPS >, reply_size + di_data< STEPS >::value + 1 > /// 1 for last line feed char
-{
-    request_gd request;
-    status_t status;
-    line_feed_t lf;
-    timestamp_t timestamp;
-    line_feed_t lf1;
-
-    static const int data_size = di_data< STEPS >::value;
-    /// each sum value is followed by a line feed char
-    di_data< STEPS > encoded;
-    line_feed_t lf_end; /// Final terminating line feed
-};
 
 /// Can be used for MD or ME request
 struct request_md : comma::packed::packed_struct< request_md, reply_header_size + 1 + 2 >
@@ -333,6 +293,48 @@ struct request_md : comma::packed::packed_struct< request_md, reply_header_size 
     sequence_string message_id;
 };
 
+struct reply
+{
+    struct gd_header
+    {
+        request_gd request;
+        status_t status;
+        line_feed_t lf;
+        timestamp_t timestamp;
+        line_feed_t lf1;        
+    };
+    struct md_header
+    {
+        request_md request;
+        status_t status;
+        line_feed_t lf;
+        timestamp_t timestamp;
+        line_feed_t lf1;
+    };
+};
+
+/// Depends on how many steps, always 3 character encoding
+template < int STEPS >
+struct reply_gd : comma::packed::packed_struct< reply_gd< STEPS >, reply_size + distance_data< STEPS >::value + 1 > /// 1 for last line feed char
+{
+    reply::gd_header header;
+
+    static const int data_size = distance_data< STEPS >::value;
+    distance_data< STEPS > encoded;
+    line_feed_t lf_end; /// Final terminating line feed
+};
+
+template < int STEPS >
+struct reply_ge : comma::packed::packed_struct< reply_ge< STEPS >, reply_size + di_data< STEPS >::value + 1 > /// 1 for last line feed char
+{
+    reply::gd_header header;
+
+    static const int data_size = di_data< STEPS >::value;
+    /// each sum value is followed by a line feed char
+    di_data< STEPS > encoded;
+    line_feed_t lf_end; /// Final terminating line feed
+};
+
 /// This is a reply as an acknowledgement of reques     t - no data
 struct reply_md : comma::packed::packed_struct< reply_md, request_md::size + status_t::size + 2 > /// 1 for last line feed char
 {
@@ -342,15 +344,12 @@ struct reply_md : comma::packed::packed_struct< reply_md, request_md::size + sta
     line_feed_t lf_end;
 };
 
+
 /// Depends on how many steps, always 3 character encoding
 template < int STEPS >
 struct reply_md_data : comma::packed::packed_struct< reply_md_data< STEPS >, request_md::size + status_timestamp_size + distance_data< STEPS >::value + 1 > /// 1 for last line feed char
 {
-    request_md request;
-    status_t status;
-    line_feed_t lf;
-    timestamp_t timestamp;
-    line_feed_t lf1;
+    reply::md_header header;
 
     static const int data_size = distance_data< STEPS >::value;
     distance_data< STEPS > encoded;
@@ -360,11 +359,7 @@ struct reply_md_data : comma::packed::packed_struct< reply_md_data< STEPS >, req
 template < int STEPS >
 struct reply_me_data : comma::packed::packed_struct< reply_me_data< STEPS >, request_md::size + status_timestamp_size + di_data< STEPS >::value + 1 > /// 1 for last line feed char
 {
-    request_md request;
-    status_t status;
-    line_feed_t lf;
-    timestamp_t timestamp;
-    line_feed_t lf1;
+    reply::md_header header;
 
     static const int data_size = di_data< STEPS >::value;
     di_data< STEPS > encoded;

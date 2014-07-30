@@ -202,11 +202,11 @@ void scanning( int start_step, comma::signal_flag& signaled,
     {
         // TODO just read the status response first, or timeout on read()
         iostream.read( response.data(), hok::reply_me_data< STEPS >::size );
-        if( response.request.message_id != me.message_id ) { COMMA_THROW( comma::exception, "message id mismatch for ME status reply" ); }
-        if( response.status.status() != hok::status::data_success ) 
+        if( response.header.request.message_id != me.message_id ) { COMMA_THROW( comma::exception, "message id mismatch for ME status reply" ); }
+        if( response.header.status() != hok::status::data_success ) 
         { 
             std::ostringstream ss;
-            ss << "data reply to ME request is not success: " << response.status.status(); // to change to string
+            ss << "data reply to ME request is not success: " << response.header.status.status(); // to change to string
             COMMA_THROW( comma::exception, ss.str() ); 
         }
         
