@@ -312,7 +312,6 @@ int main( int ac, char** av )
             }
         }
     
-    
         {
             app_exit onexit( iostream );
         
@@ -330,8 +329,6 @@ int main( int ac, char** av )
             else {
                 scanning< MAX_STEPS >( start_encoder_step, signaled, iostream, output );
             }
-    
-            
         }
     }
     catch( std::exception& ex )

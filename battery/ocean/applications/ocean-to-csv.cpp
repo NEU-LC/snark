@@ -205,13 +205,14 @@ int update_controller( controller< B >& controller, const std::string& line )
 
 static bool is_binary = false;
 static bool status_in_json = false;
+static bool is_compact_json = false;
 
 /// Write status to oss publisher
-void publish_status( const stats_t& stats, publisher& oss )
+void publish_status( const stats_t& stats, publisher& oss, const comma::csv::options& csv )
 {
      if( is_binary )
      {
-         static comma::csv::binary< stats_t > binary("","",true, stats );
+         static comma::csv::binary< stats_t > binary( csv );
          static std::vector<char> line( binary.format().size() );
          binary.put( stats, line.data() );
          oss.write( line.data(), line.size());
@@ -219,32 +220,26 @@ void publish_status( const stats_t& stats, publisher& oss )
      else
      {
          static std::string out;
-         ascii< stats_t >().put( stats, out );
+         static comma::csv::ascii< stats_t > ascii( csv );
+         ascii.put( stats, out );
          oss << out << '\n';
      }
 }
 /// Write status to 'oss' stream
-void output( const stats_t& stats, std::ostream& oss=std::cout )
+void output( const stats_t& stats, const comma::csv::options& csv, std::ostream& oss=std::cout )
 {
-     if( is_binary )
-     {
-         static comma::csv::binary< stats_t > binary("","",true, stats );
-         static std::vector<char> line( binary.format().size() );
-         binary.put( stats, line.data() );
-         oss.write( line.data(), line.size());
-     }
-     else if( status_in_json )
+     if( status_in_json )
      {
          boost::property_tree::ptree t;
          comma::to_ptree to_ptree( t );
          comma::visiting::apply( to_ptree ).to( stats );
-         boost::property_tree::write_json( oss, t );    
+         boost::property_tree::write_json( oss, t, !is_compact_json );    
          // *stream << char(4) << char(3); // End of Transmition
 
      }
      else
      {
-         static comma::csv::output_stream< stats_t > ss( oss );
+         static comma::csv::output_stream< stats_t > ss( oss, csv );
          ss.write( stats );
      }
      oss.flush();
@@ -268,8 +263,26 @@ int main( int ac, char** av )
 
     try
     {
+        // Sets up output data options
+        comma::csv::options csv;
+        csv.fields = options.value< std::string >( "--fields", "" );
+        std::vector< std::string > v = comma::split( csv.fields, ',' );
+        for( std::size_t i = 0; i < v.size(); ++i ) // convenience shortcuts
+        {
+            if( v[i] == "i" ) { v[i] = "intensity"; }
+            else if( v[i] == "r" ) { v[i] = "range"; }
+            else if( v[i] == "b" ) { v[i] = "bearing"; }
+            else if( v[i] == "e" ) { v[i] = "elevation"; }
+            else if( v[i] == "t" ) { v[i] = "timestamp"; }
+        }
+        csv.fields = comma::join( v, ',' );
+        csv.full_xpath = false;
+        // see sick-ldmrs-to-csv
+        if( options.exists( "--binary,-b" ) ) csv.format( comma::csv::format::value< stats_t >( csv.fields, false ) );
+        
         is_binary = options.exists( "--binary,-b" );
         status_in_json = options.exists( "--status-json" );
+        is_compact_json = options.exists( "--compact-json" );
         int controller_id =  options.value< int >( "--controller-id,-C" );
         float beat = options.value< float >( "--beat,-B" );
         bool is_query_mode = options.exists( "--query-mode" );
@@ -299,7 +312,7 @@ int main( int ac, char** av )
             while(1)
             {
                 stats.time = microsec_clock::universal_time();
-                output( stats );
+                output( stats, csv );
                 sleep( beat );
             }
             
@@ -379,8 +392,8 @@ int main( int ac, char** av )
                 stats.time = microsec_clock::universal_time();
                 stats.controller.consolidate( num_of_batteries );
 
-                if( !has_publish_stream ) { output( stats, std::cerr ); }
-                else { publish_status( stats, *publish ); }
+                if( !has_publish_stream ) { output( stats, csv, std::cerr ); }
+                else { publish_status( stats, *publish, csv ); }
 
                 ++counter;
                 
@@ -406,8 +419,8 @@ int main( int ac, char** av )
                     stats.time = microsec_clock::universal_time();
                     stats.controller.consolidate( num_of_batteries );
     
-                    if( !has_publish_stream ) { output( stats ); }
-                    else { publish_status( stats, *publish ); }
+                    if( !has_publish_stream ) { output( stats, csv ); }
+                    else { publish_status( stats, *publish, csv ); }
     
                     future = microsec_clock::universal_time() + seconds( beat );
                 }
