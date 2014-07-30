@@ -130,9 +130,9 @@ template < > struct traits< data_point >
         v.apply( "y", t.y );
         v.apply( "z", t.z );
         v.apply( "range", t.range );
-        v.apply( "intensity", t.intensity );
         v.apply( "bearing", t.bearing );
         v.apply( "elevation", t.elevation );
+        v.apply( "intensity", t.intensity );
     }
 };
     
@@ -144,7 +144,7 @@ static void usage()
     std::cerr << "turns on the laser scanner and broad cast laser data." << std::endl;
     std::cerr << std::endl;
     std::cerr << "usage" << std::endl;
-    std::cerr << "    socat tcp:hokuyo-laser:port - | hokuyo-to-csv --publish <tcp:port|pipe> [ --fields t,x,y,z,intensity,range,bearing ]" << std::endl;
+    std::cerr << "    socat tcp:hokuyo-laser:port EXEC:\"hokuyo-to-csv --publish <tcp:port|pipe> [ --fields t,x,y,z,intensity,range,bearing ]\"" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    --help,-h: show this message" << std::endl;

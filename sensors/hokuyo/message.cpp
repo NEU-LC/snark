@@ -38,7 +38,7 @@ namespace snark { namespace hokuyo {
     
 bool scip_verify_checksum(const std::string& line)
 {
-    if( line.size() < 2 ) { COMMA_THROW( comma::exception, "SCIP data and checksum must be at least 2 bytes long" ); }
+    if( line.size() < 2 ) { COMMA_THROW( comma::exception, "SCIP data and checksum must be at least 2 bytes long, got " << line.size() << " byte(s)" ); }
 
     comma::uint32 sum = 0;
     for( std::size_t i=0; i<line.size()-1; ++i ) { sum += line[i]; } 
@@ -54,8 +54,8 @@ namespace details {
 void strip_checksum( std::size_t raw_size, char* target, const char* raw )
 {
     comma::uint32 size = raw_size;
-    const char block = 66; // every block ( 64 bytes ) ending in checksum bit and line feed byte
-    const char data_size = 64;
+    const comma::uint32 block = 66; // every block ( 64 bytes ) ending in checksum bit and line feed byte
+    const comma::uint32 data_size = 64;
     
     // strip out all sum + line feed
     while( size >= block )
@@ -64,6 +64,9 @@ void strip_checksum( std::size_t raw_size, char* target, const char* raw )
         
         if( raw[block-1] != '\n' ) { COMMA_THROW( comma::exception, "failed to find line feed after 64 data bytes and checksum byte" ); }
         // verify checksum
+        
+        // todo: more informative expression
+        
         if( !scip_verify_checksum( std::string( raw, block-1 ) ) ) { COMMA_THROW( comma::exception, "checksum of data failed in 64 bytes block." );  }
         raw += block;
         target += data_size; // advance pointer pass data, checksum and line feed
@@ -75,6 +78,11 @@ void strip_checksum( std::size_t raw_size, char* target, const char* raw )
     {
 //         std::cerr << "final block: '" << std::string( raw, size-1 ) << '\'' << std::endl; 
         if( !scip_verify_checksum( std::string( raw, size-1 ) ) ) { 
+            
+            
+            // todo: more informative expression
+            
+            
             COMMA_THROW( comma::exception, "checksum of data failed at final odd block." );  
             
         }

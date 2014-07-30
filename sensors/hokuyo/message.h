@@ -32,6 +32,8 @@
 
 #ifndef SNARK_SENSORS_HOKUYO_MESSAGE_H
 #define SNARK_SENSORS_HOKUYO_MESSAGE_H
+
+#include <boost/static_assert.hpp>
 #include <boost/utility/binary.hpp>
 #include <comma/base/types.h>
 #include <comma/packed/packed.h>
@@ -40,11 +42,13 @@
 namespace comma { namespace packed {
     
 /// The character encoding used by Hokuyo with SCIP 
-template < int N, typename T=comma::uint32 >
+template < unsigned int N, typename T=comma::uint32 >
 class scip_encoding : public comma::packed::field< scip_encoding< N >, T, N >
 {
 public:
     enum { size = N };
+    
+    BOOST_STATIC_ASSERT( size > 0 );
     
     typedef T type;
     
@@ -57,9 +61,9 @@ public:
     
     static void pack( char* storage, type value )
     {
-        for( int i=0; i<N; ++i )
+        for( unsigned int i = 0; i<N; ++i )
         {
-            int bits_shift = 6 * (N - (i+1));
+            unsigned int bits_shift = 6 * (N - (i+1));
             char c = ( ( value & ( mask << bits_shift ) ) >> bits_shift ) + offset; 
             storage[i] = c;
         }
@@ -68,11 +72,10 @@ public:
     static type unpack( const char* storage )
     {
         type value = 0;
-        for( int i=0; i<N; ++i )
+        for( unsigned int i=0; i<N; ++i )
         {
-            
             comma::uint32 part( storage[i] );
-            int bits_shift = 6 * (N - (i+1));
+            unsigned int bits_shift = 6 * (N - (i+1));
             // std::cerr << " int: " << part << " shift: " << bits_shift;
             value |= ( ( ( part - offset ) & mask ) << bits_shift );
             // comma::uint32 bits = ( ( part - offset ) & mask );
@@ -95,6 +98,8 @@ class casted_left_fill : public packed::field< casted_left_fill< T, S, Padding >
 {
 public:
     enum { size = S };
+    
+    BOOST_STATIC_ASSERT( size > 0 );
     
     typedef T Type;
     
@@ -274,6 +279,19 @@ struct timestamp_t : comma::packed::packed_struct< timestamp_t, 5 >
 static const int reply_size = reply_header_size + status_t::size + timestamp_t::size + 2; // two line feeds, after status and timestamp
 
 static const int status_timestamp_size = status_t::size + timestamp_t::size + 2; // two line feeds, after status and timestamp
+
+struct reply
+{
+    struct header
+    {
+        // todo
+//         request_gd request;
+//         status_t status;
+//         line_feed_t lf;
+//         timestamp_t timestamp;
+//         line_feed_t lf1;        
+    };
+};
 
 /// Depends on how many steps, always 3 character encoding
 template < int STEPS >
