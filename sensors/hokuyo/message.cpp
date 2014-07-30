@@ -106,6 +106,7 @@ template class di_data< 11 >;
 template class distance_data< 101 >;    
 template class di_data< 101 >;    
 
+/// For linking. Used by hokuyo-to-csv, add more as needed.
 template class distance_data< 1081 >;    
 template class distance_data< 271 >;    
 template class di_data< 1081 >;    

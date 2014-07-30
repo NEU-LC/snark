@@ -187,7 +187,10 @@ void scanning( int start_step, comma::signal_flag& signaled,
     hok::reply_md state;
     iostream.read( state.data(), hok::reply_md::size );
     
-    if( state.request.message_id != me.message_id ) { COMMA_THROW( comma::exception, "message id mismatch for ME status reply" ); }
+    if( state.request.message_id != me.message_id ) { 
+        COMMA_THROW( comma::exception, "message id mismatch for ME status reply, got: " << me.message_id.str() 
+                                        << " expected: " << state.request.message_id.str() ); 
+    }
     if( state.status.status() != 0 ) 
     { 
         std::ostringstream ss;
@@ -197,24 +200,18 @@ void scanning( int start_step, comma::signal_flag& signaled,
     
     hok::reply_me_data< STEPS > response; // reply with data
     typename hok::di_data< STEPS >::rays rays;
-//     std::cerr << "steps: " << STEPS << " size: " << hok::reply_me_data< STEPS >::size << std::endl;
     while( !signaled && std::cin.good() )
     {
         // TODO just read the status response first, or timeout on read()
         iostream.read( response.data(), hok::reply_me_data< STEPS >::size );
-        if( response.header.request.message_id != me.message_id ) { COMMA_THROW( comma::exception, "message id mismatch for ME status reply" ); }
-        if( response.header.status() != hok::status::data_success ) 
-        { 
-            std::ostringstream ss;
-            ss << "data reply to ME request is not success: " << response.header.status.status(); // to change to string
-            COMMA_THROW( comma::exception, ss.str() ); 
+        if( response.header.request.message_id != me.message_id ) { 
+            COMMA_THROW( comma::exception, "message id mismatch for ME data reply, got: " << me.message_id.str() << " expected: " << response.header.request.message_id.str() ); 
+        }
+        if( response.header.status() != hok::status::data_success )  { 
+            COMMA_THROW( comma::exception, "data reply to ME request is not success: " << response.header.status() ); 
         }
         
-//      std::cerr << "got: " << std::endl << std::string( response.data(), hok::reply_me_data< STEPS >::size );
-//      std::cerr.flush();
-        
         response.encoded.get_values( rays );
-//      std::cerr << "some data here:" << rays.steps[0].distance() << ',' << rays.steps[1].distance() << std::endl;
         data_point point3d;
         for( std::size_t i=0; i<STEPS; ++i )
         {
@@ -296,12 +293,12 @@ int main( int ac, char** av )
             select.read().add( iostream.rdbuf()->native() );
             
             select.wait( 1 ); // wait one select for reply, it can be much smaller
-            if( !select.read().ready( iostream.rdbuf()->native() ) ) { COMMA_THROW( comma::exception, "no reply received from laser scanner after a startup (BM) command" ); }
+            if( !select.read().ready( iostream.rdbuf()->native() ) ) { 
+                COMMA_THROW( comma::exception, "no reply received from laser scanner after a startup (BM) command: " << std::string( start.data(), hok::state_command::size ) ); 
+            }
             iostream.read( start_reply.data(), hok::state_reply::size  );
-//         std::cerr << name() << "received " << start_reply.data();
-//         std::cerr << name() << "starting status of " << start_reply.status() << " request " << start.data() << std::endl;
             
-            if( start_reply.status() != 0 && start_reply.status() != 2 ) 
+            if( start_reply.status() != 0 && start_reply.status() != 2 ) // 0 = success, 2 seems to be returned when it is already in scanning mode but idle
             {
                 if( reboot_on_error )
                 {

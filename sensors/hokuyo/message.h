@@ -176,7 +176,7 @@ static comma::uint16 sequence = 0;
 
 static const int reply_header_size = sensor_to_host::size + sequence_string::size;
 
-/// For BM, PP or RB command
+/// For generic state change commands, BM, PP or RB command
 struct state_command : public comma::packed::packed_struct< state_command, 15 >
 {
     state_command( const std::string& cmd_ ) : message_id( cmd_, ++sequence ) { cmd = cmd_; }
@@ -185,6 +185,8 @@ struct state_command : public comma::packed::packed_struct< state_command, 15 >
     line_feed_t lf_end;
 };
 
+/// Represents the generic replies from state_commands.
+/// Although commands like PP has extra returned data.
 struct state_reply : public comma::packed::packed_struct< state_reply, state_command::size - 1 + 5 >
 {
     comma::packed::string< 2 > cmd;
@@ -192,7 +194,7 @@ struct state_reply : public comma::packed::packed_struct< state_reply, state_com
     comma::packed::casted_left_fill< comma::uint16, 2, '0' > status;
     char sum;
     line_feed_t lf;
-    line_feed_t lf_end; /// TODO: does it work for PP reply?
+    line_feed_t lf_end;
 };
 
 
@@ -206,6 +208,7 @@ struct request_gd : public comma::packed::packed_struct< request_gd, reply_heade
     sequence_string message_id;
 };
 
+/// Checksum is only one byte
 static const char size_of_sum = 1;
 
 /// Verify checksum of the data given that the last byte is the checksum.
@@ -221,18 +224,24 @@ struct distance_data {
     static const unsigned char num_of_sums = ( (data_only_size)/64 ) + ( data_only_size % 64 > 0 ? 1: 0 ); 
     static const comma::uint16 value = data_only_size + num_of_sums*(size_of_sum + 1); /// adding one for line feed
     
+    /// This is the array of raw data without the checksum and line feeds
     typedef boost::array< comma::packed::scip_3chars_t, STEPS > points_t;
+    /// This is the raw or blob data with checksum and linefeeds, see get_values()
     comma::packed::string< value > raw_data;   /// data mixed with checksums and linefeeds
     
+    /// This is the array of raw data without the checksum and line feeds
     struct rays : public comma::packed::packed_struct< rays, data_only_size >
     {
         points_t steps;
     };
     
+    /// This is the function to get data into 'points', as checksums and linefeeds are stripped.
     void get_values( rays& points ) const; 
     
 };
 
+/// This is used to calculate the size of returned data values, each value is 3 bytes/chars.
+/// However checksum and linefeed is added after every 64 bytes, as well the last few bytes.
 template < int STEPS >
 struct di_data {
     /// The data is mixed with check sum every 64 bytes
@@ -249,15 +258,18 @@ struct di_data {
         comma::packed::scip_3chars_t distance;
         comma::packed::scip_3chars_t intensity;
     };
-    
+    /// This is the array of data without the checksum and line feeds
     typedef boost::array< pair_t, STEPS > points_t;
+    /// This is the raw or blob data with checksum and linefeeds, see get_values()
     comma::packed::string< value > raw_data;   
     
+    /// This is the array of raw data without the checksum and line feeds
     struct rays : public comma::packed::packed_struct< rays, data_only_size >
     {
         points_t steps;
     };
     
+    /// This is the function to get data into 'points', as checksums and linefeeds are stripped.
     void get_values( rays& points ) const; 
 };
 
@@ -279,10 +291,6 @@ struct timestamp_t : comma::packed::packed_struct< timestamp_t, 5 >
     comma::uint32 operator()() const { return this->timestamp(); }
 };
 
-static const int reply_size = reply_header_size + status_t::size + timestamp_t::size + 2; // two line feeds, after status and timestamp
-
-static const int status_timestamp_size = status_t::size + timestamp_t::size + 2; // two line feeds, after status and timestamp
-
 /// Can be used for MD or ME request
 struct request_md : comma::packed::packed_struct< request_md, reply_header_size + 1 + 2 >
 {
@@ -293,6 +301,7 @@ struct request_md : comma::packed::packed_struct< request_md, reply_header_size 
     sequence_string message_id;
 };
 
+/// The replies include the exact format for the request, plus status and timestamp.
 struct reply
 {
     struct gd_header
@@ -315,21 +324,19 @@ struct reply
 
 /// Depends on how many steps, always 3 character encoding
 template < int STEPS >
-struct reply_gd : comma::packed::packed_struct< reply_gd< STEPS >, reply_size + distance_data< STEPS >::value + 1 > /// 1 for last line feed char
+struct reply_gd : comma::packed::packed_struct< reply_gd< STEPS >, sizeof( reply::gd_header ) + distance_data< STEPS >::value + 1 > /// 1 for last line feed char
 {
     reply::gd_header header;
 
-    static const int data_size = distance_data< STEPS >::value;
     distance_data< STEPS > encoded;
     line_feed_t lf_end; /// Final terminating line feed
 };
 
 template < int STEPS >
-struct reply_ge : comma::packed::packed_struct< reply_ge< STEPS >, reply_size + di_data< STEPS >::value + 1 > /// 1 for last line feed char
+struct reply_ge : comma::packed::packed_struct< reply_ge< STEPS >, sizeof( reply::gd_header ) + di_data< STEPS >::value + 1 > /// 1 for last line feed char
 {
     reply::gd_header header;
 
-    static const int data_size = di_data< STEPS >::value;
     /// each sum value is followed by a line feed char
     di_data< STEPS > encoded;
     line_feed_t lf_end; /// Final terminating line feed
@@ -347,21 +354,19 @@ struct reply_md : comma::packed::packed_struct< reply_md, request_md::size + sta
 
 /// Depends on how many steps, always 3 character encoding
 template < int STEPS >
-struct reply_md_data : comma::packed::packed_struct< reply_md_data< STEPS >, request_md::size + status_timestamp_size + distance_data< STEPS >::value + 1 > /// 1 for last line feed char
+struct reply_md_data : comma::packed::packed_struct< reply_md_data< STEPS >, sizeof( reply::md_header ) + distance_data< STEPS >::value + 1 > /// 1 for last line feed char
 {
     reply::md_header header;
 
-    static const int data_size = distance_data< STEPS >::value;
     distance_data< STEPS > encoded;
     line_feed_t lf_end; /// Final terminating line feed
 };
 
 template < int STEPS >
-struct reply_me_data : comma::packed::packed_struct< reply_me_data< STEPS >, request_md::size + status_timestamp_size + di_data< STEPS >::value + 1 > /// 1 for last line feed char
+struct reply_me_data : comma::packed::packed_struct< reply_me_data< STEPS >, sizeof( reply::md_header ) + di_data< STEPS >::value + 1 > /// 1 for last line feed char
 {
     reply::md_header header;
-
-    static const int data_size = di_data< STEPS >::value;
+    
     di_data< STEPS > encoded;
     line_feed_t lf_end; /// Final terminating line feed
 };
