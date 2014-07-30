@@ -272,6 +272,7 @@ int main( int ac, char** av )
         csv.fields = comma::join( v, ',' );
         csv.full_xpath = false;
         // see sick-ldmrs-to-csv
+        if( options.exists( "--format" ) ) { std::cout << comma::csv::format::value< data_point >( csv.fields, false ) << std::endl; return 0; }
         if( options.exists( "--binary,-b" ) ) csv.format( comma::csv::format::value< data_point >( csv.fields, false ) );
         comma::csv::output_stream< data_point > output( std::cout, csv );  
         
