@@ -4,6 +4,25 @@ cmake_minimum_required(VERSION 2.6)
 
 ENABLE_TESTING()
 
+IF (UNIX)
+	# Get the date of the last commit (for use by CPack)
+	# Check if Git is installed
+	find_package(Git)
+	IF(GIT_FOUND)
+		EXECUTE_PROCESS(
+		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+		COMMAND git log -n1 --format=%ci
+		COMMAND xargs -0 date +%Y%m%dT%H%M -d
+		OUTPUT_VARIABLE COMMITDATE
+		OUTPUT_STRIP_TRAILING_WHITESPACE
+		)
+	ELSE()
+		SET ( COMMITDATE 4 )
+	ENDIF()
+ELSE() # Probably windows; gets hardcoded patch version
+	SET ( COMMITDATE 4 ) 
+ENDIF()
+
 # ---------------------------------------------------------------------------
 # set compiler and linker flags and variables
 
@@ -276,7 +295,7 @@ SET(CPACK_PACKAGE_VENDOR "ACFR")
 SET(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/COPYING")
 SET(CPACK_PACKAGE_VERSION_MAJOR "1")
 SET(CPACK_PACKAGE_VERSION_MINOR "0")
-SET(CPACK_PACKAGE_VERSION_PATCH "4")
+SET(CPACK_PACKAGE_VERSION_PATCH ${COMMITDATE})
 SET(CPACK_PACKAGE_CONTACT "t.teo@acfr.usyd.edu.au")
 
 # Additional Win32 handling for CPack.
