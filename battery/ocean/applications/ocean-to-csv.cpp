@@ -378,6 +378,13 @@ int main( int ac, char** av )
                     snark::ocean::query( stats.controller, *io, update_all, num_of_batteries );
                 }
                 
+                /// Data alignment check/ sanity check
+                static const comma::int32 amp_limit = 100;
+                if( std::fabs( stats.controller.batteries.front().current.value() ) >= amp_limit ) {
+                    COMMA_THROW( comma::exception, "data alignment check failed, battery 0's current is greater than " 
+                            << amp_limit << "Amps, it is " <<  stats.controller.batteries.front().current.value() << "Amps" );
+                }
+                
                 stats.time = microsec_clock::universal_time();
                 stats.controller.consolidate( num_of_batteries );
 
