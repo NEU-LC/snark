@@ -46,7 +46,7 @@ boost::scoped_ptr< snark::tbb::bursty_reader< Pair > > reader;
 static Pair capture( snark::camera::gobi& camera )
 { 
     static comma::signal_flag is_shutdown;
-    if( is_shutdown ) { reader->stop(); }
+    if( is_shutdown ) { reader->stop(); return Pair(); }
     return camera.read();    
 }
 
@@ -72,14 +72,22 @@ int main( int argc, char** argv )
             ( "no-header", "output image data only" )
             ( "verbose,v", "be more verbose" );
             
-        std::ostringstream shutter_message;
-        shutter_message << "    default behaviour of mechanical shutter:" << std::endl;
-        shutter_message << "        by default the shutter is activated every time the detector's temperature changes by 0,5°C"  << std::endl;
-        shutter_message << "        or after a set period of time (in seconds) since last calibration in order to obtain a reference image and correct for pixel drifts" << std::endl;
-        shutter_message << "            AutoCorrectionDeltaTemperature=0.5" << std::endl;
-        shutter_message << "            AutoCorrectionDeltaTime=150 (the actual time of recalibration is observed to be about 30% longer)" << std::endl;
-        shutter_message << "            AutoCorrectionEnabled=1" << std::endl;
-
+        std::ostringstream autocorrection_message;
+        autocorrection_message << "autocorrection attributes:" << std::endl;
+        autocorrection_message << "        AutoCorrectionDeltaTemperature" << std::endl;
+        autocorrection_message << "        AutoCorrectionDeltaTime" << std::endl;
+        autocorrection_message << "        AutoCorrectionEnabled" << std::endl;
+        
+        std::ostringstream persistentIP_message;
+        persistentIP_message << "persistent IP attributes (writable):" << std::endl;
+        persistentIP_message << "        GevPersistentIPAddress" << std::endl;
+        persistentIP_message << "        GevPersistentDefaultGateway" << std::endl;
+        persistentIP_message << "        GevPersistentSubnetMask" << std::endl;
+        persistentIP_message << std::endl;
+        persistentIP_message << "persistent IP attributes (readable):" << std::endl;        
+        persistentIP_message << "        GevCurrentIPAddress" << std::endl;
+        persistentIP_message << "        GevCurrentDefaultGateway" << std::endl;
+        persistentIP_message << "        GevCurrentSubnetMask" << std::endl;       
 
         boost::program_options::variables_map vm;
         boost::program_options::store( boost::program_options::parse_command_line( argc, argv, description), vm );
@@ -92,8 +100,9 @@ int main( int argc, char** argv )
             std::cerr << "usage: gobi-cat [<options>] [<filters>]\n" << std::endl;
             std::cerr << "output header format: fields: t,cols,rows,type; binary: t,3ui\n" << std::endl;
             std::cerr << description << std::endl;
-            std::cerr << shutter_message.str() << std::endl;
             std::cerr << snark::cv_mat::filters::usage() << std::endl;
+            std::cerr << autocorrection_message.str() << std::endl;
+            std::cerr << persistentIP_message.str() << std::endl;
             return 1;
         }
         if( vm.count( "header" ) && vm.count( "no-header" ) ) { COMMA_THROW( comma::exception, "--header and --no-header are mutually exclusive" ); }
@@ -161,11 +170,11 @@ int main( int argc, char** argv )
         return 0;
     }
     catch( std::exception& ex )
-    {
+    {   
         std::cerr << argv[0] << ": " << ex.what() << std::endl;
     }
     catch( ... )
-    {
+    {  
         std::cerr << argv[0] << ": unknown exception" << std::endl;
     }
     return 1;
