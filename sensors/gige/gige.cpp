@@ -259,6 +259,7 @@ class gige::impl
             if( !handle_ ) { return; }
             PvCameraClose( handle_ );
             PvUnInitialize();
+            //std::cerr << "the camera has been closed" << std::endl;
         }
 
         std::pair< boost::posix_time::ptime, cv::Mat > read()
@@ -309,7 +310,6 @@ class gige::impl
                 else
                 {
                     COMMA_THROW( comma::exception, "got frame with invalid status on camera " << *id_ << ": " << pv_error_to_string_( result ) << "(" << result << ")" );
-                    close();                    
                 }
                 retries++;
             }

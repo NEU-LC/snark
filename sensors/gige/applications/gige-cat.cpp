@@ -41,8 +41,14 @@
 
 typedef std::pair< boost::posix_time::ptime, cv::Mat > Pair;
 
-static Pair capture( snark::camera::gige& camera ) { return camera.read(); }
-
+boost::scoped_ptr< snark::tbb::bursty_reader< Pair > > reader;
+static Pair capture( snark::camera::gige& camera ) 
+{ 
+    static comma::signal_flag is_shutdown;
+    if( is_shutdown ) { reader->stop(); return Pair(); }
+    return camera.read(); 
+}
+ 
 int main( int argc, char** argv )
 {
     try
@@ -141,8 +147,8 @@ int main( int argc, char** argv )
         {
             serialization.reset( new snark::cv_mat::serialization( fields, format, vm.count( "header" ) ) );
         }
-        snark::tbb::bursty_reader< Pair > reader( boost::bind( &capture, boost::ref( camera ) ), discard );
-        snark::imaging::applications::pipeline pipeline( *serialization, filters, reader );
+        reader.reset( new snark::tbb::bursty_reader< Pair >( boost::bind( &capture, boost::ref( camera ) ), discard ) );
+        snark::imaging::applications::pipeline pipeline( *serialization, filters, *reader );
         pipeline.run();
         return 0;
     }
