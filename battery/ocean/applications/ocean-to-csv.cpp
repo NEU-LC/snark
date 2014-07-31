@@ -39,12 +39,10 @@
 #include <comma/application/command_line_options.h>
 #include <comma/csv/stream.h>
 #include <comma/base/types.h>
-#include <comma/visiting/apply.h>
 #include <comma/name_value/ptree.h>
 #include <comma/name_value/parser.h>
 #include <comma/io/stream.h>
 #include <comma/io/publisher.h>
-#include <comma/csv/stream.h>
 #include "../units.h"
 #include "../commands.h"
 #include "../battery.h"
@@ -210,7 +208,16 @@ static bool is_compact_json = false;
 /// Write status to oss publisher
 void publish_status( const stats_t& stats, publisher& oss, const comma::csv::options& csv )
 {
-     if( is_binary )
+     if( status_in_json || is_compact_json )
+     {
+         boost::property_tree::ptree t;
+         comma::to_ptree to_ptree( t );
+         comma::visiting::apply( to_ptree ).to( stats );
+         std::ostringstream ss;
+         boost::property_tree::write_json( ss, t, false ); // compact json only   
+         oss << ss.str(); 
+     }
+     else if( is_binary )
      {
          static comma::csv::binary< stats_t > binary( csv );
          static std::vector<char> line( binary.format().size() );
@@ -228,7 +235,7 @@ void publish_status( const stats_t& stats, publisher& oss, const comma::csv::opt
 /// Write status to 'oss' stream
 void output( const stats_t& stats, const comma::csv::options& csv, std::ostream& oss=std::cout )
 {
-     if( status_in_json )
+     if( status_in_json || is_compact_json )
      {
          boost::property_tree::ptree t;
          comma::to_ptree to_ptree( t );
@@ -239,7 +246,7 @@ void output( const stats_t& stats, const comma::csv::options& csv, std::ostream&
      }
      else
      {
-         static comma::csv::output_stream< stats_t > ss( oss, csv );
+         static comma::csv::output_stream< stats_t > ss( oss, csv, stats );
          ss.write( stats );
      }
      oss.flush();
@@ -266,7 +273,7 @@ int main( int ac, char** av )
         // Sets up output data options
         comma::csv::options csv;
         csv.fields = options.value< std::string >( "--fields", "" );
-        csv.full_xpath = false;
+        csv.full_xpath = true;
         if( options.exists( "--binary,-b" ) ) csv.format( comma::csv::format::value< stats_t >( csv.fields, false ) );
         
         is_binary = options.exists( "--binary,-b" );
@@ -379,10 +386,14 @@ int main( int ac, char** av )
                 }
                 
                 /// Data alignment check/ sanity check
-                static const comma::int32 amp_limit = 100;
-                if( std::fabs( stats.controller.batteries.front().current.value() ) >= amp_limit ) {
-                    COMMA_THROW( comma::exception, "data alignment check failed, battery 0's current is greater than " 
-                            << amp_limit << "Amps, it is " <<  stats.controller.batteries.front().current.value() << "Amps" );
+                if( modulo <= modulo  ) // do a check once only 
+                {
+                    double pc = stats.controller.batteries.front().charge_pc;
+                    static const comma::int32 pc_limit = 100; // percent
+                    if( pc < 0 || pc > pc_limit ) {
+                        COMMA_THROW( comma::exception, "data alignment check failed, battery 0's charge % is greater than " 
+                            << pc_limit << "% or lower than 0%, it is at " << pc << '%' );
+                    }
                 }
                 
                 stats.time = microsec_clock::universal_time();
