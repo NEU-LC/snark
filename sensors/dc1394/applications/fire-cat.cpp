@@ -34,17 +34,22 @@
 #include <snark/imaging/cv_mat/pipeline.h>
 #include <snark/sensors/dc1394/dc1394.h>
 #include <boost/program_options.hpp>
+#include <boost/scoped_ptr.hpp>
 #include <boost/property_tree/ini_parser.hpp>
 #include <comma/base/exception.h>
 #include <comma/csv/format.h>
 #include <comma/name_value/ptree.h>
 #include <comma/name_value/parser.h>
+#include <comma/application/signal_flag.h>
 
 typedef std::pair< boost::posix_time::ptime, cv::Mat > Pair;
 
 /// camera capture
+boost::scoped_ptr< snark::tbb::bursty_reader< Pair > > reader;
 static Pair capture( snark::camera::dc1394& camera )
 {
+    static comma::signal_flag is_shutdown;
+    if( is_shutdown ) { reader->stop(); return Pair();}
     cv::Mat image = camera.read();
     return std::make_pair( camera.time(), image.clone() );
 }
@@ -238,8 +243,8 @@ int main( int argc, char** argv )
             return 0;
         }
 
-        snark::tbb::bursty_reader< Pair > reader( boost::bind( &capture, boost::ref( camera ) ), discard );
-        snark::imaging::applications::pipeline pipeline( *serialization, filters, reader );
+        reader.reset( new snark::tbb::bursty_reader< Pair >( boost::bind( &capture, boost::ref( camera ) ), discard ) );
+        snark::imaging::applications::pipeline pipeline( *serialization, filters, *reader );
         pipeline.run();
         std::cerr <<"here" <<std::endl;
         return 0;
