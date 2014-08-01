@@ -38,6 +38,7 @@
 #include <comma/base/types.h>
 #include <comma/packed/packed.h>
 #include <iomanip>
+#include <iostream>
 
 namespace comma { namespace packed {
     
@@ -281,6 +282,9 @@ struct status_t : comma::packed::packed_struct< status_t, 3 >
     char sum;
     comma::uint32 operator()() const { return this->status(); }
     bool verify_status() const { return verify_checksum( std::string( this->data(), size ) ); }
+    bool is_success() const { return ( this->status() == 0 || this->status() == status::data_success ); }
+    bool is_stopped() const { return ( this->status() >= status::stopped_min && this->status() <= status::stopped_max ); }
+    bool is_hardware_error() const { return ( this->status() >= status::hardware_min && this->status() <= status::hardware_max ); }
 };
 
 struct timestamp_t : comma::packed::packed_struct< timestamp_t, 5 >
@@ -397,6 +401,8 @@ struct reply_me_data : comma::packed::packed_struct< reply_me_data< STEPS >, siz
     line_feed_t lf_end; /// Final terminating line feed
 };
 
+static const char* name_tmp = "hokuyo-to-csv: ";
+
 /// Read the reply, if 0 is returned then data is filled, else we found an error.
 template < typename T > 
 comma::uint32 read( T& reply, std::istream& iss )
@@ -407,8 +413,33 @@ comma::uint32 read( T& reply, std::istream& iss )
     
     if( !status.status.verify_status() ) { COMMA_THROW( comma::exception, "checksum for status field failed for request: " << status.request.message_id.str() ); }
     
-    if( status.status() != hokuyo::status::data_success && 
-        status.status() != hokuyo::status::success ) { return status.status(); }
+    if( !status.status.is_success() ) 
+    { 
+        int code = status.status(); 
+
+        if( status.status.is_stopped() ) // it is trying to diagnose itself
+        {
+            std::cerr << name_tmp << "Hokuyo laser scanner stopped status: " << status.status() << " - diagnosing scanner." << std::endl;
+            // TODO ideally the app should wait up to 30s to see if hardware failure confirmed, or it will resumes by sending code 98
+            iss.read( status.data(), T::status_type::size ); // wait for confirmation of error
+            /// Check for resume
+            if( status.status() == hokuyo::status::resuming_after_stop ) 
+            {
+                iss.read( reply.data(), T::size);
+                return status.status(); // This is a success but it may take 30s later
+            }
+            else {
+                std::cerr << name_tmp << "Hokuyo laser scanner diagnose is done - confirmed failure: " << status.status() << std::endl;
+                return status.status(); //failure confirmed
+            }
+        }
+        else if( status.status.is_hardware_error() )
+        {
+            std::cerr << name_tmp << "Hokuyo laser scanner confirmed hardware failure status: " << code << std::endl;
+            COMMA_THROW( comma::exception, "Hokuyo laser scanner confirmed hardware failure, status " << code );
+        }
+        return status.status(); // still a failure
+    }
     
     /// It is OK read the rest of the data, as there is data to read and won't block iss
 
@@ -417,7 +448,7 @@ comma::uint32 read( T& reply, std::istream& iss )
     
     BOOST_STATIC_ASSERT( int(T::size) > int(T::status_type::size) );
     iss.read( reply.data() + T::status_type::size, T::size - T::status_type::size );
-    return 0; // success
+    return status.status();
 };
 
     

@@ -250,7 +250,7 @@ TEST( hokuyo_packed, scip_me_response )
     oss << me_data;
     std::istream iss( &buf );
     hok::reply_me_data< 11 > me_;
-    EXPECT_TRUE( hok::read( me_, iss ) == 0 ); // testing hok::read()
+    EXPECT_TRUE( hok::read( me_, iss ) == 99 ); // testing hok::read()
     const hok::reply_me_data< 11 >* results = &me_;
     // const hok::reply_me_data< 11 >* results = reinterpret_cast< const hok::reply_me_data< 11 >* >( me_data );
     EXPECT_EQ( 1, results->header.request.num_of_scans() ); // 2nd scan of 3

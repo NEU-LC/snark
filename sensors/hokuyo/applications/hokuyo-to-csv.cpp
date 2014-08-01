@@ -206,18 +206,9 @@ void scanning( int start_step, comma::signal_flag& signaled,
         // TODO just read the status response first, or timeout on read()
         // iostream.read( response.data(), hok::reply_me_data< STEPS >::size );
         int status = hok::read( response, iostream );
-        if(  status != 0 )
+        if( status != hok::status::data_success ) 
         {
-            if( status >= hok::status::stopped_min || status <= hok::status::stopped_max )
-            {
-                std::cerr << name() << "Hokuyo laser scanner stopped status: " << status << " - diagnosing scanner." << std::endl;
-                // TODO ideally the app should wait up to 30s to see if hardware failure confirmed, or it will resumes by sending status 98
-            }
-            else if( status >= hok::status::hardware_min || status <= hok::status::hardware_max )
-            {
-                std::cerr << name() << "Hokuyo laser scanner confirmed hardware failure status: " << status << std::endl;
-            }
-            COMMA_THROW( comma::exception, "Hokuyo laser scanner failure detected, status " << status );
+            COMMA_THROW( comma::exception, "failed dectect when reading data, status: " << status );
         }
         if( response.header.request.message_id != me.message_id ) { 
             COMMA_THROW( comma::exception, "message id mismatch for ME data reply, got: " << me.message_id.str() << " expected: " << response.header.request.message_id.str() ); 
