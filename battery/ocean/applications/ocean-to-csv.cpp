@@ -294,8 +294,7 @@ int main( int ac, char** av )
 					  is_binary ? comma::io::mode::binary : comma::io::mode::ascii ) );
         }
 
-        int num_of_batteries = 8;
-        if( options.exists( "--num-of-batteries" ) ) { num_of_batteries = options.value< int >( "--num-of-batteries" ); }
+        int num_of_batteries = options.value< int >( "--num-of-batteries", 8 );
 
         if( !is_query_mode ) { std::cerr << name() << ": controller id is " << controller_id << std::endl; }
         
@@ -369,8 +368,7 @@ int main( int ac, char** av )
         }
 
         
-        comma::uint16 modulo = 5;
-        if( options.exists( "--update-all-iteration" ) ) { modulo = options.value< comma::uint16 >( "--update-all-iteration" ); }
+        comma::uint16 modulo = options.value< comma::uint16 >( "--update-all-iteration", 10 ); 
         comma::uint16 counter = modulo; // For update all on first iteration
         while( std::cin.good() || serial_conn ) // If using serial connection then std::cin is not read
         {
