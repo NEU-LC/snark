@@ -135,6 +135,7 @@ dc1394::~dc1394()
     dc1394_capture_stop( m_camera );
     dc1394_video_set_transmission( m_camera, DC1394_OFF );
     dc1394_camera_free( m_camera );
+    //std::cerr << "the camera has been closed" << std::endl;
 }
 
 /// acquire a frame from the camera

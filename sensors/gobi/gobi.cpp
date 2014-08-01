@@ -249,11 +249,11 @@ class gobi::impl
         {
             if( XC_IsCapturing( handle_ ) ) 
             {
-                if( XC_StopCapture( handle_ ) != I_OK ) { return; }
+                if( XC_StopCapture( handle_ ) != I_OK ) { std::cerr << "could not stop capturing" << std::endl; return; }
             }
             if( XC_IsInitialised( handle_ ) ) XC_CloseCamera( handle_ );
             closed_ = true;
-            std::cerr << "the camera has been closed" << std::endl;
+            //std::cerr << "the camera has been closed" << std::endl;
         }
         
         std::pair< boost::posix_time::ptime, cv::Mat > read()
