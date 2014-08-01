@@ -165,10 +165,6 @@ void commands_handler::handle( arm::set_position& pos )
     inputs_.Input_2 = 0;    // zero pan for giraffe
     inputs_.Input_3 = 0;    // zero tilt for giraffe
     
-//     if( pos.position == set_position::giraffe ) {  } 
-//     else { std::ofstream file( home_filepath_.c_str(), std::ios::out | std::ios::trunc ); } 
-    // TODO only create file if in home position ??
-    
     ret = result();
 }
 

@@ -141,10 +141,11 @@ template < > struct traits< data_point >
 static void usage()
 {
     std::cerr << std::endl;
-    std::cerr << "turns on the laser scanner and broad cast laser data." << std::endl;
+    std::cerr << "It puts the laser scanner into scanning mode and broad cast laser data." << std::endl;
+    std::cerr << "By default it scans using 1081 steps/rays/data points as fast as possible, you can limit it to 271 steps with --start-step." << std::endl;
     std::cerr << std::endl;
     std::cerr << "usage" << std::endl;
-    std::cerr << "    hokuyo-to-csv --laser <host:port> [ --fields t,x,y,z,intensity,range,bearing ]\"" << std::endl;
+    std::cerr << "    hokuyo-to-csv --laser <host:port> [ --fields t,x,y,z,range,bearing,elevation,intensity ]" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "*   --laser=: give the TCP connection to the laser <host:port>" << std::endl;
@@ -203,12 +204,23 @@ void scanning( int start_step, comma::signal_flag& signaled,
     while( !signaled && std::cin.good() )
     {
         // TODO just read the status response first, or timeout on read()
-        iostream.read( response.data(), hok::reply_me_data< STEPS >::size );
+        // iostream.read( response.data(), hok::reply_me_data< STEPS >::size );
+        int status = hok::read( response, iostream );
+        if(  status != 0 )
+        {
+            if( status >= hok::status::stopped_min || status <= hok::status::stopped_max )
+            {
+                std::cerr << name() << "Hokuyo laser scanner stopped status: " << status << " - diagnosing scanner." << std::endl;
+                // TODO ideally the app should wait up to 30s to see if hardware failure confirmed, or it will resumes by sending status 98
+            }
+            else if( status >= hok::status::hardware_min || status <= hok::status::hardware_max )
+            {
+                std::cerr << name() << "Hokuyo laser scanner confirmed hardware failure status: " << status << std::endl;
+            }
+            COMMA_THROW( comma::exception, "Hokuyo laser scanner failure detected, status " << status );
+        }
         if( response.header.request.message_id != me.message_id ) { 
             COMMA_THROW( comma::exception, "message id mismatch for ME data reply, got: " << me.message_id.str() << " expected: " << response.header.request.message_id.str() ); 
-        }
-        if( response.header.status() != hok::status::data_success )  { 
-            COMMA_THROW( comma::exception, "data reply to ME request is not success: " << response.header.status() ); 
         }
         
         response.encoded.get_values( rays );

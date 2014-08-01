@@ -37,6 +37,7 @@
 
 #include <iostream>
 #include <list>
+#include <boost/asio/streambuf.hpp>
 #include <snark/timing/time.h>
 #include <gtest/gtest.h>
 #include <comma/csv/stream.h>
@@ -154,7 +155,7 @@ TEST( hokuyo_packed, scip_gd_response )
     const hok::reply_gd< 11 >* gd_reply = reinterpret_cast< const hok::reply_gd< 11 >* >( &response[0] );
     
     EXPECT_EQ( "00P", std::string( gd_reply->header.status.data(), hok::status_t::size ) );
-    EXPECT_TRUE( hok::scip_verify_checksum( std::string( gd_reply->header.status.data(), hok::status_t::size ) ) );
+    EXPECT_TRUE( hok::verify_checksum( std::string( gd_reply->header.status.data(), hok::status_t::size ) ) );
     EXPECT_EQ( "00", std::string( gd_reply->header.status.status.data(), 2 ) );
     EXPECT_EQ( "G]\\VF", std::string( gd_reply->header.timestamp.data(), hok::timestamp_t::size ) );
 //     EXPECT_EQ( 0, gd_reply->header.status.status() );
@@ -201,14 +202,14 @@ TEST( hokuyo_packed, scip_gd_response )
     
     const hok::reply_gd< 101 >* reply = reinterpret_cast< const hok::reply_gd< 101 >* >( reply101 );
     EXPECT_EQ( "00P", std::string( reply->header.status.data(), hok::status_t::size ) );
-    EXPECT_TRUE( hok::scip_verify_checksum( std::string( reply->header.status.data(), hok::status_t::size ) ) );
+    EXPECT_TRUE( hok::verify_checksum( std::string( reply->header.status.data(), hok::status_t::size ) ) );
     EXPECT_EQ( "00", std::string( reply->header.status.status.data(), 2 ) );
     EXPECT_EQ( "\\0[Vm", std::string( reply->header.timestamp.data(), hok::timestamp_t::size ) );
-    EXPECT_TRUE( hok::scip_verify_checksum( "0Mm0MV0Jc0If0I30HX0HL0H;0G`0Gb0Gm0GV0GT0G;0FQ0FB0F<0F40Eo0En0E`0a" ) );
-    EXPECT_TRUE( hok::scip_verify_checksum( "EW0ER0ER0E40E90E40E80E<0E90E90E=0E>0E>0ED0EI0EQ0EX0EX0EW0EY0E_0Ef" ) );
-    EXPECT_TRUE( hok::scip_verify_checksum( "g0F80F>0FA0FC0FA0F?0FK0FN0F[0F^0F[0Fa0G50Gb?om?om?om?om?om?om?omi" ) );
-    EXPECT_TRUE( hok::scip_verify_checksum( "?om?om?om?om?om?om?om?om?om?om?om?om?om?om?om?om?om?om?om?om?om?f" ) );
-    EXPECT_TRUE( hok::scip_verify_checksum( "om?om0I\\0IR0I[0I\\0I`?om?om?om?om?om0J60J60In0Ie5" ) );
+    EXPECT_TRUE( hok::verify_checksum( "0Mm0MV0Jc0If0I30HX0HL0H;0G`0Gb0Gm0GV0GT0G;0FQ0FB0F<0F40Eo0En0E`0a" ) );
+    EXPECT_TRUE( hok::verify_checksum( "EW0ER0ER0E40E90E40E80E<0E90E90E=0E>0E>0ED0EI0EQ0EX0EX0EW0EY0E_0Ef" ) );
+    EXPECT_TRUE( hok::verify_checksum( "g0F80F>0FA0FC0FA0F?0FK0FN0F[0F^0F[0Fa0G50Gb?om?om?om?om?om?om?omi" ) );
+    EXPECT_TRUE( hok::verify_checksum( "?om?om?om?om?om?om?om?om?om?om?om?om?om?om?om?om?om?om?om?om?om?f" ) );
+    EXPECT_TRUE( hok::verify_checksum( "om?om0I\\0IR0I[0I\\0I`?om?om?om?om?om0J60J60In0Ie5" ) );
 
     hok::distance_data< 101 >::rays rays101;
     reply->encoded.get_values( rays101 );
@@ -241,10 +242,17 @@ TEST( hokuyo_packed, scip_me_response )
       
     const hok::reply_md* me = reinterpret_cast< const hok::reply_md* >( me_response ); 
     EXPECT_EQ( "00P", std::string( me->status.data(), hok::status_t::size ) );
-    EXPECT_TRUE( hok::scip_verify_checksum( std::string( me->status.data(), hok::status_t::size ) ) );
+    EXPECT_TRUE( hok::verify_checksum( std::string( me->status.data(), hok::status_t::size ) ) );
     
     
-    const hok::reply_me_data< 11 >* results = reinterpret_cast< const hok::reply_me_data< 11 >* >( me_data );
+    boost::asio::streambuf buf;
+    std::ostream oss( &buf ); 
+    oss << me_data;
+    std::istream iss( &buf );
+    hok::reply_me_data< 11 > me_;
+    EXPECT_TRUE( hok::read( me_, iss ) == 0 ); // testing hok::read()
+    const hok::reply_me_data< 11 >* results = &me_;
+    // const hok::reply_me_data< 11 >* results = reinterpret_cast< const hok::reply_me_data< 11 >* >( me_data );
     EXPECT_EQ( 1, results->header.request.num_of_scans() ); // 2nd scan of 3
     
     hok::di_data< 11 >::rays rays;
@@ -347,17 +355,24 @@ TEST( hokuyo_packed, scip_ge_response )
     "0NC0<O0Mg0<Y0Je0<d0I[0<I0I90;00H]0:P0HD0:30H109l0H50;F0H40;X0Gj0^\n"
     ":cM\n\n";
     
-    EXPECT_TRUE( hok::scip_verify_checksum( std::string( "`mK3;" ) ) );
-    EXPECT_TRUE( hok::scip_verify_checksum( std::string( "0NC0<O0Mg0<Y0Je0<d0I[0<I0I90;00H]0:P0HD0:30H109l0H50;F0H40;X0Gj0^" ) ) );
-    EXPECT_TRUE( hok::scip_verify_checksum( std::string( ":cM" ) ) );
+    EXPECT_TRUE( hok::verify_checksum( std::string( "`mK3;" ) ) );
+    EXPECT_TRUE( hok::verify_checksum( std::string( "0NC0<O0Mg0<Y0Je0<d0I[0<I0I90;00H]0:P0HD0:30H109l0H50;F0H40;X0Gj0^" ) ) );
+    EXPECT_TRUE( hok::verify_checksum( std::string( ":cM" ) ) );
 
-    const hok::reply_ge< 11 >* ge_reply = reinterpret_cast< const hok::reply_ge< 11 >* >( reply );
-    EXPECT_EQ( "00P", std::string( ge_reply->header.status.data(), hok::status_t::size ) );
-    EXPECT_EQ( 0, ge_reply->header.status() );
+    boost::asio::streambuf buf;
+    std::ostream oss( &buf ); 
+    oss << reply;
+
+    std::istream iss( &buf );
+    hok::reply_ge< 11 > ge_reply;
+    EXPECT_TRUE( hok::read( ge_reply, iss ) == 0 );
+    // const hok::reply_ge< 11 >* ge_reply = reinterpret_cast< const hok::reply_ge< 11 >* >( reply );
+    EXPECT_EQ( "00P", std::string( ge_reply.header.status.data(), hok::status_t::size ) );
+    EXPECT_EQ( 0, ge_reply.header.status() );
 
     typedef hok::di_data< 11 > data_t;
     data_t::rays rays;
-    ge_reply->encoded.get_values( rays );
+    ge_reply.encoded.get_values( rays );
     
 }
 

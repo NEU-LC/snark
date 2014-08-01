@@ -112,8 +112,8 @@ int main( int ac, char** av )
     
     comma::csv::options csv;
     csv.fields = options.value< std::string >( "--fields", "" );
-    csv.full_xpath = false;
-    if( is_binary ) { csv.format( comma::csv::format::value< arm::fixed_status >( csv.fields, false ) ); }
+    csv.full_xpath = true;
+    if( is_binary ) { csv.format( comma::csv::format::value< arm::fixed_status >( csv.fields, true ) ); }
     
     try
     {

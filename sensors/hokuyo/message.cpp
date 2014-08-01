@@ -36,7 +36,7 @@
 
 namespace snark { namespace hokuyo {
     
-bool scip_verify_checksum(const std::string& line)
+bool verify_checksum(const std::string& line)
 {
     if( line.size() < 2 ) { COMMA_THROW( comma::exception, "SCIP data and checksum must be at least 2 bytes long, got " << line.size() << " byte(s)" ); }
 
@@ -66,7 +66,7 @@ void strip_checksum( std::size_t raw_size, char* target, const char* raw )
         // verify checksum
         
         // todo: more informative expression
-        if( !scip_verify_checksum( std::string( raw, block-1 ) ) ) { COMMA_THROW( comma::exception, "checksum of data failed in 64 bytes data block (65th byte is checksum): " << std::string( raw, block-1 ) );  }
+        if( !verify_checksum( std::string( raw, block-1 ) ) ) { COMMA_THROW( comma::exception, "checksum of data failed in 64 bytes data block (65th byte is checksum): " << std::string( raw, block-1 ) );  }
         raw += block;
         target += data_size; // advance pointer pass data, checksum and line feed
         
@@ -76,7 +76,7 @@ void strip_checksum( std::size_t raw_size, char* target, const char* raw )
     if( size > 0 )
     {
 //         std::cerr << "final block: '" << std::string( raw, size-1 ) << '\'' << std::endl; 
-        if( !scip_verify_checksum( std::string( raw, size-1 ) ) ) { 
+        if( !verify_checksum( std::string( raw, size-1 ) ) ) { 
             COMMA_THROW( comma::exception, "checksum of data failed at final odd data block: " << std::string( raw, size-1 ) );  
         }
         // if size is 1, 2 or 3, then it is an error

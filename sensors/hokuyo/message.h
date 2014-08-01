@@ -213,7 +213,7 @@ static const char size_of_sum = 1;
 
 /// Verify checksum of the data given that the last byte is the checksum.
 /// Value of checksum is the last 6 bits of the sum of the data bytes
-bool scip_verify_checksum( const std::string& line );
+bool verify_checksum( const std::string& line );
 
 /// For calculating the size of the data mixed with checksum and line feeds
 template < int STEPS >
@@ -280,6 +280,7 @@ struct status_t : comma::packed::packed_struct< status_t, 3 >
     //comma::packed::scip_2chars_t status;
     char sum;
     comma::uint32 operator()() const { return this->status(); }
+    bool verify_status() const { return verify_checksum( std::string( this->data(), size ) ); }
 };
 
 struct timestamp_t : comma::packed::packed_struct< timestamp_t, 5 >
@@ -304,6 +305,15 @@ struct request_md : comma::packed::packed_struct< request_md, reply_header_size 
 /// The replies include the exact format for the request, plus status and timestamp.
 struct reply
 {
+    /// May be returned instead of normal reply
+    /// Error is smaller than normal reply cause of no timestamp and data
+    struct gd_status  : comma::packed::packed_struct< gd_status, request_gd::size + status_t::size + 2 > /// 2 for line feed chars
+    {
+        request_gd request;
+        status_t status;
+        line_feed_t lf;
+        line_feed_t lf_end;
+    };
     struct gd_header
     {
         request_gd request;
@@ -311,6 +321,18 @@ struct reply
         line_feed_t lf;
         timestamp_t timestamp;
         line_feed_t lf1;        
+    };
+    
+    
+    /// Error is smaller than normal reply cause of no timestamp and data
+    /// This is always returned first in respond to a request MD or ME
+    /// May be returned instead of normal reply_m[de]_data
+    struct md_status : comma::packed::packed_struct< md_status, request_md::size + status_t::size + 2 > /// 2 for line feed chars
+    {
+        request_md request;
+        status_t status;
+        line_feed_t lf;
+        line_feed_t lf_end;
     };
     struct md_header
     {
@@ -322,10 +344,15 @@ struct reply
     };
 };
 
+/// This is a reply as an acknowledgement of request - has no data
+typedef reply::md_status reply_md;
+
 /// Depends on how many steps, always 3 character encoding
 template < int STEPS >
 struct reply_gd : comma::packed::packed_struct< reply_gd< STEPS >, sizeof( reply::gd_header ) + distance_data< STEPS >::value + 1 > /// 1 for last line feed char
 {
+    /// When there is an error, this message is returned, which is like a header struct with only the status field
+    typedef reply::gd_status status_type;
     reply::gd_header header;
 
     distance_data< STEPS > encoded;
@@ -335,6 +362,8 @@ struct reply_gd : comma::packed::packed_struct< reply_gd< STEPS >, sizeof( reply
 template < int STEPS >
 struct reply_ge : comma::packed::packed_struct< reply_ge< STEPS >, sizeof( reply::gd_header ) + di_data< STEPS >::value + 1 > /// 1 for last line feed char
 {
+    /// When there is an error, this message is returned, which is like a header struct with only the status field
+    typedef reply::gd_status status_type;
     reply::gd_header header;
 
     /// each sum value is followed by a line feed char
@@ -343,19 +372,14 @@ struct reply_ge : comma::packed::packed_struct< reply_ge< STEPS >, sizeof( reply
 };
 
 /// This is a reply as an acknowledgement of reques     t - no data
-struct reply_md : comma::packed::packed_struct< reply_md, request_md::size + status_t::size + 2 > /// 1 for last line feed char
-{
-    request_md request;
-    status_t status;
-    line_feed_t lf;
-    line_feed_t lf_end;
-};
-
+typedef reply::md_status reply_md;
 
 /// Depends on how many steps, always 3 character encoding
 template < int STEPS >
 struct reply_md_data : comma::packed::packed_struct< reply_md_data< STEPS >, sizeof( reply::md_header ) + distance_data< STEPS >::value + 1 > /// 1 for last line feed char
 {
+    /// When there is an error, this message is returned, which is like a header struct with only the status field
+    typedef reply::md_status status_type;
     reply::md_header header;
 
     distance_data< STEPS > encoded;
@@ -365,11 +389,37 @@ struct reply_md_data : comma::packed::packed_struct< reply_md_data< STEPS >, siz
 template < int STEPS >
 struct reply_me_data : comma::packed::packed_struct< reply_me_data< STEPS >, sizeof( reply::md_header ) + di_data< STEPS >::value + 1 > /// 1 for last line feed char
 {
+    /// When there is an error, this message is returned, which is like a header struct with only the status field
+    typedef reply::md_status status_type;
     reply::md_header header;
     
     di_data< STEPS > encoded;
     line_feed_t lf_end; /// Final terminating line feed
 };
+
+/// Read the reply, if 0 is returned then data is filled, else we found an error.
+template < typename T > 
+comma::uint32 read( T& reply, std::istream& iss )
+{
+    typename T::status_type status; // peek and see if it is success
+    
+    iss.read( status.data(), T::status_type::size );
+    
+    if( !status.status.verify_status() ) { COMMA_THROW( comma::exception, "checksum for status field failed for request: " << status.request.message_id.str() ); }
+    
+    if( status.status() != hokuyo::status::data_success && 
+        status.status() != hokuyo::status::success ) { return status.status(); }
+    
+    /// It is OK read the rest of the data, as there is data to read and won't block iss
+
+    //transfer data from status first
+    memcpy( reply.data(), status.data(), T::status_type::size );
+    
+    BOOST_STATIC_ASSERT( int(T::size) > int(T::status_type::size) );
+    iss.read( reply.data() + T::status_type::size, T::size - T::status_type::size );
+    return 0; // success
+};
+
     
 } } // namespace snark { namespace hokuyo {
     
