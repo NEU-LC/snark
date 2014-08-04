@@ -320,20 +320,19 @@ template <> struct traits< arm::fixed_status >
     template< typename K, typename V > static void visit( const K& k, const  arm::fixed_status& t, V& v )
     {
         v.apply( "time", boost::posix_time::microsec_clock::local_time() );
-        v.apply( "length", t.length() );
-        v.apply( "time_since_boot", t.time_since_boot() );
-        
+        v.apply( "coordinates", t.translation );
+        v.apply( "rotation", t.rotation );
         arm::joints_in_degrees positions( t.positions );
         v.apply( "positions", positions );
         v.apply( "velocities", t.velocities );
         v.apply( "currents", t.currents );
         v.apply( "forces", t.forces );
-        v.apply( "coordinates", t.translation );
-        v.apply( "rotation", t.rotation );
         v.apply( "temperatures", t.temperatures );
         v.apply( "robot_mode",  t.mode_str() );
         arm::joint_modes_t jmodes( t.joint_modes );
         v.apply( "joint_modes", jmodes.modes );
+        v.apply( "length", t.length() );    /// Binary length of message received
+        v.apply( "time_since_boot", t.time_since_boot() );
     }
 };
 
