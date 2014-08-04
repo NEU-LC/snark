@@ -208,7 +208,7 @@ void scanning( int start_step, comma::signal_flag& signaled,
         int status = hok::read( response, iostream );
         if( status != hok::status::data_success ) 
         {
-            COMMA_THROW( comma::exception, "failed dectect when reading data, status: " << status );
+            COMMA_THROW( comma::exception, "failure dectected when reading data, status: " << status );
         }
         if( response.header.request.message_id != me.message_id ) { 
             COMMA_THROW( comma::exception, "message id mismatch for ME data reply, got: " << me.message_id.str() << " expected: " << response.header.request.message_id.str() ); 

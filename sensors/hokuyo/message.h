@@ -403,7 +403,7 @@ struct reply_me_data : comma::packed::packed_struct< reply_me_data< STEPS >, siz
 
 static const char* name_tmp = "hokuyo-to-csv: ";
 
-/// Read the reply, if 0 is returned then data is filled, else we found an error.
+/// Read the reply, if 0 (GD & GE ) or 99 (for MD or ME) is returned then data is filled, else we found an error.
 template < typename T > 
 comma::uint32 read( T& reply, std::istream& iss )
 {
@@ -419,7 +419,7 @@ comma::uint32 read( T& reply, std::istream& iss )
 
         if( status.status.is_stopped() ) // it is trying to diagnose itself
         {
-            std::cerr << name_tmp << "Hokuyo laser scanner stopped status: " << status.status() << " - diagnosing scanner." << std::endl;
+            std::cerr << name_tmp << "Hokuyo laser scanner stopped status: " << status.status() << " - diagnosing scanner. This may take up to a minute..." << std::endl;
             // TODO ideally the app should wait up to 30s to see if hardware failure confirmed, or it will resumes by sending code 98
             iss.read( status.data(), T::status_type::size ); // wait for confirmation of error
             /// Check for resume
@@ -436,7 +436,7 @@ comma::uint32 read( T& reply, std::istream& iss )
         else if( status.status.is_hardware_error() )
         {
             std::cerr << name_tmp << "Hokuyo laser scanner confirmed hardware failure status: " << code << std::endl;
-            COMMA_THROW( comma::exception, "Hokuyo laser scanner confirmed hardware failure, status " << code );
+//             COMMA_THROW( comma::exception, "Hokuyo laser scanner confirmed hardware failure, status " << code );
         }
         return status.status(); // still a failure
     }

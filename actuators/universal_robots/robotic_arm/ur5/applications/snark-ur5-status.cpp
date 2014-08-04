@@ -64,11 +64,15 @@ void usage(int code=1)
 {
     std::cerr << std::endl;
     std::cerr << name() << std::endl;
-    std::cerr << "example: socat tcp-listen:9999,reuseaddr EXEC:\"snark-ur10-control --id 7 -ip 192.168.0.10 -p 8888\" " << name() << " " << std::endl;
-    std::cerr << "          Listens for commands from TCP port 9999, process command and send control string to 192.168.0.10:8888" << std::endl;
+    std::cerr << "example: socat -u -T 1 tcp:robot-arm:30003 - | snark-ur5-status [--fields=] [--binary | -b | --json | --compact-json] [--offset=<x,y,z>] " << name() << " " << std::endl;
+    std::cerr << "         Reads in robotic-arm's real time status information ( network byte order ) and output the status in host byte order in any format." << std::endl;
+    std::cerr << "         Approximately 20ms between statuses." << std::endl;
     std::cerr << "options:" << std::endl;
     std::cerr << "    --help,-h:            show this message" << std::endl;
-    std::cerr << "    --versbose,-v:        show messages to the robot arm - angles are changed to degrees." << std::endl;
+    std::cerr << "    --binary,-b:          output in binary." << std::endl;
+    std::cerr << "    --json,-j:            output in json." << std::endl;
+    std::cerr << "    --compact-json,-cj:   output in single line json without whitespaces or new lines." << std::endl;
+    std::cerr << "    --offset=x,y,z        adds offset to end affector's coordinate." << std::endl;
     typedef arm::fixed_status status_t;
     comma::csv::binary< status_t > binary;
     std::cerr << "Robot arm's status:" << std::endl;
@@ -88,6 +92,8 @@ comma::csv::ascii< T >& ascii( )
 }
 
 bool is_single_line_json = false;
+static bool has_offset = false;
+static std::vector< double > offset( 3, 0.0 );
 
 
 int main( int ac, char** av )
@@ -115,19 +121,39 @@ int main( int ac, char** av )
     csv.full_xpath = true;
     if( is_binary ) { csv.format( comma::csv::format::value< arm::fixed_status >( csv.fields, true ) ); }
     
+    has_offset = options.value< bool >( "--offset", false );
+    if( has_offset )
+    {
+        try {
+            comma::csv::ascii< std::vector< double > > ascii( offset );
+            ascii.get( offset, options.value< std::string >( "--offset" ) );
+        }
+        catch( std::exception& e ) { std::cerr << "failed to parse option --offset=<x,y,z>, " << e.what() << std::endl; return 1; }
+    }
+    
     try
     {
         arm::fixed_status arm_status;
+        bool first_loop = true;
         while( !signaled && std::cin.good() )
         {
             std::cin.read( arm_status.data(), status::size );
 
             // sanity check on the status
-            if( arm_status.length() != arm::fixed_status::size ||
+            if( first_loop && (
+                arm_status.length() != arm::fixed_status::size ||
                 arm_status.robot_mode() < arm::robotmode::running || 
-                arm_status.robot_mode() > arm::robotmode::safeguard_stop ) {
+                arm_status.robot_mode() > arm::robotmode::safeguard_stop ) ) {
                 std::cerr << name() << "failed sanity check, data is not aligned, exiting now..." << std::endl;
                 return 1;
+            }
+            first_loop = false;
+            
+            if( has_offset ) 
+            {
+                arm_status.translation.x = arm_status.translation.x() + offset[0];
+                arm_status.translation.y = arm_status.translation.y() + offset[1];
+                arm_status.translation.z = arm_status.translation.z() + offset[2];
             }
             
             if ( is_json || is_single_line_json )
