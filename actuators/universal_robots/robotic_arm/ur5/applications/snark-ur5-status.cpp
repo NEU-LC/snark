@@ -48,6 +48,7 @@
 #include <comma/application/signal_flag.h>
 #include "../../traits.h"
 #include "../../data.h"
+#include "../transforms/transforms.h"
 
 const char* name() { return "snark-ur10-status: "; }
 
@@ -148,6 +149,19 @@ int main( int ac, char** av )
                 return 1;
             }
             first_loop = false;
+            
+            /// As rotation data do not make sense, cacculate it using the joint angles
+            /// We will also override the TCP translation coordinate
+            arm::fixed_status::joints_type angles;
+            arm_status.get_angles( angles );
+            boost::array< double, arm::joints_num > position;
+            snark::ur::robotic_arm::ur5::tcp_transform( angles, position );
+            arm_status.translation.x = position[0];
+            arm_status.translation.y = position[1];
+            arm_status.translation.z = position[2];
+            arm_status.rotation.x = position[3];
+            arm_status.rotation.y = position[4];
+            arm_status.rotation.z = position[5];
             
             if( has_offset ) 
             {

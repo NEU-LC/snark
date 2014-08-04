@@ -122,6 +122,9 @@ struct fixed_status : public comma::packed::packed_struct< fixed_status, 812  >
 
     std::string mode_str() const { return robotmode_str( mode() ); }
     std::string jmode_str( int id ) const { return jointmode_str( jmode( id ) ); }
+    
+    typedef boost::array< plane_angle_t, joints_num > joints_type;
+    void get_angles( joints_type& angles );
 };
 
 template < typename T > struct packed_buffer {
