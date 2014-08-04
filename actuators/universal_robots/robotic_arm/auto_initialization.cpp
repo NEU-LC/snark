@@ -42,7 +42,7 @@ result auto_initialization::run( bool force )
     // snark-ur10-from-console: Initialising joint (5)
     initj[5] = "speedj_init([0,0,0,0,0,-0.1],0.05,0.04)";
     // snark-ur10-from-console: Initialising joint (4)
-    initj[4] = "speedj_init([0,0,0,0,-0.1,0],0.05,0.0333333)";
+    initj[4] = "speedj_init([0,0,0,0,0.1,0],0.05,0.0333333)";
     // snark-ur10-from-console: Initialising joint (3)
     initj[3] = "speedj_init([0,0,0,-0.1,0,0],0.05,0.0266667)";
     // snark-ur10-from-console: Initialising joint (2)
@@ -72,11 +72,11 @@ result auto_initialization::run( bool force )
         {
             if( status_.joint_modes[joint_id]() != jointmode::initializing ) { break; }
 
+            // move it a little bit
             os << initj[ joint_id ] << std::endl;
             os.flush();
-
             // std::cerr << "joint " << joint_id << " is in initializing " << std::endl;
-            std::cerr.flush();
+//             std::cerr.flush();
 
             // wait tilt joint stopped
             for( std::size_t k=0; k<retries; ++k ) 
@@ -84,14 +84,12 @@ result auto_initialization::run( bool force )
                 usleep( 0.01 * 1000000u );
                 // std::cerr << "reading status" << std::endl;
                 read_status();
-
                 // if( std::fabs( status_.forces[joint_id]() ) > force_max_ ) { return  result( "cannot moe joint because of joint force > 0", result::error::failure ); }
-
                 double vel = status_.velocities[ joint_id ]();
                 if( std::fabs( vel ) <= 0.03 ) break;
             }
             
-            /// Check and read any new input commands
+            /// Check and read any new input command from the user, if so we stop auto init.
             inputs_.read();
         }
 
@@ -110,7 +108,6 @@ result auto_initialization::run( bool force )
         os << "speedj_init([0,0,0,0,0,0],0.05,0.0133333)" << std::endl;
         os.flush();
     }
-
 
     std::cerr << name() << "command auto init completed" << std::endl;
     return result();
