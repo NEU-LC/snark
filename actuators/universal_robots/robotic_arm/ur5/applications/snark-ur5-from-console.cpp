@@ -66,9 +66,10 @@ typedef arm::fixed_status status_t;
 void usage(int code=1)
 {
     std::cerr << std::endl;
-    std::cerr << name() << std::endl;
-    std::cerr << "example: socat -u STDIN,raw,escape=81 STDOUT | snark-ur10-from-console --host robot-arm --status-port 30003 | socat -u - tcp:robot-arm:30002 " << name() << " " << std::endl;
-    std::cerr << "         The program expects raw binary input hence 'STDIN,raw', when used in ascii mode a CR must be hit after each keypress." << std::endl;
+    std::cerr << name() << " Reads keyboard input to command the initialisation of robotic arm's joints - one at a time." << std::endl;
+    std::cerr << "         Produces robot arm commands to move the joint a small angle, feed the output to robot arm's connection on port 30002." << std::endl;
+    std::cerr << "example: io-console | snark-ur10-from-console --feedback-host robot-arm --feedback-port 30003 | socat -u - tcp:robot-arm:30002 " << name() << " " << std::endl;
+    std::cerr << "         io-console can alternatively be replaced with 'socat -u STDIN,raw,escape=81 STDOUT'." << std::endl;
     std::cerr << "Interactive:" << std::endl;
     std::cerr << "    Input char 0-5 for switching joint to initialise, defaults to joint index 5 (6th joint) on startup." << std::endl;
     std::cerr << "    Press/hold char k for positive velocity." << std::endl;
@@ -77,9 +78,9 @@ void usage(int code=1)
     std::cerr << "    A stop is sent when application closes." << std::endl;
     std::cerr << "options:" << std::endl;
     std::cerr << "    --help,-h:            show this message" << std::endl;
+    std::cerr << "*   --feedback-host:      Hostname for real time feedback of robotic-arm's status." << std::endl;
+    std::cerr << "    --feedback-port:      Port for real time feed back of robotic-arm's status, defaults is 30003." << std::endl;
     std::cerr << "    --sleep:              Loop sleep in seconds, defaults to 0.02s, this should ALWAYS be smaller than --time-step." << std::endl;
-    std::cerr << "    --host:               Robot arm's hostname or IP." << std::endl;
-    std::cerr << "    --port,-p:            Robot arm's port for fixed size binary status, defaults is 30003." << std::endl;
     std::cerr << "    --versbose,-v:        show messages to the robot arm - angles are changed to degrees." << std::endl;
     std::cerr << "    --velocity,-v:        Radian per second velocity for movement." << std::endl;
     std::cerr << "    --acceleration,-a:    Radian per second squared acceleration for movement." << std::endl;
@@ -238,7 +239,7 @@ int main( int ac, char** av )
     if( options.exists("-s,--time-step") ) { duration_step = boost::posix_time::millisec(  std::size_t(options.value< double >("-s,--time-step") * 1000u) );  }
     
     std::string feedback_host = options.value< std::string >( "--feedback-host" );
-    std::string feedback_port = options.value< std::string >( "--feedback-port" );
+    std::string feedback_port = options.value< std::string >( "--feedback-port", "30003" );
     
     std::string status_conn = "tcp:" + feedback_host + ':' + feedback_port;
     std::cerr << name() << "status connection to feedback status: " << status_conn << std::endl;
