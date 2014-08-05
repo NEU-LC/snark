@@ -150,6 +150,7 @@ int main( int argc, char** argv )
                 std::cerr << "\tleft: format7 horizontal offset from left, must have non-zero width and height (default 0)" << std::endl;
                 std::cerr << "\ttop: format7 vertical offset from top, must have non-zero width height (default 0)" << std::endl;
                 std::cerr << "\tpacket-size: format7 data packet size (default 0 : maximum available)" << std::endl;
+                std::cerr << "\tdeinterlace: splits one RAW/MONO16 image into 2 8bit mono images (default false)" << std::endl;
                 std::cerr << std::endl << "allowed video modes, use coriander to see what your camera supports: " << std::endl;
                 snark::camera::print_video_modes();
                 std::cerr << std::endl << "allowed operation modes: " << std::endl;
@@ -246,7 +247,6 @@ int main( int argc, char** argv )
         reader.reset( new snark::tbb::bursty_reader< Pair >( boost::bind( &capture, boost::ref( camera ) ), discard ) );
         snark::imaging::applications::pipeline pipeline( *serialization, filters, *reader );
         pipeline.run();
-        std::cerr <<"here" <<std::endl;
         return 0;
     }
     catch( std::exception& ex )
