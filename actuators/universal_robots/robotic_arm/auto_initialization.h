@@ -65,7 +65,7 @@ class auto_initialization
 public:
     auto_initialization( arm::status_t& status, std::ostream& robot, 
                          comma::csv::binary_input_stream< arm::status_t >& status_iss, 
-			  comma::io::select& select, comma::io::file_descriptor fd,
+			             comma::io::select& select, comma::io::file_descriptor fd,
                          comma::signal_flag& signaled, arm::inputs& inputs, const std::string& work_dir ) : 
         status_( status ), os( robot ),
         iss_(status_iss), select_( select ), fd_( fd ), signaled_( signaled ),

@@ -72,7 +72,7 @@ private:
     ExtU_Arm_Controller_T& inputs_; /// inputs into simulink engine 
     status_t& status_;
     std::ostream& os;
-    auto_initialization init_;
+    auto_initialization& init_;
     fs::path home_filepath_;
 };
 

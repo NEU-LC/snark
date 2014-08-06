@@ -103,8 +103,8 @@ void usage(int code=1)
     std::cerr << "    --sleep=:             Loop sleep value in seconds, default is 0.2s if not specified." << std::endl;
     std::cerr << "*   --config=:            Config file for robot arm, see --output-config." << std::endl;
     std::cerr << "    --output-config=:     Print config format in json." << std::endl;
-    std::cerr << "    --init-force-limit,-ifl:" << std::endl;
-    std::cerr << "                          Force (Newtons) limit when auto initializing, if exceeded then stop auto init." << std::endl;
+    // std::cerr << "    --init-force-limit,-ifl:" << std::endl;
+    // std::cerr << "                          Force (Newtons) limit when auto initializing, if exceeded then stop auto init." << std::endl;
     typedef arm::current_positions current_positions_t;
     comma::csv::binary< current_positions_t > binary;
     std::cerr << "UR10's status:" << std::endl;
@@ -281,7 +281,8 @@ bool ready( comma::io::istream& is )
 }
 
 /// Return null if no status
-bool read_status( comma::csv::binary_input_stream< arm::status_t >& iss, comma::io::select& select, comma::io::file_descriptor fd )
+bool read_status( comma::csv::binary_input_stream< arm::status_t >& iss, 
+    comma::io::select& select, comma::io::file_descriptor fd )
 {
     select.check();
     if( !select.read().ready( fd ) ) return false;
@@ -455,6 +456,7 @@ int main( int ac, char** av )
 
         arm::handlers::auto_initialization auto_init( arm_status, *robot_arm, istream, select, status_stream.fd(), signaled, inputs, continuum.work_directory );
         auto_init.set_app_name( name() );
+        std::cerr << "fd start: " << status_stream.fd() << std::endl;
         if( options.exists( "--init-force-limit,-ifl" ) ){ auto_init.set_force_limit( options.value< double >( "--init-force-limit,-ifl" ) ); }
         commands_handler.reset( new commands_handler_t( Arm_Controller_U, arm_status, *robot_arm, auto_init ) );
 

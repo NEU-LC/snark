@@ -73,7 +73,8 @@ void usage(int code=1)
     std::cerr << "    --binary,-b:          output in binary." << std::endl;
     std::cerr << "    --json,-j:            output in json." << std::endl;
     std::cerr << "    --compact-json,-cj:   output in single line json without whitespaces or new lines." << std::endl;
-    std::cerr << "    --offset=x,y,z        adds offset to end affector's coordinate." << std::endl;
+    std::cerr << "    --host-byte-order:    input data is binary in host-byte-order, it assumes network order by default." << std::endl;
+    // std::cerr << "    --offset=x,y,z        adds offset to end affector's coordinate." << std::endl;
     typedef arm::status_t status_t;
     comma::csv::binary< status_t > binary;
     std::cerr << "Robot arm's status:" << std::endl;
@@ -200,11 +201,6 @@ int main( int ac, char** av )
                 return 1;
             }
             first_loop = false;
-            
-            if( has_offset ) 
-            {
-                state.position.coordinates += Eigen::Vector3d( offset[0], offset[1], offset[2] );
-            }
             
             if ( is_json || is_single_line_json )
             {
