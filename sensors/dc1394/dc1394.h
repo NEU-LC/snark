@@ -74,6 +74,8 @@ public:
         unsigned int format7_height;
         unsigned int format7_packet_size;
         dc1394color_coding_t format7_color_coding;
+
+        bool deinterlace;
     };
 
     
@@ -156,6 +158,7 @@ template <> struct traits< snark::camera::dc1394::config >
         v.apply( "gain", c.gain );
         v.apply( "exposure", c.exposure );
         v.apply( "guid", c.guid );
+        v.apply( "deinterlace", c.deinterlace );
     }
 
     template < typename Key, class Visitor >
@@ -184,6 +187,7 @@ template <> struct traits< snark::camera::dc1394::config >
         v.apply( "gain", c.gain );
         v.apply( "exposure", c.exposure );
         v.apply( "guid", c.guid );
+        v.apply( "deinterlace", c.deinterlace );
     }
 };
 

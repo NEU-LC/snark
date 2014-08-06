@@ -58,7 +58,8 @@ dc1394::config::config():
     format7_width( 0 ),
     format7_height( 0 ),
     format7_packet_size( 0 ),
-    format7_color_coding( DC1394_COLOR_CODING_MONO8 )
+    format7_color_coding( DC1394_COLOR_CODING_MONO8 ),
+    deinterlace( false )
 {
  
 }
@@ -105,7 +106,14 @@ dc1394::dc1394( const snark::camera::dc1394::config& config ):
         COMMA_THROW( comma::exception, "could not setup the camera" );
     }
 
-    m_image = cv::Mat( m_height, m_width, dc1394color_coding_to_cv_type(m_color_coding) );
+    if ( m_config.deinterlace )
+    {
+        m_image = cv::Mat( m_height*2, m_width, CV_8UC1 ); //already checked dc type is MONO/RAW16, will be converted to 2 MONO/RAW8 images
+    }
+    else
+    {
+        m_image = cv::Mat( m_height, m_width, dc1394color_coding_to_cv_type(m_color_coding) );
+    }
     
     if ( dc1394_video_set_transmission( m_camera, DC1394_ON ) != DC1394_SUCCESS )
     {
@@ -151,18 +159,28 @@ const cv::Mat& dc1394::read()
         COMMA_THROW( comma::exception, "frame corrupted" );
     }
 
-    //convert dc big endian to little endian for 16bit modes
-    // NOTE: not sure if it's mode or camera dependent
-    //   Pika2 (Point Grey Flea2) = MONO16, needs swab
-    //   Point Grey Ladybug2 = RAW16, needs memcpy
-    //   adjust logic as future cameras dictate
-    if( m_color_coding == DC1394_COLOR_CODING_MONO16 || m_color_coding == DC1394_COLOR_CODING_RGB16 || m_color_coding == DC1394_COLOR_CODING_MONO16S || m_color_coding == DC1394_COLOR_CODING_RGB16S )
+    if ( m_config.deinterlace )
     {
-        swab( m_frame->image, m_image.data, m_frame->image_bytes );
+        if ( dc1394_deinterlace_stereo(m_frame->image, m_image.data, m_width, m_height*2) != DC1394_SUCCESS )
+        {
+            COMMA_THROW( comma::exception, "could not deinterlace image" );
+        }
     }
-    else //direct copy 
+    else
     {
-        memcpy( m_image.data, m_frame->image, m_frame->image_bytes ); //todo: assert sizes reported as equal
+        //convert dc big endian to little endian for 16bit modes
+        // NOTE: not sure if it's mode or camera dependent
+        //   Pika2 (Point Grey Flea2) = MONO16, needs swab
+        //   Point Grey Ladybug2 = RAW16, needs memcpy
+        //   adjust logic as future cameras dictate
+        if( m_color_coding == DC1394_COLOR_CODING_MONO16 || m_color_coding == DC1394_COLOR_CODING_RGB16 || m_color_coding == DC1394_COLOR_CODING_MONO16S || m_color_coding == DC1394_COLOR_CODING_RGB16S )
+        {
+            swab( m_frame->image, m_image.data, m_frame->image_bytes );
+        }
+        else //direct copy 
+        {
+            memcpy( m_image.data, m_frame->image, m_frame->image_bytes ); //todo: assert sizes reported as equal
+        }
     }
 
     //Get the time from the frame timestamp
@@ -285,7 +303,6 @@ void dc1394::setup_camera()
         COMMA_THROW( comma::exception, "iso speed not set correctly" );
     }
 
-
     //calculate framerate
     dc1394framerate_t framerate;
     dc1394framerates_t framerates;
@@ -337,6 +354,12 @@ void dc1394::setup_camera()
     if ( dc1394_get_color_coding_from_video_mode( m_camera, m_config.video_mode, &m_color_coding ) != DC1394_SUCCESS )
     {
         COMMA_THROW( comma::exception, "could not get color coding from video mode" );
+    }
+
+    //check compatibility of deinterlace and color_mode
+    if ( m_config.deinterlace && (m_color_coding != DC1394_COLOR_CODING_MONO16 && m_color_coding != DC1394_COLOR_CODING_RAW16) )
+    {
+        COMMA_THROW( comma::exception, "deinterlace set to true with color_coding=" << color_coding_to_string(m_color_coding) << " - must use DC1394_COLOR_CODING_MONO16 or DC1394_COLOR_CODING_RAW16" );
     }
 
     //todo THROW or warn if any format7 settings were given, as these are ignored in this mode
@@ -400,6 +423,13 @@ void dc1394::setup_camera_format7()
     {
         COMMA_THROW( comma::exception, "color coding not set correctly" );
     }
+
+    //check compatibility of deinterlace and color_mode
+    if ( m_config.deinterlace && (m_color_coding != DC1394_COLOR_CODING_MONO16 && m_color_coding != DC1394_COLOR_CODING_RAW16) )
+    {
+        COMMA_THROW( comma::exception, "deinterlace set to true with color_coding=" << color_coding_to_string(m_color_coding) << " - must use DC1394_COLOR_CODING_MONO16 or DC1394_COLOR_CODING_RAW16" );
+    }
+
 
     //calculate packet-size
     unsigned int packet_size=0, min_size=0, max_size=0;
