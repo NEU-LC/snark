@@ -2,6 +2,7 @@
 #define SNARK_ACTUATORS_UR_ROBOTIC_ARM_DATA_H 
 #include <comma/packed/packed.h>
 #include "units.h"
+#include <snark/math/applications/frame.h>
 
 namespace comma { namespace packed {
 
@@ -57,11 +58,15 @@ struct robotmode {
     enum mode { running, freedrive, ready, initializing, security_stopped, estopped, fatal_error, no_power, not_connected, shutdown, safeguard_stop };
 };
 struct jointmode {
-    enum mode { power_off=239, error=242, freedrive=243, calibration=250, stopped=251, running=253, initializing=254, idle=255 };
+    ///TODO enumerate all modes
+    enum mode { power_off=239, error=242, freedrive=243, calibration=250, stopped=251, running=253, initializing=254, idle=255, other=-999 };
 };
 
 const char* robotmode_str( robotmode::mode mode );
 const char* jointmode_str( jointmode::mode mode );
+
+robotmode::mode get_robotmode( const std::string& mode );
+jointmode::mode get_jointmode( const std::string& mode );
     
 struct cartesian {
     comma::packed::big_endian_double x;
@@ -96,10 +101,54 @@ struct joints_in_degrees {
     } 
     boost::array< plane_angle_degrees_t, joints_num > joints;
 };
+
+template < typename T >
+void init( const T& t, boost::array< T, joints_num >& arr )
+{
+    for( std::size_t i=0; i<joints_num; ++i ) { arr[i] = t; }
+}    
+
+/// Ananlog to fixed_status, reads from host byte order source
+struct status_t {
+    typedef boost::array< double, joints_num > array_doubles_t;
+    typedef boost::array< jointmode::mode, joints_num > array_jointmodes_t;
     
+    boost::posix_time::ptime timestamp;
+    snark::applications::position position;
+    boost::array< plane_angle_t, joints_num > joint_angles;
+    boost::array< double, joints_num > velocities;
+    boost::array< double, joints_num > currents;
+    boost::array< double, joints_num > forces;
+    boost::array< double, joints_num > temperatures;
+    robotmode::mode robot_mode;
+    boost::array< jointmode::mode, joints_num > joint_modes;
+    comma::uint32 length;
+    double time_since_boot;
+
+    std::string mode_str() const { return robotmode_str( robot_mode ); }
+    std::string jmode_str( int id ) const { return jointmode_str( joint_modes[id] ); }
+    jointmode::mode jmode( int id ) const { return joint_modes[id]; }
+    robotmode::mode mode() const { return  robot_mode; }
+
+    bool is_running() const;
+    
+    status_t() : timestamp( boost::posix_time::microsec_clock::local_time() ), position(), 
+            robot_mode( robotmode::no_power ), length(812), time_since_boot(-1) 
+    {
+        init< plane_angle_t >( 0*radian, joint_angles );
+        init< double >( 0.0, velocities );
+        init< double >( 0.0, currents );
+        init< double >( 0.0, forces );
+        init< double >( 0.0, temperatures );
+        init< jointmode::mode >( jointmode::error, joint_modes );
+    }
+};
+
 
 struct fixed_status : public comma::packed::packed_struct< fixed_status, 812  >
 {
+    void get( status_t& st );
+    
     comma::packed::big_endian_uint32 length;
     comma::packed::big_endian_double time_since_boot;
     comma::packed::string< 240 > dummy1;
@@ -126,7 +175,6 @@ struct fixed_status : public comma::packed::packed_struct< fixed_status, 812  >
     typedef boost::array< plane_angle_t, joints_num > joints_type;
     void get_angles( joints_type& angles );
 };
-
 template < typename T > struct packed_buffer {
     T data;
 };  

@@ -3,7 +3,7 @@
 namespace snark { namespace ur { namespace robotic_arm { namespace ur5 {
     
     
-void tcp_transform( const boost::array< plane_angle_t, 6 >& joint_angles, boost::array< double, 6 >& position )
+void tcp_transform( const boost::array< plane_angle_t, 6 >& joint_angles, snark::applications::position& position )
 {
     tcp_transform_initialize();
     tcp_transform_U.Joint1 = joint_angles[0].value();
@@ -15,12 +15,8 @@ void tcp_transform( const boost::array< plane_angle_t, 6 >& joint_angles, boost:
     
     tcp_transform_step();
     
-    position[0] = tcp_transform_Y.x;
-    position[1] = tcp_transform_Y.y;
-    position[2] = tcp_transform_Y.z;
-    position[3] = tcp_transform_Y.Pan;
-    position[4] = tcp_transform_Y.Tilt;
-    position[5] = tcp_transform_Y.Roll;
+    position.coordinates = Eigen::Vector3d( tcp_transform_Y.x, tcp_transform_Y.y, tcp_transform_Y.z );
+    position.orientation = Eigen::Vector3d( tcp_transform_Y.Pan, tcp_transform_Y.Tilt, tcp_transform_Y.Roll );
     
     tcp_transform_terminate();
 }

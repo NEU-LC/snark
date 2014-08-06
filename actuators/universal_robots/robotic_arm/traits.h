@@ -126,6 +126,27 @@ template <> struct traits< arm::move_effector >
         v.apply( "roll", t.roll.value() );
     }
 };
+
+template <> struct traits< arm::fixed_status::joints_type >
+{
+    template< typename K, typename V > static void visit( const K& k, arm::fixed_status::joints_type& t, V& v )
+    {
+        for( std::size_t i=0; i<6; ++i ) {
+            double d = 0;
+            v.apply( boost::lexical_cast< std::string >( i ).c_str(), d );
+            // std::cerr << "getting radian: " << i << " " << d << std::endl;
+            t[i] = d * arm::radian;
+        }
+    }
+
+    template< typename K, typename V > static void visit( const K& k, const arm::fixed_status::joints_type& t, V& v )
+    {
+        for( std::size_t i=0; i<6; ++i ) {
+            v.apply( boost::lexical_cast< std::string >( i ).c_str(), t[i].value() );
+        }
+    }
+};
+
 template <> struct traits< std::vector< arm::plane_angle_degrees_t > >
 {
     template< typename K, typename V > static void visit( const K& k, std::vector< arm::plane_angle_degrees_t >& t, V& v )
@@ -333,6 +354,60 @@ template <> struct traits< arm::fixed_status >
         v.apply( "joint_modes", jmodes.modes );
         v.apply( "length", t.length() );    /// Binary length of message received
         v.apply( "time_since_boot", t.time_since_boot() );
+    }
+};
+
+template < > struct traits< boost::array< arm::jointmode::mode, 6 > >
+{
+    template< typename K, typename V > static void visit( const K& k, boost::array< arm::jointmode::mode, 6 >& t, V& v )
+    {
+        for( std::size_t i=0; i<arm::joints_num; ++i )
+        {
+            std::string mode;
+            v.apply( boost::lexical_cast< std::string >( i ).c_str(), mode ); 
+            t[i] = arm::get_jointmode( mode );
+        }
+    }
+    template< typename K, typename V > static void visit( const K& k, const boost::array< arm::jointmode::mode, 6 >& t, V& v )
+    {
+        for( std::size_t i=0; i<arm::joints_num; ++i )
+        {
+            v.apply( boost::lexical_cast< std::string >( i ).c_str(), std::string( arm::jointmode_str( t[i] ) ) ); 
+        }
+    }
+};
+
+template < > struct traits< arm::status_t >
+{
+    template< typename K, typename V > static void visit( const K& k, arm::status_t& t, V& v )
+    {
+        v.apply( "timestamp", t.timestamp );
+        v.apply( "position", t.position );
+        v.apply( "joint_angles", t.joint_angles );
+        v.apply( "velocities", t.velocities );
+        v.apply( "currents", t.currents );
+        v.apply( "forces", t.forces );
+        v.apply( "temperatures", t.temperatures );
+        std::string mode;
+        v.apply( "robot_mode",  mode );
+        t.robot_mode = arm::get_robotmode( mode );
+        v.apply( "joint_modes", t.joint_modes );
+        v.apply( "length", t.length );    /// Binary length of message received
+        v.apply( "time_since_boot", t.time_since_boot );
+    }
+    template< typename K, typename V > static void visit( const K& k, const arm::status_t& t, V& v )
+    {
+        v.apply( "timestamp", t.timestamp );
+        v.apply( "position", t.position );
+        v.apply( "joint_angles", t.joint_angles );
+        v.apply( "velocities", t.velocities );
+        v.apply( "currents", t.currents );
+        v.apply( "forces", t.forces );
+        v.apply( "temperatures", t.temperatures );
+        v.apply( "robot_mode",  t.mode_str() );
+        v.apply( "joint_modes", t.joint_modes );
+        v.apply( "length", t.length );    /// Binary length of message received
+        v.apply( "time_since_boot", t.time_since_boot );
     }
 };
 

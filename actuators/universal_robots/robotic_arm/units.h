@@ -41,6 +41,8 @@
 #include <boost/units/systems/angle/degrees.hpp>
 #include <boost/units/systems/si/angular_velocity.hpp>
 #include <boost/units/systems/si/angular_acceleration.hpp>
+#include <boost/units/systems/si/current.hpp>
+#include <boost/units/systems/temperature/celsius.hpp>
 
 
 namespace snark { namespace ur { namespace robotic_arm {
@@ -50,12 +52,16 @@ typedef boost::units::quantity< boost::units::degree::plane_angle > plane_angle_
 typedef boost::units::quantity< boost::units::si::length > length_t;
 typedef boost::units::quantity< boost::units::si::angular_acceleration > angular_acceleration_t;
 typedef boost::units::quantity< boost::units::si::angular_velocity > angular_velocity_t;
+typedef boost::units::quantity< boost::units::si::current > current_t;
+typedef boost::units::quantity< boost::units::celsius::temperature > celcius_t;
 
 const plane_angle_t::unit_type radian = boost::units::si::radian;
 const plane_angle_degrees_t::unit_type degree = boost::units::degree::degrees;
 const length_t::unit_type meter = boost::units::si::meter;
 const angular_acceleration_t::unit_type rad_per_s2 = angular_acceleration_t::unit_type();
 const angular_velocity_t::unit_type rad_per_sec = angular_velocity_t::unit_type();
+const current_t::unit_type ampere = boost::units::si::ampere;
+const celcius_t::unit_type celcius = boost::units::celsius::degree;
 
 } } } // namespace snark { namespace ur { namespace robotic_arm {
 

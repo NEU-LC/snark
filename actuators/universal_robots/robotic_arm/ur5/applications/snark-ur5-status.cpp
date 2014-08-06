@@ -74,7 +74,7 @@ void usage(int code=1)
     std::cerr << "    --json,-j:            output in json." << std::endl;
     std::cerr << "    --compact-json,-cj:   output in single line json without whitespaces or new lines." << std::endl;
     std::cerr << "    --offset=x,y,z        adds offset to end affector's coordinate." << std::endl;
-    typedef arm::fixed_status status_t;
+    typedef arm::status_t status_t;
     comma::csv::binary< status_t > binary;
     std::cerr << "Robot arm's status:" << std::endl;
     std::cerr << "   format: " << binary.format().string() << " total size is " << binary.format().size() << " bytes" << std::endl;
@@ -134,53 +134,89 @@ int main( int ac, char** av )
     
     try
     {
+        comma::csv::options csv_in;
+        csv_in.fields = options.value< std::string >( "--input-fields", "" );
+        csv_in.full_xpath = true;
+        csv_in.format( comma::csv::format::value< arm::status_t >( csv_in.fields, true ) );
+
+        if( options.exists( "--output-samples" ) )
+        {
+            // std::cerr << "output format: \n" << csv.format().string() << std::endl;
+            // std::cerr << "output fields: \n" << csv.fields << std::endl;
+            std::cerr.flush();
+            comma::csv::output_stream< arm::status_t > oss( std::cout, csv );
+            arm::status_t st;
+            while( !signaled && std::cout.good() )
+            {
+                oss.write( st );
+                oss.flush();
+                sleep( 1 );
+            }
+            return 0;
+        }
+
+        bool is_host_order = options.exists( "--host-byte-order" );
         arm::fixed_status arm_status;
         bool first_loop = true;
+        arm::status_t state;
+
+        // if( is_host_order ) {
+        //     std::cerr << "expecting fields: \n" << csv_in.fields << std::endl;
+        //     std::cerr.flush();
+        //     std::cerr << "expecting format: \n" << csv_in.format().string() << std::endl;
+        //     std::cerr.flush();
+        // }
+
         while( !signaled && std::cin.good() )
         {
-            std::cin.read( arm_status.data(), status::size );
+            if( !is_host_order ) 
+            { 
+                std::cin.read( arm_status.data(), status::size ); 
+                arm_status.get( state );
+                /// As rotation data do not make sense, caculate it using the joint angles
+                /// We will also override the TCP translation coordinate
+                snark::ur::robotic_arm::ur5::tcp_transform( state.joint_angles, state.position );
+            }
+            else 
+            {
+                // std::cerr << "aaaa" << std::endl;
+                static comma::csv::input_stream< arm::status_t > istream( std::cin, csv_in );
+                // std::cerr << "bbb" << std::endl;
+                const arm::status_t* p = istream.read();
+                // std::cerr << "ccc" << std::endl;
+                if( p == NULL ) { COMMA_THROW( comma::exception, "p is null" ); }
+                state = *p;
+            }
+            
+            state.timestamp = boost::posix_time::microsec_clock::local_time();
 
             // sanity check on the status
             if( first_loop && (
-                arm_status.length() != arm::fixed_status::size ||
-                arm_status.robot_mode() < arm::robotmode::running || 
-                arm_status.robot_mode() > arm::robotmode::safeguard_stop ) ) {
+                state.length != arm::fixed_status::size ||
+                state.robot_mode < arm::robotmode::running || 
+                state.robot_mode > arm::robotmode::safeguard_stop ) ) {
+                std::cerr << name() << "mode: " << state.mode_str() << std::endl;
                 std::cerr << name() << "failed sanity check, data is not aligned, exiting now..." << std::endl;
                 return 1;
             }
             first_loop = false;
             
-            /// As rotation data do not make sense, cacculate it using the joint angles
-            /// We will also override the TCP translation coordinate
-            arm::fixed_status::joints_type angles;
-            arm_status.get_angles( angles );
-            boost::array< double, arm::joints_num > position;
-            snark::ur::robotic_arm::ur5::tcp_transform( angles, position );
-            arm_status.translation.x = position[0];
-            arm_status.translation.y = position[1];
-            arm_status.translation.z = position[2];
-            arm_status.rotation.x = position[3];
-            arm_status.rotation.y = position[4];
-            arm_status.rotation.z = position[5];
-            
             if( has_offset ) 
             {
-                arm_status.translation.x = arm_status.translation.x() + offset[0];
-                arm_status.translation.y = arm_status.translation.y() + offset[1];
-                arm_status.translation.z = arm_status.translation.z() + offset[2];
+                state.position.coordinates += Eigen::Vector3d( offset[0], offset[1], offset[2] );
             }
             
             if ( is_json || is_single_line_json )
             {
                 boost::property_tree::ptree t;
                 comma::to_ptree to_ptree( t );
-                comma::visiting::apply( to_ptree ).to( arm_status );
+                comma::visiting::apply( to_ptree ).to( state );
                 boost::property_tree::write_json( std::cout, t, !is_single_line_json );    
             }
             else 
             { 
-                static comma::csv::output_stream< arm::fixed_status > oss( std::cout, csv );
-                oss.write( arm_status );
+                static comma::csv::output_stream< arm::status_t > oss( std::cout, csv );
+                oss.write( state );
             }
         }
         

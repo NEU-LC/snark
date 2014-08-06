@@ -37,7 +37,7 @@ void commands_handler::handle( arm::move_cam& cam )
 {
     std::cerr << name() << " running move_cam" << std::endl; 
 
-    if( !is_running() ) {
+    if( !status_.is_running() ) {
         ret = result( "cannot move (camera) as rover is not in running mode", result::error::invalid_robot_state );
         return;
     }
@@ -65,7 +65,7 @@ void commands_handler::handle( arm::move_cam& cam )
 
 void commands_handler::handle( arm::move_joints& joints )
 {
-//     if( !is_running() ) {
+//     if( !status_.is_running() ) {
 //         ret = result( "cannot move (joints) as rover is not in running mode", result::error::invalid_robot_state );
 //         return;
 //     }
@@ -99,13 +99,12 @@ void commands_handler::handle( arm::joint_move& joint )
     }
     /// command can be use if in running or initialising mode
     int index = joint.joint_id;
-    if( status_.robot_mode() != robotmode::initializing && 
-        status_.joint_modes[index]() != jointmode::initializing )
+    if( status_.robot_mode != robotmode::initializing && 
+        status_.joint_modes[index] != jointmode::initializing )
     { 
         std::ostringstream ss;
         ss << "robot and  joint (" << index << ") must be initializing state. However current robot mode is '" 
-           << arm::robotmode_str( (arm::robotmode::mode)int(status_.robot_mode()) ) 
-           << "' and joint mode is '" << arm::jointmode_str( (arm::jointmode::mode)int(status_.joint_modes[index]()) ) << '\'' << std::endl;
+           << status_.mode_str() << "' and joint mode is '" << status_.jmode_str(index)  << '\'' << std::endl;
         ret = result( ss.str(), result::error::invalid_robot_state );
         return; 
     }
@@ -151,7 +150,7 @@ void commands_handler::handle( arm::set_home& h )
 
 void commands_handler::handle( arm::set_position& pos )
 {
-    if( !is_running() ) {
+    if( !status_.is_running() ) {
         ret = result( "cannot set position as rover is not in running mode", result::error::invalid_robot_state );
         return;
     }
@@ -173,36 +172,19 @@ void commands_handler::handle( arm::move_effector& e )
 {
 }
 
-bool commands_handler::is_powered() const {
-    return (status_.robot_mode() != robotmode::no_power);
-}
 
-bool commands_handler::is_running() const 
-{
-    if(status_.robot_mode() != robotmode::running) { 
-        // std::cerr << "robot mode " << status_.robot_mode() << " expected: " << robotmode::running << std::endl;
-        return false; 
-    }
-
-    for( std::size_t i=0; i<joints_num; ++i ) {
-        // std::cerr << "joint " << i << " mode " << status_.joint_modes[i]() << " expected: " << jointmode::running << std::endl;
-        if( status_.joint_modes[i]() != jointmode::running ) { return false; }
-    }
-
-    return true;
-}
 bool commands_handler::is_initialising() const 
 {
-    if( status_.robot_mode() != robotmode::initializing ) { 
-        // std::cerr << "robot mode " << status_.robot_mode() << " expected: " << robotmode::initializing << std::endl;
+    if( status_.robot_mode != robotmode::initializing ) { 
+        // std::cerr << "robot mode " << status_.robot_mode << " expected: " << robotmode::initializing << std::endl;
         return false; 
     }
 
     for( std::size_t i=0; i<joints_num; ++i ) 
     {
-        // std::cerr << "joint " << i << " mode " << status_.joint_modes[i]() << " expected: " << jointmode::running << std::endl;
-        if( status_.joint_modes[i]() != jointmode::initializing && 
-            status_.joint_modes[i]() != jointmode::running ) { 
+        // std::cerr << "joint " << i << " mode " << status_.joint_modes[i] << " expected: " << jointmode::running << std::endl;
+        if( status_.jmode(i) != jointmode::initializing && 
+            status_.jmode(i) != jointmode::running ) { 
             return false; 
         }
     }

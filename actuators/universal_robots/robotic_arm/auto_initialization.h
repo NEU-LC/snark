@@ -7,6 +7,7 @@
 #include <comma/base/types.h>
 #include <comma/dispatch/dispatched.h>
 #include <comma/io/stream.h>
+#include <comma/csv/stream.h>
 #include <comma/io/select.h>
 #include <comma/base/exception.h>
 #include <comma/application/signal_flag.h>
@@ -42,10 +43,11 @@ namespace arm = robotic_arm;
 class auto_initialization
 {
     /// Status to check if initialized 
-    arm::fixed_status& status_;
+    arm::status_t& status_;
     std::ostream& os;           /// output to the rover
-    comma::io::istream& iss_;   /// for reading new statuses
+    comma::csv::binary_input_stream< arm::status_t >& iss_;   /// for reading new statuses
     comma::io::select& select_; /// select for above stream
+    comma::io::file_descriptor fd_;
     comma::signal_flag& signaled_;  /// Check if signal received
     arm::inputs& inputs_;   // to check if new command/s are received
     std::string name_;  // name of the executable running this
@@ -61,11 +63,12 @@ class auto_initialization
     static const char* filename;
     
 public:
-    auto_initialization( arm::fixed_status& status, std::ostream& robot, 
-                         comma::io::istream& status_iss, comma::io::select& select,
+    auto_initialization( arm::status_t& status, std::ostream& robot, 
+                         comma::csv::binary_input_stream< arm::status_t >& status_iss, 
+			  comma::io::select& select, comma::io::file_descriptor fd,
                          comma::signal_flag& signaled, arm::inputs& inputs, const std::string& work_dir ) : 
         status_( status ), os( robot ),
-        iss_(status_iss), select_( select ), signaled_( signaled ),
+        iss_(status_iss), select_( select ), fd_( fd ), signaled_( signaled ),
         inputs_( inputs ), force_max_( 13.0 ), home_filepath_( work_dir + '/' + filename ) {}
     
     void set_app_name( const char* name ) { name_ = name; }

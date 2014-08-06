@@ -61,18 +61,16 @@ public:
     void handle( joint_move& j );
     
     commands_handler( ExtU_Arm_Controller_T& simulink_inputs, 
-                      arm::fixed_status& status, std::ostream& robot, auto_initialization& init ) : 
+                      arm::status_t& status, std::ostream& robot, auto_initialization& init ) : 
         inputs_(simulink_inputs), status_( status ), os( robot ), init_(init),
         home_filepath_( init_.home_filepath() ) {}
         
-    bool is_powered() const;
-    bool is_initialising() const;
-    bool is_running() const; 
+    bool is_initialising() const; 
     
     result ret;  /// Indicate if command succeed
 private:
     ExtU_Arm_Controller_T& inputs_; /// inputs into simulink engine 
-    fixed_status& status_;
+    status_t& status_;
     std::ostream& os;
     auto_initialization init_;
     fs::path home_filepath_;

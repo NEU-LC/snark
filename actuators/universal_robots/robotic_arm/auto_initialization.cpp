@@ -14,15 +14,15 @@ void auto_initialization::read_status()
 
     for( std::size_t i=0; i<loops; ++i )
     {
-        if( !iss_->good() ) { COMMA_THROW( comma::exception, "status stream failed in auto_initialization." ); }
+//         if( !iss_->good() ) { COMMA_THROW( comma::exception, "status stream failed in auto_initialization." ); }
         select_.check();
 
-        if( select_.read().ready( iss_.fd() ) )
+        if( select_.read().ready( fd_ ) )
         {
-            iss_->read( status_.data(), fixed_status::size );
+            status_ = *( iss_.read() );
+            // iss_->read( status_.data(), fixed_status::size );
             // read all buffered data
-            while( iss_->rdbuf()->in_avail() > 0 ) { iss_->read( status_.data(), fixed_status::size ); }
-
+            while( iss_.has_data() ) { status_ = *( iss_.read() ); }
             return;
         }
 
@@ -70,7 +70,7 @@ result auto_initialization::run( bool force )
 
         while( !signaled_ && inputs_.is_empty() )
         {
-            if( status_.joint_modes[joint_id]() != jointmode::initializing ) { break; }
+            if( status_.jmode( joint_id ) != jointmode::initializing ) { break; }
 
             // move it a little bit
             os << initj[ joint_id ] << std::endl;
@@ -85,7 +85,7 @@ result auto_initialization::run( bool force )
                 // std::cerr << "reading status" << std::endl;
                 read_status();
                 // if( std::fabs( status_.forces[joint_id]() ) > force_max_ ) { return  result( "cannot moe joint because of joint force > 0", result::error::failure ); }
-                double vel = status_.velocities[ joint_id ]();
+                double vel = status_.velocities[ joint_id ];
                 if( std::fabs( vel ) <= 0.03 ) break;
             }
             
