@@ -179,7 +179,7 @@ int main( int ac, char** av )
                 arm_status.get( state );
                 /// As rotation data do not make sense, caculate it using the joint angles
                 /// We will also override the TCP translation coordinate
-                snark::ur::robotic_arm::ur5::tcp_transform( state.joint_angles, state.position );
+                snark::ur::robotic_arm::ur5::tcp_transform( state.joint_angles, state.position, state.laser_position );
             }
             else 
             {

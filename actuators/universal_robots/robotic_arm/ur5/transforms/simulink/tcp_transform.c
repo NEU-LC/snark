@@ -3,9 +3,9 @@
  *
  * Code generated for Simulink model 'tcp_transform'.
  *
- * Model version                  : 1.9
+ * Model version                  : 1.13
  * Simulink Coder version         : 8.6 (R2014a) 27-Dec-2013
- * C/C++ source code generated on : Mon Aug 04 14:27:15 2014
+ * C/C++ source code generated on : Thu Aug 07 16:00:31 2014
  *
  * Target selection: ert.tlc
  * Embedded hardware selection: 32-bit Generic
@@ -76,7 +76,7 @@ real_T rt_remd_snf(real_T u0, real_T u1)
   return y;
 }
 
-/* Function for MATLAB Function: '<S1>/getToolPosition' */
+/* Function for MATLAB Function: '<S1>/getToolLaser' */
 static void tcp_transform_cosd(real_T *x)
 {
   int8_T n;
@@ -128,7 +128,7 @@ static void tcp_transform_cosd(real_T *x)
   }
 }
 
-/* Function for MATLAB Function: '<S1>/getToolPosition' */
+/* Function for MATLAB Function: '<S1>/getToolLaser' */
 static void tcp_transform_sind(real_T *x)
 {
   int8_T n;
@@ -186,7 +186,7 @@ static void tcp_transform_sind(real_T *x)
 void tcp_transform_step(void)
 {
   real_T total_transform[16];
-  real_T laser_position[4];
+  real_T tcp_position[4];
   real_T i;
   real_T j;
   real_T k;
@@ -218,100 +218,97 @@ void tcp_transform_step(void)
   real_T db_0[16];
   real_T hb_0[16];
   int32_T i_3;
-  real_T rtb_TmpSignalConversionAtSFun_0;
-  real_T rtb_TmpSignalConversionAtSFun_1;
-  real_T rtb_TmpSignalConversionAtSFun_2;
-  real_T rtb_TmpSignalConversionAtSFun_3;
-  real_T rtb_TmpSignalConversionAtSFun_4;
-  real_T rtb_TmpSignalConversionAtSFun_5;
+  real_T joint_angles_degrees_idx_0;
+  real_T joint_angles_degrees_idx_1;
+  real_T joint_angles_degrees_idx_2;
+  real_T joint_angles_degrees_idx_3;
+  real_T joint_angles_degrees_idx_4;
+  real_T joint_angles_degrees_idx_5;
 
-  /* SignalConversion: '<S2>/TmpSignal ConversionAt SFunction Inport1' incorporates:
+  /* MATLAB Function: '<S1>/getToolLaser' incorporates:
    *  Inport: '<Root>/Joint1'
    *  Inport: '<Root>/Joint2'
    *  Inport: '<Root>/Joint3'
    *  Inport: '<Root>/Joint4'
    *  Inport: '<Root>/Joint5'
    *  Inport: '<Root>/Joint6'
-   *  MATLAB Function: '<S1>/getToolPosition'
-   */
-  rtb_TmpSignalConversionAtSFun_0 = tcp_transform_U.Joint1;
-  rtb_TmpSignalConversionAtSFun_1 = tcp_transform_U.Joint2;
-  rtb_TmpSignalConversionAtSFun_2 = tcp_transform_U.Joint3;
-  rtb_TmpSignalConversionAtSFun_3 = tcp_transform_U.Joint4;
-  rtb_TmpSignalConversionAtSFun_4 = tcp_transform_U.Joint5;
-  rtb_TmpSignalConversionAtSFun_5 = tcp_transform_U.Joint6;
-
-  /* MATLAB Function: '<S1>/getToolPosition' incorporates:
-   *  Inport: '<Root>/Joint1'
    *  SignalConversion: '<S2>/TmpSignal ConversionAt SFunction Inport1'
    */
-  /* MATLAB Function 'tcp_transform/getToolPosition': '<S2>:1' */
+  /* MATLAB Function 'tcp_transform/getToolLaser': '<S2>:1' */
   /* UNTITLED Summary of this function goes here */
   /*    Detailed explanation goes here */
   /* '<S2>:1:5' */
+  joint_angles_degrees_idx_0 = tcp_transform_U.Joint1 * 57.295779513082323;
+  joint_angles_degrees_idx_1 = tcp_transform_U.Joint2 * 57.295779513082323;
+  joint_angles_degrees_idx_2 = tcp_transform_U.Joint3 * 57.295779513082323;
+  joint_angles_degrees_idx_3 = tcp_transform_U.Joint4 * 57.295779513082323;
+  joint_angles_degrees_idx_4 = tcp_transform_U.Joint5 * 57.295779513082323;
+  joint_angles_degrees_idx_5 = tcp_transform_U.Joint6 * 57.295779513082323;
+
   /* '<S2>:1:6' */
   /* '<S2>:1:7' */
   /* '<S2>:1:8' */
   /* '<S2>:1:9' */
   /* '<S2>:1:10' */
-  /* '<S2>:1:12' */
-  i = tcp_transform_U.Joint1;
+  /* '<S2>:1:11' */
+  /* '<S2>:1:13' */
+  i = joint_angles_degrees_idx_0;
   tcp_transform_cosd(&i);
-  j = rtb_TmpSignalConversionAtSFun_0;
+  j = joint_angles_degrees_idx_0;
   tcp_transform_sind(&j);
-  k = rtb_TmpSignalConversionAtSFun_0;
+  k = joint_angles_degrees_idx_0;
   tcp_transform_sind(&k);
-  tcp_transform_cosd(&rtb_TmpSignalConversionAtSFun_0);
-  m = rtb_TmpSignalConversionAtSFun_1;
+  tcp_transform_cosd(&joint_angles_degrees_idx_0);
+  m = joint_angles_degrees_idx_1;
   tcp_transform_cosd(&m);
-  n = rtb_TmpSignalConversionAtSFun_1;
+  n = joint_angles_degrees_idx_1;
   tcp_transform_sind(&n);
-  o = rtb_TmpSignalConversionAtSFun_1;
+  o = joint_angles_degrees_idx_1;
   tcp_transform_cosd(&o);
-  p = rtb_TmpSignalConversionAtSFun_1;
+  p = joint_angles_degrees_idx_1;
   tcp_transform_sind(&p);
-  q = rtb_TmpSignalConversionAtSFun_1;
+  q = joint_angles_degrees_idx_1;
   tcp_transform_cosd(&q);
-  tcp_transform_sind(&rtb_TmpSignalConversionAtSFun_1);
-  s = rtb_TmpSignalConversionAtSFun_2;
+  tcp_transform_sind(&joint_angles_degrees_idx_1);
+  s = joint_angles_degrees_idx_2;
   tcp_transform_cosd(&s);
-  t = rtb_TmpSignalConversionAtSFun_2;
+  t = joint_angles_degrees_idx_2;
   tcp_transform_sind(&t);
-  u = rtb_TmpSignalConversionAtSFun_2;
+  u = joint_angles_degrees_idx_2;
   tcp_transform_cosd(&u);
-  v = rtb_TmpSignalConversionAtSFun_2;
+  v = joint_angles_degrees_idx_2;
   tcp_transform_sind(&v);
-  w = rtb_TmpSignalConversionAtSFun_2;
+  w = joint_angles_degrees_idx_2;
   tcp_transform_cosd(&w);
-  tcp_transform_sind(&rtb_TmpSignalConversionAtSFun_2);
-  y = rtb_TmpSignalConversionAtSFun_3;
+  tcp_transform_sind(&joint_angles_degrees_idx_2);
+  y = joint_angles_degrees_idx_3;
   tcp_transform_cosd(&y);
-  ab = rtb_TmpSignalConversionAtSFun_3;
+  ab = joint_angles_degrees_idx_3;
   tcp_transform_sind(&ab);
-  bb = rtb_TmpSignalConversionAtSFun_3;
+  bb = joint_angles_degrees_idx_3;
   tcp_transform_sind(&bb);
-  tcp_transform_cosd(&rtb_TmpSignalConversionAtSFun_3);
-  db = rtb_TmpSignalConversionAtSFun_4;
+  tcp_transform_cosd(&joint_angles_degrees_idx_3);
+  db = joint_angles_degrees_idx_4;
   tcp_transform_cosd(&db);
-  eb = rtb_TmpSignalConversionAtSFun_4;
+  eb = joint_angles_degrees_idx_4;
   tcp_transform_sind(&eb);
-  fb = rtb_TmpSignalConversionAtSFun_4;
+  fb = joint_angles_degrees_idx_4;
   tcp_transform_sind(&fb);
-  tcp_transform_cosd(&rtb_TmpSignalConversionAtSFun_4);
-  hb = rtb_TmpSignalConversionAtSFun_5;
+  tcp_transform_cosd(&joint_angles_degrees_idx_4);
+  hb = joint_angles_degrees_idx_5;
   tcp_transform_cosd(&hb);
-  ib = rtb_TmpSignalConversionAtSFun_5;
+  ib = joint_angles_degrees_idx_5;
   tcp_transform_sind(&ib);
-  jb = rtb_TmpSignalConversionAtSFun_5;
+  jb = joint_angles_degrees_idx_5;
   tcp_transform_sind(&jb);
-  tcp_transform_cosd(&rtb_TmpSignalConversionAtSFun_5);
+  tcp_transform_cosd(&joint_angles_degrees_idx_5);
   i_0[0] = i;
   i_0[4] = 0.0;
   i_0[8] = j;
   i_0[12] = 0.0;
   i_0[1] = k;
   i_0[5] = 0.0;
-  i_0[9] = -rtb_TmpSignalConversionAtSFun_0;
+  i_0[9] = -joint_angles_degrees_idx_0;
   i_0[13] = 0.0;
   i_0[2] = 0.0;
   i_0[6] = 1.0;
@@ -328,7 +325,7 @@ void tcp_transform_step(void)
   m_0[1] = p;
   m_0[5] = q;
   m_0[9] = 0.0;
-  m_0[13] = -0.425 * rtb_TmpSignalConversionAtSFun_1;
+  m_0[13] = -0.425 * joint_angles_degrees_idx_1;
   m_0[2] = 0.0;
   m_0[6] = 0.0;
   m_0[10] = 1.0;
@@ -354,7 +351,7 @@ void tcp_transform_step(void)
   s_0[1] = v;
   s_0[5] = w;
   s_0[9] = 0.0;
-  s_0[13] = -0.392 * rtb_TmpSignalConversionAtSFun_2;
+  s_0[13] = -0.392 * joint_angles_degrees_idx_2;
   s_0[2] = 0.0;
   s_0[6] = 0.0;
   s_0[10] = 1.0;
@@ -379,7 +376,7 @@ void tcp_transform_step(void)
   y_0[12] = 0.0;
   y_0[1] = bb;
   y_0[5] = 0.0;
-  y_0[9] = -rtb_TmpSignalConversionAtSFun_3;
+  y_0[9] = -joint_angles_degrees_idx_3;
   y_0[13] = 0.0;
   y_0[2] = 0.0;
   y_0[6] = 1.0;
@@ -405,7 +402,7 @@ void tcp_transform_step(void)
   db_0[12] = 0.0;
   db_0[1] = fb;
   db_0[5] = 0.0;
-  db_0[9] = rtb_TmpSignalConversionAtSFun_4;
+  db_0[9] = joint_angles_degrees_idx_4;
   db_0[13] = 0.0;
   db_0[2] = 0.0;
   db_0[6] = -1.0;
@@ -430,7 +427,7 @@ void tcp_transform_step(void)
   hb_0[8] = 0.0;
   hb_0[12] = 0.0;
   hb_0[1] = jb;
-  hb_0[5] = rtb_TmpSignalConversionAtSFun_5;
+  hb_0[5] = joint_angles_degrees_idx_5;
   hb_0[9] = 0.0;
   hb_0[13] = 0.0;
   hb_0[2] = 0.0;
@@ -451,55 +448,96 @@ void tcp_transform_step(void)
     }
   }
 
-  /* laser_offset = -0.110; %negative = upwards */
-  /* laser_position = total_transform*[0;laser_offset;0;1]; */
-  /* '<S2>:1:17' */
+  /* '<S2>:1:15' */
   for (i_2 = 0; i_2 < 4; i_2++) {
-    rtb_TmpSignalConversionAtSFun_0 = total_transform[i_2 + 12] +
+    joint_angles_degrees_idx_0 = total_transform[i_2 + 12] +
       (total_transform[i_2 + 8] * 0.0 + (total_transform[i_2 + 4] * 0.0 +
         total_transform[i_2] * 0.0));
-    laser_position[i_2] = rtb_TmpSignalConversionAtSFun_0;
+    tcp_position[i_2] = joint_angles_degrees_idx_0;
   }
 
   /* Outport: '<Root>/x' incorporates:
-   *  MATLAB Function: '<S1>/getToolPosition'
+   *  MATLAB Function: '<S1>/getToolLaser'
    */
-  /* end effector position */
-  /* '<S2>:1:20' */
-  /* '<S2>:1:21' */
-  /* '<S2>:1:22' */
-  /* co-ordinate system rotational transformation */
-  /* '<S2>:1:25' */
-  /* '<S2>:1:27' */
-  /* '<S2>:1:28' */
-  /* '<S2>:1:29' */
-  tcp_transform_Y.x = laser_position[0];
+  /* '<S2>:1:17' */
+  tcp_transform_Y.x = tcp_position[0];
 
   /* Outport: '<Root>/y' incorporates:
-   *  MATLAB Function: '<S1>/getToolPosition'
+   *  MATLAB Function: '<S1>/getToolLaser'
    */
-  tcp_transform_Y.y = laser_position[1];
+  /* '<S2>:1:18' */
+  tcp_transform_Y.y = tcp_position[1];
 
   /* Outport: '<Root>/z' incorporates:
-   *  MATLAB Function: '<S1>/getToolPosition'
+   *  MATLAB Function: '<S1>/getToolLaser'
    */
-  tcp_transform_Y.z = laser_position[2];
+  /* '<S2>:1:19' */
+  tcp_transform_Y.z = tcp_position[2];
+
+  /* MATLAB Function: '<S1>/getToolLaser' */
+  /* negative = upwards */
+  /* '<S2>:1:23' */
+  for (i_2 = 0; i_2 < 4; i_2++) {
+    joint_angles_degrees_idx_0 = total_transform[i_2 + 12] +
+      (total_transform[i_2 + 8] * 0.0 + (total_transform[i_2 + 4] * -0.11 +
+        total_transform[i_2] * 0.0));
+    tcp_position[i_2] = joint_angles_degrees_idx_0;
+  }
 
   /* Outport: '<Root>/Pan' incorporates:
-   *  MATLAB Function: '<S1>/getToolPosition'
+   *  MATLAB Function: '<S1>/getToolLaser'
    */
-  tcp_transform_Y.Pan = 57.295779513082323 * asin(total_transform[9]);
+  /* '<S2>:1:25' */
+  /* '<S2>:1:26' */
+  /* '<S2>:1:27' */
+  /* '<S2>:1:29' */
+  /* '<S2>:1:31' */
+  /* '<S2>:1:32' */
+  /* '<S2>:1:33' */
+  /* '<S2>:1:35' */
+  /* '<S2>:1:36' */
+  /* '<S2>:1:37' */
+  tcp_transform_Y.Pan = asin(total_transform[9]);
 
   /* Outport: '<Root>/Tilt' incorporates:
-   *  MATLAB Function: '<S1>/getToolPosition'
+   *  MATLAB Function: '<S1>/getToolLaser'
    */
-  tcp_transform_Y.Tilt = atan(total_transform[10] / total_transform[8]) *
-    57.295779513082323;
+  tcp_transform_Y.Tilt = atan(total_transform[10] / total_transform[8]);
 
   /* Outport: '<Root>/Roll' incorporates:
-   *  MATLAB Function: '<S1>/getToolPosition'
+   *  MATLAB Function: '<S1>/getToolLaser'
    */
   tcp_transform_Y.Roll = 0.0;
+
+  /* Outport: '<Root>/x_laser' incorporates:
+   *  MATLAB Function: '<S1>/getToolLaser'
+   */
+  tcp_transform_Y.x_laser = tcp_position[0];
+
+  /* Outport: '<Root>/y_laser' incorporates:
+   *  MATLAB Function: '<S1>/getToolLaser'
+   */
+  tcp_transform_Y.y_laser = tcp_position[1];
+
+  /* Outport: '<Root>/z_laser' incorporates:
+   *  MATLAB Function: '<S1>/getToolLaser'
+   */
+  tcp_transform_Y.z_laser = tcp_position[2];
+
+  /* Outport: '<Root>/pan_laser' incorporates:
+   *  MATLAB Function: '<S1>/getToolLaser'
+   */
+  tcp_transform_Y.pan_laser = asin(total_transform[9]);
+
+  /* Outport: '<Root>/tilt_laser' incorporates:
+   *  MATLAB Function: '<S1>/getToolLaser'
+   */
+  tcp_transform_Y.tilt_laser = atan(total_transform[10] / total_transform[8]);
+
+  /* Outport: '<Root>/roll_laser' incorporates:
+   *  MATLAB Function: '<S1>/getToolLaser'
+   */
+  tcp_transform_Y.roll_laser = 0.0;
 }
 
 /* Model initialize function */

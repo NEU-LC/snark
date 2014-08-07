@@ -3,9 +3,9 @@
  *
  * Code generated for Simulink model 'tcp_transform'.
  *
- * Model version                  : 1.9
+ * Model version                  : 1.13
  * Simulink Coder version         : 8.6 (R2014a) 27-Dec-2013
- * C/C++ source code generated on : Mon Aug 04 14:27:15 2014
+ * C/C++ source code generated on : Thu Aug 07 16:00:31 2014
  *
  * Target selection: ert.tlc
  * Embedded hardware selection: 32-bit Generic
@@ -56,6 +56,12 @@ typedef struct {
   real_T Pan;                          /* '<Root>/Pan' */
   real_T Tilt;                         /* '<Root>/Tilt' */
   real_T Roll;                         /* '<Root>/Roll' */
+  real_T x_laser;                      /* '<Root>/x_laser' */
+  real_T y_laser;                      /* '<Root>/y_laser' */
+  real_T z_laser;                      /* '<Root>/z_laser' */
+  real_T pan_laser;                    /* '<Root>/pan_laser' */
+  real_T tilt_laser;                   /* '<Root>/tilt_laser' */
+  real_T roll_laser;                   /* '<Root>/roll_laser' */
 } ExtY_tcp_transform_T;
 
 /* Real-time Model Data Structure */
@@ -96,7 +102,7 @@ extern RT_MODEL_tcp_transform_T *const tcp_transform_M;
  *
  * '<Root>' : 'laser_func'
  * '<S1>'   : 'laser_func/tcp_transform'
- * '<S2>'   : 'laser_func/tcp_transform/getToolPosition'
+ * '<S2>'   : 'laser_func/tcp_transform/getToolLaser'
  */
 #endif                                 /* RTW_HEADER_tcp_transform_h_ */
 
