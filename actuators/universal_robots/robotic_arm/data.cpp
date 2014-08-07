@@ -148,6 +148,15 @@ bool status_t::is_running() const
     return true;
 }
 
+bool status_t::is_powered_off() const
+{
+    if( robot_mode != robotmode::no_power) { return false; }
+    for( std::size_t i=0; i<joints_num; ++i ) { if( joint_modes[i] != jointmode::power_off ) { return false; } }
+    
+    return true;
+}
+
+
 
 
 } } } // namespace snark { namespace ur { namespace robotic_arm { 

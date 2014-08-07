@@ -148,10 +148,6 @@ public:
    ~arm_output() 
     { 
         Arm_Controller_terminate(); 
-        std::cout.flush(); 
-        close(STDIN_FILENO);
-        close(STDOUT_FILENO);
-        close(STDERR_FILENO);
     }
                 
    std::string debug_in_degrees() const
@@ -284,8 +280,13 @@ bool ready( comma::io::istream& is )
 bool read_status( comma::csv::binary_input_stream< arm::status_t >& iss, 
     comma::io::select& select, comma::io::file_descriptor fd )
 {
-    select.check();
-    if( !select.read().ready( fd ) ) return false;
+    /// Within 100ms, we are guranteed a new status, there may already be many statuses waiting to be read
+    static const boost::posix_time::milliseconds timeout( 0.1 * 1000000u );
+    select.wait( timeout );
+    if( !select.read().ready( fd ) ) { 
+        std::cerr << "no status received within timeout of " << timeout.total_milliseconds() << "ms" << std::endl; 
+        COMMA_THROW( comma::exception, "no status received within timeout of " << timeout.total_milliseconds() << "ms" ); 
+    }
     arm_status = *( iss.read() );
     while( iss.has_data() )  { arm_status = *( iss.read() ); }
 
@@ -420,7 +421,7 @@ int main( int ac, char** av )
 
         for( std::size_t j=0; j<arm::joints_num; ++j )
         {
-            std::cerr << name() << "home joint " << j << " - " << continuum.home_position[j] << std::endl;
+            std::cerr << name() << "home joint " << j << " - " << continuum.home_position[j] << '"' << std::endl;
         }
 
         std::string arm_conn_host = options.value< std::string >( "--robot-arm-host" );
@@ -428,8 +429,19 @@ int main( int ac, char** av )
         std::string arm_feedback_host = options.value< std::string >( "--feedback-host" );
         std::string arm_feedback_port = options.value< std::string >( "--feedback-port" );
         
-        comma::io::ostream robot_arm( "tcp:" + arm_conn_host + ':' + arm_conn_port, 
-                                      comma::io::mode::ascii, comma::io::mode::non_blocking );
+        boost::scoped_ptr< comma::io::ostream > poss;
+        try
+        {
+            const std::string cmd_str = "tcp:" + arm_conn_host + ':' + arm_conn_port;
+            std::cerr << name() << "connecting to the robotic arm command channel: " << cmd_str << std::endl;
+            poss.reset( new comma::io::ostream( cmd_str, comma::io::mode::ascii, comma::io::mode::non_blocking ) );
+        }
+        catch( comma::exception& e )
+        {
+            std::cerr << name() << "failed to connect to tcp:" << arm_conn_host << ':' << arm_conn_port << std::endl;
+            return 1;
+        }
+        comma::io::ostream& robot_arm = *poss;
 
         stop_on_exit on_exit( *robot_arm );
 
@@ -452,7 +464,6 @@ int main( int ac, char** av )
         comma::csv::binary_input_stream< arm::status_t > istream( *status_stream, csv_in );
         comma::io::select select;
         select.read().add( status_stream.fd() );
-        // std::cerr << "aaaa" << std::endl;
 
         arm::handlers::auto_initialization auto_init( arm_status, *robot_arm, istream, select, status_stream.fd(), signaled, inputs, continuum.work_directory );
         auto_init.set_app_name( name() );
@@ -460,13 +471,13 @@ int main( int ac, char** av )
         if( options.exists( "--init-force-limit,-ifl" ) ){ auto_init.set_force_limit( options.value< double >( "--init-force-limit,-ifl" ) ); }
         commands_handler.reset( new commands_handler_t( Arm_Controller_U, arm_status, *robot_arm, auto_init ) );
 
-        bool first_loop = true;
-        // std::cerr << "bbbb" << std::endl;
         while( !signaled && std::cin.good() )
         {
-            if( !first_loop && !status_stream->good() ) { COMMA_THROW( comma::exception, "status connection to robot arm failed." ); }
+            if( !status_stream->good() ) { 
+                std::cerr << name() << "status connection to robot-arm failed" << std::endl;
+                COMMA_THROW( comma::exception, "status connection to robot arm failed." ); 
+            }
 
-            first_loop = false;
             if( read_status( istream, select, status_stream.fd() ) )
             { 
                 // std::cerr << name() << "robotmode: " << arm_status.mode_str() << std::endl;

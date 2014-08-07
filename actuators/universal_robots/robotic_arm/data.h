@@ -114,7 +114,8 @@ struct status_t {
     typedef boost::array< jointmode::mode, joints_num > array_jointmodes_t;
     
     boost::posix_time::ptime timestamp;
-    snark::applications::position position;
+    snark::applications::position position;     /// Tool Center Point position
+    snark::applications::position laser_position;   /// Mounted laser position
     boost::array< plane_angle_t, joints_num > joint_angles;
     boost::array< double, joints_num > velocities;
     boost::array< double, joints_num > currents;
@@ -130,10 +131,13 @@ struct status_t {
     jointmode::mode jmode( int id ) const { return joint_modes[id]; }
     robotmode::mode mode() const { return  robot_mode; }
 
+    /// Robotic arm must be in this state to move
     bool is_running() const;
+    /// Robotic arm must be in this state to power on.
+    bool is_powered_off() const;
     
     status_t() : timestamp( boost::posix_time::microsec_clock::local_time() ), position(), 
-            robot_mode( robotmode::no_power ), length(812), time_since_boot(-1) 
+            robot_mode( robotmode::not_connected ), length(812), time_since_boot(-1) 
     {
         init< plane_angle_t >( 0*radian, joint_angles );
         init< double >( 0.0, velocities );

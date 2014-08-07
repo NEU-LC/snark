@@ -10,6 +10,10 @@ static const char* name() {
 
 void commands_handler::handle( arm::power& p )
 {
+    if( p.is_on && !status_.is_powered_off() ) {
+        ret = result( "cannot execute power on command as current state is not 'no_power'", result::error::invalid_robot_state );
+        return;
+    }
     std::cerr << name() << "powering robot arm " << ( p.is_on ? "on" : "off" ) << std::endl;
     os << "power " << ( p.is_on ? "on" : "off" ) << std::endl;
     os.flush();
@@ -53,7 +57,6 @@ void commands_handler::handle( arm::move_cam& cam )
     if( cam.height < min_height ) { ret = result( "height value is below minimum limit of 0.1m", result::error::invalid_input ); return; }
     if( cam.height > max_height ) { ret = result( "height value is above minimum limit of 1.0m", result::error::invalid_input ); return; }
     
-    static double zero_tilt = 90.0;
     inputs_.motion_primitive = real_T( input_primitive::move_cam );
     inputs_.Input_1 = cam.pan.value();
     inputs_.Input_2 = cam.tilt.value();
@@ -196,10 +199,19 @@ bool commands_handler::is_initialising() const
 void commands_handler::handle(auto_init& a)
 {
     ret = init_.run( false );
+    if( ret.is_success() ) { 
+        std::cerr << name() << "going to home position." << std::endl;
+        arm::set_position home; handle( home ); 
+    } // set to home
+
 }
 void commands_handler::handle( arm::auto_init_force& init )
 {
     ret = init_.run( init.force );
+    if( ret.is_success() ) { 
+        std::cerr << name() << "going to home position." << std::endl;
+        arm::set_position home; handle( home ); 
+    } // set to home
 }
 
 

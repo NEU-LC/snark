@@ -74,6 +74,7 @@ void usage(int code=1)
     std::cerr << "    --json,-j:            output in json." << std::endl;
     std::cerr << "    --compact-json,-cj:   output in single line json without whitespaces or new lines." << std::endl;
     std::cerr << "    --host-byte-order:    input data is binary in host-byte-order, it assumes network order by default." << std::endl;
+    std::cerr << "    --format:             displays the binary format of output data in host byte order." << std::endl;
     // std::cerr << "    --offset=x,y,z        adds offset to end affector's coordinate." << std::endl;
     typedef arm::status_t status_t;
     comma::csv::binary< status_t > binary;
@@ -104,6 +105,7 @@ int main( int ac, char** av )
     
     comma::command_line_options options( ac, av );
     if( options.exists( "-h,--help" ) ) { usage( 0 ); }
+    if( options.exists( "--format" ) ) { std::cout << comma::csv::format::value< arm::status_t >( "", false ) << std::endl; return 0; }
     
     using boost::posix_time::microsec_clock;
     using boost::posix_time::seconds;
@@ -113,6 +115,7 @@ int main( int ac, char** av )
     typedef arm::fixed_status status;
     
     std::cerr << name() << "started" << std::endl;
+
     
     bool is_json = options.exists( "--json,-j" );
     bool is_single_line_json = options.exists( "--compact-json,-cj" );
@@ -121,7 +124,7 @@ int main( int ac, char** av )
     comma::csv::options csv;
     csv.fields = options.value< std::string >( "--fields", "" );
     csv.full_xpath = true;
-    if( is_binary ) { csv.format( comma::csv::format::value< arm::fixed_status >( csv.fields, true ) ); }
+    if( is_binary ) { csv.format( comma::csv::format::value< arm::status_t >( csv.fields, true ) ); }
     
     has_offset = options.value< bool >( "--offset", false );
     if( has_offset )

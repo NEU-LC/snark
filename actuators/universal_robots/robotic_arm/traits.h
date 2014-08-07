@@ -383,6 +383,7 @@ template < > struct traits< arm::status_t >
     {
         v.apply( "timestamp", t.timestamp );
         v.apply( "position", t.position );
+        v.apply( "laser_position", t.laser_position );
         v.apply( "joint_angles", t.joint_angles );
         v.apply( "velocities", t.velocities );
         v.apply( "currents", t.currents );
@@ -399,6 +400,7 @@ template < > struct traits< arm::status_t >
     {
         v.apply( "timestamp", t.timestamp );
         v.apply( "position", t.position );
+        v.apply( "laser_position", t.laser_position );
         v.apply( "joint_angles", t.joint_angles );
         v.apply( "velocities", t.velocities );
         v.apply( "currents", t.currents );
