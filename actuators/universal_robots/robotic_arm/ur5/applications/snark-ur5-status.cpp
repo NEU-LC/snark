@@ -188,7 +188,11 @@ int main( int ac, char** av )
                 // std::cerr << "bbb" << std::endl;
                 const arm::status_t* p = istream.read();
                 // std::cerr << "ccc" << std::endl;
-                if( p == NULL ) { COMMA_THROW( comma::exception, "p is null" ); }
+                if( p == NULL ) 
+                { 
+                    if( !std::cin.good() ) { std::cerr << name() << "STDIN error" << std::endl; return 1; }
+                    COMMA_THROW( comma::exception, "p is null" ); 
+                }
                 state = *p;
             }
             

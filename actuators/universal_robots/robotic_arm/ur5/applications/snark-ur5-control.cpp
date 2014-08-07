@@ -198,6 +198,7 @@ namespace ip = boost::asio::ip;
 typedef arm::handlers::commands_handler commands_handler_t;
 typedef boost::shared_ptr< commands_handler_t > commands_handler_shared;
 static commands_handler_shared commands_handler;
+static bool verbose = false;
 
 template < typename C >
 std::string handle( const std::vector< std::string >& line, std::ostream& os )
@@ -277,8 +278,8 @@ bool ready( comma::io::istream& is )
 }
 
 /// Return null if no status
-bool read_status( comma::csv::binary_input_stream< arm::status_t >& iss, 
-    comma::io::select& select, comma::io::file_descriptor fd )
+void read_status( comma::csv::binary_input_stream< arm::status_t >& iss, 
+    comma::io::select& select, const comma::io::file_descriptor& fd )
 {
     /// Within 100ms, we are guranteed a new status, there may already be many statuses waiting to be read
     static const boost::posix_time::milliseconds timeout( 0.1 * 1000000u );
@@ -290,24 +291,10 @@ bool read_status( comma::csv::binary_input_stream< arm::status_t >& iss,
     arm_status = *( iss.read() );
     while( iss.has_data() )  { arm_status = *( iss.read() ); }
 
-    // // std::cerr << "rdbuf" << std::endl;
-    // iss->read( arm_status.data(), arm::fixed_status::size );
-    // if( !iss->good() ) {
-    //     // std::cerr  << "not good" << std::endl;
-    //     return false;
-    // }
-    // // Keep reading to get latest data
-    // while( ready( iss ) )
-    // {
-    //     iss->read( arm_status.data(), arm::fixed_status::size );
-    //     // std::cerr << "ready again read" << std::endl;
-    // }
-
     if( arm_status.length != arm::fixed_status::size ) {
         std::cerr << name() << "status data alignment check failed" << std::endl; 
         COMMA_THROW( comma::exception, "status data alignment check failed" ); 
     }
-    return true;
 }
 
 static arm::config config;
@@ -345,7 +332,7 @@ void home_position_check( const arm::status_t& status, const std::string& homefi
 {
     // static std::vector< arm::plane_angle_t > home_position; /// store home joint positions in radian
     static const fs::path path( homefile );
-    static const arm::plane_angle_t epsilon = static_cast< arm::plane_angle_t >( 2.0 * arm::degree );
+    static const arm::plane_angle_t epsilon = static_cast< arm::plane_angle_t >( 1.5 * arm::degree );
     
     static std::vector< arm::plane_angle_t > home_position; /// store home joint positions in radian
     if( home_position.empty() )
@@ -356,15 +343,23 @@ void home_position_check( const arm::status_t& status, const std::string& homefi
         home_position.push_back( static_cast< arm::plane_angle_t >( config.continuum.home_position[3] * arm::degree ) );
         home_position.push_back( static_cast< arm::plane_angle_t >( config.continuum.home_position[4] * arm::degree ) );
         home_position.push_back( static_cast< arm::plane_angle_t >( config.continuum.home_position[5] * arm::degree ) );
+        // for( std::size_t i=0; i<home_position.size(); ++i ) {
+        //     std::cerr << "home joint " << i << ':' << home_position[i].value() << std::endl; 
+        // }
+        // std::cerr << "joint epsilon " << epsilon.value() << std::endl; 
     }
 
 
     if( status.is_running() )
     {
-        // TODO, either create or delete the home position file
         bool is_home = true;
-        for( std::size_t i=0; i<=arm::joints_num; ++i ) {
-            if( !comma::math::equal( status.joint_angles[i], home_position[i], epsilon ) ){ is_home=false; break; }
+        for( std::size_t i=0; i<arm::joints_num; ++i ) 
+        {
+            if( !comma::math::equal( status.joint_angles[i], home_position[i], epsilon ) )
+            { 
+                is_home=false; 
+                break; 
+            }
         }
 
         if( is_home ){ std::ofstream( homefile.c_str(), std::ios::out | std::ios::trunc ); } // create
@@ -465,10 +460,11 @@ int main( int ac, char** av )
         comma::io::select select;
         select.read().add( status_stream.fd() );
 
-        arm::handlers::auto_initialization auto_init( arm_status, *robot_arm, istream, select, status_stream.fd(), signaled, inputs, continuum.work_directory );
+        arm::handlers::auto_initialization auto_init( arm_status, *robot_arm,  istream,
+                boost::bind( read_status, _1, select, status_stream.fd() ),
+                signaled, inputs, continuum.work_directory );
         auto_init.set_app_name( name() );
-        std::cerr << "fd start: " << status_stream.fd() << std::endl;
-        if( options.exists( "--init-force-limit,-ifl" ) ){ auto_init.set_force_limit( options.value< double >( "--init-force-limit,-ifl" ) ); }
+        // if( options.exists( "--init-force-limit,-ifl" ) ){ auto_init.set_force_limit( options.value< double >( "--init-force-limit,-ifl" ) ); }
         commands_handler.reset( new commands_handler_t( Arm_Controller_U, arm_status, *robot_arm, auto_init ) );
 
         while( !signaled && std::cin.good() )
@@ -478,14 +474,14 @@ int main( int ac, char** av )
                 COMMA_THROW( comma::exception, "status connection to robot arm failed." ); 
             }
 
-            if( read_status( istream, select, status_stream.fd() ) )
+            read_status( istream, select, status_stream.fd() ); 
+            home_position_check( arm_status, auto_init.home_filepath() );
             { 
                 // std::cerr << name() << "robotmode: " << arm_status.mode_str() << std::endl;
                 // boost::property_tree::ptree t;
                 // comma::to_ptree to_ptree( t );
                 // comma::visiting::apply( to_ptree ).to( arm_status );
                 // boost::property_tree::write_json( std::cerr, t, false );    
-                home_position_check( arm_status, auto_init.home_filepath() );
             }
             
             try { inputs.read(); }

@@ -9,30 +9,9 @@ const char* auto_initialization::filename = "ur5-in-home-position";
 
 void auto_initialization::read_status()
 {
-    comma::uint32 sleep_usec = 0.1 * 1000000u; 
-    unsigned char loops = 5;
-
-    for( std::size_t i=0; i<loops; ++i )
-    {
-//         if( !iss_->good() ) { COMMA_THROW( comma::exception, "status stream failed in auto_initialization." ); }
-        // select_.wait( 0, sleep_usec );
-
-        // if( select_.read().ready( fd_ ) )
-        // {
-            status_ = *( iss_.read() );
-            // iss_->read( status_.data(), fixed_status::size );
-            // read all buffered data
-            while( iss_.has_data() ) { status_ = *( iss_.read() ); }
-            return;
-        // }
-
-        // std::cerr << "got nothinh: " << sleep_usec << " " << fd_ << std::endl;
-    }
-    std::cerr << name() << "failed to read status in auto init" << std::endl;
-    COMMA_THROW( comma::exception, "failed to read status in auto_init" );
+    ///  THis guarantee a status is read or an exception is thrown
+    update_status_( iss_ );
 }
-
-
 
 result auto_initialization::run( bool force )
 {

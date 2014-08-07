@@ -12,6 +12,7 @@
 #include <comma/base/exception.h>
 #include <comma/application/signal_flag.h>
 #include <boost/optional.hpp>
+#include <boost/function.hpp>
 #include "data.h"
 #include "inputs.h"
 
@@ -42,12 +43,14 @@ namespace arm = robotic_arm;
 /// The code is put into this class, with the run member.
 class auto_initialization
 {
+public:
+    typedef comma::csv::binary_input_stream< arm::status_t > binary_stream_t;   /// for reading new statuses
+private:
     /// Status to check if initialized 
     arm::status_t& status_;
     std::ostream& os;           /// output to the rover
     comma::csv::binary_input_stream< arm::status_t >& iss_;   /// for reading new statuses
-    comma::io::select& select_; /// select for above stream
-    comma::io::file_descriptor fd_;
+    boost::function< void ( binary_stream_t& ) > update_status_;
     comma::signal_flag& signaled_;  /// Check if signal received
     arm::inputs& inputs_;   // to check if new command/s are received
     std::string name_;  // name of the executable running this
@@ -65,10 +68,15 @@ class auto_initialization
 public:
     auto_initialization( arm::status_t& status, std::ostream& robot, 
                          comma::csv::binary_input_stream< arm::status_t >& status_iss, 
-			             comma::io::select& select, comma::io::file_descriptor fd,
-                         comma::signal_flag& signaled, arm::inputs& inputs, const std::string& work_dir ) : 
-        status_( status ), os( robot ),
-        iss_(status_iss), select_( select ), fd_( fd ), signaled_( signaled ),
+			             // comma::io::select& select, comma::io::file_descriptor fd,
+                         boost::function< void (binary_stream_t&) > f,
+                         comma::signal_flag& signaled, 
+                         arm::inputs& inputs, const std::string& work_dir ) : 
+        status_( status ), os( robot ), 
+        iss_(status_iss), 
+        update_status_(f),
+        // select_( select ), fd_( fd ), 
+        signaled_( signaled ),
         inputs_( inputs ), force_max_( 13.0 ), home_filepath_( work_dir + '/' + filename ) {}
     
     void set_app_name( const char* name ) { name_ = name; }
