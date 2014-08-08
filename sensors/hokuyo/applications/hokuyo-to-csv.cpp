@@ -257,6 +257,7 @@ int main( int ac, char** av )
     
     try
     {
+        
         // Sets up output data
         comma::csv::options csv;
         csv.fields = options.value< std::string >( "--fields", "" );
@@ -275,6 +276,21 @@ int main( int ac, char** av )
         if( options.exists( "--format" ) ) { std::cout << comma::csv::format::value< data_point >( csv.fields, false ) << std::endl; return 0; }
         if( options.exists( "--binary,-b" ) ) csv.format( comma::csv::format::value< data_point >( csv.fields, false ) );
         comma::csv::output_stream< data_point > output( std::cout, csv );  
+        
+        if( options.exists( "--output-samples" ) )
+        {
+            data_point pt;
+            pt.x = 1; pt.y = 2; pt.z = 3;
+            pt.intensity = 100;
+            while( !signaled && std::cout.good() )
+            {
+                pt.timestamp = boost::posix_time::microsec_clock::local_time();
+                output.write( pt );
+                usleep( 0.1 * 1000000u );
+            }
+            
+            return 0;
+        }
         
         /// Connect to the laser
         ip::tcp::iostream iostream;

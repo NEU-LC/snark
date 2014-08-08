@@ -7,4 +7,4 @@ LIST( REMOVE_ITEM extras ${source} )
 
 ADD_EXECUTABLE( test_robot_arm ${source} ${extras} )
 
-TARGET_LINK_LIBRARIES( test_robot_arm snark_robotic_arm boost_system ${comma_ALL_LIBRARIES} ${GTEST_BOTH_LIBRARIES} )
+TARGET_LINK_LIBRARIES( test_robot_arm snark_robotic_arm snark_ur5_transforms snark_ur5_transforms_simulink boost_system ${comma_ALL_LIBRARIES} ${GTEST_BOTH_LIBRARIES} )

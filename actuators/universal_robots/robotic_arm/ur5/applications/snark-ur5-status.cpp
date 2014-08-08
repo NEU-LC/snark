@@ -150,11 +150,14 @@ int main( int ac, char** av )
             std::cerr.flush();
             comma::csv::output_stream< arm::status_t > oss( std::cout, csv );
             arm::status_t st;
+            st.position.coordinates = Eigen::Vector3d( 1, 2, 3 );
+            st.laser_position.coordinates = Eigen::Vector3d( 3, 2, 1 );
             while( !signaled && std::cout.good() )
             {
+                st.timestamp = boost::posix_time::microsec_clock::local_time();
                 oss.write( st );
                 oss.flush();
-                sleep( 1 );
+                usleep( 0.1 * 1000000u );
             }
             return 0;
         }
