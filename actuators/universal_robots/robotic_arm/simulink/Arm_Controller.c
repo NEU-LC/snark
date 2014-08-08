@@ -3,9 +3,9 @@
  *
  * Code generated for Simulink model 'Arm_Controller'.
  *
- * Model version                  : 1.162
+ * Model version                  : 1.157
  * Simulink Coder version         : 8.6 (R2014a) 27-Dec-2013
- * C/C++ source code generated on : Fri Jul 25 14:29:36 2014
+ * C/C++ source code generated on : Tue Jul 22 17:15:32 2014
  *
  * Target selection: ert.tlc
  * Embedded hardware selection: 32-bit Generic
@@ -582,11 +582,12 @@ void Arm_Controller_step(void)
     if (rtb_outputs[2] == 1.0) {
       /* '<S4>:1:20' */
       /* they want the giraffe position */
+      /* '<S4>:1:22' */
       /* '<S4>:1:24' */
       rtb_TmpSignalConversionAtSFunct[0] = 0.0;
       rtb_TmpSignalConversionAtSFunct[1] = -90.0;
       rtb_TmpSignalConversionAtSFunct[2] = 0.0;
-      rtb_TmpSignalConversionAtSFunct[3] = rtb_outputs[1] - 90.0;
+      rtb_TmpSignalConversionAtSFunct[3] = -rtb_outputs[1];
       rtb_TmpSignalConversionAtSFunct[4] = 90.0 + rtb_outputs[0];
       rtb_TmpSignalConversionAtSFunct[5] = 0.0;
 
@@ -629,9 +630,8 @@ void Arm_Controller_step(void)
       }
 
       /* with arm pitching forward */
-      /* j4 = j2-j3-90-tilt_angle-90; */
-      /* '<S4>:1:52' */
-      j4 = (((80.0 - j3) - 90.0) + rtb_outputs[1]) - 90.0;
+      /* '<S4>:1:51' */
+      j4 = (((80.0 - j3) - 90.0) - rtb_outputs[1]) - 90.0;
 
       /* with arm pitching back */
       /* j4 = j2 - j3 - 90 - tilt_angle; */
@@ -643,8 +643,8 @@ void Arm_Controller_step(void)
       /* return; */
       /* end */
       /* %collision checking %%%%%% */
-      /* '<S4>:1:67' */
-      /* '<S4>:1:69' */
+      /* '<S4>:1:66' */
+      /* '<S4>:1:68' */
       rtb_writehome = -0.0;
       Arm_Controller_cosd(&rtb_writehome);
       rtb_statusflag_movej = -0.0;
@@ -670,7 +670,7 @@ void Arm_Controller_step(void)
       T1[11] = 0.0;
       T1[15] = 1.0;
 
-      /* '<S4>:1:70' */
+      /* '<S4>:1:69' */
       rtb_writehome = -80.0;
       Arm_Controller_cosd(&rtb_writehome);
       rtb_statusflag_movej = -80.0;
@@ -700,7 +700,7 @@ void Arm_Controller_step(void)
       T2[11] = 0.0;
       T2[15] = 1.0;
 
-      /* '<S4>:1:71' */
+      /* '<S4>:1:70' */
       rtb_writehome = j3;
       Arm_Controller_cosd(&rtb_writehome);
       rtb_statusflag_movej = j3;
@@ -730,7 +730,7 @@ void Arm_Controller_step(void)
       T3[11] = 0.0;
       T3[15] = 1.0;
 
-      /* '<S4>:1:72' */
+      /* '<S4>:1:71' */
       rtb_writehome = j4;
       Arm_Controller_cosd(&rtb_writehome);
       rtb_statusflag_movej = j4;
@@ -756,7 +756,7 @@ void Arm_Controller_step(void)
       T4[11] = 0.0;
       T4[15] = 1.0;
 
-      /* '<S4>:1:73' */
+      /* '<S4>:1:72' */
       rtb_writehome = 90.0 + rtb_outputs[0];
       Arm_Controller_cosd(&rtb_writehome);
       rtb_statusflag_movej = 90.0 + rtb_outputs[0];
@@ -782,8 +782,8 @@ void Arm_Controller_step(void)
       T5[11] = 0.0;
       T5[15] = 1.0;
 
-      /* '<S4>:1:74' */
-      /* '<S4>:1:76' */
+      /* '<S4>:1:73' */
+      /* '<S4>:1:75' */
       rtb_writehome = 0.0;
       Arm_Controller_cosd(&rtb_writehome);
       rtb_statusflag_movej = 0.0;
@@ -861,14 +861,14 @@ void Arm_Controller_step(void)
         }
       }
 
-      /* '<S4>:1:79' */
+      /* '<S4>:1:78' */
       for (i_0 = 0; i_0 < 4; i_0++) {
         l = T1[i_0 + 12] + (T1[i_0 + 8] * 0.0 + (T1[i_0 + 4] * 0.0 + T1[i_0] *
           0.0));
         shoulder_start[i_0] = l;
       }
 
-      /* '<S4>:1:80' */
+      /* '<S4>:1:79' */
       for (i_0 = 0; i_0 < 4; i_0++) {
         for (i = 0; i < 4; i++) {
           T1_0[i_0 + (i << 2)] = 0.0;
@@ -885,7 +885,7 @@ void Arm_Controller_step(void)
         shoulder_orig[i_0] = l;
       }
 
-      /* '<S4>:1:81' */
+      /* '<S4>:1:80' */
       for (i_0 = 0; i_0 < 4; i_0++) {
         for (i = 0; i < 4; i++) {
           T1_0[i_0 + (i << 2)] = 0.0;
@@ -912,7 +912,7 @@ void Arm_Controller_step(void)
         elbow_orig[i_0] = l;
       }
 
-      /* '<S4>:1:83' */
+      /* '<S4>:1:82' */
       for (i_0 = 0; i_0 < 4; i_0++) {
         for (i = 0; i < 4; i++) {
           T1_0[i_0 + (i << 2)] = 0.0;
@@ -959,7 +959,7 @@ void Arm_Controller_step(void)
         wrist_2[i_0] = l;
       }
 
-      /* '<S4>:1:84' */
+      /* '<S4>:1:83' */
       for (i_0 = 0; i_0 < 4; i_0++) {
         l = total_transform[i_0 + 12] + (total_transform[i_0 + 8] * 0.0 +
           (total_transform[i_0 + 4] * 0.0 + total_transform[i_0] * 0.0));
@@ -967,19 +967,19 @@ void Arm_Controller_step(void)
       }
 
       /* find distance between end effector and elbow */
-      /* '<S4>:1:87' */
+      /* '<S4>:1:86' */
       p2[0] = end_effector_orig[0];
       p2[1] = end_effector_orig[1];
       p2[2] = end_effector_orig[2];
 
       /* end effector */
-      /* '<S4>:1:88' */
+      /* '<S4>:1:87' */
       p1[0] = wrist_2[0];
       p1[1] = wrist_2[1];
       p1[2] = wrist_2[2];
 
       /* wrist */
-      /* '<S4>:1:89' */
+      /* '<S4>:1:88' */
       p2_1[0] = end_effector_orig[0] - wrist_2[0];
       p2_1[1] = end_effector_orig[1] - wrist_2[1];
       p2_1[2] = end_effector_orig[2] - wrist_2[2];
@@ -989,30 +989,30 @@ void Arm_Controller_step(void)
       wrist_vect_idx_2 = (end_effector_orig[2] - wrist_2[2]) / rtb_writehome;
 
       /* normalised vector */
-      /* '<S4>:1:91' */
+      /* '<S4>:1:90' */
       /* point representing camera */
-      /* '<S4>:1:92' */
+      /* '<S4>:1:91' */
       /* point representing end of wire connector */
       /* top of camera mount */
-      /* '<S4>:1:95' */
+      /* '<S4>:1:94' */
       for (i_0 = 0; i_0 < 4; i_0++) {
         l = total_transform[i_0 + 12] + (total_transform[i_0 + 8] * 0.0 +
           (total_transform[i_0 + 4] * 0.072 + total_transform[i_0] * 0.0));
         end_effector_orig[i_0] = l;
       }
 
+      /* '<S4>:1:95' */
       /* '<S4>:1:96' */
-      /* '<S4>:1:97' */
+      /* '<S4>:1:98' */
       /* '<S4>:1:99' */
-      /* '<S4>:1:100' */
       /* collision with shoulder. Need to offset points by a certain point */
       /* shoulder CS */
-      /* '<S4>:1:104' */
+      /* '<S4>:1:103' */
       /* end of shoulder */
-      /* '<S4>:1:105' */
+      /* '<S4>:1:104' */
       /* start of shoulder */
       /* actual shouler */
-      /* '<S4>:1:108' */
+      /* '<S4>:1:107' */
       for (i_0 = 0; i_0 < 4; i_0++) {
         l = T1[i_0 + 12] + (T1[i_0 + 8] * 0.135 + (T1[i_0 + 4] * 0.0 + T1[i_0] *
           0.0));
@@ -1020,9 +1020,9 @@ void Arm_Controller_step(void)
       }
 
       /* bottom of shoulder */
-      /* '<S4>:1:109' */
+      /* '<S4>:1:108' */
       /* top of shoulder */
-      /* '<S4>:1:111' */
+      /* '<S4>:1:110' */
       /* checking self collision */
       p2_0[0] = 0.09 * wrist_vect_idx_0 + p2[0];
       p2_0[1] = 0.09 * rtb_write_pos + p2[1];
@@ -1059,11 +1059,11 @@ void Arm_Controller_step(void)
             p1_0, elbow_orig_1, shoulder_orig_1) < 0.054) ||
           (Arm_Control_DistBetween2Segment(end_effector_orig_0,
             end_effector_orig_1, wrist_2_0, wrist_2_1) < 0.09)) {
+        /* '<S4>:1:113' */
         /* '<S4>:1:114' */
-        /* '<S4>:1:115' */
         statusflag_movecam = -1;
       } else {
-        /* '<S4>:1:118' */
+        /* '<S4>:1:117' */
         rtb_TmpSignalConversionAtSFunct[0] = -0.0;
         rtb_TmpSignalConversionAtSFunct[1] = -80.0;
         rtb_TmpSignalConversionAtSFunct[2] = j3;
@@ -1071,7 +1071,7 @@ void Arm_Controller_step(void)
         rtb_TmpSignalConversionAtSFunct[4] = 90.0 + rtb_outputs[0];
         rtb_TmpSignalConversionAtSFunct[5] = 0.0;
 
-        /* '<S4>:1:119' */
+        /* '<S4>:1:118' */
         statusflag_movecam = 1;
 
         /* %%%%%%% */
@@ -1079,11 +1079,11 @@ void Arm_Controller_step(void)
       }
     }
   } else {
-    /* '<S4>:1:132' */
+    /* '<S4>:1:131' */
     statusflag_movecam = 0;
 
     /* no movement carried out */
-    /* '<S4>:1:133' */
+    /* '<S4>:1:132' */
     /* interpreted as doing nothing */
   }
 
