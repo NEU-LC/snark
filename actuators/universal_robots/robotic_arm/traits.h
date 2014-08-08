@@ -338,6 +338,7 @@ template < > struct traits< arm::cartesian >
 
 template <> struct traits< arm::fixed_status >
 {
+    /// Use this for debugging maybe
     template< typename K, typename V > static void visit( const K& k, const  arm::fixed_status& t, V& v )
     {
         v.apply( "time", boost::posix_time::microsec_clock::local_time() );

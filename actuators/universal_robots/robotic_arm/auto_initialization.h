@@ -49,8 +49,7 @@ private:
     /// Status to check if initialized 
     arm::status_t& status_;
     std::ostream& os;           /// output to the rover
-    comma::csv::binary_input_stream< arm::status_t >& iss_;   /// for reading new statuses
-    boost::function< void ( binary_stream_t& ) > update_status_;
+    boost::function< void ( void ) > update_status_;
     comma::signal_flag& signaled_;  /// Check if signal received
     arm::inputs& inputs_;   // to check if new command/s are received
     std::string name_;  // name of the executable running this
@@ -67,15 +66,11 @@ private:
     
 public:
     auto_initialization( arm::status_t& status, std::ostream& robot, 
-                         comma::csv::binary_input_stream< arm::status_t >& status_iss, 
-			             // comma::io::select& select, comma::io::file_descriptor fd,
-                         boost::function< void (binary_stream_t&) > f,
+                         boost::function< void (void) > f, /// This updates status_
                          comma::signal_flag& signaled, 
                          arm::inputs& inputs, const std::string& work_dir ) : 
         status_( status ), os( robot ), 
-        iss_(status_iss), 
         update_status_(f),
-        // select_( select ), fd_( fd ), 
         signaled_( signaled ),
         inputs_( inputs ), force_max_( 13.0 ), home_filepath_( work_dir + '/' + filename ) {}
     

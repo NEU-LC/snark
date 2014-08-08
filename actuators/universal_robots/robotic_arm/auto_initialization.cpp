@@ -10,7 +10,7 @@ const char* auto_initialization::filename = "ur5-in-home-position";
 void auto_initialization::read_status()
 {
     ///  THis guarantee a status is read or an exception is thrown
-    update_status_( iss_ );
+    update_status_( );
 }
 
 result auto_initialization::run( bool force )

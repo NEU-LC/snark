@@ -184,22 +184,22 @@ template < typename T > struct packed_buffer {
 };  
 
 
-struct robot_mode : public comma::packed::packed_struct< robot_mode, 29 > {
-    comma::packed::uint32 length;
-    unsigned char type; // should be 0
-    comma::packed::big_endian_uint64 timestamp;
-    unsigned char connected;
-    unsigned char enabled;
-    unsigned char power_on;
-    unsigned char estopped;
-    unsigned char security_stopped;
-    unsigned char program_running;
-    unsigned char program_paused;
-    unsigned char robot_mode;
-    comma::packed::big_endian_double speed_fraction;
-};
+// struct robot_mode : public comma::packed::packed_struct< robot_mode, 29 > {
+//     comma::packed::uint32 length;
+//     unsigned char type; // should be 0
+//     comma::packed::big_endian_uint64 timestamp;
+//     unsigned char connected;
+//     unsigned char enabled;
+//     unsigned char power_on;
+//     unsigned char estopped;
+//     unsigned char security_stopped;
+//     unsigned char program_running;
+//     unsigned char program_paused;
+//     unsigned char robot_mode;
+//     comma::packed::big_endian_double speed_fraction;
+// };
 
-typedef boost::array< comma::packed::big_endian_float, joints_num > joints_net_float_t;
+// typedef boost::array< comma::packed::big_endian_float, joints_num > joints_net_float_t;
 
 // struct joint_data : public comma::packed::packed_struct< joint_data, 41 > {
 //     comma::packed::big_endian_double position;

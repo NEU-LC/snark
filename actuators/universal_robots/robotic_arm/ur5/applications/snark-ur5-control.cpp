@@ -49,7 +49,6 @@
 #include <comma/name_value/ptree.h>
 #include <comma/name_value/parser.h>
 #include <comma/io/stream.h>
-#include <comma/io/publisher.h>
 #include <comma/csv/stream.h>
 #include <comma/string/string.h>
 #include <comma/application/signal_flag.h>
@@ -95,7 +94,6 @@ void usage(int code=1)
     std::cerr << "    --help,-h:            show this message" << std::endl;
     std::cerr << "    --versbose,-v:        show messages to the robot arm - angles are changed to degrees." << std::endl;
     std::cerr << "*   --id=:                ID to identify commands, eg. ><ID>,999,set_pos,home;" << std::endl;
-    std::cerr << "*   --status-port=|-sp=:  TCP service port the statuses will be broadcasted on. See below." << std::endl;
     std::cerr << "*   --robot-arm-host=:    Host name or IP of the robot arm." << std::endl;
     std::cerr << "*   --robot-arm-port=:    TCP Port number of the robot arm." << std::endl;
     std::cerr << "*   --feedback-host=:     Host name or IP of the robot arm's feedback." << std::endl;
@@ -105,13 +103,6 @@ void usage(int code=1)
     std::cerr << "    --output-config=:     Print config format in json." << std::endl;
     // std::cerr << "    --init-force-limit,-ifl:" << std::endl;
     // std::cerr << "                          Force (Newtons) limit when auto initializing, if exceeded then stop auto init." << std::endl;
-    typedef arm::current_positions current_positions_t;
-    comma::csv::binary< current_positions_t > binary;
-    std::cerr << "UR10's status:" << std::endl;
-    std::cerr << "   format: " << binary.format().string() << " total size is " << binary.format().size() << " bytes" << std::endl;
-    std::vector< std::string > names = comma::csv::names< current_positions_t >();
-    std::cerr << "   fields: " << comma::join( names, ','  ) << " number of fields: " << names.size() << std::endl;
-    std::cerr << std::endl;
     exit ( code );
 }
 
@@ -175,15 +166,6 @@ public:
        return ss.str();
    }
    
-   void write_arm_status( comma::io::publisher& publisher )
-   {
-       // write a byte indicating the status, and joint positions
-       static comma::csv::binary< current_positions_t > binary("","",true, current_positions );
-       static std::vector<char> line( binary.format().size() );
-       binary.put( current_positions, line.data() );
-       publisher.write( line.data(), line.size());
-   }
-                
 };
 
 
@@ -252,24 +234,6 @@ void process_command( const std::vector< std::string >& v, std::ostream& os )
     else { output( comma::join( v, v.size(), ',' ) + ',' + 
         impl_::str( arm::errors::unknown_command ) + ",\"unknown command found: '" + v[2] + "'\"" ); return; }
 }
-
-// /// Connect to the TCP server within the allowed timeout
-// /// Needed because comma::io::iostream is not available
-// bool tcp_connect( const std::string& host, const std::string& port, 
-//                   const boost::posix_time::time_duration& timeout, ip::tcp::iostream& io )
-// {
-//     using boost::asio::ip::tcp;
-//     boost::asio::io_service service;
-//     tcp::resolver resolver( service );
-//     tcp::resolver::query query( host == "localhost" ? "127.0.0.1" : host, port );
-//     tcp::resolver::iterator it = resolver.resolve( query );
-//     // Connect and find out if successful or not quickly using timeout
-//     io.expires_from_now( timeout );
-//     io.connect( it->endpoint() );
-//     io.expires_at( boost::posix_time::pos_infin );
-//     
-//     return io.error() == 0;
-// } 
 
 bool ready( comma::io::istream& is )
 {
@@ -394,16 +358,14 @@ int main( int ac, char** av )
     std::cerr << name() << "started" << std::endl;
     try
     {
+        /// COnvert simulink output into arm's command
         arm_output output( acc * angular_acceleration_t::unit_type(), vel * angular_velocity_t::unit_type(),
                        Arm_Controller_Y );
     
         comma::uint16 rover_id = options.value< comma::uint16 >( "--id" );
-        double sleep = 0.1; // seconds
-        if( options.exists( "--sleep" ) ) { sleep = options.value< double >( "--sleep" ); };
+        double sleep = options.value< double >( "--sleep", 0.1 );  // seconds
 
-        comma::uint32 listen_port = options.value< comma::uint32 >( "--status-port,-sp" );
-        
-        bool verbose = options.exists( "--verbose,-v" );
+        verbose = options.exists( "--verbose,-v" );
 
         std::string config_file = options.value< std::string >( "--config" );
         load_config( config_file );
@@ -440,11 +402,7 @@ int main( int ac, char** av )
 
         stop_on_exit on_exit( *robot_arm );
 
-        // create tcp server for broadcasting status
-        std::ostringstream ss;
-        ss << "tcp:" << listen_port;
-        comma::io::publisher publisher( ss.str(), comma::io::mode::binary );
-
+        /// For reading input commands
         arm::inputs inputs( rover_id );
 
         typedef std::vector< std::string > command_vector;
@@ -453,15 +411,18 @@ int main( int ac, char** av )
         std::string status_conn = "tcp:" + arm_feedback_host + ':' + arm_feedback_port;
         std::cerr << name() << "status connection to feedback status: " << status_conn << std::endl;
         comma::io::istream status_stream( status_conn, comma::io::mode::binary );
+        /// Status input is always expected to be binary format
         comma::csv::options csv_in;
         csv_in.full_xpath = true;
         csv_in.format( comma::csv::format::value< arm::status_t >( "", true ) );
         comma::csv::binary_input_stream< arm::status_t > istream( *status_stream, csv_in );
+        /// For reading status input, if failed to wait then status stream is dead
         comma::io::select select;
         select.read().add( status_stream.fd() );
 
-        arm::handlers::auto_initialization auto_init( arm_status, *robot_arm,  istream,
-                boost::bind( read_status, _1, select, status_stream.fd() ),
+        /// Create the handler for auto init.
+        arm::handlers::auto_initialization auto_init( arm_status, *robot_arm,
+                boost::bind( read_status, boost::ref(istream), select, status_stream.fd() ),
                 signaled, inputs, continuum.work_directory );
         auto_init.set_app_name( name() );
         // if( options.exists( "--init-force-limit,-ifl" ) ){ auto_init.set_force_limit( options.value< double >( "--init-force-limit,-ifl" ) ); }
@@ -476,13 +437,6 @@ int main( int ac, char** av )
 
             read_status( istream, select, status_stream.fd() ); 
             home_position_check( arm_status, auto_init.home_filepath() );
-            { 
-                // std::cerr << name() << "robotmode: " << arm_status.mode_str() << std::endl;
-                // boost::property_tree::ptree t;
-                // comma::to_ptree to_ptree( t );
-                // comma::visiting::apply( to_ptree ).to( arm_status );
-                // boost::property_tree::write_json( std::cerr, t, false );    
-            }
             
             try { inputs.read(); }
             catch(...) { COMMA_THROW( comma::exception, "reading from stdcin failed." ); }
@@ -491,7 +445,6 @@ int main( int ac, char** av )
             {
                 const command_vector v = inputs.front();
                 inputs.pop();
-                //std::cerr << name() << " got " << comma::join( v, ',' ) << std::endl;
                 process_command( v, *robot_arm );
 
             }
@@ -512,8 +465,6 @@ int main( int ac, char** av )
             
             // reset inputs
             memset( &Arm_Controller_U, 0, sizeof( ExtU_Arm_Controller_T ) );
-            // send out arm's current status: code and joint positions
-            output.write_arm_status( publisher );
 
             if( sleep > 0 ) usleep( usec );
         }
@@ -521,7 +472,6 @@ int main( int ac, char** av )
         std::cerr << name() << "exiting" << std::endl;
         *robot_arm << "power off\n";
         robot_arm->flush();
-        publisher.close();
     }
     catch( comma::exception& ce ) { std::cerr << name() << ": exception thrown: " << ce.what() << std::endl; return 1; }
     catch( std::exception& e ) { std::cerr << name() << ": unknown exception caught: " << e.what() << std::endl; return 1; }
