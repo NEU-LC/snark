@@ -335,93 +335,93 @@ struct scan
     };
 };
 
-struct scan_data
-{
-    struct request; // no request for this
-
-    // todo: actual size is variable
-    struct response : public comma::packed::packed_struct< response, 0 >
-    {
-        enum { type_field_size = 11 };
-        static const char* type() { return "LMDscandata"; }
-        static const char* command_type() { return "sRA"; } // can also be sSN? typo?
-        comma::packed::uint16 version;
-        // device (8)
-        comma::packed::uint16 device_number; // user-defined in SOPAS
-        comma::packed::uint32 serial_number;
-        comma::packed::byte zero1; // stupid sick: apparently half of device status, but always zero
-        comma::packed::byte status; // 0=ok, 1=error, 2=pollution warning, 3=pollution error
-        // status info (18)
-        comma::packed::uint16 telegram_counter;
-        comma::packed::uint16 scan_counter;
-        comma::packed::uint32 time_since_boot;
-        comma::packed::uint32 time_of_transmission;
-        comma::packed::byte zero2; // stupid sick: unused status byte
-        comma::packed::byte digital_input_state; // 0=all low, 3=all high
-        comma::packed::byte zero3; // stupid sick: unused status byte
-        comma::packed::byte digital_output_state; // 0=all low, 7=all high
-        comma::packed::uint16 reserved;
-        // frequency (8)
-        comma::packed::uint32 scan_frequency;
-        comma::packed::uint32 shot_frequency;
-        // encoder info (2 + 4n; n=number of encoders)
-        comma::packed::int16 number_of_encoders;
-        // todo: variable packet... depends on value of number_of_encoders
-        // todo: per encoder channel (I think, documentation is unclear)
-            // comma::packed::uint16 encoder_position;
-            // comma::packed::uint16 encoder_speed;
-        comma::packed::uint16 num_output_channels_16bit; // # of 16-bit output channels (LMS1xx 1-2, LMS5xx 0 or 5, others depend on sectors)
-        // todo: per 16-bit channel:
-            // comma::packed::string< 5 > channel_content; // "DIST1", "DIST2", "RSSI1", "RSSI2", or similar
-            // comma::packed::float scale_factor;
-            // comma::packed::float scale_offset;
-            // comma::packed::uint32 start_angle;
-            // comma::packed::uint16 steps;
-            // comma::packed::uint16 data_values;
-            // todo: per shot:
-                // comma::packed::uint16 data;
-        comma::packed::uint16 num_output_channels_8bit; // # of 8-bit output channels
-        // todo: per 8-bit channel
-            // comma::packed::string< 5 > channel_content; // e.g. DIST1, RSSI1
-            // comma::packed::int32 scale_factor;
-            // comma::packed::int32 scale_offset;
-            // comma::packed::int32 start_angle; // 1/10,000 deg
-            // comma::packed::uint16 steps;
-            // comma::packed::uint16 data_values;
-            // todo: per data value:
-                // comma::packed::uint8 data;
-        comma::packed::uint16 position_data_present; // 0 if not, 1 if present
-        // todo: if present
-        // comma::packed::int32 position_x; // "Real" type, units unclear
-        // comma::packed::int32 position_y;
-        // comma::packed::int32 position_z;
-        // comma::packed::int32 rotation_x;
-        // comma::packed::int32 rotation_y;
-        // comma::packed::int32 rotation_z;
-        // comma::packed::uint8 rotation_type; // enum 0=none, 1=pitch, 2=rollin, 3=free
-        // comma::packed::uint8 transmits_name_of_device; // actually i supsect this is a mistake in the documentation
-        comma::packed::uint16 name_data_present; // 0 if not, 1 if present
-        comma::packed::uint8 name_length;
-        // comma::packed::string < name_length > name; // up to 16 chars
-        comma::packed::uint16 comment_data_present; // 0 if not, 1 if present
-        comma::packed::uint8 comment_length;
-        // comma::packed::string < comment_length > comment; // up to 16 chars
-        comma::packed::uint16 time_data_present; // 0 if not, 1 if present
-        comma::packed::uint16 time_year; // 0 to 0x270F = 9999
-        comma::packed::uint8 time_month; // 0-12 stupid sick: may be 0-11 or 1-12
-        comma::packed::uint8 time_day; // 0-31
-        comma::packed::uint8 time_hour; // 0-23
-        comma::packed::uint8 time_minute; // 0-59
-        comma::packed::uint8 time_second; // 0-59
-        comma::packed::uint32 time_microseconds; // 0 to 999,999 (not total_microseconds, just added onto datetime)
-        comma::packed::uint16 event_info_present; // 0=none, 1=present
-        // comma::packed::string< 4 > fdin; // FDIN not sure if this is the value or will actually be a variable name
-        // comma::packed::uint32 encoder_position;
-        // comma::packed::uint32 event_time; // in microseconds, probably based on the rolling counter, but I'm pretty sure that's actually a millisecond counter
-        // comma::packed::int32 event_angle; // encoder angle at time of event
-
-    };
-};
+// struct scan_data
+// {
+//     struct request; // no request for this
+// 
+//     // todo: actual size is variable
+//     struct response : public comma::packed::packed_struct< response, 0 >
+//     {
+//         enum { type_field_size = 11 };
+//         static const char* type() { return "LMDscandata"; }
+//         static const char* command_type() { return "sRA"; } // can also be sSN? typo?
+//         comma::packed::uint16 version;
+//         // device (8)
+//         comma::packed::uint16 device_number; // user-defined in SOPAS
+//         comma::packed::uint32 serial_number;
+//         comma::packed::byte zero1; // stupid sick: apparently half of device status, but always zero
+//         comma::packed::byte status; // 0=ok, 1=error, 2=pollution warning, 3=pollution error
+//         // status info (18)
+//         comma::packed::uint16 telegram_counter;
+//         comma::packed::uint16 scan_counter;
+//         comma::packed::uint32 time_since_boot;
+//         comma::packed::uint32 time_of_transmission;
+//         comma::packed::byte zero2; // stupid sick: unused status byte
+//         comma::packed::byte digital_input_state; // 0=all low, 3=all high
+//         comma::packed::byte zero3; // stupid sick: unused status byte
+//         comma::packed::byte digital_output_state; // 0=all low, 7=all high
+//         comma::packed::uint16 reserved;
+//         // frequency (8)
+//         comma::packed::uint32 scan_frequency;
+//         comma::packed::uint32 shot_frequency;
+//         // encoder info (2 + 4n; n=number of encoders)
+//         comma::packed::int16 number_of_encoders;
+//         // todo: variable packet... depends on value of number_of_encoders
+//         // todo: per encoder channel (I think, documentation is unclear)
+//             // comma::packed::uint16 encoder_position;
+//             // comma::packed::uint16 encoder_speed;
+//         comma::packed::uint16 num_output_channels_16bit; // # of 16-bit output channels (LMS1xx 1-2, LMS5xx 0 or 5, others depend on sectors)
+//         // todo: per 16-bit channel:
+//             // comma::packed::string< 5 > channel_content; // "DIST1", "DIST2", "RSSI1", "RSSI2", or similar
+//             // comma::packed::float scale_factor;
+//             // comma::packed::float scale_offset;
+//             // comma::packed::uint32 start_angle;
+//             // comma::packed::uint16 steps;
+//             // comma::packed::uint16 data_values;
+//             // todo: per shot:
+//                 // comma::packed::uint16 data;
+//         comma::packed::uint16 num_output_channels_8bit; // # of 8-bit output channels
+//         // todo: per 8-bit channel
+//             // comma::packed::string< 5 > channel_content; // e.g. DIST1, RSSI1
+//             // comma::packed::int32 scale_factor;
+//             // comma::packed::int32 scale_offset;
+//             // comma::packed::int32 start_angle; // 1/10,000 deg
+//             // comma::packed::uint16 steps;
+//             // comma::packed::uint16 data_values;
+//             // todo: per data value:
+//                 // comma::packed::uint8 data;
+//         comma::packed::uint16 position_data_present; // 0 if not, 1 if present
+//         // todo: if present
+//         // comma::packed::int32 position_x; // "Real" type, units unclear
+//         // comma::packed::int32 position_y;
+//         // comma::packed::int32 position_z;
+//         // comma::packed::int32 rotation_x;
+//         // comma::packed::int32 rotation_y;
+//         // comma::packed::int32 rotation_z;
+//         // comma::packed::uint8 rotation_type; // enum 0=none, 1=pitch, 2=rollin, 3=free
+//         // comma::packed::uint8 transmits_name_of_device; // actually i supsect this is a mistake in the documentation
+//         comma::packed::uint16 name_data_present; // 0 if not, 1 if present
+//         comma::packed::uint8 name_length;
+//         // comma::packed::string < name_length > name; // up to 16 chars
+//         comma::packed::uint16 comment_data_present; // 0 if not, 1 if present
+//         comma::packed::uint8 comment_length;
+//         // comma::packed::string < comment_length > comment; // up to 16 chars
+//         comma::packed::uint16 time_data_present; // 0 if not, 1 if present
+//         comma::packed::uint16 time_year; // 0 to 0x270F = 9999
+//         comma::packed::uint8 time_month; // 0-12 stupid sick: may be 0-11 or 1-12
+//         comma::packed::uint8 time_day; // 0-31
+//         comma::packed::uint8 time_hour; // 0-23
+//         comma::packed::uint8 time_minute; // 0-59
+//         comma::packed::uint8 time_second; // 0-59
+//         comma::packed::uint32 time_microseconds; // 0 to 999,999 (not total_microseconds, just added onto datetime)
+//         comma::packed::uint16 event_info_present; // 0=none, 1=present
+//         // comma::packed::string< 4 > fdin; // FDIN not sure if this is the value or will actually be a variable name
+//         // comma::packed::uint32 encoder_position;
+//         // comma::packed::uint32 event_time; // in microseconds, probably based on the rolling counter, but I'm pretty sure that's actually a millisecond counter
+//         // comma::packed::int32 event_angle; // encoder angle at time of event
+// 
+//     };
+// };
 
 struct set_date_time
 {
@@ -468,14 +468,14 @@ struct get_date_time
         comma::packed::uint16 time_hours; // HH HH (stupid sick: I think this is actually ascii characters)
         comma::packed::byte time_separator1; // stupid sick: this is a ':' character
         comma::packed::uint16 time_minutes; // MM MM
-        comma::packed::byte time_separator1; // ':'
-        comma::packed::uint16 time_hours; // SS SS
+        comma::packed::byte time_separator2; // ':'
+        comma::packed::uint16 time_seconds; // SS SS
         comma::packed::uint16 unnamed_field2; // ?
         comma::packed::uint16 date_day; // DD DD
-        comma::packed::byte // '.'
+        comma::packed::byte separator1; // '.'
         comma::packed::uint16 date_month; // MM MM
-        comma::packed::byte // '.'
-        comma::packed::uint32 date_month; // JJ JJ JJ JJ
+        comma::packed::byte separator2; // '.'
+        comma::packed::uint32 year; // JJ JJ JJ JJ
         comma::packed::uint16 led1_state; // 0=inactive, 1=active
         comma::packed::uint16 led2_state; // 0=inactive, 1=active
         comma::packed::uint16 led3_state; // 0=inactive, 1=active
@@ -1046,7 +1046,7 @@ struct get_device_identity
         static const char* type() { return "DeviceIdent"; }
         static const char* command_type() { return "sRA"; }
         // string length defined by packet size
-        comma::packed::string< N > state; // 0=success
+        //comma::packed::string< N > state; // 0=success
     };
 };
 
@@ -1476,6 +1476,24 @@ struct stop_measurement
 // todo: not sure where this belongs
 // the sick document mysteriously just says "sFA x" above this table
 
+// todo: lower case please
+// todo: no sopas error
+//       along the lines below:
+
+struct sopas
+{
+    struct error
+    {
+        enum codes
+        {
+              ok = 0
+            , methodin_access_denied=1
+            , methodin_unknown_index=2
+            // etc
+        };
+    };
+};
+
 enum sopas_error_codes
 {
     SOPAS_OK=0,
@@ -1505,14 +1523,10 @@ enum sopas_error_codes
     SOPAS_ERROR_HUB_ADDRESS_BLANK_EXPECTED=24,
     SOPAS_ERROR_ASYNC_METHODS_ARE_SUPPRESSED=25,
     SOPAS_ERROR_COMPLEX_ARRAYS_NOT_SUPPORTED=26,
-}
+};
 
 // todo: <STX>sSI 2 1<ETX> apparently frames every response
 // todo: apparently there is an undocumented command <STX>sEN SCParmCngd 0<ETX> to deactivate these sSI 'events'
-
-
-
-
 
 } // namespace payloads {
 
