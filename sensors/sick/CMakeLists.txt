@@ -7,8 +7,8 @@ SOURCE_GROUP( ${TARGET_NAME} FILES ${source} ${includes} )
 
 ADD_LIBRARY( ${TARGET_NAME} ${source}
                             ${includes}
-                            $<TARGET_OBJECTS:snark_sick_ibeo>
-                            $<TARGET_OBJECTS:snark_sick_cola_binary> )
+                            $<TARGET_OBJECTS:snark_sick_ibeo> )
+                            # $<TARGET_OBJECTS:snark_sick_cola_binary> )
 SET_TARGET_PROPERTIES( ${TARGET_NAME} PROPERTIES ${snark_LIBRARY_PROPERTIES} )
 TARGET_LINK_LIBRARIES( ${TARGET_NAME} snark_timing ${snark_ALL_EXTERNAL_LIBRARIES} )
 
