@@ -37,6 +37,6 @@ using namespace snark::sick;
 
 TEST( cola, binary_packet_basics )
 {
-    cola::binary::packet< cola::binary::payloads::set_access_mode::request > request;
+    //cola::binary::packet< cola::binary::payloads::set_access_mode::request > request;
     // todo: test something...
 }
