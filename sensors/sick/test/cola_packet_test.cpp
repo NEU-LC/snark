@@ -30,13 +30,13 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include <gtest/gtest.h>
-#include <snark/sensors/sick/cola/binary/packets.h>
-
-using namespace snark::sick;
-
-TEST( cola, binary_packet_basics )
-{
-    //cola::binary::packet< cola::binary::payloads::set_access_mode::request > request;
-    // todo: test something...
-}
+// #include <gtest/gtest.h>
+// #include <snark/sensors/sick/cola/binary/packets.h>
+// 
+// using namespace snark::sick;
+// 
+// TEST( cola, binary_packet_basics )
+// {
+//     cola::binary::packet< cola::binary::payloads::set_access_mode::request > request;
+//     // todo: test something...
+// }
