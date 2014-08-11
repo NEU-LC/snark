@@ -35,12 +35,22 @@
 
 #include <string.h>
 #include <boost/array.hpp>
+#include <boost/crc.hpp>
 #include "./packets.h"
 
 namespace snark { namespace sick { namespace cola { namespace binary {
 
 static const boost::array< char, 4 > sentinel_ = {{ 0x02, 0x02, 0x02, 0x02 }};
-    
+
+static const string command_type_read_by_name = "sRN";
+static const string response_type_read_by_name = "sRA";
+static const string command_type_write_by_name = "sWN";
+static const string response_type_write_by_name = "sWA";
+static const string command_type_method = "sMN";
+static const string response_type_method = "sAN";
+static const string command_type_event = "sEN";
+static const string response_type_event = "sEA";
+
 bool header::valid() const { return ::memcmp( sentinel.data(), &sentinel_[0], sentinel_.size() ) == 0; }
 
 std::string header::type() const
@@ -54,5 +64,10 @@ std::string header::type() const
 }
 
 std::string header::type( const char* packet ) { return reinterpret_cast< const header* >( packet )->type(); }
-    
+
+bool packet::valid() const
+{
+    // todo: calculate crc for body, compare against crc
+}
+
 } } } } // namespace snark { namespace sick { namespace cola { namespace binary {

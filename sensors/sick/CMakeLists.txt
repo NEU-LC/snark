@@ -26,4 +26,4 @@ if( BUILD_TESTS )
 endif( BUILD_TESTS )
 
 add_subdirectory( ibeo )
-add_subdirectory( cola )
+# add_subdirectory( cola )
