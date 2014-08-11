@@ -60,7 +60,7 @@ void commands_handler::handle( arm::move_cam& cam )
     inputs_.motion_primitive = real_T( input_primitive::move_cam );
     inputs_.Input_1 = cam.pan.value();
     // inputs_.Input_2 = cam.height.value() != 1.0 ? -cam.tilt.value() : zero_tilt - cam.tilt.value();
-    inputs_.Input_2 = cam.height.value() != 1.0 ? -cam.tilt.value() : -cam.tilt.value();
+    inputs_.Input_2 = cam.tilt.value();
     inputs_.Input_3 = cam.height.value();
     
     fs::remove( home_filepath_ );

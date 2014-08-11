@@ -3,9 +3,9 @@
  *
  * Code generated for Simulink model 'Arm_Controller'.
  *
- * Model version                  : 1.157
+ * Model version                  : 1.169
  * Simulink Coder version         : 8.6 (R2014a) 27-Dec-2013
- * C/C++ source code generated on : Tue Jul 22 17:15:32 2014
+ * C/C++ source code generated on : Mon Aug 11 10:47:57 2014
  *
  * Target selection: ert.tlc
  * Embedded hardware selection: 32-bit Generic
@@ -67,7 +67,7 @@ typedef struct {
 
 /* Parameters (auto storage) */
 struct P_Arm_Controller_T_ {
-  real_T Memory1_X0[6];                /* Expression: [0 -1.396 -2.694 0.949 1.57 0]
+  real_T Memory1_X0[6];                /* Expression: [0 -1.396 -2.611 0.8658 1.571 0]
                                         * Referenced by: '<S1>/Memory1'
                                         */
   real_T Memory_X0[6];                 /* Expression: [0 0 0 0 0 0]
