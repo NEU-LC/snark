@@ -33,26 +33,6 @@
 /// @author andrew hill
 /// @author vsevolod vlaskine (v.vlaskine@acfr.usyd.edu.au)
 
-#include <string.h>
-#include <boost/array.hpp>
-#include "./packets.h"
+#include "./commands.h"
 
-namespace snark { namespace sick { namespace cola { namespace binary {
-
-static const boost::array< char, 4 > sentinel_ = {{ 0x02, 0x02, 0x02, 0x02 }};
-    
-bool header::valid() const { return ::memcmp( sentinel.data(), &sentinel_[0], sentinel_.size() ) == 0; }
-
-std::string header::type() const
-{
-    const unsigned int command_type_size = 4; // quick and dirty
-    const char* begin = reinterpret_cast< const char* >( this ) + header::size + command_type_size;
-    const char* end = begin + length() - command_type_size;
-    const char* p = begin;
-    for( ; *p != ' ' && p < end; ++p );
-    return std::string( begin, p - begin );
-}
-
-std::string header::type( const char* packet ) { return reinterpret_cast< const header* >( packet )->type(); }
-    
-} } } } // namespace snark { namespace sick { namespace cola { namespace binary {
+// todo: any executable code goes here

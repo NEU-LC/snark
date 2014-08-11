@@ -33,10 +33,54 @@
 /// @author andrew hill
 /// @author vsevolod vlaskine (v.vlaskine@acfr.usyd.edu.au)
 
-#ifndef SNARK_SENSORS_SICK_COLA_BINARY_PACKETS_H_
-#define SNARK_SENSORS_SICK_COLA_BINARY_PACKETS_H_
+#ifndef SNARK_SENSORS_SICK_COLA_BINARY_PACKET_H_
+#define SNARK_SENSORS_SICK_COLA_BINARY_PACKET_H_
 
-#include "./commands.h"
-#include "./scan_packet.h"
+#include <comma/packed/byte.h>
+#include <comma/packed/little_endian.h>
+#include <comma/packed/big_endian.h>
+#include <comma/packed/string.h>
+#include <comma/packed/struct.h>
 
-#endif // #ifndef SNARK_SENSORS_SICK_COLA_BINARY_PACKETS_H_
+namespace snark { namespace sick { namespace cola { namespace binary {
+
+struct header : public comma::packed::packed_struct< header, 8 >
+{
+    comma::packed::string< 4 > sentinel;
+    comma::packed::uint32 length;
+
+    bool valid() const;
+    std::string type() const;
+    static std::string type( const char* packet );
+};
+
+template < unsigned int TypeFieldSize >
+struct body_header : public comma::packed::packed_struct< body_header< TypeFieldSize >, 4 + TypeFieldSize + 1 >
+{
+    comma::packed::string< 3 > command_type;
+    comma::packed::const_byte< ' ' > space1;
+    comma::packed::string< TypeFieldSize, ' ' > type;
+    comma::packed::const_byte< ' ' > space2;
+};
+
+template < typename P >
+struct body : public comma::packed::packed_struct< body< P >, 4 + P::type_field_size + 1 + P::size >
+{
+    typedef body_header< P::type_field_size > header_t;
+    header_t header;
+    P payload;
+};
+
+template < typename P >
+struct packet : public comma::packed::packed_struct< packet< P >, header::size + body< P >::size + 1 >
+{
+    binary::header header;
+    binary::body< P > body;
+    comma::packed::byte crc;
+
+    bool valid() const;
+};
+
+} } } } // namespace snark {  namespace sick { namespace cola { namespace binary {
+
+#endif // #ifndef SNARK_SENSORS_SICK_COLA_BINARY_PACKET_H_

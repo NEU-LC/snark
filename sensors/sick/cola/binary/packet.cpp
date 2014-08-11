@@ -33,10 +33,35 @@
 /// @author andrew hill
 /// @author vsevolod vlaskine (v.vlaskine@acfr.usyd.edu.au)
 
-#ifndef SNARK_SENSORS_SICK_COLA_BINARY_PACKETS_H_
-#define SNARK_SENSORS_SICK_COLA_BINARY_PACKETS_H_
+#include <boost/array.hpp>
+#include <boost/crc.hpp>
+#include "./packet.h"
 
-#include "./commands.h"
-#include "./scan_packet.h"
+namespace snark { namespace sick { namespace cola { namespace binary {
 
-#endif // #ifndef SNARK_SENSORS_SICK_COLA_BINARY_PACKETS_H_
+static const boost::array< char, 4 > sentinel_ = {{ 0x02, 0x02, 0x02, 0x02 }};
+
+// static const char* command_type_read_by_name = "sRN";
+// static const char* response_type_read_by_name = "sRA";
+// static const char* command_type_write_by_name = "sWN";
+// static const char* response_type_write_by_name = "sWA";
+// static const char* command_type_method = "sMN";
+// static const char* response_type_method = "sAN";
+// static const char* command_type_event = "sEN";
+// static const char* response_type_event = "sEA";
+
+bool header::valid() const { return ::memcmp( sentinel.data(), &sentinel_[0], sentinel_.size() ) == 0; }
+
+std::string header::type() const
+{
+    const unsigned int command_type_size = 4; // quick and dirty
+    const char* begin = reinterpret_cast< const char* >( this ) + header::size + command_type_size;
+    const char* end = begin + length() - command_type_size;
+    const char* p = begin;
+    for( ; *p != ' ' && p < end; ++p );
+    return std::string( begin, p - begin );
+}
+
+std::string header::type( const char* packet ) { return reinterpret_cast< const header* >( packet )->type(); }
+
+} } } } // namespace snark { namespace sick { namespace cola { namespace binary {
