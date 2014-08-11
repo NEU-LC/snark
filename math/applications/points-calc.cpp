@@ -8,17 +8,15 @@ typedef std::pair< Eigen::Vector3d, Eigen::Vector3d > pair_t;
 
 static void usage( bool more = false )
 {
-    std::cerr << "todo" << std::endl;
-    exit( 1 );
     std::cerr << std::endl;
-    std::cerr << "take coordinates in degrees on sphere from stdin, perform calculations, append result and output to stdout" << std::endl;
+    std::cerr << "take coordinates from stdin, perform calculations, and output result to stdout" << std::endl;
     std::cerr << std::endl;
     std::cerr << "usage examples" << std::endl;
-    std::cerr << "    cat points.csv | sphere-arc distance > results.csv" << std::endl;
-    std::cerr << "    cat pairs.csv | sphere-arc distance > results.csv" << std::endl;
-    std::cerr << "    cat points.csv | sphere-arc cumulative-distance > results.csv" << std::endl;
+    std::cerr << "    cat points.csv | points-calc distance > results.csv" << std::endl;
+//    std::cerr << "    cat pairs.csv | sphere-arc distance > results.csv" << std::endl;
+    std::cerr << "    cat points.csv | points-calc cumulative-distance > results.csv" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "operations: distance, cumulative-distance" << std::endl;
+    std::cerr << "operations: distance, cumulative-distance, thin" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    distance: distance between subsequent points or, if input is pairs, between the points of the same record" << std::endl;
     std::cerr << std::endl;
@@ -29,6 +27,11 @@ static void usage( bool more = false )
     std::cerr << "    cumulative-distance: cumulative distance between subsequent points" << std::endl;
     std::cerr << std::endl;
     std::cerr << "        input fields: " << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    thin: read input data and thin them down by the given --resolution" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "        input fields" << std::endl;
+    std::cerr << "            " << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
     std::cerr << std::endl;
     exit( 1 );
 }
@@ -54,6 +57,32 @@ static void calculate_distance( const comma::csv::options& csv, bool cumulative 
         {
             std::cout << comma::join( istream.ascii().last(), csv.delimiter ) << csv.delimiter << distance << std::endl;
         }
+    }
+}
+
+static void thin( const comma::csv::options& csv, double resolution )
+{
+    comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, csv );
+    boost::optional< Eigen::Vector3d > last;
+    double distance = 0;
+    while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
+    {
+        const Eigen::Vector3d* p = istream.read();
+        if( !p ) { break; }
+        distance += last ? ( *p - *last ).norm() : 0;
+        if( !last || distance >= resolution )
+        {
+            distance = 0;
+            if( csv.binary() )
+            {
+                std::cout.write( istream.binary().last(), istream.binary().binary().format().size() );
+            }
+            else
+            {
+                std::cout << comma::join( istream.ascii().last(), csv.delimiter ) << std::endl;
+            }
+        }
+        last = *p;
     }
 }
 
@@ -100,6 +129,13 @@ int main( int ac, char** av )
         if( operation == "cumulative-distance" )
         {
             calculate_distance( csv, true );
+            return 0;
+        }
+        if( operation == "thin" )
+        {
+	    if( !options.exists( "--resolution" ) ) { std::cerr << "points-calc: --resolution is not specified " << std::endl; return 1; }
+            double resolution = options.value( "--resolution" , 0.0 );
+	    thin( csv , resolution );
             return 0;
         }
         std::cerr << "points-calc: please specify an operation" << std::endl;
