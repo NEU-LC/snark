@@ -235,14 +235,8 @@ void process_command( const std::vector< std::string >& v, std::ostream& os )
         impl_::str( arm::errors::unknown_command ) + ",\"unknown command found: '" + v[2] + "'\"" ); return; }
 }
 
-bool ready( comma::io::istream& is )
-{
-    // std::cerr << "avail: " << is->rdbuf()->in_avail() << std::endl;
-    return is->rdbuf()->in_avail() > 0;
-}
-
 /// Return null if no status
-void read_status( comma::csv::binary_input_stream< arm::status_t >& iss, 
+void read_status( comma::csv::binary_input_stream< arm::status_t >& iss, comma::io::istream& stream,
     comma::io::select& select, const comma::io::file_descriptor& fd )
 {
     /// Within 100ms, we are guranteed a new status, there may already be many statuses waiting to be read
@@ -253,7 +247,7 @@ void read_status( comma::csv::binary_input_stream< arm::status_t >& iss,
         COMMA_THROW( comma::exception, "no status received within timeout of " << timeout.total_milliseconds() << "ms" ); 
     }
     arm_status = *( iss.read() );
-    while( iss.has_data() )  { arm_status = *( iss.read() ); }
+    while( stream->rdbuf()->in_avail() > 0 )  { arm_status = *( iss.read() ); }
 
     if( arm_status.length != arm::fixed_status::size ) {
         std::cerr << name() << "status data alignment check failed" << std::endl; 
@@ -422,7 +416,7 @@ int main( int ac, char** av )
 
         /// Create the handler for auto init.
         arm::handlers::auto_initialization auto_init( arm_status, *robot_arm,
-                boost::bind( read_status, boost::ref(istream), select, status_stream.fd() ),
+                boost::bind( read_status, boost::ref(istream), boost::ref( status_stream ), select, status_stream.fd() ),
                 signaled, inputs, continuum.work_directory );
         auto_init.set_app_name( name() );
         // if( options.exists( "--init-force-limit,-ifl" ) ){ auto_init.set_force_limit( options.value< double >( "--init-force-limit,-ifl" ) ); }
@@ -435,7 +429,7 @@ int main( int ac, char** av )
                 COMMA_THROW( comma::exception, "status connection to robot arm failed." ); 
             }
 
-            read_status( istream, select, status_stream.fd() ); 
+            read_status( istream, status_stream, select, status_stream.fd() ); 
             home_position_check( arm_status, auto_init.home_filepath() );
             
             try { inputs.read(); }
