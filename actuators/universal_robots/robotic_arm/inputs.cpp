@@ -47,11 +47,11 @@ inputs::inputs( char rover_id_ )
 
 typedef std::vector< std::string > vector_s;
 
-void inputs::read()
+void inputs::read( const boost::posix_time::time_duration& timeout )
 {
     if( !istream_->good() ) { COMMA_THROW( comma::exception, "inputs - input stream not good()" ); }
 
-    select_.check();
+    select_.wait( timeout ); // can be 0 
 
     if( !select_.read().ready( istream_.fd() ) ) { return; }
 

@@ -325,14 +325,18 @@ void home_position_check( const arm::status_t& status, const std::string& homefi
     }
 }
 
+bool should_stop( arm::inputs& in )
+{
+    static const boost::posix_time::seconds timeout( 0 );
+    in.read( timeout );
+    return ( !in.is_empty() );
+}
+
 int main( int ac, char** av )
 {
-    
     comma::signal_flag signaled;
-    
     comma::command_line_options options( ac, av );
     if( options.exists( "-h,--help" ) ) { usage( 0 ); }
-
     if( options.exists( "--output-config") )
     {
         boost::property_tree::ptree t;
@@ -417,11 +421,14 @@ int main( int ac, char** av )
         /// Create the handler for auto init.
         arm::handlers::auto_initialization auto_init( arm_status, *robot_arm,
                 boost::bind( read_status, boost::ref(istream), boost::ref( status_stream ), select, status_stream.fd() ),
-                signaled, inputs, continuum.work_directory );
+                signaled, 
+                boost::bind( should_stop, boost::ref( inputs ) ),
+                continuum.work_directory );
         auto_init.set_app_name( name() );
         // if( options.exists( "--init-force-limit,-ifl" ) ){ auto_init.set_force_limit( options.value< double >( "--init-force-limit,-ifl" ) ); }
         commands_handler.reset( new commands_handler_t( Arm_Controller_U, arm_status, *robot_arm, auto_init ) );
 
+        boost::posix_time::microseconds timeout( usec );
         while( !signaled && std::cin.good() )
         {
             if( !status_stream->good() ) { 
@@ -432,8 +439,8 @@ int main( int ac, char** av )
             read_status( istream, status_stream, select, status_stream.fd() ); 
             home_position_check( arm_status, auto_init.home_filepath() );
             
-            try { inputs.read(); }
-            catch(...) { COMMA_THROW( comma::exception, "reading from stdcin failed." ); }
+            /// Also act as sleep
+            inputs.read( timeout );
             // Process commands into inputs into the system
             if( !inputs.is_empty() )
             {
@@ -459,8 +466,6 @@ int main( int ac, char** av )
             
             // reset inputs
             memset( &Arm_Controller_U, 0, sizeof( ExtU_Arm_Controller_T ) );
-
-            if( sleep > 0 ) usleep( usec );
         }
 
         std::cerr << name() << "exiting" << std::endl;

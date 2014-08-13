@@ -14,7 +14,6 @@
 #include <boost/optional.hpp>
 #include <boost/function.hpp>
 #include "data.h"
-#include "inputs.h"
 
 namespace snark { namespace ur { namespace robotic_arm { namespace handlers {
     
@@ -51,7 +50,8 @@ private:
     std::ostream& os;           /// output to the rover
     boost::function< void ( void ) > update_status_;
     comma::signal_flag& signaled_;  /// Check if signal received
-    arm::inputs& inputs_;   // to check if new command/s are received
+    boost::function< bool ( void ) > interrupt_;    /// A new command is received
+    
     std::string name_;  // name of the executable running this
     /// This is the value of force limit on arm before failing auto initialisation.
     /// Should not be 0 as there is a laszer mount?
@@ -68,11 +68,13 @@ public:
     auto_initialization( arm::status_t& status, std::ostream& robot, 
                          boost::function< void (void) > f, /// This updates status_
                          comma::signal_flag& signaled, 
-                         arm::inputs& inputs, const std::string& work_dir ) : 
+                         boost::function< bool (void) > s, /// This updates status_
+                         const std::string& work_dir ) : 
         status_( status ), os( robot ), 
         update_status_(f),
         signaled_( signaled ),
-        inputs_( inputs ), force_max_( 13.0 ), home_filepath_( work_dir + '/' + filename ) {}
+        interrupt_( s ),
+        force_max_( 13.0 ), home_filepath_( work_dir + '/' + filename ) {}
     
     void set_app_name( const char* name ) { name_ = name; }
     void set_force_limit( double newtons ){ force_max_ = newtons; }

@@ -44,10 +44,11 @@ result auto_initialization::run( bool force )
 
     static const comma::uint32 retries = 50;
     // try for two joints right now
-    for( int joint_id=5; joint_id >=0 && !signaled_ && inputs_.is_empty(); --joint_id )
+    bool stop_now = interrupt_();
+    for( int joint_id=5; joint_id >=0 && !signaled_ && !stop_now; --joint_id )
     {
 
-        while( !signaled_ && inputs_.is_empty() )
+        while( !signaled_ && !stop_now )
         {
             if( status_.jmode( joint_id ) != jointmode::initializing ) { break; }
 
@@ -69,7 +70,7 @@ result auto_initialization::run( bool force )
             }
             
             /// Check and read any new input command from the user, if so we stop auto init.
-            inputs_.read();
+            stop_now = interrupt_();
         }
 
         if( status_.jmode( joint_id ) == jointmode::running ) {
@@ -83,7 +84,7 @@ result auto_initialization::run( bool force )
             return result( "failed to auto initialise a joint", result::error::failure );
         }
     }
-    if( signaled_ || !inputs_.is_empty()  ) {
+    if( signaled_ || stop_now  ) {
         os << "speedj_init([0,0,0,0,0,0],0.05,0.0133333)" << std::endl;
         os.flush();
     }
