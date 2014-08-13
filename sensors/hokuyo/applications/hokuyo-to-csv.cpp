@@ -94,9 +94,11 @@ struct data_point
 };
 
 /// This is for setting acquired data for the point while keeping timestamp the same.
+/// 'distance' is in mm
 void data_point::set(double distance, comma::uint32 intensity, double bearing)
 {
-    if( distance == hok::ust_10lx::distance_nan || distance <= ( hok::ust_10lx::distance_min / 1000.0 ) )
+    this->range = distance / 1000.0;
+    if( distance == hok::ust_10lx::distance_nan || distance <= hok::ust_10lx::distance_min )
     {
         // timestamp stays the same
         x = 0;
@@ -104,17 +106,15 @@ void data_point::set(double distance, comma::uint32 intensity, double bearing)
         z = 0; 
         intensity = 0;
         bearing = 0;
-//         elevation = 0;
+        range = 0;
         return;
     }
     
-    this->range = distance;
     this->intensity = intensity;    
     this->bearing = bearing;
     // timestamp stays the same
-    x = distance * std::cos( bearing );
-    y = distance * -std::sin( bearing );
-    // z = 0;
+    x = range * std::cos( bearing );
+    y = range * -std::sin( bearing );
 }
 
 
@@ -161,6 +161,7 @@ static void usage()
     std::cerr << "    --start-step=<0-890>: Scan starting at a start step and go to (step+270) wich covers 67.75\" which is 270\"/4." << std::endl;
     std::cerr << "                          Does not perform a full 270\" scan." << std::endl;
     std::cerr << "    --reboot-on-error: if failed to put scanner into scanning mode, reboot the scanner." << std::endl;
+    std::cerr << "    --omit-error: if a ray cannot detect an object in range, or very low reflectivity, omit ray from output." << std::endl;
     std::cerr << std::endl;
     std::cerr << "Output format:" << std::endl;
     comma::csv::binary< data_point > binary( "", "" );
@@ -173,6 +174,8 @@ static void usage()
     std::cerr << std::endl;
     exit( -1 );
 }
+
+static bool is_omit_error = false;
 
 template < int STEPS >
 void scanning( int start_step, comma::signal_flag& signaled,
@@ -218,7 +221,12 @@ void scanning( int start_step, comma::signal_flag& signaled,
         data_point point3d;
         for( std::size_t i=0; i<STEPS; ++i )
         {
-            point3d.set( rays.steps[i].distance() / 1000.0, 
+            double distance = rays.steps[i].distance();
+            if( is_omit_error && 
+                ( distance == hok::ust_10lx::distance_nan || distance <= hok::ust_10lx::distance_min ) ) { continue; }
+                
+                
+            point3d.set( distance, 
                          rays.steps[i].intensity(), 
                          hok::ust_10lx::step_to_bearing( i + start_step ) );
             output.write( point3d );
@@ -257,6 +265,7 @@ int main( int ac, char** av )
     
     try
     {
+        is_omit_error = options.exists( "--omit-error" );
         
         // Sets up output data
         comma::csv::options csv;
