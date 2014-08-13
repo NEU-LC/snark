@@ -280,7 +280,7 @@ int main( int ac, char** av )
         status_in_json = options.exists( "--status-json" );
         is_compact_json = options.exists( "--compact-json" );
         int controller_id =  options.value< int >( "--controller-id,-C" );
-        float beat = options.value< float >( "--beat,-B" );
+        float beat = options.value< float >( "--beat,-B", 0.4 );
         bool is_query_mode = options.exists( "--query-mode" );
         bool has_publish_stream = options.exists( "--publish" );
         bool verbose = options.exists( "--verbose" );
@@ -369,6 +369,9 @@ int main( int ac, char** av )
         
         comma::uint16 modulo = options.value< comma::uint16 >( "--update-all-iteration", 10 ); 
         comma::uint16 counter = modulo; // For update all on first iteration
+        boost::posix_time::milliseconds beat_timeout( beat* 1000u );
+        comma::io::select select;
+        select.read().add( comma::io::stdin_fd );
         while( std::cin.good() || serial_conn ) // If using serial connection then std::cin is not read
         {
             if( is_query_mode )
@@ -407,20 +410,25 @@ int main( int ac, char** av )
             }
             else
             {
-                std::getline( std::cin, line );
-                if( line.empty() ) { continue; }
-    
-                snark::ocean::battery_t::strip( line );
-                if( verbose ) { std::cerr << name() << ": " << line <<std::endl; }
-    
-                if( line[1] == controller_b::battery_data_char ) // TODO: parse $C line???
+                select.wait( beat_timeout );
+                
+                if( select.read().ready( comma::io::stdin_fd ) )
                 {
-                    // get the battery ID of the data just updated
-                    update_controller( stats.controller, line );
-                    stats.time = microsec_clock::universal_time();
-                    stats.controller.consolidate( num_of_batteries );
+                    std::getline( std::cin, line );
+                    if( line.empty() ) { continue; }
+    
+                    snark::ocean::battery_t::strip( line );
+                    if( verbose ) { std::cerr << name() << ": " << line <<std::endl; }
+    
+                    if( line[1] == controller_b::battery_data_char ) // TODO: parse $C line???
+                    {
+                        // get the battery ID of the data just updated
+                        update_controller( stats.controller, line );
+                        stats.controller.consolidate( num_of_batteries );
+                    }
                 }
     
+                stats.time = microsec_clock::universal_time();
                 if( !has_publish_stream ) { output( stats, csv ); }
                 else { publish_status( stats, *publish, csv ); }
             }
