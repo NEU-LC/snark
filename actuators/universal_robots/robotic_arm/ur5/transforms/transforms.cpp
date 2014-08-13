@@ -18,9 +18,9 @@ void tcp_transform( const boost::array< plane_angle_t, 6 >& joint_angles,
     tcp_transform_step();
     
     position.coordinates = Eigen::Vector3d( tcp_transform_Y.x, tcp_transform_Y.y, tcp_transform_Y.z );
-    position.orientation = Eigen::Vector3d( tcp_transform_Y.Pan, tcp_transform_Y.Tilt, tcp_transform_Y.Roll );
+    position.orientation = Eigen::Vector3d( tcp_transform_Y.Roll, tcp_transform_Y.Tilt, tcp_transform_Y.Pan );
     laser.coordinates = Eigen::Vector3d( tcp_transform_Y.x_laser, tcp_transform_Y.y_laser, tcp_transform_Y.z_laser );
-    laser.orientation = Eigen::Vector3d( tcp_transform_Y.pan_laser, tcp_transform_Y.tilt_laser, tcp_transform_Y.roll_laser );
+    laser.orientation = Eigen::Vector3d( tcp_transform_Y.roll_laser, tcp_transform_Y.tilt_laser, tcp_transform_Y.pan_laser );
     
     tcp_transform_terminate();
 }
