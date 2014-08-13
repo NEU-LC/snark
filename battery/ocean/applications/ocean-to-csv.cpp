@@ -316,7 +316,6 @@ int main( int ac, char** av )
         std::string line;
 
         // Set it to report status immediately if no command is received
-        ptime future = microsec_clock::universal_time();
         stats_t stats( controller_id );
 
         boost::scoped_ptr< snark::ocean::stdio_query_wrapper > io;
@@ -414,21 +413,16 @@ int main( int ac, char** av )
                 snark::ocean::battery_t::strip( line );
                 if( verbose ) { std::cerr << name() << ": " << line <<std::endl; }
     
-                if( line[1] != controller_b::battery_data_char ) continue; // TODO: parse $C line???
-    
-                // get the battery ID of the data just updated
-                int battery_id = update_controller( stats.controller, line );
-                // if battery ID is num_of_batteries it means we have updated all batteries
-                if( beat > 0 && battery_id == num_of_batteries && microsec_clock::universal_time() >= future )
+                if( line[1] == controller_b::battery_data_char ) // TODO: parse $C line???
                 {
+                    // get the battery ID of the data just updated
+                    update_controller( stats.controller, line );
                     stats.time = microsec_clock::universal_time();
                     stats.controller.consolidate( num_of_batteries );
-    
-                    if( !has_publish_stream ) { output( stats, csv ); }
-                    else { publish_status( stats, *publish, csv ); }
-    
-                    future = microsec_clock::universal_time() + seconds( beat );
                 }
+    
+                if( !has_publish_stream ) { output( stats, csv ); }
+                else { publish_status( stats, *publish, csv ); }
             }
         }
 
