@@ -92,10 +92,10 @@ TEST( robot_arm, robot_arm_config )
 
 TEST( robot_arm, ur5_transforms )
 {
-    snark::applications::position tcp, laser;
     
     /// Home position
     {
+        snark::applications::position tcp, laser;
         boost::array< plane_angle_t, joints_num > angles;
         angles[0] = -2.351464889560617e-05 * radian;
         angles[1] = -1.395978507479843 * radian;
@@ -106,15 +106,38 @@ TEST( robot_arm, ur5_transforms )
         
         ur5::tcp_transform( angles, tcp, laser );
         
-        static const double epsilon = 0.0001;
+        static const double epsilon = 0.0005; // 0.2826 degree
         EXPECT_TRUE( comma::math::equal( tcp.coordinates.x(), 0.2621920341712425, epsilon) );
         EXPECT_TRUE( comma::math::equal( tcp.coordinates.y(), -0.1089892323633621, epsilon) );
         EXPECT_TRUE( comma::math::equal( tcp.coordinates.z(), 0.3041163274456367, epsilon) );
-        EXPECT_TRUE( comma::math::equal( tcp.orientation.x(), 0.0001829856036957604, epsilon) );
+        EXPECT_TRUE( comma::math::equal( tcp.orientation.x(), 0, epsilon) );
+        EXPECT_TRUE( comma::math::equal( tcp.orientation.z(), 0, epsilon) );
         EXPECT_TRUE( comma::math::equal( tcp.orientation.y(), 0.0004507152117164778, epsilon) );
         EXPECT_TRUE( comma::math::equal( laser.coordinates.x(), 0.2621920341712425, epsilon) );
         EXPECT_TRUE( comma::math::equal( laser.coordinates.y(), -0.1089892323633621, epsilon) );
         EXPECT_TRUE( comma::math::equal( laser.coordinates.z(), 0.4141163162506301, epsilon) );
+    }
+    
+    // echo ">7,2,move_cam,20,-20,0.1" | nc localhost 11006
+    {
+        snark::applications::position tcp, laser;
+        boost::array< plane_angle_t, joints_num > angles;
+        angles[0] = -2.351464889560617e-05 * radian;
+        angles[1] = -1.396242480007092 * radian;
+        angles[2] = -2.572611037206427 * radian;
+        angles[3] = 0.4782062266801357 * radian;
+        angles[4] = 1.919856243757447 * radian;
+        angles[5] = 1.246359390213299e-05 * radian;
+        
+        ur5::tcp_transform( angles, tcp, laser );
+        
+        static const double epsilon = 0.0005; // 0.2826 degree
+        EXPECT_TRUE( comma::math::equal( tcp.coordinates.x(), 0.2964307028664779, epsilon) );
+        EXPECT_TRUE( comma::math::equal( tcp.coordinates.y(), -0.08096177593378978, epsilon) );
+        EXPECT_TRUE( comma::math::equal( tcp.coordinates.z(), 0.281916006140719, epsilon) );
+        EXPECT_TRUE( comma::math::equal( tcp.orientation.x(), 0, epsilon) );
+        EXPECT_TRUE( comma::math::equal( tcp.orientation.y(), -0.3490517099755716, epsilon) );
+        EXPECT_TRUE( comma::math::equal( tcp.orientation.z(), 0.3490378203185507, epsilon) );
     }
 }
 
