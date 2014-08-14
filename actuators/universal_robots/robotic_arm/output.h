@@ -53,14 +53,14 @@ class arm_output
 public:
     typedef arm::current_positions current_positions_t;
 private:
-    angular_acceleration_t acceleration;
-    angular_velocity_t velocity;
+    angular_acceleration_t acceleration_;
+    angular_velocity_t velocity_;
     ExtY_Arm_Controller_T& joints;
     current_positions_t& current_positions;
 public:
     arm_output( const angular_acceleration_t& ac, const angular_velocity_t& vel,
                 ExtY_Arm_Controller_T& output ) : 
-                acceleration( ac ), velocity( vel ), joints( output ), 
+                acceleration_( ac ), velocity_( vel ), joints( output ), 
                 current_positions( static_cast< current_positions_t& >( output ) ) 
                 {
                     Arm_Controller_initialize();
@@ -69,6 +69,9 @@ public:
     { 
         Arm_Controller_terminate(); 
     }
+    
+    const angular_acceleration_t& acceleration() const { return acceleration_; }
+    const angular_velocity_t& velocity() const { return velocity_; }
                 
    std::string debug_in_degrees() const
    {
@@ -79,20 +82,35 @@ public:
           ss << static_cast< arm::plane_angle_degrees_t >( joints.joint_angle_vector[i] * arm::radian ).value();
           if( i < 5 ) { ss << ','; }
        }
-       ss << "],a=" << acceleration.value() << ','
-          << "v=" << velocity.value() << ')';
+       ss << "],a=" << acceleration_.value() << ','
+          << "v=" << velocity_.value() << ')';
           
           
        return ss.str();
    }
+   
+//    /// Get a command to move to the joint angles it is robotic arm is currently in.
+//    std::string soft_stop_command( const status_t::array_joint_angles_t& angles ) const
+//    {
+//        static comma::csv::ascii< status_t::array_joint_angles_t > ascii;
+//        static std::string tmp;
+//        
+//        std::ostringstream ss;
+//        
+//        ss << "movej([" << ascii.put( angles, tmp ) 
+//           << "],a=" << acceleration_.value() << ','
+//           << "v=" << velocity_.value() << ')';
+//        return ss.str();
+//    }
+   
    std::string serialise() const
    {
        static std::string tmp;
        static comma::csv::ascii< ExtY_Arm_Controller_T > ascii;
        std::ostringstream ss;
        ss << "movej([" << ascii.put( joints, tmp )
-          << "],a=" << acceleration.value() << ','
-          << "v=" << velocity.value() << ')';
+          << "],a=" << acceleration_.value() << ','
+          << "v=" << velocity_.value() << ')';
        return ss.str();
    }
    

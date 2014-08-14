@@ -112,6 +112,7 @@ void init( const T& t, boost::array< T, joints_num >& arr )
 struct status_t {
     typedef boost::array< double, joints_num > array_doubles_t;
     typedef boost::array< jointmode::mode, joints_num > array_jointmodes_t;
+    typedef boost::array< plane_angle_t, joints_num > array_joint_angles_t;
     
     boost::posix_time::ptime timestamp;
     snark::applications::position position;     /// Tool Center Point position

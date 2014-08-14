@@ -31,6 +31,8 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "camera_sweep.h"
+#include "output.h"
+#include "traits.h"
 #include <comma/math/compare.h>
 
 namespace snark { namespace ur { namespace robotic_arm { namespace handlers {
@@ -39,7 +41,15 @@ namespace snark { namespace ur { namespace robotic_arm { namespace handlers {
 void camera_sweep::stop_movement(std::ostream& rover)
 {
     static const std::string stop_str = "stopj([0.05,0.05,0.05,0.05,0.05,0.05])";
+/*    
+    static comma::csv::ascii< status_t::array_joint_angles_t > ascii;
+    static std::string tmp;
     
+    std::ostringstream ss;
+    ss << "movej([" << ascii.put( status_.joint_angles, tmp ) 
+       << "],a=" << serialiser_.acceleration().value() << ','
+       << "v=" << serialiser_.velocity().value() << ')';
+    const std::string stop_str = ss.str(); */
     rover << stop_str << std::endl;
     rover.flush();
     usleep( 0.1 * 1000000u );
