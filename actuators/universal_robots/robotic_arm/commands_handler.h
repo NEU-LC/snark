@@ -89,6 +89,7 @@ public:
     
     result ret;  /// Indicate if command succeed
     boost::optional< length_t > move_cam_height_;
+    plane_angle_degrees_t move_cam_pan_;
 //     length_t height_;   /// Last height set by move_cam
 private:
     ExtU_Arm_Controller_T& inputs_; /// inputs into simulink engine 

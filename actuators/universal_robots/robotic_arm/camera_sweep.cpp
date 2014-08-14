@@ -59,13 +59,13 @@ void camera_sweep::stop_movement(std::ostream& rover)
 
 static const int tilt_joint = 3;
     
-result camera_sweep::run( const length_t& height, 
+result camera_sweep::run( const length_t& height, const plane_angle_degrees_t& pan, 
                           const plane_angle_degrees_t& tilt_down, const plane_angle_degrees_t& tilt_up, 
                           std::ostream& rover )
 {
     
     move_t move1, move2, ret;
-    if( !calculate_solution( height, tilt_down, tilt_up, move1, move2, ret ) )
+    if( !calculate_solution( height, pan, tilt_down, tilt_up, move1, move2, ret ) )
     {
         return result( "cannot perform the proposed camera sweep because of collision", result::error::failure );
     }
@@ -114,7 +114,7 @@ result camera_sweep::run( const length_t& height,
     return result();
 }
 
-bool camera_sweep::calculate_solution( const length_t& height, 
+bool camera_sweep::calculate_solution( const length_t& height, const plane_angle_degrees_t& pan, 
                                        const plane_angle_degrees_t& tilt_down, const plane_angle_degrees_t& tilt_up, 
                                        move_t& move1, move_t& move2, move_t& ret )
 {
@@ -123,8 +123,7 @@ bool camera_sweep::calculate_solution( const length_t& height,
     inputs_reset();
     
     inputs_.motion_primitive = real_T( input_primitive::move_cam );
-    inputs_.Input_1 = 0;
-    // inputs_.Input_2 = cam.height.value() != 1.0 ? -cam.tilt.value() : zero_tilt - cam.tilt.value();
+    inputs_.Input_1 = pan.value();
     inputs_.Input_2 = tilt_down.value();
     inputs_.Input_3 = height.value();
     Arm_Controller_step();
@@ -137,8 +136,7 @@ bool camera_sweep::calculate_solution( const length_t& height,
     inputs_reset();
     
     inputs_.motion_primitive = real_T( input_primitive::move_cam );
-    inputs_.Input_1 = 0;
-    // inputs_.Input_2 = cam.height.value() != 1.0 ? -cam.tilt.value() : zero_tilt - cam.tilt.value();
+    inputs_.Input_1 = pan.value();
     inputs_.Input_2 = tilt_up.value();
     inputs_.Input_3 = height.value();
     Arm_Controller_step();
@@ -152,7 +150,7 @@ bool camera_sweep::calculate_solution( const length_t& height,
     inputs_reset();
     
     inputs_.motion_primitive = real_T( input_primitive::move_cam );
-    inputs_.Input_1 = 0;
+    inputs_.Input_1 = pan.value();
     inputs_.Input_2 = current_tilt.value();
     inputs_.Input_3 = height.value();
     Arm_Controller_step();

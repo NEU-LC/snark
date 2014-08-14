@@ -85,7 +85,7 @@ class camera_sweep
         plane_angle_t tilt;
     };
     
-    bool calculate_solution( const length_t& height, 
+    bool calculate_solution( const length_t& height, const plane_angle_degrees_t& pan, 
                              const plane_angle_degrees_t& tilt_down, const plane_angle_degrees_t& tilt_up, 
                              move_t& move1, move_t& move2, move_t& ret );
     /// Rover is the robotic arm
@@ -106,7 +106,7 @@ public:
                     status_update_( status_updater ), status_( status ), 
                     interrupt_( interrupt ), signaled_( signaled ) {}
                     
-    result run( const length_t& height, 
+    result run( const length_t& height, const plane_angle_degrees_t& pan,
                 const plane_angle_degrees_t& tilt_down, const plane_angle_degrees_t& tilt_up, 
                 std::ostream& rover );
     
