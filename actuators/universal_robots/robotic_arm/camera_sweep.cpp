@@ -31,10 +31,11 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "camera_sweep.h"
-
+#include <comma/math/compare.h>
 
 namespace snark { namespace ur { namespace robotic_arm { namespace handlers {
     
+// TODO how do you cancel an actioned item, stopj and run mode? or set to current angles
 void camera_sweep::stop_movement(std::ostream& rover)
 {
     static const std::string stop_str = "stopj([0.05,0.05,0.05,0.05,0.05,0.05])";
@@ -46,13 +47,15 @@ void camera_sweep::stop_movement(std::ostream& rover)
     rover.flush();
 }
 
+static const int tilt_joint = 3;
     
-result camera_sweep::run( const length_t& height, std::ostream& rover )
+result camera_sweep::run( const length_t& height, 
+                          const plane_angle_degrees_t& tilt_down, const plane_angle_degrees_t& tilt_up, 
+                          std::ostream& rover )
 {
     
-    std::string action1; 
-    std::string action2;
-    if( !calculate_solution( height, action1, action2 ) )
+    move_t move1, move2, ret;
+    if( !calculate_solution( height, tilt_down, tilt_up, move1, move2, ret ) )
     {
         return result( "cannot perform the proposed camera sweep because of collision", result::error::failure );
     }
@@ -60,24 +63,39 @@ result camera_sweep::run( const length_t& height, std::ostream& rover )
     bool stop = interrupt_();
     if( signaled_ || stop ) { return result( "camera sweep action is cancelled", result::error::cancelled ); }
     
-    rover << action1 << std::endl;
+    std::cerr << name() << "running action 1: " << move1.action << " target angle: " << move1.tilt.value() << std::endl;
+    rover << move1.action << std::endl;
     rover.flush();
     
     /// Check that it stopped
     static comma::uint32 usec = 0.1 * 1000000u;
     
-    while( !status_.is_stationary() )
+    static const arm::plane_angle_t epsilon = static_cast< arm::plane_angle_t >( 0.5 * arm::degree );
+    while( !comma::math::equal( status_.joint_angles[ tilt_joint ], move1.tilt, epsilon  ) )
     {
+        status_update_();
         stop = interrupt_();
-        // TODO how do you cancel an actioned item, stopj and run mode? or set to current angles
         if( signaled_ || stop ) { stop_movement( rover ); return result( "camera sweep action is cancelled", result::error::cancelled ); }
         usleep( usec );
     }
     
-    rover << action2 << std::endl;
+    std::cerr << name() << "running action 2: " << move2.action << " target angle:" << move2.tilt.value() << std::endl;
+    rover << move2.action << std::endl;
     rover.flush();
-    while( !status_.is_stationary() )
+    while( !comma::math::equal( status_.joint_angles[ tilt_joint ], move2.tilt, epsilon  ) )
     {
+        status_update_();
+        stop = interrupt_();
+        if( signaled_ || stop ) { stop_movement( rover ); return result( "camera sweep action is cancelled", result::error::cancelled ); }
+        usleep( usec );
+    }
+    
+    std::cerr << name() << "returning to position: " << ret.action << " target angle:" << ret.tilt.value() << std::endl;
+    rover << ret.action << std::endl;
+    rover.flush();
+    while( !comma::math::equal( status_.joint_angles[ tilt_joint ], ret.tilt, epsilon  ) )
+    {
+        status_update_();
         stop = interrupt_();
         if( signaled_ || stop ) { stop_movement( rover ); return result( "camera sweep action is cancelled", result::error::cancelled ); }
         usleep( usec );
@@ -87,38 +105,54 @@ result camera_sweep::run( const length_t& height, std::ostream& rover )
 }
 
 bool camera_sweep::calculate_solution( const length_t& height, 
-                                       std::string& move1, std::string& move2)
+                                       const plane_angle_degrees_t& tilt_down, const plane_angle_degrees_t& tilt_up, 
+                                       move_t& move1, move_t& move2, move_t& ret )
 {
-    Arm_Controller_initialize();
+    const plane_angle_t current_tilt = status_.joint_angles[ tilt_joint ];
+    
+    inputs_reset();
     
     inputs_.motion_primitive = real_T( input_primitive::move_cam );
     inputs_.Input_1 = 0;
     // inputs_.Input_2 = cam.height.value() != 1.0 ? -cam.tilt.value() : zero_tilt - cam.tilt.value();
-    inputs_.Input_2 = -60;
+    inputs_.Input_2 = tilt_down.value();
     inputs_.Input_3 = height.value();
     Arm_Controller_step();
     
-    if( outputs_.command_flag < 0 ) { std::cerr << name() << "failed to find move action 1" << std::endl; return false; }
+    if( outputs_.command_flag <= 0 ) { std::cerr << name() << "failed to find move action 1, flag: " << outputs_.command_flag << std::endl; return false; }
     
     /// Get commands
-    move1 = serialiser_.serialise();
+    move1 = move_t( serialiser_.serialise(), outputs_.arm_position[tilt_joint] * radian );
     
-    Arm_Controller_terminate();
-        
-    Arm_Controller_initialize();
+    inputs_reset();
     
     inputs_.motion_primitive = real_T( input_primitive::move_cam );
     inputs_.Input_1 = 0;
     // inputs_.Input_2 = cam.height.value() != 1.0 ? -cam.tilt.value() : zero_tilt - cam.tilt.value();
-    inputs_.Input_2 = 60;
+    inputs_.Input_2 = tilt_up.value();
     inputs_.Input_3 = height.value();
     Arm_Controller_step();
     
-    if( outputs_.command_flag < 0 ) { std::cerr << name() << "failed to find move action 1" << std::endl; return false; }
+    if( outputs_.command_flag <= 0 ) { std::cerr << name() << "failed to find move action 2, flag:" << outputs_.command_flag << std::endl; return false; }
     
     /// Get commands
-    move2 = serialiser_.serialise();
+    move2 = move_t( serialiser_.serialise(), outputs_.arm_position[tilt_joint] * radian );
     
+    // return to former position
+    inputs_reset();
+    
+    inputs_.motion_primitive = real_T( input_primitive::move_cam );
+    inputs_.Input_1 = 0;
+    inputs_.Input_2 = current_tilt.value();
+    inputs_.Input_3 = height.value();
+    Arm_Controller_step();
+    
+    if( outputs_.command_flag <= 0 ) { std::cerr << name() << "failed to find move action 3, flag:" << outputs_.command_flag << std::endl; return false; }
+    
+    /// Get commands
+    ret = move_t( serialiser_.serialise(), current_tilt );
+    
+    /// Done
     inputs_.motion_primitive = input_primitive::no_action;
     
     return true;

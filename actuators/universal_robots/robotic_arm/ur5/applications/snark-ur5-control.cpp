@@ -412,7 +412,11 @@ int main( int ac, char** av )
             // We we need to send command to arm
             if( Arm_Controller_Y.command_flag > 0 )
             {
-                if( verbose ) { std::cerr << name() << output.debug_in_degrees() << std::endl; }
+                if( verbose ) { 
+                    std::cerr << name() << output.debug_in_degrees() << std::endl; 
+                    std::cerr << name() << output.serialise() << std::endl; 
+                }
+                
                 *robot_arm << output.serialise() << std::endl;
                 robot_arm->flush();
                 Arm_Controller_U.motion_primitive = real_T( input_primitive::no_action );

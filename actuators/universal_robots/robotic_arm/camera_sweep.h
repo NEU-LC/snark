@@ -45,6 +45,7 @@
 #include <comma/application/signal_flag.h>
 #include <boost/optional.hpp>
 #include <boost/function.hpp>
+#include <boost/graph/graph_concepts.hpp>
 #include "data.h"
 #include "auto_initialization.h"
 extern "C" {
@@ -76,9 +77,21 @@ class camera_sweep
     comma::signal_flag& signaled_;
     std::string name_;
     
-    bool calculate_solution( const length_t& height, std::string& move1, std::string& move2 );
+    struct move_t
+    {
+        move_t() {};
+        move_t( const std::string& m, const plane_angle_t& a ) : action( m ), tilt( a ) {}
+        std::string action;
+        plane_angle_t tilt;
+    };
+    
+    bool calculate_solution( const length_t& height, 
+                             const plane_angle_degrees_t& tilt_down, const plane_angle_degrees_t& tilt_up, 
+                             move_t& move1, move_t& move2, move_t& ret );
     /// Rover is the robotic arm
     void stop_movement( std::ostream& rover );
+    
+    void inputs_reset() { memset( &inputs_, 0, sizeof( ExtU_Arm_Controller_T ) ); }
 public:
     camera_sweep( // boost::function< bool (std::string& move1, std::string& move2 ) > f, /// caculate proposed sweep
                   ExtU_Arm_Controller_T& inputs, /// Simulink inputs
@@ -93,7 +106,9 @@ public:
                     status_update_( status_updater ), status_( status ), 
                     interrupt_( interrupt ), signaled_( signaled ) {}
                     
-    result run( const length_t& height, std::ostream& rover );
+    result run( const length_t& height, 
+                const plane_angle_degrees_t& tilt_down, const plane_angle_degrees_t& tilt_up, 
+                std::ostream& rover );
     
     const std::string& name() const { return name_; }
     void name( const std::string& name )  { name_ = name ; }

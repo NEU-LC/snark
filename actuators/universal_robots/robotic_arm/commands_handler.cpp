@@ -108,7 +108,7 @@ void commands_handler::handle(sweep_cam& s)
     if( !status_.is_running() ) { ret = result( "cannot sweep (camera) as rover is not in running mode", result::error::invalid_robot_state ); return; }
     if( !move_cam_height_ ) { ret = result( "robotic_arm is not in move_cam position", result::error::invalid_robot_state ); return; }
     
-    ret = sweep_.run( *move_cam_height_, this->os );
+    ret = sweep_.run( *move_cam_height_, s.start_angle*degree, s.end_angle*degree, this->os );
 }
 
 
