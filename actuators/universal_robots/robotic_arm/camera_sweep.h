@@ -30,8 +30,8 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef SNARK_ACTUATORS_UNIVERISAL_ROBOTS_COMMANDS_HANDLER_H
-#define SNARK_ACTUATORS_UNIVERISAL_ROBOTS_COMMANDS_HANDLER_H
+#ifndef SNARKS_ACTUATORS_UR_ROBOTIC_ARM_CAMERA_SWEEP_H
+#define SNARKS_ACTUATORS_UR_ROBOTIC_ARM_CAMERA_SWEEP_H
 #include <string>
 #include <vector>
 #include <iostream>
@@ -39,67 +39,66 @@
 #include <comma/base/types.h>
 #include <comma/dispatch/dispatched.h>
 #include <comma/io/stream.h>
+#include <comma/csv/stream.h>
 #include <comma/io/select.h>
 #include <comma/base/exception.h>
 #include <comma/application/signal_flag.h>
 #include <boost/optional.hpp>
+#include <boost/function.hpp>
 #include "data.h"
-#include "commands.h"
 #include "auto_initialization.h"
-#include "camera_sweep.h"
-#include <boost/filesystem.hpp>
+extern "C" {
+    #include "simulink/Arm_Controller.h"
+}
+#include "simulink/traits.h"
+#include "result.h"
+#include "output.h"
 
 namespace snark { namespace ur { namespace robotic_arm { namespace handlers {
 
 namespace arm = robotic_arm;
-namespace fs = boost::filesystem;
 
-
-class commands_handler : public comma::dispatch::handler_of< power >,
-                                  public comma::dispatch::handler_of< brakes >,
-                                  public comma::dispatch::handler_of< set_home >,
-                                  public comma::dispatch::handler_of< auto_init >,
-                                  public comma::dispatch::handler_of< move_cam >,
-                                  public comma::dispatch::handler_of< move_joints >,
-                                  public comma::dispatch::handler_of< joint_move >,
-                                  public comma::dispatch::handler_of< set_position >,
-                                  public comma::dispatch::handler_of< auto_init_force >,
-                                  public comma::dispatch::handler_of< sweep_cam >,
-                                  public comma::dispatch::handler_of< move_effector >
+    
+class camera_sweep
 {
+    typedef boost::function< bool (std::string& move1, std::string& move2 ) > calc_func_t;
+    typedef boost::function< void ( void ) > status_updater_t;
+    typedef boost::function< bool ( void ) > interrupt_t;    /// A new command is received
+    
+    
+    //calc_func_t calculate_;
+    ExtU_Arm_Controller_T& inputs_;
+    ExtY_Arm_Controller_T& outputs_;
+    const arm_output& serialiser_;
+    status_updater_t status_update_;
+    const status_t& status_;
+    interrupt_t interrupt_;
+    comma::signal_flag& signaled_;
+    std::string name_;
+    
+    bool calculate_solution( const length_t& height, std::string& move1, std::string& move2 );
+    /// Rover is the robotic arm
+    void stop_movement( std::ostream& rover );
 public:
-    void handle( power& p );
-    void handle( brakes& b );
-    void handle( auto_init& a );
-    void handle( move_cam& c );
-    void handle( move_effector& e );
-    void handle( move_joints& js );
-    void handle( set_home& h );
-    void handle( set_position& p );
-    void handle( auto_init_force& p );
-    void handle( joint_move& j );
-    void handle( sweep_cam& s );
+    camera_sweep( // boost::function< bool (std::string& move1, std::string& move2 ) > f, /// caculate proposed sweep
+                  ExtU_Arm_Controller_T& inputs, /// Simulink inputs
+                  ExtY_Arm_Controller_T& outputs, /// Simulink outputs
+                  arm_output& serialiser,
+                  boost::function< void ( void ) > status_updater,
+                  const status_t& status,
+                  interrupt_t interrupt,
+		  comma::signal_flag& signaled
+		) : 
+                    inputs_( inputs ), outputs_(outputs), serialiser_( serialiser ), 
+                    status_update_( status_updater ), status_( status ), 
+                    interrupt_( interrupt ), signaled_( signaled ) {}
+                    
+    result run( const length_t& height, std::ostream& rover );
     
-    commands_handler( ExtU_Arm_Controller_T& simulink_inputs, 
-                      arm::status_t& status, std::ostream& robot, auto_initialization& init, camera_sweep& sweep ) : 
-        inputs_(simulink_inputs), status_( status ), os( robot ), init_(init), sweep_( sweep ),
-        home_filepath_( init_.home_filepath() ) {}
-        
-    bool is_initialising() const; 
-    
-    result ret;  /// Indicate if command succeed
-    boost::optional< length_t > move_cam_height_;
-//     length_t height_;   /// Last height set by move_cam
-private:
-    ExtU_Arm_Controller_T& inputs_; /// inputs into simulink engine 
-    status_t& status_;
-    std::ostream& os;
-    auto_initialization& init_;
-    camera_sweep sweep_;
-    fs::path home_filepath_;
+    const std::string& name() const { return name_; }
+    void name( const std::string& name )  { name_ = name ; }
 };
-
+    
 } } } } // namespace snark { namespace ur { namespace robotic_arm { namespace handlers {
 
-
-#endif // SNARK_ACTUATORS_UNIVERISAL_ROBOTS_COMMANDS_HANDLER_H
+#endif // SNARKS_ACTUATORS_UR_ROBOTIC_ARM_CAMERA_SWEEP_H

@@ -159,4 +159,6 @@ bool status_t::is_powered_off() const
 
 
 
+
+
 } } } // namespace snark { namespace ur { namespace robotic_arm { 

@@ -1,5 +1,3 @@
-#ifndef SNARK_ACTUATORS_UR_ROBOTIC_ARM_TRAITS_H
-#define SNARK_ACTUATORS_UR_ROBOTIC_ARM_TRAITS_H
 // This file is part of snark, a generic and flexible library for robotics research
 // Copyright (c) 2011 The University of Sydney
 // All rights reserved.
@@ -32,6 +30,8 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#ifndef SNARK_ACTUATORS_UR_ROBOTIC_ARM_TRAITS_H
+#define SNARK_ACTUATORS_UR_ROBOTIC_ARM_TRAITS_H
 #include <boost/units/quantity.hpp>
 #include <comma/visiting/traits.h>
 #include "commands.h"
@@ -272,6 +272,19 @@ template <> struct traits< arm::set_home >
     template< typename K, typename V > static void visit( const K& k, const arm::set_home& t, V& v )
     {
         traits< command_base < arm::set_home > >::visit(k, t, v);
+    }
+};
+
+template <> struct traits< arm::sweep_cam >
+{
+    template< typename K, typename V > static void visit( const K& k, arm::sweep_cam& t, V& v )
+    {
+        traits< command_base < arm::sweep_cam > >::visit(k, t, v);
+    }
+
+    template< typename K, typename V > static void visit( const K& k, const arm::sweep_cam& t, V& v )
+    {
+        traits< command_base < arm::sweep_cam > >::visit(k, t, v);
     }
 };
 

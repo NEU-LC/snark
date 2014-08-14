@@ -57,6 +57,7 @@
 #include "../../commands_handler.h"
 #include "../../inputs.h"
 #include "../../units.h"
+#include "../../camera_sweep.h"
 extern "C" {
     #include "../../simulink/Arm_Controller.h"
 }
@@ -114,61 +115,6 @@ comma::csv::ascii< T >& ascii( )
     return ascii_;
 }
 
-
-typedef boost::units::quantity< boost::units::si::angular_acceleration > angular_acceleration_t;
-typedef boost::units::quantity< boost::units::si::angular_velocity > angular_velocity_t;
-
-
-class arm_output
-{
-public:
-    typedef arm::current_positions current_positions_t;
-private:
-    angular_acceleration_t acceleration;
-    angular_velocity_t velocity;
-    ExtY_Arm_Controller_T& joints;
-    current_positions_t& current_positions;
-public:
-    arm_output( const angular_acceleration_t& ac, const angular_velocity_t& vel,
-                ExtY_Arm_Controller_T& output ) : 
-                acceleration( ac ), velocity( vel ), joints( output ), 
-                current_positions( static_cast< current_positions_t& >( output ) ) 
-                {
-                    Arm_Controller_initialize();
-                }
-   ~arm_output() 
-    { 
-        Arm_Controller_terminate(); 
-    }
-                
-   std::string debug_in_degrees() const
-   {
-       std::ostringstream ss;
-       ss << "debug: movej([";
-       for(std::size_t i=0; i<6u; ++i) 
-       {
-          ss << static_cast< arm::plane_angle_degrees_t >( joints.joint_angle_vector[i] * arm::radian ).value();
-          if( i < 5 ) { ss << ','; }
-       }
-       ss << "],a=" << acceleration.value() << ','
-          << "v=" << velocity.value() << ')';
-          
-          
-       return ss.str();
-   }
-   std::string serialise() const
-   {
-       static std::string tmp;
-       std::ostringstream ss;
-       ss << "movej([" << ascii< ExtY_Arm_Controller_T >( ).put( joints, tmp )
-          << "],a=" << acceleration.value() << ','
-          << "v=" << velocity.value() << ')';
-       return ss.str();
-   }
-   
-};
-
-
 void output( const std::string& msg, std::ostream& os=std::cout )
 {
     os << msg << std::endl;
@@ -220,6 +166,7 @@ void process_command( const std::vector< std::string >& v, std::ostream& os )
     else if( boost::iequals( v[2], "set_pos" ) )     { output( handle< arm::set_position >( v, os ) ); }
     else if( boost::iequals( v[2], "set_home" ) )    { output( handle< arm::set_home >( v, os ) ); }
     else if( boost::iequals( v[2], "power" ) )       { output( handle< arm::power >( v, os )); }  
+    else if( boost::iequals( v[2], "scan" ) )        { output( handle< arm::sweep_cam >( v, os )); }  
     else if( boost::iequals( v[2], "brakes" ) || 
              boost::iequals( v[2], "stop" ) )        { output( handle< arm::brakes >( v, os )); }  
     else if( boost::iequals( v[2], "auto_init" ) )  
@@ -357,7 +304,7 @@ int main( int ac, char** av )
     try
     {
         /// COnvert simulink output into arm's command
-        arm_output output( acc * angular_acceleration_t::unit_type(), vel * angular_velocity_t::unit_type(),
+        arm::handlers::arm_output output( acc * arm::angular_acceleration_t::unit_type(), vel * arm::angular_velocity_t::unit_type(),
                        Arm_Controller_Y );
     
         comma::uint16 rover_id = options.value< comma::uint16 >( "--id" );
@@ -425,10 +372,19 @@ int main( int ac, char** av )
                 boost::bind( should_stop, boost::ref( inputs ) ),
                 continuum.work_directory );
         auto_init.set_app_name( name() );
+        
+        
+        arm::handlers::camera_sweep camera_sweep( Arm_Controller_U, Arm_Controller_Y, output, 
+                boost::bind( read_status, boost::ref(istream), boost::ref( status_stream ), select, status_stream.fd() ),
+                arm_status,
+                boost::bind( should_stop, boost::ref( inputs ) ),
+                signaled );
+                                                  
+        
         // if( options.exists( "--init-force-limit,-ifl" ) ){ auto_init.set_force_limit( options.value< double >( "--init-force-limit,-ifl" ) ); }
-        commands_handler.reset( new commands_handler_t( Arm_Controller_U, arm_status, *robot_arm, auto_init ) );
+        commands_handler.reset( new commands_handler_t( Arm_Controller_U, arm_status, *robot_arm, auto_init, camera_sweep ) );
 
-        boost::posix_time::microseconds timeout( usec );
+        boost::posix_time::microseconds timeout( 0 );
         while( !signaled && std::cin.good() )
         {
             if( !status_stream->good() ) { 
@@ -441,6 +397,7 @@ int main( int ac, char** av )
             
             /// Also act as sleep
             inputs.read( timeout );
+            bool empty = inputs.is_empty();
             // Process commands into inputs into the system
             if( !inputs.is_empty() )
             {
@@ -466,6 +423,8 @@ int main( int ac, char** av )
             
             // reset inputs
             memset( &Arm_Controller_U, 0, sizeof( ExtU_Arm_Controller_T ) );
+            
+            usleep( usec );
         }
 
         std::cerr << name() << "exiting" << std::endl;
