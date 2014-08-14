@@ -40,21 +40,21 @@ namespace snark { namespace ur { namespace robotic_arm { namespace handlers {
 // TODO how do you cancel an actioned item, stopj and run mode? or set to current angles
 void camera_sweep::stop_movement(std::ostream& rover)
 {
-    static const std::string stop_str = "stopj([0.05,0.05,0.05,0.05,0.05,0.05])";
-/*    
+//     static const std::string stop_str = "stopj([0.05,0.05,0.05,0.05,0.05,0.05])";
     static comma::csv::ascii< status_t::array_joint_angles_t > ascii;
     static std::string tmp;
     
     std::ostringstream ss;
+    status_update_();
     ss << "movej([" << ascii.put( status_.joint_angles, tmp ) 
        << "],a=" << serialiser_.acceleration().value() << ','
        << "v=" << serialiser_.velocity().value() << ')';
-    const std::string stop_str = ss.str(); */
+    const std::string stop_str = ss.str();
     rover << stop_str << std::endl;
     rover.flush();
-    usleep( 0.1 * 1000000u );
-    rover << "set robotmode run" << std::endl;
-    rover.flush();
+//     usleep( 0.1 * 1000000u );
+//     rover << "set robotmode run" << std::endl;
+//     rover.flush();
 }
 
 static const int tilt_joint = 3;
