@@ -85,8 +85,8 @@ int main( int argc, char** argv )
         {
             std::cerr << "take points on stdin, append distance from a given plane" << std::endl;
             std::cerr << std::endl;
-            std::cerr << "if --intersection is specified, assume the input represents a trajectory, find its intersections with the plane," << std::endl;
-            std::cerr << "for each intersection output adjacent points between which it occurs, the intersection point, and the direction of intersection (-1,0,+1)," << std::endl;
+            std::cerr << "if --intersections is specified, assume the input represents a trajectory, find its intersections with the plane," << std::endl;
+            std::cerr << "for each intersection, output adjacent points between which it occurs, the intersection point, and the direction of intersection (-1,0,+1)," << std::endl;
             std::cerr << "where 0 indicates that both adjacent points are in the plane" << std::endl;
             std::cerr << std::endl;
             std::cerr << "usage: cat points.csv | points-slice [options] > points_with_distance.csv" << std::endl;
