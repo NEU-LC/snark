@@ -382,7 +382,8 @@ int main( int ac, char** av )
                                                   
         
         // if( options.exists( "--init-force-limit,-ifl" ) ){ auto_init.set_force_limit( options.value< double >( "--init-force-limit,-ifl" ) ); }
-        commands_handler.reset( new commands_handler_t( Arm_Controller_U, output, arm_status, *robot_arm, auto_init, camera_sweep ) );
+        commands_handler.reset( new commands_handler_t( Arm_Controller_U, output, arm_status, *robot_arm, 
+                                                        auto_init, camera_sweep, std::cout ) );
 
         boost::posix_time::microseconds timeout( 0 );
         while( !signaled && std::cin.good() )
@@ -406,34 +407,13 @@ int main( int ac, char** av )
                 process_command( v, *robot_arm );
 
             }
-//             // Run simulink code
-//             Arm_Controller_step();
-//             
-//             // We we need to send command to arm
-//             if( Arm_Controller_Y.command_flag > 0 )
-//             {
-//                 if( verbose ) { 
-//                     std::cerr << name() << output.debug_in_degrees() << std::endl; 
-//                     std::cerr << name() << output.serialise() << std::endl; 
-//                 }
-//                 
-//                 *robot_arm << output.serialise() << std::endl;
-//                 robot_arm->flush();
-//                 Arm_Controller_U.motion_primitive = real_T( input_primitive::no_action );
-//             }
-//             else if( Arm_Controller_Y.command_flag < 0 ) {
-//                 std::cerr << name() << "command cannot execute as it will cause a collision!" << std::endl;
-//             }
-//             
-//             // reset inputs
-//             memset( &Arm_Controller_U, 0, sizeof( ExtU_Arm_Controller_T ) );
             
             usleep( usec );
         }
 
         std::cerr << name() << "exiting" << std::endl;
-        *robot_arm << "power off\n";
-        robot_arm->flush();
+//         *robot_arm << "power off\n";
+//         robot_arm->flush();
     }
     catch( comma::exception& ce ) { std::cerr << name() << ": exception thrown: " << ce.what() << std::endl; return 1; }
     catch( std::exception& e ) { std::cerr << name() << ": unknown exception caught: " << e.what() << std::endl; return 1; }

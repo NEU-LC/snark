@@ -62,6 +62,7 @@ void camera_sweep::stop_movement(std::ostream& rover)
     
 result camera_sweep::run( const length_t& height, const plane_angle_degrees_t& pan, 
                           const plane_angle_degrees_t& tilt_down, const plane_angle_degrees_t& tilt_up, 
+                          started_reply_t start_initiated,
                           std::ostream& rover )
 {
     

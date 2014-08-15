@@ -45,7 +45,7 @@ void auto_initialization::read_status()
     update_status_( );
 }
 
-result auto_initialization::run( bool force )
+result auto_initialization::run( started_reply_t started_update, bool force )
 {
     std::cerr << name() << "command auto init" << std::endl;
 
@@ -72,6 +72,9 @@ result auto_initialization::run( bool force )
     /// If not forcing auto_init, and it is not in home position ( no existen of home position file ), fail
     if( !force && !fs::exists( file ) && !fs::is_regular_file( file ) ) { return result( "the robot arm is not in the home position, auto_init dis-allowed.", result::error::failure ); }
 
+    /// Signal that movement has started
+    started_update();
+    
     fs::remove( file ); // Remove file before doing auto_init
 
     static const comma::uint32 retries = 50;

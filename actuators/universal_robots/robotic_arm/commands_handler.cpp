@@ -31,8 +31,10 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "commands_handler.h"
-#include "auto_initialization.h"
 #include <fstream>
+#include <boost/bind.hpp>
+#include "auto_initialization.h"
+#include "traits.h"
 
 namespace snark { namespace ur { namespace robotic_arm { namespace handlers {
 
@@ -104,6 +106,15 @@ void commands_handler::handle( arm::move_cam& cam )
     ret = result();
 }
 
+template < typename C >
+void movement_started( const C& c, std::ostream& oss )
+{
+    static comma::csv::ascii< C > ascii;
+    static std::string tmp;
+    oss << '<' << c.serialise() << ',' << result::error::action_started << ',' << "movement initiated;" << std::endl;
+    oss.flush();
+}
+
 void commands_handler::handle(sweep_cam& s)
 {
     std::cerr << name() << " running sweep_cam" << std::endl; 
@@ -111,7 +122,10 @@ void commands_handler::handle(sweep_cam& s)
     if( !status_.is_running() ) { ret = result( "cannot sweep (camera) as rover is not in running mode", result::error::invalid_robot_state ); return; }
     if( !move_cam_height_ ) { ret = result( "robotic_arm is not in move_cam position", result::error::invalid_robot_state ); return; }
     
-    ret = sweep_.run( *move_cam_height_, move_cam_pan_, s.start_angle*degree, s.end_angle*degree, this->os );
+    ret = sweep_.run( *move_cam_height_, move_cam_pan_, 
+                      s.start_angle*degree, s.end_angle*degree, 
+                      boost::bind( movement_started< sweep_cam >, boost::cref( s ), boost::ref( this->ostream_ ) ),
+                      this->os );
 }
 
 bool commands_handler::execute()
@@ -267,7 +281,8 @@ bool commands_handler::is_initialising() const
 
 void commands_handler::handle(auto_init& a)
 {
-    ret = init_.run( false );
+    ret = init_.run( boost::bind( movement_started< auto_init >, boost::cref( a ), boost::ref( this->ostream_ ) ),
+                     false );
     if( ret.is_success() ) { 
         std::cerr << name() << "going to home position." << std::endl;
         arm::set_position home; handle( home ); 
@@ -276,7 +291,8 @@ void commands_handler::handle(auto_init& a)
 }
 void commands_handler::handle( arm::auto_init_force& init )
 {
-    ret = init_.run( init.force );
+    ret = init_.run( boost::bind( movement_started< auto_init_force >, boost::cref( init ), boost::ref( this->ostream_ ) ), 
+                     init.force );
     if( ret.is_success() ) { 
         std::cerr << name() << "going to home position." << std::endl;
         arm::set_position home; handle( home ); 

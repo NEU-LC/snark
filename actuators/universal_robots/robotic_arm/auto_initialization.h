@@ -97,10 +97,14 @@ public:
     void set_force_limit( double newtons ){ force_max_ = newtons; }
     
     const std::string& home_filepath() const { return home_filepath_; }
+    
+    /// To be called to signal that the movement has started - for commands like SCAN or AUTO_INIT
+    typedef boost::function< void ( void ) > started_reply_t;
+    
     /// Performs auto initialisation but also listens for new commands.
     /// If a new command arrives or a signal is received run() returns immediately.
     /// result: shows wether success or failure.
-    result run( bool force );
+    result run( started_reply_t started_update, bool force );
 };
 
 

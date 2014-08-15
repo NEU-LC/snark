@@ -50,7 +50,7 @@ struct input_primitive
     
 struct result
 {
-    struct error { enum { success=0, invalid_input=1, invalid_robot_state, failure, cancelled, collision=2 }; };
+    struct error { enum { success=0, action_started=1, invalid_input=2, invalid_robot_state, failure, cancelled, collision }; };
     int code;
     std::string message;
     
