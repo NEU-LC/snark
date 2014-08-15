@@ -48,6 +48,8 @@ typedef boost::units::quantity< boost::units::si::angular_acceleration > angular
 typedef boost::units::quantity< boost::units::si::angular_velocity > angular_velocity_t;
 
 
+static const int tilt_joint = 3;
+
 class arm_output
 {
 public:
@@ -69,50 +71,48 @@ public:
     { 
         Arm_Controller_terminate(); 
     }
+
+    const ExtY_Arm_Controller_T& data() const { return joints; }
+
+    /// Returns true if Simulink calculation for proposed movement is a success
+    /// If true you can proceed to use the output from serialis()
+    bool runnable() const { return joints.command_flag > 0; }
+    bool will_collide() const { return joints.command_flag < 0; }
+    /// The Simulink proposed tilt angle
+    plane_angle_t proposed_tilt_angle() const {
+        return joints.arm_position[ tilt_joint ] * radian;
+    }
     
     const angular_acceleration_t& acceleration() const { return acceleration_; }
     const angular_velocity_t& velocity() const { return velocity_; }
-                
-   std::string debug_in_degrees() const
-   {
-       std::ostringstream ss;
-       ss << "debug: movej([";
-       for(std::size_t i=0; i<6u; ++i) 
-       {
-          ss << static_cast< arm::plane_angle_degrees_t >( joints.joint_angle_vector[i] * arm::radian ).value();
-          if( i < 5 ) { ss << ','; }
-       }
-       ss << "],a=" << acceleration_.value() << ','
-          << "v=" << velocity_.value() << ')';
-          
-          
-       return ss.str();
-   }
-   
-//    /// Get a command to move to the joint angles it is robotic arm is currently in.
-//    std::string soft_stop_command( const status_t::array_joint_angles_t& angles ) const
-//    {
-//        static comma::csv::ascii< status_t::array_joint_angles_t > ascii;
-//        static std::string tmp;
-//        
-//        std::ostringstream ss;
-//        
-//        ss << "movej([" << ascii.put( angles, tmp ) 
-//           << "],a=" << acceleration_.value() << ','
-//           << "v=" << velocity_.value() << ')';
-//        return ss.str();
-//    }
-   
-   std::string serialise() const
-   {
-       static std::string tmp;
-       static comma::csv::ascii< ExtY_Arm_Controller_T > ascii;
-       std::ostringstream ss;
-       ss << "movej([" << ascii.put( joints, tmp )
-          << "],a=" << acceleration_.value() << ','
-          << "v=" << velocity_.value() << ')';
-       return ss.str();
-   }
+    /// Get the simulink angles in degrees
+    std::string debug_in_degrees() const
+    {
+        std::ostringstream ss;
+        ss << "debug: movej([";
+        for(std::size_t i=0; i<6u; ++i) 
+        {
+           ss << static_cast< arm::plane_angle_degrees_t >( joints.joint_angle_vector[i] * arm::radian ).value();
+           if( i < 5 ) { ss << ','; }
+        }
+        ss << "],a=" << acceleration_.value() << ','
+           << "v=" << velocity_.value() << ')';
+           
+           
+        return ss.str();
+    }
+    
+    /// Produce the robotic arm command with the joint angles given by Simulink output
+    std::string serialise() const
+    {
+        static std::string tmp;
+        static comma::csv::ascii< ExtY_Arm_Controller_T > ascii;
+        std::ostringstream ss;
+        ss << "movej([" << ascii.put( joints, tmp )
+           << "],a=" << acceleration_.value() << ','
+           << "v=" << velocity_.value() << ')';
+        return ss.str();
+    }
    
 };
 

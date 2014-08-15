@@ -95,6 +95,8 @@ void commands_handler::handle( arm::move_cam& cam )
     inputs_.Input_2 = cam.tilt.value();
     inputs_.Input_3 = cam.height.value();
     
+    if( !execute() ) { return; }
+    
     fs::remove( home_filepath_ );
     
     move_cam_height_ = cam.height;
@@ -111,6 +113,23 @@ void commands_handler::handle(sweep_cam& s)
     
     ret = sweep_.run( *move_cam_height_, move_cam_pan_, s.start_angle*degree, s.end_angle*degree, this->os );
 }
+
+bool commands_handler::execute()
+{
+    Arm_Controller_step();
+    if( !output_.runnable() ) { ret = result( "cannot run command as it will cause a collision", result::error::collision ); inputs_reset(); return false; }
+    
+    if( verbose_ ) { 
+        std::cerr << name() << output_.debug_in_degrees() << std::endl; 
+        std::cerr << name() << output_.serialise() << std::endl; 
+    }
+    os << output_.serialise() << std::endl;
+    os.flush();
+    inputs_reset();
+    ret= result();
+    return true;
+}
+
 
 
 void commands_handler::handle( arm::move_joints& joints )
@@ -218,7 +237,7 @@ void commands_handler::handle( arm::set_position& pos )
     inputs_.Input_2 = 0;    // zero pan for giraffe
     inputs_.Input_3 = 0;    // zero tilt for giraffe
     
-    ret = result();
+    execute();
 }
 
 

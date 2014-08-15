@@ -47,6 +47,7 @@
 #include "commands.h"
 #include "auto_initialization.h"
 #include "camera_sweep.h"
+#include "output.h"
 #include <boost/filesystem.hpp>
 
 namespace snark { namespace ur { namespace robotic_arm { namespace handlers {
@@ -80,10 +81,13 @@ public:
     void handle( joint_move& j );
     void handle( sweep_cam& s );
     
-    commands_handler( ExtU_Arm_Controller_T& simulink_inputs, 
-                      arm::status_t& status, std::ostream& robot, auto_initialization& init, camera_sweep& sweep ) : 
-        inputs_(simulink_inputs), status_( status ), os( robot ), init_(init), sweep_( sweep ),
-        home_filepath_( init_.home_filepath() ) {}
+    commands_handler( ExtU_Arm_Controller_T& simulink_inputs, const arm_output& output,
+                      arm::status_t& status, std::ostream& robot, 
+                      auto_initialization& init, camera_sweep& sweep ) : 
+        inputs_(simulink_inputs), output_(output), 
+        status_( status ), os( robot ), 
+        init_(init), sweep_( sweep ),
+        home_filepath_( init_.home_filepath() ), verbose_(false) {}
         
     bool is_initialising() const; 
     
@@ -93,11 +97,18 @@ public:
 //     length_t height_;   /// Last height set by move_cam
 private:
     ExtU_Arm_Controller_T& inputs_; /// inputs into simulink engine 
+    const arm_output& output_;
     status_t& status_;
     std::ostream& os;
     auto_initialization& init_;
     camera_sweep sweep_;
     fs::path home_filepath_;
+    bool verbose_;
+    
+    void inputs_reset() { inputs_.motion_primitive = input_primitive::no_action; }
+    /// Run the command on the controller if possible
+    bool execute();
+    
 };
 
 } } } } // namespace snark { namespace ur { namespace robotic_arm { namespace handlers {

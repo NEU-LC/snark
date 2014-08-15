@@ -62,14 +62,11 @@ namespace arm = robotic_arm;
     
 class camera_sweep
 {
-    typedef boost::function< bool (std::string& move1, std::string& move2 ) > calc_func_t;
     typedef boost::function< void ( void ) > status_updater_t;
     typedef boost::function< bool ( void ) > interrupt_t;    /// A new command is received
     
     
-    //calc_func_t calculate_;
     ExtU_Arm_Controller_T& inputs_;
-    ExtY_Arm_Controller_T& outputs_;
     const arm_output& serialiser_;
     status_updater_t status_update_;
     const status_t& status_;
@@ -95,14 +92,13 @@ class camera_sweep
 public:
     camera_sweep( // boost::function< bool (std::string& move1, std::string& move2 ) > f, /// caculate proposed sweep
                   ExtU_Arm_Controller_T& inputs, /// Simulink inputs
-                  ExtY_Arm_Controller_T& outputs, /// Simulink outputs
-                  arm_output& serialiser,
+                  arm_output& serialiser,       /// Wrapper for Simulink outputs
                   boost::function< void ( void ) > status_updater,
                   const status_t& status,
                   interrupt_t interrupt,
 		  comma::signal_flag& signaled
 		) : 
-                    inputs_( inputs ), outputs_(outputs), serialiser_( serialiser ), 
+                    inputs_( inputs ), serialiser_( serialiser ), 
                     status_update_( status_updater ), status_( status ), 
                     interrupt_( interrupt ), signaled_( signaled ) {}
                     
