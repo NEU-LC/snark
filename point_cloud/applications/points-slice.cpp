@@ -74,24 +74,37 @@ int main( int argc, char** argv )
         description.add_options()
             ( "help,h", "display help message" )
             ( "points,p", boost::program_options::value< std::string >( &points_string )->default_value( "0,0,0" ), "point(s) belonging to the plane, either 3 points, or 1 point, if --normal defined" )
-            ( "point-outside", boost::program_options::value< std::string >( &points_string ), "point on the side of the plane where the normal would point, a convenience option; 3 points are enough" )
-            ( "normal,n", boost::program_options::value< std::string >( &normal_string ), "normal to the plane" );
+            ( "point-outside", boost::program_options::value< std::string >( &point_outside ), "point on the side of the plane where the normal would point, a convenience option; 3 points are enough" )
+            ( "normal,n", boost::program_options::value< std::string >( &normal_string ), "normal to the plane" )
+            ( "intersections", "assume the input represents a trajectory, find all its intersections with the plane");
         description.add( comma::csv::program_options::description( "x,y,z" ) );
         boost::program_options::variables_map vm;
         boost::program_options::store( boost::program_options::parse_command_line( argc, argv, description), vm );
         boost::program_options::notify( vm );
         if ( vm.count( "help" ) )
         {
-            std::cerr << "take points on stdin, append distance from a given plane" << std::endl;
+            std::cerr << "take points on stdin, append distance from a given plane," << std::endl;
+            std::cerr << "if --intersection is specified, assume the input represents a trajectory, find its intersections with the plane," << std::endl;
+            std::cerr << "and output adjacent points of the trajectory, where the intersection occurs, direction of intersection, and intersection point" << std::endl;
             std::cerr << std::endl;
             std::cerr << "usage: cat points.csv | points-slice [options] > points_with_distance.csv" << std::endl;
             std::cerr << std::endl;
-            std::cerr << "input: points: x,y,z; default: x,y,z" << std::endl;
+            std::cerr << "input: --points x1,y1,z1,x2,y2,z2,x3,y3,x3    (\"--normal\" is ignored, normal direction is based on \"--points\")" << std::endl;
+            std::cerr << "input: --points x1,y1,z1,x2,y2,z2,x3,y3,x3 --point-outside x4,y4,z4    (\"--normal\" is ignored, normal direction is based on \"--point-outside\")" << std::endl;
+            std::cerr << "input: --points x,y,z --normal n1,n2,n3" << std::endl;
+            std::cerr << "input: --points x1,y1,z1,x2,y2,z2,x3,y3,x3 --normal n1,n2,n3    (\"x2,y2,z2,x3,y3,x3\" are ignored)" << std::endl;
+            std::cerr << "input: --normal n1,n2,n3    (using default \"--points 0,0,0\")" << std::endl;
             std::cerr << "output: x,y,z,distance" << std::endl;
+            std::cerr << "output if --intersections is specified: x1,y1,z1,x2,y2,z2,p1,p2,p3,i" << std::endl;
+            std::cerr << "    where \"x1,y1,z1,x2,y2,z2\" are the points of an intersecting interval, \"p1,p2,p3\" is the intersection point, \"i\" is the direction of intersection" << std::endl;
             std::cerr << "binary output format: <input_format>,d" << std::endl;
             std::cerr << std::endl;
             std::cerr << description << std::endl;
-            std::cerr << std::endl;
+            std::cerr << "examples:" << std::endl;
+            std::cerr << "   echo -e \"0,0,-1\\n0,0,0\\n0,0,1\" | points-slice --points 0,0,0,1,0,0,0,1,0" << std::endl;
+            std::cerr << "   echo -e \"0,0,-1\\n0,0,0\\n0,0,1\" | points-slice --points 0,0,0,1,0,0,0,1,0 --point-outside 0,0,1" << std::endl;
+            std::cerr << "   echo -e \"0,0,-1\\n0,0,0\\n0,0,1\" | points-slice --points 0,0,0 --normal 0,0,1" << std::endl;
+            std::cerr << "   echo -e \"0,0,-1\\n0,0,0\\n0,0,1\" | points-slice --normal 0,0,1" << std::endl;
             return 1;
         }
         if( vm.count( "points" ) == 0 ) { std::cerr << "points-slice: please specify --points" << std::endl; return 1; }
@@ -118,7 +131,7 @@ int main( int argc, char** argv )
             if( vm.count( "point-outside" ) )
             {
                 Eigen::Vector3d p = comma::csv::ascii< Eigen::Vector3d >( "x,y,z", ',' ).get( point_outside );
-                if( comma::math::equal( a.dot( p - point ), 0 ) ) { std::cerr << "points-slice: expected a point not on the plane, got: " << point_outside << std::endl; return 1; }
+                if( comma::math::equal( ( p - point ).dot( normal ), 0 ) ) { std::cerr << "points-slice: expected a point outside of the plane, got: " << point_outside << ", which belongs to the plane" << std::endl; return 1; }
                 normal *= normal.dot( p - point ) > 0 ? 1 : -1;
             }
         }
@@ -128,19 +141,76 @@ int main( int argc, char** argv )
         #endif
         comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, csv );
         comma::signal_flag is_shutdown;
-        while( !is_shutdown && ( istream.ready() || ( !std::cin.eof() && std::cin.good() ) ) )
+        if( vm.count("intersections") )
         {
-            const Eigen::Vector3d* p = istream.read();
-            if( !p ) { break; }
-            double d = ( *p - point ).dot( normal );
-            if( csv.binary() )
+            Eigen::Hyperplane< double, 3 > plane( normal, point );
+            boost::optional< Eigen::Vector3d > last;
+            double d_last = 0;
+            while( !is_shutdown && ( istream.ready() || ( !std::cin.eof() && std::cin.good() ) ) )
             {
-                std::cout.write( istream.binary().last(), istream.binary().binary().format().size() );
-                std::cout.write( reinterpret_cast< const char* >( &d ), sizeof( double ) );
+                const Eigen::Vector3d* p = istream.read();
+                if( !p ) { break; }
+                double d = ( *p - point ).dot( normal );
+                if( last )
+                {
+                    bool intersects = ( d * d_last <= 0 );
+                    if( intersects )
+                    {
+                        Eigen::Vector3d intersection_point;
+                        bool lies_on_plane = ( d == 0 && d_last == 0 );
+                        if( lies_on_plane ) 
+                        { 
+                            intersection_point = *last; 
+                        }
+                        else
+                        {
+                            Eigen::ParametrizedLine< double, 3 > line = Eigen::ParametrizedLine< double, 3 >::Through( *last, *p );
+                            intersection_point = line.intersectionPoint( plane );
+                        }
+                        int direction;
+                        if( d_last != 0 ) { direction = ( d_last > 0 ) ? 1 : -1; }
+                        else if( d != 0 ) { direction = ( d < 0 ) ? 1 : -1; }
+                        else { direction = 0; }
+                        if( csv.binary() )
+                        {
+                            std::cout.write( reinterpret_cast< const char* >( &( (*last).x() ) ), sizeof( double ) );
+                            std::cout.write( reinterpret_cast< const char* >( &( (*last).y() ) ), sizeof( double ) );
+                            std::cout.write( reinterpret_cast< const char* >( &( (*last).z() ) ), sizeof( double ) );
+                            std::cout.write( istream.binary().last(), istream.binary().binary().format().size() );
+                            std::cout.write( reinterpret_cast< const char* >( &( intersection_point.x() ) ), sizeof( double ) );
+                            std::cout.write( reinterpret_cast< const char* >( &( intersection_point.y() ) ), sizeof( double ) );
+                            std::cout.write( reinterpret_cast< const char* >( &( intersection_point.z() ) ), sizeof( double ) );
+                            std::cout.write( reinterpret_cast< const char* >( &direction ), sizeof( int ) );
+                        }
+                        else
+                        {
+                            std::cout << ( *last ).x() << csv.delimiter << ( *last ).y() << csv.delimiter << ( *last ).z() << csv.delimiter
+                            << comma::join( istream.ascii().last(), csv.delimiter ) << csv.delimiter 
+                            << intersection_point.x() << csv.delimiter << intersection_point.y() << csv.delimiter << intersection_point.z() << csv.delimiter 
+                            << direction << std::endl;
+                        }
+                    }
+                }
+                last.reset( *p );
+                d_last = d;
             }
-            else
+        }
+        else
+        {
+            while( !is_shutdown && ( istream.ready() || ( !std::cin.eof() && std::cin.good() ) ) )
             {
-                std::cout << comma::join( istream.ascii().last(), csv.delimiter ) << csv.delimiter << d << std::endl;
+                const Eigen::Vector3d* p = istream.read();
+                if( !p ) { break; }
+                double d = ( *p - point ).dot( normal );
+                if( csv.binary() )
+                {
+                    std::cout.write( istream.binary().last(), istream.binary().binary().format().size() );
+                    std::cout.write( reinterpret_cast< const char* >( &d ), sizeof( double ) );
+                }
+                else
+                {
+                    std::cout << comma::join( istream.ascii().last(), csv.delimiter ) << csv.delimiter << d << std::endl;
+                }
             }
         }
         return 0;
