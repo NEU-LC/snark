@@ -3,8 +3,9 @@
 #include <comma/application/command_line_options.h>
 #include <comma/csv/stream.h>
 #include <snark/visiting/eigen.h>
+#include <math.h>
 
-typedef std::pair< Eigen::Vector3d, Eigen::Vector3d > pair_t;
+typedef std::pair< Eigen::Vector3d, Eigen::Vector3d > point_pair_t;
 
 static void usage( bool more = false )
 {
@@ -13,7 +14,6 @@ static void usage( bool more = false )
     std::cerr << std::endl;
     std::cerr << "usage examples" << std::endl;
     std::cerr << "    cat points.csv | points-calc distance > results.csv" << std::endl;
-//    std::cerr << "    cat pairs.csv | sphere-arc distance > results.csv" << std::endl;
     std::cerr << "    cat points.csv | points-calc cumulative-distance > results.csv" << std::endl;
     std::cerr << std::endl;
     std::cerr << "operations: distance, cumulative-distance, thin" << std::endl;
@@ -22,7 +22,7 @@ static void usage( bool more = false )
     std::cerr << std::endl;
     std::cerr << "        input fields" << std::endl;
     std::cerr << "            " << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
-    std::cerr << "            " << comma::join( comma::csv::names< pair_t >( true ), ',' ) << std::endl;
+    std::cerr << "            " << comma::join( comma::csv::names< point_pair_t >( true ), ',' ) << std::endl;
     std::cerr << std::endl;
     std::cerr << "    cumulative-distance: cumulative distance between subsequent points" << std::endl;
     std::cerr << std::endl;
@@ -36,7 +36,9 @@ static void usage( bool more = false )
     exit( 1 );
 }
 
-static void calculate_distance( const comma::csv::options& csv, bool cumulative )
+static comma::csv::options csv;
+
+static void calculate_distance( bool cumulative )
 {
     comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, csv );
     boost::optional< Eigen::Vector3d > last;
@@ -60,7 +62,27 @@ static void calculate_distance( const comma::csv::options& csv, bool cumulative 
     }
 }
 
-static void thin( const comma::csv::options& csv, double resolution )
+static void calculate_distance_for_pairs()
+{
+    comma::csv::input_stream< point_pair_t > istream( std::cin, csv );
+    while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
+    {
+        const point_pair_t* p = istream.read();
+        if( !p ) { break; }
+        double norm = ( p->first - p->second ).norm();
+        if( csv.binary() )
+        {
+            std::cout.write( istream.binary().last(), istream.binary().binary().format().size() );
+            std::cout.write( reinterpret_cast< const char* >( &norm ), sizeof( double ) );
+        }
+        else
+        {
+            std::cout << comma::join( istream.ascii().last(), csv.delimiter ) << csv.delimiter << norm << std::endl;
+        }
+    }
+}
+
+static void thin( double resolution )
 {
     comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, csv );
     boost::optional< Eigen::Vector3d > last;
@@ -93,9 +115,9 @@ int main( int ac, char** av )
         comma::command_line_options options( ac, av );
         bool verbose = options.exists( "--verbose,-v" );
         if( options.exists( "--help,-h" ) ) { usage( verbose ); }
-        comma::csv::options csv( options );
+        csv = comma::csv::options( options );
         csv.full_xpath = true;
-        const std::vector< std::string >& operations = options.unnamed( "--verbose,-v,--degrees", "-.*" );
+        const std::vector< std::string >& operations = options.unnamed( "--verbose,-v", "-.*" );
         if( operations.size() != 1 ) { std::cerr << "points-calc: expected one operation, got " << operations.size() << std::endl; return 1; }
         const std::string& operation = operations[0];
         if( operation == "distance" )
@@ -105,37 +127,22 @@ int main( int ac, char** av )
                 || csv.has_field( "first/y" ) || csv.has_field( "second/y" )
                 || csv.has_field( "first/z" ) || csv.has_field( "second/z" ) )
             {
-                comma::csv::input_stream< pair_t > istream( std::cin, csv );
-                while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
-                {
-                    const pair_t* p = istream.read();
-                    if( !p ) { break; }
-                    double norm = ( p->first - p->second ).norm();
-                    if( csv.binary() )
-                    {
-                        std::cout.write( istream.binary().last(), istream.binary().binary().format().size() );
-                        std::cout.write( reinterpret_cast< const char* >( &norm ), sizeof( double ) );
-                    }
-                    else
-                    {
-                        std::cout << comma::join( istream.ascii().last(), csv.delimiter ) << csv.delimiter << norm << std::endl;
-                    }
-                }
+                calculate_distance_for_pairs();
                 return 0;
             }
-            calculate_distance( csv, false );
+            calculate_distance( false );
             return 0;
         }
         if( operation == "cumulative-distance" )
         {
-            calculate_distance( csv, true );
+            calculate_distance( true );
             return 0;
         }
         if( operation == "thin" )
         {
-	    if( !options.exists( "--resolution" ) ) { std::cerr << "points-calc: --resolution is not specified " << std::endl; return 1; }
+            if( !options.exists( "--resolution" ) ) { std::cerr << "points-calc: --resolution is not specified " << std::endl; return 1; }
             double resolution = options.value( "--resolution" , 0.0 );
-	    thin( csv , resolution );
+            thin( resolution );
             return 0;
         }
         std::cerr << "points-calc: please specify an operation" << std::endl;
