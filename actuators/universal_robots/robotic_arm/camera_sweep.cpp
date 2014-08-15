@@ -38,6 +38,8 @@
 namespace snark { namespace ur { namespace robotic_arm { namespace handlers {
     
 // TODO how do you cancel an actioned item, stopj and run mode? or set to current angles
+// Currently it sets to current joints angles, both work
+// The other method requires to be a bit of a wait for mode change
 void camera_sweep::stop_movement(std::ostream& rover)
 {
 //     static const std::string stop_str = "stopj([0.05,0.05,0.05,0.05,0.05,0.05])";
@@ -57,7 +59,6 @@ void camera_sweep::stop_movement(std::ostream& rover)
 //     rover.flush();
 }
 
-static const int tilt_joint = 3;
     
 result camera_sweep::run( const length_t& height, const plane_angle_degrees_t& pan, 
                           const plane_angle_degrees_t& tilt_down, const plane_angle_degrees_t& tilt_up, 
@@ -128,10 +129,10 @@ bool camera_sweep::calculate_solution( const length_t& height, const plane_angle
     inputs_.Input_3 = height.value();
     Arm_Controller_step();
     
-    if( outputs_.command_flag <= 0 ) { std::cerr << name() << "failed to find move action 1, flag: " << outputs_.command_flag << std::endl; return false; }
+    if( !serialiser_.runnable() ) { std::cerr << name() << "failed to find move action 1, is collision: " << serialiser_.will_collide() << std::endl; return false; }
     
     /// Get commands
-    move1 = move_t( serialiser_.serialise(), outputs_.arm_position[tilt_joint] * radian );
+    move1 = move_t( serialiser_.serialise(), serialiser_.proposed_tilt_angle() );
     
     inputs_reset();
     
@@ -141,10 +142,10 @@ bool camera_sweep::calculate_solution( const length_t& height, const plane_angle
     inputs_.Input_3 = height.value();
     Arm_Controller_step();
     
-    if( outputs_.command_flag <= 0 ) { std::cerr << name() << "failed to find move action 2, flag:" << outputs_.command_flag << std::endl; return false; }
+    if( !serialiser_.runnable() ) { std::cerr << name() << "failed to find move action 2, will_collide: " << serialiser_.will_collide() << std::endl; return false; }
     
     /// Get commands
-    move2 = move_t( serialiser_.serialise(), outputs_.arm_position[tilt_joint] * radian );
+    move2 = move_t( serialiser_.serialise(), serialiser_.proposed_tilt_angle() );
     
     // return to former position
     inputs_reset();
@@ -155,7 +156,7 @@ bool camera_sweep::calculate_solution( const length_t& height, const plane_angle
     inputs_.Input_3 = height.value();
     Arm_Controller_step();
     
-    if( outputs_.command_flag <= 0 ) { std::cerr << name() << "failed to find move action 3, flag:" << outputs_.command_flag << std::endl; return false; }
+    if( !serialiser_.runnable() ) { std::cerr << name() << "failed to find move action 3, will_collide:" << serialiser_.will_collide() << std::endl; return false; }
     
     /// Get commands
     ret = move_t( serialiser_.serialise(), current_tilt );
