@@ -83,31 +83,39 @@ int main( int argc, char** argv )
         boost::program_options::notify( vm );
         if ( vm.count( "help" ) )
         {
+            std::cerr << std::endl;
             std::cerr << "take points on stdin, append distance from a given plane" << std::endl;
             std::cerr << std::endl;
             std::cerr << "if --intersections is specified, assume the input represents a trajectory, find its intersections with the plane," << std::endl;
             std::cerr << "for each intersection, output adjacent points between which it occurs, the intersection point, and the direction of intersection (-1,0,+1)," << std::endl;
             std::cerr << "where 0 indicates that both adjacent points are in the plane" << std::endl;
             std::cerr << std::endl;
-            std::cerr << "usage: cat points.csv | points-slice [options] > points_with_distance.csv" << std::endl;
-            std::cerr << std::endl;
-            std::cerr << "input: --points x1,y1,z1,x2,y2,z2,x3,y3,x3    (\"--normal\" is ignored, normal direction is based on \"--points\")" << std::endl;
-            std::cerr << "input: --points x1,y1,z1,x2,y2,z2,x3,y3,x3 --point-outside x4,y4,z4    (\"--normal\" is ignored, normal direction is based on \"--point-outside\")" << std::endl;
-            std::cerr << "input: --points x,y,z --normal n1,n2,n3" << std::endl;
-            std::cerr << "input: --points x1,y1,z1,x2,y2,z2,x3,y3,x3 --normal n1,n2,n3    (\"x2,y2,z2,x3,y3,x3\" are ignored)" << std::endl;
-            std::cerr << "input: --normal n1,n2,n3    (using default \"--points 0,0,0\")" << std::endl;
-            std::cerr << "output: x,y,z,distance" << std::endl;
-            std::cerr << "output if --intersections is specified: x1,y1,z1,x2,y2,z2,p1,p2,p3,i" << std::endl;
-            std::cerr << "    where \"x1,y1,z1,x2,y2,z2\" are the adjacent points, \"p1,p2,p3\" is the intersection point, \"i\" is the direction of intersection" << std::endl;
-            std::cerr << "binary output format: <input_format>,d" << std::endl;
+            std::cerr << "usage: " << std::endl;
+            std::cerr << "    cat points.csv | points-slice [options] > points_with_distance.csv" << std::endl;
+            std::cerr << "    cat trajectory.csv | points-slice [options] --intersections > intersections.csv" << std::endl;
             std::cerr << std::endl;
             std::cerr << description << std::endl;
+            std::cerr << std::endl;
+            std::cerr << "defining the plane" << std::endl;
+            std::cerr << "    --points x1,y1,z1,x2,y2,z2,x3,y3,x3" << std::endl;
+            std::cerr << "    --points x1,y1,z1,x2,y2,z2,x3,y3,x3 --point-outside x4,y4,z4" << std::endl;
+            std::cerr << "    --points x,y,z --normal n1,n2,n3" << std::endl;
+            std::cerr << "    --normal n1,n2,n3    (the plane passes through 0,0,0)" << std::endl;
+            std::cerr << std::endl;
+            std::cerr << "output" << std::endl;
+            std::cerr << "    default: " << std::endl;
+            std::cerr << "        x,y,z,distance, where distance is signed distance to the plane" << std::endl;
+            std::cerr << std::endl;
+            std::cerr << "    if --intersections is specified:" << std::endl;
+            std::cerr << "        x1,y1,z1,x2,y2,z2,p1,p2,p3,i, where x1,y1,z1,x2,y2,z2 are the adjacent points, p1,p2,p3 is the intersection, and i is the direction" << std::endl;
+            std::cerr << std::endl;
             std::cerr << "examples:" << std::endl;
-            std::cerr << "   echo -e \"0,0,-1\\n0,0,0\\n0,0,1\" | points-slice --points 0,0,0,1,0,0,0,1,0" << std::endl;
-            std::cerr << "   echo -e \"0,0,-1\\n0,0,0\\n0,0,1\" | points-slice --points 0,0,0,1,0,0,0,1,0 --point-outside 0,0,1" << std::endl;
+            std::cerr << "   echo -e \"0,0,-1\\n0,0,0\\n0,0,1\" | points-slice --points 0,0,0,0,1,0,1,0,0" << std::endl;
+            std::cerr << "   echo -e \"0,0,-1\\n0,0,0\\n0,0,1\" | points-slice --points 0,0,0,0,1,0,1,0,0 --point-outside 0,0,1" << std::endl;
             std::cerr << "   echo -e \"0,0,-1\\n0,0,0\\n0,0,1\" | points-slice --points 0,0,0 --normal 0,0,1" << std::endl;
             std::cerr << "   echo -e \"0,0,-1\\n0,0,0\\n0,0,1\" | points-slice --normal 0,0,1" << std::endl;
             std::cerr << "   echo -e \"0,0,-1\\n0,0,0\\n0,0,1\" | points-slice --normal 0,0,1 --intersections" << std::endl;
+            std::cerr << std::endl;
             return 1;
         }
         if( vm.count( "points" ) == 0 ) { std::cerr << "points-slice: please specify --points" << std::endl; return 1; }
@@ -150,8 +158,7 @@ int main( int argc, char** argv )
         {
             Eigen::Hyperplane< double, 3 > plane( normal, point );
             boost::optional< Eigen::Vector3d > last;
-            std::string last_record;
-            //std::string last_record( csv.format().size(), ' ' );
+            std::string last_record( csv.binary() ? csv.format().size() : 0, ' ' );
             double d_last = 0;
             while( !is_shutdown && ( istream.ready() || ( !std::cin.eof() && std::cin.good() ) ) )
             {
@@ -195,7 +202,7 @@ int main( int argc, char** argv )
                 }
                 last.reset( *p );
                 if( csv.binary() ) { ::memcpy( &last_record[0], istream.binary().last(), istream.binary().binary().format().size() ); }
-                else { last_record.resize( istream.ascii().last().size() ); last_record = comma::join( istream.ascii().last(), csv.delimiter ); }
+                else { last_record = comma::join( istream.ascii().last(), csv.delimiter ); }
                 d_last = d;
             }
         }
