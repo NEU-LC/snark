@@ -158,7 +158,6 @@ int main( int argc, char** argv )
         {
             Eigen::Hyperplane< double, 3 > plane( normal, point );
             boost::optional< Eigen::Vector3d > last;
-            std::string last_record( csv.binary() ? csv.format().size() : 0, ' ' );
             double d_last = 0;
             while( !is_shutdown && ( istream.ready() || ( !std::cin.eof() && std::cin.good() ) ) )
             {
@@ -195,14 +194,12 @@ int main( int argc, char** argv )
                         }
                         else
                         {
-                            std::cout << last_record << csv.delimiter << comma::join( istream.ascii().last(), csv.delimiter ) << csv.delimiter
+                            std::cout << ascii.put( *last ) << csv.delimiter << comma::join( istream.ascii().last(), csv.delimiter ) << csv.delimiter
                                       << ascii.put( intersection_point ) << csv.delimiter << direction << std::endl;
                         }
                     }
                 }
                 last.reset( *p );
-                if( csv.binary() ) { ::memcpy( &last_record[0], istream.binary().last(), istream.binary().binary().format().size() ); }
-                else { last_record = comma::join( istream.ascii().last(), csv.delimiter ); }
                 d_last = d;
             }
         }
