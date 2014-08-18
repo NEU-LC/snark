@@ -133,7 +133,7 @@ bool camera_sweep::calculate_solution( const length_t& height, const plane_angle
     if( !serialiser_.runnable() ) { std::cerr << name() << "failed to find move action 1, is collision: " << serialiser_.will_collide() << std::endl; return false; }
     
     /// Get commands
-    move1 = move_t( serialiser_.serialise(), serialiser_.proposed_tilt_angle() );
+    move1 = move_t( serialiser_.camera_serialise(), serialiser_.proposed_tilt_angle() );
     
     inputs_reset();
     
@@ -146,7 +146,7 @@ bool camera_sweep::calculate_solution( const length_t& height, const plane_angle
     if( !serialiser_.runnable() ) { std::cerr << name() << "failed to find move action 2, will_collide: " << serialiser_.will_collide() << std::endl; return false; }
     
     /// Get commands
-    move2 = move_t( serialiser_.serialise(), serialiser_.proposed_tilt_angle() );
+    move2 = move_t( serialiser_.camera_serialise(), serialiser_.proposed_tilt_angle() );
     
     // return to former position
     inputs_reset();
@@ -160,7 +160,7 @@ bool camera_sweep::calculate_solution( const length_t& height, const plane_angle
     if( !serialiser_.runnable() ) { std::cerr << name() << "failed to find move action 3, will_collide:" << serialiser_.will_collide() << std::endl; return false; }
     
     /// Get commands
-    ret = move_t( serialiser_.serialise(), current_tilt );
+    ret = move_t( serialiser_.camera_serialise(), current_tilt );
     
     /// Done
     inputs_.motion_primitive = input_primitive::no_action;

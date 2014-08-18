@@ -57,12 +57,17 @@ public:
 private:
     angular_acceleration_t acceleration_;
     angular_velocity_t velocity_;
+    angular_acceleration_t camera_acceleration_;
+    angular_velocity_t camera_velocity_;
     ExtY_Arm_Controller_T& joints;
     current_positions_t& current_positions;
 public:
     arm_output( const angular_acceleration_t& ac, const angular_velocity_t& vel,
+                const angular_acceleration_t& camera_ac, const angular_velocity_t& camera_vel,
                 ExtY_Arm_Controller_T& output ) : 
-                acceleration_( ac ), velocity_( vel ), joints( output ), 
+                acceleration_( ac ), velocity_( vel ), 
+                camera_acceleration_( camera_ac ), camera_velocity_( camera_vel ), 
+                joints( output ), 
                 current_positions( static_cast< current_positions_t& >( output ) ) 
                 {
                     Arm_Controller_initialize();
@@ -111,6 +116,18 @@ public:
         ss << "movej([" << ascii.put( joints, tmp )
            << "],a=" << acceleration_.value() << ','
            << "v=" << velocity_.value() << ')';
+        return ss.str();
+    }
+    
+    /// Serialise to robotic arm command for camera movement which has different accelleration and velocity.
+    std::string camera_serialise() const
+    {
+        static std::string tmp;
+        static comma::csv::ascii< ExtY_Arm_Controller_T > ascii;
+        std::ostringstream ss;
+        ss << "movej([" << ascii.put( joints, tmp )
+           << "],a=" << camera_acceleration_.value() << ','
+           << "v=" << camera_velocity_.value() << ')';
         return ss.str();
     }
    
