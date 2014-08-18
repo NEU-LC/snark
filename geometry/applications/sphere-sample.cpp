@@ -67,6 +67,10 @@ int main( int ac, char** av )
         aero::coordinates begin = get_option< aero::coordinates >( options, "--begin", aero::coordinates( -M_PI / 2, -M_PI ) );
         static const double epsilon = 0.00000001;
         aero::coordinates end = get_option< aero::coordinates >( options, "--end", aero::coordinates( M_PI / 2 + epsilon, M_PI - epsilon ) );
+        if( begin.latitude < -M_PI / 2 ) { begin.latitude = -M_PI / 2; }
+        if( begin.longitude < -M_PI ) { begin.longitude = -M_PI; }
+        if( end.latitude > M_PI / 2 ) { end.latitude = M_PI / 2; }
+        if( end.longitude > M_PI ) { end.longitude = M_PI; }
         if( regular )
         {
             for( aero::coordinates c = begin; comma::math::less( c.latitude, end.latitude ); c.latitude += resolution )
