@@ -102,6 +102,12 @@ void usage(int code=1)
     std::cerr << "    --sleep=:             Loop sleep value in seconds, default is 0.2s if not specified." << std::endl;
     std::cerr << "*   --config=:            Config file for robot arm, see --output-config." << std::endl;
     std::cerr << "    --output-config=:     Print config format in json." << std::endl;
+    std::cerr << "    --acceleration=|-a=:  Set the accelleration for movements, max=0.9, default=0.5" << std::endl;
+    std::cerr << "    --velocity=|-v=:      Set the velocity for movements, max=0.3, default=0.1." << std::endl;
+    std::cerr << "    --camera-acceleration=|-cam-acc:" << std::endl;
+    std::cerr << "                          Set the accelleration for camera movement using SCAN command, max=0.9, default=0.7" << std::endl;
+    std::cerr << "    --camera-velocity=|-cam-vel:" << std::endl;
+    std::cerr << "                          Set the velocity for camera movement using SCAN command, max=0.3, default=0.1" << std::endl;
     // std::cerr << "    --init-force-limit,-ifl:" << std::endl;
     // std::cerr << "                          Force (Newtons) limit when auto initializing, if exceeded then stop auto init." << std::endl;
     exit ( code );
@@ -297,14 +303,27 @@ int main( int ac, char** av )
     using boost::posix_time::ptime;
     using boost::asio::ip::tcp;
 
-    double acc = 0.5;
-    double vel = 0.1;
+    double acc = options.value< double >( "--acceleration,-a", 0.5 );
+    double vel = options.value< double >( "--velocity,-v", 0.1 );
+    double camera_acc = options.value< double >( "--camera-acceleration,-cam-acc", 0.7 );
+    double camera_vel = options.value< double >( "--camera-velocity,-cam-vel", 0.1 );
+    
+    
+    static const double velocity_limit = 0.3;
+    if( vel <= 0 || camera_vel <= 0 ) { std::cerr << name() << "velocity must be greater than zero and below " <<  velocity_limit << std::endl; exit(1); } 
+    if( vel > velocity_limit ) { std::cerr << name() << "velocity cannot exceed " << velocity_limit << "m/s" << std::endl; exit(1); }
+    if( camera_vel > velocity_limit ) { std::cerr << name() << "camera's velocity cannot exceed " << velocity_limit << "m/s" << std::endl; exit(1); }
+    static const double accel_limit = 0.9;
+    if( acc <= 0 || camera_acc <= 0 ) { std::cerr << name() << "acceleration must be greater than zero and below " <<  accel_limit << std::endl; exit(1); } 
+    if( acc > accel_limit ) { std::cerr << name() << "accelleration cannot exceed " << accel_limit << "m/s^2" << std::endl; exit(1); }
+    if( camera_acc > accel_limit ) { std::cerr << name() << "camera's accelleration cannot exceed " << accel_limit << "m/s^2" << std::endl; exit(1); }
 
     std::cerr << name() << "started" << std::endl;
     try
     {
         /// COnvert simulink output into arm's command
         arm::handlers::arm_output output( acc * arm::angular_acceleration_t::unit_type(), vel * arm::angular_velocity_t::unit_type(),
+                       camera_acc * arm::angular_acceleration_t::unit_type(), camera_vel * arm::angular_velocity_t::unit_type(),
                        Arm_Controller_Y );
     
         comma::uint16 rover_id = options.value< comma::uint16 >( "--id" );
@@ -382,7 +401,8 @@ int main( int ac, char** av )
                                                   
         
         // if( options.exists( "--init-force-limit,-ifl" ) ){ auto_init.set_force_limit( options.value< double >( "--init-force-limit,-ifl" ) ); }
-        commands_handler.reset( new commands_handler_t( Arm_Controller_U, output, arm_status, *robot_arm, auto_init, camera_sweep ) );
+        commands_handler.reset( new commands_handler_t( Arm_Controller_U, output, arm_status, *robot_arm, 
+                                                        auto_init, camera_sweep, std::cout ) );
 
         boost::posix_time::microseconds timeout( 0 );
         while( !signaled && std::cin.good() )
@@ -406,34 +426,13 @@ int main( int ac, char** av )
                 process_command( v, *robot_arm );
 
             }
-//             // Run simulink code
-//             Arm_Controller_step();
-//             
-//             // We we need to send command to arm
-//             if( Arm_Controller_Y.command_flag > 0 )
-//             {
-//                 if( verbose ) { 
-//                     std::cerr << name() << output.debug_in_degrees() << std::endl; 
-//                     std::cerr << name() << output.serialise() << std::endl; 
-//                 }
-//                 
-//                 *robot_arm << output.serialise() << std::endl;
-//                 robot_arm->flush();
-//                 Arm_Controller_U.motion_primitive = real_T( input_primitive::no_action );
-//             }
-//             else if( Arm_Controller_Y.command_flag < 0 ) {
-//                 std::cerr << name() << "command cannot execute as it will cause a collision!" << std::endl;
-//             }
-//             
-//             // reset inputs
-//             memset( &Arm_Controller_U, 0, sizeof( ExtU_Arm_Controller_T ) );
             
             usleep( usec );
         }
 
         std::cerr << name() << "exiting" << std::endl;
-        *robot_arm << "power off\n";
-        robot_arm->flush();
+//         *robot_arm << "power off\n";
+//         robot_arm->flush();
     }
     catch( comma::exception& ce ) { std::cerr << name() << ": exception thrown: " << ce.what() << std::endl; return 1; }
     catch( std::exception& e ) { std::cerr << name() << ": unknown exception caught: " << e.what() << std::endl; return 1; }

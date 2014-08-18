@@ -152,6 +152,8 @@ int main( int ac, char** av )
             arm::status_t st;
             st.position.coordinates = Eigen::Vector3d( 1, 2, 3 );
             st.laser_position.coordinates = Eigen::Vector3d( 3, 2, 1 );
+            st.robot_mode = arm::robotmode::running;
+            for( std::size_t i=0; i<6; ++i ) { st.joint_modes[i] = arm::jointmode::running; }
             while( !signaled && std::cout.good() )
             {
                 st.timestamp = boost::posix_time::microsec_clock::local_time();

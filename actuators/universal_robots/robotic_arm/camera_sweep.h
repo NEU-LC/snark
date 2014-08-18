@@ -60,6 +60,7 @@ namespace snark { namespace ur { namespace robotic_arm { namespace handlers {
 namespace arm = robotic_arm;
 
     
+/// class to perform the SCAN command, moves camera down and up using tilting joint (3).
 class camera_sweep
 {
     typedef boost::function< void ( void ) > status_updater_t;
@@ -96,14 +97,18 @@ public:
                   boost::function< void ( void ) > status_updater,
                   const status_t& status,
                   interrupt_t interrupt,
-		  comma::signal_flag& signaled
-		) : 
+                  comma::signal_flag& signaled
+        ) : 
                     inputs_( inputs ), serialiser_( serialiser ), 
                     status_update_( status_updater ), status_( status ), 
                     interrupt_( interrupt ), signaled_( signaled ) {}
                     
+    /// To be called to signal that the movement has started - for commands like SCAN or AUTO_INIT
+    typedef boost::function< void ( void ) > started_reply_t;
+    
     result run( const length_t& height, const plane_angle_degrees_t& pan,
                 const plane_angle_degrees_t& tilt_down, const plane_angle_degrees_t& tilt_up, 
+                started_reply_t started,
                 std::ostream& rover );
     
     const std::string& name() const { return name_; }

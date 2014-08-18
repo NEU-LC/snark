@@ -97,8 +97,8 @@ struct move_cam : command_base< move_cam >
 
 struct sweep_cam : command_base< sweep_cam >
 {
-    static const char start_angle = -60;
-    static const char end_angle = 60;
+    static const char start_angle = -45;
+    static const char end_angle = 15;
 };
 
 
@@ -149,9 +149,6 @@ struct move_effector : command_base< move_effector >
 {
     // static const char* name_str = "MOVEF";
     position offset;    // position offset from base of arm
-    plane_angle_degrees_t pan;
-    plane_angle_degrees_t tilt;
-    plane_angle_degrees_t roll;
 
 };
 

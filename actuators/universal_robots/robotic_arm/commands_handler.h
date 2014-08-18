@@ -83,10 +83,11 @@ public:
     
     commands_handler( ExtU_Arm_Controller_T& simulink_inputs, const arm_output& output,
                       arm::status_t& status, std::ostream& robot, 
-                      auto_initialization& init, camera_sweep& sweep ) : 
+                      auto_initialization& init, camera_sweep& sweep, std::ostream& oss ) : 
         inputs_(simulink_inputs), output_(output), 
         status_( status ), os( robot ), 
         init_(init), sweep_( sweep ),
+        ostream_( oss ),
         home_filepath_( init_.home_filepath() ), verbose_(false) {}
         
     bool is_initialising() const; 
@@ -94,7 +95,6 @@ public:
     result ret;  /// Indicate if command succeed
     boost::optional< length_t > move_cam_height_;
     plane_angle_degrees_t move_cam_pan_;
-//     length_t height_;   /// Last height set by move_cam
 private:
     ExtU_Arm_Controller_T& inputs_; /// inputs into simulink engine 
     const arm_output& output_;
@@ -102,6 +102,7 @@ private:
     std::ostream& os;
     auto_initialization& init_;
     camera_sweep sweep_;
+    std::ostream& ostream_;
     fs::path home_filepath_;
     bool verbose_;
     
