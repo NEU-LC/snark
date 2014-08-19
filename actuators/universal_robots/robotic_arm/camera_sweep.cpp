@@ -75,6 +75,9 @@ result camera_sweep::run( const length_t& height, const plane_angle_degrees_t& p
     bool stop = interrupt_();
     if( signaled_ || stop ) { return result( "camera sweep action is cancelled", result::error::cancelled ); }
     
+    /// signal start of command
+    start_initiated();
+    
     std::cerr << name() << "running action 1: " << move1.action << " target angle: " << move1.tilt.value() << std::endl;
     rover << move1.action << std::endl;
     rover.flush();
