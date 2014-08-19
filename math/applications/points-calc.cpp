@@ -144,12 +144,15 @@ static void discretise( double step )
         if( previous_point )
         {
             output_points( *previous_point, *previous_point );
-            Eigen::ParametrizedLine< double, 3 > line = Eigen::ParametrizedLine< double, 3 >::Through( *previous_point, *current_point );
             double distance = ( *previous_point - *current_point ).norm();
-            for( double t = step; t < distance; t += step )
+            if( comma::math::less( step, distance ) )
             {
-                Eigen::Vector3d point = line.pointAt( t );
-                output_points( *previous_point, point );
+                Eigen::ParametrizedLine< double, 3 > line = Eigen::ParametrizedLine< double, 3 >::Through( *previous_point, *current_point );
+                for( double t = step; comma::math::less( t, distance ); t += step )
+                {
+                    Eigen::Vector3d point = line.pointAt( t );
+                    output_points( *previous_point, point );
+                }
             }
         }
         previous_point.reset( *current_point );
