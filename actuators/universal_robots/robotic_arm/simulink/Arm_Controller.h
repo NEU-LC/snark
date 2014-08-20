@@ -3,9 +3,9 @@
  *
  * Code generated for Simulink model 'Arm_Controller'.
  *
- * Model version                  : 1.169
+ * Model version                  : 1.178
  * Simulink Coder version         : 8.6 (R2014a) 27-Dec-2013
- * C/C++ source code generated on : Mon Aug 11 10:47:57 2014
+ * C/C++ source code generated on : Tue Aug 19 16:41:09 2014
  *
  * Target selection: ert.tlc
  * Embedded hardware selection: 32-bit Generic
@@ -125,9 +125,9 @@ extern RT_MODEL_Arm_Controller_T *const Arm_Controller_M;
  *
  * '<Root>' : 'fsm_toplevel'
  * '<S1>'   : 'fsm_toplevel/Arm_Controller'
- * '<S2>'   : 'fsm_toplevel/Arm_Controller/MATLAB Function'
- * '<S3>'   : 'fsm_toplevel/Arm_Controller/functionselector'
- * '<S4>'   : 'fsm_toplevel/Arm_Controller/move_cam'
+ * '<S2>'   : 'fsm_toplevel/Arm_Controller/functionselector'
+ * '<S3>'   : 'fsm_toplevel/Arm_Controller/move_cam'
+ * '<S4>'   : 'fsm_toplevel/Arm_Controller/move_joints'
  * '<S5>'   : 'fsm_toplevel/Arm_Controller/sendcommand'
  * '<S6>'   : 'fsm_toplevel/Arm_Controller/set_home'
  * '<S7>'   : 'fsm_toplevel/Arm_Controller/setpos'

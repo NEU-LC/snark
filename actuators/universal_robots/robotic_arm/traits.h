@@ -280,11 +280,13 @@ template <> struct traits< arm::sweep_cam >
     template< typename K, typename V > static void visit( const K& k, arm::sweep_cam& t, V& v )
     {
         traits< command_base < arm::sweep_cam > >::visit(k, t, v);
+        v.apply( "filetag", t.filetag );
     }
 
     template< typename K, typename V > static void visit( const K& k, const arm::sweep_cam& t, V& v )
     {
         traits< command_base < arm::sweep_cam > >::visit(k, t, v);
+        v.apply( "filetag", t.filetag );
     }
 };
 
