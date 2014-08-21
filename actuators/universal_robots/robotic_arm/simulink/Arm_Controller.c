@@ -3,9 +3,9 @@
  *
  * Code generated for Simulink model 'Arm_Controller'.
  *
- * Model version                  : 1.178
+ * Model version                  : 1.182
  * Simulink Coder version         : 8.6 (R2014a) 27-Dec-2013
- * C/C++ source code generated on : Tue Aug 19 16:41:09 2014
+ * C/C++ source code generated on : Thu Aug 21 12:11:31 2014
  *
  * Target selection: ert.tlc
  * Embedded hardware selection: 32-bit Generic
@@ -396,7 +396,7 @@ void Arm_Controller_step(void)
   real_T p1offset[3];
   real_T pwirestart[3];
   real_T q;
-  static const int8_T b[6] = { 0, -90, 0, -90, 90, 0 };
+  static const int16_T b[6] = { 0, -90, 0, -90, 90, 180 };
 
   boolean_T p;
   boolean_T b_p;
@@ -594,7 +594,7 @@ void Arm_Controller_step(void)
       rtb_TmpSignalConversionAtSFunct[2] = 0.0;
       rtb_TmpSignalConversionAtSFunct[3] = rtb_outputs[1] - 90.0;
       rtb_TmpSignalConversionAtSFunct[4] = 90.0 + rtb_outputs[0];
-      rtb_TmpSignalConversionAtSFunct[5] = 0.0;
+      rtb_TmpSignalConversionAtSFunct[5] = 180.0;
 
       /* '<S3>:1:25' */
       collision_flag = 1;
@@ -642,6 +642,7 @@ void Arm_Controller_step(void)
       /* with arm pitching back */
       /* j4 = j2 - j3 - 90 - tilt_angle; */
       /* assumption */
+      /* '<S3>:1:57' */
       /* very basic check to see if the robot will collide with itself */
       /* if (j4 > 205)||((180-j3) > 155)||((90+j5) > 140), %found these upper limits by observation */
       /* disp('Movement will cause collision') */
@@ -781,13 +782,13 @@ void Arm_Controller_step(void)
       T5[7] = 0.0;
       T5[11] = 0.0;
       T5[15] = 1.0;
-      rtb_writehome = 0.0;
+      rtb_writehome = 180.0;
       Arm_Controller_cosd(&rtb_writehome);
-      rtb_statusflag_movej = 0.0;
+      rtb_statusflag_movej = 180.0;
       Arm_Controller_sind(&rtb_statusflag_movej);
-      rtb_write_pos = 0.0;
+      rtb_write_pos = 180.0;
       Arm_Controller_sind(&rtb_write_pos);
-      wrist_vect_idx_2 = 0.0;
+      wrist_vect_idx_2 = 180.0;
       Arm_Controller_cosd(&wrist_vect_idx_2);
       for (i_0 = 0; i_0 < 4; i_0++) {
         for (i = 0; i < 4; i++) {
@@ -984,12 +985,14 @@ void Arm_Controller_step(void)
       /* point representing camera */
       /* point representing end of wire connector */
       /* top of camera mount */
+      /* p2offset = total_transform*[0;-0.072;0;1];%if end effector is rotated by 0 */
       for (i_0 = 0; i_0 < 4; i_0++) {
         q = total_transform[i_0 + 12] + (total_transform[i_0 + 8] * 0.0 +
-          (total_transform[i_0 + 4] * -0.072 + total_transform[i_0] * 0.0));
+          (total_transform[i_0 + 4] * 0.072 + total_transform[i_0] * 0.0));
         wrist_2[i_0] = q;
       }
 
+      /* if end effector is rotated by 180 */
       p3offset[0] = 0.09 * wrist_vect_idx_0 + wrist_2[0];
       p3offset[1] = 0.09 * wrist_vect_idx_1 + wrist_2[1];
       p3offset[2] = 0.09 * wrist_vect_idx_2 + wrist_2[2];
@@ -1084,7 +1087,7 @@ void Arm_Controller_step(void)
         rtb_TmpSignalConversionAtSFunct[2] = j3;
         rtb_TmpSignalConversionAtSFunct[3] = j4;
         rtb_TmpSignalConversionAtSFunct[4] = 90.0 + rtb_outputs[0];
-        rtb_TmpSignalConversionAtSFunct[5] = 0.0;
+        rtb_TmpSignalConversionAtSFunct[5] = 180.0;
 
         /* '<S3>:1:77' */
         collision_flag = 1;
