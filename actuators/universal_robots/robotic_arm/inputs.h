@@ -73,7 +73,8 @@ public:
     inputs( char rover_id );
     bool is_empty() const { return my_commands.empty(); }
     /// It select wait with timeout then reads the inputs
-    void read();
+    /// Note: if timeout > 0, it does not handle signal interrupt during waiting
+    void read( const boost::posix_time::time_duration& timeout = boost::posix_time::microseconds( 0 ) );
     
     command_tokens& front() { return my_commands.front(); }
     const std::string next_command_name() const { return my_commands.front()[ name_index ]; }

@@ -30,8 +30,8 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef SNARKS_ACTUATORS_UR_ROBOTIC_ARM_AUTO_INITIALISATION_H
-#define SNARKS_ACTUATORS_UR_ROBOTIC_ARM_AUTO_INITIALISATION_H
+#ifndef SNARKS_ACTUATORS_UR_ROBOTIC_ARM_CAMERA_SWEEP_H
+#define SNARKS_ACTUATORS_UR_ROBOTIC_ARM_CAMERA_SWEEP_H
 #include <string>
 #include <vector>
 #include <iostream>
@@ -45,69 +45,76 @@
 #include <comma/application/signal_flag.h>
 #include <boost/optional.hpp>
 #include <boost/function.hpp>
+#include <boost/graph/graph_concepts.hpp>
 #include "data.h"
+#include "auto_initialization.h"
+extern "C" {
+    #include "simulink/Arm_Controller.h"
+}
+#include "simulink/traits.h"
 #include "result.h"
+#include "output.h"
 
 namespace snark { namespace ur { namespace robotic_arm { namespace handlers {
-    
-
 
 namespace arm = robotic_arm;
 
-/// This class takes over control from the main loop and do auto init,
-/// because we dont want to use a second thread (simpler) and auto init is a long running action.
-/// The code is put into this class, with the run member.
-class auto_initialization
+    
+/// class to perform the SCAN command, moves camera down and up using tilting joint (3).
+class camera_sweep
 {
+    typedef boost::function< void ( void ) > status_updater_t;
+    typedef boost::function< bool ( void ) > interrupt_t;    /// A new command is received
+    
+    
+    ExtU_Arm_Controller_T& inputs_;
+    const arm_output& serialiser_;
+    status_updater_t status_update_;
+    const status_t& status_;
+    interrupt_t interrupt_;
+    comma::signal_flag& signaled_;
+    std::string name_;
+    
+    struct move_t
+    {
+        move_t() {};
+        move_t( const std::string& m, const plane_angle_t& a ) : action( m ), tilt( a ) {}
+        std::string action;
+        plane_angle_t tilt;
+    };
+    
+    bool calculate_solution( const length_t& height, const plane_angle_degrees_t& pan, 
+                             const plane_angle_degrees_t& tilt_down, const plane_angle_degrees_t& tilt_up, 
+                             move_t& move1, move_t& move2, move_t& ret );
+    /// Rover is the robotic arm
+    void stop_movement( std::ostream& rover );
+    
+    void inputs_reset() { memset( &inputs_, 0, sizeof( ExtU_Arm_Controller_T ) ); }
 public:
-    typedef comma::csv::binary_input_stream< arm::status_t > binary_stream_t;   /// for reading new statuses
-private:
-    /// Status to check if initialized 
-    arm::status_t& status_;
-    std::ostream& os;           /// output to the rover
-    boost::function< void ( void ) > update_status_;
-    comma::signal_flag& signaled_;  /// Check if signal received
-    boost::function< bool ( void ) > interrupt_;    /// A new command is received
-    
-    std::string name_;  // name of the executable running this
-    /// This is the value of force limit on arm before failing auto initialisation.
-    /// Should not be 0 as there is a laszer mount?
-    double force_max_; // newtons
-    std::string home_filepath_;
-    
-    const std::string& name() const { return name_; }
-    /// Get the latest status from the arm
-    void read_status(); 
-    
-    static const char* filename;
-    
-public:
-    auto_initialization( arm::status_t& status, std::ostream& robot, 
-                         boost::function< void (void) > f, /// This updates status_
-                         comma::signal_flag& signaled, 
-                         boost::function< bool (void) > s, /// This updates status_
-                         const std::string& work_dir ) : 
-        status_( status ), os( robot ), 
-        update_status_(f),
-        signaled_( signaled ),
-        interrupt_( s ),
-        force_max_( 13.0 ), home_filepath_( work_dir + '/' + filename ) {}
-    
-    void set_app_name( const char* name ) { name_ = name; }
-    void set_force_limit( double newtons ){ force_max_ = newtons; }
-    
-    const std::string& home_filepath() const { return home_filepath_; }
-    
+    camera_sweep( // boost::function< bool (std::string& move1, std::string& move2 ) > f, /// caculate proposed sweep
+                  ExtU_Arm_Controller_T& inputs, /// Simulink inputs
+                  arm_output& serialiser,       /// Wrapper for Simulink outputs
+                  boost::function< void ( void ) > status_updater,
+                  const status_t& status,
+                  interrupt_t interrupt,
+                  comma::signal_flag& signaled
+        ) : 
+                    inputs_( inputs ), serialiser_( serialiser ), 
+                    status_update_( status_updater ), status_( status ), 
+                    interrupt_( interrupt ), signaled_( signaled ) {}
+                    
     /// To be called to signal that the movement has started - for commands like SCAN or AUTO_INIT
     typedef boost::function< void ( void ) > started_reply_t;
     
-    /// Performs auto initialisation but also listens for new commands.
-    /// If a new command arrives or a signal is received run() returns immediately.
-    /// result: shows wether success or failure.
-    result run( started_reply_t started_update, bool force );
+    result run( const length_t& height, const plane_angle_degrees_t& pan,
+                const plane_angle_degrees_t& tilt_down, const plane_angle_degrees_t& tilt_up, 
+                started_reply_t started,
+                std::ostream& rover );
+    
+    const std::string& name() const { return name_; }
+    void name( const std::string& name )  { name_ = name ; }
 };
-
-
+    
 } } } } // namespace snark { namespace ur { namespace robotic_arm { namespace handlers {
 
-#endif // SNARKS_ACTUATORS_UR_ROBOTIC_ARM_AUTO_INITIALISATION_H
+#endif // SNARKS_ACTUATORS_UR_ROBOTIC_ARM_CAMERA_SWEEP_H

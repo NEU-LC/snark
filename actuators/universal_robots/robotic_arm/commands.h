@@ -95,6 +95,14 @@ struct move_cam : command_base< move_cam >
     length_t    height;
 };
 
+struct sweep_cam : command_base< sweep_cam >
+{
+    static const char start_angle = -45;
+    static const char end_angle = 15;
+    std::string filetag; /// optional name of file to save the data into
+};
+
+
 struct move_joints : command_base< move_joints >
 {
     // static const char* name_str = "MOVEJ";

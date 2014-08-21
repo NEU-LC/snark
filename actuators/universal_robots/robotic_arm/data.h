@@ -112,6 +112,7 @@ void init( const T& t, boost::array< T, joints_num >& arr )
 struct status_t {
     typedef boost::array< double, joints_num > array_doubles_t;
     typedef boost::array< jointmode::mode, joints_num > array_jointmodes_t;
+    typedef boost::array< plane_angle_t, joints_num > array_joint_angles_t;
     
     boost::posix_time::ptime timestamp;
     snark::applications::position position;     /// Tool Center Point position
@@ -135,6 +136,8 @@ struct status_t {
     bool is_running() const;
     /// Robotic arm must be in this state to power on.
     bool is_powered_off() const;
+    
+    bool is_stationary( double epsilon=0.03 ) const;
     
     status_t() : timestamp( boost::posix_time::microsec_clock::local_time() ), position(), 
             robot_mode( robotmode::not_connected ), length(812), time_since_boot(-1) 
@@ -182,6 +185,15 @@ struct fixed_status : public comma::packed::packed_struct< fixed_status, 812  >
 template < typename T > struct packed_buffer {
     T data;
 };  
+
+inline bool status_t::is_stationary( double epsilon ) const
+{
+    for( std::size_t i=0; i<joints_num; ++i ) {
+        // std::cerr << "joint " << i << " mode " << joint_modes[i] << " expected: " << jointmode::running << std::endl;
+        if( std::fabs( this->velocities[i] ) >= epsilon ) { return false; }
+    }
+    return true;
+}
 
 
 // struct robot_mode : public comma::packed::packed_struct< robot_mode, 29 > {

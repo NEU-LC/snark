@@ -1,6 +1,40 @@
+// This file is part of snark, a generic and flexible library for robotics research
+// Copyright (c) 2011 The University of Sydney
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+// 1. Redistributions of source code must retain the above copyright
+//    notice, this list of conditions and the following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright
+//    notice, this list of conditions and the following disclaimer in the
+//    documentation and/or other materials provided with the distribution.
+// 3. All advertising materials mentioning features or use of this software
+//    must display the following acknowledgement:
+//    This product includes software developed by the The University of Sydney.
+// 4. Neither the name of the The University of Sydney nor the
+//    names of its contributors may be used to endorse or promote products
+//    derived from this software without specific prior written permission.
+//
+// NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
+// GRANTED BY THIS LICENSE.  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
+// HOLDERS AND CONTRIBUTORS \"AS IS\" AND ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+// BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+// OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
+// IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 #include "commands_handler.h"
-#include "auto_initialization.h"
 #include <fstream>
+#include <boost/bind.hpp>
+#include "auto_initialization.h"
+#include "traits.h"
 
 namespace snark { namespace ur { namespace robotic_arm { namespace handlers {
 
@@ -63,10 +97,54 @@ void commands_handler::handle( arm::move_cam& cam )
     inputs_.Input_2 = cam.tilt.value();
     inputs_.Input_3 = cam.height.value();
     
+    if( !execute() ) { return; }
+    
     fs::remove( home_filepath_ );
     
+    move_cam_height_ = cam.height;
+    move_cam_pan_ = cam.pan;
     ret = result();
 }
+
+template < typename C >
+void movement_started( const C& c, std::ostream& oss )
+{
+    static comma::csv::ascii< C > ascii;
+    static std::string tmp;
+    oss << '<' << c.serialise() << ',' << result::error::action_started << ',' << "\"movement initiated\";" << std::endl;
+    oss.flush();
+}
+
+void commands_handler::handle(sweep_cam& s)
+{
+    std::cerr << name() << " running sweep_cam" << std::endl; 
+
+    if( !status_.is_running() ) { ret = result( "cannot sweep (camera) as rover is not in running mode", result::error::invalid_robot_state ); return; }
+    if( !move_cam_height_ ) { ret = result( "robotic_arm is not in move_cam position", result::error::invalid_robot_state ); return; }
+    
+    ret = sweep_.run( *move_cam_height_, move_cam_pan_, 
+                      s.start_angle*degree, s.end_angle*degree, 
+                      boost::bind( movement_started< sweep_cam >, boost::cref( s ), boost::ref( this->ostream_ ) ),
+                      this->os );
+}
+
+bool commands_handler::execute()
+{
+    Arm_Controller_step();
+    if( !output_.runnable() ) { ret = result( "cannot run command as it will cause a collision", result::error::collision ); inputs_reset(); return false; }
+    
+    if( verbose_ ) { 
+        std::cerr << name() << output_.debug_in_degrees() << std::endl; 
+        std::cerr << name() << output_.serialise() << std::endl; 
+    }
+    os << output_.serialise() << std::endl;
+    os.flush();
+    inputs_reset();
+    ret= result();
+    return true;
+}
+
+
 
 void commands_handler::handle( arm::move_joints& joints )
 {
@@ -102,6 +180,8 @@ void commands_handler::handle( arm::joint_move& joint )
         ret = result( "cannot initialise joint as rover is not in initialisation mode", result::error::invalid_robot_state );
         return;
     }
+    move_cam_height_.reset(); // no longer in move_cam position
+    
     /// command can be use if in running or initialising mode
     int index = joint.joint_id;
     if( status_.robot_mode != robotmode::initializing && 
@@ -159,6 +239,8 @@ void commands_handler::handle( arm::set_position& pos )
         ret = result( "cannot set position as rover is not in running mode", result::error::invalid_robot_state );
         return;
     }
+    
+    move_cam_height_.reset(); // no longer in move_cam position
 
     inputs_.motion_primitive = input_primitive::set_position;
 
@@ -169,7 +251,7 @@ void commands_handler::handle( arm::set_position& pos )
     inputs_.Input_2 = 0;    // zero pan for giraffe
     inputs_.Input_3 = 0;    // zero tilt for giraffe
     
-    ret = result();
+    execute();
 }
 
 
@@ -199,7 +281,8 @@ bool commands_handler::is_initialising() const
 
 void commands_handler::handle(auto_init& a)
 {
-    ret = init_.run( false );
+    ret = init_.run( boost::bind( movement_started< auto_init >, boost::cref( a ), boost::ref( this->ostream_ ) ),
+                     false );
     if( ret.is_success() ) { 
         std::cerr << name() << "going to home position." << std::endl;
         arm::set_position home; handle( home ); 
@@ -208,7 +291,8 @@ void commands_handler::handle(auto_init& a)
 }
 void commands_handler::handle( arm::auto_init_force& init )
 {
-    ret = init_.run( init.force );
+    ret = init_.run( boost::bind( movement_started< auto_init_force >, boost::cref( init ), boost::ref( this->ostream_ ) ), 
+                     init.force );
     if( ret.is_success() ) { 
         std::cerr << name() << "going to home position." << std::endl;
         arm::set_position home; handle( home ); 

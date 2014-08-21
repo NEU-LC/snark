@@ -57,6 +57,7 @@
 #include "../../commands_handler.h"
 #include "../../inputs.h"
 #include "../../units.h"
+#include "../../camera_sweep.h"
 extern "C" {
     #include "../../simulink/Arm_Controller.h"
 }
@@ -114,61 +115,6 @@ comma::csv::ascii< T >& ascii( )
     return ascii_;
 }
 
-
-typedef boost::units::quantity< boost::units::si::angular_acceleration > angular_acceleration_t;
-typedef boost::units::quantity< boost::units::si::angular_velocity > angular_velocity_t;
-
-
-class arm_output
-{
-public:
-    typedef arm::current_positions current_positions_t;
-private:
-    angular_acceleration_t acceleration;
-    angular_velocity_t velocity;
-    ExtY_Arm_Controller_T& joints;
-    current_positions_t& current_positions;
-public:
-    arm_output( const angular_acceleration_t& ac, const angular_velocity_t& vel,
-                ExtY_Arm_Controller_T& output ) : 
-                acceleration( ac ), velocity( vel ), joints( output ), 
-                current_positions( static_cast< current_positions_t& >( output ) ) 
-                {
-                    Arm_Controller_initialize();
-                }
-   ~arm_output() 
-    { 
-        Arm_Controller_terminate(); 
-    }
-                
-   std::string debug_in_degrees() const
-   {
-       std::ostringstream ss;
-       ss << "debug: movej([";
-       for(std::size_t i=0; i<6u; ++i) 
-       {
-          ss << static_cast< arm::plane_angle_degrees_t >( joints.joint_angle_vector[i] * arm::radian ).value();
-          if( i < 5 ) { ss << ','; }
-       }
-       ss << "],a=" << acceleration.value() << ','
-          << "v=" << velocity.value() << ')';
-          
-          
-       return ss.str();
-   }
-   std::string serialise() const
-   {
-       static std::string tmp;
-       std::ostringstream ss;
-       ss << "movej([" << ascii< ExtY_Arm_Controller_T >( ).put( joints, tmp )
-          << "],a=" << acceleration.value() << ','
-          << "v=" << velocity.value() << ')';
-       return ss.str();
-   }
-   
-};
-
-
 void output( const std::string& msg, std::ostream& os=std::cout )
 {
     os << msg << std::endl;
@@ -220,6 +166,7 @@ void process_command( const std::vector< std::string >& v, std::ostream& os )
     else if( boost::iequals( v[2], "set_pos" ) )     { output( handle< arm::set_position >( v, os ) ); }
     else if( boost::iequals( v[2], "set_home" ) )    { output( handle< arm::set_home >( v, os ) ); }
     else if( boost::iequals( v[2], "power" ) )       { output( handle< arm::power >( v, os )); }  
+    else if( boost::iequals( v[2], "scan" ) )        { output( handle< arm::sweep_cam >( v, os )); }  
     else if( boost::iequals( v[2], "brakes" ) || 
              boost::iequals( v[2], "stop" ) )        { output( handle< arm::brakes >( v, os )); }  
     else if( boost::iequals( v[2], "auto_init" ) )  
@@ -235,14 +182,8 @@ void process_command( const std::vector< std::string >& v, std::ostream& os )
         impl_::str( arm::errors::unknown_command ) + ",\"unknown command found: '" + v[2] + "'\"" ); return; }
 }
 
-bool ready( comma::io::istream& is )
-{
-    // std::cerr << "avail: " << is->rdbuf()->in_avail() << std::endl;
-    return is->rdbuf()->in_avail() > 0;
-}
-
 /// Return null if no status
-void read_status( comma::csv::binary_input_stream< arm::status_t >& iss, 
+void read_status( comma::csv::binary_input_stream< arm::status_t >& iss, comma::io::istream& stream,
     comma::io::select& select, const comma::io::file_descriptor& fd )
 {
     /// Within 100ms, we are guranteed a new status, there may already be many statuses waiting to be read
@@ -253,7 +194,7 @@ void read_status( comma::csv::binary_input_stream< arm::status_t >& iss,
         COMMA_THROW( comma::exception, "no status received within timeout of " << timeout.total_milliseconds() << "ms" ); 
     }
     arm_status = *( iss.read() );
-    while( iss.has_data() )  { arm_status = *( iss.read() ); }
+    while( stream->rdbuf()->in_avail() > 0 )  { arm_status = *( iss.read() ); }
 
     if( arm_status.length != arm::fixed_status::size ) {
         std::cerr << name() << "status data alignment check failed" << std::endl; 
@@ -331,14 +272,18 @@ void home_position_check( const arm::status_t& status, const std::string& homefi
     }
 }
 
+bool should_stop( arm::inputs& in )
+{
+    static const boost::posix_time::seconds timeout( 0 );
+    in.read( timeout );
+    return ( !in.is_empty() );
+}
+
 int main( int ac, char** av )
 {
-    
     comma::signal_flag signaled;
-    
     comma::command_line_options options( ac, av );
     if( options.exists( "-h,--help" ) ) { usage( 0 ); }
-
     if( options.exists( "--output-config") )
     {
         boost::property_tree::ptree t;
@@ -359,7 +304,7 @@ int main( int ac, char** av )
     try
     {
         /// COnvert simulink output into arm's command
-        arm_output output( acc * angular_acceleration_t::unit_type(), vel * angular_velocity_t::unit_type(),
+        arm::handlers::arm_output output( acc * arm::angular_acceleration_t::unit_type(), vel * arm::angular_velocity_t::unit_type(),
                        Arm_Controller_Y );
     
         comma::uint16 rover_id = options.value< comma::uint16 >( "--id" );
@@ -422,12 +367,25 @@ int main( int ac, char** av )
 
         /// Create the handler for auto init.
         arm::handlers::auto_initialization auto_init( arm_status, *robot_arm,
-                boost::bind( read_status, boost::ref(istream), select, status_stream.fd() ),
-                signaled, inputs, continuum.work_directory );
+                boost::bind( read_status, boost::ref(istream), boost::ref( status_stream ), select, status_stream.fd() ),
+                signaled, 
+                boost::bind( should_stop, boost::ref( inputs ) ),
+                continuum.work_directory );
         auto_init.set_app_name( name() );
+        
+        
+        arm::handlers::camera_sweep camera_sweep( Arm_Controller_U, output, 
+                boost::bind( read_status, boost::ref(istream), boost::ref( status_stream ), select, status_stream.fd() ),
+                arm_status,
+                boost::bind( should_stop, boost::ref( inputs ) ),
+                signaled );
+                                                  
+        
         // if( options.exists( "--init-force-limit,-ifl" ) ){ auto_init.set_force_limit( options.value< double >( "--init-force-limit,-ifl" ) ); }
-        commands_handler.reset( new commands_handler_t( Arm_Controller_U, arm_status, *robot_arm, auto_init ) );
+        commands_handler.reset( new commands_handler_t( Arm_Controller_U, output, arm_status, *robot_arm, 
+                                                        auto_init, camera_sweep, std::cout ) );
 
+        boost::posix_time::microseconds timeout( 0 );
         while( !signaled && std::cin.good() )
         {
             if( !status_stream->good() ) { 
@@ -435,11 +393,12 @@ int main( int ac, char** av )
                 COMMA_THROW( comma::exception, "status connection to robot arm failed." ); 
             }
 
-            read_status( istream, select, status_stream.fd() ); 
+            read_status( istream, status_stream, select, status_stream.fd() ); 
             home_position_check( arm_status, auto_init.home_filepath() );
             
-            try { inputs.read(); }
-            catch(...) { COMMA_THROW( comma::exception, "reading from stdcin failed." ); }
+            /// Also act as sleep
+            inputs.read( timeout );
+            bool empty = inputs.is_empty();
             // Process commands into inputs into the system
             if( !inputs.is_empty() )
             {
@@ -448,30 +407,13 @@ int main( int ac, char** av )
                 process_command( v, *robot_arm );
 
             }
-            // Run simulink code
-            Arm_Controller_step();
             
-            // We we need to send command to arm
-            if( Arm_Controller_Y.command_flag > 0 )
-            {
-                if( verbose ) { std::cerr << name() << output.debug_in_degrees() << std::endl; }
-                *robot_arm << output.serialise() << std::endl;
-                robot_arm->flush();
-                Arm_Controller_U.motion_primitive = real_T( input_primitive::no_action );
-            }
-            else if( Arm_Controller_Y.command_flag < 0 ) {
-                std::cerr << name() << "command cannot execute as it will cause a collision!" << std::endl;
-            }
-            
-            // reset inputs
-            memset( &Arm_Controller_U, 0, sizeof( ExtU_Arm_Controller_T ) );
-
-            if( sleep > 0 ) usleep( usec );
+            usleep( usec );
         }
 
         std::cerr << name() << "exiting" << std::endl;
-        *robot_arm << "power off\n";
-        robot_arm->flush();
+//         *robot_arm << "power off\n";
+//         robot_arm->flush();
     }
     catch( comma::exception& ce ) { std::cerr << name() << ": exception thrown: " << ce.what() << std::endl; return 1; }
     catch( std::exception& e ) { std::cerr << name() << ": unknown exception caught: " << e.what() << std::endl; return 1; }
