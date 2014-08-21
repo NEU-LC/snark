@@ -123,7 +123,8 @@ bool camera_sweep::calculate_solution( const length_t& height, const plane_angle
                                        const plane_angle_degrees_t& tilt_down, const plane_angle_degrees_t& tilt_up, 
                                        move_t& move1, move_t& move2, move_t& ret )
 {
-    const plane_angle_t current_tilt = status_.joint_angles[ tilt_joint ];
+    const plane_angle_degrees_t current_tilt = static_cast< plane_angle_degrees_t >( status_.position.orientation.y() * radian ); // This is the pitch
+    std::cerr << name() << "current tilt angle is " << current_tilt.value() << '"' << std::endl;
     
     inputs_reset();
     
@@ -163,7 +164,7 @@ bool camera_sweep::calculate_solution( const length_t& height, const plane_angle
     if( !serialiser_.runnable() ) { std::cerr << name() << "failed to find move action 3, will_collide:" << serialiser_.will_collide() << std::endl; return false; }
     
     /// Get commands
-    ret = move_t( serialiser_.serialise(), current_tilt );
+    ret = move_t( serialiser_.serialise(), serialiser_.proposed_tilt_angle() );
     
     /// Done
     inputs_.motion_primitive = input_primitive::no_action;
