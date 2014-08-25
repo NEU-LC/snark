@@ -58,11 +58,14 @@ void strip_checksum( std::size_t raw_size, char* target, const char* raw )
     const comma::uint32 data_size = 64;
     
     // strip out all sum + line feed
-    while( size >= block )
+    while( size > block+1 ) // if data is exactly 64 bytes or less, it is different and ends in two line feeds
     {
         memcpy( target, raw, data_size );
         
-        if( raw[block-1] != '\n' ) { COMMA_THROW( comma::exception, "failed to find line feed after 64 data bytes and checksum byte, data block: " << std::string( raw, block )  ); }
+        if( raw[block-1] != '\n' ) { 
+            std::cerr << "strip remaining size is " << size << std::endl;
+            COMMA_THROW( comma::exception, "failed to find line feed after 64 data bytes and checksum byte, data block: " << std::string( raw, block )  ); 
+        }
         // verify checksum
         
         // todo: more informative expression
