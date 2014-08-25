@@ -180,7 +180,7 @@ static void usage()
 static bool is_omit_error = false;
 
 template < int STEPS >
-void scanning( int start_step, comma::uint32 num_of_scans, // 0 for unlimited
+bool scanning( int start_step, comma::uint32 num_of_scans, // 0 for unlimited
                comma::signal_flag& signaled,
                std::iostream& iostream, comma::csv::output_stream< data_point >& output )
 {
@@ -241,10 +241,11 @@ void scanning( int start_step, comma::uint32 num_of_scans, // 0 for unlimited
         // This means we are done
         if( num_of_scans != 0 && response.header.request.num_of_scans == 0 ) { 
 
-            return; 
+            return true; 
         }   
     }
     
+    return false;
 }
 
 /// Connect to the TCP server within the allowed timeout
@@ -369,16 +370,10 @@ int main( int ac, char** av )
                 start_encoder_step = options.value< comma::uint32 >( "--start-step", 0 );
                 if( start_encoder_step >= ( hok::ust_10lx::step_max - SMALL_STEPS ) ) { COMMA_THROW( comma::exception, "start step is too high" ); }
 
-                while( 1 ) { 
-                    scanning< SMALL_STEPS >( start_encoder_step, SCANS, signaled, iostream, output );
-                    usleep( scan_break );
-                }
+                while( scanning< SMALL_STEPS >( start_encoder_step, SCANS, signaled, iostream, output ) ) { usleep( scan_break ); }
             }
             else {
-                while( 1 ) {
-                    scanning< MAX_STEPS >( start_encoder_step, SCANS, signaled, iostream, output );
-                    usleep( scan_break );
-                }
+                while( scanning< MAX_STEPS >(   start_encoder_step, SCANS, signaled, iostream, output ) ) { usleep( scan_break ); }
             }
         }
     }
