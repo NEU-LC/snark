@@ -92,9 +92,9 @@ class angle : public comma::math::cyclic< T >
         T operator()() const { return comma::math::cyclic< T >::operator()(); }
 };
 
-inline radians::radians( degrees d ) { value = d.value * static_cast< double >( M_PI ) / 180; }
+inline radians::radians( degrees d ) { value = static_cast< long double >( d.value ) * M_PI / 180; }
 
-inline degrees::degrees( radians d ) { value = d.value * 180 / static_cast< double >( M_PI ); }
+inline degrees::degrees( radians d ) { value = static_cast< long double >( d.value ) * 180 / M_PI; }
 
 } } // namespace snark{ namespace math{
 
