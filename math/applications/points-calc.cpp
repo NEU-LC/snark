@@ -41,6 +41,7 @@ static void usage( bool more = false )
     std::cerr << "            " << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
     std::cerr << std::endl;
     std::cerr << "    discretise: read input data and discretise intervals between adjacent points with --step" << std::endl;
+    std::cerr << "        skip discretised points that are closer to the end of the interval than --tolerance (default: --tolerance=0)" << std::endl;
     std::cerr << std::endl;
     std::cerr << "        input fields" << std::endl;
     std::cerr << "            " << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
@@ -132,7 +133,7 @@ void output_points(const Eigen::Vector3d& p1, const Eigen::Vector3d& p2)
     }
 }
 
-static void discretise( double step )
+static void discretise( double step, double tolerance )
 {
     BOOST_STATIC_ASSERT( sizeof( Eigen::Vector3d ) == sizeof( double ) * 3 );
     comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, csv );
@@ -148,7 +149,7 @@ static void discretise( double step )
             if( comma::math::less( step, distance ) )
             {
                 Eigen::ParametrizedLine< double, 3 > line = Eigen::ParametrizedLine< double, 3 >::Through( *previous_point, *current_point );
-                for( double t = step; comma::math::less( t, distance ); t += step )
+                for( double t = step; comma::math::less( t + tolerance, distance ); t += step )
                 {
                     Eigen::Vector3d point = line.pointAt( t );
                     output_points( *previous_point, point );
@@ -204,7 +205,11 @@ int main( int ac, char** av )
             if( !options.exists( "--step" ) ) { std::cerr << "points-calc: --step is not specified " << std::endl; return 1; }
             double step = options.value( "--step" , 0.0 );
             if( step <= 0 ) { std::cerr << "points-calc: expected positive step, got " << step << std::endl; return 1; }
-            discretise( step );
+            // the last discretised point can be very close to the end of the interval, in which case the last two points can be identical in the output since ascii.put uses 12 digits by default
+            // setting --tolerance=1e-12 will not allow the last discretised point to be too close to the end of the interval and therefore the output will have two distinct points at the end
+            double tolerance = options.value( "--tolerance" , 0.0 ); 
+            if( tolerance < 0 ) { std::cerr << "points-calc: expected non-negative tolerance, got " << tolerance << std::endl; return 1; }
+            discretise( step, tolerance );
             return 0;
         }
         std::cerr << "points-calc: please specify an operation" << std::endl;
