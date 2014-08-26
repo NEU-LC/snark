@@ -34,17 +34,17 @@
 /// @author vsevolod vlaskine (v.vlaskine@acfr.usyd.edu.au)
 
 #include "./scan_packet.h"
+#include <comma/base/exception.h>
 
 // todo: templates for channels16_t + channels8_t?
 // todo: general template for all sections with optional components?
-// todo: throw when accessing data that doesn't exist
 
 namespace snark { namespace sick { namespace cola { namespace binary {
 
 // encoders_info_t
 const scan_packet::encoder_t* scan_packet::encoders_info_t::encoders_begin() const
 {
-    // todo: throw, if encoders_size == 0
+    if ( *encoders_size.data() == 0 ) { COMMA_THROW( comma::exception, "no encoder data" ); }
     return reinterpret_cast< const scan_packet::encoder_t* >( reinterpret_cast< const char* >( this ) + size );
 }
 
@@ -61,6 +61,7 @@ const char* scan_packet::encoders_info_t::end() const
 // channel16_t
 const comma::packed::uint16* scan_packet::channel16_t::data_begin() const
 {
+    if ( *data_size.data() == 0 ) { COMMA_THROW( comma::exception, "no channel data in 16-bit channel " << *channel_content.data() ); }
     return reinterpret_cast< const comma::packed::uint16* >( reinterpret_cast< const char* >( this ) + size );
 }
 
@@ -77,7 +78,7 @@ const char* scan_packet::channel16_t::end() const
 // channels16_t
 const scan_packet::channel16_t* scan_packet::channels16_t::channels_begin() const
 {
-    // todo: throw, if channels_size == 0
+    if ( *channels_size.data() == 0 ) { COMMA_THROW( comma::exception, "no 16-bit channels" ); }
     return reinterpret_cast< const scan_packet::channel16_t* >( reinterpret_cast< const char* >( this ) + size );
 }
 
@@ -104,6 +105,7 @@ const char* scan_packet::channels16_t::end() const
 // channel8_t
 const comma::packed::uint16* scan_packet::channel8_t::data_begin() const
 {
+    if ( *data_size.data() == 0 ) { COMMA_THROW( comma::exception, "no channel data in 8-bit channel " << *channel_content.data() ); }
     return reinterpret_cast< const comma::packed::uint16* >( reinterpret_cast< const char* >( this ) + size );
 }
 
@@ -120,7 +122,7 @@ const char* scan_packet::channel8_t::end() const
 // channels8_t
 const scan_packet::channel8_t* scan_packet::channels8_t::channels_begin() const
 {
-    // todo: throw, if channels_size == 0
+    if ( *channels_size.data() == 0 ) { COMMA_THROW( comma::exception, "no 8-bit channels" ); }
     return reinterpret_cast< const scan_packet::channel8_t* >( reinterpret_cast< const char* >( this ) + size );
 }
 
@@ -147,7 +149,7 @@ const char* scan_packet::channels8_t::end() const
 // position_info_t
 const scan_packet::position_t* scan_packet::position_info_t::position() const
 {
-    // todo: throw, if data_present == 0
+    if ( *data_present.data() == 0 ) { COMMA_THROW( comma::exception, "no position data" ); }
     return reinterpret_cast< const scan_packet::position_t* >( reinterpret_cast< const char* >( this ) + size );
 }
 
@@ -165,6 +167,7 @@ const char* scan_packet::position_info_t::end() const
 // name_t
 const comma::packed::byte* scan_packet::name_t::name_begin() const
 {
+    if ( *name_length.data() == 0 ) { COMMA_THROW( comma::exception, "name length is zero" ); }
     return reinterpret_cast< const comma::packed::byte* >( reinterpret_cast< const char* >( this ) + size );
 }
 
@@ -181,7 +184,7 @@ const char* scan_packet::name_t::end() const
 // name_info_t
 const scan_packet::name_t* scan_packet::name_info_t::name() const
 {
-    // todo: throw, if data_present == 0 ?
+    if ( *data_present.data() == 0 ) { COMMA_THROW( comma::exception, "no name data" ); }
     return reinterpret_cast< const scan_packet::name_t* >( reinterpret_cast< const char* >( this ) + size );
 }
 
@@ -198,6 +201,7 @@ const char* scan_packet::name_info_t::end() const
 // comment_t
 const comma::packed::byte* scan_packet::comment_t::comment_begin() const
 {
+    if ( *comment_length.data() == 0 ) { COMMA_THROW( comma::exception, "comment length is zero" ); }
     return reinterpret_cast< const comma::packed::byte* >( reinterpret_cast< const char* >( this ) + size );
 }
 
@@ -214,7 +218,7 @@ const char* scan_packet::comment_t::end() const
 // comment_info_t
 const scan_packet::comment_t* scan_packet::comment_info_t::comment() const
 {
-    // todo: throw, if data_present == 0 ?
+    if ( *data_present.data() == 0 ) { COMMA_THROW( comma::exception, "no comment data" ); }
     return reinterpret_cast< const scan_packet::comment_t* >( reinterpret_cast< const char* >( this ) + size );
 }
 
@@ -231,7 +235,7 @@ const char* scan_packet::comment_info_t::end() const
 // timestamp_info_t
 const scan_packet::timestamp_t* scan_packet::timestamp_info_t::timestamp() const
 {
-    // todo: throw, if data_present == 0
+    if ( *data_present.data() == 0 ) { COMMA_THROW( comma::exception, "no timestamp data" ); }
     return reinterpret_cast< const scan_packet::timestamp_t* >( reinterpret_cast< const char* >( this ) + size );
 }
 
@@ -249,7 +253,7 @@ const char* scan_packet::timestamp_info_t::end() const
 // event_info_t
 const scan_packet::event_t* scan_packet::event_info_t::event() const
 {
-    // todo: throw, if data_present == 0
+    if ( *data_present.data() == 0 ) { COMMA_THROW( comma::exception, "no event data" ); }
     return reinterpret_cast< const scan_packet::event_t* >( reinterpret_cast< const char* >( this ) + size );
 }
 
