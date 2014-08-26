@@ -59,6 +59,13 @@ void camera_sweep::stop_movement(std::ostream& rover)
 //     rover.flush();
 }
 
+result camera_sweep::run( const length_t& height, const plane_angle_degrees_t& pan, 
+                          started_reply_t start_initiated,
+                          std::ostream& rover )
+{
+    return run( height, pan, min_, max_, start_initiated, rover );
+}
+    
     
 result camera_sweep::run( const length_t& height, const plane_angle_degrees_t& pan, 
                           const plane_angle_degrees_t& tilt_down, const plane_angle_degrees_t& tilt_up, 
@@ -66,6 +73,7 @@ result camera_sweep::run( const length_t& height, const plane_angle_degrees_t& p
                           std::ostream& rover )
 {
     
+    std::cerr << name() << "scanning from " << tilt_down.value() << "\" to " << tilt_up.value() << '"' << std::endl;
     move_t move1, move2, ret;
     if( !calculate_solution( height, pan, tilt_down, tilt_up, move1, move2, ret ) )
     {

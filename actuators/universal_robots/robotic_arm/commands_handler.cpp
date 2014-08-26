@@ -123,7 +123,6 @@ void commands_handler::handle(sweep_cam& s)
     if( !move_cam_height_ ) { ret = result( "robotic_arm is not in move_cam position", result::error::invalid_robot_state ); return; }
     
     ret = sweep_.run( *move_cam_height_, move_cam_pan_, 
-                      s.start_angle*degree, s.end_angle*degree, 
                       boost::bind( movement_started< sweep_cam >, boost::cref( s ), boost::ref( this->ostream_ ) ),
                       this->os );
 }
