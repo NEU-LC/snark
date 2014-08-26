@@ -98,11 +98,11 @@ struct scan_packet
     {
         comma::packed::uint16 encoders_size;
 
-        const encoder_t* encoders_begin() const { return reinterpret_cast< const encoder_t* >( reinterpret_cast< const char* >( this ) + size ); }
+        const encoder_t* encoders_begin() const;
 
-        const encoder_t* encoders_end() const { return encoders_begin() + *encoders_size.data() * encoder_t::size; }
+        const encoder_t* encoders_end() const;
 
-        const char* end() const { return reinterpret_cast< const char* >( encoders_end() ); }
+        const char* end() const;
     };
 
     struct channel16_t : public comma::packed::packed_struct< channel16_t, 21 >
@@ -114,24 +114,24 @@ struct scan_packet
         comma::packed::uint16 steps;
         comma::packed::uint16 data_size;
 
-        const comma::packed::uint16* data_begin() const { return reinterpret_cast< const comma::packed::uint16* >( reinterpret_cast< const char* >( this ) + size ); }
+        const comma::packed::uint16* data_begin() const;
 
-        const comma::packed::uint16* data_end() const { return data_begin() + *data_size.data() * sizeof( comma::packed::uint16 ); }
+        const comma::packed::uint16* data_end() const;
 
-        const char* end() const { return reinterpret_cast< const char* >( data_end() ); }
+        const char* end() const;
     };
 
     struct channels16_t : public comma::packed::packed_struct< channels16_t, 2 >
     {
         comma::packed::uint16 channels_size;
 
-        const channel16_t* channels_begin() const { return reinterpret_cast< const channel16_t* >( reinterpret_cast< const char* >( this ) + size ); } // todo: throw, if channels_size == 0
+        const channel16_t* channels_begin() const;
 
-        const channel16_t* channels_next( const channel16_t* c = NULL ) const { return c == NULL ? reinterpret_cast< const channel16_t* >( reinterpret_cast< const char* >( this ) + size ) : reinterpret_cast< const channel16_t* >( c->end() ); }
+        const channel16_t* channels_next( const channel16_t* c = NULL ) const;
 
         const channel16_t* channels_end() const;
 
-        const char* end() const { return reinterpret_cast< const char* >( channels_end() ); }
+        const char* end() const;
     };
 
     struct channel8_t : public comma::packed::packed_struct< channel8_t, 21 >
@@ -143,24 +143,24 @@ struct scan_packet
         comma::packed::uint16 steps;
         comma::packed::uint16 data_size;
 
-        const comma::packed::uint16* data_begin() const { return reinterpret_cast< const comma::packed::uint16* >( reinterpret_cast< const char* >( this ) + size ); }
+        const comma::packed::uint16* data_begin() const;
 
-        const comma::packed::uint16* data_end() const { return data_begin() + *data_size.data() * sizeof( comma::packed::uint16 ); }
+        const comma::packed::uint16* data_end() const;
 
-        const char* end() const { return reinterpret_cast< const char* >( data_end() ); }
+        const char* end() const;
     };
 
     struct channels8_t : public comma::packed::packed_struct< channels8_t, 2 >
     {
         comma::packed::uint16 channels_size;
 
-        const channel8_t* channels_begin() const { return reinterpret_cast< const channel8_t* >( reinterpret_cast< const char* >( this ) + size ); } // todo: throw, if channels_size == 0
+        const channel8_t* channels_begin() const;
 
-        const channel8_t* channels_next( const channel8_t* c = NULL ) const { return c == NULL ? reinterpret_cast< const channel8_t* >( reinterpret_cast< const char* >( this ) + size ) : reinterpret_cast< const channel8_t* >( c->end() ); }
+        const channel8_t* channels_next( const channel8_t* c = NULL ) const;
 
         const channel8_t* channels_end() const;
 
-        const char* end() const { return reinterpret_cast< const char* >( channels_end() ); }
+        const char* end() const;
     };
 
     struct position_t : public comma::packed::packed_struct< position_t, 25 >
@@ -182,34 +182,33 @@ struct scan_packet
     {
         comma::packed::uint16 data_present; // 0=no, 1=yes
 
-        const position_t* position() const { return reinterpret_cast< const position_t* >( reinterpret_cast< const char* >( this ) + size ); } // todo: throw, if data_present == 0
+        const position_t* position() const;
 
-        const position_t* position_end() const { return reinterpret_cast< const position_t* >( end() ); } // is this necessary?
+        const position_t* position_end() const;
 
-        const char* end() const { return *data_present.data() == 1 ? position()->end() : reinterpret_cast< const char* >( this ) + size; }
+        const char* end() const;
     };
 
     struct name_t : public comma::packed::packed_struct< name_t, 1 >
     {
         comma::packed::byte name_length; // should be limited to 0-16
 
-        const comma::packed::byte* name_begin() const { return reinterpret_cast< const comma::packed::byte* >( reinterpret_cast< const char* >( this ) + size ); }
+        const comma::packed::byte* name_begin() const;
 
-        const comma::packed::byte* name_end() const { return name_begin() + *name_length.data() * sizeof( comma::packed::byte ); }
+        const comma::packed::byte* name_end() const;
 
-        const char* end() const { return reinterpret_cast< const char* >( name_end() ); }
-
+        const char* end() const;
     };
 
     struct name_info_t : public comma::packed::packed_struct< position_info_t, 2 >
     {
         comma::packed::uint16 data_present; // 0=no, 1=yes
 
-        const name_t* name() const { return reinterpret_cast< const name_t* >( reinterpret_cast< const char* >( this ) + size ); } // todo: throw, if data_present == 0 ?
+        const name_t* name() const;
 
-        const name_t* name_end() const { return reinterpret_cast< const name_t* >( end() ); }
+        const name_t* name_end() const;
 
-        const char* end() const { return *data_present.data() == 1 ? name()->end() : reinterpret_cast< const char* >( this ) + size; }
+        const char* end() const;
     };
 
     // todo: exactly the same as name_t, name_info_t ?
@@ -217,11 +216,11 @@ struct scan_packet
     {
         comma::packed::byte comment_length; // should be limited to 0-16
 
-        const comma::packed::byte* comment_begin() const { return reinterpret_cast< const comma::packed::byte* >( reinterpret_cast< const char* >( this ) + size ); }
+        const comma::packed::byte* comment_begin() const;
 
-        const comma::packed::byte* comment_end() const { return comment_begin() + *comment_length.data() * sizeof( comma::packed::byte ); }
+        const comma::packed::byte* comment_end() const;
 
-        const char* end() const { return reinterpret_cast< const char* >( comment_end() ); }
+        const char* end() const;
 
     };
 
@@ -229,11 +228,11 @@ struct scan_packet
     {
         comma::packed::uint16 data_present; // 0=no, 1=yes
 
-        const comment_t* comment() const { return reinterpret_cast< const comment_t* >( reinterpret_cast< const char* >( this ) + size ); } // todo: throw, if data_present == 0 ?
+        const comment_t* comment() const;
 
-        const comment_t* comment_end() const { return reinterpret_cast< const comment_t* >( end() ); }
+        const comment_t* comment_end() const;
 
-        const char* end() const { return *data_present.data() == 1 ? comment()->end() : reinterpret_cast< const char* >( this ) + size; }
+        const char* end() const;
     };
 
     struct timestamp_t : public comma::packed::packed_struct< timestamp_t, 11 >
@@ -253,11 +252,11 @@ struct scan_packet
     {
         comma::packed::uint16 data_present; // 0=no, 1=yes
 
-        const timestamp_t* timestamp() const { return reinterpret_cast< const timestamp_t* >( reinterpret_cast< const char* >( this ) + size ); } // todo: throw, if data_present == 0
+        const timestamp_t* timestamp() const;
 
-        const timestamp_t* timestamp_end() const { return reinterpret_cast< const timestamp_t* >( end() ); } // is this necessary?
+        const timestamp_t* timestamp_end() const;
 
-        const char* end() const { return *data_present.data() == 1 ? timestamp()->end() : reinterpret_cast< const char* >( this ) + size; }
+        const char* end() const;
     };
 
     struct event_t : public comma::packed::packed_struct< event_t, 16 >
@@ -274,42 +273,42 @@ struct scan_packet
     {
         comma::packed::uint16 data_present; // 0=no, 1=yes
 
-        const event_t* event() const { return reinterpret_cast< const event_t* >( reinterpret_cast< const char* >( this ) + size ); } // todo: throw, if data_present == 0
+        const event_t* event() const;
 
-        const event_t* event_end() const { return reinterpret_cast< const event_t* >( end() ); } // is this necessary?
+        const event_t* event_end() const;
 
-        const char* end() const { return *data_present.data() == 1 ? event()->end() : reinterpret_cast< const char* >( this ) + size; }
+        const char* end() const;
     };
 
     scan_packet() {}
 
     scan_packet( const char* buffer ) : buffer( buffer ) {}
 
-    const cola::binary::header& header() const { return *reinterpret_cast< const cola::binary::header* >( buffer ); }
+    const cola::binary::header& header() const;
 
-    const char* header_end() const { return reinterpret_cast< const char* > ( buffer + cola::binary::header::size + body_header< type_field_size >::size ); }
+    const char* header_end() const;
 
-    const version_t& version() const { return *reinterpret_cast< const version_t* >( header_end() ); }
+    const version_t& version() const;
 
-    const device_t& device() const { return *reinterpret_cast< const device_t* >( version().end() ); }
+    const device_t& device() const;
 
-    const status_info_t& status_info() const { return *reinterpret_cast< const status_info_t* >( device().end() ); }
+    const status_info_t& status_info() const;
 
-    const frequency_t& frequency() const { return *reinterpret_cast< const frequency_t* >( status_info().end() ); }
+    const frequency_t& frequency() const;
 
-    const encoders_info_t& encoders() const { return *reinterpret_cast< const encoders_info_t* >( frequency().end() ); }
+    const encoders_info_t& encoders() const;
 
-    const channels16_t& channels16() const { return *reinterpret_cast< const channels16_t* >( encoders().end() ); }
+    const channels16_t& channels16() const;
 
-    const channels8_t& channels8() const { return *reinterpret_cast< const channels8_t* >( channels16().end() ); }
+    const channels8_t& channels8() const;
 
-    const name_info_t& name() const { return *reinterpret_cast< const name_info_t* >( channels8().end() ); }
+    const name_info_t& name() const;
 
-    const comment_info_t& comment() const { return *reinterpret_cast< const comment_info_t* >( name().end() ); }
+    const comment_info_t& comment() const;
 
-    const timestamp_info_t& time() const { return *reinterpret_cast< const timestamp_info_t* >( comment().end() ); }
+    const timestamp_info_t& time() const;
 
-    const event_info_t& event() const { return *reinterpret_cast< const event_info_t* >( time().end() ); }
+    const event_info_t& event() const;
 
     const char* buffer;
 
