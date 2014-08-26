@@ -284,9 +284,17 @@ struct scan_packet
 
     scan_packet( const char* buffer ) : buffer( buffer ) {}
 
+    typedef cola::binary::body_header< type_field_size > body_header_t;
+
+    const char* body() const;
+
+    const char* payload() const;
+
+    const char* body_end() const;
+
     const cola::binary::header& header() const;
 
-    const char* header_end() const;
+    const body_header_t& body_header() const;
 
     const version_t& version() const;
 
@@ -309,6 +317,10 @@ struct scan_packet
     const timestamp_info_t& time() const;
 
     const event_info_t& event() const;
+
+    const comma::packed::byte& crc() const;
+
+    bool valid() const;
 
     const char* buffer;
 

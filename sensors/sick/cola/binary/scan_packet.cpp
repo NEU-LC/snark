@@ -269,19 +269,34 @@ const char* scan_packet::event_info_t::end() const
 }
 
 // progressive parsing of scan_packet
+const char* scan_packet::body() const
+{
+    return reinterpret_cast< const char* > ( buffer + cola::binary::header::size );
+}
+
+const char* scan_packet::payload() const
+{
+    return body() + body_header_t::size;
+}
+
+const char* scan_packet::body_end() const
+{
+    return body() + *header().length.data();
+}
+
 const cola::binary::header& scan_packet::header() const
 {
     return *reinterpret_cast< const cola::binary::header* >( buffer );
 }
 
-const char* scan_packet::header_end() const
+const scan_packet::body_header_t& scan_packet::body_header() const
 {
-    return reinterpret_cast< const char* > ( buffer + cola::binary::header::size + body_header< type_field_size >::size );
+    return *reinterpret_cast< const scan_packet::body_header_t* >( body() );
 }
 
 const scan_packet::version_t& scan_packet::version() const
 {
-    return *reinterpret_cast< const scan_packet::version_t* >( header_end() );
+    return *reinterpret_cast< const scan_packet::version_t* >( payload() );
 }
 
 const scan_packet::device_t& scan_packet::device() const
@@ -333,5 +348,19 @@ const scan_packet::event_info_t& scan_packet::event() const
 {
     return *reinterpret_cast< const scan_packet::event_info_t* >( time().end() );
 }
+
+// crc
+const comma::packed::byte& scan_packet::crc() const
+{
+    return *reinterpret_cast< const comma::packed::byte* >( body_end() );
+}
+
+bool scan_packet::valid() const
+{
+    char checksum = 0;
+    for ( const char* c = body(); c < body_end(); ++c ) { checksum ^= *c; }
+    return checksum == *crc().data();
+}
+
 
 } } } } // namespace snark {  namespace sick { namespace cola { namespace binary {
