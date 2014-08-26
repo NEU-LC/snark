@@ -111,7 +111,7 @@ void movement_started( const C& c, std::ostream& oss )
 {
     static comma::csv::ascii< C > ascii;
     static std::string tmp;
-    oss << '<' << c.serialise() << ',' << result::error::action_started << ',' << "movement initiated;" << std::endl;
+    oss << '<' << c.serialise() << ',' << result::error::action_started << ',' << "\"movement initiated\";" << std::endl;
     oss.flush();
 }
 

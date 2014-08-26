@@ -3,9 +3,9 @@
  *
  * Code generated for Simulink model 'Arm_Controller'.
  *
- * Model version                  : 1.169
+ * Model version                  : 1.182
  * Simulink Coder version         : 8.6 (R2014a) 27-Dec-2013
- * C/C++ source code generated on : Mon Aug 11 10:47:57 2014
+ * C/C++ source code generated on : Thu Aug 21 12:11:31 2014
  *
  * Target selection: ert.tlc
  * Embedded hardware selection: 32-bit Generic
@@ -67,7 +67,7 @@ typedef struct {
 
 /* Parameters (auto storage) */
 struct P_Arm_Controller_T_ {
-  real_T Memory1_X0[6];                /* Expression: [0 -1.396 -2.611 0.8658 1.571 0]
+  real_T Memory1_X0[6];                /* Expression: [0 -1.396 -2.611 0.8658 1.571 3.141]
                                         * Referenced by: '<S1>/Memory1'
                                         */
   real_T Memory_X0[6];                 /* Expression: [0 0 0 0 0 0]
@@ -76,7 +76,7 @@ struct P_Arm_Controller_T_ {
   real_T current_pos_InitialValue[6];  /* Expression: [0 0 0 0 0 0]
                                         * Referenced by: '<S1>/current_pos'
                                         */
-  real_T home_pos_InitialValue[6];     /* Expression: [0 -1.396 -2.611 0.8658 1.571 0]
+  real_T home_pos_InitialValue[6];     /* Expression: [0 -1.396 -2.611 0.8658 1.571 3.141]
                                         * Referenced by: '<S1>/home_pos'
                                         */
 };
@@ -125,9 +125,9 @@ extern RT_MODEL_Arm_Controller_T *const Arm_Controller_M;
  *
  * '<Root>' : 'fsm_toplevel'
  * '<S1>'   : 'fsm_toplevel/Arm_Controller'
- * '<S2>'   : 'fsm_toplevel/Arm_Controller/MATLAB Function'
- * '<S3>'   : 'fsm_toplevel/Arm_Controller/functionselector'
- * '<S4>'   : 'fsm_toplevel/Arm_Controller/move_cam'
+ * '<S2>'   : 'fsm_toplevel/Arm_Controller/functionselector'
+ * '<S3>'   : 'fsm_toplevel/Arm_Controller/move_cam'
+ * '<S4>'   : 'fsm_toplevel/Arm_Controller/move_joints'
  * '<S5>'   : 'fsm_toplevel/Arm_Controller/sendcommand'
  * '<S6>'   : 'fsm_toplevel/Arm_Controller/set_home'
  * '<S7>'   : 'fsm_toplevel/Arm_Controller/setpos'

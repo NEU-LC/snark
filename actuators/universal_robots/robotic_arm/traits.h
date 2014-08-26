@@ -108,12 +108,22 @@ template <> struct traits< arm::move_effector >
     {
         traits< command_base < arm::move_effector > >::visit(k, t, v);
         v.apply( "offset", t.offset );
+        double p, l, r;
+        v.apply( "pan", p );
+        t.pan = p * arm::degree;
+        v.apply( "tilt", l );
+        t.tilt = l * arm::degree;
+        v.apply( "roll", r );
+        t.roll = r * arm::degree;
     }
 
     template< typename K, typename V > static void visit( const K& k, const arm::move_effector& t, V& v )
     {
         traits< command_base < arm::move_effector > >::visit(k, t, v);
         v.apply( "offset", t.offset );
+        v.apply( "pan", t.pan.value() );
+        v.apply( "tilt", t.tilt.value() );
+        v.apply( "roll", t.roll.value() );
     }
 };
 
@@ -270,11 +280,13 @@ template <> struct traits< arm::sweep_cam >
     template< typename K, typename V > static void visit( const K& k, arm::sweep_cam& t, V& v )
     {
         traits< command_base < arm::sweep_cam > >::visit(k, t, v);
+        v.apply( "filetag", t.filetag );
     }
 
     template< typename K, typename V > static void visit( const K& k, const arm::sweep_cam& t, V& v )
     {
         traits< command_base < arm::sweep_cam > >::visit(k, t, v);
+        v.apply( "filetag", t.filetag );
     }
 };
 

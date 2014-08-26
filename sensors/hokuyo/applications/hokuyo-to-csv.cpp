@@ -148,20 +148,22 @@ static void usage()
     std::cerr << "    hokuyo-to-csv --laser <host:port> [ --fields t,x,y,z,range,bearing,elevation,intensity ]" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
-    std::cerr << "*   --laser=: give the TCP connection to the laser <host:port>" << std::endl;
-    std::cerr << "    --help,-h: show this message" << std::endl;
-    std::cerr << "    --binary,-b: output binary equivalent of csv" << std::endl;
-    std::cerr << "    --fields=<fields>: output only given fields" << std::endl;
+    std::cerr << "*   --laser=:             the TCP connection to the laser <host:port>" << std::endl;
+    std::cerr << "    --help,-h:            show this message" << std::endl;
+    std::cerr << "    --binary,-b:          output binary equivalent of csv" << std::endl;
+    std::cerr << "    --fields=<fields>:    output only given fields" << std::endl;
 //     std::cerr << "        default: " << comma::join( comma::csv::names< csv_point >( false ), ',' ) << " (" << comma::csv::format::value< csv_point >() << ")" << std::endl;
-    std::cerr << "        t: timestamp" << std::endl;
-    std::cerr << "        x,y,z: cartesian coordinates in sensor frame, where <0,0,0> is no data" << std::endl;
-    std::cerr << "        range,bearing, elevation or r,b,e: polar coordinates in sensor frame" << std::endl;
-    std::cerr << "        i: intensity of the data point." << std::endl;
-    std::cerr << "    --format: output binary format for given fields to stdout and exit" << std::endl;
+    std::cerr << "        t:                timestamp" << std::endl;
+    std::cerr << "        x,y,z:            cartesian coordinates in sensor frame, where <0,0,0> is no data" << std::endl;
+    std::cerr << "                              range,bearing, elevation or r,b,e: polar coordinates in sensor frame" << std::endl;
+    std::cerr << "        i:                intensity of the data point." << std::endl;
+    std::cerr << "    --format:             output binary format for given fields to stdout and exit" << std::endl;
     std::cerr << "    --start-step=<0-890>: Scan starting at a start step and go to (step+270) wich covers 67.75\" which is 270\"/4." << std::endl;
     std::cerr << "                          Does not perform a full 270\" scan." << std::endl;
-    std::cerr << "    --reboot-on-error: if failed to put scanner into scanning mode, reboot the scanner." << std::endl;
-    std::cerr << "    --omit-error: if a ray cannot detect an object in range, or very low reflectivity, omit ray from output." << std::endl;
+    std::cerr << "    --reboot-on-error:    if failed to put scanner into scanning mode, reboot the scanner." << std::endl;
+    std::cerr << "    --omit-error:         if a ray cannot detect an object in range, or very low reflectivity, omit ray from output." << std::endl;
+    std::cerr << "    --num-of-scans:       How many scans is requested for ME requests, default is 100 - 0 for continuous ( data verification problem with 0 )." << std::endl;
+    std::cerr << "    --scan-break:         How many usec of sleep time between ME request and reponses received before issuing another ME request, default is 20us." << std::endl;
     std::cerr << std::endl;
     std::cerr << "Output format:" << std::endl;
     comma::csv::binary< data_point > binary( "", "" );
@@ -178,12 +180,14 @@ static void usage()
 static bool is_omit_error = false;
 
 template < int STEPS >
-void scanning( int start_step, comma::signal_flag& signaled,
+bool scanning( int start_step, comma::uint32 num_of_scans, // 0 for unlimited
+               comma::signal_flag& signaled,
                std::iostream& iostream, comma::csv::output_stream< data_point >& output )
 {
     hok::request_md me( true );
     me.header.start_step = start_step;
     me.header.end_step = start_step + STEPS-1;
+    me.num_of_scans = num_of_scans;
     
     iostream.write( me.data(), hok::request_md::size );
     iostream.flush();
@@ -230,10 +234,18 @@ void scanning( int start_step, comma::signal_flag& signaled,
                          rays.steps[i].intensity(), 
                          hok::ust_10lx::step_to_bearing( i + start_step ) );
             output.write( point3d );
+
+
         }
-    
+
+        // This means we are done
+        if( num_of_scans != 0 && response.header.request.num_of_scans == 0 ) { 
+
+            return true; 
+        }   
     }
     
+    return false;
 }
 
 /// Connect to the TCP server within the allowed timeout
@@ -266,6 +278,9 @@ int main( int ac, char** av )
     try
     {
         is_omit_error = options.exists( "--omit-error" );
+
+        comma::uint32 scan_break = options.value< comma::uint32 > ( "--scan-break", 20 ); // time in us
+        comma::uint32 num_of_scans = options.value< comma::uint32 > ( "--num-of-scans", 100 ); // time in us
         
         // Sets up output data
         comma::csv::options csv;
@@ -326,13 +341,16 @@ int main( int ac, char** av )
             }
             iostream.read( start_reply.data(), hok::state_reply::size  );
             
-            if( start_reply.status() != 0 && start_reply.status() != 2 ) // 0 = success, 2 seems to be returned when it is already in scanning mode but idle
+            if( start_reply.status() != 0 && 
+                start_reply.status() != 10 &&
+                start_reply.status() != 2 ) // 0 = success, 2 seems to be returned when it is already in scanning mode but idle
             {
                 if( reboot_on_error )
                 {
                     // it must be sent twice within one second
                     iostream << "RB\n"; iostream.flush();
                     iostream << "RB\n"; iostream.flush();
+                    sleep( 1 );
                 }
                 COMMA_THROW( comma::exception, std::string("Starting laser with BM command failed, status: ") + std::string( start_reply.status.data(), 2 ) ); 
             }
@@ -343,6 +361,7 @@ int main( int ac, char** av )
         
             // it is higher than 1080 because 0 is a step
             static const int MAX_STEPS = 1081;
+            static const int SCANS = num_of_scans;
             
             comma::uint32 start_encoder_step = 0;
             if( options.exists( "--start-step" ) ) 
@@ -350,10 +369,11 @@ int main( int ac, char** av )
                 static const int SMALL_STEPS = 271;
                 start_encoder_step = options.value< comma::uint32 >( "--start-step", 0 );
                 if( start_encoder_step >= ( hok::ust_10lx::step_max - SMALL_STEPS ) ) { COMMA_THROW( comma::exception, "start step is too high" ); }
-                scanning< SMALL_STEPS >( start_encoder_step, signaled, iostream, output );
+
+                while( scanning< SMALL_STEPS >( start_encoder_step, SCANS, signaled, iostream, output ) ) { usleep( scan_break ); }
             }
             else {
-                scanning< MAX_STEPS >( start_encoder_step, signaled, iostream, output );
+                while( scanning< MAX_STEPS >(   start_encoder_step, SCANS, signaled, iostream, output ) ) { usleep( scan_break ); }
             }
         }
     }
