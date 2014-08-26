@@ -36,3 +36,28 @@
 #include "./scan_packet.h"
 
 // todo: any executable code goes here
+
+namespace snark { namespace sick { namespace cola { namespace binary {
+
+const scan_packet::channel16_t* scan_packet::channels16_t::channels_end() const
+{
+    const scan_packet::channel16_t* c = NULL;
+    for(unsigned int channel = 0; channel < *channels_size.data(); ++channel )
+    {
+        c = channels_next(c);
+    }
+    return c == NULL ? reinterpret_cast< const scan_packet::channel16_t* >( reinterpret_cast< const char* >( this ) + size ) : c;
+}
+
+// todo: templates for channels16_t and channels8_t
+const scan_packet::channel8_t* scan_packet::channels8_t::channels_end() const
+{
+    const scan_packet::channel8_t* c = NULL;
+    for(unsigned int channel = 0; channel < *channels_size.data(); ++channel )
+    {
+        c = channels_next(c);
+    }
+    return c == NULL ? reinterpret_cast< const scan_packet::channel8_t* >( reinterpret_cast< const char* >( this ) + size ) : c;
+}
+
+} } } } // namespace snark {  namespace sick { namespace cola { namespace binary {
