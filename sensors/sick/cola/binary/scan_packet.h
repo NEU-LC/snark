@@ -45,155 +45,285 @@ struct scan_packet
     enum { type_field_size = 11 };
     static const char* type() { return "LMDscandata"; }
     static const char* command_type() { return "sRA"; } // can also be sSN? typo?
-    
+
+    struct version_t : public comma::packed::packed_struct< version_t, 2 >
+    {
+        comma::packed::uint16 version;
+
+        const char* end() const { return reinterpret_cast< const char* >( this ) + size; }
+    };
+
     struct device_t : public comma::packed::packed_struct< device_t, 8 >
     {
         comma::packed::uint16 device_number; // user-defined in SOPAS
         comma::packed::uint32 serial_number;
-        comma::packed::byte zero1; // stupid sick: apparently half of device status, but always zero
-        comma::packed::byte status; // 0=ok, 1=error, 2=pollution warning, 3=pollution error        
+        comma::packed::uint16 status; // 0=ok, 1=error, 2=pollution warning, 3=pollution error
+        // warning: manual says status is 2xUINT8 but not specific on purpose of high-byte
+
+        const char* end() const { return reinterpret_cast< const char* >( this ) + size; }
     };
-    
+
     struct status_info_t : public comma::packed::packed_struct< status_info_t, 18 >
     {
         comma::packed::uint16 telegram_counter;
         comma::packed::uint16 scan_counter;
         comma::packed::uint32 time_since_boot;
         comma::packed::uint32 time_of_transmission;
-        comma::packed::byte zero2; // stupid sick: unused status byte
-        comma::packed::byte digital_input_state; // 0=all low, 3=all high
-        comma::packed::byte zero3; // stupid sick: unused status byte
-        comma::packed::byte digital_output_state; // 0=all low, 7=all high
-        comma::packed::uint16 reserved;        
+        comma::packed::uint16 digital_input_state; // 0=all low, 3=all high
+        // warning: manual says digital_input_state is 2xUINT8 but not specific on purpose of high-byte
+        comma::packed::uint16 digital_output_state; // 0=all low, 7=all high
+        // warning: manual says digital_output_state is 2xUINT8 but not specific on purpose of high-byte
+        comma::packed::uint16 reserved;
+
+        const char* end() const { return reinterpret_cast< const char* >( this ) + size; }
     };
-    
+
     struct frequency_t : public comma::packed::packed_struct< frequency_t, 8 >
     {
-        comma::packed::uint32 scan_frequency;
-        comma::packed::uint32 measurement_frequency;
+        comma::packed::uint32 scan_frequency; // units 1/100 Hz
+        comma::packed::uint32 measurement_frequency; // inverse of time between two shots in units of 100 Hz
+
+        const char* end() const { return reinterpret_cast< const char* >( this ) + size; }
     };
-    
+
     struct encoder_t : public comma::packed::packed_struct< encoder_t, 4 >
     {
         comma::packed::uint16 position;
         comma::packed::uint16 speed;
+
+        const char* end() const { return reinterpret_cast< const char* >( this ) + size; }
     };
-    
-    struct channel_t : public comma::packed::packed_struct< encoder_t, 0 > // todo
+
+    struct encoders_info_t : public comma::packed::packed_struct< encoders_info_t, 2 >
+    {
+        comma::packed::uint16 encoders_size;
+
+        const encoder_t* encoders_begin() const;
+
+        const encoder_t* encoders_end() const;
+
+        const char* end() const;
+    };
+
+    struct channel16_t : public comma::packed::packed_struct< channel16_t, 21 >
     {
         comma::packed::string< 5 > channel_content; // "DIST1", "DIST2", "RSSI1", "RSSI2", or similar
         comma::packed::float32 scale_factor;
         comma::packed::float32 scale_offset;
-        comma::packed::uint32 start_angle;
+        comma::packed::int32 start_angle;
         comma::packed::uint16 steps;
         comma::packed::uint16 data_size;
-        
-        const comma::packed::uint16* data_begin() const { return reinterpret_cast< const comma::packed::uint16* >( reinterpret_cast< const char* >( this ) + size ); }
-        
-        const comma::packed::uint16* data_end() const { return data_begin() + size * sizeof( comma::packed::uint16 ); }
-        
-        const char* end() const { return reinterpret_cast< const char* >( data_end() ); }
+
+        const comma::packed::uint16* data_begin() const;
+
+        const comma::packed::uint16* data_end() const;
+
+        const char* end() const;
     };
-    
-    struct channels_t : public comma::packed::packed_struct< encoder_t, 2 > // todo
+
+    struct channels16_t : public comma::packed::packed_struct< channels16_t, 2 >
     {
         comma::packed::uint16 channels_size;
-        
-        const channel_t* begin() const { return reinterpret_cast< const channel_t* >( reinterpret_cast< const char* >( this ) + sizeof( comma::packed::uint16 ) ); } // todo: throw, if channels_size == 0
-        
-        const channel_t* next( const channel_t* c = NULL ) { return NULL ? begin() : reinterpret_cast< const channel_t* >( c->end() ); }
-        
-        const char* end() const; // todo: iterate channels, find end
-    };
-    
-    struct part_1_t : public comma::packed::packed_struct< part_1_t, 2 + device_t::size + status_info_t::size + frequency_t::size + 2 >
-    {
-        comma::packed::uint16 version;
-        device_t device;
-        status_info_t status_info;
-        frequency_t frequency;
-        comma::packed::uint16 encoders_size;
-        
-        const encoder_t* encoders() const { return reinterpret_cast< const encoder_t* >( reinterpret_cast< const char* >( this ) + size ); }
-        
-        const encoder_t* encoders_end() const { return reinterpret_cast< const encoder_t* >( end() ); }
-        
-        const char* end() const { return reinterpret_cast< const char* >( encoders() ) + encoder_t::size * encoders_size(); }
-    };
-    
-    scan_packet() {}
-    
-    scan_packet( const char* buffer ) : buffer( buffer ) {}
-    
-    const cola::binary::header& header() const { return *reinterpret_cast< const cola::binary::header* >( buffer ); }
-    
-    const part_1_t& part_1() const { return *reinterpret_cast< const part_1_t* >( buffer + cola::binary::header::size + body_header< type_field_size >::size ); }
-    
-    const channels_t& channels() const { return *reinterpret_cast< const channels_t* >( part_1().end() ); }
-    
-    const char* buffer;
-    
-    // todo: the rest of the packet
 
-    
-    
-    
-/*
-    // encoder info (2 + 4n; n=number of encoders)
-    comma::packed::int16 number_of_encoders;
-    // todo: variable packet... depends on value of number_of_encoders
-    // todo: per encoder channel (I think, documentation is unclear)
-        // comma::packed::uint16 encoder_position;
-        // comma::packed::uint16 encoder_speed;
-    comma::packed::uint16 num_output_channels_16bit; // # of 16-bit output channels (LMS1xx 1-2, LMS5xx 0 or 5, others depend on sectors)
-    // todo: per 16-bit channel:
-        // comma::packed::string< 5 > channel_content; // "DIST1", "DIST2", "RSSI1", "RSSI2", or similar
-        // comma::packed::float scale_factor;
-        // comma::packed::float scale_offset;
-        // comma::packed::uint32 start_angle;
-        // comma::packed::uint16 steps;
-        // comma::packed::uint16 data_values;
-        // todo: per shot:
-            // comma::packed::uint16 data;
-    comma::packed::uint16 num_output_channels_8bit; // # of 8-bit output channels
-    // todo: per 8-bit channel
-        // comma::packed::string< 5 > channel_content; // e.g. DIST1, RSSI1
-        // comma::packed::int32 scale_factor;
-        // comma::packed::int32 scale_offset;
-        // comma::packed::int32 start_angle; // 1/10,000 deg
-        // comma::packed::uint16 steps;
-        // comma::packed::uint16 data_values;
-        // todo: per data value:
-            // comma::packed::uint8 data;
-    comma::packed::uint16 position_data_present; // 0 if not, 1 if present
-    // todo: if present
-    // comma::packed::int32 position_x; // "Real" type, units unclear
-    // comma::packed::int32 position_y;
-    // comma::packed::int32 position_z;
-    // comma::packed::int32 rotation_x;
-    // comma::packed::int32 rotation_y;
-    // comma::packed::int32 rotation_z;
-    // comma::packed::uint8 rotation_type; // enum 0=none, 1=pitch, 2=rollin, 3=free
-    // comma::packed::uint8 transmits_name_of_device; // actually i supsect this is a mistake in the documentation
-    comma::packed::uint16 name_data_present; // 0 if not, 1 if present
-    comma::packed::uint8 name_length;
-    // comma::packed::string < name_length > name; // up to 16 chars
-    comma::packed::uint16 comment_data_present; // 0 if not, 1 if present
-    comma::packed::uint8 comment_length;
-    // comma::packed::string < comment_length > comment; // up to 16 chars
-    comma::packed::uint16 time_data_present; // 0 if not, 1 if present
-    comma::packed::uint16 time_year; // 0 to 0x270F = 9999
-    comma::packed::uint8 time_month; // 0-12 stupid sick: may be 0-11 or 1-12
-    comma::packed::uint8 time_day; // 0-31
-    comma::packed::uint8 time_hour; // 0-23
-    comma::packed::uint8 time_minute; // 0-59
-    comma::packed::uint8 time_second; // 0-59
-    comma::packed::uint32 time_microseconds; // 0 to 999,999 (not total_microseconds, just added onto datetime)
-    comma::packed::uint16 event_info_present; // 0=none, 1=present
-    // comma::packed::string< 4 > fdin; // FDIN not sure if this is the value or will actually be a variable name
-    // comma::packed::uint32 encoder_position;
-    // comma::packed::uint32 event_time; // in microseconds, probably based on the rolling counter, but I'm pretty sure that's actually a millisecond counter
-    // comma::packed::int32 event_angle; // encoder angle at time of event*/
+        const channel16_t* channels_begin() const;
+
+        const channel16_t* channels_next( const channel16_t* c = NULL ) const;
+
+        const channel16_t* channels_end() const;
+
+        const char* end() const;
+    };
+
+    struct channel8_t : public comma::packed::packed_struct< channel8_t, 21 >
+    {
+        comma::packed::string< 5 > channel_content; // "DIST1", "DIST2", "RSSI1", "RSSI2", or similar
+        comma::packed::float32 scale_factor; // stupid sick: the manual says the type of these is "Real"...?!
+        comma::packed::float32 scale_offset; // stupid sick: the manual says the type of these is "Real"...?!
+        comma::packed::int32 start_angle;
+        comma::packed::uint16 steps;
+        comma::packed::uint16 data_size;
+
+        const comma::packed::uint16* data_begin() const;
+
+        const comma::packed::uint16* data_end() const;
+
+        const char* end() const;
+    };
+
+    struct channels8_t : public comma::packed::packed_struct< channels8_t, 2 >
+    {
+        comma::packed::uint16 channels_size;
+
+        const channel8_t* channels_begin() const;
+
+        const channel8_t* channels_next( const channel8_t* c = NULL ) const;
+
+        const channel8_t* channels_end() const;
+
+        const char* end() const;
+    };
+
+    struct position_t : public comma::packed::packed_struct< position_t, 25 >
+    {
+        comma::packed::float32 x_position; // stupid sick: the manual says the type of these is "Real"...?!
+        comma::packed::float32 y_position; // stupid sick: the manual says the type of these is "Real"...?!
+        comma::packed::float32 z_position; // stupid sick: the manual says the type of these is "Real"...?!
+        comma::packed::float32 x_rotation; // stupid sick: the manual says the type of these is "Real"...?!
+        comma::packed::float32 y_rotation; // stupid sick: the manual says the type of these is "Real"...?!
+        comma::packed::float32 z_rotation; // stupid sick: the manual says the type of these is "Real"...?!
+        comma::packed::byte rotation_type; // 0=none, 1=pitch, 2=rollin, 3=free
+        // stupid sick: the manual specifies another field but it looks like a mistake from the next section of the packet
+        //comma::packed::byte name_present; // 0 = no name data, 1 = has name data
+
+        const char* end() const { return reinterpret_cast< const char* >( this ) + size; }
+    };
+
+    struct position_info_t : public comma::packed::packed_struct< position_info_t, 2 >
+    {
+        comma::packed::uint16 data_present; // 0=no, 1=yes
+
+        const position_t* position() const;
+
+        const position_t* position_end() const;
+
+        const char* end() const;
+    };
+
+    struct name_t : public comma::packed::packed_struct< name_t, 1 >
+    {
+        comma::packed::byte name_length; // should be limited to 0-16
+
+        const comma::packed::byte* name_begin() const;
+
+        const comma::packed::byte* name_end() const;
+
+        const char* end() const;
+    };
+
+    struct name_info_t : public comma::packed::packed_struct< position_info_t, 2 >
+    {
+        comma::packed::uint16 data_present; // 0=no, 1=yes
+
+        const name_t* name() const;
+
+        const name_t* name_end() const;
+
+        const char* end() const;
+    };
+
+    // todo: exactly the same as name_t, name_info_t ?
+    struct comment_t : public comma::packed::packed_struct< comment_t, 1 >
+    {
+        comma::packed::byte comment_length; // should be limited to 0-16
+
+        const comma::packed::byte* comment_begin() const;
+
+        const comma::packed::byte* comment_end() const;
+
+        const char* end() const;
+
+    };
+
+    struct comment_info_t : public comma::packed::packed_struct< comment_info_t, 2 >
+    {
+        comma::packed::uint16 data_present; // 0=no, 1=yes
+
+        const comment_t* comment() const;
+
+        const comment_t* comment_end() const;
+
+        const char* end() const;
+    };
+
+    struct timestamp_t : public comma::packed::packed_struct< timestamp_t, 11 >
+    {
+        comma::packed::uint16 year;
+        comma::packed::byte month;
+        comma::packed::byte day;
+        comma::packed::byte hour;
+        comma::packed::byte minute;
+        comma::packed::byte second;
+        comma::packed::uint32 microseconds;
+
+        const char* end() const { return reinterpret_cast< const char* >( this ) + size; }
+    };
+
+    struct timestamp_info_t : public comma::packed::packed_struct< timestamp_info_t, 2 >
+    {
+        comma::packed::uint16 data_present; // 0=no, 1=yes
+
+        const timestamp_t* timestamp() const;
+
+        const timestamp_t* timestamp_end() const;
+
+        const char* end() const;
+    };
+
+    struct event_t : public comma::packed::packed_struct< event_t, 16 >
+    {
+        comma::packed::string< 4 > event_type; // e.g. "FDIN"
+        comma::packed::uint32 encoder_position;
+        comma::packed::uint32 time_of_event;
+        comma::packed::uint32 angle_of_event;
+
+        const char* end() const { return reinterpret_cast< const char* >( this ) + size; }
+    };
+
+    struct event_info_t : public comma::packed::packed_struct< event_info_t, 2 >
+    {
+        comma::packed::uint16 data_present; // 0=no, 1=yes
+
+        const event_t* event() const;
+
+        const event_t* event_end() const;
+
+        const char* end() const;
+    };
+
+    scan_packet() {}
+
+    scan_packet( const char* buffer ) : buffer( buffer ) {}
+
+    typedef cola::binary::body_header< type_field_size > body_header_t;
+
+    const char* body() const;
+
+    const char* payload() const;
+
+    const char* body_end() const;
+
+    const cola::binary::header& header() const;
+
+    const body_header_t& body_header() const;
+
+    const version_t& version() const;
+
+    const device_t& device() const;
+
+    const status_info_t& status_info() const;
+
+    const frequency_t& frequency() const;
+
+    const encoders_info_t& encoders() const;
+
+    const channels16_t& channels16() const;
+
+    const channels8_t& channels8() const;
+
+    const name_info_t& name() const;
+
+    const comment_info_t& comment() const;
+
+    const timestamp_info_t& time() const;
+
+    const event_info_t& event() const;
+
+    const comma::packed::byte& crc() const;
+
+    bool valid() const;
+
+    const char* buffer;
+
 };
 
 } } } } // namespace snark {  namespace sick { namespace cola { namespace binary {
