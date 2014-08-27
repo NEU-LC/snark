@@ -78,11 +78,11 @@ struct set_frequency_and_angular_resolution
         enum { type_field_size = 14 };
         static const char* type() { return "mLMPsetscancfg"; }
         static const char* command_type() { return "sMN"; }
-        comma::packed::uint32 scan_frequency; // 1/100Hz
-        comma::packed::int16 sector; // 1 on LMS
-        comma::packed::uint32 angular_resolution; // 1/10000 deg
-        comma::packed::int32 start_angle; // 1/10000 deg, stupid sick: this setting doesn't get applied
-        comma::packed::int32 stop_angle; // 1/10000 deg, stupid sick: this setting doesn't get applied
+        comma::packed::net_uint32 scan_frequency; // 1/100Hz
+        comma::packed::net_int16 sector; // 1 on LMS
+        comma::packed::net_uint32 angular_resolution; // 1/10000 deg
+        comma::packed::net_int32 start_angle; // 1/10000 deg, stupid sick: this setting doesn't get applied
+        comma::packed::net_int32 stop_angle; // 1/10000 deg, stupid sick: this setting doesn't get applied
     };
 
     struct response : public comma::packed::packed_struct< response, 19 >
@@ -91,11 +91,11 @@ struct set_frequency_and_angular_resolution
         static const char* type() { return "mLMPsetscancfg"; }
         static const char* command_type() { return "sAN"; }
         comma::packed::byte status_code;
-        comma::packed::uint32 scan_frequency; // 1/100Hz
-        comma::packed::int16 sector; // 1 on LMS
-        comma::packed::uint32 angular_resolution; // 1/10000 deg
-        comma::packed::int32 start_angle; // 1/10000 deg
-        comma::packed::int32 stop_angle; // 1/10000 deg
+        comma::packed::net_uint32 scan_frequency; // 1/100Hz
+        comma::packed::net_int16 sector; // 1 on LMS
+        comma::packed::net_uint32 angular_resolution; // 1/10000 deg
+        comma::packed::net_int32 start_angle; // 1/10000 deg
+        comma::packed::net_int32 stop_angle; // 1/10000 deg
     };
 };
 
@@ -113,11 +113,11 @@ struct get_frequency_and_angular_resolution
         enum { type_field_size = 10 };
         static const char* type() { return "LMPscancfg"; }
         static const char* command_type() { return "sRA"; }
-        comma::packed::uint32 scan_frequency; // 1/100 Hz
-        comma::packed::int16 sector; // 1 on LMS
-        comma::packed::uint32 angular_resolution; // 1/10000 deg
-        comma::packed::int32 start_angle; // 1/10000 deg
-        comma::packed::int32 stop_angle; // 1/10000 deg
+        comma::packed::net_uint32 scan_frequency; // 1/100 Hz
+        comma::packed::net_int16 sector; // 1 on LMS
+        comma::packed::net_uint32 angular_resolution; // 1/10000 deg
+        comma::packed::net_int32 start_angle; // 1/10000 deg
+        comma::packed::net_int32 stop_angle; // 1/10000 deg
     };
 };
 
@@ -128,11 +128,11 @@ struct define_measurement_sectors
         enum { type_field_size = 14 };
         static const char* type() { return "mLMPsetscancfg"; }
         static const char* command_type() { return "sMN"; }
-        comma::packed::uint32 scan_frequency;
-        comma::packed::int16 number_of_sectors;
-        comma::packed::uint32 angular_resolution; // resolution must be equal for all sectors
-        comma::packed::int32 sector_start_angle;
-        comma::packed::int32 sector_stop_angle;
+        comma::packed::net_uint32 scan_frequency;
+        comma::packed::net_int16 number_of_sectors;
+        comma::packed::net_uint32 angular_resolution; // resolution must be equal for all sectors
+        comma::packed::net_int32 sector_start_angle;
+        comma::packed::net_int32 sector_stop_angle;
     };
 
     struct response : public comma::packed::packed_struct< response, 19 >
@@ -141,11 +141,11 @@ struct define_measurement_sectors
         static const char* type() { return "mLMPsetscancfg"; }
         static const char* command_type() { return "sAN"; }
         comma::packed::byte error; // 0=none, 1=frequency, 2=resolution, 3=freq+res, 4=range, 5=general
-        comma::packed::uint32 scan_frequency;
-        comma::packed::int16 number_of_sectors;
-        comma::packed::uint32 angular_resolution; // resolution must be equal for all sectors
-        comma::packed::int32 sector_start_angle;
-        comma::packed::int32 sector_stop_angle;
+        comma::packed::net_uint32 scan_frequency;
+        comma::packed::net_int16 number_of_sectors;
+        comma::packed::net_uint32 angular_resolution; // resolution must be equal for all sectors
+        comma::packed::net_int32 sector_start_angle;
+        comma::packed::net_int32 sector_stop_angle;
     };
 };
 
@@ -204,7 +204,7 @@ struct configure_scan_data
         comma::packed::byte include_device_name;
         comma::packed::byte include_comment;
         comma::packed::byte include_time;
-        comma::packed::uint16 output_rate; // skip every Nth scan
+        comma::packed::net_uint16 output_rate; // skip every Nth scan
     };
 
     struct response : public comma::packed::packed_struct< response, 0 >
@@ -224,10 +224,10 @@ struct set_measurement_angle
         enum { type_field_size = 11 };
         static const char* type() { return "LMPoutputRange"; }
         static const char* command_type() { return "sWN"; }
-        comma::packed::int16 status_code; // stupid sick: set to 1
-        comma::packed::uint32 angular_resolution; // stupid sick: cannot be changed here
-        comma::packed::int32 start_angle; // 1/10000 deg
-        comma::packed::int32 stop_angle; // 1/10000 deg
+        comma::packed::net_int16 status_code; // stupid sick: set to 1
+        comma::packed::net_uint32 angular_resolution; // stupid sick: cannot be changed here
+        comma::packed::net_int32 start_angle; // 1/10000 deg
+        comma::packed::net_int32 stop_angle; // 1/10000 deg
     };
 
     struct response : public comma::packed::packed_struct< response, 0 >
@@ -255,10 +255,10 @@ struct get_measurement_angle
         static const char* type() { return "LMPoutputRange"; }
         static const char* command_type() { return "sRA"; }
         // stupid sick: this is undocumented, but hopefully it's right (assuming same as set_measurement_angle)
-        comma::packed::int16 status_code;
-        comma::packed::uint32 angular_resolution;
-        comma::packed::int32 start_angle;
-        comma::packed::int32 stop_angle;
+        comma::packed::net_int16 status_code;
+        comma::packed::net_uint32 angular_resolution;
+        comma::packed::net_int32 start_angle;
+        comma::packed::net_int32 stop_angle;
     };
 };
 
@@ -306,13 +306,13 @@ struct set_date_time
         enum { type_field_size = 14 };
         static const char* type() { return "LSPsetdatetime"; }
         static const char* command_type() { return "sMN"; }
-        comma::packed::uint16 year;
-        comma::packed::uint8 month;
-        comma::packed::uint8 day;
-        comma::packed::uint8 hour;
-        comma::packed::uint8 minute;
-        comma::packed::uint8 second;
-        comma::packed::uint32 microseconds;
+        comma::packed::net_uint16 year;
+        comma::packed::byte month;
+        comma::packed::byte day;
+        comma::packed::byte hour;
+        comma::packed::byte minute;
+        comma::packed::byte second;
+        comma::packed::net_uint32 microseconds;
     };
 
     struct response : public comma::packed::packed_struct< response, 1 >
@@ -338,23 +338,23 @@ struct get_date_time
         enum { type_field_size = 5 };
         static const char* type() { return "STlms"; }
         static const char* command_type() { return "sRA"; }
-        comma::packed::uint16 status; // 0=undefined, 1=initialisation, 2=configuration, 3=lower case, 4=rotating, 5=in prep, 6=ready, 7=measurement active
-        comma::packed::uint8 op_temp_range; // no documentation
-        comma::packed::uint16 unnamed_field; // no documentation
-        comma::packed::uint16 time_hours; // HH HH (stupid sick: I think this is actually ascii characters)
+        comma::packed::net_uint16 status; // 0=undefined, 1=initialisation, 2=configuration, 3=lower case, 4=rotating, 5=in prep, 6=ready, 7=measurement active
+        comma::packed::byte op_temp_range; // no documentation
+        comma::packed::net_uint16 unnamed_field; // no documentation
+        comma::packed::net_uint16 time_hours; // HH HH (stupid sick: I think this is actually ascii characters)
         comma::packed::byte time_separator1; // stupid sick: this is a ':' character
-        comma::packed::uint16 time_minutes; // MM MM
+        comma::packed::net_uint16 time_minutes; // MM MM
         comma::packed::byte time_separator2; // ':'
-        comma::packed::uint16 time_seconds; // SS SS
-        comma::packed::uint16 unnamed_field2; // ?
-        comma::packed::uint16 date_day; // DD DD
+        comma::packed::net_uint16 time_seconds; // SS SS
+        comma::packed::net_uint16 unnamed_field2; // ?
+        comma::packed::net_uint16 date_day; // DD DD
         comma::packed::byte separator1; // '.'
-        comma::packed::uint16 date_month; // MM MM
+        comma::packed::net_uint16 date_month; // MM MM
         comma::packed::byte separator2; // '.'
-        comma::packed::uint32 year; // JJ JJ JJ JJ
-        comma::packed::uint16 led1_state; // 0=inactive, 1=active
-        comma::packed::uint16 led2_state; // 0=inactive, 1=active
-        comma::packed::uint16 led3_state; // 0=inactive, 1=active
+        comma::packed::net_uint32 year; // JJ JJ JJ JJ
+        comma::packed::net_uint16 led1_state; // 0=inactive, 1=active
+        comma::packed::net_uint16 led2_state; // 0=inactive, 1=active
+        comma::packed::net_uint16 led3_state; // 0=inactive, 1=active
     };
 };
 
@@ -372,7 +372,7 @@ struct get_device_time_counter
         enum { type_field_size = 10 };
         static const char* type() { return "DeviceTime"; }
         static const char* command_type() { return "sRA"; }
-        comma::packed::uint32 time; // current value of the 32-bit counter, which is probably in milliseconds but the documentation is self-conflicting (maybe microseconds)
+        comma::packed::net_uint32 time; // current value of the 32-bit counter, which is probably in milliseconds but the documentation is self-conflicting (maybe microseconds)
     };
 };
 
@@ -420,7 +420,7 @@ struct set_particle_filter // also known as logout in some documentation
         static const char* type() { return "LFPparticle"; }
         static const char* command_type() { return "sWN"; }
         comma::packed::byte state; // 0=inactive, 1=active
-        comma::packed::uint16 threshold; // stupid sick: documentation is very unclear but has a red highlighted note here... i *THINK* it has to be set to 500 always or the world will end.
+        comma::packed::net_uint16 threshold; // stupid sick: documentation is very unclear but has a red highlighted note here... i *THINK* it has to be set to 500 always or the world will end.
     };
 
     struct response : public comma::packed::packed_struct< response, 0 >
@@ -441,7 +441,7 @@ struct set_mean_filter
         static const char* type() { return "LFPmeanfilter"; }
         static const char* command_type() { return "sWN"; }
         comma::packed::byte state; // 0=inactive, 1=active
-        comma::packed::uint16 number_of_scans; // 2-100
+        comma::packed::net_uint16 number_of_scans; // 2-100
         comma::packed::byte zero; // stupid sick: an unnamed zero value...
     };
 
@@ -617,7 +617,7 @@ struct set_encoder_resolution
         enum { type_field_size = 9 };
         static const char* type() { return "LICencres"; }
         static const char* command_type() { return "sWN"; }
-        comma::packed::uint32 resolution; // stupid sick: no data type specified so be warned... range is 0.001 to 2000
+        comma::packed::net_uint32 resolution; // stupid sick: no data type specified so be warned... range is 0.001 to 2000
     };
 
     struct response : public comma::packed::packed_struct< response, 0 >
@@ -636,7 +636,7 @@ struct set_encoder_fixed_speed
         enum { type_field_size = 8 };
         static const char* type() { return "LICFixVel"; }
         static const char* command_type() { return "sWN"; }
-        comma::packed::uint32 speed; // stupid sick: no data type specified so be warned... range is 0.001 to 10
+        comma::packed::net_uint32 speed; // stupid sick: no data type specified so be warned... range is 0.001 to 10
     };
 
     struct response : public comma::packed::packed_struct< response, 0 >
@@ -680,7 +680,7 @@ struct get_encoder_speed
         enum { type_field_size = 7 };
         static const char* type() { return "LICencsp"; }
         static const char* command_type() { return "sRA"; }
-        comma::packed::uint32 speed;
+        comma::packed::net_uint32 speed;
     };
     // todo: check this, the documentation puts the speed in the request and doesn't mention any type
     // ... but that makes no sense... right?
@@ -700,39 +700,39 @@ struct get_output_states
         enum { type_field_size = 14 };
         static const char* type() { return "LIDoutputstate"; }
         static const char* command_type() { return "sRA"; }
-        comma::packed::uint16 status_code;
-        comma::packed::uint32 unnamed_value; // stupid sick
+        comma::packed::net_uint16 status_code;
+        comma::packed::net_uint32 unnamed_value; // stupid sick
         // 8-bit state values are 0=low, 1=high, 2=tristate (undefined)
         comma::packed::byte state_output1;
-        comma::packed::uint32 count_output1;
+        comma::packed::net_uint32 count_output1;
         comma::packed::byte state_output2;
-        comma::packed::uint32 count_output2;
+        comma::packed::net_uint32 count_output2;
         comma::packed::byte state_output3;
-        comma::packed::uint32 count_output3;
+        comma::packed::net_uint32 count_output3;
         // todo: these are only present for LMS5xx not LMS1xx
         // comma::packed::byte state_output4;
-        // comma::packed::uint32 count_output4;
+        // comma::packed::net_uint32 count_output4;
         // comma::packed::byte state_output5;
-        // comma::packed::uint32 count_output5;
+        // comma::packed::net_uint32 count_output5;
         // comma::packed::byte state_output6;
-        // comma::packed::uint32 count_output6;
+        // comma::packed::net_uint32 count_output6;
         comma::packed::byte external_state_output1;
-        comma::packed::uint32 external_state_count1;
+        comma::packed::net_uint32 external_state_count1;
         comma::packed::byte external_state_output2;
-        comma::packed::uint32 external_state_count2;
+        comma::packed::net_uint32 external_state_count2;
         comma::packed::byte external_state_output3;
-        comma::packed::uint32 external_state_count3;
+        comma::packed::net_uint32 external_state_count3;
         comma::packed::byte external_state_output4;
-        comma::packed::uint32 external_state_count4;
+        comma::packed::net_uint32 external_state_count4;
         comma::packed::byte external_state_output5;
-        comma::packed::uint32 external_state_count5;
+        comma::packed::net_uint32 external_state_count5;
         comma::packed::byte external_state_output6;
-        comma::packed::uint32 external_state_count6;
+        comma::packed::net_uint32 external_state_count6;
         comma::packed::byte external_state_output7;
-        comma::packed::uint32 external_state_count7;
+        comma::packed::net_uint32 external_state_count7;
         comma::packed::byte external_state_output8;
-        comma::packed::uint32 external_state_count8;
-        comma::packed::uint16 reserved;
+        comma::packed::net_uint32 external_state_count8;
+        comma::packed::net_uint16 reserved;
     };
     // todo: variable size with laser model
     // LMS5xx has all outputs
@@ -747,8 +747,8 @@ struct set_output_states
         enum { type_field_size = 12 };
         static const char* type() { return "mDOSetOutput"; }
         static const char* command_type() { return "sMN"; }
-        comma::packed::uint8 output_number; // 1-3
-        comma::packed::uint8 state; // 0=inactive, 1=active
+        comma::packed::byte output_number; // 1-3
+        comma::packed::byte state; // 0=inactive, 1=active
     };
 
     struct response : public comma::packed::packed_struct< response, 1 >
@@ -951,7 +951,7 @@ struct set_device_name
         enum { type_field_size = 12 };
         static const char* type() { return "LocationName"; }
         static const char* command_type() { return "sWN"; }
-        comma::packed::uint16 name_length_in_ascii_hex; // note, this value is written in ASCII as HEX even though it's a "binary" protocol - fucking stupid sick
+        comma::packed::net_uint16 name_length_in_ascii_hex; // note, this value is written in ASCII as HEX even though it's a "binary" protocol - fucking stupid sick
         comma::packed::string< 16 > name; // example shows shorter string based on ascii hex length - stupid sick
     };
 
@@ -960,7 +960,7 @@ struct set_device_name
         enum { type_field_size = 12 };
         static const char* type() { return "LocationName"; }
         static const char* command_type() { return "sWA"; }
-        comma::packed::uint16 name_length_in_ascii_hex; // note, this value is written in ASCII as HEX even though it's a "binary" protocol - fucking stupid sick
+        comma::packed::net_uint16 name_length_in_ascii_hex; // note, this value is written in ASCII as HEX even though it's a "binary" protocol - fucking stupid sick
         comma::packed::string< 16 > name; // example shows shorter string based on ascii hex length - stupid sick
         // todo: the example doesn't include the length, so who knows if it's really there
     };
@@ -980,7 +980,7 @@ struct get_device_name
         enum { type_field_size = 12 };
         static const char* type() { return "LocationName"; }
         static const char* command_type() { return "sRA"; }
-        comma::packed::uint16 name_length_in_ascii_hex; // note, this value is written in ASCII as HEX even though it's a "binary" protocol - fucking stupid sick
+        comma::packed::net_uint16 name_length_in_ascii_hex; // note, this value is written in ASCII as HEX even though it's a "binary" protocol - fucking stupid sick
         comma::packed::string< 16 > name; // example shows shorter string based on ascii hex length - stupid sick
     };
 };
@@ -999,7 +999,7 @@ struct get_operating_hours
         enum { type_field_size = 6 };
         static const char* type() { return "ODoprh"; }
         static const char* command_type() { return "sRA"; }
-        comma::packed::uint32 operating_hours; // 1/10h
+        comma::packed::net_uint32 operating_hours; // 1/10h
     };
 };
 
@@ -1017,7 +1017,7 @@ struct get_power_on_counter
         enum { type_field_size = 6 };
         static const char* type() { return "ODpwrc"; }
         static const char* command_type() { return "sRA"; }
-        comma::packed::uint32 counter; // units not documented...
+        comma::packed::net_uint32 counter; // units not documented...
     };
 };
 
@@ -1028,7 +1028,7 @@ struct set_ip_address
         enum { type_field_size = 8 };
         static const char* type() { return "EIIpAddr"; }
         static const char* command_type() { return "sWN"; }
-        comma::packed::uint32 ip_address; // one byte per segment, surprisingly sensible
+        comma::packed::net_uint32 ip_address; // one byte per segment, surprisingly sensible
     };
 
     struct response : public comma::packed::packed_struct< response, 0 >
@@ -1047,7 +1047,7 @@ struct set_ip_gateway
         enum { type_field_size = 6 };
         static const char* type() { return "EIgate"; }
         static const char* command_type() { return "sWN"; }
-        comma::packed::uint32 gateway; // one byte per segment, surprisingly sensible
+        comma::packed::net_uint32 gateway; // one byte per segment, surprisingly sensible
     };
 
     struct response : public comma::packed::packed_struct< response, 0 >
@@ -1066,7 +1066,7 @@ struct set_ip_netmask
         enum { type_field_size = 6 };
         static const char* type() { return "EImask"; }
         static const char* command_type() { return "sWN"; }
-        comma::packed::uint32 netmask; // one byte per segment, surprisingly sensible
+        comma::packed::net_uint32 netmask; // one byte per segment, surprisingly sensible
     };
 
     struct response : public comma::packed::packed_struct< response, 0 >
@@ -1093,9 +1093,9 @@ struct get_angle_compensation_sine
         enum { type_field_size = 14 };
         static const char* type() { return "MCAngleCompSin"; }
         static const char* command_type() { return "sRA"; }
-        comma::packed::int16 amplitude; // 1/10000 deg, -10,000 to +10,000
-        comma::packed::int32 phase; // 1/10000 deg, -3,600,000 to +3,600,000
-        comma::packed::int16 offset; // 1/1000 deg (different! maybe!?), -10,000 to +10,000
+        comma::packed::net_int16 amplitude; // 1/10000 deg, -10,000 to +10,000
+        comma::packed::net_int32 phase; // 1/10000 deg, -3,600,000 to +3,600,000
+        comma::packed::net_int16 offset; // 1/1000 deg (different! maybe!?), -10,000 to +10,000
         // todo: warning the example binary has space separators and doens't respect the above binary types
     };
 };
@@ -1160,10 +1160,10 @@ struct set_contamination_values
         enum { type_field_size = 6 };
         static const char* type() { return "LCMcfg"; }
         static const char* command_type() { return "sWN"; }
-        comma::packed::uint8 strategy; // 0=inactive, 1=high available, 2=available, 3=sensitive, 4=semi-sensitive
-        comma::packed::uint32 response_time; // 1-60
-        comma::packed::uint32 threshold_warning; // 0-100
-        comma::packed::uint32 threshold_error; // 0-100
+        comma::packed::byte strategy; // 0=inactive, 1=high available, 2=available, 3=sensitive, 4=semi-sensitive
+        comma::packed::net_uint32 response_time; // 1-60
+        comma::packed::net_uint32 threshold_warning; // 0-100
+        comma::packed::net_uint32 threshold_error; // 0-100
     };
 
     struct response : public comma::packed::packed_struct< response, 0 >
@@ -1189,10 +1189,10 @@ struct get_contamination_values
         enum { type_field_size = 6 };
         static const char* type() { return "LCMcfg"; }
         static const char* command_type() { return "sRA"; }
-        comma::packed::uint8 strategy; // 0=inactive, 1=high available, 2=available, 3=sensitive, 4=semi-sensitive
-        comma::packed::uint16 response_time; // 1-60
-        comma::packed::uint16 threshold_warning; // 0-100
-        comma::packed::uint16 threshold_error; // 0-100
+        comma::packed::byte strategy; // 0=inactive, 1=high available, 2=available, 3=sensitive, 4=semi-sensitive
+        comma::packed::net_uint16 response_time; // 1-60
+        comma::packed::net_uint16 threshold_warning; // 0-100
+        comma::packed::net_uint16 threshold_error; // 0-100
         // stupid sick: yes, even though you set them as uint32, they come back as uint16
     };
 };
@@ -1204,7 +1204,7 @@ struct set_synchronisation_phase
         enum { type_field_size = 7 };
         static const char* type() { return "SYPhase"; }
         static const char* command_type() { return "sWN"; }
-        comma::packed::uint8 phase; // units probably degrees, field entirely unspecified in documentation - stupid sick
+        comma::packed::byte phase; // units probably degrees, field entirely unspecified in documentation - stupid sick
     };
 
     struct response : public comma::packed::packed_struct< response, 0 >
@@ -1223,10 +1223,10 @@ struct set_front_panel
         enum { type_field_size = 8 };
         static const char* type() { return "LMLfpFcn"; }
         static const char* command_type() { return "sWN"; }
-        comma::packed::uint8 reserved;
-        comma::packed::uint8 led_function_q1q2; // 0=none, 1=app, 2=cmd
-        comma::packed::uint8 led_function_okstop; // 0=none, 1=app, 2=cmd
-        comma::packed::uint8 display_function; // 0=app, 1=cmd
+        comma::packed::byte reserved;
+        comma::packed::byte led_function_q1q2; // 0=none, 1=app, 2=cmd
+        comma::packed::byte led_function_okstop; // 0=none, 1=app, 2=cmd
+        comma::packed::byte display_function; // 0=app, 1=cmd
     };
 
     struct response : public comma::packed::packed_struct< response, 0 >
@@ -1245,7 +1245,7 @@ struct set_function_led_1
         enum { type_field_size = 11 };
         static const char* type() { return "HMIfpFcn_Y1"; }
         static const char* command_type() { return "sWN"; }
-        comma::packed::uint8 mode; // 0=no function, 1=app, 2=cmd
+        comma::packed::byte mode; // 0=no function, 1=app, 2=cmd
     };
 
     struct response : public comma::packed::packed_struct< response, 0 >
@@ -1263,7 +1263,7 @@ struct set_function_led_2
         enum { type_field_size = 11 };
         static const char* type() { return "HMIfpFcn_Y2"; }
         static const char* command_type() { return "sWN"; }
-        comma::packed::uint8 mode; // 0=no function, 1=app, 2=cmd
+        comma::packed::byte mode; // 0=no function, 1=app, 2=cmd
     };
 
     struct response : public comma::packed::packed_struct< response, 0 >
@@ -1282,8 +1282,8 @@ struct set_led_state
         enum { type_field_size = 10 };
         static const char* type() { return "mHMISetLed"; }
         static const char* command_type() { return "sMN"; }
-        comma::packed::uint8 led_id; // 3=LED1, 4=LED2 of course
-        comma::packed::uint8 state; // 0=off, 1=on
+        comma::packed::byte led_id; // 3=LED1, 4=LED2 of course
+        comma::packed::byte state; // 0=off, 1=on
     };
 
     struct response : public comma::packed::packed_struct< response, 1 >
@@ -1291,7 +1291,7 @@ struct set_led_state
         enum { type_field_size = 10 };
         static const char* type() { return "mHMISetLed"; }
         static const char* command_type() { return "sAN"; }
-        comma::packed::uint8 result; // 1=success, 0=fail
+        comma::packed::byte result; // 1=success, 0=fail
     };
 };
 
@@ -1309,7 +1309,7 @@ struct standby
         enum { type_field_size = 10 };
         static const char* type() { return "LMCstandby"; }
         static const char* command_type() { return "sAN"; }
-        comma::packed::uint8 status_code; // 0=no error
+        comma::packed::byte status_code; // 0=no error
     };
 };
 
@@ -1327,7 +1327,7 @@ struct start_measurement
         enum { type_field_size = 12 };
         static const char* type() { return "LMCstartmeas"; }
         static const char* command_type() { return "sAN"; }
-        comma::packed::uint8 status_code; // 0=no error, 1=not allowed
+        comma::packed::byte status_code; // 0=no error, 1=not allowed
     };
 };
 
@@ -1345,7 +1345,7 @@ struct stop_measurement
         enum { type_field_size = 11 };
         static const char* type() { return "LMCstopmeas"; }
         static const char* command_type() { return "sAN"; }
-        comma::packed::uint8 status_code; // 0=no error, 1=not allowed
+        comma::packed::byte status_code; // 0=no error, 1=not allowed
     };
 };
 

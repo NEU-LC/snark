@@ -44,57 +44,71 @@ namespace snark { namespace sick { namespace cola { namespace binary {
 // encoders_info_t
 const scan_packet::encoder_t* scan_packet::encoders_info_t::encoders_begin() const
 {
-    if ( *encoders_size.data() == 0 ) { COMMA_THROW( comma::exception, "no encoder data" ); }
+    if ( encoders_size() == 0 ) { COMMA_THROW( comma::exception, "no encoder data" ); }
     return reinterpret_cast< const scan_packet::encoder_t* >( reinterpret_cast< const char* >( this ) + size );
 }
 
 const scan_packet::encoder_t* scan_packet::encoders_info_t::encoders_end() const
 {
-    return encoders_begin() + *encoders_size.data() * encoder_t::size;
+    return reinterpret_cast< const scan_packet::encoder_t* >( end() );
 }
 
 const char* scan_packet::encoders_info_t::end() const
 {
-    return reinterpret_cast< const char* >( encoders_end() );
+    return reinterpret_cast< const char* >( this ) + size + encoders_size() * encoder_t::size;
 }
 
 // channel16_t
-const comma::packed::uint16* scan_packet::channel16_t::data_begin() const
+const comma::packed::net_uint16* scan_packet::channel16_t::data_begin() const
 {
-    if ( *data_size.data() == 0 ) { COMMA_THROW( comma::exception, "no channel data in 16-bit channel " << *channel_content.data() ); }
-    return reinterpret_cast< const comma::packed::uint16* >( reinterpret_cast< const char* >( this ) + size );
+    if ( data_size() == 0 ) { COMMA_THROW( comma::exception, "no channel data in 16-bit channel " << channel_content() ); }
+    return reinterpret_cast< const comma::packed::net_uint16* >( reinterpret_cast< const char* >( this ) + size );
 }
 
-const comma::packed::uint16* scan_packet::channel16_t::data_end() const
+const comma::packed::net_uint16* scan_packet::channel16_t::data_end() const
 {
-    return data_begin() + *data_size.data() * sizeof( comma::packed::uint16 );
+    return reinterpret_cast< const comma::packed::net_uint16* >( end() );
 }
 
 const char* scan_packet::channel16_t::end() const
 {
-    return reinterpret_cast< const char* >( data_end() );
+    return reinterpret_cast< const char* >( this ) + size + data_size() * sizeof( comma::packed::net_uint16 );
 }
 
 // channels16_t
 const scan_packet::channel16_t* scan_packet::channels16_t::channels_begin() const
 {
-    if ( *channels_size.data() == 0 ) { COMMA_THROW( comma::exception, "no 16-bit channels" ); }
+    if ( channels_size() == 0 ) { COMMA_THROW( comma::exception, "no 16-bit channels" ); }
     return reinterpret_cast< const scan_packet::channel16_t* >( reinterpret_cast< const char* >( this ) + size );
 }
 
 const scan_packet::channel16_t* scan_packet::channels16_t::channels_next( const channel16_t* c ) const
 {
-    return c == NULL ? reinterpret_cast< const channel16_t* >( reinterpret_cast< const char* >( this ) + size ) : reinterpret_cast< const scan_packet::channel16_t* >( c->end() );
+    if ( c == NULL )
+    {
+        return reinterpret_cast< const channel16_t* >( reinterpret_cast< const char* >( this ) + size );
+    }
+    else
+    {
+        return reinterpret_cast< const scan_packet::channel16_t* >( c->end() );
+    }
 }
 
 const scan_packet::channel16_t* scan_packet::channels16_t::channels_end() const
 {
     const scan_packet::channel16_t* c = NULL;
-    for(unsigned int channel = 0; channel < *channels_size.data(); ++channel )
+    for(unsigned int channel = 0; channel < channels_size(); ++channel )
     {
         c = channels_next(c);
     }
-    return c == NULL ? reinterpret_cast< const scan_packet::channel16_t* >( reinterpret_cast< const char* >( this ) + size ) : c;
+    if ( c == NULL )
+    {
+        return reinterpret_cast< const scan_packet::channel16_t* >( reinterpret_cast< const char* >( this ) + size );
+    }
+    else
+    {
+        return reinterpret_cast< const scan_packet::channel16_t* >( c->end() );
+    }
 }
 
 const char* scan_packet::channels16_t::end() const
@@ -103,42 +117,56 @@ const char* scan_packet::channels16_t::end() const
 }
 
 // channel8_t
-const comma::packed::uint16* scan_packet::channel8_t::data_begin() const
+const comma::packed::net_uint16* scan_packet::channel8_t::data_begin() const
 {
-    if ( *data_size.data() == 0 ) { COMMA_THROW( comma::exception, "no channel data in 8-bit channel " << *channel_content.data() ); }
-    return reinterpret_cast< const comma::packed::uint16* >( reinterpret_cast< const char* >( this ) + size );
+    if ( data_size() == 0 ) { COMMA_THROW( comma::exception, "no channel data in 8-bit channel " << channel_content() ); }
+    return reinterpret_cast< const comma::packed::net_uint16* >( reinterpret_cast< const char* >( this ) + size );
 }
 
-const comma::packed::uint16* scan_packet::channel8_t::data_end() const
+const comma::packed::net_uint16* scan_packet::channel8_t::data_end() const
 {
-    return data_begin() + *data_size.data() * sizeof( comma::packed::uint16 );
+    return reinterpret_cast< const comma::packed::net_uint16* >( end() );
 }
 
 const char* scan_packet::channel8_t::end() const
 {
-    return reinterpret_cast< const char* >( data_end() );
+    return reinterpret_cast< const char* >( this ) + size + data_size() * sizeof( comma::packed::net_uint16 );
 }
 
 // channels8_t
 const scan_packet::channel8_t* scan_packet::channels8_t::channels_begin() const
 {
-    if ( *channels_size.data() == 0 ) { COMMA_THROW( comma::exception, "no 8-bit channels" ); }
+    if ( channels_size() == 0 ) { COMMA_THROW( comma::exception, "no 8-bit channels" ); }
     return reinterpret_cast< const scan_packet::channel8_t* >( reinterpret_cast< const char* >( this ) + size );
 }
 
 const scan_packet::channel8_t* scan_packet::channels8_t::channels_next( const channel8_t* c ) const
 {
-    return c == NULL ? reinterpret_cast< const scan_packet::channel8_t* >( reinterpret_cast< const char* >( this ) + size ) : reinterpret_cast< const scan_packet::channel8_t* >( c->end() );
+    if ( c == NULL )
+    {
+        return reinterpret_cast< const scan_packet::channel8_t* >( reinterpret_cast< const char* >( this ) + size );
+    }
+    else
+    {
+        return reinterpret_cast< const scan_packet::channel8_t* >( c->end() );
+    }
 }
 
 const scan_packet::channel8_t* scan_packet::channels8_t::channels_end() const
 {
     const scan_packet::channel8_t* c = NULL;
-    for(unsigned int channel = 0; channel < *channels_size.data(); ++channel )
+    for(unsigned int channel = 0; channel < channels_size(); ++channel )
     {
         c = channels_next(c);
     }
-    return c == NULL ? reinterpret_cast< const scan_packet::channel8_t* >( reinterpret_cast< const char* >( this ) + size ) : c;
+    if ( c == NULL )
+    {
+        return reinterpret_cast< const scan_packet::channel8_t* >( reinterpret_cast< const char* >( this ) + size );
+    }
+    else
+    {
+        return reinterpret_cast< const scan_packet::channel8_t* >( c->end() );
+    }
 }
 
 const char* scan_packet::channels8_t::end() const
@@ -149,7 +177,7 @@ const char* scan_packet::channels8_t::end() const
 // position_info_t
 const scan_packet::position_t* scan_packet::position_info_t::position() const
 {
-    if ( *data_present.data() == 0 ) { COMMA_THROW( comma::exception, "no position data" ); }
+    if ( data_present() == 0 ) { COMMA_THROW( comma::exception, "no position data" ); }
     return reinterpret_cast< const scan_packet::position_t* >( reinterpret_cast< const char* >( this ) + size );
 }
 
@@ -161,30 +189,30 @@ const scan_packet::position_t* scan_packet::position_info_t::position_end() cons
 
 const char* scan_packet::position_info_t::end() const
 {
-    return *data_present.data() == 1 ? position()->end() : reinterpret_cast< const char* >( this ) + size;
+    return data_present() == 1 ? position()->end() : reinterpret_cast< const char* >( this ) + size;
 }
 
 // name_t
 const comma::packed::byte* scan_packet::name_t::name_begin() const
 {
-    if ( *name_length.data() == 0 ) { COMMA_THROW( comma::exception, "name length is zero" ); }
+    if ( name_length() == 0 ) { COMMA_THROW( comma::exception, "name length is zero" ); }
     return reinterpret_cast< const comma::packed::byte* >( reinterpret_cast< const char* >( this ) + size );
 }
 
 const comma::packed::byte* scan_packet::name_t::name_end() const
 {
-    return name_begin() + *name_length.data() * sizeof( comma::packed::byte );
+    return reinterpret_cast< const comma::packed::byte* >( end() );
 }
 
 const char* scan_packet::name_t::end() const
 {
-    return reinterpret_cast< const char* >( name_end() );
+    return reinterpret_cast< const char* >( this ) + size + name_length() * sizeof( comma::packed::byte );
 }
 
 // name_info_t
 const scan_packet::name_t* scan_packet::name_info_t::name() const
 {
-    if ( *data_present.data() == 0 ) { COMMA_THROW( comma::exception, "no name data" ); }
+    if ( data_present() == 0 ) { COMMA_THROW( comma::exception, "no name data" ); }
     return reinterpret_cast< const scan_packet::name_t* >( reinterpret_cast< const char* >( this ) + size );
 }
 
@@ -195,19 +223,19 @@ const scan_packet::name_t* scan_packet::name_info_t::name_end() const
 
 const char* scan_packet::name_info_t::end() const
 {
-    return *data_present.data() == 1 ? name()->end() : reinterpret_cast< const char* >( this ) + size;
+    return data_present() == 1 ? name()->end() : reinterpret_cast< const char* >( this ) + size;
 }
 
 // comment_t
 const comma::packed::byte* scan_packet::comment_t::comment_begin() const
 {
-    if ( *comment_length.data() == 0 ) { COMMA_THROW( comma::exception, "comment length is zero" ); }
+    if ( comment_length() == 0 ) { COMMA_THROW( comma::exception, "comment length is zero" ); }
     return reinterpret_cast< const comma::packed::byte* >( reinterpret_cast< const char* >( this ) + size );
 }
 
 const comma::packed::byte* scan_packet::comment_t::comment_end() const
 {
-    return comment_begin() + *comment_length.data() * sizeof( comma::packed::byte );
+    return reinterpret_cast< const comma::packed::byte* >( this ) + size + comment_length() * sizeof( comma::packed::byte );
 }
 
 const char* scan_packet::comment_t::end() const
@@ -218,7 +246,7 @@ const char* scan_packet::comment_t::end() const
 // comment_info_t
 const scan_packet::comment_t* scan_packet::comment_info_t::comment() const
 {
-    if ( *data_present.data() == 0 ) { COMMA_THROW( comma::exception, "no comment data" ); }
+    if ( data_present() == 0 ) { COMMA_THROW( comma::exception, "no comment data" ); }
     return reinterpret_cast< const scan_packet::comment_t* >( reinterpret_cast< const char* >( this ) + size );
 }
 
@@ -229,13 +257,13 @@ const scan_packet::comment_t* scan_packet::comment_info_t::comment_end() const
 
 const char* scan_packet::comment_info_t::end() const
 {
-    return *data_present.data() == 1 ? comment()->end() : reinterpret_cast< const char* >( this ) + size;
+    return data_present() == 1 ? comment()->end() : reinterpret_cast< const char* >( this ) + size;
 }
 
 // timestamp_info_t
 const scan_packet::timestamp_t* scan_packet::timestamp_info_t::timestamp() const
 {
-    if ( *data_present.data() == 0 ) { COMMA_THROW( comma::exception, "no timestamp data" ); }
+    if ( data_present() == 0 ) { COMMA_THROW( comma::exception, "no timestamp data" ); }
     return reinterpret_cast< const scan_packet::timestamp_t* >( reinterpret_cast< const char* >( this ) + size );
 }
 
@@ -247,13 +275,13 @@ const scan_packet::timestamp_t* scan_packet::timestamp_info_t::timestamp_end() c
 
 const char* scan_packet::timestamp_info_t::end() const
 {
-    return *data_present.data() == 1 ? timestamp()->end() : reinterpret_cast< const char* >( this ) + size;
+    return data_present() == 1 ? timestamp()->end() : reinterpret_cast< const char* >( this ) + size;
 }
 
 // event_info_t
 const scan_packet::event_t* scan_packet::event_info_t::event() const
 {
-    if ( *data_present.data() == 0 ) { COMMA_THROW( comma::exception, "no event data" ); }
+    if ( data_present() == 0 ) { COMMA_THROW( comma::exception, "no event data" ); }
     return reinterpret_cast< const scan_packet::event_t* >( reinterpret_cast< const char* >( this ) + size );
 }
 
@@ -265,7 +293,7 @@ const scan_packet::event_t* scan_packet::event_info_t::event_end() const
 
 const char* scan_packet::event_info_t::end() const
 {
-    return *data_present.data() == 1 ? event()->end() : reinterpret_cast< const char* >( this ) + size;
+    return data_present() == 1 ? event()->end() : reinterpret_cast< const char* >( this ) + size;
 }
 
 // progressive parsing of scan_packet
@@ -281,7 +309,7 @@ const char* scan_packet::payload() const
 
 const char* scan_packet::body_end() const
 {
-    return body() + *header().length.data();
+    return body() + header().length();
 }
 
 const cola::binary::header& scan_packet::header() const
@@ -304,14 +332,14 @@ const scan_packet::device_t& scan_packet::device() const
     return *reinterpret_cast< const scan_packet::device_t* >( version().end() );
 }
 
-const scan_packet::status_info_t& scan_packet::status_info() const
+const scan_packet::status_info_t& scan_packet::status() const
 {
     return *reinterpret_cast< const scan_packet::status_info_t* >( device().end() );
 }
 
 const scan_packet::frequency_t& scan_packet::frequency() const
 {
-    return *reinterpret_cast< const scan_packet::frequency_t* >( status_info().end() );
+    return *reinterpret_cast< const scan_packet::frequency_t* >( status().end() );
 }
 
 const scan_packet::encoders_info_t& scan_packet::encoders() const
@@ -329,9 +357,14 @@ const scan_packet::channels8_t& scan_packet::channels8() const
     return *reinterpret_cast< const scan_packet::channels8_t* >( channels16().end() );
 }
 
+const scan_packet::position_info_t& scan_packet::position() const
+{
+    return *reinterpret_cast< const scan_packet::position_info_t* >( channels8().end() );
+}
+
 const scan_packet::name_info_t& scan_packet::name() const
 {
-    return *reinterpret_cast< const scan_packet::name_info_t* >( channels8().end() );
+    return *reinterpret_cast< const scan_packet::name_info_t* >( position().end() );
 }
 
 const scan_packet::comment_info_t& scan_packet::comment() const
@@ -350,16 +383,18 @@ const scan_packet::event_info_t& scan_packet::event() const
 }
 
 // crc
-const comma::packed::byte& scan_packet::crc() const
+char scan_packet::crc() const
 {
-    return *reinterpret_cast< const comma::packed::byte* >( body_end() );
+    return *body_end();
 }
 
 bool scan_packet::valid() const
 {
     char checksum = 0;
     for ( const char* c = body(); c < body_end(); ++c ) { checksum ^= *c; }
-    return checksum == *crc().data();
+    bool checksum_valid = checksum == crc();
+    bool full_packed_parsed = event().end() == body_end();
+    return checksum_valid && full_packed_parsed;
 }
 
 
