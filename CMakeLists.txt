@@ -4,7 +4,8 @@ cmake_minimum_required(VERSION 2.6)
 
 ENABLE_TESTING()
 
-IF (UNIX)
+IF (UNIX AND NOT APPLE)
+  # May also fail on BSD as it assumes GNU date rather than BSD date command
 	# Get the date of the last commit (for use by CPack)
 	# Check if Git is installed
 	find_package(Git)
