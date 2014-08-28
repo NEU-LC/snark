@@ -139,6 +139,7 @@ OPTION( snark_build_imaging "build imaging" ON )
 OPTION( snark_build_sensors "build sensors" ON )
 OPTION( snark_build_actuators "build actuators" OFF )
 OPTION( snark_build_battery "build battery" OFF )
+OPTION( snark_build_graph "build graph" OFF )
 
 INCLUDE( CMakeDependentOption )
 CMAKE_DEPENDENT_OPTION( snark_build_sensors_dc1394 "build dc1394 components" ON "snark_build_sensors" OFF )
@@ -283,6 +284,10 @@ ENDIF( snark_build_sensors )
 IF( snark_build_battery )
     ADD_SUBDIRECTORY( battery )
 ENDIF( snark_build_battery )
+
+IF( snark_build_graph )
+    ADD_SUBDIRECTORY( graph )
+ENDIF( snark_build_graph )
 
 ADD_SUBDIRECTORY( kml )
 ADD_SUBDIRECTORY( timing )
