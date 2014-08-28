@@ -211,6 +211,7 @@ public:
     stop_on_exit( std::ostream& oss ) : os_(oss) {}
     ~stop_on_exit() 
     {
+        std::cerr << name() << "powering off on exit." << std::endl;
         os_ << "stopj([0.1,0.1,0.1,0.1,0.1,0.1])\n";
         os_ << "power off\n"; // power off too
         os_.flush();
@@ -308,7 +309,7 @@ int main( int ac, char** av )
                        Arm_Controller_Y );
     
         comma::uint16 rover_id = options.value< comma::uint16 >( "--id" );
-        double sleep = options.value< double >( "--sleep", 0.1 );  // seconds
+        double sleep = options.value< double >( "--sleep", 0.06 );  // seconds
 
         verbose = options.exists( "--verbose,-v" );
 
@@ -345,8 +346,6 @@ int main( int ac, char** av )
         }
         comma::io::ostream& robot_arm = *poss;
 
-        stop_on_exit on_exit( *robot_arm );
-
         /// For reading input commands
         arm::inputs inputs( rover_id );
 
@@ -365,55 +364,60 @@ int main( int ac, char** av )
         comma::io::select select;
         select.read().add( status_stream.fd() );
 
-        /// Create the handler for auto init.
-        arm::handlers::auto_initialization auto_init( arm_status, *robot_arm,
-                boost::bind( read_status, boost::ref(istream), boost::ref( status_stream ), select, status_stream.fd() ),
-                signaled, 
-                boost::bind( should_stop, boost::ref( inputs ) ),
-                continuum.work_directory );
-        auto_init.set_app_name( name() );
-        
-        
-        arm::handlers::camera_sweep camera_sweep( Arm_Controller_U, output, 
-                boost::bind( read_status, boost::ref(istream), boost::ref( status_stream ), select, status_stream.fd() ),
-                arm_status,
-                boost::bind( should_stop, boost::ref( inputs ) ),
-                signaled );
-                                                  
-        
-        // if( options.exists( "--init-force-limit,-ifl" ) ){ auto_init.set_force_limit( options.value< double >( "--init-force-limit,-ifl" ) ); }
-        commands_handler.reset( new commands_handler_t( Arm_Controller_U, output, arm_status, *robot_arm, 
-                                                        auto_init, camera_sweep, std::cout ) );
-
-        boost::posix_time::microseconds timeout( 0 );
-        while( !signaled && std::cin.good() )
         {
-            if( !status_stream->good() ) { 
-                std::cerr << name() << "status connection to robot-arm failed" << std::endl;
-                COMMA_THROW( comma::exception, "status connection to robot arm failed." ); 
-            }
+            stop_on_exit on_exit( *robot_arm );
 
-            read_status( istream, status_stream, select, status_stream.fd() ); 
-            home_position_check( arm_status, auto_init.home_filepath() );
+            /// Create the handler for auto init.
+            arm::handlers::auto_initialization auto_init( arm_status, *robot_arm,
+                    boost::bind( read_status, boost::ref(istream), boost::ref( status_stream ), select, status_stream.fd() ),
+                    signaled, 
+                    boost::bind( should_stop, boost::ref( inputs ) ),
+                    continuum.work_directory );
+            auto_init.set_app_name( name() );
             
-            /// Also act as sleep
-            inputs.read( timeout );
-            bool empty = inputs.is_empty();
-            // Process commands into inputs into the system
-            if( !inputs.is_empty() )
+            
+            arm::handlers::camera_sweep camera_sweep( Arm_Controller_U, output, 
+                    boost::bind( read_status, boost::ref(istream), boost::ref( status_stream ), select, status_stream.fd() ),
+                    arm_status,
+                    boost::bind( should_stop, boost::ref( inputs ) ),
+                    signaled );
+            std::cerr << name() << "min is " << continuum.scan.min.value() << std::endl;
+            camera_sweep.set_min( continuum.scan.min );                                          
+            camera_sweep.set_max( continuum.scan.max );                                          
+            
+            // if( options.exists( "--init-force-limit,-ifl" ) ){ auto_init.set_force_limit( options.value< double >( "--init-force-limit,-ifl" ) ); }
+            commands_handler.reset( new commands_handler_t( Arm_Controller_U, output, arm_status, *robot_arm, 
+                                                        auto_init, camera_sweep, std::cout ) );
+        
+
+            boost::posix_time::microseconds timeout( usec );
+            while( !signaled && std::cin.good() )
             {
-                const command_vector v = inputs.front();
-                inputs.pop();
-                process_command( v, *robot_arm );
-
+                if( !status_stream->good() ) { 
+                    std::cerr << name() << "status connection to robot-arm failed" << std::endl;
+                    COMMA_THROW( comma::exception, "status connection to robot arm failed." ); 
+                }
+    
+                read_status( istream, status_stream, select, status_stream.fd() ); 
+                home_position_check( arm_status, auto_init.home_filepath() );
+                
+                /// Also act as sleep
+                inputs.read( timeout );
+                // Process commands into inputs into the system
+                if( !inputs.is_empty() )
+                {
+                    const command_vector v = inputs.front();
+                    inputs.pop();
+                    process_command( v, *robot_arm );
+    
+                }
+                
+                usleep( 1000 );
             }
-            
-            usleep( usec );
+            std::cerr << name() << "exiting" << std::endl;
+            *robot_arm << "power off\n";
+            robot_arm->flush();
         }
-
-        std::cerr << name() << "exiting" << std::endl;
-//         *robot_arm << "power off\n";
-//         robot_arm->flush();
     }
     catch( comma::exception& ce ) { std::cerr << name() << ": exception thrown: " << ce.what() << std::endl; return 1; }
     catch( std::exception& e ) { std::cerr << name() << ": unknown exception caught: " << e.what() << std::endl; return 1; }

@@ -46,8 +46,8 @@ namespace snark { namespace sick { namespace cola { namespace binary {
 
 struct header : public comma::packed::packed_struct< header, 8 >
 {
-    comma::packed::string< 4 > sentinel;
-    comma::packed::uint32 length;
+    comma::packed::net_uint32 sentinel;
+    comma::packed::net_uint32 length;
 
     bool valid() const;
     std::string type() const;

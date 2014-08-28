@@ -74,6 +74,8 @@ class camera_sweep
     interrupt_t interrupt_;
     comma::signal_flag& signaled_;
     std::string name_;
+    plane_angle_degrees_t min_;
+    plane_angle_degrees_t max_;
     
     struct move_t
     {
@@ -101,12 +103,18 @@ public:
         ) : 
                     inputs_( inputs ), serialiser_( serialiser ), 
                     status_update_( status_updater ), status_( status ), 
-                    interrupt_( interrupt ), signaled_( signaled ) {}
-                    
+                    interrupt_( interrupt ), signaled_( signaled ),
+                    min_(-45.0*degree), max_(15.0*degree) {}
+  
+    void set_min( const plane_angle_degrees_t& min ) { min_ = min; }                  
+    void set_max( const plane_angle_degrees_t& max ) { max_ = max; }                  
     /// To be called to signal that the movement has started - for commands like SCAN or AUTO_INIT
     typedef boost::function< void ( void ) > started_reply_t;
     
     result run( const length_t& height, const plane_angle_degrees_t& pan,
+                started_reply_t started,
+                std::ostream& rover );
+     result run( const length_t& height, const plane_angle_degrees_t& pan,
                 const plane_angle_degrees_t& tilt_down, const plane_angle_degrees_t& tilt_up, 
                 started_reply_t started,
                 std::ostream& rover );

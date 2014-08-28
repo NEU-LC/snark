@@ -290,18 +290,38 @@ template <> struct traits< arm::sweep_cam >
     }
 };
 
+template <> struct traits< arm::continuum_t::scan_type >
+{
+    template< typename K, typename V > static void visit( const K& k, arm::continuum_t::scan_type& t, V& v )
+    {
+        double min=-45, max=15;
+        v.apply( "min", min );
+        t.min = min * arm::degree;
+        v.apply( "max", max );
+        t.max = max * arm::degree;
+    }
+
+    template< typename K, typename V > static void visit( const K& k, const arm::continuum_t::scan_type& t, V& v )
+    {
+        v.apply( "min", t.min.value() );
+        v.apply( "max", t.max.value() );
+    }
+};
+
 template <> struct traits< arm::continuum_t >
 {
     template< typename K, typename V > static void visit( const K& k, arm::continuum_t& t, V& v )
     {
         v.apply( "home_position", t.home_position );
         v.apply( "work_directory", t.work_directory );
+        v.apply( "scan", t.scan );
     }
 
     template< typename K, typename V > static void visit( const K& k, const arm::continuum_t& t, V& v )
     {
         v.apply( "home_position", t.home_position );
         v.apply( "work_directory", t.work_directory );
+        v.apply( "scan", t.scan );
     }
 };
 
