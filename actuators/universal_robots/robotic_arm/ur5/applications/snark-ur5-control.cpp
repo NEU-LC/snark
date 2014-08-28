@@ -57,7 +57,7 @@
 #include "../../commands_handler.h"
 #include "../../inputs.h"
 #include "../../units.h"
-#include "../../camera_sweep.h"
+#include "../../tilt_sweep.h"
 extern "C" {
     #include "../../simulink/Arm_Controller.h"
 }
@@ -376,18 +376,18 @@ int main( int ac, char** av )
             auto_init.set_app_name( name() );
             
             
-            arm::handlers::camera_sweep camera_sweep( Arm_Controller_U, output, 
+            arm::handlers::tilt_sweep tilt_sweep( Arm_Controller_U, output, 
                     boost::bind( read_status, boost::ref(istream), boost::ref( status_stream ), select, status_stream.fd() ),
                     arm_status,
                     boost::bind( should_stop, boost::ref( inputs ) ),
                     signaled );
             std::cerr << name() << "min is " << continuum.scan.min.value() << std::endl;
-            camera_sweep.set_min( continuum.scan.min );                                          
-            camera_sweep.set_max( continuum.scan.max );                                          
+            tilt_sweep.set_min( continuum.scan.min );                                          
+            tilt_sweep.set_max( continuum.scan.max );                                          
             
             // if( options.exists( "--init-force-limit,-ifl" ) ){ auto_init.set_force_limit( options.value< double >( "--init-force-limit,-ifl" ) ); }
             commands_handler.reset( new commands_handler_t( Arm_Controller_U, output, arm_status, *robot_arm, 
-                                                        auto_init, camera_sweep, std::cout ) );
+                                                        auto_init, tilt_sweep, std::cout ) );
         
 
             boost::posix_time::microseconds timeout( usec );

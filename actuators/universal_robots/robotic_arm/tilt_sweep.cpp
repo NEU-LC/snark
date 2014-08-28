@@ -30,7 +30,7 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "camera_sweep.h"
+#include "tilt_sweep.h"
 #include "output.h"
 #include "traits.h"
 #include <comma/math/compare.h>
@@ -40,7 +40,7 @@ namespace snark { namespace ur { namespace robotic_arm { namespace handlers {
 // TODO how do you cancel an actioned item, stopj and run mode? or set to current angles
 // Currently it sets to current joints angles, both work
 // The other method requires to be a bit of a wait for mode change
-void camera_sweep::stop_movement(std::ostream& rover)
+void tilt_sweep::stop_movement(std::ostream& rover)
 {
 //     static const std::string stop_str = "stopj([0.05,0.05,0.05,0.05,0.05,0.05])";
     static comma::csv::ascii< status_t::array_joint_angles_t > ascii;
@@ -59,7 +59,7 @@ void camera_sweep::stop_movement(std::ostream& rover)
 //     rover.flush();
 }
 
-result camera_sweep::run( const length_t& height, const plane_angle_degrees_t& pan, 
+result tilt_sweep::run( const length_t& height, const plane_angle_degrees_t& pan, 
                           started_reply_t start_initiated,
                           std::ostream& rover )
 {
@@ -67,7 +67,7 @@ result camera_sweep::run( const length_t& height, const plane_angle_degrees_t& p
 }
     
     
-result camera_sweep::run( const length_t& height, const plane_angle_degrees_t& pan, 
+result tilt_sweep::run( const length_t& height, const plane_angle_degrees_t& pan, 
                           const plane_angle_degrees_t& tilt_down, const plane_angle_degrees_t& tilt_up, 
                           started_reply_t start_initiated,
                           std::ostream& rover )
@@ -127,7 +127,7 @@ result camera_sweep::run( const length_t& height, const plane_angle_degrees_t& p
     return result();
 }
 
-bool camera_sweep::calculate_solution( const length_t& height, const plane_angle_degrees_t& pan, 
+bool tilt_sweep::calculate_solution( const length_t& height, const plane_angle_degrees_t& pan, 
                                        const plane_angle_degrees_t& tilt_down, const plane_angle_degrees_t& tilt_up, 
                                        move_t& move1, move_t& move2, move_t& ret )
 {

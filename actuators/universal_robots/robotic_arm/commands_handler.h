@@ -46,7 +46,7 @@
 #include "data.h"
 #include "commands.h"
 #include "auto_initialization.h"
-#include "camera_sweep.h"
+#include "tilt_sweep.h"
 #include "output.h"
 #include <boost/filesystem.hpp>
 
@@ -83,7 +83,7 @@ public:
     
     commands_handler( ExtU_Arm_Controller_T& simulink_inputs, const arm_output& output,
                       arm::status_t& status, std::ostream& robot, 
-                      auto_initialization& init, camera_sweep& sweep, std::ostream& oss ) : 
+                      auto_initialization& init, tilt_sweep& sweep, std::ostream& oss ) : 
         inputs_(simulink_inputs), output_(output), 
         status_( status ), os( robot ), 
         init_(init), sweep_( sweep ),
@@ -101,7 +101,7 @@ private:
     status_t& status_;
     std::ostream& os;
     auto_initialization& init_;
-    camera_sweep sweep_;
+    tilt_sweep sweep_;
     std::ostream& ostream_;
     fs::path home_filepath_;
     bool verbose_;

@@ -60,8 +60,8 @@ namespace snark { namespace ur { namespace robotic_arm { namespace handlers {
 namespace arm = robotic_arm;
 
     
-/// class to perform the SCAN command, moves camera down and up using tilting joint (3).
-class camera_sweep
+/// class to perform the SCAN command, moves end effector down, up then back to original tilt angle.
+class tilt_sweep
 {
     typedef boost::function< void ( void ) > status_updater_t;
     typedef boost::function< bool ( void ) > interrupt_t;    /// A new command is received
@@ -74,8 +74,9 @@ class camera_sweep
     interrupt_t interrupt_;
     comma::signal_flag& signaled_;
     std::string name_;
-    plane_angle_degrees_t min_;
-    plane_angle_degrees_t max_;
+    /// The degrees to tilt to
+    plane_angle_degrees_t min_; /// Should be negative - tilts down
+    plane_angle_degrees_t max_; /// Should be positive - tilts up
     
     struct move_t
     {
@@ -93,7 +94,7 @@ class camera_sweep
     
     void inputs_reset() { memset( &inputs_, 0, sizeof( ExtU_Arm_Controller_T ) ); }
 public:
-    camera_sweep( // boost::function< bool (std::string& move1, std::string& move2 ) > f, /// caculate proposed sweep
+    tilt_sweep( // boost::function< bool (std::string& move1, std::string& move2 ) > f, /// caculate proposed sweep
                   ExtU_Arm_Controller_T& inputs, /// Simulink inputs
                   arm_output& serialiser,       /// Wrapper for Simulink outputs
                   boost::function< void ( void ) > status_updater,
