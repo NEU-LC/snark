@@ -65,7 +65,7 @@ void usage(int code=1)
 {
     std::cerr << std::endl;
     std::cerr << name() << std::endl;
-    std::cerr << "example: socat -u -T 1 tcp:robot-arm:30003 - | snark-ur5-status [--fields=] [--binary | -b | --json | --compact-json] [--offset=<x,y,z>] " << name() << " " << std::endl;
+    std::cerr << "example: socat -u -T 1 tcp:robot-arm:30003 - | snark-ur5-status [--fields=] [--binary | -b | --json | --compact-json]" << std::endl;
     std::cerr << "         Reads in robotic-arm's real time status information ( network byte order ) and output the status in host byte order in any format." << std::endl;
     std::cerr << "         Approximately 20ms between statuses." << std::endl;
     std::cerr << "options:" << std::endl;
@@ -75,7 +75,7 @@ void usage(int code=1)
     std::cerr << "    --compact-json,-cj:   output in single line json without whitespaces or new lines." << std::endl;
     std::cerr << "    --host-byte-order:    input data is binary in host-byte-order, it assumes network order by default." << std::endl;
     std::cerr << "    --format:             displays the binary format of output data in host byte order." << std::endl;
-    // std::cerr << "    --offset=x,y,z        adds offset to end affector's coordinate." << std::endl;
+    std::cerr << "    --flip-laser-pitch:   flip the pitch pos/neg sign for laser-position's orientation." << std::endl;
     typedef arm::status_t status_t;
     comma::csv::binary< status_t > binary;
     std::cerr << "Robot arm's status:" << std::endl;
@@ -93,11 +93,6 @@ comma::csv::ascii< T >& ascii( )
     static comma::csv::ascii< T > ascii_;
     return ascii_;
 }
-
-bool is_single_line_json = false;
-static bool has_offset = false;
-static std::vector< double > offset( 3, 0.0 );
-
 
 int main( int ac, char** av )
 {
@@ -120,21 +115,12 @@ int main( int ac, char** av )
     bool is_json = options.exists( "--json,-j" );
     bool is_single_line_json = options.exists( "--compact-json,-cj" );
     bool is_binary = options.exists( "--binary,-b" );
+    bool is_flip_laser_pitch = options.exists( "--flip-laser-pitch" );
     
     comma::csv::options csv;
     csv.fields = options.value< std::string >( "--fields", "" );
     csv.full_xpath = true;
     if( is_binary ) { csv.format( comma::csv::format::value< arm::status_t >( csv.fields, true ) ); }
-    
-    has_offset = options.value< bool >( "--offset", false );
-    if( has_offset )
-    {
-        try {
-            comma::csv::ascii< std::vector< double > > ascii( offset );
-            ascii.get( offset, options.value< std::string >( "--offset" ) );
-        }
-        catch( std::exception& e ) { std::cerr << "failed to parse option --offset=<x,y,z>, " << e.what() << std::endl; return 1; }
-    }
     
     try
     {
@@ -167,31 +153,21 @@ int main( int ac, char** av )
         bool first_loop = true;
         arm::status_t state;
 
-        // if( is_host_order ) {
-        //     std::cerr << "expecting fields: \n" << csv_in.fields << std::endl;
-        //     std::cerr.flush();
-        //     std::cerr << "expecting format: \n" << csv_in.format().string() << std::endl;
-        //     std::cerr.flush();
-        // }
-
         while( !signaled && std::cin.good() )
         {
             if( !is_host_order ) 
             { 
                 std::cin.read( arm_status.data(), status::size ); 
                 arm_status.get( state );
-                /// As rotation data do not make sense, caculate it using the joint angles
+                /// As TCP rotation data do not make sense, caculate it using the joint angles
                 /// We will also override the TCP translation coordinate
                 snark::ur::robotic_arm::ur5::tcp_transform( state.joint_angles, state.position, state.laser_position );
-                //state.laser_position.orientation.y() = -( state.laser_position.orientation.y() );
+                if( is_flip_laser_pitch ) { state.laser_position.orientation.y() = -( state.laser_position.orientation.y() ); }
             }
             else 
             {
-                // std::cerr << "aaaa" << std::endl;
                 static comma::csv::input_stream< arm::status_t > istream( std::cin, csv_in );
-                // std::cerr << "bbb" << std::endl;
                 const arm::status_t* p = istream.read();
-                // std::cerr << "ccc" << std::endl;
                 if( p == NULL ) 
                 { 
                     if( !std::cin.good() ) { std::cerr << name() << "STDIN error" << std::endl; return 1; }
