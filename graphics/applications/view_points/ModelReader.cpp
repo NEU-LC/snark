@@ -97,7 +97,7 @@ const Eigen::Vector3d& ModelReader::somePoint() const
 void ModelReader::render( QGLPainter* painter )
 {
     painter->modelViewMatrix().push();
-    painter->modelViewMatrix().translate( m_translation );
+    painter->modelViewMatrix().translate( m_translation - m_offset );
     painter->modelViewMatrix().rotate( m_quaternion );
     if( m_flip ) { painter->modelViewMatrix().rotate( 180, 1, 0, 0 ); }
     if( m_plyLoader ) { m_plyLoader->draw( painter ); }

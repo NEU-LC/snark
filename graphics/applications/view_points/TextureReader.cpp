@@ -95,7 +95,7 @@ void TextureReader::render( QGLPainter* painter )
     if( id >= images_.size() ) { return; }
     painter->setStandardEffect( QGL::FlatReplaceTexture2D );
     painter->modelViewMatrix().push();
-    painter->modelViewMatrix().translate( m_translation );
+    painter->modelViewMatrix().translate( m_translation - m_offset );
     painter->modelViewMatrix().rotate( m_quaternion );
     images_[id].node->draw( painter );
     painter->modelViewMatrix().pop();
