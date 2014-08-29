@@ -1,0 +1,28 @@
+#!/bin/bash
+
+function usage()
+{
+    cat <<EOF
+    
+    examples
+        view graph with default fields (nodes: x,y,z,id; edges: source,target)
+            graph-view --nodes="nodes.csv" --edges="edges.csv"
+            
+        view graph with arbitrary fields
+            graph-view --nodes="nodes.csv;fields=x,y,z,,,id" --edges="edges.csv;fields=,,source,,,target"
+            
+        view graph from binary files
+            graph-view --nodes="nodes.bin;fields=x,y,z,,,id;binary=3d,3ui" --edges="edges.csv"
+            
+        view graph and some additional files
+            cat points.csv | graph-view --nodes="nodes.csv" --edges="edges.csv" "my-file.csv;fields=,x,y,z" "another-file.csv" "-;colour=red"
+    
+EOF
+}
+
+
+if [[ "$1" == "" ]] ; then usage ; fi
+
+for arg in "$@" ; do
+    if [[ "$arg" == "--help" || "$arg" == "-h" ]] ; then usage ; fi
+done
