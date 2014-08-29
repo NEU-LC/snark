@@ -393,8 +393,8 @@ bool scan_packet::valid() const
     char checksum = 0;
     for ( const char* c = body(); c < body_end(); ++c ) { checksum ^= *c; }
     bool checksum_valid = checksum == crc();
-    //bool full_packed_parsed = event().end() == body_end();
-    return checksum_valid; // && full_packed_parsed;
+    bool full_packed_parsed = event().end() == body_end();
+    return checksum_valid && full_packed_parsed;
 }
 
 
