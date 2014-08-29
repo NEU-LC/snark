@@ -73,7 +73,7 @@ result tilt_sweep::run( const length_t& height, const plane_angle_degrees_t& pan
                           std::ostream& rover )
 {
     
-    std::cerr << name() << "scanning from " << tilt_down.value() << "\" to " << tilt_up.value() << '"' << std::endl;
+    std::cerr << name() << "scanning from " << tilt_up.value() << "\" to " << tilt_down.value() << '"' << std::endl;
     move_t move1, move2, ret;
     if( !calculate_solution( height, pan, tilt_down, tilt_up, move1, move2, ret ) )
     {
@@ -138,7 +138,7 @@ bool tilt_sweep::calculate_solution( const length_t& height, const plane_angle_d
     
     inputs_.motion_primitive = real_T( input_primitive::move_cam );
     inputs_.Input_1 = pan.value();
-    inputs_.Input_2 = tilt_down.value();
+    inputs_.Input_2 = tilt_up.value();
     inputs_.Input_3 = height.value();
     Arm_Controller_step();
     
@@ -151,7 +151,7 @@ bool tilt_sweep::calculate_solution( const length_t& height, const plane_angle_d
     
     inputs_.motion_primitive = real_T( input_primitive::move_cam );
     inputs_.Input_1 = pan.value();
-    inputs_.Input_2 = tilt_up.value();
+    inputs_.Input_2 = tilt_down.value();
     inputs_.Input_3 = height.value();
     Arm_Controller_step();
     

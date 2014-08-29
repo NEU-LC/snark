@@ -183,7 +183,7 @@ int main( int ac, char** av )
                 /// As rotation data do not make sense, caculate it using the joint angles
                 /// We will also override the TCP translation coordinate
                 snark::ur::robotic_arm::ur5::tcp_transform( state.joint_angles, state.position, state.laser_position );
-                state.laser_position.orientation.y() = -( state.laser_position.orientation.y() );
+                //state.laser_position.orientation.y() = -( state.laser_position.orientation.y() );
             }
             else 
             {
