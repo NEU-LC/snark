@@ -88,10 +88,13 @@ struct scan_packet
         const char* end() const { return reinterpret_cast< const char* >( this ) + size; }
     };
 
-    struct encoder_t : public comma::packed::packed_struct< encoder_t, 4 >
+    struct encoder_t : public comma::packed::packed_struct< encoder_t, 6 >
     {
-        comma::packed::net_uint16 position;
-        comma::packed::net_uint16 speed;
+        // stupid sick: the documentation lists these as both 16-bit values, yet 6 bytes are provided
+        // variables will not be named to avoid possible misuse/confusion
+        comma::packed::net_uint16 poorly_documented_value1;
+        comma::packed::net_uint16 poorly_documented_value2;
+        comma::packed::net_uint16 poorly_documented_value3;
 
         const char* end() const { return reinterpret_cast< const char* >( this ) + size; }
     };
@@ -191,8 +194,9 @@ struct scan_packet
         const char* end() const;
     };
 
-    struct name_t : public comma::packed::packed_struct< name_t, 1 >
+    struct name_t : public comma::packed::packed_struct< name_t, 2 >
     {
+        comma::packed::byte zero1;
         comma::packed::byte name_length; // should be limited to 0-16
 
         const comma::packed::byte* name_begin() const;
