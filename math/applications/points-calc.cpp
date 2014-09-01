@@ -22,25 +22,29 @@ static void usage( bool more = false )
     std::cerr << "    cat points.csv | points-calc thin --resolution <resolution> > results.csv" << std::endl;
     std::cerr << "    cat points.csv | points-calc discretise --step <step> > results.csv" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "operations: distance, cumulative-distance, thin, discretise" << std::endl;
+    std::cerr << "operations: distance, cumulative-distance, thin, discretise, nearest" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    distance: distance between subsequent points or, if input is pairs, between the points of the same record" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "        input fields" << std::endl;
-    std::cerr << "            " << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
-    std::cerr << "            " << comma::join( comma::csv::names< point_pair_t >( true ), ',' ) << std::endl;
+    std::cerr << "        input fields: " << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
+    std::cerr << "                      " << comma::join( comma::csv::names< point_pair_t >( true ), ',' ) << std::endl;
     std::cerr << std::endl;
     std::cerr << "    cumulative-distance: cumulative distance between subsequent points" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "        input fields: " << std::endl;
-    std::cerr << "            " << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
+    std::cerr << "        input fields: " << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    nearest: find point nearest to the given point" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "        input fields: " << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "        options:" << std::endl;
+    std::cerr << "            --point,--to=<x>,<y>,<z>" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    thin: read input data and thin them down by the given --resolution" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "        input fields" << std::endl;
-    std::cerr << "            " << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
+    std::cerr << "        input fields" << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
     std::cerr << std::endl;
-    std::cerr << "    discretise: read input data and discretise intervals between adjacent points with --step" << std::endl;
+    std::cerr << "    discretise, discretize: read input data and discretise intervals between adjacent points with --step" << std::endl;
     std::cerr << "        skip discretised points that are closer to the end of the interval than --tolerance (default: --tolerance=0)" << std::endl;
     std::cerr << std::endl;
     std::cerr << "        input fields" << std::endl;
@@ -193,6 +197,24 @@ int main( int ac, char** av )
             calculate_distance( true );
             return 0;
         }
+        if( operation == "nearest" )
+        {
+            Eigen::Vector3d point = comma::csv::ascii< Eigen::Vector3d >().get( options.value< std::string >( "--point,--to" ) );
+            comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, csv );
+            std::string record;
+            double min_distance = std::numeric_limits< double >::max();
+            while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
+            {
+                const Eigen::Vector3d* p = istream.read();
+                if( !p ) { break; }
+                double d = ( *p - point ).norm();
+                if( d >= min_distance ) { continue; }
+                min_distance = d;
+                record = csv.binary() ? std::string( istream.binary().last(), csv.format().size() ) : ( comma::join( istream.ascii().last(), csv.delimiter ) + '\n' );
+            }
+            if( !record.empty() ) { std::cout << record; }
+            return 0;
+        }
         if( operation == "thin" )
         {
             if( !options.exists( "--resolution" ) ) { std::cerr << "points-calc: --resolution is not specified " << std::endl; return 1; }
@@ -200,7 +222,7 @@ int main( int ac, char** av )
             thin( resolution );
             return 0;
         }
-        if( operation == "discretise" )
+        if( operation == "discretise" || operation == "discretize" )
         {
             if( !options.exists( "--step" ) ) { std::cerr << "points-calc: --step is not specified " << std::endl; return 1; }
             double step = options.value( "--step" , 0.0 );
