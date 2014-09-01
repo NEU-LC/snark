@@ -18,9 +18,33 @@ static void usage( bool verbose )
     exit( 0 );
 }
 
+struct node
+{
+    Eigen::Vector3d position;
+    double distance;
+    
+    node() : distance( 0 ) {}
+    node( const Eigen::Vector3d& position, double distance = 0 ) : position( position ), distance( distance ) {}
+};
+
 struct edge {};
 
 namespace comma { namespace visiting {
+
+template <> struct traits< node >
+{
+    template < typename K, typename V > static void visit( const K&, node& n, V& v )
+    {
+        v.apply( "position", n.position );
+        v.apply( "distance", n.distance );
+    }
+    
+    template < typename K, typename V > static void visit( const K&, const node& n, V& v )
+    {
+        v.apply( "position", n.position );
+        v.apply( "distance", n.distance );
+    }
+};
 
 template <> struct traits< edge >
 {
@@ -38,6 +62,7 @@ template < typename Graph > static void load_( Graph& graph
 {
     comma::csv::options vertex_csv = comma::name_value::parser( "filename", ';' ).get< comma::csv::options >( vertices_option );
     comma::csv::options edge_csv = comma::name_value::parser( "filename", ';' ).get< comma::csv::options >( edges_option );
+    if( vertex_csv.fields.empty() ) { vertex_csv.fields = "value/position/x,value/position/y,value/position/z,id"; }
     vertex_csv.full_xpath = true;
     edge_csv.full_xpath = true;
     std::ifstream vif( &vertex_csv.filename[0] );
@@ -51,7 +76,11 @@ template < typename Graph > static void load_( Graph& graph
     if( verbose ) { std::cerr << "graph-search: loaded graph: " << boost::num_vertices( graph ) << " vertices " << boost::num_edges( graph ) << " edges" << std::endl; }
 }
 
+static double objective_function( const node& n ) { return -n.distance; }
 
+static boost::optional< node > advance( const node& from, const node& to ) { return node( to.position, from.distance + ( to.position - from.position ).norm() ); }
+
+static bool valid( const node& n ) { return true; }
 
 int main( int ac, char** av )
 {
@@ -59,9 +88,11 @@ int main( int ac, char** av )
     {
         comma::command_line_options options( ac, av, usage );
         verbose = options.exists( "--verbose,-v" );
-        typedef snark::search_graph< Eigen::Vector3d, edge >::type graph_t;
-        typedef snark::search_graph< Eigen::Vector3d, edge >::vertex_iter vertex_iterator;
-        typedef snark::search_graph< Eigen::Vector3d, edge >::vertex_desc vertex_descriptor;
+        comma::csv::options output_csv( options );
+        typedef snark::search_graph< node, edge > search_graph_t;
+        typedef search_graph_t::type graph_t;
+        typedef search_graph_t::vertex_iter vertex_iterator;
+        typedef search_graph_t::vertex_desc vertex_descriptor;
         graph_t graph;
         load_( graph, options.value< std::string >( "--vertices,--nodes" ), options.value< std::string >( "--edges" ) );
         unsigned int source_id = options.value< unsigned int >( "--start,--start-id,--source,--origin" );
@@ -76,10 +107,15 @@ int main( int ac, char** av )
         }
         if( !source ) { std::cerr << "graph-search: source id " << source_id << " not found in the graph" << std::endl; return 1; }
         if( !target ) { std::cerr << "graph-search: target id " << target_id << " not found in the graph" << std::endl; return 1; }
-        
-        //inline void forward_search( G& graph, const D& start, const A& advance, const O& objective_function, const V& valid )
-        
-        // todo
+        if( verbose ) { std::cerr << "graph-search: searching..." << std::endl; }
+        snark::forward_search( graph, source, &advance, &objective_function, &valid );
+        if( verbose ) { std::cerr << "graph-search: extracting best path..." << std::endl; }
+        const std::vector< vertex_descriptor >& best_path = snark::best_path( graph, source, target );
+        output_csv.full_xpath = true;
+        comma::csv::output_stream< search_graph_t::node > os( std::cout, output_csv );
+        if( verbose ) { std::cerr << "graph-search: outputting best path of " << best_path.size() << " node(s)..." << std::endl; }
+        for( std::size_t i = 0; i < best_path.size(); ++i ) { os.write( graph[ best_path[i] ] ); }
+        if( verbose ) { std::cerr << "graph-search: done" << std::endl; }
         return 0;
     }
     catch( std::exception& ex )

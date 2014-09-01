@@ -98,7 +98,7 @@ inline void forward_search( G& graph, const boost::unordered_set< D >& start, co
     {
         vertex_map[ *it ] = vertex_queue.insert( std::make_pair( -objective_function( graph[ *it ].value ), *it ) );
     }
-    while ( !vertex_queue.empty() )
+    while( !vertex_queue.empty() )
     {
         D v = vertex_queue.begin()->second;
         vertex_queue.erase( vertex_queue.begin() );
@@ -106,14 +106,13 @@ inline void forward_search( G& graph, const boost::unordered_set< D >& start, co
         const node_t& source = graph[v];
         if( !valid( source.value ) ) { continue; }
         typedef std::pair< typename traits_t::out_edge_iterator, typename traits_t::out_edge_iterator > edge_iterator;
-        for( edge_iterator out_edges = boost::out_edges( v, graph ); out_edges.first != out_edges.second; ++out_edges.first ) // todo: use tbb::task_group?
+        for( edge_iterator out_edges = boost::out_edges( v, graph ); out_edges.first != out_edges.second; ++out_edges.first )
         {
             vertex_desc target_desc = boost::target( *out_edges.first, graph ); // extract vertex at the other end of edge
             node_t& target = graph[target_desc];
-            if( source.best_parent && target.id == *( source.best_parent ) ){ continue; } 
+            if( source.best_parent && target.id == *( source.best_parent ) ) { continue; } 
             if( target.best_parent && objective_function( source.value ) < objective_function( target.value ) ) { continue; } // objective can only decrease or (in special cases equal) in forward prop
-
-            const node_t& node = advance( source.value, target.value );
+            const boost::optional< typename node_t::value_type >& node = advance( source.value, target.value );
             if( !node || !valid( *node ) ) { continue; }
             double objective = objective_function( *node );
             if( target.best_parent )
@@ -121,7 +120,6 @@ inline void forward_search( G& graph, const boost::unordered_set< D >& start, co
                 if( *( target.best_parent ) == source.id && comma::math::equal( objective, objective_function( target.value ) ) ) { continue; }
                 if( objective <= objective_function( target.value ) ) { continue; }
             }
-
             target.value = *node;
             target.best_parent = source.id;
             typename vertex_map_t::iterator it = vertex_map.find( target_desc );
