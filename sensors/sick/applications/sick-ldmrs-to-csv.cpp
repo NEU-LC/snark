@@ -80,7 +80,8 @@ static void usage()
     std::cerr << "        range,bearing,elevation or r,b,e: polar coordinates in sensor frame" << std::endl;
     std::cerr << "        id: laser id (or \"layer\": 0-3)" << std::endl;
     std::cerr << "        echo: echo number (0-2)" << std::endl;
-    std::cerr << "        what: transparent (1), dust (2), dirt (8)" << std::endl;
+    std::cerr << "        what: combined value of the bits from the 8-bit sensor flags: transparent (0x01), rain,dust,or similar atmospheric noise (0x02), dirt (0x08)" << std::endl;
+    std::cerr << "              register bits in the range 0xF0 are reserved as stated by the LD-MRS manual." << std::endl;
     std::cerr << "        width: echo width in metres" << std::endl;
     std::cerr << "    --format: output binary format for given fields to stdout and exit" << std::endl;
     std::cerr << std::endl;
