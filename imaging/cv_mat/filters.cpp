@@ -489,7 +489,10 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
             double scale, offset;
             std::vector< std::string > s = comma::split( e[1], ',' );
             scale = boost::lexical_cast< double >( s[0] );
-            offset = boost::lexical_cast< double >( s[1] );
+            if( s.size()==1 )
+                offset = 0.0;
+            else
+                offset = boost::lexical_cast< double >( s[1] );
             f.push_back( filter( boost::bind( &brightness_impl_, _1, scale, offset ) ) );
         }
         else
@@ -518,7 +521,7 @@ static std::string usage_impl_()
     oss << "        flip: flip vertically" << std::endl;
     oss << "        flop: flip horizontally" << std::endl;
     oss << "        invert: invert image (to negative)" << std::endl;
-    oss << "        brightness=<scale>,<offset>: output=(scale*input)+offset" << std::endl;
+    oss << "        brightness=<scale>[,<offset>]: output=(scale*input)+offset; default offset=0" << std::endl;
     oss << "        16to8bit: converts from 16 to 8 bit. Currently only supports CV_16UC1 and CV_16UC3" << std::endl;
     oss << "        split: split r,g,b channels into a 3x1 gray image" << std::endl;
     oss << "        text=<text>[,x,y][,colour]: print text; default x,y: 10,10; default colour: yellow" << std::endl;
