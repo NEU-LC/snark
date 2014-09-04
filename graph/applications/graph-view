@@ -25,4 +25,51 @@ if [[ "$1" == "" ]] ; then usage ; fi
 
 for arg in "$@" ; do
     if [[ "$arg" == "--help" || "$arg" == "-h" ]] ; then usage ; fi
+    if [[ "${arg#--nodes=}" != "$arg" ]] ; then nodes=${arg#--nodes=}
+    else if [[ "${arg#--edges=}" != "$arg" ]] ; then edges=${arg#--edges=}
+    else if [[ "$arg" == "--no-clean" ]] ; then no_clean=true
+    else if [[ "$arg" == "--view-only" ]] ; then view_only=true
+    else user_view_points_options+=("$arg") ; fi ; fi ; fi ; fi
 done
+
+if [[ "$nodes" == "" ]] ; then echo "graph-view: please specify --nodes" >&2 ; exit 1 ; fi
+
+if [[ "$view_only" != "true" ]] ; then
+    rm -rf .graph-view
+    mkdir .graph-view
+fi
+
+function clean_()
+{
+    if [[ "$no_clean" == "true" || "$view_only" == "true" ]] ; then return ; fi
+    rm -rf .graph-view
+}
+
+trap clean_ INT TERM HUP
+
+nodes_file=${nodes%%;*}
+nodes_options=${nodes#*;}
+edges_file=${edges%%;*}
+edges_options=${edges#*;}
+
+if [[ "$view_only" != "true" ]] ; then
+    echo "graph-view: processing nodes from $nodes_file..." >&2
+    cat "$nodes_file" > .graph-view/nodes.csv
+    echo "graph-view: processed nodes" >&2
+    if [[ "$edges_file" != "" ]] ; then
+        echo "graph-view: processing edges from $edges_file..." >&2
+        cat "$edges_file" | csv-join --fields=id ".graph-view/nodes.csv;fields=,,,id" \
+                   | csv-join --fields=,id ".graph-view/nodes.csv;fields=,,,id" \
+                   | cut -d, -f1,2 --complement > .graph-view/edges.joined.csv
+        echo "graph-view: processed edges" >&2
+    fi
+fi
+
+view_points_options+=( ".graph-view/nodes.csv;$nodes_options" )
+if [[ "$edges" != "" ]] ; then
+    view_points_options+=( ".graph-view/edges.joined.csv;shape=line;fields=first,,,,second;$edges_options" )
+fi
+
+view-points --orthographic --z-is-up "${view_points_options[@]}" "${user_view_points_options[@]}"
+
+clean_
