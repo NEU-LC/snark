@@ -59,15 +59,15 @@
 #include "../../units.h"
 #include "../../tilt_sweep.h"
 extern "C" {
-    #include "../../simulink/Arm_Controller.h"
+    #include "../../simulink/Arm_controller_v2.h"
 }
 #include "../../simulink/traits.h"
 
 /* External inputs (root inport signals with auto storage) */
-extern ExtU_Arm_Controller_T Arm_Controller_U;
+extern ExtU_Arm_controller_v2_T Arm_controller_v2_U;
 
 /* External outputs (root outports fed by signals with auto storage) */
-extern ExtY_Arm_Controller_T Arm_Controller_Y;
+extern ExtY_Arm_controller_v2_T Arm_controller_v2_Y;
 
 static const char* name() {
     return "robot-arm-daemon: ";
@@ -203,6 +203,13 @@ void read_status( comma::csv::binary_input_stream< arm::status_t >& iss, comma::
     }
 }
 
+/// The Simulink code needs to know the current position of the arm
+/// Sets it after reading the position
+void set_current_position( const arm::status_t& status, ExtU_Arm_controller_v2_T& inputs )
+{
+    
+}
+
 static arm::config config;
 
 class stop_on_exit
@@ -307,7 +314,7 @@ int main( int ac, char** av )
     {
         /// COnvert simulink output into arm's command
         arm::handlers::arm_output output( acc * arm::angular_acceleration_t::unit_type(), vel * arm::angular_velocity_t::unit_type(),
-                       Arm_Controller_Y );
+                       Arm_controller_v2_Y );
     
         comma::uint16 rover_id = options.value< comma::uint16 >( "--id" );
         double sleep = options.value< double >( "--sleep", 0.06 );  // seconds
@@ -347,7 +354,7 @@ int main( int ac, char** av )
         }
         comma::io::ostream& robot_arm = *poss;
 
-        /// For reading input commands
+        /// For reading  commands from stdin
         arm::inputs inputs( rover_id );
 
         typedef std::vector< std::string > command_vector;
@@ -376,8 +383,7 @@ int main( int ac, char** av )
                     continuum.work_directory );
             auto_init.set_app_name( name() );
             
-            
-            arm::handlers::tilt_sweep tilt_sweep( Arm_Controller_U, output, 
+            arm::handlers::tilt_sweep tilt_sweep( Arm_controller_v2_U, output, 
                     boost::bind( read_status, boost::ref(istream), boost::ref( status_stream ), select, status_stream.fd() ),
                     arm_status,
                     boost::bind( should_stop, boost::ref( inputs ) ),
@@ -387,7 +393,7 @@ int main( int ac, char** av )
             tilt_sweep.set_max( continuum.scan.max );                                          
             
             // if( options.exists( "--init-force-limit,-ifl" ) ){ auto_init.set_force_limit( options.value< double >( "--init-force-limit,-ifl" ) ); }
-            commands_handler.reset( new commands_handler_t( Arm_Controller_U, output, arm_status, *robot_arm, 
+            commands_handler.reset( new commands_handler_t( Arm_controller_v2_U, output, arm_status, *robot_arm, 
                                                         auto_init, tilt_sweep, std::cout ) );
         
 

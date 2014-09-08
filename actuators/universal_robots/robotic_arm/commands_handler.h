@@ -81,7 +81,7 @@ public:
     void handle( joint_move& j );
     void handle( sweep_cam& s );
     
-    commands_handler( ExtU_Arm_Controller_T& simulink_inputs, const arm_output& output,
+    commands_handler( ExtU_Arm_controller_v2_T& simulink_inputs, const arm_output& output,
                       arm::status_t& status, std::ostream& robot, 
                       auto_initialization& init, tilt_sweep& sweep, std::ostream& oss ) : 
         inputs_(simulink_inputs), output_(output), 
@@ -96,7 +96,7 @@ public:
     boost::optional< length_t > move_cam_height_;
     plane_angle_degrees_t move_cam_pan_;
 private:
-    ExtU_Arm_Controller_T& inputs_; /// inputs into simulink engine 
+    ExtU_Arm_controller_v2_T& inputs_; /// inputs into simulink engine 
     const arm_output& output_;
     status_t& status_;
     std::ostream& os;

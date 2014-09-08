@@ -1,11 +1,11 @@
 /*
  * File: rt_nonfinite.c
  *
- * Code generated for Simulink model 'Arm_Controller'.
+ * Code generated for Simulink model 'Arm_controller_v2'.
  *
- * Model version                  : 1.182
+ * Model version                  : 1.67
  * Simulink Coder version         : 8.6 (R2014a) 27-Dec-2013
- * C/C++ source code generated on : Thu Aug 21 12:11:31 2014
+ * C/C++ source code generated on : Mon Sep 08 14:34:28 2014
  *
  * Target selection: ert.tlc
  * Embedded hardware selection: 32-bit Generic

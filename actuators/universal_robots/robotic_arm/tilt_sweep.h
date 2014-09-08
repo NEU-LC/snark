@@ -49,7 +49,7 @@
 #include "data.h"
 #include "auto_initialization.h"
 extern "C" {
-    #include "simulink/Arm_Controller.h"
+    #include "simulink/Arm_controller_v2.h"
 }
 #include "simulink/traits.h"
 #include "result.h"
@@ -67,7 +67,7 @@ class tilt_sweep
     typedef boost::function< bool ( void ) > interrupt_t;    /// A new command is received
     
     
-    ExtU_Arm_Controller_T& inputs_;
+    ExtU_Arm_controller_v2_T& inputs_;
     const arm_output& serialiser_;
     status_updater_t status_update_;
     const status_t& status_;
@@ -92,10 +92,19 @@ class tilt_sweep
     /// Rover is the robotic arm
     void stop_movement( std::ostream& rover );
     
-    void inputs_reset() { memset( &inputs_, 0, sizeof( ExtU_Arm_Controller_T ) ); }
+    void inputs_reset() 
+    { 
+        inputs_.motion_primitive = input_primitive::no_action;
+        inputs_.Input_1 = 0;
+        inputs_.Input_2 = 0;
+        inputs_.Input_3 = 0;
+        inputs_.Input_4 = 0;
+        inputs_.Input_5 = 0;
+        inputs_.Input_6 = 0;
+    }
 public:
     tilt_sweep( // boost::function< bool (std::string& move1, std::string& move2 ) > f, /// caculate proposed sweep
-                  ExtU_Arm_Controller_T& inputs, /// Simulink inputs
+                  ExtU_Arm_controller_v2_T& inputs, /// Simulink inputs
                   arm_output& serialiser,       /// Wrapper for Simulink outputs
                   boost::function< void ( void ) > status_updater,
                   const status_t& status,

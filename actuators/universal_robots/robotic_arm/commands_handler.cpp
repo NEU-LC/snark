@@ -129,7 +129,7 @@ void commands_handler::handle(sweep_cam& s)
 
 bool commands_handler::execute()
 {
-    Arm_Controller_step();
+    Arm_controller_v2_step();
     if( !output_.runnable() ) { ret = result( "cannot run command as it will cause a collision", result::error::collision ); inputs_reset(); return false; }
     
     if( verbose_ ) { 
