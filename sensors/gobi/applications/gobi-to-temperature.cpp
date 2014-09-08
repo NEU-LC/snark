@@ -39,12 +39,46 @@
 #include <comma/name_value/map.h>
 #include <snark/imaging/cv_mat/pipeline.h>
 #include <snark/sensors/gobi/gobi.h>
+#include "XFilters.h"
 
 int main( int argc, char** argv )
 {
     try
     {
-        std::cerr << "gobi-to-temperature" << std::endl;
+        boost::program_options::options_description description( "options" );
+        description.add_options()
+            ( "help,h", "display help message" )
+            ( "verbose,v", "be more verbose" )
+            ( "celsius", "convert to degrees Celsius" )
+            ( "kelvin", "convert to degrees Kelvin" )
+            ( "calibration", boost::program_options::value< std::string >(), "location of the calibration file" );
+        boost::program_options::variables_map vm;
+        boost::program_options::store( boost::program_options::parse_command_line( argc, argv, description), vm );
+        boost::program_options::parsed_options parsed = boost::program_options::command_line_parser(argc, argv).options( description ).allow_unregistered().run();
+        boost::program_options::notify( vm );
+        if ( vm.count( "help" ) )
+        {
+            std::cerr << "takes from stdin binary images produced by xenics gobi camera (16 bit grey scale)" << std::endl;
+            std::cerr << "and uses the camera's calibration to output to stdout pixel values in degrees (Celsius or Kelvin)" << std::endl;
+            std::cerr << std::endl;
+            std::cerr << description << std::endl;
+            return 1;
+        }
+        bool verbose = vm.count( "verbose" );
+        if ( !vm.count( "calibration" ) ) { COMMA_THROW( comma::exception, "please provide the calibration file, --calibration is not specified"); }
+        if ( vm.count( "celsius" ) && vm.count( "kelvin" ) ) { COMMA_THROW( comma::exception, "please specify either --celsius or --kelvin" ); }
+        if ( !vm.count( "celsius" ) && !vm.count( "kelvin" ) ) { COMMA_THROW( comma::exception, "please specify --celsius or --kelvin" ); }
+        std::string calibration_file = vm["calibration"].as< std::string >();
+        XCHANDLE handle = 0;
+        if( XC_LoadCalibration(handle, calibration_file.c_str(), XLC_StartSoftwareCorrection) != I_OK )
+        {
+            COMMA_THROW( comma::exception, "failed to load calibration file \"" << calibration_file << "\"" ); 
+        }
+        else
+        {
+            if ( verbose ) { std::cerr << "gobi-to-temperature: calibration loaded" << std::endl; }
+        }
+        return 0;
     }
     catch( std::exception& ex )
     {
