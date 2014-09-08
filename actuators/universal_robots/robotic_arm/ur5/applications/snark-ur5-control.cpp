@@ -169,6 +169,7 @@ void process_command( const std::vector< std::string >& v, std::ostream& os )
     else if( boost::iequals( v[2], "scan" ) )        { output( handle< arm::sweep_cam >( v, os )); }  
     else if( boost::iequals( v[2], "brakes" ) || 
              boost::iequals( v[2], "stop" ) )        { output( handle< arm::brakes >( v, os )); }  
+    else if( boost::iequals( v[2], "cancel" ) )       { } /// No need to do anything, used to cancel other running commands e.g. auto_init or scan  
     else if( boost::iequals( v[2], "auto_init" ) )  
     { 
         if( v.size() == arm::auto_init_force::fields ) 
