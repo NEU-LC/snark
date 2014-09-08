@@ -210,9 +210,11 @@ int main( int ac, char** av )
                 double d = ( *p - point ).norm();
                 if( d >= min_distance ) { continue; }
                 min_distance = d;
-                record = csv.binary() ? std::string( istream.binary().last(), csv.format().size() ) : ( comma::join( istream.ascii().last(), csv.delimiter ) + '\n' );
+                record = csv.binary() ? std::string( istream.binary().last(), csv.format().size() ) : comma::join( istream.ascii().last(), csv.delimiter );
             }
             if( !record.empty() ) { std::cout << record; }
+            if( csv.binary() ) { std::cout.write( reinterpret_cast< const char* >( &min_distance ), sizeof( double ) ); }
+            else { std::cout << csv.delimiter << min_distance << std::endl; }
             return 0;
         }
         if( operation == "thin" )

@@ -77,6 +77,19 @@ static filters::value_type crop_tile_impl_( filters::value_type m, unsigned int 
     return filters::value_type( m.first, cv::Mat( m.second, cv::Rect( cropX, cropY, tileWidth, tileHeight ) ) );
 }
 
+static filters::value_type convert_16_to_8bit_impl_( filters::value_type m )
+{
+    filters::value_type n;
+    n.first = m.first;
+    if( m.second.type()==CV_16UC1 )
+        m.second.convertTo(n.second, CV_8UC1, 1.0/256.0);
+    else if( m.second.type()==CV_16UC3 )
+        m.second.convertTo(n.second, CV_8UC3, 1.0/256.0);
+    else
+        COMMA_THROW( comma::exception, "16 to 8 bit conversion attempted from type: " << m.second.type() << ", but only supported for CV_16UC1 and CV16_UC3");
+    return n;
+}
+
 static filters::value_type flip_impl_( filters::value_type m, int how )
 {
     filters::value_type n;
@@ -374,6 +387,10 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
             }
             f.push_back( filter( boost::bind( &text_impl_, _1, w[0], p, s ) ) );
         }
+        else if( e[0] == "16to8bit" )
+        {
+            f.push_back( filter( boost::bind( &convert_16_to_8bit_impl_, _1 ) ) );
+        }
         else if( e[0] == "resize" )
         {
             unsigned int width = 0;
@@ -472,7 +489,10 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
             double scale, offset;
             std::vector< std::string > s = comma::split( e[1], ',' );
             scale = boost::lexical_cast< double >( s[0] );
-            offset = boost::lexical_cast< double >( s[1] );
+            if( s.size()==1 )
+                offset = 0.0;
+            else
+                offset = boost::lexical_cast< double >( s[1] );
             f.push_back( filter( boost::bind( &brightness_impl_, _1, scale, offset ) ) );
         }
         else
@@ -501,7 +521,8 @@ static std::string usage_impl_()
     oss << "        flip: flip vertically" << std::endl;
     oss << "        flop: flip horizontally" << std::endl;
     oss << "        invert: invert image (to negative)" << std::endl;
-    oss << "        brightness=<scale>,<offset>: output=(scale*input)+offset" << std::endl;
+    oss << "        brightness=<scale>[,<offset>]: output=(scale*input)+offset; default offset=0" << std::endl;
+    oss << "        16to8bit: converts from 16 to 8 bit. Currently only supports CV_16UC1 and CV_16UC3" << std::endl;
     oss << "        split: split r,g,b channels into a 3x1 gray image" << std::endl;
     oss << "        text=<text>[,x,y][,colour]: print text; default x,y: 10,10; default colour: yellow" << std::endl;
     oss << "        null: same as linux /dev/null (since windows does not have it)" << std::endl;
