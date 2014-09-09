@@ -196,6 +196,8 @@ inline bool status_t::is_stationary( double epsilon ) const
 }
 
 
+struct move_config_t : public boost::array< double, joints_num > {};
+
 // struct robot_mode : public comma::packed::packed_struct< robot_mode, 29 > {
 //     comma::packed::uint32 length;
 //     unsigned char type; // should be 0

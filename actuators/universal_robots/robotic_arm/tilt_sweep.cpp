@@ -140,7 +140,7 @@ bool tilt_sweep::calculate_solution( const length_t& height, const plane_angle_d
     inputs_.Input_1 = pan.value();
     inputs_.Input_2 = tilt_up.value();
     inputs_.Input_3 = height.value();
-    Arm_Controller_step();
+    Arm_controller_v2_step();
     
     if( !serialiser_.runnable() ) { std::cerr << name() << "failed to find move action 1, is collision: " << serialiser_.will_collide() << std::endl; return false; }
     
@@ -153,7 +153,7 @@ bool tilt_sweep::calculate_solution( const length_t& height, const plane_angle_d
     inputs_.Input_1 = pan.value();
     inputs_.Input_2 = tilt_down.value();
     inputs_.Input_3 = height.value();
-    Arm_Controller_step();
+    Arm_controller_v2_step();
     
     if( !serialiser_.runnable() ) { std::cerr << name() << "failed to find move action 2, will_collide: " << serialiser_.will_collide() << std::endl; return false; }
     
@@ -167,7 +167,7 @@ bool tilt_sweep::calculate_solution( const length_t& height, const plane_angle_d
     inputs_.Input_1 = pan.value();
     inputs_.Input_2 = current_tilt.value();
     inputs_.Input_3 = height.value();
-    Arm_Controller_step();
+    Arm_controller_v2_step();
     
     if( !serialiser_.runnable() ) { std::cerr << name() << "failed to find move action 3, will_collide:" << serialiser_.will_collide() << std::endl; return false; }
     

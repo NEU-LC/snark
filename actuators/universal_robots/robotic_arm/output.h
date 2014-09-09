@@ -34,10 +34,11 @@
 #define SNARK_ACTUATORS_UR_ROBOTIC_ARM_OUTPUT_H
 #include <string>
 #include <iostream>
+#include <boost/array.hpp>
 #include <comma/base/types.h>
 #include "units.h"
 extern "C" {
-    #include "simulink/Arm_Controller.h"
+    #include "simulink/Arm_controller_v2.h"
 }
 #include "simulink/traits.h"
 
@@ -46,7 +47,6 @@ namespace snark { namespace ur { namespace robotic_arm { namespace handlers {
 namespace arm = robotic_arm;
 typedef boost::units::quantity< boost::units::si::angular_acceleration > angular_acceleration_t;
 typedef boost::units::quantity< boost::units::si::angular_velocity > angular_velocity_t;
-
 
 static const int tilt_joint = 3;
 
@@ -57,42 +57,72 @@ public:
 private:
     angular_acceleration_t acceleration_;
     angular_velocity_t velocity_;
-    ExtY_Arm_Controller_T& joints;
+    ExtY_Arm_controller_v2_T& joints;
     current_positions_t& current_positions;
 public:
     arm_output( const angular_acceleration_t& ac, const angular_velocity_t& vel,
-                ExtY_Arm_Controller_T& output ) : 
+                ExtY_Arm_controller_v2_T& output ) : 
                 acceleration_( ac ), velocity_( vel ), joints( output ), 
                 current_positions( static_cast< current_positions_t& >( output ) ) 
                 {
-                    Arm_Controller_initialize();
+                    Arm_controller_v2_initialize();
                 }
    ~arm_output() 
     { 
-        Arm_Controller_terminate(); 
+        Arm_controller_v2_terminate(); 
     }
 
-    const ExtY_Arm_Controller_T& data() const { return joints; }
+    const ExtY_Arm_controller_v2_T& data() const { return joints; }
 
     /// Returns true if Simulink calculation for proposed movement is a success
     /// If true you can proceed to use the output from serialis()
     bool runnable() const { return joints.command_flag > 0; }
     bool will_collide() const { return joints.command_flag < 0; }
     /// The Simulink proposed tilt angle
-    plane_angle_t proposed_tilt_angle() const {
-        return joints.arm_position[ tilt_joint ] * radian;
+    plane_angle_t proposed_tilt_angle( comma::uint32 index=0) const {
+        return get_move_config(index)[ tilt_joint ] * radian;
     }
     
     const angular_acceleration_t& acceleration() const { return acceleration_; }
     const angular_velocity_t& velocity() const { return velocity_; }
+    // /// This is an array of 6 doubles, or 6 angles for the joints - all in radians
+    // typedef boost::array< real_T, joints_num > move_config_t;
+    
+    const move_config_t& get_move_config( comma::uint32 index ) const
+    {
+        const move_config_t* move = NULL;
+        switch( index )
+        {
+            case 0u:
+                move = reinterpret_cast< const move_config_t* >( joints.WP1 );
+                return *move;
+            case 1u:
+                move = reinterpret_cast< const move_config_t* >( joints.WP2 );
+                return *move;
+            case 2u:
+                move = reinterpret_cast< const move_config_t* >( joints.WP3 );
+                return *move;
+            case 3u:
+                move = reinterpret_cast< const move_config_t* >( joints.WP4 );
+                return *move;
+            case 4u:
+                move = reinterpret_cast< const move_config_t* >( joints.WP5 );
+                return *move;
+            default:
+                move = reinterpret_cast< const move_config_t* >( joints.WP6 );
+                return *move;
+        }
+    }
+    
     /// Get the simulink angles in degrees
-    std::string debug_in_degrees() const
+    std::string debug_in_degrees( comma::uint32 index=0 ) const
     {
         std::ostringstream ss;
         ss << "debug: movej([";
+        const move_config_t& move = get_move_config( index );
         for(std::size_t i=0; i<6u; ++i) 
         {
-           ss << static_cast< arm::plane_angle_degrees_t >( joints.joint_angle_vector[i] * arm::radian ).value();
+           ss << static_cast< arm::plane_angle_degrees_t >( move[i] * arm::radian ).value();
            if( i < 5 ) { ss << ','; }
         }
         ss << "],a=" << acceleration_.value() << ','
@@ -102,13 +132,16 @@ public:
         return ss.str();
     }
     
+    
     /// Produce the robotic arm command with the joint angles given by Simulink output
-    std::string serialise() const
+    /// index points to the position to move to
+    std::string serialise( comma::uint32 index=0 ) const
     {
         static std::string tmp;
-        static comma::csv::ascii< ExtY_Arm_Controller_T > ascii;
+        static comma::csv::ascii< move_config_t > ascii;
+        
         std::ostringstream ss;
-        ss << "movej([" << ascii.put( joints, tmp )
+        ss << "movej([" << ascii.put( get_move_config(index), tmp )
            << "],a=" << acceleration_.value() << ','
            << "v=" << velocity_.value() << ')';
         return ss.str();

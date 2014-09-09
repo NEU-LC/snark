@@ -1,11 +1,11 @@
 /*
  * File: ert_main.c
  *
- * Code generated for Simulink model 'Arm_Controller'.
+ * Code generated for Simulink model 'Arm_controller_v2'.
  *
- * Model version                  : 1.182
+ * Model version                  : 1.67
  * Simulink Coder version         : 8.6 (R2014a) 27-Dec-2013
- * C/C++ source code generated on : Thu Aug 21 12:11:31 2014
+ * C/C++ source code generated on : Mon Sep 08 14:34:28 2014
  *
  * Target selection: ert.tlc
  * Embedded hardware selection: 32-bit Generic
@@ -15,7 +15,7 @@
 
 #include <stddef.h>
 #include <stdio.h>                     /* This ert_main.c example uses printf/fflush */
-#include "Arm_Controller.h"            /* Model's header file */
+#include "Arm_controller_v2.h"         /* Model's header file */
 #include "rtwtypes.h"
 
 /*
@@ -37,7 +37,7 @@ void rt_OneStep(void)
 
   /* Check for overrun */
   if (OverrunFlag) {
-    rtmSetErrorStatus(Arm_Controller_M, "Overrun");
+    rtmSetErrorStatus(Arm_controller_v2_M, "Overrun");
     return;
   }
 
@@ -48,7 +48,7 @@ void rt_OneStep(void)
   /* Set model inputs here */
 
   /* Step the model */
-  Arm_Controller_step();
+  Arm_controller_v2_step();
 
   /* Get model outputs here */
 
@@ -73,10 +73,10 @@ int_T main(int_T argc, const char *argv[])
   (void)(argv);
 
   /* Initialize model */
-  Arm_Controller_initialize();
+  Arm_controller_v2_initialize();
 
   /* Attach rt_OneStep to a timer or interrupt service routine with
-   * period 1.0 seconds (the model's base sample time) here.  The
+   * period 0.1 seconds (the model's base sample time) here.  The
    * call syntax for rt_OneStep is
    *
    *  rt_OneStep();
@@ -85,14 +85,14 @@ int_T main(int_T argc, const char *argv[])
          "Generated ERT main won't simulate model step behavior. "
          "To change this behavior select the 'MAT-file logging' option.\n");
   fflush((NULL));
-  while (rtmGetErrorStatus(Arm_Controller_M) == (NULL)) {
+  while (rtmGetErrorStatus(Arm_controller_v2_M) == (NULL)) {
     /*  Perform other application tasks here */
   }
 
   /* Disable rt_OneStep() here */
 
   /* Terminate model */
-  Arm_Controller_terminate();
+  Arm_controller_v2_terminate();
   return 0;
 }
 
