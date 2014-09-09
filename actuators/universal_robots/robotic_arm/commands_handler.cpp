@@ -147,29 +147,6 @@ bool commands_handler::execute()
 
 void commands_handler::handle( arm::move_joints& joints )
 {
-//     if( !status_.is_running() ) {
-//         ret = result( "cannot move (joints) as rover is not in running mode", result::error::invalid_robot_state );
-//         return;
-//     }
-// 
-//     std::cerr << name() << " running move joints"  << std::endl; 
-//     static const plane_angle_degrees_t min = 0.0 * degree;
-//     static const plane_angle_degrees_t max = 360.0 * degree;
-//     for( std::size_t i=0; i<joints.joints.size(); ++i )
-//     {
-//         if( joints.joints[i] < min || joints.joints[0] > max ) { 
-//             ret = result( "joint angle must be 0-360 degrees", result::error::invalid_input ); 
-//             return;
-//         }
-//     }
-//     
-//     inputs_.motion_primitive = real_T( input_primitive::movej );
-//     inputs_.Input_1 = joints.joints[0].value();
-//     inputs_.Input_2 = joints.joints[1].value();
-//     inputs_.Input_3 = joints.joints[2].value();
-//     inputs_.Input_4 = joints.joints[3].value();
-//     inputs_.Input_5 = joints.joints[4].value();
-//     inputs_.Input_6 = joints.joints[5].value();
     ret = result();
 }
 

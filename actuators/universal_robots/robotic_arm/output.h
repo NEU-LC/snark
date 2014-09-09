@@ -48,7 +48,6 @@ namespace arm = robotic_arm;
 typedef boost::units::quantity< boost::units::si::angular_acceleration > angular_acceleration_t;
 typedef boost::units::quantity< boost::units::si::angular_velocity > angular_velocity_t;
 
-
 static const int tilt_joint = 3;
 
 class arm_output
@@ -86,8 +85,8 @@ public:
     
     const angular_acceleration_t& acceleration() const { return acceleration_; }
     const angular_velocity_t& velocity() const { return velocity_; }
-    /// This is an array of 6 doubles, or 6 angles for the joints - all in radians
-    typedef boost::array< real_T, 6 > move_config_t;
+    // /// This is an array of 6 doubles, or 6 angles for the joints - all in radians
+    // typedef boost::array< real_T, joints_num > move_config_t;
     
     const move_config_t& get_move_config( comma::uint32 index ) const
     {
@@ -140,7 +139,6 @@ public:
     {
         static std::string tmp;
         static comma::csv::ascii< move_config_t > ascii;
-        
         
         std::ostringstream ss;
         ss << "movej([" << ascii.put( get_move_config(index), tmp )

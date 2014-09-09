@@ -207,7 +207,12 @@ void read_status( comma::csv::binary_input_stream< arm::status_t >& iss, comma::
 /// Sets it after reading the position
 void set_current_position( const arm::status_t& status, ExtU_Arm_controller_v2_T& inputs )
 {
-    
+    inputs.Joint1 = status.joint_angles[0].value();
+    inputs.Joint2 = status.joint_angles[1].value();
+    inputs.Joint3 = status.joint_angles[2].value();
+    inputs.Joint4 = status.joint_angles[3].value();
+    inputs.Joint5 = status.joint_angles[4].value();
+    inputs.Joint6 = status.joint_angles[5].value();
 }
 
 static arm::config config;
@@ -288,6 +293,26 @@ bool should_stop( arm::inputs& in )
     return ( !in.is_empty() );
 }
 
+struct ttt : public boost::array< double, 6 > {};
+
+namespace comma { namespace visiting {
+    
+// Commands
+template < > struct traits< ttt >
+{
+    template< typename K, typename V > static void visit( const K& k, ttt& t, V& v )
+    {
+        v.apply( "angles", (boost::array< double, 6 >&) t );
+    }
+    template< typename K, typename V > static void visit( const K& k, const ttt& t, V& v )
+    {
+        v.apply( "angles", (const boost::array< double, 6 >&) t );
+    }
+};
+
+}}
+
+
 int main( int ac, char** av )
 {
     comma::signal_flag signaled;
@@ -312,7 +337,7 @@ int main( int ac, char** av )
     std::cerr << name() << "started" << std::endl;
     try
     {
-        /// COnvert simulink output into arm's command
+        /// Convert simulink output into arm's command
         arm::handlers::arm_output output( acc * arm::angular_acceleration_t::unit_type(), vel * arm::angular_velocity_t::unit_type(),
                        Arm_controller_v2_Y );
     

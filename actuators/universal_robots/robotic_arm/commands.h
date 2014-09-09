@@ -153,7 +153,6 @@ struct move_effector : command_base< move_effector >
     plane_angle_degrees_t pan;
     plane_angle_degrees_t tilt;
     plane_angle_degrees_t roll;
-
 };
 
 /// Send to trigger auto initialisation on startup.

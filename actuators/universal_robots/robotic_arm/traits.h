@@ -449,6 +449,18 @@ template < > struct traits< arm::status_t >
     }
 };
 
+template < > struct traits< arm::move_config_t >
+{
+    template< typename K, typename V > static void visit( const K& k, arm::move_config_t& t, V& v )
+    {
+        v.apply( "angles", (boost::array< double, arm::joints_num >&) t );
+    }
+    template< typename K, typename V > static void visit( const K& k, const arm::move_config_t& t, V& v )
+    {
+        v.apply( "angles", (const boost::array< double, arm::joints_num >&) t );
+    }
+};
+
 }} // namespace comma { namespace visiting {
 
 #endif // SNARK_ACTUATORS_UR_ROBOTIC_ARM_TRAITS_H

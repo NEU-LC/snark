@@ -136,6 +136,8 @@ int main( int ac, char** av )
             std::cerr.flush();
             comma::csv::output_stream< arm::status_t > oss( std::cout, csv );
             arm::status_t st;
+            st.robot_mode = arm::robotmode::running;
+            for( std::size_t i=0; i<arm::joints_num; ++i ) { st.joint_modes[i] = arm::jointmode::running; }  
             st.position.coordinates = Eigen::Vector3d( 1, 2, 3 );
             st.laser_position.coordinates = Eigen::Vector3d( 3, 2, 1 );
             while( !signaled && std::cout.good() )
