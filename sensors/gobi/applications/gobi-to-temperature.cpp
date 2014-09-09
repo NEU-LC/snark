@@ -70,7 +70,7 @@ int main( int argc, char** argv )
         if ( !vm.count( "celsius" ) && !vm.count( "kelvin" ) ) { COMMA_THROW( comma::exception, "please specify --celsius or --kelvin" ); }
         std::string calibration_file = vm["calibration"].as< std::string >();
         XCHANDLE handle = 0;
-        if( XC_LoadCalibration(handle, calibration_file.c_str(), XLC_StartSoftwareCorrection) != I_OK )
+        if( XC_LoadCalibration(handle, calibration_file.c_str(), XLC_StartSoftwareCorrection ) != I_OK )
         {
             COMMA_THROW( comma::exception, "failed to load calibration file \"" << calibration_file << "\"" ); 
         }

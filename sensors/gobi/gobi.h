@@ -36,6 +36,7 @@
 
 #include <XCamera.h>
 #include <XFooters.h>
+#include <XFilters.h>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/function.hpp>
 
@@ -59,6 +60,8 @@ class gobi
         std::pair< boost::posix_time::ptime, cv::Mat > read();
 
         std::string address() const;
+        
+        std::string temperature_unit() const;
 
         unsigned long total_bytes_per_frame() const;
         
@@ -69,6 +72,8 @@ class gobi
         static std::vector< XDeviceInformation > list_cameras();
         
         static std::string format_camera_info(const XDeviceInformation& camera_info);
+        
+        void enable_thermography( std::string temperature_unit, std::string calibration_file );
         
     private:
         class impl;

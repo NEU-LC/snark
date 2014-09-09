@@ -57,6 +57,7 @@ int main( int argc, char** argv )
         std::string fields;
         std::string address;
         std::string setattributes;
+        std::string calibration_file;
         unsigned int discard;
         boost::program_options::options_description description( "options" );
         description.add_options()
@@ -70,6 +71,9 @@ int main( int argc, char** argv )
             ( "list-cameras", "list all cameras" )
             ( "header", "output header only" )
             ( "no-header", "output image data only" )
+            ( "celsius", "enable thermography and convert pixel values to degrees Celsius")
+            ( "kelvin", "enable thermography and convert pixel values to degrees Kelvin")
+            ( "calibration", boost::program_options::value< std::string >( &calibration_file ), "location of the calibration file for thermography")
             ( "verbose,v", "be more verbose" );
             
         std::ostringstream autocorrection_message;
@@ -130,6 +134,15 @@ int main( int argc, char** argv )
         snark::camera::gobi camera( address, attributes );
         if( verbose ) { std::cerr << "gobi-cat: connected to a xenics camera at address " << camera.address() << std::endl; }
         if( verbose ) { std::cerr << "gobi-cat: total bytes per frame: " << camera.total_bytes_per_frame() << std::endl; }
+        bool thermography = vm.count( "celsius" ) || vm.count( "kelvin" );
+        if( thermography )
+        {
+            if( !vm.count( "calibration") ) { COMMA_THROW( comma::exception, "thermography is enabled but no calibration file is given, use --calibration=<calibration_file>" ); }
+            if( vm.count( "celsius" ) && vm.count( "kelvin" ) ) { COMMA_THROW( comma::exception, "--celsius and --kelvin are mutually exclusive" ); }
+            std::string temperature_unit = vm.count( "celsius" ) ? "celsius" : "kelvin";
+            camera.enable_thermography( temperature_unit, calibration_file );
+            if( verbose ) { std::cerr << "gobi-cat: thermography is enabled, camera " << camera.address() << " will ouput degrees " << temperature_unit << std::endl; }
+        }
         if( vm.count( "set" ) ) { return 0; }
         if( vm.count( "list-attributes" ) )
         {
