@@ -1,6 +1,7 @@
 #ifndef SNARK_ACTUATORS_UR_ROBOTIC_ARM_DATA_H 
 #define SNARK_ACTUATORS_UR_ROBOTIC_ARM_DATA_H 
 #include <comma/packed/packed.h>
+#include <comma/math/compare.h>
 #include "units.h"
 #include <snark/math/applications/frame.h>
 
@@ -148,6 +149,18 @@ struct status_t {
         init< double >( 0.0, forces );
         init< double >( 0.0, temperatures );
         init< jointmode::mode >( jointmode::error, joint_modes );
+    }
+
+    /// Check that the given pose ( 6 joint angles in radian ) match the current arm's physical pose
+    bool check_pose( const boost::array< double, joints_num >& pose )
+    {
+        static const double radian_epsilon = static_cast< plane_angle_t >( 0.5 * degree ).value();
+        for( std::size_t i=0; i<joints_num; ++i ) 
+        {
+            if( !comma::math::equal( pose[i], joint_angles[i].value(), radian_epsilon ) ) { return false; }
+        }
+
+        return true;
     }
 };
 

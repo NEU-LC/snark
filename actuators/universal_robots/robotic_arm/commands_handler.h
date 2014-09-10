@@ -47,6 +47,7 @@
 #include "commands.h"
 #include "auto_initialization.h"
 #include "tilt_sweep.h"
+#include "waypoints_follower.h"
 #include "output.h"
 #include <boost/filesystem.hpp>
 
