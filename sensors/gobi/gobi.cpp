@@ -205,12 +205,20 @@ static cv::Mat xenics_to_cvmat_( unsigned long height, unsigned long width, Fram
     return cv::Mat(height, width, opencv_type, &frame_buffer[0] );
 }
 
+static cv::Mat xenics_temperature_to_cvmat_( unsigned long height, unsigned long width, std::vector< double >& temperature_buffer )
+{
+    int opencv_type = CV_64FC1;
+    return cv::Mat(height, width, opencv_type, &temperature_buffer[0] );
+}
+
+
 class gobi::impl
 {
     public:
         impl( std::string address, const attributes_type& attributes ) :
             address_( address )
             , closed_( false )
+            , thermography_is_enabled_( false )
         {
             if( address_.empty() ) { COMMA_THROW( comma::exception, "expected camera address, got empty string" ); }    
             std::string camera_name = "gev://" + address_;
@@ -253,7 +261,41 @@ class gobi::impl
             }
             if( XC_IsInitialised( handle_ ) ) XC_CloseCamera( handle_ );
             closed_ = true;
+            thermography_is_enabled_ = false;
             //std::cerr << "the camera has been closed" << std::endl;
+        }
+        
+        void enable_thermography( std::string temperature_unit, std::string calibration_file )
+        {
+            if( thermography_is_enabled_ ) { COMMA_THROW( comma::exception, "thermography already enabled" ); }
+            if( !XC_IsInitialised( handle_ ) ) { COMMA_THROW( comma::exception, "cannot enable thermography, since the camera has not been initialised" ); }
+            if( XC_LoadCalibration( handle_, calibration_file.c_str(), XLC_StartSoftwareCorrection ) != I_OK )
+            { 
+                COMMA_THROW( comma::exception, "failed to load calibration file \"" << calibration_file << "\"" ); 
+            }
+            FilterID fltThermography = 0;
+            fltThermography = XC_FLT_Queue( handle_, "Thermography", temperature_unit.c_str() );
+            if ( fltThermography > 0 )
+            {
+                unsigned long max_pixel_value = XC_GetMaxValue( handle_ );
+                temperature_from_pixel_value_.resize( max_pixel_value + 1 );
+                for( unsigned long i = 0; i < max_pixel_value + 1; ++i )
+                {
+                    XC_FLT_ADUToTemperature( handle_, fltThermography, i, &temperature_from_pixel_value_[i] );
+                }
+                temperature_buffer_.resize( frame_buffer_.size() );
+                temperature_unit_ = temperature_unit;
+                thermography_is_enabled_ = true;
+            }
+            else
+            {
+                COMMA_THROW( comma::exception, "could not start thermography filter" );
+            }
+        }
+        
+        void disable_thermography()
+        {
+            thermography_is_enabled_ = false;
         }
         
         std::pair< boost::posix_time::ptime, cv::Mat > read()
@@ -268,6 +310,7 @@ class gobi::impl
             }
             std::pair< boost::posix_time::ptime, cv::Mat > pair;
             ErrCode error_code = XC_GetFrame( handle_, FT_NATIVE, XGF_Blocking | XGF_NoConversion | XGF_FetchPFF, &frame_buffer_[0], total_bytes_per_frame_ );
+            //ErrCode error_code = XC_GetFrame( handle_, FT_NATIVE, XGF_Blocking | XGF_FetchPFF, &frame_buffer_[0], total_bytes_per_frame_ ); // not clear if XGF_NoConversion can be used when thermography is enabled
             if( error_code == I_OK)
             {
                 long long time_of_reception_in_microseconds_since_epoch = footer_->tft;
@@ -284,7 +327,15 @@ class gobi::impl
                     COMMA_THROW( comma::exception, "difference between utc and time_of_reception is greater than " << max_allowed_time_delay << " microseconds: time of reception = " << time_of_reception << ", utc = " << utc );
                 }
                 pair.first = time_of_reception;
-                pair.second = xenics_to_cvmat_( height_, width_, frame_type_, frame_buffer_ );
+                if( thermography_is_enabled_ )
+                {
+                    for( unsigned long i = 0; i < frame_buffer_.size(); ++i ) { temperature_buffer_[i] = temperature_from_pixel_value_[frame_buffer_[i]]; }
+                    pair.second = xenics_temperature_to_cvmat_( height_, width_, temperature_buffer_ );
+                }
+                else
+                {
+                    pair.second = xenics_to_cvmat_( height_, width_, frame_type_, frame_buffer_ );
+                }
             }
             else
             {
@@ -302,6 +353,8 @@ class gobi::impl
         bool closed() const { return closed_; }
 
         unsigned long total_bytes_per_frame() const { return total_bytes_per_frame_; }
+        
+        std::string temperature_unit() const { return temperature_unit_; }
 
         static std::vector< XDeviceInformation > list_cameras()
         {
@@ -333,6 +386,7 @@ class gobi::impl
                    << "state=\"" << state << "\"";
             return output.str();
         }
+        
     private:
         XCHANDLE handle_;
         unsigned long height_;
@@ -341,8 +395,12 @@ class gobi::impl
         unsigned long total_bytes_per_frame_;
         unsigned long frame_footer_size_;
         std::vector< byte > frame_buffer_;
+        std::vector< double > temperature_from_pixel_value_;
+        std::vector< double > temperature_buffer_;
+        std::string temperature_unit_;
         std::string address_;
         bool closed_;
+        bool thermography_is_enabled_;
         XPFF_GENERIC* footer_;
         boost::posix_time::ptime ptime_( long long microseconds_since_epoch )
         {
@@ -370,10 +428,16 @@ std::string gobi::format_camera_info( const XDeviceInformation& camera_info ) { 
 
 std::string gobi::address() const { return pimpl_->address(); }
 
+std::string gobi::temperature_unit() const { return pimpl_->temperature_unit(); }
+
 unsigned long gobi::total_bytes_per_frame() const { return pimpl_->total_bytes_per_frame(); }
 
 gobi::attributes_type gobi::attributes() const { return xenics_attributes_( pimpl_->handle() ); }
 
 void gobi::set(const gobi::attributes_type& attributes ) { pimpl_->set( attributes ); }
+
+void gobi::enable_thermography( std::string temperature_unit, std::string calibration_file ) { pimpl_->enable_thermography( temperature_unit, calibration_file ); }
+
+void gobi::disable_thermography() { pimpl_->disable_thermography(); }
 
 } } // namespace snark{ namespace camera{
