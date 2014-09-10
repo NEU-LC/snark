@@ -75,6 +75,8 @@ class gobi
         
         void enable_thermography( std::string temperature_unit, std::string calibration_file );
         
+        void disable_thermography();
+        
     private:
         class impl;
         impl* pimpl_;

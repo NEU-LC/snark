@@ -267,9 +267,9 @@ class gobi::impl
         
         void enable_thermography( std::string temperature_unit, std::string calibration_file )
         {
+            if( thermography_is_enabled_ ) { COMMA_THROW( comma::exception, "thermography already enabled" ); }
             if( !XC_IsInitialised( handle_ ) ) { COMMA_THROW( comma::exception, "cannot enable thermography, since the camera has not been initialised" ); }
-            if( thermography_is_enabled_ ) { COMMA_THROW( comma::exception, "thermography is already enabled" ); }
-            if( XC_LoadCalibration( handle_, calibration_file.c_str(), XLC_StartSoftwareCorrection ) != I_OK ) 
+            if( XC_LoadCalibration( handle_, calibration_file.c_str(), XLC_StartSoftwareCorrection ) != I_OK )
             { 
                 COMMA_THROW( comma::exception, "failed to load calibration file \"" << calibration_file << "\"" ); 
             }
@@ -291,6 +291,11 @@ class gobi::impl
             {
                 COMMA_THROW( comma::exception, "could not start thermography filter" );
             }
+        }
+        
+        void disable_thermography()
+        {
+            thermography_is_enabled_ = false;
         }
         
         std::pair< boost::posix_time::ptime, cv::Mat > read()
@@ -432,5 +437,7 @@ gobi::attributes_type gobi::attributes() const { return xenics_attributes_( pimp
 void gobi::set(const gobi::attributes_type& attributes ) { pimpl_->set( attributes ); }
 
 void gobi::enable_thermography( std::string temperature_unit, std::string calibration_file ) { pimpl_->enable_thermography( temperature_unit, calibration_file ); }
+
+void gobi::disable_thermography() { pimpl_->disable_thermography(); }
 
 } } // namespace snark{ namespace camera{

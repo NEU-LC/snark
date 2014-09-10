@@ -134,15 +134,6 @@ int main( int argc, char** argv )
         snark::camera::gobi camera( address, attributes );
         if( verbose ) { std::cerr << "gobi-cat: connected to a xenics camera at address " << camera.address() << std::endl; }
         if( verbose ) { std::cerr << "gobi-cat: total bytes per frame: " << camera.total_bytes_per_frame() << std::endl; }
-        bool thermography = vm.count( "celsius" ) || vm.count( "kelvin" );
-        if( thermography )
-        {
-            if( !vm.count( "calibration") ) { COMMA_THROW( comma::exception, "thermography is enabled but no calibration file is given, use --calibration=<calibration_file>" ); }
-            if( vm.count( "celsius" ) && vm.count( "kelvin" ) ) { COMMA_THROW( comma::exception, "--celsius and --kelvin are mutually exclusive" ); }
-            std::string temperature_unit = vm.count( "celsius" ) ? "celsius" : "kelvin";
-            camera.enable_thermography( temperature_unit, calibration_file );
-            if( verbose ) { std::cerr << "gobi-cat: thermography is enabled, camera " << camera.address() << " will ouput degrees " << temperature_unit << std::endl; }
-        }
         if( vm.count( "set" ) ) { return 0; }
         if( vm.count( "list-attributes" ) )
         {
@@ -156,7 +147,16 @@ int main( int argc, char** argv )
             std::cout << std::endl;
             return 0;
         }
-               
+        bool thermography = vm.count( "celsius" ) || vm.count( "kelvin" );
+        if( thermography )
+        {
+            if( !vm.count( "calibration") ) { COMMA_THROW( comma::exception, "please provide calibration file to enable thermography, use --calibration=<calibration_file>" ); }
+            if( vm.count( "celsius" ) && vm.count( "kelvin" ) ) { COMMA_THROW( comma::exception, "--celsius and --kelvin are mutually exclusive" ); }
+            std::string temperature_unit = vm.count( "celsius" ) ? "celsius" : "kelvin";
+            camera.enable_thermography( temperature_unit, calibration_file );
+            if( verbose ) { std::cerr << "gobi-cat: thermography is enabled, camera " << camera.address() << " will ouput degrees " << temperature_unit << std::endl; }
+        }
+
         std::vector< std::string > v = comma::split( fields, "," );
         comma::csv::format format;
         for( unsigned int i = 0; i < v.size(); ++i )
