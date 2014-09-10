@@ -44,7 +44,10 @@ struct input_primitive
         move_cam = 1,
         set_position = 2,
         set_home=3,      // define home position, internal usage
-        movej=4
+        movej=4,
+        scan=5,
+        pan_tilt=6,
+        move_effector=8
     };  
 };
     

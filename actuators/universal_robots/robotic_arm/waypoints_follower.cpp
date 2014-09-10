@@ -57,31 +57,37 @@ void waypoints_follower::stop_movement(std::ostream& rover)
 result waypoints_follower::run( started_reply_t start_initiated, std::ostream& rover )
 {
     comma::uint32 num_of_moves = serialiser_.num_of_moves();
-    if( num_of_moves > joints_num ) { return result( "Simulink calculation error, too many waypoints.", result::error::failure ); }
+    if( num_of_moves > joints_num ) { 
+        std::cerr << name() << "too many waypoints, got " << num_of_moves << std::endl;
+        return result( "Simulink calculation error, too many waypoints.", result::error::failure ); 
+    }
 
     bool stop = interrupt_();
     if( signaled_ || stop ) { return result( "action is cancelled", result::error::cancelled ); }
     
     /// Check that it stopped
     static comma::uint32 usec = 0.1 * 1000000u;
-    
+
     /// signal start of command
     start_initiated();
     
+    std::cerr << "num_of_moves is " << num_of_moves << std::endl;
     for( std::size_t j=0; j< num_of_moves; ++j )
     {
         std::cerr << name() << "moving to waypoint " << (j+1) << std::endl;
-        const arm::move_config_t& config = serialiser_.get_move_config( j );
+        std::cerr << name() << " " << serialiser_.serialise( j );
+
         rover << serialiser_.serialise( j );
         rover.flush();
 
-        while( !status_.check_pose( config ) )
-        {
-            status_update_();
-            stop = interrupt_();
-            if( signaled_ || stop ) { stop_movement( rover ); return result( "action is cancelled", result::error::cancelled ); }
-            usleep( usec );
-        }
+        // const arm::move_config_t& config = serialiser_.get_move_config( j );
+        // while( !status_.check_pose( config ) )
+        // {
+        //     status_update_();
+        //     stop = interrupt_();
+        //     if( signaled_ || stop ) { stop_movement( rover ); return result( "action is cancelled", result::error::cancelled ); }
+        //     usleep( usec );
+        // }
     }
     return result();
 }

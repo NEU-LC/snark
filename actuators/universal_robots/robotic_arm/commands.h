@@ -39,6 +39,7 @@
 #include <iostream>
 #include <functional>
 #include <boost/lexical_cast.hpp>
+#include <Eigen/Geometry>
 #include <comma/base/types.h>
 #include <comma/csv/ascii.h>
 #include <comma/dispatch/dispatched.h>
@@ -149,11 +150,7 @@ struct position
 
 struct move_effector : command_base< move_effector >
 {
-    // static const char* name_str = "MOVEF";
-    position offset;    // position offset from base of arm
-    plane_angle_degrees_t pan;
-    plane_angle_degrees_t tilt;
-    plane_angle_degrees_t roll;
+    Eigen::Vector3d offset;
 };
 
 /// Send to trigger auto initialisation on startup.

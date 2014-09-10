@@ -58,6 +58,7 @@
 #include "../../inputs.h"
 #include "../../units.h"
 #include "../../tilt_sweep.h"
+#include "../../waypoints_follower.h"
 extern "C" {
     #include "../../simulink/Arm_controller_v2.h"
 }
@@ -163,6 +164,7 @@ std::string handle( const std::vector< std::string >& line, std::ostream& os )
 void process_command( const std::vector< std::string >& v, std::ostream& os )
 {
     if( boost::iequals( v[2], "move_cam" ) )         { output( handle< arm::move_cam >( v, os ) ); }
+    else if( boost::iequals( v[2], "move_effector" )){ output( handle< arm::move_effector >( v, os ) ); }
     else if( boost::iequals( v[2], "set_pos" ) )     { output( handle< arm::set_position >( v, os ) ); }
     else if( boost::iequals( v[2], "set_home" ) )    { output( handle< arm::set_home >( v, os ) ); }
     else if( boost::iequals( v[2], "power" ) )       { output( handle< arm::power >( v, os )); }  
@@ -207,6 +209,7 @@ void read_status( comma::csv::binary_input_stream< arm::status_t >& iss, comma::
 /// Sets it after reading the position
 void set_current_position( const arm::status_t& status, ExtU_Arm_controller_v2_T& inputs )
 {
+    // std::cerr << name() << "setting joints, joint 2: " << status.joint_angles[2].value() << std::endl; 
     inputs.Joint1 = status.joint_angles[0].value();
     inputs.Joint2 = status.joint_angles[1].value();
     inputs.Joint3 = status.joint_angles[2].value();
@@ -416,10 +419,15 @@ int main( int ac, char** av )
             std::cerr << name() << "min is " << continuum.scan.min.value() << std::endl;
             tilt_sweep.set_min( continuum.scan.min );                                          
             tilt_sweep.set_max( continuum.scan.max );                                          
+            arm::handlers::waypoints_follower waypoints_follower( output, 
+                    boost::bind( read_status, boost::ref(istream), boost::ref( status_stream ), select, status_stream.fd() ),
+                    arm_status,
+                    boost::bind( should_stop, boost::ref( inputs ) ),
+                    signaled );
             
             // if( options.exists( "--init-force-limit,-ifl" ) ){ auto_init.set_force_limit( options.value< double >( "--init-force-limit,-ifl" ) ); }
             commands_handler.reset( new commands_handler_t( Arm_controller_v2_U, output, arm_status, *robot_arm, 
-                                                        auto_init, tilt_sweep, std::cout ) );
+                                                            auto_init, tilt_sweep, waypoints_follower, std::cout ) );
         
 
             boost::posix_time::microseconds timeout( usec );
@@ -432,6 +440,7 @@ int main( int ac, char** av )
     
                 read_status( istream, status_stream, select, status_stream.fd() ); 
                 home_position_check( arm_status, auto_init.home_filepath() );
+                set_current_position( arm_status, Arm_controller_v2_U );
                 
                 /// Also act as sleep
                 inputs.read( timeout );

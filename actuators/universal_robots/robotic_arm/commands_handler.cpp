@@ -139,7 +139,7 @@ bool commands_handler::execute()
     os << output_.serialise() << std::endl;
     os.flush();
     inputs_reset();
-    ret= result();
+    ret = result();
     return true;
 }
 
@@ -232,7 +232,31 @@ void commands_handler::handle( arm::set_position& pos )
 
 
 void commands_handler::handle( arm::move_effector& e )
-{
+{    
+    std::cerr << name() << "handling move_effector" << std::endl; 
+    if( !status_.is_running() ) { ret = result( "cannot move effector as rover is not in running mode", result::error::invalid_robot_state ); return; }
+
+    // First run simulink to calculate the waypoints
+    inputs_reset();
+    inputs_.motion_primitive = input_primitive::move_effector;
+    inputs_.Input_1 = e.offset.x();
+    inputs_.Input_2 = e.offset.y();
+    inputs_.Input_3 = e.offset.z();
+    std::cerr << "joint 2 is " << status_.joint_angles[2].value() << std::endl;
+    Arm_controller_v2_step();
+    if( output_.will_collide() ) 
+    { 
+        std::cerr << name() << "failed to find solution to move_effector, avoiding collision: " << output_.will_collide() << std::endl; 
+        std::ostringstream ss;
+        ss << "failed to find solution to move_effector, avoiding collision: " << output_.will_collide(); 
+        ret = result( ss.str(), result::error::failure );
+        return;
+    }
+
+    // Ok now follow the waypoints
+    ret = waypoints_follower_.run(
+                boost::bind( movement_started< arm::move_effector >, boost::cref( e ), boost::ref( this->ostream_ ) )
+                , this->os );    
 }
 
 
@@ -275,5 +299,15 @@ void commands_handler::handle( arm::auto_init_force& init )
     } // set to home
 }
 
+void commands_handler::inputs_reset() 
+{ 
+    inputs_.motion_primitive = input_primitive::no_action;
+    inputs_.Input_1 = 0;
+    inputs_.Input_2 = 0;
+    inputs_.Input_3 = 0;
+    inputs_.Input_4 = 0;
+    inputs_.Input_5 = 0;
+    inputs_.Input_6 = 0;
+}
 
 } } } } // namespace snark { namespace ur { namespace robotic_arm { namespace handlers {

@@ -84,10 +84,10 @@ public:
     
     commands_handler( ExtU_Arm_controller_v2_T& simulink_inputs, const arm_output& output,
                       arm::status_t& status, std::ostream& robot, 
-                      auto_initialization& init, tilt_sweep& sweep, std::ostream& oss ) : 
+                      auto_initialization& init, tilt_sweep& sweep, waypoints_follower& follower, std::ostream& oss ) : 
         inputs_(simulink_inputs), output_(output), 
         status_( status ), os( robot ), 
-        init_(init), sweep_( sweep ),
+        init_(init), sweep_( sweep ), waypoints_follower_( follower ),
         ostream_( oss ),
         home_filepath_( init_.home_filepath() ), verbose_(false) {}
         
@@ -102,14 +102,17 @@ private:
     status_t& status_;
     std::ostream& os;
     auto_initialization& init_;
-    tilt_sweep sweep_;
+    tilt_sweep& sweep_;
+    waypoints_follower& waypoints_follower_;
     std::ostream& ostream_;
     fs::path home_filepath_;
     bool verbose_;
     
-    void inputs_reset() { inputs_.motion_primitive = input_primitive::no_action; }
     /// Run the command on the controller if possible
     bool execute();
+
+    /// resets inputs to noaction
+    void inputs_reset();
     
 };
 

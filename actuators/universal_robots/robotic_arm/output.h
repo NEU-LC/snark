@@ -88,7 +88,7 @@ public:
     // /// This is an array of 6 doubles, or 6 angles for the joints - all in radians
     // typedef boost::array< real_T, joints_num > move_config_t;
 
-    unsigned char num_of_moves() const { return boost::lexical_cast< unsigned char >( joints.number_waypoints ); }
+    comma::uint32 num_of_moves() const { return boost::lexical_cast< comma::uint32 >( joints.number_waypoints ); }
     
     const move_config_t& get_move_config( comma::uint32 index ) const
     {
