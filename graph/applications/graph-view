@@ -57,7 +57,7 @@ function decorate_with
 {
     local what=$1
     local fields=()
-    while read f; do fields+=( "$f" ); done < <( echo "${@:2}" | tr "," "\n" )
+    while read f; do fields+=( "$f" ); done < <( echo "$2" | tr "," "\n" )
     for (( i = 0; i < ${#fields[@]}; i++ )); do
         if [[ -n "${fields[$i]}" ]]; then fields[$i]="$what/${fields[$i]}"; fi
     done
