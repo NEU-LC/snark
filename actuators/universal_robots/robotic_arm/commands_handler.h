@@ -86,18 +86,18 @@ public:
     
     commands_handler( ExtU_Arm_controller_v2_T& simulink_inputs, const arm_output& output,
                       arm::status_t& status, std::ostream& robot, 
-                      auto_initialization& init, tilt_sweep& sweep, waypoints_follower& follower, std::ostream& oss ) : 
+                      auto_initialization& init, tilt_sweep& sweep, waypoints_follower& follower, 
+                      std::ostream& oss, const arm::continuum_t& config ) : 
         inputs_(simulink_inputs), output_(output), 
         status_( status ), os( robot ), 
         init_(init), sweep_( sweep ), waypoints_follower_( follower ),
-        ostream_( oss ),
-        home_filepath_( init_.home_filepath() ), verbose_(true) {}
+        ostream_( oss ), config_( config ),
+        home_filepath_( init_.home_filepath() ), verbose_(true), is_move_effector( false ) {}
         
     bool is_initialising() const; 
     
     result ret;  /// Indicate if command succeed
-    boost::optional< length_t > move_cam_height_;
-    plane_angle_degrees_t move_cam_pan_;
+
 private:
     ExtU_Arm_controller_v2_T& inputs_; /// inputs into simulink engine 
     const arm_output& output_;
@@ -107,8 +107,12 @@ private:
     tilt_sweep& sweep_;
     waypoints_follower& waypoints_follower_;
     std::ostream& ostream_;
+    arm::continuum_t config_;
     fs::path home_filepath_;
     bool verbose_;
+    boost::optional< length_t > move_cam_height_;
+    plane_angle_degrees_t move_cam_pan_;
+    bool is_move_effector;
     
     /// Run the command on the controller if possible
     bool execute();
@@ -116,6 +120,8 @@ private:
     bool execute_waypoints( const C& c );
     /// Sets the current position of the arm into Simulink input structure
     void set_current_position();
+
+    inline bool is_home_position() const { return status_.check_pose( config_.home_position ); } 
 
     /// resets inputs to noaction
     void inputs_reset();

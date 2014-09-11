@@ -139,40 +139,41 @@ template <> struct traits< arm::move_effector >
     }
 };
 
-template <> struct traits< arm::fixed_status::joints_type >
+// template <> struct traits< arm::fixed_status::joints_type >
+// {
+//     template< typename K, typename V > static void visit( const K& k, arm::fixed_status::joints_type& t, V& v )
+//     {
+//         for( std::size_t i=0; i<6; ++i ) {
+//             double d = t[i];
+//             v.apply( boost::lexical_cast< std::string >( i ).c_str(), d );
+//             std::cerr << "getting radian: " << i << " " << d << std::endl;
+//             t[i] = d * arm::radian;
+//         }
+//     }
+
+//     template< typename K, typename V > static void visit( const K& k, const arm::fixed_status::joints_type& t, V& v )
+//     {
+//         for( std::size_t i=0; i<6; ++i ) {
+//             v.apply( boost::lexical_cast< std::string >( i ).c_str(), t[i].value() );
+//         }
+//     }
+// };
+
+template <> struct traits< arm::continuum_t::arm_position_t >
 {
-    template< typename K, typename V > static void visit( const K& k, arm::fixed_status::joints_type& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, arm::continuum_t::arm_position_t& t, V& v )
     {
-        for( std::size_t i=0; i<6; ++i ) {
-            double d = 0;
+        for( std::size_t i=0; i<arm::joints_num; ++i ) 
+        {
+            double d = t[i].value();
             v.apply( boost::lexical_cast< std::string >( i ).c_str(), d );
-            // std::cerr << "getting radian: " << i << " " << d << std::endl;
             t[i] = d * arm::radian;
         }
     }
 
-    template< typename K, typename V > static void visit( const K& k, const arm::fixed_status::joints_type& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, const arm::continuum_t::arm_position_t& t, V& v )
     {
-        for( std::size_t i=0; i<6; ++i ) {
-            v.apply( boost::lexical_cast< std::string >( i ).c_str(), t[i].value() );
-        }
-    }
-};
-
-template <> struct traits< std::vector< arm::plane_angle_degrees_t > >
-{
-    template< typename K, typename V > static void visit( const K& k, std::vector< arm::plane_angle_degrees_t >& t, V& v )
-    {
-        for( std::size_t i=0; i<t.size(); ++i ) {
-            double d = 0;
-            v.apply( boost::lexical_cast< std::string >( i ).c_str(), d );
-            t[i] = d * arm::degree;
-        }
-    }
-
-    template< typename K, typename V > static void visit( const K& k, const std::vector< arm::plane_angle_degrees_t >& t, V& v )
-    {
-        for( std::size_t i=0; i<t.size(); ++i ) {
+        for( std::size_t i=0; i<arm::joints_num; ++i ) {
             v.apply( boost::lexical_cast< std::string >( i ).c_str(), t[i].value() );
         }
     }

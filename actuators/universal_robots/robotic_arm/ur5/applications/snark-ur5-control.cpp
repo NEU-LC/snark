@@ -242,37 +242,9 @@ void home_position_check( const arm::status_t& status, const std::string& homefi
 {
     // static std::vector< arm::plane_angle_t > home_position; /// store home joint positions in radian
     static const fs::path path( homefile );
-    static const arm::plane_angle_t epsilon = static_cast< arm::plane_angle_t >( 1.5 * arm::degree );
-    
-    static std::vector< arm::plane_angle_t > home_position; /// store home joint positions in radian
-    if( home_position.empty() )
-    {
-        home_position.push_back( static_cast< arm::plane_angle_t >( config.continuum.home_position[0] * arm::degree ) );
-        home_position.push_back( static_cast< arm::plane_angle_t >( config.continuum.home_position[1] * arm::degree ) );
-        home_position.push_back( static_cast< arm::plane_angle_t >( config.continuum.home_position[2] * arm::degree ) );
-        home_position.push_back( static_cast< arm::plane_angle_t >( config.continuum.home_position[3] * arm::degree ) );
-        home_position.push_back( static_cast< arm::plane_angle_t >( config.continuum.home_position[4] * arm::degree ) );
-        home_position.push_back( static_cast< arm::plane_angle_t >( config.continuum.home_position[5] * arm::degree ) );
-        // for( std::size_t i=0; i<home_position.size(); ++i ) {
-        //     std::cerr << "home joint " << i << ':' << home_position[i].value() << std::endl; 
-        // }
-        // std::cerr << "joint epsilon " << epsilon.value() << std::endl; 
-    }
-
-
     if( status.is_running() )
     {
-        bool is_home = true;
-        for( std::size_t i=0; i<arm::joints_num; ++i ) 
-        {
-            if( !comma::math::equal( status.joint_angles[i], home_position[i], epsilon ) )
-            { 
-                is_home=false; 
-                break; 
-            }
-        }
-
-        if( is_home ){ std::ofstream( homefile.c_str(), std::ios::out | std::ios::trunc ); } // create
+        if( status.check_pose( config.continuum.home_position ) ){ std::ofstream( homefile.c_str(), std::ios::out | std::ios::trunc ); } // create
         else { fs::remove( path ); } // remove
     }
 }
@@ -348,7 +320,7 @@ int main( int ac, char** av )
 
         for( std::size_t j=0; j<arm::joints_num; ++j )
         {
-            std::cerr << name() << "home joint " << j << " - " << continuum.home_position[j] << '"' << std::endl;
+            std::cerr << name() << "home joint " << j << " - " << continuum.home_position[j].value() << '"' << std::endl;
         }
 
         std::string arm_conn_host = options.value< std::string >( "--robot-arm-host" );
@@ -416,7 +388,8 @@ int main( int ac, char** av )
             
             // if( options.exists( "--init-force-limit,-ifl" ) ){ auto_init.set_force_limit( options.value< double >( "--init-force-limit,-ifl" ) ); }
             commands_handler.reset( new commands_handler_t( Arm_controller_v2_U, output, arm_status, *robot_arm, 
-                                                            auto_init, tilt_sweep, waypoints_follower, std::cout ) );
+                                                            auto_init, tilt_sweep, waypoints_follower, 
+                                                            std::cout, continuum ) );
         
 
             boost::posix_time::microseconds timeout( usec );

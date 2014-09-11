@@ -48,6 +48,7 @@ void commands_handler::handle( arm::power& p )
         ret = result( "cannot execute power on command as current state is not 'no_power'", result::error::invalid_robot_state );
         return;
     }
+
     std::cerr << name() << "powering robot arm " << ( p.is_on ? "on" : "off" ) << std::endl;
     os << "power " << ( p.is_on ? "on" : "off" ) << std::endl;
     os.flush();
@@ -75,6 +76,9 @@ void commands_handler::handle( arm::move_cam& cam )
 {
     std::cerr << name() << " running move_cam" << std::endl; 
 
+    if( is_move_effector  ) { ret = result( "cannot use move_cam from a move_effector position", result::error::invalid_robot_state ); return; }
+    // all other positions are ok.
+
     if( !status_.is_running() ) {
         ret = result( "cannot move (camera) as rover is not in running mode", result::error::invalid_robot_state );
         return;
@@ -100,8 +104,8 @@ void commands_handler::handle( arm::move_cam& cam )
     
     if( !execute_waypoints( cam ) ) { return; }
     
+    is_move_effector = false;
     fs::remove( home_filepath_ );
-    
     move_cam_height_ = cam.height;
     move_cam_pan_ = cam.pan;
     ret = result();
@@ -227,6 +231,7 @@ bool commands_handler::execute_waypoints( const C& command )
 void commands_handler::handle( arm::pan_tilt& p )
 {
     std::cerr << name() << " handling pan_tilt" << std::endl; 
+    if( !is_move_effector ) { ret = result( "can not use use pan_tilt unless in move effector state", result::error::invalid_robot_state ); return; }
 
     if( !status_.is_running() ) { ret = result( "robotic arm is not in running mode", result::error::invalid_robot_state ); return; }
     inputs_reset();
@@ -253,8 +258,6 @@ void commands_handler::handle( arm::set_position& pos )
         return;
     }
     
-    move_cam_height_.reset(); // no longer in move_cam position
-
     inputs_reset();
     set_current_position();
     inputs_.motion_primitive = input_primitive::set_position;
@@ -266,14 +269,24 @@ void commands_handler::handle( arm::set_position& pos )
     inputs_.Input_2 = 0;    // zero pan for giraffe
     inputs_.Input_3 = 0;    // zero tilt for giraffe
     
-    execute();
+    if( execute_waypoints( pos ) )
+    {
+        is_move_effector = false;
+        move_cam_height_.reset(); // no longer in move_cam position
+    }
 }
 
 
 void commands_handler::handle( arm::move_effector& e )
 {    
     std::cerr << name() << "handling move_effector" << std::endl; 
+
+    if( status_.is_stationary() ) { ret = result( "robot arm is currently moving", result::error::invalid_robot_state ); return; }
+    if( move_cam_height_ ) { ret = result( "can not move effector in move_cam state", result::error::invalid_robot_state ); return; }
     if( !status_.is_running() ) { ret = result( "cannot move effector as rover is not in running mode", result::error::invalid_robot_state ); return; }
+    if( !is_move_effector && !is_home_position() ) { 
+        ret = result( "can not use move_effector unless starting in home position", result::error::invalid_robot_state ); return; 
+    }
 
     // First run simulink to calculate the waypoints
     inputs_reset();
@@ -284,7 +297,11 @@ void commands_handler::handle( arm::move_effector& e )
     inputs_.Input_3 = e.offset.z();
     std::cerr << "joint 2 is " << status_.joint_angles[2].value() << std::endl;
 
-    execute_waypoints( e );
+    if( execute_waypoints( e ) )
+    {
+        is_move_effector = true;
+        move_cam_height_.reset();
+    }
 }
 
 

@@ -100,6 +100,9 @@ public:
     
     /// To be called to signal that the movement has started - for commands like SCAN or AUTO_INIT
     typedef boost::function< void ( void ) > started_reply_t;
+
+    bool is_in_home_position() const;
+    bool remove_home_position() const;
     
     /// Performs auto initialisation but also listens for new commands.
     /// If a new command arrives or a signal is received run() returns immediately.

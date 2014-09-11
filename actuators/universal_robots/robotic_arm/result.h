@@ -66,7 +66,7 @@ struct result
         ss << code << ',' << '"' << message << '"';
         return ss.str();
     }
-    bool is_success() const { return code == error::success; }
+    bool is_success() const { return ( code == error::success || code == error::action_started ); }
 };
     
 } } } } //namespace snark { namespace ur { namespace robotic_arm { namespace handlers {

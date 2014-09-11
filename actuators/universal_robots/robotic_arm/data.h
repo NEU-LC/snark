@@ -3,6 +3,7 @@
 #include <comma/packed/packed.h>
 #include <comma/math/compare.h>
 #include "units.h"
+#include "config.h"
 #include <snark/math/applications/frame.h>
 
 namespace comma { namespace packed {
@@ -75,7 +76,6 @@ struct cartesian {
     comma::packed::big_endian_double z;
 };
 
-static const unsigned char joints_num = 6;
 typedef boost::array< comma::packed::big_endian_double, joints_num > joints_net_t;
 
 struct joint_modes_t 
@@ -138,7 +138,7 @@ struct status_t {
     /// Robotic arm must be in this state to power on.
     bool is_powered_off() const;
     
-    bool is_stationary( double epsilon=0.03 ) const;
+    bool is_stationary( double epsilon=0.05 ) const;
     
     status_t() : timestamp( boost::posix_time::microsec_clock::local_time() ), position(), 
             robot_mode( robotmode::not_connected ), length(812), time_since_boot(-1) 
@@ -152,16 +152,10 @@ struct status_t {
     }
 
     /// Check that the given pose ( 6 joint angles in radian ) match the current arm's physical pose
-    bool check_pose( const boost::array< double, joints_num >& pose ) const
-    {
-        static const double radian_epsilon = static_cast< plane_angle_t >( 1 * degree ).value();
-        for( int i=(joints_num-1); i>=0; --i ) 
-        {
-            if( !comma::math::equal( pose[i], joint_angles[i].value(), radian_epsilon ) ) { return false; }
-        }
-
-        return true;
-    }
+    /// Pre condition, the state must be 'running'
+    bool check_pose( const boost::array< double, joints_num >& pose ) const;
+    typedef boost::array< plane_angle_t, joints_num > arm_position_t;
+    bool check_pose( const arm_position_t& pose ) const;
 };
 
 
@@ -201,11 +195,18 @@ template < typename T > struct packed_buffer {
 
 inline bool status_t::is_stationary( double epsilon ) const
 {
-    for( std::size_t i=0; i<joints_num; ++i ) {
-        // std::cerr << "joint " << i << " mode " << joint_modes[i] << " expected: " << jointmode::running << std::endl;
-        if( std::fabs( this->velocities[i] ) >= epsilon ) { return false; }
-    }
-    return true;
+    return ( velocities[0] == 0
+             && velocities[1] == 0  
+             && velocities[2] == 0  
+             && velocities[3] == 0  
+             && std::fabs( velocities[4] ) <= 0  
+             && velocities[5] == 0  
+            );
+    // for( std::size_t i=0; i<joints_num; ++i ) {
+    //     // std::cerr << "joint " << i << " mode " << joint_modes[i] << " expected: " << jointmode::running << std::endl;
+    //     if( std::fabs( this->velocities[i] ) >= epsilon ) { return false; }
+    // }
+    // return true;
 }
 
 

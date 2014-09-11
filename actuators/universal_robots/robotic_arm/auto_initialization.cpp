@@ -45,6 +45,20 @@ void auto_initialization::read_status()
     update_status_( );
 }
 
+bool auto_initialization::is_in_home_position() const
+{
+    namespace fs = boost::filesystem;
+    fs::path file( home_filepath_ );
+
+    return fs::exists( file );
+}
+bool auto_initialization::remove_home_position() const
+{
+    namespace fs = boost::filesystem;
+    fs::path file( home_filepath_ );
+    fs::remove( file );
+}
+
 result auto_initialization::run( started_reply_t started_update, bool force )
 {
     std::cerr << name() << "command auto init" << std::endl;
