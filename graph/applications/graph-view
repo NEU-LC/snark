@@ -112,15 +112,18 @@ if [[ "$view_only" != "true" ]] ; then rm -rf "$tmp_dir"; mkdir "$tmp_dir"; fi
 declare -A nodes=$( options_to_array "file=${arg_nodes%%;*};${arg_nodes#*;}" )
 declare -A edges=$( options_to_array "file=${arg_edges%%;*};${arg_edges#*;}" )
 
+nodes[fields]="${nodes[fields]:-$default_nodes_fields}"
+edges[fields]="${edges[fields]:-$default_edges_fields}"
+
 if [[ "$view_only" != "true" ]] ; then
     echo "graph-view: processing nodes from ${nodes[file]}..." >&2
     if [[ -z "${nodes[binary]}" ]]; then cat "${nodes[file]}"; else csv-from-bin "${nodes[binary]}" < "${nodes[file]}"; fi > "$tmp_nodes"
     echo "graph-view: processed nodes" >&2
     if [[ -n "${edges[file]}" ]] ; then
         echo "graph-view: processing edges from ${edges[file]}..." >&2
-        nodes_fields=$( remove_all_except "id" "${nodes[fields]:-$default_nodes_fields}" )
+        nodes_fields=$( remove_all_except "id" "${nodes[fields]}" )
         if [[ "${nodes_fields//,/}" != "id" ]]; then echo "$name: node fields is given but it lacks id" >&2; exit 1; fi
-        edges_fields=$( remove_all_except "source,target" "${edges[fields]:-$default_edges_fields}" )
+        edges_fields=$( remove_all_except "source,target" "${edges[fields]}" )
         source=${edges_fields/target/}
         target=${edges_fields/source/}
         if [[ ${source//,/} != "source" ]]; then echo "$name: edge fields is given but it lacks source" >&2; exit 1; fi
@@ -135,7 +138,7 @@ if [[ "$view_only" != "true" ]] ; then
 fi
 
 unset nodes[file] nodes[binary]
-if [[ "$color_by_id" != "true" ]]; then nodes[fields]=$( replace id "" ${nodes[fields]} ); fi
+if [[ "$color_by_id" != "true" ]]; then nodes[fields]="$( replace id "" ${nodes[fields]} )"; fi
 nodes_options=$( for key in ${!nodes[@]}; do echo -n "$key=${nodes[$key]};"; done )
 view_points_options+=( "$tmp_nodes;$nodes_options" )
 if [[ -n "${edges[file]}" ]] ; then
