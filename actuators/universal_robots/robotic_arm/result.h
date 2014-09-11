@@ -47,7 +47,7 @@ struct input_primitive
         movej=4,
         scan=5,
         pan_tilt=6,
-        move_effector=8
+        move_effector=7
     };  
 };
     

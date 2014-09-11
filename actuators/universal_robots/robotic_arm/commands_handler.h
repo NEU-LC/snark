@@ -67,6 +67,7 @@ class commands_handler : public comma::dispatch::handler_of< power >,
                                   public comma::dispatch::handler_of< set_position >,
                                   public comma::dispatch::handler_of< auto_init_force >,
                                   public comma::dispatch::handler_of< sweep_cam >,
+                                  public comma::dispatch::handler_of< pan_tilt >,
                                   public comma::dispatch::handler_of< move_effector >
 {
 public:
@@ -81,6 +82,7 @@ public:
     void handle( auto_init_force& p );
     void handle( joint_move& j );
     void handle( sweep_cam& s );
+    void handle( pan_tilt& p );
     
     commands_handler( ExtU_Arm_controller_v2_T& simulink_inputs, const arm_output& output,
                       arm::status_t& status, std::ostream& robot, 
@@ -89,7 +91,7 @@ public:
         status_( status ), os( robot ), 
         init_(init), sweep_( sweep ), waypoints_follower_( follower ),
         ostream_( oss ),
-        home_filepath_( init_.home_filepath() ), verbose_(false) {}
+        home_filepath_( init_.home_filepath() ), verbose_(true) {}
         
     bool is_initialising() const; 
     
@@ -110,6 +112,10 @@ private:
     
     /// Run the command on the controller if possible
     bool execute();
+    template < typename C >
+    bool execute_waypoints( const C& c );
+    /// Sets the current position of the arm into Simulink input structure
+    void set_current_position();
 
     /// resets inputs to noaction
     void inputs_reset();

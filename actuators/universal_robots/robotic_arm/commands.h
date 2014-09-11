@@ -87,6 +87,12 @@ struct command_base : public serialiser< Derived >, public comma::dispatch::disp
     
 };
 
+struct pan_tilt : command_base< pan_tilt >
+{
+    plane_angle_degrees_t pan;
+    plane_angle_degrees_t tilt;
+};
+
 
 struct move_cam : command_base< move_cam >
 {

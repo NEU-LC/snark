@@ -75,19 +75,20 @@ result waypoints_follower::run( started_reply_t start_initiated, std::ostream& r
     for( std::size_t j=0; j< num_of_moves; ++j )
     {
         std::cerr << name() << "moving to waypoint " << (j+1) << std::endl;
-        std::cerr << name() << " " << serialiser_.serialise( j );
+        std::cerr << name() << serialiser_.serialise( j ) << std::endl;
 
-        rover << serialiser_.serialise( j );
+        rover << serialiser_.serialise( j ) << std::endl;
         rover.flush();
 
-        // const arm::move_config_t& config = serialiser_.get_move_config( j );
-        // while( !status_.check_pose( config ) )
-        // {
-        //     status_update_();
-        //     stop = interrupt_();
-        //     if( signaled_ || stop ) { stop_movement( rover ); return result( "action is cancelled", result::error::cancelled ); }
-        //     usleep( usec );
-        // }
+        const arm::move_config_t& config = serialiser_.get_move_config( j );
+        while( !status_.check_pose( config ) )
+        {
+            std::cerr << "not yet at pose" << std::endl;
+            status_update_();
+            stop = interrupt_();
+            if( signaled_ || stop ) { stop_movement( rover ); return result( "action is cancelled", result::error::cancelled ); }
+            usleep( usec );
+        }
     }
     return result();
 }

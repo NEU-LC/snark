@@ -152,10 +152,10 @@ struct status_t {
     }
 
     /// Check that the given pose ( 6 joint angles in radian ) match the current arm's physical pose
-    bool check_pose( const boost::array< double, joints_num >& pose )
+    bool check_pose( const boost::array< double, joints_num >& pose ) const
     {
-        static const double radian_epsilon = static_cast< plane_angle_t >( 0.5 * degree ).value();
-        for( std::size_t i=0; i<joints_num; ++i ) 
+        static const double radian_epsilon = static_cast< plane_angle_t >( 1 * degree ).value();
+        for( int i=(joints_num-1); i>=0; --i ) 
         {
             if( !comma::math::equal( pose[i], joint_angles[i].value(), radian_epsilon ) ) { return false; }
         }

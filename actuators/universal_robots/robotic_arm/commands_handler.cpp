@@ -91,13 +91,14 @@ void commands_handler::handle( arm::move_cam& cam )
     if( cam.height < min_height ) { ret = result( "height value is below minimum limit of 0.1m", result::error::invalid_input ); return; }
     if( cam.height > max_height ) { ret = result( "height value is above minimum limit of 1.0m", result::error::invalid_input ); return; }
     
+    set_current_position();
     inputs_.motion_primitive = real_T( input_primitive::move_cam );
     inputs_.Input_1 = cam.pan.value();
     // inputs_.Input_2 = cam.height.value() != 1.0 ? -cam.tilt.value() : zero_tilt - cam.tilt.value();
     inputs_.Input_2 = cam.tilt.value();
     inputs_.Input_3 = cam.height.value();
     
-    if( !execute() ) { return; }
+    if( !execute_waypoints( cam ) ) { return; }
     
     fs::remove( home_filepath_ );
     
@@ -122,6 +123,8 @@ void commands_handler::handle(sweep_cam& s)
     if( !status_.is_running() ) { ret = result( "cannot sweep (camera) as rover is not in running mode", result::error::invalid_robot_state ); return; }
     if( !move_cam_height_ ) { ret = result( "robotic_arm is not in move_cam position", result::error::invalid_robot_state ); return; }
     
+    inputs_reset();
+    set_current_position();
     ret = sweep_.run( *move_cam_height_, move_cam_pan_, 
                       boost::bind( movement_started< sweep_cam >, boost::cref( s ), boost::ref( this->ostream_ ) ),
                       this->os );
@@ -142,8 +145,6 @@ bool commands_handler::execute()
     ret = result();
     return true;
 }
-
-
 
 void commands_handler::handle( arm::move_joints& joints )
 {
@@ -203,8 +204,44 @@ void commands_handler::handle( arm::joint_move& joint )
     ret = result();
 }
 
+template < typename C >
+bool commands_handler::execute_waypoints( const C& command )
+{
+    Arm_controller_v2_step();
+    if( !output_.runnable() ) { ret = result( "cannot run command as it will cause a collision", result::error::collision ); inputs_reset(); return false; }
+    
+    if( verbose_ ) { 
+        std::cerr << name() << output_.debug_in_degrees() << std::endl; 
+        std::cerr << name() << output_.serialise() << std::endl; 
+    }
+    // Ok now follow the waypoints
+    ret = waypoints_follower_.run(
+                boost::bind( movement_started< C >, boost::cref( command ), boost::ref( this->ostream_ ) )
+                , this->os );    
+
+    inputs_reset();
+    return ret.is_success();
+}
+
+
+void commands_handler::handle( arm::pan_tilt& p )
+{
+    std::cerr << name() << " handling pan_tilt" << std::endl; 
+
+    if( !status_.is_running() ) { ret = result( "robotic arm is not in running mode", result::error::invalid_robot_state ); return; }
+    inputs_reset();
+    set_current_position();
+    inputs_.motion_primitive = input_primitive::pan_tilt;
+    inputs_.Input_1 = p.pan.value();
+    inputs_.Input_2 = p.tilt.value();
+
+    execute_waypoints( p );
+}
+
 void commands_handler::handle( arm::set_home& h )
 {
+    inputs_reset();
+    set_current_position();
     inputs_.motion_primitive = input_primitive::set_home;
     ret = result();
 }
@@ -218,6 +255,8 @@ void commands_handler::handle( arm::set_position& pos )
     
     move_cam_height_.reset(); // no longer in move_cam position
 
+    inputs_reset();
+    set_current_position();
     inputs_.motion_primitive = input_primitive::set_position;
 
     if( pos.position == "giraffe" ) { inputs_.Input_1 = set_position::giraffe; fs::remove( home_filepath_ ); }
@@ -238,25 +277,14 @@ void commands_handler::handle( arm::move_effector& e )
 
     // First run simulink to calculate the waypoints
     inputs_reset();
+    set_current_position();
     inputs_.motion_primitive = input_primitive::move_effector;
     inputs_.Input_1 = e.offset.x();
     inputs_.Input_2 = e.offset.y();
     inputs_.Input_3 = e.offset.z();
     std::cerr << "joint 2 is " << status_.joint_angles[2].value() << std::endl;
-    Arm_controller_v2_step();
-    if( output_.will_collide() ) 
-    { 
-        std::cerr << name() << "failed to find solution to move_effector, avoiding collision: " << output_.will_collide() << std::endl; 
-        std::ostringstream ss;
-        ss << "failed to find solution to move_effector, avoiding collision: " << output_.will_collide(); 
-        ret = result( ss.str(), result::error::failure );
-        return;
-    }
 
-    // Ok now follow the waypoints
-    ret = waypoints_follower_.run(
-                boost::bind( movement_started< arm::move_effector >, boost::cref( e ), boost::ref( this->ostream_ ) )
-                , this->os );    
+    execute_waypoints( e );
 }
 
 
@@ -308,6 +336,18 @@ void commands_handler::inputs_reset()
     inputs_.Input_4 = 0;
     inputs_.Input_5 = 0;
     inputs_.Input_6 = 0;
+}
+/// The Simulink code needs to know the current position of the arm
+/// Sets it after reading the position
+void commands_handler::set_current_position( )
+{
+    // std::cerr << name() << "setting joints, joint 2: " << status.joint_angles[2].value() << std::endl; 
+    inputs_.Joint1 = status_.joint_angles[0].value();
+    inputs_.Joint2 = status_.joint_angles[1].value();
+    inputs_.Joint3 = status_.joint_angles[2].value();
+    inputs_.Joint4 = status_.joint_angles[3].value();
+    inputs_.Joint5 = status_.joint_angles[4].value();
+    inputs_.Joint6 = status_.joint_angles[5].value();
 }
 
 } } } } // namespace snark { namespace ur { namespace robotic_arm { namespace handlers {

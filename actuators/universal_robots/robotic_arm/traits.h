@@ -67,7 +67,7 @@ template <> struct traits< arm::move_cam >
 {
     template< typename K, typename V > static void visit( const K& k, arm::move_cam& t, V& v )
     {
-    	traits< command_base < arm::move_cam > >::visit(k, t, v);
+        traits< command_base < arm::move_cam > >::visit(k, t, v);
         double p, l, h;
         v.apply( "pan", p );
         t.pan = p * arm::degree;
@@ -79,10 +79,31 @@ template <> struct traits< arm::move_cam >
 
     template< typename K, typename V > static void visit( const K& k, const arm::move_cam& t, V& v )
     {
-    	traits< command_base < arm::move_cam > >::visit(k, t, v);
+        traits< command_base < arm::move_cam > >::visit(k, t, v);
         v.apply( "pan", t.pan.value() );
         v.apply( "tilt", t.tilt.value() );
         v.apply( "height", t.height.value() );
+    }
+};
+
+template <> struct traits< arm::pan_tilt >
+{
+    template< typename K, typename V > static void visit( const K& k, arm::pan_tilt& t, V& v )
+    {
+    	traits< command_base < arm::pan_tilt > >::visit(k, t, v);
+        double p = t.pan.value();
+        double l = t.tilt.value();
+        v.apply( "pan", p );
+        t.pan = p * arm::degree;
+        v.apply( "tilt", l );
+        t.tilt = l * arm::degree;
+    }
+
+    template< typename K, typename V > static void visit( const K& k, const arm::pan_tilt& t, V& v )
+    {
+    	traits< command_base < arm::pan_tilt > >::visit(k, t, v);
+        v.apply( "pan", t.pan.value() );
+        v.apply( "tilt", t.tilt.value() );
     }
 };
 

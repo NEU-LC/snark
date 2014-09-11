@@ -165,6 +165,7 @@ void process_command( const std::vector< std::string >& v, std::ostream& os )
 {
     if( boost::iequals( v[2], "move_cam" ) )         { output( handle< arm::move_cam >( v, os ) ); }
     else if( boost::iequals( v[2], "move_effector" )){ output( handle< arm::move_effector >( v, os ) ); }
+    else if( boost::iequals( v[2], "pan_tilt" ) )    { output( handle< arm::pan_tilt >( v, os ) ); }
     else if( boost::iequals( v[2], "set_pos" ) )     { output( handle< arm::set_position >( v, os ) ); }
     else if( boost::iequals( v[2], "set_home" ) )    { output( handle< arm::set_home >( v, os ) ); }
     else if( boost::iequals( v[2], "power" ) )       { output( handle< arm::power >( v, os )); }  
@@ -203,19 +204,6 @@ void read_status( comma::csv::binary_input_stream< arm::status_t >& iss, comma::
         std::cerr << name() << "status data alignment check failed" << std::endl; 
         COMMA_THROW( comma::exception, "status data alignment check failed" ); 
     }
-}
-
-/// The Simulink code needs to know the current position of the arm
-/// Sets it after reading the position
-void set_current_position( const arm::status_t& status, ExtU_Arm_controller_v2_T& inputs )
-{
-    // std::cerr << name() << "setting joints, joint 2: " << status.joint_angles[2].value() << std::endl; 
-    inputs.Joint1 = status.joint_angles[0].value();
-    inputs.Joint2 = status.joint_angles[1].value();
-    inputs.Joint3 = status.joint_angles[2].value();
-    inputs.Joint4 = status.joint_angles[3].value();
-    inputs.Joint5 = status.joint_angles[4].value();
-    inputs.Joint6 = status.joint_angles[5].value();
 }
 
 static arm::config config;
@@ -424,6 +412,7 @@ int main( int ac, char** av )
                     arm_status,
                     boost::bind( should_stop, boost::ref( inputs ) ),
                     signaled );
+            waypoints_follower.name( name() );
             
             // if( options.exists( "--init-force-limit,-ifl" ) ){ auto_init.set_force_limit( options.value< double >( "--init-force-limit,-ifl" ) ); }
             commands_handler.reset( new commands_handler_t( Arm_controller_v2_U, output, arm_status, *robot_arm, 
@@ -440,7 +429,6 @@ int main( int ac, char** av )
     
                 read_status( istream, status_stream, select, status_stream.fd() ); 
                 home_position_check( arm_status, auto_init.home_filepath() );
-                set_current_position( arm_status, Arm_controller_v2_U );
                 
                 /// Also act as sleep
                 inputs.read( timeout );
