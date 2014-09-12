@@ -33,6 +33,7 @@
 #ifndef SNARK_SENSORS_HOKUYO_TRAITS_H 
 #define SNARK_SENSORS_HOKUYO_TRAITS_H 
 #include "message.h"
+#include "output.h"
 
 namespace hok = snark::hokuyo;
 
@@ -51,6 +52,34 @@ struct traits< boost::array< typename comma::packed::scip_3chars_t, 11 > >
         }
     }
 };
+
+template < > struct traits< hok::data_point >
+{
+    template< typename K, typename V > static void visit( const K& k, hok::data_point& t, V& v )
+    {
+        v.apply( "timestamp", t.timestamp );
+        v.apply( "x", t.x );
+        v.apply( "y", t.y );
+        v.apply( "z", t.z );
+        v.apply( "range", t.range );
+        v.apply( "bearing", t.bearing );
+        v.apply( "elevation", t.elevation );
+        v.apply( "intensity", t.intensity );
+    }
+    
+    template< typename K, typename V > static void visit( const K& k, const hok::data_point& t, V& v )
+    {
+        v.apply( "timestamp", t.timestamp );
+        v.apply( "x", t.x );
+        v.apply( "y", t.y );
+        v.apply( "z", t.z );
+        v.apply( "range", t.range );
+        v.apply( "bearing", t.bearing );
+        v.apply( "elevation", t.elevation );
+        v.apply( "intensity", t.intensity );
+    }
+};
+    
 
     
 } } // namespace comma { namespace visitting {
