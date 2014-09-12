@@ -42,6 +42,8 @@ static const char* name() {
     return "robot-arm-daemon: ";
 }
 
+const char* commands_handler::lidar_filename = "lidar-scan.bin";
+
 void commands_handler::handle( arm::power& p )
 {
     if( p.is_on && !status_.is_powered_off() ) {
@@ -125,13 +127,18 @@ void commands_handler::handle(sweep_cam& s)
     std::cerr << name() << " running sweep_cam" << std::endl; 
 
     if( !status_.is_running() ) { ret = result( "cannot sweep (camera) as rover is not in running mode", result::error::invalid_robot_state ); return; }
-    if( !move_cam_height_ ) { ret = result( "robotic_arm is not in move_cam position", result::error::invalid_robot_state ); return; }
+    // if( !move_cam_height_ ) { ret = result( "robotic_arm is not in move_cam position", result::error::invalid_robot_state ); return; }
     
     inputs_reset();
     set_current_position();
-    ret = sweep_.run( *move_cam_height_, move_cam_pan_, 
-                      boost::bind( movement_started< sweep_cam >, boost::cref( s ), boost::ref( this->ostream_ ) ),
-                      this->os );
+    // ret = sweep_.run( *move_cam_height_, move_cam_pan_, 
+    //                   boost::bind( movement_started< sweep_cam >, boost::cref( s ), boost::ref( this->ostream_ ) ),
+    //                   this->os );
+
+    inputs_.motion_primitive = input_primitive::scan;
+    inputs_.Input_1 = 45;
+
+    execute_waypoints( s );
 }
 
 bool commands_handler::execute()
@@ -165,11 +172,11 @@ void commands_handler::handle( arm::joint_move& joint )
     
     /// command can be use if in running or initialising mode
     int index = joint.joint_id;
-    if( status_.robot_mode != robotmode::initializing && 
-        status_.joint_modes[index] != jointmode::initializing )
+    if( !( ( status_.robot_mode == robotmode::initializing || status_.robot_mode == robotmode::running )  && 
+           ( status_.joint_modes[index] == jointmode::initializing || status_.robot_mode == robotmode::running ) ) ) 
     { 
         std::ostringstream ss;
-        ss << "robot and  joint (" << index << ") must be initializing state. However current robot mode is '" 
+        ss << "robot and  joint (" << index << ") must be initializing or running state. However current robot mode is '" 
            << status_.mode_str() << "' and joint mode is '" << status_.jmode_str(index)  << '\'' << std::endl;
         ret = result( ss.str(), result::error::invalid_robot_state );
         return; 
@@ -212,7 +219,16 @@ template < typename C >
 bool commands_handler::execute_waypoints( const C& command )
 {
     Arm_controller_v2_step();
-    if( !output_.runnable() ) { ret = result( "cannot run command as it will cause a collision", result::error::collision ); inputs_reset(); return false; }
+    if( !output_.runnable() ) { 
+
+        if( output_.will_collide() ) {
+            ret = result( "cannot run command as it will cause a collision", result::error::collision ); inputs_reset(); 
+        }
+        else {
+            ret = result( "proposed action is not possible", result::error::invalid_input );
+        }
+        return false; 
+    }
     
     if( verbose_ ) { 
         std::cerr << name() << output_.debug_in_degrees() << std::endl; 
@@ -231,7 +247,7 @@ bool commands_handler::execute_waypoints( const C& command )
 void commands_handler::handle( arm::pan_tilt& p )
 {
     std::cerr << name() << " handling pan_tilt" << std::endl; 
-    if( !is_move_effector ) { ret = result( "can not use use pan_tilt unless in move effector state", result::error::invalid_robot_state ); return; }
+    // if( !is_move_effector ) { ret = result( "can not use use pan_tilt unless in move effector state", result::error::invalid_robot_state ); return; }
 
     if( !status_.is_running() ) { ret = result( "robotic arm is not in running mode", result::error::invalid_robot_state ); return; }
     inputs_reset();
@@ -281,12 +297,11 @@ void commands_handler::handle( arm::move_effector& e )
 {    
     std::cerr << name() << "handling move_effector" << std::endl; 
 
-    if( status_.is_stationary() ) { ret = result( "robot arm is currently moving", result::error::invalid_robot_state ); return; }
-    if( move_cam_height_ ) { ret = result( "can not move effector in move_cam state", result::error::invalid_robot_state ); return; }
+    // if( move_cam_height_ ) { ret = result( "can not move effector in move_cam state", result::error::invalid_robot_state ); return; }
     if( !status_.is_running() ) { ret = result( "cannot move effector as rover is not in running mode", result::error::invalid_robot_state ); return; }
-    if( !is_move_effector && !is_home_position() ) { 
-        ret = result( "can not use move_effector unless starting in home position", result::error::invalid_robot_state ); return; 
-    }
+    // if( !is_move_effector && !is_home_position() ) { 
+    //     ret = result( "can not use move_effector unless starting in home position", result::error::invalid_robot_state ); return; 
+    // }
 
     // First run simulink to calculate the waypoints
     inputs_reset();

@@ -375,7 +375,7 @@ int main( int ac, char** av )
                     boost::bind( read_status, boost::ref(istream), boost::ref( status_stream ), select, status_stream.fd() ),
                     arm_status,
                     boost::bind( should_stop, boost::ref( inputs ) ),
-                    signaled );
+                    signaled, continuum );
             std::cerr << name() << "min is " << continuum.scan.min.value() << std::endl;
             tilt_sweep.set_min( continuum.scan.min );                                          
             tilt_sweep.set_max( continuum.scan.max );                                          

@@ -195,18 +195,11 @@ template < typename T > struct packed_buffer {
 
 inline bool status_t::is_stationary( double epsilon ) const
 {
-    return ( velocities[0] == 0
-             && velocities[1] == 0  
-             && velocities[2] == 0  
-             && velocities[3] == 0  
-             && std::fabs( velocities[4] ) <= 0  
-             && velocities[5] == 0  
-            );
-    // for( std::size_t i=0; i<joints_num; ++i ) {
-    //     // std::cerr << "joint " << i << " mode " << joint_modes[i] << " expected: " << jointmode::running << std::endl;
-    //     if( std::fabs( this->velocities[i] ) >= epsilon ) { return false; }
-    // }
-    // return true;
+    for( std::size_t i=0; i<joints_num; ++i ) {
+        // std::cerr << "joint " << i << " mode " << joint_modes[i] << " expected: " << jointmode::running << std::endl;
+        if( std::fabs( this->velocities[i] ) >= epsilon ) { return false; }
+    }
+    return true;
 }
 
 

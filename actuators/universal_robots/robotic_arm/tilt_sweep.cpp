@@ -34,8 +34,42 @@
 #include "output.h"
 #include "traits.h"
 #include <comma/math/compare.h>
+#include <comma/io/publisher.h>
+#include <comma/io/stream.h>
 
 namespace snark { namespace ur { namespace robotic_arm { namespace handlers {
+
+const char* tilt_sweep::lidar_filename = "lidar.bin";
+
+namespace impl_ {
+
+// void save_lidar( const std::string& conn_str, const boost::filesystem::path& savefile )
+// {
+//     boost::filesystem::remove( savefile );
+
+//     try
+//     {
+//         /// TODO use input stream
+//         comma::csv::
+//         comma::io::ostream ostream( conn_str, comma::io::mode::binary );
+
+//         status_t
+//         while( 1 )
+//         {
+
+//         }
+//     }
+//     catch( std::exception& e )
+//     {
+//         std::cerr << name_ << "save_lidar exception: " << e.what() << std::endl;
+//     }
+//     catch(...)
+//     {
+//         std::cerr << name_ << "save_lidar unknown exception."<< std::endl;
+//     }
+// }
+
+} // namespace impl_ {
     
 // TODO how do you cancel an actioned item, stopj and run mode? or set to current angles
 // Currently it sets to current joints angles, both work

@@ -91,7 +91,8 @@ public:
         update_status_(f),
         signaled_( signaled ),
         interrupt_( s ),
-        force_max_( 13.0 ), home_filepath_( work_dir + '/' + filename ) {}
+        force_max_( 13.0 ), 
+        home_filepath_( work_dir + '/' + filename ) {}
     
     void set_app_name( const char* name ) { name_ = name; }
     void set_force_limit( double newtons ){ force_max_ = newtons; }

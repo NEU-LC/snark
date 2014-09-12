@@ -45,7 +45,7 @@
 #include <comma/application/signal_flag.h>
 #include <boost/optional.hpp>
 #include <boost/function.hpp>
-#include <boost/graph/graph_concepts.hpp>
+#include <boost/filesystem.hpp>
 #include "data.h"
 #include "auto_initialization.h"
 extern "C" {
@@ -73,6 +73,7 @@ class tilt_sweep
     const status_t& status_;
     interrupt_t interrupt_;
     comma::signal_flag& signaled_;
+    continuum_t config_;
     std::string name_;
     /// The degrees to tilt to
     plane_angle_degrees_t min_; /// Should be negative - tilts down
@@ -109,12 +110,15 @@ public:
                   boost::function< void ( void ) > status_updater,
                   const status_t& status,
                   interrupt_t interrupt,
-                  comma::signal_flag& signaled
+                  comma::signal_flag& signaled,
+                  const continuum_t config
         ) : 
                     inputs_( inputs ), serialiser_( serialiser ), 
                     status_update_( status_updater ), status_( status ), 
                     interrupt_( interrupt ), signaled_( signaled ),
-                    min_(-45.0*degree), max_(15.0*degree) {}
+                    config_( config ),
+                    min_(-45.0*degree), max_(15.0*degree),
+                    lidar_filepath_( config.work_directory + '/' + lidar_filename )  {}
   
     void set_min( const plane_angle_degrees_t& min ) { min_ = min; }                  
     void set_max( const plane_angle_degrees_t& max ) { max_ = max; }                  
@@ -131,6 +135,9 @@ public:
     
     const std::string& name() const { return name_; }
     void name( const std::string& name )  { name_ = name ; }
+
+    static const char* lidar_filename;
+    const boost::filesystem::path lidar_filepath_;
 };
     
 } } } } // namespace snark { namespace ur { namespace robotic_arm { namespace handlers {

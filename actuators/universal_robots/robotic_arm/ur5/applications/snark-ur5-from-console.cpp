@@ -85,6 +85,7 @@ void usage(int code=1)
     std::cerr << "    --velocity,-v:        Radian per second velocity for movement." << std::endl;
     std::cerr << "    --acceleration,-a:    Radian per second squared acceleration for movement." << std::endl;
     std::cerr << "    --time-step,-s:       Seconds e.g. 0.1 for 100ms, how long to move arm per key press." << std::endl;
+    std::cerr << "    --no-exit:            Allows moving each joint when the arm is already initialised." << std::endl;
     exit ( code );
 }
 
@@ -237,7 +238,8 @@ int main( int ac, char** av )
     double sleep = 0.01;
     if( options.exists("--sleep") ) { sleep = options.value< double >("--sleep");  }
     const comma::int64 usec = 1000000u * sleep;
-    
+
+    bool allow_in_run_mode = options.exists( "--no-exit" );
     
     if( options.exists("-v,--velocity") ) { velocity = options.value< double >("-v,--velocity") * arm::rad_per_sec;  }
     if( options.exists("-a,--acceleration") ) { acceleration = options.value< double >("-a,--acceleration") * arm::rad_per_s2;  }
@@ -295,7 +297,8 @@ int main( int ac, char** av )
 
             int joint_inited = -1;
             // find first joint in initialization state, descending order joint 5-0
-            if( state.joint_modes[ joint.index() ] != arm::jointmode::initializing ) 
+            if( allow_in_run_mode && state.joint_modes[ joint.index() ] != arm::jointmode::running ) {}
+            else if( state.joint_modes[ joint.index() ] != arm::jointmode::initializing ) 
             {
                 typedef arm::status_t::array_jointmodes_t::const_reverse_iterator reverse_iter;
                 typedef arm::status_t::array_jointmodes_t::const_iterator const_iter;
@@ -306,8 +309,9 @@ int main( int ac, char** av )
                     const_iter irun = std::find_if( state.joint_modes.cbegin(), 
                                                     state.joint_modes.cend(), is_not_in_running() );
                     
-                    if( irun == state.joint_modes.cend() ) { 
-                        std::cerr << name() << "finished - initialisation completed for all joints." << std::endl; 
+                    if( irun == state.joint_modes.cend() ) 
+                    { 
+                        std::cerr << name() << "finished - initialisation completed for all joints." << std::endl;  
                         return 0; 
                     } // all initialised 
                     else 

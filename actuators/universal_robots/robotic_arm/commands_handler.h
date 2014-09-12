@@ -92,12 +92,13 @@ public:
         status_( status ), os( robot ), 
         init_(init), sweep_( sweep ), waypoints_follower_( follower ),
         ostream_( oss ), config_( config ),
-        home_filepath_( init_.home_filepath() ), verbose_(true), is_move_effector( false ) {}
+        verbose_(true), is_move_effector( false ),
+        home_filepath_( init_.home_filepath() ), lidar_filepath_( config_.work_directory + '/' + lidar_filename )
+        {}
         
     bool is_initialising() const; 
     
     result ret;  /// Indicate if command succeed
-
 private:
     ExtU_Arm_controller_v2_T& inputs_; /// inputs into simulink engine 
     const arm_output& output_;
@@ -108,7 +109,6 @@ private:
     waypoints_follower& waypoints_follower_;
     std::ostream& ostream_;
     arm::continuum_t config_;
-    fs::path home_filepath_;
     bool verbose_;
     boost::optional< length_t > move_cam_height_;
     plane_angle_degrees_t move_cam_pan_;
@@ -125,7 +125,10 @@ private:
 
     /// resets inputs to noaction
     void inputs_reset();
-    
+public:
+    static const char* lidar_filename;
+    const fs::path home_filepath_;
+    const fs::path lidar_filepath_;
 };
 
 } } } } // namespace snark { namespace ur { namespace robotic_arm { namespace handlers {
