@@ -6,8 +6,18 @@ function usage()
 {
     cat >&2 <<EOF
     
-visualise a graph
-    
+visualise a graph defined by nodes and edges read from files 
+
+description:
+    $name prepares graph data and invokes view-points for visualisation; it can read additional points from stdin and passes optional arguments to view-points
+
+options:
+    --nodes="<nodes_file>;<option=value>;..." : file with nodes data (x,y,z,id by default) followed by option and value pairs accepted by view-points
+    --edges="<edges_file>;<option=value>;..." : the same for edges data (source,target by default)
+    --view-only : do not process the graph, just visualise using previously created temporary files
+    --no-clean : do not remove temporary files used for visualisation
+    --colour-by-id : colour nodes by their id values (by default id of nodes is only used to identify them in processing)
+
 examples:
     view graph with default fields (nodes: x,y,z,id; edges: source,target):
         $name --nodes="nodes.csv" --edges="edges.csv"
@@ -65,15 +75,16 @@ function decorate_with
     echo "${fields[*]}"    
 }
 
-function options_to_array
+function name_value_pairs_to_array_template
 {
-    IFS=";"
-    local elements=( $@ )
+    separator="$1"
+    IFS="$separator"
+    local elements=( $2 )
     local output=""
     for e in "${elements[@]}"; do 
         local name value
         IFS='=' read name value <<< "$e"
-        output="$output [$name]=\"$value\""
+        if [[ -n "$name" ]]; then output="$output [$name]=\"$value\""; fi
     done
     echo "( $output )"
 }
@@ -82,11 +93,11 @@ if [[ "$1" == "" ]] ; then usage ; fi
 
 for arg in "$@" ; do
     if [[ "$arg" == "--help" || "$arg" == "-h" ]] ; then usage ; fi
-    if [[ "${arg#--nodes=}" != "$arg" ]] ; then arg_nodes="${arg#--nodes=}"
-    else if [[ "${arg#--edges=}" != "$arg" ]] ; then arg_edges="${arg#--edges=}"
+    if [[ "${arg#--nodes=}" != "$arg" ]] ; then arg_nodes="${arg#--nodes=};"
+    else if [[ "${arg#--edges=}" != "$arg" ]] ; then arg_edges="${arg#--edges=};"
     else if [[ "$arg" == "--no-clean" ]] ; then no_clean=true
     else if [[ "$arg" == "--view-only" ]] ; then view_only=true
-    else if [[ "$arg" == "--color-by-id" ]] ; then color_by_id=true
+    else if [[ "$arg" == "--color-by-id" ||"$arg" == "--colour-by-id" ]] ; then colour_by_id=true
     else user_view_points_options+=("$arg") ; fi ; fi ; fi ; fi ; fi
 done
 
@@ -109,8 +120,8 @@ trap clean_ INT TERM HUP
 if [[ "$view_only" != "true" && "$arg_nodes" == "" ]] ; then echo "$name: please specify the file with nodes, e.g. --nodes=nodes.csv" >&2 ; exit 1 ; fi
 if [[ "$view_only" != "true" ]] ; then rm -rf "$tmp_dir"; mkdir "$tmp_dir"; fi
 
-declare -A nodes=$( options_to_array "file=${arg_nodes%%;*};${arg_nodes#*;}" )
-declare -A edges=$( options_to_array "file=${arg_edges%%;*};${arg_edges#*;}" )
+declare -A nodes=$( name_value_pairs_to_array_template ";" "file=${arg_nodes%%;*};${arg_nodes#*;}" )
+declare -A edges=$( name_value_pairs_to_array_template ";" "file=${arg_edges%%;*};${arg_edges#*;}" )
 
 nodes[fields]="${nodes[fields]:-$default_nodes_fields}"
 edges[fields]="${edges[fields]:-$default_edges_fields}"
@@ -138,15 +149,16 @@ if [[ "$view_only" != "true" ]] ; then
 fi
 
 unset nodes[file] nodes[binary]
-if [[ "$color_by_id" != "true" ]]; then nodes[fields]="$( replace id "" ${nodes[fields]} )"; fi
+if [[ "$colour_by_id" != "true" ]]; then nodes[fields]="$( replace id "" ${nodes[fields]} )"; fi
 nodes_options=$( for key in ${!nodes[@]}; do echo -n "$key=${nodes[$key]};"; done )
 view_points_options+=( "$tmp_nodes;$nodes_options" )
 if [[ -n "${edges[file]}" ]] ; then
-    xyz=$( remove_all_except "x,y,z" "${nodes[fields]}" )
-    edges_fields="$( decorate_with first $xyz ),$( decorate_with second $xyz )"
-    unset edges[file] edges[shape] edges[fields] edges[binary]
-    edges_options=$( for key in ${!edges[@]}; do echo -n "$key=${edges[@]};"; done )
-    view_points_options+=( "$tmp_joined_edges;shape=line;fields=$edges_fields;$edges_options" )
+    unset edges[file] edges[binary]
+    xyz="$( remove_all_except "x,y,z" "${nodes[fields]}" )"
+    edges[fields]="$( decorate_with first $xyz ),$( decorate_with second $xyz )"
+    edges[shape]="${edges[shape]:-line}"
+    joined_edges_options=$( for key in ${!edges[@]}; do echo -n "$key=${edges[$key]};"; done )
+    view_points_options+=( "$tmp_joined_edges;$joined_edges_options" )
 fi
 
 view-points --orthographic --z-is-up "${view_points_options[@]}" "${user_view_points_options[@]}"
