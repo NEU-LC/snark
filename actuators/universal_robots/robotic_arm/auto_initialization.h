@@ -91,7 +91,8 @@ public:
         update_status_(f),
         signaled_( signaled ),
         interrupt_( s ),
-        force_max_( 13.0 ), home_filepath_( work_dir + '/' + filename ) {}
+        force_max_( 13.0 ), 
+        home_filepath_( work_dir + '/' + filename ) {}
     
     void set_app_name( const char* name ) { name_ = name; }
     void set_force_limit( double newtons ){ force_max_ = newtons; }
@@ -100,6 +101,9 @@ public:
     
     /// To be called to signal that the movement has started - for commands like SCAN or AUTO_INIT
     typedef boost::function< void ( void ) > started_reply_t;
+
+    bool is_in_home_position() const;
+    bool remove_home_position() const;
     
     /// Performs auto initialisation but also listens for new commands.
     /// If a new command arrives or a signal is received run() returns immediately.

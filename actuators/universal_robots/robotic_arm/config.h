@@ -6,6 +6,8 @@
 #include "units.h"
 
 namespace snark { namespace ur { namespace robotic_arm { 
+    
+static const unsigned char joints_num = 6;
 
 struct continuum_t 
 {
@@ -15,9 +17,10 @@ struct continuum_t
     	plane_angle_degrees_t max;
     };
 
-    continuum_t() : home_position( 6 ) {} // position of six joints
+    typedef boost::array< plane_angle_t, joints_num > arm_position_t;
     // vector of plane_angle_degrees_t does not work with boost::ptree
-    std::vector< double > home_position;	
+    arm_position_t home_position; // position of six joints
+    arm_position_t giraffe_position; // position of six joints
     std::string work_directory;
     scan_type scan;
 

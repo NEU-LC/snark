@@ -58,6 +58,7 @@
 #include "../../inputs.h"
 #include "../../units.h"
 #include "../../tilt_sweep.h"
+#include "../../waypoints_follower.h"
 extern "C" {
     #include "../../simulink/Arm_controller_v2.h"
 }
@@ -163,6 +164,8 @@ std::string handle( const std::vector< std::string >& line, std::ostream& os )
 void process_command( const std::vector< std::string >& v, std::ostream& os )
 {
     if( boost::iequals( v[2], "move_cam" ) )         { output( handle< arm::move_cam >( v, os ) ); }
+    else if( boost::iequals( v[2], "move_effector" )){ output( handle< arm::move_effector >( v, os ) ); }
+    else if( boost::iequals( v[2], "pan_tilt" ) )    { output( handle< arm::pan_tilt >( v, os ) ); }
     else if( boost::iequals( v[2], "set_pos" ) )     { output( handle< arm::set_position >( v, os ) ); }
     else if( boost::iequals( v[2], "set_home" ) )    { output( handle< arm::set_home >( v, os ) ); }
     else if( boost::iequals( v[2], "power" ) )       { output( handle< arm::power >( v, os )); }  
@@ -203,18 +206,6 @@ void read_status( comma::csv::binary_input_stream< arm::status_t >& iss, comma::
     }
 }
 
-/// The Simulink code needs to know the current position of the arm
-/// Sets it after reading the position
-void set_current_position( const arm::status_t& status, ExtU_Arm_controller_v2_T& inputs )
-{
-    inputs.Joint1 = status.joint_angles[0].value();
-    inputs.Joint2 = status.joint_angles[1].value();
-    inputs.Joint3 = status.joint_angles[2].value();
-    inputs.Joint4 = status.joint_angles[3].value();
-    inputs.Joint5 = status.joint_angles[4].value();
-    inputs.Joint6 = status.joint_angles[5].value();
-}
-
 static arm::config config;
 
 class stop_on_exit
@@ -251,37 +242,9 @@ void home_position_check( const arm::status_t& status, const std::string& homefi
 {
     // static std::vector< arm::plane_angle_t > home_position; /// store home joint positions in radian
     static const fs::path path( homefile );
-    static const arm::plane_angle_t epsilon = static_cast< arm::plane_angle_t >( 1.5 * arm::degree );
-    
-    static std::vector< arm::plane_angle_t > home_position; /// store home joint positions in radian
-    if( home_position.empty() )
-    {
-        home_position.push_back( static_cast< arm::plane_angle_t >( config.continuum.home_position[0] * arm::degree ) );
-        home_position.push_back( static_cast< arm::plane_angle_t >( config.continuum.home_position[1] * arm::degree ) );
-        home_position.push_back( static_cast< arm::plane_angle_t >( config.continuum.home_position[2] * arm::degree ) );
-        home_position.push_back( static_cast< arm::plane_angle_t >( config.continuum.home_position[3] * arm::degree ) );
-        home_position.push_back( static_cast< arm::plane_angle_t >( config.continuum.home_position[4] * arm::degree ) );
-        home_position.push_back( static_cast< arm::plane_angle_t >( config.continuum.home_position[5] * arm::degree ) );
-        // for( std::size_t i=0; i<home_position.size(); ++i ) {
-        //     std::cerr << "home joint " << i << ':' << home_position[i].value() << std::endl; 
-        // }
-        // std::cerr << "joint epsilon " << epsilon.value() << std::endl; 
-    }
-
-
     if( status.is_running() )
     {
-        bool is_home = true;
-        for( std::size_t i=0; i<arm::joints_num; ++i ) 
-        {
-            if( !comma::math::equal( status.joint_angles[i], home_position[i], epsilon ) )
-            { 
-                is_home=false; 
-                break; 
-            }
-        }
-
-        if( is_home ){ std::ofstream( homefile.c_str(), std::ios::out | std::ios::trunc ); } // create
+        if( status.check_pose( config.continuum.home_position ) ){ std::ofstream( homefile.c_str(), std::ios::out | std::ios::trunc ); } // create
         else { fs::remove( path ); } // remove
     }
 }
@@ -357,7 +320,7 @@ int main( int ac, char** av )
 
         for( std::size_t j=0; j<arm::joints_num; ++j )
         {
-            std::cerr << name() << "home joint " << j << " - " << continuum.home_position[j] << '"' << std::endl;
+            std::cerr << name() << "home joint " << j << " - " << continuum.home_position[j].value() << '"' << std::endl;
         }
 
         std::string arm_conn_host = options.value< std::string >( "--robot-arm-host" );
@@ -412,14 +375,21 @@ int main( int ac, char** av )
                     boost::bind( read_status, boost::ref(istream), boost::ref( status_stream ), select, status_stream.fd() ),
                     arm_status,
                     boost::bind( should_stop, boost::ref( inputs ) ),
-                    signaled );
+                    signaled, continuum );
             std::cerr << name() << "min is " << continuum.scan.min.value() << std::endl;
             tilt_sweep.set_min( continuum.scan.min );                                          
             tilt_sweep.set_max( continuum.scan.max );                                          
+            arm::handlers::waypoints_follower waypoints_follower( output, 
+                    boost::bind( read_status, boost::ref(istream), boost::ref( status_stream ), select, status_stream.fd() ),
+                    arm_status,
+                    boost::bind( should_stop, boost::ref( inputs ) ),
+                    signaled );
+            waypoints_follower.name( name() );
             
             // if( options.exists( "--init-force-limit,-ifl" ) ){ auto_init.set_force_limit( options.value< double >( "--init-force-limit,-ifl" ) ); }
             commands_handler.reset( new commands_handler_t( Arm_controller_v2_U, output, arm_status, *robot_arm, 
-                                                        auto_init, tilt_sweep, std::cout ) );
+                                                            auto_init, tilt_sweep, waypoints_follower, 
+                                                            std::cout, continuum ) );
         
 
             boost::posix_time::microseconds timeout( usec );
