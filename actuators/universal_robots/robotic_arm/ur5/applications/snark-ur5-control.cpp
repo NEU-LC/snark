@@ -41,6 +41,7 @@
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/convenience.hpp>
+#include <boost/thread.hpp>
 #include <comma/application/command_line_options.h>
 #include <comma/csv/stream.h>
 #include <comma/base/types.h>
@@ -59,6 +60,7 @@
 #include "../../units.h"
 #include "../../tilt_sweep.h"
 #include "../../waypoints_follower.h"
+#include "../../../../../sensors/hokuyo/traits.h"
 extern "C" {
     #include "../../simulink/Arm_controller_v2.h"
 }
@@ -79,6 +81,60 @@ namespace impl_ {
 template < typename T >
 std::string str(T t) { return boost::lexical_cast< std::string > ( t ); }
     
+const char* lidar_filename = "lidar.bin";
+
+namespace fs = boost::filesystem;
+
+void do_nothting() {}
+
+/// This function must be easily interruptible
+void save_lidar( const std::string& conn_str, const std::string& savefile,
+                 const std::string& fields, 
+                 double range_limit )
+{
+    // boost::filesystem::remove( savefile );
+
+    namespace hok = snark::hokuyo;
+
+    comma::csv::options csv;
+    csv.fields = fields;
+    csv.full_xpath = true;
+
+    try
+    {
+        /// TODO use input stream
+        comma::io::istream iss( conn_str, comma::io::mode::binary );
+        comma::csv::binary_input_stream< hok::data_point > istream( *iss ); 
+        //comma::io::ostream oss( savefile.string(), comma::io::mode::binary );
+        std::ofstream oss( savefile.c_str(), std::ios::trunc | std::ios::binary | std::ios::out );
+        if( !oss.is_open() ) { COMMA_THROW( comma::exception, "failed to open output file: " << savefile );  }
+        comma::csv::output_stream< hok::data_point > ostream( oss, csv ); 
+
+        comma::uint32 count = 0;
+        while( 1 )
+        {
+            ++count;
+            if( count % 10 == 0 ) { boost::this_thread::interruption_point(); }
+
+            const hok::data_point* point = istream.read();
+            if( point == NULL ) { return; }
+
+            if( point->range <= range_limit ) { ostream.write( *point ); }
+        }
+    }
+    catch( boost::thread_interrupted& ti )
+    {
+        std::cerr << "save lidar interrupted." << std::endl;
+    }
+    catch( std::exception& e )
+    {
+        std::cerr  << "save_lidar exception: " << e.what() << std::endl;
+    }
+    catch(...)
+    {
+        std::cerr << "save_lidar unknown exception."<< std::endl;
+    }
+}
 } // namespace impl_ {
 
 
@@ -386,9 +442,23 @@ int main( int ac, char** av )
                     signaled );
             waypoints_follower.name( name() );
             
-            // if( options.exists( "--init-force-limit,-ifl" ) ){ auto_init.set_force_limit( options.value< double >( "--init-force-limit,-ifl" ) ); }
+
+            arm::handlers::commands_handler::optional_recording_t record_info;
+            if( !continuum.lidar.service_host.empty() )
+            {
+                std::ostringstream ss;
+                ss << "tcp:" << continuum.lidar.service_host << ':' << continuum.lidar.service_port;
+                std::string lidar_filepath = continuum.work_directory + '/' + impl_::lidar_filename;
+                std::cerr << "connection to lidar: " << ss.str() << std::endl;
+                std::string lidar_conn; 
+                lidar_conn = ss.str();
+                record_info.reset( arm::handlers::waypoints_follower::recorder_setup_t( 2, 3, 
+                                                                         boost::bind( &impl_::save_lidar, lidar_conn, lidar_filepath, 
+                                                                                      continuum.lidar.fields, continuum.lidar.range_limit ) )
+                );
+            }
             commands_handler.reset( new commands_handler_t( Arm_controller_v2_U, output, arm_status, *robot_arm, 
-                                                            auto_init, tilt_sweep, waypoints_follower, 
+                                                            auto_init, tilt_sweep, waypoints_follower, record_info, 
                                                             std::cout, continuum ) );
         
 

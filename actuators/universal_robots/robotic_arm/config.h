@@ -6,7 +6,7 @@
 #include "units.h"
 
 namespace snark { namespace ur { namespace robotic_arm { 
-    
+
 static const unsigned char joints_num = 6;
 
 struct continuum_t 
@@ -17,12 +17,21 @@ struct continuum_t
     	plane_angle_degrees_t max;
     };
 
+    struct lidar_config
+    {
+        std::string service_host;
+        comma::uint32 service_port;
+        std::string fields;     /// fields to retain
+        double range_limit;     /// Any points further than the limit are discarded
+    };
+
     typedef boost::array< plane_angle_t, joints_num > arm_position_t;
     // vector of plane_angle_degrees_t does not work with boost::ptree
     arm_position_t home_position; // position of six joints
     arm_position_t giraffe_position; // position of six joints
     std::string work_directory;
     scan_type scan;
+    lidar_config lidar;
 
     bool operator==( const continuum_t& rhs ) const {
     	return ( home_position == rhs.home_position && work_directory == rhs.work_directory );

@@ -34,6 +34,8 @@
 #define SNARK_SENSORS_HOKUYO_OUTPUT_H
 
 #include <boost/static_assert.hpp>
+#include <boost/date_time/posix_time/ptime.hpp>
+#include <boost/date_time/posix_time/posix_time_types.hpp>
 #include <comma/base/types.h>
 #include "sensors.h"
 
@@ -65,30 +67,6 @@ struct data_point
 /// should check the detection capability verification test.
     comma::uint32 intensity;   /// This is a relative, unit less number that is 18-bit
 };
-
-/// This is for setting acquired data for the point while keeping timestamp the same.
-/// 'distance' is in mm
-void data_point::set(double distance, comma::uint32 intensity, double bearing)
-{
-    this->range = distance / 1000.0;
-    if( distance == ust_10lx::distance_nan || distance <= ust_10lx::distance_min )
-    {
-        // timestamp stays the same
-        x = 0;
-        y = 0;
-        z = 0; 
-        intensity = 0;
-        bearing = 0;
-        range = 0;
-        return;
-    }
-    
-    this->intensity = intensity;    
-    this->bearing = bearing;
-    // timestamp stays the same
-    x = range * std::cos( bearing );
-    y = range * std::sin( bearing );
-}
     
 } } // namespace snark { namespace hokuyo {
     

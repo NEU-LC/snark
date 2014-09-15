@@ -33,9 +33,12 @@
 #include "tilt_sweep.h"
 #include "output.h"
 #include "traits.h"
+#include <fstream>
+#include <boost/thread.hpp>
 #include <comma/math/compare.h>
 #include <comma/io/publisher.h>
 #include <comma/io/stream.h>
+#include "../../../sensors/hokuyo/traits.h"
 
 namespace snark { namespace ur { namespace robotic_arm { namespace handlers {
 
@@ -43,31 +46,76 @@ const char* tilt_sweep::lidar_filename = "lidar.bin";
 
 namespace impl_ {
 
-// void save_lidar( const std::string& conn_str, const boost::filesystem::path& savefile )
-// {
-//     boost::filesystem::remove( savefile );
+void save_lidar( const std::string& conn_str, const boost::filesystem::path& savefile,
+                 const std::string& fields, 
+                 double range_limit )
+{
+    boost::filesystem::remove( savefile );
 
-//     try
-//     {
-//         /// TODO use input stream
-//         comma::csv::
-//         comma::io::ostream ostream( conn_str, comma::io::mode::binary );
+    namespace hok = snark::hokuyo;
 
-//         status_t
-//         while( 1 )
-//         {
+    comma::csv::options csv;
+    csv.fields = fields;
+    csv.full_xpath = true;
 
-//         }
-//     }
-//     catch( std::exception& e )
-//     {
-//         std::cerr << name_ << "save_lidar exception: " << e.what() << std::endl;
-//     }
-//     catch(...)
-//     {
-//         std::cerr << name_ << "save_lidar unknown exception."<< std::endl;
-//     }
-// }
+    try
+    {
+        /// TODO use input stream
+        comma::io::istream iss( conn_str, comma::io::mode::binary );
+        comma::csv::binary_input_stream< hok::data_point > istream( *iss ); 
+        //comma::io::ostream oss( savefile.string(), comma::io::mode::binary );
+        std::ofstream oss( savefile.string().c_str(), std::ios::trunc | std::ios::binary | std::ios::out );
+        if( !oss.is_open() ) { COMMA_THROW( comma::exception, "failed to open output file: " << savefile.string() );  }
+        comma::csv::output_stream< hok::data_point > ostream( oss, csv ); 
+
+        comma::uint32 count = 0;
+        while( 1 )
+        {
+            ++count;
+            if( count % 10 == 0 ) { boost::this_thread::interruption_point(); }
+
+            const hok::data_point* point = istream.read();
+            if( point == NULL ) { return; }
+
+            if( point->range <= range_limit ) { ostream.write( *point ); }
+        }
+    }
+    catch( boost::thread_interrupted& ti )
+    {
+        std::cerr << "save lidar interrupted." << std::endl;
+    }
+    catch( std::exception& e )
+    {
+        std::cerr  << "save_lidar exception: " << e.what() << std::endl;
+    }
+    catch(...)
+    {
+        std::cerr << "save_lidar unknown exception."<< std::endl;
+    }
+}
+class holder
+{
+public:
+    holder( boost::thread& thread ) : thread_( thread ), stopped_( false ) {}
+    ~holder();
+    /// Interrupt and wait for running thread to stop
+    void stop();
+
+private:
+    boost::thread& thread_;
+    bool stopped_;
+};
+void holder::stop()
+{
+    std::cerr << "interrupting save_lidar." << std::endl;
+    thread_.interrupt();
+    stopped_ = true;
+    thread_.join();
+    std::cerr << "save_lidar ended." << std::endl;
+}
+holder::~holder (){ 
+    if( !stopped_ ) { stop(); } 
+}
 
 } // namespace impl_ {
     
@@ -76,7 +124,6 @@ namespace impl_ {
 // The other method requires to be a bit of a wait for mode change
 void tilt_sweep::stop_movement(std::ostream& rover)
 {
-//     static const std::string stop_str = "stopj([0.05,0.05,0.05,0.05,0.05,0.05])";
     static comma::csv::ascii< status_t::array_joint_angles_t > ascii;
     static std::string tmp;
     
@@ -88,9 +135,6 @@ void tilt_sweep::stop_movement(std::ostream& rover)
     const std::string stop_str = ss.str();
     rover << stop_str << std::endl;
     rover.flush();
-//     usleep( 0.1 * 1000000u );
-//     rover << "set robotmode run" << std::endl;
-//     rover.flush();
 }
 
 result tilt_sweep::run( const length_t& height, const plane_angle_degrees_t& pan, 
@@ -119,6 +163,12 @@ result tilt_sweep::run( const length_t& height, const plane_angle_degrees_t& pan
     
     /// signal start of command
     start_initiated();
+
+    /// Starting recording thread.
+    std::cerr << "starting to save lidar data into " << lidar_filepath_.string() << std::endl;
+    boost::thread recorder( boost::bind( &impl_::save_lidar, "tcp:localhost:9003", lidar_filepath_, "x,y,z,intensity", 3.0 ) );
+
+    impl_::holder thread_started( recorder );
     
     std::cerr << name() << "running action 1: " << move1.action << " target angle: " << move1.tilt.value() << std::endl;
     rover << move1.action << std::endl;
@@ -146,6 +196,8 @@ result tilt_sweep::run( const length_t& height, const plane_angle_degrees_t& pan
         if( signaled_ || stop ) { stop_movement( rover ); return result( "camera sweep action is cancelled", result::error::cancelled ); }
         usleep( usec );
     }
+    // stop recording lidar data now
+    thread_started.stop();
     
     std::cerr << name() << "returning to position: " << ret.action << " target angle:" << ret.tilt.value() << std::endl;
     rover << ret.action << std::endl;

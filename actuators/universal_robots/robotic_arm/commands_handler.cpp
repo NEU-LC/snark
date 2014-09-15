@@ -136,7 +136,7 @@ void commands_handler::handle(sweep_cam& s)
     //                   this->os );
 
     inputs_.motion_primitive = input_primitive::scan;
-    inputs_.Input_1 = 45;
+    inputs_.Input_1 = 60;
 
     execute_waypoints( s );
 }
@@ -173,7 +173,7 @@ void commands_handler::handle( arm::joint_move& joint )
     /// command can be use if in running or initialising mode
     int index = joint.joint_id;
     if( !( ( status_.robot_mode == robotmode::initializing || status_.robot_mode == robotmode::running )  && 
-           ( status_.joint_modes[index] == jointmode::initializing || status_.robot_mode == robotmode::running ) ) ) 
+           ( status_.joint_modes[index] == jointmode::initializing || status_.joint_modes[index] == jointmode::running ) ) ) 
     { 
         std::ostringstream ss;
         ss << "robot and  joint (" << index << ") must be initializing or running state. However current robot mode is '" 
@@ -237,7 +237,7 @@ bool commands_handler::execute_waypoints( const C& command )
     // Ok now follow the waypoints
     ret = waypoints_follower_.run(
                 boost::bind( movement_started< C >, boost::cref( command ), boost::ref( this->ostream_ ) )
-                , this->os );    
+                , this->os, recorder_setup_ );    
 
     inputs_reset();
     return ret.is_success();

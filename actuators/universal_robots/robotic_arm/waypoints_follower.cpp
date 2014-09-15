@@ -36,6 +36,25 @@
 #include <comma/math/compare.h>
 
 namespace snark { namespace ur { namespace robotic_arm { namespace handlers {
+
+namespace impl_ { 
+
+class thread_release
+{
+public:
+    void operator()( boost::thread* thread )
+    {
+        std::cerr << "interrupting save_lidar." << std::endl;
+        thread->interrupt();
+        thread->join();
+        std::cerr << "save_lidar ended." << std::endl;
+        delete thread;
+    }
+
+private:
+};
+
+} // namespace impl_ { 
     
 // Currently it sets to current joints angles, both work
 // The other method requires to be a bit of a wait for mode change
@@ -54,7 +73,7 @@ void waypoints_follower::stop_movement(std::ostream& rover)
     rover.flush();
 }
 
-result waypoints_follower::run( started_reply_t start_initiated, std::ostream& rover )
+result waypoints_follower::run( started_reply_t start_initiated, std::ostream& rover, const boost::optional< recorder_setup_t >& record_info )
 {
     comma::uint32 num_of_moves = serialiser_.num_of_moves();
     if( num_of_moves > joints_num ) { 
@@ -70,12 +89,20 @@ result waypoints_follower::run( started_reply_t start_initiated, std::ostream& r
 
     /// signal start of command
     start_initiated();
+    /// If recording is needed, and always release the thread regardless of function exit point
+    boost::shared_ptr< boost::thread > recorder_container;
     
     std::cerr << "num_of_moves is " << num_of_moves << std::endl;
     for( std::size_t j=0; j< num_of_moves; ++j )
     {
         std::cerr << name() << "moving to waypoint " << (j+1) << std::endl;
         std::cerr << name() << serialiser_.serialise( j ) << std::endl;
+
+        if( record_info )
+        {
+            if( record_info->start_waypoint_ == j ) { recorder_container.reset( new boost::thread( record_info->recorder_ ), impl_::thread_release() ); }
+            if( record_info->end_waypoint_ == j ) { recorder_container.reset(); }
+        }
 
         rover << serialiser_.serialise( j ) << std::endl;
         rover.flush();

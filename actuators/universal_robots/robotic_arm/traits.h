@@ -139,26 +139,6 @@ template <> struct traits< arm::move_effector >
     }
 };
 
-// template <> struct traits< arm::fixed_status::joints_type >
-// {
-//     template< typename K, typename V > static void visit( const K& k, arm::fixed_status::joints_type& t, V& v )
-//     {
-//         for( std::size_t i=0; i<6; ++i ) {
-//             double d = t[i];
-//             v.apply( boost::lexical_cast< std::string >( i ).c_str(), d );
-//             std::cerr << "getting radian: " << i << " " << d << std::endl;
-//             t[i] = d * arm::radian;
-//         }
-//     }
-
-//     template< typename K, typename V > static void visit( const K& k, const arm::fixed_status::joints_type& t, V& v )
-//     {
-//         for( std::size_t i=0; i<6; ++i ) {
-//             v.apply( boost::lexical_cast< std::string >( i ).c_str(), t[i].value() );
-//         }
-//     }
-// };
-
 template <> struct traits< arm::continuum_t::arm_position_t >
 {
     template< typename K, typename V > static void visit( const K& k, arm::continuum_t::arm_position_t& t, V& v )
@@ -304,7 +284,6 @@ template <> struct traits< arm::sweep_cam >
         v.apply( "filetag", t.filetag );
     }
 };
-
 template <> struct traits< arm::continuum_t::scan_type >
 {
     template< typename K, typename V > static void visit( const K& k, arm::continuum_t::scan_type& t, V& v )
@@ -323,6 +302,25 @@ template <> struct traits< arm::continuum_t::scan_type >
     }
 };
 
+template <> struct traits< arm::continuum_t::lidar_config >
+{
+    template< typename K, typename V > static void visit( const K& k, arm::continuum_t::lidar_config& t, V& v )
+    {
+        v.apply( "service-host", t.service_host );
+        v.apply( "service-port", t.service_port );
+        v.apply( "fields", t.fields );
+        v.apply( "range-limit", t.range_limit );
+    }
+
+    template< typename K, typename V > static void visit( const K& k, const arm::continuum_t::lidar_config& t, V& v )
+    {
+        v.apply( "service-host", t.service_host );
+        v.apply( "service-port", t.service_port );
+        v.apply( "fields", t.fields );
+        v.apply( "range-limit", t.range_limit );
+    }
+};
+
 template <> struct traits< arm::continuum_t >
 {
     template< typename K, typename V > static void visit( const K& k, arm::continuum_t& t, V& v )
@@ -330,6 +328,7 @@ template <> struct traits< arm::continuum_t >
         v.apply( "home_position", t.home_position );
         v.apply( "work_directory", t.work_directory );
         v.apply( "scan", t.scan );
+        v.apply( "hokuyo", t.lidar );
     }
 
     template< typename K, typename V > static void visit( const K& k, const arm::continuum_t& t, V& v )
@@ -337,6 +336,7 @@ template <> struct traits< arm::continuum_t >
         v.apply( "home_position", t.home_position );
         v.apply( "work_directory", t.work_directory );
         v.apply( "scan", t.scan );
+        v.apply( "hokuyo", t.lidar );
     }
 };
 
