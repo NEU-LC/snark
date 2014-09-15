@@ -37,41 +37,40 @@ exit
 
 function remove_all_except
 {
-    local exceptions=()
-    local fields=()
-    while read f; do exceptions+=( "$f" ); done < <( echo "$1" | tr "," "\n" )
-    while read f; do fields+=( "$f" ); done < <( echo "$2" | tr "," "\n" )
+    IFS=,
+    local exceptions=( $1 )
+    local fields_="$2,"
+    local fields=( $fields_ )
     for (( i = 0; i < ${#fields[@]}; i++ )); do
         local skip=false
-        for e in ${exceptions[@]}; do if [[ "${fields[$i]}" == "$e" ]]; then skip=true; fi; done
+        for e in "${exceptions[@]}"; do if [[ "${fields[$i]}" == "$e" ]]; then skip=true; fi; done
         if [[ $skip == false ]]; then fields[$i]=""; fi
     done
-    IFS=,
     echo "${fields[*]}"
 }
 
 function replace
 {
+    IFS=,
     local what=$1
     local replacement=$2
-    local fields=()
-    while read f; do fields+=( "$f" ); done < <( echo "$3" | tr "," "\n" )
+    local fields_="$3,"
+    local fields=( $fields_ )
     for (( i = 0; i < ${#fields[@]}; i++ )); do
         if [[ "${fields[$i]}" == "$what" ]]; then fields[$i]="$replacement"; fi
     done
-    IFS=,
     echo "${fields[*]}"
 }
 
 function decorate_with
 {
+    IFS=,
     local what=$1
-    local fields=()
-    while read f; do fields+=( "$f" ); done < <( echo "$2" | tr "," "\n" )
+    local fields_="$2,"
+    local fields=( $fields_ )
     for (( i = 0; i < ${#fields[@]}; i++ )); do
         if [[ -n "${fields[$i]}" ]]; then fields[$i]="$what/${fields[$i]}"; fi
     done
-    IFS=,
     echo "${fields[*]}"    
 }
 
@@ -93,8 +92,8 @@ if [[ "$1" == "" ]] ; then usage ; fi
 
 for arg in "$@" ; do
     if [[ "$arg" == "--help" || "$arg" == "-h" ]] ; then usage ; fi
-    if [[ "${arg#--nodes=}" != "$arg" ]] ; then arg_nodes="${arg#--nodes=};"
-    else if [[ "${arg#--edges=}" != "$arg" ]] ; then arg_edges="${arg#--edges=};"
+    if [[ "${arg#--nodes=}" != "$arg" ]] ; then arg_nodes="${arg#--nodes=}"
+    else if [[ "${arg#--edges=}" != "$arg" ]] ; then arg_edges="${arg#--edges=}"
     else if [[ "$arg" == "--no-clean" ]] ; then no_clean=true
     else if [[ "$arg" == "--view-only" ]] ; then view_only=true
     else if [[ "$arg" == "--color-by-id" ||"$arg" == "--colour-by-id" ]] ; then colour_by_id=true
@@ -120,6 +119,8 @@ trap clean_ INT TERM HUP
 if [[ "$view_only" != "true" && "$arg_nodes" == "" ]] ; then echo "$name: please specify the file with nodes, e.g. --nodes=nodes.csv" >&2 ; exit 1 ; fi
 if [[ "$view_only" != "true" ]] ; then rm -rf "$tmp_dir"; mkdir "$tmp_dir"; fi
 
+arg_nodes="$arg_nodes;"
+arg_edges="$arg_edges;"
 declare -A nodes=$( name_value_pairs_to_array_template ";" "file=${arg_nodes%%;*};${arg_nodes#*;}" )
 declare -A edges=$( name_value_pairs_to_array_template ";" "file=${arg_edges%%;*};${arg_edges#*;}" )
 
