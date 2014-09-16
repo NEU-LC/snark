@@ -35,6 +35,7 @@
 #include <boost/optional.hpp>
 #include <boost/thread.hpp>
 #include <comma/base/exception.h>
+#include <fstream>
 #include "./gobi.h"
 
 namespace snark{ namespace camera{
@@ -177,7 +178,7 @@ gobi::attributes_type xenics_attributes_( XCHANDLE& handle )
     return attributes;    
 }
         
-static cv::Mat xenics_to_cvmat_( unsigned long height, unsigned long width, FrameType frame_type, std::vector< byte >& frame_buffer )
+static cv::Mat xenics_to_cvmat_( unsigned long height, unsigned long width, FrameType frame_type, std::vector< word >& frame_buffer )
 {
     int opencv_type;
     switch( frame_type )
@@ -186,7 +187,7 @@ static cv::Mat xenics_to_cvmat_( unsigned long height, unsigned long width, Fram
             opencv_type = CV_8UC1;
             break;
         case FT_16_BPP_GRAY:
-            opencv_type = CV_16UC1;
+            opencv_type = CV_16UC1; // native format for Gobi 640 GigE
             break;
         case FT_32_BPP_GRAY:
             opencv_type = CV_32SC1; // this case needs to be verified (opencv does not support CV_32UC1 but the camera uses unsigned 32 bit type)
@@ -219,6 +220,7 @@ class gobi::impl
             address_( address )
             , closed_( false )
             , thermography_is_enabled_( false )
+            , output_temperature_ ( false )
         {
             if( address_.empty() ) { COMMA_THROW( comma::exception, "expected camera address, got empty string" ); }    
             std::string camera_name = "gev://" + address_;
@@ -236,9 +238,10 @@ class gobi::impl
             width_ = boost::lexical_cast< unsigned long >( XC_GetWidth( handle_ ) );
             frame_type_ = XC_GetFrameType( handle_ );
             total_bytes_per_frame_ = boost::lexical_cast< unsigned long >( XC_GetFrameSize( handle_ ) );
-            frame_footer_size_ = boost::lexical_cast< unsigned long >( XC_GetFrameFooterLength( handle_ ) );
-            frame_buffer_.resize( total_bytes_per_frame_ + frame_footer_size_);
-            footer_ = ( XPFF_GENERIC* )( &frame_buffer_[0] + total_bytes_per_frame_ );
+            frame_footer_size_in_bytes_ = boost::lexical_cast< unsigned long >( XC_GetFrameFooterLength( handle_ ) );
+            unsigned long frame_footer_size_in_words_ = frame_footer_size_in_bytes_ / 2;
+            frame_buffer_.resize( width_ * height_ + frame_footer_size_in_words_ );
+            footer_ = ( XPFF_GENERIC* )( &frame_buffer_[0] + width_ * height_ );
         }
         
         void set( const attributes_type& attributes )
@@ -260,8 +263,8 @@ class gobi::impl
                 if( XC_StopCapture( handle_ ) != I_OK ) { std::cerr << "could not stop capturing" << std::endl; return; }
             }
             if( XC_IsInitialised( handle_ ) ) XC_CloseCamera( handle_ );
-            closed_ = true;
             thermography_is_enabled_ = false;
+            closed_ = true;
             //std::cerr << "the camera has been closed" << std::endl;
         }
         
@@ -283,7 +286,7 @@ class gobi::impl
                 {
                     XC_FLT_ADUToTemperature( handle_, fltThermography, i, &temperature_from_pixel_value_[i] );
                 }
-                temperature_buffer_.resize( frame_buffer_.size() );
+                temperature_buffer_.resize( width_ * height_ );
                 temperature_unit_ = temperature_unit;
                 thermography_is_enabled_ = true;
             }
@@ -293,9 +296,14 @@ class gobi::impl
             }
         }
         
-        void disable_thermography()
+        void disable_thermography() { thermography_is_enabled_ = false; }
+        
+        void output_conversion( std::string file_name )
         {
-            thermography_is_enabled_ = false;
+            if( !thermography_is_enabled_ ) { COMMA_THROW( comma::exception, "failed to output conversion table, since thermography was not enabled" ); }
+            std::ofstream ofs ( file_name.c_str() );
+            if( !ofs ) { COMMA_THROW( comma::exception, "failed to save conversion table, unable to create and/or open " << file_name ); };
+            for( unsigned long i=0; i < temperature_from_pixel_value_.size(); ++i) ofs << i << "," << temperature_from_pixel_value_[i] << std::endl;
         }
         
         std::pair< boost::posix_time::ptime, cv::Mat > read()
@@ -310,7 +318,6 @@ class gobi::impl
             }
             std::pair< boost::posix_time::ptime, cv::Mat > pair;
             ErrCode error_code = XC_GetFrame( handle_, FT_NATIVE, XGF_Blocking | XGF_NoConversion | XGF_FetchPFF, &frame_buffer_[0], total_bytes_per_frame_ );
-            //ErrCode error_code = XC_GetFrame( handle_, FT_NATIVE, XGF_Blocking | XGF_FetchPFF, &frame_buffer_[0], total_bytes_per_frame_ ); // not clear if XGF_NoConversion can be used when thermography is enabled
             if( error_code == I_OK)
             {
                 long long time_of_reception_in_microseconds_since_epoch = footer_->tft;
@@ -327,14 +334,14 @@ class gobi::impl
                     COMMA_THROW( comma::exception, "difference between utc and time_of_reception is greater than " << max_allowed_time_delay << " microseconds: time of reception = " << time_of_reception << ", utc = " << utc );
                 }
                 pair.first = time_of_reception;
-                if( thermography_is_enabled_ )
+                if( output_temperature_ )
                 {
-                    for( unsigned long i = 0; i < frame_buffer_.size(); ++i ) { temperature_buffer_[i] = temperature_from_pixel_value_[frame_buffer_[i]]; }
+                    for( unsigned long i = 0; i < temperature_buffer_.size(); ++i ) { temperature_buffer_[i] = temperature_from_pixel_value_[frame_buffer_[i]]; }
                     pair.second = xenics_temperature_to_cvmat_( height_, width_, temperature_buffer_ );
                 }
                 else
                 {
-                    pair.second = xenics_to_cvmat_( height_, width_, frame_type_, frame_buffer_ );
+                     pair.second = xenics_to_cvmat_( height_, width_, frame_type_, frame_buffer_ );
                 }
             }
             else
@@ -393,14 +400,15 @@ class gobi::impl
         unsigned long width_;
         FrameType frame_type_;
         unsigned long total_bytes_per_frame_;
-        unsigned long frame_footer_size_;
-        std::vector< byte > frame_buffer_;
+        unsigned long frame_footer_size_in_bytes_;
+        std::vector< word > frame_buffer_;
         std::vector< double > temperature_from_pixel_value_;
         std::vector< double > temperature_buffer_;
         std::string temperature_unit_;
         std::string address_;
         bool closed_;
         bool thermography_is_enabled_;
+        bool output_temperature_;
         XPFF_GENERIC* footer_;
         boost::posix_time::ptime ptime_( long long microseconds_since_epoch )
         {
@@ -439,5 +447,7 @@ void gobi::set(const gobi::attributes_type& attributes ) { pimpl_->set( attribut
 void gobi::enable_thermography( std::string temperature_unit, std::string calibration_file ) { pimpl_->enable_thermography( temperature_unit, calibration_file ); }
 
 void gobi::disable_thermography() { pimpl_->disable_thermography(); }
+
+void gobi::output_conversion( std::string file_name ) { pimpl_->output_conversion( file_name ); }
 
 } } // namespace snark{ namespace camera{
