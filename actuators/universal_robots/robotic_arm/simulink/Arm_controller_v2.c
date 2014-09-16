@@ -3,9 +3,9 @@
  *
  * Code generated for Simulink model 'Arm_controller_v2'.
  *
- * Model version                  : 1.87
+ * Model version                  : 1.88
  * Simulink Coder version         : 8.6 (R2014a) 27-Dec-2013
- * C/C++ source code generated on : Tue Sep 16 11:48:38 2014
+ * C/C++ source code generated on : Tue Sep 16 15:04:03 2014
  *
  * Target selection: ert.tlc
  * Embedded hardware selection: 32-bit Generic
@@ -1932,136 +1932,132 @@ static real_T Arm_controller__check_collision(const real_T joint_angles_degrees
 
     /* there is a collision */
   } else {
-    flag = 0.0;
+    /* %%%%%%%%end of self collision%%%% */
+    /* %%creating sample of points across the arm%%%% */
+    /* reference co-ordinates of 3 main linkages */
+    /* start and end co-ordinates for shoulder */
+    /* %creating a set of points which represent the arm */
+    for (x = 0; x < 43; x++) {
+      dist_mount = (1.0 + (real_T)x) * 0.01;
+      shoulder[0] = p2[0] - wrist_2[0];
+      shoulder[1] = p2[1] - wrist_2[1];
+      shoulder[2] = p2[2] - wrist_2[2];
+      wrist_vect_idx_2 = Arm_controller_v2_norm_c(shoulder);
+      shoulder_points[x] = (p2[0] - wrist_2[0]) * dist_mount / wrist_vect_idx_2
+        + wrist_2[0];
+      shoulder_points[x + 43] = (p2[1] - wrist_2[1]) * dist_mount /
+        wrist_vect_idx_2 + wrist_2[1];
+      shoulder_points[x + 86] = (p2[2] - wrist_2[2]) * dist_mount /
+        wrist_vect_idx_2 + wrist_2[2];
+    }
 
-    /* there is no collision */
-  }
+    for (x = 0; x < 40; x++) {
+      dist_mount = (1.0 + (real_T)x) * 0.01;
+      elbow[0] = shoulder_orig[0] - elbow_orig[0];
+      elbow[1] = shoulder_orig[1] - elbow_orig[1];
+      elbow[2] = shoulder_orig[2] - elbow_orig[2];
+      wrist_vect_idx_2 = Arm_controller_v2_norm_c(elbow);
+      elbow_points[x] = (shoulder_orig[0] - elbow_orig[0]) * dist_mount /
+        wrist_vect_idx_2 + elbow_orig[0];
+      elbow_points[x + 40] = (shoulder_orig[1] - elbow_orig[1]) * dist_mount /
+        wrist_vect_idx_2 + elbow_orig[1];
+      elbow_points[x + 80] = (shoulder_orig[2] - elbow_orig[2]) * dist_mount /
+        wrist_vect_idx_2 + elbow_orig[2];
+    }
 
-  /* %%%%%%%%end of self collision%%%% */
-  /* %%creating sample of points across the arm%%%% */
-  /* reference co-ordinates of 3 main linkages */
-  /* start and end co-ordinates for shoulder */
-  /* %creating a set of points which represent the arm */
-  for (x = 0; x < 43; x++) {
-    dist_mount = (1.0 + (real_T)x) * 0.01;
-    shoulder[0] = p2[0] - wrist_2[0];
-    shoulder[1] = p2[1] - wrist_2[1];
-    shoulder[2] = p2[2] - wrist_2[2];
-    wrist_vect_idx_2 = Arm_controller_v2_norm_c(shoulder);
-    shoulder_points[x] = (p2[0] - wrist_2[0]) * dist_mount / wrist_vect_idx_2 +
-      wrist_2[0];
-    shoulder_points[x + 43] = (p2[1] - wrist_2[1]) * dist_mount /
-      wrist_vect_idx_2 + wrist_2[1];
-    shoulder_points[x + 86] = (p2[2] - wrist_2[2]) * dist_mount /
-      wrist_vect_idx_2 + wrist_2[2];
-  }
+    for (x = 0; x < 29; x++) {
+      dist_mount = (1.0 + (real_T)x) * 0.01;
+      laser[0] = p1offset[0] - p3offset[0];
+      laser[1] = p1offset[1] - p3offset[1];
+      laser[2] = p1offset[2] - p3offset[2];
+      wrist_vect_idx_2 = Arm_controller_v2_norm_c(laser);
+      laser_points[x] = (p1offset[0] - p3offset[0]) * dist_mount /
+        wrist_vect_idx_2 + p3offset[0];
+      laser_points[x + 29] = (p1offset[1] - p3offset[1]) * dist_mount /
+        wrist_vect_idx_2 + p3offset[1];
+      laser_points[x + 58] = (p1offset[2] - p3offset[2]) * dist_mount /
+        wrist_vect_idx_2 + p3offset[2];
+    }
 
-  for (x = 0; x < 40; x++) {
-    dist_mount = (1.0 + (real_T)x) * 0.01;
-    elbow[0] = shoulder_orig[0] - elbow_orig[0];
-    elbow[1] = shoulder_orig[1] - elbow_orig[1];
-    elbow[2] = shoulder_orig[2] - elbow_orig[2];
-    wrist_vect_idx_2 = Arm_controller_v2_norm_c(elbow);
-    elbow_points[x] = (shoulder_orig[0] - elbow_orig[0]) * dist_mount /
-      wrist_vect_idx_2 + elbow_orig[0];
-    elbow_points[x + 40] = (shoulder_orig[1] - elbow_orig[1]) * dist_mount /
-      wrist_vect_idx_2 + elbow_orig[1];
-    elbow_points[x + 80] = (shoulder_orig[2] - elbow_orig[2]) * dist_mount /
-      wrist_vect_idx_2 + elbow_orig[2];
-  }
+    /* %combining the vectors into one */
+    for (x = 0; x < 3; x++) {
+      memcpy(&fullarm[112 * x], &shoulder_points[43 * x], 43U * sizeof(real_T));
+    }
 
-  for (x = 0; x < 29; x++) {
-    dist_mount = (1.0 + (real_T)x) * 0.01;
-    laser[0] = p1offset[0] - p3offset[0];
-    laser[1] = p1offset[1] - p3offset[1];
-    laser[2] = p1offset[2] - p3offset[2];
-    wrist_vect_idx_2 = Arm_controller_v2_norm_c(laser);
-    laser_points[x] = (p1offset[0] - p3offset[0]) * dist_mount /
-      wrist_vect_idx_2 + p3offset[0];
-    laser_points[x + 29] = (p1offset[1] - p3offset[1]) * dist_mount /
-      wrist_vect_idx_2 + p3offset[1];
-    laser_points[x + 58] = (p1offset[2] - p3offset[2]) * dist_mount /
-      wrist_vect_idx_2 + p3offset[2];
-  }
+    for (x = 0; x < 3; x++) {
+      memcpy(&fullarm[112 * x + 43], &elbow_points[40 * x], 40U * sizeof(real_T));
+    }
 
-  /* %combining the vectors into one */
-  for (x = 0; x < 3; x++) {
-    memcpy(&fullarm[112 * x], &shoulder_points[43 * x], 43U * sizeof(real_T));
-  }
+    for (x = 0; x < 3; x++) {
+      memcpy(&fullarm[112 * x + 83], &laser_points[29 * x], 29U * sizeof(real_T));
+    }
 
-  for (x = 0; x < 3; x++) {
-    memcpy(&fullarm[112 * x + 43], &elbow_points[40 * x], 40U * sizeof(real_T));
-  }
-
-  for (x = 0; x < 3; x++) {
-    memcpy(&fullarm[112 * x + 83], &laser_points[29 * x], 29U * sizeof(real_T));
-  }
-
-  /* [m, n] = size(fullarm); */
-  /* %defining obstacles%% */
-  /* %radius of shoulder */
-  /* %left wheel%% */
-  /* x, y, z co-ordinate of left wheel top right corner closest to base */
-  /* if (  */
-  /* %right wheel%% */
-  /* x, y, z co-ordinate of right wheel top left corner closest to base */
-  /* %body%% */
-  /* top right corner */
-  /* exagerrated to make sure arm never goes in that region */
-  /* %pan tilt%% */
-  /* %ground%% use laser scanner */
-  /* % */
-  /* disp(m); */
-  x = 0;
-  exitg1 = false;
-  while ((!exitg1) && (x < 112)) {
-    /* disp([x, y, z]); */
-    /* disp(y); */
-    /* disp(z); */
-    if (fullarm[224 + x] < -0.25) {
-      /* dont move */
-      /* give collision flag */
-      flag = 1.0;
-      exitg1 = true;
-    } else if ((fullarm[x] > -0.05) && (fullarm[x] < 0.21000000000000002) &&
-               (fullarm[112 + x] > 0.15000000000000002) && (fullarm[112 + x] <
-                0.37) && (fullarm[224 + x] < 0.135) && (fullarm[224 + x] >
-                -0.31499999999999995)) {
-      /* %the point is inside left wheel */
-      /* %collision */
-      /* disp('left wheel collision'); */
-      flag = 1.0;
-      exitg1 = true;
-    } else if ((fullarm[x] > -0.090000000000000011) && (fullarm[x] <
-                0.21000000000000002) && (fullarm[112 + x] > -0.37) && (fullarm
-                [112 + x] < -0.15000000000000002) && (fullarm[224 + x] < 0.135) &&
-               (fullarm[224 + x] > -0.31499999999999995)) {
-      /* %right wheel */
-      /* disp('right wheel collision'); */
-      flag = 1.0;
-      exitg1 = true;
-    } else if ((fullarm[x] > -1.6400000000000001) && (fullarm[x] <
-                -0.039999999999999994) && (fullarm[112 + x] > -0.25) &&
-               (fullarm[112 + x] < 0.25) && (fullarm[224 + x] < 0.25) &&
-               (fullarm[224 + x] > -0.25)) {
-      /* %body */
-      /* disp('body collision'); */
-      /* disp([i x y z]); */
-      /* disp([body_x_b, body_x_f]); */
-      flag = 1.0;
-      exitg1 = true;
-    } else if ((fullarm[x] > -0.14) && (fullarm[x] < 0.15000000000000002) &&
-               (fullarm[112 + x] > 0.03) && (fullarm[112 + x] < 0.29) &&
-               (fullarm[224 + x] < 0.0) && (fullarm[224 + x] > -0.25)) {
-      /* %pantilt */
-      /* disp('camera collision'); */
-      flag = 1.0;
-      exitg1 = true;
-    } else {
-      /* no collision */
-      /* disp('no collision'); */
-      flag = 0.0;
-      x++;
+    /* [m, n] = size(fullarm); */
+    /* %defining obstacles%% */
+    /* %radius of shoulder */
+    /* %left wheel%% */
+    /* x, y, z co-ordinate of left wheel top right corner closest to base */
+    /* if (  */
+    /* %right wheel%% */
+    /* x, y, z co-ordinate of right wheel top left corner closest to base */
+    /* %body%% */
+    /* top right corner */
+    /* exagerrated to make sure arm never goes in that region */
+    /* %pan tilt%% */
+    /* %ground%% use laser scanner */
+    /* % */
+    /* disp(m); */
+    x = 0;
+    exitg1 = false;
+    while ((!exitg1) && (x < 112)) {
+      /* disp([x, y, z]); */
+      /* disp(y); */
+      /* disp(z); */
+      if (fullarm[224 + x] < -0.25) {
+        /* dont move */
+        /* give collision flag */
+        flag = 1.0;
+        exitg1 = true;
+      } else if ((fullarm[x] > -0.05) && (fullarm[x] < 0.21000000000000002) &&
+                 (fullarm[112 + x] > 0.15000000000000002) && (fullarm[112 + x] <
+                  0.37) && (fullarm[224 + x] < 0.135) && (fullarm[224 + x] >
+                  -0.31499999999999995)) {
+        /* %the point is inside left wheel */
+        /* %collision */
+        /* disp('left wheel collision'); */
+        flag = 1.0;
+        exitg1 = true;
+      } else if ((fullarm[x] > -0.090000000000000011) && (fullarm[x] <
+                  0.21000000000000002) && (fullarm[112 + x] > -0.37) &&
+                 (fullarm[112 + x] < -0.15000000000000002) && (fullarm[224 + x] <
+                  0.135) && (fullarm[224 + x] > -0.31499999999999995)) {
+        /* %right wheel */
+        /* disp('right wheel collision'); */
+        flag = 1.0;
+        exitg1 = true;
+      } else if ((fullarm[x] > -1.6400000000000001) && (fullarm[x] <
+                  -0.039999999999999994) && (fullarm[112 + x] > -0.25) &&
+                 (fullarm[112 + x] < 0.25) && (fullarm[224 + x] < 0.25) &&
+                 (fullarm[224 + x] > -0.25)) {
+        /* %body */
+        /* disp('body collision'); */
+        /* disp([i x y z]); */
+        /* disp([body_x_b, body_x_f]); */
+        flag = 1.0;
+        exitg1 = true;
+      } else if ((fullarm[x] > -0.14) && (fullarm[x] < 0.15000000000000002) &&
+                 (fullarm[112 + x] > 0.03) && (fullarm[112 + x] < 0.29) &&
+                 (fullarm[224 + x] < 0.0) && (fullarm[224 + x] > -0.25)) {
+        /* %pantilt */
+        /* disp('camera collision'); */
+        flag = 1.0;
+        exitg1 = true;
+      } else {
+        /* no collision */
+        /* disp('no collision'); */
+        flag = 0.0;
+        x++;
+      }
     }
   }
 
@@ -3303,136 +3299,132 @@ static real_T Arm_controlle_check_collision_k(const real_T joint_angles_degrees
 
     /* there is a collision */
   } else {
-    flag = 0.0;
+    /* %%%%%%%%end of self collision%%%% */
+    /* %%creating sample of points across the arm%%%% */
+    /* reference co-ordinates of 3 main linkages */
+    /* start and end co-ordinates for shoulder */
+    /* %creating a set of points which represent the arm */
+    for (x = 0; x < 43; x++) {
+      dist_mount = (1.0 + (real_T)x) * 0.01;
+      shoulder[0] = p2[0] - wrist_2[0];
+      shoulder[1] = p2[1] - wrist_2[1];
+      shoulder[2] = p2[2] - wrist_2[2];
+      wrist_vect_idx_2 = Arm_controller_v2_norm_m(shoulder);
+      shoulder_points[x] = (p2[0] - wrist_2[0]) * dist_mount / wrist_vect_idx_2
+        + wrist_2[0];
+      shoulder_points[x + 43] = (p2[1] - wrist_2[1]) * dist_mount /
+        wrist_vect_idx_2 + wrist_2[1];
+      shoulder_points[x + 86] = (p2[2] - wrist_2[2]) * dist_mount /
+        wrist_vect_idx_2 + wrist_2[2];
+    }
 
-    /* there is no collision */
-  }
+    for (x = 0; x < 40; x++) {
+      dist_mount = (1.0 + (real_T)x) * 0.01;
+      elbow[0] = shoulder_orig[0] - elbow_orig[0];
+      elbow[1] = shoulder_orig[1] - elbow_orig[1];
+      elbow[2] = shoulder_orig[2] - elbow_orig[2];
+      wrist_vect_idx_2 = Arm_controller_v2_norm_m(elbow);
+      elbow_points[x] = (shoulder_orig[0] - elbow_orig[0]) * dist_mount /
+        wrist_vect_idx_2 + elbow_orig[0];
+      elbow_points[x + 40] = (shoulder_orig[1] - elbow_orig[1]) * dist_mount /
+        wrist_vect_idx_2 + elbow_orig[1];
+      elbow_points[x + 80] = (shoulder_orig[2] - elbow_orig[2]) * dist_mount /
+        wrist_vect_idx_2 + elbow_orig[2];
+    }
 
-  /* %%%%%%%%end of self collision%%%% */
-  /* %%creating sample of points across the arm%%%% */
-  /* reference co-ordinates of 3 main linkages */
-  /* start and end co-ordinates for shoulder */
-  /* %creating a set of points which represent the arm */
-  for (x = 0; x < 43; x++) {
-    dist_mount = (1.0 + (real_T)x) * 0.01;
-    shoulder[0] = p2[0] - wrist_2[0];
-    shoulder[1] = p2[1] - wrist_2[1];
-    shoulder[2] = p2[2] - wrist_2[2];
-    wrist_vect_idx_2 = Arm_controller_v2_norm_m(shoulder);
-    shoulder_points[x] = (p2[0] - wrist_2[0]) * dist_mount / wrist_vect_idx_2 +
-      wrist_2[0];
-    shoulder_points[x + 43] = (p2[1] - wrist_2[1]) * dist_mount /
-      wrist_vect_idx_2 + wrist_2[1];
-    shoulder_points[x + 86] = (p2[2] - wrist_2[2]) * dist_mount /
-      wrist_vect_idx_2 + wrist_2[2];
-  }
+    for (x = 0; x < 29; x++) {
+      dist_mount = (1.0 + (real_T)x) * 0.01;
+      laser[0] = p1offset[0] - p3offset[0];
+      laser[1] = p1offset[1] - p3offset[1];
+      laser[2] = p1offset[2] - p3offset[2];
+      wrist_vect_idx_2 = Arm_controller_v2_norm_m(laser);
+      laser_points[x] = (p1offset[0] - p3offset[0]) * dist_mount /
+        wrist_vect_idx_2 + p3offset[0];
+      laser_points[x + 29] = (p1offset[1] - p3offset[1]) * dist_mount /
+        wrist_vect_idx_2 + p3offset[1];
+      laser_points[x + 58] = (p1offset[2] - p3offset[2]) * dist_mount /
+        wrist_vect_idx_2 + p3offset[2];
+    }
 
-  for (x = 0; x < 40; x++) {
-    dist_mount = (1.0 + (real_T)x) * 0.01;
-    elbow[0] = shoulder_orig[0] - elbow_orig[0];
-    elbow[1] = shoulder_orig[1] - elbow_orig[1];
-    elbow[2] = shoulder_orig[2] - elbow_orig[2];
-    wrist_vect_idx_2 = Arm_controller_v2_norm_m(elbow);
-    elbow_points[x] = (shoulder_orig[0] - elbow_orig[0]) * dist_mount /
-      wrist_vect_idx_2 + elbow_orig[0];
-    elbow_points[x + 40] = (shoulder_orig[1] - elbow_orig[1]) * dist_mount /
-      wrist_vect_idx_2 + elbow_orig[1];
-    elbow_points[x + 80] = (shoulder_orig[2] - elbow_orig[2]) * dist_mount /
-      wrist_vect_idx_2 + elbow_orig[2];
-  }
+    /* %combining the vectors into one */
+    for (x = 0; x < 3; x++) {
+      memcpy(&fullarm[112 * x], &shoulder_points[43 * x], 43U * sizeof(real_T));
+    }
 
-  for (x = 0; x < 29; x++) {
-    dist_mount = (1.0 + (real_T)x) * 0.01;
-    laser[0] = p1offset[0] - p3offset[0];
-    laser[1] = p1offset[1] - p3offset[1];
-    laser[2] = p1offset[2] - p3offset[2];
-    wrist_vect_idx_2 = Arm_controller_v2_norm_m(laser);
-    laser_points[x] = (p1offset[0] - p3offset[0]) * dist_mount /
-      wrist_vect_idx_2 + p3offset[0];
-    laser_points[x + 29] = (p1offset[1] - p3offset[1]) * dist_mount /
-      wrist_vect_idx_2 + p3offset[1];
-    laser_points[x + 58] = (p1offset[2] - p3offset[2]) * dist_mount /
-      wrist_vect_idx_2 + p3offset[2];
-  }
+    for (x = 0; x < 3; x++) {
+      memcpy(&fullarm[112 * x + 43], &elbow_points[40 * x], 40U * sizeof(real_T));
+    }
 
-  /* %combining the vectors into one */
-  for (x = 0; x < 3; x++) {
-    memcpy(&fullarm[112 * x], &shoulder_points[43 * x], 43U * sizeof(real_T));
-  }
+    for (x = 0; x < 3; x++) {
+      memcpy(&fullarm[112 * x + 83], &laser_points[29 * x], 29U * sizeof(real_T));
+    }
 
-  for (x = 0; x < 3; x++) {
-    memcpy(&fullarm[112 * x + 43], &elbow_points[40 * x], 40U * sizeof(real_T));
-  }
-
-  for (x = 0; x < 3; x++) {
-    memcpy(&fullarm[112 * x + 83], &laser_points[29 * x], 29U * sizeof(real_T));
-  }
-
-  /* [m, n] = size(fullarm); */
-  /* %defining obstacles%% */
-  /* %radius of shoulder */
-  /* %left wheel%% */
-  /* x, y, z co-ordinate of left wheel top right corner closest to base */
-  /* if (  */
-  /* %right wheel%% */
-  /* x, y, z co-ordinate of right wheel top left corner closest to base */
-  /* %body%% */
-  /* top right corner */
-  /* exagerrated to make sure arm never goes in that region */
-  /* %pan tilt%% */
-  /* %ground%% use laser scanner */
-  /* % */
-  /* disp(m); */
-  x = 0;
-  exitg1 = false;
-  while ((!exitg1) && (x < 112)) {
-    /* disp([x, y, z]); */
-    /* disp(y); */
-    /* disp(z); */
-    if (fullarm[224 + x] < -0.25) {
-      /* dont move */
-      /* give collision flag */
-      flag = 1.0;
-      exitg1 = true;
-    } else if ((fullarm[x] > -0.05) && (fullarm[x] < 0.21000000000000002) &&
-               (fullarm[112 + x] > 0.15000000000000002) && (fullarm[112 + x] <
-                0.37) && (fullarm[224 + x] < 0.135) && (fullarm[224 + x] >
-                -0.31499999999999995)) {
-      /* %the point is inside left wheel */
-      /* %collision */
-      /* disp('left wheel collision'); */
-      flag = 1.0;
-      exitg1 = true;
-    } else if ((fullarm[x] > -0.090000000000000011) && (fullarm[x] <
-                0.21000000000000002) && (fullarm[112 + x] > -0.37) && (fullarm
-                [112 + x] < -0.15000000000000002) && (fullarm[224 + x] < 0.135) &&
-               (fullarm[224 + x] > -0.31499999999999995)) {
-      /* %right wheel */
-      /* disp('right wheel collision'); */
-      flag = 1.0;
-      exitg1 = true;
-    } else if ((fullarm[x] > -1.6400000000000001) && (fullarm[x] <
-                -0.039999999999999994) && (fullarm[112 + x] > -0.25) &&
-               (fullarm[112 + x] < 0.25) && (fullarm[224 + x] < 0.25) &&
-               (fullarm[224 + x] > -0.25)) {
-      /* %body */
-      /* disp('body collision'); */
-      /* disp([i x y z]); */
-      /* disp([body_x_b, body_x_f]); */
-      flag = 1.0;
-      exitg1 = true;
-    } else if ((fullarm[x] > -0.14) && (fullarm[x] < 0.15000000000000002) &&
-               (fullarm[112 + x] > 0.03) && (fullarm[112 + x] < 0.29) &&
-               (fullarm[224 + x] < 0.0) && (fullarm[224 + x] > -0.25)) {
-      /* %pantilt */
-      /* disp('camera collision'); */
-      flag = 1.0;
-      exitg1 = true;
-    } else {
-      /* no collision */
-      /* disp('no collision'); */
-      flag = 0.0;
-      x++;
+    /* [m, n] = size(fullarm); */
+    /* %defining obstacles%% */
+    /* %radius of shoulder */
+    /* %left wheel%% */
+    /* x, y, z co-ordinate of left wheel top right corner closest to base */
+    /* if (  */
+    /* %right wheel%% */
+    /* x, y, z co-ordinate of right wheel top left corner closest to base */
+    /* %body%% */
+    /* top right corner */
+    /* exagerrated to make sure arm never goes in that region */
+    /* %pan tilt%% */
+    /* %ground%% use laser scanner */
+    /* % */
+    /* disp(m); */
+    x = 0;
+    exitg1 = false;
+    while ((!exitg1) && (x < 112)) {
+      /* disp([x, y, z]); */
+      /* disp(y); */
+      /* disp(z); */
+      if (fullarm[224 + x] < -0.25) {
+        /* dont move */
+        /* give collision flag */
+        flag = 1.0;
+        exitg1 = true;
+      } else if ((fullarm[x] > -0.05) && (fullarm[x] < 0.21000000000000002) &&
+                 (fullarm[112 + x] > 0.15000000000000002) && (fullarm[112 + x] <
+                  0.37) && (fullarm[224 + x] < 0.135) && (fullarm[224 + x] >
+                  -0.31499999999999995)) {
+        /* %the point is inside left wheel */
+        /* %collision */
+        /* disp('left wheel collision'); */
+        flag = 1.0;
+        exitg1 = true;
+      } else if ((fullarm[x] > -0.090000000000000011) && (fullarm[x] <
+                  0.21000000000000002) && (fullarm[112 + x] > -0.37) &&
+                 (fullarm[112 + x] < -0.15000000000000002) && (fullarm[224 + x] <
+                  0.135) && (fullarm[224 + x] > -0.31499999999999995)) {
+        /* %right wheel */
+        /* disp('right wheel collision'); */
+        flag = 1.0;
+        exitg1 = true;
+      } else if ((fullarm[x] > -1.6400000000000001) && (fullarm[x] <
+                  -0.039999999999999994) && (fullarm[112 + x] > -0.25) &&
+                 (fullarm[112 + x] < 0.25) && (fullarm[224 + x] < 0.25) &&
+                 (fullarm[224 + x] > -0.25)) {
+        /* %body */
+        /* disp('body collision'); */
+        /* disp([i x y z]); */
+        /* disp([body_x_b, body_x_f]); */
+        flag = 1.0;
+        exitg1 = true;
+      } else if ((fullarm[x] > -0.14) && (fullarm[x] < 0.15000000000000002) &&
+                 (fullarm[112 + x] > 0.03) && (fullarm[112 + x] < 0.29) &&
+                 (fullarm[224 + x] < 0.0) && (fullarm[224 + x] > -0.25)) {
+        /* %pantilt */
+        /* disp('camera collision'); */
+        flag = 1.0;
+        exitg1 = true;
+      } else {
+        /* no collision */
+        /* disp('no collision'); */
+        flag = 0.0;
+        x++;
+      }
     }
   }
 
@@ -4204,136 +4196,132 @@ static real_T Arm_controlle_check_collision_f(const real_T joint_angles_degrees
 
     /* there is a collision */
   } else {
-    flag = 0.0;
+    /* %%%%%%%%end of self collision%%%% */
+    /* %%creating sample of points across the arm%%%% */
+    /* reference co-ordinates of 3 main linkages */
+    /* start and end co-ordinates for shoulder */
+    /* %creating a set of points which represent the arm */
+    for (x = 0; x < 43; x++) {
+      dist_mount = (1.0 + (real_T)x) * 0.01;
+      shoulder[0] = p2[0] - wrist_2[0];
+      shoulder[1] = p2[1] - wrist_2[1];
+      shoulder[2] = p2[2] - wrist_2[2];
+      wrist_vect_idx_2 = Arm_controller_v2_norm_e(shoulder);
+      shoulder_points[x] = (p2[0] - wrist_2[0]) * dist_mount / wrist_vect_idx_2
+        + wrist_2[0];
+      shoulder_points[x + 43] = (p2[1] - wrist_2[1]) * dist_mount /
+        wrist_vect_idx_2 + wrist_2[1];
+      shoulder_points[x + 86] = (p2[2] - wrist_2[2]) * dist_mount /
+        wrist_vect_idx_2 + wrist_2[2];
+    }
 
-    /* there is no collision */
-  }
+    for (x = 0; x < 40; x++) {
+      dist_mount = (1.0 + (real_T)x) * 0.01;
+      elbow[0] = shoulder_orig[0] - elbow_orig[0];
+      elbow[1] = shoulder_orig[1] - elbow_orig[1];
+      elbow[2] = shoulder_orig[2] - elbow_orig[2];
+      wrist_vect_idx_2 = Arm_controller_v2_norm_e(elbow);
+      elbow_points[x] = (shoulder_orig[0] - elbow_orig[0]) * dist_mount /
+        wrist_vect_idx_2 + elbow_orig[0];
+      elbow_points[x + 40] = (shoulder_orig[1] - elbow_orig[1]) * dist_mount /
+        wrist_vect_idx_2 + elbow_orig[1];
+      elbow_points[x + 80] = (shoulder_orig[2] - elbow_orig[2]) * dist_mount /
+        wrist_vect_idx_2 + elbow_orig[2];
+    }
 
-  /* %%%%%%%%end of self collision%%%% */
-  /* %%creating sample of points across the arm%%%% */
-  /* reference co-ordinates of 3 main linkages */
-  /* start and end co-ordinates for shoulder */
-  /* %creating a set of points which represent the arm */
-  for (x = 0; x < 43; x++) {
-    dist_mount = (1.0 + (real_T)x) * 0.01;
-    shoulder[0] = p2[0] - wrist_2[0];
-    shoulder[1] = p2[1] - wrist_2[1];
-    shoulder[2] = p2[2] - wrist_2[2];
-    wrist_vect_idx_2 = Arm_controller_v2_norm_e(shoulder);
-    shoulder_points[x] = (p2[0] - wrist_2[0]) * dist_mount / wrist_vect_idx_2 +
-      wrist_2[0];
-    shoulder_points[x + 43] = (p2[1] - wrist_2[1]) * dist_mount /
-      wrist_vect_idx_2 + wrist_2[1];
-    shoulder_points[x + 86] = (p2[2] - wrist_2[2]) * dist_mount /
-      wrist_vect_idx_2 + wrist_2[2];
-  }
+    for (x = 0; x < 29; x++) {
+      dist_mount = (1.0 + (real_T)x) * 0.01;
+      laser[0] = p1offset[0] - p3offset[0];
+      laser[1] = p1offset[1] - p3offset[1];
+      laser[2] = p1offset[2] - p3offset[2];
+      wrist_vect_idx_2 = Arm_controller_v2_norm_e(laser);
+      laser_points[x] = (p1offset[0] - p3offset[0]) * dist_mount /
+        wrist_vect_idx_2 + p3offset[0];
+      laser_points[x + 29] = (p1offset[1] - p3offset[1]) * dist_mount /
+        wrist_vect_idx_2 + p3offset[1];
+      laser_points[x + 58] = (p1offset[2] - p3offset[2]) * dist_mount /
+        wrist_vect_idx_2 + p3offset[2];
+    }
 
-  for (x = 0; x < 40; x++) {
-    dist_mount = (1.0 + (real_T)x) * 0.01;
-    elbow[0] = shoulder_orig[0] - elbow_orig[0];
-    elbow[1] = shoulder_orig[1] - elbow_orig[1];
-    elbow[2] = shoulder_orig[2] - elbow_orig[2];
-    wrist_vect_idx_2 = Arm_controller_v2_norm_e(elbow);
-    elbow_points[x] = (shoulder_orig[0] - elbow_orig[0]) * dist_mount /
-      wrist_vect_idx_2 + elbow_orig[0];
-    elbow_points[x + 40] = (shoulder_orig[1] - elbow_orig[1]) * dist_mount /
-      wrist_vect_idx_2 + elbow_orig[1];
-    elbow_points[x + 80] = (shoulder_orig[2] - elbow_orig[2]) * dist_mount /
-      wrist_vect_idx_2 + elbow_orig[2];
-  }
+    /* %combining the vectors into one */
+    for (x = 0; x < 3; x++) {
+      memcpy(&fullarm[112 * x], &shoulder_points[43 * x], 43U * sizeof(real_T));
+    }
 
-  for (x = 0; x < 29; x++) {
-    dist_mount = (1.0 + (real_T)x) * 0.01;
-    laser[0] = p1offset[0] - p3offset[0];
-    laser[1] = p1offset[1] - p3offset[1];
-    laser[2] = p1offset[2] - p3offset[2];
-    wrist_vect_idx_2 = Arm_controller_v2_norm_e(laser);
-    laser_points[x] = (p1offset[0] - p3offset[0]) * dist_mount /
-      wrist_vect_idx_2 + p3offset[0];
-    laser_points[x + 29] = (p1offset[1] - p3offset[1]) * dist_mount /
-      wrist_vect_idx_2 + p3offset[1];
-    laser_points[x + 58] = (p1offset[2] - p3offset[2]) * dist_mount /
-      wrist_vect_idx_2 + p3offset[2];
-  }
+    for (x = 0; x < 3; x++) {
+      memcpy(&fullarm[112 * x + 43], &elbow_points[40 * x], 40U * sizeof(real_T));
+    }
 
-  /* %combining the vectors into one */
-  for (x = 0; x < 3; x++) {
-    memcpy(&fullarm[112 * x], &shoulder_points[43 * x], 43U * sizeof(real_T));
-  }
+    for (x = 0; x < 3; x++) {
+      memcpy(&fullarm[112 * x + 83], &laser_points[29 * x], 29U * sizeof(real_T));
+    }
 
-  for (x = 0; x < 3; x++) {
-    memcpy(&fullarm[112 * x + 43], &elbow_points[40 * x], 40U * sizeof(real_T));
-  }
-
-  for (x = 0; x < 3; x++) {
-    memcpy(&fullarm[112 * x + 83], &laser_points[29 * x], 29U * sizeof(real_T));
-  }
-
-  /* [m, n] = size(fullarm); */
-  /* %defining obstacles%% */
-  /* %radius of shoulder */
-  /* %left wheel%% */
-  /* x, y, z co-ordinate of left wheel top right corner closest to base */
-  /* if (  */
-  /* %right wheel%% */
-  /* x, y, z co-ordinate of right wheel top left corner closest to base */
-  /* %body%% */
-  /* top right corner */
-  /* exagerrated to make sure arm never goes in that region */
-  /* %pan tilt%% */
-  /* %ground%% use laser scanner */
-  /* % */
-  /* disp(m); */
-  x = 0;
-  exitg1 = false;
-  while ((!exitg1) && (x < 112)) {
-    /* disp([x, y, z]); */
-    /* disp(y); */
-    /* disp(z); */
-    if (fullarm[224 + x] < -0.25) {
-      /* dont move */
-      /* give collision flag */
-      flag = 1.0;
-      exitg1 = true;
-    } else if ((fullarm[x] > -0.05) && (fullarm[x] < 0.21000000000000002) &&
-               (fullarm[112 + x] > 0.15000000000000002) && (fullarm[112 + x] <
-                0.37) && (fullarm[224 + x] < 0.135) && (fullarm[224 + x] >
-                -0.31499999999999995)) {
-      /* %the point is inside left wheel */
-      /* %collision */
-      /* disp('left wheel collision'); */
-      flag = 1.0;
-      exitg1 = true;
-    } else if ((fullarm[x] > -0.090000000000000011) && (fullarm[x] <
-                0.21000000000000002) && (fullarm[112 + x] > -0.37) && (fullarm
-                [112 + x] < -0.15000000000000002) && (fullarm[224 + x] < 0.135) &&
-               (fullarm[224 + x] > -0.31499999999999995)) {
-      /* %right wheel */
-      /* disp('right wheel collision'); */
-      flag = 1.0;
-      exitg1 = true;
-    } else if ((fullarm[x] > -1.6400000000000001) && (fullarm[x] <
-                -0.039999999999999994) && (fullarm[112 + x] > -0.25) &&
-               (fullarm[112 + x] < 0.25) && (fullarm[224 + x] < 0.25) &&
-               (fullarm[224 + x] > -0.25)) {
-      /* %body */
-      /* disp('body collision'); */
-      /* disp([i x y z]); */
-      /* disp([body_x_b, body_x_f]); */
-      flag = 1.0;
-      exitg1 = true;
-    } else if ((fullarm[x] > -0.14) && (fullarm[x] < 0.15000000000000002) &&
-               (fullarm[112 + x] > 0.03) && (fullarm[112 + x] < 0.29) &&
-               (fullarm[224 + x] < 0.0) && (fullarm[224 + x] > -0.25)) {
-      /* %pantilt */
-      /* disp('camera collision'); */
-      flag = 1.0;
-      exitg1 = true;
-    } else {
-      /* no collision */
-      /* disp('no collision'); */
-      flag = 0.0;
-      x++;
+    /* [m, n] = size(fullarm); */
+    /* %defining obstacles%% */
+    /* %radius of shoulder */
+    /* %left wheel%% */
+    /* x, y, z co-ordinate of left wheel top right corner closest to base */
+    /* if (  */
+    /* %right wheel%% */
+    /* x, y, z co-ordinate of right wheel top left corner closest to base */
+    /* %body%% */
+    /* top right corner */
+    /* exagerrated to make sure arm never goes in that region */
+    /* %pan tilt%% */
+    /* %ground%% use laser scanner */
+    /* % */
+    /* disp(m); */
+    x = 0;
+    exitg1 = false;
+    while ((!exitg1) && (x < 112)) {
+      /* disp([x, y, z]); */
+      /* disp(y); */
+      /* disp(z); */
+      if (fullarm[224 + x] < -0.25) {
+        /* dont move */
+        /* give collision flag */
+        flag = 1.0;
+        exitg1 = true;
+      } else if ((fullarm[x] > -0.05) && (fullarm[x] < 0.21000000000000002) &&
+                 (fullarm[112 + x] > 0.15000000000000002) && (fullarm[112 + x] <
+                  0.37) && (fullarm[224 + x] < 0.135) && (fullarm[224 + x] >
+                  -0.31499999999999995)) {
+        /* %the point is inside left wheel */
+        /* %collision */
+        /* disp('left wheel collision'); */
+        flag = 1.0;
+        exitg1 = true;
+      } else if ((fullarm[x] > -0.090000000000000011) && (fullarm[x] <
+                  0.21000000000000002) && (fullarm[112 + x] > -0.37) &&
+                 (fullarm[112 + x] < -0.15000000000000002) && (fullarm[224 + x] <
+                  0.135) && (fullarm[224 + x] > -0.31499999999999995)) {
+        /* %right wheel */
+        /* disp('right wheel collision'); */
+        flag = 1.0;
+        exitg1 = true;
+      } else if ((fullarm[x] > -1.6400000000000001) && (fullarm[x] <
+                  -0.039999999999999994) && (fullarm[112 + x] > -0.25) &&
+                 (fullarm[112 + x] < 0.25) && (fullarm[224 + x] < 0.25) &&
+                 (fullarm[224 + x] > -0.25)) {
+        /* %body */
+        /* disp('body collision'); */
+        /* disp([i x y z]); */
+        /* disp([body_x_b, body_x_f]); */
+        flag = 1.0;
+        exitg1 = true;
+      } else if ((fullarm[x] > -0.14) && (fullarm[x] < 0.15000000000000002) &&
+                 (fullarm[112 + x] > 0.03) && (fullarm[112 + x] < 0.29) &&
+                 (fullarm[224 + x] < 0.0) && (fullarm[224 + x] > -0.25)) {
+        /* %pantilt */
+        /* disp('camera collision'); */
+        flag = 1.0;
+        exitg1 = true;
+      } else {
+        /* no collision */
+        /* disp('no collision'); */
+        flag = 0.0;
+        x++;
+      }
     }
   }
 
