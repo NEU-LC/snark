@@ -42,7 +42,7 @@ struct input_primitive
     enum {
         no_action = 0,
         move_cam = 1,
-        set_position = 2,
+        set_position = 8,
         set_home=3,      // define home position, internal usage
         movej=4,
         scan=5,

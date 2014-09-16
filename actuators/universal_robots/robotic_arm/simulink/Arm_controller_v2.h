@@ -3,9 +3,9 @@
  *
  * Code generated for Simulink model 'Arm_controller_v2'.
  *
- * Model version                  : 1.67
+ * Model version                  : 1.87
  * Simulink Coder version         : 8.6 (R2014a) 27-Dec-2013
- * C/C++ source code generated on : Mon Sep 08 14:34:28 2014
+ * C/C++ source code generated on : Tue Sep 16 11:48:38 2014
  *
  * Target selection: ert.tlc
  * Embedded hardware selection: 32-bit Generic
@@ -140,7 +140,8 @@ extern RT_MODEL_Arm_controller_v2_T *const Arm_controller_v2_M;
  * '<S7>'   : 'fsm_v2/Arm_controller_v2/move_joints'
  * '<S8>'   : 'fsm_v2/Arm_controller_v2/sendcommand'
  * '<S9>'   : 'fsm_v2/Arm_controller_v2/set_home'
- * '<S10>'  : 'fsm_v2/Arm_controller_v2/setpos'
+ * '<S10>'  : 'fsm_v2/Arm_controller_v2/set_pos2'
+ * '<S11>'  : 'fsm_v2/Arm_controller_v2/setpos'
  */
 #endif                                 /* RTW_HEADER_Arm_controller_v2_h_ */
 
