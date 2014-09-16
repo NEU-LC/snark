@@ -87,7 +87,7 @@ namespace fs = boost::filesystem;
 
 void do_nothting() {}
 
-/// This function must be easily interruptible
+/// This function must be easily interruptible, making sure it always calls interruption_point()
 void save_lidar( const std::string& conn_str, const std::string& savefile,
                  const std::string& fields, 
                  double range_limit )
@@ -105,6 +105,9 @@ void save_lidar( const std::string& conn_str, const std::string& savefile,
         /// TODO use input stream
         comma::io::istream iss( conn_str, comma::io::mode::binary );
         comma::csv::binary_input_stream< hok::data_point > istream( *iss ); 
+        comma::io::select select;
+        select.read().add( iss.fd() );
+
         //comma::io::ostream oss( savefile.string(), comma::io::mode::binary );
         std::ofstream oss( savefile.c_str(), std::ios::trunc | std::ios::binary | std::ios::out );
         if( !oss.is_open() ) { COMMA_THROW( comma::exception, "failed to open output file: " << savefile );  }
@@ -115,11 +118,15 @@ void save_lidar( const std::string& conn_str, const std::string& savefile,
         {
             ++count;
             if( count % 10 == 0 ) { boost::this_thread::interruption_point(); }
+            static const comma::uint32 usleep = 100000; // This make sure it never blocks while reading, e.g. server sends no data
+            if( !istream.ready() ) { select.wait( 0, usleep ); }
+            if( istream.ready() ||  select.read().ready( iss.fd() ) )
+            {
+                const hok::data_point* point = istream.read();
+                if( point == NULL ) { return; }
 
-            const hok::data_point* point = istream.read();
-            if( point == NULL ) { return; }
-
-            if( point->range <= range_limit ) { ostream.write( *point ); }
+                if( point->range <= range_limit ) { ostream.write( *point ); }
+            }
         }
     }
     catch( boost::thread_interrupted& ti )

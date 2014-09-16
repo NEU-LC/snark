@@ -138,7 +138,7 @@ void commands_handler::handle(sweep_cam& s)
     inputs_.motion_primitive = input_primitive::scan;
     inputs_.Input_1 = 60;
 
-    execute_waypoints( s );
+    execute_waypoints( s, true );
 }
 
 bool commands_handler::execute()
