@@ -172,7 +172,7 @@ int main( int ac, char** av )
                 const arm::status_t* p = istream.read();
                 if( p == NULL ) 
                 { 
-                    if( !std::cin.good() ) { std::cerr << name() << "STDIN error" << std::endl; return 1; }
+                    if( !std::cin.good() ) { /* std::cerr << name() << "STDIN error" << std::endl; */ return 1; } // happens a lot, when closed on purpose
                     COMMA_THROW( comma::exception, "p is null" ); 
                 }
                 state = *p;

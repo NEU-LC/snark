@@ -135,6 +135,7 @@ struct status_t {
 
     /// Robotic arm must be in this state to move
     bool is_running() const;
+    bool is_initialising_ready() const;
     /// Robotic arm must be in this state to power on.
     bool is_powered_off() const;
     

@@ -77,7 +77,7 @@ result auto_initialization::run( started_reply_t started_update, bool force )
     // snark-ur10-from-console: Initialising joint (0)
     initj[0] = "speedj_init([0.05,0,0,0,0,0],0.05,0.00666667)";
 
-    if( status_.mode() != robotmode::initializing ) {
+    if( !status_.is_initialising_ready() ) {
         std::cerr << name() << "auto_init failed because robotic arm mode is " << status_.mode_str() << std::endl;
         return result( "cannot auto initialise robot if robot mode is not set to initializing", result::error::failure );
     }

@@ -36,6 +36,7 @@
 #include <vector>
 #include <iostream>
 #include <functional>
+#include <boost/thread.hpp>
 #include <comma/base/types.h>
 #include <comma/dispatch/dispatched.h>
 #include <comma/io/stream.h>
@@ -89,10 +90,19 @@ public:
   
     /// To be called to signal that the movement has started - for commands like SCAN or AUTO_INIT
     typedef boost::function< void ( void ) > started_reply_t;
+    typedef boost::function< void ( void ) > recorder_func_t;
 
-
+    /// class to trigger recorder function, which waypoint to start or stop recording
+    struct recorder_setup_t 
+    {
+        recorder_setup_t( comma::uint16 start, comma::uint16 end, recorder_func_t rec ) :
+            start_waypoint_( start ), end_waypoint_( end ), recorder_(rec ) {}
+        comma::uint16 start_waypoint_;
+        comma::uint16 end_waypoint_;
+        recorder_func_t recorder_;
+    };
     
-    result run( started_reply_t started, std::ostream& rover );
+    result run( started_reply_t started, std::ostream& rover, const boost::optional< recorder_setup_t >& record_info=boost::none );
     
     const std::string& name() const { return name_; }
     void name( const std::string& name )  { name_ = name ; }
