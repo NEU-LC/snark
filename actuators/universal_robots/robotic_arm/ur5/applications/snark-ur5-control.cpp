@@ -85,9 +85,8 @@ const char* lidar_filename = "lidar.bin";
 
 namespace fs = boost::filesystem;
 
-void do_nothting() {}
-
-/// This function must be easily interruptible, making sure it always calls interruption_point()
+/// A function to acts as the recorder for 'scan' command, parameters are binded to it in main,
+/// This function must be easily interruptible, making sure it always calls interruption_point()`.
 void save_lidar( const std::string& conn_str, const std::string& savefile,
                  const std::string& fields, 
                  double range_limit )
@@ -102,7 +101,6 @@ void save_lidar( const std::string& conn_str, const std::string& savefile,
 
     try
     {
-        /// TODO use input stream
         comma::io::istream iss( conn_str, comma::io::mode::binary );
         comma::csv::binary_input_stream< hok::data_point > istream( *iss ); 
         comma::io::select select;
@@ -129,17 +127,17 @@ void save_lidar( const std::string& conn_str, const std::string& savefile,
             }
         }
     }
-    catch( boost::thread_interrupted& ti )
+    catch( boost::thread_interrupted& ti ) // This is normal, exception does not inherits from std::exception
     {
-        std::cerr << "save lidar interrupted." << std::endl;
+        // std::cerr << name() << "save_lidar interrupted." << std::endl;
     }
     catch( std::exception& e )
     {
-        std::cerr  << "save_lidar exception: " << e.what() << std::endl;
+        std::cerr << name() << "save_lidar exception: " << e.what() << std::endl;
     }
     catch(...)
     {
-        std::cerr << "save_lidar unknown exception."<< std::endl;
+        std::cerr << name() << "save_lidar unknown exception."<< std::endl;
     }
 }
 } // namespace impl_ {
