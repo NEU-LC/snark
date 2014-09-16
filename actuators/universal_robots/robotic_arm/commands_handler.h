@@ -122,7 +122,7 @@ private:
     /// Run the command on the controller if possible
     bool execute();
     template < typename C >
-    bool execute_waypoints( const C& c );
+    bool execute_waypoints( const C& c, bool record=false );
     /// Sets the current position of the arm into Simulink input structure
     void set_current_position();
 

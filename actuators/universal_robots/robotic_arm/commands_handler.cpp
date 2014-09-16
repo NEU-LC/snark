@@ -216,7 +216,7 @@ void commands_handler::handle( arm::joint_move& joint )
 }
 
 template < typename C >
-bool commands_handler::execute_waypoints( const C& command )
+bool commands_handler::execute_waypoints( const C& command, bool record )
 {
     Arm_controller_v2_step();
     if( !output_.runnable() ) { 
@@ -235,9 +235,17 @@ bool commands_handler::execute_waypoints( const C& command )
         std::cerr << name() << output_.serialise() << std::endl; 
     }
     // Ok now follow the waypoints
-    ret = waypoints_follower_.run(
+    if( record ) {
+        ret = waypoints_follower_.run(
                 boost::bind( movement_started< C >, boost::cref( command ), boost::ref( this->ostream_ ) )
                 , this->os, recorder_setup_ );    
+    }
+    else {
+        ret = waypoints_follower_.run(
+                boost::bind( movement_started< C >, boost::cref( command ), boost::ref( this->ostream_ ) )
+                , this->os );    
+
+    }
 
     inputs_reset();
     return ret.is_success();
