@@ -189,6 +189,7 @@ typedef arm::handlers::commands_handler commands_handler_t;
 typedef boost::shared_ptr< commands_handler_t > commands_handler_shared;
 static commands_handler_shared commands_handler;
 static bool verbose = false;
+static arm::config config;
 
 template < typename C >
 std::string handle( const std::vector< std::string >& line, std::ostream& os )
@@ -230,7 +231,19 @@ void process_command( const std::vector< std::string >& v, std::ostream& os )
     else if( boost::iequals( v[2], "set_pos" ) )     { output( handle< arm::set_position >( v, os ) ); }
     else if( boost::iequals( v[2], "set_home" ) )    { output( handle< arm::set_home >( v, os ) ); }
     else if( boost::iequals( v[2], "power" ) )       { output( handle< arm::power >( v, os )); }  
-    else if( boost::iequals( v[2], "scan" ) )        { output( handle< arm::sweep_cam >( v, os )); }  
+    else if( boost::iequals( v[2], "scan" ) )        
+    {
+        if( v.size() >= arm::sweep_cam::fields )     { output( handle< arm::sweep_cam >( v, os )); }
+        else 
+        {
+            // If the user did not enter a sweep angle as last field, use the default
+            // You can either do this or create another scan command with the extra sweep_angle field
+            static std::string default_sweep = boost::lexical_cast< std::string >( config.continuum.scan.sweep_angle.value() );
+            std::vector< std::string > items = v; 
+            items.push_back( default_sweep );
+            output( handle< arm::sweep_cam >( items, os ) );
+        } 
+    }  
     else if( boost::iequals( v[2], "brakes" ) || 
              boost::iequals( v[2], "stop" ) )        { output( handle< arm::brakes >( v, os )); }  
     else if( boost::iequals( v[2], "cancel" ) )       { } /// No need to do anything, used to cancel other running commands e.g. auto_init or scan  
@@ -267,7 +280,6 @@ void read_status( comma::csv::binary_input_stream< arm::status_t >& iss, comma::
     }
 }
 
-static arm::config config;
 
 class stop_on_exit
 {

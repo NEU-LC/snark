@@ -136,8 +136,8 @@ void commands_handler::handle(sweep_cam& s)
     //                   this->os );
 
     inputs_.motion_primitive = input_primitive::scan;
-    std::cerr << name() << "scaning sweep for " << config_.scan.sweep_angle.value() << " degrees." << std::endl;
-    inputs_.Input_1 = config_.scan.sweep_angle.value();
+    std::cerr << name() << "scaning sweep for " << s.sweep_angle.value() << " degrees." << std::endl;
+    inputs_.Input_1 = s.sweep_angle.value();
 
     execute_waypoints( s, true );
 }

@@ -106,10 +106,11 @@ struct sweep_cam : command_base< sweep_cam >
 {
     static const char start_angle = -45;
     static const char end_angle = 15;
+    static const char fields = 6;
     bool use_world_frame;
     std::string filetag; /// optional name of file to save the data into
+    plane_angle_degrees_t sweep_angle;
 };
-
 
 struct move_joints : command_base< move_joints >
 {
