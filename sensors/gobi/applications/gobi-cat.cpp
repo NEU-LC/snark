@@ -147,12 +147,15 @@ int main( int argc, char** argv )
             std::cout << std::endl;
             return 0;
         }
-        if( !vm.count( "calibration") ) { COMMA_THROW( comma::exception, "please provide a calibration file for thermography, use --calibration=<calibration_file>" ); }
-        std::string temperature_unit = "celsius";
-        camera.enable_thermography( temperature_unit, calibration_file );
-        if( verbose ) { std::cerr << "gobi-cat: calibration file " << calibration_file << " is loaded" << std::endl; }
+        if( vm.count( "calibration") ) 
+        {
+            std::string temperature_unit = "celsius";
+            camera.enable_thermography( temperature_unit, calibration_file );
+            if( verbose ) { std::cerr << "gobi-cat: calibration file " << calibration_file << " is loaded" << std::endl; }
+        }
         if( vm.count( "output-conversion" ) ) 
         {
+            if( !vm.count( "calibration") ) { COMMA_THROW( comma::exception, "gobi-cat: unable to output conversion table, since calibration file was not provided" ); }
             std::string local_time = boost::posix_time::to_iso_string( boost::posix_time::second_clock::local_time() );
             std::string file_name = directory + "/" + local_time + ".csv";
             camera.output_conversion( file_name ); 

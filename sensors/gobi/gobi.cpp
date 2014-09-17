@@ -302,7 +302,7 @@ class gobi::impl
         {
             if( !thermography_is_enabled_ ) { COMMA_THROW( comma::exception, "failed to output conversion table, since thermography was not enabled" ); }
             std::ofstream ofs ( file_name.c_str() );
-            if( !ofs ) { COMMA_THROW( comma::exception, "failed to save conversion table, unable to create and/or open " << file_name ); };
+            if( !ofs ) { COMMA_THROW( comma::exception, "failed to output conversion table, unable to create and/or open file: " << file_name ); };
             for( unsigned long i=0; i < temperature_from_pixel_value_.size(); ++i) ofs << i << "," << temperature_from_pixel_value_[i] << std::endl;
         }
         
