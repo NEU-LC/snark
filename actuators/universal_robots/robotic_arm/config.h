@@ -16,6 +16,7 @@ struct continuum_t
     	plane_angle_degrees_t min;
     	plane_angle_degrees_t max;
         plane_angle_degrees_t sweep_angle;
+        angular_velocity_t sweep_velocity;
     };
 
     struct lidar_config

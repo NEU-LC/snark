@@ -95,10 +95,11 @@ public:
     /// class to trigger recorder function, which waypoint to start or stop recording
     struct recorder_setup_t 
     {
-        recorder_setup_t( comma::uint16 start, comma::uint16 end, recorder_func_t rec ) :
-            start_waypoint_( start ), end_waypoint_( end ), recorder_(rec ) {}
+        recorder_setup_t( comma::uint16 start, comma::uint16 end, const angular_velocity_t& velocity, recorder_func_t rec ) :
+            start_waypoint_( start ), end_waypoint_( end ), velocity_( velocity ), recorder_(rec ) {}
         comma::uint16 start_waypoint_;
         comma::uint16 end_waypoint_;
+        angular_velocity_t velocity_;
         recorder_func_t recorder_;
     };
     

@@ -469,7 +469,7 @@ int main( int ac, char** av )
                 std::cerr << "connection to lidar: " << ss.str() << std::endl;
                 std::string lidar_conn; 
                 lidar_conn = ss.str();
-                record_info.reset( arm::handlers::waypoints_follower::recorder_setup_t( 2, 3, 
+                record_info.reset( arm::handlers::waypoints_follower::recorder_setup_t( 2, 3, continuum.scan.sweep_velocity,
                                                                          boost::bind( &impl_::save_lidar, lidar_conn, lidar_filepath, 
                                                                                       continuum.lidar.fields, continuum.lidar.range_limit ) )
                 );

@@ -299,6 +299,10 @@ template <> struct traits< arm::continuum_t::scan_type >
         t.max = max * arm::degree;
         v.apply( "sweep_angle", sweep_angle );
         t.sweep_angle = sweep_angle * arm::degree;
+
+        double vel = t.sweep_velocity.value();
+        v.apply( "sweep_velocity", vel );
+        t.sweep_velocity = vel * arm::rad_per_sec;
     }
 
     template< typename K, typename V > static void visit( const K& k, const arm::continuum_t::scan_type& t, V& v )
@@ -306,6 +310,7 @@ template <> struct traits< arm::continuum_t::scan_type >
         v.apply( "min", t.min.value() );
         v.apply( "max", t.max.value() );
         v.apply( "sweep_angle", t.sweep_angle.value() );
+        v.apply( "sweep_velocity", t.sweep_velocity.value() );
     }
 };
 

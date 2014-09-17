@@ -134,18 +134,23 @@ public:
         return ss.str();
     }
     
-    
     /// Produce the robotic arm command with the joint angles given by Simulink output
     /// index points to the position to move to
-    std::string serialise( comma::uint32 index=0 ) const
+    std::string serialise( comma::uint32 index=0 ) const { return serialise_waypoint( index, velocity_ ); }
+    std::string serialise( const angular_velocity_t& velocity, comma::uint32 index=0 ) const { return serialise_waypoint( index, velocity ); }
+
+private:
+    std::string serialise_waypoint( comma::uint32 index, const angular_velocity_t& velocity ) const
     {
         static std::string tmp;
         static comma::csv::ascii< move_config_t > ascii;
+
+        angular_velocity_t velocity_capped = velocity > velocity_ + velocity_ ? velocity_ + velocity_ : velocity;
         
         std::ostringstream ss;
         ss << "movej([" << ascii.put( get_move_config(index), tmp )
            << "],a=" << acceleration_.value() << ','
-           << "v=" << velocity_.value() << ')';
+           << "v=" << velocity_capped.value() << ')';
         return ss.str();
     }
    

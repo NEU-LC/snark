@@ -98,13 +98,19 @@ result waypoints_follower::run( started_reply_t start_initiated, std::ostream& r
         std::cerr << name() << "moving to waypoint " << (j+1) << std::endl;
         std::cerr << name() << serialiser_.serialise( j ) << std::endl;
 
+        /// If recording, starts it and use the specified velocity
+        std::string arm_command = serialiser_.serialise( j );
         if( record_info )
         {
-            if( record_info->start_waypoint_ == j ) { recorder_container.reset( new boost::thread( record_info->recorder_ ), impl_::thread_release() ); }
+            if( record_info->start_waypoint_ == j ) 
+            { 
+                arm_command = serialiser_.serialise( record_info->velocity_, j );
+                recorder_container.reset( new boost::thread( record_info->recorder_ ), impl_::thread_release() ); 
+            }
             if( record_info->end_waypoint_ == j ) { recorder_container.reset(); }
         }
 
-        rover << serialiser_.serialise( j ) << std::endl;
+        rover << arm_command << std::endl;
         rover.flush();
 
         const arm::move_config_t& config = serialiser_.get_move_config( j );
