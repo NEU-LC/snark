@@ -58,6 +58,7 @@ int main( int argc, char** argv )
         std::string address;
         std::string setattributes;
         std::string calibration_file;
+        std::string directory;
         unsigned int discard;
         boost::program_options::options_description description( "options" );
         description.add_options()
@@ -71,9 +72,8 @@ int main( int argc, char** argv )
             ( "list-cameras", "list all cameras" )
             ( "header", "output header only" )
             ( "no-header", "output image data only" )
-            ( "celsius", "enable thermography and convert pixel values to degrees Celsius")
-            ( "kelvin", "enable thermography and convert pixel values to degrees Kelvin")
-            ( "calibration", boost::program_options::value< std::string >( &calibration_file ), "location of the calibration file for thermography")
+            ( "calibration", boost::program_options::value< std::string >( &calibration_file ), "calibration file for thermography")
+            ( "output-conversion", boost::program_options::value< std::string >( &directory ), "output conversion table to a timestamped csv file in the specified directory")
             ( "verbose,v", "be more verbose" );
             
         std::ostringstream autocorrection_message;
@@ -147,16 +147,20 @@ int main( int argc, char** argv )
             std::cout << std::endl;
             return 0;
         }
-        bool thermography = vm.count( "celsius" ) || vm.count( "kelvin" );
-        if( thermography )
+        if( vm.count( "calibration") ) 
         {
-            if( !vm.count( "calibration") ) { COMMA_THROW( comma::exception, "please provide calibration file to enable thermography, use --calibration=<calibration_file>" ); }
-            if( vm.count( "celsius" ) && vm.count( "kelvin" ) ) { COMMA_THROW( comma::exception, "--celsius and --kelvin are mutually exclusive" ); }
-            std::string temperature_unit = vm.count( "celsius" ) ? "celsius" : "kelvin";
+            std::string temperature_unit = "celsius";
             camera.enable_thermography( temperature_unit, calibration_file );
-            if( verbose ) { std::cerr << "gobi-cat: thermography is enabled, camera " << camera.address() << " will ouput degrees " << temperature_unit << std::endl; }
+            if( verbose ) { std::cerr << "gobi-cat: calibration file " << calibration_file << " is loaded" << std::endl; }
         }
-
+        if( vm.count( "output-conversion" ) ) 
+        {
+            if( !vm.count( "calibration") ) { COMMA_THROW( comma::exception, "gobi-cat: unable to output conversion table, since calibration file was not provided" ); }
+            std::string local_time = boost::posix_time::to_iso_string( boost::posix_time::second_clock::local_time() );
+            std::string file_name = directory + "/" + local_time + ".csv";
+            camera.output_conversion( file_name ); 
+            if( verbose ) { std::cerr << "gobi-cat: conversion table for thermography has been saved to " << file_name << std::endl; }
+        }
         std::vector< std::string > v = comma::split( fields, "," );
         comma::csv::format format;
         for( unsigned int i = 0; i < v.size(); ++i )

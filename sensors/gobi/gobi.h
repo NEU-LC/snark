@@ -77,6 +77,8 @@ class gobi
         
         void disable_thermography();
         
+        void output_conversion( std::string file_name );
+        
     private:
         class impl;
         impl* pimpl_;
