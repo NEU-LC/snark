@@ -3,9 +3,9 @@
  *
  * Code generated for Simulink model 'Arm_controller_v2'.
  *
- * Model version                  : 1.88
+ * Model version                  : 1.89
  * Simulink Coder version         : 8.6 (R2014a) 27-Dec-2013
- * C/C++ source code generated on : Tue Sep 16 15:04:03 2014
+ * C/C++ source code generated on : Tue Sep 16 16:11:31 2014
  *
  * Target selection: ert.tlc
  * Embedded hardware selection: 32-bit Generic
@@ -6093,8 +6093,7 @@ void Arm_controller_v2_step(void)
         /* %or wp3 to wp4 */
         if (waypoint_number == 3) {
           /* '<S6>:1:204' */
-          /* '<S6>:1:205' */
-          /* %transforming wp2 if needed */
+          /* %transforming shoulder joint */
           if (fabs(rtb_wp2_o[1] - rtb_wp1_k[1]) > 180.0) {
             /* '<S6>:1:206' */
             if (rtb_wp2_o[1] < 0.0) {
@@ -6110,93 +6109,55 @@ void Arm_controller_v2_step(void)
             rtb_wp3_cw[1] = rtb_wp2_o[1];
           }
 
-          /* '<S6>:1:205' */
-          /* %transforming wp2 if needed */
-          if (fabs(rtb_wp2_o[2] - rtb_wp1_k[2]) > 180.0) {
-            /* '<S6>:1:206' */
-            if (rtb_wp2_o[2] < 0.0) {
-              /* '<S6>:1:207' */
-              /* '<S6>:1:208' */
-              rtb_wp2_o[2] += 360.0;
-            } else {
-              /* '<S6>:1:210' */
-              rtb_wp2_o[2] -= 360.0;
-            }
-
-            /* '<S6>:1:212' */
-            rtb_wp3_cw[2] = rtb_wp2_o[2];
-          }
-
-          /* '<S6>:1:205' */
-          /* %transforming wp2 if needed */
+          /* transforming tilt joint */
           if (fabs(rtb_wp2_o[3] - rtb_wp1_k[3]) > 180.0) {
-            /* '<S6>:1:206' */
+            /* '<S6>:1:216' */
             if (rtb_wp2_o[3] < 0.0) {
-              /* '<S6>:1:207' */
-              /* '<S6>:1:208' */
+              /* '<S6>:1:217' */
+              /* '<S6>:1:218' */
               rtb_wp2_o[3] += 360.0;
             } else {
-              /* '<S6>:1:210' */
+              /* '<S6>:1:220' */
               rtb_wp2_o[3] -= 360.0;
             }
 
-            /* '<S6>:1:212' */
+            /* '<S6>:1:222' */
             rtb_wp3_cw[3] = rtb_wp2_o[3];
           }
-
-          /* '<S6>:1:205' */
         } else {
           if (waypoint_number == 5) {
-            /* '<S6>:1:216' */
-            /* '<S6>:1:217' */
+            /* '<S6>:1:225' */
+            /* transforming shoulder joint */
             if (fabs(rtb_wp4_m2[1] - rtb_wp3_cw[1]) > 180.0) {
-              /* '<S6>:1:218' */
+              /* '<S6>:1:227' */
               if (rtb_wp4_m2[1] < 0.0) {
-                /* '<S6>:1:219' */
-                /* '<S6>:1:220' */
+                /* '<S6>:1:228' */
+                /* '<S6>:1:229' */
                 rtb_wp4_m2[1] += 360.0;
               } else {
-                /* '<S6>:1:222' */
+                /* '<S6>:1:231' */
                 rtb_wp4_m2[1] -= 360.0;
               }
 
-              /* '<S6>:1:224' */
+              /* '<S6>:1:233' */
               rtb_wp5_m[1] = rtb_wp4_m2[1];
             }
 
-            /* '<S6>:1:217' */
-            if (fabs(rtb_wp4_m2[2] - rtb_wp3_cw[2]) > 180.0) {
-              /* '<S6>:1:218' */
-              if (rtb_wp4_m2[2] < 0.0) {
-                /* '<S6>:1:219' */
-                /* '<S6>:1:220' */
-                rtb_wp4_m2[2] += 360.0;
-              } else {
-                /* '<S6>:1:222' */
-                rtb_wp4_m2[2] -= 360.0;
-              }
-
-              /* '<S6>:1:224' */
-              rtb_wp5_m[2] = rtb_wp4_m2[2];
-            }
-
-            /* '<S6>:1:217' */
+            /* transforming tilt joint */
             if (fabs(rtb_wp4_m2[3] - rtb_wp3_cw[3]) > 180.0) {
-              /* '<S6>:1:218' */
+              /* '<S6>:1:237' */
               if (rtb_wp4_m2[3] < 0.0) {
-                /* '<S6>:1:219' */
-                /* '<S6>:1:220' */
+                /* '<S6>:1:238' */
+                /* '<S6>:1:239' */
                 rtb_wp4_m2[3] += 360.0;
               } else {
-                /* '<S6>:1:222' */
+                /* '<S6>:1:241' */
                 rtb_wp4_m2[3] -= 360.0;
               }
 
-              /* '<S6>:1:224' */
+              /* '<S6>:1:243' */
               rtb_wp5_m[3] = rtb_wp4_m2[3];
             }
-
-            /* '<S6>:1:217' */
           }
         }
       }

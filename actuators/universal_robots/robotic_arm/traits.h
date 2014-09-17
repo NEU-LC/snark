@@ -288,17 +288,20 @@ template <> struct traits< arm::continuum_t::scan_type >
 {
     template< typename K, typename V > static void visit( const K& k, arm::continuum_t::scan_type& t, V& v )
     {
-        double min=-45, max=15;
+        double min=-45, max=15, sweep_angle = t.sweep_angle.value();
         v.apply( "min", min );
         t.min = min * arm::degree;
         v.apply( "max", max );
         t.max = max * arm::degree;
+        v.apply( "sweep_angle", sweep_angle );
+        t.sweep_angle = sweep_angle * arm::degree;
     }
 
     template< typename K, typename V > static void visit( const K& k, const arm::continuum_t::scan_type& t, V& v )
     {
         v.apply( "min", t.min.value() );
         v.apply( "max", t.max.value() );
+        v.apply( "sweep_angle", t.sweep_angle.value() );
     }
 };
 
