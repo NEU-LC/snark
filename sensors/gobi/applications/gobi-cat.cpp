@@ -64,6 +64,7 @@ int main( int argc, char** argv )
         description.add_options()
             ( "help,h", "display help message" )
             ( "set", boost::program_options::value< std::string >( &setattributes ), "set camera attributes as semicolon-separated name-value pairs" )
+            ( "set-and-exit", "set camera attributes specified in --set and exit" )
             ( "address", boost::program_options::value< std::string >( &address )->default_value( "" ), "ip address of the camera" )
             ( "discard", "discard frames, if cannot keep up; same as --buffer=1" )
             ( "buffer", boost::program_options::value< unsigned int >( &discard )->default_value( 0 ), "maximum buffer size before discarding frames, default: unlimited" )
@@ -134,7 +135,7 @@ int main( int argc, char** argv )
         snark::camera::gobi camera( address, attributes );
         if( verbose ) { std::cerr << "gobi-cat: connected to a xenics camera at address " << camera.address() << std::endl; }
         if( verbose ) { std::cerr << "gobi-cat: total bytes per frame: " << camera.total_bytes_per_frame() << std::endl; }
-        if( vm.count( "set" ) ) { return 0; }
+        if( vm.count( "set-and-exit" ) ) { return 0; }
         if( vm.count( "list-attributes" ) )
         {
             attributes = camera.attributes();
