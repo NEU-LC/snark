@@ -103,12 +103,12 @@ static void usage()
     exit( -1 );
 }
 
-bool timestampRequired = false; // quick and dirty
-boost::optional< boost::posix_time::time_duration > maxGap;
+bool timestamp_required = false; // quick and dirty
+boost::optional< boost::posix_time::time_duration > max_gap;
 
-std::vector< boost::shared_ptr< snark::applications::frame > > parseframes( const std::vector< std::string >& values
+std::vector< boost::shared_ptr< snark::applications::frame > > parse_frames( const std::vector< std::string >& values
                                                     , const comma::csv::options& options
-                                                    , bool discardOutOfOrder
+                                                    , bool discard_out_of_order
                                                     , bool outputframe
                                                     , std::vector< bool > to
                                                     , bool interpolate
@@ -152,8 +152,8 @@ std::vector< boost::shared_ptr< snark::applications::frame > > parseframes( cons
                 }
                 csv.full_xpath = false;
                 outputframe = outputframe || comma::name_value::map( stripped, "filename" ).exists( "output-frame" );
-                timestampRequired = true;
-                frames.push_back( boost::shared_ptr< snark::applications::frame >( new snark::applications::frame( csv, discardOutOfOrder, maxGap, outputframe, to[i], interpolate, rotation_present ) ) );
+                timestamp_required = true;
+                frames.push_back( boost::shared_ptr< snark::applications::frame >( new snark::applications::frame( csv, discard_out_of_order, max_gap, outputframe, to[i], interpolate, rotation_present ) ) );
             }
         }
     }
@@ -162,37 +162,37 @@ std::vector< boost::shared_ptr< snark::applications::frame > > parseframes( cons
 
 void run( const std::vector< boost::shared_ptr< snark::applications::frame > >& frames, const comma::csv::options& csv )
 {
-    comma::signal_flag shutdownFlag;
+    comma::signal_flag is_shutdown;
     comma::csv::input_stream< snark::applications::frame::point_type > istream( std::cin, csv );
     comma::csv::output_stream< snark::applications::frame::point_type > ostream( std::cout, csv );
     if( !ostream.is_binary() ) { ostream.ascii().precision( 12 ); } // quick and dirty, brush up later
     // ---------------------------------------------------
     // outputting frame: quick and dirty, uglier than britney spears! brush up later
-    unsigned int outputframeCount = 0;
-    for( std::size_t i = 0; i < frames.size(); ++i ) { if( frames[i]->outputframe ) { ++outputframeCount; } }
-    boost::scoped_ptr< comma::csv::binary< snark::applications::frame::point_type > > binaryPoint;
-    boost::scoped_ptr< comma::csv::ascii< snark::applications::frame::point_type > > asciiPoint;
-    boost::scoped_ptr< comma::csv::binary< snark::applications::position > > binaryframe;
-    boost::scoped_ptr< comma::csv::ascii< snark::applications::position > > asciiframe;
-    if( outputframeCount > 0 )
+    unsigned int output_frame_count = 0;
+    for( std::size_t i = 0; i < frames.size(); ++i ) { if( frames[i]->outputframe ) { ++output_frame_count; } }
+    boost::scoped_ptr< comma::csv::binary< snark::applications::frame::point_type > > binary_point;
+    boost::scoped_ptr< comma::csv::ascii< snark::applications::frame::point_type > > ascii_point;
+    boost::scoped_ptr< comma::csv::binary< snark::applications::position > > binary_frame;
+    boost::scoped_ptr< comma::csv::ascii< snark::applications::position > > ascii_frame;
+    if( output_frame_count > 0 )
     {
         if( csv.binary() )
         {
-            binaryPoint.reset( new comma::csv::binary< snark::applications::frame::point_type >( csv ) );
-            binaryframe.reset( new comma::csv::binary< snark::applications::position >() );
+            binary_point.reset( new comma::csv::binary< snark::applications::frame::point_type >( csv ) );
+            binary_frame.reset( new comma::csv::binary< snark::applications::position >() );
         }
         else
         {
-            asciiPoint.reset( new comma::csv::ascii< snark::applications::frame::point_type >( csv ) );
-            asciiframe.reset( new comma::csv::ascii< snark::applications::position >() );
+            ascii_point.reset( new comma::csv::ascii< snark::applications::frame::point_type >( csv ) );
+            ascii_frame.reset( new comma::csv::ascii< snark::applications::position >() );
         }
     }
     // ---------------------------------------------------
 
-    std::string outputBuf;
-    if( csv.binary() ) { outputBuf.resize( csv.format().size() ); }
+    std::string output_buf;
+    if( csv.binary() ) { output_buf.resize( csv.format().size() ); }
 
-    while( !shutdownFlag )
+    while( !is_shutdown )
     {
         const snark::applications::frame::point_type* p = istream.read();
         if( p == NULL ) { return; }
@@ -208,24 +208,24 @@ void run( const std::vector< boost::shared_ptr< snark::applications::frame > >& 
             converted = *c;
         }
         if( discarded ) { continue; }
-        if( outputframeCount > 0 ) // quick and dirty, and probably slow; brush up later
+        if( output_frame_count > 0 ) // quick and dirty, and probably slow; brush up later
         {
             // ---------------------------------------------------
             // outputting frame: quick and dirty, uglier than britney spears! brush up later
             if( csv.binary() )
             {
-                static const std::size_t pointSize = csv.format().size();
-                static const std::size_t positionSize = comma::csv::format( comma::csv::format::value< snark::applications::position >() ).size();
-                static const std::size_t size = pointSize + outputframeCount * positionSize;
+                static const std::size_t point_size = csv.format().size();
+                static const std::size_t position_size = comma::csv::format( comma::csv::format::value< snark::applications::position >() ).size();
+                static const std::size_t size = point_size + output_frame_count * position_size;
                 std::vector< char > buf( size );
                 ::memset( &buf[0], 0, size );
-                ::memcpy( &buf[0], istream.binary().last(), pointSize );
-                binaryPoint->put( converted, &buf[0] );
+                ::memcpy( &buf[0], istream.binary().last(), point_size );
+                binary_point->put( converted, &buf[0] );
                 unsigned int count = 0;
                 for( std::size_t i = 0; i < frames.size(); ++i )
                 {
                     if( !frames[i]->outputframe ) { continue; }
-                    binaryframe->put( frames[i]->last(), &buf[0] + pointSize + count * positionSize );
+                    binary_frame->put( frames[i]->last(), &buf[0] + point_size + count * position_size );
                     ++count;
                 }
                 std::cout.write( &buf[0], size );
@@ -233,12 +233,12 @@ void run( const std::vector< boost::shared_ptr< snark::applications::frame > >& 
             else
             {
                 std::string s = comma::join( istream.ascii().last(), csv.delimiter );
-                asciiPoint->put( converted, s );
+                ascii_point->put( converted, s );
                 for( std::size_t i = 0; i < frames.size(); ++i )
                 {
                     if( !frames[i]->outputframe ) { continue; }
                     std::vector< std::string > f;
-                    asciiframe->put( frames[i]->last(), f );
+                    ascii_frame->put( frames[i]->last(), f );
                     s += ( csv.delimiter + comma::join( f, csv.delimiter ) );
                 }
                 std::cout << s << std::endl;
@@ -249,8 +249,8 @@ void run( const std::vector< boost::shared_ptr< snark::applications::frame > >& 
         {
             if( csv.binary() )
             {
-                ::memcpy( &outputBuf[0], istream.binary().last(), csv.format().size() );
-                ostream.write( converted, outputBuf );
+                ::memcpy( &output_buf[0], istream.binary().last(), csv.format().size() );
+                ostream.write( converted, output_buf );
             }
             else
             {
@@ -266,45 +266,37 @@ int main( int ac, char** av )
     {
         comma::command_line_options options( ac, av );
         if( options.exists( "--help,-h" ) || ac == 1 ) { usage(); }
-        bool discardOutOfOrder = options.exists( "--discard-out-of-order,--discard" );
+        bool discard_out_of_order = options.exists( "--discard-out-of-order,--discard" );
         bool from = options.exists( "--from" );
         bool to = options.exists( "--to" );
         if( !to && !from ) { COMMA_THROW( comma::exception, "please specify either --to or --from" ); }
         bool interpolate = !options.exists( "--no-interpolate" );
-
         std::vector< std::string > names = options.names();
-        std::vector< bool > toVector;
+        std::vector< bool > to_vector;
         for( unsigned int i = 0u; i < names.size(); i++ )
         {
-            if( names[i] == "--from" )
-            {
-                toVector.push_back( false );
-            }
-            else if( names[i] == "--to" )
-            {
-                toVector.push_back( true );
-            }
+            if( names[i] == "--from" ) { to_vector.push_back( false ); }
+            else if( names[i] == "--to" ) { to_vector.push_back( true ); }
         }
-
         if( options.exists( "--max-gap" ) )
         {
             double d = options.value< double >( "--max-gap" );
-            if( !comma::math::less( 0, d ) ) { std::cerr << "points-frame: expected --max-gap in seconds, got " << maxGap << std::endl; usage(); }
-            maxGap = boost::posix_time::seconds( int( d ) ) + boost::posix_time::microseconds( int( 1000000.0 * ( d - int( d ) ) ) );
+            if( !comma::math::less( 0, d ) ) { std::cerr << "points-frame: expected --max-gap in seconds, got " << d << std::endl; usage(); }
+            max_gap = boost::posix_time::seconds( int( d ) ) + boost::posix_time::microseconds( int( 1000000.0 * ( d - int( d ) ) ) );
         }
         comma::csv::options csv( options );
         if( csv.fields == "" ) { csv.fields="t,x,y,z"; }
         bool rotation_present = comma::csv::fields_exist( csv.fields, "roll,pitch,yaw" );
-        std::vector< boost::shared_ptr< snark::applications::frame > > frames = parseframes( options.values< std::string >( "--from,--to" )
+        std::vector< boost::shared_ptr< snark::applications::frame > > frames = parse_frames( options.values< std::string >( "--from,--to" )
                                                                       , csv
-                                                                      , discardOutOfOrder
+                                                                      , discard_out_of_order
                                                                       , options.exists( "--output-frame" )
-                                                                      , toVector
+                                                                      , to_vector
                                                                       , interpolate
                                                                       , rotation_present );
-        //if( timestampRequired ) { if( csv.fields != "" && !comma::csv::namesValid( comma::split( csv.fields, ',' ), comma::split( "t,x,y,z", ',' ) ) ) { COMMA_THROW( comma::exception, "expected mandatory fields t,x,y,z; got " << csv.fields ); } }
+        //if( timestamp_required ) { if( csv.fields != "" && !comma::csv::namesValid( comma::split( csv.fields, ',' ), comma::split( "t,x,y,z", ',' ) ) ) { COMMA_THROW( comma::exception, "expected mandatory fields t,x,y,z; got " << csv.fields ); } }
         //else { if( csv.fields != "" && !comma::csv::namesValid( comma::split( csv.fields, ',' ), comma::split( "x,y,z", ',' ) ) ) { COMMA_THROW( comma::exception, "expected mandatory fields x,y,z; got " << csv.fields ); } }
-        if( timestampRequired ) { if( csv.fields != "" && !comma::csv::fields_exist( csv.fields, "t" ) ) { COMMA_THROW( comma::exception, "expected mandatory field t; got " << csv.fields ); } }
+        if( timestamp_required ) { if( csv.fields != "" && !comma::csv::fields_exist( csv.fields, "t" ) ) { COMMA_THROW( comma::exception, "expected mandatory field t; got " << csv.fields ); } }
         csv.precision = 12;
         run( frames, csv );
         return 0;
