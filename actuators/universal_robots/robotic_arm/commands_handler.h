@@ -88,12 +88,12 @@ public:
     
     commands_handler( ExtU_Arm_controller_v2_T& simulink_inputs, const arm_output& output,
                       arm::status_t& status, std::ostream& robot, 
-                      auto_initialization& init, tilt_sweep& sweep, waypoints_follower& follower, 
+                      auto_initialization& init, waypoints_follower& follower, 
                       optional_recording_t recorder,
                       std::ostream& oss, const arm::continuum_t& config ) : 
         inputs_(simulink_inputs), output_(output), 
         status_( status ), os( robot ), 
-        init_(init), sweep_( sweep ), waypoints_follower_( follower ),
+        init_(init), waypoints_follower_( follower ),
         recorder_setup_( recorder ),
         ostream_( oss ), config_( config ),
         verbose_(true), is_move_effector( false ),
@@ -109,7 +109,6 @@ private:
     status_t& status_;
     std::ostream& os;
     auto_initialization& init_;
-    tilt_sweep& sweep_;
     waypoints_follower& waypoints_follower_;
     optional_recording_t recorder_setup_;
     std::ostream& ostream_;

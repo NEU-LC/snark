@@ -415,7 +415,7 @@ int main( int ac, char** av )
         }
         comma::io::ostream& robot_arm = *poss;
 
-        /// For reading  commands from stdin
+        /// For reading  commands from stdin with specific rover id as filter
         arm::inputs inputs( rover_id );
 
         typedef std::vector< std::string > command_vector;
@@ -443,15 +443,7 @@ int main( int ac, char** av )
                     boost::bind( should_stop, boost::ref( inputs ) ),
                     continuum.work_directory );
             auto_init.set_app_name( name() );
-            
-            arm::handlers::tilt_sweep tilt_sweep( Arm_controller_v2_U, output, 
-                    boost::bind( read_status, boost::ref(istream), boost::ref( status_stream ), select, status_stream.fd() ),
-                    arm_status,
-                    boost::bind( should_stop, boost::ref( inputs ) ),
-                    signaled, continuum );
-            std::cerr << name() << "min is " << continuum.scan.min.value() << std::endl;
-            tilt_sweep.set_min( continuum.scan.min );                                          
-            tilt_sweep.set_max( continuum.scan.max );                                          
+            /// This is the handler for following waypoints given by Simulink code
             arm::handlers::waypoints_follower waypoints_follower( output, 
                     boost::bind( read_status, boost::ref(istream), boost::ref( status_stream ), select, status_stream.fd() ),
                     arm_status,
@@ -459,7 +451,8 @@ int main( int ac, char** av )
                     signaled );
             waypoints_follower.name( name() );
             
-
+            // This is the infomation and generic function for recording some data
+            // It records data for scan command starting from waypoint 2 and ends at waypoint 3
             arm::handlers::commands_handler::optional_recording_t record_info;
             if( !continuum.lidar.service_host.empty() )
             {
@@ -474,8 +467,9 @@ int main( int ac, char** av )
                                                                                       continuum.lidar.fields, continuum.lidar.range_limit ) )
                 );
             }
+            /// This is the command handler for all commands
             commands_handler.reset( new commands_handler_t( Arm_controller_v2_U, output, arm_status, *robot_arm, 
-                                                            auto_init, tilt_sweep, waypoints_follower, record_info, 
+                                                            auto_init, waypoints_follower, record_info, 
                                                             std::cout, continuum ) );
         
 
@@ -486,11 +480,12 @@ int main( int ac, char** av )
                     std::cerr << name() << "status connection to robot-arm failed" << std::endl;
                     COMMA_THROW( comma::exception, "status connection to robot arm failed." ); 
                 }
-    
+                // Read and update the latest status from the robot arm, put it into arm_status
                 read_status( istream, status_stream, select, status_stream.fd() ); 
+                // Checks for home position and create the home file if true, else remove home file.
                 home_position_check( arm_status, auto_init.home_filepath() );
                 
-                /// Also act as sleep
+                /// Also act as sleep, reads commands from stdin
                 inputs.read( timeout );
                 // Process commands into inputs into the system
                 if( !inputs.is_empty() )
