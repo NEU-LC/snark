@@ -50,7 +50,7 @@
 #include <comma/name_value/ptree.h>
 #include <comma/name_value/parser.h>
 #include <comma/io/stream.h>
-#include <comma/csv/stream.h>
+#include <comma/io/publisher.h>
 #include <comma/string/string.h>
 #include <comma/application/signal_flag.h>
 #include "../../traits.h"
@@ -88,8 +88,8 @@ namespace fs = boost::filesystem;
 /// A function to acts as the recorder for 'scan' command, parameters are binded to it in main,
 /// This function must be easily interruptible, making sure it always calls interruption_point()`.
 void save_lidar( const std::string& conn_str, const std::string& savefile,
-                 const std::string& fields, 
-                 double range_limit )
+                 const std::string& fields, double range_limit,
+                 comma::io::publisher& publisher )
 {
     // boost::filesystem::remove( savefile );
 
@@ -99,6 +99,9 @@ void save_lidar( const std::string& conn_str, const std::string& savefile,
     csv.fields = fields;
     csv.full_xpath = true;
 
+    comma::csv::binary< hok::data_point > binary;
+    std::vector<char> line( binary.format().size() );
+ 
     try
     {
         comma::io::istream iss( conn_str, comma::io::mode::binary );
@@ -124,6 +127,10 @@ void save_lidar( const std::string& conn_str, const std::string& savefile,
                 if( point == NULL ) { return; }
 
                 if( point->range <= range_limit ) { ostream.write( *point ); }
+
+                //republish the data         
+                binary.put( *point, line.data() );
+                publisher.write( line.data(), line.size());
             }
         }
     }
@@ -163,6 +170,8 @@ void usage(int code=1)
     std::cerr << "*   --feedback-port=:     TCP Port number of the robot arm's feedback." << std::endl;
     std::cerr << "    --sleep=:             Loop sleep value in seconds, default is 0.2s if not specified." << std::endl;
     std::cerr << "*   --config=:            Config file for robot arm, see --output-config." << std::endl;
+    std::cerr << "*   --scan-forwarding-port=|-P=:" << std::endl;
+    std::cerr << "                          Broadcast scanned data using TCP on this port." << std::endl;
     std::cerr << "    --output-config=:     Print config format in json." << std::endl;
     // std::cerr << "    --init-force-limit,-ifl:" << std::endl;
     // std::cerr << "                          Force (Newtons) limit when auto initializing, if exceeded then stop auto init." << std::endl;
@@ -400,6 +409,8 @@ int main( int ac, char** av )
         std::string arm_conn_port = options.value< std::string >( "--robot-arm-port" );
         std::string arm_feedback_host = options.value< std::string >( "--feedback-host" );
         std::string arm_feedback_port = options.value< std::string >( "--feedback-port" );
+        std::string tcp_scan_forwarding = "tcp:" + boost::lexical_cast< std::string >( continuum.lidar.scan_forwarding_port );
+        comma::io::publisher scan_broadcast( tcp_scan_forwarding, comma::io::mode::binary );
         
         boost::scoped_ptr< comma::io::ostream > poss;
         try
@@ -433,6 +444,7 @@ int main( int ac, char** av )
         comma::io::select select;
         select.read().add( status_stream.fd() );
 
+
         {
             stop_on_exit on_exit( *robot_arm );
 
@@ -458,13 +470,14 @@ int main( int ac, char** av )
             {
                 std::ostringstream ss;
                 ss << "tcp:" << continuum.lidar.service_host << ':' << continuum.lidar.service_port;
-                std::string lidar_filepath = continuum.work_directory + '/' + impl_::lidar_filename;
+                std::string scan_filepath = continuum.work_directory + '/' + impl_::lidar_filename;
                 std::cerr << "connection to lidar: " << ss.str() << std::endl;
-                std::string lidar_conn; 
-                lidar_conn = ss.str();
+                std::string hokuyo_conn; 
+                hokuyo_conn = ss.str();
                 record_info.reset( arm::handlers::waypoints_follower::recorder_setup_t( 2, 3, continuum.scan.sweep_velocity,
-                                                                         boost::bind( &impl_::save_lidar, lidar_conn, lidar_filepath, 
-                                                                                      continuum.lidar.fields, continuum.lidar.range_limit ) )
+                                                                         boost::bind( &impl_::save_lidar, hokuyo_conn, scan_filepath, 
+                                                                                      continuum.scan.fields, continuum.scan.range_limit,
+                                                                                      boost::ref( scan_broadcast ) ) )
                 );
             }
             /// This is the command handler for all commands

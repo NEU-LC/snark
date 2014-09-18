@@ -292,25 +292,24 @@ template <> struct traits< arm::continuum_t::scan_type >
 {
     template< typename K, typename V > static void visit( const K& k, arm::continuum_t::scan_type& t, V& v )
     {
-        double min=-45, max=15, sweep_angle = t.sweep_angle.value();
-        v.apply( "min", min );
-        t.min = min * arm::degree;
-        v.apply( "max", max );
-        t.max = max * arm::degree;
+        double sweep_angle = t.sweep_angle.value();
         v.apply( "sweep_angle", sweep_angle );
         t.sweep_angle = sweep_angle * arm::degree;
 
         double vel = t.sweep_velocity.value();
         v.apply( "sweep_velocity", vel );
         t.sweep_velocity = vel * arm::rad_per_sec;
+
+        v.apply( "fields", t.fields );
+        v.apply( "range-limit", t.range_limit );
     }
 
     template< typename K, typename V > static void visit( const K& k, const arm::continuum_t::scan_type& t, V& v )
     {
-        v.apply( "min", t.min.value() );
-        v.apply( "max", t.max.value() );
         v.apply( "sweep_angle", t.sweep_angle.value() );
         v.apply( "sweep_velocity", t.sweep_velocity.value() );
+        v.apply( "fields", t.fields );
+        v.apply( "range-limit", t.range_limit );
     }
 };
 
@@ -320,16 +319,14 @@ template <> struct traits< arm::continuum_t::lidar_config >
     {
         v.apply( "service-host", t.service_host );
         v.apply( "service-port", t.service_port );
-        v.apply( "fields", t.fields );
-        v.apply( "range-limit", t.range_limit );
+        v.apply( "scan-forwarding-port", t.scan_forwarding_port );
     }
 
     template< typename K, typename V > static void visit( const K& k, const arm::continuum_t::lidar_config& t, V& v )
     {
         v.apply( "service-host", t.service_host );
         v.apply( "service-port", t.service_port );
-        v.apply( "fields", t.fields );
-        v.apply( "range-limit", t.range_limit );
+        v.apply( "scan-forwarding-port", t.scan_forwarding_port );
     }
 };
 

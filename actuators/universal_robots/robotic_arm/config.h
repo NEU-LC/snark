@@ -13,18 +13,17 @@ struct continuum_t
 {
     struct scan_type
     {
-    	plane_angle_degrees_t min;
-    	plane_angle_degrees_t max;
         plane_angle_degrees_t sweep_angle;
         angular_velocity_t sweep_velocity;
+        std::string fields;     /// fields to retain
+        double range_limit;     /// Any points further than the limit are discarded
     };
 
     struct lidar_config
     {
         std::string service_host;
         comma::uint32 service_port;
-        std::string fields;     /// fields to retain
-        double range_limit;     /// Any points further than the limit are discarded
+        comma::uint32 scan_forwarding_port;
     };
 
     typedef boost::array< plane_angle_t, joints_num > arm_position_t;
