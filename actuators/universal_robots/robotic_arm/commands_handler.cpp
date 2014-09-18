@@ -142,22 +142,6 @@ void commands_handler::handle(sweep_cam& s)
     execute_waypoints( s, true );
 }
 
-bool commands_handler::execute()
-{
-    Arm_controller_v2_step();
-    if( !output_.runnable() ) { ret = result( "cannot run command as it will cause a collision", result::error::collision ); inputs_reset(); return false; }
-    
-    if( verbose_ ) { 
-        std::cerr << name() << output_.debug_in_degrees() << std::endl; 
-        std::cerr << name() << output_.serialise() << std::endl; 
-    }
-    os << output_.serialise() << std::endl;
-    os.flush();
-    inputs_reset();
-    ret = result();
-    return true;
-}
-
 void commands_handler::handle( arm::move_joints& joints )
 {
     ret = result();
