@@ -39,45 +39,57 @@
 #include <comma/name_value/map.h>
 #include <snark/imaging/cv_mat/pipeline.h>
 #include <snark/sensors/gobi/gobi.h>
+#include <limits>
+#include <fstream>
+#include "XCamera.h"
 #include "XFilters.h"
 
 int main( int argc, char** argv )
 {
     try
     {
+        std::string conversion_table;
         boost::program_options::options_description description( "options" );
         description.add_options()
             ( "help,h", "display help message" )
             ( "verbose,v", "be more verbose" )
-            ( "celsius", "convert to degrees Celsius" )
-            ( "kelvin", "convert to degrees Kelvin" )
-            ( "calibration", boost::program_options::value< std::string >(), "location of the calibration file" );
+            ( "conversion-table", boost::program_options::value< std::string >( &conversion_table ), "file with the conversion data from pixel values to degrees Celsius" );
         boost::program_options::variables_map vm;
         boost::program_options::store( boost::program_options::parse_command_line( argc, argv, description), vm );
         boost::program_options::parsed_options parsed = boost::program_options::command_line_parser(argc, argv).options( description ).allow_unregistered().run();
         boost::program_options::notify( vm );
         if ( vm.count( "help" ) )
         {
-            std::cerr << "takes from stdin binary images produced by xenics gobi camera (16 bit grey scale)" << std::endl;
-            std::cerr << "and uses the camera's calibration to output to stdout pixel values in degrees (Celsius or Kelvin)" << std::endl;
+            std::cerr << "takes from stdin binary images produced by xenics gobi camera" << std::endl;
+            std::cerr << "converts calibrated pixel values to degrees Celsius and outputs to stdout" << std::endl;
             std::cerr << std::endl;
+            std::cerr << "examples:" << std::endl;
+            std::cerr << "    cat input.bin | gobi-to-temperature --conversion-table=tmptable.csv --verbose > output.bin" << std::endl;
             std::cerr << description << std::endl;
             return 1;
         }
         bool verbose = vm.count( "verbose" );
-        if ( !vm.count( "calibration" ) ) { COMMA_THROW( comma::exception, "please provide the calibration file, --calibration is not specified"); }
-        if ( vm.count( "celsius" ) && vm.count( "kelvin" ) ) { COMMA_THROW( comma::exception, "please specify either --celsius or --kelvin" ); }
-        if ( !vm.count( "celsius" ) && !vm.count( "kelvin" ) ) { COMMA_THROW( comma::exception, "please specify --celsius or --kelvin" ); }
-        std::string calibration_file = vm["calibration"].as< std::string >();
-        XCHANDLE handle = 0;
-        if( XC_LoadCalibration(handle, calibration_file.c_str(), XLC_StartSoftwareCorrection ) != I_OK )
+        if ( !vm.count( "conversion-table" ) ) { COMMA_THROW( comma::exception, "conversion table is not provided"); }
+        const unsigned long max_pixel_value = std::numeric_limits< word >::max();
+        const unsigned long number_of_pixel_values = max_pixel_value + 1;
+        std::vector< double > temperature_from_pixel_value_;
+        temperature_from_pixel_value_.reserve( number_of_pixel_values );
+        std::ifstream ifs ( conversion_table.c_str() );
+        if( !ifs.is_open() ) { COMMA_THROW( comma::exception, "failed to open conversion table: " << conversion_table ); };
+        while( ifs.good() && !ifs.eof() )
         {
-            COMMA_THROW( comma::exception, "failed to load calibration file \"" << calibration_file << "\"" ); 
+            double value = 0;
+            if( ifs >> value ) { temperature_from_pixel_value_.push_back( value ); }
+            if( temperature_from_pixel_value_.size() > number_of_pixel_values ) 
+            { 
+                COMMA_THROW( comma::exception, "conversion table " << conversion_table << " has too many values; expected " << number_of_pixel_values ); 
+            }
         }
-        else
-        {
-            if ( verbose ) { std::cerr << "gobi-to-temperature: calibration loaded" << std::endl; }
+        if( temperature_from_pixel_value_.size() < number_of_pixel_values ) 
+        { 
+            COMMA_THROW( comma::exception, "conversion table " << conversion_table << " has too few values; found " << temperature_from_pixel_value_.size() << " but expected " << number_of_pixel_values ); 
         }
+        if ( verbose ) { std::cerr << "gobi-to-temperature: conversion table " << conversion_table << " loaded" << std::endl; }
         return 0;
     }
     catch( std::exception& ex )
