@@ -36,6 +36,7 @@
 #include <sstream>
 #include <boost/bind.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/unordered_map.hpp>
 #include <comma/base/exception.h>
 #include <comma/csv/ascii.h>
 #include <comma/string/string.h>
@@ -77,16 +78,10 @@ static filters::value_type crop_tile_impl_( filters::value_type m, unsigned int 
     return filters::value_type( m.first, cv::Mat( m.second, cv::Rect( cropX, cropY, tileWidth, tileHeight ) ) );
 }
 
-static filters::value_type convert_16_to_8bit_impl_( filters::value_type m )
+static filters::value_type convert_to_impl_( filters::value_type m, int type, double scale, double offset )
 {
     filters::value_type n;
-    n.first = m.first;
-    if( m.second.type()==CV_16UC1 )
-        m.second.convertTo(n.second, CV_8UC1, 1.0/256.0);
-    else if( m.second.type()==CV_16UC3 )
-        m.second.convertTo(n.second, CV_8UC3, 1.0/256.0);
-    else
-        COMMA_THROW( comma::exception, "16 to 8 bit conversion attempted from type: " << m.second.type() << ", but only supported for CV_16UC1 and CV16_UC3");
+    m.second.convertTo( n.second, type, scale, offset );
     return n;
 }
 
@@ -230,7 +225,7 @@ static filters::value_type text_impl_( filters::value_type m, const std::string&
 class undistort_impl_
 {
     public:
-        undistort_impl_( const std::string filename ) : filename_( filename ) {}
+        undistort_impl_( const std::string& filename ) : filename_( filename ) {}
 
         filters::value_type operator()( filters::value_type m )
         {
@@ -292,6 +287,42 @@ class max_impl_ // experimental, to debug
         bool is_max_;
         std::deque< filters::value_type > deque_; // use vector?
 };
+
+static boost::unordered_map< std::string, int > fill_types_()
+{
+    boost::unordered_map< std::string, int > types;
+    types[ "CV_8UC1" ] = types[ "ub" ] = CV_8UC1;
+    types[ "CV_8UC2 " ] = types[ "2ub" ] = CV_8UC2;
+    types[ "CV_8UC3 " ] = types[ "3ub" ] = CV_8UC3;
+    types[ "CV_8UC4 " ] = types[ "4ub" ] = CV_8UC4;
+    types[ "CV_8SC1 " ] = types[ "b" ] = CV_8SC1;
+    types[ "CV_8SC2 " ] = types[ "2b" ] = CV_8SC2;
+    types[ "CV_8SC3 " ] = types[ "3b" ] = CV_8SC3;
+    types[ "CV_8SC4 " ] = types[ "4b" ] = CV_8SC4;
+    types[ "CV_16UC1" ] = types[ "uw" ] = CV_16UC1;
+    types[ "CV_16UC2" ] = types[ "2uw" ] = CV_16UC2;
+    types[ "CV_16UC3" ] = types[ "3uw" ] = CV_16UC3;
+    types[ "CV_16UC4" ] = types[ "4uw" ] = CV_16UC4;
+    types[ "CV_16SC1" ] = types[ "w" ] = CV_16SC1;
+    types[ "CV_16SC2" ] = types[ "2w" ] = CV_16SC2;
+    types[ "CV_16SC3" ] = types[ "3w" ] = CV_16SC3;
+    types[ "CV_16SC4" ] = types[ "4w" ] = CV_16SC4;
+    types[ "CV_32SC1" ] = types[ "i" ] = CV_32SC1;
+    types[ "CV_32SC2" ] = types[ "2i" ] = CV_32SC2;
+    types[ "CV_32SC3" ] = types[ "3i" ] = CV_32SC3;
+    types[ "CV_32SC4" ] = types[ "4i" ] = CV_32SC4;
+    types[ "CV_32FC1" ] = types[ "f" ] = CV_32FC1;
+    types[ "CV_32FC2" ] = types[ "2f" ] = CV_32FC2;
+    types[ "CV_32FC3" ] = types[ "3f" ] = CV_32FC3;
+    types[ "CV_32FC4" ] = types[ "4f" ] = CV_32FC4;
+    types[ "CV_64FC1" ] = types[ "d" ] = CV_64FC1;
+    types[ "CV_64FC2" ] = types[ "2d" ] = CV_64FC2;
+    types[ "CV_64FC3" ] = types[ "3d" ] = CV_64FC3;
+    types[ "CV_64FC4" ] = types[ "4d" ] = CV_64FC4;
+    return types;
+}
+
+static const boost::unordered_map< std::string, int > types_ = fill_types_();
 
 std::vector< filter > filters::make( const std::string& how, unsigned int default_delay )
 {
@@ -387,9 +418,15 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
             }
             f.push_back( filter( boost::bind( &text_impl_, _1, w[0], p, s ) ) );
         }
-        else if( e[0] == "16to8bit" )
+        else if( e[0] == "convert_to" )
         {
-            f.push_back( filter( boost::bind( &convert_16_to_8bit_impl_, _1 ) ) );
+            if( e.size() <= 1 ) { COMMA_THROW( comma::exception, "convert_to: expected options, got none" ); }
+            const std::vector< std::string >& w = comma::split( e[1], ',' );
+            boost::unordered_map< std::string, int >::const_iterator it = types_.find( w[0] );
+            if( it == types_.end() ) { COMMA_THROW( comma::exception, "convert_to: expected target type, got \"" << w[0] << "\"" ); }
+            double scale = w.size() > 1 ? boost::lexical_cast< double >( w[1] ) : 1.0;
+            double offset = w.size() > 2 ? boost::lexical_cast< double >( w[2] ) : 0.0;
+            f.push_back( filter( boost::bind( &convert_to_impl_, _1, it->second, scale, offset ) ) );
         }
         else if( e[0] == "resize" )
         {
@@ -486,13 +523,9 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
         }
         else if( e[0] == "brightness" )
         {
-            double scale, offset;
-            std::vector< std::string > s = comma::split( e[1], ',' );
-            scale = boost::lexical_cast< double >( s[0] );
-            if( s.size()==1 )
-                offset = 0.0;
-            else
-                offset = boost::lexical_cast< double >( s[1] );
+            const std::vector< std::string >& s = comma::split( e[1], ',' );
+            double scale = boost::lexical_cast< double >( s[0] );
+            double offset = s.size() == 1 ? 0.0 : boost::lexical_cast< double >( s[1] );
             f.push_back( filter( boost::bind( &brightness_impl_, _1, scale, offset ) ) );
         }
         else
@@ -515,16 +548,17 @@ static std::string usage_impl_()
     std::ostringstream oss;
     oss << "    cv::Mat image filters usage (';'-separated):" << std::endl;
     oss << "        bayer=<mode>: convert from bayer, <mode>=1-4" << std::endl;
+    oss << "        brightness=<scale>[,<offset>]: output=(scale*input)+offset; default offset=0" << std::endl;
+    oss << "        convert_to=<type>[,<scale>[,<offset>]]: convert to given type; should be the same number of channels; see opencv convertTo for details" << std::endl;
     oss << "        crop=[<x>,<y>],<width>,<height>: crop the portion of the image starting at x,y with size width x height" << std::endl;
     oss << "        crop-tile=[<x>,<y>],<num-tile-x>,<num-tile-y>: divide the image in num-tile-x x num-tile-y tiles, and crop the tile x,y (count from zero)" << std::endl;
     oss << "        cross[=<x>,<y>]: draw cross-hair at x,y; default: at image center" << std::endl;
+    oss << "        encode=<format>: encode images to the specified format. <format>: jpg|ppm|png|tiff..., make sure to use --no-header" << std::endl;
+    oss << "        file=<format>: write images to files with timestamp as name in the specified format. <format>: jpg|ppm|png|tiff...; if no timestamp, system time is used" << std::endl;
     oss << "        flip: flip vertically" << std::endl;
     oss << "        flop: flip horizontally" << std::endl;
-    oss << "        invert: invert image (to negative)" << std::endl;
-    oss << "        brightness=<scale>[,<offset>]: output=(scale*input)+offset; default offset=0" << std::endl;
-    oss << "        16to8bit: converts from 16 to 8 bit. Currently only supports CV_16UC1 and CV_16UC3" << std::endl;
-    oss << "        split: split r,g,b channels into a 3x1 gray image" << std::endl;
-    oss << "        text=<text>[,x,y][,colour]: print text; default x,y: 10,10; default colour: yellow" << std::endl;
+    oss << "        grab=<format>: write an image to file with timestamp as name in the specified format. <format>: jpg|ppm|png|tiff..., if no timestamp, system time is used" << std::endl;
+    oss << "        invert: invert image (to negative)" << std::endl;    
     oss << "        null: same as linux /dev/null (since windows does not have it)" << std::endl;
     oss << "        resize=<width>,<height>: e.g:" << std::endl;
     oss << "            resize=512,1024 : resize to 512x1024 pixels" << std::endl;
@@ -533,6 +567,8 @@ static std::string usage_impl_()
     oss << "            resize=0.5,1024 : 50% of width; heigth 1024 pixels" << std::endl;
     oss << "            note: if no decimal dot '.', size is in pixels; if decimal dot present, size as a fraction" << std::endl;
     oss << "                  i.e. 5 means 5 pixels; 5.0 means 5 times" << std::endl;
+    oss << "        split: split r,g,b channels into a 3x1 gray image" << std::endl;
+    oss << "        text=<text>[,x,y][,colour]: print text; default x,y: 10,10; default colour: yellow" << std::endl;
     oss << "        thumb[=<cols>[,<wait-interval>]]: view resized image; a convenience for debugging and filter pipeline monitoring" << std::endl;
     oss << "                                          <cols>: image width in pixels; default: 100" << std::endl;
     oss << "                                          <wait-interval>: a hack for now; milliseconds to wait for image display and key press; default: 1" << std::endl;
@@ -541,9 +577,6 @@ static std::string usage_impl_()
     oss << "        undistort=<map file>: undistort" << std::endl;
     oss << "        view[=<wait-interval>]: view image; press <space> to save image (timestamp or system time as filename); <esc>: to close" << std::endl;
     oss << "                                <wait-interval>: a hack for now; milliseconds to wait for image display and key press; default 1" << std::endl;
-    oss << "        encode=<format>: encode images to the specified format. <format>: jpg|ppm|png|tiff..., make sure to use --no-header" << std::endl;
-    oss << "        grab=<format>: write an image to file with timestamp as name in the specified format. <format>: jpg|ppm|png|tiff..., if no timestamp, system time is used" << std::endl;
-    oss << "        file=<format>: write images to files with timestamp as name in the specified format. <format>: jpg|ppm|png|tiff...; if no timestamp, system time is used" << std::endl;
     return oss.str();
 }
 
