@@ -33,6 +33,7 @@
 #ifndef SNARK_SENSORS_HOKUYO_MESSAGE_H
 #define SNARK_SENSORS_HOKUYO_MESSAGE_H
 
+#include <boost/array.hpp>
 #include <boost/static_assert.hpp>
 #include <boost/utility/binary.hpp>
 #include <comma/base/types.h>
