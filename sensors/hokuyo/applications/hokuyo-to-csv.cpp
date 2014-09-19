@@ -166,6 +166,8 @@ bool scanning( int start_step, comma::uint32 num_of_scans, // 0 for unlimited
 
         }
 
+        output.flush();
+
         // This means we are done
         if( num_of_scans != 0 && response.header.request.num_of_scans == 0 ) { 
 

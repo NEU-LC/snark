@@ -229,7 +229,6 @@ bool commands_handler::execute_waypoints( const C& command, bool record )
         ret = waypoints_follower_.run(
                 boost::bind( movement_started< C >, boost::cref( command ), boost::ref( this->ostream_ ) )
                 , this->os );    
-
     }
 
     inputs_reset();
@@ -240,15 +239,15 @@ bool commands_handler::execute_waypoints( const C& command, bool record )
 void commands_handler::handle( arm::pan_tilt& p )
 {
     std::cerr << name() << " handling pan_tilt" << std::endl; 
-    static const plane_angle_degrees_t max_pan = 90.0 * degree;
-    static const plane_angle_degrees_t min_pan = -90.0 * degree;
-    static const plane_angle_degrees_t max_tilt = 180.0 * degree;
-    static const plane_angle_degrees_t min_tilt = -180.0 * degree;
+    static const plane_angle_degrees_t max_pan = 89.5 * degree;
+    static const plane_angle_degrees_t min_pan = -89.5 * degree;
+    static const plane_angle_degrees_t max_tilt = 89.5 * degree;
+    static const plane_angle_degrees_t min_tilt = -89.5 * degree;
 
-    if( p.pan < min_pan ) { ret = result( "pan angle is below minimum limit of -90.0", result::error::invalid_input ); return; }
-    if( p.pan > max_pan ) { ret = result( "pan angle is above minimum limit of 90.0", result::error::invalid_input ); return; }
-    if( p.tilt < min_tilt ) { ret = result( "tilt angle is below minimum limit of -90.0", result::error::invalid_input ); return; }
-    if( p.tilt > max_tilt ) { ret = result( "tilt angle is above minimum limit of 90.0", result::error::invalid_input ); return; }
+    if( p.pan < min_pan ) { ret = result( "pan angle is below minimum limit of -89.5", result::error::invalid_input ); return; }
+    if( p.pan > max_pan ) { ret = result( "pan angle is above minimum limit of 89.5", result::error::invalid_input ); return; }
+    if( p.tilt < min_tilt ) { ret = result( "tilt angle is below minimum limit of -89.5", result::error::invalid_input ); return; }
+    if( p.tilt > max_tilt ) { ret = result( "tilt angle is above minimum limit of 89.5", result::error::invalid_input ); return; }
 
     if( !status_.is_running() ) { ret = result( "robotic arm is not in running mode", result::error::invalid_robot_state ); return; }
     inputs_reset();

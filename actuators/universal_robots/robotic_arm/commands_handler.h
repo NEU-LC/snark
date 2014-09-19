@@ -96,7 +96,7 @@ public:
         init_(init), waypoints_follower_( follower ),
         recorder_setup_( recorder ),
         ostream_( oss ), config_( config ),
-        verbose_(true), is_move_effector( false ),
+        verbose_( false ), is_move_effector( false ),
         home_filepath_( init_.home_filepath() ), lidar_filepath_( config_.work_directory + '/' + lidar_filename )
         {}
         

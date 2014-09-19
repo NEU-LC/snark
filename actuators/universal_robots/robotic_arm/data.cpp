@@ -165,7 +165,7 @@ bool status_t::is_initialising_ready() const
 
 bool status_t::check_pose( const boost::array< double, joints_num >& pose ) const
 {
-    static const double radian_epsilon = static_cast< plane_angle_t >( 1 * degree ).value();
+    static const double radian_epsilon = static_cast< plane_angle_t >( 0.3 * degree ).value();
     for( int i=(joints_num-1); i>=0; --i ) {
         if( !comma::math::equal( pose[i], joint_angles[i].value(), radian_epsilon ) ) { return false; }
     }
@@ -174,7 +174,7 @@ bool status_t::check_pose( const boost::array< double, joints_num >& pose ) cons
 
 bool status_t::check_pose( const arm_position_t& pose ) const
 {
-    static const double radian_epsilon = static_cast< plane_angle_t >( 1 * degree ).value();
+    static const double radian_epsilon = static_cast< plane_angle_t >( 0.3 * degree ).value();
     for( int i=(joints_num-1); i>=0; --i ) {
         if( !comma::math::equal( pose[i].value(), joint_angles[i].value(), radian_epsilon ) ) { return false; }
     }
