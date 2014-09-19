@@ -64,20 +64,18 @@ inline std::vector< typename boost::graph_traits< Graph >::vertex_descriptor > b
                                                                                         , const typename boost::graph_traits< Graph >::vertex_descriptor& goal )
 {
     typedef boost::graph_traits< Graph > traits_t;
-    typedef typename Graph::vertex_property_type node_t;
     std::vector< typename traits_t::vertex_descriptor > best;
     best.push_back( goal );
     for( typename traits_t::vertex_descriptor target = goal; target != start; )
     {
-        const node_t& node = graph[target];
-        if( !node.best_parent ) { return std::vector< typename traits_t::vertex_descriptor >(); }
+        if( !graph[target].best_parent ) { return std::vector< typename traits_t::vertex_descriptor >(); }
         std::pair< typename traits_t::in_edge_iterator, typename traits_t::in_edge_iterator > it;
         for( it = boost::in_edges( target, graph ); it.first != it.second; ++it.first )
         {
             target = boost::source( *it.first, graph );
-            if( graph[target].id == *node.best_parent ) { best.push_back( target ); break; } // todo: quick and dirty, may be suboptimal
+            if( graph[target].id == *graph[target].best_parent ) { best.push_back( target ); break; } // todo: quick and dirty, may be suboptimal
         }
-        if( it.first == it.second ) { COMMA_THROW( comma::exception, "node with " << node.id << " has best parent with id " << *node.best_parent << ", but the edge from the best parent to the node not found" ); }
+        if( it.first == it.second ) { COMMA_THROW( comma::exception, "node with " << graph[target].id << " has best parent with id " << *graph[target].best_parent << ", but the edge from the best parent to the node not found" ); }
     }
     std::reverse( best.begin(), best.end() );
     return best;
@@ -87,7 +85,11 @@ template < typename G, typename D, typename A, typename O, typename V >
 inline void forward_search( G& graph, const boost::unordered_set< D >& start, const A& advance, const O& objective_function, const V& valid )
 {
     typedef boost::graph_traits< G > traits_t;
+    #ifdef BOOST_GRAPH_NO_BUNDLED_PROPERTIES
     typedef typename G::vertex_property_type node_t;
+    #else // BOOST_GRAPH_NO_BUNDLED_PROPERTIES
+    typedef typename G::vertex_bundled node_t;
+    #endif // BOOST_GRAPH_NO_BUNDLED_PROPERTIES
     typedef boost::unordered_set< D > set_t;
     typedef D vertex_desc;
     typedef std::multimap< double, vertex_desc > map_t;

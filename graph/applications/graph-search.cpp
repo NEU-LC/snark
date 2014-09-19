@@ -55,7 +55,7 @@ template <> struct traits< node >
         v.apply( "position", n.position );
         v.apply( "distance", n.distance );
     }
-    
+
     template < typename K, typename V > static void visit( const K&, const node& n, V& v )
     {
         v.apply( "position", n.position );
