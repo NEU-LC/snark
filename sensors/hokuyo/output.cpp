@@ -23,7 +23,7 @@ void data_point::set(double distance, comma::uint32 intensity, double bearing)
     this->bearing = bearing;
     // timestamp stays the same
     x = range * std::cos( bearing );
-    y = range * std::sin( bearing );
+    y = range * -std::sin( bearing );
 }
 
 } }  // namespace snark { namespace hokuyo {
