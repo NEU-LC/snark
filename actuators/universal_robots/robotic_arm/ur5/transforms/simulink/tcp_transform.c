@@ -3,9 +3,9 @@
  *
  * Code generated for Simulink model 'tcp_transform'.
  *
- * Model version                  : 1.14
+ * Model version                  : 1.22
  * Simulink Coder version         : 8.6 (R2014a) 27-Dec-2013
- * C/C++ source code generated on : Fri Sep 19 14:17:16 2014
+ * C/C++ source code generated on : Mon Sep 22 14:50:15 2014
  *
  * Target selection: ert.tlc
  * Embedded hardware selection: 32-bit Generic
@@ -182,15 +182,51 @@ static void tcp_transform_sind(real_T *x)
   *x = b_x;
 }
 
+real_T rt_atan2d_snf(real_T u0, real_T u1)
+{
+  real_T y;
+  int32_T u0_0;
+  int32_T u1_0;
+  if (rtIsNaN(u0) || rtIsNaN(u1)) {
+    y = (rtNaN);
+  } else if (rtIsInf(u0) && rtIsInf(u1)) {
+    if (u0 > 0.0) {
+      u0_0 = 1;
+    } else {
+      u0_0 = -1;
+    }
+
+    if (u1 > 0.0) {
+      u1_0 = 1;
+    } else {
+      u1_0 = -1;
+    }
+
+    y = atan2(u0_0, u1_0);
+  } else if (u1 == 0.0) {
+    if (u0 > 0.0) {
+      y = RT_PI / 2.0;
+    } else if (u0 < 0.0) {
+      y = -(RT_PI / 2.0);
+    } else {
+      y = 0.0;
+    }
+  } else {
+    y = atan2(u0, u1);
+  }
+
+  return y;
+}
+
 /* Model step function */
 void tcp_transform_step(void)
 {
   real_T total_transform[16];
   real_T tcp_position[4];
   real_T laser_orientation[9];
+  real_T yaw;
   static const int8_T b[9] = { 0, 0, 1, 1, 0, 0, 0, 1, 0 };
 
-  real_T i;
   real_T j;
   real_T k;
   real_T m;
@@ -212,16 +248,16 @@ void tcp_transform_step(void)
   real_T hb;
   real_T ib;
   real_T jb;
-  real_T i_0[16];
+  real_T yaw_0[16];
   real_T m_0[16];
-  real_T i_1[16];
+  real_T yaw_1[16];
   real_T s_0[16];
-  int32_T i_2;
+  int32_T i;
   real_T y_0[16];
   real_T db_0[16];
   real_T hb_0[16];
   real_T total_transform_0[9];
-  int32_T i_3;
+  int32_T i_0;
   real_T joint_angles_degrees_idx_0;
   real_T joint_angles_degrees_idx_1;
   real_T joint_angles_degrees_idx_2;
@@ -249,6 +285,7 @@ void tcp_transform_step(void)
   joint_angles_degrees_idx_4 = tcp_transform_U.Joint5 * 57.295779513082323;
   joint_angles_degrees_idx_5 = tcp_transform_U.Joint6 * 57.295779513082323;
 
+  /* convert to degrees */
   /* '<S2>:1:6' */
   /* '<S2>:1:7' */
   /* '<S2>:1:8' */
@@ -256,8 +293,8 @@ void tcp_transform_step(void)
   /* '<S2>:1:10' */
   /* '<S2>:1:11' */
   /* '<S2>:1:13' */
-  i = joint_angles_degrees_idx_0;
-  tcp_transform_cosd(&i);
+  yaw = joint_angles_degrees_idx_0;
+  tcp_transform_cosd(&yaw);
   j = joint_angles_degrees_idx_0;
   tcp_transform_sind(&j);
   k = joint_angles_degrees_idx_0;
@@ -306,22 +343,22 @@ void tcp_transform_step(void)
   jb = joint_angles_degrees_idx_5;
   tcp_transform_sind(&jb);
   tcp_transform_cosd(&joint_angles_degrees_idx_5);
-  i_0[0] = i;
-  i_0[4] = 0.0;
-  i_0[8] = j;
-  i_0[12] = 0.0;
-  i_0[1] = k;
-  i_0[5] = 0.0;
-  i_0[9] = -joint_angles_degrees_idx_0;
-  i_0[13] = 0.0;
-  i_0[2] = 0.0;
-  i_0[6] = 1.0;
-  i_0[10] = 0.0;
-  i_0[14] = 0.089;
-  i_0[3] = 0.0;
-  i_0[7] = 0.0;
-  i_0[11] = 0.0;
-  i_0[15] = 1.0;
+  yaw_0[0] = yaw;
+  yaw_0[4] = 0.0;
+  yaw_0[8] = j;
+  yaw_0[12] = 0.0;
+  yaw_0[1] = k;
+  yaw_0[5] = 0.0;
+  yaw_0[9] = -joint_angles_degrees_idx_0;
+  yaw_0[13] = 0.0;
+  yaw_0[2] = 0.0;
+  yaw_0[6] = 1.0;
+  yaw_0[10] = 0.0;
+  yaw_0[14] = 0.089;
+  yaw_0[3] = 0.0;
+  yaw_0[7] = 0.0;
+  yaw_0[11] = 0.0;
+  yaw_0[15] = 1.0;
   m_0[0] = m;
   m_0[4] = -n;
   m_0[8] = 0.0;
@@ -338,13 +375,13 @@ void tcp_transform_step(void)
   m_0[7] = 0.0;
   m_0[11] = 0.0;
   m_0[15] = 1.0;
-  for (i_2 = 0; i_2 < 4; i_2++) {
-    for (i_3 = 0; i_3 < 4; i_3++) {
-      i_1[i_2 + (i_3 << 2)] = 0.0;
-      i_1[i_2 + (i_3 << 2)] += m_0[i_3 << 2] * i_0[i_2];
-      i_1[i_2 + (i_3 << 2)] += m_0[(i_3 << 2) + 1] * i_0[i_2 + 4];
-      i_1[i_2 + (i_3 << 2)] += m_0[(i_3 << 2) + 2] * i_0[i_2 + 8];
-      i_1[i_2 + (i_3 << 2)] += m_0[(i_3 << 2) + 3] * i_0[i_2 + 12];
+  for (i = 0; i < 4; i++) {
+    for (i_0 = 0; i_0 < 4; i_0++) {
+      yaw_1[i + (i_0 << 2)] = 0.0;
+      yaw_1[i + (i_0 << 2)] += m_0[i_0 << 2] * yaw_0[i];
+      yaw_1[i + (i_0 << 2)] += m_0[(i_0 << 2) + 1] * yaw_0[i + 4];
+      yaw_1[i + (i_0 << 2)] += m_0[(i_0 << 2) + 2] * yaw_0[i + 8];
+      yaw_1[i + (i_0 << 2)] += m_0[(i_0 << 2) + 3] * yaw_0[i + 12];
     }
   }
 
@@ -364,13 +401,13 @@ void tcp_transform_step(void)
   s_0[7] = 0.0;
   s_0[11] = 0.0;
   s_0[15] = 1.0;
-  for (i_2 = 0; i_2 < 4; i_2++) {
-    for (i_3 = 0; i_3 < 4; i_3++) {
-      i_0[i_2 + (i_3 << 2)] = 0.0;
-      i_0[i_2 + (i_3 << 2)] += s_0[i_3 << 2] * i_1[i_2];
-      i_0[i_2 + (i_3 << 2)] += s_0[(i_3 << 2) + 1] * i_1[i_2 + 4];
-      i_0[i_2 + (i_3 << 2)] += s_0[(i_3 << 2) + 2] * i_1[i_2 + 8];
-      i_0[i_2 + (i_3 << 2)] += s_0[(i_3 << 2) + 3] * i_1[i_2 + 12];
+  for (i = 0; i < 4; i++) {
+    for (i_0 = 0; i_0 < 4; i_0++) {
+      yaw_0[i + (i_0 << 2)] = 0.0;
+      yaw_0[i + (i_0 << 2)] += s_0[i_0 << 2] * yaw_1[i];
+      yaw_0[i + (i_0 << 2)] += s_0[(i_0 << 2) + 1] * yaw_1[i + 4];
+      yaw_0[i + (i_0 << 2)] += s_0[(i_0 << 2) + 2] * yaw_1[i + 8];
+      yaw_0[i + (i_0 << 2)] += s_0[(i_0 << 2) + 3] * yaw_1[i + 12];
     }
   }
 
@@ -390,13 +427,13 @@ void tcp_transform_step(void)
   y_0[7] = 0.0;
   y_0[11] = 0.0;
   y_0[15] = 1.0;
-  for (i_2 = 0; i_2 < 4; i_2++) {
-    for (i_3 = 0; i_3 < 4; i_3++) {
-      i_1[i_2 + (i_3 << 2)] = 0.0;
-      i_1[i_2 + (i_3 << 2)] += y_0[i_3 << 2] * i_0[i_2];
-      i_1[i_2 + (i_3 << 2)] += y_0[(i_3 << 2) + 1] * i_0[i_2 + 4];
-      i_1[i_2 + (i_3 << 2)] += y_0[(i_3 << 2) + 2] * i_0[i_2 + 8];
-      i_1[i_2 + (i_3 << 2)] += y_0[(i_3 << 2) + 3] * i_0[i_2 + 12];
+  for (i = 0; i < 4; i++) {
+    for (i_0 = 0; i_0 < 4; i_0++) {
+      yaw_1[i + (i_0 << 2)] = 0.0;
+      yaw_1[i + (i_0 << 2)] += y_0[i_0 << 2] * yaw_0[i];
+      yaw_1[i + (i_0 << 2)] += y_0[(i_0 << 2) + 1] * yaw_0[i + 4];
+      yaw_1[i + (i_0 << 2)] += y_0[(i_0 << 2) + 2] * yaw_0[i + 8];
+      yaw_1[i + (i_0 << 2)] += y_0[(i_0 << 2) + 3] * yaw_0[i + 12];
     }
   }
 
@@ -416,13 +453,13 @@ void tcp_transform_step(void)
   db_0[7] = 0.0;
   db_0[11] = 0.0;
   db_0[15] = 1.0;
-  for (i_2 = 0; i_2 < 4; i_2++) {
-    for (i_3 = 0; i_3 < 4; i_3++) {
-      i_0[i_2 + (i_3 << 2)] = 0.0;
-      i_0[i_2 + (i_3 << 2)] += db_0[i_3 << 2] * i_1[i_2];
-      i_0[i_2 + (i_3 << 2)] += db_0[(i_3 << 2) + 1] * i_1[i_2 + 4];
-      i_0[i_2 + (i_3 << 2)] += db_0[(i_3 << 2) + 2] * i_1[i_2 + 8];
-      i_0[i_2 + (i_3 << 2)] += db_0[(i_3 << 2) + 3] * i_1[i_2 + 12];
+  for (i = 0; i < 4; i++) {
+    for (i_0 = 0; i_0 < 4; i_0++) {
+      yaw_0[i + (i_0 << 2)] = 0.0;
+      yaw_0[i + (i_0 << 2)] += db_0[i_0 << 2] * yaw_1[i];
+      yaw_0[i + (i_0 << 2)] += db_0[(i_0 << 2) + 1] * yaw_1[i + 4];
+      yaw_0[i + (i_0 << 2)] += db_0[(i_0 << 2) + 2] * yaw_1[i + 8];
+      yaw_0[i + (i_0 << 2)] += db_0[(i_0 << 2) + 3] * yaw_1[i + 12];
     }
   }
 
@@ -442,22 +479,21 @@ void tcp_transform_step(void)
   hb_0[7] = 0.0;
   hb_0[11] = 0.0;
   hb_0[15] = 1.0;
-  for (i_2 = 0; i_2 < 4; i_2++) {
-    for (i_3 = 0; i_3 < 4; i_3++) {
-      total_transform[i_2 + (i_3 << 2)] = 0.0;
-      total_transform[i_2 + (i_3 << 2)] += hb_0[i_3 << 2] * i_0[i_2];
-      total_transform[i_2 + (i_3 << 2)] += hb_0[(i_3 << 2) + 1] * i_0[i_2 + 4];
-      total_transform[i_2 + (i_3 << 2)] += hb_0[(i_3 << 2) + 2] * i_0[i_2 + 8];
-      total_transform[i_2 + (i_3 << 2)] += hb_0[(i_3 << 2) + 3] * i_0[i_2 + 12];
+  for (i = 0; i < 4; i++) {
+    for (i_0 = 0; i_0 < 4; i_0++) {
+      total_transform[i + (i_0 << 2)] = 0.0;
+      total_transform[i + (i_0 << 2)] += hb_0[i_0 << 2] * yaw_0[i];
+      total_transform[i + (i_0 << 2)] += hb_0[(i_0 << 2) + 1] * yaw_0[i + 4];
+      total_transform[i + (i_0 << 2)] += hb_0[(i_0 << 2) + 2] * yaw_0[i + 8];
+      total_transform[i + (i_0 << 2)] += hb_0[(i_0 << 2) + 3] * yaw_0[i + 12];
     }
   }
 
   /* '<S2>:1:15' */
-  for (i_2 = 0; i_2 < 4; i_2++) {
-    joint_angles_degrees_idx_0 = total_transform[i_2 + 12] +
-      (total_transform[i_2 + 8] * 0.0 + (total_transform[i_2 + 4] * 0.0 +
-        total_transform[i_2] * 0.0));
-    tcp_position[i_2] = joint_angles_degrees_idx_0;
+  for (i = 0; i < 4; i++) {
+    joint_angles_degrees_idx_0 = total_transform[i + 12] + (total_transform[i +
+      8] * 0.0 + (total_transform[i + 4] * 0.0 + total_transform[i] * 0.0));
+    tcp_position[i] = joint_angles_degrees_idx_0;
   }
 
   /* Outport: '<Root>/x' incorporates:
@@ -481,11 +517,10 @@ void tcp_transform_step(void)
   /* MATLAB Function: '<S1>/getToolLaser' */
   /* negative = downwards */
   /* '<S2>:1:23' */
-  for (i_2 = 0; i_2 < 4; i_2++) {
-    joint_angles_degrees_idx_0 = total_transform[i_2 + 12] +
-      (total_transform[i_2 + 8] * 0.0 + (total_transform[i_2 + 4] * 0.11 +
-        total_transform[i_2] * 0.0));
-    tcp_position[i_2] = joint_angles_degrees_idx_0;
+  for (i = 0; i < 4; i++) {
+    joint_angles_degrees_idx_0 = total_transform[i + 12] + (total_transform[i +
+      8] * 0.0 + (total_transform[i + 4] * 0.11 + total_transform[i] * 0.0));
+    tcp_position[i] = joint_angles_degrees_idx_0;
   }
 
   /* '<S2>:1:25' */
@@ -497,8 +532,20 @@ void tcp_transform_step(void)
   /* pan = asind(laser_orientation(2,3)); */
   /* tilt = atand(laser_orientation(3,3)/laser_orientation(1,3)); */
   /* roll = 0; */
-  /* giraffe position laser orientation transposed */
-  /* '<S2>:1:40' */
+  /* default_pos_transform = [0 1 0;0 0 1;1 0 0]; %giraffe position laser orientation transposed */
+  /* laser_orientation = laser_orientation*default_pos_transform; %finds transformation between new position and default giraffe position */
+  /* roll = atand(laser_orientation(3,2)/laser_orientation(3,3)); */
+  /* tilt = -atand(-laser_orientation(3,1)/sqrt((laser_orientation(3,2)^2) + (laser_orientation(3,3)^2))); %negative sign reverse direction */
+  /* pan = atand(laser_orientation(2,1)/laser_orientation(1,1)); */
+  /* pan = asin(tool_orientation(2,3)); */
+  /* tilt = atan(tool_orientation(3,3)/tool_orientation(1,3)); */
+  /* roll = 0; */
+  /* default_pos_transform = [0 1 0;0 0 1;1 0 0]; %giraffe position laser orientation transposed */
+  /* laser_orientation = default_pos_transform*laser_orientation; %finds transformation between new position and default giraffe position */
+  /* Rx = atand(laser_orientation(3,2)/laser_orientation(3,3)); %roll about the end effector x-axis */
+  /* Ry = atand(-laser_orientation(3,1)/sqrt((laser_orientation(3,2)^2) + (laser_orientation(3,3)^2))); %pitch about the end effector y-axis */
+  /* Rz = atand(laser_orientation(2,1)/laser_orientation(1,1)); %yaw about the end effector z-axis */
+  /* '<S2>:1:57' */
   total_transform_0[0] = total_transform[0];
   total_transform_0[3] = total_transform[4];
   total_transform_0[6] = total_transform[8];
@@ -508,40 +555,52 @@ void tcp_transform_step(void)
   total_transform_0[2] = total_transform[2];
   total_transform_0[5] = total_transform[6];
   total_transform_0[8] = total_transform[10];
-  for (i_2 = 0; i_2 < 3; i_2++) {
-    for (i_3 = 0; i_3 < 3; i_3++) {
-      laser_orientation[i_2 + 3 * i_3] = 0.0;
-      laser_orientation[i_2 + 3 * i_3] += (real_T)b[3 * i_3] *
-        total_transform_0[i_2];
-      laser_orientation[i_2 + 3 * i_3] += (real_T)b[3 * i_3 + 1] *
-        total_transform_0[i_2 + 3];
-      laser_orientation[i_2 + 3 * i_3] += (real_T)b[3 * i_3 + 2] *
-        total_transform_0[i_2 + 6];
+  for (i = 0; i < 3; i++) {
+    for (i_0 = 0; i_0 < 3; i_0++) {
+      laser_orientation[i + 3 * i_0] = 0.0;
+      laser_orientation[i + 3 * i_0] += (real_T)b[3 * i_0] * total_transform_0[i];
+      laser_orientation[i + 3 * i_0] += (real_T)b[3 * i_0 + 1] *
+        total_transform_0[i + 3];
+      laser_orientation[i + 3 * i_0] += (real_T)b[3 * i_0 + 2] *
+        total_transform_0[i + 6];
     }
   }
 
-  /* finds transformation between new position and default giraffe position */
-  /* '<S2>:1:42' */
-  i = atan(laser_orientation[5] / laser_orientation[8]) * 57.295779513082323;
+  /* '<S2>:1:59' */
+  if ((laser_orientation[2] == 1.0) || (laser_orientation[2] == -1.0)) {
+    /* '<S2>:1:60' */
+    /* '<S2>:1:61' */
+    k = 0.0;
 
-  /* '<S2>:1:43' */
-  j = atan(-laser_orientation[2] / sqrt(laser_orientation[5] *
-            laser_orientation[5] + laser_orientation[8] * laser_orientation[8]))
-    * 57.295779513082323;
+    /* '<S2>:1:62' */
+    yaw = 57.295779513082323 * rt_atan2d_snf(laser_orientation[7],
+      laser_orientation[6]);
+  } else {
+    /* '<S2>:1:64' */
+    k = 57.295779513082323 * rt_atan2d_snf(laser_orientation[5],
+      laser_orientation[8]);
 
-  /* '<S2>:1:44' */
-  k = atan(laser_orientation[1] / laser_orientation[0]) * 57.295779513082323;
+    /* '<S2>:1:65' */
+    yaw = 57.295779513082323 * rt_atan2d_snf(laser_orientation[1],
+      laser_orientation[0]);
+  }
+
+  /* '<S2>:1:69' */
+  k *= 0.017453292519943295;
+
+  /* '<S2>:1:70' */
+  yaw *= 0.017453292519943295;
+
+  /* '<S2>:1:71' */
+  j = 57.295779513082323 * asin(-laser_orientation[2]) * 0.017453292519943295;
 
   /* Outport: '<Root>/Pan' incorporates:
    *  MATLAB Function: '<S1>/getToolLaser'
    */
-  /* pan = asin(tool_orientation(2,3)); */
-  /* tilt = atan(tool_orientation(3,3)/tool_orientation(1,3)); */
-  /* roll = 0; */
-  /* '<S2>:1:50' */
-  /* '<S2>:1:51' */
-  /* '<S2>:1:52' */
-  tcp_transform_Y.Pan = k;
+  /* '<S2>:1:73' */
+  /* '<S2>:1:74' */
+  /* '<S2>:1:75' */
+  tcp_transform_Y.Pan = yaw;
 
   /* Outport: '<Root>/Tilt' incorporates:
    *  MATLAB Function: '<S1>/getToolLaser'
@@ -551,7 +610,7 @@ void tcp_transform_step(void)
   /* Outport: '<Root>/Roll' incorporates:
    *  MATLAB Function: '<S1>/getToolLaser'
    */
-  tcp_transform_Y.Roll = i;
+  tcp_transform_Y.Roll = k;
 
   /* Outport: '<Root>/x_laser' incorporates:
    *  MATLAB Function: '<S1>/getToolLaser'
@@ -571,7 +630,7 @@ void tcp_transform_step(void)
   /* Outport: '<Root>/pan_laser' incorporates:
    *  MATLAB Function: '<S1>/getToolLaser'
    */
-  tcp_transform_Y.pan_laser = k;
+  tcp_transform_Y.pan_laser = yaw;
 
   /* Outport: '<Root>/tilt_laser' incorporates:
    *  MATLAB Function: '<S1>/getToolLaser'
@@ -581,7 +640,7 @@ void tcp_transform_step(void)
   /* Outport: '<Root>/roll_laser' incorporates:
    *  MATLAB Function: '<S1>/getToolLaser'
    */
-  tcp_transform_Y.roll_laser = i;
+  tcp_transform_Y.roll_laser = k;
 }
 
 /* Model initialize function */

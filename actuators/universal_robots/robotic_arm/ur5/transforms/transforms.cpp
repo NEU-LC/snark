@@ -1,15 +1,7 @@
 #include "transforms.h"
-#include "../../units.h"
 
 namespace snark { namespace ur { namespace robotic_arm { namespace ur5 {
 
-
-double deg2rad( double deg )
-{
-    return static_cast< plane_angle_t >( deg * degree ).value();
-}
-
-    
 void tcp_transform( const boost::array< plane_angle_t, 6 >& joint_angles, 
                     snark::applications::position& position,
                     snark::applications::position& laser )
@@ -27,7 +19,7 @@ void tcp_transform( const boost::array< plane_angle_t, 6 >& joint_angles,
     position.coordinates = Eigen::Vector3d( tcp_transform_Y.x, tcp_transform_Y.y, tcp_transform_Y.z );
     position.orientation = Eigen::Vector3d( tcp_transform_Y.Roll, tcp_transform_Y.Tilt, tcp_transform_Y.Pan );
     laser.coordinates = Eigen::Vector3d( tcp_transform_Y.x_laser, tcp_transform_Y.y_laser, tcp_transform_Y.z_laser );
-    laser.orientation = Eigen::Vector3d( deg2rad( tcp_transform_Y.roll_laser ), deg2rad( tcp_transform_Y.tilt_laser ), deg2rad( tcp_transform_Y.pan_laser ) );
+    laser.orientation = Eigen::Vector3d( tcp_transform_Y.roll_laser , tcp_transform_Y.tilt_laser , tcp_transform_Y.pan_laser );
     
     tcp_transform_terminate();
 }
