@@ -1,16 +1,12 @@
-SET( PROJECT "graph" )
-SET( TARGET_NAME snark_${PROJECT} )
-SET( dir ${SOURCE_CODE_BASE_DIR}/${PROJECT} )
-
-FILE( GLOB source *.cpp )
-FILE( GLOB includes *.h )
-
+set( PROJECT "graph" )
+set( TARGET_NAME snark_${PROJECT} )
+set( dir ${SOURCE_CODE_BASE_DIR}/${PROJECT} )
+file( GLOB source *.cpp )
+file( GLOB includes *.h )
 #ADD_DEFINITIONS(-DBOOST_GRAPH_NO_BUNDLED_PROPERTIES)
-
 add_custom_target( ${TARGET_NAME} ${source} ${includes} )
-
-INSTALL( FILES ${includes} DESTINATION ${snark_INSTALL_INCLUDE_DIR}/${PROJECT} )
-
-IF( snark_BUILD_APPLICATIONS )
-    ADD_SUBDIRECTORY( applications )
-ENDIF( snark_BUILD_APPLICATIONS )
+install( FILES ${includes} DESTINATION ${snark_INSTALL_INCLUDE_DIR}/${PROJECT} )
+if( snark_BUILD_APPLICATIONS )
+    add_subdirectory( applications )
+endif( snark_BUILD_APPLICATIONS )
+    

@@ -85,11 +85,13 @@ template < typename G, typename D, typename A, typename O, typename V >
 inline void forward_search( G& graph, const boost::unordered_set< D >& start, const A& advance, const O& objective_function, const V& valid )
 {
     typedef boost::graph_traits< G > traits_t;
-    #ifdef BOOST_GRAPH_NO_BUNDLED_PROPERTIES
     typedef typename G::vertex_property_type node_t;
-    #else // BOOST_GRAPH_NO_BUNDLED_PROPERTIES
-    typedef typename G::vertex_bundled node_t;
-    #endif // BOOST_GRAPH_NO_BUNDLED_PROPERTIES
+    // i hate boost graph
+    //#ifdef BOOST_GRAPH_NO_BUNDLED_PROPERTIES
+    //typedef typename G::vertex_property_type node_t;
+    //#else // BOOST_GRAPH_NO_BUNDLED_PROPERTIES
+    //typedef typename G::vertex_bundled node_t;
+    //#endif // BOOST_GRAPH_NO_BUNDLED_PROPERTIES
     typedef boost::unordered_set< D > set_t;
     typedef D vertex_desc;
     typedef std::multimap< double, vertex_desc > map_t;
