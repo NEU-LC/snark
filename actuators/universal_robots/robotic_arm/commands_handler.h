@@ -96,7 +96,7 @@ public:
         init_(init), waypoints_follower_( follower ),
         recorder_setup_( recorder ),
         ostream_( oss ), config_( config ),
-        verbose_(true), is_move_effector( false ),
+        verbose_( false ), is_move_effector( false ),
         home_filepath_( init_.home_filepath() ), lidar_filepath_( config_.work_directory + '/' + lidar_filename )
         {}
         
@@ -119,7 +119,6 @@ private:
     bool is_move_effector;
     
     /// Run the command on the controller if possible
-    bool execute();
     template < typename C >
     bool execute_waypoints( const C& c, bool record=false );
     /// Sets the current position of the arm into Simulink input structure

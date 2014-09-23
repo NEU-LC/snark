@@ -114,7 +114,7 @@ result waypoints_follower::run( started_reply_t start_initiated, std::ostream& r
         rover.flush();
 
         const arm::move_config_t& config = serialiser_.get_move_config( j );
-        while( !status_.check_pose( config ) )
+        while( !status_.check_pose( config ) )  // Only check for intermediate waypoints
         {
             // std::cerr << "not yet at pose" << std::endl;
             status_update_();
