@@ -141,6 +141,7 @@ OPTION( snark_build_sensors "build sensors" ON )
 OPTION( snark_build_actuators "build actuators" OFF )
 OPTION( snark_build_battery "build battery" OFF )
 OPTION( snark_build_graph "build graph" ON )
+OPTION( snark_build_math_geometry "build math geometry, requires libdsdp" OFF )
 
 INCLUDE( CMakeDependentOption )
 CMAKE_DEPENDENT_OPTION( snark_build_sensors_dc1394 "build dc1394 components" ON "snark_build_sensors" OFF )
