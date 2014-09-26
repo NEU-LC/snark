@@ -34,25 +34,54 @@
 #include <cmath>
 #include <Eigen/Eigen>
 #include <dsdp/dsdp5.h>
-#include <boost/shared_ptr.hpp>
+#include <comma/base/exception.h>
 #include "./polytope.h"
+
+namespace snark{ namespace geometry {
+
+const Eigen::MatrixXd& convex_polytope::normals() const { return normals_; }
+    
+const Eigen::VectorXd& convex_polytope::offsets() const { return offsets_; }
+
+convex_polytope::convex_polytope( const std::vector< Eigen::VectorXd >& normals, const std::vector< double >& offsets )
+{
+    if(!normals.size() || normals[0].size()) { COMMA_THROW( comma::exception, "normals size cannot be zero" ); }
+    if(normals.size()!=offsets.size()) { COMMA_THROW( comma::exception, "normals and offsets should be of same size, got "<< normals.size()<<" and "<<offsets.size() ); }
+    normals_.resize(normals.size(),normals[0].size());
+    offsets_.resize(offsets.size());
+    for(unsigned int i=0; i<normals.size(); ++i )
+    {
+        normals_.row(i)=normals[i].transpose();
+        offsets_(i)=offsets[i];
+    }
+}
+
+convex_polytope::convex_polytope( const Eigen::MatrixXd& normals, const Eigen::VectorXd& offsets )
+    : normals_( normals )
+    , offsets_( offsets )
+{
+    if(!normals.size()) { COMMA_THROW( comma::exception, "normals size cannot be zero" ); }
+    if(normals.rows()!=offsets.rows()) { COMMA_THROW( comma::exception, "normals and offsets should be of same size, got "<< normals.rows()<<" and "<<offsets.rows() ); }
+}
+
+convex_polytope::convex_polytope( const Eigen::MatrixXd& planes )
+{
+    if(!planes.rows() || planes.cols() < 2) { COMMA_THROW( comma::exception, "planes rows cannot be zero and cols must be at least two, got "<<planes.rows()<<" and "<<planes.cols() ); }
+    normals_=planes.leftCols( static_cast< unsigned int >( planes.cols() - 1 ) );
+    offsets_=planes.rightCols(1);
+}
 
 static Eigen::VectorXd symmat2vec(const Eigen::MatrixXd& A)
 {
-    int n=A.rows();
-    Eigen::VectorXd v(n*(n+1)/2);
-
-    for(int i=0; i<n; i++)
+    unsigned int n = A.rows();
+    Eigen::VectorXd v( n * ( n + 1 ) / 2 );
+    unsigned int m = 0;
+    for( unsigned int i=0; i<n; ++i )
     {
-        for(int j=0; j<=i; j++)
-        {
-            v(i*(i+1)/2+j)=A(i,j);
-        }
+        for( unsigned int j = 0; j <= i; v(m) = A(i,j), ++j, ++m );
     }
     return v;
 }
-
-namespace snark{ namespace geometry {
 
 /// This function uses the SDP solver provided by the DSDP library
 /// It reformulates the problem of finding whether a point is inside a convex polygon as an SDP (Semi-Definite Program)
@@ -64,13 +93,13 @@ namespace snark{ namespace geometry {
 bool convex_polytope::has(const Eigen::VectorXd &x, double tolerance)
 {
     int dimx=x.size();
-    if(dimx!=normals.cols())
+    if(dimx!=normals_.cols())
     {
-        COMMA_THROW( comma::exception, "point should be of same dimension as polytope, polytope dimension: "<<normals.cols()<<" point dimension: "<<dimx );
+        COMMA_THROW( comma::exception, "point should be of same dimension as polytope, polytope dimension: "<<normals_.cols()<<" point dimension: "<<dimx );
     }
 
-    const Eigen::MatrixXd& A=normals;
-    const Eigen::VectorXd& b=offsets;
+    const Eigen::MatrixXd& A=normals_;
+    const Eigen::VectorXd& b=offsets_;
 
     int nofaces=A.rows();
 
@@ -92,8 +121,8 @@ bool convex_polytope::has(const Eigen::VectorXd &x, double tolerance)
     Eigen::MatrixXd A0(nofaces,nofaces);
     Eigen::MatrixXd A1(dimx+1,dimx+1);
 
-    std::vector< boost::shared_ptr<Eigen::VectorXd> > a0(dimx+2);
-    std::vector< boost::shared_ptr<Eigen::VectorXd> > a1(dimx+2);
+    std::vector< Eigen::VectorXd > a0(dimx+2);
+    std::vector< Eigen::VectorXd > a1(dimx+2);
 
     //constant terms
     A0.setZero();
@@ -102,10 +131,10 @@ bool convex_polytope::has(const Eigen::VectorXd &x, double tolerance)
     A1.block(0,0,dimx,dimx)=Eigen::MatrixXd::Identity(dimx,dimx);
     A1.block(0,dimx,dimx,1)=-x;
     A1.block(dimx,0,1,dimx)=-x.transpose();
-    a0[0].reset(new Eigen::VectorXd(symmat2vec(A0)));
-    a1[0].reset(new Eigen::VectorXd(symmat2vec(A1)));
-    SDPConeSetADenseVecMat(cone,0,0,dimx+1,1.0,a0[0]->data(),a0[0]->size());
-    SDPConeSetADenseVecMat(cone,1,0,nofaces,1.0,a1[0]->data(),a1[0]->size());
+    a0[0] = Eigen::VectorXd(symmat2vec(A0));
+    a1[0] = Eigen::VectorXd(symmat2vec(A1));
+    SDPConeSetADenseVecMat(cone,0,0,dimx+1,1.0,a0[0].data(),a0[0].size());
+    SDPConeSetADenseVecMat(cone,1,0,nofaces,1.0,a1[0].data(),a1[0].size());
 
 
     //yi's, A's are negated
@@ -116,20 +145,20 @@ bool convex_polytope::has(const Eigen::VectorXd &x, double tolerance)
         A0=A.col(cntr).asDiagonal();
         A1(dimx,cntr)=1;
         A1(cntr,dimx)=1;
-        a0[cntr+1].reset(new Eigen::VectorXd(symmat2vec(-A0)));
-        a1[cntr+1].reset(new Eigen::VectorXd(symmat2vec(-A1)));
-        SDPConeSetADenseVecMat(cone,0,cntr+1,dimx+1,1.0,a0[cntr+1]->data(),a0[cntr+1]->size());
-        SDPConeSetADenseVecMat(cone,1,cntr+1,nofaces,1.0,a1[cntr+1]->data(),a1[cntr+1]->size());
+        a0[cntr+1] = Eigen::VectorXd(symmat2vec(-A0));
+        a1[cntr+1] = Eigen::VectorXd(symmat2vec(-A1));
+        SDPConeSetADenseVecMat(cone,0,cntr+1,dimx+1,1.0,a0[cntr+1].data(),a0[cntr+1].size());
+        SDPConeSetADenseVecMat(cone,1,cntr+1,nofaces,1.0,a1[cntr+1].data(),a1[cntr+1].size());
     }
 
     //t
     A0.setZero();
     A1.setZero();
     A1(dimx,dimx)=1;
-    a0[dimx+1].reset(new Eigen::VectorXd(symmat2vec(-A0)));
-    a1[dimx+1].reset(new Eigen::VectorXd(symmat2vec(-A1)));
-    SDPConeSetADenseVecMat(cone,0,dimx+1,dimx+1,1.0,a0[dimx+1]->data(),a0[dimx+1]->size());
-    SDPConeSetADenseVecMat(cone,1,dimx+1,nofaces,1.0,a1[dimx+1]->data(),a1[dimx+1]->size());
+    a0[dimx+1] = Eigen::VectorXd(symmat2vec(-A0));
+    a1[dimx+1] = Eigen::VectorXd(symmat2vec(-A1));
+    SDPConeSetADenseVecMat(cone,0,dimx+1,dimx+1,1.0,a0[dimx+1].data(),a0[dimx+1].size());
+    SDPConeSetADenseVecMat(cone,1,dimx+1,nofaces,1.0,a1[dimx+1].data(),a1[dimx+1].size());
 
 //    DSDPSetY0(solver,1,1);
 //    DSDPSetY0(solver,2,1);
@@ -165,4 +194,5 @@ bool convex_polytope::has(const Eigen::VectorXd &x, double tolerance)
     double t=y(dimx);
     return(t<tolerance);
 }
+
 }} // namespace snark{ { namespace geometry {

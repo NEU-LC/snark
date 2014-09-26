@@ -30,13 +30,13 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+/// @author abdallah kassir
 
-#ifndef SNARK_GEOMETRY_POLYGON_
-#define SNARK_GEOMETRY_POLYGON_
+#ifndef SNARK_MATH_GEOMETRY_POLYGON_
+#define SNARK_MATH_GEOMETRY_POLYGON_
 
 #include <Eigen/Core>
 #include <vector>
-#include <comma/base/exception.h>
 
 namespace snark{ namespace geometry{
 
@@ -48,54 +48,30 @@ namespace snark{ namespace geometry{
 class convex_polytope
 {
 public:
-    convex_polytope( const std::vector< Eigen::VectorXd >& normals_, const std::vector< double >& offsets_ )
-    {
-        if(!normals_.size() || normals_[0].size())
-        {
-            COMMA_THROW( comma::exception, "normals size cannot be zero" );
-        }
-        if(normals_.size()!=offsets_.size())
-        {
-            COMMA_THROW( comma::exception, "normals and offsets should be of same size, got "<< normals_.size()<<" and "<<offsets_.size() );
-        }
-        normals.resize(normals_.size(),normals_[0].size());
-        offsets.resize(offsets_.size());
-        for(unsigned int cntr=0; cntr<normals_.size(); )
-        {
-            normals.row(cntr)=normals_[cntr].transpose();
-            offsets(cntr)=offsets_[cntr];
-        }
-    }
-    convex_polytope( const Eigen::MatrixXd& normals_, const Eigen::VectorXd& offsets_ )
-    {
-        if(!normals_.size())
-        {
-            COMMA_THROW( comma::exception, "normals size cannot be zero" );
-        }
-        if(normals_.rows()!=offsets_.rows())
-        {
-            COMMA_THROW( comma::exception, "normals and offsets should be of same size, got "<< normals_.rows()<<" and "<<offsets_.rows() );
-        }
-        normals=normals_;
-        offsets=offsets_;
-    }
-    convex_polytope( const Eigen::MatrixXd& planes )
-    {
-        if(!planes.rows() || planes.cols()<2)
-        {
-            COMMA_THROW( comma::exception, "planes rows cannot be zero and cols must be at least two, got "<<planes.rows()<<" and "<<planes.cols() );
-        }
-        normals=planes.leftCols(planes.cols()-1);
-        offsets=planes.rightCols(1);
-    }
+    /// @param normals to the planes
+    /// @param offsets from the origins to the planes
+    convex_polytope( const std::vector< Eigen::VectorXd >& normals, const std::vector< double >& offsets );
+    
+    /// @param normals to the planes
+    /// @param offsets from the origins to the planes
+    convex_polytope( const Eigen::MatrixXd& normals, const Eigen::VectorXd& offsets );
+    
+    /// @param planes normals and offsets concatenated into one matrix
+    convex_polytope( const Eigen::MatrixXd& planes );
 
+    /// @return true, if point is inside of the polytope with a given tolerance
     bool has( const Eigen::VectorXd& x, double tolerance = 1e-4 );
+    
+    const Eigen::MatrixXd& normals() const;
+    
+    const Eigen::VectorXd& offsets() const;
+    
 private:
     //polytope defined by the set of inequalities: Ax>=b
-    Eigen::MatrixXd normals; //A
-    Eigen::VectorXd offsets; //b
+    Eigen::MatrixXd normals_; //A
+    Eigen::VectorXd offsets_; //b
 };
 
 }} // namespace snark{ namepsace geometry{
 
-#endif // #ifndef SNARK_GEOMETRY_POLYGON_
+#endif // SNARK_MATH_GEOMETRY_POLYGON_

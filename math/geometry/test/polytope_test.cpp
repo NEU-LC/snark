@@ -13,16 +13,17 @@ TEST(geometry, convex_polytope_2d)
        0,1,
        -1,-1;
     b<<0,0,-1;
+        
     convex_polytope poly(A,b);
-
+    
     Eigen::Vector2d x;
     x<<0.1,0.1;
 
-    EXPECT_EQ(true,poly.has(x));
-
-    x<<1,1,1;
-
-    EXPECT_EQ(false,poly.has(x));
+    EXPECT_TRUE(poly.has(x));
+    
+    x<<1,1;
+    
+    EXPECT_FALSE( poly.has(x));
 }
 
 TEST(geometry, convex_polytope_3d)
@@ -40,11 +41,11 @@ TEST(geometry, convex_polytope_3d)
     Eigen::Vector3d x;
     x<<0.1,0.1,0.1;
 
-    EXPECT_EQ(true,poly.has(x));
+    EXPECT_TRUE(poly.has(x));
 
     x<<1,1,1;
 
-    EXPECT_EQ(false,poly.has(x));
+    EXPECT_FALSE(poly.has(x));
 }
 
 int main(int argc, char *argv[])
