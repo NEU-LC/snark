@@ -57,11 +57,14 @@ int main( int argc, char** argv )
         std::string fields;
         std::string address;
         std::string setattributes;
+        std::string calibration_file;
+        std::string directory;
         unsigned int discard;
         boost::program_options::options_description description( "options" );
         description.add_options()
             ( "help,h", "display help message" )
             ( "set", boost::program_options::value< std::string >( &setattributes ), "set camera attributes as semicolon-separated name-value pairs" )
+            ( "set-and-exit", "set camera attributes specified in --set and exit" )
             ( "address", boost::program_options::value< std::string >( &address )->default_value( "" ), "ip address of the camera" )
             ( "discard", "discard frames, if cannot keep up; same as --buffer=1" )
             ( "buffer", boost::program_options::value< unsigned int >( &discard )->default_value( 0 ), "maximum buffer size before discarding frames, default: unlimited" )
@@ -70,6 +73,8 @@ int main( int argc, char** argv )
             ( "list-cameras", "list all cameras" )
             ( "header", "output header only" )
             ( "no-header", "output image data only" )
+            ( "calibration", boost::program_options::value< std::string >( &calibration_file ), "calibration file for thermography")
+            ( "output-conversion", boost::program_options::value< std::string >( &directory ), "output conversion table to a timestamped csv file in the specified directory")
             ( "verbose,v", "be more verbose" );
             
         std::ostringstream autocorrection_message;
@@ -130,7 +135,7 @@ int main( int argc, char** argv )
         snark::camera::gobi camera( address, attributes );
         if( verbose ) { std::cerr << "gobi-cat: connected to a xenics camera at address " << camera.address() << std::endl; }
         if( verbose ) { std::cerr << "gobi-cat: total bytes per frame: " << camera.total_bytes_per_frame() << std::endl; }
-        if( vm.count( "set" ) ) { return 0; }
+        if( vm.count( "set-and-exit" ) ) { return 0; }
         if( vm.count( "list-attributes" ) )
         {
             attributes = camera.attributes();
@@ -143,7 +148,20 @@ int main( int argc, char** argv )
             std::cout << std::endl;
             return 0;
         }
-               
+        if( vm.count( "calibration") ) 
+        {
+            std::string temperature_unit = "celsius";
+            camera.enable_thermography( temperature_unit, calibration_file );
+            if( verbose ) { std::cerr << "gobi-cat: calibration file " << calibration_file << " is loaded" << std::endl; }
+        }
+        if( vm.count( "output-conversion" ) ) 
+        {
+            if( !vm.count( "calibration") ) { COMMA_THROW( comma::exception, "gobi-cat: unable to output conversion table, since calibration file was not provided" ); }
+            std::string local_time = boost::posix_time::to_iso_string( boost::posix_time::second_clock::local_time() );
+            std::string file_name = directory + "/" + local_time + ".csv";
+            camera.output_conversion( file_name ); 
+            if( verbose ) { std::cerr << "gobi-cat: conversion table for thermography has been saved to " << file_name << std::endl; }
+        }
         std::vector< std::string > v = comma::split( fields, "," );
         comma::csv::format format;
         for( unsigned int i = 0; i < v.size(); ++i )

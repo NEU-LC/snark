@@ -5,6 +5,8 @@ SET( dir ${SOURCE_CODE_BASE_DIR}/${PROJECT} )
 FILE( GLOB source *.cpp )
 FILE( GLOB includes *.h )
 
+#ADD_DEFINITIONS(-DBOOST_GRAPH_NO_BUNDLED_PROPERTIES)
+
 add_custom_target( ${TARGET_NAME} ${source} ${includes} )
 
 INSTALL( FILES ${includes} DESTINATION ${snark_INSTALL_INCLUDE_DIR}/${PROJECT} )

@@ -34,6 +34,7 @@
 #define SNARK_ACTUATORS_UR_ROBOTIC_ARM_TRAITS_H
 #include <boost/units/quantity.hpp>
 #include <comma/visiting/traits.h>
+#include <snark/visiting/eigen.h>
 #include "commands.h"
 #include "commands_handler.h"
 #include "units.h"
@@ -66,7 +67,7 @@ template <> struct traits< arm::move_cam >
 {
     template< typename K, typename V > static void visit( const K& k, arm::move_cam& t, V& v )
     {
-    	traits< command_base < arm::move_cam > >::visit(k, t, v);
+        traits< command_base < arm::move_cam > >::visit(k, t, v);
         double p, l, h;
         v.apply( "pan", p );
         t.pan = p * arm::degree;
@@ -78,10 +79,31 @@ template <> struct traits< arm::move_cam >
 
     template< typename K, typename V > static void visit( const K& k, const arm::move_cam& t, V& v )
     {
-    	traits< command_base < arm::move_cam > >::visit(k, t, v);
+        traits< command_base < arm::move_cam > >::visit(k, t, v);
         v.apply( "pan", t.pan.value() );
         v.apply( "tilt", t.tilt.value() );
         v.apply( "height", t.height.value() );
+    }
+};
+
+template <> struct traits< arm::pan_tilt >
+{
+    template< typename K, typename V > static void visit( const K& k, arm::pan_tilt& t, V& v )
+    {
+    	traits< command_base < arm::pan_tilt > >::visit(k, t, v);
+        double p = t.pan.value();
+        double l = t.tilt.value();
+        v.apply( "pan", p );
+        t.pan = p * arm::degree;
+        v.apply( "tilt", l );
+        t.tilt = l * arm::degree;
+    }
+
+    template< typename K, typename V > static void visit( const K& k, const arm::pan_tilt& t, V& v )
+    {
+    	traits< command_base < arm::pan_tilt > >::visit(k, t, v);
+        v.apply( "pan", t.pan.value() );
+        v.apply( "tilt", t.tilt.value() );
     }
 };
 
@@ -108,59 +130,30 @@ template <> struct traits< arm::move_effector >
     {
         traits< command_base < arm::move_effector > >::visit(k, t, v);
         v.apply( "offset", t.offset );
-        double p, l, r;
-        v.apply( "pan", p );
-        t.pan = p * arm::degree;
-        v.apply( "tilt", l );
-        t.tilt = l * arm::degree;
-        v.apply( "roll", r );
-        t.roll = r * arm::degree;
-    }
+   }
 
     template< typename K, typename V > static void visit( const K& k, const arm::move_effector& t, V& v )
     {
         traits< command_base < arm::move_effector > >::visit(k, t, v);
         v.apply( "offset", t.offset );
-        v.apply( "pan", t.pan.value() );
-        v.apply( "tilt", t.tilt.value() );
-        v.apply( "roll", t.roll.value() );
     }
 };
 
-template <> struct traits< arm::fixed_status::joints_type >
+template <> struct traits< arm::continuum_t::arm_position_t >
 {
-    template< typename K, typename V > static void visit( const K& k, arm::fixed_status::joints_type& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, arm::continuum_t::arm_position_t& t, V& v )
     {
-        for( std::size_t i=0; i<6; ++i ) {
-            double d = 0;
+        for( std::size_t i=0; i<arm::joints_num; ++i ) 
+        {
+            double d = t[i].value();
             v.apply( boost::lexical_cast< std::string >( i ).c_str(), d );
-            // std::cerr << "getting radian: " << i << " " << d << std::endl;
             t[i] = d * arm::radian;
         }
     }
 
-    template< typename K, typename V > static void visit( const K& k, const arm::fixed_status::joints_type& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, const arm::continuum_t::arm_position_t& t, V& v )
     {
-        for( std::size_t i=0; i<6; ++i ) {
-            v.apply( boost::lexical_cast< std::string >( i ).c_str(), t[i].value() );
-        }
-    }
-};
-
-template <> struct traits< std::vector< arm::plane_angle_degrees_t > >
-{
-    template< typename K, typename V > static void visit( const K& k, std::vector< arm::plane_angle_degrees_t >& t, V& v )
-    {
-        for( std::size_t i=0; i<t.size(); ++i ) {
-            double d = 0;
-            v.apply( boost::lexical_cast< std::string >( i ).c_str(), d );
-            t[i] = d * arm::degree;
-        }
-    }
-
-    template< typename K, typename V > static void visit( const K& k, const std::vector< arm::plane_angle_degrees_t >& t, V& v )
-    {
-        for( std::size_t i=0; i<t.size(); ++i ) {
+        for( std::size_t i=0; i<arm::joints_num; ++i ) {
             v.apply( boost::lexical_cast< std::string >( i ).c_str(), t[i].value() );
         }
     }
@@ -280,31 +273,60 @@ template <> struct traits< arm::sweep_cam >
     template< typename K, typename V > static void visit( const K& k, arm::sweep_cam& t, V& v )
     {
         traits< command_base < arm::sweep_cam > >::visit(k, t, v);
+        v.apply( "use_world_frame", t.use_world_frame );
         v.apply( "filetag", t.filetag );
+        double angle = t.sweep_angle.value();
+        v.apply( "sweep_angle", angle );
+        t.sweep_angle = angle * arm::degree;
     }
 
     template< typename K, typename V > static void visit( const K& k, const arm::sweep_cam& t, V& v )
     {
         traits< command_base < arm::sweep_cam > >::visit(k, t, v);
+        v.apply( "use_world_frame", t.use_world_frame );
         v.apply( "filetag", t.filetag );
+        v.apply( "sweep_angle", t.sweep_angle.value() );
     }
 };
-
 template <> struct traits< arm::continuum_t::scan_type >
 {
     template< typename K, typename V > static void visit( const K& k, arm::continuum_t::scan_type& t, V& v )
     {
-        double min=-45, max=15;
-        v.apply( "min", min );
-        t.min = min * arm::degree;
-        v.apply( "max", max );
-        t.max = max * arm::degree;
+        double sweep_angle = t.sweep_angle.value();
+        v.apply( "sweep_angle", sweep_angle );
+        t.sweep_angle = sweep_angle * arm::degree;
+
+        double vel = t.sweep_velocity.value();
+        v.apply( "sweep_velocity", vel );
+        t.sweep_velocity = vel * arm::rad_per_sec;
+
+        v.apply( "fields", t.fields );
+        v.apply( "range-limit", t.range_limit );
     }
 
     template< typename K, typename V > static void visit( const K& k, const arm::continuum_t::scan_type& t, V& v )
     {
-        v.apply( "min", t.min.value() );
-        v.apply( "max", t.max.value() );
+        v.apply( "sweep_angle", t.sweep_angle.value() );
+        v.apply( "sweep_velocity", t.sweep_velocity.value() );
+        v.apply( "fields", t.fields );
+        v.apply( "range-limit", t.range_limit );
+    }
+};
+
+template <> struct traits< arm::continuum_t::lidar_config >
+{
+    template< typename K, typename V > static void visit( const K& k, arm::continuum_t::lidar_config& t, V& v )
+    {
+        v.apply( "service-host", t.service_host );
+        v.apply( "service-port", t.service_port );
+        v.apply( "scan-forwarding-port", t.scan_forwarding_port );
+    }
+
+    template< typename K, typename V > static void visit( const K& k, const arm::continuum_t::lidar_config& t, V& v )
+    {
+        v.apply( "service-host", t.service_host );
+        v.apply( "service-port", t.service_port );
+        v.apply( "scan-forwarding-port", t.scan_forwarding_port );
     }
 };
 
@@ -315,6 +337,7 @@ template <> struct traits< arm::continuum_t >
         v.apply( "home_position", t.home_position );
         v.apply( "work_directory", t.work_directory );
         v.apply( "scan", t.scan );
+        v.apply( "hokuyo", t.lidar );
     }
 
     template< typename K, typename V > static void visit( const K& k, const arm::continuum_t& t, V& v )
@@ -322,6 +345,7 @@ template <> struct traits< arm::continuum_t >
         v.apply( "home_position", t.home_position );
         v.apply( "work_directory", t.work_directory );
         v.apply( "scan", t.scan );
+        v.apply( "hokuyo", t.lidar );
     }
 };
 
@@ -446,6 +470,18 @@ template < > struct traits< arm::status_t >
         v.apply( "joint_modes", t.joint_modes );
         v.apply( "length", t.length );    /// Binary length of message received
         v.apply( "time_since_boot", t.time_since_boot );
+    }
+};
+
+template < > struct traits< arm::move_config_t >
+{
+    template< typename K, typename V > static void visit( const K& k, arm::move_config_t& t, V& v )
+    {
+        v.apply( "angles", (boost::array< double, arm::joints_num >&) t );
+    }
+    template< typename K, typename V > static void visit( const K& k, const arm::move_config_t& t, V& v )
+    {
+        v.apply( "angles", (const boost::array< double, arm::joints_num >&) t );
     }
 };
 

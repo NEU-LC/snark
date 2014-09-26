@@ -48,25 +48,25 @@ namespace snark {
 template < typename V, typename E, typename Directed, typename VertexStorage, typename EdgeStorage >
 void read_vertices( boost::adjacency_list< VertexStorage, EdgeStorage, Directed, V, E >& graph
                   , std::istream& is
-                  , const comma::csv::options csv = comma::csv::options() );
+                  , const comma::csv::options& csv = comma::csv::options() );
 
 /// read graph edges from a csv input stream
 template < typename V, typename E, typename Directed, typename VertexStorage, typename EdgeStorage >
 void read_edges( boost::adjacency_list< VertexStorage, EdgeStorage, Directed, V, E >& graph
-               , std::ostream& os
-               , const comma::csv::options csv = comma::csv::options() );
+               , std::istream& os
+               , const comma::csv::options& csv = comma::csv::options() );
 
 /// write graph vertices to a csv output stream
 template < typename V, typename E, typename Directed, typename VertexStorage, typename EdgeStorage >
 void write_vertices( const boost::adjacency_list< VertexStorage, EdgeStorage, Directed, V, E >& graph
                    , std::ostream& os
-                   , const comma::csv::options csv = comma::csv::options() );
+                   , const comma::csv::options& csv = comma::csv::options() );
 
 /// write graph edges from to csv output stream
 template < typename V, typename E, typename Directed, typename VertexStorage, typename EdgeStorage >
 void write_egdes( const boost::adjacency_list< VertexStorage, EdgeStorage, Directed, V, E >& graph
                 , std::ostream& os
-                , const comma::csv::options csv = comma::csv::options() );
+                , const comma::csv::options& csv = comma::csv::options() );
 
 /// write graph edges with full source and target vertices to to csv output stream
 template < typename V, typename E, typename Directed, typename VertexStorage, typename EdgeStorage >
@@ -78,8 +78,9 @@ void write_edges_with_vertices( const boost::adjacency_list< VertexStorage, Edge
 template < typename V, typename E, typename Directed, typename VertexStorage, typename EdgeStorage >
 inline void read_vertices( boost::adjacency_list< VertexStorage, EdgeStorage, Directed, V, E >& graph
                          , std::istream& is
-                         , comma::csv::options csv = comma::csv::options() )
+                         , const comma::csv::options& c )
 {
+    comma::csv::options csv = c;
     if( csv.fields.empty() ) { csv.full_xpath = true; } // quick and dirty
     comma::csv::input_stream< V > stream( is, csv );
     while( stream.ready() || ( is.good() && !is.eof() ) )
@@ -93,8 +94,9 @@ inline void read_vertices( boost::adjacency_list< VertexStorage, EdgeStorage, Di
 template < typename V, typename E, typename Directed, typename VertexStorage, typename EdgeStorage >
 inline void write_vertices( const boost::adjacency_list< VertexStorage, EdgeStorage, Directed, V, E >& graph
                           , std::ostream& os
-                          , comma::csv::options csv = comma::csv::options() )
+                          , const comma::csv::options& c )
 {
+    comma::csv::options csv = c;
     if( csv.fields.empty() ) { csv.full_xpath = true; } // quick and dirty
     typedef boost::adjacency_list< VertexStorage, EdgeStorage, Directed, V, E > graph_t;
     comma::csv::output_stream< V > stream( os, csv );
@@ -161,8 +163,9 @@ template < typename P > struct edge_traits< P, output_id >
 template < typename T, typename P, typename V, typename E, typename Directed, typename VertexStorage, typename EdgeStorage >
 inline void write_edges_( const boost::adjacency_list< VertexStorage, EdgeStorage, Directed, V, E >& graph
                         , std::ostream& os
-                        , comma::csv::options csv )
+                        , const comma::csv::options& c )
 {
+    comma::csv::options csv = c;
     if( csv.fields.empty() ) { csv.full_xpath = true; } // quick and dirty
     typedef boost::adjacency_list< VertexStorage, EdgeStorage, Directed, V, E > graph_t;
     typedef impl::serialized_edge< P, E > edge_t;
@@ -182,7 +185,7 @@ inline void write_edges_( const boost::adjacency_list< VertexStorage, EdgeStorag
 template < typename V, typename E, typename Directed, typename VertexStorage, typename EdgeStorage >
 inline void write_edges( const boost::adjacency_list< VertexStorage, EdgeStorage, Directed, V, E >& graph
                        , std::ostream& os
-                       , const comma::csv::options& csv = comma::csv::options() )
+                       , const comma::csv::options& csv )
 {
     impl::write_edges_< impl::output_id, typename V::id_type >( graph, os, csv );
 }
@@ -190,7 +193,7 @@ inline void write_edges( const boost::adjacency_list< VertexStorage, EdgeStorage
 template < typename V, typename E, typename Directed, typename VertexStorage, typename EdgeStorage >
 inline void write_edges_with_vertices( const boost::adjacency_list< VertexStorage, EdgeStorage, Directed, V, E >& graph
                                      , std::ostream& os
-                                     , const comma::csv::options& csv = comma::csv::options() )
+                                     , const comma::csv::options& csv )
 {
     impl::write_edges_< impl::output_all, V >( graph, os, csv );
 }
@@ -198,8 +201,9 @@ inline void write_edges_with_vertices( const boost::adjacency_list< VertexStorag
 template < typename V, typename E, typename Directed, typename VertexStorage, typename EdgeStorage >
 inline void read_edges( boost::adjacency_list< VertexStorage, EdgeStorage, Directed, V, E >& graph
                       , std::istream& is
-                      , comma::csv::options csv = comma::csv::options() )
+                      , const comma::csv::options& c )
 {
+    comma::csv::options csv = c;
     if( csv.fields.empty() ) { csv.full_xpath = true; } // quick and dirty
     typedef boost::adjacency_list< VertexStorage, EdgeStorage, Directed, V, E > graph_t;
     typedef typename V::id_type id_type;

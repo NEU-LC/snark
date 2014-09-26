@@ -1,73 +1,165 @@
 #!/bin/bash
 
+name=$( basename $0 )
+
 function usage()
 {
-    cat <<EOF
+    cat >&2 <<EOF
     
-    examples
-        view graph with default fields (nodes: x,y,z,id; edges: source,target)
-            graph-view --nodes="nodes.csv" --edges="edges.csv"
-            
-        view graph with arbitrary fields
-            graph-view --nodes="nodes.csv;fields=x,y,z,,,id" --edges="edges.csv;fields=,,source,,,target"
-            
-        view graph from binary files
-            graph-view --nodes="nodes.bin;fields=x,y,z,,,id;binary=3d,3ui" --edges="edges.csv"
-            
-        view graph and some additional files
-            cat points.csv | graph-view --nodes="nodes.csv" --edges="edges.csv" "my-file.csv;fields=,x,y,z" "another-file.csv" "-;colour=red"
+visualise a graph defined by nodes and edges read from files 
+
+description:
+    $name prepares graph data and invokes view-points for visualisation; it can read additional points from stdin and passes optional arguments to view-points
+
+options:
+    --nodes="<nodes_file>;<option=value>;..." : file with nodes data (x,y,z,id by default) followed by option and value pairs accepted by view-points
+    --edges="<edges_file>;<option=value>;..." : the same for edges data (source,target by default)
+    --view-only : do not process the graph, just visualise using previously created temporary files
+    --no-clean : do not remove temporary files used for visualisation
+    --colour-by-id : colour nodes by their id values (by default id of nodes is only used to identify them in processing)
+
+examples:
+    view graph with default fields (nodes: x,y,z,id; edges: source,target):
+        $name --nodes="nodes.csv" --edges="edges.csv"
+        
+    view graph with arbitrary fields:
+        $name --nodes="nodes.csv;fields=x,y,z,,,id" --edges="edges.csv;fields=,,source,,,target"
+        
+    view graph from binary files:
+        $name --nodes="nodes.bin;fields=x,y,z,,,id;binary=3d,3ui" --edges="edges.csv"
+        
+    view graph and some additional files:
+        cat points.csv | $name --nodes="nodes.csv" --edges="edges.csv" "my-file.csv;fields=,x,y,z" "another-file.csv" "-;colour=red"
     
 EOF
+exit
 }
 
+function remove_all_except
+{
+    IFS=,
+    local exceptions=( $1 )
+    local fields_="$2,"
+    local fields=( $fields_ )
+    for (( i = 0; i < ${#fields[@]}; i++ )); do
+        local skip=false
+        for e in "${exceptions[@]}"; do if [[ "${fields[$i]}" == "$e" ]]; then skip=true; fi; done
+        if [[ $skip == false ]]; then fields[$i]=""; fi
+    done
+    echo "${fields[*]}"
+}
+
+function replace
+{
+    IFS=,
+    local what=$1
+    local replacement=$2
+    local fields_="$3,"
+    local fields=( $fields_ )
+    for (( i = 0; i < ${#fields[@]}; i++ )); do
+        if [[ "${fields[$i]}" == "$what" ]]; then fields[$i]="$replacement"; fi
+    done
+    echo "${fields[*]}"
+}
+
+function decorate_with
+{
+    IFS=,
+    local what=$1
+    local fields_="$2,"
+    local fields=( $fields_ )
+    for (( i = 0; i < ${#fields[@]}; i++ )); do
+        if [[ -n "${fields[$i]}" ]]; then fields[$i]="$what/${fields[$i]}"; fi
+    done
+    echo "${fields[*]}"    
+}
+
+function name_value_pairs_to_array_template
+{
+    separator="$1"
+    IFS="$separator"
+    local elements=( $2 )
+    local output=""
+    for e in "${elements[@]}"; do 
+        local name value
+        IFS='=' read name value <<< "$e"
+        if [[ -n "$name" ]]; then output="$output [$name]=\"$value\""; fi
+    done
+    echo "( $output )"
+}
 
 if [[ "$1" == "" ]] ; then usage ; fi
 
 for arg in "$@" ; do
     if [[ "$arg" == "--help" || "$arg" == "-h" ]] ; then usage ; fi
-    if [[ "${arg#--nodes=}" != "$arg" ]] ; then nodes=${arg#--nodes=}
-    else if [[ "${arg#--edges=}" != "$arg" ]] ; then edges=${arg#--edges=}
+    if [[ "${arg#--nodes=}" != "$arg" ]] ; then arg_nodes="${arg#--nodes=}"
+    else if [[ "${arg#--edges=}" != "$arg" ]] ; then arg_edges="${arg#--edges=}"
     else if [[ "$arg" == "--no-clean" ]] ; then no_clean=true
     else if [[ "$arg" == "--view-only" ]] ; then view_only=true
-    else user_view_points_options+=("$arg") ; fi ; fi ; fi ; fi
+    else if [[ "$arg" == "--color-by-id" ||"$arg" == "--colour-by-id" ]] ; then colour_by_id=true
+    else user_view_points_options+=("$arg") ; fi ; fi ; fi ; fi ; fi
 done
 
-if [[ "$nodes" == "" ]] ; then echo "graph-view: please specify --nodes" >&2 ; exit 1 ; fi
+tmp_dir=".graph-view"
+tmp_nodes="$tmp_dir/nodes.csv"
+tmp_edges="$tmp_dir/edges.csv"
+tmp_joined_edges="$tmp_dir/edges.joined.csv"
 
-if [[ "$view_only" != "true" ]] ; then
-    rm -rf .graph-view
-    mkdir .graph-view
-fi
+default_nodes_fields="x,y,z,id"
+default_edges_fields="source,target"
 
 function clean_()
 {
     if [[ "$no_clean" == "true" || "$view_only" == "true" ]] ; then return ; fi
-    rm -rf .graph-view
+    rm -rf "$tmp_dir"
 }
 
 trap clean_ INT TERM HUP
 
-nodes_file=${nodes%%;*}
-nodes_options=${nodes#*;}
-edges_file=${edges%%;*}
-edges_options=${edges#*;}
+if [[ "$view_only" != "true" && "$arg_nodes" == "" ]] ; then echo "$name: please specify the file with nodes, e.g. --nodes=nodes.csv" >&2 ; exit 1 ; fi
+if [[ "$view_only" != "true" ]] ; then rm -rf "$tmp_dir"; mkdir "$tmp_dir"; fi
+
+arg_nodes="$arg_nodes;"
+arg_edges="$arg_edges;"
+declare -A nodes=$( name_value_pairs_to_array_template ";" "file=${arg_nodes%%;*};${arg_nodes#*;}" )
+declare -A edges=$( name_value_pairs_to_array_template ";" "file=${arg_edges%%;*};${arg_edges#*;}" )
+
+nodes[fields]="${nodes[fields]:-$default_nodes_fields}"
+edges[fields]="${edges[fields]:-$default_edges_fields}"
 
 if [[ "$view_only" != "true" ]] ; then
-    echo "graph-view: processing nodes from $nodes_file..." >&2
-    cat "$nodes_file" > .graph-view/nodes.csv
+    echo "graph-view: processing nodes from ${nodes[file]}..." >&2
+    if [[ -z "${nodes[binary]}" ]]; then cat "${nodes[file]}"; else csv-from-bin "${nodes[binary]}" < "${nodes[file]}"; fi > "$tmp_nodes"
     echo "graph-view: processed nodes" >&2
-    if [[ "$edges_file" != "" ]] ; then
-        echo "graph-view: processing edges from $edges_file..." >&2
-        cat "$edges_file" | csv-join --fields=id ".graph-view/nodes.csv;fields=,,,id" \
-                   | csv-join --fields=,id ".graph-view/nodes.csv;fields=,,,id" \
-                   | cut -d, -f1,2 --complement > .graph-view/edges.joined.csv
+    if [[ -n "${edges[file]}" ]] ; then
+        echo "graph-view: processing edges from ${edges[file]}..." >&2
+        nodes_fields=$( remove_all_except "id" "${nodes[fields]}" )
+        if [[ "${nodes_fields//,/}" != "id" ]]; then echo "$name: node fields is given but it lacks id" >&2; exit 1; fi
+        edges_fields=$( remove_all_except "source,target" "${edges[fields]}" )
+        source=${edges_fields/target/}
+        target=${edges_fields/source/}
+        if [[ ${source//,/} != "source" ]]; then echo "$name: edge fields is given but it lacks source" >&2; exit 1; fi
+        if [[ ${target//,/} != "target" ]]; then echo "$name: edge fields is given but it lacks target" >&2; exit 1; fi
+        if [[ -z "${edges[binary]}" ]]; then cat "${edges[file]}"; else csv-from-bin "${edges[binary]}" < "${edges[file]}"; fi > "$tmp_edges"
+        declare -i number_of_edges_fields=$(( $( head -n1 "$tmp_edges" | sed 's/[^,]//g' | wc -m ) ))
+        cat "$tmp_edges" | csv-join --fields=$source "$tmp_nodes;fields=$( replace "id" "source" $nodes_fields )" \
+            | csv-join --fields=$target "$tmp_nodes;fields=$( replace "id" "target" $nodes_fields )" \
+            | cut -d, -f1-$number_of_edges_fields --complement > "$tmp_joined_edges"
         echo "graph-view: processed edges" >&2
     fi
 fi
 
-view_points_options+=( ".graph-view/nodes.csv;$nodes_options" )
-if [[ "$edges" != "" ]] ; then
-    view_points_options+=( ".graph-view/edges.joined.csv;shape=line;fields=first,,,,second;$edges_options" )
+unset nodes[file] nodes[binary]
+if [[ "$colour_by_id" != "true" ]]; then nodes[fields]="$( replace id "" ${nodes[fields]} )"; fi
+nodes_options=$( for key in ${!nodes[@]}; do echo -n "$key=${nodes[$key]};"; done )
+view_points_options+=( "$tmp_nodes;$nodes_options" )
+if [[ -n "${edges[file]}" ]] ; then
+    unset edges[file] edges[binary]
+    xyz="$( remove_all_except "x,y,z" "${nodes[fields]}" )"
+    edges[fields]="$( decorate_with first $xyz ),$( decorate_with second $xyz )"
+    edges[shape]="${edges[shape]:-line}"
+    joined_edges_options=$( for key in ${!edges[@]}; do echo -n "$key=${edges[$key]};"; done )
+    view_points_options+=( "$tmp_joined_edges;$joined_edges_options" )
 fi
 
 view-points --orthographic --z-is-up "${view_points_options[@]}" "${user_view_points_options[@]}"

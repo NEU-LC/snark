@@ -39,6 +39,7 @@
 #include <iostream>
 #include <functional>
 #include <boost/lexical_cast.hpp>
+#include <Eigen/Geometry>
 #include <comma/base/types.h>
 #include <comma/csv/ascii.h>
 #include <comma/dispatch/dispatched.h>
@@ -86,6 +87,12 @@ struct command_base : public serialiser< Derived >, public comma::dispatch::disp
     
 };
 
+struct pan_tilt : command_base< pan_tilt >
+{
+    plane_angle_degrees_t pan;
+    plane_angle_degrees_t tilt;
+};
+
 
 struct move_cam : command_base< move_cam >
 {
@@ -99,9 +106,11 @@ struct sweep_cam : command_base< sweep_cam >
 {
     static const char start_angle = -45;
     static const char end_angle = 15;
+    static const char fields = 6;
+    bool use_world_frame;
     std::string filetag; /// optional name of file to save the data into
+    plane_angle_degrees_t sweep_angle;
 };
-
 
 struct move_joints : command_base< move_joints >
 {
@@ -148,12 +157,7 @@ struct position
 
 struct move_effector : command_base< move_effector >
 {
-    // static const char* name_str = "MOVEF";
-    position offset;    // position offset from base of arm
-    plane_angle_degrees_t pan;
-    plane_angle_degrees_t tilt;
-    plane_angle_degrees_t roll;
-
+    Eigen::Vector3d offset;
 };
 
 /// Send to trigger auto initialisation on startup.

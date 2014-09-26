@@ -47,6 +47,7 @@
 #include "commands.h"
 #include "auto_initialization.h"
 #include "tilt_sweep.h"
+#include "waypoints_follower.h"
 #include "output.h"
 #include <boost/filesystem.hpp>
 
@@ -66,6 +67,7 @@ class commands_handler : public comma::dispatch::handler_of< power >,
                                   public comma::dispatch::handler_of< set_position >,
                                   public comma::dispatch::handler_of< auto_init_force >,
                                   public comma::dispatch::handler_of< sweep_cam >,
+                                  public comma::dispatch::handler_of< pan_tilt >,
                                   public comma::dispatch::handler_of< move_effector >
 {
 public:
@@ -80,36 +82,56 @@ public:
     void handle( auto_init_force& p );
     void handle( joint_move& j );
     void handle( sweep_cam& s );
+    void handle( pan_tilt& p );
+
+    typedef boost::optional< waypoints_follower::recorder_setup_t > optional_recording_t;
     
-    commands_handler( ExtU_Arm_Controller_T& simulink_inputs, const arm_output& output,
+    commands_handler( ExtU_Arm_controller_v2_T& simulink_inputs, const arm_output& output,
                       arm::status_t& status, std::ostream& robot, 
-                      auto_initialization& init, tilt_sweep& sweep, std::ostream& oss ) : 
+                      auto_initialization& init, waypoints_follower& follower, 
+                      optional_recording_t recorder,
+                      std::ostream& oss, const arm::continuum_t& config ) : 
         inputs_(simulink_inputs), output_(output), 
         status_( status ), os( robot ), 
-        init_(init), sweep_( sweep ),
-        ostream_( oss ),
-        home_filepath_( init_.home_filepath() ), verbose_(false) {}
+        init_(init), waypoints_follower_( follower ),
+        recorder_setup_( recorder ),
+        ostream_( oss ), config_( config ),
+        verbose_( false ), is_move_effector( false ),
+        home_filepath_( init_.home_filepath() ), lidar_filepath_( config_.work_directory + '/' + lidar_filename )
+        {}
         
     bool is_initialising() const; 
     
     result ret;  /// Indicate if command succeed
-    boost::optional< length_t > move_cam_height_;
-    plane_angle_degrees_t move_cam_pan_;
 private:
-    ExtU_Arm_Controller_T& inputs_; /// inputs into simulink engine 
+    ExtU_Arm_controller_v2_T& inputs_; /// inputs into simulink engine 
     const arm_output& output_;
     status_t& status_;
     std::ostream& os;
     auto_initialization& init_;
-    tilt_sweep sweep_;
+    waypoints_follower& waypoints_follower_;
+    optional_recording_t recorder_setup_;
     std::ostream& ostream_;
-    fs::path home_filepath_;
+    arm::continuum_t config_;
     bool verbose_;
+    boost::optional< length_t > move_cam_height_;
+    plane_angle_degrees_t move_cam_pan_;
+    bool is_move_effector;
     
-    void inputs_reset() { inputs_.motion_primitive = input_primitive::no_action; }
     /// Run the command on the controller if possible
-    bool execute();
-    
+    template < typename C >
+    bool execute_waypoints( const C& c, bool record=false );
+    /// Sets the current position of the arm into Simulink input structure
+    void set_current_position();
+
+    inline bool is_home_position() const { return status_.check_pose( config_.home_position ); } 
+
+    /// resets inputs to noaction
+    void inputs_reset();
+public:
+    static const char* lidar_filename;
+    const fs::path home_filepath_;
+    const fs::path lidar_filepath_;
 };
 
 } } } } // namespace snark { namespace ur { namespace robotic_arm { namespace handlers {

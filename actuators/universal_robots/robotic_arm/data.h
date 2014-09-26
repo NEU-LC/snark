@@ -1,7 +1,9 @@
 #ifndef SNARK_ACTUATORS_UR_ROBOTIC_ARM_DATA_H 
 #define SNARK_ACTUATORS_UR_ROBOTIC_ARM_DATA_H 
 #include <comma/packed/packed.h>
+#include <comma/math/compare.h>
 #include "units.h"
+#include "config.h"
 #include <snark/math/applications/frame.h>
 
 namespace comma { namespace packed {
@@ -74,7 +76,6 @@ struct cartesian {
     comma::packed::big_endian_double z;
 };
 
-static const unsigned char joints_num = 6;
 typedef boost::array< comma::packed::big_endian_double, joints_num > joints_net_t;
 
 struct joint_modes_t 
@@ -134,10 +135,11 @@ struct status_t {
 
     /// Robotic arm must be in this state to move
     bool is_running() const;
+    bool is_initialising_ready() const;
     /// Robotic arm must be in this state to power on.
     bool is_powered_off() const;
     
-    bool is_stationary( double epsilon=0.03 ) const;
+    bool is_stationary( double epsilon=0.05 ) const;
     
     status_t() : timestamp( boost::posix_time::microsec_clock::local_time() ), position(), 
             robot_mode( robotmode::not_connected ), length(812), time_since_boot(-1) 
@@ -149,6 +151,12 @@ struct status_t {
         init< double >( 0.0, temperatures );
         init< jointmode::mode >( jointmode::error, joint_modes );
     }
+
+    /// Check that the given pose ( 6 joint angles in radian ) match the current arm's physical pose
+    /// Pre condition, the state must be 'running'
+    bool check_pose( const boost::array< double, joints_num >& pose ) const;
+    typedef boost::array< plane_angle_t, joints_num > arm_position_t;
+    bool check_pose( const arm_position_t& pose ) const;
 };
 
 
@@ -195,6 +203,8 @@ inline bool status_t::is_stationary( double epsilon ) const
     return true;
 }
 
+
+struct move_config_t : public boost::array< double, joints_num > {};
 
 // struct robot_mode : public comma::packed::packed_struct< robot_mode, 29 > {
 //     comma::packed::uint32 length;

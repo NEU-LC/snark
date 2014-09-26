@@ -66,78 +66,6 @@ public:
     }
 };
 
-/// Represent a point relative to the laser's coordinate frame.
-/// Note z and elevation are always zero as laser shoots out horizontally.
-struct data_point
-{
-    data_point() : timestamp( boost::posix_time::microsec_clock::local_time() ), 
-        x(0), y(0), z(0), range(0), bearing(0), elevation(0), intensity(0) {}
-    
-    bool is_nan() const { return ( x == 0 && y == 0 && z == 0 ); }
-    
-    /// Set the data point
-    /// distance in meters, bearing in (radians)
-    void set( double distance, comma::uint32 intensity, double bearing );
-    
-    boost::posix_time::ptime timestamp;
-    double x;
-    double y;
-    double z;
-    double range; // meters
-    double bearing; //radians
-    double elevation;   // radians
-/// Intensity is the reflected strength of the laser.
-/// The reflected laser intensity value is represented by 18- bit data. It is a relative number without a unit.
-/// Intensity may differ depending upon the distance, material and detection angle of the object. Therefore, users
-/// should check the detection capability verification test.
-    comma::uint32 intensity;   /// This is a relative, unit less number that is 18-bit
-};
-
-/// This is for setting acquired data for the point while keeping timestamp the same.
-/// 'distance' is in mm
-void data_point::set(double distance, comma::uint32 intensity, double bearing)
-{
-    this->range = distance / 1000.0;
-    if( distance == hok::ust_10lx::distance_nan || distance <= hok::ust_10lx::distance_min )
-    {
-        // timestamp stays the same
-        x = 0;
-        y = 0;
-        z = 0; 
-        intensity = 0;
-        bearing = 0;
-        range = 0;
-        return;
-    }
-    
-    this->intensity = intensity;    
-    this->bearing = bearing;
-    // timestamp stays the same
-    x = range * std::cos( bearing );
-    y = range * std::sin( bearing );
-}
-
-
-namespace comma { namespace visiting {
-    
-template < > struct traits< data_point >
-{
-    
-    template< typename K, typename V > static void visit( const K& k, const data_point& t, V& v )
-    {
-        v.apply( "timestamp", t.timestamp );
-        v.apply( "x", t.x );
-        v.apply( "y", t.y );
-        v.apply( "z", t.z );
-        v.apply( "range", t.range );
-        v.apply( "bearing", t.bearing );
-        v.apply( "elevation", t.elevation );
-        v.apply( "intensity", t.intensity );
-    }
-};
-    
-} } // namespace comma { namespace visiting {
-
 static void usage()
 {
     std::cerr << std::endl;
@@ -166,9 +94,9 @@ static void usage()
     std::cerr << "    --scan-break:         How many usec of sleep time between ME request and reponses received before issuing another ME request, default is 20us." << std::endl;
     std::cerr << std::endl;
     std::cerr << "Output format:" << std::endl;
-    comma::csv::binary< data_point > binary( "", "" );
+    comma::csv::binary< hok::data_point > binary( "", "" );
     std::cerr << "   format: " << binary.format().string() << " total size is " << binary.format().size() << " bytes" << std::endl;
-    std::vector< std::string > names = comma::csv::names< data_point >();
+    std::vector< std::string > names = comma::csv::names< hok::data_point >();
     std::cerr << "   fields: " << comma::join( names, ','  ) << " number of fields: " << names.size() << std::endl;
     std::cerr << std::endl;
     std::cerr << "author:" << std::endl;
@@ -182,7 +110,7 @@ static bool is_omit_error = false;
 template < int STEPS >
 bool scanning( int start_step, comma::uint32 num_of_scans, // 0 for unlimited
                comma::signal_flag& signaled,
-               std::iostream& iostream, comma::csv::output_stream< data_point >& output )
+               std::iostream& iostream, comma::csv::output_stream< hok::data_point >& output )
 {
     hok::request_md me( true );
     me.header.start_step = start_step;
@@ -222,7 +150,7 @@ bool scanning( int start_step, comma::uint32 num_of_scans, // 0 for unlimited
         }
         
         response.encoded.get_values( rays );
-        data_point point3d;
+        hok::data_point point3d;
         for( std::size_t i=0; i<STEPS; ++i )
         {
             double distance = rays.steps[i].distance();
@@ -237,6 +165,8 @@ bool scanning( int start_step, comma::uint32 num_of_scans, // 0 for unlimited
 
 
         }
+
+        output.flush();
 
         // This means we are done
         if( num_of_scans != 0 && response.header.request.num_of_scans == 0 ) { 
@@ -297,13 +227,13 @@ int main( int ac, char** av )
         csv.fields = comma::join( v, ',' );
         csv.full_xpath = false;
         // see sick-ldmrs-to-csv
-        if( options.exists( "--format" ) ) { std::cout << comma::csv::format::value< data_point >( csv.fields, false ) << std::endl; return 0; }
-        if( options.exists( "--binary,-b" ) ) csv.format( comma::csv::format::value< data_point >( csv.fields, false ) );
-        comma::csv::output_stream< data_point > output( std::cout, csv );  
+        if( options.exists( "--format" ) ) { std::cout << comma::csv::format::value< hok::data_point >( csv.fields, false ) << std::endl; return 0; }
+        if( options.exists( "--binary,-b" ) ) csv.format( comma::csv::format::value< hok::data_point >( csv.fields, false ) );
+        comma::csv::output_stream< hok::data_point > output( std::cout, csv );  
         
         if( options.exists( "--output-samples" ) )
         {
-            data_point pt;
+            hok::data_point pt;
             pt.x = 1; pt.y = 2; pt.z = 3;
             pt.intensity = 100;
             while( !signaled && std::cout.good() )

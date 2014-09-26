@@ -3,9 +3,9 @@
  *
  * Code generated for Simulink model 'tcp_transform'.
  *
- * Model version                  : 1.13
+ * Model version                  : 1.14
  * Simulink Coder version         : 8.6 (R2014a) 27-Dec-2013
- * C/C++ source code generated on : Thu Aug 07 16:00:31 2014
+ * C/C++ source code generated on : Fri Sep 19 14:17:16 2014
  *
  * Target selection: ert.tlc
  * Embedded hardware selection: 32-bit Generic
@@ -187,6 +187,9 @@ void tcp_transform_step(void)
 {
   real_T total_transform[16];
   real_T tcp_position[4];
+  real_T laser_orientation[9];
+  static const int8_T b[9] = { 0, 0, 1, 1, 0, 0, 0, 1, 0 };
+
   real_T i;
   real_T j;
   real_T k;
@@ -217,6 +220,7 @@ void tcp_transform_step(void)
   real_T y_0[16];
   real_T db_0[16];
   real_T hb_0[16];
+  real_T total_transform_0[9];
   int32_T i_3;
   real_T joint_angles_degrees_idx_0;
   real_T joint_angles_degrees_idx_1;
@@ -475,39 +479,79 @@ void tcp_transform_step(void)
   tcp_transform_Y.z = tcp_position[2];
 
   /* MATLAB Function: '<S1>/getToolLaser' */
-  /* negative = upwards */
+  /* negative = downwards */
   /* '<S2>:1:23' */
   for (i_2 = 0; i_2 < 4; i_2++) {
     joint_angles_degrees_idx_0 = total_transform[i_2 + 12] +
-      (total_transform[i_2 + 8] * 0.0 + (total_transform[i_2 + 4] * -0.11 +
+      (total_transform[i_2 + 8] * 0.0 + (total_transform[i_2 + 4] * 0.11 +
         total_transform[i_2] * 0.0));
     tcp_position[i_2] = joint_angles_degrees_idx_0;
   }
 
-  /* Outport: '<Root>/Pan' incorporates:
-   *  MATLAB Function: '<S1>/getToolLaser'
-   */
   /* '<S2>:1:25' */
   /* '<S2>:1:26' */
   /* '<S2>:1:27' */
-  /* '<S2>:1:29' */
-  /* '<S2>:1:31' */
+  /* tool_orientation = [total_transform(1,1),total_transform(1,2),total_transform(1,3); total_transform(2,1),total_transform(2,2),total_transform(2,3); total_transform(3,1),total_transform(3,2),total_transform(3,3)]; */
+  /* co-ordinate system rotational transformation */
   /* '<S2>:1:32' */
-  /* '<S2>:1:33' */
-  /* '<S2>:1:35' */
-  /* '<S2>:1:36' */
-  /* '<S2>:1:37' */
-  tcp_transform_Y.Pan = asin(total_transform[9]);
+  /* pan = asind(laser_orientation(2,3)); */
+  /* tilt = atand(laser_orientation(3,3)/laser_orientation(1,3)); */
+  /* roll = 0; */
+  /* giraffe position laser orientation transposed */
+  /* '<S2>:1:40' */
+  total_transform_0[0] = total_transform[0];
+  total_transform_0[3] = total_transform[4];
+  total_transform_0[6] = total_transform[8];
+  total_transform_0[1] = total_transform[1];
+  total_transform_0[4] = total_transform[5];
+  total_transform_0[7] = total_transform[9];
+  total_transform_0[2] = total_transform[2];
+  total_transform_0[5] = total_transform[6];
+  total_transform_0[8] = total_transform[10];
+  for (i_2 = 0; i_2 < 3; i_2++) {
+    for (i_3 = 0; i_3 < 3; i_3++) {
+      laser_orientation[i_2 + 3 * i_3] = 0.0;
+      laser_orientation[i_2 + 3 * i_3] += (real_T)b[3 * i_3] *
+        total_transform_0[i_2];
+      laser_orientation[i_2 + 3 * i_3] += (real_T)b[3 * i_3 + 1] *
+        total_transform_0[i_2 + 3];
+      laser_orientation[i_2 + 3 * i_3] += (real_T)b[3 * i_3 + 2] *
+        total_transform_0[i_2 + 6];
+    }
+  }
+
+  /* finds transformation between new position and default giraffe position */
+  /* '<S2>:1:42' */
+  i = atan(laser_orientation[5] / laser_orientation[8]) * 57.295779513082323;
+
+  /* '<S2>:1:43' */
+  j = atan(-laser_orientation[2] / sqrt(laser_orientation[5] *
+            laser_orientation[5] + laser_orientation[8] * laser_orientation[8]))
+    * 57.295779513082323;
+
+  /* '<S2>:1:44' */
+  k = atan(laser_orientation[1] / laser_orientation[0]) * 57.295779513082323;
+
+  /* Outport: '<Root>/Pan' incorporates:
+   *  MATLAB Function: '<S1>/getToolLaser'
+   */
+  /* pan = asin(tool_orientation(2,3)); */
+  /* tilt = atan(tool_orientation(3,3)/tool_orientation(1,3)); */
+  /* roll = 0; */
+  /* '<S2>:1:50' */
+  /* '<S2>:1:51' */
+  /* '<S2>:1:52' */
+  tcp_transform_Y.Pan = k;
 
   /* Outport: '<Root>/Tilt' incorporates:
    *  MATLAB Function: '<S1>/getToolLaser'
    */
-  tcp_transform_Y.Tilt = atan(total_transform[10] / total_transform[8]);
+  tcp_transform_Y.Tilt = j;
 
   /* Outport: '<Root>/Roll' incorporates:
    *  MATLAB Function: '<S1>/getToolLaser'
    */
-  tcp_transform_Y.Roll = 0.0;
+  tcp_transform_Y.Roll = i;
 
   /* Outport: '<Root>/x_laser' incorporates:
    *  MATLAB Function: '<S1>/getToolLaser'
@@ -527,17 +571,17 @@ void tcp_transform_step(void)
   /* Outport: '<Root>/pan_laser' incorporates:
    *  MATLAB Function: '<S1>/getToolLaser'
    */
-  tcp_transform_Y.pan_laser = asin(total_transform[9]);
+  tcp_transform_Y.pan_laser = k;
 
   /* Outport: '<Root>/tilt_laser' incorporates:
    *  MATLAB Function: '<S1>/getToolLaser'
    */
-  tcp_transform_Y.tilt_laser = atan(total_transform[10] / total_transform[8]);
+  tcp_transform_Y.tilt_laser = j;
 
   /* Outport: '<Root>/roll_laser' incorporates:
    *  MATLAB Function: '<S1>/getToolLaser'
    */
-  tcp_transform_Y.roll_laser = 0.0;
+  tcp_transform_Y.roll_laser = i;
 }
 
 /* Model initialize function */

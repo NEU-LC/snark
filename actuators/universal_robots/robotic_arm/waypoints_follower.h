@@ -30,12 +30,13 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef SNARKS_ACTUATORS_UR_ROBOTIC_ARM_CAMERA_SWEEP_H
-#define SNARKS_ACTUATORS_UR_ROBOTIC_ARM_CAMERA_SWEEP_H
+#ifndef SNARKS_ACTUATORS_UR_ROBOTIC_ARM_WAYPOINTS_FOLLOWER_H
+#define SNARKS_ACTUATORS_UR_ROBOTIC_ARM_WAYPOINTS_FOLLOWER_H
 #include <string>
 #include <vector>
 #include <iostream>
 #include <functional>
+#include <boost/thread.hpp>
 #include <comma/base/types.h>
 #include <comma/dispatch/dispatched.h>
 #include <comma/io/stream.h>
@@ -45,7 +46,6 @@
 #include <comma/application/signal_flag.h>
 #include <boost/optional.hpp>
 #include <boost/function.hpp>
-#include <boost/filesystem.hpp>
 #include "data.h"
 #include "auto_initialization.h"
 extern "C" {
@@ -60,86 +60,55 @@ namespace snark { namespace ur { namespace robotic_arm { namespace handlers {
 namespace arm = robotic_arm;
 
     
-/// class to perform the SCAN command, moves end effector down, up then back to original tilt angle.
-class tilt_sweep
+/// class to perform follows the number of arm waypoints from simulink output, it will either finishes or cancelled.
+class waypoints_follower
 {
     typedef boost::function< void ( void ) > status_updater_t;
     typedef boost::function< bool ( void ) > interrupt_t;    /// A new command is received
     
-    
-    ExtU_Arm_controller_v2_T& inputs_;
     const arm_output& serialiser_;
     status_updater_t status_update_;
     const status_t& status_;
     interrupt_t interrupt_;
     comma::signal_flag& signaled_;
-    continuum_t config_;
     std::string name_;
-    /// The degrees to tilt to
-    plane_angle_degrees_t min_; /// Should be negative - tilts down
-    plane_angle_degrees_t max_; /// Should be positive - tilts up
     
-    struct move_t
-    {
-        move_t() {};
-        move_t( const std::string& m, const plane_angle_t& a ) : action( m ), tilt( a ) {}
-        std::string action;
-        plane_angle_t tilt;
-    };
-    
-    bool calculate_solution( const length_t& height, const plane_angle_degrees_t& pan, 
-                             const plane_angle_degrees_t& tilt_down, const plane_angle_degrees_t& tilt_up, 
-                             move_t& move1, move_t& move2, move_t& ret );
     /// Rover is the robotic arm
     void stop_movement( std::ostream& rover );
     
-    void inputs_reset() 
-    { 
-        inputs_.motion_primitive = input_primitive::no_action;
-        inputs_.Input_1 = 0;
-        inputs_.Input_2 = 0;
-        inputs_.Input_3 = 0;
-        inputs_.Input_4 = 0;
-        inputs_.Input_5 = 0;
-        inputs_.Input_6 = 0;
-    }
 public:
-    tilt_sweep( // boost::function< bool (std::string& move1, std::string& move2 ) > f, /// caculate proposed sweep
-                  ExtU_Arm_controller_v2_T& inputs, /// Simulink inputs
+    waypoints_follower( // boost::function< bool (std::string& move1, std::string& move2 ) > f, /// caculate proposed sweep
                   arm_output& serialiser,       /// Wrapper for Simulink outputs
                   boost::function< void ( void ) > status_updater,
                   const status_t& status,
                   interrupt_t interrupt,
-                  comma::signal_flag& signaled,
-                  const continuum_t config
+                  comma::signal_flag& signaled
         ) : 
-                    inputs_( inputs ), serialiser_( serialiser ), 
+                    serialiser_( serialiser ), 
                     status_update_( status_updater ), status_( status ), 
-                    interrupt_( interrupt ), signaled_( signaled ),
-                    config_( config ),
-                    min_(-45.0*degree), max_(15.0*degree),
-                    lidar_filepath_( config.work_directory + '/' + lidar_filename )  {}
+                    interrupt_( interrupt ), signaled_( signaled ) {}
   
-    void set_min( const plane_angle_degrees_t& min ) { min_ = min; }                  
-    void set_max( const plane_angle_degrees_t& max ) { max_ = max; }                  
     /// To be called to signal that the movement has started - for commands like SCAN or AUTO_INIT
     typedef boost::function< void ( void ) > started_reply_t;
+    typedef boost::function< void ( void ) > recorder_func_t;
+
+    /// class to trigger recorder function, which waypoint to start or stop recording
+    struct recorder_setup_t 
+    {
+        recorder_setup_t( comma::uint16 start, comma::uint16 end, const angular_velocity_t& velocity, recorder_func_t rec ) :
+            start_waypoint_( start ), end_waypoint_( end ), velocity_( velocity ), recorder_(rec ) {}
+        comma::uint16 start_waypoint_;
+        comma::uint16 end_waypoint_;
+        angular_velocity_t velocity_;
+        recorder_func_t recorder_;
+    };
     
-    result run( const length_t& height, const plane_angle_degrees_t& pan,
-                started_reply_t started,
-                std::ostream& rover );
-     result run( const length_t& height, const plane_angle_degrees_t& pan,
-                const plane_angle_degrees_t& tilt_down, const plane_angle_degrees_t& tilt_up, 
-                started_reply_t started,
-                std::ostream& rover );
+    result run( started_reply_t started, std::ostream& rover, const boost::optional< recorder_setup_t >& record_info=boost::none );
     
     const std::string& name() const { return name_; }
     void name( const std::string& name )  { name_ = name ; }
-
-    static const char* lidar_filename;
-    const boost::filesystem::path lidar_filepath_;
 };
     
 } } } } // namespace snark { namespace ur { namespace robotic_arm { namespace handlers {
 
-#endif // SNARKS_ACTUATORS_UR_ROBOTIC_ARM_CAMERA_SWEEP_H
+#endif // SNARKS_ACTUATORS_UR_ROBOTIC_ARM_WAYPOINTS_FOLLOWER_H

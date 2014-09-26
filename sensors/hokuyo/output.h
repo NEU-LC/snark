@@ -30,60 +30,45 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#ifndef SNARK_SENSORS_HOKUYO_OUTPUT_H
+#define SNARK_SENSORS_HOKUYO_OUTPUT_H
 
-#ifndef SNARK_SENSORS_GOBI_H_
-#define SNARK_SENSORS_GOBI_H_
+#include <boost/static_assert.hpp>
+#include <boost/date_time/posix_time/ptime.hpp>
+#include <boost/date_time/posix_time/posix_time_types.hpp>
+#include <comma/base/types.h>
+#include "sensors.h"
 
-#include <XCamera.h>
-#include <XFooters.h>
-#include <XFilters.h>
-#include <boost/date_time/posix_time/posix_time.hpp>
-#include <boost/function.hpp>
+namespace snark { namespace hokuyo {
 
-#include <opencv2/core/core.hpp>
-
-namespace snark{ namespace camera{
-
-class gobi
+/// Represent a point relative to the laser's coordinate frame.
+/// Note z and elevation are always zero as laser shoots out horizontally.
+struct data_point
 {
-    public:
-        typedef std::map< std::string, std::string > attributes_type;       
-        
-        gobi( std::string address, const attributes_type& attributes = attributes_type() );
-
-        ~gobi();
-
-        attributes_type attributes() const;
-        
-        void set( const attributes_type& attributes );
-
-        std::pair< boost::posix_time::ptime, cv::Mat > read();
-
-        std::string address() const;
-        
-        std::string temperature_unit() const;
-
-        unsigned long total_bytes_per_frame() const;
-        
-        void close();
-        
-        bool closed() const;
-
-        static std::vector< XDeviceInformation > list_cameras();
-        
-        static std::string format_camera_info(const XDeviceInformation& camera_info);
-        
-        void enable_thermography( std::string temperature_unit, std::string calibration_file );
-        
-        void disable_thermography();
-        
-        void output_conversion( std::string file_name );
-        
-    private:
-        class impl;
-        impl* pimpl_;
+    data_point() : timestamp( boost::posix_time::microsec_clock::local_time() ), 
+        x(0), y(0), z(0), range(0), bearing(0), elevation(0), intensity(0) {}
+    
+    bool is_nan() const { return ( x == 0 && y == 0 && z == 0 ); }
+    
+    /// Set the data point
+    /// distance in meters, bearing in (radians)
+    void set( double distance, comma::uint32 intensity, double bearing );
+    
+    boost::posix_time::ptime timestamp;
+    double x;
+    double y;
+    double z;
+    double range; // meters
+    double bearing; //radians
+    double elevation;   // radians
+/// Intensity is the reflected strength of the laser.
+/// The reflected laser intensity value is represented by 18- bit data. It is a relative number without a unit.
+/// Intensity may differ depending upon the distance, material and detection angle of the object. Therefore, users
+/// should check the detection capability verification test.
+    comma::uint32 intensity;   /// This is a relative, unit less number that is 18-bit
 };
-
-} } // namespace snark{ namespace camera{
-
-#endif // SNARK_SENSORS_GOBI_H_
+    
+} } // namespace snark { namespace hokuyo {
+    
+    
+#endif // SNARK_SENSORS_HOKUYO_OUTPUT_H

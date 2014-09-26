@@ -45,6 +45,20 @@ void auto_initialization::read_status()
     update_status_( );
 }
 
+bool auto_initialization::is_in_home_position() const
+{
+    namespace fs = boost::filesystem;
+    fs::path file( home_filepath_ );
+
+    return fs::exists( file );
+}
+bool auto_initialization::remove_home_position() const
+{
+    namespace fs = boost::filesystem;
+    fs::path file( home_filepath_ );
+    fs::remove( file );
+}
+
 result auto_initialization::run( started_reply_t started_update, bool force )
 {
     std::cerr << name() << "command auto init" << std::endl;
@@ -63,7 +77,7 @@ result auto_initialization::run( started_reply_t started_update, bool force )
     // snark-ur10-from-console: Initialising joint (0)
     initj[0] = "speedj_init([0.05,0,0,0,0,0],0.05,0.00666667)";
 
-    if( status_.mode() != robotmode::initializing ) {
+    if( !status_.is_initialising_ready() ) {
         std::cerr << name() << "auto_init failed because robotic arm mode is " << status_.mode_str() << std::endl;
         return result( "cannot auto initialise robot if robot mode is not set to initializing", result::error::failure );
     }
@@ -79,10 +93,11 @@ result auto_initialization::run( started_reply_t started_update, bool force )
 
     static const comma::uint32 retries = 50;
     // try for two joints right now
-    bool stop_now = interrupt_();
+    bool stop_now = false;
     for( int joint_id=5; joint_id >=0 && !signaled_ && !stop_now; --joint_id )
     {
 
+        stop_now = interrupt_();
         while( !signaled_ && !stop_now )
         {
             if( status_.jmode( joint_id ) != jointmode::initializing ) { break; }
@@ -90,22 +105,21 @@ result auto_initialization::run( started_reply_t started_update, bool force )
             // move it a little bit
             os << initj[ joint_id ] << std::endl;
             os.flush();
-            // std::cerr << "joint " << joint_id << " is in initializing " << std::endl;
-//             std::cerr.flush();
 
             // wait tilt joint stopped
-            for( std::size_t k=0; k<retries; ++k ) 
+            for( std::size_t k=0; k<retries && !signaled_ && !stop_now; ++k ) 
             {
-                usleep( 0.01 * 1000000u );
+                /// Check and read any new input command from the user, if so we stop auto init.
+                usleep( 0.005 * 1000000u );
                 // std::cerr << "reading status" << std::endl;
                 read_status();
                 // if( std::fabs( status_.forces[joint_id]() ) > force_max_ ) { return  result( "cannot moe joint because of joint force > 0", result::error::failure ); }
                 double vel = status_.velocities[ joint_id ];
                 if( std::fabs( vel ) <= 0.03 ) break;
+                stop_now = interrupt_();
             }
             
-            /// Check and read any new input command from the user, if so we stop auto init.
-            stop_now = interrupt_();
+            if( signaled_ || stop_now ) { return result( "auto_init cancelled", result::error::cancelled ); }
         }
 
         if( status_.jmode( joint_id ) == jointmode::running ) {
@@ -114,10 +128,13 @@ result auto_initialization::run( started_reply_t started_update, bool force )
         }
         else 
         {
-            std::cerr << name() << "failed to initialise joint: " << joint_id 
-                      << ", joint mode: " << status_.jmode_str( joint_id ) << std::endl;
-            return result( "failed to auto initialise a joint", result::error::failure );
-        }
+            if( signaled_ || stop_now ) { return result( "auto_init cancelled", result::error::cancelled ); }
+            else
+            {
+                std::cerr << name() << "failed to initialise joint: " << joint_id << ", joint mode: " << status_.jmode_str( joint_id ) << std::endl;
+                return result( "failed to auto initialise a joint", result::error::failure );
+            }
+       }
     }
     if( signaled_ || stop_now  ) {
         os << "speedj_init([0,0,0,0,0,0],0.05,0.0133333)" << std::endl;

@@ -41,6 +41,7 @@
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/convenience.hpp>
+#include <boost/thread.hpp>
 #include <comma/application/command_line_options.h>
 #include <comma/csv/stream.h>
 #include <comma/base/types.h>
@@ -49,7 +50,7 @@
 #include <comma/name_value/ptree.h>
 #include <comma/name_value/parser.h>
 #include <comma/io/stream.h>
-#include <comma/csv/stream.h>
+#include <comma/io/publisher.h>
 #include <comma/string/string.h>
 #include <comma/application/signal_flag.h>
 #include "../../traits.h"
@@ -58,16 +59,18 @@
 #include "../../inputs.h"
 #include "../../units.h"
 #include "../../tilt_sweep.h"
+#include "../../waypoints_follower.h"
+#include "../../../../../sensors/hokuyo/traits.h"
 extern "C" {
-    #include "../../simulink/Arm_Controller.h"
+    #include "../../simulink/Arm_controller_v2.h"
 }
 #include "../../simulink/traits.h"
 
 /* External inputs (root inport signals with auto storage) */
-extern ExtU_Arm_Controller_T Arm_Controller_U;
+extern ExtU_Arm_controller_v2_T Arm_controller_v2_U;
 
 /* External outputs (root outports fed by signals with auto storage) */
-extern ExtY_Arm_Controller_T Arm_Controller_Y;
+extern ExtY_Arm_controller_v2_T Arm_controller_v2_Y;
 
 static const char* name() {
     return "robot-arm-daemon: ";
@@ -78,6 +81,72 @@ namespace impl_ {
 template < typename T >
 std::string str(T t) { return boost::lexical_cast< std::string > ( t ); }
     
+const char* lidar_filename = "lidar.bin";
+
+namespace fs = boost::filesystem;
+
+/// A function to acts as the recorder for 'scan' command, parameters are binded to it in main,
+/// This function must be easily interruptible, making sure it always calls interruption_point()`.
+void save_lidar( const std::string& conn_str, const std::string& savefile,
+                 const std::string& fields, double range_limit,
+                 comma::io::publisher& publisher )
+{
+    // boost::filesystem::remove( savefile );
+
+    namespace hok = snark::hokuyo;
+
+    comma::csv::options csv;
+    csv.fields = fields;
+    csv.full_xpath = true;
+
+    comma::csv::binary< hok::data_point > binary;
+    std::vector<char> line( binary.format().size() );
+ 
+    try
+    {
+        comma::io::istream iss( conn_str, comma::io::mode::binary );
+        comma::csv::binary_input_stream< hok::data_point > istream( *iss ); 
+        comma::io::select select;
+        select.read().add( iss.fd() );
+
+        //comma::io::ostream oss( savefile.string(), comma::io::mode::binary );
+        std::ofstream oss( savefile.c_str(), std::ios::trunc | std::ios::binary | std::ios::out );
+        if( !oss.is_open() ) { COMMA_THROW( comma::exception, "failed to open output file: " << savefile );  }
+        comma::csv::output_stream< hok::data_point > ostream( oss, csv ); 
+
+        comma::uint32 count = 0;
+        while( 1 )
+        {
+            ++count;
+            if( count % 10 == 0 ) { boost::this_thread::interruption_point(); }
+            static const comma::uint32 usleep = 100000; // This make sure it never blocks while reading, e.g. server sends no data
+            if( !istream.ready() ) { select.wait( 0, usleep ); }
+            if( istream.ready() ||  select.read().ready( iss.fd() ) )
+            {
+                const hok::data_point* point = istream.read();
+                if( point == NULL ) { return; }
+
+                if( point->range <= range_limit ) { ostream.write( *point ); }
+
+                //republish the data         
+                binary.put( *point, line.data() );
+                publisher.write( line.data(), line.size());
+            }
+        }
+    }
+    catch( boost::thread_interrupted& ti ) // This is normal, exception does not inherits from std::exception
+    {
+        // std::cerr << name() << "save_lidar interrupted." << std::endl;
+    }
+    catch( std::exception& e )
+    {
+        std::cerr << name() << "save_lidar exception: " << e.what() << std::endl;
+    }
+    catch(...)
+    {
+        std::cerr << name() << "save_lidar unknown exception."<< std::endl;
+    }
+}
 } // namespace impl_ {
 
 
@@ -101,6 +170,8 @@ void usage(int code=1)
     std::cerr << "*   --feedback-port=:     TCP Port number of the robot arm's feedback." << std::endl;
     std::cerr << "    --sleep=:             Loop sleep value in seconds, default is 0.2s if not specified." << std::endl;
     std::cerr << "*   --config=:            Config file for robot arm, see --output-config." << std::endl;
+    std::cerr << "*   --scan-forwarding-port=|-P=:" << std::endl;
+    std::cerr << "                          Broadcast scanned data using TCP on this port." << std::endl;
     std::cerr << "    --output-config=:     Print config format in json." << std::endl;
     // std::cerr << "    --init-force-limit,-ifl:" << std::endl;
     // std::cerr << "                          Force (Newtons) limit when auto initializing, if exceeded then stop auto init." << std::endl;
@@ -127,6 +198,7 @@ typedef arm::handlers::commands_handler commands_handler_t;
 typedef boost::shared_ptr< commands_handler_t > commands_handler_shared;
 static commands_handler_shared commands_handler;
 static bool verbose = false;
+static arm::config config;
 
 template < typename C >
 std::string handle( const std::vector< std::string >& line, std::ostream& os )
@@ -163,12 +235,27 @@ std::string handle( const std::vector< std::string >& line, std::ostream& os )
 void process_command( const std::vector< std::string >& v, std::ostream& os )
 {
     if( boost::iequals( v[2], "move_cam" ) )         { output( handle< arm::move_cam >( v, os ) ); }
+    else if( boost::iequals( v[2], "move_effector" )){ output( handle< arm::move_effector >( v, os ) ); }
+    else if( boost::iequals( v[2], "pan_tilt" ) )    { output( handle< arm::pan_tilt >( v, os ) ); }
     else if( boost::iequals( v[2], "set_pos" ) )     { output( handle< arm::set_position >( v, os ) ); }
     else if( boost::iequals( v[2], "set_home" ) )    { output( handle< arm::set_home >( v, os ) ); }
     else if( boost::iequals( v[2], "power" ) )       { output( handle< arm::power >( v, os )); }  
-    else if( boost::iequals( v[2], "scan" ) )        { output( handle< arm::sweep_cam >( v, os )); }  
+    else if( boost::iequals( v[2], "scan" ) )        
+    {
+        if( v.size() >= arm::sweep_cam::fields )     { output( handle< arm::sweep_cam >( v, os )); }
+        else 
+        {
+            // If the user did not enter a sweep angle as last field, use the default
+            // You can either do this or create another scan command with the extra sweep_angle field
+            static std::string default_sweep = boost::lexical_cast< std::string >( config.continuum.scan.sweep_angle.value() );
+            std::vector< std::string > items = v; 
+            items.push_back( default_sweep );
+            output( handle< arm::sweep_cam >( items, os ) );
+        } 
+    }  
     else if( boost::iequals( v[2], "brakes" ) || 
              boost::iequals( v[2], "stop" ) )        { output( handle< arm::brakes >( v, os )); }  
+    else if( boost::iequals( v[2], "cancel" ) )       { } /// No need to do anything, used to cancel other running commands e.g. auto_init or scan  
     else if( boost::iequals( v[2], "auto_init" ) )  
     { 
         if( v.size() == arm::auto_init_force::fields ) 
@@ -202,7 +289,6 @@ void read_status( comma::csv::binary_input_stream< arm::status_t >& iss, comma::
     }
 }
 
-static arm::config config;
 
 class stop_on_exit
 {
@@ -238,37 +324,9 @@ void home_position_check( const arm::status_t& status, const std::string& homefi
 {
     // static std::vector< arm::plane_angle_t > home_position; /// store home joint positions in radian
     static const fs::path path( homefile );
-    static const arm::plane_angle_t epsilon = static_cast< arm::plane_angle_t >( 1.5 * arm::degree );
-    
-    static std::vector< arm::plane_angle_t > home_position; /// store home joint positions in radian
-    if( home_position.empty() )
-    {
-        home_position.push_back( static_cast< arm::plane_angle_t >( config.continuum.home_position[0] * arm::degree ) );
-        home_position.push_back( static_cast< arm::plane_angle_t >( config.continuum.home_position[1] * arm::degree ) );
-        home_position.push_back( static_cast< arm::plane_angle_t >( config.continuum.home_position[2] * arm::degree ) );
-        home_position.push_back( static_cast< arm::plane_angle_t >( config.continuum.home_position[3] * arm::degree ) );
-        home_position.push_back( static_cast< arm::plane_angle_t >( config.continuum.home_position[4] * arm::degree ) );
-        home_position.push_back( static_cast< arm::plane_angle_t >( config.continuum.home_position[5] * arm::degree ) );
-        // for( std::size_t i=0; i<home_position.size(); ++i ) {
-        //     std::cerr << "home joint " << i << ':' << home_position[i].value() << std::endl; 
-        // }
-        // std::cerr << "joint epsilon " << epsilon.value() << std::endl; 
-    }
-
-
     if( status.is_running() )
     {
-        bool is_home = true;
-        for( std::size_t i=0; i<arm::joints_num; ++i ) 
-        {
-            if( !comma::math::equal( status.joint_angles[i], home_position[i], epsilon ) )
-            { 
-                is_home=false; 
-                break; 
-            }
-        }
-
-        if( is_home ){ std::ofstream( homefile.c_str(), std::ios::out | std::ios::trunc ); } // create
+        if( status.check_pose( config.continuum.home_position ) ){ std::ofstream( homefile.c_str(), std::ios::out | std::ios::trunc ); } // create
         else { fs::remove( path ); } // remove
     }
 }
@@ -279,6 +337,26 @@ bool should_stop( arm::inputs& in )
     in.read( timeout );
     return ( !in.is_empty() );
 }
+
+struct ttt : public boost::array< double, 6 > {};
+
+namespace comma { namespace visiting {
+    
+// Commands
+template < > struct traits< ttt >
+{
+    template< typename K, typename V > static void visit( const K& k, ttt& t, V& v )
+    {
+        v.apply( "angles", (boost::array< double, 6 >&) t );
+    }
+    template< typename K, typename V > static void visit( const K& k, const ttt& t, V& v )
+    {
+        v.apply( "angles", (const boost::array< double, 6 >&) t );
+    }
+};
+
+}}
+
 
 int main( int ac, char** av )
 {
@@ -304,9 +382,9 @@ int main( int ac, char** av )
     std::cerr << name() << "started" << std::endl;
     try
     {
-        /// COnvert simulink output into arm's command
+        /// Convert simulink output into arm's command
         arm::handlers::arm_output output( acc * arm::angular_acceleration_t::unit_type(), vel * arm::angular_velocity_t::unit_type(),
-                       Arm_Controller_Y );
+                       Arm_controller_v2_Y );
     
         comma::uint16 rover_id = options.value< comma::uint16 >( "--id" );
         double sleep = options.value< double >( "--sleep", 0.06 );  // seconds
@@ -324,13 +402,15 @@ int main( int ac, char** av )
 
         for( std::size_t j=0; j<arm::joints_num; ++j )
         {
-            std::cerr << name() << "home joint " << j << " - " << continuum.home_position[j] << '"' << std::endl;
+            std::cerr << name() << "home joint " << j << " - " << continuum.home_position[j].value() << '"' << std::endl;
         }
 
         std::string arm_conn_host = options.value< std::string >( "--robot-arm-host" );
         std::string arm_conn_port = options.value< std::string >( "--robot-arm-port" );
         std::string arm_feedback_host = options.value< std::string >( "--feedback-host" );
         std::string arm_feedback_port = options.value< std::string >( "--feedback-port" );
+        std::string tcp_scan_forwarding = "tcp:" + boost::lexical_cast< std::string >( continuum.lidar.scan_forwarding_port );
+        comma::io::publisher scan_broadcast( tcp_scan_forwarding, comma::io::mode::binary );
         
         boost::scoped_ptr< comma::io::ostream > poss;
         try
@@ -346,7 +426,7 @@ int main( int ac, char** av )
         }
         comma::io::ostream& robot_arm = *poss;
 
-        /// For reading input commands
+        /// For reading  commands from stdin with specific rover id as filter
         arm::inputs inputs( rover_id );
 
         typedef std::vector< std::string > command_vector;
@@ -364,6 +444,7 @@ int main( int ac, char** av )
         comma::io::select select;
         select.read().add( status_stream.fd() );
 
+
         {
             stop_on_exit on_exit( *robot_arm );
 
@@ -374,20 +455,35 @@ int main( int ac, char** av )
                     boost::bind( should_stop, boost::ref( inputs ) ),
                     continuum.work_directory );
             auto_init.set_app_name( name() );
-            
-            
-            arm::handlers::tilt_sweep tilt_sweep( Arm_Controller_U, output, 
+            /// This is the handler for following waypoints given by Simulink code
+            arm::handlers::waypoints_follower waypoints_follower( output, 
                     boost::bind( read_status, boost::ref(istream), boost::ref( status_stream ), select, status_stream.fd() ),
                     arm_status,
                     boost::bind( should_stop, boost::ref( inputs ) ),
                     signaled );
-            std::cerr << name() << "min is " << continuum.scan.min.value() << std::endl;
-            tilt_sweep.set_min( continuum.scan.min );                                          
-            tilt_sweep.set_max( continuum.scan.max );                                          
+            waypoints_follower.name( name() );
             
-            // if( options.exists( "--init-force-limit,-ifl" ) ){ auto_init.set_force_limit( options.value< double >( "--init-force-limit,-ifl" ) ); }
-            commands_handler.reset( new commands_handler_t( Arm_Controller_U, output, arm_status, *robot_arm, 
-                                                        auto_init, tilt_sweep, std::cout ) );
+            // This is the infomation and generic function for recording some data
+            // It records data for scan command starting from waypoint 2 and ends at waypoint 3
+            arm::handlers::commands_handler::optional_recording_t record_info;
+            if( !continuum.lidar.service_host.empty() )
+            {
+                std::ostringstream ss;
+                ss << "tcp:" << continuum.lidar.service_host << ':' << continuum.lidar.service_port;
+                std::string scan_filepath = continuum.work_directory + '/' + impl_::lidar_filename;
+                std::cerr << "connection to lidar: " << ss.str() << std::endl;
+                std::string hokuyo_conn; 
+                hokuyo_conn = ss.str();
+                record_info.reset( arm::handlers::waypoints_follower::recorder_setup_t( 2, 3, continuum.scan.sweep_velocity,
+                                                                         boost::bind( &impl_::save_lidar, hokuyo_conn, scan_filepath, 
+                                                                                      continuum.scan.fields, continuum.scan.range_limit,
+                                                                                      boost::ref( scan_broadcast ) ) )
+                );
+            }
+            /// This is the command handler for all commands
+            commands_handler.reset( new commands_handler_t( Arm_controller_v2_U, output, arm_status, *robot_arm, 
+                                                            auto_init, waypoints_follower, record_info, 
+                                                            std::cout, continuum ) );
         
 
             boost::posix_time::microseconds timeout( usec );
@@ -397,11 +493,12 @@ int main( int ac, char** av )
                     std::cerr << name() << "status connection to robot-arm failed" << std::endl;
                     COMMA_THROW( comma::exception, "status connection to robot arm failed." ); 
                 }
-    
+                // Read and update the latest status from the robot arm, put it into arm_status
                 read_status( istream, status_stream, select, status_stream.fd() ); 
+                // Checks for home position and create the home file if true, else remove home file.
                 home_position_check( arm_status, auto_init.home_filepath() );
                 
-                /// Also act as sleep
+                /// Also act as sleep, reads commands from stdin
                 inputs.read( timeout );
                 // Process commands into inputs into the system
                 if( !inputs.is_empty() )

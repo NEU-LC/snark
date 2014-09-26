@@ -76,7 +76,8 @@ int main( int argc, char** argv )
             ( "points,p", boost::program_options::value< std::string >( &points_string )->default_value( "0,0,0" ), "point(s) belonging to the plane, either 3 points, or 1 point, if --normal defined" )
             ( "point-outside", boost::program_options::value< std::string >( &point_outside ), "point on the side of the plane where the normal would point, a convenience option; 3 points are enough" )
             ( "normal,n", boost::program_options::value< std::string >( &normal_string ), "normal to the plane" )
-            ( "intersections", "assume the input represents a trajectory, find all its intersections with the plane");
+            ( "intersections", "assume the input represents a trajectory, find all its intersections with the plane")
+            ( "threshold", boost::program_options::value< double >(), "if --intersections present, any separation between contiguous points of trajectory greater than threshold will be treated as a gap in the trajectory (no intersections will lie in the gaps)");
         description.add( comma::csv::program_options::description( "x,y,z" ) );
         boost::program_options::variables_map vm;
         boost::program_options::store( boost::program_options::parse_command_line( argc, argv, description), vm );
@@ -115,6 +116,7 @@ int main( int argc, char** argv )
             std::cerr << "   echo -e \"0,0,-1\\n0,0,0\\n0,0,1\" | points-slice --points 0,0,0 --normal 0,0,1" << std::endl;
             std::cerr << "   echo -e \"0,0,-1\\n0,0,0\\n0,0,1\" | points-slice --normal 0,0,1" << std::endl;
             std::cerr << "   echo -e \"0,0,-1\\n0,0,0\\n0,0,1\" | points-slice --normal 0,0,1 --intersections" << std::endl;
+            std::cerr << "   echo -e \"0,0,-1\\n0,0,-0.5\\n0,0,0\\n0,0,1\\n0,0,1.5\" | points-slice --normal 0,0,1 --intersections --threshold=0.5" << std::endl;
             std::cerr << std::endl;
             return 1;
         }
@@ -159,44 +161,49 @@ int main( int argc, char** argv )
             Eigen::Hyperplane< double, 3 > plane( normal, point );
             boost::optional< Eigen::Vector3d > last;
             double d_last = 0;
+            boost::optional< double > threshold;
+            if( vm.count("threshold") ) { threshold.reset( vm["threshold"].as< double >() ); }
             while( !is_shutdown && ( istream.ready() || ( !std::cin.eof() && std::cin.good() ) ) )
             {
                 const Eigen::Vector3d* p = istream.read();
                 if( !p ) { break; }
                 double d = ( *p - point ).dot( normal );
+                bool valid_intersection = false;
                 if( last )
                 {
-                    bool intersects = ( d * d_last <= 0 );
-                    if( intersects )
+                    bool intersects = d * d_last <= 0;
+                    bool interval_within_threshold = !threshold || ( threshold && ( *p - *last ).norm() <= *threshold );
+                    valid_intersection = intersects && interval_within_threshold;
+                }
+                if( valid_intersection )
+                {
+                    Eigen::Vector3d intersection_point;
+                    BOOST_STATIC_ASSERT( sizeof( Eigen::Vector3d ) == sizeof( double ) * 3 );
+                    bool lies_on_plane = ( d == 0 && d_last == 0 );
+                    if( lies_on_plane )
                     {
-                        Eigen::Vector3d intersection_point;
-                        BOOST_STATIC_ASSERT( sizeof( Eigen::Vector3d ) == sizeof( double ) * 3 );
-                        bool lies_on_plane = ( d == 0 && d_last == 0 );
-                        if( lies_on_plane ) 
-                        { 
-                            intersection_point = *last; 
-                        }
-                        else
-                        {
-                            Eigen::ParametrizedLine< double, 3 > line = Eigen::ParametrizedLine< double, 3 >::Through( *last, *p );
-                            intersection_point = line.intersectionPoint( plane );
-                        }
-                        comma::int32 direction;
-                        if( d_last != 0 ) { direction = ( d_last > 0 ) ? 1 : -1; }
-                        else if( d != 0 ) { direction = ( d < 0 ) ? 1 : -1; }
-                        else { direction = 0; }
-                        if( csv.binary() )
-                        {
-                            std::cout.write( reinterpret_cast< const char* >( &( *last ) ), sizeof( double ) * 3 );
-                            std::cout.write( istream.binary().last(), istream.binary().binary().format().size() );
-                            std::cout.write( reinterpret_cast< const char* >( &intersection_point ), sizeof( double ) * 3 );
-                            std::cout.write( reinterpret_cast< const char* >( &direction ), sizeof( comma::int32 ) );
-                        }
-                        else
-                        {
-                            std::cout << ascii.put( *last ) << csv.delimiter << comma::join( istream.ascii().last(), csv.delimiter ) << csv.delimiter
-                                      << ascii.put( intersection_point ) << csv.delimiter << direction << std::endl;
-                        }
+                        intersection_point = *last; 
+                    }
+                    else
+                    {
+                        Eigen::ParametrizedLine< double, 3 > line = Eigen::ParametrizedLine< double, 3 >::Through( *last, *p );
+                        intersection_point = line.intersectionPoint( plane );
+                    }
+                    comma::int32 direction;
+                    if( d_last != 0 ) { direction = ( d_last > 0 ) ? 1 : -1; }
+                    else if( d != 0 ) { direction = ( d < 0 ) ? 1 : -1; }
+                    else { direction = 0; }
+                    if( csv.binary() )
+                    {
+                        std::cout.write( reinterpret_cast< const char* >( &( *last ) ), sizeof( double ) * 3 );
+                        std::cout.write( istream.binary().last(), istream.binary().binary().format().size() );
+                        std::cout.write( reinterpret_cast< const char* >( &intersection_point ), sizeof( double ) * 3 );
+                        std::cout.write( reinterpret_cast< const char* >( &direction ), sizeof( comma::int32 ) );
+                    }
+                    else
+                    {
+                        std::cout << ascii.put( *last ) << csv.delimiter << comma::join( istream.ascii().last(), csv.delimiter ) << csv.delimiter
+                                    << ascii.put( intersection_point ) << csv.delimiter << direction << std::endl;
                     }
                 }
                 last.reset( *p );
