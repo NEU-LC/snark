@@ -42,11 +42,39 @@
 #include <comma/string/string.h>
 #include "./filters.h"
 #include <Eigen/Core>
+#include <boost/unordered_map.hpp>
+#include <comma/csv/stream.h>
 
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/imgproc/imgproc_c.h>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/highgui/highgui_c.h>
+
+#include <boost/static_assert.hpp>
+#include <boost/type_traits.hpp>
+
+struct map_t
+{
+    typedef double value_type;
+    // todo? unsigned int key;
+    value_type value;
+};
+
+namespace comma { namespace visiting {
+
+template <> struct traits< map_t >
+{
+    template< typename K, typename V > static void visit( const K&, map_t& t, V& v )
+    {
+        v.apply( "value", t.value );
+    }
+    template< typename K, typename V > static void visit( const K&, const map_t& t, V& v )
+    {
+        v.apply( "value", t.value );
+    }
+};
+
+} } // namespace comma { namespace visiting {
 
 namespace snark{ namespace cv_mat {
 
@@ -288,6 +316,48 @@ class max_impl_ // experimental, to debug
         std::deque< filters::value_type > deque_; // use vector?
 };
 
+class map_impl_
+{
+    typedef unsigned short input_pixel_value_type;
+    typedef double output_pixel_value_type;
+    static const int input_image_cvtype = CV_16UC1;
+    static const int output_image_cvtype = CV_64FC1;
+    public:
+        map_impl_( const std::string& filename )
+        {
+            std::ifstream ifs( &filename[0] );
+            if( !ifs ) { COMMA_THROW( comma::exception, "failed to open \"" << filename << "\"" ); }
+            BOOST_STATIC_ASSERT( boost::is_same< map_t::value_type, output_pixel_value_type >::value );
+            comma::csv::input_stream< map_t > map_stream( ifs );
+            std::size_t expected_size = std::numeric_limits< input_pixel_value_type >::max() + 1;
+            for( std::size_t counter = 0; map_stream.ready() || ( ifs.good() && !ifs.eof() ) ; ++counter )
+            {
+                if( counter > expected_size ) { break; }
+                const map_t* map_input = map_stream.read();
+                if( !map_input ) { break; }
+                map_.insert( std::pair< input_pixel_value_type, output_pixel_value_type >( counter, map_input->value ) );
+            }
+            if( map_.size() != expected_size ) { COMMA_THROW( comma::exception, "expected to load " << expected_size << " elements from " << filename << ", but got " << map_.size() ); }
+        }
+        
+        filters::value_type operator()( filters::value_type m )
+        {
+            if( m.second.type() != input_image_cvtype ) { COMMA_THROW( comma::exception, "expected input image of opencv type " << input_image_cvtype << ", but got " << m.second.type() ); }
+            filters::value_type n( m.first, cv::Mat( m.second.rows, m.second.cols, output_image_cvtype ) );
+            for(int i=0; i < m.second.cols; i++)
+            {
+                for(int j=0; j < m.second.rows; j++)
+                {
+                    n.second.at< output_pixel_value_type >( cv::Point(i,j) ) = map_[ m.second.at< input_pixel_value_type >( cv::Point(i,j) ) ];
+                }
+            }
+            return n;
+        }
+
+    private:
+        boost::unordered_map< input_pixel_value_type, output_pixel_value_type > map_;
+};
+
 static boost::unordered_map< std::string, int > fill_types_()
 {
     boost::unordered_map< std::string, int > types;
@@ -527,6 +597,10 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
             double scale = boost::lexical_cast< double >( s[0] );
             double offset = s.size() == 1 ? 0.0 : boost::lexical_cast< double >( s[1] );
             f.push_back( filter( boost::bind( &brightness_impl_, _1, scale, offset ) ) );
+        }        
+        else if( e[0] == "map" )
+        {
+            f.push_back( filter( map_impl_( e[1] ) ) );
         }
         else
         {
@@ -574,7 +648,8 @@ static std::string usage_impl_()
     oss << "                                          <wait-interval>: a hack for now; milliseconds to wait for image display and key press; default: 1" << std::endl;
     oss << "        timestamp: write timestamp on images" << std::endl;
     oss << "        transpose: transpose the image (swap rows and columns)" << std::endl;
-    oss << "        undistort=<map file>: undistort" << std::endl;
+    oss << "        undistort=<undistort map file>: undistort" << std::endl;
+    oss << "        map=<map file>: map discrete pixel values to values read from the map file" << std::endl;
     oss << "        view[=<wait-interval>]: view image; press <space> to save image (timestamp or system time as filename); <esc>: to close" << std::endl;
     oss << "                                <wait-interval>: a hack for now; milliseconds to wait for image display and key press; default 1" << std::endl;
     return oss.str();
