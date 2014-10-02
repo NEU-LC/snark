@@ -327,7 +327,7 @@ class map_impl_
         {
             std::ifstream ifs( &filename[0] );
             if( !ifs ) { COMMA_THROW( comma::exception, "failed to open \"" << filename << "\"" ); }
-            BOOST_STATIC_ASSERT( boost::is_same< map_t::value_type, output_pixel_value_type >::value );
+            BOOST_STATIC_ASSERT(( boost::is_same< map_t::value_type, output_pixel_value_type >::value ));
             comma::csv::input_stream< map_t > map_stream( ifs );
             std::size_t expected_size = std::numeric_limits< input_pixel_value_type >::max() + 1;
             for( std::size_t counter = 0; map_stream.ready() || ( ifs.good() && !ifs.eof() ) ; ++counter )

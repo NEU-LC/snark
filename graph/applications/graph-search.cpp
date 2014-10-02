@@ -9,6 +9,7 @@
 #include <snark/graph/serialization.h>
 #include <snark/graph/traits.h>
 #include <snark/visiting/traits.h>
+#include <boost/static_assert.hpp>
 
 static void usage( bool verbose )
 {
