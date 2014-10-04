@@ -30,28 +30,28 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
 #include <fstream>
 #include <queue>
 #include <sstream>
 #include <boost/bind.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/unordered_map.hpp>
-#include <comma/base/exception.h>
-#include <comma/csv/ascii.h>
-#include <comma/string/string.h>
-#include "./filters.h"
+#include <boost/static_assert.hpp>
+#include <boost/type_traits.hpp>
 #include <Eigen/Core>
-#include <boost/unordered_map.hpp>
-#include <comma/csv/stream.h>
-
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/imgproc/imgproc_c.h>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/highgui/highgui_c.h>
-
-#include <boost/static_assert.hpp>
-#include <boost/type_traits.hpp>
+//#define USE_FFT
+#ifdef USE_FFT
+#include <fftw3.h>
+#endif
+#include <comma/base/exception.h>
+#include <comma/csv/ascii.h>
+#include <comma/csv/stream.h>
+#include <comma/string/string.h>
+#include "./filters.h"
 
 struct map_t
 {
@@ -342,7 +342,7 @@ class map_impl_
         
         filters::value_type operator()( filters::value_type m )
         {
-            if( m.second.type() != input_image_cvtype ) { COMMA_THROW( comma::exception, "expected input image of opencv type " << input_image_cvtype << ", but got " << m.second.type() ); }
+            if( m.second.type() != input_image_cvtype ) { COMMA_THROW( comma::exception, "expected input image of opencv type " << input_image_cvtype << ", got " << m.second.type() ); }
             filters::value_type n( m.first, cv::Mat( m.second.rows, m.second.cols, output_image_cvtype ) );
             for(int i=0; i < m.second.cols; i++)
             {
@@ -362,13 +362,13 @@ static boost::unordered_map< std::string, int > fill_types_()
 {
     boost::unordered_map< std::string, int > types;
     types[ "CV_8UC1" ] = types[ "ub" ] = CV_8UC1;
-    types[ "CV_8UC2 " ] = types[ "2ub" ] = CV_8UC2;
-    types[ "CV_8UC3 " ] = types[ "3ub" ] = CV_8UC3;
-    types[ "CV_8UC4 " ] = types[ "4ub" ] = CV_8UC4;
-    types[ "CV_8SC1 " ] = types[ "b" ] = CV_8SC1;
-    types[ "CV_8SC2 " ] = types[ "2b" ] = CV_8SC2;
-    types[ "CV_8SC3 " ] = types[ "3b" ] = CV_8SC3;
-    types[ "CV_8SC4 " ] = types[ "4b" ] = CV_8SC4;
+    types[ "CV_8UC2" ] = types[ "2ub" ] = CV_8UC2;
+    types[ "CV_8UC3" ] = types[ "3ub" ] = CV_8UC3;
+    types[ "CV_8UC4" ] = types[ "4ub" ] = CV_8UC4;
+    types[ "CV_8SC1" ] = types[ "b" ] = CV_8SC1;
+    types[ "CV_8SC2" ] = types[ "2b" ] = CV_8SC2;
+    types[ "CV_8SC3" ] = types[ "3b" ] = CV_8SC3;
+    types[ "CV_8SC4" ] = types[ "4b" ] = CV_8SC4;
     types[ "CV_16UC1" ] = types[ "uw" ] = CV_16UC1;
     types[ "CV_16UC2" ] = types[ "2uw" ] = CV_16UC2;
     types[ "CV_16UC3" ] = types[ "3uw" ] = CV_16UC3;
@@ -392,7 +392,110 @@ static boost::unordered_map< std::string, int > fill_types_()
     return types;
 }
 
+static boost::unordered_map< int, std::string > fill_types_as_string_()
+{
+    boost::unordered_map< int, std::string > types;
+    types[ CV_8UC1 ] = "CV_8UC1";
+    types[ CV_8UC2 ] = "CV_8UC2";
+    types[ CV_8UC3 ] = "CV_8UC3";
+    types[ CV_8UC4 ] = "CV_8UC4";
+    types[ CV_8SC1 ] = "CV_8SC1";
+    types[ CV_8SC2 ] = "CV_8SC2";
+    types[ CV_8SC3 ] = "CV_8SC3";
+    types[ CV_8SC4 ] = "CV_8SC4";
+    types[ CV_16UC1 ] = "CV_16UC1";
+    types[ CV_16UC2 ] = "CV_16UC2";
+    types[ CV_16UC3 ] = "CV_16UC3";
+    types[ CV_16UC4 ] = "CV_16UC4";
+    types[ CV_16SC1 ] = "CV_16SC1";
+    types[ CV_16SC2 ] = "CV_16SC2";
+    types[ CV_16SC3 ] = "CV_16SC3";
+    types[ CV_16SC4 ] = "CV_16SC4";
+    types[ CV_32SC1 ] = "CV_32SC1";
+    types[ CV_32SC2 ] = "CV_32SC2";
+    types[ CV_32SC3 ] = "CV_32SC3";
+    types[ CV_32SC4 ] = "CV_32SC4";
+    types[ CV_32FC1 ] = "CV_32FC1";
+    types[ CV_32FC2 ] = "CV_32FC2";
+    types[ CV_32FC3 ] = "CV_32FC3";
+    types[ CV_32FC4 ] = "CV_32FC4";
+    types[ CV_64FC1 ] = "CV_64FC1";
+    types[ CV_64FC2 ] = "CV_64FC2";
+    types[ CV_64FC3 ] = "CV_64FC3";
+    types[ CV_64FC4 ] = "CV_64FC4";
+    return types;
+}
+
 static const boost::unordered_map< std::string, int > types_ = fill_types_();
+static const boost::unordered_map< int, std::string > types_as_string = fill_types_as_string_();
+
+//static std::string type_as_string( int t )
+std::string type_as_string( int t ) // to avoid compilation warning
+{
+    boost::unordered_map< int, std::string >::const_iterator it = types_as_string.find( t );
+    return it == types_as_string.end() ? boost::lexical_cast< std::string >( t ) : it->second;
+}
+
+#ifdef USE_FFT // tear down macro switches, once implemented and debugged
+
+struct fft_impl_
+{
+    fft_impl_( const std::string& options ) : direction( FFTW_FORWARD ), flags( FFTW_ESTIMATE )
+    {
+        const std::vector< std::string > v = comma::split( options, ',' );
+        for( unsigned int i = 0; i < v.size(); ++i )
+        {
+            if( v[i] == "backward" ) { direction = FFTW_BACKWARD; }
+        }
+    }
+    
+    int direction;
+    int flags;
+    
+    // todo: quick and dirty; wasteful to create plan every time, but we don't know the dimensions upfront
+    //                        if the dimensions given (as rows and cols), create the plan once on construction
+    //                        and destroy in destructor
+    filters::value_type operator()( filters::value_type m )
+    {
+        switch( m.second.type() )
+        {
+            case CV_32FC1:
+            case CV_32FC2:
+            case CV_32FC3:
+            case CV_32FC4:
+            case CV_64FC1:
+            case CV_64FC2:
+            case CV_64FC3:
+            case CV_64FC4:
+                break;
+            default:
+                std::cerr << "fft: expected a floating-point image type, got: " << type_as_string( m.second.type() ) << m.second;
+                return filters::value_type();
+        }
+        
+        // todo
+        
+//         fftw_complex *in, *out;
+//         fftw_plan p;
+//         in = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * N);
+//         out = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * N);
+//          p = fftw_plan_dft_1d( N, in, out, direction, flags );
+//          fftw_execute(p); /* repeat as needed */
+//          ...
+//          fftw_destroy_plan(p);
+//          fftw_free(in); fftw_free(out);
+        
+//         fftw_plan plan = fftw_plan_dft_r2c_2d( m.second.cols, m.second.rows, 
+//                                     double *in, fftw_complex *out,
+//                                     unsigned flags);
+//         rfftw2d_create_plan( direction, flags );
+        std::cerr << "fft: todo" << std::endl;
+        return filters::value_type();
+        //fftw_destroy_plan( plan );
+    }
+};
+
+#endif // #ifdef USE_FFT
 
 std::vector< filter > filters::make( const std::string& how, unsigned int default_delay )
 {
