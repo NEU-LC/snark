@@ -30,30 +30,28 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
 #include <fstream>
 #include <queue>
 #include <sstream>
+#include <boost/array.hpp>
 #include <boost/bind.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/unordered_map.hpp>
+#include <boost/static_assert.hpp>
+#include <boost/type_traits.hpp>
 #include <comma/base/exception.h>
 #include <comma/base/types.h>
 #include <comma/csv/ascii.h>
+#include <comma/csv/stream.h>
+#include <comma/csv/options.h>
 #include <comma/string/string.h>
-#include "./filters.h"
+#include <comma/name_value/parser.h>
 #include <Eigen/Core>
-
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/imgproc/imgproc_c.h>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/highgui/highgui_c.h>
-
-#include <comma/csv/stream.h>
-#include <comma/csv/options.h>
-#include <comma/name_value/parser.h>
-#include <boost/static_assert.hpp>
-#include <boost/type_traits.hpp>
+#include "./filters.h"
 
 struct map_input_t
 {
@@ -238,6 +236,20 @@ static filters::value_type timestamp_impl_( filters::value_type m )
     return m;
 }
 
+struct count_impl_
+{
+    count_impl_() : count( 0 ) {}
+    
+    unsigned int count;
+    
+    filters::value_type operator()( filters::value_type m )
+    {
+        cv::rectangle( m.second, cv::Point( 5, 5 ), cv::Point( 80, 25 ), cv::Scalar( 0xffff, 0xffff, 0xffff ), CV_FILLED, CV_AA );
+        cv::putText( m.second, boost::lexical_cast< std::string >( count++ ), cv::Point( 10, 20 ), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar( 0, 0, 0 ), 1, CV_AA );
+        return m;
+    }
+};
+
 static filters::value_type invert_impl_( filters::value_type m )
 {
     unsigned int c = ( m.second.dataend - m.second.datastart ) / ( m.second.rows * m.second.cols );
@@ -405,13 +417,13 @@ static boost::unordered_map< std::string, int > fill_types_()
 {
     boost::unordered_map< std::string, int > types;
     types[ "CV_8UC1" ] = types[ "ub" ] = CV_8UC1;
-    types[ "CV_8UC2 " ] = types[ "2ub" ] = CV_8UC2;
-    types[ "CV_8UC3 " ] = types[ "3ub" ] = CV_8UC3;
-    types[ "CV_8UC4 " ] = types[ "4ub" ] = CV_8UC4;
-    types[ "CV_8SC1 " ] = types[ "b" ] = CV_8SC1;
-    types[ "CV_8SC2 " ] = types[ "2b" ] = CV_8SC2;
-    types[ "CV_8SC3 " ] = types[ "3b" ] = CV_8SC3;
-    types[ "CV_8SC4 " ] = types[ "4b" ] = CV_8SC4;
+    types[ "CV_8UC2" ] = types[ "2ub" ] = CV_8UC2;
+    types[ "CV_8UC3" ] = types[ "3ub" ] = CV_8UC3;
+    types[ "CV_8UC4" ] = types[ "4ub" ] = CV_8UC4;
+    types[ "CV_8SC1" ] = types[ "b" ] = CV_8SC1;
+    types[ "CV_8SC2" ] = types[ "2b" ] = CV_8SC2;
+    types[ "CV_8SC3" ] = types[ "3b" ] = CV_8SC3;
+    types[ "CV_8SC4" ] = types[ "4b" ] = CV_8SC4;
     types[ "CV_16UC1" ] = types[ "uw" ] = CV_16UC1;
     types[ "CV_16UC2" ] = types[ "2uw" ] = CV_16UC2;
     types[ "CV_16UC3" ] = types[ "3uw" ] = CV_16UC3;
@@ -435,7 +447,121 @@ static boost::unordered_map< std::string, int > fill_types_()
     return types;
 }
 
+static boost::unordered_map< int, std::string > fill_types_as_string_()
+{
+    boost::unordered_map< int, std::string > types;
+    types[ CV_8UC1 ] = "CV_8UC1";
+    types[ CV_8UC2 ] = "CV_8UC2";
+    types[ CV_8UC3 ] = "CV_8UC3";
+    types[ CV_8UC4 ] = "CV_8UC4";
+    types[ CV_8SC1 ] = "CV_8SC1";
+    types[ CV_8SC2 ] = "CV_8SC2";
+    types[ CV_8SC3 ] = "CV_8SC3";
+    types[ CV_8SC4 ] = "CV_8SC4";
+    types[ CV_16UC1 ] = "CV_16UC1";
+    types[ CV_16UC2 ] = "CV_16UC2";
+    types[ CV_16UC3 ] = "CV_16UC3";
+    types[ CV_16UC4 ] = "CV_16UC4";
+    types[ CV_16SC1 ] = "CV_16SC1";
+    types[ CV_16SC2 ] = "CV_16SC2";
+    types[ CV_16SC3 ] = "CV_16SC3";
+    types[ CV_16SC4 ] = "CV_16SC4";
+    types[ CV_32SC1 ] = "CV_32SC1";
+    types[ CV_32SC2 ] = "CV_32SC2";
+    types[ CV_32SC3 ] = "CV_32SC3";
+    types[ CV_32SC4 ] = "CV_32SC4";
+    types[ CV_32FC1 ] = "CV_32FC1";
+    types[ CV_32FC2 ] = "CV_32FC2";
+    types[ CV_32FC3 ] = "CV_32FC3";
+    types[ CV_32FC4 ] = "CV_32FC4";
+    types[ CV_64FC1 ] = "CV_64FC1";
+    types[ CV_64FC2 ] = "CV_64FC2";
+    types[ CV_64FC3 ] = "CV_64FC3";
+    types[ CV_64FC4 ] = "CV_64FC4";
+    return types;
+}
+
 static const boost::unordered_map< std::string, int > types_ = fill_types_();
+static const boost::unordered_map< int, std::string > types_as_string = fill_types_as_string_();
+
+//static std::string type_as_string( int t )
+std::string type_as_string( int t ) // to avoid compilation warning
+{
+    boost::unordered_map< int, std::string >::const_iterator it = types_as_string.find( t );
+    return it == types_as_string.end() ? boost::lexical_cast< std::string >( t ) : it->second;
+}
+
+template < typename T, int Type >
+static filters::value_type convert( filters::value_type m, bool magnitude, bool log_scale, bool normalize )
+{
+    cv::Mat padded;
+    int padded_rows = cv::getOptimalDFTSize( m.second.rows );
+    int padded_cols = cv::getOptimalDFTSize( m.second.cols );
+    cv::copyMakeBorder( m.second, padded, 0, padded_rows - m.second.rows, 0, padded_cols - m.second.cols, cv::BORDER_CONSTANT, cv::Scalar::all( 0 ) );
+    boost::array< cv::Mat, 2 > planes = {{ cv::Mat_< T >( padded ), cv::Mat::zeros( padded.size(), Type ) }};
+    filters::value_type p;
+    p.first = m.first;
+    cv::merge( &planes[0], 2, p.second );
+    cv::dft( p.second, p.second );
+    if( !magnitude ) { return p; }
+    cv::split( p.second, &planes[0] );
+    cv::magnitude( planes[0], planes[1], planes[0] );
+    filters::value_type n;
+    n.first = m.first;
+    n.second = planes[0];
+    if( log_scale )
+    {
+        n.second += cv::Scalar::all( 1 );
+        cv::log( n.second, n.second ); // todo: optional
+    }
+    n.second = n.second( cv::Rect( 0, 0, n.second.cols & -2, n.second.rows & -2 ) );
+
+    int cx = n.second.cols / 2 ;
+    int cy = n.second.rows / 2 ;
+    
+    cv::Mat q0(n.second, cv::Rect(0, 0, cx, cy));   // Top-Left - Create a ROI per quadrant
+    cv::Mat q1(n.second, cv::Rect(cx, 0, cx, cy));  // Top-Right
+    cv::Mat q2(n.second, cv::Rect(0, cy, cx, cy));  // Bottom-Left
+    cv::Mat q3(n.second, cv::Rect(cx, cy, cx, cy)); // Bottom-Right
+    
+    cv::Mat tmp;
+    q0.copyTo( tmp ); // swap top-left with bottom-right
+    q3.copyTo( q0 );
+    tmp.copyTo( q3 );
+    q1.copyTo( tmp ); // swap top-right with bottom-left
+    q2.copyTo( q1 );
+    tmp.copyTo( q2 );
+    
+    if( normalize ) { cv::normalize( n.second, n.second, 0, 1, CV_MINMAX ); }
+    return n;
+}
+
+// todo: quick and dirty; wasteful to create plan every time, but we don't know the dimensions upfront
+//                        if the dimensions given (as rows and cols), create the plan once on construction
+//                        and destroy in destructor
+filters::value_type fft_impl_( filters::value_type m, bool magnitude, bool log_scale, bool normalize )
+{
+    switch( m.second.type() )
+    {
+        case CV_32FC1:
+            return convert< float, CV_32FC1 >( m, magnitude, log_scale, normalize );
+        case CV_32FC2:
+        case CV_32FC3:
+        case CV_32FC4:
+            std::cerr << "fft: multichannel image support: todo, got: " << type_as_string( m.second.type() ) << m.second;
+            return filters::value_type();
+        case CV_64FC1:
+            return convert< double, CV_64FC1 >( m, magnitude, log_scale, normalize );
+        case CV_64FC2:
+        case CV_64FC3:
+        case CV_64FC4:
+            std::cerr << "fft: multichannel image support: todo, got: " << type_as_string( m.second.type() ) << m.second;
+            return filters::value_type();
+        default:
+            std::cerr << "fft: expected a floating-point image type, got: " << type_as_string( m.second.type() ) << m.second;
+            return filters::value_type();
+    }
+}
 
 std::vector< filter > filters::make( const std::string& how, unsigned int default_delay )
 {
@@ -457,6 +583,11 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
             if( modified ) { COMMA_THROW( comma::exception, "cannot covert from bayer after transforms: " << name ); }
             unsigned int which = boost::lexical_cast< unsigned int >( e[1] );
             f.push_back( filter( boost::bind( &cvt_color_impl_, _1, which ) ) );
+        }
+        else if( e[0] == "count" )
+        {
+            count_impl_ c;
+            f.push_back( filter( c ) );
         }
         else if( e[0] == "crop" )
         {
@@ -503,6 +634,24 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
                 center->y() = boost::lexical_cast< unsigned int >( s[1] );
             }
             f.push_back( filter( boost::bind( &cross_impl_, _1, center ) ) );
+        }
+        else if( e[0] == "fft" )
+        {
+            bool log_scale = false;
+            bool normalize = false;
+            bool magnitude = false;
+            if( e.size() > 1 )
+            {
+                const std::vector< std::string >& w = comma::split( e[1], ',' );
+                for( unsigned int i = 0; i < w.size(); ++i )
+                {
+                    if( w[i] == "log" || w[i] == "log-scale" ) { log_scale = true; }
+                    else if( w[i] == "normalize" ) { normalize = true; }
+                    else if( w[i] == "magnitude" ) { magnitude = true; }
+                }
+            }
+            if( log_scale || normalize ) { magnitude = true; }
+            f.push_back( filter( boost::bind( &fft_impl_, _1, magnitude, log_scale, normalize ) ) );
         }
         else if( e[0] == "flip" )
         {
@@ -672,6 +821,7 @@ static std::string usage_impl_()
     oss << "        bayer=<mode>: convert from bayer, <mode>=1-4" << std::endl;
     oss << "        brightness=<scale>[,<offset>]: output=(scale*input)+offset; default offset=0" << std::endl;
     oss << "        convert_to=<type>[,<scale>[,<offset>]]: convert to given type; should be the same number of channels; see opencv convertTo for details" << std::endl;
+    oss << "        count: write frame number on images" << std::endl;
     oss << "        crop=[<x>,<y>],<width>,<height>: crop the portion of the image starting at x,y with size width x height" << std::endl;
     oss << "        crop-tile=[<x>,<y>],<num-tile-x>,<num-tile-y>: divide the image in num-tile-x x num-tile-y tiles, and crop the tile x,y (count from zero)" << std::endl;
     oss << "        cross[=<x>,<y>]: draw cross-hair at x,y; default: at image center" << std::endl;
