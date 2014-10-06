@@ -38,38 +38,43 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/unordered_map.hpp>
 #include <comma/base/exception.h>
+#include <comma/base/types.h>
 #include <comma/csv/ascii.h>
 #include <comma/string/string.h>
 #include "./filters.h"
 #include <Eigen/Core>
-#include <boost/unordered_map.hpp>
-#include <comma/csv/stream.h>
 
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/imgproc/imgproc_c.h>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/highgui/highgui_c.h>
 
+#include <comma/csv/stream.h>
+#include <comma/csv/options.h>
+#include <comma/name_value/parser.h>
 #include <boost/static_assert.hpp>
 #include <boost/type_traits.hpp>
 
-struct map_t
+struct map_input_t
 {
     typedef double value_type;
-    // todo? unsigned int key;
+    typedef int key_type;
+    key_type key;
     value_type value;
 };
 
 namespace comma { namespace visiting {
 
-template <> struct traits< map_t >
+template <> struct traits< map_input_t >
 {
-    template< typename K, typename V > static void visit( const K&, map_t& t, V& v )
+    template< typename K, typename V > static void visit( const K&, map_input_t& t, V& v )
     {
+        v.apply( "key", t.key );
         v.apply( "value", t.value );
     }
-    template< typename K, typename V > static void visit( const K&, const map_t& t, V& v )
+    template< typename K, typename V > static void visit( const K&, const map_input_t& t, V& v )
     {
+        v.apply( "key", t.key );
         v.apply( "value", t.value );
     }
 };
@@ -318,44 +323,82 @@ class max_impl_ // experimental, to debug
 
 class map_impl_
 {
-    typedef unsigned short input_pixel_value_type;
-    typedef double output_pixel_value_type;
-    static const int input_image_cvtype = CV_16UC1;
-    static const int output_image_cvtype = CV_64FC1;
+    typedef int key_type;
+    typedef double output_value_type;
     public:
-        map_impl_( const std::string& filename )
+        map_impl_( const std::string& map_filter_options, bool permissive ) : permissive_ ( permissive )
         {
-            std::ifstream ifs( &filename[0] );
-            if( !ifs ) { COMMA_THROW( comma::exception, "failed to open \"" << filename << "\"" ); }
-            BOOST_STATIC_ASSERT( boost::is_same< map_t::value_type, output_pixel_value_type >::value );
-            comma::csv::input_stream< map_t > map_stream( ifs );
-            std::size_t expected_size = std::numeric_limits< input_pixel_value_type >::max() + 1;
-            for( std::size_t counter = 0; map_stream.ready() || ( ifs.good() && !ifs.eof() ) ; ++counter )
+            comma::csv::options csv_options = comma::name_value::parser( "filename", '&' , '=' ).get< comma::csv::options >( map_filter_options );
+            std::string default_csv_fields = "value";
+            bool no_key_field = true;
+            if( csv_options.fields.empty() )
             {
-                if( counter > expected_size ) { break; }
-                const map_t* map_input = map_stream.read();
-                if( !map_input ) { break; }
-                map_.insert( std::pair< input_pixel_value_type, output_pixel_value_type >( counter, map_input->value ) );
+                csv_options.fields = default_csv_fields;
             }
-            if( map_.size() != expected_size ) { COMMA_THROW( comma::exception, "expected to load " << expected_size << " elements from " << filename << ", but got " << map_.size() ); }
+            else
+            {
+                if( !csv_options.has_field( "value" ) ) { COMMA_THROW( comma::exception, "map filter: fields option is given but \"value\" field is not found" ); }
+                no_key_field = !csv_options.has_field( "key" );
+            }    
+            std::ifstream ifs( &csv_options.filename[0] );
+            if( !ifs ) { COMMA_THROW( comma::exception, "map filter: failed to open \"" << csv_options.filename << "\"" ); }
+            BOOST_STATIC_ASSERT( boost::is_same< map_input_t::key_type, key_type >::value );
+            BOOST_STATIC_ASSERT( boost::is_same< map_input_t::value_type, output_value_type >::value );
+            comma::csv::input_stream< map_input_t > map_stream( ifs , csv_options );
+            for( key_type counter = 0; map_stream.ready() || ( ifs.good() && !ifs.eof() ) ; ++counter )
+            {
+                const map_input_t* map_input = map_stream.read();
+                if( !map_input ) { break; }
+                key_type key = no_key_field ? counter : map_input->key;
+                map_.insert( std::pair< key_type, output_value_type >( key, map_input->value ) );
+            }
         }
         
         filters::value_type operator()( filters::value_type m )
         {
-            if( m.second.type() != input_image_cvtype ) { COMMA_THROW( comma::exception, "expected input image of opencv type " << input_image_cvtype << ", but got " << m.second.type() ); }
-            filters::value_type n( m.first, cv::Mat( m.second.rows, m.second.cols, output_image_cvtype ) );
-            for(int i=0; i < m.second.cols; i++)
+            if( m.second.channels() != 1 ) { std::cerr << "map filter: expected single channel cv type, got " << m.second.channels() << " channels" << std::endl; return filters::value_type(); }
+            filters::value_type n( m.first, cv::Mat( m.second.size(), cv::DataType< output_value_type >::type ) );
+            try 
             {
-                for(int j=0; j < m.second.rows; j++)
+                switch( m.second.type() )
                 {
-                    n.second.at< output_pixel_value_type >( cv::Point(i,j) ) = map_[ m.second.at< input_pixel_value_type >( cv::Point(i,j) ) ];
+                    case cv::DataType< unsigned char >::type : apply_map< unsigned char >( m.second, n.second ); break;
+                    case cv::DataType< comma::uint16 >::type : apply_map< comma::uint16 >( m.second, n.second ); break;
+                    case cv::DataType< char >::type : apply_map< char >( m.second, n.second ); break;
+                    case cv::DataType< comma::int16 >::type : apply_map< comma::int16 >( m.second, n.second ); break;
+                    case cv::DataType< comma::int32 >::type : apply_map< comma::int32 >( m.second, n.second ); break;
+                    default: std::cerr << "map filter: expected integer cv type, got " << m.second.type() << std::endl; return filters::value_type(); 
                 }
-            }
+            } catch ( std::out_of_range ) { return filters::value_type(); }
             return n;
         }
-
+        
     private:
-        boost::unordered_map< input_pixel_value_type, output_pixel_value_type > map_;
+        typedef boost::unordered_map< key_type, output_value_type > map_t_;
+        map_t_ map_;
+        bool permissive_;
+        
+        template < typename input_value_type >
+        void apply_map( const cv::Mat& input, cv::Mat& output )
+        {
+            for( int i=0; i < input.rows; ++i )
+            {
+                for( int j=0; j < input.cols; ++j )
+                {
+                    key_type key = input.at< input_value_type >(i,j);
+                    map_t_::const_iterator it = map_.find( key );
+                    if( it != map_.end() )
+                    {
+                        output.at< output_value_type >(i,j) = map_.at( key );
+                    }
+                    else
+                    {
+                        if( permissive_ ) { output.at< output_value_type >(i,j) = key; } 
+                        else { std::cerr << "map filter: expected a pixel value from the map, got: pixel at " << i << "," << j << " with value " << key << std::endl; throw std::out_of_range(""); }
+                    }
+                }
+            }
+        }
 };
 
 static boost::unordered_map< std::string, int > fill_types_()
@@ -600,7 +643,12 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
         }        
         else if( e[0] == "map" )
         {
-            f.push_back( filter( map_impl_( e[1] ) ) );
+            if( e.size() < 2 ) { COMMA_THROW( comma::exception, "expected file name with the map, e.g. map=f.csv" ); }
+            std::stringstream s; s << e[1]; for( std::size_t i = 2; i < e.size(); ++i ) { s << "=" << e[i]; }
+            std::string map_filter_options = s.str();
+            std::vector< std::string > items = comma::split( map_filter_options, '&' );
+            bool permissive = std::find( items.begin()+1, items.end(), "permissive" ) != items.end();
+            f.push_back( filter( map_impl_( map_filter_options, permissive ) ) );
         }
         else
         {
@@ -649,9 +697,15 @@ static std::string usage_impl_()
     oss << "        timestamp: write timestamp on images" << std::endl;
     oss << "        transpose: transpose the image (swap rows and columns)" << std::endl;
     oss << "        undistort=<undistort map file>: undistort" << std::endl;
-    oss << "        map=<map file>: map discrete pixel values to values read from the map file" << std::endl;
     oss << "        view[=<wait-interval>]: view image; press <space> to save image (timestamp or system time as filename); <esc>: to close" << std::endl;
-    oss << "                                <wait-interval>: a hack for now; milliseconds to wait for image display and key press; default 1" << std::endl;
+    oss << "                                <wait-interval>: a hack for now; milliseconds to wait for image display and key press; default 1" << std::endl;    
+    oss << "        map=<map file>[&<csv options>][&permissive]: map integer values to floating point values read from the map file" << std::endl;
+    oss << "             <csv options>: usual csv options for map file, but &-separated (running out of separator characters)" << std::endl;
+    oss << "                  fields: key,value; default: value" << std::endl;
+    oss << "                  default: read a single column of floating point values (with the row counter starting from zero used as key)" << std::endl;
+    oss << "             <permissive>: if present, integer values in the input are simply copied to the output unless they are in the map" << std::endl;
+    oss << "                  default: filter fails with an error message if it encounters an integer value which is not in the map" << std::endl;
+    oss << "             example: \"map=map.bin&fields=,key,value&binary=2ui,d\"" << std::endl;
     return oss.str();
 }
 
