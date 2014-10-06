@@ -33,6 +33,7 @@
 #include <fstream>
 #include <queue>
 #include <sstream>
+#include <boost/array.hpp>
 #include <boost/bind.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/unordered_map.hpp>
@@ -43,10 +44,6 @@
 #include <opencv2/imgproc/imgproc_c.h>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/highgui/highgui_c.h>
-//#define USE_FFT
-#ifdef USE_FFT
-#include <fftw3.h>
-#endif
 #include <comma/base/exception.h>
 #include <comma/csv/ascii.h>
 #include <comma/csv/stream.h>
@@ -232,6 +229,20 @@ static filters::value_type timestamp_impl_( filters::value_type m )
     cv::putText( m.second, boost::posix_time::to_iso_string( m.first ), cv::Point( 10, 20 ), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar( 0, 0, 0 ), 1, CV_AA );
     return m;
 }
+
+struct count_impl_
+{
+    count_impl_() : count( 0 ) {}
+    
+    unsigned int count;
+    
+    filters::value_type operator()( filters::value_type m )
+    {
+        cv::rectangle( m.second, cv::Point( 5, 5 ), cv::Point( 80, 25 ), cv::Scalar( 0xffff, 0xffff, 0xffff ), CV_FILLED, CV_AA );
+        cv::putText( m.second, boost::lexical_cast< std::string >( count++ ), cv::Point( 10, 20 ), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar( 0, 0, 0 ), 1, CV_AA );
+        return m;
+    }
+};
 
 static filters::value_type invert_impl_( filters::value_type m )
 {
@@ -436,66 +447,77 @@ std::string type_as_string( int t ) // to avoid compilation warning
     return it == types_as_string.end() ? boost::lexical_cast< std::string >( t ) : it->second;
 }
 
-#ifdef USE_FFT // tear down macro switches, once implemented and debugged
-
-struct fft_impl_
+template < typename T, int Type >
+static filters::value_type convert( filters::value_type m, bool magnitude, bool log_scale, bool normalize )
 {
-    fft_impl_( const std::string& options ) : direction( FFTW_FORWARD ), flags( FFTW_ESTIMATE )
+    cv::Mat padded;
+    int padded_rows = cv::getOptimalDFTSize( m.second.rows );
+    int padded_cols = cv::getOptimalDFTSize( m.second.cols );
+    cv::copyMakeBorder( m.second, padded, 0, padded_rows - m.second.rows, 0, padded_cols - m.second.cols, cv::BORDER_CONSTANT, cv::Scalar::all( 0 ) );
+    boost::array< cv::Mat, 2 > planes = {{ cv::Mat_< T >( padded ), cv::Mat::zeros( padded.size(), Type ) }};
+    filters::value_type p;
+    p.first = m.first;
+    cv::merge( &planes[0], 2, p.second );
+    cv::dft( p.second, p.second );
+    if( !magnitude ) { return p; }
+    cv::split( p.second, &planes[0] );
+    cv::magnitude( planes[0], planes[1], planes[0] );
+    filters::value_type n;
+    n.first = m.first;
+    n.second = planes[0];
+    if( log_scale )
     {
-        const std::vector< std::string > v = comma::split( options, ',' );
-        for( unsigned int i = 0; i < v.size(); ++i )
-        {
-            if( v[i] == "backward" ) { direction = FFTW_BACKWARD; }
-        }
+        n.second += cv::Scalar::all( 1 );
+        cv::log( n.second, n.second ); // todo: optional
     }
-    
-    int direction;
-    int flags;
-    
-    // todo: quick and dirty; wasteful to create plan every time, but we don't know the dimensions upfront
-    //                        if the dimensions given (as rows and cols), create the plan once on construction
-    //                        and destroy in destructor
-    filters::value_type operator()( filters::value_type m )
-    {
-        switch( m.second.type() )
-        {
-            case CV_32FC1:
-            case CV_32FC2:
-            case CV_32FC3:
-            case CV_32FC4:
-            case CV_64FC1:
-            case CV_64FC2:
-            case CV_64FC3:
-            case CV_64FC4:
-                break;
-            default:
-                std::cerr << "fft: expected a floating-point image type, got: " << type_as_string( m.second.type() ) << m.second;
-                return filters::value_type();
-        }
-        
-        // todo
-        
-//         fftw_complex *in, *out;
-//         fftw_plan p;
-//         in = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * N);
-//         out = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * N);
-//          p = fftw_plan_dft_1d( N, in, out, direction, flags );
-//          fftw_execute(p); /* repeat as needed */
-//          ...
-//          fftw_destroy_plan(p);
-//          fftw_free(in); fftw_free(out);
-        
-//         fftw_plan plan = fftw_plan_dft_r2c_2d( m.second.cols, m.second.rows, 
-//                                     double *in, fftw_complex *out,
-//                                     unsigned flags);
-//         rfftw2d_create_plan( direction, flags );
-        std::cerr << "fft: todo" << std::endl;
-        return filters::value_type();
-        //fftw_destroy_plan( plan );
-    }
-};
+    n.second = n.second( cv::Rect( 0, 0, n.second.cols & -2, n.second.rows & -2 ) );
 
-#endif // #ifdef USE_FFT
+    int cx = n.second.cols / 2 ;
+    int cy = n.second.rows / 2 ;
+    
+    cv::Mat q0(n.second, cv::Rect(0, 0, cx, cy));   // Top-Left - Create a ROI per quadrant
+    cv::Mat q1(n.second, cv::Rect(cx, 0, cx, cy));  // Top-Right
+    cv::Mat q2(n.second, cv::Rect(0, cy, cx, cy));  // Bottom-Left
+    cv::Mat q3(n.second, cv::Rect(cx, cy, cx, cy)); // Bottom-Right
+    
+    cv::Mat tmp;
+    q0.copyTo( tmp ); // swap top-left with bottom-right
+    q3.copyTo( q0 );
+    tmp.copyTo( q3 );
+    q1.copyTo( tmp ); // swap top-right with bottom-left
+    q2.copyTo( q1 );
+    tmp.copyTo( q2 );
+    
+    if( normalize ) { cv::normalize( n.second, n.second, 0, 1, CV_MINMAX ); }
+    return n;
+}
+
+// todo: quick and dirty; wasteful to create plan every time, but we don't know the dimensions upfront
+//                        if the dimensions given (as rows and cols), create the plan once on construction
+//                        and destroy in destructor
+filters::value_type fft_impl_( filters::value_type m, bool magnitude, bool log_scale, bool normalize )
+{
+    switch( m.second.type() )
+    {
+        case CV_32FC1:
+            return convert< float, CV_32FC1 >( m, magnitude, log_scale, normalize );
+        case CV_32FC2:
+        case CV_32FC3:
+        case CV_32FC4:
+            std::cerr << "fft: multichannel image support: todo, got: " << type_as_string( m.second.type() ) << m.second;
+            return filters::value_type();
+        case CV_64FC1:
+            return convert< double, CV_64FC1 >( m, magnitude, log_scale, normalize );
+        case CV_64FC2:
+        case CV_64FC3:
+        case CV_64FC4:
+            std::cerr << "fft: multichannel image support: todo, got: " << type_as_string( m.second.type() ) << m.second;
+            return filters::value_type();
+        default:
+            std::cerr << "fft: expected a floating-point image type, got: " << type_as_string( m.second.type() ) << m.second;
+            return filters::value_type();
+    }
+}
 
 std::vector< filter > filters::make( const std::string& how, unsigned int default_delay )
 {
@@ -517,6 +539,11 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
             if( modified ) { COMMA_THROW( comma::exception, "cannot covert from bayer after transforms: " << name ); }
             unsigned int which = boost::lexical_cast< unsigned int >( e[1] );
             f.push_back( filter( boost::bind( &cvt_color_impl_, _1, which ) ) );
+        }
+        else if( e[0] == "count" )
+        {
+            count_impl_ c;
+            f.push_back( filter( c ) );
         }
         else if( e[0] == "crop" )
         {
@@ -563,6 +590,24 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
                 center->y() = boost::lexical_cast< unsigned int >( s[1] );
             }
             f.push_back( filter( boost::bind( &cross_impl_, _1, center ) ) );
+        }
+        else if( e[0] == "fft" )
+        {
+            bool log_scale = false;
+            bool normalize = false;
+            bool magnitude = false;
+            if( e.size() > 1 )
+            {
+                const std::vector< std::string >& w = comma::split( e[1], ',' );
+                for( unsigned int i = 0; i < w.size(); ++i )
+                {
+                    if( w[i] == "log" || w[i] == "log-scale" ) { log_scale = true; }
+                    else if( w[i] == "normalize" ) { normalize = true; }
+                    else if( w[i] == "magnitude" ) { magnitude = true; }
+                }
+            }
+            if( log_scale || normalize ) { magnitude = true; }
+            f.push_back( filter( boost::bind( &fft_impl_, _1, magnitude, log_scale, normalize ) ) );
         }
         else if( e[0] == "flip" )
         {
@@ -727,6 +772,7 @@ static std::string usage_impl_()
     oss << "        bayer=<mode>: convert from bayer, <mode>=1-4" << std::endl;
     oss << "        brightness=<scale>[,<offset>]: output=(scale*input)+offset; default offset=0" << std::endl;
     oss << "        convert_to=<type>[,<scale>[,<offset>]]: convert to given type; should be the same number of channels; see opencv convertTo for details" << std::endl;
+    oss << "        count: write frame number on images" << std::endl;
     oss << "        crop=[<x>,<y>],<width>,<height>: crop the portion of the image starting at x,y with size width x height" << std::endl;
     oss << "        crop-tile=[<x>,<y>],<num-tile-x>,<num-tile-y>: divide the image in num-tile-x x num-tile-y tiles, and crop the tile x,y (count from zero)" << std::endl;
     oss << "        cross[=<x>,<y>]: draw cross-hair at x,y; default: at image center" << std::endl;
