@@ -106,6 +106,7 @@ static filters::value_type crop_tile_impl_( filters::value_type m, unsigned int 
 static filters::value_type convert_to_impl_( filters::value_type m, int type, double scale, double offset )
 {
     filters::value_type n;
+    n.first = m.first;
     m.second.convertTo( n.second, type, scale, offset );
     return n;
 }
