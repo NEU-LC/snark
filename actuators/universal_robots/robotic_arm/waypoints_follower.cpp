@@ -93,6 +93,9 @@ result waypoints_follower::run( started_reply_t start_initiated, std::ostream& r
     boost::shared_ptr< boost::thread > recorder_container;
     
     std::cerr << "num_of_moves is " << num_of_moves << std::endl;
+
+    static const plane_angle_degrees_t final_epsilon = 0.3*degree;
+    static const plane_angle_degrees_t epsilon = 0.5*degree;
     for( std::size_t j=0; j< num_of_moves; ++j )
     {
         std::cerr << name() << "moving to waypoint " << (j+1) << std::endl;
@@ -114,7 +117,7 @@ result waypoints_follower::run( started_reply_t start_initiated, std::ostream& r
         rover.flush();
 
         const arm::move_config_t& config = serialiser_.get_move_config( j );
-        while( !status_.check_pose( config ) )  // Only check for intermediate waypoints
+        while( !status_.check_pose( config, ( j == (num_of_moves - 1 ) ? final_epsilon : epsilon )  ) )  // Only check for intermediate waypoints
         {
             // std::cerr << "not yet at pose" << std::endl;
             status_update_();

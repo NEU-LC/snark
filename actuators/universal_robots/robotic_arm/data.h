@@ -154,9 +154,9 @@ struct status_t {
 
     /// Check that the given pose ( 6 joint angles in radian ) match the current arm's physical pose
     /// Pre condition, the state must be 'running'
-    bool check_pose( const boost::array< double, joints_num >& pose ) const;
+    bool check_pose( const boost::array< double, joints_num >& pose, const plane_angle_degrees_t& epsilon=(0.5*degree) ) const;
     typedef boost::array< plane_angle_t, joints_num > arm_position_t;
-    bool check_pose( const arm_position_t& pose ) const;
+    bool check_pose( const arm_position_t& pose, const plane_angle_degrees_t& epsilon=(0.5*degree) ) const;
 };
 
 
