@@ -43,6 +43,10 @@ ADD_SUBDIRECTORY( filter )
 ADD_SUBDIRECTORY( fft )
 ADD_SUBDIRECTORY( gaussian_process )
 
+IF( snark_build_math_geometry )
+    ADD_SUBDIRECTORY( geometry )
+ENDIF( snark_build_math_geometry )
+
 IF( BUILD_TESTS )
     ADD_SUBDIRECTORY( test )
 ENDIF( BUILD_TESTS )
