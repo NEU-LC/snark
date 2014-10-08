@@ -41,6 +41,8 @@
 #include <comma/string/string.h>
 #include <snark/timing/ntp.h>
 #include <snark/sensors/sick/ibeo/protocol.h>
+#include <comma/io/publisher.h>
+#include <boost/shared_ptr.hpp>
 #ifdef WIN32
 #include <fcntl.h>
 #include <io.h>
@@ -51,7 +53,7 @@ using namespace snark;
 static void usage()
 {
     std::cerr << std::endl;
-    std::cerr << "publish scan data from sick ld-mrs laser on stdout" << std::endl;
+    std::cerr << "publish scan data from sick ld-mrs laser on stdout (by default) or tcp port" << std::endl;
     std::cerr << "configure sick ld-mrs laser (sick ldmrs)" << std::endl;
     std::cerr << "todo: take ntp updates on stdin?" << std::endl;
     std::cerr << std::endl;
@@ -74,6 +76,9 @@ static void usage()
     std::cerr << "            port=<port>: set tcp port" << std::endl;
     std::cerr << "    --start: start pumping laser scan data" << std::endl;
     std::cerr << "    --stop: stop pumping laser scan data" << std::endl;
+    std::cerr << "    --publish \"tcp:<port>\": publish to tcp port on localhost" << std::endl;
+    std::cerr << "    --no-discard: if present, do blocking write" << std::endl;
+    std::cerr << "    --no-flush: if present, do not flush the output stream ( use on high bandwidth sources )" << std::endl;    
     std::cerr << "    --verbose,-v: more output to stderr" << std::endl;
     std::cerr << std::endl;
     std::cerr << "author:" << std::endl;
@@ -117,7 +122,7 @@ int main( int ac, char** av )
         comma::command_line_options options( ac, av );
         if( options.exists( "--help,-h" ) ) { usage(); }
         verbose = options.exists( "--verbose,-v" );
-        std::vector< std::string > v = options.unnamed( "--help,-h,--get-status,--reset,--reset-dsp,--start,--stop,--verbose,-v", "--get,--set" );
+        std::vector< std::string > v = options.unnamed( "--help,-h,--get-status,--reset,--reset-dsp,--start,--stop,--verbose,-v,--no-discard,--no-flush", "--get,--set" );
         std::vector< std::string > a = comma::split( ( v.empty() ? std::string( "192.168.0.1:12002" ) : v[0] ), ':' );
         if( a.size() != 2 ) { std::cerr << "sick-ldmrs-stream: expected address, got \"" << v[0] << "\"" << std::endl; usage(); }
         std::string address = a[0];
@@ -131,7 +136,7 @@ int main( int ac, char** av )
         if( !( *stream ) ) { COMMA_THROW( comma::exception, "failed to connect to " << address << ":" << port ); }
         if( verbose ) { std::cerr << "sick-ldmrs-stream: connected to " << address << ":" << port << std::endl; }
         protocol.reset( new sick::ibeo::protocol( *stream ) );
-        options.assert_mutually_exclusive( "--get,--get-status,--reset,--set,--reset-dsp,--start,--stop" );
+        options.assert_mutually_exclusive( "--get,--get-status,--reset,--set,--reset-dsp,--start,--stop,--publish" );
         bool ok = true;
         if( options.exists( "--reset" ) )
         {
@@ -217,6 +222,18 @@ int main( int ac, char** av )
         }
         else
         {
+            std::string publisher_name;
+            boost::shared_ptr< comma::io::publisher > publisher;
+            if( options.exists( "--publish" ) ) 
+            { 
+                publisher_name = options.value< std::string >( "--publish" ); 
+                bool blocking = options.exists( "--no-discard" );
+                bool flush = !options.exists( "--no-flush" );
+                publisher = boost::shared_ptr< comma::io::publisher >( new comma::io::publisher( publisher_name, comma::io::mode::binary, blocking, flush ) );
+                if( verbose ) { 
+                    std::cerr << "sick-ldmrs-stream: will be publishing on " << publisher_name << ( blocking? ", blocking enabled": "" ) << ( flush? ", flush enabled": "" ) << std::endl; 
+                }
+            }
             update_timestamp( true );
             if( verbose ) { std::cerr << "sick-ldmrs-stream: starting scanning..." << std::endl; }
             if( !protocol->write( sick::ibeo::commands::start() ).ok() ) { COMMA_THROW( comma::exception, "failed to start scanning" ); }
@@ -236,7 +253,14 @@ int main( int ac, char** av )
                 if( scan == NULL ) { break; }
                 if( verbose && first ) { std::cerr << "sick-ldmrs-stream: got first scan" << std::endl; first = false; }
                 if( !scan->packet_header.valid() ) { COMMA_THROW( comma::exception, "invalid scan" ); }
-                std::cout.write( scan->data(), sick::ibeo::header::size + scan->packet_header.payload_size() );
+                if( options.exists( "--publish" ) )
+                {
+                    publisher->write( scan->data(), sick::ibeo::header::size + scan->packet_header.payload_size() );
+                }
+                else 
+                {
+                    std::cout.write( scan->data(), sick::ibeo::header::size + scan->packet_header.payload_size() ); 
+                }
                 if( verbose && ( scan->packet_scan.scan_header.measurement_number() % 10 == 0 ) )
                 {
                     std::cerr << "sick-ldmrs-stream: got " << scan->packet_scan.scan_header.measurement_number() << " scans              \r";
