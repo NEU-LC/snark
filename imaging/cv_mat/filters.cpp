@@ -491,6 +491,14 @@ std::string type_as_string( int t ) // to avoid compilation warning
     return it == types_as_string.end() ? boost::lexical_cast< std::string >( t ) : it->second;
 }
 
+static filters::value_type convert( filters::value_type m, bool scale, bool complex )
+{
+    filters::value_type n;
+    n.first = m.first;
+    cv::dft( m.second, n.second, ( scale ? cv::DFT_SCALE : cv::DFT_INVERSE ) | ( complex ? cv::DFT_COMPLEX_OUTPUT : cv::DFT_REAL_OUTPUT ) );
+    return n;
+}
+
 template < typename T, int Type >
 static filters::value_type convert( filters::value_type m, bool magnitude, bool log_scale, bool normalize )
 {
@@ -536,29 +544,28 @@ static filters::value_type convert( filters::value_type m, bool magnitude, bool 
     return n;
 }
 
-// todo: quick and dirty; wasteful to create plan every time, but we don't know the dimensions upfront
-//                        if the dimensions given (as rows and cols), create the plan once on construction
-//                        and destroy in destructor
-filters::value_type fft_impl_( filters::value_type m, bool magnitude, bool log_scale, bool normalize )
+filters::value_type fft_impl_( filters::value_type m, bool direct, bool complex )
 {
     switch( m.second.type() )
     {
         case CV_32FC1:
-            return convert< float, CV_32FC1 >( m, magnitude, log_scale, normalize );
+            return convert( m, direct, complex );
+            //return convert< float, CV_32FC1 >( m, magnitude, log_scale, normalize );
         case CV_32FC2:
         case CV_32FC3:
         case CV_32FC4:
-            std::cerr << "fft: multichannel image support: todo, got: " << type_as_string( m.second.type() ) << m.second;
+            std::cerr << "fft: multichannel image support: todo, got: " << type_as_string( m.second.type() ) << std::endl;
             return filters::value_type();
         case CV_64FC1:
-            return convert< double, CV_64FC1 >( m, magnitude, log_scale, normalize );
+            return convert( m, direct, complex );
+            //return convert< double, CV_64FC1 >( m, magnitude, log_scale, normalize );
         case CV_64FC2:
         case CV_64FC3:
         case CV_64FC4:
-            std::cerr << "fft: multichannel image support: todo, got: " << type_as_string( m.second.type() ) << m.second;
+            std::cerr << "fft: multichannel image support: todo, got: " << type_as_string( m.second.type() ) << std::endl;
             return filters::value_type();
         default:
-            std::cerr << "fft: expected a floating-point image type, got: " << type_as_string( m.second.type() ) << m.second;
+            std::cerr << "fft: expected a floating-point image type, got: " << type_as_string( m.second.type() ) << std::endl;
             return filters::value_type();
     }
 }
@@ -635,23 +642,40 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
             }
             f.push_back( filter( boost::bind( &cross_impl_, _1, center ) ) );
         }
+//         else if( e[0] == "fft" )
+//         {
+//             bool log_scale = false;
+//             bool normalize = false;
+//             bool magnitude = false;
+//             if( e.size() > 1 )
+//             {
+//                 const std::vector< std::string >& w = comma::split( e[1], ',' );
+//                 for( unsigned int i = 0; i < w.size(); ++i )
+//                 {
+//                     if( w[i] == "log" || w[i] == "log-scale" ) { log_scale = true; }
+//                     else if( w[i] == "normalize" ) { normalize = true; }
+//                     else if( w[i] == "magnitude" ) { magnitude = true; }
+//                 }
+//             }
+//             if( log_scale || normalize ) { magnitude = true; }
+//             f.push_back( filter( boost::bind( &fft_impl_, _1, magnitude, log_scale, normalize ) ) );
+//         }
         else if( e[0] == "fft" )
         {
-            bool log_scale = false;
-            bool normalize = false;
-            bool magnitude = false;
+            bool direct = true;
+            bool complex = true;
             if( e.size() > 1 )
             {
                 const std::vector< std::string >& w = comma::split( e[1], ',' );
                 for( unsigned int i = 0; i < w.size(); ++i )
                 {
-                    if( w[i] == "log" || w[i] == "log-scale" ) { log_scale = true; }
-                    else if( w[i] == "normalize" ) { normalize = true; }
-                    else if( w[i] == "magnitude" ) { magnitude = true; }
+                    if( w[i] == "direct" ) { direct = true; }
+                    else if( w[i] == "inverse" ) { direct = false; }
+                    else if( w[i] == "complex" ) { complex = true; }
+                    else if( w[i] == "real" ) { complex = false; }
                 }
             }
-            if( log_scale || normalize ) { magnitude = true; }
-            f.push_back( filter( boost::bind( &fft_impl_, _1, magnitude, log_scale, normalize ) ) );
+            f.push_back( filter( boost::bind( &fft_impl_, _1, direct, complex ) ) );
         }
         else if( e[0] == "flip" )
         {
