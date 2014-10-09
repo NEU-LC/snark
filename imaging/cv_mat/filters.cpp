@@ -549,17 +549,17 @@ filters::value_type fft_impl_( filters::value_type m, bool direct, bool complex 
     switch( m.second.type() )
     {
         case CV_32FC1:
-            return convert( m, direct, complex );
             //return convert< float, CV_32FC1 >( m, magnitude, log_scale, normalize );
         case CV_32FC2:
+            return convert( m, direct, complex );
         case CV_32FC3:
         case CV_32FC4:
             std::cerr << "fft: multichannel image support: todo, got: " << type_as_string( m.second.type() ) << std::endl;
             return filters::value_type();
         case CV_64FC1:
-            return convert( m, direct, complex );
             //return convert< double, CV_64FC1 >( m, magnitude, log_scale, normalize );
         case CV_64FC2:
+            return convert( m, direct, complex );
         case CV_64FC3:
         case CV_64FC4:
             std::cerr << "fft: multichannel image support: todo, got: " << type_as_string( m.second.type() ) << std::endl;
