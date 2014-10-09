@@ -148,16 +148,60 @@ static filters::value_type transpose_impl_( filters::value_type m )
     return n;
 }
 
+static int single_channel_type_( int t )
+{
+    switch( t )
+    {
+        case CV_8UC1:
+        case CV_8UC2:
+        case CV_8UC3:
+        case CV_8UC4:
+            return CV_8UC1;
+        case CV_8SC1:
+        case CV_8SC2:
+        case CV_8SC3:
+        case CV_8SC4:
+            return CV_8SC1;
+        case CV_16UC1:
+        case CV_16UC2:
+        case CV_16UC3:
+        case CV_16UC4:
+            return CV_16UC1;
+        case CV_16SC1:
+        case CV_16SC2:
+        case CV_16SC3:
+        case CV_16SC4:
+            return CV_16SC1;
+        case CV_32SC1:
+        case CV_32SC2:
+        case CV_32SC3:
+        case CV_32SC4:
+            return CV_32SC1;
+        case CV_32FC1:
+        case CV_32FC2:
+        case CV_32FC3:
+        case CV_32FC4:
+            return CV_32FC1;
+        case CV_64FC1:
+        case CV_64FC2:
+        case CV_64FC3:
+        case CV_64FC4:
+            return CV_64FC1;
+    }
+    return CV_8UC1;
+}
+
 static filters::value_type split_impl_( filters::value_type m )
 {
     filters::value_type n;
     n.first = m.first;
-    n.second = cv::Mat( m.second.rows * 3, m.second.cols, CV_8UC1 ); // todo: check number of channels!
+    n.second = cv::Mat( m.second.rows * m.second.channels(), m.second.cols, single_channel_type_( m.second.type() ) ); // todo: check number of channels!
     std::vector< cv::Mat > channels;
-    channels.reserve( 3 );
-    channels.push_back( cv::Mat( n.second, cv::Rect( 0, 0, m.second.cols, m.second.rows ) ) );
-    channels.push_back( cv::Mat( n.second, cv::Rect( 0, m.second.rows, m.second.cols, m.second.rows ) ) );
-    channels.push_back( cv::Mat( n.second, cv::Rect( 0, 2 * m.second.rows, m.second.cols, m.second.rows ) ) );
+    channels.reserve( m.second.channels() );    
+    for( unsigned int i = 0; i < static_cast< unsigned int >( m.second.channels() ); ++i )
+    {
+        channels.push_back( cv::Mat( n.second, cv::Rect( 0, i * m.second.rows, m.second.cols, m.second.rows ) ) );
+    }
     cv::split( m.second, channels );
     return n;
 }
