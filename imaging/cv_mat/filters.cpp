@@ -536,6 +536,17 @@ std::string type_as_string( int t ) // to avoid compilation warning
     return it == types_as_string.end() ? boost::lexical_cast< std::string >( t ) : it->second;
 }
 
+static filters::value_type magnitude_impl_( filters::value_type m )
+{
+    if( m.second.channels() != 2 ) { std::cerr << "cv filters: magnitude: expected 2 channels, got " << m.second.channels() << std::endl; return filters::value_type(); }
+    boost::array< cv::Mat, 2 > planes;
+    filters::value_type n;
+    n.first = m.first;
+    cv::split( m.second, &planes[0] );
+    cv::magnitude( planes[0], planes[1], n.second );
+    return n;
+}
+
 static filters::value_type convert( filters::value_type m, bool scale, bool complex, bool magnitude, bool log_scale, bool normalize )
 {
     filters::value_type n;
@@ -697,24 +708,6 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
             }
             f.push_back( filter( boost::bind( &cross_impl_, _1, center ) ) );
         }
-//         else if( e[0] == "fft" )
-//         {
-//             bool log_scale = false;
-//             bool normalize = false;
-//             bool magnitude = false;
-//             if( e.size() > 1 )
-//             {
-//                 const std::vector< std::string >& w = comma::split( e[1], ',' );
-//                 for( unsigned int i = 0; i < w.size(); ++i )
-//                 {
-//                     if( w[i] == "log" || w[i] == "log-scale" ) { log_scale = true; }
-//                     else if( w[i] == "normalize" ) { normalize = true; }
-//                     else if( w[i] == "magnitude" ) { magnitude = true; }
-//                 }
-//             }
-//             if( log_scale || normalize ) { magnitude = true; }
-//             f.push_back( filter( boost::bind( &fft_impl_, _1, magnitude, log_scale, normalize ) ) );
-//         }
         else if( e[0] == "fft" )
         {
             bool direct = true;
@@ -745,6 +738,10 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
         else if( e[0] == "flop" )
         {
             f.push_back( filter( boost::bind( &flip_impl_, _1, 1 ) ) );
+        }
+        else if( e[0] == "magnitude" )
+        {
+            f.push_back( filter( boost::bind( &magnitude_impl_, _1 ) ) );
         }
         else if( e[0] == "text" )
         {
@@ -915,7 +912,8 @@ static std::string usage_impl_()
     oss << "        flip: flip vertically" << std::endl;
     oss << "        flop: flip horizontally" << std::endl;
     oss << "        grab=<format>: write an image to file with timestamp as name in the specified format. <format>: jpg|ppm|png|tiff..., if no timestamp, system time is used" << std::endl;
-    oss << "        invert: invert image (to negative)" << std::endl;    
+    oss << "        invert: invert image (to negative)" << std::endl;
+    oss << "        magnitude: calculate magnitude for a 2-channel image; see cv::magnitude() for details" << std::endl;    
     oss << "        null: same as linux /dev/null (since windows does not have it)" << std::endl;
     oss << "        resize=<width>,<height>: e.g:" << std::endl;
     oss << "            resize=512,1024 : resize to 512x1024 pixels" << std::endl;
