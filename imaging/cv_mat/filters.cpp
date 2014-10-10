@@ -112,6 +112,7 @@ static filters::value_type crop_tile_impl_( filters::value_type m, unsigned int 
 static filters::value_type convert_to_impl_( filters::value_type m, int type, double scale, double offset )
 {
     filters::value_type n;
+    n.first = m.first;
     m.second.convertTo( n.second, type, scale, offset );
     return n;
 }
@@ -148,16 +149,60 @@ static filters::value_type transpose_impl_( filters::value_type m )
     return n;
 }
 
+static int single_channel_type_( int t )
+{
+    switch( t )
+    {
+        case CV_8UC1:
+        case CV_8UC2:
+        case CV_8UC3:
+        case CV_8UC4:
+            return CV_8UC1;
+        case CV_8SC1:
+        case CV_8SC2:
+        case CV_8SC3:
+        case CV_8SC4:
+            return CV_8SC1;
+        case CV_16UC1:
+        case CV_16UC2:
+        case CV_16UC3:
+        case CV_16UC4:
+            return CV_16UC1;
+        case CV_16SC1:
+        case CV_16SC2:
+        case CV_16SC3:
+        case CV_16SC4:
+            return CV_16SC1;
+        case CV_32SC1:
+        case CV_32SC2:
+        case CV_32SC3:
+        case CV_32SC4:
+            return CV_32SC1;
+        case CV_32FC1:
+        case CV_32FC2:
+        case CV_32FC3:
+        case CV_32FC4:
+            return CV_32FC1;
+        case CV_64FC1:
+        case CV_64FC2:
+        case CV_64FC3:
+        case CV_64FC4:
+            return CV_64FC1;
+    }
+    return CV_8UC1;
+}
+
 static filters::value_type split_impl_( filters::value_type m )
 {
     filters::value_type n;
     n.first = m.first;
-    n.second = cv::Mat( m.second.rows * 3, m.second.cols, CV_8UC1 ); // todo: check number of channels!
+    n.second = cv::Mat( m.second.rows * m.second.channels(), m.second.cols, single_channel_type_( m.second.type() ) ); // todo: check number of channels!
     std::vector< cv::Mat > channels;
-    channels.reserve( 3 );
-    channels.push_back( cv::Mat( n.second, cv::Rect( 0, 0, m.second.cols, m.second.rows ) ) );
-    channels.push_back( cv::Mat( n.second, cv::Rect( 0, m.second.rows, m.second.cols, m.second.rows ) ) );
-    channels.push_back( cv::Mat( n.second, cv::Rect( 0, 2 * m.second.rows, m.second.cols, m.second.rows ) ) );
+    channels.reserve( m.second.channels() );    
+    for( unsigned int i = 0; i < static_cast< unsigned int >( m.second.channels() ); ++i )
+    {
+        channels.push_back( cv::Mat( n.second, cv::Rect( 0, i * m.second.rows, m.second.cols, m.second.rows ) ) );
+    }
     cv::split( m.second, channels );
     return n;
 }
@@ -491,6 +536,24 @@ std::string type_as_string( int t ) // to avoid compilation warning
     return it == types_as_string.end() ? boost::lexical_cast< std::string >( t ) : it->second;
 }
 
+static filters::value_type convert( filters::value_type m, bool scale, bool complex, bool magnitude, bool log_scale, bool normalize )
+{
+    filters::value_type n;
+    n.first = m.first;
+    cv::dft( m.second, n.second, ( scale ? cv::DFT_SCALE : cv::DFT_INVERSE ) | ( complex ? cv::DFT_COMPLEX_OUTPUT : cv::DFT_REAL_OUTPUT ) );
+    if( !magnitude ) { return n; }
+    boost::array< cv::Mat, 2 > planes = {{ cv::Mat::zeros( m.second.size(), m.second.type() ), cv::Mat::zeros( m.second.size(), m.second.type() ) }};
+    cv::split( n.second, &planes[0] );
+    cv::magnitude( planes[0], planes[1], n.second ); // make separate filters: magnitude, log, scale, normalize?
+    if( log_scale )
+    {
+        n.second += cv::Scalar::all( 1 );
+        cv::log( n.second, n.second ); // todo: optional
+    }
+    if( normalize ) { cv::normalize( n.second, n.second, 0, 1, CV_MINMAX ); }
+    return n;
+}
+
 template < typename T, int Type >
 static filters::value_type convert( filters::value_type m, bool magnitude, bool log_scale, bool normalize )
 {
@@ -536,29 +599,28 @@ static filters::value_type convert( filters::value_type m, bool magnitude, bool 
     return n;
 }
 
-// todo: quick and dirty; wasteful to create plan every time, but we don't know the dimensions upfront
-//                        if the dimensions given (as rows and cols), create the plan once on construction
-//                        and destroy in destructor
-filters::value_type fft_impl_( filters::value_type m, bool magnitude, bool log_scale, bool normalize )
+filters::value_type fft_impl_( filters::value_type m, bool direct, bool complex, bool magnitude, bool log_scale, bool normalize )
 {
     switch( m.second.type() )
     {
         case CV_32FC1:
-            return convert< float, CV_32FC1 >( m, magnitude, log_scale, normalize );
+            //return convert< float, CV_32FC1 >( m, magnitude, log_scale, normalize );
         case CV_32FC2:
+            return convert( m, direct, complex, magnitude, log_scale, normalize );
         case CV_32FC3:
         case CV_32FC4:
-            std::cerr << "fft: multichannel image support: todo, got: " << type_as_string( m.second.type() ) << m.second;
+            std::cerr << "fft: multichannel image support: todo, got: " << type_as_string( m.second.type() ) << std::endl;
             return filters::value_type();
         case CV_64FC1:
-            return convert< double, CV_64FC1 >( m, magnitude, log_scale, normalize );
+            //return convert< double, CV_64FC1 >( m, magnitude, log_scale, normalize, normalize );
         case CV_64FC2:
+            return convert( m, direct, complex, magnitude, log_scale, normalize );
         case CV_64FC3:
         case CV_64FC4:
-            std::cerr << "fft: multichannel image support: todo, got: " << type_as_string( m.second.type() ) << m.second;
+            std::cerr << "fft: multichannel image support: todo, got: " << type_as_string( m.second.type() ) << std::endl;
             return filters::value_type();
         default:
-            std::cerr << "fft: expected a floating-point image type, got: " << type_as_string( m.second.type() ) << m.second;
+            std::cerr << "fft: expected a floating-point image type, got: " << type_as_string( m.second.type() ) << std::endl;
             return filters::value_type();
     }
 }
@@ -635,23 +697,46 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
             }
             f.push_back( filter( boost::bind( &cross_impl_, _1, center ) ) );
         }
+//         else if( e[0] == "fft" )
+//         {
+//             bool log_scale = false;
+//             bool normalize = false;
+//             bool magnitude = false;
+//             if( e.size() > 1 )
+//             {
+//                 const std::vector< std::string >& w = comma::split( e[1], ',' );
+//                 for( unsigned int i = 0; i < w.size(); ++i )
+//                 {
+//                     if( w[i] == "log" || w[i] == "log-scale" ) { log_scale = true; }
+//                     else if( w[i] == "normalize" ) { normalize = true; }
+//                     else if( w[i] == "magnitude" ) { magnitude = true; }
+//                 }
+//             }
+//             if( log_scale || normalize ) { magnitude = true; }
+//             f.push_back( filter( boost::bind( &fft_impl_, _1, magnitude, log_scale, normalize ) ) );
+//         }
         else if( e[0] == "fft" )
         {
+            bool direct = true;
+            bool complex = true;
+            bool magnitude = false;
             bool log_scale = false;
             bool normalize = false;
-            bool magnitude = false;
             if( e.size() > 1 )
             {
                 const std::vector< std::string >& w = comma::split( e[1], ',' );
                 for( unsigned int i = 0; i < w.size(); ++i )
                 {
-                    if( w[i] == "log" || w[i] == "log-scale" ) { log_scale = true; }
-                    else if( w[i] == "normalize" ) { normalize = true; }
+                    if( w[i] == "direct" ) { direct = true; }
+                    else if( w[i] == "inverse" ) { direct = false; }
+                    else if( w[i] == "complex" ) { complex = true; }
+                    else if( w[i] == "real" ) { complex = false; }
                     else if( w[i] == "magnitude" ) { magnitude = true; }
+                    else if( w[i] == "normalize" ) { normalize = true; }
+                    else if( w[i] == "log" || w[i] == "log-scale" ) { log_scale = true; }
                 }
             }
-            if( log_scale || normalize ) { magnitude = true; }
-            f.push_back( filter( boost::bind( &fft_impl_, _1, magnitude, log_scale, normalize ) ) );
+            f.push_back( filter( boost::bind( &fft_impl_, _1, direct, complex, magnitude, log_scale, normalize ) ) );
         }
         else if( e[0] == "flip" )
         {
