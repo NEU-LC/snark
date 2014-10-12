@@ -178,7 +178,8 @@ class protocol::impl
                 m_payload = &m_buf[0] + header::size;
             }
             m_istream->read( m_payload, size ); // todo: check payload size so that it does not go crazy?
-            if( m_istream->eof() || m_istream->bad() || m_istream->gcount() != int( size ) ) { COMMA_THROW( comma::exception, "failed to read payload of size " << m_header->payload_size() << ", bad stream" ); }
+            if( m_istream->eof() ) { COMMA_THROW( comma::exception, "failed to read payload of size " << m_header->payload_size() << ", end of file" ); }
+            if( m_istream->bad() || m_istream->gcount() != int( size ) ) { COMMA_THROW( comma::exception, "failed to read payload of size " << m_header->payload_size() << ", bad stream" ); }
             if( m_header->type() == header::fault_type ) { m_fault = *( reinterpret_cast< fault* >( m_payload ) ); }
             return true;
         }
