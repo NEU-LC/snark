@@ -81,6 +81,83 @@ template <> struct traits< map_input_t >
 
 namespace snark{ namespace cv_mat {
 
+static boost::unordered_map< std::string, int > fill_types_()
+{
+    boost::unordered_map< std::string, int > types;
+    types[ "CV_8UC1" ] = types[ "ub" ] = CV_8UC1;
+    types[ "CV_8UC2" ] = types[ "2ub" ] = CV_8UC2;
+    types[ "CV_8UC3" ] = types[ "3ub" ] = CV_8UC3;
+    types[ "CV_8UC4" ] = types[ "4ub" ] = CV_8UC4;
+    types[ "CV_8SC1" ] = types[ "b" ] = CV_8SC1;
+    types[ "CV_8SC2" ] = types[ "2b" ] = CV_8SC2;
+    types[ "CV_8SC3" ] = types[ "3b" ] = CV_8SC3;
+    types[ "CV_8SC4" ] = types[ "4b" ] = CV_8SC4;
+    types[ "CV_16UC1" ] = types[ "uw" ] = CV_16UC1;
+    types[ "CV_16UC2" ] = types[ "2uw" ] = CV_16UC2;
+    types[ "CV_16UC3" ] = types[ "3uw" ] = CV_16UC3;
+    types[ "CV_16UC4" ] = types[ "4uw" ] = CV_16UC4;
+    types[ "CV_16SC1" ] = types[ "w" ] = CV_16SC1;
+    types[ "CV_16SC2" ] = types[ "2w" ] = CV_16SC2;
+    types[ "CV_16SC3" ] = types[ "3w" ] = CV_16SC3;
+    types[ "CV_16SC4" ] = types[ "4w" ] = CV_16SC4;
+    types[ "CV_32SC1" ] = types[ "i" ] = CV_32SC1;
+    types[ "CV_32SC2" ] = types[ "2i" ] = CV_32SC2;
+    types[ "CV_32SC3" ] = types[ "3i" ] = CV_32SC3;
+    types[ "CV_32SC4" ] = types[ "4i" ] = CV_32SC4;
+    types[ "CV_32FC1" ] = types[ "f" ] = CV_32FC1;
+    types[ "CV_32FC2" ] = types[ "2f" ] = CV_32FC2;
+    types[ "CV_32FC3" ] = types[ "3f" ] = CV_32FC3;
+    types[ "CV_32FC4" ] = types[ "4f" ] = CV_32FC4;
+    types[ "CV_64FC1" ] = types[ "d" ] = CV_64FC1;
+    types[ "CV_64FC2" ] = types[ "2d" ] = CV_64FC2;
+    types[ "CV_64FC3" ] = types[ "3d" ] = CV_64FC3;
+    types[ "CV_64FC4" ] = types[ "4d" ] = CV_64FC4;
+    return types;
+}
+
+static boost::unordered_map< int, std::string > fill_types_as_string_()
+{
+    boost::unordered_map< int, std::string > types;
+    types[ CV_8UC1 ] = "CV_8UC1";
+    types[ CV_8UC2 ] = "CV_8UC2";
+    types[ CV_8UC3 ] = "CV_8UC3";
+    types[ CV_8UC4 ] = "CV_8UC4";
+    types[ CV_8SC1 ] = "CV_8SC1";
+    types[ CV_8SC2 ] = "CV_8SC2";
+    types[ CV_8SC3 ] = "CV_8SC3";
+    types[ CV_8SC4 ] = "CV_8SC4";
+    types[ CV_16UC1 ] = "CV_16UC1";
+    types[ CV_16UC2 ] = "CV_16UC2";
+    types[ CV_16UC3 ] = "CV_16UC3";
+    types[ CV_16UC4 ] = "CV_16UC4";
+    types[ CV_16SC1 ] = "CV_16SC1";
+    types[ CV_16SC2 ] = "CV_16SC2";
+    types[ CV_16SC3 ] = "CV_16SC3";
+    types[ CV_16SC4 ] = "CV_16SC4";
+    types[ CV_32SC1 ] = "CV_32SC1";
+    types[ CV_32SC2 ] = "CV_32SC2";
+    types[ CV_32SC3 ] = "CV_32SC3";
+    types[ CV_32SC4 ] = "CV_32SC4";
+    types[ CV_32FC1 ] = "CV_32FC1";
+    types[ CV_32FC2 ] = "CV_32FC2";
+    types[ CV_32FC3 ] = "CV_32FC3";
+    types[ CV_32FC4 ] = "CV_32FC4";
+    types[ CV_64FC1 ] = "CV_64FC1";
+    types[ CV_64FC2 ] = "CV_64FC2";
+    types[ CV_64FC3 ] = "CV_64FC3";
+    types[ CV_64FC4 ] = "CV_64FC4";
+    return types;
+}
+
+static const boost::unordered_map< std::string, int > types_ = fill_types_();
+static const boost::unordered_map< int, std::string > types_as_string = fill_types_as_string_();
+
+static std::string type_as_string( int t ) // to avoid compilation warning
+{
+    boost::unordered_map< int, std::string >::const_iterator it = types_as_string.find( t );
+    return it == types_as_string.end() ? boost::lexical_cast< std::string >( t ) : it->second;
+}
+    
 static filters::value_type cvt_color_impl_( filters::value_type m, unsigned int which )
 {
     filters::value_type n;
@@ -102,11 +179,14 @@ static filters::value_type crop_impl_( filters::value_type m, unsigned int x, un
 
 static filters::value_type crop_tile_impl_( filters::value_type m, unsigned int x, unsigned int y, unsigned int w, unsigned int h )
 {
-    unsigned int tileWidth = m.second.cols / w;
-    unsigned int tileHeight = m.second.rows / h;
-    unsigned int cropX = x * tileWidth;
-    unsigned int cropY = y * tileHeight;
-    return filters::value_type( m.first, cv::Mat( m.second, cv::Rect( cropX, cropY, tileWidth, tileHeight ) ) );
+    unsigned int tile_width = m.second.cols / w;
+    unsigned int tile_height = m.second.rows / h;
+    unsigned int crop_x = x * tile_width;
+    unsigned int crop_y = y * tile_height;
+    filters::value_type n;
+    n.first = m.first;
+    cv::Mat( m.second, cv::Rect( crop_x, crop_y, tile_width, tile_height ) ).copyTo( n.second );
+    return n;
 }
 
 static filters::value_type convert_to_impl_( filters::value_type m, int type, double scale, double offset )
@@ -297,13 +377,9 @@ struct count_impl_
 
 static filters::value_type invert_impl_( filters::value_type m )
 {
-    unsigned int c = ( m.second.dataend - m.second.datastart ) / ( m.second.rows * m.second.cols );
-    if( c != 3 && c != 1 ) { COMMA_THROW( comma::exception, "expected 1 or 3 channels, got: " << c ); } // quick and dirty
-    filters::value_type n;
-    n.first = m.first;
-    m.second.copyTo( n.second );
-    for( unsigned char* c = n.second.datastart; c < n.second.dataend; *c = 255 - *c, ++c );
-    return n;
+    if( m.second.type() != CV_8UC1 && m.second.type() != CV_8UC2 && m.second.type() != CV_8UC3 && m.second.type() != CV_8UC4 ) { COMMA_THROW( comma::exception, "expected image type ub, 2ub, 3ub, 4ub; got: " << type_as_string( m.second.type() ) ); }
+    for( unsigned char* c = m.second.datastart; c < m.second.dataend; *c = 255 - *c, ++c );
+    return m;
 }
 
 static filters::value_type text_impl_( filters::value_type m, const std::string& s, const cv::Point& origin, const cv::Scalar& colour )
@@ -361,7 +437,7 @@ class max_impl_ // experimental, to debug
             deque_.push_back( filters::value_type() );
             m.second.copyTo( deque_.back().second );
             filters::value_type s( m.first, cv::Mat( m.second.rows, m.second.cols, m.second.type() ) );
-            ::memset( m.second.datastart, 0, m.second.dataend - m.second.datastart );
+            ::memset( m.second.datastart, 0, m.second.rows * m.second.cols * m.second.channels() );
             static unsigned int count = 0;
             for( unsigned int i = 0; i < deque_.size(); ++i )
             {
@@ -457,84 +533,6 @@ class map_impl_
             }
         }
 };
-
-static boost::unordered_map< std::string, int > fill_types_()
-{
-    boost::unordered_map< std::string, int > types;
-    types[ "CV_8UC1" ] = types[ "ub" ] = CV_8UC1;
-    types[ "CV_8UC2" ] = types[ "2ub" ] = CV_8UC2;
-    types[ "CV_8UC3" ] = types[ "3ub" ] = CV_8UC3;
-    types[ "CV_8UC4" ] = types[ "4ub" ] = CV_8UC4;
-    types[ "CV_8SC1" ] = types[ "b" ] = CV_8SC1;
-    types[ "CV_8SC2" ] = types[ "2b" ] = CV_8SC2;
-    types[ "CV_8SC3" ] = types[ "3b" ] = CV_8SC3;
-    types[ "CV_8SC4" ] = types[ "4b" ] = CV_8SC4;
-    types[ "CV_16UC1" ] = types[ "uw" ] = CV_16UC1;
-    types[ "CV_16UC2" ] = types[ "2uw" ] = CV_16UC2;
-    types[ "CV_16UC3" ] = types[ "3uw" ] = CV_16UC3;
-    types[ "CV_16UC4" ] = types[ "4uw" ] = CV_16UC4;
-    types[ "CV_16SC1" ] = types[ "w" ] = CV_16SC1;
-    types[ "CV_16SC2" ] = types[ "2w" ] = CV_16SC2;
-    types[ "CV_16SC3" ] = types[ "3w" ] = CV_16SC3;
-    types[ "CV_16SC4" ] = types[ "4w" ] = CV_16SC4;
-    types[ "CV_32SC1" ] = types[ "i" ] = CV_32SC1;
-    types[ "CV_32SC2" ] = types[ "2i" ] = CV_32SC2;
-    types[ "CV_32SC3" ] = types[ "3i" ] = CV_32SC3;
-    types[ "CV_32SC4" ] = types[ "4i" ] = CV_32SC4;
-    types[ "CV_32FC1" ] = types[ "f" ] = CV_32FC1;
-    types[ "CV_32FC2" ] = types[ "2f" ] = CV_32FC2;
-    types[ "CV_32FC3" ] = types[ "3f" ] = CV_32FC3;
-    types[ "CV_32FC4" ] = types[ "4f" ] = CV_32FC4;
-    types[ "CV_64FC1" ] = types[ "d" ] = CV_64FC1;
-    types[ "CV_64FC2" ] = types[ "2d" ] = CV_64FC2;
-    types[ "CV_64FC3" ] = types[ "3d" ] = CV_64FC3;
-    types[ "CV_64FC4" ] = types[ "4d" ] = CV_64FC4;
-    return types;
-}
-
-static boost::unordered_map< int, std::string > fill_types_as_string_()
-{
-    boost::unordered_map< int, std::string > types;
-    types[ CV_8UC1 ] = "CV_8UC1";
-    types[ CV_8UC2 ] = "CV_8UC2";
-    types[ CV_8UC3 ] = "CV_8UC3";
-    types[ CV_8UC4 ] = "CV_8UC4";
-    types[ CV_8SC1 ] = "CV_8SC1";
-    types[ CV_8SC2 ] = "CV_8SC2";
-    types[ CV_8SC3 ] = "CV_8SC3";
-    types[ CV_8SC4 ] = "CV_8SC4";
-    types[ CV_16UC1 ] = "CV_16UC1";
-    types[ CV_16UC2 ] = "CV_16UC2";
-    types[ CV_16UC3 ] = "CV_16UC3";
-    types[ CV_16UC4 ] = "CV_16UC4";
-    types[ CV_16SC1 ] = "CV_16SC1";
-    types[ CV_16SC2 ] = "CV_16SC2";
-    types[ CV_16SC3 ] = "CV_16SC3";
-    types[ CV_16SC4 ] = "CV_16SC4";
-    types[ CV_32SC1 ] = "CV_32SC1";
-    types[ CV_32SC2 ] = "CV_32SC2";
-    types[ CV_32SC3 ] = "CV_32SC3";
-    types[ CV_32SC4 ] = "CV_32SC4";
-    types[ CV_32FC1 ] = "CV_32FC1";
-    types[ CV_32FC2 ] = "CV_32FC2";
-    types[ CV_32FC3 ] = "CV_32FC3";
-    types[ CV_32FC4 ] = "CV_32FC4";
-    types[ CV_64FC1 ] = "CV_64FC1";
-    types[ CV_64FC2 ] = "CV_64FC2";
-    types[ CV_64FC3 ] = "CV_64FC3";
-    types[ CV_64FC4 ] = "CV_64FC4";
-    return types;
-}
-
-static const boost::unordered_map< std::string, int > types_ = fill_types_();
-static const boost::unordered_map< int, std::string > types_as_string = fill_types_as_string_();
-
-//static std::string type_as_string( int t )
-std::string type_as_string( int t ) // to avoid compilation warning
-{
-    boost::unordered_map< int, std::string >::const_iterator it = types_as_string.find( t );
-    return it == types_as_string.end() ? boost::lexical_cast< std::string >( t ) : it->second;
-}
 
 static filters::value_type magnitude_impl_( filters::value_type m )
 {
