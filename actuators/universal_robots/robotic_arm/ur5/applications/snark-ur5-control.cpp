@@ -88,7 +88,7 @@ namespace fs = boost::filesystem;
 /// A function to acts as the recorder for 'scan' command, parameters are binded to it in main,
 /// This function must be easily interruptible, making sure it always calls interruption_point()`.
 void save_lidar( const std::string& conn_str, const std::string& savefile,
-                 const std::string& fields, double range_limit,
+                 const std::string& fields, double range_limit, comma::uint32 thinning_value,
                  comma::io::publisher& publisher )
 {
     // boost::filesystem::remove( savefile );
@@ -126,11 +126,13 @@ void save_lidar( const std::string& conn_str, const std::string& savefile,
                 const hok::data_point* point = istream.read();
                 if( point == NULL ) { return; }
 
-                if( point->range <= range_limit ) { ostream.write( *point ); }
-
                 //republish the data         
                 binary.put( *point, line.data() );
                 publisher.write( line.data(), line.size());
+
+                // save the data if needed
+                if( thinning_value == 0 || count % thinning_value != 0 ) { continue; }
+                if( point->range <= range_limit ) { ostream.write( *point ); }
             }
         }
     }
@@ -476,7 +478,8 @@ int main( int ac, char** av )
                 hokuyo_conn = ss.str();
                 record_info.reset( arm::handlers::waypoints_follower::recorder_setup_t( 2, 3, continuum.scan.sweep_velocity,
                                                                          boost::bind( &impl_::save_lidar, hokuyo_conn, scan_filepath, 
-                                                                                      continuum.scan.fields, continuum.scan.range_limit,
+                                                                                      continuum.scan.fields, continuum.scan.range_limit, 
+                                                                                      continuum.scan.thinning_value,
                                                                                       boost::ref( scan_broadcast ) ) )
                 );
             }

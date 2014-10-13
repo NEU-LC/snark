@@ -302,6 +302,7 @@ template <> struct traits< arm::continuum_t::scan_type >
 
         v.apply( "fields", t.fields );
         v.apply( "range-limit", t.range_limit );
+        v.apply( "thinning", t.thinning_value );
     }
 
     template< typename K, typename V > static void visit( const K& k, const arm::continuum_t::scan_type& t, V& v )
@@ -310,6 +311,7 @@ template <> struct traits< arm::continuum_t::scan_type >
         v.apply( "sweep_velocity", t.sweep_velocity.value() );
         v.apply( "fields", t.fields );
         v.apply( "range-limit", t.range_limit );
+        v.apply( "thinning", t.thinning_value );
     }
 };
 
