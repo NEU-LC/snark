@@ -17,6 +17,7 @@ struct continuum_t
         angular_velocity_t sweep_velocity;
         std::string fields;     /// fields to retain
         double range_limit;     /// Any points further than the limit are discarded
+        comma::uint16 thinning_value;  /// if 0 - disabled, else keep every 1/thinning point
     };
 
     struct lidar_config
