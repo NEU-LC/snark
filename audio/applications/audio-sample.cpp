@@ -55,7 +55,9 @@ static void usage( bool verbose )
     if( verbose ) { std::cerr << std::endl << "csv options" << std::endl << comma::csv::options::usage() << std::endl; }
     std::cerr << std::endl;
     std::cerr << "examples" << std::endl;
-    std::cerr << "    todo" << std::endl;
+    std::cerr << "    echo -e 440,15000,2,0\\n880,10000,2,0\\n1760,12000,2,0 | audio-sample -r 64000 | csv-to-bin d | csv-cast d w --force > test.64000.w.raw" << std::endl;
+    std::cerr << "    sox -r 64k -e signed -b 16 -c 1 test.64000.w.raw test.64000.w.wav" << std::endl;
+    std::cerr << "    play test.64000.w.wav" << std::endl;
     std::cerr << std::endl;
     exit( 0 );
 }
