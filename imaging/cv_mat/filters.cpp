@@ -475,8 +475,8 @@ class map_impl_
             }    
             std::ifstream ifs( &csv_options.filename[0] );
             if( !ifs ) { COMMA_THROW( comma::exception, "map filter: failed to open \"" << csv_options.filename << "\"" ); }
-            BOOST_STATIC_ASSERT( boost::is_same< map_input_t::key_type, key_type >::value );
-            BOOST_STATIC_ASSERT( boost::is_same< map_input_t::value_type, output_value_type >::value );
+            BOOST_STATIC_ASSERT( ( boost::is_same< map_input_t::key_type, key_type >::value ) );
+            BOOST_STATIC_ASSERT( ( boost::is_same< map_input_t::value_type, output_value_type >::value ) );
             comma::csv::input_stream< map_input_t > map_stream( ifs , csv_options );
             for( key_type counter = 0; map_stream.ready() || ( ifs.good() && !ifs.eof() ) ; ++counter )
             {
