@@ -47,6 +47,7 @@ namespace comma
                 v.apply( "z", p.z );
                 v.apply( "block", p.block );
                 v.apply( "id", p.id );
+                v.apply( "size", p.size );
             }
         };
     }
