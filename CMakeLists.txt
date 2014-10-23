@@ -5,21 +5,21 @@ cmake_minimum_required(VERSION 2.6)
 ENABLE_TESTING()
 
 IF (UNIX AND NOT APPLE)
-  # May also fail on BSD as it assumes GNU date rather than BSD date command
-	# Get the date of the last commit (for use by CPack)
-	# Check if Git is installed
-	find_package(Git)
-	IF(GIT_FOUND)
-		EXECUTE_PROCESS(
-		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-		COMMAND git log -n1 --format=%ci
-		COMMAND xargs -0 date +%Y%m%dT%H%M -d
-		OUTPUT_VARIABLE COMMITDATE
-		OUTPUT_STRIP_TRAILING_WHITESPACE
-		)
-	ELSE()
-		SET ( COMMITDATE 4 )
-	ENDIF()
+# May also fail on BSD as it assumes GNU date rather than BSD date command
+    # Get the date of the last commit (for use by CPack)
+    # Check if Git is installed
+    find_package(Git)
+    IF(GIT_FOUND)
+        EXECUTE_PROCESS(
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        COMMAND git log -n1 --format=%ci
+        COMMAND xargs -0 date +%Y%m%dT%H%M -d
+        OUTPUT_VARIABLE COMMITDATE
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        )
+    ELSE()
+        SET ( COMMITDATE 4 )
+    ENDIF()
 ELSE() # Probably windows; gets hardcoded patch version
 	SET ( COMMITDATE 4 )
 ENDIF()
@@ -306,6 +306,7 @@ IF( snark_build_graph )
     ADD_SUBDIRECTORY( graph )
 ENDIF( snark_build_graph )
 
+add_subdirectory( audio )
 ADD_SUBDIRECTORY( kml )
 ADD_SUBDIRECTORY( timing )
 ADD_SUBDIRECTORY( visiting )
