@@ -107,7 +107,7 @@ void partitions_to_centroids(block_t& block, block_t& centroids, std::vector<dou
 void publish_centroids(const block_t& centroids, const std::vector<double>& sizes, comma::csv::output_stream<Point>& ostream)
 {
     //publish centroids
-    for(int cntr=0; cntr<centroids.size(); cntr++)
+    for(unsigned int cntr=0; cntr<centroids.size(); cntr++)
     {
         if(ostream.is_binary())
         {

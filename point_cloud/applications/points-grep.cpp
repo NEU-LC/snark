@@ -244,7 +244,7 @@ int main( int argc, char** argv )
 
     //check if flag field exists
     bool flag_exists=false;
-    for(int cntr=0; cntr<fields.size(); cntr++)
+    for(unsigned int cntr=0; cntr<fields.size(); cntr++)
     {
         if(fields[cntr]=="flag")
         {
