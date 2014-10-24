@@ -927,7 +927,7 @@ static std::string usage_impl_()
     oss << "            resize=0.5,1024 : 50% of width; heigth 1024 pixels" << std::endl;
     oss << "            note: if no decimal dot '.', size is in pixels; if decimal dot present, size as a fraction" << std::endl;
     oss << "                  i.e. 5 means 5 pixels; 5.0 means 5 times" << std::endl;
-    oss << "        split: split r,g,b channels into a 3x1 gray image" << std::endl;
+    oss << "        split: split n-channel image into a nx1 grey-scale image" << std::endl;
     oss << "        text=<text>[,x,y][,colour]: print text; default x,y: 10,10; default colour: yellow" << std::endl;
     oss << "        thumb[=<cols>[,<wait-interval>]]: view resized image; a convenience for debugging and filter pipeline monitoring" << std::endl;
     oss << "                                          <cols>: image width in pixels; default: 100" << std::endl;
