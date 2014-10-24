@@ -760,12 +760,12 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
             }
             f.push_back( filter( boost::bind( &text_impl_, _1, w[0], p, s ) ) );
         }
-        else if( e[0] == "convert_to" )
+        else if( e[0] == "convert-to" || e[0] == "convert_to" )
         {
-            if( e.size() <= 1 ) { COMMA_THROW( comma::exception, "convert_to: expected options, got none" ); }
+            if( e.size() <= 1 ) { COMMA_THROW( comma::exception, "convert-to: expected options, got none" ); }
             const std::vector< std::string >& w = comma::split( e[1], ',' );
             boost::unordered_map< std::string, int >::const_iterator it = types_.find( w[0] );
-            if( it == types_.end() ) { COMMA_THROW( comma::exception, "convert_to: expected target type, got \"" << w[0] << "\"" ); }
+            if( it == types_.end() ) { COMMA_THROW( comma::exception, "convert-to: expected target type, got \"" << w[0] << "\"" ); }
             double scale = w.size() > 1 ? boost::lexical_cast< double >( w[1] ) : 1.0;
             double offset = w.size() > 2 ? boost::lexical_cast< double >( w[2] ) : 0.0;
             f.push_back( filter( boost::bind( &convert_to_impl_, _1, it->second, scale, offset ) ) );
@@ -900,7 +900,7 @@ static std::string usage_impl_()
     oss << "    cv::Mat image filters usage (';'-separated):" << std::endl;
     oss << "        bayer=<mode>: convert from bayer, <mode>=1-4" << std::endl;
     oss << "        brightness=<scale>[,<offset>]: output=(scale*input)+offset; default offset=0" << std::endl;
-    oss << "        convert_to=<type>[,<scale>[,<offset>]]: convert to given type; should be the same number of channels; see opencv convertTo for details" << std::endl;
+    oss << "        convert-to,convert_to=<type>[,<scale>[,<offset>]]: convert to given type; should be the same number of channels; see opencv convertTo for details" << std::endl;
     oss << "        count: write frame number on images" << std::endl;
     oss << "        crop=[<x>,<y>],<width>,<height>: crop the portion of the image starting at x,y with size width x height" << std::endl;
     oss << "        crop-tile=[<x>,<y>],<num-tile-x>,<num-tile-y>: divide the image in num-tile-x x num-tile-y tiles, and crop the tile x,y (count from zero)" << std::endl;
