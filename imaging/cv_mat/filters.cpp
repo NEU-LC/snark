@@ -906,6 +906,12 @@ static std::string usage_impl_()
     oss << "        crop-tile=[<x>,<y>],<num-tile-x>,<num-tile-y>: divide the image in num-tile-x x num-tile-y tiles, and crop the tile x,y (count from zero)" << std::endl;
     oss << "        cross[=<x>,<y>]: draw cross-hair at x,y; default: at image center" << std::endl;
     oss << "        encode=<format>: encode images to the specified format. <format>: jpg|ppm|png|tiff..., make sure to use --no-header" << std::endl;
+    oss << "        fft[=<options>]: do fft on a floating point image" << std::endl;
+    oss << "            options: inverse: do inverse fft" << std::endl;
+    oss << "                     real: output real part only" << std::endl;
+    oss << "                     magnitude: output magnitude only" << std::endl;
+    oss << "            examples: cv-cat --file image.jpg \"split;crop-tile=0,0,1,3;convert-to=f,0.0039;fft;fft=inverse,magnitude;view;null\"" << std::endl;
+    oss << "                      cv-cat --file image.jpg \"split;crop-tile=0,0,1,3;convert-to=f,0.0039;fft=magnitude;convert-to=f,40000;view;null\"" << std::endl;
     oss << "        file=<format>: write images to files with timestamp as name in the specified format. <format>: jpg|ppm|png|tiff...; if no timestamp, system time is used" << std::endl;
     oss << "        flip: flip vertically" << std::endl;
     oss << "        flop: flip horizontally" << std::endl;
