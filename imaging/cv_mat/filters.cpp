@@ -912,6 +912,13 @@ static std::string usage_impl_()
     oss << "        grab=<format>: write an image to file with timestamp as name in the specified format. <format>: jpg|ppm|png|tiff..., if no timestamp, system time is used" << std::endl;
     oss << "        invert: invert image (to negative)" << std::endl;
     oss << "        magnitude: calculate magnitude for a 2-channel image; see cv::magnitude() for details" << std::endl;    
+    oss << "        map=<map file>[&<csv options>][&permissive]: map integer values to floating point values read from the map file" << std::endl;
+    oss << "             <csv options>: usual csv options for map file, but &-separated (running out of separator characters)" << std::endl;
+    oss << "                  fields: key,value; default: value" << std::endl;
+    oss << "                  default: read a single column of floating point values (with the row counter starting from zero used as key)" << std::endl;
+    oss << "             <permissive>: if present, integer values in the input are simply copied to the output unless they are in the map" << std::endl;
+    oss << "                  default: filter fails with an error message if it encounters an integer value which is not in the map" << std::endl;
+    oss << "             example: \"map=map.bin&fields=,key,value&binary=2ui,d\"" << std::endl;
     oss << "        null: same as linux /dev/null (since windows does not have it)" << std::endl;
     oss << "        resize=<width>,<height>: e.g:" << std::endl;
     oss << "            resize=512,1024 : resize to 512x1024 pixels" << std::endl;
@@ -930,13 +937,6 @@ static std::string usage_impl_()
     oss << "        undistort=<undistort map file>: undistort" << std::endl;
     oss << "        view[=<wait-interval>]: view image; press <space> to save image (timestamp or system time as filename); <esc>: to close" << std::endl;
     oss << "                                <wait-interval>: a hack for now; milliseconds to wait for image display and key press; default 1" << std::endl;    
-    oss << "        map=<map file>[&<csv options>][&permissive]: map integer values to floating point values read from the map file" << std::endl;
-    oss << "             <csv options>: usual csv options for map file, but &-separated (running out of separator characters)" << std::endl;
-    oss << "                  fields: key,value; default: value" << std::endl;
-    oss << "                  default: read a single column of floating point values (with the row counter starting from zero used as key)" << std::endl;
-    oss << "             <permissive>: if present, integer values in the input are simply copied to the output unless they are in the map" << std::endl;
-    oss << "                  default: filter fails with an error message if it encounters an integer value which is not in the map" << std::endl;
-    oss << "             example: \"map=map.bin&fields=,key,value&binary=2ui,d\"" << std::endl;
     return oss.str();
 }
 
