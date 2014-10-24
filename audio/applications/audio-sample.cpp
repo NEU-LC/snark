@@ -103,11 +103,13 @@ int main( int ac, char** av )
     try
     {
         comma::command_line_options options( ac, av, usage );
+        bool verbose = options.exists( "--verbose,-v" );
         unsigned int rate = options.value< unsigned int >( "--rate,-r" );
         comma::csv::options csv( options );
         comma::csv::input_stream< input > istream( std::cin, csv );
         boost::optional< input > last;
         std::vector< input > v;
+        unsigned int count = 0;
         while( std::cin.good() )
         {
             const input* p = istream.read();
@@ -122,6 +124,7 @@ int main( int ac, char** av )
                     else { std::cout << a << std::endl; }
                 }
                 v.clear();
+                if( verbose && ++count % 100 == 0 ) { std::cerr << "audio-sample: processed " << count << " blocks" << std::endl; }
             }
             if( !p ) { break; }
             if( !v.empty() && !comma::math::equal( v.back().duration, p->duration ) ) { std::cerr << "audio-sample: expected consistent duration across a block, got " << v.back().duration << " and " << p->duration << " in block" << p->block << std::endl; return 1; }
