@@ -136,8 +136,20 @@ int main( int argc, char** argv )
     comma::command_line_options options( argc, argv );
     if( options.exists( "--help,-h" ) )
     {
-        std::cerr<<"gets the centroid of a partitioned scan based on id"<<std::endl;
-        std::cerr<<"parititions do not have to be in sequence"<<std::endl;
+        std::cerr << "gets the centroid of a partitioned point cloud based on id" << std::endl;
+        std::cerr << "parititions do not have to be in sequence"<<std::endl;
+        std::cerr << std::endl;
+        std::cerr << "usage: cat points.csv | points-to-centroids [<options>]" << std::endl;
+        std::cerr << std::endl;
+        std::cerr << "input: partitioned point cloud where field id corresponds to the partition number" << std::endl;
+        std::cerr << std::endl;
+        std::cerr << "output: the centroid of each partition with a size field optionally appended" << std::endl;
+        std::cerr << std::endl;
+        std::cerr << "<options>" << std::endl;
+        std::cerr << "    --output-size: if present output partition size" << std::endl;
+        std::cerr << comma::csv::options::usage() << std::endl;
+        std::cerr << std::endl;
+        exit(-1);
     }
     outputsize=options.exists("--output-size");
     comma::csv::options csv( options );
