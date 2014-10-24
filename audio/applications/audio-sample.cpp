@@ -113,7 +113,7 @@ int main( int ac, char** av )
             const input* p = istream.read();
             if( !p || ( !v.empty() && v.back().block != p->block ) )
             {
-                double step = v[0].duration / rate;
+                double step = 1.0 / rate;
                 for( double t = 0; t < v[0].duration; t += step )
                 {
                     double a = 0;
