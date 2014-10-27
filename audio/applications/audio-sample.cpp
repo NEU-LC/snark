@@ -50,6 +50,7 @@ static void usage( bool verbose )
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    --help,-h: --help --verbose for more help" << std::endl;
+    std::cerr << "    --duration=[<seconds>]: if duration field absent, use this duration for all the samples" << std::endl;
     std::cerr << "    todo" << std::endl;
     std::cerr << "    --verbose,-v: more output" << std::endl;
     if( verbose ) { std::cerr << std::endl << "csv options" << std::endl << comma::csv::options::usage() << std::endl; }
@@ -106,7 +107,9 @@ int main( int ac, char** av )
         bool verbose = options.exists( "--verbose,-v" );
         unsigned int rate = options.value< unsigned int >( "--rate,-r" );
         comma::csv::options csv( options );
-        comma::csv::input_stream< input > istream( std::cin, csv );
+        input default_input;
+        default_input.duration = options.value( "--duration", 0.0 );
+        comma::csv::input_stream< input > istream( std::cin, csv, default_input );
         boost::optional< input > last;
         std::vector< input > v;
         unsigned int count = 0;
