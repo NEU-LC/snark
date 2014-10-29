@@ -50,6 +50,7 @@ static void usage( bool verbose )
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    --help,-h: --help --verbose for more help" << std::endl;
+    std::cerr << "    --duration=[<seconds>]: if duration field absent, use this duration for all the samples" << std::endl;
     std::cerr << "    todo" << std::endl;
     std::cerr << "    --verbose,-v: more output" << std::endl;
     if( verbose ) { std::cerr << std::endl << "csv options" << std::endl << comma::csv::options::usage() << std::endl; }
@@ -103,17 +104,21 @@ int main( int ac, char** av )
     try
     {
         comma::command_line_options options( ac, av, usage );
+        bool verbose = options.exists( "--verbose,-v" );
         unsigned int rate = options.value< unsigned int >( "--rate,-r" );
         comma::csv::options csv( options );
-        comma::csv::input_stream< input > istream( std::cin, csv );
+        input default_input;
+        default_input.duration = options.value( "--duration", 0.0 );
+        comma::csv::input_stream< input > istream( std::cin, csv, default_input );
         boost::optional< input > last;
         std::vector< input > v;
+        unsigned int count = 0;
         while( std::cin.good() )
         {
             const input* p = istream.read();
             if( !p || ( !v.empty() && v.back().block != p->block ) )
             {
-                double step = v[0].duration / rate;
+                double step = 1.0 / rate;
                 for( double t = 0; t < v[0].duration; t += step )
                 {
                     double a = 0;
@@ -122,6 +127,7 @@ int main( int ac, char** av )
                     else { std::cout << a << std::endl; }
                 }
                 v.clear();
+                if( verbose && ++count % 100 == 0 ) { std::cerr << "audio-sample: processed " << count << " blocks" << std::endl; }
             }
             if( !p ) { break; }
             if( !v.empty() && !comma::math::equal( v.back().duration, p->duration ) ) { std::cerr << "audio-sample: expected consistent duration across a block, got " << v.back().duration << " and " << p->duration << " in block" << p->block << std::endl; return 1; }

@@ -760,12 +760,12 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
             }
             f.push_back( filter( boost::bind( &text_impl_, _1, w[0], p, s ) ) );
         }
-        else if( e[0] == "convert_to" )
+        else if( e[0] == "convert-to" || e[0] == "convert_to" )
         {
-            if( e.size() <= 1 ) { COMMA_THROW( comma::exception, "convert_to: expected options, got none" ); }
+            if( e.size() <= 1 ) { COMMA_THROW( comma::exception, "convert-to: expected options, got none" ); }
             const std::vector< std::string >& w = comma::split( e[1], ',' );
             boost::unordered_map< std::string, int >::const_iterator it = types_.find( w[0] );
-            if( it == types_.end() ) { COMMA_THROW( comma::exception, "convert_to: expected target type, got \"" << w[0] << "\"" ); }
+            if( it == types_.end() ) { COMMA_THROW( comma::exception, "convert-to: expected target type, got \"" << w[0] << "\"" ); }
             double scale = w.size() > 1 ? boost::lexical_cast< double >( w[1] ) : 1.0;
             double offset = w.size() > 2 ? boost::lexical_cast< double >( w[2] ) : 0.0;
             f.push_back( filter( boost::bind( &convert_to_impl_, _1, it->second, scale, offset ) ) );
@@ -900,18 +900,31 @@ static std::string usage_impl_()
     oss << "    cv::Mat image filters usage (';'-separated):" << std::endl;
     oss << "        bayer=<mode>: convert from bayer, <mode>=1-4" << std::endl;
     oss << "        brightness=<scale>[,<offset>]: output=(scale*input)+offset; default offset=0" << std::endl;
-    oss << "        convert_to=<type>[,<scale>[,<offset>]]: convert to given type; should be the same number of channels; see opencv convertTo for details" << std::endl;
+    oss << "        convert-to,convert_to=<type>[,<scale>[,<offset>]]: convert to given type; should be the same number of channels; see opencv convertTo for details" << std::endl;
     oss << "        count: write frame number on images" << std::endl;
     oss << "        crop=[<x>,<y>],<width>,<height>: crop the portion of the image starting at x,y with size width x height" << std::endl;
     oss << "        crop-tile=[<x>,<y>],<num-tile-x>,<num-tile-y>: divide the image in num-tile-x x num-tile-y tiles, and crop the tile x,y (count from zero)" << std::endl;
     oss << "        cross[=<x>,<y>]: draw cross-hair at x,y; default: at image center" << std::endl;
     oss << "        encode=<format>: encode images to the specified format. <format>: jpg|ppm|png|tiff..., make sure to use --no-header" << std::endl;
+    oss << "        fft[=<options>]: do fft on a floating point image" << std::endl;
+    oss << "            options: inverse: do inverse fft" << std::endl;
+    oss << "                     real: output real part only" << std::endl;
+    oss << "                     magnitude: output magnitude only" << std::endl;
+    oss << "            examples: cv-cat --file image.jpg \"split;crop-tile=0,0,1,3;convert-to=f,0.0039;fft;fft=inverse,magnitude;view;null\"" << std::endl;
+    oss << "                      cv-cat --file image.jpg \"split;crop-tile=0,0,1,3;convert-to=f,0.0039;fft=magnitude;convert-to=f,40000;view;null\"" << std::endl;
     oss << "        file=<format>: write images to files with timestamp as name in the specified format. <format>: jpg|ppm|png|tiff...; if no timestamp, system time is used" << std::endl;
     oss << "        flip: flip vertically" << std::endl;
     oss << "        flop: flip horizontally" << std::endl;
     oss << "        grab=<format>: write an image to file with timestamp as name in the specified format. <format>: jpg|ppm|png|tiff..., if no timestamp, system time is used" << std::endl;
     oss << "        invert: invert image (to negative)" << std::endl;
     oss << "        magnitude: calculate magnitude for a 2-channel image; see cv::magnitude() for details" << std::endl;    
+    oss << "        map=<map file>[&<csv options>][&permissive]: map integer values to floating point values read from the map file" << std::endl;
+    oss << "             <csv options>: usual csv options for map file, but &-separated (running out of separator characters)" << std::endl;
+    oss << "                  fields: key,value; default: value" << std::endl;
+    oss << "                  default: read a single column of floating point values (with the row counter starting from zero used as key)" << std::endl;
+    oss << "             <permissive>: if present, integer values in the input are simply copied to the output unless they are in the map" << std::endl;
+    oss << "                  default: filter fails with an error message if it encounters an integer value which is not in the map" << std::endl;
+    oss << "             example: \"map=map.bin&fields=,key,value&binary=2ui,d\"" << std::endl;
     oss << "        null: same as linux /dev/null (since windows does not have it)" << std::endl;
     oss << "        resize=<width>,<height>: e.g:" << std::endl;
     oss << "            resize=512,1024 : resize to 512x1024 pixels" << std::endl;
@@ -920,7 +933,7 @@ static std::string usage_impl_()
     oss << "            resize=0.5,1024 : 50% of width; heigth 1024 pixels" << std::endl;
     oss << "            note: if no decimal dot '.', size is in pixels; if decimal dot present, size as a fraction" << std::endl;
     oss << "                  i.e. 5 means 5 pixels; 5.0 means 5 times" << std::endl;
-    oss << "        split: split r,g,b channels into a 3x1 gray image" << std::endl;
+    oss << "        split: split n-channel image into a nx1 grey-scale image" << std::endl;
     oss << "        text=<text>[,x,y][,colour]: print text; default x,y: 10,10; default colour: yellow" << std::endl;
     oss << "        thumb[=<cols>[,<wait-interval>]]: view resized image; a convenience for debugging and filter pipeline monitoring" << std::endl;
     oss << "                                          <cols>: image width in pixels; default: 100" << std::endl;
@@ -930,13 +943,6 @@ static std::string usage_impl_()
     oss << "        undistort=<undistort map file>: undistort" << std::endl;
     oss << "        view[=<wait-interval>]: view image; press <space> to save image (timestamp or system time as filename); <esc>: to close" << std::endl;
     oss << "                                <wait-interval>: a hack for now; milliseconds to wait for image display and key press; default 1" << std::endl;    
-    oss << "        map=<map file>[&<csv options>][&permissive]: map integer values to floating point values read from the map file" << std::endl;
-    oss << "             <csv options>: usual csv options for map file, but &-separated (running out of separator characters)" << std::endl;
-    oss << "                  fields: key,value; default: value" << std::endl;
-    oss << "                  default: read a single column of floating point values (with the row counter starting from zero used as key)" << std::endl;
-    oss << "             <permissive>: if present, integer values in the input are simply copied to the output unless they are in the map" << std::endl;
-    oss << "                  default: filter fails with an error message if it encounters an integer value which is not in the map" << std::endl;
-    oss << "             example: \"map=map.bin&fields=,key,value&binary=2ui,d\"" << std::endl;
     return oss.str();
 }
 
