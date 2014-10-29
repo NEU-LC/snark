@@ -156,7 +156,7 @@ OPTION( snark_build_sensors "build sensors" ON )
 OPTION( snark_build_actuators "build actuators" OFF )
 OPTION( snark_build_battery "build battery" OFF )
 OPTION( snark_build_graph "build graph" ON )
-OPTION( snark_build_math_geometry "build math geometry, requires libdsdp" OFF )
+OPTION( snark_build_math_geometry "build math geometry" OFF )
 
 INCLUDE( CMakeDependentOption )
 CMAKE_DEPENDENT_OPTION( snark_build_sensors_dc1394 "build dc1394 components" ON "snark_build_sensors" OFF )
@@ -184,6 +184,11 @@ if( snark_build_graphics )
     SET( snark_ALL_LIBRARIES ${snark_ALL_LIBRARIES} debug snark_graphics_qt3d-d
                              optimized snark_graphics_qt3d )
 endif( snark_build_graphics )
+
+if( snark_build_math_geometry )
+    SET( snark_ALL_LIBRARIES ${snark_ALL_LIBRARIES} debug snark_geometry-d
+                             optimized snark_geometry )
+endif( snark_build_math_geometry )
 
 if( snark_build_point_cloud )
     SET( snark_ALL_LIBRARIES ${snark_ALL_LIBRARIES} debug snark_point_cloud-d

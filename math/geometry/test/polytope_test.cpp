@@ -28,24 +28,45 @@ TEST(geometry, convex_polytope_2d)
 
 TEST(geometry, convex_polytope_3d)
 {
-    Eigen::MatrixXd A(4,3);
-    Eigen::VectorXd b(4);
+    Eigen::MatrixXd A;
+    Eigen::VectorXd b;
+    Eigen::Vector3d x;
 
+    //first polytope, two points
+    A.resize(4,3);
+    b.resize(4);
     A<<1,0,0,
        0,1,0,
        0,0,1,
        -1,-1,-1;
     b<<0,0,0,-1;
-    convex_polytope poly(A,b);
 
-    Eigen::Vector3d x;
     x<<0.1,0.1,0.1;
 
-    EXPECT_TRUE(poly.has(x));
+    EXPECT_TRUE(convex_polytope(A,b).has(x));
 
     x<<1,1,1;
 
-    EXPECT_FALSE(poly.has(x));
+    EXPECT_FALSE(convex_polytope(A,b).has(x));
+
+    //second polytope, two points
+    A.resize(6,3);
+    b.resize(6);
+    A<<1,0,0,
+       0,1,0,
+       0,0,1,
+       -1,0,0,
+       0,-1,0,
+       0,0,-1;
+    b<<0,0,0,-1,-1,-1;
+
+    x<<0.5,0.5,0.5;
+
+    EXPECT_TRUE(convex_polytope(A,b).has(x));
+
+    x<<2,2,2;
+
+    EXPECT_FALSE(convex_polytope(A,b).has(x));
 }
 
 int main(int argc, char *argv[])

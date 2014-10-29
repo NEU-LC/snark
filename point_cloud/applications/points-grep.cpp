@@ -214,7 +214,7 @@ void filter_point(JoinedPoint& pq)
 
     for(int cntr2=1; cntr2<origins.cols(); cntr2++)
     {
-        A.row(cntr2-1)<<origins(0,0)-origins(0,cntr2),origins(1,0)-origins(1,cntr2),origins(2,0)-origins(2,cntr2);
+        A.row(cntr2-1)<<origins.col(0).transpose()-origins.col(cntr2).transpose();
         b(cntr2-1)=origins.col(cntr2).transpose()*(origins.col(0)-origins.col(cntr2));
     }
 
@@ -222,7 +222,11 @@ void filter_point(JoinedPoint& pq)
     Eigen::Vector3d point(pq.p.x,pq.p.y,pq.p.z);
 
     //check polygon in 3d
-    pq.p.flag=!snark::geometry::convex_polytope(A,b).has(point);
+    // use if statement not assignment because point might already be filtered
+    if(snark::geometry::convex_polytope(A,b).has(point))
+    {
+        pq.p.flag=0;
+    }
 }
 
 int main( int argc, char** argv )
@@ -232,7 +236,6 @@ int main( int argc, char** argv )
     comma::csv::options csv(options);
 
     offset=options.value("--offset",0.5);
-//    std::string bounds_string=options.value("--bounds",std::string("0,0,0,0,0,0"));
 
     bounds=comma::csv::ascii<Bounds>().get(options.value("--bounds",std::string("0,0,0,0,0,0")));
 
@@ -253,7 +256,7 @@ int main( int argc, char** argv )
         }
     }
 
-    std::vector<std::string> unnamed=options.unnamed("--output-all","--binary,--fields,--offset");
+    std::vector<std::string> unnamed=options.unnamed("--output-all","--binary,--fields,--offset,--bounds");
 
     std::string operation=unnamed[0];
 

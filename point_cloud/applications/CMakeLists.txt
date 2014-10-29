@@ -13,7 +13,7 @@ ADD_EXECUTABLE( points-to-voxel-indices points-to-voxel-indices.cpp )
 
 IF( snark_build_math_geometry )
     ADD_EXECUTABLE( points-grep points-grep.cpp )
-    TARGET_LINK_LIBRARIES( points-grep snark_geometry snark_math ${comma_ALL_LIBRARIES})
+    TARGET_LINK_LIBRARIES( points-grep snark_geometry snark_math ${comma_ALL_LIBRARIES} boost_filesystem)
     INSTALL( TARGETS points-grep RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
 ENDIF( snark_build_math_geometry )
 
