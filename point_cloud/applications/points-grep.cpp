@@ -14,6 +14,11 @@
 #include <snark/math/geometry/polytope.h>
 #include <string>
 
+// todo
+// - naming conventions: snake please, e.g: BoundingPoint -> bounding_point
+// - --help: add examples
+// - --help: --offset: what is it supposed to be?
+
 struct Bounds
 {
     Bounds(): front(0), back(0), right(0), left(0), top(0), bottom(0) {}
@@ -29,7 +34,7 @@ struct BoundingPoint
 {
     BoundingPoint(): x(0), y(0), z(0), roll(0), pitch(0), yaw(0) {}
     boost::posix_time::ptime timestamp;
-    double x;
+    double x; // todo? use Eigen::Vector3d instead of x,y,z?
     double y;
     double z;
     double roll;
@@ -41,7 +46,7 @@ struct Point
 {
     Point(): x(0), y(0), z(0), block(0), id(0), flag(1){}
     boost::posix_time::ptime timestamp;
-    double x;
+    double x; // todo? use Eigen::Vector3d instead of x,y,z?
     double y;
     double z;
     comma::uint32 block;
@@ -51,9 +56,41 @@ struct Point
 
 struct JoinedPoint
 {
-    Point p;
-    BoundingPoint q;
+    Point p; // todo: meaningful name
+    BoundingPoint q; // todo: meaningful name
 };
+
+struct point
+{
+    boost::posix_time::ptime timestamp;
+    Eigen::Vector3d coordinates;
+    comma::uint32 block;
+    comma::uint32 id;
+    comma::uint32 flag;
+};
+
+struct rotation
+{
+    double roll;
+    double pitch;
+    double yaw;
+};
+
+struct bounding_point
+{
+    boost::posix_time::ptime timestamp;
+    Eigen::Vector3d coordinates;
+    ::rotation rotation;
+};
+
+struct joined_point
+{
+    point bounded; // todo: meaningful name
+    bounding_point bounding; // todo: meaningful name
+};
+
+// --fields=bounded/timestamp,bounded/coordinates,bounding
+// --fields=bounded/coordinates/x,bounded/coordinates/y
 
 namespace comma
 {
@@ -142,6 +179,20 @@ namespace comma
                 v.apply( "", p.q );
             }
         };
+        
+        template <> struct traits< joined_point >
+        {
+            template < typename K, typename V > static void visit( const K&, joined_point& p, V& v )
+            {
+                v.apply( "bounded", p.bounded );
+                v.apply( "bounding", p.bounding );
+            }
+            template < typename K, typename V > static void visit( const K&, const joined_point& p, V& v )
+            {
+                v.apply( "bounded", p.bounded );
+                v.apply( "bounding", p.bounding );
+            }
+        };
     }
 }
 
@@ -180,7 +231,10 @@ static void usage()
     std::cerr << "      --offset=<offset> global error offset from object boundaries" << std::endl;
     std::cerr << "      --output-all: output all points" << std::endl;
     std::cerr << std::endl;
-    exit( -1 );
+    std::cerr << "examples" << std::endl;
+    std::cerr << "    cat points.csv | points-grep shape --fields=t,x,y,z,block,id,flag,tt,xx,yy,zz,roll,pitch,yaw" << std::endl;
+    std::cerr << std::endl;
+    exit( 0 );
 }
 
 static double offset;
@@ -234,7 +288,6 @@ int main( int argc, char** argv )
     comma::command_line_options options( argc, argv );
     if( options.exists( "--help" ) || options.exists( "-h" ) || argc == 1 ) { usage(); }
     comma::csv::options csv(options);
-
     offset=options.value("--offset",0.5);
 
     bounds=comma::csv::ascii<Bounds>().get(options.value("--bounds",std::string("0,0,0,0,0,0")));
@@ -284,6 +337,11 @@ int main( int argc, char** argv )
     else if(operation=="shape")
     {
         istream_select.read().add(0);
+    }
+    else
+    {
+        std::cerr << "points-grep: expected operation, got: \"" << operation << "\"" << std::endl;
+        return 1;
     }
 
     comma::signal_flag is_shutdown;
