@@ -32,15 +32,44 @@
 
 /// @author Vsevolod Vlaskine
 
-#include <iostream>
-#include <QApplication>
-#include "./csv_plot/plot.h"
+#include <boost/bind.hpp>
+#include "./reader.h"
 
-int main( int ac, char** av )
+namespace snark { namespace graphics {
+
+reader::reader( comma::csv::options& options, std::size_t size )
+    : options( options )
+    , size( size )
+    , is_shutdown_( false )
+    , is_stdin_( options.filename == "-" )
+    , istream_( options.filename, options.binary() ? comma::io::mode::binary : comma::io::mode::ascii, comma::io::mode::non_blocking )
 {
-    std::cerr << "csv-plot: an empty placeholder, work in progress..." << std::endl;
-    QApplication a( ac, av );
-    snark::graphics::plot p;
-    p.show();
-    return a.exec();
 }
+
+void reader::start()
+{
+    thread_.reset( new boost::thread( boost::bind( &graphics::reader::read, boost::ref( *this ) ) ) );
+}
+
+bool reader::is_shutdown() const { return is_shutdown_; }
+
+bool reader::is_stdin() const { return is_stdin_; }
+
+void reader::shutdown()
+{
+    is_shutdown_ = true;
+    if( thread_ ) { thread_->join(); }
+    if( !is_stdin_ ) { istream_.close(); }
+}
+
+void reader::read()
+{
+    // todo
+    while( !is_shutdown_ && istream_->good() && !istream_->eof() ) // todo: || csv input stream ready
+    {
+        // todo
+    }
+    is_shutdown_ = true;
+}
+
+} } // namespace snark { namespace graphics {

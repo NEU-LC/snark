@@ -32,15 +32,41 @@
 
 /// @author Vsevolod Vlaskine
 
-#include <iostream>
-#include <QApplication>
-#include "./csv_plot/plot.h"
+#ifndef SNARK_GRAPHICS_APPLICATIONS_CSV_PLOT_READER_H_
+#define SNARK_GRAPHICS_APPLICATIONS_CSV_PLOT_READER_H_
 
-int main( int ac, char** av )
+#include <deque>
+#include <boost/scoped_ptr.hpp>
+#include <boost/thread.hpp>
+#include <boost/thread/mutex.hpp>
+#include <Eigen/Core>
+#include <comma/csv/options.h>
+#include <comma/io/stream.h>
+
+namespace snark { namespace graphics {
+
+class reader
 {
-    std::cerr << "csv-plot: an empty placeholder, work in progress..." << std::endl;
-    QApplication a( ac, av );
-    snark::graphics::plot p;
-    p.show();
-    return a.exec();
-}
+    public:
+        reader( comma::csv::options& options, std::size_t size );
+        
+        const comma::csv::options options;
+        const unsigned int size;
+
+        void start();
+        bool is_shutdown() const;
+        bool is_stdin() const;
+        void shutdown();
+        void read();
+
+    protected:
+        bool is_shutdown_;
+        bool is_stdin_;
+        comma::io::istream istream_;
+        boost::scoped_ptr< boost::thread > thread_;
+        mutable boost::mutex mutex_;
+};
+    
+} } // namespace snark { namespace graphics {
+
+#endif // #ifndef SNARK_GRAPHICS_APPLICATIONS_CSV_PLOT_READER_H_
