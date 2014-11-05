@@ -32,44 +32,59 @@
 
 /// @author Vsevolod Vlaskine
 
-#ifndef SNARK_GRAPHICS_APPLICATIONS_CSV_PLOT_READER_H_
-#define SNARK_GRAPHICS_APPLICATIONS_CSV_PLOT_READER_H_
+#ifndef SNARK_GRAPHICS_APPLICATIONS_CSV_PLOT_TRAITS_H_
+#define SNARK_GRAPHICS_APPLICATIONS_CSV_PLOT_TRAITS_H_
 
-#include <deque>
-#include <boost/scoped_ptr.hpp>
-#include <boost/thread.hpp>
-#include <Eigen/Core>
-#include <comma/csv/options.h>
-#include <comma/csv/stream.h>
-#include <comma/io/stream.h>
-#include <comma/sync/synchronized.h>
+#include <snark/visiting/eigen.h>
 #include "./point.h"
-#include "./traits.h"
 
-namespace snark { namespace graphics { namespace plotting {
+namespace comma { namespace visiting {
 
-class reader
+template <> struct traits< QColor4ub >
 {
-    public:
-        typedef std::deque< graphics::plotting::point > points_t;
-        comma::synchronized< points_t > points; // quick and dirty
-        const comma::csv::options csv;
-        
-        reader( const comma::csv::options& csv );
-        void start();
-        bool is_shutdown() const;
-        bool is_stdin() const;
-        void shutdown();
-        void read();
+    template< typename K, typename V > static void visit( const K&, QColor4ub& t, V& v )
+    {
+        int a;
+        a = t.red();
+        v.apply( "r", a );
+        t.setRed( a );
+        a = t.green();
+        v.apply( "g", a );
+        t.setGreen( a );
+        a = t.blue();
+        v.apply( "b", a );
+        t.setBlue( a );
+        a = t.alpha();
+        v.apply( "a", a );
+        t.setAlpha( a );
+    }
 
-    protected:
-        bool is_shutdown_;
-        bool is_stdin_;
-        comma::io::istream is_;
-        comma::csv::input_stream< graphics::plotting::point > istream_;
-        boost::scoped_ptr< boost::thread > thread_;
+    template< typename K, typename V > static void visit( const K&, const QColor4ub& t, V& v )
+    {
+        v.apply( "r", t.red() );
+        v.apply( "g", t.green() );
+        v.apply( "b", t.blue() );
+        v.apply( "a", t.alpha() );
+    }
 };
     
-} } } // namespace snark { namespace graphics { namespace plotting {
+template <> struct traits< snark::graphics::plotting::point >
+{
+    template< typename K, typename V > static void visit( const K&, snark::graphics::plotting::point& t, V& v )
+    {
+        v.apply( "coordinates", t.coordinates );
+        v.apply( "color", t.color );
+        v.apply( "block", t.block );
+    }
 
-#endif // #ifndef SNARK_GRAPHICS_APPLICATIONS_CSV_PLOT_READER_H_
+    template< typename K, typename V > static void visit( const K&, const snark::graphics::plotting::point& t, V& v )
+    {
+        v.apply( "coordinates", t.coordinates );
+        v.apply( "color", t.color );
+        v.apply( "block", t.block );
+    }
+};
+
+} } // namespace comma { namespace visiting {
+
+#endif // #ifndef SNARK_GRAPHICS_APPLICATIONS_CSV_PLOT_TRAITS_H_

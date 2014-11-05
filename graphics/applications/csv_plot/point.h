@@ -32,44 +32,22 @@
 
 /// @author Vsevolod Vlaskine
 
-#ifndef SNARK_GRAPHICS_APPLICATIONS_CSV_PLOT_READER_H_
-#define SNARK_GRAPHICS_APPLICATIONS_CSV_PLOT_READER_H_
+#ifndef SNARK_GRAPHICS_APPLICATIONS_CSV_PLOT_POINT_H_
+#define SNARK_GRAPHICS_APPLICATIONS_CSV_PLOT_POINT_H_
 
-#include <deque>
-#include <boost/scoped_ptr.hpp>
-#include <boost/thread.hpp>
 #include <Eigen/Core>
-#include <comma/csv/options.h>
-#include <comma/csv/stream.h>
-#include <comma/io/stream.h>
-#include <comma/sync/synchronized.h>
-#include "./point.h"
-#include "./traits.h"
+#include <Qt3D/qcolor4ub.h>
+#include <comma/base/types.h>
 
 namespace snark { namespace graphics { namespace plotting {
 
-class reader
+struct point
 {
-    public:
-        typedef std::deque< graphics::plotting::point > points_t;
-        comma::synchronized< points_t > points; // quick and dirty
-        const comma::csv::options csv;
-        
-        reader( const comma::csv::options& csv );
-        void start();
-        bool is_shutdown() const;
-        bool is_stdin() const;
-        void shutdown();
-        void read();
-
-    protected:
-        bool is_shutdown_;
-        bool is_stdin_;
-        comma::io::istream is_;
-        comma::csv::input_stream< graphics::plotting::point > istream_;
-        boost::scoped_ptr< boost::thread > thread_;
+    Eigen::Vector2d coordinates;
+    QColor4ub color;
+    comma::uint32 block;
 };
     
 } } } // namespace snark { namespace graphics { namespace plotting {
 
-#endif // #ifndef SNARK_GRAPHICS_APPLICATIONS_CSV_PLOT_READER_H_
+#endif // #ifndef SNARK_GRAPHICS_APPLICATIONS_CSV_PLOT_POINT_H_

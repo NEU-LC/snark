@@ -35,20 +35,20 @@
 #include <boost/bind.hpp>
 #include "./reader.h"
 
-namespace snark { namespace graphics {
+namespace snark { namespace graphics { namespace plotting {
 
-reader::reader( comma::csv::options& options, std::size_t size )
-    : options( options )
-    , size( size )
+reader::reader( const comma::csv::options& csv)
+    : csv( csv )
     , is_shutdown_( false )
-    , is_stdin_( options.filename == "-" )
-    , istream_( options.filename, options.binary() ? comma::io::mode::binary : comma::io::mode::ascii, comma::io::mode::non_blocking )
+    , is_stdin_( csv.filename == "-" )
+    , is_( csv.filename, csv.binary() ? comma::io::mode::binary : comma::io::mode::ascii, comma::io::mode::non_blocking )
+    , istream_( *is_, csv )
 {
 }
 
 void reader::start()
 {
-    thread_.reset( new boost::thread( boost::bind( &graphics::reader::read, boost::ref( *this ) ) ) );
+    thread_.reset( new boost::thread( boost::bind( &graphics::plotting::reader::read, boost::ref( *this ) ) ) );
 }
 
 bool reader::is_shutdown() const { return is_shutdown_; }
@@ -59,17 +59,18 @@ void reader::shutdown()
 {
     is_shutdown_ = true;
     if( thread_ ) { thread_->join(); }
-    if( !is_stdin_ ) { istream_.close(); }
+    if( !is_stdin_ ) { is_.close(); }
 }
 
 void reader::read()
 {
-    // todo
-    while( !is_shutdown_ && istream_->good() && !istream_->eof() ) // todo: || csv input stream ready
+    while( !is_shutdown_ && ( istream_.ready() || ( is_->good() && !is_->eof() ) ) )
     {
-        // todo
+        const point* p = istream_.read();
+        if( !p ) { break; }
+        comma::synchronized< points_t >::scoped_transaction( points )->push_back( *p );
     }
     is_shutdown_ = true;
 }
 
-} } // namespace snark { namespace graphics {
+} } } // namespace snark { namespace graphics { namespace plotting {

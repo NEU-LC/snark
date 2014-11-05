@@ -34,13 +34,57 @@
 
 #include <iostream>
 #include <QApplication>
+#include <boost/shared_ptr.hpp>
+#include <comma/application/command_line_options.h>
+//#include <comma/application/signal_flag.h>
+#include <comma/csv/options.h>
+#include <comma/name_value/parser.h>
 #include "./csv_plot/plot.h"
+
+static void usage( bool verbose = false )
+{
+    std::cerr << "plot points from csv files or streams" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "usage: cat xy.csv | csv-plot [<sources>] [<options>]" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "sources: input sources" << std::endl;
+    std::cerr << "    todo" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "options" << std::endl;
+    std::cerr << "    --no-stdin: no input on stdin; otherwise it is impossible to detect whether to expect anything on stdin" << std::endl;
+    std::cerr << "    todo" << std::endl;
+    if( verbose ) { std::cerr << std::endl << comma::csv::options::usage() << std::endl; }
+    std::cerr << std::endl;
+    if( verbose )
+    {
+        std::cerr << "examples" << std::endl;
+        std::cerr << "    todo" << std::endl;
+    }
+    else
+    {
+        std::cerr << "examples: use --help --verbose..." << std::endl;
+    }
+    std::cerr << std::endl;
+    exit( 0 );
+}
+
+snark::graphics::plotting::reader* make_reader( const std::string& s, const comma::csv::options& csv )
+{
+    return NULL; // todo
+}
 
 int main( int ac, char** av )
 {
-    std::cerr << "csv-plot: an empty placeholder, work in progress..." << std::endl;
+    comma::command_line_options options( ac, av, usage );
+    comma::csv::options csv;
     QApplication a( ac, av );
-    snark::graphics::plot p;
-    p.show();
+    const std::vector< std::string >& unnamed = options.unnamed( "--no-stdin,--verbose,-v", "-.*" );
+    boost::optional< unsigned int > stdin_index;
+    for( unsigned int i = 0; i < unnamed.size(); ++i ) { if( unnamed[i].substr( 0, 2 ) == "-;" ) { stdin_index = i; break; } }
+    snark::graphics::plotting::plot plot;
+    if( options.exists( "--no-stdin" ) && stdin_index ) { std::cerr << "csv-plot: due to --no-stdin, expected no stdin options; got: \"" << unnamed[ *stdin_index ] << "\"" << std::endl; return 1; }
+    else if( !stdin_index ) { csv.filename = "-"; plot.push_back( new snark::graphics::plotting::reader( csv ) ); }
+    for( unsigned int i = 0; i < unnamed.size(); ++i ) { plot.push_back( new snark::graphics::plotting::reader( comma::name_value::parser( ',' ).get( unnamed[i], csv ) ) ); }
+    plot.show();
     return a.exec();
 }
