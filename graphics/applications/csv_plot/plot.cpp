@@ -39,7 +39,7 @@ namespace snark { namespace graphics { namespace plotting {
 plot::plot( QWidget *parent, char *name ) : QwtPlot( parent )
 {
     // Show a title
-    setTitle( "This is an Example" );
+    setTitle( "this is an example" );
 
 //     // Show a legend at the bottom
 //     setAutoLegend( true );
@@ -79,19 +79,10 @@ plot::plot( QWidget *parent, char *name ) : QwtPlot( parent )
     replot();
 }
 
-void plot::push_back( reader* r )
-{
-    readers_.push_back( r );
-}
+void plot::push_back( reader* r ) { readers_.push_back( r ); }
 
-void plot::start()
-{
-    // todo
-}
+void plot::start() { for( unsigned int i = 0; i < readers_.size(); ++i ) { readers_[i].start(); } }
 
-void plot::shutdown()
-{
-    // todo
-}
-    
+void plot::shutdown() { for( unsigned int i = 0; i < readers_.size(); ++i ) { readers_[i].shutdown(); } }
+
 } } } // namespace snark { namespace graphics { namespace plotting {

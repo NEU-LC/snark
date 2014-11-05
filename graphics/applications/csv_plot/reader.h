@@ -51,11 +51,17 @@ namespace snark { namespace graphics { namespace plotting {
 class reader
 {
     public:
+        struct config // todo: traits, reader constructor, etc
+        {
+            comma::csv::options options;
+            std::string color;
+        };
+        
         typedef std::deque< graphics::plotting::point > points_t;
         comma::synchronized< points_t > points; // quick and dirty
         const comma::csv::options csv;
         
-        reader( const comma::csv::options& csv );
+        reader( const comma::csv::options& csv ); // todo: pass colour?
         void start();
         bool is_shutdown() const;
         bool is_stdin() const;
