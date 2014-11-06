@@ -38,6 +38,8 @@
 #include <deque>
 #include <boost/scoped_ptr.hpp>
 #include <boost/thread.hpp>
+#include <QColor>
+#include <qwt/qwt_plot_curve.h>
 #include <Eigen/Core>
 #include <comma/application/command_line_options.h>
 #include <comma/csv/options.h>
@@ -55,8 +57,8 @@ class stream
         {
             comma::csv::options csv;
             boost::optional< comma::uint32 > size;
-            std::string color;
-            // convert colour on construction or visiting 
+            std::string color_name;
+            QColor color;
             
             config_t() {}
             config_t( const comma::command_line_options& options );
@@ -65,6 +67,7 @@ class stream
         const config_t config;
         typedef std::deque< graphics::plotting::point > points_t;
         comma::synchronized< points_t > points; // quick and dirty
+        QwtPlotCurve curve;
         
         stream( const config_t& csv );
         void start();

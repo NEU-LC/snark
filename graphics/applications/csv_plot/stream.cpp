@@ -41,27 +41,24 @@ namespace snark { namespace graphics { namespace plotting {
 stream::config_t::config_t( const comma::command_line_options& options )
     : csv( options )
     , size( options.optional< comma::uint32 >( "--size,-s" ) )
-    , color( options.value< std::string >( "--color,--colour", "" ) )
+    , color_name( options.value< std::string >( "--color,--colour", "" ) )
 {
-    if( !color.empty() )
-    {
-    }
+    if( !color_name.empty() ) { color = QColor( &color_name[0] ); }
 }
-    
+
 stream::stream( const stream::config_t& config )
     : config( config )
+    , curve( &config.csv.filename[0] )
     , is_shutdown_( false )
     , is_stdin_( config.csv.filename == "-" )
     , is_( config.csv.filename, config.csv.binary() ? comma::io::mode::binary : comma::io::mode::ascii, comma::io::mode::non_blocking )
     , istream_( *is_, config.csv )
     , has_x_( config.csv.fields.empty() || config.csv.has_field( "x" ) )
 {
+    // todo: curve: set data?
 }
 
-void stream::start()
-{
-    thread_.reset( new boost::thread( boost::bind( &graphics::plotting::stream::read, boost::ref( *this ) ) ) );
-}
+void stream::start() { thread_.reset( new boost::thread( boost::bind( &graphics::plotting::stream::read, boost::ref( *this ) ) ) ); }
 
 bool stream::is_shutdown() const { return is_shutdown_; }
 
