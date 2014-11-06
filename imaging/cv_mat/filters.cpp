@@ -189,9 +189,9 @@ static filters::value_type crop_tile_impl_( filters::value_type input, unsigned 
     {
         unsigned int x = tiles[i].first * w;
         unsigned int y = tiles[i].second * h;
-        cv::Rect tile_rect_in_input = cv::Rect( x, y, w, h );
-        cv::Rect tile_rect_in_output = cv::Rect( vertical ? 0 : i*w, vertical ? i*h: 0, w, h );
-        cv::Mat( input.second, tile_rect_in_input ).copyTo( cv::Mat( output.second,  tile_rect_in_output ) );
+        cv::Mat to( output.second,  cv::Rect( vertical ? 0 : i*w, vertical ? i*h: 0, w, h ) );
+        cv::Mat( input.second, cv::Rect( x, y, w, h ) ).copyTo( to );
+        //cv::Mat( input.second, tile_rect_in_input ).copyTo( cv::Mat( output.second,  tile_rect_in_output ) );
     }
     return output;
 }
