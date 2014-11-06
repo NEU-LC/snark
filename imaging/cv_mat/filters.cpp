@@ -177,16 +177,23 @@ static filters::value_type crop_impl_( filters::value_type m, unsigned int x, un
     return filters::value_type( m.first, cv::Mat( m.second, cv::Rect( x, y, w, h ) ) );
 }
 
-static filters::value_type crop_tile_impl_( filters::value_type m, unsigned int x, unsigned int y, unsigned int w, unsigned int h )
+typedef std::pair< unsigned int, unsigned int > tile_t;
+
+static filters::value_type crop_tile_impl_( filters::value_type input, unsigned int number_of_tile_cols, unsigned int number_of_tile_rows, const std::vector< tile_t >& tiles, bool vertical )
 {
-    unsigned int tile_width = m.second.cols / w;
-    unsigned int tile_height = m.second.rows / h;
-    unsigned int crop_x = x * tile_width;
-    unsigned int crop_y = y * tile_height;
-    filters::value_type n;
-    n.first = m.first;
-    cv::Mat( m.second, cv::Rect( crop_x, crop_y, tile_width, tile_height ) ).copyTo( n.second );
-    return n;
+    unsigned int w = input.second.cols / number_of_tile_cols;
+    unsigned int h = input.second.rows / number_of_tile_rows;
+    unsigned int s = tiles.size();
+    filters::value_type output( input.first, cv::Mat( vertical ? h*s : h, vertical ? w : w*s, input.second.type() ) );
+    for( std::size_t i = 0; i < tiles.size(); ++i)
+    {
+        unsigned int x = tiles[i].first * w;
+        unsigned int y = tiles[i].second * h;
+        cv::Rect tile_rect_in_input = cv::Rect( x, y, w, h );
+        cv::Rect tile_rect_in_output = cv::Rect( vertical ? 0 : i*w, vertical ? i*h: 0, w, h );
+        cv::Mat( input.second, tile_rect_in_input ).copyTo( cv::Mat( output.second,  tile_rect_in_output ) );
+    }
+    return output;
 }
 
 static filters::value_type convert_to_impl_( filters::value_type m, int type, double scale, double offset )
@@ -464,10 +471,7 @@ class map_impl_
             comma::csv::options csv_options = comma::name_value::parser( "filename", '&' , '=' ).get< comma::csv::options >( map_filter_options );
             std::string default_csv_fields = "value";
             bool no_key_field = true;
-            if( csv_options.fields.empty() )
-            {
-                csv_options.fields = default_csv_fields;
-            }
+            if( csv_options.fields.empty() ) { csv_options.fields = default_csv_fields; }
             else
             {
                 if( !csv_options.has_field( "value" ) ) { COMMA_THROW( comma::exception, "map filter: fields option is given but \"value\" field is not found" ); }
@@ -520,10 +524,7 @@ class map_impl_
                 {
                     key_type key = input.at< input_value_type >(i,j);
                     map_t_::const_iterator it = map_.find( key );
-                    if( it != map_.end() )
-                    {
-                        output.at< output_value_type >(i,j) = map_.at( key );
-                    }
+                    if( it != map_.end() ) { output.at< output_value_type >(i,j) = map_.at( key ); }
                     else
                     {
                         if( permissive_ ) { output.at< output_value_type >(i,j) = key; } 
@@ -685,13 +686,34 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
         }
         else if( e[0] == "crop-tile" )
         {
-            unsigned int x, y, w, h;
-            std::vector< std::string > s = comma::split( e[1], ',' );
-            x = boost::lexical_cast< unsigned int >( s[0] );
-            y = boost::lexical_cast< unsigned int >( s[1] );
-            w = boost::lexical_cast< unsigned int >( s[2] );
-            h = boost::lexical_cast< unsigned int >( s[3] );
-            f.push_back( filter( boost::bind( &crop_tile_impl_, _1, x, y, w, h ) ) );
+            if( e.size() < 2 ) { COMMA_THROW( comma::exception, "crop-tile: specify number of tiles along x and y, and at least one tile, e.g. crop-tile=1,1,0,0" ); }
+            std::vector< std::string > items = comma::split( e[1], '&' );
+            bool vertical = std::find( items.begin()+1, items.end(), "horizontal" ) == items.end();
+            std::vector< std::string > s = comma::split( items[0], ',' );
+            if( s.size() < 4 ) { COMMA_THROW( comma::exception, "crop-tile: expected number of tiles along x and y, and at least one tile, got " << e[1] ); }
+            if( s.size()%2 != 0 ) { COMMA_THROW( comma::exception, "crop-tile: expected number of tiles along x and y, followed by pairs of integers representing tiles, got " << e[1] ); }
+            std::vector< unsigned int > v( s.size() );
+            for( std::size_t i=0; i < s.size(); ++i ) { v[i] = boost::lexical_cast< unsigned int >( s[i] ); }
+            unsigned int number_of_tile_cols, number_of_tile_rows;
+            std::vector< tile_t > tiles;
+            if( v.size() == 4 && v[0] < v[2] && v[1] < v[3]) // for backward compatibility only
+            {
+                number_of_tile_cols = v[2];
+                number_of_tile_rows = v[3];
+                tiles.push_back( tile_t( v[0], v[1] ) );
+            }
+            else
+            {
+                number_of_tile_cols = v[0];
+                number_of_tile_rows = v[1];
+                for( std::size_t i=2; i < v.size()-1; i+=2 )
+                { 
+                    if( v[i] >= number_of_tile_cols || v[i+1] >= number_of_tile_rows ) { COMMA_THROW( comma::exception, "crop-tile: encountered an invalid tile " << v[i] << "," << v[i+1] ); }
+                    tiles.push_back( tile_t( v[i], v[i+1] ) ); 
+                }
+            }
+            if( number_of_tile_cols == 0 || number_of_tile_rows == 0 ) { COMMA_THROW( comma::exception, "crop-tile: expected positive number of tiles along x and y, got " << number_of_tile_cols << "," << number_of_tile_rows ); }
+            f.push_back( filter( boost::bind( &crop_tile_impl_, _1, number_of_tile_cols, number_of_tile_rows, tiles, vertical ) ) );
         }
         else if( e[0] == "cross" )
         {
@@ -903,7 +925,10 @@ static std::string usage_impl_()
     oss << "        convert-to,convert_to=<type>[,<scale>[,<offset>]]: convert to given type; should be the same number of channels; see opencv convertTo for details" << std::endl;
     oss << "        count: write frame number on images" << std::endl;
     oss << "        crop=[<x>,<y>],<width>,<height>: crop the portion of the image starting at x,y with size width x height" << std::endl;
-    oss << "        crop-tile=[<x>,<y>],<num-tile-x>,<num-tile-y>: divide the image in num-tile-x x num-tile-y tiles, and crop the tile x,y (count from zero)" << std::endl;
+    oss << "        crop-tile=<ncols>,<nrows>,<i>,<j>,...[&horizontal]: divide the image into a grid of tiles (ncols-by-nrows), and output an image made of the croped tiles defined by i,j (count from zero)" << std::endl;
+    oss << "            <horizontal>: if present, tiles will be stacked horizontally (by default, vertical stacking is used)" << std::endl;
+    oss << "            example: \"crop-tile=2,5,1,0,1,4&horizontal\"" << std::endl;
+    oss << "            deprecated: old syntax <i>,<j>,<ncols>,<nrows> is used for one tile if i < ncols and j < ncols" << std::endl;
     oss << "        cross[=<x>,<y>]: draw cross-hair at x,y; default: at image center" << std::endl;
     oss << "        encode=<format>: encode images to the specified format. <format>: jpg|ppm|png|tiff..., make sure to use --no-header" << std::endl;
     oss << "        fft[=<options>]: do fft on a floating point image" << std::endl;
