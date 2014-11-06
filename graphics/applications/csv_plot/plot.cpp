@@ -32,56 +32,39 @@
 
 /// @author Vsevolod Vlaskine
 
+#include <QTimer>
 #include "./plot.h"
 
 namespace snark { namespace graphics { namespace plotting {
 
-plot::plot( QWidget *parent, char *name ) : QwtPlot( parent )
+plot::plot( unsigned int fps, QWidget *parent, char *name ) : QwtPlot( parent ), fps_( fps ), alive_( true ) {}
+
+void plot::start()
 {
-    // Show a title
-    setTitle( "this is an example" );
-
-//     // Show a legend at the bottom
-//     setAutoLegend( true );
-//     setLegendPos( Qwt::Bottom );
-// 
-//     // Show the axes
-//     setAxisTitle( xBottom, "x" );
-//     setAxisTitle( yLeft, "y" );
-// 
-//     // Insert two curves and get IDs for them
-//     long cSin = insertCurve( "y = sin(x)" );
-//     long cSign = insertCurve( "y = sign(sin(x))" );
-// 
-//     // Calculate the data, 500 points each
-//     const int points = 500;
-//     double x[ points ];
-//     double sn[ points ];
-//     double sg[ points ];
-// 
-//     for( int i=0; i<points; i++ )
-//     {
-//       x[i] = (3.0*3.14/double(points))*double(i);
-//     
-//       sn[i] = 2.0*sin( x[i] );
-//       sg[i] = (sn[i]>0)?1:((sn[i]<0)?-1:0);
-//     }
-// 
-//     // Copy the data to the plot
-//     setCurveData( cSin, x, sn, points );
-//     setCurveData( cSign, x, sg, points );
-// 
-//     // Set the style of the curves
-//     setCurvePen( cSin, QPen( blue ) );
-//     setCurvePen( cSign, QPen( green, 3 ) );
-
-    // Show the plots
-    replot();
+    for( unsigned int i = 0; i < streams_.size(); ++i ) { streams_[i].start(); }
+    QTimer* timer = new QTimer( this );
+    timer->start( 1000 / fps_ );
+    connect( timer, SIGNAL( timeout() ), this, SLOT( update() ) );
 }
 
-void plot::push_back( stream* r ) { streams_.push_back( r ); }
+void plot::update()
+{
+    if( !alive_ ) { return; }
+    bool updated = false;
+    for( unsigned int i = 0; i < streams_.size(); ++i )
+    {
+        if( streams_[i].is_shutdown() ) { continue; }
+        alive_ = true;
+        // todo: read queue, if updated, set updated to true
+    }
+    if( updated ) { replot(); }
+}
 
-void plot::start() { for( unsigned int i = 0; i < streams_.size(); ++i ) { streams_[i].start(); } }
+void plot::push_back( stream* s )
+{
+    s->curve.attach( this );
+    streams_.push_back( s );
+}
 
 void plot::shutdown() { for( unsigned int i = 0; i < streams_.size(); ++i ) { streams_[i].shutdown(); } }
 

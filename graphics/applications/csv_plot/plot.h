@@ -43,14 +43,20 @@ namespace snark { namespace graphics { namespace plotting {
     
 class plot : public QwtPlot
 {
+    Q_OBJECT
     public:
-        plot( QWidget* parent = NULL, char* name = NULL );
+        plot( unsigned int fps, QWidget* parent = NULL, char* name = NULL );
         void push_back( stream* r );
         void start();
         void shutdown();
         
     private:
         boost::ptr_vector< stream > streams_;
+        unsigned int fps_;
+        bool alive_;
+        
+    private slots:
+        void update();
 };
     
 } } } // namespace snark { namespace graphics { namespace plotting {
