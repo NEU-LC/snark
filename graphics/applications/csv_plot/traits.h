@@ -41,9 +41,9 @@
 
 namespace comma { namespace visiting {
 
-template <> struct traits< QColor4ub >
+template <> struct traits< QColor >
 {
-    template< typename K, typename V > static void visit( const K&, QColor4ub& t, V& v )
+    template< typename K, typename V > static void visit( const K&, QColor& t, V& v )
     {
         int a;
         a = t.red();
@@ -60,7 +60,7 @@ template <> struct traits< QColor4ub >
         t.setAlpha( a );
     }
 
-    template< typename K, typename V > static void visit( const K&, const QColor4ub& t, V& v )
+    template< typename K, typename V > static void visit( const K&, const QColor& t, V& v )
     {
         v.apply( "r", t.red() );
         v.apply( "g", t.green() );

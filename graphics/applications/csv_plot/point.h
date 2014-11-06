@@ -36,7 +36,7 @@
 #define SNARK_GRAPHICS_APPLICATIONS_CSV_PLOT_POINT_H_
 
 #include <Eigen/Core>
-#include <Qt3D/qcolor4ub.h>
+#include <QColor>
 #include <comma/base/types.h>
 
 namespace snark { namespace graphics { namespace plotting {
@@ -44,7 +44,7 @@ namespace snark { namespace graphics { namespace plotting {
 struct point
 {
     Eigen::Vector2d coordinates;
-    QColor4ub color;
+    QColor color;
     comma::uint32 block;
 };
     
