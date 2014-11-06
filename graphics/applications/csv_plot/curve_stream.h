@@ -32,62 +32,25 @@
 
 /// @author Vsevolod Vlaskine
 
-#ifndef SNARK_GRAPHICS_APPLICATIONS_CSV_PLOT_STREAM_H_
-#define SNARK_GRAPHICS_APPLICATIONS_CSV_PLOT_STREAM_H_
+#ifndef SNARK_GRAPHICS_APPLICATIONS_CSV_PLOT_CURVE_STREAM_H_
+#define SNARK_GRAPHICS_APPLICATIONS_CSV_PLOT_CURVE_STREAM_H_
 
-#include <deque>
-#include <boost/scoped_ptr.hpp>
-#include <boost/thread.hpp>
-#include <QColor>
-#include <Eigen/Core>
-#include <comma/application/command_line_options.h>
-#include <comma/csv/options.h>
-#include <comma/csv/stream.h>
-#include <comma/io/stream.h>
-#include <comma/sync/synchronized.h>
-#include "./point.h"
+#include <qwt/qwt_plot_curve.h>
+#include "./stream.h"
 
 class QwtPlot;
 
 namespace snark { namespace graphics { namespace plotting {
 
-class stream
+struct curve_stream : public stream
 {
-    public:
-        struct config_t
-        {
-            comma::csv::options csv;
-            boost::optional< comma::uint32 > size;
-            std::string color_name;
-            QColor color;
-            
-            config_t() {}
-            config_t( const comma::command_line_options& options );
-        };
-        
-        const config_t config;
-        typedef std::deque< graphics::plotting::point > points_t;
-        comma::synchronized< points_t > points; // quick and dirty
-        
-        stream( const config_t& config );
-        void start();
-        bool is_shutdown() const;
-        bool is_stdin() const;
-        void shutdown();
-        virtual void attach( QwtPlot* p ) = 0;
-
-    protected:
-        bool is_shutdown_;
-        bool is_stdin_;
-        comma::io::istream is_;
-        comma::csv::input_stream< graphics::plotting::point > istream_;
-        boost::scoped_ptr< boost::thread > thread_;
-        comma::uint64 count_;
-        bool has_x_;
-        void start_reading_();
-        void read_();
+    QwtPlotCurve curve;
+    
+    curve_stream( const config_t& config );
+    
+    void attach( QwtPlot* p );
 };
     
 } } } // namespace snark { namespace graphics { namespace plotting {
 
-#endif // #ifndef SNARK_GRAPHICS_APPLICATIONS_CSV_PLOT_STREAM_H_
+#endif // #ifndef SNARK_GRAPHICS_APPLICATIONS_CSV_PLOT_CURVE_STREAM_H_

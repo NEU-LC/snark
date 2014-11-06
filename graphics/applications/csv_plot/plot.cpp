@@ -62,7 +62,7 @@ void plot::update()
 
 void plot::push_back( stream* s )
 {
-    s->curve.attach( this );
+    s->attach( this );
     streams_.push_back( s );
 }
 
