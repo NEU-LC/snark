@@ -37,7 +37,7 @@
 
 #include <qwt/qwt_plot.h>
 #include <boost/ptr_container/ptr_vector.hpp>
-#include "./reader.h"
+#include "./stream.h"
 
 namespace snark { namespace graphics { namespace plotting {
     
@@ -45,12 +45,12 @@ class plot : public QwtPlot
 {
     public:
         plot( QWidget* parent = NULL, char* name = NULL );
-        void push_back( reader* r );
+        void push_back( stream* r );
         void start();
         void shutdown();
         
     private:
-        boost::ptr_vector< reader > readers_;
+        boost::ptr_vector< stream > streams_;
 };
     
 } } } // namespace snark { namespace graphics { namespace plotting {

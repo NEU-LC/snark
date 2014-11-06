@@ -32,50 +32,60 @@
 
 /// @author Vsevolod Vlaskine
 
-#ifndef SNARK_GRAPHICS_APPLICATIONS_CSV_PLOT_READER_H_
-#define SNARK_GRAPHICS_APPLICATIONS_CSV_PLOT_READER_H_
-
-#include <deque>
-#include <boost/scoped_ptr.hpp>
-#include <boost/thread.hpp>
-#include <Eigen/Core>
-#include <comma/csv/options.h>
-#include <comma/csv/stream.h>
-#include <comma/io/stream.h>
-#include <comma/sync/synchronized.h>
-#include "./point.h"
+#include <boost/bind.hpp>
+#include "./stream.h"
 #include "./traits.h"
 
 namespace snark { namespace graphics { namespace plotting {
 
-class reader
+stream::config_t::config_t( const comma::command_line_options& options )
+    : csv( options )
+    , size( options.optional< comma::uint32 >( "--size,-s" ) )
+    , color( options.value< std::string >( "--color,--colour", "" ) )
 {
-    public:
-        struct config // todo: traits, reader constructor, etc
-        {
-            comma::csv::options options;
-            std::string color;
-        };
-        
-        typedef std::deque< graphics::plotting::point > points_t;
-        comma::synchronized< points_t > points; // quick and dirty
-        const comma::csv::options csv;
-        
-        reader( const comma::csv::options& csv ); // todo: pass colour?
-        void start();
-        bool is_shutdown() const;
-        bool is_stdin() const;
-        void shutdown();
-        void read();
-
-    protected:
-        bool is_shutdown_;
-        bool is_stdin_;
-        comma::io::istream is_;
-        comma::csv::input_stream< graphics::plotting::point > istream_;
-        boost::scoped_ptr< boost::thread > thread_;
-};
+    if( !color.empty() )
+    {
+    }
+}
     
-} } } // namespace snark { namespace graphics { namespace plotting {
+stream::stream( const stream::config_t& config )
+    : config( config )
+    , is_shutdown_( false )
+    , is_stdin_( config.csv.filename == "-" )
+    , is_( config.csv.filename, config.csv.binary() ? comma::io::mode::binary : comma::io::mode::ascii, comma::io::mode::non_blocking )
+    , istream_( *is_, config.csv )
+    , has_x_( config.csv.fields.empty() || config.csv.has_field( "x" ) )
+{
+}
 
-#endif // #ifndef SNARK_GRAPHICS_APPLICATIONS_CSV_PLOT_READER_H_
+void stream::start()
+{
+    thread_.reset( new boost::thread( boost::bind( &graphics::plotting::stream::read, boost::ref( *this ) ) ) );
+}
+
+bool stream::is_shutdown() const { return is_shutdown_; }
+
+bool stream::is_stdin() const { return is_stdin_; }
+
+void stream::shutdown()
+{
+    is_shutdown_ = true;
+    if( thread_ ) { thread_->join(); }
+    if( !is_stdin_ ) { is_.close(); }
+}
+
+void stream::read()
+{
+    while( !is_shutdown_ && ( istream_.ready() || ( is_->good() && !is_->eof() ) ) )
+    {
+        const point* p = istream_.read();
+        if( !p ) { break; }
+        point q = *p;
+        if( !has_x_ ) { q.coordinates.x() = count_; }
+        ++count_;
+        comma::synchronized< points_t >::scoped_transaction( points )->push_back( q );
+    }
+    is_shutdown_ = true;
+}
+
+} } } // namespace snark { namespace graphics { namespace plotting {

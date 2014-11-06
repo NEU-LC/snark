@@ -39,6 +39,7 @@
 #include <comma/csv/options.h>
 #include <comma/name_value/parser.h>
 #include "./csv_plot/plot.h"
+#include "./csv_plot/traits.h"
 
 #include <QApplication>
 
@@ -69,7 +70,7 @@ static void usage( bool verbose = false )
     exit( 0 );
 }
 
-snark::graphics::plotting::reader* make_reader( const std::string& s, const comma::csv::options& csv )
+snark::graphics::plotting::stream* make_stream( const std::string& s, const comma::csv::options& csv )
 {
     return NULL; // todo
 }
@@ -77,15 +78,15 @@ snark::graphics::plotting::reader* make_reader( const std::string& s, const comm
 int main( int ac, char** av )
 {
     comma::command_line_options options( ac, av, usage );
-    comma::csv::options csv;
+    snark::graphics::plotting::stream::config_t config( options );
     QApplication a( ac, av );
     const std::vector< std::string >& unnamed = options.unnamed( "--no-stdin,--verbose,-v", "-.*" );
     boost::optional< unsigned int > stdin_index;
     for( unsigned int i = 0; i < unnamed.size(); ++i ) { if( unnamed[i].substr( 0, 2 ) == "-;" ) { stdin_index = i; break; } }
     snark::graphics::plotting::plot plot;
     if( options.exists( "--no-stdin" ) && stdin_index ) { std::cerr << "csv-plot: due to --no-stdin, expected no stdin options; got: \"" << unnamed[ *stdin_index ] << "\"" << std::endl; return 1; }
-    else if( !stdin_index ) { csv.filename = "-"; plot.push_back( new snark::graphics::plotting::reader( csv ) ); }
-    for( unsigned int i = 0; i < unnamed.size(); ++i ) { plot.push_back( new snark::graphics::plotting::reader( comma::name_value::parser( ',' ).get( unnamed[i], csv ) ) ); }
+    else if( !stdin_index ) { config.csv.filename = "-"; plot.push_back( new snark::graphics::plotting::stream( config ) ); }
+    for( unsigned int i = 0; i < unnamed.size(); ++i ) { plot.push_back( new snark::graphics::plotting::stream( comma::name_value::parser( ',' ).get( unnamed[i], config ) ) ); }
     plot.show(); // todo: plot should be in main_window class
     return a.exec();
 }

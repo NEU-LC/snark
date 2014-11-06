@@ -37,6 +37,7 @@
 
 #include <snark/visiting/eigen.h>
 #include "./point.h"
+#include "./stream.h"
 
 namespace comma { namespace visiting {
 
@@ -82,6 +83,25 @@ template <> struct traits< snark::graphics::plotting::point >
         v.apply( "coordinates", t.coordinates );
         v.apply( "color", t.color );
         v.apply( "block", t.block );
+    }
+};
+
+template <> struct traits< snark::graphics::plotting::stream::config_t >
+{
+    template< typename K, typename V > static void visit( const K&, snark::graphics::plotting::stream::config_t& t, V& v )
+    {
+        v.apply( "csv", t.csv );
+        v.apply( "size", t.size );
+        v.apply( "color", t.color );
+        // todo: set colour
+    }
+
+    template< typename K, typename V > static void visit( const K&, const snark::graphics::plotting::stream::config_t& t, V& v )
+    {
+        v.apply( "csv", t.csv );
+        v.apply( "size", t.size );
+        v.apply( "color", t.color );
+        // todo: set colour
     }
 };
 

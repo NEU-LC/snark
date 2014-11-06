@@ -79,10 +79,10 @@ plot::plot( QWidget *parent, char *name ) : QwtPlot( parent )
     replot();
 }
 
-void plot::push_back( reader* r ) { readers_.push_back( r ); }
+void plot::push_back( stream* r ) { streams_.push_back( r ); }
 
-void plot::start() { for( unsigned int i = 0; i < readers_.size(); ++i ) { readers_[i].start(); } }
+void plot::start() { for( unsigned int i = 0; i < streams_.size(); ++i ) { streams_[i].start(); } }
 
-void plot::shutdown() { for( unsigned int i = 0; i < readers_.size(); ++i ) { readers_[i].shutdown(); } }
+void plot::shutdown() { for( unsigned int i = 0; i < streams_.size(); ++i ) { streams_[i].shutdown(); } }
 
 } } } // namespace snark { namespace graphics { namespace plotting {
