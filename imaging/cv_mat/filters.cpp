@@ -969,6 +969,7 @@ static std::string usage_impl_()
     oss << "             <permissive>: if present, integer values in the input are simply copied to the output unless they are in the map" << std::endl;
     oss << "                  default: filter fails with an error message if it encounters an integer value which is not in the map" << std::endl;
     oss << "             example: \"map=map.bin&fields=,key,value&binary=2ui,d\"" << std::endl;
+    oss << "        merge: split an image into three horizontal bands of equal size and merge them into a 3-channel rgb image (the number of rows must be a multiple of 3)" << std::endl;
     oss << "        null: same as linux /dev/null (since windows does not have it)" << std::endl;
     oss << "        resize=<width>,<height>: e.g:" << std::endl;
     oss << "            resize=512,1024 : resize to 512x1024 pixels" << std::endl;
