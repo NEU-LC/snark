@@ -294,6 +294,22 @@ static filters::value_type split_impl_( filters::value_type m )
     return n;
 }
 
+static filters::value_type merge_impl_( filters::value_type m )
+{
+    const int nchannels = 3;
+    filters::value_type n;
+    n.first = m.first;
+    if( m.second.rows % nchannels != 0 ) { COMMA_THROW( comma::exception, "merge: expected " << nchannels << " horizontal strips of equal height, got " << m.second.rows << " rows, which is not a multiple of " << nchannels ); }
+    std::vector< cv::Mat > channels;
+    channels.reserve( nchannels );
+    for( std::size_t i = 0; i < nchannels; ++i )
+    {
+        channels.push_back( cv::Mat( m.second, cv::Rect( 0, i * m.second.rows / nchannels, m.second.cols, m.second.rows / nchannels ) ) );
+    }
+    cv::merge( channels, n.second );
+    return n;
+}
+
 static filters::value_type view_impl_( filters::value_type m, std::string name, unsigned int delay )
 {
     cv::imshow( &name[0], m.second );
@@ -835,6 +851,10 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
         {
             f.push_back( filter( &split_impl_ ) );
         }
+        else if( e[0] == "merge" )
+        {
+            f.push_back( filter( &merge_impl_ ) );
+        }        
         else if( e[0] == "undistort" )
         {
             f.push_back( filter( undistort_impl_( e[1] ) ) );
