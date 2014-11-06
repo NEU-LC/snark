@@ -25,7 +25,6 @@ ENDIF( WIN32 OR APPLE )
 #    FIND_LIBRARY( Qt3D_LIB NAMES Qt3D REQUIRED )
 #ENDIF(snark_use_Qt5)
 
-
 EXECUTE_PROCESS( COMMAND qmake -v COMMAND grep "Qt version" COMMAND sed "s/.* \\([0-9]\\)\\.[0-9]\\.[0-9] .*/\\1/" OUTPUT_VARIABLE snark_QT_DEFAULT_VERSION )
 IF( snark_QT_DEFAULT_VERSION EQUAL "5" )
     SET( snark_QT_VERSION "5" CACHE STRING "Qt version" )

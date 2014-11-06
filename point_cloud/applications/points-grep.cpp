@@ -12,16 +12,16 @@
 #include <Eigen/Dense>
 #include <snark/math/rotation_matrix.h>
 #include <snark/math/geometry/polytope.h>
+#include <snark/math/applications/frame.h>
 #include <string>
 
 // todo
-// - naming conventions: snake please, e.g: BoundingPoint -> bounding_point
 // - --help: add examples
 // - --help: --offset: what is it supposed to be?
 
-struct Bounds
+struct bounds_t
 {
-    Bounds(): front(0), back(0), right(0), left(0), top(0), bottom(0) {}
+    bounds_t(): front(0), back(0), right(0), left(0), top(0), bottom(0) {}
     double front;
     double back;
     double right;
@@ -30,38 +30,9 @@ struct Bounds
     double bottom;
 };
 
-struct BoundingPoint
-{
-    BoundingPoint(): x(0), y(0), z(0), roll(0), pitch(0), yaw(0) {}
-    boost::posix_time::ptime timestamp;
-    double x; // todo? use Eigen::Vector3d instead of x,y,z?
-    double y;
-    double z;
-    double roll;
-    double pitch;
-    double yaw;
-};
-
-struct Point
-{
-    Point(): x(0), y(0), z(0), block(0), id(0), flag(1){}
-    boost::posix_time::ptime timestamp;
-    double x; // todo? use Eigen::Vector3d instead of x,y,z?
-    double y;
-    double z;
-    comma::uint32 block;
-    comma::uint32 id;
-    comma::uint32 flag;
-};
-
-struct JoinedPoint
-{
-    Point p; // todo: meaningful name
-    BoundingPoint q; // todo: meaningful name
-};
-
 struct point
 {
+    point(): block(0), id(0), flag(1){}
     boost::posix_time::ptime timestamp;
     Eigen::Vector3d coordinates;
     comma::uint32 block;
@@ -69,36 +40,21 @@ struct point
     comma::uint32 flag;
 };
 
-struct rotation
-{
-    double roll;
-    double pitch;
-    double yaw;
-};
-
-struct bounding_point
-{
-    boost::posix_time::ptime timestamp;
-    Eigen::Vector3d coordinates;
-    ::rotation rotation;
-};
+typedef snark::applications::frame::position_type bounding_point;
 
 struct joined_point
 {
-    point bounded; // todo: meaningful name
-    bounding_point bounding; // todo: meaningful name
+    point bounded;
+    bounding_point bounding;
 };
-
-// --fields=bounded/timestamp,bounded/coordinates,bounding
-// --fields=bounded/coordinates/x,bounded/coordinates/y
 
 namespace comma
 {
     namespace visiting
     {
-        template <> struct traits< Bounds >
+        template <> struct traits< bounds_t >
         {
-            template < typename K, typename V > static void visit( const K&, Bounds& p, V& v )
+            template < typename K, typename V > static void visit( const K&, bounds_t& p, V& v )
             {
                 v.apply( "front", p.front );
                 v.apply( "back", p.back );
@@ -108,7 +64,7 @@ namespace comma
                 v.apply( "bottom", p.bottom );
             }
 
-            template < typename K, typename V > static void visit( const K&, const Bounds& p, V& v )
+            template < typename K, typename V > static void visit( const K&, const bounds_t& p, V& v )
             {
                 v.apply( "front", p.front );
                 v.apply( "back", p.back );
@@ -118,65 +74,24 @@ namespace comma
                 v.apply( "bottom", p.bottom );
             }
         };
-        template <> struct traits< Point >
+        template <> struct traits< point >
         {
-            template < typename K, typename V > static void visit( const K&, Point& p, V& v )
+            template < typename K, typename V > static void visit( const K&, point& p, V& v )
             {
                 v.apply( "t", p.timestamp );
-                v.apply( "x", p.x );
-                v.apply( "y", p.y );
-                v.apply( "z", p.z );
+                v.apply( "coordinates", p.coordinates );
                 v.apply( "block", p.block );
                 v.apply( "id", p.id );
                 v.apply( "flag", p.flag );
             }
 
-            template < typename K, typename V > static void visit( const K&, const Point& p, V& v )
+            template < typename K, typename V > static void visit( const K&, const point& p, V& v )
             {
                 v.apply( "t", p.timestamp );
-                v.apply( "x", p.x );
-                v.apply( "y", p.y );
-                v.apply( "z", p.z );
+                v.apply( "coordinates", p.coordinates );
                 v.apply( "block", p.block );
                 v.apply( "id", p.id );
                 v.apply( "flag", p.flag );
-            }
-        };
-        template <> struct traits< BoundingPoint >
-        {
-            template < typename K, typename V > static void visit( const K&, BoundingPoint& p, V& v )
-            {
-                v.apply( "tt", p.timestamp );
-                v.apply( "xx", p.x );
-                v.apply( "yy", p.y );
-                v.apply( "zz", p.z );
-                v.apply( "roll", p.roll );
-                v.apply( "pitch", p.pitch );
-                v.apply( "yaw", p.yaw );
-            }
-
-            template < typename K, typename V > static void visit( const K&, const BoundingPoint& p, V& v )
-            {
-                v.apply( "tt", p.timestamp );
-                v.apply( "xx", p.x );
-                v.apply( "yy", p.y );
-                v.apply( "zz", p.z );
-                v.apply( "roll", p.roll );
-                v.apply( "pitch", p.pitch );
-                v.apply( "yaw", p.yaw );
-            }
-        };
-        template <> struct traits< JoinedPoint >
-        {
-            template < typename K, typename V > static void visit( const K&, JoinedPoint& p, V& v )
-            {
-                v.apply( "", p.p );
-                v.apply( "", p.q );
-            }
-            template < typename K, typename V > static void visit( const K&, const JoinedPoint& p, V& v )
-            {
-                v.apply( "", p.p );
-                v.apply( "", p.q );
             }
         };
         
@@ -202,10 +117,6 @@ namespace comma
 // - usage: points-grep stream
 // - usage: points-grep shape (when input is points joined with shapes)
 
-// usage:
-// cat points.csv | points-grep stream --fields=t,x,y,z,block,id,flag "nav.csv;fields=tt,xx,yy,zz,roll,pitch,yaw"
-// cat points.csv | points-grep shape --fields=t,x,y,z,block,id,flag,tt,xx,yy,zz,roll,pitch,yaw
-
 static void usage()
 {
     std::cerr << std::endl;
@@ -221,26 +132,27 @@ static void usage()
     std::cerr << std::endl;
     std::cerr << "  stream <stream>: points are time-joined with a position stream and filtered based on a bounding box around the positions" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "      <stream>: example: \"nav.csv;fields=tt,xx,yy,zz,roll,pitch,yaw\" " << std::endl;
+    std::cerr << "      <stream>: example: \"nav.csv;fields=t,x,y,z,roll,pitch,yaw\" " << std::endl;
     std::cerr << std::endl;
     std::cerr << "  shape: points are assumed to be joined with their positions" << std::endl;
     std::cerr << std::endl;
     std::cerr << "<options>:" << std::endl;
     std::cerr << std::endl;
     std::cerr << "      --bounds=<front>,<back>,<right>,<left>,<top>,<bottom>" << std::endl;
-    std::cerr << "      --offset=<offset> global error offset from object boundaries" << std::endl;
+    std::cerr << "      --offset=<offset> error margin value added to bounds (for user convenience)" << std::endl;
     std::cerr << "      --output-all: output all points" << std::endl;
     std::cerr << std::endl;
     std::cerr << "examples" << std::endl;
-    std::cerr << "    cat points.csv | points-grep shape --fields=t,x,y,z,block,id,flag,tt,xx,yy,zz,roll,pitch,yaw" << std::endl;
+    std::cerr << "    cat points.csv | points-grep stream --fields=bounded/t,bounded/coordinates,bounded/block,bounded/id,bounded/flag \"nav.csv;fields=t,x,y,z,roll,pitch,yaw\" --bounds=1.0,2.0,1.0,2.0,1.0,2.0 --offset=0.1" << std::endl;
+    std::cerr << "    cat points.csv | points-grep shape --fields=bounded/t,bounded/coordinates,bounded/block,bounded/id,bounded/flag,bounding --bounds=1.0,2.0,1.0,2.0,1.0,2.0 --offset=0.1" << std::endl;
     std::cerr << std::endl;
     exit( 0 );
 }
 
 static double offset;
-static Bounds bounds;
+static bounds_t bounds;
 
-void filter_point(JoinedPoint& pq)
+void filter_point(joined_point& pq)
 {
     //get polygon from bounds
     Eigen::MatrixXd origins(3,7); //origin, front, back, right, left, top, bottom
@@ -254,12 +166,11 @@ void filter_point(JoinedPoint& pq)
     //convert vehicle bounds to world coordinates
     //get transformation
 
-    Eigen::MatrixXd rot_matrix=snark::rotation_matrix::rotation( pq.q.roll, pq.q.pitch, pq.q.yaw );
-    Eigen::Vector3d trans_vector(pq.q.x, pq.q.y, pq.q.z);
+    Eigen::MatrixXd rot_matrix = snark::rotation_matrix::rotation(pq.bounding.value.orientation);
 
     for(int cntr2=0; cntr2<origins.cols(); cntr2++)
     {
-        origins.col(cntr2)=rot_matrix*origins.col(cntr2)+trans_vector;
+        origins.col(cntr2)=rot_matrix*origins.col(cntr2)+pq.bounding.value.coordinates;
     }
 
     //get plane equations
@@ -272,14 +183,11 @@ void filter_point(JoinedPoint& pq)
         b(cntr2-1)=origins.col(cntr2).transpose()*(origins.col(0)-origins.col(cntr2));
     }
 
-
-    Eigen::Vector3d point(pq.p.x,pq.p.y,pq.p.z);
-
     //check polygon in 3d
     // use if statement not assignment because point might already be filtered
-    if(snark::geometry::convex_polytope(A,b).has(point))
+    if(snark::geometry::convex_polytope(A,b).has(pq.bounded.coordinates))
     {
-        pq.p.flag=0;
+        pq.bounded.flag=0;
     }
 }
 
@@ -288,13 +196,14 @@ int main( int argc, char** argv )
     comma::command_line_options options( argc, argv );
     if( options.exists( "--help" ) || options.exists( "-h" ) || argc == 1 ) { usage(); }
     comma::csv::options csv(options);
+    csv.full_xpath=true;
     offset=options.value("--offset",0.5);
 
-    bounds=comma::csv::ascii<Bounds>().get(options.value("--bounds",std::string("0,0,0,0,0,0")));
+    bounds=comma::csv::ascii<bounds_t>().get(options.value("--bounds",std::string("0,0,0,0,0,0")));
 
     bool output_all = options.exists( "--output-all");
-    comma::csv::input_stream<JoinedPoint> istream(std::cin,csv);
-    comma::csv::output_stream<JoinedPoint> ostream(std::cout,csv);
+    comma::csv::input_stream<joined_point> istream(std::cin,csv);
+    comma::csv::output_stream<joined_point> ostream(std::cout,csv);
 
     std::vector<std::string> fields=comma::split(csv.fields,',');
 
@@ -302,7 +211,7 @@ int main( int argc, char** argv )
     bool flag_exists=false;
     for(unsigned int cntr=0; cntr<fields.size(); cntr++)
     {
-        if(fields[cntr]=="flag")
+        if(fields[cntr]=="bounded/flag")
         {
             flag_exists=true;
             break;
@@ -314,9 +223,9 @@ int main( int argc, char** argv )
     std::string operation=unnamed[0];
 
     //bounding stream
-    std::deque<BoundingPoint> bounding_queue;
+    std::deque<bounding_point> bounding_queue;
     boost::shared_ptr< comma::io::istream > bounding_is;
-    boost::shared_ptr< comma::csv::input_stream<BoundingPoint> > bounding_istream;
+    boost::shared_ptr< comma::csv::input_stream<bounding_point> > bounding_istream;
 
     comma::io::select istream_select;
     comma::io::select bounding_istream_select;
@@ -328,7 +237,7 @@ int main( int argc, char** argv )
 
         comma::name_value::parser parser( "filename" );
         comma::csv::options bounding_csv = parser.get< comma::csv::options >( unnamed[1] ); // get stream options
-        bounding_istream.reset(new comma::csv::input_stream<BoundingPoint>(**bounding_is, bounding_csv)); // create stream
+        bounding_istream.reset(new comma::csv::input_stream<bounding_point>(**bounding_is, bounding_csv)); // create stream
 
         istream_select.read().add(0);
         istream_select.read().add(bounding_is->fd());
@@ -346,7 +255,7 @@ int main( int argc, char** argv )
 
     comma::signal_flag is_shutdown;
 
-    JoinedPoint pq;
+    joined_point pq;
     bool next=true;
 
     while(!is_shutdown && ( istream.ready() || ( std::cin.good() && !std::cin.eof() ) ))
@@ -397,7 +306,7 @@ int main( int argc, char** argv )
             //keep storing available bounding data
             if(bounding_istream_ready)
             {
-                const BoundingPoint* q = bounding_istream->read();
+                const bounding_point* q = bounding_istream->read();
                 if( q )
                 {
                     bounding_queue.push_back(*q);
@@ -412,7 +321,7 @@ int main( int argc, char** argv )
             if(next)
             {
                 if(!istream_ready) { continue; }
-                const JoinedPoint* pq_ptr = istream.read();
+                const joined_point* pq_ptr = istream.read();
                 if( !pq_ptr ) { break; }
                 pq=*pq_ptr;
             }
@@ -420,7 +329,7 @@ int main( int argc, char** argv )
             //get bound
             while(bounding_queue.size()>=2)
             {
-                if( pq.p.timestamp < bounding_queue[1].timestamp ) { break; }
+                if( pq.bounded.timestamp < bounding_queue[1].t ) { break; }
                 bounding_queue.pop_front();
             }
 
@@ -437,14 +346,14 @@ int main( int argc, char** argv )
             next=true; //get new point on next iteration
 
             //discard late points
-            if(pq.p.timestamp < bounding_queue[0].timestamp)
+            if(pq.bounded.timestamp < bounding_queue[0].t)
             {
                 continue;
             }
 
             //match
-            bool is_first=( pq.p.timestamp - bounding_queue[0].timestamp < bounding_queue[1].timestamp - pq.p.timestamp );
-            pq.q = is_first ? bounding_queue[0] : bounding_queue[1]; // assign bounding point
+            bool is_first=( pq.bounded.timestamp - bounding_queue[0].t < bounding_queue[1].t - pq.bounded.timestamp );
+            pq.bounding = is_first ? bounding_queue[0] : bounding_queue[1]; // assign bounding point
 
         }
         else if(operation=="shape")
@@ -462,7 +371,7 @@ int main( int argc, char** argv )
 
             if(!istream_ready) { continue; }
 
-            const JoinedPoint* pq_ptr = istream.read();
+            const joined_point* pq_ptr = istream.read();
 
             if( !pq_ptr ) { break; }
 
@@ -472,7 +381,7 @@ int main( int argc, char** argv )
         //filter out object points
         filter_point(pq);
 
-        if(!pq.p.flag && !output_all)
+        if(!pq.bounded.flag && !output_all)
         {
             continue;
         }
@@ -488,12 +397,12 @@ int main( int argc, char** argv )
         if(ostream.is_binary())
         {
             ostream.write(pq,istream.binary().last());
-            std::cout.write( reinterpret_cast< const char* >( &pq.p.flag ), sizeof( Point::flag ) );
+            std::cout.write( reinterpret_cast< const char* >( &pq.bounded.flag ), sizeof( point::flag ) );
         }
         else
         {
             std::string line=comma::join( istream.ascii().last(), csv.delimiter );
-            line+=","+boost::lexical_cast<std::string>(pq.p.flag);
+            line+=","+boost::lexical_cast<std::string>(pq.bounded.flag);
             ostream.write(pq,line);
         }
         ostream.flush();
