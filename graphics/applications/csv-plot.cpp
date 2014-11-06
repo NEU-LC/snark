@@ -38,6 +38,7 @@
 #include <comma/application/signal_flag.h>
 #include <comma/csv/options.h>
 #include <comma/name_value/parser.h>
+#include "./csv_plot/curve_stream.h"
 #include "./csv_plot/plot.h"
 #include "./csv_plot/traits.h"
 
@@ -83,8 +84,8 @@ int main( int ac, char** av )
         QApplication a( ac, av );
         snark::graphics::plotting::plot plot( options.value( "--frames-per-second,--fps", 25 ) );
         if( options.exists( "--no-stdin" ) && stdin_index ) { std::cerr << "csv-plot: due to --no-stdin, expected no stdin options; got: \"" << unnamed[ *stdin_index ] << "\"" << std::endl; return 1; }
-        else if( !stdin_index ) { config.csv.filename = "-"; plot.push_back( new snark::graphics::plotting::stream( config ) ); }
-        for( unsigned int i = 0; i < unnamed.size(); ++i ) { plot.push_back( new snark::graphics::plotting::stream( comma::name_value::parser( ',' ).get( unnamed[i], config ) ) ); }
+        else if( !stdin_index ) { config.csv.filename = "-"; plot.push_back( new snark::graphics::plotting::curve_stream( config ) ); }
+        for( unsigned int i = 0; i < unnamed.size(); ++i ) { plot.push_back( new snark::graphics::plotting::curve_stream( comma::name_value::parser( ',' ).get( unnamed[i], config ) ) ); }
         plot.start();
         plot.show(); // todo: plot should be in main_window class
         return a.exec();

@@ -48,17 +48,20 @@ stream::config_t::config_t( const comma::command_line_options& options )
 
 stream::stream( const stream::config_t& config )
     : config( config )
-    , curve( &config.csv.filename[0] )
     , is_shutdown_( false )
     , is_stdin_( config.csv.filename == "-" )
     , is_( config.csv.filename, config.csv.binary() ? comma::io::mode::binary : comma::io::mode::ascii, comma::io::mode::non_blocking )
     , istream_( *is_, config.csv )
     , has_x_( config.csv.fields.empty() || config.csv.has_field( "x" ) )
 {
-    // todo: curve: set data?
 }
 
-void stream::start() { thread_.reset( new boost::thread( boost::bind( &graphics::plotting::stream::read, boost::ref( *this ) ) ) ); }
+void stream::start()
+{
+    start_reading_();
+}
+
+void stream::start_reading_() { thread_.reset( new boost::thread( boost::bind( &graphics::plotting::stream::read_, boost::ref( *this ) ) ) ); }
 
 bool stream::is_shutdown() const { return is_shutdown_; }
 
@@ -71,7 +74,7 @@ void stream::shutdown()
     if( !is_stdin_ ) { is_.close(); }
 }
 
-void stream::read()
+void stream::read_()
 {
     while( !is_shutdown_ && ( istream_.ready() || ( is_->good() && !is_->eof() ) ) )
     {
