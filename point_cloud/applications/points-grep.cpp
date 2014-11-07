@@ -133,8 +133,14 @@ static void usage()
     std::cerr << "  stream <stream>: points are time-joined with a position stream and filtered based on a bounding box around the positions" << std::endl;
     std::cerr << std::endl;
     std::cerr << "      <stream>: example: \"nav.csv;fields=t,x,y,z,roll,pitch,yaw\" " << std::endl;
+    std::cerr << "      fields" << std::endl;
+    std::cerr << "          bounded: " << comma::join( comma::csv::names< point >( false ), ',' ) << std::endl;
+    std::cerr << "                   default: t,x,y,z" << std::endl;
+    std::cerr << "          bounding: " << comma::join( comma::csv::names< bounding_point >( false ), ',' ) << std::endl;
+    std::cerr << "                    or shorthand: bounded,bounding" << std::endl;
     std::cerr << std::endl;
     std::cerr << "  shape: points are assumed to be joined with their positions" << std::endl;
+    std::cerr << "      fields: " << comma::join( comma::csv::names< joined_point >( true ), ',' ) << std::endl;
     std::cerr << std::endl;
     std::cerr << "<options>:" << std::endl;
     std::cerr << std::endl;
@@ -196,32 +202,37 @@ int main( int argc, char** argv )
     comma::command_line_options options( argc, argv );
     if( options.exists( "--help" ) || options.exists( "-h" ) || argc == 1 ) { usage(); }
     comma::csv::options csv(options);
+    //if( csv.fields.empty() ) { csv.fields="t,x,y,z"; }
     csv.full_xpath=true;
     offset=options.value("--offset",0.5);
 
     bounds=comma::csv::ascii<bounds_t>().get(options.value("--bounds",std::string("0,0,0,0,0,0")));
 
     bool output_all = options.exists( "--output-all");
-    comma::csv::input_stream<joined_point> istream(std::cin,csv);
-    comma::csv::output_stream<joined_point> ostream(std::cout,csv);
-
-    std::vector<std::string> fields=comma::split(csv.fields,',');
-
-    //check if flag field exists
-    bool flag_exists=false;
-    for(unsigned int cntr=0; cntr<fields.size(); cntr++)
-    {
-        if(fields[cntr]=="bounded/flag")
-        {
-            flag_exists=true;
-            break;
-        }
-    }
-
-    std::vector<std::string> unnamed=options.unnamed("--output-all","--binary,--fields,--offset,--bounds");
+    std::vector<std::string> unnamed=options.unnamed("--output-all,--verbose,-v","-.*");
 
     std::string operation=unnamed[0];
 
+    bool flag_exists = false;
+    if( operation == "stream" )
+    {
+        csv.full_xpath = false;
+        if( csv.fields.empty() ) { csv.fields = "t,x,y,z"; }
+        flag_exists = csv.has_field( "flag" );
+    }
+    else if( operation == "shape" )
+    {
+        flag_exists = csv.has_field( "bounded/flag" );
+    }
+    else
+    {
+        std::cerr << "points-grep: expected operation, got: \"" << operation << "\"" << std::endl;
+        return 1;
+    }
+    
+    comma::csv::input_stream<joined_point> istream(std::cin,csv);
+    comma::csv::output_stream<joined_point> ostream(std::cout,csv);
+    
     //bounding stream
     std::deque<bounding_point> bounding_queue;
     boost::shared_ptr< comma::io::istream > bounding_is;
@@ -358,18 +369,18 @@ int main( int argc, char** argv )
         }
         else if(operation=="shape")
         {
-            bool istream_ready=istream.ready();
-
-            if(!istream_ready)
-            {
-                istream_select.wait(boost::posix_time::milliseconds(10));
-                if(istream_select.read().ready(0))
-                {
-                   istream_ready=true;
-                }
-            }
-
-            if(!istream_ready) { continue; }
+//             bool istream_ready=istream.ready();
+// 
+//             if(!istream_ready)
+//             {
+//                 istream_select.wait(boost::posix_time::milliseconds(10));
+//                 if(istream_select.read().ready(0))
+//                 {
+//                    istream_ready=true;
+//                 }
+//             }
+// 
+//             if(!istream_ready) { continue; }
 
             const joined_point* pq_ptr = istream.read();
 
