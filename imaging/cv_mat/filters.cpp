@@ -293,18 +293,13 @@ static filters::value_type split_impl_( filters::value_type m )
     return n;
 }
 
-static filters::value_type merge_impl_( filters::value_type m )
+static filters::value_type merge_impl_( filters::value_type m, unsigned int nchannels )
 {
-    const int nchannels = 3;
     filters::value_type n;
     n.first = m.first;
     if( m.second.rows % nchannels != 0 ) { COMMA_THROW( comma::exception, "merge: expected " << nchannels << " horizontal strips of equal height, got " << m.second.rows << " rows, which is not a multiple of " << nchannels ); }
-    std::vector< cv::Mat > channels;
-    channels.reserve( nchannels );
-    for( std::size_t i = 0; i < nchannels; ++i )
-    {
-        channels.push_back( cv::Mat( m.second, cv::Rect( 0, i * m.second.rows / nchannels, m.second.cols, m.second.rows / nchannels ) ) );
-    }
+    std::vector< cv::Mat > channels( nchannels );
+    for( std::size_t i = 0; i < nchannels; ++i ) { channels[i] = cv::Mat( m.second, cv::Rect( 0, i * m.second.rows / nchannels, m.second.cols, m.second.rows / nchannels ) ); }
     cv::merge( channels, n.second );
     return n;
 }
@@ -852,7 +847,9 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
         }
         else if( e[0] == "merge" )
         {
-            f.push_back( filter( &merge_impl_ ) );
+            unsigned int default_number_of_channels = 3;
+            unsigned int nchannels = e.size() == 1 ? default_number_of_channels : boost::lexical_cast< unsigned int >( e[1] );
+            f.push_back( filter( boost::bind( &merge_impl_, _1, nchannels ) ) );
         }        
         else if( e[0] == "undistort" )
         {
@@ -969,7 +966,7 @@ static std::string usage_impl_()
     oss << "             <permissive>: if present, integer values in the input are simply copied to the output unless they are in the map" << std::endl;
     oss << "                  default: filter fails with an error message if it encounters an integer value which is not in the map" << std::endl;
     oss << "             example: \"map=map.bin&fields=,key,value&binary=2ui,d\"" << std::endl;
-    oss << "        merge: split an image into three horizontal bands of equal size and merge them into a 3-channel rgb image (the number of rows must be a multiple of 3)" << std::endl;
+    oss << "        merge=<n>: split an image into n horizontal bands of equal height and merge them into an n-channel image (the number of rows must be a multiple of n)" << std::endl;
     oss << "        null: same as linux /dev/null (since windows does not have it)" << std::endl;
     oss << "        resize=<width>,<height>: e.g:" << std::endl;
     oss << "            resize=512,1024 : resize to 512x1024 pixels" << std::endl;
