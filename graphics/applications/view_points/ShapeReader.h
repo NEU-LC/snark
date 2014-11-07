@@ -41,6 +41,7 @@
 //#include <windows.h>
 #endif
 
+#include <snark/graphics/block_buffer.h>
 #include <snark/graphics/qt3d/vertex_buffer.h>
 #include "./Reader.h"
 #include "./ShapeWithId.h"
