@@ -57,6 +57,7 @@ int main( int ac, char** av )
     try
     {
         comma::command_line_options options( ac, av, usage );
+        if( options.exists( "--verbose,-v" ) ) { std::cerr << "sphere-sample: called as: " << options.string() << std::endl; }
         double resolution = options.value< double >( "--resolution,-r" ) * M_PI / 180;
         comma::csv::output_stream< aero::coordinates > ostream( std::cout, comma::csv::options( options ) );
         options.assert_mutually_exclusive( "--random,--regular" );
