@@ -974,7 +974,7 @@ static std::string usage_impl_()
     std::ostringstream oss;
     oss << "    cv::Mat image filters usage (';'-separated):" << std::endl;
     oss << "        accumulate=<n>: accumulate the last n images and concatenate them vertically (useful for slit-scan and spectral cameras like pika2)" << std::endl;
-    oss << "            example: cat pika2.bin | cv-cat \"crop-tile=1,244,0,32,0,61,0,128;merge;accumulate=900;view;null\"" << std::endl;
+    oss << "            example: cat pika2.bin | cv-cat \"crop-tile=1,244,0,36,0,53,0,122;merge;accumulate=900;view;null\"" << std::endl;
     oss << "        bayer=<mode>: convert from bayer, <mode>=1-4" << std::endl;
     oss << "        brightness=<scale>[,<offset>]: output=(scale*input)+offset; default offset=0" << std::endl;
     oss << "        convert-to,convert_to=<type>[,<scale>[,<offset>]]: convert to given type; should be the same number of channels; see opencv convertTo for details" << std::endl;
