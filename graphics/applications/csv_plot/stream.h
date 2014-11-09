@@ -45,6 +45,7 @@
 #include <comma/csv/stream.h>
 #include <comma/io/stream.h>
 #include <comma/sync/synchronized.h>
+#include <snark/graphics/block_buffer.h>
 #include "./point.h"
 
 class QwtPlot;
@@ -57,11 +58,11 @@ class stream
         struct config_t
         {
             comma::csv::options csv;
-            boost::optional< comma::uint32 > size;
+            comma::uint32 size;
             std::string color_name;
             QColor color;
             
-            config_t() {}
+            config_t() : size( 10000 ) {} // arbitrary
             config_t( const comma::command_line_options& options );
         };
         
@@ -75,6 +76,7 @@ class stream
         bool is_stdin() const;
         void shutdown();
         virtual void attach( QwtPlot* p ) = 0;
+        virtual void update() = 0;
 
     protected:
         bool is_shutdown_;
@@ -86,6 +88,15 @@ class stream
         bool has_x_;
         void start_reading_();
         void read_();
+        void update_();
+        struct buffers_t_
+        {
+            block_buffer< double > x;
+            block_buffer< double > y;
+            buffers_t_( comma::uint32 size );
+            void add( const point& p );
+        };
+        buffers_t_ buffers_;
 };
     
 } } } // namespace snark { namespace graphics { namespace plotting {

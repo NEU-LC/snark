@@ -32,12 +32,11 @@
 
 /// @author Vsevolod Vlaskine
 
-#ifndef SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_BLOCK_BUFFER_H_
-#define SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_BLOCK_BUFFER_H_
+#ifndef SNARK_GRAPHICS_BLOCK_BUFFER_H_
+#define SNARK_GRAPHICS_BLOCK_BUFFER_H_
 
 #include <vector>
 #include <boost/array.hpp>
-#include <boost/concept_check.hpp>
 
 namespace snark { namespace graphics {
 
@@ -138,4 +137,4 @@ inline unsigned int block_buffer< T, Storage >::index() const { return read_bloc
 
 } } // namespace snark { namespace graphics {
 
-#endif // SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_BLOCK_BUFFER_H_
+#endif // SNARK_GRAPHICS_BLOCK_BUFFER_H_

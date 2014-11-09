@@ -38,7 +38,6 @@
 
 #include <Qt3D/qvector3darray.h>
 #include <Qt3D/qcolor4ub.h>
-#include "./block_buffer.h"
 
 namespace snark { namespace graphics { namespace qt3d {
 

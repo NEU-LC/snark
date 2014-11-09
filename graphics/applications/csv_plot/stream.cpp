@@ -40,7 +40,7 @@ namespace snark { namespace graphics { namespace plotting {
 
 stream::config_t::config_t( const comma::command_line_options& options )
     : csv( options )
-    , size( options.optional< comma::uint32 >( "--size,-s" ) )
+    , size( options.value( "--size,-s", 10000 ) )
     , color_name( options.value< std::string >( "--color,--colour", "" ) )
 {
     if( !color_name.empty() ) { color = QColor( &color_name[0] ); }
@@ -53,7 +53,16 @@ stream::stream( const stream::config_t& config )
     , is_( config.csv.filename, config.csv.binary() ? comma::io::mode::binary : comma::io::mode::ascii, comma::io::mode::non_blocking )
     , istream_( *is_, config.csv )
     , has_x_( config.csv.fields.empty() || config.csv.has_field( "x" ) )
+    , buffers_( config.size )
 {
+}
+
+stream::buffers_t_::buffers_t_( comma::uint32 size ) : x( size ), y( size ) {}
+
+void stream::buffers_t_::add( const point& p )
+{
+    x.add( p.coordinates.x(), p.block );
+    y.add( p.coordinates.x(), p.block );
 }
 
 void stream::start()
@@ -86,6 +95,17 @@ void stream::read_()
         comma::synchronized< points_t >::scoped_transaction( points )->push_back( q );
     }
     is_shutdown_ = true;
+}
+
+void stream::update_()
+{
+    points_t p;
+    {
+        comma::synchronized< points_t >::scoped_transaction t( points );
+        p = *t; // quick and dirty, watch performance?
+        t->clear();
+    }
+    for( std::size_t i = 0; i < p.size(); ++i ) { buffers_.add( p[i] ); }
 }
 
 } } } // namespace snark { namespace graphics { namespace plotting {

@@ -37,16 +37,13 @@
 
 namespace snark { namespace graphics { namespace plotting {
 
-curve_stream::curve_stream( const stream::config_t& config )
-    : stream( config )
-    , curve( &config.csv.filename[0] )
-{
-    // todo: set data
-}
+curve_stream::curve_stream( const stream::config_t& config ) : stream( config ), curve( &config.csv.filename[0] ) {}
 
-void curve_stream::attach( QwtPlot* p )
+void curve_stream::attach( QwtPlot* p ) { curve.attach( p ); }
+
+void curve_stream::update()
 {
-    curve.attach( p );
+    // todo: curve.setData(  );
 }
 
 } } } // namespace snark { namespace graphics { namespace plotting {

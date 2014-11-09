@@ -49,6 +49,8 @@ struct curve_stream : public stream
     curve_stream( const config_t& config );
     
     void attach( QwtPlot* p );
+    
+    void update();
 };
     
 } } } // namespace snark { namespace graphics { namespace plotting {
