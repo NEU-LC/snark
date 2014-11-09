@@ -195,6 +195,38 @@ static filters::value_type crop_tile_impl_( filters::value_type input, unsigned 
     return output;
 }
 
+class accumulate_impl_
+{
+    public:
+        accumulate_impl_( unsigned int how_many ) : how_many_ ( how_many ), defined_ ( false ) {}
+        filters::value_type operator()( filters::value_type input )
+        {
+            if( !defined_ )
+            {
+                unsigned int cols = input.second.cols;
+                unsigned int h = input.second.rows;
+                unsigned int rows = h * how_many_;
+                accumulated_image_ = cv::Mat::zeros( rows, cols, input.second.type() );
+                rect_for_new_data_ = cv::Rect( 0, 0, cols, h );
+                rect_for_old_data_ = cv::Rect( 0, h, cols, rows - h );
+                rect_to_keep_ = cv::Rect( 0, 0, cols, rows - h );                
+                defined_ = true;
+            }
+            filters::value_type output( input.first, cv::Mat( accumulated_image_.size(), accumulated_image_.type() ) );
+            cv::Mat new_data( output.second, rect_for_new_data_ );
+            input.second.copyTo( new_data );
+            cv::Mat old_data( output.second, rect_for_old_data_ );
+            cv::Mat( accumulated_image_, rect_to_keep_ ).copyTo( old_data );
+            output.second.copyTo( accumulated_image_ );
+            return output;
+        }
+    private:
+        unsigned int how_many_;
+        bool defined_;
+        cv::Rect rect_for_new_data_, rect_for_old_data_, rect_to_keep_;
+        cv::Mat accumulated_image_;
+};
+
 static filters::value_type convert_to_impl_( filters::value_type m, int type, double scale, double offset )
 {
     filters::value_type n;
@@ -300,7 +332,7 @@ static filters::value_type merge_impl_( filters::value_type m, unsigned int ncha
     if( m.second.rows % nchannels != 0 ) { COMMA_THROW( comma::exception, "merge: expected " << nchannels << " horizontal strips of equal height, got " << m.second.rows << " rows, which is not a multiple of " << nchannels ); }
     std::vector< cv::Mat > channels( nchannels );
     for( std::size_t i = 0; i < nchannels; ++i ) { channels[i] = cv::Mat( m.second, cv::Rect( 0, i * m.second.rows / nchannels, m.second.cols, m.second.rows / nchannels ) ); }
-    cv::merge( channels, n.second );
+    cv::merge( channels, n.second ); 
     return n;
 }
 
@@ -725,6 +757,11 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
             if( number_of_tile_cols == 0 || number_of_tile_rows == 0 ) { COMMA_THROW( comma::exception, "crop-tile: expected positive number of tiles along x and y, got " << number_of_tile_cols << "," << number_of_tile_rows ); }
             f.push_back( filter( boost::bind( &crop_tile_impl_, _1, number_of_tile_cols, number_of_tile_rows, tiles, vertical ) ) );
         }
+        else if( e[0] == "accumulate" )
+        {
+            unsigned int how_many = boost::lexical_cast< unsigned int >( e[1] );
+            f.push_back( filter( accumulate_impl_( how_many ) ) );
+        }
         else if( e[0] == "cross" )
         {
             boost::optional< Eigen::Vector2i > center;
@@ -936,6 +973,8 @@ static std::string usage_impl_()
 {
     std::ostringstream oss;
     oss << "    cv::Mat image filters usage (';'-separated):" << std::endl;
+    oss << "        accumulate=<n>: accumulate the last n images and concatenate them vertically (useful for slit-scan and spectral cameras like pika2)" << std::endl;
+    oss << "            example: cat pika2.bin | cv-cat \"crop-tile=1,244,0,32,0,61,0,128;merge;accumulate=900;view;null\"" << std::endl;
     oss << "        bayer=<mode>: convert from bayer, <mode>=1-4" << std::endl;
     oss << "        brightness=<scale>[,<offset>]: output=(scale*input)+offset; default offset=0" << std::endl;
     oss << "        convert-to,convert_to=<type>[,<scale>[,<offset>]]: convert to given type; should be the same number of channels; see opencv convertTo for details" << std::endl;
