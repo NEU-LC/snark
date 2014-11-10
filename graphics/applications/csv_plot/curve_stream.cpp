@@ -45,6 +45,7 @@ curve_stream::curve_stream( const stream::config_t& config )
     , curve_( new QwtPlotCurve( &config.csv.filename[0] ) )
     , attached_( false )
 {
+    curve_->setPen( config.color );
 }
 
 void curve_stream::attach( QwtPlot* p )

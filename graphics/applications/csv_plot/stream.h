@@ -87,7 +87,6 @@ class stream
         boost::scoped_ptr< boost::thread > thread_;
         comma::uint64 count_;
         bool has_x_;
-        void start_reading_();
         void read_();
         struct buffers_t_
         {

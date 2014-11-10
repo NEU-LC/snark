@@ -38,13 +38,27 @@
 
 namespace snark { namespace graphics { namespace plotting {
 
+static const char* hex_color_( const std::string& c )
+{
+    if( c == "red" ) { return "#FF0000"; }
+    if( c == "green" ) { return "#00FF00"; }
+    if( c == "blue" ) { return "#0000FF"; }
+    if( c == "yellow" ) { return "#FFFF00"; }
+    if( c == "cyan" ) { return "#00FFFF"; }
+    if( c == "magenta" ) { return "#FF00FF"; }
+    if( c == "black" ) { return "#000000"; }
+    if( c == "white" ) { return "#FFFFFF"; }
+    if( c == "grey" ) { return "#888888"; }
+    return &c[0];
+}
+    
 stream::config_t::config_t( const comma::command_line_options& options )
     : csv( options )
     , size( options.value( "--size,-s", 10000 ) )
     , color_name( options.value< std::string >( "--color,--colour", "" ) )
 {
     if( csv.fields.empty() ) { csv.fields="x,y"; } // todo: parametrize on the graph type
-    if( !color_name.empty() ) { color = QColor( &color_name[0] ); }
+    if( !color_name.empty() ) { color = QColor( hex_color_( color_name ) ); }
 }
 
 stream::stream( const stream::config_t& config )
@@ -67,12 +81,7 @@ void stream::buffers_t_::add( const point& p )
     y.add( p.coordinates.y(), p.block );
 }
 
-void stream::start()
-{
-    start_reading_();
-}
-
-void stream::start_reading_() { thread_.reset( new boost::thread( boost::bind( &graphics::plotting::stream::read_, boost::ref( *this ) ) ) ); }
+void stream::start() { thread_.reset( new boost::thread( boost::bind( &graphics::plotting::stream::read_, boost::ref( *this ) ) ) ); }
 
 bool stream::is_shutdown() const { return is_shutdown_; }
 

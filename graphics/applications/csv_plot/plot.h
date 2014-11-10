@@ -54,7 +54,6 @@ class plot : public QwtPlot
     private:
         boost::ptr_vector< stream > streams_;
         unsigned int fps_;
-        bool alive_;
         
     private slots:
         void update();
