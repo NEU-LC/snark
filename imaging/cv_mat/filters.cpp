@@ -206,7 +206,8 @@ class accumulate_impl_
                 cols_ = input.second.cols;
                 h_ = input.second.rows;
                 rows_ = h_ * how_many_;
-                accumulated_image_ = cv::Mat::zeros( rows_, cols_, input.second.type() );
+                type_ = input.second.type();
+                accumulated_image_ = cv::Mat::zeros( rows_, cols_, type_ );
                 rect_for_new_data_ = cv::Rect( 0, 0, cols_, h_ );
                 rect_for_old_data_ = cv::Rect( 0, h_, cols_, rows_ - h_ );
                 rect_to_keep_ = cv::Rect( 0, 0, cols_, rows_ - h_ );                
@@ -214,7 +215,7 @@ class accumulate_impl_
             }
             if( input.second.cols != cols_ ) { COMMA_THROW( comma::exception, "accumulate: expected input image with " << cols_ << " columns, got " << input.second.cols << " columns"); }
             if( input.second.rows != h_ ) { COMMA_THROW( comma::exception, "accumulate: expected input image with " << h_ << " rows, got " << input.second.rows << " rows"); }
-            if( input.second.type() != accumulated_image_.type() ) { COMMA_THROW( comma::exception, "accumulate: expected input image of type " << accumulated_image_.type() << ", got type " << input.second.type() << " rows"); }
+            if( input.second.type() != type_ ) { COMMA_THROW( comma::exception, "accumulate: expected input image of type " << type_ << ", got type " << input.second.type() << " rows"); }
             filters::value_type output( input.first, cv::Mat( accumulated_image_.size(), accumulated_image_.type() ) );
             cv::Mat new_data( output.second, rect_for_new_data_ );
             input.second.copyTo( new_data );
@@ -226,7 +227,7 @@ class accumulate_impl_
     private:
         unsigned int how_many_;
         bool defined_;
-        unsigned int cols_, h_, rows_;
+        int cols_, h_, rows_, type_;
         cv::Rect rect_for_new_data_, rect_for_old_data_, rect_to_keep_;
         cv::Mat accumulated_image_;
 };
@@ -764,6 +765,7 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
         else if( e[0] == "accumulate" )
         {
             unsigned int how_many = boost::lexical_cast< unsigned int >( e[1] );
+            if ( how_many == 0 ) { COMMA_THROW( comma::exception, "expected positive number of images to accumulate in accumulate filter, got " << how_many ); }
             f.push_back( filter( accumulate_impl_( how_many ) ) );
         }
         else if( e[0] == "cross" )
@@ -890,6 +892,7 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
         {
             unsigned int default_number_of_channels = 3;
             unsigned int nchannels = e.size() == 1 ? default_number_of_channels : boost::lexical_cast< unsigned int >( e[1] );
+            if ( nchannels == 0 ) { COMMA_THROW( comma::exception, "expected positive number of channels in merge filter, got " << nchannels ); }
             f.push_back( filter( boost::bind( &merge_impl_, _1, nchannels ) ) );
         }        
         else if( e[0] == "undistort" )
