@@ -109,7 +109,8 @@ void usage()
     std::cerr << "    --z=<value>: 'up' or 'down': in polar direction of z axis; default: up" << std::endl;
     std::cerr << std::endl;
     std::cerr << "examples" << std::endl;
-    std::cerr << "    cat slit-scan.bin | image-accumulate --fields=timestamp,,,,values --size=100,640 --binary=t,3ui,640ub --output=\"rows=100;cols=640\" | cv-cat \"view;null\"" << std::endl;
+    std::cerr << "    accumulate and visualise the last 100 frames from the output of a slit-scan camera with 640 pixels of 8-bit gray-scale values:" << std::endl;
+    std::cerr << "    cat slit-scan.bin | image-accumulate --fields=,,,,values --binary=t,3ui,640ub --size=100,640 --output=\"rows=100;cols=640\" | cv-cat \"view;null\"" << std::endl;
     std::cerr << "    todo: more examples" << std::endl;
     std::cerr << std::endl;
     exit( 1 );
