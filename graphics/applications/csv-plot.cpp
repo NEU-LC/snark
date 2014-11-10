@@ -71,6 +71,7 @@ static void usage( bool verbose = false )
     std::cerr << "    --shape=<what>: curve (default)" << std::endl;
     std::cerr << "                    todo: more shapes" << std::endl;
     std::cerr << "    --size,-s,--tail=<n>: plot last <n> records of stream; default 10000" << std::endl;
+    std::cerr << "        use --style=dots, otherwise it's buggy; todo: fix" << std::endl;
     std::cerr << "    --style=<style>: plot style (mapped into qwt styles)" << std::endl;
     std::cerr << "        curve: no-curve" << std::endl;
     std::cerr << "               lines (default)" << std::endl;
