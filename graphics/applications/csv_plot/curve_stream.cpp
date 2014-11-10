@@ -40,12 +40,24 @@
 
 namespace snark { namespace graphics { namespace plotting {
 
+static QwtPlotCurve::CurveStyle style_from_string( const std::string& s )
+{
+    if( s.empty() ) { return QwtPlotCurve::Lines; }
+    if( s == "no-curve" ) { return QwtPlotCurve::NoCurve; }
+    if( s == "lines" ) { return QwtPlotCurve::Lines; }
+    if( s == "sticks" ) { return QwtPlotCurve::Sticks; }
+    if( s == "steps" ) { return QwtPlotCurve::Steps; }
+    if( s == "dots" || s == "points" ) { return QwtPlotCurve::Dots; }
+    COMMA_THROW( comma::exception, "expected style, got \"" << s << "\"" );
+}
+    
 curve_stream::curve_stream( const stream::config_t& config )
     : stream( config )
     , curve_( new QwtPlotCurve( &config.csv.filename[0] ) )
     , attached_( false )
 {
-    curve_->setPen( config.color );
+    curve_->setPen( QPen( config.color, config.weight ) );
+    curve_->setStyle( style_from_string( config.style ) );
 }
 
 void curve_stream::attach( QwtPlot* p )

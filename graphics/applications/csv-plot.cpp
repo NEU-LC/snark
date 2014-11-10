@@ -72,6 +72,16 @@ static void usage( bool verbose = false )
     exit( 0 );
 }
 
+static snark::graphics::plotting::stream* make_stream( const snark::graphics::plotting::stream::config_t& config )
+{
+    if( config.shape.empty() || config.shape == "curve" || config.shape == "lines" )
+    {
+        return new snark::graphics::plotting::curve_stream( config );
+    }
+    std::cerr << "csv-plot: expected stream type as shape, got: \"" << config.shape << "\"" << std::endl;
+    exit( 1 );
+}
+
 int main( int ac, char** av )
 {
     try
@@ -85,8 +95,8 @@ int main( int ac, char** av )
         QApplication a( ac, av );
         snark::graphics::plotting::plot plot( options.value( "--frames-per-second,--fps,--no-stdin,--verbose,-v", 25 ) );
         if( options.exists( "--no-stdin" ) ) { if( stdin_index ) { std::cerr << "csv-plot: due to --no-stdin, expected no stdin options; got: \"" << unnamed[ *stdin_index ] << "\"" << std::endl; return 1; } }
-        else if( !stdin_index ) { config.csv.filename = "-"; plot.push_back( new snark::graphics::plotting::curve_stream( config ) ); }
-        for( unsigned int i = 0; i < unnamed.size(); ++i ) { plot.push_back( new snark::graphics::plotting::curve_stream( comma::name_value::parser( "filename", ';', '=', false ).get( unnamed[i], config ) ) ); }
+        else if( !stdin_index ) { config.csv.filename = "-"; plot.push_back( make_stream( config ) ); }
+        for( unsigned int i = 0; i < unnamed.size(); ++i ) { plot.push_back( make_stream( comma::name_value::parser( "filename", ';', '=', false ).get( unnamed[i], config ) ) ); }
         if( verbose ) { std::cerr << "csv-plot: got " << plot.streams().size() << " input stream(s)" << std::endl; }
         plot.start();
         plot.show(); // todo: plot should be in main_window class

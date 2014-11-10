@@ -49,8 +49,12 @@ void plot::start()
 
 void plot::update()
 {
-    for( unsigned int i = 0; i < streams_.size(); ++i ) { streams_[i].update(); }
-    replot(); // todo: replot only if updated
+    bool updated = false;
+    for( unsigned int i = 0; i < streams_.size(); ++i )
+    { 
+        if( streams_[i].update() ) { updated = true; }
+    }
+    if( updated ) { replot(); }
 }
 
 void plot::push_back( stream* s )

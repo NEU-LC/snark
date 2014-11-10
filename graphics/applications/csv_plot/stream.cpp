@@ -55,7 +55,10 @@ static const char* hex_color_( const std::string& c )
 stream::config_t::config_t( const comma::command_line_options& options )
     : csv( options )
     , size( options.value( "--size,-s", 10000 ) )
-    , color_name( options.value< std::string >( "--color,--colour", "" ) )
+    , color_name( options.value< std::string >( "--color,--colour", "black" ) )
+    , shape( options.value< std::string >( "--shape", "curve" ) )
+    , style( options.value< std::string >( "--style", "" ) )
+    , weight( 0.0 )
 {
     if( csv.fields.empty() ) { csv.fields="x,y"; } // todo: parametrize on the graph type
     if( !color_name.empty() ) { color = QColor( hex_color_( color_name ) ); }
@@ -79,6 +82,14 @@ void stream::buffers_t_::add( const point& p )
 {
     x.add( p.coordinates.x(), p.block );
     y.add( p.coordinates.y(), p.block );
+}
+
+bool stream::buffers_t_::changed() const { return x.changed(); }
+
+void stream::buffers_t_::mark_seen()
+{
+    x.mark_seen();
+    y.mark_seen();
 }
 
 void stream::start() { thread_.reset( new boost::thread( boost::bind( &graphics::plotting::stream::read_, boost::ref( *this ) ) ) ); }
@@ -108,7 +119,7 @@ void stream::read_()
     is_shutdown_ = true;
 }
 
-void stream::update()
+bool stream::update()
 {
     points_t p;
     {
@@ -116,9 +127,12 @@ void stream::update()
         p = *t; // quick and dirty, watch performance?
         t->clear();
     }
-    if( p.empty() ) { return; }
+    if( p.empty() ) { return false; }
     for( std::size_t i = 0; i < p.size(); ++i ) { buffers_.add( p[i] ); }
-    update_plot_data();
+    bool changed = buffers_.changed();
+    if( buffers_.changed() ) { update_plot_data(); }
+    buffers_.mark_seen();
+    return changed;
 }
 
 } } } // namespace snark { namespace graphics { namespace plotting {

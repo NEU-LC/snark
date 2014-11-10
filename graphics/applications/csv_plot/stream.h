@@ -60,6 +60,9 @@ class stream
             comma::csv::options csv;
             comma::uint32 size;
             std::string color_name;
+            std::string shape;
+            std::string style;
+            float weight;
             QColor color;
             
             config_t() : size( 10000 ) {} // arbitrary
@@ -75,7 +78,7 @@ class stream
         bool is_shutdown() const;
         bool is_stdin() const;
         void shutdown();
-        void update();
+        bool update();
         virtual void attach( QwtPlot* p ) = 0;
         virtual void update_plot_data() = 0;
 
@@ -94,6 +97,8 @@ class stream
             block_buffer< double > y;
             buffers_t_( comma::uint32 size );
             void add( const point& p );
+            bool changed() const;
+            void mark_seen();
         };
         buffers_t_ buffers_;
 };

@@ -94,6 +94,9 @@ template <> struct traits< snark::graphics::plotting::stream::config_t >
         v.apply( "size", t.size );
         v.apply( "color", t.color_name );
         t.color = QColor( &t.color_name[0] );
+        v.apply( "shape", t.shape );
+        v.apply( "style", t.style );
+        v.apply( "weight", t.weight );
     }
 
     template< typename K, typename V > static void visit( const K&, const snark::graphics::plotting::stream::config_t& t, V& v )
@@ -101,6 +104,9 @@ template <> struct traits< snark::graphics::plotting::stream::config_t >
         v.apply( "csv", t.csv );
         v.apply( "size", t.size );
         v.apply( "color", std::string( t.color.name() ) );
+        v.apply( "shape", t.shape );
+        v.apply( "style", t.style );
+        v.apply( "weight", t.weight );
     }
 };
 

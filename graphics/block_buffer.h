@@ -76,6 +76,12 @@ class block_buffer
 
         /// return current offset in the buffer that is ready for reading
         unsigned int index() const;
+        
+        /// return true, if data has changed since seen last time
+        bool changed() const;
+        
+        /// reset changed flag
+        void mark_seen();
 
     protected:
         unsigned int read_block_;
@@ -84,6 +90,7 @@ class block_buffer
         unsigned int write_end_;
         unsigned int write_size_;
         unsigned int block_;
+        bool changed_;
         boost::array< Storage, 2 > values_;
 };
 
@@ -95,6 +102,7 @@ inline block_buffer< T, Storage >::block_buffer( std::size_t size )
     , write_end_( 0 )
     , write_size_( 0 )
     , block_( 0 )
+    , changed_( false )
 {
     values_[0].resize( size );
     values_[1].resize( size );
@@ -107,7 +115,7 @@ inline void block_buffer< T, Storage >::add( const T& t, unsigned int block )
     block_ = block;
     values_[write_block_][write_end_] = t;
     if( write_size_ < values_[0].size() ) { ++write_size_; }
-    if( read_block_ == write_block_ ) { read_size_ = write_size_; }
+    if( read_block_ == write_block_ ) { read_size_ = write_size_; changed_ = true; }
     ++write_end_;
     if( write_end_ == values_[0].size() ) { write_end_ = 0; }
 }
@@ -115,6 +123,7 @@ inline void block_buffer< T, Storage >::add( const T& t, unsigned int block )
 template < typename T, typename Storage >
 inline void block_buffer< T, Storage >::toggle()
 {
+    changed_ = true;
     if( write_size_ == 0 ) { return; }
     write_block_ = 1 - write_block_;
     if( read_block_ == write_block_ )
@@ -134,6 +143,12 @@ inline unsigned int block_buffer< T, Storage >::size() const { return read_size_
 
 template < typename T, typename Storage >
 inline unsigned int block_buffer< T, Storage >::index() const { return read_block_; }
+
+template < typename T, typename Storage >
+inline bool block_buffer< T, Storage >::changed() const { return changed_; }
+
+template < typename T, typename Storage >
+inline void block_buffer< T, Storage >::mark_seen() { changed_ = false; }
 
 } } // namespace snark { namespace graphics {
 
