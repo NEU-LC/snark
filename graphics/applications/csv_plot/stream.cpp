@@ -54,11 +54,11 @@ static const char* hex_color_( const std::string& c )
     
 stream::config_t::config_t( const comma::command_line_options& options )
     : csv( options )
-    , size( options.value( "--size,-s", 10000 ) )
+    , size( options.value( "--size,-s,--tail", 10000 ) )
     , color_name( options.value< std::string >( "--color,--colour", "black" ) )
-    , shape( options.value< std::string >( "--shape", "curve" ) )
+    , shape( options.value< std::string >( "--shape,--type", "curve" ) )
     , style( options.value< std::string >( "--style", "" ) )
-    , weight( 0.0 )
+    , weight( options.value( "--weight", 0.0 ) )
 {
     if( csv.fields.empty() ) { csv.fields="x,y"; } // todo: parametrize on the graph type
     if( !color_name.empty() ) { color = QColor( hex_color_( color_name ) ); }
