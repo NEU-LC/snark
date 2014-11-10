@@ -33,17 +33,30 @@
 /// @author Vsevolod Vlaskine
 
 #include <qwt/qwt_plot.h>
+#include <comma/base/exception.h>
 #include "./curve_stream.h"
+
+#include <iostream>
 
 namespace snark { namespace graphics { namespace plotting {
 
-curve_stream::curve_stream( const stream::config_t& config ) : stream( config ), curve( &config.csv.filename[0] ) {}
-
-void curve_stream::attach( QwtPlot* p ) { curve.attach( p ); }
-
-void curve_stream::update()
+curve_stream::curve_stream( const stream::config_t& config )
+    : stream( config )
+    , curve_( new QwtPlotCurve( &config.csv.filename[0] ) )
+    , attached_( false )
 {
-    // todo: curve.setData(  );
+}
+
+void curve_stream::attach( QwtPlot* p )
+{
+    if( attached_ ) { COMMA_THROW( comma::exception, "already attached" ); }
+    curve_->attach( p );
+    attached_ = true;
+}
+
+void curve_stream::update_plot_data()
+{
+    curve_->setSamples( &buffers_.x.values()[0], &buffers_.y.values()[0], buffers_.x.size() );
 }
 
 } } } // namespace snark { namespace graphics { namespace plotting {

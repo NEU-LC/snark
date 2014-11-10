@@ -75,8 +75,9 @@ class stream
         bool is_shutdown() const;
         bool is_stdin() const;
         void shutdown();
+        void update();
         virtual void attach( QwtPlot* p ) = 0;
-        virtual void update() = 0;
+        virtual void update_plot_data() = 0;
 
     protected:
         bool is_shutdown_;
@@ -88,7 +89,6 @@ class stream
         bool has_x_;
         void start_reading_();
         void read_();
-        void update_();
         struct buffers_t_
         {
             block_buffer< double > x;
