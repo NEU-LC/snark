@@ -15,9 +15,6 @@
 #include <snark/math/applications/frame.h>
 #include <string>
 
-// todo
-// - --help: add examples
-// - --help: --offset: what is it supposed to be?
 
 struct bounds_t
 {
@@ -111,16 +108,13 @@ namespace comma
     }
 }
 
-// todo (Seva)
-// - rename to points-grep
-// - usage: points-grep <operation>
-// - usage: points-grep stream
-// - usage: points-grep shape (when input is points joined with shapes)
 
 static void usage()
 {
     std::cerr << std::endl;
-    std::cerr << "time-match and filter points from dynamic objects" << std::endl;
+    std::cerr << "filter points from dynamic objects represented by a position and orientation stream" << std::endl;
+    std::cerr << "input: point-cloud, bounding stream" << std::endl;
+    std::cerr << "       bounding data may either be joined to each point or provided through a separate stream in which points-grep will time-join the two streams" << std::endl;
     std::cerr << std::endl;
     std::cerr<< "output: each point is tagged with a flag of type ui" << std::endl;
     std::cerr<< "        the value of flag is 0 for filtered points and 1 otherwise" << std::endl;
@@ -139,18 +133,22 @@ static void usage()
     std::cerr << "          bounding: " << comma::join( comma::csv::names< bounding_point >( false ), ',' ) << std::endl;
     std::cerr << "                    or shorthand: bounded,bounding" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "  shape: points are assumed to be joined with their positions" << std::endl;
+    std::cerr << "  shape: points are assumed to be joined with the bounding stream" << std::endl;
     std::cerr << "      fields: " << comma::join( comma::csv::names< joined_point >( true ), ',' ) << std::endl;
     std::cerr << std::endl;
     std::cerr << "<options>:" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "      --bounds=<front>,<back>,<right>,<left>,<top>,<bottom>" << std::endl;
-    std::cerr << "      --offset=<offset> error margin value added to bounds (for user convenience)" << std::endl;
+    std::cerr << "      --bounds=<front>,<back>,<right>,<left>,<top>,<bottom> the values represent the distances of the faces of the bounding box to the centre of the bounding stream in the bounding frame" << std::endl;
+    std::cerr << "      --error-margin=<margin> error margin value added to bounds (for user convenience), default: 0.5" << std::endl;
     std::cerr << "      --output-all: output all points" << std::endl;
     std::cerr << std::endl;
     std::cerr << "examples" << std::endl;
-    std::cerr << "    cat points.csv | points-grep stream --fields=bounded/t,bounded/coordinates,bounded/block,bounded/id,bounded/flag \"nav.csv;fields=t,x,y,z,roll,pitch,yaw\" --bounds=1.0,2.0,1.0,2.0,1.0,2.0 --offset=0.1" << std::endl;
-    std::cerr << "    cat points.csv | points-grep shape --fields=bounded/t,bounded/coordinates,bounded/block,bounded/id,bounded/flag,bounding --bounds=1.0,2.0,1.0,2.0,1.0,2.0 --offset=0.1" << std::endl;
+    std::cerr << "    cat points.csv | points-grep stream --fields=bounded \"nav.csv;fields=t,x,y,z,roll,pitch,yaw\" --bounds=1.0,2.0,1.0,2.0,1.0,2.0 --error-margin=0.1" << std::endl;
+    std::cerr << "    cat points.csv | points-grep stream --fields=t,coordinates,block,flag \"nav.csv;fields=t,x,y,z,roll,pitch,yaw\" --bounds=1.0,2.0,1.0,2.0,1.0,2.0 --error-margin=0.1" << std::endl;
+    std::cerr << "    cat points.csv | points-grep stream --fields=bounded/t,bounded/coordinates,bounded/block,bounded/flag \"local:/tmp/nav;fields=t,x,y,z,roll,pitch,yaw\" --bounds=1.0,2.0,1.0,2.0,1.0,2.0 --error-margin=0.5" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    cat points.csv | points-grep shape --fields=bounded,bounding --bounds=1.0,2.0,1.0,2.0,1.0,2.0" << std::endl;
+    std::cerr << "    cat points.csv | points-grep shape --fields=bounded/t,bounded/coordinates,bounded/flag,bounding/t,bounding/x,bounding/y,bounding/z,bounding/roll,bounding/pitch,bounding/yaw --bounds=1.0,1.0,1.0,1.0,1.0,1.0 --error-margin=1.0" << std::endl;
     std::cerr << std::endl;
     exit( 0 );
 }
@@ -201,10 +199,7 @@ int main( int argc, char** argv )
 {
     comma::command_line_options options( argc, argv );
     if( options.exists( "--help" ) || options.exists( "-h" ) || argc == 1 ) { usage(); }
-    comma::csv::options csv(options);
-    //if( csv.fields.empty() ) { csv.fields="t,x,y,z"; }
-    csv.full_xpath=true;
-    offset=options.value("--offset",0.5);
+    offset=options.value("--error-margin",0.5);
 
     bounds=comma::csv::ascii<bounds_t>().get(options.value("--bounds",std::string("0,0,0,0,0,0")));
 
@@ -213,70 +208,68 @@ int main( int argc, char** argv )
 
     std::string operation=unnamed[0];
 
-    bool flag_exists = false;
+    comma::csv::options csv(options);
+    csv.full_xpath=true;
+    bool flag_exists=false;
+
     if( operation == "stream" )
     {
-        csv.full_xpath = false;
-        if( csv.fields.empty() ) { csv.fields = "t,x,y,z"; }
+        std::vector<std::string> fields=comma::split(csv.fields,csv.delimiter);
+        if( csv.fields.empty() ) { csv.fields = "t,coordinates"; }
         flag_exists = csv.has_field( "flag" );
+        std::string bounded_string("bounded/");
+        for(unsigned int i=0; i<fields.size(); i++)
+        {
+            if(fields[i].substr(0,bounded_string.size())!=bounded_string)
+            {
+                fields[i]=bounded_string+fields[i];
+            }
+        }
+        csv.fields=comma::join( fields, csv.delimiter );
     }
     else if( operation == "shape" )
     {
-        flag_exists = csv.has_field( "bounded/flag" );
     }
     else
     {
         std::cerr << "points-grep: expected operation, got: \"" << operation << "\"" << std::endl;
         return 1;
     }
+
+    flag_exists = csv.has_field( "bounded/flag" );
     
     comma::csv::input_stream<joined_point> istream(std::cin,csv);
     comma::csv::output_stream<joined_point> ostream(std::cout,csv);
-    
-    //bounding stream
-    std::deque<bounding_point> bounding_queue;
-    boost::shared_ptr< comma::io::istream > bounding_is;
-    boost::shared_ptr< comma::csv::input_stream<bounding_point> > bounding_istream;
 
-    comma::io::select istream_select;
-    comma::io::select bounding_istream_select;
+    comma::signal_flag is_shutdown;
+    joined_point pq;
 
     if(operation=="stream")
     {
         if(unnamed.size()<2){ usage(); }
-        bounding_is.reset(new comma::io::istream( comma::split(unnamed[1],';')[0] )); // get stream name
-
+        comma::io::istream bounding_is( comma::split(unnamed[1],';')[0] ); // get stream name
         comma::name_value::parser parser( "filename" );
         comma::csv::options bounding_csv = parser.get< comma::csv::options >( unnamed[1] ); // get stream options
-        bounding_istream.reset(new comma::csv::input_stream<bounding_point>(**bounding_is, bounding_csv)); // create stream
+
+        //bounding stream
+        std::deque<bounding_point> bounding_queue;
+        comma::csv::input_stream<bounding_point> bounding_istream(*bounding_is, bounding_csv);
+
+        comma::io::select istream_select;
+        comma::io::select bounding_istream_select;
 
         istream_select.read().add(0);
-        istream_select.read().add(bounding_is->fd());
-        bounding_istream_select.read().add(bounding_is->fd());
-    }
-    else if(operation=="shape")
-    {
-        istream_select.read().add(0);
-    }
-    else
-    {
-        std::cerr << "points-grep: expected operation, got: \"" << operation << "\"" << std::endl;
-        return 1;
-    }
+        istream_select.read().add(bounding_is.fd());
+        bounding_istream_select.read().add(bounding_is.fd());
 
-    comma::signal_flag is_shutdown;
+        bool next=true;
 
-    joined_point pq;
-    bool next=true;
-
-    while(!is_shutdown && ( istream.ready() || ( std::cin.good() && !std::cin.eof() ) ))
-    {
-        if(operation=="stream")
+        while(!is_shutdown && ( istream.ready() || ( std::cin.good() && !std::cin.eof() ) ))
         {
-            bool bounding_data_available =  bounding_istream->ready() || ( (*bounding_is)->good() && !(*bounding_is)->eof());
+            bool bounding_data_available =  bounding_istream.ready() || ( bounding_is->good() && !bounding_is->eof());
 
             //check so we do not block
-            bool bounding_istream_ready=bounding_istream->ready();
+            bool bounding_istream_ready=bounding_istream.ready();
             bool istream_ready=istream.ready();
 
             if(next)
@@ -292,7 +285,7 @@ int main( int argc, char** argv )
                    {
                        istream_select.check();
                    }
-                   if(istream_select.read().ready(bounding_is->fd()))
+                   if(istream_select.read().ready(bounding_is.fd()))
                    {
                        bounding_istream_ready=true;
                    }
@@ -307,7 +300,7 @@ int main( int argc, char** argv )
                if(!bounding_istream_ready)
                {
                    bounding_istream_select.wait(boost::posix_time::milliseconds(10));
-                   if(bounding_istream_select.read().ready(bounding_is->fd()))
+                   if(bounding_istream_select.read().ready(bounding_is.fd()))
                    {
                        bounding_istream_ready=true;
                    }
@@ -317,7 +310,7 @@ int main( int argc, char** argv )
             //keep storing available bounding data
             if(bounding_istream_ready)
             {
-                const bounding_point* q = bounding_istream->read();
+                const bounding_point* q = bounding_istream.read();
                 if( q )
                 {
                     bounding_queue.push_back(*q);
@@ -366,58 +359,74 @@ int main( int argc, char** argv )
             bool is_first=( pq.bounded.timestamp - bounding_queue[0].t < bounding_queue[1].t - pq.bounded.timestamp );
             pq.bounding = is_first ? bounding_queue[0] : bounding_queue[1]; // assign bounding point
 
-        }
-        else if(operation=="shape")
-        {
-//             bool istream_ready=istream.ready();
-// 
-//             if(!istream_ready)
-//             {
-//                 istream_select.wait(boost::posix_time::milliseconds(10));
-//                 if(istream_select.read().ready(0))
-//                 {
-//                    istream_ready=true;
-//                 }
-//             }
-// 
-//             if(!istream_ready) { continue; }
+            //filter out object points
+            filter_point(pq);
 
+            if(!pq.bounded.flag && !output_all)
+            {
+                continue;
+            }
+
+            if(flag_exists)
+            {
+                ostream.write(pq);
+                ostream.flush();
+                continue;
+            }
+
+            //append flag
+            if(ostream.is_binary())
+            {
+                ostream.write(pq,istream.binary().last());
+                std::cout.write( reinterpret_cast< const char* >( &pq.bounded.flag ), sizeof( point::flag ) );
+            }
+            else
+            {
+                std::string line=comma::join( istream.ascii().last(), csv.delimiter );
+                line+=","+boost::lexical_cast<std::string>(pq.bounded.flag);
+                ostream.write(pq,line);
+            }
+            ostream.flush();
+        }
+    }
+    else if(operation=="shape")
+    {
+        while(!is_shutdown && ( istream.ready() || ( std::cin.good() && !std::cin.eof() ) ))
+        {
             const joined_point* pq_ptr = istream.read();
 
             if( !pq_ptr ) { break; }
 
             pq=*pq_ptr;
-        }
 
-        //filter out object points
-        filter_point(pq);
+            //filter out object points
+            filter_point(pq);
+            if(!pq.bounded.flag && !output_all)
+            {
+                continue;
+            }
 
-        if(!pq.bounded.flag && !output_all)
-        {
-            continue;
-        }
+            if(flag_exists)
+            {
+                ostream.write(pq);
+                ostream.flush();
+                continue;
+            }
 
-        if(flag_exists)
-        {
-            ostream.write(pq);
+            //append flag
+            if(ostream.is_binary())
+            {
+                ostream.write(pq,istream.binary().last());
+                std::cout.write( reinterpret_cast< const char* >( &pq.bounded.flag ), sizeof( point::flag ) );
+            }
+            else
+            {
+                std::string line=comma::join( istream.ascii().last(), csv.delimiter );
+                line+=","+boost::lexical_cast<std::string>(pq.bounded.flag);
+                ostream.write(pq,line);
+            }
             ostream.flush();
-            continue;
         }
-
-        //append flag
-        if(ostream.is_binary())
-        {
-            ostream.write(pq,istream.binary().last());
-            std::cout.write( reinterpret_cast< const char* >( &pq.bounded.flag ), sizeof( point::flag ) );
-        }
-        else
-        {
-            std::string line=comma::join( istream.ascii().last(), csv.delimiter );
-            line+=","+boost::lexical_cast<std::string>(pq.bounded.flag);
-            ostream.write(pq,line);
-        }
-        ostream.flush();
-
     }
 
     return(0);
