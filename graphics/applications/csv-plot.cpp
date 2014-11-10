@@ -50,19 +50,64 @@ static void usage( bool verbose = false )
     std::cerr << std::endl;
     std::cerr << "usage: cat xy.csv | csv-plot [<sources>] [<options>]" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "sources: input sources" << std::endl;
-    std::cerr << "    todo" << std::endl;
+    std::cerr << "sources: input sources as <name>[;<options>]" << std::endl;
+    std::cerr << "    <name>: e.g. points.csv, tcp:localhost:12345, etc" << std::endl;
+    std::cerr << "    <options>: csv options or stream specific options (see below)" << std::endl;
+    std::cerr << "               e.g: csv-plot \"points.bin;fields=x,y;binary=2d;color=red;weight=2\"" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "input fields: " << comma::join( comma::csv::names< snark::graphics::plotting::point >( false ), ',' ) << std::endl;
+    std::cerr << "              default: x,y" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
+    std::cerr << "    --help,-h: help, --help --verbose: more help" << std::endl;
     std::cerr << "    --frames-per-second,--fps=<value>, default: 25" << std::endl;
-    std::cerr << "    --no-stdin: no input on stdin; otherwise it is impossible to detect whether to expect anything on stdin" << std::endl;
-    std::cerr << "    todo" << std::endl;
+    std::cerr << "    --no-stdin: don't try to read from stdin" << std::endl;
+    std::cerr << "    --verbose,-v: more output" << std::endl;
+    std::cerr << std::endl;    
+    std::cerr << "stream options" << std::endl;
+    std::cerr << "    --color=<color>: plot color: black, white, red, green, blue" << std::endl;
+    std::cerr << "                                 yellow, cyan, magenta, grey" << std::endl;
+    std::cerr << "                                 or #rrggbb, e.g. #ff00ff" << std::endl;
+    std::cerr << "    --shape=<what>: curve (default)" << std::endl;
+    std::cerr << "                    todo: more shapes" << std::endl;
+    std::cerr << "    --size,-s,--tail=<n>: plot last <n> records of stream; default 10000" << std::endl;
+    std::cerr << "        use --style=dots, otherwise it's buggy; todo: fix" << std::endl;
+    std::cerr << "    --style=<style>: plot style (mapped into qwt styles)" << std::endl;
+    std::cerr << "        curve: no-curve" << std::endl;
+    std::cerr << "               lines (default)" << std::endl;
+    std::cerr << "               sticks" << std::endl;
+    std::cerr << "               steps" << std::endl;
+    std::cerr << "               dots" << std::endl;
+    std::cerr << "    --weight=<weight>: point or line weight" << std::endl;
     if( verbose ) { std::cerr << std::endl << comma::csv::options::usage() << std::endl; }
     std::cerr << std::endl;
     if( verbose )
     {
         std::cerr << "examples" << std::endl;
-        std::cerr << "    todo" << std::endl;
+        std::cerr << "    plot points on stdin" << std::endl;
+        std::cerr << "        echo -e 1,10\\\\n2,5\\\\n3,8 | csv-plot" << std::endl;
+        std::cerr << "        echo -e 1,10\\\\n2,5\\\\n3,8 | csv-plot --color=red" << std::endl;
+        std::cerr << "        echo -e 1,10\\\\n2,5\\\\n3,8 | csv-plot --color=red --weight=5" << std::endl;
+        std::cerr << "        echo -e 1,10\\\\n2,5\\\\n3,8 | csv-plot --color=red --weight=5 --style=dots" << std::endl;
+        std::cerr << std::endl;
+        std::cerr << "    use point number as x" << std::endl;
+        std::cerr << "        echo -e 10\\\\n5\\\\n8 | csv-plot --fields=y" << std::endl;
+        std::cerr << std::endl;
+        std::cerr << "    use point number as x" << std::endl;
+        std::cerr << "        echo -e 10\\\\n5\\\\n8 | csv-plot --fields y" << std::endl;
+        std::cerr << std::endl;
+        std::cerr << "    several plots at once" << std::endl;
+        std::cerr << "        echo -e 1,10\\\\n2,5\\\\n3,8 > test.csv" << std::endl;
+        std::cerr << "        csv-plot \"test.csv;color=red\" \"test.csv;color=blue;fields=y,x\"" << std::endl;
+        std::cerr << std::endl;
+        std::cerr << "    point streams: show last 100 points" << std::endl;
+        std::cerr << "        netcat localhost 12345 | csv-plot --size=100" << std::endl;
+        std::cerr << std::endl;
+        std::cerr << "    several streams" << std::endl;
+        std::cerr << "        csv-plot \"tcp:localhost:8888\" \"tcp:localhost:9999\"" << std::endl;
+        std::cerr << std::endl;
+        std::cerr << "    plot block by block" << std::endl;
+        std::cerr << "        netcat localhost 12345 | csv-plot --fields=x,y,block" << std::endl;
     }
     else
     {
