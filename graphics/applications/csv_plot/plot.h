@@ -49,11 +49,11 @@ class plot : public QwtPlot
         void push_back( stream* r );
         void start();
         void shutdown();
+        const boost::ptr_vector< stream >& streams() const { return streams_; }
         
     private:
         boost::ptr_vector< stream > streams_;
         unsigned int fps_;
-        bool alive_;
         
     private slots:
         void update();

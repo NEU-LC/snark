@@ -42,15 +42,18 @@ class QwtPlot;
 
 namespace snark { namespace graphics { namespace plotting {
 
-struct curve_stream : public stream
+class curve_stream : public stream
 {
-    QwtPlotCurve curve;
-    
-    curve_stream( const config_t& config );
-    
-    void attach( QwtPlot* p );
-    
-    void update();
+    public:
+        curve_stream( const config_t& config );
+        
+        void attach( QwtPlot* p );
+        
+        void update_plot_data();
+        
+    private:
+        QwtPlotCurve* curve_;
+        bool attached_;
 };
     
 } } } // namespace snark { namespace graphics { namespace plotting {

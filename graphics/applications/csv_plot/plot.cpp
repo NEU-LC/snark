@@ -37,7 +37,7 @@
 
 namespace snark { namespace graphics { namespace plotting {
 
-plot::plot( unsigned int fps, QWidget *parent, char *name ) : QwtPlot( parent ), fps_( fps ), alive_( true ) {}
+plot::plot( unsigned int fps, QWidget *parent, char *name ) : QwtPlot( parent ), fps_( fps ) {}
 
 void plot::start()
 {
@@ -49,15 +49,8 @@ void plot::start()
 
 void plot::update()
 {
-    if( !alive_ ) { return; }
-    bool updated = false;
-    for( unsigned int i = 0; i < streams_.size(); ++i )
-    {
-        if( streams_[i].is_shutdown() ) { continue; }
-        alive_ = true;
-        // todo: read queue, if updated, set updated to true
-    }
-    if( updated ) { replot(); }
+    for( unsigned int i = 0; i < streams_.size(); ++i ) { streams_[i].update(); }
+    replot(); // todo: replot only if updated
 }
 
 void plot::push_back( stream* s )
