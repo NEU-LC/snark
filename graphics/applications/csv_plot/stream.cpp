@@ -43,6 +43,7 @@ stream::config_t::config_t( const comma::command_line_options& options )
     , size( options.value( "--size,-s", 10000 ) )
     , color_name( options.value< std::string >( "--color,--colour", "" ) )
 {
+    if( csv.fields.empty() ) { csv.fields="x,y"; } // todo: parametrize on the graph type
     if( !color_name.empty() ) { color = QColor( &color_name[0] ); }
 }
 
@@ -52,6 +53,7 @@ stream::stream( const stream::config_t& config )
     , is_stdin_( config.csv.filename == "-" )
     , is_( config.csv.filename, config.csv.binary() ? comma::io::mode::binary : comma::io::mode::ascii, comma::io::mode::non_blocking )
     , istream_( *is_, config.csv )
+    , count_( 0 )
     , has_x_( config.csv.fields.empty() || config.csv.has_field( "x" ) )
     , buffers_( config.size )
 {
@@ -62,7 +64,7 @@ stream::buffers_t_::buffers_t_( comma::uint32 size ) : x( size ), y( size ) {}
 void stream::buffers_t_::add( const point& p )
 {
     x.add( p.coordinates.x(), p.block );
-    y.add( p.coordinates.x(), p.block );
+    y.add( p.coordinates.y(), p.block );
 }
 
 void stream::start()
@@ -97,7 +99,7 @@ void stream::read_()
     is_shutdown_ = true;
 }
 
-void stream::update_()
+void stream::update()
 {
     points_t p;
     {
@@ -105,7 +107,9 @@ void stream::update_()
         p = *t; // quick and dirty, watch performance?
         t->clear();
     }
+    if( p.empty() ) { return; }
     for( std::size_t i = 0; i < p.size(); ++i ) { buffers_.add( p[i] ); }
+    update_plot_data();
 }
 
 } } } // namespace snark { namespace graphics { namespace plotting {

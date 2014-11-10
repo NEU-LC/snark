@@ -50,14 +50,15 @@ void plot::start()
 void plot::update()
 {
     if( !alive_ ) { return; }
-    bool updated = false;
+    bool alive = false;
     for( unsigned int i = 0; i < streams_.size(); ++i )
     {
+        streams_[i].update();
         if( streams_[i].is_shutdown() ) { continue; }
-        alive_ = true;
-        // todo: read queue, if updated, set updated to true
+        alive = true;
     }
-    if( updated ) { replot(); }
+    if( alive_ ) { replot(); }
+    alive_ = alive;
 }
 
 void plot::push_back( stream* s )
