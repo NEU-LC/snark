@@ -195,6 +195,43 @@ static filters::value_type crop_tile_impl_( filters::value_type input, unsigned 
     return output;
 }
 
+class accumulate_impl_
+{
+    public:
+        accumulate_impl_( unsigned int how_many ) : how_many_ ( how_many ), defined_ ( false ) {}
+        filters::value_type operator()( filters::value_type input )
+        {
+            if( !defined_ )
+            {
+                cols_ = input.second.cols;
+                h_ = input.second.rows;
+                rows_ = h_ * how_many_;
+                type_ = input.second.type();
+                accumulated_image_ = cv::Mat::zeros( rows_, cols_, type_ );
+                rect_for_new_data_ = cv::Rect( 0, 0, cols_, h_ );
+                rect_for_old_data_ = cv::Rect( 0, h_, cols_, rows_ - h_ );
+                rect_to_keep_ = cv::Rect( 0, 0, cols_, rows_ - h_ );                
+                defined_ = true;
+            }
+            if( input.second.cols != cols_ ) { COMMA_THROW( comma::exception, "accumulate: expected input image with " << cols_ << " columns, got " << input.second.cols << " columns"); }
+            if( input.second.rows != h_ ) { COMMA_THROW( comma::exception, "accumulate: expected input image with " << h_ << " rows, got " << input.second.rows << " rows"); }
+            if( input.second.type() != type_ ) { COMMA_THROW( comma::exception, "accumulate: expected input image of type " << type_ << ", got type " << input.second.type() << " rows"); }
+            filters::value_type output( input.first, cv::Mat( accumulated_image_.size(), accumulated_image_.type() ) );
+            cv::Mat new_data( output.second, rect_for_new_data_ );
+            input.second.copyTo( new_data );
+            cv::Mat old_data( output.second, rect_for_old_data_ );
+            cv::Mat( accumulated_image_, rect_to_keep_ ).copyTo( old_data );
+            output.second.copyTo( accumulated_image_ );
+            return output;
+        }
+    private:
+        unsigned int how_many_;
+        bool defined_;
+        int cols_, h_, rows_, type_;
+        cv::Rect rect_for_new_data_, rect_for_old_data_, rect_to_keep_;
+        cv::Mat accumulated_image_;
+};
+
 static filters::value_type convert_to_impl_( filters::value_type m, int type, double scale, double offset )
 {
     filters::value_type n;
@@ -300,7 +337,7 @@ static filters::value_type merge_impl_( filters::value_type m, unsigned int ncha
     if( m.second.rows % nchannels != 0 ) { COMMA_THROW( comma::exception, "merge: expected " << nchannels << " horizontal strips of equal height, got " << m.second.rows << " rows, which is not a multiple of " << nchannels ); }
     std::vector< cv::Mat > channels( nchannels );
     for( std::size_t i = 0; i < nchannels; ++i ) { channels[i] = cv::Mat( m.second, cv::Rect( 0, i * m.second.rows / nchannels, m.second.cols, m.second.rows / nchannels ) ); }
-    cv::merge( channels, n.second );
+    cv::merge( channels, n.second ); 
     return n;
 }
 
@@ -725,6 +762,12 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
             if( number_of_tile_cols == 0 || number_of_tile_rows == 0 ) { COMMA_THROW( comma::exception, "crop-tile: expected positive number of tiles along x and y, got " << number_of_tile_cols << "," << number_of_tile_rows ); }
             f.push_back( filter( boost::bind( &crop_tile_impl_, _1, number_of_tile_cols, number_of_tile_rows, tiles, vertical ) ) );
         }
+        else if( e[0] == "accumulate" )
+        {
+            unsigned int how_many = boost::lexical_cast< unsigned int >( e[1] );
+            if ( how_many == 0 ) { COMMA_THROW( comma::exception, "expected positive number of images to accumulate in accumulate filter, got " << how_many ); }
+            f.push_back( filter( accumulate_impl_( how_many ) ) );
+        }
         else if( e[0] == "cross" )
         {
             boost::optional< Eigen::Vector2i > center;
@@ -849,6 +892,7 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
         {
             unsigned int default_number_of_channels = 3;
             unsigned int nchannels = e.size() == 1 ? default_number_of_channels : boost::lexical_cast< unsigned int >( e[1] );
+            if ( nchannels == 0 ) { COMMA_THROW( comma::exception, "expected positive number of channels in merge filter, got " << nchannels ); }
             f.push_back( filter( boost::bind( &merge_impl_, _1, nchannels ) ) );
         }        
         else if( e[0] == "undistort" )
@@ -936,6 +980,8 @@ static std::string usage_impl_()
 {
     std::ostringstream oss;
     oss << "    cv::Mat image filters usage (';'-separated):" << std::endl;
+    oss << "        accumulate=<n>: accumulate the last n images and concatenate them vertically (useful for slit-scan and spectral cameras like pika2)" << std::endl;
+    oss << "            example: cat slit-scan.bin | cv-cat \"accumulate=400;view;null\"" << std::endl;
     oss << "        bayer=<mode>: convert from bayer, <mode>=1-4" << std::endl;
     oss << "        brightness=<scale>[,<offset>]: output=(scale*input)+offset; default offset=0" << std::endl;
     oss << "        convert-to,convert_to=<type>[,<scale>[,<offset>]]: convert to given type; should be the same number of channels; see opencv convertTo for details" << std::endl;
