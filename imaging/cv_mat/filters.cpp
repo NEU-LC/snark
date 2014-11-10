@@ -203,15 +203,18 @@ class accumulate_impl_
         {
             if( !defined_ )
             {
-                unsigned int cols = input.second.cols;
-                unsigned int h = input.second.rows;
-                unsigned int rows = h * how_many_;
-                accumulated_image_ = cv::Mat::zeros( rows, cols, input.second.type() );
-                rect_for_new_data_ = cv::Rect( 0, 0, cols, h );
-                rect_for_old_data_ = cv::Rect( 0, h, cols, rows - h );
-                rect_to_keep_ = cv::Rect( 0, 0, cols, rows - h );                
+                cols_ = input.second.cols;
+                h_ = input.second.rows;
+                rows_ = h_ * how_many_;
+                accumulated_image_ = cv::Mat::zeros( rows_, cols_, input.second.type() );
+                rect_for_new_data_ = cv::Rect( 0, 0, cols_, h_ );
+                rect_for_old_data_ = cv::Rect( 0, h_, cols_, rows_ - h_ );
+                rect_to_keep_ = cv::Rect( 0, 0, cols_, rows_ - h_ );                
                 defined_ = true;
             }
+            if( input.second.cols != cols_ ) { COMMA_THROW( comma::exception, "accumulate: expected input image with " << cols_ << " columns, got " << input.second.cols << " columns"); }
+            if( input.second.rows != h_ ) { COMMA_THROW( comma::exception, "accumulate: expected input image with " << h_ << " rows, got " << input.second.rows << " rows"); }
+            if( input.second.type() != accumulated_image_.type() ) { COMMA_THROW( comma::exception, "accumulate: expected input image of type " << accumulated_image_.type() << ", got type " << input.second.type() << " rows"); }
             filters::value_type output( input.first, cv::Mat( accumulated_image_.size(), accumulated_image_.type() ) );
             cv::Mat new_data( output.second, rect_for_new_data_ );
             input.second.copyTo( new_data );
@@ -223,6 +226,7 @@ class accumulate_impl_
     private:
         unsigned int how_many_;
         bool defined_;
+        unsigned int cols_, h_, rows_;
         cv::Rect rect_for_new_data_, rect_for_old_data_, rect_to_keep_;
         cv::Mat accumulated_image_;
 };
@@ -974,7 +978,7 @@ static std::string usage_impl_()
     std::ostringstream oss;
     oss << "    cv::Mat image filters usage (';'-separated):" << std::endl;
     oss << "        accumulate=<n>: accumulate the last n images and concatenate them vertically (useful for slit-scan and spectral cameras like pika2)" << std::endl;
-    oss << "            example: cat pika2.bin | cv-cat \"crop-tile=1,244,0,36,0,53,0,122;merge;accumulate=900;view;null\"" << std::endl;
+    oss << "            example: cat slit-scan.bin | cv-cat \"accumulate=400;view;null\"" << std::endl;
     oss << "        bayer=<mode>: convert from bayer, <mode>=1-4" << std::endl;
     oss << "        brightness=<scale>[,<offset>]: output=(scale*input)+offset; default offset=0" << std::endl;
     oss << "        convert-to,convert_to=<type>[,<scale>[,<offset>]]: convert to given type; should be the same number of channels; see opencv convertTo for details" << std::endl;
