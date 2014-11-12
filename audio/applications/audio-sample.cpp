@@ -108,7 +108,7 @@ int main( int ac, char** av )
         comma::command_line_options options( ac, av, usage );
         bool verbose = options.exists( "--verbose,-v" );
         unsigned int rate = options.value< unsigned int >( "--rate,-r" );
-        double attenuation = options.value( "--attenuation", 1.0 );
+        //double attenuation = options.value( "--attenuation", 1.0 );
         comma::csv::options csv( options );
         input default_input;
         default_input.duration = options.value( "--duration", 0.0 );
