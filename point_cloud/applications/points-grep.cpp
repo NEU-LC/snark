@@ -378,7 +378,7 @@ int main( int argc, char** argv )
             if(ostream.is_binary())
             {
                 ostream.write(pq,istream.binary().last());
-                std::cout.write( reinterpret_cast< const char* >( &pq.bounded.flag ), sizeof( point::flag ) );
+                std::cout.write( reinterpret_cast< const char* >( &pq.bounded.flag ), sizeof( comma::uint32 ) );
             }
             else
             {
@@ -417,7 +417,7 @@ int main( int argc, char** argv )
             if(ostream.is_binary())
             {
                 ostream.write(pq,istream.binary().last());
-                std::cout.write( reinterpret_cast< const char* >( &pq.bounded.flag ), sizeof( point::flag ) );
+                std::cout.write( reinterpret_cast< const char* >( &pq.bounded.flag ), sizeof( comma::uint32 ) );
             }
             else
             {
