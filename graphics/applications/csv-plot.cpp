@@ -134,7 +134,7 @@ int main( int ac, char** av )
         comma::command_line_options options( ac, av, usage );
         bool verbose = options.exists( "--verbose,-v" );
         snark::graphics::plotting::stream::config_t config( options );
-        const std::vector< std::string >& unnamed = options.unnamed( "--no-stdin,--verbose,-v", "--.*|-[a-z].*" );
+        const std::vector< std::string >& unnamed = options.unnamed( "--no-stdin,--verbose,-v", "--.*,-[a-z].*" );
         boost::optional< unsigned int > stdin_index;
         for( unsigned int i = 0; i < unnamed.size(); ++i ) { if( unnamed[i] == "-" || unnamed[i].substr( 0, 2 ) == "-;" ) { stdin_index = i; break; } }
         QApplication a( ac, av );
