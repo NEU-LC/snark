@@ -60,6 +60,23 @@ ENDIF( snark_QT_VERSION EQUAL "5" )
 OPTION( snark_build_graphics_csv_plot "build csv-plot" OFF )
 
 if( snark_build_graphics_csv_plot ) # todo: make sure it works for qt5
+    
+    # todo: quick and dirty, most likely won't work on windows; do it right, sometime
+    find_path( QWT_INCLUDE_DIRS
+                    NAMES qwt_plot.h
+                    PATHS
+                    /usr/local/include/qwt-qt4
+                    /usr/local/include/qwt
+                    /usr/include/qwt-qt4
+                    /usr/include/qwt )
+    find_library( QWT_LIBRARIES
+                    NAMES qwt-qt4 qwt
+                    PATHS /usr/local/lib /usr/lib )
+    include ( FindPackageHandleStandardArgs )
+    find_package_handle_standard_args( Qwt DEFAULT_MSG QWT_LIBRARIES QWT_INCLUDE_DIRS )
+    MARK_AS_ADVANCED(QWT_LIBRARIES QWT_INCLUDE_DIRS)
+
+    include_directories( ${QWT_INCLUDE_DIRS} )
     SET( CSV_PLOT_MOC_FILES csv_plot_moc csv_plot/plot.h ) #SET( CSV_PLOT_MOC_FILES csv_plot_Moc csv_plot/main_window.h csv_plot/plot.h )
     IF( snark_QT_VERSION EQUAL "5" )
         QT5_WRAP_CPP( ${CSV_PLOT_MOC_FILES} OPTIONS ${MOC_OPTIONS} )
@@ -76,10 +93,10 @@ if( snark_build_graphics_csv_plot ) # todo: make sure it works for qt5
     ADD_EXECUTABLE( csv-plot csv-plot.cpp  ${csv_plot_source} ${csv_plot_include} ${csv_plot_moc} )
 
     IF( snark_QT_VERSION EQUAL "5" ) 
-    TARGET_LINK_LIBRARIES( csv-plot ${comma_ALL_LIBRARIES} qwt ) #profiler )
+    TARGET_LINK_LIBRARIES( csv-plot ${comma_ALL_LIBRARIES} ${QWT_LIBRARIES} ) #profiler )
     ELSE( snark_QT_VERSION EQUAL "5" )
     IF( snark_QT_VERSION EQUAL "4" )
-        TARGET_LINK_LIBRARIES( csv-plot ${QT_LIBRARIES} ${comma_ALL_LIBRARIES} qwt ${OPENGL_LIBRARY} ) #profiler )
+        TARGET_LINK_LIBRARIES( csv-plot ${QT_LIBRARIES} ${comma_ALL_LIBRARIES} ${QWT_LIBRARIES} ${OPENGL_LIBRARY} ) #profiler )
     ENDIF( snark_QT_VERSION EQUAL "4" )
     ENDIF( snark_QT_VERSION EQUAL "5" )
     

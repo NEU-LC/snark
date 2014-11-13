@@ -50,7 +50,9 @@ static void usage( bool verbose )
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    --help,-h: --help --verbose for more help" << std::endl;
+    //std::cerr << "    --attenuation=[<rate>]: attenuation rate per second (currently square root only; todo: implement properly)" << std::endl;
     std::cerr << "    --duration=[<seconds>]: if duration field absent, use this duration for all the samples" << std::endl;
+    std::cerr << "    --rate=[<value>]: samples per second" << std::endl;
     std::cerr << "    todo" << std::endl;
     std::cerr << "    --verbose,-v: more output" << std::endl;
     if( verbose ) { std::cerr << std::endl << "csv options" << std::endl << comma::csv::options::usage() << std::endl; }
@@ -106,6 +108,7 @@ int main( int ac, char** av )
         comma::command_line_options options( ac, av, usage );
         bool verbose = options.exists( "--verbose,-v" );
         unsigned int rate = options.value< unsigned int >( "--rate,-r" );
+        //double attenuation = options.value( "--attenuation", 1.0 );
         comma::csv::options csv( options );
         input default_input;
         default_input.duration = options.value( "--duration", 0.0 );
