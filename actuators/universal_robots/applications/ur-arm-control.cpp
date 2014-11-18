@@ -241,8 +241,6 @@ void load_config( const std::string& filepath )
     comma::visiting::apply( from_ptree ).to( config );
 }
 
-namespace fs = boost::filesystem;
-
 /// Create a home position file if arm is running and is in home position
 void home_position_check( const arm::status_t& status, const std::string& homefile )
 {
