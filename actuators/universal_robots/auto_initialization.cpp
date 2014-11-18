@@ -57,6 +57,7 @@ bool auto_initialization::remove_home_position() const
     namespace fs = boost::filesystem;
     fs::path file( home_filepath_ );
     fs::remove( file );
+    return true;
 }
 
 result auto_initialization::run( started_reply_t started_update, bool force )
