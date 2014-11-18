@@ -11,7 +11,3 @@ ADD_EXECUTABLE( ur-arm-status ur-arm-status.cpp )
 TARGET_LINK_LIBRARIES( ur-arm-status snark_robotic_arm snark_ur5_transforms snark_ur5_transforms_simulink snark_robotic_arm_simulink boost_system ${comma_ALL_LIBRARIES} )
 INSTALL( TARGETS ur-arm-status RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
 
-ADD_EXECUTABLE( ur-arm-from-console ur-arm-from-console.cpp )
-TARGET_LINK_LIBRARIES( ur-arm-from-console snark_robotic_arm snark_robotic_arm_simulink boost_system ${comma_ALL_LIBRARIES} )
-INSTALL( TARGETS ur-arm-from-console RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
-
