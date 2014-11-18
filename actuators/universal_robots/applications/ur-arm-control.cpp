@@ -163,33 +163,28 @@ void process_command( const std::vector< std::string >& v, std::ostream& os )
     else if( boost::iequals( v[2], "set_pos" ) )     { output( handle< snark::ur::set_position >( v, os ) ); }
     else if( boost::iequals( v[2], "set_home" ) )    { output( handle< snark::ur::set_home >( v, os ) ); }
     else if( boost::iequals( v[2], "power" ) )       { output( handle< snark::ur::power >( v, os )); }  
-    else if( boost::iequals( v[2], "scan" ) )        
-    {
-        if( v.size() >= snark::ur::sweep_cam::fields )     { output( handle< snark::ur::sweep_cam >( v, os )); }
-        else 
-        {
-            // If the user did not enter a sweep angle as last field, use the default
-            // You can either do this or create another scan command with the extra sweep_angle field
-            static std::string default_sweep = boost::lexical_cast< std::string >( config.continuum.scan.sweep_angle.value() );
-            std::vector< std::string > items = v; 
-            items.push_back( default_sweep );
-            output( handle< snark::ur::sweep_cam >( items, os ) );
-        } 
-    }  
-    else if( boost::iequals( v[2], "brakes" ) || 
-             boost::iequals( v[2], "stop" ) )        { output( handle< snark::ur::brakes >( v, os )); }  
-    else if( boost::iequals( v[2], "cancel" ) )       { } /// No need to do anything, used to cancel other running commands e.g. auto_init or scan  
+//     else if( boost::iequals( v[2], "scan" ) )        
+//     {
+//         if( v.size() >= snark::ur::sweep_cam::fields )     { output( handle< snark::ur::sweep_cam >( v, os )); }
+//         else 
+//         {
+//             // If the user did not enter a sweep angle as last field, use the default
+//             // You can either do this or create another scan command with the extra sweep_angle field
+//             static std::string default_sweep = boost::lexical_cast< std::string >( config.continuum.scan.sweep_angle.value() );
+//             std::vector< std::string > items = v; 
+//             items.push_back( default_sweep );
+//             output( handle< snark::ur::sweep_cam >( items, os ) );
+//         } 
+//     }  
+    else if( boost::iequals( v[2], "brakes" ) || boost::iequals( v[2], "stop" ) ) { output( handle< snark::ur::brakes >( v, os )); }  
+    else if( boost::iequals( v[2], "cancel" ) ) { } /// No need to do anything, used to cancel other running commands e.g. auto_init or scan
     else if( boost::iequals( v[2], "auto_init" ) )  
     { 
-        if( v.size() == snark::ur::auto_init_force::fields ) 
-                                                     { output( handle< snark::ur::auto_init_force >( v, os )); }
-        else                                         { output( handle< snark::ur::auto_init >( v, os )); } 
+        if( v.size() == snark::ur::auto_init_force::fields ) { output( handle< snark::ur::auto_init_force >( v, os )); }
+        else { output( handle< snark::ur::auto_init >( v, os )); } 
     }  
-    else if( boost::iequals( v[2], "initj" ) )       { output( handle< snark::ur::joint_move >( v, os )); 
-    }  
-    // else if( boost::iequals( v[2], "movej" ) )      { output( handle< snark::ur::move_joints >( v, os ) ); }
-    else { output( comma::join( v, v.size(), ',' ) + ',' + 
-        boost::lexical_cast< std::string >( snark::ur::errors::unknown_command ) + ",\"unknown command found: '" + v[2] + "'\"" ); return; }
+    else if( boost::iequals( v[2], "initj" ) ) { output( handle< snark::ur::joint_move >( v, os )); }  
+    else { output( comma::join( v, v.size(), ',' ) + ',' + boost::lexical_cast< std::string >( snark::ur::errors::unknown_command ) + ",\"unknown command found: '" + v[2] + "'\"" ); return; }
 }
 
 /// Return null if no status
@@ -211,7 +206,6 @@ void read_status( comma::csv::binary_input_stream< snark::ur::status_t >& iss, c
         COMMA_THROW( comma::exception, "status data alignment check failed" ); 
     }
 }
-
 
 class stop_on_exit
 {
@@ -243,11 +237,10 @@ void load_config( const std::string& filepath )
 /// Create a home position file if arm is running and is in home position
 void home_position_check( const snark::ur::status_t& status, const std::string& homefile )
 {
-    // static std::vector< snark::ur::plane_angle_t > home_position; /// store home joint positions in radian
     static const boost::filesystem::path path( homefile );
     if( status.is_running() )
     {
-        if( status.check_pose( config.continuum.home_position ) ){ std::ofstream( homefile.c_str(), std::ios::out | std::ios::trunc ); } // create
+        if( status.check_pose( config.continuum.home_position ) ) { std::ofstream( homefile.c_str(), std::ios::out | std::ios::trunc ); } // create
         else { boost::filesystem::remove( path ); } // remove
     }
 }
