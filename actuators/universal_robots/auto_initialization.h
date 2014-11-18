@@ -57,17 +57,36 @@ class auto_initialization
 {
 public:
     typedef comma::csv::binary_input_stream< snark::ur::status_t > binary_stream_t;   /// for reading new statuses
+    typedef boost::function< void ( void ) > started_reply_t; /// To be called to signal that the movement has started - for commands like scan or auto_init
+    typedef boost::function< bool ( void ) > command_received_t; 
+    
+    auto_initialization( snark::ur::status_t& status, std::ostream& robot, started_reply_t f, comma::signal_flag& signaled, command_received_t s, const std::string& work_dir ) : 
+        status_( status ), os( robot ), update_status_( f ), signaled_( signaled ), interrupt_( s ), force_max_( 13.0 ), home_filepath_( work_dir + '/' + filename ) {}
+    // parameters f and s update status_
+    
+    void set_app_name( const char* name ) { name_ = name; }
+    void set_force_limit( double newtons ){ force_max_ = newtons; }
+    
+    const std::string& home_filepath() const { return home_filepath_; }
+    
+    bool is_in_home_position() const;
+    bool remove_home_position() const;
+    
+    /// Performs auto initialisation but also listens for new commands.
+    /// If a new command arrives or a signal is received run() returns immediately.
+    /// result: shows whether success or failure.
+    result run( started_reply_t started_update, bool force );
+    
 private:
-    /// Status to check if initialized 
-    snark::ur::status_t& status_;
+    snark::ur::status_t& status_; /// Status to check if initialized 
     std::ostream& os;           /// output to the rover
-    boost::function< void ( void ) > update_status_;
+    started_reply_t update_status_;
     comma::signal_flag& signaled_;  /// Check if signal received
-    boost::function< bool ( void ) > interrupt_;    /// A new command is received
+    command_received_t interrupt_;    /// A new command is received
     
     std::string name_;  // name of the executable running this
     /// This is the value of force limit on arm before failing auto initialisation.
-    /// Should not be 0 as there is a laszer mount?
+    /// Should not be 0 as there is a laser mount?
     double force_max_; // newtons
     std::string home_filepath_;
     
@@ -76,37 +95,7 @@ private:
     void read_status(); 
     
     static const char* filename;
-    
-public:
-    auto_initialization( snark::ur::status_t& status, std::ostream& robot, 
-                         boost::function< void (void) > f, /// This updates status_
-                         comma::signal_flag& signaled, 
-                         boost::function< bool (void) > s, /// This updates status_
-                         const std::string& work_dir ) : 
-        status_( status ), os( robot ), 
-        update_status_(f),
-        signaled_( signaled ),
-        interrupt_( s ),
-        force_max_( 13.0 ), 
-        home_filepath_( work_dir + '/' + filename ) {}
-    
-    void set_app_name( const char* name ) { name_ = name; }
-    void set_force_limit( double newtons ){ force_max_ = newtons; }
-    
-    const std::string& home_filepath() const { return home_filepath_; }
-    
-    /// To be called to signal that the movement has started - for commands like SCAN or AUTO_INIT
-    typedef boost::function< void ( void ) > started_reply_t;
-
-    bool is_in_home_position() const;
-    bool remove_home_position() const;
-    
-    /// Performs auto initialisation but also listens for new commands.
-    /// If a new command arrives or a signal is received run() returns immediately.
-    /// result: shows wether success or failure.
-    result run( started_reply_t started_update, bool force );
 };
-
 
 } } } // namespace snark { namespace ur { namespace handlers {
 

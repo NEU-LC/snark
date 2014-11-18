@@ -35,11 +35,11 @@
 
 namespace snark { namespace ur { namespace handlers {
 
-const char* auto_initialization::filename = "ur5-in-home-position";
+const char* auto_initialization::filename = "ur-arm-in-home-position";
 
 void auto_initialization::read_status()
 {
-    ///  THis guarantee a status is read or an exception is thrown
+    ///  This guarantee a status is read or an exception is thrown
     update_status_( );
 }
 
@@ -61,17 +61,11 @@ result auto_initialization::run( started_reply_t started_update, bool force )
     std::cerr << name() << "command auto init" << std::endl;
 
     std::map< char, std::string > initj;
-    // snark-ur10-from-console: Initialising joint (5)
     initj[5] = "speedj_init([0,0,0,0,0,-0.1],0.05,0.04)";
-    // snark-ur10-from-console: Initialising joint (4)
     initj[4] = "speedj_init([0,0,0,0,0.1,0],0.05,0.0333333)";
-    // snark-ur10-from-console: Initialising joint (3)
     initj[3] = "speedj_init([0,0,0,-0.1,0,0],0.05,0.0266667)";
-    // snark-ur10-from-console: Initialising joint (2)
     initj[2] = "speedj_init([0,0,0.05,0,0,0],0.05,0.02)";
-    // snark-ur10-from-console: Initialising joint (1)
     initj[1] = "speedj_init([0,-0.05,0,0,0,0],0.05,0.0133333)";
-    // snark-ur10-from-console: Initialising joint (0)
     initj[0] = "speedj_init([0.05,0,0,0,0,0],0.05,0.00666667)";
 
     if( !status_.is_initialising_ready() ) {
@@ -140,7 +134,5 @@ result auto_initialization::run( started_reply_t started_update, bool force )
     std::cerr << name() << "command auto init completed" << std::endl;
     return result();
 }
-
-
 
 } } } // namespace snark { namespace ur { namespace handlers {
