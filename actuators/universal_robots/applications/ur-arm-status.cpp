@@ -50,7 +50,7 @@
 #include "../data.h"
 #include "../transforms/transforms.h"
 
-const char* name() { return "snark-ur10-status: "; }
+const char* name() { return "ur-arm-status: "; }
 
 namespace impl_ {
 

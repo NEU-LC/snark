@@ -51,7 +51,7 @@
 #include "../data.h"
 #include "../units.h"
 
-const char* name() { return "snark-ur10-from-console: "; }
+const char* name() { return "ur-arm-from-console: "; }
 
 namespace impl_ {
 

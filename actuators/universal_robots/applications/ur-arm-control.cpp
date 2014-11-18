@@ -72,9 +72,7 @@ extern ExtU_Arm_controller_v2_T Arm_controller_v2_U;
 /* External outputs (root outports fed by signals with auto storage) */
 extern ExtY_Arm_controller_v2_T Arm_controller_v2_Y;
 
-static const char* name() {
-    return "robot-arm-daemon: ";
-}
+static const char* name() { return "ur-arm-control: "; }
 
 namespace impl_ {
 
