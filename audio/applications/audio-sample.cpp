@@ -36,8 +36,12 @@
 #include <iostream>
 #include <vector>
 #include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/thread/pthread/mutex.hpp>
 #include <comma/application/command_line_options.h>
 #include <comma/csv/stream.h>
+#ifndef WIN32
+#include <comma/io/select.h>
+#endif // #ifndef WIN32
 #include <comma/visiting/traits.h>
 #include <snark/visiting/traits.h>
 
@@ -50,17 +54,26 @@ static void usage( bool verbose )
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    --help,-h: --help --verbose for more help" << std::endl;
+    std::cerr << "    --amplitude,--volume=[<value>]: if duration field absent, use this duration for all the samples" << std::endl;
     //std::cerr << "    --attenuation=[<rate>]: attenuation rate per second (currently square root only; todo: implement properly)" << std::endl;
     std::cerr << "    --duration=[<seconds>]: if duration field absent, use this duration for all the samples" << std::endl;
     std::cerr << "    --rate=[<value>]: samples per second" << std::endl;
+    #ifndef WIN32
+    std::cerr << "    --realtime: output sample until next block available on stdin" << std::endl;
+    std::cerr << "                experimental feature, implementation in progress..." << std::endl;
+    #endif // #ifndef WIN32
     std::cerr << "    todo" << std::endl;
     std::cerr << "    --verbose,-v: more output" << std::endl;
     if( verbose ) { std::cerr << std::endl << "csv options" << std::endl << comma::csv::options::usage() << std::endl; }
     std::cerr << std::endl;
     std::cerr << "examples" << std::endl;
-    std::cerr << "    echo -e 440,15000,2,0\\n880,10000,2,0\\n1760,12000,2,0 | audio-sample -r 64000 | csv-to-bin d | csv-cast d w --force > test.64000.w.raw" << std::endl;
-    std::cerr << "    sox -r 64k -e signed -b 16 -c 1 test.64000.w.raw test.64000.w.wav" << std::endl;
-    std::cerr << "    play test.64000.w.wav" << std::endl;
+    std::cerr << "    play from stdin" << std::endl;
+    std::cerr << "        echo -e 440,15000,2,0\\\\n880,10000,2,0\\\\n1760,12000,2,0 | audio-sample -r 64000 | csv-to-bin d | csv-cast d w --force | play -t raw -r 64k -e signed -b 16 -c 1 -" << std::endl;
+    std::cerr << "        seq 440 10 1050 | csv-paste - line-number | audio-sample -r 64000 --amplitude=20000 --duration=0.1 --fields=frequency,block | csv-to-bin d | csv-cast d w --force | play -t raw -r 64k -e signed -b 16 -c 1 -" << std::endl;
+    std::cerr << "    play from file" << std::endl;
+    std::cerr << "        echo -e 440,15000,2,0\\\\n880,10000,2,0\\\\n1760,12000,2,0 | audio-sample -r 64000 | csv-to-bin d | csv-cast d w --force > test.64000.w.raw" << std::endl;
+    std::cerr << "        sox -r 64k -e signed -b 16 -c 1 test.64000.w.raw test.64000.w.wav" << std::endl;
+    std::cerr << "        play test.64000.w.wav" << std::endl;
     std::cerr << std::endl;
     exit( 0 );
 }
@@ -112,6 +125,13 @@ int main( int ac, char** av )
         comma::csv::options csv( options );
         input default_input;
         default_input.duration = options.value( "--duration", 0.0 );
+        default_input.amplitude = options.value( "--amplitude,--volume", 0.0 );
+        bool realtime = false;
+        #ifndef WIN32
+        realtime = options.exists( "--realtime" );
+        comma::io::select select;
+        if( realtime ) { select.read().add( 0 ); }
+        #endif // #ifndef WIN32
         comma::csv::input_stream< input > istream( std::cin, csv, default_input );
         boost::optional< input > last;
         std::vector< input > v;
@@ -122,14 +142,39 @@ int main( int ac, char** av )
             if( !p || ( !v.empty() && v.back().block != p->block ) )
             {
                 double step = 1.0 / rate;
-                for( double t = 0; t < v[0].duration; t += step )
+                if( realtime )
                 {
-                    double a = 0;
-                    for( unsigned int i = 0; i < v.size(); ++i ) { a += v[i].amplitude * std::sin( M_PI * 2 * v[i].frequency * t ); }
-                    if( csv.binary() ) { std::cout.write( reinterpret_cast< const char* >( &a ), sizeof( double ) ); }
-                    else { std::cout << a << std::endl; }
+                    boost::posix_time::ptime before = boost::posix_time::microsec_clock::universal_time();
+                    double microseconds_per_sample = 1000000.0 / rate;
+                    unsigned int size = 1;
+                    double t = 0;
+                    while( true )
+                    {
+                        for( unsigned int k = 0; k < size; --k, t += step )
+                        {
+                            double a = 0;
+                            for( unsigned int i = 0; i < v.size(); ++i ) { a += v[i].amplitude * std::sin( M_PI * 2 * v[i].frequency * t ); }
+                            if( csv.binary() ) { std::cout.write( reinterpret_cast< const char* >( &a ), sizeof( double ) ); }
+                            else { std::cout << a << std::endl; }
+                        }
+                        select.wait( boost::posix_time::microseconds( microseconds_per_sample ) );
+                        if( select.read().ready( 0 ) ) { v.clear(); break; }
+                        boost::posix_time::ptime now = boost::posix_time::microsec_clock::universal_time();
+                        size = ( now - before ).total_microseconds() / microseconds_per_sample;
+                        before = now;
+                    }
                 }
-                v.clear();
+                else
+                {
+                    for( double t = 0; t < v[0].duration; t += step )
+                    {
+                        double a = 0;
+                        for( unsigned int i = 0; i < v.size(); ++i ) { a += v[i].amplitude * std::sin( M_PI * 2 * v[i].frequency * t ); }
+                        if( csv.binary() ) { std::cout.write( reinterpret_cast< const char* >( &a ), sizeof( double ) ); }
+                        else { std::cout << a << std::endl; }
+                    }
+                    v.clear();
+                }
                 if( verbose && ++count % 100 == 0 ) { std::cerr << "audio-sample: processed " << count << " blocks" << std::endl; }
             }
             if( !p ) { break; }
