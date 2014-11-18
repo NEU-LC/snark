@@ -75,9 +75,6 @@ extern ExtY_Arm_controller_v2_T Arm_controller_v2_Y;
 static const char* name() { return "ur-arm-control: "; }
 
 namespace impl_ {
-
-template < typename T >
-std::string str(T t) { return boost::lexical_cast< std::string > ( t ); }
     
 const char* lidar_filename = "lidar.bin";
 
@@ -210,13 +207,13 @@ std::string handle( const std::vector< std::string >& line, std::ostream& os )
     }
     catch( boost::bad_lexical_cast& le ) {
         std::ostringstream ss;
-        ss << '<' << comma::join( line, ',' ) << ',' << impl_::str( arm::errors::format_error )
+        ss << '<' << comma::join( line, ',' ) << ',' << boost::lexical_cast< std::string >( arm::errors::format_error )
            << ",\"command format error, wrong field type/s, fields: " << c.names() << " - types: "  << c.serialise() << "\";";
         return ss.str();
     }
     catch( comma::exception& ce ) {
         std::ostringstream ss;
-        ss << '<' << comma::join( line, ',' ) << ',' << impl_::str( arm::errors::format_error )
+        ss << '<' << comma::join( line, ',' ) << ',' << boost::lexical_cast< std::string >( arm::errors::format_error )
            << ",\"command format error, wrong field/s or field type/s, fields: " << c.names() << " - types: "  << c.serialise() << "\";";
         return ss.str();
     }
@@ -266,7 +263,7 @@ void process_command( const std::vector< std::string >& v, std::ostream& os )
     }  
     // else if( boost::iequals( v[2], "movej" ) )      { output( handle< arm::move_joints >( v, os ) ); }
     else { output( comma::join( v, v.size(), ',' ) + ',' + 
-        impl_::str( arm::errors::unknown_command ) + ",\"unknown command found: '" + v[2] + "'\"" ); return; }
+        boost::lexical_cast< std::string >( arm::errors::unknown_command ) + ",\"unknown command found: '" + v[2] + "'\"" ); return; }
 }
 
 /// Return null if no status

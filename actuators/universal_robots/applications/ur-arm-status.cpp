@@ -52,13 +52,6 @@
 
 const char* name() { return "ur-arm-status: "; }
 
-namespace impl_ {
-
-template < typename T >
-std::string str(T t) { return boost::lexical_cast< std::string > ( t ); }
-    
-} // namespace impl_ {
-
 namespace arm = snark::ur::robotic_arm;
 
 void usage(int code=1)
