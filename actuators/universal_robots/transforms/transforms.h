@@ -3,7 +3,7 @@
 
 #include <boost/array.hpp>
 #include <snark/math/applications/frame.h>
-#include "../../units.h"
+#include "../units.h"
 extern "C" {
 #include "simulink/tcp_transform.h"
 }

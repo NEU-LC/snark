@@ -38,7 +38,7 @@
 #include <comma/math/compare.h>
 #include <comma/io/publisher.h>
 #include <comma/io/stream.h>
-#include "../../../sensors/hokuyo/traits.h"
+#include "../../sensors/hokuyo/traits.h"
 
 namespace snark { namespace ur { namespace robotic_arm { namespace handlers {
 

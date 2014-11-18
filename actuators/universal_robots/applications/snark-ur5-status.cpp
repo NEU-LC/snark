@@ -46,8 +46,8 @@
 #include <comma/csv/binary.h>
 #include <comma/string/string.h>
 #include <comma/application/signal_flag.h>
-#include "../../traits.h"
-#include "../../data.h"
+#include "../traits.h"
+#include "../data.h"
 #include "../transforms/transforms.h"
 
 const char* name() { return "snark-ur10-status: "; }

@@ -1,4 +1,4 @@
-SET( dir ${SOURCE_CODE_BASE_DIR}/actuators/universal_robots/robotic_arm/ur5/applications )
+SET( dir ${SOURCE_CODE_BASE_DIR}/actuators/universal_robots/applications )
 FILE( GLOB source   ${dir}/*.cpp)
 FILE( GLOB includes ${dir}/*.h)
 SOURCE_GROUP( ${TARGET_NAME} FILES ${source} ${includes} )

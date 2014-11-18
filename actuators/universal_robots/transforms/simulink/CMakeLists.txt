@@ -1,9 +1,9 @@
-SET( PROJECT "robotic_arm" )
-SET( DIR "actuators/universal_robots/robotic_arm" )
+SET( PROJECT "ur5_transforms_simulink" )
+SET( DIR "actuators/universal_robots/transforms/simulink" )
 SET( TARGET_NAME snark_${PROJECT} )
 
-FILE( GLOB source   ${SOURCE_CODE_BASE_DIR}/${DIR}/*.cpp)
-FILE( GLOB includes ${SOURCE_CODE_BASE_DIR}/${DIR}/*.h)
+FILE( GLOB source   ${SOURCE_CODE_BASE_DIR}/${DIR}/*.c )
+FILE( GLOB includes ${SOURCE_CODE_BASE_DIR}/${DIR}/*.h )
 
 SOURCE_GROUP( ${TARGET_NAME} FILES ${source} ${includes} )
 
@@ -18,11 +18,3 @@ INSTALL(
     LIBRARY DESTINATION ${snark_INSTALL_LIB_DIR} COMPONENT Runtime     # .so, mod.dll
     ARCHIVE DESTINATION ${snark_INSTALL_LIB_DIR} COMPONENT Development # .a, .lib
 )
-
-ADD_SUBDIRECTORY( ur5 )
-
-IF( snark_BUILD_TESTS )
-    ADD_SUBDIRECTORY( test )
-ENDIF( snark_BUILD_TESTS )
-
-ADD_SUBDIRECTORY( simulink )

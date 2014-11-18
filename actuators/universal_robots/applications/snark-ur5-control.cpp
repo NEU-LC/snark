@@ -53,18 +53,18 @@
 #include <comma/io/publisher.h>
 #include <comma/string/string.h>
 #include <comma/application/signal_flag.h>
-#include "../../traits.h"
-#include "../../commands.h"
-#include "../../commands_handler.h"
-#include "../../inputs.h"
-#include "../../units.h"
-#include "../../tilt_sweep.h"
-#include "../../waypoints_follower.h"
-#include "../../../../../sensors/hokuyo/traits.h"
+#include "../traits.h"
+#include "../commands.h"
+#include "../commands_handler.h"
+#include "../inputs.h"
+#include "../units.h"
+#include "../tilt_sweep.h"
+#include "../waypoints_follower.h"
+#include "../../../sensors/hokuyo/traits.h"
 extern "C" {
-    #include "../../simulink/Arm_controller_v2.h"
+    #include "../simulink/Arm_controller_v2.h"
 }
-#include "../../simulink/traits.h"
+#include "../simulink/traits.h"
 
 /* External inputs (root inport signals with auto storage) */
 extern ExtU_Arm_controller_v2_T Arm_controller_v2_U;
