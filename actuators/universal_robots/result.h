@@ -35,7 +35,7 @@
 #include <string>
 #include <iostream>
 
-namespace snark { namespace ur { namespace robotic_arm { namespace handlers {
+namespace snark { namespace ur { namespace handlers {
 
 struct input_primitive
 {
@@ -69,6 +69,6 @@ struct result
     bool is_success() const { return ( code == error::success || code == error::action_started ); }
 };
     
-} } } } //namespace snark { namespace ur { namespace robotic_arm { namespace handlers {
+} } } //namespace snark { namespace ur { namespace handlers {
 
 #endif // SNARK_ACTUATORS_UR_ROBOTIC_ARM_RESULT_H

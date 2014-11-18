@@ -55,17 +55,13 @@ extern "C" {
 #include "result.h"
 #include "output.h"
 
-namespace snark { namespace ur { namespace robotic_arm { namespace handlers {
+namespace snark { namespace ur { namespace handlers {
 
-namespace arm = robotic_arm;
-
-    
 /// class to perform the SCAN command, moves end effector down, up then back to original tilt angle.
 class tilt_sweep
 {
     typedef boost::function< void ( void ) > status_updater_t;
     typedef boost::function< bool ( void ) > interrupt_t;    /// A new command is received
-    
     
     ExtU_Arm_controller_v2_T& inputs_;
     const arm_output& serialiser_;
@@ -140,6 +136,6 @@ public:
     const boost::filesystem::path lidar_filepath_;
 };
     
-} } } } // namespace snark { namespace ur { namespace robotic_arm { namespace handlers {
+} } } // namespace snark { namespace ur { namespace handlers {
 
 #endif // SNARKS_ACTUATORS_UR_ROBOTIC_ARM_CAMERA_SWEEP_H

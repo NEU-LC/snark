@@ -45,7 +45,7 @@
 #include <boost/units/systems/temperature/celsius.hpp>
 
 
-namespace snark { namespace ur { namespace robotic_arm {
+namespace snark { namespace ur {
 
 typedef boost::units::quantity< boost::units::si::plane_angle > plane_angle_t;
 typedef boost::units::quantity< boost::units::degree::plane_angle > plane_angle_degrees_t;
@@ -63,7 +63,7 @@ const angular_velocity_t::unit_type rad_per_sec = angular_velocity_t::unit_type(
 const current_t::unit_type ampere = boost::units::si::ampere;
 const celcius_t::unit_type celcius = boost::units::celsius::degree;
 
-} } } // namespace snark { namespace ur { namespace robotic_arm {
+} } // namespace snark { namespace ur {
 
 
 #endif //  SNARK_ACTUATORS_UR_ROBOTIC_ARM_UNITS_H

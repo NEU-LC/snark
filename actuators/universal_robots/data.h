@@ -54,7 +54,7 @@ typedef big_endian_64< float > big_endian_float;
 
 } } // namespace comma { namespace packed {
 
-namespace snark { namespace ur { namespace robotic_arm { 
+namespace snark { namespace ur { 
 
 struct robotmode {
     enum mode { running, freedrive, ready, initializing, security_stopped, estopped, fatal_error, no_power, not_connected, shutdown, safeguard_stop };
@@ -82,8 +82,8 @@ struct joint_modes_t
 {
     joint_modes_t( const joints_net_t& joints )
     {
-        for( std::size_t i=0; i<robotic_arm::joints_num; ++i )  { 
-            modes.push_back( robotic_arm::jointmode_str( robotic_arm::jointmode::mode( (int)(joints[i]()) ) ) );
+        for( std::size_t i=0; i<joints_num; ++i )  { 
+            modes.push_back( jointmode_str( jointmode::mode( (int)(joints[i]()) ) ) );
         }
     }
     std::vector< std::string > modes;
@@ -239,6 +239,6 @@ struct move_config_t : public boost::array< double, joints_num > {};
 //     boost::array< joint_data, joints_num > joints;
 // };
 
-} } } //namespace snark { namespace ur { namespace robotic_arm { 
+} } //namespace snark { namespace ur { 
 
 #endif // SNARK_ACTUATORS_UR_ROBOTIC_ARM_DATA_H 

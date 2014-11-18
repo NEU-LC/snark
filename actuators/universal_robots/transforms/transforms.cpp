@@ -1,6 +1,6 @@
 #include "transforms.h"
 
-namespace snark { namespace ur { namespace robotic_arm { namespace ur5 {
+namespace snark { namespace ur { namespace ur5 {
 
 void tcp_transform( const boost::array< plane_angle_t, 6 >& joint_angles, 
                     snark::applications::position& position,
@@ -25,5 +25,5 @@ void tcp_transform( const boost::array< plane_angle_t, 6 >& joint_angles,
 }
     
 
-} } } } // namespace snark { namespace ur { namespace robotic_arm { namespace ur5 {
+} } } // namespace snark { namespace ur { namespace ur5 {
 

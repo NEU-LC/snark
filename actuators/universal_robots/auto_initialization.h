@@ -48,11 +48,7 @@
 #include "data.h"
 #include "result.h"
 
-namespace snark { namespace ur { namespace robotic_arm { namespace handlers {
-    
-
-
-namespace arm = robotic_arm;
+namespace snark { namespace ur { namespace handlers {
 
 /// This class takes over control from the main loop and do auto init,
 /// because we dont want to use a second thread (simpler) and auto init is a long running action.
@@ -60,10 +56,10 @@ namespace arm = robotic_arm;
 class auto_initialization
 {
 public:
-    typedef comma::csv::binary_input_stream< arm::status_t > binary_stream_t;   /// for reading new statuses
+    typedef comma::csv::binary_input_stream< snark::ur::status_t > binary_stream_t;   /// for reading new statuses
 private:
     /// Status to check if initialized 
-    arm::status_t& status_;
+    snark::ur::status_t& status_;
     std::ostream& os;           /// output to the rover
     boost::function< void ( void ) > update_status_;
     comma::signal_flag& signaled_;  /// Check if signal received
@@ -82,7 +78,7 @@ private:
     static const char* filename;
     
 public:
-    auto_initialization( arm::status_t& status, std::ostream& robot, 
+    auto_initialization( snark::ur::status_t& status, std::ostream& robot, 
                          boost::function< void (void) > f, /// This updates status_
                          comma::signal_flag& signaled, 
                          boost::function< bool (void) > s, /// This updates status_
@@ -112,6 +108,6 @@ public:
 };
 
 
-} } } } // namespace snark { namespace ur { namespace robotic_arm { namespace handlers {
+} } } // namespace snark { namespace ur { namespace handlers {
 
 #endif // SNARKS_ACTUATORS_UR_ROBOTIC_ARM_AUTO_INITIALISATION_H

@@ -1,7 +1,7 @@
 #include "data.h"
 #include <iostream>
 
-namespace snark { namespace ur { namespace robotic_arm { 
+namespace snark { namespace ur { 
 
 const char* robotmode_str( robotmode::mode mode )
 {
@@ -182,4 +182,4 @@ bool status_t::check_pose( const arm_position_t& pose, const plane_angle_degrees
 
 
 
-} } } // namespace snark { namespace ur { namespace robotic_arm { 
+} } // namespace snark { namespace ur { 

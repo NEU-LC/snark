@@ -36,7 +36,7 @@
 #include "auto_initialization.h"
 #include "traits.h"
 
-namespace snark { namespace ur { namespace robotic_arm { namespace handlers {
+namespace snark { namespace ur { namespace handlers {
 
 static const char* name() {
     return "robot-arm-daemon: ";
@@ -44,7 +44,7 @@ static const char* name() {
 
 const char* commands_handler::lidar_filename = "lidar-scan.bin";
 
-void commands_handler::handle( arm::power& p )
+void commands_handler::handle( snark::ur::power& p )
 {
     if( p.is_on && !status_.is_powered_off() ) {
         ret = result( "cannot execute power on command as current state is not 'no_power'", result::error::invalid_robot_state );
@@ -57,7 +57,7 @@ void commands_handler::handle( arm::power& p )
     ret = result();
 }
 
-void commands_handler::handle( arm::brakes& b )
+void commands_handler::handle( snark::ur::brakes& b )
 {
     std::cerr << name() << "running brakes: " << b.enable  << std::endl;
     if( !b.enable ) {
@@ -74,7 +74,7 @@ static const plane_angle_degrees_t min_pan = -90.0 * degree;
 static const plane_angle_degrees_t max_tilt = 90.0 * degree;
 static const plane_angle_degrees_t min_tilt = -90.0 * degree;
 
-void commands_handler::handle( arm::move_cam& cam )
+void commands_handler::handle( snark::ur::move_cam& cam )
 {
     std::cerr << name() << " running move_cam" << std::endl; 
 
@@ -107,7 +107,7 @@ void commands_handler::handle( arm::move_cam& cam )
     if( !execute_waypoints( cam ) ) { return; }
     
     is_move_effector = false;
-    fs::remove( home_filepath_ );
+    boost::filesystem::remove( home_filepath_ );
     move_cam_height_ = cam.height;
     move_cam_pan_ = cam.pan;
     ret = result();
@@ -127,7 +127,6 @@ void commands_handler::handle(sweep_cam& s)
     std::cerr << name() << " running sweep_cam" << std::endl; 
 
     if( !status_.is_running() ) { ret = result( "cannot sweep (camera) as rover is not in running mode", result::error::invalid_robot_state ); return; }
-    // if( !move_cam_height_ ) { ret = result( "robotic_arm is not in move_cam position", result::error::invalid_robot_state ); return; }
     
     inputs_reset();
     set_current_position();
@@ -142,12 +141,12 @@ void commands_handler::handle(sweep_cam& s)
     execute_waypoints( s, true );
 }
 
-void commands_handler::handle( arm::move_joints& joints )
+void commands_handler::handle( snark::ur::move_joints& joints )
 {
     ret = result();
 }
 
-void commands_handler::handle( arm::joint_move& joint )
+void commands_handler::handle( snark::ur::joint_move& joint )
 {
     if( !is_initialising() ) {
         ret = result( "cannot initialise joint as rover is not in initialisation mode", result::error::invalid_robot_state );
@@ -195,7 +194,7 @@ void commands_handler::handle( arm::joint_move& joint )
     os << ss.str();
     os.flush(); 
     
-    fs::remove( home_filepath_ );
+    boost::filesystem::remove( home_filepath_ );
     
     ret = result();
 }
@@ -236,7 +235,7 @@ bool commands_handler::execute_waypoints( const C& command, bool record )
 }
 
 
-void commands_handler::handle( arm::pan_tilt& p )
+void commands_handler::handle( snark::ur::pan_tilt& p )
 {
     std::cerr << name() << " handling pan_tilt" << std::endl; 
     static const plane_angle_degrees_t max_pan = 89.5 * degree;
@@ -259,7 +258,7 @@ void commands_handler::handle( arm::pan_tilt& p )
     execute_waypoints( p );
 }
 
-void commands_handler::handle( arm::set_home& h )
+void commands_handler::handle( snark::ur::set_home& h )
 {
     inputs_reset();
     set_current_position();
@@ -267,7 +266,7 @@ void commands_handler::handle( arm::set_home& h )
     ret = result();
 }
 
-void commands_handler::handle( arm::set_position& pos )
+void commands_handler::handle( snark::ur::set_position& pos )
 {
     if( !status_.is_running() ) {
         ret = result( "cannot set position as rover is not in running mode", result::error::invalid_robot_state );
@@ -278,8 +277,8 @@ void commands_handler::handle( arm::set_position& pos )
     set_current_position();
     inputs_.motion_primitive = input_primitive::set_position;
 
-    if( pos.position == "giraffe" ) { inputs_.Input_1 = set_position::giraffe; fs::remove( home_filepath_ ); }
-    else if( pos.position == "home" ) { inputs_.Input_1 = set_position::home; }
+    if( pos.position == "giraffe" ) { inputs_.Input_1 = snark::ur::set_position::giraffe; boost::filesystem::remove( home_filepath_ ); }
+    else if( pos.position == "home" ) { inputs_.Input_1 = snark::ur::set_position::home; }
     else { ret = result("unknown position type", int(result::error::invalid_input) ); return; }
 
     inputs_.Input_2 = 0;    // zero pan for giraffe
@@ -293,7 +292,7 @@ void commands_handler::handle( arm::set_position& pos )
 }
 
 
-void commands_handler::handle( arm::move_effector& e )
+void commands_handler::handle( snark::ur::move_effector& e )
 {    
     std::cerr << name() << "handling move_effector" << std::endl; 
 
@@ -339,23 +338,25 @@ bool commands_handler::is_initialising() const
     return true;
 }
 
-void commands_handler::handle(auto_init& a)
+void commands_handler::handle( snark::ur::auto_init& a )
 {
     ret = init_.run( boost::bind( movement_started< auto_init >, boost::cref( a ), boost::ref( this->ostream_ ) ),
                      false );
     if( ret.is_success() ) { 
         std::cerr << name() << "going to home position." << std::endl;
-        arm::set_position home; handle( home ); 
+        snark::ur::set_position home; 
+        handle( home ); 
     } // set to home
 
 }
-void commands_handler::handle( arm::auto_init_force& init )
+void commands_handler::handle( snark::ur::auto_init_force& init )
 {
     ret = init_.run( boost::bind( movement_started< auto_init_force >, boost::cref( init ), boost::ref( this->ostream_ ) ), 
                      init.force );
     if( ret.is_success() ) { 
         std::cerr << name() << "going to home position." << std::endl;
-        arm::set_position home; handle( home ); 
+        snark::ur::set_position home; 
+        handle( home ); 
     } // set to home
 }
 
@@ -382,4 +383,4 @@ void commands_handler::set_current_position( )
     inputs_.Joint6 = status_.joint_angles[5].value();
 }
 
-} } } } // namespace snark { namespace ur { namespace robotic_arm { namespace handlers {
+} } } // namespace snark { namespace ur { namespace handlers {

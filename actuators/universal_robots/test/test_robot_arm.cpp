@@ -45,7 +45,7 @@
 #include "../transforms/transforms.h"
 #include <boost/property_tree/json_parser.hpp>
 
-namespace snark { namespace ur { namespace robotic_arm {
+namespace snark { namespace ur {
 
 template < typename T >
 comma::csv::ascii< T >& ascii() { 
@@ -141,7 +141,7 @@ TEST( robot_arm, ur5_transforms )
 }
 
 
-} } } // namespace snark { namespace ur { namespace robotic_arm {
+} } } // namespace snark { namespace ur {
 
 int main( int argc, char* argv[] )
 {

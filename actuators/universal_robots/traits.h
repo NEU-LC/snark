@@ -43,7 +43,7 @@
 
 namespace comma { namespace visiting {
     
-namespace arm = snark::ur::robotic_arm;
+namespace arm = snark::ur;
 using arm::command_base;
 
 // Commands
@@ -487,6 +487,6 @@ template < > struct traits< arm::move_config_t >
     }
 };
 
-}} // namespace comma { namespace visiting {
+} } // namespace comma { namespace visiting {
 
 #endif // SNARK_ACTUATORS_UR_ROBOTIC_ARM_TRAITS_H

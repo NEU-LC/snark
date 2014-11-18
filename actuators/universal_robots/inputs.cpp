@@ -37,7 +37,7 @@
 #include <comma/string/split.h>
 #include <comma/string/string.h>
 
-namespace snark { namespace ur { namespace robotic_arm {
+namespace snark { namespace ur {
     
 inputs::inputs( char rover_id_ ) 
         : rover_id( rover_id_ ), istream_( "-", comma::io::mode::ascii ) {
@@ -106,4 +106,4 @@ void inputs::read( const boost::posix_time::time_duration& timeout )
 
 
 
-} }  } // namespace snark { namespace ur { namespace robotic_arm {
+} } // namespace snark { namespace ur {

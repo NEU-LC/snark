@@ -40,7 +40,7 @@
 #include <comma/io/stream.h>
 #include "../../sensors/hokuyo/traits.h"
 
-namespace snark { namespace ur { namespace robotic_arm { namespace handlers {
+namespace snark { namespace ur { namespace handlers {
 
 const char* tilt_sweep::lidar_filename = "lidar.bin";
 
@@ -177,7 +177,7 @@ result tilt_sweep::run( const length_t& height, const plane_angle_degrees_t& pan
     /// Check that it stopped
     static comma::uint32 usec = 0.1 * 1000000u;
     
-    static const arm::plane_angle_t epsilon = static_cast< arm::plane_angle_t >( 0.5 * arm::degree );
+    static const snark::ur::plane_angle_t epsilon = static_cast< snark::ur::plane_angle_t >( 0.5 * degree );
     while( !comma::math::equal( status_.joint_angles[ tilt_joint ], move1.tilt, epsilon  ) )
     {
         status_update_();
@@ -267,5 +267,5 @@ bool tilt_sweep::calculate_solution( const length_t& height, const plane_angle_d
 }
 
     
-} } } } // namespace snark { namespace ur { namespace robotic_arm { namespace handlers {
+} } } // namespace snark { namespace ur { namespace handlers {
     

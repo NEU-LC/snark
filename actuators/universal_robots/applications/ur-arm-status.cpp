@@ -52,8 +52,6 @@
 
 const char* name() { return "ur-arm-status: "; }
 
-namespace arm = snark::ur::robotic_arm;
-
 void usage(int code=1)
 {
     std::cerr << std::endl;
@@ -69,7 +67,7 @@ void usage(int code=1)
     std::cerr << "    --host-byte-order:    input data is binary in host-byte-order, it assumes network order by default." << std::endl;
     std::cerr << "    --format:             displays the binary format of output data in host byte order." << std::endl;
     std::cerr << "    --flip-laser-pitch:   flip the pitch pos/neg sign for laser-position's orientation." << std::endl;
-    typedef arm::status_t status_t;
+    typedef snark::ur::status_t status_t;
     comma::csv::binary< status_t > binary;
     std::cerr << "Robot arm's status:" << std::endl;
     std::cerr << "   format: " << binary.format().string() << " total size is " << binary.format().size() << " bytes" << std::endl;
@@ -93,14 +91,14 @@ int main( int ac, char** av )
     
     comma::command_line_options options( ac, av );
     if( options.exists( "-h,--help" ) ) { usage( 0 ); }
-    if( options.exists( "--format" ) ) { std::cout << comma::csv::format::value< arm::status_t >( "", false ) << std::endl; return 0; }
+    if( options.exists( "--format" ) ) { std::cout << comma::csv::format::value< snark::ur::status_t >( "", false ) << std::endl; return 0; }
     
     using boost::posix_time::microsec_clock;
     using boost::posix_time::seconds;
     using boost::posix_time::ptime;
     using boost::asio::ip::tcp;
 
-    typedef arm::fixed_status status;
+    typedef snark::ur::fixed_status status;
     
     std::cerr << name() << "started" << std::endl;
 
@@ -113,24 +111,24 @@ int main( int ac, char** av )
     comma::csv::options csv;
     csv.fields = options.value< std::string >( "--fields", "" );
     csv.full_xpath = true;
-    if( is_binary ) { csv.format( comma::csv::format::value< arm::status_t >( csv.fields, true ) ); }
+    if( is_binary ) { csv.format( comma::csv::format::value< snark::ur::status_t >( csv.fields, true ) ); }
     
     try
     {
         comma::csv::options csv_in;
         csv_in.fields = options.value< std::string >( "--input-fields", "" );
         csv_in.full_xpath = true;
-        csv_in.format( comma::csv::format::value< arm::status_t >( csv_in.fields, true ) );
+        csv_in.format( comma::csv::format::value< snark::ur::status_t >( csv_in.fields, true ) );
 
         if( options.exists( "--output-samples" ) )
         {
             // std::cerr << "output format: \n" << csv.format().string() << std::endl;
             // std::cerr << "output fields: \n" << csv.fields << std::endl;
             std::cerr.flush();
-            comma::csv::output_stream< arm::status_t > oss( std::cout, csv );
-            arm::status_t st;
-            st.robot_mode = arm::robotmode::running;
-            for( std::size_t i=0; i<arm::joints_num; ++i ) { st.joint_modes[i] = arm::jointmode::running; }  
+            comma::csv::output_stream< snark::ur::status_t > oss( std::cout, csv );
+            snark::ur::status_t st;
+            st.robot_mode = snark::ur::robotmode::running;
+            for( std::size_t i=0; i<snark::ur::joints_num; ++i ) { st.joint_modes[i] = snark::ur::jointmode::running; }  
             st.position.coordinates = Eigen::Vector3d( 1, 2, 3 );
             st.laser_position.coordinates = Eigen::Vector3d( 3, 2, 1 );
             while( !signaled && std::cout.good() )
@@ -144,9 +142,9 @@ int main( int ac, char** av )
         }
 
         bool is_host_order = options.exists( "--host-byte-order" );
-        arm::fixed_status arm_status;
+        snark::ur::fixed_status arm_status;
         bool first_loop = true;
-        arm::status_t state;
+        snark::ur::status_t state;
 
         while( !signaled && std::cin.good() )
         {
@@ -156,13 +154,13 @@ int main( int ac, char** av )
                 arm_status.get( state );
                 /// As TCP rotation data do not make sense, caculate it using the joint angles
                 /// We will also override the TCP translation coordinate
-                snark::ur::robotic_arm::ur5::tcp_transform( state.joint_angles, state.position, state.laser_position );
+                snark::ur::ur5::tcp_transform( state.joint_angles, state.position, state.laser_position );
                 if( is_flip_laser_pitch ) { state.laser_position.orientation.y() = -( state.laser_position.orientation.y() ); }
             }
             else 
             {
-                static comma::csv::input_stream< arm::status_t > istream( std::cin, csv_in );
-                const arm::status_t* p = istream.read();
+                static comma::csv::input_stream< snark::ur::status_t > istream( std::cin, csv_in );
+                const snark::ur::status_t* p = istream.read();
                 if( p == NULL ) 
                 { 
                     if( !std::cin.good() ) { /* std::cerr << name() << "STDIN error" << std::endl; */ return 1; } // happens a lot, when closed on purpose
@@ -175,9 +173,9 @@ int main( int ac, char** av )
 
             // sanity check on the status
             if( first_loop && (
-                state.length != arm::fixed_status::size ||
-                state.robot_mode < arm::robotmode::running || 
-                state.robot_mode > arm::robotmode::safeguard_stop ) ) {
+                state.length != snark::ur::fixed_status::size ||
+                state.robot_mode < snark::ur::robotmode::running || 
+                state.robot_mode > snark::ur::robotmode::safeguard_stop ) ) {
                 std::cerr << name() << "mode: " << state.mode_str() << std::endl;
                 std::cerr << name() << "failed sanity check, data is not aligned, exiting now..." << std::endl;
                 return 1;
@@ -193,7 +191,7 @@ int main( int ac, char** av )
             }
             else 
             { 
-                static comma::csv::output_stream< arm::status_t > oss( std::cout, csv );
+                static comma::csv::output_stream< snark::ur::status_t > oss( std::cout, csv );
                 oss.write( state );
             }
         }

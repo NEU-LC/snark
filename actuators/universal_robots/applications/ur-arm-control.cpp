@@ -74,9 +74,8 @@ extern ExtY_Arm_controller_v2_T Arm_controller_v2_Y;
 
 static const char* name() { return "ur-arm-control: "; }
 
-namespace arm = snark::ur::robotic_arm;
-using arm::handlers::input_primitive;
-using arm::handlers::result;
+using snark::ur::handlers::input_primitive;
+using snark::ur::handlers::result;
 
 void usage(int code=1)
 {
@@ -115,14 +114,14 @@ void output( const std::string& msg, std::ostream& os=std::cout )
     os << msg << std::endl;
 }
 
-static arm::status_t arm_status; 
+static snark::ur::status_t arm_status; 
 /// Stream to command robot arm
 namespace ip = boost::asio::ip;
-typedef arm::handlers::commands_handler commands_handler_t;
+typedef snark::ur::handlers::commands_handler commands_handler_t;
 typedef boost::shared_ptr< commands_handler_t > commands_handler_shared;
 static commands_handler_shared commands_handler;
 static bool verbose = false;
-static arm::config config;
+static snark::ur::config config;
 
 template < typename C >
 std::string handle( const std::vector< std::string >& line, std::ostream& os )
@@ -134,13 +133,13 @@ std::string handle( const std::vector< std::string >& line, std::ostream& os )
     }
     catch( boost::bad_lexical_cast& le ) {
         std::ostringstream ss;
-        ss << '<' << comma::join( line, ',' ) << ',' << boost::lexical_cast< std::string >( arm::errors::format_error )
+        ss << '<' << comma::join( line, ',' ) << ',' << boost::lexical_cast< std::string >( snark::ur::errors::format_error )
            << ",\"command format error, wrong field type/s, fields: " << c.names() << " - types: "  << c.serialise() << "\";";
         return ss.str();
     }
     catch( comma::exception& ce ) {
         std::ostringstream ss;
-        ss << '<' << comma::join( line, ',' ) << ',' << boost::lexical_cast< std::string >( arm::errors::format_error )
+        ss << '<' << comma::join( line, ',' ) << ',' << boost::lexical_cast< std::string >( snark::ur::errors::format_error )
            << ",\"command format error, wrong field/s or field type/s, fields: " << c.names() << " - types: "  << c.serialise() << "\";";
         return ss.str();
     }
@@ -150,7 +149,7 @@ std::string handle( const std::vector< std::string >& line, std::ostream& os )
     comma::dispatch::dispatched_base& ref( c );
     ref.dispatch_to( h_ref );
     // perform action
-    // result ret = arm::action< C >::run( c, os );
+    // result ret = snark::ur::action< C >::run( c, os );
     std::ostringstream ss;
     ss << '<' << c.serialise() << ',' << commands_handler->ret.get_message() << ';';
     return ss.str();
@@ -158,15 +157,15 @@ std::string handle( const std::vector< std::string >& line, std::ostream& os )
 
 void process_command( const std::vector< std::string >& v, std::ostream& os )
 {
-    if( boost::iequals( v[2], "move_cam" ) )         { output( handle< arm::move_cam >( v, os ) ); }
-    else if( boost::iequals( v[2], "move_effector" )){ output( handle< arm::move_effector >( v, os ) ); }
-    else if( boost::iequals( v[2], "pan_tilt" ) )    { output( handle< arm::pan_tilt >( v, os ) ); }
-    else if( boost::iequals( v[2], "set_pos" ) )     { output( handle< arm::set_position >( v, os ) ); }
-    else if( boost::iequals( v[2], "set_home" ) )    { output( handle< arm::set_home >( v, os ) ); }
-    else if( boost::iequals( v[2], "power" ) )       { output( handle< arm::power >( v, os )); }  
+    if( boost::iequals( v[2], "move_cam" ) )         { output( handle< snark::ur::move_cam >( v, os ) ); }
+    else if( boost::iequals( v[2], "move_effector" )){ output( handle< snark::ur::move_effector >( v, os ) ); }
+    else if( boost::iequals( v[2], "pan_tilt" ) )    { output( handle< snark::ur::pan_tilt >( v, os ) ); }
+    else if( boost::iequals( v[2], "set_pos" ) )     { output( handle< snark::ur::set_position >( v, os ) ); }
+    else if( boost::iequals( v[2], "set_home" ) )    { output( handle< snark::ur::set_home >( v, os ) ); }
+    else if( boost::iequals( v[2], "power" ) )       { output( handle< snark::ur::power >( v, os )); }  
     else if( boost::iequals( v[2], "scan" ) )        
     {
-        if( v.size() >= arm::sweep_cam::fields )     { output( handle< arm::sweep_cam >( v, os )); }
+        if( v.size() >= snark::ur::sweep_cam::fields )     { output( handle< snark::ur::sweep_cam >( v, os )); }
         else 
         {
             // If the user did not enter a sweep angle as last field, use the default
@@ -174,27 +173,27 @@ void process_command( const std::vector< std::string >& v, std::ostream& os )
             static std::string default_sweep = boost::lexical_cast< std::string >( config.continuum.scan.sweep_angle.value() );
             std::vector< std::string > items = v; 
             items.push_back( default_sweep );
-            output( handle< arm::sweep_cam >( items, os ) );
+            output( handle< snark::ur::sweep_cam >( items, os ) );
         } 
     }  
     else if( boost::iequals( v[2], "brakes" ) || 
-             boost::iequals( v[2], "stop" ) )        { output( handle< arm::brakes >( v, os )); }  
+             boost::iequals( v[2], "stop" ) )        { output( handle< snark::ur::brakes >( v, os )); }  
     else if( boost::iequals( v[2], "cancel" ) )       { } /// No need to do anything, used to cancel other running commands e.g. auto_init or scan  
     else if( boost::iequals( v[2], "auto_init" ) )  
     { 
-        if( v.size() == arm::auto_init_force::fields ) 
-                                                     { output( handle< arm::auto_init_force >( v, os )); }
-        else                                         { output( handle< arm::auto_init >( v, os )); } 
+        if( v.size() == snark::ur::auto_init_force::fields ) 
+                                                     { output( handle< snark::ur::auto_init_force >( v, os )); }
+        else                                         { output( handle< snark::ur::auto_init >( v, os )); } 
     }  
-    else if( boost::iequals( v[2], "initj" ) )       { output( handle< arm::joint_move >( v, os )); 
+    else if( boost::iequals( v[2], "initj" ) )       { output( handle< snark::ur::joint_move >( v, os )); 
     }  
-    // else if( boost::iequals( v[2], "movej" ) )      { output( handle< arm::move_joints >( v, os ) ); }
+    // else if( boost::iequals( v[2], "movej" ) )      { output( handle< snark::ur::move_joints >( v, os ) ); }
     else { output( comma::join( v, v.size(), ',' ) + ',' + 
-        boost::lexical_cast< std::string >( arm::errors::unknown_command ) + ",\"unknown command found: '" + v[2] + "'\"" ); return; }
+        boost::lexical_cast< std::string >( snark::ur::errors::unknown_command ) + ",\"unknown command found: '" + v[2] + "'\"" ); return; }
 }
 
 /// Return null if no status
-void read_status( comma::csv::binary_input_stream< arm::status_t >& iss, comma::io::istream& stream,
+void read_status( comma::csv::binary_input_stream< snark::ur::status_t >& iss, comma::io::istream& stream,
     comma::io::select& select, const comma::io::file_descriptor& fd )
 {
     /// Within 100ms, we are guranteed a new status, there may already be many statuses waiting to be read
@@ -207,7 +206,7 @@ void read_status( comma::csv::binary_input_stream< arm::status_t >& iss, comma::
     arm_status = *( iss.read() );
     while( stream->rdbuf()->in_avail() > 0 )  { arm_status = *( iss.read() ); }
 
-    if( arm_status.length != arm::fixed_status::size ) {
+    if( arm_status.length != snark::ur::fixed_status::size ) {
         std::cerr << name() << "status data alignment check failed" << std::endl; 
         COMMA_THROW( comma::exception, "status data alignment check failed" ); 
     }
@@ -242,9 +241,9 @@ void load_config( const std::string& filepath )
 }
 
 /// Create a home position file if arm is running and is in home position
-void home_position_check( const arm::status_t& status, const std::string& homefile )
+void home_position_check( const snark::ur::status_t& status, const std::string& homefile )
 {
-    // static std::vector< arm::plane_angle_t > home_position; /// store home joint positions in radian
+    // static std::vector< snark::ur::plane_angle_t > home_position; /// store home joint positions in radian
     static const boost::filesystem::path path( homefile );
     if( status.is_running() )
     {
@@ -253,7 +252,7 @@ void home_position_check( const arm::status_t& status, const std::string& homefi
     }
 }
 
-bool should_stop( arm::inputs& in )
+bool should_stop( snark::ur::inputs& in )
 {
     static const boost::posix_time::seconds timeout( 0 );
     in.read( timeout );
@@ -305,7 +304,7 @@ int main( int ac, char** av )
     try
     {
         /// Convert simulink output into arm's command
-        arm::handlers::arm_output output( acc * arm::angular_acceleration_t::unit_type(), vel * arm::angular_velocity_t::unit_type(),
+        snark::ur::handlers::arm_output output( acc * snark::ur::angular_acceleration_t::unit_type(), vel * snark::ur::angular_velocity_t::unit_type(),
                        Arm_controller_v2_Y );
     
         comma::uint16 rover_id = options.value< comma::uint16 >( "--id" );
@@ -317,12 +316,12 @@ int main( int ac, char** av )
         load_config( config_file );
         
         /// home position file
-        const arm::continuum_t& continuum = config.continuum;
+        const snark::ur::continuum_t& continuum = config.continuum;
         if( continuum.work_directory.empty() ) { std::cerr << name() << "cannot find home position directory! exiting!" <<std::endl; return 1; }
         boost::filesystem::path dir( continuum.work_directory );
         if( !boost::filesystem::exists( dir ) || !boost::filesystem::is_directory( dir ) ) { std::cerr << name() << "work_directory must exists: " << continuum.work_directory << std::endl; return 1; }
 
-        for( std::size_t j=0; j<arm::joints_num; ++j )
+        for( std::size_t j=0; j<snark::ur::joints_num; ++j )
         {
             std::cerr << name() << "home joint " << j << " - " << continuum.home_position[j].value() << '"' << std::endl;
         }
@@ -349,7 +348,7 @@ int main( int ac, char** av )
         comma::io::ostream& robot_arm = *poss;
 
         /// For reading  commands from stdin with specific rover id as filter
-        arm::inputs inputs( rover_id );
+        snark::ur::inputs inputs( rover_id );
 
         typedef std::vector< std::string > command_vector;
         const comma::uint32 usec( sleep * 1000000u );
@@ -360,8 +359,8 @@ int main( int ac, char** av )
         /// Status input is always expected to be binary format
         comma::csv::options csv_in;
         csv_in.full_xpath = true;
-        csv_in.format( comma::csv::format::value< arm::status_t >( "", true ) );
-        comma::csv::binary_input_stream< arm::status_t > istream( *status_stream, csv_in );
+        csv_in.format( comma::csv::format::value< snark::ur::status_t >( "", true ) );
+        comma::csv::binary_input_stream< snark::ur::status_t > istream( *status_stream, csv_in );
         /// For reading status input, if failed to wait then status stream is dead
         comma::io::select select;
         select.read().add( status_stream.fd() );
@@ -371,14 +370,14 @@ int main( int ac, char** av )
             stop_on_exit on_exit( *robot_arm );
 
             /// Create the handler for auto init.
-            arm::handlers::auto_initialization auto_init( arm_status, *robot_arm,
+            snark::ur::handlers::auto_initialization auto_init( arm_status, *robot_arm,
                     boost::bind( read_status, boost::ref(istream), boost::ref( status_stream ), select, status_stream.fd() ),
                     signaled, 
                     boost::bind( should_stop, boost::ref( inputs ) ),
                     continuum.work_directory );
             auto_init.set_app_name( name() );
             /// This is the handler for following waypoints given by Simulink code
-            arm::handlers::waypoints_follower waypoints_follower( output, 
+            snark::ur::handlers::waypoints_follower waypoints_follower( output, 
                     boost::bind( read_status, boost::ref(istream), boost::ref( status_stream ), select, status_stream.fd() ),
                     arm_status,
                     boost::bind( should_stop, boost::ref( inputs ) ),
@@ -387,7 +386,7 @@ int main( int ac, char** av )
             
             // This is the infomation and generic function for recording some data
             // It records data for scan command starting from waypoint 2 and ends at waypoint 3
-            arm::handlers::commands_handler::optional_recording_t record_info;
+            snark::ur::handlers::commands_handler::optional_recording_t record_info;
 
             /// This is the command handler for all commands
             commands_handler.reset( new commands_handler_t( Arm_controller_v2_U, output, arm_status, *robot_arm, 

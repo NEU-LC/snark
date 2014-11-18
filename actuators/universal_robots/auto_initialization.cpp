@@ -33,9 +33,7 @@
 #include "auto_initialization.h"
 #include <boost/filesystem.hpp>
 
-namespace snark { namespace ur { namespace robotic_arm { namespace handlers {
-
-namespace arm = robotic_arm;
+namespace snark { namespace ur { namespace handlers {
 
 const char* auto_initialization::filename = "ur5-in-home-position";
 
@@ -47,16 +45,14 @@ void auto_initialization::read_status()
 
 bool auto_initialization::is_in_home_position() const
 {
-    namespace fs = boost::filesystem;
-    fs::path file( home_filepath_ );
+    boost::filesystem::path file( home_filepath_ );
 
-    return fs::exists( file );
+    return boost::filesystem::exists( file );
 }
 bool auto_initialization::remove_home_position() const
 {
-    namespace fs = boost::filesystem;
-    fs::path file( home_filepath_ );
-    fs::remove( file );
+    boost::filesystem::path file( home_filepath_ );
+    boost::filesystem::remove( file );
     return true;
 }
 
@@ -82,15 +78,14 @@ result auto_initialization::run( started_reply_t started_update, bool force )
         std::cerr << name() << "auto_init failed because robotic arm mode is " << status_.mode_str() << std::endl;
         return result( "cannot auto initialise robot if robot mode is not set to initializing", result::error::failure );
     }
-    namespace fs = boost::filesystem;
-    fs::path file( home_filepath_ );
+    boost::filesystem::path file( home_filepath_ );
     /// If not forcing auto_init, and it is not in home position ( no existen of home position file ), fail
-    if( !force && !fs::exists( file ) && !fs::is_regular_file( file ) ) { return result( "the robot arm is not in the home position, auto_init dis-allowed.", result::error::failure ); }
+    if( !force && !boost::filesystem::exists( file ) && !boost::filesystem::is_regular_file( file ) ) { return result( "the robot arm is not in the home position, auto_init dis-allowed.", result::error::failure ); }
 
     /// Signal that movement has started
     started_update();
     
-    fs::remove( file ); // Remove file before doing auto_init
+    boost::filesystem::remove( file ); // Remove file before doing auto_init
 
     static const comma::uint32 retries = 50;
     // try for two joints right now
@@ -148,4 +143,4 @@ result auto_initialization::run( started_reply_t started_update, bool force )
 
 
 
-} } } } // namespace snark { namespace ur { namespace robotic_arm { namespace handlers {
+} } } // namespace snark { namespace ur { namespace handlers {

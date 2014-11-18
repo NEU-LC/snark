@@ -53,8 +53,7 @@
 
 const char* name() { return "ur-arm-from-console: "; }
 
-namespace arm = snark::ur::robotic_arm;
-typedef arm::fixed_status status_t;
+typedef snark::ur::fixed_status status_t;
 
 void usage(int code=1)
 {
@@ -94,20 +93,20 @@ std::ostream& ostream = std::cout;
 
 struct is_in_initialise
 {
-    bool operator()( const arm::jointmode::mode& state ) { return state == arm::jointmode::initializing; }
+    bool operator()( const snark::ur::jointmode::mode& state ) { return state == snark::ur::jointmode::initializing; }
 };
 
 struct is_not_in_running
 {
-    bool operator()( const arm::jointmode::mode& state ) { return state != arm::jointmode::running; }
+    bool operator()( const snark::ur::jointmode::mode& state ) { return state != snark::ur::jointmode::running; }
 };
 
 /// Stores the current joint being initialised, it handles key press to move the single joint.
 class current_joint
 {
     char current_;
-    arm::angular_velocity_t velocity_;          // velocity for every key press
-    arm::angular_acceleration_t acceleration_;  // accelaration for every key press
+    snark::ur::angular_velocity_t velocity_;          // velocity for every key press
+    snark::ur::angular_acceleration_t acceleration_;  // accelaration for every key press
     boost::posix_time::time_duration time_;           // how long to move arm per key press
     static const char min = 0;
     static const char max = 5;
@@ -122,8 +121,8 @@ class current_joint
     };
 public:
     current_joint( char num, 
-                   const arm::angular_velocity_t& vel, 
-                   const arm::angular_acceleration_t& acc, 
+                   const snark::ur::angular_velocity_t& vel, 
+                   const snark::ur::angular_acceleration_t& acc, 
                    const boost::posix_time::time_duration& duration=boost::posix_time::seconds(0.1) ) : current_( num ), 
         velocity_( vel ), acceleration_( acc ), time_( duration ) {
             status();
@@ -133,7 +132,7 @@ public:
     char index() const { return current_; }
     void set_current( char id )
     {
-        if( id > (arm::joints_num-1) || id < 0 ) { COMMA_THROW( comma::exception, "joint index out of range" ); }
+        if( id > (snark::ur::joints_num-1) || id < 0 ) { COMMA_THROW( comma::exception, "joint index out of range" ); }
         current_ = id;
         
         status();
@@ -205,9 +204,9 @@ template < > struct traits< current_joint::data >
 
 } } //namespace comma { namespace visiting {
 
-void get_status( arm::status_t& state )
+void get_status( snark::ur::status_t& state )
 {
-    static comma::csv::binary_input_stream< arm::status_t > iss( std::cin );
+    static comma::csv::binary_input_stream< snark::ur::status_t > iss( std::cin );
 }
 
 int main( int ac, char** av )
@@ -224,8 +223,8 @@ int main( int ac, char** av )
     using boost::asio::ip::tcp;
     
     const char start_joint = 5;
-    arm::angular_acceleration_t acceleration = 0.05 * arm::rad_per_s2;
-    arm::angular_velocity_t velocity = 0.1 * arm::rad_per_sec;
+    snark::ur::angular_acceleration_t acceleration = 0.05 * snark::ur::rad_per_s2;
+    snark::ur::angular_velocity_t velocity = 0.1 * snark::ur::rad_per_sec;
     boost::posix_time::millisec duration_step( 20u );
     
     double sleep = 0.01;
@@ -234,8 +233,8 @@ int main( int ac, char** av )
 
     bool allow_in_run_mode = options.exists( "--no-exit" );
     
-    if( options.exists("-v,--velocity") ) { velocity = options.value< double >("-v,--velocity") * arm::rad_per_sec;  }
-    if( options.exists("-a,--acceleration") ) { acceleration = options.value< double >("-a,--acceleration") * arm::rad_per_s2;  }
+    if( options.exists("-v,--velocity") ) { velocity = options.value< double >("-v,--velocity") * snark::ur::rad_per_sec;  }
+    if( options.exists("-a,--acceleration") ) { acceleration = options.value< double >("-a,--acceleration") * snark::ur::rad_per_s2;  }
     if( options.exists("-s,--time-step") ) { duration_step = boost::posix_time::millisec(  std::size_t(options.value< double >("-s,--time-step") * 1000u) );  }
     
     std::string feedback_host = options.value< std::string >( "--feedback-host" );
@@ -260,8 +259,8 @@ int main( int ac, char** av )
     select.read().add( 0 );
     
     // arm's status
-    arm::fixed_status arm_status; 
-    arm::status_t state;
+    snark::ur::fixed_status arm_status; 
+    snark::ur::status_t state;
 
     usleep( 0.5 * 1000000u );
     
@@ -269,8 +268,8 @@ int main( int ac, char** av )
     {
         comma::csv::options csv_in;
         csv_in.full_xpath = true;
-        csv_in.format( comma::csv::format::value< arm::status_t >( "", true ) );
-        comma::csv::binary_input_stream< arm::status_t > iss( *status_stream, csv_in );
+        csv_in.format( comma::csv::format::value< snark::ur::status_t >( "", true ) );
+        comma::csv::binary_input_stream< snark::ur::status_t > iss( *status_stream, csv_in );
         
         current_joint joint( start_joint, velocity, acceleration, duration_step );
         while( !signaled && std::cin.good() )
@@ -290,11 +289,11 @@ int main( int ac, char** av )
 
             int joint_inited = -1;
             // find first joint in initialization state, descending order joint 5-0
-            if( allow_in_run_mode && state.joint_modes[ joint.index() ] != arm::jointmode::running ) {}
-            else if( state.joint_modes[ joint.index() ] != arm::jointmode::initializing ) 
+            if( allow_in_run_mode && state.joint_modes[ joint.index() ] != snark::ur::jointmode::running ) {}
+            else if( state.joint_modes[ joint.index() ] != snark::ur::jointmode::initializing ) 
             {
-                typedef arm::status_t::array_jointmodes_t::const_reverse_iterator reverse_iter;
-                typedef arm::status_t::array_jointmodes_t::const_iterator const_iter;
+                typedef snark::ur::status_t::array_jointmodes_t::const_reverse_iterator reverse_iter;
+                typedef snark::ur::status_t::array_jointmodes_t::const_iterator const_iter;
                 reverse_iter iter = std::find_if( state.joint_modes.crbegin(), 
                                                   state.joint_modes.crend(), is_in_initialise() );
                 if( iter == state.joint_modes.crend() ) // no more in initialize state
@@ -310,7 +309,7 @@ int main( int ac, char** av )
                     else 
                     { 
                         std::cerr << name() << "error - initialisation completed with joint/s not in running state, joint: "
-                                  << ( irun - state.joint_modes.cbegin() ) << " mode: " << arm::jointmode_str(*irun) << std::endl; 
+                                  << ( irun - state.joint_modes.cbegin() ) << " mode: " << snark::ur::jointmode_str(*irun) << std::endl; 
                         // boost::property_tree::ptree t;
                         // comma::to_ptree to_ptree( t );
                         // comma::visiting::apply( to_ptree ).to( state );

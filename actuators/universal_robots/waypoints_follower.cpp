@@ -35,7 +35,7 @@
 #include "traits.h"
 #include <comma/math/compare.h>
 
-namespace snark { namespace ur { namespace robotic_arm { namespace handlers {
+namespace snark { namespace ur { namespace handlers {
 
 namespace impl_ { 
 
@@ -116,7 +116,7 @@ result waypoints_follower::run( started_reply_t start_initiated, std::ostream& r
         rover << arm_command << std::endl;
         rover.flush();
 
-        const arm::move_config_t& config = serialiser_.get_move_config( j );
+        const snark::ur::move_config_t& config = serialiser_.get_move_config( j );
         while( !status_.check_pose( config, ( j == (num_of_moves - 1 ) ? final_epsilon : epsilon )  ) )  // Only check for intermediate waypoints
         {
             // std::cerr << "not yet at pose" << std::endl;
@@ -129,8 +129,5 @@ result waypoints_follower::run( started_reply_t start_initiated, std::ostream& r
     return result();
 }
     
-    
-
-    
-} } } } // namespace snark { namespace ur { namespace robotic_arm { namespace handlers {
+} } } // namespace snark { namespace ur { namespace handlers {
     

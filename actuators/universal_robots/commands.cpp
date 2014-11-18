@@ -34,7 +34,7 @@
 #include "commands.h"
 
 
-namespace snark { namespace ur { namespace robotic_arm {
+namespace snark { namespace ur {
 
 
 // basic::result waypoint::check_inputs_impl()
@@ -49,4 +49,4 @@ namespace snark { namespace ur { namespace robotic_arm {
 // 	return basic::result();
 // }
 
-} } } // namespace snark { namespace ur { namespace robotic_arm {
+} } // namespace snark { namespace ur {

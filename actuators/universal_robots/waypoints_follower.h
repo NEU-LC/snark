@@ -55,10 +55,7 @@ extern "C" {
 #include "result.h"
 #include "output.h"
 
-namespace snark { namespace ur { namespace robotic_arm { namespace handlers {
-
-namespace arm = robotic_arm;
-
+namespace snark { namespace ur { namespace handlers {
     
 /// class to perform follows the number of arm waypoints from simulink output, it will either finishes or cancelled.
 class waypoints_follower
@@ -109,6 +106,6 @@ public:
     void name( const std::string& name )  { name_ = name ; }
 };
     
-} } } } // namespace snark { namespace ur { namespace robotic_arm { namespace handlers {
+} } } // namespace snark { namespace ur { namespace handlers {
 
 #endif // SNARKS_ACTUATORS_UR_ROBOTIC_ARM_WAYPOINTS_FOLLOWER_H

@@ -42,9 +42,8 @@ extern "C" {
 }
 #include "simulink/traits.h"
 
-namespace snark { namespace ur { namespace robotic_arm { namespace handlers {
-    
-namespace arm = robotic_arm;
+namespace snark { namespace ur { namespace handlers {
+
 typedef boost::units::quantity< boost::units::si::angular_acceleration > angular_acceleration_t;
 typedef boost::units::quantity< boost::units::si::angular_velocity > angular_velocity_t;
 
@@ -53,7 +52,7 @@ static const int tilt_joint = 3;
 class arm_output
 {
 public:
-    typedef arm::current_positions current_positions_t;
+    typedef snark::ur::current_positions current_positions_t;
 private:
     angular_acceleration_t acceleration_;
     angular_velocity_t velocity_;
@@ -124,7 +123,7 @@ public:
         const move_config_t& move = get_move_config( index );
         for(std::size_t i=0; i<6u; ++i) 
         {
-           ss << static_cast< arm::plane_angle_degrees_t >( move[i] * arm::radian ).value();
+           ss << static_cast< snark::ur::plane_angle_degrees_t >( move[i] * snark::ur::radian ).value();
            if( i < 5 ) { ss << ','; }
         }
         ss << "],a=" << acceleration_.value() << ','
@@ -157,6 +156,6 @@ private:
 };
 
     
-} } } } //namespace snark { namespace ur { namespace robotic_arm { namespace handlers {
+} } } //namespace snark { namespace ur { namespace handlers {
 
 #endif // SNARK_ACTUATORS_UR_ROBOTIC_ARM_OUTPUT_H

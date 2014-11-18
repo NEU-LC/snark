@@ -46,7 +46,7 @@
 #include "units.h"
 
 
-namespace snark { namespace ur { namespace robotic_arm {
+namespace snark { namespace ur {
 
 struct errors {
     enum error_code { success=0, unknown_command=401, format_error=402, incorrrect_operation=403 };
@@ -176,6 +176,6 @@ struct joint_move : command_base< joint_move > {
     bool dir;
 };
 
-} } } // namespace snark { namespace ur { namespace robotic_arm {
+} } // namespace snark { namespace ur {
 
 #endif // SNARK_ACTUATORS_UR_ROBOTIC_ARM_COMMANDS_H

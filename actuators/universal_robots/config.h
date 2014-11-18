@@ -5,7 +5,7 @@
 #include <vector>
 #include "units.h"
 
-namespace snark { namespace ur { namespace robotic_arm { 
+namespace snark { namespace ur { 
 
 static const unsigned char joints_num = 6;
 
@@ -46,6 +46,6 @@ struct config {
 	continuum_t continuum;
 };
     
-} }  } //namespace snark { namespace ur { namespace robotic_arm { 
+} } //namespace snark { namespace ur { 
 
 #endif // SNARK_ACTUATORS_UR_ROBOTIC_ARM_CONFIG_H

@@ -51,11 +51,7 @@
 #include "output.h"
 #include <boost/filesystem.hpp>
 
-namespace snark { namespace ur { namespace robotic_arm { namespace handlers {
-
-namespace arm = robotic_arm;
-namespace fs = boost::filesystem;
-
+namespace snark { namespace ur { namespace handlers {
 
 class commands_handler : public comma::dispatch::handler_of< power >,
                                   public comma::dispatch::handler_of< brakes >,
@@ -87,10 +83,10 @@ public:
     typedef boost::optional< waypoints_follower::recorder_setup_t > optional_recording_t;
     
     commands_handler( ExtU_Arm_controller_v2_T& simulink_inputs, const arm_output& output,
-                      arm::status_t& status, std::ostream& robot, 
+                      snark::ur::status_t& status, std::ostream& robot, 
                       auto_initialization& init, waypoints_follower& follower, 
                       optional_recording_t recorder,
-                      std::ostream& oss, const arm::continuum_t& config ) : 
+                      std::ostream& oss, const snark::ur::continuum_t& config ) : 
         inputs_(simulink_inputs), output_(output), 
         status_( status ), os( robot ), 
         init_(init), waypoints_follower_( follower ),
@@ -112,7 +108,7 @@ private:
     waypoints_follower& waypoints_follower_;
     optional_recording_t recorder_setup_;
     std::ostream& ostream_;
-    arm::continuum_t config_;
+    snark::ur::continuum_t config_;
     bool verbose_;
     boost::optional< length_t > move_cam_height_;
     plane_angle_degrees_t move_cam_pan_;
@@ -130,11 +126,11 @@ private:
     void inputs_reset();
 public:
     static const char* lidar_filename;
-    const fs::path home_filepath_;
-    const fs::path lidar_filepath_;
+    const boost::filesystem::path home_filepath_;
+    const boost::filesystem::path lidar_filepath_;
 };
 
-} } } } // namespace snark { namespace ur { namespace robotic_arm { namespace handlers {
+} } } // namespace snark { namespace ur { namespace handlers {
 
 
 #endif // SNARK_ACTUATORS_UNIVERISAL_ROBOTS_COMMANDS_HANDLER_H
