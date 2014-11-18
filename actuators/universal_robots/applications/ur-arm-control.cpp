@@ -74,79 +74,6 @@ extern ExtY_Arm_controller_v2_T Arm_controller_v2_Y;
 
 static const char* name() { return "ur-arm-control: "; }
 
-namespace impl_ {
-    
-const char* lidar_filename = "lidar.bin";
-
-namespace fs = boost::filesystem;
-
-/// A function to acts as the recorder for 'scan' command, parameters are binded to it in main,
-/// This function must be easily interruptible, making sure it always calls interruption_point()`.
-void save_lidar( const std::string& conn_str, const std::string& savefile,
-                 const std::string& fields, double range_limit, comma::uint32 thinning_value,
-                 comma::io::publisher& publisher )
-{
-    // boost::filesystem::remove( savefile );
-
-    namespace hok = snark::hokuyo;
-
-    comma::csv::options csv;
-    csv.fields = fields;
-    csv.full_xpath = true;
-
-    comma::csv::binary< hok::data_point > binary;
-    std::vector<char> line( binary.format().size() );
- 
-    try
-    {
-        comma::io::istream iss( conn_str, comma::io::mode::binary );
-        comma::csv::binary_input_stream< hok::data_point > istream( *iss ); 
-        comma::io::select select;
-        select.read().add( iss.fd() );
-
-        //comma::io::ostream oss( savefile.string(), comma::io::mode::binary );
-        std::ofstream oss( savefile.c_str(), std::ios::trunc | std::ios::binary | std::ios::out );
-        if( !oss.is_open() ) { COMMA_THROW( comma::exception, "failed to open output file: " << savefile );  }
-        comma::csv::output_stream< hok::data_point > ostream( oss, csv ); 
-
-        comma::uint32 count = 0;
-        while( 1 )
-        {
-            ++count;
-            if( count % 10 == 0 ) { boost::this_thread::interruption_point(); }
-            static const comma::uint32 usleep = 100000; // This make sure it never blocks while reading, e.g. server sends no data
-            if( !istream.ready() ) { select.wait( 0, usleep ); }
-            if( istream.ready() ||  select.read().ready( iss.fd() ) )
-            {
-                const hok::data_point* point = istream.read();
-                if( point == NULL ) { return; }
-
-                //republish the data         
-                binary.put( *point, line.data() );
-                publisher.write( line.data(), line.size());
-
-                // save the data if needed
-                if( thinning_value == 0 || count % thinning_value != 0 ) { continue; }
-                if( point->range <= range_limit ) { ostream.write( *point ); }
-            }
-        }
-    }
-    catch( boost::thread_interrupted& ti ) // This is normal, exception does not inherits from std::exception
-    {
-        // std::cerr << name() << "save_lidar interrupted." << std::endl;
-    }
-    catch( std::exception& e )
-    {
-        std::cerr << name() << "save_lidar exception: " << e.what() << std::endl;
-    }
-    catch(...)
-    {
-        std::cerr << name() << "save_lidar unknown exception."<< std::endl;
-    }
-}
-} // namespace impl_ {
-
-
 namespace arm = snark::ur::robotic_arm;
 using arm::handlers::input_primitive;
 using arm::handlers::result;
@@ -320,11 +247,11 @@ namespace fs = boost::filesystem;
 void home_position_check( const arm::status_t& status, const std::string& homefile )
 {
     // static std::vector< arm::plane_angle_t > home_position; /// store home joint positions in radian
-    static const fs::path path( homefile );
+    static const boost::filesystem::path path( homefile );
     if( status.is_running() )
     {
         if( status.check_pose( config.continuum.home_position ) ){ std::ofstream( homefile.c_str(), std::ios::out | std::ios::trunc ); } // create
-        else { fs::remove( path ); } // remove
+        else { boost::filesystem::remove( path ); } // remove
     }
 }
 
@@ -394,8 +321,8 @@ int main( int ac, char** av )
         /// home position file
         const arm::continuum_t& continuum = config.continuum;
         if( continuum.work_directory.empty() ) { std::cerr << name() << "cannot find home position directory! exiting!" <<std::endl; return 1; }
-        fs::path dir( continuum.work_directory );
-        if( !fs::exists( dir ) || !fs::is_directory( dir ) ) { std::cerr << name() << "work_directory must exists: " << continuum.work_directory << std::endl; return 1; }
+        boost::filesystem::path dir( continuum.work_directory );
+        if( !boost::filesystem::exists( dir ) || !boost::filesystem::is_directory( dir ) ) { std::cerr << name() << "work_directory must exists: " << continuum.work_directory << std::endl; return 1; }
 
         for( std::size_t j=0; j<arm::joints_num; ++j )
         {
@@ -463,21 +390,7 @@ int main( int ac, char** av )
             // This is the infomation and generic function for recording some data
             // It records data for scan command starting from waypoint 2 and ends at waypoint 3
             arm::handlers::commands_handler::optional_recording_t record_info;
-            if( !continuum.lidar.service_host.empty() )
-            {
-                std::ostringstream ss;
-                ss << "tcp:" << continuum.lidar.service_host << ':' << continuum.lidar.service_port;
-                std::string scan_filepath = continuum.work_directory + '/' + impl_::lidar_filename;
-                std::cerr << "connection to lidar: " << ss.str() << std::endl;
-                std::string hokuyo_conn; 
-                hokuyo_conn = ss.str();
-                record_info.reset( arm::handlers::waypoints_follower::recorder_setup_t( 2, 3, continuum.scan.sweep_velocity,
-                                                                         boost::bind( &impl_::save_lidar, hokuyo_conn, scan_filepath, 
-                                                                                      continuum.scan.fields, continuum.scan.range_limit, 
-                                                                                      continuum.scan.thinning_value,
-                                                                                      boost::ref( scan_broadcast ) ) )
-                );
-            }
+
             /// This is the command handler for all commands
             commands_handler.reset( new commands_handler_t( Arm_controller_v2_U, output, arm_status, *robot_arm, 
                                                             auto_init, waypoints_follower, record_info, 
