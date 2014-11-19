@@ -45,6 +45,7 @@
 namespace comma { namespace visiting {
     
 using snark::ur::command_base;
+using snark::ur::radian;
 
 // Commands
 template <typename C> struct traits< command_base< C > >
@@ -103,7 +104,7 @@ template <> struct traits< snark::ur::config_t::arm_position_t >
         {
             double d = t[i].value();
             v.apply( boost::lexical_cast< std::string >( i ).c_str(), d );
-            t[i] = d * snark::ur::radian;
+            t[i] = d * radian;
         }
     }
 
@@ -320,7 +321,6 @@ template < > struct traits< snark::ur::status_t >
     {
         v.apply( "timestamp", t.timestamp );
         v.apply( "position", t.position );
-        v.apply( "laser_position", t.laser_position );
         v.apply( "joint_angles", t.joint_angles );
         v.apply( "velocities", t.velocities );
         v.apply( "currents", t.currents );
@@ -337,7 +337,6 @@ template < > struct traits< snark::ur::status_t >
     {
         v.apply( "timestamp", t.timestamp );
         v.apply( "position", t.position );
-        v.apply( "laser_position", t.laser_position );
         v.apply( "joint_angles", t.joint_angles );
         v.apply( "velocities", t.velocities );
         v.apply( "currents", t.currents );

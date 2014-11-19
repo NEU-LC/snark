@@ -61,7 +61,7 @@ public:
     bool runnable() const { return joints.command_flag > 0; }
     bool will_collide() const { return joints.command_flag < 0; }
     /// The Simulink proposed tilt angle
-    plane_angle_t proposed_tilt_angle( comma::uint32 index=0) const { return get_move_config(index)[ tilt_joint ] * snark::ur::radian; }
+    plane_angle_t proposed_tilt_angle( comma::uint32 index=0) const { return get_move_config(index)[ tilt_joint ] * radian; }
     
     const angular_acceleration_t& acceleration() const { return acceleration_; }
     const angular_velocity_t& velocity() const { return velocity_; }
@@ -99,7 +99,7 @@ public:
         std::ostringstream ss;
         ss << "debug: movej([";
         const move_config_t& move = get_move_config( index );
-        for(std::size_t i=0; i<6u; ++i) { ss << static_cast< snark::ur::plane_angle_degrees_t >( move[i] * snark::ur::radian ).value(); if( i < 5 ) { ss << ','; } }
+        for(std::size_t i=0; i<6u; ++i) { ss << static_cast< snark::ur::plane_angle_degrees_t >( move[i] * radian ).value(); if( i < 5 ) { ss << ','; } }
         ss << "],a=" << acceleration_.value() << ',' << "v=" << velocity_.value() << ')';
         return ss.str();
     }

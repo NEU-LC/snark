@@ -126,7 +126,6 @@ int main( int ac, char** av )
             st.robot_mode = snark::ur::robotmode::running;
             for( std::size_t i=0; i<snark::ur::joints_num; ++i ) { st.joint_modes[i] = snark::ur::jointmode::running; }  
             st.position.coordinates = Eigen::Vector3d( 1, 2, 3 );
-            st.laser_position.coordinates = Eigen::Vector3d( 3, 2, 1 );
             while( !signaled && std::cout.good() )
             {
                 st.timestamp = boost::posix_time::microsec_clock::local_time();

@@ -126,12 +126,12 @@ struct joints_in_degrees {
     joints_in_degrees() {}
     joints_in_degrees( const joints_net_t& joints_ ) 
     { 
-        joints[0] = static_cast< plane_angle_degrees_t >( joints_[0]() * snark::ur::radian );  
-        joints[1] = static_cast< plane_angle_degrees_t >( joints_[1]() * snark::ur::radian );  
-        joints[2] = static_cast< plane_angle_degrees_t >( joints_[2]() * snark::ur::radian );  
-        joints[3] = static_cast< plane_angle_degrees_t >( joints_[3]() * snark::ur::radian );  
-        joints[4] = static_cast< plane_angle_degrees_t >( joints_[4]() * snark::ur::radian );  
-        joints[5] = static_cast< plane_angle_degrees_t >( joints_[5]() * snark::ur::radian );  
+        joints[0] = static_cast< plane_angle_degrees_t >( joints_[0]() * radian );  
+        joints[1] = static_cast< plane_angle_degrees_t >( joints_[1]() * radian );  
+        joints[2] = static_cast< plane_angle_degrees_t >( joints_[2]() * radian );  
+        joints[3] = static_cast< plane_angle_degrees_t >( joints_[3]() * radian );  
+        joints[4] = static_cast< plane_angle_degrees_t >( joints_[4]() * radian );  
+        joints[5] = static_cast< plane_angle_degrees_t >( joints_[5]() * radian );  
     } 
     boost::array< plane_angle_degrees_t, joints_num > joints;
 };
@@ -150,7 +150,6 @@ struct status_t {
     
     boost::posix_time::ptime timestamp;
     snark::applications::position position;     /// Tool Center Point position
-    snark::applications::position laser_position;   /// Mounted laser position
     boost::array< plane_angle_t, joints_num > joint_angles;
     boost::array< double, joints_num > velocities;
     boost::array< double, joints_num > currents;
@@ -176,7 +175,7 @@ struct status_t {
     
     status_t() : timestamp( boost::posix_time::microsec_clock::local_time() ), position(), robot_mode( robotmode::not_connected ), length(812), time_since_boot(-1) 
     {
-        init< plane_angle_t >( 0 * snark::ur::radian, joint_angles );
+        init< plane_angle_t >( 0 * radian, joint_angles );
         init< double >( 0.0, velocities );
         init< double >( 0.0, currents );
         init< double >( 0.0, forces );

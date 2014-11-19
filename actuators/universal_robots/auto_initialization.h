@@ -86,7 +86,6 @@ private:
     
     std::string name_;  // name of the executable running this
     /// This is the value of force limit on arm before failing auto initialisation.
-    /// Should not be 0 as there is a laser mount?
     double force_max_; // newtons
     std::string home_filepath_;
     

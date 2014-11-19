@@ -21,7 +21,7 @@ extern void tcp_transform_terminate(void);
 
 namespace snark { namespace ur { namespace ur5 {
     
-/// Given the joint angles for the UR5, give the position of the TCP and of mounted laser ( 11mm above the TCP )
+/// Given the joint angles for the UR5, give the position of the tool centre-point (TCP)
 void tcp_transform( const boost::array< plane_angle_t, 6 >& joint_angles, snark::applications::position& position );
 
 } } } // namespace snark { namespace ur { namespace ur5 {
