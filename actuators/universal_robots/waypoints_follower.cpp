@@ -64,7 +64,7 @@ void waypoints_follower::stop_movement(std::ostream& robot)
     static std::string tmp;
     
     std::ostringstream ss;
-    status_update_();
+    update_status_();
     ss << "movej([" << ascii.put( status_.joint_angles, tmp ) 
        << "],a=" << serialiser_.acceleration().value() << ','
        << "v=" << serialiser_.velocity().value() << ')';
@@ -120,7 +120,7 @@ result waypoints_follower::run( started_reply_t start_initiated, std::ostream& r
         while( !status_.check_pose( config, ( j == (num_of_moves - 1 ) ? final_epsilon : epsilon )  ) )  // Only check for intermediate waypoints
         {
             // std::cerr << "not yet at pose" << std::endl;
-            status_update_();
+            update_status_();
             stop = interrupt_();
             if( signaled_ || stop ) { stop_movement( robot ); return result( "action is cancelled", result::error::cancelled ); }
             usleep( usec );

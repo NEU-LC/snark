@@ -94,8 +94,6 @@ private:
     std::ostream& ostream_;
     snark::ur::continuum_t config_;
     bool verbose_;
-    boost::optional< length_t > move_cam_height_;
-    plane_angle_degrees_t move_cam_pan_;
     bool is_move_effector;
     
     /// Run the command on the controller if possible

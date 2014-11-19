@@ -50,15 +50,8 @@ static const int tilt_joint = 3;
 class arm_output
 {
 public:
-    typedef snark::ur::current_positions current_positions_t;
-private:
-    angular_acceleration_t acceleration_;
-    angular_velocity_t velocity_;
-    ExtY_Arm_controller_v2_T& joints;
-    current_positions_t& current_positions;
-public:
     arm_output( const angular_acceleration_t& ac, const angular_velocity_t& vel, ExtY_Arm_controller_v2_T& output ) : 
-        acceleration_( ac ), velocity_( vel ), joints( output ), current_positions( static_cast< current_positions_t& >( output ) ) { Arm_controller_v2_initialize(); }
+        acceleration_( ac ), velocity_( vel ), joints( output ) { Arm_controller_v2_initialize(); }
    ~arm_output() { Arm_controller_v2_terminate(); }
 
     const ExtY_Arm_controller_v2_T& data() const { return joints; }
@@ -117,6 +110,10 @@ public:
     std::string serialise( const angular_velocity_t& velocity, comma::uint32 index=0 ) const { return serialise_waypoint( index, velocity ); }
 
 private:
+    angular_acceleration_t acceleration_;
+    angular_velocity_t velocity_;
+    ExtY_Arm_controller_v2_T& joints;
+    
     std::string serialise_waypoint( comma::uint32 index, const angular_velocity_t& velocity ) const
     {
         static std::string tmp;

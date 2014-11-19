@@ -59,19 +59,11 @@ namespace snark { namespace ur { namespace handlers {
 class waypoints_follower
 {
     typedef boost::function< void ( void ) > status_updater_t;
-    typedef boost::function< bool ( void ) > interrupt_t;    /// A new command is received
-    
-    const arm_output& serialiser_;
-    status_updater_t status_update_;
-    const status_t& status_;
-    interrupt_t interrupt_;
-    comma::signal_flag& signaled_;
-    std::string name_;
-    void stop_movement( std::ostream& robot );
+    typedef boost::function< bool ( void ) > interrupt_t;    /// A new command is received    
     
 public:
     waypoints_follower( arm_output& serialiser, boost::function< void ( void ) > status_updater, const status_t& status, interrupt_t interrupt, comma::signal_flag& signaled ) : 
-        serialiser_( serialiser ), status_update_( status_updater ), status_( status ), interrupt_( interrupt ), signaled_( signaled ) {}
+        serialiser_( serialiser ), update_status_( status_updater ), status_( status ), interrupt_( interrupt ), signaled_( signaled ) {}
     // serialiser is a wrapper for simulink outputs
   
     /// To be called to signal that the movement has started - for commands like SCAN or AUTO_INIT
@@ -93,6 +85,15 @@ public:
     
     const std::string& name() const { return name_; }
     void name( const std::string& name )  { name_ = name ; }
+    
+private:
+    const arm_output& serialiser_;
+    status_updater_t update_status_;
+    const status_t& status_;
+    interrupt_t interrupt_;
+    comma::signal_flag& signaled_;
+    std::string name_;
+    void stop_movement( std::ostream& robot );    
 };
     
 } } } // namespace snark { namespace ur { namespace handlers {

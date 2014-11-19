@@ -126,12 +126,12 @@ struct joints_in_degrees {
     joints_in_degrees() {}
     joints_in_degrees( const joints_net_t& joints_ ) 
     { 
-        joints[0] = static_cast< plane_angle_degrees_t >( joints_[0]() * radian );  
-        joints[1] = static_cast< plane_angle_degrees_t >( joints_[1]() * radian );  
-        joints[2] = static_cast< plane_angle_degrees_t >( joints_[2]() * radian );  
-        joints[3] = static_cast< plane_angle_degrees_t >( joints_[3]() * radian );  
-        joints[4] = static_cast< plane_angle_degrees_t >( joints_[4]() * radian );  
-        joints[5] = static_cast< plane_angle_degrees_t >( joints_[5]() * radian );  
+        joints[0] = static_cast< plane_angle_degrees_t >( joints_[0]() * snark::ur::radian );  
+        joints[1] = static_cast< plane_angle_degrees_t >( joints_[1]() * snark::ur::radian );  
+        joints[2] = static_cast< plane_angle_degrees_t >( joints_[2]() * snark::ur::radian );  
+        joints[3] = static_cast< plane_angle_degrees_t >( joints_[3]() * snark::ur::radian );  
+        joints[4] = static_cast< plane_angle_degrees_t >( joints_[4]() * snark::ur::radian );  
+        joints[5] = static_cast< plane_angle_degrees_t >( joints_[5]() * snark::ur::radian );  
     } 
     boost::array< plane_angle_degrees_t, joints_num > joints;
 };
@@ -174,8 +174,7 @@ struct status_t {
     
     bool is_stationary( double epsilon=0.05 ) const;
     
-    status_t() : timestamp( boost::posix_time::microsec_clock::local_time() ), position(), 
-            robot_mode( robotmode::not_connected ), length(812), time_since_boot(-1) 
+    status_t() : timestamp( boost::posix_time::microsec_clock::local_time() ), position(), robot_mode( robotmode::not_connected ), length(812), time_since_boot(-1) 
     {
         init< plane_angle_t >( 0*radian, joint_angles );
         init< double >( 0.0, velocities );
@@ -222,13 +221,15 @@ struct fixed_status : public comma::packed::packed_struct< fixed_status, 812  >
     typedef boost::array< plane_angle_t, joints_num > joints_type;
     void get_angles( joints_type& angles );
 };
-template < typename T > struct packed_buffer {
+template < typename T > struct packed_buffer 
+{
     T data;
 };  
 
 inline bool status_t::is_stationary( double epsilon ) const
 {
-    for( std::size_t i=0; i<joints_num; ++i ) {
+    for( std::size_t i=0; i<joints_num; ++i ) 
+    {
         // std::cerr << "joint " << i << " mode " << joint_modes[i] << " expected: " << jointmode::running << std::endl;
         if( std::fabs( this->velocities[i] ) >= epsilon ) { return false; }
     }

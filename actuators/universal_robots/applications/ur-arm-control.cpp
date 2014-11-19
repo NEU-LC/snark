@@ -59,15 +59,12 @@
 #include "../inputs.h"
 #include "../units.h"
 #include "../waypoints_follower.h"
-//#include "../../../sensors/hokuyo/traits.h"
 #include "../Arm_controller_v2.h"
 
 /* External inputs (root inport signals with auto storage) */
-//extern ExtU_Arm_controller_v2_T Arm_controller_v2_U;
 ExtU_Arm_controller_v2_T Arm_controller_v2_U;
 
 /* External outputs (root outports fed by signals with auto storage) */
-//extern ExtY_Arm_controller_v2_T Arm_controller_v2_Y;
 ExtY_Arm_controller_v2_T Arm_controller_v2_Y;
 
 static const char* name() { return "ur-arm-control: "; }
@@ -112,7 +109,6 @@ void output( const std::string& msg, std::ostream& os=std::cout )
 
 static snark::ur::status_t arm_status; 
 /// Stream to command robot arm
-namespace ip = boost::asio::ip;
 typedef snark::ur::handlers::commands_handler commands_handler_t;
 typedef boost::shared_ptr< commands_handler_t > commands_handler_shared;
 static commands_handler_shared commands_handler;
@@ -276,8 +272,7 @@ int main( int ac, char** av )
     try
     {
         /// Convert simulink output into arm's command
-        snark::ur::handlers::arm_output output( acc * snark::ur::angular_acceleration_t::unit_type(), vel * snark::ur::angular_velocity_t::unit_type(),
-                       Arm_controller_v2_Y );
+        snark::ur::handlers::arm_output output( acc * snark::ur::angular_acceleration_t::unit_type(), vel * snark::ur::angular_velocity_t::unit_type(), Arm_controller_v2_Y );
     
         comma::uint16 robot_id = options.value< comma::uint16 >( "--id" );
         double sleep = options.value< double >( "--sleep", 0.06 );  // seconds

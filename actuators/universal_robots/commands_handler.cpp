@@ -86,7 +86,6 @@ void commands_handler::handle( snark::ur::joint_move& joint )
         ret = result( "cannot initialise joint as robot is not in initialisation mode", result::error::invalid_robot_state );
         return;
     }
-    move_cam_height_.reset(); // no longer in move_cam position
     
     /// command can be use if in running or initialising mode
     int index = joint.joint_id;
@@ -153,16 +152,8 @@ bool commands_handler::execute_waypoints( const C& command, bool record )
         std::cerr << name() << output_.serialise() << std::endl; 
     }
     // Ok now follow the waypoints
-    if( record ) {
-        ret = waypoints_follower_.run(
-                boost::bind( movement_started< C >, boost::cref( command ), boost::ref( this->ostream_ ) )
-                , this->os, recorder_setup_ );    
-    }
-    else {
-        ret = waypoints_follower_.run(
-                boost::bind( movement_started< C >, boost::cref( command ), boost::ref( this->ostream_ ) )
-                , this->os );    
-    }
+    if( record ) { ret = waypoints_follower_.run( boost::bind( movement_started< C >, boost::cref( command ), boost::ref( this->ostream_ ) ) , this->os, recorder_setup_ ); }
+    else { ret = waypoints_follower_.run( boost::bind( movement_started< C >, boost::cref( command ), boost::ref( this->ostream_ ) ) , this->os ); }
 
     inputs_reset();
     return ret.is_success();
@@ -194,11 +185,7 @@ void commands_handler::handle( snark::ur::set_position& pos )
     inputs_.Input_2 = 0;    // zero pan for giraffe
     inputs_.Input_3 = 0;    // zero tilt for giraffe
     
-    if( execute_waypoints( pos ) )
-    {
-        is_move_effector = false;
-        move_cam_height_.reset(); // no longer in move_cam position
-    }
+    if( execute_waypoints( pos ) ) { is_move_effector = false; }
 }
 
 void commands_handler::handle( snark::ur::move_effector& e )
@@ -214,37 +201,25 @@ void commands_handler::handle( snark::ur::move_effector& e )
     inputs_.Input_2 = e.offset.y();
     inputs_.Input_3 = e.offset.z();
     std::cerr << "joint 2 is " << status_.joint_angles[2].value() << std::endl;
-
-    if( execute_waypoints( e ) )
-    {
-        is_move_effector = true;
-        move_cam_height_.reset();
-    }
+    if( execute_waypoints( e ) ) { is_move_effector = true; }
 }
 
 bool commands_handler::is_initialising() const 
 {
-    if( status_.robot_mode != robotmode::initializing ) { 
-        // std::cerr << "robot mode " << status_.robot_mode << " expected: " << robotmode::initializing << std::endl;
-        return false; 
-    }
-
+    if( status_.robot_mode != robotmode::initializing ) { return false; }
     for( std::size_t i=0; i<joints_num; ++i ) 
     {
-        // std::cerr << "joint " << i << " mode " << status_.joint_modes[i] << " expected: " << jointmode::running << std::endl;
         if( status_.jmode(i) != jointmode::initializing && 
             status_.jmode(i) != jointmode::running ) { 
             return false; 
         }
     }
-
     return true;
 }
 
 void commands_handler::handle( snark::ur::auto_init& a )
 {
-    ret = init_.run( boost::bind( movement_started< auto_init >, boost::cref( a ), boost::ref( this->ostream_ ) ),
-                     false );
+    ret = init_.run( boost::bind( movement_started< auto_init >, boost::cref( a ), boost::ref( this->ostream_ ) ), false );
     if( ret.is_success() ) { 
         std::cerr << name() << "going to home position." << std::endl;
         snark::ur::set_position home; 
@@ -255,9 +230,9 @@ void commands_handler::handle( snark::ur::auto_init& a )
 
 void commands_handler::handle( snark::ur::auto_init_force& init )
 {
-    ret = init_.run( boost::bind( movement_started< auto_init_force >, boost::cref( init ), boost::ref( this->ostream_ ) ), 
-                     init.force );
-    if( ret.is_success() ) { 
+    ret = init_.run( boost::bind( movement_started< auto_init_force >, boost::cref( init ), boost::ref( this->ostream_ ) ), init.force );
+    if( ret.is_success() ) 
+    { 
         std::cerr << name() << "going to home position." << std::endl;
         snark::ur::set_position home; 
         handle( home ); 
@@ -279,7 +254,6 @@ void commands_handler::inputs_reset()
 /// Sets it after reading the position
 void commands_handler::set_current_position( )
 {
-    // std::cerr << name() << "setting joints, joint 2: " << status.joint_angles[2].value() << std::endl; 
     inputs_.Joint1 = status_.joint_angles[0].value();
     inputs_.Joint2 = status_.joint_angles[1].value();
     inputs_.Joint3 = status_.joint_angles[2].value();
