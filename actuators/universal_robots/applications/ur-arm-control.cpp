@@ -145,8 +145,6 @@ std::string handle( const std::vector< std::string >& line, std::ostream& os )
     comma::dispatch::handler& h_ref( *commands_handler );
     comma::dispatch::dispatched_base& ref( c );
     ref.dispatch_to( h_ref );
-    // perform action
-    // result ret = snark::ur::action< C >::run( c, os );
     std::ostringstream ss;
     ss << '<' << c.serialise() << ',' << commands_handler->ret.get_message() << ';';
     return ss.str();
@@ -305,8 +303,6 @@ int main( int ac, char** av )
         std::string arm_conn_port = options.value< std::string >( "--robot-arm-port" );
         std::string arm_feedback_host = options.value< std::string >( "--feedback-host" );
         std::string arm_feedback_port = options.value< std::string >( "--feedback-port" );
-        std::string tcp_scan_forwarding = "tcp:" + boost::lexical_cast< std::string >( continuum.lidar.scan_forwarding_port );
-        comma::io::publisher scan_broadcast( tcp_scan_forwarding, comma::io::mode::binary );
         
         boost::scoped_ptr< comma::io::ostream > poss;
         try

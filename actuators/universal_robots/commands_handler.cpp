@@ -38,11 +38,7 @@
 
 namespace snark { namespace ur { namespace handlers {
 
-static const char* name() {
-    return "robot-arm-daemon: ";
-}
-
-const char* commands_handler::lidar_filename = "lidar-scan.bin";
+static const char* name() { return "robot-arm-daemon: "; }
 
 void commands_handler::handle( snark::ur::power& p )
 {
@@ -205,16 +201,10 @@ void commands_handler::handle( snark::ur::set_position& pos )
     }
 }
 
-
 void commands_handler::handle( snark::ur::move_effector& e )
 {    
     std::cerr << name() << "handling move_effector" << std::endl; 
-
-    // if( move_cam_height_ ) { ret = result( "can not move effector in move_cam state", result::error::invalid_robot_state ); return; }
     if( !status_.is_running() ) { ret = result( "cannot move effector as robot is not in running mode", result::error::invalid_robot_state ); return; }
-    // if( !is_move_effector && !is_home_position() ) { 
-    //     ret = result( "can not use move_effector unless starting in home position", result::error::invalid_robot_state ); return; 
-    // }
 
     // First run simulink to calculate the waypoints
     inputs_reset();
@@ -231,7 +221,6 @@ void commands_handler::handle( snark::ur::move_effector& e )
         move_cam_height_.reset();
     }
 }
-
 
 bool commands_handler::is_initialising() const 
 {
@@ -263,6 +252,7 @@ void commands_handler::handle( snark::ur::auto_init& a )
     } // set to home
 
 }
+
 void commands_handler::handle( snark::ur::auto_init_force& init )
 {
     ret = init_.run( boost::bind( movement_started< auto_init_force >, boost::cref( init ), boost::ref( this->ostream_ ) ), 
@@ -284,6 +274,7 @@ void commands_handler::inputs_reset()
     inputs_.Input_5 = 0;
     inputs_.Input_6 = 0;
 }
+
 /// The Simulink code needs to know the current position of the arm
 /// Sets it after reading the position
 void commands_handler::set_current_position( )

@@ -75,9 +75,6 @@ public:
     
     const angular_acceleration_t& acceleration() const { return acceleration_; }
     const angular_velocity_t& velocity() const { return velocity_; }
-    // /// This is an array of 6 doubles, or 6 angles for the joints - all in radians
-    // typedef boost::array< real_T, joints_num > move_config_t;
-
     comma::uint32 num_of_moves() const { return boost::lexical_cast< comma::uint32 >( joints.number_waypoints ); }
     
     const move_config_t& get_move_config( comma::uint32 index ) const
@@ -112,15 +109,8 @@ public:
         std::ostringstream ss;
         ss << "debug: movej([";
         const move_config_t& move = get_move_config( index );
-        for(std::size_t i=0; i<6u; ++i) 
-        {
-           ss << static_cast< snark::ur::plane_angle_degrees_t >( move[i] * snark::ur::radian ).value();
-           if( i < 5 ) { ss << ','; }
-        }
-        ss << "],a=" << acceleration_.value() << ','
-           << "v=" << velocity_.value() << ')';
-           
-           
+        for(std::size_t i=0; i<6u; ++i) { ss << static_cast< snark::ur::plane_angle_degrees_t >( move[i] * snark::ur::radian ).value(); if( i < 5 ) { ss << ','; } }
+        ss << "],a=" << acceleration_.value() << ',' << "v=" << velocity_.value() << ')';
         return ss.str();
     }
     

@@ -105,7 +105,6 @@ int main( int ac, char** av )
     bool is_json = options.exists( "--json,-j" );
     bool is_single_line_json = options.exists( "--compact-json,-cj" );
     bool is_binary = options.exists( "--binary,-b" );
-    //bool is_flip_laser_pitch = options.exists( "--flip-laser-pitch" );
     
     comma::csv::options csv;
     csv.fields = options.value< std::string >( "--fields", "" );
@@ -121,8 +120,6 @@ int main( int ac, char** av )
 
         if( options.exists( "--output-samples" ) )
         {
-            // std::cerr << "output format: \n" << csv.format().string() << std::endl;
-            // std::cerr << "output fields: \n" << csv.fields << std::endl;
             std::cerr.flush();
             comma::csv::output_stream< snark::ur::status_t > oss( std::cout, csv );
             snark::ur::status_t st;

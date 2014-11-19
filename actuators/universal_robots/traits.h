@@ -224,66 +224,18 @@ template <> struct traits< snark::ur::set_home >
     }
 };
 
-template <> struct traits< snark::ur::continuum_t::scan_type >
-{
-    template< typename K, typename V > static void visit( const K& k, snark::ur::continuum_t::scan_type& t, V& v )
-    {
-        double sweep_angle = t.sweep_angle.value();
-        v.apply( "sweep_angle", sweep_angle );
-        t.sweep_angle = sweep_angle * snark::ur::degree;
-
-        double vel = t.sweep_velocity.value();
-        v.apply( "sweep_velocity", vel );
-        t.sweep_velocity = vel * snark::ur::rad_per_sec;
-
-        v.apply( "fields", t.fields );
-        v.apply( "range-limit", t.range_limit );
-        v.apply( "thinning", t.thinning_value );
-    }
-
-    template< typename K, typename V > static void visit( const K& k, const snark::ur::continuum_t::scan_type& t, V& v )
-    {
-        v.apply( "sweep_angle", t.sweep_angle.value() );
-        v.apply( "sweep_velocity", t.sweep_velocity.value() );
-        v.apply( "fields", t.fields );
-        v.apply( "range-limit", t.range_limit );
-        v.apply( "thinning", t.thinning_value );
-    }
-};
-
-template <> struct traits< snark::ur::continuum_t::lidar_config >
-{
-    template< typename K, typename V > static void visit( const K& k, snark::ur::continuum_t::lidar_config& t, V& v )
-    {
-        v.apply( "service-host", t.service_host );
-        v.apply( "service-port", t.service_port );
-        v.apply( "scan-forwarding-port", t.scan_forwarding_port );
-    }
-
-    template< typename K, typename V > static void visit( const K& k, const snark::ur::continuum_t::lidar_config& t, V& v )
-    {
-        v.apply( "service-host", t.service_host );
-        v.apply( "service-port", t.service_port );
-        v.apply( "scan-forwarding-port", t.scan_forwarding_port );
-    }
-};
-
 template <> struct traits< snark::ur::continuum_t >
 {
     template< typename K, typename V > static void visit( const K& k, snark::ur::continuum_t& t, V& v )
     {
         v.apply( "home_position", t.home_position );
         v.apply( "work_directory", t.work_directory );
-        v.apply( "scan", t.scan );
-        v.apply( "hokuyo", t.lidar );
     }
 
     template< typename K, typename V > static void visit( const K& k, const snark::ur::continuum_t& t, V& v )
     {
         v.apply( "home_position", t.home_position );
         v.apply( "work_directory", t.work_directory );
-        v.apply( "scan", t.scan );
-        v.apply( "hokuyo", t.lidar );
     }
 };
 
