@@ -19,13 +19,10 @@ extern void tcp_transform_initialize(void);
 extern void tcp_transform_step(void);
 extern void tcp_transform_terminate(void);
 
-
 namespace snark { namespace ur { namespace ur5 {
     
 /// Given the joint angles for the UR5, give the position of the TCP and of mounted laser ( 11mm above the TCP )
-void tcp_transform( const boost::array< plane_angle_t, 6 >& joint_angles, 
-                    snark::applications::position& position,
-                    snark::applications::position& laser );
+void tcp_transform( const boost::array< plane_angle_t, 6 >& joint_angles, snark::applications::position& position );
 
 } } } // namespace snark { namespace ur { namespace ur5 {
 

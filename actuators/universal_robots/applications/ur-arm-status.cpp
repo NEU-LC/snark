@@ -66,7 +66,6 @@ void usage(int code=1)
     std::cerr << "    --compact-json,-cj:   output in single line json without whitespaces or new lines." << std::endl;
     std::cerr << "    --host-byte-order:    input data is binary in host-byte-order, it assumes network order by default." << std::endl;
     std::cerr << "    --format:             displays the binary format of output data in host byte order." << std::endl;
-    std::cerr << "    --flip-laser-pitch:   flip the pitch pos/neg sign for laser-position's orientation." << std::endl;
     typedef snark::ur::status_t status_t;
     comma::csv::binary< status_t > binary;
     std::cerr << "Robot arm's status:" << std::endl;
@@ -106,7 +105,7 @@ int main( int ac, char** av )
     bool is_json = options.exists( "--json,-j" );
     bool is_single_line_json = options.exists( "--compact-json,-cj" );
     bool is_binary = options.exists( "--binary,-b" );
-    bool is_flip_laser_pitch = options.exists( "--flip-laser-pitch" );
+    //bool is_flip_laser_pitch = options.exists( "--flip-laser-pitch" );
     
     comma::csv::options csv;
     csv.fields = options.value< std::string >( "--fields", "" );
@@ -154,8 +153,7 @@ int main( int ac, char** av )
                 arm_status.get( state );
                 /// As TCP rotation data do not make sense, caculate it using the joint angles
                 /// We will also override the TCP translation coordinate
-                snark::ur::ur5::tcp_transform( state.joint_angles, state.position, state.laser_position );
-                if( is_flip_laser_pitch ) { state.laser_position.orientation.y() = -( state.laser_position.orientation.y() ); }
+                snark::ur::ur5::tcp_transform( state.joint_angles, state.position );
             }
             else 
             {
