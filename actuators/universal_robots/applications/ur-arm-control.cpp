@@ -59,17 +59,16 @@
 #include "../inputs.h"
 #include "../units.h"
 #include "../waypoints_follower.h"
-#include "../../../sensors/hokuyo/traits.h"
-extern "C" {
-    #include "../simulink/Arm_controller_v2.h"
-}
-#include "../simulink/traits.h"
+//#include "../../../sensors/hokuyo/traits.h"
+#include "../Arm_controller_v2.h"
 
 /* External inputs (root inport signals with auto storage) */
-extern ExtU_Arm_controller_v2_T Arm_controller_v2_U;
+//extern ExtU_Arm_controller_v2_T Arm_controller_v2_U;
+ExtU_Arm_controller_v2_T Arm_controller_v2_U;
 
 /* External outputs (root outports fed by signals with auto storage) */
-extern ExtY_Arm_controller_v2_T Arm_controller_v2_Y;
+//extern ExtY_Arm_controller_v2_T Arm_controller_v2_Y;
+ExtY_Arm_controller_v2_T Arm_controller_v2_Y;
 
 static const char* name() { return "ur-arm-control: "; }
 

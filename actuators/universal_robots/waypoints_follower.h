@@ -49,10 +49,7 @@
 #include <boost/function.hpp>
 #include "data.h"
 #include "auto_initialization.h"
-extern "C" {
-    #include "simulink/Arm_controller_v2.h"
-}
-#include "simulink/traits.h"
+#include "Arm_controller_v2.h"
 #include "result.h"
 #include "output.h"
 

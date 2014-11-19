@@ -38,10 +38,7 @@
 #include <boost/array.hpp>
 #include <comma/base/types.h>
 #include "units.h"
-extern "C" {
-    #include "simulink/Arm_controller_v2.h"
-}
-#include "simulink/traits.h"
+#include "Arm_controller_v2.h"
 
 namespace snark { namespace ur { namespace handlers {
 
