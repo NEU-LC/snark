@@ -32,6 +32,7 @@
 
 #ifndef SNARKS_ACTUATORS_UR_ROBOTIC_ARM_AUTO_INITIALISATION_H
 #define SNARKS_ACTUATORS_UR_ROBOTIC_ARM_AUTO_INITIALISATION_H
+
 #include <string>
 #include <vector>
 #include <iostream>

@@ -32,6 +32,7 @@
 
 #ifndef SNARK_ACTUATORS_UR_ROBOTIC_ARM_INPUTS_H
 #define SNARK_ACTUATORS_UR_ROBOTIC_ARM_INPUTS_H
+
 #include <vector>
 #include <queue>
 #include <string>

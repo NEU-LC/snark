@@ -32,6 +32,7 @@
 
 #ifndef SNARK_ACTUATORS_UR_ROBOTIC_ARM_TRAITS_H
 #define SNARK_ACTUATORS_UR_ROBOTIC_ARM_TRAITS_H
+
 #include <boost/units/quantity.hpp>
 #include <comma/visiting/traits.h>
 #include <snark/visiting/eigen.h>

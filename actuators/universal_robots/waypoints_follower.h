@@ -32,6 +32,7 @@
 
 #ifndef SNARKS_ACTUATORS_UR_ROBOTIC_ARM_WAYPOINTS_FOLLOWER_H
 #define SNARKS_ACTUATORS_UR_ROBOTIC_ARM_WAYPOINTS_FOLLOWER_H
+
 #include <string>
 #include <vector>
 #include <iostream>
@@ -72,16 +73,9 @@ class waypoints_follower
     void stop_movement( std::ostream& robot );
     
 public:
-    waypoints_follower( // boost::function< bool (std::string& move1, std::string& move2 ) > f, /// caculate proposed sweep
-                  arm_output& serialiser,       /// Wrapper for Simulink outputs
-                  boost::function< void ( void ) > status_updater,
-                  const status_t& status,
-                  interrupt_t interrupt,
-                  comma::signal_flag& signaled
-        ) : 
-                    serialiser_( serialiser ), 
-                    status_update_( status_updater ), status_( status ), 
-                    interrupt_( interrupt ), signaled_( signaled ) {}
+    waypoints_follower( arm_output& serialiser, boost::function< void ( void ) > status_updater, const status_t& status, interrupt_t interrupt, comma::signal_flag& signaled ) : 
+        serialiser_( serialiser ), status_update_( status_updater ), status_( status ), interrupt_( interrupt ), signaled_( signaled ) {}
+    // serialiser is a wrapper for simulink outputs
   
     /// To be called to signal that the movement has started - for commands like SCAN or AUTO_INIT
     typedef boost::function< void ( void ) > started_reply_t;

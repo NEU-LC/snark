@@ -32,6 +32,7 @@
 
 #ifndef SNARK_ACTUATORS_UNIVERISAL_ROBOTS_COMMANDS_HANDLER_H
 #define SNARK_ACTUATORS_UNIVERISAL_ROBOTS_COMMANDS_HANDLER_H
+
 #include <string>
 #include <vector>
 #include <iostream>
@@ -53,14 +54,14 @@
 namespace snark { namespace ur { namespace handlers {
 
 class commands_handler : public comma::dispatch::handler_of< power >,
-                                  public comma::dispatch::handler_of< brakes >,
-                                  public comma::dispatch::handler_of< set_home >,
-                                  public comma::dispatch::handler_of< auto_init >,
-                                  public comma::dispatch::handler_of< move_joints >,
-                                  public comma::dispatch::handler_of< joint_move >,
-                                  public comma::dispatch::handler_of< set_position >,
-                                  public comma::dispatch::handler_of< auto_init_force >,
-                                  public comma::dispatch::handler_of< move_effector >
+    public comma::dispatch::handler_of< brakes >,
+    public comma::dispatch::handler_of< set_home >,
+    public comma::dispatch::handler_of< auto_init >,
+    public comma::dispatch::handler_of< move_joints >,
+    public comma::dispatch::handler_of< joint_move >,
+    public comma::dispatch::handler_of< set_position >,
+    public comma::dispatch::handler_of< auto_init_force >,
+    public comma::dispatch::handler_of< move_effector >
 {
 public:
     void handle( power& p );
@@ -75,20 +76,10 @@ public:
 
     typedef boost::optional< waypoints_follower::recorder_setup_t > optional_recording_t;
     
-    commands_handler( ExtU_Arm_controller_v2_T& simulink_inputs, const arm_output& output,
-                      snark::ur::status_t& status, std::ostream& robot_ostream, 
-                      auto_initialization& init, waypoints_follower& follower, 
-                      optional_recording_t recorder,
-                      std::ostream& oss, const snark::ur::continuum_t& config ) : 
-        inputs_(simulink_inputs), output_(output), 
-        status_( status ), os( robot_ostream ), 
-        init_(init), waypoints_follower_( follower ),
-        recorder_setup_( recorder ),
-        ostream_( oss ), config_( config ),
-        verbose_( false ), is_move_effector( false ),
-        home_filepath_( init_.home_filepath() ), lidar_filepath_( config_.work_directory + '/' + lidar_filename )
-        {}
-        
+    commands_handler( ExtU_Arm_controller_v2_T& simulink_inputs, const arm_output& output, snark::ur::status_t& status, std::ostream& robot_ostream, 
+        auto_initialization& init, waypoints_follower& follower, optional_recording_t recorder, std::ostream& oss, const snark::ur::continuum_t& config ) : 
+        inputs_( simulink_inputs ), output_( output ), status_( status ), os( robot_ostream ), init_( init ), waypoints_follower_( follower ), recorder_setup_( recorder ), ostream_( oss ),
+        config_( config ), verbose_( false ), is_move_effector( false ), home_filepath_( init_.home_filepath() ), lidar_filepath_( config_.work_directory + '/' + lidar_filename ) {}        
     bool is_initialising() const; 
     
     result ret;  /// Indicate if command succeed
@@ -124,6 +115,5 @@ public:
 };
 
 } } } // namespace snark { namespace ur { namespace handlers {
-
 
 #endif // SNARK_ACTUATORS_UNIVERISAL_ROBOTS_COMMANDS_HANDLER_H

@@ -32,6 +32,7 @@
 
 #ifndef SNARK_ACTUATORS_UR_ROBOTIC_ARM_OUTPUT_H
 #define SNARK_ACTUATORS_UR_ROBOTIC_ARM_OUTPUT_H
+
 #include <string>
 #include <iostream>
 #include <boost/array.hpp>
@@ -59,17 +60,9 @@ private:
     ExtY_Arm_controller_v2_T& joints;
     current_positions_t& current_positions;
 public:
-    arm_output( const angular_acceleration_t& ac, const angular_velocity_t& vel,
-                ExtY_Arm_controller_v2_T& output ) : 
-                acceleration_( ac ), velocity_( vel ), joints( output ), 
-                current_positions( static_cast< current_positions_t& >( output ) ) 
-                {
-                    Arm_controller_v2_initialize();
-                }
-   ~arm_output() 
-    { 
-        Arm_controller_v2_terminate(); 
-    }
+    arm_output( const angular_acceleration_t& ac, const angular_velocity_t& vel, ExtY_Arm_controller_v2_T& output ) : 
+        acceleration_( ac ), velocity_( vel ), joints( output ), current_positions( static_cast< current_positions_t& >( output ) ) { Arm_controller_v2_initialize(); }
+   ~arm_output() { Arm_controller_v2_terminate(); }
 
     const ExtY_Arm_controller_v2_T& data() const { return joints; }
 
@@ -78,9 +71,7 @@ public:
     bool runnable() const { return joints.command_flag > 0; }
     bool will_collide() const { return joints.command_flag < 0; }
     /// The Simulink proposed tilt angle
-    plane_angle_t proposed_tilt_angle( comma::uint32 index=0) const {
-        return get_move_config(index)[ tilt_joint ] * radian;
-    }
+    plane_angle_t proposed_tilt_angle( comma::uint32 index=0) const { return get_move_config(index)[ tilt_joint ] * snark::ur::radian; }
     
     const angular_acceleration_t& acceleration() const { return acceleration_; }
     const angular_velocity_t& velocity() const { return velocity_; }
@@ -155,7 +146,6 @@ private:
    
 };
 
-    
 } } } //namespace snark { namespace ur { namespace handlers {
 
 #endif // SNARK_ACTUATORS_UR_ROBOTIC_ARM_OUTPUT_H

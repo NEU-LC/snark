@@ -32,6 +32,7 @@
 
 #ifndef SNARK_ACTUATORS_UR_ROBOTIC_ARM_RESULT_H
 #define SNARK_ACTUATORS_UR_ROBOTIC_ARM_RESULT_H
+
 #include <string>
 #include <iostream>
 

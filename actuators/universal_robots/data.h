@@ -1,5 +1,38 @@
+// This file is part of snark, a generic and flexible library for robotics research
+// Copyright (c) 2011 The University of Sydney
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+// 1. Redistributions of source code must retain the above copyright
+//    notice, this list of conditions and the following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright
+//    notice, this list of conditions and the following disclaimer in the
+//    documentation and/or other materials provided with the distribution.
+// 3. All advertising materials mentioning features or use of this software
+//    must display the following acknowledgement:
+//    This product includes software developed by the The University of Sydney.
+// 4. Neither the name of the The University of Sydney nor the
+//    names of its contributors may be used to endorse or promote products
+//    derived from this software without specific prior written permission.
+//
+// NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
+// GRANTED BY THIS LICENSE.  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
+// HOLDERS AND CONTRIBUTORS \"AS IS\" AND ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+// BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+// OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
+// IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 #ifndef SNARK_ACTUATORS_UR_ROBOTIC_ARM_DATA_H 
-#define SNARK_ACTUATORS_UR_ROBOTIC_ARM_DATA_H 
+#define SNARK_ACTUATORS_UR_ROBOTIC_ARM_DATA_H
+
 #include <comma/packed/packed.h>
 #include <comma/math/compare.h>
 #include "units.h"
@@ -159,7 +192,6 @@ struct status_t {
     bool check_pose( const arm_position_t& pose, const plane_angle_degrees_t& epsilon=(0.5*degree) ) const;
 };
 
-
 struct fixed_status : public comma::packed::packed_struct< fixed_status, 812  >
 {
     void get( status_t& st );
@@ -203,41 +235,7 @@ inline bool status_t::is_stationary( double epsilon ) const
     return true;
 }
 
-
 struct move_config_t : public boost::array< double, joints_num > {};
-
-// struct robot_mode : public comma::packed::packed_struct< robot_mode, 29 > {
-//     comma::packed::uint32 length;
-//     unsigned char type; // should be 0
-//     comma::packed::big_endian_uint64 timestamp;
-//     unsigned char connected;
-//     unsigned char enabled;
-//     unsigned char power_on;
-//     unsigned char estopped;
-//     unsigned char security_stopped;
-//     unsigned char program_running;
-//     unsigned char program_paused;
-//     unsigned char robot_mode;
-//     comma::packed::big_endian_double speed_fraction;
-// };
-
-// typedef boost::array< comma::packed::big_endian_float, joints_num > joints_net_float_t;
-
-// struct joint_data : public comma::packed::packed_struct< joint_data, 41 > {
-//     comma::packed::big_endian_double position;
-//     comma::packed::big_endian_double target_position;
-//     comma::packed::big_endian_double speed;
-//     comma::packed::string< 8 > dummy1;
-//     comma::packed::big_endian_float temperature;
-//     comma::uint32 unused;
-//     unsigned char mode;
-// };
-//     
-// struct joints_data : public comma::packed::packed_struct< joints_data, 251 > {
-//     comma::packed::uint32 length;
-//     unsigned char type; // should be 0
-//     boost::array< joint_data, joints_num > joints;
-// };
 
 } } //namespace snark { namespace ur { 
 

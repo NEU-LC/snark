@@ -1,3 +1,4 @@
+// This file is part of snark, a generic and flexible library for robotics research
 // Copyright (c) 2011 The University of Sydney
 // All rights reserved.
 //
@@ -29,7 +30,6 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
 #include "inputs.h"
 #include <string>
 #include <iostream>
@@ -39,22 +39,15 @@
 
 namespace snark { namespace ur {
     
-inputs::inputs( char robot_id_ ) 
-        : robot_id( robot_id_ ), istream_( "-", comma::io::mode::ascii ) {
-            select_.read().add( istream_.fd() );
-        }
-
+inputs::inputs( char robot_id_ ) : robot_id( robot_id_ ), istream_( "-", comma::io::mode::ascii ) { select_.read().add( istream_.fd() ); }
 
 typedef std::vector< std::string > vector_s;
 
 void inputs::read( const boost::posix_time::time_duration& timeout )
 {
     if( !istream_->good() ) { COMMA_THROW( comma::exception, "inputs - input stream not good()" ); }
-
     select_.wait( timeout ); // can be 0 
-
     if( !select_.read().ready( istream_.fd() ) ) { return; }
-
     do
     {
         std::string line;
@@ -103,7 +96,5 @@ void inputs::read( const boost::posix_time::time_duration& timeout )
     } 
     while( istream_->rdbuf()->in_avail() > 0 );
 }
-
-
 
 } } // namespace snark { namespace ur {
