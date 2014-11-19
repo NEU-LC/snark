@@ -63,50 +63,6 @@ template <typename C> struct traits< command_base< C > >
     }
 };
 
-template <> struct traits< arm::move_cam >
-{
-    template< typename K, typename V > static void visit( const K& k, arm::move_cam& t, V& v )
-    {
-        traits< command_base < arm::move_cam > >::visit(k, t, v);
-        double p, l, h;
-        v.apply( "pan", p );
-        t.pan = p * arm::degree;
-        v.apply( "tilt", l );
-        t.tilt = l * arm::degree;
-        v.apply( "height", h );
-        t.height = h * arm::meter;
-    }
-
-    template< typename K, typename V > static void visit( const K& k, const arm::move_cam& t, V& v )
-    {
-        traits< command_base < arm::move_cam > >::visit(k, t, v);
-        v.apply( "pan", t.pan.value() );
-        v.apply( "tilt", t.tilt.value() );
-        v.apply( "height", t.height.value() );
-    }
-};
-
-template <> struct traits< arm::pan_tilt >
-{
-    template< typename K, typename V > static void visit( const K& k, arm::pan_tilt& t, V& v )
-    {
-    	traits< command_base < arm::pan_tilt > >::visit(k, t, v);
-        double p = t.pan.value();
-        double l = t.tilt.value();
-        v.apply( "pan", p );
-        t.pan = p * arm::degree;
-        v.apply( "tilt", l );
-        t.tilt = l * arm::degree;
-    }
-
-    template< typename K, typename V > static void visit( const K& k, const arm::pan_tilt& t, V& v )
-    {
-    	traits< command_base < arm::pan_tilt > >::visit(k, t, v);
-        v.apply( "pan", t.pan.value() );
-        v.apply( "tilt", t.tilt.value() );
-    }
-};
-
 template <> struct traits< arm::position >
 {
     template< typename K, typename V > static void visit( const K& k, arm::position& t, V& v )
@@ -268,26 +224,6 @@ template <> struct traits< arm::set_home >
     }
 };
 
-template <> struct traits< arm::sweep_cam >
-{
-    template< typename K, typename V > static void visit( const K& k, arm::sweep_cam& t, V& v )
-    {
-        traits< command_base < arm::sweep_cam > >::visit(k, t, v);
-        v.apply( "use_world_frame", t.use_world_frame );
-        v.apply( "filetag", t.filetag );
-        double angle = t.sweep_angle.value();
-        v.apply( "sweep_angle", angle );
-        t.sweep_angle = angle * arm::degree;
-    }
-
-    template< typename K, typename V > static void visit( const K& k, const arm::sweep_cam& t, V& v )
-    {
-        traits< command_base < arm::sweep_cam > >::visit(k, t, v);
-        v.apply( "use_world_frame", t.use_world_frame );
-        v.apply( "filetag", t.filetag );
-        v.apply( "sweep_angle", t.sweep_angle.value() );
-    }
-};
 template <> struct traits< arm::continuum_t::scan_type >
 {
     template< typename K, typename V > static void visit( const K& k, arm::continuum_t::scan_type& t, V& v )

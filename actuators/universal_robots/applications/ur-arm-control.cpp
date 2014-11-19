@@ -96,8 +96,6 @@ void usage(int code=1)
     std::cerr << "*   --scan-forwarding-port=|-P=:" << std::endl;
     std::cerr << "                          Broadcast scanned data using TCP on this port." << std::endl;
     std::cerr << "    --output-config=:     Print config format in json." << std::endl;
-    // std::cerr << "    --init-force-limit,-ifl:" << std::endl;
-    // std::cerr << "                          Force (Newtons) limit when auto initializing, if exceeded then stop auto init." << std::endl;
     exit ( code );
 }
 
@@ -157,25 +155,10 @@ std::string handle( const std::vector< std::string >& line, std::ostream& os )
 
 void process_command( const std::vector< std::string >& v, std::ostream& os )
 {
-    if( boost::iequals( v[2], "move_cam" ) )         { output( handle< snark::ur::move_cam >( v, os ) ); }
-    else if( boost::iequals( v[2], "move_effector" )){ output( handle< snark::ur::move_effector >( v, os ) ); }
-    else if( boost::iequals( v[2], "pan_tilt" ) )    { output( handle< snark::ur::pan_tilt >( v, os ) ); }
+    if( boost::iequals( v[2], "move_effector" )){ output( handle< snark::ur::move_effector >( v, os ) ); }
     else if( boost::iequals( v[2], "set_pos" ) )     { output( handle< snark::ur::set_position >( v, os ) ); }
     else if( boost::iequals( v[2], "set_home" ) )    { output( handle< snark::ur::set_home >( v, os ) ); }
     else if( boost::iequals( v[2], "power" ) )       { output( handle< snark::ur::power >( v, os )); }  
-//     else if( boost::iequals( v[2], "scan" ) )        
-//     {
-//         if( v.size() >= snark::ur::sweep_cam::fields )     { output( handle< snark::ur::sweep_cam >( v, os )); }
-//         else 
-//         {
-//             // If the user did not enter a sweep angle as last field, use the default
-//             // You can either do this or create another scan command with the extra sweep_angle field
-//             static std::string default_sweep = boost::lexical_cast< std::string >( config.continuum.scan.sweep_angle.value() );
-//             std::vector< std::string > items = v; 
-//             items.push_back( default_sweep );
-//             output( handle< snark::ur::sweep_cam >( items, os ) );
-//         } 
-//     }  
     else if( boost::iequals( v[2], "brakes" ) || boost::iequals( v[2], "stop" ) ) { output( handle< snark::ur::brakes >( v, os )); }  
     else if( boost::iequals( v[2], "cancel" ) ) { } /// No need to do anything, used to cancel other running commands e.g. auto_init or scan
     else if( boost::iequals( v[2], "auto_init" ) )  

@@ -69,49 +69,6 @@ void commands_handler::handle( snark::ur::brakes& b )
     os.flush();
     ret = result();
 }
-static const plane_angle_degrees_t max_pan = 90.0 * degree;
-static const plane_angle_degrees_t min_pan = -90.0 * degree;
-static const plane_angle_degrees_t max_tilt = 90.0 * degree;
-static const plane_angle_degrees_t min_tilt = -90.0 * degree;
-
-void commands_handler::handle( snark::ur::move_cam& cam )
-{
-    std::cerr << name() << " running move_cam" << std::endl; 
-
-    if( is_move_effector  ) { ret = result( "cannot use move_cam from a move_effector position", result::error::invalid_robot_state ); return; }
-    // all other positions are ok.
-
-    if( !status_.is_running() ) {
-        ret = result( "cannot move (camera) as rover is not in running mode", result::error::invalid_robot_state );
-        return;
-    }
-
-    static const length_t min_height = 0.1 * meter;
-    static const length_t max_height = 1.0 * meter;
-    
-    
-    if( cam.pan < min_pan ) { ret = result( "pan angle is below minimum limit of -45.0", result::error::invalid_input ); return; }
-    if( cam.pan > max_pan ) { ret = result( "pan angle is above minimum limit of 45.0", result::error::invalid_input ); return; }
-    if( cam.tilt < min_tilt ) { ret = result( "tilt angle is below minimum limit of -90.0", result::error::invalid_input ); return; }
-    if( cam.tilt > max_tilt ) { ret = result( "tilt angle is above minimum limit of 90.0", result::error::invalid_input ); return; }
-    if( cam.height < min_height ) { ret = result( "height value is below minimum limit of 0.1m", result::error::invalid_input ); return; }
-    if( cam.height > max_height ) { ret = result( "height value is above minimum limit of 1.0m", result::error::invalid_input ); return; }
-    
-    set_current_position();
-    inputs_.motion_primitive = real_T( input_primitive::move_cam );
-    inputs_.Input_1 = cam.pan.value();
-    // inputs_.Input_2 = cam.height.value() != 1.0 ? -cam.tilt.value() : zero_tilt - cam.tilt.value();
-    inputs_.Input_2 = cam.tilt.value();
-    inputs_.Input_3 = cam.height.value();
-    
-    if( !execute_waypoints( cam ) ) { return; }
-    
-    is_move_effector = false;
-    boost::filesystem::remove( home_filepath_ );
-    move_cam_height_ = cam.height;
-    move_cam_pan_ = cam.pan;
-    ret = result();
-}
 
 template < typename C >
 void movement_started( const C& c, std::ostream& oss )
@@ -120,25 +77,6 @@ void movement_started( const C& c, std::ostream& oss )
     static std::string tmp;
     oss << '<' << c.serialise() << ',' << result::error::action_started << ',' << "\"movement initiated\";" << std::endl;
     oss.flush();
-}
-
-void commands_handler::handle(sweep_cam& s)
-{
-    std::cerr << name() << " running sweep_cam" << std::endl; 
-
-    if( !status_.is_running() ) { ret = result( "cannot sweep (camera) as rover is not in running mode", result::error::invalid_robot_state ); return; }
-    
-    inputs_reset();
-    set_current_position();
-    // ret = sweep_.run( *move_cam_height_, move_cam_pan_, 
-    //                   boost::bind( movement_started< sweep_cam >, boost::cref( s ), boost::ref( this->ostream_ ) ),
-    //                   this->os );
-
-    inputs_.motion_primitive = input_primitive::scan;
-    std::cerr << name() << "scaning sweep for " << s.sweep_angle.value() << " degrees." << std::endl;
-    inputs_.Input_1 = s.sweep_angle.value();
-
-    execute_waypoints( s, true );
 }
 
 void commands_handler::handle( snark::ur::move_joints& joints )
@@ -232,30 +170,6 @@ bool commands_handler::execute_waypoints( const C& command, bool record )
 
     inputs_reset();
     return ret.is_success();
-}
-
-
-void commands_handler::handle( snark::ur::pan_tilt& p )
-{
-    std::cerr << name() << " handling pan_tilt" << std::endl; 
-    static const plane_angle_degrees_t max_pan = 89.5 * degree;
-    static const plane_angle_degrees_t min_pan = -89.5 * degree;
-    static const plane_angle_degrees_t max_tilt = 89.5 * degree;
-    static const plane_angle_degrees_t min_tilt = -89.5 * degree;
-
-    if( p.pan < min_pan ) { ret = result( "pan angle is below minimum limit of -89.5", result::error::invalid_input ); return; }
-    if( p.pan > max_pan ) { ret = result( "pan angle is above minimum limit of 89.5", result::error::invalid_input ); return; }
-    if( p.tilt < min_tilt ) { ret = result( "tilt angle is below minimum limit of -89.5", result::error::invalid_input ); return; }
-    if( p.tilt > max_tilt ) { ret = result( "tilt angle is above minimum limit of 89.5", result::error::invalid_input ); return; }
-
-    if( !status_.is_running() ) { ret = result( "robotic arm is not in running mode", result::error::invalid_robot_state ); return; }
-    inputs_reset();
-    set_current_position();
-    inputs_.motion_primitive = input_primitive::pan_tilt;
-    inputs_.Input_1 = p.pan.value();
-    inputs_.Input_2 = p.tilt.value();
-
-    execute_waypoints( p );
 }
 
 void commands_handler::handle( snark::ur::set_home& h )

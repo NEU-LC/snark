@@ -45,34 +45,20 @@
 #include <comma/dispatch/dispatched.h>
 #include "units.h"
 
-
 namespace snark { namespace ur {
 
-struct errors {
-    enum error_code { success=0, unknown_command=401, format_error=402, incorrrect_operation=403 };
+struct errors 
+{ 
+    enum error_code { success=0, unknown_command=401, format_error=402, incorrrect_operation=403 }; 
 };
-
 
 template < typename Derived > 
 struct serialiser
 {
     // Returns the same copy when called, doesnt build copy if not called
-    static comma::csv::ascii< Derived >& ascii() { 
-        static comma::csv::ascii< Derived > ascii;
-        return ascii;
-    }
-    const std::string& serialise() const
-    {
-        static std::string str;
-        ascii().put( static_cast< const Derived& >( *this ), str );
-        return str;
-    }
-    
-    const std::string& names() const
-    {
-        static std::string names = comma::join( comma::csv::names< Derived >() , ',' );
-        return names;
-    }
+    static comma::csv::ascii< Derived >& ascii() { static comma::csv::ascii< Derived > ascii; return ascii; }
+    const std::string& serialise() const { static std::string str; ascii().put( static_cast< const Derived& >( *this ), str ); return str; }
+    const std::string& names() const { static std::string names = comma::join( comma::csv::names< Derived >() , ',' ); return names; }
 };
 
 template < typename Derived >
@@ -82,65 +68,31 @@ struct command_base : public serialiser< Derived >, public comma::dispatch::disp
     comma::int32 sequence_number;   /// Command seuqence number
     std::string name;   /// Command name e.g. STEER
     command_base() : rover_id(0), sequence_number(0) {}
-    command_base( comma::uint16 id, comma::int32 seq_no, const char* name_ ) :
-        rover_id( id ), sequence_number( seq_no ), name( name_ ) {}
-    
-};
-
-struct pan_tilt : command_base< pan_tilt >
-{
-    plane_angle_degrees_t pan;
-    plane_angle_degrees_t tilt;
-};
-
-
-struct move_cam : command_base< move_cam >
-{
-    // static const char* name_str = "MOVE_CAM";
-    plane_angle_degrees_t pan;
-    plane_angle_degrees_t tilt;
-    length_t    height;
-};
-
-struct sweep_cam : command_base< sweep_cam >
-{
-    static const char start_angle = -45;
-    static const char end_angle = 15;
-    static const char fields = 6;
-    bool use_world_frame;
-    std::string filetag; /// optional name of file to save the data into
-    plane_angle_degrees_t sweep_angle;
+    command_base( comma::uint16 id, comma::int32 seq_no, const char* name_ ) : rover_id( id ), sequence_number( seq_no ), name( name_ ) {}    
 };
 
 struct move_joints : command_base< move_joints >
 {
-    // static const char* name_str = "MOVEJ";
+    move_joints() : joints( joint_num ) {}
     static const char joint_num = 6;
     static const unsigned char fields = 9; /// number of fields for command
-
-    /// angle for each joint
-    std::vector< plane_angle_degrees_t > joints;
-
-    move_joints() : joints( joint_num ) {}
+    std::vector< plane_angle_degrees_t > joints; /// angle for each joint
 };
 
 /// For setting known pose: 'home' or 'giraffe'
 struct set_position : command_base< set_position >
 {
+    set_position() : position( "home" ) {}    
     static const char fields = 4;
-    std::string position;
-    
-//     set_position(comma::uint16 id, comma::int32 seq_no, const char* name_);
-    set_position() : position( "home" ) {}
-    
+    std::string position;    
     enum { home=1, giraffe=2 };
 };
+
 struct auto_init_force : command_base< auto_init_force >
 {
     static const char fields = 4;
     bool force;
 };
-
 
 /// Reads arm current joint positions and save as home position
 struct set_home : command_base< set_home >
@@ -162,9 +114,11 @@ struct move_effector : command_base< move_effector >
 
 /// Send to trigger auto initialisation on startup.
 struct auto_init : command_base< auto_init > {};
+
 struct power : command_base< power > {
     bool is_on;
 };
+
 struct brakes : command_base< brakes > {
     bool enable;
 };

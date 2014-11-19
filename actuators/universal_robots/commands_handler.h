@@ -57,28 +57,22 @@ class commands_handler : public comma::dispatch::handler_of< power >,
                                   public comma::dispatch::handler_of< brakes >,
                                   public comma::dispatch::handler_of< set_home >,
                                   public comma::dispatch::handler_of< auto_init >,
-                                  public comma::dispatch::handler_of< move_cam >,
                                   public comma::dispatch::handler_of< move_joints >,
                                   public comma::dispatch::handler_of< joint_move >,
                                   public comma::dispatch::handler_of< set_position >,
                                   public comma::dispatch::handler_of< auto_init_force >,
-                                  public comma::dispatch::handler_of< sweep_cam >,
-                                  public comma::dispatch::handler_of< pan_tilt >,
                                   public comma::dispatch::handler_of< move_effector >
 {
 public:
     void handle( power& p );
     void handle( brakes& b );
     void handle( auto_init& a );
-    void handle( move_cam& c );
     void handle( move_effector& e );
     void handle( move_joints& js );
     void handle( set_home& h );
     void handle( set_position& p );
     void handle( auto_init_force& p );
     void handle( joint_move& j );
-    void handle( sweep_cam& s );
-    void handle( pan_tilt& p );
 
     typedef boost::optional< waypoints_follower::recorder_setup_t > optional_recording_t;
     
