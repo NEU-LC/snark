@@ -61,8 +61,7 @@ public:
     typedef std::queue< command_tokens > robot_commands;
     typedef std::list< command_tokens > command_list;
     typedef std::vector< command_tokens > command_vector;
-    /// Rover's ID index
-    static const comma::uint16 id_index = 0;
+    static const comma::uint16 id_index = 0; // robot's id index
     /// Command's name index
     static const comma::uint16 name_index = 2;
     static const comma::uint16 MAX_BUFFER = 2048;
