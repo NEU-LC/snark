@@ -76,8 +76,8 @@ void usage(int code=1)
 {
     std::cerr << std::endl;
     std::cerr << name() << std::endl;
-    std::cerr << "example: socat tcp-listen:9999,reuseaddr EXEC:\"snark-ur10-control --id 7 -ip 192.168.0.10 -p 8888\" " << name() << " " << std::endl;
-    std::cerr << "          Listens for commands from TCP port 9999, process command and send control string to 192.168.0.10:8888" << std::endl;
+    //std::cerr << "example: socat tcp-listen:9999,reuseaddr EXEC:\"ur-arm-control --id 7 -ip 192.168.0.10 -p 8888\" " << name() << " " << std::endl;
+    //std::cerr << "          Listens for commands from TCP port 9999, process command and send control string to 192.168.0.10:8888" << std::endl;
     std::cerr << "options:" << std::endl;
     std::cerr << "    --help,-h:            show this message" << std::endl;
     std::cerr << "    --versbose,-v:        show messages to the robot arm - angles are changed to degrees." << std::endl;
@@ -88,8 +88,6 @@ void usage(int code=1)
     std::cerr << "*   --feedback-port=:     TCP Port number of the robot arm's feedback." << std::endl;
     std::cerr << "    --sleep=:             Loop sleep value in seconds, default is 0.2s if not specified." << std::endl;
     std::cerr << "*   --config=:            Config file for robot arm, see --output-config." << std::endl;
-    std::cerr << "*   --scan-forwarding-port=|-P=:" << std::endl;
-    std::cerr << "                          Broadcast scanned data using TCP on this port." << std::endl;
     std::cerr << "    --output-config=:     Print config format in json." << std::endl;
     exit ( code );
 }

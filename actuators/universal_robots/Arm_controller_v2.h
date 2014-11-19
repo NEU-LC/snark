@@ -1,3 +1,5 @@
+// this is a leftover from simulink
+
 #ifndef RTW_HEADER_Arm_controller_v2_h_
 #define RTW_HEADER_Arm_controller_v2_h_
 
@@ -32,9 +34,5 @@ struct ExtY_Arm_controller_v2_T {
 inline void Arm_controller_v2_initialize() {}
 inline void Arm_controller_v2_terminate() {}
 inline void Arm_controller_v2_step() {}
-
-namespace snark { namespace ur {
-    struct current_positions : public ExtY_Arm_controller_v2_T {};
-} }
 
 #endif // RTW_HEADER_Arm_controller_v2_h_

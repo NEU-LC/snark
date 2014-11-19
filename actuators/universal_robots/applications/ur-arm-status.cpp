@@ -56,7 +56,7 @@ void usage(int code=1)
 {
     std::cerr << std::endl;
     std::cerr << name() << std::endl;
-    std::cerr << "example: socat -u -T 1 tcp:robot-arm:30003 - | snark-ur5-status [--fields=] [--binary | -b | --json | --compact-json]" << std::endl;
+    std::cerr << "example: socat -u -T 1 tcp:robot-arm:30003 - | ur-arm-status [--fields=] [--binary | -b | --json | --compact-json]" << std::endl;
     std::cerr << "         Reads in robotic-arm's real time status information ( network byte order ) and output the status in host byte order in any format." << std::endl;
     std::cerr << "         Approximately 20ms between statuses." << std::endl;
     std::cerr << "options:" << std::endl;
