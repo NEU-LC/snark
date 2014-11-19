@@ -176,7 +176,7 @@ struct status_t {
     
     status_t() : timestamp( boost::posix_time::microsec_clock::local_time() ), position(), robot_mode( robotmode::not_connected ), length(812), time_since_boot(-1) 
     {
-        init< plane_angle_t >( 0*radian, joint_angles );
+        init< plane_angle_t >( 0 * snark::ur::radian, joint_angles );
         init< double >( 0.0, velocities );
         init< double >( 0.0, currents );
         init< double >( 0.0, forces );
@@ -228,11 +228,7 @@ template < typename T > struct packed_buffer
 
 inline bool status_t::is_stationary( double epsilon ) const
 {
-    for( std::size_t i=0; i<joints_num; ++i ) 
-    {
-        // std::cerr << "joint " << i << " mode " << joint_modes[i] << " expected: " << jointmode::running << std::endl;
-        if( std::fabs( this->velocities[i] ) >= epsilon ) { return false; }
-    }
+    for( std::size_t i=0; i<joints_num; ++i ) { if( std::fabs( this->velocities[i] ) >= epsilon ) { return false; } }
     return true;
 }
 

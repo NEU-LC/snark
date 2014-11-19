@@ -95,9 +95,9 @@ template <> struct traits< snark::ur::move_effector >
     }
 };
 
-template <> struct traits< snark::ur::continuum_t::arm_position_t >
+template <> struct traits< snark::ur::config_t::arm_position_t >
 {
-    template< typename K, typename V > static void visit( const K& k, snark::ur::continuum_t::arm_position_t& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, snark::ur::config_t::arm_position_t& t, V& v )
     {
         for( std::size_t i=0; i<snark::ur::joints_num; ++i ) 
         {
@@ -107,7 +107,7 @@ template <> struct traits< snark::ur::continuum_t::arm_position_t >
         }
     }
 
-    template< typename K, typename V > static void visit( const K& k, const snark::ur::continuum_t::arm_position_t& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, const snark::ur::config_t::arm_position_t& t, V& v )
     {
         for( std::size_t i=0; i<snark::ur::joints_num; ++i ) {
             v.apply( boost::lexical_cast< std::string >( i ).c_str(), t[i].value() );
@@ -224,31 +224,18 @@ template <> struct traits< snark::ur::set_home >
     }
 };
 
-template <> struct traits< snark::ur::continuum_t >
+template <> struct traits< snark::ur::config_t >
 {
-    template< typename K, typename V > static void visit( const K& k, snark::ur::continuum_t& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, snark::ur::config_t& t, V& v )
     {
         v.apply( "home_position", t.home_position );
         v.apply( "work_directory", t.work_directory );
     }
 
-    template< typename K, typename V > static void visit( const K& k, const snark::ur::continuum_t& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, const snark::ur::config_t& t, V& v )
     {
         v.apply( "home_position", t.home_position );
         v.apply( "work_directory", t.work_directory );
-    }
-};
-
-template <> struct traits< snark::ur::config >
-{
-    template< typename K, typename V > static void visit( const K& k, snark::ur::config& t, V& v )
-    {
-        v.apply( "continuum", t.continuum );
-    }
-
-    template< typename K, typename V > static void visit( const K& k, const snark::ur::config& t, V& v )
-    {
-        v.apply( "continuum", t.continuum );
     }
 };
 

@@ -42,21 +42,15 @@ namespace snark { namespace ur {
 
 static const unsigned char joints_num = 6;
 
-struct continuum_t 
+struct config_t 
 {
-    typedef boost::array< plane_angle_t, joints_num > arm_position_t;
-    // vector of plane_angle_degrees_t does not work with boost::ptree
+    typedef boost::array< plane_angle_t, joints_num > arm_position_t; // vector of plane_angle_degrees_t does not work with boost::ptree
     arm_position_t home_position; // position of six joints
     arm_position_t giraffe_position; // position of six joints
     std::string work_directory;
-    bool operator==( const continuum_t& rhs ) const { return ( home_position == rhs.home_position && work_directory == rhs.work_directory ); }
+    bool operator==( const config_t& rhs ) const { return ( home_position == rhs.home_position && work_directory == rhs.work_directory ); }
 };
-    
-struct config 
-{
-    continuum_t continuum;
-};
-    
+
 } } //namespace snark { namespace ur { 
 
 #endif // SNARK_ACTUATORS_UR_ROBOTIC_ARM_CONFIG_H

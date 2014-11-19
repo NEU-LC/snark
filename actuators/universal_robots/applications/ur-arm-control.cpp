@@ -111,7 +111,7 @@ typedef snark::ur::handlers::commands_handler commands_handler_t;
 typedef boost::shared_ptr< commands_handler_t > commands_handler_shared;
 static commands_handler_shared commands_handler;
 static bool verbose = false;
-static snark::ur::config config;
+static snark::ur::config_t config;
 
 template < typename C >
 std::string handle( const std::vector< std::string >& line, std::ostream& os )
@@ -213,7 +213,7 @@ void home_position_check( const snark::ur::status_t& status, const std::string& 
     static const boost::filesystem::path path( homefile );
     if( status.is_running() )
     {
-        if( status.check_pose( config.continuum.home_position ) ) { std::ofstream( homefile.c_str(), std::ios::out | std::ios::trunc ); } // create
+        if( status.check_pose( config.home_position ) ) { std::ofstream( homefile.c_str(), std::ios::out | std::ios::trunc ); } // create
         else { boost::filesystem::remove( path ); } // remove
     }
 }
@@ -281,14 +281,13 @@ int main( int ac, char** av )
         load_config( config_file );
         
         /// home position file
-        const snark::ur::continuum_t& continuum = config.continuum;
-        if( continuum.work_directory.empty() ) { std::cerr << name() << "cannot find home position directory! exiting!" <<std::endl; return 1; }
-        boost::filesystem::path dir( continuum.work_directory );
-        if( !boost::filesystem::exists( dir ) || !boost::filesystem::is_directory( dir ) ) { std::cerr << name() << "work_directory must exists: " << continuum.work_directory << std::endl; return 1; }
+        if( config.work_directory.empty() ) { std::cerr << name() << "cannot find home position directory! exiting!" <<std::endl; return 1; }
+        boost::filesystem::path dir( config.work_directory );
+        if( !boost::filesystem::exists( dir ) || !boost::filesystem::is_directory( dir ) ) { std::cerr << name() << "work_directory must exists: " << config.work_directory << std::endl; return 1; }
 
         for( std::size_t j=0; j<snark::ur::joints_num; ++j )
         {
-            std::cerr << name() << "home joint " << j << " - " << continuum.home_position[j].value() << '"' << std::endl;
+            std::cerr << name() << "home joint " << j << " - " << config.home_position[j].value() << '"' << std::endl;
         }
 
         std::string arm_conn_host = options.value< std::string >( "--robot-arm-host" );
@@ -337,7 +336,7 @@ int main( int ac, char** av )
                     boost::bind( read_status, boost::ref(istream), boost::ref( status_stream ), select, status_stream.fd() ),
                     signaled, 
                     boost::bind( should_stop, boost::ref( inputs ) ),
-                    continuum.work_directory );
+                    config.work_directory );
             auto_init.set_app_name( name() );
             /// This is the handler for following waypoints given by Simulink code
             snark::ur::handlers::waypoints_follower waypoints_follower( output, 
@@ -354,7 +353,7 @@ int main( int ac, char** av )
             /// This is the command handler for all commands
             commands_handler.reset( new commands_handler_t( Arm_controller_v2_U, output, arm_status, *robot_arm, 
                                                             auto_init, waypoints_follower, record_info, 
-                                                            std::cout, continuum ) );
+                                                            std::cout, config ) );
         
 
             boost::posix_time::microseconds timeout( usec );

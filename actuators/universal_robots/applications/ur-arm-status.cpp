@@ -182,7 +182,7 @@ int main( int ac, char** av )
                 boost::property_tree::ptree t;
                 comma::to_ptree to_ptree( t );
                 comma::visiting::apply( to_ptree ).to( state );
-                boost::property_tree::write_json( std::cout, t, !is_single_line_json );    
+                boost::property_tree::write_json( std::cout, t, !is_single_line_json );
             }
             else 
             { 

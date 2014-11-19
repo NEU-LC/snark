@@ -77,7 +77,7 @@ public:
     typedef boost::optional< waypoints_follower::recorder_setup_t > optional_recording_t;
     
     commands_handler( ExtU_Arm_controller_v2_T& simulink_inputs, const arm_output& output, snark::ur::status_t& status, std::ostream& robot_ostream, 
-        auto_initialization& init, waypoints_follower& follower, optional_recording_t recorder, std::ostream& oss, const snark::ur::continuum_t& config ) : 
+        auto_initialization& init, waypoints_follower& follower, optional_recording_t recorder, std::ostream& oss, const snark::ur::config_t& config ) : 
         inputs_( simulink_inputs ), output_( output ), status_( status ), os( robot_ostream ), init_( init ), waypoints_follower_( follower ), recorder_setup_( recorder ), ostream_( oss ),
         config_( config ), verbose_( false ), is_move_effector( false ), home_filepath_( init_.home_filepath() ) {}
     bool is_initialising() const; 
@@ -92,7 +92,7 @@ private:
     waypoints_follower& waypoints_follower_;
     optional_recording_t recorder_setup_;
     std::ostream& ostream_;
-    snark::ur::continuum_t config_;
+    snark::ur::config_t config_;
     bool verbose_;
     bool is_move_effector;
     
