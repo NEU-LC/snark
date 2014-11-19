@@ -122,7 +122,7 @@ holder::~holder (){
 // TODO how do you cancel an actioned item, stopj and run mode? or set to current angles
 // Currently it sets to current joints angles, both work
 // The other method requires to be a bit of a wait for mode change
-void tilt_sweep::stop_movement(std::ostream& rover)
+void tilt_sweep::stop_movement(std::ostream& robot)
 {
     static comma::csv::ascii< status_t::array_joint_angles_t > ascii;
     static std::string tmp;
@@ -133,22 +133,22 @@ void tilt_sweep::stop_movement(std::ostream& rover)
        << "],a=" << serialiser_.acceleration().value() << ','
        << "v=" << serialiser_.velocity().value() << ')';
     const std::string stop_str = ss.str();
-    rover << stop_str << std::endl;
-    rover.flush();
+    robot << stop_str << std::endl;
+    robot.flush();
 }
 
 result tilt_sweep::run( const length_t& height, const plane_angle_degrees_t& pan, 
                           started_reply_t start_initiated,
-                          std::ostream& rover )
+                          std::ostream& robot )
 {
-    return run( height, pan, min_, max_, start_initiated, rover );
+    return run( height, pan, min_, max_, start_initiated, robot );
 }
     
     
 result tilt_sweep::run( const length_t& height, const plane_angle_degrees_t& pan, 
                           const plane_angle_degrees_t& tilt_down, const plane_angle_degrees_t& tilt_up, 
                           started_reply_t start_initiated,
-                          std::ostream& rover )
+                          std::ostream& robot )
 {
     
     std::cerr << name() << "scanning from " << tilt_up.value() << "\" to " << tilt_down.value() << '"' << std::endl;
@@ -171,8 +171,8 @@ result tilt_sweep::run( const length_t& height, const plane_angle_degrees_t& pan
     impl_::holder thread_started( recorder );
     
     std::cerr << name() << "running action 1: " << move1.action << " target angle: " << move1.tilt.value() << std::endl;
-    rover << move1.action << std::endl;
-    rover.flush();
+    robot << move1.action << std::endl;
+    robot.flush();
     
     /// Check that it stopped
     static comma::uint32 usec = 0.1 * 1000000u;
@@ -182,31 +182,31 @@ result tilt_sweep::run( const length_t& height, const plane_angle_degrees_t& pan
     {
         status_update_();
         stop = interrupt_();
-        if( signaled_ || stop ) { stop_movement( rover ); return result( "camera sweep action is cancelled", result::error::cancelled ); }
+        if( signaled_ || stop ) { stop_movement( robot ); return result( "camera sweep action is cancelled", result::error::cancelled ); }
         usleep( usec );
     }
     
     std::cerr << name() << "running action 2: " << move2.action << " target angle:" << move2.tilt.value() << std::endl;
-    rover << move2.action << std::endl;
-    rover.flush();
+    robot << move2.action << std::endl;
+    robot.flush();
     while( !comma::math::equal( status_.joint_angles[ tilt_joint ], move2.tilt, epsilon  ) )
     {
         status_update_();
         stop = interrupt_();
-        if( signaled_ || stop ) { stop_movement( rover ); return result( "camera sweep action is cancelled", result::error::cancelled ); }
+        if( signaled_ || stop ) { stop_movement( robot ); return result( "camera sweep action is cancelled", result::error::cancelled ); }
         usleep( usec );
     }
     // stop recording lidar data now
     thread_started.stop();
     
     std::cerr << name() << "returning to position: " << ret.action << " target angle:" << ret.tilt.value() << std::endl;
-    rover << ret.action << std::endl;
-    rover.flush();
+    robot << ret.action << std::endl;
+    robot.flush();
     while( !comma::math::equal( status_.joint_angles[ tilt_joint ], ret.tilt, epsilon  ) )
     {
         status_update_();
         stop = interrupt_();
-        if( signaled_ || stop ) { stop_movement( rover ); return result( "camera sweep action is cancelled", result::error::cancelled ); }
+        if( signaled_ || stop ) { stop_movement( robot ); return result( "camera sweep action is cancelled", result::error::cancelled ); }
         usleep( usec );
     }
     

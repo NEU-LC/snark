@@ -5401,7 +5401,7 @@ void Arm_controller_v2_step(void)
   /* MATLAB Function: '<S1>/move_cam2' */
   /* MATLAB Function 'Arm_controller_v2/move_cam2': '<S5>:1' */
   /* moves the end effector of the arm by a specific pan and tilt angle */
-  /* for now the pan and tilt angle are relative to the direction the rover is */
+  /* for now the pan and tilt angle are relative to the direction the robot is */
   /* facing */
   /* positive tilt = tilt up */
   /* positive pan = pan left */
@@ -5782,8 +5782,8 @@ void Arm_controller_v2_step(void)
         if ((q_sols[collision_flag] < -1.0) || (q_sols[collision_flag] > 181.0))
         {
           /* '<S6>:1:47' */
-          /* collision with rover */
-          /* disp('collision with rover') */
+          /* collision with robot */
+          /* disp('collision with robot') */
           /* '<S6>:1:50' */
           checksol[collision_flag] = 1;
         } else if (fabs(q_sols[40 + collision_flag]) < 1.0) {

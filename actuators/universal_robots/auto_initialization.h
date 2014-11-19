@@ -79,7 +79,7 @@ public:
     
 private:
     snark::ur::status_t& status_; /// Status to check if initialized 
-    std::ostream& os;           /// output to the rover
+    std::ostream& os;           /// output to the robot
     started_reply_t update_status_;
     comma::signal_flag& signaled_;  /// Check if signal received
     command_received_t interrupt_;    /// A new command is received

@@ -51,13 +51,13 @@ template <typename C> struct traits< command_base< C > >
 {
     template< typename K, typename V > static void visit( const K& k, command_base< C >& t, V& v )
     {
-        v.apply( "rover_id", t.rover_id );
+        v.apply( "robot_id", t.robot_id );
         v.apply( "sequence_number", t.sequence_number );
         v.apply( "name", t.name );
     }
     template< typename K, typename V > static void visit( const K& k, const command_base< C >& t, V& v )
     {
-        v.apply( "rover_id", t.rover_id );
+        v.apply( "robot_id", t.robot_id );
         v.apply( "sequence_number", t.sequence_number );
         v.apply( "name", t.name );
     }

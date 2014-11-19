@@ -87,7 +87,7 @@ void commands_handler::handle( snark::ur::move_joints& joints )
 void commands_handler::handle( snark::ur::joint_move& joint )
 {
     if( !is_initialising() ) {
-        ret = result( "cannot initialise joint as rover is not in initialisation mode", result::error::invalid_robot_state );
+        ret = result( "cannot initialise joint as robot is not in initialisation mode", result::error::invalid_robot_state );
         return;
     }
     move_cam_height_.reset(); // no longer in move_cam position
@@ -183,7 +183,7 @@ void commands_handler::handle( snark::ur::set_home& h )
 void commands_handler::handle( snark::ur::set_position& pos )
 {
     if( !status_.is_running() ) {
-        ret = result( "cannot set position as rover is not in running mode", result::error::invalid_robot_state );
+        ret = result( "cannot set position as robot is not in running mode", result::error::invalid_robot_state );
         return;
     }
     
@@ -211,7 +211,7 @@ void commands_handler::handle( snark::ur::move_effector& e )
     std::cerr << name() << "handling move_effector" << std::endl; 
 
     // if( move_cam_height_ ) { ret = result( "can not move effector in move_cam state", result::error::invalid_robot_state ); return; }
-    if( !status_.is_running() ) { ret = result( "cannot move effector as rover is not in running mode", result::error::invalid_robot_state ); return; }
+    if( !status_.is_running() ) { ret = result( "cannot move effector as robot is not in running mode", result::error::invalid_robot_state ); return; }
     // if( !is_move_effector && !is_home_position() ) { 
     //     ret = result( "can not use move_effector unless starting in home position", result::error::invalid_robot_state ); return; 
     // }

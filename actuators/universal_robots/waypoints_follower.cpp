@@ -58,7 +58,7 @@ private:
     
 // Currently it sets to current joints angles, both work
 // The other method requires to be a bit of a wait for mode change
-void waypoints_follower::stop_movement(std::ostream& rover)
+void waypoints_follower::stop_movement(std::ostream& robot)
 {
     static comma::csv::ascii< status_t::array_joint_angles_t > ascii;
     static std::string tmp;
@@ -69,11 +69,11 @@ void waypoints_follower::stop_movement(std::ostream& rover)
        << "],a=" << serialiser_.acceleration().value() << ','
        << "v=" << serialiser_.velocity().value() << ')';
     const std::string stop_str = ss.str();
-    rover << stop_str << std::endl;
-    rover.flush();
+    robot << stop_str << std::endl;
+    robot.flush();
 }
 
-result waypoints_follower::run( started_reply_t start_initiated, std::ostream& rover, const boost::optional< recorder_setup_t >& record_info )
+result waypoints_follower::run( started_reply_t start_initiated, std::ostream& robot, const boost::optional< recorder_setup_t >& record_info )
 {
     comma::uint32 num_of_moves = serialiser_.num_of_moves();
     if( num_of_moves > joints_num ) { 
@@ -113,8 +113,8 @@ result waypoints_follower::run( started_reply_t start_initiated, std::ostream& r
             if( record_info->end_waypoint_ == j ) { recorder_container.reset(); }
         }
 
-        rover << arm_command << std::endl;
-        rover.flush();
+        robot << arm_command << std::endl;
+        robot.flush();
 
         const snark::ur::move_config_t& config = serialiser_.get_move_config( j );
         while( !status_.check_pose( config, ( j == (num_of_moves - 1 ) ? final_epsilon : epsilon )  ) )  // Only check for intermediate waypoints
@@ -122,7 +122,7 @@ result waypoints_follower::run( started_reply_t start_initiated, std::ostream& r
             // std::cerr << "not yet at pose" << std::endl;
             status_update_();
             stop = interrupt_();
-            if( signaled_ || stop ) { stop_movement( rover ); return result( "action is cancelled", result::error::cancelled ); }
+            if( signaled_ || stop ) { stop_movement( robot ); return result( "action is cancelled", result::error::cancelled ); }
             usleep( usec );
         }
     }

@@ -86,8 +86,7 @@ class tilt_sweep
     bool calculate_solution( const length_t& height, const plane_angle_degrees_t& pan, 
                              const plane_angle_degrees_t& tilt_down, const plane_angle_degrees_t& tilt_up, 
                              move_t& move1, move_t& move2, move_t& ret );
-    /// Rover is the robotic arm
-    void stop_movement( std::ostream& rover );
+    void stop_movement( std::ostream& robot );
     
     void inputs_reset() 
     { 
@@ -123,11 +122,11 @@ public:
     
     result run( const length_t& height, const plane_angle_degrees_t& pan,
                 started_reply_t started,
-                std::ostream& rover );
+                std::ostream& robot );
      result run( const length_t& height, const plane_angle_degrees_t& pan,
                 const plane_angle_degrees_t& tilt_down, const plane_angle_degrees_t& tilt_up, 
                 started_reply_t started,
-                std::ostream& rover );
+                std::ostream& robot );
     
     const std::string& name() const { return name_; }
     void name( const std::string& name )  { name_ = name ; }

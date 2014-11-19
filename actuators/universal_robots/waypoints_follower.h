@@ -69,9 +69,7 @@ class waypoints_follower
     interrupt_t interrupt_;
     comma::signal_flag& signaled_;
     std::string name_;
-    
-    /// Rover is the robotic arm
-    void stop_movement( std::ostream& rover );
+    void stop_movement( std::ostream& robot );
     
 public:
     waypoints_follower( // boost::function< bool (std::string& move1, std::string& move2 ) > f, /// caculate proposed sweep
@@ -100,7 +98,7 @@ public:
         recorder_func_t recorder_;
     };
     
-    result run( started_reply_t started, std::ostream& rover, const boost::optional< recorder_setup_t >& record_info=boost::none );
+    result run( started_reply_t started, std::ostream& robot, const boost::optional< recorder_setup_t >& record_info=boost::none );
     
     const std::string& name() const { return name_; }
     void name( const std::string& name )  { name_ = name ; }

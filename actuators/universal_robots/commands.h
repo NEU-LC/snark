@@ -64,11 +64,11 @@ struct serialiser
 template < typename Derived >
 struct command_base : public serialiser< Derived >, public comma::dispatch::dispatched< Derived >
 {
-    comma::uint16 rover_id;         /// The rover's ID number
+    comma::uint16 robot_id;         /// The robot's ID number
     comma::int32 sequence_number;   /// Command seuqence number
     std::string name;   /// Command name e.g. STEER
-    command_base() : rover_id(0), sequence_number(0) {}
-    command_base( comma::uint16 id, comma::int32 seq_no, const char* name_ ) : rover_id( id ), sequence_number( seq_no ), name( name_ ) {}    
+    command_base() : robot_id(0), sequence_number(0) {}
+    command_base( comma::uint16 id, comma::int32 seq_no, const char* name_ ) : robot_id( id ), sequence_number( seq_no ), name( name_ ) {}    
 };
 
 struct move_joints : command_base< move_joints >

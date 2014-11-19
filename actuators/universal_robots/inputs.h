@@ -49,8 +49,8 @@
 
 namespace snark { namespace ur {
 /// Buffers inputs by the user, reads from std::cin
-/// It reads all user input before the rover starts to process them 
-/// Allows the rover to process a small batch of commands at a time but reads all of them
+/// It reads all user input before the robot starts to process them 
+/// Allows the robot to process a small batch of commands at a time but reads all of them
 ///  as soon as they come in.
 /// If a user sends an ESTOP/DISABLE, the buffer of commands is discarded immediately.
 /// Purpose is to prevent a large backlog
@@ -58,7 +58,7 @@ class inputs
 {
 public:
     typedef std::vector< std::string > command_tokens;
-    typedef std::queue< command_tokens > rover_commands;
+    typedef std::queue< command_tokens > robot_commands;
     typedef std::list< command_tokens > command_list;
     typedef std::vector< command_tokens > command_vector;
     /// Rover's ID index
@@ -68,7 +68,7 @@ public:
     static const comma::uint16 MAX_BUFFER = 2048;
     
     // A file backend for logs
-    inputs( char rover_id );
+    inputs( char robot_id );
     bool is_empty() const { return my_commands.empty(); }
     /// It select wait with timeout then reads the inputs
     /// Note: if timeout > 0, it does not handle signal interrupt during waiting
@@ -79,14 +79,13 @@ public:
     void pop() { my_commands.pop(); }
     
 private:
-    /// rover's ID
-    char rover_id;
+    char robot_id;
     
     comma::io::istream istream_;
     comma::io::select select_;
     
     /// The buffer of commands
-    rover_commands my_commands;
+    robot_commands my_commands;
 };
 
 } } // namespace snark { namespace ur {

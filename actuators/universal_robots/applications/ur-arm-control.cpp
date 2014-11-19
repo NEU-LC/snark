@@ -283,7 +283,7 @@ int main( int ac, char** av )
         snark::ur::handlers::arm_output output( acc * snark::ur::angular_acceleration_t::unit_type(), vel * snark::ur::angular_velocity_t::unit_type(),
                        Arm_controller_v2_Y );
     
-        comma::uint16 rover_id = options.value< comma::uint16 >( "--id" );
+        comma::uint16 robot_id = options.value< comma::uint16 >( "--id" );
         double sleep = options.value< double >( "--sleep", 0.06 );  // seconds
 
         verbose = options.exists( "--verbose,-v" );
@@ -323,8 +323,8 @@ int main( int ac, char** av )
         }
         comma::io::ostream& robot_arm = *poss;
 
-        /// For reading  commands from stdin with specific rover id as filter
-        snark::ur::inputs inputs( rover_id );
+        /// For reading  commands from stdin with specific robot id as filter
+        snark::ur::inputs inputs( robot_id );
 
         typedef std::vector< std::string > command_vector;
         const comma::uint32 usec( sleep * 1000000u );

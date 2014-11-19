@@ -39,8 +39,8 @@
 
 namespace snark { namespace ur {
     
-inputs::inputs( char rover_id_ ) 
-        : rover_id( rover_id_ ), istream_( "-", comma::io::mode::ascii ) {
+inputs::inputs( char robot_id_ ) 
+        : robot_id( robot_id_ ), istream_( "-", comma::io::mode::ascii ) {
             select_.read().add( istream_.fd() );
         }
 
@@ -80,12 +80,12 @@ void inputs::read( const boost::posix_time::time_duration& timeout )
                 id = boost::lexical_cast< comma::uint16 >( command[ id_index ] );
             }
             catch( boost::bad_lexical_cast& el ) {
-                std::cerr << "failed to parse rover ID field: " << command[ id_index ] << " - " << el.what() << std::endl;
+                std::cerr << "failed to parse robot ID field: " << command[ id_index ] << " - " << el.what() << std::endl;
                 continue; // bad ID, ignore command line
             }
-            // Not for this rover
-            if( id != rover_id ) { 
-                std::cerr << "discarding command because of ID mismatch: " << line << " " << int(rover_id) << " to " << id << std::endl;
+            // Not for this robot
+            if( id != robot_id ) { 
+                std::cerr << "discarding command because of ID mismatch: " << line << " " << int(robot_id) << " to " << id << std::endl;
                 continue;
             }
             
@@ -93,7 +93,7 @@ void inputs::read( const boost::posix_time::time_duration& timeout )
             if( command[ name_index ] == "ESTOP" || command[ name_index ] == "MICROCONTROLLER" )
             {
                 // Throws out previous commands
-                my_commands = rover_commands();
+                my_commands = robot_commands();
             }
             
             // std::cerr << "pushed line: " << line << std::endl;
