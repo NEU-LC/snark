@@ -43,8 +43,7 @@
 
 namespace comma { namespace visiting {
     
-namespace arm = snark::ur;
-using arm::command_base;
+using snark::ur::command_base;
 
 // Commands
 template <typename C> struct traits< command_base< C > >
@@ -63,16 +62,16 @@ template <typename C> struct traits< command_base< C > >
     }
 };
 
-template <> struct traits< arm::position >
+template <> struct traits< snark::ur::position >
 {
-    template< typename K, typename V > static void visit( const K& k, arm::position& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, snark::ur::position& t, V& v )
     {
         v.apply( "x", t.x );
         v.apply( "y", t.y );
         v.apply( "z", t.z );
     }
 
-    template< typename K, typename V > static void visit( const K& k, const arm::position& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, const snark::ur::position& t, V& v )
     {
         v.apply( "x", t.x );
         v.apply( "y", t.y );
@@ -80,168 +79,168 @@ template <> struct traits< arm::position >
     }
 };
 
-template <> struct traits< arm::move_effector >
+template <> struct traits< snark::ur::move_effector >
 {
-    template< typename K, typename V > static void visit( const K& k, arm::move_effector& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, snark::ur::move_effector& t, V& v )
     {
-        traits< command_base < arm::move_effector > >::visit(k, t, v);
+        traits< command_base < snark::ur::move_effector > >::visit(k, t, v);
         v.apply( "offset", t.offset );
    }
 
-    template< typename K, typename V > static void visit( const K& k, const arm::move_effector& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, const snark::ur::move_effector& t, V& v )
     {
-        traits< command_base < arm::move_effector > >::visit(k, t, v);
+        traits< command_base < snark::ur::move_effector > >::visit(k, t, v);
         v.apply( "offset", t.offset );
     }
 };
 
-template <> struct traits< arm::continuum_t::arm_position_t >
+template <> struct traits< snark::ur::continuum_t::arm_position_t >
 {
-    template< typename K, typename V > static void visit( const K& k, arm::continuum_t::arm_position_t& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, snark::ur::continuum_t::arm_position_t& t, V& v )
     {
-        for( std::size_t i=0; i<arm::joints_num; ++i ) 
+        for( std::size_t i=0; i<snark::ur::joints_num; ++i ) 
         {
             double d = t[i].value();
             v.apply( boost::lexical_cast< std::string >( i ).c_str(), d );
-            t[i] = d * arm::radian;
+            t[i] = d * snark::ur::radian;
         }
     }
 
-    template< typename K, typename V > static void visit( const K& k, const arm::continuum_t::arm_position_t& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, const snark::ur::continuum_t::arm_position_t& t, V& v )
     {
-        for( std::size_t i=0; i<arm::joints_num; ++i ) {
+        for( std::size_t i=0; i<snark::ur::joints_num; ++i ) {
             v.apply( boost::lexical_cast< std::string >( i ).c_str(), t[i].value() );
         }
     }
 };
 
-template <> struct traits< arm::move_joints >
+template <> struct traits< snark::ur::move_joints >
 {
-    template< typename K, typename V > static void visit( const K& k, arm::move_joints& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, snark::ur::move_joints& t, V& v )
     {
-        traits< command_base < arm::move_joints > >::visit(k, t, v);
+        traits< command_base < snark::ur::move_joints > >::visit(k, t, v);
         v.apply( "joints", t.joints );
     }
 
-    template< typename K, typename V > static void visit( const K& k, const arm::move_joints& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, const snark::ur::move_joints& t, V& v )
     {
-        traits< command_base < arm::move_joints > >::visit(k, t, v);
+        traits< command_base < snark::ur::move_joints > >::visit(k, t, v);
         v.apply( "joints", t.joints );
     }
 };
 
-template <> struct traits< arm::joint_move >
+template <> struct traits< snark::ur::joint_move >
 {
-    template< typename K, typename V > static void visit( const K& k, arm::joint_move& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, snark::ur::joint_move& t, V& v )
     {
-        traits< command_base < arm::joint_move > >::visit(k, t, v);
+        traits< command_base < snark::ur::joint_move > >::visit(k, t, v);
         v.apply( "joint_id", t.joint_id );
         v.apply( "dir", t.dir );
     }
 
-    template< typename K, typename V > static void visit( const K& k, const arm::joint_move& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, const snark::ur::joint_move& t, V& v )
     {
-        traits< command_base < arm::joint_move > >::visit(k, t, v);
+        traits< command_base < snark::ur::joint_move > >::visit(k, t, v);
         v.apply( "joint_id", t.joint_id );
         v.apply( "dir", t.dir );
     }
 };
 
-template <> struct traits< arm::auto_init >
+template <> struct traits< snark::ur::auto_init >
 {
-    template< typename K, typename V > static void visit( const K& k, arm::auto_init& t, V& v ) {
-        traits< command_base < arm::auto_init > >::visit(k, t, v);
+    template< typename K, typename V > static void visit( const K& k, snark::ur::auto_init& t, V& v ) {
+        traits< command_base < snark::ur::auto_init > >::visit(k, t, v);
     }
-    template< typename K, typename V > static void visit( const K& k, const arm::auto_init& t, V& v ) {
-        traits< command_base < arm::auto_init > >::visit(k, t, v);
+    template< typename K, typename V > static void visit( const K& k, const snark::ur::auto_init& t, V& v ) {
+        traits< command_base < snark::ur::auto_init > >::visit(k, t, v);
     }
 };
 
-template <> struct traits< arm::auto_init_force >
+template <> struct traits< snark::ur::auto_init_force >
 {
-    template< typename K, typename V > static void visit( const K& k, arm::auto_init_force& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, snark::ur::auto_init_force& t, V& v )
     {
-        traits< command_base < arm::auto_init_force > >::visit(k, t, v);
+        traits< command_base < snark::ur::auto_init_force > >::visit(k, t, v);
         v.apply( "force", t.force );
     }
 
-    template< typename K, typename V > static void visit( const K& k, const arm::auto_init_force& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, const snark::ur::auto_init_force& t, V& v )
     {
-        traits< command_base < arm::auto_init_force > >::visit(k, t, v);
+        traits< command_base < snark::ur::auto_init_force > >::visit(k, t, v);
         v.apply( "force", t.force );
     }
 };
 
-template <> struct traits< arm::power >
+template <> struct traits< snark::ur::power >
 {
-    template< typename K, typename V > static void visit( const K& k, arm::power& t, V& v ) {
-        traits< command_base < arm::power > >::visit(k, t, v);
+    template< typename K, typename V > static void visit( const K& k, snark::ur::power& t, V& v ) {
+        traits< command_base < snark::ur::power > >::visit(k, t, v);
         v.apply( "is_on", t.is_on );
     }
-    template< typename K, typename V > static void visit( const K& k, const arm::power& t, V& v ) {
-        traits< command_base < arm::power > >::visit(k, t, v);
+    template< typename K, typename V > static void visit( const K& k, const snark::ur::power& t, V& v ) {
+        traits< command_base < snark::ur::power > >::visit(k, t, v);
         v.apply( "is_on", t.is_on );
     }
 };
 
-template <> struct traits< arm::brakes >
+template <> struct traits< snark::ur::brakes >
 {
-    template< typename K, typename V > static void visit( const K& k, arm::brakes& t, V& v ) {
-        traits< command_base < arm::brakes > >::visit(k, t, v);
+    template< typename K, typename V > static void visit( const K& k, snark::ur::brakes& t, V& v ) {
+        traits< command_base < snark::ur::brakes > >::visit(k, t, v);
         v.apply( "enable", t.enable );
     }
-    template< typename K, typename V > static void visit( const K& k, const arm::brakes& t, V& v ) {
-        traits< command_base < arm::brakes > >::visit(k, t, v);
+    template< typename K, typename V > static void visit( const K& k, const snark::ur::brakes& t, V& v ) {
+        traits< command_base < snark::ur::brakes > >::visit(k, t, v);
         v.apply( "enable", t.enable );
     }
 };
 
-template <> struct traits< arm::set_position >
+template <> struct traits< snark::ur::set_position >
 {
-    template< typename K, typename V > static void visit( const K& k, arm::set_position& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, snark::ur::set_position& t, V& v )
     {
-        traits< command_base < arm::set_position > >::visit(k, t, v);
+        traits< command_base < snark::ur::set_position > >::visit(k, t, v);
         v.apply( "position", t.position );
     }
 
-    template< typename K, typename V > static void visit( const K& k, const arm::set_position& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, const snark::ur::set_position& t, V& v )
     {
-        traits< command_base < arm::set_position > >::visit(k, t, v);
+        traits< command_base < snark::ur::set_position > >::visit(k, t, v);
         v.apply( "position", t.position );
     }
 };
 
-template <> struct traits< arm::set_home >
+template <> struct traits< snark::ur::set_home >
 {
-    template< typename K, typename V > static void visit( const K& k, arm::set_home& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, snark::ur::set_home& t, V& v )
     {
-        traits< command_base < arm::set_home > >::visit(k, t, v);
+        traits< command_base < snark::ur::set_home > >::visit(k, t, v);
     }
 
-    template< typename K, typename V > static void visit( const K& k, const arm::set_home& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, const snark::ur::set_home& t, V& v )
     {
-        traits< command_base < arm::set_home > >::visit(k, t, v);
+        traits< command_base < snark::ur::set_home > >::visit(k, t, v);
     }
 };
 
-template <> struct traits< arm::continuum_t::scan_type >
+template <> struct traits< snark::ur::continuum_t::scan_type >
 {
-    template< typename K, typename V > static void visit( const K& k, arm::continuum_t::scan_type& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, snark::ur::continuum_t::scan_type& t, V& v )
     {
         double sweep_angle = t.sweep_angle.value();
         v.apply( "sweep_angle", sweep_angle );
-        t.sweep_angle = sweep_angle * arm::degree;
+        t.sweep_angle = sweep_angle * snark::ur::degree;
 
         double vel = t.sweep_velocity.value();
         v.apply( "sweep_velocity", vel );
-        t.sweep_velocity = vel * arm::rad_per_sec;
+        t.sweep_velocity = vel * snark::ur::rad_per_sec;
 
         v.apply( "fields", t.fields );
         v.apply( "range-limit", t.range_limit );
         v.apply( "thinning", t.thinning_value );
     }
 
-    template< typename K, typename V > static void visit( const K& k, const arm::continuum_t::scan_type& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, const snark::ur::continuum_t::scan_type& t, V& v )
     {
         v.apply( "sweep_angle", t.sweep_angle.value() );
         v.apply( "sweep_velocity", t.sweep_velocity.value() );
@@ -251,16 +250,16 @@ template <> struct traits< arm::continuum_t::scan_type >
     }
 };
 
-template <> struct traits< arm::continuum_t::lidar_config >
+template <> struct traits< snark::ur::continuum_t::lidar_config >
 {
-    template< typename K, typename V > static void visit( const K& k, arm::continuum_t::lidar_config& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, snark::ur::continuum_t::lidar_config& t, V& v )
     {
         v.apply( "service-host", t.service_host );
         v.apply( "service-port", t.service_port );
         v.apply( "scan-forwarding-port", t.scan_forwarding_port );
     }
 
-    template< typename K, typename V > static void visit( const K& k, const arm::continuum_t::lidar_config& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, const snark::ur::continuum_t::lidar_config& t, V& v )
     {
         v.apply( "service-host", t.service_host );
         v.apply( "service-port", t.service_port );
@@ -268,9 +267,9 @@ template <> struct traits< arm::continuum_t::lidar_config >
     }
 };
 
-template <> struct traits< arm::continuum_t >
+template <> struct traits< snark::ur::continuum_t >
 {
-    template< typename K, typename V > static void visit( const K& k, arm::continuum_t& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, snark::ur::continuum_t& t, V& v )
     {
         v.apply( "home_position", t.home_position );
         v.apply( "work_directory", t.work_directory );
@@ -278,7 +277,7 @@ template <> struct traits< arm::continuum_t >
         v.apply( "hokuyo", t.lidar );
     }
 
-    template< typename K, typename V > static void visit( const K& k, const arm::continuum_t& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, const snark::ur::continuum_t& t, V& v )
     {
         v.apply( "home_position", t.home_position );
         v.apply( "work_directory", t.work_directory );
@@ -287,14 +286,14 @@ template <> struct traits< arm::continuum_t >
     }
 };
 
-template <> struct traits< arm::config >
+template <> struct traits< snark::ur::config >
 {
-    template< typename K, typename V > static void visit( const K& k, arm::config& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, snark::ur::config& t, V& v )
     {
         v.apply( "continuum", t.continuum );
     }
 
-    template< typename K, typename V > static void visit( const K& k, const arm::config& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, const snark::ur::config& t, V& v )
     {
         v.apply( "continuum", t.continuum );
     }
@@ -312,20 +311,20 @@ template < > struct traits< boost::array< comma::packed::big_endian_double, 6 > 
     }
 };
 
-template < > struct traits< arm::joints_in_degrees >
+template < > struct traits< snark::ur::joints_in_degrees >
 {
-    template< typename K, typename V > static void visit( const K& k, const arm::joints_in_degrees& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, const snark::ur::joints_in_degrees& t, V& v )
     {
-        for( std::size_t i=0; i<arm::joints_num; ++i ) { 
+        for( std::size_t i=0; i<snark::ur::joints_num; ++i ) { 
             double d = t.joints[i].value();
             v.apply( boost::lexical_cast< std::string >( i ).c_str(), d ); 
         }
     }
 };
 
-template < > struct traits< arm::cartesian >
+template < > struct traits< snark::ur::cartesian >
 {
-    template< typename K, typename V > static void visit( const K& k, const arm::cartesian& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, const snark::ur::cartesian& t, V& v )
     {
         v.apply( "x", t.x() );
         v.apply( "y", t.y() );
@@ -333,51 +332,51 @@ template < > struct traits< arm::cartesian >
     }
 };
 
-template <> struct traits< arm::fixed_status >
+template <> struct traits< snark::ur::fixed_status >
 {
     /// Use this for debugging maybe
-    template< typename K, typename V > static void visit( const K& k, const  arm::fixed_status& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, const  snark::ur::fixed_status& t, V& v )
     {
         v.apply( "time", boost::posix_time::microsec_clock::local_time() );
         v.apply( "coordinates", t.translation );
         v.apply( "rotation", t.rotation );
-        arm::joints_in_degrees positions( t.positions );
+        snark::ur::joints_in_degrees positions( t.positions );
         v.apply( "positions", positions );
         v.apply( "velocities", t.velocities );
         v.apply( "currents", t.currents );
         v.apply( "forces", t.forces );
         v.apply( "temperatures", t.temperatures );
         v.apply( "robot_mode",  t.mode_str() );
-        arm::joint_modes_t jmodes( t.joint_modes );
+        snark::ur::joint_modes_t jmodes( t.joint_modes );
         v.apply( "joint_modes", jmodes.modes );
         v.apply( "length", t.length() );    /// Binary length of message received
         v.apply( "time_since_boot", t.time_since_boot() );
     }
 };
 
-template < > struct traits< boost::array< arm::jointmode::mode, 6 > >
+template < > struct traits< boost::array< snark::ur::jointmode::mode, 6 > >
 {
-    template< typename K, typename V > static void visit( const K& k, boost::array< arm::jointmode::mode, 6 >& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, boost::array< snark::ur::jointmode::mode, 6 >& t, V& v )
     {
-        for( std::size_t i=0; i<arm::joints_num; ++i )
+        for( std::size_t i=0; i<snark::ur::joints_num; ++i )
         {
             std::string mode;
             v.apply( boost::lexical_cast< std::string >( i ).c_str(), mode ); 
-            t[i] = arm::get_jointmode( mode );
+            t[i] = snark::ur::get_jointmode( mode );
         }
     }
-    template< typename K, typename V > static void visit( const K& k, const boost::array< arm::jointmode::mode, 6 >& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, const boost::array< snark::ur::jointmode::mode, 6 >& t, V& v )
     {
-        for( std::size_t i=0; i<arm::joints_num; ++i )
+        for( std::size_t i=0; i<snark::ur::joints_num; ++i )
         {
-            v.apply( boost::lexical_cast< std::string >( i ).c_str(), std::string( arm::jointmode_str( t[i] ) ) ); 
+            v.apply( boost::lexical_cast< std::string >( i ).c_str(), std::string( snark::ur::jointmode_str( t[i] ) ) ); 
         }
     }
 };
 
-template < > struct traits< arm::status_t >
+template < > struct traits< snark::ur::status_t >
 {
-    template< typename K, typename V > static void visit( const K& k, arm::status_t& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, snark::ur::status_t& t, V& v )
     {
         v.apply( "timestamp", t.timestamp );
         v.apply( "position", t.position );
@@ -389,12 +388,12 @@ template < > struct traits< arm::status_t >
         v.apply( "temperatures", t.temperatures );
         std::string mode;
         v.apply( "robot_mode",  mode );
-        t.robot_mode = arm::get_robotmode( mode );
+        t.robot_mode = snark::ur::get_robotmode( mode );
         v.apply( "joint_modes", t.joint_modes );
         v.apply( "length", t.length );    /// Binary length of message received
         v.apply( "time_since_boot", t.time_since_boot );
     }
-    template< typename K, typename V > static void visit( const K& k, const arm::status_t& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, const snark::ur::status_t& t, V& v )
     {
         v.apply( "timestamp", t.timestamp );
         v.apply( "position", t.position );
@@ -411,15 +410,15 @@ template < > struct traits< arm::status_t >
     }
 };
 
-template < > struct traits< arm::move_config_t >
+template < > struct traits< snark::ur::move_config_t >
 {
-    template< typename K, typename V > static void visit( const K& k, arm::move_config_t& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, snark::ur::move_config_t& t, V& v )
     {
-        v.apply( "angles", (boost::array< double, arm::joints_num >&) t );
+        v.apply( "angles", (boost::array< double, snark::ur::joints_num >&) t );
     }
-    template< typename K, typename V > static void visit( const K& k, const arm::move_config_t& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, const snark::ur::move_config_t& t, V& v )
     {
-        v.apply( "angles", (const boost::array< double, arm::joints_num >&) t );
+        v.apply( "angles", (const boost::array< double, snark::ur::joints_num >&) t );
     }
 };
 
