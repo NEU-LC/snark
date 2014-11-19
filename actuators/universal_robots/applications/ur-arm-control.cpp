@@ -58,7 +58,6 @@
 #include "../commands_handler.h"
 #include "../inputs.h"
 #include "../units.h"
-#include "../tilt_sweep.h"
 #include "../waypoints_follower.h"
 #include "../../../sensors/hokuyo/traits.h"
 extern "C" {
