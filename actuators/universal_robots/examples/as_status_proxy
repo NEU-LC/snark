@@ -1,0 +1,19 @@
+#!/usr/bash
+
+as_status_proxy()
+{
+    echo "robot-armd status proxying" >&2
+    [[ -r "$CONFIG" ]] || die "missing --config option, must be first option."
+    
+    # The port for status from arm's controller
+    local ARM_MATLAB_PORT=$( cat $CONFIG  | name-value-get --from json $ROVER/status-proxy/port )
+    local PROXY_PORT=$( cat $CONFIG  | name-value-get --from json $ROVER/status-proxy/service-port )
+    local ARM_HOST=$( cat $CONFIG  | name-value-get --from json $ROVER/status-proxy/host )
+
+    local bin_format=$( rover-ur5-status --format )
+
+    [[ -n "$ARM_HOST" && -n "$PROXY_PORT" && -n "$ARM_MATLAB_PORT" ]] || die "failed to read from $CONFIG for values from $ROVER/status-proxy/{host,port,service-port}"
+    exec socat -T 5 -u -L $ROBOT_ARM_MATLAB_LOCK tcp:$ARM_HOST:$ARM_MATLAB_PORT - | rover-ur5-status --binary | io-publish -s 370 tcp:$PROXY_PORT
+    exit 1
+}
+
