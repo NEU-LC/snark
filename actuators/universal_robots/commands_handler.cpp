@@ -113,8 +113,6 @@ void commands_handler::handle( snark::ur::joint_move& joint )
     os << ss.str();
     os.flush(); 
     
-    boost::filesystem::remove( home_filepath_ );
-    
     ret = result();
 }
 
@@ -134,7 +132,7 @@ bool commands_handler::execute_waypoints( const C& command, bool record )
     if( !output_.runnable() ) { 
 
         if( output_.will_collide() ) {
-            ret = result( "cannot run command as it will cause a collision", result::error::collision ); inputs_reset(); 
+            ret = result( "cannot run command as it will cause a collision", result::error::collision );
         }
         else {
             ret = result( "proposed action is not possible", result::error::invalid_input );
@@ -150,7 +148,6 @@ bool commands_handler::execute_waypoints( const C& command, bool record )
     if( record ) { ret = waypoints_follower_.run( boost::bind( movement_started< C >, boost::cref( command ), boost::ref( this->ostream_ ) ) , this->os, recorder_setup_ ); }
     else { ret = waypoints_follower_.run( boost::bind( movement_started< C >, boost::cref( command ), boost::ref( this->ostream_ ) ) , this->os ); }
 
-    inputs_reset();
     return ret.is_success();
 }
 
@@ -169,12 +166,7 @@ bool commands_handler::is_initialising() const
 
 void commands_handler::handle( snark::ur::auto_init& a )
 {
-    ret = init_.run( boost::bind( movement_started< auto_init >, boost::cref( a ), boost::ref( this->ostream_ ) ), false );
-}
-
-void commands_handler::handle( snark::ur::auto_init_force& init )
-{
-    ret = init_.run( boost::bind( movement_started< auto_init_force >, boost::cref( init ), boost::ref( this->ostream_ ) ), init.force );
+    ret = init_.run( boost::bind( movement_started< auto_init >, boost::cref( a ), boost::ref( this->ostream_ ) ) );
 }
 
 } } } // namespace snark { namespace ur { namespace handlers {

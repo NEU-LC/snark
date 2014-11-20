@@ -31,32 +31,11 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "auto_initialization.h"
-#include <boost/filesystem.hpp>
+//#include <boost/filesystem.hpp>
 
 namespace snark { namespace ur { namespace handlers {
 
-const char* auto_initialization::filename = "ur-arm-in-home-position";
-
-void auto_initialization::read_status()
-{
-    ///  This guarantee a status is read or an exception is thrown
-    update_status_( );
-}
-
-bool auto_initialization::is_in_home_position() const
-{
-    boost::filesystem::path file( home_filepath_ );
-
-    return boost::filesystem::exists( file );
-}
-bool auto_initialization::remove_home_position() const
-{
-    boost::filesystem::path file( home_filepath_ );
-    boost::filesystem::remove( file );
-    return true;
-}
-
-result auto_initialization::run( started_reply_t started_update, bool force )
+result auto_initialization::run( started_reply_t started_update )
 {
     std::cerr << name() << "command auto init" << std::endl;
 
@@ -72,15 +51,10 @@ result auto_initialization::run( started_reply_t started_update, bool force )
         std::cerr << name() << "auto_init failed because robotic arm mode is " << status_.mode_str() << std::endl;
         return result( "cannot auto initialise robot if robot mode is not set to initializing", result::error::failure );
     }
-    boost::filesystem::path file( home_filepath_ );
-    /// If not forcing auto_init, and it is not in home position ( no existen of home position file ), fail
-    if( !force && !boost::filesystem::exists( file ) && !boost::filesystem::is_regular_file( file ) ) { return result( "the robot arm is not in the home position, auto_init dis-allowed.", result::error::failure ); }
-
+    
     /// Signal that movement has started
     started_update();
     
-    boost::filesystem::remove( file ); // Remove file before doing auto_init
-
     static const comma::uint32 retries = 50;
     // try for two joints right now
     bool stop_now = false;
@@ -101,7 +75,7 @@ result auto_initialization::run( started_reply_t started_update, bool force )
             {
                 /// Check and read any new input command from the user, if so we stop auto init.
                 usleep( 0.005 * 1000000u );
-                read_status();
+                update_status_(); ///  This guarantee a status is read or an exception is thrown
                 double vel = status_.velocities[ joint_id ];
                 if( std::fabs( vel ) <= 0.03 ) break;
                 stop_now = interrupt_();

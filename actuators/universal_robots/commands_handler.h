@@ -49,21 +49,19 @@
 #include "auto_initialization.h"
 #include "waypoints_follower.h"
 #include "output.h"
-#include <boost/filesystem.hpp>
+//#include <boost/filesystem.hpp>
 
 namespace snark { namespace ur { namespace handlers {
 
 class commands_handler : public comma::dispatch::handler_of< power >,
     public comma::dispatch::handler_of< brakes >,
     public comma::dispatch::handler_of< auto_init >,
-    public comma::dispatch::handler_of< joint_move >,
-    public comma::dispatch::handler_of< auto_init_force >
+    public comma::dispatch::handler_of< joint_move >
 {
 public:
     void handle( power& p );
     void handle( brakes& b );
     void handle( auto_init& a );
-    void handle( auto_init_force& p );
     void handle( joint_move& j );
 
     typedef boost::optional< waypoints_follower::recorder_setup_t > optional_recording_t;
@@ -71,7 +69,7 @@ public:
     commands_handler( ExtU_Arm_controller_v2_T& simulink_inputs, const arm_output& output, snark::ur::status_t& status, std::ostream& robot_ostream, 
         auto_initialization& init, waypoints_follower& follower, optional_recording_t recorder, std::ostream& oss, const snark::ur::config_t& config ) : 
         inputs_( simulink_inputs ), output_( output ), status_( status ), os( robot_ostream ), init_( init ), waypoints_follower_( follower ), recorder_setup_( recorder ), ostream_( oss ),
-        config_( config ), verbose_( false ), is_move_effector( false ), home_filepath_( init_.home_filepath() ) {}
+        config_( config ), verbose_( false ) {}
     bool is_initialising() const; 
     
     result ret;  /// Indicate if command succeed
@@ -86,20 +84,9 @@ private:
     std::ostream& ostream_;
     snark::ur::config_t config_;
     bool verbose_;
-    bool is_move_effector;
     
-    /// Run the command on the controller if possible
     template < typename C >
     bool execute_waypoints( const C& c, bool record=false );
-    /// Sets the current position of the arm into Simulink input structure
-    void set_current_position();
-
-    inline bool is_home_position() const { return status_.check_pose( config_.home_position ); } 
-
-    /// resets inputs to noaction
-    void inputs_reset();
-public:
-    const boost::filesystem::path home_filepath_;
 };
 
 } } } // namespace snark { namespace ur { namespace handlers {

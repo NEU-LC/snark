@@ -111,21 +111,6 @@ template <> struct traits< snark::ur::auto_init >
     }
 };
 
-template <> struct traits< snark::ur::auto_init_force >
-{
-    template< typename K, typename V > static void visit( const K& k, snark::ur::auto_init_force& t, V& v )
-    {
-        traits< command_base < snark::ur::auto_init_force > >::visit(k, t, v);
-        v.apply( "force", t.force );
-    }
-
-    template< typename K, typename V > static void visit( const K& k, const snark::ur::auto_init_force& t, V& v )
-    {
-        traits< command_base < snark::ur::auto_init_force > >::visit(k, t, v);
-        v.apply( "force", t.force );
-    }
-};
-
 template <> struct traits< snark::ur::power >
 {
     template< typename K, typename V > static void visit( const K& k, snark::ur::power& t, V& v ) {

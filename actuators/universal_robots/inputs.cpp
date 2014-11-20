@@ -52,21 +52,16 @@ void inputs::read( const boost::posix_time::time_duration& timeout )
     {
         std::string line;
         std::getline( *istream_, line ); 
-        // std::cerr << "size: " << istream_->rdbuf()->in_avail() << std::endl;
-        // std::cerr << "line: " << line << std::endl;
         if( line.empty() ) continue;
-
         // now process received line
         vector_s cmds = comma::split( line, ";");
         for( vector_s::const_iterator c=cmds.begin(); c!=cmds.end(); ++c ) 
         { 
-            // std::cerr << "cmd: " << *c << std::endl;
             command_tokens command = comma::split( *c, ',' );
             // empty line found, or not enough tokens
             if( command.size() <= name_index ) {
                 continue;
             }
-            
             comma::uint16 id = 0;
             command[ id_index ] = command[ id_index ].substr(1); // removes '>' at start of string
             try {
@@ -81,18 +76,14 @@ void inputs::read( const boost::posix_time::time_duration& timeout )
                 std::cerr << "discarding command because of ID mismatch: " << line << " " << int(robot_id) << " to " << id << std::endl;
                 continue;
             }
-            
             command[ name_index ] = comma::strip( command[ name_index ], '"' );
             if( command[ name_index ] == "ESTOP" || command[ name_index ] == "MICROCONTROLLER" )
             {
                 // Throws out previous commands
                 my_commands = robot_commands();
             }
-            
-            // std::cerr << "pushed line: " << line << std::endl;
             my_commands.push( command );
         } 
-        
     } 
     while( istream_->rdbuf()->in_avail() > 0 );
 }

@@ -30,7 +30,6 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
 #ifndef SNARK_ACTUATORS_UR_ROBOTIC_ARM_COMMANDS_H
 #define SNARK_ACTUATORS_UR_ROBOTIC_ARM_COMMANDS_H
 
@@ -69,12 +68,6 @@ struct command_base : public serialiser< Derived >, public comma::dispatch::disp
     std::string name;   /// Command name e.g. STEER
     command_base() : robot_id(0), sequence_number(0) {}
     command_base( comma::uint16 id, comma::int32 seq_no, const char* name_ ) : robot_id( id ), sequence_number( seq_no ), name( name_ ) {}    
-};
-
-struct auto_init_force : command_base< auto_init_force >
-{
-    static const char fields = 4;
-    bool force;
 };
 
 /// Send to trigger auto initialisation on startup.
