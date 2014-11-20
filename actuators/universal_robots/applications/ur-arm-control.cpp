@@ -76,12 +76,12 @@ void usage(int code=1)
 {
     std::cerr << std::endl;
     std::cerr << name() << std::endl;
-    //std::cerr << "example: socat tcp-listen:9999,reuseaddr EXEC:\"ur-arm-control --id 7 -ip 192.168.0.10 -p 8888\" " << name() << " " << std::endl;
-    //std::cerr << "          Listens for commands from TCP port 9999, process command and send control string to 192.168.0.10:8888" << std::endl;
+    std::cerr << "example: socat tcp-listen:9999,reuseaddr EXEC:\"ur-arm-control --id 7 --robot-arm-host=<arm ip address> --robot-arm-port=30002 --feedback-host=localhost --feedback-port=9998 \" " << name() << " " << std::endl;
+    std::cerr << "          Listens for commands from TCP port 9999, process command and send feedback to localhost:9998" << std::endl;
     std::cerr << "options:" << std::endl;
     std::cerr << "    --help,-h:            show this message" << std::endl;
     std::cerr << "    --versbose,-v:        show messages to the robot arm - angles are changed to degrees." << std::endl;
-    std::cerr << "*   --id=:                ID to identify commands, eg. ><ID>,999,set_pos,home;" << std::endl;
+    std::cerr << "*   --id=:                robot's id to be used in commands, eg. ><id>,1,set_pos,home;" << std::endl;
     std::cerr << "*   --robot-arm-host=:    Host name or IP of the robot arm." << std::endl;
     std::cerr << "*   --robot-arm-port=:    TCP Port number of the robot arm." << std::endl;
     std::cerr << "*   --feedback-host=:     Host name or IP of the robot arm's feedback." << std::endl;
