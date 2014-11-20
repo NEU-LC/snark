@@ -64,38 +64,6 @@ template <typename C> struct traits< command_base< C > >
     }
 };
 
-template <> struct traits< snark::ur::position >
-{
-    template< typename K, typename V > static void visit( const K& k, snark::ur::position& t, V& v )
-    {
-        v.apply( "x", t.x );
-        v.apply( "y", t.y );
-        v.apply( "z", t.z );
-    }
-
-    template< typename K, typename V > static void visit( const K& k, const snark::ur::position& t, V& v )
-    {
-        v.apply( "x", t.x );
-        v.apply( "y", t.y );
-        v.apply( "z", t.z );
-    }
-};
-
-template <> struct traits< snark::ur::move_effector >
-{
-    template< typename K, typename V > static void visit( const K& k, snark::ur::move_effector& t, V& v )
-    {
-        traits< command_base < snark::ur::move_effector > >::visit(k, t, v);
-        v.apply( "offset", t.offset );
-   }
-
-    template< typename K, typename V > static void visit( const K& k, const snark::ur::move_effector& t, V& v )
-    {
-        traits< command_base < snark::ur::move_effector > >::visit(k, t, v);
-        v.apply( "offset", t.offset );
-    }
-};
-
 template <> struct traits< snark::ur::config_t::arm_position_t >
 {
     template< typename K, typename V > static void visit( const K& k, snark::ur::config_t::arm_position_t& t, V& v )
@@ -113,21 +81,6 @@ template <> struct traits< snark::ur::config_t::arm_position_t >
         for( std::size_t i=0; i<snark::ur::joints_num; ++i ) {
             v.apply( boost::lexical_cast< std::string >( i ).c_str(), t[i].value() );
         }
-    }
-};
-
-template <> struct traits< snark::ur::move_joints >
-{
-    template< typename K, typename V > static void visit( const K& k, snark::ur::move_joints& t, V& v )
-    {
-        traits< command_base < snark::ur::move_joints > >::visit(k, t, v);
-        v.apply( "joints", t.joints );
-    }
-
-    template< typename K, typename V > static void visit( const K& k, const snark::ur::move_joints& t, V& v )
-    {
-        traits< command_base < snark::ur::move_joints > >::visit(k, t, v);
-        v.apply( "joints", t.joints );
     }
 };
 
@@ -158,21 +111,6 @@ template <> struct traits< snark::ur::auto_init >
     }
 };
 
-template <> struct traits< snark::ur::auto_init_force >
-{
-    template< typename K, typename V > static void visit( const K& k, snark::ur::auto_init_force& t, V& v )
-    {
-        traits< command_base < snark::ur::auto_init_force > >::visit(k, t, v);
-        v.apply( "force", t.force );
-    }
-
-    template< typename K, typename V > static void visit( const K& k, const snark::ur::auto_init_force& t, V& v )
-    {
-        traits< command_base < snark::ur::auto_init_force > >::visit(k, t, v);
-        v.apply( "force", t.force );
-    }
-};
-
 template <> struct traits< snark::ur::power >
 {
     template< typename K, typename V > static void visit( const K& k, snark::ur::power& t, V& v ) {
@@ -194,34 +132,6 @@ template <> struct traits< snark::ur::brakes >
     template< typename K, typename V > static void visit( const K& k, const snark::ur::brakes& t, V& v ) {
         traits< command_base < snark::ur::brakes > >::visit(k, t, v);
         v.apply( "enable", t.enable );
-    }
-};
-
-template <> struct traits< snark::ur::set_position >
-{
-    template< typename K, typename V > static void visit( const K& k, snark::ur::set_position& t, V& v )
-    {
-        traits< command_base < snark::ur::set_position > >::visit(k, t, v);
-        v.apply( "position", t.position );
-    }
-
-    template< typename K, typename V > static void visit( const K& k, const snark::ur::set_position& t, V& v )
-    {
-        traits< command_base < snark::ur::set_position > >::visit(k, t, v);
-        v.apply( "position", t.position );
-    }
-};
-
-template <> struct traits< snark::ur::set_home >
-{
-    template< typename K, typename V > static void visit( const K& k, snark::ur::set_home& t, V& v )
-    {
-        traits< command_base < snark::ur::set_home > >::visit(k, t, v);
-    }
-
-    template< typename K, typename V > static void visit( const K& k, const snark::ur::set_home& t, V& v )
-    {
-        traits< command_base < snark::ur::set_home > >::visit(k, t, v);
     }
 };
 

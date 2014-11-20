@@ -48,8 +48,6 @@
 #include <boost/optional.hpp>
 #include <boost/function.hpp>
 #include "data.h"
-#include "auto_initialization.h"
-#include "Arm_controller_v2.h"
 #include "result.h"
 #include "output.h"
 

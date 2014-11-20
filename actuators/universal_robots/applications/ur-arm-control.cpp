@@ -69,7 +69,6 @@ ExtY_Arm_controller_v2_T Arm_controller_v2_Y;
 
 static const char* name() { return "ur-arm-control: "; }
 
-using snark::ur::handlers::input_primitive;
 using snark::ur::handlers::result;
 
 void usage(int code=1)
@@ -92,7 +91,6 @@ void usage(int code=1)
     exit ( code );
 }
 
-
 template < typename T > 
 comma::csv::ascii< T >& ascii( )
 {
@@ -100,13 +98,7 @@ comma::csv::ascii< T >& ascii( )
     return ascii_;
 }
 
-void output( const std::string& msg, std::ostream& os=std::cout )
-{
-    os << msg << std::endl;
-}
-
 static snark::ur::status_t arm_status; 
-/// Stream to command robot arm
 typedef snark::ur::handlers::commands_handler commands_handler_t;
 typedef boost::shared_ptr< commands_handler_t > commands_handler_shared;
 static commands_handler_shared commands_handler;
@@ -145,19 +137,12 @@ std::string handle( const std::vector< std::string >& line, std::ostream& os )
 
 void process_command( const std::vector< std::string >& v, std::ostream& os )
 {
-    if( boost::iequals( v[2], "move_effector" )){ output( handle< snark::ur::move_effector >( v, os ) ); }
-    else if( boost::iequals( v[2], "set_pos" ) )     { output( handle< snark::ur::set_position >( v, os ) ); }
-    else if( boost::iequals( v[2], "set_home" ) )    { output( handle< snark::ur::set_home >( v, os ) ); }
-    else if( boost::iequals( v[2], "power" ) )       { output( handle< snark::ur::power >( v, os )); }  
-    else if( boost::iequals( v[2], "brakes" ) || boost::iequals( v[2], "stop" ) ) { output( handle< snark::ur::brakes >( v, os )); }  
-    else if( boost::iequals( v[2], "cancel" ) ) { } /// No need to do anything, used to cancel other running commands e.g. auto_init or scan
-    else if( boost::iequals( v[2], "auto_init" ) )  
-    { 
-        if( v.size() == snark::ur::auto_init_force::fields ) { output( handle< snark::ur::auto_init_force >( v, os )); }
-        else { output( handle< snark::ur::auto_init >( v, os )); } 
-    }  
-    else if( boost::iequals( v[2], "initj" ) ) { output( handle< snark::ur::joint_move >( v, os )); }  
-    else { output( comma::join( v, v.size(), ',' ) + ',' + boost::lexical_cast< std::string >( snark::ur::errors::unknown_command ) + ",\"unknown command found: '" + v[2] + "'\"" ); return; }
+    if( boost::iequals( v[2], "power" ) )       { std::cout << handle< snark::ur::power >( v, os ) << std::endl; }  
+    else if( boost::iequals( v[2], "brakes" ) || boost::iequals( v[2], "stop" ) ) { std::cout << handle< snark::ur::brakes >( v, os ) << std::endl; }  
+    else if( boost::iequals( v[2], "cancel" ) ) { } /// No need to do anything, used to cancel other running commands e.g. auto_init
+    else if( boost::iequals( v[2], "auto_init" ) ) { std::cout << handle< snark::ur::auto_init >( v, os ) << std::endl; }
+    else if( boost::iequals( v[2], "initj" ) ) { std::cout << handle< snark::ur::joint_move >( v, os ) << std::endl; }
+    else { std::cout << comma::join( v, v.size(), ',' ) << ',' << boost::lexical_cast< std::string >( snark::ur::errors::unknown_command ) << ",\"unknown command found: '" << v[2] << "'\"" << std::endl; return; }
 }
 
 /// Return null if no status
@@ -182,7 +167,6 @@ void read_status( comma::csv::binary_input_stream< snark::ur::status_t >& iss, c
 
 class stop_on_exit
 {
-    std::ostream& os_;
 public:
     stop_on_exit( std::ostream& oss ) : os_(oss) {}
     ~stop_on_exit() 
@@ -192,30 +176,18 @@ public:
         os_ << "power off\n"; // power off too
         os_.flush();
     }
-
+private:
+    std::ostream& os_;
 };
 
 void load_config( const std::string& filepath )
 {
     std::ifstream config_ifs( filepath.c_str() );
     if( !config_ifs.is_open() ) { COMMA_THROW( comma::exception, "failed to open file: " + filepath ); }
-
     boost::property_tree::ptree t;
-    comma::from_ptree( t, true );
     boost::property_tree::read_json( config_ifs, t );
     comma::from_ptree from_ptree( t, true );
     comma::visiting::apply( from_ptree ).to( config );
-}
-
-/// Create a home position file if arm is running and is in home position
-void home_position_check( const snark::ur::status_t& status, const std::string& homefile )
-{
-    static const boost::filesystem::path path( homefile );
-    if( status.is_running() )
-    {
-        if( status.check_pose( config.home_position ) ) { std::ofstream( homefile.c_str(), std::ios::out | std::ios::trunc ); } // create
-        else { boost::filesystem::remove( path ); } // remove
-    }
 }
 
 bool should_stop( snark::ur::inputs& in )
@@ -224,26 +196,6 @@ bool should_stop( snark::ur::inputs& in )
     in.read( timeout );
     return ( !in.is_empty() );
 }
-
-struct ttt : public boost::array< double, 6 > {};
-
-namespace comma { namespace visiting {
-    
-// Commands
-template < > struct traits< ttt >
-{
-    template< typename K, typename V > static void visit( const K& k, ttt& t, V& v )
-    {
-        v.apply( "angles", (boost::array< double, 6 >&) t );
-    }
-    template< typename K, typename V > static void visit( const K& k, const ttt& t, V& v )
-    {
-        v.apply( "angles", (const boost::array< double, 6 >&) t );
-    }
-};
-
-}}
-
 
 int main( int ac, char** av )
 {
@@ -269,32 +221,23 @@ int main( int ac, char** av )
     std::cerr << name() << "started" << std::endl;
     try
     {
-        /// Convert simulink output into arm's command
         snark::ur::handlers::arm_output output( acc * snark::ur::angular_acceleration_t::unit_type(), vel * snark::ur::angular_velocity_t::unit_type(), Arm_controller_v2_Y );
-    
         comma::uint16 robot_id = options.value< comma::uint16 >( "--id" );
-        double sleep = options.value< double >( "--sleep", 0.06 );  // seconds
-
+        double sleep = options.value< double >( "--sleep", 0.06 );
         verbose = options.exists( "--verbose,-v" );
-
         std::string config_file = options.value< std::string >( "--config" );
         load_config( config_file );
-        
-        /// home position file
-        if( config.work_directory.empty() ) { std::cerr << name() << "cannot find home position directory! exiting!" <<std::endl; return 1; }
+        if( config.work_directory.empty() ) { std::cerr << name() << "expected to find work_directory in config file, got empty string" <<std::endl; return 1; }
         boost::filesystem::path dir( config.work_directory );
         if( !boost::filesystem::exists( dir ) || !boost::filesystem::is_directory( dir ) ) { std::cerr << name() << "work_directory must exists: " << config.work_directory << std::endl; return 1; }
-
         for( std::size_t j=0; j<snark::ur::joints_num; ++j )
         {
             std::cerr << name() << "home joint " << j << " - " << config.home_position[j].value() << '"' << std::endl;
         }
-
         std::string arm_conn_host = options.value< std::string >( "--robot-arm-host" );
         std::string arm_conn_port = options.value< std::string >( "--robot-arm-port" );
         std::string arm_feedback_host = options.value< std::string >( "--feedback-host" );
         std::string arm_feedback_port = options.value< std::string >( "--feedback-port" );
-        
         boost::scoped_ptr< comma::io::ostream > poss;
         try
         {
@@ -308,54 +251,28 @@ int main( int ac, char** av )
             return 1;
         }
         comma::io::ostream& robot_arm = *poss;
-
-        /// For reading  commands from stdin with specific robot id as filter
-        snark::ur::inputs inputs( robot_id );
-
+        snark::ur::inputs inputs( robot_id ); /// For reading  commands from stdin with specific robot id as filter
         typedef std::vector< std::string > command_vector;
         const comma::uint32 usec( sleep * 1000000u );
-        
         std::string status_conn = "tcp:" + arm_feedback_host + ':' + arm_feedback_port;
         std::cerr << name() << "status connection to feedback status: " << status_conn << std::endl;
         comma::io::istream status_stream( status_conn, comma::io::mode::binary );
-        /// Status input is always expected to be binary format
         comma::csv::options csv_in;
         csv_in.full_xpath = true;
         csv_in.format( comma::csv::format::value< snark::ur::status_t >( "", true ) );
         comma::csv::binary_input_stream< snark::ur::status_t > istream( *status_stream, csv_in );
-        /// For reading status input, if failed to wait then status stream is dead
-        comma::io::select select;
+        comma::io::select select; /// For reading status input, if failed to wait then status stream is dead
         select.read().add( status_stream.fd() );
-
-
         {
             stop_on_exit on_exit( *robot_arm );
-
-            /// Create the handler for auto init.
-            snark::ur::handlers::auto_initialization auto_init( arm_status, *robot_arm,
-                    boost::bind( read_status, boost::ref(istream), boost::ref( status_stream ), select, status_stream.fd() ),
-                    signaled, 
-                    boost::bind( should_stop, boost::ref( inputs ) ),
-                    config.work_directory );
+            snark::ur::handlers::auto_initialization auto_init( arm_status, *robot_arm, boost::bind( read_status, boost::ref(istream), boost::ref( status_stream ), select, status_stream.fd() ),
+                signaled, boost::bind( should_stop, boost::ref( inputs ) ), config.work_directory );
             auto_init.set_app_name( name() );
-            /// This is the handler for following waypoints given by Simulink code
-            snark::ur::handlers::waypoints_follower waypoints_follower( output, 
-                    boost::bind( read_status, boost::ref(istream), boost::ref( status_stream ), select, status_stream.fd() ),
-                    arm_status,
-                    boost::bind( should_stop, boost::ref( inputs ) ),
-                    signaled );
+            snark::ur::handlers::waypoints_follower waypoints_follower( output, boost::bind( read_status, boost::ref(istream), boost::ref( status_stream ), select, status_stream.fd() ),
+                arm_status, boost::bind( should_stop, boost::ref( inputs ) ), signaled );
             waypoints_follower.name( name() );
-            
-            // This is the infomation and generic function for recording some data
-            // It records data for scan command starting from waypoint 2 and ends at waypoint 3
             snark::ur::handlers::commands_handler::optional_recording_t record_info;
-
-            /// This is the command handler for all commands
-            commands_handler.reset( new commands_handler_t( Arm_controller_v2_U, output, arm_status, *robot_arm, 
-                                                            auto_init, waypoints_follower, record_info, 
-                                                            std::cout, config ) );
-        
-
+            commands_handler.reset( new commands_handler_t( Arm_controller_v2_U, output, arm_status, *robot_arm, auto_init, waypoints_follower, record_info, std::cout, config ) );
             boost::posix_time::microseconds timeout( usec );
             while( !signaled && std::cin.good() )
             {
@@ -363,22 +280,14 @@ int main( int ac, char** av )
                     std::cerr << name() << "status connection to robot-arm failed" << std::endl;
                     COMMA_THROW( comma::exception, "status connection to robot arm failed." ); 
                 }
-                // Read and update the latest status from the robot arm, put it into arm_status
-                read_status( istream, status_stream, select, status_stream.fd() ); 
-                // Checks for home position and create the home file if true, else remove home file.
-                home_position_check( arm_status, auto_init.home_filepath() );
-                
-                /// Also act as sleep, reads commands from stdin
-                inputs.read( timeout );
-                // Process commands into inputs into the system
+                read_status( istream, status_stream, select, status_stream.fd() ); // Read and update the latest status from the robot arm, put it into arm_status
+                inputs.read( timeout ); // Also act as sleep, reads commands from stdin
                 if( !inputs.is_empty() )
                 {
                     const command_vector v = inputs.front();
                     inputs.pop();
                     process_command( v, *robot_arm );
-    
                 }
-                
                 usleep( 1000 );
             }
             std::cerr << name() << "exiting" << std::endl;

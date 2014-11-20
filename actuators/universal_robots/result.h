@@ -38,20 +38,6 @@
 
 namespace snark { namespace ur { namespace handlers {
 
-struct input_primitive
-{
-    enum {
-        no_action = 0,
-        move_cam = 1,
-        set_position = 8,
-        set_home=3,      // define home position, internal usage
-        movej=4,
-        scan=5,
-        pan_tilt=6,
-        move_effector=7
-    };  
-};
-    
 struct result
 {
     struct error { enum { success=0, action_started=1, invalid_input=2, invalid_robot_state, failure, cancelled, collision }; };

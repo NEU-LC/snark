@@ -66,20 +66,6 @@ void commands_handler::handle( snark::ur::brakes& b )
     ret = result();
 }
 
-template < typename C >
-void movement_started( const C& c, std::ostream& oss )
-{
-    static comma::csv::ascii< C > ascii;
-    static std::string tmp;
-    oss << '<' << c.serialise() << ',' << result::error::action_started << ',' << "\"movement initiated\";" << std::endl;
-    oss.flush();
-}
-
-void commands_handler::handle( snark::ur::move_joints& joints )
-{
-    ret = result();
-}
-
 void commands_handler::handle( snark::ur::joint_move& joint )
 {
     if( !is_initialising() ) {
@@ -127,9 +113,16 @@ void commands_handler::handle( snark::ur::joint_move& joint )
     os << ss.str();
     os.flush(); 
     
-    boost::filesystem::remove( home_filepath_ );
-    
     ret = result();
+}
+
+template < typename C >
+void movement_started( const C& c, std::ostream& oss )
+{
+    static comma::csv::ascii< C > ascii;
+    static std::string tmp;
+    oss << '<' << c.serialise() << ',' << result::error::action_started << ',' << "\"movement initiated\";" << std::endl;
+    oss.flush();
 }
 
 template < typename C >
@@ -139,7 +132,7 @@ bool commands_handler::execute_waypoints( const C& command, bool record )
     if( !output_.runnable() ) { 
 
         if( output_.will_collide() ) {
-            ret = result( "cannot run command as it will cause a collision", result::error::collision ); inputs_reset(); 
+            ret = result( "cannot run command as it will cause a collision", result::error::collision );
         }
         else {
             ret = result( "proposed action is not possible", result::error::invalid_input );
@@ -155,53 +148,7 @@ bool commands_handler::execute_waypoints( const C& command, bool record )
     if( record ) { ret = waypoints_follower_.run( boost::bind( movement_started< C >, boost::cref( command ), boost::ref( this->ostream_ ) ) , this->os, recorder_setup_ ); }
     else { ret = waypoints_follower_.run( boost::bind( movement_started< C >, boost::cref( command ), boost::ref( this->ostream_ ) ) , this->os ); }
 
-    inputs_reset();
     return ret.is_success();
-}
-
-void commands_handler::handle( snark::ur::set_home& h )
-{
-    inputs_reset();
-    set_current_position();
-    inputs_.motion_primitive = input_primitive::set_home;
-    ret = result();
-}
-
-void commands_handler::handle( snark::ur::set_position& pos )
-{
-    if( !status_.is_running() ) {
-        ret = result( "cannot set position as robot is not in running mode", result::error::invalid_robot_state );
-        return;
-    }
-    
-    inputs_reset();
-    set_current_position();
-    inputs_.motion_primitive = input_primitive::set_position;
-
-    if( pos.position == "giraffe" ) { inputs_.Input_1 = snark::ur::set_position::giraffe; boost::filesystem::remove( home_filepath_ ); }
-    else if( pos.position == "home" ) { inputs_.Input_1 = snark::ur::set_position::home; }
-    else { ret = result("unknown position type", int(result::error::invalid_input) ); return; }
-
-    inputs_.Input_2 = 0;    // zero pan for giraffe
-    inputs_.Input_3 = 0;    // zero tilt for giraffe
-    
-    if( execute_waypoints( pos ) ) { is_move_effector = false; }
-}
-
-void commands_handler::handle( snark::ur::move_effector& e )
-{    
-    std::cerr << name() << "handling move_effector" << std::endl; 
-    if( !status_.is_running() ) { ret = result( "cannot move effector as robot is not in running mode", result::error::invalid_robot_state ); return; }
-
-    // First run simulink to calculate the waypoints
-    inputs_reset();
-    set_current_position();
-    inputs_.motion_primitive = input_primitive::move_effector;
-    inputs_.Input_1 = e.offset.x();
-    inputs_.Input_2 = e.offset.y();
-    inputs_.Input_3 = e.offset.z();
-    std::cerr << "joint 2 is " << status_.joint_angles[2].value() << std::endl;
-    if( execute_waypoints( e ) ) { is_move_effector = true; }
 }
 
 bool commands_handler::is_initialising() const 
@@ -219,47 +166,7 @@ bool commands_handler::is_initialising() const
 
 void commands_handler::handle( snark::ur::auto_init& a )
 {
-    ret = init_.run( boost::bind( movement_started< auto_init >, boost::cref( a ), boost::ref( this->ostream_ ) ), false );
-    if( ret.is_success() ) { 
-        std::cerr << name() << "going to home position." << std::endl;
-        snark::ur::set_position home; 
-        handle( home ); 
-    } // set to home
-
-}
-
-void commands_handler::handle( snark::ur::auto_init_force& init )
-{
-    ret = init_.run( boost::bind( movement_started< auto_init_force >, boost::cref( init ), boost::ref( this->ostream_ ) ), init.force );
-    if( ret.is_success() ) 
-    { 
-        std::cerr << name() << "going to home position." << std::endl;
-        snark::ur::set_position home; 
-        handle( home ); 
-    } // set to home
-}
-
-void commands_handler::inputs_reset() 
-{ 
-    inputs_.motion_primitive = input_primitive::no_action;
-    inputs_.Input_1 = 0;
-    inputs_.Input_2 = 0;
-    inputs_.Input_3 = 0;
-    inputs_.Input_4 = 0;
-    inputs_.Input_5 = 0;
-    inputs_.Input_6 = 0;
-}
-
-/// The Simulink code needs to know the current position of the arm
-/// Sets it after reading the position
-void commands_handler::set_current_position( )
-{
-    inputs_.Joint1 = status_.joint_angles[0].value();
-    inputs_.Joint2 = status_.joint_angles[1].value();
-    inputs_.Joint3 = status_.joint_angles[2].value();
-    inputs_.Joint4 = status_.joint_angles[3].value();
-    inputs_.Joint5 = status_.joint_angles[4].value();
-    inputs_.Joint6 = status_.joint_angles[5].value();
+    ret = init_.run( boost::bind( movement_started< auto_init >, boost::cref( a ), boost::ref( this->ostream_ ) ) );
 }
 
 } } } // namespace snark { namespace ur { namespace handlers {

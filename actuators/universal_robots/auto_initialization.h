@@ -61,21 +61,16 @@ class auto_initialization
     
 public:
     typedef boost::function< void ( void ) > started_reply_t; /// To be called to signal that the movement has started - for commands like scan or auto_init   
-    auto_initialization( snark::ur::status_t& status, std::ostream& robot, started_reply_t status_updater, comma::signal_flag& signaled, interrupt_t interrupt, const std::string& work_dir ) : 
-        status_( status ), os( robot ), update_status_( status_updater ), signaled_( signaled ), interrupt_( interrupt ), force_max_( 13.0 ), home_filepath_( work_dir + '/' + filename ) {}
+    auto_initialization( snark::ur::status_t& status, std::ostream& robot_ostream, started_reply_t status_updater, comma::signal_flag& signaled, interrupt_t interrupt, const std::string& work_dir ) : 
+        status_( status ), os( robot_ostream ), update_status_( status_updater ), signaled_( signaled ), interrupt_( interrupt ), force_max_( 13.0 ) {}
     
     void set_app_name( const char* name ) { name_ = name; }
     void set_force_limit( double newtons ){ force_max_ = newtons; }
     
-    const std::string& home_filepath() const { return home_filepath_; }
-    
-    bool is_in_home_position() const;
-    bool remove_home_position() const; 
-    
     /// Performs auto initialisation but also listens for new commands.
     /// If a new command arrives or a signal is received run() returns immediately.
     /// result: shows whether success or failure.
-    result run( started_reply_t started, bool force );
+    result run( started_reply_t started );
     
 private:
     snark::ur::status_t& status_; /// Status to check if initialized 
@@ -86,14 +81,8 @@ private:
     
     std::string name_;  // name of the executable running this
     /// This is the value of force limit on arm before failing auto initialisation.
-    double force_max_; // newtons
-    std::string home_filepath_;
-    
+    double force_max_; // newtons    
     const std::string& name() const { return name_; }
-    /// Get the latest status from the arm
-    void read_status(); 
-    
-    static const char* filename;
 };
 
 } } } // namespace snark { namespace ur { namespace handlers {
