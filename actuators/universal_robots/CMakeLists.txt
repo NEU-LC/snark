@@ -25,7 +25,3 @@ ENDIF( snark_BUILD_APPLICATIONS )
 
 ADD_SUBDIRECTORY( transforms )
 
-IF( snark_BUILD_TESTS )
-    ADD_SUBDIRECTORY( test )
-ENDIF( snark_BUILD_TESTS )
-
