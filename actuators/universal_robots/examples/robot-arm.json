@@ -1,9 +1,7 @@
 {
-    "continuum" :
-    {
         "rover_id": "7",
         "serving-port" : 9001,
-        "work_directory": "/usr/local/etc/robot-arm",
+        "work_directory": "./",
         "status-proxy" : 
         {
             "descriptions" : "TCP status proxying for robotic arm.",
@@ -48,5 +46,4 @@
             "descriptions" : "Robotic arm's fixed offset values - robot arm base to robot frame . Robot frame is centered on central axis.",
             "values" : "0.2027,0,0.0175,0,0,0"
         }
-    }
 }
