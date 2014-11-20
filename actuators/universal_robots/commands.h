@@ -71,60 +71,28 @@ struct command_base : public serialiser< Derived >, public comma::dispatch::disp
     command_base( comma::uint16 id, comma::int32 seq_no, const char* name_ ) : robot_id( id ), sequence_number( seq_no ), name( name_ ) {}    
 };
 
-struct move_joints : command_base< move_joints >
-{
-    move_joints() : joints( joint_num ) {}
-    static const char joint_num = 6;
-    static const unsigned char fields = 9; /// number of fields for command
-    std::vector< plane_angle_degrees_t > joints; /// angle for each joint
-};
-
-/// For setting known pose: 'home' or 'giraffe'
-struct set_position : command_base< set_position >
-{
-    set_position() : position( "home" ) {}    
-    static const char fields = 4;
-    std::string position;    
-    enum { home=1, giraffe=2 };
-};
-
 struct auto_init_force : command_base< auto_init_force >
 {
     static const char fields = 4;
     bool force;
 };
 
-/// Reads arm current joint positions and save as home position
-struct set_home : command_base< set_home >
-{
-    set_home() : command_base< set_home >( 0, 0, "set_home" ) {}
-};
-
-struct position
-{
-    double x;
-    double y;
-    double z;
-};
-
-struct move_effector : command_base< move_effector >
-{
-    Eigen::Vector3d offset;
-};
-
 /// Send to trigger auto initialisation on startup.
 struct auto_init : command_base< auto_init > {};
 
-struct power : command_base< power > {
+struct power : command_base< power > 
+{
     bool is_on;
 };
 
-struct brakes : command_base< brakes > {
+struct brakes : command_base< brakes > 
+{
     bool enable;
 };
 
 /// Move an single joint at set speed in a given direction e.g. for initialisation.
-struct joint_move : command_base< joint_move > {
+struct joint_move : command_base< joint_move > 
+{
     static const unsigned char fields = 5; /// number of fields for command
     comma::uint16 joint_id;
     bool dir;

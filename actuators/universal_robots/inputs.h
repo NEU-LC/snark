@@ -46,7 +46,6 @@
 #include <comma/io/select.h>
 #include <comma/io/stream.h>
 #include <comma/base/types.h>
-#include "../../battery/ocean/stdio_query.h"
 
 namespace snark { namespace ur {
 /// Buffers inputs by the user, reads from std::cin

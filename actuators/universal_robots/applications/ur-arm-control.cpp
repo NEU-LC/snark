@@ -69,7 +69,6 @@ ExtY_Arm_controller_v2_T Arm_controller_v2_Y;
 
 static const char* name() { return "ur-arm-control: "; }
 
-using snark::ur::handlers::input_primitive;
 using snark::ur::handlers::result;
 
 void usage(int code=1)
@@ -145,10 +144,7 @@ std::string handle( const std::vector< std::string >& line, std::ostream& os )
 
 void process_command( const std::vector< std::string >& v, std::ostream& os )
 {
-    if( boost::iequals( v[2], "move_effector" )){ output( handle< snark::ur::move_effector >( v, os ) ); }
-    else if( boost::iequals( v[2], "set_pos" ) )     { output( handle< snark::ur::set_position >( v, os ) ); }
-    else if( boost::iequals( v[2], "set_home" ) )    { output( handle< snark::ur::set_home >( v, os ) ); }
-    else if( boost::iequals( v[2], "power" ) )       { output( handle< snark::ur::power >( v, os )); }  
+    if( boost::iequals( v[2], "power" ) )       { output( handle< snark::ur::power >( v, os )); }  
     else if( boost::iequals( v[2], "brakes" ) || boost::iequals( v[2], "stop" ) ) { output( handle< snark::ur::brakes >( v, os )); }  
     else if( boost::iequals( v[2], "cancel" ) ) { } /// No need to do anything, used to cancel other running commands e.g. auto_init or scan
     else if( boost::iequals( v[2], "auto_init" ) )  
@@ -201,7 +197,6 @@ void load_config( const std::string& filepath )
     if( !config_ifs.is_open() ) { COMMA_THROW( comma::exception, "failed to open file: " + filepath ); }
 
     boost::property_tree::ptree t;
-    comma::from_ptree( t, true );
     boost::property_tree::read_json( config_ifs, t );
     comma::from_ptree from_ptree( t, true );
     comma::visiting::apply( from_ptree ).to( config );
@@ -224,26 +219,6 @@ bool should_stop( snark::ur::inputs& in )
     in.read( timeout );
     return ( !in.is_empty() );
 }
-
-struct ttt : public boost::array< double, 6 > {};
-
-namespace comma { namespace visiting {
-    
-// Commands
-template < > struct traits< ttt >
-{
-    template< typename K, typename V > static void visit( const K& k, ttt& t, V& v )
-    {
-        v.apply( "angles", (boost::array< double, 6 >&) t );
-    }
-    template< typename K, typename V > static void visit( const K& k, const ttt& t, V& v )
-    {
-        v.apply( "angles", (const boost::array< double, 6 >&) t );
-    }
-};
-
-}}
-
 
 int main( int ac, char** av )
 {

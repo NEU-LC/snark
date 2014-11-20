@@ -55,22 +55,14 @@ namespace snark { namespace ur { namespace handlers {
 
 class commands_handler : public comma::dispatch::handler_of< power >,
     public comma::dispatch::handler_of< brakes >,
-    public comma::dispatch::handler_of< set_home >,
     public comma::dispatch::handler_of< auto_init >,
-    public comma::dispatch::handler_of< move_joints >,
     public comma::dispatch::handler_of< joint_move >,
-    public comma::dispatch::handler_of< set_position >,
-    public comma::dispatch::handler_of< auto_init_force >,
-    public comma::dispatch::handler_of< move_effector >
+    public comma::dispatch::handler_of< auto_init_force >
 {
 public:
     void handle( power& p );
     void handle( brakes& b );
     void handle( auto_init& a );
-    void handle( move_effector& e );
-    void handle( move_joints& js );
-    void handle( set_home& h );
-    void handle( set_position& p );
     void handle( auto_init_force& p );
     void handle( joint_move& j );
 
