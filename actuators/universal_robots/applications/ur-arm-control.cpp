@@ -76,7 +76,7 @@ void usage(int code=1)
 {
     std::cerr << std::endl;
     std::cerr << name() << std::endl;
-    std::cerr << "example: socat tcp-listen:9999,reuseaddr EXEC:\"ur-arm-control --id 7 --robot-arm-host=<arm ip address> --robot-arm-port=30002 --feedback-host=localhost --feedback-port=9998 \" " << name() << " " << std::endl;
+    std::cerr << "example: socat tcp-listen:9999,reuseaddr EXEC:\"ur-arm-control --config=<config file> --id 7 --robot-arm-host=<arm ip address> --robot-arm-port=30002 --feedback-host=localhost --feedback-port=9998 \" " << name() << " " << std::endl;
     std::cerr << "          Listens for commands from TCP port 9999, process command and send feedback to localhost:9998" << std::endl;
     std::cerr << "options:" << std::endl;
     std::cerr << "    --help,-h:            show this message" << std::endl;
