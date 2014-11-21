@@ -61,7 +61,7 @@ class auto_initialization
     
 public:
     typedef boost::function< void ( void ) > started_reply_t; /// To be called to signal that the movement has started - for commands like scan or auto_init   
-    auto_initialization( snark::ur::status_t& status, std::ostream& robot_ostream, started_reply_t status_updater, comma::signal_flag& signaled, interrupt_t interrupt, const std::string& work_dir ) : 
+    auto_initialization( snark::ur::status_t& status, std::ostream& robot_ostream, started_reply_t status_updater, comma::signal_flag& signaled, interrupt_t interrupt ) : 
         status_( status ), os( robot_ostream ), update_status_( status_updater ), signaled_( signaled ), interrupt_( interrupt ), force_max_( 13.0 ) {}
     
     void set_app_name( const char* name ) { name_ = name; }

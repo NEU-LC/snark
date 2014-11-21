@@ -44,15 +44,10 @@ struct result
     int code;
     std::string message;
     
-    result( const std::string& msg, int code_ ) : code( code_ ), message( msg ) {}
+    result( const std::string& message_, int code_ ) : code( code_ ), message( message_ ) {}
     result() : code( error::success ), message( "success" ) {}
     
-    std::string get_message() const 
-    {
-        std::ostringstream ss;
-        ss << code << ',' << '"' << message << '"';
-        return ss.str();
-    }
+    std::string get_message() const { std::ostringstream ss; ss << code << ',' << '"' << message << '"'; return ss.str(); }
     bool is_success() const { return ( code == error::success || code == error::action_started ); }
 };
     

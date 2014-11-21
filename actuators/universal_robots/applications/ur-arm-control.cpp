@@ -72,7 +72,6 @@ void usage(int code=1)
     std::cerr << "options:" << std::endl;
     std::cerr << "    --help,-h:            show this message" << std::endl;
     std::cerr << "    --versbose,-v:        show messages to the robot arm - angles are changed to degrees." << std::endl;
-    std::cerr << "*   --id=:                robot's id to be used in commands, eg. ><id>,1,set_pos,home;" << std::endl;
     std::cerr << "*   --robot-arm-host=:    Host name or IP of the robot arm." << std::endl;
     std::cerr << "*   --robot-arm-port=:    TCP Port number of the robot arm." << std::endl;
     std::cerr << "*   --feedback-host=:     Host name or IP of the robot arm's feedback." << std::endl;
@@ -83,13 +82,6 @@ void usage(int code=1)
     exit ( code );
 }
 
-template < typename T > 
-comma::csv::ascii< T >& ascii( )
-{
-    static comma::csv::ascii< T > ascii_;
-    return ascii_;
-}
-
 static snark::ur::status_t arm_status; 
 typedef snark::ur::handlers::commands_handler commands_handler_t;
 typedef boost::shared_ptr< commands_handler_t > commands_handler_shared;
@@ -97,44 +89,29 @@ static commands_handler_shared commands_handler;
 static bool verbose = false;
 static snark::ur::config_t config;
 
-template < typename C >
+template < typename T >
 std::string handle( const std::vector< std::string >& line, std::ostream& os )
 {
-    C c;
-    try
-    {
-        c = C::ascii().get( line );
-    }
-    catch( boost::bad_lexical_cast& le ) {
-        std::ostringstream ss;
-        ss << '<' << comma::join( line, ',' ) << ',' << boost::lexical_cast< std::string >( snark::ur::errors::format_error )
-           << ",\"command format error, wrong field type/s, fields: " << c.names() << " - types: "  << c.serialise() << "\";";
-        return ss.str();
-    }
-    catch( comma::exception& ce ) {
-        std::ostringstream ss;
-        ss << '<' << comma::join( line, ',' ) << ',' << boost::lexical_cast< std::string >( snark::ur::errors::format_error )
-           << ",\"command format error, wrong field/s or field type/s, fields: " << c.names() << " - types: "  << c.serialise() << "\";";
-        return ss.str();
-    }
-    catch( ... ) { COMMA_THROW( comma::exception, "unknown error is parsing: " + comma::join( line , ',' ) ); }
-       
+    static comma::csv::ascii< T > ascii;
+    T command;
+    try { command = ascii.get( line ); }
+    catch( boost::bad_lexical_cast& le ) { std::ostringstream ss; ss << comma::join( line, ',' ) << ":\"format error, wrong field type/s, expected fields: " << command.names(); return ss.str(); }
+    catch( comma::exception& ce ) { std::ostringstream ss; ss << comma::join( line, ',' ) << ":\"format error, wrong field/s or field type/s, expected fields: " << command.names(); return ss.str(); }
+    catch( ... ) { COMMA_THROW( comma::exception, "unknown error is parsing: " + comma::join( line , ',' ) ); }       
     comma::dispatch::handler& h_ref( *commands_handler );
-    comma::dispatch::dispatched_base& ref( c );
+    comma::dispatch::dispatched_base& ref( command );
     ref.dispatch_to( h_ref );
-    std::ostringstream ss;
-    ss << '<' << c.serialise() << ',' << commands_handler->ret.get_message() << ';';
-    return ss.str();
+    std::ostringstream ss; ss << command.serialise() << ':' << commands_handler->ret.get_message() << ';'; return ss.str();
 }
 
 void process_command( const std::vector< std::string >& v, std::ostream& os )
 {
-    if( boost::iequals( v[2], "power" ) )       { std::cout << handle< snark::ur::power >( v, os ) << std::endl; }  
-    else if( boost::iequals( v[2], "brakes" ) || boost::iequals( v[2], "stop" ) ) { std::cout << handle< snark::ur::brakes >( v, os ) << std::endl; }  
-    else if( boost::iequals( v[2], "cancel" ) ) { } /// No need to do anything, used to cancel other running commands e.g. auto_init
-    else if( boost::iequals( v[2], "auto_init" ) ) { std::cout << handle< snark::ur::auto_init >( v, os ) << std::endl; }
-    else if( boost::iequals( v[2], "initj" ) ) { std::cout << handle< snark::ur::joint_move >( v, os ) << std::endl; }
-    else { std::cout << comma::join( v, v.size(), ',' ) << ',' << boost::lexical_cast< std::string >( snark::ur::errors::unknown_command ) << ",\"unknown command found: '" << v[2] << "'\"" << std::endl; return; }
+    if( boost::iequals( v[0], "power" ) )       { std::cout << handle< snark::ur::power >( v, os ) << std::endl; }  
+    else if( boost::iequals( v[0], "brakes" ) || boost::iequals( v[2], "stop" ) ) { std::cout << handle< snark::ur::brakes >( v, os ) << std::endl; }  
+    else if( boost::iequals( v[0], "cancel" ) ) { } /// No need to do anything, used to cancel other running commands e.g. auto_init
+    else if( boost::iequals( v[0], "auto_init" ) ) { std::cout << handle< snark::ur::auto_init >( v, os ) << std::endl; }
+    else if( boost::iequals( v[0], "initj" ) ) { std::cout << handle< snark::ur::joint_move >( v, os ) << std::endl; }
+    else { std::cout << comma::join( v, v.size(), ',' ) << ":\"unknown command\"" << std::endl; return; }
 }
 
 /// Return null if no status
@@ -210,7 +187,6 @@ int main( int ac, char** av )
     std::cerr << name() << "started" << std::endl;
     try
     {
-        comma::uint16 robot_id = options.value< comma::uint16 >( "--id" );
         double sleep = options.value< double >( "--sleep", 0.06 );
         verbose = options.exists( "--verbose,-v" );
         std::string config_file = options.value< std::string >( "--config" );
@@ -239,7 +215,7 @@ int main( int ac, char** av )
             return 1;
         }
         comma::io::ostream& robot_arm = *poss;
-        snark::ur::inputs inputs( robot_id ); /// For reading  commands from stdin with specific robot id as filter
+        snark::ur::inputs inputs; /// For reading  commands from stdin with specific robot id as filter
         typedef std::vector< std::string > command_vector;
         const comma::uint32 usec( sleep * 1000000u );
         std::string status_conn = "tcp:" + arm_feedback_host + ':' + arm_feedback_port;
@@ -254,16 +230,13 @@ int main( int ac, char** av )
         {
             stop_on_exit on_exit( *robot_arm );
             snark::ur::handlers::auto_initialization auto_init( arm_status, *robot_arm, boost::bind( read_status, boost::ref(istream), boost::ref( status_stream ), select, status_stream.fd() ),
-                signaled, boost::bind( should_stop, boost::ref( inputs ) ), config.work_directory );
+                signaled, boost::bind( should_stop, boost::ref( inputs ) ) );
             auto_init.set_app_name( name() );
             commands_handler.reset( new commands_handler_t( arm_status, *robot_arm, auto_init, std::cout, config ) );
             boost::posix_time::microseconds timeout( usec );
             while( !signaled && std::cin.good() )
             {
-                if( !status_stream->good() ) { 
-                    std::cerr << name() << "status connection to robot-arm failed" << std::endl;
-                    COMMA_THROW( comma::exception, "status connection to robot arm failed." ); 
-                }
+                if( !status_stream->good() ) { COMMA_THROW( comma::exception, name() << "status connection to robot arm failed." ); }
                 read_status( istream, status_stream, select, status_stream.fd() ); // Read and update the latest status from the robot arm, put it into arm_status
                 inputs.read( timeout ); // Also act as sleep, reads commands from stdin
                 if( !inputs.is_empty() )

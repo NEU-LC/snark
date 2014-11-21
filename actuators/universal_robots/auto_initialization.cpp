@@ -31,7 +31,6 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "auto_initialization.h"
-//#include <boost/filesystem.hpp>
 
 namespace snark { namespace ur { namespace handlers {
 

@@ -39,7 +39,8 @@
 
 namespace snark { namespace ur {
     
-inputs::inputs( char robot_id_ ) : robot_id( robot_id_ ), istream_( "-", comma::io::mode::ascii ) { select_.read().add( istream_.fd() ); }
+//inputs::inputs( char robot_id_ ) : robot_id( robot_id_ ), istream_( "-", comma::io::mode::ascii ) { select_.read().add( istream_.fd() ); }
+//inputs::inputs() : istream_( "-", comma::io::mode::ascii ) { select_.read().add( istream_.fd() ); }
 
 typedef std::vector< std::string > vector_s;
 
@@ -52,36 +53,14 @@ void inputs::read( const boost::posix_time::time_duration& timeout )
     {
         std::string line;
         std::getline( *istream_, line ); 
-        if( line.empty() ) continue;
-        // now process received line
+        if( line.empty() ) { continue; }
         vector_s cmds = comma::split( line, ";");
         for( vector_s::const_iterator c=cmds.begin(); c!=cmds.end(); ++c ) 
         { 
+            if ( c->empty() ) { continue; }
             command_tokens command = comma::split( *c, ',' );
-            // empty line found, or not enough tokens
-            if( command.size() <= name_index ) {
-                continue;
-            }
-            comma::uint16 id = 0;
-            command[ id_index ] = command[ id_index ].substr(1); // removes '>' at start of string
-            try {
-                id = boost::lexical_cast< comma::uint16 >( command[ id_index ] );
-            }
-            catch( boost::bad_lexical_cast& el ) {
-                std::cerr << "failed to parse robot ID field: " << command[ id_index ] << " - " << el.what() << std::endl;
-                continue; // bad ID, ignore command line
-            }
-            // Not for this robot
-            if( id != robot_id ) { 
-                std::cerr << "discarding command because of ID mismatch: " << line << " " << int(robot_id) << " to " << id << std::endl;
-                continue;
-            }
             command[ name_index ] = comma::strip( command[ name_index ], '"' );
-            if( command[ name_index ] == "ESTOP" || command[ name_index ] == "MICROCONTROLLER" )
-            {
-                // Throws out previous commands
-                my_commands = robot_commands();
-            }
+            if( command[ name_index ] == "cancel" ) { my_commands = robot_commands(); } // Throws out previous commands
             my_commands.push( command );
         } 
     } 

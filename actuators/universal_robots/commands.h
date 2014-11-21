@@ -63,27 +63,15 @@ struct serialiser
 template < typename Derived >
 struct command_base : public serialiser< Derived >, public comma::dispatch::dispatched< Derived >
 {
-    comma::uint16 robot_id;         /// The robot's ID number
-    comma::int32 sequence_number;   /// Command seuqence number
-    std::string name;   /// Command name e.g. STEER
-    command_base() : robot_id(0), sequence_number(0) {}
-    command_base( comma::uint16 id, comma::int32 seq_no, const char* name_ ) : robot_id( id ), sequence_number( seq_no ), name( name_ ) {}    
+    std::string name;   /// Command name
+    command_base() {}
+    command_base( const char* name_ ) : name( name_ ) {}    
 };
 
-/// Send to trigger auto initialisation on startup.
 struct auto_init : command_base< auto_init > {};
+struct power : command_base< power > { bool is_on; };
+struct brakes : command_base< brakes >  { bool enable; };
 
-struct power : command_base< power > 
-{
-    bool is_on;
-};
-
-struct brakes : command_base< brakes > 
-{
-    bool enable;
-};
-
-/// Move an single joint at set speed in a given direction e.g. for initialisation.
 struct joint_move : command_base< joint_move > 
 {
     static const unsigned char fields = 5; /// number of fields for command

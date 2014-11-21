@@ -61,13 +61,11 @@ public:
     typedef std::queue< command_tokens > robot_commands;
     typedef std::list< command_tokens > command_list;
     typedef std::vector< command_tokens > command_vector;
-    static const comma::uint16 id_index = 0; // robot's id index
-    /// Command's name index
-    static const comma::uint16 name_index = 2;
+    static const comma::uint16 name_index = 0;
     static const comma::uint16 MAX_BUFFER = 2048;
     
     // A file backend for logs
-    inputs( char robot_id );
+    inputs() : istream_( "-", comma::io::mode::ascii ) { select_.read().add( istream_.fd() ); }
     bool is_empty() const { return my_commands.empty(); }
     /// It select wait with timeout then reads the inputs
     /// Note: if timeout > 0, it does not handle signal interrupt during waiting
@@ -78,13 +76,9 @@ public:
     void pop() { my_commands.pop(); }
     
 private:
-    char robot_id;
-    
     comma::io::istream istream_;
     comma::io::select select_;
-    
-    /// The buffer of commands
-    robot_commands my_commands;
+    robot_commands my_commands; /// The buffer of commands
 };
 
 } } // namespace snark { namespace ur {

@@ -76,14 +76,6 @@ void usage(int code=1)
     exit ( code );
 }
 
-
-template < typename T > 
-comma::csv::ascii< T >& ascii( )
-{
-    static comma::csv::ascii< T > ascii_;
-    return ascii_;
-}
-
 int main( int ac, char** av )
 {
     comma::signal_flag signaled;

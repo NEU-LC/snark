@@ -56,14 +56,20 @@ void commands_handler::handle( snark::ur::power& p )
 void commands_handler::handle( snark::ur::brakes& b )
 {
     std::cerr << name() << "running brakes: " << b.enable  << std::endl;
-    if( !b.enable ) {
-        os << "set robotmode run" <<std::endl;
-    }
-    else {
-        os << "stopj([0.1,0.1,0.1,0.1,0.1,0.1])" << std::endl;
-    }
+    if( !b.enable ) { os << "set robotmode run" <<std::endl; }
+    else { os << "stopj([0.1,0.1,0.1,0.1,0.1,0.1])" << std::endl; }
     os.flush();
     ret = result();
+}
+
+bool commands_handler::is_initialising() const 
+{
+    if( status_.robot_mode != robotmode::initializing ) { return false; }
+    for( std::size_t i=0; i<joints_num; ++i ) 
+    {
+        if( status_.jmode(i) != jointmode::initializing &&  status_.jmode(i) != jointmode::running ) { return false; }
+    }
+    return true;
 }
 
 void commands_handler::handle( snark::ur::joint_move& joint )
@@ -116,27 +122,8 @@ void commands_handler::handle( snark::ur::joint_move& joint )
     ret = result();
 }
 
-template < typename C >
-void movement_started( const C& c, std::ostream& oss )
-{
-    static comma::csv::ascii< C > ascii;
-    static std::string tmp;
-    oss << '<' << c.serialise() << ',' << result::error::action_started << ',' << "\"movement initiated\";" << std::endl;
-    oss.flush();
-}
-
-bool commands_handler::is_initialising() const 
-{
-    if( status_.robot_mode != robotmode::initializing ) { return false; }
-    for( std::size_t i=0; i<joints_num; ++i ) 
-    {
-        if( status_.jmode(i) != jointmode::initializing && 
-            status_.jmode(i) != jointmode::running ) { 
-            return false; 
-        }
-    }
-    return true;
-}
+template < typename T >
+void movement_started( const T& command, std::ostream& oss ) { oss << command.serialise() << ':' << "\"movement initiated\";" << std::endl; oss.flush(); }
 
 void commands_handler::handle( snark::ur::auto_init& a )
 {
