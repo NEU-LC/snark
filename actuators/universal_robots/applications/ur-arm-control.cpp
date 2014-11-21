@@ -58,14 +58,6 @@
 #include "../commands_handler.h"
 #include "../inputs.h"
 #include "../units.h"
-#include "../waypoints_follower.h"
-#include "../Arm_controller_v2.h"
-
-/* External inputs (root inport signals with auto storage) */
-ExtU_Arm_controller_v2_T Arm_controller_v2_U;
-
-/* External outputs (root outports fed by signals with auto storage) */
-ExtY_Arm_controller_v2_T Arm_controller_v2_Y;
 
 static const char* name() { return "ur-arm-control: "; }
 
@@ -215,13 +207,9 @@ int main( int ac, char** av )
     using boost::posix_time::ptime;
     using boost::asio::ip::tcp;
 
-    double acc = 0.5;
-    double vel = 0.1;
-
     std::cerr << name() << "started" << std::endl;
     try
     {
-        snark::ur::handlers::arm_output output( acc * snark::ur::angular_acceleration_t::unit_type(), vel * snark::ur::angular_velocity_t::unit_type(), Arm_controller_v2_Y );
         comma::uint16 robot_id = options.value< comma::uint16 >( "--id" );
         double sleep = options.value< double >( "--sleep", 0.06 );
         verbose = options.exists( "--verbose,-v" );
@@ -268,11 +256,7 @@ int main( int ac, char** av )
             snark::ur::handlers::auto_initialization auto_init( arm_status, *robot_arm, boost::bind( read_status, boost::ref(istream), boost::ref( status_stream ), select, status_stream.fd() ),
                 signaled, boost::bind( should_stop, boost::ref( inputs ) ), config.work_directory );
             auto_init.set_app_name( name() );
-            snark::ur::handlers::waypoints_follower waypoints_follower( output, boost::bind( read_status, boost::ref(istream), boost::ref( status_stream ), select, status_stream.fd() ),
-                arm_status, boost::bind( should_stop, boost::ref( inputs ) ), signaled );
-            waypoints_follower.name( name() );
-            snark::ur::handlers::commands_handler::optional_recording_t record_info;
-            commands_handler.reset( new commands_handler_t( Arm_controller_v2_U, output, arm_status, *robot_arm, auto_init, waypoints_follower, record_info, std::cout, config ) );
+            commands_handler.reset( new commands_handler_t( arm_status, *robot_arm, auto_init, std::cout, config ) );
             boost::posix_time::microseconds timeout( usec );
             while( !signaled && std::cin.good() )
             {

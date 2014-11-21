@@ -125,32 +125,6 @@ void movement_started( const C& c, std::ostream& oss )
     oss.flush();
 }
 
-template < typename C >
-bool commands_handler::execute_waypoints( const C& command, bool record )
-{
-    Arm_controller_v2_step();
-    if( !output_.runnable() ) { 
-
-        if( output_.will_collide() ) {
-            ret = result( "cannot run command as it will cause a collision", result::error::collision );
-        }
-        else {
-            ret = result( "proposed action is not possible", result::error::invalid_input );
-        }
-        return false; 
-    }
-    
-    if( verbose_ ) { 
-        std::cerr << name() << output_.debug_in_degrees() << std::endl; 
-        std::cerr << name() << output_.serialise() << std::endl; 
-    }
-    // Ok now follow the waypoints
-    if( record ) { ret = waypoints_follower_.run( boost::bind( movement_started< C >, boost::cref( command ), boost::ref( this->ostream_ ) ) , this->os, recorder_setup_ ); }
-    else { ret = waypoints_follower_.run( boost::bind( movement_started< C >, boost::cref( command ), boost::ref( this->ostream_ ) ) , this->os ); }
-
-    return ret.is_success();
-}
-
 bool commands_handler::is_initialising() const 
 {
     if( status_.robot_mode != robotmode::initializing ) { return false; }
