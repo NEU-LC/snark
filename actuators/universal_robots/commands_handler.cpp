@@ -43,7 +43,7 @@ static const char* name() { return "robot-arm-daemon: "; }
 void commands_handler::handle( snark::ur::power& p )
 {
     if( p.is_on && !status_.is_powered_off() ) {
-        ret = result( "cannot execute power on command as current state is not 'no_power'", result::error::invalid_robot_state );
+        ret = result( "cannot execute power on command as current state is not 'no_power'", result::status::invalid_robot_state );
         return;
     }
 
@@ -75,7 +75,7 @@ bool commands_handler::is_initialising() const
 void commands_handler::handle( snark::ur::joint_move& joint )
 {
     if( !is_initialising() ) {
-        ret = result( "cannot initialise joint as robot is not in initialisation mode", result::error::invalid_robot_state );
+        ret = result( "cannot initialise joint as robot is not in initialisation mode", result::status::invalid_robot_state );
         return;
     }
     
@@ -87,7 +87,7 @@ void commands_handler::handle( snark::ur::joint_move& joint )
         std::ostringstream ss;
         ss << "robot and  joint (" << index << ") must be initializing or running state. However current robot mode is '" 
            << status_.mode_str() << "' and joint mode is '" << status_.jmode_str(index)  << '\'' << std::endl;
-        ret = result( ss.str(), result::error::invalid_robot_state );
+        ret = result( ss.str(), result::status::invalid_robot_state );
         return; 
     }
 
@@ -99,7 +99,7 @@ void commands_handler::handle( snark::ur::joint_move& joint )
     static const boost::posix_time::time_duration duration = boost::posix_time::milliseconds( 20 );
     
     if( joint.joint_id < min_id || joint.joint_id > max_id ) {
-        ret = result( "joint id must be 0-5", result::error::invalid_input );
+        ret = result( "joint id must be 0-5", result::status::invalid_input );
         return;
     }
     

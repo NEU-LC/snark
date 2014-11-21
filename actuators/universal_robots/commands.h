@@ -51,17 +51,17 @@ struct errors
     enum error_code { success=0, unknown_command=401, format_error=402, incorrrect_operation=403 }; 
 };
 
-template < typename Derived > 
+template < typename T > 
 struct serialiser
 {
     // Returns the same copy when called, doesnt build copy if not called
-    static comma::csv::ascii< Derived >& ascii() { static comma::csv::ascii< Derived > ascii; return ascii; }
-    const std::string& serialise() const { static std::string str; ascii().put( static_cast< const Derived& >( *this ), str ); return str; }
-    const std::string& names() const { static std::string names = comma::join( comma::csv::names< Derived >() , ',' ); return names; }
+    static comma::csv::ascii< T >& ascii() { static comma::csv::ascii< T > ascii; return ascii; }
+    const std::string& serialise() const { static std::string str; ascii().put( static_cast< const T& >( *this ), str ); return str; }
+    const std::string& names() const { static std::string names = comma::join( comma::csv::names< T >() , ',' ); return names; }
 };
 
-template < typename Derived >
-struct command_base : public serialiser< Derived >, public comma::dispatch::dispatched< Derived >
+template < typename T >
+struct command_base : public serialiser< T >, public comma::dispatch::dispatched< T >
 {
     std::string name;   /// Command name
     command_base() {}

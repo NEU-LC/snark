@@ -95,19 +95,19 @@ std::string handle( const std::vector< std::string >& line, std::ostream& os )
     static comma::csv::ascii< T > ascii;
     T command;
     try { command = ascii.get( line ); }
-    catch( boost::bad_lexical_cast& le ) { std::ostringstream ss; ss << comma::join( line, ',' ) << ":\"format error, wrong field type/s, expected fields: " << command.names(); return ss.str(); }
-    catch( comma::exception& ce ) { std::ostringstream ss; ss << comma::join( line, ',' ) << ":\"format error, wrong field/s or field type/s, expected fields: " << command.names(); return ss.str(); }
+    catch( boost::bad_lexical_cast& le ) { std::ostringstream ss; ss << comma::join( line, ',' ) << ": wrong field types, expected fields: " << command.names(); return ss.str(); }
+    catch( comma::exception& ce ) { std::ostringstream ss; ss << comma::join( line, ',' ) << ": wrong fields or field types, expected fields: " << command.names(); return ss.str(); }
     catch( ... ) { COMMA_THROW( comma::exception, "unknown error is parsing: " + comma::join( line , ',' ) ); }       
     comma::dispatch::handler& h_ref( *commands_handler );
     comma::dispatch::dispatched_base& ref( command );
     ref.dispatch_to( h_ref );
-    std::ostringstream ss; ss << command.serialise() << ':' << commands_handler->ret.get_message() << ';'; return ss.str();
+    std::ostringstream ss; ss << command.serialise() << ": " << commands_handler->ret.get_message(); return ss.str();
 }
 
 void process_command( const std::vector< std::string >& v, std::ostream& os )
 {
     if( boost::iequals( v[0], "power" ) )       { std::cout << handle< snark::ur::power >( v, os ) << std::endl; }  
-    else if( boost::iequals( v[0], "brakes" ) || boost::iequals( v[2], "stop" ) ) { std::cout << handle< snark::ur::brakes >( v, os ) << std::endl; }  
+    else if( boost::iequals( v[0], "brakes" ) || boost::iequals( v[0], "stop" ) ) { std::cout << handle< snark::ur::brakes >( v, os ) << std::endl; }  
     else if( boost::iequals( v[0], "cancel" ) ) { } /// No need to do anything, used to cancel other running commands e.g. auto_init
     else if( boost::iequals( v[0], "auto_init" ) ) { std::cout << handle< snark::ur::auto_init >( v, os ) << std::endl; }
     else if( boost::iequals( v[0], "initj" ) ) { std::cout << handle< snark::ur::joint_move >( v, os ) << std::endl; }

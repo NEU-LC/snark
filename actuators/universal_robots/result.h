@@ -40,15 +40,15 @@ namespace snark { namespace ur { namespace handlers {
 
 struct result
 {
-    struct error { enum { success=0, action_started=1, invalid_input=2, invalid_robot_state, failure, cancelled, collision }; };
+    struct status { enum { success=0, action_started=1, invalid_input=2, invalid_robot_state, failure, cancelled, collision }; };
     int code;
     std::string message;
     
     result( const std::string& message_, int code_ ) : code( code_ ), message( message_ ) {}
-    result() : code( error::success ), message( "success" ) {}
+    result() : code( status::success ), message( "success" ) {}
     
-    std::string get_message() const { std::ostringstream ss; ss << code << ',' << '"' << message << '"'; return ss.str(); }
-    bool is_success() const { return ( code == error::success || code == error::action_started ); }
+    std::string get_message() const { return message; }
+    bool is_success() const { return ( code == status::success || code == status::action_started ); }
 };
     
 } } } //namespace snark { namespace ur { namespace handlers {

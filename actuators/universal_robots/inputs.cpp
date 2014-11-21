@@ -38,9 +38,6 @@
 #include <comma/string/string.h>
 
 namespace snark { namespace ur {
-    
-//inputs::inputs( char robot_id_ ) : robot_id( robot_id_ ), istream_( "-", comma::io::mode::ascii ) { select_.read().add( istream_.fd() ); }
-//inputs::inputs() : istream_( "-", comma::io::mode::ascii ) { select_.read().add( istream_.fd() ); }
 
 typedef std::vector< std::string > vector_s;
 

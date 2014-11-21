@@ -48,7 +48,7 @@ result auto_initialization::run( started_reply_t started_update )
 
     if( !status_.is_initialising_ready() ) {
         std::cerr << name() << "auto_init failed because robotic arm mode is " << status_.mode_str() << std::endl;
-        return result( "cannot auto initialise robot if robot mode is not set to initializing", result::error::failure );
+        return result( "cannot auto initialise robot if robot mode is not set to initializing", result::status::failure );
     }
     
     /// Signal that movement has started
@@ -80,7 +80,7 @@ result auto_initialization::run( started_reply_t started_update )
                 stop_now = interrupt_();
             }
             
-            if( signaled_ || stop_now ) { return result( "auto_init cancelled", result::error::cancelled ); }
+            if( signaled_ || stop_now ) { return result( "auto_init cancelled", result::status::cancelled ); }
         }
 
         if( status_.jmode( joint_id ) == jointmode::running ) {
@@ -89,11 +89,11 @@ result auto_initialization::run( started_reply_t started_update )
         }
         else 
         {
-            if( signaled_ || stop_now ) { return result( "auto_init cancelled", result::error::cancelled ); }
+            if( signaled_ || stop_now ) { return result( "auto_init cancelled", result::status::cancelled ); }
             else
             {
                 std::cerr << name() << "failed to initialise joint: " << joint_id << ", joint mode: " << status_.jmode_str( joint_id ) << std::endl;
-                return result( "failed to auto initialise a joint", result::error::failure );
+                return result( "failed to auto initialise a joint", result::status::failure );
             }
        }
     }
