@@ -178,10 +178,10 @@ template < > struct traits< snark::ur::cartesian >
     }
 };
 
-template <> struct traits< snark::ur::fixed_status >
+template <> struct traits< snark::ur::fixed_status_t >
 {
     /// Use this for debugging maybe
-    template< typename K, typename V > static void visit( const K& k, const  snark::ur::fixed_status& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, const  snark::ur::fixed_status_t& t, V& v )
     {
         v.apply( "time", boost::posix_time::microsec_clock::local_time() );
         v.apply( "coordinates", t.translation );

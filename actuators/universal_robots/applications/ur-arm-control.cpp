@@ -128,7 +128,7 @@ void read_status( comma::csv::binary_input_stream< snark::ur::status_t >& iss, c
     arm_status = *( iss.read() );
     while( stream->rdbuf()->in_avail() > 0 )  { arm_status = *( iss.read() ); }
 
-    if( arm_status.length != snark::ur::fixed_status::size ) {
+    if( arm_status.length != snark::ur::fixed_status_t::size ) {
         std::cerr << name() << "status data alignment check failed" << std::endl; 
         COMMA_THROW( comma::exception, "status data alignment check failed" ); 
     }

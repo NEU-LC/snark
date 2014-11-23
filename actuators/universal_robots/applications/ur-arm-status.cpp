@@ -36,6 +36,7 @@
 #include <comma/io/stream.h>
 #include <comma/application/command_line_options.h>
 #include <comma/csv/stream.h>
+#include <comma/string/split.h>
 #include <comma/base/types.h>
 #include <comma/visiting/apply.h>
 #include <comma/name_value/ptree.h>
@@ -55,23 +56,16 @@ const char* name() { return "ur-arm-status: "; }
 void usage(int code=1)
 {
     std::cerr << std::endl;
-    std::cerr << name() << std::endl;
-    std::cerr << "example: socat -u -T 1 tcp:robot-arm:30003 - | ur-arm-status [--fields=] [--binary | -b | --json | --compact-json]" << std::endl;
-    std::cerr << "         Reads in robotic-arm's real time status information ( network byte order ) and output the status in host byte order in any format." << std::endl;
-    std::cerr << "         Approximately 20ms between statuses." << std::endl;
+    std::cerr << "take arm status feed on stdin, output csv data to stdout" << std::endl;
+    std::cerr << std::endl;
     std::cerr << "options:" << std::endl;
     std::cerr << "    --help,-h:            show this message" << std::endl;
-    std::cerr << "    --binary,-b:          output in binary." << std::endl;
-    std::cerr << "    --json,-j:            output in json." << std::endl;
-    std::cerr << "    --compact-json,-cj:   output in single line json without whitespaces or new lines." << std::endl;
-    std::cerr << "    --host-byte-order:    input data is binary in host-byte-order, it assumes network order by default." << std::endl;
-    std::cerr << "    --format:             displays the binary format of output data in host byte order." << std::endl;
-    typedef snark::ur::status_t status_t;
-    comma::csv::binary< status_t > binary;
-    std::cerr << "Robot arm's status:" << std::endl;
-    std::cerr << "   format: " << binary.format().string() << " total size is " << binary.format().size() << " bytes" << std::endl;
-    std::vector< std::string > names = comma::csv::names< status_t >();
-    std::cerr << "   fields: " << comma::join( names, ','  ) << " number of fields: " << names.size() << std::endl;
+    std::cerr << "    --binary,-b:          output binary equivalent of csv" << std::endl;
+    std::cerr << "    --format:             output binary format for given fields to stdout and exit" << std::endl;
+    std::cerr << "    --output-fields:      output field names and exit" << std::endl;
+    std::cerr << "    --host-byte-order:    input data is binary in host-byte-order, it assumes network order by default" << std::endl;
+    std::cerr << "examples: " << std::endl;
+    std::cerr << "    socat -u -T 1 tcp:robot-arm:30003 - | ur-arm-status --fields=timestamp,robot_mode,joint_modes" << std::endl;
     std::cerr << std::endl;
     exit ( code );
 }
@@ -79,66 +73,30 @@ void usage(int code=1)
 int main( int ac, char** av )
 {
     comma::signal_flag signaled;
-    
     comma::command_line_options options( ac, av );
     if( options.exists( "-h,--help" ) ) { usage( 0 ); }
-    if( options.exists( "--format" ) ) { std::cout << comma::csv::format::value< snark::ur::status_t >( "", false ) << std::endl; return 0; }
-    
-    using boost::posix_time::microsec_clock;
-    using boost::posix_time::seconds;
-    using boost::posix_time::ptime;
-    using boost::asio::ip::tcp;
-
-    typedef snark::ur::fixed_status status;
-    
-    std::cerr << name() << "started" << std::endl;
-
-    
-    bool is_json = options.exists( "--json,-j" );
-    bool is_single_line_json = options.exists( "--compact-json,-cj" );
-    bool is_binary = options.exists( "--binary,-b" );
-    
+    if( options.exists( "--output-fields" ) ) { std::cout << comma::join( comma::csv::names< snark::ur::status_t >(), ',' ) << std::endl; return 0; }
     comma::csv::options csv;
-    csv.fields = options.value< std::string >( "--fields", "" );
     csv.full_xpath = true;
-    if( is_binary ) { csv.format( comma::csv::format::value< snark::ur::status_t >( csv.fields, true ) ); }
-    
+    csv.fields = options.value< std::string >( "--fields", "" );
+    if( options.exists( "--format" ) ) { std::cout << comma::csv::format::value< snark::ur::status_t >( csv.fields, true ) << std::endl; return 0; }
+    if( options.exists( "--binary,-b" ) ) { csv.format( comma::csv::format::value< snark::ur::status_t >( csv.fields, true ) ); }
     try
     {
         comma::csv::options csv_in;
         csv_in.fields = options.value< std::string >( "--input-fields", "" );
         csv_in.full_xpath = true;
         csv_in.format( comma::csv::format::value< snark::ur::status_t >( csv_in.fields, true ) );
-
-        if( options.exists( "--output-samples" ) )
-        {
-            std::cerr.flush();
-            comma::csv::output_stream< snark::ur::status_t > oss( std::cout, csv );
-            snark::ur::status_t st;
-            st.robot_mode = snark::ur::robotmode::running;
-            for( std::size_t i=0; i<snark::ur::joints_num; ++i ) { st.joint_modes[i] = snark::ur::jointmode::running; }  
-            st.position.coordinates = Eigen::Vector3d( 1, 2, 3 );
-            while( !signaled && std::cout.good() )
-            {
-                st.timestamp = boost::posix_time::microsec_clock::local_time();
-                oss.write( st );
-                oss.flush();
-                usleep( 0.1 * 1000000u );
-            }
-            return 0;
-        }
-
         bool is_host_order = options.exists( "--host-byte-order" );
-        snark::ur::fixed_status arm_status;
+        snark::ur::fixed_status_t fixed_status;
         bool first_loop = true;
         snark::ur::status_t state;
-
         while( !signaled && std::cin.good() )
         {
             if( !is_host_order ) 
             { 
-                std::cin.read( arm_status.data(), status::size ); 
-                arm_status.get( state );
+                std::cin.read( fixed_status.data(), snark::ur::fixed_status_t::size ); 
+                fixed_status.get( state );
                 /// As TCP rotation data do not make sense, caculate it using the joint angles
                 /// We will also override the TCP translation coordinate
                 snark::ur::ur5::tcp_transform( state.joint_angles, state.position );
@@ -154,12 +112,9 @@ int main( int ac, char** av )
                 }
                 state = *p;
             }
-            
             state.timestamp = boost::posix_time::microsec_clock::local_time();
-
-            // sanity check on the status
             if( first_loop && (
-                state.length != snark::ur::fixed_status::size ||
+                state.length != snark::ur::fixed_status_t::size ||
                 state.robot_mode < snark::ur::robotmode::running || 
                 state.robot_mode > snark::ur::robotmode::safeguard_stop ) ) {
                 std::cerr << name() << "mode: " << state.mode_str() << std::endl;
@@ -167,21 +122,9 @@ int main( int ac, char** av )
                 return 1;
             }
             first_loop = false;
-            
-            if ( is_json || is_single_line_json )
-            {
-                boost::property_tree::ptree t;
-                comma::to_ptree to_ptree( t );
-                comma::visiting::apply( to_ptree ).to( state );
-                boost::property_tree::write_json( std::cout, t, !is_single_line_json );
-            }
-            else 
-            { 
-                static comma::csv::output_stream< snark::ur::status_t > oss( std::cout, csv );
-                oss.write( state );
-            }
+            static comma::csv::output_stream< snark::ur::status_t > oss( std::cout, csv );
+            oss.write( state );
         }
-        
     }
     catch( comma::exception& ce ) { std::cerr << name() << ": exception thrown: " << ce.what() << std::endl; return 1; }
     catch( std::exception& e ) { std::cerr << name() << ": unknown exception caught: " << e.what() << std::endl; return 1; }

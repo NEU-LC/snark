@@ -80,10 +80,10 @@ public:
 };
 
 typedef big_endian_64< double > big_endian_double;
-typedef big_endian_64< comma::uint64 > big_endian_uint64;
-typedef big_endian_64< comma::int64 > big_endian_int64;
-typedef big_endian_64< comma::int64 > big_endian_int64;
-typedef big_endian_64< float > big_endian_float;
+// typedef big_endian_64< comma::uint64 > big_endian_uint64;
+// typedef big_endian_64< comma::int64 > big_endian_int64;
+// typedef big_endian_64< comma::int64 > big_endian_int64;
+// typedef big_endian_64< float > big_endian_float;
 
 } } // namespace comma { namespace packed {
 
@@ -142,7 +142,7 @@ void init( const T& t, boost::array< T, joints_num >& arr )
     for( std::size_t i=0; i<joints_num; ++i ) { arr[i] = t; }
 }    
 
-/// Ananlog to fixed_status, reads from host byte order source
+/// Ananlog to fixed_status_t, reads from host byte order source
 struct status_t {
     typedef boost::array< double, joints_num > array_doubles_t;
     typedef boost::array< jointmode::mode, joints_num > array_jointmodes_t;
@@ -190,7 +190,7 @@ struct status_t {
     bool check_pose( const arm_position_t& pose, const plane_angle_degrees_t& epsilon=(0.5*degree) ) const;
 };
 
-struct fixed_status : public comma::packed::packed_struct< fixed_status, 812  >
+struct fixed_status_t : public comma::packed::packed_struct< fixed_status_t, 812  >
 {
     void get( status_t& st );
     
@@ -220,10 +220,6 @@ struct fixed_status : public comma::packed::packed_struct< fixed_status, 812  >
     typedef boost::array< plane_angle_t, joints_num > joints_type;
     void get_angles( joints_type& angles );
 };
-template < typename T > struct packed_buffer 
-{
-    T data;
-};  
 
 inline bool status_t::is_stationary( double epsilon ) const
 {

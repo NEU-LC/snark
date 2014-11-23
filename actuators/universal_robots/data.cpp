@@ -123,7 +123,7 @@ const char* jointmode_str( jointmode::mode mode )
     }
 }
 
-void fixed_status::get_angles(boost::array< plane_angle_t, 6 >& angles)
+void fixed_status_t::get_angles(boost::array< plane_angle_t, 6 >& angles)
 {
     angles[0] = this->positions[0]() * radian;
     angles[1] = this->positions[1]() * radian;
@@ -143,7 +143,7 @@ void set_array( const joints_net_t& values, status_t::array_doubles_t& arr )
     arr[5] = values[5]();
 }
 
-void fixed_status::get(status_t& st)
+void fixed_status_t::get(status_t& st)
 {
     st.position.coordinates = Eigen::Vector3d( this->translation.x(), this->translation.y(), this->translation.z() );
     st.position.orientation = Eigen::Vector3d( this->rotation.x(), this->rotation.y(), this->rotation.z() );
