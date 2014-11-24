@@ -123,44 +123,22 @@ const char* jointmode_str( jointmode::mode mode )
     }
 }
 
-void fixed_status_t::get_angles(boost::array< plane_angle_t, 6 >& angles)
+void status_t::set( const packet_t& packet )
 {
-    angles[0] = this->positions[0]() * radian;
-    angles[1] = this->positions[1]() * radian;
-    angles[2] = this->positions[2]() * radian;
-    angles[3] = this->positions[3]() * radian;
-    angles[4] = this->positions[4]() * radian;
-    angles[5] = this->positions[5]() * radian;
-}
-
-void set_array( const joints_net_t& values, status_t::array_doubles_t& arr )
-{
-    arr[0] = values[0]();
-    arr[1] = values[1]();
-    arr[2] = values[2]();
-    arr[3] = values[3]();
-    arr[4] = values[4]();
-    arr[5] = values[5]();
-}
-
-void fixed_status_t::get(status_t& st)
-{
-    st.position.coordinates = Eigen::Vector3d( this->translation.x(), this->translation.y(), this->translation.z() );
-    st.position.orientation = Eigen::Vector3d( this->rotation.x(), this->rotation.y(), this->rotation.z() );
-    this->get_angles( st.joint_angles );
-    set_array( velocities, st.velocities );
-    set_array( currents, st.currents );
-    set_array( forces, st.forces );
-    set_array( temperatures, st.temperatures );
-    st.robot_mode = robotmode::mode( int(this->robot_mode()) );
-    st.joint_modes[0] = jointmode::mode( int( this->joint_modes[0]() ) );
-    st.joint_modes[1] = jointmode::mode( int( this->joint_modes[1]() ) );
-    st.joint_modes[2] = jointmode::mode( int( this->joint_modes[2]() ) );
-    st.joint_modes[3] = jointmode::mode( int( this->joint_modes[3]() ) );
-    st.joint_modes[4] = jointmode::mode( int( this->joint_modes[4]() ) );
-    st.joint_modes[5] = jointmode::mode( int( this->joint_modes[5]() ) );
-    st.length = length();
-    st.time_since_boot = time_since_boot();
+    this->position.coordinates = Eigen::Vector3d( packet.translation.x(), packet.translation.y(), packet.translation.z() );
+    this->position.orientation = Eigen::Vector3d( packet.rotation.x(), packet.rotation.y(), packet.rotation.z() );    
+    this->robot_mode = robotmode::mode( int( packet.robot_mode() ) );
+    this->length = packet.length();
+    this->time_since_boot = packet.time_since_boot();    
+    for( int i = 0; i < joints_num; ++i) 
+    { 
+        this->joint_angles[i] = packet.positions[i]() * radian; 
+        this->velocities[i] = packet.velocities[i]();
+        this->currents[i] = packet.currents[i]();
+        this->forces[i] = packet.forces[i]();
+        this->temperatures[i] = packet.temperatures[i]();
+        this->joint_modes[i] = jointmode::mode( int( packet.joint_modes[i]() ) );
+    }
 }
 
 bool status_t::is_running() const

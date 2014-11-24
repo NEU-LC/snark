@@ -142,7 +142,35 @@ void init( const T& t, boost::array< T, joints_num >& arr )
     for( std::size_t i=0; i<joints_num; ++i ) { arr[i] = t; }
 }    
 
-/// Ananlog to fixed_status_t, reads from host byte order source
+struct packet_t : public comma::packed::packed_struct< packet_t, 812  >
+{
+    //void get( status_t& st );
+    
+    comma::packed::big_endian_uint32 length;
+    comma::packed::big_endian_double time_since_boot;
+    comma::packed::string< 240 > dummy1;
+    joints_net_t positions; /// actual joint positions
+    joints_net_t velocities; /// actual joint velocities
+    joints_net_t currents; /// actual joint currents - Amps
+    comma::packed::string< 120 > dummy2;
+    joints_net_t forces;    /// Force (Newton) on each joint
+    comma::packed::string< 24 > dummy5;
+    cartesian  translation;       ///  coordinates
+    cartesian  rotation;       ///  rotation
+    comma::packed::string< 56 > dummy3;
+    joints_net_t  temperatures; ///  Celcius
+    comma::packed::string< 16 > dummy4;
+    comma::packed::big_endian_double robot_mode;
+    joints_net_t joint_modes; ///  joint modes - see documents
+
+    robotmode::mode mode() const { return  robotmode::mode( (int)this->robot_mode() ); }
+    jointmode::mode jmode( int id ) const { return jointmode::mode( int(joint_modes[id]()) ); }
+
+    std::string mode_str() const { return robotmode_str( mode() ); }
+    std::string jmode_str( int id ) const { return jointmode_str( jmode( id ) ); }
+};
+
+/// Ananlog to packet_t, reads from host byte order source
 struct status_t {
     typedef boost::array< double, joints_num > array_doubles_t;
     typedef boost::array< jointmode::mode, joints_num > array_jointmodes_t;
@@ -160,6 +188,8 @@ struct status_t {
     comma::uint32 length;
     double time_since_boot;
 
+    void set( const packet_t& packet );
+    
     std::string mode_str() const { return robotmode_str( robot_mode ); }
     std::string jmode_str( int id ) const { return jointmode_str( joint_modes[id] ); }
     jointmode::mode jmode( int id ) const { return joint_modes[id]; }
@@ -188,37 +218,6 @@ struct status_t {
     bool check_pose( const boost::array< double, joints_num >& pose, const plane_angle_degrees_t& epsilon=(0.5*degree) ) const;
     typedef boost::array< plane_angle_t, joints_num > arm_position_t;
     bool check_pose( const arm_position_t& pose, const plane_angle_degrees_t& epsilon=(0.5*degree) ) const;
-};
-
-struct fixed_status_t : public comma::packed::packed_struct< fixed_status_t, 812  >
-{
-    void get( status_t& st );
-    
-    comma::packed::big_endian_uint32 length;
-    comma::packed::big_endian_double time_since_boot;
-    comma::packed::string< 240 > dummy1;
-    joints_net_t positions; /// actual joint positions
-    joints_net_t velocities; /// actual joint velocities
-    joints_net_t currents; /// actual joint currents - Amps
-    comma::packed::string< 120 > dummy2;
-    joints_net_t forces;    /// Force (Newton) on each joint
-    comma::packed::string< 24 > dummy5;
-    cartesian  translation;       ///  coordinates
-    cartesian  rotation;       ///  rotation
-    comma::packed::string< 56 > dummy3;
-    joints_net_t  temperatures; ///  Celcius
-    comma::packed::string< 16 > dummy4;
-    comma::packed::big_endian_double robot_mode;
-    joints_net_t joint_modes; ///  joint modes - see documents
-
-    robotmode::mode mode() const { return  robotmode::mode( (int)this->robot_mode() ); }
-    jointmode::mode jmode( int id ) const { return jointmode::mode( int(joint_modes[id]()) ); }
-
-    std::string mode_str() const { return robotmode_str( mode() ); }
-    std::string jmode_str( int id ) const { return jointmode_str( jmode( id ) ); }
-    
-    typedef boost::array< plane_angle_t, joints_num > joints_type;
-    void get_angles( joints_type& angles );
 };
 
 inline bool status_t::is_stationary( double epsilon ) const

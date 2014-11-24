@@ -88,18 +88,18 @@ int main( int ac, char** av )
         csv_in.full_xpath = true;
         csv_in.format( comma::csv::format::value< snark::ur::status_t >( csv_in.fields, true ) );
         bool is_host_order = options.exists( "--host-byte-order" );
-        snark::ur::fixed_status_t fixed_status;
+        snark::ur::packet_t packet;
         bool first_loop = true;
-        snark::ur::status_t state;
+        snark::ur::status_t status;
         while( !signaled && std::cin.good() )
         {
             if( !is_host_order ) 
             { 
-                std::cin.read( fixed_status.data(), snark::ur::fixed_status_t::size ); 
-                fixed_status.get( state );
+                std::cin.read( packet.data(), snark::ur::packet_t::size ); 
+                status.set( packet ); 
                 /// As TCP rotation data do not make sense, caculate it using the joint angles
                 /// We will also override the TCP translation coordinate
-                snark::ur::ur5::tcp_transform( state.joint_angles, state.position );
+                snark::ur::ur5::tcp_transform( status.joint_angles, status.position );
             }
             else 
             {
@@ -110,20 +110,20 @@ int main( int ac, char** av )
                     if( !std::cin.good() ) { /* std::cerr << name() << "STDIN error" << std::endl; */ return 1; } // happens a lot, when closed on purpose
                     COMMA_THROW( comma::exception, "p is null" ); 
                 }
-                state = *p;
+                status = *p;
             }
-            state.timestamp = boost::posix_time::microsec_clock::local_time();
+            status.timestamp = boost::posix_time::microsec_clock::local_time();
             if( first_loop && (
-                state.length != snark::ur::fixed_status_t::size ||
-                state.robot_mode < snark::ur::robotmode::running || 
-                state.robot_mode > snark::ur::robotmode::safeguard_stop ) ) {
-                std::cerr << name() << "mode: " << state.mode_str() << std::endl;
+                status.length != snark::ur::packet_t::size ||
+                status.robot_mode < snark::ur::robotmode::running || 
+                status.robot_mode > snark::ur::robotmode::safeguard_stop ) ) {
+                std::cerr << name() << "mode: " << status.mode_str() << std::endl;
                 std::cerr << name() << "failed sanity check, data is not aligned, exiting now..." << std::endl;
                 return 1;
             }
             first_loop = false;
             static comma::csv::output_stream< snark::ur::status_t > oss( std::cout, csv );
-            oss.write( state );
+            oss.write( status );
         }
     }
     catch( comma::exception& ce ) { std::cerr << name() << ": exception thrown: " << ce.what() << std::endl; return 1; }
