@@ -49,7 +49,6 @@
 #include <comma/application/signal_flag.h>
 #include "../traits.h"
 #include "../data.h"
-#include "../transforms/transforms.h"
 
 const char* name() { return "ur-arm-status: "; }
 
@@ -97,9 +96,6 @@ int main( int ac, char** av )
             { 
                 std::cin.read( packet.data(), snark::ur::packet_t::size ); 
                 status.set( packet ); 
-                /// As TCP rotation data do not make sense, caculate it using the joint angles
-                /// We will also override the TCP translation coordinate
-                snark::ur::ur5::tcp_transform( status.joint_angles, status.position );
             }
             else 
             {
