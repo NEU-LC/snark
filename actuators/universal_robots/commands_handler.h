@@ -61,16 +61,14 @@ public:
     void handle( auto_init& a );
     void handle( joint_move& j );
 
-    commands_handler( snark::ur::status_t& status, std::ostream& robot_ostream, auto_initialization& init, std::ostream& oss, const snark::ur::config_t& config ) : 
-        status_( status ), os( robot_ostream ), init_( init ), ostream_( oss ), config_( config ), verbose_( false ) {}
+    commands_handler( snark::ur::status_t& status, std::ostream& robot_ostream, const snark::ur::config_t& config ) : 
+        status_( status ), os( robot_ostream ), config_( config ), verbose_( false ) {}
     bool is_initialising() const; 
     
     result ret;  /// Indicate if command succeed
 private:
     status_t& status_;
     std::ostream& os;
-    auto_initialization& init_;
-    std::ostream& ostream_;
     snark::ur::config_t config_;
     bool verbose_;    
 };

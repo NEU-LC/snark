@@ -50,9 +50,9 @@
 #include "../traits.h"
 #include "../data.h"
 
-const char* name() { return "ur-arm-status"; }
+static const char* name() { return "ur-arm-status"; }
 
-void usage(int code=1)
+void usage()
 {
     std::cerr << std::endl;
     std::cerr << "take arm status feed on stdin, output csv data to stdout" << std::endl;
@@ -65,7 +65,7 @@ void usage(int code=1)
     std::cerr << "examples: " << std::endl;
     std::cerr << "    socat -u -T 1 tcp:robot-arm:30003 - | ur-arm-status --fields=timestamp,robot_mode,joint_modes" << std::endl;
     std::cerr << std::endl;
-    exit ( code );
+    exit ( -1 );
 }
 
 int main( int ac, char** av )
@@ -73,7 +73,7 @@ int main( int ac, char** av )
     try
     {
         comma::command_line_options options( ac, av );
-        if( options.exists( "-h,--help" ) ) { usage( 0 ); }
+        if( options.exists( "-h,--help" ) ) { usage(); }
         if( options.exists( "--output-fields" ) ) { std::cout << comma::join( comma::csv::names< snark::ur::status_t >(), ',' ) << std::endl; return 0; }
         comma::csv::options csv;
         csv.full_xpath = true;

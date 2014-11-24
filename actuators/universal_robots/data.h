@@ -80,10 +80,6 @@ public:
 };
 
 typedef big_endian_64< double > big_endian_double;
-// typedef big_endian_64< comma::uint64 > big_endian_uint64;
-// typedef big_endian_64< comma::int64 > big_endian_int64;
-// typedef big_endian_64< comma::int64 > big_endian_int64;
-// typedef big_endian_64< float > big_endian_float;
 
 } } // namespace comma { namespace packed {
 
@@ -122,20 +118,6 @@ struct joint_modes_t
     std::vector< std::string > modes;
 };
 
-struct joints_in_degrees {
-    joints_in_degrees() {}
-    joints_in_degrees( const joints_net_t& joints_ ) 
-    { 
-        joints[0] = static_cast< plane_angle_degrees_t >( joints_[0]() * radian );  
-        joints[1] = static_cast< plane_angle_degrees_t >( joints_[1]() * radian );  
-        joints[2] = static_cast< plane_angle_degrees_t >( joints_[2]() * radian );  
-        joints[3] = static_cast< plane_angle_degrees_t >( joints_[3]() * radian );  
-        joints[4] = static_cast< plane_angle_degrees_t >( joints_[4]() * radian );  
-        joints[5] = static_cast< plane_angle_degrees_t >( joints_[5]() * radian );  
-    } 
-    boost::array< plane_angle_degrees_t, joints_num > joints;
-};
-
 template < typename T >
 void init( const T& t, boost::array< T, joints_num >& arr )
 {
@@ -144,8 +126,6 @@ void init( const T& t, boost::array< T, joints_num >& arr )
 
 struct packet_t : public comma::packed::packed_struct< packet_t, 812  >
 {
-    //void get( status_t& st );
-    
     comma::packed::big_endian_uint32 length;
     comma::packed::big_endian_double time_since_boot;
     comma::packed::string< 240 > dummy1;

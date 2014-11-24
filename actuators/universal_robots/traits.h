@@ -157,17 +157,6 @@ template < > struct traits< boost::array< comma::packed::big_endian_double, 6 > 
     }
 };
 
-template < > struct traits< snark::ur::joints_in_degrees >
-{
-    template< typename K, typename V > static void visit( const K& k, const snark::ur::joints_in_degrees& t, V& v )
-    {
-        for( std::size_t i=0; i<snark::ur::joints_num; ++i ) { 
-            double d = t.joints[i].value();
-            v.apply( boost::lexical_cast< std::string >( i ).c_str(), d ); 
-        }
-    }
-};
-
 template < > struct traits< snark::ur::cartesian >
 {
     template< typename K, typename V > static void visit( const K& k, const snark::ur::cartesian& t, V& v )
@@ -175,28 +164,6 @@ template < > struct traits< snark::ur::cartesian >
         v.apply( "x", t.x() );
         v.apply( "y", t.y() );
         v.apply( "z", t.z() );
-    }
-};
-
-template <> struct traits< snark::ur::packet_t >
-{
-    /// Use this for debugging maybe
-    template< typename K, typename V > static void visit( const K& k, const  snark::ur::packet_t& t, V& v )
-    {
-        v.apply( "time", boost::posix_time::microsec_clock::local_time() );
-        v.apply( "coordinates", t.translation );
-        v.apply( "rotation", t.rotation );
-        snark::ur::joints_in_degrees positions( t.positions );
-        v.apply( "positions", positions );
-        v.apply( "velocities", t.velocities );
-        v.apply( "currents", t.currents );
-        v.apply( "forces", t.forces );
-        v.apply( "temperatures", t.temperatures );
-        v.apply( "robot_mode",  t.mode_str() );
-        snark::ur::joint_modes_t jmodes( t.joint_modes );
-        v.apply( "joint_modes", jmodes.modes );
-        v.apply( "length", t.length() );    /// Binary length of message received
-        v.apply( "time_since_boot", t.time_since_boot() );
     }
 };
 

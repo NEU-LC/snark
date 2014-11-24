@@ -127,7 +127,7 @@ void movement_started( const T& command, std::ostream& oss ) { oss << command.se
 
 void commands_handler::handle( snark::ur::auto_init& a )
 {
-    ret = init_.run( boost::bind( movement_started< auto_init >, boost::cref( a ), boost::ref( this->ostream_ ) ) );
+//    ret = init_.run( boost::bind( movement_started< auto_init >, boost::cref( a ), boost::ref( this->ostream_ ) ) );
 }
 
 } } } // namespace snark { namespace ur { namespace handlers {

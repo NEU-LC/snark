@@ -145,7 +145,6 @@ void status_t::set( boost::posix_time::ptime timestamp, const packet_t& packet )
 bool status_t::is_running() const
 {
     if( robot_mode != robotmode::running) { 
-        // std::cerr << "robot mode " << robot_mode << " expected: " << robotmode::running << std::endl;
         return false; 
     }
 
