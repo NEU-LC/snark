@@ -123,11 +123,12 @@ const char* jointmode_str( jointmode::mode mode )
     }
 }
 
-void status_t::set( const packet_t& packet )
+void status_t::set( boost::posix_time::ptime timestamp, const packet_t& packet )
 {
+    this->timestamp = timestamp;
     this->position.coordinates = Eigen::Vector3d( packet.translation.x(), packet.translation.y(), packet.translation.z() );
     this->position.orientation = Eigen::Vector3d( packet.rotation.x(), packet.rotation.y(), packet.rotation.z() );    
-    this->robot_mode = robotmode::mode( int( packet.robot_mode() ) );
+    this->robot_mode = static_cast< robotmode::mode >( packet.robot_mode() );
     this->length = packet.length();
     this->time_since_boot = packet.time_since_boot();    
     for( int i = 0; i < joints_num; ++i) 
@@ -137,7 +138,7 @@ void status_t::set( const packet_t& packet )
         this->currents[i] = packet.currents[i]();
         this->forces[i] = packet.forces[i]();
         this->temperatures[i] = packet.temperatures[i]();
-        this->joint_modes[i] = jointmode::mode( int( packet.joint_modes[i]() ) );
+        this->joint_modes[i] = static_cast< jointmode::mode >( packet.joint_modes[i]() );
     }
 }
 

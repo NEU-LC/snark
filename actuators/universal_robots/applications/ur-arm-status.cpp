@@ -50,7 +50,7 @@
 #include "../traits.h"
 #include "../data.h"
 
-const char* name() { return "ur-arm-status: "; }
+const char* name() { return "ur-arm-status"; }
 
 void usage(int code=1)
 {
@@ -62,7 +62,6 @@ void usage(int code=1)
     std::cerr << "    --binary,-b:          output binary equivalent of csv" << std::endl;
     std::cerr << "    --format:             output binary format for given fields to stdout and exit" << std::endl;
     std::cerr << "    --output-fields:      output field names and exit" << std::endl;
-    std::cerr << "    --host-byte-order:    input data is binary in host-byte-order, it assumes network order by default" << std::endl;
     std::cerr << "examples: " << std::endl;
     std::cerr << "    socat -u -T 1 tcp:robot-arm:30003 - | ur-arm-status --fields=timestamp,robot_mode,joint_modes" << std::endl;
     std::cerr << std::endl;
@@ -71,59 +70,28 @@ void usage(int code=1)
 
 int main( int ac, char** av )
 {
-    comma::signal_flag signaled;
-    comma::command_line_options options( ac, av );
-    if( options.exists( "-h,--help" ) ) { usage( 0 ); }
-    if( options.exists( "--output-fields" ) ) { std::cout << comma::join( comma::csv::names< snark::ur::status_t >(), ',' ) << std::endl; return 0; }
-    comma::csv::options csv;
-    csv.full_xpath = true;
-    csv.fields = options.value< std::string >( "--fields", "" );
-    if( options.exists( "--format" ) ) { std::cout << comma::csv::format::value< snark::ur::status_t >( csv.fields, true ) << std::endl; return 0; }
-    if( options.exists( "--binary,-b" ) ) { csv.format( comma::csv::format::value< snark::ur::status_t >( csv.fields, true ) ); }
     try
     {
-        comma::csv::options csv_in;
-        csv_in.fields = options.value< std::string >( "--input-fields", "" );
-        csv_in.full_xpath = true;
-        csv_in.format( comma::csv::format::value< snark::ur::status_t >( csv_in.fields, true ) );
-        bool is_host_order = options.exists( "--host-byte-order" );
+        comma::command_line_options options( ac, av );
+        if( options.exists( "-h,--help" ) ) { usage( 0 ); }
+        if( options.exists( "--output-fields" ) ) { std::cout << comma::join( comma::csv::names< snark::ur::status_t >(), ',' ) << std::endl; return 0; }
+        comma::csv::options csv;
+        csv.full_xpath = true;
+        csv.fields = options.value< std::string >( "--fields", "" );
+        if( options.exists( "--format" ) ) { std::cout << comma::csv::format::value< snark::ur::status_t >( csv.fields, true ) << std::endl; return 0; }
+        if( options.exists( "--binary,-b" ) ) { csv.format( comma::csv::format::value< snark::ur::status_t >( csv.fields, true ) ); }
+        static comma::csv::output_stream< snark::ur::status_t > ostream( std::cout, csv );
         snark::ur::packet_t packet;
-        bool first_loop = true;
         snark::ur::status_t status;
-        while( !signaled && std::cin.good() )
+        comma::signal_flag is_shutdown;        
+        while( !is_shutdown && std::cin.good() && !std::cin.eof() )
         {
-            if( !is_host_order ) 
-            { 
-                std::cin.read( packet.data(), snark::ur::packet_t::size ); 
-                status.set( packet ); 
-            }
-            else 
-            {
-                static comma::csv::input_stream< snark::ur::status_t > istream( std::cin, csv_in );
-                const snark::ur::status_t* p = istream.read();
-                if( p == NULL ) 
-                { 
-                    if( !std::cin.good() ) { /* std::cerr << name() << "STDIN error" << std::endl; */ return 1; } // happens a lot, when closed on purpose
-                    COMMA_THROW( comma::exception, "p is null" ); 
-                }
-                status = *p;
-            }
-            status.timestamp = boost::posix_time::microsec_clock::local_time();
-            if( first_loop && (
-                status.length != snark::ur::packet_t::size ||
-                status.robot_mode < snark::ur::robotmode::running || 
-                status.robot_mode > snark::ur::robotmode::safeguard_stop ) ) {
-                std::cerr << name() << "mode: " << status.mode_str() << std::endl;
-                std::cerr << name() << "failed sanity check, data is not aligned, exiting now..." << std::endl;
-                return 1;
-            }
-            first_loop = false;
-            static comma::csv::output_stream< snark::ur::status_t > oss( std::cout, csv );
-            oss.write( status );
+            std::cin.read( packet.data(), snark::ur::packet_t::size ); 
+            status.set( boost::posix_time::microsec_clock::local_time(), packet ); 
+            if( !status.is_valid() ) { std::cerr << name() << ": got invalid packet, exiting now..." << std::endl; return 1; }
+            ostream.write( status );
         }
     }
-    catch( comma::exception& ce ) { std::cerr << name() << ": exception thrown: " << ce.what() << std::endl; return 1; }
-    catch( std::exception& e ) { std::cerr << name() << ": unknown exception caught: " << e.what() << std::endl; return 1; }
-    catch(...) { std::cerr << name() << ": unknown exception." << std::endl; return 1; }
-    
+    catch( std::exception& ex ) { std::cerr << name() << ": " << ex.what() << std::endl; return 1; }
+    catch(...) { std::cerr << name() << ": unknown exception" << std::endl; return 1; }    
 }

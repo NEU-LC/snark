@@ -188,7 +188,8 @@ struct status_t {
     comma::uint32 length;
     double time_since_boot;
 
-    void set( const packet_t& packet );
+    void set( boost::posix_time::ptime timestamp, const packet_t& packet );
+    bool is_valid() { return this->length == snark::ur::packet_t::size && this->robot_mode >= snark::ur::robotmode::running && this->robot_mode <= snark::ur::robotmode::safeguard_stop; }
     
     std::string mode_str() const { return robotmode_str( robot_mode ); }
     std::string jmode_str( int id ) const { return jointmode_str( joint_modes[id] ); }
