@@ -68,29 +68,79 @@ void usage()
     exit ( -1 );
 }
 
+
+
+struct status_t {
+    boost::posix_time::ptime timestamp;
+    snark::applications::position position;     /// Tool Center Point position
+    boost::array< double, snark::ur::joints_num > joint_angles;
+    boost::array< double, snark::ur::joints_num > velocities;
+    boost::array< double, snark::ur::joints_num > currents;
+    boost::array< double, snark::ur::joints_num > forces;
+    boost::array< double, snark::ur::joints_num > temperatures;
+    unsigned int robot_mode;
+    boost::array< unsigned int, snark::ur::joints_num > joint_modes;
+    comma::uint32 length;
+    double time_since_boot;
+};
+
+namespace comma { namespace visiting {
+
+template < > struct traits< status_t >
+{
+    template< typename K, typename V > static void visit( const K& k, const status_t& t, V& v )
+    {
+        v.apply( "timestamp", t.timestamp );
+        v.apply( "position", t.position );
+        v.apply( "joint_angles", t.joint_angles );
+        v.apply( "velocities", t.velocities );
+        v.apply( "currents", t.currents );
+        v.apply( "forces", t.forces );
+        v.apply( "temperatures", t.temperatures );
+        v.apply( "robot_mode",  t.robot_mode );
+        v.apply( "joint_modes", t.joint_modes );
+        v.apply( "length", t.length );    /// Binary length of message received
+        v.apply( "time_since_boot", t.time_since_boot );
+    }
+};
+
+} } // namespace comma { namespace visiting {
+
 int main( int ac, char** av )
 {
     try
     {
         comma::command_line_options options( ac, av );
         if( options.exists( "-h,--help" ) ) { usage(); }
-        if( options.exists( "--output-fields" ) ) { std::cout << comma::join( comma::csv::names< snark::ur::status_t >(), ',' ) << std::endl; return 0; }
+        if( options.exists( "--output-fields" ) ) { std::cout << comma::join( comma::csv::names< status_t >(), ',' ) << std::endl; return 0; }
         comma::csv::options csv;
         csv.full_xpath = true;
         csv.fields = options.value< std::string >( "--fields", "" );
-        if( options.exists( "--format" ) ) { std::cout << comma::csv::format::value< snark::ur::status_t >( csv.fields, true ) << std::endl; return 0; }
-        if( options.exists( "--binary,-b" ) ) { csv.format( comma::csv::format::value< snark::ur::status_t >( csv.fields, true ) ); }
-        static comma::csv::output_stream< snark::ur::status_t > ostream( std::cout, csv );
+        if( options.exists( "--format" ) ) { std::cout << comma::csv::format::value< status_t >( csv.fields, true ) << std::endl; return 0; }
+        if( options.exists( "--binary,-b" ) ) { csv.format( comma::csv::format::value< status_t >( csv.fields, true ) ); }
+        static comma::csv::output_stream< status_t > ostream( std::cout, csv );
         snark::ur::packet_t packet;
-        snark::ur::status_t status;
-        comma::signal_flag is_shutdown;        
+        status_t status;
+        comma::signal_flag is_shutdown;    
         while( !is_shutdown && std::cin.good() && !std::cin.eof() )
         {
             std::cin.read( packet.data(), snark::ur::packet_t::size );
             if( packet.length() != snark::ur::packet_t::size ) { std::cerr << name() << ": expected packet length " << snark::ur::packet_t::size << ", got " << packet.length() << std::endl; return 1; }
-            
-            
-            status.set( boost::posix_time::microsec_clock::local_time(), packet ); 
+            status.timestamp = boost::posix_time::microsec_clock::local_time();
+            status.position.coordinates = Eigen::Vector3d( packet.translation.x(), packet.translation.y(), packet.translation.z() );
+            status.position.orientation = Eigen::Vector3d( packet.rotation.x(), packet.rotation.y(), packet.rotation.z() );    
+            status.robot_mode = static_cast< unsigned int >( packet.robot_mode() );
+            status.length = packet.length();
+            status.time_since_boot = packet.time_since_boot();    
+            for( int i = 0; i < snark::ur::joints_num; ++i) 
+            { 
+                status.joint_angles[i] = packet.positions[i]();
+                status.velocities[i] = packet.velocities[i]();
+                status.currents[i] = packet.currents[i]();
+                status.forces[i] = packet.forces[i]();
+                status.temperatures[i] = packet.temperatures[i]();
+                status.joint_modes[i] = static_cast< unsigned int >( packet.joint_modes[i]() );
+            }
             ostream.write( status );
         }
     }

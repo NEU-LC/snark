@@ -42,14 +42,8 @@
 #include <comma/base/types.h>
 #include <comma/csv/ascii.h>
 #include <comma/dispatch/dispatched.h>
-#include "units.h"
 
 namespace snark { namespace ur {
-
-struct errors 
-{ 
-    enum error_code { success=0, unknown_command=401, format_error=402, incorrrect_operation=403 }; 
-};
 
 template < typename T > 
 struct serialiser
@@ -68,16 +62,8 @@ struct command_base : public serialiser< T >, public comma::dispatch::dispatched
     command_base( const char* name_ ) : name( name_ ) {}    
 };
 
-struct auto_init : command_base< auto_init > {};
 struct power : command_base< power > { bool is_on; };
 struct brakes : command_base< brakes >  { bool enable; };
-
-struct joint_move : command_base< joint_move > 
-{
-    static const unsigned char fields = 5; /// number of fields for command
-    comma::uint16 joint_id;
-    bool dir;
-};
 
 } } // namespace snark { namespace ur {
 

@@ -57,7 +57,6 @@
 #include "../commands.h"
 #include "../commands_handler.h"
 #include "../inputs.h"
-#include "../units.h"
 #include "../data.h"
 
 static const char* name() { return "ur-arm-command"; }
@@ -85,10 +84,33 @@ void usage()
     exit ( -1 );
 }
 
+struct config_t 
+{
+    std::string work_directory;
+    bool operator==( const config_t& rhs ) const { return ( work_directory == rhs.work_directory ); }
+};
+
+namespace comma { namespace visiting {
+    
+template <> struct traits< config_t >
+{
+    template< typename K, typename V > static void visit( const K& k, config_t& t, V& v )
+    {
+        v.apply( "work_directory", t.work_directory );
+    }
+
+    template< typename K, typename V > static void visit( const K& k, const config_t& t, V& v )
+    {
+        v.apply( "work_directory", t.work_directory );
+    }
+};
+
+} } // namespace comma { namespace visiting {
+
 typedef snark::ur::handlers::commands_handler commands_handler_t;
 typedef boost::shared_ptr< commands_handler_t > commands_handler_shared;
 static commands_handler_shared commands_handler;
-static snark::ur::config_t config;
+static config_t config;
 using snark::ur::handlers::result;
 
 template < typename T >
@@ -111,8 +133,8 @@ void process_command( const std::vector< std::string >& v, std::ostream& os )
     if( boost::iequals( v[0], "power" ) )       { std::cout << handle< snark::ur::power >( v, os ) << std::endl; }  
     else if( boost::iequals( v[0], "brakes" ) || boost::iequals( v[0], "stop" ) ) { std::cout << handle< snark::ur::brakes >( v, os ) << std::endl; }  
     else if( boost::iequals( v[0], "cancel" ) ) { } /// No need to do anything, used to cancel other running commands e.g. auto_init
-    else if( boost::iequals( v[0], "auto_init" ) ) { std::cout << handle< snark::ur::auto_init >( v, os ) << std::endl; }
-    else if( boost::iequals( v[0], "initj" ) ) { std::cout << handle< snark::ur::joint_move >( v, os ) << std::endl; }
+//    else if( boost::iequals( v[0], "auto_init" ) ) { std::cout << handle< snark::ur::auto_init >( v, os ) << std::endl; }
+//    else if( boost::iequals( v[0], "initj" ) ) { std::cout << handle< snark::ur::joint_move >( v, os ) << std::endl; }
     else { std::cout << comma::join( v, v.size(), ',' ) << ":\"unknown command\"" << std::endl; return; }
 }
 
@@ -135,8 +157,8 @@ int main( int ac, char** av )
         std::string config_file = options.value< std::string >( "--config" );
         load_config( config_file );
         snark::ur::inputs inputs;
-        snark::ur::status_t status; 
-        commands_handler.reset( new commands_handler_t( status, std::cout, config ) );
+        //status_t status; 
+        commands_handler.reset( new commands_handler_t( std::cout ) );
         comma::signal_flag is_shutdown;
         while( !is_shutdown && std::cin.good() && ! std::cin.eof() )
         {

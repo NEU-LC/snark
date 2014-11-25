@@ -32,8 +32,6 @@
 
 #include "commands_handler.h"
 #include <fstream>
-#include <boost/bind.hpp>
-//#include "auto_initialization.h"
 #include "traits.h"
 
 namespace snark { namespace ur { namespace handlers {
@@ -42,11 +40,6 @@ static const char* name() { return "robot-arm-daemon: "; }
 
 void commands_handler::handle( snark::ur::power& p )
 {
-//     if( p.is_on && !status_.is_powered_off() ) {
-//         ret = result( "cannot execute power on command as current state is not 'no_power'", result::status::invalid_robot_state );
-//         return;
-//     }
-// 
     std::cerr << name() << "powering robot arm " << ( p.is_on ? "on" : "off" ) << std::endl;
     os << "power " << ( p.is_on ? "on" : "off" ) << std::endl;
     os.flush();
@@ -61,73 +54,5 @@ void commands_handler::handle( snark::ur::brakes& b )
     os.flush();
     ret = result();
 }
-
-bool commands_handler::is_initialising() const 
-{
-    if( status_.robot_mode != robotmode::initializing ) { return false; }
-    for( std::size_t i=0; i<joints_num; ++i ) 
-    {
-        if( status_.jmode(i) != jointmode::initializing &&  status_.jmode(i) != jointmode::running ) { return false; }
-    }
-    return true;
-}
-
-void commands_handler::handle( snark::ur::joint_move& joint )
-{
-    if( !is_initialising() ) {
-        ret = result( "cannot initialise joint as robot is not in initialisation mode", result::status::invalid_robot_state );
-        return;
-    }
-    
-    /// command can be use if in running or initialising mode
-    int index = joint.joint_id;
-    if( !( ( status_.robot_mode == robotmode::initializing || status_.robot_mode == robotmode::running )  && 
-           ( status_.joint_modes[index] == jointmode::initializing || status_.joint_modes[index] == jointmode::running ) ) ) 
-    { 
-        std::ostringstream ss;
-        ss << "robot and  joint (" << index << ") must be initializing or running state. However current robot mode is '" 
-           << status_.mode_str() << "' and joint mode is '" << status_.jmode_str(index)  << '\'' << std::endl;
-        ret = result( ss.str(), result::status::invalid_robot_state );
-        return; 
-    }
-
-    static const unsigned char min_id = 0;
-    static const unsigned char max_id = 5;
-    std::cerr << name() << "move joint: " << int(joint.joint_id) << " dir: " << joint.dir << std::endl;
-    static const angular_velocity_t velocity = 0.1 * rad_per_sec;
-    static const angular_acceleration_t acceleration = 0.05 * rad_per_s2;
-    static const boost::posix_time::time_duration duration = boost::posix_time::milliseconds( 20 );
-    
-    if( joint.joint_id < min_id || joint.joint_id > max_id ) {
-        ret = result( "joint id must be 0-5", result::status::invalid_input );
-        return;
-    }
-    
-    double vel = ( joint.dir ? velocity.value() : -velocity.value() );
-    if( joint.joint_id == 2 ) { vel /= 2; }
-    else if( joint.joint_id == 1 ) { vel /= 2.5; }
-    else if( joint.joint_id < 1 ) { vel /= 3; }
-    
-    std::ostringstream ss;
-    ss << "speedj_init([";
-    for( std::size_t i=min_id; i<=max_id; ++i )
-    {
-        ss << (i == joint.joint_id ? vel : 0);
-        if( i != max_id ) { ss << ','; };
-    }
-    ss << "],"  << acceleration.value() << ',' << (duration.total_milliseconds()/1000.0) << ')' << std::endl;
-    os << ss.str();
-    os.flush(); 
-    
-    ret = result();
-}
-
-template < typename T >
-void movement_started( const T& command, std::ostream& oss ) { oss << command.serialise() << ':' << "\"movement initiated\";" << std::endl; oss.flush(); }
-
-// void commands_handler::handle( snark::ur::auto_init& a )
-// {
-// //    ret = init_.run( boost::bind( movement_started< auto_init >, boost::cref( a ), boost::ref( this->ostream_ ) ) );
-// }
 
 } } } // namespace snark { namespace ur { namespace handlers {

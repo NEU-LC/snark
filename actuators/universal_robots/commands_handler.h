@@ -47,30 +47,19 @@
 #include "data.h"
 #include "commands.h"
 #include "result.h"
-//#include "auto_initialization.h"
 
 namespace snark { namespace ur { namespace handlers {
 
 class commands_handler : public comma::dispatch::handler_of< power >,
-    public comma::dispatch::handler_of< brakes >,
-//    public comma::dispatch::handler_of< auto_init >,
-    public comma::dispatch::handler_of< joint_move >
+    public comma::dispatch::handler_of< brakes >
 {
 public:
     void handle( power& p );
     void handle( brakes& b );
-    void handle( auto_init& a );
-    void handle( joint_move& j );
-
-    commands_handler( snark::ur::status_t& status, std::ostream& robot_ostream, const snark::ur::config_t& config ) : 
-        status_( status ), os( robot_ostream ), config_( config ), verbose_( false ) {}
-    bool is_initialising() const; 
-    
+    commands_handler( std::ostream& robot_ostream ) : os( robot_ostream ), verbose_( false ) {}    
     result ret;  /// Indicate if command succeed
 private:
-    status_t& status_;
     std::ostream& os;
-    snark::ur::config_t config_;
     bool verbose_;    
 };
 

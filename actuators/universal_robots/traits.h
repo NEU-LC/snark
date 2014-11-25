@@ -38,13 +38,11 @@
 #include <snark/visiting/eigen.h>
 #include "commands.h"
 #include "commands_handler.h"
-#include "units.h"
 #include "data.h"
 
 namespace comma { namespace visiting {
     
 using snark::ur::command_base;
-using snark::ur::radian;
 
 template <typename C> struct traits< command_base< C > >
 {
@@ -55,53 +53,6 @@ template <typename C> struct traits< command_base< C > >
     template< typename K, typename V > static void visit( const K& k, const command_base< C >& t, V& v )
     {
         v.apply( "name", t.name );
-    }
-};
-
-template <> struct traits< snark::ur::config_t::arm_position_t >
-{
-    template< typename K, typename V > static void visit( const K& k, snark::ur::config_t::arm_position_t& t, V& v )
-    {
-        for( std::size_t i=0; i<snark::ur::joints_num; ++i ) 
-        {
-            double d = t[i].value();
-            v.apply( boost::lexical_cast< std::string >( i ).c_str(), d );
-            t[i] = d * radian;
-        }
-    }
-
-    template< typename K, typename V > static void visit( const K& k, const snark::ur::config_t::arm_position_t& t, V& v )
-    {
-        for( std::size_t i=0; i<snark::ur::joints_num; ++i ) {
-            v.apply( boost::lexical_cast< std::string >( i ).c_str(), t[i].value() );
-        }
-    }
-};
-
-template <> struct traits< snark::ur::joint_move >
-{
-    template< typename K, typename V > static void visit( const K& k, snark::ur::joint_move& t, V& v )
-    {
-        traits< command_base < snark::ur::joint_move > >::visit(k, t, v);
-        v.apply( "joint_id", t.joint_id );
-        v.apply( "dir", t.dir );
-    }
-
-    template< typename K, typename V > static void visit( const K& k, const snark::ur::joint_move& t, V& v )
-    {
-        traits< command_base < snark::ur::joint_move > >::visit(k, t, v);
-        v.apply( "joint_id", t.joint_id );
-        v.apply( "dir", t.dir );
-    }
-};
-
-template <> struct traits< snark::ur::auto_init >
-{
-    template< typename K, typename V > static void visit( const K& k, snark::ur::auto_init& t, V& v ) {
-        traits< command_base < snark::ur::auto_init > >::visit(k, t, v);
-    }
-    template< typename K, typename V > static void visit( const K& k, const snark::ur::auto_init& t, V& v ) {
-        traits< command_base < snark::ur::auto_init > >::visit(k, t, v);
     }
 };
 
@@ -129,33 +80,6 @@ template <> struct traits< snark::ur::brakes >
     }
 };
 
-template <> struct traits< snark::ur::config_t >
-{
-    template< typename K, typename V > static void visit( const K& k, snark::ur::config_t& t, V& v )
-    {
-        v.apply( "home_position", t.home_position );
-        v.apply( "work_directory", t.work_directory );
-    }
-
-    template< typename K, typename V > static void visit( const K& k, const snark::ur::config_t& t, V& v )
-    {
-        v.apply( "home_position", t.home_position );
-        v.apply( "work_directory", t.work_directory );
-    }
-};
-
-template < > struct traits< boost::array< comma::packed::big_endian_double, 6 > >
-{
-    template< typename K, typename V > static void visit( const K& k, const boost::array< comma::packed::big_endian_double, 6 >& t, V& v )
-    {
-        std::size_t i = 0;
-        for( const comma::packed::big_endian_double* iter=t.cbegin(); iter!=t.cend(); ++iter ) { 
-            v.apply( boost::lexical_cast< std::string >( i ).c_str(), (*iter)() ); 
-            ++i;
-        }
-    }
-};
-
 template < > struct traits< snark::ur::cartesian >
 {
     template< typename K, typename V > static void visit( const K& k, const snark::ur::cartesian& t, V& v )
@@ -163,60 +87,6 @@ template < > struct traits< snark::ur::cartesian >
         v.apply( "x", t.x() );
         v.apply( "y", t.y() );
         v.apply( "z", t.z() );
-    }
-};
-
-template < > struct traits< boost::array< snark::ur::jointmode::mode, 6 > >
-{
-    template< typename K, typename V > static void visit( const K& k, boost::array< snark::ur::jointmode::mode, 6 >& t, V& v )
-    {
-        for( std::size_t i=0; i<snark::ur::joints_num; ++i )
-        {
-            std::string mode;
-            v.apply( boost::lexical_cast< std::string >( i ).c_str(), mode ); 
-            t[i] = snark::ur::get_jointmode( mode );
-        }
-    }
-    template< typename K, typename V > static void visit( const K& k, const boost::array< snark::ur::jointmode::mode, 6 >& t, V& v )
-    {
-        for( std::size_t i=0; i<snark::ur::joints_num; ++i )
-        {
-            v.apply( boost::lexical_cast< std::string >( i ).c_str(), std::string( snark::ur::jointmode_str( t[i] ) ) ); 
-        }
-    }
-};
-
-template < > struct traits< snark::ur::status_t >
-{
-//     template< typename K, typename V > static void visit( const K& k, snark::ur::status_t& t, V& v )
-//     {
-//         v.apply( "timestamp", t.timestamp );
-//         v.apply( "position", t.position );
-//         v.apply( "joint_angles", t.joint_angles );
-//         v.apply( "velocities", t.velocities );
-//         v.apply( "currents", t.currents );
-//         v.apply( "forces", t.forces );
-//         v.apply( "temperatures", t.temperatures );
-//         std::string mode;
-//         v.apply( "robot_mode",  mode );
-//         t.robot_mode = snark::ur::get_robotmode( mode );
-//         v.apply( "joint_modes", t.joint_modes );
-//         v.apply( "length", t.length );    /// Binary length of message received
-//         v.apply( "time_since_boot", t.time_since_boot );
-//     }
-    template< typename K, typename V > static void visit( const K& k, const snark::ur::status_t& t, V& v )
-    {
-        v.apply( "timestamp", t.timestamp );
-        v.apply( "position", t.position );
-        v.apply( "joint_angles", t.joint_angles );
-        v.apply( "velocities", t.velocities );
-        v.apply( "currents", t.currents );
-        v.apply( "forces", t.forces );
-        v.apply( "temperatures", t.temperatures );
-        v.apply( "robot_mode",  t.mode_str() );
-        v.apply( "joint_modes", t.joint_modes );
-        v.apply( "length", t.length );    /// Binary length of message received
-        v.apply( "time_since_boot", t.time_since_boot );
     }
 };
 
