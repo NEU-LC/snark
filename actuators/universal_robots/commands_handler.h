@@ -44,7 +44,6 @@
 #include <comma/base/exception.h>
 #include <comma/application/signal_flag.h>
 #include <boost/optional.hpp>
-#include "data.h"
 #include "commands.h"
 #include "result.h"
 

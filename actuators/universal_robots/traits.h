@@ -38,7 +38,6 @@
 #include <snark/visiting/eigen.h>
 #include "commands.h"
 #include "commands_handler.h"
-#include "data.h"
 
 namespace comma { namespace visiting {
     
@@ -77,16 +76,6 @@ template <> struct traits< snark::ur::brakes >
     template< typename K, typename V > static void visit( const K& k, const snark::ur::brakes& t, V& v ) {
         traits< command_base < snark::ur::brakes > >::visit(k, t, v);
         v.apply( "enable", t.enable );
-    }
-};
-
-template < > struct traits< snark::ur::cartesian >
-{
-    template< typename K, typename V > static void visit( const K& k, const snark::ur::cartesian& t, V& v )
-    {
-        v.apply( "x", t.x() );
-        v.apply( "y", t.y() );
-        v.apply( "z", t.z() );
     }
 };
 
