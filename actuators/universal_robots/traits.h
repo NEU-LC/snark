@@ -39,7 +39,6 @@
 #include "commands.h"
 #include "commands_handler.h"
 #include "units.h"
-#include "config.h"
 #include "data.h"
 
 namespace comma { namespace visiting {
@@ -189,22 +188,22 @@ template < > struct traits< boost::array< snark::ur::jointmode::mode, 6 > >
 
 template < > struct traits< snark::ur::status_t >
 {
-    template< typename K, typename V > static void visit( const K& k, snark::ur::status_t& t, V& v )
-    {
-        v.apply( "timestamp", t.timestamp );
-        v.apply( "position", t.position );
-        v.apply( "joint_angles", t.joint_angles );
-        v.apply( "velocities", t.velocities );
-        v.apply( "currents", t.currents );
-        v.apply( "forces", t.forces );
-        v.apply( "temperatures", t.temperatures );
-        std::string mode;
-        v.apply( "robot_mode",  mode );
-        t.robot_mode = snark::ur::get_robotmode( mode );
-        v.apply( "joint_modes", t.joint_modes );
-        v.apply( "length", t.length );    /// Binary length of message received
-        v.apply( "time_since_boot", t.time_since_boot );
-    }
+//     template< typename K, typename V > static void visit( const K& k, snark::ur::status_t& t, V& v )
+//     {
+//         v.apply( "timestamp", t.timestamp );
+//         v.apply( "position", t.position );
+//         v.apply( "joint_angles", t.joint_angles );
+//         v.apply( "velocities", t.velocities );
+//         v.apply( "currents", t.currents );
+//         v.apply( "forces", t.forces );
+//         v.apply( "temperatures", t.temperatures );
+//         std::string mode;
+//         v.apply( "robot_mode",  mode );
+//         t.robot_mode = snark::ur::get_robotmode( mode );
+//         v.apply( "joint_modes", t.joint_modes );
+//         v.apply( "length", t.length );    /// Binary length of message received
+//         v.apply( "time_since_boot", t.time_since_boot );
+//     }
     template< typename K, typename V > static void visit( const K& k, const snark::ur::status_t& t, V& v )
     {
         v.apply( "timestamp", t.timestamp );
@@ -218,18 +217,6 @@ template < > struct traits< snark::ur::status_t >
         v.apply( "joint_modes", t.joint_modes );
         v.apply( "length", t.length );    /// Binary length of message received
         v.apply( "time_since_boot", t.time_since_boot );
-    }
-};
-
-template < > struct traits< snark::ur::move_config_t >
-{
-    template< typename K, typename V > static void visit( const K& k, snark::ur::move_config_t& t, V& v )
-    {
-        v.apply( "angles", (boost::array< double, snark::ur::joints_num >&) t );
-    }
-    template< typename K, typename V > static void visit( const K& k, const snark::ur::move_config_t& t, V& v )
-    {
-        v.apply( "angles", (const boost::array< double, snark::ur::joints_num >&) t );
     }
 };
 

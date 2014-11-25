@@ -86,9 +86,11 @@ int main( int ac, char** av )
         comma::signal_flag is_shutdown;        
         while( !is_shutdown && std::cin.good() && !std::cin.eof() )
         {
-            std::cin.read( packet.data(), snark::ur::packet_t::size ); 
+            std::cin.read( packet.data(), snark::ur::packet_t::size );
+            if( packet.length() != snark::ur::packet_t::size ) { std::cerr << name() << ": expected packet length " << snark::ur::packet_t::size << ", got " << packet.length() << std::endl; return 1; }
+            
+            
             status.set( boost::posix_time::microsec_clock::local_time(), packet ); 
-            if( !status.is_valid() ) { std::cerr << name() << ": got invalid packet, exiting now..." << std::endl; return 1; }
             ostream.write( status );
         }
     }

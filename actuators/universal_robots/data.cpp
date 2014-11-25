@@ -142,49 +142,4 @@ void status_t::set( boost::posix_time::ptime timestamp, const packet_t& packet )
     }
 }
 
-bool status_t::is_running() const
-{
-    if( robot_mode != robotmode::running) { 
-        return false; 
-    }
-
-    for( std::size_t i=0; i<joints_num; ++i ) {
-        // std::cerr << "joint " << i << " mode " << joint_modes[i] << " expected: " << jointmode::running << std::endl;
-        if( joint_modes[i] != jointmode::running ) { return false; }
-    }
-    
-    return true;
-}
-
-bool status_t::is_powered_off() const
-{
-    if( robot_mode != robotmode::no_power) { return false; }
-    for( std::size_t i=0; i<joints_num; ++i ) { if( joint_modes[i] != jointmode::power_off ) { return false; } }
-    
-    return true;
-}
-
-bool status_t::is_initialising_ready() const
-{
-    if( robot_mode != robotmode::initializing) { return false; }
-    for( std::size_t i=0; i<joints_num; ++i ) { if( joint_modes[i] != jointmode::initializing && joint_modes[i] != jointmode::running ) { return false; } }
-    return true;
-}
-
-bool status_t::check_pose( const boost::array< double, joints_num >& pose, const plane_angle_degrees_t& epsilon ) const
-{
-    for( int i=(joints_num-1); i>=0; --i ) {
-        if( !comma::math::equal( pose[i], joint_angles[i].value(), static_cast< plane_angle_t >( epsilon ).value() ) ) { return false; }
-    }
-    return true;
-}
-
-bool status_t::check_pose( const arm_position_t& pose, const plane_angle_degrees_t& epsilon ) const
-{
-    for( int i=(joints_num-1); i>=0; --i ) {
-        if( !comma::math::equal( pose[i], joint_angles[i], static_cast< plane_angle_t >( epsilon ) ) ) { return false; }
-    }
-    return true;
-}
-
 } } // namespace snark { namespace ur { 

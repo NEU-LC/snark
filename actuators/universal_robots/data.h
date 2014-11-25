@@ -35,9 +35,8 @@
 
 #include <comma/packed/packed.h>
 #include <comma/math/compare.h>
-#include "units.h"
-#include "config.h"
 #include <snark/math/applications/frame.h>
+#include "units.h"
 
 namespace comma { namespace packed {
 
@@ -45,41 +44,33 @@ namespace comma { namespace packed {
 /// The ntohd() is from the Windows socket library, for UNIX it is not defined in the BSD sockets library because there is more than one standard for float/double between different UNIX systems.
 /// In our case the standard in use is the IEEE754 [1] standard (which all Windows systems also use).
 template < typename T >
-class big_endian_64 : public comma::packed::field< big_endian_64< T >, T, sizeof( T ) >
+class big_endian_f : public comma::packed::field< big_endian_f< T >, T, sizeof( T ) >
 {
 public:
     enum { size = sizeof( T ) };
-    
-    //BOOST_STATIC_ASSERT( size == 8 );
-    
+    BOOST_STATIC_ASSERT( size ==4 || size == 8 );
     typedef T type;
-    
-    typedef comma::packed::field< big_endian_64< T >, T, size > base_type;
-    
+    typedef comma::packed::field< big_endian_f< T >, T, size > base_type;
     static type default_value() { return 0; }
-    
     static void pack( char* storage, type value )
     {
         ::memcpy( storage, ( void* )&value, size );
-        std::reverse(&storage, &storage + size );
+        std::reverse( storage, storage + size );
     }
-    
     static type unpack( const char* storage )
     {
         type value;
         ::memcpy( ( void* )&value, storage, size );
-        
-        char& raw = reinterpret_cast<char&>(value);
-        std::reverse(&raw, &raw + size );
+        char* p = reinterpret_cast< char* >( &value );
+        std::reverse( p, p + size );
         return value;
     }
-    
-    const big_endian_64< T >& operator=( const big_endian_64< T >& rhs ) { return base_type::operator=( rhs ); }
-    
-    const big_endian_64< T >& operator=( type rhs ) { return base_type::operator=( rhs ); }
+    const big_endian_f< T >& operator=( const big_endian_f< T >& rhs ) { return base_type::operator=( rhs ); }
+    const big_endian_f< T >& operator=( type rhs ) { return base_type::operator=( rhs ); }
 };
 
-typedef big_endian_64< double > big_endian_double;
+typedef big_endian_f< float > big_endian_float;
+typedef big_endian_f< double > big_endian_double;
 
 } } // namespace comma { namespace packed {
 
@@ -105,7 +96,19 @@ struct cartesian {
     comma::packed::big_endian_double z;
 };
 
+static const unsigned char joints_num = 6;
+
 typedef boost::array< comma::packed::big_endian_double, joints_num > joints_net_t;
+typedef boost::array< plane_angle_t, joints_num > arm_position_t;
+
+struct config_t 
+{
+    typedef boost::array< plane_angle_t, joints_num > arm_position_t; // vector of plane_angle_degrees_t does not work with boost::ptree
+    arm_position_t home_position; // position of six joints
+    arm_position_t giraffe_position; // position of six joints
+    std::string work_directory;
+    bool operator==( const config_t& rhs ) const { return ( home_position == rhs.home_position && work_directory == rhs.work_directory ); }
+};
 
 struct joint_modes_t 
 {
@@ -152,10 +155,6 @@ struct packet_t : public comma::packed::packed_struct< packet_t, 812  >
 
 /// Ananlog to packet_t, reads from host byte order source
 struct status_t {
-    typedef boost::array< double, joints_num > array_doubles_t;
-    typedef boost::array< jointmode::mode, joints_num > array_jointmodes_t;
-    typedef boost::array< plane_angle_t, joints_num > array_joint_angles_t;
-    
     boost::posix_time::ptime timestamp;
     snark::applications::position position;     /// Tool Center Point position
     boost::array< plane_angle_t, joints_num > joint_angles;
@@ -176,38 +175,7 @@ struct status_t {
     jointmode::mode jmode( int id ) const { return joint_modes[id]; }
     robotmode::mode mode() const { return  robot_mode; }
 
-    /// Robotic arm must be in this state to move
-    bool is_running() const;
-    bool is_initialising_ready() const;
-    /// Robotic arm must be in this state to power on.
-    bool is_powered_off() const;
-    
-    bool is_stationary( double epsilon=0.05 ) const;
-    
-    status_t() : timestamp( boost::posix_time::microsec_clock::local_time() ), position(), robot_mode( robotmode::not_connected ), length(812), time_since_boot(-1) 
-    {
-        init< plane_angle_t >( 0 * radian, joint_angles );
-        init< double >( 0.0, velocities );
-        init< double >( 0.0, currents );
-        init< double >( 0.0, forces );
-        init< double >( 0.0, temperatures );
-        init< jointmode::mode >( jointmode::error, joint_modes );
-    }
-
-    /// Check that the given pose ( 6 joint angles in radian ) match the current arm's physical pose
-    /// Pre condition, the state must be 'running'
-    bool check_pose( const boost::array< double, joints_num >& pose, const plane_angle_degrees_t& epsilon=(0.5*degree) ) const;
-    typedef boost::array< plane_angle_t, joints_num > arm_position_t;
-    bool check_pose( const arm_position_t& pose, const plane_angle_degrees_t& epsilon=(0.5*degree) ) const;
 };
-
-inline bool status_t::is_stationary( double epsilon ) const
-{
-    for( std::size_t i=0; i<joints_num; ++i ) { if( std::fabs( this->velocities[i] ) >= epsilon ) { return false; } }
-    return true;
-}
-
-struct move_config_t : public boost::array< double, joints_num > {};
 
 } } //namespace snark { namespace ur { 
 

@@ -46,13 +46,14 @@
 #include <boost/optional.hpp>
 #include "data.h"
 #include "commands.h"
-#include "auto_initialization.h"
+#include "result.h"
+//#include "auto_initialization.h"
 
 namespace snark { namespace ur { namespace handlers {
 
 class commands_handler : public comma::dispatch::handler_of< power >,
     public comma::dispatch::handler_of< brakes >,
-    public comma::dispatch::handler_of< auto_init >,
+//    public comma::dispatch::handler_of< auto_init >,
     public comma::dispatch::handler_of< joint_move >
 {
 public:

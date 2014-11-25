@@ -33,7 +33,7 @@
 #include "commands_handler.h"
 #include <fstream>
 #include <boost/bind.hpp>
-#include "auto_initialization.h"
+//#include "auto_initialization.h"
 #include "traits.h"
 
 namespace snark { namespace ur { namespace handlers {
@@ -42,11 +42,11 @@ static const char* name() { return "robot-arm-daemon: "; }
 
 void commands_handler::handle( snark::ur::power& p )
 {
-    if( p.is_on && !status_.is_powered_off() ) {
-        ret = result( "cannot execute power on command as current state is not 'no_power'", result::status::invalid_robot_state );
-        return;
-    }
-
+//     if( p.is_on && !status_.is_powered_off() ) {
+//         ret = result( "cannot execute power on command as current state is not 'no_power'", result::status::invalid_robot_state );
+//         return;
+//     }
+// 
     std::cerr << name() << "powering robot arm " << ( p.is_on ? "on" : "off" ) << std::endl;
     os << "power " << ( p.is_on ? "on" : "off" ) << std::endl;
     os.flush();
@@ -125,9 +125,9 @@ void commands_handler::handle( snark::ur::joint_move& joint )
 template < typename T >
 void movement_started( const T& command, std::ostream& oss ) { oss << command.serialise() << ':' << "\"movement initiated\";" << std::endl; oss.flush(); }
 
-void commands_handler::handle( snark::ur::auto_init& a )
-{
-//    ret = init_.run( boost::bind( movement_started< auto_init >, boost::cref( a ), boost::ref( this->ostream_ ) ) );
-}
+// void commands_handler::handle( snark::ur::auto_init& a )
+// {
+// //    ret = init_.run( boost::bind( movement_started< auto_init >, boost::cref( a ), boost::ref( this->ostream_ ) ) );
+// }
 
 } } } // namespace snark { namespace ur { namespace handlers {
