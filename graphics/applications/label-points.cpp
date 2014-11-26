@@ -41,6 +41,7 @@
 #include <Qt3D/qcolor4ub.h>
 #include <comma/application/command_line_options.h>
 #include <comma/csv/options.h>
+#include <comma/csv/traits.h>
 #include <comma/name_value/parser.h>
 #include <comma/string/string.h>
 #include "snark/graphics/applications/label_points/MainWindow.h"
@@ -90,7 +91,7 @@ int main( int argc, char** argv )
         comma::csv::options csvOptions( argc, argv );
         QColor4ub backgroundcolour( QColor( QString( options.value< std::string >( "--background-colour", "#000000" ).c_str() ) ) );
         if( csvOptions.fields == "" ) { csvOptions.fields = "x,y,z,id"; }
-        std::vector< std::string > files = options.unnamed( "--repair,--fix-duplicated,--verbose,-v",
+        std::vector< std::string > files = options.unnamed( "--repair,--fix-duplicated,--flush,--verbose,-v",
                                                             "--binary,--bin,-b,--fields,--delimiter,-d,--background-colour,--precision,--orthographic,--fov" );
         if( files.empty() ) { std::cerr << "label-points: please specify input files" << std::endl; return 1; }
         std::vector< comma::csv::options > dataset_csv_options;

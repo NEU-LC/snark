@@ -36,6 +36,7 @@
 #include <iostream>
 #include <Eigen/Geometry>
 #include <comma/application/command_line_options.h>
+#include <comma/csv/traits.h>
 #include <comma/name_value/parser.h>
 #include <comma/visiting/traits.h>
 #include <snark/graph/search.h>

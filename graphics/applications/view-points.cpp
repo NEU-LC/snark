@@ -37,6 +37,7 @@
 #include <comma/base/types.h>
 #include <comma/csv/options.h>
 #include <comma/csv/stream.h>
+#include <comma/csv/traits.h>
 #include <comma/name_value/parser.h>
 #include <comma/string/string.h>
 #include <snark/graphics/applications/view_points/MainWindow.h>
@@ -412,7 +413,7 @@ int main( int argc, char** argv )
         comma::command_line_options options( argc, argv );
         if( options.exists( "--help" ) || options.exists( "-h" ) ) { usage(); }
         comma::csv::options csvOptions( argc, argv );
-        std::vector< std::string > properties = options.unnamed( "--z-is-up,--orthographic,--no-stdin,--output-camera-config,--output-camera"
+        std::vector< std::string > properties = options.unnamed( "--z-is-up,--orthographic,--flush,--no-stdin,--output-camera-config,--output-camera"
                 , "--binary,--bin,-b,--fields,--size,--delimiter,-d,--colour,-c,--point-size,--weight,--background-colour,--scene-center,--center,--scene-radius,--radius,--shape,--label,--camera,--camera-position,--camera-config,--fov,--model,--full-xpath" );
         QColor4ub backgroundcolour( QColor( QString( options.value< std::string >( "--background-colour", "#000000" ).c_str() ) ) );
         boost::optional< comma::csv::options > camera_csv;

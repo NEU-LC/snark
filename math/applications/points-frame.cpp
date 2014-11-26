@@ -43,6 +43,7 @@
 #include <comma/application/signal_flag.h>
 #include <comma/csv/ascii.h>
 #include <comma/csv/binary.h>
+#include <comma/csv/traits.h>
 #include <comma/math/compare.h>
 #include <comma/name_value/parser.h>
 #include <comma/string/string.h>

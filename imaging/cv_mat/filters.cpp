@@ -43,6 +43,7 @@
 #include <comma/base/types.h>
 #include <comma/csv/ascii.h>
 #include <comma/csv/stream.h>
+#include <comma/csv/traits.h>
 #include <comma/csv/options.h>
 #include <comma/string/string.h>
 #include <comma/name_value/parser.h>

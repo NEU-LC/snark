@@ -38,6 +38,7 @@
 #include <boost/optional.hpp>
 #include <comma/application/command_line_options.h>
 #include <comma/csv/stream.h>
+#include <comma/csv/traits.h>
 #include <comma/base/types.h>
 #include <comma/name_value/ptree.h>
 #include <comma/name_value/parser.h>

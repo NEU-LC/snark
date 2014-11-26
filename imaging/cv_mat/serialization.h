@@ -40,8 +40,7 @@
 #include <opencv2/core/core.hpp>
 #include <comma/base/types.h>
 #include <comma/csv/binary.h>
-#include <comma/visiting/traits.h>
-
+#include <comma/csv/traits.h>
 
 namespace snark{ namespace cv_mat {
 

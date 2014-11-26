@@ -328,16 +328,22 @@ SET(CPACK_PACKAGE_CONTACT "t.teo@acfr.usyd.edu.au")
 
 # Additional Win32 handling for CPack.
 IF( WIN32 )
-    FILE( GLOB OpenCV_DLLS ${OpenCV_LIB_PATH}/../bin/*.dll ) #from opencv version 2.4
+    if( snark_build_imaging )
+        file( GLOB OpenCV_DLLS ${OpenCV_LIB_PATH}/../bin/*.dll ) #from opencv version 2.4
+    endif( snark_build_imaging )
 
-    GET_FILENAME_COMPONENT( QT_BIN_DIR ${QT_QMAKE_EXECUTABLE} PATH )
-    FILE( GLOB QT_DLLS ${QT_BIN_DIR}/*.dll )
+    if( snark_build_graphics )
+        get_filename_component( QT_BIN_DIR ${QT_QMAKE_EXECUTABLE} PATH )
+        file( GLOB QT_DLLS ${QT_BIN_DIR}/*.dll )
+    endif( snark_build_imaging )
 
     SET(snark_PACKAGE_DLLS ${TBB_DLL_DIR}/tbb.dll ${OpenCV_DLLS} ${QT_DLLS})
+    
     INSTALL(FILES ${snark_PACKAGE_DLLS} DESTINATION bin )
 
     #this line finds the appropriate compiler dlls, e.g. Visual Studio DLLS in windows. Maybe it would find other dlls if a different build tool were used.
     INCLUDE( InstallRequiredSystemLibraries )
 ENDIF( WIN32 )
+
 INCLUDE( CPack )
 # End Packaging

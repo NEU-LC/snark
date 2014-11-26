@@ -37,6 +37,7 @@
 #include <comma/application/command_line_options.h>
 #include <comma/application/signal_flag.h>
 #include <comma/csv/options.h>
+#include <comma/csv/traits.h>
 #include <comma/name_value/parser.h>
 #include "./csv_plot/curve_stream.h"
 #include "./csv_plot/plot.h"
@@ -134,7 +135,7 @@ int main( int ac, char** av )
         comma::command_line_options options( ac, av, usage );
         bool verbose = options.exists( "--verbose,-v" );
         snark::graphics::plotting::stream::config_t config( options );
-        const std::vector< std::string >& unnamed = options.unnamed( "--no-stdin,--verbose,-v", "--.*,-[a-z].*" );
+        const std::vector< std::string >& unnamed = options.unnamed( "--no-stdin,--verbose,-v,--flush", "--.*,-[a-z].*" );
         boost::optional< unsigned int > stdin_index;
         for( unsigned int i = 0; i < unnamed.size(); ++i ) { if( unnamed[i] == "-" || unnamed[i].substr( 0, 2 ) == "-;" ) { stdin_index = i; break; } }
         QApplication a( ac, av );
