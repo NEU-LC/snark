@@ -30,38 +30,29 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef SNARK_ACTUATORS_UNIVERISAL_ROBOTS_COMMANDS_HANDLER_H
-#define SNARK_ACTUATORS_UNIVERISAL_ROBOTS_COMMANDS_HANDLER_H
+#include <boost/array.hpp>
+#include <comma/packed/packed.h>
+#include "arm.h"
 
-#include <string>
-#include <vector>
-#include <iostream>
-#include <functional>
-#include <comma/base/types.h>
-#include <comma/dispatch/dispatched.h>
-#include <comma/io/stream.h>
-#include <comma/io/select.h>
-#include <comma/base/exception.h>
-#include <comma/application/signal_flag.h>
-#include <boost/optional.hpp>
-#include "commands.h"
-#include "result.h"
+namespace comma { namespace ur {
 
-namespace snark { namespace ur { namespace handlers {
-
-class commands_handler : public comma::dispatch::handler_of< power >,
-    public comma::dispatch::handler_of< brakes >
+struct packet_t : public comma::packed::packed_struct< packet_t, 812  >
 {
-public:
-    void handle( power& p );
-    void handle( brakes& b );
-    commands_handler( std::ostream& robot_ostream ) : os( robot_ostream ), verbose_( false ) {}    
-    result ret;  /// Indicate if command succeed
-private:
-    std::ostream& os;
-    bool verbose_;    
+    comma::packed::net_uint32 length;
+    comma::packed::net_float64 time_since_boot;
+    comma::packed::string< 240 > dummy1;
+    boost::array< comma::packed::net_float64, number_of_joints > actual_joint_positions; 
+    boost::array< comma::packed::net_float64, number_of_joints > actual_joint_velocities;
+    boost::array< comma::packed::net_float64, number_of_joints > actual_joint_currents;
+    comma::packed::string< 144 > dummy2;
+    boost::array< comma::packed::net_float64, number_of_tool_fields > tool_generalised_forces;
+    boost::array< comma::packed::net_float64, number_of_tool_fields > tool_pose;
+    boost::array< comma::packed::net_float64, number_of_tool_fields > tool_speed;
+    comma::packed::string< 8 > dummy3;
+    boost::array< comma::packed::net_float64, number_of_joints >  joint_temperatures;
+    comma::packed::string< 16 > dummy4;
+    comma::packed::net_float64 robot_mode;
+    boost::array< comma::packed::net_float64, number_of_joints > joint_modes;
 };
 
-} } } // namespace snark { namespace ur { namespace handlers {
-
-#endif // SNARK_ACTUATORS_UNIVERISAL_ROBOTS_COMMANDS_HANDLER_H
+} } //

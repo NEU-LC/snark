@@ -1,0 +1,9 @@
+{
+	"move-options":
+	{
+		"acceleration": 0.5,
+		"speed": 0.2,
+		"time": 0,
+		"radius": 0.01
+	}
+}

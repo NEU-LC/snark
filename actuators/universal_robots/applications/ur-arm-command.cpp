@@ -53,100 +53,76 @@
 #include <comma/io/publisher.h>
 #include <comma/string/string.h>
 #include <comma/application/signal_flag.h>
-#include "../traits.h"
-#include "../commands.h"
-#include "../commands_handler.h"
-#include "../inputs.h"
-//#include "../data.h"
+#include <comma/csv/traits.h>
+#include "../arm.h"
+#include "../config.h"
 
 static const char* name() { return "ur-arm-command"; }
 
 void usage()
 {
     std::cerr << std::endl;
-    std::cerr << "take ur arm command arguments on stdin (e.g., six joint angles) and output ur-script-formatted command to stdout" << std::endl;
+    std::cerr << "take six comma-separated joint angles and output ur-script-formatted commands to stdout" << std::endl;
     std::cerr << std::endl;
+    std::cerr << "commands:" << std::endl;
+    std::cerr << "    init: move joints for the duration of time (use for initialisation); requires speed, acceleration, and time" << std::endl;
+    std::cerr << "    stop: stop joint movement; requires acceleration" << std::endl;
+    std::cerr << "    move: move joints until joint angles are equal to values read from input" << std::endl;
     std::cerr << "options:" << std::endl;
     std::cerr << "    --help,-h: show this message" << std::endl;
-    std::cerr << "    --config: path to arm config file" << std::endl;
-    std::cerr << "general commands:" << std::endl;
-    std::cerr << "    power-on: " << std::endl;
-    std::cerr << "    power-off: " << std::endl;
-    std::cerr << "    init: " << std::endl;
-    std::cerr << "    init-joint: " << std::endl;
-    std::cerr << "    stop: " << std::endl;
-    std::cerr << "movement commands:" << std::endl;
-    std::cerr << "    move-joints: " << std::endl;
-    std::cerr << "    move-tool: " << std::endl;
+//    std::cerr << "    --config: path to config file" << std::endl;
+    std::cerr << "    --acceleration: angular acceleration of the leading axis" << std::endl;
+    std::cerr << "    --speed: angular speed of the leading axis" << std::endl;
+    std::cerr << "    --radius: blend radius" << std::endl;
+    std::cerr << "    --time: time to execute the motion" << std::endl;    
     std::cerr << "examples:" << std::endl;
-    std::cerr << "    echo \"0,0,0,3.14,0,0\" | ur-arm-command move-joints --config=ur-arm.json | nc robot-arm 30002" << std::endl;
+    std::cerr << "    echo \"0,0,0,3.14,0,0\" | ur-arm-command move | nc robot-arm 30002" << std::endl;
     std::cerr << std::endl;
     exit ( -1 );
 }
 
-struct config_t 
-{
-    std::string work_directory;
-    bool operator==( const config_t& rhs ) const { return ( work_directory == rhs.work_directory ); }
-};
+static const unsigned int number_of_input_fields = comma::ur::number_of_joints;
+struct input_t { boost::array< double, number_of_input_fields > values; };
 
-namespace comma { namespace visiting {
+namespace comma { namespace visiting {    
     
-template <> struct traits< config_t >
+template <> struct traits< input_t >
 {
-    template< typename K, typename V > static void visit( const K& k, config_t& t, V& v )
+    template< typename K, typename V > static void visit( const K&, input_t& t, V& v )
     {
-        v.apply( "work_directory", t.work_directory );
+        v.apply( "values", t.values );
     }
-
-    template< typename K, typename V > static void visit( const K& k, const config_t& t, V& v )
+    template< typename K, typename V > static void visit( const K&, const input_t& t, V& v )
     {
-        v.apply( "work_directory", t.work_directory );
+        v.apply( "values", t.values );
     }
 };
-
+    
 } } // namespace comma { namespace visiting {
 
-typedef snark::ur::handlers::commands_handler commands_handler_t;
-typedef boost::shared_ptr< commands_handler_t > commands_handler_shared;
-static commands_handler_shared commands_handler;
-static config_t config;
-using snark::ur::handlers::result;
-
-template < typename T >
-std::string handle( const std::vector< std::string >& line, std::ostream& os )
+struct move_options_t
 {
-    static comma::csv::ascii< T > ascii;
-    T command;
-    try { command = ascii.get( line ); }
-    catch( boost::bad_lexical_cast& le ) { std::ostringstream ss; ss << comma::join( line, ',' ) << ": wrong field types, expected fields: " << command.names(); return ss.str(); }
-    catch( comma::exception& ce ) { std::ostringstream ss; ss << comma::join( line, ',' ) << ": wrong fields or field types, expected fields: " << command.names(); return ss.str(); }
-    catch( ... ) { COMMA_THROW( comma::exception, "unknown error is parsing: " + comma::join( line , ',' ) ); }       
-    comma::dispatch::handler& h_ref( *commands_handler );
-    comma::dispatch::dispatched_base& ref( command );
-    ref.dispatch_to( h_ref );
-    std::ostringstream ss; ss << command.serialise() << ": " << commands_handler->ret.get_message(); return ss.str();
-}
-
-void process_command( const std::vector< std::string >& v, std::ostream& os )
-{
-    if( boost::iequals( v[0], "power" ) )       { std::cout << handle< snark::ur::power >( v, os ) << std::endl; }  
-    else if( boost::iequals( v[0], "brakes" ) || boost::iequals( v[0], "stop" ) ) { std::cout << handle< snark::ur::brakes >( v, os ) << std::endl; }  
-    else if( boost::iequals( v[0], "cancel" ) ) { } /// No need to do anything, used to cancel other running commands e.g. auto_init
-//    else if( boost::iequals( v[0], "auto_init" ) ) { std::cout << handle< snark::ur::auto_init >( v, os ) << std::endl; }
-//    else if( boost::iequals( v[0], "initj" ) ) { std::cout << handle< snark::ur::joint_move >( v, os ) << std::endl; }
-    else { std::cout << comma::join( v, v.size(), ',' ) << ":\"unknown command\"" << std::endl; return; }
-}
-
-void load_config( const std::string& filepath )
-{
-    std::ifstream config_ifs( filepath.c_str() );
-    if( !config_ifs.is_open() ) { COMMA_THROW( comma::exception, "failed to open file: " + filepath ); }
-    boost::property_tree::ptree t;
-    boost::property_tree::read_json( config_ifs, t );
-    comma::from_ptree from_ptree( t, true );
-    comma::visiting::apply( from_ptree ).to( config );
-}
+    typedef double type;
+    move_options_t( const comma::command_line_options& options )
+    {
+        acceleration = options.optional< type >( "--acceleration" );
+        speed = options.optional< type >( "--speed" );
+        time = options.optional< type >( "--time" );
+        radius = options.optional< type >( "--radius" );
+        std::stringstream ss;
+        if( acceleration ) ss << ",a=" << *acceleration;
+        if( speed ) ss << ",v=" << *speed;
+        if( time ) ss << ",t=" << *time;
+        if( radius ) ss << ",r=" << *radius;
+        optional_arguments = ss.str();
+    }
+    std::string operator()() { return optional_arguments; };
+    std::string optional_arguments;
+    boost::optional< type > acceleration;
+    boost::optional< type > speed;
+    boost::optional< type > time;
+    boost::optional< type > radius;
+};
 
 int main( int ac, char** av )
 {
@@ -154,22 +130,44 @@ int main( int ac, char** av )
     {
         comma::command_line_options options( ac, av );
         if( options.exists( "-h,--help" ) ) { usage(); }
-        std::string config_file = options.value< std::string >( "--config" );
-        load_config( config_file );
-        snark::ur::inputs inputs;
-        //status_t status; 
-        commands_handler.reset( new commands_handler_t( std::cout ) );
-        comma::signal_flag is_shutdown;
-        while( !is_shutdown && std::cin.good() && ! std::cin.eof() )
+        comma::csv::options csv = comma::csv::options( options );
+        const std::vector< std::string > unnamed = options.unnamed( "--help,-h", "-.*,--.*" );
+        if( unnamed.size() != 1 ) { std::cerr << name() << ": expected one command, got " << unnamed.size() << std::endl; return 1; }
+        const std::string command = unnamed[0];
+        //boost::optional< comma::ur::config_t > config;
+        //if( options.exists( "--config" ) ) { config.reset( options.value< std::string >( "--config" ) ); }
+        //if( config ) { std::cerr << config->move_options.acceleration << std::endl; }
+        move_options_t m( options );
+        if( command == "stop" ) 
         {
-            // TODO: get rid of inputs (want to read command argument on stdin, not the commands themselves)
-            inputs.read(); // Also act as sleep, reads commands from stdin
-            if( !inputs.is_empty() )
+            if( !m.acceleration ) { std::cerr << name() << ": acceleration is not given" << std::endl; return 1; } 
+            std::cout << "stopj(" << *m.acceleration << ")" << std::endl; 
+            return 0;
+        }
+        else if( command == "init" ) 
+        { 
+            if( !m.acceleration ) { std::cerr << name() << ": acceleration is not given" << std::endl; return 1; } 
+            if( !m.speed ) { std::cerr << name() << ": speed is not given" << std::endl; return 1; } 
+            if( !m.time ) { std::cerr << name() << ": time is not given" << std::endl; return 1; } 
+            std::vector< double > s( comma::ur::number_of_joints, *m.speed );
+            std::cout << "speedj_init([" << comma::join( s, ',' ) << "]" << "," << *m.acceleration << "," << *m.time << ")" << std::endl;
+            
+            return 0;
+        }
+        else if( command == "move" ) 
+        {
+            comma::csv::input_stream< input_t > istream( std::cin, csv );
+            comma::signal_flag is_shutdown;
+            while( !is_shutdown && std::cin.good() && !std::cin.eof() )
             {
-                const std::vector< std::string > commands = inputs.front();
-                inputs.pop();
-                process_command( commands, std::cout );
+                const input_t* input = istream.read();
+                if( !input ) { break; }
+                std::cout << "movej([" << comma::join( input->values, ',' ) << "]" << m() << ")" << std::endl;
             }
+        }
+        else
+        { 
+            std::cerr << name() << ": expected a command, got" << command << std::endl; return 0; 
         }
     }
     catch( std::exception& ex ) { std::cerr << name() << ": " << ex.what() << std::endl; return 1; }

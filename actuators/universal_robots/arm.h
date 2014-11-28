@@ -30,38 +30,9 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "inputs.h"
-#include <string>
-#include <iostream>
-#include <boost/log/common.hpp>
-#include <comma/string/split.h>
-#include <comma/string/string.h>
+namespace comma { namespace ur {
 
-namespace snark { namespace ur {
+static const unsigned int number_of_joints = 6;
+static const unsigned int number_of_tool_fields = 6;
 
-typedef std::vector< std::string > vector_s;
-
-void inputs::read( const boost::posix_time::time_duration& timeout )
-{
-    if( !istream_->good() ) { COMMA_THROW( comma::exception, "inputs - input stream not good()" ); }
-    select_.wait( timeout ); // can be 0 
-    if( !select_.read().ready( istream_.fd() ) ) { return; }
-    do
-    {
-        std::string line;
-        std::getline( *istream_, line ); 
-        if( line.empty() ) { continue; }
-        vector_s cmds = comma::split( line, ";");
-        for( vector_s::const_iterator c=cmds.begin(); c!=cmds.end(); ++c ) 
-        { 
-            if ( c->empty() ) { continue; }
-            command_tokens command = comma::split( *c, ',' );
-            command[ name_index ] = comma::strip( command[ name_index ], '"' );
-            if( command[ name_index ] == "cancel" ) { my_commands = robot_commands(); } // Throws out previous commands
-            my_commands.push( command );
-        } 
-    } 
-    while( istream_->rdbuf()->in_avail() > 0 );
-}
-
-} } // namespace snark { namespace ur {
+} } // namespace comma { namespace ur {
