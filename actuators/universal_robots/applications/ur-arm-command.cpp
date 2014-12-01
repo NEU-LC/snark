@@ -36,6 +36,7 @@
 #include <comma/string/string.h>
 #include <comma/application/signal_flag.h>
 #include <comma/csv/traits.h>
+#include <stdlib.h>
 #include "../arm.h"
 #include "../config.h"
 
@@ -62,9 +63,7 @@ void usage()
     std::cerr << "examples (assuming robot.arm is the arm's IP address):" << std::endl;
     std::cerr << "    turn on and attempt to initialise one joint:" << std::endl;
     std::cerr << "        ur-arm-command on" << std::endl;
-    std::cerr << "        ur-arm-command init --speed=0,0,-0.02,0,0,0 --acceleration=0.1 --time=10 | nc robot.arm 30002" << std::endl;
-    std::cerr << "    attempt to initialise all joints using the same speed:" << std::endl;
-    std::cerr << "        ur-arm-command init --speed=0.02 --acceleration=0.1 --time=10 | nc robot.arm 30002" << std::endl;
+    std::cerr << "        ur-arm-command init --speed=0,0,-0.05,0,0,0 --time=15 | nc robot.arm 30002" << std::endl;
     std::cerr << "    change joint angles at a speed of 0.02 rad/sec to new values 0,0,0,3.14,0,0:" << std::endl;
     std::cerr << "        echo \"0,0,0,3.14,0,0\" | ur-arm-command move --speed=0.02 | nc robot.arm 30002" << std::endl;    
     std::cerr << "    change joint angles in 10 seconds to new values 0,0,0,3.14,0,0:" << std::endl;
@@ -136,7 +135,9 @@ int main( int ac, char** av )
         if( command == "on" )
         {
             std::cout << "power on" << std::endl;
-            std::cout << "stopj(0)" << std::endl;
+            sleep(3);
+            std::cout << "stopj([0,0,0,0,0,0])" << std::endl;
+            sleep(5);
             std::cout << "set robotmode run" << std::endl;
             return 0;
         }
