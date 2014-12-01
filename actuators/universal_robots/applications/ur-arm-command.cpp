@@ -31,13 +31,14 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <boost/optional.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/thread/thread.hpp> 
 #include <comma/application/command_line_options.h>
 #include <comma/csv/stream.h>
 #include <comma/string/string.h>
 #include <comma/application/signal_flag.h>
 #include <comma/csv/traits.h>
 #include <comma/name_value/serialize.h>
-#include <stdlib.h>
 #include "arm.h"
 #include "config.h"
 
@@ -61,27 +62,23 @@ void usage( bool verbose )
     std::cerr << "    --speed: angular speed of the leading axis" << std::endl;
     std::cerr << "    --radius: blend radius" << std::endl;
     std::cerr << "    --time: time to execute the motion" << std::endl;
-    if( verbose ) {} // TODO: std::cerr << "csv options" << std::endl << comma::csv::options( "values" ) << std::endl << std::endl; }
+    if( verbose ) { std::cerr << "csv options" << std::endl << comma::csv::options::usage( "values" ) << std::endl; }
     else { std::cerr << "csv options... use --help --verbose for more" << std::endl << std::endl; }
     std::cerr << "examples (assuming robot.arm is the arm's IP address):" << std::endl;
     std::cerr << "    turn the arm on and attempt to initialise one joint:" << std::endl;
     std::cerr << "        ur-arm-command on" << std::endl;
     std::cerr << "        ur-arm-command init --speed=0,0,-0.05,0,0,0 --time=15 | nc robot.arm 30002" << std::endl;
     std::cerr << "    change joint angles at a speed of 0.02 rad/sec to new values 0,0,0,3.14,0,0:" << std::endl;
-    std::cerr << "        echo \"0,0,0,3.14,0,0\" | ur-arm-command move --speed=0.02 | nc robot.arm 30002" << std::endl;    
+    std::cerr << "        echo \"3.14,0,0,0,0,0\" | ur-arm-command move --speed=0.02 | nc robot.arm 30002" << std::endl;    
     std::cerr << "    change joint angles in 10 seconds to new values 0,0,0,3.14,0,0:" << std::endl;
-    std::cerr << "        echo \"0,0,0,3.14,0,0\" | ur-arm-command move --time=10 | nc robot.arm 30002" << std::endl;
+    std::cerr << "        echo \"3.14,0,0,0,0,0\" | ur-arm-command move --time=10 | nc robot.arm 30002" << std::endl;
+    std::cerr << "    same as above but with a timestamp in the input stream (the time stamp is ignored):" << std::endl;
+    std::cerr << "        echo \"20140101T000000,3.14,0,0,0,0,0\" | ur-arm-command move --time=10 --fields=t,values | nc robot.arm 30002" << std::endl;
+    std::cerr << "    same as above but with the first and second input values swapped:" << std::endl;
+    std::cerr << "        echo \"3.14,0,0,0,0,0\" | ur-arm-command move --time=10 --fields=values[1],values[0],values[2],values[3],values[4],values[5] | nc robot.arm 30002" << std::endl;    
     std::cerr << std::endl;
     exit ( -1 );
 }
-
-// TODO: add to examples
-// fields
-//echo 20140101T000000,1,2,3,4,5,6 | ur-arm-command move --acceleration 0.1 --fields=t,values
-//movej([1,2,3,4,5,6],a=0.1)
-// individual fields
-//echo 20140101T000000,1,2,3,4,5,6 | ur-arm-command move --acceleration 0.1 --fields=t,values[5],values[1],values[2],values[3],values[4],values[0]
-//movej([6,2,3,4,5,1],a=0.1)
 
 static const unsigned int number_of_input_fields = comma::ur::number_of_joints;
 struct input_t { boost::array< double, number_of_input_fields > values; };
@@ -106,7 +103,7 @@ class move_options_t
 {
 public:
     typedef double type;
-    move_options_t() : optional_parameters_( "" ) {};
+    move_options_t() {};
     move_options_t( const comma::command_line_options& options )
         : acceleration_( options.optional< type >( "--acceleration" ) )
         , speed_( options.optional< type >( "--speed" ) )
@@ -139,15 +136,15 @@ int main( int ac, char** av )
         const std::vector< std::string > unnamed = options.unnamed( "--help,-h", "-.*,--.*" );
         if( unnamed.size() != 1 ) { std::cerr << name() << ": expected one command, got " << unnamed.size() << std::endl; return 1; }
         const std::string command = unnamed[0];
-        boost::optional< comma::ur::config_t > config;
-        if( options.exists( "--config" ) ) { config = comma::read_json< comma::ur::config_t >( options.value< std::string >( "--config" ) ); }
-        if( config ) { std::cerr << config->move_options.acceleration << std::endl; }
+        //boost::optional< comma::ur::config_t > config;
+        //if( options.exists( "--config" ) ) { config = comma::read_json< comma::ur::config_t >( options.value< std::string >( "--config" ) ); }
+        //if( config ) { std::cerr << config->move_options.acceleration << std::endl; }
         if( command == "on" )
         {
             std::cout << "power on" << std::endl;
-            sleep(3); // todo: use boost::thread sleep; hardcoded timeouts? long, arbitrary
+            boost::this_thread::sleep( boost::posix_time::seconds(3) );  // todo: hardcoded timeouts? long, arbitrary
             std::cout << "stopj([0,0,0,0,0,0])" << std::endl;
-            sleep(5); // todo: use boost::thread sleep; hardcoded timeouts? long, arbitrary
+            boost::this_thread::sleep( boost::posix_time::seconds(5) ); // todo: hardcoded timeouts? long, arbitrary
             std::cout << "set robotmode run" << std::endl;
             return 0;
         }
