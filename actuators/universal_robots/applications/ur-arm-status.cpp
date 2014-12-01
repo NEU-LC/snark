@@ -30,24 +30,11 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include <stdint.h>
-#include <boost/asio.hpp>
-#include <boost/property_tree/json_parser.hpp>
-#include <comma/io/stream.h>
 #include <comma/application/command_line_options.h>
 #include <comma/csv/stream.h>
 #include <comma/string/split.h>
-#include <comma/base/types.h>
-#include <comma/visiting/apply.h>
-#include <comma/name_value/ptree.h>
-#include <comma/name_value/parser.h>
-#include <comma/io/stream.h>
-#include <comma/io/publisher.h>
-#include <comma/csv/stream.h>
-#include <comma/csv/binary.h>
 #include <comma/string/string.h>
 #include <comma/application/signal_flag.h>
-#include <comma/packed/packed.h>
 #include "../packet.h"
 
 static const char* name() { return "ur-arm-status"; }

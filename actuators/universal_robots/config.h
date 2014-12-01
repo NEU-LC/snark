@@ -30,29 +30,8 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include <stdint.h>
 #include <boost/property_tree/json_parser.hpp>
-#include <boost/numeric/conversion/cast.hpp>
-#include <boost/date_time/posix_time/ptime.hpp>
-#include <boost/date_time/posix_time/posix_time_duration.hpp>
-#include <boost/optional.hpp>
-#include <boost/algorithm/string.hpp>
-#include <boost/asio.hpp>
-#include <boost/filesystem.hpp>
-#include <boost/filesystem/operations.hpp>
-#include <boost/filesystem/convenience.hpp>
-#include <boost/thread.hpp>
-#include <comma/application/command_line_options.h>
-#include <comma/csv/stream.h>
-#include <comma/base/types.h>
-#include <comma/math/compare.h>
-#include <comma/visiting/apply.h>
 #include <comma/name_value/ptree.h>
-#include <comma/name_value/parser.h>
-#include <comma/io/stream.h>
-#include <comma/io/publisher.h>
-#include <comma/string/string.h>
-#include <comma/application/signal_flag.h>
 #include <comma/csv/traits.h>
 
 namespace comma { namespace ur { 
