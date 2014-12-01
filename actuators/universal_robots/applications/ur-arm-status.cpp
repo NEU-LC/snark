@@ -35,7 +35,7 @@
 #include <comma/string/split.h>
 #include <comma/string/string.h>
 #include <comma/application/signal_flag.h>
-#include "../packet.h"
+#include "packet.h"
 
 static const char* name() { return "ur-arm-status"; }
 
@@ -67,9 +67,9 @@ struct joints_t
 
 struct tool_t
 {
-    boost::array< double, comma::ur::number_of_tool_fields > pose;
-    boost::array< double, comma::ur::number_of_tool_fields > speed;
-    boost::array< double, comma::ur::number_of_tool_fields > force;
+    boost::array< double, comma::ur::number_of_pose_fields > pose;
+    boost::array< double, comma::ur::number_of_pose_fields > speed;
+    boost::array< double, comma::ur::number_of_pose_fields > force;
 };
 
 struct status_t 
@@ -79,7 +79,6 @@ struct status_t
     tool_t tool;
     typedef comma::int32 mode_t;
     mode_t mode;
-    comma::uint32 packet_length;
     double time_since_boot;
 };
 
@@ -115,7 +114,6 @@ template < > struct traits< status_t >
         v.apply( "joints", t.joints );
         v.apply( "tool", t.tool );
         v.apply( "mode",  t.mode );
-        v.apply( "packet_length", t.packet_length );
         v.apply( "time_since_boot", t.time_since_boot );
     }
 };
@@ -141,10 +139,11 @@ int main( int ac, char** av )
         while( !is_shutdown && std::cin.good() && !std::cin.eof() )
         {
             std::cin.read( packet.data(), comma::ur::packet_t::size );
-            if( packet.length() != comma::ur::packet_t::size ) { std::cerr << name() << ": expected packet length " << comma::ur::packet_t::size << ", got " << packet.length() << std::endl; return 1; }
-            status.t = boost::posix_time::microsec_clock::local_time();
+            if( std::cin.gcount() == 0 ) { break; }
+            if( std::cin.gcount() < comma::ur::packet_t::size ) { std::cerr << name() << ": received a packet of length " << std::cin.gcount() << ", expected " << comma::ur::packet_t::size << std::endl; return 1; }
+            if( packet.length() != comma::ur::packet_t::size ) { std::cerr << name() << ": received a packet that reports length " << packet.length() << ", expected " << comma::ur::packet_t::size << std::endl; return 1; }
+            status.t = boost::posix_time::microsec_clock::universal_time();
             status.mode = static_cast< status_t::mode_t >( packet.robot_mode() );
-            status.packet_length = packet.length();
             status.time_since_boot = packet.time_since_boot();    
             for( unsigned int i = 0; i < comma::ur::number_of_joints; ++i )
             { 
@@ -154,7 +153,7 @@ int main( int ac, char** av )
                 status.joints.temperature[i] = packet.joint_temperatures[i]();
                 status.joints.mode[i] = static_cast< joints_t::mode_t >( packet.joint_modes[i]() );
             }
-            for( unsigned int i = 0; i < comma::ur::number_of_tool_fields; ++i )
+            for( unsigned int i = 0; i < comma::ur::number_of_pose_fields; ++i )
             {
                 status.tool.pose[i] = packet.tool_pose[i]();
                 status.tool.speed[i] = packet.tool_speed[i]();

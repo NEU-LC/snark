@@ -45,9 +45,9 @@ struct packet_t : public comma::packed::packed_struct< packet_t, 812  >
     boost::array< comma::packed::net_float64, number_of_joints > actual_joint_velocities;
     boost::array< comma::packed::net_float64, number_of_joints > actual_joint_currents;
     comma::packed::string< 144 > dummy2;
-    boost::array< comma::packed::net_float64, number_of_tool_fields > tool_generalised_forces;
-    boost::array< comma::packed::net_float64, number_of_tool_fields > tool_pose;
-    boost::array< comma::packed::net_float64, number_of_tool_fields > tool_speed;
+    boost::array< comma::packed::net_float64, number_of_pose_fields > tool_generalised_forces;
+    boost::array< comma::packed::net_float64, number_of_pose_fields > tool_pose;
+    boost::array< comma::packed::net_float64, number_of_pose_fields > tool_speed;
     comma::packed::string< 8 > dummy3;
     boost::array< comma::packed::net_float64, number_of_joints >  joint_temperatures;
     comma::packed::string< 16 > dummy4;

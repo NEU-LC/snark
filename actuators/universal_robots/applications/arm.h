@@ -33,6 +33,6 @@
 namespace comma { namespace ur {
 
 static const unsigned int number_of_joints = 6;
-static const unsigned int number_of_tool_fields = 6;
+static const unsigned int number_of_pose_fields = 6;
 
 } } // namespace comma { namespace ur {

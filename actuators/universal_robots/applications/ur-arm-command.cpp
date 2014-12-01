@@ -37,31 +37,33 @@
 #include <comma/application/signal_flag.h>
 #include <comma/csv/traits.h>
 #include <stdlib.h>
-#include "../arm.h"
-#include "../config.h"
+#include "arm.h"
+#include "config.h"
 
 static const char* name() { return "ur-arm-command"; }
 
-void usage()
+void usage( bool verbose )
 {
     std::cerr << std::endl;
     std::cerr << "take six comma-separated joint angles and output ur-script-formatted commands to stdout" << std::endl;
     std::cerr << std::endl;
     std::cerr << "commands:" << std::endl;
-    std::cerr << "    on: turn the arm on" << std::endl;
+    std::cerr << "    on: turn the arm on and release brakes" << std::endl;
     std::cerr << "    init: move joints for the duration of time (used for initialisation); requires speed, acceleration, and time" << std::endl;
     std::cerr << "    move: move joints until joint angles are equal to values read from input" << std::endl;
     std::cerr << "    stop: stop joint movement; requires acceleration" << std::endl;
     std::cerr << "    off: turn the arm off" << std::endl;    
     std::cerr << "options:" << std::endl;
-    std::cerr << "    --help,-h: show this message" << std::endl;
+    std::cerr << "    --help,-h: show this message; --help --verbose: more help" << std::endl;
 //    std::cerr << "    --config: path to config file" << std::endl;
     std::cerr << "    --acceleration: angular acceleration of the leading axis" << std::endl;
     std::cerr << "    --speed: angular speed of the leading axis" << std::endl;
     std::cerr << "    --radius: blend radius" << std::endl;
     std::cerr << "    --time: time to execute the motion" << std::endl;
+    if( verbose ) {} // TODO: std::cerr << "csv options" << std::endl << comma::csv::options( "values" ) << std::endl << std::endl; }
+    else { std::cerr << "csv options... use --help --verbose for more" << std::endl << std::endl; }
     std::cerr << "examples (assuming robot.arm is the arm's IP address):" << std::endl;
-    std::cerr << "    turn on and attempt to initialise one joint:" << std::endl;
+    std::cerr << "    turn the arm on and attempt to initialise one joint:" << std::endl;
     std::cerr << "        ur-arm-command on" << std::endl;
     std::cerr << "        ur-arm-command init --speed=0,0,-0.05,0,0,0 --time=15 | nc robot.arm 30002" << std::endl;
     std::cerr << "    change joint angles at a speed of 0.02 rad/sec to new values 0,0,0,3.14,0,0:" << std::endl;
@@ -71,6 +73,14 @@ void usage()
     std::cerr << std::endl;
     exit ( -1 );
 }
+
+// TODO: add to examples
+// fields
+//echo 20140101T000000,1,2,3,4,5,6 | ur-arm-command move --acceleration 0.1 --fields=t,values
+//movej([1,2,3,4,5,6],a=0.1)
+// individual fields
+//echo 20140101T000000,1,2,3,4,5,6 | ur-arm-command move --acceleration 0.1 --fields=t,values[5],values[1],values[2],values[3],values[4],values[0]
+//movej([6,2,3,4,5,1],a=0.1)
 
 static const unsigned int number_of_input_fields = comma::ur::number_of_joints;
 struct input_t { boost::array< double, number_of_input_fields > values; };
@@ -97,11 +107,11 @@ public:
     typedef double type;
     move_options_t() : optional_parameters_( "" ) {};
     move_options_t( const comma::command_line_options& options )
+        : acceleration_( options.optional< type >( "--acceleration" ) )
+        , speed_( options.optional< type >( "--speed" ) )
+        , time_( options.optional< type >( "--time" ) )
+        , radius_( options.optional< type >( "--radius" ) )
     {
-        acceleration_ = options.optional< type >( "--acceleration" );
-        speed_ = options.optional< type >( "--speed" );
-        time_ = options.optional< type >( "--time" );
-        radius_ = options.optional< type >( "--radius" );
         std::stringstream ss;
         if( acceleration_ ) ss << ",a=" << *acceleration_;
         if( speed_ ) ss << ",v=" << *speed_;
@@ -109,7 +119,7 @@ public:
         if( radius_ ) ss << ",r=" << *radius_;
         optional_parameters_ = ss.str();
     }
-    std::string optional_parameters() const { return optional_parameters_; }
+    const std::string& optional_parameters() const { return optional_parameters_; }
     
 private:
     std::string optional_parameters_;
@@ -123,8 +133,7 @@ int main( int ac, char** av )
 {
     try
     {
-        comma::command_line_options options( ac, av );
-        if( options.exists( "-h,--help" ) ) { usage(); }
+        comma::command_line_options options( ac, av, usage );
         comma::csv::options csv = comma::csv::options( options );
         const std::vector< std::string > unnamed = options.unnamed( "--help,-h", "-.*,--.*" );
         if( unnamed.size() != 1 ) { std::cerr << name() << ": expected one command, got " << unnamed.size() << std::endl; return 1; }
@@ -135,9 +144,9 @@ int main( int ac, char** av )
         if( command == "on" )
         {
             std::cout << "power on" << std::endl;
-            sleep(3);
+            sleep(3); // todo: use boost::thread sleep; hardcoded timeouts? long, arbitrary
             std::cout << "stopj([0,0,0,0,0,0])" << std::endl;
-            sleep(5);
+            sleep(5); // todo: use boost::thread sleep; hardcoded timeouts? long, arbitrary
             std::cout << "set robotmode run" << std::endl;
             return 0;
         }
@@ -150,7 +159,7 @@ int main( int ac, char** av )
             for( std::size_t i = 0; i < comma::ur::number_of_joints; ++i ) { speed[i] = boost::lexical_cast< double >( s[s.size() == 1 ? 0 : i] ); }
             double acceleration = options.value< double >( "--acceleration" ); 
             double time = options.value< double >( "--time" );
-            std::cout << "speedj_init([" << comma::join( speed, ',' ) << "]" << "," << acceleration << "," << time << ")" << std::endl;            
+            std::cout << "speedj_init([" << comma::join( speed, ',' ) << "]" << "," << acceleration << "," << time << ")" << std::endl;
             return 0;
         }
         else if( command == "move" ) 
