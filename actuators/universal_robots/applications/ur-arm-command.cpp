@@ -65,18 +65,28 @@ void usage()
     std::cerr << "take six comma-separated joint angles and output ur-script-formatted commands to stdout" << std::endl;
     std::cerr << std::endl;
     std::cerr << "commands:" << std::endl;
-    std::cerr << "    init: move joints for the duration of time (use for initialisation); requires speed, acceleration, and time" << std::endl;
-    std::cerr << "    stop: stop joint movement; requires acceleration" << std::endl;
+    std::cerr << "    on: turn the arm on" << std::endl;
+    std::cerr << "    init: move joints for the duration of time (used for initialisation); requires speed, acceleration, and time" << std::endl;
     std::cerr << "    move: move joints until joint angles are equal to values read from input" << std::endl;
+    std::cerr << "    stop: stop joint movement; requires acceleration" << std::endl;
+    std::cerr << "    off: turn the arm off" << std::endl;    
     std::cerr << "options:" << std::endl;
     std::cerr << "    --help,-h: show this message" << std::endl;
 //    std::cerr << "    --config: path to config file" << std::endl;
     std::cerr << "    --acceleration: angular acceleration of the leading axis" << std::endl;
     std::cerr << "    --speed: angular speed of the leading axis" << std::endl;
     std::cerr << "    --radius: blend radius" << std::endl;
-    std::cerr << "    --time: time to execute the motion" << std::endl;    
-    std::cerr << "examples:" << std::endl;
-    std::cerr << "    echo \"0,0,0,3.14,0,0\" | ur-arm-command move | nc robot-arm 30002" << std::endl;
+    std::cerr << "    --time: time to execute the motion" << std::endl;
+    std::cerr << "examples (assuming robot.arm is the arm's IP address):" << std::endl;
+    std::cerr << "    turn on and attempt to initialise one joint:" << std::endl;
+    std::cerr << "        ur-arm-command on" << std::endl;
+    std::cerr << "        ur-arm-command init --speed=0,0,-0.02,0,0,0 --acceleration=0.1 --time=10 | nc robot.arm 30002" << std::endl;
+    std::cerr << "    attempt to initialise all joints using the same speed:" << std::endl;
+    std::cerr << "        ur-arm-command init --speed=0.02 --acceleration=0.1 --time=10 | nc robot.arm 30002" << std::endl;
+    std::cerr << "    change joint angles at a speed of 0.02 rad/sec to new values 0,0,0,3.14,0,0:" << std::endl;
+    std::cerr << "        echo \"0,0,0,3.14,0,0\" | ur-arm-command move --speed=0.02 | nc robot.arm 30002" << std::endl;    
+    std::cerr << "    change joint angles in 10 seconds to new values 0,0,0,3.14,0,0:" << std::endl;
+    std::cerr << "        echo \"0,0,0,3.14,0,0\" | ur-arm-command move --time=10 | nc robot.arm 30002" << std::endl;
     std::cerr << std::endl;
     exit ( -1 );
 }
@@ -100,28 +110,32 @@ template <> struct traits< input_t >
     
 } } // namespace comma { namespace visiting {
 
-struct move_options_t
+class move_options_t
 {
+public:
     typedef double type;
+    move_options_t() : optional_parameters_( "" ) {};
     move_options_t( const comma::command_line_options& options )
     {
-        acceleration = options.optional< type >( "--acceleration" );
-        speed = options.optional< type >( "--speed" );
-        time = options.optional< type >( "--time" );
-        radius = options.optional< type >( "--radius" );
+        acceleration_ = options.optional< type >( "--acceleration" );
+        speed_ = options.optional< type >( "--speed" );
+        time_ = options.optional< type >( "--time" );
+        radius_ = options.optional< type >( "--radius" );
         std::stringstream ss;
-        if( acceleration ) ss << ",a=" << *acceleration;
-        if( speed ) ss << ",v=" << *speed;
-        if( time ) ss << ",t=" << *time;
-        if( radius ) ss << ",r=" << *radius;
-        optional_arguments = ss.str();
+        if( acceleration_ ) ss << ",a=" << *acceleration_;
+        if( speed_ ) ss << ",v=" << *speed_;
+        if( time_ ) ss << ",t=" << *time_;
+        if( radius_ ) ss << ",r=" << *radius_;
+        optional_parameters_ = ss.str();
     }
-    std::string operator()() { return optional_arguments; };
-    std::string optional_arguments;
-    boost::optional< type > acceleration;
-    boost::optional< type > speed;
-    boost::optional< type > time;
-    boost::optional< type > radius;
+    std::string optional_parameters() const { return optional_parameters_; }
+    
+private:
+    std::string optional_parameters_;
+    boost::optional< type > acceleration_;
+    boost::optional< type > speed_;
+    boost::optional< type > time_;
+    boost::optional< type > radius_;
 };
 
 int main( int ac, char** av )
@@ -137,33 +151,48 @@ int main( int ac, char** av )
         //boost::optional< comma::ur::config_t > config;
         //if( options.exists( "--config" ) ) { config.reset( options.value< std::string >( "--config" ) ); }
         //if( config ) { std::cerr << config->move_options.acceleration << std::endl; }
-        move_options_t m( options );
-        if( command == "stop" ) 
+        if( command == "on" )
         {
-            if( !m.acceleration ) { std::cerr << name() << ": acceleration is not given" << std::endl; return 1; } 
-            std::cout << "stopj(" << *m.acceleration << ")" << std::endl; 
+            std::cout << "power on" << std::endl;
+            std::cout << "stopj(0)" << std::endl;
+            std::cout << "set robotmode run" << std::endl;
             return 0;
         }
-        else if( command == "init" ) 
-        { 
-            if( !m.acceleration ) { std::cerr << name() << ": acceleration is not given" << std::endl; return 1; } 
-            if( !m.speed ) { std::cerr << name() << ": speed is not given" << std::endl; return 1; } 
-            if( !m.time ) { std::cerr << name() << ": time is not given" << std::endl; return 1; } 
-            std::vector< double > s( comma::ur::number_of_joints, *m.speed );
-            std::cout << "speedj_init([" << comma::join( s, ',' ) << "]" << "," << *m.acceleration << "," << *m.time << ")" << std::endl;
-            
+        else if( command == "init" )
+        {
+            if( !options.exists( "--speed" ) ||!options.exists( "--acceleration" ) ||  !options.exists( "--time" ) ) { std::cerr << name() << ": --acceleration, --speed, and --time are required for init" << std::endl; return 1; }
+            std::vector< std::string > s = comma::split( options.value< std::string >( "--speed" ), ',' );
+            if( s.size() != 1 && s.size() != comma::ur::number_of_joints ) { std::cerr << name() << ": expected 1 or " << comma::ur::number_of_joints << " comma-separated speed values, got: " << s.size() << std::endl; return 1; }
+            std::vector< double > speed( comma::ur::number_of_joints );
+            for( std::size_t i = 0; i < comma::ur::number_of_joints; ++i ) { speed[i] = boost::lexical_cast< double >( s[s.size() == 1 ? 0 : i] ); }
+            double acceleration = options.value< double >( "--acceleration" ); 
+            double time = options.value< double >( "--time" );
+            std::cout << "speedj_init([" << comma::join( speed, ',' ) << "]" << "," << acceleration << "," << time << ")" << std::endl;            
             return 0;
         }
         else if( command == "move" ) 
         {
+            move_options_t move_options( options );
             comma::csv::input_stream< input_t > istream( std::cin, csv );
             comma::signal_flag is_shutdown;
             while( !is_shutdown && std::cin.good() && !std::cin.eof() )
             {
                 const input_t* input = istream.read();
                 if( !input ) { break; }
-                std::cout << "movej([" << comma::join( input->values, ',' ) << "]" << m() << ")" << std::endl;
+                std::cout << "movej([" << comma::join( input->values, ',' ) << "]" << move_options.optional_parameters() << ")" << std::endl;
             }
+            return 0;
+        }
+        else if( command == "stop" ) 
+        {
+            double acceleration = options.value< double >( "--acceleration", 0.0 );
+            std::cout << "stopj(" << acceleration << ")" << std::endl;
+            return 0;
+        }
+        else if( command == "off" )
+        {
+            std::cout << "power off" << std::endl;
+            return 0;
         }
         else
         { 

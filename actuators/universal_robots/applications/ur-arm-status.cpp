@@ -63,7 +63,7 @@ void usage()
     std::cerr << "    --format:             output binary format for given fields to stdout and exit" << std::endl;
     std::cerr << "    --output-fields:      output field names and exit" << std::endl;
     std::cerr << "examples: " << std::endl;
-    std::cerr << "    socat -u -T 1 tcp:robot-arm:30003 - | " << name() << " --fields=t,mode,joints/mode" << std::endl;
+    std::cerr << "    socat -u tcp:robot.arm:30003 - | " << name() << " --fields=t,mode,joints/mode" << std::endl;
     std::cerr << std::endl;
     exit ( -1 );
 }

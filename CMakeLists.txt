@@ -168,7 +168,7 @@ CMAKE_DEPENDENT_OPTION( snark_build_sensors_gobi "build gobi components" OFF "sn
 
 CMAKE_DEPENDENT_OPTION( snark_build_actuators_quickset "build quickset components" ON "snark_build_actuators" OFF )
 CMAKE_DEPENDENT_OPTION( snark_build_actuators_wheels "build wheels components" ON "snark_build_actuators" OFF )
-CMAKE_DEPENDENT_OPTION( snark_build_actuators_robotic_arm "build robotic_arm components" ON "snark_build_actuators" OFF )
+CMAKE_DEPENDENT_OPTION( snark_build_actuators_universal_robots "build universal_robots components" ON "snark_build_actuators" OFF )
 
 IF( snark_build_imaging )
     IF( WIN32 )
@@ -224,12 +224,10 @@ IF( snark_build_actuators_wheels )
                          optimized snark_wheels )
 ENDIF( snark_build_actuators_wheels )
 
-IF( snark_build_actuators_robotic_arm )
-  SET( snark_ALL_LIBRARIES ${snark_ALL_LIBRARIES} debug snark_robotic_arm-d
-                         optimized snark_robotic_arm )
-
-  SET( snark_build_battery ON )
-ENDIF( snark_build_actuators_robotic_arm )
+IF( snark_build_actuators_universal_robots )
+  SET( snark_ALL_LIBRARIES ${snark_ALL_LIBRARIES} debug snark_universal_robots-d
+                         optimized snark_universal_robots )
+ENDIF( snark_build_actuators_universal_robots )
 
 if( snark_build_battery )
     SET( snark_ALL_LIBRARIES ${snark_ALL_LIBRARIES} debug snark_ocean-d

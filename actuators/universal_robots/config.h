@@ -68,7 +68,7 @@ struct config_t
         comma::from_ptree from_ptree( t, true );
         comma::visiting::apply( from_ptree ).to( *this );
     }
-    struct move_options_t { typedef double type; type acceleration; type speed; type time; type radius; };
+    struct move_options_t { typedef double type; type acceleration; type speed; type radius; };
     move_options_t move_options;
 };
 
@@ -82,7 +82,6 @@ template <> struct traits< comma::ur::config_t::move_options_t >
     {
         v.apply( "acceleration", t.acceleration );
         v.apply( "speed", t.speed );
-        v.apply( "time", t.time );
         v.apply( "radius", t.radius );
     }    
     
@@ -90,7 +89,6 @@ template <> struct traits< comma::ur::config_t::move_options_t >
     {
         v.apply( "acceleration", t.acceleration );
         v.apply( "speed", t.speed );
-        v.apply( "time", t.time );
         v.apply( "radius", t.radius );
     }
 };
