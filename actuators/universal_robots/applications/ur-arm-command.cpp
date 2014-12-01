@@ -36,6 +36,7 @@
 #include <comma/string/string.h>
 #include <comma/application/signal_flag.h>
 #include <comma/csv/traits.h>
+#include <comma/name_value/serialize.h>
 #include <stdlib.h>
 #include "arm.h"
 #include "config.h"
@@ -139,7 +140,7 @@ int main( int ac, char** av )
         if( unnamed.size() != 1 ) { std::cerr << name() << ": expected one command, got " << unnamed.size() << std::endl; return 1; }
         const std::string command = unnamed[0];
         boost::optional< comma::ur::config_t > config;
-        if( options.exists( "--config" ) ) { config.reset( options.value< std::string >( "--config" ) ); }
+        if( options.exists( "--config" ) ) { config = comma::read_json< comma::ur::config_t >( options.value< std::string >( "--config" ) ); }
         if( config ) { std::cerr << config->move_options.acceleration << std::endl; }
         if( command == "on" )
         {

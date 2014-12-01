@@ -30,31 +30,39 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include <boost/property_tree/json_parser.hpp>
-#include <comma/name_value/ptree.h>
 #include <comma/csv/traits.h>
 
 namespace comma { namespace ur { 
 
 struct config_t 
 {
-    config_t( const std::string& filepath )
-    {
-        std::ifstream config_ifs( filepath.c_str() );
-        if( !config_ifs.is_open() ) { COMMA_THROW( comma::exception, "failed to open file: " + filepath ); }
-        boost::property_tree::ptree t;
-        boost::property_tree::read_json( config_ifs, t );
-        comma::from_ptree from_ptree( t, true );
-        comma::visiting::apply( from_ptree ).to( *this );
-    }
-    struct move_options_t { typedef double type; type acceleration; type speed; type radius; };
+    struct move_options_t 
+    { 
+        typedef double type; 
+        type acceleration; 
+        type speed; 
+        type radius; 
+    };
     move_options_t move_options;
 };
 
 } } // namespace comma { namespace ur { 
 
 namespace comma { namespace visiting {    
+
+  template <> struct traits< comma::ur::config_t >
+{
+    template< typename K, typename V > static void visit( const K&, comma::ur::config_t& t, V& v )
+    {
+        v.apply( "move-options", t.move_options );
+    }
     
+    template< typename K, typename V > static void visit( const K&, const comma::ur::config_t& t, V& v )
+    {
+        v.apply( "move-options", t.move_options );
+    }
+};
+      
 template <> struct traits< comma::ur::config_t::move_options_t >
 {
     template< typename K, typename V > static void visit( const K&, comma::ur::config_t::move_options_t& t, V& v )
@@ -69,19 +77,6 @@ template <> struct traits< comma::ur::config_t::move_options_t >
         v.apply( "acceleration", t.acceleration );
         v.apply( "speed", t.speed );
         v.apply( "radius", t.radius );
-    }
-};
-
-template <> struct traits< comma::ur::config_t >
-{
-    template< typename K, typename V > static void visit( const K&, comma::ur::config_t& t, V& v )
-    {
-        v.apply( "move-options", t.move_options );
-    }
-    
-    template< typename K, typename V > static void visit( const K&, const comma::ur::config_t& t, V& v )
-    {
-        v.apply( "move-options", t.move_options );
     }
 };
 
