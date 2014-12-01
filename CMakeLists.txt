@@ -224,11 +224,6 @@ IF( snark_build_actuators_wheels )
                          optimized snark_wheels )
 ENDIF( snark_build_actuators_wheels )
 
-IF( snark_build_actuators_universal_robots )
-  SET( snark_ALL_LIBRARIES ${snark_ALL_LIBRARIES} debug snark_universal_robots-d
-                         optimized snark_universal_robots )
-ENDIF( snark_build_actuators_universal_robots )
-
 if( snark_build_battery )
     SET( snark_ALL_LIBRARIES ${snark_ALL_LIBRARIES} debug snark_ocean-d
                              optimized snark_ocean )
