@@ -35,8 +35,8 @@
 #include <comma/string/split.h>
 #include <comma/string/string.h>
 #include <comma/application/signal_flag.h>
+#include "base.h"
 #include "packet.h"
-#include "arm.h"
 
 static const char* name() { return "ur-arm-status"; }
 
@@ -47,6 +47,7 @@ void usage( bool verbose )
     std::cerr << std::endl;
     std::cerr << "options:" << std::endl;
     std::cerr << "    --help,-h: show this message" << std::endl;
+    std::cerr << "    --verbose,-v: show more info (mode names, etc)" << std::endl;
     std::cerr << "    --binary,-b: output binary equivalent of csv" << std::endl;
     std::cerr << "    --format: output binary format for given fields to stdout and exit" << std::endl;
     std::cerr << "    --output-fields: output field names and exit" << std::endl;

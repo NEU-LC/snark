@@ -30,8 +30,8 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef COMMA_UR_ARM
-#define COMMA_UR_ARM
+#ifndef COMMA_UR_BASE
+#define COMMA_UR_BASE
 
 #include <boost/bimap.hpp>
 #include <boost/assign.hpp>
@@ -104,4 +104,4 @@ inline int joint_mode_from_name( std::string name )
 
 } } // namespace comma { namespace ur {
 
-#endif // #ifndef COMMA_UR_ARM
+#endif // #ifndef COMMA_UR_BASE
