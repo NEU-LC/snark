@@ -30,6 +30,9 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#ifndef COMMA_UR_PACKET
+#define COMMA_UR_PACKET
+
 #include <boost/array.hpp>
 #include <comma/packed/packed.h>
 #include "arm.h"
@@ -55,4 +58,6 @@ struct packet_t : public comma::packed::packed_struct< packet_t, 812  >
     boost::array< comma::packed::net_float64, number_of_joints > joint_modes;
 };
 
-} } //
+} } // namespace comma { namespace ur {
+
+#endif // #ifndef COMMA_UR_PACKET

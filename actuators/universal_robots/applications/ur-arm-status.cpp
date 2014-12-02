@@ -36,10 +36,11 @@
 #include <comma/string/string.h>
 #include <comma/application/signal_flag.h>
 #include "packet.h"
+#include "arm.h"
 
 static const char* name() { return "ur-arm-status"; }
 
-void usage()
+void usage( bool verbose )
 {
     std::cerr << std::endl;
     std::cerr << "take arm status feed on stdin, output csv data to stdout" << std::endl;
@@ -50,9 +51,23 @@ void usage()
     std::cerr << "    --format: output binary format for given fields to stdout and exit" << std::endl;
     std::cerr << "    --output-fields: output field names and exit" << std::endl;
     std::cerr << "    --packet-size: output packet-size and exit" << std::endl;
+    std::cerr << "    --robot-mode-from-name=<name>: output the integer corresponding to the given robot mode name and exit" << std::endl;
+    std::cerr << "    --joint-mode-from-name=<name>: same as above for joint modes" << std::endl;
+    std::cerr << "    --robot-mode-to-name=<mode>: output the name of the given robot mode integer and exit" << std::endl;
+    std::cerr << "    --joint-mode-to-name=<mode>: same as above for joint modes" << std::endl;    
+    std::cerr << std::endl;
     std::cerr << "examples: " << std::endl;
     std::cerr << "    socat -u tcp:robot.arm:30003 - | " << name() << " --fields=t,mode,joints/mode" << std::endl;
     std::cerr << std::endl;
+    if( verbose )
+    {
+        std::cerr << "robot modes: " << std::endl;
+        for( comma::ur::modes_t::const_iterator it = comma::ur::robot_modes.begin(); it != comma::ur::robot_modes.end(); ++it ) { std::cerr << "    " << it->left << ": " << it->right << std::endl; }
+        std::cerr << std::endl;
+        std::cerr << "joint modes: " << std::endl;
+        for( comma::ur::modes_t::const_iterator it = comma::ur::joint_modes.begin(); it != comma::ur::joint_modes.end(); ++it ) { std::cerr << "    " << it->left << ": " << it->right << std::endl; }
+        std::cerr << std::endl;
+    }
     exit ( -1 );
 }
 
@@ -125,8 +140,8 @@ int main( int ac, char** av )
 {
     try
     {
-        comma::command_line_options options( ac, av );
-        if( options.exists( "-h,--help" ) ) { usage(); }
+        comma::command_line_options options( ac, av, usage );
+        //if( options.exists( "-h,--help" ) ) { usage(); }
         if( options.exists( "--output-fields" ) ) { std::cout << comma::join( comma::csv::names< status_t >(), ',' ) << std::endl; return 0; }
         comma::csv::options csv;
         csv.full_xpath = true;
@@ -134,6 +149,10 @@ int main( int ac, char** av )
         if( options.exists( "--format" ) ) { std::cout << comma::csv::format::value< status_t >( csv.fields, true ) << std::endl; return 0; }
         if( options.exists( "--binary,-b" ) ) { csv.format( comma::csv::format::value< status_t >( csv.fields, true ) ); }
         if( options.exists( "--packet-size" ) ) { std::cout << comma::ur::packet_t::size << std::endl; return 0; }
+        if( options.exists( "--robot-mode-from-name" ) ) { std::cout << comma::ur::robot_mode_from_name( options.value< std::string >( "--robot-mode-from-name" ) ) << std::endl; return 0; }
+        if( options.exists( "--joint-mode-from-name" ) ) { std::cout << comma::ur::joint_mode_from_name( options.value< std::string >( "--joint-mode-from-name" ) ) << std::endl; return 0; }
+        if( options.exists( "--robot-mode-to-name" ) ) { std::cout << comma::ur::robot_mode_to_name( options.value< int >( "--robot-mode-to-name" ) ) << std::endl; return 0; }
+        if( options.exists( "--joint-mode-to-name" ) ) { std::cout << comma::ur::joint_mode_to_name( options.value< int >( "--joint-mode-to-name" ) ) << std::endl; return 0; }        
         static comma::csv::output_stream< status_t > ostream( std::cout, csv );
         comma::ur::packet_t packet;
         status_t status;

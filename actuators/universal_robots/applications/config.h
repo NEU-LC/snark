@@ -30,6 +30,9 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#ifndef COMMA_UR_CONFIG
+#define COMMA_UR_CONFIG
+
 #include <comma/csv/traits.h>
 
 namespace comma { namespace ur { 
@@ -81,3 +84,5 @@ template <> struct traits< comma::ur::config_t::move_options_t >
 };
 
 } } // namespace comma { namespace visiting {
+
+#endif // #ifndef COMMA_UR_CONFIG
