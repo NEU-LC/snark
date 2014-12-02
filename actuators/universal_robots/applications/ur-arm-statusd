@@ -5,5 +5,5 @@ address="$( name-value-get --from json status/address < $daemon_config )"
 port="$( name-value-get --from json status/port < $daemon_config )"
 publisher_port="$( name-value-get --from json status/publisher/port < $daemon_config )"
 
-packet-size=$( ur-arm-status --packet-size )
-socat -u tcp:"$address":"$port" | io-publish -s "$packet_size" tcp:"$publisher_port"
+packet_size=$( ur-arm-status --packet-size )
+socat -T 1 -u tcp:"$address":"$port" - | io-publish -s "$packet_size" tcp:"$publisher_port"

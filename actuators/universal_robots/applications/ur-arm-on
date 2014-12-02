@@ -1,11 +1,15 @@
 #!/bin/bash
 
 name=$( basename $0 )
+function replicate { printf "$1"; printf ",$1%.0s" $( seq -s' ' 2 $2 ); }
 
 config=./ur-arm.json
-no_power_mode="$( name-value-get --from json robot-mode/no-power < $config )"
-security_stopped_mode="$( name-value-get --from json robot-mode/security-stopped < $config )"
-initialising_mode="$( name-value-get --from json robot-mode/initialising < $config )"
+robot_mode_no_power=$( name-value-get --from json robot-mode/no-power < $config )
+robot_mode_stop=$( name-value-get --from json robot-mode/security-stopped < $config )
+robot_mode_init=$( name-value-get --from json robot-mode/initialising < $config )
+number_of_joints=$( name-value-get --from json number-of-joints < $config )
+joint_modes_idle=$( replicate $( name-value-get --from json joint-mode/idle < $config ) $number_of_joints )
+joint_modes_init=$( replicate $( name-value-get --from json joint-mode/initialisation < $config ) $number_of_joints )
 
 daemon_config=./ur-armd.json
 publisher_address="$( name-value-get --from json status/publisher/address < $daemon_config )"
@@ -14,27 +18,31 @@ command_address="$( name-value-get --from json command/address < $daemon_config 
 command_port="$( name-value-get --from json command/port < $daemon_config )"
 timeout="$( name-value-get --from json timeout < $daemon_config )"
 
+function robot_mode { echo "$( nc $publisher_address $publisher_port | ur-arm-status --fields=mode | head -1 )"; }
+function joint_modes { echo "$( nc $publisher_address $publisher_port | ur-arm-status --fields=joints/mode | head -1 )"; }
+
 function wait_for_mode
 {
-    local expected_mode="$1"
-    local -i timeout="$2"
-    local -i t=0
-    while [[ "$mode" != "$expected_mode" ]]; do
-        mode="$( nc $publisher_address $publisher_port | ur-arm-status --fields=mode | head -1 )"
+    local expected_robot_mode="$1"
+    local expected_joint_modes="$2"
+    local -i timeout="$3"
+    SECONDS=0
+    while [[ "$( robot_mode )" != "$expected_robot_mode" || "$( joint_modes )" != "$expected_joint_modes" ]]; do
         sleep 0.1
-        echo $t $mode
-        if (( ++t > timeout )); then return 1; fi
+        if (( SECONDS > timeout )); then echo "$name: timed out after waiting for $timeout seconds for robot mode $expected_robot_mode and joint modes $expected_joint_modes" >&2; exit 1; fi
     done
-    return 0
 }
 
-mode="$( nc $publisher_address $publisher_port | ur-arm-status --fields=mode | head -1 )"
-if [[ -z "$mode" ]]; then echo "$name: failed to get mode, status daemon is not running" >&2; exit 1; fi
-if [[ "$mode" != "$no_power_mode" ]]; then  echo "$name: expected the arm to be in mode $no_power_mode (no-power), got mode $mode" >&2; exit 1; fi
+mode="$( robot_mode )"
+if [[ -z "$mode" ]]; then echo "$name: failed to get mode, check if status daemon is publishing in port $publisher_port" >&2; exit 1; fi
+if [[ "$mode" != "$robot_mode_no_power" ]]; then echo "$name: expected the arm to be in mode $robot_mode_no_power (no-power), got mode $mode" >&2; exit 1; fi
+
+echo "$name: turning the arm on at $( date +%X.%N ) ..."
 echo 'power on' | nc "$command_address" "$command_port"
-expected_mode="$security_stopped_mode"
-wait_for_mode "$expected_mode" "$timeout" || { echo "$name: timed out after waiting for $timeout seconds for mode $expected_mode" >&2; exit 1; }
-echo 'stopj(0)' | nc "$command_address" "$command_port"
-expected_mode="$initialising_mode"
-wait_for_mode "$expected_mode" "$timeout" || { echo "$name: timed out after waiting for $timeout seconds for mode $expected_mode" >&2; exit 1; }
+wait_for_mode "$robot_mode_init" "$joint_modes_idle" "$timeout" 
+echo 'stopj([0,0,0,0,0,0])' | nc "$command_address" "$command_port"
+wait_for_mode "$robot_mode_stop" "$joint_modes_idle" "$timeout" 
 echo 'set robotmode run' | nc "$command_address" "$command_port"
+wait_for_mode "$robot_mode_init" "$joint_modes_init" "$timeout"
+echo "$name: the arm is on and ready for initialisation at $( date +%X.%N )"
+
