@@ -3,9 +3,8 @@
 name=$( basename $0 )
 function replicate { printf "$1"; printf ",$1%.0s" $( seq -s' ' 2 $2 ); }
 
-config=./ur-arm.json
-joint_mode_init=$( name-value-get --from json joint-mode/initialisation < $config )
-joint_mode_run=$( name-value-get --from json joint-mode/running < $config )
+joint_mode_init=$( ur-arm-status --joint-mode-from-name initialisation )
+joint_mode_run=$( ur-arm-status --joint-mode-from-name running )
 
 daemon_config=./ur-armd.json
 publisher_address="$( name-value-get --from json status/publisher/address < $daemon_config )"

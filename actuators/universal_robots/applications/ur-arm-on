@@ -3,12 +3,11 @@
 name=$( basename $0 )
 function replicate { printf "$1"; printf ",$1%.0s" $( seq -s' ' 2 $2 ); }
 
-config=./ur-arm.json
-robot_mode_no_power=$( name-value-get --from json robot-mode/no-power < $config )
-robot_mode_stop=$( name-value-get --from json robot-mode/security-stopped < $config )
-robot_mode_init=$( name-value-get --from json robot-mode/initialising < $config )
-joint_mode_idle=$( name-value-get --from json joint-mode/idle < $config )
-joint_mode_init=$( name-value-get --from json joint-mode/initialisation < $config )
+robot_mode_no_power=$( ur-arm-status --robot-mode-from-name no-power )
+robot_mode_stop=$( ur-arm-status --robot-mode-from-name security-stopped )
+robot_mode_init=$( ur-arm-status --robot-mode-from-name initialising )
+joint_mode_idle=$( ur-arm-status --joint-mode-from-name idle )
+joint_mode_init=$( ur-arm-status --joint-mode-from-name  initialisation )
 
 daemon_config=./ur-armd.json
 publisher_address="$( name-value-get --from json status/publisher/address < $daemon_config )"
