@@ -45,10 +45,11 @@ void usage()
     std::cerr << "take arm status feed on stdin, output csv data to stdout" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options:" << std::endl;
-    std::cerr << "    --help,-h:            show this message" << std::endl;
-    std::cerr << "    --binary,-b:          output binary equivalent of csv" << std::endl;
-    std::cerr << "    --format:             output binary format for given fields to stdout and exit" << std::endl;
-    std::cerr << "    --output-fields:      output field names and exit" << std::endl;
+    std::cerr << "    --help,-h: show this message" << std::endl;
+    std::cerr << "    --binary,-b: output binary equivalent of csv" << std::endl;
+    std::cerr << "    --format: output binary format for given fields to stdout and exit" << std::endl;
+    std::cerr << "    --output-fields: output field names and exit" << std::endl;
+    std::cerr << "    --packet-size: output packet-size and exit" << std::endl;
     std::cerr << "examples: " << std::endl;
     std::cerr << "    socat -u tcp:robot.arm:30003 - | " << name() << " --fields=t,mode,joints/mode" << std::endl;
     std::cerr << std::endl;
@@ -132,6 +133,7 @@ int main( int ac, char** av )
         csv.fields = options.value< std::string >( "--fields", "" );
         if( options.exists( "--format" ) ) { std::cout << comma::csv::format::value< status_t >( csv.fields, true ) << std::endl; return 0; }
         if( options.exists( "--binary,-b" ) ) { csv.format( comma::csv::format::value< status_t >( csv.fields, true ) ); }
+        if( options.exists( "--packet-size" ) ) { std::cout << comma::ur::packet_t::size << std::endl; return 0; }
         static comma::csv::output_stream< status_t > ostream( std::cout, csv );
         comma::ur::packet_t packet;
         status_t status;
