@@ -1,0 +1,7 @@
+#!/bin/bash
+
+config=./ur-armd.json
+command_address="$( name-value-get --from json command/address < $config )"
+command_port="$( name-value-get --from json command/port < $config )"
+
+echo 'power off' | nc "$command_address" "$command_port"

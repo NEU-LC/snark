@@ -1,0 +1,38 @@
+{
+    "robot-mode":
+    {
+        "running": 0,
+        "freedrive": 1,
+        "ready": 2,
+        "initialising": 3,
+        "security-stopped": 4,
+        "emergency-stopped": 5,
+        "fatal-error": 6,
+        "no-power": 7,
+        "not-connected": 8,
+        "shutdown": 9,
+        "safeguard-stop": 10
+    },
+    "joint-mode":
+    {
+        "part-d-calibration": 237,
+        "backdrive": 238,
+        "power-off": 239,
+        "emergency-stopped": 240,
+        "calval-initialisation": 241,
+        "error": 242,
+        "freedrive": 243,
+        "simulated": 244,
+        "not-responding": 245,
+        "motor-initialisation": 246,
+        "adc-calibration": 247,
+        "dead-commutatin": 248,
+        "bootloader": 249,
+        "calibration": 250,
+        "stopped": 251,
+        "fault": 252,
+        "running": 253,
+        "initialisation": 254,
+        "idle": 255
+    }
+}

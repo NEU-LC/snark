@@ -1,0 +1,40 @@
+#!/bin/bash
+
+name=$( basename $0 )
+
+config=./ur-arm.json
+no_power_mode="$( name-value-get --from json robot-mode/no-power < $config )"
+security_stopped_mode="$( name-value-get --from json robot-mode/security-stopped < $config )"
+initialising_mode="$( name-value-get --from json robot-mode/initialising < $config )"
+
+daemon_config=./ur-armd.json
+publisher_address="$( name-value-get --from json status/publisher/address < $daemon_config )"
+publisher_port="$( name-value-get --from json status/publisher/port < $daemon_config )"
+command_address="$( name-value-get --from json command/address < $daemon_config )"
+command_port="$( name-value-get --from json command/port < $daemon_config )"
+timeout="$( name-value-get --from json timeout < $daemon_config )"
+
+function wait_for_mode
+{
+    local expected_mode="$1"
+    local -i timeout="$2"
+    local -i t=0
+    while [[ "$mode" != "$expected_mode" ]]; do
+        mode="$( nc $publisher_address $publisher_port | ur-arm-status --fields=mode | head -1 )"
+        sleep 0.1
+        echo $t $mode
+        if (( ++t > timeout )); then return 1; fi
+    done
+    return 0
+}
+
+mode="$( nc $publisher_address $publisher_port | ur-arm-status --fields=mode | head -1 )"
+if [[ -z "$mode" ]]; then echo "$name: failed to get mode, status daemon is not running" >&2; exit 1; fi
+if [[ "$mode" != "$no_power_mode" ]]; then  echo "$name: expected the arm to be in mode $no_power_mode (no-power), got mode $mode" >&2; exit 1; fi
+echo 'power on' | nc "$command_address" "$command_port"
+expected_mode="$security_stopped_mode"
+wait_for_mode "$expected_mode" "$timeout" || { echo "$name: timed out after waiting for $timeout seconds for mode $expected_mode" >&2; exit 1; }
+echo 'stopj(0)' | nc "$command_address" "$command_port"
+expected_mode="$initialising_mode"
+wait_for_mode "$expected_mode" "$timeout" || { echo "$name: timed out after waiting for $timeout seconds for mode $expected_mode" >&2; exit 1; }
+echo 'set robotmode run' | nc "$command_address" "$command_port"

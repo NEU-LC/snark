@@ -1,0 +1,18 @@
+{
+    "status":
+    {
+        "address": "ladybird.arm",
+        "port": 30003,
+        "publisher":
+        {
+            "address": "ladybird.nuvo",
+            "port": 14000
+        }
+    },
+    "command":
+    {
+        "address": "ladybird.arm",
+        "port": 30002
+    },
+    "timeout": 5
+}
