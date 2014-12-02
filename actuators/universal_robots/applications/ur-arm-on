@@ -1,7 +1,8 @@
 #!/bin/bash
 
 name=$( basename $0 )
-function replicate { printf "$1"; printf ",$1%.0s" $( seq -s' ' 2 $2 ); }
+default_timeout=10
+timeout=${1:-$default_timeout}
 
 robot_mode_no_power=$( ur-arm-status --robot-mode-from-name no-power )
 robot_mode_stop=$( ur-arm-status --robot-mode-from-name security-stopped )
@@ -14,8 +15,8 @@ publisher_address="$( name-value-get --from json status/publisher/address < $con
 publisher_port="$( name-value-get --from json status/publisher/port < $config )"
 command_address="$( name-value-get --from json command/address < $config )"
 command_port="$( name-value-get --from json command/port < $config )"
-timeout="$( name-value-get --from json timeout < $config )"
 
+function replicate { printf "$1"; printf ",$1%.0s" $( seq -s' ' 2 $2 ); }
 function robot_mode { echo "$( nc $publisher_address $publisher_port | ur-arm-status --fields=mode | head -1 )"; }
 function joint_modes { echo "$( nc $publisher_address $publisher_port | ur-arm-status --fields=joints/mode | head -1 )"; }
 
@@ -24,7 +25,6 @@ function wait_for_mode
     local expected_robot_mode="$1"
     local expected_joint_modes="$2"
     local -i timeout="$3"
-    SECONDS=0
     while [[ "$( robot_mode )" != "$expected_robot_mode" || "$( joint_modes )" != "$expected_joint_modes" ]]; do
         sleep 0.1
         if (( SECONDS > timeout )); then echo "$name: timed out after waiting for $timeout seconds for robot mode $expected_robot_mode and joint modes $expected_joint_modes" >&2; exit 1; fi
@@ -37,6 +37,7 @@ if [[ "$mode" != "$robot_mode_no_power" ]]; then echo "$name: expected the arm t
 
 number_of_joints=$( joint_modes | tr ',' '\n' | wc -l )
 
+SECONDS=0
 echo "$name: turning the arm on at $( date +%X.%N ) ..."
 echo "power on" | nc "$command_address" "$command_port"
 wait_for_mode "$robot_mode_init" "$joint_modes_idle" "$timeout"
@@ -45,4 +46,3 @@ wait_for_mode "$robot_mode_stop" "$( replicate $joint_mode_idle $number_of_joint
 echo "set robotmode run" | nc "$command_address" "$command_port"
 wait_for_mode "$robot_mode_init" "$( replicate $joint_mode_init $number_of_joints )" "$timeout"
 echo "$name: the arm is on and ready for initialisation at $( date +%X.%N )"
-
