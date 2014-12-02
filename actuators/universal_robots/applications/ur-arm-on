@@ -9,12 +9,12 @@ robot_mode_init=$( ur-arm-status --robot-mode-from-name initialising )
 joint_mode_idle=$( ur-arm-status --joint-mode-from-name idle )
 joint_mode_init=$( ur-arm-status --joint-mode-from-name  initialisation )
 
-daemon_config=./ur-armd.json
-publisher_address="$( name-value-get --from json status/publisher/address < $daemon_config )"
-publisher_port="$( name-value-get --from json status/publisher/port < $daemon_config )"
-command_address="$( name-value-get --from json command/address < $daemon_config )"
-command_port="$( name-value-get --from json command/port < $daemon_config )"
-timeout="$( name-value-get --from json timeout < $daemon_config )"
+config=./ur-arm.json
+publisher_address="$( name-value-get --from json status/publisher/address < $config )"
+publisher_port="$( name-value-get --from json status/publisher/port < $config )"
+command_address="$( name-value-get --from json command/address < $config )"
+command_port="$( name-value-get --from json command/port < $config )"
+timeout="$( name-value-get --from json timeout < $config )"
 
 function robot_mode { echo "$( nc $publisher_address $publisher_port | ur-arm-status --fields=mode | head -1 )"; }
 function joint_modes { echo "$( nc $publisher_address $publisher_port | ur-arm-status --fields=joints/mode | head -1 )"; }

@@ -6,15 +6,15 @@ function replicate { printf "$1"; printf ",$1%.0s" $( seq -s' ' 2 $2 ); }
 joint_mode_init=$( ur-arm-status --joint-mode-from-name initialisation )
 joint_mode_run=$( ur-arm-status --joint-mode-from-name running )
 
-daemon_config=./ur-armd.json
-publisher_address="$( name-value-get --from json status/publisher/address < $daemon_config )"
-publisher_port="$( name-value-get --from json status/publisher/port < $daemon_config )"
-command_address="$( name-value-get --from json command/address < $daemon_config )"
-command_port="$( name-value-get --from json command/port < $daemon_config )"
+config=./ur-arm.json
+publisher_address="$( name-value-get --from json status/publisher/address < $config )"
+publisher_port="$( name-value-get --from json status/publisher/port < $config )"
+command_address="$( name-value-get --from json command/address < $config )"
+command_port="$( name-value-get --from json command/port < $config )"
 
-IFS=, init_speed=( $( name-value-get --from json init/speed < $daemon_config ) )
-acceleration="$( name-value-get --from json init/acceleration < $daemon_config )"
-time="$( name-value-get --from json init/time < $daemon_config )"
+IFS=, init_speed=( $( name-value-get --from json init/speed < $config ) )
+acceleration="$( name-value-get --from json init/acceleration < $config )"
+time="$( name-value-get --from json init/time < $config )"
 
 function joint_modes { echo "$( nc $publisher_address $publisher_port | ur-arm-status --fields=joints/mode | head -1 )"; }
 
