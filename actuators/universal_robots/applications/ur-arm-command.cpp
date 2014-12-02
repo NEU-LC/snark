@@ -36,7 +36,6 @@
 #include <comma/application/command_line_options.h>
 #include <comma/csv/stream.h>
 #include <comma/string/string.h>
-#include <comma/application/signal_flag.h>
 #include <comma/csv/traits.h>
 #include <comma/name_value/serialize.h>
 #include "arm.h"
@@ -164,8 +163,7 @@ int main( int ac, char** av )
         {
             move_options_t move_options( options );
             comma::csv::input_stream< input_t > istream( std::cin, csv );
-            comma::signal_flag is_shutdown;
-            while( !is_shutdown && std::cin.good() && !std::cin.eof() )
+            while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
             {
                 const input_t* input = istream.read();
                 if( !input ) { break; }
