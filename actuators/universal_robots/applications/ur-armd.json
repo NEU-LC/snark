@@ -2,17 +2,23 @@
     "status":
     {
         "address": "ladybird.arm",
-        "port": 30003,
+        "port": "30003",
         "publisher":
         {
             "address": "ladybird.nuvo",
-            "port": 14000
+            "port": "14000"
         }
     },
     "command":
     {
         "address": "ladybird.arm",
-        "port": 30002
+        "port": "30002"
     },
-    "timeout": 5
+    "init":
+    {
+        "speeds": "0.02,0.02,0.02,0.02,0.02,0.02",
+        "acceleration": "0.02",
+        "time": "15"
+    },
+    "timeout": "5"
 }

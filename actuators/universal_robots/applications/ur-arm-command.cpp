@@ -49,11 +49,9 @@ void usage( bool verbose )
     std::cerr << "take six comma-separated joint angles and output ur-script-formatted commands to stdout" << std::endl;
     std::cerr << std::endl;
     std::cerr << "commands:" << std::endl;
-    std::cerr << "    on: turn the arm on and release brakes" << std::endl;
     std::cerr << "    init: move joints for the duration of time (used for initialisation); requires speed, acceleration, and time" << std::endl;
     std::cerr << "    move: move joints until joint angles are equal to values read from input" << std::endl;
     std::cerr << "    stop: stop joint movement; requires acceleration" << std::endl;
-    std::cerr << "    off: turn the arm off" << std::endl;    
     std::cerr << "options:" << std::endl;
     std::cerr << "    --help,-h: show this message; --help --verbose: more help" << std::endl;
 //    std::cerr << "    --config: path to config file" << std::endl;
@@ -64,9 +62,8 @@ void usage( bool verbose )
     if( verbose ) { std::cerr << "csv options" << std::endl << comma::csv::options::usage( "values" ) << std::endl; }
     else { std::cerr << "csv options... use --help --verbose for more" << std::endl << std::endl; }
     std::cerr << "examples (assuming robot.arm is the arm's IP address):" << std::endl;
-    std::cerr << "    turn the arm on and attempt to initialise one joint:" << std::endl;
-    std::cerr << "        ur-arm-command on" << std::endl;
-    std::cerr << "        ur-arm-command init --speed=0,0,-0.05,0,0,0 --time=15 | nc robot.arm 30002" << std::endl;
+    std::cerr << "    attempt to initialise one joint:" << std::endl;
+    std::cerr << "        ur-arm-command init --speed=0,0,-0.05,0,0,0 --time=15 --acceleration=0.1 | nc robot.arm 30002" << std::endl;
     std::cerr << "    change joint angles at a speed of 0.02 rad/sec to new values 0,0,0,3.14,0,0:" << std::endl;
     std::cerr << "        echo \"3.14,0,0,0,0,0\" | ur-arm-command move --speed=0.02 | nc robot.arm 30002" << std::endl;    
     std::cerr << "    change joint angles in 10 seconds to new values 0,0,0,3.14,0,0:" << std::endl;
@@ -138,16 +135,7 @@ int main( int ac, char** av )
         //boost::optional< comma::ur::config_t > config;
         //if( options.exists( "--config" ) ) { config = comma::read_json< comma::ur::config_t >( options.value< std::string >( "--config" ) ); }
         //if( config ) { std::cerr << config->move_options.acceleration << std::endl; }
-        if( command == "on" )
-        {
-            std::cout << "power on" << std::endl;
-            boost::this_thread::sleep( boost::posix_time::seconds(3) );  // todo: hardcoded timeouts? long, arbitrary
-            std::cout << "stopj([0,0,0,0,0,0])" << std::endl;
-            boost::this_thread::sleep( boost::posix_time::seconds(5) ); // todo: hardcoded timeouts? long, arbitrary
-            std::cout << "set robotmode run" << std::endl;
-            return 0;
-        }
-        else if( command == "init" )
+        if( command == "init" )
         {
             if( !options.exists( "--speed" ) ||!options.exists( "--acceleration" ) ||  !options.exists( "--time" ) ) { std::cerr << name() << ": --acceleration, --speed, and --time are required for init" << std::endl; return 1; }
             std::vector< std::string > s = comma::split( options.value< std::string >( "--speed" ), ',' );
@@ -175,11 +163,6 @@ int main( int ac, char** av )
         {
             double acceleration = options.value< double >( "--acceleration", 0 );
             std::cout << "stopj(" << acceleration << ")" << std::endl;
-            return 0;
-        }
-        else if( command == "off" )
-        {
-            std::cout << "power off" << std::endl;
             return 0;
         }
         else

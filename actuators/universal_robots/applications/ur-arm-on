@@ -7,9 +7,8 @@ config=./ur-arm.json
 robot_mode_no_power=$( name-value-get --from json robot-mode/no-power < $config )
 robot_mode_stop=$( name-value-get --from json robot-mode/security-stopped < $config )
 robot_mode_init=$( name-value-get --from json robot-mode/initialising < $config )
-number_of_joints=$( name-value-get --from json number-of-joints < $config )
-joint_modes_idle=$( replicate $( name-value-get --from json joint-mode/idle < $config ) $number_of_joints )
-joint_modes_init=$( replicate $( name-value-get --from json joint-mode/initialisation < $config ) $number_of_joints )
+joint_mode_idle=$( name-value-get --from json joint-mode/idle < $config )
+joint_mode_init=$( name-value-get --from json joint-mode/initialisation < $config )
 
 daemon_config=./ur-armd.json
 publisher_address="$( name-value-get --from json status/publisher/address < $daemon_config )"
@@ -34,15 +33,17 @@ function wait_for_mode
 }
 
 mode="$( robot_mode )"
-if [[ -z "$mode" ]]; then echo "$name: failed to get mode, check if status daemon is publishing in port $publisher_port" >&2; exit 1; fi
+if [[ -z "$mode" ]]; then echo "$name: failed to get mode, check if status daemon is publishing on port $publisher_port" >&2; exit 1; fi
 if [[ "$mode" != "$robot_mode_no_power" ]]; then echo "$name: expected the arm to be in mode $robot_mode_no_power (no-power), got mode $mode" >&2; exit 1; fi
 
+number_of_joints=$( joint_modes | tr ',' '\n' | wc -l )
+
 echo "$name: turning the arm on at $( date +%X.%N ) ..."
-echo 'power on' | nc "$command_address" "$command_port"
-wait_for_mode "$robot_mode_init" "$joint_modes_idle" "$timeout" 
-echo 'stopj([0,0,0,0,0,0])' | nc "$command_address" "$command_port"
-wait_for_mode "$robot_mode_stop" "$joint_modes_idle" "$timeout" 
-echo 'set robotmode run' | nc "$command_address" "$command_port"
-wait_for_mode "$robot_mode_init" "$joint_modes_init" "$timeout"
+echo "power on" | nc "$command_address" "$command_port"
+wait_for_mode "$robot_mode_init" "$joint_modes_idle" "$timeout"
+echo "stopj([$( replicate 0 $number_of_joints)])" | nc "$command_address" "$command_port"
+wait_for_mode "$robot_mode_stop" "$( replicate $joint_mode_idle $number_of_joints)" "$timeout" 
+echo "set robotmode run" | nc "$command_address" "$command_port"
+wait_for_mode "$robot_mode_init" "$( replicate $joint_mode_init $number_of_joints )" "$timeout"
 echo "$name: the arm is on and ready for initialisation at $( date +%X.%N )"
 
