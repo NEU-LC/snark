@@ -21,7 +21,7 @@ if [[ -z "${mode[@]}" ]]; then echo "$name: failed to get joint modes, check if 
 number_of_joints=${#mode[@]}
 zeros=( $( printf " 0%.0s" $( seq -s' ' 1 $number_of_joints ) ) )
 
-function stop { IFS=,; echo "stopj([${zeros[*]}])" | nc "$command_address" "$command_port"; exit 1;}
+function stop { IFS=,; echo "stopj([${zeros[*]}])" | nc "$command_address" "$command_port"; echo "stopping"; exit 1;}
 trap 'stop' INT KILL
 
 function initialise_joint
@@ -37,17 +37,19 @@ function initialise_joint
     SECONDS=0
     while [[ "$( joint_modes | cut -d, -f$(( joint+1 )) )" != "$joint_mode_run" ]]; do
         sleep 0.1
-        if (( SECONDS > t )); then echo "$name: failed to initialise joint $joint after moving it at speed ${s[joint]} rad/sec and acceleration $a rad/sec2 for $t seconds " >&2; exit 1; fi
+        if (( $( echo "$SECONDS > $t" | bc -l ) )); then return 1; fi
     done
-    echo "done"
+    return 0
 }
 
 echo "$name: initialising the arm at $( date +%X.%N )..."
-for (( joint = $number_of_joints - 1; joint >= 0; --joint )); do
+for (( joint = number_of_joints - 1; joint >= 0; joint-- )); do
     if [[ "${mode[joint]}" == "$joint_mode_run" ]]; then 
-        echo "$name: joint $i is already initialised"
+        echo "$name: joint $joint is already initialised"
     else
-        if [[ "${mode[joint]}" == "$joint_mode_init" ]]; then initialise_joint $i; else echo "$name: expected joint $joint to be in mode $joint_mode_init (init), got ${mode[joint]}" >&2; exit 1; fi
+        if [[ "${mode[joint]}" == "$joint_mode_init" ]]; then initialise_joint $joint && echo "succeeded" || echo "failed";
+        else echo "$name: expected joint $joint to be in mode $joint_mode_init (init), got ${mode[joint]}" >&2; exit 1; fi
     fi
 done
 echo "$name: the arm is initialised and ready to be used at $( date +%X.%N )"
+

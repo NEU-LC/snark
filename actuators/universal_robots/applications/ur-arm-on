@@ -38,9 +38,10 @@ function replicate { printf "$1"; printf ",$1%.0s" $( seq -s' ' 2 $number_of_joi
 
 echo "$name: turning the arm on at $( date +%X.%N ) ..."
 echo "power on" | nc "$command_address" "$command_port"
-wait_for_mode "$robot_mode_init" "$joint_modes_idle"
+wait_for_mode "$robot_mode_init" "$( replicate $joint_mode_idle )"
 echo "stopj([$( replicate 0 )])" | nc "$command_address" "$command_port"
 wait_for_mode "$robot_mode_stop" "$( replicate $joint_mode_idle )"
 echo "set robotmode run" | nc "$command_address" "$command_port"
 wait_for_mode "$robot_mode_init" "$( replicate $joint_mode_init )"
 echo "$name: the arm is on and ready for initialisation at $( date +%X.%N )"
+
