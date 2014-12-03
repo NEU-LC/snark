@@ -1,10 +1,6 @@
 #!/bin/bash
 
 name=$( basename $0 )
-function replicate { printf "$1"; printf ",$1%.0s" $( seq -s' ' 2 $2 ); }
-
-joint_mode_init=$( ur-arm-status --joint-mode-from-name initialisation )
-joint_mode_run=$( ur-arm-status --joint-mode-from-name running )
 
 config=./ur-arm.json
 publisher_address="$( name-value-get --from json status/publisher/address < $config )"
@@ -12,42 +8,46 @@ publisher_port="$( name-value-get --from json status/publisher/port < $config )"
 command_address="$( name-value-get --from json command/address < $config )"
 command_port="$( name-value-get --from json command/port < $config )"
 
-IFS=, init_speed=( $( name-value-get --from json init/speed < $config ) )
-acceleration="$( name-value-get --from json init/acceleration < $config )"
-time="$( name-value-get --from json init/time < $config )"
+speed=( $( name-value-get --from json init/speed < $config | tr ',' ' ' ) )
+acceleration=( $( name-value-get --from json init/acceleration < $config | tr ',' ' ' ) )
+time=( $( name-value-get --from json init/time < $config | tr ',' ' ' ) )
+
+joint_mode_init=$( ur-arm-status --joint-mode-from-name initialisation )
+joint_mode_run=$( ur-arm-status --joint-mode-from-name running )
 
 function joint_modes { echo "$( nc $publisher_address $publisher_port | ur-arm-status --fields=joints/mode | head -1 )"; }
+mode=( $( joint_modes | tr ',' ' ' ) )
+if [[ -z "${mode[@]}" ]]; then echo "$name: failed to get joint modes, check if status daemon is publishing on port $publisher_port" >&2; exit 1; fi
+number_of_joints=${#mode[@]}
+zeros=( $( printf " 0%.0s" $( seq -s' ' 1 $number_of_joints ) ) )
 
-# TODO: trap signals
+function stop { IFS=,; echo "stopj([${zeros[*]}])" | nc "$command_address" "$command_port"; exit 1;}
+trap 'stop' INT KILL
 
 function initialise_joint
 {
-    local joint="$1"
-    IFS=, 
-    local -a speed=( $( replicate 0 $number_of_joints ) )
-    speed[joint]=${init_speed[joint]}
     echo -n "$name: initialising joint $joint..."
-    echo "speedj_init([${speeds[*]}],$acceleration,$time)" | nc "$command_address" "$command_port"
+    local joint="$1"
+    local -a s=(${zeros[@]})
+    s[joint]=${speed[joint]}
+    local a=${acceleration[joint]}
+    local t=${time[joint]}
+    IFS=,
+    echo "speedj_init([${s[*]}],$a,$t)" | nc "$command_address" "$command_port"
     SECONDS=0
     while [[ "$( joint_modes | cut -d, -f$(( joint+1 )) )" != "$joint_mode_run" ]]; do
         sleep 0.1
-        if (( SECONDS > time )); then echo "$name: failed to initialise joint $joint after moving it at speed $speed rad/sec and acceleration $acceleration rad/sec2 for $time seconds " >&2; exit 1; fi
+        if (( SECONDS > t )); then echo "$name: failed to initialise joint $joint after moving it at speed ${s[joint]} rad/sec and acceleration $a rad/sec2 for $t seconds " >&2; exit 1; fi
     done
     echo "done"
 }
 
-modes="$( joint_modes )"
-if [[ -z "$modes" ]]; then echo "$name: failed to get joint modes, check if status daemon is publishing on port $publisher_port" >&2; exit 1; fi
-
-number_of_joints=$( echo "$modes" | tr ',' '\n' | wc -l )
-
 echo "$name: initialising the arm at $( date +%X.%N )..."
-IFS=, mode_of_joint=($modes)
-for(( i=0; i<${#mode_of_joint[@]}; ++i )); do
-    if [[ "${mode_of_joint[i]}" == "$joint_mode_run" ]]; then 
-        echo "$name: joint $joint is already initialised"
+for (( joint = $number_of_joints - 1; joint >= 0; --joint )); do
+    if [[ "${mode[joint]}" == "$joint_mode_run" ]]; then 
+        echo "$name: joint $i is already initialised"
     else
-        if [[ "${mode_of_joint[i]}" == "$joint_mode_init" ]]; then initialise_joint $i; else echo "$name: expected joint $joint to be in mode $joint_mode_init (init), got ${mode_of_joint[i]}" >&2; exit 1; fi
+        if [[ "${mode[joint]}" == "$joint_mode_init" ]]; then initialise_joint $i; else echo "$name: expected joint $joint to be in mode $joint_mode_init (init), got ${mode[joint]}" >&2; exit 1; fi
     fi
 done
 echo "$name: the arm is initialised and ready to be used at $( date +%X.%N )"
