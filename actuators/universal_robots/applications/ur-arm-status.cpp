@@ -37,7 +37,6 @@
 #include <comma/application/signal_flag.h>
 #include <boost/graph/graph_concepts.hpp>
 #include "base.h"
-#include "packet.h"
 
 static const char* name() { return "ur-arm-status"; }
 
@@ -73,23 +72,6 @@ void usage( bool verbose )
     exit ( -1 );
 }
 
-        
-// // struct arm_t
-// // {
-// //     arm_t() {};
-// //     arm_t( const snark::ur::packet_t& p ) 
-// //         : angles( p.actual_joint_angles )
-// //         , speeds( p.actual_joint_speeds )
-// //         , currents( p.actual_joint_currents )
-// //         , temperatures( p.joint_temperatures ) 
-// //         , modes( p.joint_modes ) {};
-// //     snark::ur::joint_values_t< double > angles;
-// //     snark::ur::joint_values_t< double > speeds;
-// //     snark::ur::joint_values_t< double > currents;
-// //     snark::ur::joint_values_t< double > temperatures;
-// //     snark::ur::joint_values_t< int > modes;
-// // };
-
 struct tool_t
 {
     boost::array< double, snark::ur::number_of_pose_fields > pose;
@@ -108,19 +90,7 @@ struct status_t
 
 namespace comma { namespace visiting {
 
-// template < > struct traits< arm_t >
-// {
-//     template< typename K, typename V > static void visit( const K& k, const arm_t& t, V& v )
-//     {
-//         v.apply( "angles", t.angles );
-//         v.apply( "speeds", t.speeds );
-//         v.apply( "currents", t.currents );
-//         v.apply( "temperatures", t.temperatures );
-//         v.apply( "modes", t.modes );
-//     }
-// };
-
-template < > struct traits< tool_t >
+template <> struct traits< tool_t >
 {
     template< typename K, typename V > static void visit( const K& k, const tool_t& t, V& v )
     {
@@ -130,7 +100,7 @@ template < > struct traits< tool_t >
     }
 };
     
-template < > struct traits< status_t >
+template <> struct traits< status_t >
 {
     template< typename K, typename V > static void visit( const K& k, const status_t& t, V& v )
     {
@@ -173,7 +143,7 @@ int main( int ac, char** av )
             status.t = boost::posix_time::microsec_clock::universal_time();
             status.mode = static_cast< int >( packet.mode() );
             status.time_since_boot = packet.time_since_boot();
-            status.arm.import_from( packet );
+            packet.export_to( status.arm );
             for( unsigned int i = 0; i < snark::ur::number_of_pose_fields; ++i )
             {
                 status.tool.pose[i] = packet.tool_pose[i]();

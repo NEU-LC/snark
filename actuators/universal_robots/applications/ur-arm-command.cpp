@@ -81,16 +81,6 @@ void usage( bool verbose )
     exit ( -1 );
 }
 
-// struct joint_angles_t
-// {
-//     double base;
-//     double shoulder;
-//     double elbow;
-//     double wrist1;
-//     double wrist2;
-//     double wrist3;
-// };
- 
 struct input_t 
 { 
     snark::ur::joint_values_t< double > angles;
@@ -102,28 +92,6 @@ struct input_t
 
 namespace comma { namespace visiting {    
 
-/*template <> struct traits< joint_angles_t >
-{
-    template< typename K, typename V > static void visit( const K&, joint_angles_t& t, V& v )
-    {
-        v.apply( "base", t.base );
-        v.apply( "shoulder", t.shoulder );
-        v.apply( "elbow", t.elbow );
-        v.apply( "wrist1", t.wrist1 );
-        v.apply( "wrist2", t.wrist2 );
-        v.apply( "wrist3", t.wrist3 );
-    }
-    template< typename K, typename V > static void visit( const K&, const joint_angles_t& t, V& v )
-    {
-        v.apply( "base", t.base );
-        v.apply( "shoulder", t.shoulder );
-        v.apply( "elbow", t.elbow );
-        v.apply( "wrist1", t.wrist1 );
-        v.apply( "wrist2", t.wrist2 );
-        v.apply( "wrist3", t.wrist3 );
-    }
-};
- */   
 template <> struct traits< input_t >
 {
     template< typename K, typename V > static void visit( const K&, input_t& t, V& v )
@@ -231,7 +199,6 @@ int main( int ac, char** av )
             {
                 const input_t* input = istream.read();
                 if( !input ) { break; }
-                //std::cout << "movej([" << comma::join( input->angles, ',' ) << "]" << optional_parameters( input ) << ")" << std::endl;
                 std::cout << "movej([" 
                     << input->angles.base << ',' << input->angles.shoulder << ',' << input->angles.elbow << ',' << input->angles.wrist1 << ',' << input->angles.wrist2 << ',' << input->angles.wrist3
                     << "]" 

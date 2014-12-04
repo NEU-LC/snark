@@ -38,42 +38,10 @@
 #include <comma/base/exception.h>
 #include <boost/array.hpp>
 #include <comma/packed/packed.h>
-#include "packet.h"
 
 namespace snark { namespace ur {
 
-//static const unsigned int number_of_joints = 6;
 static const unsigned int number_of_pose_fields = 6;
-
-// struct packed_joint_values_t : public comma::packed::packed_struct< packed_joint_values_t, 48 >
-// {        
-//     typedef comma::packed::net_float64 type;
-//     type base;
-//     type shoulder;
-//     type elbow;
-//     type wrist1;
-//     type wrist2;
-//     type wrist3;    
-// };
-// 
-// struct packet_t : public comma::packed::packed_struct< packet_t, 812  >
-// {
-//     comma::packed::net_uint32 length;
-//     comma::packed::net_float64 time_since_boot;
-//     comma::packed::string< 240 > dummy1;
-//     packed_joint_values_t actual_joint_angles;
-//     packed_joint_values_t actual_joint_speeds;
-//     packed_joint_values_t actual_joint_currents;
-//     comma::packed::string< 144 > dummy2;
-//     boost::array< comma::packed::net_float64, number_of_pose_fields > tool_force;
-//     boost::array< comma::packed::net_float64, number_of_pose_fields > tool_pose;
-//     boost::array< comma::packed::net_float64, number_of_pose_fields > tool_speed;
-//     comma::packed::string< 8 > dummy3;
-//     packed_joint_values_t joint_temperatures;
-//     comma::packed::string< 16 > dummy4;
-//     comma::packed::net_float64 mode;
-//     packed_joint_values_t joint_modes;
-// };
 
 template < typename T >
 struct joint_values_t
@@ -85,35 +53,62 @@ struct joint_values_t
     type wrist1;
     type wrist2;
     type wrist3;
-    void import_from( const snark::ur::packed_joint_values_t& v )
-    {
-        base = static_cast< type >( v.base() );
-        shoulder = static_cast< type >( v.shoulder() );
-        elbow = static_cast< type >( v.elbow() );
-        wrist1 = static_cast< type >( v.wrist1() );
-        wrist2 = static_cast< type >( v.wrist2() );
-        wrist3 = static_cast< type >( v.wrist3() );
-    };
 };
 
 struct arm_t
 {
-    joint_values_t< double > angles;
-    joint_values_t< double > speeds;
-    joint_values_t< double > currents;
-    joint_values_t< double > temperatures;
-    joint_values_t< int > modes;    
-    void import_from( const snark::ur::packet_t& p )
+    typedef double type;
+    joint_values_t< type > angles;
+    joint_values_t< type > speeds;
+    joint_values_t< type > currents;
+    joint_values_t< type > temperatures;
+    typedef int mode_t;
+    joint_values_t< mode_t > modes;
+};
+
+struct packed_joint_values_t : public comma::packed::packed_struct< packed_joint_values_t, 48 >, joint_values_t< comma::packed::net_float64 > 
+{
+    template < typename T >
+    void export_to( joint_values_t< T >& v ) const
     {
-        angles.import_from( p.actual_joint_angles );
-        speeds.import_from( p.actual_joint_speeds );
-        currents.import_from( p.actual_joint_currents );
-        temperatures.import_from( p.joint_temperatures );
-        modes.import_from( p.joint_modes );
+        v.base = static_cast< T >( base() );
+        v.shoulder = static_cast< T >( shoulder() );
+        v.elbow = static_cast< T >( elbow() );
+        v.wrist1 = static_cast< T >( wrist1() );
+        v.wrist2 = static_cast< T >( wrist2() );
+        v.wrist3 = static_cast< T >( wrist3() );
     };
 };
 
-} }
+struct packet_t : public comma::packed::packed_struct< packet_t, 812  >
+{
+    comma::packed::net_uint32 length;
+    comma::packed::net_float64 time_since_boot;
+    comma::packed::string< 240 > dummy1;
+    packed_joint_values_t actual_joint_angles;
+    packed_joint_values_t actual_joint_speeds;
+    packed_joint_values_t actual_joint_currents;
+    comma::packed::string< 144 > dummy2;
+    boost::array< comma::packed::net_float64, number_of_pose_fields > tool_force;
+    boost::array< comma::packed::net_float64, number_of_pose_fields > tool_pose;
+    boost::array< comma::packed::net_float64, number_of_pose_fields > tool_speed;
+    comma::packed::string< 8 > dummy3;
+    packed_joint_values_t joint_temperatures;
+    comma::packed::string< 16 > dummy4;
+    comma::packed::net_float64 mode;
+    packed_joint_values_t joint_modes;
+    
+    void export_to( arm_t& arm ) const
+    {
+        actual_joint_angles.export_to< arm_t::type >( arm.angles );
+        actual_joint_speeds.export_to< arm_t::type >( arm.speeds );
+        actual_joint_currents.export_to< arm_t::type >( arm.currents );
+        joint_temperatures.export_to< arm_t::type >( arm.temperatures );
+        joint_modes.export_to< arm_t::mode_t >( arm.modes );
+    };
+};
+
+} } // namespace snark { namespace ur {
 
 namespace comma { namespace visiting {    
 
@@ -159,7 +154,7 @@ template < > struct traits< snark::ur::arm_t >
     }
 };
 
-} }
+} } // namespace comma { namespace visiting {    
 
 namespace snark { namespace ur {
 
