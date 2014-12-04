@@ -33,11 +33,10 @@
 #ifndef COMMA_UR_BASE
 #define COMMA_UR_BASE
 
+#include <comma/csv/traits.h>
 #include <comma/packed/packed.h>
 
 namespace snark { namespace ur {
-
-static const unsigned int number_of_pose_fields = 6;
 
 template < typename T >
 struct joint_values_t

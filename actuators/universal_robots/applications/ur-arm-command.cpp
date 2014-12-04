@@ -32,13 +32,10 @@
 
 #include <boost/optional.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
-#include <boost/thread/thread.hpp> 
-#include <boost/graph/graph_concepts.hpp>
 #include <comma/application/command_line_options.h>
 #include <comma/csv/stream.h>
 #include <comma/string/string.h>
 #include <comma/csv/traits.h>
-#include <comma/name_value/serialize.h>
 #include "base.h"
 #include "config.h"
 

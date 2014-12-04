@@ -30,12 +30,12 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include <boost/date_time/posix_time/posix_time.hpp>
 #include <comma/application/command_line_options.h>
 #include <comma/csv/stream.h>
-#include <comma/string/split.h>
 #include <comma/string/string.h>
+#include <comma/csv/traits.h>
 #include <comma/application/signal_flag.h>
-#include <boost/graph/graph_concepts.hpp>
 #include "base.h"
 #include "mode.h"
 
@@ -80,6 +80,15 @@ struct status_t
     snark::ur::tool_t tool;
     int mode;
     double time_since_boot;
+    
+    void set( const snark::ur::packet_t& packet )
+    {
+        t = boost::posix_time::microsec_clock::universal_time();
+        packet.export_to( arm );
+        packet.export_to( tool );        
+        mode = static_cast< int >( packet.mode() );
+        time_since_boot = packet.time_since_boot();
+    }
 };
 
 namespace comma { namespace visiting {
@@ -124,11 +133,7 @@ int main( int ac, char** av )
             if( std::cin.gcount() == 0 ) { break; }
             if( std::cin.gcount() < snark::ur::packet_t::size ) { std::cerr << name() << ": received a packet of length " << std::cin.gcount() << ", expected " << snark::ur::packet_t::size << std::endl; return 1; }
             if( packet.length() != snark::ur::packet_t::size ) { std::cerr << name() << ": received a packet that reports length " << packet.length() << ", expected " << snark::ur::packet_t::size << std::endl; return 1; }
-            status.t = boost::posix_time::microsec_clock::universal_time();
-            status.mode = static_cast< int >( packet.mode() );
-            status.time_since_boot = packet.time_since_boot();
-            packet.export_to( status.arm );
-            packet.export_to( status.tool );
+            status.set( packet );
             ostream.write( status );
         }
     }
