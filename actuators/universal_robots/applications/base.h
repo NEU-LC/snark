@@ -44,7 +44,7 @@ static const unsigned int number_of_pose_fields = 6;
 
 typedef boost::bimap< int, std::string > modes_t;
 
-static const modes_t robot_modes = boost::assign::list_of< modes_t::relation >
+static const modes_t modes = boost::assign::list_of< modes_t::relation >
     ( 0, "running" )
     ( 1, "freedrive" )
     ( 2, "ready" )
@@ -78,16 +78,16 @@ static const modes_t joint_modes = boost::assign::list_of< modes_t::relation >
     ( 254, "initialisation" )
     ( 255, "idle" );
 
-inline std::string robot_mode_to_name( int mode ) 
+inline std::string mode_to_name( int mode ) 
 { 
-    if( !robot_modes.left.count( mode ) ) { COMMA_THROW( comma::exception, "robot mode " << mode << " is not found" ); };
-    return robot_modes.left.at( mode );
+    if( !modes.left.count( mode ) ) { COMMA_THROW( comma::exception, "robot mode " << mode << " is not found" ); };
+    return modes.left.at( mode );
 }
 
-inline int robot_mode_from_name( std::string name ) 
+inline int mode_from_name( std::string name ) 
 { 
-    if( !robot_modes.right.count( name ) ) { COMMA_THROW( comma::exception, "robot mode \'" << name << "\' is not found" ); };
-    return robot_modes.right.at( name );
+    if( !modes.right.count( name ) ) { COMMA_THROW( comma::exception, "robot mode \'" << name << "\' is not found" ); };
+    return modes.right.at( name );
 }
 
 inline std::string joint_mode_to_name( int mode ) 
