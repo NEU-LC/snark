@@ -33,13 +33,7 @@
 #ifndef COMMA_UR_BASE
 #define COMMA_UR_BASE
 
-#include <boost/bimap.hpp>
-#include <boost/assign.hpp>
-#include <comma/base/exception.h>
-#include <boost/array.hpp>
 #include <comma/packed/packed.h>
-
-#include <snark/visiting/eigen.h>
 
 namespace snark { namespace ur {
 
@@ -248,69 +242,5 @@ template <> struct traits< snark::ur::tool_t >
 };
 
 } } // namespace comma { namespace visiting {    
-
-namespace snark { namespace ur {
-
-typedef boost::bimap< int, std::string > modes_t;
-
-static const modes_t modes = boost::assign::list_of< modes_t::relation >
-    ( 0, "running" )
-    ( 1, "freedrive" )
-    ( 2, "ready" )
-    ( 3, "initialising" )
-    ( 4, "security-stopped" )
-    ( 5, "emergency-stopped" )
-    ( 6, "fatal-error" )
-    ( 7, "no-power" )
-    ( 8, "not-connected" )
-    ( 9, "shutdown" )
-    ( 10, "safeguard-stop" );
-    
-static const modes_t joint_modes = boost::assign::list_of< modes_t::relation >
-    ( 237, "part-d-calibration" )
-    ( 238, "backdrive" )
-    ( 239, "power-off" )
-    ( 240, "emergency-stopped" )
-    ( 241, "calval-initialisation" )
-    ( 242, "error" )
-    ( 243, "freedrive" )
-    ( 244, "simulated" )
-    ( 245, "not-responding" )
-    ( 246, "motor-initialisation" )
-    ( 247, "adc-calibration" )
-    ( 248, "dead-commutation" )
-    ( 249, "bootloader" )
-    ( 250, "calibration" )
-    ( 251, "stopped" )
-    ( 252, "fault" )
-    ( 253, "running" )
-    ( 254, "initialisation" )
-    ( 255, "idle" );
-
-inline std::string mode_to_name( int mode ) 
-{ 
-    if( !modes.left.count( mode ) ) { COMMA_THROW( comma::exception, "robot mode " << mode << " is not found" ); };
-    return modes.left.at( mode );
-}
-
-inline int mode_from_name( std::string name ) 
-{ 
-    if( !modes.right.count( name ) ) { COMMA_THROW( comma::exception, "robot mode \'" << name << "\' is not found" ); };
-    return modes.right.at( name );
-}
-
-inline std::string joint_mode_to_name( int mode ) 
-{ 
-    if( !joint_modes.left.count( mode ) ) { COMMA_THROW( comma::exception, "joint mode " << mode << " is not found" ); };
-    return joint_modes.left.at( mode );
-}
-
-inline int joint_mode_from_name( std::string name ) 
-{ 
-    if( !joint_modes.right.count( name ) ) { COMMA_THROW( comma::exception, "joint mode \'" << name << "\' is not found" ); };
-    return joint_modes.right.at( name );
-}
-
-} } // namespace snark { namespace ur {
 
 #endif // #ifndef COMMA_UR_BASE
