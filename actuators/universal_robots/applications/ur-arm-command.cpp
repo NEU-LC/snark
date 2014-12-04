@@ -33,6 +33,7 @@
 #include <boost/optional.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/thread/thread.hpp> 
+#include <boost/graph/graph_concepts.hpp>
 #include <comma/application/command_line_options.h>
 #include <comma/csv/stream.h>
 #include <comma/string/string.h>
@@ -49,37 +50,50 @@ void usage( bool verbose )
     std::cerr << "take six comma-separated joint angles and output ur-script-formatted commands to stdout" << std::endl;
     std::cerr << std::endl;
     std::cerr << "commands:" << std::endl;
-    std::cerr << "    init: move joints for the duration of time (used for initialisation); requires speed, acceleration, and time" << std::endl;
     std::cerr << "    move: move joints until joint angles are equal to values read from input" << std::endl;
-    std::cerr << "    stop: stop joint movement; requires acceleration" << std::endl;
+    std::cerr << "    stop: stop joint movement" << std::endl;
+    std::cerr << std::endl;
     std::cerr << "options:" << std::endl;
-    std::cerr << "    --help,-h: show this message; --help --verbose: more help" << std::endl;
+    std::cerr << "    --help,-h: show this message; --help" << std::endl; 
+    std::cerr << "    --verbose,-v: more help" << std::endl;
 //    std::cerr << "    --config: path to config file" << std::endl;
     std::cerr << "    --acceleration: angular acceleration of the leading axis" << std::endl;
     std::cerr << "    --speed: angular speed of the leading axis" << std::endl;
     std::cerr << "    --time: time to execute the motion" << std::endl;
     std::cerr << "    --radius: blend radius" << std::endl;
-    std::cerr << "    --fields: input stream fields (default: values, optional: acceleration,speed,time,radius)" << std::endl;
+    std::cerr << "    --fields: input stream fields (default: angles, optional: acceleration, speed, time, radius)" << std::endl;
     std::cerr << "        note: input values of optional fields take priority over values given via options on the command line" << std::endl;
+    std::cerr << std::endl;
     if( verbose ) { std::cerr << "csv options" << std::endl << comma::csv::options::usage( "angles" ) << std::endl; }
     else { std::cerr << "csv options... use --help --verbose for more" << std::endl << std::endl; }
     std::cerr << "examples (assuming robot.arm is the arm's IP address):" << std::endl;
-    std::cerr << "    change joint angles at a speed of 0.02 rad/sec to new values 0,0,0,3.14,0,0:" << std::endl;
-    std::cerr << "        echo \"3.14,0,0,0,0,0\" | ur-arm-command move --speed=0.02 | nc robot.arm 30002" << std::endl;    
-    std::cerr << "    change joint angles in 10 seconds to new values 0,0,0,3.14,0,0:" << std::endl;
-    std::cerr << "        echo \"3.14,0,0,0,0,0\" | ur-arm-command move --time=10 | nc robot.arm 30002" << std::endl;
-    std::cerr << "    same as above but with a timestamp in the input stream (the time stamp is ignored):" << std::endl;
-    std::cerr << "        echo \"20140101T000000,3.14,0,0,0,0,0\" | ur-arm-command move --time=10 --fields=t,angles | nc robot.arm 30002" << std::endl;
-    std::cerr << "    same as above but with the first and second input angles swapped:" << std::endl;
-    std::cerr << "        echo \"3.14,0,0,0,0,0\" | ur-arm-command move --time=10 --fields=angles[1],angles[0],angles[2],angles[3],angles[4],angles[5] | nc robot.arm 30002" << std::endl;    
+    std::cerr << "    move joints at a speed of 0.02 rad/sec until joint angles reach new values 1,2,3,4,5,6 (in radians):" << std::endl;
+    std::cerr << "        echo \"1,2,3,4,5,6\" | ur-arm-command move --speed=0.02 | nc robot.arm 30002" << std::endl;
+    std::cerr << "    same as above but with a timestamp in the input stream (timestamp is ignored):" << std::endl;
+    std::cerr << "        echo \"20140101T000000,1,2,3,4,5,6\" | ur-arm-command move --speed=0.02 --fields=t,angles | nc robot.arm 30002" << std::endl;        
+    std::cerr << "    move joints until joint angles reach new values 1,2,3,4,5,6 (complete the motion in 10 seconds):" << std::endl;
+    std::cerr << "        echo \"1,2,3,4,5,6\" | ur-arm-command move --time=10 | nc robot.arm 30002" << std::endl;
+    std::cerr << "    same as above but take the time from input stream):" << std::endl;
+    std::cerr << "        echo \"1,2,3,4,5,6,10\" | ur-arm-command move --fields=angles,time | nc robot.arm 30002" << std::endl;
+    std::cerr << "    same as above but with the base and shoulder angles swapped (default order: base,shoulder,elbow,wrist1,wrist2,wrist3):" << std::endl;
+    std::cerr << "        echo \"1,2,3,4,5,6,10\" | ur-arm-command move --fields=shoulder,base,elbow,wrist1,wrist2,wrist3,time | nc robot.arm 30002" << std::endl;    
     std::cerr << std::endl;
     exit ( -1 );
 }
 
-static const unsigned int number_of_input_fields = comma::ur::number_of_joints;
+struct joint_angles_t
+{
+    double base;
+    double shoulder;
+    double elbow;
+    double wrist1;
+    double wrist2;
+    double wrist3;
+};
+
 struct input_t 
 { 
-    boost::array< double, number_of_input_fields > angles; 
+    joint_angles_t angles;
     double acceleration;
     double speed;
     double time;
@@ -87,6 +101,28 @@ struct input_t
 };
 
 namespace comma { namespace visiting {    
+
+template <> struct traits< joint_angles_t >
+{
+    template< typename K, typename V > static void visit( const K&, joint_angles_t& t, V& v )
+    {
+        v.apply( "base", t.base );
+        v.apply( "shoulder", t.shoulder );
+        v.apply( "elbow", t.elbow );
+        v.apply( "wrist1", t.wrist1 );
+        v.apply( "wrist2", t.wrist2 );
+        v.apply( "wrist3", t.wrist3 );
+    }
+    template< typename K, typename V > static void visit( const K&, const joint_angles_t& t, V& v )
+    {
+        v.apply( "base", t.base );
+        v.apply( "shoulder", t.shoulder );
+        v.apply( "elbow", t.elbow );
+        v.apply( "wrist1", t.wrist1 );
+        v.apply( "wrist2", t.wrist2 );
+        v.apply( "wrist3", t.wrist3 );
+    }
+};
     
 template <> struct traits< input_t >
 {
@@ -175,7 +211,12 @@ int main( int ac, char** av )
     {
         comma::command_line_options options( ac, av, usage );
         comma::csv::options csv = comma::csv::options( options, "angles" );
-        if( !( csv.has_field( "angles" ) || csv.has_field( "angles[0],angles[1],angles[2],angles[3],angles[4],angles[5]" ) ) ) { std::cerr << name() << ": expected input fields for angles of all joints, some are missing" << std::endl; return 1; }
+        if( !csv.has_field( "angles" ) &&
+            !( csv.full_xpath && csv.has_field( "angles/base,angles/shoulder,angles/elbow,angles/wrist1,angles/wrist2,angles/wrist3" ) ) &&
+            !( !csv.full_xpath && csv.has_field( "base,shoulder,elbow,wrist1,wrist2,wrist3" ) ) ) 
+        { 
+            std::cerr << name() << ": expected input fields for angles of all joints, some are missing" << std::endl; return 1; 
+        }
         const std::vector< std::string > unnamed = options.unnamed( "--help,-h", "-.*,--.*" );
         if( unnamed.size() != 1 ) { std::cerr << name() << ": expected one command, got " << unnamed.size() << std::endl; return 1; }
         const std::string command = unnamed[0];
@@ -190,7 +231,11 @@ int main( int ac, char** av )
             {
                 const input_t* input = istream.read();
                 if( !input ) { break; }
-                std::cout << "movej([" << comma::join( input->angles, ',' ) << "]" << optional_parameters( input ) << ")" << std::endl;
+                //std::cout << "movej([" << comma::join( input->angles, ',' ) << "]" << optional_parameters( input ) << ")" << std::endl;
+                std::cout << "movej([" 
+                    << input->angles.base << ',' << input->angles.shoulder << ',' << input->angles.elbow << ',' << input->angles.wrist1 << ',' << input->angles.wrist2 << ',' << input->angles.wrist3
+                    << "]" 
+                    << optional_parameters( input ) << ")" << std::endl;
             }
             return 0;
         }
