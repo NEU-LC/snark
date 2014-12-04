@@ -35,29 +35,95 @@
 
 #include <boost/array.hpp>
 #include <comma/packed/packed.h>
-#include "base.h"
+//#include "base.h"
 
-namespace comma { namespace ur {
+namespace snark { namespace ur {
+
+const int number_of_pose_fields_ = 6;
+
+struct packed_joint_values_t : public comma::packed::packed_struct< packed_joint_values_t, 48 >
+{        
+    typedef comma::packed::net_float64 type;
+    type base;
+    type shoulder;
+    type elbow;
+    type wrist1;
+    type wrist2;
+    type wrist3;    
+};
 
 struct packet_t : public comma::packed::packed_struct< packet_t, 812  >
 {
     comma::packed::net_uint32 length;
     comma::packed::net_float64 time_since_boot;
     comma::packed::string< 240 > dummy1;
-    boost::array< comma::packed::net_float64, number_of_joints > actual_joint_positions; 
-    boost::array< comma::packed::net_float64, number_of_joints > actual_joint_velocities;
-    boost::array< comma::packed::net_float64, number_of_joints > actual_joint_currents;
+    packed_joint_values_t actual_joint_angles;
+    packed_joint_values_t actual_joint_speeds;
+    packed_joint_values_t actual_joint_currents;
     comma::packed::string< 144 > dummy2;
-    boost::array< comma::packed::net_float64, number_of_pose_fields > tool_generalised_forces;
-    boost::array< comma::packed::net_float64, number_of_pose_fields > tool_pose;
-    boost::array< comma::packed::net_float64, number_of_pose_fields > tool_speed;
+    boost::array< comma::packed::net_float64, number_of_pose_fields_ > tool_force;
+    boost::array< comma::packed::net_float64, number_of_pose_fields_ > tool_pose;
+    boost::array< comma::packed::net_float64, number_of_pose_fields_ > tool_speed;
     comma::packed::string< 8 > dummy3;
-    boost::array< comma::packed::net_float64, number_of_joints >  joint_temperatures;
+    packed_joint_values_t joint_temperatures;
     comma::packed::string< 16 > dummy4;
-    comma::packed::net_float64 robot_mode;
-    boost::array< comma::packed::net_float64, number_of_joints > joint_modes;
+    comma::packed::net_float64 mode;
+    packed_joint_values_t joint_modes;
 };
 
-} } // namespace comma { namespace ur {
+    
+    
+/*struct packed_joint_values_t : public comma::packed::packed_struct< packed_joint_values_t, 48 >
+{        
+    typedef comma::packed::net_float64 type;
+    type base;
+    type shoulder;
+    type elbow;
+    type wrist1;
+    type wrist2;
+    type wrist3;    
+};
+
+struct packet_t : public comma::packed::packed_struct< packet_t, 812  >
+{
+    comma::packed::net_uint32 length;
+    comma::packed::net_float64 time_since_boot;
+    comma::packed::string< 240 > dummy1;
+    packed_joint_values_t actual_joint_angles;
+    packed_joint_values_t actual_joint_speeds;
+    packed_joint_values_t actual_joint_currents;
+    comma::packed::string< 144 > dummy2;
+    boost::array< comma::packed::net_float64, snark::ur::number_of_pose_fields > tool_force;
+    boost::array< comma::packed::net_float64, snark::ur::number_of_pose_fields > tool_pose;
+    boost::array< comma::packed::net_float64, snark::ur::number_of_pose_fields > tool_speed;
+    comma::packed::string< 8 > dummy3;
+    packed_joint_values_t joint_temperatures;
+    comma::packed::string< 16 > dummy4;
+    comma::packed::net_float64 robot_mode;
+    packed_joint_values_t joint_modes;
+    enum { base=0, shoulder=1, elbow=2, wrist1=3, wrist2=4, wrist3=5 };
+};
+   */ 
+// struct packet_t : public comma::packed::packed_struct< packet_t, 812  >
+// {
+//     comma::packed::net_uint32 length;
+//     comma::packed::net_float64 time_since_boot;
+//     comma::packed::string< 240 > dummy1;
+//     boost::array< comma::packed::net_float64, number_of_joints > actual_joint_positions;
+//     boost::array< comma::packed::net_float64, number_of_joints > actual_joint_velocities;
+//     boost::array< comma::packed::net_float64, number_of_joints > actual_joint_currents;
+//     comma::packed::string< 144 > dummy2;
+//     boost::array< comma::packed::net_float64, number_of_pose_fields > tool_generalised_forces;
+//     boost::array< comma::packed::net_float64, number_of_pose_fields > tool_pose;
+//     boost::array< comma::packed::net_float64, number_of_pose_fields > tool_speed;
+//     comma::packed::string< 8 > dummy3;
+//     boost::array< comma::packed::net_float64, number_of_joints >  joint_temperatures;
+//     comma::packed::string< 16 > dummy4;
+//     comma::packed::net_float64 robot_mode;
+//     boost::array< comma::packed::net_float64, number_of_joints > joint_modes;
+//     enum { base=0, shoulder=1, elbow=2, wrist1=3, wrist2=4, wrist3=5 };
+// };
+
+} } // namespace snark { namespace ur {
 
 #endif // #ifndef COMMA_UR_PACKET

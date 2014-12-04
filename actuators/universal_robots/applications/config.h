@@ -35,7 +35,7 @@
 
 #include <comma/csv/traits.h>
 
-namespace comma { namespace ur { 
+namespace snark { namespace ur { 
 
 struct config_t 
 {
@@ -49,33 +49,33 @@ struct config_t
     move_options_t move_options;
 };
 
-} } // namespace comma { namespace ur { 
+} } // namespace snark { namespace ur { 
 
 namespace comma { namespace visiting {    
 
-  template <> struct traits< comma::ur::config_t >
+  template <> struct traits< snark::ur::config_t >
 {
-    template< typename K, typename V > static void visit( const K&, comma::ur::config_t& t, V& v )
+    template< typename K, typename V > static void visit( const K&, snark::ur::config_t& t, V& v )
     {
         v.apply( "move-options", t.move_options );
     }
     
-    template< typename K, typename V > static void visit( const K&, const comma::ur::config_t& t, V& v )
+    template< typename K, typename V > static void visit( const K&, const snark::ur::config_t& t, V& v )
     {
         v.apply( "move-options", t.move_options );
     }
 };
       
-template <> struct traits< comma::ur::config_t::move_options_t >
+template <> struct traits< snark::ur::config_t::move_options_t >
 {
-    template< typename K, typename V > static void visit( const K&, comma::ur::config_t::move_options_t& t, V& v )
+    template< typename K, typename V > static void visit( const K&, snark::ur::config_t::move_options_t& t, V& v )
     {
         v.apply( "acceleration", t.acceleration );
         v.apply( "speed", t.speed );
         v.apply( "radius", t.radius );
     }    
     
-    template< typename K, typename V > static void visit( const K&, const comma::ur::config_t::move_options_t& t, V& v )
+    template< typename K, typename V > static void visit( const K&, const snark::ur::config_t::move_options_t& t, V& v )
     {
         v.apply( "acceleration", t.acceleration );
         v.apply( "speed", t.speed );
@@ -83,6 +83,6 @@ template <> struct traits< comma::ur::config_t::move_options_t >
     }
 };
 
-} } // namespace comma { namespace visiting {
+} } // namespace snark { namespace visiting {
 
 #endif // #ifndef COMMA_UR_CONFIG

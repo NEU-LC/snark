@@ -81,19 +81,19 @@ void usage( bool verbose )
     exit ( -1 );
 }
 
-struct joint_angles_t
-{
-    double base;
-    double shoulder;
-    double elbow;
-    double wrist1;
-    double wrist2;
-    double wrist3;
-};
-
+// struct joint_angles_t
+// {
+//     double base;
+//     double shoulder;
+//     double elbow;
+//     double wrist1;
+//     double wrist2;
+//     double wrist3;
+// };
+ 
 struct input_t 
 { 
-    joint_angles_t angles;
+    snark::ur::joint_values_t< double > angles;
     double acceleration;
     double speed;
     double time;
@@ -102,7 +102,7 @@ struct input_t
 
 namespace comma { namespace visiting {    
 
-template <> struct traits< joint_angles_t >
+/*template <> struct traits< joint_angles_t >
 {
     template< typename K, typename V > static void visit( const K&, joint_angles_t& t, V& v )
     {
@@ -123,7 +123,7 @@ template <> struct traits< joint_angles_t >
         v.apply( "wrist3", t.wrist3 );
     }
 };
-    
+ */   
 template <> struct traits< input_t >
 {
     template< typename K, typename V > static void visit( const K&, input_t& t, V& v )
@@ -220,8 +220,8 @@ int main( int ac, char** av )
         const std::vector< std::string > unnamed = options.unnamed( "--help,-h", "-.*,--.*" );
         if( unnamed.size() != 1 ) { std::cerr << name() << ": expected one command, got " << unnamed.size() << std::endl; return 1; }
         const std::string command = unnamed[0];
-        //boost::optional< comma::ur::config_t > config;
-        //if( options.exists( "--config" ) ) { config = comma::read_json< comma::ur::config_t >( options.value< std::string >( "--config" ) ); }
+        //boost::optional< snark::ur::config_t > config;
+        //if( options.exists( "--config" ) ) { config = comma::read_json< snark::ur::config_t >( options.value< std::string >( "--config" ) ); }
         //if( config ) { std::cerr << config->move_options.acceleration << std::endl; }
         if( command == "move" )
         {

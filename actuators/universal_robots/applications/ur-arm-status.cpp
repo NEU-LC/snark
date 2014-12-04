@@ -35,6 +35,7 @@
 #include <comma/string/split.h>
 #include <comma/string/string.h>
 #include <comma/application/signal_flag.h>
+#include <boost/graph/graph_concepts.hpp>
 #include "base.h"
 #include "packet.h"
 
@@ -63,55 +64,61 @@ void usage( bool verbose )
     if( verbose )
     {
         std::cerr << "modes: " << std::endl;
-        for( comma::ur::modes_t::const_iterator it = comma::ur::modes.begin(); it != comma::ur::modes.end(); ++it ) { std::cerr << "    " << it->left << ": " << it->right << std::endl; }
+        for( snark::ur::modes_t::const_iterator it = snark::ur::modes.begin(); it != snark::ur::modes.end(); ++it ) { std::cerr << "    " << it->left << ": " << it->right << std::endl; }
         std::cerr << std::endl;
         std::cerr << "joint modes: " << std::endl;
-        for( comma::ur::modes_t::const_iterator it = comma::ur::joint_modes.begin(); it != comma::ur::joint_modes.end(); ++it ) { std::cerr << "    " << it->left << ": " << it->right << std::endl; }
+        for( snark::ur::modes_t::const_iterator it = snark::ur::joint_modes.begin(); it != snark::ur::joint_modes.end(); ++it ) { std::cerr << "    " << it->left << ": " << it->right << std::endl; }
         std::cerr << std::endl;
     }
     exit ( -1 );
 }
 
-struct joints_t 
-{
-    boost::array< double, comma::ur::number_of_joints > angle;
-    boost::array< double, comma::ur::number_of_joints > velocity;
-    boost::array< double, comma::ur::number_of_joints > current;
-    boost::array< double, comma::ur::number_of_joints > temperature;
-    typedef comma::int32 mode_t;
-    boost::array< mode_t, comma::ur::number_of_joints > mode;
-};
+        
+// // struct arm_t
+// // {
+// //     arm_t() {};
+// //     arm_t( const snark::ur::packet_t& p ) 
+// //         : angles( p.actual_joint_angles )
+// //         , speeds( p.actual_joint_speeds )
+// //         , currents( p.actual_joint_currents )
+// //         , temperatures( p.joint_temperatures ) 
+// //         , modes( p.joint_modes ) {};
+// //     snark::ur::joint_values_t< double > angles;
+// //     snark::ur::joint_values_t< double > speeds;
+// //     snark::ur::joint_values_t< double > currents;
+// //     snark::ur::joint_values_t< double > temperatures;
+// //     snark::ur::joint_values_t< int > modes;
+// // };
 
 struct tool_t
 {
-    boost::array< double, comma::ur::number_of_pose_fields > pose;
-    boost::array< double, comma::ur::number_of_pose_fields > speed;
-    boost::array< double, comma::ur::number_of_pose_fields > force;
+    boost::array< double, snark::ur::number_of_pose_fields > pose;
+    boost::array< double, snark::ur::number_of_pose_fields > speed;
+    boost::array< double, snark::ur::number_of_pose_fields > force;
 };
 
 struct status_t 
 {
     boost::posix_time::ptime t;
-    joints_t joints;
+    snark::ur::arm_t arm;
     tool_t tool;
-    typedef comma::int32 mode_t;
-    mode_t mode;
+    int mode;
     double time_since_boot;
 };
 
 namespace comma { namespace visiting {
 
-template < > struct traits< joints_t >
-{
-    template< typename K, typename V > static void visit( const K& k, const joints_t& t, V& v )
-    {
-        v.apply( "angle", t.angle );
-        v.apply( "velocity", t.velocity );
-        v.apply( "current", t.current );
-        v.apply( "temperature", t.temperature );
-        v.apply( "mode", t.mode );
-    }
-};
+// template < > struct traits< arm_t >
+// {
+//     template< typename K, typename V > static void visit( const K& k, const arm_t& t, V& v )
+//     {
+//         v.apply( "angles", t.angles );
+//         v.apply( "speeds", t.speeds );
+//         v.apply( "currents", t.currents );
+//         v.apply( "temperatures", t.temperatures );
+//         v.apply( "modes", t.modes );
+//     }
+// };
 
 template < > struct traits< tool_t >
 {
@@ -128,7 +135,7 @@ template < > struct traits< status_t >
     template< typename K, typename V > static void visit( const K& k, const status_t& t, V& v )
     {
         v.apply( "t", t.t );
-        v.apply( "joints", t.joints );
+        v.apply( "arm", t.arm );
         v.apply( "tool", t.tool );
         v.apply( "mode",  t.mode );
         v.apply( "time_since_boot", t.time_since_boot );
@@ -142,44 +149,36 @@ int main( int ac, char** av )
     try
     {
         comma::command_line_options options( ac, av, usage );
-        //if( options.exists( "-h,--help" ) ) { usage(); }
         if( options.exists( "--output-fields" ) ) { std::cout << comma::join( comma::csv::names< status_t >(), ',' ) << std::endl; return 0; }
         comma::csv::options csv;
         csv.full_xpath = true;
         csv.fields = options.value< std::string >( "--fields", "" );
         if( options.exists( "--format" ) ) { std::cout << comma::csv::format::value< status_t >( csv.fields, true ) << std::endl; return 0; }
         if( options.exists( "--binary,-b" ) ) { csv.format( comma::csv::format::value< status_t >( csv.fields, true ) ); }
-        if( options.exists( "--packet-size" ) ) { std::cout << comma::ur::packet_t::size << std::endl; return 0; }
-        if( options.exists( "--mode-from-name" ) ) { std::cout << comma::ur::mode_from_name( options.value< std::string >( "--mode-from-name" ) ) << std::endl; return 0; }
-        if( options.exists( "--joint-mode-from-name" ) ) { std::cout << comma::ur::joint_mode_from_name( options.value< std::string >( "--joint-mode-from-name" ) ) << std::endl; return 0; }
-        if( options.exists( "--mode-to-name" ) ) { std::cout << comma::ur::mode_to_name( options.value< int >( "--mode-to-name" ) ) << std::endl; return 0; }
-        if( options.exists( "--joint-mode-to-name" ) ) { std::cout << comma::ur::joint_mode_to_name( options.value< int >( "--joint-mode-to-name" ) ) << std::endl; return 0; }        
+        if( options.exists( "--packet-size" ) ) { std::cout << snark::ur::packet_t::size << std::endl; return 0; }
+        if( options.exists( "--mode-from-name" ) ) { std::cout << snark::ur::mode_from_name( options.value< std::string >( "--mode-from-name" ) ) << std::endl; return 0; }
+        if( options.exists( "--joint-mode-from-name" ) ) { std::cout << snark::ur::joint_mode_from_name( options.value< std::string >( "--joint-mode-from-name" ) ) << std::endl; return 0; }
+        if( options.exists( "--mode-to-name" ) ) { std::cout << snark::ur::mode_to_name( options.value< int >( "--mode-to-name" ) ) << std::endl; return 0; }
+        if( options.exists( "--joint-mode-to-name" ) ) { std::cout << snark::ur::joint_mode_to_name( options.value< int >( "--joint-mode-to-name" ) ) << std::endl; return 0; }        
         static comma::csv::output_stream< status_t > ostream( std::cout, csv );
-        comma::ur::packet_t packet;
+        snark::ur::packet_t packet;
         status_t status;
         comma::signal_flag is_shutdown;    
         while( !is_shutdown && std::cin.good() && !std::cin.eof() )
         {
-            std::cin.read( packet.data(), comma::ur::packet_t::size );
+            std::cin.read( packet.data(), snark::ur::packet_t::size );
             if( std::cin.gcount() == 0 ) { break; }
-            if( std::cin.gcount() < comma::ur::packet_t::size ) { std::cerr << name() << ": received a packet of length " << std::cin.gcount() << ", expected " << comma::ur::packet_t::size << std::endl; return 1; }
-            if( packet.length() != comma::ur::packet_t::size ) { std::cerr << name() << ": received a packet that reports length " << packet.length() << ", expected " << comma::ur::packet_t::size << std::endl; return 1; }
+            if( std::cin.gcount() < snark::ur::packet_t::size ) { std::cerr << name() << ": received a packet of length " << std::cin.gcount() << ", expected " << snark::ur::packet_t::size << std::endl; return 1; }
+            if( packet.length() != snark::ur::packet_t::size ) { std::cerr << name() << ": received a packet that reports length " << packet.length() << ", expected " << snark::ur::packet_t::size << std::endl; return 1; }
             status.t = boost::posix_time::microsec_clock::universal_time();
-            status.mode = static_cast< status_t::mode_t >( packet.robot_mode() );
-            status.time_since_boot = packet.time_since_boot();    
-            for( unsigned int i = 0; i < comma::ur::number_of_joints; ++i )
-            { 
-                status.joints.angle[i] = packet.actual_joint_positions[i]();
-                status.joints.velocity[i] = packet.actual_joint_velocities[i]();
-                status.joints.current[i] = packet.actual_joint_currents[i]();
-                status.joints.temperature[i] = packet.joint_temperatures[i]();
-                status.joints.mode[i] = static_cast< joints_t::mode_t >( packet.joint_modes[i]() );
-            }
-            for( unsigned int i = 0; i < comma::ur::number_of_pose_fields; ++i )
+            status.mode = static_cast< int >( packet.mode() );
+            status.time_since_boot = packet.time_since_boot();
+            status.arm.import_from( packet );
+            for( unsigned int i = 0; i < snark::ur::number_of_pose_fields; ++i )
             {
                 status.tool.pose[i] = packet.tool_pose[i]();
                 status.tool.speed[i] = packet.tool_speed[i]();
-                status.tool.force[i] = packet.tool_generalised_forces[i]();
+                status.tool.force[i] = packet.tool_force[i]();
             }
             ostream.write( status );
         }
