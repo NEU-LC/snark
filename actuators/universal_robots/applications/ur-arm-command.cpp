@@ -57,27 +57,34 @@ void usage( bool verbose )
 //    std::cerr << "    --config: path to config file" << std::endl;
     std::cerr << "    --acceleration: angular acceleration of the leading axis" << std::endl;
     std::cerr << "    --speed: angular speed of the leading axis" << std::endl;
-    std::cerr << "    --radius: blend radius" << std::endl;
     std::cerr << "    --time: time to execute the motion" << std::endl;
-    if( verbose ) { std::cerr << "csv options" << std::endl << comma::csv::options::usage( "values" ) << std::endl; }
+    std::cerr << "    --radius: blend radius" << std::endl;
+    std::cerr << "    --fields: input stream fields (default: values, optional: acceleration,speed,time,radius)" << std::endl;
+    std::cerr << "        note: input values of optional fields take priority over values given via options on the command line" << std::endl;
+    if( verbose ) { std::cerr << "csv options" << std::endl << comma::csv::options::usage( "angles" ) << std::endl; }
     else { std::cerr << "csv options... use --help --verbose for more" << std::endl << std::endl; }
     std::cerr << "examples (assuming robot.arm is the arm's IP address):" << std::endl;
-    std::cerr << "    attempt to initialise one joint:" << std::endl;
-    std::cerr << "        ur-arm-command init --speed=0,0,-0.05,0,0,0 --time=15 --acceleration=0.1 | nc robot.arm 30002" << std::endl;
     std::cerr << "    change joint angles at a speed of 0.02 rad/sec to new values 0,0,0,3.14,0,0:" << std::endl;
     std::cerr << "        echo \"3.14,0,0,0,0,0\" | ur-arm-command move --speed=0.02 | nc robot.arm 30002" << std::endl;    
     std::cerr << "    change joint angles in 10 seconds to new values 0,0,0,3.14,0,0:" << std::endl;
     std::cerr << "        echo \"3.14,0,0,0,0,0\" | ur-arm-command move --time=10 | nc robot.arm 30002" << std::endl;
     std::cerr << "    same as above but with a timestamp in the input stream (the time stamp is ignored):" << std::endl;
-    std::cerr << "        echo \"20140101T000000,3.14,0,0,0,0,0\" | ur-arm-command move --time=10 --fields=t,values | nc robot.arm 30002" << std::endl;
-    std::cerr << "    same as above but with the first and second input values swapped:" << std::endl;
-    std::cerr << "        echo \"3.14,0,0,0,0,0\" | ur-arm-command move --time=10 --fields=values[1],values[0],values[2],values[3],values[4],values[5] | nc robot.arm 30002" << std::endl;    
+    std::cerr << "        echo \"20140101T000000,3.14,0,0,0,0,0\" | ur-arm-command move --time=10 --fields=t,angles | nc robot.arm 30002" << std::endl;
+    std::cerr << "    same as above but with the first and second input angles swapped:" << std::endl;
+    std::cerr << "        echo \"3.14,0,0,0,0,0\" | ur-arm-command move --time=10 --fields=angles[1],angles[0],angles[2],angles[3],angles[4],angles[5] | nc robot.arm 30002" << std::endl;    
     std::cerr << std::endl;
     exit ( -1 );
 }
 
 static const unsigned int number_of_input_fields = comma::ur::number_of_joints;
-struct input_t { boost::array< double, number_of_input_fields > values; };
+struct input_t 
+{ 
+    boost::array< double, number_of_input_fields > angles; 
+    double acceleration;
+    double speed;
+    double time;
+    double radius;
+};
 
 namespace comma { namespace visiting {    
     
@@ -85,42 +92,81 @@ template <> struct traits< input_t >
 {
     template< typename K, typename V > static void visit( const K&, input_t& t, V& v )
     {
-        v.apply( "values", t.values );
+        v.apply( "angles", t.angles );
+        v.apply( "acceleration", t.acceleration );
+        v.apply( "speed", t.speed );
+        v.apply( "time", t.time );
+        v.apply( "radius", t.radius );
     }
     template< typename K, typename V > static void visit( const K&, const input_t& t, V& v )
     {
-        v.apply( "values", t.values );
+        v.apply( "angles", t.angles );
+        v.apply( "acceleration", t.acceleration );
+        v.apply( "speed", t.speed );
+        v.apply( "time", t.time );
+        v.apply( "radius", t.radius );
     }
 };
     
 } } // namespace comma { namespace visiting {
 
-class move_options_t
+class optional_parameters_t
 {
 public:
-    typedef double type;
-    move_options_t() {};
-    move_options_t( const comma::command_line_options& options )
-        : acceleration_( options.optional< type >( "--acceleration" ) )
-        , speed_( options.optional< type >( "--speed" ) )
-        , time_( options.optional< type >( "--time" ) )
-        , radius_( options.optional< type >( "--radius" ) )
+    optional_parameters_t( const comma::command_line_options& options, const comma::csv::options& csv )
+        : command_line_options_( options ), input_stream_has_( csv )
     {
         std::stringstream ss;
-        if( acceleration_ ) ss << ",a=" << *acceleration_;
-        if( speed_ ) ss << ",v=" << *speed_;
-        if( time_ ) ss << ",t=" << *time_;
-        if( radius_ ) ss << ",r=" << *radius_;
-        optional_parameters_ = ss.str();
+        if( command_line_options_.acceleration && !input_stream_has_.acceleration ) ss << ",a=" << *command_line_options_.acceleration;
+        if( command_line_options_.speed && !input_stream_has_.speed ) ss << ",v=" << *command_line_options_.speed;
+        if( command_line_options_.time && !input_stream_has_.time ) ss << ",t=" << *command_line_options_.time;
+        if( command_line_options_.radius && !input_stream_has_.radius ) ss << ",r=" << *command_line_options_.radius;
+        parameters_from_command_line_ = ss.str();
     }
-    const std::string& optional_parameters() const { return optional_parameters_; }
+    std::string operator()( const input_t* input )
+    { 
+        if( input_stream_has_.none ) { return parameters_from_command_line_; }
+        else
+        {
+            std::stringstream ss;
+            if( input_stream_has_.acceleration ) { ss << ",a=" << input->acceleration; }
+            if( input_stream_has_.speed ) { ss << ",v=" << input->speed; }
+            if( input_stream_has_.time ) { ss << ",t=" << input->time; }
+            if( input_stream_has_.radius ) { ss << ",r=" << input->radius; }
+            return parameters_from_command_line_ + ss.str();
+        }
+    }
     
 private:
-    std::string optional_parameters_;
-    boost::optional< type > acceleration_;
-    boost::optional< type > speed_;
-    boost::optional< type > time_;
-    boost::optional< type > radius_;
+    struct command_line_options_t
+    {
+        command_line_options_t( const comma::command_line_options& options ) 
+            : acceleration( options.optional< double >( "--acceleration" ) )
+            , speed( options.optional< double >( "--speed" ) )
+            , time( options.optional< double >( "--time" ) )
+            , radius( options.optional< double >( "--radius" ) ) {};
+        boost::optional< double > acceleration;
+        boost::optional< double > speed;
+        boost::optional< double > time;
+        boost::optional< double > radius;
+    };    
+    struct input_stream_has_t
+    {
+        input_stream_has_t( const comma::csv::options& csv ) 
+            : acceleration( csv.has_field( "acceleration" ) )
+            , speed( csv.has_field( "speed" ) )
+            , time( csv.has_field( "time" ) )
+            , radius( csv.has_field( "radius" ) )
+            , none( !acceleration && !speed && !time && !radius ) {};
+        bool acceleration;
+        bool speed;
+        bool time;
+        bool radius;
+        bool none;
+    };    
+    command_line_options_t command_line_options_;
+    input_stream_has_t input_stream_has_;
+    std::string parameters_from_command_line_;
 };
 
 int main( int ac, char** av )
@@ -128,38 +174,27 @@ int main( int ac, char** av )
     try
     {
         comma::command_line_options options( ac, av, usage );
-        comma::csv::options csv = comma::csv::options( options );
+        comma::csv::options csv = comma::csv::options( options, "angles" );
+        if( !( csv.has_field( "angles" ) || csv.has_field( "angles[0],angles[1],angles[2],angles[3],angles[4],angles[5]" ) ) ) { std::cerr << name() << ": expected input fields for angles of all joints, some are missing" << std::endl; return 1; }
         const std::vector< std::string > unnamed = options.unnamed( "--help,-h", "-.*,--.*" );
         if( unnamed.size() != 1 ) { std::cerr << name() << ": expected one command, got " << unnamed.size() << std::endl; return 1; }
         const std::string command = unnamed[0];
         //boost::optional< comma::ur::config_t > config;
         //if( options.exists( "--config" ) ) { config = comma::read_json< comma::ur::config_t >( options.value< std::string >( "--config" ) ); }
         //if( config ) { std::cerr << config->move_options.acceleration << std::endl; }
-        if( command == "init" )
+        if( command == "move" )
         {
-            if( !options.exists( "--speed" ) ||!options.exists( "--acceleration" ) ||  !options.exists( "--time" ) ) { std::cerr << name() << ": --acceleration, --speed, and --time are required for init" << std::endl; return 1; }
-            std::vector< std::string > s = comma::split( options.value< std::string >( "--speed" ), ',' );
-            if( s.size() != 1 && s.size() != comma::ur::number_of_joints ) { std::cerr << name() << ": expected 1 or " << comma::ur::number_of_joints << " comma-separated speed values, got: " << s.size() << std::endl; return 1; }
-            std::vector< double > speed( comma::ur::number_of_joints );
-            for( std::size_t i = 0; i < comma::ur::number_of_joints; ++i ) { speed[i] = boost::lexical_cast< double >( s[s.size() == 1 ? 0 : i] ); }
-            double acceleration = options.value< double >( "--acceleration" ); 
-            double time = options.value< double >( "--time" );
-            std::cout << "speedj_init([" << comma::join( speed, ',' ) << "]" << "," << acceleration << "," << time << ")" << std::endl;
-            return 0;
-        }
-        else if( command == "move" ) 
-        {
-            move_options_t move_options( options );
+            optional_parameters_t optional_parameters( options, csv );
             comma::csv::input_stream< input_t > istream( std::cin, csv );
             while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
             {
                 const input_t* input = istream.read();
                 if( !input ) { break; }
-                std::cout << "movej([" << comma::join( input->values, ',' ) << "]" << move_options.optional_parameters() << ")" << std::endl;
+                std::cout << "movej([" << comma::join( input->angles, ',' ) << "]" << optional_parameters( input ) << ")" << std::endl;
             }
             return 0;
         }
-        else if( command == "stop" ) 
+        else if( command == "stop" )
         {
             double acceleration = options.value< double >( "--acceleration", 0 );
             std::cout << "stopj(" << acceleration << ")" << std::endl;
