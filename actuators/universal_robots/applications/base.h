@@ -39,6 +39,8 @@
 #include <boost/array.hpp>
 #include <comma/packed/packed.h>
 
+#include <snark/visiting/eigen.h>
+
 namespace snark { namespace ur {
 
 static const unsigned int number_of_pose_fields = 6;
@@ -66,6 +68,28 @@ struct arm_t
     joint_values_t< mode_t > modes;
 };
 
+template < typename T > struct coordinates_t 
+{ 
+    typedef T type; 
+    type x;
+    type y;
+    type z;
+};
+
+struct pose_t
+{
+    typedef double type;
+    coordinates_t< type > position;
+    coordinates_t< type > orientation;
+};
+
+struct tool_t
+{
+    pose_t pose;
+    pose_t velocity;
+    pose_t force;
+};
+
 struct packed_joint_values_t : public comma::packed::packed_struct< packed_joint_values_t, 48 >, joint_values_t< comma::packed::net_float64 > 
 {
     template < typename T >
@@ -77,7 +101,24 @@ struct packed_joint_values_t : public comma::packed::packed_struct< packed_joint
         v.wrist1 = static_cast< T >( wrist1() );
         v.wrist2 = static_cast< T >( wrist2() );
         v.wrist3 = static_cast< T >( wrist3() );
-    };
+    }
+};
+
+struct packed_coordinates_t : public comma::packed::packed_struct< packed_coordinates_t, 24 >, coordinates_t< comma::packed::net_float64 >
+{
+    template < typename T >
+    void export_to( coordinates_t< T >& c ) const { c.x = x(); c.y = y(); c.z = z(); }
+};
+
+struct packed_pose_t : public comma::packed::packed_struct< packed_pose_t, 48 >
+{
+    packed_coordinates_t position;
+    packed_coordinates_t orientation;
+    void export_to( pose_t& p ) const
+    { 
+        position.export_to< pose_t::type >( p.position ); 
+        orientation.export_to< pose_t::type >( p.orientation ); 
+    }
 };
 
 struct packet_t : public comma::packed::packed_struct< packet_t, 812  >
@@ -89,9 +130,9 @@ struct packet_t : public comma::packed::packed_struct< packet_t, 812  >
     packed_joint_values_t actual_joint_speeds;
     packed_joint_values_t actual_joint_currents;
     comma::packed::string< 144 > dummy2;
-    boost::array< comma::packed::net_float64, number_of_pose_fields > tool_force;
-    boost::array< comma::packed::net_float64, number_of_pose_fields > tool_pose;
-    boost::array< comma::packed::net_float64, number_of_pose_fields > tool_speed;
+    packed_pose_t tool_force;
+    packed_pose_t tool_pose;
+    packed_pose_t tool_velocity;
     comma::packed::string< 8 > dummy3;
     packed_joint_values_t joint_temperatures;
     comma::packed::string< 16 > dummy4;
@@ -105,7 +146,13 @@ struct packet_t : public comma::packed::packed_struct< packet_t, 812  >
         actual_joint_currents.export_to< arm_t::type >( arm.currents );
         joint_temperatures.export_to< arm_t::type >( arm.temperatures );
         joint_modes.export_to< arm_t::mode_t >( arm.modes );
-    };
+    }
+    void export_to( tool_t& tool ) const
+    {
+        tool_pose.export_to( tool.pose );
+        tool_velocity.export_to( tool.velocity ); 
+        tool_force.export_to( tool.force );
+    }
 };
 
 } } // namespace snark { namespace ur {
@@ -134,7 +181,7 @@ template < typename T > struct traits< snark::ur::joint_values_t< T > >
     }
 };
 
-template < > struct traits< snark::ur::arm_t >
+template <> struct traits< snark::ur::arm_t >
 {
     template< typename K, typename V > static void visit( const K& k, snark::ur::arm_t& t, V& v )
     {
@@ -151,6 +198,52 @@ template < > struct traits< snark::ur::arm_t >
         v.apply( "currents", t.currents );
         v.apply( "temperatures", t.temperatures );
         v.apply( "modes", t.modes );
+    }
+};
+
+template < typename T > struct traits< snark::ur::coordinates_t< T > >
+{
+    template< typename K, typename V > static void visit( const K& k, snark::ur::coordinates_t< T >& t, V& v )
+    {
+        v.apply( "x", t.x );
+        v.apply( "y", t.y );
+        v.apply( "z", t.z );
+    }    
+    template< typename K, typename V > static void visit( const K& k, const snark::ur::coordinates_t< T >& t, V& v )
+    {
+        v.apply( "x", t.x );
+        v.apply( "y", t.y );
+        v.apply( "z", t.z );
+    }
+};
+
+template <> struct traits< snark::ur::pose_t >
+{
+    template< typename K, typename V > static void visit( const K& k, snark::ur::pose_t& t, V& v )
+    {
+        v.apply( "position", t.position );
+        v.apply( "orientation", t.orientation );
+    }    
+    template< typename K, typename V > static void visit( const K& k, const snark::ur::pose_t& t, V& v )
+    {
+        v.apply( "position", t.position );
+        v.apply( "orientation", t.orientation );
+    }
+};
+
+template <> struct traits< snark::ur::tool_t >
+{
+    template< typename K, typename V > static void visit( const K& k, snark::ur::tool_t& t, V& v )
+    {
+        v.apply( "pose", t.pose );
+        v.apply( "velocity", t.velocity );
+        v.apply( "force", t.force );
+    }    
+    template< typename K, typename V > static void visit( const K& k, const snark::ur::tool_t& t, V& v )
+    {
+        v.apply( "pose", t.pose );
+        v.apply( "velocity", t.velocity );
+        v.apply( "force", t.force );
     }
 };
 

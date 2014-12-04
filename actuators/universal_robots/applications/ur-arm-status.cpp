@@ -71,26 +71,26 @@ void usage( bool verbose )
     }
     exit ( -1 );
 }
-
+/*
 struct tool_t
 {
     boost::array< double, snark::ur::number_of_pose_fields > pose;
     boost::array< double, snark::ur::number_of_pose_fields > speed;
     boost::array< double, snark::ur::number_of_pose_fields > force;
-};
+};*/
 
 struct status_t 
 {
     boost::posix_time::ptime t;
     snark::ur::arm_t arm;
-    tool_t tool;
+    snark::ur::tool_t tool;
     int mode;
     double time_since_boot;
 };
 
 namespace comma { namespace visiting {
 
-template <> struct traits< tool_t >
+/*template <> struct traits< tool_t >
 {
     template< typename K, typename V > static void visit( const K& k, const tool_t& t, V& v )
     {
@@ -99,7 +99,7 @@ template <> struct traits< tool_t >
         v.apply( "force", t.force );        
     }
 };
-    
+  */  
 template <> struct traits< status_t >
 {
     template< typename K, typename V > static void visit( const K& k, const status_t& t, V& v )
@@ -144,12 +144,13 @@ int main( int ac, char** av )
             status.mode = static_cast< int >( packet.mode() );
             status.time_since_boot = packet.time_since_boot();
             packet.export_to( status.arm );
-            for( unsigned int i = 0; i < snark::ur::number_of_pose_fields; ++i )
-            {
-                status.tool.pose[i] = packet.tool_pose[i]();
-                status.tool.speed[i] = packet.tool_speed[i]();
-                status.tool.force[i] = packet.tool_force[i]();
-            }
+            packet.export_to( status.tool );
+//             for( unsigned int i = 0; i < snark::ur::number_of_pose_fields; ++i )
+//             {
+//                 status.tool.pose[i] = packet.tool_pose[i]();
+//                 status.tool.speed[i] = packet.tool_speed[i]();
+//                 status.tool.force[i] = packet.tool_force[i]();
+//             }
             ostream.write( status );
         }
     }
