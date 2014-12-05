@@ -52,7 +52,7 @@ void usage( bool verbose )
     std::cerr << "    --binary,-b: output binary equivalent of csv" << std::endl;
     std::cerr << "    --format: output binary format for given fields to stdout and exit" << std::endl;
     std::cerr << "    --output-fields: output field names and exit" << std::endl;
-    std::cerr << "    --packet-size: output packet-size and exit" << std::endl;
+    std::cerr << "    --packet-size: output packet size and exit" << std::endl;
     std::cerr << "    --mode-from-name=<name>: output the integer corresponding to the given mode name and exit" << std::endl;
     std::cerr << "    --joint-mode-from-name=<name>: same as above for joint modes" << std::endl;
     std::cerr << "    --mode-to-name=<mode>: output the name of the given mode integer and exit" << std::endl;

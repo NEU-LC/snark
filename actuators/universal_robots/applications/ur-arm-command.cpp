@@ -36,6 +36,7 @@
 #include <comma/csv/stream.h>
 #include <comma/string/string.h>
 #include <comma/csv/traits.h>
+#include <comma/csv/ascii.h>
 #include "base.h"
 #include "config.h"
 
@@ -80,11 +81,12 @@ void usage( bool verbose )
 
 struct input_t 
 { 
-    snark::ur::joint_values_t< double > angles;
-    double acceleration;
-    double speed;
-    double time;
-    double radius;
+    typedef double type;
+    snark::ur::joint_values_t< type > angles;
+    type acceleration;
+    type speed;
+    type time;
+    type radius;
 };
 
 namespace comma { namespace visiting {    
@@ -115,13 +117,13 @@ class optional_parameters_t
 {
 public:
     optional_parameters_t( const comma::command_line_options& options, const comma::csv::options& csv )
-        : command_line_options_( options ), input_stream_has_( csv )
+        : options_( options ), input_stream_has_( csv )
     {
         std::stringstream ss;
-        if( command_line_options_.acceleration && !input_stream_has_.acceleration ) ss << ",a=" << *command_line_options_.acceleration;
-        if( command_line_options_.speed && !input_stream_has_.speed ) ss << ",v=" << *command_line_options_.speed;
-        if( command_line_options_.time && !input_stream_has_.time ) ss << ",t=" << *command_line_options_.time;
-        if( command_line_options_.radius && !input_stream_has_.radius ) ss << ",r=" << *command_line_options_.radius;
+        if( options_.acceleration && !input_stream_has_.acceleration ) ss << ",a=" << *options_.acceleration;
+        if( options_.speed && !input_stream_has_.speed ) ss << ",v=" << *options_.speed;
+        if( options_.time && !input_stream_has_.time ) ss << ",t=" << *options_.time;
+        if( options_.radius && !input_stream_has_.radius ) ss << ",r=" << *options_.radius;
         parameters_from_command_line_ = ss.str();
     }
     std::string operator()( const input_t* input )
@@ -141,16 +143,17 @@ public:
 private:
     struct command_line_options_t
     {
+        typedef double type;
         command_line_options_t( const comma::command_line_options& options ) 
-            : acceleration( options.optional< double >( "--acceleration" ) )
-            , speed( options.optional< double >( "--speed" ) )
-            , time( options.optional< double >( "--time" ) )
-            , radius( options.optional< double >( "--radius" ) ) {};
-        boost::optional< double > acceleration;
-        boost::optional< double > speed;
-        boost::optional< double > time;
-        boost::optional< double > radius;
-    };    
+            : acceleration( options.optional< type >( "--acceleration" ) )
+            , speed( options.optional< type >( "--speed" ) )
+            , time( options.optional< type >( "--time" ) )
+            , radius( options.optional< type >( "--radius" ) ) {};
+        boost::optional< type > acceleration;
+        boost::optional< type > speed;
+        boost::optional< type > time;
+        boost::optional< type > radius;
+    };
     struct input_stream_has_t
     {
         input_stream_has_t( const comma::csv::options& csv ) 
@@ -165,7 +168,7 @@ private:
         bool radius;
         bool none;
     };    
-    command_line_options_t command_line_options_;
+    command_line_options_t options_;
     input_stream_has_t input_stream_has_;
     std::string parameters_from_command_line_;
 };
@@ -192,14 +195,12 @@ int main( int ac, char** av )
         {
             optional_parameters_t optional_parameters( options, csv );
             comma::csv::input_stream< input_t > istream( std::cin, csv );
+            comma::csv::ascii< snark::ur::joint_values_t< input_t::type > > ascii;
             while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
             {
                 const input_t* input = istream.read();
                 if( !input ) { break; }
-                std::cout << "movej([" 
-                    << input->angles.base << ',' << input->angles.shoulder << ',' << input->angles.elbow << ',' << input->angles.wrist1 << ',' << input->angles.wrist2 << ',' << input->angles.wrist3
-                    << "]" 
-                    << optional_parameters( input ) << ")" << std::endl;
+                std::cout << "movej([" << ascii.put( input->angles ) << "]" << optional_parameters( input ) << ")" << std::endl;
             }
             return 0;
         }

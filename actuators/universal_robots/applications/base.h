@@ -102,7 +102,12 @@ struct packed_joint_values_t : public comma::packed::packed_struct< packed_joint
 struct packed_coordinates_t : public comma::packed::packed_struct< packed_coordinates_t, 24 >, coordinates_t< comma::packed::net_float64 >
 {
     template < typename T >
-    void export_to( coordinates_t< T >& c ) const { c.x = x(); c.y = y(); c.z = z(); }
+    void export_to( coordinates_t< T >& c ) const 
+    { 
+        c.x = x(); 
+        c.y = y(); 
+        c.z = z(); 
+    }
 };
 
 struct packed_pose_t : public comma::packed::packed_struct< packed_pose_t, 48 >, pose_t< packed_coordinates_t >
