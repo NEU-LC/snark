@@ -59,7 +59,7 @@ void usage( bool verbose )
     std::cerr << "    --joint-mode-to-name=<mode>: same as above for joint modes" << std::endl;    
     std::cerr << std::endl;
     std::cerr << "examples: " << std::endl;
-    std::cerr << "    socat -u tcp:robot.arm:30003 - | " << name() << " --fields=t,mode,joints/mode" << std::endl;
+    std::cerr << "    socat -u tcp:robot.arm:30003 - | " << name() << " --fields=t,mode,arm/modes" << std::endl;
     std::cerr << std::endl;
     if( verbose )
     {
