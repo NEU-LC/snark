@@ -61,7 +61,8 @@ struct arm_t
     joint_values_t< mode_t > modes;
 };
 
-template < typename T > struct coordinates_t 
+template < typename T > 
+struct coordinates_t 
 { 
     typedef T type; 
     type x;
@@ -69,18 +70,19 @@ template < typename T > struct coordinates_t
     type z;
 };
 
+template < typename T >
 struct pose_t
 {
-    typedef double type;
-    coordinates_t< type > position;
-    coordinates_t< type > orientation;
+    T position;
+    T orientation;
 };
 
 struct tool_t
 {
-    pose_t pose;
-    pose_t velocity;
-    pose_t force;
+    typedef double type;
+    pose_t< coordinates_t< type > > pose;
+    pose_t< coordinates_t< type > > velocity;
+    pose_t< coordinates_t< type > > force;
 };
 
 struct packed_joint_values_t : public comma::packed::packed_struct< packed_joint_values_t, 48 >, joint_values_t< comma::packed::net_float64 > 
@@ -103,14 +105,13 @@ struct packed_coordinates_t : public comma::packed::packed_struct< packed_coordi
     void export_to( coordinates_t< T >& c ) const { c.x = x(); c.y = y(); c.z = z(); }
 };
 
-struct packed_pose_t : public comma::packed::packed_struct< packed_pose_t, 48 >
+struct packed_pose_t : public comma::packed::packed_struct< packed_pose_t, 48 >, pose_t< packed_coordinates_t >
 {
-    packed_coordinates_t position;
-    packed_coordinates_t orientation;
-    void export_to( pose_t& p ) const
+    template < typename T >
+    void export_to( pose_t< coordinates_t< T > >& p ) const
     { 
-        position.export_to< pose_t::type >( p.position ); 
-        orientation.export_to< pose_t::type >( p.orientation ); 
+        position.export_to< T >( p.position ); 
+        orientation.export_to< T >( p.orientation ); 
     }
 };
 
@@ -142,9 +143,9 @@ struct packet_t : public comma::packed::packed_struct< packet_t, 812  >
     }
     void export_to( tool_t& tool ) const
     {
-        tool_pose.export_to( tool.pose );
-        tool_velocity.export_to( tool.velocity ); 
-        tool_force.export_to( tool.force );
+        tool_pose.export_to< tool_t::type >( tool.pose );
+        tool_velocity.export_to< tool_t::type >( tool.velocity ); 
+        tool_force.export_to< tool_t::type >( tool.force );
     }
 };
 
@@ -210,14 +211,14 @@ template < typename T > struct traits< snark::ur::coordinates_t< T > >
     }
 };
 
-template <> struct traits< snark::ur::pose_t >
+template < typename T > struct traits< snark::ur::pose_t< T > >
 {
-    template< typename K, typename V > static void visit( const K& k, snark::ur::pose_t& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, snark::ur::pose_t< T >& t, V& v )
     {
         v.apply( "position", t.position );
         v.apply( "orientation", t.orientation );
     }    
-    template< typename K, typename V > static void visit( const K& k, const snark::ur::pose_t& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, const snark::ur::pose_t< T >& t, V& v )
     {
         v.apply( "position", t.position );
         v.apply( "orientation", t.orientation );
