@@ -1,0 +1,201 @@
+#!/bin/bash
+
+name=$( basename $0 )
+
+source $( which comma-application-util )
+
+default_timeout=10
+
+function operation_description
+{
+    cat <<EOF
+on; turn the arm on and prepare it for initialisation
+off; turn the arm off
+init; initialise the arm
+estop; emergency stop (subsequent move commands are ignored)
+free; release the arm so it can be moved manually
+run; restore normal operation after estop or free
+stop; stop currently executed motion
+EOF
+}
+
+
+function option_description
+{
+    cat <<EOF
+--timeout; timeout time (the script exits after the specified time)
+--config=[<config>]; arm config file
+EOF
+}
+
+function usage
+{
+    cat >&2 <<EOF
+
+    $name provides a suite of operations for managing the robotic arm
+
+usage: 
+    $name <operation> [options]
+
+operations:
+$( operation_description | sed 's/^/    /g' )
+
+options:
+$( option_description | sed 's/^/    /g' )
+
+to see further details use: 
+    $name -h -v
+
+EOF
+
+    if [[ "$1" == "verbose" ]]; then
+    cat >&2 <<EOF
+details of operations:
+    init:
+        control arm's movement via a keyboard: ' ' change direction, '+'/'-' increase/decrease speed
+
+EOF
+    fi
+    exit
+}
+
+
+function get_mode { echo "$( nc $publisher_address $publisher_port | ur-arm-status --fields=mode | head -1 )"; }
+function get_joint_modes { echo "$( nc $publisher_address $publisher_port | ur-arm-status --fields=arm/modes | head -1 )"; }
+function replicate { printf "$1"; printf ",$1%.0s" $( seq -s' ' 2 $2 ); }
+
+function wait_for_mode
+{
+    local expected_mode="$1"
+    local expected_joint_modes="$2"
+    while [[ "$( get_mode )" != "$expected_mode" || "$( get_joint_modes )" != "$expected_joint_modes" ]]; do
+        sleep 0.1
+        if (( SECONDS > timeout )); then echo "$name: timed out waiting for mode $expected_mode and joint modes $expected_joint_modes" >&2; exit 1; fi
+    done
+}
+
+function arm_on
+{
+    local mode="$( get_mode )"
+    if [[ -z "$mode" ]]; then echo "$name: failed to get mode, check if status daemon is publishing on port $publisher_port" >&2; exit 1; fi
+    if [[ "$mode" != "$mode_no_power" ]]; then echo "$name: expected the arm to be in mode $mode_no_power (no-power), got mode $mode" >&2; exit 1; fi
+    local number_of_joints=$( get_joint_modes | tr ',' '\n' | wc -l )
+
+    echo "$name: turning the arm on at $( date +%X.%N ) ..."
+    echo "power on" | nc "$command_address" "$command_port"
+    wait_for_mode "$mode_init" "$( replicate $joint_mode_idle $number_of_joints )"
+    echo "stopj([$( replicate 0 )])" | nc "$command_address" "$command_port"
+    wait_for_mode "$mode_stop" "$( replicate $joint_mode_idle $number_of_joints )"
+    echo "set robotmode run" | nc "$command_address" "$command_port"
+    wait_for_mode "$mode_init" "$( replicate $joint_mode_init $number_of_joints )"
+    echo "$name: the arm is on and ready for initialisation at $( date +%X.%N )"
+}
+
+function arm_off { echo 'power off' | nc "$command_address" "$command_port"; }
+function arm_free { echo 'still needs to be tested'; return; echo 'set robotmode freedrive' | nc "$command_address" "$command_port"; }
+function arm_emergency_stop { IFS=,; echo "stopj([${zeros[*]}])" | nc "$command_address" "$command_port"; }
+function arm_stop { echo "stopj(0)" | nc "$command_address" "$command_port"; }
+function arm_run { echo "set robotmode run" | nc "$command_address" "$command_port"; }
+
+function initialise_joint
+{
+# TODO: implement control from the keyboard (space to change direction, +/- to change speed)
+# TODO: decide what to do with the execution time
+    echo -n "$name: initialising joint $joint..."
+    local joint="$1"
+    local -a s=(${zeros[@]})
+    s[joint]=${speed[joint]}
+    local a=${acceleration[joint]}
+    local t=${time[joint]}
+    IFS=,
+    echo "speedj_init([${s[*]}],$a,$t)" | nc "$command_address" "$command_port"
+    SECONDS=0
+    while [[ "$( get_joint_modes | cut -d, -f$(( joint+1 )) )" != "$joint_mode_run" ]]; do
+        sleep 0.1
+        if (( $( echo "$SECONDS > $t" | bc -l ) )); then return 1; fi
+    done
+    return 0
+}
+
+function arm_init { 
+    local -a mode=( $( get_joint_modes | tr ',' ' ' ) )
+    if [[ -z "${mode[@]}" ]]; then echo "$name: failed to get joint modes, check if status daemon is publishing on port $publisher_port" >&2; exit 1; fi
+    local number_of_joints=${#mode[@]}
+    local -a zeros=( $( printf " 0%.0s" $( seq -s' ' 1 $number_of_joints ) ) )
+
+    trap 'arm_stop' INT KILL
+
+    echo "$name: initialising the arm at $( date +%X.%N )..."
+    for (( joint = number_of_joints - 1; joint >= 0; joint-- )); do
+        if [[ "${mode[joint]}" == "$joint_mode_run" ]]; then 
+            echo "$name: joint $joint is already initialised"
+        else
+            if [[ "${mode[joint]}" == "$joint_mode_init" ]]; then initialise_joint $joint && echo "succeeded" || echo "failed";
+            else echo "$name: expected joint $joint to be in mode $joint_mode_init (init), got ${mode[joint]}" >&2; exit 1; fi
+        fi
+    done
+    echo "$name: the arm is initialised and ready to be used at $( date +%X.%N )"
+}
+
+
+if (( $( comma_options_has --help "$@" ) || $( comma_options_has -h "$@" ) )) ; then
+    if (( $( comma_options_has --verbose "$@" ) || $( comma_options_has -v "$@" ) )) ; then
+        usage verbose
+    else
+        usage
+    fi
+fi
+allowed_operations=$( echo $( operation_description | cut -d";" -f1 | tr '\n' ' ') )
+operation=$1
+comma_path_value_to_var --prefix=options --no-quotes < <( option_description | comma-options-to-name-value "$@" | grep -v '^"' )
+
+if (( $( comma_options_has $operation $allowed_operations ) )); then 
+    shift
+else
+    echo -e "$name: expected operation (e.g. ${allowed_operations// /, }), got \"$operation\"" >&2
+    exit 1
+fi
+
+timeout=${options_timeout:-$default_timeout}
+config=${options_config}
+
+if [[ ! -f "$config" ]]; then echo "$name: config file not found" >&2; exit 1; fi
+publisher_address="$( name-value-get --from json status/publisher/address < $config )"
+publisher_port="$( name-value-get --from json status/publisher/port < $config )"
+command_address="$( name-value-get --from json command/address < $config )"
+command_port="$( name-value-get --from json command/port < $config )"
+
+speed=( $( name-value-get --from json init/speed < $config | tr ',' ' ' ) )
+acceleration=( $( name-value-get --from json init/acceleration < $config | tr ',' ' ' ) )
+time=( $( name-value-get --from json init/time < $config | tr ',' ' ' ) )
+
+mode_no_power=$( ur-arm-status --mode-from-name no-power )
+mode_stop=$( ur-arm-status --mode-from-name security-stopped )
+mode_init=$( ur-arm-status --mode-from-name initialising )
+joint_mode_idle=$( ur-arm-status --joint-mode-from-name idle )
+joint_mode_init=$( ur-arm-status --joint-mode-from-name  initialisation )
+joint_mode_run=$( ur-arm-status --joint-mode-from-name running )
+
+case "$operation" in
+"on")
+    arm_on
+    ;;
+"off")
+    arm_off
+    ;;
+"init")
+    arm_init
+    ;;
+"estop")
+    arm_emergency_estop
+    ;;
+"free")
+    arm_free
+    ;;
+"run")
+    arm_run
+    ;;
+"stop")
+    arm_stop
+    ;;
+esac
