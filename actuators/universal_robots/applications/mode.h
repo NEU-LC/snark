@@ -30,8 +30,8 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef COMMA_UR_MODE
-#define COMMA_UR_MODE
+#ifndef SNARK_UR_MODE
+#define SNARK_UR_MODE
 
 #include <boost/bimap.hpp>
 #include <boost/assign.hpp>
@@ -101,4 +101,4 @@ inline int joint_mode_from_name( std::string name )
 
 } } // namespace snark { namespace ur {
 
-#endif // #ifndef COMMA_UR_MODE
+#endif // #ifndef SNARK_UR_MODE

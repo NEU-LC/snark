@@ -30,8 +30,8 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef COMMA_UR_CONFIG
-#define COMMA_UR_CONFIG
+#ifndef SNARK_UR_CONFIG
+#define SNARK_UR_CONFIG
 
 #include <comma/csv/traits.h>
 
@@ -85,4 +85,4 @@ template <> struct traits< snark::ur::config_t::move_options_t >
 
 } } // namespace snark { namespace visiting {
 
-#endif // #ifndef COMMA_UR_CONFIG
+#endif // #ifndef SNARK_UR_CONFIG

@@ -30,8 +30,8 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef COMMA_UR_BASE
-#define COMMA_UR_BASE
+#ifndef SNARK_UR_BASE
+#define SNARK_UR_BASE
 
 #include <comma/csv/traits.h>
 #include <comma/packed/packed.h>
@@ -248,4 +248,4 @@ template <> struct traits< snark::ur::tool_t >
 
 } } // namespace comma { namespace visiting {    
 
-#endif // #ifndef COMMA_UR_BASE
+#endif // #ifndef SNARK_UR_BASE
