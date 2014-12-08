@@ -1,0 +1,9 @@
+stop="echo 0,1,2,3,4,5,6 | ur-arm-command"
+
+joints/move="echo 1,1,2,3,4,5,6 | ur-arm-command"
+joints/speed="echo 2,1,2,3,4,5,6,0.1,10.2 | ur-arm-command --fields=command,values,acceleration,time"
+joints/optional="echo 1,1,2,3,4,5,6,0.1,0.2,10.2,5.5 | ur-arm-command --fields=command,values,acceleration,speed,time,radius"
+
+tool/move="echo 3,1,2,3,4,5,6 | ur-arm-command"
+tool/speed="echo 4,1,2,3,4,5,6,0.1,10.2 | ur-arm-command --fields=command,values,acceleration,time"
+tool/optional="echo 3,1,2,3,4,5,6,0.1,0.2,10.2,5.5 | ur-arm-command --fields=command,values,acceleration,speed,time,radius"

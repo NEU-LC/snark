@@ -1,0 +1,16 @@
+stop/output="stopj(0)"
+stop/status=0
+
+joints/move/output="movej([1,2,3,4,5,6])"
+joints/move/status=0
+joints/speed/output="speedj([1,2,3,4,5,6],0.1,10.2)"
+joints/speed/status=0
+joints/optional/output="movej([1,2,3,4,5,6],a=0.1,v=0.2,t=10.2,r=5.5)"
+joints/optional/status=0
+
+tool/move/output="movel(p[1,2,3,4,5,6])"
+tool/move/status=0
+tool/speed/output="speedl([1,2,3,4,5,6],0.1,10.2)"
+tool/speed/status=0
+tool/optional/output="movel(p[1,2,3,4,5,6],a=0.1,v=0.2,t=10.2,r=5.5)"
+tool/optional/status=0
