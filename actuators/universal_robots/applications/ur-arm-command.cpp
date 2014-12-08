@@ -186,7 +186,7 @@ int main( int ac, char** av )
                     std::cout << "speedl([" << comma::join( input->values, ',' ) << "]" << "," << input->acceleration << "," << input->time << ")" << std::endl; 
                     break;
                 default: 
-                    std::cerr << name() << ": expected a command, got" << input->command << std::endl; return 1;
+                    std::cerr << name() << ": expected a command code, got" << input->command << std::endl; return 1;
             }
         }
         return 0;
