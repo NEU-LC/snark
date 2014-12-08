@@ -59,7 +59,6 @@ EOF
     exit
 }
 
-
 function get_mode { echo "$( nc $publisher_address $publisher_port | ur-arm-status --fields=mode | head -1 )"; }
 function get_joint_modes { echo "$( nc $publisher_address $publisher_port | ur-arm-status --fields=arm/modes | head -1 )"; }
 function replicate { printf "$1"; printf ",$1%.0s" $( seq -s' ' 2 $2 ); }
@@ -84,7 +83,7 @@ function arm_on
     echo "$name: turning the arm on at $( date +%X.%N ) ..."
     echo "power on" | nc "$command_address" "$command_port"
     wait_for_mode "$mode_init" "$( replicate $joint_mode_idle $number_of_joints )"
-    echo "stopj([$( replicate 0 )])" | nc "$command_address" "$command_port"
+    echo "stopj([$( replicate 0 $number_of_joints )])" | nc "$command_address" "$command_port"
     wait_for_mode "$mode_stop" "$( replicate $joint_mode_idle $number_of_joints )"
     echo "set robotmode run" | nc "$command_address" "$command_port"
     wait_for_mode "$mode_init" "$( replicate $joint_mode_init $number_of_joints )"
@@ -99,20 +98,26 @@ function arm_run { echo "set robotmode run" | nc "$command_address" "$command_po
 
 function initialise_joint
 {
-# TODO: implement control from the keyboard (space to change direction, +/- to change speed)
-# TODO: decide what to do with the execution time
     echo -n "$name: initialising joint $joint..."
     local joint="$1"
-    local -a s=(${zeros[@]})
-    s[joint]=${speed[joint]}
-    local a=${acceleration[joint]}
-    local t=${time[joint]}
+    local -a speeds=(${zeros[@]})
+    speeds[joint]=$speed
     IFS=,
-    echo "speedj_init([${s[*]}],$a,$t)" | nc "$command_address" "$command_port"
+    echo "speedj_init([${speeds[*]}],$acceleration,$time)" | nc "$command_address" "$command_port"
     SECONDS=0
+    local key_press_waiting_time=0.1
+    local key
+    local adjust_movement
     while [[ "$( get_joint_modes | cut -d, -f$(( joint+1 )) )" != "$joint_mode_run" ]]; do
-        sleep 0.1
         if (( $( echo "$SECONDS > $t" | bc -l ) )); then return 1; fi
+        read -t $key_press_waiting_time -n 1 -s key
+        case "$key" in
+            ' ') s[joint]=$(( -s[joint] )); adjust_movement=1 ;;
+            '+') s[joint]=$(( 1.25*s[joint] )); adjust_movement=1 ;;
+            '-') s[joint]=$(( 0.75*s[joint] )); adjust_movement=1 ;;
+            *) adjust_movement=0
+        esac
+        if (( adjust_movement )); then echo "speedj_init([${speeds[*]}],$acceleration,$time)" | nc "$command_address" "$command_port"; fi
     done
     return 0
 }
@@ -165,9 +170,9 @@ publisher_port="$( name-value-get --from json status/publisher/port < $config )"
 command_address="$( name-value-get --from json command/address < $config )"
 command_port="$( name-value-get --from json command/port < $config )"
 
-speed=( $( name-value-get --from json init/speed < $config | tr ',' ' ' ) )
-acceleration=( $( name-value-get --from json init/acceleration < $config | tr ',' ' ' ) )
-time=( $( name-value-get --from json init/time < $config | tr ',' ' ' ) )
+speed=( $( name-value-get --from json init/speed < $config ) )
+acceleration=( $( name-value-get --from json init/acceleration < $config ) )
+time=( $( name-value-get --from json init/time < $config ) )
 
 mode_no_power=$( ur-arm-status --mode-from-name no-power )
 mode_stop=$( ur-arm-status --mode-from-name security-stopped )
