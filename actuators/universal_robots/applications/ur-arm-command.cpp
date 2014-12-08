@@ -175,14 +175,14 @@ int main( int ac, char** av )
                     std::cout << "movej([" << comma::join( input->values, ',' ) << "]" << optional_parameters( input ) << ")" << std::endl; 
                     break; 
                 case speed_joints: 
-                    if( !csv.has_field( "acceleration,time" ) ) { std::cerr << name() << ": command " << speed_joints << " requires acceleration and time" << std::endl; return 1; }
+                    if( !csv.has_field( "acceleration,time" ) ) { std::cerr << name() << ": command " << input->command << " requires acceleration and time" << std::endl; return 1; }
                     std::cout << "speedj([" << comma::join( input->values, ',' ) << "]" << "," << input->acceleration << "," << input->time << ")" << std::endl; 
                     break;
                 case move_tool: 
                     std::cout << "movel(p[" << comma::join( input->values, ',' ) << "]" << optional_parameters( input ) << ")" << std::endl;
                     break;
                 case speed_tool: 
-                    if( !csv.has_field( "acceleration,time" ) ) { std::cerr << name() << ": command " << speed_joints << " requires acceleration and time" << std::endl; return 1; }
+                    if( !csv.has_field( "acceleration,time" ) ) { std::cerr << name() << ": command " << input->command << " requires acceleration and time" << std::endl; return 1; }
                     std::cout << "speedl([" << comma::join( input->values, ',' ) << "]" << "," << input->acceleration << "," << input->time << ")" << std::endl; 
                     break;
                 default: 
