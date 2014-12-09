@@ -194,6 +194,7 @@ comma_path_value_to_var --prefix=options --no-quotes < <( option_description | c
 if (( $( comma_options_has $operation $allowed_operations ) )); then 
     shift
 else
+    if [[ -z "$operation" ]]; then usage; fi
     echo -e "$name: expected operation (e.g. ${allowed_operations// /, }), got \"$operation\"" >&2
     exit 1
 fi
