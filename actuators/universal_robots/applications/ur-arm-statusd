@@ -64,7 +64,6 @@ packet_size=$( ur-arm-status --packet-size )
 if [[ -z "$packet_size" ]]; then echo "$name: failed to get packet size, check if 'ur-arm-status --packet-size' works" >&2; exit 1; fi
 
 while :; do
-    nc -w 1 -z "$address" "$port" \
-        && socat -T 1 -u tcp:"$address":"$port",connect-timeout=1 - | io-publish -s "$packet_size" tcp:"$publisher_port"
-done
+    nc -w 1 -z "$address" "$port" && socat -T 1 -u tcp:"$address":"$port",connect-timeout=1 - 
+done | io-publish -s "$packet_size" tcp:"$publisher_port"
 
