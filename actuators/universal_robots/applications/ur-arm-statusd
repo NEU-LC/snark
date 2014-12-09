@@ -1,9 +1,70 @@
 #!/bin/bash
 
-config=./ur-arm.json
-address="$( name-value-get --from json status/address < $config )"
-port="$( name-value-get --from json status/port < $config )"
-publisher_port="$( name-value-get --from json status/publisher/port < $config )"
+name=$( basename $0 )
+
+function usage
+{
+    cat >&2 <<EOF
+publish status of ur arm whose address and port are taken from the config file entries found under prefix    
+    
+usage: $name --config=<config> --prefix=<prefix>
+
+example: $name --config=/usr/local/etc/ladybird/config.json --prefix=ur5
+
+sample config file with prefix=ur5:
+
+{
+    "ur5":
+    {
+        "status":
+        {
+            "address": "robot.arm",
+            "port": "30003",
+            "publisher":
+            {
+                "address": "localhost",
+                "port": "14000"
+            }
+        },
+        "command":
+        {
+            "address": "robot.arm",
+            "port": "30002"
+        }
+    }
+}
+
+EOF
+    exit 1
+}
+
+while (( $# > 0 )); do
+    case "$1" in
+    --help|-h) usage ;;
+    --prefix=*) prefix="${1#*=}" ;;
+    --config=*) config="${1#*=}" ;;
+    esac
+    shift
+done
+
+if [[ -z "$config" ]]; then echo "$name: config file is not given" >&2; exit 1; fi
+if [[ ! -f "$config" ]]; then echo "$name: config file '$config' is not found" >&2; exit 1; fi
+if [[ -z "$prefix" ]]; then echo "$name: prefix is not given" >&2; exit 1; fi
+
+address="$( name-value-get --from json $prefix/status/address < $config )"
+if [[ -z "$address" ]]; then echo "$name: $prefix/status/address is not found in $config" >&2; exit 1; fi
+port="$( name-value-get --from json $prefix/status/port < $config )"
+if [[ -z "$port" ]]; then echo "$name: $prefix/status/port is not found in $config" >&2; exit 1; fi
+publisher_address="$( name-value-get --from json $prefix/status/publisher/address < $config )"
+if [[ -z "$publisher_address" ]]; then echo "$name: $prefix/status/publisher/address is not found in $config" >&2; exit 1; fi
+publisher_port="$( name-value-get --from json $prefix/status/publisher/port < $config )"
+if [[ -z "$publisher_port" ]]; then echo "$name: $prefix/status/publisher/port is not found in $config" >&2; exit 1; fi
 
 packet_size=$( ur-arm-status --packet-size )
-socat -T 1 -u tcp:"$address":"$port" - | io-publish -s "$packet_size" tcp:"$publisher_port"
+if [[ -z "$packet_size" ]]; then echo "$name: failed to get packet size, check if 'ur-arm-status --packet-size' works" >&2; exit 1; fi
+
+while :; do
+    nc -w 1 -z "$address" "$port" \
+        && socat -T 1 -u tcp:"$address":"$port",connect-timeout=1 - | io-publish -s "$packet_size" tcp:"$publisher_port"
+done
+
