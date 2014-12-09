@@ -12,7 +12,7 @@ function operation_description
 on; turn the arm on and prepare it for initialisation
 off; turn the arm off
 init; initialise the arm
-estop; emergency stop (subsequent move commands are ignored)
+estop; emergency stop
 free; release the arm so it can be moved manually
 run; restore normal operation after estop or free
 stop; stop currently executed motion
@@ -23,7 +23,7 @@ EOF
 function option_description
 {
     cat <<EOF
---timeout; timeout time (the script exits after the specified time)
+--timeout=[<timeout>]; timeout period in seconds (the script exits after the specified time), default: $default_timeout seconds
 --config=[<config>]; arm config file
 EOF
 }
@@ -51,8 +51,45 @@ EOF
     if [[ "$1" == "verbose" ]]; then
     cat >&2 <<EOF
 details of operations:
+    on:
+        turn the arm on, release the brakes and prepare for initialisation
+    off:
+        turn the arm off
     init:
-        control arm's movement via a keyboard: ' ' change direction, '+'/'-' increase/decrease speed
+        initialise the arm by slowly turning each joint one by one until their status changes from initialising to running
+        control arm's movement via the keyboard: ' ' change direction, '+'/'-' increase/decrease speed
+    estop:
+        emergency stop (subsequent move commands are ignored)
+        to return to normal operation use 'run' command
+    run:
+        restore normal operation after emergency stop
+    stop:
+        stop currently executed motion without entering emergency stop mode (subsequent move commands are executed)
+
+sample config file:
+{
+    "status":
+    {
+        "address": "robot.arm",
+        "port": "30003",
+        "publisher":
+        {
+            "address": "robot.nuvo",
+            "port": "14000"
+        }
+    },
+    "command":
+    {
+        "address": "robot.arm",
+        "port": "30002"
+    },
+    "init":
+    {
+        "speed": 0.025,
+        "acceleration": 0.1,
+        "time": 15
+    }
+}
 
 EOF
     fi
