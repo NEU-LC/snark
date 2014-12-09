@@ -128,7 +128,7 @@ function arm_on
 }
 
 function arm_off { echo 'power off' | nc "$command_address" "$command_port"; }
-function arm_free { echo 'still needs to be tested'; return; echo 'set robotmode freedrive' | nc "$command_address" "$command_port"; }
+function arm_free { echo 'set robotmode freedrive' | nc "$command_address" "$command_port"; }
 function arm_emergency_stop { IFS=,; echo "stopj([${zeros[*]}])" | nc "$command_address" "$command_port"; }
 function arm_stop { echo "stopj(0)" | nc "$command_address" "$command_port"; }
 function arm_run { echo "set robotmode run" | nc "$command_address" "$command_port"; }
@@ -232,7 +232,7 @@ case "$operation" in
     arm_init
     ;;
 "estop")
-    arm_emergency_estop
+    arm_emergency_stop
     ;;
 "free")
     arm_free
