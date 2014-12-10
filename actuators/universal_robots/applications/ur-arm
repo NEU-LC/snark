@@ -183,27 +183,31 @@ function arm_init
     local -r speed=( $( name-value-get --from json $prefix/init/speed < $config ) )
     local -r acceleration=( $( name-value-get --from json $prefix/init/acceleration < $config ) )
     local -r time=( $( name-value-get --from json $prefix/init/time < $config ) )
+    local mode_init=$( ur-arm-status --mode-from-name initialising )
     local joint_mode_init=$( ur-arm-status --joint-mode-from-name initialisation )
     local joint_mode_run=$( ur-arm-status --joint-mode-from-name running )
     if [[ -z "$speed" ]]; then echo "$name: $FUNCNAME: $prefix/init/speed is not found in $config" >&2; exit 1; fi
     if [[ -z "$acceleration" ]]; then echo "$name: $FUNCNAME: $prefix/init/acceleration is not found in $config " >&2; exit 1; fi
     if [[ -z "$time" ]]; then echo "$name: $FUNCNAME: $prefix/init/time is not found in $config" >&2; exit 1; fi
     if (( $( echo "$time <= 0" | bc -l ) )); then echo "$name: $FUNCNAME: expected positive time, got $time" >&2; exit 1; fi
+    if [[ -z "$mode_init" ]]; then echo "$name: $FUNCNAME: init mode undefined, check if 'ur-arm-status --mode-from-name initialising' works" >&2; exit 1; fi
     if [[ -z "$joint_mode_init" ]]; then echo "$name: $FUNCNAME: initialisation mode undefined, check if 'ur-arm-status --joint-mode-from-name initialisation' works" >&2; exit 1; fi
     if [[ -z "$joint_mode_run" ]]; then echo "$name: $FUNCNAME: running mode undefined, check if 'ur-arm-status --joint-mode-from-name running' works" >&2; exit 1; fi    
-    local -a modes=( $( get_joint_modes | tr ',' ' ' ) )
-    if [[ -z "${modes[@]}" ]]; then echo "$name: $FUNCNAME: failed to get joint modes, check if status daemon is publishing on port $publisher_port" >&2; exit 1; fi
-    if [[ ${#modes[@]} != $number_of_joints ]]; then echo "$name: $FUNCNAME: failed to get $number_of_joints joint modes" >&2; exit 1; fi
+    local mode=$( get_mode )
+    if [[ "$mode" != "$mode_init" ]]; then echo "$name: $FUNCNAME: expected arm mode $init_mode, got $mode (try using operation 'run')" >&2; exit 1; fi
+    local -a joint_modes=( $( get_joint_modes | tr ',' ' ' ) )
+    if [[ -z "${joint_modes[@]}" ]]; then echo "$name: $FUNCNAME: failed to get joint modes, check if status daemon is publishing on port $publisher_port" >&2; exit 1; fi
+    if [[ ${#joint_modes[@]} != $number_of_joints ]]; then echo "$name: $FUNCNAME: failed to get $number_of_joints joint modes" >&2; exit 1; fi
 
     trap 'arm_security_stop; stty echo echok; exit 1' SIGINT SIGTERM
 
     echo "initialising the arm at $( date +%X.%N )..."
     for (( joint = number_of_joints - 1; joint >= 0; joint-- )); do
-        if [[ "${modes[joint]}" == "$joint_mode_run" ]]; then 
+        if [[ "${joint_modes[joint]}" == "$joint_mode_run" ]]; then 
             echo "joint $joint already initialised"
         else
-            if [[ "${modes[joint]}" == "$joint_mode_init" ]]; then echo -n "initialising joint $joint... "; initialise_joint $joint && echo " succeeded" || echo " failed";
-            else echo "$name: $FUNCNAME: expected joint $joint to be in mode $joint_mode_init (init), got ${modes[joint]}" >&2; exit 1; fi
+            if [[ "${joint_modes[joint]}" == "$joint_mode_init" ]]; then echo -n "initialising joint $joint... "; initialise_joint $joint && echo " succeeded" || echo " failed";
+            else echo "$name: $FUNCNAME: expected joint $joint to be in mode $joint_mode_init (init), got ${joint_modes[joint]}" >&2; exit 1; fi
         fi
     done
     echo "the arm is initialised and ready to be used at $( date +%X.%N )"
