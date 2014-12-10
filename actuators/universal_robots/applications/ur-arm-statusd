@@ -26,11 +26,6 @@ sample config file (with prefix=ur5):
                 "address": "localhost",
                 "port": "14000"
             }
-        },
-        "command":
-        {
-            "address": "robot.arm",
-            "port": "30002"
         }
     }
 }
