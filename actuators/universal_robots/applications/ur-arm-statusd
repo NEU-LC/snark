@@ -17,15 +17,11 @@ sample config file (with prefix=ur5):
 {
     "ur5":
     {
-        "status":
+        "address": "robot.arm",
+        "port": "30003",
+        "publisher":
         {
-            "address": "robot.arm",
-            "port": "30003",
-            "publisher":
-            {
-                "address": "localhost",
-                "port": "14000"
-            }
+            "data": { "address": "localhost", "port": "14000" }
         }
     }
 }
@@ -47,14 +43,14 @@ if [[ -z "$config" ]]; then echo "$name: config file is not given" >&2; exit 1; 
 if [[ ! -f "$config" ]]; then echo "$name: config file '$config' is not found" >&2; exit 1; fi
 if [[ -z "$prefix" ]]; then echo "$name: prefix is not given" >&2; exit 1; fi
 
-address="$( name-value-get --from json $prefix/status/address < $config )"
-if [[ -z "$address" ]]; then echo "$name: $prefix/status/address is not found in $config" >&2; exit 1; fi
-port="$( name-value-get --from json $prefix/status/port < $config )"
-if [[ -z "$port" ]]; then echo "$name: $prefix/status/port is not found in $config" >&2; exit 1; fi
-publisher_address="$( name-value-get --from json $prefix/status/publisher/address < $config )"
-if [[ -z "$publisher_address" ]]; then echo "$name: $prefix/status/publisher/address is not found in $config" >&2; exit 1; fi
-publisher_port="$( name-value-get --from json $prefix/status/publisher/port < $config )"
-if [[ -z "$publisher_port" ]]; then echo "$name: $prefix/status/publisher/port is not found in $config" >&2; exit 1; fi
+address="$( name-value-get --from json $prefix/address < $config )"
+if [[ -z "$address" ]]; then echo "$name: $prefix/address is not found in $config" >&2; exit 1; fi
+port="$( name-value-get --from json $prefix/port < $config )"
+if [[ -z "$port" ]]; then echo "$name: $prefix/port is not found in $config" >&2; exit 1; fi
+publisher_address="$( name-value-get --from json $prefix/publisher/data/address < $config )"
+if [[ -z "$publisher_address" ]]; then echo "$name: $prefix/publisher/data/address is not found in $config" >&2; exit 1; fi
+publisher_port="$( name-value-get --from json $prefix/publisher/data/port < $config )"
+if [[ -z "$publisher_port" ]]; then echo "$name: $prefix/publisher/data/port is not found in $config" >&2; exit 1; fi
 
 packet_size=$( ur-arm-status --packet-size )
 if [[ -z "$packet_size" ]]; then echo "$name: failed to get packet size, check if 'ur-arm-status --packet-size' works" >&2; exit 1; fi

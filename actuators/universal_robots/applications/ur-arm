@@ -75,25 +75,21 @@ details of operations:
         stop currently executed motion without entering security stop mode (subsequent move commands are executed)
         this command only works when the arm is in running mode (it does not work during init)
 
-sample config file (with prefix=ur5):
+sample config file (with prefix=ur5 and assuming robot.arm is the IP address of the arm):
 
-"ur5":
 {
+    "ur5":
     {
-        "status":
-        {
-            "address": "robot.arm",
-            "port": "30003",
-            "publisher":
-            {
-                "address": "robot.nuvo",
-                "port": "14000"
-            }
-        },
+        "address": "robot.arm",
+        "port": "30003",
         "command":
         {
             "address": "robot.arm",
             "port": "30002"
+        },        
+        "publisher":
+        {
+            "data": { "address": "localhost", "port": "14000" }
         },
         "init":
         {
@@ -240,13 +236,13 @@ if [[ -z "$config" ]]; then echo "$name: config file is not given" >&2; exit 1; 
 if [[ ! -f "$config" ]]; then echo "$name: config file not found" >&2; exit 1; fi
 if [[ -z "$prefix" ]]; then echo "$name: prefix is not given" >&2; exit 1; fi
 
-publisher_address="$( name-value-get --from json $prefix/status/publisher/address < $config )"
-publisher_port="$( name-value-get --from json $prefix/status/publisher/port < $config )"
+publisher_address="$( name-value-get --from json $prefix/publisher/data/address < $config )"
+publisher_port="$( name-value-get --from json $prefix/publisher/data/port < $config )"
 command_address="$( name-value-get --from json $prefix/command/address < $config )"
 command_port="$( name-value-get --from json $prefix/command/port < $config )"
 
-if [[ -z "$publisher_address" ]]; then echo "$name: $prefix/status/publisher/address is not found in $config" >&2; exit 1; fi
-if [[ -z "$publisher_port" ]]; then echo "$name: $prefix/status/publisher/port is not found in $config" >&2; exit 1; fi
+if [[ -z "$publisher_address" ]]; then echo "$name: $prefixpublisher/data/address is not found in $config" >&2; exit 1; fi
+if [[ -z "$publisher_port" ]]; then echo "$name: $prefix/publisher/data/port is not found in $config" >&2; exit 1; fi
 if [[ -z "$command_address" ]]; then echo "$name: $prefix/command/address is not found in $config" >&2; exit 1; fi
 if [[ -z "$command_port" ]]; then echo "$name: $prefix/command/port is not found in $config" >&2; exit 1; fi
 
