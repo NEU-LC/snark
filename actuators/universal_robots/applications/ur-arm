@@ -17,7 +17,7 @@ function operation_description
 on; turn the arm on and prepare it for initialisation
 off; turn the arm off
 init; initialise the arm
-estop; emergency stop
+estop; security stop
 free; release the arm so it can be moved manually
 run; restore normal operation after estop or free
 stop; stop currently executed motion
@@ -65,14 +65,14 @@ details of operations:
         initialise the arm by slowly turning each joint one by one until their status changes from initialising to running
         control arm's movement via the keyboard: ' ' change direction, '+'/'-' increase/decrease speed
     estop:
-        emergency stop (subsequent move commands are ignored)
+        security stop (subsequent move commands are ignored)
         to return to normal operation use 'run' command
     free:
         release the arm for manual operation (subsequent move commmands are ignored)
     run:
-        restore normal operation after emergency stop or free
+        restore normal operation after security stop or free
     stop:
-        stop currently executed motion without entering emergency stop mode (subsequent move commands are executed)
+        stop currently executed motion without entering security stop mode (subsequent move commands are executed)
         this command only works when the arm is in running mode (it does not work during init)
 
 sample config file (with prefix=ur5):
@@ -114,7 +114,7 @@ function get_joint_modes { nc $publisher_address $publisher_port | ur-arm-status
 
 function arm_off { echo 'power off' | nc "$command_address" "$command_port"; }
 function arm_free { echo 'set robotmode freedrive' | nc "$command_address" "$command_port"; }
-function arm_emergency_stop { echo "stopj([$zeros])" | nc "$command_address" "$command_port"; }
+function arm_security_stop { echo "stopj([$zeros])" | nc "$command_address" "$command_port"; }
 function arm_stop { echo "stopj($default_acceleration)" | nc "$command_address" "$command_port"; }
 function arm_run { echo "set robotmode run" | nc "$command_address" "$command_port"; }
 
@@ -139,7 +139,7 @@ function arm_on
     local joint_mode_init=$( ur-arm-status --joint-mode-from-name initialisation )
     if [[ -z "$mode_no_power" ]]; then echo "$name: $FUNCNAME: no-power mode undefined, check if 'ur-arm-status --mode-from-name no-power' works" >&2; exit 1; fi
     if [[ -z "$mode_stop" ]]; then echo "$name: $FUNCNAME: stop mode undefined, check if 'ur-arm-status --mode-from-name security-stopped' works" >&2; exit 1; fi
-    if [[ -z "$mode_init" ]]; then echo "$name: $FUNCNAME: init mode undefined, check if 'ur-arm-status --mode-from-name initialisation' works" >&2; exit 1; fi
+    if [[ -z "$mode_init" ]]; then echo "$name: $FUNCNAME: init mode undefined, check if 'ur-arm-status --mode-from-name initialising' works" >&2; exit 1; fi
     if [[ -z "$joint_mode_idle" ]]; then echo "$name: $FUNCNAME: joint idle mode undefined, check if 'ur-arm-status --joint-mode-from-name idle' works" >&2; exit 1; fi
     if [[ -z "$joint_mode_init" ]]; then echo "$name: $FUNCNAME: joint initialisation mode undefined, check if 'ur-arm-status --joint-mode-from-name initialisation' works" >&2; exit 1; fi
     local mode="$( get_mode )"
@@ -150,7 +150,7 @@ function arm_on
     echo "turning the arm on at $( date +%X.%N ) ..."
     echo "power on" | nc "$command_address" "$command_port"
     wait_for_mode "$mode_init" "$( replicate $joint_mode_idle $number_of_joints )"
-    arm_emergency_stop
+    arm_security_stop
     wait_for_mode "$mode_stop" "$( replicate $joint_mode_idle $number_of_joints )"
     arm_run
     wait_for_mode "$mode_init" "$( replicate $joint_mode_init $number_of_joints )"
@@ -199,7 +199,7 @@ function arm_init
     if [[ -z "${modes[@]}" ]]; then echo "$name: $FUNCNAME: failed to get joint modes, check if status daemon is publishing on port $publisher_port" >&2; exit 1; fi
     if [[ ${#modes[@]} != $number_of_joints ]]; then echo "$name: $FUNCNAME: failed to get $number_of_joints joint modes" >&2; exit 1; fi
 
-    trap 'arm_emergency_stop; stty echo echok; exit 1' SIGINT SIGTERM
+    trap 'arm_security_stop; stty echo echok; exit 1' SIGINT SIGTERM
 
     echo "initialising the arm at $( date +%X.%N )..."
     for (( joint = number_of_joints - 1; joint >= 0; joint-- )); do
@@ -261,7 +261,7 @@ case "$operation" in
     arm_init
     ;;
 "estop")
-    arm_emergency_stop
+    arm_security_stop
     ;;
 "free")
     arm_free
