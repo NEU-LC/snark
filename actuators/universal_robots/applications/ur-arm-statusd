@@ -5,13 +5,14 @@ name=$( basename $0 )
 function usage
 {
     cat >&2 <<EOF
+
 publish status of ur arm whose address and port are taken from the config file entries found under prefix    
     
 usage: $name --config=<config> --prefix=<prefix>
 
-example: $name --config=/usr/local/etc/ladybird/config.json --prefix=ur5
+example: $name --config=config.json --prefix=ur5
 
-sample config file with prefix=ur5:
+sample config file (with prefix=ur5):
 
 {
     "ur5":
