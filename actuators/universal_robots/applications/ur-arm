@@ -5,8 +5,10 @@ name=$( basename $0 )
 source $( which comma-application-util )
 
 readonly default_timeout=10
+readonly default_acceleration=1
+readonly default_time=1
 readonly number_of_joints=6
-function replicate { printf "$1"; printf ",$1%.0s" $( seq -s' ' 2 $2 ); }
+function replicate { local what="$1"; local -i n=$2; local separator=,; printf "$what"; printf "${separator}${what}%.0s" $( seq -s' ' 2 $n ); }
 readonly zeros=$( replicate 0 $number_of_joints )
 
 function operation_description
@@ -26,7 +28,7 @@ EOF
 function option_description
 {
     cat <<EOF
---timeout=[<timeout>]; timeout period in seconds for operation 'on' (the script exits after the specified time), default: $default_timeout seconds
+--timeout=[<timeout>]; timeout period in seconds for operation 'on', default: $default_timeout seconds
 --config=[<config>]; arm config file (run '$name -h -v' to see a sample)
 --prefix=[<prefix>]; the entry in the config file under which the script locates relevant info
 EOF
@@ -113,13 +115,13 @@ function get_joint_modes { nc $publisher_address $publisher_port | ur-arm-status
 function arm_off { echo 'power off' | nc "$command_address" "$command_port"; }
 function arm_free { echo 'set robotmode freedrive' | nc "$command_address" "$command_port"; }
 function arm_emergency_stop { echo "stopj([$zeros])" | nc "$command_address" "$command_port"; }
-function arm_stop { echo "stopj(0)" | nc "$command_address" "$command_port"; }
+function arm_stop { echo "stopj($default_acceleration)" | nc "$command_address" "$command_port"; }
 function arm_run { echo "set robotmode run" | nc "$command_address" "$command_port"; }
 
 function wait_for_mode
 {
     local timeout=${options_timeout:-$default_timeout}
-    if (( $( echo "$timeout <= 0" | bc -l ) )); then echo "$name: $FUNCNAME: expected positive timeout, got $timeout">&2; exit 1; fi
+    if (( $( echo "$timeout <= 0" | bc -l ) )); then echo "$name: $FUNCNAME: expected positive timeout, got $timeout" >&2; exit 1; fi
     local expected_mode="$1"
     local expected_joint_modes="$2"
     while [[ "$( get_mode )" != "$expected_mode" || "$( get_joint_modes )" != "$expected_joint_modes" ]]; do
@@ -176,7 +178,7 @@ function initialise_joint
         esac
         if (( $( echo "$SECONDS > $time" | bc -l ) )); then status=1; break; fi
     done
-    echo "speedj_init([$zeros],1,1)" | nc "$command_address" "$command_port" >/dev/null
+    echo "speedj_init([$zeros],$default_acceleration,$default_time)" | nc "$command_address" "$command_port" >/dev/null
     return $status
 }
 
@@ -190,13 +192,12 @@ function arm_init
     if [[ -z "$speed" ]]; then echo "$name: $FUNCNAME: $prefix/init/speed is not found in $config" >&2; exit 1; fi
     if [[ -z "$acceleration" ]]; then echo "$name: $FUNCNAME: $prefix/init/acceleration is not found in $config " >&2; exit 1; fi
     if [[ -z "$time" ]]; then echo "$name: $FUNCNAME: $prefix/init/time is not found in $config" >&2; exit 1; fi
-    if [[ $( echo "$time <= 0" | bc -l ) ]]; then echo "$name: $FUNCNAME: expected positive time, got $time" >&2; exit 1; fi
+    if (( $( echo "$time <= 0" | bc -l ) )); then echo "$name: $FUNCNAME: expected positive time, got $time" >&2; exit 1; fi
     if [[ -z "$joint_mode_init" ]]; then echo "$name: $FUNCNAME: initialisation mode undefined, check if 'ur-arm-status --joint-mode-from-name initialisation' works" >&2; exit 1; fi
     if [[ -z "$joint_mode_run" ]]; then echo "$name: $FUNCNAME: running mode undefined, check if 'ur-arm-status --joint-mode-from-name running' works" >&2; exit 1; fi    
     local -a modes=( $( get_joint_modes | tr ',' ' ' ) )
     if [[ -z "${modes[@]}" ]]; then echo "$name: $FUNCNAME: failed to get joint modes, check if status daemon is publishing on port $publisher_port" >&2; exit 1; fi
     if [[ ${#modes[@]} != $number_of_joints ]]; then echo "$name: $FUNCNAME: failed to get $number_of_joints joint modes" >&2; exit 1; fi
-    local -a zeros=( $( printf " 0%.0s" $( seq -s' ' 1 $number_of_joints ) ) )
 
     trap 'arm_emergency_stop; stty echo echok; exit 1' SIGINT SIGTERM
 
