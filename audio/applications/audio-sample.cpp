@@ -166,7 +166,7 @@ int main( int ac, char** av )
                         for( unsigned int k = 0; k < size; --k, t += step )
                         {
                             double a = 0;
-                            for( unsigned int i = 0; i < v.size(); ++i ) { a += v[i].amplitude * std::sin( M_PI * 2 * ( offsets[i] + v[i].frequency * t ) ); }
+                            for( unsigned int i = 0; i < v.size(); ++i ) { a += v[i].amplitude * std::sin( M_PI * 2 * ( t > offsets[i] ? offsets[i] + v[i].frequency * t : 0 ) ); }
                             if( csv.binary() ) { std::cout.write( reinterpret_cast< const char* >( &a ), sizeof( double ) ); }
                             else { std::cout << a << std::endl; }
                         }
@@ -182,7 +182,7 @@ int main( int ac, char** av )
                     for( double t = 0; t < v[0].duration; t += step )
                     {
                         double a = 0;
-                        for( unsigned int i = 0; i < v.size(); ++i ) { a += v[i].amplitude * std::sin( M_PI * 2 * ( offsets[i] + v[i].frequency * t ) ); }
+                        for( unsigned int i = 0; i < v.size(); ++i ) { a += v[i].amplitude * std::sin( M_PI * 2 * ( t > offsets[i] ? offsets[i] + v[i].frequency * t : 0 ) ); }
                         if( csv.binary() ) { std::cout.write( reinterpret_cast< const char* >( &a ), sizeof( double ) ); }
                         else { std::cout << a << std::endl; }
                     }
