@@ -36,6 +36,9 @@
 #include <iostream>
 #include <vector>
 #include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/random/mersenne_twister.hpp>
+#include <boost/random/uniform_real.hpp>
+#include <boost/random/variate_generator.hpp>
 #include <boost/thread/pthread/mutex.hpp>
 #include <comma/application/command_line_options.h>
 #include <comma/csv/stream.h>
@@ -57,6 +60,7 @@ static void usage( bool verbose )
     std::cerr << "    --amplitude,--volume=[<value>]: if duration field absent, use this duration for all the samples" << std::endl;
     //std::cerr << "    --attenuation=[<rate>]: attenuation rate per second (currently square root only; todo: implement properly)" << std::endl;
     std::cerr << "    --duration=[<seconds>]: if duration field absent, use this duration for all the samples" << std::endl;
+    std::cerr << "    --no-phase-randomization: don't randomize phase in sample" << std::endl;
     std::cerr << "    --rate=[<value>]: samples per second" << std::endl;
     #ifndef WIN32
     std::cerr << "    --realtime: output sample until next block available on stdin" << std::endl;
@@ -126,6 +130,7 @@ int main( int ac, char** av )
         input default_input;
         default_input.duration = options.value( "--duration", 0.0 );
         default_input.amplitude = options.value( "--amplitude,--volume", 0.0 );
+        bool randomize = !options.exists( "--no-phase-randomization" );
         bool realtime = false;
         #ifndef WIN32
         realtime = options.exists( "--realtime" );
@@ -141,6 +146,14 @@ int main( int ac, char** av )
             const input* p = istream.read();
             if( !p || ( !v.empty() && v.back().block != p->block ) )
             {
+                std::vector< double > offsets( v.size(), 0 );
+                if( randomize )
+                {
+                    static boost::mt19937 generator;
+                    static boost::uniform_real< float > distribution( 0, 1 ); // watch performance
+                    static boost::variate_generator< boost::mt19937&, boost::uniform_real< float > > random( generator, distribution );
+                    for( unsigned int i = 0; i < offsets.size(); offsets[i] = random(), ++i );
+                }
                 double step = 1.0 / rate;
                 if( realtime )
                 {
@@ -153,7 +166,7 @@ int main( int ac, char** av )
                         for( unsigned int k = 0; k < size; --k, t += step )
                         {
                             double a = 0;
-                            for( unsigned int i = 0; i < v.size(); ++i ) { a += v[i].amplitude * std::sin( M_PI * 2 * v[i].frequency * t ); }
+                            for( unsigned int i = 0; i < v.size(); ++i ) { a += v[i].amplitude * std::sin( M_PI * 2 * ( offsets[i] + v[i].frequency * t ) ); }
                             if( csv.binary() ) { std::cout.write( reinterpret_cast< const char* >( &a ), sizeof( double ) ); }
                             else { std::cout << a << std::endl; }
                         }
@@ -169,7 +182,7 @@ int main( int ac, char** av )
                     for( double t = 0; t < v[0].duration; t += step )
                     {
                         double a = 0;
-                        for( unsigned int i = 0; i < v.size(); ++i ) { a += v[i].amplitude * std::sin( M_PI * 2 * v[i].frequency * t ); }
+                        for( unsigned int i = 0; i < v.size(); ++i ) { a += v[i].amplitude * std::sin( M_PI * 2 * ( offsets[i] + v[i].frequency * t ) ); }
                         if( csv.binary() ) { std::cout.write( reinterpret_cast< const char* >( &a ), sizeof( double ) ); }
                         else { std::cout << a << std::endl; }
                     }
