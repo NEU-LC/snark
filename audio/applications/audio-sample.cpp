@@ -147,12 +147,13 @@ int main( int ac, char** av )
             if( !p || ( !v.empty() && v.back().block != p->block ) )
             {
                 std::vector< double > offsets( v.size(), 0 );
+                std::vector< double > start( v.size(), 0 );
                 if( randomize )
                 {
                     static boost::mt19937 generator;
                     static boost::uniform_real< float > distribution( 0, 1 ); // watch performance
                     static boost::variate_generator< boost::mt19937&, boost::uniform_real< float > > random( generator, distribution );
-                    for( unsigned int i = 0; i < offsets.size(); offsets[i] = random(), ++i );
+                    for( unsigned int i = 0; i < offsets.size(); offsets[i] = random(), start[i] = ( 1 - offsets[i] ) / v[i].frequency, ++i );
                 }
                 double step = 1.0 / rate;
                 if( realtime )
@@ -166,7 +167,10 @@ int main( int ac, char** av )
                         for( unsigned int k = 0; k < size; --k, t += step )
                         {
                             double a = 0;
-                            for( unsigned int i = 0; i < v.size(); ++i ) { a += v[i].amplitude * std::sin( M_PI * 2 * ( t > offsets[i] ? offsets[i] + v[i].frequency * t : 0 ) ); }
+                            for( unsigned int i = 0; i < v.size(); ++i )
+                            {
+                                if( t > start[i] ) { a += v[i].amplitude * std::sin( M_PI * 2 * ( offsets[i] + v[i].frequency * t ) ); }
+                            }
                             if( csv.binary() ) { std::cout.write( reinterpret_cast< const char* >( &a ), sizeof( double ) ); }
                             else { std::cout << a << std::endl; }
                         }
@@ -182,7 +186,10 @@ int main( int ac, char** av )
                     for( double t = 0; t < v[0].duration; t += step )
                     {
                         double a = 0;
-                        for( unsigned int i = 0; i < v.size(); ++i ) { a += v[i].amplitude * std::sin( M_PI * 2 * ( t > offsets[i] ? offsets[i] + v[i].frequency * t : 0 ) ); }
+                        for( unsigned int i = 0; i < v.size(); ++i )
+                        {
+                            if( t > start[i] ) { a += v[i].amplitude * std::sin( M_PI * 2 * ( offsets[i] + v[i].frequency * t ) ); }
+                        }
                         if( csv.binary() ) { std::cout.write( reinterpret_cast< const char* >( &a ), sizeof( double ) ); }
                         else { std::cout << a << std::endl; }
                     }
