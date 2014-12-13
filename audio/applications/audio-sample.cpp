@@ -59,6 +59,7 @@ static void usage( bool verbose )
     std::cerr << "    --help,-h: --help --verbose for more help" << std::endl;
     std::cerr << "    --amplitude,--volume=[<value>]: if duration field absent, use this duration for all the samples" << std::endl;
     //std::cerr << "    --attenuation=[<rate>]: attenuation rate per second (currently square root only; todo: implement properly)" << std::endl;
+    std::cerr << "    --antiphase-randomization,--antiphase: randomize frequencies in sample by phase/antiphase to reduce click artefact" << std::endl;
     std::cerr << "    --duration=[<seconds>]: if duration field absent, use this duration for all the samples" << std::endl;
     std::cerr << "    --no-phase-randomization: don't randomize phase in sample" << std::endl;
     std::cerr << "    --rate=[<value>]: samples per second" << std::endl;
@@ -131,6 +132,7 @@ int main( int ac, char** av )
         default_input.duration = options.value( "--duration", 0.0 );
         default_input.amplitude = options.value( "--amplitude,--volume", 0.0 );
         bool randomize = !options.exists( "--no-phase-randomization" );
+        bool antiphase = options.exists( "--antiphase-randomization,--antiphase" );
         bool realtime = false;
         #ifndef WIN32
         realtime = options.exists( "--realtime" );
@@ -153,7 +155,14 @@ int main( int ac, char** av )
                     static boost::mt19937 generator;
                     static boost::uniform_real< float > distribution( 0, 1 ); // watch performance
                     static boost::variate_generator< boost::mt19937&, boost::uniform_real< float > > random( generator, distribution );
-                    for( unsigned int i = 0; i < offsets.size(); offsets[i] = random(), start[i] = ( 1 - offsets[i] ) / v[i].frequency, ++i );
+                    if( antiphase )
+                    {
+                        for( unsigned int i = 0; i < offsets.size(); offsets[i] = random() < 0.5 ? 0 : 0.5, ++i );
+                    }
+                    else
+                    {
+                        for( unsigned int i = 0; i < offsets.size(); offsets[i] = random(), start[i] = ( 1 - offsets[i] ) / v[i].frequency, ++i );
+                    }
                 }
                 double step = 1.0 / rate;
                 if( realtime )
