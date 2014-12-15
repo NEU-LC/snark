@@ -1,50 +1,20 @@
 #!/bin/bash
 
-source $( which comma-test-util ) || { echo "$0: failed to source comma-test-util" >&2 ; exit 1 ; }
-
-#comma_test_commands
-
 config=config.json
 prefix=ur5
 publisher_address=$( name-value-get --from json $prefix/publisher/data/address < $config )
 publisher_port=$( name-value-get --from json $prefix/publisher/data/port < $config )
 
-name=()
-delay=()
-actual_angles=()
-while read n d a; do
-    name+=($n)
-    delay+=($d)
-    actual_angles+=($a)
-done <<EOF
-run1.bin 1 -0.338185322542,-0.633055150409,1.10512963954,-1.57840449991,1.28162885625,1.26304814245
-run2.bin 1 0.0405102978181,-1.24234860584,1.89573085484,-1.37831711554,0.0612785896688,1.26304814245
-run3.bin 1 -0.123953202518,-1.11674402827,1.8643783648,-2.04126775501,-0.250465039175,0.807012707741
-run4.bin 1 0.189736690288,-1.05830300345,1.5743924827,-2.27326202395,0.157208570962,0.286336293352
-run5.bin 1 -0.322333912895,-0.946403182811,1.42272232461,-2.75129301742,-0.240817630268,-0.172243715593
-EOF
+bins=(run1.bin run2.bin run3.bin run4.bin run5.bin)
+delay=0.25
 
 function elapsed_time { echo "$( date +%s.%N ) - $start_time" | bc -l; }
 
-for (( i=0; i<${#delay[@]}; i++  )); do
+for bin in ${bins[@]}; do
     start_time=$( date +%s.%N )
-    while (( `echo "$( elapsed_time ) < ${delay[$i]}" | bc -l` )); do cat ${name[$i]}; done
+    while (( `echo "$( elapsed_time ) < $delay" | bc -l` )); do cat $bin; done
 done | io-publish -s 812 tcp:$publisher_port 2>/dev/null &
-pid=$!
 
-target_angles=()
-while read a; do
-    target_angles+=($a)
-done <<EOF
-0.041,-1.242,1.896,-1.378,0.061,1.263
--0.124,-1.117,1.864,-2.041,-0.250,0.807
-0.190,-1.058,1.574,-2.273,0.157,0.286
--0.322,-0.946,1.423,-2.751,-0.241,-0.172
-EOF
-
-command=1
-for waypoint in ${target_angles[@]}; do
-    echo $command,$waypoint | ur-arm wait --fields=command,values --config=$config --prefix=$prefix --timeout=5 --tolerance=0.001
+while IFS='=' read key input; do
+    echo $input | ur-arm wait --fields=command,values --config=$config --prefix=$prefix --timeout=5 --tolerance=0.001 | while IFS= read output; do echo $key/output=$output; done
 done
-    
-kill $pid
