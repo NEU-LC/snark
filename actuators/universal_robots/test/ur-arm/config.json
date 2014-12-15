@@ -1,0 +1,22 @@
+{
+    "ur5":
+    {
+        "address": "localhost",
+        "port": "30003",
+        "command": 
+        { 
+            "address": "localhost", 
+            "port": "30002" 
+        },        
+        "publisher": 
+        { 
+            "data": { "address": "localhost", "port": "14000" } 
+        },
+        "init":
+        {
+            "speed": 0.025,
+            "acceleration": 0.1,
+            "time": 15
+        }
+    }
+}
