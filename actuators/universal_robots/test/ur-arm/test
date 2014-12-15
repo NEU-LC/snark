@@ -15,6 +15,14 @@ for bin in ${bins[@]}; do
     while (( `echo "$( elapsed_time ) < $delay" | bc -l` )); do cat $bin; done
 done | io-publish -s 812 tcp:$publisher_port 2>/dev/null &
 
-while IFS='=' read key input; do
-    echo $input | ur-arm wait --fields=command,values --config=$config --prefix=$prefix --timeout=5 --tolerance=0.001 | while IFS= read output; do echo $key/output=$output; done
+keys=()
+inputs=()
+while IFS='=' read k i; do
+    keys+=($k)
+    inputs+=($i)
 done
+
+declare -i i=0
+for input in ${inputs[@]}; do echo $input; done \
+    | ur-arm wait --fields=command,values --config=$config --prefix=$prefix --timeout=5 --tolerance=0.001 \
+    | while IFS= read output; do echo "${keys[$i]}/output=$output"; (( i++ )); done

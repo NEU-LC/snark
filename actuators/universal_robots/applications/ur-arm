@@ -275,23 +275,21 @@ function wait_and_serve
     if [[ ! "$fields" =~ command ]]; then echo "$name: $FUNCNAME: expected input fields to have command, got $fields" >&2; exit 1; fi
     local explicit_fields=$( get_fields_with_explicit_values "$fields" )
     if [[ -z "$( get 'arm' )" ]]; then echo "$name: $FUNCNAME: failed to get status from the arm, check if the daemon is publishing on port $publisher_port" >&2; exit 1; fi
-    trap 'security_stop; exit 1' SIGINT SIGTERM
     IFS=,
     local input
     while read input; do
         eval $( echo "$input" | name-value-from-csv "$explicit_fields" | egrep "^command=|^values\[[0-9]+\]=" | sed "s/^/local /" )
         local angles="${values[*]}"
-        if [[ -z "$command" ]]; then echo "$name: $FUNCNAME: failed to define command, check that the input matches fields" >&2; security_stop; exit 1; fi        
-        if [[ -z "$angles" ]]; then echo "$name: $FUNCNAME: failed to define waypoint, check that the input matches fields" >&2; security_stop; exit 1; fi
-        if (( command != move_joints_command )); then echo "$name: $FUNCNAME: expected command $move_joints_command in the input stream, got $command" >&2; security_stop; exit 1; fi
+        if [[ -z "$command" ]]; then echo "$name: $FUNCNAME: failed to define command, check that the input matches fields" >&2; exit 1; fi        
+        if [[ -z "$angles" ]]; then echo "$name: $FUNCNAME: failed to define waypoint, check that the input matches fields" >&2; exit 1; fi
+        if (( command != move_joints_command )); then echo "$name: $FUNCNAME: expected command $move_joints_command in the input stream, got $command" >&2; exit 1; fi
         echo "$input"
         if [[ -n "$until_stopped" ]]; then
-            wait_until_stopped || { echo "$name: $FUNCNAME: failed to stop" >&2; security_stop; exit 1; }
+            wait_until_stopped || { echo "$name: $FUNCNAME: failed to stop" >&2; exit 1; }
         else
-            wait_until_reached "$angles" || { echo "$name: $FUNCNAME: failed to reach angles $angles" >&2; security_stop; exit 1; }
+            wait_until_reached "$angles" || { echo "$name: $FUNCNAME: failed to reach angles $angles" >&2; exit 1; }
         fi
     done
-    stop_movement
 }
  
  
