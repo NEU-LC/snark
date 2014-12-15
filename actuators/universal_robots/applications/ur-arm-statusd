@@ -1,6 +1,7 @@
 #!/bin/bash
 
 name=$( basename $0 )
+readonly timeout=1
 
 function usage
 {
@@ -44,18 +45,20 @@ if [[ ! -f "$config" ]]; then echo "$name: config file '$config' is not found" >
 if [[ -z "$prefix" ]]; then echo "$name: prefix is not given" >&2; exit 1; fi
 
 address="$( name-value-get --from json $prefix/address < $config )"
-if [[ -z "$address" ]]; then echo "$name: $prefix/address is not found in $config" >&2; exit 1; fi
 port="$( name-value-get --from json $prefix/port < $config )"
-if [[ -z "$port" ]]; then echo "$name: $prefix/port is not found in $config" >&2; exit 1; fi
 publisher_address="$( name-value-get --from json $prefix/publisher/data/address < $config )"
-if [[ -z "$publisher_address" ]]; then echo "$name: $prefix/publisher/data/address is not found in $config" >&2; exit 1; fi
 publisher_port="$( name-value-get --from json $prefix/publisher/data/port < $config )"
+
+if [[ -z "$address" ]]; then echo "$name: $prefix/address is not found in $config" >&2; exit 1; fi
+if [[ -z "$port" ]]; then echo "$name: $prefix/port is not found in $config" >&2; exit 1; fi
+if [[ -z "$publisher_address" ]]; then echo "$name: $prefix/publisher/data/address is not found in $config" >&2; exit 1; fi
 if [[ -z "$publisher_port" ]]; then echo "$name: $prefix/publisher/data/port is not found in $config" >&2; exit 1; fi
+
 
 packet_size=$( ur-arm-status --packet-size )
 if [[ -z "$packet_size" ]]; then echo "$name: failed to get packet size, check if 'ur-arm-status --packet-size' works" >&2; exit 1; fi
 
 while :; do
-    nc -w 1 -z "$address" "$port" && socat -T 1 -u tcp:"$address":"$port",connect-timeout=1 - 
+    nc -w $timeout -z "$address" "$port" && socat -T $timeout -u tcp:"$address":"$port",connect-timeout=$timeout - 
 done | io-publish -s "$packet_size" tcp:"$publisher_port"
 
