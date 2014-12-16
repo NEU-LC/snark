@@ -7,7 +7,7 @@ timeout=0.1
 angle_tolerance=0.0001
 status_sample=status_sample_stationary.bin
 
-if (( `lsof -n -i tcp:$publisher_port | grep LISTEN | wc -l` )); then 
+if (( `lsof -n -i tcp:$publisher_port | wc -l` )); then 
     echo "$( readlink -f `basename $0` ): required port $publisher_port is already in use, try changing publisher port in config.json" >&2
     exit 1
 fi
@@ -16,17 +16,13 @@ ur-arm wait --target=1,2,3,4,5,6 --config=$config --prefix=$prefix --timeout=$ti
 status=$?
 echo "waypoint/no_publisher/status=$status"
 
-while :; do cat $status_sample; done | io-publish -s $( ur-arm-status --packet-size ) tcp:$publisher_port 2>/dev/null &
-pid=$!
+cat $status_sample | nc -l $publisher_port &
 ur-arm wait --target=1,2,3,4,5,6 --config=$config --prefix=$prefix --timeout=$timeout --tolerance=$angle_tolerance
 status=$?
 echo "waypoint/timed_out/status=$status"
-kill $pid
 
-while :; do cat $status_sample; done | io-publish -s $( ur-arm-status --packet-size ) tcp:$publisher_port 2>/dev/null &
-pid=$!
-angles=$( cat $status_sample | ur-arm-status --fields=arm/angles )
-ur-arm wait --target=$angles --config=$config --prefix=$prefix --timeout=$timeout --tolerance=$angle_tolerance
+cat $status_sample | nc -l $publisher_port &
+ur-arm wait --target=$( cat $status_sample | ur-arm-status --fields=arm/angles ) --config=$config --prefix=$prefix --timeout=$timeout --tolerance=$angle_tolerance
 status=$?
 echo "waypoint/success/status=$status"
-kill $pid
+
