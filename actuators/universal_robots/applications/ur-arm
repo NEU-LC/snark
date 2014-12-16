@@ -22,7 +22,7 @@ off; turn the arm off
 init; initialise the arm
 estop; security stop
 free; release the arm so it can be moved manually
-run; restore normal operation after estop or free
+restore; restore normal operation after estop or free
 stop; stop currently executed motion
 wait; wait until the target waypoint is reached
 EOF
@@ -74,10 +74,10 @@ details of operations:
         initial speed, acceleration, and time are taken from the config file
     estop:
         security stop (subsequent move commands are ignored)
-        to return to normal operation use 'run' command
+        to return to normal operation use 'restore'
     free:
         release the arm for manual operation (subsequent move commmands are ignored)
-    run:
+    restore:
         restore normal operation after security stop or free
     stop:
         stop currently executed motion without entering security stop mode (subsequent move commands are executed)
@@ -121,7 +121,7 @@ EOF
     exit
 }
 
-function get { nc $publisher_address $publisher_port | ur-arm-status --fields="$1" | head -1; }
+function get { nc $publisher_address $publisher_port </dev/null | ur-arm-status --fields="$1" | head -1; }
 function send { nc "$command_address" "$command_port" >/dev/null; }
 function send_command { echo "$1" | send; }
 
@@ -129,7 +129,7 @@ function turn_off { send_command 'power off'; }
 function freedrive { send_command 'set robotmode freedrive'; }
 function security_stop { send_command "stopj([$zeros])"; }
 function stop_movement { send_command "stopj($default_acceleration)"; }
-function run { send_command 'set robotmode run'; }
+function restore { send_command 'set robotmode run'; }
 
 function wait_for_mode
 {
@@ -166,7 +166,7 @@ function turn_on
     wait_for_mode "$mode_init" "$( replicate $joint_mode_idle $number_of_joints )"
     security_stop
     wait_for_mode "$mode_stop" "$( replicate $joint_mode_idle $number_of_joints )"
-    run
+    restore
     wait_for_mode "$mode_init" "$( replicate $joint_mode_init $number_of_joints )"
     echo "the arm is on and ready for initialisation at $( date +%X.%N )"
 }
@@ -212,7 +212,7 @@ function init
     if [[ -z "$joint_mode_init" ]]; then echo "$name: $FUNCNAME: initialisation mode undefined, check if 'ur-arm-status --joint-mode-from-name initialisation' works" >&2; exit 1; fi
     if [[ -z "$joint_mode_run" ]]; then echo "$name: $FUNCNAME: running mode undefined, check if 'ur-arm-status --joint-mode-from-name running' works" >&2; exit 1; fi    
     local mode=$( get 'mode' )
-    if [[ "$mode" != "$mode_init" ]]; then echo "$name: $FUNCNAME: expected arm mode $init_mode, got $mode (try using operation 'run')" >&2; exit 1; fi
+    if [[ "$mode" != "$mode_init" ]]; then echo "$name: $FUNCNAME: expected arm mode $init_mode, got $mode (try using operation 'restore')" >&2; exit 1; fi
     local -a joint_modes=( $( get 'arm/modes' | tr ',' ' ' ) )
     if [[ -z "${joint_modes[@]}" ]]; then echo "$name: $FUNCNAME: failed to get joint modes, check if status daemon is publishing on port $publisher_port" >&2; exit 1; fi
     if (( ${#joint_modes[@]} != number_of_joints )); then echo "$name: $FUNCNAME: failed to get $number_of_joints joint modes" >&2; exit 1; fi
@@ -305,8 +305,8 @@ case "$operation" in
 "free")
     freedrive
     ;;
-"run")
-    run
+"restore")
+    restore
     ;;
 "stop")
     stop_movement
