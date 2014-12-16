@@ -1,3 +1,4 @@
 #!/bin/python
 
-from . import image
+from . import cv_image
+from . import cv_types
