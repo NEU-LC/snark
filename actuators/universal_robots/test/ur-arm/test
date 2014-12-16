@@ -6,23 +6,23 @@ publisher_port=$( name-value-get --from json $prefix/publisher/data/port < $conf
 timeout=0.1
 angle_tolerance=0.0001
 status_sample=status_sample_stationary.bin
+real_target=$( cat $status_sample | ur-arm-status --fields=arm/angles )
+fake_target=1,2,3,4,5,6
 
-if (( `lsof -n -i tcp:$publisher_port | wc -l` )); then 
-    echo "$( readlink -f `basename $0` ): required port $publisher_port is already in use, try changing publisher port in config.json" >&2
-    exit 1
-fi
+function port_is_used { lsof -n -i tcp:$publisher_port | wc -l; }
+function publish { cat $1 | nc -l $publisher_port; }
 
-ur-arm wait --target=1,2,3,4,5,6 --config=$config --prefix=$prefix --timeout=$timeout --tolerance=$angle_tolerance
+if (( `port_is_used` )); then echo "$( readlink -f `basename $0` ): required port $publisher_port is already used, try changing publisher port in config.json" >&2; exit 1; fi
+ur-arm wait --target=$fake_target --config=$config --prefix=$prefix --timeout=$timeout --tolerance=$angle_tolerance
 status=$?
 echo "waypoint/no_publisher/status=$status"
 
-cat $status_sample | nc -l $publisher_port &
-ur-arm wait --target=1,2,3,4,5,6 --config=$config --prefix=$prefix --timeout=$timeout --tolerance=$angle_tolerance
+publish $status_sample & while (( ! `port_is_used` )); do :; done
+ur-arm wait --target=$fake_target --config=$config --prefix=$prefix --timeout=$timeout --tolerance=$angle_tolerance
 status=$?
 echo "waypoint/timed_out/status=$status"
 
-cat $status_sample | nc -l $publisher_port &
-ur-arm wait --target=$( cat $status_sample | ur-arm-status --fields=arm/angles ) --config=$config --prefix=$prefix --timeout=$timeout --tolerance=$angle_tolerance
+publish $status_sample & while (( ! `port_is_used` )); do :; done
+ur-arm wait --target=$real_target --config=$config --prefix=$prefix --timeout=$timeout --tolerance=$angle_tolerance
 status=$?
 echo "waypoint/success/status=$status"
-
