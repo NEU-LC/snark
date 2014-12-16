@@ -52,7 +52,7 @@ void usage( bool verbose )
     std::cerr << "        optional: acceleration,speed,time,radius" << std::endl;
     std::cerr << std::endl;
     std::cerr << "command codes:" << std::endl;
-    std::cerr << "    0: stop currently executed motion (input values are ignored)" << std::endl;
+    std::cerr << "    0: stop currently executed motion (requires acceleration; values are ignored)" << std::endl;
     std::cerr << "    1: move joints to given joint angles (requires joint angles)" << std::endl;
     std::cerr << "    2: move joints at given joint speeds (requires joint speeds, acceleration and time)" << std::endl;
     std::cerr << "    3: move tool to given pose (requires tool pose)" << std::endl;
@@ -75,8 +75,8 @@ void usage( bool verbose )
     std::cerr << "    move tool at pose velocity 0,1,2,0,1,2 for 10 seconds with acceleration 0.1 m/sec2:" << std::endl;
     std::cerr << "        echo \"4,0,1,2,0,1,2,10,0.1\" | ur-arm-command --fields=command,values,time,acceleration | nc robot.arm 30002" << std::endl;    
     std::cerr << std::endl;
-    std::cerr << "    stop current motion (values and time are ignored):" << std::endl;
-    std::cerr << "        echo \"0,0,1,2,3,4,5,10\" | ur-arm-command --fields=command,values,time | nc robot.arm 30002" << std::endl;    
+    std::cerr << "    stop current motion with acceleration of 0.5 rad/sec2 (values and time are ignored):" << std::endl;
+    std::cerr << "        echo \"0,0,1,2,3,4,5,0.5,10\" | ur-arm-command --fields=command,values,acceleration,time | nc robot.arm 30002" << std::endl;
     std::cerr << std::endl;
     exit ( -1 );
 }
@@ -159,7 +159,8 @@ int main( int ac, char** av )
     {
         comma::command_line_options options( ac, av, usage );
         comma::csv::options csv = comma::csv::options( options, "command,values" );
-        if( !csv.has_field( "command,values" ) ) { std::cerr << name() << ": failed to find command and values in the input fields" << std::endl; }
+        if( !csv.has_field( "command" ) ) { std::cerr << name() << ": failed to find command in the input fields" << std::endl; }
+        if( !csv.has_field( "values" ) && !csv.has_field( "values[0],values[1],values[2],values[3],values[4],values[5]" ) ) { std::cerr << name() << ": failed to find command in the input fields" << std::endl; }
         comma::csv::input_stream< input_t > istream( std::cin, csv );
         optional_parameters_t optional_parameters( csv );
         while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
@@ -169,7 +170,8 @@ int main( int ac, char** av )
             switch( input->command )
             {
                 case stop:
-                    std::cout << "stopj(0)" << std::endl; 
+                    if( !csv.has_field( "acceleration" ) ) { std::cerr << name() << ": command " << input->command << " requires acceleration" << std::endl; return 1; }
+                    std::cout << "stopj(" << input->acceleration << ")" << std::endl; 
                     break;
                 case move_joints: 
                     std::cout << "movej([" << comma::join( input->values, ',' ) << "]" << optional_parameters( input ) << ")" << std::endl; 

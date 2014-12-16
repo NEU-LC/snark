@@ -1,9 +1,64 @@
 #!/bin/bash
 
-config=./ur-arm.json
-address="$( name-value-get --from json status/address < $config )"
-port="$( name-value-get --from json status/port < $config )"
-publisher_port="$( name-value-get --from json status/publisher/port < $config )"
+name=$( basename $0 )
+readonly timeout=1
+
+function usage
+{
+    cat >&2 <<EOF
+
+publish status of ur arm whose address and port are taken from the config file entries found under prefix    
+    
+usage: $name --config=<config> --prefix=<prefix>
+
+example: $name --config=config.json --prefix=ur5
+
+sample config file (with prefix=ur5):
+
+{
+    "ur5":
+    {
+        "address": "robot.arm",
+        "port": "30003",
+        "publisher":
+        {
+            "data": { "address": "localhost", "port": "14000" }
+        }
+    }
+}
+
+EOF
+    exit 1
+}
+
+while (( $# > 0 )); do
+    case "$1" in
+    --help|-h) usage ;;
+    --prefix=*) prefix="${1#*=}" ;;
+    --config=*) config="${1#*=}" ;;
+    esac
+    shift
+done
+
+if [[ -z "$config" ]]; then echo "$name: config file is not given" >&2; exit 1; fi
+if [[ ! -f "$config" ]]; then echo "$name: config file '$config' is not found" >&2; exit 1; fi
+if [[ -z "$prefix" ]]; then echo "$name: prefix is not given" >&2; exit 1; fi
+
+address="$( name-value-get --from json $prefix/address < $config )"
+port="$( name-value-get --from json $prefix/port < $config )"
+publisher_address="$( name-value-get --from json $prefix/publisher/data/address < $config )"
+publisher_port="$( name-value-get --from json $prefix/publisher/data/port < $config )"
+
+if [[ -z "$address" ]]; then echo "$name: $prefix/address is not found in $config" >&2; exit 1; fi
+if [[ -z "$port" ]]; then echo "$name: $prefix/port is not found in $config" >&2; exit 1; fi
+if [[ -z "$publisher_address" ]]; then echo "$name: $prefix/publisher/data/address is not found in $config" >&2; exit 1; fi
+if [[ -z "$publisher_port" ]]; then echo "$name: $prefix/publisher/data/port is not found in $config" >&2; exit 1; fi
+
 
 packet_size=$( ur-arm-status --packet-size )
-socat -T 1 -u tcp:"$address":"$port" - | io-publish -s "$packet_size" tcp:"$publisher_port"
+if [[ -z "$packet_size" ]]; then echo "$name: failed to get packet size, check if 'ur-arm-status --packet-size' works" >&2; exit 1; fi
+
+while :; do
+    nc -w $timeout -z "$address" "$port" && socat -T $timeout -u tcp:"$address":"$port",connect-timeout=$timeout - 
+done | io-publish -s "$packet_size" tcp:"$publisher_port"
+
