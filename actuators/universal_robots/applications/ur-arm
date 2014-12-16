@@ -82,10 +82,10 @@ details of operations:
     stop:
         stop currently executed motion without entering security stop mode (subsequent move commands are executed)
     wait:
-        wait until the arm's joints have reached the target
-        --target: comma-separated list of angles of the target waypoint
+        wait until the arm's joints have reached the target waypoint
+        --target: comma-separated list of the joint angles of the target waypoint (from base to wrist)
         --tolerance: the target is considered reached if actual joint angles are within tolerance of the target's angles
-        --timeout: exits with status 1 if it takes more than timeout to reach the target
+        --timeout: exits with status ${wait_error[timed_out]} if it takes more than timeout to reach the target
         exit codes:
             0 -> target reached
             ${wait_error[timed_out]} -> timed out
@@ -229,7 +229,7 @@ function init
     echo "the arm is initialised and ready to be used at $( date +%X.%N )"
 }
 
-function wait_
+function wait_for_target
 {
     IFS=,
     local -r target_angles=( $options_target )
@@ -312,6 +312,6 @@ case "$operation" in
     stop_movement
     ;;
 "wait")
-    wait_
+    wait_for_target
     ;;
 esac
