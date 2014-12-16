@@ -121,7 +121,7 @@ EOF
     exit
 }
 
-function get { nc -d $publisher_address $publisher_port | ur-arm-status --fields="$1" | head -1; }
+function get { nc $publisher_address $publisher_port | ur-arm-status --fields="$1" | head -1; }
 function send { nc "$command_address" "$command_port" >/dev/null; }
 function send_command { echo "$1" | send; }
 
