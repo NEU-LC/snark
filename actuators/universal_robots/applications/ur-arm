@@ -1,6 +1,5 @@
 #!/bin/bash
 
-#declare -r name=$( basename $0 )
 name=$( basename $0 )
 
 source $( which comma-application-util )
@@ -8,12 +7,12 @@ source $( which comma-application-util )
 declare -r default_timeout=10
 declare -r default_acceleration=1
 declare -r default_time=1
-declare -r default_fields="command,values"
-declare -r default_tolerance=0.02
-declare -ri move_joints_command=1
+declare -r default_tolerance=0.01
 declare -ri number_of_joints=6
 function replicate { local what="$1"; local -i n=$2; local separator=${3:-,}; printf "$what"; printf "${separator}${what}%.0s" $( seq -s' ' 2 $n ); }
 declare -r zeros=$( replicate 0 $number_of_joints )
+function time_ { date +%s.%N; }
+declare -rA wait_error=( [timed_out]=1 [status_unavailable]=2 )
 
 function operation_description
 {
@@ -25,7 +24,7 @@ estop; security stop
 free; release the arm so it can be moved manually
 run; restore normal operation after estop or free
 stop; stop currently executed motion
-wait; take a sequence of waypoints on stdin and serve them to stdout with a delay
+wait; wait until the target waypoint is reached
 EOF
 }
 
@@ -33,12 +32,11 @@ EOF
 function option_description
 {
     cat <<EOF
---timeout=[<timeout>]; timeout period in seconds for operations 'on' and 'path', default: $default_timeout seconds
+--timeout=[<timeout>]; timeout period for operations 'on' and 'wait', default: $default_timeout seconds
 --config=[<config>]; arm config file (run '$name -h -v' to see a sample)
 --prefix=[<prefix>]; the entry in the config file under which the script locates relevant info
---fields=[<fields>]; input fields for ur-arm-command used by operation 'path', default: $default_fields
---tolerance=[<tolerance>]; tolerance used by operation 'path' to determine if a waypoint is reached, default: $default_tolerance radians
---until-stopped; operation 'path' will wait until joints stopped moving before going to next waypoint
+--target=[<target>]; comma-separated list of angles of the target waypoint for operation 'wait'
+--tolerance=[<tolerance>]; tolerance used by operation 'wait' to determine if a waypoint is reached, default: $default_tolerance radians
 EOF
 }
 
@@ -83,13 +81,15 @@ details of operations:
         restore normal operation after security stop or free
     stop:
         stop currently executed motion without entering security stop mode (subsequent move commands are executed)
-        this command only works when the arm is in running mode (it does not work during init)
     wait:
-        take waypoints on stdin and output them to stdout, where each waypoint is fed to the output only after the previous waypoint has been reached
-        --fields: input stream fields ( see 'ur-arm-command -h -v' for more details )
-        --tolerance: a target waypoint is considered reached if actual joint angles are within tolerance of the target waypoints' angles
-        --timeout: the script will exit if it takes more than timeout to reach next waypoint
-        --until-stopped: next waypoint is issued as soon as joints stop (by default next move command is issued when target waypoint is reached)
+        wait until the arm's joints have reached the target
+        --target: comma-separated list of angles of the target waypoint
+        --tolerance: the target is considered reached if actual joint angles are within tolerance of the target's angles
+        --timeout: exits with status 1 if it takes more than timeout to reach the target
+        exit codes:
+            0 -> target reached
+            ${wait_error[timed_out]} -> timed out
+            ${wait_error[status_unavailable]} -> arm status unavailable
 
 sample config file (with prefix=ur5 and assuming robot.arm is the IP address of the arm):
 
@@ -133,13 +133,11 @@ function run { send_command 'set robotmode run'; }
 
 function wait_for_mode
 {
-    local timeout=${options_timeout:-$default_timeout}
-    if (( $( echo "$timeout <= 0" | bc -l ) )); then echo "$name: $FUNCNAME: expected positive timeout, got $timeout" >&2; exit 1; fi
     local expected_mode="$1"
     local expected_joint_modes="$2"
     while [[ "$( get 'mode' )" != "$expected_mode" || "$( get 'arm/modes' )" != "$expected_joint_modes" ]]; do
         sleep 0.1
-        if (( $( echo "$SECONDS > $timeout" | bc -l ) )); then echo "$name: $FUNCNAME: timed out waiting for mode $expected_mode and joint modes $expected_joint_modes" >&2; exit 1; fi
+        if (( $( echo "`time_` > $end_time" | bc -l ) )); then echo "$name: $FUNCNAME: timed out waiting for mode $expected_mode and joint modes $expected_joint_modes" >&2; exit 1; fi
     done
 }
 
@@ -159,7 +157,10 @@ function turn_on
     if [[ -z "$mode" ]]; then echo "$name: $FUNCNAME: failed to get mode, check if status daemon is publishing on port $publisher_port" >&2; exit 1; fi
     if [[ "$mode" != "$mode_no_power" ]]; then echo "$name: $FUNCNAME: expected the arm to be in mode $mode_no_power (no-power), got mode $mode" >&2; exit 1; fi
     if [[ $( get 'arm/modes' | tr ',' '\n' | wc -l ) != $number_of_joints ]]; then echo "$name: $FUNCNAME: failed to get $number_of_joints joint modes" >&2; exit 1; fi 
+    local timeout=${options_timeout:-$default_timeout}
+    if (( $( echo "$timeout <= 0" | bc -l ) )); then echo "$name: $FUNCNAME: expected positive timeout, got $timeout" >&2; exit 1; fi
 
+    local -r end_time=$( echo "`time_` + ($timeout)" | bc -l )
     echo "turning the arm on at $( date +%X.%N ) ..."
     send_command 'power on'
     wait_for_mode "$mode_init" "$( replicate $joint_mode_idle $number_of_joints )"
@@ -179,9 +180,9 @@ function initialise_joint
     local -a speeds=( $zeros )
     speeds[joint]=$speed
     local -i update_movement=1
-    SECONDS=0
+    local -r end_time=$( echo "`time_` + $time" | bc -l )
     while [[ "$( get 'arm/modes' | cut -d, -f$(( joint+1 )) )" != "$joint_mode_run" ]]; do
-        if (( `echo "$SECONDS > $time" | bc -l` )); then status=1; break; fi
+        if (( `echo "`time_` > $end_time" | bc -l` )); then status=1; break; fi
         if (( update_movement )); then send_command "speedj_init([${speeds[*]}],$acceleration,$time)"; fi
         read -s -t 0.25 -n 1 key
         case "$key" in
@@ -228,70 +229,29 @@ function init
     echo "the arm is initialised and ready to be used at $( date +%X.%N )"
 }
 
-function get_fields_with_explicit_values
-{
-    local -r fields="$1"
-    if [[ "$fields" =~ values\[[0-9]+\] ]]; then # todo: check that all expected explicit values are present (values[0], values[1], etc, up to the number of joints minus 1)
-        echo "$fields"
-    elif [[ "$fields" =~ values ]]; then 
-        local explicit_values=$( printf "values[0]"; printf ",values[%d]" `seq -s' ' 1 $(( number_of_joints - 1 ))` )
-        echo "${fields/values/$explicit_values}"
-    else 
-        echo "$name: $FUNCNAME: expected input fields to have values, got $fields" >&2
-        exit 1
-    fi
-}
-
-function wait_until
+function wait_
 {
     IFS=,
-    local what="$1"
-    local -a target=($2)
-    SECONDS=0
-    while :; do
-        if (( `echo "$SECONDS > $timeout" | bc -l` )); then echo "$name: $FUNCNAME: timed out after $timeout seconds" >&2; return 1; fi
-        local -a actual=( `get "arm/$what"` )
-        if [[ -z "${actual[@]}" ]]; then echo "$name: $FUNCNAME: failed to get arm/$what, check if the daemon is publishing on port $publisher_port" >&2; return 1; fi
-        local -i within_tolerance=1
-        for (( i=0; i<number_of_joints; i++ )); do
-            local difference=$( echo "${target[$i]}-(${actual[$i]})" | bc -l )
-            if (( `echo "${difference#-} > $tolerance" | bc -l` )); then within_tolerance=0; break; fi
-        done
-        if (( within_tolerance )); then return 0; fi
-    done
-}
-
-function wait_until_stopped { wait_until speeds "$zeros"; }
-function wait_until_reached { wait_until angles "$1"; }
-
-function wait_and_serve
-{
-    local -r tolerance=${options_tolerance:-$default_tolerance}
-    local -r timeout=${options_timeout:-$default_timeout}
-    local -r fields=${options_fields:-$default_fields}
-    local -r until_stopped=$options_until_stopped
+    local -r target_angles=( $options_target )
+    local -r tolerance="${options_tolerance:-$default_tolerance}"
+    local -r timeout="${options_timeout:-$default_timeout}"
+    if [[ -z "${target_angles[@]}" ]]; then echo "$name: $FUNCNAME: target is not given" >&2; exit 1; fi
     if (( `echo "$tolerance <= 0" | bc -l` )); then echo "$name: $FUNCNAME: expected positive tolerance, got $tolerance" >&2; exit 1; fi
-    if (( `echo "$timeout <= 0" | bc -l` )); then echo "$name: $FUNCNAME: expected positive timeout, got $timeout" >&2; exit 1; fi    
-    if [[ ! "$fields" =~ command ]]; then echo "$name: $FUNCNAME: expected input fields to have command, got $fields" >&2; exit 1; fi
-    local explicit_fields=$( get_fields_with_explicit_values "$fields" )
-    if [[ -z "$( get 'arm' )" ]]; then echo "$name: $FUNCNAME: failed to get status from the arm, check if the daemon is publishing on port $publisher_port" >&2; exit 1; fi
-    IFS=,
-    local input
-    while read input; do
-        eval $( echo "$input" | name-value-from-csv "$explicit_fields" | egrep "^command=|^values\[[0-9]+\]=" | sed "s/^/local /" )
-        local angles="${values[*]}"
-        if [[ -z "$command" ]]; then echo "$name: $FUNCNAME: failed to define command, check that the input matches fields" >&2; exit 1; fi        
-        if [[ -z "$angles" ]]; then echo "$name: $FUNCNAME: failed to define waypoint, check that the input matches fields" >&2; exit 1; fi
-        if (( command != move_joints_command )); then echo "$name: $FUNCNAME: expected command $move_joints_command in the input stream, got $command" >&2; exit 1; fi
-        echo "$input"
-        if [[ -n "$until_stopped" ]]; then
-            wait_until_stopped || { echo "$name: $FUNCNAME: failed to stop" >&2; exit 1; }
-        else
-            wait_until_reached "$angles" || { echo "$name: $FUNCNAME: failed to reach angles $angles" >&2; exit 1; }
-        fi
+    if (( `echo "$timeout <= 0" | bc -l` )); then echo "$name: $FUNCNAME: expected positive timeout, got $timeout" >&2; exit 1; fi
+    local -r end_time=$( echo "$( time_ ) + $timeout" | bc -l )
+    while :; do
+        if (( `echo "$( time_ ) > $end_time" | bc -l` )); then exit ${wait_error[timed_out]}; fi
+        local actual_angles=( `get "arm/angles"` )
+        if [[ -z "${actual_angles[@]}" ]]; then exit ${wait_error[status_unavailable]}; fi
+        local -i target_reached=1
+        for (( i=0; i<number_of_joints; i++ )); do
+            local difference=$( echo "${target_angles[$i]}-(${actual_angles[$i]})" | bc -l )
+            if (( `echo "${difference#-} > $tolerance" | bc -l` )); then target_reached=0; break; fi
+        done
+        if (( target_reached )); then exit; fi
     done
 }
- 
+
  
 if (( `comma_options_has --help "$@"` || `comma_options_has -h "$@"` )) ; then
     if (( `comma_options_has --verbose "$@"` || `comma_options_has -v "$@"` )) ; then
@@ -352,6 +312,6 @@ case "$operation" in
     stop_movement
     ;;
 "wait")
-    wait_and_serve
+    wait_
     ;;
 esac

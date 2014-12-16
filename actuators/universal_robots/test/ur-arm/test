@@ -2,27 +2,27 @@
 
 config=config.json
 prefix=ur5
-publisher_address=$( name-value-get --from json $prefix/publisher/data/address < $config )
 publisher_port=$( name-value-get --from json $prefix/publisher/data/port < $config )
+timeout=0.1
+angle_tolerance=0.0001
+status_sample=status_sample_stationary.bin
 
-bins=(run1.bin run2.bin run3.bin run4.bin run5.bin)
-delay=0.25
+nc -d -z localhost $publisher_port && { echo "$( readlink -f `basename $0` ): required port $publisher_port is already in use, try changing publisher port in config.json" >&2; exit 1; }
+ur-arm wait --target=1,2,3,4,5,6 --config=$config --prefix=$prefix --timeout=$timeout --tolerance=$angle_tolerance
+status=$?
+echo "waypoint/no_publisher/status=$status"
 
-function elapsed_time { echo "$( date +%s.%N ) - $start_time" | bc -l; }
+while :; do cat $status_sample; done | io-publish -s $( ur-arm-status --packet-size ) tcp:$publisher_port 2>/dev/null &
+pid=$!
+ur-arm wait --target=1,2,3,4,5,6 --config=$config --prefix=$prefix --timeout=$timeout --tolerance=$angle_tolerance
+status=$?
+echo "waypoint/timed_out/status=$status"
+kill $pid
 
-for bin in ${bins[@]}; do
-    start_time=$( date +%s.%N )
-    while (( `echo "$( elapsed_time ) < $delay" | bc -l` )); do cat $bin; done
-done | io-publish -s 812 tcp:$publisher_port 2>/dev/null &
-
-keys=()
-inputs=()
-while IFS='=' read k i; do
-    keys+=($k)
-    inputs+=($i)
-done
-
-declare -i i=0
-for input in ${inputs[@]}; do echo $input; done \
-    | ur-arm wait --fields=command,values --config=$config --prefix=$prefix --timeout=5 --tolerance=0.001 \
-    | while IFS= read output; do echo "${keys[$i]}/output=$output"; (( i++ )); done
+while :; do cat $status_sample; done | io-publish -s $( ur-arm-status --packet-size ) tcp:$publisher_port 2>/dev/null &
+pid=$!
+angles=$( cat $status_sample | ur-arm-status --fields=arm/angles )
+ur-arm wait --target=$angles --config=$config --prefix=$prefix --timeout=$timeout --tolerance=$angle_tolerance
+status=$?
+echo "waypoint/success/status=$status"
+kill $pid
