@@ -121,8 +121,8 @@ EOF
     exit
 }
 
-function get { nc $publisher_address $publisher_port </dev/null | ur-arm-status --fields="$1" | head -1; }
-function send { nc "$command_address" "$command_port" >/dev/null; }
+function get { nc -4 $publisher_address $publisher_port </dev/null | ur-arm-status --fields="$1" | head -1; }
+function send { nc -4 "$command_address" "$command_port" >/dev/null; }
 function send_command { echo "$1" | send; }
 
 function turn_off { send_command 'power off'; }
