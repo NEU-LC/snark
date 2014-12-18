@@ -130,15 +130,13 @@ wheel_command compute_wheel_command( const steer_command &desired, Eigen::Matrix
     // apply angle limit if specified
     if( angle_limit )
     {
-        // reduce new angle to (-360,360)
-        command.turnrate = std::fmod( command.turnrate, 2 * M_PI );
-
-        if( comma::math::less( angle_limit->max, command.turnrate, 1e-9 ) )
+        while( comma::math::less( angle_limit->max, command.turnrate, 1e-9 ) )
         {
             command.turnrate -= M_PI;
             positive_direction = !positive_direction;
         }
-        else if( comma::math::less( command.turnrate, angle_limit->min, 1e-9 ) )
+
+        while( comma::math::less( command.turnrate, angle_limit->min, 1e-9 ) )
         {
             command.turnrate += M_PI;
             positive_direction = !positive_direction;
