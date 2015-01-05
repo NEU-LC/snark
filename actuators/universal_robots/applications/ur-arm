@@ -137,7 +137,7 @@ function wait_for_mode
     local expected_joint_modes="$2"
     while [[ "$( get 'mode' )" != "$expected_mode" || "$( get 'arm/modes' )" != "$expected_joint_modes" ]]; do
         sleep 0.1
-        if (( $( echo "`time_` > $end_time" | bc -l ) )); then echo "$name: $FUNCNAME: timed out waiting for mode $expected_mode and joint modes $expected_joint_modes" >&2; exit 1; fi
+        if (( `echo "$( time_ ) > $end_time" | bc -l` )); then echo "$name: $FUNCNAME: timed out waiting for mode $expected_mode and joint modes $expected_joint_modes" >&2; exit 1; fi
     done
 }
 
@@ -182,7 +182,7 @@ function initialise_joint
     local -i update_movement=1
     local -r end_time=$( echo "`time_` + $time" | bc -l )
     while [[ "$( get 'arm/modes' | cut -d, -f$(( joint+1 )) )" != "$joint_mode_run" ]]; do
-        if (( `echo "`time_` > $end_time" | bc -l` )); then status=1; break; fi
+        if (( `echo "$( time_ ) > $end_time" | bc -l` )); then status=1; break; fi
         if (( update_movement )); then send_command "speedj_init([${speeds[*]}],$acceleration,$time)"; fi
         read -s -t 0.25 -n 1 key
         case "$key" in
@@ -238,7 +238,7 @@ function wait_for_target
     if [[ -z "${target_angles[@]}" ]]; then echo "$name: $FUNCNAME: target is not given" >&2; exit 1; fi
     if (( `echo "$tolerance <= 0" | bc -l` )); then echo "$name: $FUNCNAME: expected positive tolerance, got $tolerance" >&2; exit 1; fi
     if (( `echo "$timeout <= 0" | bc -l` )); then echo "$name: $FUNCNAME: expected positive timeout, got $timeout" >&2; exit 1; fi
-    local -r end_time=$( echo "$( time_ ) + $timeout" | bc -l )
+    local -r end_time=$( echo "`time_` + $timeout" | bc -l )
     while :; do
         if (( `echo "$( time_ ) > $end_time" | bc -l` )); then exit ${wait_error[timed_out]}; fi
         local actual_angles=( `get "arm/angles"` )
