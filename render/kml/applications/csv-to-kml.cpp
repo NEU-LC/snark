@@ -38,8 +38,8 @@
 #include <comma/name_value/to_xml.h>
 #include <comma/visiting/apply.h>
 #include <comma/visiting/traits.h>
-#include <snark/kml/document.h>
-#include <snark/kml/traits.h>
+#include <snark/render/kml/document.h>
+#include <snark/render/kml/traits.h>
 
 void usage( bool verbose = false )
 {
@@ -94,7 +94,7 @@ void usage( bool verbose = false )
 
 struct input
 {
-    snark::kml::position position;
+    snark::render::kml::position position;
     std::string name;
     std::string style;
     std::string image;
@@ -218,10 +218,10 @@ int main( int ac, char** av )
         output_style( style );
         if( what == "trajectory" || what == "line-string" )
         {
-            snark::kml::document document;
+            snark::render::kml::document document;
             document.placemarks.resize( 1 );
-            snark::kml::placemark& placemark = document.placemarks[0];
-            placemark.line_string = snark::kml::line_string();
+            snark::render::kml::placemark& placemark = document.placemarks[0];
+            placemark.line_string = snark::render::kml::line_string();
             placemark.name = name;
             if( !style.url.empty() ) { placemark.style_url = style.url; }
             placemark.line_string->altitude_mode = altitude_mode;
@@ -239,7 +239,7 @@ int main( int ac, char** av )
         }
         else if( what == "placemarks" || what == "points" )
         {
-            snark::kml::document default_document;
+            snark::render::kml::document default_document;
             default_document.placemarks.resize( 1 );
             default_document.placemarks[0].name = name;
             if( !style.url.empty() ) { default_document.placemarks[0].style_url = style.url; }
@@ -251,8 +251,8 @@ int main( int ac, char** av )
             {
                 const input* p = istream.read();
                 if( !p ) { break; }
-                snark::kml::document document = default_document;
-                document.placemarks[0].point = snark::kml::point();
+                snark::render::kml::document document = default_document;
+                document.placemarks[0].point = snark::render::kml::point();
                 document.placemarks[0].point->coordinates = p->position;
                 if( !p->name.empty() ) { document.placemarks[0].name = p->name; }
                 if( !p->style.empty() ) { document.placemarks[0].style_url = p->style; }
@@ -269,8 +269,8 @@ int main( int ac, char** av )
             }
             return 0;
         }
-        if( what == "header" ) { std::cout << snark::kml::header() << snark::kml::document::tag(); return 0; }
-        if( what == "footer" ) { std::cout  << snark::kml::document::gat() << snark::kml::footer(); return 0; }
+        if( what == "header" ) { std::cout << snark::render::kml::header() << snark::render::kml::document::tag(); return 0; }
+        if( what == "footer" ) { std::cout  << snark::render::kml::document::gat() << snark::render::kml::footer(); return 0; }
         std::cerr << "csv-to-kml: expected an operation; got: \"" << what << "\"" << std::endl;
         return 1;
     }

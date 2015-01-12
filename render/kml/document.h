@@ -1,11 +1,11 @@
-#ifndef SNARK_KML_DOCUMENT_H_
-#define SNARK_KML_DOCUMENT_H_
+#ifndef SNARK_RENDER_KML_DOCUMENT_H_
+#define SNARK_RENDER_KML_DOCUMENT_H_
 
 #include <iostream>
 #include <boost/concept_check.hpp>
 #include "./placemark.h"
 
-namespace snark { namespace kml {
+namespace snark { namespace render { namespace kml {
 
 struct document
 {
@@ -22,6 +22,6 @@ const std::string& footer();
 
 void write( std::ostream& os, const document& d );
 
-} } // namespace snark { namespace kml {
+} } } // namespace snark { namespace render { namespace kml {
 
-#endif // SNARK_KML_DOCUMENT_H_
+#endif // SNARK_RENDER_KML_DOCUMENT_H_

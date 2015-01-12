@@ -1,6 +1,6 @@
 #include "./coordinates.h"
 
-namespace snark { namespace kml {
+namespace snark { namespace render { namespace kml {
 
 std::string as_string( const kml::coordinates& c ) { std::ostringstream oss; oss.precision( 12 ); oss << c.longitude << ',' << c.latitude; return oss.str(); }
 
@@ -15,4 +15,4 @@ std::string as_string( const std::vector< kml::position >& v )
     return oss.str();
 }
 
-} } // namespace snark { namespace kml {
+} } } // namespace snark { namespace render { namespace kml {

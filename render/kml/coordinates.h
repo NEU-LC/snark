@@ -1,11 +1,11 @@
-#ifndef SNARK_KML_COORDINATES_H_
-#define SNARK_KML_COORDINATES_H_
+#ifndef SNARK_RENDER_KML_COORDINATES_H_
+#define SNARK_RENDER_KML_COORDINATES_H_
 
 #include <sstream>
 #include <string>
 #include <vector>
 
-namespace snark { namespace kml {
+namespace snark { namespace render { namespace kml {
 
 struct coordinates
 {
@@ -31,6 +31,6 @@ std::string as_string( const kml::position& p );
 
 std::string as_string( const std::vector< kml::position >& v );
 
-} } // namespace snark { namespace kml {
+} } } // namespace snark { namespace render { namespace kml {
 
-#endif // SNARK_KML_COORDINATES_H_
+#endif // SNARK_RENDER_KML_COORDINATES_H_

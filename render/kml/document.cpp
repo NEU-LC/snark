@@ -3,7 +3,7 @@
 #include "./document.h"
 #include "./traits.h"
 
-namespace snark { namespace kml {
+namespace snark { namespace render { namespace kml {
 
 struct const_document_tag
 {
@@ -12,13 +12,13 @@ struct const_document_tag
     const_document_tag( const kml::document& d ) : document( &d ) {}
 };
 
-} } // namespace snark { namespace kml {
+} } } // namespace snark { namespace render { namespace kml {
 
 namespace comma { namespace visiting {
 
-template <> struct traits< snark::kml::const_document_tag >
+template <> struct traits< snark::render::kml::const_document_tag >
 {
-    template< typename K, typename V > static void visit( const K&, const snark::kml::const_document_tag& t, V& v )
+    template< typename K, typename V > static void visit( const K&, const snark::render::kml::const_document_tag& t, V& v )
     {
         v.apply( "Document", *t.document );
     }
@@ -26,7 +26,7 @@ template <> struct traits< snark::kml::const_document_tag >
 
 } } // namespace comma { namespace visiting {
 
-namespace snark { namespace kml {
+namespace snark { namespace render { namespace kml {
 
 static const std::string header_ = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
                                    "<kml xmlns=\"http://www.opengis.net/kml/2.2\" xmlns:gx=\"http://www.google.com/kml/ext/2.2\" xmlns:kml=\"http://www.opengis.net/kml/2.2\" xmlns:atom=\"http://www.w3.org/2005/Atom\">\n";
@@ -45,4 +45,4 @@ void write( std::ostream& os, const document& d )
     os << footer_;
 }
 
-} } // namespace snark { namespace kml {
+} } } // namespace snark { namespace render { namespace kml {
