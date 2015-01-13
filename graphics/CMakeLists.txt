@@ -1,4 +1,5 @@
 SET( PROJECT "graphics" )
+SET( TARGET_NAME snark_${PROJECT} )
 
 IF( WIN32 OR APPLE )
     FIND_PACKAGE( OpenGL )
@@ -47,8 +48,22 @@ ELSE ( snark_QT_VERSION EQUAL "5" )
 ENDIF( snark_QT_VERSION EQUAL "5" )
 
 SET( dir ${SOURCE_CODE_BASE_DIR}/${PROJECT} )
+FILE( GLOB source   ${dir}/*.cpp)
 FILE( GLOB includes ${dir}/*.h )
+
+SOURCE_GROUP( ${TARGET_NAME} FILES ${source} ${includes} )
+
+ADD_LIBRARY( ${TARGET_NAME} ${source} ${includes} )
+SET_TARGET_PROPERTIES( ${TARGET_NAME} PROPERTIES ${snark_LIBRARY_PROPERTIES} )
+TARGET_LINK_LIBRARIES( ${TARGET_NAME} ${snark_ALL_EXTERNAL_LIBRARIES} )
+
 INSTALL( FILES ${includes} DESTINATION ${snark_INSTALL_INCLUDE_DIR}/${PROJECT} )
+INSTALL(
+    TARGETS ${TARGET_NAME}
+    RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime     # .exe, .dll
+    LIBRARY DESTINATION ${snark_INSTALL_LIB_DIR} COMPONENT Runtime     # .so, mod.dll
+    ARCHIVE DESTINATION ${snark_INSTALL_LIB_DIR} COMPONENT Development # .a, .lib
+)
 
 IF( snark_BUILD_APPLICATIONS )
     ADD_SUBDIRECTORY( applications )

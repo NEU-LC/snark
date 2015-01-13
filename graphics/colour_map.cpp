@@ -1,6 +1,6 @@
-#include "./colour_map.h"
+#include "colour_map.h"
 
-namespace snark {
+namespace snark { namespace graphics {
 
 colour_map::values colour_map::constant( unsigned char r, unsigned char g, unsigned char b )
 {
@@ -37,6 +37,16 @@ colour_map::values colour_map::temperature( unsigned char offset_r, unsigned cha
     return v;
 }
 
+static void jet_impl_( colour_map::values& v, colour_map::channels channel, int offset )
+{
+    for( unsigned int i = 0; i < 256; ++i ) { v[i][channel] = 0; }
+    comma::math::cyclic< unsigned int > c( 0, 256 );
+    c += offset;
+    for( unsigned int i = 1; i < 64; ++i, ++c ) { v[ c() ][channel] = i * 4; }
+    for( unsigned int i = 0; i < 65; ++i, ++c ) { v[ c() ][channel] = 255; }
+    for( unsigned int i = 1; i < 64; ++i, ++c ) { v[ c() ][channel] = 255 - i * 4; }
+}
+
 colour_map::values colour_map::jet()
 {
     values v;
@@ -61,14 +71,4 @@ colour_map::pixel colour_map::contrast_to( const values& v )
     return p;
 }
 
-void colour_map::jet_impl_( values& v, channels channel, int offset )
-{
-    for( unsigned int i = 0; i < 256; ++i ) { v[i][channel] = 0; }
-    comma::math::cyclic< unsigned int > c( 0, 256 );
-    c += offset;
-    for( unsigned int i = 1; i < 64; ++i, ++c ) { v[ c() ][channel] = i * 4; }
-    for( unsigned int i = 0; i < 65; ++i, ++c ) { v[ c() ][channel] = 255; }
-    for( unsigned int i = 1; i < 64; ++i, ++c ) { v[ c() ][channel] = 255 - i * 4; }
-}
-
-} // namespace snark {
+} } // namespace snark { namespace graphics {

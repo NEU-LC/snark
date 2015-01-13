@@ -50,10 +50,10 @@ SOURCE_GROUP( "view_points" FILES view-points.cpp ${source} ${include} )
 ADD_EXECUTABLE( ${view_points} view-points.cpp  ${source} ${include} ${view_pointsMoc} )
 
 IF( snark_QT_VERSION EQUAL "5" ) 
-  TARGET_LINK_LIBRARIES( ${view_points} snark_graphics_qt3d ${comma_ALL_LIBRARIES}  ) #profiler )
+  TARGET_LINK_LIBRARIES( ${view_points} snark_graphics snark_graphics_qt3d ${comma_ALL_LIBRARIES}  ) #profiler )
 ELSE( snark_QT_VERSION EQUAL "5" )
   IF( snark_QT_VERSION EQUAL "4" )
-    TARGET_LINK_LIBRARIES( ${view_points} ${QT_LIBRARIES} ${Qt3D_LIB} snark_graphics_qt3d ${comma_ALL_LIBRARIES} ${OPENGL_LIBRARY} ) #profiler )
+    TARGET_LINK_LIBRARIES( ${view_points} ${QT_LIBRARIES} ${Qt3D_LIB} snark_graphics snark_graphics_qt3d ${comma_ALL_LIBRARIES} ${OPENGL_LIBRARY} ) #profiler )
   ENDIF( snark_QT_VERSION EQUAL "4" )
 ENDIF( snark_QT_VERSION EQUAL "5" )
 

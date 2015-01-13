@@ -1,10 +1,10 @@
-#ifndef SNARK_GRAPHICS_APPLICATIONS_VIEW_POINTS_COLOUR_MAP_H_
-#define SNARK_GRAPHICS_APPLICATIONS_VIEW_POINTS_COLOUR_MAP_H_
+#ifndef SNARK_GRAPHICS_COLOUR_MAP_H_
+#define SNARK_GRAPHICS_COLOUR_MAP_H_
 
 #include <boost/array.hpp>
 #include <comma/math/cyclic.h>
 
-namespace snark {
+namespace snark { namespace graphics {
 
 class colour_map // quick and dirty
 {
@@ -22,11 +22,8 @@ class colour_map // quick and dirty
         static values jet();
 
         static pixel contrast_to( const values& v );
-
-    private:
-        static void jet_impl_( values& v, channels channel, int offset );
 };
 
-} // namespace snark {
+} } // namespace snark { namespace graphics {
 
-#endif //SNARK_GRAPHICS_APPLICATIONS_VIEW_POINTS_COLOUR_MAP_H_
+#endif //SNARK_GRAPHICS_COLOUR_MAP_H_

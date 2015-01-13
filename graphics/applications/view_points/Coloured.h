@@ -35,7 +35,7 @@
 
 #include <string>
 #include <Qt3D/qcolor4ub.h>
-#include "./colour_map.h"
+#include "snark/graphics/colour_map.h"
 #include "./PointWithId.h"
 
 namespace snark { namespace graphics { namespace View {

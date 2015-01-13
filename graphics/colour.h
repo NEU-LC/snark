@@ -36,6 +36,7 @@
 #include <comma/math/compare.h>
 #include <comma/Point/Point.h>
 #include <comma/visiting/traits.h>
+#include <snark/graphics/colour_map.h>
 
 namespace snark { namespace graphics {
 
