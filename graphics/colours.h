@@ -48,6 +48,19 @@ struct colours
     static colour< T > cyan( T a = colour_traits< T >::max() ) { return colour< T >( colour_traits< T >::min(), colour_traits< T >::max(), colour_traits< T >::max(), a ); }
     static colour< T > yellow( T a = colour_traits< T >::max() ) { return colour< T >( colour_traits< T >::max(), colour_traits< T >::max(), colour_traits< T >::min(), a ); }
     static colour< T > magenta( T a = colour_traits< T >::max() ) { return colour< T >( colour_traits< T >::max(), colour_traits< T >::min(), colour_traits< T >::max(), a ); }
+
+    static colour< T > from_string( const std::string& name )
+    {
+        if( name == "red" ) { return red(); }
+        else if( name == "green" ) { return green(); }
+        else if( name == "blue" ) { return blue(); }
+        else if( name == "white" ) { return white(); }
+        else if( name == "black" ) { return black(); }
+        else if( name == "cyan" ) { return cyan(); }
+        else if( name == "yellow" ) { return yellow(); }
+        else if( name == "magenta" ) { return magenta(); }
+        else { COMMA_THROW( comma::exception, "unknown colour: " << name ); }
+    }
 };
 
 } } // namespace snark { namespace graphics {

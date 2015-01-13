@@ -31,12 +31,14 @@
 #ifndef SNARK_GRAPHICS_COLOUR_HEADER_GUARD_
 #define SNARK_GRAPHICS_COLOUR_HEADER_GUARD_
 
+#include <iomanip>
+#include <sstream>
+#include <boost/array.hpp>
 #include <boost/lexical_cast.hpp>
 #include <comma/base/exception.h>
+#include <comma/base/types.h>
 #include <comma/math/compare.h>
-#include <comma/Point/Point.h>
 #include <comma/visiting/traits.h>
-#include <snark/graphics/colour_map.h>
 
 namespace snark { namespace graphics {
 
@@ -47,6 +49,8 @@ struct colour_traits
     typedef T numeric_type;
     static numeric_type min() { return 0; }
     static numeric_type max() { return 1; }
+    // returns 8-bit value [0,255]
+    static unsigned int value( numeric_type t ) { return t / static_cast< double >( max() ) * 255; }
 };
 
 /// colour traits for char
@@ -56,11 +60,13 @@ struct colour_traits< unsigned char >
     typedef unsigned int numeric_type;
     static numeric_type min() { return 0; }
     static numeric_type max() { return 255; }
+    // returns 8-bit value [0,255]
+    static unsigned int value( numeric_type t ) { return t; }
 };
 
 /// RGB + transparency colour type
 template < typename T >
-class colour : public comma::Point< T, 4 >
+class colour : public boost::array< T, 4 >
 {
     public:
         /// default constructor
@@ -121,12 +127,12 @@ class colour : public comma::Point< T, 4 >
         colour< T >& alpha( T t );
 
         /// base class
-        typedef comma::Point< T, 4 > Base;
+        typedef boost::array< T, 4 > Base;
 
         /// operators
         /// @todo implement proper colour ariphmetics
-        bool operator==( const colour& rhs ) const { return comma::Point< T, 4 >::operator==( rhs ); }
-        bool operator!=( const colour& rhs ) const { return !operator==( rhs ); }
+        //bool operator==( const colour& rhs ) const { return boost::array< T, 4 >::operator==( rhs ); }
+        //bool operator!=( const colour& rhs ) const { return !operator==( rhs ); }
         colour operator-() const { return colour( colour_traits< T >::max() - red(), colour_traits< T >::max() - green(), colour_traits< T >::max() - blue() ); }
         const colour& operator+=( const colour& rhs ) { red( red() + rhs.red() ); green( green() + rhs.green() ); blue( blue() + rhs.blue() ); alpha( ( alpha() + rhs.alpha() ) / 2 ); return *this; }
         const colour& operator*=( double d );
@@ -139,12 +145,7 @@ class colour : public comma::Point< T, 4 >
 
         /// colour from string like 0x123456 or 0x12345678
         static colour< T > fromString( const std::string& rgba );
-
-        /// const [] operator
-        const T& operator[]( std::size_t i ) const { return comma::Point< T, 4 >::operator[]( i ); }
-
-    private:
-        T& operator[]( std::size_t i ) { return comma::Point< T, 4 >::operator[]( i ); }
+        std::string hex() const;
 };
 
 namespace impl {
@@ -152,7 +153,7 @@ namespace impl {
 template < typename T >
 inline void validate( T t )
 {
-    if( math::less( t, colour_traits< T >::min() ) || math::less( colour_traits< T >::max(), t ) )
+    if( comma::math::less( t, colour_traits< T >::min() ) || comma::math::less( colour_traits< T >::max(), t ) )
     {
         COMMA_THROW( comma::exception, "expected value in [" << colour_traits< T >::min() << ", " << colour_traits< T >::max() << "], got " << t );
     }
@@ -174,12 +175,24 @@ inline unsigned char fromString< unsigned char >( const std::string& s ) // todo
 template <>
 inline colour< unsigned char > colour< unsigned char >::fromString( const std::string& rgba )
 {
-    if( ( rgba.length() != 8 && rgba.length() != 10 ) || rgba.at( 0 ) != '0' || ( rgba.at( 1 ) != 'x' && rgba.at( 1 ) != 'X' ) ) { COMMA_THROW( graphics::exception, "expected hex colour, got \"" << rgba << "\"" ); }
+    if( ( rgba.length() != 8 && rgba.length() != 10 ) || rgba.at( 0 ) != '0' || ( rgba.at( 1 ) != 'x' && rgba.at( 1 ) != 'X' ) ) { COMMA_THROW( comma::exception, "expected hex colour, got \"" << rgba << "\"" ); }
     colour< unsigned char > c( impl::fromString< unsigned char >( rgba.substr( 2 ) )
                             , impl::fromString< unsigned char >( rgba.substr( 4 ) )
                             , impl::fromString< unsigned char >( rgba.substr( 6 ) ) );
     if( rgba.length() == 10 ) { c.alpha( impl::fromString< unsigned char >( rgba.substr( 8 ) ) ); }
     return c;
+}
+
+template< typename T >
+std::string colour< T >::hex() const
+{
+    std::stringstream ss;
+    ss  << '#'
+        << std::hex << std::setfill('0') << std::uppercase
+        << std::setw(2) << colour_traits< T >::value( red() )
+        << std::setw(2) << colour_traits< T >::value( green() )
+        << std::setw(2) << colour_traits< T >::value( blue() );
+    return ss.str();
 }
 
 template < typename T >
@@ -233,16 +246,16 @@ inline S colour< T >::as() const
 }
 
 template < typename T >
-inline T colour< T >::red() const { return const_cast< colour* >( this )->operator[]( 0 ); } // a quick fix
+inline T colour< T >::red() const { return this->operator[]( 0 ); } // a quick fix
 
 template < typename T >
-inline T colour< T >::green() const { return const_cast< colour* >( this )->operator[]( 1 ); }
+inline T colour< T >::green() const { return this->operator[]( 1 ); }
 
 template < typename T >
-inline T colour< T >::blue() const { return const_cast< colour* >( this )->operator[]( 2 ); }
+inline T colour< T >::blue() const { return this->operator[]( 2 ); }
 
 template < typename T >
-inline T colour< T >::alpha() const { return const_cast< colour* >( this )->operator[]( 3 ); }
+inline T colour< T >::alpha() const { return this->operator[]( 3 ); }
 
 template < typename T >
 inline colour< T >& colour< T >::red( T t )
