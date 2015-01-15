@@ -8,26 +8,39 @@
 
 namespace snark { namespace render { namespace svg {
 
-struct header
+struct element
+{
+    boost::optional< std::string > klass;
+    boost::optional< std::string > id;
+    boost::optional< std::string > style;
+    boost::optional< std::string > transform;
+
+    element() { }
+    element( const boost::optional< std::string >& style ) : style( style ) { }
+    element( const boost::optional< std::string >& klass, const boost::optional< std::string >& id, const boost::optional< std::string >& style, const boost::optional< std::string >& transform ) : klass( klass ), id( id ), style( style ), transform( transform ) { }
+
+    friend std::ostream& operator<<( std::ostream& os, const element& e );
+};
+
+struct header : public element
 {
     std::string width;
     std::string height;
-    unsigned int viewbox_min_x;
-    unsigned int viewbox_min_y;
-    unsigned int viewbox_width;
-    unsigned int viewbox_height;
-    boost::optional< std::string > style;
+    double viewbox_min_x;
+    double viewbox_min_y;
+    double viewbox_width;
+    double viewbox_height;
     boost::optional< std::string > css;
 
     header() { }
-    header( const std::string& width, const std::string &height, const unsigned int viewbox_min_x, const unsigned int viewbox_min_y, const unsigned int viewbox_width, const unsigned int viewbox_height, const boost::optional< std::string >& style, const boost::optional< std::string >& css ) :
-          width( width )
+    header( const std::string& width, const std::string &height, const double viewbox_min_x, const double viewbox_min_y, const double viewbox_width, const double viewbox_height, const boost::optional< std::string >& style, const boost::optional< std::string >& css ) :
+          element( style )
+        , width( width )
         , height( height )
         , viewbox_min_x( viewbox_min_x )
         , viewbox_min_y( viewbox_min_y )
         , viewbox_width( viewbox_width )
         , viewbox_height( viewbox_height )
-        , style( style )
         , css( css )
     { }
 
@@ -45,38 +58,31 @@ struct style
     static std::string end();
 };
 
-struct element
-{
-    boost::optional< std::string > klass;
-    boost::optional< std::string > id;
-    boost::optional< std::string > style;
-
-    element() { }
-    element( const boost::optional< std::string >& klass, const boost::optional< std::string >& id, const boost::optional< std::string >& style ) : klass( klass ), id( id ), style( style ) { }
-};
-
 struct g : public element
 {
-    g( const boost::optional< std::string >& klass, const boost::optional< std::string >& id, const boost::optional< std::string >& style ) : element( klass, id, style ) { }
+    g( const boost::optional< std::string >& klass, const boost::optional< std::string >& id, const boost::optional< std::string >& style, const boost::optional< std::string >& transform ) : element( klass, id, style, transform ) { }
 
-    static std::string close();
+    static std::string end();
 
     friend std::ostream& operator<<( std::ostream& os, const g& gg );
 };
 
-struct circle
+struct circle : public element
 {
+    static double DEFAULT_RADIUS;
+
     double cx;
     double cy;
     double r;
 
-    circle() { }
+    circle() : r( DEFAULT_RADIUS ) { }
     circle( const double cx, const double cy, const double r ) : cx( cx ), cy( cy ), r( r ) { }
+    circle( const circle& c, const std::string& colour );
 
     friend std::ostream& operator<<( std::ostream& os, const circle& c );
 };
 
-struct line
+struct line : public element
 {
     double x1;
     double y1;
@@ -85,6 +91,8 @@ struct line
 
     line() { }
     line( const double x1, const double y1, const double x2, const double y2 ) : x1( x1 ), y1( y1 ), x2( x2 ), y2( y2 ) { }
+    line( const double x1, const double y1, const double x2, const double y2, const std::string& colour );
+    line( const line& l, const std::string& colour );
 
     friend std::ostream& operator<<( std::ostream& os, const line& l );
 };
