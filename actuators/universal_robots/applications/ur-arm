@@ -4,11 +4,11 @@ name=$( basename $0 )
 
 source $( which comma-application-util )
 
-declare -r default_timeout=10
 declare -r default_acceleration=1
 declare -r default_time=1
 declare -r default_tolerance=0.01
 declare -ri number_of_joints=6
+declare -ri number_of_pose_fields=6
 function replicate { local what="$1"; local -i n=$2; local separator=${3:-,}; printf "$what"; printf "${separator}${what}%.0s" $( seq -s' ' 2 $n ); }
 declare -r zeros=$( replicate 0 $number_of_joints )
 function time_ { date +%s.%N; }
@@ -32,11 +32,12 @@ EOF
 function option_description
 {
     cat <<EOF
---timeout=[<timeout>]; timeout period for operations 'on' and 'wait', default: $default_timeout seconds
---config=[<config>]; arm config file (run '$name -h -v' to see a sample)
+--timeout=[<timeout>]; timeout period for operations 'on' and 'wait'; no timeout by default
+--config=[<config>]; arm config file (run '$name -h -v' to see a sample); optionally <config> can be followed by colon-separated prefix, e.g. --config=<config:prefix>
 --prefix=[<prefix>]; the entry in the config file under which the script locates relevant info
---target=[<target>]; comma-separated list of angles of the target waypoint for operation 'wait'
---tolerance=[<tolerance>]; tolerance used by operation 'wait' to determine if a waypoint is reached, default: $default_tolerance radians
+--angles=[<angles>]; comma-separated list of angles of the target waypoint for operation 'wait'
+--pose=[<pose>]; comma-separated list of pose values of the target waypoint for operation 'wait'
+--tolerance=[<tolerance>]; tolerance used by operation 'wait' to determine if a waypoint is reached, default: $default_tolerance
 EOF
 }
 
@@ -83,8 +84,9 @@ details of operations:
         stop currently executed motion without entering security stop mode (subsequent move commands are executed)
     wait:
         wait until the arm's joints have reached the target waypoint
-        --target: comma-separated list of the joint angles of the target waypoint (from base to wrist)
-        --tolerance: the target is considered reached if actual joint angles are within tolerance of the target's angles
+        --angles: comma-separated list of the joint angles of the target waypoint (from base to wrist)
+        --pose: comma-separated list of the pose values of the target waypoint (position and orientation)
+        --tolerance: the target is considered reached if actual joint angles or pose values are within tolerance of the target values
         --timeout: exits with status ${wait_error[timed_out]} if it takes more than timeout to reach the target
         exit codes:
             0 -> target reached
@@ -135,19 +137,21 @@ function wait_for_mode
 {
     local expected_mode="$1"
     local expected_joint_modes="$2"
+    local end_time="$3"
     while [[ "$( get 'mode' )" != "$expected_mode" || "$( get 'arm/modes' )" != "$expected_joint_modes" ]]; do
         sleep 0.1
+        if [[ -z "$end_time" ]]; then continue; fi
         if (( `echo "$( time_ ) > $end_time" | bc -l` )); then echo "$name: $FUNCNAME: timed out waiting for mode $expected_mode and joint modes $expected_joint_modes" >&2; exit 1; fi
     done
 }
 
 function turn_on
 {
-    local mode_no_power=$( ur-arm-status --mode-from-name no-power )
-    local mode_stop=$( ur-arm-status --mode-from-name security-stopped )
-    local mode_init=$( ur-arm-status --mode-from-name initialising )
-    local joint_mode_idle=$( ur-arm-status --joint-mode-from-name idle )
-    local joint_mode_init=$( ur-arm-status --joint-mode-from-name initialisation )
+    local -r mode_no_power=$( ur-arm-status --mode-from-name no-power )
+    local -r mode_stop=$( ur-arm-status --mode-from-name security-stopped )
+    local -r mode_init=$( ur-arm-status --mode-from-name initialising )
+    local -r joint_mode_idle=$( ur-arm-status --joint-mode-from-name idle )
+    local -r joint_mode_init=$( ur-arm-status --joint-mode-from-name initialisation )
     if [[ -z "$mode_no_power" ]]; then echo "$name: $FUNCNAME: no-power mode undefined, check if 'ur-arm-status --mode-from-name no-power' works" >&2; exit 1; fi
     if [[ -z "$mode_stop" ]]; then echo "$name: $FUNCNAME: stop mode undefined, check if 'ur-arm-status --mode-from-name security-stopped' works" >&2; exit 1; fi
     if [[ -z "$mode_init" ]]; then echo "$name: $FUNCNAME: init mode undefined, check if 'ur-arm-status --mode-from-name initialising' works" >&2; exit 1; fi
@@ -157,17 +161,19 @@ function turn_on
     if [[ -z "$mode" ]]; then echo "$name: $FUNCNAME: failed to get mode, check if status daemon is publishing on port $publisher_port" >&2; exit 1; fi
     if [[ "$mode" != "$mode_no_power" ]]; then echo "$name: $FUNCNAME: expected the arm to be in mode $mode_no_power (no-power), got mode $mode" >&2; exit 1; fi
     if [[ $( get 'arm/modes' | tr ',' '\n' | wc -l ) != $number_of_joints ]]; then echo "$name: $FUNCNAME: failed to get $number_of_joints joint modes" >&2; exit 1; fi 
-    local timeout=${options_timeout:-$default_timeout}
-    if (( $( echo "$timeout <= 0" | bc -l ) )); then echo "$name: $FUNCNAME: expected positive timeout, got $timeout" >&2; exit 1; fi
-
-    local -r end_time=$( echo "`time_` + ($timeout)" | bc -l )
+    local -r timeout=${options_timeout}
+    if [[ -n "$timeout" ]]; then
+        if (( $( echo "$timeout <= 0" | bc -l ) )); then echo "$name: $FUNCNAME: expected positive timeout, got $timeout" >&2; exit 1; fi
+        local -r end_time=$( echo "`time_` + ($timeout)" | bc -l )
+    fi
+    
     echo "turning the arm on at $( date +%X.%N ) ..."
     send_command 'power on'
-    wait_for_mode "$mode_init" "$( replicate $joint_mode_idle $number_of_joints )"
+    wait_for_mode "$mode_init" "$( replicate $joint_mode_idle $number_of_joints )" "$end_time"
     security_stop
-    wait_for_mode "$mode_stop" "$( replicate $joint_mode_idle $number_of_joints )"
+    wait_for_mode "$mode_stop" "$( replicate $joint_mode_idle $number_of_joints )" "$end_time"
     restore
-    wait_for_mode "$mode_init" "$( replicate $joint_mode_init $number_of_joints )"
+    wait_for_mode "$mode_init" "$( replicate $joint_mode_init $number_of_joints )" "$end_time"
     echo "the arm is on and ready for initialisation at $( date +%X.%N )"
 }
 
@@ -198,15 +204,15 @@ function initialise_joint
 
 function init 
 {
-    local -r speed=( $( name-value-get --from json $prefix/init/speed < $config ) )
-    local -r acceleration=( $( name-value-get --from json $prefix/init/acceleration < $config ) )
-    local -r time=( $( name-value-get --from json $prefix/init/time < $config ) )
-    local mode_init=$( ur-arm-status --mode-from-name initialising )
-    local joint_mode_init=$( ur-arm-status --joint-mode-from-name initialisation )
-    local joint_mode_run=$( ur-arm-status --joint-mode-from-name running )
-    if [[ -z "$speed" ]]; then echo "$name: $FUNCNAME: $prefix/init/speed is not found in $config" >&2; exit 1; fi
-    if [[ -z "$acceleration" ]]; then echo "$name: $FUNCNAME: $prefix/init/acceleration is not found in $config " >&2; exit 1; fi
-    if [[ -z "$time" ]]; then echo "$name: $FUNCNAME: $prefix/init/time is not found in $config" >&2; exit 1; fi
+    local -r speed=( $( name-value-get --from json ${prefix}init/speed < $config ) )
+    local -r acceleration=( $( name-value-get --from json ${prefix}init/acceleration < $config ) )
+    local -r time=( $( name-value-get --from json ${prefix}init/time < $config ) )
+    local -r mode_init=$( ur-arm-status --mode-from-name initialising )
+    local -r joint_mode_init=$( ur-arm-status --joint-mode-from-name initialisation )
+    local -r joint_mode_run=$( ur-arm-status --joint-mode-from-name running )
+    if [[ -z "$speed" ]]; then echo "$name: $FUNCNAME: ${prefix}init/speed is not found in $config" >&2; exit 1; fi
+    if [[ -z "$acceleration" ]]; then echo "$name: $FUNCNAME: ${prefix}init/acceleration is not found in $config " >&2; exit 1; fi
+    if [[ -z "$time" ]]; then echo "$name: $FUNCNAME: ${prefix}init/time is not found in $config" >&2; exit 1; fi
     if (( $( echo "$time <= 0" | bc -l ) )); then echo "$name: $FUNCNAME: expected positive time, got $time" >&2; exit 1; fi
     if [[ -z "$mode_init" ]]; then echo "$name: $FUNCNAME: init mode undefined, check if 'ur-arm-status --mode-from-name initialising' works" >&2; exit 1; fi
     if [[ -z "$joint_mode_init" ]]; then echo "$name: $FUNCNAME: initialisation mode undefined, check if 'ur-arm-status --joint-mode-from-name initialisation' works" >&2; exit 1; fi
@@ -232,24 +238,38 @@ function init
 function wait_for_target
 {
     IFS=,
-    local -r target_angles=( $options_target )
+    local -r fields=$1
+    local -r target_values=( $2 )
+    local -ri number_of_values=$3
     local -r tolerance="${options_tolerance:-$default_tolerance}"
-    local -r timeout="${options_timeout:-$default_timeout}"
-    if [[ -z "${target_angles[@]}" ]]; then echo "$name: $FUNCNAME: target is not given" >&2; exit 1; fi
+    local -r timeout="${options_timeout}"
+    if (( ${#target_values[@]} != $number_of_values )); then echo "$name: $FUNCNAME: expected $number_of_values target values ($fields), got ${#target_values[@]}" >&2; exit 1; fi
     if (( `echo "$tolerance <= 0" | bc -l` )); then echo "$name: $FUNCNAME: expected positive tolerance, got $tolerance" >&2; exit 1; fi
-    if (( `echo "$timeout <= 0" | bc -l` )); then echo "$name: $FUNCNAME: expected positive timeout, got $timeout" >&2; exit 1; fi
-    local -r end_time=$( echo "`time_` + $timeout" | bc -l )
+    if [[ -n "$timeout" ]]; then
+        if (( `echo "$timeout <= 0" | bc -l` )); then echo "$name: $FUNCNAME: expected positive timeout, got $timeout" >&2; exit 1; fi
+        local -r end_time=$( echo "`time_` + $timeout" | bc -l )
+    fi
     while :; do
-        if (( `echo "$( time_ ) > $end_time" | bc -l` )); then exit ${wait_error[timed_out]}; fi
-        local actual_angles=( `get "arm/angles"` )
-        if [[ -z "${actual_angles[@]}" ]]; then exit ${wait_error[status_unavailable]}; fi
+        [[ -n "$end_time" ]] && if (( `echo "$( time_ ) > $end_time" | bc -l` )); then exit ${wait_error[timed_out]}; fi
+        local actual_values=( `get "$fields"` )
+        if [[ -z "${actual_values[@]}" ]]; then exit ${wait_error[status_unavailable]}; fi
         local -i target_reached=1
-        for (( i=0; i<number_of_joints; i++ )); do
-            local difference=$( echo "${target_angles[$i]}-(${actual_angles[$i]})" | bc -l )
+        for (( i=0; i<$number_of_values; i++ )); do
+            local difference=$( echo "${target_values[$i]}-(${actual_values[$i]})" | bc -l )
             if (( `echo "${difference#-} > $tolerance" | bc -l` )); then target_reached=0; break; fi
         done
         if (( target_reached )); then exit; fi
     done
+}
+
+function wait_for_target_selector
+{
+    local -r angles="$options_angles"
+    local -r pose="$options_pose"
+    if [[ -n "$angles" && -n "$pose" ]]; then echo "$name: $FUNCNAME: options --angles and --pose are mutually exclusive" >&2; exit 1; fi
+    if [[ -z "$angles" && -z "$pose" ]]; then echo "$name: $FUNCNAME: target is not given, use --angles or --pose to specify the target" >&2; exit 1; fi
+    if [[ -n "$angles" ]]; then wait_for_target "arm/angles" "$angles" $number_of_joints; fi
+    if [[ -n "$pose" ]]; then wait_for_target "tool/pose" "$pose" $number_of_pose_fields; fi
 }
 
  
@@ -272,22 +292,26 @@ else
     exit 1
 fi
 
-declare -r config=${options_config}
-declare -r prefix=${options_prefix}
-
+declare -r config=${options_config%:*}
 if [[ -z "$config" ]]; then echo "$name: config file is not given" >&2; exit 1; fi
 if [[ ! -f "$config" ]]; then echo "$name: config file not found" >&2; exit 1; fi
-if [[ -z "$prefix" ]]; then echo "$name: prefix is not given" >&2; exit 1; fi
 
-declare -r publisher_address="$( name-value-get --from json $prefix/publisher/data/address < $config )"
-declare -r publisher_port="$( name-value-get --from json $prefix/publisher/data/port < $config )"
-declare -r command_address="$( name-value-get --from json $prefix/command/address < $config )"
-declare -r command_port="$( name-value-get --from json $prefix/command/port < $config )"
+[[ "$options_config" =~ ":" && -n "${options_config#*:}" ]] && config_bound_prefix="${options_config#*:}"
+[[ -n "${options_prefix}" ]] && stand_alone_prefix="$options_prefix"
+if [[ -n "$config_bound_prefix" && -n "$stand_alone_prefix" ]]; then echo "$name: expected either \"--config=<config:prefix>\" or \"--config=<config> --prefix=<prefix>\", got both" >&2; exit 1; fi
+prefix=""
+[[ -n "$config_bound_prefix" ]] && prefix="$config_bound_prefix/"
+[[ -n "$stand_alone_prefix" ]] && prefix="$stand_alone_prefix/"
 
-if [[ -z "$publisher_address" ]]; then echo "$name: $prefixpublisher/data/address is not found in $config" >&2; exit 1; fi
-if [[ -z "$publisher_port" ]]; then echo "$name: $prefix/publisher/data/port is not found in $config" >&2; exit 1; fi
-if [[ -z "$command_address" ]]; then echo "$name: $prefix/command/address is not found in $config" >&2; exit 1; fi
-if [[ -z "$command_port" ]]; then echo "$name: $prefix/command/port is not found in $config" >&2; exit 1; fi
+declare -r publisher_address="$( name-value-get --from json ${prefix}publisher/data/address < $config )"
+declare -r publisher_port="$( name-value-get --from json ${prefix}publisher/data/port < $config )"
+declare -r command_address="$( name-value-get --from json ${prefix}command/address < $config )"
+declare -r command_port="$( name-value-get --from json ${prefix}command/port < $config )"
+
+if [[ -z "$publisher_address" ]]; then echo "$name: ${prefix}publisher/data/address is not found in $config" >&2; exit 1; fi
+if [[ -z "$publisher_port" ]]; then echo "$name: ${prefix}publisher/data/port is not found in $config" >&2; exit 1; fi
+if [[ -z "$command_address" ]]; then echo "$name: ${prefix}command/address is not found in $config" >&2; exit 1; fi
+if [[ -z "$command_port" ]]; then echo "$name: ${prefix}command/port is not found in $config" >&2; exit 1; fi
 
 case "$operation" in
 "on")
@@ -312,6 +336,6 @@ case "$operation" in
     stop_movement
     ;;
 "wait")
-    wait_for_target
+    wait_for_target_selector
     ;;
 esac

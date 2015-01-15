@@ -57,6 +57,14 @@ void usage( bool verbose )
     std::cerr << std::endl;
     if( verbose ) { std::cerr << "csv options" << std::endl << comma::csv::options::usage( "command,values" ) << std::endl; }
     else { std::cerr << "csv options... use --help --verbose for more" << std::endl << std::endl; }
+    std::cerr << "default values:" << std::endl;
+    std::cerr << "    joints: speed = 0.75 rad/s, acceleration = 3 rad/s^2" << std::endl;
+    std::cerr << "    tool: speed = 0.3 m/s, acceleration = 1.2 m/s^2" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "maximum values (approximate):" << std::endl;
+    std::cerr << "    joints: speed = 3.14 rad/s" << std::endl;
+    std::cerr << "    tool: speed = 1 m/s" << std::endl;    
+    std::cerr << std::endl;
     std::cerr << "examples (assuming robot.arm is the arm's IP address):" << std::endl;
     std::cerr << "    move joints at a speed of 0.02 rad/sec to new joint angles 0,1,2,3,4,5 (in radians):" << std::endl;
     std::cerr << "        echo \"1,0,1,2,3,4,5,0.02\" | ur-arm-command --fields=command,values,speed | nc robot.arm 30002" << std::endl;
