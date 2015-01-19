@@ -65,7 +65,7 @@ void usage( bool verbose = false )
     std::cerr << std::endl;
     std::cerr << "    point, circle:" << std::endl;
     std::cerr << "        fields: x,y,r[,scalar] (default for point: x,y)" << std::endl;
-    std::cerr << "            --point-size,--weight,--radius,-r=<size> (default: " << snark::render::svg::circle::DEFAULT_RADIUS << ")" << std::endl;
+    std::cerr << "        --point-size,--weight,--radius,-r=<size> (default: " << snark::render::svg::circle::DEFAULT_RADIUS << ")" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    line:" << std::endl;
     std::cerr << "        fields: x1,y1,x2,y2" << std::endl;
@@ -75,6 +75,7 @@ void usage( bool verbose = false )
     std::cerr << std::endl;
     std::cerr << "    polyline" << std::endl;
     std::cerr << "        fields: x,y" << std::endl;
+    std::cerr << "        --loop: connect the last point to the first" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    --class=<string>: implies --have-css" << std::endl;
@@ -136,8 +137,13 @@ boost::optional< std::string > make_style( const comma::command_line_options& op
             style += "fill:" + options.value< std::string >( "--colour,--color,-c" );
         }
     }
-    else if( what == "line" || what == "lines" || what == "polyline" )
+    else if( what == "line" || what == "lines" || what == "polyline" || what == "polygon" )
     {
+        if( parse_colour && options.exists( "--colour,--color,-c" ) )
+        {
+            if( style.size() ) { style += ";"; }
+            style += "stroke:" + options.value< std::string >( "--colour,--color,-c" );
+        }
         if( options.exists( "--width" ) )
         {
             if( style.size() ) { style += ";"; }
@@ -150,7 +156,7 @@ boost::optional< std::string > make_style( const comma::command_line_options& op
                 if( style.size() ) { style += ";"; }
                 style += "stroke:" + options.value< std::string >( "--colour,--color,-c", "black" );
             }
-            if( what == "polyline" )
+            if( what == "polyline" || what == "polygon" )
             {
                 if( style.find( "fill: " ) == std::string::npos )
                 {
@@ -213,7 +219,7 @@ int main( int ac, char** av )
     try
     {
         comma::command_line_options options( ac, av, usage );
-        const std::vector< std::string >& unnamed = options.unnamed( "--verbose,-v,--have-css" , "-.*" );
+        const std::vector< std::string >& unnamed = options.unnamed( "--verbose,-v,--have-css,--loop" , "-.*" );
         if( unnamed.size() != 1 ) { std::cerr << "csv-to-svg: expected one operation name" << ( unnamed.size() ? "; got " + comma::join( unnamed, ' ' ) : "" ) << std::endl; return 1; }
         std::string what = unnamed[0];
         if( what == "header" )
@@ -344,9 +350,30 @@ int main( int ac, char** av )
             {
                 const snark::render::svg::point* p = istream.read();
                 if( !p ) { break; }
-                polyline.add( *p );
+                polyline.points.push_back( *p );
             }
-            if( polyline.points.size() ) { std::cout << polyline << std::endl; }
+            if( polyline.points.size() )
+            {
+                if( options.exists( "--loop" ) ) { polyline.points.push_back( polyline.points[0] ); }
+                std::cout << polyline << std::endl;
+            }
+        }
+        else if( what == "polygon" )
+        {
+            if( csv.fields.empty() ) { csv.fields = comma::join( comma::csv::names< snark::render::svg::point >(), ',' ); }
+            if( options.exists( "--binary,-b" ) ) { csv.format( comma::csv::format::value< snark::render::svg::point >( csv.fields, true ) ); }
+            comma::csv::input_stream< snark::render::svg::point > istream( std::cin, csv );
+            snark::render::svg::polygon polygon;
+            boost::optional< snark::render::svg::point > first;
+            boost::optional< snark::render::svg::point > prev;
+            while( std::cin.good() )
+            {
+                const snark::render::svg::point* p = istream.read();
+                if( !p ) { break; }
+                if( !first ) { first = *p; }
+                polygon.points.push_back( *p );
+            }
+            if( polygon.points.size() ) { std::cout << polygon << std::endl; }
         }
         else if( what == "colour" )
         {

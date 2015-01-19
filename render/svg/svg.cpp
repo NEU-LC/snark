@@ -83,11 +83,6 @@ std::ostream& operator<<( std::ostream& os, const line& l )
         << "/>";
 }
 
-void polyline::add( const point& p )
-{
-    points.push_back( p );
-}
-
 static std::ostream& operator<<( std::ostream& os, const point& p )
 {
     return os << p.x << ',' << p.y;
@@ -96,14 +91,19 @@ static std::ostream& operator<<( std::ostream& os, const point& p )
 static std::ostream& operator<<( std::ostream& os, const std::vector< point >& points )
 {
     if( points.empty() ) { return os; }
-    os << points[0];
+    os << " points=\"" << points[0];
     for( unsigned int i = 1; i < points.size(); ++i ) { os << ' ' << points[i]; }
-    return os;
+    return os << "\"";
 }
 
 std::ostream& operator<<( std::ostream& os, const polyline& p )
 {
-    return os << "<polyline points=\"" << p.points << "\"/>";
+    return os << "<polyline" << p.points << "/>";
+}
+
+std::ostream& operator<<( std::ostream& os, const polygon& p )
+{
+    return os << "<polygon" << p.points << "/>";
 }
 
 } } } // namespace snark { namespace render { namespace svg {

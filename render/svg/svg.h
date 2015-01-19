@@ -101,15 +101,23 @@ struct point
 {
     double x;
     double y;
+    
+    point() { }
+    point( const double x, const double y ) : x( x ), y( y ) { }
 };
 
 struct polyline
 {
     std::vector< point > points;
 
-    void add( const point& p );
-
     friend std::ostream& operator<<( std::ostream& os, const polyline& p );
+};
+
+struct polygon
+{
+    std::vector< point > points;
+
+    friend std::ostream& operator<<( std::ostream& os, const polygon& p );
 };
 
 } } } // namespace snark { namespace render { namespace svg {
