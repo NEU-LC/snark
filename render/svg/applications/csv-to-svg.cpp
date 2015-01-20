@@ -27,7 +27,6 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/// @author Vinny Do
 
 #include <iostream>
 #include <comma/application/command_line_options.h>
@@ -100,7 +99,25 @@ void usage( bool verbose = false )
     std::cerr << "                                      <min>:<max>,<from-colour>:<to-colour> (black, blue, green, cyan, red, magenta, yellow, white)" << std::endl; 
     std::cerr << "                                      <min>:<max>,<colourmap> (jet, hot)" << std::endl; 
     std::cerr << std::endl;
-    std::cerr << "examples: todo" << std::endl;
+    if( !verbose )
+    {
+        std::cerr << "examples: csv-to-svg --help --verbose" << std::endl;
+    }
+    else
+    {
+        std::cerr << "examples:" << std::endl;
+        std::cerr << "    output svg with a few circles and lines" << std::endl;
+        std::cerr << std::endl;
+        std::cerr << "csv-to-svg header --width 800px --height 600px --viewbox \"0 0 800 600\"" << std::endl;
+        std::cerr << "csv-to-svg group_begin --style \"stroke:black\"" << std::endl;
+        std::cerr << "echo -e \"10,10\\n790,10\\n790,590\\n10,590\" | csv-to-svg polygon --style \"fill:#D0EEEE\"" << std::endl;
+        std::cerr << "echo -e \"15,15\\n785,15\\n785,585\\n15,585\" | csv-to-svg polyline --style \"fill:none\" --stroke-width 5" << std::endl;
+        std::cerr << "csv-to-svg group_end" << std::endl;
+        std::cerr << "echo -e \"100,100\\n200,200\\n400,300\" | csv-to-svg point --point-size 20 --colour blue" << std::endl;
+        std::cerr << "echo -e \"100,100,200,200\\n200,200,400,300\" | csv-to-svg line --colour grey --stroke-width 10" << std::endl;
+        std::cerr << "echo -e \"50,500,30,0\\n150,500,30,1\\n250,500,30,2\\n350,500,30,3\\n450,500,30,4\\n550,500,30,5\\n650,500,30,6\\n750,500,30,7\" | csv-to-svg circle --fields x,y,r,scalar --colour 0:10,jet --stroke-width 4 --style \"stroke:crimson\"" << std::endl;
+        std::cerr << "csv-to-svg footer" << std::endl;
+    }
     std::cerr << std::endl;
     std::cerr << comma::contact_info << std::endl;
     std::cerr << std::endl;
