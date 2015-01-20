@@ -361,43 +361,15 @@ int main( int ac, char** av )
             snark::render::svg::polygon polygon;
             boost::optional< snark::render::svg::point > first;
             boost::optional< snark::render::svg::point > prev;
-            double fix_latitude = 90;
             while( std::cin.good() )
             {
                 const snark::render::svg::point* p = istream.read();
                 if( !p ) { break; }
                 if( !first ) { first = *p; }
-                if( options.exists( "--fix-pole" ) )
-                {
-                    if( comma::math::equal( std::abs( p->y ), 90, 1e-3 ) )
-                    {
-                        if( prev ) { polygon.points.push_back( snark::render::svg::point( prev->x, fix_latitude * ( p->y > 0 ? 1 : -1 ) ) ); }
-                    }
-                    else if( prev && comma::math::equal( std::abs( prev->y ), 90, 1e-3 ) )
-                    {
-                        polygon.points.push_back( snark::render::svg::point( p->x, fix_latitude * ( p->y > 0 ? 1 : -1 ) ) );
-                        polygon.points.push_back( *p );
-                    }
-                    else
-                    {
-                        polygon.points.push_back( *p );
-                    }
-                }
-                else
-                {
-                    polygon.points.push_back( *p );
-                }
+                polygon.points.push_back( *p );
                 prev = *p;
             }
-            if( polygon.points.size() )
-            {
-                if( options.exists( "--fix-pole" ) )
-                {
-                    if( comma::math::equal( std::abs( first->y ), 90, 1e-3 ) ) { polygon.points.push_back( snark::render::svg::point( prev->x, fix_latitude * ( prev->y > 0 ? 1 : -1 ) ) ); }
-                    if( comma::math::equal( std::abs( prev->y ), 90, 1e-3 ) ) { polygon.points.push_back( snark::render::svg::point( first->x, fix_latitude * ( prev->y > 0 ? 1 : -1 ) ) ); }
-                }
-                std::cout << polygon << std::endl;
-            }
+            if( polygon.points.size() ) { std::cout << polygon << std::endl; }
         }
         else if( what == "text" )
         {
