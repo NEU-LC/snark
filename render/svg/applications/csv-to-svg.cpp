@@ -36,8 +36,8 @@
 #include <comma/visiting/traits.h>
 #include <snark/render/svg/svg.h>
 #include <snark/render/svg/traits.h>
-#include <snark/graphics/colours.h>
-#include <snark/graphics/colour_mapper.h>
+#include <snark/render/colours.h>
+#include <snark/render/colour_map.h>
 
 void usage( bool verbose = false )
 {
@@ -149,13 +149,13 @@ std::string make_style( const comma::command_line_options& options, const std::s
     return style;
 }
 
-snark::graphics::colour_mapper parse_colour_map( const std::string& colour )
+snark::render::colour_map parse_colour_map( const std::string& colour )
 {
     double from = 0;
     double to = 1;
-    snark::graphics::colour< unsigned char > from_colour = snark::graphics::colours< unsigned char >::magenta();
-    snark::graphics::colour< unsigned char > to_colour = snark::graphics::colours< unsigned char >::cyan();
-    boost::optional< snark::graphics::colour_map::values > map;
+    snark::render::colour< unsigned char > from_colour = snark::render::colours< unsigned char >::magenta();
+    snark::render::colour< unsigned char > to_colour = snark::render::colours< unsigned char >::cyan();
+    boost::optional< snark::render::colour_map::values > map;
     std::vector< std::string > v = comma::split( colour, ',' );
     switch( v.size() )
     {
@@ -168,13 +168,13 @@ snark::graphics::colour_mapper parse_colour_map( const std::string& colour )
                 switch( w.size() )
                 {
                     case 1:
-                        if( w[0] == "jet" ) { map = snark::graphics::colour_map::jet(); }
-                        else if( w[0] == "hot" ) { map = snark::graphics::colour_map::temperature( 96, 96 ); }
+                        if( w[0] == "jet" ) { map = snark::render::colour_map::jet(); }
+                        else if( w[0] == "hot" ) { map = snark::render::colour_map::temperature( 96, 96 ); }
                         else { COMMA_THROW( comma::exception, "unknown colourmap: " << w[0] ); }
                         break;
                     case 2:
-                        from_colour = snark::graphics::colours< unsigned char >::from_string( w[0] );
-                        to_colour = snark::graphics::colours< unsigned char >::from_string( w[1] );
+                        from_colour = snark::render::colours< unsigned char >::from_string( w[0] );
+                        to_colour = snark::render::colours< unsigned char >::from_string( w[1] );
                         break;
                 }
             }
@@ -189,8 +189,8 @@ snark::graphics::colour_mapper parse_colour_map( const std::string& colour )
             break;
         default: COMMA_THROW( comma::exception, "invalid '--colour'; got " << colour );
     }
-    if( map ) { return snark::graphics::colour_mapper( from, to, *map ); }
-    return snark::graphics::colour_mapper( from, to, from_colour, to_colour );
+    if( map ) { return snark::render::colour_map( from, to, *map ); }
+    return snark::render::colour_map( from, to, from_colour, to_colour );
 }
 
 int main( int ac, char** av )
@@ -203,11 +203,11 @@ int main( int ac, char** av )
         std::string what = unnamed[0];
 
         comma::csv::options csv( options );
-        snark::graphics::colour_mapper colour_mapper;
+        snark::render::colour_map colour_map;
         bool parse_colour = true;
         if( ( what == "point" || what == "circle" || what == "line" || what == "lines" ) && csv.has_field( "scalar" ) )
         {
-            colour_mapper = parse_colour_map( options.value< std::string >( "--colour,--color,-c", "" ) );
+            colour_map = parse_colour_map( options.value< std::string >( "--colour,--color,-c", "" ) );
             parse_colour = false;
         }
 
@@ -246,7 +246,7 @@ int main( int ac, char** av )
                 {
                     const coloured< snark::render::svg::circle >* c = istream.read();
                     if( !c ) { break; }
-                    std::cout << snark::render::svg::circle( *c, colour_mapper.map( c->scalar ).hex() ) << std::endl;
+                    std::cout << snark::render::svg::circle( *c, colour_map( c->scalar ).hex() ) << std::endl;
                 }
             }
             else
@@ -272,7 +272,7 @@ int main( int ac, char** av )
                 {
                     const coloured< snark::render::svg::line >* l = istream.read();
                     if( !l ) { break; }
-                    std::cout << snark::render::svg::line( *l, colour_mapper.map( l->scalar ).hex() ) << std::endl;
+                    std::cout << snark::render::svg::line( *l, colour_map( l->scalar ).hex() ) << std::endl;
                 }
             }
             else
@@ -299,7 +299,7 @@ int main( int ac, char** av )
                 {
                     const coloured< snark::render::svg::point >* p = istream.read();
                     if( !p ) { break; }
-                    if( prev ) { std::cout << snark::render::svg::line( prev->x, prev->y, p->x, p->y, colour_mapper.map( prev->scalar ).hex() ) << std::endl; }
+                    if( prev ) { std::cout << snark::render::svg::line( prev->x, prev->y, p->x, p->y, colour_map( prev->scalar ).hex() ) << std::endl; }
                     prev = *p;
                 }
             }
@@ -382,17 +382,6 @@ int main( int ac, char** av )
                 std::cout << polygon << std::endl;
             }
         }
-        else if( what == "colour" )
-        {
-            colour_mapper = parse_colour_map( options.value< std::string >( "--colour,--color,-c", "" ) );
-            std::string line;
-            while( std::cin.good() )
-            {
-                std::getline( std::cin, line );
-                if( line.empty() ) { break; }
-                std::cout << colour_mapper.map( boost::lexical_cast< double >( line ) ).hex() << std::endl;
-            }
-        }
         else if( what == "text" )
         {
             if( csv.has_field( "scalar" ) )
@@ -402,7 +391,7 @@ int main( int ac, char** av )
                 {
                     const coloured< snark::render::svg::text >* t = istream.read();
                     if( !t ) { break; }
-                    std::cout << snark::render::svg::text( *t, colour_mapper.map( t->scalar ).hex() ) << std::endl;
+                    std::cout << snark::render::svg::text( *t, colour_map( t->scalar ).hex() ) << std::endl;
                 }
             }
             else

@@ -28,14 +28,14 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-#ifndef SNARK_GRAPHICS_COLOURED_H_
-#define SNARK_GRAPHICS_COLOURED_H_
+#ifndef SNARK_RENDER_COLOURED_H_
+#define SNARK_RENDER_COLOURED_H_
 
 #include <boost/array.hpp>
 #include <comma/Visiting/traits.h>
-#include <snark/graphics/Vertex.h>
+#include <snark/render/Vertex.h>
 
-namespace snark { namespace graphics {
+namespace snark { namespace render {
 
 template < typename T, typename S >
 struct coloured // real quick and dirty
@@ -46,16 +46,16 @@ struct coloured // real quick and dirty
     coloured( const T& value, const colour< S > = colours< S >::black() ) : value( value ), colour( colour ) {}
 };
 
-} } // namespace snark { namespace graphics {
+} } // namespace snark { namespace render {
 
 namespace snark { namespace Visiting { 
 
 /// visiting traits
-template < typename T, typename S > struct traits< snark::graphics::coloured< T, S > >
+template < typename T, typename S > struct traits< snark::render::coloured< T, S > >
 {
     /// const visiting
     template < typename Key, class Visitor >
-    static void visit( const Key&, const snark::graphics::coloured< T, S >& p, Visitor& v )
+    static void visit( const Key&, const snark::render::coloured< T, S >& p, Visitor& v )
     {
         v.apply( "value", p.value );
         v.apply( "colour", p.colour );
@@ -63,7 +63,7 @@ template < typename T, typename S > struct traits< snark::graphics::coloured< T,
     
     /// const visiting
     template < typename Key, class Visitor >
-    static void visit( const Key&, snark::graphics::coloured< T, S >& p, Visitor& v )
+    static void visit( const Key&, snark::render::coloured< T, S >& p, Visitor& v )
     {
         v.apply( "value", p.value );
         v.apply( "colour", p.colour );
@@ -72,4 +72,4 @@ template < typename T, typename S > struct traits< snark::graphics::coloured< T,
 
 } } // namespace snark { namespace Visiting {
 
-#endif /*SNARK_GRAPHICS_GL_COLOURED_H_*/
+#endif /*SNARK_RENDER_GL_COLOURED_H_*/

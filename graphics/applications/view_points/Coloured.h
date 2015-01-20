@@ -35,7 +35,7 @@
 
 #include <string>
 #include <Qt3D/qcolor4ub.h>
-#include "snark/graphics/colour_map.h"
+#include "snark/render/colour_map.h"
 #include "./PointWithId.h"
 
 namespace snark { namespace graphics { namespace View {
@@ -93,7 +93,7 @@ class ByScalar : public coloured
 
         ByScalar( double from
                 , double to
-                , const colour_map::values& map );
+                , const snark::render::colour_map::values& map );
 
         QColor4ub color( const Eigen::Vector3d& point
                        , comma::uint32 id
@@ -102,7 +102,7 @@ class ByScalar : public coloured
 
     protected:
         double from, to, diff;
-        boost::optional< colour_map::values > map;
+        boost::optional< snark::render::colour_map::values > map;
         QColor4ub from_color;
         QColor4ub to_color;
 };

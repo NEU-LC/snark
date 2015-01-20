@@ -1,6 +1,6 @@
 #include "colour_map.h"
 
-namespace snark { namespace graphics {
+namespace snark { namespace render {
 
 colour_map::values colour_map::constant( unsigned char r, unsigned char g, unsigned char b )
 {
@@ -71,4 +71,30 @@ colour_map::pixel colour_map::contrast_to( const values& v )
     return p;
 }
 
-} } // namespace snark { namespace graphics {
+colour_map::colour_map( double from, double to, const colour< unsigned char >& from_colour, const colour< unsigned char >& to_colour )
+    : from( from )
+    , to( to )
+    , diff( to - from )
+    , from_colour( from_colour )
+    , to_colour( to_colour )
+{
+}
+
+colour_map::colour_map( double from, double to, const values& v )
+    : from( from )
+    , to( to )
+    , diff( to - from )
+    , values_( v )
+{
+}
+
+colour< unsigned char > colour_map::map( const double scalar ) const
+{
+    double v = ( scalar - from ) / diff;
+    v = ( v < 0 ? 0 : v > 1 ? 1 : v );
+    if( !values_ ) { return from_colour * ( 1 - v ) + to_colour * v; }
+    unsigned int i = v * 255;
+    return colour< unsigned char >( ( *values_ )[i][0], ( *values_ )[i][1], ( *values_ )[i][2] );
+}
+
+} } // namespace snark { namespace render {

@@ -28,14 +28,14 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-#ifndef SNARK_GRAPHICS_COLOURS_HEADER_GUARD_
-#define SNARK_GRAPHICS_COLOURS_HEADER_GUARD_
+#ifndef SNARK_RENDER_COLOURS_HEADER_GUARD_
+#define SNARK_RENDER_COLOURS_HEADER_GUARD_
 
 #include <comma/base/exception.h>
 #include <comma/math/compare.h>
-#include <snark/graphics/colour.h>
+#include <snark/render/colour.h>
 
-namespace snark { namespace graphics {
+namespace snark { namespace render {
 
 template < typename T >
 struct colours
@@ -63,6 +63,6 @@ struct colours
     }
 };
 
-} } // namespace snark { namespace graphics {
+} } // namespace snark { namespace render {
 
-#endif /*SNARK_GRAPHICS_COLOURS_HEADER_GUARD_*/
+#endif /*SNARK_RENDER_COLOURS_HEADER_GUARD_*/

@@ -28,8 +28,8 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-#ifndef SNARK_GRAPHICS_COLOUR_HEADER_GUARD_
-#define SNARK_GRAPHICS_COLOUR_HEADER_GUARD_
+#ifndef SNARK_RENDER_COLOUR_HEADER_GUARD_
+#define SNARK_RENDER_COLOUR_HEADER_GUARD_
 
 #include <iomanip>
 #include <sstream>
@@ -40,7 +40,7 @@
 #include <comma/math/compare.h>
 #include <comma/visiting/traits.h>
 
-namespace snark { namespace graphics {
+namespace snark { namespace render {
 
 /// generic colour traits
 template < typename T >
@@ -318,16 +318,16 @@ T colour< T >::brightness() const
     // todo
 }
 
-} } // namespace snark { namespace graphics {
+} } // namespace snark { namespace render {
 
 namespace comma { namespace visiting {
 
 /// visiting traits
-template < typename T > struct traits< snark::graphics::colour< T > >
+template < typename T > struct traits< snark::render::colour< T > >
 {
     /// const visiting
     template < typename Key, class Visitor >
-    static void visit( const Key&, const snark::graphics::colour< T >& p, Visitor& v )
+    static void visit( const Key&, const snark::render::colour< T >& p, Visitor& v )
     {
         v.apply( "r", p.red() );
         v.apply( "g", p.green() );
@@ -337,7 +337,7 @@ template < typename T > struct traits< snark::graphics::colour< T > >
 
     /// visiting
     template < typename Key, class Visitor >
-    static void visit( Key, snark::graphics::colour< T >& p, Visitor& v )
+    static void visit( Key, snark::render::colour< T >& p, Visitor& v )
     {
         T r = p.red();
         T g = p.green();
@@ -347,10 +347,10 @@ template < typename T > struct traits< snark::graphics::colour< T > >
         v.apply( "g", g );
         v.apply( "b", b );
         v.apply( "a", a );
-        p = snark::graphics::colour< T >( r, g, b, a );
+        p = snark::render::colour< T >( r, g, b, a );
     }
 };
 
 } } // namespace comma { namespace visiting {
 
-#endif /*SNARK_GRAPHICS_COLOUR_HEADER_GUARD_*/
+#endif /*SNARK_RENDER_COLOUR_HEADER_GUARD_*/
