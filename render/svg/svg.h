@@ -10,14 +10,14 @@ namespace snark { namespace render { namespace svg {
 
 struct element
 {
-    boost::optional< std::string > klass;
-    boost::optional< std::string > id;
-    boost::optional< std::string > style;
-    boost::optional< std::string > transform;
+    static std::string DEFAULT_ATTRIBUTES;
+    static std::string DEFAULT_STYLE;
 
-    element() { }
-    element( const boost::optional< std::string >& style ) : style( style ) { }
-    element( const boost::optional< std::string >& klass, const boost::optional< std::string >& id, const boost::optional< std::string >& style, const boost::optional< std::string >& transform ) : klass( klass ), id( id ), style( style ), transform( transform ) { }
+    std::string attributes;
+    std::string style;
+
+    element() : attributes( DEFAULT_ATTRIBUTES ), style( DEFAULT_STYLE ) { }
+    element( const std::string& style );
 
     friend std::ostream& operator<<( std::ostream& os, const element& e );
 };
@@ -26,22 +26,12 @@ struct header : public element
 {
     std::string width;
     std::string height;
-    double viewbox_min_x;
-    double viewbox_min_y;
-    double viewbox_width;
-    double viewbox_height;
+    std::string viewbox;
     boost::optional< std::string > css;
 
     header() { }
-    header( const std::string& width, const std::string &height, const double viewbox_min_x, const double viewbox_min_y, const double viewbox_width, const double viewbox_height, const boost::optional< std::string >& style, const boost::optional< std::string >& css ) :
-          element( style )
-        , width( width )
-        , height( height )
-        , viewbox_min_x( viewbox_min_x )
-        , viewbox_min_y( viewbox_min_y )
-        , viewbox_width( viewbox_width )
-        , viewbox_height( viewbox_height )
-        , css( css )
+    header( const std::string& width, const std::string &height, const std::string& viewbox, const boost::optional< std::string >& css )
+        : width( width ), height( height ), viewbox( viewbox ), css( css )
     { }
 
     friend std::ostream& operator<<( std::ostream& os, const header& h );
@@ -52,6 +42,18 @@ struct footer
     friend std::ostream& operator<<( std::ostream& os, const footer& f );
 };
 
+struct script
+{
+    static std::string begin();
+    static std::string end();
+
+    std::string file;
+
+    script( const std::string& file ) : file( file ) { }
+
+    friend std::ostream& operator<<( std::ostream& os, const script& s );
+};
+
 struct style
 {
     static std::string begin();
@@ -60,7 +62,7 @@ struct style
 
 struct g : public element
 {
-    g( const boost::optional< std::string >& klass, const boost::optional< std::string >& id, const boost::optional< std::string >& style, const boost::optional< std::string >& transform ) : element( klass, id, style, transform ) { }
+    g() { }
 
     static std::string end();
 
@@ -106,18 +108,30 @@ struct point
     point( const double x, const double y ) : x( x ), y( y ) { }
 };
 
-struct polyline
+struct polyline : public element
 {
     std::vector< point > points;
 
     friend std::ostream& operator<<( std::ostream& os, const polyline& p );
 };
 
-struct polygon
+struct polygon : public element
 {
     std::vector< point > points;
 
     friend std::ostream& operator<<( std::ostream& os, const polygon& p );
+};
+
+struct text : public element
+{
+    double x;
+    double y;
+    std::string value;
+
+    text() { }
+    text( const text& t, const std::string & colour );
+
+    friend std::ostream& operator<<( std::ostream& os, const text& t );
 };
 
 } } } // namespace snark { namespace render { namespace svg {

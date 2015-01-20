@@ -63,20 +63,31 @@ template <> struct traits< snark::render::svg::header >
     {
         v.apply( "width", t.width );
         v.apply( "height", t.height );
-        v.apply( "viewbox_min_x", t.viewbox_min_x );
-        v.apply( "viewbox_min_y", t.viewbox_min_y );
-        v.apply( "viewbox_width", t.viewbox_width );
-        v.apply( "viewbox_height", t.viewbox_height );
+        v.apply( "viewbox", t.viewbox );
     }
 
     template< typename K, typename V > static void visit( const K&, const snark::render::svg::header& t, V& v )
     {
         v.apply( "width", t.width );
         v.apply( "height", t.height );
-        v.apply( "viewbox_min_x", t.viewbox_min_x );
-        v.apply( "viewbox_min_y", t.viewbox_min_y );
-        v.apply( "viewbox_width", t.viewbox_width );
-        v.apply( "viewbox_height", t.viewbox_height );
+        v.apply( "viewbox", t.viewbox );
+    }
+};
+
+template <> struct traits< snark::render::svg::text >
+{
+    template< typename K, typename V > static void visit( const K&, snark::render::svg::text& t, V& v )
+    {
+        v.apply( "x", t.x );
+        v.apply( "y", t.y );
+        v.apply( "value", t.value );
+    }
+
+    template< typename K, typename V > static void visit( const K&, const snark::render::svg::text& t, V& v )
+    {
+        v.apply( "x", t.x );
+        v.apply( "y", t.y );
+        v.apply( "value", t.value );
     }
 };
 

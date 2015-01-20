@@ -49,19 +49,27 @@ void usage( bool verbose = false )
     std::cerr << "        options" << std::endl;
     std::cerr << "            --width=<length>: viewport width of the svg document" << std::endl;
     std::cerr << "            --height=<length>: viewport height of the svg document" << std::endl;
-    std::cerr << "            --viewbox-min-x=<width> (default: 0)" << std::endl;
-    std::cerr << "            --viewbox-min-y=<height> (default: 0)" << std::endl;
-    std::cerr << "            --viewbox-width=<width>" << std::endl;
-    std::cerr << "            --viewbox-height=<height>" << std::endl;
-    std::cerr << "                  svg viewBox attribute which specifies a rectangle in user space which should be mapped to the bounds of the viewport" << std::endl;
+    std::cerr << "            --viewbox=\"min-x min-y width height\": svg viewBox attribute which specifies a rectangle in user space which should be mapped to the bounds of the viewport" << std::endl;
+    std::cerr << "                      min-x,min-y may be negative" << std::endl;
     std::cerr << "            --style=<style>" << std::endl;
     std::cerr << "            --css=<path-to-stylesheet>" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    footer: output svg document footer" << std::endl;
     std::cerr << std::endl;
+    std::cerr << "    script: link javascript file" << std::endl;
+    std::cerr << "        --file=<file>" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    script_begin: begin script definitions" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    script_end: end script definitions" << std::endl;
+    std::cerr << std::endl;
     std::cerr << "    style_begin: begin style definitions" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    style_end: end style definitions" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    group_begin: begin group <g>" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    group_end: end group </g>" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    point, circle:" << std::endl;
     std::cerr << "        fields: x,y,r[,scalar] (default for point: x,y)" << std::endl;
@@ -78,22 +86,19 @@ void usage( bool verbose = false )
     std::cerr << "        --loop: connect the last point to the first" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
-    std::cerr << "    --class=<string>: implies --have-css" << std::endl;
+    std::cerr << "    --attributes='<attributes>': svg element attributes which will be used as is" << std::endl;
+    std::cerr << "    --class=<string>" << std::endl;
     std::cerr << "    --id=<string>" << std::endl;
+    std::cerr << "    --transform=\"<transform-list>\": svg transformations" << std::endl;
     std::cerr << "    --style=\"<style>\" ;-seperated CSS name:value pairs e.g." << std::endl;
     std::cerr << "          fill:<colour>" << std::endl;
     std::cerr << "          stroke:<colour>" << std::endl;
     std::cerr << "          stroke-width:<width>" << std::endl;
-    std::cerr << "    --transform=\"<transform-list>\": svg transformations" << std::endl;
-    std::cerr << "    --have-css: disables generating the following default styles:" << std::endl;
-    std::cerr << "                  <line>: stroke:black" << std::endl;
-    std::cerr << "                  <polyline>: stroke:black;fill:none" << std::endl;
-    std::cerr << "                specify when using external css" << std::endl;
+    std::cerr << "    --stroke-width=<width>: specifies stroke-width style attribute" << std::endl;
     std::cerr << "    --colour,--color,-c=<colour>: any svg recognised colour" << std::endl;
     std::cerr << "                                  if scalar field present:" << std::endl;
     std::cerr << "                                      <min>:<max>,<from-colour>:<to-colour> (black, blue, green, cyan, red, magenta, yellow, white)" << std::endl; 
     std::cerr << "                                      <min>:<max>,<colourmap> (jet, hot)" << std::endl; 
-    std::cerr << "    --width=<width>: specifies stroke-width attributes for <line> and <polyline>" << std::endl;
     std::cerr << std::endl;
     std::cerr << "examples: todo" << std::endl;
     std::cerr << std::endl;
@@ -126,47 +131,21 @@ template < typename T > struct traits< coloured< T > >
 
 } } // namespace comma { namespace visiting {
 
-boost::optional< std::string > make_style( const comma::command_line_options& options, const std::string& what, const bool parse_colour )
+std::string make_style( const comma::command_line_options& options, const std::string& what, const bool parse_colour )
 {
     std::string style = options.value< std::string >( "--style", "" );
-    if( what == "point" || what == "circle" )
+    if( options.exists( "--stroke-width" ) )
     {
-        if( parse_colour && options.exists( "--colour,--color,-c" ) )
-        {
-            if( style.size() ) { style += ";"; }
-            style += "fill:" + options.value< std::string >( "--colour,--color,-c" );
-        }
+        if( style.size() ) { style += ";"; }
+        style += "stroke-width:" + options.value< std::string >( "--stroke-width" );
     }
-    else if( what == "line" || what == "lines" || what == "polyline" || what == "polygon" )
+    if( parse_colour && options.exists( "--colour,--color,-c" ) )
     {
-        if( parse_colour && options.exists( "--colour,--color,-c" ) )
-        {
-            if( style.size() ) { style += ";"; }
-            style += "stroke:" + options.value< std::string >( "--colour,--color,-c" );
-        }
-        if( options.exists( "--width" ) )
-        {
-            if( style.size() ) { style += ";"; }
-            style += "stroke-width:" + options.value< std::string >( "--width" );
-        }
-        if( !options.exists( "--class" ) && !options.exists( "--have-css" ) )
-        {
-            if( parse_colour && style.find( "stroke:" ) == std::string::npos )
-            {
-                if( style.size() ) { style += ";"; }
-                style += "stroke:" + options.value< std::string >( "--colour,--color,-c", "black" );
-            }
-            if( what == "polyline" || what == "polygon" )
-            {
-                if( style.find( "fill: " ) == std::string::npos )
-                {
-                    if( style.size() ) { style += ";"; }
-                    style += "fill:none";
-                }
-            }
-        }
+        if( style.size() ) { style += ";"; }
+        std::string attribute = "fill";
+        if( what == "line" || what == "lines" || what == "polyline" || what == "polygon" ) { attribute = "stroke"; }
+        style += attribute + ":" + options.value< std::string >( "--colour,--color,-c" );
     }
-    if( style.empty() ) { return boost::none; }
     return style;
 }
 
@@ -222,23 +201,6 @@ int main( int ac, char** av )
         const std::vector< std::string >& unnamed = options.unnamed( "--verbose,-v,--have-css,--loop" , "-.*" );
         if( unnamed.size() != 1 ) { std::cerr << "csv-to-svg: expected one operation name" << ( unnamed.size() ? "; got " + comma::join( unnamed, ' ' ) : "" ) << std::endl; return 1; }
         std::string what = unnamed[0];
-        if( what == "header" )
-        {
-            std::cout << snark::render::svg::header(
-                  options.value< std::string >( "--width" )
-                , options.value< std::string >( "--height" )
-                , options.value< double >( "--viewbox-min-x", 0 )
-                , options.value< double >( "--viewbox-min-y", 0 )
-                , options.value< double >( "--viewbox-width" )
-                , options.value< double >( "--viewbox-height" )
-                , options.optional< std::string >( "--style" )
-                , options.optional< std::string >( "--css" )
-                ) << std::endl;
-            return 0;
-        }
-        else if( what == "footer" ) { std::cout << snark::render::svg::footer() << std::endl; return 0; }
-        else if( what == "style_begin" ) { std::cout << snark::render::svg::style::begin() << std::endl; return 0; }
-        else if( what == "style_end" ) { std::cout << snark::render::svg::style::end() << std::endl; return 0; }
 
         comma::csv::options csv( options );
         snark::graphics::colour_mapper colour_mapper;
@@ -249,14 +211,30 @@ int main( int ac, char** av )
             parse_colour = false;
         }
 
-        std::cout << snark::render::svg::g(
-                  options.optional< std::string >( "--class" )
-                , options.optional< std::string >( "--id" )
-                , make_style( options, what, parse_colour )
-                , options.optional< std::string >( "--transform" )
-                ) << std::endl;
+        if( options.exists( "--class" ) ) { snark::render::svg::element::DEFAULT_ATTRIBUTES += " class=\"" + options.value< std::string >( "--class" ) + "\""; }
+        if( options.exists( "--id" ) ) { snark::render::svg::element::DEFAULT_ATTRIBUTES += " id=\"" + options.value< std::string >( "--id" ) + "\""; }
+        if( options.exists( "--transform" ) ) { snark::render::svg::element::DEFAULT_ATTRIBUTES += " transform=\"" + options.value< std::string >( "--transform" ) + "\""; }
+        if( options.exists( "--attributes" ) ) { snark::render::svg::element::DEFAULT_ATTRIBUTES += " " + options.value< std::string >( "--attributes" ); }
+        snark::render::svg::element::DEFAULT_STYLE = make_style( options, what, parse_colour );
 
-        if( what == "point" || what == "circle" )
+        if( what == "header" )
+        {
+            std::cout << snark::render::svg::header(
+                  options.value< std::string >( "--width" )
+                , options.value< std::string >( "--height" )
+                , options.value< std::string >( "--viewbox" )
+                , options.optional< std::string >( "--css" )
+                ) << std::endl;
+        }
+        else if( what == "footer" ) { std::cout << snark::render::svg::footer() << std::endl; }
+        else if( what == "script" ) { std::cout << snark::render::svg::script( options.value< std::string >( "--file" ) ) << std::endl; }
+        else if( what == "script_begin" ) { std::cout << snark::render::svg::script::begin() << std::endl; }
+        else if( what == "script_end" ) { std::cout << snark::render::svg::script::end() << std::endl; }
+        else if( what == "style_begin" ) { std::cout << snark::render::svg::style::begin() << std::endl; }
+        else if( what == "style_end" ) { std::cout << snark::render::svg::style::end() << std::endl; }
+        else if( what == "group_begin" ) { std::cout << snark::render::svg::g() << std::endl; }
+        else if( what == "group_end" ) { std::cout << snark::render::svg::g::end() << std::endl; }
+        else if( what == "point" || what == "circle" )
         { 
             boost::optional< double > r = options.optional< double >( "--point-size,--weight,--radius,-r" );
             if( r ) { snark::render::svg::circle::DEFAULT_RADIUS = *r; }
@@ -366,14 +344,43 @@ int main( int ac, char** av )
             snark::render::svg::polygon polygon;
             boost::optional< snark::render::svg::point > first;
             boost::optional< snark::render::svg::point > prev;
+            double fix_latitude = 90;
             while( std::cin.good() )
             {
                 const snark::render::svg::point* p = istream.read();
                 if( !p ) { break; }
                 if( !first ) { first = *p; }
-                polygon.points.push_back( *p );
+                if( options.exists( "--fix-pole" ) )
+                {
+                    if( comma::math::equal( std::abs( p->y ), 90, 1e-3 ) )
+                    {
+                        if( prev ) { polygon.points.push_back( snark::render::svg::point( prev->x, fix_latitude * ( p->y > 0 ? 1 : -1 ) ) ); }
+                    }
+                    else if( prev && comma::math::equal( std::abs( prev->y ), 90, 1e-3 ) )
+                    {
+                        polygon.points.push_back( snark::render::svg::point( p->x, fix_latitude * ( p->y > 0 ? 1 : -1 ) ) );
+                        polygon.points.push_back( *p );
+                    }
+                    else
+                    {
+                        polygon.points.push_back( *p );
+                    }
+                }
+                else
+                {
+                    polygon.points.push_back( *p );
+                }
+                prev = *p;
             }
-            if( polygon.points.size() ) { std::cout << polygon << std::endl; }
+            if( polygon.points.size() )
+            {
+                if( options.exists( "--fix-pole" ) )
+                {
+                    if( comma::math::equal( std::abs( first->y ), 90, 1e-3 ) ) { polygon.points.push_back( snark::render::svg::point( prev->x, fix_latitude * ( prev->y > 0 ? 1 : -1 ) ) ); }
+                    if( comma::math::equal( std::abs( prev->y ), 90, 1e-3 ) ) { polygon.points.push_back( snark::render::svg::point( first->x, fix_latitude * ( prev->y > 0 ? 1 : -1 ) ) ); }
+                }
+                std::cout << polygon << std::endl;
+            }
         }
         else if( what == "colour" )
         {
@@ -386,13 +393,35 @@ int main( int ac, char** av )
                 std::cout << colour_mapper.map( boost::lexical_cast< double >( line ) ).hex() << std::endl;
             }
         }
+        else if( what == "text" )
+        {
+            if( csv.has_field( "scalar" ) )
+            {
+                comma::csv::input_stream< coloured< snark::render::svg::text > > istream( std::cin, csv );
+                while( std::cin.good() )
+                {
+                    const coloured< snark::render::svg::text >* t = istream.read();
+                    if( !t ) { break; }
+                    std::cout << snark::render::svg::text( *t, colour_mapper.map( t->scalar ).hex() ) << std::endl;
+                }
+            }
+            else
+            {
+                if( csv.fields.empty() ) { csv.fields = comma::join( comma::csv::names< snark::render::svg::text >(), ',' ); }
+                comma::csv::input_stream< snark::render::svg::text > istream( std::cin, csv );
+                while( std::cin.good() )
+                {
+                    const snark::render::svg::text* t = istream.read();
+                    if( !t ) { break; }
+                    std::cout << *t << std::endl;
+                }
+            }
+        }
         else
         {
             std::cerr << "csv-to-svg: unrecognized operation: \"" << what << "\"" << std::endl;
             return 1;
         }
-
-        std::cout << snark::render::svg::g::end() << std::endl;
 
         return 0;
     }
