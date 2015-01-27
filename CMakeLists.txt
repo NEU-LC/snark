@@ -157,6 +157,7 @@ OPTION( snark_build_actuators "build actuators" ON )
 OPTION( snark_build_battery "build battery" OFF )
 OPTION( snark_build_graph "build graph" ON )
 OPTION( snark_build_math_geometry "build math geometry" OFF )
+OPTION( snark_build_python "build python packages" OFF )
 
 INCLUDE( CMakeDependentOption )
 CMAKE_DEPENDENT_OPTION( snark_build_sensors_dc1394 "build dc1394 components" ON "snark_build_sensors" OFF )
@@ -308,6 +309,10 @@ add_subdirectory( audio )
 ADD_SUBDIRECTORY( render )
 ADD_SUBDIRECTORY( timing )
 ADD_SUBDIRECTORY( visiting )
+
+IF( snark_build_python )
+    ADD_SUBDIRECTORY( python )
+ENDIF( snark_build_python )
 
 # Package
 #the following set up optional parameters for cpack
