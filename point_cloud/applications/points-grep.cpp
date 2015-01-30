@@ -247,9 +247,9 @@ int main( int argc, char** argv )
     if(operation=="stream")
     {
         if(unnamed.size()<2){ usage(); }
-        comma::io::istream bounding_is( comma::split(unnamed[1],';')[0] ); // get stream name
         comma::name_value::parser parser( "filename" );
         comma::csv::options bounding_csv = parser.get< comma::csv::options >( unnamed[1] ); // get stream options
+        comma::io::istream bounding_is( comma::split(unnamed[1],';')[0], bounding_csv.binary() ? comma::io::mode::binary : comma::io::mode::ascii ); // get stream name
 
         //bounding stream
         std::deque<bounding_point> bounding_queue;
