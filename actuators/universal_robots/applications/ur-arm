@@ -25,6 +25,8 @@ free; release the arm so it can be moved manually
 restore; restore normal operation after estop or free
 stop; stop currently executed motion
 wait; wait until the target waypoint is reached
+valve-on; turn the valve on
+valve-off; turn the valve off
 EOF
 }
 
@@ -92,6 +94,8 @@ details of operations:
             0 -> target reached
             ${wait_error[timed_out]} -> timed out
             ${wait_error[status_unavailable]} -> arm status unavailable
+    valve-on, valve-off:
+        turn the valve on and off
 
 sample config file (with prefix=ur5 and assuming robot.arm is the IP address of the arm):
 
@@ -272,6 +276,13 @@ function wait_for_target_selector
     if [[ -n "$pose" ]]; then wait_for_target "tool/pose" "$pose" $number_of_pose_fields; fi
 }
 
+function valve
+{
+    local -i signal=$1
+    local -i valve_id=0
+    send_command "set_digital_out($valve_id,$signal)"
+}
+
  
 if (( `comma_options_has --help "$@"` || `comma_options_has -h "$@"` )) ; then
     if (( `comma_options_has --verbose "$@"` || `comma_options_has -v "$@"` )) ; then
@@ -338,4 +349,10 @@ case "$operation" in
 "wait")
     wait_for_target_selector
     ;;
+"valve-on")
+    valve 1
+    ;;
+"valve-off")
+    valve 0
+    ;;    
 esac
