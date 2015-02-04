@@ -25,8 +25,7 @@ free; release the arm so it can be moved manually
 restore; restore normal operation after estop or free
 stop; stop currently executed motion
 wait; wait until the target waypoint is reached
-valve-on; turn the valve on
-valve-off; turn the valve off
+io; set digital out to on/off
 EOF
 }
 
@@ -40,6 +39,7 @@ function option_description
 --angles=[<angles>]; comma-separated list of angles of the target waypoint for operation 'wait'
 --pose=[<pose>]; comma-separated list of pose values of the target waypoint for operation 'wait'
 --tolerance=[<tolerance>]; tolerance used by operation 'wait' to determine if a waypoint is reached, default: $default_tolerance
+--signal=[<signal>]; digital output signal, where <signal>=<id>,<on/off> with <id> identifying output id followed by on/off switch (used by operation io)
 EOF
 }
 
@@ -94,8 +94,8 @@ details of operations:
             0 -> target reached
             ${wait_error[timed_out]} -> timed out
             ${wait_error[status_unavailable]} -> arm status unavailable
-    valve-on, valve-off:
-        turn the valve on and off
+    io:
+        set digital out to on or off for output id specified by option --signal decorated with 'on' or 'off', e.g. $name io --signal=0,on
 
 sample config file (with prefix=ur5 and assuming robot.arm is the IP address of the arm):
 
@@ -276,11 +276,16 @@ function wait_for_target_selector
     if [[ -n "$pose" ]]; then wait_for_target "tool/pose" "$pose" $number_of_pose_fields; fi
 }
 
-function valve
+function set_digital_out
 {
-    local -i signal=$1
-    local -i valve_id=0
-    send_command "set_digital_out($valve_id,$signal)"
+    if [[ -z "$options_signal" ]]; then echo "$name: $FUNCNAME: option --signal is not given" >&2; exit 1; fi
+    IFS=,
+    local -a signal=( $options_signal )
+    if (( ${#signal[@]} != 2 )); then echo "$name: $FUNCNAME: expected --signal=<id>,<on/off> but got $options_signal" >&2; exit 1; fi
+    local -i id=${signal[0]}
+    local -i switch=$( echo ${signal[1]} | sed 's/on/1/' | sed 's/off/0/' )
+    if (( ! ( $switch == 0 || $switch == 1 ) )); then echo "$name: $FUNCNAME: expected the switch in --signal=<id>,<switch> to be 'on' or 'off', e.g. --signal=0,on but got ${signal[1]}" >&2; exit 1; fi
+    send_command "set_digital_out($id,$switch)"
 }
 
  
@@ -349,10 +354,7 @@ case "$operation" in
 "wait")
     wait_for_target_selector
     ;;
-"valve-on")
-    valve 1
+"io")
+    set_digital_out
     ;;
-"valve-off")
-    valve 0
-    ;;    
 esac
