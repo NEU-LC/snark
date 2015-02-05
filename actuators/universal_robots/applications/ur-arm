@@ -283,8 +283,8 @@ function set_digital_out
     local -a signal=( $options_signal )
     if (( ${#signal[@]} != 2 )); then echo "$name: $FUNCNAME: expected --signal=<id>,<on/off> but got $options_signal" >&2; exit 1; fi
     local -i id=${signal[0]}
-    local -i switch=$( echo ${signal[1]} | sed 's/on/1/' | sed 's/off/0/' )
-    if (( ! ( $switch == 0 || $switch == 1 ) )); then echo "$name: $FUNCNAME: expected the switch in --signal=<id>,<switch> to be 'on' or 'off', e.g. --signal=0,on but got ${signal[1]}" >&2; exit 1; fi
+    local switch=$( echo ${signal[1]} | sed 's/on/True/' | sed 's/off/False/' )
+    if (( ! ( $switch == "True" || $switch == "False" ) )); then echo "$name: $FUNCNAME: expected the switch in --signal=<id>,<switch> to be 'on' or 'off', e.g. --signal=0,on but got ${signal[1]}" >&2; exit 1; fi
     send_command "set_digital_out($id,$switch)"
 }
 
