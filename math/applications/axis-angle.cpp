@@ -108,9 +108,9 @@ euler_t transform( const Eigen::Vector3d& axis_angle_vector )
 
 Eigen::Vector3d transform( const euler_t& e )
 {
-    Eigen::AngleAxisd yaw = Eigen::AngleAxisd( e.yaw, Eigen::Vector3d::UnitZ() );
-    Eigen::AngleAxisd pitch = Eigen::AngleAxisd( e.pitch, Eigen::Vector3d::UnitY() );
-    Eigen::AngleAxisd roll = Eigen::AngleAxisd( e.roll, Eigen::Vector3d::UnitX() );
+    Eigen::AngleAxisd yaw( e.yaw, Eigen::Vector3d::UnitZ() );
+    Eigen::AngleAxisd pitch( e.pitch, Eigen::Vector3d::UnitY() );
+    Eigen::AngleAxisd roll( e.roll, Eigen::Vector3d::UnitX() );
     Eigen::AngleAxisd v( yaw * pitch * roll );
     return v.axis() * std::abs( v.angle() );
 }
