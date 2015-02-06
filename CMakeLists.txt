@@ -306,6 +306,7 @@ IF( snark_build_graph )
 ENDIF( snark_build_graph )
 
 add_subdirectory( audio )
+add_subdirectory( geodesy )
 ADD_SUBDIRECTORY( render )
 ADD_SUBDIRECTORY( timing )
 ADD_SUBDIRECTORY( visiting )
