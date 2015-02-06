@@ -10,7 +10,7 @@ real_target_angles=$( cat $status_sample | ur-arm-status --fields=arm/angles )
 real_target_pose=$( cat $status_sample | ur-arm-status --fields=tool/pose )
 fake_target=1,2,3,4,5,6
 
-if (( `lsof -n -i tcp:$publisher_port | grep LISTEN | wc -l` )); then 
+if (( `netstat --all | grep tcp | grep LISTEN | grep $publisher_port | wc -l` )); then 
     echo "$( readlink -f `basename $0` ): required port $publisher_port is already in use, try changing publisher port in config.json" >&2
     exit 1
 fi
