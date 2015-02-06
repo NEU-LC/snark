@@ -31,6 +31,18 @@ EOF
     exit 1
 }
 
+function bye
+{
+    pids=$( pgrep -P $$ )
+    for pid in $pids; do kill $pid &>/dev/null; done
+    sleep 1
+    pids=$( pgrep -P $$ )
+    for pid in $pids; do kill -9 $pid &>/dev/null; done
+    exit 0
+}
+
+trap bye INT TERM HUP
+
 while (( $# > 0 )); do
     case "$1" in
     --help|-h) usage ;;
@@ -58,7 +70,11 @@ if [[ -z "$publisher_port" ]]; then echo "$name: $prefix/publisher/data/port is 
 packet_size=$( ur-arm-status --packet-size )
 if [[ -z "$packet_size" ]]; then echo "$name: failed to get packet size, check if 'ur-arm-status --packet-size' works" >&2; exit 1; fi
 
-while :; do
-    nc -w $timeout -z "$address" "$port" && socat -T $timeout -u tcp:"$address":"$port",connect-timeout=$timeout - 
-done | io-publish -s "$packet_size" tcp:"$publisher_port"
-
+socat_command="socat -T $timeout -u tcp:$address:$port,connect-timeout=$timeout -"
+while :; do 
+    if ! pgrep -f "$socat_command" &>/dev/null; then
+        pkill -P $$
+        $socat_command | io-publish -s "$packet_size" tcp:"$publisher_port" &
+    fi
+    sleep 1
+done
