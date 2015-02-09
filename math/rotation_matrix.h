@@ -41,7 +41,6 @@ class rotation_matrix
 public:
     rotation_matrix( const Eigen::Matrix3d& rotation =  Eigen::Matrix3d::Identity() ) : m_rotation( rotation ) {}
     rotation_matrix( const Eigen::Quaterniond& quaternion ) : m_rotation( quaternion.normalized() ) {}
-    rotation_matrix( double roll, double pitch, double yaw )  : m_rotation( rotation( roll, pitch, yaw ) ) {}
     rotation_matrix( const Eigen::Vector3d& rpy ) : m_rotation( rotation( rpy.x(), rpy.y(), rpy.z() ) ) {}
     rotation_matrix( const Eigen::AngleAxisd& angle_axis ) : m_rotation( angle_axis ) {}
     
@@ -54,7 +53,7 @@ public:
         double angle = snark::math::angle< double >( snark::math::radians( a.angle() ) ).as_radians();
         Eigen::Vector3d axis = a.axis();
         if( comma::math::less( M_PI, angle ) ) { angle = 2*M_PI - angle; axis = -axis; }
-        return axis * angle;    
+        return axis * angle;
     }
     
     static Eigen::Vector3d roll_pitch_yaw( const ::Eigen::Matrix3d& m )

@@ -68,7 +68,7 @@ static void usage( bool verbose )
 typedef Eigen::Vector3d axis_angle_t;
 typedef Eigen::Quaterniond quaternion_t;
 
-template< typename T > T cast_to( const Eigen::Vector3d& axis_angle );
+template< typename T > T cast_to( const Eigen::Vector3d& );
 template<> Eigen::AngleAxisd cast_to< Eigen::AngleAxisd >( const Eigen::Vector3d& axis_angle )
 {
     double angle = axis_angle.norm();
@@ -88,6 +88,7 @@ struct euler_t
 {
     euler_t( double roll_ = 0, double pitch_ = 0, double yaw_ = 0 ) : roll( roll_ ), pitch( pitch_ ), yaw( yaw_ ) {}
     euler_t( const Eigen::Vector3d& v ) : roll( v.x() ), pitch( v.y() ), yaw( v.z() ) {}
+    Eigen::Vector3d as_vector() const { return Eigen::Vector3d( roll, pitch, yaw ); };
     double roll;
     double pitch;
     double yaw;
@@ -119,8 +120,8 @@ template <> struct traits< euler_t >
 template< typename from_t, typename to_t > to_t convert( const from_t& from );
 template<> euler_t convert< quaternion_t, euler_t >( const quaternion_t& q ) { return euler_t( snark::rotation_matrix( q ).roll_pitch_yaw() ); }
 template<> euler_t convert< axis_angle_t, euler_t >( const axis_angle_t& axis_angle ) { return euler_t( snark::rotation_matrix( cast_to< Eigen::AngleAxisd >( axis_angle ) ).roll_pitch_yaw() ); }
-template<> quaternion_t convert< euler_t, quaternion_t >( const euler_t& e ) { return snark::rotation_matrix( e.roll, e.pitch, e.yaw ).quaternion(); }
-template<> axis_angle_t convert< euler_t, axis_angle_t >( const euler_t& e ) { return snark::rotation_matrix( e.roll, e.pitch, e.yaw ).angle_axis(); }
+template<> quaternion_t convert< euler_t, quaternion_t >( const euler_t& e ) { return snark::rotation_matrix( e.as_vector() ).quaternion(); }
+template<> axis_angle_t convert< euler_t, axis_angle_t >( const euler_t& e ) { return snark::rotation_matrix( e.as_vector() ).angle_axis(); }
 template<> axis_angle_t convert< quaternion_t, axis_angle_t >( const quaternion_t& q ) { return snark::rotation_matrix( q ).angle_axis(); }
 template<> quaternion_t convert< axis_angle_t, quaternion_t >( const axis_angle_t& axis_angle ) {  return snark::rotation_matrix( cast_to< Eigen::AngleAxisd >( axis_angle ) ).quaternion(); }
 
