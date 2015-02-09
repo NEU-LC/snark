@@ -28,39 +28,81 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-#ifndef SNARK_GRAPHICS_IMPL_ROTATION_MATRIX_H_
-#define SNARK_GRAPHICS_IMPL_ROTATION_MATRIX_H_
+#ifndef SNARK_ROTATION_MATRIX_H_
+#define SNARK_ROTATION_MATRIX_H_
 
-#include <comma/base/exception.h>
-#include <Eigen/Core>
 #include <Eigen/Geometry>
+#include "snark/math/angle.h"
 
 namespace snark {
 
-/// rotation matrix (a quick and dirty class, to refactor at some point)
 class rotation_matrix 
 {
 public:
-    rotation_matrix( const ::Eigen::Matrix3d& rotation =  ::Eigen::Matrix3d::Identity() );
-    rotation_matrix( const ::Eigen::Quaterniond& quaternion );
-    rotation_matrix( const ::Eigen::Vector3d& rpy );
-
-    const ::Eigen::Matrix3d& rotation() const;
-    ::Eigen::Quaterniond quaternion() const;
-    ::Eigen::Vector3d roll_pitch_yaw() const;
-    static ::Eigen::Vector3d roll_pitch_yaw( const ::Eigen::Matrix3d& m );
-    static ::Eigen::Matrix3d rotation( const ::Eigen::Vector3d& rpy );
-    static ::Eigen::Matrix3d rotation( double roll, double pitch, double yaw );
-
-    /// convert to requested type
-    template< typename Output >
-    Output convert() const;
-
-private:
-    ::Eigen::Matrix3d m_rotation;
+    rotation_matrix( const Eigen::Matrix3d& rotation =  Eigen::Matrix3d::Identity() ) : m_rotation( rotation ) {}
+    rotation_matrix( const Eigen::Quaterniond& quaternion ) : m_rotation( quaternion.normalized() ) {}
+    rotation_matrix( double roll, double pitch, double yaw )  : m_rotation( rotation( roll, pitch, yaw ) ) {}
+    rotation_matrix( const Eigen::Vector3d& rpy ) : m_rotation( rotation( rpy.x(), rpy.y(), rpy.z() ) ) {}
+    rotation_matrix( const Eigen::AngleAxisd& angle_axis ) : m_rotation( angle_axis ) {}
     
+    const Eigen::Matrix3d& rotation() const { return m_rotation; }
+    Eigen::Quaterniond quaternion() const { return Eigen::Quaterniond( m_rotation ); }
+    Eigen::Vector3d roll_pitch_yaw() const { return roll_pitch_yaw( m_rotation ); }
+    Eigen::Vector3d angle_axis() const
+    {
+        Eigen::AngleAxisd a( m_rotation );
+        double angle = snark::math::angle< double >( snark::math::radians( a.angle() ) ).as_radians();
+        Eigen::Vector3d axis = a.axis();
+        if( comma::math::less( M_PI, angle ) ) { angle = 2*M_PI - angle; axis = -axis; }
+        return axis * angle;    
+    }
+    
+    static Eigen::Vector3d roll_pitch_yaw( const ::Eigen::Matrix3d& m )
+    {
+        double roll;
+        double pitch=std::asin( -m(2,0) );
+        double yaw;
+        if( m(2,0)==1 || m(2,0)==-1 )
+        {
+            roll=0;
+            yaw=std::atan2( m(1,2), m(0,2) );
+        }
+        else
+        {
+            roll=std::atan2( m(2,1), m(2,2) );
+            yaw=std::atan2( m(1,0), m(0,0) );
+        }
+        Eigen::Vector3d rpy;
+        rpy << roll, pitch, yaw;
+        return rpy;
+    }
+    static Eigen::Matrix3d rotation( double roll, double pitch, double yaw )
+    {
+        const double sr = std::sin( roll );
+        const double cr = std::cos( roll );
+        const double sp = std::sin( pitch );
+        const double cp = std::cos( pitch );
+        const double sy = std::sin( yaw );
+        const double cy = std::cos( yaw );
+        const double spcy = sp*cy;
+        const double spsy = sp*sy;
+        Eigen::Matrix3d m;
+        m << cp*cy, -cr*sy+sr*spcy,  sr*sy+cr*spcy,
+             cp*sy,  cr*cy+sr*spsy, -sr*cy+cr*spsy,
+             -sp,          sr*cp,          cr*cp;
+        return m;
+    }
+    static Eigen::Matrix3d rotation( const ::Eigen::Vector3d& rpy ) { return rotation( rpy.x(), rpy.y(), rpy.z() ); }
+
+    template< typename Output > Output convert() const;
+    
+private:
+    Eigen::Matrix3d m_rotation;    
 };
+
+template<> inline Eigen::Quaterniond rotation_matrix::convert< Eigen::Quaterniond >() const { return quaternion(); }
+template<> inline Eigen::Vector3d rotation_matrix::convert< Eigen::Vector3d >() const { return roll_pitch_yaw(); }
 
 } // namespace snark {
 
-#endif // SNARK_GRAPHICS_IMPL_ROTATION_MATRIX_H_
+#endif // SNARK_ROTATION_MATRIX_H_

@@ -27,140 +27,157 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
-
-#include <comma/application/signal_flag.h>
 #include <comma/application/command_line_options.h>
 #include <comma/csv/stream.h>
 #include <comma/csv/options.h>
-#include <snark/math/rotation_matrix.h>
+#include <comma/math/compare.h>
 #include <snark/visiting/eigen.h>
+#include <snark/math/rotation_matrix.h>
+#include "snark/math/angle.h"
 
-static void usage()
+static std::string name() { return "math-rotation-convert"; }
+
+static void usage( bool verbose )
 {
     std::cerr << std::endl;
-    std::cerr << "Usage: math-rotation-convert [OPTION]" << std::endl;
-    std::cerr << "convert quaternions to euler angles ( roll pitch yaw ) and back " << std::endl;
-    std::cerr << "<options>" << std::endl;
-    std::cerr << "    --type,-t <type>: conversion type, either rpy2q or q2rpy" << std::endl;
-    std::cerr << "    --delimiter,-d <delimiter>: default ','" << std::endl;
-    std::cerr << "    --field,-f <field>: field by which to split, starting from 1" << std::endl;
-    std::cerr << "    --output,-o <prefix>: output prefix" << std::endl;
-    std::cerr << "    --binary,-b <format>: if present, input is binary with given format" << std::endl;
-    std::cerr << comma::csv::format::usage();
+    std::cerr << "convert between different representations of rotation" << std::endl;
     std::cerr << std::endl;
-    std::cerr << " examples " << std::endl;
-    std::cerr << " echo \"0.182574185835,0.36514837167,0.547722557505,0.73029674334\" | math-rotation-convert --type q2rpy " << std::endl;
-    std::cerr << " >> 0.785398163397,0.339836909454,1.42889927219 " << std::endl;
-    std::cerr << " echo \"0.785398163397,0.339836909454,1.42889927219\" | math-rotation-convert --type rpy2q " << std::endl;
-    std::cerr << " >> 0.182574185835,0.36514837167,0.547722557505,0.73029674334 " << std::endl << std::endl;
+    std::cerr << "options:" << std::endl;
+    std::cerr << "    --from: input type" << std::endl;
+    std::cerr << "    --to: desired output type" << std::endl;
+    std::cerr << "    --output-format: show binary output format" << std::endl;
+    std::cerr << "    --help,-h: show help" << std::endl;
+    std::cerr << "    --verbose,-h: show csv options" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "types:" << std::endl;
+    std::cerr << "    axis-angle: coordinates of an axis-angle vector (default fields: x,y,z)" << std::endl;
+    std::cerr << "    euler: Euler angles (default fields: roll,pitch,yaw)" << std::endl;
+    std::cerr << "    quaternion: coordiantes of a normalized quaternion (default fields: x,y,z,w)" << std::endl;
+    std::cerr << std::endl; 
+    std::cerr << "examples:" << std::endl;
+    std::cerr << "    echo 0.1,0.2,0.3 | " << name() << " --from euler --to axis-angle --fields=roll,pitch,yaw --output-fields=x,y,z" << std::endl;
+    std::cerr << "    echo 0.1,0.2,0.3 | " << name() << " --from euler --to quaternion --fields=roll,pitch,yaw --output-fields=w,x,y,z" << std::endl;
+    std::cerr << "    cat axis-angle.bin | " << name() << " --from axis-angle --to euler --binary=3d --fields=x,y,z --output-fields=roll,pitch,yaw | csv-from-bin 3d" << std::endl;
+    std::cerr << "    " << name() << " --from axis-angle --to euler --output-fields=roll,pitch,yaw --output-format" << std::endl;
+    std::cerr << std::endl;
+    if( verbose ) { std::cerr << "csv options:" << std::endl << comma::csv::options::usage() << std::endl; }
     exit( -1 );
 }
 
+typedef Eigen::Vector3d axis_angle_t;
+typedef Eigen::Quaterniond quaternion_t;
 
-comma::signal_flag shutdownFlag;
-
-namespace snark{
-
-/// read from std in, convert and write to std out
-template< typename Input, typename Output >
-class Convert
+template< typename T > T cast_to( const Eigen::Vector3d& axis_angle );
+template<> Eigen::AngleAxisd cast_to< Eigen::AngleAxisd >( const Eigen::Vector3d& axis_angle )
 {
-public:
-    Convert( const comma::csv::options& options );
-    bool read();
+    double angle = axis_angle.norm();
+    if( comma::math::equal( angle, 0) ) 
+    { 
+        return Eigen::AngleAxisd(0, Eigen::Vector3d(0,0,1) ); 
+    }
+    else
+    {
+        Eigen::Vector3d axis( axis_angle );
+        axis.normalize();
+        return Eigen::AngleAxisd( angle, axis );
+    }
+}
 
-private:
-    comma::csv::options m_options;
-    std::string m_outputFormat;
-    comma::csv::input_stream< Input > m_input;
-    boost::scoped_ptr< comma::csv::ascii< Output > > m_ascii;
-    boost::scoped_ptr< comma::csv::binary< Output > > m_binary;
-    std::string m_buffer;
+struct euler_t
+{
+    euler_t( double roll_ = 0, double pitch_ = 0, double yaw_ = 0 ) : roll( roll_ ), pitch( pitch_ ), yaw( yaw_ ) {}
+    euler_t( const Eigen::Vector3d& v ) : roll( v.x() ), pitch( v.y() ), yaw( v.z() ) {}
+    double roll;
+    double pitch;
+    double yaw;
 };
 
-template< typename Input, typename Output >
-Convert< Input, Output>::Convert( const comma::csv::options& options ):
-    m_options( options ),
-    m_outputFormat( comma::csv::format::value( Output() ) ),
-    m_input( std::cin, options )
-{
-    if( options.binary() )
-    {
-        m_binary.reset( new comma::csv::binary< Output >( m_outputFormat ) );
-        comma::csv::format format( m_outputFormat );
-        m_buffer.resize( format.size() );
-    }
-    else
-    {
-        m_ascii.reset( new comma::csv::ascii< Output >() );
-    }
-}
+namespace comma { namespace visiting {
 
-template< typename Input, typename Output >
-bool Convert< Input, Output>::read()
+template <> struct traits< euler_t >
 {
-    const Input* input = m_input.read();
-    if( input != NULL )
+    template < typename Key, class Visitor >
+    static void visit( const Key&, euler_t& e, Visitor& v )
     {
-        snark::rotation_matrix rotation( *input );
-        Output output = rotation.convert< Output >();
-        if( m_binary )
+        v.apply( "roll", e.roll );
+        v.apply( "pitch", e.pitch );
+        v.apply( "yaw", e.yaw );
+    }
+    
+    template < typename Key, class Visitor >
+    static void visit( const Key&, const euler_t& e, Visitor& v )
+    {
+        v.apply( "roll", e.roll );
+        v.apply( "pitch", e.pitch );
+        v.apply( "yaw", e.yaw );
+    }
+};
+
+} } // namespace comma { namespace visiting {
+
+template< typename to_t, typename from_t > to_t convert( const from_t& from );
+template<> euler_t convert< euler_t, quaternion_t >( const quaternion_t& q ) { return euler_t( snark::rotation_matrix( q ).roll_pitch_yaw() ); }
+template<> euler_t convert< euler_t, axis_angle_t >( const axis_angle_t& axis_angle ) { return euler_t( snark::rotation_matrix( cast_to< Eigen::AngleAxisd >( axis_angle ) ).roll_pitch_yaw() ); }
+template<> quaternion_t convert< quaternion_t, euler_t>( const euler_t& e ) { return snark::rotation_matrix( e.roll, e.pitch, e.yaw ).quaternion(); }
+template<> axis_angle_t convert< axis_angle_t, euler_t >( const euler_t& e ) { return snark::rotation_matrix( e.roll, e.pitch, e.yaw ).angle_axis(); }
+template<> axis_angle_t convert< axis_angle_t, quaternion_t >( const quaternion_t& q ) { return snark::rotation_matrix( q ).angle_axis(); }
+template<> quaternion_t convert< quaternion_t, axis_angle_t >( const axis_angle_t& axis_angle ) {  return snark::rotation_matrix( cast_to< Eigen::AngleAxisd >( axis_angle ) ).quaternion(); }
+
+template< typename from_t, typename to_t >
+struct pipeline_t
+{
+    comma::command_line_options options;
+    comma::csv::options csv_in;
+    comma::csv::options csv_out;
+    std::string output_format;
+    template< typename T > std::string names() { return comma::join( comma::csv::names< T >(), comma::csv::options().delimiter ); }
+    pipeline_t( const comma::command_line_options& options_ ) : options( options_ ), csv_in( options, names< from_t >() ), csv_out( csv_in )
+    {
+        csv_out.fields = options.value< std::string >( "--output-fields", names< to_t >() );
+        output_format = comma::csv::format::value< to_t >( csv_out.fields, false );
+        if( csv_out.binary() ) { csv_out.format( output_format ); }
+    }
+    void run()
+    {
+        comma::csv::input_stream< from_t > istream( std::cin, csv_in );
+        comma::csv::output_stream< to_t > ostream( std::cout, csv_out );
+        while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
         {
-            m_binary->put( output, &m_buffer[0] );
-            std::cout.write( &m_buffer[0], m_buffer.size() );
+            const from_t* from = istream.read();
+            if( !from ) break;
+            to_t to = convert< to_t, from_t >( *from );
+            ostream.write( to );
         }
-        else
-        {
-            std::vector< std::string > v;
-            m_ascii->put( output, v );
-            std::cout << comma::join( v, m_options.delimiter ) << std::endl;
-        }
-        return true;
     }
-    else
-    {
-        return false;
-    }
-}
+};
 
-template< typename Input, typename Output >
-static void run( const comma::csv::options& options )
+template< typename T >
+void process( T pipeline )
 {
-    Convert< Input, Output > convert( options );
-
-    while( !shutdownFlag && std::cin.good() && !std::cin.eof() )
-    {
-        convert.read();
-    }
+    if( pipeline.options.exists( "--output-format" ) ) { std::cout << pipeline.output_format << std::endl; return; }
+    pipeline.run();
 }
 
-}
-
-int main( int argc, char* argv[] )
-{
-    comma::command_line_options options( argc, argv );
-    if( options.exists( "--help,-h" ) ) { usage(); }
-
-    comma::csv::options csvOptions( options, "x,y,z,w");
-    csvOptions.full_xpath = true;
-
-    std::string type = options.value< std::string >( "--type", "" );
-    if( type.empty() ) { usage(); }
-
-    if( type == "rpy2q" )
+int main( int ac, char** av )
+{    
+    try
     {
-        snark::run< Eigen::Vector3d, Eigen::Quaterniond >( csvOptions );
+        comma::command_line_options options( ac, av, usage );
+        options.unnamed( "--help,-h,--verbose,-v,--output-format", "-.*,--.*" );
+        if( !options.exists( "--from" ) || !options.exists( "--to" ) ) { std::cerr << name() << ": please specify --from and --to, e.g. --from=euler --to=axis-angle" << std::endl; return 1;}
+        std::string to = options.value< std::string >( "--to" );
+        std::string from = options.value< std::string >( "--from" );
+        if( to == from ) { std::cerr << name() << ": expected different --from and --to, got --from=" << from << " and --to=" << to << std::endl; return 1; }
+        if( from == "axis-angle" && to == "euler" ) { process( pipeline_t< axis_angle_t, euler_t >( options ) ); }
+        else if( from == "euler" && to == "axis-angle" ) { process( pipeline_t< euler_t, axis_angle_t >( options ) ); }
+        else if( from == "quaternion" && to == "euler" ) { process( pipeline_t< quaternion_t, euler_t >( options ) ); }
+        else if( from == "euler" && to == "quaternion" ) { process( pipeline_t< euler_t, quaternion_t >( options ) ); }
+        else if( from == "quaternion" && to == "axis-angle" ) { process( pipeline_t< quaternion_t, axis_angle_t >( options ) ); }
+        else if( from == "axis-angle" && to == "quaternion" ) { process( pipeline_t< axis_angle_t, quaternion_t >( options ) ); }
+        else { std::cerr << name() << ": expected --to and --from to be axis-angle, euler, or quaternion, got --to=" << to << " and --from=" << from << std::endl; return 1; }
+        return 0;
     }
-    else if( type == "q2rpy" )
-    {
-        snark::run< Eigen::Quaterniond, Eigen::Vector3d >( csvOptions );
-    }
-    else
-    {
-        COMMA_THROW( comma::exception, "unknown type" );
-    }
-
-    return 0;
+    catch( std::exception& ex ) { std::cerr << "axis-angle: " << ex.what() << std::endl; }
+    catch( ... ) { std::cerr << "axis-angle: unknown exception" << std::endl; }
 }
 
