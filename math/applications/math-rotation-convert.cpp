@@ -55,9 +55,10 @@ static void usage( bool verbose )
     std::cerr << "    quaternion: coordiantes of a normalized quaternion (default fields: x,y,z,w)" << std::endl;
     std::cerr << std::endl; 
     std::cerr << "examples:" << std::endl;
-    std::cerr << "    echo 0.1,0.2,0.3 | " << name() << " --from euler --to axis-angle --fields=roll,pitch,yaw --output-fields=x,y,z" << std::endl;
-    std::cerr << "    echo 0.1,0.2,0.3 | " << name() << " --from euler --to quaternion --fields=roll,pitch,yaw --output-fields=w,x,y,z" << std::endl;
-    std::cerr << "    cat axis-angle.bin | " << name() << " --from axis-angle --to euler --binary=3d --fields=x,y,z --output-fields=roll,pitch,yaw | csv-from-bin 3d" << std::endl;
+    std::cerr << "    echo 0.1,0.2,0.3 | " << name() << " --from euler --to axis-angle" << std::endl;
+    std::cerr << "    echo 0.1,0.2,0.3 | " << name() << " --from euler --to axis-angle --fields=roll,pitch,yaw --output-fields=x,y" << std::endl;
+    std::cerr << "    echo 0.1,0.2,0.3 | " << name() << " --from euler --to quaternion" << std::endl;
+    std::cerr << "    cat axis-angle.bin | " << name() << " --from axis-angle --to euler --binary=3d" << std::endl;
     std::cerr << "    " << name() << " --from axis-angle --to euler --output-fields=roll,pitch,yaw --output-format" << std::endl;
     std::cerr << std::endl;
     if( verbose ) { std::cerr << "csv options:" << std::endl << comma::csv::options::usage() << std::endl; }
