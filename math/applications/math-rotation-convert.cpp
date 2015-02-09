@@ -116,13 +116,13 @@ template <> struct traits< euler_t >
 
 } } // namespace comma { namespace visiting {
 
-template< typename to_t, typename from_t > to_t convert( const from_t& from );
-template<> euler_t convert< euler_t, quaternion_t >( const quaternion_t& q ) { return euler_t( snark::rotation_matrix( q ).roll_pitch_yaw() ); }
-template<> euler_t convert< euler_t, axis_angle_t >( const axis_angle_t& axis_angle ) { return euler_t( snark::rotation_matrix( cast_to< Eigen::AngleAxisd >( axis_angle ) ).roll_pitch_yaw() ); }
-template<> quaternion_t convert< quaternion_t, euler_t>( const euler_t& e ) { return snark::rotation_matrix( e.roll, e.pitch, e.yaw ).quaternion(); }
-template<> axis_angle_t convert< axis_angle_t, euler_t >( const euler_t& e ) { return snark::rotation_matrix( e.roll, e.pitch, e.yaw ).angle_axis(); }
-template<> axis_angle_t convert< axis_angle_t, quaternion_t >( const quaternion_t& q ) { return snark::rotation_matrix( q ).angle_axis(); }
-template<> quaternion_t convert< quaternion_t, axis_angle_t >( const axis_angle_t& axis_angle ) {  return snark::rotation_matrix( cast_to< Eigen::AngleAxisd >( axis_angle ) ).quaternion(); }
+template< typename from_t, typename to_t > to_t convert( const from_t& from );
+template<> euler_t convert< quaternion_t, euler_t >( const quaternion_t& q ) { return euler_t( snark::rotation_matrix( q ).roll_pitch_yaw() ); }
+template<> euler_t convert< axis_angle_t, euler_t >( const axis_angle_t& axis_angle ) { return euler_t( snark::rotation_matrix( cast_to< Eigen::AngleAxisd >( axis_angle ) ).roll_pitch_yaw() ); }
+template<> quaternion_t convert< euler_t, quaternion_t >( const euler_t& e ) { return snark::rotation_matrix( e.roll, e.pitch, e.yaw ).quaternion(); }
+template<> axis_angle_t convert< euler_t, axis_angle_t >( const euler_t& e ) { return snark::rotation_matrix( e.roll, e.pitch, e.yaw ).angle_axis(); }
+template<> axis_angle_t convert< quaternion_t, axis_angle_t >( const quaternion_t& q ) { return snark::rotation_matrix( q ).angle_axis(); }
+template<> quaternion_t convert< axis_angle_t, quaternion_t >( const axis_angle_t& axis_angle ) {  return snark::rotation_matrix( cast_to< Eigen::AngleAxisd >( axis_angle ) ).quaternion(); }
 
 template< typename from_t, typename to_t >
 struct pipeline_t
@@ -146,7 +146,7 @@ struct pipeline_t
         {
             const from_t* from = istream.read();
             if( !from ) break;
-            to_t to = convert< to_t, from_t >( *from );
+            to_t to = convert< from_t, to_t >( *from );
             ostream.write( to );
         }
     }
@@ -181,4 +181,3 @@ int main( int ac, char** av )
     catch( std::exception& ex ) { std::cerr << "axis-angle: " << ex.what() << std::endl; }
     catch( ... ) { std::cerr << "axis-angle: unknown exception" << std::endl; }
 }
-
