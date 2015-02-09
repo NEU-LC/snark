@@ -94,14 +94,9 @@ public:
     }
     static Eigen::Matrix3d rotation( const ::Eigen::Vector3d& rpy ) { return rotation( rpy.x(), rpy.y(), rpy.z() ); }
 
-    template< typename Output > Output convert() const;
-    
 private:
     Eigen::Matrix3d m_rotation;    
 };
-
-template<> inline Eigen::Quaterniond rotation_matrix::convert< Eigen::Quaterniond >() const { return quaternion(); }
-template<> inline Eigen::Vector3d rotation_matrix::convert< Eigen::Vector3d >() const { return roll_pitch_yaw(); }
 
 } // namespace snark {
 
