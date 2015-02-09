@@ -46,7 +46,7 @@
 #include <comma/base/types.h>
 #include <comma/csv/stream.h>
 #include <comma/io/select.h>
-#include <snark/graphics/qt3d/rotation_matrix.h>
+#include <snark/math/rotation_matrix.h>
 #include "./Reader.h"
 #include "./Texture.h"
 

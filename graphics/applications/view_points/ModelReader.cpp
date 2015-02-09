@@ -31,7 +31,6 @@
 /// @author Cedric Wohlleber
 
 #include <Eigen/Core>
-#include <snark/graphics/qt3d/rotation_matrix.h>
 #include "./ModelReader.h"
 #include "./Texture.h"
 

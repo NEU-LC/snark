@@ -38,7 +38,7 @@
 #include <comma/base/types.h>
 #include <comma/visiting/traits.h>
 #include <snark/math/interval.h>
-#include <snark/graphics/qt3d/rotation_matrix.h>
+#include <snark/math/rotation_matrix.h>
 #include <snark/graphics/qt3d/vertex_buffer.h>
 #include <Qt3D/qglnamespace.h>
 #include <Qt3D/qglpainter.h>

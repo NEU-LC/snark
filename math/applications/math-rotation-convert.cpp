@@ -33,7 +33,6 @@
 #include <comma/math/compare.h>
 #include <snark/visiting/eigen.h>
 #include <snark/math/rotation_matrix.h>
-#include "snark/math/angle.h"
 
 static std::string name() { return "math-rotation-convert"; }
 

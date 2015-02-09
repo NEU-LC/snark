@@ -31,7 +31,6 @@
 
 #include <Eigen/Core>
 #include <comma/base/exception.h>
-#include <snark/graphics/qt3d/rotation_matrix.h>
 #include "./TextureReader.h"
 
 namespace snark { namespace graphics { namespace View {
