@@ -254,13 +254,12 @@ function wait_for_target
         local -r end_time=$( echo "`time_` + $timeout" | bc -l )
     fi
     while :; do
-        [[ -n "$end_time" ]] && if (( `echo "$( time_ ) > $end_time" | bc -l` )); then exit ${wait_error[timed_out]}; fi
+        [[ -n "$end_time" ]] && if (( `echo "($( time_ )) > ($end_time)" | bc -l` )); then exit ${wait_error[timed_out]}; fi
         local actual_values=( `get "$fields"` )
         if [[ -z "${actual_values[@]}" ]]; then exit ${wait_error[status_unavailable]}; fi
         local -i target_reached=1
         for (( i=0; i<$number_of_values; i++ )); do
-            local difference=$( echo "${target_values[$i]}-(${actual_values[$i]})" | bc -l )
-            if (( `echo "${difference#-} > $tolerance" | bc -l` )); then target_reached=0; break; fi
+            python -c "exit(1) if abs(${target_values[$i]}-(${actual_values[$i]})) > $tolerance else exit(0)" || { target_reached=0; break; }
         done
         if (( target_reached )); then exit; fi
     done
