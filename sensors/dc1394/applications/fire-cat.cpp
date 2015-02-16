@@ -103,7 +103,9 @@ int main( int argc, char** argv )
             ( "buffer", boost::program_options::value< unsigned int >( &discard )->default_value( 0 ), "maximum buffer size before discarding frames, default: unlimited" )
             ( "fields,f", boost::program_options::value< std::string >( &fields )->default_value( "t,rows,cols,type" ), "header fields, possible values: t,rows,cols,type,size" )
             ( "header", "output header only" )
-            ( "no-header", "output image data only" );
+            ( "no-header", "output image data only" )
+            ( "strobe-on", "turn strobe on" )
+            ( "strobe-off", "turn strobe off" );
 
         boost::program_options::variables_map vm;
         boost::program_options::store( boost::program_options::parse_command_line( argc, argv, description), vm );
@@ -238,6 +240,18 @@ int main( int argc, char** argv )
         if( vm.count( "list-attributes" ) )
         {
             camera.list_attributes();    
+            return 0;
+        }
+        
+        if( vm.count( "strobe-on" ) )
+        {
+            camera.strobe_on();
+            return 0;
+        }
+        
+        if( vm.count( "strobe-off" ) )
+        {
+            camera.strobe_off();
             return 0;
         }
 

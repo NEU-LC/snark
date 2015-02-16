@@ -621,5 +621,22 @@ void dc1394::list_attributes()
     dc1394_feature_print_all(&featureset, stderr);
 }
 
+void dc1394::strobe_on()
+{
+    uint32_t value;
+    uint64_t STROBE_2_CNT = 0x1508;
+    dc1394_get_control_register(m_camera, STROBE_2_CNT, &value);
+    value |= ( 1 << 25 );
+    dc1394_set_control_register(m_camera, STROBE_2_CNT, value);
+}
+
+void dc1394::strobe_off()
+{
+    uint32_t value;
+    uint64_t STROBE_2_CNT = 0x1508;
+    dc1394_get_control_register(m_camera, STROBE_2_CNT, &value);
+    value &= ~( 1 << 25 );
+    dc1394_set_control_register(m_camera, STROBE_2_CNT, value);
+}
 
 } } // namespace snark { namespace camera {
