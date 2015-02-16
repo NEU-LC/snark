@@ -543,7 +543,7 @@ void dc1394::set_absolute_shutter_gain( float shutter, float gain )
     err = dc1394_feature_set_absolute_value(m_camera, DC1394_FEATURE_GAIN, gain);
     DC1394_ERR(err, "Failed to set absolute gain value");
 
-    /* 3. Set the shutter to manual mode, and then the requested value. */
+    /* 3. Set the shutter to manual mode, and then the requdc1394_set_strobe_register(camera, strobe_offset, strobe_settings);ested value. */
     err = dc1394_feature_set_mode(m_camera, DC1394_FEATURE_SHUTTER, DC1394_FEATURE_MODE_MANUAL);
     DC1394_ERR(err, "Failed to set shutter mode");
     err = dc1394_feature_set_absolute_control(m_camera, DC1394_FEATURE_SHUTTER, DC1394_ON);
@@ -621,22 +621,30 @@ void dc1394::list_attributes()
     dc1394_feature_print_all(&featureset, stderr);
 }
 
+struct strobe
+{
+
+    // 4.11.3 Strobe Signal Output Function ( IICD 1394-based Digital Camera Specification ver. 1.31 )
+    static const uint64_t strobe_2_cnt_offset = 0x208; // using GPIO 2
+    static const unsigned int on_off_bit = 6;
+    static unsigned int offset( unsigned int bit, unsigned int number_of_bits = 32) { return  number_of_bits - bit - 1; }
+};
+
 void dc1394::strobe_on()
 {
     uint32_t value;
-    uint64_t STROBE_2_CNT = 0x1508;
-    dc1394_get_control_register(m_camera, STROBE_2_CNT, &value);
-    value |= ( 1 << 25 );
-    dc1394_set_control_register(m_camera, STROBE_2_CNT, value);
+    dc1394_get_strobe_register( m_camera, strobe::strobe_2_cnt_offset, &value);
+    value |= (1 << strobe::offset( strobe::on_off_bit ) );
+    dc1394_set_strobe_register( m_camera, strobe::strobe_2_cnt_offset, value);
+
 }
 
 void dc1394::strobe_off()
 {
     uint32_t value;
-    uint64_t STROBE_2_CNT = 0x1508;
-    dc1394_get_control_register(m_camera, STROBE_2_CNT, &value);
-    value &= ~( 1 << 25 );
-    dc1394_set_control_register(m_camera, STROBE_2_CNT, value);
+    dc1394_get_strobe_register( m_camera, strobe::strobe_2_cnt_offset, &value);
+    value &= ~(1 << strobe::offset( strobe::on_off_bit ) );
+    dc1394_set_strobe_register( m_camera, strobe::strobe_2_cnt_offset, value);
 }
 
 } } // namespace snark { namespace camera {
