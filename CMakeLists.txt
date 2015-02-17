@@ -5,23 +5,32 @@ cmake_minimum_required(VERSION 2.6)
 ENABLE_TESTING()
 
 IF (UNIX AND NOT APPLE)
-# May also fail on BSD as it assumes GNU date rather than BSD date command
-    # Get the date of the last commit (for use by CPack)
-    # Check if Git is installed
-    find_package(Git)
-    IF(GIT_FOUND)
-        EXECUTE_PROCESS(
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-        COMMAND git log -n1 --format=%ci
-        COMMAND xargs -0 date +%Y%m%dT%H%M -d
-        OUTPUT_VARIABLE COMMITDATE
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-        )
-    ELSE()
-        SET ( COMMITDATE 4 )
-    ENDIF()
+  # May also fail on BSD as it assumes GNU date rather than BSD date command
+	# Check if Git is installed
+	find_package(Git)
+	IF(GIT_FOUND)
+		# Get the date of the last commit (for use by CPack)
+		EXECUTE_PROCESS(
+		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+		COMMAND git log -n1 --format=%ci
+		COMMAND xargs -0 date +%Y%m%dT%H%M -d
+		OUTPUT_VARIABLE COMMITDATE
+		OUTPUT_STRIP_TRAILING_WHITESPACE
+		)
+		# And also the hash.
+		EXECUTE_PROCESS(
+		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+		COMMAND git rev-parse HEAD
+		OUTPUT_VARIABLE COMMITHASH
+		OUTPUT_STRIP_TRAILING_WHITESPACE
+	)
+	ELSE()
+		SET ( COMMITDATE 1 )
+		SET ( COMMITHASH "abc" )
+	ENDIF()
 ELSE() # Probably windows; gets hardcoded patch version
-	SET ( COMMITDATE 4 )
+	SET ( COMMITDATE 1 ) 
+	SET ( COMMITHASH "abc" )
 ENDIF()
 
 # ---------------------------------------------------------------------------
@@ -321,9 +330,10 @@ SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "This is a description of snark. It's grea
 SET(CPACK_PACKAGE_VENDOR "ACFR")
 SET(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/COPYING")
 SET(CPACK_PACKAGE_VERSION_MAJOR "1")
-SET(CPACK_PACKAGE_VERSION_MINOR "0")
-SET(CPACK_PACKAGE_VERSION_PATCH ${COMMITDATE})
+SET(CPACK_PACKAGE_VERSION_MINOR ${COMMITDATE})
+SET(CPACK_PACKAGE_VERSION_PATCH ${COMMITHASH})
 SET(CPACK_PACKAGE_CONTACT "t.teo@acfr.usyd.edu.au")
+SET(CPACK_RPM_PACKAGE_REQUIRES "comma")
 
 # Additional Win32 handling for CPack.
 IF( WIN32 )
