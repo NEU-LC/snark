@@ -48,6 +48,12 @@ struct ellipsoid
     
     /// return coordinates at a given distance from begin at given bearing, using vincenty's formulae
     coordinates at( const coordinates& begin, double distance, double bearing );
+    
+    struct arc
+    {
+        coordinates begin;
+        coordinates end;
+    };
 };
     
 } } // namespace snark { namespace spherical {

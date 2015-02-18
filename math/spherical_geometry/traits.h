@@ -33,6 +33,7 @@
 #include <comma/visiting/traits.h>
 #include <snark/math/angle.h>
 #include "./coordinates.h"
+#include "ellipsoid.h"
 
 namespace comma { namespace visiting {
 
@@ -57,6 +58,21 @@ template <> struct traits< snark::spherical::coordinates > // quick and dirty?
         v.apply( "latitude", d );
         d = snark::math::degrees( snark::math::radians( t.longitude ) ).value;
         v.apply( "longitude", d );
+    }
+};
+
+template <> struct traits< snark::spherical::ellipsoid::arc >
+{
+    template< typename K, typename V > static void visit( const K&, snark::spherical::ellipsoid::arc& t, V& v )
+    {
+        v.apply( "begin", t.begin );
+        v.apply( "end", t.end );
+    }
+
+    template< typename K, typename V > static void visit( const K&, const snark::spherical::ellipsoid::arc& t, V& v )
+    {
+        v.apply( "begin", t.begin );
+        v.apply( "end", t.end );
     }
 };
 
