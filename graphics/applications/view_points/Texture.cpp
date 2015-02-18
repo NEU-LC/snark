@@ -30,6 +30,7 @@
 
 /// @author Cedric Wohlleber
 
+#include <iostream>
 #include "./Texture.h"
 
 namespace snark { namespace graphics { namespace View {
@@ -63,10 +64,10 @@ QGLSceneNode* Quad::node() const
     
 Texture::Texture ( const QString& string, const QColor4ub& color )
 {
-    QFont font( "helvetica", 64 );
+    QFont font( "System", 64 ); //QFont font( "helvetica", 64 ); font sizes seem to be poorly supported for helvetica
+    font.setStyleHint( QFont::System );
     QFontMetrics metrics( font );
     QRect rect = metrics.boundingRect(string);
-
     m_image = QImage( rect.size(), QImage::Format_ARGB32 );
     m_image.fill( Qt::transparent );
     QPainter p2( &m_image );
