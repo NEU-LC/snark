@@ -210,7 +210,7 @@ template <> struct traits< snark::camera::dc1394::strobe_parameters >
     {
         std::string polarity;
         v.apply( "polarity", polarity );
-        if( !polarity.empty() ) { c.polarity = snark::camera::dc1394::polarity_from_string( polarity ); }
+        if( !polarity.empty() ) { c.polarity = snark::camera::dc1394::polarity_from_string( polarity ); }        
         v.apply( "enable", c.enable );
         v.apply( "pin", c.pin );
         v.apply( "delay", c.delay );
@@ -226,7 +226,7 @@ template <> struct traits< snark::camera::dc1394::strobe_parameters >
         v.apply( "polarity", polarity );
         v.apply( "delay", c.delay );
         v.apply( "duration", c.duration );
-    }    
+    } 
 };
 
 } } // namespace comma { namespace visiting {

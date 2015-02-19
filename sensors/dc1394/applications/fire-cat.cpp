@@ -132,13 +132,14 @@ int main( int argc, char** argv )
             std::cerr << "output header format: fields: t,cols,rows,type; binary: t,3ui\n" << std::endl;
             std::cerr << description << std::endl;
             std::cerr << "strobe: " << std::endl;
-            std::cerr << "    examples: " << std::endl;
-            std::cerr << "        --strobe=\"on;pin=2;polarity=high;delay=0;duration=0\"" << std::endl;
-            std::cerr << "        --strobe=off" << std::endl;
             std::cerr << "    pin: GPIO pin for strobe (its direction should be set to 'Out')" << std::endl;
             std::cerr << "    polarity: low/high" << std::endl;
             std::cerr << "    delay: delay after start of exposure until the strobe signal asserts" << std::endl;
             std::cerr << "    duration: duration of the strobe signal" << std::endl;
+            std::cerr << "    examples: " << std::endl;
+            std::cerr << "        --strobe=\"on;pin=2;polarity=high;delay=4095;duration=4095\"" << std::endl;
+            std::cerr << "        --strobe=\"off;pin=2\"" << std::endl;            
+            std::cerr << "    defaults: \"pin=0;polarity=high;delay=0;duration=0\"" << std::endl;
             std::cerr << std::endl;
             std::cerr << "examples:" << std::endl;
             std::cerr << "\tview all 3 bumblebee cameras: fire-cat --config=bumblebee.config \"split;bayer=4;resize=640,1440;view\" > /dev/null" << std::endl;
