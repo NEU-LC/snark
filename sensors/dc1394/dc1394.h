@@ -42,7 +42,7 @@
 #include <snark/sensors/dc1394/types.h>
 
 namespace snark { namespace camera {
-
+    
 /// image acquisition from dc1394 camera
 class dc1394
 {
@@ -75,6 +75,19 @@ public:
         bool deinterlace;
     };
 
+    static const std::size_t number_of_pins = 4;
+    typedef enum { STROBE_POLARITY_LOW = 0, STROBE_POLARITY_HIGH = 1 } polarity_t;
+    struct strobe_parameters
+    {
+        strobe_parameters() : enable( true ), pin( 0 ), polarity( STROBE_POLARITY_HIGH ), delay( 0 ), duration( 0 ) {}
+        bool enable;
+        unsigned int pin;
+        polarity_t polarity;
+        unsigned int delay;
+        unsigned int duration;
+    };   
+    static polarity_t polarity_from_string( std::string s ) { if( s == "low" ) { return STROBE_POLARITY_LOW; } else if( s == "high" ) { return STROBE_POLARITY_HIGH; } else { COMMA_THROW( comma::exception, "expected polarity to be either \"high\" or \"low\", got " << s ); } }
+    static std::string polarity_to_string( polarity_t polarity ) { if( polarity == STROBE_POLARITY_LOW ) { return "low"; } else if( polarity == STROBE_POLARITY_HIGH ) { return "high"; } }
     
     dc1394( const config& config = config() );
     ~dc1394();
@@ -83,9 +96,9 @@ public:
     boost::posix_time::ptime time() const { return m_time; }
     bool poll();
     static void list_cameras();
-    void list_attributes();    
-    void strobe_on();
-    void strobe_off();
+    void list_attributes();
+    void verify_strobe_parameters( const strobe_parameters& p );
+    void trigger_strobe( const strobe_parameters& p );
 
 private:
     void init_camera();
@@ -190,6 +203,32 @@ template <> struct traits< snark::camera::dc1394::config >
     }
 };
 
-} }
+template <> struct traits< snark::camera::dc1394::strobe_parameters >
+{
+    template < typename Key, class Visitor >
+    static void visit( const Key&, snark::camera::dc1394::strobe_parameters& c, Visitor& v )
+    {
+        std::string polarity;
+        v.apply( "polarity", polarity );
+        if( !polarity.empty() ) { c.polarity = snark::camera::dc1394::polarity_from_string( polarity ); }
+        v.apply( "enable", c.enable );
+        v.apply( "pin", c.pin );
+        v.apply( "delay", c.delay );
+        v.apply( "duration", c.duration );
+    }
+    
+    template < typename Key, class Visitor >
+    static void visit( const Key&, const snark::camera::dc1394::strobe_parameters& c, Visitor& v )
+    {
+        std::string polarity = snark::camera::dc1394::polarity_to_string( c.polarity );
+        v.apply( "enable", c.enable );
+        v.apply( "pin", c.pin );
+        v.apply( "polarity", polarity );
+        v.apply( "delay", c.delay );
+        v.apply( "duration", c.duration );
+    }    
+};
+
+} } // namespace comma { namespace visiting {
 
 #endif // SNARK_SENSORS_DC1394_H_

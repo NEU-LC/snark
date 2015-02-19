@@ -27,6 +27,7 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include <limits>
 
 #include <snark/sensors/dc1394/dc1394.h>
 #include <snark/timing/time.h>
@@ -621,30 +622,69 @@ void dc1394::list_attributes()
     dc1394_feature_print_all(&featureset, stderr);
 }
 
-struct strobe
+template< typename T >
+void reverse_bits( T& v )
 {
-
-    // 4.11.3 Strobe Signal Output Function ( IICD 1394-based Digital Camera Specification ver. 1.31 )
-    static const uint64_t strobe_2_cnt_offset = 0x208; // using GPIO 2
-    static const unsigned int on_off_bit = 6;
-    static unsigned int offset( unsigned int bit, unsigned int number_of_bits = 32) { return  number_of_bits - bit - 1; }
-};
-
-void dc1394::strobe_on()
-{
-    uint32_t value;
-    dc1394_get_strobe_register( m_camera, strobe::strobe_2_cnt_offset, &value);
-    value |= (1 << strobe::offset( strobe::on_off_bit ) );
-    dc1394_set_strobe_register( m_camera, strobe::strobe_2_cnt_offset, value);
-
+    unsigned int s = std::numeric_limits< T >::digits - 1;
+    T r = v;
+    for( v >>= 1; v; v >>= 1 )
+    {   
+        r <<= 1;
+        r |= v & 1;
+        s--;
+    }
+    r <<= s;
+    v = r;
 }
 
-void dc1394::strobe_off()
-{
+// see 4.11.3 Strobe Signal Output Function ( IIDC 1394-based Digital Camera Specification ver. 1.31 )
+void dc1394::verify_strobe_parameters( const dc1394::strobe_parameters& p )
+{               
+    static const uint64_t offset[number_of_pins] = { 0x100, 0x104, 0x108, 0x10c };
+    struct mask { enum { presence = 0x00000001, read_out = 0x00000010, on_off = 0x00000020, polarity = 0x00000040, min_value = 0x000fff00, max_value = 0xfff00000 }; };
+    struct shift { enum { min_value = 8, max_value = 20 }; };
+    
+    if( p.pin >= number_of_pins ) { COMMA_THROW( comma::exception, "expected GPIO pin from 0 to " << number_of_pins - 1  << ", got " << p.pin ); }
+    
     uint32_t value;
-    dc1394_get_strobe_register( m_camera, strobe::strobe_2_cnt_offset, &value);
-    value &= ~(1 << strobe::offset( strobe::on_off_bit ) );
-    dc1394_set_strobe_register( m_camera, strobe::strobe_2_cnt_offset, value);
+    dc1394error_t err = dc1394_get_strobe_register( m_camera, offset[p.pin], &value );
+    DC1394_ERR( err, "Failed to get strobe register" );
+    reverse_bits< uint32_t >( value );
+    
+    if( !( value & mask::presence ) ) { COMMA_THROW( comma::exception, "this feature is not present for pin " << p.pin ); }
+    if( !( value & mask::read_out ) ) { COMMA_THROW( comma::exception, "this feature's value cannot be read for pin " << p.pin ); }
+    if( !( value & mask::on_off ) ) { COMMA_THROW( comma::exception, "this feature cannot be switched on and off for pin " << p.pin ); }
+    if( p.polarity && !( value & mask::polarity ) ) { COMMA_THROW( comma::exception, "this feature's polarity cannot be changed for pin " << p.pin ); }
+    if( p.polarity != STROBE_POLARITY_HIGH && p.polarity != STROBE_POLARITY_LOW ) { COMMA_THROW( comma::exception, "expected polarity to be " << STROBE_POLARITY_LOW << " (low) or " << STROBE_POLARITY_HIGH << " (high), got " << p.polarity ); }
+    uint32_t min_value = ( value & mask::min_value ) >> shift::min_value;
+    uint32_t max_value = ( value & mask::max_value ) >> shift::max_value;
+    if( p.delay < min_value || p.delay > max_value ) { COMMA_THROW( comma::exception, "expected delay in the range [" << min_value << "," << max_value << "], got " << p.delay ); }
+    if( p.duration < min_value || p.duration > max_value ) { COMMA_THROW( comma::exception, "expected duration in the range [" << min_value << "," << max_value << "], got " << p.duration ); }
+}
+
+void dc1394::trigger_strobe( const dc1394::strobe_parameters& p )
+{
+    static const uint64_t offset[number_of_pins] = { 0x200, 0x204, 0x208, 0x20c };
+    struct mask { enum { presence = 0x00000001, on_off = 0x00000040, polarity = 0x00000080, delay = 0x000fff00, duration = 0xfff00000 }; };
+    struct shift { enum { delay = 8, duration = 20 }; };
+    
+    verify_strobe_parameters( p );
+    
+    uint32_t value;
+    dc1394error_t err = dc1394_get_strobe_register( m_camera, offset[p.pin], &value );
+    DC1394_ERR( err, "Failed to get strobe register" );
+    reverse_bits< uint32_t >( value );
+    
+    if( !( value & mask::presence ) ) { COMMA_THROW( comma::exception, "this feature is not present" ); }
+    value = p.enable ? ( value | mask::on_off ) : ( value & ~mask::on_off );
+    if( p.polarity == STROBE_POLARITY_HIGH ) { value |= mask::polarity; }
+    if( p.polarity == STROBE_POLARITY_LOW ) { value &= ~mask::polarity; }
+    value = ( value & ~mask::delay ) | ( p.delay << shift::delay );
+    value = ( value & ~mask::duration ) | ( p.duration << shift::duration );
+    
+    reverse_bits< uint32_t >( value );
+    err = dc1394_set_strobe_register( m_camera, offset[p.pin], value );
+    DC1394_ERR( err, "Failed to set strobe register" );
 }
 
 } } // namespace snark { namespace camera {

@@ -38,6 +38,7 @@
 #include <comma/name_value/ptree.h>
 #include <comma/name_value/parser.h>
 #include <comma/application/signal_flag.h>
+#include <comma/string/string.h>
 
 typedef std::pair< boost::posix_time::ptime, cv::Mat > Pair;
 
@@ -91,6 +92,7 @@ int main( int argc, char** argv )
     {
         std::string config_string; 
         std::string fields;
+        std::string strobe_string;
         unsigned int discard;
         boost::program_options::options_description description( "options" );
         description.add_options()
@@ -104,8 +106,7 @@ int main( int argc, char** argv )
             ( "fields,f", boost::program_options::value< std::string >( &fields )->default_value( "t,rows,cols,type" ), "header fields, possible values: t,rows,cols,type,size" )
             ( "header", "output header only" )
             ( "no-header", "output image data only" )
-            ( "strobe-on", "turn strobe on" )
-            ( "strobe-off", "turn strobe off" );
+            ( "strobe", boost::program_options::value< std::string >( &strobe_string ), "strobe on/off trigger" );
 
         boost::program_options::variables_map vm;
         boost::program_options::store( boost::program_options::parse_command_line( argc, argv, description), vm );
@@ -128,10 +129,22 @@ int main( int argc, char** argv )
             std::cerr << "Usage: fire-cat [options] [<filters>]\n" << std::endl;
             std::cerr << "output header format: fields: t,cols,rows,type; binary: t,3ui\n" << std::endl;
             std::cerr << description << std::endl;
-            std::cerr << snark::cv_mat::filters::usage() << std::endl;
-
+            std::cerr << "strobe: " << std::endl;
+            std::cerr << "    examples: " << std::endl;
+            std::cerr << "        --strobe=\"on;pin=2;polarity=high;delay=0;duration=0\"" << std::endl;
+            std::cerr << "        --strobe=off" << std::endl;
+            std::cerr << "    pin: GPIO pin for strobe (its direction should be set to 'Out')" << std::endl;
+            std::cerr << "    polarity: low/high" << std::endl;
+            std::cerr << "    delay: delay after start of exposure until the strobe signal asserts" << std::endl;
+            std::cerr << "    duration: duration of the strobe signal" << std::endl;
+            std::cerr << std::endl;
+            std::cerr << "examples:" << std::endl;
+            std::cerr << "\tview all 3 bumblebee cameras: fire-cat --config=bumblebee.config \"split;bayer=4;resize=640,1440;view\" > /dev/null" << std::endl;
+            std::cerr << "\tview all 6 ladybug cameras: fire-cat --config=ladybug.config \"bayer=1;resize=808,3696;transpose;view\" > /dev/null" << std::endl;
+            std::cerr << std::endl;
             if ( vm.count( "verbose" ) )
             {
+                std::cerr << snark::cv_mat::filters::usage() << std::endl;
                 std::cerr << std::endl << "config file options:" << std::endl;
                 std::cerr << "\tvideo-mode: dc1394 video mode" << std::endl;
                 std::cerr << "\toperation-mode: dc1394 operation mode" << std::endl;
@@ -176,11 +189,6 @@ int main( int argc, char** argv )
                 std::cerr << "iso-speed=DC1394_ISO_SPEED_800\nframe-rate=DC1394_FRAMERATE_240\ncolor-coding=DC1394_COLOR_CODING_MONO16\nguid=49712223534632451\n" << std::endl;
                 std::cerr << "--------------------------------------------" << std::endl;
             }
-
-            std::cerr << "examples:" << std::endl;
-            std::cerr << "\tview all 3 bumblebee cameras: fire-cat \"split;bayer=4;resize=640,1440;view\" > /dev/null" << std::endl;
-            std::cerr << "\tview all 6 ladybug cameras: fire-cat \"bayer=1;resize=808,3696;transpose;view\" > /dev/null" << std::endl;
-            std::cerr << std::endl;
             return 1;
         }
 
@@ -243,18 +251,17 @@ int main( int argc, char** argv )
             return 0;
         }
         
-        if( vm.count( "strobe-on" ) )
+        if( vm.count( "strobe" ) )
         {
-            camera.strobe_on();
+            std::vector< std::string > v = comma::split( strobe_string, ';' );
+            if( v[0] == "on" ) { v[0] = "enable=1"; } else if( v[0] == "off" ) { v[0] = "enable=0"; }
+            else { COMMA_THROW( comma::exception, "expected the first parameter of --strobe to be on or off (e.g. --strobe=on), got " << v[0] ); }
+            comma::name_value::parser parser( ';', '=' );
+            snark::camera::dc1394::strobe_parameters p = parser.get< snark::camera::dc1394::strobe_parameters >( comma::join< std::vector< std::string > >( v, ';' ) );
+            camera.trigger_strobe( p );
             return 0;
         }
         
-        if( vm.count( "strobe-off" ) )
-        {
-            camera.strobe_off();
-            return 0;
-        }
-
         reader.reset( new snark::tbb::bursty_reader< Pair >( boost::bind( &capture, boost::ref( camera ) ), discard ) );
         snark::imaging::applications::pipeline pipeline( *serialization, filters, *reader );
         pipeline.run();
