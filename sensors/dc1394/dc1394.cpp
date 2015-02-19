@@ -32,6 +32,7 @@
 #include <snark/sensors/dc1394/dc1394.h>
 #include <snark/timing/time.h>
 #include <comma/base/exception.h>
+#include <comma/packed/bits.h>
 
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
@@ -622,24 +623,10 @@ void dc1394::list_attributes()
     dc1394_feature_print_all(&featureset, stderr);
 }
 
-template< typename T >
-void reverse_bits( T& v )
-{
-    unsigned int s = std::numeric_limits< T >::digits - 1;
-    T r = v;
-    for( v >>= 1; v; v >>= 1 )
-    {   
-        r <<= 1;
-        r |= v & 1;
-        s--;
-    }
-    r <<= s;
-    v = r;
-}
 
-// see 4.11.3 Strobe Signal Output Function ( IIDC 1394-based Digital Camera Specification ver. 1.31 )
 void dc1394::verify_strobe_parameters( const dc1394::strobe_parameters& p )
-{               
+{   
+    // for offsets and bit masks see 4.11.3 Strobe Signal Output Function ( IIDC 1394-based Digital Camera Specification ver. 1.31 )    
     static const uint64_t offset[number_of_pins] = { 0x100, 0x104, 0x108, 0x10c };
     struct mask { enum { presence = 0x00000001, read_out = 0x00000010, on_off = 0x00000020, polarity = 0x00000040, min_value = 0x000fff00, max_value = 0xfff00000 }; };
     struct shift { enum { min_value = 8, max_value = 20 }; };
@@ -649,7 +636,7 @@ void dc1394::verify_strobe_parameters( const dc1394::strobe_parameters& p )
     uint32_t value;
     dc1394error_t err = dc1394_get_strobe_register( m_camera, offset[p.pin], &value );
     DC1394_ERR( err, "Failed to get strobe register" );
-    reverse_bits< uint32_t >( value );
+    comma::packed::reverse_bits< uint32_t >( value );
     
     if( !( value & mask::presence ) ) { COMMA_THROW( comma::exception, "this feature is not present for pin " << p.pin ); }
     if( !( value & mask::read_out ) ) { COMMA_THROW( comma::exception, "this feature's value cannot be read for pin " << p.pin ); }
@@ -664,6 +651,7 @@ void dc1394::verify_strobe_parameters( const dc1394::strobe_parameters& p )
 
 void dc1394::trigger_strobe( const dc1394::strobe_parameters& p )
 {
+    // for offsets and bit masks see 4.11.3 Strobe Signal Output Function ( IIDC 1394-based Digital Camera Specification ver. 1.31 )
     static const uint64_t offset[number_of_pins] = { 0x200, 0x204, 0x208, 0x20c };
     struct mask { enum { presence = 0x00000001, on_off = 0x00000040, polarity = 0x00000080, delay = 0x000fff00, duration = 0xfff00000 }; };
     struct shift { enum { delay = 8, duration = 20 }; };
@@ -673,7 +661,7 @@ void dc1394::trigger_strobe( const dc1394::strobe_parameters& p )
     uint32_t value;
     dc1394error_t err = dc1394_get_strobe_register( m_camera, offset[p.pin], &value );
     DC1394_ERR( err, "Failed to get strobe register" );
-    reverse_bits< uint32_t >( value );
+    comma::packed::reverse_bits< uint32_t >( value );
     
     if( !( value & mask::presence ) ) { COMMA_THROW( comma::exception, "this feature is not present" ); }
     value = p.enable ? ( value | mask::on_off ) : ( value & ~mask::on_off );
@@ -682,7 +670,7 @@ void dc1394::trigger_strobe( const dc1394::strobe_parameters& p )
     value = ( value & ~mask::delay ) | ( p.delay << shift::delay );
     value = ( value & ~mask::duration ) | ( p.duration << shift::duration );
     
-    reverse_bits< uint32_t >( value );
+    comma::packed::reverse_bits< uint32_t >( value );
     err = dc1394_set_strobe_register( m_camera, offset[p.pin], value );
     DC1394_ERR( err, "Failed to set strobe register" );
 }

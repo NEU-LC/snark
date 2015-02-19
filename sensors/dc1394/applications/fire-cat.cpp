@@ -52,6 +52,8 @@ static Pair capture( snark::camera::dc1394& camera )
     return std::make_pair( camera.time(), image.clone() );
 }
 
+//if( options.exists( --config ) ) { config = comma::read_json< comma::ur::config_t >( options.value< std::string >( --config ) ); }
+
 // quick and dirty for now, just to tear down application/ptree.h
 template < typename C >
 C config_from_ini( const std::string& filename, const std::string& name = "", const C& defaultconfig = C() )
