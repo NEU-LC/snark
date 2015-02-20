@@ -30,7 +30,7 @@
 
 #include <comma/base/exception.h>
 #include <snark/timing/time.h>
-#include "./pcap_reader.h"
+#include "pcap_reader.h"
 
 namespace snark {
 pcap_reader::pcap_reader( const std::string& filename )

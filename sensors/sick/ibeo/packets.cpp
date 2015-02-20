@@ -31,7 +31,7 @@
 #include <cmath>
 #include <comma/base/exception.h>
 #include <snark/timing/ntp.h>
-#include "./packets.h"
+#include "packets.h"
 
 namespace snark {  namespace sick { namespace ibeo {
     

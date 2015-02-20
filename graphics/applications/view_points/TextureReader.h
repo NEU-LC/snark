@@ -36,7 +36,7 @@
 #include <vector>
 #include <boost/optional.hpp>
 #include <boost/ptr_container/ptr_vector.hpp>
-#include "./Reader.h"
+#include "Reader.h"
 #include <Qt3D/qglbuilder.h>
 
 namespace snark { namespace graphics { namespace View {

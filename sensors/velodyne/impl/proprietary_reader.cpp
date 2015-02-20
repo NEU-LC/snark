@@ -31,7 +31,7 @@
 #include <comma/base/exception.h>
 #include <comma/base/types.h>
 #include <snark/timing/time.h>
-#include "./proprietary_reader.h"
+#include "proprietary_reader.h"
 
 #ifdef WIN32
 #include <fcntl.h>

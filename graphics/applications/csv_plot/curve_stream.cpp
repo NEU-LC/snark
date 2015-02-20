@@ -31,7 +31,7 @@
 
 #include <qwt/qwt_plot.h>
 #include <comma/base/exception.h>
-#include "./curve_stream.h"
+#include "curve_stream.h"
 
 #include <iostream>
 

@@ -34,9 +34,9 @@
 #include <boost/optional.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include "snark/sensors/velodyne/scan_tick.h"
-#include "./pcap_reader.h"
-#include "./proprietary_reader.h"
-#include "./thin_reader.h"
+#include "pcap_reader.h"
+#include "proprietary_reader.h"
+#include "thin_reader.h"
 
 namespace snark {  namespace velodyne { namespace impl {
 

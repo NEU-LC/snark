@@ -29,8 +29,8 @@
 
 
 #include <iostream>
-#include "./Icons.h"
-#include "./Actions.h"
+#include "Icons.h"
+#include "Actions.h"
 
 #include <qfiledialog.h>
 

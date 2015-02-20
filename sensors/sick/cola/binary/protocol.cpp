@@ -31,7 +31,7 @@
 /// @author vsevolod vlaskine (v.vlaskine@acfr.usyd.edu.au)
 
 #include <comma/base/exception.h>
-#include "./protocol.h"
+#include "protocol.h"
 
 namespace snark { namespace sick { namespace cola { namespace binary {
 

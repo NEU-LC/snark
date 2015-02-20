@@ -30,7 +30,7 @@
 /// @author andrew hill
 /// @author vsevolod vlaskine (v.vlaskine@acfr.usyd.edu.au)
 
-#include "./scan_packet.h"
+#include "scan_packet.h"
 #include <comma/base/exception.h>
 
 // todo: templates for channels16_t + channels8_t?

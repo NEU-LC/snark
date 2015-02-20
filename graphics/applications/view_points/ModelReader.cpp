@@ -31,8 +31,8 @@
 /// @author Cedric Wohlleber
 
 #include <Eigen/Core>
-#include "./ModelReader.h"
-#include "./Texture.h"
+#include "ModelReader.h"
+#include "Texture.h"
 
 namespace snark { namespace graphics { namespace View {
 

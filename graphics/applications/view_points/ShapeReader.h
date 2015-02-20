@@ -40,8 +40,8 @@
 
 #include <snark/graphics/block_buffer.h>
 #include <snark/graphics/qt3d/vertex_buffer.h>
-#include "./Reader.h"
-#include "./ShapeWithId.h"
+#include "Reader.h"
+#include "ShapeWithId.h"
 
 namespace snark { namespace graphics { namespace View {
 

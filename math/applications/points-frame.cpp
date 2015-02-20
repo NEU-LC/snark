@@ -45,7 +45,7 @@
 #include <comma/name_value/parser.h>
 #include <comma/string/string.h>
 #include <snark/visiting/eigen.h>
-#include "./frame.h"
+#include "frame.h"
 
 static void usage()
 {

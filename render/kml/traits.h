@@ -4,11 +4,11 @@
 #include <sstream>
 #include <comma/base/exception.h>
 #include <comma/visiting/traits.h>
-#include "./coordinates.h"
-#include "./document.h"
-#include "./line_string.h"
-#include "./placemark.h"
-#include "./point.h"
+#include "coordinates.h"
+#include "document.h"
+#include "line_string.h"
+#include "placemark.h"
+#include "point.h"
 
 namespace comma { namespace visiting {
 

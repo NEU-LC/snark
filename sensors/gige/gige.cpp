@@ -32,7 +32,7 @@
 #include <boost/optional.hpp>
 #include <boost/thread.hpp>
 #include <comma/base/exception.h>
-#include "./gige.h"
+#include "gige.h"
 
 static void PVDECL pv_callback_( tPvFrame *frame );
 

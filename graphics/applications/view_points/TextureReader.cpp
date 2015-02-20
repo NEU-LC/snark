@@ -31,7 +31,7 @@
 
 #include <Eigen/Core>
 #include <comma/base/exception.h>
-#include "./TextureReader.h"
+#include "TextureReader.h"
 
 namespace snark { namespace graphics { namespace View {
 

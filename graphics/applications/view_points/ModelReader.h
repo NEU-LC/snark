@@ -34,8 +34,8 @@
 #define SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_MODEL_READER_H_
 
 
-#include "./Reader.h"
-#include "./PlyLoader.h"
+#include "Reader.h"
+#include "PlyLoader.h"
 
 class QGLAbstractScene;
 

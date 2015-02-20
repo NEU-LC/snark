@@ -31,7 +31,7 @@
 #include <comma/base/exception.h>
 #include <comma/math/compare.h>
 #include "../angle.h"
-#include "./ellipsoid.h"
+#include "ellipsoid.h"
 
 namespace snark { namespace spherical {
 

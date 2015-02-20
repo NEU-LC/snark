@@ -31,7 +31,7 @@
 #include <cmath>
 #include <boost/array.hpp>
 #include <comma/base/exception.h>
-#include "./angle.h"
+#include "angle.h"
 
 namespace snark {  namespace velodyne { namespace impl {
 

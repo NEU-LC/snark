@@ -30,7 +30,7 @@
 #ifndef SNARK_MATH_SPHERICAL_GEOMETRY_ELLIPSOID_H_
 #define SNARK_MATH_SPHERICAL_GEOMETRY_ELLIPSOID_H_
 
-#include "./coordinates.h"
+#include "coordinates.h"
 
 namespace snark { namespace spherical {
     

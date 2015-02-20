@@ -30,8 +30,8 @@
 
 #include <algorithm>
 #include <boost/array.hpp>
-#include "./Viewer.h"
-#include "./Tools.h"
+#include "Viewer.h"
+#include "Tools.h"
 #include <Qt3D/qglcube.h>
 
 namespace snark { namespace graphics { namespace View {  namespace Tools {

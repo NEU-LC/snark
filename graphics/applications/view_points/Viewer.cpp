@@ -43,7 +43,7 @@
 #include <comma/csv/stream.h>
 #include <comma/name_value/ptree.h>
 #include <comma/visiting/apply.h>
-#include "./Viewer.h"
+#include "Viewer.h"
 #include <QTimer>
 
 namespace snark { namespace graphics { namespace View {
