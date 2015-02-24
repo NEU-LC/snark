@@ -47,12 +47,12 @@ static const std::string name("grs67");
  It became a part of the GRS-67 which was approved and adopted at the 1971 meeting of the IUGG held in Moscow. It is used in Australia for the Australian Geodetic Datum and in South America for the South American Datum 1969.
 */
 
-void help()
+void inline help()
 {
     std::cerr << "        GRS67: Geodesic Reference System 1967 (6,378,160; 6,356,774.516); 298.247167427" << std::endl;
 }
 
-void info()
+void inline info()
 {
     std::cout << "GRS67,Geodesic Reference System 1967," << major_semiaxis <<","<< minor_semiaxis <<","<<eccentricity<<std::endl;
 }

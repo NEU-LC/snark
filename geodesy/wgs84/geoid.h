@@ -40,12 +40,12 @@ static const double minor_semiaxis = 6356752.314245;
 static const double radius = major_semiaxis;
 static const std::string name("wgs84");
     
-void help()
+void inline help()
 {
     std::cerr << "        WGS84: World Geodesic System 1984 standard used in GPS (6378137.0; 6356752.314245); 298.257223563" << std::endl;
 }
 
-void info()
+void inline info()
 {
     std::cout << "WGS84,World Geodesic System 1984," << major_semiaxis <<","<< minor_semiaxis <<","<<eccentricity<<std::endl;
 }
