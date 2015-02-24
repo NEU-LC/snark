@@ -27,34 +27,41 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef SNARK_GEODESY_WGS84_H_
-#define SNARK_GEODESY_WGS84_H_
+#ifndef SNARK_GEODESY_GRS67_H_
+#define SNARK_GEODESY_GRS67_H_
 
 #include "../../math/spherical_geometry/ellipsoid.h"
 
-namespace snark { namespace geodesy { namespace wgs84 {
+namespace snark { namespace geodesy { namespace grs67 {
 
-static const double eccentricity = 1.0 / 298.257223563;
-static const double major_semiaxis = 6378137.0;
-static const double minor_semiaxis = 6356752.314245;
+static const double eccentricity = 1.0 / 298.247167427;
+static const double major_semiaxis = 6378160.0;
+static const double minor_semiaxis = 6356774.516;
 static const double radius = major_semiaxis;
-static const std::string name("wgs84");
-    
+static const std::string name("grs67");
+
+/* 
+ cached from http://en.wikipedia.org/wiki/Earth_ellipsoid#Historical_Earth_ellipsoids
+ At the 1967 meeting of the IUGG held in Lucerne, Switzerland, the ellipsoid called GRS-67 (Geodetic Reference System 1967) in the listing was recommended for adoption. 
+ The new ellipsoid was not recommended to replace the International Ellipsoid (1924), but was advocated for use where a greater degree of accuracy is required. 
+ It became a part of the GRS-67 which was approved and adopted at the 1971 meeting of the IUGG held in Moscow. It is used in Australia for the Australian Geodetic Datum and in South America for the South American Datum 1969.
+*/
+
 void inline help()
 {
-    std::cerr << "        WGS84: World Geodesic System 1984 standard used in GPS (6378137.0; 6356752.314245); 298.257223563" << std::endl;
+    std::cerr << "        GRS67: Geodesic Reference System 1967 (6,378,160; 6,356,774.516); 298.247167427" << std::endl;
 }
 
 void inline info()
 {
-    std::cout << "WGS84,World Geodesic System 1984," << major_semiaxis <<","<< minor_semiaxis <<","<<eccentricity<<std::endl;
+    std::cout << "GRS67,Geodesic Reference System 1967," << major_semiaxis <<","<< minor_semiaxis <<","<<eccentricity<<std::endl;
 }
 
 struct geoid : public spherical::ellipsoid
 {
-    geoid() : ellipsoid( wgs84::major_semiaxis, wgs84::minor_semiaxis ) {}
+    geoid() : ellipsoid( major_semiaxis, minor_semiaxis ) {}
 };
 
-} } } // namespace snark { namespace geodesy { namespace wgs84 {
+} } } // namespace snark { namespace geodesy { namespace agd84 {
 
-#endif // SNARK_GEODESY_WGS84_H_
+#endif // SNARK_GEODESY_GRS67_H_
