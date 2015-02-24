@@ -31,7 +31,7 @@
 /// @author Cedric Wohlleber
 
 #include <iostream>
-#include "./Texture.h"
+#include "Texture.h"
 
 namespace snark { namespace graphics { namespace View {
 

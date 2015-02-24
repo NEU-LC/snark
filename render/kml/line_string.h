@@ -2,7 +2,7 @@
 #define SNARK_RENDER_KML_LINE_STRING_H_
 
 #include <string>
-#include "./coordinates.h"
+#include "coordinates.h"
 
 namespace snark { namespace render { namespace kml {
 

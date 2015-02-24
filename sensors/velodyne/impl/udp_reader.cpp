@@ -29,7 +29,7 @@
 
 
 #include <comma/base/exception.h>
-#include "./udp_reader.h"
+#include "udp_reader.h"
 
 namespace snark { 
 

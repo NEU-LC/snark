@@ -30,7 +30,7 @@
 
 #include <boost/optional.hpp>
 #include <comma/base/exception.h>
-#include "./protocol.h"
+#include "protocol.h"
 
 namespace snark {  namespace sick { namespace ibeo {
 

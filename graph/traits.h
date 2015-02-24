@@ -34,7 +34,7 @@
 
 #include <comma/base/types.h>
 #include <comma/visiting/traits.h>
-#include "./search_graph.h"
+#include "search_graph.h"
 
 namespace comma { namespace visiting {
 

@@ -36,8 +36,8 @@
 #include <comma/csv/options.h>
 #include <snark/math/interval.h>
 #include <snark/graphics/qt3d/vertex_buffer.h>
-#include "./PointMap.h"
-#include "./PointWithId.h"
+#include "PointMap.h"
+#include "PointWithId.h"
 #include <Qt3D/qglpainter.h>
 
 namespace snark { namespace graphics { namespace View {

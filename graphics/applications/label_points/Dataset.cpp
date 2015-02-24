@@ -35,8 +35,8 @@
 #include <fstream>
 #include <boost/filesystem/operations.hpp>
 #include <comma/csv/stream.h>
-#include "./Dataset.h"
-#include "./Tools.h"
+#include "Dataset.h"
+#include "Tools.h"
 
 namespace snark { namespace graphics { namespace View {
 

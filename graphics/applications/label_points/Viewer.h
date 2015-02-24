@@ -49,9 +49,9 @@
 
 #include <snark/graphics/qt3d/view.h>
 
-#include "./Dataset.h"
-#include "./PointWithId.h"
-#include "./Tools.h"
+#include "Dataset.h"
+#include "PointWithId.h"
+#include "Tools.h"
 
 namespace snark { namespace graphics { namespace View {
 

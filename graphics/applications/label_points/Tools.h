@@ -42,7 +42,7 @@
 #include <Eigen/Core>
 #include <Qt3D/qcolor4ub.h>
 #include <Qt3D/qglpainter.h>
-#include "./Icons.h"
+#include "Icons.h"
 
 namespace snark { namespace graphics { namespace View { class Viewer; } } }
 

@@ -34,7 +34,7 @@
 #define SNARK_SENSORS_SICK_COLA_BINARY_PROTOCOL_H_
 
 #include <iostream>
-#include "./packets.h"
+#include "packets.h"
 
 namespace snark { namespace sick { namespace cola { namespace binary {
 

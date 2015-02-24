@@ -39,7 +39,7 @@
 #include <Qt3D/qglview.h>
 #include <QMouseEvent>
 #include <comma/visiting/traits.h> // quick and dirty
-#include "./coordinates.h"
+#include "coordinates.h"
 
 namespace snark { namespace graphics { namespace qt3d {
 

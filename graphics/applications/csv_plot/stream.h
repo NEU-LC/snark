@@ -43,7 +43,7 @@
 #include <comma/io/stream.h>
 #include <comma/sync/synchronized.h>
 #include <snark/graphics/block_buffer.h>
-#include "./point.h"
+#include "point.h"
 
 class QwtPlot;
 

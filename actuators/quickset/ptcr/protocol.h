@@ -33,8 +33,8 @@
 
 #include <string>
 #include <boost/noncopyable.hpp>
-#include "./commands.h"
-#include "./packet.h"
+#include "commands.h"
+#include "packet.h"
 
 namespace snark { namespace quickset { namespace ptcr {
 

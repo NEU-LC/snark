@@ -29,7 +29,7 @@
 
 
 #include <comma/base/exception.h>
-#include "./stream_reader.h"
+#include "stream_reader.h"
 #include <snark/timing/time.h>
 #ifdef WIN32
 #include <fcntl.h>

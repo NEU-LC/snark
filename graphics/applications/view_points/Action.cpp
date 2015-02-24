@@ -31,7 +31,7 @@
 /// @author Vsevolod Vlaskine
 
 #include <iostream>
-#include "./Action.h"
+#include "Action.h"
 
 
 namespace snark { namespace graphics { namespace View {

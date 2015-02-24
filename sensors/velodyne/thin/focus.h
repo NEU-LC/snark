@@ -33,7 +33,7 @@
 
 #include <map>
 #include <boost/shared_ptr.hpp>
-#include "./region.h"
+#include "region.h"
 
 namespace snark {  namespace velodyne { namespace thin {
 

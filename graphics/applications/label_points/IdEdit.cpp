@@ -31,9 +31,9 @@
 #include <sstream>
 #include <boost/lexical_cast.hpp>
 #include <QHBoxLayout>
-#include "./IdEdit.h"
-#include "./Tools.h"
-#include "./Viewer.h"
+#include "IdEdit.h"
+#include "Tools.h"
+#include "Viewer.h"
 
 namespace snark { namespace graphics { namespace View {
 

@@ -35,7 +35,7 @@
 #include <boost/lexical_cast.hpp>
 #include <qnamespace.h>
 #include <comma/string/string.h>
-#include "./Coloured.h"
+#include "Coloured.h"
 
 namespace snark { namespace graphics { namespace View {
 

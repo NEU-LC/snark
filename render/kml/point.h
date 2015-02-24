@@ -3,7 +3,7 @@
 
 #include <string>
 #include <boost/optional.hpp>
-#include "./coordinates.h"
+#include "coordinates.h"
 
 namespace snark { namespace render { namespace kml {
 

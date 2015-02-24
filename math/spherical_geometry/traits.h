@@ -32,7 +32,7 @@
 
 #include <comma/visiting/traits.h>
 #include <snark/math/angle.h>
-#include "./coordinates.h"
+#include "coordinates.h"
 #include "ellipsoid.h"
 
 namespace comma { namespace visiting {

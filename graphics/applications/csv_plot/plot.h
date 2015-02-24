@@ -34,7 +34,7 @@
 
 #include <qwt/qwt_plot.h>
 #include <boost/ptr_container/ptr_vector.hpp>
-#include "./stream.h"
+#include "stream.h"
 
 namespace snark { namespace graphics { namespace plotting {
     

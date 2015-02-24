@@ -33,7 +33,7 @@
 #include <comma/base/exception.h>
 #include <comma/math/compare.h>
 #include <snark/math/angle.h>
-#include "./coordinates.h"
+#include "coordinates.h"
 
 namespace snark { namespace spherical {
 

@@ -41,9 +41,9 @@
 #include <comma/base/last_error.h>
 #include <comma/io/select.h>
 #include <comma/string/string.h>
-#include "./commands.h"
-#include "./packet.h"
-#include "./protocol.h"
+#include "commands.h"
+#include "packet.h"
+#include "protocol.h"
 
 namespace snark { namespace quickset { namespace ptcr {
 

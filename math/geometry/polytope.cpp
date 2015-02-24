@@ -31,7 +31,7 @@
 #include <cmath>
 #include <Eigen/Eigen>
 #include <comma/base/exception.h>
-#include "./polytope.h"
+#include "polytope.h"
 
 namespace snark{ namespace geometry {
 

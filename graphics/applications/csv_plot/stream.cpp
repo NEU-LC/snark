@@ -30,8 +30,8 @@
 /// @author Vsevolod Vlaskine
 
 #include <boost/bind.hpp>
-#include "./stream.h"
-#include "./traits.h"
+#include "stream.h"
+#include "traits.h"
 
 namespace snark { namespace graphics { namespace plotting {
 

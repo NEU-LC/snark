@@ -32,7 +32,7 @@
 
 #include <boost/array.hpp>
 #include <boost/crc.hpp>
-#include "./packet.h"
+#include "packet.h"
 
 namespace snark { namespace sick { namespace cola { namespace binary {
 

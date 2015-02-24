@@ -29,7 +29,7 @@
 
 
 #include <string>
-#include "./db.h"
+#include "db.h"
 
 namespace snark {  namespace velodyne { namespace test {
 

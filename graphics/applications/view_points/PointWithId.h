@@ -36,7 +36,7 @@
 #include <comma/base/types.h>
 #include <snark/visiting/eigen.h>
 #include <Qt3D/qcolor4ub.h>
-#include "./ShapeWithId.h"
+#include "ShapeWithId.h"
 
 namespace snark { namespace graphics { namespace View {
 

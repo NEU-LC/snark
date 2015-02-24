@@ -40,7 +40,7 @@
 #include <snark/sensors/velodyne/db.h>
 #include <snark/sensors/velodyne/impl/angle.h>
 #include <snark/sensors/velodyne/impl/serializable_db.h>
-#include "./db.h"
+#include "db.h"
 
 #include <boost/date_time/posix_time/posix_time.hpp>
 

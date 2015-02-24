@@ -39,7 +39,7 @@
 #include <QCheckBox>
 #include <QMainWindow>
 #include <comma/base/types.h>
-#include "./Viewer.h"
+#include "Viewer.h"
 
 QT_BEGIN_NAMESPACE
 class QAction;
