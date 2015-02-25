@@ -32,16 +32,21 @@
 
 #include "../../math/spherical_geometry/ellipsoid.h"
 
-namespace snark { namespace geodesy { namespace agd84 {
+namespace snark
+{
+namespace geodesy
+{
+namespace agd84
+{
 
 static const double eccentricity = 1.0 / 298.25;
 static const double major_semiaxis = 6378160.0;
 static const double minor_semiaxis = 6356774.719;
 static const double radius = major_semiaxis;
-static const std::string name("agd84");
+static const std::string name( "agd84" );
 
 /* cahced from  http://georepository.com/datum_6203/Australian-Geodetic-Datum-1984.html
- 
+
 Geodetic Datum used in Australia - AGD84
 
 Australian Geodetic Datum 1984 is a geodetic datum first defined in 1984 and is suitable for use in Australia - Queensland (Qld), South Australia (SA), Western Australia (WA).. Australian Geodetic Datum 1984 references the Australian National Spheroid ellipsoid and the Greenwich prime meridian. Australian Geodetic Datum 1984 origin is Fundamental point: Johnson Memorial Cairn. Latitude: 25°56'54.5515"S, longitude: 133°12'30.0771"E (of Greenwich). Australian Geodetic Datum 1984 is a geodetic datum for Topographic mapping. It was defined by information from "GDA technical manual v2_2", Intergovernmental Committee on Surveying and Mapping. www.anzlic.org.au/icsm/gdtm/ Uses all data from 1966 adjustment with additional observations, improved software and a geoid model.
@@ -60,7 +65,7 @@ SEMI-MAJOR AXIS:        6378160 metreOpen
 INVERSE FLATTENING:     298.25
 
 META DATA
-REMARKS:        
+REMARKS:
 Based on the GRS 1967 figure but with 1/f taken to 2 decimal places exactly. The dimensions are also used as the GRS 1967 Modified ellipsoid (see code 7050).
 INFORMATION SOURCE:     "Australian Map Grid Technical Manual"; National Mapping Council of Australia Special Publication #7; 1972
 DATA SOURCE:    OGP
@@ -76,7 +81,7 @@ void inline help()
 
 void inline info()
 {
-    std::cout << "AGD84,Australian Geodetic Datum 1984," << major_semiaxis <<","<< minor_semiaxis <<","<<eccentricity<<std::endl;
+    std::cout << "AGD84,Australian Geodetic Datum 1984," << major_semiaxis << "," << minor_semiaxis << "," << eccentricity << std::endl;
 }
 
 struct geoid : public spherical::ellipsoid
@@ -84,6 +89,8 @@ struct geoid : public spherical::ellipsoid
     geoid() : ellipsoid( agd84::major_semiaxis, agd84::minor_semiaxis ) {}
 };
 
-} } } // namespace snark { namespace geodesy { namespace agd84 {
+}
+}
+} // namespace snark { namespace geodesy { namespace agd84 {
 
 #endif // SNARK_GEODESY_AGD84_H_

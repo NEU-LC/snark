@@ -55,13 +55,6 @@ struct ellipsoid
     /// todo: an extensive comment no what kind of bearing is used
     coordinates at( const coordinates &begin, double distance, double bearing );
 
-    //heading degree from north; east is positive 90
-    static double bearing( double heading )
-    {
-        //bearing standard geometric radian; ie east=0,north=pi/2,south=-pi/2
-        return ( heading * -1 ) + ( M_PI / 2 );
-    }
-
     //great circle arc
     struct arc
     {
@@ -92,6 +85,13 @@ struct ellipsoid
         arc() {}
         arc( const ellipsoid::circle &circle, double begin, double end ) : circle( circle ), begin( begin ), end( end ) {}
         std::vector< coordinates > discretize( ellipsoid &ellipsoid, const boost::optional< double > &resolution, const boost::optional< unsigned int > &circle_size ) const;
+        
+        //heading degree from north; east is positive 90
+        static double bearing( double heading )
+        {
+            //bearing standard geometric radian; ie east=0,north=pi/2,south=-pi/2
+            return ( heading * -1 ) + ( M_PI / 2 );
+        }
     };
 
 };

@@ -32,14 +32,19 @@
 
 #include "../../math/spherical_geometry/ellipsoid.h"
 
-namespace snark { namespace geodesy { namespace wgs84 {
+namespace snark
+{
+namespace geodesy
+{
+namespace wgs84
+{
 
 static const double eccentricity = 1.0 / 298.257223563;
 static const double major_semiaxis = 6378137.0;
 static const double minor_semiaxis = 6356752.314245;
 static const double radius = major_semiaxis;
-static const std::string name("wgs84");
-    
+static const std::string name( "wgs84" );
+
 void inline help()
 {
     std::cerr << "        WGS84: World Geodesic System 1984 standard used in GPS (6378137.0; 6356752.314245); 298.257223563" << std::endl;
@@ -47,7 +52,7 @@ void inline help()
 
 void inline info()
 {
-    std::cout << "WGS84,World Geodesic System 1984," << major_semiaxis <<","<< minor_semiaxis <<","<<eccentricity<<std::endl;
+    std::cout << "WGS84,World Geodesic System 1984," << major_semiaxis << "," << minor_semiaxis << "," << eccentricity << std::endl;
 }
 
 struct geoid : public spherical::ellipsoid
@@ -55,6 +60,8 @@ struct geoid : public spherical::ellipsoid
     geoid() : ellipsoid( wgs84::major_semiaxis, wgs84::minor_semiaxis ) {}
 };
 
-} } } // namespace snark { namespace geodesy { namespace wgs84 {
+}
+}
+} // namespace snark { namespace geodesy { namespace wgs84 {
 
 #endif // SNARK_GEODESY_WGS84_H_

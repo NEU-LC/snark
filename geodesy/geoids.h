@@ -35,89 +35,93 @@
 #include "agd84/geoid.h"
 #include "grs67/geoid.h"
 
-namespace snark { namespace geodesy { 
+namespace snark
+{
+namespace geodesy
+{
 
 static const double unit_minor_semiaxis = wgs84::minor_semiaxis / wgs84::major_semiaxis;
 static const double earth_average_radius = 6371000;
 
 struct geoids
 {
-    //see http://en.wikipedia.org/wiki/Earth_ellipsoid  
+    //see http://en.wikipedia.org/wiki/Earth_ellipsoid
     //enum geoid_enum {wgs84};
     wgs84::geoid wgs84;
     agd84::geoid agd84;
     snark::spherical::ellipsoid sphere;
     snark::spherical::ellipsoid unit;
     grs67::geoid grs67;
-    
+
     geoids():
-        sphere(earth_average_radius,earth_average_radius),
-        unit(1, unit_minor_semiaxis)
+        sphere( earth_average_radius, earth_average_radius ),
+        unit( 1, unit_minor_semiaxis )
     {
     }
-    void (*info)();
+    void ( *info )();
     std::string name;
-    snark::spherical::ellipsoid* ellipsoid;
-    snark::spherical::ellipsoid* select(boost::optional< std::string > geoid_option)
+    snark::spherical::ellipsoid *ellipsoid;
+    snark::spherical::ellipsoid *select( boost::optional< std::string > geoid_option )
     {
-        if (geoid_option)
+        if ( geoid_option )
         {
-            name=*geoid_option;
-            boost::to_lower(name);
-            if (name==wgs84::name)
+            name = *geoid_option;
+            boost::to_lower( name );
+            if ( name == wgs84::name )
             {
-                ellipsoid=&wgs84;
-                info=&wgs84::info;
+                ellipsoid = &wgs84;
+                info = &wgs84::info;
             }
-            else if (name==agd84::name)
+            else if ( name == agd84::name )
             {
-                ellipsoid=&agd84;
-                info=&agd84::info;
+                ellipsoid = &agd84;
+                info = &agd84::info;
             }
-            else if (name==grs67::name)
+            else if ( name == grs67::name )
             {
-                ellipsoid=&grs67;
-                info=&grs67::info;
+                ellipsoid = &grs67;
+                info = &grs67::info;
             }
-            else if (name=="sphere")
+            else if ( name == "sphere" )
             {
-                ellipsoid=&sphere;
-                info=&sphere_info;
+                ellipsoid = &sphere;
+                info = &sphere_info;
             }
-            else if (name=="unit")
+            else if ( name == "unit" )
             {
-                ellipsoid=&unit;
-                info=&unit_info;
+                ellipsoid = &unit;
+                info = &unit_info;
             }
             else
             {
-                ellipsoid=NULL;
-                info=NULL;
+                ellipsoid = NULL;
+                info = NULL;
             }
         }
         else
         {
-            name="(default)";   //name is used for debugging only
-            ellipsoid=&wgs84;
-            info=&wgs84::info;
+            name = "(default)"; //name is used for debugging only
+            ellipsoid = &wgs84;
+            info = &wgs84::info;
         }
         return ellipsoid;
     }
     static void other_help()
     {
-        std::cerr << "        sphere: sphere with earth average radius for comparision/testing ; "<<earth_average_radius<<";"<<earth_average_radius<<"); 1" << std::endl;
+        std::cerr << "        sphere: sphere with earth average radius for comparision/testing ; " << earth_average_radius << ";" << earth_average_radius << "); 1" << std::endl;
         std::cerr << "        unit: WGS84 scaled down to unit, useful for getting distance in equivalent radian for instance (1; " << unit_minor_semiaxis << ");" << wgs84::eccentricity << std::endl;
     }
     static void sphere_info()
     {
-        std::cout << "shere,sphere with equal major and minor semiaxis,"<<earth_average_radius<<","<<earth_average_radius<<",1"<<std::endl;
+        std::cout << "shere,sphere with equal major and minor semiaxis," << earth_average_radius << "," << earth_average_radius << ",1" << std::endl;
     }
     static void unit_info()
     {
-        std::cout << "unit,scaled down WGS84,1,"<<unit_minor_semiaxis<<","<<wgs84::eccentricity <<std::endl;
+        std::cout << "unit,scaled down WGS84,1," << unit_minor_semiaxis << "," << wgs84::eccentricity << std::endl;
     }
 };
 
-} } // namespace snark { namespace geodesy { 
+}
+} // namespace snark { namespace geodesy {
 
 #endif // SNARK_GEODESY_WGS84_H_

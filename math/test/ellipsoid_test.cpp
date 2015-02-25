@@ -218,25 +218,25 @@ double inline bearing( double heading )
 }
 
 template<typename T>
-static std::basic_ostream<T>& operator<<(std::basic_ostream<T>& s,const coordinates& c)
+static std::basic_ostream<T> &operator<<( std::basic_ostream<T> &s, const coordinates &c )
 {
-    return s<<"("<<c.latitude<<", "<<c.longitude<<")";
+    return s << "(" << c.latitude << ", " << c.longitude << ")";
 }
 
-void hexagon_test(ellipsoid e, coordinates center, double radius)
+void hexagon_test( ellipsoid e, coordinates center, double radius )
 {
-    std::cerr<<"hexagon_test; center:"<<center<<", radius:"<<radius<<std::endl;
+    //std::cerr<<"hexagon_test; center:"<<center<<", radius:"<<radius<<std::endl;
     coordinates p[6];
-    for(int i=0;i<6;i++)
-        p[i]=e.at(center,radius,(2*pi*i)/6);
+    for ( int i = 0; i < 6; i++ )
+        p[i] = e.at( center, radius, ( 2 * pi * i ) / 6 );
     //in a hexagon all sides are equal?? (not if length is comparable to ellipsoid's axis)
-    double edge0=e.distance(p[0], p[1]);
-    for(int i=0;i<5;i++)
+    double edge0 = e.distance( p[0], p[1] );
+    for ( int i = 0; i < 5; i++ )
     {
         //std::cerr<<"hex test["<<i<<"]"<<std::endl;
-        EXPECT_NEAR(e.distance(p[i],p[i+1]),edge0,precision);
+        EXPECT_NEAR( e.distance( p[i], p[i + 1] ), edge0, precision );
     }
-    EXPECT_NEAR(e.distance(center,e.at(center,radius,pi/6)),radius,precision);
+    EXPECT_NEAR( e.distance( center, e.at( center, radius, pi / 6 ) ), radius, precision );
 }
 
 TEST( ellipsoid, at )
@@ -252,18 +252,18 @@ TEST( ellipsoid, at )
             EXPECT_NEAR( e.distance( c, p ), distance, precision );
         }
     }
-    
+
     //hexagon_test
     {
         //center,radius
-        hexagon_test(e,coordinates(0,0),100);
-        hexagon_test(e,coordinates(.5,1),100);
-        hexagon_test(e,coordinates(pi/2,1),100);
-        hexagon_test(e,coordinates(0,pi),100);
+        hexagon_test( e, coordinates( 0, 0 ), 100 );
+        hexagon_test( e, coordinates( .5, 1 ), 100 );
+        hexagon_test( e, coordinates( pi / 2, 1 ), 100 );
+        hexagon_test( e, coordinates( 0, pi ), 100 );
         //hexagon_test(e,coordinates(.8,0),5000);       //large radius fails
-        
+
     }
-    
+
     //discretized arc
     {
         coordinates center( rad( 54.408625 ), rad( -110.2958583 ) );
@@ -282,7 +282,35 @@ TEST( ellipsoid, at )
         EXPECT_NEAR( e.distance( p2, end ), 0, precision );
 
     }
+
 }
+
+TEST( ellipsoid, bearing )
+{
+    //sphere with 10,000 km equator to pole distance
+    ellipsoid e( 6366.1978, 6366.1978 );
+    //great_circle::arc northern(coordinates(0,0), coordinates(M_PI/4,0));
+    //EXPECT_DOUBLE_EQ(northern.bearing(0),0);        //should be zero
+    coordinates center( 0, 0 );
+    double radius = 100;
+    double angle = M_PI / 200;
+    coordinates northern = e.at( center, radius, 0 );
+    EXPECT_NEAR( northern.longitude, center.longitude, 0.001 );
+    EXPECT_NEAR( northern.latitude, center.latitude + angle, 0.001 );
+
+    coordinates eastern = e.at( center, radius, M_PI / 2 );
+    EXPECT_NEAR( eastern.longitude, center.longitude + angle, 0.001 );
+    EXPECT_NEAR( eastern.latitude, center.latitude, 0.001 );
+
+    coordinates western = e.at( center, radius, -M_PI / 2 );
+    EXPECT_NEAR( western.longitude, center.longitude - angle, 0.001 );
+    EXPECT_NEAR( western.latitude, center.latitude, 0.001 );
+
+    coordinates southern = e.at( center, radius, M_PI );
+    EXPECT_NEAR( southern.longitude, center.longitude, 0.001 );
+    EXPECT_NEAR( southern.latitude, center.latitude - angle, 0.001 );
+}
+
 
 }//math
 }//snark

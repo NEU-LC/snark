@@ -86,8 +86,8 @@ static void usage( bool more = false )
     std::cerr << "            GRS67: Historical standard" << std::endl;
     std::cerr << "            sphere: major=minor" << std::endl;
     std::cerr << "            unit: scaled down WGS84 (~radian)" << std::endl;
-    
-    if( more )
+
+    if ( more )
     {
         std::cerr << "        (name: description (major semiaxis; minor semiaxis); inverse eccentricity)" << std::endl;
         snark::geodesy::wgs84::help();
@@ -110,24 +110,24 @@ static void usage( bool more = false )
 }
 
 template < typename S >
-int discretize( const comma::csv::options& csv, snark::spherical::ellipsoid& ellipsoid, const boost::optional< double >& resolution, const boost::optional< unsigned int >& circle_size )
+int discretize( const comma::csv::options &csv, snark::spherical::ellipsoid &ellipsoid, const boost::optional< double > &resolution, const boost::optional< unsigned int > &circle_size )
 {
     comma::csv::input_stream< S > istream( std::cin, csv );
     comma::csv::ascii< snark::spherical::coordinates > ascii;
     comma::csv::binary< snark::spherical::coordinates > binary;
-    while( istream.ready() || std::cin.good() )
+    while ( istream.ready() || std::cin.good() )
     {
-        const S* a = istream.read();
-        if( !a ) { break; }
-        const std::vector< snark::spherical::coordinates >& v = a->discretize(ellipsoid, resolution, circle_size);
-        for( unsigned int i = 0; i < v.size(); ++i )
+        const S *a = istream.read();
+        if ( !a ) { break; }
+        const std::vector< snark::spherical::coordinates > &v = a->discretize( ellipsoid, resolution, circle_size );
+        for ( unsigned int i = 0; i < v.size(); ++i )
         {
-            if( csv.binary() )
+            if ( csv.binary() )
             {
                 std::cout.write( istream.binary().last(), istream.binary().binary().format().size() );
                 std::vector< char > buf( binary.format().size() );
                 binary.put( v[i], &buf[0] );
-                std::cout.write( reinterpret_cast< const char* >( &buf[i] ), buf.size() );
+                std::cout.write( reinterpret_cast< const char * >( &buf[i] ), buf.size() );
             }
             else
             {
@@ -153,8 +153,8 @@ int main( int ac, char **av )
         if ( !csv.binary() )
             std::cout.precision( options.value( "--precision,-p", 12 ) );
         csv.full_xpath = true;
-        snark::spherical::ellipsoid *geoid = geoids.select(options.optional< std::string >( "--geoid" ));
-        if(geoid == NULL)
+        snark::spherical::ellipsoid *geoid = geoids.select( options.optional< std::string >( "--geoid" ) );
+        if ( geoid == NULL )
         {
             std::cerr << "geoid not supported: " << geoids.name << std::endl;
             return 1;
@@ -184,21 +184,21 @@ int main( int ac, char **av )
             }
             return 0;
         }
-        else if( operations[0] == "discretize" )
+        else if ( operations[0] == "discretize" )
         {
             //whole circle or circular arc
             boost::optional< double > resolution = options.optional< double >( "--resolution" );
-            if( resolution ) { resolution = *resolution * M_PI / 180; }
+            if ( resolution ) { resolution = *resolution * M_PI / 180; }
             boost::optional< unsigned int > circle_size = options.optional< unsigned int >( "--circle-size,--size" );
-            if(operations.size()==2)
+            if ( operations.size() == 2 )
             {
-                if ( operations[1] == "circle")
+                if ( operations[1] == "circle" )
                 {
                     return discretize< snark::spherical::ellipsoid::circle >( csv, *geoid, resolution, circle_size );
                 }
-                else if(operations[1] == "arc")
+                else if ( operations[1] == "arc" )
                 {
-                    return discretize<snark::spherical::ellipsoid::circle::arc>(csv, *geoid, resolution, circle_size );
+                    return discretize<snark::spherical::ellipsoid::circle::arc>( csv, *geoid, resolution, circle_size );
                 }
                 std::cerr << "geo-calc: unknown shape for discretize: \"" << operations[1] << "\"" << std::endl;
             }
@@ -206,16 +206,16 @@ int main( int ac, char **av )
                 std::cerr << "geo-calc: expected shape for operation discretize" << std::endl;
             return 1;
         }
-        else if(operations[0]=="info")
+        else if ( operations[0] == "info" )
         {
-            if (geoids.info!=NULL)
+            if ( geoids.info != NULL )
             {
                 geoids.info();
                 return 0;
             }
-            std::cerr <<"can't get info on geoid"<<std::endl;
+            std::cerr << "can't get info on geoid" << std::endl;
             return 1;
-            
+
         }
         std::cerr << "geo-calc: unknown operation: \"" << operations[0] << "\"" << std::endl;
         return 1;

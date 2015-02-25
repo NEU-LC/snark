@@ -32,18 +32,23 @@
 
 #include "../../math/spherical_geometry/ellipsoid.h"
 
-namespace snark { namespace geodesy { namespace grs67 {
+namespace snark
+{
+namespace geodesy
+{
+namespace grs67
+{
 
 static const double eccentricity = 1.0 / 298.247167427;
 static const double major_semiaxis = 6378160.0;
 static const double minor_semiaxis = 6356774.516;
 static const double radius = major_semiaxis;
-static const std::string name("grs67");
+static const std::string name( "grs67" );
 
-/* 
+/*
  cached from http://en.wikipedia.org/wiki/Earth_ellipsoid#Historical_Earth_ellipsoids
- At the 1967 meeting of the IUGG held in Lucerne, Switzerland, the ellipsoid called GRS-67 (Geodetic Reference System 1967) in the listing was recommended for adoption. 
- The new ellipsoid was not recommended to replace the International Ellipsoid (1924), but was advocated for use where a greater degree of accuracy is required. 
+ At the 1967 meeting of the IUGG held in Lucerne, Switzerland, the ellipsoid called GRS-67 (Geodetic Reference System 1967) in the listing was recommended for adoption.
+ The new ellipsoid was not recommended to replace the International Ellipsoid (1924), but was advocated for use where a greater degree of accuracy is required.
  It became a part of the GRS-67 which was approved and adopted at the 1971 meeting of the IUGG held in Moscow. It is used in Australia for the Australian Geodetic Datum and in South America for the South American Datum 1969.
 */
 
@@ -54,7 +59,7 @@ void inline help()
 
 void inline info()
 {
-    std::cout << "GRS67,Geodesic Reference System 1967," << major_semiaxis <<","<< minor_semiaxis <<","<<eccentricity<<std::endl;
+    std::cout << "GRS67,Geodesic Reference System 1967," << major_semiaxis << "," << minor_semiaxis << "," << eccentricity << std::endl;
 }
 
 struct geoid : public spherical::ellipsoid
@@ -62,6 +67,8 @@ struct geoid : public spherical::ellipsoid
     geoid() : ellipsoid( major_semiaxis, minor_semiaxis ) {}
 };
 
-} } } // namespace snark { namespace geodesy { namespace agd84 {
+}
+}
+} // namespace snark { namespace geodesy { namespace agd84 {
 
 #endif // SNARK_GEODESY_GRS67_H_
