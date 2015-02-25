@@ -55,6 +55,27 @@ TEST( math, closed_interval )
     EXPECT_EQ( i.max(), Eigen::Vector3d( 3, 10, 5 ) );
 }
 
+void invalid_closed_interval() 
+{   
+    std::vector< Eigen::Vector3i > v;
+    v.push_back( Eigen::Vector3i( 1, 2, 3 ) );
+    v.push_back( Eigen::Vector3i( 0, 2, 4 ) );    
+    snark::math::closed_interval< int, 3 > e( v[0], v[1] );
+}
+
+TEST( math, closed_interval_int )
+{
+    {
+        snark::math::closed_interval< int, 3 > e( Eigen::Vector3i( 1, 2, 3 ), Eigen::Vector3i( 1, 2, 3 ) );
+        EXPECT_EQ( e.min(), Eigen::Vector3i( 1, 2, 3 ) );
+        EXPECT_EQ( e.max(), Eigen::Vector3i( 1, 2, 3 ) );
+        e = e.hull( Eigen::Vector3i( 0, 2, 4 ) );
+        EXPECT_EQ( e.min(), Eigen::Vector3i( 0, 2, 3 ) );
+        EXPECT_EQ( e.max(), Eigen::Vector3i( 1, 2, 4 ) );
+    }
+    ASSERT_THROW( invalid_closed_interval(), comma::exception );
+}
+
 TEST( math, closed_interval_one_dimension_zero )
 {
     Eigen::Vector3d a( 0, 1, 2 );
