@@ -18,12 +18,15 @@ FILE( GLOB gaussian_process_source ${dir}/gaussian_process/*.cpp )
 FILE( GLOB gaussian_process_includes ${dir}/gaussian_process/*.h )
 FILE( GLOB math_source ${dir}/*.cpp )
 FILE( GLOB math_includes ${dir}/*.h )
+FILE( GLOB spherical_geometry_source ${dir}/spherical_geometry/*.cpp )
+FILE( GLOB spherical_geometry_include ${dir}/spherical_geometry/*.h )
 
-SET( source ${math_source} ${filter_source} ${gaussian_process_source} ${fft_source} )
-SET( includes ${math_includes} ${filter_includes} ${gaussian_process_includes} ${fft_includes} )
+SET( source ${math_source} ${filter_source} ${gaussian_process_source} ${fft_source} ${spherical_geometry_source})
+SET( includes ${math_includes} ${filter_includes} ${gaussian_process_includes} ${fft_includes} ${spherical_geometry_include})
 
 # todo? make snark_math_spherical_geometry a standalone library?
-ADD_LIBRARY( ${TARGET_NAME} ${source} ${includes} $<TARGET_OBJECTS:snark_math_spherical_geometry> )
+#ADD_LIBRARY( ${TARGET_NAME} ${source} ${includes} $<TARGET_OBJECTS:snark_math_spherical_geometry> )    //didn't work on cmake 2.8.2
+ADD_LIBRARY( ${TARGET_NAME} ${source} ${includes})
 SET_TARGET_PROPERTIES( ${TARGET_NAME} PROPERTIES ${snark_LIBRARY_PROPERTIES} )
 MESSAGE( STATUS "snark all external: ${snark_ALL_EXTERNAL_LIBRARIES}" )
 TARGET_LINK_LIBRARIES( ${TARGET_NAME} ${snark_ALL_EXTERNAL_LIBRARIES} )
