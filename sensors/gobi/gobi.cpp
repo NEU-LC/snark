@@ -33,7 +33,7 @@
 #include <boost/thread.hpp>
 #include <comma/base/exception.h>
 #include <fstream>
-#include "./gobi.h"
+#include "gobi.h"
 
 namespace snark{ namespace camera{
 

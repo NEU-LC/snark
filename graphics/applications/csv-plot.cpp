@@ -36,9 +36,9 @@
 #include <comma/csv/options.h>
 #include <comma/csv/traits.h>
 #include <comma/name_value/parser.h>
-#include "./csv_plot/curve_stream.h"
-#include "./csv_plot/plot.h"
-#include "./csv_plot/traits.h"
+#include "csv_plot/curve_stream.h"
+#include "csv_plot/plot.h"
+#include "csv_plot/traits.h"
 
 #include <QApplication>
 

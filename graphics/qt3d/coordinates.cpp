@@ -30,7 +30,7 @@
 
 /// @author Cedric Wohlleber
 
-#include "./coordinates.h"
+#include "coordinates.h"
 
 namespace snark { namespace graphics { namespace qt3d {
 

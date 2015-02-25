@@ -3,7 +3,7 @@
 
 #include <iostream>
 #include <boost/concept_check.hpp>
-#include "./placemark.h"
+#include "placemark.h"
 
 namespace snark { namespace render { namespace kml {
 

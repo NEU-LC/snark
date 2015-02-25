@@ -27,46 +27,48 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/// @author Vsevolod Vlaskine
+#ifndef SNARK_GEODESY_GRS67_H_
+#define SNARK_GEODESY_GRS67_H_
 
-#include <qwt/qwt_plot.h>
-#include <comma/base/exception.h>
-#include "curve_stream.h"
+#include "../../math/spherical_geometry/ellipsoid.h"
 
-#include <iostream>
-
-namespace snark { namespace graphics { namespace plotting {
-
-static QwtPlotCurve::CurveStyle style_from_string( const std::string& s )
+namespace snark
 {
-    if( s.empty() ) { return QwtPlotCurve::Lines; }
-    if( s == "no-curve" ) { return QwtPlotCurve::NoCurve; }
-    if( s == "lines" ) { return QwtPlotCurve::Lines; }
-    if( s == "sticks" ) { return QwtPlotCurve::Sticks; }
-    if( s == "steps" ) { return QwtPlotCurve::Steps; }
-    if( s == "dots" || s == "points" ) { return QwtPlotCurve::Dots; }
-    COMMA_THROW( comma::exception, "expected style, got \"" << s << "\"" );
-}
-    
-curve_stream::curve_stream( const stream::config_t& config )
-    : stream( config )
-    , curve_( new QwtPlotCurve( &config.csv.filename[0] ) )
-    , attached_( false )
+namespace geodesy
 {
-    curve_->setPen( QPen( config.color, config.weight ) );
-    curve_->setStyle( style_from_string( config.style ) );
-}
+namespace grs67
+{
 
-void curve_stream::attach( QwtPlot* p )
+static const double eccentricity = 1.0 / 298.247167427;
+static const double major_semiaxis = 6378160.0;
+static const double minor_semiaxis = 6356774.516;
+static const double radius = major_semiaxis;
+static const std::string name( "grs67" );
+
+/*
+ cached from http://en.wikipedia.org/wiki/Earth_ellipsoid#Historical_Earth_ellipsoids
+ At the 1967 meeting of the IUGG held in Lucerne, Switzerland, the ellipsoid called GRS-67 (Geodetic Reference System 1967) in the listing was recommended for adoption.
+ The new ellipsoid was not recommended to replace the International Ellipsoid (1924), but was advocated for use where a greater degree of accuracy is required.
+ It became a part of the GRS-67 which was approved and adopted at the 1971 meeting of the IUGG held in Moscow. It is used in Australia for the Australian Geodetic Datum and in South America for the South American Datum 1969.
+*/
+
+void inline help()
 {
-    if( attached_ ) { COMMA_THROW( comma::exception, "already attached" ); }
-    curve_->attach( p );
-    attached_ = true;
+    std::cerr << "        GRS67: Geodesic Reference System 1967 (6,378,160; 6,356,774.516); 298.247167427" << std::endl;
 }
 
-void curve_stream::update_plot_data()
+void inline info()
 {
-    curve_->setSamples( &buffers_.x.values()[0], &buffers_.y.values()[0], buffers_.x.size() );
+    std::cout << "GRS67,Geodesic Reference System 1967," << major_semiaxis << "," << minor_semiaxis << "," << eccentricity << std::endl;
 }
 
-} } } // namespace snark { namespace graphics { namespace plotting {
+struct geoid : public spherical::ellipsoid
+{
+    geoid() : ellipsoid( major_semiaxis, minor_semiaxis ) {}
+};
+
+}
+}
+} // namespace snark { namespace geodesy { namespace agd84 {
+
+#endif // SNARK_GEODESY_GRS67_H_

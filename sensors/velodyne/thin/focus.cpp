@@ -32,7 +32,7 @@
 #include <cmath>
 #include <comma/base/exception.h>
 #include <comma/math/compare.h>
-#include "./focus.h"
+#include "focus.h"
 
 namespace snark {  namespace velodyne { namespace thin {
 

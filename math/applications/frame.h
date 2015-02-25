@@ -45,7 +45,7 @@
 #include <comma/io/stream.h>
 #include <snark/math/rotation_matrix.h>
 #include <snark/visiting/eigen.h>
-#include "./timestamped.h"
+#include "timestamped.h"
 
 namespace snark{ namespace applications {
 

@@ -42,9 +42,9 @@
 #include <QDialog>
 #include <QLabel>
 #include <comma/base/types.h>
-#include "./Actions.h"
-#include "./MainWindow.h"
-#include "./Viewer.h"
+#include "Actions.h"
+#include "MainWindow.h"
+#include "Viewer.h"
 
 namespace snark { namespace graphics { namespace View {
 

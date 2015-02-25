@@ -32,7 +32,7 @@
 
 #include <comma/visiting/traits.h>
 #include <snark/math/angle.h>
-#include "./coordinates.h"
+#include "coordinates.h"
 #include "ellipsoid.h"
 
 namespace comma { namespace visiting {
@@ -75,6 +75,43 @@ template <> struct traits< snark::spherical::ellipsoid::arc >
         v.apply( "end", t.end );
     }
 };
+
+template <> struct traits< snark::spherical::ellipsoid::circle::arc > // quick and dirty?
+{
+    template< typename K, typename V > static void visit( const K&, snark::spherical::ellipsoid::circle::arc& t, V& v )
+    {
+        v.apply( "circle", t.circle );
+        double d = snark::math::degrees( snark::math::radians( t.begin ) ).value;
+        v.apply( "begin", d );
+        t.begin = snark::math::radians( snark::math::degrees( d ) ).value;
+        d = snark::math::degrees( snark::math::radians( t.end ) ).value;
+        v.apply( "end", d );
+        t.end = snark::math::radians( snark::math::degrees( d ) ).value;
+    }
+
+    template< typename K, typename V > static void visit( const K&, const snark::spherical::ellipsoid::circle::arc& t, V& v )
+    {
+        v.apply( "circle", t.circle );
+        v.apply( "begin", snark::math::degrees( snark::math::radians( t.begin ) ).value );
+        v.apply( "end", snark::math::degrees( snark::math::radians( t.end ) ).value );
+    }
+};
+
+template <> struct traits< snark::spherical::ellipsoid::circle >
+{
+    template< typename K, typename V > static void visit( const K&, snark::spherical::ellipsoid::circle& t, V& v )
+    {
+        v.apply( "centre", t.centre );
+        v.apply( "radius", t.radius );
+    }
+
+    template< typename K, typename V > static void visit( const K&, const snark::spherical::ellipsoid::circle& t, V& v )
+    {
+        v.apply( "centre", t.centre );
+        v.apply( "radius", t.radius );
+    }
+};
+
 
 } } // namespace comma { namespace visiting {
 

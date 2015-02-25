@@ -30,6 +30,6 @@
 /// @author andrew hill
 /// @author vsevolod vlaskine (v.vlaskine@acfr.usyd.edu.au)
 
-#include "./commands.h"
+#include "commands.h"
 
 // todo: any executable code goes here

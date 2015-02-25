@@ -30,7 +30,7 @@
 
 #include <cmath>
 #include <Eigen/Eigen>
-#include "./covariance.h"
+#include "covariance.h"
 
 namespace snark{ 
 

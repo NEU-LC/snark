@@ -30,7 +30,7 @@
 /// @author Vsevolod Vlaskine
 
 #include <QTimer>
-#include "./plot.h"
+#include "plot.h"
 
 namespace snark { namespace graphics { namespace plotting {
 

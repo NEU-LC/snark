@@ -1,7 +1,7 @@
 #include <comma/name_value/to_xml.h>
 #include <comma/visiting/apply.h>
-#include "./document.h"
-#include "./traits.h"
+#include "document.h"
+#include "traits.h"
 
 namespace snark { namespace render { namespace kml {
 

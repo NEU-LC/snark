@@ -31,7 +31,7 @@
 #include <comma/base/exception.h>
 #include <comma/math/compare.h>
 #include "../angle.h"
-#include "./ellipsoid.h"
+#include "ellipsoid.h"
 
 namespace snark { namespace spherical {
 
@@ -223,4 +223,36 @@ coordinates ellipsoid::at( const coordinates& p, double distance, double bearing
     return coordinates( lat2, lon2 );
 }
 
+std::vector< coordinates > ellipsoid::circle::discretize( ellipsoid &ellipsoid, const boost::optional< double > &resolution, const boost::optional< unsigned int > &circle_size ) const
+{
+    return arc( *this, 0, 2 * M_PI ).discretize( ellipsoid, resolution, circle_size );
+}
+
+std::vector< coordinates > ellipsoid::circle::arc::discretize( ellipsoid &ellipsoid, const boost::optional< double > &resolution, const boost::optional< unsigned int > &circle_size ) const
+{
+    boost::optional< long double > r;
+    if ( resolution ) { r = *resolution; }
+    boost::optional< long double > s;
+    long double planar_radius = circle.radius / ellipsoid.major_semiaxis;
+    if ( circle_size ) { s = M_PI * 2 * planar_radius / *circle_size; }
+    if ( ( !r && s ) || ( s && *r > *s ) ) { r = s; }
+    if ( !r ) { COMMA_THROW( comma::exception, "expected either resolution or circle size, got none" ); }
+    if ( *r >= M_PI || *r < 0 ) { COMMA_THROW( comma::exception, "expected positive resolution less than 180 degrees; got " << ( *r * 180 / M_PI ) ); }
+    long double step = *r / planar_radius;
+    unsigned int size = M_PI * 2 / step;
+    std::vector< coordinates > v;
+    v.reserve( size + 1 );
+    long double diff = std::abs( end - begin );
+    long double sign = begin > end ? -1 : 1;
+
+    for ( long double a( 0 ), b( begin ); a < diff;  b += ( step * sign ), a += step )
+    {
+        v.push_back( ellipsoid.at( circle.centre, circle.radius, bearing( b ) ) );
+    }
+    const coordinates &end_coordinates = ellipsoid.at( circle.centre, circle.radius, bearing( end ) );
+    if ( v.back() != end_coordinates ) { v.push_back( end_coordinates ); }
+    return v;
+}
+
 } } // namespace snark { namespace spherical {
+

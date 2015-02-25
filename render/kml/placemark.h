@@ -3,8 +3,8 @@
 
 #include <string>
 #include <boost/optional.hpp>
-#include "./line_string.h"
-#include "./point.h"
+#include "line_string.h"
+#include "point.h"
 
 namespace snark { namespace render { namespace kml {
 

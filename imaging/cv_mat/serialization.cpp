@@ -32,7 +32,7 @@
 #include <comma/base/exception.h>
 #include <comma/csv/binary.h>
 #include <comma/string/string.h>
-#include "./serialization.h"
+#include "serialization.h"
 
 namespace snark{ namespace cv_mat {
 

@@ -1,7 +1,7 @@
 #include <cmath>
 #include <comma/base/exception.h>
 #include <comma/math/compare.h>
-#include "./spherical_grid.h"
+#include "spherical_grid.h"
 
 #include <iostream>
 

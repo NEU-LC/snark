@@ -33,7 +33,7 @@
 #define SNARK_GRAPHICS_APPLICATIONS_CSV_PLOT_CURVE_STREAM_H_
 
 #include <qwt/qwt_plot_curve.h>
-#include "./stream.h"
+#include "stream.h"
 
 class QwtPlot;
 

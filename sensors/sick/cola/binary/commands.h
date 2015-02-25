@@ -33,7 +33,7 @@
 #ifndef SNARK_SENSORS_SICK_COLA_BINARY_COMMANDS_H_
 #define SNARK_SENSORS_SICK_COLA_BINARY_COMMANDS_H_
 
-#include "./packet.h"
+#include "packet.h"
 
 namespace snark { namespace sick { namespace cola { namespace binary {
 

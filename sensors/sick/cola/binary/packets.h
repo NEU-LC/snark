@@ -33,7 +33,7 @@
 #ifndef SNARK_SENSORS_SICK_COLA_BINARY_PACKETS_H_
 #define SNARK_SENSORS_SICK_COLA_BINARY_PACKETS_H_
 
-#include "./commands.h"
-#include "./scan_packet.h"
+#include "commands.h"
+#include "scan_packet.h"
 
 #endif // #ifndef SNARK_SENSORS_SICK_COLA_BINARY_PACKETS_H_

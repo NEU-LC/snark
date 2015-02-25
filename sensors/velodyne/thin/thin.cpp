@@ -35,7 +35,7 @@
 #include <comma/base/exception.h>
 #include <snark/sensors/velodyne/packet.h>
 #include <snark/sensors/velodyne/scan_tick.h>
-#include "./thin.h"
+#include "thin.h"
 
 namespace snark {  namespace velodyne { namespace thin {
 

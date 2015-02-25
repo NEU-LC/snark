@@ -34,7 +34,7 @@
 #include <boost/filesystem/operations.hpp>
 #include <boost/lexical_cast.hpp>
 #include <comma/math/compare.h>
-#include "./Viewer.h"
+#include "Viewer.h"
 
 namespace snark { namespace graphics { namespace View {
 

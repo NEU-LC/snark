@@ -44,7 +44,7 @@
 #include <comma/base/types.h>
 #include <comma/csv/stream.h>
 #include <comma/io/select.h>
-#include "./CameraReader.h"
+#include "CameraReader.h"
 
 namespace snark { namespace graphics { namespace View {
 

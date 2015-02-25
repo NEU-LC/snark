@@ -37,9 +37,9 @@
 #include <QMenu>
 #include <QCheckBox>
 #include <comma/base/types.h>
-#include "./Actions.h"
-#include "./IdEdit.h"
-#include "./Viewer.h"
+#include "Actions.h"
+#include "IdEdit.h"
+#include "Viewer.h"
 
 namespace snark { namespace graphics { namespace View {
 

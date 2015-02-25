@@ -30,7 +30,7 @@
 
 /// @author Cedric Wohlleber
 
-#include "./vertex_buffer.h"
+#include "vertex_buffer.h"
 
 namespace snark { namespace graphics { namespace qt3d {
 

@@ -47,8 +47,8 @@
 #include <comma/io/stream.h>
 #include <comma/sync/synchronized.h>
 #include <snark/math/interval.h>
-#include "./Coloured.h"
-#include "./PointWithId.h"
+#include "Coloured.h"
+#include "PointWithId.h"
 #include <snark/graphics/qt3d/vertex_buffer.h>
 #include <Qt3D/qglview.h>
 

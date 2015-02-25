@@ -40,17 +40,36 @@ static void usage( bool more = false )
     std::cerr << std::endl;
     std::cerr << "usage examples" << std::endl;
     std::cerr << "    cat arcs.csv | ellipsoid-calc distance [<options>] > results.csv" << std::endl;
-    std::cerr << "    echo 0,0,45,90 | ellipsoid-calc distance --major=6378137 --minor=6356752.314245" << std::endl;
-    std::cerr << "    echo 0,0,45,90 | ellipsoid-calc distance --major=6378137 --minor=6356752.314245" << std::endl;
-    std::cerr << "    echo 0,0,45,90 | ellipsoid-calc distance --major=1.00336409 --minor=1" << std::endl;
+    std::cerr << "    cat circular-arcs.csv | ellipsoid-calc discretize arc [<options>] > results.csv" << std::endl;
+    std::cerr << "    cat circle.csv | ellipsoid-calc discretize circle [<options>] > results.csv" << std::endl;
     std::cerr << std::endl;
     std::cerr << "operations" << std::endl;
     std::cerr << "    distance   : output length of ellipsoid arc" << std::endl;
+    std::cerr << "    discretize : output a discretized shape (e.g. circle) with a given resolution" << std::endl;
     std::cerr << std::endl;
     std::cerr << "operations: details" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    distance: ellipsoid arc distance; if --binary, output as double" << std::endl;
     std::cerr << "        input fields: " << comma::join( comma::csv::names< snark::spherical::ellipsoid::arc >( true ), ',' ) << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    discretize shape: output a discretized shape with a given resolution" << std::endl;
+    std::cerr << "                multiple output lines per input line" << std::endl;
+    std::cerr << "                the result will be appended to the line (see example)" << std::endl;
+    std::cerr << "          shape: circle, arc" << std::endl;
+    std::cerr << "          input fields" << std::endl;
+    std::cerr << "              circle: centre,radius" << std::endl;
+    std::cerr << "                  centre: latitude,longitude in degrees" << std::endl;
+    std::cerr << "                  radius: metric distance from centre" << std::endl;
+    std::cerr << "              arc: circle/centre,circle/radius,begin,end" << std::endl;
+    std::cerr << "                  circle/centre: latitude,longitude in degrees" << std::endl;
+    std::cerr << "                  circle/radius: metric distance from centre" << std::endl;
+    std::cerr << "                  begin: begin bearing, degrees" << std::endl;
+    std::cerr << "                  end: end bearing, degrees" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "        options" << std::endl;
+    std::cerr << "            --resolution=<degrees>" << std::endl;
+    std::cerr << "            --circle-size,--size=<number>: number of points in the discretized circle (circle or arc only)" << std::endl;
+    std::cerr << "                                           if both --resolution and --cricle-size present, whatever gives finer resolution will be choosen" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    --help,-h: show help; --help --verbose for more help" << std::endl;
@@ -60,7 +79,46 @@ static void usage( bool more = false )
     if ( more )
         std::cerr << std::endl << "csv options" << std::endl << comma::csv::options::usage() << std::endl;
     std::cerr << std::endl;
+    std::cerr << "examples" << std::endl;
+    std::cerr << "    echo 0,0,45,90 | ellipsoid-calc distance --major=6378137 --minor=6356752.314245" << std::endl;
+    std::cerr << "    echo 0,0,45,90 | ellipsoid-calc distance --major=6378137 --minor=6356752.314245" << std::endl;
+    std::cerr << "    echo 0,0,45,90 | ellipsoid-calc distance --major=1.00336409 --minor=1" << std::endl;
+    std::cerr << "    cat circular-arcs.csv | ellipsoid-calc discretize arc --fields=circle/centre/latitude,circle/centre/longitude,circle/radius,begin,end --circle-size=32 > results.csv" << std::endl;
+    std::cerr << "    cat circle.csv | ellipsoid-calc discretize circle --fields=centre,radius --resolution=0.1 | column -ts," << std::endl;
+    std::cerr << std::endl;
     exit( 1 );
+}
+
+
+template < typename S >
+int discretize( const comma::csv::options& csv, snark::spherical::ellipsoid& ellipsoid, const boost::optional< double >& resolution, const boost::optional< unsigned int >& circle_size )
+{
+    comma::csv::input_stream< S > istream( std::cin, csv );
+    comma::csv::ascii< snark::spherical::coordinates > ascii;
+    comma::csv::binary< snark::spherical::coordinates > binary;
+    while( istream.ready() || std::cin.good() )
+    {
+        const S* a = istream.read();
+        if( !a ) { break; }
+        const std::vector< snark::spherical::coordinates >& v = a->discretize(ellipsoid, resolution, circle_size);
+        for( unsigned int i = 0; i < v.size(); ++i )
+        {
+            if( csv.binary() )
+            {
+                std::cout.write( istream.binary().last(), istream.binary().binary().format().size() );
+                std::vector< char > buf( binary.format().size() );
+                binary.put( v[i], &buf[0] );
+                std::cout.write( reinterpret_cast< const char* >( &buf[i] ), buf.size() );
+            }
+            else
+            {
+                std::cout << comma::join( istream.ascii().last(), csv.delimiter );
+                std::cout << csv.delimiter << ascii.put( v[i] );
+                std::cout << std::endl;
+            }
+        }
+    }
+    return 0;
 }
 
 int main( int ac, char **av )
@@ -83,10 +141,14 @@ int main( int ac, char **av )
         }
         double major_semiaxis = options.value( "--major", 1.0 );
         double minor_semiaxis = options.value( "--minor", 1.0 );
-        const std::string &operation = operations[0];
-        if ( operation == "distance" )
+        snark::spherical::ellipsoid ellipsoid( major_semiaxis, minor_semiaxis );
+        if ( operations.size() < 1 )
         {
-            snark::spherical::ellipsoid ellipsoid( major_semiaxis, minor_semiaxis );
+            std::cerr << "ellipsoid-calc: expected one operation, got " << operations.size() << std::endl;
+            return 1;
+        }
+        if ( operations[0] == "distance" )
+        {
             comma::csv::input_stream< snark::spherical::ellipsoid::arc > istream( std::cin, csv );
             while ( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
             {
@@ -104,7 +166,29 @@ int main( int ac, char **av )
             }
             return 0;
         }
-        std::cerr << "ellipsoid-calc: unknown operation: \"" << operation << "\"" << std::endl;
+        else if( operations[0] == "discretize" )
+        {
+            //whole circle or circular arc
+            boost::optional< double > resolution = options.optional< double >( "--resolution" );
+            if( resolution ) { resolution = *resolution * M_PI / 180; }
+            boost::optional< unsigned int > circle_size = options.optional< unsigned int >( "--circle-size,--size" );
+            if(operations.size()==2)
+            {
+                if ( operations[1] == "circle")
+                {
+                    return discretize< snark::spherical::ellipsoid::circle >( csv, ellipsoid, resolution, circle_size );
+                }
+                else if(operations[1] == "arc")
+                {
+                    return discretize<snark::spherical::ellipsoid::circle::arc>(csv, ellipsoid, resolution, circle_size );
+                }
+                std::cerr << "ellipsoid-calc: unknown shape for discretize: \"" << operations[1] << "\"" << std::endl;
+            }
+            else
+                std::cerr << "ellipsoid-calc: expected shape for operation discretize" << std::endl;
+            return 1;
+        }
+        std::cerr << "ellipsoid-calc: unknown operation: \"" << operations[0] << "\"" << std::endl;
         return 1;
     }
     catch ( std::exception &ex )
