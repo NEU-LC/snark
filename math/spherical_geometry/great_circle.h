@@ -19,63 +19,21 @@ struct great_circle
     {
         public:
 
-            arc()
-                : begin_coordinates_( 0, 0 )
-                , end_coordinates_( 0, 0 )
-                , begin_( 1, 0, 0 )
-                , end_( 1, 0, 0 )
-                , angle_axis_( 0, Eigen::Vector3d( 0, 1, 0 ) ) // quick and dirty
-            { }
+            arc();
 
 //             // back and forth conversions increases floating point error and unit test failure
 // //             arc( const coordinates& begin, const coordinates& end ) : arc( begin.to_cartesian(), end.to_cartesian() ) {}
 // //             arc( const  Eigen::Vector3d& begin, const coordinates& end ) : arc( begin, end.to_cartesian() ) {}
 // //             arc( const coordinates& begin, const Eigen::Vector3d& end ) : arc( begin.to_cartesian(), end ) {}
 //
-            arc( const Eigen::Vector3d& begin, const Eigen::Vector3d& end )
-                : begin_coordinates_( begin )
-                , end_coordinates_( end )
-                , begin_( begin )
-                , end_( end )
-                , angle_axis_( Eigen::Quaternion< double >::FromTwoVectors( begin_, end_ ) )
-            {
-                if( comma::math::less( M_PI, angle() ) ) { COMMA_THROW( comma::exception, "only arcs less than pi supported; got " << angle() << " radian for begin: " << std::string(begin_coordinates_) << " end: " << std::string(end_coordinates_)); }
-                //if( equal_(begin_, end_) ) { COMMA_THROW( comma::exception, "zero length great_circle::arc is not permitted: got  begin: " << std::string(begin_coordinates_) << " end: " << std::string(end_coordinates_)); }
-            }
+            arc( const Eigen::Vector3d& begin, const Eigen::Vector3d& end );
 
             // conversion to/from cartesian is expensive all permutations should be implemented
-            arc( const coordinates& begin, const coordinates& end )
-                : begin_coordinates_( begin )
-                , end_coordinates_( end )
-                , begin_( begin )
-                , end_( end )
-                , angle_axis_( Eigen::Quaternion< double >::FromTwoVectors( begin_, end_ ) )
-            {
-                if( comma::math::less( M_PI, angle() ) ) { COMMA_THROW( comma::exception, "only arcs less than pi supported; got " << angle() << " radian for begin: " << std::string(begin_coordinates_) << " end: " << std::string(end_coordinates_)); }
-                //if( equal_(begin_, end_) ) { COMMA_THROW( comma::exception, "zero length great_circle::arc is not permitted: got  begin: " << std::string(begin_coordinates_) << " end: " << std::string(end_coordinates_)); }
-            }
+            arc( const coordinates& begin, const coordinates& end );
 
-            arc( const Eigen::Vector3d& begin, const coordinates& end )
-                : begin_coordinates_( begin )
-                , end_coordinates_( end )
-                , begin_( begin )
-                , end_( end )
-                , angle_axis_( Eigen::Quaternion< double >::FromTwoVectors( begin_, end_ ) )
-            {
-                if( comma::math::less( M_PI, angle() ) ) { COMMA_THROW( comma::exception, "only arcs less than pi supported; got " << angle() << " radian for begin: " << std::string(begin_coordinates_) << " end: " << std::string(end_coordinates_)); }
-                //if( equal_(begin_, end_) ) { COMMA_THROW( comma::exception, "zero length great_circle::arc is not permitted: got  begin: " << std::string(begin_coordinates_) << " end: " << std::string(end_coordinates_)); }
-            }
+            arc( const Eigen::Vector3d& begin, const coordinates& end );
 
-            arc( const coordinates& begin, const Eigen::Vector3d& end )
-                : begin_coordinates_( begin )
-                , end_coordinates_( end )
-                , begin_( begin )
-                , end_( end )
-                , angle_axis_( Eigen::Quaternion< double >::FromTwoVectors( begin_, end_ ) )
-            {
-                if( comma::math::less( M_PI, angle() ) ) { COMMA_THROW( comma::exception, "only arcs less than pi supported; got " << angle() << " radian for begin: " << std::string(begin_coordinates_) << " end: " << std::string(end_coordinates_)); }
-                //if( equal_(begin_, end_) ) { COMMA_THROW( comma::exception, "zero length great_circle::arc is not permitted: got  begin: " << std::string(begin_coordinates_) << " end: " << std::string(end_coordinates_)); }
-            }
+            arc( const coordinates& begin, const Eigen::Vector3d& end );
 
             /// @param angle angular offset from begin in radians along the arc towards its end
             /// @return vector at that point
