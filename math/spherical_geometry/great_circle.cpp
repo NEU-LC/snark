@@ -20,18 +20,71 @@ static bool is_between_( const great_circle::arc& a, const Eigen::Vector3d& p ) 
 
 //qnd
 template< typename T >
-inline bool is_between( const T &t, const T &d1, const T &d2 ) 
+static inline bool is_between( const T &t, const T &d1, const T &d2 ) 
 {
     return d1 < d2 ? ( t >= d1 && t <= d2 ) : ( t <= d1 && t >= d2 );
 }
 
 template< typename T >
-inline bool has_overlap( const T &t1, const T &t2, const T &d1, const T &d2 ) 
+static inline bool has_overlap( const T &t1, const T &t2, const T &d1, const T &d2 ) 
 {
     return is_between( t1, d1, d2 )
         || is_between( t2, d1, d2 )
         || is_between( d1, t1, t2 )
         || is_between( d2, t1, t2 );
+}
+
+great_circle::arc::arc()
+    : begin_coordinates_( 0, 0 )
+    , end_coordinates_( 0, 0 )
+    , begin_( 1, 0, 0 )
+    , end_( 1, 0, 0 )
+    , angle_axis_( 0, Eigen::Vector3d( 0, 1, 0 ) ) // quick and dirty
+{ }
+
+great_circle::arc::arc( const Eigen::Vector3d& begin, const Eigen::Vector3d& end )
+    : begin_coordinates_( begin )
+    , end_coordinates_( end )
+    , begin_( begin )
+    , end_( end )
+    , angle_axis_( Eigen::Quaternion< double >::FromTwoVectors( begin_, end_ ) )
+{
+    if( comma::math::less( M_PI, angle() ) ) { COMMA_THROW( comma::exception, "only arcs less than pi supported; got " << angle() << " radian for begin: " << std::string(begin_coordinates_) << " end: " << std::string(end_coordinates_)); }
+    //if( equal_(begin_, end_) ) { COMMA_THROW( comma::exception, "zero length great_circle::arc is not permitted: got  begin: " << std::string(begin_coordinates_) << " end: " << std::string(end_coordinates_)); }
+}
+
+// conversion to/from cartesian is expensive all permutations should be implemented
+great_circle::arc::arc( const coordinates& begin, const coordinates& end )
+    : begin_coordinates_( begin )
+    , end_coordinates_( end )
+    , begin_( begin )
+    , end_( end )
+    , angle_axis_( Eigen::Quaternion< double >::FromTwoVectors( begin_, end_ ) )
+{
+    if( comma::math::less( M_PI, angle() ) ) { COMMA_THROW( comma::exception, "only arcs less than pi supported; got " << angle() << " radian for begin: " << std::string(begin_coordinates_) << " end: " << std::string(end_coordinates_)); }
+    //if( equal_(begin_, end_) ) { COMMA_THROW( comma::exception, "zero length great_circle::arc is not permitted: got  begin: " << std::string(begin_coordinates_) << " end: " << std::string(end_coordinates_)); }
+}
+
+great_circle::arc::arc( const Eigen::Vector3d& begin, const coordinates& end )
+    : begin_coordinates_( begin )
+    , end_coordinates_( end )
+    , begin_( begin )
+    , end_( end )
+    , angle_axis_( Eigen::Quaternion< double >::FromTwoVectors( begin_, end_ ) )
+{
+    if( comma::math::less( M_PI, angle() ) ) { COMMA_THROW( comma::exception, "only arcs less than pi supported; got " << angle() << " radian for begin: " << std::string(begin_coordinates_) << " end: " << std::string(end_coordinates_)); }
+    //if( equal_(begin_, end_) ) { COMMA_THROW( comma::exception, "zero length great_circle::arc is not permitted: got  begin: " << std::string(begin_coordinates_) << " end: " << std::string(end_coordinates_)); }
+}
+
+great_circle::arc::arc( const coordinates& begin, const Eigen::Vector3d& end )
+    : begin_coordinates_( begin )
+    , end_coordinates_( end )
+    , begin_( begin )
+    , end_( end )
+    , angle_axis_( Eigen::Quaternion< double >::FromTwoVectors( begin_, end_ ) )
+{
+    if( comma::math::less( M_PI, angle() ) ) { COMMA_THROW( comma::exception, "only arcs less than pi supported; got " << angle() << " radian for begin: " << std::string(begin_coordinates_) << " end: " << std::string(end_coordinates_)); }
+    //if( equal_(begin_, end_) ) { COMMA_THROW( comma::exception, "zero length great_circle::arc is not permitted: got  begin: " << std::string(begin_coordinates_) << " end: " << std::string(end_coordinates_)); }
 }
 
 
