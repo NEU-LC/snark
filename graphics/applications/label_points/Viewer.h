@@ -48,9 +48,6 @@
 #include <comma/string/string.h>
 #include <comma/csv/stream.h>
 #include "../label_points/PointWithId.h"
-//#include <comma/base/types.h>
-//#include <comma/visiting/traits.h>
-//#include <snark/math/traits.h>
 
 #include <snark/graphics/qt3d/view.h>
 
