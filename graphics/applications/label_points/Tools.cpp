@@ -97,9 +97,10 @@ void PickId::onMousePress( QMouseEvent* e )
 {
     if( e->button() == Qt::LeftButton )
     {
-        boost::optional< std::pair< Eigen::Vector3d, comma::uint32 > > picked = m_viewer.pointSelection( e->pos() );
+        boost::optional< point_and_id > picked = m_viewer.pointSelection( e->pos() );
         if( picked )
         {
+            m_viewer.m_output_stream.write( PointWithId( *picked ) );
             m_viewer.m_id = picked->second;
             emit valueChanged( picked->second );
         }
@@ -130,7 +131,7 @@ void SelectPartition::onMousePress( QMouseEvent* e )
     {
         for( std::size_t i = 0; i < m_viewer.datasets().size(); ++i ) { m_viewer.dataset( i ).selection().clear(); }
     }
-    boost::optional< std::pair< Eigen::Vector3d, comma::uint32 > > picked = m_viewer.pointSelection( e->pos() );
+    boost::optional< point_and_id > picked = m_viewer.pointSelection( e->pos() );
     if( picked )
     {
         for( std::size_t i = 0; i < m_viewer.datasets().size(); ++i )
@@ -172,7 +173,7 @@ void SelectId::onMousePress( QMouseEvent* e )
     {
         for( std::size_t i = 0; i < m_viewer.datasets().size(); ++i ) { m_viewer.dataset( i ).selection().clear(); }
     }
-    boost::optional< std::pair< Eigen::Vector3d, comma::uint32 > > picked = m_viewer.pointSelection( e->pos() );
+    boost::optional< point_and_id > picked = m_viewer.pointSelection( e->pos() );
     if( picked )
     {
         for( std::size_t i = 0; i < m_viewer.datasets().size(); ++i )
@@ -209,7 +210,7 @@ void Fill::onMousePress( QMouseEvent* e )
     for( std::size_t i = 0; i < m_viewer.datasets().size() && selectionEmpty; ++i ) { selectionEmpty = m_viewer.dataset( i ).selection().points().empty(); }
     if( selectionEmpty )
     {
-        boost::optional< std::pair< Eigen::Vector3d, comma::uint32 > > picked = m_viewer.pointSelection( e->pos(), true );
+        boost::optional< point_and_id > picked = m_viewer.pointSelection( e->pos(), true );
         if( !picked ) { return; }
         std::cerr << " picked " << picked->first << std::endl;
         for( std::size_t i = 0; i < m_viewer.datasets().size(); ++i )
@@ -244,7 +245,7 @@ SelectClip::SelectClip( Viewer& viewer ) : Tool( viewer, new QCursor )
 void SelectClip::onMousePress( QMouseEvent* e )
 {
     if( e->button() != Qt::LeftButton ) { return; }
-    boost::optional< std::pair< Eigen::Vector3d, comma::uint32 > > picked = m_viewer.pointSelection( e->pos() );
+    boost::optional< point_and_id > picked = m_viewer.pointSelection( e->pos() );
     if( !picked ) { return; }
     m_rectangle = QRect( e->pos(), e->pos() );
     m_center = picked->first;

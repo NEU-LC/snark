@@ -41,6 +41,8 @@ struct PointWithId // quick and dirty
 {
     Eigen::Vector3d point;
     comma::uint32 id;
+    PointWithId() {}
+    PointWithId( std::pair< Eigen::Vector3d, comma::uint32 > p ) { point = p.first, id = p.second; }
 };
 
 } } } // namespace snark { namespace graphics { namespace View {

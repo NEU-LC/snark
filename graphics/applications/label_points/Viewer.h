@@ -46,6 +46,11 @@
 #include <boost/scoped_ptr.hpp>
 #include <boost/optional.hpp>
 #include <comma/string/string.h>
+#include <comma/csv/stream.h>
+#include "../label_points/PointWithId.h"
+#include <comma/base/types.h>
+#include <comma/visiting/traits.h>
+#include <snark/math/traits.h>
 
 #include <snark/graphics/qt3d/view.h>
 
@@ -56,6 +61,8 @@
 namespace snark { namespace graphics { namespace View {
 
 static const long double pi_ = 3.14159265358979323846l;
+
+typedef std::pair< Eigen::Vector3d, comma::uint32 > point_and_id;
 
 class Viewer : public qt3d::view
 {
@@ -70,6 +77,7 @@ class Viewer : public qt3d::view
         Tools::Fill fill;
 
         Viewer( const std::vector< comma::csv::options >& options
+              , comma::csv::output_stream< PointWithId >& output_stream
               , bool labelDuplicated
               , const QColor4ub& background_color
               , bool orthographic = false
@@ -98,7 +106,7 @@ class Viewer : public qt3d::view
         void mousePressEvent( QMouseEvent* e );
         void mouseReleaseEvent( QMouseEvent* e );
         void mouseMoveEvent( QMouseEvent* e );
-        boost::optional< std::pair< Eigen::Vector3d, comma::uint32 > > pointSelection( const QPoint& point, bool writableOnly = false );
+        boost::optional< point_and_id > pointSelection( const QPoint& point, bool writableOnly = false );
 
     private:
         friend class Tools::Tool; // quick and dirty
@@ -114,6 +122,7 @@ class Viewer : public qt3d::view
         boost::optional< comma::uint32 > m_id;
         const QColor4ub m_background_color;
         std::vector< comma::csv::options > m_options;
+        comma::csv::output_stream< PointWithId >& m_output_stream;
         bool m_labelDuplicated;
         bool m_orthographic;
         double m_fieldOfView;

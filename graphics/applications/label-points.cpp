@@ -41,6 +41,12 @@
 #include <comma/csv/traits.h>
 #include <comma/name_value/parser.h>
 #include <comma/string/string.h>
+#include <comma/csv/format.h>
+#include <comma/csv/stream.h>
+#include <comma/base/types.h>
+#include <comma/visiting/traits.h>
+#include <snark/math/traits.h>
+#include <Eigen/Core>
 #include "snark/graphics/applications/label_points/MainWindow.h"
 
 void usage( bool verbose )
@@ -60,6 +66,8 @@ void usage( bool verbose )
     std::cerr << "               currently only re-label duplicated points" << std::endl;
     std::cerr << "    --verbose,-v : more info, e.g. show x,y,z,id of selected points" << std::endl;
     std::cerr << "                   warning: can be lots of output on large files" << std::endl;
+    std::cerr << "    --output-fields: output fields for points selected with a pipette tool (default: x,y,z,id)" << std::endl;
+    std::cerr << "    --show-output-format: show binary output format and exit" << std::endl;
     if( verbose )
     {
         std::cerr << "csv options" << std::endl;
@@ -74,6 +82,7 @@ void usage( bool verbose )
     std::cerr << "    label-points scan.csv --fields=,,,x,y,z,,id" << std::endl;
     std::cerr << "    label-points semantic_labels.csv partitions.csv" << std::endl;
     std::cerr << "    label-points 'scan.csv;fields=x,y,z,,id' 'scan.csv;fields=x,y,z,id'" << std::endl;
+    std::cerr << "    label-points scan.csv --output-fields=id,x,y > selected_points.csv" << std::endl;
     std::cerr << std::endl;
     exit( -1 );
 }
@@ -88,8 +97,13 @@ int main( int argc, char** argv )
         comma::csv::options csvOptions( argc, argv );
         QColor4ub backgroundcolour( QColor( QString( options.value< std::string >( "--background-colour", "#000000" ).c_str() ) ) );
         if( csvOptions.fields == "" ) { csvOptions.fields = "x,y,z,id"; }
-        std::vector< std::string > files = options.unnamed( "--repair,--fix-duplicated,--flush,--verbose,-v",
-                                                            "--binary,--bin,-b,--fields,--delimiter,-d,--background-colour,--precision,--orthographic,--fov" );
+        comma::csv::options csv_out( csvOptions );
+        csv_out.fields = options.value< std::string >( "--output-fields", "x,y,z,id" );
+        if( csvOptions.binary() ) { csv_out.format( comma::csv::format::value< snark::graphics::View::PointWithId >( csv_out.fields, csv_out.full_xpath ) ); }
+        if( options.exists( "--show-output-format" ) ) { std::cout << comma::csv::format::value< snark::graphics::View::PointWithId >( csv_out.fields, csv_out.full_xpath ) << std::endl; return 0; }
+        comma::csv::output_stream< snark::graphics::View::PointWithId > output_stream( std::cout, csv_out );
+        std::vector< std::string > files = options.unnamed( "--repair,--fix-duplicated,--flush,--verbose,-v,--show-output-format",
+                                                            "--binary,--bin,-b,--fields,--delimiter,-d,--background-colour,--precision,--output-fields,--orthographic,--fov" );
         if( files.empty() ) { std::cerr << "label-points: please specify input files" << std::endl; return 1; }
         std::vector< comma::csv::options > dataset_csv_options;
         bool fixDuplicated = options.exists( "--fix-duplicated" );
@@ -107,7 +121,7 @@ int main( int argc, char** argv )
             QApplication application( argc, argv );
             bool orthographic = options.exists( "--orthographic" );
             double fieldOfView = options.value< double >( "--fov", 45 );
-            boost::scoped_ptr< snark::graphics::View::Viewer > viewer( new snark::graphics::View::Viewer( dataset_csv_options, fixDuplicated, backgroundcolour, orthographic, fieldOfView, verbose ) );
+            boost::scoped_ptr< snark::graphics::View::Viewer > viewer( new snark::graphics::View::Viewer( dataset_csv_options, output_stream, fixDuplicated, backgroundcolour, orthographic, fieldOfView, verbose ) );
             snark::graphics::View::MainWindow mainWindow( comma::join( argv, argc, ' ' ), viewer.get() );
             mainWindow.show();
             /*return*/ application.exec();

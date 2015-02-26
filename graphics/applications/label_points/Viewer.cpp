@@ -39,6 +39,7 @@
 namespace snark { namespace graphics { namespace View {
 
 Viewer::Viewer( const std::vector< comma::csv::options >& options
+              , comma::csv::output_stream< PointWithId >& output_stream
               , bool labelDuplicated
               , const QColor4ub& background_color
               , bool orthographic
@@ -53,6 +54,7 @@ Viewer::Viewer( const std::vector< comma::csv::options >& options
     , fill( *this )
     , m_currentTool( &navigate )
     , m_options( options )
+    , m_output_stream( output_stream )
     , m_labelDuplicated( labelDuplicated )
     , verbose_( verbose )
 {
@@ -184,9 +186,9 @@ void Viewer::mouseMoveEvent( QMouseEvent *e )
 //     GL::View::mouseMoveEvent( e );
 }
 
-boost::optional< std::pair< Eigen::Vector3d, comma::uint32 > > Viewer::pointSelection( const QPoint& point, bool writableOnly )
+boost::optional< point_and_id > Viewer::pointSelection( const QPoint& point, bool writableOnly )
 {
-    boost::optional< std::pair< Eigen::Vector3d, comma::uint32 > > result;
+    boost::optional< point_and_id > result;
     boost::optional< QVector3D > point3d = getPoint( point );
     if( point3d )
     {
@@ -216,7 +218,7 @@ boost::optional< std::pair< Eigen::Vector3d, comma::uint32 > > Viewer::pointSele
             }
         }
     }
-    return boost::optional< std::pair< Eigen::Vector3d, comma::uint32 > >();
+    return boost::optional< point_and_id >();
 }
 
 void Viewer::handleId( comma::uint32 id ) { m_id = id; }
