@@ -77,7 +77,7 @@ class Viewer : public qt3d::view
         Tools::Fill fill;
 
         Viewer( const std::vector< comma::csv::options >& options
-              , comma::csv::output_stream< PointWithId >& output_stream
+              , const comma::csv::options& csv_out
               , bool labelDuplicated
               , const QColor4ub& background_color
               , bool orthographic = false
@@ -122,7 +122,8 @@ class Viewer : public qt3d::view
         boost::optional< comma::uint32 > m_id;
         const QColor4ub m_background_color;
         std::vector< comma::csv::options > m_options;
-        comma::csv::output_stream< PointWithId >& m_output_stream;
+        bool output_with_id;
+        comma::csv::output_stream< PointWithId > m_output_stream;
         bool m_labelDuplicated;
         bool m_orthographic;
         double m_fieldOfView;

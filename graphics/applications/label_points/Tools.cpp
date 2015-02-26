@@ -100,7 +100,6 @@ void PickId::onMousePress( QMouseEvent* e )
         boost::optional< point_and_id > picked = m_viewer.pointSelection( e->pos() );
         if( picked )
         {
-            m_viewer.m_output_stream.write( PointWithId( *picked ) );
             m_viewer.m_id = picked->second;
             emit valueChanged( picked->second );
         }

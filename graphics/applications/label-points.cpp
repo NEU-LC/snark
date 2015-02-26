@@ -101,7 +101,6 @@ int main( int argc, char** argv )
         csv_out.fields = options.value< std::string >( "--output-fields", "x,y,z,id" );
         if( csvOptions.binary() ) { csv_out.format( comma::csv::format::value< snark::graphics::View::PointWithId >( csv_out.fields, csv_out.full_xpath ) ); }
         if( options.exists( "--show-output-format" ) ) { std::cout << comma::csv::format::value< snark::graphics::View::PointWithId >( csv_out.fields, csv_out.full_xpath ) << std::endl; return 0; }
-        comma::csv::output_stream< snark::graphics::View::PointWithId > output_stream( std::cout, csv_out );
         std::vector< std::string > files = options.unnamed( "--repair,--fix-duplicated,--flush,--verbose,-v,--show-output-format",
                                                             "--binary,--bin,-b,--fields,--delimiter,-d,--background-colour,--precision,--output-fields,--orthographic,--fov" );
         if( files.empty() ) { std::cerr << "label-points: please specify input files" << std::endl; return 1; }
@@ -121,7 +120,7 @@ int main( int argc, char** argv )
             QApplication application( argc, argv );
             bool orthographic = options.exists( "--orthographic" );
             double fieldOfView = options.value< double >( "--fov", 45 );
-            boost::scoped_ptr< snark::graphics::View::Viewer > viewer( new snark::graphics::View::Viewer( dataset_csv_options, output_stream, fixDuplicated, backgroundcolour, orthographic, fieldOfView, verbose ) );
+            boost::scoped_ptr< snark::graphics::View::Viewer > viewer( new snark::graphics::View::Viewer( dataset_csv_options, csv_out, fixDuplicated, backgroundcolour, orthographic, fieldOfView, verbose ) );
             snark::graphics::View::MainWindow mainWindow( comma::join( argv, argc, ' ' ), viewer.get() );
             mainWindow.show();
             /*return*/ application.exec();

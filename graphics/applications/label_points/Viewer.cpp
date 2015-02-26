@@ -39,7 +39,7 @@
 namespace snark { namespace graphics { namespace View {
 
 Viewer::Viewer( const std::vector< comma::csv::options >& options
-              , comma::csv::output_stream< PointWithId >& output_stream
+              , const comma::csv::options& csv_out
               , bool labelDuplicated
               , const QColor4ub& background_color
               , bool orthographic
@@ -54,7 +54,8 @@ Viewer::Viewer( const std::vector< comma::csv::options >& options
     , fill( *this )
     , m_currentTool( &navigate )
     , m_options( options )
-    , m_output_stream( output_stream )
+    , output_with_id( csv_out.has_field( "id" ) )
+    , m_output_stream( std::cout, csv_out )
     , m_labelDuplicated( labelDuplicated )
     , verbose_( verbose )
 {
@@ -194,6 +195,7 @@ boost::optional< point_and_id > Viewer::pointSelection( const QPoint& point, boo
     {
         Eigen::Vector3d p(  point3d->x(), point3d->y(), point3d->z() );
         if( m_offset ) { p += *m_offset; }
+        if( !output_with_id ) { m_output_stream.write( PointWithId( p ) ); }
         std::cerr << " clicked point " << std::setprecision( 12 ) << p.transpose() << std::endl;
         snark::math::closed_interval< double, 3 > e( p - Eigen::Vector3d::Ones(), p + Eigen::Vector3d::Ones() );
         double minDistanceSquare = std::numeric_limits< double >::max();
@@ -213,6 +215,7 @@ boost::optional< point_and_id > Viewer::pointSelection( const QPoint& point, boo
             }
             if( minDistanceSquare <= 0.01 )
             {
+                if( output_with_id ) { m_output_stream.write( PointWithId( *result ) ); }
                 if( verbose_ ) { std::cerr << " found point: " << std::setprecision( 12 ) << result->first.transpose() << "; id: " << result->second << std::endl; }
                 return result;
             }
