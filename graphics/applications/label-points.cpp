@@ -42,11 +42,11 @@
 #include <comma/name_value/parser.h>
 #include <comma/string/string.h>
 #include <comma/csv/format.h>
-#include <comma/csv/stream.h>
-#include <comma/base/types.h>
-#include <comma/visiting/traits.h>
-#include <snark/math/traits.h>
-#include <Eigen/Core>
+//#include <comma/csv/stream.h>
+//#include <comma/base/types.h>
+//#include <comma/visiting/traits.h>
+//#include <snark/math/traits.h>
+//#include <Eigen/Core>
 #include "snark/graphics/applications/label_points/MainWindow.h"
 
 void usage( bool verbose )
