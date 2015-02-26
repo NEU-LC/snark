@@ -222,6 +222,8 @@ ENDIF( snark_build_sensors_hokuyo )
 
 SET( snark_ALL_LIBRARIES ${snark_ALL_LIBRARIES} debug snark_math-d
                          optimized snark_math
+                         debug snark_math_spherical_geometry-d
+                         optimized snark_math_spherical_geometry
                          debug snark_timing-d
                          optimized snark_timing )
 IF( snark_build_actuators_quickset )
