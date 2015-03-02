@@ -311,9 +311,12 @@ boost::optional< QVector3D > view::getPoint( const QPoint& point2d )
     }
 }
 
+void view::mouseDoubleRightClickEvent( QMouseEvent *e ) {}
+
 /// handle mouse double click: set rotation point
 void view::mouseDoubleClickEvent( QMouseEvent *e )
 {
+    if( e->button() == Qt::RightButton ) { mouseDoubleRightClickEvent( e ); }
     if( e->button() == Qt::LeftButton )
     {
         boost::optional< QVector3D > point = getPoint( e->pos() );
@@ -332,9 +335,8 @@ void view::mouseDoubleClickEvent( QMouseEvent *e )
         m_show_coordinates = true;
         update();
         QTimer::singleShot( 3000, this, SLOT( hide_coordinates() ) );
+        QGLView::mouseDoubleClickEvent(e);
     }
-    QGLView::mouseDoubleClickEvent(e);
 }
-
 
 } } } // namespace snark { namespace graphics { namespace qt3d {

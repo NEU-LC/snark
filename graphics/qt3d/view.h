@@ -74,6 +74,7 @@ protected:
     QVector3D unproject( float x, float y, float depth );
     boost::optional< QVector3D > getPoint( const QPoint& point2d );
     void mouseDoubleClickEvent( QMouseEvent *e );
+    virtual void mouseDoubleRightClickEvent( QMouseEvent *e );
 
     const QColor4ub m_background_color;
     QVector3D m_sceneCenter;
