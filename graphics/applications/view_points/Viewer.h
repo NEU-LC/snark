@@ -76,7 +76,7 @@ class Viewer : public qt3d::view
         void initializeGL( QGLPainter *painter );
         void paintGL( QGLPainter *painter );
         void setCameraPosition( const Eigen::Vector3d& position, const Eigen::Vector3d& orientation );
-        virtual void mouseDoubleRightClickEvent(  QMouseEvent *e );
+        virtual void mouse_double_right_click_event( QMouseEvent *e );
 
         bool m_shutdown;
         bool m_lookAt;

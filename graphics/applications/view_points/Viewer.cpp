@@ -207,12 +207,12 @@ void Viewer::setCameraPosition ( const Eigen::Vector3d& position, const Eigen::V
     m_sceneCenter = QVector3D( scene_center.x(), scene_center.y(), scene_center.z() );
 }
 
-void Viewer::mouseDoubleRightClickEvent(  QMouseEvent *e )
+void Viewer::mouse_double_right_click_event(  QMouseEvent *e )
 {
     boost::optional< QVector3D > point = getPoint( e->pos() );
-    if( !point ) { return; }
+    if( !point ) { std::cerr << "warning: no point found near the double right click" << std::endl; return; }
     Eigen::Vector3d p( point->x(), point->y(), point->z() );
-    if( !m_offset ) { std::cerr << "warning: offset is not defined yet, wait until it is found before clicking on the points" << std::endl; return; }
+    if( !m_offset ) { std::cerr << "warning: offset is not defined yet, wait until it is found first" << std::endl; return; }
     p += *m_offset;
     std::cout << std::setprecision(16) << p.x() << "," << p.y() << "," << p.z() << std::endl;
 }

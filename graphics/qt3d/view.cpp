@@ -311,13 +311,11 @@ boost::optional< QVector3D > view::getPoint( const QPoint& point2d )
     }
 }
 
-void view::mouseDoubleRightClickEvent( QMouseEvent *e ) {}
-
 /// handle mouse double click: set rotation point
 void view::mouseDoubleClickEvent( QMouseEvent *e )
 {
-    if( e->button() == Qt::RightButton ) { mouseDoubleRightClickEvent( e ); }
-    if( e->button() == Qt::LeftButton )
+    if( e->button() == Qt::RightButton ) { mouse_double_right_click_event( e ); }
+    else if( e->button() == Qt::LeftButton )
     {
         boost::optional< QVector3D > point = getPoint( e->pos() );
         if( point )
