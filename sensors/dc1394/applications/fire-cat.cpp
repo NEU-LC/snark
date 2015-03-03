@@ -41,13 +41,14 @@
 #include <comma/string/string.h>
 
 typedef std::pair< boost::posix_time::ptime, cv::Mat > Pair;
+static const char* name() { return "fire-cat"; }
 
 /// camera capture
 boost::scoped_ptr< snark::tbb::bursty_reader< Pair > > reader;
 static Pair capture( snark::camera::dc1394& camera )
 {
     static comma::signal_flag is_shutdown;
-    if( is_shutdown ) { reader->stop(); return Pair();}
+    if( is_shutdown ) { reader->stop(); return Pair(); }
     cv::Mat image = camera.read();
     return std::make_pair( camera.time(), image.clone() );
 }
@@ -248,25 +249,25 @@ int main( int argc, char** argv )
             comma::name_value::parser parser( ';', '=' );
             config = parser.get< snark::camera::dc1394::config >( config_string );
         }
-        snark::camera::dc1394 camera( config );
+        
+        snark::camera::dc1394::strobe strobe;
+        
+        if( vm.count( "strobe" ) )
+        {
+            std::vector< std::string > v = comma::split( strobe_string, ';' );
+            if( v.empty() ) { std::cerr << name() << ": strobe parameters are not given (e.g. --strobe=\"pin=2\")" << std::endl; return 1; }
+            comma::name_value::parser parser( ';', '=' );
+            strobe = parser.get< snark::camera::dc1394::strobe >( comma::join< std::vector< std::string > >( v, ';' ) );
+        }        
+        
+        snark::camera::dc1394 camera( config, strobe );
         
         if( vm.count( "list-attributes" ) )
         {
             camera.list_attributes();    
             return 0;
         }
-        
-        if( vm.count( "strobe" ) )
-        {
-            std::vector< std::string > v = comma::split( strobe_string, ';' );
-            if( v[0] == "on" ) { v[0] = "enable=1"; } else if( v[0] == "off" ) { v[0] = "enable=0"; }
-            else { COMMA_THROW( comma::exception, "expected the first parameter of --strobe to be on or off (e.g. --strobe=on), got " << v[0] ); }
-            comma::name_value::parser parser( ';', '=' );
-            snark::camera::dc1394::strobe_parameters p = parser.get< snark::camera::dc1394::strobe_parameters >( comma::join< std::vector< std::string > >( v, ';' ) );
-            camera.trigger_strobe( p );
-            return 0;
-        }
-        
+                
         reader.reset( new snark::tbb::bursty_reader< Pair >( boost::bind( &capture, boost::ref( camera ) ), discard ) );
         snark::imaging::applications::pipeline pipeline( *serialization, filters, *reader );
         pipeline.run();
