@@ -33,6 +33,7 @@
 #include <boost/program_options.hpp>
 #include <boost/scoped_ptr.hpp>
 #include <boost/property_tree/ini_parser.hpp>
+#include <boost/optional.hpp>
 #include <comma/base/exception.h>
 #include <comma/csv/format.h>
 #include <comma/name_value/ptree.h>
@@ -250,7 +251,7 @@ int main( int argc, char** argv )
             config = parser.get< snark::camera::dc1394::config >( config_string );
         }
         
-        snark::camera::dc1394::strobe strobe;
+        boost::optional< snark::camera::dc1394::strobe > strobe;
         
         if( vm.count( "strobe" ) )
         {

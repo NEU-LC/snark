@@ -88,7 +88,7 @@ public:
     static polarity_t polarity_from_string( std::string s ) { if( s == "low" ) { return STROBE_POLARITY_LOW; } else if( s == "high" ) { return STROBE_POLARITY_HIGH; } else { COMMA_THROW( comma::exception, "expected polarity to be either \"high\" or \"low\", got " << s ); } }
     static std::string polarity_to_string( polarity_t polarity ) { if( polarity == STROBE_POLARITY_LOW ) { return "low"; } else if( polarity == STROBE_POLARITY_HIGH ) { return "high"; } }
     
-    dc1394( const config& config = config(), const strobe& strobe = strobe() );
+    dc1394( const config& config = config(), boost::optional< strobe > strobe = boost::optional< strobe >() );
     ~dc1394();
 
     const cv::Mat& read();
@@ -132,7 +132,7 @@ private:
     int m_fd;
     comma::io::select m_select;
     boost::posix_time::time_duration m_frame_duration;
-    strobe m_strobe;
+    boost::optional< strobe > m_strobe;
 };
 
 } } // namespace snark { namespace camera {
