@@ -134,6 +134,10 @@ int main( int argc, char** argv )
             std::cerr << "output header format: fields: t,cols,rows,type; binary: t,3ui\n" << std::endl;
             std::cerr << description << std::endl;
             std::cerr << "strobe: " << std::endl;
+            std::cerr << "    commands: " << std::endl;
+            std::cerr << "        on: trun strobe on and exit" << std::endl;
+            std::cerr << "        off: trun strobe off and exit" << std::endl;
+            std::cerr << "        auto: keep strobe on when the camera is in use" << std::endl;
             std::cerr << "    parameters: " << std::endl;
             std::cerr << "        pin: GPIO pin for strobe (its direction should be set to 'Out')" << std::endl;
             std::cerr << "        polarity: low/high" << std::endl;
@@ -143,6 +147,7 @@ int main( int argc, char** argv )
             std::cerr << "    examples: " << std::endl;
             std::cerr << "        --strobe=\"on;pin=2;polarity=high;delay=4095;duration=4095\"" << std::endl;
             std::cerr << "        --strobe=\"off;pin=2\"" << std::endl;            
+            std::cerr << "        --strobe=\"auto;pin=2\"" << std::endl;            
             std::cerr << "    default parameters: \"pin=0;polarity=high;delay=0;duration=0\"" << std::endl;
             std::cerr << std::endl;
             std::cerr << "examples:" << std::endl;
@@ -251,17 +256,22 @@ int main( int argc, char** argv )
             config = parser.get< snark::camera::dc1394::config >( config_string );
         }
         
-        boost::optional< snark::camera::dc1394::strobe > strobe;
+        snark::camera::dc1394::strobe strobe;
+        bool trigger_strobe_and_exit = false;
         
         if( vm.count( "strobe" ) )
         {
             std::vector< std::string > v = comma::split( strobe_string, ';' );
-            if( v.empty() ) { std::cerr << name() << ": strobe parameters are not given (e.g. --strobe=\"pin=2\")" << std::endl; return 1; }
+            if( v.empty() ) { std::cerr << name() << ": strobe parameters are not given (e.g. --strobe=\"auto;pin=2\")" << std::endl; return 1; }
+            if( v[0] != "on" && v[0] != "off" && v[0] != "auto" ) { std::cerr << name() << ": expected strobe command to be \"on\", \"off\" or \"auto\", got " << v[0] << std::endl; return 1; }
+            if( v[0] == "on" || v[0] == "off" ) { trigger_strobe_and_exit = true; }
+            v[0] = "command=" + v[0];
             comma::name_value::parser parser( ';', '=' );
             strobe = parser.get< snark::camera::dc1394::strobe >( comma::join< std::vector< std::string > >( v, ';' ) );
         }        
         
         snark::camera::dc1394 camera( config, strobe );
+        if( trigger_strobe_and_exit ) { return 0; }
         
         if( vm.count( "list-attributes" ) )
         {
