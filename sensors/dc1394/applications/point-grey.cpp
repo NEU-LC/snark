@@ -75,12 +75,11 @@ C config_from_ini( const std::string& filename, const std::string& name = "", co
 }
 
 static const uint64_t PIO_DIRECTION_ADDRESS = 0x11F8;
-static const unsigned int number_of_pins = 4;
+static const unsigned int number_of_pins = snark::camera::dc1394::number_of_pins;
 
 void set_pin_direction( snark::camera::dc1394& camera, unsigned int pin, bool is_out = true )
 {    
-    static const uint32_t enable_out[number_of_pins] = { 0x0001, 0x0010, 0x0100, 0x1000 };
-    COMMA_THROW( comma::exception, "expected pin to be from 0 to " << number_of_pins - 1 << ", got " << pin );
+    static const uint32_t enable_out[number_of_pins] = { 0x0001, 0x0002, 0x0004, 0x0008 };
     uint32_t value = 0;
     camera.get_control_register( value, PIO_DIRECTION_ADDRESS );
     comma::packed::reverse_bits< uint32_t >( value );
@@ -134,6 +133,7 @@ int main( int argc, char** argv )
         
         snark::camera::dc1394 camera( config );
         
+        if( pin >= number_of_pins ) { COMMA_THROW( comma::exception, "expected pin to be from 0 to " << number_of_pins - 1 << ", got " << pin ); }
         if( vm.count( "direction" ) )
         {
             if( direction != "in" && direction != "out" ) { std::cerr << name() << ": expected direction to be either 'in' or 'out', got " << direction << std::endl; }
