@@ -678,4 +678,16 @@ void dc1394::trigger_strobe( const bool enable )
     DC1394_ERR( err, "Failed to set strobe register" );
 }
 
+void dc1394::get_control_register( uint32_t value, const uint64_t address )
+{    
+    dc1394error_t error = dc1394_get_control_register( m_camera, address, &value );
+    DC1394_ERR( error, "Failed to get control register" );
+}    
+
+void dc1394::set_control_register( const uint32_t value, const uint64_t address )
+{    
+    dc1394error_t error = dc1394_set_control_register( m_camera, address, value );
+    DC1394_ERR( error, "Failed to set control register" );
+}   
+
 } } // namespace snark { namespace camera {

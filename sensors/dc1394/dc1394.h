@@ -100,6 +100,8 @@ public:
     void trigger_strobe( const bool enable);
     void start_strobe() { trigger_strobe( true ); }
     void stop_strobe() { trigger_strobe( false ); }
+    void get_control_register( uint32_t value, const uint64_t address );
+    void set_control_register( const uint32_t value, const uint64_t address );
 
 private:
     void init_camera();
