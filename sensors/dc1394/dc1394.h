@@ -87,8 +87,19 @@ public:
         unsigned int duration;
         strobe_command_t command;
     };   
-    static strobe_polarity_t polarity_from_string( std::string s ) { if( s == "low" ) { return STROBE_POLARITY_LOW; } else if( s == "high" ) { return STROBE_POLARITY_HIGH; } else { COMMA_THROW( comma::exception, "expected strobe polarity to be either \"high\" or \"low\", got " << s ); } }
-    static strobe_command_t command_from_string( std::string s ) { if( s == "on" ) { return STROBE_ON; } else if( s == "off" ) { return STROBE_OFF; } else if ( s == "auto" ) { return STROBE_AUTO; } else { COMMA_THROW( comma::exception, "expected strobe command to be \"on\", \"off\" or \"auto\", got " << s ); } }
+    static strobe_polarity_t polarity_from_string( std::string s ) 
+    { 
+        if( s == "low" ) { return STROBE_POLARITY_LOW; }
+        else if( s == "high" ) { return STROBE_POLARITY_HIGH; } 
+        else { COMMA_THROW( comma::exception, "expected strobe polarity to be either \"high\" or \"low\", got " << s ); } 
+    }
+    static strobe_command_t command_from_string( std::string s ) 
+    { 
+        if( s == "on" ) { return STROBE_ON; } 
+        else if( s == "off" ) { return STROBE_OFF; } 
+        else if ( s == "auto" ) { return STROBE_AUTO; } 
+        else { COMMA_THROW( comma::exception, "expected strobe command to be \"on\", \"off\" or \"auto\", got " << s ); } 
+    }
     
     dc1394( const config& config = config(), const strobe& strobe = strobe() );
     ~dc1394();
@@ -117,7 +128,6 @@ private:
     void manage_strobe_at_stop();
 
     config m_config;
-    strobe m_strobe;
     
     dc1394camera_t* m_camera;
     dc1394video_frame_t* m_frame;
@@ -139,6 +149,8 @@ private:
     int m_fd;
     comma::io::select m_select;
     boost::posix_time::time_duration m_frame_duration;
+    
+    strobe m_strobe;
 };
 
 } } // namespace snark { namespace camera {

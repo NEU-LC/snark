@@ -64,22 +64,20 @@ dc1394::config::config():
  
 }
 
-void dc1394::manage_strobe_at_start() 
-{ 
-    if( m_strobe.command != STROBE_IGNORE ) 
+void dc1394::manage_strobe_at_start()
+{
+    switch( m_strobe.command )
     {
-        switch( m_strobe.command )
-        {
-            case STROBE_ON: trigger_strobe( true, m_strobe ); break;
-            case STROBE_AUTO: trigger_strobe( true, m_strobe ); break;
-            case STROBE_OFF: trigger_strobe( false, m_strobe ); break;
-            default: COMMA_THROW( comma::exception, "encountered unexpected strobe command " << m_strobe.command );
-        }
+        case STROBE_IGNORE: break;
+        case STROBE_AUTO: trigger_strobe( true, m_strobe ); break;
+        case STROBE_ON: trigger_strobe( true, m_strobe ); break;
+        case STROBE_OFF: trigger_strobe( false, m_strobe ); break;
+        default: COMMA_THROW( comma::exception, "encountered unexpected strobe command " << m_strobe.command );
     }
 }
 
-void dc1394::manage_strobe_at_stop() 
-{ 
+void dc1394::manage_strobe_at_stop()
+{
     if( m_strobe.command == STROBE_AUTO  ) { trigger_strobe( false, m_strobe ); }
 }
 
