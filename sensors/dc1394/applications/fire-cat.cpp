@@ -110,7 +110,7 @@ int main( int argc, char** argv )
             ( "fields,f", boost::program_options::value< std::string >( &fields )->default_value( "t,rows,cols,type" ), "header fields, possible values: t,rows,cols,type,size" )
             ( "header", "output header only" )
             ( "no-header", "output image data only" )
-            ( "strobe", boost::program_options::value< std::string >( &strobe_string ), "strobe on/off trigger" );
+            ( "strobe", boost::program_options::value< std::string >( &strobe_string ), "strobe control" );
 
         boost::program_options::variables_map vm;
         boost::program_options::store( boost::program_options::parse_command_line( argc, argv, description), vm );
@@ -134,20 +134,19 @@ int main( int argc, char** argv )
             std::cerr << "output header format: fields: t,cols,rows,type; binary: t,3ui\n" << std::endl;
             std::cerr << description << std::endl;
             std::cerr << "strobe: " << std::endl;
-            std::cerr << "    commands: " << std::endl;
-            std::cerr << "        on: trun strobe on and exit" << std::endl;
-            std::cerr << "        off: trun strobe off and exit" << std::endl;
-            std::cerr << "        auto: keep strobe on when the camera is in use" << std::endl;
             std::cerr << "    parameters: " << std::endl;
-            std::cerr << "        pin: GPIO pin for strobe (its direction should be set to 'Out')" << std::endl;
+            std::cerr << "        pin: GPIO pin for strobe (its direction should be set to 'Out', use point-grey utility if necessary)" << std::endl;
             std::cerr << "        polarity: low/high" << std::endl;
             std::cerr << "        delay: delay after start of exposure until the strobe signal asserts" << std::endl;
             std::cerr << "        duration: duration of the strobe signal" << std::endl;
             std::cerr << "    note: delay and duration are given in ticks of the 1.024MHz clock (needs to be confirmed)" << std::endl;
+            std::cerr << "    optional commands (by default strobe will be on while the camera is in use): " << std::endl;
+            std::cerr << "        on: turn strobe on and exit" << std::endl;
+            std::cerr << "        off: turn strobe off and exit" << std::endl;
             std::cerr << "    examples: " << std::endl;
-            std::cerr << "        --strobe=\"on;pin=2;polarity=high;delay=4095;duration=4095\"" << std::endl;
-            std::cerr << "        --strobe=\"off;pin=2\"" << std::endl;            
-            std::cerr << "        --strobe=\"auto;pin=2\"" << std::endl;            
+            std::cerr << "        --strobe=\"pin=2;polarity=high;delay=4095;duration=4095\"" << std::endl;
+            std::cerr << "        --strobe=\"on;pin=2\"" << std::endl;
+            std::cerr << "        --strobe=\"off;pin=2\"" << std::endl;
             std::cerr << "    default parameters: \"pin=0;polarity=high;delay=0;duration=0\"" << std::endl;
             std::cerr << std::endl;
             std::cerr << "examples:" << std::endl;
@@ -262,10 +261,8 @@ int main( int argc, char** argv )
         if( vm.count( "strobe" ) )
         {
             std::vector< std::string > v = comma::split( strobe_string, ';' );
-            if( v.empty() ) { std::cerr << name() << ": strobe parameters are not given (e.g. --strobe=\"auto;pin=2\")" << std::endl; return 1; }
-            if( v[0] != "on" && v[0] != "off" && v[0] != "auto" ) { std::cerr << name() << ": expected strobe command to be \"on\", \"off\" or \"auto\", got " << v[0] << std::endl; return 1; }
-            if( v[0] == "on" || v[0] == "off" ) { trigger_strobe_and_exit = true; }
-            v[0] = "command=" + v[0];
+            if( v.empty() ) { std::cerr << name() << ": strobe parameters are not given (e.g. --strobe=\"pin=2\")" << std::endl; return 1; }
+            if( v[0] == "on" || v[0] == "off" ) { trigger_strobe_and_exit = true; v[0] = "command=" + v[0]; } else { v.push_back( "command=auto" ); }
             comma::name_value::parser parser( ';', '=' );
             strobe = parser.get< snark::camera::dc1394::strobe >( comma::join< std::vector< std::string > >( v, ';' ) );
         }        
