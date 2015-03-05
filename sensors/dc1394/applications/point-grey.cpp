@@ -139,6 +139,7 @@ int main( int argc, char** argv )
             if( direction != "in" && direction != "out" ) { std::cerr << name() << ": expected direction to be either 'in' or 'out', got " << direction << std::endl; }
             set_pin_direction( camera, pin, ( direction == "out" ) );
         }
+        return 0;
     }
     catch( std::exception& ex )
     {
