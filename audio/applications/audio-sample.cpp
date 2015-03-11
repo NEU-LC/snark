@@ -39,7 +39,6 @@
 #include <boost/random/mersenne_twister.hpp>
 #include <boost/random/uniform_real.hpp>
 #include <boost/random/variate_generator.hpp>
-#include <boost/thread/pthread/mutex.hpp>
 #include <comma/application/command_line_options.h>
 #include <comma/csv/stream.h>
 #ifndef WIN32
