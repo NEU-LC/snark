@@ -54,11 +54,11 @@ struct coordinates
     
     operator Eigen::Vector3d() const { return to_cartesian(); }
     
-    bool near( const Eigen::Vector3d& c, double _epsilon = 0.0005 ) const;
+    bool is_near( const Eigen::Vector3d& c, double _epsilon = 0.0005 ) const;
     
     bool operator!=( const Eigen::Vector3d& rhs ) const { return !operator==( rhs ); }
     
-    bool operator==( const Eigen::Vector3d& rhs ) const { return near( rhs, coordinates::epsilon ); }
+    bool operator==( const Eigen::Vector3d& rhs ) const { return is_near( rhs, coordinates::epsilon ); }
 
     bool operator==( const coordinates& rhs ) const;
     
@@ -69,7 +69,7 @@ struct coordinates
     /// @return true if the two coordinates are close to each other (within +/-epsilon)
     /// @note this is highly approximate, since longitude distorts with latitude
     /// @note an espilon of 0.0003 is about 1 minute of latitude
-    bool near( const coordinates& c, double epsilon = 0.0005 ) const;
+    bool is_near( const coordinates& c, double epsilon = 0.0005 ) const;
 
     snark::bearing_elevation as_bearing_elevation() const { return snark::bearing_elevation( longitude, latitude ); }
     

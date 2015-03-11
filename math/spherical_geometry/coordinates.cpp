@@ -40,9 +40,9 @@ namespace snark { namespace spherical {
 const double coordinates::epsilon = 1e-6;
 
 bool coordinates::operator==( const coordinates& rhs ) const
-{ return near( rhs, epsilon ); }
+{ return is_near( rhs, epsilon ); }
 
-bool coordinates::near( const coordinates& c, double epsilon ) const
+bool coordinates::is_near( const coordinates& c, double epsilon ) const
 {
     double dist = std::abs( longitude - c.longitude );
     return comma::math::equal( latitude, c.latitude, epsilon ) && comma::math::equal( 0, std::min( dist, 2 * M_PI - dist ), epsilon );
@@ -98,7 +98,7 @@ coordinates::operator std::string() const
     return (boost::format("%.2f") % c.first ).str() + "," + (boost::format("%.2f") % c.second).str();
 }
 
-bool coordinates::near( const Eigen::Vector3d& c, double _epsilon ) const
+bool coordinates::is_near( const Eigen::Vector3d& c, double _epsilon ) const
 {
     return ( to_cartesian() - c ).lpNorm<Eigen::Infinity>() < _epsilon;
 }
