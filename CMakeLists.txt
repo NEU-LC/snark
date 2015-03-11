@@ -5,23 +5,32 @@ cmake_minimum_required(VERSION 2.6)
 ENABLE_TESTING()
 
 IF (UNIX AND NOT APPLE)
-# May also fail on BSD as it assumes GNU date rather than BSD date command
-    # Get the date of the last commit (for use by CPack)
-    # Check if Git is installed
-    find_package(Git)
-    IF(GIT_FOUND)
-        EXECUTE_PROCESS(
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-        COMMAND git log -n1 --format=%ci
-        COMMAND xargs -0 date +%Y%m%dT%H%M -d
-        OUTPUT_VARIABLE COMMITDATE
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-        )
-    ELSE()
-        SET ( COMMITDATE 4 )
-    ENDIF()
+  # May also fail on BSD as it assumes GNU date rather than BSD date command
+	# Check if Git is installed
+	find_package(Git)
+	IF(GIT_FOUND)
+		# Get the date of the last commit (for use by CPack)
+		EXECUTE_PROCESS(
+		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+		COMMAND git log -n1 --format=%ci
+		COMMAND xargs -0 date +%Y%m%dT%H%M -d
+		OUTPUT_VARIABLE COMMITDATE
+		OUTPUT_STRIP_TRAILING_WHITESPACE
+		)
+		# And also the hash.
+		EXECUTE_PROCESS(
+		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+		COMMAND git rev-parse HEAD
+		OUTPUT_VARIABLE COMMITHASH
+		OUTPUT_STRIP_TRAILING_WHITESPACE
+	)
+	ELSE()
+		SET ( COMMITDATE 1 )
+		SET ( COMMITHASH "abc" )
+	ENDIF()
 ELSE() # Probably windows; gets hardcoded patch version
-	SET ( COMMITDATE 4 )
+	SET ( COMMITDATE 1 ) 
+	SET ( COMMITHASH "abc" )
 ENDIF()
 
 # ---------------------------------------------------------------------------
@@ -157,6 +166,7 @@ OPTION( snark_build_actuators "build actuators" ON )
 OPTION( snark_build_battery "build battery" OFF )
 OPTION( snark_build_graph "build graph" ON )
 OPTION( snark_build_math_geometry "build math geometry" OFF )
+OPTION( snark_build_python "build python packages" OFF )
 
 INCLUDE( CMakeDependentOption )
 CMAKE_DEPENDENT_OPTION( snark_build_sensors_dc1394 "build dc1394 components" ON "snark_build_sensors" OFF )
@@ -212,6 +222,8 @@ ENDIF( snark_build_sensors_hokuyo )
 
 SET( snark_ALL_LIBRARIES ${snark_ALL_LIBRARIES} debug snark_math-d
                          optimized snark_math
+                         debug snark_math_spherical_geometry-d
+                         optimized snark_math_spherical_geometry
                          debug snark_timing-d
                          optimized snark_timing )
 IF( snark_build_actuators_quickset )
@@ -305,9 +317,14 @@ IF( snark_build_graph )
 ENDIF( snark_build_graph )
 
 add_subdirectory( audio )
-ADD_SUBDIRECTORY( kml )
+add_subdirectory( geodesy )
+ADD_SUBDIRECTORY( render )
 ADD_SUBDIRECTORY( timing )
 ADD_SUBDIRECTORY( visiting )
+
+IF( snark_build_python )
+    ADD_SUBDIRECTORY( python )
+ENDIF( snark_build_python )
 
 # Package
 #the following set up optional parameters for cpack
@@ -315,9 +332,10 @@ SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "This is a description of snark. It's grea
 SET(CPACK_PACKAGE_VENDOR "ACFR")
 SET(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/COPYING")
 SET(CPACK_PACKAGE_VERSION_MAJOR "1")
-SET(CPACK_PACKAGE_VERSION_MINOR "0")
-SET(CPACK_PACKAGE_VERSION_PATCH ${COMMITDATE})
+SET(CPACK_PACKAGE_VERSION_MINOR ${COMMITDATE})
+SET(CPACK_PACKAGE_VERSION_PATCH ${COMMITHASH})
 SET(CPACK_PACKAGE_CONTACT "t.teo@acfr.usyd.edu.au")
+SET(CPACK_RPM_PACKAGE_REQUIRES "comma")
 
 # Additional Win32 handling for CPack.
 IF( WIN32 )
@@ -328,7 +346,7 @@ IF( WIN32 )
     if( snark_build_graphics )
         get_filename_component( QT_BIN_DIR ${QT_QMAKE_EXECUTABLE} PATH )
         file( GLOB QT_DLLS ${QT_BIN_DIR}/*.dll )
-    endif( snark_build_imaging )
+    endif( snark_build_graphics )
 
     SET(snark_PACKAGE_DLLS ${TBB_DLL_DIR}/tbb.dll ${OpenCV_DLLS} ${QT_DLLS})
     

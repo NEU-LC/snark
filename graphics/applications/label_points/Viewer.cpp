@@ -9,10 +9,7 @@
 // 2. Redistributions in binary form must reproduce the above copyright
 //    notice, this list of conditions and the following disclaimer in the
 //    documentation and/or other materials provided with the distribution.
-// 3. All advertising materials mentioning features or use of this software
-//    must display the following acknowledgement:
-//    This product includes software developed by the The University of Sydney.
-// 4. Neither the name of the The University of Sydney nor the
+// 3. Neither the name of the University of Sydney nor the
 //    names of its contributors may be used to endorse or promote products
 //    derived from this software without specific prior written permission.
 //
@@ -37,11 +34,12 @@
 #include <boost/filesystem/operations.hpp>
 #include <boost/lexical_cast.hpp>
 #include <comma/math/compare.h>
-#include "./Viewer.h"
+#include "Viewer.h"
 
 namespace snark { namespace graphics { namespace View {
 
 Viewer::Viewer( const std::vector< comma::csv::options >& options
+              , const comma::csv::options& csv_out
               , bool labelDuplicated
               , const QColor4ub& background_color
               , bool orthographic
@@ -56,6 +54,8 @@ Viewer::Viewer( const std::vector< comma::csv::options >& options
     , fill( *this )
     , m_currentTool( &navigate )
     , m_options( options )
+    , output_with_id( csv_out.has_field( "id" ) )
+    , m_output_stream( std::cout, csv_out )
     , m_labelDuplicated( labelDuplicated )
     , verbose_( verbose )
 {
@@ -187,14 +187,15 @@ void Viewer::mouseMoveEvent( QMouseEvent *e )
 //     GL::View::mouseMoveEvent( e );
 }
 
-boost::optional< std::pair< Eigen::Vector3d, comma::uint32 > > Viewer::pointSelection( const QPoint& point, bool writableOnly )
+boost::optional< point_and_id > Viewer::pointSelection( const QPoint& point, bool writableOnly )
 {
-    boost::optional< std::pair< Eigen::Vector3d, comma::uint32 > > result;
+    boost::optional< point_and_id > result;
     boost::optional< QVector3D > point3d = getPoint( point );
     if( point3d )
     {
         Eigen::Vector3d p(  point3d->x(), point3d->y(), point3d->z() );
         if( m_offset ) { p += *m_offset; }
+        if( !output_with_id ) { m_output_stream.write( PointWithId( p ) ); }
         std::cerr << " clicked point " << std::setprecision( 12 ) << p.transpose() << std::endl;
         snark::math::closed_interval< double, 3 > e( p - Eigen::Vector3d::Ones(), p + Eigen::Vector3d::Ones() );
         double minDistanceSquare = std::numeric_limits< double >::max();
@@ -214,12 +215,13 @@ boost::optional< std::pair< Eigen::Vector3d, comma::uint32 > > Viewer::pointSele
             }
             if( minDistanceSquare <= 0.01 )
             {
+                if( output_with_id ) { m_output_stream.write( PointWithId( *result ) ); }
                 if( verbose_ ) { std::cerr << " found point: " << std::setprecision( 12 ) << result->first.transpose() << "; id: " << result->second << std::endl; }
                 return result;
             }
         }
     }
-    return boost::optional< std::pair< Eigen::Vector3d, comma::uint32 > >();
+    return boost::optional< point_and_id >();
 }
 
 void Viewer::handleId( comma::uint32 id ) { m_id = id; }

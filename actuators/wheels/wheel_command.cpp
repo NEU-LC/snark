@@ -9,10 +9,7 @@
 // 2. Redistributions in binary form must reproduce the above copyright
 //    notice, this list of conditions and the following disclaimer in the
 //    documentation and/or other materials provided with the distribution.
-// 3. All advertising materials mentioning features or use of this software
-//    must display the following acknowledgement:
-//    This product includes software developed by the The University of Sydney.
-// 4. Neither the name of the The University of Sydney nor the
+// 3. Neither the name of the University of Sydney nor the
 //    names of its contributors may be used to endorse or promote products
 //    derived from this software without specific prior written permission.
 //
@@ -130,15 +127,13 @@ wheel_command compute_wheel_command( const steer_command &desired, Eigen::Matrix
     // apply angle limit if specified
     if( angle_limit )
     {
-        // reduce new angle to (-360,360)
-        command.turnrate = std::fmod( command.turnrate, 2 * M_PI );
-
-        if( comma::math::less( angle_limit->max, command.turnrate, 1e-9 ) )
+        while( comma::math::less( angle_limit->max, command.turnrate, 1e-9 ) )
         {
             command.turnrate -= M_PI;
             positive_direction = !positive_direction;
         }
-        else if( comma::math::less( command.turnrate, angle_limit->min, 1e-9 ) )
+
+        while( comma::math::less( command.turnrate, angle_limit->min, 1e-9 ) )
         {
             command.turnrate += M_PI;
             positive_direction = !positive_direction;

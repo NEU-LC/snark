@@ -1,0 +1,32 @@
+#!/usr/bin/python
+import sys
+import cv2
+import numpy as np
+from optparse import OptionParser
+from snark.imaging import cv_image
+from comma.io import windows_binary
+
+
+if __name__ == "__main__":
+    parser = OptionParser()
+    parser.add_option("--binary", dest="binary", action="store_true", default=False, help="binary output", metavar="BINARY")
+    (options, args) = parser.parse_args()
+
+    file = sys.stdin
+    images = cv_image.iterator(file)
+    output = np.zeros(1, dtype='uint64,uint32,uint32,uint32,float64')
+
+    while True:
+        image = images.next()
+        intensity = np.mean(image.data)
+
+        if options.binary:
+            output[0] = (image.header['time'].astype(np.uint64), image.header['rows'], image.header['cols'], image.header['type'], intensity)
+            output.tofile(sys.stdout)
+            sys.stdout.flush()
+        else:
+            print >> sys.stdout, "{},{},{},{},{}".format(image.header['time'].item(), image.header['rows'], image.header['cols'], image.header['type'], intensity)
+
+        # cv2.imshow('test',image.data)
+        # cv2.waitKey(1)
+

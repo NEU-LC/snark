@@ -9,10 +9,7 @@
 // 2. Redistributions in binary form must reproduce the above copyright
 //    notice, this list of conditions and the following disclaimer in the
 //    documentation and/or other materials provided with the distribution.
-// 3. All advertising materials mentioning features or use of this software
-//    must display the following acknowledgement:
-//    This product includes software developed by the The University of Sydney.
-// 4. Neither the name of the The University of Sydney nor the
+// 3. Neither the name of the University of Sydney nor the
 //    names of its contributors may be used to endorse or promote products
 //    derived from this software without specific prior written permission.
 //
@@ -81,13 +78,13 @@ struct status_t
     int mode;
     double time_since_boot;
     
-    void set( const snark::ur::packet_t& packet )
+    void set( const snark::ur::body_t& body )
     {
         t = boost::posix_time::microsec_clock::universal_time();
-        packet.export_to( arm );
-        packet.export_to( tool );        
-        mode = static_cast< int >( packet.mode() );
-        time_since_boot = packet.time_since_boot();
+        body.export_to( arm );
+        body.export_to( tool );        
+        mode = static_cast< int >( body.mode() );
+        time_since_boot = body.time_since_boot();
     }
 };
 
@@ -118,22 +115,35 @@ int main( int ac, char** av )
         csv.fields = options.value< std::string >( "--fields", "" );
         if( options.exists( "--format" ) ) { std::cout << comma::csv::format::value< status_t >( csv.fields, true ) << std::endl; return 0; }
         if( options.exists( "--binary,-b" ) ) { csv.format( comma::csv::format::value< status_t >( csv.fields, true ) ); }
-        if( options.exists( "--packet-size" ) ) { std::cout << snark::ur::packet_t::size << std::endl; return 0; }
+        const unsigned int expected_packet_size = snark::ur::header_t::size + snark::ur::body_t::size;
+        if( options.exists( "--packet-size" ) ) { std::cout << expected_packet_size << std::endl; return 0; }
         if( options.exists( "--mode-from-name" ) ) { std::cout << snark::ur::mode_from_name( options.value< std::string >( "--mode-from-name" ) ) << std::endl; return 0; }
         if( options.exists( "--joint-mode-from-name" ) ) { std::cout << snark::ur::joint_mode_from_name( options.value< std::string >( "--joint-mode-from-name" ) ) << std::endl; return 0; }
         if( options.exists( "--mode-to-name" ) ) { std::cout << snark::ur::mode_to_name( options.value< int >( "--mode-to-name" ) ) << std::endl; return 0; }
         if( options.exists( "--joint-mode-to-name" ) ) { std::cout << snark::ur::joint_mode_to_name( options.value< int >( "--joint-mode-to-name" ) ) << std::endl; return 0; }        
         static comma::csv::output_stream< status_t > ostream( std::cout, csv );
-        snark::ur::packet_t packet;
+        snark::ur::header_t header;
+        snark::ur::body_t body;
         status_t status;
-        comma::signal_flag is_shutdown;    
+        comma::signal_flag is_shutdown;
+        char incomplete_body[expected_packet_size];
         while( !is_shutdown && std::cin.good() && !std::cin.eof() )
         {
-            std::cin.read( packet.data(), snark::ur::packet_t::size );
+            std::cin.read( header.data(), snark::ur::header_t::size );
             if( std::cin.gcount() == 0 ) { break; }
-            if( std::cin.gcount() < snark::ur::packet_t::size ) { std::cerr << name() << ": received a packet of length " << std::cin.gcount() << ", expected " << snark::ur::packet_t::size << std::endl; return 1; }
-            if( packet.length() != snark::ur::packet_t::size ) { std::cerr << name() << ": received a packet that reports length " << packet.length() << ", expected " << snark::ur::packet_t::size << std::endl; return 1; }
-            status.set( packet );
+            if( std::cin.gcount() < snark::ur::header_t::size ) { std::cerr << name() << ": received corrupted header of size " << std::cin.gcount() << " (expected " << snark::ur::header_t::size << ")" <<std::endl; return 1; }
+            unsigned int size = header.length();
+            if( size > expected_packet_size ) { std::cerr << name() << ": cannot process a packet of size " << size << " (expected " << expected_packet_size << ")" << std::endl; return 1; }
+            if( size < expected_packet_size )
+            { 
+                std::cerr << name() << ": skipping an unknown packet of size " << size << " (expected " << expected_packet_size << ")" << std::endl;
+                std::cin.read( incomplete_body, size );
+                continue;
+            }
+            std::cin.read( body.data(), snark::ur::body_t::size ); 
+            if( std::cin.gcount() == 0 ) { break; }
+            if( std::cin.gcount() < snark::ur::body_t::size ) { std::cerr << name() << ": received body of size " << std::cin.gcount() << " (expected " << snark::ur::body_t::size << ")" << std::endl; return 1; }
+            status.set( body );
             ostream.write( status );
         }
     }

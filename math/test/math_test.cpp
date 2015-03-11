@@ -9,10 +9,7 @@
 // 2. Redistributions in binary form must reproduce the above copyright
 //    notice, this list of conditions and the following disclaimer in the
 //    documentation and/or other materials provided with the distribution.
-// 3. All advertising materials mentioning features or use of this software
-//    must display the following acknowledgement:
-//    This product includes software developed by the The University of Sydney.
-// 4. Neither the name of the The University of Sydney nor the
+// 3. Neither the name of the University of Sydney nor the
 //    names of its contributors may be used to endorse or promote products
 //    derived from this software without specific prior written permission.
 //
@@ -56,6 +53,27 @@ TEST( math, closed_interval )
     i = i.hull( Eigen::Vector3d ( 0, 10, 3 ) );
     EXPECT_EQ( i.min(), Eigen::Vector3d( -1, 1, 2 ) );
     EXPECT_EQ( i.max(), Eigen::Vector3d( 3, 10, 5 ) );
+}
+
+void invalid_closed_interval() 
+{   
+    std::vector< Eigen::Vector3i > v;
+    v.push_back( Eigen::Vector3i( 1, 2, 3 ) );
+    v.push_back( Eigen::Vector3i( 0, 2, 4 ) );    
+    snark::math::closed_interval< int, 3 > e( v[0], v[1] );
+}
+
+TEST( math, closed_interval_int )
+{
+    {
+        snark::math::closed_interval< int, 3 > e( Eigen::Vector3i( 1, 2, 3 ), Eigen::Vector3i( 1, 2, 3 ) );
+        EXPECT_EQ( e.min(), Eigen::Vector3i( 1, 2, 3 ) );
+        EXPECT_EQ( e.max(), Eigen::Vector3i( 1, 2, 3 ) );
+        e = e.hull( Eigen::Vector3i( 0, 2, 4 ) );
+        EXPECT_EQ( e.min(), Eigen::Vector3i( 0, 2, 3 ) );
+        EXPECT_EQ( e.max(), Eigen::Vector3i( 1, 2, 4 ) );
+    }
+    ASSERT_THROW( invalid_closed_interval(), comma::exception );
 }
 
 TEST( math, closed_interval_one_dimension_zero )

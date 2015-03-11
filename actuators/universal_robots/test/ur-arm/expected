@@ -1,0 +1,6 @@
+angles/no_publisher/status="2"
+angles/timed_out/status="1"
+angles/success/status="0"
+pose/no_publisher/status="2"
+pose/timed_out/status="1"
+pose/success/status="0"

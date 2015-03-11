@@ -38,3 +38,7 @@ INSTALL( TARGETS points-to-polar RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} CO
 ADD_EXECUTABLE( points-calc points-calc.cpp )
 TARGET_LINK_LIBRARIES( points-calc snark_math ${comma_ALL_LIBRARIES} ${snark_ALL_EXTERNAL_LIBRARIES} )
 INSTALL( TARGETS points-calc RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
+
+ADD_EXECUTABLE( ellipsoid-calc ellipsoid-calc.cpp )
+TARGET_LINK_LIBRARIES( ellipsoid-calc snark_math_spherical_geometry ${comma_ALL_LIBRARIES} ${snark_ALL_EXTERNAL_LIBRARIES} )
+INSTALL( TARGETS ellipsoid-calc RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )

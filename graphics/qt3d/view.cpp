@@ -9,10 +9,7 @@
 // 2. Redistributions in binary form must reproduce the above copyright
 //    notice, this list of conditions and the following disclaimer in the
 //    documentation and/or other materials provided with the distribution.
-// 3. All advertising materials mentioning features or use of this software
-//    must display the following acknowledgement:
-//    This product includes software developed by the The University of Sydney.
-// 4. Neither the name of the The University of Sydney nor the
+// 3. Neither the name of the University of Sydney nor the
 //    names of its contributors may be used to endorse or promote products
 //    derived from this software without specific prior written permission.
 //
@@ -35,8 +32,8 @@
 
 #include <QTimer>
 #include <boost/array.hpp>
-#include "./rotation_matrix.h"
-#include "./view.h"
+#include <snark/math/rotation_matrix.h>
+#include "view.h"
 
 namespace snark { namespace graphics { namespace qt3d {
 
@@ -317,7 +314,8 @@ boost::optional< QVector3D > view::getPoint( const QPoint& point2d )
 /// handle mouse double click: set rotation point
 void view::mouseDoubleClickEvent( QMouseEvent *e )
 {
-    if( e->button() == Qt::LeftButton )
+    if( e->button() == Qt::RightButton ) { mouse_double_right_click_event( e ); }
+    else if( e->button() == Qt::LeftButton )
     {
         boost::optional< QVector3D > point = getPoint( e->pos() );
         if( point )
@@ -335,9 +333,8 @@ void view::mouseDoubleClickEvent( QMouseEvent *e )
         m_show_coordinates = true;
         update();
         QTimer::singleShot( 3000, this, SLOT( hide_coordinates() ) );
+        QGLView::mouseDoubleClickEvent(e);
     }
-    QGLView::mouseDoubleClickEvent(e);
 }
-
 
 } } } // namespace snark { namespace graphics { namespace qt3d {

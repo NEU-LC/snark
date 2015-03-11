@@ -9,10 +9,7 @@
 // 2. Redistributions in binary form must reproduce the above copyright
 //    notice, this list of conditions and the following disclaimer in the
 //    documentation and/or other materials provided with the distribution.
-// 3. All advertising materials mentioning features or use of this software
-//    must display the following acknowledgement:
-//    This product includes software developed by the The University of Sydney.
-// 4. Neither the name of the The University of Sydney nor the
+// 3. Neither the name of the University of Sydney nor the
 //    names of its contributors may be used to endorse or promote products
 //    derived from this software without specific prior written permission.
 //
@@ -36,7 +33,7 @@
 #ifndef SNARK_SENSORS_SICK_COLA_BINARY_PACKETS_H_
 #define SNARK_SENSORS_SICK_COLA_BINARY_PACKETS_H_
 
-#include "./commands.h"
-#include "./scan_packet.h"
+#include "commands.h"
+#include "scan_packet.h"
 
 #endif // #ifndef SNARK_SENSORS_SICK_COLA_BINARY_PACKETS_H_

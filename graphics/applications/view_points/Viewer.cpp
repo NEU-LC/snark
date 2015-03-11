@@ -9,10 +9,7 @@
 // 2. Redistributions in binary form must reproduce the above copyright
 //    notice, this list of conditions and the following disclaimer in the
 //    documentation and/or other materials provided with the distribution.
-// 3. All advertising materials mentioning features or use of this software
-//    must display the following acknowledgement:
-//    This product includes software developed by the The University of Sydney.
-// 4. Neither the name of the The University of Sydney nor the
+// 3. Neither the name of the University of Sydney nor the
 //    names of its contributors may be used to endorse or promote products
 //    derived from this software without specific prior written permission.
 //
@@ -46,7 +43,7 @@
 #include <comma/csv/stream.h>
 #include <comma/name_value/ptree.h>
 #include <comma/visiting/apply.h>
-#include "./Viewer.h"
+#include "Viewer.h"
 #include <QTimer>
 
 namespace snark { namespace graphics { namespace View {
@@ -208,6 +205,16 @@ void Viewer::setCameraPosition ( const Eigen::Vector3d& position, const Eigen::V
     Eigen::Vector3d where = p + direction;
     camera()->setCenter( QVector3D( where.x(), where.y(), where.z() ) );
     m_sceneCenter = QVector3D( scene_center.x(), scene_center.y(), scene_center.z() );
+}
+
+void Viewer::mouse_double_right_click_event(  QMouseEvent *e )
+{
+    boost::optional< QVector3D > point = getPoint( e->pos() );
+    if( !point ) { std::cerr << "warning: no point found near the double right click" << std::endl; return; }
+    Eigen::Vector3d p( point->x(), point->y(), point->z() );
+    if( !m_offset ) { std::cerr << "warning: offset is not defined yet, wait until it is found first" << std::endl; return; }
+    p += *m_offset;
+    std::cout << std::setprecision(16) << p.x() << "," << p.y() << "," << p.z() << std::endl;
 }
 
 } } } // namespace snark { namespace graphics { namespace View {

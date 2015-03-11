@@ -9,10 +9,7 @@
 // 2. Redistributions in binary form must reproduce the above copyright
 //    notice, this list of conditions and the following disclaimer in the
 //    documentation and/or other materials provided with the distribution.
-// 3. All advertising materials mentioning features or use of this software
-//    must display the following acknowledgement:
-//    This product includes software developed by the The University of Sydney.
-// 4. Neither the name of the The University of Sydney nor the
+// 3. Neither the name of the University of Sydney nor the
 //    names of its contributors may be used to endorse or promote products
 //    derived from this software without specific prior written permission.
 //
@@ -42,7 +39,7 @@
 #include <Qt3D/qglview.h>
 #include <QMouseEvent>
 #include <comma/visiting/traits.h> // quick and dirty
-#include "./coordinates.h"
+#include "coordinates.h"
 
 namespace snark { namespace graphics { namespace qt3d {
 
@@ -77,6 +74,7 @@ protected:
     QVector3D unproject( float x, float y, float depth );
     boost::optional< QVector3D > getPoint( const QPoint& point2d );
     void mouseDoubleClickEvent( QMouseEvent *e );
+    virtual void mouse_double_right_click_event( QMouseEvent *e ) {}
 
     const QColor4ub m_background_color;
     QVector3D m_sceneCenter;

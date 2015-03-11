@@ -9,10 +9,7 @@
 // 2. Redistributions in binary form must reproduce the above copyright
 //    notice, this list of conditions and the following disclaimer in the
 //    documentation and/or other materials provided with the distribution.
-// 3. All advertising materials mentioning features or use of this software
-//    must display the following acknowledgement:
-//    This product includes software developed by the The University of Sydney.
-// 4. Neither the name of the The University of Sydney nor the
+// 3. Neither the name of the University of Sydney nor the
 //    names of its contributors may be used to endorse or promote products
 //    derived from this software without specific prior written permission.
 //
@@ -38,8 +35,8 @@
 
 #include <string>
 #include <Qt3D/qcolor4ub.h>
-#include "./colour_map.h"
-#include "./PointWithId.h"
+#include "snark/render/colour_map.h"
+#include "PointWithId.h"
 
 namespace snark { namespace graphics { namespace View {
 
@@ -96,7 +93,7 @@ class ByScalar : public coloured
 
         ByScalar( double from
                 , double to
-                , const colour_map::values& map );
+                , const snark::render::colour_map::values& map );
 
         QColor4ub color( const Eigen::Vector3d& point
                        , comma::uint32 id
@@ -105,7 +102,7 @@ class ByScalar : public coloured
 
     protected:
         double from, to, diff;
-        boost::optional< colour_map::values > map;
+        boost::optional< snark::render::colour_map::values > map;
         QColor4ub from_color;
         QColor4ub to_color;
 };

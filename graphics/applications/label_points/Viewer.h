@@ -9,10 +9,7 @@
 // 2. Redistributions in binary form must reproduce the above copyright
 //    notice, this list of conditions and the following disclaimer in the
 //    documentation and/or other materials provided with the distribution.
-// 3. All advertising materials mentioning features or use of this software
-//    must display the following acknowledgement:
-//    This product includes software developed by the The University of Sydney.
-// 4. Neither the name of the The University of Sydney nor the
+// 3. Neither the name of the University of Sydney nor the
 //    names of its contributors may be used to endorse or promote products
 //    derived from this software without specific prior written permission.
 //
@@ -49,16 +46,20 @@
 #include <boost/scoped_ptr.hpp>
 #include <boost/optional.hpp>
 #include <comma/string/string.h>
+#include <comma/csv/stream.h>
+#include "../label_points/PointWithId.h"
 
 #include <snark/graphics/qt3d/view.h>
 
-#include "./Dataset.h"
-#include "./PointWithId.h"
-#include "./Tools.h"
+#include "Dataset.h"
+#include "PointWithId.h"
+#include "Tools.h"
 
 namespace snark { namespace graphics { namespace View {
 
 static const long double pi_ = 3.14159265358979323846l;
+
+typedef std::pair< Eigen::Vector3d, comma::uint32 > point_and_id;
 
 class Viewer : public qt3d::view
 {
@@ -73,6 +74,7 @@ class Viewer : public qt3d::view
         Tools::Fill fill;
 
         Viewer( const std::vector< comma::csv::options >& options
+              , const comma::csv::options& csv_out
               , bool labelDuplicated
               , const QColor4ub& background_color
               , bool orthographic = false
@@ -101,7 +103,7 @@ class Viewer : public qt3d::view
         void mousePressEvent( QMouseEvent* e );
         void mouseReleaseEvent( QMouseEvent* e );
         void mouseMoveEvent( QMouseEvent* e );
-        boost::optional< std::pair< Eigen::Vector3d, comma::uint32 > > pointSelection( const QPoint& point, bool writableOnly = false );
+        boost::optional< point_and_id > pointSelection( const QPoint& point, bool writableOnly = false );
 
     private:
         friend class Tools::Tool; // quick and dirty
@@ -117,6 +119,8 @@ class Viewer : public qt3d::view
         boost::optional< comma::uint32 > m_id;
         const QColor4ub m_background_color;
         std::vector< comma::csv::options > m_options;
+        bool output_with_id;
+        comma::csv::output_stream< PointWithId > m_output_stream;
         bool m_labelDuplicated;
         bool m_orthographic;
         double m_fieldOfView;

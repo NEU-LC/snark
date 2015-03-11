@@ -9,10 +9,7 @@
 // 2. Redistributions in binary form must reproduce the above copyright
 //    notice, this list of conditions and the following disclaimer in the
 //    documentation and/or other materials provided with the distribution.
-// 3. All advertising materials mentioning features or use of this software
-//    must display the following acknowledgement:
-//    This product includes software developed by the The University of Sydney.
-// 4. Neither the name of the The University of Sydney nor the
+// 3. Neither the name of the University of Sydney nor the
 //    names of its contributors may be used to endorse or promote products
 //    derived from this software without specific prior written permission.
 //
@@ -33,7 +30,8 @@
 
 /// @author Cedric Wohlleber
 
-#include "./Texture.h"
+#include <iostream>
+#include "Texture.h"
 
 namespace snark { namespace graphics { namespace View {
 
@@ -66,10 +64,10 @@ QGLSceneNode* Quad::node() const
     
 Texture::Texture ( const QString& string, const QColor4ub& color )
 {
-    QFont font( "helvetica", 64 );
+    QFont font( "System", 64 ); //QFont font( "helvetica", 64 ); font sizes seem to be poorly supported for helvetica
+    font.setStyleHint( QFont::System );
     QFontMetrics metrics( font );
     QRect rect = metrics.boundingRect(string);
-
     m_image = QImage( rect.size(), QImage::Format_ARGB32 );
     m_image.fill( Qt::transparent );
     QPainter p2( &m_image );

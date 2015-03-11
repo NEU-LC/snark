@@ -9,10 +9,7 @@
 // 2. Redistributions in binary form must reproduce the above copyright
 //    notice, this list of conditions and the following disclaimer in the
 //    documentation and/or other materials provided with the distribution.
-// 3. All advertising materials mentioning features or use of this software
-//    must display the following acknowledgement:
-//    This product includes software developed by the The University of Sydney.
-// 4. Neither the name of the The University of Sydney nor the
+// 3. Neither the name of the University of Sydney nor the
 //    names of its contributors may be used to endorse or promote products
 //    derived from this software without specific prior written permission.
 //
@@ -163,6 +160,12 @@ void usage()
     std::cerr << std::endl;
     std::cerr << "    most of the options can be set for individual files (see examples)" << std::endl;
     std::cerr << std::endl;
+    std::cerr << "mouse clicks:" << std::endl;
+    std::cerr << "    left press and hold: rotate the scene around the centre" << std::endl;
+    std::cerr << "    right press and hold: translate the scene" << std::endl;
+    std::cerr << "    double left click: change the centre of the scene" << std::endl;
+    std::cerr << "    double right click: output to stdout coordinates of the clicked point" << std::endl;
+    std::cerr << std::endl;
     std::cerr << "examples" << std::endl;
     std::cerr << std::endl;
     std::cerr << "basics" << std::endl;
@@ -211,6 +214,18 @@ void usage()
     std::cerr << "        echo 0,0,0,1 >> points.csv" << std::endl;
     std::cerr << "        echo 0,0,0,2 >> points.csv" << std::endl;
     std::cerr << "        echo points.csv | view-points \"-;shape=image1.jpg,image2.jpg,image3.jpg;fields=x,y,z,id\"" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    show points selected with a double right click" << std::endl;
+    std::cerr << "        rm -rf pipe && mkfifo pipe && cat pipe | view-points \"rose.st.ground.csv;fields=x,y,z,r,g,b\" \"-;colour=sky;weight=10\" > pipe" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    publish a real time playback of georeferenced velodyne data on port 12345, visualise the data in real time and show points selected with a double right click" << std::endl;
+    std::cerr << "        cat velodyne-georeferenced.bin | csv-play --binary t,3d,ui | io-publish --size $( csv-size t,3d,ui ) -m 10000 tcp:12345" << std::endl;
+    std::cerr << "        rm -rf pipe && mkfifo pipe && cat pipe | view-points \"tcp:localhost:12345;binary=t,3d,ui;fields=,x,y,z,block\" \"-;fields=x,y,z;colour=sky;weight=10\" > pipe" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    similar to above but uses different colours for the shown points and adds labels next to the points indicating the click order " << std::endl;
+    std::cerr << "        cat velodyne-georeferenced.bin | csv-play --binary t,3d,ui | io-publish --size $( csv-size t,3d,ui ) -m 10000 tcp:12345" << std::endl;
+    std::cerr << "        rm -rf pipe && mkfifo pipe && cat pipe | view-points \"tcp:localhost:12345;binary=t,3d,ui;fields=,x,y,z,block\" \"-;fields=x,y,z,id,label;weight=10\" | csv-paste \"-\" line-number line-number > pipe" << std::endl;
+    std::cerr << std::endl;
     exit( -1 );
 }
 

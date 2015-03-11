@@ -1,4 +1,5 @@
 SET( PROJECT "graphics" )
+SET( TARGET_NAME snark_${PROJECT} )
 
 IF( WIN32 OR APPLE )
     FIND_PACKAGE( OpenGL )
@@ -47,8 +48,10 @@ ELSE ( snark_QT_VERSION EQUAL "5" )
 ENDIF( snark_QT_VERSION EQUAL "5" )
 
 SET( dir ${SOURCE_CODE_BASE_DIR}/${PROJECT} )
+FILE( GLOB source   ${dir}/*.cpp)
 FILE( GLOB includes ${dir}/*.h )
-INSTALL( FILES ${includes} DESTINATION ${snark_INSTALL_INCLUDE_DIR}/${PROJECT} )
+
+SOURCE_GROUP( ${TARGET_NAME} FILES ${source} ${includes} )
 
 IF( snark_BUILD_APPLICATIONS )
     ADD_SUBDIRECTORY( applications )

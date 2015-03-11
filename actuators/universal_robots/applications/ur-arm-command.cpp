@@ -9,10 +9,7 @@
 // 2. Redistributions in binary form must reproduce the above copyright
 //    notice, this list of conditions and the following disclaimer in the
 //    documentation and/or other materials provided with the distribution.
-// 3. All advertising materials mentioning features or use of this software
-//    must display the following acknowledgement:
-//    This product includes software developed by the The University of Sydney.
-// 4. Neither the name of the The University of Sydney nor the
+// 3. Neither the name of the University of Sydney nor the
 //    names of its contributors may be used to endorse or promote products
 //    derived from this software without specific prior written permission.
 //
@@ -60,6 +57,14 @@ void usage( bool verbose )
     std::cerr << std::endl;
     if( verbose ) { std::cerr << "csv options" << std::endl << comma::csv::options::usage( "command,values" ) << std::endl; }
     else { std::cerr << "csv options... use --help --verbose for more" << std::endl << std::endl; }
+    std::cerr << "default values:" << std::endl;
+    std::cerr << "    joints: speed = 0.75 rad/s, acceleration = 3 rad/s^2" << std::endl;
+    std::cerr << "    tool: speed = 0.3 m/s, acceleration = 1.2 m/s^2" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "maximum values (approximate):" << std::endl;
+    std::cerr << "    joints: speed = 3.14 rad/s" << std::endl;
+    std::cerr << "    tool: speed = 1 m/s" << std::endl;    
+    std::cerr << std::endl;
     std::cerr << "examples (assuming robot.arm is the arm's IP address):" << std::endl;
     std::cerr << "    move joints at a speed of 0.02 rad/sec to new joint angles 0,1,2,3,4,5 (in radians):" << std::endl;
     std::cerr << "        echo \"1,0,1,2,3,4,5,0.02\" | ur-arm-command --fields=command,values,speed | nc robot.arm 30002" << std::endl;
@@ -159,7 +164,8 @@ int main( int ac, char** av )
     {
         comma::command_line_options options( ac, av, usage );
         comma::csv::options csv = comma::csv::options( options, "command,values" );
-        if( !csv.has_field( "command,values" ) ) { std::cerr << name() << ": failed to find command and values in the input fields" << std::endl; }
+        if( !csv.has_field( "command" ) ) { std::cerr << name() << ": failed to find command in the input fields" << std::endl; }
+        if( !csv.has_field( "values" ) && !csv.has_field( "values[0],values[1],values[2],values[3],values[4],values[5]" ) ) { std::cerr << name() << ": failed to find command in the input fields" << std::endl; }
         comma::csv::input_stream< input_t > istream( std::cin, csv );
         optional_parameters_t optional_parameters( csv );
         while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )

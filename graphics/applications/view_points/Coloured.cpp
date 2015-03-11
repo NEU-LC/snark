@@ -9,10 +9,7 @@
 // 2. Redistributions in binary form must reproduce the above copyright
 //    notice, this list of conditions and the following disclaimer in the
 //    documentation and/or other materials provided with the distribution.
-// 3. All advertising materials mentioning features or use of this software
-//    must display the following acknowledgement:
-//    This product includes software developed by the The University of Sydney.
-// 4. Neither the name of the The University of Sydney nor the
+// 3. Neither the name of the University of Sydney nor the
 //    names of its contributors may be used to endorse or promote products
 //    derived from this software without specific prior written permission.
 //
@@ -38,7 +35,7 @@
 #include <boost/lexical_cast.hpp>
 #include <qnamespace.h>
 #include <comma/string/string.h>
-#include "./Coloured.h"
+#include "Coloured.h"
 
 namespace snark { namespace graphics { namespace View {
 
@@ -191,7 +188,7 @@ ByScalar::ByScalar( double from, double to, const QColor4ub& from_color, const Q
 {
 }
 
-ByScalar::ByScalar( double from, double to, const colour_map::values& map )
+ByScalar::ByScalar( double from, double to, const snark::render::colour_map::values& map )
     : from( from )
     , to( to )
     , diff( to - from )
@@ -317,7 +314,7 @@ coloured* colourFromString( const std::string& s, const std::string& fields, con
             QColor4ub to_color = color_from_name( "cyan" );
             double from = 0;
             double to = 1;
-            boost::optional< colour_map::values > map;
+            boost::optional< snark::render::colour_map::values > map;
             if( s != "" )
             {
                 std::vector< std::string > v = comma::split( s, ',' );
@@ -329,10 +326,10 @@ coloured* colourFromString( const std::string& s, const std::string& fields, con
                         switch( w.size() )
                         {
                             case 1:
-                                if( w[0] == "green" ) { map = colour_map::constant( 0, 255, 0 ); }
-                                else if( w[0] == "red" ) { map = colour_map::constant( 255, 0, 0 ); }
-                                else if( w[0] == "hot" ) { map = colour_map::temperature( 96, 96 ); }
-                                else if( w[0] == "jet" ) { map = colour_map::jet(); }
+                                if( w[0] == "green" ) { map = snark::render::colour_map::constant( 0, 255, 0 ); }
+                                else if( w[0] == "red" ) { map = snark::render::colour_map::constant( 255, 0, 0 ); }
+                                else if( w[0] == "hot" ) { map = snark::render::colour_map::temperature( 96, 96 ); }
+                                else if( w[0] == "jet" ) { map = snark::render::colour_map::jet(); }
                                 else { COMMA_THROW( comma::exception, "expected colour map, got: " << s ); }
                                 break;
                             case 2:
@@ -361,10 +358,10 @@ coloured* colourFromString( const std::string& s, const std::string& fields, con
                         switch( w.size() )
                         {
                             case 1:
-                                if( w[0] == "green" ) { map = colour_map::constant( 0, 255, 0 ); }
-                                else if( w[0] == "red" ) { map = colour_map::constant( 255, 0, 0 ); }
-                                else if( w[0] == "hot" ) { map = colour_map::temperature( 96, 96 ); }
-                                else if( w[0] == "jet" ) { map = colour_map::jet(); }
+                                if( w[0] == "green" ) { map = snark::render::colour_map::constant( 0, 255, 0 ); }
+                                else if( w[0] == "red" ) { map = snark::render::colour_map::constant( 255, 0, 0 ); }
+                                else if( w[0] == "hot" ) { map = snark::render::colour_map::temperature( 96, 96 ); }
+                                else if( w[0] == "jet" ) { map = snark::render::colour_map::jet(); }
                                 else { COMMA_THROW( comma::exception, "expected colour map, got: " << s ); }
                                 break;
                             case 2:

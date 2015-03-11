@@ -1,0 +1,43 @@
+#!/bin/bash
+
+config=config.json
+prefix=ur5
+publisher_port=$( name-value-get --from json $prefix/publisher/data/port < $config )
+timeout=0.1
+angle_tolerance=0.0001
+status_sample=status_sample_stationary.bin
+real_target_angles=$( cat $status_sample | ur-arm-status --fields=arm/angles )
+real_target_pose=$( cat $status_sample | ur-arm-status --fields=tool/pose )
+fake_target=1,2,3,4,5,6
+
+if (( `netstat --all | grep tcp | grep LISTEN | grep $publisher_port | wc -l` )); then 
+    echo "$( readlink -f `basename $0` ): required port $publisher_port is already in use, try changing publisher port in config.json" >&2
+    exit 1
+fi
+
+function bye { pkill -P $$; }
+trap 'bye' INT HUP TERM 
+
+function test_for
+{
+    name="$1"
+    real_target="$2"
+    ur-arm wait --$name=$fake_target --config=$config --prefix=$prefix --timeout=$timeout --tolerance=$angle_tolerance
+    status=$?
+    echo "$name/no_publisher/status=$status"
+
+    while :; do cat $status_sample; sleep 0.01; done | io-publish -s $( ur-arm-status --packet-size ) tcp:$publisher_port 2>/dev/null &
+    ur-arm wait --$name=$fake_target --config=$config --prefix=$prefix --timeout=$timeout --tolerance=$angle_tolerance
+    status=$?
+    echo "$name/timed_out/status=$status"
+    pkill -P $$
+
+    while :; do cat $status_sample; sleep 0.01; done | io-publish -s $( ur-arm-status --packet-size ) tcp:$publisher_port 2>/dev/null &
+    ur-arm wait --$name=$real_target --config=$config --prefix=$prefix --timeout=$timeout --tolerance=$angle_tolerance
+    status=$?
+    echo "$name/success/status=$status"
+    pkill -P $$    
+}
+
+test_for angles $real_target_angles
+test_for pose $real_target_pose

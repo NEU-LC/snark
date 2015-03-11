@@ -9,10 +9,7 @@
 // 2. Redistributions in binary form must reproduce the above copyright
 //    notice, this list of conditions and the following disclaimer in the
 //    documentation and/or other materials provided with the distribution.
-// 3. All advertising materials mentioning features or use of this software
-//    must display the following acknowledgement:
-//    This product includes software developed by the The University of Sydney.
-// 4. Neither the name of the The University of Sydney nor the
+// 3. Neither the name of the University of Sydney nor the
 //    names of its contributors may be used to endorse or promote products
 //    derived from this software without specific prior written permission.
 //
@@ -45,7 +42,7 @@
 #include <snark/sensors/dc1394/types.h>
 
 namespace snark { namespace camera {
-
+    
 /// image acquisition from dc1394 camera
 class dc1394
 {
@@ -78,8 +75,33 @@ public:
         bool deinterlace;
     };
 
+    static const std::size_t number_of_pins = 4;
+    typedef enum { STROBE_POLARITY_LOW = 0, STROBE_POLARITY_HIGH = 1 } strobe_polarity_t;
+    typedef enum { STROBE_IGNORE, STROBE_ON, STROBE_OFF, STROBE_AUTO } strobe_command_t;
+    struct strobe
+    {
+        strobe() : pin( 0 ), polarity( STROBE_POLARITY_HIGH ), delay( 0 ), duration( 0 ), command( STROBE_IGNORE ) {}
+        unsigned int pin;
+        strobe_polarity_t polarity;
+        unsigned int delay;
+        unsigned int duration;
+        strobe_command_t command;
+    };   
+    static strobe_polarity_t polarity_from_string( std::string s ) 
+    { 
+        if( s == "low" ) { return STROBE_POLARITY_LOW; }
+        else if( s == "high" ) { return STROBE_POLARITY_HIGH; } 
+        else { COMMA_THROW( comma::exception, "expected strobe polarity to be either \"high\" or \"low\", got " << s ); } 
+    }
+    static strobe_command_t command_from_string( std::string s ) 
+    { 
+        if( s == "on" ) { return STROBE_ON; } 
+        else if( s == "off" ) { return STROBE_OFF; } 
+        else if ( s == "auto" ) { return STROBE_AUTO; } 
+        else { COMMA_THROW( comma::exception, "expected strobe command to be \"on\", \"off\" or \"auto\", got " << s ); } 
+    }
     
-    dc1394( const config& config = config() );
+    dc1394( const config& config = config(), const strobe& strobe = strobe() );
     ~dc1394();
 
     const cv::Mat& read();
@@ -87,6 +109,11 @@ public:
     bool poll();
     static void list_cameras();
     void list_attributes();
+
+    void get_control_register( uint32_t value, const uint64_t address );
+    void set_control_register( const uint32_t value, const uint64_t address );
+    void verify_strobe_parameters( const strobe& strobe );
+    void trigger_strobe( const bool enable, const strobe& strobe );
 
 private:
     void init_camera();
@@ -96,6 +123,9 @@ private:
     void set_absolute_shutter_gain( float shutter, float gain );
     void set_relative_shutter_gain( unsigned int shutter, unsigned int gain );
     void set_exposure( unsigned int exposure );
+
+    void manage_strobe_at_start();
+    void manage_strobe_at_stop();
 
     config m_config;
     
@@ -119,6 +149,8 @@ private:
     int m_fd;
     comma::io::select m_select;
     boost::posix_time::time_duration m_frame_duration;
+    
+    strobe m_strobe;
 };
 
 } } // namespace snark { namespace camera {
@@ -191,6 +223,24 @@ template <> struct traits< snark::camera::dc1394::config >
     }
 };
 
-} }
+template <> struct traits< snark::camera::dc1394::strobe >
+{
+    template < typename Key, class Visitor >
+    static void visit( const Key&, snark::camera::dc1394::strobe& c, Visitor& v )
+    {
+        std::string command;
+        std::string polarity;
+        v.apply( "command", command );
+        v.apply( "polarity", polarity );
+        if( !command.empty() ) { c.command = snark::camera::dc1394::command_from_string( command ); }        
+        if( !polarity.empty() ) { c.polarity = snark::camera::dc1394::polarity_from_string( polarity ); }        
+        v.apply( "pin", c.pin );
+        v.apply( "delay", c.delay );
+        v.apply( "duration", c.duration );
+    }
+    
+};
+
+} } // namespace comma { namespace visiting {
 
 #endif // SNARK_SENSORS_DC1394_H_
