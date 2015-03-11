@@ -133,8 +133,10 @@ int main( int ac, char** av )
         bool anticlick = options.exists( "--anticlick" );
         double attack = options.value< double >( "--attack", 0 );
         bool realtime = false;
-        #ifndef WIN32
         realtime = options.exists( "--realtime" );
+        #ifdef WIN32
+        if( realtime ) { std::cerr << "audio-sample: --realtime not supported on windows" << std::endl; return 1; }
+        #else
         comma::io::select select;
         if( realtime ) { select.read().add( 0 ); }
         #endif // #ifndef WIN32
@@ -162,6 +164,7 @@ int main( int ac, char** av )
                 double step = 1.0 / rate;
                 if( realtime )
                 {
+                    #ifndef WIN32
                     boost::posix_time::ptime before = boost::posix_time::microsec_clock::universal_time();
                     double microseconds_per_sample = 1000000.0 / rate;
                     unsigned int size = 1;
@@ -179,12 +182,14 @@ int main( int ac, char** av )
                             if( csv.binary() ) { std::cout.write( reinterpret_cast< const char* >( &a ), sizeof( double ) ); }
                             else { std::cout << a << std::endl; }
                         }
+                        
                         select.wait( boost::posix_time::microseconds( microseconds_per_sample ) );
                         if( select.read().ready( 0 ) ) { v.clear(); break; }
                         boost::posix_time::ptime now = boost::posix_time::microsec_clock::universal_time();
                         size = ( now - before ).total_microseconds() / microseconds_per_sample;
                         before = now;
                     }
+                    #endif // #ifndef WIN32
                 }
                 else
                 {
