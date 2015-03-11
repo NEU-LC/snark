@@ -346,7 +346,7 @@ IF( WIN32 )
     if( snark_build_graphics )
         get_filename_component( QT_BIN_DIR ${QT_QMAKE_EXECUTABLE} PATH )
         file( GLOB QT_DLLS ${QT_BIN_DIR}/*.dll )
-    endif( snark_build_imaging )
+    endif( snark_build_graphics )
 
     SET(snark_PACKAGE_DLLS ${TBB_DLL_DIR}/tbb.dll ${OpenCV_DLLS} ${QT_DLLS})
     
