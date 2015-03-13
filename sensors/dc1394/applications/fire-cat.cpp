@@ -38,6 +38,7 @@
 #include <comma/csv/format.h>
 #include <comma/name_value/ptree.h>
 #include <comma/name_value/parser.h>
+#include <comma/name_value/serialize.h>
 #include <comma/application/signal_flag.h>
 #include <comma/string/string.h>
 
@@ -54,47 +55,11 @@ static Pair capture( snark::camera::dc1394& camera )
     return std::make_pair( camera.time(), image.clone() );
 }
 
-//if( options.exists( --config ) ) { config = comma::read_json< comma::ur::config_t >( options.value< std::string >( --config ) ); }
-
-// quick and dirty for now, just to tear down application/ptree.h
-template < typename C >
-C config_from_ini( const std::string& filename, const std::string& name = "", const C& defaultconfig = C() )
-{
-    boost::property_tree::ptree tree;
-    C config = defaultconfig;
-    std::ifstream file;
-    file.open( filename.c_str() );
-    if ( !file.is_open() )
-    {
-        comma::to_ptree v( tree, name );
-        comma::visiting::apply( v, config );
-        boost::property_tree::ini_parser::write_ini( filename, tree );
-    }
-    else
-    {
-        boost::property_tree::ini_parser::read_ini( filename, tree );
-        boost::property_tree::ptree::assoc_iterator it = tree.find( name );
-        if( it == tree.not_found() && !name.empty() )
-        {
-            // section not found, put default
-            comma::to_ptree v( tree, name );
-            comma::visiting::apply( v, config );
-            boost::property_tree::ini_parser::write_ini(filename, tree);
-        }
-        else
-        {
-            comma::from_ptree v( tree, name, true );
-            comma::visiting::apply( v, config );
-        }
-    }
-    return config;
-}
-
 int main( int argc, char** argv )
 {
     try
     {
-        std::string config_string; 
+        std::string config_string;
         std::string fields;
         std::string strobe_string;
         unsigned int discard;
@@ -105,28 +70,18 @@ int main( int argc, char** argv )
             ( "list", "list cameras on the bus with guids" )
             ( "list-attributes", "output current camera attributes" )
             ( "discard,d", "discard frames, if cannot keep up; same as --buffer=1" )
-            ( "config,c", boost::program_options::value< std::string >( &config_string )->default_value( "fire-cat.ini" ), "configuration file for the camera or semicolon-separated name=value string, see long help for details" )
+            ( "config,c", boost::program_options::value< std::string >( &config_string ), "configuration file for the camera or semicolon-separated name=value string, see long help for details" )
             ( "buffer", boost::program_options::value< unsigned int >( &discard )->default_value( 0 ), "maximum buffer size before discarding frames, default: unlimited" )
             ( "fields,f", boost::program_options::value< std::string >( &fields )->default_value( "t,rows,cols,type" ), "header fields, possible values: t,rows,cols,type,size" )
             ( "header", "output header only" )
             ( "no-header", "output image data only" )
             ( "strobe", boost::program_options::value< std::string >( &strobe_string ), "strobe control" );
-
         boost::program_options::variables_map vm;
         boost::program_options::store( boost::program_options::parse_command_line( argc, argv, description), vm );
         boost::program_options::parsed_options parsed = boost::program_options::command_line_parser(argc, argv).options( description ).allow_unregistered().run();
         boost::program_options::notify( vm );
-        
-        if( vm.count( "header" ) + vm.count( "no-header" ) > 1 )
-        {
-            COMMA_THROW( comma::exception, "--header and --no-header are mutually exclusive" );
-        }
-
-        if( vm.count( "fields" ) && vm.count( "no-header" ) > 1 )
-        {
-            COMMA_THROW( comma::exception, "--fields and --no-header are mutually exclusive" );
-        }
-
+        if( vm.count( "header" ) + vm.count( "no-header" ) > 1 ) { COMMA_THROW( comma::exception, "--header and --no-header are mutually exclusive" ); }
+        if( vm.count( "fields" ) && vm.count( "no-header" ) > 1 ) { COMMA_THROW( comma::exception, "--fields and --no-header are mutually exclusive" ); }
         if ( vm.count( "help" ) || vm.count( "verbose" ) )
         {
             std::cerr << "acquire images from a firewire camera using libdc1394 and output them to std::out in OpenCV format" << std::endl;
@@ -184,98 +139,68 @@ int main( int argc, char** argv )
                 snark::camera::print_frame_rates();
                 std::cerr << std::endl << "allowed color codings for format7 op modes: " << std::endl;
                 snark::camera::print_color_coding();
-                std::cerr << std::endl << "ini file example for bumblebee on shrimp:" << std::endl;
-                std::cerr << "--------------------------------------------" << std::endl;
-                std::cerr << "video-mode=DC1394_VIDEO_MODE_FORMAT7_3\noperation-mode=DC1394_OPERATION_MODE_1394B\n";
-                std::cerr << "iso-speed=DC1394_ISO_SPEED_800\nframe-rate=DC1394_FRAMERATE_240\ncolor-coding=DC1394_COLOR_CODING_RGB8\nguid=49712223529993963" << std::endl;
-                std::cerr << "--------------------------------------------" << std::endl;
-                std::cerr << std::endl << "ini file example for ladybug on shrimp:" << std::endl;
-                std::cerr << "--------------------------------------------" << std::endl;
-                std::cerr << "video-mode=DC1394_VIDEO_MODE_FORMAT7_0\noperation-mode=DC1394_OPERATION_MODE_1394B\n";
-                std::cerr << "iso-speed=DC1394_ISO_SPEED_800\nframe-rate=DC1394_FRAMERATE_240\ncolor-coding=DC1394_COLOR_CODING_RAW8\npacket-size=8160\nguid=49712223530115149" << std::endl;
-                std::cerr << "--------------------------------------------" << std::endl;
-                std::cerr << std::endl << "ini file example for pika2 on shrimp:" << std::endl;
-                std::cerr << "--------------------------------------------" << std::endl;
-                std::cerr << "video-mode=DC1394_VIDEO_MODE_FORMAT7_2\noperation-mode=DC1394_OPERATION_MODE_1394B\n";
-                std::cerr << "iso-speed=DC1394_ISO_SPEED_800\nframe-rate=DC1394_FRAMERATE_240\ncolor-coding=DC1394_COLOR_CODING_MONO16\nguid=49712223534632451\n" << std::endl;
-                std::cerr << "--------------------------------------------" << std::endl;
+                std::cerr << std::endl << "config file example( --config=\"filename:bumblebee2\" ):" << std::endl;
+                std::cerr << "{                                                              " << std::endl;
+                std::cerr << "    \"bumblebee2\":                                            " << std::endl;
+                std::cerr << "    {                                                          " << std::endl;
+                std::cerr << "        \"video-mode\": DC1394_VIDEO_MODE_FORMAT7_3,           " << std::endl;
+                std::cerr << "        \"operation-mode\": DC1394_OPERATION_MODE_1394B,       " << std::endl;
+                std::cerr << "        \"iso-speed\": DC1394_ISO_SPEED_400,                   " << std::endl;
+                std::cerr << "        \"frame-rate\": DC1394_FRAMERATE_240,                  " << std::endl;
+                std::cerr << "        \"color-coding\": DC1394_COLOR_CODING_RAW16,           " << std::endl;
+                std::cerr << "        \"shutter\": 0.000075,                                 " << std::endl;
+                std::cerr << "        \"gain\": 5,                                           " << std::endl;
+                std::cerr << "        \"packet-size\": 1536,                                 " << std::endl;
+                std::cerr << "        \"deinterlace\": 1,                                    " << std::endl;
+                std::cerr << "        \"guid\": 49712223535733607                            " << std::endl;
+                std::cerr << "    }                                                          " << std::endl;
+                std::cerr << "}                                                              " << std::endl;
+                std::cerr << std::endl;
+                std::cerr << std::endl << "default values:" << std::endl; // todo 
+                comma::write_json< snark::camera::dc1394::config >( snark::camera::dc1394::config(), std::cerr );
+                std::cerr << std::endl;
             }
             return 1;
         }
-
-
-        if ( vm.count( "list" ) )
-        {
-            snark::camera::dc1394::list_cameras();
-            return 1;
-        }
-
-        if ( vm.count( "discard" ) )
-        {
-            discard = 1;
-        }
-
+        if ( vm.count( "list" ) ) { snark::camera::dc1394::list_cameras(); return 1; }
+        if ( vm.count( "discard" ) ) { discard = 1; }
         std::vector< std::string > v = comma::split( fields, "," );
         comma::csv::format format;
-        for( unsigned int i = 0; i < v.size(); ++i )
-        {
-            if( v[i] == "t" ) { format += "t"; }
-            else { format += "ui"; }
-        }
+        for( unsigned int i = 0; i < v.size(); ++i ) { if( v[i] == "t" ) { format += "t"; } else { format += "ui"; } }
         std::vector< std::string > filterStrings = boost::program_options::collect_unrecognized( parsed.options, boost::program_options::include_positional );
         std::string filters;
-        if( filterStrings.size() == 1 )
-        {
-            filters = filterStrings[0];
-        }
-        if( filterStrings.size() > 1 )
-        {
-            COMMA_THROW( comma::exception, "please provide filters as name-value string" );
-        }
-
+        if( filterStrings.size() == 1 ) { filters = filterStrings[0]; }
+        if( filterStrings.size() > 1 ) { COMMA_THROW( comma::exception, "please provide filters as name-value string" ); }
         boost::scoped_ptr< snark::cv_mat::serialization > serialization;
-        if( vm.count( "no-header" ) )
-        {
-            serialization.reset( new snark::cv_mat::serialization( "", format ) );
-        }
-        else
-        {
-            serialization.reset( new snark::cv_mat::serialization( fields, format, vm.count( "header" ) ) );
-        }
-        
+        if( vm.count( "no-header" ) ) { serialization.reset( new snark::cv_mat::serialization( "", format ) ); }
+        else { serialization.reset( new snark::cv_mat::serialization( fields, format, vm.count( "header" ) ) ); }
         snark::camera::dc1394::config config;
-        
-        if( config_string.find_first_of( '=' ) == std::string::npos ) // quick and dirty
+        bool config_from_command_line = config_string.find_first_of( '=' ) != std::string::npos; // quick and dirty
+        if( config_from_command_line )
         {
-            config = config_from_ini< snark::camera::dc1394::config >( config_string );
+            config = comma::name_value::parser( ';', '=' ).get< snark::camera::dc1394::config >( config_string );
         }
         else
         {
-            comma::name_value::parser parser( ';', '=' );
-            config = parser.get< snark::camera::dc1394::config >( config_string );
+            if( config_string.empty() ) { std::cerr << name() << ": --config is not given" << std::endl; }
+            std::vector< std::string > v = comma::split( config_string, ':' );
+            if( v.size() > 2 ) { std::cerr << name() << ": expected --config=filename or --config=filename:xpath, got '" << config_string << "'" << std::endl; return 1; }
+            std::string filename = v[0];
+            std::string xpath = ( v.size() == 1 ) ? "" : v[1];
+            config = comma::read< snark::camera::dc1394::config >( filename, xpath.c_str() );
         }
-        
         snark::camera::dc1394::strobe strobe;
         bool trigger_strobe_and_exit = false;
-        
         if( vm.count( "strobe" ) )
         {
             std::vector< std::string > v = comma::split( strobe_string, ';' );
             if( v.empty() ) { std::cerr << name() << ": strobe parameters are not given (e.g. --strobe=\"pin=2\")" << std::endl; return 1; }
             if( v[0] == "on" || v[0] == "off" ) { trigger_strobe_and_exit = true; v[0] = "command=" + v[0]; } else { v.push_back( "command=auto" ); }
-            comma::name_value::parser parser( ';', '=' );
-            strobe = parser.get< snark::camera::dc1394::strobe >( comma::join< std::vector< std::string > >( v, ';' ) );
-        }        
-        
+            strobe = comma::name_value::parser( ';', '=' ).get< snark::camera::dc1394::strobe >( comma::join< std::vector< std::string > >( v, ';' ) );
+        }
         snark::camera::dc1394 camera( config, strobe );
         if( trigger_strobe_and_exit ) { return 0; }
-        
-        if( vm.count( "list-attributes" ) )
-        {
-            camera.list_attributes();    
-            return 0;
-        }
-                
+        if( vm.count( "list-attributes" ) ) { camera.list_attributes(); return 0; }
         reader.reset( new snark::tbb::bursty_reader< Pair >( boost::bind( &capture, boost::ref( camera ) ), discard ) );
         snark::imaging::applications::pipeline pipeline( *serialization, filters, *reader );
         pipeline.run();
