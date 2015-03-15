@@ -174,6 +174,7 @@ int main( int argc, char** argv )
         boost::scoped_ptr< snark::cv_mat::serialization > serialization;
         if( vm.count( "no-header" ) ) { serialization.reset( new snark::cv_mat::serialization( "", format ) ); }
         else { serialization.reset( new snark::cv_mat::serialization( fields, format, vm.count( "header" ) ) ); }
+        if( config_string.empty() ) { std::cerr << name() << ": --config is not given" << std::endl; return 1; }
         snark::camera::dc1394::config config;
         bool config_from_command_line = config_string.find_first_of( '=' ) != std::string::npos; // quick and dirty
         if( config_from_command_line )
@@ -182,7 +183,6 @@ int main( int argc, char** argv )
         }
         else
         {
-            if( config_string.empty() ) { std::cerr << name() << ": --config is not given" << std::endl; }
             std::vector< std::string > v = comma::split( config_string, ':' );
             if( v.size() > 2 ) { std::cerr << name() << ": expected --config=filename or --config=filename:xpath, got '" << config_string << "'" << std::endl; return 1; }
             std::string filename = v[0];
