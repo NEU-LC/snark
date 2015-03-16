@@ -26,7 +26,7 @@ stow; move the arm to home position
 security-stop; security stop
 free; release the arm so it can be moved manually
 restore; restore normal operation after secutiry-stop or free
-release-brakes; release brakes after emergency stop
+unlock-brakes; unlock brakes after emergency stop
 stop; stop currently executed motion
 wait; wait until the target waypoint is reached
 io; set digital out to on/off
@@ -44,6 +44,7 @@ function option_description
 --pose=[<pose>]; comma-separated list of pose values of the target waypoint for operation 'wait'
 --tolerance=[<tolerance>]; tolerance used by operation 'wait' to determine if a waypoint is reached, default: $default_tolerance
 --signal=[<signal>]; digital output signal, where <signal>=<id>,<on/off> with <id> identifying output id followed by on/off switch (used by operation io)
+--force; forces auto-init even if the arm is not in home position
 EOF
 }
 
@@ -81,15 +82,18 @@ details of operations:
         initial speed, acceleration, and time are taken from the config file
     auto-init:
         initialise the arm automatically from stow position using speeds and directions from the config file
+        --force: forces auto-init even if the arm is not in home position
     stow:
         move the arm to home position
-    estop:
+    security-stop:
         security stop (subsequent move commands are ignored)
         to return to normal operation use 'restore'
     free:
         release the arm for manual operation (subsequent move commmands are ignored)
     restore:
         restore normal operation after security stop or free
+    unlock-brakes:
+        unlock brakes after emergency stop
     stop:
         stop currently executed motion without entering security stop mode (subsequent move commands are executed)
     wait:
@@ -144,7 +148,43 @@ function freedrive { send_command 'set robotmode freedrive'; }
 function security_stop { send_command "stopj([$zeros])"; }
 function stop_movement { send_command "stopj($default_acceleration)"; }
 function restore { send_command 'set robotmode run'; }
-function release_brakes { send_command 'power on'; }
+function unlock_brakes { send_command 'power on'; }
+
+function wait_for_target
+{
+    IFS=,
+    local -r fields=$1
+    local -r target_values=( $2 )
+    local -ri number_of_values=$3
+    local -r timeout=$4
+    local -r tolerance="${options_tolerance:-$default_tolerance}"
+    if (( ${#target_values[@]} != $number_of_values )); then echo "$name: $FUNCNAME: expected $number_of_values target values ($fields), got ${#target_values[@]}" >&2; exit 1; fi
+    if (( `echo "$tolerance <= 0" | bc -l` )); then echo "$name: $FUNCNAME: expected positive tolerance, got $tolerance" >&2; exit 1; fi
+    if [[ -n "$timeout" ]]; then
+        if (( `echo "$timeout <= 0" | bc -l` )); then echo "$name: $FUNCNAME: expected positive timeout, got $timeout" >&2; exit 1; fi
+        local -r end_time=$( echo "`time_` + $timeout" | bc -l )
+    fi
+    while :; do
+        [[ -n "$end_time" ]] && if (( `echo "($( time_ )) > ($end_time)" | bc -l` )); then exit ${wait_error[timed_out]}; fi
+        local actual_values=( `get "$fields"` )
+        if [[ -z "${actual_values[@]}" ]]; then exit ${wait_error[status_unavailable]}; fi
+        local -i target_reached=1
+        for (( i=0; i<$number_of_values; i++ )); do
+            python -c "exit(1) if abs(${target_values[$i]}-(${actual_values[$i]})) > $tolerance else exit(0)" || { target_reached=0; break; }
+        done
+        if (( target_reached )); then exit 0; fi
+    done
+}
+
+function wait_for_target_selector
+{
+    local -r angles="$options_angles"
+    local -r pose="$options_pose"
+    if [[ -n "$angles" && -n "$pose" ]]; then echo "$name: $FUNCNAME: options --angles and --pose are mutually exclusive" >&2; exit 1; fi
+    if [[ -z "$angles" && -z "$pose" ]]; then echo "$name: $FUNCNAME: target is not given, use --angles or --pose to specify the target" >&2; exit 1; fi
+    if [[ -n "$angles" ]]; then wait_for_target "arm/angles" "$angles" $number_of_joints $options_timeout; fi
+    if [[ -n "$pose" ]]; then wait_for_target "tool/pose" "$pose" $number_of_pose_fields $options_timeout; fi
+}
 
 function wait_for_mode
 {
@@ -178,15 +218,15 @@ function turn_on
         if (( $( echo "$timeout <= 0" | bc -l ) )); then echo "$name: $FUNCNAME: expected positive timeout, got $timeout" >&2; exit 1; fi
         local -r end_time=$( echo "`time_` + ($timeout)" | bc -l )
     fi
-    
-    echo "turning the arm on at $( date +%X.%N ) ..."
-    release_brakes
+
+    echo "turning the arm on at $( date +%X.%N ) ..." >&2
+    unlock_brakes
     wait_for_mode "$mode_init" "$( replicate $joint_mode_idle $number_of_joints )" "$end_time"
     security_stop
     wait_for_mode "$mode_stop" "$( replicate $joint_mode_idle $number_of_joints )" "$end_time"
     restore
     wait_for_mode "$mode_init" "$( replicate $joint_mode_init $number_of_joints )" "$end_time"
-    echo "the arm is on and ready for initialisation at $( date +%X.%N )"
+    echo "the arm is on and ready for initialisation at $( date +%X.%N )" >&2
     exit 0
 }
 
@@ -253,13 +293,12 @@ function init
     local -a joint_modes=( $( get 'arm/modes' | tr ',' ' ' ) )
     if [[ -z "${joint_modes[@]}" ]]; then echo "$name: $FUNCNAME: failed to get joint modes, check if status daemon is publishing on port $publisher_port" >&2; exit 1; fi
     if (( ${#joint_modes[@]} != number_of_joints )); then echo "$name: $FUNCNAME: failed to get $number_of_joints joint modes" >&2; exit 1; fi
-    trap 'security_stop; stty echo echok; exit 1' SIGINT SIGTERM SIGHUP
     local -a init_config_values=()
-    local init_status=0
+    local -i init_status=0
     echo "initialising the arm at $( date +%X.%N )..." >&2
     for (( joint = number_of_joints - 1; joint >= 0; joint-- )); do
         if [[ "${joint_modes[joint]}" == "$joint_mode_run" ]]; then
-            echo "joint $joint (${joint_names[joint]}) is already initialised"
+            echo "joint $joint (${joint_names[joint]}) is already initialised" >&2
         else
             if [[ "${joint_modes[joint]}" == "$joint_mode_init" ]]; then 
                 echo -n "initialising joint $joint (${joint_names[joint]}) ... " >&2
@@ -267,19 +306,25 @@ function init
             else echo "$name: $FUNCNAME: expected joint $joint (${joint_names[joint]}) to be in mode $joint_mode_init (init), got ${joint_modes[joint]}" >&2; exit 1; fi
         fi
     done
-    echo "the arm is initialised and ready to be used at $( date +%X.%N )"
-    (( init_status == 0 )) && output_init_config 
+    if (( init_status == 0 )); then
+        echo "the arm is initialised and ready to be used at $( date +%X.%N )" >&2
+        output_init_config
+    fi
     exit $init_status
 }
 
 function auto_init
 {
     IFS=,
-    trap 'security_stop; stty echo echok; exit 1' SIGINT SIGTERM SIGHUP
+    if [[ -z "$options_force" ]]; then
+        local -r angles=( $( name-value-get --from json ${prefix}stow/angles < $config ) )
+        local -r timeout=0.5
+        wait_for_target "arm/angles" "$angles" $number_of_joints $timeout || { echo "$name: $FUNCNAME: the arm is not in home position $angles" >&2; exit 1; }
+    fi
     local -r joint_mode_run=$( ur-arm-status --joint-mode-from-name running )
     local -r acceleration=( $( name-value-get --from json ${prefix}auto-init/acceleration < $config ) )
     if [[ -z "$acceleration" ]]; then echo "$name: $FUNCNAME: ${prefix}auto-init/acceleration is not found in $config " >&2; exit 1; fi
-    local auto_init_status=0
+    local -i auto_init_status=0
     for(( joint = number_of_joints - 1; joint >= 0; joint-- )); do
         local speed=( $( name-value-get --from json ${prefix}auto-init/${joint_names[joint]}/speed < $config ) )
         local time=( $( name-value-get --from json ${prefix}auto-init/${joint_names[joint]}/time < $config ) )
@@ -289,8 +334,12 @@ function auto_init
         speeds[$joint]="$speed"
         send_command "speedj_init([${speeds[*]}],$default_acceleration,$time)"
         sleep $time
-        if [[ "$( get 'arm/modes' | cut -d, -f$(( joint+1 )) )" != "$joint_mode_run" ]]; then auto_init_status=1; echo "$name: $FUNCNAME: failed to auto-initialise joint $joint (${joint_names[joint]})" >&2; fi
+        if [[ "$( get 'arm/modes' | cut -d, -f$(( joint+1 )) )" != "$joint_mode_run" ]]; then 
+            auto_init_status=1
+            echo "$name: $FUNCNAME: failed to auto-initialise joint $joint (${joint_names[joint]})" >&2; 
+        fi
     done
+    if (( auto_init_status == 0 )); then echo "the arm is initialised and ready to be used at $( date +%X.%N )" >&2; fi
     exit $auto_init_status
 }
 
@@ -300,43 +349,11 @@ function stow
     local -r speed=( $( name-value-get --from json ${prefix}stow/speed < $config ) )
     if [[ -z "$angles" ]]; then echo "$name: $FUNCNAME: ${prefix}stow/angles is not found in $config" >&2; exit 1; fi
     if [[ -z "$speed" ]]; then echo "$name: $FUNCNAME: ${prefix}stow/speed is not found in $config" >&2; exit 1; fi
+    echo "started stowing the arm to home position $angles at $( date +%X.%N )" >&2
     send_command "movej([$angles],a=$default_acceleration,v=$speed)"
-}
-
-function wait_for_target
-{
-    IFS=,
-    local -r fields=$1
-    local -r target_values=( $2 )
-    local -ri number_of_values=$3
-    local -r tolerance="${options_tolerance:-$default_tolerance}"
-    local -r timeout="${options_timeout}"
-    if (( ${#target_values[@]} != $number_of_values )); then echo "$name: $FUNCNAME: expected $number_of_values target values ($fields), got ${#target_values[@]}" >&2; exit 1; fi
-    if (( `echo "$tolerance <= 0" | bc -l` )); then echo "$name: $FUNCNAME: expected positive tolerance, got $tolerance" >&2; exit 1; fi
-    if [[ -n "$timeout" ]]; then
-        if (( `echo "$timeout <= 0" | bc -l` )); then echo "$name: $FUNCNAME: expected positive timeout, got $timeout" >&2; exit 1; fi
-        local -r end_time=$( echo "`time_` + $timeout" | bc -l )
-    fi
-    while :; do
-        [[ -n "$end_time" ]] && if (( `echo "($( time_ )) > ($end_time)" | bc -l` )); then exit ${wait_error[timed_out]}; fi
-        local actual_values=( `get "$fields"` )
-        if [[ -z "${actual_values[@]}" ]]; then exit ${wait_error[status_unavailable]}; fi
-        local -i target_reached=1
-        for (( i=0; i<$number_of_values; i++ )); do
-            python -c "exit(1) if abs(${target_values[$i]}-(${actual_values[$i]})) > $tolerance else exit(0)" || { target_reached=0; break; }
-        done
-        if (( target_reached )); then exit; fi
-    done
-}
-
-function wait_for_target_selector
-{
-    local -r angles="$options_angles"
-    local -r pose="$options_pose"
-    if [[ -n "$angles" && -n "$pose" ]]; then echo "$name: $FUNCNAME: options --angles and --pose are mutually exclusive" >&2; exit 1; fi
-    if [[ -z "$angles" && -z "$pose" ]]; then echo "$name: $FUNCNAME: target is not given, use --angles or --pose to specify the target" >&2; exit 1; fi
-    if [[ -n "$angles" ]]; then wait_for_target "arm/angles" "$angles" $number_of_joints; fi
-    if [[ -n "$pose" ]]; then wait_for_target "tool/pose" "$pose" $number_of_pose_fields; fi
+    wait_for_target "arm/angles" "$angles" $number_of_joints
+    echo "the arm has reached home position at $( date +%X.%N )" >&2
+    exit 0
 }
 
 function set_digital_out
@@ -351,7 +368,7 @@ function set_digital_out
     send_command "set_digital_out($id,$switch)"
 }
 
- 
+
 if (( `comma_options_has --help "$@"` || `comma_options_has -h "$@"` )) ; then
     if (( `comma_options_has --verbose "$@"` || `comma_options_has -v "$@"` )) ; then
         usage verbose
@@ -392,6 +409,8 @@ if [[ -z "$publisher_port" ]]; then echo "$name: ${prefix}publisher/data/port is
 if [[ -z "$command_address" ]]; then echo "$name: ${prefix}command/address is not found in $config" >&2; exit 1; fi
 if [[ -z "$command_port" ]]; then echo "$name: ${prefix}command/port is not found in $config" >&2; exit 1; fi
 
+trap 'security_stop; stty echo echok; exit 1' SIGINT SIGTERM SIGHUP
+
 case "$operation" in
 "on")
     turn_on
@@ -414,8 +433,8 @@ case "$operation" in
 "free")
     freedrive
     ;;
-"release-brakes")
-    release_brakes
+"unlock-brakes")
+    unlock_brakes
     ;;
 "restore")
     restore
