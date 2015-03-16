@@ -32,23 +32,18 @@
 #include "parameters.h"
 #include <fstream>
 #include <comma/base/exception.h>
-#include <comma/name_value/ptree.h>
+//#include <comma/name_value/ptree.h>
+#include <comma/name_value/serialize.h>
 #include <snark/math/rotation_matrix.h>
 
 namespace snark { namespace imaging {
 
 camera_parser::camera_parser ( const std::string& file, const std::string& path )
 {
-    std::ifstream ifs( file.c_str() ); // todo: config stream instead?
-    if( !ifs.is_open() )
-    {
-        COMMA_THROW_STREAM( comma::exception, "failed to open camera config file: " << file );
-    }
-    boost::property_tree::ptree tree;
-    comma::property_tree::from_name_value( ifs, tree, '=', ' ' );
-    comma::from_ptree from_ptree( tree, path, true );
     camera_parameters parameters;
-    comma::visiting::apply( from_ptree, parameters );
+    // TODO: leave only comma::read<> and remove the rest of try-catch block once name-value configs have been converted to json
+    try { comma::read< camera_parameters >( parameters, file, path ); }
+    catch( comma::exception ) { comma::read_name_value< camera_parameters >( parameters, file, path ); }
 
     if( parameters.focal_length == "0,0" ) { std::cerr << "stereo-to-points: warning: " << path << ": focal-length set to default (\"0,0\")" << std::endl; }
     std::vector< std::string > v = comma::split( parameters.focal_length, ',' );

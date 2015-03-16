@@ -104,9 +104,9 @@ int main( int argc, char** argv )
         
         description.add_options()
             ( "help,h", "display help message" )
-            ( "config", boost::program_options::value< std::string >( &configFile ), "camera config file" )
-            ( "left-path", boost::program_options::value< std::string >( &leftPath ), "left camera config file path" )
-            ( "right-path", boost::program_options::value< std::string >( &rightPath ), "right camera config file path" )
+            ( "config", boost::program_options::value< std::string >( &configFile ), "camera config file, e.g. --config=config.json:bb2, where bb2 is xpath to the camera" )
+            ( "left-path", boost::program_options::value< std::string >( &leftPath ), "sub-xpath to left camera, e.g. --config=config.json:bb2 --left-path=left" )
+            ( "right-path", boost::program_options::value< std::string >( &rightPath ), "sub-xpath to right camera" )
             ( "left", boost::program_options::value< std::string >( &leftImage ), "left image file name (file input only)" )
             ( "right", boost::program_options::value< std::string >( &rightImage ), "right image file name (file input only)" )
             ( "roi", boost::program_options::value< std::string >( &roi ),
@@ -213,9 +213,11 @@ int main( int argc, char** argv )
             std::cerr << argv[0] << ": please specify --left-path and --right-path to read camera configuration parameters" << std::endl;
             return 1;
         }
-
-        snark::imaging::camera_parser leftParameters( configFile, leftPath );
-        snark::imaging::camera_parser rightParameters( configFile, rightPath );
+        std::vector< std::string > v = comma::split( configFile, ':' );
+        std::string filename = v[0];
+        std::string xpath_to_camera = ( v.size() == 1 ) ? "" : v[1] + "/";
+        snark::imaging::camera_parser leftParameters( filename, xpath_to_camera + leftPath );
+        snark::imaging::camera_parser rightParameters( filename, xpath_to_camera + rightPath );
 
         cv::Mat left = cv::imread( leftImage, 1 );
         cv::Mat right = cv::imread( rightImage, 1 );
