@@ -13,6 +13,7 @@ function replicate { local what="$1"; local -i n=$2; local separator=${3:-,}; pr
 declare -r zeros=$( replicate 0 $number_of_joints )
 function time_ { date +%s.%N; }
 declare -rA wait_error=( [timed_out]=1 [status_unavailable]=2 )
+declare -ra joint_names=( $( ur-arm-status --output-fields | tr ',' '\n' | grep arm/angles | sed 's|arm/angles/||' ) )
 
 function operation_description
 {
@@ -20,6 +21,8 @@ function operation_description
 on; turn the arm on and prepare it for initialisation
 off; turn the arm off
 init; initialise the arm
+auto-init; initialise the arm automatically
+stow; move the arm to home position
 estop; security stop
 free; release the arm so it can be moved manually
 restore; restore normal operation after estop or free
@@ -75,6 +78,10 @@ details of operations:
         initialise the arm by slowly turning each joint one by one until their status changes from initialising to running
         control arm's movement via the keyboard: ' ' change direction, '+'/'-' increase/decrease speed
         initial speed, acceleration, and time are taken from the config file
+    auto-init:
+        initialise the arm automatically from stow position using speeds and directions from the config file
+    stow:
+        move the arm to home position
     estop:
         security stop (subsequent move commands are ignored)
         to return to normal operation use 'restore'
@@ -108,7 +115,7 @@ sample config file (with prefix=ur5 and assuming robot.arm is the IP address of 
         {
             "address": "robot.arm",
             "port": "30002"
-        },        
+        },
         "publisher":
         {
             "data": { "address": "localhost", "port": "14000" }
@@ -190,6 +197,7 @@ function initialise_joint
     local -a speeds=( $zeros )
     speeds[joint]=$speed
     local -i update_movement=1
+    local -r start_time=$( time_ )
     local -r end_time=$( echo "`time_` + $time" | bc -l )
     while [[ "$( get 'arm/modes' | cut -d, -f$(( joint+1 )) )" != "$joint_mode_run" ]]; do
         if (( `echo "$( time_ ) > $end_time" | bc -l` )); then status=1; break; fi
@@ -203,10 +211,25 @@ function initialise_joint
         esac
     done
     send_command "speedj_init([$zeros],$default_acceleration,$default_time)"
+    elapsed_time=$( echo "`time_` - ( $start_time )" | bc -l )
+    init_config_values[$joint]="${speeds[joint]},$elapsed_time"
     return $status
 }
 
-function init 
+function output_init_config
+{
+    local speed
+    local time
+    echo "{ \"auto-init\": { "
+    for(( joint=0; joint < number_of_joints; joint++ )); do
+        IFS=, read final_speed elapsed_time <<< "${init_config_values[joint]}"
+        echo "\"${joint_names[joint]}\": { \"speed\": \"$final_speed\", \"time\": \"$elapsed_time\" }"
+        if (( joint < number_of_joints - 1 )); then echo ", "; fi
+    done
+    echo -e " } }\n"
+}
+
+function init
 {
     local -r speed=( $( name-value-get --from json ${prefix}init/speed < $config ) )
     local -r acceleration=( $( name-value-get --from json ${prefix}init/acceleration < $config ) )
@@ -220,23 +243,52 @@ function init
     if (( $( echo "$time <= 0" | bc -l ) )); then echo "$name: $FUNCNAME: expected positive time, got $time" >&2; exit 1; fi
     if [[ -z "$mode_init" ]]; then echo "$name: $FUNCNAME: init mode undefined, check if 'ur-arm-status --mode-from-name initialising' works" >&2; exit 1; fi
     if [[ -z "$joint_mode_init" ]]; then echo "$name: $FUNCNAME: initialisation mode undefined, check if 'ur-arm-status --joint-mode-from-name initialisation' works" >&2; exit 1; fi
-    if [[ -z "$joint_mode_run" ]]; then echo "$name: $FUNCNAME: running mode undefined, check if 'ur-arm-status --joint-mode-from-name running' works" >&2; exit 1; fi    
+    if [[ -z "$joint_mode_run" ]]; then echo "$name: $FUNCNAME: running mode undefined, check if 'ur-arm-status --joint-mode-from-name running' works" >&2; exit 1; fi
     local mode=$( get 'mode' )
     if [[ "$mode" != "$mode_init" ]]; then echo "$name: $FUNCNAME: expected arm mode $init_mode, got $mode (try using operation 'restore')" >&2; exit 1; fi
     local -a joint_modes=( $( get 'arm/modes' | tr ',' ' ' ) )
     if [[ -z "${joint_modes[@]}" ]]; then echo "$name: $FUNCNAME: failed to get joint modes, check if status daemon is publishing on port $publisher_port" >&2; exit 1; fi
     if (( ${#joint_modes[@]} != number_of_joints )); then echo "$name: $FUNCNAME: failed to get $number_of_joints joint modes" >&2; exit 1; fi
-    trap 'security_stop; stty echo echok; exit 1' SIGINT SIGTERM
-    echo "initialising the arm at $( date +%X.%N )..."
+    trap 'security_stop; stty echo echok; exit 1' SIGINT SIGTERM SIGHUP
+    local -a init_config_values=()
+    echo "initialising the arm at $( date +%X.%N )..." >&2
     for (( joint = number_of_joints - 1; joint >= 0; joint-- )); do
-        if [[ "${joint_modes[joint]}" == "$joint_mode_run" ]]; then 
-            echo "joint $joint is already initialised"
+        if [[ "${joint_modes[joint]}" == "$joint_mode_run" ]]; then
+            echo "joint $joint (${joint_names[joint]}) is already initialised"
         else
-            if [[ "${joint_modes[joint]}" == "$joint_mode_init" ]]; then echo -n "initialising joint $joint... "; initialise_joint $joint && echo " succeeded" || echo " failed";
-            else echo "$name: $FUNCNAME: expected joint $joint to be in mode $joint_mode_init (init), got ${joint_modes[joint]}" >&2; exit 1; fi
+            if [[ "${joint_modes[joint]}" == "$joint_mode_init" ]]; then echo -n "initialising joint $joint (${joint_names[joint]})... " >&2; initialise_joint $joint && echo " succeeded" >&2 || echo " failed" >&2;
+            else echo "$name: $FUNCNAME: expected joint $joint (${joint_names[joint]}) to be in mode $joint_mode_init (init), got ${joint_modes[joint]}" >&2; exit 1; fi
         fi
     done
     echo "the arm is initialised and ready to be used at $( date +%X.%N )"
+    output_init_config "${init_config_values[@]}"
+}
+
+function auto_init
+{
+    IFS=,
+    trap 'security_stop; stty echo echok; exit 1' SIGINT SIGTERM SIGHUP
+    local -r joint_mode_run=$( ur-arm-status --joint-mode-from-name running )
+    for(( joint = number_of_joints - 1; joint >= 0; joint-- )); do
+        local speed=( $( name-value-get --from json ${prefix}auto-init/${joint_names[joint]}/speed < $config ) )
+        local time=( $( name-value-get --from json ${prefix}auto-init/${joint_names[joint]}/time < $config ) )
+        if [[ -z "$speed" ]]; then echo "$name: $FUNCNAME: ${prefix}auto-init/${joint_names[joint]}/speed is not found in $config" >&2; continue; fi
+        if [[ -z "$time" ]]; then echo "$name: $FUNCNAME: ${prefix}auto-init/${joint_names[joint]}/time is not found in $config" >&2; continue; fi
+        local -a speeds=( $zeros )
+        speeds[$joint]="$speed"
+        send_command "speedj_init([${speeds[*]}],$default_acceleration,$time)"
+        sleep $time
+        if [[ "$( get 'arm/modes' | cut -d, -f$(( joint+1 )) )" != "$joint_mode_run" ]]; then echo "$name: $FUNCNAME: failed to auto-initialise joint $joint (${joint_names[joint]})" >&2; fi
+    done
+}
+
+function stow
+{
+    local -r angles=( $( name-value-get --from json ${prefix}stow/angles < $config ) )
+    local -r speed=( $( name-value-get --from json ${prefix}stow/speed < $config ) )
+    if [[ -z "$angles" ]]; then echo "$name: $FUNCNAME: ${prefix}stow/angles is not found in $config" >&2; exit 1; fi
+    if [[ -z "$speed" ]]; then echo "$name: $FUNCNAME: ${prefix}stow/speed is not found in $config" >&2; exit 1; fi
+    send_command "movej([$angles],a=$default_acceleration,v=$speed)"
 }
 
 function wait_for_target
@@ -337,6 +389,12 @@ case "$operation" in
     ;;
 "init")
     init
+    ;;
+"auto-init")
+    auto_init
+    ;;
+"stow")
+    stow
     ;;
 "estop")
     security_stop
