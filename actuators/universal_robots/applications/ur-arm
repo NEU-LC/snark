@@ -23,9 +23,10 @@ off; turn the arm off
 init; initialise the arm
 auto-init; initialise the arm automatically
 stow; move the arm to home position
-estop; security stop
+security-stop; security stop
 free; release the arm so it can be moved manually
-restore; restore normal operation after estop or free
+restore; restore normal operation after secutiry-stop or free
+release-brakes; release brakes after emergency stop
 stop; stop currently executed motion
 wait; wait until the target waypoint is reached
 io; set digital out to on/off
@@ -143,6 +144,7 @@ function freedrive { send_command 'set robotmode freedrive'; }
 function security_stop { send_command "stopj([$zeros])"; }
 function stop_movement { send_command "stopj($default_acceleration)"; }
 function restore { send_command 'set robotmode run'; }
+function release_brakes { send_command 'power on'; }
 
 function wait_for_mode
 {
@@ -170,7 +172,6 @@ function turn_on
     if [[ -z "$joint_mode_init" ]]; then echo "$name: $FUNCNAME: joint initialisation mode undefined, check if 'ur-arm-status --joint-mode-from-name initialisation' works" >&2; exit 1; fi
     local mode="$( get 'mode' )"
     if [[ -z "$mode" ]]; then echo "$name: $FUNCNAME: failed to get mode, check if status daemon is publishing on port $publisher_port" >&2; exit 1; fi
-    if [[ "$mode" != "$mode_no_power" ]]; then echo "$name: $FUNCNAME: expected the arm to be in mode $mode_no_power (no-power), got mode $mode" >&2; exit 1; fi
     if [[ $( get 'arm/modes' | tr ',' '\n' | wc -l ) != $number_of_joints ]]; then echo "$name: $FUNCNAME: failed to get $number_of_joints joint modes" >&2; exit 1; fi 
     local -r timeout=${options_timeout}
     if [[ -n "$timeout" ]]; then
@@ -179,13 +180,14 @@ function turn_on
     fi
     
     echo "turning the arm on at $( date +%X.%N ) ..."
-    send_command 'power on'
+    release_brakes
     wait_for_mode "$mode_init" "$( replicate $joint_mode_idle $number_of_joints )" "$end_time"
     security_stop
     wait_for_mode "$mode_stop" "$( replicate $joint_mode_idle $number_of_joints )" "$end_time"
     restore
     wait_for_mode "$mode_init" "$( replicate $joint_mode_init $number_of_joints )" "$end_time"
     echo "the arm is on and ready for initialisation at $( date +%X.%N )"
+    exit 0
 }
 
 function initialise_joint
@@ -211,22 +213,24 @@ function initialise_joint
         esac
     done
     send_command "speedj_init([$zeros],$default_acceleration,$default_time)"
-    elapsed_time=$( echo "`time_` - ( $start_time )" | bc -l )
-    init_config_values[$joint]="${speeds[joint]},$elapsed_time"
+    local final_speed=$( echo ${speeds[joint]} | sed -r 's/^(-?)\./\10\./' )
+    local elapsed_time=$( echo "`time_` - ( $start_time )" | bc -l | sed -r 's/^(-?)\./\10\./')
+    init_config_values[$joint]="$final_speed,$elapsed_time"
     return $status
 }
 
 function output_init_config
 {
-    local speed
-    local time
+    local final_speed
+    local elapsed_time
     echo "{ \"auto-init\": { "
     for(( joint=0; joint < number_of_joints; joint++ )); do
-        IFS=, read final_speed elapsed_time <<< "${init_config_values[joint]}"
-        echo "\"${joint_names[joint]}\": { \"speed\": \"$final_speed\", \"time\": \"$elapsed_time\" }"
-        if (( joint < number_of_joints - 1 )); then echo ", "; fi
+        if [[ -n "${init_config_values[joint]}" ]]; then IFS=, read final_speed elapsed_time <<< "${init_config_values[joint]}";
+        else final_speed=0; elapsed_time=0; fi
+        echo -e "    \"${joint_names[joint]}\": { \"speed\": \"$final_speed\", \"time\": \"$elapsed_time\" },"
     done
-    echo -e " } }\n"
+    echo "\"acceleration\": \"$acceleration\""
+    echo "} }"
 }
 
 function init
@@ -251,17 +255,21 @@ function init
     if (( ${#joint_modes[@]} != number_of_joints )); then echo "$name: $FUNCNAME: failed to get $number_of_joints joint modes" >&2; exit 1; fi
     trap 'security_stop; stty echo echok; exit 1' SIGINT SIGTERM SIGHUP
     local -a init_config_values=()
+    local init_status=0
     echo "initialising the arm at $( date +%X.%N )..." >&2
     for (( joint = number_of_joints - 1; joint >= 0; joint-- )); do
         if [[ "${joint_modes[joint]}" == "$joint_mode_run" ]]; then
             echo "joint $joint (${joint_names[joint]}) is already initialised"
         else
-            if [[ "${joint_modes[joint]}" == "$joint_mode_init" ]]; then echo -n "initialising joint $joint (${joint_names[joint]})... " >&2; initialise_joint $joint && echo " succeeded" >&2 || echo " failed" >&2;
+            if [[ "${joint_modes[joint]}" == "$joint_mode_init" ]]; then 
+                echo -n "initialising joint $joint (${joint_names[joint]}) ... " >&2
+                initialise_joint $joint && echo " succeeded" >&2 || { echo " failed" >&2; init_status=1; }
             else echo "$name: $FUNCNAME: expected joint $joint (${joint_names[joint]}) to be in mode $joint_mode_init (init), got ${joint_modes[joint]}" >&2; exit 1; fi
         fi
     done
     echo "the arm is initialised and ready to be used at $( date +%X.%N )"
-    output_init_config "${init_config_values[@]}"
+    (( init_status == 0 )) && output_init_config 
+    exit $init_status
 }
 
 function auto_init
@@ -269,6 +277,9 @@ function auto_init
     IFS=,
     trap 'security_stop; stty echo echok; exit 1' SIGINT SIGTERM SIGHUP
     local -r joint_mode_run=$( ur-arm-status --joint-mode-from-name running )
+    local -r acceleration=( $( name-value-get --from json ${prefix}auto-init/acceleration < $config ) )
+    if [[ -z "$acceleration" ]]; then echo "$name: $FUNCNAME: ${prefix}auto-init/acceleration is not found in $config " >&2; exit 1; fi
+    local auto_init_status=0
     for(( joint = number_of_joints - 1; joint >= 0; joint-- )); do
         local speed=( $( name-value-get --from json ${prefix}auto-init/${joint_names[joint]}/speed < $config ) )
         local time=( $( name-value-get --from json ${prefix}auto-init/${joint_names[joint]}/time < $config ) )
@@ -278,8 +289,9 @@ function auto_init
         speeds[$joint]="$speed"
         send_command "speedj_init([${speeds[*]}],$default_acceleration,$time)"
         sleep $time
-        if [[ "$( get 'arm/modes' | cut -d, -f$(( joint+1 )) )" != "$joint_mode_run" ]]; then echo "$name: $FUNCNAME: failed to auto-initialise joint $joint (${joint_names[joint]})" >&2; fi
+        if [[ "$( get 'arm/modes' | cut -d, -f$(( joint+1 )) )" != "$joint_mode_run" ]]; then auto_init_status=1; echo "$name: $FUNCNAME: failed to auto-initialise joint $joint (${joint_names[joint]})" >&2; fi
     done
+    exit $auto_init_status
 }
 
 function stow
@@ -396,11 +408,14 @@ case "$operation" in
 "stow")
     stow
     ;;
-"estop")
+"security-stop")
     security_stop
     ;;
 "free")
     freedrive
+    ;;
+"release-brakes")
+    release_brakes
     ;;
 "restore")
     restore
