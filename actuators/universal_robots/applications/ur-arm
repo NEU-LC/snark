@@ -158,21 +158,21 @@ function wait_for_target
     local -ri number_of_values=$3
     local -r timeout=$4
     local -r tolerance="${options_tolerance:-$default_tolerance}"
-    if (( ${#target_values[@]} != $number_of_values )); then echo "$name: $FUNCNAME: expected $number_of_values target values ($fields), got ${#target_values[@]}" >&2; exit 1; fi
-    if (( `echo "$tolerance <= 0" | bc -l` )); then echo "$name: $FUNCNAME: expected positive tolerance, got $tolerance" >&2; exit 1; fi
+    if (( ${#target_values[@]} != $number_of_values )); then echo "$name: $FUNCNAME: expected $number_of_values target values ($fields), got ${#target_values[@]}" >&2; exit -1; fi
+    if (( `echo "$tolerance <= 0" | bc -l` )); then echo "$name: $FUNCNAME: expected positive tolerance, got $tolerance" >&2; exit -1; fi
     if [[ -n "$timeout" ]]; then
-        if (( `echo "$timeout <= 0" | bc -l` )); then echo "$name: $FUNCNAME: expected positive timeout, got $timeout" >&2; exit 1; fi
+        if (( `echo "$timeout <= 0" | bc -l` )); then echo "$name: $FUNCNAME: expected positive timeout, got $timeout" >&2; exit -1; fi
         local -r end_time=$( echo "`time_` + $timeout" | bc -l )
     fi
     while :; do
-        [[ -n "$end_time" ]] && if (( `echo "($( time_ )) > ($end_time)" | bc -l` )); then exit ${wait_error[timed_out]}; fi
+        [[ -n "$end_time" ]] && if (( `echo "($( time_ )) > ($end_time)" | bc -l` )); then return ${wait_error[timed_out]}; fi
         local actual_values=( `get "$fields"` )
-        if [[ -z "${actual_values[@]}" ]]; then exit ${wait_error[status_unavailable]}; fi
+        if [[ -z "${actual_values[@]}" ]]; then return ${wait_error[status_unavailable]}; fi
         local -i target_reached=1
         for (( i=0; i<$number_of_values; i++ )); do
             python -c "exit(1) if abs(${target_values[$i]}-(${actual_values[$i]})) > $tolerance else exit(0)" || { target_reached=0; break; }
         done
-        if (( target_reached )); then exit 0; fi
+        if (( target_reached )); then return 0; fi
     done
 }
 
@@ -182,8 +182,8 @@ function wait_for_target_selector
     local -r pose="$options_pose"
     if [[ -n "$angles" && -n "$pose" ]]; then echo "$name: $FUNCNAME: options --angles and --pose are mutually exclusive" >&2; exit 1; fi
     if [[ -z "$angles" && -z "$pose" ]]; then echo "$name: $FUNCNAME: target is not given, use --angles or --pose to specify the target" >&2; exit 1; fi
-    if [[ -n "$angles" ]]; then wait_for_target "arm/angles" "$angles" $number_of_joints $options_timeout; fi
-    if [[ -n "$pose" ]]; then wait_for_target "tool/pose" "$pose" $number_of_pose_fields $options_timeout; fi
+    if [[ -n "$angles" ]]; then wait_for_target "arm/angles" "$angles" $number_of_joints $options_timeout; exit $?; fi
+    if [[ -n "$pose" ]]; then wait_for_target "tool/pose" "$pose" $number_of_pose_fields $options_timeout; exit $?; fi
 }
 
 function wait_for_mode
@@ -212,6 +212,7 @@ function turn_on
     if [[ -z "$joint_mode_init" ]]; then echo "$name: $FUNCNAME: joint initialisation mode undefined, check if 'ur-arm-status --joint-mode-from-name initialisation' works" >&2; exit 1; fi
     local mode="$( get 'mode' )"
     if [[ -z "$mode" ]]; then echo "$name: $FUNCNAME: failed to get mode, check if status daemon is publishing on port $publisher_port" >&2; exit 1; fi
+    if [[ "$mode" != "$mode_no_power" ]]; then echo "$name: $FUNCNAME: expected the arm to be in mode $mode_no_power (no-power), got mode $mode" >&2; exit 1; fi
     if [[ $( get 'arm/modes' | tr ',' '\n' | wc -l ) != $number_of_joints ]]; then echo "$name: $FUNCNAME: failed to get $number_of_joints joint modes" >&2; exit 1; fi 
     local -r timeout=${options_timeout}
     if [[ -n "$timeout" ]]; then
@@ -315,21 +316,24 @@ function init
 
 function auto_init
 {
-    IFS=,
     if [[ -z "$options_force" ]]; then
-        local -r angles=( $( name-value-get --from json ${prefix}stow/angles < $config ) )
+        local -r angles=$( name-value-get --from json ${prefix}stow/angles < $config )
+        if [[ -z "$angles" ]]; then echo "$name: $FUNCNAME: ${prefix}stow/angles is not found in $config" >&2; exit 1; fi
         local -r timeout=0.5
         wait_for_target "arm/angles" "$angles" $number_of_joints $timeout || { echo "$name: $FUNCNAME: the arm is not in home position $angles" >&2; exit 1; }
     fi
     local -r joint_mode_run=$( ur-arm-status --joint-mode-from-name running )
-    local -r acceleration=( $( name-value-get --from json ${prefix}auto-init/acceleration < $config ) )
+    if [[ -z "$joint_mode_run" ]]; then echo "$name: $FUNCNAME: running mode undefined, check if 'ur-arm-status --joint-mode-from-name running' works" >&2; exit 1; fi
+    local -r acceleration=$( name-value-get --from json ${prefix}auto-init/acceleration < $config )
     if [[ -z "$acceleration" ]]; then echo "$name: $FUNCNAME: ${prefix}auto-init/acceleration is not found in $config " >&2; exit 1; fi
     local -i auto_init_status=0
+    echo "auto-initialising the arm at $( date +%X.%N )..." >&2
     for(( joint = number_of_joints - 1; joint >= 0; joint-- )); do
-        local speed=( $( name-value-get --from json ${prefix}auto-init/${joint_names[joint]}/speed < $config ) )
-        local time=( $( name-value-get --from json ${prefix}auto-init/${joint_names[joint]}/time < $config ) )
+        local speed=$( name-value-get --from json ${prefix}auto-init/${joint_names[joint]}/speed < $config )
+        local time=$( name-value-get --from json ${prefix}auto-init/${joint_names[joint]}/time < $config )
         if [[ -z "$speed" ]]; then echo "$name: $FUNCNAME: ${prefix}auto-init/${joint_names[joint]}/speed is not found in $config" >&2; continue; fi
         if [[ -z "$time" ]]; then echo "$name: $FUNCNAME: ${prefix}auto-init/${joint_names[joint]}/time is not found in $config" >&2; continue; fi
+        IFS=,
         local -a speeds=( $zeros )
         speeds[$joint]="$speed"
         send_command "speedj_init([${speeds[*]}],$default_acceleration,$time)"
@@ -345,15 +349,12 @@ function auto_init
 
 function stow
 {
-    local -r angles=( $( name-value-get --from json ${prefix}stow/angles < $config ) )
-    local -r speed=( $( name-value-get --from json ${prefix}stow/speed < $config ) )
+    local -r angles=$( name-value-get --from json ${prefix}stow/angles < $config )
+    local -r speed=$( name-value-get --from json ${prefix}stow/speed < $config )
     if [[ -z "$angles" ]]; then echo "$name: $FUNCNAME: ${prefix}stow/angles is not found in $config" >&2; exit 1; fi
     if [[ -z "$speed" ]]; then echo "$name: $FUNCNAME: ${prefix}stow/speed is not found in $config" >&2; exit 1; fi
-    echo "started stowing the arm to home position $angles at $( date +%X.%N )" >&2
     send_command "movej([$angles],a=$default_acceleration,v=$speed)"
     wait_for_target "arm/angles" "$angles" $number_of_joints
-    echo "the arm has reached home position at $( date +%X.%N )" >&2
-    exit 0
 }
 
 function set_digital_out
