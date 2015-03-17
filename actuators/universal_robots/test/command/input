@@ -7,6 +7,7 @@ fields/binary="echo 20140101T000000,1,0,1,2,3,4,5,0.02 | csv-to-bin t,ui,7d | ur
 joints/move="echo 1,1,2,3,4,5,6 | ur-arm-command"
 joints/speed="echo 2,1,2,3,4,5,6,0.1,10.2 | ur-arm-command --fields=command,values,acceleration,time"
 joints/optional="echo 1,1,2,3,4,5,6,0.1,0.2,10.2,5.5 | ur-arm-command --fields=command,values,acceleration,speed,time,radius"
+joints/pose="echo 5,0,1,2,0,1,2 | ur-arm-command"
 
 tool/move="echo 3,1,2,3,4,5,6 | ur-arm-command"
 tool/speed="echo 4,1,2,3,4,5,6,0.1,10.2 | ur-arm-command --fields=command,values,acceleration,time"

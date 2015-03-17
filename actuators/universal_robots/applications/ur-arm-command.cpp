@@ -54,6 +54,7 @@ void usage( bool verbose )
     std::cerr << "    2: move joints at given joint speeds (requires joint speeds, acceleration and time)" << std::endl;
     std::cerr << "    3: move tool to given pose (requires tool pose)" << std::endl;
     std::cerr << "    4: move tool at given pose velocity (requires pose velocity, acceleration and time)" << std::endl;
+    std::cerr << "    5: move joints so that the tool reaches given pose (requires tool pose)" << std::endl;
     std::cerr << std::endl;
     if( verbose ) { std::cerr << "csv options" << std::endl << comma::csv::options::usage( "command,values" ) << std::endl; }
     else { std::cerr << "csv options... use --help --verbose for more" << std::endl << std::endl; }
@@ -72,6 +73,8 @@ void usage( bool verbose )
     std::cerr << "        echo \"20140101T000000,1,0,1,2,3,4,5,0.02\" | ur-arm-command move --fields=t,command,values,speed | nc robot.arm 30002" << std::endl;        
     std::cerr << "    move joints to new joint angles 0,1,2,3,4,5 (complete the motion in 10 seconds):" << std::endl;
     std::cerr << "        echo \"1,0,1,2,3,4,5,10\" | ur-arm-command --fields=command,values,time | nc robot.arm 30002" << std::endl;
+    std::cerr << "    move joints so that the tool reaches new pose 0,1,2,0,1,2 with default joint speed:" << std::endl;
+    std::cerr << "        echo \"5,0,1,2,0,1,2\" | ur-arm-command | nc robot.arm 30002" << std::endl;
     std::cerr << "    move joints at speeds 0,1,2,3,4,5 rad/sec for 0.5 seconds:" << std::endl;
     std::cerr << "        echo \"2,0,1,2,3,4,5,0.5\" | ur-arm-command --fields=command,values,time | nc robot.arm 30002" << std::endl;
     std::cerr << std::endl;
@@ -86,7 +89,7 @@ void usage( bool verbose )
     exit ( -1 );
 }
 
-enum command_t { stop=0, move_joints=1, speed_joints=2, move_tool=3, speed_tool=4 };
+enum command_t { stop=0, move_joints=1, speed_joints=2, move_tool=3, speed_tool=4, move_joints_to_pose=5 };
 
 struct input_t 
 { 
@@ -100,7 +103,7 @@ struct input_t
     type radius;
 };
 
-namespace comma { namespace visiting {    
+namespace comma { namespace visiting {
 
 template <> struct traits< input_t >
 {
@@ -133,7 +136,7 @@ class optional_parameters_t
 public:
     optional_parameters_t( const comma::csv::options& csv ) : input_stream_has_( csv ) {}
     std::string operator()( const input_t* input )
-    { 
+    {
         std::stringstream ss;
         if( input_stream_has_.acceleration ) { ss << ",a=" << input->acceleration; }
         if( input_stream_has_.speed ) { ss << ",v=" << input->speed; }
@@ -141,11 +144,11 @@ public:
         if( input_stream_has_.radius ) { ss << ",r=" << input->radius; }
         return ss.str();
     }
-    
+
 private:
     struct input_stream_has_t
     {
-        input_stream_has_t( const comma::csv::options& csv ) 
+        input_stream_has_t( const comma::csv::options& csv )
             : acceleration( csv.has_field( "acceleration" ) )
             , speed( csv.has_field( "speed" ) )
             , time( csv.has_field( "time" ) )
@@ -154,7 +157,7 @@ private:
         bool speed;
         bool time;
         bool radius;
-    };    
+    };
     input_stream_has_t input_stream_has_;
 };
 
@@ -192,7 +195,10 @@ int main( int ac, char** av )
                     if( !csv.has_field( "acceleration,time" ) ) { std::cerr << name() << ": command " << input->command << " requires acceleration and time" << std::endl; return 1; }
                     std::cout << "speedl([" << comma::join( input->values, ',' ) << "]" << "," << input->acceleration << "," << input->time << ")" << std::endl; 
                     break;
-                default: 
+                case move_joints_to_pose:
+                    std::cout << "movej(p[" << comma::join( input->values, ',' ) << "]" << optional_parameters( input ) << ")" << std::endl; 
+                    break;
+                default:
                     std::cerr << name() << ": expected a command code, got" << input->command << std::endl; return 1;
             }
         }
