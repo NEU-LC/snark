@@ -165,7 +165,7 @@ OPTION( snark_build_sensors "build sensors" ON )
 OPTION( snark_build_actuators "build actuators" ON )
 OPTION( snark_build_battery "build battery" OFF )
 OPTION( snark_build_graph "build graph" ON )
-OPTION( snark_build_math_geometry "build math geometry" OFF )
+OPTION( snark_build_math_geometry "build math geometry" ON )
 OPTION( snark_build_python "build python packages" OFF )
 
 INCLUDE( CMakeDependentOption )
