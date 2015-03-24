@@ -60,10 +60,10 @@ void set_pin_direction( snark::camera::dc1394& camera, unsigned int pin, bool is
     pin_mode mode = packed_mode();
     switch( pin )
     {
-        case 0: mode.pin0 = is_out ? MODE_OUT : MODE_IN;
-        case 1: mode.pin1 = is_out ? MODE_OUT : MODE_IN;
-        case 2: mode.pin2 = is_out ? MODE_OUT : MODE_IN;
-        case 3: mode.pin3 = is_out ? MODE_OUT : MODE_IN;
+        case 0: mode.pin0 = is_out ? MODE_OUT : MODE_IN; break;
+        case 1: mode.pin1 = is_out ? MODE_OUT : MODE_IN; break;
+        case 2: mode.pin2 = is_out ? MODE_OUT : MODE_IN; break;
+        case 3: mode.pin3 = is_out ? MODE_OUT : MODE_IN; break;
     }
     packed_mode = mode;
     value = *reinterpret_cast< uint32_t* >( packed_mode.data() );
