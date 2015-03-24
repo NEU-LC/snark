@@ -33,6 +33,7 @@
 
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/optional.hpp>
+#include <boost/array.hpp>
 #include <dc1394/dc1394.h>
 
 #include <opencv2/core/core.hpp>
@@ -75,12 +76,17 @@ public:
         bool deinterlace;
     };
 
+    // for offsets and bit masks see 4.11.3 Strobe Signal Output Function ( IIDC 1394-based Digital Camera Specification ver. 1.31 )
+    struct strobe_inquiry { uint32_t presence: 1, : 3, read_out: 1, on_off: 1, polarity: 1, : 1, min_value: 12, max_value: 12; };
+    struct strobe_control { uint32_t presence: 1, : 5, on_off: 1, polarity: 1, delay: 12, duration: 12; };
     static const std::size_t number_of_pins = 4;
-    typedef enum { STROBE_POLARITY_LOW = 0, STROBE_POLARITY_HIGH = 1 } strobe_polarity_t;
+    static uint64_t strobe_inquiry_offsets( unsigned int pin ) { static boost::array< unsigned int, number_of_pins > offsets = { 0x100, 0x104, 0x108, 0x10c }; return offsets.at( pin ); }
+    static uint64_t strobe_control_offsets( unsigned int pin ) { static boost::array< unsigned int, number_of_pins > offsets = { 0x200, 0x204, 0x208, 0x20c }; return offsets.at( pin ); }
+    typedef enum { STROBE_POLARITY_UNSPECIFIED = -1, STROBE_POLARITY_LOW = 0, STROBE_POLARITY_HIGH = 1 } strobe_polarity_t;
     typedef enum { STROBE_IGNORE, STROBE_ON, STROBE_OFF, STROBE_AUTO } strobe_command_t;
     struct strobe
     {
-        strobe() : pin( 0 ), polarity( STROBE_POLARITY_HIGH ), delay( 0 ), duration( 0 ), command( STROBE_IGNORE ) {}
+        strobe() : pin( 0 ), polarity( STROBE_POLARITY_UNSPECIFIED ), delay( 0 ), duration( 0 ), command( STROBE_IGNORE ) {}
         unsigned int pin;
         strobe_polarity_t polarity;
         unsigned int delay;
@@ -110,7 +116,7 @@ public:
     static void list_cameras();
     void list_attributes();
 
-    void get_control_register( uint32_t value, const uint64_t address );
+    void get_control_register( uint32_t* p, const uint64_t address );
     void set_control_register( const uint32_t value, const uint64_t address );
     void verify_strobe_parameters( const strobe& strobe );
     void trigger_strobe( const bool enable, const strobe& strobe );
@@ -232,8 +238,8 @@ template <> struct traits< snark::camera::dc1394::strobe >
         std::string polarity;
         v.apply( "command", command );
         v.apply( "polarity", polarity );
-        if( !command.empty() ) { c.command = snark::camera::dc1394::command_from_string( command ); }        
-        if( !polarity.empty() ) { c.polarity = snark::camera::dc1394::polarity_from_string( polarity ); }        
+        if( !command.empty() ) { c.command = snark::camera::dc1394::command_from_string( command ); }
+        if( !polarity.empty() ) { c.polarity = snark::camera::dc1394::polarity_from_string( polarity ); }
         v.apply( "pin", c.pin );
         v.apply( "delay", c.delay );
         v.apply( "duration", c.duration );
