@@ -243,9 +243,12 @@ function initialise_joint
 {
     IFS=,
     local joint="$1"
-    local acceleration=( $( name-value-get --from json ${prefix}init/acceleration < $config ) ); if [[ -z "$acceleration" ]]; then acceleration=$default_acceleration; fi
-    local speed=$( name-value-get --from json ${prefix}init/${joint_names[joint]}/speed < $config ); if [[ -z "$speed" ]]; then speed=$default_init_speed; fi
-    local time=$( name-value-get --from json ${prefix}init/${joint_names[joint]}/time < $config ); if [[ -z "$time" ]]; then time=$default_init_time; fi
+    local acceleration=( $( name-value-get --from json ${prefix}init/acceleration < $config ) )
+    if [[ -z "$acceleration" ]]; then acceleration=$default_acceleration; fi
+    local speed=$( name-value-get --from json ${prefix}init/${joint_names[joint]}/speed < $config )
+    local time=$( name-value-get --from json ${prefix}init/${joint_names[joint]}/time < $config )
+    if [[ -z "$speed" && -z "$time" ]]; then speed=$default_init_speed; time=$default_init_time; fi
+    if [[ ! ( -n "$speed" && -n "$time" ) ]]; then echo "$name: $FUNCNAME: expected both init speed and time for joint $joint (${joint_names[joint]})" >&2; exit -1; fi
     if (( $( echo "$time <= 0" | bc -l ) )); then echo "$name: $FUNCNAME: expected positive time, got $time" >&2; exit 1; fi
     local key
     local -i status=0
