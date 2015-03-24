@@ -76,9 +76,17 @@ public:
         bool deinterlace;
     };
 
-    // for offsets and bit masks see 4.11.3 Strobe Signal Output Function ( IIDC 1394-based Digital Camera Specification ver. 1.31 )
-    struct strobe_inquiry { uint32_t presence: 1, : 3, read_out: 1, on_off: 1, polarity: 1, : 1, min_value: 12, max_value: 12; };
-    struct strobe_control { uint32_t presence: 1, : 5, on_off: 1, polarity: 1, delay: 12, duration: 12; };
+    // see 4.11.3 Strobe Signal Output Function ( IIDC 1394-based Digital Camera Specification ver. 1.31 )
+    struct strobe_inquiry 
+    {
+        strobe_inquiry() : presence( 0 ), unused1( 0 ), read_out( 0 ), on_off( 0 ), polarity( 0 ), unused2( 0 ), min_value( 0 ), max_value( 0 ) {}
+        uint32_t presence: 1, unused1: 3, read_out: 1, on_off: 1, polarity: 1, unused2: 1, min_value: 12, max_value: 12;
+    };
+    struct strobe_control 
+    {
+        strobe_control() : presence( 0 ), unused( 0 ), on_off( 0 ), polarity( 0 ), delay( 0 ), duration( 0 ) {}
+        uint32_t presence: 1, unused: 5, on_off: 1, polarity: 1, delay: 12, duration: 12;
+    };
     static const std::size_t number_of_pins = 4;
     static uint64_t strobe_inquiry_offsets( unsigned int pin ) { static boost::array< unsigned int, number_of_pins > offsets = { 0x100, 0x104, 0x108, 0x10c }; return offsets.at( pin ); }
     static uint64_t strobe_control_offsets( unsigned int pin ) { static boost::array< unsigned int, number_of_pins > offsets = { 0x200, 0x204, 0x208, 0x20c }; return offsets.at( pin ); }
@@ -92,21 +100,21 @@ public:
         unsigned int delay;
         unsigned int duration;
         strobe_command_t command;
-    };   
-    static strobe_polarity_t polarity_from_string( std::string s ) 
-    { 
+    };
+    static strobe_polarity_t polarity_from_string( std::string s )
+    {
         if( s == "low" ) { return STROBE_POLARITY_LOW; }
-        else if( s == "high" ) { return STROBE_POLARITY_HIGH; } 
+        else if( s == "high" ) { return STROBE_POLARITY_HIGH; }
         else { COMMA_THROW( comma::exception, "expected strobe polarity to be either \"high\" or \"low\", got " << s ); } 
     }
-    static strobe_command_t command_from_string( std::string s ) 
-    { 
-        if( s == "on" ) { return STROBE_ON; } 
-        else if( s == "off" ) { return STROBE_OFF; } 
-        else if ( s == "auto" ) { return STROBE_AUTO; } 
-        else { COMMA_THROW( comma::exception, "expected strobe command to be \"on\", \"off\" or \"auto\", got " << s ); } 
+    static strobe_command_t command_from_string( std::string s )
+    {
+        if( s == "on" ) { return STROBE_ON; }
+        else if( s == "off" ) { return STROBE_OFF; }
+        else if ( s == "auto" ) { return STROBE_AUTO; }
+        else { COMMA_THROW( comma::exception, "expected strobe command to be \"on\", \"off\" or \"auto\", got " << s ); }
     }
-    
+
     dc1394( const config& config = config(), const strobe& strobe = strobe() );
     ~dc1394();
 

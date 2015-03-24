@@ -43,7 +43,11 @@ static const char* name() { return "point-grey"; }
 
 // see Register Reference for Point Grey Digital Cameras Version 3.1 Revised 2/6/2013 (Section 6.3)
 static const uint64_t PIO_DIRECTION_ADDRESS = 0x11F8;
-struct pin_mode { comma::uint32 pin0: 1, pin1: 1, pin2: 1, pin3: 1, :28; };
+struct pin_mode 
+{
+    pin_mode() : pin0( 0 ), pin1( 0 ), pin2( 0 ), pin3( 0 ), unused( 0 ) {}
+    comma::uint32 pin0: 1, pin1: 1, pin2: 1, pin3: 1, unused:28;
+};
 enum { MODE_IN = 0, MODE_OUT = 1 };
 
 static const unsigned int number_of_pins = snark::camera::dc1394::number_of_pins;
