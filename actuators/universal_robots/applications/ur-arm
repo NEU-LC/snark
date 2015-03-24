@@ -79,9 +79,9 @@ details of operations:
     init:
         initialise the arm by moving joints one by one until their status changes from initialising to running
         control joints' movement via the keyboard: ' ' change direction, '+'/'-' increase/decrease speed
-        default initial values: acceleration=$default_acceleration, speed=$default_init_speed, time=$default_init_time
+        defaults: speed=$default_init_speed, time=$default_init_time, acceleration=$default_acceleration
         if the arm config file has init section with speeds, times, and acceleration, use these values instead of default values
-        if initilisation is successful, output init config with acceleration, final speed, and total time for each joint
+        if initialisation is successful, output init config with acceleration, final speed, and total time for each joint
     stow:
         move the arm to home position
     security-stop:
