@@ -90,8 +90,6 @@ SET( EXECUTABLE_OUTPUT_PATH
      ${PROJECT_BINARY_DIR}/bin CACHE PATH
      "Single output directory for building all executables." )
 
-INCLUDE_DIRECTORIES( ${SOURCE_CODE_BASE_DIR}/../ )
-
 SET( snark_LIBRARY_PROPERTIES ${snark_LIBRARY_PROPERTIES} DEBUG_POSTFIX "-d" )
 
 IF( NOT snark_INSTALL_BIN_DIR )
@@ -109,6 +107,9 @@ ENDIF( NOT snark_INSTALL_LIB_DIR )
 IF( NOT snark_INSTALL_PACKAGE_DIR )
   SET( snark_INSTALL_PACKAGE_DIR CMakeFiles )
 ENDIF( NOT snark_INSTALL_PACKAGE_DIR )
+
+INCLUDE_DIRECTORIES( ${SOURCE_CODE_BASE_DIR}/../ )
+INCLUDE_DIRECTORIES( ${snark_INSTALL_INCLUDE_DIR}/../ )
 
 IF( APPLE )
     SET( CMAKE_INSTALL_NAME_DIR ${CMAKE_INSTALL_PREFIX}/${snark_INSTALL_LIB_DIR} )
@@ -165,7 +166,7 @@ OPTION( snark_build_sensors "build sensors" ON )
 OPTION( snark_build_actuators "build actuators" ON )
 OPTION( snark_build_battery "build battery" OFF )
 OPTION( snark_build_graph "build graph" ON )
-OPTION( snark_build_math_geometry "build math geometry" OFF )
+OPTION( snark_build_math_geometry "build math geometry" ON )
 OPTION( snark_build_python "build python packages" OFF )
 
 INCLUDE( CMakeDependentOption )
