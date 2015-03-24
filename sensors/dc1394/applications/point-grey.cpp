@@ -41,17 +41,28 @@
 
 static const char* name() { return "point-grey"; }
 
+// see Register Reference for Point Grey Digital Cameras Version 3.1 Revised 2/6/2013 (Section 6.3)
 static const uint64_t PIO_DIRECTION_ADDRESS = 0x11F8;
+struct pin_mode { comma::uint32 pin0: 1, pin1: 1, pin2: 1, pin3: 1, :28; };
+enum { MODE_IN = 0, MODE_OUT = 1 };
+
 static const unsigned int number_of_pins = snark::camera::dc1394::number_of_pins;
 
 void set_pin_direction( snark::camera::dc1394& camera, unsigned int pin, bool is_out = true )
 {
-    static const uint32_t enable_out[number_of_pins] = { 0x0001, 0x0002, 0x0004, 0x0008 };
-    uint32_t value = 0;
-    camera.get_control_register( value, PIO_DIRECTION_ADDRESS );
-    comma::packed::reverse_bits< uint32_t >( value );
-    if( is_out ) { value |= enable_out[pin]; } else { value &= ~enable_out[pin]; }
-    comma::packed::reverse_bits< uint32_t >( value );
+    uint32_t value;
+    camera.get_control_register( &value, PIO_DIRECTION_ADDRESS );
+    comma::packed::reversed_bits< pin_mode > packed_mode = *reinterpret_cast< comma::packed::reversed_bits< pin_mode >* >( &value );
+    pin_mode mode = packed_mode();
+    switch( pin )
+    {
+        case 0: mode.pin0 = is_out ? MODE_OUT : MODE_IN;
+        case 1: mode.pin1 = is_out ? MODE_OUT : MODE_IN;
+        case 2: mode.pin2 = is_out ? MODE_OUT : MODE_IN;
+        case 3: mode.pin3 = is_out ? MODE_OUT : MODE_IN;
+    }
+    packed_mode = mode;
+    value = *reinterpret_cast< uint32_t* >( packed_mode.data() );
     camera.set_control_register( value, PIO_DIRECTION_ADDRESS );
 }
 
