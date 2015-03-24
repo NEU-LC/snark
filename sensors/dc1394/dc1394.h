@@ -90,11 +90,11 @@ public:
     static const std::size_t number_of_pins = 4;
     static uint64_t strobe_inquiry_offsets( unsigned int pin ) { static boost::array< unsigned int, number_of_pins > offsets = { 0x100, 0x104, 0x108, 0x10c }; return offsets.at( pin ); }
     static uint64_t strobe_control_offsets( unsigned int pin ) { static boost::array< unsigned int, number_of_pins > offsets = { 0x200, 0x204, 0x208, 0x20c }; return offsets.at( pin ); }
-    typedef enum { STROBE_POLARITY_UNSPECIFIED = -1, STROBE_POLARITY_LOW = 0, STROBE_POLARITY_HIGH = 1 } strobe_polarity_t;
+    typedef enum { STROBE_POLARITY_LOW = 0, STROBE_POLARITY_HIGH = 1 } strobe_polarity_t;
     typedef enum { STROBE_IGNORE, STROBE_ON, STROBE_OFF, STROBE_AUTO } strobe_command_t;
     struct strobe
     {
-        strobe() : pin( 0 ), polarity( STROBE_POLARITY_UNSPECIFIED ), delay( 0 ), duration( 0 ), command( STROBE_IGNORE ) {}
+        strobe() : pin( 0 ), polarity( STROBE_POLARITY_HIGH ), delay( 0 ), duration( 0 ), command( STROBE_IGNORE ) {}
         unsigned int pin;
         strobe_polarity_t polarity;
         unsigned int delay;

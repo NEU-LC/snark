@@ -656,7 +656,7 @@ void dc1394::verify_strobe_parameters( const dc1394::strobe& strobe )
     if( !inquiry.presence ) { COMMA_THROW( comma::exception, "strobe inquiry feature is not present for pin " << strobe.pin ); }
     if( !inquiry.read_out ) { COMMA_THROW( comma::exception, "strobe inquiry value cannot be read for pin " << strobe.pin ); }
     if( !inquiry.on_off ) { COMMA_THROW( comma::exception, "strobe cannot be switched on and off for pin " << strobe.pin << ", check if this pin's direction control is set to 'Out'" ); }
-    if( strobe.polarity != STROBE_POLARITY_UNSPECIFIED && !inquiry.polarity ) { COMMA_THROW( comma::exception, "strobe's polarity cannot be changed for pin " << strobe.pin ); }
+    if( !inquiry.polarity ) { COMMA_THROW( comma::exception, "strobe's polarity cannot be changed for pin " << strobe.pin ); }
     if( strobe.polarity != STROBE_POLARITY_HIGH && strobe.polarity != STROBE_POLARITY_LOW ) { COMMA_THROW( comma::exception, "expected polarity to be " << STROBE_POLARITY_LOW << " (low) or " << STROBE_POLARITY_HIGH << " (high), got " << strobe.polarity ); }
     uint32_t min_value = inquiry.min_value;
     uint32_t max_value = inquiry.max_value;
