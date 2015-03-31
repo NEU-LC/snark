@@ -164,7 +164,7 @@ void usage()
     std::cerr << "    left press and hold: rotate the scene around the centre" << std::endl;
     std::cerr << "    right press and hold: translate the scene" << std::endl;
     std::cerr << "    double left click: change the centre of the scene" << std::endl;
-    std::cerr << "    double right click: output to stdout coordinates of the clicked point" << std::endl;
+    std::cerr << "    double right click: output to stdout approximate coordinates of the clicked point" << std::endl;
     std::cerr << std::endl;
     std::cerr << "examples" << std::endl;
     std::cerr << std::endl;
