@@ -21,3 +21,5 @@ ENDIF( snark_build_sensors_hokuyo )
 IF( snark_build_sensors_gobi )
     ADD_SUBDIRECTORY( gobi )
 ENDIF( snark_build_sensors_gobi )
+
+add_subdirectory( las )
