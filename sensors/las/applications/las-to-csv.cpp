@@ -33,6 +33,7 @@
 #include <comma/application/command_line_options.h>
 #include <comma/csv/stream.h>
 #include <comma/name_value/serialize.h>
+#include <comma/string/string.h>
 #include <comma/visiting/traits.h>
 #include "../../../sensors/las/packets.h"
 #include "../../../sensors/las/traits.h"
@@ -139,6 +140,27 @@ int main( int ac, char** av )
     {
         comma::command_line_options options( ac, av, usage );
         if( ac < 2 ) { usage(); }
+        if( options.exists( "--output-fields" ) )
+        {
+            unsigned int type = options.value< unsigned int >( "--output-fields" );
+            switch( type )
+            {
+                case 1:
+                    std::cout << comma::join( comma::csv::names< point< 1 > >( false ), ',' ) << std::endl;
+                    return 0;
+                case 0:
+                case 2:
+                case 3:
+                case 4:
+                case 5:
+                    std::cerr << "las-to-csv: output fields for point data format " << type << ": todo" << std::endl;
+                    return 1;
+                default:
+                    std::cerr << "las-to-csv: expected point data format between 0 and 5, got: " << type << std::endl;
+                    return 1;
+            }
+            return 0;
+        }
         std::string what = av[1];
         snark::las::header header;
         std::cin.read( reinterpret_cast< char* >( &header ), snark::las::header::size );
