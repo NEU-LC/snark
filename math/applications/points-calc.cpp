@@ -283,7 +283,15 @@ int main( int ac, char** av )
             {
                 for( voxel_t::iterator vit = it->begin(); vit != it->end(); ++vit )
                 {
-                    //if( ( *vit )->rejected ) { continue; }
+                    if( ( *vit )->rejected ) { continue; }
+                    for( voxel_t::iterator wit = it->begin(); wit != it->end(); ++wit )
+                    {
+                        double dx = ( *vit )->point.x() - ( *wit )->point.x();
+                        double dy = ( *vit )->point.y() - ( *wit )->point.y();
+                        if( dx * dx + dy * dy > radius_square ) { continue; }
+                        ( *vit )->rejected = ( ( *vit )->point.z() - ( *wit )->point.z() ) * sign < 0;
+                        if( !( *vit )->rejected ) { ( *wit )->rejected = true; }
+                    }
                     for( grid_t::neighbourhood_iterator nit = grid_t::neighbourhood_iterator::begin( it ); nit != grid_t::neighbourhood_iterator::end( it ) && !( *vit )->rejected; ++nit )
                     {
                         for( voxel_t::iterator wit = nit->begin(); wit != nit->end() && !( *vit )->rejected; ++wit )
