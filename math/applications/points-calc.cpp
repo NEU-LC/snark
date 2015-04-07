@@ -1,10 +1,12 @@
+#include <cmath>
+#include <deque>
 #include <iostream>
 #include <boost/optional.hpp>
 #include <comma/application/command_line_options.h>
 #include <comma/csv/stream.h>
-#include <snark/visiting/eigen.h>
-#include <math.h>
 #include <comma/math/compare.h>
+#include <snark/point_cloud/voxel_grid.h> // real quick and dirty
+#include <snark/visiting/eigen.h>
 
 typedef std::pair< Eigen::Vector3d, Eigen::Vector3d > point_pair_t;
 
@@ -165,6 +167,15 @@ static void discretise( double step, double tolerance )
     output_points( *previous_point, *previous_point );
 }
 
+struct local_max_record // quick and dirty
+{
+    Eigen::Vector3d point;
+    std::string line;
+    bool rejected;
+    
+    local_max_record() : rejected( false ) {}
+    local_max_record( const Eigen::Vector3d& point, const std::string& line, bool rejected = false ) : point( point ), line( line ), rejected( rejected ) {}
+};
 
 int main( int ac, char** av )
 {
@@ -234,6 +245,66 @@ int main( int ac, char** av )
             double tolerance = options.value( "--tolerance" , 0.0 ); 
             if( tolerance < 0 ) { std::cerr << "points-calc: expected non-negative tolerance, got " << tolerance << std::endl; return 1; }
             discretise( step, tolerance );
+            return 0;
+        }
+        if( operation == "local-max" || operation == "local-min" ) // todo: if( operation == "local-calc" ? )
+        {
+            double sign = operation == "local-max" ? 1 : -1;
+            if( csv.fields.empty() ) { csv.fields = "x,y,z"; } // todo: better use x,y,scalar as a point
+            comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, csv );
+            std::deque< local_max_record > points;
+            double radius = options.value< double >( "--radius" );
+            Eigen::Vector3d resolution( radius, radius, radius );
+            snark::math::closed_interval< double, 3 > extents;
+            while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
+            {
+                const Eigen::Vector3d* p = istream.read();
+                if( !p ) { break; }
+                std::string line;
+                if( csv.binary() ) // quick and dirty
+                {
+                    line.resize( csv.format().size() );
+                    ::memcpy( &line[0], istream.binary().last(), csv.format().size() );
+                }
+                else
+                {
+                    line = comma::join( istream.ascii().last(), csv.delimiter ) + "\n";
+                }
+                points.push_back( local_max_record( *p, line ) );
+                extents.set_hull( *p );
+            }
+            typedef std::vector< local_max_record* > voxel_t; // todo: is vector a good container? use deque
+            typedef snark::voxel_grid< voxel_t > grid_t;
+            grid_t grid( extents, resolution );
+            for( std::size_t i = 0; i < points.size(); ++i ) { ( grid.touch_at( points[i].point ) )->push_back( &points[i] ); }
+            std::deque< voxel_t > extrema;
+            double radius_square = radius * radius;
+            for( grid_t::iterator it = grid.begin(); it != grid.end(); ++it )
+            {
+                for( voxel_t::iterator vit = it->begin(); vit != it->end(); ++vit )
+                {
+                    //if( ( *vit )->rejected ) { continue; }
+                    for( grid_t::neighbourhood_iterator nit = grid_t::neighbourhood_iterator::begin( it ); nit != grid_t::neighbourhood_iterator::end( it ) && !( *vit )->rejected; ++nit )
+                    {
+                        for( voxel_t::iterator wit = nit->begin(); wit != nit->end() && !( *vit )->rejected; ++wit )
+                        {
+                            //if( ( *wit )->rejected ) { continue; }
+                            double dx = ( *vit )->point.x() - ( *wit )->point.x();
+                            double dy = ( *vit )->point.y() - ( *wit )->point.y();
+                            if( dx * dx + dy * dy > radius_square ) { continue; }
+                            ( *vit )->rejected = ( ( *vit )->point.z() - ( *wit )->point.z() ) * sign < 0;
+                            if( !( *vit )->rejected ) { ( *wit )->rejected = true; }
+                        }
+                    }
+                }
+            }
+            #ifdef WIN32
+            _setmode( _fileno( stdout ), _O_BINARY );
+            #endif
+            for( std::size_t i = 0; i < points.size(); ++i )
+            {
+                if( !points[i].rejected ) { std::cout.write( &points[i].line[0], points[i].line.size() ); }
+            }
             return 0;
         }
         std::cerr << "points-calc: please specify an operation" << std::endl;
