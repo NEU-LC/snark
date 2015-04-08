@@ -38,7 +38,9 @@ static void usage( bool more = false )
     std::cerr << "    local-min: output local minimums inside of given radius" << std::endl;
     std::cerr << "    local-max: output local maximums inside of given radius" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "        input fields: " << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
+    std::cerr << "        input fields: x,y,z,scalar" << std::endl;
+    std::cerr << "        example: get local height maxima in the radius of 5 metres:" << std::endl;
+    std::cerr << "            cat xyz.csv | points-calc local-max --fields=x,y,scalar --radius=5" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    nearest: find point nearest to the given point" << std::endl;
     std::cerr << std::endl;
