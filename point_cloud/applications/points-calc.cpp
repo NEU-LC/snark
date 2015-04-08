@@ -176,7 +176,7 @@ static void discretise( double step, double tolerance )
 
 namespace local_operation {
 
-struct point // quick and dirty
+struct point
 {
     Eigen::Vector3d coordinates;
     double scalar;
@@ -185,21 +185,22 @@ struct point // quick and dirty
     point( const Eigen::Vector3d& coordinates, double scalar ) : coordinates( coordinates ), scalar( scalar ) {}
 };
 
-struct record // quick and dirty
+struct record
 {
     local_operation::point point;
     std::string line;
     bool rejected;
     
     record() : rejected( false ) {}
-    record( const local_operation::point& p, const std::string& line, bool rejected = false ) : point( p ), line( line ), rejected( rejected ) {}
+    record( const local_operation::point& p, const std::string& line ) : point( p ), line( line ), rejected( false ) {}
 };
 
-template < typename I, typename J > static void evaluate_local_extremum( I& i, J& j, double radius, double sign )
+static void evaluate_local_extremum( record* i, record* j, double radius, double sign )
 {
-    if( ( ( *i )->point.coordinates - ( *j )->point.coordinates ).squaredNorm() > radius * radius ) { return; }
-    ( *i )->rejected = ( ( *i )->point.scalar - ( *j )->point.scalar ) * sign < 0;
-    if( !( *i )->rejected ) { ( *j )->rejected = true; }
+    if( i == j || i->rejected ) { return; }
+    if( ( i->point.coordinates - j->point.coordinates ).squaredNorm() > radius * radius ) { return; }
+    i->rejected = comma::math::less( ( i->point.scalar - j->point.scalar ) * sign, 0 );
+    if( !i->rejected ) { j->rejected = true; }
 }
 
 } // namespace local_operation {
@@ -315,7 +316,7 @@ int main( int ac, char** av )
                 }
                 else
                 {
-                    line = comma::join( istream.ascii().last(), csv.delimiter ) + "\n";
+                    line = comma::join( istream.ascii().last(), csv.delimiter );
                 }
                 records.push_back( local_operation::record( *p, line ) );
                 extents.set_hull( p->coordinates );
@@ -328,16 +329,15 @@ int main( int ac, char** av )
             {
                 for( voxel_t::iterator vit = it->begin(); vit != it->end(); ++vit )
                 {
-                    if( ( *vit )->rejected ) { continue; }
-                    for( voxel_t::iterator wit = it->begin(); wit != it->end(); ++wit )
+                    for( voxel_t::iterator wit = it->begin(); !( *vit )->rejected && wit != it->end(); ++wit )
                     {
-                        local_operation::evaluate_local_extremum( vit, wit, radius, sign );
+                        local_operation::evaluate_local_extremum( *vit, *wit, radius, sign );
                     }
                     for( grid_t::neighbourhood_iterator nit = grid_t::neighbourhood_iterator::begin( it ); nit != grid_t::neighbourhood_iterator::end( it ) && !( *vit )->rejected; ++nit )
                     {
                         for( voxel_t::iterator wit = nit->begin(); wit != nit->end() && !( *vit )->rejected; ++wit )
                         {
-                            local_operation::evaluate_local_extremum( vit, wit, radius, sign );
+                            local_operation::evaluate_local_extremum( *vit, *wit, radius, sign );
                         }
                     }
                 }
@@ -345,9 +345,12 @@ int main( int ac, char** av )
             #ifdef WIN32
             _setmode( _fileno( stdout ), _O_BINARY );
             #endif
+            std::string endl = csv.binary() ? "" : "\n";
             for( std::size_t i = 0; i < records.size(); ++i )
             {
-                if( !records[i].rejected ) { std::cout.write( &records[i].line[0], records[i].line.size() ); }
+                if( records[i].rejected ) { continue; }
+                std::cout.write( &records[i].line[0], records[i].line.size() );
+                std::cout.write( &endl[0], endl.size() );
             }
             return 0;
         }
