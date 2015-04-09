@@ -221,18 +221,18 @@ struct record
 {
     local_operation::point point;
     std::string line;
-    bool rejected;
+    bool is_extremum;
     
-    record() : rejected( false ) {}
-    record( const local_operation::point& p, const std::string& line ) : point( p ), line( line ), rejected( false ) {}
+    record() : is_extremum( true ) {}
+    record( const local_operation::point& p, const std::string& line ) : point( p ), line( line ), is_extremum( true ) {}
 };
 
 static void evaluate_local_extremum( record* i, record* j, double radius, double sign )
 {
-    if( i == j || i->rejected ) { return; }
+    if( i == j || !i->is_extremum ) { return; }
     if( ( i->point.coordinates - j->point.coordinates ).squaredNorm() > radius * radius ) { return; }
-    i->rejected = comma::math::less( ( i->point.scalar - j->point.scalar ) * sign, 0 );
-    if( !i->rejected ) { j->rejected = true; }
+    i->is_extremum = !comma::math::less( ( i->point.scalar - j->point.scalar ) * sign, 0 );
+    if( i->is_extremum ) { j->is_extremum = false; }
 }
 
 } // namespace local_operation {
@@ -251,6 +251,14 @@ template <> struct traits< local_operation::point >
     {
         v.apply( "coordinates", t.coordinates );
         v.apply( "scalar", t.scalar );
+    }
+};
+
+template <> struct traits< local_operation::record > // quick and dirty
+{
+    template< typename K, typename V > static void visit( const K&, const local_operation::record& t, V& v )
+    {
+        v.apply( "is_extremum", t.is_extremum );
     }
 };
 
@@ -361,13 +369,13 @@ int main( int ac, char** av )
 //             {
 //                 for( voxel_t::iterator vit = it->begin(); vit != it->end(); ++vit )
 //                 {
-//                     for( voxel_t::iterator wit = it->begin(); !( *vit )->rejected && wit != it->end(); ++wit )
+//                     for( voxel_t::iterator wit = it->begin(); ( *vit )->is_extremum && wit != it->end(); ++wit )
 //                     {
 //                         local_operation::evaluate_local_extremum( *vit, *wit, radius, sign );
 //                     }
-//                     for( grid_t::neighbourhood_iterator nit = grid_t::neighbourhood_iterator::begin( it ); nit != grid_t::neighbourhood_iterator::end( it ) && !( *vit )->rejected; ++nit )
+//                     for( grid_t::neighbourhood_iterator nit = grid_t::neighbourhood_iterator::begin( it ); nit != grid_t::neighbourhood_iterator::end( it ) && ( *vit )->is_extremum; ++nit )
 //                     {
-//                         for( voxel_t::iterator wit = nit->begin(); wit != nit->end() && !( *vit )->rejected; ++wit )
+//                         for( voxel_t::iterator wit = nit->begin(); wit != nit->end() && ( *vit )->is_extremum; ++wit )
 //                         {
 //                             local_operation::evaluate_local_extremum( *vit, *wit, radius, sign );
 //                         }
@@ -382,11 +390,11 @@ int main( int ac, char** av )
                 for( voxel_t::iterator vit = it->second.begin(); vit != it->second.end(); ++vit )
                 {
                     grid_t::index_type i;
-                    for( i[0] = it->first[0] - 1; i[0] < it->first[0] + 1 && !( *vit )->rejected; ++i[0] )
+                    for( i[0] = it->first[0] - 1; i[0] < it->first[0] + 1 && ( *vit )->is_extremum; ++i[0] )
                     {
-                        for( i[1] = it->first[1] - 1; i[1] < it->first[1] + 1 && !( *vit )->rejected; ++i[1] )
+                        for( i[1] = it->first[1] - 1; i[1] < it->first[1] + 1 && ( *vit )->is_extremum; ++i[1] )
                         {
-                            for( i[2] = it->first[2] - 1; i[2] < it->first[2] + 1 && !( *vit )->rejected; ++i[2] )
+                            for( i[2] = it->first[2] - 1; i[2] < it->first[2] + 1 && ( *vit )->is_extremum; ++i[2] )
                             {
                                 grid_t::iterator it = grid.find( i );
                                 if( it == grid.end() ) { continue; }
@@ -403,11 +411,15 @@ int main( int ac, char** av )
             _setmode( _fileno( stdout ), _O_BINARY );
             #endif
             std::string endl = csv.binary() ? "" : "\n";
+            std::string delimiter = csv.binary() ? "" : std::string( 1, csv.delimiter );
+            comma::csv::options output_csv;
+            if( csv.binary() ) { output_csv.format( "b" ); } // todo
+            comma::csv::output_stream< local_operation::record > ostream( std::cout, output_csv );
             for( std::size_t i = 0; i < records.size(); ++i )
             {
-                if( records[i].rejected ) { continue; }
                 std::cout.write( &records[i].line[0], records[i].line.size() );
-                std::cout.write( &endl[0], endl.size() );
+                std::cout.write( &delimiter[0], delimiter.size() );
+                ostream.write( records[i] ); // quick and dirty
             }
             return 0;
         }
