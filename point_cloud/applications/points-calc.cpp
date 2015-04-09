@@ -70,6 +70,14 @@ static void usage( bool more = false )
     std::cerr << "    local-min: output local minimums inside of given radius" << std::endl;
     std::cerr << "    local-max: output local maximums inside of given radius" << std::endl;
     std::cerr << std::endl;
+    std::cerr << "        options" << std::endl;
+//     std::cerr << "            --operation=<operation>" << std::endl;
+//     std::cerr << "                operations" << std::endl;
+//     std::cerr << "                    min: find local minima" << std::endl;
+//     std::cerr << "                    max: find local maxima" << std::endl;
+//     std::cerr << "                    distance: distance " << std::endl;
+    std::cerr << "            --radius=<metres>: radius of the local region to search" << std::endl;
+    std::cerr << std::endl;
     std::cerr << "        input fields: x,y,z,scalar" << std::endl;
     std::cerr << "        example: get local height maxima in the radius of 5 metres:" << std::endl;
     std::cerr << "            cat xyz.csv | points-calc local-max --fields=x,y,scalar --radius=5" << std::endl;
