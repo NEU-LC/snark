@@ -1,3 +1,34 @@
+// This file is part of snark, a generic and flexible library for robotics research
+// Copyright (c) 2011 The University of Sydney
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+// 1. Redistributions of source code must retain the above copyright
+//    notice, this list of conditions and the following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright
+//    notice, this list of conditions and the following disclaimer in the
+//    documentation and/or other materials provided with the distribution.
+// 3. Neither the name of the University of Sydney nor the
+//    names of its contributors may be used to endorse or promote products
+//    derived from this software without specific prior written permission.
+//
+// NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
+// GRANTED BY THIS LICENSE.  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
+// HOLDERS AND CONTRIBUTORS \"AS IS\" AND ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+// BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+// OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
+// IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/// @author vsevolod vlaskine
+
 #include <cmath>
 #include <deque>
 #include <iostream>
@@ -5,7 +36,8 @@
 #include <comma/application/command_line_options.h>
 #include <comma/csv/stream.h>
 #include <comma/math/compare.h>
-#include <snark/point_cloud/voxel_grid.h> // real quick and dirty
+#include <snark/point_cloud/voxel_grid.h>
+#include <snark/point_cloud/voxel_map.h>
 #include <snark/visiting/eigen.h>
 
 typedef std::pair< Eigen::Vector3d, Eigen::Vector3d > point_pair_t;
@@ -59,7 +91,7 @@ static void usage( bool more = false )
     std::cerr << "        input fields" << std::endl;
     std::cerr << "            " << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
     std::cerr << std::endl;
-    exit( 1 );
+    exit( 0 );
 }
 
 static void calculate_distance( bool cumulative )
@@ -322,22 +354,47 @@ int main( int ac, char** av )
                 extents.set_hull( p->coordinates );
             }
             typedef std::vector< local_operation::record* > voxel_t; // todo: is vector a good container? use deque
-            typedef snark::voxel_grid< voxel_t > grid_t;
-            grid_t grid( extents, resolution );
-            for( std::size_t i = 0; i < records.size(); ++i ) { ( grid.touch_at( records[i].point.coordinates ) )->push_back( &records[i] ); }
+//             typedef snark::voxel_grid< voxel_t > grid_t;
+//             grid_t grid( extents, resolution );
+//             for( std::size_t i = 0; i < records.size(); ++i ) { ( grid.touch_at( records[i].point.coordinates ) )->push_back( &records[i] ); }
+//             for( grid_t::iterator it = grid.begin(); it != grid.end(); ++it )
+//             {
+//                 for( voxel_t::iterator vit = it->begin(); vit != it->end(); ++vit )
+//                 {
+//                     for( voxel_t::iterator wit = it->begin(); !( *vit )->rejected && wit != it->end(); ++wit )
+//                     {
+//                         local_operation::evaluate_local_extremum( *vit, *wit, radius, sign );
+//                     }
+//                     for( grid_t::neighbourhood_iterator nit = grid_t::neighbourhood_iterator::begin( it ); nit != grid_t::neighbourhood_iterator::end( it ) && !( *vit )->rejected; ++nit )
+//                     {
+//                         for( voxel_t::iterator wit = nit->begin(); wit != nit->end() && !( *vit )->rejected; ++wit )
+//                         {
+//                             local_operation::evaluate_local_extremum( *vit, *wit, radius, sign );
+//                         }
+//                     }
+//                 }
+//             }
+            typedef snark::voxel_map< voxel_t, 3 > grid_t;
+            grid_t grid( extents.min(), resolution );
+            for( std::size_t i = 0; i < records.size(); ++i ) { ( grid.touch_at( records[i].point.coordinates ) )->second.push_back( &records[i] ); }
             for( grid_t::iterator it = grid.begin(); it != grid.end(); ++it )
             {
-                for( voxel_t::iterator vit = it->begin(); vit != it->end(); ++vit )
+                for( voxel_t::iterator vit = it->second.begin(); vit != it->second.end(); ++vit )
                 {
-                    for( voxel_t::iterator wit = it->begin(); !( *vit )->rejected && wit != it->end(); ++wit )
+                    grid_t::index_type i;
+                    for( i[0] = it->first[0] - 1; i[0] < it->first[0] + 1 && !( *vit )->rejected; ++i[0] )
                     {
-                        local_operation::evaluate_local_extremum( *vit, *wit, radius, sign );
-                    }
-                    for( grid_t::neighbourhood_iterator nit = grid_t::neighbourhood_iterator::begin( it ); nit != grid_t::neighbourhood_iterator::end( it ) && !( *vit )->rejected; ++nit )
-                    {
-                        for( voxel_t::iterator wit = nit->begin(); wit != nit->end() && !( *vit )->rejected; ++wit )
+                        for( i[1] = it->first[1] - 1; i[1] < it->first[1] + 1 && !( *vit )->rejected; ++i[1] )
                         {
-                            local_operation::evaluate_local_extremum( *vit, *wit, radius, sign );
+                            for( i[2] = it->first[2] - 1; i[2] < it->first[2] + 1 && !( *vit )->rejected; ++i[2] )
+                            {
+                                grid_t::iterator it = grid.find( i );
+                                if( it == grid.end() ) { continue; }
+                                for( std::size_t k = 0; k < it->second.size(); ++k )
+                                {
+                                    local_operation::evaluate_local_extremum( *vit, it->second[k], radius, sign );
+                                }
+                            }
                         }
                     }
                 }
