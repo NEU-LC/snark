@@ -56,7 +56,15 @@ static void usage( bool more = false )
     std::cerr << "    cat points.csv | points-calc thin --resolution <resolution> > results.csv" << std::endl;
     std::cerr << "    cat points.csv | points-calc discretise --step <step> > results.csv" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "operations: distance, cumulative-distance, thin, discretise, nearest, local-min, local-max" << std::endl;
+    std::cerr << "operations" << std::endl;
+    std::cerr << "    distance" << std::endl;
+    std::cerr << "    cumulative-distance" << std::endl;
+    std::cerr << "    thin" << std::endl;
+    std::cerr << "    discretise" << std::endl;
+    std::cerr << "    local-min" << std::endl;
+    std::cerr << "    local-max" << std::endl;
+    std::cerr << "    nearest" << std::endl;
+    std::cerr << "    remove-outliers" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    distance: distance between subsequent points or, if input is pairs, between the points of the same record" << std::endl;
     std::cerr << std::endl;
@@ -77,6 +85,7 @@ static void usage( bool more = false )
 //     std::cerr << "                    max: find local maxima" << std::endl;
 //     std::cerr << "                    distance: distance " << std::endl;
     std::cerr << "            --radius=<metres>: radius of the local region to search" << std::endl;
+    std::cerr << "            --less-limited-vicinity;--unlimited: todo: document" << std::endl;
     std::cerr << std::endl;
     std::cerr << "        input fields: x,y,z,scalar,id" << std::endl;
     std::cerr << "        output fields: <input line>,extremum_id,distance (todo: make outputs optional)" << std::endl;
@@ -93,6 +102,18 @@ static void usage( bool more = false )
     std::cerr << "    thin: read input data and thin them down by the given --resolution" << std::endl;
     std::cerr << std::endl;
     std::cerr << "        input fields" << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    remove-outliers: remove points in low density areas" << std::endl;
+    std::cerr << "                     currently quick and dirty, may have aliasing problems" << std::endl;
+    std::cerr << "                     unless --no-antialiasing defined, will not remove points" << std::endl;
+    std::cerr << "                     on the border of a denser cloud" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "        input fields" << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "        options" << std::endl;
+    std::cerr << "            --resolution=<resolution>: size of the voxel to remove outliers" << std::endl;
+    std::cerr << "            --min-number-of-points-per-voxel,--size=<number>: min number of points for a voxel to keep" << std::endl;
+    std::cerr << "            --no-antialiasing: neighbour voxels" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    discretise, discretize: read input data and discretise intervals between adjacent points with --step" << std::endl;
     std::cerr << "        skip discretised points that are closer to the end of the interval than --tolerance (default: --tolerance=0)" << std::endl;
@@ -251,7 +272,7 @@ static void evaluate_local_extremum( record* i, record* j, double radius, double
     if( i->is_extremum ) { j->is_extremum = false; }
 }
 
-static void update_nearest_extremum( record* i, record* j, double radius )
+static void update_nearest_extremum( record* i, record* j, double radius, bool unlimited )
 {
     if( i->is_extremum )
     {
@@ -261,7 +282,7 @@ static void update_nearest_extremum( record* i, record* j, double radius )
         return;
     }
     double norm = ( i->point.coordinates - j->point.coordinates ).norm();
-    if( norm > radius ) { return; }
+    if( !unlimited && norm > radius ) { return; }
     if( i->extremum_id != record::invalid_id && i->distance < norm ) { return; }
     i->extremum_id = j->point.id;
     i->distance = norm;
@@ -299,6 +320,20 @@ template <> struct traits< local_operation::record > // quick and dirty
 
 } } // namespace comma { namespace visiting {
 
+namespace remove_outliers {
+
+struct record
+{
+    Eigen::Vector3d point;
+    std::string line;
+    bool rejected;
+    
+    record() : rejected( false ) {}
+    record( const Eigen::Vector3d& p, const std::string& line ) : point( p ), line( line ), rejected( false ) {}
+};
+
+} // namespace remove_outliers {
+
 int main( int ac, char** av )
 {
     try
@@ -309,7 +344,7 @@ int main( int ac, char** av )
         csv = comma::csv::options( options );
         csv.full_xpath = true;
         ascii = comma::csv::ascii< Eigen::Vector3d >( "x,y,z", csv.delimiter );
-        const std::vector< std::string >& operations = options.unnamed( "--verbose,-v", "-.*" );
+        const std::vector< std::string >& operations = options.unnamed( "--verbose,-v,--less-limited-vicinity,--unlimited,--no-antialiasing", "-.*" );
         if( operations.size() != 1 ) { std::cerr << "points-calc: expected one operation, got " << operations.size() << std::endl; return 1; }
         const std::string& operation = operations[0];
         if( operation == "distance" )
@@ -378,6 +413,7 @@ int main( int ac, char** av )
             comma::csv::input_stream< local_operation::point > istream( std::cin, csv );
             std::deque< local_operation::record > records;
             double radius = options.value< double >( "--radius" );
+            bool unlimited = options.exists( "--less-limited-vicinity,--unlimited" );
             Eigen::Vector3d resolution( radius, radius, radius );
             snark::math::closed_interval< double, 3 > extents;
             comma::uint32 id = 0;
@@ -477,7 +513,7 @@ int main( int ac, char** av )
                             {                            
                                 for( std::size_t k = 0; k < git->second.size(); ++k )
                                 {
-                                    local_operation::update_nearest_extremum( it->second[n], git->second[k], radius );
+                                    local_operation::update_nearest_extremum( it->second[n], git->second[k], radius, unlimited );
                                 }
                             }
                         }
@@ -496,6 +532,77 @@ int main( int ac, char** av )
                 std::cout.write( &records[i].line[0], records[i].line.size() );
                 std::cout.write( &delimiter[0], delimiter.size() );
                 ostream.write( records[i] ); // quick and dirty
+            }
+            if( verbose ) { std::cerr << "points-calc: done!" << std::endl; }
+            return 0;
+        }
+        if( operation == "remove-outliers" )
+        {
+            unsigned int size = options.value< unsigned int >( "--min-number-of-points-per-voxel,--size" );
+            double r = options.value< double >( "--resolution" );
+            Eigen::Vector3d resolution( r, r, r );
+            bool no_antialiasing = options.exists( "--no-antialiasing" );            
+            comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, csv );
+            std::deque< remove_outliers::record > records;
+            snark::math::closed_interval< double, 3 > extents;
+            if( verbose ) { std::cerr << "points-calc: reading input points..." << std::endl; }
+            while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
+            {
+                const Eigen::Vector3d* p = istream.read();
+                if( !p ) { break; }
+                std::string line;
+                if( csv.binary() ) // quick and dirty
+                {
+                    line.resize( csv.format().size() );
+                    ::memcpy( &line[0], istream.binary().last(), csv.format().size() );
+                }
+                else
+                {
+                    line = comma::join( istream.ascii().last(), csv.delimiter );
+                }
+                records.push_back( remove_outliers::record( *p, line ) );
+                extents.set_hull( *p );
+            }
+            if( verbose ) { std::cerr << "points-calc: loading " << records.size() << " points into grid..." << std::endl; }
+            typedef std::vector< remove_outliers::record* > voxel_t; // todo: is vector a good container? use deque
+            typedef snark::voxel_map< voxel_t, 3 > grid_t;
+            grid_t grid( extents.min(), resolution );
+            for( std::size_t i = 0; i < records.size(); ++i ) { ( grid.touch_at( records[i].point ) )->second.push_back( &records[i] ); }
+            if( verbose ) { std::cerr << "points-calc: removing outliers..." << std::endl; }
+            for( grid_t::iterator it = grid.begin(); it != grid.end(); ++it )
+            {
+                bool rejected = true;
+                if( no_antialiasing )
+                {
+                    rejected = it->second.size() < size;
+                }
+                else
+                {
+                    grid_t::index_type i;
+                    for( i[0] = it->first[0] - 1; i[0] < it->first[0] + 2 && rejected; ++i[0] )
+                    {
+                        for( i[1] = it->first[1] - 1; i[1] < it->first[1] + 2 && rejected; ++i[1] )
+                        {
+                            for( i[2] = it->first[2] - 1; i[2] < it->first[2] + 2 && rejected; ++i[2] )
+                            {
+                                grid_t::iterator git = grid.find( i );
+                                rejected = git == grid.end() || git->second.size() < size;
+                            }
+                        }
+                    }
+                }
+                if( rejected ) { for( std::size_t i = 0; i < it->second.size(); ++i ) { it->second[i]->rejected = true; } }
+            }
+            #ifdef WIN32
+            _setmode( _fileno( stdout ), _O_BINARY );
+            #endif
+            if( verbose ) { std::cerr << "points-calc: outputting..." << std::endl; }
+            std::string endl = csv.binary() ? "" : "\n";
+            for( std::size_t i = 0; i < records.size(); ++i )
+            {
+                if( records[i].rejected ) { continue; }
+                std::cout.write( &records[i].line[0], records[i].line.size() );
+                std::cout.write( &endl[0], endl.size() );
             }
             if( verbose ) { std::cerr << "points-calc: done!" << std::endl; }
             return 0;
