@@ -439,26 +439,6 @@ int main( int ac, char** av )
             }
             if( verbose ) { std::cerr << "points-calc: loading " << records.size() << " points into grid..." << std::endl; }
             typedef std::vector< local_operation::record* > voxel_t; // todo: is vector a good container? use deque
-//             typedef snark::voxel_grid< voxel_t > grid_t;
-//             grid_t grid( extents, resolution );
-//             for( std::size_t i = 0; i < records.size(); ++i ) { ( grid.touch_at( records[i].point.coordinates ) )->push_back( &records[i] ); }
-//             for( grid_t::iterator it = grid.begin(); it != grid.end(); ++it )
-//             {
-//                 for( voxel_t::iterator vit = it->begin(); vit != it->end(); ++vit )
-//                 {
-//                     for( voxel_t::iterator wit = it->begin(); ( *vit )->is_extremum && wit != it->end(); ++wit )
-//                     {
-//                         local_operation::evaluate_local_extremum( *vit, *wit, radius, sign );
-//                     }
-//                     for( grid_t::neighbourhood_iterator nit = grid_t::neighbourhood_iterator::begin( it ); nit != grid_t::neighbourhood_iterator::end( it ) && ( *vit )->is_extremum; ++nit )
-//                     {
-//                         for( voxel_t::iterator wit = nit->begin(); wit != nit->end() && ( *vit )->is_extremum; ++wit )
-//                         {
-//                             local_operation::evaluate_local_extremum( *vit, *wit, radius, sign );
-//                         }
-//                     }
-//                 }
-//             }
             typedef snark::voxel_map< voxel_t, 3 > grid_t;
             grid_t grid( extents.min(), resolution );
             for( std::size_t i = 0; i < records.size(); ++i ) { ( grid.touch_at( records[i].point.coordinates ) )->second.push_back( &records[i] ); }
