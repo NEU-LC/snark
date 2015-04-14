@@ -55,8 +55,6 @@ static void usage( bool more = false )
     std::cerr << "    --radius=<radius>: lookup radius" << std::endl;
     std::cerr << "    --strict: exit, if nearest point not found" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "output: <input_record><joined_record><distance>" << std::endl;
-    std::cerr << std::endl;
     exit( 0 );
 }
 
@@ -158,11 +156,10 @@ int main( int ac, char** av )
             {
                 std::cout.write( istream.binary().last(), stdin_csv.format().size() );
                 std::cout.write( &nearest->line[0], filter_csv.format().size() );
-                std::cout.write( reinterpret_cast< char* >( &distance ), sizeof( double ) );
             }
             else
             {
-                std::cout << comma::join( istream.ascii().last(), stdin_csv.delimiter ) << stdin_csv.delimiter << nearest->line << stdin_csv.delimiter << distance << std::endl;
+                std::cout << comma::join( istream.ascii().last(), stdin_csv.delimiter ) << stdin_csv.delimiter << nearest->line << std::endl;
             }
             ++count;
         }
