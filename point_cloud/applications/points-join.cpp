@@ -55,6 +55,10 @@ static void usage( bool more = false )
     std::cerr << "    --radius=<radius>: lookup radius" << std::endl;
     std::cerr << "    --strict: exit, if nearest point not found" << std::endl;
     std::cerr << std::endl;
+    std::cerr << "fields: x,y,z" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "todo: add support for block field" << std::endl;
+    std::cerr << std::endl;
     exit( 0 );
 }
 
