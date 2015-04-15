@@ -117,7 +117,7 @@ static void usage( bool more = false )
     std::cerr << "        options" << std::endl;
     std::cerr << "            --resolution=<resolution>: size of the voxel to remove outliers" << std::endl;
     std::cerr << "            --min-number-of-points-per-voxel,--size=<number>: min number of points for a voxel to keep" << std::endl;
-    std::cerr << "            --no-antialiasing: neighbour voxels" << std::endl;
+    std::cerr << "            --no-antialiasing: don't check neighbour voxels, which is faster, but may remove points in borderline voxels" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    discretise, discretize: read input data and discretise intervals between adjacent points with --step" << std::endl;
     std::cerr << "        skip discretised points that are closer to the end of the interval than --tolerance (default: --tolerance=0)" << std::endl;
@@ -373,7 +373,7 @@ int main( int ac, char** av )
         csv.full_xpath = true;
         ascii = comma::csv::ascii< Eigen::Vector3d >( "x,y,z", csv.delimiter );
         const std::vector< std::string >& operations = options.unnamed( "--verbose,-v,--less-limited-vicinity,--unlimited,--no-antialiasing", "-.*" );
-        if( operations.size() != 1 ) { std::cerr << "points-calc: expected one operation, got " << operations.size() << std::endl; return 1; }
+        if( operations.size() != 1 ) { std::cerr << "points-calc: expected one operation, got " << operations.size() << ": " << comma::join( operations, ' ' ) << std::endl; return 1; }
         const std::string& operation = operations[0];
         if( operation == "distance" )
         {
