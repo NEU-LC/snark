@@ -31,6 +31,7 @@
 
 #include <Eigen/Core>
 #include <comma/application/command_line_options.h>
+#include <comma/base/exception.h>
 #include <comma/csv/stream.h>
 #include <comma/name_value/serialize.h>
 #include <comma/string/string.h>
@@ -53,6 +54,7 @@ static void usage( bool verbose = false )
     std::cerr << "options" << std::endl;
     std::cerr << "    --help,-h: help; --help --verbose: more help" << std::endl;
     std::cerr << "    --output-fields=<point format>: output fields for a given point format (0-5) and exit" << std::endl;
+    std::cerr << "                                    use \"--output-fields -\" to read point format from a las file on stdin" << std::endl;
     std::cerr << "    --verbose,-v: more output" << std::endl;
     if( verbose ) { std::cerr << comma::csv::options::usage() << std::endl; }
     std::cerr << std::endl;
@@ -134,6 +136,15 @@ static int read_points( const snark::las::header& header, const comma::csv::opti
     return 0;
 }
 
+static snark::las::header read_header( std::istream& is )
+{
+    snark::las::header header;
+    is.read( reinterpret_cast< char* >( &header ), snark::las::header::size );
+    int count = std::cin.gcount();
+    if( count < snark::las::header::size ) { COMMA_THROW( comma::exception, "las-to-csv: expected las header of " << snark::las::header::size << " bytes, got only: " << count << std::endl ); }
+    return header;
+}
+
 int main( int ac, char** av )
 {
     try
@@ -142,7 +153,8 @@ int main( int ac, char** av )
         if( ac < 2 ) { usage(); }
         if( options.exists( "--output-fields" ) )
         {
-            unsigned int type = options.value< unsigned int >( "--output-fields" );
+            std::string s = options.value< std::string >( "--output-fields" );
+            unsigned int type = s.empty() || s == "-" ? read_header( std::cin ).point_data_format() : boost::lexical_cast< unsigned int >( s );
             switch( type )
             {
                 case 1:
@@ -162,16 +174,13 @@ int main( int ac, char** av )
             return 0;
         }
         std::string what = av[1];
-        snark::las::header header;
-        std::cin.read( reinterpret_cast< char* >( &header ), snark::las::header::size );
-        int count = std::cin.gcount();
-        if( count < snark::las::header::size ) { std::cerr << "las-to-csv: expected las header of " << snark::las::header::size << " bytes, got only: " << count << std::endl; return 1; }
+        snark::las::header header = read_header( std::cin );
         if( what == "header" ) { comma::write_json( header, std::cout ); return 0; }
         if( what == "points" )
         {
             std::vector< char > offset( header.offset_to_point_data() - header.header_size() );
             std::cin.read( &offset[0], offset.size() );
-            count = std::cin.gcount();
+            int count = std::cin.gcount();
             if( count < int( offset.size() ) ) { std::cerr << "las-to-csv: expected " << offset.size() << " bytes, got only: " << count << std::endl; return 1; }
             switch( header.point_data_format() )
             {
