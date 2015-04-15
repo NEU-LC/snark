@@ -463,6 +463,7 @@ int main( int ac, char** av )
                 local_operation::point q = *p;
                 if( !has_id ) { q.id = id++; }
                 records.push_back( local_operation::record( q, line ) );
+                records.back().reference_record = &records.back();
                 extents.set_hull( p->coordinates );
             }
             if( verbose ) { std::cerr << "points-calc: loading " << records.size() << " points into grid..." << std::endl; }
