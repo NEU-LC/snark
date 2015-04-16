@@ -66,7 +66,7 @@ static void usage( bool more = false )
     std::cerr << "    nearest-min" << std::endl;
     std::cerr << "    nearest-max" << std::endl;
     std::cerr << "    nearest" << std::endl;
-    std::cerr << "    remove-outliers" << std::endl;
+    std::cerr << "    find-outliers" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    distance: distance between subsequent points or, if input is pairs, between the points of the same record" << std::endl;
     std::cerr << std::endl;
@@ -107,12 +107,15 @@ static void usage( bool more = false )
     std::cerr << std::endl;
     std::cerr << "        input fields" << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
     std::cerr << std::endl;
-    std::cerr << "    remove-outliers: remove points in low density areas" << std::endl;
-    std::cerr << "                     currently quick and dirty, may have aliasing problems" << std::endl;
-    std::cerr << "                     unless --no-antialiasing defined, will not remove points" << std::endl;
-    std::cerr << "                     on the border of a denser cloud" << std::endl;
+    std::cerr << "    find-outliers: find points in low density areas" << std::endl;
+    std::cerr << "                   currently quick and dirty, may have aliasing problems" << std::endl;
+    std::cerr << "                   unless --no-antialiasing defined, will not remove points" << std::endl;
+    std::cerr << "                   on the border of a denser cloud" << std::endl;
     std::cerr << std::endl;
     std::cerr << "        input fields" << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "        output: input line with appended 0 for outliers, 1 for non-outliers" << std::endl;
+    std::cerr << "                binary output: flag as unsigned byte (ub)" << std::endl;
     std::cerr << std::endl;
     std::cerr << "        options" << std::endl;
     std::cerr << "            --resolution=<resolution>: size of the voxel to remove outliers" << std::endl;
@@ -625,7 +628,7 @@ int main( int ac, char** av )
             if( verbose ) { std::cerr << "points-calc: done!" << std::endl; }
             return 0;
         }
-        if( operation == "remove-outliers" )
+        if( operation == "find-outliers" )
         {
             unsigned int size = options.value< unsigned int >( "--min-number-of-points-per-voxel,--size" );
             double r = options.value< double >( "--resolution" );
@@ -687,10 +690,13 @@ int main( int ac, char** av )
             #endif
             if( verbose ) { std::cerr << "points-calc: outputting..." << std::endl; }
             std::string endl = csv.binary() ? "" : "\n";
+            std::string delimiter = csv.binary() ? "" : std::string( 1, csv.delimiter );
             for( std::size_t i = 0; i < records.size(); ++i )
             {
-                if( records[i].rejected ) { continue; }
+                char valid = records[i].rejected ? 0 : 1;
                 std::cout.write( &records[i].line[0], records[i].line.size() );
+                std::cout.write( &delimiter[0], delimiter.size() );
+                std::cout.write( &valid, 1 );
                 std::cout.write( &endl[0], endl.size() );
             }
             if( verbose ) { std::cerr << "points-calc: done!" << std::endl; }
