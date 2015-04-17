@@ -83,13 +83,9 @@ static void usage( bool more = false )
     std::cerr << "    nearest-max: for each point, output local maximums inside of given radius" << std::endl;
     std::cerr << std::endl;
     std::cerr << "        options" << std::endl;
-//     std::cerr << "            --operation=<operation>" << std::endl;
-//     std::cerr << "                operations" << std::endl;
-//     std::cerr << "                    min: find local minima" << std::endl;
-//     std::cerr << "                    max: find local maxima" << std::endl;
-//     std::cerr << "                    distance: distance " << std::endl;
     std::cerr << "            --radius=<metres>: radius of the local region to search" << std::endl;
-    std::cerr << "            --less-limited-vicinity;--unlimited: todo: document" << std::endl;
+    std::cerr << "            --trace: local min/max only; if a points's reference point is not local" << std::endl;
+    std::cerr << "                     extremum, replace it with its reference" << std::endl;
     std::cerr << std::endl;
     std::cerr << "        input fields: x,y,z,scalar,id" << std::endl;
     std::cerr << "        output fields: <input line>,extremum_id,distance (todo: make outputs optional)" << std::endl;
@@ -276,7 +272,7 @@ struct record // todo: it's a mess; remove code duplication: all information can
     
     record() : is_extremum( true ), extremum_id( invalid_id ), distance( std::numeric_limits< double >::max() ), reference_record( NULL ) {}
     record( const local_operation::point& p, const std::string& line ) : point( p ), line( line ), is_extremum( true ), extremum_id( invalid_id ), distance( std::numeric_limits< double >::max() ), reference_record( NULL ) {}
-    local_operation::output output() const { return local_operation::output( reference_record->point.id, ( reference_record->point.coordinates - point.coordinates ).norm() ); }
+    local_operation::output output( bool force = true ) const { return !force && extremum_id == invalid_id ? local_operation::output( invalid_id, 0 ) : local_operation::output( reference_record->point.id, ( reference_record->point.coordinates - point.coordinates ).norm() ); }
 };
 
 comma::uint32 record::invalid_id = std::numeric_limits< comma::uint32 >::max();
@@ -289,7 +285,7 @@ static void evaluate_local_extremum( record* i, record* j, double radius, double
     if( i->is_extremum ) { j->is_extremum = false; }
 }
 
-static void update_nearest_extremum( record* i, record* j, double radius, bool unlimited )
+static void update_nearest_extremum( record* i, record* j, double radius )
 {
     if( i->is_extremum )
     {
@@ -301,19 +297,19 @@ static void update_nearest_extremum( record* i, record* j, double radius, bool u
     }
     if( !j->is_extremum ) { return; }
     double norm = ( i->point.coordinates - j->point.coordinates ).norm();
-    if( !unlimited && norm > radius ) { return; }
+    if( norm > radius ) { return; }
     if( i->extremum_id != record::invalid_id && i->distance < norm ) { return; }
     i->extremum_id = j->point.id;
     i->distance = norm;
     i->reference_record = j; // todo: dump extremum_id, reference_record is enough
 }
 
-static void update_nearest( record* i, record* j, double radius, double sign, bool unlimited )
+static void update_nearest( record* i, record* j, double radius, double sign )
 {
     if( i == j ) { return; }
     if( comma::math::less( ( j->point.scalar - i->reference_record->point.scalar ) * sign, 0 ) ) { return; }
     double norm = ( i->point.coordinates - j->point.coordinates ).norm();
-    if( !unlimited && norm > radius ) { return; }
+    if( norm > radius ) { return; }
     if(    comma::math::equal( ( i->reference_record->point.scalar - j->point.scalar ) * sign, 0 )
         && ( i->reference_record->point.coordinates - i->point.coordinates ).norm() < norm ) { return; }
     i->reference_record = j;
@@ -375,7 +371,7 @@ int main( int ac, char** av )
         csv = comma::csv::options( options );
         csv.full_xpath = true;
         ascii = comma::csv::ascii< Eigen::Vector3d >( "x,y,z", csv.delimiter );
-        const std::vector< std::string >& operations = options.unnamed( "--verbose,-v,--less-limited-vicinity,--unlimited,--no-antialiasing", "-.*" );
+        const std::vector< std::string >& operations = options.unnamed( "--verbose,-v,--trace,--no-antialiasing", "-.*" );
         if( operations.size() != 1 ) { std::cerr << "points-calc: expected one operation, got " << operations.size() << ": " << comma::join( operations, ' ' ) << std::endl; return 1; }
         const std::string& operation = operations[0];
         if( operation == "distance" )
@@ -444,7 +440,7 @@ int main( int ac, char** av )
             comma::csv::input_stream< local_operation::point > istream( std::cin, csv );
             std::deque< local_operation::record > records;
             double radius = options.value< double >( "--radius" );
-            bool unlimited = options.exists( "--less-limited-vicinity,--unlimited" );
+            bool trace = options.exists( "--trace" );
             Eigen::Vector3d resolution( radius, radius, radius );
             snark::math::closed_interval< double, 3 > extents;
             comma::uint32 id = 0;
@@ -477,18 +473,18 @@ int main( int ac, char** av )
             if( verbose ) { std::cerr << "points-calc: searching for local extrema..." << std::endl; }
             for( grid_t::iterator it = grid.begin(); it != grid.end(); ++it )
             {
-                for( voxel_t::iterator vit = it->second.begin(); vit != it->second.end(); ++vit )
+                grid_t::index_type i;
+                for( i[0] = it->first[0] - 1; i[0] < it->first[0] + 2; ++i[0] )
                 {
-                    grid_t::index_type i;
-                    for( i[0] = it->first[0] - 1; i[0] < it->first[0] + 2 && ( *vit )->is_extremum; ++i[0] )
+                    for( i[1] = it->first[1] - 1; i[1] < it->first[1] + 2; ++i[1] )
                     {
-                        for( i[1] = it->first[1] - 1; i[1] < it->first[1] + 2 && ( *vit )->is_extremum; ++i[1] )
+                        for( i[2] = it->first[2] - 1; i[2] < it->first[2] + 2; ++i[2] )
                         {
-                            for( i[2] = it->first[2] - 1; i[2] < it->first[2] + 2 && ( *vit )->is_extremum; ++i[2] )
+                            grid_t::iterator git = grid.find( i );
+                            if( git == grid.end() ) { continue; }
+                            for( voxel_t::iterator vit = it->second.begin(); vit != it->second.end(); ++vit )
                             {
-                                grid_t::iterator git = grid.find( i );
-                                if( git == grid.end() ) { continue; }
-                                for( std::size_t k = 0; k < git->second.size(); ++k )
+                                for( std::size_t k = 0; k < git->second.size() && ( *vit )->is_extremum; ++k )
                                 {
                                     local_operation::evaluate_local_extremum( *vit, git->second[k], radius, sign );
                                 }
@@ -502,14 +498,24 @@ int main( int ac, char** av )
             #endif
             if( verbose ) { std::cerr << "points-calc: filling extrema grid..." << std::endl; }
             grid_t extrema( extents.min(), resolution );
-            for( grid_t::iterator it = grid.begin(); it != grid.end(); ++it )
+            for( std::size_t i = 0; i < records.size(); ++i )
             {
-                for( voxel_t::iterator vit = it->second.begin(); vit != it->second.end(); ++vit )
-                {
-                    if( ( *vit )->is_extremum ) { ( extrema.touch_at( ( *vit )->point.coordinates ) )->second.push_back( *vit ); }
+                if( records[i].is_extremum )
+                { 
+                    ( extrema.touch_at( records[i].point.coordinates ) )->second.push_back( &records[i] );
+                }
+                else
+                { 
+                    records[i].extremum_id = local_operation::record::invalid_id; // quick and dirty for now
+//                     if( records[i].extremum_id == local_operation::record::invalid_id ) { continue; }
+//                     while( records[i].reference_record->point.id != records[i].reference_record->reference_record->point.id )
+//                     {
+//                         records[i].reference_record = records[i].reference_record->reference_record;
+//                     }
+//                     records[i].extremum_id = records[i].reference_record->point.id;
                 }
             }
-            if( verbose ) { std::cerr << "points-calc: calculating distances to local extrema..." << std::endl; }
+            if( verbose ) { std::cerr << "points-calc: calculating distances to " << extrema.size() << " local extrema..." << std::endl; }
             for( grid_t::iterator it = grid.begin(); it != grid.end(); ++it )
             {
                 grid_t::index_type i;
@@ -525,13 +531,24 @@ int main( int ac, char** av )
                             {                            
                                 for( std::size_t k = 0; k < git->second.size(); ++k )
                                 {
-                                    local_operation::update_nearest_extremum( it->second[n], git->second[k], radius, unlimited );
+                                    local_operation::update_nearest_extremum( it->second[n], git->second[k], radius );
                                 }
                             }
                         }
                     }
                 }
-                //std::cerr << std::endl;
+            }
+            if( trace )
+            {
+                if( verbose ) { std::cerr << "points-calc: tracing extrema..." << std::endl; }
+                for( std::size_t i = 0; i < records.size(); ++i )
+                {
+                    if( records[i].extremum_id == local_operation::record::invalid_id ) { continue; }
+                    while( records[i].reference_record->point.id != records[i].reference_record->reference_record->point.id )
+                    {
+                        records[i].reference_record = records[i].reference_record->reference_record;
+                    }
+                }
             }
             if( verbose ) { std::cerr << "points-calc: outputting..." << std::endl; }
             std::string endl = csv.binary() ? "" : "\n";
@@ -543,7 +560,7 @@ int main( int ac, char** av )
             {
                 std::cout.write( &records[i].line[0], records[i].line.size() );
                 std::cout.write( &delimiter[0], delimiter.size() );
-                ostream.write( records[i].output() ); // quick and dirty
+                ostream.write( records[i].output( false ) ); // quick and dirty
             }
             if( verbose ) { std::cerr << "points-calc: done!" << std::endl; }
             return 0;
@@ -557,7 +574,6 @@ int main( int ac, char** av )
             comma::csv::input_stream< local_operation::point > istream( std::cin, csv );
             std::deque< local_operation::record > records;
             double radius = options.value< double >( "--radius" );
-            bool unlimited = options.exists( "--less-limited-vicinity,--unlimited" );
             Eigen::Vector3d resolution( radius, radius, radius );
             snark::math::closed_interval< double, 3 > extents;
             comma::uint32 id = 0;
@@ -603,7 +619,7 @@ int main( int ac, char** av )
                             {                            
                                 for( std::size_t k = 0; k < git->second.size(); ++k )
                                 {
-                                    local_operation::update_nearest( it->second[n], git->second[k], radius, sign, unlimited );
+                                    local_operation::update_nearest( it->second[n], git->second[k], radius, sign );
                                 }
                             }
                         }
@@ -623,7 +639,7 @@ int main( int ac, char** av )
             {
                 std::cout.write( &records[i].line[0], records[i].line.size() );
                 std::cout.write( &delimiter[0], delimiter.size() );
-                ostream.write( records[i].output() ); // quick and dirty
+                ostream.write( records[i].output() );
             }
             if( verbose ) { std::cerr << "points-calc: done!" << std::endl; }
             return 0;
