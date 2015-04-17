@@ -65,6 +65,7 @@ static void usage( bool more = false )
     std::cerr << "    local-max" << std::endl;
     std::cerr << "    nearest-min" << std::endl;
     std::cerr << "    nearest-max" << std::endl;
+    std::cerr << "    nearest-any" << std::endl;
     std::cerr << "    nearest" << std::endl;
     std::cerr << "    find-outliers" << std::endl;
     std::cerr << std::endl;
@@ -81,6 +82,7 @@ static void usage( bool more = false )
     std::cerr << "    local-max: output local maximums inside of given radius" << std::endl;
     std::cerr << "    nearest-min: for each point, output nearest minimums inside of given radius" << std::endl;
     std::cerr << "    nearest-max: for each point, output local maximums inside of given radius" << std::endl;
+    std::cerr << "    nearest-any: for each point, output any nearest point inside of given radius" << std::endl;
     std::cerr << std::endl;
     std::cerr << "        options" << std::endl;
     std::cerr << "            --radius=<metres>: radius of the local region to search" << std::endl;
@@ -304,15 +306,25 @@ static void update_nearest_extremum( record* i, record* j, double radius )
     i->reference_record = j; // todo: dump extremum_id, reference_record is enough
 }
 
-static void update_nearest( record* i, record* j, double radius, double sign )
+static void update_nearest( record* i, record* j, double radius, double sign, bool any )
 {
     if( i == j ) { return; }
-    if( comma::math::less( ( j->point.scalar - i->reference_record->point.scalar ) * sign, 0 ) ) { return; }
-    double norm = ( i->point.coordinates - j->point.coordinates ).norm();
-    if( norm > radius ) { return; }
-    if(    comma::math::equal( ( i->reference_record->point.scalar - j->point.scalar ) * sign, 0 )
-        && ( i->reference_record->point.coordinates - i->point.coordinates ).norm() < norm ) { return; }
-    i->reference_record = j;
+    if( any ) // quick and dirty
+    {
+        double norm = ( i->point.coordinates - j->point.coordinates ).norm();
+        if( norm > radius ) { return; }
+        if( i != i->reference_record && ( i->reference_record->point.coordinates - i->point.coordinates ).norm() < norm ) { return; }
+        i->reference_record = j;
+    }
+    else
+    {
+        if( comma::math::less( ( j->point.scalar - i->reference_record->point.scalar ) * sign, 0 ) ) { return; }
+        double norm = ( i->point.coordinates - j->point.coordinates ).norm();
+        if( norm > radius ) { return; }
+        if(    comma::math::equal( ( i->reference_record->point.scalar - j->point.scalar ) * sign, 0 )
+            && ( i->reference_record->point.coordinates - i->point.coordinates ).norm() < norm ) { return; }
+        i->reference_record = j;
+    }
 }
 
 } // namespace local_operation {
@@ -394,23 +406,31 @@ int main( int ac, char** av )
         }
         if( operation == "nearest" )
         {
-            Eigen::Vector3d point = comma::csv::ascii< Eigen::Vector3d >().get( options.value< std::string >( "--point,--to" ) );
-            comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, csv );
-            std::string record;
-            double min_distance = std::numeric_limits< double >::max();
-            while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
+            if( options.exists( "--point,--to" ) )
             {
-                const Eigen::Vector3d* p = istream.read();
-                if( !p ) { break; }
-                double d = ( *p - point ).norm();
-                if( d >= min_distance ) { continue; }
-                min_distance = d;
-                record = csv.binary() ? std::string( istream.binary().last(), csv.format().size() ) : comma::join( istream.ascii().last(), csv.delimiter );
+                Eigen::Vector3d point = comma::csv::ascii< Eigen::Vector3d >().get( options.value< std::string >( "--point,--to" ) );
+                comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, csv );
+                std::string record;
+                double min_distance = std::numeric_limits< double >::max();
+                while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
+                {
+                    const Eigen::Vector3d* p = istream.read();
+                    if( !p ) { break; }
+                    double d = ( *p - point ).norm();
+                    if( d >= min_distance ) { continue; }
+                    min_distance = d;
+                    record = csv.binary() ? std::string( istream.binary().last(), csv.format().size() ) : comma::join( istream.ascii().last(), csv.delimiter );
+                }
+                if( !record.empty() ) { std::cout << record; }
+                if( csv.binary() ) { std::cout.write( reinterpret_cast< const char* >( &min_distance ), sizeof( double ) ); }
+                else { std::cout << csv.delimiter << min_distance << std::endl; }
+                return 0;
             }
-            if( !record.empty() ) { std::cout << record; }
-            if( csv.binary() ) { std::cout.write( reinterpret_cast< const char* >( &min_distance ), sizeof( double ) ); }
-            else { std::cout << csv.delimiter << min_distance << std::endl; }
-            return 0;
+            else
+            {
+                
+                return 0;
+            }
         }
         if( operation == "thin" )
         {
@@ -565,9 +585,10 @@ int main( int ac, char** av )
             if( verbose ) { std::cerr << "points-calc: done!" << std::endl; }
             return 0;
         }
-        if( operation == "nearest-max" || operation == "nearest-min" )
+        if( operation == "nearest-max" || operation == "nearest-min" || operation == "nearest-any" )
         {
             double sign = operation == "nearest-max" ? 1 : -1;
+            bool any = operation == "nearest-any";
             if( csv.fields.empty() ) { csv.fields = "x,y,z,scalar"; }
             csv.full_xpath = false;
             bool has_id = csv.has_field( "id" );
@@ -619,7 +640,7 @@ int main( int ac, char** av )
                             {                            
                                 for( std::size_t k = 0; k < git->second.size(); ++k )
                                 {
-                                    local_operation::update_nearest( it->second[n], git->second[k], radius, sign );
+                                    local_operation::update_nearest( it->second[n], git->second[k], radius, sign, any );
                                 }
                             }
                         }
