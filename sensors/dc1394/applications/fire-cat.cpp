@@ -188,7 +188,7 @@ int main( int argc, char** argv )
             std::string filename = v[0];
             std::string xpath = ( v.size() == 1 ) ? "" : v[1];
             try { config = comma::read< snark::camera::dc1394::config >( filename, xpath.c_str() ); }
-            catch(...) { config = comma::read_name_value< snark::camera::dc1394::config >( filename, xpath.c_str() ); }
+            catch(...) { config = comma::read_ini< snark::camera::dc1394::config >( filename, xpath.c_str() ); }
         }
         snark::camera::dc1394::strobe strobe;
         bool trigger_strobe_and_exit = false;

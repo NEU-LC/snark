@@ -40,9 +40,7 @@ namespace snark { namespace imaging {
 camera_parser::camera_parser ( const std::string& file, const std::string& path )
 {
     camera_parameters parameters;
-    // TODO: leave only comma::read<> and remove the rest of try-catch block once name-value configs have been converted to json
-    try { comma::read< camera_parameters >( parameters, file, path ); }
-    catch( comma::exception ) { comma::read_name_value< camera_parameters >( parameters, file, path ); }
+    comma::read< camera_parameters >( parameters, file, path );
 
     if( parameters.focal_length == "0,0" ) { std::cerr << "stereo-to-points: warning: " << path << ": focal-length set to default (\"0,0\")" << std::endl; }
     std::vector< std::string > v = comma::split( parameters.focal_length, ',' );
