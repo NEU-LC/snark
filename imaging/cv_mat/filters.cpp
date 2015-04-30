@@ -170,6 +170,12 @@ static filters::value_type cvt_color_impl_( filters::value_type m, unsigned int 
     return n;
 }
 
+static filters::value_type head_impl_( filters::value_type m, unsigned int number_of_frames )
+{
+    static unsigned int frame_number = 0;
+    if( frame_number < number_of_frames ) { frame_number++; return m; } else { return filters::value_type(); }
+}
+
 static filters::value_type crop_impl_( filters::value_type m, unsigned int x, unsigned int y, unsigned int w, unsigned int h )
 {
     return filters::value_type( m.first, cv::Mat( m.second, cv::Rect( x, y, w, h ) ) );
@@ -687,13 +693,8 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
     if( how == "" ) { return f; }
     std::string name;
     bool modified = false;
-    bool last = false;
     for( std::size_t i = 0; i < v.size(); name += ( i > 0 ? ";" : "" ) + v[i], ++i )
     {
-        if( last )
-        {
-            COMMA_THROW( comma::exception, "cannot have a filter after encode" );
-        }
         std::vector< std::string > e = comma::split( v[i], '=' );
         if( e[0] == "bayer" )
         {
@@ -920,10 +921,14 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
         }
         else if( e[0] == "encode" )
         {
+            if( i < v.size()-1 )
+            {
+                std::string next_filter = comma::split( v[i+1], '=' )[0];
+                if( next_filter != "head" ) COMMA_THROW( comma::exception, "cannot have a filter after encode unless next filter is head" ); 
+            }
             if( e.size() < 2 ) { COMMA_THROW( comma::exception, "expected encoding type like jpg, ppm, etc" ); }
             std::string s = e[1];
             f.push_back( filter( boost::bind( &encode_impl_, _1, s ) ) );
-            last = true;
         }
         else if( e[0] == "grab" )
         {
@@ -939,7 +944,7 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
         }
         else if( e[0] == "null" )
         {
-            if( ( i + 1 ) != v.size() ) { COMMA_THROW( comma::exception, "expected 'null' as the last filter, got \"" << how << "\"" ); }
+            if( i < v.size()-1 ) { COMMA_THROW( comma::exception, "expected 'null' as the last filter, got \"" << how << "\"" ); }
             if( i == 0 ) { COMMA_THROW( comma::exception, "'null' as the only filter is not supported; use cv-cat > /dev/null, if you need" ); }
             f.push_back( filter( NULL ) );
         }
@@ -958,6 +963,17 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
             std::vector< std::string > items = comma::split( map_filter_options, '&' );
             bool permissive = std::find( items.begin()+1, items.end(), "permissive" ) != items.end();
             f.push_back( filter( map_impl_( map_filter_options, permissive ) ) );
+        }
+        else if ( e[0] == "head" )
+        {
+            if( i < v.size()-1 )
+            {
+                std::string next_filter = comma::split( v[i+1], '=' )[0];
+                if( next_filter != "null" ) { COMMA_THROW( comma::exception, "cannot have a filter after encode unless next filter is null" ); }
+            }
+            if( e.size() < 2 ) { COMMA_THROW( comma::exception, "expected number of frames, e.g. head=1" ); }
+            unsigned int n = boost::lexical_cast< unsigned int >( e[1] );
+            f.push_back( filter( boost::bind( &head_impl_, _1, n ) ) );
         }
         else
         {
@@ -1001,6 +1017,7 @@ static std::string usage_impl_()
     oss << "        flip: flip vertically" << std::endl;
     oss << "        flop: flip horizontally" << std::endl;
     oss << "        grab=<format>: write an image to file with timestamp as name in the specified format. <format>: jpg|ppm|png|tiff..., if no timestamp, system time is used" << std::endl;
+    oss << "        head=<n>: output <n> frames and exit" << std::endl;
     oss << "        invert: invert image (to negative)" << std::endl;
     oss << "        magnitude: calculate magnitude for a 2-channel image; see cv::magnitude() for details" << std::endl;    
     oss << "        map=<map file>[&<csv options>][&permissive]: map integer values to floating point values read from the map file" << std::endl;
