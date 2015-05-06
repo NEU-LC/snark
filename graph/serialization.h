@@ -51,7 +51,8 @@ void read_vertices( boost::adjacency_list< VertexStorage, EdgeStorage, Directed,
 template < typename V, typename E, typename Directed, typename VertexStorage, typename EdgeStorage >
 void read_edges( boost::adjacency_list< VertexStorage, EdgeStorage, Directed, V, E >& graph
                , std::istream& os
-               , const comma::csv::options& csv = comma::csv::options() );
+               , const comma::csv::options& csv = comma::csv::options()
+               , bool add_non_existent_vertices = false );
 
 /// write graph vertices to a csv output stream
 template < typename V, typename E, typename Directed, typename VertexStorage, typename EdgeStorage >
@@ -198,29 +199,54 @@ inline void write_edges_with_vertices( const boost::adjacency_list< VertexStorag
 template < typename V, typename E, typename Directed, typename VertexStorage, typename EdgeStorage >
 inline void read_edges( boost::adjacency_list< VertexStorage, EdgeStorage, Directed, V, E >& graph
                       , std::istream& is
-                      , const comma::csv::options& c )
+                      , const comma::csv::options& c
+                      , bool add_non_existent_vertices )
 {
     comma::csv::options csv = c;
     if( csv.fields.empty() ) { csv.full_xpath = true; } // quick and dirty
     typedef boost::adjacency_list< VertexStorage, EdgeStorage, Directed, V, E > graph_t;
     typedef typename V::id_type id_type;
     typedef impl::serialized_edge< id_type, E > edge_t;
-    typedef boost::unordered_map< id_type, typename graph_t::vertex_iterator > vertices_map;
+    typedef boost::unordered_map< id_type, typename graph_t::vertex_descriptor > vertices_map;
     vertices_map vertices; // super-lame
     std::pair< typename graph_t::vertex_iterator, typename graph_t::vertex_iterator > begin_end = boost::vertices( graph );
-    for( typename graph_t::vertex_iterator it = begin_end.first; it != begin_end.second; vertices[ graph[ *it ].id ] = it, ++it );
+    for( typename graph_t::vertex_iterator it = begin_end.first; it != begin_end.second; vertices[ graph[ *it ].id ] = *it, ++it );
     comma::csv::input_stream< edge_t > stream( is, csv );
     while( stream.ready() || ( is.good() && !is.eof() ) )
     {
         const edge_t* e = stream.read();
         if( !e ) { break; }
+        typename graph_t::vertex_descriptor source_descriptor;
+        typename graph_t::vertex_descriptor target_descriptor;
         typename vertices_map::const_iterator source = vertices.find( e->source );
-        if( source == vertices.end() ) { COMMA_THROW( comma::exception, "vertex not found for key: " << e->source ); }
+        if( source == vertices.end() )
+        { 
+            if( !add_non_existent_vertices ) { COMMA_THROW( comma::exception, "vertex not found for key: " << e->source ); }
+            V v;
+            v.id = e->source;
+            source_descriptor = boost::add_vertex( v, graph );
+            vertices[ e->source ] = source_descriptor;
+        }
+        else
+        {
+            source_descriptor = source->second;
+        }
         typename vertices_map::const_iterator target = vertices.find( e->target );
-        if( target == vertices.end() ) { COMMA_THROW( comma::exception, "vertex not found for key: " << e->target ); }
+        if( target == vertices.end() )
+        { 
+            if( !add_non_existent_vertices ) { COMMA_THROW( comma::exception, "vertex not found for key: " << e->target ); }
+            V v;
+            v.id = e->target;
+            target_descriptor = boost::add_vertex( v, graph );
+            vertices[ e->target ] = target_descriptor;
+        }
+        else
+        {
+            target_descriptor = target->second;
+        }
         typename graph_t::edge_descriptor d;
         bool linked = false;
-        boost::tie( d, linked ) = boost::add_edge( *( source->second ), *( target->second ), graph );
+        boost::tie( d, linked ) = boost::add_edge( source_descriptor, target_descriptor, graph );
         if( linked ) { graph[d] = e->value; }
     }
 }

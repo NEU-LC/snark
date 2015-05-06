@@ -52,15 +52,26 @@ static void usage( bool verbose )
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    --help,-h: --help --verbose for more help" << std::endl;
-    std::cerr << "    --edges=<filename>[,<csv options>]: graph edges; default fields: source,target" << std::endl;
-    std::cerr << "    --nodes,--vertices=<filename>[,<csv options>]: graph nodes; default fields: x,y,z,id" << std::endl;
+    std::cerr << "    --edges=<filename>[,<csv options>]: graph edges" << std::endl;
+    std::cerr << "        fields: source,target,cost" << std::endl;
+    std::cerr << "        default fields" << std::endl;
+    std::cerr << "            if x, y, or z fields present for nodes: source,target" << std::endl;
+    std::cerr << "            otherwise: source,target,cost" << std::endl;
+    std::cerr << "    --nodes,--vertices=[<filename>[,<csv options>]]: graph nodes" << std::endl;
+    std::cerr << "        fields: x,y,z,id" << std::endl;
+    std::cerr << "        default fields: id" << std::endl;
     std::cerr << "    --source,--start-id,--from,--start,--origin: source node id" << std::endl;
     std::cerr << "    --target,--target-id,--to,--destination: target node id" << std::endl;
     std::cerr << "    --verbose,-v: more output" << std::endl;
     if( verbose ) { std::cerr << std::endl << "csv options" << std::endl << comma::csv::options::usage() << std::endl; }
     std::cerr << std::endl;
     std::cerr << "examples" << std::endl;
-    std::cerr << "    todo" << std::endl;
+    std::cerr << "    graph defined by edges only; find best path from node 1 to node 100" << std::endl;
+    std::cerr << "        echo 1,100 | graph-search --edges=\"edges.csv\"" << std::endl;
+    std::cerr << "    find best path from node 1 to node 100" << std::endl;
+    std::cerr << "        echo 1,100 | graph-search --nodes=\"nodes.csv\" --edges=\"edges.csv\"" << std::endl;
+    std::cerr << "    find best path by euclidean distance between the nodes" << std::endl;
+    std::cerr << "        echo 1,100 | graph-search --nodes=\"nodes.csv;fields=x,y,z,id\" --edges=\"edges.csv\"" << std::endl;
     std::cerr << std::endl;
     exit( 0 );
 }
@@ -68,14 +79,19 @@ static void usage( bool verbose )
 struct node
 {
     Eigen::Vector3d position;
-    double distance;
+    double cost;
     std::string record;
     
-    node() : distance( 0 ) {}
-    node( const Eigen::Vector3d& position, double distance = 0 ) : position( position ), distance( distance ) {}
+    node() : position( 0, 0, 0 ), cost( 0 ) {} // std::numeric_limits< double >::max() ) {}
+    node( const Eigen::Vector3d& position, double cost = 0 /* std::numeric_limits< double >::max() */ ) : position( position ), cost( cost ) {}
 };
 
-struct edge {};
+struct edge
+{
+    double cost;
+    
+    edge() : cost( 0 ) {}
+};
 
 struct record { comma::uint32 id; };
 
@@ -86,20 +102,27 @@ template <> struct traits< node >
     template < typename K, typename V > static void visit( const K&, node& n, V& v )
     {
         v.apply( "position", n.position );
-        v.apply( "distance", n.distance );
+        v.apply( "cost", n.cost );
     }
 
     template < typename K, typename V > static void visit( const K&, const node& n, V& v )
     {
         v.apply( "position", n.position );
-        v.apply( "distance", n.distance );
+        v.apply( "cost", n.cost );
     }
 };
 
 template <> struct traits< edge >
 {
-    template < typename K, typename V > static void visit( const K&, edge& n, V& v ) {}
-    template < typename K, typename V > static void visit( const K&, const edge& n, V& v ) {}
+    template < typename K, typename V > static void visit( const K&, edge& n, V& v )
+    {
+        v.apply( "cost", n.cost );
+    }
+    
+    template < typename K, typename V > static void visit( const K&, const edge& n, V& v )
+    {
+        v.apply( "cost", n.cost );
+    }
 };
 
 template <> struct traits< record >
@@ -123,20 +146,38 @@ typedef search_graph_t::vertex_iter vertex_iterator;
 typedef search_graph_t::vertex_desc vertex_descriptor;
 typedef boost::unordered_map< comma::uint32, std::string > records_t;
 static bool verbose = false;
+static bool by_distance = false;
 static graph_t graph;
 static records_t records;
 
-static void load_( graph_t& graph, const comma::csv::options& node_csv, const comma::csv::options& edge_csv )
+static const std::string& node_record( comma::uint32 id )
 {
-    std::ifstream vif( &node_csv.filename[0] );
-    if( !vif.is_open() ) { std::cerr << "graph-search: failed to open " << node_csv.filename << std::endl; exit( 1 ); }
+    if( !records.empty() ) { return records[id]; }
+    static std::string s;
+    s = boost::lexical_cast< std::string >( id );
+    return s;
+}
+
+static void load_( graph_t& graph
+                 , const boost::optional< comma::csv::options >& node_csv
+                 , const comma::csv::options& edge_csv )
+{
     std::ifstream eif( &edge_csv.filename[0] );
     if( !eif.is_open() ) { std::cerr << "graph-search: failed to open " << edge_csv.filename << std::endl; exit( 1 ); }
-    if( verbose ) { std::cerr << "graph-search: loading vertices from " << node_csv.filename << "..." << std::endl; }
-    snark::read_vertices( graph, vif, node_csv );
-    vif.close();
+    if( node_csv )
+    {
+        std::ifstream vif( &node_csv->filename[0] );
+        if( !vif.is_open() ) { std::cerr << "graph-search: failed to open " << node_csv->filename << std::endl; exit( 1 ); }
+        if( verbose ) { std::cerr << "graph-search: loading vertices from " << node_csv->filename << "..." << std::endl; }
+        snark::read_vertices( graph, vif, *node_csv );
+        vif.close();
+    }
+    else
+    {
+        std::cerr << "graph-search: --nodes not given, vertices implied from edges: " << edge_csv.filename << std::endl;
+    }
     if( verbose ) { std::cerr << "graph-search: loading edges from " << edge_csv.filename << "..." << std::endl; }
-    snark::read_edges( graph, eif, edge_csv );
+    snark::read_edges( graph, eif, edge_csv, !node_csv );
     eif.close();
     if( verbose ) { std::cerr << "graph-search: loaded graph: " << boost::num_vertices( graph ) << " vertices " << boost::num_edges( graph ) << " edges" << std::endl; }
 }
@@ -155,9 +196,12 @@ static void load_records_( records_t& r, const comma::csv::options& csv )
     ifs.close();
 }
 
-static double objective_function( const node& n ) { return -n.distance; }
+static double objective_function( const node& n ) { return -n.cost; }
 
-static boost::optional< node > advance( const node& from, const node& to ) { return node( to.position, from.distance + ( to.position - from.position ).norm() ); }
+static boost::optional< node > advance( const node& from, const node& to, const edge& e )
+{
+    return node( to.position, from.cost + ( by_distance ? ( to.position - from.position ).norm() : e.cost ) );
+}
 
 static bool valid( const node& n ) { return true; }
 
@@ -167,7 +211,7 @@ static void reset_graph()
     {
         search_graph_t::node& n = graph[ *d.first ];
         n.best_parent.reset();
-        n.value.distance = 0;
+        n.value.cost = 0; //std::numeric_limits< double >::max();
     }
 }
 
@@ -197,13 +241,28 @@ int main( int ac, char** av )
     {
         comma::command_line_options options( ac, av, usage );
         verbose = options.exists( "--verbose,-v" );
-        comma::csv::options node_csv = comma::name_value::parser( "filename", ';' ).get< comma::csv::options >( options.value< std::string >( "--vertices,--nodes" ) );
+        boost::optional< comma::csv::options > node_csv;
+        if( options.exists( "--vertices,--nodes" ) )
+        { 
+            node_csv = comma::name_value::parser( "filename", ';' ).get< comma::csv::options >( options.value< std::string >( "--vertices,--nodes" ) );
+            if( node_csv->fields.empty() ) { node_csv->fields = "id"; }
+            std::vector< std::string > v = comma::split( node_csv->fields, ',' );
+            for( unsigned int i = 0; i < v.size(); ++i )
+            {
+                if( v[i] == "x" || v[i] == "y" || v[i] == "z" )
+                {
+                    v[i] = "value/position/" + v[i];
+                    by_distance = true;
+                }
+            }
+            node_csv->fields = comma::join( v, ',' );
+            node_csv->full_xpath = true;
+        }
         comma::csv::options edge_csv = comma::name_value::parser( "filename", ';' ).get< comma::csv::options >( options.value< std::string >( "--edges" ) );
-        if( node_csv.fields.empty() ) { node_csv.fields = "value/position/x,value/position/y,value/position/z,id"; }
-        node_csv.full_xpath = true;
         edge_csv.full_xpath = true;
+        if( by_distance && edge_csv.fields.empty() ) { edge_csv.fields = "source,target"; }
         load_( graph, node_csv, edge_csv );
-        load_records_( records, node_csv );
+        if( node_csv ) { load_records_( records, *node_csv ); }
         boost::optional< unsigned int > source_id = options.optional< unsigned int >( "--start,--start-id,--from,--source,--origin" );
         boost::optional< unsigned int > target_id = options.optional< unsigned int >( "--target,--target-id,--to,--destination" );
         if( source_id && !target_id ) { std::cerr << "graph-search: --source specified, thus, please specify --target" << std::endl; return 1; }
@@ -213,9 +272,9 @@ int main( int ac, char** av )
             const std::vector< vertex_descriptor >& p = best_path( *source_id, *target_id );
             for( std::size_t i = 0; i < p.size(); ++i )
             {
-                const std::string& s = records[ graph[ p[i] ].id ];
+                const std::string& s = node_record( graph[ p[i] ].id );
                 std::cout.write( &s[0], s.size() );
-                if( !node_csv.binary() ) { std::cout << std::endl; }
+                if( !node_csv || !node_csv->binary() ) { std::cout << std::endl; }
             }
         }
         else
@@ -225,6 +284,7 @@ int main( int ac, char** av )
             std::string last;
             comma::csv::options csv( options );
             comma::csv::input_stream< record > istream( std::cin, csv );
+            if( node_csv && csv.binary() != node_csv->binary() ) { std::cerr << "graph-search: expected stdin and " << node_csv->filename << " of the same type; got stdin " << ( csv.binary() ? "binary" : "ascii" ) << ", " << node_csv->filename << ": " << ( node_csv->binary() ? "binary" : "ascii" ) << std::endl; }
             while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
             {
                 const record* r = istream.read();
@@ -233,13 +293,15 @@ int main( int ac, char** av )
                 {
                     const std::vector< vertex_descriptor >& p = best_path( last_id, r->id );
                     if( p.empty() ) { std::cerr << "graph-search: failed to find path from " << last_id << " to " << r->id << std::endl; return 1; }
+                    std::string delimiter = csv.binary() ? "" : std::string( 1, csv.delimiter );
+                    std::string endl = csv.binary() ? "" : std::string( 1, '\n' );
                     for( std::size_t i = 0; i < p.size(); ++i )
                     {
-                        const std::string& s = records[ graph[ p[i] ].id ];
+                        const std::string& s = node_record( graph[ p[i] ].id );
                         std::cout.write( &s[0], s.size() );
-                        if( !node_csv.binary() ) { std::cout << csv.delimiter; }
+                        std::cout << delimiter;
                         std::cout.write( &last[0], last.size() );
-                        if( !node_csv.binary() ) { std::cout << std::endl; }
+                        std::cout << endl;
                     }
                 }
                 last_id = r->id;
