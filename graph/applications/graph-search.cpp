@@ -82,8 +82,8 @@ struct node
     double cost;
     std::string record;
     
-    node() : position( 0, 0, 0 ), cost( 0 ) {} // std::numeric_limits< double >::max() ) {}
-    node( const Eigen::Vector3d& position, double cost = 0 /* std::numeric_limits< double >::max() */ ) : position( position ), cost( cost ) {}
+    node() : position( 0, 0, 0 ), cost( std::numeric_limits< double >::max() ) {}
+    node( const Eigen::Vector3d& position, double cost = std::numeric_limits< double >::max() ) : position( position ), cost( cost ) {}
 };
 
 struct edge
@@ -211,7 +211,7 @@ static void reset_graph()
     {
         search_graph_t::node& n = graph[ *d.first ];
         n.best_parent.reset();
-        n.value.cost = 0; //std::numeric_limits< double >::max();
+        n.value.cost = std::numeric_limits< double >::max();
     }
 }
 
@@ -230,6 +230,7 @@ static std::vector< vertex_descriptor > best_path( comma::uint32 source_id, comm
     if( !target ) { std::cerr << "graph-search: target id " << target_id << " not found in the graph" << std::endl; exit( 1 ); }
     if( source == target ) { return std::vector< vertex_descriptor >( 1, source ); }
     if( verbose ) { std::cerr << "graph-search: searching..." << std::endl; }
+    graph[ source ].value.cost = 0; // todo: is it right at all?
     snark::forward_search( graph, source, &advance, &objective_function, &valid );
     if( verbose ) { std::cerr << "graph-search: extracting best path from " << source_id << " to " << target_id << "..." << std::endl; }
     return snark::best_path( graph, source, target );
