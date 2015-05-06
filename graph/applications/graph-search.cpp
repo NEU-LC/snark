@@ -67,11 +67,11 @@ static void usage( bool verbose )
     std::cerr << std::endl;
     std::cerr << "examples" << std::endl;
     std::cerr << "    graph defined by edges only; find best path from node 1 to node 100" << std::endl;
-    std::cerr << "        echo 1,100 | graph-search --edges=\"edges.csv\"" << std::endl;
+    std::cerr << "        ( echo 1 ; echo 100 ; ) | graph-search --edges=\"edges.csv\"" << std::endl;
     std::cerr << "    find best path from node 1 to node 100" << std::endl;
-    std::cerr << "        echo 1,100 | graph-search --nodes=\"nodes.csv\" --edges=\"edges.csv\"" << std::endl;
+    std::cerr << "        ( echo 1 ; echo 100 ; ) | graph-search --nodes=\"nodes.csv\" --edges=\"edges.csv\"" << std::endl;
     std::cerr << "    find best path by euclidean distance between the nodes" << std::endl;
-    std::cerr << "        echo 1,100 | graph-search --nodes=\"nodes.csv;fields=x,y,z,id\" --edges=\"edges.csv\"" << std::endl;
+    std::cerr << "        ( echo 1 ; echo 100 ; ) | graph-search --nodes=\"nodes.csv;fields=x,y,z,id\" --edges=\"edges.csv\"" << std::endl;
     std::cerr << std::endl;
     exit( 0 );
 }
