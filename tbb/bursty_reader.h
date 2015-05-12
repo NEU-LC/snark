@@ -33,9 +33,10 @@
 
 #include <snark/tbb/queue.h>
 #include <boost/thread.hpp>
+#include <boost/scoped_ptr.hpp>
 #include <tbb/pipeline.h>
 
-namespace snark{ namespace tbb{ 
+namespace snark{ namespace tbb{
 
 /// the user can provide a method to validate the data,
 /// the pipeline will be shut down if invalid data is received
@@ -129,7 +130,7 @@ void bursty_reader< T >::stop()
     m_queue.shutdown();
 }
 
-/// join the push thread 
+/// join the push thread
 template< typename T >
 void bursty_reader< T >::join()
 {
@@ -201,6 +202,6 @@ void bursty_reader< T >::push_thread()
 }
 
 
-} } 
+} }
 
 #endif // SNARK_TBB_BURSTY_READER_H_
