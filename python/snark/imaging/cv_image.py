@@ -27,29 +27,24 @@ def iterator(file):
     read binary cv-cat data from file object in the form t,rows,cols,type,data, t,3ui,data
     """
 
-    # todo fix handling of end of file or stdin
-
     # first time, read header and calculate data types
-    header = np.fromfile(file, image.header_dtype, 1)[0]
-    type_string, channels = cv_types.cv2string(header['type'])
-
+    header = np.fromfile(file, image.header_dtype, 1)
+    if header.shape[0]==0: return
+    type_string, channels = cv_types.cv2string(header[0]['type'])
+    
     # get the image data
-    data_dtype = np.dtype((np.dtype(type_string), (header['rows'], header['cols'], channels)))
-    data = np.fromfile(file, data_dtype, 1)[0]
+    data_dtype = np.dtype((np.dtype(type_string), (header[0]['rows'], header[0]['cols'], channels)))
+    data = np.fromfile(file, data_dtype, 1)
 
-    while True:
-        yield image(header, data)
-        header = np.fromfile(file, image.header_dtype, 1)[0]
-        data = np.fromfile(file, data_dtype, 1)[0]
+    while (header.shape[0]==1 & data.shape[0]==1):
+        yield image(header[0], data[0])
+        header = np.fromfile(file, image.header_dtype, 1)
+        data = np.fromfile(file, data_dtype, 1)
 
 
 if __name__ == '__main__':
-    file = sys.stdin
-    images = iterator(file)
-
-    while True:
-        image = images.next()
-        print >> sys.stderr, "{},{},{},{}".format(image.header['time'].item(), image.header['rows'],
-                                                  image.header['cols'], image.header['type'])
-        cv2.imshow('test', image.data)
+    for i in iterator(sys.stdin):
+        print >> sys.stderr, "{},{},{},{}".format(i.header['time'].item(), i.header['rows'],
+                                                  i.header['cols'], i.header['type'])
+        cv2.imshow('test', i.data)
         cv2.waitKey(1)
