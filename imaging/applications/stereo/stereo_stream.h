@@ -85,6 +85,7 @@ template< typename T >
 inline void stereo_stream< T >::read( const cv::StereoSGBM& sgbm )
 {
     std::pair< boost::posix_time::ptime, cv::Mat > image = m_input.read( std::cin );
+    if( image.second.empty() ) { return; }
     m_stereo.process( image.second( m_left ), image.second( m_right ), sgbm, image.first );
 }
 
