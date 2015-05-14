@@ -117,9 +117,9 @@ inline void forward_search( G& graph, const boost::unordered_set< D >& start, co
             node_t& target = graph[target_desc];
             if( source.best_parent && target.id == *( source.best_parent ) ) { continue; } 
             if( target.best_parent && objective_function( source.value ) < objective_function( target.value ) ) { continue; } // objective can only decrease or (in special cases equal) in forward prop
-            const boost::optional< typename node_t::value_type >& node = advance( source.value, target.value );
+            const boost::optional< typename node_t::value_type >& node = advance( source.value, target.value, graph[ *out_edges.first ] );
             if( !node || !valid( *node ) ) { continue; }
-            double objective = objective_function( *node );
+            double objective = objective_function( *node );            
             if( target.best_parent )
             {
                 if( *( target.best_parent ) == source.id && comma::math::equal( objective, objective_function( target.value ) ) ) { continue; }

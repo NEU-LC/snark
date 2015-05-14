@@ -73,27 +73,27 @@ struct ellipsoid
         std::vector< coordinates > discretize( ellipsoid &ellipsoid, const boost::optional< double > &resolution, const boost::optional< unsigned int > &circle_size ) const;
     };
 
-    //circular arc
-    struct circle::arc
-    {
-        /// circle of which this is an arc
-        ellipsoid::circle circle;
-        /// begin bearing
-        double begin;
-        /// end bearing
-        double end;
-        arc() {}
-        arc( const ellipsoid::circle &circle, double begin, double end ) : circle( circle ), begin( begin ), end( end ) {}
-        std::vector< coordinates > discretize( ellipsoid &ellipsoid, const boost::optional< double > &resolution, const boost::optional< unsigned int > &circle_size ) const;
-        
-        //heading degree from north; east is positive 90
-        static double bearing( double heading )
-        {
-            //bearing standard geometric radian; ie east=0,north=pi/2,south=-pi/2
-            return ( heading * -1 ) + ( M_PI / 2 );
-        }
-    };
+};
 
+//circular arc
+struct ellipsoid::circle::arc
+{
+    /// circle of which this is an arc
+    ellipsoid::circle circle;
+    /// begin bearing
+    double begin;
+    /// end bearing
+    double end;
+    arc() {}
+    arc( const ellipsoid::circle &circle, double begin, double end ) : circle( circle ), begin( begin ), end( end ) {}
+    std::vector< coordinates > discretize( ellipsoid &ellipsoid, const boost::optional< double > &resolution, const boost::optional< unsigned int > &circle_size ) const;
+
+    //heading degree from north; east is positive 90
+    static double bearing( double heading )
+    {
+        //bearing standard geometric radian; ie east=0,north=pi/2,south=-pi/2
+        return ( heading * -1 ) + ( M_PI / 2 );
+    }
 };
 
 }

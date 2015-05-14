@@ -52,6 +52,7 @@ static void usage( bool more = false )
     std::cerr << "usage: cat points.1.csv | points-join \"points.2.csv[;<csv options>]\" [<options>] > joined.csv" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
+    std::cerr << "    --all: output all points in the given radius instead of the nearest" << std::endl;
     std::cerr << "    --radius=<radius>: lookup radius" << std::endl;
     std::cerr << "    --strict: exit, if nearest point not found" << std::endl;
     std::cerr << std::endl;
@@ -78,7 +79,7 @@ int main( int ac, char** av )
         bool verbose = options.exists( "--verbose,-v" );
         if( options.exists( "--help,-h" ) ) { usage( verbose ); }
         comma::csv::options stdin_csv = comma::csv::options( options );
-        std::vector< std::string > unnamed = options.unnamed( "--verbose,-v,--strict", "-.*" );
+        std::vector< std::string > unnamed = options.unnamed( "--verbose,-v,--strict,--all", "-.*" );
         if( unnamed.empty() ) { std::cerr << "csv-join: please specify the second source" << std::endl; return 1; }
         if( unnamed.size() > 1 ) { std::cerr << "csv-join: expected one file or stream to join, got " << comma::join( unnamed, ' ' ) << std::endl; return 1; }
         comma::name_value::parser parser( "filename", ';', '=', false );
@@ -88,6 +89,7 @@ int main( int ac, char** av )
         if( !ifs.is_open() ) { std::cerr << "points-join: failed to open \"" << filter_csv.filename << "\"" << std::endl; }
         bool strict = options.exists( "--strict" );
         double radius = options.value< double >( "--radius" );
+        bool all = options.exists( "--all" );
         Eigen::Vector3d resolution( radius, radius, radius );
         comma::csv::input_stream< Eigen::Vector3d > ifstream( ifs, filter_csv );
         std::deque< record > filter_points;
@@ -142,28 +144,39 @@ int main( int ac, char** av )
                         {
                             double norm = ( *p - it->second[k]->point ).norm();
                             if( norm > radius ) { continue; }
-                            if( nearest && distance < norm ) { continue; }
-                            nearest = it->second[k];
-                            distance = norm;
+                            if( all )
+                            {
+                                std::cout.write( istream.binary().last(), stdin_csv.format().size() );
+                                std::cout.write( &it->second[k]->line[0], filter_csv.format().size() );
+                            }
+                            else
+                            {
+                                if( nearest && distance < norm ) { continue; }
+                                nearest = it->second[k];
+                                distance = norm;
+                            }
                         }
                     }
                 }
             }
-            if( !nearest )
+            if( !all )
             {
-                if( verbose ) { std::cerr.precision( 12 ); std::cerr << "points-join: record " << count << " at " << p->x() << "," << p->y() << "," << p->z() << ": no matches found" << std::endl; }
-                if( strict ) { return 1; }
-                ++discarded;
-                continue;
-            }
-            if( stdin_csv.binary() ) // quick and dirty
-            {
-                std::cout.write( istream.binary().last(), stdin_csv.format().size() );
-                std::cout.write( &nearest->line[0], filter_csv.format().size() );
-            }
-            else
-            {
-                std::cout << comma::join( istream.ascii().last(), stdin_csv.delimiter ) << stdin_csv.delimiter << nearest->line << std::endl;
+                if( !nearest )
+                {
+                    if( verbose ) { std::cerr.precision( 12 ); std::cerr << "points-join: record " << count << " at " << p->x() << "," << p->y() << "," << p->z() << ": no matches found" << std::endl; }
+                    if( strict ) { return 1; }
+                    ++discarded;
+                    continue;
+                }
+                if( stdin_csv.binary() ) // quick and dirty
+                {
+                    std::cout.write( istream.binary().last(), stdin_csv.format().size() );
+                    std::cout.write( &nearest->line[0], filter_csv.format().size() );
+                }
+                else
+                {
+                    std::cout << comma::join( istream.ascii().last(), stdin_csv.delimiter ) << stdin_csv.delimiter << nearest->line << std::endl;
+                }
             }
             ++count;
         }

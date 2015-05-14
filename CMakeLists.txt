@@ -179,7 +179,7 @@ CMAKE_DEPENDENT_OPTION( snark_build_sensors_gobi "build gobi components" OFF "sn
 
 CMAKE_DEPENDENT_OPTION( snark_build_actuators_quickset "build quickset components" OFF "snark_build_actuators" OFF )
 CMAKE_DEPENDENT_OPTION( snark_build_actuators_wheels "build wheels components" OFF "snark_build_actuators" OFF )
-CMAKE_DEPENDENT_OPTION( snark_build_actuators_universal_robots "build universal_robots components" ON "snark_build_actuators" OFF )
+CMAKE_DEPENDENT_OPTION( snark_build_actuators_universal_robots "build universal_robots components" OFF "snark_build_actuators" OFF )
 
 IF( snark_build_imaging )
     IF( WIN32 )
