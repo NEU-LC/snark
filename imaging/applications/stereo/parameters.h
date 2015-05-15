@@ -38,9 +38,29 @@
 
 namespace snark { namespace imaging {
 
+static const std::string zero_focal_length = "0,0";
+static const std::string zero_center = "0,0";
+static const std::string zero_distortion = "0,0,0,0,0";
+static const std::string zero_rotation = "0,0,0";
+static const std::string zero_translation = "0,0,0";
+static const std::string zero_size = "0,0";
+
 struct camera_parameters
 {
-    camera_parameters() : focal_length("0,0"),center("0,0"),distortion("0,0,0,0,0"),rotation("0,0,0"),translation("0,0,0"),size("0,0"){}
+    camera_parameters() :
+        focal_length( zero_focal_length )
+        , center( zero_center )
+        , distortion( zero_distortion )
+        , rotation( zero_rotation )
+        , translation( zero_translation )
+        , size( zero_size ) {}
+    camera_parameters( std::string focal_length_, std::string center_, std::string distortion_, std::string rotation_, std::string translation_ ) :
+        focal_length( focal_length_ )
+        , center( center_ )
+        , distortion( distortion_ )
+        , rotation( rotation_ )
+        , translation( translation_ )
+        , size( zero_size ) {}
 
     std::string focal_length;
     std::string center;

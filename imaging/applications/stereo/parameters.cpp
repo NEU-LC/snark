@@ -39,24 +39,36 @@ namespace snark { namespace imaging {
 
 camera_parser::camera_parser ( const std::string& file, const std::string& path )
 {
-    camera_parameters parameters;
+    camera_parameters parameters("","","","","");
     comma::read< camera_parameters >( parameters, file, path );
 
-    if( parameters.focal_length == "0,0" ) { std::cerr << "stereo-to-points: warning: " << path << ": focal-length set to default (\"0,0\")" << std::endl; }
+    if( parameters.focal_length.empty() )
+    {
+        parameters.focal_length = zero_focal_length;
+        std::cerr << "stereo-to-points: warning: " << path << ": focal-length set to default (\"" << zero_focal_length << "\")" << std::endl;
+    }
     std::vector< std::string > v = comma::split( parameters.focal_length, ',' );
     if ( v.size() != 2 ) COMMA_THROW_STREAM( comma::exception, " unexpected input for " << path << " focal-length : " << parameters.focal_length );
     double fX = boost::lexical_cast< double >( v[0] );
     double fY = boost::lexical_cast< double >( v[1] );
     // std::cerr << parameters.focal_length << " ( " << fX << "," << fY << " ) " << std::endl;
 
-    if( parameters.center == "0,0" ) { std::cerr << "stereo-to-points: warning: " << path << ": center set to default (\"0,0\")" << std::endl; }
+    if( parameters.center.empty() )
+    {
+        parameters.center = zero_center;
+        std::cerr << "stereo-to-points: warning: " << path << ": center set to default (\"" << zero_center << "\")" << std::endl; 
+    }
     v = comma::split( parameters.center, ',' );
     if ( v.size() != 2 ) COMMA_THROW_STREAM( comma::exception, " unexpected input for " << path << " center : " << parameters.center );
     double cX = boost::lexical_cast< double >( v[0] );
     double cY = boost::lexical_cast< double >( v[1] );
     // std::cerr << parameters.center << " ( " << cX << "," << cY << " ) " << std::endl;
 
-    if( parameters.distortion == "0,0,0,0,0" ) { std::cerr << "stereo-to-points: warning: " << path << ": distortion set to default (\"0,0,0,0,0\")" << std::endl; }
+    if( parameters.distortion.empty() )
+    {
+        parameters.distortion = zero_distortion;
+        std::cerr << "stereo-to-points: warning: " << path << ": distortion set to default (\"" << zero_distortion << "\")" << std::endl;
+    }
     v = comma::split( parameters.distortion, ',' );
     if ( v.size() != 5 ) COMMA_THROW_STREAM( comma::exception, " unexpected input for " << path << " distortion : " << parameters.distortion );
     double k1 = boost::lexical_cast< double >( v[0] );
@@ -66,7 +78,11 @@ camera_parser::camera_parser ( const std::string& file, const std::string& path 
     double k3 = boost::lexical_cast< double >( v[4] );
     // std::cerr << parameters.distortion << " ( " << k1 << "," << k2 << "," << p1 << "," << p2 << "," << k3 << " ) " << std::endl;
     
-    if( parameters.rotation == "0,0,0" ) { std::cerr << "stereo-to-points: warning: " << path << ": rotation set to default (\"0,0,0\")" << std::endl; }
+    if( parameters.rotation.empty() )
+    {
+        parameters.rotation = zero_rotation;
+        std::cerr << "stereo-to-points: warning: " << path << ": rotation set to default (\"" << zero_rotation << "\")" << std::endl;
+    }
     v = comma::split( parameters.rotation, ',' );
     if ( v.size() != 3 ) COMMA_THROW_STREAM( comma::exception, " unexpected input for " << path << " rotation : " << parameters.rotation );
     double roll = boost::lexical_cast< double >( v[0] );
@@ -74,7 +90,11 @@ camera_parser::camera_parser ( const std::string& file, const std::string& path 
     double yaw = boost::lexical_cast< double >( v[2] );
     // std::cerr << parameters.rotation << " ( " << roll << "," << pitch << "," << yaw << " ) " << std::endl;
 
-    if( parameters.translation == "0,0" ) { std::cerr << "stereo-to-points: warning: " << path << ": translation set to default (\"0,0,0\")" << std::endl; }
+    if( parameters.translation.empty() )
+    {
+        parameters.translation = zero_translation;
+        std::cerr << "stereo-to-points: warning: " << path << ": translation set to default (\"" << zero_translation << "\")" << std::endl;
+    }
     v = comma::split( parameters.translation, ',' );
     if ( v.size() != 3 ) COMMA_THROW_STREAM( comma::exception, " unexpected input for " << path << " translation : " << parameters.translation );
     double tX = boost::lexical_cast< double >( v[0] );
