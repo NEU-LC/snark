@@ -1,0 +1,49 @@
+#!/bin/bash
+
+scriptname=$( basename $0 )
+
+function bye()
+{
+    pkill -P $$
+    exit 1
+}
+
+CONFIG=/usr/local/etc/websocketd/snark-frames.json
+
+if [[ ! -e "$CONFIG" ]]; then
+    echo "error: $scriptname config file not found"
+    exit 1
+fi
+
+BACKEND_CONFIG=$( name-value-get --from json config/backend < "$CONFIG" )
+ROBOT_CONFIG=$( name-value-get --from json config/robot < "$CONFIG" )
+PUBLISH_CONFIG=$( name-value-get --from json config/publish < "$CONFIG" )
+
+if [[ -z "$BACKEND_CONFIG" || -z "$ROBOT_CONFIG" || -z "$PUBLISH_CONFIG" ]]; then
+    echo "error: $scriptname configuration missing"
+    exit 1
+fi
+
+exec 2>/dev/null
+
+trap bye INT
+
+# parse query string
+declare -A query_string
+for pair in ${QUERY_STRING//&/ }; do
+    IFS='=' read key value <<< "$pair"
+    query_string[$key]=$value
+done
+
+if [[ -z ${query_string[xpath]} ]]; then
+    echo "error: expected xpath in query string"
+    exit 1
+fi
+
+args="--backend-config=$BACKEND_CONFIG --robot-config=$ROBOT_CONFIG --publish-config=$PUBLISH_CONFIG --xpath=${query_string[xpath]}"
+[[ "${query_string[data_uri]}" == true ]] && args+=" --data-uri"
+[[ -n "${query_string[count]}" ]] && args+=" --count=${query_string[count]}"
+
+snark-frames $args &
+
+wait $!

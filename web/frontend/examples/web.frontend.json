@@ -1,0 +1,27 @@
+{
+    "host": "http://ladybird.nuvo:7000",
+    "websocket": "ws://ladybird.nuvo:8888/snark-frames",
+    "sensors":
+    {
+        "battery-charge":
+        {
+            "type": "graph",
+            "refresh":
+            {
+                "interval": 60
+            },
+            "graph":
+            {
+                "units": "%"
+            }
+        },
+        "novatel":
+        {
+            "type": "text"
+        },
+        "ladybug-resize":
+        {
+            "type": "stream"
+        }
+    }
+}

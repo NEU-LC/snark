@@ -1,0 +1,27 @@
+{
+  "name": "snark-web-sensors",
+  "version": "1.0.0",
+  "homepage": "https://github.com/acfr/snark",
+  "authors": [
+    "v-do <vdo.code@gmail.com>"
+  ],
+  "description": "sensors monitor",
+  "main": [
+    "js/sensors.js",
+    "css/sensors.css"
+  ],
+  "license": "BSD (3-clause)",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "jquery": "~2.1.4",
+    "jquery-ui": "~1.11.4",
+    "bootstrap": "~3.3.4",
+    "dat-gui": "~0.5.1"
+  }
+}

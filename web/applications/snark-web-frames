@@ -1,0 +1,233 @@
+#!/usr/bin/python
+import json
+import urlparse
+import BaseHTTPServer
+import SocketServer
+import argparse
+import commands
+import subprocess
+import sys
+import os
+import collections
+import httplib
+import signal
+import shlex
+import threading
+
+script_name = sys.argv[0].split('/')[-1]
+DEFAULT_PORT = 7000
+DEFAULT_TIMEOUT = 10
+HTTP_PLAIN_TEXT = 'text/plain'
+
+description = "take http requests and serve frames from sensors"
+epilog="""
+examples:
+    {script_name} --config=web.backend.json --robot-config=config.json --publish-config=publish.json --port=8000 --timeout=15
+
+http requests:
+    http://robot:8000/novatel
+    http://robot:8000/camera
+
+notes:
+    1) 'content-type' is http content type of the frame ( default: {content_type} )
+    2) 'xpath' is the xpath of the sensor in robot config or publish config (default xpath is the same as in web config)
+    3) 'command' is a bash pipeline that reads data from e.g. a port on a robot and outputs a frame, e.g. text, value, or image
+    4) if 'address' and 'port' are given in robot config or publish config,
+       the 'command' is assumed to expect data from the given tcp address and port (default address: 'localhost' )
+    5) 'timeout' is the number of seconds after which the bash pipeline will time out (default: {timeout} seconds)
+""".format( script_name=script_name, content_type=HTTP_PLAIN_TEXT, timeout=DEFAULT_TIMEOUT ) + \
+"""
+web.backend.json:
+{
+    "camera":
+    {
+        "command": "cv-cat 'encode=jpg;head=1' --output=no-header",
+        "timeout": "30",
+        "content-type": "image/jpg"
+    },
+    "novatel":
+    {
+        "command": "novatel-to-csv | head -n1"
+    },
+    "battery-voltage":
+    {
+        "xpath": "battery",
+        "command": "braille-to-csv  --type=info --fields=voltage | head -n1"
+    },
+    "sick":
+    {
+        "xpath": "sick/publisher/data",
+        "command": "sick-ldmrs-to-csv | head -n1"
+    }
+}
+
+publish.json:
+{
+    "camera": { address="robot", port="40000" }
+}
+
+config.json:
+{
+    "novatel": { "address": "robot", port: "10000" }
+    "battery": { "address": "robot", "port": "20000" }
+    "sick": { "publisher": { "data": { "address": "robot", "port": "30000" } } }
+}
+"""
+
+def extract( xpath, config ):
+    subconfig = config
+    for element in xpath.split('/'):
+        if element in subconfig: subconfig = subconfig[element]
+        else: return None
+    return subconfig
+
+def get( key, *dictionaries ):
+    for d in dictionaries:
+        if d and key in d: return d[key]
+
+class sensors:
+    def _find_sensor_names( self, dictionary, xpath='' ):
+        for key,value in dictionary.iteritems():
+            if type( value ) == dict:
+                xpath_key = ( xpath + '/' + key ) if xpath else key
+                if 'command' in value: self._names.append( xpath_key )
+                self._find_sensor_names( value, xpath_key )
+
+    def __init__( self, web_config, robot_config, publish_config ):
+        self._names = []
+        self._find_sensor_names( web_config )
+        self._parameters = {}
+        for name in self._names:
+            sensor_web_config = extract( name, web_config )
+            frame_command = sensor_web_config['command'].strip('/')
+            xpath = sensor_web_config['xpath'] if 'xpath' in sensor_web_config else name
+            sensor_robot_config = extract( xpath, robot_config )
+            sensor_publish_config = extract( xpath, publish_config )
+            address = get( 'address', sensor_publish_config, sensor_robot_config )
+            port = get( 'port', sensor_publish_config, sensor_robot_config )
+            if port: address = "tcp:%s:%s" % ( address or 'localhost', port )
+            pipeline = "io-client -u %s | %s" % ( address, frame_command ) if address else frame_command
+            timeout = sensor_web_config['timeout'] if 'timeout' in sensor_web_config else args.timeout
+            timeout_command = "timeout -k 10 -s TERM %f bash -c \"%s\"" % ( timeout, pipeline )
+            content_type = sensor_web_config['content-type'] if 'content-type' in sensor_web_config else HTTP_PLAIN_TEXT
+            parameters = collections.namedtuple( 'parameters', 'command content_type' )
+            self._parameters[name] = parameters( command=timeout_command, content_type=content_type )
+
+    def get( self, name ):
+        return self._parameters.get( name )
+
+class handler( BaseHTTPServer.BaseHTTPRequestHandler ):
+    def do_GET( self ):
+        url = urlparse.urlparse( self.path )
+        sensor = url.path.strip('/')
+        client = self.client_address[0]
+        sensor_parameters = sensors.get( sensor )
+        if not sensor_parameters:
+            message = "%s: sensor '%s' requested by client '%s' is not in web_config '%s'" % ( script_name, sensor, client, args.config )
+            self.send_error( httplib.NOT_FOUND, message )
+            return
+        def preexec_fn():
+            signal.signal( signal.SIGPIPE, signal.SIG_DFL )
+        #    os.setsid() # using timeout is a safer option to get a process group
+        with lock:
+            p = subprocess.Popen( shlex.split( sensor_parameters.command.encode('ascii') ), stdout=subprocess.PIPE, stderr=subprocess.PIPE, preexec_fn=preexec_fn )
+            running_subprocesses.append( p )
+        output, error = p.communicate()
+        status = p.returncode
+        with lock: running_subprocesses.remove( p )
+        if status != 0:
+            # error is not included in message due problems with the html format for special symbols (using cgi.escape didn't help completely)
+            message = "%s: request '%s' for sensor '%s' in web config '%s' failed" % ( script_name, sensor_parameters.command, sensor, args.config )
+            self.send_error( httplib.INTERNAL_SERVER_ERROR, message )
+            return
+        self.send_response( httplib.OK )
+        self.send_header( 'Content-type', sensor_parameters.content_type )
+        self.send_header( 'Content-length', len( output ) )
+        self.send_header( 'Access-Control-Allow-Origin', '*' )
+        self.end_headers()
+        self.wfile.write( output )
+
+parser = argparse.ArgumentParser( description=description, epilog=epilog, formatter_class=argparse.RawDescriptionHelpFormatter )
+parser.add_argument( '--config', help='web backend config file' )
+parser.add_argument( '--robot-config', help='robot config file' )
+parser.add_argument( '--publish-config', help='publish config file', default=None )
+parser.add_argument( '--port', help='port number for http requests', type=int, default=DEFAULT_PORT )
+parser.add_argument( '--timeout', help='default timeout for frame commands', type=float, default=DEFAULT_TIMEOUT )
+args = parser.parse_args()
+
+def load_config( config_file_name ):
+    if not config_file_name: return {}
+    # parsing through name-value-convert first is needed since json.load throws on json files with comments
+    command = "name-value-convert --to json < %s" % config_file_name
+    status, output = commands.getstatusoutput( command )
+    if status != 0: sys.exit( "%s: '%s' returned error: %s" % ( script_name, command, output ) )
+    return json.loads( output )
+
+configs = {
+    'web_config': load_config( args.config ),
+    'robot_config': load_config( args.robot_config ),
+    'publish_config': load_config( args.publish_config ) }
+
+sensors = sensors( **configs )
+running_subprocesses = []
+lock = threading.Lock()
+
+def trap( signalnum, frame ):
+    with lock:
+        for p in running_subprocesses:
+            os.killpg( os.getpgid( p.pid ), signal.SIGTERM )
+        os._exit(1)
+
+signal.signal( signal.SIGINT, trap )
+signal.signal( signal.SIGTERM, trap )
+signal.signal( signal.SIGHUP, trap )
+
+class async_http_server( SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer ): pass
+
+async_http_server( ( '', args.port ), handler ).serve_forever()
+
+
+
+
+# in case of performance problems that too many
+# clients fire the sensor pipeline at once
+# we could check for each new request whether
+# there already is an outstanding request
+# and if yes, then reuse the output of the latter
+# below is a pseudo-code sketch of the solution
+#class sensor_handler :
+    #def __init__( self ) :
+        #self.request_lock = threading.Lock()
+        #self.queue_lock = threading.Lock()
+        #self.request_id = 0;
+    #def handle( self, h ) : # todo? add unique key: def handle( self, key, h )
+        #with self.queue_lock :
+            #id = self.request_id
+            #++self.request_id
+            #self.queue[id] = h
+        #with self.request_lock :
+            #with self.queue_lock : # probably don't need this lock
+                #if id in self.done :
+                    #self.done.erase( id )
+                    #return
+            ## calling pipeline:
+            #output = "result of long request"
+            #status = 0
+            #error = "blah"
+            #with self.queue_lock :
+                #for e in self.queue :
+                    #if status != 0:
+                        #message = "%s: request '%s' for sensor '%s' in web config '%s' failed" % ( script_name, sensor_parameters.pipeline, sensor, args.config )
+                        #e.send_error( httplib.INTERNAL_SERVER_ERROR, message ) # error is not included in message due problems with the html format for special symbols (using cgi.escape didn't help completely)
+                        #return
+                    ## lock sensor_dict
+                    ## for each entry in sensor_dict 
+                    #e.send_response( httplib.OK )
+                    #e.send_header( 'Content-type', sensor_parameters.content_type )
+                    #e.send_header( 'Content-length', len( output ) )
+                    #e.send_header( 'Access-Control-Allow-Origin', '*' )
+                    #e.end_headers()
+                    #e.wfile.write( output )
+                #self.done = queue
+                #self.done.erase( h )
+                #self.queue.clear()

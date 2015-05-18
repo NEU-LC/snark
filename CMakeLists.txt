@@ -168,6 +168,7 @@ OPTION( snark_build_battery "build battery" OFF )
 OPTION( snark_build_graph "build graph" ON )
 OPTION( snark_build_math_geometry "build math geometry" ON )
 OPTION( snark_build_python "build python packages" OFF )
+OPTION( snark_build_web "build web" OFF )
 
 INCLUDE( CMakeDependentOption )
 CMAKE_DEPENDENT_OPTION( snark_build_sensors_dc1394 "build dc1394 components" ON "snark_build_sensors" OFF )
@@ -180,6 +181,9 @@ CMAKE_DEPENDENT_OPTION( snark_build_sensors_gobi "build gobi components" OFF "sn
 CMAKE_DEPENDENT_OPTION( snark_build_actuators_quickset "build quickset components" OFF "snark_build_actuators" OFF )
 CMAKE_DEPENDENT_OPTION( snark_build_actuators_wheels "build wheels components" OFF "snark_build_actuators" OFF )
 CMAKE_DEPENDENT_OPTION( snark_build_actuators_universal_robots "build universal_robots components" OFF "snark_build_actuators" OFF )
+
+CMAKE_DEPENDENT_OPTION( snark_build_web_frontend "snark: build web frontend" ON "snark_build_web" OFF )
+CMAKE_DEPENDENT_OPTION( snark_build_web_websocket "snark: build web with websockets" ON "snark_build_web" OFF )
 
 IF( snark_build_imaging )
     IF( WIN32 )
@@ -326,6 +330,10 @@ ADD_SUBDIRECTORY( visiting )
 IF( snark_build_python )
     ADD_SUBDIRECTORY( python )
 ENDIF( snark_build_python )
+
+IF( snark_build_web )
+    ADD_SUBDIRECTORY( web )
+ENDIF( snark_build_web )
 
 # Package
 #the following set up optional parameters for cpack

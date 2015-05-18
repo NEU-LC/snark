@@ -1,0 +1,172 @@
+body {
+    background: black;
+    color: #abcdef;
+    padding-top: 20px;
+}
+
+.dg select {
+    color: black;
+    background-color: #dddddd;
+}
+
+.dg .title {
+    color: #abcdef;
+    font-size: 13px;
+}
+
+#container {
+    background: #080808;
+    width: 80%;
+    height: 100%;
+    padding: 0px;
+    margin: 0px;
+}
+
+.container-resize {
+    border-right: 5px double #535353;
+}
+
+.panel {
+    display: inline-block;
+    margin: 10px;
+    padding: 0px 10px 10px 10px;
+    vertical-align: top;
+    background: #181818;
+    border-radius: 20px;
+    cursor: move;
+    min-width: 262px;
+    border: 2px solid transparent;
+    box-sizing: border-box;
+}
+
+.panel:hover {
+    background: #2c2c2c;
+}
+
+.panel .time {
+    white-space: nowrap
+}
+
+.panel-body {
+    padding: 0;
+    border-radius: 0;
+}
+
+.panel-body h3 {
+    margin: 10px 15px 10px 0px;
+}
+
+.panel-body button {
+    border-radius: 4px;
+    margin: 1px;
+    background-color: transparent;
+    box-sizing: border-box;
+    border: 1px solid transparent;
+    padding-left: 3px;
+    padding-right: 5px;
+}
+
+.panel-body button:hover {
+    border: 1px solid #383838;
+}
+
+.panel-body button:active {
+    background-color: #181818;
+    border-radius: 4px;
+}
+
+.button-shadow {
+    text-shadow: 2px 2px 4px #242424;
+}
+
+.panel-refresh {
+    padding-left: 1px;
+    padding-right: 5px;
+}
+
+.panel-close {
+    font-size: 18px;
+    background-color: transparent;
+    box-sizing: border-box;
+    border: 1px solid transparent;
+    margin: 0;
+    padding: 0;
+}
+
+.panel-close:hover {
+    border: 1px solid #383838;
+}
+
+.target:not(:empty) {
+    border: 1px solid #2c2c2c;
+}
+
+img.target {
+    display: block;
+    min-width: 250px;
+    min-height: 250px;
+    margin: 5px;
+}
+
+ul.target li {
+    font: monospace;
+    border: none;
+    background: #181818;
+    color: #bcdefa;
+    padding: 0px 5px;
+}
+
+.graph {
+    background: #020;
+    width: 248px;
+    padding: 0 0 3px 3px;
+}
+
+.graph-text {
+    color: #0f0;
+}
+
+.graph-bars {
+    width: 240px;
+    height: 100px;
+    background: #0c2;
+}
+
+.graph-bar-col {
+    width: 3px;
+    height: 100%;
+    float: left;
+    display: inline;
+}
+
+.graph-bar-col:hover {
+    opacity: 0.9;
+    background: #0f0;
+}
+
+.graph-bar {
+    width: 100%;
+    height: 100%;
+    float: left;
+    background: #131;
+}
+
+.target pre {
+    padding: 0;
+    margin: 0;
+    background: #181818;
+    color: #bcdefa;
+    border: none;
+    font-size: 14px;
+    font-family: monospace;
+    border-radius: 0;
+    word-wrap: normal;
+}
+
+.panel-placeholder {
+    border: 2px dashed #6a6a6a;
+}
+
+.transparent {
+    opacity: 0;
+}
