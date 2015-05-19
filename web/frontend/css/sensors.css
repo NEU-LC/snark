@@ -54,6 +54,7 @@ body {
 
 .panel-body h3 {
     margin: 10px 15px 10px 0px;
+    white-space: nowrap;
 }
 
 .panel-body button {

@@ -221,7 +221,7 @@ async_http_server( ( '', args.port ), handler ).serve_forever()
                         #e.send_error( httplib.INTERNAL_SERVER_ERROR, message ) # error is not included in message due problems with the html format for special symbols (using cgi.escape didn't help completely)
                         #return
                     ## lock sensor_dict
-                    ## for each entry in sensor_dict 
+                    ## for each entry in sensor_dict
                     #e.send_response( httplib.OK )
                     #e.send_header( 'Content-type', sensor_parameters.content_type )
                     #e.send_header( 'Content-length', len( output ) )
