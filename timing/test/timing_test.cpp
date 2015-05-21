@@ -34,6 +34,10 @@
 #include <snark/timing/play.h>
 #include <snark/timing/ntp.h>
 #include <snark/timing/time.h>
+#include <snark/timing/timestamped.h>
+#include <comma/visiting/traits.h>
+#include <comma/csv/stream.h>
+#include <comma/csv/options.h>
 
 namespace snark { namespace test {
 
@@ -179,7 +183,72 @@ TEST(time, NTP)
     testTime( "20100101T000000.999999" );
 }
 
-} } // namespace snark { namespace Test {
+} } // namespace snark { namespace test {
+
+struct data_t
+{
+    data_t() {}
+    data_t( int i ) : i( i ) {}
+    int i;
+};
+
+namespace comma { namespace visiting {
+
+template <> struct traits< data_t >
+{
+    template < typename K, typename V > static void visit( const K&, data_t& p, V& v )
+    {
+        v.apply( "i", p.i );
+    }
+
+    template < typename K, typename V > static void visit( const K&, const data_t& p, V& v )
+    {
+        v.apply( "i", p.i );
+    }
+};
+
+} } // namespace comma { namespace visiting {
+
+namespace snark { namespace test {
+
+TEST( time, timestamped_basic )
+{
+    boost::posix_time::ptime t = boost::posix_time::second_clock::local_time();
+    int i = 10;
+    snark::timestamped< data_t > a( t, data_t( i ) );
+    EXPECT_EQ( t, a.t );
+    EXPECT_EQ( i, a.data.i );
+}
+
+TEST( time, timestamped_read )
+{
+    std::string iso_t = "20001020T102030.123456";
+    int i = 11;
+    std::stringstream s;
+    s << iso_t << ',' << i;
+    comma::csv::options csv;
+    csv.fields = "t,i";
+    comma::csv::input_stream< snark::timestamped< data_t > > istream( s, csv );
+    const snark::timestamped< data_t >* p = istream.read();
+    EXPECT_EQ( boost::posix_time::from_iso_string( iso_t ), p->t );
+    EXPECT_EQ( 11, p->data.i );
+}
+
+TEST( time, timestamped_write )
+{
+    std::string iso_t = "21231121T112131.654321";
+    boost::posix_time::ptime t = boost::posix_time::from_iso_string( iso_t );
+    int i = 12;
+    snark::timestamped< data_t > a( t, data_t( i ) );
+    std::stringstream s;
+    comma::csv::options csv;
+    csv.fields = "t,i";
+    comma::csv::output_stream< snark::timestamped< data_t > > ostream( s, csv );
+    ostream.write( a );
+    EXPECT_EQ( "21231121T112131.654321,12\n", s.str() );
+}
+
+} } // namespace snark { namespace test {
 
 int main( int argc, char* argv[] )
 {
