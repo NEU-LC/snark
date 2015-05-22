@@ -97,8 +97,7 @@ int main( int ac, char** av )
         comma::csv::output_stream< control_error_t > error_stream( std::cout, error_csv );
         comma::csv::tied< input_t, control_error_t > tied( input_stream, error_stream );
         if( options.exists( "--format" ) ) { std::cerr << comma::csv::format::value< input_t >( input_csv.fields, false ) << std::endl; return 0; }
-        if( options.exists( "--output-format" ) ) { std::cerr << comma::csv::format::value< control_error_t >( error_csv.fields, false ) << std::endl; return 0; }
-        if( options.exists( "--format" ) ) { std::cerr << comma::csv::format::value< input_t >( input_csv.fields, false ) << std::endl; return 0; }
+        if( options.exists( "--error-format" ) ) { std::cerr << comma::csv::format::value< control_error_t >( error_csv.fields, false ) << std::endl; return 0; }
         double proximity = options.value< double >( "--proximity", default_proximity );
         bool verbose = options.exists( "--verbose,-v" );
         std::vector< std::string > unnamed = options.unnamed( "--help,-h,--verbose,-v,--format,--output-format", "--fields,-f,--binary,-b,--output-fields" );
@@ -111,8 +110,9 @@ int main( int ac, char** av )
         select.read().add( feedback_in );
         boost::optional< feedback_t > feedback;
         boost::optional< input_t > input;
-        boost::optional< coordinates_t > to;
-        boost::optional< coordinates_t > from;
+        boost::optional< vector_t > to;
+        boost::optional< vector_t > from;
+        wayline_t wayline;
         comma::signal_flag is_shutdown;
         while( !is_shutdown && std::cin.good() && !std::cin.eof() )
         {
@@ -122,13 +122,14 @@ int main( int ac, char** av )
                 const input_t* i = input_stream.read();
                 if( !i ) { break; }
                 input = *i;
-                to = input->coordinates;
+                to = input->location;
                 if( verbose ) { std::cerr << name() << ": received target waypoint " << serialise( *to ) << std::endl; }
-                if( from && ( *from - *to ).norm() < proximity )
+                if( from && distance( *from, *to ) < proximity )
                 {
                     if( verbose ) { std::cerr << name() << ": skipping waypoint " << serialise( *to ) << " since it is within " << proximity << " of previous waypoint " << serialise( *from ) << std::endl; }
                     continue;
                 }
+                if( from && to ) { wayline = wayline_t( *from, *to ); }
                 while( !is_shutdown && std::cout.good() )
                 {
                     select.check();
@@ -137,8 +138,8 @@ int main( int ac, char** av )
                         const feedback_t* f = feedback_stream.read();
                         if( !f ) { std::cerr << name() << ": feedback stream error occurred prior to reaching waypoint " << serialise( *to ) << std::endl; return 1; }
                         feedback = *f;
-                        coordinates_t current = feedback->data.coordinates;
-                        if( ( current - *to ).norm() < proximity )
+                        position_t current = feedback->data;
+                        if( distance( current.location, *to ) < proximity )
                         {
                             if( verbose ) { std::cerr << name() << ": waypoint " << serialise( *to ) << " is reached (proximity)" << std::endl; }
                             from = *to;
@@ -146,15 +147,19 @@ int main( int ac, char** av )
                         }
                         else
                         {
-                            if( !from ) { from = current; }
-                            if( is_past_endpoint( current, *from, *to ) )
+                            if( !from )
+                            {
+                                from = current.location;
+                                wayline = wayline_t( *from, *to );
+                            }
+                            if( wayline.is_past_endpoint( current.location ) )
                             {
                                 if( verbose ) { std::cerr << name() << ": waypoint " << serialise( *to ) << " is reached (past endpoint)" << std::endl; }
                                 break;
                             }
                             control_error_t error;
-                            error.cross_track = -1.1; // todo
-                            error.heading = -2.2; // todo
+                            error.cross_track = wayline.cross_track_error( current.location );
+                            error.heading = wayline.heading_error( current.orientation.yaw );
                             tied.append( error );
                         }
                     }

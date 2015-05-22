@@ -50,25 +50,18 @@
 #include <comma/csv/traits.h>
 #include <snark/visiting/eigen.h>
 #include <snark/timing/timestamped.h>
+#include <boost/static_assert.hpp>
+#include <snark/math/angle.h>
 
 static const unsigned int dimensions = 2;
-typedef Eigen::Matrix< double, dimensions, 1 > coordinates_t;
-std::string serialise( const coordinates_t& c )
+typedef Eigen::Matrix< double, dimensions, 1 > vector_t;
+double distance( const vector_t& p1, const vector_t& p2 ) { return ( p1 - p2 ).norm(); }
+vector_t normalise( const vector_t& v ) { return v.normalized(); }
+std::string serialise( const vector_t& p )
 {
     std::stringstream s;
-    s << c.x() << ',' << c.y();
+    s << p.x() << ',' << p.y();
     return s.str();
-}
-
-typedef Eigen::ParametrizedLine< double, dimensions > line_t;
-typedef Eigen::Hyperplane< double, dimensions > hyperplane_t;
-bool is_past_endpoint( coordinates_t current, coordinates_t start, coordinates_t end )
-{
-    line_t wayline = line_t::Through( start, end );
-    coordinates_t v = end - start;
-    v.normalize();
-    hyperplane_t perp( v, end );
-    return perp.signedDistance( current ) > 0;
 }
 
 struct orientation_t
@@ -78,7 +71,7 @@ struct orientation_t
 
 struct position_t
 {
-    coordinates_t coordinates;
+    vector_t location;
     orientation_t orientation;
 };
 
@@ -91,7 +84,7 @@ struct decoration_t
 
 struct input_t
 {
-    coordinates_t coordinates;
+    vector_t location;
     decoration_t decoration;
 };
 
@@ -99,6 +92,34 @@ struct control_error_t
 {
     double cross_track;
     double heading;
+};
+
+
+class wayline_t
+{
+    vector_t v;
+    double heading;
+    Eigen::Hyperplane< double, dimensions > line;
+    Eigen::Hyperplane< double, dimensions > perpendicular_line_at_end;
+
+public:
+    wayline_t() {}
+    wayline_t( const vector_t& start, const vector_t& end ) :
+          v( normalise( end - start ) )
+        , heading( atan2( v.y(), v.x() ) )
+        , line( Eigen::ParametrizedLine< double, dimensions >::Through( start, end ) )
+        , perpendicular_line_at_end( v, end )
+        { BOOST_STATIC_ASSERT( dimensions == 2 ); }
+    bool is_past_endpoint( const vector_t& location ) { return perpendicular_line_at_end.signedDistance( location ) > 0; }
+    double cross_track_error( const vector_t& location ) { return line.signedDistance( location ); }
+    double heading_error( double yaw )
+    {
+        if( yaw < -M_PI || yaw > M_PI ) { COMMA_THROW( comma::exception, "expected yaw within [-pi,pi], got" << yaw ); }
+        double diff = yaw - heading;
+        if( diff <= -M_PI ) { return diff += 2*M_PI; }
+        else if( diff > M_PI ) { return diff -= 2*M_PI; }
+        else { return diff; }
+    }
 };
 
 namespace comma { namespace visiting {
@@ -120,13 +141,13 @@ template <> struct traits< position_t >
 {
     template < typename K, typename V > static void visit( const K&, position_t& p, V& v )
     {
-        v.apply( "coordinates", p.coordinates );
+        v.apply( "location", p.location );
         v.apply( "orientation", p.orientation );
     }
 
     template < typename K, typename V > static void visit( const K&, const position_t& p, V& v )
     {
-        v.apply( "coordinates", p.coordinates );
+        v.apply( "location", p.location );
         v.apply( "orientation", p.orientation );
     }
 };
@@ -148,13 +169,13 @@ template <> struct traits< input_t >
 {
     template < typename K, typename V > static void visit( const K&, input_t& p, V& v )
     {
-        v.apply( "coordinates", p.coordinates );
+        v.apply( "location", p.location );
         v.apply( "decoration", p.decoration );
     }
 
     template < typename K, typename V > static void visit( const K&, const input_t& p, V& v )
     {
-        v.apply( "coordinates", p.coordinates );
+        v.apply( "location", p.location );
         v.apply( "decoration", p.decoration );
     }
 };
