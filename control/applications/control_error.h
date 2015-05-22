@@ -33,25 +33,10 @@
 #include <cmath>
 #include <iostream>
 #include <boost/date_time/posix_time/posix_time.hpp>
-#include <boost/lexical_cast.hpp>
-#include <boost/optional.hpp>
-#include <boost/scoped_ptr.hpp>
-#include <boost/graph/graph_concepts.hpp>
-#include <comma/application/command_line_options.h>
-#include <comma/application/signal_flag.h>
-#include <comma/base/types.h>
-#include <comma/csv/stream.h>
-#include <comma/io/select.h>
-#include <comma/io/stream.h>
-#include <comma/math/compare.h>
-#include <comma/name_value/parser.h>
+#include <boost/static_assert.hpp>
 #include <comma/visiting/traits.h>
 #include <snark/visiting/eigen.h>
-#include <comma/csv/traits.h>
-#include <snark/visiting/eigen.h>
 #include <snark/timing/timestamped.h>
-#include <boost/static_assert.hpp>
-#include <snark/math/angle.h>
 
 static const unsigned int dimensions = 2;
 typedef Eigen::Matrix< double, dimensions, 1 > vector_t;
@@ -103,13 +88,16 @@ class wayline_t
     Eigen::Hyperplane< double, dimensions > perpendicular_line_at_end;
 
 public:
-    wayline_t() {}
-    wayline_t( const vector_t& start, const vector_t& end ) :
+    wayline_t( bool verbose = false ) {}
+    wayline_t( const vector_t& start, const vector_t& end, bool verbose = false ) :
           v( normalise( end - start ) )
         , heading( atan2( v.y(), v.x() ) )
         , line( Eigen::ParametrizedLine< double, dimensions >::Through( start, end ) )
         , perpendicular_line_at_end( v, end )
-        { BOOST_STATIC_ASSERT( dimensions == 2 ); }
+        {
+            BOOST_STATIC_ASSERT( dimensions == 2 );
+            if( verbose ) { std::cerr << "wayline from " << serialise( start ) << " to " << serialise( end ) << std::endl; }
+        }
     bool is_past_endpoint( const vector_t& location ) { return perpendicular_line_at_end.signedDistance( location ) > 0; }
     double cross_track_error( const vector_t& location ) { return line.signedDistance( location ); }
     double heading_error( double yaw )

@@ -27,19 +27,17 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include <cmath>
 #include <iostream>
-#include <boost/date_time/posix_time/posix_time.hpp>
-#include <boost/lexical_cast.hpp>
 #include <boost/optional.hpp>
 #include <comma/application/command_line_options.h>
 #include <comma/application/signal_flag.h>
-#include <comma/base/types.h>
 #include <comma/csv/stream.h>
+#include <comma/csv/names.h>
+#include <comma/csv/traits.h>
+#include <comma/visiting/traits.h>
 #include <comma/io/select.h>
 #include <comma/io/stream.h>
-#include <comma/math/compare.h>
-#include <comma/name_value/parser.h>
+#include <comma/name_value/name_value.h>
 #include "control_error.h"
 
 static const char* name() { return "control-error"; }
@@ -103,6 +101,7 @@ int main( int ac, char** av )
         std::vector< std::string > unnamed = options.unnamed( "--help,-h,--verbose,-v,--format,--output-format", "--fields,-f,--binary,-b,--output-fields" );
         if( unnamed.empty() ) { std::cerr << name() << ": feedback stream is not given" << std::endl; return 1; }
         comma::csv::options feedback_csv = comma::name_value::parser( "filename", ';', '=', false ).get< comma::csv::options >( unnamed[0] );
+        if( feedback_csv.fields.empty() ) { feedback_csv.fields = field_names< feedback_t >(); }
         comma::io::istream feedback_in( feedback_csv.filename, feedback_csv.binary() ? comma::io::mode::binary : comma::io::mode::ascii, comma::io::mode::non_blocking );
         comma::csv::input_stream< feedback_t > feedback_stream( *feedback_in, feedback_csv );
         comma::io::select select;
@@ -129,7 +128,7 @@ int main( int ac, char** av )
                     if( verbose ) { std::cerr << name() << ": skipping waypoint " << serialise( *to ) << " since it is within " << proximity << " of previous waypoint " << serialise( *from ) << std::endl; }
                     continue;
                 }
-                if( from && to ) { wayline = wayline_t( *from, *to ); }
+                if( from ) { wayline = wayline_t( *from, *to, verbose ); }
                 while( !is_shutdown && std::cout.good() )
                 {
                     select.check();
@@ -145,23 +144,21 @@ int main( int ac, char** av )
                             from = *to;
                             break;
                         }
-                        else
+                        if( !from )
                         {
-                            if( !from )
-                            {
-                                from = current.location;
-                                wayline = wayline_t( *from, *to );
-                            }
-                            if( wayline.is_past_endpoint( current.location ) )
-                            {
-                                if( verbose ) { std::cerr << name() << ": waypoint " << serialise( *to ) << " is reached (past endpoint)" << std::endl; }
-                                break;
-                            }
-                            control_error_t error;
-                            error.cross_track = wayline.cross_track_error( current.location );
-                            error.heading = wayline.heading_error( current.orientation.yaw );
-                            tied.append( error );
+                            from = current.location; // the first feedback point is the start point of the first wayline
+                            wayline = wayline_t( *from, *to, verbose );
                         }
+                        if( wayline.is_past_endpoint( current.location ) )
+                        {
+                            if( verbose ) { std::cerr << name() << ": waypoint " << serialise( *to ) << " is reached (past endpoint)" << std::endl; }
+                            from = *to;
+                            break;
+                        }
+                        control_error_t error;
+                        error.cross_track = wayline.cross_track_error( current.location );
+                        error.heading = wayline.heading_error( current.orientation.yaw );
+                        tied.append( error );
                     }
                 }
             }
