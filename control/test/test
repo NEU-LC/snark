@@ -11,6 +11,7 @@ function clean
 }
 function bye { clean; exit 1; }
 trap bye INT TERM HUP
+trap clean EXIT
 
 port=$( find_free_port )
 input=/tmp/snark_control_error_input
@@ -20,15 +21,16 @@ output=/tmp/snark_control_error_output
 rm -f $input $feedback $output
 mkfifo $input
 mkfifo $feedback
-tail -F $input | control-error "tcp:localhost:$port;fields=t,x,y,,,,yaw;binary=t,6d" --proximity=0.01 --flush > $output & pid=$!
+
 tail -F $feedback | socat -u - tcp-listen:$port,reuseaddr,fork & socat_pid=$!
 wait_for_success "netstat -ltn | grep $port &>/dev/null"
+tail -F $input | control-error "tcp:localhost:$port;fields=t,x,y,,,,yaw" --proximity=0.01 --precision=5 --verbose > $output & pid=$!
 
 function send_feedback
 {
     local x y yaw
     IFS=, read x y yaw <<< $1
-    echo -e "20121011T121314.123456,$x,$y,0,0,0,$yaw" | csv-to-bin t,6d > $feedback
+    echo -e "20121011T121314.123456,$x,$y,0,0,0,$yaw" > $feedback
 }
 
 output_line_count=0
@@ -48,12 +50,20 @@ function test_feedback
     wait_for_new_output && echo "$lhs=\"$( tail -n1 $output )\"" || exit 1
 }
 
-echo -e "1,0" > $input
-test_feedback "basic/xtrack/zero" 0,0,0
-test_feedback "basic/xtrack/positive" 0,0.1,0
-test_feedback "basic/xtrack/negative" 0,-0.1,0
-test_feedback "basic/heading/positive" 0,0,0.1
-test_feedback "basic/heading/negative" 0,0,-0.1
+echo -e "1,0" > $input; sleep 0.1
+test_feedback "to10/xtrack/zero" 0,0,0
+test_feedback "to10/xtrack/positive" 0,0.1,0
+test_feedback "to10/xtrack/negative" 0,-0.1,0
+test_feedback "to10/heading/positive" 0,0,0.1
+test_feedback "to10/heading/negative" 0,0,-0.1
 send_feedback 1,0,0
+
+echo -e "1,1" > $input; sleep 0.1
+test_feedback "to11/xtrack/zero" 1,0,1.5707963267948966
+test_feedback "to11/xtrack/positive" 0.9,0,1.5707963267948966
+test_feedback "to11/xtrack/negative" 1.1,0,1.5707963267948966
+test_feedback "to11/heading/positive" 1,0,1.6707963267948966
+test_feedback "to11/heading/negative" 1,0,1.4707963267948966
+send_feedback 1,1,1.57079632679
 
 clean
