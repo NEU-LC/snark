@@ -1,0 +1,5 @@
+basic/xtrack/zero="1,0,0,0"
+basic/xtrack/positive="1,0,0.1,0"
+basic/xtrack/negative="1,0,-0.1,0"
+basic/heading/positive="1,0,0,0.1"
+basic/heading/negative="1,0,0,-0.1"
