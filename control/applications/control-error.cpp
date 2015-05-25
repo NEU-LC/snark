@@ -89,7 +89,7 @@ int main( int ac, char** av )
         comma::command_line_options options( ac, av, usage );
         comma::csv::options input_csv( options, default_fields );
         comma::csv::input_stream< input_t > input_stream( std::cin, input_csv );
-        comma::csv::options error_csv( input_csv );
+        comma::csv::options error_csv( options );
         if( options.exists( "--error-fields" ) ) { error_csv.fields = options.value< std::string >( "--error-fields" ); }
         if( input_csv.binary() ) { error_csv.format( comma::csv::format::value< control_error_t >() ); }
         comma::csv::output_stream< control_error_t > error_stream( std::cout, error_csv );
@@ -98,7 +98,7 @@ int main( int ac, char** av )
         if( options.exists( "--error-format" ) ) { std::cerr << comma::csv::format::value< control_error_t >( error_csv.fields, false ) << std::endl; return 0; }
         double proximity = options.value< double >( "--proximity", default_proximity );
         bool verbose = options.exists( "--verbose,-v" );
-        std::vector< std::string > unnamed = options.unnamed( "--help,-h,--verbose,-v,--format,--output-format", "--fields,-f,--binary,-b,--output-fields" );
+        std::vector< std::string > unnamed = options.unnamed( "--help,-h,--verbose,-v,--format,--output-format,--flush", "--fields,-f,--binary,-b,--error-fields,--precision,--delimiter" );
         if( unnamed.empty() ) { std::cerr << name() << ": feedback stream is not given" << std::endl; return 1; }
         comma::csv::options feedback_csv = comma::name_value::parser( "filename", ';', '=', false ).get< comma::csv::options >( unnamed[0] );
         if( feedback_csv.fields.empty() ) { feedback_csv.fields = field_names< feedback_t >(); }
