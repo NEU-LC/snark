@@ -104,8 +104,8 @@ public:
     {
         if( yaw < -M_PI || yaw > M_PI ) { COMMA_THROW( comma::exception, "expected yaw within [-pi,pi], got" << yaw ); }
         double diff = yaw - heading;
-        if( diff <= -M_PI ) { return diff += 2*M_PI; }
-        else if( diff > M_PI ) { return diff -= 2*M_PI; }
+        if( diff <= -M_PI ) { return diff + 2*M_PI; }
+        else if( diff > M_PI ) { return diff - 2*M_PI; }
         else { return diff; }
     }
 };
