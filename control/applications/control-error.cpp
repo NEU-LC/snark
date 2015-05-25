@@ -89,7 +89,7 @@ int main( int ac, char** av )
         comma::command_line_options options( ac, av, usage );
         comma::csv::options input_csv( options, default_fields );
         comma::csv::input_stream< input_t > input_stream( std::cin, input_csv );
-        comma::csv::options error_csv;
+        comma::csv::options error_csv( input_csv );
         if( options.exists( "--error-fields" ) ) { error_csv.fields = options.value< std::string >( "--error-fields" ); }
         if( input_csv.binary() ) { error_csv.format( comma::csv::format::value< control_error_t >() ); }
         comma::csv::output_stream< control_error_t > error_stream( std::cout, error_csv );
