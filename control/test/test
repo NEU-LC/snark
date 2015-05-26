@@ -3,7 +3,8 @@
 prefix=./output/
 input=${prefix}objective
 feedback=${prefix}feedback
-output=${prefix}error
+output=${prefix}output
+proximity=0.1
 
 function clean
 {
@@ -16,18 +17,33 @@ function bye { clean; exit 1; }
 trap bye INT TERM HUP
 trap clean EXIT
 
+echo "format/input/x=\"$( control-error "filename" --fields=x --format )\""
+echo "format/input/xy=\"$( control-error "filename" --fields=x,y --format )\""
+echo "format/input/default=\"$( control-error "filename" --format )\""
+echo "format/input/xyspeed=\"$( control-error "filename" --fields=x,y,speed --format )\""
+echo "format/output/default=\"$( control-error "filename" --output-format )\""
+echo "format/output/with_speed=\"$( control-error "filename" --fields=x,y,speed --output-format )\""
+echo "format/output/heading=\"$( control-error "filename" --error-fields=heading --output-format )\""
+
+rm -f $feedback
+echo -e "0,0,0\n0,0.5,0.5\n0,1,0\n0,1.5,-0.5\n0,2,0" | csv-to-bin 3d > $feedback
+binary_test_output=( $( echo -e "10,1,0\n20,2,0" | csv-to-bin 3d | control-error "$feedback;fields=yaw,x,y;binary=3d" --fields=speed,x,y --binary=3d --error-fields=heading,cross_track --verbose | csv-from-bin 5d ) )
+echo "binary/output0=${binary_test_output[0]}"
+echo "binary/output1=${binary_test_output[1]}"
+echo "binary/output2=${binary_test_output[2]}"
+
+rm -f $feedback $input $output
+mkfifo $feedback
+mkfifo $input
+
 function wait_for_success { local timeout=1; local n=100; local dt=$( bc -l <<< "$timeout/$n" ); for(( i=0; i < n; i++ )); do eval "$1" && return 0 || sleep $dt; done; return 1; }
-function find_free_port { local port; for(( i=0; i < 65535; i++ )); do port=$(( RANDOM + RANDOM )) && (( port > 1023 && port < 65536 )) && ! netstat -ln | grep $port &>/dev/null && echo $port && return; done; }
+function find_free_port { local port; for(( i=0; i < 100; i++ )); do port=$(( RANDOM + RANDOM )) && (( port > 1023 && port < 65536 )) && ! netstat -ln | grep $port &>/dev/null && echo $port && return; done; }
 port=$( find_free_port )
 if [[ -z "$port" ]]; then echo "failed to find a free tcp port" >&2; exit 1; fi
 
-rm -f $input $feedback $output
-mkfifo $input
-mkfifo $feedback
-
 tail -f $feedback | socat -u - tcp-listen:$port,reuseaddr,fork & feedback_pid=$!
 wait_for_success "netstat -ltn | grep $port &>/dev/null"
-tail -f $input | control-error "tcp:localhost:$port;fields=t,x,y,,,,yaw" --proximity=0.1 --precision=5 --verbose > $output & pid=$!
+tail -f $input | control-error "tcp:localhost:$port;fields=t,x,y,,,,yaw" --proximity=$proximity --precision=5 --verbose > $output & pid=$!
 
 function send_feedback
 {
@@ -143,17 +159,11 @@ send_feedback 3,2,0
 
 go_to 1,1
 send_input 3,2
-send_feedback 3.1,2.05,0.46364760900080609
+x=$( bc -l <<< "3+$proximity" )
+y=$( bc -l <<< "2+$proximity/2" )
+send_feedback $x,$y,0.46364760900080609
 wait_for_new_output && reached=0 || reached=1
 echo "past_endpoint/reached=\"$reached\""
 
 clean
-
-echo "format/input/x=\"$( control-error "filename" --fields=x --format )\""
-echo "format/input/xy=\"$( control-error "filename" --fields=x,y --format )\""
-echo "format/input/default=\"$( control-error "filename" --format )\""
-echo "format/input/xyspeed=\"$( control-error "filename" --fields=x,y,speed --format )\""
-echo "format/output/default=\"$( control-error "filename" --error-format )\""
-echo "format/output/with_speed=\"$( control-error "filename" --fields=x,y,speed --error-format )\""
-echo "format/output/heading=\"$( control-error "filename" --error-fields=heading --error-format )\""
 
