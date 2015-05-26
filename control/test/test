@@ -1,7 +1,10 @@
 #!/bin/bash
 
-function find_free_port { for(( port=1024; port < 65536; port++ )); do ! netstat -ltun | grep $port &>/dev/null && echo $port && return; done; }
-function wait_for_success { for(( i=0; i<100; i++ )); do eval "$1" && return 0 || sleep 0.01; done; return 1; }
+prefix=./output/
+input=${prefix}objective
+feedback=${prefix}feedback
+output=${prefix}error
+
 function clean
 {
     pkill -P $$
@@ -13,24 +16,24 @@ function bye { clean; exit 1; }
 trap bye INT TERM HUP
 trap clean EXIT
 
+function wait_for_success { for(( i=0; i < 100; i++ )); do eval "$1" && return 0 || sleep 0.01; done; return 1; }
+function find_free_port { for(( i=0; i < 32767; i++ )); do port=$RANDOM && (( port > 1024 && port < 65536 )) && ! netstat -ltun | grep $port &>/dev/null && echo $port && return; done; }
 port=$( find_free_port )
-input=/tmp/snark_control_error_input
-feedback=/tmp/snark_control_error_feedback
-output=/tmp/snark_control_error_output
+if [[ -z "$port" ]]; then echo "failed to find a free tcp port" >&2; exit 1; fi
 
 rm -f $input $feedback $output
 mkfifo $input
 mkfifo $feedback
 
-tail -F $feedback | socat -u - tcp-listen:$port,reuseaddr,fork & socat_pid=$!
+tail -f $feedback | socat -u - tcp-listen:$port,reuseaddr,fork & socat_pid=$!
 wait_for_success "netstat -ltn | grep $port &>/dev/null"
-tail -F $input | control-error "tcp:localhost:$port;fields=t,x,y,,,,yaw" --proximity=0.01 --precision=5 --verbose > $output & pid=$!
+tail -f $input | control-error "tcp:localhost:$port;fields=t,x,y,,,,yaw" --proximity=0.01 --precision=5 --verbose > $output & pid=$!
 
 function send_feedback
 {
     local x y yaw
     IFS=, read x y yaw <<< $1
-    echo -e "20121011T121314.123456,$x,$y,0,0,0,$yaw" > $feedback
+    echo 20121011T121314.123456,$x,$y,0,0,0,$yaw > $feedback
 }
 
 output_line_count=0
@@ -50,7 +53,10 @@ function test_feedback
     wait_for_new_output && echo "$lhs=\"$( tail -n1 $output )\"" || exit 1
 }
 
-echo -e "1,0" > $input; sleep 0.1
+function send_input { echo $1 > $input; sleep 0.1; }
+function return_to_origin { send_input 0,0; send_feedback 0,0,0; }
+
+send_input 1,0
 test_feedback "to10/xtrack/initial" 0,0,0
 test_feedback "to10/xtrack/positive" 0,0.1,0
 test_feedback "to10/xtrack/negative" 0,-0.1,0
@@ -58,7 +64,7 @@ test_feedback "to10/heading/positive" 0,0,0.1
 test_feedback "to10/heading/negative" 0,0,-0.1
 send_feedback 1,0,0
 
-echo -e "1,1" > $input; sleep 0.1
+send_input 1,1
 test_feedback "to11/xtrack/initial" 1,0,1.5707963267948966
 test_feedback "to11/xtrack/positive" 0.9,0,1.5707963267948966
 test_feedback "to11/xtrack/negative" 1.1,0,1.5707963267948966
@@ -66,7 +72,7 @@ test_feedback "to11/heading/positive" 1,0,1.6707963267948966
 test_feedback "to11/heading/negative" 1,0,1.4707963267948966
 send_feedback 1,1,1.57079632679
 
-echo -e "0,1" > $input; sleep 0.1
+send_input 0,1
 test_feedback "to01/xtrack/initial" 1,1,3.141592653589793
 test_feedback "to01/xtrack/positive" 1,0.9,3.141592653589793
 test_feedback "to01/xtrack/negative" 1,1.1,3.141592653589793
@@ -74,12 +80,55 @@ test_feedback "to01/heading/positive" 1,1,-3.041592653589793
 test_feedback "to01/heading/negative" 1,1,3.041592653589793
 send_feedback 0,1,-3.141592653589793
 
-echo -e "0,0" > $input; sleep 0.1
+send_input 0,0
 test_feedback "to00/xtrack/initial" 0,1,-1.5707963267948966
 test_feedback "to00/xtrack/positive" 0.1,1,-1.5707963267948966
 test_feedback "to00/xtrack/negative" -0.1,1,-1.5707963267948966
 test_feedback "to00/heading/positive" 0,1,-1.4707963267948966
 test_feedback "to00/heading/negative" 0,1,-1.6707963267948966
 send_feedback 0,0,-1.5707963267948966
+
+send_input 1,0
+test_feedback "heading10/zero" 0,0,0
+test_feedback "heading10/p1" 0,0,1
+test_feedback "heading10/p2" 0,0,2
+test_feedback "heading10/p3" 0,0,3
+test_feedback "heading10/n1" 0,0,-1
+test_feedback "heading10/n2" 0,0,-2
+test_feedback "heading10/n3" 0,0,-3
+send_feedback 1,0,0
+
+return_to_origin
+send_input 0,1
+test_feedback "heading01/zero" 0,0,0
+test_feedback "heading01/p1" 0,0,1
+test_feedback "heading01/p2" 0,0,2
+test_feedback "heading01/p3" 0,0,3
+test_feedback "heading01/n1" 0,0,-1
+test_feedback "heading01/n2" 0,0,-2
+test_feedback "heading01/n3" 0,0,-3
+send_feedback 0,1,0
+
+return_to_origin
+send_input -1,0
+test_feedback "headingm10/zero" 0,0,0
+test_feedback "headingm10/p1" 0,0,1
+test_feedback "headingm10/p2" 0,0,2
+test_feedback "headingm10/p3" 0,0,3
+test_feedback "headingm10/n1" 0,0,-1
+test_feedback "headingm10/n2" 0,0,-2
+test_feedback "headingm10/n3" 0,0,-3
+send_feedback -1,0,0
+
+return_to_origin
+send_input 0,-1
+test_feedback "heading0m1/zero" 0,0,0
+test_feedback "heading0m1/p1" 0,0,1
+test_feedback "heading0m1/p2" 0,0,2
+test_feedback "heading0m1/p3" 0,0,3
+test_feedback "heading0m1/n1" 0,0,-1
+test_feedback "heading0m1/n2" 0,0,-2
+test_feedback "heading0m1/n3" 0,0,-3
+send_feedback 0,-1,0
 
 clean
