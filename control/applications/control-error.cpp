@@ -96,7 +96,7 @@ int main( int ac, char** av )
         comma::csv::output_stream< control_error_t > error_stream( std::cout, error_csv );
         comma::csv::tied< input_t, control_error_t > tied( input_stream, error_stream );
         if( options.exists( "--format" ) ) { std::cout << format< input_t >( input_csv.fields ) << std::endl; return 0; }
-        if( options.exists( "--error-format" ) ) { std::cout << format< input_t >( input_csv.fields ) << ',' << format< control_error_t >( error_csv.fields ) << std::endl; return 0; }
+        if( options.exists( "--output-format" ) ) { std::cout << format< input_t >( input_csv.fields ) << ',' << format< control_error_t >( error_csv.fields ) << std::endl; return 0; }
         double proximity = options.value< double >( "--proximity", default_proximity );
         bool verbose = options.exists( "--verbose,-v" );
         std::vector< std::string > unnamed = options.unnamed( "--help,-h,--verbose,-v,--format,--output-format,--flush", "--fields,-f,--binary,-b,--error-fields,--precision,--delimiter" );
