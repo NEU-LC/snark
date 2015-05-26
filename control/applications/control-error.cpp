@@ -43,6 +43,7 @@
 static const char* name() { return "control-error"; }
 
 template< typename T > std::string field_names() { return comma::join( comma::csv::names< T >( false ), ',' ); }
+template< typename T > std::string format( std::string fields ) { return comma::csv::format::value< T >( fields, false ); }
 static const std::string default_fields = "x,y";
 static const double default_proximity = 0.1;
 
@@ -90,12 +91,12 @@ int main( int ac, char** av )
         comma::csv::options input_csv( options, default_fields );
         comma::csv::input_stream< input_t > input_stream( std::cin, input_csv );
         comma::csv::options error_csv( options );
-        if( options.exists( "--error-fields" ) ) { error_csv.fields = options.value< std::string >( "--error-fields" ); }
-        if( input_csv.binary() ) { error_csv.format( comma::csv::format::value< control_error_t >() ); }
+        error_csv.fields = options.exists( "--error-fields" ) ? options.value< std::string >( "--error-fields" ) : field_names< control_error_t >();
+        if( input_csv.binary() ) { error_csv.format( format< control_error_t >( error_csv.fields ) ); }
         comma::csv::output_stream< control_error_t > error_stream( std::cout, error_csv );
         comma::csv::tied< input_t, control_error_t > tied( input_stream, error_stream );
-        if( options.exists( "--format" ) ) { std::cerr << comma::csv::format::value< input_t >( input_csv.fields, false ) << std::endl; return 0; }
-        if( options.exists( "--error-format" ) ) { std::cerr << comma::csv::format::value< control_error_t >( error_csv.fields, false ) << std::endl; return 0; }
+        if( options.exists( "--format" ) ) { std::cout << format< input_t >( input_csv.fields ) << std::endl; return 0; }
+        if( options.exists( "--error-format" ) ) { std::cout << format< input_t >( input_csv.fields ) << ',' << format< control_error_t >( error_csv.fields ) << std::endl; return 0; }
         double proximity = options.value< double >( "--proximity", default_proximity );
         bool verbose = options.exists( "--verbose,-v" );
         std::vector< std::string > unnamed = options.unnamed( "--help,-h,--verbose,-v,--format,--output-format,--flush", "--fields,-f,--binary,-b,--error-fields,--precision,--delimiter" );
