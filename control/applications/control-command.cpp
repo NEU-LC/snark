@@ -29,6 +29,8 @@
 
 #include <comma/csv/options.h>
 #include <comma/csv/stream.h>
+#include <comma/io/select.h>
+#include <comma/application/signal_flag.h>
 #include "control.h"
 #include "pid.h"
 
@@ -40,28 +42,62 @@ template< typename T > std::string format( std::string fields ) { return comma::
 static void usage( bool verbose = false )
 {
     std::cerr << std::endl;
-    std::cerr << "take control errors (cross_track,heading) in stdin and output velocity and turn rate to stdout" << std::endl;
+    std::cerr << "take control errors (cross_track, heading) on stdin and output velocity and turn rate to stdout" << std::endl;
     std::cerr << std::endl;
     std::cerr << "usage: cat errors.csv | " << name() << " [<options>]" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
-    std::cerr << "    --pid=<p>,<i>,<d>,<error threshold>: pid parameters" << std::endl;
+    std::cerr << "    --pid=<p>,<i>,<d>[,<error threshold>]: pid parameters" << std::endl;
+    std::cerr << "    --output-fields: comma-separated list of fields to output (default: " << field_names< snark::control::command_t >() << ")" << std::endl;    
+    std::cerr << "    --format: output binary format of input stream to stdout and exit" << std::endl;
+    std::cerr << "    --output-format: output binary format of output stream to stdout and exit" << std::endl;
     std::cerr << std::endl;
+    std::cerr << "csv options:" << std::endl;
     std::cerr << comma::csv::options::usage( field_names< snark::control::error_t >() ) << std::endl;
     std::cerr << std::endl;
     exit( 1 );
 }
 
+typedef snark::control::error_t input_t;
+typedef snark::control::command_t command_t;
+
 int main( int ac, char** av )
 {
-    comma::command_line_options options( ac, av, usage );
-    std::vector< std::string > v = comma::split( options.value< std::string >( "--pid" ), ',' );
-    if( v.size() != 3 && v.size() != 4 ) { std::cerr << "control-heading: expected pid parameters, got " << options.value< std::string >( "--pid" ) << std::endl; return 1; }
-    double p = boost::lexical_cast< double >( v[0] );
-    double i = boost::lexical_cast< double >( v[1] );
-    double d = boost::lexical_cast< double >( v[2] );
-    boost::optional< double > error_threshold;
-    if( v.size() == 4 ) { error_threshold = boost::lexical_cast< double >( v[3] ); }
-    snark::control::pid< snark::control::external > external_pid( p, i, d, error_threshold );
-    snark::control::pid< snark::control::internal > internal_pid( p, i, d, error_threshold );
+    try
+    {
+        comma::command_line_options options( ac, av, usage );
+        std::vector< std::string > v = comma::split( options.value< std::string >( "--pid" ), ',' );
+        if( v.size() != 3 && v.size() != 4 ) { std::cerr << "control-heading: expected pid parameters, got " << options.value< std::string >( "--pid" ) << std::endl; return 1; }
+        double p = boost::lexical_cast< double >( v[0] );
+        double i = boost::lexical_cast< double >( v[1] );
+        double d = boost::lexical_cast< double >( v[2] );
+        boost::optional< double > error_threshold;
+        if( v.size() == 4 ) { error_threshold = boost::lexical_cast< double >( v[3] ); }
+        snark::control::pid< snark::control::external > external_pid( p, i, d, error_threshold );
+        snark::control::pid< snark::control::internal > internal_pid( p, i, d, error_threshold );
+        comma::csv::options input_csv( options );
+        comma::csv::input_stream< input_t > input_stream( std::cin, input_csv );
+        comma::csv::options output_csv( options );
+        output_csv.fields = options.exists( "--output-fields" ) ? options.value< std::string >( "--output-fields" ) : field_names< command_t >();
+        if( input_csv.binary() ) { output_csv.format( format< command_t >( output_csv.fields ) ); }
+        comma::csv::output_stream< command_t > output_stream( std::cout, output_csv );
+        if( options.exists( "--format" ) ) { std::cout << format< input_t >( input_csv.fields ) << std::endl; return 0; }
+        if( options.exists( "--output-format" ) ) { std::cout << format< command_t >( output_csv.fields ) << std::endl; return 0; }
+        comma::signal_flag is_shutdown;
+        while( !is_shutdown && ( input_stream.ready() || ( std::cin.good() && !std::cin.eof() ) ) )
+        {
+            const input_t* input = input_stream.read();
+            if( !input ) { break; }
+            double cross_track = input->cross_track;
+            double heading = input->heading;
+            command_t command;
+            command.velocity = 0;
+            command.turn_rate = 0;
+            output_stream.write( command );
+        }
+        return 0;
+    }
+    catch( std::exception& ex ) { std::cerr << name() << ": " << ex.what() << std::endl; }
+    catch( ... ) { std::cerr << name() << ": unknown exception" << std::endl; }
+    return 1;
 }
