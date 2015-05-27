@@ -38,7 +38,7 @@
 #include <comma/io/select.h>
 #include <comma/io/stream.h>
 #include <comma/name_value/name_value.h>
-#include "control_error.h"
+#include "control.h"
 
 static const char* name() { return "control-error"; }
 

@@ -27,14 +27,15 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef SNARK_CONTROL_ERROR_H
-#define SNARK_CONTROL_ERROR_H
+#ifndef SNARK_CONTROL_H
+#define SNARK_CONTROL_H
 
 #include <cmath>
 #include <iostream>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/static_assert.hpp>
 #include <comma/visiting/traits.h>
+#include <comma/base/exception.h>
 #include <snark/visiting/eigen.h>
 #include <snark/timing/timestamped.h>
 
@@ -189,4 +190,4 @@ template <> struct traits< snark::control::error_t >
 
 } } // namespace comma { namespace visiting {
 
-#endif // SNARK_CONTROL_ERROR_H
+#endif // SNARK_CONTROL_H
