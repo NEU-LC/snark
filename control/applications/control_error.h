@@ -38,6 +38,8 @@
 #include <snark/visiting/eigen.h>
 #include <snark/timing/timestamped.h>
 
+namespace snark { namespace control {
+
 static const unsigned int dimensions = 2;
 typedef Eigen::Matrix< double, dimensions, 1 > vector_t;
 double distance( const vector_t& p1, const vector_t& p2 ) { return ( p1 - p2 ).norm(); }
@@ -73,7 +75,7 @@ struct input_t
     decoration_t decoration;
 };
 
-struct control_error_t
+struct error_t
 {
     double cross_track;
     double heading;
@@ -110,73 +112,75 @@ public:
     }
 };
 
+} } // namespace snark { namespace control
+
 namespace comma { namespace visiting {
 
-template <> struct traits< orientation_t >
+template <> struct traits< snark::control::orientation_t >
 {
-    template < typename K, typename V > static void visit( const K&, orientation_t& p, V& v )
+    template < typename K, typename V > static void visit( const K&, snark::control::orientation_t& p, V& v )
     {
         v.apply( "yaw", p.yaw );
     }
 
-    template < typename K, typename V > static void visit( const K&, const orientation_t& p, V& v )
+    template < typename K, typename V > static void visit( const K&, const snark::control::orientation_t& p, V& v )
     {
         v.apply( "yaw", p.yaw );
     }
 };
 
-template <> struct traits< position_t >
+template <> struct traits< snark::control::position_t >
 {
-    template < typename K, typename V > static void visit( const K&, position_t& p, V& v )
+    template < typename K, typename V > static void visit( const K&, snark::control::position_t& p, V& v )
     {
         v.apply( "location", p.location );
         v.apply( "orientation", p.orientation );
     }
 
-    template < typename K, typename V > static void visit( const K&, const position_t& p, V& v )
+    template < typename K, typename V > static void visit( const K&, const snark::control::position_t& p, V& v )
     {
         v.apply( "location", p.location );
         v.apply( "orientation", p.orientation );
     }
 };
 
-template <> struct traits< decoration_t >
+template <> struct traits< snark::control::decoration_t >
 {
-    template < typename K, typename V > static void visit( const K&, decoration_t& p, V& v )
+    template < typename K, typename V > static void visit( const K&, snark::control::decoration_t& p, V& v )
     {
         v.apply( "speed", p.speed );
     }
 
-    template < typename K, typename V > static void visit( const K&, const decoration_t& p, V& v )
+    template < typename K, typename V > static void visit( const K&, const snark::control::decoration_t& p, V& v )
     {
         v.apply( "speed", p.speed );
     }
 };
 
-template <> struct traits< input_t >
+template <> struct traits< snark::control::input_t >
 {
-    template < typename K, typename V > static void visit( const K&, input_t& p, V& v )
+    template < typename K, typename V > static void visit( const K&, snark::control::input_t& p, V& v )
     {
         v.apply( "location", p.location );
         v.apply( "decoration", p.decoration );
     }
 
-    template < typename K, typename V > static void visit( const K&, const input_t& p, V& v )
+    template < typename K, typename V > static void visit( const K&, const snark::control::input_t& p, V& v )
     {
         v.apply( "location", p.location );
         v.apply( "decoration", p.decoration );
     }
 };
 
-template <> struct traits< control_error_t >
+template <> struct traits< snark::control::error_t >
 {
-    template < typename K, typename V > static void visit( const K&, control_error_t& p, V& v )
+    template < typename K, typename V > static void visit( const K&, snark::control::error_t& p, V& v )
     {
         v.apply( "cross_track", p.cross_track );
         v.apply( "heading", p.heading );
     }
 
-    template < typename K, typename V > static void visit( const K&, const control_error_t& p, V& v )
+    template < typename K, typename V > static void visit( const K&, const snark::control::error_t& p, V& v )
     {
         v.apply( "cross_track", p.cross_track );
         v.apply( "heading", p.heading );
