@@ -113,6 +113,12 @@ public:
     }
 };
 
+struct command_t
+{
+    double velocity;
+    double turn_rate;
+};
+
 } } // namespace snark { namespace control
 
 namespace comma { namespace visiting {
@@ -185,6 +191,21 @@ template <> struct traits< snark::control::error_t >
     {
         v.apply( "cross_track", p.cross_track );
         v.apply( "heading", p.heading );
+    }
+};
+
+template <> struct traits< snark::control::command_t >
+{
+    template < typename K, typename V > static void visit( const K&, snark::control::command_t& p, V& v )
+    {
+        v.apply( "velocity", p.velocity );
+        v.apply( "turn_rate", p.turn_rate );
+    }
+
+    template < typename K, typename V > static void visit( const K&, const snark::control::command_t& p, V& v )
+    {
+        v.apply( "velocity", p.velocity );
+        v.apply( "turn_rate", p.turn_rate );
     }
 };
 
