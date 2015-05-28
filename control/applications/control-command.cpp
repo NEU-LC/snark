@@ -66,6 +66,14 @@ int main( int ac, char** av )
     try
     {
         comma::command_line_options options( ac, av, usage );
+        comma::csv::options input_csv( options );
+        comma::csv::input_stream< input_t > input_stream( std::cin, input_csv );
+        comma::csv::options output_csv( options );
+        output_csv.fields = options.exists( "--output-fields" ) ? options.value< std::string >( "--output-fields" ) : field_names< command_t >();
+        if( input_csv.binary() ) { output_csv.format( format< command_t >( output_csv.fields ) ); }
+        comma::csv::output_stream< command_t > output_stream( std::cout, output_csv );
+        if( options.exists( "--format" ) ) { std::cout << format< input_t >( input_csv.fields ) << std::endl; return 0; }
+        if( options.exists( "--output-format" ) ) { std::cout << format< command_t >( output_csv.fields ) << std::endl; return 0; }
         std::vector< std::string > v = comma::split( options.value< std::string >( "--pid" ), ',' );
         if( v.size() != 3 && v.size() != 4 ) { std::cerr << "control-heading: expected pid parameters, got " << options.value< std::string >( "--pid" ) << std::endl; return 1; }
         double p = boost::lexical_cast< double >( v[0] );
@@ -75,14 +83,6 @@ int main( int ac, char** av )
         if( v.size() == 4 ) { error_threshold = boost::lexical_cast< double >( v[3] ); }
         snark::control::pid< snark::control::external > external_pid( p, i, d, error_threshold );
         snark::control::pid< snark::control::internal > internal_pid( p, i, d, error_threshold );
-        comma::csv::options input_csv( options );
-        comma::csv::input_stream< input_t > input_stream( std::cin, input_csv );
-        comma::csv::options output_csv( options );
-        output_csv.fields = options.exists( "--output-fields" ) ? options.value< std::string >( "--output-fields" ) : field_names< command_t >();
-        if( input_csv.binary() ) { output_csv.format( format< command_t >( output_csv.fields ) ); }
-        comma::csv::output_stream< command_t > output_stream( std::cout, output_csv );
-        if( options.exists( "--format" ) ) { std::cout << format< input_t >( input_csv.fields ) << std::endl; return 0; }
-        if( options.exists( "--output-format" ) ) { std::cout << format< command_t >( output_csv.fields ) << std::endl; return 0; }
         comma::signal_flag is_shutdown;
         while( !is_shutdown && ( input_stream.ready() || ( std::cin.good() && !std::cin.eof() ) ) )
         {
