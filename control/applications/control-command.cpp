@@ -74,15 +74,8 @@ int main( int ac, char** av )
         comma::csv::output_stream< command_t > output_stream( std::cout, output_csv );
         if( options.exists( "--format" ) ) { std::cout << format< control_error_t >( input_csv.fields ) << std::endl; return 0; }
         if( options.exists( "--output-format" ) ) { std::cout << format< command_t >( output_csv.fields ) << std::endl; return 0; }
-        std::vector< std::string > v = comma::split( options.value< std::string >( "--pid" ), ',' );
-        if( v.size() != 3 && v.size() != 4 ) { std::cerr << "control-heading: expected pid parameters, got " << options.value< std::string >( "--pid" ) << std::endl; return 1; }
-        double p = boost::lexical_cast< double >( v[0] );
-        double i = boost::lexical_cast< double >( v[1] );
-        double d = boost::lexical_cast< double >( v[2] );
-        boost::optional< double > error_threshold;
-        if( v.size() == 4 ) { error_threshold = boost::lexical_cast< double >( v[3] ); }
-        snark::control::pid< snark::control::external > external_pid( p, i, d, error_threshold );
-        snark::control::pid< snark::control::internal > internal_pid( p, i, d, error_threshold );
+        snark::control::pid<> cross_track_pid( options.value< std::string >( "--cross-track-pid" ) );
+        snark::control::pid<> heading_pid( options.value< std::string >( "--heading-pid" ) );
         comma::signal_flag is_shutdown;
         while( !is_shutdown && ( input_stream.ready() || ( std::cin.good() && !std::cin.eof() ) ) )
         {
@@ -91,8 +84,8 @@ int main( int ac, char** av )
             double cross_track = error->cross_track;
             double heading = error->heading;
             command_t command;
-            command.velocity = 0;
             command.turn_rate = 0;
+            command.local_heading = 0;
             output_stream.write( command );
         }
         return 0;

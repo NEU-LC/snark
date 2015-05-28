@@ -32,6 +32,7 @@
 
 #include <boost/date_time/posix_time/ptime.hpp>
 #include <boost/optional.hpp>
+#include <boost/lexical_cast.hpp>
 #include <comma/base/exception.h>
 #include <comma/csv/stream.h>
 
@@ -39,12 +40,21 @@ namespace snark { namespace control {
 
 enum derivative_mode { internal, external };
 
-template< derivative_mode >
+template< derivative_mode = internal >
 class pid
 {
 public:
     pid( double p, double i, double d ) : p( p ), i( i ), d( d ), integral( 0 ) {}
     pid( double p, double i, double d, boost::optional< double > threshold ) : p( p ), i( i ), d( d ), integral( 0 ), threshold( threshold ) {}
+    pid( std::string pid_values, char delimiter = ',' )
+    {
+        std::vector< std::string > v = comma::split( pid_values, delimiter );
+        if( v.size() != 3 && v.size() != 4 ) { COMMA_THROW( comma::exception, "expected 3 or 4 elements, got " << v.size() ); }
+        p = boost::lexical_cast< double >( v[0] );
+        i = boost::lexical_cast< double >( v[1] );
+        d = boost::lexical_cast< double >( v[2] );
+        if( v.size() == 4 ) { threshold = boost::lexical_cast< double >( v[3] ); }
+    }
     double time_increment( boost::posix_time::ptime  t )
     {
         return ( t - time ).total_microseconds() / 1e6;
