@@ -78,7 +78,7 @@ static void usage( bool verbose = false )
     std::cerr << "    3) the transition to the next wayline occurs when the waypoint at the end of the current wayline is reached" << std::endl;
     std::cerr << std::endl;
     std::cerr << "examples: " << std::endl;
-    std::cerr << "    cat waypoints.bin | " << name() << " \"tcp:localhost:12345;fields=t,x,y,,,,yaw;binary=t,6d\" --fields=x,,,y,speed --binary=3d --error-fields=heading,cross_track > control_errors.bin" << std::endl;
+    std::cerr << "    cat waypoints.bin | " << name() << " \"tcp:localhost:12345;fields=t,x,y,,,,yaw;binary=t,6d\" --fields=x,y,,,speed --binary=3d,ui,d --error-fields=heading,cross_track > control_errors.bin" << std::endl;
     std::cerr << std::endl;
     exit( 1 );
 }
@@ -115,6 +115,7 @@ int main( int ac, char** av )
             const snark::control::input_t* input = input_stream.read();
             if( !input ) { break; }
             snark::control::vector_t to = input->location;
+            double heading_offset = input->decoration.heading_offset;
             if( verbose ) { std::cerr << name() << ": received target waypoint " << snark::control::serialise( to ) << std::endl; }
             if( from && snark::control::distance( *from, to ) < proximity )
             {
@@ -149,7 +150,7 @@ int main( int ac, char** av )
                     }
                     snark::control::error_t error;
                     error.cross_track = wayline.cross_track_error( current.location );
-                    error.heading = wayline.heading_error( current.orientation.yaw );
+                    error.heading = wayline.heading_error( current.orientation.yaw, heading_offset );
                     tied.append( error );
                 }
             }

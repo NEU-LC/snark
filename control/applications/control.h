@@ -36,6 +36,7 @@
 #include <boost/static_assert.hpp>
 #include <comma/visiting/traits.h>
 #include <comma/base/exception.h>
+#include <comma/math/cyclic.h>
 #include <snark/visiting/eigen.h>
 #include <snark/timing/timestamped.h>
 
@@ -67,7 +68,9 @@ typedef snark::timestamped< position_t > feedback_t;
 
 struct decoration_t
 {
+    decoration_t() : speed( 0 ), heading_offset( 0 ) {}
     double speed;
+    double heading_offset;
 };
 
 struct input_t
@@ -78,10 +81,10 @@ struct input_t
 
 struct error_t
 {
+    error_t() : cross_track( 0 ), heading( 0 ) {}
     double cross_track;
     double heading;
 };
-
 
 class wayline_t
 {
@@ -98,15 +101,8 @@ public:
         }
     bool is_past_endpoint( const vector_t& location ) { return perpendicular_line_at_end.signedDistance( location ) > 0; }
     double cross_track_error( const vector_t& location ) { return line.signedDistance( location ); }
-    double heading_error( double yaw )
-    {
-        if( yaw < -M_PI || yaw > M_PI ) { COMMA_THROW( comma::exception, "expected yaw within [-pi,pi], got" << yaw ); }
-        double diff = yaw - heading;
-        if( diff <= -M_PI ) { return diff + 2*M_PI; }
-        else if( diff > M_PI ) { return diff - 2*M_PI; }
-        else { return diff; }
-    }
-
+    double heading_error( double yaw, double heading_offset ) { return angle_wrap( yaw - heading - heading_offset ); }
+    double angle_wrap( double value ) { return comma::math::cyclic< double >( comma::math::interval< double >( -M_PI, M_PI ), value )(); }
 private:
     vector_t v;
     double heading;
@@ -157,11 +153,13 @@ template <> struct traits< snark::control::decoration_t >
     template < typename K, typename V > static void visit( const K&, snark::control::decoration_t& p, V& v )
     {
         v.apply( "speed", p.speed );
+        v.apply( "heading_offset", p.heading_offset );
     }
 
     template < typename K, typename V > static void visit( const K&, const snark::control::decoration_t& p, V& v )
     {
         v.apply( "speed", p.speed );
+        v.apply( "heading_offset", p.heading_offset );
     }
 };
 
