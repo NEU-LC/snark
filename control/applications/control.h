@@ -85,11 +85,6 @@ struct error_t
 
 class wayline_t
 {
-    vector_t v;
-    double heading;
-    Eigen::Hyperplane< double, dimensions > line;
-    Eigen::Hyperplane< double, dimensions > perpendicular_line_at_end;
-
 public:
     wayline_t( bool verbose = false ) {}
     wayline_t( const vector_t& start, const vector_t& end, bool verbose = false ) :
@@ -111,6 +106,12 @@ public:
         else if( diff > M_PI ) { return diff - 2*M_PI; }
         else { return diff; }
     }
+
+private:
+    vector_t v;
+    double heading;
+    Eigen::Hyperplane< double, dimensions > line;
+    Eigen::Hyperplane< double, dimensions > perpendicular_line_at_end;
 };
 
 struct command_t

@@ -58,7 +58,7 @@ static void usage( bool verbose = false )
     exit( 1 );
 }
 
-typedef snark::control::error_t input_t;
+typedef snark::control::error_t control_error_t;
 typedef snark::control::command_t command_t;
 
 int main( int ac, char** av )
@@ -67,12 +67,12 @@ int main( int ac, char** av )
     {
         comma::command_line_options options( ac, av, usage );
         comma::csv::options input_csv( options );
-        comma::csv::input_stream< input_t > input_stream( std::cin, input_csv );
+        comma::csv::input_stream< control_error_t > input_stream( std::cin, input_csv );
         comma::csv::options output_csv( options );
         output_csv.fields = options.exists( "--output-fields" ) ? options.value< std::string >( "--output-fields" ) : field_names< command_t >();
         if( input_csv.binary() ) { output_csv.format( format< command_t >( output_csv.fields ) ); }
         comma::csv::output_stream< command_t > output_stream( std::cout, output_csv );
-        if( options.exists( "--format" ) ) { std::cout << format< input_t >( input_csv.fields ) << std::endl; return 0; }
+        if( options.exists( "--format" ) ) { std::cout << format< control_error_t >( input_csv.fields ) << std::endl; return 0; }
         if( options.exists( "--output-format" ) ) { std::cout << format< command_t >( output_csv.fields ) << std::endl; return 0; }
         std::vector< std::string > v = comma::split( options.value< std::string >( "--pid" ), ',' );
         if( v.size() != 3 && v.size() != 4 ) { std::cerr << "control-heading: expected pid parameters, got " << options.value< std::string >( "--pid" ) << std::endl; return 1; }
@@ -86,10 +86,10 @@ int main( int ac, char** av )
         comma::signal_flag is_shutdown;
         while( !is_shutdown && ( input_stream.ready() || ( std::cin.good() && !std::cin.eof() ) ) )
         {
-            const input_t* input = input_stream.read();
-            if( !input ) { break; }
-            double cross_track = input->cross_track;
-            double heading = input->heading;
+            const control_error_t* error = input_stream.read();
+            if( !error ) { break; }
+            double cross_track = error->cross_track;
+            double heading = error->heading;
             command_t command;
             command.velocity = 0;
             command.turn_rate = 0;

@@ -39,7 +39,7 @@ namespace snark { namespace control {
 
 enum derivative_mode { internal, external };
 
-template< derivative_mode M >
+template< derivative_mode >
 class pid
 {
 public:
@@ -82,8 +82,8 @@ private:
     double d;
     double integral;
     boost::optional< double > threshold;
-    boost::optional< double > previous_error;
     boost::posix_time::ptime time;
+    boost::optional< double > previous_error; // only used if derivative mode is internal
 };
 
 template<> double pid< internal >::update( double error, const boost::posix_time::ptime& t )
