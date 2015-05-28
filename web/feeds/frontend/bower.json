@@ -1,14 +1,16 @@
 {
-  "name": "snark-web-sensors",
+  "name": "snark-web-feeds",
   "version": "1.0.0",
   "homepage": "https://github.com/acfr/snark",
   "authors": [
     "v-do <vdo.code@gmail.com>"
   ],
-  "description": "sensors monitor",
+  "description": "visualise feeds",
   "main": [
-    "js/sensors.js",
-    "css/sensors.css"
+    "js/feeds.js",
+    "css/feeds.css",
+    "js/point-cloud.js",
+    "css/point-cloud.css"
   ],
   "license": "BSD (3-clause)",
   "ignore": [
@@ -22,6 +24,8 @@
     "jquery": "~2.1.4",
     "jquery-ui": "~1.11.4",
     "bootstrap": "~3.3.4",
-    "dat-gui": "~0.5.1"
+    "dat-gui": "~0.5.1",
+    "threejs": "*",
+    "stats.js": "*"
   }
 }

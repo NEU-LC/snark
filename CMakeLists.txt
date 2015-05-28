@@ -183,8 +183,7 @@ CMAKE_DEPENDENT_OPTION( snark_build_actuators_quickset "build quickset component
 CMAKE_DEPENDENT_OPTION( snark_build_actuators_wheels "build wheels components" OFF "snark_build_actuators" OFF )
 CMAKE_DEPENDENT_OPTION( snark_build_actuators_universal_robots "build universal_robots components" OFF "snark_build_actuators" OFF )
 
-CMAKE_DEPENDENT_OPTION( snark_build_web_frontend "snark: build web frontend" ON "snark_build_web" OFF )
-CMAKE_DEPENDENT_OPTION( snark_build_web_websocket "snark: build web with websockets" ON "snark_build_web" OFF )
+CMAKE_DEPENDENT_OPTION( snark_build_web_feeds "snark: build web feeds" ON "snark_build_web" OFF )
 
 IF( snark_build_imaging )
     IF( WIN32 )
