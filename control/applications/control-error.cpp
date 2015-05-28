@@ -106,56 +106,51 @@ int main( int ac, char** av )
         comma::io::istream feedback_in( feedback_csv.filename, feedback_csv.binary() ? comma::io::mode::binary : comma::io::mode::ascii, comma::io::mode::non_blocking );
         comma::csv::input_stream< snark::control::feedback_t > feedback_stream( *feedback_in, feedback_csv );
         comma::io::select select;
-        select.read().add( comma::io::stdin_fd );
         select.read().add( feedback_in );
         boost::optional< snark::control::vector_t > from;
         snark::control::wayline_t wayline;
         comma::signal_flag is_shutdown;
-        while( !is_shutdown && std::cin.good() && !std::cin.eof() )
+        while( !is_shutdown && ( input_stream.ready() || ( std::cin.good() && !std::cin.eof() ) ) )
         {
-            select.check();
-            if( input_stream.ready() || select.read().ready( comma::io::stdin_fd ) )
+            const snark::control::input_t* input = input_stream.read();
+            if( !input ) { break; }
+            snark::control::vector_t to = input->location;
+            if( verbose ) { std::cerr << name() << ": received target waypoint " << snark::control::serialise( to ) << std::endl; }
+            if( from && snark::control::distance( *from, to ) < proximity )
             {
-                const snark::control::input_t* input = input_stream.read();
-                if( !input ) { break; }
-                snark::control::vector_t to = input->location;
-                if( verbose ) { std::cerr << name() << ": received target waypoint " << snark::control::serialise( to ) << std::endl; }
-                if( from && snark::control::distance( *from, to ) < proximity )
+                if( verbose ) { std::cerr << name() << ": skipping waypoint " << snark::control::serialise( to ) << " since it is within " << proximity << " of previous waypoint " << snark::control::serialise( *from ) << std::endl; }
+                continue;
+            }
+            if( from ) { wayline = snark::control::wayline_t( *from, to, verbose ); }
+            while( !is_shutdown && std::cout.good() )
+            {
+                select.check();
+                if( feedback_stream.ready() || select.read().ready( feedback_in ) )
                 {
-                    if( verbose ) { std::cerr << name() << ": skipping waypoint " << snark::control::serialise( to ) << " since it is within " << proximity << " of previous waypoint " << snark::control::serialise( *from ) << std::endl; }
-                    continue;
-                }
-                if( from ) { wayline = snark::control::wayline_t( *from, to, verbose ); }
-                while( !is_shutdown && std::cout.good() )
-                {
-                    select.check();
-                    if( feedback_stream.ready() || select.read().ready( feedback_in ) )
+                    const snark::control::feedback_t* feedback = feedback_stream.read();
+                    if( !feedback ) { std::cerr << name() << ": feedback stream error occurred prior to reaching waypoint " << snark::control::serialise( to ) << std::endl; return 1; }
+                    snark::control::position_t current = feedback->data;
+                    if( snark::control::distance( current.location, to ) < proximity )
                     {
-                        const snark::control::feedback_t* feedback = feedback_stream.read();
-                        if( !feedback ) { std::cerr << name() << ": feedback stream error occurred prior to reaching waypoint " << snark::control::serialise( to ) << std::endl; return 1; }
-                        snark::control::position_t current = feedback->data;
-                        if( snark::control::distance( current.location, to ) < proximity )
-                        {
-                            if( verbose ) { std::cerr << name() << ": waypoint " << snark::control::serialise( to ) << " is reached (proximity)" << std::endl; }
-                            from = to;
-                            break;
-                        }
-                        if( !from )
-                        {
-                            from = current.location; // the first feedback point is the start point of the first wayline
-                            wayline = snark::control::wayline_t( *from, to, verbose );
-                        }
-                        if( wayline.is_past_endpoint( current.location ) )
-                        {
-                            if( verbose ) { std::cerr << name() << ": waypoint " << snark::control::serialise( to ) << " is reached (past endpoint)" << std::endl; }
-                            from = to;
-                            break;
-                        }
-                        snark::control::error_t error;
-                        error.cross_track = wayline.cross_track_error( current.location );
-                        error.heading = wayline.heading_error( current.orientation.yaw );
-                        tied.append( error );
+                        if( verbose ) { std::cerr << name() << ": waypoint " << snark::control::serialise( to ) << " is reached (proximity)" << std::endl; }
+                        from = to;
+                        break;
                     }
+                    if( !from )
+                    {
+                        from = current.location; // the first feedback point is the start point of the first wayline
+                        wayline = snark::control::wayline_t( *from, to, verbose );
+                    }
+                    if( wayline.is_past_endpoint( current.location ) )
+                    {
+                        if( verbose ) { std::cerr << name() << ": waypoint " << snark::control::serialise( to ) << " is reached (past endpoint)" << std::endl; }
+                        from = to;
+                        break;
+                    }
+                    snark::control::error_t error;
+                    error.cross_track = wayline.cross_track_error( current.location );
+                    error.heading = wayline.heading_error( current.orientation.yaw );
+                    tied.append( error );
                 }
             }
         }
