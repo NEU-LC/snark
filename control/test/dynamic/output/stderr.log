@@ -1,0 +1,10 @@
+control-error: received target waypoint 1,0
+wayline from 0,0 to 1,0
+control-error: received target waypoint 1,1
+wayline from 0.5,0 to 1,1
+control-error: waypoint 1,1 is reached (proximity)
+control-error: received target waypoint 0,1
+wayline from 1,1 to 0,1
+control-error: received target waypoint 0,0
+wayline from 0.5,1 to 0,0
+control-error: waypoint 0,0 is reached (proximity)

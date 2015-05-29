@@ -34,6 +34,8 @@
 #include <iostream>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/static_assert.hpp>
+#include <boost/bimap.hpp>
+#include <boost/assign.hpp>
 #include <comma/visiting/traits.h>
 #include <comma/base/exception.h>
 #include <comma/math/cyclic.h>
@@ -41,6 +43,14 @@
 #include <snark/timing/timestamped.h>
 
 namespace snark { namespace control {
+
+enum mode { fixed, dynamic };
+typedef boost::bimap< mode, std::string > mode_name_t;
+static const mode_name_t mode_names = boost::assign::list_of< mode_name_t::relation >
+    ( fixed, "fixed" )
+    ( dynamic, "dynamic" );
+mode mode_from_string( std::string s ) { return  mode_names.right.at( s ); }
+std::string mode_to_string( mode m ) { return  mode_names.left.at( m ); }
 
 static const unsigned int dimensions = 2;
 typedef Eigen::Matrix< double, dimensions, 1 > vector_t;

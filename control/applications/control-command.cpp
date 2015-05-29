@@ -81,10 +81,10 @@ int main( int ac, char** av )
         {
             const control_error_t* error = input_stream.read();
             if( !error ) { break; }
-            double cross_track = error->cross_track;
-            double heading = error->heading;
+            //double cross_track = error->cross_track;
+            //double heading = error->heading;
             command_t command;
-            command.turn_rate = 0;
+            command.turn_rate = 0; //heading_pid.update( error->heading, now );
             command.local_heading = 0;
             output_stream.write( command );
         }

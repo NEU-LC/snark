@@ -46,6 +46,7 @@ template< typename T > std::string field_names() { return comma::join( comma::cs
 template< typename T > std::string format( std::string fields ) { return comma::csv::format::value< T >( fields, false ); }
 static const std::string default_fields = "x,y";
 static const double default_proximity = 0.1;
+static const std::string default_mode = "fixed";
 
 static void usage( bool verbose = false )
 {
@@ -68,20 +69,30 @@ static void usage( bool verbose = false )
     std::cerr << "    --error-fields <names>: comma-separated field names (default: " << field_names< snark::control::error_t >() << ")" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options: " << std::endl;
-    std::cerr << "    --proximity: a waypoint is reached as soon as position is within proximity (default: " << default_proximity << ")" << std::endl;
+    std::cerr << "    --mode <mode>: path mode (default: " << default_mode << ")" << std::endl;
+    std::cerr << "    --proximity <proximity>: a wayline is traversed as soon as current position is within proximity of the endpoint (default: " << default_proximity << ")" << std::endl;
+    std::cerr << "    --past-endpoint: a wayline is traversed as soon as current position is past the endpoint" << std::endl;
     std::cerr << "    --format: output binary format of input stream to stdout and exit" << std::endl;
     std::cerr << "    --output-format: output binary format of output stream to stdout and exit" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "notes: " << std::endl;
-    std::cerr << "    1) the control errors are determined with respect to the current wayline, which in turn is determined by the last two waypoints" << std::endl;
-    std::cerr << "    2) the first wayline is from the first feedback position to the first waypoint" << std::endl;
-    std::cerr << "    3) the transition to the next wayline occurs when the waypoint at the end of the current wayline is reached" << std::endl;
+    std::cerr << "path modes: " << std::endl;
+    std::cerr << "    fixed: wait until the current waypoint is reached before accepting a new waypoint (first feedback position is the start of the first wayline)" << std::endl;
+    std::cerr << "    dynamic: use a new waypoint as soon as it becomes available to define a new wayline form the current position to the new waypoint" << std::endl;
     std::cerr << std::endl;
     std::cerr << "examples: " << std::endl;
     std::cerr << "    cat waypoints.bin | " << name() << " \"tcp:localhost:12345;fields=t,x,y,,,,yaw;binary=t,6d\" --fields=x,y,,,speed --binary=3d,ui,d --error-fields=heading,cross_track > control_errors.bin" << std::endl;
     std::cerr << std::endl;
     exit( 1 );
 }
+
+struct reached_t
+{
+    bool state;
+    std::string reason;
+    reached_t() : state( false ) {}
+    reached_t( const std::string& reason ) : state( true ), reason( reason ) {}
+    operator bool() const { return state; }
+};
 
 int main( int ac, char** av )
 {
@@ -98,8 +109,11 @@ int main( int ac, char** av )
         if( options.exists( "--format" ) ) { std::cout << format< snark::control::input_t >( input_csv.fields ) << std::endl; return 0; }
         if( options.exists( "--output-format" ) ) { std::cout << format< snark::control::input_t >( input_csv.fields ) << ',' << format< snark::control::error_t >( error_csv.fields ) << std::endl; return 0; }
         double proximity = options.value< double >( "--proximity", default_proximity );
+        if( proximity <= 0 ) { std::cerr << name() << ": expected positive proximity, got " << proximity << std::endl; return 1; }
+        snark::control::mode mode = snark::control::mode_from_string( options.value< std::string >( "--mode", default_mode ) );
+        bool use_past_endpoint = options.exists( "--past-endpoint" );
         bool verbose = options.exists( "--verbose,-v" );
-        std::vector< std::string > unnamed = options.unnamed( "--help,-h,--verbose,-v,--format,--output-format,--flush", "--fields,-f,--binary,-b,--error-fields,--precision,--delimiter" );
+        std::vector< std::string > unnamed = options.unnamed( "--help,-h,--verbose,-v,--format,--output-format,--past-endpoint", "-.*,--.*" );
         if( unnamed.empty() ) { std::cerr << name() << ": feedback stream is not given" << std::endl; return 1; }
         comma::csv::options feedback_csv = comma::name_value::parser( "filename", ';', '=', false ).get< comma::csv::options >( unnamed[0] );
         if( feedback_csv.fields.empty() ) { feedback_csv.fields = field_names< snark::control::feedback_t >(); }
@@ -112,40 +126,36 @@ int main( int ac, char** av )
         comma::signal_flag is_shutdown;
         while( !is_shutdown && ( input_stream.ready() || ( std::cin.good() && !std::cin.eof() ) ) )
         {
+            reached_t reached;
             const snark::control::input_t* input = input_stream.read();
             if( !input ) { break; }
             snark::control::vector_t to = input->location;
             double heading_offset = input->decoration.heading_offset;
             if( verbose ) { std::cerr << name() << ": received target waypoint " << snark::control::serialise( to ) << std::endl; }
-            if( from && snark::control::distance( *from, to ) < proximity )
-            {
-                if( verbose ) { std::cerr << name() << ": skipping waypoint " << snark::control::serialise( to ) << " since it is within " << proximity << " of previous waypoint " << snark::control::serialise( *from ) << std::endl; }
-                continue;
-            }
+            if( from && snark::control::distance( *from, to ) < proximity ) { continue; }
             if( from ) { wayline = snark::control::wayline_t( *from, to, verbose ); }
             while( !is_shutdown && std::cout.good() )
             {
+                if( mode == snark::control::dynamic && input_stream.ready() ) { from = boost::none; break; }
                 select.check();
                 if( feedback_stream.ready() || select.read().ready( feedback_in ) )
                 {
                     const snark::control::feedback_t* feedback = feedback_stream.read();
                     if( !feedback ) { std::cerr << name() << ": feedback stream error occurred prior to reaching waypoint " << snark::control::serialise( to ) << std::endl; return 1; }
                     snark::control::position_t current = feedback->data;
-                    if( snark::control::distance( current.location, to ) < proximity )
-                    {
-                        if( verbose ) { std::cerr << name() << ": waypoint " << snark::control::serialise( to ) << " is reached (proximity)" << std::endl; }
-                        from = to;
-                        break;
-                    }
                     if( !from )
                     {
-                        from = current.location; // the first feedback point is the start point of the first wayline
+                        from = current.location;
                         wayline = snark::control::wayline_t( *from, to, verbose );
                     }
-                    if( wayline.is_past_endpoint( current.location ) )
+                    if( snark::control::distance( current.location, to ) < proximity ) { reached = reached_t( "proximity" ); }
+                    if( use_past_endpoint && wayline.is_past_endpoint( current.location ) ) { reached = reached_t( "past endpoint" ); }
+                    if( reached )
                     {
-                        if( verbose ) { std::cerr << name() << ": waypoint " << snark::control::serialise( to ) << " is reached (past endpoint)" << std::endl; }
-                        from = to;
+                        if( verbose ) { std::cerr << name() << ": waypoint " << snark::control::serialise( to ) << " is reached (" << reached.reason << ")" << std::endl; }
+                        if( mode == snark::control::fixed ) { from = to; }
+                        else if( mode == snark::control::dynamic ) { from = boost::none; }
+                        else { COMMA_THROW( comma::exception, "received unrecongnised mode " << snark::control::mode_to_string( mode ) ); }
                         break;
                     }
                     snark::control::error_t error;
