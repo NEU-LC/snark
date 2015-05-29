@@ -1,6 +1,0 @@
-control-error: received target waypoint 1,0
-wayline from 0,0 to 1,0
-control-error: waypoint 1,0 is reached (proximity)
-control-error: received target waypoint 2,0
-wayline from 1,0 to 2,0
-control-error: waypoint 2,0 is reached (proximity)
