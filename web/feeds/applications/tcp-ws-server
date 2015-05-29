@@ -1,0 +1,88 @@
+#!/usr/bin/python
+
+# requires autobahn python:
+#
+#   sudo pip install autobahn[twisted]
+
+import json
+import socket
+from autobahn.twisted.websocket import WebSocketServerProtocol, WebSocketServerFactory
+
+DEFAULT_PORT = 9999
+
+description = '''\
+streams tcp data over websocket
+'''
+
+logging = False
+
+class TcpServerProtocol(WebSocketServerProtocol):
+
+    def __init__(self):
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.ready = False
+
+    def onConnect(self, request):
+        if logging: print "Client connecting: {0}".format(request.peer)
+
+    def doRead(self, packets):
+        buf = self.socket.recv(self.size * packets, socket.MSG_WAITALL)
+        self.sendMessage(buf, True)
+
+    def onOpen(self):
+        if logging: print "WebSocket connection open."
+
+    def onMessage(self, payload, isBinary):
+        if not self.ready:
+            data = json.loads(payload.decode('utf8'))
+            if type(data) is dict:
+                host = data.get('host')
+                port = data.get('port')
+                size = data.get('size')
+            if type(data) is not dict or host is None or port is None or size is None:
+                self.sendClose(code=3000, reason=u'init parameters required: { host: <str>, port: <int>, size: <int> }')
+                return
+            try:
+                self.socket.connect((host, port))
+            except Exception as e:
+                self.sendClose(code=3000, reason=u'error connecting to "{0}:{1}" {2}'.format(host, port, e))
+                return
+            self.size = size
+            self.ready = True
+            return
+        if self.ready:
+            self.doRead(int(payload))
+
+    def onClose(self, wasClean, code, reason):
+        self.socket.close()
+        if logging: print "WebSocket connection closed: {0}".format(reason)
+
+
+if __name__ == '__main__':
+
+    import argparse
+
+    parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter, description=description)
+    parser.add_argument( '--port', help='websocket server port (default: {0})'.format(DEFAULT_PORT), type=int, default=DEFAULT_PORT )
+    parser.add_argument( '--debug', help='enable websocket debugging', action='store_true')
+    parser.add_argument( '--log', help='enable logging (default: stdout)', action='store', default='', const='-', nargs='?')
+    args = parser.parse_args()
+
+    if args.log:
+        import sys
+        from twisted.python import log
+        if args.log == '-':
+            log.startLogging(sys.stdout)
+        else:
+            f = open(args.log, 'a')
+            log.startLogging(f)
+        logging = True
+
+    factory = WebSocketServerFactory("ws://localhost:{0}".format(args.port), debug=args.debug)
+    factory.protocol = TcpServerProtocol
+    # factory.setProtocolOptions(maxConnections=2)
+
+    from twisted.internet import reactor
+
+    reactor.listenTCP(args.port, factory)
+    reactor.run()
