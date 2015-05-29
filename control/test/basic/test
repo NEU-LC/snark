@@ -24,8 +24,22 @@ echo "format/output/heading=\"$( control-error "filename" --error-fields=heading
 
 echo -e "0,0,0\n0,0.5,0.5\n0,1,0\n0,1.5,-0.5\n0,2,0" | csv-to-bin 3d > $feedback
 binary_test_output=( $( echo -e "10,1,0\n20,2,0" | csv-to-bin 3d | control-error "$feedback;fields=yaw,x,y;binary=3d" --fields=speed,x,y --binary=3d --error-fields=heading,cross_track --verbose | csv-from-bin 5d ) )
-echo "binary/output0=${binary_test_output[0]}"
-echo "binary/output1=${binary_test_output[1]}"
-echo "binary/output2=${binary_test_output[2]}"
+
+function echo_result
+{
+    local lhs=$1
+    local result=$2
+    local x y xtrack heading
+    IFS=, read x y speed xtrack heading <<< $result
+    echo "$lhs/x=$x"
+    echo "$lhs/y=$y"
+    echo "$lhs/speed=$speed"
+    echo "$lhs/xtrack=$xtrack"
+    echo "$lhs/heading=$heading"
+}
+
+echo_result "binary/output[0]" "${binary_test_output[0]}"
+echo_result "binary/output[1]" "${binary_test_output[1]}"
+echo_result "binary/output[2]" "${binary_test_output[2]}"
 
 clean

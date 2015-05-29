@@ -65,21 +65,21 @@ function test_feedback
 function send_input { echo $1 > $input; sleep 0.1; }
 
 send_input 1,0
-test_feedback "to10/feedback[0]" 0,0,0
-test_feedback "to10/feedback[1]" 0.25,0.1,0.01
+test_feedback "from_00_to_10/feedback[0]" 0,0,0
+test_feedback "from_00_to_10/feedback[1]" 0.25,0.1,0.01
 
 send_input 1,1
-test_feedback "to11/feedback[0]" 0.5,0,1.1071487177940904
-test_feedback "to11/feedback[1]" 0.75,0.5,1.1071487177940904
+test_feedback "from_10_to_11/feedback[0]" 0.5,0,1.1071487177940904
+test_feedback "from_10_to_11/feedback[1]" 0.75,0.5,1.1071487177940904
 send_feedback 1,1,0.46364760900080609
 
 send_input 0,1
-test_feedback "to01/feedback[0]" 1,1,3.141592653589793
-test_feedback "to01/feedback[1]" 0.75,1.1,3.141592653589793
+test_feedback "from_11_to_01/feedback[0]" 1,1,3.141592653589793
+test_feedback "from_11_to_01/feedback[1]" 0.75,1.1,3.141592653589793
 
 send_input 0,0
-test_feedback "to00/feedback[0]" 0.5,1,-2.0344439357957027
-test_feedback "to00/feedback[1]" 0.25,0.5,-2.0344439357957027
+test_feedback "from_01_to_00/feedback[0]" 0.5,1,-2.0344439357957027
+test_feedback "from_01_to_00/feedback[1]" 0.25,0.5,-2.0344439357957027
 send_feedback 0,0,-2.0344439357957027
 
 clean
