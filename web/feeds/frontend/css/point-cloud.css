@@ -7,3 +7,11 @@ canvas {
     height: 100%;
     display: block;
 }
+
+.dg kbd {
+    padding: 0px 3px;
+    background: #343434;
+    color: white;
+    border-radius: 3px;
+    box-shadow: inset 0 -1px #676767;
+}

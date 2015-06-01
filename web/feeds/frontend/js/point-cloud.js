@@ -31,6 +31,9 @@ var options_point_cloud = {
             ws = null;
         }
     },
+    toggle: function() {
+        return (ws && ws.readyState === WebSocket.OPEN) ? this.stop() : this.start();
+    },
     clear: function() {
         while (point_clouds.length) {
             remove_point_cloud();
@@ -95,8 +98,7 @@ function gui_point_cloud() {
     //folder.add(options_point_cloud, 'height_range', 1, 6).step(0.001).name('height range');
     //folder.add(options_point_cloud, 'distance_max', 1, 150).step(1).name('distance max');
     //folder.add(options_point_cloud, 'refresh');
-    folder.add(options_point_cloud, 'start');
-    folder.add(options_point_cloud, 'stop');
+    folder.add(options_point_cloud, 'toggle').name('start/stop <kbd>spacebar</kbd>');
     folder.add(options_point_cloud, 'clear');
     folder.add(options_point_cloud, 'stats').onFinishChange(function(value) {
         if (options_point_cloud.stats) {
@@ -193,9 +195,18 @@ function remove_point_cloud() {
     scene.remove(point_clouds.shift());
 }
 
+function key_toggle(e) {
+    if (e.keyCode === 32) {
+        options_point_cloud.toggle();
+    }
+}
+
 $(function() {
+    init_gui();
     document.body.appendChild(renderer.domElement);
     document.body.appendChild(stats.domElement);
-    init_gui();
+    document.addEventListener('keypress', key_toggle, false);
+    $(':input').focusin(function() { document.removeEventListener('keypress', key_toggle); });
+    $(':input').focusout(function() { document.addEventListener('keypress', key_toggle, false); });
     requestAnimationFrame(animate);
 });
