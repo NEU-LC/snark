@@ -80,7 +80,7 @@ function init_gui() {
 function gui_point_cloud() {
     var folder = gui.addFolder('point cloud');
     folder.open();
-    folder.add(options_point_cloud, 'websocket_url').name('websocket url').onFinishChange(function(value) {
+    folder.add(options_point_cloud, 'websocket_url').name('websocket server').onFinishChange(function(value) {
         init_stream(options_point_cloud.url);
     });
     folder.add(options_point_cloud, 'host');
