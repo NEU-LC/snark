@@ -76,17 +76,17 @@ struct position_t
 
 typedef snark::timestamped< position_t > feedback_t;
 
-struct decoration_t
+struct parameters_t
 {
-    decoration_t() : speed( 0 ), heading_offset( 0 ) {}
+    parameters_t() : speed( 0 ), heading_offset( 0 ) {}
     double speed;
     double heading_offset;
 };
 
-struct input_t
+struct target_t
 {
     vector_t location;
-    decoration_t decoration;
+    parameters_t parameters;
 };
 
 struct error_t
@@ -96,7 +96,7 @@ struct error_t
     double heading;
 };
 
-class wayline_t
+struct wayline_t
 {
 public:
     wayline_t( bool verbose = false ) {}
@@ -109,15 +109,26 @@ public:
             BOOST_STATIC_ASSERT( dimensions == 2 );
             if( verbose ) { std::cerr << "wayline from " << serialise( start ) << " to " << serialise( end ) << std::endl; }
         }
-    bool is_past_endpoint( const vector_t& location ) { return perpendicular_line_at_end.signedDistance( location ) > 0; }
-    double cross_track_error( const vector_t& location ) { return line.signedDistance( location ); }
-    double heading_error( double yaw, double heading_offset ) { return angle_wrap( yaw - heading - heading_offset ); }
-    double angle_wrap( double value ) { return comma::math::cyclic< double >( comma::math::interval< double >( -M_PI, M_PI ), value )(); }
+    bool is_past_endpoint( const vector_t& location ) const { return perpendicular_line_at_end.signedDistance( location ) > 0; }
+    double cross_track_error( const vector_t& location ) const { return line.signedDistance( location ); }
+    double heading_error( double yaw, double heading_offset ) const { return angle_wrap( yaw - heading - heading_offset ); }
+    double get_heading() const { return heading; }
 private:
     vector_t v;
     double heading;
     Eigen::Hyperplane< double, dimensions > line;
     Eigen::Hyperplane< double, dimensions > perpendicular_line_at_end;
+    double angle_wrap( double value ) const { return comma::math::cyclic< double >( comma::math::interval< double >( -M_PI, M_PI ), value )(); }
+};
+
+struct control_data_t
+{
+    control_data_t() {}
+    control_data_t( const target_t& target, const wayline_t& wayline, const feedback_t& feedback, const error_t& error ) : target( target ), wayline( wayline ), feedback( feedback ), error( error ) {}
+    target_t target;
+    wayline_t wayline;
+    feedback_t feedback;
+    error_t error;
 };
 
 struct command_t
@@ -158,33 +169,33 @@ template <> struct traits< snark::control::position_t >
     }
 };
 
-template <> struct traits< snark::control::decoration_t >
+template <> struct traits< snark::control::parameters_t >
 {
-    template < typename K, typename V > static void visit( const K&, snark::control::decoration_t& p, V& v )
+    template < typename K, typename V > static void visit( const K&, snark::control::parameters_t& p, V& v )
     {
         v.apply( "speed", p.speed );
         v.apply( "heading_offset", p.heading_offset );
     }
 
-    template < typename K, typename V > static void visit( const K&, const snark::control::decoration_t& p, V& v )
+    template < typename K, typename V > static void visit( const K&, const snark::control::parameters_t& p, V& v )
     {
         v.apply( "speed", p.speed );
         v.apply( "heading_offset", p.heading_offset );
     }
 };
 
-template <> struct traits< snark::control::input_t >
+template <> struct traits< snark::control::target_t >
 {
-    template < typename K, typename V > static void visit( const K&, snark::control::input_t& p, V& v )
+    template < typename K, typename V > static void visit( const K&, snark::control::target_t& p, V& v )
     {
         v.apply( "location", p.location );
-        v.apply( "decoration", p.decoration );
+        v.apply( "parameters", p.parameters );
     }
 
-    template < typename K, typename V > static void visit( const K&, const snark::control::input_t& p, V& v )
+    template < typename K, typename V > static void visit( const K&, const snark::control::target_t& p, V& v )
     {
         v.apply( "location", p.location );
-        v.apply( "decoration", p.decoration );
+        v.apply( "parameters", p.parameters );
     }
 };
 
@@ -200,6 +211,33 @@ template <> struct traits< snark::control::error_t >
     {
         v.apply( "cross_track", p.cross_track );
         v.apply( "heading", p.heading );
+    }
+};
+
+template <> struct traits< snark::control::wayline_t >
+{
+    template < typename K, typename V > static void visit( const K&, const snark::control::wayline_t& p, V& v )
+    {
+        v.apply( "heading", p.get_heading() );
+    }
+};
+
+template <> struct traits< snark::control::control_data_t >
+{
+    template < typename K, typename V > static void visit( const K&, snark::control::control_data_t& p, V& v )
+    {
+        v.apply( "target", p.target );
+        v.apply( "wayline", p.wayline );
+        v.apply( "feedback", p.feedback );
+        v.apply( "error", p.error );
+    }
+
+    template < typename K, typename V > static void visit( const K&, const snark::control::control_data_t& p, V& v )
+    {
+        v.apply( "target", p.target );
+        v.apply( "wayline", p.wayline );
+        v.apply( "feedback", p.feedback );
+        v.apply( "error", p.error );
     }
 };
 

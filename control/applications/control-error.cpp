@@ -42,8 +42,8 @@
 
 static const char* name() { return "control-error"; }
 
-template< typename T > std::string field_names() { return comma::join( comma::csv::names< T >( false ), ',' ); }
-template< typename T > std::string format( std::string fields ) { return comma::csv::format::value< T >( fields, false ); }
+template< typename T > std::string field_names( bool full_xpath = false ) { return comma::join( comma::csv::names< T >( full_xpath ), ',' ); }
+template< typename T > std::string format( std::string fields, bool full_xpath = false ) { return comma::csv::format::value< T >( fields, full_xpath ); }
 static const std::string default_fields = "x,y";
 static const double default_proximity = 0.1;
 static const std::string default_mode = "fixed";
@@ -61,26 +61,24 @@ static void usage( bool verbose = false )
     std::cerr << "    default fields: " << field_names< snark::control::feedback_t >() << std::endl;
     std::cerr << std::endl;
     std::cerr << "input stream options: " << std::endl;
-    std::cerr << "    --fields,-f <names>: comma-separated field names (possible fields: " << field_names< snark::control::input_t >() << "; default: " << default_fields << ")" << std::endl;
+    std::cerr << "    --fields,-f <names>: comma-separated field names (possible fields: " << field_names< snark::control::target_t >() << "; default: " << default_fields << ")" << std::endl;
     std::cerr << "    --binary,-b <format>: use binary format" << std::endl;
     if( verbose ) { std::cerr << comma::csv::format::usage() << std::endl; }
-    std::cerr << std::endl;
-    std::cerr << "control error stream options: " << std::endl;
-    std::cerr << "    --error-fields <names>: comma-separated field names (default: " << field_names< snark::control::error_t >() << ")" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options: " << std::endl;
     std::cerr << "    --mode <mode>: path mode (default: " << default_mode << ")" << std::endl;
     std::cerr << "    --proximity <proximity>: a wayline is traversed as soon as current position is within proximity of the endpoint (default: " << default_proximity << ")" << std::endl;
-    std::cerr << "    --past-endpoint: a wayline is traversed as soon as current position is past the endpoint" << std::endl;
+    std::cerr << "    --past-endpoint: a wayline is traversed as soon as current position is past the endpoint (or proximity condition is met)" << std::endl;
     std::cerr << "    --format: output binary format of input stream to stdout and exit" << std::endl;
-    std::cerr << "    --output-format: output binary format of output stream to stdout and exit" << std::endl;
+    std::cerr << "    --output-format: show binary format of output stream on stdout and exit" << std::endl;
+    std::cerr << "    --output-fields: show output fields on stdout and exit" << std::endl;
     std::cerr << std::endl;
     std::cerr << "path modes: " << std::endl;
     std::cerr << "    fixed: wait until the current waypoint is reached before accepting a new waypoint (first feedback position is the start of the first wayline)" << std::endl;
     std::cerr << "    dynamic: use a new waypoint as soon as it becomes available to define a new wayline form the current position to the new waypoint" << std::endl;
     std::cerr << std::endl;
     std::cerr << "examples: " << std::endl;
-    std::cerr << "    cat waypoints.bin | " << name() << " \"tcp:localhost:12345;fields=t,x,y,,,,yaw;binary=t,6d\" --fields=x,y,,,speed --binary=3d,ui,d --error-fields=heading,cross_track > control_errors.bin" << std::endl;
+    std::cerr << "    cat targets.bin | " << name() << " \"tcp:localhost:12345;fields=t,x,y,,,,yaw;binary=t,6d\" --fields=x,y,,,speed --binary=3d,ui,d --past-endpoint > control.bin" << std::endl;
     std::cerr << std::endl;
     exit( 1 );
 }
@@ -100,14 +98,15 @@ int main( int ac, char** av )
     {
         comma::command_line_options options( ac, av, usage );
         comma::csv::options input_csv( options, default_fields );
-        comma::csv::input_stream< snark::control::input_t > input_stream( std::cin, input_csv );
-        comma::csv::options error_csv( options );
-        error_csv.fields = options.exists( "--error-fields" ) ? options.value< std::string >( "--error-fields" ) : field_names< snark::control::error_t >();
-        if( input_csv.binary() ) { error_csv.format( format< snark::control::error_t >( error_csv.fields ) ); }
-        comma::csv::output_stream< snark::control::error_t > error_stream( std::cout, error_csv );
-        comma::csv::tied< snark::control::input_t, snark::control::error_t > tied( input_stream, error_stream );
-        if( options.exists( "--format" ) ) { std::cout << format< snark::control::input_t >( input_csv.fields ) << std::endl; return 0; }
-        if( options.exists( "--output-format" ) ) { std::cout << format< snark::control::input_t >( input_csv.fields ) << ',' << format< snark::control::error_t >( error_csv.fields ) << std::endl; return 0; }
+        comma::csv::input_stream< snark::control::target_t > input_stream( std::cin, input_csv );
+        comma::csv::options output_csv( options );
+        output_csv.full_xpath = true;
+        output_csv.fields = field_names< snark::control::control_data_t >( true );
+        if( input_csv.binary() ) { output_csv.format( format< snark::control::control_data_t >( output_csv.fields, true ) ); }
+        comma::csv::output_stream< snark::control::control_data_t > output_stream( std::cout, output_csv );
+        if( options.exists( "--format" ) ) { std::cout << format< snark::control::target_t >( input_csv.fields ) << std::endl; return 0; }
+        if( options.exists( "--output-format" ) ) { std::cout << format< snark::control::control_data_t >( output_csv.fields, true ) << std::endl; return 0; }
+        if( options.exists( "--output-fields" ) ) { std::cout << output_csv.fields << std::endl; return 0; }
         double proximity = options.value< double >( "--proximity", default_proximity );
         if( proximity <= 0 ) { std::cerr << name() << ": expected positive proximity, got " << proximity << std::endl; return 1; }
         snark::control::mode mode = snark::control::mode_from_string( options.value< std::string >( "--mode", default_mode ) );
@@ -127,10 +126,10 @@ int main( int ac, char** av )
         while( !is_shutdown && ( input_stream.ready() || ( std::cin.good() && !std::cin.eof() ) ) )
         {
             reached_t reached;
-            const snark::control::input_t* input = input_stream.read();
-            if( !input ) { break; }
-            snark::control::vector_t to = input->location;
-            double heading_offset = input->decoration.heading_offset;
+            const snark::control::target_t* target = input_stream.read();
+            if( !target ) { break; }
+            snark::control::vector_t to = target->location;
+            double heading_offset = target->parameters.heading_offset;
             if( verbose ) { std::cerr << name() << ": received target waypoint " << snark::control::serialise( to ) << std::endl; }
             if( from && snark::control::distance( *from, to ) < proximity ) { continue; }
             if( from ) { wayline = snark::control::wayline_t( *from, to, verbose ); }
@@ -161,7 +160,7 @@ int main( int ac, char** av )
                     snark::control::error_t error;
                     error.cross_track = wayline.cross_track_error( current.location );
                     error.heading = wayline.heading_error( current.orientation.yaw, heading_offset );
-                    tied.append( error );
+                    output_stream.write( snark::control::control_data_t( *target, wayline, *feedback, error ) );
                 }
             }
         }

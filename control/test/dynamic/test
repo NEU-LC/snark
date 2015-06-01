@@ -29,7 +29,7 @@ if [[ -z "$port" ]]; then echo "failed to find a free tcp port" >&2; exit 1; fi
 
 tail -f $feedback | socat -u - tcp-listen:$port,reuseaddr,fork & feedback_pid=$!
 wait_for_success "netstat -ltn | grep $port &>/dev/null"
-tail -f $input | control-error "tcp:localhost:$port;fields=t,x,y,,,,yaw" --proximity=$proximity --past-endpoint --mode=$mode --precision=5 --verbose > $output & pid=$!
+tail -f $input | control-error "tcp:localhost:$port;fields=t,x,y,,,,yaw" --proximity=$proximity --past-endpoint --mode=$mode --verbose > $output & pid=$!
 
 function send_feedback
 {
@@ -54,8 +54,9 @@ function test_feedback
     local values=$2
     send_feedback $values
     wait_for_new_output || exit 1
+    local output_fields="target/location/x,target/location/y,error/cross_track,error/heading"
     local x y xtrack heading
-    IFS=, read x y xtrack heading <<< $( tail -n1 $output )
+    IFS=, read x y xtrack heading <<< $( tail -n1 $output | csv-shuffle --fields=$( control-error --output-fields ) --output-fields=$output_fields )
     echo "$lhs/x=$x"
     echo "$lhs/y=$y"
     echo "$lhs/xtrack=$xtrack"
