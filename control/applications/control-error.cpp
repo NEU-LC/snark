@@ -44,14 +44,13 @@ static const char* name() { return "control-error"; }
 
 template< typename T > std::string field_names( bool full_xpath = false ) { return comma::join( comma::csv::names< T >( full_xpath ), ',' ); }
 template< typename T > std::string format( std::string fields, bool full_xpath = false ) { return comma::csv::format::value< T >( fields, full_xpath ); }
-static const std::string default_fields = "x,y";
 static const double default_proximity = 0.1;
 static const std::string default_mode = "fixed";
 
 static void usage( bool verbose = false )
 {
     std::cerr << std::endl;
-    std::cerr << "take waypoints on stdin and copy to stdout with the appended cross-track and heading errors with respect to the feedback stream" << std::endl;
+    std::cerr << "take target waypoints on stdin and output to stdout with the appended wayline, feedback, and control errors" << std::endl;
     std::cerr << std::endl;
     std::cerr << "usage: " << name() << " <feedback> [<options>]" << std::endl;
     std::cerr << std::endl;
@@ -61,7 +60,7 @@ static void usage( bool verbose = false )
     std::cerr << "    default fields: " << field_names< snark::control::feedback_t >() << std::endl;
     std::cerr << std::endl;
     std::cerr << "input stream options: " << std::endl;
-    std::cerr << "    --fields,-f <names>: comma-separated field names (possible fields: " << field_names< snark::control::target_t >() << "; default: " << default_fields << ")" << std::endl;
+    std::cerr << "    --fields,-f <names>: comma-separated field names (default: " << field_names< snark::control::target_t >() << ")" << std::endl;
     std::cerr << "    --binary,-b <format>: use binary format" << std::endl;
     if( verbose ) { std::cerr << comma::csv::format::usage() << std::endl; }
     std::cerr << std::endl;
@@ -69,9 +68,9 @@ static void usage( bool verbose = false )
     std::cerr << "    --mode <mode>: path mode (default: " << default_mode << ")" << std::endl;
     std::cerr << "    --proximity <proximity>: a wayline is traversed as soon as current position is within proximity of the endpoint (default: " << default_proximity << ")" << std::endl;
     std::cerr << "    --past-endpoint: a wayline is traversed as soon as current position is past the endpoint (or proximity condition is met)" << std::endl;
-    std::cerr << "    --format: output binary format of input stream to stdout and exit" << std::endl;
-    std::cerr << "    --output-format: show binary format of output stream on stdout and exit" << std::endl;
-    std::cerr << "    --output-fields: show output fields on stdout and exit" << std::endl;
+    std::cerr << "    --format: show binary format of default input stream and exit" << std::endl;
+    std::cerr << "    --output-format: show binary format of output stream and exit" << std::endl;
+    std::cerr << "    --output-fields: show output fields and exit" << std::endl;
     std::cerr << std::endl;
     std::cerr << "path modes: " << std::endl;
     std::cerr << "    fixed: wait until the current waypoint is reached before accepting a new waypoint (first feedback position is the start of the first wayline)" << std::endl;
@@ -97,7 +96,7 @@ int main( int ac, char** av )
     try
     {
         comma::command_line_options options( ac, av, usage );
-        comma::csv::options input_csv( options, default_fields );
+        comma::csv::options input_csv( options );
         comma::csv::input_stream< snark::control::target_t > input_stream( std::cin, input_csv );
         comma::csv::options output_csv( options );
         output_csv.full_xpath = true;

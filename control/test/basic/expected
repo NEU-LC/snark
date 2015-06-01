@@ -1,6 +1,6 @@
 format/input/x="d"
 format/input/xy="d,d"
-format/input/default="d,d"
+format/input/default="d,d,d,d"
 format/input/xyspeed="d,d,d"
 format/output="d,d,d,d,d,t,d,d,d,d,d"
 binary/output[0]/x=1 +/- 0.01

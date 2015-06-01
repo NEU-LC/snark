@@ -28,7 +28,7 @@ if [[ -z "$port" ]]; then echo "failed to find a free tcp port" >&2; exit 1; fi
 
 tail -f $feedback | socat -u - tcp-listen:$port,reuseaddr,fork & feedback_pid=$!
 wait_for_success "netstat -ltn | grep $port &>/dev/null"
-tail -f $input | control-error "tcp:localhost:$port;fields=t,x,y,,,,yaw" --proximity=$proximity --past-endpoint --verbose > $output & pid=$!
+tail -f $input | control-error "tcp:localhost:$port;fields=t,x,y,,,,yaw" --proximity=$proximity --fields=x,y --past-endpoint --verbose > $output & pid=$!
 
 function send_feedback
 {

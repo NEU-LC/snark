@@ -30,8 +30,8 @@ function extract
 }
 
 fields="target/location/x,target/location/y,target/parameters/speed,error/cross_track,error/heading"
-echo -e "0,0,0\n0,0.5,0.5\n0,1,0\n0,1.5,-0.5\n0,2,0" | csv-to-bin 3d > $feedback
-output=( $( echo -e "10,1,0\n20,2,0" | csv-to-bin 3d | control-error "$feedback;fields=yaw,x,y;binary=3d" --fields=speed,x,y --binary=3d --verbose | extract $fields ) )
+echo -e "1,0,0\n1,0.5,0.5\n1,1,0\n2,1.5,-0.5\n2,2,0" | csv-to-bin 3d > $feedback
+output=( $( echo -e "1,10,1,0\n2,20,2,0" | csv-to-bin 4d | control-error "$feedback;fields=yaw,x,y;binary=3d" --fields=heading_offset,speed,x,y --binary=4d --verbose | extract $fields ) )
 
 function echo_result
 {
