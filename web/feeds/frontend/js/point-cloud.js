@@ -196,7 +196,8 @@ function remove_point_cloud() {
 }
 
 function key_toggle(e) {
-    if (e.keyCode === 32) {
+    var key = typeof e.which === 'number' ? e.which : e.keyCode;
+    if (key === 32) {
         options_point_cloud.toggle();
     }
 }
