@@ -354,7 +354,7 @@ if (( `comma_options_has --help "$@"` || `comma_options_has -h "$@"` )) ; then
 fi
 declare -r allowed_operations=$( operation_description | cut -d';' -f1 | tr '\n' ' ' )
 declare -r operation="$1"
-comma_path_value_to_var --prefix=options --no-quotes < <( option_description | comma-options-to-name-value "$@" )
+comma_path_value_to_var --prefix=options < <( option_description | comma-options-to-name-value "$@" )
 
 if (( `comma_options_has "$operation" "$allowed_operations"` )); then 
     shift

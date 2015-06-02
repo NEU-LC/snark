@@ -93,7 +93,7 @@ if (( $( comma_options_has --help "$@" ) || $( comma_options_has -h "$@" ) )) ; 
     fi
 fi
 
-comma_path_value_to_var --prefix=options --no-quotes < <( option_description | comma-options-to-name-value "$@" | grep -v '^"' )
+comma_path_value_to_var --prefix=options < <( option_description | comma-options-to-name-value "$@" | grep -v '^"' )
 
 data_uri=$( comma_options_has --data-uri "$@" )
 
