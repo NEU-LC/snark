@@ -96,7 +96,7 @@ double angle_wrap( double value ) { return comma::math::cyclic< double >( comma:
 struct wayline_t
 {
 public:
-    wayline_t( bool verbose = false ) {}
+    wayline_t() {}
     wayline_t( const vector_t& start, const vector_t& end, bool verbose = false ) :
           v( normalise( end - start ) )
         , heading( atan2( v.y(), v.x() ) )

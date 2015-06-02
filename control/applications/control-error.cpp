@@ -31,6 +31,7 @@
 #include <boost/optional.hpp>
 #include <boost/bimap.hpp>
 #include <boost/assign.hpp>
+#include <boost/scoped_ptr.hpp>
 #include <comma/application/command_line_options.h>
 #include <comma/application/signal_flag.h>
 #include <comma/csv/stream.h>
@@ -135,7 +136,7 @@ int main( int ac, char** av )
         comma::io::select select;
         select.read().add( feedback_in );
         boost::optional< snark::control::vector_t > from;
-        snark::control::wayline_t wayline;
+        boost::scoped_ptr< snark::control::wayline_t > wayline;
         comma::signal_flag is_shutdown;
         while( !is_shutdown && ( input_stream.ready() || ( std::cin.good() && !std::cin.eof() ) ) )
         {
@@ -146,7 +147,7 @@ int main( int ac, char** av )
             double heading_offset = target->parameters.heading_offset;
             if( verbose ) { std::cerr << name << ": received target waypoint " << snark::control::serialise( to ) << std::endl; }
             if( from && snark::control::distance( *from, to ) < proximity ) { continue; }
-            if( from ) { wayline = snark::control::wayline_t( *from, to, verbose ); }
+            if( from ) { wayline.reset( new snark::control::wayline_t( *from, to, verbose ) ); }
             while( !is_shutdown && std::cout.good() )
             {
                 if( input_stream.ready() )
@@ -164,10 +165,10 @@ int main( int ac, char** av )
                     if( !from )
                     {
                         from = current.location;
-                        wayline = snark::control::wayline_t( *from, to, verbose );
+                        wayline.reset( new snark::control::wayline_t( *from, to, verbose ) );
                     }
                     if( snark::control::distance( current.location, to ) < proximity ) { reached = reached_t( "proximity" ); }
-                    if( use_past_endpoint && wayline.is_past_endpoint( current.location ) ) { reached = reached_t( "past endpoint" ); }
+                    if( use_past_endpoint && wayline->is_past_endpoint( current.location ) ) { reached = reached_t( "past endpoint" ); }
                     if( reached )
                     {
                         if( verbose ) { std::cerr << name << ": waypoint " << snark::control::serialise( to ) << " is reached (" << reached.reason << ")" << std::endl; }
@@ -177,9 +178,9 @@ int main( int ac, char** av )
                         break;
                     }
                     snark::control::error_t error;
-                    error.cross_track = wayline.cross_track_error( current.location );
-                    error.heading = wayline.heading_error( current.orientation.yaw, heading_offset );
-                    output_stream.write( snark::control::control_data_t( *target, wayline, *feedback, error ) );
+                    error.cross_track = wayline->cross_track_error( current.location );
+                    error.heading = wayline->heading_error( current.orientation.yaw, heading_offset );
+                    output_stream.write( snark::control::control_data_t( *target, *wayline, *feedback, error ) );
                 }
             }
         }
