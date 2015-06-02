@@ -36,56 +36,63 @@
 
 static const char* name() { return "control-command"; }
 
-template< typename T > std::string field_names() { return comma::join( comma::csv::names< T >( false ), ',' ); }
-template< typename T > std::string format( std::string fields ) { return comma::csv::format::value< T >( fields, false ); }
+template< typename T > std::string field_names( bool full_xpath = false ) { return comma::join( comma::csv::names< T >( full_xpath ), ',' ); }
+template< typename T > std::string format( std::string fields, bool full_xpath = false ) { return comma::csv::format::value< T >( fields, full_xpath ); }
+
+typedef snark::control::control_data_t control_data_t;
+typedef snark::control::command_t command_t;
 
 static void usage( bool verbose = false )
 {
     std::cerr << std::endl;
-    std::cerr << "take control errors (cross_track, heading) on stdin and output velocity and turn rate to stdout" << std::endl;
+    std::cerr << "take control data on stdin and output command to stdout" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "usage: cat errors.csv | " << name() << " [<options>]" << std::endl;
+    std::cerr << "usage: " << name() << " [<options>]" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
-    std::cerr << "    --pid=<p>,<i>,<d>[,<error threshold>]: pid parameters" << std::endl;
-    std::cerr << "    --output-fields: comma-separated list of fields to output (default: " << field_names< snark::control::command_t >() << ")" << std::endl;    
-    std::cerr << "    --format: output binary format of input stream to stdout and exit" << std::endl;
-    std::cerr << "    --output-format: output binary format of output stream to stdout and exit" << std::endl;
+    std::cerr << "    --cross-track-pid=<p>,<i>,<d>[,<error threshold>]: cross track pid parameters" << std::endl;
+    std::cerr << "    --heading-pid=<p>,<i>,<d>[,<error threshold>]: heading pid parameters" << std::endl;
+    std::cerr << "    --control-type <type>: control type (available types: " << "todo" << ")" << std::endl;
+    std::cerr << "    --format: show default binary format of input stream and exit" << std::endl;
+    std::cerr << "    --output-format: show binary format of output stream and exit" << std::endl;
+    std::cerr << "    --output-fields: show output fields and exit" << std::endl;
     std::cerr << std::endl;
     std::cerr << "csv options:" << std::endl;
-    std::cerr << comma::csv::options::usage( field_names< snark::control::error_t >() ) << std::endl;
+    std::cerr << comma::csv::options::usage( field_names< control_data_t >( true) ) << std::endl;
     std::cerr << std::endl;
+    std::cerr << "examples:" << std::endl;
+    std::cerr << "    cat targets.csv | control-error \"feedback\" |" << name() << " --cross-track-pid=1,0,0 --heading-pid=1,0,0" << std::endl;
     exit( 1 );
 }
-
-typedef snark::control::error_t control_error_t;
-typedef snark::control::command_t command_t;
 
 int main( int ac, char** av )
 {
     try
     {
         comma::command_line_options options( ac, av, usage );
-        comma::csv::options input_csv( options );
-        comma::csv::input_stream< control_error_t > input_stream( std::cin, input_csv );
+        comma::csv::options input_csv( options, field_names< control_data_t >( true ) );
+        input_csv.full_xpath = true;
+        comma::csv::input_stream< control_data_t > input_stream( std::cin, input_csv );
         comma::csv::options output_csv( options );
-        output_csv.fields = options.exists( "--output-fields" ) ? options.value< std::string >( "--output-fields" ) : field_names< command_t >();
+        output_csv.fields = field_names< command_t >();
         if( input_csv.binary() ) { output_csv.format( format< command_t >( output_csv.fields ) ); }
         comma::csv::output_stream< command_t > output_stream( std::cout, output_csv );
-        if( options.exists( "--format" ) ) { std::cout << format< control_error_t >( input_csv.fields ) << std::endl; return 0; }
+        if( options.exists( "--format" ) ) { std::cout << format< control_data_t >( input_csv.fields, true ) << std::endl; return 0; }
         if( options.exists( "--output-format" ) ) { std::cout << format< command_t >( output_csv.fields ) << std::endl; return 0; }
+        if( options.exists( "--output-fields" ) ) { std::cout << output_csv.fields << std::endl; return 0; }
         snark::control::pid<> cross_track_pid( options.value< std::string >( "--cross-track-pid" ) );
         snark::control::pid<> heading_pid( options.value< std::string >( "--heading-pid" ) );
         comma::signal_flag is_shutdown;
         while( !is_shutdown && ( input_stream.ready() || ( std::cin.good() && !std::cin.eof() ) ) )
         {
-            const control_error_t* error = input_stream.read();
-            if( !error ) { break; }
-            //double cross_track = error->cross_track;
-            //double heading = error->heading;
+            const control_data_t* control = input_stream.read();
+            if( !control ) { break; }
             command_t command;
-            command.turn_rate = 0; //heading_pid.update( error->heading, now );
-            command.local_heading = 0;
+            command.turn_rate = cross_track_pid.update( control->error.heading, control->feedback.t );
+            double local_heading = heading_pid.update( control->error.cross_track, control->feedback.t );
+            double yaw = control->feedback.data.orientation.yaw;
+            double heading_offset = control->target.parameters.heading_offset;
+            command.local_heading = snark::control::angle_wrap( yaw + heading_offset - local_heading );
             output_stream.write( command );
         }
         return 0;

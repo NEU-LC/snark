@@ -65,7 +65,7 @@ static void usage( bool verbose = false )
     if( verbose ) { std::cerr << comma::csv::format::usage() << std::endl; }
     std::cerr << std::endl;
     std::cerr << "options: " << std::endl;
-    std::cerr << "    --mode <mode>: path mode (default: " << default_mode << ")" << std::endl;
+    std::cerr << "    --path-mode <mode>: path mode (default: " << default_mode << ")" << std::endl;
     std::cerr << "    --proximity <proximity>: a wayline is traversed as soon as current position is within proximity of the endpoint (default: " << default_proximity << ")" << std::endl;
     std::cerr << "    --past-endpoint: a wayline is traversed as soon as current position is past the endpoint (or proximity condition is met)" << std::endl;
     std::cerr << "    --format: show binary format of default input stream and exit" << std::endl;
@@ -77,7 +77,7 @@ static void usage( bool verbose = false )
     std::cerr << "    dynamic: use a new waypoint as soon as it becomes available to define a new wayline form the current position to the new waypoint" << std::endl;
     std::cerr << std::endl;
     std::cerr << "examples: " << std::endl;
-    std::cerr << "    cat targets.bin | " << name() << " \"tcp:localhost:12345;fields=t,x,y,,,,yaw;binary=t,6d\" --fields=x,y,,,speed --binary=3d,ui,d --past-endpoint > control.bin" << std::endl;
+    std::cerr << "    cat targets.bin | " << name() << " \"tcp:localhost:12345;fields=t,x,y,,,,yaw;binary=t,6d\" --fields=x,y,,,speed --binary=3d,ui,d --past-endpoint" << std::endl;
     std::cerr << std::endl;
     exit( 1 );
 }
@@ -96,7 +96,7 @@ int main( int ac, char** av )
     try
     {
         comma::command_line_options options( ac, av, usage );
-        comma::csv::options input_csv( options );
+        comma::csv::options input_csv( options, field_names< snark::control::target_t >() );
         comma::csv::input_stream< snark::control::target_t > input_stream( std::cin, input_csv );
         comma::csv::options output_csv( options );
         output_csv.full_xpath = true;
@@ -108,7 +108,7 @@ int main( int ac, char** av )
         if( options.exists( "--output-fields" ) ) { std::cout << output_csv.fields << std::endl; return 0; }
         double proximity = options.value< double >( "--proximity", default_proximity );
         if( proximity <= 0 ) { std::cerr << name() << ": expected positive proximity, got " << proximity << std::endl; return 1; }
-        snark::control::mode mode = snark::control::mode_from_string( options.value< std::string >( "--mode", default_mode ) );
+        snark::control::mode mode = snark::control::mode_from_string( options.value< std::string >( "--path-mode", default_mode ) );
         bool use_past_endpoint = options.exists( "--past-endpoint" );
         bool verbose = options.exists( "--verbose,-v" );
         std::vector< std::string > unnamed = options.unnamed( "--help,-h,--verbose,-v,--format,--output-format,--past-endpoint", "-.*,--.*" );

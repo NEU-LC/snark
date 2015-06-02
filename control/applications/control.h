@@ -52,6 +52,14 @@ static const mode_name_t mode_names = boost::assign::list_of< mode_name_t::relat
 mode mode_from_string( std::string s ) { return  mode_names.right.at( s ); }
 std::string mode_to_string( mode m ) { return  mode_names.left.at( m ); }
 
+enum type { skid, omni };
+typedef boost::bimap< type, std::string > type_name_t;
+static const type_name_t type_names = boost::assign::list_of< type_name_t::relation >
+    ( skid, "skid" )
+    ( omni, "omni" );
+type type_from_string( std::string s ) { return  type_names.right.at( s ); }
+std::string type_to_string( type t ) { return  type_names.left.at( t ); }
+
 static const unsigned int dimensions = 2;
 typedef Eigen::Matrix< double, dimensions, 1 > vector_t;
 double distance( const vector_t& p1, const vector_t& p2 ) { return ( p1 - p2 ).norm(); }
@@ -96,6 +104,8 @@ struct error_t
     double heading;
 };
 
+double angle_wrap( double value ) { return comma::math::cyclic< double >( comma::math::interval< double >( -M_PI, M_PI ), value )(); }
+
 struct wayline_t
 {
 public:
@@ -113,12 +123,12 @@ public:
     double cross_track_error( const vector_t& location ) const { return line.signedDistance( location ); }
     double heading_error( double yaw, double heading_offset ) const { return angle_wrap( yaw - heading - heading_offset ); }
     double get_heading() const { return heading; }
+    void set_heading( double h ) { heading = h; }
 private:
     vector_t v;
     double heading;
     Eigen::Hyperplane< double, dimensions > line;
     Eigen::Hyperplane< double, dimensions > perpendicular_line_at_end;
-    double angle_wrap( double value ) const { return comma::math::cyclic< double >( comma::math::interval< double >( -M_PI, M_PI ), value )(); }
 };
 
 struct control_data_t
@@ -216,6 +226,12 @@ template <> struct traits< snark::control::error_t >
 
 template <> struct traits< snark::control::wayline_t >
 {
+    template < typename K, typename V > static void visit( const K&, snark::control::wayline_t& p, V& v )
+    {
+        double heading;
+        v.apply( "heading", heading );
+        p.set_heading( heading );
+    }
     template < typename K, typename V > static void visit( const K&, const snark::control::wayline_t& p, V& v )
     {
         v.apply( "heading", p.get_heading() );
