@@ -44,21 +44,8 @@
 
 namespace snark { namespace control {
 
-enum mode { fixed, dynamic };
-typedef boost::bimap< mode, std::string > mode_name_t;
-static const mode_name_t mode_names = boost::assign::list_of< mode_name_t::relation >
-    ( fixed, "fixed" )
-    ( dynamic, "dynamic" );
-mode mode_from_string( std::string s ) { return  mode_names.right.at( s ); }
-std::string mode_to_string( mode m ) { return  mode_names.left.at( m ); }
-
-enum type { skid, omni };
-typedef boost::bimap< type, std::string > type_name_t;
-static const type_name_t type_names = boost::assign::list_of< type_name_t::relation >
-    ( skid, "skid" )
-    ( omni, "omni" );
-type type_from_string( std::string s ) { return  type_names.right.at( s ); }
-std::string type_to_string( type t ) { return  type_names.left.at( t ); }
+static std::string command_app_name = "control-command";
+static std::string error_app_name = "control-error";
 
 static const unsigned int dimensions = 2;
 typedef Eigen::Matrix< double, dimensions, 1 > vector_t;
@@ -143,6 +130,7 @@ struct control_data_t
 
 struct command_t
 {
+    command_t() : turn_rate( 0 ), local_heading( 0 ) {}
     double turn_rate;
     double local_heading;
 };

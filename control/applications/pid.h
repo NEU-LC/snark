@@ -68,7 +68,7 @@ public:
         }
     }
     double update( double error, const boost::posix_time::ptime& t );
-    double update( double error, const boost::posix_time::ptime& t, const double& derivative )
+    double update( double error, const boost::posix_time::ptime& t, double derivative )
     {
         if( time != boost::posix_time::not_a_date_time && t != boost::posix_time::not_a_date_time )
         {

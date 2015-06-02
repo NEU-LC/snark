@@ -27,6 +27,7 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include <cmath>
 #include <comma/csv/options.h>
 #include <comma/csv/stream.h>
 #include <comma/io/select.h>
@@ -34,35 +35,64 @@
 #include "control.h"
 #include "pid.h"
 
-static const char* name() { return "control-command"; }
+static const std::string name = snark::control::command_app_name;
 
-template< typename T > std::string field_names( bool full_xpath = false ) { return comma::join( comma::csv::names< T >( full_xpath ), ',' ); }
+template< typename T > std::string field_names( bool full_xpath = false, char separator = ',' ) { return comma::join( comma::csv::names< T >( full_xpath ), separator ); }
 template< typename T > std::string format( std::string fields, bool full_xpath = false ) { return comma::csv::format::value< T >( fields, full_xpath ); }
 
 typedef snark::control::control_data_t control_data_t;
 typedef snark::control::command_t command_t;
+
+enum control_mode_t { skid, omni };
+typedef boost::bimap< control_mode_t, std::string > named_control_mode_t;
+static const named_control_mode_t named_control_modes = boost::assign::list_of< named_control_mode_t::relation >
+    ( skid, "skid" )
+    ( omni, "omni" );
+control_mode_t control_mode_from_string( std::string s )
+{
+    if( !named_control_modes.right.count( s ) ) { COMMA_THROW( comma::exception, "control mode '" << s << "' is not found" ); }; 
+    return  named_control_modes.right.at( s );
+}
+std::string control_mode_to_string( control_mode_t m ) { return  named_control_modes.left.at( m ); }
 
 static void usage( bool verbose = false )
 {
     std::cerr << std::endl;
     std::cerr << "take control data on stdin and output command to stdout" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "usage: " << name() << " [<options>]" << std::endl;
+    std::cerr << "usage: " << name << " [<options>]" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
+    std::cerr << "    --control-mode <mode>: control mode (available modes: skid, omni)" << std::endl;
     std::cerr << "    --cross-track-pid=<p>,<i>,<d>[,<error threshold>]: cross track pid parameters" << std::endl;
     std::cerr << "    --heading-pid=<p>,<i>,<d>[,<error threshold>]: heading pid parameters" << std::endl;
-    std::cerr << "    --control-type <type>: control type (available types: " << "todo" << ")" << std::endl;
     std::cerr << "    --format: show default binary format of input stream and exit" << std::endl;
     std::cerr << "    --output-format: show binary format of output stream and exit" << std::endl;
     std::cerr << "    --output-fields: show output fields and exit" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "csv options:" << std::endl;
-    std::cerr << comma::csv::options::usage( field_names< control_data_t >( true) ) << std::endl;
+    std::cerr << "control modes:" << std::endl;
+    std::cerr << "    skid: skid-steer mode" << std::endl;
+    std::cerr << "    omni: omnidirectional mode" << std::endl;
     std::cerr << std::endl;
+    if( verbose )
+    {
+        std::cerr << "csv options:" << std::endl;
+        std::cerr << comma::csv::options::usage() << std::endl;
+        std::cerr << "default input fields:" << std::endl;
+        std::cerr << field_names< control_data_t >( true, '\n' ) << std::endl;
+        std::cerr << std::endl;
+    }
     std::cerr << "examples:" << std::endl;
-    std::cerr << "    cat targets.csv | control-error \"feedback\" |" << name() << " --cross-track-pid=1,0,0 --heading-pid=1,0,0" << std::endl;
+    std::cerr << "    cat targets.csv | " << snark::control::error_app_name << " \"feedback\" | " << name << " --cross-track-pid=0.1,0,0 --heading-pid=0.2,0,0 --control-mode=omni" << std::endl;
+    std::cerr << std::endl;
     exit( 1 );
+}
+
+double limit_angle( double angle, double limit = M_PI/2 )
+{
+    if( angle > limit ) { return limit; }
+    else if( angle < -limit ) { return -limit; }
+    else { return angle; }
 }
 
 int main( int ac, char** av )
@@ -70,8 +100,10 @@ int main( int ac, char** av )
     try
     {
         comma::command_line_options options( ac, av, usage );
+        control_mode_t control_mode = control_mode_from_string( options.value< std::string >( "--control-mode" ) );
         comma::csv::options input_csv( options, field_names< control_data_t >( true ) );
         input_csv.full_xpath = true;
+        bool feedback_has_time  = input_csv.has_field( "feedback/t" );
         comma::csv::input_stream< control_data_t > input_stream( std::cin, input_csv );
         comma::csv::options output_csv( options );
         output_csv.fields = field_names< command_t >();
@@ -85,19 +117,33 @@ int main( int ac, char** av )
         comma::signal_flag is_shutdown;
         while( !is_shutdown && ( input_stream.ready() || ( std::cin.good() && !std::cin.eof() ) ) )
         {
-            const control_data_t* control = input_stream.read();
-            if( !control ) { break; }
+            const control_data_t* control_data = input_stream.read();
+            if( !control_data ) { break; }
+            boost::posix_time::ptime time = feedback_has_time ? control_data->feedback.t : boost::posix_time::microsec_clock::universal_time();
             command_t command;
-            command.turn_rate = cross_track_pid.update( control->error.heading, control->feedback.t );
-            double local_heading = heading_pid.update( control->error.cross_track, control->feedback.t );
-            double yaw = control->feedback.data.orientation.yaw;
-            double heading_offset = control->target.parameters.heading_offset;
-            command.local_heading = snark::control::angle_wrap( yaw + heading_offset - local_heading );
+            if( control_mode == omni )
+            {
+                double heading = control_data->wayline.get_heading();
+                double heading_correction = limit_angle( cross_track_pid.update( control_data->error.cross_track, time ) );
+                double yaw = control_data->feedback.data.orientation.yaw;
+                command.local_heading = snark::control::angle_wrap( heading + heading_correction - yaw );
+                command.turn_rate = heading_pid.update( control_data->error.heading, time );
+            }
+            else if( control_mode == skid )
+            {
+                double heading_correction = limit_angle( cross_track_pid.update( control_data->error.cross_track, time ) );
+                command.turn_rate = heading_pid.update( control_data->error.heading + heading_correction, time );
+            }
+            else
+            {
+                std::cerr << name << ": control mode " << control_mode_to_string( control_mode ) << "is not implemented" << std::endl;
+                return 1;
+            }
             output_stream.write( command );
         }
         return 0;
     }
-    catch( std::exception& ex ) { std::cerr << name() << ": " << ex.what() << std::endl; }
-    catch( ... ) { std::cerr << name() << ": unknown exception" << std::endl; }
+    catch( std::exception& ex ) { std::cerr << name << ": " << ex.what() << std::endl; }
+    catch( ... ) { std::cerr << name << ": unknown exception" << std::endl; }
     return 1;
 }
