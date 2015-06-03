@@ -58,7 +58,7 @@ std::string control_mode_to_string( control_mode_t m ) { return  named_control_m
 static void usage( bool verbose = false )
 {
     std::cerr << std::endl;
-    std::cerr << "take control data on stdin and output command to stdout" << std::endl;
+    std::cerr << "take control data on stdin and output command to stdout with the appended command" << std::endl;
     std::cerr << std::endl;
     std::cerr << "usage: " << name << " [<options>]" << std::endl;
     std::cerr << std::endl;
@@ -111,9 +111,10 @@ int main( int ac, char** av )
         else { std::cerr << name << ": control mode " << control_mode_to_string( control_mode ) << "is not implemented" << std::endl; return 1; }
         if( input_csv.binary() ) { output_csv.format( format< command_t >( output_csv.fields ) ); }
         comma::csv::output_stream< command_t > output_stream( std::cout, output_csv );
+        comma::csv::tied< control_data_t, command_t > tied( input_stream, output_stream );
         if( options.exists( "--format" ) ) { std::cout << format< control_data_t >( input_csv.fields, true ) << std::endl; return 0; }
-        if( options.exists( "--output-format" ) ) { std::cout << format< command_t >( output_csv.fields ) << std::endl; return 0; }
-        if( options.exists( "--output-fields" ) ) { std::cout << output_csv.fields << std::endl; return 0; }
+        if( options.exists( "--output-format" ) ) { std::cout << format< control_data_t >( input_csv.fields, true ) << ',' << format< command_t >( output_csv.fields ) << std::endl; return 0; }
+        if( options.exists( "--output-fields" ) ) { std::cout << input_csv.fields << ',' << output_csv.fields << std::endl; return 0; }
         snark::control::pid<> cross_track_pid( options.value< std::string >( "--cross-track-pid" ) );
         snark::control::pid<> heading_pid( options.value< std::string >( "--heading-pid" ) );
         comma::signal_flag is_shutdown;
@@ -141,7 +142,7 @@ int main( int ac, char** av )
                 std::cerr << name << ": control mode " << control_mode_to_string( control_mode ) << "is not implemented" << std::endl;
                 return 1;
             }
-            output_stream.write( command );
+            tied.append( command );
         }
         return 0;
     }
