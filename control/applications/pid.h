@@ -45,7 +45,8 @@ class pid
 {
 public:
     pid( double p, double i, double d ) : p( p ), i( i ), d( d ), integral( 0 ) {}
-    pid( double p, double i, double d, boost::optional< double > threshold ) : p( p ), i( i ), d( d ), integral( 0 ), threshold( threshold ) {}
+    pid( double p, double i, double d, boost::optional< double > threshold ) : p( p ), i( i ), d( d ), integral( 0 ), threshold( threshold ) 
+        { if( *threshold <= 0 ) { COMMA_THROW( comma::exception, "expected positive threshold, got " << *threshold ); } }
     pid( std::string pid_values, char delimiter = ',' )
     {
         std::vector< std::string > v = comma::split( pid_values, delimiter );
@@ -72,8 +73,8 @@ public:
     {
         if( time != boost::posix_time::not_a_date_time && t != boost::posix_time::not_a_date_time )
         {
-            if( t < time ) { COMMA_THROW( comma::exception, "expected time greater than " << boost::posix_time::to_iso_string( time ) << ", got " << boost::posix_time::to_iso_string( t ) ); }
-            integral = time_increment( t ) * error;
+            if( t <= time ) { COMMA_THROW( comma::exception, "expected time greater than " << boost::posix_time::to_iso_string( time ) << ", got " << boost::posix_time::to_iso_string( t ) ); }
+            integral += time_increment( t ) * error;
             clip( integral );
         }
         time = t;
