@@ -50,18 +50,18 @@ template< typename T > std::string format( std::string fields, bool full_xpath =
 static const double default_proximity = 0.1;
 static const std::string default_mode = "fixed";
 
-enum path_mode_t { fixed, dynamic };
-typedef boost::bimap< path_mode_t, std::string > named_path_mode_t;
-static const named_path_mode_t named_path_modes = boost::assign::list_of< named_path_mode_t::relation >
+enum control_mode_t { fixed, dynamic };
+typedef boost::bimap< control_mode_t, std::string > named_mode_t;
+static const named_mode_t named_modes = boost::assign::list_of< named_mode_t::relation >
     ( fixed, "fixed" )
     ( dynamic, "dynamic" );
 
-path_mode_t path_mode_from_string( std::string s )
+control_mode_t mode_from_string( std::string s )
 {
-    if( !named_path_modes.right.count( s ) ) { COMMA_THROW( comma::exception, "path mode '" << s << "' is not found" ); };
-    return  named_path_modes.right.at( s );
+    if( !named_modes.right.count( s ) ) { COMMA_THROW( comma::exception, "control mode '" << s << "' is not found" ); };
+    return  named_modes.right.at( s );
 }
-std::string path_mode_to_string( path_mode_t m ) { return  named_path_modes.left.at( m ); }
+std::string mode_to_string( control_mode_t m ) { return  named_modes.left.at( m ); }
 
 static void usage( bool verbose = false )
 {
@@ -81,14 +81,14 @@ static void usage( bool verbose = false )
     if( verbose ) { std::cerr << comma::csv::format::usage() << std::endl; }
     std::cerr << std::endl;
     std::cerr << "options: " << std::endl;
-    std::cerr << "    --path-mode <mode>: path mode (default: " << default_mode << ")" << std::endl;
+    std::cerr << "    --mode <mode>: control mode (default: " << default_mode << ")" << std::endl;
     std::cerr << "    --proximity <proximity>: a wayline is traversed as soon as current position is within proximity of the endpoint (default: " << default_proximity << ")" << std::endl;
     std::cerr << "    --past-endpoint: a wayline is traversed as soon as current position is past the endpoint (or proximity condition is met)" << std::endl;
     std::cerr << "    --format: show binary format of default input stream and exit" << std::endl;
     std::cerr << "    --output-format: show binary format of output stream and exit" << std::endl;
     std::cerr << "    --output-fields: show output fields and exit" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "path modes: " << std::endl;
+    std::cerr << "control modes: " << std::endl;
     std::cerr << "    fixed: wait until the current waypoint is reached before accepting a new waypoint (first feedback position is the start of the first wayline)" << std::endl;
     std::cerr << "    dynamic: use a new waypoint as soon as it becomes available to define a new wayline form the current position to the new waypoint" << std::endl;
     std::cerr << std::endl;
@@ -124,7 +124,7 @@ int main( int ac, char** av )
         if( options.exists( "--output-fields" ) ) { std::cout << output_csv.fields << std::endl; return 0; }
         double proximity = options.value< double >( "--proximity", default_proximity );
         if( proximity <= 0 ) { std::cerr << name << ": expected positive proximity, got " << proximity << std::endl; return 1; }
-        path_mode_t path_mode = path_mode_from_string( options.value< std::string >( "--path-mode", default_mode ) );
+        control_mode_t mode = mode_from_string( options.value< std::string >( "--mode", default_mode ) );
         bool use_past_endpoint = options.exists( "--past-endpoint" );
         bool verbose = options.exists( "--verbose,-v" );
         std::vector< std::string > unnamed = options.unnamed( "--help,-h,--verbose,-v,--format,--output-format,--past-endpoint", "-.*,--.*" );
@@ -152,9 +152,9 @@ int main( int ac, char** av )
             {
                 if( input_stream.ready() )
                 {
-                    if( path_mode == fixed ) {}
-                    else if( path_mode == dynamic ) { from = boost::none; break; }
-                    else { std::cerr << name << ": path mode " << path_mode_to_string( path_mode ) << " is not implemented" << std::endl; return 1; }
+                    if( mode == fixed ) {}
+                    else if( mode == dynamic ) { from = boost::none; break; }
+                    else { std::cerr << name << ": control mode " << mode_to_string( mode ) << " is not implemented" << std::endl; return 1; }
                 }
                 select.check();
                 if( feedback_stream.ready() || select.read().ready( feedback_in ) )
@@ -172,9 +172,9 @@ int main( int ac, char** av )
                     if( reached )
                     {
                         if( verbose ) { std::cerr << name << ": waypoint " << snark::control::serialise( to ) << " is reached (" << reached.reason << ")" << std::endl; }
-                        if( path_mode == fixed ) { from = to; }
-                        else if( path_mode == dynamic ) { from = boost::none; }
-                        else { std::cerr << name << ": path mode " << path_mode_to_string( path_mode ) << " is not implemented" << std::endl; return 1; }
+                        if( mode == fixed ) { from = to; }
+                        else if( mode == dynamic ) { from = boost::none; }
+                        else { std::cerr << name << ": control mode " << mode_to_string( mode ) << " is not implemented" << std::endl; return 1; }
                         break;
                     }
                     snark::control::error_t error;
