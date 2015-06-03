@@ -68,6 +68,13 @@ Sensor.prototype.get_url = function() {
     var url = this.config.url;
     return url + (url.indexOf('?') < 0 ? '?q=' : '&q=') + Math.random();
 }
+Sensor.prototype.alert = function(on) {
+    if (on) {
+        this.el.addClass('panel-alert');
+    } else {
+        this.el.removeClass('panel-alert');
+    }
+}
 
 var ImageSensor = function(sensor_name, config) {
     this.base = Sensor;
@@ -212,12 +219,13 @@ TextSensor.prototype.draw = function() {
 var GraphSensor = function(sensor_name, config) {
     this.base = Sensor;
     this.base(sensor_name, config);
+    this.default_threshold = { value: this.config.graph.max, color: '#5cb85c' }
     this.text = $('#' + sensor_name + ' .graph-text');
     this.bars = $('#' + sensor_name + ' .graph-bars');
     this.bars.append('<div class="graph-bar-col"><span class="graph-bar"></span></div>');
-    this.bars_width = $('.graph-bars').width();
-    this.bar_width = $('.graph-bar-col').width();
-    this.bar_height = $('.graph-bar-col').height();
+    this.bars_width = Number($('.graph-bars').css('width').replace('px', ''));
+    this.bar_width = Number($('.graph-bar-col').css('width').replace('px', ''));
+    this.bar_height = Number($('.graph-bar-col').css('height').replace('px', ''));
     this.bar_count = Math.floor(this.bars_width / this.bar_width);
     if (!isFinite(this.bar_count)) {
         throw 'invalid graph bar styles; calculated bar count: ' + this.bar_count;
@@ -225,6 +233,15 @@ var GraphSensor = function(sensor_name, config) {
     for (var i = 1; i < this.bar_count; ++i ) {
         this.bars.append('<div class="graph-bar-col"><span class="graph-bar"></span></div>');
     }
+    var _this = this;
+    this.bars.find('.graph-bar-col').each(function(i, e) {
+        _this.config.graph.thresholds.forEach(function(threshold, index) {
+            var span = $('<span class="graph-threshold"></span>');
+            span.css('height', _this.get_bar_height(threshold.value) + 1 + 'px');
+            span.css('border-bottom-color', threshold.color);
+            span.appendTo(e);
+        });
+    });
     $('.graph-bar-col').tooltip();
 }
 GraphSensor.prototype = new Sensor;
@@ -246,19 +263,39 @@ GraphSensor.prototype.onload_ = function(data) {
     this.text.html(text);
     var bar = this.bars.children().first();
     this.bars.append(bar);
-    var height = this.bar_height;
-    if (!isNaN(data)) {
-        var value = Number(data);
-        var scale = (value - this.config.graph.min) / (this.config.graph.max - this.config.graph.min);
-        if (scale > 1) {
-            scale = 1;
-        } else if (scale < 0) {
-            scale = 0;
-        }
-        height = this.bar_height - scale * this.bar_height;
-    }
+    var value = isNaN(data) ? this.config.graph.min : Number(data);
+    var height = this.get_bar_height(value);
+    var threshold = this.get_threshold(value);
     bar.find('.graph-bar').css('height', height);
+    bar.css('background', threshold.color);
+    this.alert(threshold.alert);
     bar.data('bs.tooltip').options.title = text + ' @ ' + this.refresh_time;
+    bar.find('.graph-threshold').each(function(index, value) {
+        var e = $(value);
+        if (Number(e.css('height').replace('px', '')) >= height) {
+            e.hide();
+        } else {
+            e.show();
+        }
+    });
+}
+GraphSensor.prototype.get_bar_height = function(value) {
+    var scale = (value - this.config.graph.min) / (this.config.graph.max - this.config.graph.min);
+    if (scale > 1) {
+        scale = 1;
+    } else if (scale < 0) {
+        scale = 0;
+    }
+    return this.bar_height - scale * this.bar_height;
+}
+GraphSensor.prototype.get_threshold = function(value) {
+    for (var i in this.config.graph.thresholds) {
+        var threshold = this.config.graph.thresholds[i];
+        if (value <= threshold.value) {
+            return threshold
+        }
+    }
+    return this.default_threshold;
 }
 
 var add_panel = function(sensor_name) {
@@ -470,6 +507,10 @@ function initialize(frontend_config) {
             if (!('max' in config.graph)) {
                 config.graph.max = 100;
             }
+            if (!('thresholds' in config.graph)) {
+                config.graph.thresholds = [];
+            }
+            config.graph.thresholds.sort(function(a,b) { return a.value - b.value; });
         }
         var sensor = create_sensor(config.type, sensor_name, config);
         var folder = gui.addFolder(sensor_name);

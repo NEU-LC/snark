@@ -16,19 +16,26 @@ web.frontend.json description:
             "url": "http://host:port/path"      // optional
             "refresh":                          // optional
             {
-                "interval": <number>            // refresh interval in seconds, optional, default: 2
-                "auto": true|false              // auto refresh, optional, default: false
+                "interval": <number>            // optional, refresh interval in seconds, default: 2
+                "auto": true|false              // optional, auto refresh, default: false
                                                 // if a non-zero interval is given then auto is true unless specified
             },
             "text":                             // optional, only applicable when "type": "text"
             {
-                "show_lines": <number>          // number of lines to show, optional, default: 5
+                "show_lines": <number>          // optional, number of lines to show, default: 5
             },
             "graph":                            // optional, only applicable when "type": "graph"
             {
-                "min": <number>,                // min value, optional, default: 0
-                "max": <number>,                // max value, optional, default: 100
-                "units": "unit"                 // value units, optional
+                "min": <number>,                // optional, min value, default: 0
+                "max": <number>,                // optional, max value, default: 100
+                "units": "unit"                 // optional, value units
+                "thresholds": [                 // optional, array of thresholds
+                    {
+                        "value": <number>,      // graph values less than or equal to this value will be colored by the corresponding color
+                        "color": <#hex-string>,
+                        "alert": true|false     // optional, raise panel alert if graph value is within this threshold
+                    }
+                ]
             },
             "stream":                           // optional, only applicable when "type": "stream"
             {
