@@ -43,6 +43,10 @@ body {
     background: #2c2c2c;
 }
 
+.panel-alert, .panel-alert:hover {
+    background: #d9534f;
+}
+
 .panel .time {
     white-space: nowrap
 }
@@ -118,38 +122,54 @@ ul.target li {
 }
 
 .graph {
-    background: #020;
-    width: 248px;
-    padding: 0 0 3px 3px;
+    background: #181818;
+    padding: 3px;
 }
 
 .graph-text {
-    color: #0f0;
+    color: #abcdef;
+    text-align: right;
 }
 
 .graph-bars {
-    width: 240px;
-    height: 100px;
-    background: #0c2;
+    width: 300px;
+    height: 200px;
+    background: #fff;
 }
 
 .graph-bar-col {
-    width: 3px;
+    width: 5px;
     height: 100%;
     float: left;
-    display: inline;
+    position: relative;
+    border-left: 1px solid #232323;
+    box-sizing: border-box;
 }
 
 .graph-bar-col:hover {
-    opacity: 0.9;
-    background: #0f0;
+    opacity: 0.8;
+}
+
+.graph-bar-col:hover .graph-bar {
+    border-bottom: 1px solid white;
+}
+
+.graph-threshold {
+    width: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    border-bottom: 1px solid transparent;
+    opacity: 0.6;
 }
 
 .graph-bar {
     width: 100%;
     height: 100%;
-    float: left;
-    background: #131;
+    position: absolute;
+    top: 0;
+    left: 0;
+    background: #232323;
 }
 
 .target pre {
