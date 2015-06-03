@@ -106,7 +106,9 @@ int main( int ac, char** av )
         bool feedback_has_time  = input_csv.has_field( "feedback/t" );
         comma::csv::input_stream< control_data_t > input_stream( std::cin, input_csv );
         comma::csv::options output_csv( options );
-        output_csv.fields = field_names< command_t >();
+        if( control_mode == omni ) { output_csv.fields = "turn_rate,local_heading"; }
+        else if( control_mode == skid ) { output_csv.fields = "turn_rate"; }
+        else { std::cerr << name << ": control mode " << control_mode_to_string( control_mode ) << "is not implemented" << std::endl; return 1; }
         if( input_csv.binary() ) { output_csv.format( format< command_t >( output_csv.fields ) ); }
         comma::csv::output_stream< command_t > output_stream( std::cout, output_csv );
         if( options.exists( "--format" ) ) { std::cout << format< control_data_t >( input_csv.fields, true ) << std::endl; return 0; }
