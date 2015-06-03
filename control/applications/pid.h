@@ -47,7 +47,7 @@ public:
     pid( double p, double i, double d ) : p( p ), i( i ), d( d ), integral( 0 ) {}
     pid( double p, double i, double d, boost::optional< double > threshold ) : p( p ), i( i ), d( d ), integral( 0 ), threshold( threshold ) 
         { if( *threshold <= 0 ) { COMMA_THROW( comma::exception, "expected positive threshold, got " << *threshold ); } }
-    pid( std::string pid_values, char delimiter = ',' )
+    pid( const std::string& pid_values, char delimiter = ',' )
     {
         std::vector< std::string > v = comma::split( pid_values, delimiter );
         if( v.size() != 3 && v.size() != 4 ) { COMMA_THROW( comma::exception, "expected 3 or 4 elements, got " << v.size() ); }
