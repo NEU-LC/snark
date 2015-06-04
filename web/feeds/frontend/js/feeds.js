@@ -18,12 +18,12 @@ Sensor.prototype.reset = function() {
 }
 Sensor.prototype.set_interval = function() {
     this.interval = setInterval(this.preload.bind(this), this.config.refresh.interval * 1000);
-    this.status.removeClass('text-muted text-danger').addClass('text-success');
+    this.status.removeClass('text-muted').addClass('text-success');
 }
 Sensor.prototype.clear_interval = function() {
     clearInterval(this.interval);
     delete pending[this.sensor_name];
-    this.status.removeClass('text-success text-danger').addClass('text-muted');
+    this.status.removeClass('text-success').addClass('text-muted');
 }
 Sensor.prototype.refresh = function() {
     this.clear_interval();
@@ -50,29 +50,34 @@ Sensor.prototype.preload = function() {
 }
 Sensor.prototype.onload = function(data) {
     this.time.text(this.refresh_time);
-    if (this.config.refresh.auto) {
-        this.status.removeClass('text-danger').addClass('text-success');
-    }
     this.status.finish().fadeTo(0, 1);
+    if (this.config.alert) {
+        this.alert(!data || !data.length);
+    }
     this.onload_(data);
     delete pending[this.sensor_name];
 }
 Sensor.prototype.onerror = function() {
-    if (this.config.refresh.auto) {
-        this.status.removeClass('text-success').addClass('text-danger');
-    }
+    this.time.text(this.refresh_time);
     this.status.finish().fadeTo(0, 1);
+    this.onload_();
     delete pending[this.sensor_name];
+    if (this.config.alert) {
+        this.alert(true);
+    }
 }
 Sensor.prototype.get_url = function() {
     var url = this.config.url;
     return url + (url.indexOf('?') < 0 ? '?q=' : '&q=') + Math.random();
 }
 Sensor.prototype.alert = function(on) {
+    var gui_folder = $(gui.__folders[this.sensor_name].__ul);
     if (on) {
         this.el.addClass('panel-alert');
+        gui_folder.find('.title').addClass('panel-alert');
     } else {
         this.el.removeClass('panel-alert');
+        gui_folder.find('.title').removeClass('panel-alert');
     }
 }
 
@@ -207,6 +212,7 @@ TextSensor.prototype.load = function() {
     });
 }
 TextSensor.prototype.onload_ = function(data) {
+    data = data ? data : '&nbsp;';
     this.target.append('<li><pre>' + data + '</pre></li>');
     this.draw();
 }
@@ -268,7 +274,9 @@ GraphSensor.prototype.onload_ = function(data) {
     var threshold = this.get_threshold(value);
     bar.find('.graph-bar').css('height', height);
     bar.css('background', threshold.color);
-    this.alert(threshold.alert);
+    if (this.config.alert) {
+        this.alert(threshold.alert);
+    }
     bar.data('bs.tooltip').options.title = text + ' @ ' + this.refresh_time;
     bar.find('.graph-threshold').each(function(index, value) {
         var e = $(value);
@@ -418,6 +426,21 @@ var Globals = function(options) {
             gui.setProperty('show', false, sensor.sensor_name);
         });
     }
+    this.enable_alerting = function() {
+        $.each(sensors, function(index, sensor) {
+            gui.setProperty('alert', true, sensor.sensor_name);
+        });
+    }
+    this.disable_alerting = function() {
+        $.each(sensors, function(index, sensor) {
+            gui.setProperty('alert', false, sensor.sensor_name);
+        });
+    }
+    this.clear_alerts = function() {
+        $.each(sensors, function(index, sensor) {
+            sensor.alert(false);
+        });
+    }
     this.config_file = options.config_file
 }
 
@@ -455,6 +478,9 @@ function initialize(frontend_config) {
     folder.add(globals, "stop_all").name("stop all");
     folder.add(globals, "show_all").name("show all");
     folder.add(globals, "hide_all").name("hide all");
+    folder.add(globals, "enable_alerting").name("enable alerting");
+    folder.add(globals, "disable_alerting").name("disable alerting");
+    folder.add(globals, "clear_alerts").name("clear alerts");
 
     for (var sensor_name in frontend_config.sensors) {
         var config = frontend_config.sensors[sensor_name];
@@ -512,6 +538,9 @@ function initialize(frontend_config) {
             }
             config.graph.thresholds.sort(function(a,b) { return a.value - b.value; });
         }
+        if (!('alert' in config)) {
+            config.alert = true;
+        }
         var sensor = create_sensor(config.type, sensor_name, config);
         var folder = gui.addFolder(sensor_name);
         folder.add(sensor.config, 'url').onFinishChange(function(value) {
@@ -541,6 +570,11 @@ function initialize(frontend_config) {
             }
             sensor.refresh();
         }
+        folder.add(sensor.config, 'alert').name('enable alerting').onFinishChange(function(value) {
+            if (!value) {
+                sensors[this.object.sensor_name].alert(false);
+            }
+        });
         sensors[sensor_name] = sensor;
     }
 

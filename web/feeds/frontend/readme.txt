@@ -40,7 +40,8 @@ web.frontend.json description:
             "stream":                           // optional, only applicable when "type": "stream"
             {
                 "autoplay": true|false          // autoplay stream on load, default: false
-            }
+            },
+            "alert": true|false                 // optional, enable alerting, default: true
         },
         "<sensor-name>":
         {

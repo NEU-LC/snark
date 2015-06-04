@@ -44,7 +44,9 @@ body {
 }
 
 .panel-alert, .panel-alert:hover {
-    background: #d9534f;
+    color: #012345 !important;
+    text-shadow: none;
+    background: #d9534f !important;
 }
 
 .panel .time {
@@ -102,6 +104,10 @@ body {
     border: 1px solid #383838;
 }
 
+.target {
+    background: #181818;
+}
+
 .target:not(:empty) {
     border: 1px solid #2c2c2c;
 }
@@ -110,19 +116,16 @@ img.target {
     display: block;
     min-width: 250px;
     min-height: 250px;
-    margin: 5px;
 }
 
 ul.target li {
     font: monospace;
     border: none;
-    background: #181818;
     color: #bcdefa;
     padding: 0px 5px;
 }
 
 .graph {
-    background: #181818;
     padding: 3px;
 }
 
@@ -133,7 +136,7 @@ ul.target li {
 
 .graph-bars {
     width: 300px;
-    height: 200px;
+    height: 222px;
     background: #fff;
 }
 
