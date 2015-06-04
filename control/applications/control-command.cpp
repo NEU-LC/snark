@@ -64,8 +64,8 @@ static void usage( bool verbose = false )
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    --steering <mode>: steering mode" << std::endl;
-    std::cerr << "    --cross-track-pid=<p>,<i>,<d>[,<error threshold>]: cross track pid parameters" << std::endl;
-    std::cerr << "    --heading-pid=<p>,<i>,<d>[,<error threshold>]: heading pid parameters" << std::endl;
+    std::cerr << "    --cross-track-pid=<p>,<i>,<d>[,<integral threshold>]: cross track pid parameters" << std::endl;
+    std::cerr << "    --heading-pid=<p>,<i>,<d>[,<integral threshold>]: heading pid parameters" << std::endl;
     std::cerr << "    --format: show default binary format of input stream and exit" << std::endl;
     std::cerr << "    --output-format: show binary format of output stream and exit" << std::endl;
     std::cerr << "    --output-fields: show output fields and exit" << std::endl;
@@ -79,11 +79,12 @@ static void usage( bool verbose = false )
         std::cerr << "csv options:" << std::endl;
         std::cerr << comma::csv::options::usage() << std::endl;
         std::cerr << "default input fields:" << std::endl;
-        std::cerr << field_names< control_data_t >( true, '\n' ) << std::endl;
+        std::vector< std::string > v = comma::split( field_names< control_data_t >( true ), ',' );
+        for( std::vector< std::string >::const_iterator it = v.begin(); it != v.end(); ++it ) { std::cerr  << "    " << *it << std::endl; }
         std::cerr << std::endl;
     }
     std::cerr << "examples:" << std::endl;
-    std::cerr << "    cat targets.csv | " << snark::control::error_app_name << " \"feedback\" --mode=fixed | " << name << " --fields=target/parameters/speed,error --cross-track-pid=0.1,0,0 --heading-pid=0.2,0,0 --steering=omni" << std::endl;
+    std::cerr << "    cat targets.csv | " << snark::control::error_app_name << " \"feedback\" --mode=fixed | " << name << " --cross-track-pid=0.1,0,0 --heading-pid=0.2,0,0 --steering=omni" << std::endl;
     std::cerr << std::endl;
     exit( 1 );
 }
@@ -108,7 +109,7 @@ int main( int ac, char** av )
         comma::csv::options output_csv( options );
         if( steering == omni ) { output_csv.fields = "turn_rate,local_heading"; }
         else if( steering == skid ) { output_csv.fields = "turn_rate"; }
-        else { std::cerr << name << ": steering " << steering_to_string( steering ) << "is not implemented" << std::endl; return 1; }
+        else { std::cerr << name << ": steering '" << steering_to_string( steering ) << "' is not implemented" << std::endl; return 1; }
         if( input_csv.binary() ) { output_csv.format( format< command_t >( output_csv.fields ) ); }
         comma::csv::output_stream< command_t > output_stream( std::cout, output_csv );
         comma::csv::tied< control_data_t, command_t > tied( input_stream, output_stream );
@@ -127,19 +128,19 @@ int main( int ac, char** av )
             if( steering == omni )
             {
                 double heading = control_data->wayline.get_heading();
-                double heading_correction = limit_angle( cross_track_pid.update( control_data->error.cross_track, time ) );
+                double local_heading_correction = limit_angle( cross_track_pid.update( control_data->error.cross_track, time ) );
                 double yaw = control_data->feedback.data.orientation.yaw;
-                command.local_heading = snark::control::angle_wrap( heading + heading_correction - yaw );
+                command.local_heading = snark::control::wrap_angle( yaw - heading + local_heading_correction );
                 command.turn_rate = heading_pid.update( control_data->error.heading, time );
             }
             else if( steering == skid )
             {
-                double heading_correction = limit_angle( cross_track_pid.update( control_data->error.cross_track, time ) );
-                command.turn_rate = heading_pid.update( control_data->error.heading + heading_correction, time );
+                double heading_error_correction = limit_angle( cross_track_pid.update( control_data->error.cross_track, time ) );
+                command.turn_rate = heading_pid.update( control_data->error.heading + heading_error_correction, time );
             }
             else
             {
-                std::cerr << name << ": steering " << steering_to_string( steering ) << "is not implemented" << std::endl;
+                std::cerr << name << ": steering '" << steering_to_string( steering ) << "' is not implemented" << std::endl;
                 return 1;
             }
             tied.append( command );

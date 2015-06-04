@@ -154,7 +154,7 @@ int main( int ac, char** av )
                 {
                     if( mode == fixed ) {}
                     else if( mode == dynamic ) { from = boost::none; break; }
-                    else { std::cerr << name << ": control mode " << mode_to_string( mode ) << " is not implemented" << std::endl; return 1; }
+                    else { std::cerr << name << ": control mode '" << mode_to_string( mode ) << "' is not implemented" << std::endl; return 1; }
                 }
                 select.check();
                 if( feedback_stream.ready() || select.read().ready( feedback_in ) )
@@ -174,7 +174,7 @@ int main( int ac, char** av )
                         if( verbose ) { std::cerr << name << ": waypoint " << snark::control::serialise( to ) << " is reached (" << reached.reason << ")" << std::endl; }
                         if( mode == fixed ) { from = to; }
                         else if( mode == dynamic ) { from = boost::none; }
-                        else { std::cerr << name << ": control mode " << mode_to_string( mode ) << " is not implemented" << std::endl; return 1; }
+                        else { std::cerr << name << ": control mode '" << mode_to_string( mode ) << "' is not implemented" << std::endl; return 1; }
                         break;
                     }
                     snark::control::error_t error;

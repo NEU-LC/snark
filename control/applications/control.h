@@ -91,7 +91,7 @@ struct error_t
     double heading;
 };
 
-double angle_wrap( double value ) { return comma::math::cyclic< double >( comma::math::interval< double >( -M_PI, M_PI ), value )(); }
+double wrap_angle( double value ) { return comma::math::cyclic< double >( comma::math::interval< double >( -M_PI, M_PI ), value )(); }
 
 struct wayline_t
 {
@@ -108,7 +108,7 @@ public:
         }
     bool is_past_endpoint( const vector_t& location ) const { return perpendicular_line_at_end.signedDistance( location ) > 0; }
     double cross_track_error( const vector_t& location ) const { return line.signedDistance( location ); }
-    double heading_error( double yaw, double heading_offset ) const { return angle_wrap( yaw - heading - heading_offset ); }
+    double heading_error( double yaw, double heading_offset ) const { return wrap_angle( yaw - heading - heading_offset ); }
     double get_heading() const { return heading; }
     void set_heading( double h ) { heading = h; }
 private:
