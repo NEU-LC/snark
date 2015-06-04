@@ -35,6 +35,7 @@
 #include <boost/lexical_cast.hpp>
 #include <comma/base/exception.h>
 #include <comma/csv/stream.h>
+#include <comma/string/split.h>
 
 namespace snark { namespace control {
 
@@ -45,21 +46,23 @@ class pid
 {
 public:
     pid( double p, double i, double d ) : p( p ), i( i ), d( d ), integral( 0 ) {}
-    pid( double p, double i, double d, boost::optional< double > threshold ) : p( p ), i( i ), d( d ), integral( 0 ), threshold( threshold ) 
-        { if( *threshold <= 0 ) { COMMA_THROW( comma::exception, "expected positive threshold, got " << *threshold ); } }
+    pid( double p, double i, double d, boost::optional< double > threshold ) : p( p ), i( i ), d( d ), integral( 0 ), threshold( threshold )
+        { if( threshold && *threshold <= 0 ) { COMMA_THROW( comma::exception, "expected positive threshold, got " << *threshold ); } }
     pid( const std::string& pid_values, char delimiter = ',' )
     {
         std::vector< std::string > v = comma::split( pid_values, delimiter );
-        if( v.size() != 3 && v.size() != 4 ) { COMMA_THROW( comma::exception, "expected 3 or 4 elements, got " << v.size() ); }
+        if( v.size() != 3 && v.size() != 4 ) { COMMA_THROW( comma::exception, "expected a string with 3 or 4 elements separated by '" << delimiter << "', got " << v.size() ); }
         p = boost::lexical_cast< double >( v[0] );
         i = boost::lexical_cast< double >( v[1] );
         d = boost::lexical_cast< double >( v[2] );
-        if( v.size() == 4 ) { threshold = boost::lexical_cast< double >( v[3] ); }
+        integral = 0;
+        if( v.size() == 4 )
+        {
+            threshold = boost::lexical_cast< double >( v[3] );
+            if( *threshold <= 0 ) { COMMA_THROW( comma::exception, "expected positive threshold, got " << *threshold ); }
+        }
     }
-    double time_increment( boost::posix_time::ptime  t )
-    {
-        return ( t - time ).total_microseconds() / 1e6;
-    }
+    double time_increment( boost::posix_time::ptime  t ) { return ( t - time ).total_microseconds() / 1e6; }
     void clip( double& value )
     {
         if( threshold )

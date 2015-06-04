@@ -33,16 +33,44 @@
 
 namespace snark { namespace test {
 
+TEST( pid, constructor )
+{
+    {
+        snark::control::pid<> p( 0.1, 0.01, 0.001 );
+        snark::control::pid< snark::control::internal > p1( 0.1, 0.01, 0.001 );
+        snark::control::pid< snark::control::internal > p2( 0.1, 0.01, 0.001, 0.25 );
+        snark::control::pid< snark::control::external > p3( 0.1, 0.01, 0.001 );
+        snark::control::pid< snark::control::external > p4( 0.1, 0.01, 0.001, 0.25 );
+    }
+    {
+        snark::control::pid< snark::control::internal > p1( "0.1,0.01,0.001" );
+        snark::control::pid< snark::control::external > p2( "0.1,0.01,0.001" );
+        snark::control::pid< snark::control::external > p3( "0.1;0.01;0.001", ';' );
+        snark::control::pid< snark::control::external > p4( "0.1,0.01,0.001,0.25" );
+        snark::control::pid< snark::control::external > p5( "0.1;0.01;0.001;0.25", ';' );
+    }
+}
+
 TEST( pid, threshold_throw )
 {
     ASSERT_THROW( snark::control::pid<>( 0, 0, 0, -1.0 ), comma::exception );
     ASSERT_THROW( snark::control::pid<>( 0, 0, 0, 0.0 ), comma::exception );
+    ASSERT_THROW( snark::control::pid<>( "0,0,0,-1.0" ), comma::exception );
+    ASSERT_THROW( snark::control::pid<>( "0,0,0,0.0" ), comma::exception );
 }
+
+TEST( pid, parsing_throw )
+{
+    ASSERT_THROW( snark::control::pid<>( "0,0" ), comma::exception );
+    ASSERT_THROW( snark::control::pid<>( "0,0,0,-1,0" ), comma::exception );
+}
+
+static const boost::posix_time::ptime initial_time = boost::posix_time::from_iso_string( "20101010T121212.123456" );
 
 TEST( pid, zero_time_increment_throw )
 {
     snark::control::pid<> pid( 0, 0, 0 );
-    boost::posix_time::ptime t = boost::posix_time::from_iso_string( "20101010T121212.123456" );
+    boost::posix_time::ptime t = initial_time;
     pid.update( 0, t );
     ASSERT_THROW( pid.update( 0, t ), comma::exception );
 }
@@ -51,77 +79,143 @@ TEST( pid, proportional )
 {
     const double p = 0.12;
     snark::control::pid<> pid( p, 0, 0 );
-    boost::posix_time::ptime t = boost::posix_time::from_iso_string( "20101010T121212.123456" );
+    boost::posix_time::ptime t = initial_time;
     double error = 0.1;
     EXPECT_EQ( p*error, pid.update( error, t ) );
-    t += boost::posix_time::seconds( 1 );
+    t += boost::posix_time::microseconds( 1 );
     error = 0.11;
     EXPECT_EQ( p*error, pid.update( error, t ) );
-    t += boost::posix_time::seconds( 2 );
+    t += boost::posix_time::microseconds( 2 );
     error = 0.12;
     EXPECT_EQ( p*error, pid.update( error, t ) );
 }
+
+double to_seconds( double microseconds ) { return microseconds/1e6; }
 
 TEST( pid, integral )
 {
     const double i = 0.04;
     snark::control::pid<> pid( 0, i, 0 );
-    boost::posix_time::ptime t = boost::posix_time::from_iso_string( "20101010T121212.123456" );
+    boost::posix_time::ptime t = initial_time;
     double error = 0.1;
     double integral = 0;
     EXPECT_EQ( i*integral, pid.update( error, t ) );
-    int dt = 1;
-    t += boost::posix_time::seconds( dt );
+    int microseconds = 10;
+    t += boost::posix_time::microseconds( microseconds );
     error = 0.11;
-    integral += error * dt;
+    integral += error * to_seconds( microseconds );
     EXPECT_EQ( i*integral, pid.update( error, t ) );
-    dt = 2;
-    t += boost::posix_time::seconds( dt );
+    microseconds = 20;
+    t += boost::posix_time::microseconds( microseconds );
     error = -0.12;
-    integral += error * dt;
+    integral += error * to_seconds( microseconds );
     EXPECT_EQ( i*integral, pid.update( error, t ) );
 }
 
 TEST( pid, threshold )
 {
     const double i = 0.1;
-    const double threshold = 0.15;
+    const double threshold = 0.00015;
     snark::control::pid<> pid( 0, i, 0, threshold );
-    boost::posix_time::ptime t = boost::posix_time::from_iso_string( "20101010T121212.123456" );
+    boost::posix_time::ptime t = initial_time;
     double error = 0;
     EXPECT_EQ( 0, pid.update( error, t ) );
-    int dt = 2;
-    t += boost::posix_time::seconds( dt );
+    int microseconds = 2000;
+    t += boost::posix_time::microseconds( microseconds );
     error = -0.1;
     EXPECT_EQ( i*(-threshold), pid.update( error, t ) );
 }
 
-TEST( pid, derivative )
+TEST( pid, derivative_internal )
 {
     const double d = 0.1;
     snark::control::pid<> pid( 0, 0, d );
-    boost::posix_time::ptime t = boost::posix_time::from_iso_string( "20101010T121212.123456" );
+    boost::posix_time::ptime t = initial_time;
     double error = 0.1;
-    double derivative = 0;
-    EXPECT_EQ( d*derivative, pid.update( error, t ) );
-    int dt = 1;
-    t += boost::posix_time::seconds( dt );
+    EXPECT_EQ( 0, pid.update( error, t ) );
+    int microseconds = 1;
+    t += boost::posix_time::microseconds( microseconds );
     double previous_error = error;
     error = 0.11;
-    derivative = ( error - previous_error )/ dt;
+    double derivative = ( error - previous_error )/ to_seconds( microseconds );
     EXPECT_EQ( d*derivative, pid.update( error, t ) );
-    dt = 2;
-    t += boost::posix_time::seconds( dt );
+    microseconds = 2;
+    t += boost::posix_time::microseconds( microseconds );
     previous_error = error;
     error = 0.12;
-    derivative = ( error - previous_error )/ dt;
+    derivative = ( error - previous_error )/ to_seconds( microseconds );
     EXPECT_EQ( d*derivative, pid.update( error, t ) );
+}
+
+TEST( pid, derivative_external )
+{
+    const double d = 0.1;
+    snark::control::pid< snark::control::external > pid( 0, 0, d );
+    boost::posix_time::ptime t = initial_time;
+    double error = 0;
+    EXPECT_EQ( 0, pid.update( error, t ) );
+    t += boost::posix_time::microseconds( 1 );
+    double derivative = 0.1;
+    EXPECT_EQ( d*derivative, pid.update( error, t, derivative ) );
+    t += boost::posix_time::microseconds( 2 );
+    derivative = 0.2;
+    EXPECT_EQ( d*derivative, pid.update( error, t, derivative ) );
+}
+
+TEST( pid, reset )
+{
+    double i = 0.1;
+    snark::control::pid<> pid( 0, i, 0 );
+    boost::posix_time::ptime t = initial_time;
+    double error = 0.1;
+    double integral = 0;
+    EXPECT_EQ( i*integral, pid.update( error, t ) );
+    int microseconds = 2;
+    t += boost::posix_time::microseconds( microseconds );
+    error = 0.2;
+    integral += error * to_seconds( microseconds );
+    EXPECT_EQ( i*integral, pid.update( error, t ) );
+    pid.reset();
+    integral = 0;
+    EXPECT_EQ( i*integral, pid.update( error, t ) );
+    microseconds = 3;
+    t += boost::posix_time::microseconds( microseconds );
+    error = 0.3;
+    integral = error * to_seconds( microseconds );
+    EXPECT_EQ( i*integral, pid.update( error, t ) );
+}
+
+TEST( pid, combination )
+{
+    double p = 0.1;
+    double i = 0.01;
+    double d = 0.001;
+    snark::control::pid<> pid( p, i, d );
+    boost::posix_time::ptime t = initial_time;
+    double error = 0.1;
+    double integral = 0;
+    double derivative = 0;
+    EXPECT_EQ( p*error + i*integral + d*derivative, pid.update( error, t ) );
+    int microseconds = 2;
+    t += boost::posix_time::microseconds( microseconds );
+    double previous_error = error;
+    error = -0.2;
+    integral += error * to_seconds( microseconds );
+    derivative = ( error - previous_error ) / to_seconds( microseconds );
+    EXPECT_EQ( p*error + i*integral + d*derivative, pid.update( error, t ) );
+    microseconds = 3;
+    t += boost::posix_time::microseconds( microseconds );
+    previous_error = error;
+    error = 0.3;
+    integral += error * to_seconds( microseconds );
+    derivative = ( error - previous_error ) / to_seconds( microseconds );
+    EXPECT_EQ( p*error + i*integral + d*derivative, pid.update( error, t ) );
 }
 
 } } // namespace snark {  namespace test {
 
-int main(int argc, char *argv[])
+int main( int ac, char** av )
 {
-    ::testing::InitGoogleTest(&argc, argv);
+    ::testing::InitGoogleTest( &ac, av );
     return RUN_ALL_TESTS();
 }
