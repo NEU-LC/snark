@@ -1,14 +1,18 @@
 var Sensor = function(sensor_name, config) {
     this.sensor_name = sensor_name;
     this.config = config;
-    this.el = $('#' + this.sensor_name);
-    this.status = $('#' + this.sensor_name + ' .status');
-    this.time = $('#' + this.sensor_name + ' .time');
-    this.target = $('#' + this.sensor_name + ' .target');
+    this.id = '#' + this.sensor_name;
+    this.el = $(this.id);
+    this.compact_icon = $(this.id + ' .panel-compact span');
+    this.body = $(this.id + ' .panel-body');
+    this.status = $(this.id + ' .status');
+    this.time = $(this.id + ' .time');
+    this.target = $(this.id + ' .target');
     this.interval = null;
     this.refresh_time = null;
     this.show = true;
 };
+Sensor.views = ['show', 'compact', 'hide'];
 Sensor.prototype.reset = function() {
     if (this.config.refresh.auto) {
         this.refresh();
@@ -32,10 +36,16 @@ Sensor.prototype.refresh = function() {
         this.set_interval();
     }
 }
-Sensor.prototype.toggle_show = function() {
-    if (this.show) {
+Sensor.prototype.update_view = function() {
+    if (this.config.view == 'show') {
         this.el.show();
-    } else {
+        this.body.show();
+        this.compact_icon.removeClass('glyphicon-resize-full').addClass('glyphicon-resize-small');
+    } else if (this.config.view == 'compact') {
+        this.el.show();
+        this.body.hide();
+        this.compact_icon.removeClass('glyphicon-resize-small').addClass('glyphicon-resize-full');
+    } else if (this.config.view == 'hide') {
         this.el.hide();
     }
 }
@@ -109,9 +119,10 @@ ImageSensor.prototype.onload_ = function(data) {
 var ImageStreamSensor = function(sensor_name, config) {
     this.sensor_name = sensor_name;
     this.config = config;
-    this.el = $('#' + this.sensor_name);
-    this.target = $('#' + this.sensor_name + ' .target');
-    this.control = $('#' + this.sensor_name + ' .panel-stream-control span');
+    this.id = '#' + this.sensor_name;
+    this.el = $(this.id);
+    this.target = $(this.id + ' .target');
+    this.control = $(this.id + ' .panel-stream-control span');
     this.target.on('load', function() {
         var id = $(this).closest('li').attr('id');
         var sensor = sensors[id];
@@ -125,7 +136,6 @@ var ImageStreamSensor = function(sensor_name, config) {
             sensor.is_resizable = true;
         }
     });
-    this.show = true;
     this.reset(this.config.stream.autoplay ? {} : { count: 1 });
 }
 ImageStreamSensor.prototype.onload = function(data) {
@@ -171,7 +181,7 @@ ImageStreamSensor.prototype.toggle = function() {
     }
 }
 ImageStreamSensor.prototype.toggle_show = function() {
-    if (this.show) {
+    if (this.config.show) {
         this.el.show();
     } else {
         this.el.hide();
@@ -212,6 +222,9 @@ TextSensor.prototype.load = function() {
     });
 }
 TextSensor.prototype.onload_ = function(data) {
+    if (data && data.length && data[data.length - 1] == '\n') {
+        data = data.substring(0, data.length - 1);
+    }
     data = data ? data : '&nbsp;';
     this.target.append('<li><pre>' + data + '</pre></li>');
     this.draw();
@@ -226,8 +239,8 @@ var GraphSensor = function(sensor_name, config) {
     this.base = Sensor;
     this.base(sensor_name, config);
     this.default_threshold = { value: this.config.graph.max, color: '#5cb85c' }
-    this.text = $('#' + sensor_name + ' .graph-text');
-    this.bars = $('#' + sensor_name + ' .graph-bars');
+    this.text = $(this.id + ' .graph-text');
+    this.bars = $(this.id + ' .graph-bars');
     this.bars.append('<div class="graph-bar-col"><span class="graph-bar"></span></div>');
     this.bars_width = Number($('.graph-bars').css('width').replace('px', ''));
     this.bar_width = Number($('.graph-bar-col').css('width').replace('px', ''));
@@ -262,7 +275,7 @@ GraphSensor.prototype.load = function() {
     });
 }
 GraphSensor.prototype.onload_ = function(data) {
-    var text = data.replace("\n", '');
+    var text = data ? data.replace("\n", '') : 'N/A';
     if (this.config.graph.units) {
         text += ' ' + this.config.graph.units;
     }
@@ -309,27 +322,33 @@ GraphSensor.prototype.get_threshold = function(value) {
 var add_panel = function(sensor_name) {
     $('#container').append(
         '<li id="' + sensor_name + '" class="panel">' +
-        '  <button type="button" class="panel-close text-muted transparent pull-right" title="close"><span>&times;</span></button>' +
-        '  <div class="panel-body">' +
-        '  </div>' +
+        '  <button type="button" class="panel-close hideable text-muted transparent pull-right" title="close"><span>&times;</span></button>' +
         '</li>'
     );
 }
 
 var add_poll_body = function(sensor_name, element) {
     var id = '#' + sensor_name;
-    $(id + ' .panel-body').append(
-        '<h3>' + sensor_name + ' <button class="panel-refresh" title="<kbd>click</kbd>: refresh<br><kbd>shift+click</kbd>: auto refresh"><span class="status text-muted glyphicon glyphicon-stop"></span></button><button class="panel-settings transparent" title="settings"><span class="text-muted glyphicon glyphicon-cog"></span></button></h3>' +
-        '<p class="time small">&nbsp;</p>' +
-        element
+    $(id).append(
+        '<h3>' + sensor_name + 
+        '  <button class="panel-refresh" title="<kbd>click</kbd>: refresh<br><kbd>shift+click</kbd>: auto refresh"><span class="status text-muted glyphicon glyphicon-stop"></span></button>' +
+        '  <button class="panel-settings hideable transparent" title="settings"><span class="text-muted glyphicon glyphicon-cog"></span></button>' +
+        '  <button class="panel-compact hideable transparent" title="compact"><span class="text-muted glyphicon glyphicon-resize-small"></span></button>' +
+        '</h3>' +
+        '<div class="panel-body">' +
+        '  <p class="time small">&nbsp;</p>' +
+           element +
+        '</div>'
     );
 }
 
 var add_stream_body = function(sensor_name, element) {
     var id = '#' + sensor_name;
-    $(id + ' .panel-body').append(
+    $(id).append(
         '<h3>' + sensor_name + ' <button class="panel-stream-control" title="<kbd>click</kbd>: refresh<br><kbd>shift+click</kbd>: start/stop"><span class="status text-muted glyphicon glyphicon-stop"></span></button><button class="panel-settings transparent" title="settings"><span class="text-muted glyphicon glyphicon-cog"></span></button></h3>' +
-        element
+        '<div class="panel-body">' +
+           element +
+        '</div>'
     );
 }
 
@@ -408,22 +427,37 @@ var Globals = function(options) {
             }
         });
     }
-    this.start_all = function() {
+    this.start = function() {
         this.start_auto_refresh();
         this.start_streams();
     }
-    this.stop_all = function() {
+    this.stop = function() {
         this.stop_auto_refresh();
         this.stop_streams();
     }
-    this.show_all = function() {
+    this.show = function() {
         $.each(sensors, function(index, sensor) {
-            gui.setProperty('show', true, sensor.sensor_name);
+            if (sensor.config.type == 'stream') {
+                gui.setProperty('show', true, sensor.sensor_name);
+            } else {
+                gui.setProperty('view', 'show', sensor.sensor_name);
+            }
         });
     }
-    this.hide_all = function() {
+    this.compact = function() {
         $.each(sensors, function(index, sensor) {
-            gui.setProperty('show', false, sensor.sensor_name);
+            if (sensor.config.type != 'stream') {
+                gui.setProperty('view', 'compact', sensor.sensor_name);
+            }
+        });
+    }
+    this.hide = function() {
+        $.each(sensors, function(index, sensor) {
+            if (sensor.config.type == 'stream') {
+                gui.setProperty('show', false, sensor.sensor_name);
+            } else {
+                gui.setProperty('view', 'hide', sensor.sensor_name);
+            }
         });
     }
     this.enable_alerting = function() {
@@ -454,7 +488,7 @@ var globals = new Globals({
 });
 
 function initialize(frontend_config) {
-    globals.stop_all();
+    globals.stop();
     $('#container').empty();
     sensors = {};
     pending = {};
@@ -470,14 +504,11 @@ function initialize(frontend_config) {
     });
     var folder = gui.addFolder('global actions');
     folder.add(globals, "refresh");
-    folder.add(globals, "start_auto_refresh").name("start auto refresh");
-    folder.add(globals, "stop_auto_refresh").name("stop auto refresh");
-    folder.add(globals, "start_streams").name("start streams");
-    folder.add(globals, "stop_streams").name("stop streams");
-    folder.add(globals, "start_all").name("start all");
-    folder.add(globals, "stop_all").name("stop all");
-    folder.add(globals, "show_all").name("show all");
-    folder.add(globals, "hide_all").name("hide all");
+    folder.add(globals, "start");
+    folder.add(globals, "stop");
+    folder.add(globals, "show");
+    folder.add(globals, "compact");
+    folder.add(globals, "hide");
     folder.add(globals, "enable_alerting").name("enable alerting");
     folder.add(globals, "disable_alerting").name("disable alerting");
     folder.add(globals, "clear_alerts").name("clear alerts");
@@ -489,6 +520,7 @@ function initialize(frontend_config) {
             config.type = 'image';
         }
         if (config.type == 'stream') {
+            config.show = true;
             if (!('stream' in config)) {
                 config.stream = {
                     autoplay: false
@@ -500,6 +532,7 @@ function initialize(frontend_config) {
                 config.url = frontend_config.websocket + '?xpath=' + xpath + '&data_uri=true';
             }
         } else {
+            config.view = Sensor.views[0];
             if (!('refresh' in config)) {
                 config.refresh = {};
             }
@@ -546,13 +579,13 @@ function initialize(frontend_config) {
         folder.add(sensor.config, 'url').onFinishChange(function(value) {
             sensors[this.object.sensor_name].reset();
         });
-        folder.add(sensor, 'show').onFinishChange(function(value) {
-            this.object.toggle_show();
-            if (!value) {
-                gui.setProperty('auto', false, this.object.sensor_name);
-            }
-        });
         if (config.type != 'stream') {
+            folder.add(sensor.config, 'view', Sensor.views).onFinishChange(function(value) {
+                sensors[this.object.sensor_name].update_view();
+                if (value == 'hide') {
+                    gui.setProperty('auto', false, this.object.sensor_name);
+                }
+            });
             folder.add(sensor.config.refresh, 'auto').name("auto refresh").onFinishChange(function(value) {
                 sensors[this.object.sensor_name].reset();
             });
@@ -569,6 +602,13 @@ function initialize(frontend_config) {
                 });
             }
             sensor.refresh();
+        } else {
+            folder.add(sensor.config, 'show').onFinishChange(function(value) {
+                sensors[this.object.sensor_name].toggle_show();
+                if (!value) {
+                    gui.setProperty('auto', false, this.object.sensor_name);
+                }
+            });
         }
         folder.add(sensor.config, 'alert').name('enable alerting').onFinishChange(function(value) {
             if (!value) {
@@ -598,13 +638,11 @@ function initialize(frontend_config) {
     });
 
     $('.panel').on('mouseover', function() {
-        $(this).find('button').addClass('thin-border');
-        $(this).find('.panel-settings, .panel-close').removeClass('transparent');
+        $(this).find('.hideable').removeClass('transparent');
         $(this).find('div button').addClass('button-shadow');
     })
     $('.panel').on('mouseout', function() {
-        $(this).find('button').removeClass('thin-border');
-        $(this).find('.panel-settings, .panel-close').addClass('transparent');
+        $(this).find('.hideable').addClass('transparent');
         $(this).find('div button').removeClass('button-shadow');
     })
     $('.panel button').tooltip({ html: true });
@@ -638,7 +676,19 @@ function initialize(frontend_config) {
     });
     $('.panel-close').on('click', function(event) {
         var id = $(this).closest('li').attr('id');
-        gui.setProperty('show', false, id);
+        var sensor = sensors[id];
+        if (sensor.config.type == 'stream') {
+            gui.setProperty('show', false, sensor.sensor_name);
+        } else {
+            gui.setProperty('view', 'hide', sensor.sensor_name);
+        }
+    });
+    $('.panel-compact').on('click', function(event) {
+        var id = $(this).closest('li').attr('id');
+        var sensor = sensors[id];
+        if (sensor.config.type != 'stream') {
+            gui.setProperty('view', sensor.config.view == 'compact' ? 'show' : 'compact', sensor.sensor_name);
+        }
     });
 
     $(document).on('keydown', function(event) {
