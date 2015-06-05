@@ -85,6 +85,9 @@ Sensor.prototype.alert = function(on) {
     if (on) {
         this.el.addClass('panel-alert');
         gui_folder.find('.title').addClass('panel-alert');
+        if (globals.alert_beep) {
+            globals.beep();
+        }
     } else {
         this.el.removeClass('panel-alert');
         gui_folder.find('.title').removeClass('panel-alert');
@@ -475,7 +478,14 @@ var Globals = function(options) {
             sensor.alert(false);
         });
     }
-    this.config_file = options.config_file
+    this.config_file = options.config_file;
+    this.alert_beep = true;
+    this.beep = function() {
+        var oscillator = audio_context.createOscillator();
+        oscillator.connect(audio_context.destination);
+        oscillator.start(0);
+        oscillator.stop(audio_context.currentTime + 0.2);
+    }
 }
 
 var gui;
@@ -483,6 +493,7 @@ var sensors = {};
 var pending = {};
 var config_dir = 'config';
 var config_files = [];
+var audio_context = new AudioContext;
 var globals = new Globals({
     config_file: config_dir + '/web.frontend.json',
 });
@@ -512,6 +523,7 @@ function initialize(frontend_config) {
     folder.add(globals, "enable_alerting").name("enable alerting");
     folder.add(globals, "disable_alerting").name("disable alerting");
     folder.add(globals, "clear_alerts").name("clear alerts");
+    folder.add(globals, "alert_beep").name("alert beep");
 
     for (var sensor_name in frontend_config.sensors) {
         var config = frontend_config.sensors[sensor_name];
