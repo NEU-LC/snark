@@ -52,6 +52,8 @@ body {
 .panel .time {
     white-space: nowrap;
     margin: 0;
+    display: block;
+    width: 100%;
 }
 
 .panel-body {

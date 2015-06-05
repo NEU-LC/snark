@@ -6,7 +6,8 @@ var Sensor = function(sensor_name, config) {
     this.compact_icon = $(this.id + ' .panel-compact span');
     this.body = $(this.id + ' .panel-body');
     this.status = $(this.id + ' .status');
-    this.time = $(this.id + ' .time');
+    this.time = $(this.id + ' .utc-time').hide();
+    this.timeago = $(this.id + ' .timeago').timeago();
     this.target = $(this.id + ' .target');
     this.interval = null;
     this.refresh_time = null;
@@ -54,12 +55,13 @@ Sensor.prototype.preload = function() {
         return;
     }
     pending[this.sensor_name] = true;
-    this.refresh_time = Date();
+    this.refresh_time = new Date();
     this.status.fadeTo(1000, 0.4);
     this.load();
 }
 Sensor.prototype.onload = function(data) {
     this.time.text(this.refresh_time);
+    this.timeago.attr('datetime', this.refresh_time.toISOString()).timeago('updateFromDOM');
     this.status.finish().fadeTo(0, 1);
     if (this.config.alert) {
         this.alert(!data || !data.length);
@@ -69,6 +71,7 @@ Sensor.prototype.onload = function(data) {
 }
 Sensor.prototype.onerror = function() {
     this.time.text(this.refresh_time);
+    this.timeago.attr('datetime', this.refresh_time.toISOString()).timeago('updateFromDOM');
     this.status.finish().fadeTo(0, 1);
     this.onload_();
     delete pending[this.sensor_name];
@@ -339,7 +342,8 @@ var add_poll_body = function(sensor_name, element) {
         '  <button class="panel-compact hideable transparent" title="compact"><span class="text-muted glyphicon glyphicon-resize-small"></span></button>' +
         '</h3>' +
         '<div class="panel-body">' +
-        '  <p class="time small">&nbsp;</p>' +
+        '  <time class="utc-time time small">&nbsp;</time>' +
+        '  <time class="timeago time small">&nbsp;</time>' +
            element +
         '</div>'
     );
@@ -701,6 +705,18 @@ function initialize(frontend_config) {
         if (sensor.config.type != 'stream') {
             gui.setProperty('view', sensor.config.view == 'compact' ? 'show' : 'compact', sensor.sensor_name);
         }
+    });
+    $('.timeago').on('mouseenter', function(e) {
+        var id = $(this).closest('li').attr('id');
+        var sensor = sensors[id];
+        sensor.timeago.hide();
+        sensor.time.show();
+    });
+    $('.utc-time').on('mouseleave', function(e) {
+        var id = $(this).closest('li').attr('id');
+        var sensor = sensors[id];
+        sensor.timeago.show();
+        sensor.time.hide();
     });
 
     $(document).on('keydown', function(event) {
