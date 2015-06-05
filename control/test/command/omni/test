@@ -40,32 +40,4 @@ function echo_omni_result
 
 for(( i=0; i < ${#omni_output[@]}; i++ )); do echo_omni_result "omni/output[$i]" ${omni_output[i]}; done
 
-
-skid_fields="speed,error/cross_track,error/heading"
-read -d '' skid_input <<END
-10.0,0,0.01
-11.0,0,-0.01
-12.0,0.01,0
-13.0,-0.01,0
-14.0,0.01,0.01
-15.0,-0.01,-0.01
-16.0,0.01,-0.1
-17.0,-0.01,0.1
-END
-skid_output=( $( echo -e "$skid_input" | control-command --fields=$skid_fields --cross-track-pid=1.11111,0,0 --heading-pid=0.12345,0,0 --steering=skid ) )
-
-function echo_skid_result
-{
-    local lhs=$1
-    local result=$2
-    local speed cross_track_error heading_error turn_rate
-    IFS=, read speed cross_track_error heading_error turn_rate <<< $result
-    echo "$lhs/speed=$speed"
-    echo "$lhs/cross_track_error=$cross_track_error"
-    echo "$lhs/heading_error=$heading_error"
-    echo "$lhs/turn_rate=$turn_rate"
-}
-
-for(( i=0; i < ${#skid_output[@]}; i++ )); do echo_skid_result "skid/output[$i]" ${skid_output[i]}; done
-
 clean

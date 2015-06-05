@@ -1,0 +1,14 @@
+output[0]/yaw=0.1
+output[0]/yaw_rate=0.01
+output[0]/wayline_heading=0.1
+output[0]/cross_track_error=0
+output[0]/heading_error=0
+output[0]/turn_rate=0.01
+output[0]/local_heading=0
+output[1]/yaw=0.1
+output[1]/yaw_rate=0.02
+output[1]/wayline_heading=0.1
+output[1]/cross_track_error=0
+output[1]/heading_error=0
+output[1]/turn_rate=0.02
+output[1]/local_heading=0

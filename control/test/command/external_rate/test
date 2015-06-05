@@ -1,0 +1,36 @@
+#!/bin/bash
+
+function clean
+{
+    pkill -P $$
+    return 0
+}
+function bye { clean; exit 1; }
+trap bye INT TERM HUP
+trap clean EXIT
+
+omni_fields="feedback/yaw,feedback/yaw_rate,wayline/heading,error/cross_track,error/heading"
+read -d '' omni_input <<END
+0.1,0.01,0.1,0,0
+0.1,0.02,0.1,0,0
+END
+omni_output=( $( echo -e "$omni_input" | control-command --fields=$omni_fields --cross-track-pid=0,0,0 --heading-pid=0,0,1 --steering=omni ) )
+
+function echo_omni_result
+{
+    local lhs=$1
+    local result=$2
+    local yaw yaw_rate wayline_heading cross_track_error heading_error turn_rate local_heading
+    IFS=, read yaw yaw_rate wayline_heading cross_track_error heading_error turn_rate local_heading <<< $result
+    echo "$lhs/yaw=$yaw"
+    echo "$lhs/yaw_rate=$yaw_rate"
+    echo "$lhs/wayline_heading=$wayline_heading"
+    echo "$lhs/cross_track_error=$cross_track_error"
+    echo "$lhs/heading_error=$heading_error"
+    echo "$lhs/turn_rate=$turn_rate"
+    echo "$lhs/local_heading=$local_heading"
+}
+
+for(( i=0; i < ${#omni_output[@]}; i++ )); do echo_omni_result "output[$i]" ${omni_output[i]}; done
+
+clean
