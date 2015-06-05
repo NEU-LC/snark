@@ -69,9 +69,8 @@ struct feedback_t
 
 struct target_t
 {
-    target_t() : speed( 0 ), heading_offset( 0 ) {}
+    target_t() : heading_offset( 0 ) {}
     vector_t position;
-    double speed;
     double heading_offset;
 };
 
@@ -112,10 +111,10 @@ private:
 struct control_data_t
 {
     control_data_t() {}
-    control_data_t( const target_t& target, const wayline_t& wayline, const feedback_t& feedback, const error_t& error ) : target( target ), wayline( wayline ), feedback( feedback ), error( error ) {}
+    control_data_t( const wayline_t& wayline, const error_t& error ) : wayline( wayline ), error( error ) {}
     target_t target;
-    wayline_t wayline;
     feedback_t feedback;
+    wayline_t wayline;
     error_t error;
 };
 
@@ -154,14 +153,12 @@ template <> struct traits< snark::control::target_t >
     template < typename K, typename V > static void visit( const K&, snark::control::target_t& p, V& v )
     {
         v.apply( "position", p.position );
-        v.apply( "speed", p.speed );
         v.apply( "heading_offset", p.heading_offset );
     }
 
     template < typename K, typename V > static void visit( const K&, const snark::control::target_t& p, V& v )
     {
         v.apply( "position", p.position );
-        v.apply( "speed", p.speed );
         v.apply( "heading_offset", p.heading_offset );
     }
 };
@@ -200,16 +197,16 @@ template <> struct traits< snark::control::control_data_t >
     template < typename K, typename V > static void visit( const K&, snark::control::control_data_t& p, V& v )
     {
         v.apply( "target", p.target );
-        v.apply( "wayline", p.wayline );
         v.apply( "feedback", p.feedback );
+        v.apply( "wayline", p.wayline );
         v.apply( "error", p.error );
     }
 
     template < typename K, typename V > static void visit( const K&, const snark::control::control_data_t& p, V& v )
     {
         v.apply( "target", p.target );
-        v.apply( "wayline", p.wayline );
         v.apply( "feedback", p.feedback );
+        v.apply( "wayline", p.wayline );
         v.apply( "error", p.error );
     }
 };

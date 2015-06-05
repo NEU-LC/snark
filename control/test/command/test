@@ -9,16 +9,16 @@ function bye { clean; exit 1; }
 trap bye INT TERM HUP
 trap clean EXIT
 
-omni_fields="feedback/t,target/speed,wayline/heading,feedback/yaw,error/cross_track,error/heading"
+omni_fields="speed,feedback/t,feedback/yaw,wayline/heading,error/cross_track,error/heading"
 read -d '' omni_input <<END
-20010101T000000.000000,10.0,0.1,0.11,0.0,0.01
-20010101T000000.100000,11.0,0.1,0.09,0.0,-0.01
-20010101T000000.200000,12.0,0.1,0.1,0.01,0
-20010101T000000.300000,13.0,0.1,0.1,-0.01,0
-20010101T000000.400000,14.0,0.1,0.11,0.01,0.01
-20010101T000000.500000,15.0,0.1,0.09,-0.01,-0.01
-20010101T000000.600000,16.0,0.1,0.0,0.01,-0.1
-20010101T000000.700000,17.0,0.1,0.2,-0.01,0.1
+10.0,20010101T000000.000000,0.11,0.1,0.0,0.01
+11.0,20010101T000000.100000,0.09,0.1,0.0,-0.01
+12.0,20010101T000000.200000,0.1,0.1,0.01,0
+13.0,20010101T000000.300000,0.1,0.1,-0.01,0
+14.0,20010101T000000.400000,0.11,0.1,0.01,0.01
+15.0,20010101T000000.500000,0.09,0.1,-0.01,-0.01
+16.0,20010101T000000.600000,0.0,0.1,0.01,-0.1
+17.0,20010101T000000.700000,0.2,0.1,-0.01,0.1
 END
 omni_output=( $( echo -e "$omni_input" | control-command --fields=$omni_fields --cross-track-pid=1.11111,0,0 --heading-pid=0.12345,0,0 --steering=omni ) )
 
@@ -26,8 +26,8 @@ function echo_omni_result
 {
     local lhs=$1
     local result=$2
-    local time speed wayline_heading yaw cross_track_error heading_error turn_rate local_heading
-    IFS=, read time speed wayline_heading yaw cross_track_error heading_error turn_rate local_heading <<< $result
+    local speed time yaw wayline_heading cross_track_error heading_error turn_rate local_heading
+    IFS=, read speed time yaw wayline_heading cross_track_error heading_error turn_rate local_heading <<< $result
     echo "$lhs/time=\"$time\""
     echo "$lhs/speed=$speed"
     echo "$lhs/wayline_heading=$wayline_heading"
@@ -41,7 +41,7 @@ function echo_omni_result
 for(( i=0; i < ${#omni_output[@]}; i++ )); do echo_omni_result "omni/output[$i]" ${omni_output[i]}; done
 
 
-skid_fields="target/speed,error/cross_track,error/heading"
+skid_fields="speed,error/cross_track,error/heading"
 read -d '' skid_input <<END
 10.0,0,0.01
 11.0,0,-0.01

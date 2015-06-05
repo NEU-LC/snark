@@ -37,8 +37,12 @@
 
 static const std::string name = snark::control::command_app_name;
 
-template< typename T > std::string field_names( bool full_xpath = false, char separator = ',' ) { return comma::join( comma::csv::names< T >( full_xpath ), separator ); }
-template< typename T > std::string format( std::string fields, bool full_xpath = false ) { return comma::csv::format::value< T >( fields, full_xpath ); }
+template< typename T > std::string field_names( bool full_xpath = false ) { return comma::join( comma::csv::names< T >( full_xpath ), ',' ); }
+template< typename T > std::string format( const std::string& fields = "", bool full_xpath = false ) { return comma::csv::format::value< T >( !fields.empty() ? fields : field_names< T >( full_xpath ), full_xpath ); }
+template< typename T > std::string format( bool full_xpath = false ) { return format< T >( "", full_xpath ); }
+
+//template< typename T > std::string field_names( bool full_xpath = false, char separator = ',' ) { return comma::join( comma::csv::names< T >( full_xpath ), separator ); }
+//template< typename T > std::string format( std::string fields, bool full_xpath = false ) { return comma::csv::format::value< T >( fields, full_xpath ); }
 
 typedef snark::control::control_data_t control_data_t;
 typedef snark::control::command_t command_t;
@@ -58,7 +62,7 @@ std::string steering_to_string( steering_t m ) { return  named_steerings.left.at
 static void usage( bool verbose = false )
 {
     std::cerr << std::endl;
-    std::cerr << "take control data on stdin and output command to stdout with the appended command" << std::endl;
+    std::cerr << "take control data on stdin and output it to stdout with the appended command" << std::endl;
     std::cerr << std::endl;
     std::cerr << "usage: " << name << " [<options>]" << std::endl;
     std::cerr << std::endl;
@@ -66,9 +70,9 @@ static void usage( bool verbose = false )
     std::cerr << "    --steering <mode>: steering mode" << std::endl;
     std::cerr << "    --cross-track-pid=<p>,<i>,<d>[,<integral threshold>]: cross track pid parameters" << std::endl;
     std::cerr << "    --heading-pid=<p>,<i>,<d>[,<integral threshold>]: heading pid parameters" << std::endl;
-    std::cerr << "    --format: show default binary format of input stream and exit" << std::endl;
-    std::cerr << "    --output-format: show binary format of output stream and exit" << std::endl;
-    std::cerr << "    --output-fields: show output fields and exit" << std::endl;
+    std::cerr << "    --format: show binary format of default input stream fields and exit" << std::endl;
+    std::cerr << "    --output-format: show binary format of output stream and exit (for command fields only)" << std::endl;
+    std::cerr << "    --output-fields: show output fields and exit (for command fields only)" << std::endl;
     std::cerr << std::endl;
     std::cerr << "steering modes:" << std::endl;
     std::cerr << "    skid: skid-steer mode" << std::endl;
@@ -113,9 +117,9 @@ int main( int ac, char** av )
         if( input_csv.binary() ) { output_csv.format( format< command_t >( output_csv.fields ) ); }
         comma::csv::output_stream< command_t > output_stream( std::cout, output_csv );
         comma::csv::tied< control_data_t, command_t > tied( input_stream, output_stream );
-        if( options.exists( "--format" ) ) { std::cout << format< control_data_t >( input_csv.fields, true ) << std::endl; return 0; }
-        if( options.exists( "--output-format" ) ) { std::cout << format< control_data_t >( input_csv.fields, true ) << ',' << format< command_t >( output_csv.fields ) << std::endl; return 0; }
-        if( options.exists( "--output-fields" ) ) { std::cout << input_csv.fields << ',' << output_csv.fields << std::endl; return 0; }
+        if( options.exists( "--format" ) ) { std::cout << format< control_data_t >( true ) << std::endl; return 0; }
+        if( options.exists( "--output-format" ) ) { std::cout << format< command_t >( output_csv.fields ) << std::endl; return 0; }
+        if( options.exists( "--output-fields" ) ) { std::cout << output_csv.fields << std::endl; return 0; }
         snark::control::pid<> cross_track_pid( options.value< std::string >( "--cross-track-pid" ) );
         snark::control::pid<> heading_pid( options.value< std::string >( "--heading-pid" ) );
         comma::signal_flag is_shutdown;
