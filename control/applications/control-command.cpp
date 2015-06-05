@@ -123,7 +123,6 @@ int main( int ac, char** av )
         bool compute_rate = !input_csv.has_field( "feedback/yaw_rate" );
         snark::control::pid<> cross_track_pid( options.value< std::string >( "--cross-track-pid" ) );
         snark::control::pid<> heading_pid( options.value< std::string >( "--heading-pid" ) );
-        snark::control::pid< snark::control::external > external_heading_pid( options.value< std::string >( "--heading-pid" ) );
         comma::signal_flag is_shutdown;
         while( !is_shutdown && ( input_stream.ready() || ( std::cin.good() && !std::cin.eof() ) ) )
         {
@@ -137,7 +136,7 @@ int main( int ac, char** av )
                 double local_heading_correction = limit_angle( cross_track_pid.update( control_data->error.cross_track, time ) );
                 double yaw = control_data->feedback.yaw;
                 command.local_heading = snark::control::wrap_angle( yaw - heading + local_heading_correction );
-                command.turn_rate = compute_rate ? heading_pid.update( control_data->error.heading, time ) : external_heading_pid.update( control_data->error.heading, time, control_data->feedback.yaw_rate );
+                command.turn_rate = compute_rate ? heading_pid.update( control_data->error.heading, time ) : heading_pid.update( control_data->error.heading, time, control_data->feedback.yaw_rate );
             }
             else if( steering == skid )
             {
