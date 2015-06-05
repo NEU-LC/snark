@@ -9,7 +9,7 @@ function bye { clean; exit 1; }
 trap bye INT TERM HUP
 trap clean EXIT
 
-omni_fields="feedback/t,target/parameters/speed,wayline/heading,feedback/data/orientation/yaw,error/cross_track,error/heading"
+omni_fields="feedback/t,target/speed,wayline/heading,feedback/yaw,error/cross_track,error/heading"
 read -d '' omni_input <<END
 20010101T000000.000000,10.0,0.1,0.11,0.0,0.01
 20010101T000000.100000,11.0,0.1,0.09,0.0,-0.01
@@ -41,7 +41,7 @@ function echo_omni_result
 for(( i=0; i < ${#omni_output[@]}; i++ )); do echo_omni_result "omni/output[$i]" ${omni_output[i]}; done
 
 
-skid_fields="target/parameters/speed,error/cross_track,error/heading"
+skid_fields="target/speed,error/cross_track,error/heading"
 read -d '' skid_input <<END
 10.0,0,0.01
 11.0,0,-0.01

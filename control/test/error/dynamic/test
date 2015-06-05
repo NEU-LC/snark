@@ -54,7 +54,7 @@ function test_feedback
     local values=$2
     send_feedback $values
     wait_for_new_output || exit 1
-    local output_fields="target/location/x,target/location/y,error/cross_track,error/heading"
+    local output_fields="target/position/x,target/position/y,error/cross_track,error/heading"
     local x y xtrack heading
     IFS=, read x y xtrack heading <<< $( tail -n1 $output | csv-shuffle --fields=$( control-error --output-fields ) --output-fields=$output_fields )
     echo "$lhs/x=$x"

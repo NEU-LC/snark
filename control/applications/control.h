@@ -39,6 +39,7 @@
 #include <comma/visiting/traits.h>
 #include <comma/base/exception.h>
 #include <comma/math/cyclic.h>
+#include <comma/base/types.h>
 #include <snark/visiting/eigen.h>
 #include <snark/timing/timestamped.h>
 
@@ -58,30 +59,20 @@ std::string serialise( const vector_t& p )
     return s.str();
 }
 
-struct orientation_t
+struct feedback_t
 {
+    boost::posix_time::ptime t;
+    vector_t position;
     double yaw;
-};
-
-struct position_t
-{
-    vector_t location;
-    orientation_t orientation;
-};
-
-typedef snark::timestamped< position_t > feedback_t;
-
-struct parameters_t
-{
-    parameters_t() : speed( 0 ), heading_offset( 0 ) {}
-    double speed;
-    double heading_offset;
+    double yaw_rate;
 };
 
 struct target_t
 {
-    vector_t location;
-    parameters_t parameters;
+    target_t() : speed( 0 ), heading_offset( 0 ) {}
+    vector_t position;
+    double speed;
+    double heading_offset;
 };
 
 struct error_t
@@ -139,46 +130,22 @@ struct command_t
 
 namespace comma { namespace visiting {
 
-template <> struct traits< snark::control::orientation_t >
+template <> struct traits< snark::control::feedback_t >
 {
-    template < typename K, typename V > static void visit( const K&, snark::control::orientation_t& p, V& v )
+    template < typename K, typename V > static void visit( const K&, snark::control::feedback_t& p, V& v )
     {
+        v.apply( "t", p.t );
+        v.apply( "position", p.position );
         v.apply( "yaw", p.yaw );
+        v.apply( "yaw_rate", p.yaw_rate );
     }
 
-    template < typename K, typename V > static void visit( const K&, const snark::control::orientation_t& p, V& v )
+    template < typename K, typename V > static void visit( const K&, const snark::control::feedback_t& p, V& v )
     {
+        v.apply( "t", p.t );
+        v.apply( "position", p.position );
         v.apply( "yaw", p.yaw );
-    }
-};
-
-template <> struct traits< snark::control::position_t >
-{
-    template < typename K, typename V > static void visit( const K&, snark::control::position_t& p, V& v )
-    {
-        v.apply( "location", p.location );
-        v.apply( "orientation", p.orientation );
-    }
-
-    template < typename K, typename V > static void visit( const K&, const snark::control::position_t& p, V& v )
-    {
-        v.apply( "location", p.location );
-        v.apply( "orientation", p.orientation );
-    }
-};
-
-template <> struct traits< snark::control::parameters_t >
-{
-    template < typename K, typename V > static void visit( const K&, snark::control::parameters_t& p, V& v )
-    {
-        v.apply( "speed", p.speed );
-        v.apply( "heading_offset", p.heading_offset );
-    }
-
-    template < typename K, typename V > static void visit( const K&, const snark::control::parameters_t& p, V& v )
-    {
-        v.apply( "speed", p.speed );
-        v.apply( "heading_offset", p.heading_offset );
+        v.apply( "yaw_rate", p.yaw_rate );
     }
 };
 
@@ -186,14 +153,16 @@ template <> struct traits< snark::control::target_t >
 {
     template < typename K, typename V > static void visit( const K&, snark::control::target_t& p, V& v )
     {
-        v.apply( "location", p.location );
-        v.apply( "parameters", p.parameters );
+        v.apply( "position", p.position );
+        v.apply( "speed", p.speed );
+        v.apply( "heading_offset", p.heading_offset );
     }
 
     template < typename K, typename V > static void visit( const K&, const snark::control::target_t& p, V& v )
     {
-        v.apply( "location", p.location );
-        v.apply( "parameters", p.parameters );
+        v.apply( "position", p.position );
+        v.apply( "speed", p.speed );
+        v.apply( "heading_offset", p.heading_offset );
     }
 };
 
