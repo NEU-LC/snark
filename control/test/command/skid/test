@@ -9,8 +9,8 @@ function bye { clean; exit 1; }
 trap bye INT TERM HUP
 trap clean EXIT
 
-skid_fields="speed,error/cross_track,error/heading"
-read -d '' skid_input <<END
+fields="speed,error/cross_track,error/heading"
+read -d '' input <<END
 10.0,0,0.01
 11.0,0,-0.01
 12.0,0.01,0
@@ -20,7 +20,7 @@ read -d '' skid_input <<END
 16.0,0.01,-0.1
 17.0,-0.01,0.1
 END
-skid_output=( $( echo -e "$skid_input" | control-command --fields=$skid_fields --cross-track-pid=1.11111,0,0 --heading-pid=0.12345,0,0 --steering=skid ) )
+output=( $( echo -e "$input" | control-command --fields=$fields --cross-track-pid=1.11111,0,0 --heading-pid=0.12345,0,0 --steering=skid ) )
 
 function echo_skid_result
 {
@@ -34,6 +34,6 @@ function echo_skid_result
     echo "$lhs/turn_rate=$turn_rate"
 }
 
-for(( i=0; i < ${#skid_output[@]}; i++ )); do echo_skid_result "skid/output[$i]" ${skid_output[i]}; done
+for(( i=0; i < ${#output[@]}; i++ )); do echo_skid_result "skid/output[$i]" ${output[i]}; done
 
 clean

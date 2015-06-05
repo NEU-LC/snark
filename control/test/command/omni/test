@@ -9,8 +9,8 @@ function bye { clean; exit 1; }
 trap bye INT TERM HUP
 trap clean EXIT
 
-omni_fields="speed,feedback/t,feedback/yaw,wayline/heading,error/cross_track,error/heading"
-read -d '' omni_input <<END
+fields="speed,feedback/t,feedback/yaw,wayline/heading,error/cross_track,error/heading"
+read -d '' input <<END
 10.0,20010101T000000.000000,0.11,0.1,0.0,0.01
 11.0,20010101T000000.100000,0.09,0.1,0.0,-0.01
 12.0,20010101T000000.200000,0.1,0.1,0.01,0
@@ -20,7 +20,7 @@ read -d '' omni_input <<END
 16.0,20010101T000000.600000,0.0,0.1,0.01,-0.1
 17.0,20010101T000000.700000,0.2,0.1,-0.01,0.1
 END
-omni_output=( $( echo -e "$omni_input" | control-command --fields=$omni_fields --cross-track-pid=1.11111,0,0 --heading-pid=0.12345,0,0 --steering=omni ) )
+output=( $( echo -e "$input" | control-command --fields=$fields --cross-track-pid=1.11111,0,0 --heading-pid=0.12345,0,0 --steering=omni ) )
 
 function echo_omni_result
 {
@@ -38,6 +38,6 @@ function echo_omni_result
     echo "$lhs/local_heading=$local_heading"
 }
 
-for(( i=0; i < ${#omni_output[@]}; i++ )); do echo_omni_result "omni/output[$i]" ${omni_output[i]}; done
+for(( i=0; i < ${#output[@]}; i++ )); do echo_omni_result "omni/output[$i]" ${output[i]}; done
 
 clean

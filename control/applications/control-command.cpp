@@ -32,6 +32,7 @@
 #include <comma/csv/stream.h>
 #include <comma/io/select.h>
 #include <comma/application/signal_flag.h>
+#include <comma/math/compare.h>
 #include "control.h"
 #include "pid.h"
 
@@ -70,6 +71,7 @@ static void usage( bool verbose = false )
     std::cerr << "    --steering <mode>: steering mode" << std::endl;
     std::cerr << "    --cross-track-pid=<p>,<i>,<d>[,<integral threshold>]: cross track pid parameters" << std::endl;
     std::cerr << "    --heading-pid=<p>,<i>,<d>[,<integral threshold>]: heading pid parameters" << std::endl;
+    std::cerr << "    --reset: pid's are reset every time target waypoint changes" << std::endl;
     std::cerr << "    --format: show binary format of default input stream fields and exit" << std::endl;
     std::cerr << "    --output-format: show binary format of output stream and exit (for command fields only)" << std::endl;
     std::cerr << "    --output-fields: show output fields and exit (for command fields only)" << std::endl;
@@ -121,14 +123,27 @@ int main( int ac, char** av )
         if( options.exists( "--output-format" ) ) { std::cout << format< command_t >( output_csv.fields ) << std::endl; return 0; }
         if( options.exists( "--output-fields" ) ) { std::cout << output_csv.fields << std::endl; return 0; }
         bool compute_rate = !input_csv.has_field( "feedback/yaw_rate" );
+        bool reset_pid = options.exists( "--reset" );
         snark::control::pid<> cross_track_pid( options.value< std::string >( "--cross-track-pid" ) );
         snark::control::pid<> heading_pid( options.value< std::string >( "--heading-pid" ) );
         comma::signal_flag is_shutdown;
+        boost::optional< snark::control::vector_t > position;
+        boost::optional< snark::control::vector_t > previous_position;
         while( !is_shutdown && ( input_stream.ready() || ( std::cin.good() && !std::cin.eof() ) ) )
         {
             const control_data_t* control_data = input_stream.read();
             if( !control_data ) { break; }
             boost::posix_time::ptime time = feedback_has_time ? control_data->feedback.t : boost::posix_time::microsec_clock::universal_time();
+            if( reset_pid )
+            {
+                if( position ) { previous_position = position; }
+                position = control_data->target.position;
+                if( previous_position && !position->isApprox( *previous_position ) )
+                {
+                    cross_track_pid.reset();
+                    heading_pid.reset();
+                }
+            }
             command_t command;
             if( steering == omni )
             {
