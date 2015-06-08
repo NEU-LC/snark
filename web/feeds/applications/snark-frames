@@ -3,6 +3,7 @@
 scriptname=$( basename $0 )
 
 source $( which comma-application-util )
+source $( which comma-trap )
 
 DEFAULT_TIMEOUT=10
 
