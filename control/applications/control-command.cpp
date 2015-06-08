@@ -124,8 +124,8 @@ int main( int ac, char** av )
         if( options.exists( "--output-fields" ) ) { std::cout << output_csv.fields << std::endl; return 0; }
         bool compute_rate = !input_csv.has_field( "feedback/yaw_rate" );
         bool reset_pid = options.exists( "--reset" );
-        snark::control::pid<> cross_track_pid( options.value< std::string >( "--cross-track-pid" ) );
-        snark::control::pid<> heading_pid( options.value< std::string >( "--heading-pid" ) );
+        snark::control::pid cross_track_pid( options.value< std::string >( "--cross-track-pid" ) );
+        snark::control::pid heading_pid( options.value< std::string >( "--heading-pid" ) );
         comma::signal_flag is_shutdown;
         boost::optional< snark::control::vector_t > position;
         boost::optional< snark::control::vector_t > previous_position;
@@ -148,15 +148,15 @@ int main( int ac, char** av )
             if( steering == omni )
             {
                 double heading = control_data->wayline.get_heading();
-                double local_heading_correction = limit_angle( cross_track_pid.update( control_data->error.cross_track, time ) );
+                double local_heading_correction = limit_angle( cross_track_pid( control_data->error.cross_track, time ) );
                 double yaw = control_data->feedback.yaw;
                 command.local_heading = snark::control::wrap_angle( yaw - heading + local_heading_correction );
-                command.turn_rate = compute_rate ? heading_pid.update( control_data->error.heading, time ) : heading_pid.update( control_data->error.heading, time, control_data->feedback.yaw_rate );
+                command.turn_rate = compute_rate ? heading_pid( control_data->error.heading, time ) : heading_pid( control_data->error.heading, control_data->feedback.yaw_rate, time );
             }
             else if( steering == skid )
             {
-                double heading_error = control_data->error.heading + limit_angle( cross_track_pid.update( control_data->error.cross_track, time ) );
-                command.turn_rate = compute_rate ? heading_pid.update( heading_error, time ) : heading_pid.update( heading_error, time, control_data->feedback.yaw_rate );
+                double heading_error = control_data->error.heading + limit_angle( cross_track_pid( control_data->error.cross_track, time ) );
+                command.turn_rate = compute_rate ? heading_pid( heading_error, time ) : heading_pid( heading_error, control_data->feedback.yaw_rate, time );
             }
             else
             {

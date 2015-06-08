@@ -39,9 +39,6 @@
 
 namespace snark { namespace control {
 
-enum derivative_mode { internal, external };
-
-template< derivative_mode = internal >
 class pid
 {
 public:
@@ -62,26 +59,16 @@ public:
             if( *threshold <= 0 ) { COMMA_THROW( comma::exception, "expected positive threshold, got " << *threshold ); }
         }
     }
-    double time_increment( boost::posix_time::ptime  t ) { return ( t - time ).total_microseconds() / 1e6; }
-    void clip( double& value )
+    double operator()( double error, const boost::posix_time::ptime& t = boost::posix_time::not_a_date_time )
     {
-        if( threshold )
-        {
-            if ( value > *threshold ) { value = *threshold; }
-            else if ( value < -*threshold ) { value = -*threshold; }
-        }
+        boost::optional< double > dt = get_time_increment( t );
+        double derivative = previous_error && dt ? ( error - *previous_error ) / *dt : 0;
+        return update( error, derivative, t, dt );
     }
-    double update( double error, const boost::posix_time::ptime& t );
-    double update( double error, const boost::posix_time::ptime& t, double derivative )
+    double operator()( double error, double derivative, const boost::posix_time::ptime& t = boost::posix_time::not_a_date_time )
     {
-        if( time != boost::posix_time::not_a_date_time && t != boost::posix_time::not_a_date_time )
-        {
-            if( t <= time ) { COMMA_THROW( comma::exception, "expected time greater than " << boost::posix_time::to_iso_string( time ) << ", got " << boost::posix_time::to_iso_string( t ) ); }
-            integral += time_increment( t ) * error;
-            clip( integral );
-        }
-        time = t;
-        return p * error + i * integral + d * derivative;
+        boost::optional< double > dt = get_time_increment( t );
+        return update( error, derivative, t, dt );
     }
     void reset()
     {
@@ -97,29 +84,31 @@ private:
     double integral;
     boost::optional< double > threshold;
     boost::posix_time::ptime time;
-    boost::optional< double > previous_error; // only used if derivative mode is internal
-};
-
-template<> double pid< internal >::update( double error, const boost::posix_time::ptime& t )
-{
-    if( !previous_error )
+    boost::optional< double > previous_error;
+    boost::optional< double > get_time_increment( const boost::posix_time::ptime& t )
     {
+        if( time == boost::posix_time::not_a_date_time || t == boost::posix_time::not_a_date_time ) { return boost::none; }
+        if( t <= time ) { COMMA_THROW( comma::exception, "expected time greater than " << boost::posix_time::to_iso_string( time ) << ", got " << boost::posix_time::to_iso_string( t ) ); }
+        return ( t - time ).total_microseconds() / 1e6;
+    }
+    void clip_integral()
+    {
+        if( !threshold ) { return; }
+        if ( integral > *threshold ) { integral = *threshold; }
+        else if ( integral < -*threshold ) { integral = -*threshold; }
+    }
+    double update( double error, double derivative, const boost::posix_time::ptime& t, boost::optional< double > dt )
+    {
+        if( dt ) 
+        {
+            integral += error * *dt;
+            clip_integral();
+        }
         previous_error = error;
-        return update( error, t, 0 );
+        time = t;
+        return p * error + i * integral + d * derivative;
     }
-    if( time == boost::posix_time::not_a_date_time || t == boost::posix_time::not_a_date_time )
-    {
-        return update( error, t, 0 );
-    }
-    double derivative =  ( error - *previous_error ) / time_increment( t );
-    previous_error = error;
-    return update( error, t, derivative );
-}
-
-template<> double pid< external >::update( double error, const boost::posix_time::ptime& t )
-{
-    return update( error, t, 0 );
-}
+};
 
 } } // namespace snark { namespace control {
 
