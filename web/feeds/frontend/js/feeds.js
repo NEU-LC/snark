@@ -719,24 +719,20 @@ function initialize(frontend_config) {
         sensor.timeago.show();
     });
 
-    $(document).on('keydown', function(event) {
-        if (event.ctrlKey) {
-            sort_enable();
-        }
-    });
-    $(document).on('keyup', function(event) { sort_disable(); });
-    $(window).on('focusout', function(event) { sort_disable(); });
+    $(document).on('keydown', function(event) { if (event.ctrlKey) { toggle_sortable(false); } });
+    $(document).on('keyup', function(event) { toggle_sortable(true); });
+    $(window).on('focusout', function(event) { toggle_sortable(true); });
     $(window).on('beforeunload', function(e) { save_layout(); });
 }
 
-function sort_enable() {
-    $('#container').sortable('disable');
-    $('.panel').css('cursor', 'auto');
-}
-
-function sort_disable() {
-    $('#container').sortable('enable');
-    $('.panel').css('cursor', 'move');
+function toggle_sortable(enable) {
+    if (enable) {
+        $('#container').sortable('enable');
+        $('.panel').css('cursor', 'move');
+    } else {
+        $('#container').sortable('disable');
+        $('.panel').css('cursor', 'auto');
+    }
 }
 
 function save_layout() {
