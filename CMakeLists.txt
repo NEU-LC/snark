@@ -324,6 +324,7 @@ ENDIF( snark_build_graph )
 add_subdirectory( audio )
 add_subdirectory( geodesy )
 ADD_SUBDIRECTORY( render )
+add_subdirectory( terrain )
 ADD_SUBDIRECTORY( timing )
 ADD_SUBDIRECTORY( visiting )
 
