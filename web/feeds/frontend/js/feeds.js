@@ -467,6 +467,11 @@ var globals = {
             }
         });
     },
+    reset: function() {
+        reset(globals.config_file);
+        $('#container').width(container_width);
+        load_config(globals.config_file);
+    },
     enable_alerting: function() {
         $.each(sensors, function(index, sensor) {
             gui.setProperty('alert', true, sensor.sensor_name);
@@ -497,14 +502,18 @@ var gui;
 var sensors = {};
 var pending = {};
 var config_files = [];
-var audio_context = new AudioContext;
+var audio_context = new AudioContext();
+var current_config_file;
+var container_width;
 
 function initialize(frontend_config) {
+    current_config_file = globals.config_file;
     globals.stop();
     $('#container').empty();
+    try { $('#container').sortable('destroy'); } catch (e) { }
+    try { $('#container').resizable('destroy'); } catch (e) { }
     sensors = {};
     pending = {};
-
     if (gui) {
         gui.destroy();
     }
@@ -512,15 +521,17 @@ function initialize(frontend_config) {
         width: 500,
     });
     gui.add(globals, 'config_file', config_files).name('config file').onFinishChange(function(value) {
+        save(current_config_file);
         load_config(globals.config_file);
     });
-    var folder = gui.addFolder('global actions');
+    var folder = gui.addFolder('globals');
     folder.add(globals, "refresh");
     folder.add(globals, "start");
     folder.add(globals, "stop");
     folder.add(globals, "show");
     folder.add(globals, "compact");
     folder.add(globals, "hide");
+    folder.add(globals, "reset");
     folder.add(globals, "enable_alerting").name("enable alerting");
     folder.add(globals, "disable_alerting").name("disable alerting");
     folder.add(globals, "clear_alerts").name("clear alerts");
@@ -632,7 +643,7 @@ function initialize(frontend_config) {
         sensors[sensor_name] = sensor;
     }
 
-    load_layout();
+    load(current_config_file);
 
     $('#container').sortable({
         items: 'li.panel',
@@ -722,7 +733,9 @@ function initialize(frontend_config) {
     $(document).on('keydown', function(event) { if (event.ctrlKey) { toggle_sortable(false); } });
     $(document).on('keyup', function(event) { toggle_sortable(true); });
     $(window).on('focusout', function(event) { toggle_sortable(true); });
-    $(window).on('beforeunload', function(e) { save_layout(); });
+    $(window).on('beforeunload', function(e) {
+        save(current_config_file);
+    });
 }
 
 function toggle_sortable(enable) {
@@ -735,41 +748,70 @@ function toggle_sortable(enable) {
     }
 }
 
-function save_layout() {
+function save(config_file) {
+    if (!config_file) {
+        return;
+    }
+    save_layout(config_file);
+    save_gui_config(config_file);
+}
+
+function load(config_file) {
+    if (!config_file) {
+        return;
+    }
+    load_layout(config_file);
+    load_gui_config(config_file);
+}
+
+function reset(config_file) {
+    var keys = [];
+    for (var i = 0; i < localStorage.length; ++i) {
+        keys.push(localStorage.key(i));
+    }
+    for (var i in keys) {
+        var key = keys[i];
+        var re = new RegExp('^feeds[.].*\\[' + config_file + '\\]');
+        if (key.match(re)) {
+            localStorage.removeItem(key);
+        }
+    }
+}
+
+function save_layout(config_file) {
+    var key = 'feeds.layout[' + config_file + ']';
     var layout = $('#container > li').map(function() {
         var id = this.id;
         var sensor = sensors[id];
         var layout = { id: id };
-        if (sensor.target.is('img')) {
+        if (sensor.target.is('img') && sensor.target.attr('src')) {
             layout.width = sensor.target.width();
             layout.height = sensor.target.height();
         }
         return layout;
     }).get();
-    var container = $('#container');
     layout.push({
         id: 'container',
-        width: container.width(),
-        height: container.height()
+        width: $('#container').width()
     });
-    localStorage.setItem('feeds.layout', JSON.stringify(layout));
+    localStorage.setItem(key, JSON.stringify(layout));
 }
 
-function load_layout() {
-    var layout = JSON.parse(localStorage.getItem('feeds.layout'));
+function load_layout(config_file) {
+    var key = 'feeds.layout[' + config_file + ']';
+    var layout = JSON.parse(localStorage.getItem(key));
     if (!layout) {
         return;
     }
     layout.forEach(function(value, index) {
+        var container = $('#container');
         if (value.id === 'container') {
-            var container = $('#container');
             container.width(value.width);
-            container.height(value.height);
             return;
         }
         var panel = $('#' + value.id);
         if (panel.length) {
-            $('#container').append(panel);
+            container.append(panel);
         }
         var sensor = sensors[value.id];
         if ('width' in value) {
@@ -779,6 +821,43 @@ function load_layout() {
             sensor.target.height(value.height);
         }
     });
+}
+
+function save_gui_config(config_file) {
+    var key = 'feeds.gui.config[' + config_file + ']';
+    var config = {
+        globals: globals
+    };
+    for (var id in sensors) {
+        config[id] = sensors[id].config;
+    }
+    localStorage.setItem(key, JSON.stringify(config));
+}
+
+function set_properties(config, folder_name) {
+    for (var id in config) {
+        var value = config[id];
+        if (typeof value === 'object') {
+            set_properties(value, folder_name);
+        } else {
+            gui.setProperty(id, value, folder_name);
+        }
+    }
+}
+
+function load_gui_config(config_file) {
+    var key = 'feeds.gui.config[' + config_file + ']';
+    var config = JSON.parse(localStorage.getItem(key));
+    if (!config) {
+        return;
+    }
+    gui.setProperty('alert_beep', config['globals'].alert_beep, 'globals');
+    for (var id in config) {
+        if (id == 'globals') {
+            continue;
+        }
+        set_properties(config[id], id);
+    }
 }
 
 function parse_query_string() {
@@ -807,17 +886,9 @@ function load_config(file) {
 }
 
 var query_string = parse_query_string();
-function parse_query_string() {
-    var result = {};
-    var parameters = location.search.replace(/^\?/, '').split('&');
-    for (var i in parameters) {
-        var key_value = parameters[i].split('=');
-        result[key_value[0]] = key_value[1];
-    }
-    return result;
-}
 
 $(function() {
+    container_width = $('#container').width();
     $.ajax({
         url: globals.config_dir,
     }).done(function(data, textStatus, jqXHR) {
