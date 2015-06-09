@@ -589,6 +589,7 @@ function initialize(frontend_config) {
         }
         var sensor = create_sensor(config.type, sensor_name, config);
         var folder = gui.addFolder(sensor_name);
+        folder.close();
         folder.add(sensor.config, 'url').onFinishChange(function(value) {
             sensors[this.object.sensor_name].reset();
         });
@@ -630,6 +631,8 @@ function initialize(frontend_config) {
         });
         sensors[sensor_name] = sensor;
     }
+
+    load_layout();
 
     $('#container').sortable({
         items: 'li.panel',
@@ -723,6 +726,7 @@ function initialize(frontend_config) {
     });
     $(document).on('keyup', function(event) { sort_disable(); });
     $(window).on('focusout', function(event) { sort_disable(); });
+    $(window).on('beforeunload', function(e) { save_layout(); });
 }
 
 function sort_enable() {
@@ -733,6 +737,52 @@ function sort_enable() {
 function sort_disable() {
     $('#container').sortable('enable');
     $('.panel').css('cursor', 'move');
+}
+
+function save_layout() {
+    var layout = $('#container > li').map(function() {
+        var id = this.id;
+        var sensor = sensors[id];
+        var layout = { id: id };
+        if (sensor.target.is('img')) {
+            layout.width = sensor.target.width();
+            layout.height = sensor.target.height();
+        }
+        return layout;
+    }).get();
+    var container = $('#container');
+    layout.push({
+        id: 'container',
+        width: container.width(),
+        height: container.height()
+    });
+    localStorage.setItem('feeds.layout', JSON.stringify(layout));
+}
+
+function load_layout() {
+    var layout = JSON.parse(localStorage.getItem('feeds.layout'));
+    if (!layout) {
+        return;
+    }
+    layout.forEach(function(value, index) {
+        if (value.id === 'container') {
+            var container = $('#container');
+            container.width(value.width);
+            container.height(value.height);
+            return;
+        }
+        var panel = $('#' + value.id);
+        if (panel.length) {
+            $('#container').append(panel);
+        }
+        var sensor = sensors[value.id];
+        if ('width' in value) {
+            sensor.target.width(value.width);
+        }
+        if ('height' in value) {
+            sensor.target.height(value.height);
+        }
+    });
 }
 
 function parse_query_string() {
