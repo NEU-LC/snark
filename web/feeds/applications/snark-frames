@@ -52,7 +52,7 @@ function read_input
             [[ -n "$address" ]] || address="localhost"
             io_address="tcp:$address:$port"
         fi
-        io-client -u $io_address
+        io-cat -u $io_address
     else
         :
     fi

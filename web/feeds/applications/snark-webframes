@@ -106,7 +106,7 @@ class sensors:
             address = get( 'address', sensor_publish_config, sensor_robot_config )
             port = get( 'port', sensor_publish_config, sensor_robot_config )
             if port: address = "tcp:%s:%s" % ( address or 'localhost', port )
-            pipeline = "io-client -u %s | %s" % ( address, frame_command ) if address else frame_command
+            pipeline = "io-cat -u %s | %s" % ( address, frame_command ) if address else frame_command
             timeout = sensor_web_config['timeout'] if 'timeout' in sensor_web_config else args.timeout
             timeout_command = "timeout -k 10 -s TERM %f bash -c \"%s\"" % ( timeout, pipeline )
             content_type = sensor_web_config['content-type'] if 'content-type' in sensor_web_config else HTTP_PLAIN_TEXT
