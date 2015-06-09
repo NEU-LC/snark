@@ -46,27 +46,27 @@
 static const std::string name = snark::control::error_app_name;
 
 template< typename T > std::string field_names( bool full_xpath = false ) { return comma::join( comma::csv::names< T >( full_xpath ), ',' ); }
-template< typename T > std::string format( std::string fields, bool full_xpath = false ) { return comma::csv::format::value< T >( fields, full_xpath ); }
+template< typename T > std::string format( const std::string& fields = "", bool full_xpath = false ) { return comma::csv::format::value< T >( !fields.empty() ? fields : field_names< T >( full_xpath ), full_xpath ); }
 static const double default_proximity = 0.1;
 static const std::string default_mode = "fixed";
 
-enum path_mode_t { fixed, dynamic };
-typedef boost::bimap< path_mode_t, std::string > named_path_mode_t;
-static const named_path_mode_t named_path_modes = boost::assign::list_of< named_path_mode_t::relation >
+enum control_mode_t { fixed, dynamic };
+typedef boost::bimap< control_mode_t, std::string > named_mode_t;
+static const named_mode_t named_modes = boost::assign::list_of< named_mode_t::relation >
     ( fixed, "fixed" )
     ( dynamic, "dynamic" );
 
-path_mode_t path_mode_from_string( std::string s )
+control_mode_t mode_from_string( std::string s )
 {
-    if( !named_path_modes.right.count( s ) ) { COMMA_THROW( comma::exception, "path mode '" << s << "' is not found" ); };
-    return  named_path_modes.right.at( s );
+    if( !named_modes.right.count( s ) ) { COMMA_THROW( comma::exception, "control mode '" << s << "' is not found" ); };
+    return  named_modes.right.at( s );
 }
-std::string path_mode_to_string( path_mode_t m ) { return  named_path_modes.left.at( m ); }
+std::string mode_to_string( control_mode_t m ) { return  named_modes.left.at( m ); }
 
 static void usage( bool verbose = false )
 {
     std::cerr << std::endl;
-    std::cerr << "take target waypoints on stdin and output to stdout with the appended wayline, feedback, and control errors" << std::endl;
+    std::cerr << "take target waypoints on stdin and feedback from address and output to stdout with the appended wayline and control errors" << std::endl;
     std::cerr << std::endl;
     std::cerr << "usage: " << name << " <feedback> [<options>]" << std::endl;
     std::cerr << std::endl;
@@ -81,14 +81,14 @@ static void usage( bool verbose = false )
     if( verbose ) { std::cerr << comma::csv::format::usage() << std::endl; }
     std::cerr << std::endl;
     std::cerr << "options: " << std::endl;
-    std::cerr << "    --path-mode <mode>: path mode (default: " << default_mode << ")" << std::endl;
+    std::cerr << "    --mode <mode>: control mode (default: " << default_mode << ")" << std::endl;
     std::cerr << "    --proximity <proximity>: a wayline is traversed as soon as current position is within proximity of the endpoint (default: " << default_proximity << ")" << std::endl;
     std::cerr << "    --past-endpoint: a wayline is traversed as soon as current position is past the endpoint (or proximity condition is met)" << std::endl;
-    std::cerr << "    --format: show binary format of default input stream and exit" << std::endl;
-    std::cerr << "    --output-format: show binary format of output stream and exit" << std::endl;
-    std::cerr << "    --output-fields: show output fields and exit" << std::endl;
+    std::cerr << "    --format: show binary format of default input stream fields and exit" << std::endl;
+    std::cerr << "    --output-format: show binary format of output stream and exit (for wayline and control error fields only)" << std::endl;
+    std::cerr << "    --output-fields: show output fields and exit (for wayline and control error fields only)" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "path modes: " << std::endl;
+    std::cerr << "control modes: " << std::endl;
     std::cerr << "    fixed: wait until the current waypoint is reached before accepting a new waypoint (first feedback position is the start of the first wayline)" << std::endl;
     std::cerr << "    dynamic: use a new waypoint as soon as it becomes available to define a new wayline form the current position to the new waypoint" << std::endl;
     std::cerr << std::endl;
@@ -113,23 +113,26 @@ int main( int ac, char** av )
     {
         comma::command_line_options options( ac, av, usage );
         comma::csv::options input_csv( options, field_names< snark::control::target_t >() );
+        const char delimiter = input_csv.delimiter;
         comma::csv::input_stream< snark::control::target_t > input_stream( std::cin, input_csv );
         comma::csv::options output_csv( options );
         output_csv.full_xpath = true;
-        output_csv.fields = field_names< snark::control::control_data_t >( true );
+        output_csv.fields = "wayline/heading,error/cross_track,error/heading";
         if( input_csv.binary() ) { output_csv.format( format< snark::control::control_data_t >( output_csv.fields, true ) ); }
         comma::csv::output_stream< snark::control::control_data_t > output_stream( std::cout, output_csv );
-        if( options.exists( "--format" ) ) { std::cout << format< snark::control::target_t >( input_csv.fields ) << std::endl; return 0; }
+        if( options.exists( "--format" ) ) { std::cout << format< snark::control::target_t >() << std::endl; return 0; }
         if( options.exists( "--output-format" ) ) { std::cout << format< snark::control::control_data_t >( output_csv.fields, true ) << std::endl; return 0; }
         if( options.exists( "--output-fields" ) ) { std::cout << output_csv.fields << std::endl; return 0; }
         double proximity = options.value< double >( "--proximity", default_proximity );
         if( proximity <= 0 ) { std::cerr << name << ": expected positive proximity, got " << proximity << std::endl; return 1; }
-        path_mode_t path_mode = path_mode_from_string( options.value< std::string >( "--path-mode", default_mode ) );
+        control_mode_t mode = mode_from_string( options.value< std::string >( "--mode", default_mode ) );
         bool use_past_endpoint = options.exists( "--past-endpoint" );
         bool verbose = options.exists( "--verbose,-v" );
-        std::vector< std::string > unnamed = options.unnamed( "--help,-h,--verbose,-v,--format,--output-format,--past-endpoint", "-.*,--.*" );
+        std::vector< std::string > unnamed = options.unnamed( "--help,-h,--verbose,-v,--format,--output-format,--output-fields,--past-endpoint", "-.*,--.*" );
         if( unnamed.empty() ) { std::cerr << name << ": feedback stream is not given" << std::endl; return 1; }
         comma::csv::options feedback_csv = comma::name_value::parser( "filename", ';', '=', false ).get< comma::csv::options >( unnamed[0] );
+        if( input_csv.binary() && !feedback_csv.binary() ) { std::cerr << name << ": cannot join binary input stream with ascii feedback stream" << std::endl; return 1; }
+        if( !input_csv.binary() && feedback_csv.binary() ) { std::cerr << name << ": cannot join ascii input stream with binary feedback stream" << std::endl; return 1; }
         if( feedback_csv.fields.empty() ) { feedback_csv.fields = field_names< snark::control::feedback_t >(); }
         comma::io::istream feedback_in( feedback_csv.filename, feedback_csv.binary() ? comma::io::mode::binary : comma::io::mode::ascii, comma::io::mode::non_blocking );
         comma::csv::input_stream< snark::control::feedback_t > feedback_stream( *feedback_in, feedback_csv );
@@ -143,8 +146,8 @@ int main( int ac, char** av )
             reached_t reached;
             const snark::control::target_t* target = input_stream.read();
             if( !target ) { break; }
-            snark::control::vector_t to = target->location;
-            double heading_offset = target->parameters.heading_offset;
+            snark::control::vector_t to = target->position;
+            double heading_offset = target->heading_offset;
             if( verbose ) { std::cerr << name << ": received target waypoint " << snark::control::serialise( to ) << std::endl; }
             if( from && snark::control::distance( *from, to ) < proximity ) { continue; }
             if( from ) { wayline.reset( new snark::control::wayline_t( *from, to, verbose ) ); }
@@ -152,35 +155,39 @@ int main( int ac, char** av )
             {
                 if( input_stream.ready() )
                 {
-                    if( path_mode == fixed ) {}
-                    else if( path_mode == dynamic ) { from = boost::none; break; }
-                    else { std::cerr << name << ": path mode " << path_mode_to_string( path_mode ) << " is not implemented" << std::endl; return 1; }
+                    if( mode == fixed ) {}
+                    else if( mode == dynamic ) { from = boost::none; break; }
+                    else { std::cerr << name << ": control mode '" << mode_to_string( mode ) << "' is not implemented" << std::endl; return 1; }
                 }
                 select.check();
+                //select.wait( boost::posix_time::microseconds( 100 ) );
                 if( feedback_stream.ready() || select.read().ready( feedback_in ) )
                 {
                     const snark::control::feedback_t* feedback = feedback_stream.read();
                     if( !feedback ) { std::cerr << name << ": feedback stream error occurred prior to reaching waypoint " << snark::control::serialise( to ) << std::endl; return 1; }
-                    snark::control::position_t current = feedback->data;
                     if( !from )
                     {
-                        from = current.location;
+                        from = feedback->position;
                         wayline.reset( new snark::control::wayline_t( *from, to, verbose ) );
                     }
-                    if( snark::control::distance( current.location, to ) < proximity ) { reached = reached_t( "proximity" ); }
-                    if( use_past_endpoint && wayline->is_past_endpoint( current.location ) ) { reached = reached_t( "past endpoint" ); }
+                    if( snark::control::distance( feedback->position, to ) < proximity ) { reached = reached_t( "proximity" ); }
+                    if( use_past_endpoint && wayline->is_past_endpoint( feedback->position ) ) { reached = reached_t( "past endpoint" ); }
                     if( reached )
                     {
                         if( verbose ) { std::cerr << name << ": waypoint " << snark::control::serialise( to ) << " is reached (" << reached.reason << ")" << std::endl; }
-                        if( path_mode == fixed ) { from = to; }
-                        else if( path_mode == dynamic ) { from = boost::none; }
-                        else { std::cerr << name << ": path mode " << path_mode_to_string( path_mode ) << " is not implemented" << std::endl; return 1; }
+                        if( mode == fixed ) { from = to; }
+                        else if( mode == dynamic ) { from = boost::none; }
+                        else { std::cerr << name << ": control mode '" << mode_to_string( mode ) << "' is not implemented" << std::endl; return 1; }
                         break;
                     }
                     snark::control::error_t error;
-                    error.cross_track = wayline->cross_track_error( current.location );
-                    error.heading = wayline->heading_error( current.orientation.yaw, heading_offset );
-                    output_stream.write( snark::control::control_data_t( *target, *wayline, *feedback, error ) );
+                    error.cross_track = wayline->cross_track_error( feedback->position );
+                    error.heading = wayline->heading_error( feedback->yaw, heading_offset );
+                    if( input_csv.binary() ) { std::cout.write( input_stream.binary().last(), input_csv.format().size() ); }
+                    else { std::cout << comma::join( input_stream.ascii().last(), delimiter ) << delimiter; }
+                    if( feedback_csv.binary() ) { std::cout.write( feedback_stream.binary().last(), feedback_csv.format().size() ); }
+                    else { std::cout << comma::join( feedback_stream.ascii().last(), delimiter ) << delimiter; }
+                    output_stream.write( snark::control::control_data_t( *wayline, error ) );
                 }
             }
         }

@@ -1,0 +1,46 @@
+#!/bin/bash
+
+prefix=./output/
+feedback_file=${prefix}feedback
+proximity=0.1
+
+function clean
+{
+    pkill -P $$
+    rm -f $feedback_file
+    return 0
+}
+function bye { clean; exit 1; }
+trap bye INT TERM HUP
+trap clean EXIT
+
+echo "format/input=\"$( control-error --format )\""
+echo "format/output=\"$( control-error "filename" --output-format )\""
+
+declare -A target=( [fields]="heading_offset,speed,x,y" [format]="4d" )
+declare -A feedback=( [fields]="yaw,x,y" [format]="3d" )
+
+echo -e "1.1,0,0\n0.9,0.5,0.5\n1,1,0\n2.1,1.5,-0.5\n2,2,0" | csv-to-bin ${feedback[format]} > $feedback_file
+output=( $( echo -e "1,10,1,0\n2,20,2,0" | csv-to-bin ${target[format]} \
+    | control-error "$feedback_file;fields=${feedback[fields]};binary=${feedback[format]}" --fields=${target[fields]} --binary=${target[format]} --verbose \
+    | csv-from-bin ${target[format]},${feedback[format]},$( control-error --output-format ) ) )
+
+function echo_result
+{
+    local lhs=$1
+    local result=$2
+    local fields="heading_offset speed x y feedback_yaw feedback_x feedback_y wayline_heading xtrack heading"
+    local $fields
+    IFS=, read $fields <<< $result
+    echo "$lhs/x=$x"
+    echo "$lhs/y=$y"
+    echo "$lhs/speed=$speed"
+    echo "$lhs/xtrack=$xtrack"
+    echo "$lhs/heading=$heading"
+}
+
+echo_result "binary/output[0]" "${output[0]}"
+echo_result "binary/output[1]" "${output[1]}"
+echo_result "binary/output[2]" "${output[2]}"
+
+clean

@@ -29,12 +29,12 @@ body {
 .panel {
     display: inline-block;
     margin: 10px;
-    padding: 0px 10px 10px 10px;
+    padding: 0px 0px 10px 10px;
     vertical-align: top;
     background: #181818;
-    border-radius: 20px;
+    border-radius: 10px;
     cursor: move;
-    min-width: 262px;
+    min-width: 268px;
     border: 2px solid transparent;
     box-sizing: border-box;
 }
@@ -44,39 +44,44 @@ body {
 }
 
 .panel-alert, .panel-alert:hover {
-    background: #d9534f;
+    color: #012345 !important;
+    text-shadow: none;
+    background: #d9534f !important;
 }
 
 .panel .time {
-    white-space: nowrap
+    white-space: nowrap;
+    margin: 0;
+    display: block;
+    width: 100%;
 }
 
 .panel-body {
+    margin-right: 10px;
     padding: 0;
     border-radius: 0;
 }
 
-.panel-body h3 {
-    margin: 10px 15px 10px 0px;
+.panel h3 {
+    margin: 10px 17px 0px 0px;
     white-space: nowrap;
 }
 
-.panel-body button {
+.panel button {
     border-radius: 4px;
-    margin: 1px;
     background-color: transparent;
     box-sizing: border-box;
     border: 1px solid transparent;
-    padding-left: 3px;
-    padding-right: 5px;
+    padding: 0 2px 0 1px;
+    margin: 0;
 }
 
-.panel-body button:hover {
+.panel h3 button:hover {
     border: 1px solid #383838;
 }
 
-.panel-body button:active {
-    background-color: #181818;
+.panel h3 button:active {
+    opacity: 0.7;
     border-radius: 4px;
 }
 
@@ -94,12 +99,13 @@ body {
     background-color: transparent;
     box-sizing: border-box;
     border: 1px solid transparent;
-    margin: 0;
+    margin: 1px;
     padding: 0;
 }
 
-.panel-close:hover {
-    border: 1px solid #383838;
+.target {
+    margin-top: 5px;
+    background: #181818;
 }
 
 .target:not(:empty) {
@@ -110,19 +116,17 @@ img.target {
     display: block;
     min-width: 250px;
     min-height: 250px;
-    margin: 5px;
+    width: 100%;
 }
 
 ul.target li {
     font: monospace;
     border: none;
-    background: #181818;
     color: #bcdefa;
     padding: 0px 5px;
 }
 
 .graph {
-    background: #181818;
     padding: 3px;
 }
 
@@ -133,7 +137,7 @@ ul.target li {
 
 .graph-bars {
     width: 300px;
-    height: 200px;
+    height: 222px;
     background: #fff;
 }
 

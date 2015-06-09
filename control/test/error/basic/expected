@@ -1,0 +1,17 @@
+format/input="d,d,d"
+format/output="d,d,d"
+binary/output[0]/x=1 +/- 0.0001
+binary/output[0]/y=0 +/- 0.0001
+binary/output[0]/speed=10 +/- 0.0001
+binary/output[0]/xtrack=0 +/- 0.0001
+binary/output[0]/heading=0.1 +/- 0.0001
+binary/output[1]/x=1 +/- 0.0001
+binary/output[1]/y=0 +/- 0.0001
+binary/output[1]/speed=10 +/- 0.0001
+binary/output[1]/xtrack=0.5 +/- 0.0001
+binary/output[1]/heading=-0.1 +/- 0.0001
+binary/output[2]/x=2 +/- 0.0001
+binary/output[2]/y=0 +/- 0.0001
+binary/output[2]/speed=20 +/- 0.0001
+binary/output[2]/xtrack=-0.5 +/- 0.0001
+binary/output[2]/heading=0.1 +/- 0.0001

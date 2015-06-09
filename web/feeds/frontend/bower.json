@@ -26,6 +26,7 @@
     "bootstrap": "~3.3.4",
     "dat-gui": "~0.5.1",
     "threejs": "*",
-    "stats.js": "*"
+    "stats.js": "*",
+    "jquery-timeago": "~1.4.1"
   }
 }

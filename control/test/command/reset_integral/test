@@ -1,0 +1,45 @@
+#!/bin/bash
+
+function clean
+{
+    pkill -P $$
+    return 0
+}
+function bye { clean; exit 1; }
+trap bye INT TERM HUP
+trap clean EXIT
+
+fields="target/position/x,target/position/y,feedback/t,feedback/yaw,wayline/heading,error/cross_track,error/heading"
+read -d '' input <<END
+0,0,20010101T000000.000000,0.11,0.1,0.001,0.01
+0,0,20010101T000001.000000,0.11,0.1,0.001,0.01
+0,0,20010101T000002.000000,0.11,0.1,0.001,0.01
+1,0,20010101T000003.000000,0.11,0.1,0.001,0.01
+1,0,20010101T000004.000000,0.11,0.1,0.001,0.01
+1,0,20010101T000005.000000,0.11,0.1,0.001,0.01
+1,1,20010101T000006.000000,0.11,0.1,0.001,0.01
+1,1,20010101T000007.000000,0.11,0.1,0.001,0.01
+1,1,20010101T000008.000000,0.11,0.1,0.001,0.01
+END
+output=( $( echo -e "$input" | control-command --fields=$fields --cross-track-pid=0,1,0 --heading-pid=0,2,0 --steering=omni --reset ) )
+
+function echo_result
+{
+    local lhs=$1
+    local result=$2
+    local x y time yaw wayline_heading cross_track_error heading_error turn_rate local_heading
+    IFS=, read x y time yaw wayline_heading cross_track_error heading_error turn_rate local_heading <<< $result
+    echo "$lhs/x=$x"
+    echo "$lhs/y=$y"
+    echo "$lhs/time=\"$time\""
+    echo "$lhs/wayline_heading=$wayline_heading"
+    echo "$lhs/yaw=$yaw"
+    echo "$lhs/cross_track_error=$cross_track_error"
+    echo "$lhs/heading_error=$heading_error"
+    echo "$lhs/turn_rate=$turn_rate"
+    echo "$lhs/local_heading=$local_heading"
+}
+
+for(( i=0; i < ${#output[@]}; i++ )); do echo_result "output[$i]" ${output[i]}; done
+
+clean
