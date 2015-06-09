@@ -34,7 +34,7 @@ body {
     background: #181818;
     border-radius: 10px;
     cursor: move;
-    min-width: 262px;
+    min-width: 268px;
     border: 2px solid transparent;
     box-sizing: border-box;
 }

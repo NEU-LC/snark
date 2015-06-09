@@ -6,7 +6,7 @@ var Sensor = function(sensor_name, config) {
     this.compact_icon = $(this.id + ' .panel-compact span');
     this.body = $(this.id + ' .panel-body');
     this.status = $(this.id + ' .status');
-    this.time = $(this.id + ' .utc-time').hide();
+    this.timestring = $(this.id + ' .timestring').hide();
     this.timeago = $(this.id + ' .timeago').timeago();
     this.target = $(this.id + ' .target');
     this.interval = null;
@@ -60,7 +60,7 @@ Sensor.prototype.preload = function() {
     this.load();
 }
 Sensor.prototype.onload = function(data) {
-    this.time.text(this.refresh_time);
+    this.timestring.text(this.refresh_time);
     this.timeago.attr('datetime', this.refresh_time.toISOString()).timeago('updateFromDOM');
     this.status.finish().fadeTo(0, 1);
     if (this.config.alert) {
@@ -70,7 +70,7 @@ Sensor.prototype.onload = function(data) {
     delete pending[this.sensor_name];
 }
 Sensor.prototype.onerror = function() {
-    this.time.text(this.refresh_time);
+    this.timestring.text(this.refresh_time);
     this.timeago.attr('datetime', this.refresh_time.toISOString()).timeago('updateFromDOM');
     this.status.finish().fadeTo(0, 1);
     this.onload_();
@@ -342,7 +342,7 @@ var add_poll_body = function(sensor_name, element) {
         '  <button class="panel-compact hideable transparent" title="compact"><span class="text-muted glyphicon glyphicon-resize-small"></span></button>' +
         '</h3>' +
         '<div class="panel-body">' +
-        '  <time class="utc-time time small">&nbsp;</time>' +
+        '  <time class="timestring time small">&nbsp;</time>' +
         '  <time class="timeago time small">&nbsp;</time>' +
            element +
         '</div>'
@@ -402,47 +402,47 @@ dat.GUI.prototype.toggleProperty = function(property, opt_folder_name) {
     }
 }
 
-var Globals = function(options) {
-    this.refresh = function() {
+var globals = {
+    refresh: function() {
         $.each(sensors, function(index, sensor) {
             sensor.refresh();
         });
-    }
-    this.start_auto_refresh = function() {
+    },
+    start_auto_refresh: function() {
         $.each(sensors, function(index, sensor) {
             if (sensor.show) {
                 gui.setProperty('auto', true, sensor.sensor_name);
             }
         });
-    }
-    this.stop_auto_refresh = function() {
+    },
+    stop_auto_refresh: function() {
         $.each(sensors, function(index, sensor) {
             gui.setProperty('auto', false, sensor.sensor_name);
         });
-    }
-    this.start_streams = function() {
+    },
+    start_streams: function() {
         $.each(sensors, function(index, sensor) {
             if (sensor.config.type === 'stream') {
                 sensor.reset();
             }
         });
-    }
-    this.stop_streams = function() {
+    },
+    stop_streams: function() {
         $.each(sensors, function(index, sensor) {
             if (sensor.config.type === 'stream') {
                 sensor.stop();
             }
         });
-    }
-    this.start = function() {
+    },
+    start: function() {
         this.start_auto_refresh();
         this.start_streams();
-    }
-    this.stop = function() {
+    },
+    stop: function() {
         this.stop_auto_refresh();
         this.stop_streams();
-    }
-    this.show = function() {
+    },
+    show: function() {
         $.each(sensors, function(index, sensor) {
             if (sensor.config.type == 'stream') {
                 gui.setProperty('show', true, sensor.sensor_name);
@@ -450,15 +450,15 @@ var Globals = function(options) {
                 gui.setProperty('view', 'show', sensor.sensor_name);
             }
         });
-    }
-    this.compact = function() {
+    },
+    compact: function() {
         $.each(sensors, function(index, sensor) {
             if (sensor.config.type != 'stream') {
                 gui.setProperty('view', 'compact', sensor.sensor_name);
             }
         });
-    }
-    this.hide = function() {
+    },
+    hide: function() {
         $.each(sensors, function(index, sensor) {
             if (sensor.config.type == 'stream') {
                 gui.setProperty('show', false, sensor.sensor_name);
@@ -466,25 +466,26 @@ var Globals = function(options) {
                 gui.setProperty('view', 'hide', sensor.sensor_name);
             }
         });
-    }
-    this.enable_alerting = function() {
+    },
+    enable_alerting: function() {
         $.each(sensors, function(index, sensor) {
             gui.setProperty('alert', true, sensor.sensor_name);
         });
-    }
-    this.disable_alerting = function() {
+    },
+    disable_alerting: function() {
         $.each(sensors, function(index, sensor) {
             gui.setProperty('alert', false, sensor.sensor_name);
         });
-    }
-    this.clear_alerts = function() {
+    },
+    clear_alerts: function() {
         $.each(sensors, function(index, sensor) {
             sensor.alert(false);
         });
-    }
-    this.config_file = options.config_file;
-    this.alert_beep = true;
-    this.beep = function() {
+    },
+    config_dir: 'config',
+    config_file: 'config/web.frontend.json',
+    alert_beep: true,
+    beep: function() {
         var oscillator = audio_context.createOscillator();
         oscillator.connect(audio_context.destination);
         oscillator.start(0);
@@ -495,12 +496,8 @@ var Globals = function(options) {
 var gui;
 var sensors = {};
 var pending = {};
-var config_dir = 'config';
 var config_files = [];
 var audio_context = new AudioContext;
-var globals = new Globals({
-    config_file: config_dir + '/web.frontend.json',
-});
 
 function initialize(frontend_config) {
     globals.stop();
@@ -710,13 +707,13 @@ function initialize(frontend_config) {
         var id = $(this).closest('li').attr('id');
         var sensor = sensors[id];
         sensor.timeago.hide();
-        sensor.time.show();
+        sensor.timestring.show();
     });
-    $('.utc-time').on('mouseleave', function(e) {
+    $('.timestring').on('mouseleave', function(e) {
         var id = $(this).closest('li').attr('id');
         var sensor = sensors[id];
+        sensor.timestring.hide();
         sensor.timeago.show();
-        sensor.time.hide();
     });
 
     $(document).on('keydown', function(event) {
@@ -776,12 +773,12 @@ function parse_query_string() {
 
 $(function() {
     $.ajax({
-        url: config_dir,
+        url: globals.config_dir,
     }).done(function(data, textStatus, jqXHR) {
         $(data).find('a').each(function(index) {
             var href = $(this).attr('href');
             if (href.match(/[.]json$/)) {
-                config_files.push(config_dir + '/' + href);
+                config_files.push(globals.config_dir + '/' + href);
             }
         });
         if (config_files.length && config_files.indexOf(globals.config_file) == -1) {
