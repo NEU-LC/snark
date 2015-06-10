@@ -29,7 +29,7 @@
 
 #include <gtest/gtest.h>
 #include <comma/base/exception.h>
-#include "../applications/pid.h"
+#include "../pid.h"
 
 namespace snark { namespace test {
 
