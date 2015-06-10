@@ -626,7 +626,6 @@ function initialize(frontend_config) {
                     sensors[this.object.sensor_name].draw();
                 });
             }
-            sensor.refresh();
         } else {
             folder.add(sensor.config, 'show').onFinishChange(function(value) {
                 sensors[this.object.sensor_name].toggle_show();
@@ -644,6 +643,13 @@ function initialize(frontend_config) {
     }
 
     load(current_config_file);
+
+    for (var id in sensors) {
+        var sensor = sensors[id];
+        if (sensor.el.is(':visible')) {
+            sensor.refresh();
+        }
+    }
 
     $('#container').sortable({
         items: 'li.panel',
