@@ -30,34 +30,14 @@
 #ifndef SNARK_CONTROL_H
 #define SNARK_CONTROL_H
 
-#include <cmath>
-#include <iostream>
 #include <boost/date_time/posix_time/posix_time.hpp>
-#include <boost/static_assert.hpp>
-#include <boost/bimap.hpp>
-#include <boost/assign.hpp>
 #include <comma/visiting/traits.h>
-#include <comma/base/exception.h>
-#include <comma/math/cyclic.h>
-#include <comma/base/types.h>
-#include <snark/visiting/eigen.h>
-#include <snark/timing/timestamped.h>
+#include "wayline.h"
 
 namespace snark { namespace control {
 
 static std::string command_app_name = "control-command";
 static std::string error_app_name = "control-error";
-
-static const unsigned int dimensions = 2;
-typedef Eigen::Matrix< double, dimensions, 1 > vector_t;
-double distance( const vector_t& p1, const vector_t& p2 ) { return ( p1 - p2 ).norm(); }
-vector_t normalise( const vector_t& v ) { return v.normalized(); }
-std::string serialise( const vector_t& p )
-{
-    std::stringstream s;
-    s << p.x() << ',' << p.y();
-    return s.str();
-}
 
 struct feedback_t
 {
@@ -78,32 +58,6 @@ struct error_t
 {
     error_t() : cross_track( 0 ), heading( 0 ) {}
     double cross_track;
-    double heading;
-};
-
-double wrap_angle( double value ) { return comma::math::cyclic< double >( comma::math::interval< double >( -M_PI, M_PI ), value )(); }
-
-struct wayline_t
-{
-public:
-    wayline_t() {}
-    wayline_t( const vector_t& start, const vector_t& end, bool verbose = false ) :
-          v( normalise( end - start ) )
-        , line( Eigen::ParametrizedLine< double, dimensions >::Through( start, end ) )
-        , perpendicular_line_at_end( v, end )
-        , heading( atan2( v.y(), v.x() ) )
-        {
-            BOOST_STATIC_ASSERT( dimensions == 2 );
-            if( verbose ) { std::cerr << "wayline from " << serialise( start ) << " to " << serialise( end ) << std::endl; }
-        }
-    bool is_past_endpoint( const vector_t& location ) const { return perpendicular_line_at_end.signedDistance( location ) > 0; }
-    double cross_track_error( const vector_t& location ) const { return line.signedDistance( location ); }
-    double heading_error( double yaw, double heading_offset ) const { return wrap_angle( yaw - heading - heading_offset ); }
-private:
-    vector_t v;
-    Eigen::Hyperplane< double, dimensions > line;
-    Eigen::Hyperplane< double, dimensions > perpendicular_line_at_end;
-public:
     double heading;
 };
 
@@ -173,18 +127,6 @@ template <> struct traits< snark::control::error_t >
     template < typename K, typename V > static void visit( const K&, const snark::control::error_t& p, V& v )
     {
         v.apply( "cross_track", p.cross_track );
-        v.apply( "heading", p.heading );
-    }
-};
-
-template <> struct traits< snark::control::wayline_t >
-{
-    template < typename K, typename V > static void visit( const K&, snark::control::wayline_t& p, V& v )
-    {
-        v.apply( "heading", p.heading );
-    }
-    template < typename K, typename V > static void visit( const K&, const snark::control::wayline_t& p, V& v )
-    {
         v.apply( "heading", p.heading );
     }
 };

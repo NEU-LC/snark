@@ -34,6 +34,7 @@
 #include <boost/scoped_ptr.hpp>
 #include <comma/application/command_line_options.h>
 #include <comma/application/signal_flag.h>
+#include <comma/csv/options.h>
 #include <comma/csv/stream.h>
 #include <comma/csv/names.h>
 #include <comma/csv/traits.h>

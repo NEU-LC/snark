@@ -28,10 +28,12 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <cmath>
+#include <boost/bimap.hpp>
+#include <boost/assign.hpp>
+#include <comma/application/command_line_options.h>
 #include <comma/csv/options.h>
 #include <comma/csv/stream.h>
 #include <comma/io/select.h>
-#include <comma/math/compare.h>
 #include "control.h"
 #include "pid.h"
 
