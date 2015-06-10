@@ -29,37 +29,20 @@
 
 /// @author vsevolod vlaskine
 
-#ifndef SNARK_TERRAIN_DEM_SRTM_HEADER_H_
-#define SNARK_TERRAIN_DEM_SRTM_HEADER_H_
+#ifndef SNARK_TERRAIN_DEM_SRTM_DATA_H_
+#define SNARK_TERRAIN_DEM_SRTM_DATA_H_
 
-#include <comma/base/types.h>
-#include "../../../math/spherical_geometry/coordinates.h"
-#include "../../../terrain/dem/tile.h"
+#include <comma/packed/big_endian.h>
+#include <comma/packed/struct.h>
 
 namespace snark { namespace terrain { namespace dem { namespace srtm {
 
-struct header
+/// @todo template on size and use size from header (currently hard-coded)
+struct data : comma::packed::packed_struct< data, 2 >
 {
-    std::string byteorder;
-    std::string layout;
-    comma::uint32 nrows;
-    comma::uint32 ncols;
-    comma::uint32 nbands;
-    comma::uint32 nbits;
-    comma::uint32 bandrowbytes;
-    comma::uint32 totalrowbytes;
-    comma::uint32 bandgapbytes;
-    comma::int32 nodata;
-    double ulxmap;
-    double ulymap;
-    double xdim;
-    double ydim;
-    
-    header() : nrows( 0 ), ncols( 0 ), nbands( 0 ), nbits( 0 ), bandrowbytes( 0 ), totalrowbytes( 0 ), bandgapbytes( 0 ), nodata( 0 ), ulxmap( 0 ), ulymap( 0 ), xdim( 0 ), ydim( 0 ) {}
-    
-    dem::tile::properties tile_properties() const;
+    comma::packed::big_endian_int16 height;
 };
 
 } } } } // namespace snark { namespace terrain { namespace dem { namespace srtm {
 
-#endif // SNARK_TERRAIN_DEM_SRTM_HEADER_H_
+#endif // SNARK_TERRAIN_DEM_SRTM_DATA_H_

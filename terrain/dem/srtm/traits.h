@@ -29,37 +29,52 @@
 
 /// @author vsevolod vlaskine
 
-#ifndef SNARK_TERRAIN_DEM_SRTM_HEADER_H_
-#define SNARK_TERRAIN_DEM_SRTM_HEADER_H_
+#ifndef SNARK_TERRAIN_DEM_SRTM_TRAITS_H_
 
-#include <comma/base/types.h>
-#include "../../../math/spherical_geometry/coordinates.h"
-#include "../../../terrain/dem/tile.h"
+#include <comma/visiting/traits.h>
+#include "header.h"
 
-namespace snark { namespace terrain { namespace dem { namespace srtm {
+namespace comma { namespace visiting {
 
-struct header
+template <> struct traits< snark::terrain::dem::srtm::header >
 {
-    std::string byteorder;
-    std::string layout;
-    comma::uint32 nrows;
-    comma::uint32 ncols;
-    comma::uint32 nbands;
-    comma::uint32 nbits;
-    comma::uint32 bandrowbytes;
-    comma::uint32 totalrowbytes;
-    comma::uint32 bandgapbytes;
-    comma::int32 nodata;
-    double ulxmap;
-    double ulymap;
-    double xdim;
-    double ydim;
-    
-    header() : nrows( 0 ), ncols( 0 ), nbands( 0 ), nbits( 0 ), bandrowbytes( 0 ), totalrowbytes( 0 ), bandgapbytes( 0 ), nodata( 0 ), ulxmap( 0 ), ulymap( 0 ), xdim( 0 ), ydim( 0 ) {}
-    
-    dem::tile::properties tile_properties() const;
+    template< typename K, typename V > static void visit( const K&, snark::terrain::dem::srtm::header& t, V& v )
+    {
+        v.apply( "BYTEORDER", t.byteorder );
+        v.apply( "LAYOUT", t.layout );
+        v.apply( "NROWS", t.nrows );
+        v.apply( "NCOLS", t.ncols );
+        v.apply( "NBANDS", t.nbands );
+        v.apply( "NBITS", t.nbits );
+        v.apply( "BANDROWBYTES", t.bandrowbytes );
+        v.apply( "TOTALROWBYTES", t.totalrowbytes );
+        v.apply( "BANDGAPBYTES", t.bandgapbytes );
+        v.apply( "NODATA", t.nodata );
+        v.apply( "ULXMAP", t.ulxmap );
+        v.apply( "ULYMAP", t.ulymap );
+        v.apply( "XDIM", t.xdim );
+        v.apply( "YDIM", t.ydim );
+    }
+
+    template< typename K, typename V > static void visit( const K&, const snark::terrain::dem::srtm::header& t, V& v )
+    {
+        v.apply( "BYTEORDER", t.byteorder );
+        v.apply( "LAYOUT", t.layout );
+        v.apply( "NROWS", t.nrows );
+        v.apply( "NCOLS", t.ncols );
+        v.apply( "NBANDS", t.nbands );
+        v.apply( "NBITS", t.nbits );
+        v.apply( "BANDROWBYTES", t.bandrowbytes );
+        v.apply( "TOTALROWBYTES", t.totalrowbytes );
+        v.apply( "BANDGAPBYTES", t.bandgapbytes );
+        v.apply( "NODATA", t.nodata );
+        v.apply( "ULXMAP", t.ulxmap );
+        v.apply( "ULYMAP", t.ulymap );
+        v.apply( "XDIM", t.xdim );
+        v.apply( "YDIM", t.ydim );
+    }
 };
 
-} } } } // namespace snark { namespace terrain { namespace dem { namespace srtm {
+} } // namespace comma { namespace visiting {
 
-#endif // SNARK_TERRAIN_DEM_SRTM_HEADER_H_
+#endif // SNARK_TERRAIN_DEM_SRTM_TRAITS_H_

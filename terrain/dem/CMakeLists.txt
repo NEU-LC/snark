@@ -1,1 +1,7 @@
+set( TARGET_NAME snark_terrain_dem )
+file( GLOB source *.cpp )
+file( GLOB includes *.h )
+source_group( ${TARGET_NAME} FILES ${source} ${includes} )
+add_library( ${TARGET_NAME} OBJECT ${source} ${includes} )
+install( FILES ${includes} DESTINATION ${snark_INSTALL_INCLUDE_DIR}/terrain/dem )
 add_subdirectory( srtm )
