@@ -22,8 +22,8 @@ body {
     margin: 0px;
 }
 
-.container-resize {
-    border-right: 5px double #535353;
+#container:hover {
+    background: #0D0D0D;
 }
 
 .panel {
@@ -34,7 +34,7 @@ body {
     background: #181818;
     border-radius: 10px;
     cursor: move;
-    min-width: 268px;
+    min-width: 275px;
     border: 2px solid transparent;
     box-sizing: border-box;
 }

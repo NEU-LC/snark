@@ -626,7 +626,6 @@ function initialize(frontend_config) {
                     sensors[this.object.sensor_name].draw();
                 });
             }
-            sensor.refresh();
         } else {
             folder.add(sensor.config, 'show').onFinishChange(function(value) {
                 sensors[this.object.sensor_name].toggle_show();
@@ -645,6 +644,13 @@ function initialize(frontend_config) {
 
     load(current_config_file);
 
+    for (var id in sensors) {
+        var sensor = sensors[id];
+        if (sensor.el.is(':visible')) {
+            sensor.refresh();
+        }
+    }
+
     $('#container').sortable({
         items: 'li.panel',
         opacity: 0.8,
@@ -656,12 +662,6 @@ function initialize(frontend_config) {
         }
     }).resizable({
         handles: 'e',
-        start: function() {
-            $('#container').addClass('container-resize');
-        },
-        stop: function() {
-            $('#container').removeClass('container-resize');
-        }
     });
 
     $('.panel').on('mouseover', function() {
@@ -803,6 +803,7 @@ function load_layout(config_file) {
     if (!layout) {
         return;
     }
+    layout.reverse();
     layout.forEach(function(value, index) {
         var container = $('#container');
         if (value.id === 'container') {
@@ -810,9 +811,10 @@ function load_layout(config_file) {
             return;
         }
         var panel = $('#' + value.id);
-        if (panel.length) {
-            container.append(panel);
+        if (!panel.length) {
+            return;
         }
+        container.prepend(panel);
         var sensor = sensors[value.id];
         if ('width' in value) {
             sensor.target.width(value.width);
