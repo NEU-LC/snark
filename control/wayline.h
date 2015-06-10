@@ -28,7 +28,7 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #ifndef SNARK_CONTROL_WAYLINE_H
-#define SNARK_CONTROL_WAYLINE_
+#define SNARK_CONTROL_WAYLINE_H
 
 #include <comma/math/cyclic.h>
 #include <comma/visiting/traits.h>

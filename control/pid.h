@@ -27,8 +27,8 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef SNARK_CONTROL_PID_HEADER
-#define SNARK_CONTROL_PID_HEADER
+#ifndef SNARK_CONTROL_PID_H
+#define SNARK_CONTROL_PID_H
 
 #include <boost/date_time/posix_time/ptime.hpp>
 #include <boost/optional.hpp>
