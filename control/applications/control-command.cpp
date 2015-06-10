@@ -28,22 +28,20 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <cmath>
+#include <boost/bimap.hpp>
+#include <boost/assign.hpp>
+#include <comma/application/command_line_options.h>
 #include <comma/csv/options.h>
 #include <comma/csv/stream.h>
 #include <comma/io/select.h>
-#include <comma/application/signal_flag.h>
-#include <comma/math/compare.h>
 #include "control.h"
-#include "pid.h"
+#include "snark/control/pid.h"
 
 static const std::string name = snark::control::command_app_name;
 
 template< typename T > std::string field_names( bool full_xpath = false ) { return comma::join( comma::csv::names< T >( full_xpath ), ',' ); }
 template< typename T > std::string format( const std::string& fields = "", bool full_xpath = false ) { return comma::csv::format::value< T >( !fields.empty() ? fields : field_names< T >( full_xpath ), full_xpath ); }
 template< typename T > std::string format( bool full_xpath = false ) { return format< T >( "", full_xpath ); }
-
-//template< typename T > std::string field_names( bool full_xpath = false, char separator = ',' ) { return comma::join( comma::csv::names< T >( full_xpath ), separator ); }
-//template< typename T > std::string format( std::string fields, bool full_xpath = false ) { return comma::csv::format::value< T >( fields, full_xpath ); }
 
 typedef snark::control::control_data_t control_data_t;
 typedef snark::control::command_t command_t;
@@ -106,6 +104,25 @@ double limit_angle( double angle, double limit = M_PI/2 )
     else { return angle; }
 }
 
+snark::control::pid make_pid( const std::string& pid_values, char delimiter = ',' )
+{
+    std::vector< std::string > v = comma::split( pid_values, delimiter );
+    if( v.size() != 3 && v.size() != 4 ) { COMMA_THROW( comma::exception, "expected a string with 3 or 4 elements separated by '" << delimiter << "', got " << v.size() ); }
+    double p = boost::lexical_cast< double >( v[0] );
+    double i = boost::lexical_cast< double >( v[1] );
+    double d = boost::lexical_cast< double >( v[2] );
+    if( v.size() == 4 )
+    {
+        double threshold = boost::lexical_cast< double >( v[3] );
+        if( threshold <= 0 ) { COMMA_THROW( comma::exception, "expected positive threshold, got " << threshold ); }
+        return snark::control::pid( p, i, d, threshold );
+    }
+    else
+    {
+        return snark::control::pid( p, i, d );
+    }
+}
+
 int main( int ac, char** av )
 {
     try
@@ -128,12 +145,11 @@ int main( int ac, char** av )
         bool feedback_has_time  = input_csv.has_field( "feedback/t" );
         bool compute_yaw_rate = !input_csv.has_field( "feedback/yaw_rate" );
         bool reset_pid = options.exists( "--reset" );
-        snark::control::pid cross_track_pid( options.value< std::string >( "--cross-track-pid" ) );
-        snark::control::pid heading_pid( options.value< std::string >( "--heading-pid" ) );
-        comma::signal_flag is_shutdown;
+        snark::control::pid cross_track_pid = make_pid( options.value< std::string >( "--cross-track-pid" ) );
+        snark::control::pid heading_pid = make_pid( options.value< std::string >( "--heading-pid" ) );
         boost::optional< snark::control::vector_t > position;
         boost::optional< snark::control::vector_t > previous_position;
-        while( !is_shutdown && ( input_stream.ready() || ( std::cin.good() && !std::cin.eof() ) ) )
+        while( input_stream.ready() || ( std::cin.good() && !std::cin.eof() ) )
         {
             const control_data_t* control_data = input_stream.read();
             if( !control_data ) { break; }
@@ -149,23 +165,23 @@ int main( int ac, char** av )
             }
             command_t command;
             boost::posix_time::ptime time = feedback_has_time ? control_data->feedback.t : boost::posix_time::not_a_date_time;
-            if( steering == omni )
+            switch( steering )
             {
-                double yaw = control_data->feedback.yaw;
-                double heading = control_data->wayline.get_heading();
-                double correction = limit_angle( cross_track_pid( control_data->error.cross_track, time ) );
-                command.local_heading = snark::control::wrap_angle( yaw - heading + correction );
-                command.turn_rate = compute_yaw_rate ? heading_pid( control_data->error.heading, time ) : heading_pid( control_data->error.heading, control_data->feedback.yaw_rate, time );
-            }
-            else if( steering == skid )
-            {
-                double error = control_data->error.heading + limit_angle( cross_track_pid( control_data->error.cross_track, time ) );
-                command.turn_rate = compute_yaw_rate ? heading_pid( error, time ) : heading_pid( error, control_data->feedback.yaw_rate, time );
-            }
-            else
-            {
-                std::cerr << name << ": steering '" << steering_to_string( steering ) << "' is not implemented" << std::endl;
-                return 1;
+                case omni:
+                {
+                    double yaw = control_data->feedback.yaw;
+                    double heading = control_data->wayline.heading;
+                    double correction = limit_angle( cross_track_pid( control_data->error.cross_track, time ) );
+                    command.local_heading = snark::control::wrap_angle( yaw - heading + correction );
+                    command.turn_rate = compute_yaw_rate ? heading_pid( control_data->error.heading, time ) : heading_pid( control_data->error.heading, control_data->feedback.yaw_rate, time );
+                    break;
+                }
+                case skid:
+                {
+                    double error = control_data->error.heading + limit_angle( cross_track_pid( control_data->error.cross_track, time ) );
+                    command.turn_rate = compute_yaw_rate ? heading_pid( error, time ) : heading_pid( error, control_data->feedback.yaw_rate, time );
+                    break;
+                }
             }
             tied.append( command );
         }

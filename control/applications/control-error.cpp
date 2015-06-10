@@ -34,6 +34,7 @@
 #include <boost/scoped_ptr.hpp>
 #include <comma/application/command_line_options.h>
 #include <comma/application/signal_flag.h>
+#include <comma/csv/options.h>
 #include <comma/csv/stream.h>
 #include <comma/csv/names.h>
 #include <comma/csv/traits.h>
@@ -75,10 +76,11 @@ static void usage( bool verbose = false )
     std::cerr << "    options: semicolon-separated csv options of the feedback stream, e.g. fields=t,x,y,,,,yaw;binary=t,6d" << std::endl;
     std::cerr << "    default fields: " << field_names< snark::control::feedback_t >() << std::endl;
     std::cerr << std::endl;
-    std::cerr << "input stream options: " << std::endl;
-    std::cerr << "    --fields,-f <names>: comma-separated field names (default: " << field_names< snark::control::target_t >() << ")" << std::endl;
-    std::cerr << "    --binary,-b <format>: use binary format" << std::endl;
-    if( verbose ) { std::cerr << comma::csv::format::usage() << std::endl; }
+    if( verbose )
+    {
+        std::cerr << "csv stream options: " << std::endl;
+        std::cerr << comma::csv::options::usage( field_names< snark::control::target_t >() ) << std::endl;
+    }
     std::cerr << std::endl;
     std::cerr << "options: " << std::endl;
     std::cerr << "    --mode <mode>: control mode (default: " << default_mode << ")" << std::endl;
@@ -159,8 +161,7 @@ int main( int ac, char** av )
                     else if( mode == dynamic ) { from = boost::none; break; }
                     else { std::cerr << name << ": control mode '" << mode_to_string( mode ) << "' is not implemented" << std::endl; return 1; }
                 }
-                select.check();
-                //select.wait( boost::posix_time::microseconds( 100 ) );
+                select.wait( boost::posix_time::microseconds( 100000 ) );
                 if( feedback_stream.ready() || select.read().ready( feedback_in ) )
                 {
                     const snark::control::feedback_t* feedback = feedback_stream.read();
