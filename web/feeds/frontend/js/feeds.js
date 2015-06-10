@@ -662,12 +662,6 @@ function initialize(frontend_config) {
         }
     }).resizable({
         handles: 'e',
-        start: function() {
-            $('#container').addClass('container-resize');
-        },
-        stop: function() {
-            $('#container').removeClass('container-resize');
-        }
     });
 
     $('.panel').on('mouseover', function() {
