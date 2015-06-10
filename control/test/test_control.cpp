@@ -29,7 +29,9 @@
 
 #include <gtest/gtest.h>
 #include <comma/base/exception.h>
-#include "../pid.h"
+#include <boost/date_time/posix_time/ptime.hpp>
+#include <comma/csv/stream.h>
+#include "snark/control/pid.h"
 
 namespace snark { namespace test {
 

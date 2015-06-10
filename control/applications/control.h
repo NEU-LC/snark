@@ -32,7 +32,7 @@
 
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <comma/visiting/traits.h>
-#include "../wayline.h"
+#include "snark/control/wayline.h"
 
 namespace snark { namespace control {
 

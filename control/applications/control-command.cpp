@@ -35,7 +35,7 @@
 #include <comma/csv/stream.h>
 #include <comma/io/select.h>
 #include "control.h"
-#include "../pid.h"
+#include "snark/control/pid.h"
 
 static const std::string name = snark::control::command_app_name;
 

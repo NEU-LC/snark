@@ -32,37 +32,18 @@
 
 #include <boost/date_time/posix_time/ptime.hpp>
 #include <boost/optional.hpp>
-#include <comma/base/exception.h>
-#include <comma/csv/stream.h>
 
 namespace snark { namespace control {
 
 class pid
 {
 public:
-    pid() : p( 0 ), i( 0 ), d( 0 ), integral( 0 ) {}
-    pid( double p, double i, double d ) : p( p ), i( i ), d( d ), integral( 0 ) {}
-    pid( double p, double i, double d, double threshold ) : p( p ), i( i ), d( d ), integral( 0 ), threshold( threshold )
-    {
-        if( threshold <= 0 ) { COMMA_THROW( comma::exception, "expected positive threshold, got " << threshold ); }
-    }
-    double operator()( double error, const boost::posix_time::ptime& t = boost::posix_time::not_a_date_time )
-    {
-        boost::optional< double > dt = get_time_increment( t );
-        double derivative = previous_error && dt ? ( error - *previous_error ) / *dt : 0;
-        return update( error, derivative, t, dt );
-    }
-    double operator()( double error, double derivative, const boost::posix_time::ptime& t = boost::posix_time::not_a_date_time )
-    {
-        boost::optional< double > dt = get_time_increment( t );
-        return update( error, derivative, t, dt );
-    }
-    void reset()
-    {
-        integral = 0;
-        previous_error = boost::none;
-        time = boost::posix_time::not_a_date_time;
-    }
+    pid();
+    pid( double p, double i, double d );
+    pid( double p, double i, double d, double threshold );
+    double operator()( double error, const boost::posix_time::ptime& t = boost::posix_time::not_a_date_time );
+    double operator()( double error, double derivative, const boost::posix_time::ptime& t = boost::posix_time::not_a_date_time );
+    void reset();
 
 private:
     double p;
@@ -72,29 +53,9 @@ private:
     boost::optional< double > threshold;
     boost::posix_time::ptime time;
     boost::optional< double > previous_error;
-    boost::optional< double > get_time_increment( const boost::posix_time::ptime& t )
-    {
-        if( time == boost::posix_time::not_a_date_time || t == boost::posix_time::not_a_date_time ) { return boost::none; }
-        if( t <= time ) { COMMA_THROW( comma::exception, "expected time greater than " << boost::posix_time::to_iso_string( time ) << ", got " << boost::posix_time::to_iso_string( t ) ); }
-        return ( t - time ).total_microseconds() / 1e6;
-    }
-    void clip_integral()
-    {
-        if( !threshold ) { return; }
-        if ( integral > *threshold ) { integral = *threshold; }
-        else if ( integral < -*threshold ) { integral = -*threshold; }
-    }
-    double update( double error, double derivative, const boost::posix_time::ptime& t, boost::optional< double > dt )
-    {
-        if( dt ) 
-        {
-            integral += error * *dt;
-            clip_integral();
-        }
-        previous_error = error;
-        time = t;
-        return p * error + i * integral + d * derivative;
-    }
+    boost::optional< double > get_time_increment( const boost::posix_time::ptime& t );
+    void clip_integral();
+    double update( double error, double derivative, const boost::posix_time::ptime& t, boost::optional< double > dt );
 };
 
 } } // namespace snark { namespace control {
