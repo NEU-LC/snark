@@ -89,9 +89,9 @@ public:
     wayline_t() {}
     wayline_t( const vector_t& start, const vector_t& end, bool verbose = false ) :
           v( normalise( end - start ) )
-        , heading( atan2( v.y(), v.x() ) )
         , line( Eigen::ParametrizedLine< double, dimensions >::Through( start, end ) )
         , perpendicular_line_at_end( v, end )
+        , heading( atan2( v.y(), v.x() ) )
         {
             BOOST_STATIC_ASSERT( dimensions == 2 );
             if( verbose ) { std::cerr << "wayline from " << serialise( start ) << " to " << serialise( end ) << std::endl; }
@@ -99,13 +99,12 @@ public:
     bool is_past_endpoint( const vector_t& location ) const { return perpendicular_line_at_end.signedDistance( location ) > 0; }
     double cross_track_error( const vector_t& location ) const { return line.signedDistance( location ); }
     double heading_error( double yaw, double heading_offset ) const { return wrap_angle( yaw - heading - heading_offset ); }
-    double get_heading() const { return heading; }
-    void set_heading( double h ) { heading = h; }
 private:
     vector_t v;
-    double heading;
     Eigen::Hyperplane< double, dimensions > line;
     Eigen::Hyperplane< double, dimensions > perpendicular_line_at_end;
+public:
+    double heading;
 };
 
 struct control_data_t
@@ -182,13 +181,11 @@ template <> struct traits< snark::control::wayline_t >
 {
     template < typename K, typename V > static void visit( const K&, snark::control::wayline_t& p, V& v )
     {
-        double heading;
-        v.apply( "heading", heading );
-        p.set_heading( heading );
+        v.apply( "heading", p.heading );
     }
     template < typename K, typename V > static void visit( const K&, const snark::control::wayline_t& p, V& v )
     {
-        v.apply( "heading", p.get_heading() );
+        v.apply( "heading", p.heading );
     }
 };
 
