@@ -35,34 +35,17 @@ namespace snark { namespace test {
 
 TEST( pid, constructor )
 {
-    {
-        snark::control::pid p( 0.1, 0.01, 0.001 );
-        snark::control::pid p1( 0.1, 0.01, 0.001 );
-        snark::control::pid p2( 0.1, 0.01, 0.001, 0.25 );
-        snark::control::pid p3( 0.1, 0.01, 0.001 );
-        snark::control::pid p4( 0.1, 0.01, 0.001, 0.25 );
-    }
-    {
-        snark::control::pid p1( "0.1,0.01,0.001" );
-        snark::control::pid p2( "0.1,0.01,0.001" );
-        snark::control::pid p3( "0.1;0.01;0.001", ';' );
-        snark::control::pid p4( "0.1,0.01,0.001,0.25" );
-        snark::control::pid p5( "0.1;0.01;0.001;0.25", ';' );
-    }
+    snark::control::pid p( 0.1, 0.01, 0.001 );
+    snark::control::pid p1( 0.1, 0.01, 0.001 );
+    snark::control::pid p2( 0.1, 0.01, 0.001, 0.25 );
+    snark::control::pid p3( 0.1, 0.01, 0.001 );
+    snark::control::pid p4( 0.1, 0.01, 0.001, 0.25 );
 }
 
 TEST( pid, threshold_throw )
 {
     ASSERT_THROW( snark::control::pid( 0, 0, 0, -1.0 ), comma::exception );
     ASSERT_THROW( snark::control::pid( 0, 0, 0, 0.0 ), comma::exception );
-    ASSERT_THROW( snark::control::pid( "0,0,0,-1.0" ), comma::exception );
-    ASSERT_THROW( snark::control::pid( "0,0,0,0.0" ), comma::exception );
-}
-
-TEST( pid, parsing_throw )
-{
-    ASSERT_THROW( snark::control::pid( "0,0" ), comma::exception );
-    ASSERT_THROW( snark::control::pid( "0,0,0,-1,0" ), comma::exception );
 }
 
 static const boost::posix_time::ptime initial_time = boost::posix_time::from_iso_string( "20101010T121212.123456" );

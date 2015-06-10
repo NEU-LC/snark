@@ -32,32 +32,19 @@
 
 #include <boost/date_time/posix_time/ptime.hpp>
 #include <boost/optional.hpp>
-#include <boost/lexical_cast.hpp>
 #include <comma/base/exception.h>
 #include <comma/csv/stream.h>
-#include <comma/string/split.h>
 
 namespace snark { namespace control {
 
 class pid
 {
 public:
+    pid() : p( 0 ), i( 0 ), d( 0 ), integral( 0 ) {}
     pid( double p, double i, double d ) : p( p ), i( i ), d( d ), integral( 0 ) {}
-    pid( double p, double i, double d, boost::optional< double > threshold ) : p( p ), i( i ), d( d ), integral( 0 ), threshold( threshold )
-        { if( threshold && *threshold <= 0 ) { COMMA_THROW( comma::exception, "expected positive threshold, got " << *threshold ); } }
-    pid( const std::string& pid_values, char delimiter = ',' )
+    pid( double p, double i, double d, double threshold ) : p( p ), i( i ), d( d ), integral( 0 ), threshold( threshold )
     {
-        std::vector< std::string > v = comma::split( pid_values, delimiter );
-        if( v.size() != 3 && v.size() != 4 ) { COMMA_THROW( comma::exception, "expected a string with 3 or 4 elements separated by '" << delimiter << "', got " << v.size() ); }
-        p = boost::lexical_cast< double >( v[0] );
-        i = boost::lexical_cast< double >( v[1] );
-        d = boost::lexical_cast< double >( v[2] );
-        integral = 0;
-        if( v.size() == 4 )
-        {
-            threshold = boost::lexical_cast< double >( v[3] );
-            if( *threshold <= 0 ) { COMMA_THROW( comma::exception, "expected positive threshold, got " << *threshold ); }
-        }
+        if( threshold <= 0 ) { COMMA_THROW( comma::exception, "expected positive threshold, got " << threshold ); }
     }
     double operator()( double error, const boost::posix_time::ptime& t = boost::posix_time::not_a_date_time )
     {
