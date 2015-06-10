@@ -809,6 +809,7 @@ function load_layout(config_file) {
     if (!layout) {
         return;
     }
+    layout.reverse();
     layout.forEach(function(value, index) {
         var container = $('#container');
         if (value.id === 'container') {
@@ -816,9 +817,10 @@ function load_layout(config_file) {
             return;
         }
         var panel = $('#' + value.id);
-        if (panel.length) {
-            container.append(panel);
+        if (!panel.length) {
+            return;
         }
+        container.prepend(panel);
         var sensor = sensors[value.id];
         if ('width' in value) {
             sensor.target.width(value.width);
