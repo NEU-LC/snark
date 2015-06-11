@@ -8,13 +8,13 @@ function option_description
     cat <<EOF
 --mode=[<mode>]; waypoint following mode (fixed or dynamic)
 --steering=[<steering>]; steering mode (omni or skid)
---fields=[<fields>]; input fields (default: ${target[fields]})
---binary=[<format>]; binary format of input fields (default: ${target[format]})
---feedback=[<feedback>]; feedback source, fields, and binary format (default: "${feedback[source]};fields=${feedback[fields]};binary=${feedback[format]}" )
+--fields=[<fields>]; input fields (default: $default_target_fields)
+--binary=[<format>]; binary format of input fields if input is binary
+--feedback=[<feedback>]; feedback source, fields, and binary format if feedback is binary (default fields: $default_feedback_fields )
 --cross-track-pid=[<cross_track_pid>]; pid parameters for cross-track errors (where <pid>=p,i,d[,threshold])
 --heading-pid=[<heading_pid>]; pid parameters for heading errors (where <pid>=p,i,d[,threshold])
 --reset; switch on resetting of pids upon reaching a waypoint
---proximity=[<proximity>]; a proximity value for deciding when a waypoint is reached (default: $proximity)
+--proximity=[<proximity>]; a proximity value for deciding when a waypoint is reached (default: $default_proximity)
 --output-fields; show output fields and exit
 --output-format; show output format and exit
 EOF
@@ -27,19 +27,9 @@ function usage
     $scriptname: take waypoints and output wheel commands based on feedback
 
 example:
-    $scriptname --mode=fixed --steering=omni --fields=${target[fields]} --binary=${target[format]} \\
-        --feedback="${feedback[source]};fields=${feedback[fields]};binary=${feedback[format]}" \\
-        --cross-track-pid=1,2,3,0.1 --heading-pid=1,2,3,0.1 --proximity=$proximity --reset
-
-    show output fields:
-    $scriptname --steering=omni --fields=${target[fields]} --binary=${target[format]} \\
-        --feedback="${feedback[source]};fields=${feedback[fields]};binary=${feedback[format]}" \\
-        --output-fields
-
-    show output format:
-    $scriptname --steering=omni --fields=${target[fields]} --binary=${target[format]} \\
-        --feedback="${feedback[source]};fields=${feedback[fields]};binary=${feedback[format]}" \\
-        --output-format
+    $scriptname --mode=fixed --steering=omni --fields=x,y,heading_offset,speed --binary=4d \\
+        --feedback="tcp:localhost:12345;fields=t,x,y,yaw,yaw_rate;binary=t,4d" \\
+        --cross-track-pid=1,2,3,0.1 --heading-pid=1,2,3,0.1 --proximity=0.1 --reset
 
 options:
 $( option_description | sed 's/^/    /g' )
@@ -53,18 +43,19 @@ function full_xpath { local path=$1 fields=$2; csv-fields prefix --fields "x,y" 
 
 function bye
 {
-    kill $pid &>/dev/null
-    wait $pid
+    pkill -P $$ &>/dev/null
     exit 1
 }
 
 trap bye INT TERM HUP
 
-declare -A target=( [fields]="x,y,heading_offset" [format]="3d" )
-declare -A feedback=( [source]="feedback" [fields]="t,x,y,yaw,yaw_rate" [format]="t,4d" )
-proximity=0.05
+default_target_fields="x,y,heading_offset"
+default_feedback_fields="t,x,y,yaw,yaw_rate"
+declare -A target
+declare -A feedback
+default_proximity=0.05
 reset=
-target_fields_not_in_output=${target[fields]}
+declare -i binary_output=0
 
 if (( $( comma_options_has --help "$@" ) || $( comma_options_has -h "$@" ) )); then usage; fi
 comma_path_value_to_var --prefix=options < <( option_description | comma-options-to-name-value "$@" )
@@ -77,46 +68,60 @@ error_format=$( control-error --output-format )
 command_fields=$( control-command --steering=$steering --output-fields )
 command_format=$( control-command --steering=$steering --output-format )
 
-target[fields]=${options_fields:-${target[fields]}}
-target[format]=${options_binary:-${target[format]}}
+target[fields]=${options_fields:-$default_target_fields}
+target[format]=$options_binary
 if [[ -n "$options_feedback" ]]; then
     feedback_source=$( sed 's/;.*//g' <<< "$options_feedback" )
-    feedback_fields=$( sed -E 's/.*;?(fields=[^;]+);?.*/\1/g;s/fields=//g' <<< "$options_feedback" )
-    feedback_format=$( sed -E 's/.*;?(binary=[^;]+);?.*/\1/g;s/binary=//g' <<< "$options_feedback" )
+    function extract { local what=$1 from=$2; echo "$from" | grep "$what=" 2>/dev/null | sed -E "s/.*;?($what=[^;]+);?.*/\1/g;s/$what=//g"; }
+    feedback_fields=$( extract fields "$options_feedback" )
+    feedback_format=$( extract binary "$options_feedback" )
     [[ -n "$feedback_source" ]] && feedback[source]=$feedback_source
     [[ -n "$feedback_fields" ]] && feedback[fields]=$feedback_fields
     [[ -n "$feedback_format" ]] && feedback[format]=$feedback_format
 fi
+[[ -n "${target[format]}" ]] && binary_output=1
 
 passed_fields=$( full_xpath target ${target[fields]} ),$( full_xpath feedback ${feedback[fields]} )
-passed_format=${target[format]},${feedback[format]}
-
 all_fields=$passed_fields,$error_fields,$command_fields
-all_format=$passed_format,$error_format,$command_format
-
-keep_target_fields=$( full_xpath target $( csv-fields clear --remove $target_fields_not_in_output <<< ${target[fields]} ) )
+keep_target_fields=$( full_xpath target $( csv-fields clear --remove $default_target_fields <<< ${target[fields]} ) )
 cut_fields=$( csv-fields clear --keep $keep_target_fields,$command_fields <<< $all_fields )
-
 output_fields=$( compress_commas <<< $cut_fields )
-output_format=$( csv-format expand <<< $all_format | csv-fields clear --mask $cut_fields | compress_commas )
 
-(( $( comma_options_has --output-fields "$@" ) )) && { echo $output_fields; exit; }
-(( $( comma_options_has --output-format "$@" ) )) && { echo $output_format; exit; }
+if (( $( comma_options_has --output-fields "$@" ) )); then 
+    echo $output_fields
+    exit
+fi
+
+if (( binary_output )); then
+    passed_format=$( compress_commas <<< ${target[format]},${feedback[format]} )
+    all_format=$( compress_commas <<< $passed_format,$error_format,$command_format )
+    output_format=$( csv-format expand <<< $all_format | csv-fields clear --mask $cut_fields | compress_commas )
+fi
+
+if (( $( comma_options_has --output-format "$@" ) )); then
+    if (( ! binary_output )); then echo "$scriptname: failed to get output format since output is ascii" >&2; exit 1; fi
+    echo $output_format
+    exit
+fi
 
 mode=$options_mode
 cross_track_pid=$options_cross_track_pid
 heading_pid=$options_heading_pid
-proximity=${options_proximity:-$proximity}
+proximity=${options_proximity:-$default_proximity}
 (( $( comma_options_has --reset "$@" ) )) && reset="--reset"
 
 if [[ -z "$mode" ]]; then echo "$scriptname: mode is not given" >&2; exit 1; fi
 if [[ -z "$cross_track_pid" ]]; then echo "$scriptname: cross-track pid is not given" >&2; exit 1; fi
 if [[ -z "$heading_pid" ]]; then echo "$scriptname: heading pid is not given" >&2; exit 1; fi
 
-timeout -k 5 -s TERM 4294967296d control-error "${feedback[source]};fields=${feedback[fields]};binary=${feedback[format]}" \
-    --mode=$mode --fields=${target[fields]} --binary=${target[format]} --proximity=$proximity --past-endpoint --verbose --flush \
-    | control-command --fields=$passed_fields,$error_fields --binary=$passed_format,$error_format \
+control-error "${feedback[source]};fields=${feedback[fields]}${feedback[format]:+;binary=${feedback[format]}}" \
+    --mode=$mode --fields=${target[fields]} ${target[format]:+--binary=${target[format]}} --proximity=$proximity --past-endpoint --verbose --flush \
+    | control-command --fields=$passed_fields,$error_fields ${passed_format:+--binary=$passed_format,$error_format} \
     --cross-track-pid=$cross_track_pid --heading-pid=$heading_pid --steering=$steering $reset --verbose --flush \
-    | csv-bin-cut $all_format --fields=$( csv-fields <<< $cut_fields ) --flush & pid=$!
+    | if (( binary_output )); then
+       csv-bin-cut $all_format --fields=$( csv-fields <<< $cut_fields ) --flush
+    else
+        csv-shuffle --fields=$all_fields --output-fields=$output_fields --flush
+    fi &
 
 while :; do sleep 1; done
