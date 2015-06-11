@@ -26,6 +26,11 @@ function usage
 
     $scriptname: take waypoints and output wheel commands based on feedback
 
+output:
+    output consists of any fields specified by --fields option except the default fields
+    with the appended command fields (turn_rate and optionally local_heading), e.g.
+    for --fields=x,y,heading_offset,speed and --steering=omni, the output will consist of speed,$( control-command --steering=omni --output-fields )
+
 example:
     $scriptname --mode=fixed --steering=omni --fields=x,y,heading_offset,speed --binary=4d \\
         --feedback="tcp:localhost:12345;fields=t,x,y,yaw,yaw_rate;binary=t,4d" \\
@@ -119,7 +124,7 @@ control-error "${feedback[source]};fields=${feedback[fields]}${feedback[format]:
     | control-command --fields=$passed_fields,$error_fields ${passed_format:+--binary=$passed_format,$error_format} \
     --cross-track-pid=$cross_track_pid --heading-pid=$heading_pid --steering=$steering $reset --verbose --flush \
     | if (( binary_output )); then
-       csv-bin-cut $all_format --fields=$( csv-fields <<< $cut_fields ) --flush
+        csv-bin-cut $all_format --fields=$( csv-fields <<< $cut_fields ) --flush
     else
         csv-shuffle --fields=$all_fields --output-fields=$output_fields --flush
     fi &
