@@ -75,13 +75,16 @@ command_format=$( control-command --steering=$steering --output-format )
 
 target[fields]=${options_fields:-$default_target_fields}
 target[format]=$options_binary
-if [[ -n "$options_feedback" ]]; then
+if [[ -z "$options_feedback" ]]; then
+    echo "$scriptname: feedback source is not given" >&2
+    exit 1
+else
     feedback_source=$( sed 's/;.*//g' <<< "$options_feedback" )
     function extract { local what=$1 from=$2; echo "$from" | grep "$what=" 2>/dev/null | sed -E "s/.*;?($what=[^;]+);?.*/\1/g;s/$what=//g"; }
     feedback_fields=$( extract fields "$options_feedback" )
     feedback_format=$( extract binary "$options_feedback" )
-    [[ -n "$feedback_source" ]] && feedback[source]=$feedback_source
-    [[ -n "$feedback_fields" ]] && feedback[fields]=$feedback_fields
+    feedback[source]=$feedback_source
+    feedback[fields]=${feedback_fields:-$default_feedback_fields}
     [[ -n "$feedback_format" ]] && feedback[format]=$feedback_format
 fi
 [[ -n "${target[format]}" ]] && binary_output=1
