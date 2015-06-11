@@ -142,7 +142,6 @@ var ImageStreamSensor = function(sensor_name, config) {
             sensor.is_resizable = true;
         }
     });
-    this.reset(this.config.stream.autoplay ? {} : { count: 1 });
 }
 ImageStreamSensor.prototype.onload = function(data) {
     if (data.substr(0, 5) === 'data:') {
@@ -210,6 +209,9 @@ ImageStreamSensor.prototype.refresh = function() {
     if (!this.is_open()) {
         this.reset({ count: 1 });
     }
+}
+ImageStreamSensor.prototype.start = function() {
+    this.reset(this.config.stream.autoplay ? {} : { count: 1 });
 }
 
 var TextSensor = function(sensor_name, config) {
@@ -612,7 +614,11 @@ function initialize(frontend_config) {
                 }
             });
             folder.add(sensor.config.refresh, 'auto').name("auto refresh").onFinishChange(function(value) {
-                sensors[this.object.sensor_name].reset();
+                var sensor = sensors[this.object.sensor_name];
+                if (value && sensor.config.view == 'hide') {
+                    gui.setProperty('view', 'show', this.object.sensor_name);
+                }
+                sensor.reset();
             });
             folder.add(sensor.config.refresh, 'interval', 0, 90).name("refresh interval").step(1).onFinishChange(function(value) {
                 if (value == 0) {
@@ -646,7 +652,12 @@ function initialize(frontend_config) {
 
     for (var id in sensors) {
         var sensor = sensors[id];
-        if (sensor.el.is(':visible')) {
+        if (!sensor.el.is(':visible')) {
+            continue;
+        }
+        if (sensor.config.type == 'stream') {
+            sensor.start();
+        } else {
             sensor.refresh();
         }
     }
@@ -754,6 +765,7 @@ function save(config_file) {
     }
     save_layout(config_file);
     save_gui_config(config_file);
+    save_last_config_file(config_file);
 }
 
 function load(config_file) {
@@ -778,13 +790,23 @@ function reset(config_file) {
     }
 }
 
+function save_last_config_file(config_file) {
+    var key = 'feeds.config_file';
+    localStorage.setItem(key, config_file);
+}
+
+function load_last_config_file() {
+    var key = 'feeds.config_file';
+    return localStorage.getItem(key);
+}
+
 function save_layout(config_file) {
     var key = 'feeds.layout[' + config_file + ']';
     var layout = $('#container > li').map(function() {
         var id = this.id;
         var sensor = sensors[id];
         var layout = { id: id };
-        if (sensor.target.is('img') && sensor.target.attr('src')) {
+        if (sensor.target.is('img') && sensor.target.attr('src') && sensor.target.is(':visible')) {
             layout.width = sensor.target.width();
             layout.height = sensor.target.height();
         }
@@ -908,6 +930,11 @@ $(function() {
         var file = query_string['config'];
         if (file) {
             globals.config_file = file;
+        } else {
+            var config_file = load_last_config_file();
+            if (config_file && config_files.indexOf(config_file) != -1) {
+                globals.config_file = config_file;
+            }
         }
         if (config_files.indexOf(globals.config_file) == -1) {
             config_files.push(globals.config_file);

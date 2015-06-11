@@ -34,49 +34,7 @@
 #include <boost/algorithm/string/regex.hpp>
 #include <comma/name_value/serialize.h>
 #include "load.h"
-
-namespace comma { namespace visiting {
-
-template <> struct traits< snark::terrain::dem::srtm::header >
-{
-    template< typename K, typename V > static void visit( const K&, snark::terrain::dem::srtm::header& t, V& v )
-    {
-        v.apply( "BYTEORDER", t.byteorder );
-        v.apply( "LAYOUT", t.layout );
-        v.apply( "NROWS", t.nrows );
-        v.apply( "NCOLS", t.ncols );
-        v.apply( "NBANDS", t.nbands );
-        v.apply( "NBITS", t.nbits );
-        v.apply( "BANDROWBYTES", t.bandrowbytes );
-        v.apply( "TOTALROWBYTES", t.totalrowbytes );
-        v.apply( "BANDGAPBYTES", t.bandgapbytes );
-        v.apply( "nodata", t.nodata );
-        v.apply( "ULXMAP", t.ulxmap );
-        v.apply( "ULYMAP", t.ulymap );
-        v.apply( "XDIM", t.xdim );
-        v.apply( "YDIM", t.ydim );
-    }
-
-    template< typename K, typename V > static void visit( const K&, const snark::terrain::dem::srtm::header& t, V& v )
-    {
-        v.apply( "BYTEORDER", t.byteorder );
-        v.apply( "LAYOUT", t.layout );
-        v.apply( "NROWS", t.nrows );
-        v.apply( "NCOLS", t.ncols );
-        v.apply( "NBANDS", t.nbands );
-        v.apply( "NBITS", t.nbits );
-        v.apply( "BANDROWBYTES", t.bandrowbytes );
-        v.apply( "TOTALROWBYTES", t.totalrowbytes );
-        v.apply( "BANDGAPBYTES", t.bandgapbytes );
-        v.apply( "nodata", t.nodata );
-        v.apply( "ULXMAP", t.ulxmap );
-        v.apply( "ULYMAP", t.ulymap );
-        v.apply( "XDIM", t.xdim );
-        v.apply( "YDIM", t.ydim );
-    }
-};
-
-} } // namespace comma { namespace visiting {
+#include "traits.h"
 
 namespace snark { namespace terrain { namespace dem { namespace srtm {
 
@@ -94,6 +52,13 @@ void load( header& h, const std::string& filename )
     }
     std::istringstream iss( s );
     h = comma::read_path_value< header >( iss ); // debug: comma::write_json( h, std::cerr );
+}
+
+header load_header( const std::string& filename )
+{
+    header h;
+    load( h, filename );
+    return h;
 }
 
 } } } } // namespace snark { namespace terrain { namespace dem { namespace srtm {

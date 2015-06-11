@@ -39,6 +39,8 @@ namespace snark { namespace terrain { namespace dem { namespace srtm {
 
 void load( header& h, const std::string& filename );
 
+header load_header( const std::string& filename );
+
 } } } } // namespace snark { namespace terrain { namespace dem { namespace srtm {
 
 #endif // SNARK_TERRAIN_DEM_SRTM_LOAD_H_
