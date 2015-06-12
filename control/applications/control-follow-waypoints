@@ -27,9 +27,10 @@ function usage
     $scriptname: take waypoints and output wheel commands based on feedback
 
 output:
-    output consists of any fields specified by --fields option except the default fields
+    output consists of any fields specified by --fields option, except the default fields ($default_target_fields),
     with the appended command fields (turn_rate and optionally local_heading), e.g.
-    for --fields=x,y,heading_offset,speed and --steering=omni, the output will consist of speed,$( control-command --steering=omni --output-fields )
+    --fields=x,y,heading_offset,speed,type --steering=omni -> speed,type,$( control-command --steering=omni --output-fields )
+    --fields=x,y,speed --steering=skid -> speed,$( control-command --steering=skid --output-fields )
 
 example:
     $scriptname --mode=fixed --steering=omni --fields=x,y,heading_offset,speed --binary=4d \\
@@ -45,6 +46,17 @@ EOF
 
 function compress_commas { sed -E 's/,+/,/g;s/(^,|,$)//g'; }
 function full_xpath { local path=$1 fields=$2; csv-fields prefix --fields "x,y" --path "position" <<< $fields | csv-fields prefix --path $path; }
+function remove_full_xpath
+{
+    local input
+    read -r input
+    local input_with_extra_comma="$input," # extra comma is necessary for cases when input has trailing commas, e.g. path/one,,,path/two,,
+    IFS=,
+    local fields=( $input_with_extra_comma )
+    for(( i=0; i<${#fields[@]}; i++ )); do fields[i]=${fields[i]##*/}; done
+    echo "${fields[*]}"
+    unset IFS
+}
 
 function bye
 {
@@ -60,7 +72,7 @@ declare -A target
 declare -A feedback
 default_proximity=0.05
 reset=
-declare -i binary_output=0
+declare -i binary_output
 
 if (( $( comma_options_has --help "$@" ) || $( comma_options_has -h "$@" ) )); then usage; fi
 comma_path_value_to_var --prefix=options < <( option_description | comma-options-to-name-value "$@" )
@@ -87,7 +99,11 @@ else
     feedback[fields]=${feedback_fields:-$default_feedback_fields}
     [[ -n "$feedback_format" ]] && feedback[format]=$feedback_format
 fi
-[[ -n "${target[format]}" ]] && binary_output=1
+
+if [[ -z "${target[format]}" && -z "${feedback[format]}" ]]; then binary_output=0
+elif [[ -n "${target[format]}" && -n "${feedback[format]}" ]]; then binary_output=1
+else echo "$scriptname: input and feedback streams should be both ascii or both binary" >&2; exit 1
+fi
 
 passed_fields=$( full_xpath target ${target[fields]} ),$( full_xpath feedback ${feedback[fields]} )
 all_fields=$passed_fields,$error_fields,$command_fields
@@ -95,8 +111,8 @@ keep_target_fields=$( full_xpath target $( csv-fields clear --remove $default_ta
 cut_fields=$( csv-fields clear --keep $keep_target_fields,$command_fields <<< $all_fields )
 output_fields=$( compress_commas <<< $cut_fields )
 
-if (( $( comma_options_has --output-fields "$@" ) )); then 
-    echo $output_fields
+if (( $( comma_options_has --output-fields "$@" ) )); then
+    echo $output_fields | remove_full_xpath
     exit
 fi
 
