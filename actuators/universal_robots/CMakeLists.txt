@@ -1,8 +1,10 @@
 SET( PROJECT "universal_robots" )
-SET( dir ${snark_actuators_dir}/${PROJECT} )
-
-IF( snark_BUILD_APPLICATIONS )
-    ADD_SUBDIRECTORY( applications )
-    EXECUTE_PROCESS( COMMAND rm -f ${dir}/test/disabled )
-ENDIF( snark_BUILD_APPLICATIONS )
-
+IF( NOT snark_build_actuators_universal_robots )
+    EXECUTE_PROCESS( COMMAND touch ${snark_actuators_dir}/${PROJECT}/test/disabled )
+ELSE( NOT snark_build_actuators_universal_robots )
+    SET( dir ${snark_actuators_dir}/${PROJECT} )
+    IF( snark_BUILD_APPLICATIONS )
+        ADD_SUBDIRECTORY( applications )
+        EXECUTE_PROCESS( COMMAND rm -f ${snark_actuators_dir}/${PROJECT}/test/disabled )
+    ENDIF( snark_BUILD_APPLICATIONS )
+ENDIF( NOT snark_build_actuators_universal_robots )

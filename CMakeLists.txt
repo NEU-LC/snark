@@ -284,9 +284,7 @@ SET( snark_PACKAGE_CMAKEFILES ${snark_PACKAGE_CMAKEFILES} ${PROJECT_BINARY_DIR}/
 INSTALL( FILES ${snark_PACKAGE_CMAKEFILES}
          DESTINATION ${snark_INSTALL_PACKAGE_DIR} )
 
-IF( snark_build_actuators )
-    ADD_SUBDIRECTORY( actuators )
-ENDIF( snark_build_actuators )
+ADD_SUBDIRECTORY( actuators )
 
 IF( snark_build_comms )
     ADD_SUBDIRECTORY( comms )
@@ -327,6 +325,7 @@ ADD_SUBDIRECTORY( render )
 add_subdirectory( terrain )
 ADD_SUBDIRECTORY( timing )
 ADD_SUBDIRECTORY( visiting )
+ADD_SUBDIRECTORY( control )
 
 IF( snark_build_python )
     ADD_SUBDIRECTORY( python )
@@ -335,10 +334,6 @@ ENDIF( snark_build_python )
 IF( snark_build_web )
     ADD_SUBDIRECTORY( web )
 ENDIF( snark_build_web )
-
-IF( snark_build_control )
-    ADD_SUBDIRECTORY( control )
-ENDIF( snark_build_control )
 
 # Package
 #the following set up optional parameters for cpack
