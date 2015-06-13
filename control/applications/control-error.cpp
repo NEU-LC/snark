@@ -162,7 +162,7 @@ int main( int ac, char** av )
                     else { std::cerr << name << ": control mode '" << mode_to_string( mode ) << "' is not implemented" << std::endl; return 1; }
                 }
                 select.wait( boost::posix_time::microseconds( 100000 ) );
-                if( feedback_stream.ready() || select.read().ready( feedback_in ) )
+                if( !is_shutdown && ( feedback_stream.ready() || select.read().ready( feedback_in ) ) )
                 {
                     const snark::control::feedback_t* feedback = feedback_stream.read();
                     if( !feedback ) { std::cerr << name << ": feedback stream error occurred prior to reaching waypoint " << snark::control::serialise( to ) << std::endl; return 1; }
