@@ -53,12 +53,12 @@ bool wayline_t::is_past_endpoint( const vector_t& location ) const
 
 double wayline_t::cross_track_error( const vector_t& location ) const
 {
-    return line.signedDistance( location );
+    return -line.signedDistance( location );
 }
 
 double wayline_t::heading_error( double yaw, double heading_offset ) const
 {
-    return wrap_angle( yaw - heading - heading_offset );
+    return wrap_angle( heading + heading_offset - yaw );
 }
 
 } } // namespace snark { namespace control {

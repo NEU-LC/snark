@@ -172,7 +172,7 @@ int main( int ac, char** av )
                     double yaw = control_data->feedback.yaw;
                     double heading = control_data->wayline.heading;
                     double correction = limit_angle( cross_track_pid( control_data->error.cross_track, time ) );
-                    command.local_heading = snark::control::wrap_angle( yaw - heading + correction );
+                    command.local_heading = snark::control::wrap_angle( heading + correction - yaw );
                     command.turn_rate = compute_yaw_rate ? heading_pid( control_data->error.heading, time ) : heading_pid( control_data->error.heading, control_data->feedback.yaw_rate, time );
                     break;
                 }
