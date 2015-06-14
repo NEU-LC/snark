@@ -178,7 +178,7 @@ int main( int ac, char** av )
                 }
                 case skid:
                 {
-                    double error = control_data->error.heading + limit_angle( cross_track_pid( control_data->error.cross_track, time ) );
+                    double error = control_data->error.heading - limit_angle( cross_track_pid( control_data->error.cross_track, time ) );
                     command.turn_rate = compute_yaw_rate ? heading_pid( error, time ) : heading_pid( error, control_data->feedback.yaw_rate, time );
                     break;
                 }
