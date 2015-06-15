@@ -8,6 +8,7 @@ function option_description
     cat <<EOF
 --mode=[<mode>]; waypoint following mode (fixed or dynamic)
 --steering=[<steering>]; steering mode (omni or skid)
+--frequency=[<frequency>]; control frequency (default: $default_frequency)
 --fields=[<fields>]; input fields (default: $default_target_fields)
 --binary=[<format>]; binary format of input fields if input is binary
 --feedback=[<feedback>]; feedback source, fields, and binary format if feedback is binary (default fields: $default_feedback_fields )
@@ -60,7 +61,7 @@ function remove_full_xpath
 
 function bye
 {
-    pkill -P $$ &>/dev/null
+    pkill -P $$
     exit 1
 }
 
@@ -71,6 +72,7 @@ default_feedback_fields="t,x,y,yaw,yaw_rate"
 declare -A target
 declare -A feedback
 default_proximity=0.05
+default_frequency=20.0
 reset=
 declare -i binary_output
 
@@ -132,6 +134,7 @@ mode=$options_mode
 cross_track_pid=$options_cross_track_pid
 heading_pid=$options_heading_pid
 proximity=${options_proximity:-$default_proximity}
+frequency=${options_frequency:-$default_frequency}
 (( $( comma_options_has --reset "$@" ) )) && reset="--reset"
 
 if [[ -z "$mode" ]]; then echo "$scriptname: mode is not given" >&2; exit 1; fi
@@ -139,7 +142,7 @@ if [[ -z "$cross_track_pid" ]]; then echo "$scriptname: cross-track pid is not g
 if [[ -z "$heading_pid" ]]; then echo "$scriptname: heading pid is not given" >&2; exit 1; fi
 
 control-error "${feedback[source]};fields=${feedback[fields]}${feedback[format]:+;binary=${feedback[format]}}" \
-    --mode=$mode --fields=${target[fields]} ${target[format]:+--binary=${target[format]}} --proximity=$proximity --past-endpoint --verbose --flush \
+    --mode=$mode --fields=${target[fields]} ${target[format]:+--binary=${target[format]}} --proximity=$proximity --frequency=$frequency --past-endpoint --verbose --flush \
     | control-command --fields=$passed_fields,$error_fields ${passed_format:+--binary=$passed_format,$error_format} \
     --cross-track-pid=$cross_track_pid --heading-pid=$heading_pid --steering=$steering $reset --verbose --flush \
     | if (( binary_output )); then
@@ -148,4 +151,4 @@ control-error "${feedback[source]};fields=${feedback[fields]}${feedback[format]:
         csv-shuffle --fields=$all_fields --output-fields=$output_fields --flush
     fi &
 
-while :; do sleep 1; done
+wait

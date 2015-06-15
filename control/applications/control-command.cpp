@@ -66,7 +66,7 @@ static void usage( bool verbose = false )
     std::cerr << "usage: " << name << " [<options>]" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
-    std::cerr << "    --steering <mode>: steering mode" << std::endl;
+    std::cerr << "    --steering,-s=<mode>: steering mode" << std::endl;
     std::cerr << "    --cross-track-pid=<p>,<i>,<d>[,<integral threshold>]: cross track pid parameters" << std::endl;
     std::cerr << "    --heading-pid=<p>,<i>,<d>[,<integral threshold>]: heading pid parameters" << std::endl;
     std::cerr << "    --reset: pid's are reset every time target waypoint changes" << std::endl;
@@ -128,7 +128,7 @@ int main( int ac, char** av )
     try
     {
         comma::command_line_options options( ac, av, usage );
-        steering_t steering = steering_from_string( options.value< std::string >( "--steering" ) );
+        steering_t steering = steering_from_string( options.value< std::string >( "--steering,-s" ) );
         comma::csv::options input_csv( options, field_names< control_data_t >( true ) );
         input_csv.full_xpath = true;
         comma::csv::input_stream< control_data_t > input_stream( std::cin, input_csv );
