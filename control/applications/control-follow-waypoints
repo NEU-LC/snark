@@ -8,7 +8,7 @@ function option_description
     cat <<EOF
 --mode=[<mode>]; waypoint following mode (fixed or dynamic)
 --steering=[<steering>]; steering mode (omni or skid)
---frequency=[<frequency>]; control frequency (default: $default_frequency)
+--frequency=[<frequency>]; control frequency (default: $default_frequency); the rate at which $scriptname outputs wheel commands
 --fields=[<fields>]; input fields (default: $default_target_fields)
 --binary=[<format>]; binary format of input fields if input is binary
 --feedback=[<feedback>]; feedback source, fields, and binary format if feedback is binary (default fields: $default_feedback_fields )
@@ -25,7 +25,7 @@ function usage
 {
     cat >&2 <<EOF
 
-    $scriptname: take waypoints and output wheel commands based on feedback
+    take waypoints and output wheel commands based on feedback
 
 output:
     output consists of any fields specified by --fields option, except the default fields ($default_target_fields),

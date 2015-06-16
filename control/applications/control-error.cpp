@@ -50,7 +50,6 @@ static const std::string name = snark::control::error_app_name;
 template< typename T > std::string field_names( bool full_xpath = false ) { return comma::join( comma::csv::names< T >( full_xpath ), ',' ); }
 template< typename T > std::string format( const std::string& fields = "", bool full_xpath = false ) { return comma::csv::format::value< T >( !fields.empty() ? fields : field_names< T >( full_xpath ), full_xpath ); }
 static const double default_proximity = 0.1;
-static const double default_frequency = 20.0;
 static const std::string default_mode = "fixed";
 
 enum control_mode_t { fixed, dynamic };
@@ -69,7 +68,7 @@ std::string mode_to_string( control_mode_t m ) { return  named_modes.left.at( m 
 static void usage( bool verbose = false )
 {
     std::cerr << std::endl;
-    std::cerr << "take target waypoints on stdin and feedback from address and output to stdout with the appended wayline and control errors" << std::endl;
+    std::cerr << "take target waypoints on stdin and feedback from address and output to stdout with the appended wayline heading and control errors" << std::endl;
     std::cerr << std::endl;
     std::cerr << "usage: " << name << " <feedback> [<options>]" << std::endl;
     std::cerr << std::endl;
@@ -88,7 +87,7 @@ static void usage( bool verbose = false )
     std::cerr << "    --mode,-m=<mode>: control mode (default: " << default_mode << ")" << std::endl;
     std::cerr << "    --proximity,-p=<proximity>: a wayline is traversed as soon as current position is within proximity of the endpoint (default: " << default_proximity << ")" << std::endl;
     std::cerr << "    --past-endpoint: a wayline is traversed as soon as current position is past the endpoint (or proximity condition is met)" << std::endl;
-    std::cerr << "    --frequency,-f=<frequency>: control frequency (default: " << default_frequency << ")" << std::endl;
+    std::cerr << "    --frequency,-f=<frequency>: control frequency (the rate at which " << name <<" outputs control errors using latest feedback)" << std::endl;
     std::cerr << "    --format: show binary format of default input stream fields and exit" << std::endl;
     std::cerr << "    --output-format: show binary format of output stream and exit (for wayline and control error fields only)" << std::endl;
     std::cerr << "    --output-fields: show output fields and exit (for wayline and control error fields only)" << std::endl;
@@ -132,9 +131,14 @@ int main( int ac, char** av )
         if( proximity <= 0 ) { std::cerr << name << ": expected positive proximity, got " << proximity << std::endl; return 1; }
         control_mode_t mode = mode_from_string( options.value< std::string >( "--mode", default_mode ) );
         bool use_past_endpoint = options.exists( "--past-endpoint" );
-        double frequency = options.value< double >( "--frequency,-f", default_frequency );
-        if( frequency <= 0 ) { std::cerr << name << ": expected positive frequency, got " << frequency << std::endl; }
-        boost::posix_time::microseconds delay( static_cast< long >( 1000000 / frequency ) );
+        bool use_delay = options.exists( "--frequency,-f" );
+        boost::posix_time::microseconds delay( 0 );
+        if( use_delay )
+        {
+            double frequency = options.value< double >( "--frequency,-f" );
+            if( frequency <= 0 ) { std::cerr << name << ": expected positive frequency, got " << frequency << std::endl; return 1; }
+            delay = boost::posix_time::microseconds( static_cast< long >( 1000000 / frequency ) );
+        }
         bool verbose = options.exists( "--verbose,-v" );
         std::vector< std::string > unnamed = options.unnamed( "--help,-h,--verbose,-v,--format,--output-format,--output-fields,--past-endpoint", "-.*,--.*" );
         if( unnamed.empty() ) { std::cerr << name << ": feedback stream is not given" << std::endl; return 1; }
@@ -170,7 +174,7 @@ int main( int ac, char** av )
                 select.wait( boost::posix_time::microseconds( 1000 ) );
                 if( !is_shutdown && ( feedback_stream.ready() || select.read().ready( feedback_in ) ) )
                 {
-                    boost::this_thread::sleep( delay );
+                    if( use_delay ) { boost::this_thread::sleep( delay ); }
                     const snark::control::feedback_t* feedback = feedback_stream.read();
                     if( !feedback ) { std::cerr << name << ": feedback stream error occurred prior to reaching waypoint " << snark::control::serialise( to ) << std::endl; return 1; }
                     if( !from )
