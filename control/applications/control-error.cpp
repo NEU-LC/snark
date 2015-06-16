@@ -133,6 +133,7 @@ int main( int ac, char** av )
         bool use_past_endpoint = options.exists( "--past-endpoint" );
         bool use_delay = options.exists( "--frequency,-f" );
         boost::posix_time::microseconds delay( 0 );
+        boost::posix_time::ptime next_output_time;
         if( use_delay )
         {
             double frequency = options.value< double >( "--frequency,-f" );
@@ -163,6 +164,7 @@ int main( int ac, char** av )
             if( verbose ) { std::cerr << name << ": received target waypoint " << snark::control::serialise( to ) << std::endl; }
             if( from && snark::control::distance( *from, to ) < proximity ) { continue; }
             if( from ) { wayline.reset( new snark::control::wayline_t( *from, to, verbose ) ); }
+            if( use_delay ) { next_output_time = boost::posix_time::microsec_clock::universal_time() + delay; }
             while( !is_shutdown && std::cout.good() )
             {
                 if( input_stream.ready() )
@@ -171,12 +173,12 @@ int main( int ac, char** av )
                     else if( mode == dynamic ) { from = boost::none; break; }
                     else { std::cerr << name << ": control mode '" << mode_to_string( mode ) << "' is not implemented" << std::endl; return 1; }
                 }
-                select.wait( boost::posix_time::microseconds( 1000 ) );
+                select.wait( boost::posix_time::microseconds( 10000 ) );
                 if( !is_shutdown && ( feedback_stream.ready() || select.read().ready( feedback_in ) ) )
                 {
-                    if( use_delay ) { boost::this_thread::sleep( delay ); }
                     const snark::control::feedback_t* feedback = feedback_stream.read();
                     if( !feedback ) { std::cerr << name << ": feedback stream error occurred prior to reaching waypoint " << snark::control::serialise( to ) << std::endl; return 1; }
+                    if( use_delay && boost::posix_time::microsec_clock::universal_time() < next_output_time ) { continue; }
                     if( !from )
                     {
                         from = feedback->position;
@@ -200,6 +202,7 @@ int main( int ac, char** av )
                     if( feedback_csv.binary() ) { std::cout.write( feedback_stream.binary().last(), feedback_csv.format().size() ); }
                     else { std::cout << comma::join( feedback_stream.ascii().last(), delimiter ) << delimiter; }
                     output_stream.write( snark::control::control_data_t( *wayline, error ) );
+                    if( use_delay ) { next_output_time = boost::posix_time::microsec_clock::universal_time() + delay; }
                 }
             }
         }
