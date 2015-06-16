@@ -58,6 +58,8 @@ static void usage( bool verbose )
     std::cerr << "    --antiphase-randomization,--antiphase: randomize frequencies in sample by phase/antiphase to reduce click artefact" << std::endl;
     std::cerr << "    --attack=<duration>: attack/decline duration, quick and dirty, simple linear attack used; default 0" << std::endl;
     std::cerr << "    --duration=[<seconds>]: if duration field absent, use this duration for all the samples" << std::endl;
+    std::cerr << "    --frequency=[<frequency>]: if frequency field absent, use this frequency for all the samples" << std::endl;
+    std::cerr << "    --input-fields: print input fields and exit" << std::endl;
     std::cerr << "    --no-phase-randomization: don't randomize phase in sample" << std::endl;
     std::cerr << "    --rate=[<value>]: samples per second" << std::endl;
     #ifndef WIN32
@@ -89,6 +91,7 @@ struct input
     comma::uint32 block;
     
     input() : block( 0 ) {}
+    input( double frequency, double amplitude, double duration, comma::uint32 block = 0 ) : frequency( frequency ), amplitude( amplitude ), duration( duration ), block( block ) {}
 };
 
 namespace comma { namespace visiting {
@@ -121,13 +124,14 @@ int main( int ac, char** av )
     try
     {
         comma::command_line_options options( ac, av, usage );
+        if( options.exists( "--input-fields" ) ) { std::cout << comma::join( comma::csv::names< input >( false ), ',' ) << std::endl; return 0; }
         bool verbose = options.exists( "--verbose,-v" );
         unsigned int rate = options.value< unsigned int >( "--rate,-r" );
         //double attenuation = options.value( "--attenuation", 1.0 );
         comma::csv::options csv( options );
-        input default_input;
-        default_input.duration = options.value( "--duration", 0.0 );
-        default_input.amplitude = options.value( "--amplitude,--volume", 0.0 );
+        input default_input( options.value( "--frequency", 0.0 )
+                           , options.value( "--duration", 0.0 )
+                           , options.value( "--amplitude,--volume", 0.0 ) );
         bool randomize = !options.exists( "--no-phase-randomization" );
         bool antiphase = options.exists( "--antiphase-randomization,--antiphase" );
         bool anticlick = options.exists( "--anticlick" );
