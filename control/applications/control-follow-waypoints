@@ -47,7 +47,7 @@ EOF
 
 function count_commas { echo -n $1 | sed 's/[^,]//g' | wc -c; }
 function fields_and_format_are_consistent { local fields=$1 format=$2; (( $( count_commas $fields ) == $( count_commas $( csv-format expand <<< $format ) ) )) && return 0 || return 1; }
-function extract { local what=$1 from=$2; echo "$from" | grep "$what=" 2>/dev/null | sed -E "s/.*;?($what=[^;]+);?.*/\1/g;s/$what=//g"; }
+function extract_option { local what=$1 from=$2; echo "$from" | grep "$what=" 2>/dev/null | sed -E "s/.*;?($what=[^;]+);?.*/\1/g;s/$what=//g"; }
 function compress_commas { sed -E 's/,+/,/g;s/(^,|,$)//g'; }
 function add_xpath { local path=$1 fields=$2; csv-fields prefix --fields "x,y" --path "position" <<< $fields | csv-fields prefix --path $path; }
 
@@ -85,8 +85,8 @@ feedback[fields]=$default_feedback_fields
 feedback[format]=
 if [[ -n "$options_feedback" ]]; then
     feedback[source]=$( sed 's/;.*//g' <<< "$options_feedback" )
-    feedback_fields=$( extract fields "$options_feedback" )
-    feedback_format=$( extract binary "$options_feedback" )
+    feedback_fields=$( extract_option fields "$options_feedback" )
+    feedback_format=$( extract_option binary "$options_feedback" )
     [[ -n "$feedback_fields" ]] && feedback[fields]=$feedback_fields
     [[ -n "$feedback_format" ]] && feedback[format]=$feedback_format
 fi
@@ -101,8 +101,7 @@ if (( $( comma_options_has --output-fields "$@" ) )); then csv-fields prefix --b
 
 if [[ -z "${target[format]}" && -z "${feedback[format]}" ]]; then binary_output=0
 elif [[ -n "${target[format]}" && -n "${feedback[format]}" ]]; then binary_output=1
-else echo "$scriptname: input and feedback streams should be both ascii or both binary" >&2; exit 1
-fi
+else echo "$scriptname: input and feedback streams should be both ascii or both binary" >&2; exit 1; fi
 
 if (( binary_output )); then
     if ! fields_and_format_are_consistent ${target[fields]} ${target[format]}; then echo "$scriptname: target fields and format are inconsistent ${target[fields]} ${target[format]}" >&2; exit 1; fi
@@ -134,10 +133,6 @@ control-error "${feedback[source]};fields=${feedback[fields]}${feedback[format]:
     --mode=$mode --fields=${target[fields]} ${target[format]:+--binary=${target[format]}} --proximity=$proximity --frequency=$frequency --past-endpoint --verbose --flush \
     | control-command --fields=$passed_fields,$error_fields ${passed_format:+--binary=$passed_format,$error_format} \
     --cross-track-pid=$cross_track_pid --heading-pid=$heading_pid --steering=$steering $reset --verbose --flush \
-    | if (( binary_output )); then
-        csv-bin-cut $all_format --fields=$( csv-fields <<< $cut_fields ) --flush
-    else
-        csv-shuffle --fields=$all_fields --output-fields=$output_fields --flush
-    fi &
+    | csv-shuffle --fields=$all_fields ${all_format:+--binary=$all_format} --output-fields=$output_fields --flush &
 
 wait
