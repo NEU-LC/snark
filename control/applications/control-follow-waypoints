@@ -28,10 +28,11 @@ function usage
     take waypoints and output wheel commands based on feedback
 
 output:
-    output consists of any fields specified by --fields option, except the default fields ($default_target_fields),
-    with the appended command fields (turn_rate and optionally local_heading), e.g.
-    --fields=x,y,heading_offset,speed,type --steering=omni -> speed,type,$( control-command --steering=omni --output-fields )
-    --fields=x,y,speed --steering=skid -> speed,$( control-command --steering=skid --output-fields )
+    <extra_fields>,<command_fields>
+    where <command_fields> is 'turn_rate,local_heading' (for steering=omni) or 'turn_rate' (for steering=skid)
+    and <extra_fields> consists of any fields specified in the input with the default input fields stripped, e.g.
+    --fields=x,y,heading_offset,speed,type --steering=omni -> output-fields=speed,type,$( control-command --steering=omni --output-fields )
+    --fields=x,y,speed --steering=skid -> output-fields=speed,$( control-command --steering=skid --output-fields )
 
 example:
     $scriptname --mode=fixed --steering=omni --fields=x,y,heading_offset,speed --binary=4d \\
