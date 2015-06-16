@@ -45,19 +45,11 @@ EOF
     exit
 }
 
+function count_commas { echo -n $1 | sed 's/[^,]//g' | wc -c; }
+function fields_and_format_are_consistent { local fields=$1 format=$2; (( $( count_commas $fields ) == $( count_commas $( csv-format expand <<< $format ) ) )) && return 0 || return 1; }
+function extract { local what=$1 from=$2; echo "$from" | grep "$what=" 2>/dev/null | sed -E "s/.*;?($what=[^;]+);?.*/\1/g;s/$what=//g"; }
 function compress_commas { sed -E 's/,+/,/g;s/(^,|,$)//g'; }
-function full_xpath { local path=$1 fields=$2; csv-fields prefix --fields "x,y" --path "position" <<< $fields | csv-fields prefix --path $path; }
-function remove_full_xpath
-{
-    local input
-    read -r input
-    local input_with_extra_comma="$input," # extra comma is necessary for cases when input has trailing commas, e.g. path/one,,,path/two,,
-    IFS=,
-    local fields=( $input_with_extra_comma )
-    for(( i=0; i<${#fields[@]}; i++ )); do fields[i]=${fields[i]##*/}; done
-    echo "${fields[*]}"
-    unset IFS
-}
+function add_xpath { local path=$1 fields=$2; csv-fields prefix --fields "x,y" --path "position" <<< $fields | csv-fields prefix --path $path; }
 
 function bye
 {
@@ -89,38 +81,34 @@ command_format=$( control-command --steering=$steering --output-format )
 
 target[fields]=${options_fields:-$default_target_fields}
 target[format]=$options_binary
-if [[ -z "$options_feedback" ]]; then
-    echo "$scriptname: feedback source is not given" >&2
-    exit 1
-else
-    feedback_source=$( sed 's/;.*//g' <<< "$options_feedback" )
-    function extract { local what=$1 from=$2; echo "$from" | grep "$what=" 2>/dev/null | sed -E "s/.*;?($what=[^;]+);?.*/\1/g;s/$what=//g"; }
+feedback[fields]=$default_feedback_fields
+feedback[format]=
+if [[ -n "$options_feedback" ]]; then
+    feedback[source]=$( sed 's/;.*//g' <<< "$options_feedback" )
     feedback_fields=$( extract fields "$options_feedback" )
     feedback_format=$( extract binary "$options_feedback" )
-    feedback[source]=$feedback_source
-    feedback[fields]=${feedback_fields:-$default_feedback_fields}
+    [[ -n "$feedback_fields" ]] && feedback[fields]=$feedback_fields
     [[ -n "$feedback_format" ]] && feedback[format]=$feedback_format
 fi
+
+passed_fields=$( add_xpath target ${target[fields]} ),$( add_xpath feedback ${feedback[fields]} )
+all_fields=$passed_fields,$error_fields,$command_fields
+keep_target_fields=$( add_xpath target $( csv-fields clear --remove $default_target_fields <<< ${target[fields]} ) )
+cut_fields=$( csv-fields clear --keep $keep_target_fields,$command_fields <<< $all_fields )
+output_fields=$( compress_commas <<< $cut_fields )
+
+if (( $( comma_options_has --output-fields "$@" ) )); then csv-fields prefix --basename <<< $output_fields; exit; fi
 
 if [[ -z "${target[format]}" && -z "${feedback[format]}" ]]; then binary_output=0
 elif [[ -n "${target[format]}" && -n "${feedback[format]}" ]]; then binary_output=1
 else echo "$scriptname: input and feedback streams should be both ascii or both binary" >&2; exit 1
 fi
 
-passed_fields=$( full_xpath target ${target[fields]} ),$( full_xpath feedback ${feedback[fields]} )
-all_fields=$passed_fields,$error_fields,$command_fields
-keep_target_fields=$( full_xpath target $( csv-fields clear --remove $default_target_fields <<< ${target[fields]} ) )
-cut_fields=$( csv-fields clear --keep $keep_target_fields,$command_fields <<< $all_fields )
-output_fields=$( compress_commas <<< $cut_fields )
-
-if (( $( comma_options_has --output-fields "$@" ) )); then
-    echo $output_fields | remove_full_xpath
-    exit
-fi
-
 if (( binary_output )); then
-    passed_format=$( compress_commas <<< ${target[format]},${feedback[format]} )
-    all_format=$( compress_commas <<< $passed_format,$error_format,$command_format )
+    if ! fields_and_format_are_consistent ${target[fields]} ${target[format]}; then echo "$scriptname: target fields and format are inconsistent ${target[fields]} ${target[format]}" >&2; exit 1; fi
+    if ! fields_and_format_are_consistent ${feedback[fields]} ${feedback[format]}; then echo "$scriptname: feedback fields and format are inconsistent ${feedback[fields]} ${feedback[format]}" >&2; exit 1; fi
+    passed_format=${target[format]},${feedback[format]}
+    all_format=$passed_format,$error_format,$command_format
     output_format=$( csv-format expand <<< $all_format | csv-fields clear --mask $cut_fields | compress_commas )
 fi
 
@@ -137,6 +125,7 @@ proximity=${options_proximity:-$default_proximity}
 frequency=${options_frequency:-$default_frequency}
 (( $( comma_options_has --reset "$@" ) )) && reset="--reset"
 
+if [[ -z "$options_feedback" ]]; then echo "$scriptname: feedback source is not given" >&2; exit 1; fi
 if [[ -z "$mode" ]]; then echo "$scriptname: mode is not given" >&2; exit 1; fi
 if [[ -z "$cross_track_pid" ]]; then echo "$scriptname: cross-track pid is not given" >&2; exit 1; fi
 if [[ -z "$heading_pid" ]]; then echo "$scriptname: heading pid is not given" >&2; exit 1; fi
