@@ -133,7 +133,7 @@ int main( int ac, char** av )
         bool use_past_endpoint = options.exists( "--past-endpoint" );
         bool use_delay = options.exists( "--frequency,-f" );
         boost::posix_time::microseconds delay( 0 );
-        boost::posix_time::ptime next_output_time;
+        boost::posix_time::ptime next_output_time( boost::posix_time::microsec_clock::universal_time() );
         if( use_delay )
         {
             double frequency = options.value< double >( "--frequency,-f" );
@@ -164,7 +164,6 @@ int main( int ac, char** av )
             if( verbose ) { std::cerr << name << ": received target waypoint " << snark::control::serialise( to ) << std::endl; }
             if( from && snark::control::distance( *from, to ) < proximity ) { continue; }
             if( from ) { wayline.reset( new snark::control::wayline_t( *from, to, verbose ) ); }
-            if( use_delay ) { next_output_time = boost::posix_time::microsec_clock::universal_time() + delay; }
             while( !is_shutdown && std::cout.good() )
             {
                 if( input_stream.ready() )
