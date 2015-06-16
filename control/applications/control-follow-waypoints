@@ -29,7 +29,7 @@ function usage
 
 output:
     <extra_fields>,<command_fields>
-    where <command_fields> is 'turn_rate,local_heading' (for steering=omni) or 'turn_rate' (for steering=skid)
+    where <command_fields> is '$( control-command --steering=omni --output-fields )' (for steering=omni) or '$( control-command --steering=skid --output-fields )' (for steering=skid)
     and <extra_fields> consists of any fields specified in the input with the default input fields stripped, e.g.
     --fields=x,y,heading_offset,speed,type --steering=omni -> output-fields=speed,type,$( control-command --steering=omni --output-fields )
     --fields=x,y,speed --steering=skid -> output-fields=speed,$( control-command --steering=skid --output-fields )
