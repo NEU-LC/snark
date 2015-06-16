@@ -75,7 +75,7 @@ int main( int argc, char** argv )
         boost::program_options::notify( vm );
         if ( vm.count( "help" ) )
         {
-            std::cerr << "acquire images from a prosilica flycapture camera" << std::endl;
+            std::cerr << "acquire images from a pointgrey flycapture camera" << std::endl;
             std::cerr << "output to stdout as serialized cv::Mat" << std::endl;
             std::cerr << "usage: flycapture-cat [<options>] [<filters>]\n" << std::endl;
             std::cerr << "output header format: fields: t,cols,rows,type; binary: t,3ui\n" << std::endl;
@@ -89,18 +89,19 @@ int main( int argc, char** argv )
         bool verbose = vm.count( "verbose" );
         if( vm.count( "list-cameras" ) )
         {
-//             const std::vector< tPvCameraInfo >& list = snark::camera::flycapture::list_cameras();
-//             for( std::size_t i = 0; i < list.size(); ++i ) // todo: serialize properly with name-value
-//             {
-//                 std::cout << "id=" << list[i].UniqueId << "," << "name=\"" << list[i].DisplayName << "\"" << "," << "serial=\"" << list[i].SerialString << "\"" << std::endl;
-//             }
+            const std::vector<FlyCapture2::CameraInfo >& list = snark::camera::flycapture::list_cameras();
+            for( std::size_t i = 0; i < list.size(); ++i ) // todo: serialize properly with name-value
+            {
+	      std::cout << "serial=\"" << list[i].serialNumber << "\"," << "model=\"" << list[i].modelName << "\"" << std::endl;
+            }
+            std::cout << "Line number: " << __LINE__ << " reached" << std::endl;
             return 0;
         }
         if ( vm.count( "discard" ) )
         {
             discard = 1;
         }
-        
+        std::cout << "Line number: " << __LINE__ << " reached in: " << __FILE__ << std::endl;
         snark::camera::flycapture::attributes_type attributes;
         if( vm.count( "set" ) )
         {
@@ -108,13 +109,19 @@ int main( int argc, char** argv )
             attributes.insert( m.get().begin(), m.get().end() );
         }
         if( verbose ) { std::cerr << "flycapture-cat: connecting..." << std::endl; }
+        //TODO before setting/changing attributes, I need to connect to the camera
+        //NOTE constructor for camera
+        std::cout << "Line number: " << __LINE__ << " reached" << std::endl;
         snark::camera::flycapture camera( id, attributes );
+	std::cout << "Line number: " << __LINE__ << " reached" << std::endl;
         if( verbose ) { std::cerr << "flycapture-cat: connected to camera " << camera.id() << std::endl; }
         if( verbose ) { std::cerr << "flycapture-cat: total bytes per frame: " << camera.total_bytes_per_frame() << std::endl; }
         if( vm.count( "set-and-exit" ) ) { return 0; }
         if( vm.count( "list-attributes" ) )
         {
+	  //TODO This is the attributes section
 //             attributes = camera.attributes(); // quick and dirty
+	  //TODO This just spits attributes to stdout, so replace this how I see fit
             for( snark::camera::flycapture::attributes_type::const_iterator it = attributes.begin(); it != attributes.end(); ++it )
             {
                 if( it != attributes.begin() ) { std::cout << std::endl; }

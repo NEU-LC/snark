@@ -31,7 +31,7 @@
 #ifndef SNARK_SENSORS_FLYCAPTURE_H_
 #define SNARK_SENSORS_FLYCAPTURE_H_
 
-#include <FlyCapture2.h>
+#include "FlyCapture2.h"
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/function.hpp>
 
@@ -69,7 +69,7 @@ class flycapture
         void close();
 
         /// list cameras
-        //static std::vector< tPvCameraInfo > list_cameras();
+        static std::vector< FlyCapture2::CameraInfo > list_cameras();
 
         /// callback
         class callback

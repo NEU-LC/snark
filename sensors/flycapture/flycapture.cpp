@@ -34,9 +34,11 @@
 #include <comma/base/exception.h>
 #include "flycapture.h"
 
+using namespace FlyCapture2;
+
 // static void PVDECL pv_callback_( tPvFrame *frame );
 
-namespace snark{ namespace camera{
+namespace snark{ namespace camera{ 
 
 static const unsigned int timeOutFactor = 3;
 static const unsigned int maxRetries = 15; 
@@ -136,16 +138,17 @@ static void pv_set_attribute_( tPvHandle& handle, const std::string& key, const 
 //     };
 // }
 
-/*flycapture::attributes_type pv_attributes_( tPvHandle& handle )
-{
-    tPvAttrListPtr list;
-    unsigned long size;
-    tPvErr result = PvAttrList( handle, &list, &size );
-    if( result != ePvErrSuccess ) { COMMA_THROW( comma::exception, "failed to get attribute list: " << pv_error_to_string_( result ) << " (" << result << ")" ); }
-    flycapture::attributes_type attributes;
-    for( unsigned int i = 0; i < size; ++i ) { attributes.insert( std::make_pair( list[i], pv_get_attribute_( handle, list[i] ) ) ); }
-    return attributes;
-}*/
+// flycapture::attributes_type pv_attributes_( tPvHandle& handle )
+// {
+//   //Points to a list, given by PvAttrList
+//     tPvAttrListPtr list;
+//     unsigned long size;
+//     tPvErr result = PvAttrList( handle, &list, &size );
+//     if( result != ePvErrSuccess ) { COMMA_THROW( comma::exception, "failed to get attribute list: " << pv_error_to_string_( result ) << " (" << result << ")" ); }
+//     flycapture::attributes_type attributes;
+//     for( unsigned int i = 0; i < size; ++i ) { attributes.insert( std::make_pair( list[i], pv_get_attribute_( handle, list[i] ) ) ); }
+//     return attributes;
+// }
 
 // static cv::Mat pv_as_cvmat_( const tPvFrame& frame )
 // {
@@ -184,11 +187,12 @@ static void pv_set_attribute_( tPvHandle& handle, const std::string& key, const 
 
 class flycapture::impl
 {
+  //Note, for Point Grey, the serial number is used as ID
     public:
         impl( unsigned int id, const attributes_type& attributes ) :
             started_( false ),
             timeOut_( 1000 )
-        {/*
+        {
             initialize_();
             static const boost::posix_time::time_duration timeout = boost::posix_time::seconds( 5 ); // quick and dirty; make configurable?
             boost::posix_time::ptime now = boost::posix_time::microsec_clock::universal_time();
@@ -196,56 +200,73 @@ class flycapture::impl
             unsigned int size = 0;
             for( ; now < end; now = boost::posix_time::microsec_clock::universal_time() )
             {
-                const std::vector< tPvCameraInfo >& list = list_cameras();
-                size = list.size();
-                for( unsigned int i = 0; i < list.size(); ++i ) // look for a flycapture camera which permits Master Access
-                {
-                    if(    list[i].InterfaceType == ePvInterfaceEthernet
-                        && ( attributes.empty() || list[i].PermittedAccess & ePvAccessMaster )
-                        && ( id == 0 || id == list[i].UniqueId ) )
-                    {
-                        id_ = list[i].UniqueId;
-                        break;
-                    }
-                }
-                if( id_ ) { break; }
+                list_cameras();
+		 const std::vector< CameraInfo >& list = list_cameras();
+                 size = list.size();
+// //NOTE connects to camera, looking for `master access'
+// //It grabs a list of cameras, adn then tries to connect one by one
+// //If the UniqueId matches desired, it stops.
+// //I'll just connect directly to a serial number?
+// //Or maybe IP, or MAC. There is no short ID in PG.
+		 	      std::cout << "Line number: " << __LINE__ << " reached in: " << __FILE__ << std::endl;
+                 for( unsigned int i = 0; i < list.size(); ++i ) // look for a flycapture camera which permits Master Access
+                 {
+                     if(    
+ 		       list[i].interfaceType == INTERFACE_GIGE
+//                          && ( attributes.empty() || list[i].PermittedAccess & ePvAccessMaster )
+                         && ( id == 0 || id == list[i].serialNumber ) )
+                     {
+                         id_ = list[i].serialNumber;
+                         break;
+                     }
+                 }
+                 if( id_ ) { break; }
+             }
+             if( !id_ ) { COMMA_THROW( comma::exception, "timeout; camera not found" ); }
+             	      std::cout << "Line number: " << __LINE__ << " reached in: " << __FILE__ << std::endl;
+//NOTE Zero is an `any' wildcard
+             if( id == 0 && size > 1 )
+             {
+                 const std::vector< CameraInfo >& list = list_cameras();
+                 std::stringstream stream;
+                 for( std::size_t i = 0; i < list.size(); ++i ) // todo: serialize properly with name-value
+                 {
+                     stream << "serial=\"" << list[i].serialNumber << "\"," << "model=\"" << list[i].modelName << "\"" << std::endl;
             }
-            if( !id_ ) { COMMA_THROW( comma::exception, "timeout; camera not found" ); }
-            if( id == 0 && size > 1 )
-            {
-                const std::vector< tPvCameraInfo >& list = list_cameras();
-                std::stringstream stream;
-                for( std::size_t i = 0; i < list.size(); ++i ) // todo: serialize properly with name-value
-                {
-                    stream << "id=" << list[i].UniqueId << "," << "name=\"" << list[i].DisplayName << "\"" << "," << "serial=\"" << list[i].SerialString << "\"" << std::endl;
-                }
-                COMMA_THROW( comma::exception, "no id provided and multiple cameras found: would pick up a random one\n\tavailable cameras:\n" << stream.str() );
-            }
-            now = boost::posix_time::microsec_clock::universal_time();
-            end = now + timeout;
-            tPvErr result = PvCameraOpen( *id_, ePvAccessMaster, &handle_ );
-            for( ; ( result != ePvErrSuccess ) && ( now < end ); now = boost::posix_time::microsec_clock::universal_time() )
-            {
-                boost::thread::sleep( now + boost::posix_time::milliseconds( 10 ) );
-                result = PvCameraOpen( *id_, ePvAccessMaster, &handle_ );
-            }
-            if( result != ePvErrSuccess ) { close(); COMMA_THROW( comma::exception, "failed to open flycapture camera: " << pv_error_to_string_( result ) << " (" << result << ")" ); }
-            for( attributes_type::const_iterator i = attributes.begin(); i != attributes.end(); ++i )
-            {
-                pv_set_attribute_( handle_, i->first, i->second );
-            }
-            PvAttrEnumSet( handle_, "AcquisitionMode", "Continuous" );
-            PvAttrEnumSet( handle_, "FrameStartTriggerMode", "FixedRate" );
-            ::memset( &frame_, 0, sizeof( tPvFrame ) ); // voodoo
-            result = PvAttrUint32Get( handle_, "TotalBytesPerFrame", &total_bytes_per_frame_ );
-            if( result != ePvErrSuccess ) { close(); COMMA_THROW( comma::exception, "failed to get TotalBytesPerFrame from flycapture camera " << *id_ << ": " << pv_error_to_string_( result ) << " (" << result << ")" ); }
-            buffer_.resize( total_bytes_per_frame_ );
-            frame_.ImageBuffer = &buffer_[0];
-            frame_.ImageBufferSize = total_bytes_per_frame_;
-            float frameRate;
-            PvAttrFloat32Get( handle_, "FrameRate", &frameRate);
-            timeOut_ = 1000 / frameRate;
-            timeOut_ *= timeOutFactor;*/
+                 COMMA_THROW( comma::exception, "no id provided and multiple cameras found: would pick up a random one\n\tavailable cameras:\n" << stream.str() );
+             }
+             now = boost::posix_time::microsec_clock::universal_time();
+             end = now + timeout;
+	     //Get Point grey unique id (guid) from serial number. guid does not exist in CameraInfo, and so it does not appear in the camera list
+	     BusManager busMgr;
+	     busMgr.GetCameraFromSerialNumber(*id_, &guid);
+	     
+//              tPvErr result = PvCameraOpen( *id_, ePvAccessMaster, &handle_ );
+	     Error result = handle_.Connect(&guid);
+              for( ; ( result != PGRERROR_OK ) && ( now < end ); now = boost::posix_time::microsec_clock::universal_time() )
+              {
+                  boost::thread::sleep( now + boost::posix_time::milliseconds( 10 ) );
+//                  result = PvCameraOpen( *id_, ePvAccessMaster, &handle_ );
+		  result = handle_.Connect(&guid);
+              }
+//              if( result != ePvErrSuccess ) { close(); COMMA_THROW( comma::exception, "failed to open flycapture camera: " << pv_error_to_string_( result ) << " (" << result << ")" ); }
+              if (result != PGRERROR_OK){close(); COMMA_THROW( comma::exception, "failed to open point grey camera: " << result.GetDescription() );}
+//              for( attributes_type::const_iterator i = attributes.begin(); i != attributes.end(); ++i )
+//              {
+//                 pv_set_attribute_( handle_, i->first, i->second );
+//             }
+//             PvAttrEnumSet( handle_, "AcquisitionMode", "Continuous" );
+//             PvAttrEnumSet( handle_, "FrameStartTriggerMode", "FixedRate" );
+//             ::memset( &frame_, 0, sizeof( tPvFrame ) ); // voodoo
+//             result = PvAttrUint32Get( handle_, "TotalBytesPerFrame", &total_bytes_per_frame_ );
+//             if( result != ePvErrSuccess ) { close(); COMMA_THROW( comma::exception, "failed to get TotalBytesPerFrame from flycapture camera " << *id_ << ": " << pv_error_to_string_( result ) << " (" << result << ")" ); }
+//             buffer_.resize( total_bytes_per_frame_ );
+//             frame_.ImageBuffer = &buffer_[0];
+//             frame_.ImageBufferSize = total_bytes_per_frame_;
+//             float frameRate;
+//             PvAttrFloat32Get( handle_, "FrameRate", &frameRate);
+//             timeOut_ = 1000 / frameRate;
+//             timeOut_ *= timeOutFactor;
             
         }
 
@@ -323,31 +344,54 @@ class flycapture::impl
 
         unsigned long total_bytes_per_frame() const { return total_bytes_per_frame_; }
 
-//         static std::vector< tPvCameraInfo > list_cameras()
-//         {
-//             initialize_();
-//             static const boost::posix_time::time_duration timeout = boost::posix_time::seconds( 5 ); // quick and dirty; make configurable?
-//             boost::posix_time::ptime now = boost::posix_time::microsec_clock::universal_time();
-//             boost::posix_time::ptime end = now + timeout;
-//             std::vector< tPvCameraInfo > list;
-//             for( ; now < end; now = boost::posix_time::microsec_clock::universal_time() )
-//             {
-//                 std::size_t count = PvCameraCount();
-//                 list.resize( count );
-//                 count = PvCameraList( &list[0], count, NULL );
-//                 list.resize( count );
-//                 if( !list.empty() ) { break; }
-//                 boost::thread::sleep( now + boost::posix_time::milliseconds( 10 ) );
-//             }
-//             return list;
-//         }
+        static std::vector< CameraInfo > list_cameras()
+        {
+            initialize_();
+             static const boost::posix_time::time_duration timeout = boost::posix_time::seconds( 5 ); // quick and dirty; make configurable?
+             boost::posix_time::ptime now = boost::posix_time::microsec_clock::universal_time();
+             boost::posix_time::ptime end = now + timeout;
+             std::vector< CameraInfo > list;
+             for( ; now < end; now = boost::posix_time::microsec_clock::universal_time() )
+             {
+	      BusManager busMgr;
+	      unsigned int numCameras;
+	      Error error;
+	      error = busMgr.GetNumOfCameras(&numCameras);
+	      if (error != PGRERROR_OK){
+		  COMMA_THROW( comma::exception, "Cannot find point grey cameras");
+		  //TODO replace with COMMA_THROW
+	      }
+	      
+	      CameraInfo camInfo[numCameras];
+	      error = BusManager::DiscoverGigECameras( camInfo, &numCameras );
+	      if (error != PGRERROR_OK){
+		  COMMA_THROW( comma::exception, "Cannot discover point grey cameras");
+		  //TODO replace with COMMA_THROW
+	      }
+	      
+// 		 std::size_t count = PvCameraCount();
+//                  list.resize( count );
+//                  count = PvCameraList( &list[0], count, NULL );
+//                  list.resize( count );
+
+		//If array is not empty, convert to list and exit
+                if( numCameras > 0 ) {
+		  std::copy(&camInfo[0],&camInfo[numCameras],std::back_inserter(list));
+		  break;
+		  }
+                 boost::thread::sleep( now + boost::posix_time::milliseconds( 10 ) );
+             }
+             return list;
+        }
         
     private:
         friend class flycapture::callback::impl;
 //         tPvHandle handle_;
 //         tPvFrame frame_;
+	GigECamera handle_;
         std::vector< char > buffer_;
         boost::optional< unsigned int > id_;
+        PGRGuid guid;
         unsigned long total_bytes_per_frame_;
         bool started_;
         unsigned int timeOut_; // milliseconds
@@ -419,12 +463,14 @@ std::pair< boost::posix_time::ptime, cv::Mat > flycapture::read() { return pimpl
 
 void flycapture::close() { pimpl_->close(); }
 
-// std::vector< tPvCameraInfo > flycapture::list_cameras() { return flycapture::impl::list_cameras(); }
+std::vector< CameraInfo > flycapture::list_cameras() { return flycapture::impl::list_cameras(); }
 
 unsigned int flycapture::id() const { return pimpl_->id(); }
 
 unsigned long flycapture::total_bytes_per_frame() const { return pimpl_->total_bytes_per_frame(); }
 
+
+//TODO I need to fix this, its causing a segfault
 // flycapture::attributes_type flycapture::attributes() const { return pv_attributes_( pimpl_->handle() ); }
 
 flycapture::callback::callback( flycapture& flycapture, boost::function< void ( std::pair< boost::posix_time::ptime, cv::Mat > ) > on_frame )
@@ -436,4 +482,4 @@ flycapture::callback::~callback() { delete pimpl_; }
 
 bool flycapture::callback::good() const { return pimpl_->good; }
 
-} } // namespace snark{ namespace camera{
+} }// namespace snark{ namespace camera{ 
