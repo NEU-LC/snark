@@ -1,0 +1,17 @@
+[Unit]
+Description=websocketd service
+After=network-online.target
+Wants=network-online.target
+Conflicts=shutdown.target
+
+[Service]
+Type=simple
+Environment="DAEMON_ARGS=--port 8888 --dir /usr/local/lib/websocketd --devconsole --loglevel error"
+EnvironmentFile=-/etc/sysconfig/websocketd
+EnvironmentFile=-/etc/default/websocketd
+ExecStart=/usr/local/bin/websocketd $DAEMON_ARGS
+StandardOutput=syslog
+StandardError=syslog
+
+[Install]
+WantedBy=default.target

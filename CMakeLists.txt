@@ -186,6 +186,14 @@ CMAKE_DEPENDENT_OPTION( snark_build_actuators_universal_robots "build universal_
 
 CMAKE_DEPENDENT_OPTION( snark_build_web_feeds "snark: build web feeds" ON "snark_build_web" OFF )
 
+SET( snark_system_manager "auto" CACHE STRING "the system and service manager of the operating system, options are: auto init systemd" )
+IF( snark_system_manager STREQUAL "auto" )
+    EXECUTE_PROCESS( COMMAND cat /proc/1/comm
+                     OUTPUT_VARIABLE snark_system_manager
+                     OUTPUT_STRIP_TRAILING_WHITESPACE )
+    MESSAGE( STATUS "auto detected system manager: ${snark_system_manager}" )
+ENDIF( snark_system_manager STREQUAL "auto" )
+
 IF( snark_build_imaging )
     IF( WIN32 )
         SET( OpenCV_STATIC OFF )

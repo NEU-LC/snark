@@ -1,0 +1,17 @@
+[Unit]
+Description=tcp websocket service
+After=network-online.target
+Wants=network-online.target
+Conflicts=shutdown.target
+
+[Service]
+Type=simple
+Environment="DAEMON_ARGS="
+EnvironmentFile=-/etc/sysconfig/tcp-ws-server
+EnvironmentFile=-/etc/default/tcp-ws-server
+ExecStart=/usr/local/bin/tcp-ws-server $DAEMON_ARGS
+StandardOutput=syslog
+StandardError=syslog
+
+[Install]
+WantedBy=default.target
