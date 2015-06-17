@@ -95,8 +95,8 @@ fi
 passed_fields=$( add_xpath target ${target[fields]} ),$( add_xpath feedback ${feedback[fields]} )
 all_fields=$passed_fields,$error_fields,$command_fields
 keep_target_fields=$( add_xpath target $( csv-fields clear --remove $default_target_fields <<< ${target[fields]} ) )
-cut_fields=$( csv-fields clear --keep $keep_target_fields,$command_fields <<< $all_fields )
-output_fields=$( compress_commas <<< $cut_fields )
+output_fields_mask=$( csv-fields clear --keep $keep_target_fields,$command_fields <<< $all_fields )
+output_fields=$( compress_commas <<< $output_fields_mask )
 
 if (( $( comma_options_has --output-fields "$@" ) )); then csv-fields prefix --basename <<< $output_fields; exit; fi
 
@@ -109,7 +109,7 @@ if (( binary_output )); then
     if ! fields_and_format_are_consistent ${feedback[fields]} ${feedback[format]}; then echo "$scriptname: feedback fields and format are inconsistent ${feedback[fields]} ${feedback[format]}" >&2; exit 1; fi
     passed_format=${target[format]},${feedback[format]}
     all_format=$passed_format,$error_format,$command_format
-    output_format=$( csv-format expand <<< $all_format | csv-fields clear --mask $cut_fields | compress_commas )
+    output_format=$( csv-format expand <<< $all_format | csv-fields clear --mask $output_fields_mask | compress_commas )
 fi
 
 if (( $( comma_options_has --output-format "$@" ) )); then
