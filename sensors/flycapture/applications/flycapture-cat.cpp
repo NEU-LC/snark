@@ -94,14 +94,12 @@ int main( int argc, char** argv )
             {
 	      std::cout << "serial=\"" << list[i].serialNumber << "\"," << "model=\"" << list[i].modelName << "\"" << std::endl;
             }
-            std::cout << "Line number: " << __LINE__ << " reached" << std::endl;
             return 0;
         }
         if ( vm.count( "discard" ) )
         {
             discard = 1;
         }
-        std::cout << "Line number: " << __LINE__ << " reached in: " << __FILE__ << std::endl;
         snark::camera::flycapture::attributes_type attributes;
         if( vm.count( "set" ) )
         {
@@ -111,9 +109,7 @@ int main( int argc, char** argv )
         if( verbose ) { std::cerr << "flycapture-cat: connecting..." << std::endl; }
         //TODO before setting/changing attributes, I need to connect to the camera
         //NOTE constructor for camera
-        std::cout << "Line number: " << __LINE__ << " reached" << std::endl;
         snark::camera::flycapture camera( id, attributes );
-	std::cout << "Line number: " << __LINE__ << " reached" << std::endl;
         if( verbose ) { std::cerr << "flycapture-cat: connected to camera " << camera.id() << std::endl; }
         if( verbose ) { std::cerr << "flycapture-cat: total bytes per frame: " << camera.total_bytes_per_frame() << std::endl; }
         if( vm.count( "set-and-exit" ) ) { return 0; }

@@ -42,38 +42,7 @@ namespace snark{ namespace camera{
 
 static const unsigned int timeOutFactor = 3;
 static const unsigned int maxRetries = 15; 
-  /*
-static const char *pv_error_to_string_( tPvErr error )
-{
-    switch( error )
-    {
-        case ePvErrSuccess: return "ePvErrSuccess";
-        case ePvErrCameraFault: return "ePvErrCameraFault"; 
-        case ePvErrInternalFault: return "ePvErrInternalFault"; 
-        case ePvErrBadHandle: return "ePvErrBadHandle";
-        case ePvErrBadParameter: return "ePvErrBadParameter";
-        case ePvErrBadSequence: return "ePvErrBadSequence";
-        case ePvErrNotFound: return "ePvErrNotFound";
-        case ePvErrAccessDenied: return "ePvErrAccessDenied";
-        case ePvErrUnplugged: return "ePvErrUnplugged";
-        case ePvErrInvalidSetup: return "ePvErrInvalidSetup";
-        case ePvErrResources: return "ePvErrResources";
-        case ePvErrBandwidth: return "ePvErrBandwidth";
-        case ePvErrQueueFull: return "ePvErrQueueFull";
-        case ePvErrBufferTooSmall: return "ePvErrBufferTooSmall";
-        case ePvErrCancelled: return "ePvErrCancelled";
-        case ePvErrDataLost: return "ePvErrDataLost";
-        case ePvErrDataMissing: return "ePvErrDataMissing";
-        case ePvErrTimeout: return "ePvErrTimeout";
-        case ePvErrOutOfRange: return "ePvErrOutOfRange";
-        case ePvErrWrongType: return "ePvErrWrongType";
-        case ePvErrForbidden: return "ePvErrForbidden";
-        case ePvErrUnavailable: return "ePvErrUnavailable";
-        case ePvErrFirewall: return "ePvErrFirewall";
-        case __ePvErr_force_32: return "__ePvErr_force_32";
-        default : return "unknown error";
-    };
-}*/
+
 /*
 static void pv_set_attribute_( tPvHandle& handle, const std::string& key, const std::string& value )
 {
@@ -150,40 +119,44 @@ static void pv_set_attribute_( tPvHandle& handle, const std::string& key, const 
 //     return attributes;
 // }
 
-// static cv::Mat pv_as_cvmat_( const tPvFrame& frame )
-// {
+static cv::Mat pg_as_cvmat_( const Image& frame )
+{
 //     if( frame.Status != ePvErrSuccess ) { return cv::Mat(); }
-//     int type;
-//     switch( frame.Format )
-//     {
-//         case ePvFmtMono8:
-//         case ePvFmtBayer8:
-//             type = CV_8UC1;
-//             break;
-//         case ePvFmtBayer16:
-//         case ePvFmtMono16:
-//             type = CV_16UC1;
-//             break;
-//         case ePvFmtRgb24:
-//         case ePvFmtBgr24:
-//             type = CV_8UC3;
-//             break;
-//         case ePvFmtRgba32:
-//         case ePvFmtBgra32:
-//             type = CV_8UC4;
-//             break;
+    int type;
+    switch( frame.GetPixelFormat() )
+    {
+        case PIXEL_FORMAT_MONO8:
+        case PIXEL_FORMAT_RAW8:
+            type = CV_8UC1;
+            break;
+        case PIXEL_FORMAT_RAW16:
+        case PIXEL_FORMAT_MONO16:
+            type = CV_16UC1;
+            break;
+        case PIXEL_FORMAT_RGB:
+        case PIXEL_FORMAT_BGR:
+            type = CV_8UC3;
+            break;
+        case PIXEL_FORMAT_RGBU:
+        case PIXEL_FORMAT_BGRU:
+            type = CV_8UC4;
+            break;
 //         case ePvFmtRgb48:
-//             type = CV_16UC3;
-//             break;
-//         case ePvFmtYuv411:
-//         case ePvFmtYuv422:
-//         case ePvFmtYuv444:
-//             COMMA_THROW( comma::exception, "unsupported format " << frame.Format );
-//         default:
-//             COMMA_THROW( comma::exception, "unknown format " << frame.Format );
-//     };
+         case PIXEL_FORMAT_RGB16:
+            type = CV_16UC3;
+            break;
+        case PIXEL_FORMAT_411YUV8:
+        case PIXEL_FORMAT_422YUV8:
+        case PIXEL_FORMAT_444YUV8:
+            COMMA_THROW( comma::exception, "unsupported format " << frame.GetPixelFormat()  );
+        default:
+            COMMA_THROW( comma::exception, "unknown format " << frame.GetPixelFormat()  );
+    };
 //     return cv::Mat( frame.Height, frame.Width, type, frame.ImageBuffer );
-// }
+// TODO Not sure if this is correct image format passing. Should I use frame.convert?
+ std::cerr << "Frame information: rows: " << frame.GetRows() << " cols: " << frame.GetCols() << std::endl ;
+     return cv::Mat( frame.GetRows(), frame.GetCols(), type, frame.GetData() );
+}
 
 class flycapture::impl
 {
@@ -208,7 +181,7 @@ class flycapture::impl
 // //If the UniqueId matches desired, it stops.
 // //I'll just connect directly to a serial number?
 // //Or maybe IP, or MAC. There is no short ID in PG.
-		 	      std::cout << "Line number: " << __LINE__ << " reached in: " << __FILE__ << std::endl;
+		 	      //std::cout << "Line number: " << __LINE__ << " reached in: " << __FILE__ << std::endl;
                  for( unsigned int i = 0; i < list.size(); ++i ) // look for a flycapture camera which permits Master Access
                  {
                      if(    
@@ -223,7 +196,7 @@ class flycapture::impl
                  if( id_ ) { break; }
              }
              if( !id_ ) { COMMA_THROW( comma::exception, "timeout; camera not found" ); }
-             	      std::cout << "Line number: " << __LINE__ << " reached in: " << __FILE__ << std::endl;
+//              	      std::cout << "Line number: " << __LINE__ << " reached in: " << __FILE__ << std::endl;
 //NOTE Zero is an `any' wildcard
              if( id == 0 && size > 1 )
              {
@@ -255,11 +228,19 @@ class flycapture::impl
 //              {
 //                 pv_set_attribute_( handle_, i->first, i->second );
 //             }
+//NOTE This is where acquisition mode, frame size, frame rate are set 
+//NOTE however it does not include actually grabbing frames
+
 //             PvAttrEnumSet( handle_, "AcquisitionMode", "Continuous" );
 //             PvAttrEnumSet( handle_, "FrameStartTriggerMode", "FixedRate" );
 //             ::memset( &frame_, 0, sizeof( tPvFrame ) ); // voodoo
 //             result = PvAttrUint32Get( handle_, "TotalBytesPerFrame", &total_bytes_per_frame_ );
-//             if( result != ePvErrSuccess ) { close(); COMMA_THROW( comma::exception, "failed to get TotalBytesPerFrame from flycapture camera " << *id_ << ": " << pv_error_to_string_( result ) << " (" << result << ")" ); }
+// TODO Get size of frame bytes here.
+//  I don't think I've initialized the frame properly here,  which is resulting in a framesize of zero
+//  I'm almost certain I have to get a frame to find the size of the buffer associated with the frame
+// Total bytes per frame is now set after the grab of each frame. Unsure if this will work
+	     	      
+//              if( total_bytes_per_frame_ ==  0) { close(); COMMA_THROW( comma::exception, "failed to get TotalBytesPerFrame from flycapture camera " ); }
 //             buffer_.resize( total_bytes_per_frame_ );
 //             frame_.ImageBuffer = &buffer_[0];
 //             frame_.ImageBufferSize = total_bytes_per_frame_;
@@ -275,9 +256,12 @@ class flycapture::impl
         void close()
         {
             id_.reset();
-//             if( !handle_ ) { return; }
+             if( !handle_.IsConnected() ) { return; }
 //             PvCameraClose( handle_ );
+// TODO This is wrong.
+	       handle_.StopCapture();
 //             PvUnInitialize();
+	       handle_.Disconnect();
             //std::cerr << "the camera has been closed" << std::endl;
         }
 
@@ -288,57 +272,86 @@ class flycapture::impl
             unsigned int retries = 0;
             while( !success && retries < maxRetries )
             {
- /*               tPvErr result = ePvErrSuccess;
-                if( !started_ )
+	      Error result;
+//               tPvErr result = ePvErrSuccess;
+                 if( !started_ )
+                 {
+//                     result = PvCaptureStart( handle_ );
+		   result = handle_.StartCapture();
+                 }
+                 if( result == PGRERROR_OK )
+                 {
+/*                     result = PvCaptureQueueFrame( handle_, &frame_, 0 );
+//                     if( result == ePvErrSuccess )
+//                     {
+//                         if( !started_ )
+//                         {
+//                             result = PvCommandRun( handle_, "AcquisitionStart" );
+//                             started_ = true;
+//                         }
+//                         if( result == ePvErrSuccess )
+//                         {
+                            result = PvCaptureWaitForFrameDone( handle_, &frame_, timeOut_ );*/
+		   started_ = true;
+		   Image rawImage;
+		   result = handle_.RetrieveBuffer(&rawImage);
+		   frame_.DeepCopy(&rawImage);
+		   rawImage.ReleaseBuffer();
+		   total_bytes_per_frame_ = frame_.GetDataSize();
+// 		   std::cerr << "Total Bytes per frame: " << total_bytes_per_frame_ << std::endl;
+// 		  if( result == ePvErrSuccess )
+// 		  {
+// 		      result = frame_.Status;
+// 		  }
+		    pair.first = boost::posix_time::microsec_clock::universal_time();
+//                         }
+//                     }
+		   
+                 }
+                 //Camera is getting stuck in an `already started state' and so I am not getting unique images as
+                 //retrieve buffer is only called once.
+                 
+                if(( result == PGRERROR_OK) /*| (result==PGRERROR_ISOCH_ALREADY_STARTED) */)
                 {
-                    result = PvCaptureStart( handle_ );
-                }
-                if( result == ePvErrSuccess )
-                {
-                    result = PvCaptureQueueFrame( handle_, &frame_, 0 );
-                    if( result == ePvErrSuccess )
-                    {
-                        if( !started_ )
-                        {
-                            result = PvCommandRun( handle_, "AcquisitionStart" );
-                            started_ = true;
-                        }
-                        if( result == ePvErrSuccess )
-                        {
-                            result = PvCaptureWaitForFrameDone( handle_, &frame_, timeOut_ );
-                            if( result == ePvErrSuccess )
-                            {
-                                result = frame_.Status;
-                            }
-                            pair.first = boost::posix_time::microsec_clock::universal_time();
-                        }
-                    }
-                }
-                if( result == ePvErrSuccess )
-                {
-                    pair.second = pv_as_cvmat_( frame_ );
+//                     pair.second = pv_as_cvmat_( frame_ );
+//  std::cerr << "Line number: " << __LINE__ << " reached in: " << __FILE__ << std::endl;
+		    pair.second =  pg_as_cvmat_( frame_ );
+//  		    std::cerr << "Line number: " << __LINE__ << " reached in: " << __FILE__ << std::endl;
                     success = true;
-                }
-                else if( result == ePvErrDataMissing || result == ePvErrTimeout )
+                    //This is the error complaining the transfer has not finished yet?
+                } 
+//                  else if(result==PGRERROR_ISOCH_ALREADY_STARTED) {
+//  		    started_ = true;
+//  		}
+                else if( /*result == ePvErrDataMissing |*/
+		  (result == PGRERROR_ISOCH_START_FAILED )
+		  | (result == PGRERROR_TIMEOUT )
+		  | (result==PGRERROR_ISOCH_ALREADY_STARTED)
+		  | (result==PGRERROR_UNDEFINED) 
+		  | (result==PGRERROR_IIDC_FAILED) /*error 22*/ )
                 {
-                    PvCaptureQueueClear( handle_ );
-                    PvCommandRun( handle_, "AcquisitionStop" );
-                    PvCaptureEnd( handle_ );
-                    started_ = false;
+		      //BUG The undefined error happens a lot. Unknown cause.
+		      std::cerr << "Error:" << result.GetDescription() << ". Retrying..." << std::endl;
+//                     PvCaptureQueueClear( handle_ );
+//                     PvCommandRun( handle_, "AcquisitionStop" );
+		      handle_.StopCapture();
+//                     PvCaptureEnd( handle_ );
+
+                     started_ = false;
                 }
-                else
+                 else
                 {
-                    COMMA_THROW( comma::exception, "got frame with invalid status on camera " << *id_ << ": " << pv_error_to_string_( result ) << "(" << result << ")" );
+                    COMMA_THROW( comma::exception, "got frame with invalid status on camera " << *id_ << ": " << result.GetType() << ": " << result.GetDescription() );
                 }
                 retries++;
- */           }
+             }
              if( success ) { return pair; }
              COMMA_THROW( comma::exception, "got lots of missing frames or timeouts" << std::endl << std::endl << "it is likely that MTU size on your machine is less than packet size" << std::endl << "check PacketSize attribute (flycapture-cat --list-attributes)" << std::endl << "set packet size (e.g. flycapture-cat --set=PacketSize=1500)" << std::endl << "or increase MTU size on your machine" );
         }
         
-//         const tPvHandle& handle() const { return handle_; }
+         const GigECamera& handle() const { return handle_; }
 //         
-//         tPvHandle& handle() { return handle_; }
+         GigECamera& handle() { return handle_; }
 
         unsigned int id() const { return *id_; }
 
@@ -359,14 +372,12 @@ class flycapture::impl
 	      error = busMgr.GetNumOfCameras(&numCameras);
 	      if (error != PGRERROR_OK){
 		  COMMA_THROW( comma::exception, "Cannot find point grey cameras");
-		  //TODO replace with COMMA_THROW
 	      }
 	      
 	      CameraInfo camInfo[numCameras];
 	      error = BusManager::DiscoverGigECameras( camInfo, &numCameras );
 	      if (error != PGRERROR_OK){
 		  COMMA_THROW( comma::exception, "Cannot discover point grey cameras");
-		  //TODO replace with COMMA_THROW
 	      }
 	      
 // 		 std::size_t count = PvCameraCount();
@@ -389,6 +400,7 @@ class flycapture::impl
 //         tPvHandle handle_;
 //         tPvFrame frame_;
 	GigECamera handle_;
+	Image frame_;
         std::vector< char > buffer_;
         boost::optional< unsigned int > id_;
         PGRGuid guid;
@@ -431,6 +443,7 @@ class flycapture::callback::impl
 //             PvCommandRun( handle, "Acquisitionstop" );
 //             PvCaptureQueueClear( handle );
 //             PvCaptureEnd( handle );
+// 	       handle.StopCapture();
         }
 
         OnFrame on_frame;
@@ -469,8 +482,6 @@ unsigned int flycapture::id() const { return pimpl_->id(); }
 
 unsigned long flycapture::total_bytes_per_frame() const { return pimpl_->total_bytes_per_frame(); }
 
-
-//TODO I need to fix this, its causing a segfault
 // flycapture::attributes_type flycapture::attributes() const { return pv_attributes_( pimpl_->handle() ); }
 
 flycapture::callback::callback( flycapture& flycapture, boost::function< void ( std::pair< boost::posix_time::ptime, cv::Mat > ) > on_frame )
