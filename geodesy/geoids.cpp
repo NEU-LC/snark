@@ -57,7 +57,7 @@ static std::string unit_info()
 
 } // namespace impl
 
-snark::spherical::ellipsoid& geoids::select( std::string name )
+const snark::spherical::ellipsoid& geoids::select( std::string name )
 {
     if ( name.empty())
         return impl::wgs84;

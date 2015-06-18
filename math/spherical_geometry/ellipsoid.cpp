@@ -77,7 +77,7 @@ static double square( double x ) { return x * x; }
 
 // super-quick and dirty; a phenomenally dirty implementation
 // todo: what are all those magic constants? are they specific to geoid?
-double ellipsoid::distance( const coordinates& p1, const coordinates& p2 )
+double ellipsoid::distance( const coordinates& p1, const coordinates& p2 ) const
 {
     double middle = ( major_semiaxis - minor_semiaxis ) / major_semiaxis;
     double L = p2.longitude - p1.longitude;
@@ -174,7 +174,7 @@ double ellipsoid::distance( const coordinates& p1, const coordinates& p2 )
 
 // super-quick and dirty; a phenomenally dirty implementation
 // todo: what are all those magic constants? are they specific to geoid?
-coordinates ellipsoid::at( const coordinates& p, double distance, double bearing )
+coordinates ellipsoid::at( const coordinates& p, double distance, double bearing ) const
 {
     double middle = ( major_semiaxis - minor_semiaxis ) / major_semiaxis;
     double s = distance;
@@ -223,12 +223,12 @@ coordinates ellipsoid::at( const coordinates& p, double distance, double bearing
     return coordinates( lat2, lon2 );
 }
 
-std::vector< coordinates > ellipsoid::circle::discretize( ellipsoid &ellipsoid, const boost::optional< double > &resolution, const boost::optional< unsigned int > &circle_size ) const
+std::vector< coordinates > ellipsoid::circle::discretize( const ellipsoid &ellipsoid, const boost::optional< double > &resolution, const boost::optional< unsigned int > &circle_size ) const
 {
     return arc( *this, 0, 2 * M_PI ).discretize( ellipsoid, resolution, circle_size );
 }
 
-std::vector< coordinates > ellipsoid::circle::arc::discretize( ellipsoid &ellipsoid, const boost::optional< double > &resolution, const boost::optional< unsigned int > &circle_size ) const
+std::vector< coordinates > ellipsoid::circle::arc::discretize( const ellipsoid &ellipsoid, const boost::optional< double > &resolution, const boost::optional< unsigned int > &circle_size ) const
 {
     boost::optional< long double > r;
     if ( resolution ) { r = *resolution; }

@@ -49,11 +49,11 @@ struct ellipsoid
     double minor_semiaxis;
 
     /// return distance between from and to coordinates, using vincenty's formulae
-    double distance( const coordinates &from, const coordinates &to );
+    double distance( const coordinates &from, const coordinates &to ) const;
 
     /// return coordinates at a given distance from begin at given bearing, using vincenty's formulae
     /// todo: an extensive comment no what kind of bearing is used
-    coordinates at( const coordinates &begin, double distance, double bearing );
+    coordinates at( const coordinates &begin, double distance, double bearing ) const;
 
     //great circle arc
     struct arc
@@ -70,7 +70,7 @@ struct ellipsoid
         //radius is distance in metric unit
         double radius;
         struct arc;
-        std::vector< coordinates > discretize( ellipsoid &ellipsoid, const boost::optional< double > &resolution, const boost::optional< unsigned int > &circle_size ) const;
+        std::vector< coordinates > discretize( const ellipsoid &ellipsoid, const boost::optional< double > &resolution, const boost::optional< unsigned int > &circle_size ) const;
     };
 
 };
@@ -86,7 +86,7 @@ struct ellipsoid::circle::arc
     double end;
     arc() {}
     arc( const ellipsoid::circle &circle, double begin, double end ) : circle( circle ), begin( begin ), end( end ) {}
-    std::vector< coordinates > discretize( ellipsoid &ellipsoid, const boost::optional< double > &resolution, const boost::optional< unsigned int > &circle_size ) const;
+    std::vector< coordinates > discretize( const ellipsoid &ellipsoid, const boost::optional< double > &resolution, const boost::optional< unsigned int > &circle_size ) const;
 
     //heading degree from north; east is positive 90
     static double bearing( double heading )

@@ -110,7 +110,7 @@ static void usage( bool more = false )
 }
 
 template < typename S >
-int discretize( const comma::csv::options &csv, snark::spherical::ellipsoid &ellipsoid, const boost::optional< double > &resolution, const boost::optional< unsigned int > &circle_size )
+int discretize( const comma::csv::options &csv, const snark::spherical::ellipsoid &ellipsoid, const boost::optional< double > &resolution, const boost::optional< unsigned int > &circle_size )
 {
     comma::csv::input_stream< S > istream( std::cin, csv );
     comma::csv::ascii< snark::spherical::coordinates > ascii;
@@ -153,7 +153,7 @@ int main( int ac, char **av )
             std::cout.precision( options.value( "--precision,-p", 12 ) );
         csv.full_xpath = true;
         std::string geoid_name = options.value< std::string >( "--geoid", "" );
-        snark::spherical::ellipsoid& geoid = snark::geodesy::geoids::select( geoid_name );
+        const snark::spherical::ellipsoid& geoid = snark::geodesy::geoids::select( geoid_name );
         const std::vector<std::string> &operations = options.unnamed( "--verbose,-v,--degrees", "-.*" );
         if ( operations.size() < 1 )
         {
