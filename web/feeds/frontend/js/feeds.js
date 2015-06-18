@@ -59,9 +59,18 @@ Sensor.prototype.preload = function() {
     this.status.fadeTo(1000, 0.4);
     this.load();
 }
-Sensor.prototype.onload = function(data) {
-    this.timestring.text(this.refresh_time);
+Sensor.prototype.update_time = function() {
+    var timestring = this.refresh_time.toString();
+    var timezone = timestring.match(/\(.*\)$/);
+    if (timezone.length) {
+        var short_timezone = timezone[0].replace(/[^A-Z]/g, '');
+        timestring = timestring.replace(/\(.*\)$/, '(' + short_timezone + ')');
+    }
+    this.timestring.text(timestring);
     this.timeago.attr('datetime', this.refresh_time.toISOString()).timeago('updateFromDOM');
+}
+Sensor.prototype.onload = function(data) {
+    this.update_time();
     this.status.finish().fadeTo(0, 1);
     if (this.config.alert) {
         this.alert(!data || !data.length);
@@ -70,8 +79,7 @@ Sensor.prototype.onload = function(data) {
     delete pending[this.sensor_name];
 }
 Sensor.prototype.onerror = function() {
-    this.timestring.text(this.refresh_time);
-    this.timeago.attr('datetime', this.refresh_time.toISOString()).timeago('updateFromDOM');
+    this.update_time();
     this.status.finish().fadeTo(0, 1);
     this.onload_();
     delete pending[this.sensor_name];
@@ -247,6 +255,7 @@ var GraphSensor = function(sensor_name, config) {
     this.base = Sensor;
     this.base(sensor_name, config);
     this.default_threshold = { value: this.config.graph.max, color: '#5cb85c' }
+    this.default_exceeded_threshold = { value: Number.MAX_VALUE, color: '#d9534f', alert: true }
     this.text = $(this.id + ' .graph-text');
     this.bars = $(this.id + ' .graph-bars');
     this.bars.append('<div class="graph-bar-col"><span class="graph-bar"></span></div>');
@@ -263,6 +272,9 @@ var GraphSensor = function(sensor_name, config) {
     var _this = this;
     this.bars.find('.graph-bar-col').each(function(i, e) {
         _this.config.graph.thresholds.forEach(function(threshold, index) {
+            if (threshold.value > _this.config.graph.max) {
+                return;
+            }
             var span = $('<span class="graph-threshold"></span>');
             span.css('height', _this.get_bar_height(threshold.value) + 1 + 'px');
             span.css('border-bottom-color', threshold.color);
@@ -318,13 +330,16 @@ GraphSensor.prototype.get_bar_height = function(value) {
     return this.bar_height - scale * this.bar_height;
 }
 GraphSensor.prototype.get_threshold = function(value) {
+    if (!this.config.graph.thresholds.length) {
+        return this.default_threshold;
+    }
     for (var i in this.config.graph.thresholds) {
         var threshold = this.config.graph.thresholds[i];
         if (value <= threshold.value) {
             return threshold
         }
     }
-    return this.default_threshold;
+    return this.default_exceeded_threshold;
 }
 
 var add_panel = function(sensor_name) {
@@ -702,10 +717,6 @@ function initialize(frontend_config) {
     });
     $('.panel-settings').on('click', function(event) {
         var id = $(this).closest('li').attr('id');
-        if (!gui.closed && !gui.__folders[id].closed) {
-            gui.close();
-            return;
-        }
         $.each(gui.__folders, function(index, folder) {
             folder.close();
         });
