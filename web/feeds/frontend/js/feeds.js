@@ -61,9 +61,9 @@ Sensor.prototype.preload = function() {
 }
 Sensor.prototype.update_time = function() {
     var timestring = this.refresh_time.toString();
-    var timezone = timestring.match(/\(.*\)$/);
-    if (timezone.length) {
-        var short_timezone = timezone[0].replace(/[^A-Z]/g, '');
+    var timezone = timestring.match(/\((.*)\)$/);
+    if (timezone.length == 2 && timezone[1].match(/ /)) {
+        var short_timezone = timezone[1].split(' ').map(function(word, index) { return word[0]; }).join('');
         timestring = timestring.replace(/\(.*\)$/, '(' + short_timezone + ')');
     }
     this.timestring.text(timestring);
