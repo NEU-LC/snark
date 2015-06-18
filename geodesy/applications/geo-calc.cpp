@@ -90,10 +90,10 @@ static void usage( bool more = false )
     if ( more )
     {
         std::cerr << "        (name: description (major semiaxis; minor semiaxis); inverse eccentricity)" << std::endl;
-        snark::geodesy::wgs84::help();
-        snark::geodesy::agd84::help();
-        snark::geodesy::grs67::help();
-        snark::geodesy::geoids::other_help();
+        std::cerr << snark::geodesy::wgs84::help();
+        std::cerr << snark::geodesy::agd84::help();
+        std::cerr << snark::geodesy::grs67::help();
+        std::cerr << snark::geodesy::geoids::help();
     }
     else
     {
@@ -144,7 +144,6 @@ int main( int ac, char **av )
 {
     try
     {
-        snark::geodesy::geoids geoids;
         comma::command_line_options options( ac, av );
         bool verbose = options.exists( "--verbose,-v" );
         if ( options.exists( "--help,-h" ) )
@@ -153,12 +152,8 @@ int main( int ac, char **av )
         if ( !csv.binary() )
             std::cout.precision( options.value( "--precision,-p", 12 ) );
         csv.full_xpath = true;
-        snark::spherical::ellipsoid *geoid = geoids.select( options.optional< std::string >( "--geoid" ) );
-        if ( geoid == NULL )
-        {
-            std::cerr << "geoid not supported: " << geoids.name << std::endl;
-            return 1;
-        }
+        std::string geoid_name = options.value< std::string >( "--geoid", "" );
+        snark::spherical::ellipsoid& geoid = snark::geodesy::geoids::select( geoid_name );
         const std::vector<std::string> &operations = options.unnamed( "--verbose,-v,--degrees", "-.*" );
         if ( operations.size() < 1 )
         {
@@ -173,7 +168,7 @@ int main( int ac, char **av )
                 const snark::spherical::ellipsoid::arc *a = istream.read();
                 if ( !a )
                     break;
-                double distance = geoid->distance( a->begin, a->end );
+                double distance = geoid.distance( a->begin, a->end );
                 if ( csv.binary() )
                 {
                     std::cout.write( istream.binary().last(), istream.binary().binary().format().size() );
@@ -194,11 +189,11 @@ int main( int ac, char **av )
             {
                 if ( operations[1] == "circle" )
                 {
-                    return discretize< snark::spherical::ellipsoid::circle >( csv, *geoid, resolution, circle_size );
+                    return discretize< snark::spherical::ellipsoid::circle >( csv, geoid, resolution, circle_size );
                 }
                 else if ( operations[1] == "arc" )
                 {
-                    return discretize<snark::spherical::ellipsoid::circle::arc>( csv, *geoid, resolution, circle_size );
+                    return discretize<snark::spherical::ellipsoid::circle::arc>( csv, geoid, resolution, circle_size );
                 }
                 std::cerr << "geo-calc: unknown shape for discretize: \"" << operations[1] << "\"" << std::endl;
             }
@@ -208,14 +203,8 @@ int main( int ac, char **av )
         }
         else if ( operations[0] == "info" )
         {
-            if ( geoids.info != NULL )
-            {
-                geoids.info();
-                return 0;
-            }
-            std::cerr << "can't get info on geoid" << std::endl;
-            return 1;
-
+            std::cerr << snark::geodesy::geoids::info( geoid_name );
+            return 0;
         }
         std::cerr << "geo-calc: unknown operation: \"" << operations[0] << "\"" << std::endl;
         return 1;

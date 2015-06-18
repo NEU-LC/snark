@@ -31,6 +31,7 @@
 #define SNARK_GEODESY_GRS67_H_
 
 #include "../../math/spherical_geometry/ellipsoid.h"
+#include <sstream>
 
 namespace snark
 {
@@ -52,14 +53,18 @@ static const std::string name( "grs67" );
  It became a part of the GRS-67 which was approved and adopted at the 1971 meeting of the IUGG held in Moscow. It is used in Australia for the Australian Geodetic Datum and in South America for the South American Datum 1969.
 */
 
-void inline help()
+inline std::string help()
 {
-    std::cerr << "        GRS67: Geodesic Reference System 1967 (6,378,160; 6,356,774.516); 298.247167427" << std::endl;
+    std::stringstream os;
+    os << "        GRS67: Geodesic Reference System 1967 (6,378,160; 6,356,774.516); 298.247167427" << std::endl;
+    return os.str();
 }
 
-void inline info()
+inline std::string info()
 {
-    std::cout << "GRS67,Geodesic Reference System 1967," << major_semiaxis << "," << minor_semiaxis << "," << eccentricity << std::endl;
+    std::stringstream os;
+    os << "GRS67,Geodesic Reference System 1967," << major_semiaxis << "," << minor_semiaxis << "," << eccentricity << std::endl;
+    return os.str();
 }
 
 struct geoid : public spherical::ellipsoid

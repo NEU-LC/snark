@@ -31,6 +31,7 @@
 #define SNARK_GEODESY_AGD84_H_
 
 #include "../../math/spherical_geometry/ellipsoid.h"
+#include <sstream>
 
 namespace snark
 {
@@ -74,14 +75,18 @@ CHANGE ID:      [2002.500] [2008.017]
 
 */
 
-void inline help()
+inline std::string help()
 {
-    std::cerr << "        AGD84: Australian Geodetic Datum 1984 - uses Australian National 1966 spheroid (6,378,160; 6,356,774.719); 298.25" << std::endl;
+    std::stringstream os;
+    os << "        AGD84: Australian Geodetic Datum 1984 - uses Australian National 1966 spheroid (6,378,160; 6,356,774.719); 298.25" << std::endl;
+    return os.str();
 }
 
-void inline info()
+inline std::string info()
 {
-    std::cout << "AGD84,Australian Geodetic Datum 1984," << major_semiaxis << "," << minor_semiaxis << "," << eccentricity << std::endl;
+    std::stringstream os;
+    os << "AGD84,Australian Geodetic Datum 1984," << major_semiaxis << "," << minor_semiaxis << "," << eccentricity << std::endl;
+    return os.str();
 }
 
 struct geoid : public spherical::ellipsoid
