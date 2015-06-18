@@ -20,10 +20,14 @@ body {
     height: 100%;
     padding: 0px;
     margin: 0px;
+    box-sizing: border-box;
+    border-right: 2px solid transparent;
 }
 
-#container:hover {
+#container:hover,
+#container.ui-resizable-resizing {
     background: #0D0D0D;
+    border-right: 2px solid #484848;
 }
 
 .panel {
@@ -46,7 +50,7 @@ body {
 .panel-alert, .panel-alert:hover {
     color: #012345 !important;
     text-shadow: none;
-    background: #d9534f !important;
+    background-color: #d9534f !important;
 }
 
 .panel .time {
