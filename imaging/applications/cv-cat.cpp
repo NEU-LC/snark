@@ -203,10 +203,7 @@ int main( int argc, char** argv )
         const unsigned int default_delay = vm.count( "file" ) == 0 ? 1 : 200; // HACK to make view work on single files
         snark::imaging::applications::pipeline pipeline( output, snark::cv_mat::filters::make( filters, default_delay ), *reader, number_of_threads );
         pipeline.run();
-        if( vm.count( "stay" ) )
-        {
-            while( !is_shutdown ) { boost::this_thread::sleep( boost::posix_time::seconds( 1 ) ); }
-        }
+        if( vm.count( "stay" ) ) { while( !is_shutdown ) { boost::this_thread::sleep( boost::posix_time::seconds( 1 ) ); } }
         return 0;
     }
     catch( std::exception& ex )

@@ -50,6 +50,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/highgui/highgui_c.h>
 #include "filters.h"
+#include "serialization.h"
 
 struct map_input_t
 {
@@ -394,6 +395,36 @@ static filters::value_type encode_impl_( filters::value_type m, const std::strin
     p.second = cv::Mat( buffer.size(), 1, CV_8UC1 );
     ::memcpy( p.second.data, &buffer[0] , buffer.size() );
     return p;
+}
+
+static comma::csv::options make_header_csv()
+{
+    comma::csv::options csv;
+    csv.fields = "t,rows,cols,type";
+    csv.format( "t,3ui" );
+    return csv;
+}
+
+static filters::value_type histogram_impl_( filters::value_type m )
+{
+    static comma::csv::output_stream< serialization::header > os( std::cout, make_header_csv() ); // todo: quick and dirty; generalize imaging::serialization::pipeline
+    if( single_channel_type_( m.second.type() ) != CV_8UC1 ) { std::cerr << "cv-cat: histogram: expected an unsigned char image type; got " << type_as_string( m.second.type() ) << std::endl; exit( 1 ); }
+    typedef boost::array< comma::uint32, 256 > channel_t;
+    std::vector< channel_t > channels( m.second.channels() );
+    for( unsigned int i = 0; i < channels.size(); ++i ) { ::memset( ( char* )( &channels[i][0] ), 0, sizeof( comma::uint32 ) * 256 ); }
+    for( const unsigned char* p = m.second.datastart; p < m.second.dataend; )
+    {
+        for( unsigned int i = 0; i < channels.size(); ++channels[i][*p], ++i, ++p );
+    }
+    serialization::header h;
+    h.timestamp = m.first;
+    h.rows = m.second.rows;
+    h.cols = m.second.cols;
+    h.type = m.second.type();
+    os.write( h );
+    os.flush();
+    for( unsigned int i = 0; i < channels.size(); ++i ) { std::cout.write( ( char* )( &channels[i][0] ), sizeof( comma::uint32 ) * 256 ); }
+    return m;
 }
 
 static filters::value_type grab_impl_( filters::value_type m, const std::string& type )
@@ -942,9 +973,15 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
             std::string s = e[1];
             f.push_back( filter( boost::bind( &file_impl_, _1, s ) ) );
         }
+        else if( e[0] == "histogram" )
+        {
+            if( i < v.size() - 1 ) { COMMA_THROW( comma::exception, "expected 'histogram' as the last filter, got \"" << how << "\"" ); }
+            f.push_back( filter( boost::bind( &histogram_impl_, _1 ) ) );
+            f.push_back( filter( NULL ) ); // quick and dirty
+        }
         else if( e[0] == "null" )
         {
-            if( i < v.size()-1 ) { COMMA_THROW( comma::exception, "expected 'null' as the last filter, got \"" << how << "\"" ); }
+            if( i < v.size() - 1 ) { COMMA_THROW( comma::exception, "expected 'null' as the last filter, got \"" << how << "\"" ); }
             if( i == 0 ) { COMMA_THROW( comma::exception, "'null' as the only filter is not supported; use cv-cat > /dev/null, if you need" ); }
             f.push_back( filter( NULL ) );
         }
