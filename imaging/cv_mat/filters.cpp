@@ -412,9 +412,13 @@ static filters::value_type histogram_impl_( filters::value_type m )
     typedef boost::array< comma::uint32, 256 > channel_t;
     std::vector< channel_t > channels( m.second.channels() );
     for( unsigned int i = 0; i < channels.size(); ++i ) { ::memset( ( char* )( &channels[i][0] ), 0, sizeof( comma::uint32 ) * 256 ); }
-    for( const unsigned char* p = m.second.datastart; p < m.second.dataend; )
+    for( int r = 0; r < m.second.rows; ++r )
     {
-        for( unsigned int i = 0; i < channels.size(); ++channels[i][*p], ++i, ++p );
+        const unsigned char* p = m.second.ptr< unsigned char >( r );
+        for( int c = 0; c < m.second.cols; ++c )
+        {
+            for( unsigned int i = 0; i < channels.size(); ++channels[i][p[c]], ++i, ++p );
+        }
     }
     serialization::header h;
     h.timestamp = m.first;
