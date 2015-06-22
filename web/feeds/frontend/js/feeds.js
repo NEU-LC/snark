@@ -437,7 +437,9 @@ var add_poll_body = function(sensor_name, element) {
 var add_stream_body = function(sensor_name, element) {
     var id = '#' + sensor_name;
     $(id).append(
-        '<h3>' + sensor_name + ' <button class="panel-stream-control" title="<kbd>click</kbd>: refresh<br><kbd>shift+click</kbd>: start/stop"><span class="status text-muted glyphicon glyphicon-stop"></span></button><button class="panel-settings transparent" title="settings"><span class="text-muted glyphicon glyphicon-cog"></span></button></h3>' +
+        '<h3>' + sensor_name + 
+        '  <button class="panel-stream-control" title="<kbd>click</kbd>: refresh<br><kbd>shift+click</kbd>: start/stop"><span class="status text-muted glyphicon glyphicon-stop"></span></button>' +
+        '  <button class="panel-settings hideable transparent" title="settings"><span class="text-muted glyphicon glyphicon-cog"></span></button></h3>' +
         '<div class="panel-body">' +
            element +
         '</div>'
@@ -707,6 +709,12 @@ function initialize(frontend_config) {
                     sensors[sensor_name].init_styles();
                 });
             }
+            folder.add(sensor.config, 'alert').name('enable alerting').onFinishChange(function(value) {
+                var sensor_name = $(this.__gui.__ul).find('li.title').text();
+                if (!value) {
+                    sensors[sensor_name].alert(false);
+                }
+            });
         } else {
             folder.add(sensor.config, 'show').onFinishChange(function(value) {
                 var sensor_name = $(this.__gui.__ul).find('li.title').text();
@@ -716,12 +724,6 @@ function initialize(frontend_config) {
                 }
             });
         }
-        folder.add(sensor.config, 'alert').name('enable alerting').onFinishChange(function(value) {
-            var sensor_name = $(this.__gui.__ul).find('li.title').text();
-            if (!value) {
-                sensors[sensor_name].alert(false);
-            }
-        });
         sensors[sensor_name] = sensor;
     }
 
