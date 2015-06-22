@@ -954,7 +954,7 @@ function load_gui_config(config_file) {
             continue;
         }
         set_properties(config[id], id);
-        if (sensors[id].config.type == 'csv') {
+        if (id in sensors && sensors[id].config.type == 'csv') {
             sensors[id].init_styles();
         }
     }
