@@ -24,6 +24,14 @@ web.frontend.json description:
             {
                 "show_lines": <number>          // optional, number of lines to show, default: 5
             },
+            "csv":                              // optional, only applicable when "type": "csv"
+            {
+                "min": "<csv min values>",      // optional, csv list of min values, empty allowed e.g. min value of 3rd field: ,,40
+                "min_color": "css-color",       // optional, color the value if it is below min, default: orange
+                "max": "<csv max values>",      // optional, csv list of max values, empty allowed, e.g. max value of 5th and 7th fields: ,,,,100,,10
+                "max_color": "css-color",       // optional, color the value if it is above max, default: red
+                "alert": true|false             // optional, alert if values are out of range, default: true
+            },
             "graph":                            // optional, only applicable when "type": "graph"
             {
                 "min": <number>,                // optional, min value, default: 0
@@ -32,7 +40,7 @@ web.frontend.json description:
                 "thresholds": [                 // optional, array of thresholds
                     {
                         "value": <number>,      // graph values less than or equal to this value will be colored by the corresponding color
-                        "color": <#hex-string>,
+                        "color": <css-color>,
                         "alert": true|false     // optional, raise panel alert if graph value is within this threshold
                     }
                 ]
