@@ -261,7 +261,7 @@ var CsvFeed = function(feed_name, config) {
 CsvFeed.prototype = new TextFeed;
 CsvFeed.prototype.init = function() {
     this.init_fields();
-    this.init_styles();
+    this.init_ranges();
 }
 CsvFeed.prototype.init_fields = function() {
     this.target.find('thead').empty();
@@ -282,15 +282,12 @@ CsvFeed.prototype.init_fields = function() {
         this.target.find('thead').append(tr);
     }
 }
-CsvFeed.prototype.init_styles = function() {
-    this.el.remove('style');
-    var css = '';
+CsvFeed.prototype.init_ranges = function() {
     this.min = {};
     var min = this.config.csv.min.split(',');
     for (var i in min) {
         if (min[i] && !isNaN(min[i])) {
             this.min[i] = Number(min[i]);
-            css += ' .' + this.class_id(i, '-min') + ' { color: ' + this.config.csv.min_color + ' }\n'
         }
     }
     this.max = {};
@@ -298,35 +295,45 @@ CsvFeed.prototype.init_styles = function() {
     for (var i in max) {
         if (max[i] && !isNaN(max[i])) {
             this.max[i] = Number(max[i]);
-            css += ' .' + this.class_id(i, '-max') + ' { color: ' + this.config.csv.max_color + ' }\n'
         }
     }
-    $('<style>')
-        .attr('type', 'text/css')
-        .html(css)
-        .prependTo(this.el);
-}
-CsvFeed.prototype.class_id = function(index, suffix) {
-    return 'style-' + this.feed_name + '-' + index + suffix;
 }
 CsvFeed.prototype.onload_ = function(data) {
+    var data_color;
+    var column_has_space;
+    var tbody = $('<tbody>');
     if (data) {
         data = data.split('\n').map(function(value, index) { return value.split(','); });
         var out_of_range = false;
+        data_color = new Array(data.length);
+        var columns = 0;
         for (var i in data) {
+            if (columns < data[i].length) {
+                columns = data[i].length;
+            }
+        }
+        var column_has_space = new Array(columns);
+        for (var i in data) {
+            for (var j = 0; j < data[i].length; ++j) {
+                if (data[i][j].match(/ /)) {
+                    column_has_space[j] = true;
+                }
+            }
+        }
+        for (var i in data) {
+            data_color[i] = new Array(data[i].length);
             for (var j in data[i]) {
                 var value = data[i][j];
                 if (value && !isNaN(value)) {
-                    var class_id = '';
                     if (j in this.min && Number(value) < this.min[j]) {
                         out_of_range = true;
-                        class_id = this.class_id(j, '-min');
+                        data_color[i][j] = this.config.csv.min_color;
                     } else if (j in this.max && Number(value) > this.max[j]) {
                         out_of_range = true;
-                        class_id = this.class_id(j, '-max');
+                        data_color[i][j] = this.config.csv.max_color;
                     }
-                    if (class_id) {
-                        data[i][j] = '<span class="' + class_id + '">' + value + '</span>';
+                    if (this.config.type == 'csv' && data_color[i][j]) {
+                        data[i][j] = '<span style="color:' + data_color[i][j] + '">' + data[i][j] + '</span>';
                     }
                 }
             }
@@ -339,27 +346,32 @@ CsvFeed.prototype.onload_ = function(data) {
         if (typeof data === 'object') {
             for (var i in data) {
                 if (data[i].length == 1 && !data[i][0]) { continue; }
-                var tr = $('<tr class="text-right">');
+                var tr = $('<tr>');
                 for (var j in data[i]) {
-                    tr.append('<td><pre>' + data[i][j] + '</pre></td>');
+                    var td = $('<td>');
+                    if (!column_has_space[j]) { td.addClass('text-right'); }
+                    var pre = $('<pre>');
+                    if (data_color[i][j]) { pre.css('color', data_color[i][j]); }
+                    tr.append(td.append(pre.text(data[i][j])));
                 }
-                this.target.append(tr);
+                tbody.append(tr);
             }
         } else {
-            this.target.append('<tr><td colspan="' + this.target.find('thead th').length + '"><pre>' + data + '</pre></td></tr>');
+            tbody.append('<tr><td colspan="' + this.target.find('thead th').length + '"><pre>' + data + '</pre></td></tr>');
         }
     } else {
         if (typeof data === 'object') { data = data.map(function(value, index) { return value.join(','); }).join('\n'); }
         if (data && data.length && data[data.length - 1] == '\n') {
             data = data.substring(0, data.length - 1);
         }
-        this.target.append('<tr><td><pre>' + data + '</pre></td></tr>');
+        tbody.append('<tr><td><pre>' + data + '</pre></td></tr>');
     }
+    this.target.append(tbody);
     this.draw();
 }
 CsvFeed.prototype.draw = function() {
-    while (this.target.find('tbody tr').length > this.config.csv.show_items ) {
-        this.target.find('tbody tr').first().remove();
+    while (this.target.find('tbody').length > this.config.csv.show_items ) {
+        this.target.find('tbody').first().remove();
     }
 }
 
