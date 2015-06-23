@@ -107,17 +107,12 @@ int main( int argc, char** argv )
             attributes.insert( m.get().begin(), m.get().end() );
         }
         if( verbose ) { std::cerr << "flycapture-cat: connecting..." << std::endl; }
-        //TODO before setting/changing attributes, I need to connect to the camera
-        //NOTE constructor for camera
         snark::camera::flycapture camera( id, attributes );
         if( verbose ) { std::cerr << "flycapture-cat: connected to camera " << camera.id() << std::endl; }
         if( verbose ) { std::cerr << "flycapture-cat: total bytes per frame: " << camera.total_bytes_per_frame() << std::endl; }
         if( vm.count( "set-and-exit" ) ) { return 0; }
         if( vm.count( "list-attributes" ) )
         {
-	  //TODO This is the attributes section
-//             attributes = camera.attributes(); // quick and dirty
-	  //TODO This just spits attributes to stdout, so replace this how I see fit
             for( snark::camera::flycapture::attributes_type::const_iterator it = attributes.begin(); it != attributes.end(); ++it )
             {
                 if( it != attributes.begin() ) { std::cout << std::endl; }

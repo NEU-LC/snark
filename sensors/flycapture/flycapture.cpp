@@ -38,6 +38,11 @@ using namespace FlyCapture2;
 
 // static void PVDECL pv_callback_( tPvFrame *frame );
 
+/*TODO:
+* Attributes cannot be set or read, this is currently done through the flycap program provided by point-grey.
+* Discard argument is ignored.
+* Remove callback as it does not appear to be necessary.
+*/
 namespace snark{ namespace camera{ 
 
 static const unsigned int timeOutFactor = 3;
@@ -121,7 +126,6 @@ static void pv_set_attribute_( tPvHandle& handle, const std::string& key, const 
 
 static cv::Mat pg_as_cvmat_( const Image& frame )
 {
-//     if( frame.Status != ePvErrSuccess ) { return cv::Mat(); }
     int type;
     switch( frame.GetPixelFormat() )
     {
@@ -152,9 +156,7 @@ static cv::Mat pg_as_cvmat_( const Image& frame )
         default:
             COMMA_THROW( comma::exception, "unknown format " << frame.GetPixelFormat()  );
     };
-//     return cv::Mat( frame.Height, frame.Width, type, frame.ImageBuffer );
-// TODO Not sure if this is correct image format passing. Should I use frame.convert?
- std::cerr << "Frame information: rows: " << frame.GetRows() << " cols: " << frame.GetCols() << std::endl ;
+
      return cv::Mat( frame.GetRows(), frame.GetCols(), type, frame.GetData() );
 }
 
@@ -173,20 +175,13 @@ class flycapture::impl
             unsigned int size = 0;
             for( ; now < end; now = boost::posix_time::microsec_clock::universal_time() )
             {
-                list_cameras();
 		 const std::vector< CameraInfo >& list = list_cameras();
                  size = list.size();
-// //NOTE connects to camera, looking for `master access'
-// //It grabs a list of cameras, adn then tries to connect one by one
-// //If the UniqueId matches desired, it stops.
-// //I'll just connect directly to a serial number?
-// //Or maybe IP, or MAC. There is no short ID in PG.
-		 	      //std::cout << "Line number: " << __LINE__ << " reached in: " << __FILE__ << std::endl;
-                 for( unsigned int i = 0; i < list.size(); ++i ) // look for a flycapture camera which permits Master Access
+
+                 for( unsigned int i = 0; i < list.size(); ++i ) // look for a point grey camera that matches the serial number
                  {
                      if(    
  		       list[i].interfaceType == INTERFACE_GIGE
-//                          && ( attributes.empty() || list[i].PermittedAccess & ePvAccessMaster )
                          && ( id == 0 || id == list[i].serialNumber ) )
                      {
                          id_ = list[i].serialNumber;
@@ -196,8 +191,7 @@ class flycapture::impl
                  if( id_ ) { break; }
              }
              if( !id_ ) { COMMA_THROW( comma::exception, "timeout; camera not found" ); }
-//              	      std::cout << "Line number: " << __LINE__ << " reached in: " << __FILE__ << std::endl;
-//NOTE Zero is an `any' wildcard
+
              if( id == 0 && size > 1 )
              {
                  const std::vector< CameraInfo >& list = list_cameras();
@@ -210,45 +204,24 @@ class flycapture::impl
              }
              now = boost::posix_time::microsec_clock::universal_time();
              end = now + timeout;
+	     
 	     //Get Point grey unique id (guid) from serial number. guid does not exist in CameraInfo, and so it does not appear in the camera list
 	     BusManager busMgr;
 	     busMgr.GetCameraFromSerialNumber(*id_, &guid);
 	     
-//              tPvErr result = PvCameraOpen( *id_, ePvAccessMaster, &handle_ );
 	     Error result = handle_.Connect(&guid);
               for( ; ( result != PGRERROR_OK ) && ( now < end ); now = boost::posix_time::microsec_clock::universal_time() )
               {
                   boost::thread::sleep( now + boost::posix_time::milliseconds( 10 ) );
-//                  result = PvCameraOpen( *id_, ePvAccessMaster, &handle_ );
 		  result = handle_.Connect(&guid);
               }
-//              if( result != ePvErrSuccess ) { close(); COMMA_THROW( comma::exception, "failed to open flycapture camera: " << pv_error_to_string_( result ) << " (" << result << ")" ); }
+
               if (result != PGRERROR_OK){close(); COMMA_THROW( comma::exception, "failed to open point grey camera: " << result.GetDescription() );}
 //              for( attributes_type::const_iterator i = attributes.begin(); i != attributes.end(); ++i )
 //              {
 //                 pv_set_attribute_( handle_, i->first, i->second );
 //             }
-//NOTE This is where acquisition mode, frame size, frame rate are set 
-//NOTE however it does not include actually grabbing frames
-
-//             PvAttrEnumSet( handle_, "AcquisitionMode", "Continuous" );
-//             PvAttrEnumSet( handle_, "FrameStartTriggerMode", "FixedRate" );
-//             ::memset( &frame_, 0, sizeof( tPvFrame ) ); // voodoo
-//             result = PvAttrUint32Get( handle_, "TotalBytesPerFrame", &total_bytes_per_frame_ );
-// TODO Get size of frame bytes here.
-//  I don't think I've initialized the frame properly here,  which is resulting in a framesize of zero
-//  I'm almost certain I have to get a frame to find the size of the buffer associated with the frame
-// Total bytes per frame is now set after the grab of each frame. Unsure if this will work
-	     	      
-//              if( total_bytes_per_frame_ ==  0) { close(); COMMA_THROW( comma::exception, "failed to get TotalBytesPerFrame from flycapture camera " ); }
-//             buffer_.resize( total_bytes_per_frame_ );
-//             frame_.ImageBuffer = &buffer_[0];
-//             frame_.ImageBufferSize = total_bytes_per_frame_;
-//             float frameRate;
-//             PvAttrFloat32Get( handle_, "FrameRate", &frameRate);
-//             timeOut_ = 1000 / frameRate;
-//             timeOut_ *= timeOutFactor;
-            
+    
         }
 
         ~impl() { close(); }
@@ -257,10 +230,7 @@ class flycapture::impl
         {
             id_.reset();
              if( !handle_.IsConnected() ) { return; }
-//             PvCameraClose( handle_ );
-// TODO This is wrong.
 	       handle_.StopCapture();
-//             PvUnInitialize();
 	       handle_.Disconnect();
             //std::cerr << "the camera has been closed" << std::endl;
         }
@@ -273,70 +243,36 @@ class flycapture::impl
             while( !success && retries < maxRetries )
             {
 	      Error result;
-//               tPvErr result = ePvErrSuccess;
                  if( !started_ )
                  {
 //                     result = PvCaptureStart( handle_ );
 		   result = handle_.StartCapture();
                  }
-                 if( result == PGRERROR_OK )
-                 {
-/*                     result = PvCaptureQueueFrame( handle_, &frame_, 0 );
-//                     if( result == ePvErrSuccess )
-//                     {
-//                         if( !started_ )
-//                         {
-//                             result = PvCommandRun( handle_, "AcquisitionStart" );
-//                             started_ = true;
-//                         }
-//                         if( result == ePvErrSuccess )
-//                         {
-                            result = PvCaptureWaitForFrameDone( handle_, &frame_, timeOut_ );*/
-		   started_ = true;
-		   Image rawImage;
-		   result = handle_.RetrieveBuffer(&rawImage);
-		   frame_.DeepCopy(&rawImage);
-		   rawImage.ReleaseBuffer();
-		   total_bytes_per_frame_ = frame_.GetDataSize();
-// 		   std::cerr << "Total Bytes per frame: " << total_bytes_per_frame_ << std::endl;
-// 		  if( result == ePvErrSuccess )
-// 		  {
-// 		      result = frame_.Status;
-// 		  }
-		    pair.first = boost::posix_time::microsec_clock::universal_time();
-//                         }
-//                     }
-		   
-                 }
-                 //Camera is getting stuck in an `already started state' and so I am not getting unique images as
-                 //retrieve buffer is only called once.
-                 
-                if(( result == PGRERROR_OK) /*| (result==PGRERROR_ISOCH_ALREADY_STARTED) */)
+                 // error is not checked as sometimes the camera
+                 // will start correctly but return an error
+		  started_ = true;
+		  Image rawImage;
+		  result = handle_.RetrieveBuffer(&rawImage);
+		  frame_.DeepCopy(&rawImage);
+		  rawImage.ReleaseBuffer();
+		  total_bytes_per_frame_ = frame_.GetDataSize();
+		  pair.first = boost::posix_time::microsec_clock::universal_time();
+  
+                if(( result == PGRERROR_OK))
                 {
-//                     pair.second = pv_as_cvmat_( frame_ );
-//  std::cerr << "Line number: " << __LINE__ << " reached in: " << __FILE__ << std::endl;
 		    pair.second =  pg_as_cvmat_( frame_ );
-//  		    std::cerr << "Line number: " << __LINE__ << " reached in: " << __FILE__ << std::endl;
                     success = true;
-                    //This is the error complaining the transfer has not finished yet?
                 } 
-//                  else if(result==PGRERROR_ISOCH_ALREADY_STARTED) {
-//  		    started_ = true;
-//  		}
-                else if( /*result == ePvErrDataMissing |*/
+                else if( //These are errors that result in a retry
 		  (result == PGRERROR_ISOCH_START_FAILED )
 		  | (result == PGRERROR_TIMEOUT )
 		  | (result==PGRERROR_ISOCH_ALREADY_STARTED)
 		  | (result==PGRERROR_UNDEFINED) 
-		  | (result==PGRERROR_IIDC_FAILED) /*error 22*/ )
+		  | (result==PGRERROR_IIDC_FAILED) /*error 22*/
+		  | (result==PGRERROR_IMAGE_CONSISTENCY_ERROR))
                 {
-		      //BUG The undefined error happens a lot. Unknown cause.
-		      std::cerr << "Error:" << result.GetDescription() << ". Retrying..." << std::endl;
-//                     PvCaptureQueueClear( handle_ );
-//                     PvCommandRun( handle_, "AcquisitionStop" );
+		      std::cerr << "Error: " << result.GetDescription() << " Retrying..." << std::endl;
 		      handle_.StopCapture();
-//                     PvCaptureEnd( handle_ );
-
                      started_ = false;
                 }
                  else
@@ -380,11 +316,6 @@ class flycapture::impl
 		  COMMA_THROW( comma::exception, "Cannot discover point grey cameras");
 	      }
 	      
-// 		 std::size_t count = PvCameraCount();
-//                  list.resize( count );
-//                  count = PvCameraList( &list[0], count, NULL );
-//                  list.resize( count );
-
 		//If array is not empty, convert to list and exit
                 if( numCameras > 0 ) {
 		  std::copy(&camInfo[0],&camInfo[numCameras],std::back_inserter(list));
