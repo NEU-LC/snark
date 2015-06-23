@@ -14,6 +14,8 @@ var Sensor = function(sensor_name, config) {
     this.show = true;
 };
 Sensor.views = ['show', 'compact', 'hide'];
+Sensor.prototype.init = function() {
+}
 Sensor.prototype.reset = function() {
     if (this.config.refresh.auto) {
         this.refresh();
@@ -242,22 +244,45 @@ TextSensor.prototype.onload_ = function(data) {
         data = data.substring(0, data.length - 1);
     }
     data = data ? data : '&nbsp;';
-    this.target.append('<li><pre>' + data + '</pre></li>');
+    this.target.append('<tr><td><pre>' + data + '</pre></td></tr>');
     this.draw();
 }
 TextSensor.prototype.draw = function() {
-    while (this.target.find('li').length > this.config.text.show_items ) {
-        this.target.find('li').first().remove();
+    while (this.target.find('tbody tr').length > this.config.text.show_items ) {
+        this.target.find('tbody tr').first().remove();
     }
 }
 
-var CsvTextSensor = function(sensor_name, config) {
+var CsvSensor = function(sensor_name, config) {
     this.base = Sensor;
     this.base(sensor_name, config);
+    this.init();
+}
+CsvSensor.prototype = new TextSensor;
+CsvSensor.prototype.init = function() {
+    this.init_fields();
     this.init_styles();
 }
-CsvTextSensor.prototype = new TextSensor;
-CsvTextSensor.prototype.init_styles = function() {
+CsvSensor.prototype.init_fields = function() {
+    this.target.find('thead').empty();
+    if (this.config.csv.fields) {
+        var tr = $('<tr>');
+        if (this.config.type == 'csv-table') {
+            var fields = this.config.csv.fields.split(',');
+            for (var i in fields) {
+                $('<th class="text-center">')
+                    .text(fields[i])
+                    .appendTo(tr);
+            }
+        } else {
+            $('<th>')
+                .text(this.config.csv.fields)
+                .appendTo(tr);
+        }
+        this.target.find('thead').append(tr);
+    }
+}
+CsvSensor.prototype.init_styles = function() {
     this.el.remove('style');
     var css = '';
     this.min = {};
@@ -281,10 +306,10 @@ CsvTextSensor.prototype.init_styles = function() {
         .html(css)
         .prependTo(this.el);
 }
-CsvTextSensor.prototype.class_id = function(index, suffix) {
+CsvSensor.prototype.class_id = function(index, suffix) {
     return 'style-' + this.sensor_name + '-' + index + suffix;
 }
-CsvTextSensor.prototype.onload_ = function(data) {
+CsvSensor.prototype.onload_ = function(data) {
     if (data) {
         data = data.split('\n').map(function(value, index) { return value.split(','); });
         var out_of_range = false;
@@ -306,17 +331,36 @@ CsvTextSensor.prototype.onload_ = function(data) {
                 }
             }
         }
-        this.alert(this.config.alert && this.config.csv.alert && out_of_range);
-        data = data.map(function(value, index) { return value.join(','); }).join('\n');
+        this.alert(this.config.csv.threshold_alert && out_of_range);
+    } else {
+        data = '&nbsp;'
     }
-    if (data && data.length && data[data.length - 1] == '\n') {
-        data = data.substring(0, data.length - 1);
+    if (this.config.type == 'csv-table') {
+        if (typeof data === 'object') {
+            for (var i in data) {
+                if (data[i].length == 1 && !data[i][0]) { continue; }
+                var tr = $('<tr class="text-right">');
+                for (var j in data[i]) {
+                    tr.append('<td><pre>' + data[i][j] + '</pre></td>');
+                }
+                this.target.append(tr);
+            }
+        } else {
+            this.target.append('<tr><td colspan="' + this.target.find('thead th').length + '"><pre>' + data + '</pre></td></tr>');
+        }
+    } else {
+        if (typeof data === 'object') { data = data.map(function(value, index) { return value.join(','); }).join('\n'); }
+        if (data && data.length && data[data.length - 1] == '\n') {
+            data = data.substring(0, data.length - 1);
+        }
+        this.target.append('<tr><td><pre>' + data + '</pre></td></tr>');
     }
-    if (!data) {
-        data = '&nbsp;';
-    }
-    this.target.append('<li><pre>' + data + '</pre></li>');
     this.draw();
+}
+CsvSensor.prototype.draw = function() {
+    while (this.target.find('tbody tr').length > this.config.csv.show_items ) {
+        this.target.find('tbody tr').first().remove();
+    }
 }
 
 var GraphSensor = function(sensor_name, config) {
@@ -451,9 +495,9 @@ var create_sensor = function(type, sensor_name, config) {
     if (type == 'image') {
         add_poll_body(sensor_name, '<img class="target"/>');
         return new ImageSensor(sensor_name, config);
-    } else if (type == 'text' || type == 'csv') {
-        add_poll_body(sensor_name, '<ul class="target list-unstyled"></ul>');
-        return type == 'text' ? new TextSensor(sensor_name, config) : new CsvTextSensor(sensor_name, config);
+    } else if (type == 'text' || type == 'csv' || type == 'csv-table') {
+        add_poll_body(sensor_name, '<table class="target"><thead></thead></table>');
+        return type == 'text' ? new TextSensor(sensor_name, config) : new CsvSensor(sensor_name, config);
     } else if (type == 'graph') {
         add_poll_body(sensor_name, '<div class="target graph"><div class="graph-text">&nbsp;</div><div class="graph-bars"></div></div>');
         return new GraphSensor(sensor_name, config);
@@ -562,11 +606,13 @@ var globals = {
     enable_alerting: function() {
         $.each(sensors, function(index, sensor) {
             gui.setProperty('alert', true, sensor.sensor_name);
+            gui.setProperty('threshold_alert', true, sensor.sensor_name);
         });
     },
     disable_alerting: function() {
         $.each(sensors, function(index, sensor) {
             gui.setProperty('alert', false, sensor.sensor_name);
+            gui.setProperty('threshold_alert', false, sensor.sensor_name);
         });
     },
     clear_alerts: function() {
@@ -641,17 +687,18 @@ function initialize(frontend_config) {
             if (!('interval' in config.refresh)) { config.refresh.interval = 2; }
             if (!('url' in config)) { config.url = frontend_config.host + '/' + sensor_name; }
         }
-        if (config.type == 'text' || config.type == 'csv') {
+        if (config.type == 'text') {
             if (!('text' in config)) { config.text = {}; }
             if (!('show_items' in config.text)) { config.text.show_items = 1; }
-            if (config.type == 'csv') {
-                if (!('csv' in config)) { config.csv = {}; }
-                if (!('min' in config.csv)) { config.csv.min = ''; }
-                if (!('max' in config.csv)) { config.csv.max = ''; }
-                if (!('min_color' in config.csv) || !config.csv.min_color) { config.csv.min_color = 'orange'; }
-                if (!('max_color' in config.csv) || !config.csv.max_color) { config.csv.max_color = 'red'; }
-                if (!('alert' in config.csv)) { config.csv.alert = false; }
-            }
+        } else if (config.type == 'csv' || config.type == 'csv-table') {
+            if (!('csv' in config)) { config.csv = {}; }
+            if (!('show_items' in config.csv)) { config.csv.show_items = 1; }
+            if (!('fields' in config.csv)) { config.csv.fields = ''; }
+            if (!('min' in config.csv)) { config.csv.min = ''; }
+            if (!('max' in config.csv)) { config.csv.max = ''; }
+            if (!('min_color' in config.csv) || !config.csv.min_color) { config.csv.min_color = 'orange'; }
+            if (!('max_color' in config.csv) || !config.csv.max_color) { config.csv.max_color = 'red'; }
+            if (!('threshold_alert' in config.csv)) { config.csv.threshold_alert = false; }
         } else if (config.type == 'graph') {
             if (!('graph' in config)) { config.graph = {}; }
             if (!('min' in config.graph)) { config.graph.min = 0; }
@@ -691,25 +738,32 @@ function initialize(frontend_config) {
                     sensors[sensor_name].reset();
                 }
             });
-            if (config.type == 'text' || config.type == 'csv') {
+            if (config.type == 'text') {
                 folder.add(sensor.config.text, 'show_items', 0, 20).name("show items").step(1).onFinishChange(function(value) {
                     var sensor_name = $(this.__gui.__ul).find('li.title').text();
                     sensors[sensor_name].draw();
                 });
             }
-            if (config.type == 'csv') {
+            if (config.type == 'csv' || config.type == 'csv-table') {
+                folder.add(sensor.config.csv, 'show_items', 0, 20).name("show items").step(1).onFinishChange(function(value) {
+                    var sensor_name = $(this.__gui.__ul).find('li.title').text();
+                    sensors[sensor_name].draw();
+                });
+                folder.add(sensor.config.csv, 'fields').onChange(function(value) {
+                    var sensor_name = $(this.__gui.__ul).find('li.title').text();
+                    sensors[sensor_name].init_fields();
+                });
                 folder.add(sensor.config.csv, 'min').onFinishChange(function(value) {
-                    console.log('min');
                     var sensor_name = $(this.__gui.__ul).find('li.title').text();
                     sensors[sensor_name].init_styles();
                 });
                 folder.add(sensor.config.csv, 'max').onFinishChange(function(value) {
-                    console.log('max');
                     var sensor_name = $(this.__gui.__ul).find('li.title').text();
                     sensors[sensor_name].init_styles();
                 });
+                folder.add(sensor.config.csv, 'threshold_alert').name('threshold alert');
             }
-            folder.add(sensor.config, 'alert').name('enable alerting').onFinishChange(function(value) {
+            folder.add(sensor.config, 'alert').name('feed alert').onFinishChange(function(value) {
                 var sensor_name = $(this.__gui.__ul).find('li.title').text();
                 if (!value) {
                     sensors[sensor_name].alert(false);
@@ -847,8 +901,10 @@ function load(config_file) {
     if (!config_file) {
         return;
     }
+    if (!load_gui_config(config_file)) {
+        return;
+    }
     load_layout(config_file);
-    load_gui_config(config_file);
 }
 
 function reset(config_file) {
@@ -948,18 +1004,19 @@ function load_gui_config(config_file) {
     var key = 'feeds.gui.config[' + config_file + ']';
     var config = JSON.parse(localStorage.getItem(key));
     if (!config) {
-        return;
+        return false;
     }
     gui.setProperty('alert_beep', config['globals'].alert_beep, 'globals');
-    for (var id in config) {
-        if (id == 'globals') {
-            continue;
-        }
-        set_properties(config[id], id);
-        if (id in sensors && sensors[id].config.type == 'csv') {
-            sensors[id].init_styles();
+    for (var id in sensors) {
+        if (!(id in config)) {
+            return;
         }
     }
+    for (var id in sensors) {
+        set_properties(config[id], id);
+        sensors[id].init();
+    }
+    return true;
 }
 
 function parse_query_string() {
