@@ -40,9 +40,9 @@ example config file:
         },
         "feedback":
         {
-            "command": "socat -u tcp:localhost:60000 - | novatel-to-csv --fields=t,position/x,position/y,position/yaw,rate/yaw --binary",
-            "fields": "t,x,y,yaw,yaw_rate",
-            "binary": "t,4d"
+            "command": "socat -u tcp:localhost:60000 - | novatel-to-csv --binary | csv-bin-cut t,6d --fields=1,2,3,7 --flush",
+            "fields": "t,x,y,yaw",
+            "binary": "t,3d"
         },
         "pid":
         {
@@ -70,7 +70,7 @@ example config file:
         command: a command that outputs position feedback to stdout
         fields: csv fields of feedback
         binary: binary format of feedback
-    dir: directory for temporary sockets and log files (commands.log.* and control.log.*, where * is the client number)
+    dir: directory for temporary sockets and log files (commands.log.* and control.log.*, where * is the client number); current directory by default
 
 waypoints input:
     once $scriptname is running, target waypoints can be supplied by, e.g., running 'cat waypoints.csv | csv-to-bin 4d,ui --flush | socat -u - tcp:localhost:10100',
