@@ -147,12 +147,18 @@ class handler( BaseHTTPServer.BaseHTTPRequestHandler ):
         self.end_headers()
         self.wfile.write( output )
 
+    def log_message(self, format, *a):
+        if args.verbose:
+            return BaseHTTPServer.BaseHTTPRequestHandler.log_message(self, format, *a)
+
+
 parser = argparse.ArgumentParser( description=description, epilog=epilog, formatter_class=argparse.RawDescriptionHelpFormatter )
 parser.add_argument( '--config', help='web backend config file' )
 parser.add_argument( '--robot-config', help='robot config file' )
 parser.add_argument( '--publish-config', help='publish config file', default=None )
 parser.add_argument( '--port', help='port number for http requests', type=int, default=DEFAULT_PORT )
 parser.add_argument( '--timeout', help='default timeout for frame commands', type=float, default=DEFAULT_TIMEOUT )
+parser.add_argument( '--verbose', help='verbose logging', action='store_true' )
 args = parser.parse_args()
 
 def load_config( config_file_name ):
@@ -176,7 +182,7 @@ def trap( signalnum, frame ):
     with lock:
         for p in running_subprocesses:
             os.killpg( os.getpgid( p.pid ), signal.SIGTERM )
-        os._exit(1)
+        os._exit(0)
 
 signal.signal( signal.SIGINT, trap )
 signal.signal( signal.SIGTERM, trap )
