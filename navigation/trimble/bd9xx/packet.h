@@ -29,8 +29,8 @@
 
 /// @author vsevolod vlaskine
 
-#ifndef SNARK_NAVIGATION_TRIMBLE_BD9XX_PACKETS_H_
-#define SNARK_NAVIGATION_TRIMBLE_BD9XX_PACKETS_H_
+#ifndef SNARK_NAVIGATION_TRIMBLE_BD9XX_PACKET_H_
+#define SNARK_NAVIGATION_TRIMBLE_BD9XX_PACKET_H_
 
 #include <comma/base/types.h>
 #include <comma/packed/byte.h>
@@ -81,4 +81,4 @@ struct packet : public comma::packed::packed_struct< packet< Data >, bd9xx::head
     
 } } } // namespace snark { namespace trimble { namespace bd9xx {
 
-#endif // SNARK_NAVIGATION_TRIMBLE_BD9XX_PACKETS_H_
+#endif // SNARK_NAVIGATION_TRIMBLE_BD9XX_PACKET_H_

@@ -31,7 +31,7 @@
 
 #include <iostream>
 #include <comma/application/command_line_options.h>
-#include "../bd9xx/packets.h"
+#include "../bd9xx/packet.h"
 
 static void usage( bool verbose )
 {
