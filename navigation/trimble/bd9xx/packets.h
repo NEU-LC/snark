@@ -29,25 +29,22 @@
 
 /// @author vsevolod vlaskine
 
-#include <iostream>
-#include <comma/application/command_line_options.h>
-#include "../bd9xx/packets.h"
+#ifndef SNARK_NAVIGATION_TRIMBLE_BD9XX_PACKETS_H_
+#define SNARK_NAVIGATION_TRIMBLE_BD9XX_PACKETS_H_
 
-static void usage( bool verbose )
-{
-    std::cerr << std::endl;
-    std::cerr << "acquire data from trimble over bd9xx protocol" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "trimble-to-csv: todo" << std::endl;
-    std::cerr << std::endl;
-    exit( 0 );
-}
+#include "packet.h"
 
-int main( int ac, char** av )
+namespace snark { namespace trimble { namespace bd9xx {
+
+struct receiver_info
 {
-    comma::command_line_options options( ac, av, usage );
-    snark::trimble::bd9xx::header h;
-    snark::trimble::bd9xx::receiver_info::request r;
-    std::cerr << "trimble-to-csv: todo" << std::endl;
-    return 1;
-}
+    typedef simple_packet< 0x06 > request;
+    
+    struct response
+    {
+    };
+};
+    
+} } } // namespace snark { namespace trimble { namespace bd9xx {
+
+#endif // SNARK_NAVIGATION_TRIMBLE_BD9XX_PACKETS_H_

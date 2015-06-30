@@ -39,6 +39,8 @@
 
 namespace snark { namespace trimble { namespace bd9xx {
 
+/// http://www.trimble.com/OEM_ReceiverHelp/v4.91/en/default.html#DataCollectorFormatPackets.html
+    
 enum { stx = 0x02, etx = 0x03 };
 
 struct status
@@ -48,15 +50,19 @@ struct status
                   reserved_1: 1,
                   roving: 1,
                   reserved_2: 4;
+                  
+    status() : reserved_0( 0 ), battery_low( 0 ), reserved_1( 0 ), roving( 0 ), reserved_2( 0 ) {}
 };
 
-/// http://www.trimble.com/OEM_ReceiverHelp/v4.91/en/default.html#DataCollectorFormatPackets.html
 struct header : public comma::packed::packed_struct< header, 4 >
 {
     comma::packed::const_byte< bd9xx::stx > stx;
     comma::packed::bits< bd9xx::status > status;
     comma::packed::uint8 type;
-    comma::packed::uint8 length; // including header (unusually)
+    comma::packed::uint8 length;
+    
+    header( unsigned char t = 0, unsigned char s = 0, unsigned char l = 0 ) { type = t; status = s; length = l; }
+    unsigned char checksum() const { return *status.data() + *type.data(); }
 };
 
 struct trailer : public comma::packed::packed_struct< trailer, 2 >
@@ -65,19 +71,42 @@ struct trailer : public comma::packed::packed_struct< trailer, 2 >
     comma::packed::const_byte< bd9xx::etx > etx;
 };
 
-struct packet_with_no_data : public comma::packed::packed_struct< packet_with_no_data, bd9xx::header::size + bd9xx::trailer::size >
+template < unsigned char Type >
+struct simple_packet : public comma::packed::packed_struct< simple_packet< Type >, bd9xx::header::size + bd9xx::trailer::size >
 {
+    enum { type = Type };
+    
     bd9xx::header header;
     bd9xx::trailer trailer;
+    
+    simple_packet( unsigned char status = 0 ) : header( type, status ) { trailer.checksum = header.checksum(); }
 };
 
-template < typename Data >
-struct packet : public comma::packed::packed_struct< packet< Data >, bd9xx::header::size + Data::size + bd9xx::trailer::size >
+template < typename Body >
+struct packet : public comma::packed::packed_struct< packet< Body >, bd9xx::header::size + Body::size + bd9xx::trailer::size >
 {
     bd9xx::header header;
-    Data data;
+    Body body;
     bd9xx::trailer trailer;
+    
+    packet() : header( Body::type, 0, Body::size ) {}
+    unsigned char checksum() const;
+    void set_checksum();
+    bool valid() const;
 };
+
+template < typename Body > inline unsigned char packet< Body >::checksum() const
+{
+    unsigned char sum = header.checksum();
+    unsigned char* begin = body.data();
+    unsigned char* end = begin + header.length();
+    for( unsigned char* p = header.status.data(); p < end; sum += *p++ );
+    return sum;
+}
+
+template < typename Body > inline bool packet< Body >::valid() const { return checksum() == trailer.checksum(); }
+
+template < typename Body > inline void packet< Body >::set_checksum() { return trailer.checksum = checksum(); }
     
 } } } // namespace snark { namespace trimble { namespace bd9xx {
 
