@@ -2,20 +2,13 @@
 
 scriptname=$( basename $0 )
 source $( which comma-application-util )
+source $( which comma-name-value-util )
+source $( which comma-process-util )
 
 function option_description
 {
     cat <<EOF
---mode=[<mode>]; waypoint following mode (fixed or dynamic)
---steering=[<steering>]; steering mode (omni or skid)
---frequency=[<frequency>]; control frequency (default: $default_frequency); the rate at which $scriptname outputs wheel commands
---fields=[<fields>]; input fields (default: $default_target_fields)
---binary=[<format>]; binary format of input fields if input is binary
---feedback=[<feedback>]; feedback source, fields, and binary format if feedback is binary (default fields: $default_feedback_fields )
---cross-track-pid=[<cross_track_pid>]; pid parameters for cross-track errors (where <pid>=p,i,d[,threshold])
---heading-pid=[<heading_pid>]; pid parameters for heading errors (where <pid>=p,i,d[,threshold])
---reset; switch on resetting of pids upon reaching a waypoint
---proximity=[<proximity>]; a proximity value for deciding when a waypoint is reached (default: $default_proximity)
+--config=<config>; config file name
 --output-fields; show output fields and exit
 --output-format; show output format and exit
 EOF
@@ -23,91 +16,139 @@ EOF
 
 function usage
 {
-    cat >&2 <<EOF
+    cat << END
 
-    take waypoints and output wheel commands based on feedback
+    output wheel commands based on waypoints provided through a tcp socket and position feedback
+
+options:
+$( option_description | sed 's/^/    /g' )
+
+example config file:
+
+    {
+        "mode": "fixed",
+        "steering": "omni",
+        "proximity": "0.15",
+        "past-endpoint": 1,
+        "frequency": "20.0",
+        "reset": 0,
+        "waypoints":
+        {
+            "port": "10100",
+            "fields": "x,y,heading_offset,speed,type",
+            "binary": "4d,ui"
+        },
+        "feedback":
+        {
+            "command": "socat -u tcp:localhost:60000 - | novatel-to-csv --fields=t,position/x,position/y,position/yaw,rate/yaw --binary",
+            "fields": "t,x,y,yaw,yaw_rate",
+            "binary": "t,4d"
+        },
+        "pid":
+        {
+            "cross-track": "0.3,0,0",
+            "heading": "0.5,0,0"
+        },
+        "dir": "/tmp/control"
+    }
+
+    mode: waypoint following mode (fixed or dynamic)
+    steering: steering mode (omni or skid)
+    proximity: distance for deciding when a waypoint is reached
+    past-endpoint: 1 -> besides proximity condition, consider a waypoint as reached if the vehicle has moved past the end line, 0 -> use only proximity condition
+        ( the end line is a line which goes through the target waypoint and is perpendicular to the current wayline)
+    frequency: control frequency (the rate at which wheel commands are output)
+    reset: 1 -> reset pid integral upon reaching every target waypoint, 0 -> no reset
+    pid:
+        cross-track: p,i,d[,threshold] values, with optional integral threshold, for cross-track
+        heading: the same for heading
+    waypoints:
+        port: tcp port on localhost where target waypoints should be sent
+        fields: csv fields of waypoints
+        binary: binary format of waypoints
+    feedback:
+        command: a command that outputs position feedback to stdout
+        fields: csv fields of feedback
+        binary: binary format of feedback
+    dir: directory for temporary sockets and log files (commands.log.* and control.log.*, where * is the client number)
+
+waypoints input:
+    once $scriptname is running, target waypoints can be supplied by, e.g., running 'cat waypoints.csv | csv-to-bin 4d,ui --flush | socat -u - tcp:localhost:10100',
+    where waypoints.csv is a csv file containing target waypoints in the form specified in the config file
+    note that only one client is allowed at a time and a new client can only connect after all waypoints supplied by the previous client have been traversed
 
 output:
     <extra_fields>,<command_fields>
     where <command_fields> is '$( control-command --steering=omni --output-fields )' (for steering=omni) or '$( control-command --steering=skid --output-fields )' (for steering=skid)
     and <extra_fields> consists of any fields specified in the input with the default input fields stripped, e.g.
-    --fields=x,y,heading_offset,speed,type --steering=omni -> output-fields=speed,type,$( control-command --steering=omni --output-fields )
-    --fields=x,y,speed --steering=skid -> output-fields=speed,$( control-command --steering=skid --output-fields )
+    '--fields=x,y,heading_offset,speed,type --steering=omni' yields output-fields: speed,type,$( control-command --steering=omni --output-fields )
+    '--fields=x,y,speed --steering=skid' yields output-fields: speed,$( control-command --steering=skid --output-fields )
 
-example:
-    $scriptname --mode=fixed --steering=omni --fields=x,y,heading_offset,speed --binary=4d \\
-        --feedback="tcp:localhost:12345;fields=t,x,y,yaw,yaw_rate;binary=t,4d" \\
-        --cross-track-pid=1,2,3,0.1 --heading-pid=1,2,3,0.1 --proximity=0.1 --reset
+examples:
+        $scriptname --config=/usr/local/etc/ladybird/follow-waypoints.json
+        $scriptname --output-fields --config=/usr/local/etc/ladybird/follow-waypoints.json
+        $scriptname --output-format --config=/usr/local/etc/ladybird/follow-waypoints.json
 
-options:
-$( option_description | sed 's/^/    /g' )
-
-EOF
+END
     exit
 }
 
 function count_commas { echo -n $1 | sed 's/[^,]//g' | wc -c; }
 function fields_and_format_are_consistent { local fields=$1 format=$2; (( $( count_commas $fields ) == $( count_commas $( csv-format expand <<< $format ) ) )) && return 0 || return 1; }
-function extract_option { local what=$1 from=$2; echo "$from" | grep "$what=" 2>/dev/null | sed -E "s/.*;?($what=[^;]+);?.*/\1/g;s/$what=//g"; }
 function compress_commas { sed -E 's/,+/,/g;s/(^,|,$)//g'; }
 function add_xpath { local path=$1 fields=$2; csv-fields prefix --fields "x,y" --path "position" <<< $fields | csv-fields prefix --path $path; }
 
+function daemonize
+{
+    trap - INT TERM HUP
+    comma_execute_and_wait --group "bash -c eval \"$1\""
+}
+
 function bye
 {
-    pkill -P $$
+    rm -f $waypoints_socket $feedback_socket
+    kill $feedback_pid $pipeline_pid $socat_pid 2>/dev/null
+    wait $feedback_pid $pipeline_pid $socat_pid
     exit 1
 }
 
-trap bye INT TERM HUP
-
-default_target_fields="x,y,heading_offset"
-default_feedback_fields="t,x,y,yaw,yaw_rate"
-declare -A target
-declare -A feedback
-default_proximity=0.05
-default_frequency=20.0
-reset=
-declare -i binary_output
+trap bye INT TERM HUP EXIT
 
 if (( $( comma_options_has --help "$@" ) || $( comma_options_has -h "$@" ) )); then usage; fi
-comma_path_value_to_var --prefix=options < <( option_description | comma-options-to-name-value "$@" )
+comma_path_value_to_var < <( option_description | comma-options-to-name-value "$@" )
 
-steering=$options_steering
-if [[ -z "$steering" ]]; then echo "$scriptname: steering is not given" >&2; exit 1; fi
+if [[ -z "$config" ]]; then echo "$scriptname: config file is not given" >&2; exit 1; fi
+if [[ ! -f "$config" ]]; then echo "$scriptname: config file $config is not found" >&2; exit 1; fi
+
+comma_path_value_to_var < <( name-value-convert --to path-value < $config )
+
+if [[ -z "$steering" ]]; then echo "$scriptname: steering is not found in $config" >&2; exit 1; fi
 
 error_fields=$( control-error --output-fields )
 error_format=$( control-error --output-format )
 command_fields=$( control-command --steering=$steering --output-fields )
 command_format=$( control-command --steering=$steering --output-format )
 
-target[fields]=${options_fields:-$default_target_fields}
-target[format]=$options_binary
-feedback[fields]=$default_feedback_fields
-feedback[format]=
-if [[ -n "$options_feedback" ]]; then
-    feedback[source]=$( sed 's/;.*//g' <<< "$options_feedback" )
-    feedback_fields=$( extract_option fields "$options_feedback" )
-    feedback_format=$( extract_option binary "$options_feedback" )
-    [[ -n "$feedback_fields" ]] && feedback[fields]=$feedback_fields
-    [[ -n "$feedback_format" ]] && feedback[format]=$feedback_format
-fi
+if [[ -z "$waypoints_fields" ]]; then echo "$scriptname: waypoints/fields is not found in $config" >&2; exit 1; fi
+if [[ -z "$feedback_fields" ]]; then echo "$scriptname: feedback/fields is not found in $config" >&2; exit 1; fi
 
-passed_fields=$( add_xpath target ${target[fields]} ),$( add_xpath feedback ${feedback[fields]} )
+passed_fields=$( add_xpath target $waypoints_fields ),$( add_xpath feedback $feedback_fields )
 all_fields=$passed_fields,$error_fields,$command_fields
-keep_target_fields=$( add_xpath target $( csv-fields clear --remove $default_target_fields <<< ${target[fields]} ) )
+default_control_error_fields="x,y,heading_offset"
+keep_target_fields=$( add_xpath target $( csv-fields clear --remove $default_control_error_fields <<< $waypoints_fields ) )
 output_fields_mask=$( csv-fields clear --keep $keep_target_fields,$command_fields <<< $all_fields )
 output_fields=$( compress_commas <<< $output_fields_mask )
 
 if (( $( comma_options_has --output-fields "$@" ) )); then csv-fields prefix --basename <<< $output_fields; exit; fi
 
-if [[ -z "${target[format]}" && -z "${feedback[format]}" ]]; then binary_output=0
-elif [[ -n "${target[format]}" && -n "${feedback[format]}" ]]; then binary_output=1
+if [[ -z "$waypoints_binary" && -z "$feedback_binary" ]]; then binary_output=0
+elif [[ -n "$waypoints_binary" && -n "$feedback_binary" ]]; then binary_output=1
 else echo "$scriptname: input and feedback streams should be both ascii or both binary" >&2; exit 1; fi
 
 if (( binary_output )); then
-    if ! fields_and_format_are_consistent ${target[fields]} ${target[format]}; then echo "$scriptname: target fields and format are inconsistent ${target[fields]} ${target[format]}" >&2; exit 1; fi
-    if ! fields_and_format_are_consistent ${feedback[fields]} ${feedback[format]}; then echo "$scriptname: feedback fields and format are inconsistent ${feedback[fields]} ${feedback[format]}" >&2; exit 1; fi
-    passed_format=${target[format]},${feedback[format]}
+    if ! fields_and_format_are_consistent $waypoints_fields $waypoints_binary; then echo "$scriptname: target fields and format are inconsistent $waypoints_fields $waypoints_binary" >&2; exit 1; fi
+    if ! fields_and_format_are_consistent $feedback_fields $feedback_binary; then echo "$scriptname: feedback fields and format are inconsistent $feedback_fields $feedback_binary" >&2; exit 1; fi
+    passed_format=$waypoints_binary,$feedback_binary
     all_format=$passed_format,$error_format,$command_format
     output_format=$( csv-format expand <<< $all_format | csv-fields clear --mask $output_fields_mask | compress_commas )
 fi
@@ -118,22 +159,56 @@ if (( $( comma_options_has --output-format "$@" ) )); then
     exit
 fi
 
-mode=$options_mode
-cross_track_pid=$options_cross_track_pid
-heading_pid=$options_heading_pid
-proximity=${options_proximity:-$default_proximity}
-frequency=${options_frequency:-$default_frequency}
-(( $( comma_options_has --reset "$@" ) )) && reset="--reset"
+if [[ -z "$mode" ]]; then echo "$scriptname: mode is not found in $config" >&2; exit 1; fi
+if [[ -z "$proximity" ]]; then echo "$scriptname: proximity is not found in $config" >&2; exit 1; fi
+if [[ -z "$past_endpoint" ]]; then echo "$scriptname: past-endpoint is not found in $config" >&2; exit 1; fi
+if [[ -z "$frequency" ]]; then echo "$scriptname: frequency is not found in $config" >&2; exit 1; fi
+if [[ -z "$reset" ]]; then echo "$scriptname: reset is not found in $config" >&2; exit 1; fi
+if [[ -z "$waypoints_port" ]]; then echo "$scriptname: waypoints/port is not found in $config" >&2; exit 1; fi
+if [[ -z "$feedback_command" ]]; then echo "$scriptname: feedback/command is not found in $config" >&2; exit 1; fi
+if [[ -z "$pid_cross_track" ]]; then echo "$scriptname: pid/cross-track is not found in $config" >&2; exit 1; fi
+if [[ -z "$pid_heading" ]]; then echo "$scriptname: pid/heading is not found in $config" >&2; exit 1; fi
 
-if [[ -z "$options_feedback" ]]; then echo "$scriptname: feedback source is not given" >&2; exit 1; fi
-if [[ -z "$mode" ]]; then echo "$scriptname: mode is not given" >&2; exit 1; fi
-if [[ -z "$cross_track_pid" ]]; then echo "$scriptname: cross-track pid is not given" >&2; exit 1; fi
-if [[ -z "$heading_pid" ]]; then echo "$scriptname: heading pid is not given" >&2; exit 1; fi
+(( past_endpoint )) && past_endpoint_option="--past-endpoint"  || past_endpoint_option=""
+(( reset )) && reset_option="--reset"  || reset_option=""
 
-control-error "${feedback[source]};fields=${feedback[fields]}${feedback[format]:+;binary=${feedback[format]}}" \
-    --mode=$mode --fields=${target[fields]} ${target[format]:+--binary=${target[format]}} --proximity=$proximity --frequency=$frequency --past-endpoint --verbose --flush \
+mkdir -p ${dir:-.}
+commands_log="$dir/commands.log"
+control_log="$dir/control.log"
+waypoints_socket="$dir/targets.socket"
+feedback_socket="$dir/feedback.socket"
+rm -f $waypoints_socket $feedback_socket ${commands_log}.* ${control_log}.*
+
+control_pipeline="control-error --fields=$waypoints_fields ${waypoints_binary:+--binary=$waypoints_binary} \
+    'local:$feedback_socket;fields=${feedback_fields}${feedback_binary:+;binary=$feedback_binary}' \
+    --mode=$mode --proximity=$proximity --frequency=$frequency $past_endpoint_option --verbose --flush \
     | control-command --fields=$passed_fields,$error_fields ${passed_format:+--binary=$passed_format,$error_format} \
-    --cross-track-pid=$cross_track_pid --heading-pid=$heading_pid --steering=$steering $reset --verbose --flush \
-    | csv-shuffle --fields=$all_fields ${all_format:+--binary=$all_format} --output-fields=$output_fields --flush &
+    --cross-track-pid=$pid_cross_track --heading-pid=$pid_heading --steering=$steering $reset_option --verbose --flush \
+    | csv-shuffle --fields=$all_fields ${all_format:+--binary=$all_format} --output-fields=$output_fields --flush"
 
-wait
+daemonize "$feedback_command | io-publish ${feedback_binary:+--size $( csv-size $feedback_binary )} local:$feedback_socket" & feedback_pid=$!
+
+while :; do
+    if ! test -S $waypoints_socket; then
+        if netstat -ltn | grep $waypoints_port &>/dev/null; then echo "$scriptname: waypoints port $waypoints_port is already in use" >&2; exit 1; fi
+        socat -u tcp4-listen:$waypoints_port,reuseaddr unix-listen:$waypoints_socket,unlink-close=0 & socat_pid=$!
+        echo "$scriptname: ready to accept a client on tcp:localhost:$waypoints_port" >&2
+        wait $socat_pid
+        echo "$scriptname: client disconnected" >&2
+    fi
+    sleep 0.1
+done & waypoints_pid=$!
+
+declare -i client=0
+while ps -p $waypoints_pid >/dev/null; do
+    if test -S $waypoints_socket; then
+        (( client++ ))
+        echo "$scriptname: client $client has connected" >&2
+        daemonize "socat -u unix:$waypoints_socket - | $control_pipeline | tee ${commands_log}.$client" 2>${control_log}.$client & pipeline_pid=$!
+        echo "$scriptname: control pipeline has started (pid=$pipeline_pid)" >&2
+        wait $pipeline_pid
+        rm -f $waypoints_socket
+        echo "$scriptname: pipeline for client $client has finished" >&2
+    fi
+    sleep 0.1
+done
