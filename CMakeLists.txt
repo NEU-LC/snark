@@ -153,23 +153,24 @@ IF( snark_BUILD_TESTS )
     #FIND_PACKAGE( GTest )
     #INCLUDE_DIRECTORIES(${GTEST_INCLUDE_DIRS})
     FIND_PATH( GTest_SOURCE_DIR NAMES CMakeLists.txt HINTS /usr/src/gtest DOC "source code of gtest" )
-    ADD_SUBDIRECTORY( ${GTest_SOURCE_DIR} gtest )
+    add_subdirectory( ${GTest_SOURCE_DIR} gtest )
     INCLUDE_DIRECTORIES( src ${GTest_SOURCE_DIR}/include ${GTest_SOURCE_DIR} )
     SET( GTEST_BOTH_LIBRARIES gtest gtest_main )
 ENDIF( snark_BUILD_TESTS )
 
-OPTION( snark_build_comms "build comms" ON )
-OPTION( snark_build_graphics "build graphics" ON )
-OPTION( snark_build_point_cloud "build point cloud" ON )
-OPTION( snark_build_imaging "build imaging" ON )
-OPTION( snark_build_sensors "build sensors" ON )
 OPTION( snark_build_actuators "build actuators" ON )
 OPTION( snark_build_battery "build battery" OFF )
+OPTION( snark_build_comms "build comms" ON )
+OPTION( snark_build_control "build control" OFF )
 OPTION( snark_build_graph "build graph" ON )
+OPTION( snark_build_graphics "build graphics" ON )
+OPTION( snark_build_imaging "build imaging" ON )
 OPTION( snark_build_math_geometry "build math geometry" ON )
+OPTION( snark_build_navigation "build navigation" OFF )
+OPTION( snark_build_point_cloud "build point cloud" ON )
+OPTION( snark_build_sensors "build sensors" ON )
 OPTION( snark_build_python "build python packages" OFF )
 OPTION( snark_build_web "build web" OFF )
-OPTION( snark_build_control "build control" OFF )
 
 INCLUDE( CMakeDependentOption )
 CMAKE_DEPENDENT_OPTION( snark_build_sensors_dc1394 "build dc1394 components" ON "snark_build_sensors" OFF )
@@ -223,6 +224,12 @@ if( snark_build_imaging )
     SET( snark_ALL_LIBRARIES ${snark_ALL_LIBRARIES} debug snark_imaging-d
                              optimized snark_imaging )
 endif( snark_build_imaging )
+
+# todo: uncomment, once implemented
+# if( snark_build_navigation )
+#     set( snark_ALL_LIBRARIES ${snark_ALL_LIBRARIES} debug snark_navigation_trimble-d
+#                              optimized snark_navigation_trimble )
+# endif( snark_build_navigation )
 
 IF( snark_build_sensors_velodyne )
     SET( snark_ALL_LIBRARIES ${snark_ALL_LIBRARIES} debug snark_velodyne-d
@@ -298,55 +305,59 @@ SET( snark_PACKAGE_CMAKEFILES ${snark_PACKAGE_CMAKEFILES} ${PROJECT_BINARY_DIR}/
 INSTALL( FILES ${snark_PACKAGE_CMAKEFILES}
          DESTINATION ${snark_INSTALL_PACKAGE_DIR} )
 
-ADD_SUBDIRECTORY( actuators )
+add_subdirectory( actuators )
 
 IF( snark_build_comms )
-    ADD_SUBDIRECTORY( comms )
+    add_subdirectory( comms )
 ENDIF( snark_build_comms )
 
 IF( snark_build_graphics )
-    ADD_SUBDIRECTORY( graphics )
+    add_subdirectory( graphics )
 ENDIF( snark_build_graphics )
 
 IF( snark_build_point_cloud )
-    ADD_SUBDIRECTORY( point_cloud )
+    add_subdirectory( point_cloud )
 ENDIF( snark_build_point_cloud )
 
-ADD_SUBDIRECTORY( doc )
+add_subdirectory( doc )
 
 IF( snark_build_imaging )
-    ADD_SUBDIRECTORY( tbb )
-    ADD_SUBDIRECTORY( imaging )
+    add_subdirectory( tbb )
+    add_subdirectory( imaging )
 ENDIF( snark_build_imaging )
 
-ADD_SUBDIRECTORY( math )
+if( snark_build_navigation )
+    add_subdirectory( navigation )
+endif( snark_build_navigation )
+
+add_subdirectory( math )
 
 IF( snark_build_sensors )
-    ADD_SUBDIRECTORY( sensors )
+    add_subdirectory( sensors )
 ENDIF( snark_build_sensors )
 
 IF( snark_build_battery )
-    ADD_SUBDIRECTORY( battery )
+    add_subdirectory( battery )
 ENDIF( snark_build_battery )
 
 IF( snark_build_graph )
-    ADD_SUBDIRECTORY( graph )
+    add_subdirectory( graph )
 ENDIF( snark_build_graph )
 
 add_subdirectory( audio )
 add_subdirectory( geodesy )
-ADD_SUBDIRECTORY( render )
+add_subdirectory( render )
 add_subdirectory( terrain )
-ADD_SUBDIRECTORY( timing )
-ADD_SUBDIRECTORY( visiting )
-ADD_SUBDIRECTORY( control )
+add_subdirectory( timing )
+add_subdirectory( visiting )
+add_subdirectory( control )
 
 IF( snark_build_python )
-    ADD_SUBDIRECTORY( python )
+    add_subdirectory( python )
 ENDIF( snark_build_python )
 
 IF( snark_build_web )
-    ADD_SUBDIRECTORY( web )
+    add_subdirectory( web )
 ENDIF( snark_build_web )
 
 # Package
