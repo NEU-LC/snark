@@ -31,7 +31,7 @@
 
 #include <iostream>
 #include <comma/application/command_line_options.h>
-#include "../bd9xx/packet.h"
+#include "../bd9xx/packets.h"
 
 static void usage( bool verbose )
 {
@@ -46,6 +46,9 @@ static void usage( bool verbose )
 int main( int ac, char** av )
 {
     comma::command_line_options options( ac, av, usage );
+    snark::trimble::bd9xx::header h;
+    snark::trimble::bd9xx::packets::receiver_info::request::packet request;
+    snark::trimble::bd9xx::packets::receiver_info::response::packet response;
     std::cerr << "trimble-to-csv: todo" << std::endl;
     return 1;
 }
