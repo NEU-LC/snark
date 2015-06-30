@@ -1,0 +1,17 @@
+[Unit]
+Description=snark-webframes service
+After=network-online.target
+Wants=network-online.target
+Conflicts=shutdown.target
+
+[Service]
+Type=simple
+Environment="DAEMON_ARGS=--config /usr/local/etc/snark/web.backend.json"
+EnvironmentFile=-/etc/sysconfig/snark-webframes
+EnvironmentFile=-/etc/default/snark-webframes
+ExecStart=/usr/local/bin/snark-webframes $DAEMON_ARGS
+StandardOutput=syslog
+StandardError=syslog
+
+[Install]
+WantedBy=default.target
