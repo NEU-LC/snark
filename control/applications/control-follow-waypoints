@@ -64,11 +64,11 @@ example config file:
         heading: the same for heading
     waypoints:
         port: tcp port on localhost where target waypoints should be sent
-        fields: csv fields of waypoints
+        fields: csv fields of waypoints (required fields: 'x,y' for skid and 'x,y,heading_offset' for omni steering)
         binary: binary format of waypoints
     feedback:
         command: a command that outputs position feedback to stdout
-        fields: csv fields of feedback
+        fields: csv fields of feedback (required fields: 't,x,y,yaw')
         binary: binary format of feedback
     dir: directory for temporary sockets and log files (commands.log.* and control.log.*, where * is the client number); current directory by default
 
@@ -77,12 +77,12 @@ waypoints input:
     where waypoints.csv is a csv file containing target waypoints in the form specified in the config file
     note that only one client is allowed at a time and a new client can only connect after all waypoints supplied by the previous client have been traversed
 
-output:
-    <extra_fields>,<command_fields>
+output fields:
+    <optional_waypoints_fields>,<command_fields>
     where <command_fields> is '$( control-command --steering=omni --output-fields )' (for steering=omni) or '$( control-command --steering=skid --output-fields )' (for steering=skid)
-    and <extra_fields> consists of any fields specified in the input with the default input fields stripped, e.g.
-    '--fields=x,y,heading_offset,speed,type --steering=omni' yields output-fields: speed,type,$( control-command --steering=omni --output-fields )
-    '--fields=x,y,speed --steering=skid' yields output-fields: speed,$( control-command --steering=skid --output-fields )
+    and <optional_waypoints_fields> consists of any csv fields of waypoints with the required fields stripped, e.g.
+    '--fields=x,y,heading_offset,speed,type --steering=omni' yields the following output-fields: speed,type,$( control-command --steering=omni --output-fields )
+    '--fields=x,y,speed --steering=skid' yields the following output-fields: speed,$( control-command --steering=skid --output-fields )
 
 examples:
         $scriptname --config=/usr/local/etc/ladybird/follow-waypoints.json
@@ -134,8 +134,8 @@ if [[ -z "$feedback_fields" ]]; then echo "$scriptname: feedback/fields is not f
 
 passed_fields=$( add_xpath target $waypoints_fields ),$( add_xpath feedback $feedback_fields )
 all_fields=$passed_fields,$error_fields,$command_fields
-default_control_error_fields="x,y,heading_offset"
-keep_target_fields=$( add_xpath target $( csv-fields clear --remove $default_control_error_fields <<< $waypoints_fields ) )
+required_waypoints_fields="x,y"; [[ "$steering" == "omni" ]] && required_waypoints_fields+=",heading_offset"
+keep_target_fields=$( add_xpath target $( csv-fields clear --remove $required_waypoints_fields <<< $waypoints_fields ) )
 output_fields_mask=$( csv-fields clear --keep $keep_target_fields,$command_fields <<< $all_fields )
 output_fields=$( compress_commas <<< $output_fields_mask )
 
