@@ -154,7 +154,7 @@ int main( int argc, char** argv )
         
         if ( vm.count( "help" ) )
         {
-            std::cerr << "acquire images from a prosilica flycapture camera, same as flycapture-cat but using a callback " << std::endl;
+            std::cerr << "acquire images from a point grey flycapture camera, same as flycapture-cat but using a callback " << std::endl;
             std::cerr << "instead of a thread to acquire the images" << std::endl;
             std::cerr << "output to stdout as serialized cv::Mat" << std::endl;
             std::cerr << "usage: flycapture-capture [<options>] [<filters>]" << std::endl;

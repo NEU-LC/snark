@@ -145,7 +145,6 @@ static cv::Mat pg_as_cvmat_( const Image& frame )
         case PIXEL_FORMAT_BGRU:
             type = CV_8UC4;
             break;
-//         case ePvFmtRgb48:
          case PIXEL_FORMAT_RGB16:
             type = CV_16UC3;
             break;
@@ -229,9 +228,9 @@ class flycapture::impl
         void close()
         {
             id_.reset();
-             if( !handle_.IsConnected() ) { return; }
-	       handle_.StopCapture();
-	       handle_.Disconnect();
+            if( !handle_.IsConnected() ) { return; }
+            handle_.StopCapture();
+            handle_.Disconnect();
             //std::cerr << "the camera has been closed" << std::endl;
         }
 
@@ -242,38 +241,37 @@ class flycapture::impl
             unsigned int retries = 0;
             while( !success && retries < maxRetries )
             {
-	      Error result;
-                 if( !started_ )
-                 {
-//                     result = PvCaptureStart( handle_ );
-		   result = handle_.StartCapture();
-                 }
+                Error result;
+                if( !started_ )
+                {
+                    result = handle_.StartCapture();
+                }
                  // error is not checked as sometimes the camera
                  // will start correctly but return an error
-		  started_ = true;
-		  Image rawImage;
-		  result = handle_.RetrieveBuffer(&rawImage);
-		  frame_.DeepCopy(&rawImage);
-		  rawImage.ReleaseBuffer();
-		  total_bytes_per_frame_ = frame_.GetDataSize();
-		  pair.first = boost::posix_time::microsec_clock::universal_time();
+                started_ = true;
+                Image rawImage;
+                result = handle_.RetrieveBuffer(&rawImage);
+                frame_.DeepCopy(&rawImage);
+                rawImage.ReleaseBuffer();
+                total_bytes_per_frame_ = frame_.GetDataSize();
+                pair.first = boost::posix_time::microsec_clock::universal_time();
   
                 if(( result == PGRERROR_OK))
                 {
-		    pair.second =  pg_as_cvmat_( frame_ );
+                    pair.second =  pg_as_cvmat_( frame_ );
                     success = true;
                 } 
                 else if( //These are errors that result in a retry
-		  (result == PGRERROR_ISOCH_START_FAILED )
-		  | (result == PGRERROR_TIMEOUT )
-		  | (result==PGRERROR_ISOCH_ALREADY_STARTED)
-		  | (result==PGRERROR_UNDEFINED) 
-		  | (result==PGRERROR_IIDC_FAILED) /*error 22*/
-		  | (result==PGRERROR_IMAGE_CONSISTENCY_ERROR))
+                    (result == PGRERROR_ISOCH_START_FAILED )
+                    | (result == PGRERROR_TIMEOUT )
+                    | (result==PGRERROR_ISOCH_ALREADY_STARTED)
+                    | (result==PGRERROR_UNDEFINED) 
+                    | (result==PGRERROR_IIDC_FAILED) /*error 22*/
+                    | (result==PGRERROR_IMAGE_CONSISTENCY_ERROR))
                 {
-		      std::cerr << "Error: " << result.GetDescription() << " Retrying..." << std::endl;
-		      handle_.StopCapture();
-                     started_ = false;
+                    std::cerr << "Error: " << result.GetDescription() << " Retrying..." << std::endl;
+                    handle_.StopCapture();
+                    started_ = false;
                 }
                  else
                 {
@@ -286,7 +284,7 @@ class flycapture::impl
         }
         
          const GigECamera& handle() const { return handle_; }
-//         
+ 
          GigECamera& handle() { return handle_; }
 
         unsigned int id() const { return *id_; }
@@ -296,42 +294,40 @@ class flycapture::impl
         static std::vector< CameraInfo > list_cameras()
         {
             initialize_();
-             static const boost::posix_time::time_duration timeout = boost::posix_time::seconds( 5 ); // quick and dirty; make configurable?
-             boost::posix_time::ptime now = boost::posix_time::microsec_clock::universal_time();
-             boost::posix_time::ptime end = now + timeout;
-             std::vector< CameraInfo > list;
-             for( ; now < end; now = boost::posix_time::microsec_clock::universal_time() )
-             {
-	      BusManager busMgr;
-	      unsigned int numCameras;
-	      Error error;
-	      error = busMgr.GetNumOfCameras(&numCameras);
-	      if (error != PGRERROR_OK){
-		  COMMA_THROW( comma::exception, "Cannot find point grey cameras");
-	      }
-	      
-	      CameraInfo camInfo[numCameras];
-	      error = BusManager::DiscoverGigECameras( camInfo, &numCameras );
-	      if (error != PGRERROR_OK){
-		  COMMA_THROW( comma::exception, "Cannot discover point grey cameras");
-	      }
-	      
-		//If array is not empty, convert to list and exit
+            static const boost::posix_time::time_duration timeout = boost::posix_time::seconds( 5 ); // quick and dirty; make configurable?
+            boost::posix_time::ptime now = boost::posix_time::microsec_clock::universal_time();
+            boost::posix_time::ptime end = now + timeout;
+            std::vector< CameraInfo > list;
+            for( ; now < end; now = boost::posix_time::microsec_clock::universal_time() )
+            {
+                BusManager busMgr;
+                unsigned int numCameras;
+                Error error;
+                error = busMgr.GetNumOfCameras(&numCameras);
+                if (error != PGRERROR_OK){
+                    COMMA_THROW( comma::exception, "Cannot find point grey cameras");
+                }
+
+                CameraInfo camInfo[numCameras];
+                error = BusManager::DiscoverGigECameras( camInfo, &numCameras );
+                if (error != PGRERROR_OK){
+                    COMMA_THROW( comma::exception, "Cannot discover point grey cameras");
+                }
+                
+                //If array is not empty, convert to list and exit
                 if( numCameras > 0 ) {
-		  std::copy(&camInfo[0],&camInfo[numCameras],std::back_inserter(list));
-		  break;
-		  }
-                 boost::thread::sleep( now + boost::posix_time::milliseconds( 10 ) );
-             }
-             return list;
+                    std::copy(&camInfo[0],&camInfo[numCameras],std::back_inserter(list));
+                    break;
+                }
+                boost::thread::sleep( now + boost::posix_time::milliseconds( 10 ) );
+            }
+            return list;
         }
         
     private:
         friend class flycapture::callback::impl;
-//         tPvHandle handle_;
-//         tPvFrame frame_;
-	GigECamera handle_;
-	Image frame_;
+        GigECamera handle_;
+        Image frame_;
         std::vector< char > buffer_;
         boost::optional< unsigned int > id_;
         PGRGuid guid;
@@ -340,8 +336,6 @@ class flycapture::impl
         unsigned int timeOut_; // milliseconds
         static void initialize_() // quick and dirty
         {
-//             static tPvErr result = PvInitialize(); // should it be a singleton?
-//             if( result != ePvErrSuccess ) { COMMA_THROW( comma::exception, "failed to initialize flycapture camera: " << pv_error_to_string_( result ) << " (" << result << ")" ); }
         }
 };
 

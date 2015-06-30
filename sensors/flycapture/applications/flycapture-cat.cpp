@@ -57,13 +57,13 @@ int main( int argc, char** argv )
         boost::program_options::options_description description( "options" );
         description.add_options()
             ( "help,h", "display help message" )
-            ( "set", boost::program_options::value< std::string >( &setattributes ), "set camera attributes as semicolon-separated name-value pairs" )
-            ( "set-and-exit", "set camera attributes specified in --set and exit" )
-            ( "id", boost::program_options::value< unsigned int >( &id )->default_value( 0 ), "camera id; default: first available camera" )
-            ( "discard", "discard frames, if cannot keep up; same as --buffer=1" )
-            ( "buffer", boost::program_options::value< unsigned int >( &discard )->default_value( 0 ), "maximum buffer size before discarding frames, default: unlimited" )
+            //TODO 2 ( "set", boost::program_options::value< std::string >( &setattributes ), "set camera attributes as semicolon-separated name-value pairs" )
+            //TODO 3 ( "set-and-exit", "set camera attributes specified in --set and exit" )
+            ( "serial", boost::program_options::value< unsigned int >( &id )->default_value( 0 ), "camera serial number; default: first available camera" )
+            //TODO 4 Currently the driver behaves as if disard is always true( "discard", "discard frames, if cannot keep up; same as --buffer=1" )
+            //TODO 5 Not sure what this does ( "buffer", boost::program_options::value< unsigned int >( &discard )->default_value( 0 ), "maximum buffer size before discarding frames, default: unlimited" )
             ( "fields,f", boost::program_options::value< std::string >( &fields )->default_value( "t,rows,cols,type" ), "header fields, possible values: t,rows,cols,type,size" )
-            ( "list-attributes", "output current camera attributes" )
+            //TODO 1 ( "list-attributes", "output current camera attributes" )
             ( "list-cameras", "list all cameras and exit" )
             ( "header", "output header only" )
             ( "no-header", "output image data only" )
@@ -80,7 +80,7 @@ int main( int argc, char** argv )
             std::cerr << "usage: flycapture-cat [<options>] [<filters>]\n" << std::endl;
             std::cerr << "output header format: fields: t,cols,rows,type; binary: t,3ui\n" << std::endl;
             std::cerr << description << std::endl;
-            std::cerr << snark::cv_mat::filters::usage() << std::endl;
+            if( vm.count( "verbose") ) { std::cerr << snark::cv_mat::filters::usage() << std::endl; }
             return 1;
         }
         if( vm.count( "header" ) && vm.count( "no-header" ) ) { COMMA_THROW( comma::exception, "--header and --no-header are mutually exclusive" ); }
@@ -92,7 +92,7 @@ int main( int argc, char** argv )
             const std::vector<FlyCapture2::CameraInfo >& list = snark::camera::flycapture::list_cameras();
             for( std::size_t i = 0; i < list.size(); ++i ) // todo: serialize properly with name-value
             {
-	      std::cout << "serial=\"" << list[i].serialNumber << "\"," << "model=\"" << list[i].modelName << "\"" << std::endl;
+                std::cout << "serial=\"" << list[i].serialNumber << "\"," << "model=\"" << list[i].modelName << "\"" << std::endl;
             }
             return 0;
         }
