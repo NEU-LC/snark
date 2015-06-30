@@ -82,31 +82,36 @@ struct simple_packet : public comma::packed::packed_struct< simple_packet< Type 
     simple_packet( unsigned char status = 0 ) : header( type, status ) { trailer.checksum = header.checksum(); }
 };
 
-template < typename Body >
-struct packet : public comma::packed::packed_struct< packet< Body >, bd9xx::header::size + Body::size + bd9xx::trailer::size >
+template < unsigned char Type, typename Body >
+struct packet : public comma::packed::packed_struct< packet< Type, Body >, bd9xx::header::size + Body::size + bd9xx::trailer::size >
 {
+    enum { type = Type };
+    
     bd9xx::header header;
     Body body;
     bd9xx::trailer trailer;
     
-    packet() : header( Body::type, 0, Body::size ) {}
+    packet() : header( Type, 0, Body::size ) {}
     unsigned char checksum() const;
     void set_checksum();
     bool valid() const;
 };
 
-template < typename Body > inline unsigned char packet< Body >::checksum() const
+template < unsigned char Type, typename Body >
+inline unsigned char packet< Type, Body >::checksum() const
 {
     unsigned char sum = header.checksum();
     unsigned char* begin = body.data();
-    unsigned char* end = begin + header.length();
-    for( unsigned char* p = header.status.data(); p < end; sum += *p++ );
+    unsigned char* end = begin + static_cast< unsigned int >( header.length() );
+    for( unsigned char* p = begin; p < end; sum += *p++ );
     return sum;
 }
 
-template < typename Body > inline bool packet< Body >::valid() const { return checksum() == trailer.checksum(); }
+template < unsigned char Type, typename Body >
+inline bool packet< Type, Body >::valid() const { return checksum() == trailer.checksum(); }
 
-template < typename Body > inline void packet< Body >::set_checksum() { return trailer.checksum = checksum(); }
+template < unsigned char Type, typename Body >
+inline void packet< Type, Body >::set_checksum() { return trailer.checksum = checksum(); }
     
 } } } // namespace snark { namespace trimble { namespace bd9xx {
 
