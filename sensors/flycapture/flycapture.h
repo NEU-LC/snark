@@ -34,6 +34,7 @@
 #include "FlyCapture2.h"
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/function.hpp>
+#include <boost/bimap.hpp>
 
 #include <opencv2/core/core.hpp>
 

@@ -57,13 +57,13 @@ int main( int argc, char** argv )
         boost::program_options::options_description description( "options" );
         description.add_options()
             ( "help,h", "display help message" )
-            //TODO 2 ( "set", boost::program_options::value< std::string >( &setattributes ), "set camera attributes as semicolon-separated name-value pairs" )
-            //TODO 3 ( "set-and-exit", "set camera attributes specified in --set and exit" )
+            //TODO ( "set", boost::program_options::value< std::string >( &setattributes ), "set camera attributes as semicolon-separated name-value pairs" )
+            //TODO ( "set-and-exit", "set camera attributes specified in --set and exit" )
             ( "serial", boost::program_options::value< unsigned int >( &id )->default_value( 0 ), "camera serial number; default: first available camera" )
-            //TODO 4 Currently the driver behaves as if disard is always true( "discard", "discard frames, if cannot keep up; same as --buffer=1" )
-            //TODO 5 Not sure what this does ( "buffer", boost::program_options::value< unsigned int >( &discard )->default_value( 0 ), "maximum buffer size before discarding frames, default: unlimited" )
+            //TODO Currently this is ignored and the driver behaves as if disard is always true ( "discard", "discard frames, if cannot keep up; same as --buffer=1" )
+            //TODO ( "buffer", boost::program_options::value< unsigned int >( &discard )->default_value( 0 ), "maximum buffer size before discarding frames, default: unlimited" )
             ( "fields,f", boost::program_options::value< std::string >( &fields )->default_value( "t,rows,cols,type" ), "header fields, possible values: t,rows,cols,type,size" )
-            //TODO 1 ( "list-attributes", "output current camera attributes" )
+            ( "list-attributes", "output current camera attributes" )
             ( "list-cameras", "list all cameras and exit" )
             ( "header", "output header only" )
             ( "no-header", "output image data only" )
@@ -113,12 +113,14 @@ int main( int argc, char** argv )
         if( vm.count( "set-and-exit" ) ) { return 0; }
         if( vm.count( "list-attributes" ) )
         {
+	    attributes = camera.attributes(); // quick and dirty
             for( snark::camera::flycapture::attributes_type::const_iterator it = attributes.begin(); it != attributes.end(); ++it )
             {
                 if( it != attributes.begin() ) { std::cout << std::endl; }
                 std::cout << it->first;
                 if( it->second != "" ) { std::cout << '=' << it->second; }
             }
+            std::cout << std::endl;
             return 0;
         }
 
