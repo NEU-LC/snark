@@ -112,7 +112,7 @@ function bye
     exit 1
 }
 
-trap bye INT TERM HUP
+trap bye INT TERM HUP EXIT
 
 if (( $( comma_options_has --help "$@" ) || $( comma_options_has -h "$@" ) )); then usage; fi
 comma_path_value_to_var < <( option_description | comma-options-to-name-value "$@" )
@@ -188,27 +188,17 @@ control_pipeline="control-error --fields=$waypoints_fields ${waypoints_binary:+-
 
 daemonize "$feedback_command | io-publish ${feedback_binary:+--size $( csv-size $feedback_binary )} local:$feedback_socket" & feedback_pid=$!
 
-while :; do
-    if ! test -S $waypoints_socket; then
-        if netstat -ltn | grep -E ":$waypoints_port\s" &>/dev/null; then echo "$scriptname: waypoints port $waypoints_port is already in use" >&2; exit 1; fi
-        socat -u tcp4-listen:$waypoints_port,reuseaddr unix-listen:$waypoints_socket,unlink-close=0 & socat_pid=$!
-        echo "$scriptname: ready to accept a client on tcp:localhost:$waypoints_port" >&2
-        wait $socat_pid
-        echo "$scriptname: client disconnected" >&2
-    fi
-    sleep 0.1
-done & waypoints_pid=$!
-
 declare -i client=0
-while ps -p $waypoints_pid >/dev/null; do
-    if test -S $waypoints_socket; then
-        (( client++ ))
-        echo "$scriptname: client $client has connected" >&2
-        daemonize "socat -u unix:$waypoints_socket - | $control_pipeline | tee ${commands_log}.$client" 2>${control_log}.$client & pipeline_pid=$!
-        echo "$scriptname: control pipeline has started (pid=$pipeline_pid)" >&2
-        wait $pipeline_pid
-        rm -f $waypoints_socket
-        echo "$scriptname: pipeline for client $client has finished" >&2
-    fi
-    sleep 0.1
+while ps -p $feedback_pid >/dev/null; do
+    if netstat -ltn | grep -E ":$waypoints_port\s" &>/dev/null; then echo "$scriptname: waypoints port $waypoints_port is already in use" >&2; exit 1; fi
+    socat -u tcp4-listen:$waypoints_port,reuseaddr unix-listen:$waypoints_socket,unlink-close=0 & socat_pid=$!
+    echo "$scriptname: ready to accept a client on tcp:localhost:$waypoints_port" >&2
+    while ! test -S $waypoints_socket; do sleep 0.1; done
+    (( client++ ))
+    echo "$scriptname: client $client has connected" >&2
+    daemonize "socat -u unix:$waypoints_socket - | $control_pipeline | tee ${commands_log}.$client" 2>${control_log}.$client & pipeline_pid=$!
+    echo "$scriptname: control pipeline for client $client has started (pid=$pipeline_pid)" >&2
+    wait $pipeline_pid
+    rm -f $waypoints_socket
+    echo "$scriptname: control pipeline for client $client has finished" >&2
 done
