@@ -29,12 +29,48 @@
 
 /// @author vsevolod vlaskine
 
-#ifndef SNARK_NAVIGATION_TRIMBLE_BD9XX_PACKETS_H_
-#define SNARK_NAVIGATION_TRIMBLE_BD9XX_PACKETS_H_
+#ifndef SNARK_NAVIGATION_TRIMBLE_BD9XX_PACKETS_RAW_DATA_H_
+#define SNARK_NAVIGATION_TRIMBLE_BD9XX_PACKETS_RAW_DATA_H_
 
-#include "packets/options.h"
-#include "packets/raw_data.h"
-#include "packets/receiver_info.h"
-#include "packets/satellite.h"
+#include <comma/base/exception.h>
+#include <comma/packed/string.h>
+#include <comma/packed/big_endian.h>
+#include "../packet.h"
 
-#endif // SNARK_NAVIGATION_TRIMBLE_BD9XX_PACKETS_H_
+namespace snark { namespace trimble { namespace bd9xx { namespace packets {
+
+struct raw_data // getraw
+{
+    struct request
+    {
+        struct flags
+        {
+            unsigned char expanded: 1,
+                          enabled: 1,
+                          reserved: 6;
+        };
+        
+        struct enhanced_flags
+        {
+            unsigned char subtype: 1,
+                          reserved: 3,
+                          enable_l1_doppler_output: 1,
+                          more_reserved: 3;
+        };
+        
+        struct data : public comma::packed::packed_struct< data, 3 >
+        {
+            comma::packed::uint8 type;
+            comma::packed::bits< request::flags > flags;
+            comma::packed::bits< request::flags > enhanced_flags;
+        };
+        
+        typedef bd9xx::packet< 0x56, data > packet;
+    };
+    
+    
+};
+    
+} } } } // namespace snark { namespace trimble { namespace bd9xx { namespace packets {
+
+#endif // SNARK_NAVIGATION_TRIMBLE_BD9XX_PACKETS_RAW_DATA_H_
