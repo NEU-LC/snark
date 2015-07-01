@@ -100,12 +100,13 @@ function add_xpath { local path=$1 fields=$2; csv-fields prefix --fields "x,y" -
 
 function daemonize
 {
-    trap - INT TERM HUP
+    trap - INT TERM HUP 
     comma_execute_and_wait --group "bash -c eval \"$1\""
 }
 
 function bye
 {
+    is_shutdown=1
     rm -f $waypoints_socket $feedback_socket
     kill $feedback_pid $pipeline_pid $socat_pid 2>/dev/null
     wait $feedback_pid $pipeline_pid $socat_pid
@@ -186,10 +187,12 @@ control_pipeline="control-error --fields=$waypoints_fields ${waypoints_binary:+-
     --cross-track-pid=$pid_cross_track --heading-pid=$pid_heading --steering=$steering $reset_option --verbose --flush \
     | csv-shuffle --fields=$all_fields ${all_format:+--binary=$all_format} --output-fields=$output_fields --flush"
 
-daemonize "$feedback_command | io-publish ${feedback_binary:+--size $( csv-size $feedback_binary )} local:$feedback_socket" & feedback_pid=$!
+eval "$feedback_command" | io-publish ${feedback_binary:+--size $( csv-size $feedback_binary )} local:$feedback_socket & feedback_pid=$!
 
 declare -i client=0
-while ps -p $feedback_pid >/dev/null; do
+declare -i is_shutdown=0
+while (( ! is_shutdown )); do
+    if ! ps -p $feedback_pid >/dev/null; then echo "$scriptname: feedback stream failed" >&2; exit 1; fi
     if netstat -ltn | grep -E ":$waypoints_port\s" &>/dev/null; then echo "$scriptname: waypoints port $waypoints_port is already in use" >&2; exit 1; fi
     socat -u tcp4-listen:$waypoints_port,reuseaddr unix-listen:$waypoints_socket,unlink-close=0 & socat_pid=$!
     echo "$scriptname: ready to accept a client on tcp:localhost:$waypoints_port" >&2
