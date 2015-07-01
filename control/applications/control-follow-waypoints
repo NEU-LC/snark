@@ -190,7 +190,7 @@ daemonize "$feedback_command | io-publish ${feedback_binary:+--size $( csv-size 
 
 while :; do
     if ! test -S $waypoints_socket; then
-        if netstat -ltn | grep $waypoints_port &>/dev/null; then echo "$scriptname: waypoints port $waypoints_port is already in use" >&2; exit 1; fi
+        if netstat -ltn | grep -E ":$waypoints_port\s" &>/dev/null; then echo "$scriptname: waypoints port $waypoints_port is already in use" >&2; exit 1; fi
         socat -u tcp4-listen:$waypoints_port,reuseaddr unix-listen:$waypoints_socket,unlink-close=0 & socat_pid=$!
         echo "$scriptname: ready to accept a client on tcp:localhost:$waypoints_port" >&2
         wait $socat_pid
