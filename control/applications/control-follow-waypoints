@@ -18,7 +18,7 @@ function usage
 {
     cat << END
 
-    output wheel commands based on waypoints provided through a tcp socket and position feedback
+    output wheel commands based on 1) waypoints provided through a tcp socket and 2) position feedback
 
 options:
 $( option_description | sed 's/^/    /g' )
@@ -112,7 +112,7 @@ function bye
     exit 1
 }
 
-trap bye INT TERM HUP EXIT
+trap bye INT TERM HUP
 
 if (( $( comma_options_has --help "$@" ) || $( comma_options_has -h "$@" ) )); then usage; fi
 comma_path_value_to_var < <( option_description | comma-options-to-name-value "$@" )
