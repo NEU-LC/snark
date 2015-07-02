@@ -29,12 +29,41 @@
 
 /// @author vsevolod vlaskine
 
-#ifndef SNARK_NAVIGATION_TRIMBLE_BD9XX_PACKETS_H_
-#define SNARK_NAVIGATION_TRIMBLE_BD9XX_PACKETS_H_
+#ifndef SNARK_NAVIGATION_TRIMBLE_BD9XX_PACKETS_OPTIONS_H_
+#define SNARK_NAVIGATION_TRIMBLE_BD9XX_PACKETS_OPTIONS_H_
 
-#include "packets/options.h"
-#include "packets/raw_data.h"
-#include "packets/receiver_info.h"
-#include "packets/satellite.h"
+#include <comma/base/exception.h>
+#include <comma/packed/string.h>
+#include <comma/packed/big_endian.h>
+#include "../packet.h"
 
-#endif // SNARK_NAVIGATION_TRIMBLE_BD9XX_PACKETS_H_
+namespace snark { namespace trimble { namespace bd9xx { namespace packets {
+
+struct options // getopt
+{
+    struct request
+    { 
+        struct data : public comma::packed::packed_struct< data, 1 >
+        {
+            comma::packed::uint8 page;
+        };
+        
+        typedef bd9xx::packet< 0x4a, data > packet;
+    };
+    
+    struct response
+    {
+        struct data : public comma::packed::packed_struct< data, 1 >
+        {
+            comma::packed::string< 1 > todo;
+            
+            data() { COMMA_THROW( comma::exception, "todo" ); }
+        };
+    
+        typedef bd9xx::packet< 0x4b, data > packet;
+    };
+};
+    
+} } } } // namespace snark { namespace trimble { namespace bd9xx { namespace packets {
+
+#endif // SNARK_NAVIGATION_TRIMBLE_BD9XX_PACKETS_OPTIONS_H_
