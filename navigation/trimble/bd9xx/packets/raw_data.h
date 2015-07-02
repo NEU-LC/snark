@@ -68,7 +68,29 @@ struct raw_data // getraw
         typedef bd9xx::packet< 0x56, data > packet;
     };
     
-    
+    struct response
+    {
+        struct header;
+        
+        struct records
+        {
+            struct survey_data
+            {
+                struct expanded;
+                
+                struct concise;
+            };
+            
+            struct position
+            {
+                struct basic;
+                
+                struct enhanced;
+            };
+            
+            struct event_mark;
+        };
+    };
 };
     
 } } } } // namespace snark { namespace trimble { namespace bd9xx { namespace packets {

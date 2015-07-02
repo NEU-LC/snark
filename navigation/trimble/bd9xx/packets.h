@@ -32,6 +32,7 @@
 #ifndef SNARK_NAVIGATION_TRIMBLE_BD9XX_PACKETS_H_
 #define SNARK_NAVIGATION_TRIMBLE_BD9XX_PACKETS_H_
 
+#include "packets/gsof.h"
 #include "packets/options.h"
 #include "packets/raw_data.h"
 #include "packets/receiver_info.h"
