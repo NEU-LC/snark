@@ -29,41 +29,29 @@
 
 /// @author vsevolod vlaskine
 
-#ifndef SNARK_NAVIGATION_TRIMBLE_BD9XX_PACKETS_OPTIONS_H_
-#define SNARK_NAVIGATION_TRIMBLE_BD9XX_PACKETS_OPTIONS_H_
+#ifndef SNARK_NAVIGATION_TRIMBLE_BD9XX_GSOF_H_
+#define SNARK_NAVIGATION_TRIMBLE_BD9XX_GSOF_H_
 
-#include <comma/base/exception.h>
-#include <comma/packed/string.h>
-#include <comma/packed/big_endian.h>
-#include "../packet.h"
+#include <vector>
+#include "packets/gsof.h"
 
-namespace snark { namespace trimble { namespace bd9xx { namespace packets {
+namespace snark { namespace trimble { namespace bd9xx { namespace gsof {
 
-struct options // getopt
+class transmission
 {
-    struct request
-    { 
-        struct data : public comma::packed::packed_struct< data, 1 >
-        {
-            comma::packed::uint8 page;
-        };
+    public:
+        void append( const char* buf, unsigned int size );
         
-        typedef bd9xx::fixed_packet< 0x4a, data > packet;
-    };
-    
-    struct response
-    {
-        struct data : public comma::packed::packed_struct< data, 1 >
-        {
-            comma::packed::string< 1 > todo;
-            
-            data() { COMMA_THROW( comma::exception, "todo" ); }
-        };
-    
-        typedef bd9xx::fixed_packet< 0x4b, data > packet;
-    };
+        bool complete() const;
+        
+        const std::vector< char >& records() const;
+        
+    private:
+        typedef trimble::bd9xx::packets::gsof::transmission::header header_t_;
+        boost::optional< header_t_ > header_;
+        std::vector< char > records_;
 };
     
-} } } } // namespace snark { namespace trimble { namespace bd9xx { namespace packets {
+} } } } // namespace snark { namespace trimble { namespace bd9xx { namespace gsof {
 
-#endif // SNARK_NAVIGATION_TRIMBLE_BD9XX_PACKETS_OPTIONS_H_
+#endif // SNARK_NAVIGATION_TRIMBLE_BD9XX_GSOF_H_

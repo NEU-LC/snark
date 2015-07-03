@@ -29,47 +29,29 @@
 
 /// @author vsevolod vlaskine
 
-#ifndef SNARK_NAVIGATION_TRIMBLE_BD9XX_PACKETS_RECEIVER_INFO_H_
-#define SNARK_NAVIGATION_TRIMBLE_BD9XX_PACKETS_RECEIVER_INFO_H_
-
+#include <memory>
 #include <comma/base/exception.h>
-#include <comma/packed/string.h>
-#include <comma/packed/big_endian.h>
-#include "../packet.h"
+#include "gsof.h"
 
-namespace snark { namespace trimble { namespace bd9xx { namespace packets {
+namespace snark { namespace trimble { namespace bd9xx { namespace gsof {
 
-struct receiver_info // getserial
+void transmission::append( const char* buf, unsigned int size )
 {
-    struct request { typedef simple_packet< 0x06 > packet; };
-    
-    struct response
-    {
-        struct data : public comma::packed::packed_struct< data, 158 >
-        {
-            comma::packed::string< 8 > receiver_serial_number;
-            comma::packed::string< 8 > receiver_type;
-            comma::packed::string< 5 > nav_process_version;
-            comma::packed::string< 5 > sig_process_version;
-            comma::packed::string< 5 > boot_rom_version;
-            comma::packed::string< 8 > antenna_serial_number;
-            comma::packed::string< 2 > antenna_type;
-            comma::packed::string< 2 > number_of_channels;
-            comma::packed::string< 2 > number_of_channels_l1;
-            comma::packed::string< 10 > long_serial_number;
-            comma::packed::string< 31 > local_long_antenna_serial_number;
-            comma::packed::string< 31 > base_long_antenna_serial_number;
-            comma::packed::string< 31 > base_ngs_antenna_descriptor;
-            comma::packed::string< 2 > number_of_usable_channels;
-            comma::packed::string< 2 > number_of_physical_channels;
-            comma::packed::string< 1 > number_of_simultaneous_channels;
-            comma::packed::string< 5 > antenna_ini_version;
-        };
-    
-        typedef bd9xx::fixed_packet< 0x07, data > packet;
-    };
-};
-    
-} } } } // namespace snark { namespace trimble { namespace bd9xx { namespace packets {
+    if( complete() ) { COMMA_THROW( comma::exception, "cannot append to a complete transmission" ); }
+    if( size < header_t_::size ) {  }
+    const header_t_* header = reinterpret_cast< const header_t_* >( buf );
+    if( header_ && header_->transmission_number() != header->transmission_number() ) { COMMA_THROW( comma::exception, "expected transmission number " << static_cast< unsigned int >( header_->transmission_number() ) << "; got: " << header->transmission_number() ); }
+    if( header_ && header_->max_page_index() != header->max_page_index() ) { COMMA_THROW( comma::exception, "expected max page index" << static_cast< unsigned int >( header_->max_page_index() ) << "; got: " << header->max_page_index() ); }
+    if( header_ && header_->page_index() + 1 != header->page_index() ) { COMMA_THROW( comma::exception, "expected page index" << static_cast< unsigned int >( header_->page_index() + 1 ) << "; got: " << header->page_index() ); }
+    header_ = *header;
+    char* p = &records_[ records_.size() ];
+    unsigned int s = size - header_t_::size;
+    records_.resize( records_.size() + s );
+    ::memcpy( p, buf + header_t_::size, s );
+}
 
-#endif // SNARK_NAVIGATION_TRIMBLE_BD9XX_PACKETS_RECEIVER_INFO_H_
+bool transmission::complete() const { return header_ && header_->page_index() == header_->max_page_index(); } 
+
+const std::vector< char >& transmission::records() const { return records_; }
+        
+} } } } // namespace snark { namespace trimble { namespace bd9xx { namespace gsof {

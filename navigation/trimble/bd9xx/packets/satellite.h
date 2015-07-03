@@ -73,7 +73,7 @@ struct satellite // getsvdata
                 comma::packed::uint8 flags; // todo: see documentation
             };
             
-            typedef bd9xx::packet< 0x54, data > packet;
+            typedef bd9xx::fixed_packet< 0x54, data > packet;
         };
         
         struct response; // todo
@@ -91,7 +91,7 @@ struct satellite // getsvdata
                 comma::packed::uint8 mode; // todo: see documentation
             };
             
-            typedef bd9xx::packet< 0x54, data > packet;
+            typedef bd9xx::fixed_packet< 0x54, data > packet;
         };
         
         struct response; // todo

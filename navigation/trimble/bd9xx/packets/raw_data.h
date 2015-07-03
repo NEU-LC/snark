@@ -65,7 +65,7 @@ struct raw_data // getraw
             comma::packed::bits< request::flags > enhanced_flags;
         };
         
-        typedef bd9xx::packet< 0x56, data > packet;
+        typedef bd9xx::fixed_packet< 0x56, data > packet;
     };
     
     struct response

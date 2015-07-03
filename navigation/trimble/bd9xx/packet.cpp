@@ -29,41 +29,31 @@
 
 /// @author vsevolod vlaskine
 
-#ifndef SNARK_NAVIGATION_TRIMBLE_BD9XX_PACKETS_OPTIONS_H_
-#define SNARK_NAVIGATION_TRIMBLE_BD9XX_PACKETS_OPTIONS_H_
+#include "packet.h"
 
-#include <comma/base/exception.h>
-#include <comma/packed/string.h>
-#include <comma/packed/big_endian.h>
-#include "../packet.h"
-
-namespace snark { namespace trimble { namespace bd9xx { namespace packets {
-
-struct options // getopt
+namespace snark { namespace trimble { namespace bd9xx {
+    
+unsigned char packet::checksum() const
 {
-    struct request
-    { 
-        struct data : public comma::packed::packed_struct< data, 1 >
-        {
-            comma::packed::uint8 page;
-        };
-        
-        typedef bd9xx::fixed_packet< 0x4a, data > packet;
-    };
-    
-    struct response
-    {
-        struct data : public comma::packed::packed_struct< data, 1 >
-        {
-            comma::packed::string< 1 > todo;
-            
-            data() { COMMA_THROW( comma::exception, "todo" ); }
-        };
-    
-        typedef bd9xx::fixed_packet< 0x4b, data > packet;
-    };
-};
-    
-} } } } // namespace snark { namespace trimble { namespace bd9xx { namespace packets {
+    unsigned char sum = header().checksum();
+    const char* begin = body();
+    const char* end = begin + static_cast< unsigned int >( header().length() );
+    for( const char* p = begin; p < end; sum += *p++ );
+    return sum;
+}
 
-#endif // SNARK_NAVIGATION_TRIMBLE_BD9XX_PACKETS_OPTIONS_H_
+const bd9xx::header& packet::header() const { return *reinterpret_cast< const bd9xx::header* >( this ); }
+
+bd9xx::header& packet::header() { return *reinterpret_cast< bd9xx::header* >( this ); }
+
+const bd9xx::trailer& packet::trailer() const { return *reinterpret_cast< const bd9xx::trailer* >( body() + header().length() ); }
+
+bd9xx::trailer& packet::trailer() { return *reinterpret_cast< bd9xx::trailer* >( body() + header().length() ); }
+
+const char* packet::body() const { return &( this->operator[]( bd9xx::header::size ) ); }
+
+char* packet::body() { return &( this->operator[]( bd9xx::header::size ) ); }
+
+bool packet::valid() const { return trailer().checksum() == checksum(); }
+    
+} } } // namespace snark { namespace trimble { namespace bd9xx {

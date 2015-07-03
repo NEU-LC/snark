@@ -32,6 +32,7 @@
 #ifndef SNARK_NAVIGATION_TRIMBLE_BD9XX_PACKET_H_
 #define SNARK_NAVIGATION_TRIMBLE_BD9XX_PACKET_H_
 
+#include <boost/array.hpp>
 #include <comma/base/types.h>
 #include <comma/packed/byte.h>
 #include <comma/packed/bits.h>
@@ -71,6 +72,29 @@ struct trailer : public comma::packed::packed_struct< trailer, 2 >
     comma::packed::const_byte< bd9xx::etx > etx;
 };
 
+struct packet : public boost::array< char, 4 + 255 + 2 >
+{
+    const bd9xx::header& header() const;
+    
+    bd9xx::header& header();
+    
+    const bd9xx::trailer& trailer() const;
+    
+    bd9xx::trailer& trailer();
+    
+    const char* body() const;
+    
+    char* body();
+    
+    unsigned char checksum() const;
+    
+    bool valid() const;
+    
+    template < typename T > const T& as() const { return *reinterpret_cast< const T* >( &( this->operator[](0) ) ); }
+    
+    template < typename T > T& as() { return *reinterpret_cast< T* >( &( this->operator[](0) ) ); }
+};
+
 template < unsigned char Type >
 struct simple_packet : public comma::packed::packed_struct< simple_packet< Type >, bd9xx::header::size + bd9xx::trailer::size >
 {
@@ -83,7 +107,7 @@ struct simple_packet : public comma::packed::packed_struct< simple_packet< Type 
 };
 
 template < unsigned char Type, typename Body >
-struct packet : public comma::packed::packed_struct< packet< Type, Body >, bd9xx::header::size + Body::size + bd9xx::trailer::size >
+struct fixed_packet : public comma::packed::packed_struct< fixed_packet< Type, Body >, bd9xx::header::size + Body::size + bd9xx::trailer::size >
 {
     enum { type = Type };
     
@@ -91,27 +115,20 @@ struct packet : public comma::packed::packed_struct< packet< Type, Body >, bd9xx
     Body body;
     bd9xx::trailer trailer;
     
-    packet() : header( Type, 0, Body::size ) {}
+    fixed_packet() : header( Type, 0, Body::size ) {}
     unsigned char checksum() const;
     void set_checksum();
     bool valid() const;
 };
 
 template < unsigned char Type, typename Body >
-inline unsigned char packet< Type, Body >::checksum() const
-{
-    unsigned char sum = header.checksum();
-    unsigned char* begin = body.data();
-    unsigned char* end = begin + static_cast< unsigned int >( header.length() );
-    for( unsigned char* p = begin; p < end; sum += *p++ );
-    return sum;
-}
+inline unsigned char fixed_packet< Type, Body >::checksum() const { return reinterpret_cast< const packet* >( this )->checksum(); }
 
 template < unsigned char Type, typename Body >
-inline bool packet< Type, Body >::valid() const { return checksum() == trailer.checksum(); }
+inline bool fixed_packet< Type, Body >::valid() const { return checksum() == trailer.checksum(); }
 
 template < unsigned char Type, typename Body >
-inline void packet< Type, Body >::set_checksum() { return trailer.checksum = checksum(); }
+inline void fixed_packet< Type, Body >::set_checksum() { return trailer.checksum = checksum(); }
     
 } } } // namespace snark { namespace trimble { namespace bd9xx {
 
