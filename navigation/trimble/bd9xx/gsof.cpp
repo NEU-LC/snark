@@ -35,6 +35,8 @@
 
 namespace snark { namespace trimble { namespace bd9xx { namespace gsof {
 
+transmission::transmission() { records_.reserve( bd9xx::packet::size() * 10 ); } // quick and dirty: up to 10 packets per transmission according to documentation
+    
 void transmission::append( const char* buf, unsigned int size )
 {
     if( complete() ) { COMMA_THROW( comma::exception, "cannot append to a complete transmission" ); }

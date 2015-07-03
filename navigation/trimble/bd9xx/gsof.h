@@ -40,6 +40,8 @@ namespace snark { namespace trimble { namespace bd9xx { namespace gsof {
 class transmission
 {
     public:
+        transmission();
+        
         void append( const char* buf, unsigned int size );
         
         bool complete() const;
