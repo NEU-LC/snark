@@ -171,6 +171,7 @@ OPTION( snark_build_point_cloud "build point cloud" ON )
 OPTION( snark_build_sensors "build sensors" ON )
 OPTION( snark_build_python "build python packages" OFF )
 OPTION( snark_build_web "build web" OFF )
+OPTION( snark_build_terrain "build terrain" OFF )
 
 INCLUDE( CMakeDependentOption )
 CMAKE_DEPENDENT_OPTION( snark_build_sensors_dc1394 "build dc1394 components" ON "snark_build_sensors" OFF )
@@ -347,10 +348,14 @@ ENDIF( snark_build_graph )
 add_subdirectory( audio )
 add_subdirectory( geodesy )
 add_subdirectory( render )
-add_subdirectory( terrain )
 add_subdirectory( timing )
 add_subdirectory( visiting )
 add_subdirectory( control )
+
+IF( snark_build_terrain )
+    add_subdirectory( terrain )
+ENDIF( snark_build_terrain )
+
 
 IF( snark_build_python )
     add_subdirectory( python )
