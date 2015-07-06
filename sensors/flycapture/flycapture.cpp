@@ -31,10 +31,12 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/optional.hpp>
 #include <boost/thread.hpp>
+#include <boost/assign.hpp>
+#include <boost/bimap.hpp>
 #include <comma/base/exception.h>
 #include "flycapture.h"
 
-using namespace FlyCapture2;
+//using namespace FlyCapture2;
 
 // static void PVDECL pv_callback_( tPvFrame *frame );
 
@@ -43,167 +45,137 @@ using namespace FlyCapture2;
 * Discard argument is ignored.
 * implement a callback solution
 */
+
 namespace snark{ namespace camera{ 
 
-static const unsigned int timeOutFactor = 3;
-static const unsigned int maxRetries = 15;
-typedef boost::bimap<PixelFormat ,const char*> pixelFormatMap_t;
-pixelFormatMap_t pixelFormatMap;
-typedef boost::bimap<PropertyType ,std::string > propertyMap_t;
-propertyMap_t propertyMap;
+static const unsigned int max_retries = 15;
 
-/*Create a map of the ENUM PixelFormat so that it can be matched to strings given via command line*/
-static void pg_create_PixelFormat_map_(void)
+typedef boost::bimap<FlyCapture2::PixelFormat ,const char*> pixel_format_map_t;
+static const pixel_format_map_t pixel_format_map = boost::assign::list_of< pixel_format_map_t::relation >
+     (FlyCapture2::PIXEL_FORMAT_MONO8, "PIXEL_FORMAT_MONO8")
+     (FlyCapture2::PIXEL_FORMAT_411YUV8, "PIXEL_FORMAT_411YUV8")     /**< YUV 4:1:1. */
+     (FlyCapture2::PIXEL_FORMAT_422YUV8, "PIXEL_FORMAT_422YUV8")     /**< YUV 4:2:2. */
+     (FlyCapture2::PIXEL_FORMAT_444YUV8, "PIXEL_FORMAT_444YUV8")     /**< YUV 4:4:4. */
+     (FlyCapture2::PIXEL_FORMAT_RGB8   , "PIXEL_FORMAT_RGB8")        /**< R = G = B = 8 bits. */
+     (FlyCapture2::PIXEL_FORMAT_MONO16 , "PIXEL_FORMAT_MONO16")      /**< 16 bits of mono information. */
+     (FlyCapture2::PIXEL_FORMAT_RGB16  , "PIXEL_FORMAT_RGB16")       /**< R = G = B = 16 bits. */
+     (FlyCapture2::PIXEL_FORMAT_S_MONO16, "PIXEL_FORMAT_S_MONO16")    /**< 16 bits of signed mono information. */
+     (FlyCapture2::PIXEL_FORMAT_S_RGB16 , "PIXEL_FORMAT_S_RGB16")     /**< R = G = B = 16 bits signed. */
+     (FlyCapture2::PIXEL_FORMAT_RAW8    , "PIXEL_FORMAT_RAW8")        /**< 8 bit raw data output of sensor. */
+     (FlyCapture2::PIXEL_FORMAT_RAW16   , "PIXEL_FORMAT_RAW16")       /**< 16 bit raw data output of sensor. */
+     (FlyCapture2::PIXEL_FORMAT_MONO12  , "PIXEL_FORMAT_MONO12")      /**< 12 bits of mono information. */
+     (FlyCapture2::PIXEL_FORMAT_RAW12   , "PIXEL_FORMAT_RAW12")       /**< 12 bit raw data output of sensor. */
+     (FlyCapture2::PIXEL_FORMAT_BGR     , "PIXEL_FORMAT_BGR")         /**< 24 bit BGR. */
+     (FlyCapture2::PIXEL_FORMAT_BGRU    , "PIXEL_FORMAT_BGRU")        /**< 32 bit BGRU. */
+//     (FlyCapture2::PIXEL_FORMAT_RGB ,"PIXEL_FORMAT_RGB")         /**< 24 bit RGB. same as RGB8*/
+     (FlyCapture2::PIXEL_FORMAT_RGBU    , "PIXEL_FORMAT_RGBU")        /**< 32 bit RGBU. */
+     (FlyCapture2::PIXEL_FORMAT_BGR16   , "PIXEL_FORMAT_BGR16")       /**< R = G = B = 16 bits. */
+     (FlyCapture2::PIXEL_FORMAT_BGRU16  , "PIXEL_FORMAT_BGRU16")      /**< 64 bit BGRU. */
+     (FlyCapture2::PIXEL_FORMAT_422YUV8_JPEG, "PIXEL_FORMAT_422YUV8_JPEG")/**< JPEG compressed stream. */
+     (FlyCapture2::NUM_PIXEL_FORMATS        , "NUM_PIXEL_FORMATS")        /**< Number of pixel formats. */
+     (FlyCapture2::UNSPECIFIED_PIXEL_FORMAT, "UNSPECIFIED_PIXEL_FORMAT");
+
+typedef boost::bimap<FlyCapture2::PropertyType ,std::string > property_map_t;
+property_map_t property_map = boost::assign::list_of<property_map_t::relation>
+    (FlyCapture2::BRIGHTNESS,        "brightness")
+    (FlyCapture2::AUTO_EXPOSURE,     "auto_exposure")
+    (FlyCapture2::SHARPNESS,         "sharpness")
+    (FlyCapture2::WHITE_BALANCE,     "white_balance")
+    (FlyCapture2::HUE,               "hue")
+    (FlyCapture2::SATURATION,        "saturation")
+    (FlyCapture2::GAMMA,             "gamma")
+    (FlyCapture2::IRIS,              "iris")
+    (FlyCapture2::FOCUS,             "focus")
+    (FlyCapture2::ZOOM,              "zoom")
+    (FlyCapture2::PAN,               "pan")
+    (FlyCapture2::TILT,              "tilt")
+    (FlyCapture2::SHUTTER,           "shutter")
+    (FlyCapture2::GAIN,              "gain")
+    (FlyCapture2::TRIGGER_MODE,      "trigger_mode")
+    (FlyCapture2::TRIGGER_DELAY,     "trigger_delay")
+    (FlyCapture2::FRAME_RATE,        "frame_rate")
+    (FlyCapture2::TEMPERATURE,       "temperature");
+    
+//List for attributes that exist inside structs
+static const std::string structAttributes[] = {"maxWidth", "maxHeight", "offsetHStepSize" , "offsetVStepSize", "offsetX" , "offsetY" , "width" , "height" ,"PixelFormat"};     
+    
+static std::string flycapture_get_attribute_( FlyCapture2::GigECamera& handle, const std::string& key )
 {
-     pixelFormatMap.insert(pixelFormatMap_t::value_type(PIXEL_FORMAT_MONO8, "PIXEL_FORMAT_MONO8"));       /**< 8 bits of mono information. */
-     pixelFormatMap.insert(pixelFormatMap_t::value_type(PIXEL_FORMAT_411YUV8, "PIXEL_FORMAT_411YUV8"));     /**< YUV 4:1:1. */
-     pixelFormatMap.insert(pixelFormatMap_t::value_type(PIXEL_FORMAT_422YUV8, "PIXEL_FORMAT_422YUV8"));     /**< YUV 4:2:2. */
-     pixelFormatMap.insert(pixelFormatMap_t::value_type(PIXEL_FORMAT_444YUV8, "PIXEL_FORMAT_444YUV8"));     /**< YUV 4:4:4. */
-     pixelFormatMap.insert(pixelFormatMap_t::value_type(PIXEL_FORMAT_RGB8   , "PIXEL_FORMAT_RGB8"));        /**< R = G = B = 8 bits. */
-     pixelFormatMap.insert(pixelFormatMap_t::value_type(PIXEL_FORMAT_MONO16 , "PIXEL_FORMAT_MONO16"));      /**< 16 bits of mono information. */
-     pixelFormatMap.insert(pixelFormatMap_t::value_type(PIXEL_FORMAT_RGB16  , "PIXEL_FORMAT_RGB16"));       /**< R = G = B = 16 bits. */
-     pixelFormatMap.insert(pixelFormatMap_t::value_type(PIXEL_FORMAT_S_MONO16, "PIXEL_FORMAT_S_MONO16"));    /**< 16 bits of signed mono information. */
-     pixelFormatMap.insert(pixelFormatMap_t::value_type(PIXEL_FORMAT_S_RGB16 , "PIXEL_FORMAT_S_RGB16"));     /**< R = G = B = 16 bits signed. */
-     pixelFormatMap.insert(pixelFormatMap_t::value_type(PIXEL_FORMAT_RAW8    , "PIXEL_FORMAT_RAW8"));        /**< 8 bit raw data output of sensor. */
-     pixelFormatMap.insert(pixelFormatMap_t::value_type(PIXEL_FORMAT_RAW16   , "PIXEL_FORMAT_RAW16"));       /**< 16 bit raw data output of sensor. */
-     pixelFormatMap.insert(pixelFormatMap_t::value_type(PIXEL_FORMAT_MONO12  , "PIXEL_FORMAT_MONO12"));      /**< 12 bits of mono information. */
-     pixelFormatMap.insert(pixelFormatMap_t::value_type(PIXEL_FORMAT_RAW12   , "PIXEL_FORMAT_RAW12"));       /**< 12 bit raw data output of sensor. */
-     pixelFormatMap.insert(pixelFormatMap_t::value_type(PIXEL_FORMAT_BGR     , "PIXEL_FORMAT_BGR"));         /**< 24 bit BGR. */
-     pixelFormatMap.insert(pixelFormatMap_t::value_type(PIXEL_FORMAT_BGRU    , "PIXEL_FORMAT_BGRU"));        /**< 32 bit BGRU. */
- //    pixelFormatMap.insert(pixelFormatMap_t::value_type(case PIXEL_FORMAT_RGB ,"PIXEL_FORMAT_RGB"));         /**< 24 bit RGB. same as RGB8*/
-     pixelFormatMap.insert(pixelFormatMap_t::value_type(PIXEL_FORMAT_RGBU    , "PIXEL_FORMAT_RGBU"));        /**< 32 bit RGBU. */
-     pixelFormatMap.insert(pixelFormatMap_t::value_type(PIXEL_FORMAT_BGR16   , "PIXEL_FORMAT_BGR16"));       /**< R = G = B = 16 bits. */
-     pixelFormatMap.insert(pixelFormatMap_t::value_type(PIXEL_FORMAT_BGRU16  , "PIXEL_FORMAT_BGRU16"));      /**< 64 bit BGRU. */
-     pixelFormatMap.insert(pixelFormatMap_t::value_type(PIXEL_FORMAT_422YUV8_JPEG, "PIXEL_FORMAT_422YUV8_JPEG"));/**< JPEG compressed stream. */
-     pixelFormatMap.insert(pixelFormatMap_t::value_type(NUM_PIXEL_FORMATS        , "NUM_PIXEL_FORMATS"));        /**< Number of pixel formats. */
-     pixelFormatMap.insert(pixelFormatMap_t::value_type( UNSPECIFIED_PIXEL_FORMAT, "UNSPECIFIED_PIXEL_FORMAT"));
-    return;
-}
+    FlyCapture2::Error error;
+    FlyCapture2::CameraInfo cam_info;
+    FlyCapture2::GigEImageSettings image_settings;
+    FlyCapture2::GigEImageSettingsInfo image_settings_info;
 
-/*Create a map of the ENUM PropertyType so that it can be matched to strings given via command line*/
-static void pg_create_property_map_(void){
-    propertyMap.insert(propertyMap_t::value_type(BRIGHTNESS,        "brightness"));
-    propertyMap.insert(propertyMap_t::value_type(AUTO_EXPOSURE,     "auto_exposure"));
-    propertyMap.insert(propertyMap_t::value_type(SHARPNESS,         "sharpness"));
-    propertyMap.insert(propertyMap_t::value_type(WHITE_BALANCE,     "white_balance"));
-    propertyMap.insert(propertyMap_t::value_type(HUE,               "hue"));
-    propertyMap.insert(propertyMap_t::value_type(SATURATION,        "saturation"));
-    propertyMap.insert(propertyMap_t::value_type(GAMMA,             "gamma"));
-    propertyMap.insert(propertyMap_t::value_type(IRIS,              "iris"));
-    propertyMap.insert(propertyMap_t::value_type(FOCUS,             "focus"));
-    propertyMap.insert(propertyMap_t::value_type(ZOOM,              "zoom"));
-    propertyMap.insert(propertyMap_t::value_type(PAN,               "pan"));
-    propertyMap.insert(propertyMap_t::value_type(TILT,              "tilt"));
-    propertyMap.insert(propertyMap_t::value_type(SHUTTER,           "shutter"));
-    propertyMap.insert(propertyMap_t::value_type(GAIN,              "gain"));
-    propertyMap.insert(propertyMap_t::value_type(TRIGGER_MODE,      "trigger_mode"));
-    propertyMap.insert(propertyMap_t::value_type(TRIGGER_DELAY,     "trigger_delay"));
-    propertyMap.insert(propertyMap_t::value_type(FRAME_RATE,        "frame_rate"));
-    propertyMap.insert(propertyMap_t::value_type(TEMPERATURE,       "temperature"));
-    return;
-}
-
-static std::string pg_get_attribute_(GigECamera& handle, const std::string& key)
-{
-    //Get all the structs
-    Error error;
-    CameraInfo camInfo;
-    GigEImageSettings imageSettings;
-    GigEImageSettingsInfo imageSettingsInfo;    
-
-    error = handle.GetCameraInfo(&camInfo);
-    error = handle.GetGigEImageSettings(&imageSettings);
-    error = handle.GetGigEImageSettingsInfo(&imageSettingsInfo);            
-    //switch on string
+    error = handle.GetCameraInfo(&cam_info);
+    error = handle.GetGigEImageSettings(&image_settings);
+    error = handle.GetGigEImageSettingsInfo(&image_settings_info);            
     
     //ImageSettingsInfo struct
-    /*****/if (0 == key.compare("maxWidth")){    
-       return boost::to_string(imageSettingsInfo.maxWidth);
-    }
-    else if (0 == key.compare("maxHeight")){
-        return boost::to_string(imageSettingsInfo.maxHeight);
-    }
-    else if (0 == key.compare("offsetHStepSize")){
-        return boost::to_string(imageSettingsInfo.offsetHStepSize);
-    }
-    else if (0 == key.compare("offsetVStepSize")){
-        return boost::to_string(imageSettingsInfo.offsetVStepSize);
-    } 
+    /***/if ( key == "maxWidth" )        return boost::to_string( image_settings_info.maxWidth );
+    else if ( key == "maxHeight" )       return boost::to_string( image_settings_info.maxHeight );
+    else if ( key == "offsetHStepSize" ) return boost::to_string( image_settings_info.offsetHStepSize );
+    else if ( key == "offsetVStepSize" ) return boost::to_string( image_settings_info.offsetVStepSize );
+     
     //ImageSettings struct
-    else if (0 == key.compare("offsetX")){
-        return boost::to_string(imageSettings.offsetX);
-    }
-    else if (0 == key.compare("offsetY")){
-        return boost::to_string(imageSettings.offsetY);
-    }
-    else if (0 == key.compare("width")){
-        return boost::to_string(imageSettings.width);
-    }
-    else if (0 == key.compare("height")){
-        return boost::to_string(imageSettings.height);
-    }
-    else if (0 == key.compare("PixelFormat")){
-        return pixelFormatMap.left.at(imageSettings.pixelFormat);
-    }  
-    // Finally check the property list
+    else if ( key == "offsetX" )     return boost::to_string( image_settings.offsetX );
+    else if ( key == "offsetY" )     return boost::to_string( image_settings.offsetY );
+    else if ( key == "width" )       return boost::to_string( image_settings.width );
+    else if ( key == "height" )      return boost::to_string( image_settings.height );
+    else if ( key == "PixelFormat" ) return pixel_format_map.left.at( image_settings.pixelFormat );
+    //Check the property list
     else{
-        if(propertyMap.right.find(key) != propertyMap.right.end()){
-            Property camProp;
-            PropertyInfo camPropInfo;
+        if( property_map.right.find(key) != property_map.right.end() )
+        {
+            FlyCapture2::Property cam_prop;
+            FlyCapture2::PropertyInfo cam_prop_info;
             
-            //Lookup the given property
-            camProp.type = propertyMap.right.at(key);
-            camPropInfo.type = propertyMap.right.at(key);
+            cam_prop.type = property_map.right.at( key );
+            cam_prop_info.type = property_map.right.at( key );
             
-            //Fetch the property and its info
-            handle.GetProperty(&camProp);
-            handle.GetPropertyInfo(&camPropInfo);
+            handle.GetProperty( &cam_prop );
+            handle.GetPropertyInfo( &cam_prop_info );
             
-            if(!camProp.present) return "N/A";    //If property is not present, it is unsupported for this camera
-            if(camProp.autoManualMode) return "auto";
-            if(camProp.type == WHITE_BALANCE){ //White balance has two values, so it is a special case
-              return (boost::to_string(camProp.valueA) + "," + boost::to_string(camProp.valueB));
-            }
-            if(camProp.absControl){ //The value is a floating point number
-              return boost::to_string(camProp.absValue);
-            } else{ //value is an int
-              return boost::to_string(camProp.valueA);
-            }
-        } else {
+            if( !cam_prop.present ) return "N/A";    //If property is not present, it is unsupported for this camera
+            if( cam_prop.autoManualMode ) return "auto";
+            if( cam_prop.type == FlyCapture2::WHITE_BALANCE ) //White balance has two values, so it is a special case
+                return boost::to_string( cam_prop.valueA ) + "," + boost::to_string( cam_prop.valueB );
+	    
+            return boost::to_string( cam_prop.absControl ? cam_prop.absValue : cam_prop.valueA );
+  
+        } else 
+        {
           std::cerr << "Property: " << key << " not found!" << std::endl;
         }
     }
    return "Not Found"; 
 }
 
-static void pg_set_attribute_( GigECamera& handle, const std::string& key, const std::string& value )
+static void flycapture_set_attribute_( FlyCapture2::GigECamera& handle, const std::string& key, const std::string& value )
 {
-    CameraInfo CamInfo;
-    GigEConfig CamConfig;
-    GigEImageSettings ImageSettings;
-    
+    FlyCapture2::Error error;
+    FlyCapture2::CameraInfo cam_info;
+    FlyCapture2::GigEConfig cam_config;
+    FlyCapture2::GigEImageSettings image_settings;
+    FlyCapture2::GigEImageSettingsInfo image_settings_info;   
+
+    //TODO
     return;
 }
 
 
-flycapture::attributes_type pg_attributes_( GigECamera& handle )
+flycapture::attributes_type flycapture_attributes_( FlyCapture2::GigECamera& handle )
 {
-     flycapture::attributes_type attributes;
-     //Some attributes exist inside a struct
-     attributes.insert( std::make_pair("maxWidth" , pg_get_attribute_( handle, "maxWidth" ) ) );
-     attributes.insert( std::make_pair("maxHeight" , pg_get_attribute_( handle, "maxHeight" ) ) );
-     attributes.insert( std::make_pair("offsetHStepSize" , pg_get_attribute_( handle, "offsetHStepSize" ) ) );
-     attributes.insert( std::make_pair("offsetVStepSize" , pg_get_attribute_( handle, "offsetVStepSize" ) ) );
-     attributes.insert( std::make_pair("offsetX" , pg_get_attribute_( handle, "offsetX" ) ) );
-     attributes.insert( std::make_pair("offsetY" , pg_get_attribute_( handle, "offsetY" ) ) );
-     attributes.insert( std::make_pair("width" , pg_get_attribute_( handle, "width" ) ) );
-     attributes.insert( std::make_pair("height" , pg_get_attribute_( handle, "height" ) ) );
-     attributes.insert( std::make_pair("PixelFormat" , pg_get_attribute_(handle, "PixelFormat") ) );
-     //There is a list for the remaining attributes
-     for( propertyMap_t::iterator i = propertyMap.begin(), iend = propertyMap.end(); i != iend; ++i ){
-        attributes.insert(std::make_pair(i->right,pg_get_attribute_(handle,i->right))); 
-     }
-
+    flycapture::attributes_type attributes;
+    for ( uint i = 0; i < ( sizeof( structAttributes ) / sizeof( std::string ) ); i++ ) 
+    {
+       attributes.insert( std::make_pair(structAttributes[i].c_str(), flycapture_get_attribute_( handle, structAttributes[i].c_str() ) ) );
+    }
+     
+    //There is an iterable list for the remaining attributes
+    for( property_map_t::const_iterator i = property_map.begin(); i != property_map.end(); ++i )
+    {
+       attributes.insert( std::make_pair( i->right , flycapture_get_attribute_( handle,i->right ) ) ); 
+    }
     return attributes;
 }
 
@@ -239,33 +211,33 @@ static void pv_set_attribute_( tPvHandle& handle, const std::string& key, const 
 
 
 
-static cv::Mat pg_as_cvmat_( const Image& frame )
+static cv::Mat flycapture_image_as_cvmat_( const FlyCapture2::Image& frame )
 {
     int type;
     switch( frame.GetPixelFormat() )
     {
-        case PIXEL_FORMAT_MONO8:
-        case PIXEL_FORMAT_RAW8:
+        case FlyCapture2::PIXEL_FORMAT_MONO8:
+        case FlyCapture2::PIXEL_FORMAT_RAW8:
             type = CV_8UC1;
             break;
-        case PIXEL_FORMAT_RAW16:
-        case PIXEL_FORMAT_MONO16:
+        case FlyCapture2::PIXEL_FORMAT_RAW16:
+        case FlyCapture2::PIXEL_FORMAT_MONO16:
             type = CV_16UC1;
             break;
-        case PIXEL_FORMAT_RGB:
-        case PIXEL_FORMAT_BGR:
+        case FlyCapture2::PIXEL_FORMAT_RGB:
+        case FlyCapture2::PIXEL_FORMAT_BGR:
             type = CV_8UC3;
             break;
-        case PIXEL_FORMAT_RGBU:
-        case PIXEL_FORMAT_BGRU:
+        case FlyCapture2::PIXEL_FORMAT_RGBU:
+        case FlyCapture2::PIXEL_FORMAT_BGRU:
             type = CV_8UC4;
             break;
-         case PIXEL_FORMAT_RGB16:
+        case FlyCapture2::PIXEL_FORMAT_RGB16:
             type = CV_16UC3;
             break;
-        case PIXEL_FORMAT_411YUV8:
-        case PIXEL_FORMAT_422YUV8:
-        case PIXEL_FORMAT_444YUV8:
+        case FlyCapture2::PIXEL_FORMAT_411YUV8:
+        case FlyCapture2::PIXEL_FORMAT_422YUV8:
+        case FlyCapture2::PIXEL_FORMAT_444YUV8:
             COMMA_THROW( comma::exception, "unsupported format " << frame.GetPixelFormat()  );
         default:
             COMMA_THROW( comma::exception, "unknown format " << frame.GetPixelFormat()  );
@@ -289,12 +261,12 @@ class flycapture::impl
             unsigned int size = 0;
             for( ; now < end; now = boost::posix_time::microsec_clock::universal_time() )
             {
-                const std::vector< CameraInfo >& list = list_cameras();
+                const std::vector< FlyCapture2::CameraInfo >& list = list_cameras();
                 size = list.size();
 
                 for( unsigned int i = 0; i < list.size(); ++i ) // look for a point grey camera that matches the serial number
                 {
-                    if(list[i].interfaceType == INTERFACE_GIGE
+                    if(list[i].interfaceType == FlyCapture2::INTERFACE_GIGE
                         && ( id == 0 || id == list[i].serialNumber ) )
                     {
                         id_ = list[i].serialNumber;
@@ -307,7 +279,7 @@ class flycapture::impl
 
              if( id == 0 && size > 1 )
              {
-                const std::vector< CameraInfo >& list = list_cameras();
+                const std::vector< FlyCapture2::CameraInfo >& list = list_cameras();
                 std::stringstream stream;
                 for( std::size_t i = 0; i < list.size(); ++i ) // todo: serialize properly with name-value
                 {
@@ -319,17 +291,17 @@ class flycapture::impl
             end = now + timeout;
    
             //Get Point grey unique id (guid) from serial number. guid does not exist in CameraInfo, and so it does not appear in the camera list
-            BusManager busMgr;
-            busMgr.GetCameraFromSerialNumber(*id_, &guid);
+            FlyCapture2::BusManager bus_manager;
+            bus_manager.GetCameraFromSerialNumber(*id_, &guid);
     
-            Error result = handle_.Connect(&guid);
-            for( ; ( result != PGRERROR_OK ) && ( now < end ); now = boost::posix_time::microsec_clock::universal_time() )
+            FlyCapture2::Error result = handle_.Connect(&guid);
+            for( ; ( result != FlyCapture2::PGRERROR_OK ) && ( now < end ); now = boost::posix_time::microsec_clock::universal_time() )
             {
                 boost::thread::sleep( now + boost::posix_time::milliseconds( 10 ) );
                 result = handle_.Connect(&guid);
             }
 
-            if (result != PGRERROR_OK){close(); COMMA_THROW( comma::exception, "failed to open point grey camera: " << result.GetDescription() );}
+            if (result != FlyCapture2::PGRERROR_OK){close(); COMMA_THROW( comma::exception, "failed to open point grey camera: " << result.GetDescription() );}
 //              for( attributes_type::const_iterator i = attributes.begin(); i != attributes.end(); ++i )
 //              {
 //                 pv_set_attribute_( handle_, i->first, i->second );
@@ -353,9 +325,9 @@ class flycapture::impl
             std::pair< boost::posix_time::ptime, cv::Mat > pair;
             bool success = false;
             unsigned int retries = 0;
-            while( !success && retries < maxRetries )
+            while( !success && retries < max_retries )
             {
-                Error result;
+                FlyCapture2::Error result;
                 if( !started_ )
                 {
                     result = handle_.StartCapture();
@@ -363,25 +335,25 @@ class flycapture::impl
                  // error is not checked as sometimes the camera
                  // will start correctly but return an error
                 started_ = true;
-                Image rawImage;
-                result = handle_.RetrieveBuffer(&rawImage);
-                frame_.DeepCopy(&rawImage);
-                rawImage.ReleaseBuffer();
+                FlyCapture2::Image raw_image;
+                result = handle_.RetrieveBuffer(&raw_image);
+                frame_.DeepCopy(&raw_image);
+                raw_image.ReleaseBuffer();
                 total_bytes_per_frame_ = frame_.GetDataSize();
                 pair.first = boost::posix_time::microsec_clock::universal_time();
   
-                if(( result == PGRERROR_OK))
+                if( result == FlyCapture2::PGRERROR_OK ) 
                 {
-                    pair.second =  pg_as_cvmat_( frame_ );
+                    pair.second =  flycapture_image_as_cvmat_( frame_ );
                     success = true;
                 } 
                 else if( //These are errors that result in a retry
-                    (result == PGRERROR_ISOCH_START_FAILED )
-                    | (result == PGRERROR_TIMEOUT )
-                    | (result==PGRERROR_ISOCH_ALREADY_STARTED)
-                    | (result==PGRERROR_UNDEFINED) 
-                    | (result==PGRERROR_IIDC_FAILED) /*error 22*/
-                    | (result==PGRERROR_IMAGE_CONSISTENCY_ERROR))
+                    ( result == FlyCapture2::PGRERROR_ISOCH_START_FAILED )
+                    | ( result == FlyCapture2::PGRERROR_TIMEOUT )
+                    | ( result == FlyCapture2::PGRERROR_ISOCH_ALREADY_STARTED )
+                    | ( result == FlyCapture2::PGRERROR_UNDEFINED ) 
+                    | ( result == FlyCapture2::PGRERROR_IIDC_FAILED ) /*error 22*/
+                    | ( result == FlyCapture2::PGRERROR_IMAGE_CONSISTENCY_ERROR ) )
                 {
                     std::cerr << "Error: " << result.GetDescription() << " Retrying..." << std::endl;
                     handle_.StopCapture();
@@ -397,40 +369,40 @@ class flycapture::impl
              COMMA_THROW( comma::exception, "got lots of missing frames or timeouts" << std::endl << std::endl << "it is likely that MTU size on your machine is less than packet size" << std::endl << "check PacketSize attribute (flycapture-cat --list-attributes)" << std::endl << "set packet size (e.g. flycapture-cat --set=PacketSize=1500)" << std::endl << "or increase MTU size on your machine" );
         }
         
-         const GigECamera& handle() const { return handle_; }
+         const FlyCapture2::GigECamera& handle() const { return handle_; }
  
-         GigECamera& handle() { return handle_; }
+         FlyCapture2::GigECamera& handle() { return handle_; }
 
         unsigned int id() const { return *id_; }
 
         unsigned long total_bytes_per_frame() const { return total_bytes_per_frame_; }
 
-        static std::vector< CameraInfo > list_cameras()
+        static std::vector< FlyCapture2::CameraInfo > list_cameras()
         {
             initialize_();
             static const boost::posix_time::time_duration timeout = boost::posix_time::seconds( 5 ); // quick and dirty; make configurable?
             boost::posix_time::ptime now = boost::posix_time::microsec_clock::universal_time();
             boost::posix_time::ptime end = now + timeout;
-            std::vector< CameraInfo > list;
+            std::vector< FlyCapture2::CameraInfo > list;
             for( ; now < end; now = boost::posix_time::microsec_clock::universal_time() )
             {
-                BusManager busMgr;
-                unsigned int numCameras;
-                Error error;
-                error = busMgr.GetNumOfCameras(&numCameras);
-                if (error != PGRERROR_OK){
+                FlyCapture2::BusManager bus_manager;
+                unsigned int num_cameras;
+                FlyCapture2::Error error;
+                error = bus_manager.GetNumOfCameras( &num_cameras );
+                if ( error != FlyCapture2::PGRERROR_OK ){
                     COMMA_THROW( comma::exception, "Cannot find point grey cameras");
                 }
 
-                CameraInfo camInfo[numCameras];
-                error = BusManager::DiscoverGigECameras( camInfo, &numCameras );
-                if (error != PGRERROR_OK){
-                    COMMA_THROW( comma::exception, "Cannot discover point grey cameras");
+                FlyCapture2::CameraInfo cam_info[num_cameras];
+                error = FlyCapture2::BusManager::DiscoverGigECameras( cam_info, &num_cameras );
+                if ( error != FlyCapture2::PGRERROR_OK ){
+                    COMMA_THROW( comma::exception, "Cannot discover point grey cameras" );
                 }
                 
                 //If array is not empty, convert to list and exit
-                if( numCameras > 0 ) {
-                    std::copy(&camInfo[0],&camInfo[numCameras],std::back_inserter(list));
+                if( num_cameras > 0 ) {
+                    std::copy( &cam_info[0] , &cam_info[num_cameras] , std::back_inserter( list ) );
                     break;
                 }
                 boost::thread::sleep( now + boost::posix_time::milliseconds( 10 ) );
@@ -440,18 +412,18 @@ class flycapture::impl
         
     private:
         friend class flycapture::callback::impl;
-        GigECamera handle_;
-        Image frame_;
+        FlyCapture2::GigECamera handle_;
+        FlyCapture2::Image frame_;
         std::vector< char > buffer_;
         boost::optional< unsigned int > id_;
-        PGRGuid guid;
+        FlyCapture2::PGRGuid guid;
         unsigned long total_bytes_per_frame_;
         bool started_;
         unsigned int timeOut_; // milliseconds
         static void initialize_() // quick and dirty
         {
-            pg_create_PixelFormat_map_();
-            pg_create_property_map_();
+//             flycapture_create_PixelFormat_map_();
+//             flycapture_create_property_map_();
         }
 };
 
@@ -517,13 +489,13 @@ std::pair< boost::posix_time::ptime, cv::Mat > flycapture::read() { return pimpl
 
 void flycapture::close() { pimpl_->close(); }
 
-std::vector< CameraInfo > flycapture::list_cameras() { return flycapture::impl::list_cameras(); }
+std::vector< FlyCapture2::CameraInfo > flycapture::list_cameras() { return flycapture::impl::list_cameras(); }
 
 unsigned int flycapture::id() const { return pimpl_->id(); }
 
 unsigned long flycapture::total_bytes_per_frame() const { return pimpl_->total_bytes_per_frame(); }
 
-flycapture::attributes_type flycapture::attributes() const { return pg_attributes_( pimpl_->handle() ); }
+flycapture::attributes_type flycapture::attributes() const { return flycapture_attributes_( pimpl_->handle() ); }
 
 flycapture::callback::callback( flycapture& flycapture, boost::function< void ( std::pair< boost::posix_time::ptime, cv::Mat > ) > on_frame )
     : pimpl_( new callback::impl( flycapture, on_frame ) )
