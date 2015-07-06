@@ -40,13 +40,45 @@ namespace snark { namespace trimble { namespace bd9xx { namespace gsof {
 class transmission
 {
     public:
+        /// constructor
         transmission();
         
+        /// append packet body
         void append( const char* buf, unsigned int size );
         
+        /// return true, if transmission is complete
         bool complete() const;
         
+        /// return records; throw, if transmission is incomplete
         const std::vector< char >& records() const;
+        
+        class const_iterator
+        {
+            public:
+                const_iterator() : current_( NULL ) {}
+                
+                template < typename T > const T& as() const { return *reinterpret_cast< const T* >( current_ ); }
+                
+                bool operator==( const const_iterator& rhs ) const { return current_ == rhs.current_; }
+                
+                bool operator!=( const const_iterator& rhs ) const { return !operator==( rhs ); }
+                
+                transmission::const_iterator& operator++(); // todo
+                
+                const packets::gsof::header* operator->() const { return &as< packets::gsof::header >(); }
+                
+                const packets::gsof::header& operator*() const { return as< packets::gsof::header >(); }
+                
+            private:
+                friend class transmission;
+                const char* current_;
+        };
+        
+        /// return iterator pointing to first record
+        const_iterator begin() const;
+        
+        /// return iterator pointing beyond the last record
+        const_iterator end() const;
         
     private:
         typedef trimble::bd9xx::packets::gsof::transmission::header header_t_;

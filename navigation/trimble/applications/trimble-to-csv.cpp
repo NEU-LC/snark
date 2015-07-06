@@ -31,7 +31,10 @@
 
 #include <iostream>
 #include <comma/application/command_line_options.h>
+#include <comma/csv/impl/fieldwise.h>
 #include <comma/csv/stream.h>
+#include "../../../math/spherical_geometry/coordinates.h"
+#include "../../../timing/timestamped.h"
 #include "../bd9xx/stream.h"
 #include "../bd9xx/gsof.h"
 
@@ -54,6 +57,32 @@ static void usage( bool verbose )
     exit( 0 );
 }
 
+struct position
+{
+    // todo
+};
+
+struct output
+{
+    // todo
+};
+
+static void handle( const snark::trimble::bd9xx::gsof::transmission::const_iterator& it )
+{
+    switch( it->type() )
+    {
+        case snark::trimble::bd9xx::packets::gsof::records::current_time_utc::type:
+            // todo
+            break;
+            
+        // todo
+            
+        default:
+            // todo
+            break;
+    }
+}
+
 int main( int ac, char** av )
 {
     try
@@ -70,8 +99,12 @@ int main( int ac, char** av )
                 transmission.append( p->body(), p->header().length() );
             }
             if( !transmission.complete() ) { continue; } // may be end of stream or out of sync
+            for( snark::trimble::bd9xx::gsof::transmission::const_iterator it = transmission.begin(); it != transmission.end(); ++it )
+            {
+                handle( it );
+            }
             
-            // todo: handle transmission records
+            // todo: output
             
         }
         return 0;

@@ -54,6 +54,30 @@ void transmission::append( const char* buf, unsigned int size )
 
 bool transmission::complete() const { return header_ && header_->page_index() == header_->max_page_index(); } 
 
-const std::vector< char >& transmission::records() const { return records_; }
+const std::vector< char >& transmission::records() const
+{ 
+    if( complete() ) { return records_; }
+    COMMA_THROW( comma::exception, "incomplete transmission" );
+}
+
+transmission::const_iterator transmission::begin() const
+{
+    transmission::const_iterator it;
+    it.current_ = &records_[0];
+    return it;
+}
+
+transmission::const_iterator transmission::end() const
+{
+    transmission::const_iterator it;
+    it.current_ = &records_[0] + records_.size();
+    return it;
+}
+
+transmission::const_iterator& transmission::const_iterator::operator++()
+{
+    current_ += bd9xx::packets::gsof::transmission::header::size + reinterpret_cast< const bd9xx::packets::gsof::header* >( current_ )->length();
+    return *this;
+}
         
 } } } } // namespace snark { namespace trimble { namespace bd9xx { namespace gsof {
