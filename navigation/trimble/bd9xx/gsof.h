@@ -57,7 +57,7 @@ class transmission
             public:
                 const_iterator() : current_( NULL ) {}
                 
-                template < typename T > const T& as() const { return *reinterpret_cast< const T* >( current_ ); }
+                template < typename T > const T& as() const { return *reinterpret_cast< const T* >( current_ + packets::gsof::header::size ); }
                 
                 bool operator==( const const_iterator& rhs ) const { return current_ == rhs.current_; }
                 
@@ -65,9 +65,9 @@ class transmission
                 
                 transmission::const_iterator& operator++(); // todo
                 
-                const packets::gsof::header* operator->() const { return &as< packets::gsof::header >(); }
+                const packets::gsof::header* operator->() const { return reinterpret_cast< const packets::gsof::header* >( current_ ); }
                 
-                const packets::gsof::header& operator*() const { return as< packets::gsof::header >(); }
+                const packets::gsof::header& operator*() const { return *reinterpret_cast< const packets::gsof::header* >( current_ ); }
                 
             private:
                 friend class transmission;

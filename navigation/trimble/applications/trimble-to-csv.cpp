@@ -67,13 +67,21 @@ struct output
     // todo
 };
 
+namespace gsof = snark::trimble::bd9xx::packets::gsof;
+
 static void handle( const snark::trimble::bd9xx::gsof::transmission::const_iterator& it )
 {
     switch( it->type() )
     {
-        case snark::trimble::bd9xx::packets::gsof::records::current_time_utc::type:
+        case gsof::records::current_time_utc::type:
+        {
+            const gsof::records::current_time_utc::data& r = it.as< gsof::records::current_time_utc::data >();
             // todo
+            
+            std::cerr << "--> todo: got: " << r.time.utc_offset() << std::endl;
+            
             break;
+        }
             
         // todo
             
