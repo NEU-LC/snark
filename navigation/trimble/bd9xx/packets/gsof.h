@@ -74,8 +74,18 @@ struct gps_time : public comma::packed::packed_struct< gps_time, 6 >
 {
     comma::packed::big_endian_int32 milliseconds; // milliseconds of gps week
     comma::packed::big_endian_int16 week_number;
+
+    /// @todo dodgy, since it does not take care about leap seconds
+    boost::posix_time::ptime as_time() const { return boost::posix_time::ptime( boost::gregorian::date( 1980, boost::gregorian::Jan, 1 ), boost::posix_time::hours( week_number() * 7 ) + boost::posix_time::milliseconds( milliseconds() ) ); }
+};
+
+struct gps_time_with_offset : public comma::packed::packed_struct< gps_time_with_offset, 8 >
+{
+    gsof::gps_time time;
+    comma::packed::big_endian_int16 utc_offset; // seconds
     
-    boost::posix_time::ptime as_time() const; // todo
+    /// @todo do we need to handle gps weeks rollover?
+    boost::posix_time::ptime as_time() const { return time.as_time() + boost::posix_time::seconds( utc_offset() ); }
 };
 
 struct coordinates : public comma::packed::packed_struct< coordinates, 16 >
@@ -165,8 +175,7 @@ struct current_time_utc
     
     struct data : public comma::packed::packed_struct< data, 9 >
     {
-        gsof::gps_time gps_time;
-        comma::packed::big_endian_int16 utc_offset; // seconds
+        gsof::gps_time_with_offset time;
         comma::packed::bits< current_time_utc::flags > flags;
     };
 };

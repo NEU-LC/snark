@@ -31,16 +31,26 @@
 
 #include <iostream>
 #include <comma/application/command_line_options.h>
+#include <comma/csv/stream.h>
 #include "../bd9xx/stream.h"
 #include "../bd9xx/gsof.h"
 
 static void usage( bool verbose )
 {
     std::cerr << std::endl;
-    std::cerr << "acquire data from trimble over bd9xx protocol" << std::endl;
+    std::cerr << "acquire data from trimble over bd9xx gsof protocol" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "trimble-to-csv: todo" << std::endl;
+    std::cerr << "usage: netcat localhost 12345 | trimble-to-csv [<options>]" << std::endl;
     std::cerr << std::endl;
+    std::cerr << "options" << std::endl;
+    std::cerr << "    --help,-h: output help; --help --verbose: more help" << std::endl;
+    std::cerr << "    --fields=<fields>: output fields" << std::endl;
+    std::cerr << "    --verbose,-v: more output to stderr" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "fields" << std::endl;
+    std::cerr << "    default: position" << std::endl;
+    std::cerr << std::endl;
+    if( verbose ) { std::cerr << std::endl << "binary options" << std::endl << comma::csv::options::usage() << std::endl; }
     exit( 0 );
 }
 
