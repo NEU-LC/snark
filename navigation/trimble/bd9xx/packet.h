@@ -64,12 +64,15 @@ struct header : public comma::packed::packed_struct< header, 4 >
     
     header( unsigned char t = 0, unsigned char s = 0, unsigned char l = 0 ) { type = t; status = s; length = l; }
     unsigned char checksum() const { return *status.data() + *type.data(); }
+    bool valid() const { return stx() == stx.default_value(); }
 };
 
 struct trailer : public comma::packed::packed_struct< trailer, 2 >
 {
     comma::packed::uint8 checksum;
     comma::packed::const_byte< bd9xx::etx > etx;
+    
+    bool valid() const { return etx() == etx.default_value(); }
 };
 
 struct packet : public boost::array< char, 4 + 255 + 2 >
@@ -104,6 +107,8 @@ struct simple_packet : public comma::packed::packed_struct< simple_packet< Type 
     bd9xx::trailer trailer;
     
     simple_packet( unsigned char status = 0 ) : header( type, status ) { trailer.checksum = header.checksum(); }
+    
+    bool valid() const { return header.valid() && trailer.valid(); }
 };
 
 template < unsigned char Type, typename Body >
@@ -125,10 +130,10 @@ template < unsigned char Type, typename Body >
 inline unsigned char fixed_packet< Type, Body >::checksum() const { return reinterpret_cast< const packet* >( this )->checksum(); }
 
 template < unsigned char Type, typename Body >
-inline bool fixed_packet< Type, Body >::valid() const { return checksum() == trailer.checksum(); }
+inline bool fixed_packet< Type, Body >::valid() const { return header.valid() && trailer.valid() && checksum() == trailer.checksum(); }
 
 template < unsigned char Type, typename Body >
-inline void fixed_packet< Type, Body >::set_checksum() { return trailer.checksum = checksum(); }
+inline void fixed_packet< Type, Body >::set_checksum() { trailer.checksum = checksum(); }
     
 } } } // namespace snark { namespace trimble { namespace bd9xx {
 

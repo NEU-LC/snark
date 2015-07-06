@@ -31,7 +31,8 @@
 
 #include <iostream>
 #include <comma/application/command_line_options.h>
-#include "../bd9xx/packets.h"
+#include "../bd9xx/stream.h"
+#include "../bd9xx/gsof.h"
 
 static void usage( bool verbose )
 {
@@ -45,10 +46,27 @@ static void usage( bool verbose )
 
 int main( int ac, char** av )
 {
-    comma::command_line_options options( ac, av, usage );
-    snark::trimble::bd9xx::header h;
-    snark::trimble::bd9xx::packets::receiver_info::request::packet request;
-    snark::trimble::bd9xx::packets::receiver_info::response::packet response;
-    std::cerr << "trimble-to-csv: todo" << std::endl;
+    try
+    {
+        comma::command_line_options options( ac, av, usage );
+        snark::trimble::bd9xx::input_stream is( std::cin );
+        while( std::cin.good() )
+        {
+            snark::trimble::bd9xx::gsof::transmission transmission;
+            while( std::cin.good() && !transmission.complete() )
+            {
+                const snark::trimble::bd9xx::packet* p = is.read();
+                if( !p ) { break; }
+                transmission.append( p->body(), p->header().length() );
+            }
+            if( !transmission.complete() ) { continue; } // may be end of stream or out of sync
+            
+            // todo: handle transmission records
+            
+        }
+        return 0;
+    }
+    catch( std::exception& ex ) { std::cerr << "trimble-to-csv: " << ex.what() << std::endl; }
+    catch( ... ) { std::cerr << "trimble-to-csv: unknown exception" << std::endl; }
     return 1;
 }

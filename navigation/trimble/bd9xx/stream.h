@@ -1,9 +1,3 @@
-// This file is part of snark, a generic and flexible library for robotics research
-// Copyright (c) 2011 The University of Sydney
-// All rights reserved.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are met:
 // 1. Redistributions of source code must retain the above copyright
 //    notice, this list of conditions and the following disclaimer.
 // 2. Redistributions in binary form must reproduce the above copyright
@@ -29,31 +23,30 @@
 
 /// @author vsevolod vlaskine
 
+#ifndef SNARK_NAVIGATION_TRIMBLE_BD9XX_STREAM_H_
+#define SNARK_NAVIGATION_TRIMBLE_BD9XX_STREAM_H_
+
+#include <iostream>
 #include "packet.h"
 
 namespace snark { namespace trimble { namespace bd9xx {
-    
-unsigned char packet::checksum() const
+
+/// receive a packet; if invalid, no resynching, just discard
+class input_stream
 {
-    unsigned char sum = header().checksum();
-    const char* begin = body();
-    const char* end = begin + static_cast< unsigned int >( header().length() );
-    for( const char* p = begin; p < end; sum += *p++ );
-    return sum;
-}
-
-const bd9xx::header& packet::header() const { return *reinterpret_cast< const bd9xx::header* >( this ); }
-
-bd9xx::header& packet::header() { return *reinterpret_cast< bd9xx::header* >( this ); }
-
-const bd9xx::trailer& packet::trailer() const { return *reinterpret_cast< const bd9xx::trailer* >( body() + header().length() ); }
-
-bd9xx::trailer& packet::trailer() { return *reinterpret_cast< bd9xx::trailer* >( body() + header().length() ); }
-
-const char* packet::body() const { return &( this->operator[]( bd9xx::header::size ) ); }
-
-char* packet::body() { return &( this->operator[]( bd9xx::header::size ) ); }
-
-bool packet::valid() const { return header().valid() && header().valid() && trailer().checksum() == checksum(); }
+    public:
+        /// constructor
+        input_stream( std::istream& is );
+        
+        /// read packet, return null, if out of sync or end of stream; resync, if necessary
+        const bd9xx::packet* read();
+        
+    private:
+        std::istream& is_;
+        bd9xx::packet packet_;
+        
+};
     
 } } } // namespace snark { namespace trimble { namespace bd9xx {
+
+#endif // SNARK_NAVIGATION_TRIMBLE_BD9XX_STREAM_H_
