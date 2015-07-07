@@ -50,6 +50,8 @@ static void usage( bool verbose )
     std::cerr << "options" << std::endl;
     std::cerr << "    --help,-h: output help; --help --verbose: more help" << std::endl;
     std::cerr << "    --fields=<fields>: output fields" << std::endl;
+    std::cerr << "    --output-all,--all: if present, output records on every gps update," << std::endl;
+    std::cerr << "                        even if values of output fields have not changed" << std::endl;
     std::cerr << "    --verbose,-v: more output to stderr" << std::endl;
     std::cerr << std::endl;
     std::cerr << "fields" << std::endl;
@@ -149,21 +151,40 @@ static comma::csv::fieldwise make_fieldwise( const comma::csv::options& csv )
     return comma::csv::fieldwise( output::type(), c );
 }
 
+static void output( const comma::csv::fieldwise& fieldwise
+                  , const output::type& v
+                  , comma::csv::output_stream< output::type >& os )
+{
+    static std::string last;
+    std::string current;
+    if( os.is_binary() )
+    {
+        current.resize( os.binary().binary().format().size() );
+        os.binary().binary().put( v, &current[0] );
+        if( !fieldwise.binary().equal( &last[0], &current[0] ) ) { std::cout.write( &current[0], os.binary().binary().format().size() ); }
+    }
+    else
+    {
+        os.ascii().ascii().put( v, current );
+        if( !fieldwise.ascii().equal( last, current ) ) { std::cout << current << std::endl; }
+    }
+    last = current;
+}
+
 namespace gsof = snark::trimble::bd9xx::packets::gsof;
 
 static const output::type* handle( const snark::trimble::bd9xx::gsof::transmission::const_iterator& it )
 {
     static boost::optional< boost::posix_time::time_duration > utc_offset;
+    static boost::posix_time::ptime time;
     static output::type value; // quick and dirty
     switch( it->type() )
     {
         case gsof::records::current_time_utc::type:
         {
             const gsof::records::current_time_utc::data& r = it.as< gsof::records::current_time_utc::data >();
-            // todo
-            
-            std::cerr << "--> todo: got: " << r.time.utc_offset() << std::endl;
-            
+            utc_offset = boost::posix_time::seconds( r.time.utc_offset() );
+            time = r.time.as_time();
             return NULL;
         }
         
@@ -199,10 +220,12 @@ int main( int ac, char** av )
     try
     {
         comma::command_line_options options( ac, av, usage );
+        bool output_all = options.exists( "--output-all,--all" );
         snark::trimble::bd9xx::input_stream is( std::cin );
         comma::csv::options csv( options );
         comma::csv::fieldwise fieldwise = make_fieldwise( csv ); // todo: plug in
         comma::csv::output_stream< output::type > os( std::cout, csv );
+        std::string last;
         while( std::cin.good() )
         {
             snark::trimble::bd9xx::gsof::transmission transmission;
@@ -216,7 +239,9 @@ int main( int ac, char** av )
             for( snark::trimble::bd9xx::gsof::transmission::const_iterator it = transmission.begin(); it != transmission.end(); ++it )
             {
                 const output::type* v = handle( it );
-                if( v ) { os.write( *v ); } // todo: plug in fieldwise
+                if( !v ) { continue; }
+                if( output_all ) { os.write( *v ); }
+                else { output( fieldwise, *v, os ); }
             }
         }
         return 0;
