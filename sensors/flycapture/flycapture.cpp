@@ -34,6 +34,8 @@
 #include <boost/assign.hpp>
 #include <boost/bimap.hpp>
 #include <comma/base/exception.h>
+#include <comma/application/signal_flag.h>
+#include <comma/csv/stream.h>
 #include "flycapture.h"
 
 //using namespace FlyCapture2;
@@ -41,7 +43,6 @@
 // static void PVDECL pv_callback_( tPvFrame *frame );
 
 /*TODO:
-* Attributes cannot be set, this is currently done through the flycap program provided by point-grey.
 * Discard argument is ignored.
 * implement a callback solution
 */
@@ -50,7 +51,7 @@ namespace snark{ namespace camera{
 
 static const unsigned int max_retries = 15;
 
-typedef boost::bimap<FlyCapture2::PixelFormat ,const char*> pixel_format_map_t;
+typedef boost::bimap<FlyCapture2::PixelFormat , std::string> pixel_format_map_t;
 static const pixel_format_map_t pixel_format_map = boost::assign::list_of< pixel_format_map_t::relation >
      (FlyCapture2::PIXEL_FORMAT_MONO8, "PIXEL_FORMAT_MONO8")
      (FlyCapture2::PIXEL_FORMAT_411YUV8, "PIXEL_FORMAT_411YUV8")     /**< YUV 4:1:1. */
@@ -102,11 +103,9 @@ static const std::string structAttributes[] = {"maxWidth", "maxHeight", "offsetH
 static std::string flycapture_get_attribute_( FlyCapture2::GigECamera& handle, const std::string& key )
 {
     FlyCapture2::Error error;
-    FlyCapture2::CameraInfo cam_info;
     FlyCapture2::GigEImageSettings image_settings;
     FlyCapture2::GigEImageSettingsInfo image_settings_info;
 
-    error = handle.GetCameraInfo(&cam_info);
     error = handle.GetGigEImageSettings(&image_settings);
     error = handle.GetGigEImageSettingsInfo(&image_settings_info);            
     
@@ -139,7 +138,7 @@ static std::string flycapture_get_attribute_( FlyCapture2::GigECamera& handle, c
             if( cam_prop.autoManualMode ) return "auto";
             if( cam_prop.type == FlyCapture2::WHITE_BALANCE ) //White balance has two values, so it is a special case
                 return boost::to_string( cam_prop.valueA ) + "," + boost::to_string( cam_prop.valueB );
-	    
+    
             return boost::to_string( cam_prop.absControl ? cam_prop.absValue : cam_prop.valueA );
   
         } else 
@@ -153,12 +152,103 @@ static std::string flycapture_get_attribute_( FlyCapture2::GigECamera& handle, c
 static void flycapture_set_attribute_( FlyCapture2::GigECamera& handle, const std::string& key, const std::string& value )
 {
     FlyCapture2::Error error;
-    FlyCapture2::CameraInfo cam_info;
     FlyCapture2::GigEConfig cam_config;
     FlyCapture2::GigEImageSettings image_settings;
     FlyCapture2::GigEImageSettingsInfo image_settings_info;   
 
-    //TODO
+    error = handle.GetGigEImageSettings(&image_settings);
+    error = handle.GetGigEImageSettingsInfo(&image_settings_info);            
+    
+    //ImageSettingsInfo struct
+    /**/ if ( key == "offsetHStepSize" ) image_settings_info.offsetHStepSize = boost::lexical_cast<int>(value);
+    else if ( key == "offsetVStepSize" ) image_settings_info.offsetVStepSize = boost::lexical_cast<int>(value);
+     
+    //ImageSettings struct
+    else if ( key == "offsetX" )     image_settings.offsetX = boost::lexical_cast<int>(value);
+    else if ( key == "offsetY" )     image_settings.offsetY = boost::lexical_cast<int>(value);
+    else if ( key == "width" )       
+    {
+        if((boost::lexical_cast<uint>(value) > image_settings_info.maxWidth) |
+            (boost::lexical_cast<uint>(value) < 0))
+            std::cerr << "Error: width out of bounds" << std::endl;
+        else
+          image_settings.width = boost::lexical_cast<int>(value);
+    }
+    else if ( key == "height" )
+    {
+        if((boost::lexical_cast<uint>(value) > image_settings_info.maxHeight) |
+            (boost::lexical_cast<uint>(value) < 0))
+            std::cerr << "Error: height out of bounds" << std::endl;
+        else
+          image_settings.height = boost::lexical_cast<int>(value);
+    }    
+    else if ( key == "PixelFormat" ) 
+    {
+      if( pixel_format_map.right.find(value) != pixel_format_map.right.end() )
+            image_settings.pixelFormat = pixel_format_map.right.at( value );
+      else
+            std::cerr << "Error, invalid pixel format." << std::endl;
+    }
+    //Check the property list
+    else{
+        if( property_map.right.find(key) != property_map.right.end() )
+        {
+            FlyCapture2::Property cam_prop;
+            FlyCapture2::PropertyInfo cam_prop_info;
+            
+            cam_prop.type = property_map.right.at( key );
+            cam_prop_info.type = property_map.right.at( key );
+            
+            handle.GetProperty( &cam_prop );
+            handle.GetPropertyInfo( &cam_prop_info );
+            
+            if( !cam_prop.present ) return;    //If property is not present, it is unsupported for this camera
+            if( value == "auto" ) 
+                cam_prop.autoManualMode = true;
+            else
+            {
+                cam_prop.autoManualMode = false;
+                if( cam_prop.type == FlyCapture2::WHITE_BALANCE ) //White balance has two values, so it is a special case
+                {
+                    std::vector< std::string > v = comma::split( value, "," );
+                    if(v.size() != 2)
+                    {
+                        std::cerr << "Error: White Balance must be in the format of 'red,blue' or 'auto' where red and blue are integers [0,1023]" << std::endl;
+                    } 
+                    else   
+                    {
+                       cam_prop.valueA = boost::lexical_cast<uint>(v[0]);
+                       cam_prop.valueB = boost::lexical_cast<uint>(v[1]);
+                    }
+                }
+                else 
+                {  
+                    if( value.find( "." ) != value.npos )
+                       {
+                           cam_prop.absControl = true;
+                           cam_prop.absValue = boost::lexical_cast<float>(value);             
+                       }
+                       else
+                       {
+                         cam_prop.absControl = false;
+                           cam_prop.valueA = boost::lexical_cast<uint>(value);
+                       }
+                }
+            }
+            error = handle.SetProperty(&cam_prop);
+            if(error != FlyCapture2::PGRERROR_OK)
+                std::cerr << "Error setting attributes: " << error.GetDescription() << std::endl;
+        } else 
+        {
+          std::cerr << "Property: " << key << " not found!" << std::endl;
+        }
+    }
+    //Handle errors here, the SDK should do out of bounds checking (test width > 1920 for example)
+    
+    error = handle.SetGigEImageSettings(&image_settings);
+    if(error != FlyCapture2::PGRERROR_OK)
+        std::cerr << "Error setting attributes." << std::endl;
+
     return;
 }
 
@@ -178,38 +268,6 @@ flycapture::attributes_type flycapture_attributes_( FlyCapture2::GigECamera& han
     }
     return attributes;
 }
-
-/*
-static void pv_set_attribute_( tPvHandle& handle, const std::string& key, const std::string& value )
-{
-    tPvAttributeInfo info;
-    if( PvAttrIsAvailable( handle, key.c_str() ) != ePvErrSuccess ) { COMMA_THROW( comma::exception, "attribute \"" << key << "\" unavailable" ); }
-    if( PvAttrInfo( handle, key.c_str(), &info ) != ePvErrSuccess ) { COMMA_THROW( comma::exception, "failed to get attribute info for \"" << key << "\"" ); }
-    tPvErr result;
-    switch( info.Datatype )
-    {
-        case ePvDatatypeString:
-        case ePvDatatypeEnum:
-            result = PvAttrEnumSet( handle, key.c_str(), value.c_str() );
-            break;
-        case ePvDatatypeUint32:
-            result = PvAttrUint32Set( handle, key.c_str(), boost::lexical_cast< int >( value ) );
-            break;
-        case ePvDatatypeFloat32:
-            result = PvAttrFloat32Set( handle, key.c_str(), boost::lexical_cast< int >( value ) );
-            break;
-        case ePvDatatypeCommand:
-            result = PvCommandRun( handle, key.c_str() );
-            break;
-        case ePvDatatypeRaw:
-        case ePvDatatypeUnknown:
-        default:
-            COMMA_THROW( comma::exception, "unknown attribute \"" << key << "\"" );
-    };
-    if( result != ePvErrSuccess ) { COMMA_THROW( comma::exception, "failed to set attribute \"" << key << "\": " << pv_error_to_string_( result ) << " (" << result << ")" ); }
-}*/
-
-
 
 static cv::Mat flycapture_image_as_cvmat_( const FlyCapture2::Image& frame )
 {
@@ -302,10 +360,10 @@ class flycapture::impl
             }
 
             if (result != FlyCapture2::PGRERROR_OK){close(); COMMA_THROW( comma::exception, "failed to open point grey camera: " << result.GetDescription() );}
-//              for( attributes_type::const_iterator i = attributes.begin(); i != attributes.end(); ++i )
-//              {
-//                 pv_set_attribute_( handle_, i->first, i->second );
-//             }
+             for( attributes_type::const_iterator i = attributes.begin(); i != attributes.end(); ++i )
+             {
+                flycapture_set_attribute_( handle_, i->first, i->second );
+            }
     
         }
 
@@ -456,7 +514,7 @@ class flycapture::callback::impl
 //             PvCommandRun( handle, "Acquisitionstop" );
 //             PvCaptureQueueClear( handle );
 //             PvCaptureEnd( handle );
-// 	       handle.StopCapture();
+//             handle.StopCapture();
         }
 
         OnFrame on_frame;
