@@ -173,47 +173,55 @@ static void output( const comma::csv::fieldwise& fieldwise
 
 namespace gsof = snark::trimble::bd9xx::packets::gsof;
 
-static const output::type* handle( const snark::trimble::bd9xx::gsof::transmission::const_iterator& it )
+class transmission
 {
-    static boost::optional< boost::posix_time::time_duration > utc_offset;
-    static boost::posix_time::ptime time;
-    static output::type value; // quick and dirty
-    switch( it->type() )
-    {
-        case gsof::records::current_time_utc::type:
+    public:
+        const output::type* handle( const snark::trimble::bd9xx::gsof::transmission::const_iterator& it )
         {
-            const gsof::records::current_time_utc::data& r = it.as< gsof::records::current_time_utc::data >();
-            utc_offset = boost::posix_time::seconds( r.time.utc_offset() );
-            time = r.time.as_time();
-            return NULL;
+            switch( it->type() )
+            {
+                case gsof::records::current_time_utc::type:
+                {
+                    const gsof::records::current_time_utc::data& r = it.as< gsof::records::current_time_utc::data >();
+                    utc_offset_ = boost::posix_time::seconds( r.time.utc_offset() );
+                    value_.t = r.time.as_time();
+                    return NULL;
+                }
+                
+                case gsof::records::position_time::type:
+                {
+                    const gsof::records::position_time::data& r = it.as< gsof::records::position_time::data >();
+                    if( !utc_offset_ ) { return NULL; } // todo: quick and dirty for now
+                    value_.t = r.gps_time.as_time() + *utc_offset_;
+                    return &value_;
+                }
+                
+                case gsof::records::position::type:
+                {
+                    const gsof::records::position::data& r = it.as< gsof::records::position::data >();
+                    value_.data.position.coordinates.latitude = r.position.coordinates.latitude();
+                    value_.data.position.coordinates.longitude = r.position.coordinates.longitude();
+                    value_.data.position.z = r.position.height();
+                    return value_.t.is_not_a_date_time() ? NULL : &value_;
+                }
+                    
+                case gsof::records::velocity::type:
+                    return NULL; // todo
+                    
+                case gsof::records::altitude::type:
+                    return NULL; // todo
+                    
+                default:
+                    return NULL;
+            }
         }
         
-        case gsof::records::position_time::type:
-        {
-            const gsof::records::position_time::data& r = it.as< gsof::records::position_time::data >();
-            // todo
-            
-            std::cerr << "--> todo: got: " << r.gps_time.milliseconds() << std::endl;
-            
-            return NULL;
-        }
-        
-        case gsof::records::position::type:
-        {
-            const gsof::records::position::data& r = it.as< gsof::records::position::data >();
-            // todo
-            
-            std::cerr << "--> todo: got: " << r.position.coordinates.latitude() << std::endl;
-            
-            return utc_offset ? &value : NULL;
-        }
-            
-        // todo
-            
-        default:
-            return NULL;
-    }
-}
+    private:
+        static boost::optional< boost::posix_time::time_duration > utc_offset_; // quick and dirty, initialized and kept
+        output::type value_;
+};
+
+boost::optional< boost::posix_time::time_duration > transmission::utc_offset_;
 
 int main( int ac, char** av )
 {
@@ -229,6 +237,7 @@ int main( int ac, char** av )
         while( std::cin.good() )
         {
             snark::trimble::bd9xx::gsof::transmission transmission;
+            ::transmission t;
             while( std::cin.good() && !transmission.complete() )
             {
                 const snark::trimble::bd9xx::packet* p = is.read();
@@ -238,7 +247,7 @@ int main( int ac, char** av )
             if( !transmission.complete() ) { continue; } // may be end of stream or out of sync
             for( snark::trimble::bd9xx::gsof::transmission::const_iterator it = transmission.begin(); it != transmission.end(); ++it )
             {
-                const output::type* v = handle( it );
+                const output::type* v = t.handle( it );
                 if( !v ) { continue; }
                 if( output_all ) { os.write( *v ); }
                 else { output( fieldwise, *v, os ); }
