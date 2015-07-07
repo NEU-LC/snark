@@ -34,7 +34,9 @@
 #include <comma/csv/impl/fieldwise.h>
 #include <comma/csv/stream.h>
 #include "../../../math/spherical_geometry/coordinates.h"
+#include "../../../math/spherical_geometry/traits.h"
 #include "../../../timing/timestamped.h"
+#include "../../../timing/traits.h"
 #include "../bd9xx/stream.h"
 #include "../bd9xx/gsof.h"
 
@@ -59,18 +61,100 @@ static void usage( bool verbose )
 
 struct position
 {
-    // todo
+    snark::spherical::coordinates coordinates;
+    double z;
+    
+    position() : z( 0 ) {}
+    position( const snark::spherical::coordinates& coordinates, double z ) : coordinates( coordinates ), z( z ) {}
+};
+
+struct orientation
+{
+    double roll;
+    double pitch;
+    double yaw;
+    
+    orientation() : roll( 0 ), pitch( 0 ), yaw( 0 ) {}
+    orientation( double roll, double pitch, double yaw ) : roll( roll ), pitch( pitch ), yaw( yaw ) {}
 };
 
 struct output
 {
-    // todo
+    struct data
+    {
+        ::position position;
+        ::orientation orientation;
+    };
+    
+    typedef snark::timestamped< data > type;
 };
+
+namespace comma { namespace visiting {
+
+template <> struct traits< position >
+{
+    template < typename Key, class Visitor > static void visit( const Key&, position& p, Visitor& v )
+    {
+        v.apply( "coordinates", p.coordinates );
+        v.apply( "z", p.z );
+    }
+    
+    template < typename Key, class Visitor > static void visit( const Key&, const position& p, Visitor& v )
+    {
+        v.apply( "coordinates", p.coordinates );
+        v.apply( "z", p.z );
+    }
+};
+    
+template <> struct traits< orientation >
+{
+    template < typename Key, class Visitor > static void visit( const Key&, orientation& p, Visitor& v )
+    {
+        v.apply( "roll", p.roll );
+        v.apply( "pitch", p.pitch );
+        v.apply( "yaw", p.yaw );
+    }
+    
+    template < typename Key, class Visitor > static void visit( const Key&, const orientation& p, Visitor& v )
+    {
+        v.apply( "roll", p.roll );
+        v.apply( "pitch", p.pitch );
+        v.apply( "yaw", p.yaw );
+    }
+};
+    
+template <> struct traits< output::data >
+{
+    template < typename Key, class Visitor > static void visit( const Key&, output::data& p, Visitor& v )
+    {
+        v.apply( "position", p.position );
+        v.apply( "orientation", p.orientation );
+    }
+    
+    template < typename Key, class Visitor > static void visit( const Key&, const output::data& p, Visitor& v )
+    {
+        v.apply( "position", p.position );
+        v.apply( "orientation", p.orientation );
+    }
+};
+
+} } // namespace comma { namespace visiting {
+
+static comma::csv::fieldwise make_fieldwise( const comma::csv::options& csv )
+{
+    std::vector< std::string > v = comma::split( csv.fields, ',' );
+    for( unsigned int i = 0; i < v.size(); ++i ) { if( v[i] == "t" ) { v[i] = ""; } }
+    comma::csv::options c = csv;
+    c.fields = comma::join( v, ',' );
+    return comma::csv::fieldwise( output::type(), c );
+}
 
 namespace gsof = snark::trimble::bd9xx::packets::gsof;
 
-static void handle( const snark::trimble::bd9xx::gsof::transmission::const_iterator& it )
+static const output::type* handle( const snark::trimble::bd9xx::gsof::transmission::const_iterator& it )
 {
+    static boost::optional< boost::posix_time::time_duration > utc_offset;
+    static output::type value; // quick and dirty
     switch( it->type() )
     {
         case gsof::records::current_time_utc::type:
@@ -80,14 +164,33 @@ static void handle( const snark::trimble::bd9xx::gsof::transmission::const_itera
             
             std::cerr << "--> todo: got: " << r.time.utc_offset() << std::endl;
             
-            break;
+            return NULL;
+        }
+        
+        case gsof::records::position_time::type:
+        {
+            const gsof::records::position_time::data& r = it.as< gsof::records::position_time::data >();
+            // todo
+            
+            std::cerr << "--> todo: got: " << r.gps_time.milliseconds() << std::endl;
+            
+            return NULL;
+        }
+        
+        case gsof::records::position::type:
+        {
+            const gsof::records::position::data& r = it.as< gsof::records::position::data >();
+            // todo
+            
+            std::cerr << "--> todo: got: " << r.position.coordinates.latitude() << std::endl;
+            
+            return utc_offset ? &value : NULL;
         }
             
         // todo
             
         default:
-            // todo
-            break;
+            return NULL;
     }
 }
 
@@ -97,6 +200,9 @@ int main( int ac, char** av )
     {
         comma::command_line_options options( ac, av, usage );
         snark::trimble::bd9xx::input_stream is( std::cin );
+        comma::csv::options csv( options );
+        comma::csv::fieldwise fieldwise = make_fieldwise( csv ); // todo: plug in
+        comma::csv::output_stream< output::type > os( std::cout, csv );
         while( std::cin.good() )
         {
             snark::trimble::bd9xx::gsof::transmission transmission;
@@ -109,11 +215,9 @@ int main( int ac, char** av )
             if( !transmission.complete() ) { continue; } // may be end of stream or out of sync
             for( snark::trimble::bd9xx::gsof::transmission::const_iterator it = transmission.begin(); it != transmission.end(); ++it )
             {
-                handle( it );
+                const output::type* v = handle( it );
+                if( v ) { os.write( *v ); } // todo: plug in fieldwise
             }
-            
-            // todo: output
-            
         }
         return 0;
     }

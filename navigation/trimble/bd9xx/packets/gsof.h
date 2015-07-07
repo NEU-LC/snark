@@ -85,6 +85,7 @@ struct gps_time_with_offset : public comma::packed::packed_struct< gps_time_with
     comma::packed::big_endian_int16 utc_offset; // seconds
     
     /// @todo do we need to handle gps weeks rollover?
+    /// @todo is utc offset applied correctly?
     boost::posix_time::ptime as_time() const { return time.as_time() + boost::posix_time::seconds( utc_offset() ); }
 };
 
