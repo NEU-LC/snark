@@ -35,7 +35,7 @@
 #include <snark/timing/ntp.h>
 #include <snark/timing/time.h>
 #include <snark/timing/timestamped.h>
-#include <comma/visiting/traits.h>
+#include <snark/timing/traits.h>
 #include <comma/csv/stream.h>
 #include <comma/csv/options.h>
 

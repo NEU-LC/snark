@@ -27,26 +27,30 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef SNARK_TIMING_TIMESTAMPED_H_
-#define SNARK_TIMING_TIMESTAMPED_H_
+#ifndef SNARK_TIMING_TRAITS_H_
+#define SNARK_TIMING_TRAITS_H_
 
-#include <boost/date_time/posix_time/ptime.hpp>
+#include <comma/visiting/traits.h>
+#include "timestamped.h"
 
-namespace snark {
+namespace comma { namespace visiting {
 
-template < typename T >
-struct timestamped
+template < typename T > struct traits< snark::timestamped< T > >
 {
-    boost::posix_time::ptime t;
+    template< typename K, typename V > static void visit( const K&, snark::timestamped< T >& p, V& v )
+    {
+        v.apply( "t", p.t );
+        v.apply( "data", p.data );
+    }
 
-    T data;
-
-    timestamped() {}
-
-    timestamped( const boost::posix_time::ptime& t, const T& data ) : t( t ), data( data ) {}
+    template< typename K, typename V > static void visit( const K&, const snark::timestamped< T >& p, V& v )
+    {
+        v.apply( "t", p.t );
+        v.apply( "data", p.data );
+    }
 };
 
-} // namespace snark {
+} } // namespace comma { namespace visiting {
 
-#endif // SNARK_TIMING_TIMESTAMPED_H_
+#endif // SNARK_TIMING_TRAITS_H_
 
