@@ -91,7 +91,7 @@ int main( int ac, char** av )
         double radius = options.value< double >( "--radius" );
         bool all = options.exists( "--all" );
         Eigen::Vector3d resolution( radius, radius, radius );
-        comma::csv::input_stream< Eigen::Vector3d > ifstream( ifs, filter_csv );
+        comma::csv::input_stream< Eigen::Vector3d > ifstream( ifs, filter_csv, Eigen::Vector3d::Zero() );
         std::deque< record > filter_points;
         snark::math::closed_interval< double, 3 > extents;
         if( verbose ) { std::cerr << "points-join: reading input points..." << std::endl; }
@@ -118,7 +118,7 @@ int main( int ac, char** av )
         grid_t grid( extents.min(), resolution );
         for( std::size_t i = 0; i < filter_points.size(); ++i ) { ( grid.touch_at( filter_points[i].point ) )->second.push_back( &filter_points[i] ); }
         if( verbose ) { std::cerr << "points-join: joining..." << std::endl; }
-        comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, stdin_csv );
+        comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, stdin_csv, Eigen::Vector3d::Zero() );
         #ifdef WIN32
         _setmode( _fileno( stdout ), _O_BINARY );
         #endif
