@@ -121,7 +121,7 @@ template <> struct traits< snark::nmea::messages::gpgga >
     {
         v.apply( "time", p.time );
         v.apply( "coordinates", p.coordinates );
-        unsigned int q;
+        unsigned int q = static_cast< unsigned int >( p.quality );
         v.apply( "quality", q );
         p.quality = static_cast< snark::nmea::messages::gpgga::quality_t >( q );
         v.apply( "satellites_in_use", p.satellites_in_use );
@@ -155,6 +155,24 @@ template <> struct traits< snark::nmea::messages::ptnl::avr >
 {
     template < typename Key, class Visitor >
     static void visit( const Key&, snark::nmea::messages::ptnl::avr& p, Visitor& v ) // hyper-quick and monster-dirty
+    {
+        v.apply( "time", p.time );
+        v.apply( "yaw", p.yaw );
+        v.apply( "yaw_string", p.yaw_string );
+        v.apply( "tilt", p.tilt );
+        v.apply( "tilt_string", p.tilt_string );
+        v.apply( "roll", p.roll );
+        v.apply( "roll_string", p.roll_string );
+        v.apply( "range", p.range );
+        unsigned int q = static_cast< unsigned int >( p.quality );
+        v.apply( "quality", q );
+        p.quality = static_cast< snark::nmea::messages::ptnl::avr::quality_t >( q );
+        v.apply( "pdop", p.pdop );
+        v.apply( "satellites_in_use", p.satellites_in_use );
+    }
+    
+    template < typename Key, class Visitor >
+    static void visit( const Key&, const snark::nmea::messages::ptnl::avr& p, Visitor& v ) // hyper-quick and monster-dirty
     {
         v.apply( "time", p.time );
         v.apply( "yaw", p.yaw );
