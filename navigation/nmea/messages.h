@@ -62,7 +62,7 @@ struct gpgga
     
     nmea::messages::time time;
     messages::coordinates coordinates;
-    quality_t quality;
+    quality_t::values quality;
     unsigned int satellites_in_use;
     double hdop;
     double orthometric_height;
@@ -91,7 +91,7 @@ namespace ptnl
         double roll;
         std::string roll_string;
         double range;
-        quality_t quality;
+        quality_t::values quality;
         double pdop;
         unsigned int satellites_in_use;
     };

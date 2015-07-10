@@ -64,6 +64,23 @@ template <> struct traits< snark::nmea::messages::coordinate >
     }
 };
 
+template <> struct traits< snark::nmea::messages::coordinates >
+{
+    template < typename Key, class Visitor >
+    static void visit( const Key&, snark::nmea::messages::coordinates& p, Visitor& v ) // hyper-quick and dirty
+    {
+        v.apply( "latitude", p.latitude );
+        v.apply( "longitude", p.longitude );
+    }
+    
+    template < typename Key, class Visitor >
+    static void visit( const Key&, const snark::nmea::messages::coordinates& p, Visitor& v ) // hyper-quick and dirty
+    {
+        v.apply( "latitude", p.latitude );
+        v.apply( "longitude", p.longitude );
+    }
+};
+
 template <> struct traits< snark::nmea::messages::time > // pain
 {
     template < typename Key, class Visitor >
@@ -123,7 +140,7 @@ template <> struct traits< snark::nmea::messages::gpgga >
         v.apply( "coordinates", p.coordinates );
         unsigned int q = static_cast< unsigned int >( p.quality );
         v.apply( "quality", q );
-        p.quality = static_cast< snark::nmea::messages::gpgga::quality_t >( q );
+        p.quality = static_cast< snark::nmea::messages::gpgga::quality_t::values >( q );
         v.apply( "satellites_in_use", p.satellites_in_use );
         v.apply( "hdop", p.hdop );
         v.apply( "orthometric_height", p.orthometric_height );
@@ -166,7 +183,7 @@ template <> struct traits< snark::nmea::messages::ptnl::avr >
         v.apply( "range", p.range );
         unsigned int q = static_cast< unsigned int >( p.quality );
         v.apply( "quality", q );
-        p.quality = static_cast< snark::nmea::messages::ptnl::avr::quality_t >( q );
+        p.quality = static_cast< snark::nmea::messages::ptnl::avr::quality_t::values >( q );
         v.apply( "pdop", p.pdop );
         v.apply( "satellites_in_use", p.satellites_in_use );
     }

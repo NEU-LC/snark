@@ -70,12 +70,12 @@ class string::as
 };
 
 template < typename T >
-T string::as< T >::from( const string& m )
+T string::as< T >::from( const string& s )
 {
-    if( !m.valid() ) { COMMA_THROW( comma::exception, "checksum check failed on: " << comma::join( m.values_, ',' ) ); }
-    if( !m.complete() ) { COMMA_THROW( comma::exception, "incomplete message: " << comma::join( m.values_, ',' ) ); }
-    if( T::value_type::name() != m.type() ) { COMMA_THROW( comma::exception, "expected message of type: " << T::type << ", got: " << m.type() ); }
-    return ascii_.get( m.values_ );
+    if( !s.valid() ) { COMMA_THROW( comma::exception, "checksum check failed on: " << comma::join( s.values_, ',' ) ); }
+    if( !s.complete() ) { COMMA_THROW( comma::exception, "incomplete message: " << comma::join( s.values_, ',' ) ); }
+    if( T::value_type::name() != s.type() ) { COMMA_THROW( comma::exception, "expected message of type: " << T::value_type::name() << ", got: " << s.type() ); }
+    return ascii_.get( s.values_ );
 }
     
 } } // namespace snark { namespace nmea {

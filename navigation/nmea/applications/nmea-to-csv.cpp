@@ -173,6 +173,19 @@ static void output( const comma::csv::fieldwise& fieldwise
     last = current;
 }
 
+using namespace snark;
+
+void handle( const nmea::message< nmea::messages::gpgga >& m )
+{
+    // todo
+}
+
+template < typename T > void handle( const nmea::string& s )
+{
+    static nmea::string::as< T > m;
+    handle( m.from( s ) );
+}
+
 int main( int ac, char** av )
 {
     try
@@ -192,12 +205,14 @@ int main( int ac, char** av )
             std::string line;
             std::getline( std::cin, line );
             if( line.empty() ) { continue; }
-            snark::nmea::string s( line );
+            nmea::string s( line );
             if( !s.valid() ) { if( verbose ) { std::cerr << "nmea-to-csv: invalid nmea string: \"" << line << "\"" << std::endl; } continue; }
             
+            // todo: if( !s.complete() ) { continue; }
+            
+            if( s.type() == "GPGGA" ) { handle< nmea::message< nmea::messages::gpgga > >( s ); }
+            
             // todo
-            
-            
             
         }
         return 0;
