@@ -57,8 +57,7 @@ static void usage( bool verbose )
     std::cerr << "    --verbose,-v: more output to stderr" << std::endl;
     std::cerr << std::endl;
     std::cerr << "fields" << std::endl;
-    std::cerr << "    default: position" << std::endl;
-    std::cerr << "    todo" << std::endl;
+    std::cerr << "    default: t,latitude,longitude,z,roll,pitch,yaw" << std::endl;
     std::cerr << std::endl;
     if( verbose ) { std::cerr << std::endl << "binary options" << std::endl << comma::csv::options::usage() << std::endl; }
     exit( 0 );
@@ -145,6 +144,8 @@ template <> struct traits< output::data >
 
 } } // namespace comma { namespace visiting {
 
+static output::type output_;
+    
 static comma::csv::fieldwise make_fieldwise( const comma::csv::options& csv )
 {
     std::vector< std::string > v = comma::split( csv.fields, ',' );
@@ -154,9 +155,7 @@ static comma::csv::fieldwise make_fieldwise( const comma::csv::options& csv )
     return comma::csv::fieldwise( output::type(), c );
 }
 
-static void output( const comma::csv::fieldwise& fieldwise
-                  , const output::type& v
-                  , comma::csv::output_stream< output::type >& os )
+static void output( const comma::csv::fieldwise& fieldwise, const output::type& v, comma::csv::output_stream< output::type >& os )
 {
     static std::string last;
     std::string current;
@@ -178,9 +177,8 @@ using namespace snark;
 
 void handle( const nmea::message< nmea::messages::gpgga >& m )
 {
-    // todo
-    std::cerr.precision( 16 );
-    std::cerr << "on gpgga: t: " << boost::posix_time::to_iso_string( m.value.time.value ) << " coordinates:" << ( m.value.coordinates().latitude * 180 / M_PI ) << "," << ( m.value.coordinates().longitude * 180 / M_PI ) << std::endl;
+    output_.t = m.value.time.value;
+    output_.data.position.coordinates = m.value.coordinates();
 }
 
 template < typename T > void handle( const nmea::string& s )
@@ -197,10 +195,17 @@ int main( int ac, char** av )
         bool output_all = options.exists( "--output-all,--all" );
         bool verbose = options.exists( "--verbose,-v" );
         bool permissive = options.exists( "--permissive" );
-        
-        // todo? --no-timestamp?
-        
         comma::csv::options csv( options );
+        csv.full_xpath = true; // for future, e.g. to plug in errors
+        if( csv.fields.empty() ) { csv.fields = "t,latitude,longitude,z,roll,pitch,yaw"; }
+        std::vector< std::string > v = comma::split( csv.fields, ',' );
+        for( unsigned int i = 0; i < v.size(); ++i )
+        {
+            if( v[i] == "latitude" || v[i] == "longitude" ) { v[i] = "data/position/coordinates/" + v[i]; }
+            else if( v[i] == "z" ) { v[i] = "data/position/" + v[i]; }
+            if( v[i] == "roll" || v[i] == "pitch" || v[i] == "yaw" ) { v[i] = "data/orientation/" + v[i]; }
+        }
+        csv.fields = comma::join( v, ',' );
         comma::csv::fieldwise fieldwise = make_fieldwise( csv ); // todo: plug in
         comma::csv::output_stream< output::type > os( std::cout, csv );
         std::string last;
@@ -217,8 +222,11 @@ int main( int ac, char** av )
             }
             if( s.type() == "GPGGA" ) { handle< nmea::message< nmea::messages::gpgga > >( s ); }
             
-            // todo
+            // todo: orientation
             
+            // todo: elevation
+            
+            if( output_all ) { os.write( output_ ); } else { output( fieldwise, output_, os ); }
         }
         return 0;
     }
