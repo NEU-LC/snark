@@ -151,62 +151,25 @@ template <> struct traits< snark::nmea::messages::gpgga >
     }
 };
 
-// template <> struct traits< snark::nmea::messages::ptln::avr >
-// {
-//     template < typename Key, class Visitor >
-//     static void visit( const Key&, snark::nmea::messages::ptln::avr& p, Visitor& v ) // hyper-quick and monster-dirty
-//     {
-//         v.apply( "time", p.time );
-//         v.apply( "coordinates", p.coordinates );
-//         unsigned int q;
-//         v.apply( "quality", q );
-//         p.quality = static_cast< snark::nmea::messages::ptln::avr::quality >
-//     }
-// };
+template <> struct traits< snark::nmea::messages::ptnl::avr >
+{
+    template < typename Key, class Visitor >
+    static void visit( const Key&, snark::nmea::messages::ptnl::avr& p, Visitor& v ) // hyper-quick and monster-dirty
+    {
+        v.apply( "time", p.time );
+        v.apply( "yaw", p.yaw );
+        v.apply( "yaw_string", p.yaw_string );
+        v.apply( "tilt", p.tilt );
+        v.apply( "tilt_string", p.tilt_string );
+        v.apply( "roll", p.roll );
+        v.apply( "roll_string", p.roll_string );
+        v.apply( "range", p.range );
+        v.apply( "quality", static_cast< unsigned int >( p.quality ) );        
+        v.apply( "pdop", p.pdop );
+        v.apply( "satellites_in_use", p.satellites_in_use );
+    }
+};
 
 } } // namespace comma { namespace visiting {
-
-// struct gpgga
-// {
-//     static const char* name() { return "GPGGA"; }
-//     
-//     struct quality_t { enum values { fix_not_valid = 0, gps_fix = 1, differential_gps_fix = 2, real_time_kinematic_fixed_integers = 4, real_time_kinematic_float_integers = 5 }; };
-//     
-//     boost::posix_time::ptime time;
-//     messages::coordinates coordinates;
-//     quality_t quality;
-//     unsigned int satellites_in_use;
-//     double hdop;
-//     double orthometric_height;
-//     std::string height_unit;
-//     double geoid_separation;
-//     std::string geoid_separation_unit;
-//     double age_of_differential_gps_data_record;
-//     std::string reference_station_id;
-// };
-// 
-// namespace ptnl
-// {
-//     template < T > struct message : public nmea::message< T > { static const char* name() { return "PTNL"; } };
-//     
-//     struct avr
-//     {
-//         static const char* name() { return "AVR"; }
-//         
-//         struct quality_t { enum values { fix_not_valid = 0, autonomous_gps_fix = 1, differential_carrier_phase_solution_rtk_float = 2, differential_carrier_phase_solution_rtk_float = 3, differential_code_based_solution_dgps = 4 }; };
-//         
-//         boost::posix_time::ptime time;
-//         double yaw;
-//         string yaw_string;
-//         double tilt;
-//         string tilt_string;
-//         double roll;
-//         string roll_string;
-//         double range;
-//         quality_t quality;
-//         double pdop;
-//         unsigned int satellites_in_use;
-//     };
-// };
 
 #endif // SNARK_NAVIGATION_NMEA_TRAITS_H_
