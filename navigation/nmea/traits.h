@@ -45,12 +45,12 @@ template <> struct traits< snark::nmea::messages::coordinate >
     static void visit( const Key&, snark::nmea::messages::coordinate& p, Visitor& v ) // hyper-quick and dirty
     {
         double c;
-        char d;
+        std::string d;
         v.apply( "value", c );
         v.apply( "direction", d );
-        double sign = d == 'N' || d == 'E' ? 1 : -1;
+        double sign = d == "N" || d == "E" ? 1 : -1;
         int degrees = c / 100;
-        double fractions = ( c - degrees ) / 60 ;
+        double fractions = ( c - degrees * 100 ) / 60 ;
         p.value = sign * ( M_PI * ( fractions + degrees ) ) / 180;
     }
     
@@ -58,7 +58,7 @@ template <> struct traits< snark::nmea::messages::coordinate >
     static void visit( const Key&, const snark::nmea::messages::coordinate& p, Visitor& v ) // hyper-quick and dirty
     {
         double c = 0; // todo, if needed: set from p
-        char d = 0; // todo, if needed: set from p
+        std::string d; // todo, if needed: set from p
         v.apply( "value", c );
         v.apply( "direction", d );
     }

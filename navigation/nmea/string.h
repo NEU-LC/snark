@@ -42,7 +42,7 @@ namespace snark { namespace nmea {
 class string
 {
     public:
-        string( const std::string& s );
+        string( const std::string& s, bool permissive = false );
         
         bool valid() const;
         
@@ -72,8 +72,8 @@ class string::as
 template < typename T >
 T string::as< T >::from( const string& s )
 {
-    if( !s.valid() ) { COMMA_THROW( comma::exception, "checksum check failed on: " << comma::join( s.values_, ',' ) ); }
-    if( !s.complete() ) { COMMA_THROW( comma::exception, "incomplete message: " << comma::join( s.values_, ',' ) ); }
+    //if( !s.valid() ) { COMMA_THROW( comma::exception, "checksum check failed on: " << comma::join( s.values_, ',' ) ); }
+    //if( !s.complete() ) { COMMA_THROW( comma::exception, "incomplete message: " << comma::join( s.values_, ',' ) ); }
     if( T::value_type::name() != s.type() ) { COMMA_THROW( comma::exception, "expected message of type: " << T::value_type::name() << ", got: " << s.type() ); }
     return ascii_.get( s.values_ );
 }

@@ -51,6 +51,7 @@ static void usage( bool verbose )
     std::cerr << "options" << std::endl;
     std::cerr << "    --help,-h: output help; --help --verbose: more help" << std::endl;
     std::cerr << "    --fields=<fields>: output fields" << std::endl;
+    std::cerr << "    --permissive: parse even if checksum invalid, e.g. for debugging" << std::endl;
     std::cerr << "    --output-all,--all: if present, output records on every gps update," << std::endl;
     std::cerr << "                        even if values of output fields have not changed" << std::endl;
     std::cerr << "    --verbose,-v: more output to stderr" << std::endl;
@@ -178,6 +179,8 @@ using namespace snark;
 void handle( const nmea::message< nmea::messages::gpgga >& m )
 {
     // todo
+    std::cerr.precision( 16 );
+    std::cerr << "on gpgga: t: " << boost::posix_time::to_iso_string( m.value.time.value ) << " coordinates:" << ( m.value.coordinates().latitude * 180 / M_PI ) << "," << ( m.value.coordinates().longitude * 180 / M_PI ) << std::endl;
 }
 
 template < typename T > void handle( const nmea::string& s )
@@ -193,6 +196,7 @@ int main( int ac, char** av )
         comma::command_line_options options( ac, av, usage );
         bool output_all = options.exists( "--output-all,--all" );
         bool verbose = options.exists( "--verbose,-v" );
+        bool permissive = options.exists( "--permissive" );
         
         // todo? --no-timestamp?
         
@@ -205,11 +209,12 @@ int main( int ac, char** av )
             std::string line;
             std::getline( std::cin, line );
             if( line.empty() ) { continue; }
-            nmea::string s( line );
-            if( !s.valid() ) { if( verbose ) { std::cerr << "nmea-to-csv: invalid nmea string: \"" << line << "\"" << std::endl; } continue; }
-            
-            // todo: if( !s.complete() ) { continue; }
-            
+            nmea::string s( line, permissive );
+            if( !s.valid() )
+            {
+                if( permissive ) { if( verbose ) { std::cerr << "nmea-to-csv: invalid nmea string, but parse anyway: \"" << line << "\"" << std::endl; } }
+                else { if( verbose ) { std::cerr << "nmea-to-csv: discarded invalid nmea string: \"" << line << "\"" << std::endl; } continue; }
+            }
             if( s.type() == "GPGGA" ) { handle< nmea::message< nmea::messages::gpgga > >( s ); }
             
             // todo
@@ -217,7 +222,7 @@ int main( int ac, char** av )
         }
         return 0;
     }
-    catch( std::exception& ex ) { std::cerr << "trimble-to-csv: " << ex.what() << std::endl; }
-    catch( ... ) { std::cerr << "trimble-to-csv: unknown exception" << std::endl; }
+    catch( std::exception& ex ) { std::cerr << "nmea-to-csv: " << ex.what() << std::endl; }
+    catch( ... ) { std::cerr << "nmea-to-csv: unknown exception" << std::endl; }
     return 1;
 }
