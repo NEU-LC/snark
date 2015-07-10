@@ -29,22 +29,43 @@
 
 /// @author vsevolod vlaskine
 
-#ifndef SNARK_NAVIGATION_NMEA_MESSAGE_H_
-#define SNARK_NAVIGATION_NMEA_MESSAGE_H_
-
-#include <string>
+#include <comma/base/exception.h>
+#include "string.h"
 
 namespace snark { namespace nmea {
 
-template < typename T >
-struct message
+static unsigned int hex_to_int( char c )
 {
-    typedef T value_type;
-    
-    std::string type;
-    value_type value;
-};
+    if( '0' <= c && c <= '9' ) { return c - '0'; }
+    if( 'A' <= c && c <= 'F' ) { return c - 'A'; }
+    if( 'a' <= c && c <= 'f' ) { return c - 'a'; }
+    COMMA_THROW( comma::exception, "expected a hexadecimal digit, got: " << c );
+}
+
+string::string( const std::string& s ) // quick and dirty
+    : valid_( false )
+    , complete_( false )
+{
+    if( s[0] != '$' ) { return; }
+    bool has_cr = s[ s.size() - 1 ] != '\r';
+    if( s[ s.size() - 1 ] != '\r' ) { return; }
+    std::string::size_type p = s.find_last_of( '*' );
+    if( p == std::string::npos ) { return; }
+    if( p + 2 + has_cr != s.size() ) { return; }
+    unsigned char checksum = 16 * hex_to_int( s[ p + 1 ] ) + hex_to_int( s[ p + 2 ] );
+    unsigned char sum = 0;
+    for( unsigned int i = 1; i < p; sum += s[i++] );
+    if( sum != checksum ) { return; }
+    valid_ = true;
+    values_ = comma::split( s.substr( 1, p ), ',' );
+    complete_ = true;
+    for( unsigned int i = 0; i < values_.size() && complete_; complete_ = !values_[i++].empty() );
+}
+
+bool string::valid() const { return valid_; }
+
+bool string::complete() const { return complete_; }
+
+const std::string& string::type() const { return values_[0]; }
     
 } } // namespace snark { namespace nmea {
-
-#endif // SNARK_NAVIGATION_NMEA_MESSAGE_H_

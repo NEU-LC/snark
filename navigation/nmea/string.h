@@ -29,26 +29,55 @@
 
 /// @author vsevolod vlaskine
 
-#include "message.h"
+#ifndef SNARK_NAVIGATION_NMEA_STRING_H_
+#define SNARK_NAVIGATION_NMEA_STRING_H_
+
+#include <string>
+#include <comma/base/exception.h>
+#include <comma/csv/ascii.h>
+#include <comma/string/string.h>
 
 namespace snark { namespace nmea {
 
-message::message( const std::string& s )
-    : valid_( false )
-    , complete_( false )
+class string
 {
-    // todo: get type
-    // todo: get payload
-    // todo: get checksum, set valid_
-    // todo: set complete_
+    public:
+        string( const std::string& s );
+        
+        bool valid() const;
+        
+        bool complete() const;
+        
+        const std::string& type() const;
+        
+        template < typename T > class as;
+        
+    private:
+        template < typename T > friend class as;
+        bool valid_;
+        bool complete_;
+        std::vector< std::string > values_;
+};
+
+template < typename T >
+class string::as
+{
+    public:
+        T from( const string& m );
+        
+    private:
+        comma::csv::ascii< T > ascii_;
+};
+
+template < typename T >
+T string::as< T >::from( const string& m )
+{
+    if( !m.valid() ) { COMMA_THROW( comma::exception, "checksum check failed on: " << comma::join( m.values_, ',' ) ); }
+    if( !m.complete() ) { COMMA_THROW( comma::exception, "incomplete message: " << comma::join( m.values_, ',' ) ); }
+    if( T::value_type::name() != m.type() ) { COMMA_THROW( comma::exception, "expected message of type: " << T::type << ", got: " << m.type() ); }
+    return ascii_.get( m.values_ );
 }
-
-bool message::valid() const { return valid_; }
-
-bool message::complete() const { return complete_; }
-
-const std::string& message::type() const { return type_; }
-
-const std::string& message::payload() const { return payload_; }
     
 } } // namespace snark { namespace nmea {
+
+#endif // SNARK_NAVIGATION_NMEA_STRING_H_
