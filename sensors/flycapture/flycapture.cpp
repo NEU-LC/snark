@@ -157,7 +157,13 @@ static void flycapture_set_attribute_( FlyCapture2::GigECamera& handle, const st
     FlyCapture2::GigEImageSettingsInfo image_settings_info;   
 
     error = handle.GetGigEImageSettings(&image_settings);
+    if(error != FlyCapture2::PGRERROR_OK)
+        std::cerr << "Error getting attributes from camera." << std::endl;
+
     error = handle.GetGigEImageSettingsInfo(&image_settings_info);            
+    if(error != FlyCapture2::PGRERROR_OK)
+        std::cerr << "Error getting attributes from camera." << std::endl;
+
     
     //ImageSettingsInfo struct
     /**/ if ( key == "offsetHStepSize" ) image_settings_info.offsetHStepSize = boost::lexical_cast<int>(value);
@@ -269,7 +275,7 @@ flycapture::attributes_type flycapture_attributes_( FlyCapture2::GigECamera& han
     return attributes;
 }
 
-static cv::Mat flycapture_image_as_cvmat_( const FlyCapture2::Image& frame )
+cv::Mat flycapture_image_as_cvmat_( const FlyCapture2::Image& frame )
 {
     int type;
     switch( frame.GetPixelFormat() )
@@ -304,15 +310,61 @@ static cv::Mat flycapture_image_as_cvmat_( const FlyCapture2::Image& frame )
     return cv::Mat( frame.GetRows(), frame.GetCols(), type, frame.GetData() );
 }
 
+bool flycapture_collect_frame_(cv::Mat & image, FlyCapture2::GigECamera& handle, bool & started)
+{
+    FlyCapture2::Error result;
+    FlyCapture2::Image frame_;
+    
+    FlyCapture2::Image raw_image;
+    result = handle.RetrieveBuffer(&raw_image);
+    frame_.DeepCopy(&raw_image);
+    raw_image.ReleaseBuffer();
+
+    if( result == FlyCapture2::PGRERROR_OK ) 
+    {
+      cv::Mat cvImage = flycapture_image_as_cvmat_( frame_ );
+      cvImage.copyTo(image);
+      return true;
+    } 
+    else if( result == FlyCapture2::PGRERROR_IMAGE_CONSISTENCY_ERROR )
+    {   //report damaged frame and try again
+        FlyCapture2::CameraInfo camera_info;
+        handle.GetCameraInfo(&camera_info);
+        std::cerr << "Error line " << __LINE__ << ": " << result.GetDescription() << "from camera: " << camera_info.serialNumber << " Retrying..." << std::endl;
+        return false; 
+    } 
+    else if ( ( result == FlyCapture2::PGRERROR_ISOCH_START_FAILED ) //These are errors that result in a retry
+      | ( result == FlyCapture2::PGRERROR_ISOCH_ALREADY_STARTED )
+      | ( result == FlyCapture2::PGRERROR_ISOCH_NOT_STARTED ) )
+    {
+        std::cerr << "Error: " << result.GetDescription() << " Restarting camera." << std::endl;
+        handle.StopCapture();
+        started = false;
+	return false;
+    }
+    else
+    {  //Fatal
+      FlyCapture2::CameraInfo camera_info;
+      handle.GetCameraInfo(&camera_info);
+      COMMA_THROW( comma::exception, "got frame with invalid status on camera " << camera_info.serialNumber << ": " << result.GetType() << ": " << result.GetDescription() );
+    }
+
+}
+
 class flycapture::impl
 {
     //Note, for Point Grey, the serial number is used as ID
     public:
-        impl( unsigned int id, const attributes_type& attributes ) :
+        impl( unsigned int id, const attributes_type& attributes, unsigned int id_right ) :
             started_( false ),
             timeOut_( 1000 )
         {
             initialize_();
+            
+            stereo = false;
+            if(id_right != 0)
+                {stereo = true; }
+            
             static const boost::posix_time::time_duration timeout = boost::posix_time::seconds( 5 ); // quick and dirty; make configurable?
             boost::posix_time::ptime now = boost::posix_time::microsec_clock::universal_time();
             boost::posix_time::ptime end = now + timeout;
@@ -324,18 +376,20 @@ class flycapture::impl
 
                 for( unsigned int i = 0; i < list.size(); ++i ) // look for a point grey camera that matches the serial number
                 {
-                    if(list[i].interfaceType == FlyCapture2::INTERFACE_GIGE
-                        && ( id == 0 || id == list[i].serialNumber ) )
-                    {
+                    if(list[i].interfaceType == FlyCapture2::INTERFACE_GIGE && (id == 0))
                         id_ = list[i].serialNumber;
-                        break;
-                    }
+                    if(list[i].interfaceType == FlyCapture2::INTERFACE_GIGE && ( id == list[i].serialNumber))
+                        id_ = list[i].serialNumber;
+                    if(list[i].interfaceType == FlyCapture2::INTERFACE_GIGE && ( id_right == list[i].serialNumber))
+                        id_right_ = list[i].serialNumber;
                 }
-                if( id_ ) { break; }
+                if( id_ && !stereo) { break; }
+                if(stereo && id_ && id_right_) { break; }
              }
              if( !id_ ) { COMMA_THROW( comma::exception, "timeout; camera not found" ); }
+             if(stereo && !id_right_ ) { COMMA_THROW( comma::exception, "timeout; stereo right camera not found" ); }
 
-             if( id == 0 && size > 1 )
+             if( id == 0 && size > 1)
              {
                 const std::vector< FlyCapture2::CameraInfo >& list = list_cameras();
                 std::stringstream stream;
@@ -351,20 +405,55 @@ class flycapture::impl
             //Get Point grey unique id (guid) from serial number. guid does not exist in CameraInfo, and so it does not appear in the camera list
             FlyCapture2::BusManager bus_manager;
             bus_manager.GetCameraFromSerialNumber(*id_, &guid);
-    
+     
             FlyCapture2::Error result = handle_.Connect(&guid);
             for( ; ( result != FlyCapture2::PGRERROR_OK ) && ( now < end ); now = boost::posix_time::microsec_clock::universal_time() )
             {
                 boost::thread::sleep( now + boost::posix_time::milliseconds( 10 ) );
                 result = handle_.Connect(&guid);
             }
-
-            if (result != FlyCapture2::PGRERROR_OK){close(); COMMA_THROW( comma::exception, "failed to open point grey camera: " << result.GetDescription() );}
-             for( attributes_type::const_iterator i = attributes.begin(); i != attributes.end(); ++i )
-             {
+            if (result != FlyCapture2::PGRERROR_OK){close(); COMMA_THROW( comma::exception, "failed to open point grey camera: " << id << ", Reason: " << result.GetDescription() );}
+            
+            for( attributes_type::const_iterator i = attributes.begin(); i != attributes.end(); ++i )
+            {
                 flycapture_set_attribute_( handle_, i->first, i->second );
+            }   
+            
+            end = now + timeout;
+            if(stereo)
+            {
+                bus_manager.GetCameraFromSerialNumber(*id_right_, &guid_right);
+                FlyCapture2::Error result = handle_right_.Connect(&guid_right);
+                std::cerr << "Connecting to second camera" << std::endl;
+                for( ; ( result != FlyCapture2::PGRERROR_OK ) && ( now < end ); now = boost::posix_time::microsec_clock::universal_time() )
+                {
+                    boost::thread::sleep( now + boost::posix_time::milliseconds( 10 ) );
+                    result = handle_right_.Connect(&guid_right);
+                }
+                if (result != FlyCapture2::PGRERROR_OK){close(); COMMA_THROW( comma::exception, "failed to open point grey camera: " << id_right << ", Reason: " << result.GetDescription() );}
             }
-    
+            
+            if(stereo)
+            { // Trigger mode is used to synchronize shutters between the cameras
+              std::cerr << "Setting trigger mode" << std::endl;
+               flycapture_set_attribute_(handle_, "trigger_mode", "0");
+               flycapture_set_attribute_(handle_right_, "trigger_mode", "0");
+            } else
+            { //disable trigger for single camera
+              flycapture_set_attribute_(handle_, "trigger_mode", "0");
+            }
+                //total_bytes_per_frame_ = frame_.GetDataSize();
+                //HACK
+                total_bytes_per_frame_ = 2304000;
+        
+        FlyCapture2::CameraInfo camera_info;	
+            if(stereo){
+                handle_right_.GetCameraInfo(&camera_info);
+                std::cerr << "Connected to camera: " << camera_info.serialNumber << std::endl;
+            }
+            
+            handle_.GetCameraInfo(&camera_info);
+            std::cerr << "Connected to camera: " << camera_info.serialNumber << std::endl;
         }
 
         ~impl() { close(); }
@@ -375,51 +464,62 @@ class flycapture::impl
             if( !handle_.IsConnected() ) { return; }
             handle_.StopCapture();
             handle_.Disconnect();
+            if(stereo)
+            {
+              id_right_.reset();
+              if( !handle_right_.IsConnected() ) { return; }
+              handle_right_.StopCapture();
+              handle_right_.Disconnect();
+            }
             //std::cerr << "the camera has been closed" << std::endl;
         }
 
         std::pair< boost::posix_time::ptime, cv::Mat > read()
         {
+            cv::Mat image_;
+            cv::Mat image_right_;
             std::pair< boost::posix_time::ptime, cv::Mat > pair;
             bool success = false;
             unsigned int retries = 0;
+
             while( !success && retries < max_retries )
             {
                 FlyCapture2::Error result;
-                if( !started_ )
-                {
-                    result = handle_.StartCapture();
-                }
-                 // error is not checked as sometimes the camera
-                 // will start correctly but return an error
-                started_ = true;
-                FlyCapture2::Image raw_image;
-                result = handle_.RetrieveBuffer(&raw_image);
-                frame_.DeepCopy(&raw_image);
-                raw_image.ReleaseBuffer();
-                total_bytes_per_frame_ = frame_.GetDataSize();
+                
+            if( !started_ )
+                result = handle_.StartCapture();
+            // error is not checked as sometimes the camera
+            // will start correctly but return an error
+            started_ = true;
+    
+            if(!started_right_)
+                result =  handle_right_.StartCapture();
+            started_right_ = true;
+
+                
+                //TODO framerate delay here
+ /*              if(stereo) //Trigger camera shutters at (almost) the same time
+               {
+                   handle_.FireSoftwareTrigger();
+                   handle_right_.FireSoftwareTrigger();
+                   std::cerr << "Fired software frame trigger" << std::endl;
+               }   */
                 pair.first = boost::posix_time::microsec_clock::universal_time();
-  
-                if( result == FlyCapture2::PGRERROR_OK ) 
-                {
-                    pair.second =  flycapture_image_as_cvmat_( frame_ );
-                    success = true;
-                } 
-                else if( //These are errors that result in a retry
-                    ( result == FlyCapture2::PGRERROR_ISOCH_START_FAILED )
-                    | ( result == FlyCapture2::PGRERROR_TIMEOUT )
-                    | ( result == FlyCapture2::PGRERROR_ISOCH_ALREADY_STARTED )
-                    | ( result == FlyCapture2::PGRERROR_UNDEFINED ) 
-                    | ( result == FlyCapture2::PGRERROR_IIDC_FAILED ) /*error 22*/
-                    | ( result == FlyCapture2::PGRERROR_IMAGE_CONSISTENCY_ERROR ) )
-                {
-                    std::cerr << "Error: " << result.GetDescription() << " Retrying..." << std::endl;
-                    handle_.StopCapture();
-                    started_ = false;
-                }
-                 else
-                {
-                    COMMA_THROW( comma::exception, "got frame with invalid status on camera " << *id_ << ": " << result.GetType() << ": " << result.GetDescription() );
+                success = flycapture_collect_frame_(image_, handle_, started_);
+                if(success){
+                    if(!stereo)
+                    {
+                        pair.second = image_;
+                    } 
+                    else 
+                    {
+                      boost::thread::sleep( pair.first + boost::posix_time::milliseconds( 10 ) );
+                      success = flycapture_collect_frame_(image_right_, handle_right_, started_right_);
+                      if (success)
+                      {
+                        cv::hconcat(image_,image_right_,pair.second);
+                      } 
+                    }
                 }
                 retries++;
              }
@@ -427,11 +527,17 @@ class flycapture::impl
              COMMA_THROW( comma::exception, "got lots of missing frames or timeouts" << std::endl << std::endl << "it is likely that MTU size on your machine is less than packet size" << std::endl << "check PacketSize attribute (flycapture-cat --list-attributes)" << std::endl << "set packet size (e.g. flycapture-cat --set=PacketSize=1500)" << std::endl << "or increase MTU size on your machine" );
         }
         
-         const FlyCapture2::GigECamera& handle() const { return handle_; }
+        const FlyCapture2::GigECamera& handle() const { return handle_; }
  
-         FlyCapture2::GigECamera& handle() { return handle_; }
+        FlyCapture2::GigECamera& handle() { return handle_; }
+        
+        const FlyCapture2::GigECamera& handle_right() const { return handle_right_; }
+ 
+        FlyCapture2::GigECamera& handle_right() { return handle_right_; }
 
         unsigned int id() const { return *id_; }
+        
+        unsigned int id_right() const { return *id_right_; }
 
         unsigned long total_bytes_per_frame() const { return total_bytes_per_frame_; }
 
@@ -471,17 +577,19 @@ class flycapture::impl
     private:
         friend class flycapture::callback::impl;
         FlyCapture2::GigECamera handle_;
-        FlyCapture2::Image frame_;
+        FlyCapture2::GigECamera handle_right_;
         std::vector< char > buffer_;
         boost::optional< unsigned int > id_;
+        boost::optional< unsigned int > id_right_;
         FlyCapture2::PGRGuid guid;
+        FlyCapture2::PGRGuid guid_right;
+        bool stereo;
         unsigned long total_bytes_per_frame_;
         bool started_;
+        bool started_right_;
         unsigned int timeOut_; // milliseconds
         static void initialize_() // quick and dirty
         {
-//             flycapture_create_PixelFormat_map_();
-//             flycapture_create_property_map_();
         }
 };
 
@@ -539,7 +647,7 @@ class flycapture::callback::impl
 
 namespace snark{ namespace camera{
 
-flycapture::flycapture( unsigned int id, const flycapture::attributes_type& attributes ) : pimpl_( new impl( id, attributes ) ) {}
+flycapture::flycapture( unsigned int id, const flycapture::attributes_type& attributes, unsigned int id_right ) : pimpl_( new impl( id, attributes, id_right ) ) {}
 
 flycapture::~flycapture() { delete pimpl_; }
 
@@ -550,6 +658,8 @@ void flycapture::close() { pimpl_->close(); }
 std::vector< FlyCapture2::CameraInfo > flycapture::list_cameras() { return flycapture::impl::list_cameras(); }
 
 unsigned int flycapture::id() const { return pimpl_->id(); }
+
+unsigned int flycapture::id_right() const { return pimpl_->id_right(); }
 
 unsigned long flycapture::total_bytes_per_frame() const { return pimpl_->total_bytes_per_frame(); }
 

@@ -52,6 +52,7 @@ int main( int argc, char** argv )
     {
         std::string fields;
         unsigned int id;
+	unsigned int id_right;
         std::string setattributes;
         unsigned int discard;
         boost::program_options::options_description description( "options" );
@@ -65,6 +66,7 @@ int main( int argc, char** argv )
             ( "fields,f", boost::program_options::value< std::string >( &fields )->default_value( "t,rows,cols,type" ), "header fields, possible values: t,rows,cols,type,size" )
             ( "list-attributes", "output current camera attributes" )
             ( "list-cameras", "list all cameras and exit" )
+	    ( "stereo",boost::program_options::value< unsigned int >( &id_right )->default_value( 0 ), "serial of right camera for stereo. Using this will set the camera specified by --serial as the left camera" )
             ( "header", "output header only" )
             ( "no-header", "output image data only" )
             ( "verbose,v", "be more verbose" );
@@ -107,7 +109,7 @@ int main( int argc, char** argv )
             attributes.insert( m.get().begin(), m.get().end() );
         }
         if( verbose ) { std::cerr << "flycapture-cat: connecting..." << std::endl; }
-        snark::camera::flycapture camera( id, attributes );
+        snark::camera::flycapture camera( id, attributes, id_right );
         if( verbose ) { std::cerr << "flycapture-cat: connected to camera " << camera.id() << std::endl; }
         if( verbose ) { std::cerr << "flycapture-cat: total bytes per frame: " << camera.total_bytes_per_frame() << std::endl; }
         if( vm.count( "set-and-exit" ) ) { return 0; }

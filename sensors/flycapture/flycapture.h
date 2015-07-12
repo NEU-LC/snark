@@ -49,7 +49,7 @@ class flycapture
         typedef std::map< std::string, std::string > attributes_type;
         
         /// constructor; default id: connect to any available camera
-        flycapture( unsigned int id = 0, const attributes_type& attributes = attributes_type() );
+        flycapture( unsigned int id = 0, const attributes_type& attributes = attributes_type(), unsigned int id_right = 0 );
 
         /// destructor
         ~flycapture();
@@ -62,6 +62,9 @@ class flycapture
 
         /// return camera id
         unsigned int id() const;
+        
+        /// return camera id of right stereo pair
+        unsigned int id_right() const;
 
         /// return total bytes per frame
         unsigned long total_bytes_per_frame() const;
