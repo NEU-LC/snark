@@ -34,6 +34,7 @@
 
 #include <cmath>
 #include <boost/date_time/posix_time/posix_time.hpp>
+#include <comma/visiting/apply.h>
 #include <comma/visiting/traits.h>
 #include "message.h"
 
@@ -88,7 +89,7 @@ template <> struct traits< snark::nmea::messages::time > // pain
     {
         std::string t;
         v.apply( "time_of_day", t );
-        p.value = boost::posix_time::ptime( boost::posix_time::microsec_clock::universal_time().date(), boost::posix_time::from_iso_string( "19700101T" + t ).time_of_day() );
+        if( !t.empty() ) { p.value = boost::posix_time::ptime( boost::posix_time::microsec_clock::universal_time().date(), boost::posix_time::from_iso_string( "19700101T" + t ).time_of_day() ); }
     }
     
     template < typename Key, class Visitor >
@@ -116,18 +117,18 @@ template < typename T > struct traits< snark::nmea::message< T > >
     }
 };
 
-template < typename T > struct traits< snark::nmea::messages::ptnl::message< T > >
+template < typename T > struct traits< snark::nmea::messages::ptnl::value< T > >
 {
     template < typename Key, class Visitor >
-    static void visit( const Key& k, snark::nmea::messages::ptnl::message< T >& p, Visitor& v ) // hyper-quick and monster-dirty
+    static void visit( const Key& k, snark::nmea::messages::ptnl::value< T >& p, Visitor& v ) // hyper-quick and monster-dirty
     {
-        visit( k, static_cast< snark::nmea::message< T >& >( p ), v );
+        v.apply( k, static_cast< snark::nmea::message< T >& >( p ) );
     }
     
     template < typename Key, class Visitor >
-    static void visit( const Key& k, const snark::nmea::messages::ptnl::message< T >& p, Visitor& v ) // hyper-quick and monster-dirty
+    static void visit( const Key& k, const snark::nmea::messages::ptnl::value< T >& p, Visitor& v ) // hyper-quick and monster-dirty
     {
-        visit( k, static_cast< const snark::nmea::message< T >& >( p ), v );
+        v.apply( k, static_cast< const snark::nmea::message< T >& >( p ) );
     }
 };
 
@@ -168,10 +169,28 @@ template <> struct traits< snark::nmea::messages::gpgga >
     }
 };
 
+template <> struct traits< snark::nmea::messages::angle >
+{
+    template < typename Key, class Visitor >
+    static void visit( const Key&, snark::nmea::messages::angle& p, Visitor& v )
+    {
+        double a = p.value * 180 / M_PI;
+        v.apply( "value", a );
+        p.value = a * M_PI / 180;
+    }
+    
+    template < typename Key, class Visitor >
+    static void visit( const Key&, const snark::nmea::messages::angle& p, Visitor& v )
+    {
+        double a = p.value * 180 / M_PI;
+        v.apply( "value", a );
+    }
+};
+
 template <> struct traits< snark::nmea::messages::ptnl::avr >
 {
     template < typename Key, class Visitor >
-    static void visit( const Key&, snark::nmea::messages::ptnl::avr& p, Visitor& v ) // hyper-quick and monster-dirty
+    static void visit( const Key&, snark::nmea::messages::ptnl::avr& p, Visitor& v )
     {
         v.apply( "time", p.time );
         v.apply( "yaw", p.yaw );
@@ -189,7 +208,7 @@ template <> struct traits< snark::nmea::messages::ptnl::avr >
     }
     
     template < typename Key, class Visitor >
-    static void visit( const Key&, const snark::nmea::messages::ptnl::avr& p, Visitor& v ) // hyper-quick and monster-dirty
+    static void visit( const Key&, const snark::nmea::messages::ptnl::avr& p, Visitor& v )
     {
         v.apply( "time", p.time );
         v.apply( "yaw", p.yaw );

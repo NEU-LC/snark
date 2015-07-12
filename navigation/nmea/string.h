@@ -50,6 +50,8 @@ class string
         
         const std::string& type() const;
         
+        const std::vector< std::string >& values() const;
+        
         template < typename T > class as;
         
     private:

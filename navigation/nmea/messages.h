@@ -36,6 +36,7 @@
 #include <comma/string/string.h>
 #include "../../math/spherical_geometry/coordinates.h"
 #include "message.h"
+#include "string.h"
 
 namespace snark { namespace nmea { namespace messages {
 
@@ -49,10 +50,9 @@ struct coordinates
     spherical::coordinates operator()() const { return spherical::coordinates( latitude.value, longitude.value ); }
 };
 
-struct time
-{
-    boost::posix_time::ptime value;
-};
+struct time { boost::posix_time::ptime value; };
+
+struct angle { double value; };
     
 struct gpgga
 {
@@ -75,7 +75,13 @@ struct gpgga
 
 namespace ptnl
 {
-    template < typename T > struct message : public nmea::message< T > { static const char* name() { return "PTNL"; } };
+    struct string : public nmea::string { const std::string& ptnl_type() const { return values()[1]; } };
+    
+    template < typename T > struct value : public nmea::message< T >
+    { 
+        static const char* name() { return "PTNL"; }
+        typedef nmea::message< T > type;
+    };
     
     struct avr
     {
@@ -84,11 +90,11 @@ namespace ptnl
         struct quality_t { enum values { fix_not_valid = 0, autonomous_gps_fix = 1, differential_carrier_phase_solution_rtk_float = 2, differential_carrier_phase_solution_rtk_int = 3, differential_code_based_solution_dgps = 4 }; };
         
         nmea::messages::time time;
-        double yaw;
+        nmea::messages::angle yaw;
         std::string yaw_string;
-        double tilt;
+        nmea::messages::angle tilt;
         std::string tilt_string;
-        double roll;
+        nmea::messages::angle roll;
         std::string roll_string;
         double range;
         quality_t::values quality;

@@ -66,5 +66,7 @@ bool string::valid() const { return valid_; }
 bool string::complete() const { return complete_; }
 
 const std::string& string::type() const { return values_[0]; }
+
+const std::vector< std::string >& string::values() const { return values_; }
     
 } } // namespace snark { namespace nmea {

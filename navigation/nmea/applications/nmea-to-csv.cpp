@@ -86,8 +86,11 @@ struct output
 {
     struct data
     {
-        ::position position;
-        ::orientation orientation;
+        ::position position; // todo: make optional? or simply check for zeroes?
+        ::orientation orientation; // todo: make optional? or simply check for zeroes?
+        comma::uint32 number_of_satellites;
+        
+        data() : number_of_satellites( 0 ) {}
     };
     
     typedef snark::timestamped< data > type;
@@ -133,12 +136,13 @@ template <> struct traits< output::data >
     {
         v.apply( "position", p.position );
         v.apply( "orientation", p.orientation );
+        v.apply( "number_of_satellites", p.number_of_satellites );
     }
     
     template < typename Key, class Visitor > static void visit( const Key&, const output::data& p, Visitor& v )
     {
         v.apply( "position", p.position );
-        v.apply( "orientation", p.orientation );
+        v.apply( "number_of_satellites", p.number_of_satellites );
     }
 };
 
@@ -175,16 +179,27 @@ static void output( const comma::csv::fieldwise& fieldwise, const output::type& 
 
 using namespace snark;
 
-void handle( const nmea::message< nmea::messages::gpgga >& m )
+void handle( const nmea::messages::gpgga& v )
+{
+    output_.t = v.time.value;
+    output_.data.position.coordinates = v.coordinates();
+    output_.data.position.z = v.orthometric_height;
+    output_.data.number_of_satellites = v.satellites_in_use;
+}
+
+void handle( const nmea::message< nmea::messages::ptnl::avr >& m )
 {
     output_.t = m.value.time.value;
-    output_.data.position.coordinates = m.value.coordinates();
+    output_.data.orientation.roll = m.value.roll.value;
+    output_.data.orientation.pitch = m.value.tilt.value;
+    output_.data.orientation.yaw = m.value.yaw.value;
+    output_.data.number_of_satellites = m.value.satellites_in_use;
 }
 
 template < typename T > void handle( const nmea::string& s )
 {
-    static nmea::string::as< T > m;
-    handle( m.from( s ) );
+    static nmea::string::as< nmea::message< T > > m;
+    handle( m.from( s ).value );
 }
 
 int main( int ac, char** av )
@@ -208,7 +223,6 @@ int main( int ac, char** av )
         csv.fields = comma::join( v, ',' );
         comma::csv::fieldwise fieldwise = make_fieldwise( csv ); // todo: plug in
         comma::csv::output_stream< output::type > os( std::cout, csv );
-        std::string last;
         while( std::cin.good() )
         {
             std::string line;
@@ -220,12 +234,13 @@ int main( int ac, char** av )
                 if( permissive ) { if( verbose ) { std::cerr << "nmea-to-csv: invalid nmea string, but parse anyway: \"" << line << "\"" << std::endl; } }
                 else { if( verbose ) { std::cerr << "nmea-to-csv: discarded invalid nmea string: \"" << line << "\"" << std::endl; } continue; }
             }
-            if( s.type() == "GPGGA" ) { handle< nmea::message< nmea::messages::gpgga > >( s ); }
-            
-            // todo: orientation
-            
-            // todo: elevation
-            
+            if( s.type() == "GPGGA" ) { handle< nmea::messages::gpgga >( s ); }
+            else if( s.type() == "PTNL" )
+            {
+                if( static_cast< const nmea::messages::ptnl::string& >( s ).ptnl_type() == "AVR" ) { handle< nmea::messages::ptnl::value< nmea::messages::ptnl::avr > >( s ); }
+                else { if( verbose ) { std::cerr << "nmea-to-csv: discarded unimplemented string: \"" << line << "\"" << std::endl; } }
+            }
+            else { if( verbose ) { std::cerr << "nmea-to-csv: discarded unimplemented string: \"" << line << "\"" << std::endl; } }
             if( output_all ) { os.write( output_ ); } else { output( fieldwise, output_, os ); }
         }
         return 0;
