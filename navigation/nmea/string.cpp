@@ -56,7 +56,7 @@ string::string( const std::string& s, bool permissive ) // quick and dirty
     for( unsigned int i = 1; i < p; sum ^= s[i++] );
     if( !permissive && sum != checksum ) { return; }
     valid_ = true;
-    values_ = comma::split( s.substr( 1, p ), ',' );
+    values_ = comma::split( s.substr( 1, p - 1 ), ',' );
     complete_ = true;
     for( unsigned int i = 0; i < values_.size() && complete_; complete_ = !values_[i++].empty() );
 }
