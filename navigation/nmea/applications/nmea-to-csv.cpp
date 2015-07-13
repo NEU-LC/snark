@@ -194,7 +194,7 @@ void handle( const nmea::message< nmea::messages::ptnl::avr >& m )
     output_.data.orientation.roll = m.value.roll.value;
     output_.data.orientation.pitch = m.value.tilt.value;
     output_.data.orientation.yaw = m.value.yaw.value;
-    output_.data.number_of_satellites = m.value.satellites_in_use;
+    //output_.data.number_of_satellites = m.value.satellites_in_use;
 }
 
 template < typename T > void handle( const nmea::string& s )
