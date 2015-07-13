@@ -47,10 +47,10 @@ string::string( const std::string& s, bool permissive ) // quick and dirty
     , complete_( false )
 {
     if( !permissive && s[0] != '$' ) { return; }
-    bool has_cr = s[ s.size() - 1 ] != '\r';
+    bool has_cr = s[ s.size() - 1 ] == '\r';
     std::string::size_type p = s.find_last_of( '*' );
     if( !permissive && p == std::string::npos ) { return; }
-    if( !permissive && p + 2 + has_cr != s.size() ) { return; }
+    if( !permissive && p + 3 + has_cr != s.size() ) { return; }
     unsigned char checksum = 16 * hex_to_int( s[ p + 1 ] ) + hex_to_int( s[ p + 2 ] );
     unsigned char sum = 0;
     for( unsigned int i = 1; i < p; sum ^= s[i++] );
