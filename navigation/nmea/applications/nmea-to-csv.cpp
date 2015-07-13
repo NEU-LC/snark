@@ -57,7 +57,7 @@ static void usage( bool verbose )
     std::cerr << "    --verbose,-v: more output to stderr" << std::endl;
     std::cerr << std::endl;
     std::cerr << "fields" << std::endl;
-    std::cerr << "    default: t,latitude,longitude,z,roll,pitch,yaw" << std::endl;
+    std::cerr << "    default: t,latitude,longitude,z,roll,pitch,yaw,number_of_satellites" << std::endl;
     std::cerr << std::endl;
     if( verbose ) { std::cerr << std::endl << "binary options" << std::endl << comma::csv::options::usage() << std::endl; }
     exit( 0 );
@@ -142,6 +142,7 @@ template <> struct traits< output::data >
     template < typename Key, class Visitor > static void visit( const Key&, const output::data& p, Visitor& v )
     {
         v.apply( "position", p.position );
+        v.apply( "orientation", p.orientation );
         v.apply( "number_of_satellites", p.number_of_satellites );
     }
 };
@@ -212,13 +213,14 @@ int main( int ac, char** av )
         bool permissive = options.exists( "--permissive" );
         comma::csv::options csv( options );
         csv.full_xpath = true; // for future, e.g. to plug in errors
-        if( csv.fields.empty() ) { csv.fields = "t,latitude,longitude,z,roll,pitch,yaw"; }
+        if( csv.fields.empty() ) { csv.fields = "t,latitude,longitude,z,roll,pitch,yaw,number_of_satellites"; }
         std::vector< std::string > v = comma::split( csv.fields, ',' );
         for( unsigned int i = 0; i < v.size(); ++i )
         {
             if( v[i] == "latitude" || v[i] == "longitude" ) { v[i] = "data/position/coordinates/" + v[i]; }
             else if( v[i] == "z" ) { v[i] = "data/position/" + v[i]; }
             if( v[i] == "roll" || v[i] == "pitch" || v[i] == "yaw" ) { v[i] = "data/orientation/" + v[i]; }
+            else if( v[i] == "number_of_satellites" ) { v[i] = "data/" + v[i]; }
         }
         csv.fields = comma::join( v, ',' );
         comma::csv::fieldwise fieldwise = make_fieldwise( csv ); // todo: plug in
