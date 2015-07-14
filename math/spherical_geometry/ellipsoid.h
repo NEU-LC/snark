@@ -34,11 +34,40 @@
 #include <boost/optional.hpp>
 #include "coordinates.h"
 
-namespace snark
-{
-namespace spherical
-{
+namespace snark { namespace spherical {
 
+/// uses:
+/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  */
+/* Vincenty Inverse Solution of Geodesics on the Ellipsoid ( c ) Chris Veness 2002-2012           */
+/*                                                                                                */
+/* from: Vincenty inverse formula - T Vincenty, "Direct and Inverse Solutions of Geodesics on the */
+/*       Ellipsoid with application of nested equations", Survey Review, vol XXII no 176, 1975    */
+/*       http://www.ngs.noaa.gov/PUBS_LIB/inverse.pdf                                             */
+/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  */
+//
+// See http://www.movable-type.co.uk/scripts/latlong-vincenty.html
+
+// The MIT License (MIT)
+// 
+// Copyright (c) 2014 Chris Veness
+// 
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+// 
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
 struct ellipsoid
 {
     /// constructor
@@ -52,7 +81,7 @@ struct ellipsoid
     double distance( const coordinates &from, const coordinates &to ) const;
 
     /// return coordinates at a given distance from begin at given bearing, using vincenty's formulae
-    /// todo: an extensive comment no what kind of bearing is used
+    /// todo: an extensive comment on what kind of bearing is used
     coordinates at( const coordinates &begin, double distance, double bearing ) const;
 
     //great circle arc
@@ -96,7 +125,6 @@ struct ellipsoid::circle::arc
     }
 };
 
-}
-} // namespace snark { namespace spherical {
+} } // namespace snark { namespace spherical {
 
 #endif // SNARK_MATH_SPHERICAL_GEOMETRY_ELLIPSOID_H_

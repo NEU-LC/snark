@@ -6,6 +6,3 @@ SOURCE_GROUP( ${TARGET_NAME} FILES ${source} ${includes} )
 add_executable( geo-calc geo-calc.cpp )
 target_link_libraries( geo-calc snark_geodesy )
 INSTALL( TARGETS geo-calc RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
-
-
-

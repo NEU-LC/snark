@@ -3,11 +3,14 @@ SET( TARGET_NAME snark_${PROJECT} )
 
 FILE( GLOB source *.cpp)
 FILE( GLOB includes *.h )
-SOURCE_GROUP( ${PROJECT} FILES ${source} ${includes} )
+FILE( GLOB detail_source detail/GeographicConversions/*.cpp ) # quick and dirty
+FILE( GLOB detail_includes detail/GeographicConversions/*.h ) # quick and dirty
+SOURCE_GROUP( ${PROJECT} FILES ${source} ${includes} ${detail_source} ${detail_includes} )
 
 INSTALL( FILES ${includes} DESTINATION ${snark_INSTALL_INCLUDE_DIR}/${PROJECT} )
+INSTALL( FILES ${detail_includes} DESTINATION ${snark_INSTALL_INCLUDE_DIR}/${PROJECT}/detail/GeographicConversions )
 
-ADD_LIBRARY( ${TARGET_NAME} ${source} ${includes} )
+ADD_LIBRARY( ${TARGET_NAME} ${source} ${includes} ${detail_source} ${detail_includes} )
 SET_TARGET_PROPERTIES( ${TARGET_NAME} PROPERTIES ${snark_LIBRARY_PROPERTIES} )
 TARGET_LINK_LIBRARIES( ${TARGET_NAME} snark_math_spherical_geometry ${snark_ALL_EXTERNAL_LIBRARIES} )
 INSTALL(
@@ -17,9 +20,7 @@ INSTALL(
     ARCHIVE DESTINATION ${snark_INSTALL_LIB_DIR} COMPONENT Development # .a, .lib
 )
 
-
+add_subdirectory( agd84 )
+add_subdirectory( grs67 )
 add_subdirectory( wgs84 )
 add_subdirectory( applications )
-
-add_subdirectory(agd84)
-add_subdirectory(grs67)

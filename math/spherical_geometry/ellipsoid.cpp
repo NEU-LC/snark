@@ -44,7 +44,7 @@ ellipsoid::ellipsoid( double major_semiaxis, double minor_semiaxis )
 static double square( double x ) { return x * x; }
 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  */
-/* Vincenty Inverse Solution of Geodesics on the Ellipsoid ( c ) Chris Veness 2002-2012             */
+/* Vincenty Inverse Solution of Geodesics on the Ellipsoid ( c ) Chris Veness 2002-2012           */
 /*                                                                                                */
 /* from: Vincenty inverse formula - T Vincenty, "Direct and Inverse Solutions of Geodesics on the */
 /*       Ellipsoid with application of nested equations", Survey Review, vol XXII no 176, 1975    */
@@ -244,7 +244,6 @@ std::vector< coordinates > ellipsoid::circle::arc::discretize( const ellipsoid &
     v.reserve( size + 1 );
     long double diff = std::abs( end - begin );
     long double sign = begin > end ? -1 : 1;
-
     for ( long double a( 0 ), b( begin ); a < diff;  b += ( step * sign ), a += step )
     {
         v.push_back( ellipsoid.at( circle.centre, circle.radius, bearing( b ) ) );
