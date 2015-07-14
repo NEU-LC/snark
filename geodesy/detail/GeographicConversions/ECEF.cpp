@@ -35,7 +35,7 @@
 
 using namespace std;
 
-using namespace GeographicGeodeticRectangular;
+namespace snark { namespace detail { namespace GeographicGeodeticRectangular {
 
 void CGeodeticECEF::toECEF ( double const & latitude, double const & longitude, double const & height, 
   double & X, double & Y, double & Z)
@@ -192,3 +192,4 @@ void CGeodeticECEF::fromECEF ( double const & X, double const & Y, double const 
 
 }
 
+} } } // namespace snark { namespace detail { namespace GeographicGeodeticRectangular {

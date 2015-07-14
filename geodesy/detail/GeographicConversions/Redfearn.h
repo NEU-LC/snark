@@ -37,7 +37,7 @@
 #include "MapGrid.h"
 
 //! Convert between various coordinate systems. 
-namespace GeographicGeodeticRectangular {
+namespace snark { namespace detail { namespace GeographicGeodeticRectangular {
 
   //! This class converts between geographic and grid coordinates using Redfearn's formulae.
   /*!
@@ -159,6 +159,6 @@ namespace GeographicGeodeticRectangular {
     MapGrid::CMapGrid M;
   };
 
-}
+} } } // namespace snark { namespace detail { namespace GeographicGeodeticRectangular {
 
 #endif

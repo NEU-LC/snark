@@ -33,7 +33,7 @@
 #define ELLIPSOID_H
 
 //! Ellipsoids representing the shape of the earth.
-namespace Ellipsoid {
+namespace snark { namespace detail { namespace Ellipsoid {
 
   //! Stores constants for the ellipsoid.
   /*!
@@ -316,5 +316,6 @@ namespace Ellipsoid {
   static CEllipsoid WGS84(6378137.0,298.257223563); 
 
 
-}
+} } } // namespace snark { namespace detail { namespace Ellipsoid {
+
 #endif // ELLIPSOID_H

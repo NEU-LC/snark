@@ -31,9 +31,9 @@
 
 #include "Redfearn.h"
 
-using namespace GeographicGeodeticRectangular;
-using namespace Ellipsoid;
-using namespace MapGrid;
+using namespace snark::detail::GeographicGeodeticRectangular;
+using namespace snark::detail::Ellipsoid;
+using namespace snark::detail::MapGrid;
 using namespace std;
 
 void CRedfearn::GetGridCoordinates ( 

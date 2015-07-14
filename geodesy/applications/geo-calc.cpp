@@ -116,9 +116,14 @@ static void usage( bool more = false )
     }
     if( more ) { std::cerr << std::endl << "csv options" << std::endl << comma::csv::options::usage() << std::endl; }
     std::cerr << std::endl;
-    std::cerr << "examples" << std::endl;
-    std::cerr << "    cat circular-arcs.csv | geo-calc discretize arc --fields=circle/centre/latitude,circle/centre/longitude,circle/radius,begin,end --circle-size=32 > results.csv" << std::endl;
-    std::cerr << "    cat circle.csv | geo-calc discretize circle --fields=centre,radius --resolution=0.1 | column -ts," << std::endl;
+    std::cerr << "examples (try them)" << std::endl;
+    std::cerr << "    convert" << std::endl;
+    std::cerr << "        echo -34,154,10 | geo-calc convert --to ned" << std::endl;
+    std::cerr << "        echo 6237393.34007,592349.603343,-10,56 | geo-calc convert --to coordinates --zone 56" << std::endl;
+    std::cerr << "        echo 6237393.34007,592349.603343,-10,56 | geo-calc convert --to coordinates --fields=x,y,z,zone" << std::endl;
+    std::cerr << "    discretize" << std::endl;
+    std::cerr << "        cat circular-arcs.csv | geo-calc discretize arc --fields=circle/centre/latitude,circle/centre/longitude,circle/radius,begin,end --circle-size=32 > results.csv" << std::endl;
+    std::cerr << "        cat circle.csv | geo-calc discretize circle --fields=centre,radius --resolution=0.1 | column -ts," << std::endl;
     std::cerr << std::endl;
     exit( 0 );
 }
@@ -155,50 +160,50 @@ template < typename S > int discretize( const comma::csv::options &csv, const sn
 
 namespace convert_ {
 
-struct ned_input
+struct ned_
 {
     Eigen::Vector3d coordinates;
-    comma::uint32 zone;
+    comma::int32 zone; // todo: is it uint or int?
     
-    ned_input() : coordinates( 0, 0, 0 ), zone( 0 ) {}
+    ned_() : coordinates( 0, 0, 0 ), zone( 0 ) {}
 };
 
-struct coordinates_input
+struct coordinates_
 {
     snark::spherical::coordinates coordinates;
     double z;
     
-    coordinates_input() : z( 0 ) {}
+    coordinates_() : z( 0 ) {}
 };
 
 } // namespace convert_ {
 
 namespace comma { namespace visiting {
 
-template <> struct traits< convert_::coordinates_input >
+template <> struct traits< convert_::coordinates_ >
 {
-    template < typename Key, class Visitor > static void visit( const Key&, convert_::coordinates_input& p, Visitor& v )
+    template < typename Key, class Visitor > static void visit( const Key&, convert_::coordinates_& p, Visitor& v )
     {
         v.apply( "coordinates", p.coordinates );
         v.apply( "z", p.z );
     }
     
-    template < typename Key, class Visitor > static void visit( const Key&, const convert_::coordinates_input& p, Visitor& v )
+    template < typename Key, class Visitor > static void visit( const Key&, const convert_::coordinates_& p, Visitor& v )
     {
         v.apply( "coordinates", p.coordinates );
         v.apply( "z", p.z );
     }
 };
 
-template <> struct traits< convert_::ned_input >
+template <> struct traits< convert_::ned_ >
 {
-    template < typename Key, class Visitor > static void visit( const Key&, convert_::ned_input& p, Visitor& v )
+    template < typename Key, class Visitor > static void visit( const Key&, convert_::ned_& p, Visitor& v )
     {
         v.apply( "coordinates", p.coordinates );
         v.apply( "zone", p.zone );
     }
     
-    template < typename Key, class Visitor > static void visit( const Key&, const convert_::ned_input& p, Visitor& v )
+    template < typename Key, class Visitor > static void visit( const Key&, const convert_::ned_& p, Visitor& v )
     {
         v.apply( "coordinates", p.coordinates );
         v.apply( "zone", p.zone );
@@ -215,40 +220,67 @@ int main( int ac, char **av )
         comma::csv::options csv( options );
         if( !csv.binary() ) { std::cout.precision( options.value( "--precision,-p", 16 ) ); } // do we need it?
         csv.full_xpath = true;
-        std::string geoid_name = options.value< std::string >( "--geoid", "" );
+        std::string geoid_name = options.value< std::string >( "--geoid", "wgs84" );
         const snark::spherical::ellipsoid& geoid = snark::geodesy::geoids::select( geoid_name );
         const std::vector<std::string> &operations = options.unnamed( "--verbose,-v,--degrees", "-.*" );
         if( operations.empty() ) { std::cerr << "geo-calc: please specify operation" << std::endl; return 1; }
         if( operations[0] == "convert" )
         {
+            snark::detail::GeographicGeodeticRectangular::CRedfearn credfearn(
+                  geoid_name == "agd84" ? snark::detail::Ellipsoid::AUSTRALIAN_NATIONAL
+                : geoid_name == "wgs84" ? snark::detail::Ellipsoid::WGS84
+                                        : snark::detail::Ellipsoid::WGS84
+                , snark::detail::MapGrid::MGA );
             std::string to = options.value< std::string >( "--to" );
             csv.full_xpath = false; // quick and dirty
             if( to == "north-east-down" || to == "ned" )
             {
                 if( csv.fields.empty() ) { csv.fields = "latitude,longitude,z"; }
-                comma::csv::input_stream< convert_::coordinates_input > is( std::cin, csv );
-                comma::csv::output_stream< convert_::ned_input > os( std::cout ); // todo? csv.binary() );
-                comma::csv::tied< convert_::coordinates_input, convert_::ned_input > tied( is, os );
+                comma::csv::input_stream< convert_::coordinates_ > is( std::cin, csv );
+                comma::csv::output_stream< convert_::ned_ > os( std::cout ); // todo? csv.binary() );
+                comma::csv::tied< convert_::coordinates_, convert_::ned_ > tied( is, os );
                 while ( is.ready() || ( std::cin.good() && !std::cin.eof() ) )
                 {
-                    // todo
-                    std::cerr << "geo-calc: implementation in progress..." << std::endl;
-                    return 1;
+                    const convert_::coordinates_* p = is.read();
+                    if( !p ) { break; }
+                    convert_::ned_ q;
+                    double east, north, scale, convergence;
+                    credfearn.GetGridCoordinates( ( p->coordinates.latitude * 180 / M_PI ) // todo: quick and dirty, refactor redfearn
+                                                , ( p->coordinates.longitude * 180 / M_PI )
+                                                , q.zone
+                                                , east
+                                                , north
+                                                , convergence
+                                                , scale );
+                    q.coordinates = Eigen::Vector3d( north, east, -p->z );
+                    tied.append( q );
                 }
             }
             else if( to == "coordinates" )
             {
                 if( csv.fields.empty() ) { csv.fields = "x,y,z"; }
-                convert_::ned_input default_input;
+                convert_::ned_ default_input;
                 if( !csv.has_field( "zone" ) ) { default_input.zone = options.value< unsigned int >( "--zone" ); }
-                comma::csv::input_stream< convert_::ned_input > is( std::cin, csv, default_input );
-                comma::csv::output_stream< convert_::coordinates_input > os( std::cout );
-                comma::csv::tied< convert_::ned_input, convert_::coordinates_input > tied( is, os );
+                comma::csv::input_stream< convert_::ned_ > is( std::cin, csv, default_input );
+                comma::csv::output_stream< convert_::coordinates_ > os( std::cout );
+                comma::csv::tied< convert_::ned_, convert_::coordinates_ > tied( is, os );
                 while ( is.ready() || ( std::cin.good() && !std::cin.eof() ) )
                 {
-                    // todo
-                    std::cerr << "geo-calc: implementation in progress..." << std::endl;
-                    return 1;
+                    const convert_::ned_* p = is.read();
+                    if( !p ) { break; }
+                    convert_::coordinates_ q;
+                    double latitude, longitude, scale, convergence;
+                    credfearn.GetGeographicCoordinates( p->zone
+                                                      , p->coordinates.y()
+                                                      , p->coordinates.x()
+                                                      , latitude
+                                                      , longitude
+                                                      , convergence
+                                                      , scale );
+                    q.coordinates.latitude = latitude * M_PI / 180;
+                    q.coordinates.longitude = longitude * M_PI / 180;
+                    q.z = -p->coordinates.z();
+                    tied.append( q );
                 }
             }
             return 0;

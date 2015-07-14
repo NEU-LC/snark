@@ -34,9 +34,7 @@
 
 #include "Ellipsoid.h"
 
-
-namespace GeographicGeodeticRectangular
-{
+namespace snark { namespace detail { namespace GeographicGeodeticRectangular {
 
   //! This class converts between geodetic and ECEF rectangular coordinates on the ellipsoid.
   /*!
@@ -193,6 +191,6 @@ namespace GeographicGeodeticRectangular
     double const pi2;
   };
 
-}
+} } } // namespace snark { namespace detail { namespace GeographicGeodeticRectangular {
 
 #endif // ECEF_H

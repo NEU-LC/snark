@@ -35,7 +35,7 @@
 #include <cmath>
 
 //! Mapping grids for the earth.
-namespace MapGrid {
+namespace snark { namespace detail { namespace MapGrid {
 
   //! Stores constants for the map grid.
   /*!
@@ -170,6 +170,6 @@ namespace MapGrid {
   static CMapGrid MGA(500000.0, 10000000, 0.9996, 6, -177);
 
 
-}
+} } } // namespace snark { namespace detail { namespace MapGrid {
 
 #endif // MAPGRID_H
