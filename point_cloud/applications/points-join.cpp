@@ -146,8 +146,14 @@ int main( int ac, char** av )
                             if( norm > radius ) { continue; }
                             if( all )
                             {
-                                std::cout.write( istream.binary().last(), stdin_csv.format().size() );
-                                std::cout.write( &it->second[k]->line[0], filter_csv.format().size() );
+                                if( stdin_csv.binary() )
+                                {
+                                    std::cout.write( istream.binary().last(), stdin_csv.format().size() );
+                                    std::cout.write( &it->second[k]->line[0], filter_csv.format().size() );
+                                } else {
+                                    std::cout << comma::join( istream.ascii().last(), stdin_csv.delimiter )
+                                              << stdin_csv.delimiter << &it->second[k]->line[0] << std::endl;
+                                }
                             }
                             else
                             {
