@@ -61,9 +61,11 @@ static void usage( bool more = false )
     std::cerr << "                    coordinates: convert from north-east-down to coordinates" << std::endl;
     std::cerr << "                        input fields: x,y,z,zone; default: x,y,z" << std::endl;
     std::cerr << "                        appended output fields: latitude,longitude,z" << std::endl;
+    std::cerr << "                        appended output format: 3d" << std::endl;
     std::cerr << "                    north-east-down,ned: convert from coordinates to north-east-down" << std::endl;
     std::cerr << "                        input fields: default: latitude,longitude,z" << std::endl;
     std::cerr << "                        appended output fields: x,y,z,zone" << std::endl;
+    std::cerr << "                        appended output format: 3d,ui" << std::endl;
     std::cerr << "            --zone=<zone>: zone, if --to ned; e.g. 56 for Sydney: default zone, in case zone field is not on stdin input" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    distance: ellipsoid arc distance in meters; if --binary, output as double" << std::endl;
@@ -237,7 +239,7 @@ int main( int ac, char **av )
             {
                 if( csv.fields.empty() ) { csv.fields = "latitude,longitude,z"; }
                 comma::csv::input_stream< convert_::coordinates_ > is( std::cin, csv );
-                comma::csv::output_stream< convert_::ned_ > os( std::cout ); // todo? csv.binary() );
+                comma::csv::output_stream< convert_::ned_ > os( std::cout, csv.binary() );
                 comma::csv::tied< convert_::coordinates_, convert_::ned_ > tied( is, os );
                 while ( is.ready() || ( std::cin.good() && !std::cin.eof() ) )
                 {
@@ -262,7 +264,7 @@ int main( int ac, char **av )
                 convert_::ned_ default_input;
                 if( !csv.has_field( "zone" ) ) { default_input.zone = options.value< unsigned int >( "--zone" ); }
                 comma::csv::input_stream< convert_::ned_ > is( std::cin, csv, default_input );
-                comma::csv::output_stream< convert_::coordinates_ > os( std::cout );
+                comma::csv::output_stream< convert_::coordinates_ > os( std::cout, csv.binary() );
                 comma::csv::tied< convert_::ned_, convert_::coordinates_ > tied( is, os );
                 while ( is.ready() || ( std::cin.good() && !std::cin.eof() ) )
                 {
