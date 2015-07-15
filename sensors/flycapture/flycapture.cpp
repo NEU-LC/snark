@@ -92,22 +92,26 @@ property_map_t property_map = boost::assign::list_of<property_map_t::relation>
     (FlyCapture2::TILT,              "tilt")
     (FlyCapture2::SHUTTER,           "shutter")
     (FlyCapture2::GAIN,              "gain")
-    (FlyCapture2::TRIGGER_MODE,      "trigger_mode")
-    (FlyCapture2::TRIGGER_DELAY,     "trigger_delay")
+    //(FlyCapture2::TRIGGER_MODE,      "trigger_mode")  //Not supported properly through PropertyType
+    //(FlyCapture2::TRIGGER_DELAY,     "trigger_delay") //There is a separate function set for trigger modes 
     (FlyCapture2::FRAME_RATE,        "frame_rate")
     (FlyCapture2::TEMPERATURE,       "temperature");
     
 //List for attributes that exist inside structs
-static const std::string structAttributes[] = {"maxWidth", "maxHeight", "offsetHStepSize" , "offsetVStepSize", "offsetX" , "offsetY" , "width" , "height" ,"PixelFormat"};     
+static const std::string structAttributes[] = {"maxWidth", "maxHeight", "offsetHStepSize" , "offsetVStepSize",
+  "offsetX" , "offsetY" , "width" , "height" , "PixelFormat" ,"trigger_on", "trigger_mode" , "trigger_parameter",
+  "trigger_polarity" , "trigger_source"};     
     
 static std::string flycapture_get_attribute_( FlyCapture2::GigECamera& handle, const std::string& key )
 {
     FlyCapture2::Error error;
     FlyCapture2::GigEImageSettings image_settings;
     FlyCapture2::GigEImageSettingsInfo image_settings_info;
+    FlyCapture2::TriggerMode trigger_mode;
 
     error = handle.GetGigEImageSettings(&image_settings);
-    error = handle.GetGigEImageSettingsInfo(&image_settings_info);            
+    error = handle.GetGigEImageSettingsInfo(&image_settings_info);
+    error = handle.GetTriggerMode(&trigger_mode); 
     
     //ImageSettingsInfo struct
     /***/if ( key == "maxWidth" )        return boost::to_string( image_settings_info.maxWidth );
@@ -121,6 +125,12 @@ static std::string flycapture_get_attribute_( FlyCapture2::GigECamera& handle, c
     else if ( key == "width" )       return boost::to_string( image_settings.width );
     else if ( key == "height" )      return boost::to_string( image_settings.height );
     else if ( key == "PixelFormat" ) return pixel_format_map.left.at( image_settings.pixelFormat );
+    
+    else if ( key == "trigger_on" )        return boost::to_string(trigger_mode.onOff);
+    else if ( key == "trigger_polarity" )  return boost::to_string(trigger_mode.polarity);
+    else if ( key == "trigger_source" )    return boost::to_string(trigger_mode.source);
+    else if ( key == "trigger_mode" )      return boost::to_string(trigger_mode.mode);
+    else if ( key == "trigger_parameter" ) return boost::to_string(trigger_mode.parameter);
     //Check the property list
     else{
         if( property_map.right.find(key) != property_map.right.end() )
@@ -154,7 +164,8 @@ static void flycapture_set_attribute_( FlyCapture2::GigECamera& handle, const st
     FlyCapture2::Error error;
     FlyCapture2::GigEConfig cam_config;
     FlyCapture2::GigEImageSettings image_settings;
-    FlyCapture2::GigEImageSettingsInfo image_settings_info;   
+    FlyCapture2::GigEImageSettingsInfo image_settings_info;
+    FlyCapture2::TriggerMode trigger_mode;
 
     error = handle.GetGigEImageSettings(&image_settings);
     if(error != FlyCapture2::PGRERROR_OK)
@@ -164,6 +175,9 @@ static void flycapture_set_attribute_( FlyCapture2::GigECamera& handle, const st
     if(error != FlyCapture2::PGRERROR_OK)
         std::cerr << "Error getting attributes from camera." << std::endl;
 
+    error = handle.GetTriggerMode(&trigger_mode);            
+    if(error != FlyCapture2::PGRERROR_OK)
+        std::cerr << "Error getting attributes from camera." << std::endl;
     
     //ImageSettingsInfo struct
     /**/ if ( key == "offsetHStepSize" ) image_settings_info.offsetHStepSize = boost::lexical_cast<int>(value);
@@ -174,30 +188,61 @@ static void flycapture_set_attribute_( FlyCapture2::GigECamera& handle, const st
     else if ( key == "offsetY" )     image_settings.offsetY = boost::lexical_cast<int>(value);
     else if ( key == "width" )       
     {
-        if((boost::lexical_cast<uint>(value) > image_settings_info.maxWidth) |
-            (boost::lexical_cast<uint>(value) < 0))
+        if(( boost::lexical_cast<uint>( value ) > image_settings_info.maxWidth ) |
+            ( boost::lexical_cast<uint>( value ) < 0 ))
             std::cerr << "Error: width out of bounds" << std::endl;
         else
-          image_settings.width = boost::lexical_cast<int>(value);
+          image_settings.width = boost::lexical_cast<int>( value );
     }
     else if ( key == "height" )
     {
-        if((boost::lexical_cast<uint>(value) > image_settings_info.maxHeight) |
-            (boost::lexical_cast<uint>(value) < 0))
+        if(( boost::lexical_cast<uint>( value ) > image_settings_info.maxHeight ) |
+            ( boost::lexical_cast<uint>( value ) < 0 ))
             std::cerr << "Error: height out of bounds" << std::endl;
         else
-          image_settings.height = boost::lexical_cast<int>(value);
+          image_settings.height = boost::lexical_cast<int>( value );
     }    
     else if ( key == "PixelFormat" ) 
     {
-      if( pixel_format_map.right.find(value) != pixel_format_map.right.end() )
-            image_settings.pixelFormat = pixel_format_map.right.at( value );
+        if( pixel_format_map.right.find(value) != pixel_format_map.right.end() )
+              image_settings.pixelFormat = pixel_format_map.right.at( value );
+        else
+              std::cerr << "Error, invalid pixel format." << std::endl;
+    } 
+    else if ( key == "trigger_on" ) 
+    {
+      if ( value == "true" )
+          trigger_mode.onOff = true;
+      else if ( value == "false" )
+          trigger_mode.onOff = false;
       else
-            std::cerr << "Error, invalid pixel format." << std::endl;
+          std::cerr << "Error, invalid trigger_on setting. Please use true/false" << std::endl;
+    }  
+    else if ( key == "trigger_polarity" ) //TODO confirm integer values
+    {
+       if ( value == "high" )
+          trigger_mode.polarity = 1;
+      else if ( value == "low" )
+          trigger_mode.polarity = 0;
+      else
+          std::cerr << "Error, invalid trigger_polarity setting. Please use high/low" << std::endl;
+    }        
+    else if ( key == "trigger_source" ) // 0-3 are GPIO, 4 = none
+    {
+        /**/ if( value == "GPIO0" ) trigger_mode.source = 0; 
+        else if( value == "GPIO1" ) trigger_mode.source = 1;
+        else if( value == "GPIO2" ) trigger_mode.source = 2;
+        else if( value == "GPIO3" ) trigger_mode.source = 3;
+        else if( value == "none"  ) trigger_mode.source = 4;
+        else if( value == "software" ) trigger_mode.source = 7;
+        else std::cerr << "Error unknown trigger source. please use 'GPIO[0-3]', 'software' or 'none'" << std::endl;
     }
+    else if ( key == "trigger_mode" )      trigger_mode.mode = boost::lexical_cast<int>(value);
+    else if ( key == "trigger_parameter" ) trigger_mode.parameter = boost::lexical_cast<int>(value);
+
     //Check the property list
     else{
-        if( property_map.right.find(key) != property_map.right.end() )
+        if( property_map.right.find( key ) != property_map.right.end() )
         {
             FlyCapture2::Property cam_prop;
             FlyCapture2::PropertyInfo cam_prop_info;
@@ -223,8 +268,8 @@ static void flycapture_set_attribute_( FlyCapture2::GigECamera& handle, const st
                     } 
                     else   
                     {
-                       cam_prop.valueA = boost::lexical_cast<uint>(v[0]);
-                       cam_prop.valueB = boost::lexical_cast<uint>(v[1]);
+                       cam_prop.valueA = boost::lexical_cast<uint>( v[0] );
+                       cam_prop.valueB = boost::lexical_cast<uint>( v[1] );
                     }
                 }
                 else 
@@ -232,16 +277,16 @@ static void flycapture_set_attribute_( FlyCapture2::GigECamera& handle, const st
                     if( value.find( "." ) != value.npos )
                        {
                            cam_prop.absControl = true;
-                           cam_prop.absValue = boost::lexical_cast<float>(value);             
+                           cam_prop.absValue = boost::lexical_cast<float>( value );             
                        }
                        else
                        {
                          cam_prop.absControl = false;
-                           cam_prop.valueA = boost::lexical_cast<uint>(value);
+                           cam_prop.valueA = boost::lexical_cast<uint>( value );
                        }
                 }
             }
-            error = handle.SetProperty(&cam_prop);
+            error = handle.SetProperty( &cam_prop );
             if(error != FlyCapture2::PGRERROR_OK)
                 std::cerr << "Error setting attributes: " << error.GetDescription() << std::endl;
         } else 
@@ -251,7 +296,11 @@ static void flycapture_set_attribute_( FlyCapture2::GigECamera& handle, const st
     }
     //Handle errors here, the SDK should do out of bounds checking (test width > 1920 for example)
     
-    error = handle.SetGigEImageSettings(&image_settings);
+    error = handle.SetGigEImageSettings( &image_settings );
+    if(error != FlyCapture2::PGRERROR_OK)
+        std::cerr << "Error setting attributes." << std::endl;
+    
+    error = handle.SetTriggerMode( &trigger_mode );
     if(error != FlyCapture2::PGRERROR_OK)
         std::cerr << "Error setting attributes." << std::endl;
 
@@ -275,34 +324,55 @@ flycapture::attributes_type flycapture_attributes_( FlyCapture2::GigECamera& han
     return attributes;
 }
 
-cv::Mat flycapture_image_as_cvmat_( const FlyCapture2::Image& frame )
+unsigned int flycapture_bits_per_pixel_( const FlyCapture2::PixelFormat pixel_format_ )
 {
-    int type;
-    switch( frame.GetPixelFormat() )
+    switch( pixel_format_ )
     {
         case FlyCapture2::PIXEL_FORMAT_MONO8:
         case FlyCapture2::PIXEL_FORMAT_RAW8:
-            type = CV_8UC1;
+            return 8;
             break;
         case FlyCapture2::PIXEL_FORMAT_RAW16:
         case FlyCapture2::PIXEL_FORMAT_MONO16:
-            type = CV_16UC1;
-            break;
+            return 16;
         case FlyCapture2::PIXEL_FORMAT_RGB:
         case FlyCapture2::PIXEL_FORMAT_BGR:
-            type = CV_8UC3;
-            break;
+            return 24;
         case FlyCapture2::PIXEL_FORMAT_RGBU:
         case FlyCapture2::PIXEL_FORMAT_BGRU:
-            type = CV_8UC4;
-            break;
+            return 32;
         case FlyCapture2::PIXEL_FORMAT_RGB16:
-            type = CV_16UC3;
-            break;
+            return 48;
         case FlyCapture2::PIXEL_FORMAT_411YUV8:
         case FlyCapture2::PIXEL_FORMAT_422YUV8:
         case FlyCapture2::PIXEL_FORMAT_444YUV8:
-            COMMA_THROW( comma::exception, "unsupported format " << frame.GetPixelFormat()  );
+            COMMA_THROW( comma::exception, "unsupported format " << pixel_format_ );
+        default:
+            COMMA_THROW( comma::exception, "unknown format " << pixel_format_ );  
+        return 0;
+    }
+}
+
+cv::Mat flycapture_image_as_cvmat_( const FlyCapture2::Image& frame )
+{
+    int type;
+    switch( flycapture_bits_per_pixel_(frame.GetPixelFormat() ) ) 
+    {
+        case 8:
+            type = CV_8UC1;
+            break;
+        case 16:
+            type = CV_16UC1;
+            break;
+        case 24:
+            type = CV_8UC3;
+            break;
+        case 32:
+            type = CV_8UC4;
+            break;
+        case 48:
+            type = CV_16UC3;
+            break;
         default:
             COMMA_THROW( comma::exception, "unknown format " << frame.GetPixelFormat()  );
     };
@@ -314,12 +384,12 @@ bool flycapture_collect_frame_(cv::Mat & image, FlyCapture2::GigECamera& handle,
 {
     FlyCapture2::Error result;
     FlyCapture2::Image frame_;
-    
     FlyCapture2::Image raw_image;
+    
     result = handle.RetrieveBuffer(&raw_image);
     frame_.DeepCopy(&raw_image);
     raw_image.ReleaseBuffer();
-
+    
     if( result == FlyCapture2::PGRERROR_OK ) 
     {
       cv::Mat cvImage = flycapture_image_as_cvmat_( frame_ );
@@ -340,7 +410,7 @@ bool flycapture_collect_frame_(cv::Mat & image, FlyCapture2::GigECamera& handle,
         std::cerr << "Error: " << result.GetDescription() << " Restarting camera." << std::endl;
         handle.StopCapture();
         started = false;
-	return false;
+        return false;
     }
     else
     {  //Fatal
@@ -378,13 +448,13 @@ class flycapture::impl
                 {
                     if(list[i].interfaceType == FlyCapture2::INTERFACE_GIGE && (id == 0))
                         id_ = list[i].serialNumber;
-                    if(list[i].interfaceType == FlyCapture2::INTERFACE_GIGE && ( id == list[i].serialNumber))
+                    if(list[i].interfaceType == FlyCapture2::INTERFACE_GIGE && ( id == list[i].serialNumber ))
                         id_ = list[i].serialNumber;
-                    if(list[i].interfaceType == FlyCapture2::INTERFACE_GIGE && ( id_right == list[i].serialNumber))
+                    if(list[i].interfaceType == FlyCapture2::INTERFACE_GIGE && ( id_right == list[i].serialNumber ))
                         id_right_ = list[i].serialNumber;
                 }
-                if( id_ && !stereo) { break; }
-                if(stereo && id_ && id_right_) { break; }
+                if( id_ && !stereo ) { break; }
+                if(stereo && id_ && id_right_ ) { break; }
              }
              if( !id_ ) { COMMA_THROW( comma::exception, "timeout; camera not found" ); }
              if(stereo && !id_right_ ) { COMMA_THROW( comma::exception, "timeout; stereo right camera not found" ); }
@@ -404,9 +474,9 @@ class flycapture::impl
    
             //Get Point grey unique id (guid) from serial number. guid does not exist in CameraInfo, and so it does not appear in the camera list
             FlyCapture2::BusManager bus_manager;
-            bus_manager.GetCameraFromSerialNumber(*id_, &guid);
+            bus_manager.GetCameraFromSerialNumber( *id_ , &guid );
      
-            FlyCapture2::Error result = handle_.Connect(&guid);
+            FlyCapture2::Error result = handle_.Connect( &guid );
             for( ; ( result != FlyCapture2::PGRERROR_OK ) && ( now < end ); now = boost::posix_time::microsec_clock::universal_time() )
             {
                 boost::thread::sleep( now + boost::posix_time::milliseconds( 10 ) );
@@ -420,11 +490,11 @@ class flycapture::impl
             }   
             
             end = now + timeout;
-            if(stereo)
+            if( stereo )
             {
                 bus_manager.GetCameraFromSerialNumber(*id_right_, &guid_right);
                 FlyCapture2::Error result = handle_right_.Connect(&guid_right);
-                std::cerr << "Connecting to second camera" << std::endl;
+
                 for( ; ( result != FlyCapture2::PGRERROR_OK ) && ( now < end ); now = boost::posix_time::microsec_clock::universal_time() )
                 {
                     boost::thread::sleep( now + boost::posix_time::milliseconds( 10 ) );
@@ -433,27 +503,43 @@ class flycapture::impl
                 if (result != FlyCapture2::PGRERROR_OK){close(); COMMA_THROW( comma::exception, "failed to open point grey camera: " << id_right << ", Reason: " << result.GetDescription() );}
             }
             
+            FlyCapture2::CameraInfo camera_info;
+            if(stereo)
+            {
+                handle_right_.GetCameraInfo( &camera_info );
+            }
+            handle_.GetCameraInfo( &camera_info );
+ 
+            
             if(stereo)
             { // Trigger mode is used to synchronize shutters between the cameras
-              std::cerr << "Setting trigger mode" << std::endl;
-               flycapture_set_attribute_(handle_, "trigger_mode", "0");
-               flycapture_set_attribute_(handle_right_, "trigger_mode", "0");
-            } else
-            { //disable trigger for single camera
-              flycapture_set_attribute_(handle_, "trigger_mode", "0");
+               flycapture_set_attribute_( handle_, "trigger_on", "false" );     
+               flycapture_set_attribute_( handle_right_, "trigger_mode", "0" );
+               flycapture_set_attribute_( handle_right_, "trigger_on", "true" );
+               flycapture_set_attribute_( handle_right_, "trigger_source", "GPIO0" );
+	       
+	       //An extended packet delay is needed to stop packet collision
+	       //TODO Maybe add this to set_attr so that it can be user customisable
+	       FlyCapture2::GigEProperty packetDelay;
+	       packetDelay.propType = FlyCapture2::PACKET_DELAY;
+	       handle_.GetGigEProperty(&packetDelay);
+	       packetDelay.value = 2000;
+	       handle_.SetGigEProperty(&packetDelay);
+	       handle_right_.GetGigEProperty(&packetDelay);
+	       packetDelay.value = 2100;
+	       handle_right_.SetGigEProperty(&packetDelay);
             }
-                //total_bytes_per_frame_ = frame_.GetDataSize();
-                //HACK
-                total_bytes_per_frame_ = 2304000;
-        
-        FlyCapture2::CameraInfo camera_info;	
-            if(stereo){
-                handle_right_.GetCameraInfo(&camera_info);
-                std::cerr << "Connected to camera: " << camera_info.serialNumber << std::endl;
-            }
-            
-            handle_.GetCameraInfo(&camera_info);
-            std::cerr << "Connected to camera: " << camera_info.serialNumber << std::endl;
+
+            uint width;
+            uint height;
+            FlyCapture2::PixelFormat pixel_format;
+            width = boost::lexical_cast<uint>( flycapture_get_attribute_( handle_, "width" ) );
+            height = boost::lexical_cast<uint>( flycapture_get_attribute_( handle_, "height" ) );
+            pixel_format = pixel_format_map.right.at( flycapture_get_attribute_( handle_,"PixelFormat" ) );
+
+            total_bytes_per_frame_ = ( stereo ? 2 : 0 ) * width * height
+                                          * flycapture_bits_per_pixel_( pixel_format ) / 8;
+
         }
 
         ~impl() { close(); }
@@ -464,7 +550,7 @@ class flycapture::impl
             if( !handle_.IsConnected() ) { return; }
             handle_.StopCapture();
             handle_.Disconnect();
-            if(stereo)
+            if( stereo )
             {
               id_right_.reset();
               if( !handle_right_.IsConnected() ) { return; }
@@ -486,39 +572,34 @@ class flycapture::impl
             {
                 FlyCapture2::Error result;
                 
-            if( !started_ )
-                result = handle_.StartCapture();
-            // error is not checked as sometimes the camera
-            // will start correctly but return an error
-            started_ = true;
-    
-            if(!started_right_)
-                result =  handle_right_.StartCapture();
-            started_right_ = true;
+                if( !started_ )
+                    {result = handle_.StartCapture();}
+                // error is not checked as sometimes the camera
+                // will start correctly but return an error
+                started_ = true;
 
+                if( stereo )
+                {
+                    if(!started_right_)
+                        result =  handle_right_.StartCapture();
+                    started_right_ = true;
                 
-                //TODO framerate delay here
- /*              if(stereo) //Trigger camera shutters at (almost) the same time
-               {
-                   handle_.FireSoftwareTrigger();
-                   handle_right_.FireSoftwareTrigger();
-                   std::cerr << "Fired software frame trigger" << std::endl;
-               }   */
+                } 
+                success = flycapture_collect_frame_( image_, handle_ , started_ );
                 pair.first = boost::posix_time::microsec_clock::universal_time();
-                success = flycapture_collect_frame_(image_, handle_, started_);
-                if(success){
-                    if(!stereo)
+                if( success )
+                {
+                    if( !stereo )
                     {
                         pair.second = image_;
                     } 
                     else 
                     {
-                      boost::thread::sleep( pair.first + boost::posix_time::milliseconds( 10 ) );
-                      success = flycapture_collect_frame_(image_right_, handle_right_, started_right_);
-                      if (success)
-                      {
-                        cv::hconcat(image_,image_right_,pair.second);
-                      } 
+                        success = flycapture_collect_frame_( image_right_ , handle_right_ , started_right_ );
+                        if ( success )
+                        {
+                            cv::hconcat( image_ , image_right_ , pair.second );
+                        } 
                     }
                 }
                 retries++;
@@ -548,6 +629,7 @@ class flycapture::impl
             boost::posix_time::ptime now = boost::posix_time::microsec_clock::universal_time();
             boost::posix_time::ptime end = now + timeout;
             std::vector< FlyCapture2::CameraInfo > list;
+    
             for( ; now < end; now = boost::posix_time::microsec_clock::universal_time() )
             {
                 FlyCapture2::BusManager bus_manager;
@@ -559,6 +641,7 @@ class flycapture::impl
                 }
 
                 FlyCapture2::CameraInfo cam_info[num_cameras];
+		//BUG DiscoverGigECameras will sometimes crash if there are devices on a different subnet
                 error = FlyCapture2::BusManager::DiscoverGigECameras( cam_info, &num_cameras );
                 if ( error != FlyCapture2::PGRERROR_OK ){
                     COMMA_THROW( comma::exception, "Cannot discover point grey cameras" );
