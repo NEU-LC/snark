@@ -51,6 +51,8 @@ static void usage( bool more = false )
     std::cerr << std::endl;
     std::cerr << "usage: cat points.1.csv | points-join \"points.2.csv[;<csv options>]\" [<options>] > joined.csv" << std::endl;
     std::cerr << std::endl;
+    std::cerr << "    if the second set is not given, for each point output the nearest point in the same set; todo" << std::endl;
+    std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    --all: output all points in the given radius instead of the nearest" << std::endl;
     std::cerr << "    --radius=<radius>: lookup radius" << std::endl;
@@ -67,7 +69,7 @@ struct record
 { 
     Eigen::Vector3d point;
     std::string line;
-    record() {}
+    record() : point( Eigen::Vector3d::Zero() ) {}
     record( const Eigen::Vector3d& point, const std::string& line ) : point( point ), line( line ) {}
 };
     
@@ -80,8 +82,8 @@ int main( int ac, char** av )
         if( options.exists( "--help,-h" ) ) { usage( verbose ); }
         comma::csv::options stdin_csv = comma::csv::options( options );
         std::vector< std::string > unnamed = options.unnamed( "--verbose,-v,--strict,--all", "-.*" );
-        if( unnamed.empty() ) { std::cerr << "csv-join: please specify the second source" << std::endl; return 1; }
-        if( unnamed.size() > 1 ) { std::cerr << "csv-join: expected one file or stream to join, got " << comma::join( unnamed, ' ' ) << std::endl; return 1; }
+        if( unnamed.empty() ) { std::cerr << "points-join: please specify the second source; self-join: todo" << std::endl; return 1; }
+        if( unnamed.size() > 1 ) { std::cerr << "points-join: expected one file or stream to join, got " << comma::join( unnamed, ' ' ) << std::endl; return 1; }
         comma::name_value::parser parser( "filename", ';', '=', false );
         comma::csv::options filter_csv = parser.get< comma::csv::options >( unnamed[0] );
         if( stdin_csv.binary() && !filter_csv.binary() ) { std::cerr << "points-join: stdin stream binary and filter stream ascii: this combination is not supported" << std::endl; return 1; }
