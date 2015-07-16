@@ -1,0 +1,38 @@
+#!/bin/bash
+
+NAME=$( basename $0 )
+
+function usage()
+{
+    cat >&2 <<EOF
+usage: $NAME [OPTION...]
+
+ladybird battery status
+
+    options
+        --help,-h           display help message
+        --config=<file>     configuration file, e.g. /usr/local/etc/ladybird/config.json
+        --verbose,-v        more output
+
+EOF
+    exit 1
+}
+
+CONFIG=
+VERBOSE=1
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+    --help|-h)          usage ;;
+    --config=*)         CONFIG="${1#*=}" ;;
+    --verbose|-v)       VERBOSE=1 ;;
+    esac
+    shift
+done
+
+if [[ -z "$CONFIG" ]]; then echo "config file is not given" >&2; exit 1; fi
+if [[ ! -e "$CONFIG" ]]; then echo "config file '$CONFIG' does not exist" >&2; exit 1; fi
+
+BATTERY_ADDRESS=$( name-value-get --from json battery/address < "$CONFIG" )
+BATTERY_PORT=$( name-value-get --from json battery/port < "$CONFIG" )
+
+nc -d $BATTERY_ADDRESS $BATTERY_PORT | head -4 | braille-to-csv | tail -1 | name-value-from-csv $( braille-to-csv --list-fields ) | tr -d '"' | column -nts=

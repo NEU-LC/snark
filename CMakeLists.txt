@@ -159,7 +159,7 @@ IF( snark_BUILD_TESTS )
 ENDIF( snark_BUILD_TESTS )
 
 OPTION( snark_build_actuators "build actuators" ON )
-OPTION( snark_build_battery "build battery" OFF )
+OPTION( snark_build_batteries "build batteries" OFF )
 OPTION( snark_build_comms "build comms" ON )
 OPTION( snark_build_control "build control" OFF )
 OPTION( snark_build_graph "build graph" ON )
@@ -187,6 +187,9 @@ CMAKE_DEPENDENT_OPTION( snark_build_actuators_wheels "build wheels components" O
 CMAKE_DEPENDENT_OPTION( snark_build_actuators_universal_robots "build universal_robots components" OFF "snark_build_actuators" OFF )
 
 CMAKE_DEPENDENT_OPTION( snark_build_web_feeds "snark: build web feeds" ON "snark_build_web" OFF )
+
+CMAKE_DEPENDENT_OPTION( snark_build_batteries_ocean "snark: build ocean battery" OFF "snark_build_batteries" OFF )
+CMAKE_DEPENDENT_OPTION( snark_build_batteries_braille "snark: build braille battery" OFF "snark_build_batteries" OFF )
 
 SET( snark_system_manager "auto" CACHE STRING "the system and service manager of the operating system, options are: auto init systemd" )
 IF( snark_system_manager STREQUAL "auto" )
@@ -258,10 +261,10 @@ IF( snark_build_actuators_wheels )
                          optimized snark_wheels )
 ENDIF( snark_build_actuators_wheels )
 
-if( snark_build_battery )
+if( snark_build_batteries_ocean )
     SET( snark_ALL_LIBRARIES ${snark_ALL_LIBRARIES} debug snark_ocean-d
                              optimized snark_ocean )
-endif( snark_build_battery )
+endif( snark_build_batteries_ocean )
 
 if( snark_build_control )
     SET( snark_ALL_LIBRARIES ${snark_ALL_LIBRARIES} debug snark_control-d
@@ -337,9 +340,9 @@ IF( snark_build_sensors )
     add_subdirectory( sensors )
 ENDIF( snark_build_sensors )
 
-IF( snark_build_battery )
-    add_subdirectory( battery )
-ENDIF( snark_build_battery )
+IF( snark_build_batteries )
+    add_subdirectory( batteries )
+ENDIF( snark_build_batteries )
 
 IF( snark_build_graph )
     add_subdirectory( graph )
