@@ -136,8 +136,8 @@ if [[ -z "$feedback_fields" ]]; then echo "$scriptname: feedback/fields is not f
 passed_fields=$( add_xpath target $waypoints_fields ),$( add_xpath feedback $feedback_fields )
 all_fields=$passed_fields,$error_fields,$command_fields
 required_waypoints_fields="x,y"; [[ "$steering" == "omni" ]] && required_waypoints_fields+=",heading_offset"
-keep_target_fields=$( add_xpath target $( csv-fields clear --remove $required_waypoints_fields <<< $waypoints_fields ) )
-output_fields_mask=$( csv-fields clear --keep $keep_target_fields,$command_fields <<< $all_fields )
+keep_waypoints_fields=$( add_xpath target $( csv-fields clear --remove $required_waypoints_fields <<< $waypoints_fields ) )
+output_fields_mask=$( csv-fields clear --keep $keep_waypoints_fields,$command_fields <<< $all_fields )
 output_fields=$( compress_commas <<< $output_fields_mask )
 
 if (( $( comma_options_has --output-fields "$@" ) )); then csv-fields prefix --basename <<< $output_fields; exit; fi
