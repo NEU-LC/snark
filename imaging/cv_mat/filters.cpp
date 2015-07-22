@@ -269,6 +269,33 @@ static filters::value_type brightness_impl_( filters::value_type m, double scale
     return n;
 }
 
+struct threshold_t
+{
+    enum types { binary = CV_THRESH_BINARY
+               , binary_inv = CV_THRESH_BINARY_INV
+               , trunc = CV_THRESH_TRUNC
+               , tozero = CV_THRESH_TOZERO
+               , tozero_inv = CV_THRESH_TOZERO_INV };
+               
+    static types from_string( const std::string& s )
+    {
+        if( s.empty() || s == "binary" ) { return binary; }
+        if( s == "binary_inv" ) { return binary_inv; }
+        if( s == "trunc" ) { return trunc; }
+        if( s == "tozero" ) { return tozero; }
+        if( s == "tozero_inv" ) { return tozero_inv; }
+        COMMA_THROW( comma::exception, "expected threshold type, got: \"" << s << "\"" );
+    }
+};
+
+static filters::value_type threshold_impl_( filters::value_type m, double threshold, double max_value, threshold_t::types type )
+{
+    filters::value_type n;
+    n.first = m.first;
+    cv::threshold( m.second, n.second, threshold, max_value, type );
+    return n;
+}
+
 static filters::value_type transpose_impl_( filters::value_type m )
 {
     filters::value_type n;
@@ -1016,6 +1043,15 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
             unsigned int n = boost::lexical_cast< unsigned int >( e[1] );
             f.push_back( filter( boost::bind( &head_impl_, _1, n ) ) );
         }
+        else if( e[0] == "threshold" )
+        {
+            const std::vector< std::string >& s = comma::split( e[1], ',' );
+            if( s[0].empty() ) { COMMA_THROW( comma::exception, "threshold: expected <threshold>[,<max_value>[,<type>]] got: \"" << v[i] << "\"" ); }
+            double threshold = boost::lexical_cast< double >( s[0] );
+            double maxval = s.size() < 2 ? 255 : boost::lexical_cast< double >( s[1] );
+            threshold_t::types type = threshold_t::from_string( s.size() < 3 ? "" : s[2] );
+            f.push_back( filter( boost::bind( &threshold_impl_, _1, threshold, maxval, type ) ) );
+        }
         else
         {
             COMMA_THROW( comma::exception, "expected filter, got \"" << v[i] << "\"" );
@@ -1080,6 +1116,8 @@ static std::string usage_impl_()
     oss << "                  i.e. 5 means 5 pixels; 5.0 means 5 times" << std::endl;
     oss << "        split: split n-channel image into a nx1 grey-scale image" << std::endl;
     oss << "        text=<text>[,x,y][,colour]: print text; default x,y: 10,10; default colour: yellow" << std::endl;
+    oss << "        threshold=<threshold>[,<maxval>,[<type>]]: threshold image; same semantics as cv::threshold()" << std::endl;
+    oss << "            <type>: binary, binary_inv, trunc, tozero, tozero_inv" << std::endl;
     oss << "        thumb[=<cols>[,<wait-interval>]]: view resized image; a convenience for debugging and filter pipeline monitoring" << std::endl;
     oss << "                                          <cols>: image width in pixels; default: 100" << std::endl;
     oss << "                                          <wait-interval>: a hack for now; milliseconds to wait for image display and key press; default: 1" << std::endl;
