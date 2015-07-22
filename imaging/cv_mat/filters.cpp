@@ -45,12 +45,16 @@
 #include <comma/string/string.h>
 #include <comma/name_value/parser.h>
 #include <Eigen/Core>
+#include <opencv2/features2d/features2d.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/imgproc/imgproc_c.h>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/highgui/highgui_c.h>
+#include "../../timing/timestamped.h"
+#include "../../timing/traits.h"
 #include "filters.h"
 #include "serialization.h"
+#include "traits.h"
 
 struct map_input_t
 {
@@ -455,6 +459,33 @@ static filters::value_type histogram_impl_( filters::value_type m )
     os.write( h );
     os.flush();
     for( unsigned int i = 0; i < channels.size(); ++i ) { std::cout.write( ( char* )( &channels[i][0] ), sizeof( comma::uint32 ) * 256 ); }
+    return m;
+}
+
+template < typename T > static comma::csv::options make_csv_options_( bool binary ) // quick and dirty
+{
+    comma::csv::options csv;
+    if( binary ) { csv.format( comma::csv::format::value< snark::timestamped< T > >() ); }
+    return csv;
+}
+
+template < typename T > static T cv_read_( const std::string& filename = "", const std::string& path = "" )
+{
+    if( filename.empty() ) { return T(); }
+    T t;
+    cv::FileStorage f( filename, cv::FileStorage::READ );
+    cv::FileNode n = f[path];
+    t.read( n );
+    return t;
+}
+
+static filters::value_type simple_blob_impl_( filters::value_type m, const cv::SimpleBlobDetector::Params& params, bool binary )
+{
+    static cv::SimpleBlobDetector detector( params ); // quick and dirty
+    std::vector< cv::KeyPoint > key_points;
+    detector.detect( m.second, key_points );
+    static comma::csv::output_stream< snark::timestamped< cv::KeyPoint > > os( std::cout, make_csv_options_< snark::timestamped< cv::KeyPoint > >( binary ) );
+    for( unsigned int i = 0; i < key_points.size(); ++i ) { os.write( snark::timestamped< cv::KeyPoint >( m.first, key_points[i] ) ); }
     return m;
 }
 
@@ -912,7 +943,7 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
             unsigned int height = 0;
             double w = 0;
             double h = 0;
-            std::vector< std::string > r = comma::split( e[1], ',' );
+            const std::vector< std::string >& r = comma::split( e[1], ',' );
             switch( r.size() )
             {
                 case 1:
@@ -1008,6 +1039,35 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
         {
             if( i < v.size() - 1 ) { COMMA_THROW( comma::exception, "expected 'histogram' as the last filter, got \"" << how << "\"" ); }
             f.push_back( filter( boost::bind( &histogram_impl_, _1 ) ) );
+            f.push_back( filter( NULL ) ); // quick and dirty
+        }
+        else if( e[0] == "simple-blob" )
+        {
+            if( i < v.size() - 1 ) { COMMA_THROW( comma::exception, "expected 'simple-blob' as the last filter, got \"" << how << "\"" ); }
+            const std::vector< std::string >& s = comma::split( e[1], ',' );
+            bool binary = false;
+            std::string config;
+            std::string path;
+            for( unsigned int i = 0; i < s.size(); ++i )
+            { 
+                if( s[i] == "output-binary" ) { binary = true; }
+                if( s[i] == "output-fields" ) { std::cout << comma::join( comma::csv::names< snark::timestamped< cv::KeyPoint > >(), ',' ) << std::endl; exit( 0 ); }
+                if( s[i] == "output-format" ) { std::cout << comma::csv::format::value< snark::timestamped< cv::KeyPoint > >() << std::endl; exit( 0 ); }
+                if( s[i] == "output-default-params" || s[i] == "default-params" )
+                {
+                    cv::FileStorage fs( "dummy", cv::FileStorage::WRITE | cv::FileStorage::MEMORY | cv::FileStorage::FORMAT_YAML );
+                    cv::SimpleBlobDetector::Params().write( fs );
+                    std::cout << fs.releaseAndGetString() << std::endl;
+                    exit( 0 ); // hyper quick and dirty
+                }
+                else
+                {
+                    const std::vector< std::string >& t = comma::split( s[i], ':' );
+                    config = t[0];
+                    if( t.size() > 1 ) { path = s[1]; }
+                }
+            }
+            f.push_back( filter( boost::bind( &simple_blob_impl_, _1, cv_read_< cv::SimpleBlobDetector::Params >( config, path ), binary ) ) );
             f.push_back( filter( NULL ) ); // quick and dirty
         }
         else if( e[0] == "null" )
@@ -1126,6 +1186,17 @@ static std::string usage_impl_()
     oss << "        undistort=<undistort map file>: undistort" << std::endl;
     oss << "        view[=<wait-interval>]: view image; press <space> to save image (timestamp or system time as filename); <esc>: to close" << std::endl;
     oss << "                                <wait-interval>: a hack for now; milliseconds to wait for image display and key press; default 1" << std::endl;    
+    oss << std::endl;
+    oss << "    cv::Mat image operations:" << std::endl;
+    oss << "        simple-blob[=<parameters>]: wraps cv::SimpleBlobDetector, outputs as csv key points timestamped by image timestamp" << std::endl;
+    oss << "            <parameters>" << std::endl;
+    oss << "                output-binary: output key points as binary" << std::endl;
+    oss << "                output-fields: print output fields on stdout and exit" << std::endl;
+    oss << "                output-format: print binary output format on stdout and exit" << std::endl;
+    oss << "                output-default-params,default-params: print default simple blob detector parameters to stdout and exit" << std::endl;
+    oss << "                <filename>[:<path>]: simple blob detector params config file and optionally cv file node path in it" << std::endl;
+    oss << "                                     e.g: my-params.txt:blob" << std::endl;
+    oss << "                                     if not present, defaults will be used" << std::endl;
     return oss.str();
 }
 

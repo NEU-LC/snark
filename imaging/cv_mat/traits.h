@@ -27,47 +27,55 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+/// @author vsevolod vlaskine
 
-#ifndef SNARK_IMAGING_CVMAT_FILTERS_H_
-#define SNARK_IMAGING_CVMAT_FILTERS_H_
+#ifndef SNARK_IMAGING_CV_MAT_TRAITS_H_
+#define SNARK_IMAGING_CV_MAT_TRAITS_H_
 
-#include <vector>
-#include <boost/function.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
+#include <opencv2/features2d/features2d.hpp>
+#include <comma/visiting/traits.h>
 
-#include <opencv2/core/core.hpp>
+namespace comma { namespace visiting {
 
-namespace snark{ namespace cv_mat {
-
-template < typename Output = cv::Mat >
-struct operation
+template < typename T > struct traits< cv::Point_< T > >
 {
-    typedef std::pair< boost::posix_time::ptime, cv::Mat > input_type;
-    typedef std::pair< boost::posix_time::ptime, Output > output_type;
-    typedef input_type value_type; // quick and dirty for now
-    operation( boost::function< output_type( value_type ) > f, bool p = true ): filter_function( f ), parallel( p ) {}
-    boost::function< output_type( value_type ) > filter_function;
-    bool parallel;
-};
-
-typedef operation<> filter;
-
-/// filter pipeline helpers
-struct filters
-{
-    /// value type
-    typedef std::pair< boost::posix_time::ptime, cv::Mat > value_type;
-
-    /// return filters from name-value string
-    static std::vector< filter > make( const std::string& how, unsigned int default_delay = 1 );
-
-    /// apply filters (a helper)
-    static value_type apply( std::vector< filter >& filters, value_type m );
-
-    /// return filter usage
-    static const std::string& usage();
-};
+    template < typename Key, class Visitor > static void visit( const Key&, const cv::Point_< T >& p, Visitor& v )
+    {
+        v.apply( "x", p.x );
+        v.apply( "y", p.y );
+    }
     
-} }  // namespace snark{ namespace cv_mat {
+    template < typename Key, class Visitor > static void visit( const Key&, cv::Point_< T >& p, Visitor& v )
+    {
+        v.apply( "x", p.x );
+        v.apply( "y", p.y );
+    }
+};
 
-#endif // SNARK_IMAGING_CVMAT_FILTERS_H_
+template <> struct traits< cv::KeyPoint >
+{
+    template < typename Key, class Visitor > static void visit( const Key&, const cv::KeyPoint& p, Visitor& v )
+    {
+        v.apply( "point", p.pt );
+        v.apply( "size", p.size );
+        v.apply( "angle", p.angle );
+        v.apply( "response", p.response );
+        v.apply( "octave", p.octave );
+        v.apply( "class_id", p.class_id );
+    }
+    
+    template < typename Key, class Visitor > static void visit( const Key&, cv::KeyPoint& p, Visitor& v )
+    {
+        v.apply( "point", p.pt );
+        v.apply( "size", p.size );
+        v.apply( "angle", p.angle );
+        v.apply( "response", p.response );
+        v.apply( "octave", p.octave );
+        v.apply( "class_id", p.class_id );
+    }
+};
+
+} } // namespace comma { namespace visiting {
+
+#endif // SNARK_IMAGING_CV_MAT_TRAITS_H_
+

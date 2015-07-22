@@ -38,6 +38,7 @@
 #include <comma/name_value/parser.h>
 #include <snark/imaging/cv_mat/pipeline.h>
 #include <opencv2/highgui/highgui.hpp>
+#include <opencv2/features2d/features2d.hpp>
 
 #ifdef WIN32
 #include <fcntl.h>
