@@ -1054,7 +1054,7 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
             for( unsigned int i = 0; i < s.size(); ++i )
             { 
                 if( s[i] == "output-binary" ) { binary = true; }
-                if( s[i] == "output-fields" ) { std::cout << comma::join( comma::csv::names< snark::timestamped< cv::KeyPoint > >(), ',' ) << std::endl; exit( 0 ); }
+                if( s[i] == "output-fields" ) { std::cout << comma::join( comma::csv::names< snark::timestamped< cv::KeyPoint > >( false ), ',' ) << std::endl; exit( 0 ); }
                 if( s[i] == "output-format" ) { std::cout << comma::csv::format::value< snark::timestamped< cv::KeyPoint > >() << std::endl; exit( 0 ); }
                 if( s[i] == "output-default-params" || s[i] == "default-params" )
                 {
