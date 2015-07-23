@@ -1047,7 +1047,8 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
         else if( e[0] == "simple-blob" )
         {
             if( i < v.size() - 1 ) { COMMA_THROW( comma::exception, "expected 'simple-blob' as the last filter, got \"" << how << "\"" ); }
-            const std::vector< std::string >& s = comma::split( e[1], ',' );
+            std::vector< std::string > s;
+            if( e.size() > 1 ) { s = comma::split( e[1], ',' ); }
             bool binary = false;
             std::string config;
             std::string path;
