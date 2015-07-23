@@ -1058,7 +1058,7 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
                 if( s[i] == "output-format" ) { std::cout << comma::csv::format::value< snark::timestamped< cv::KeyPoint > >() << std::endl; exit( 0 ); }
                 if( s[i] == "output-default-params" || s[i] == "default-params" )
                 {
-                    cv::FileStorage fs( "dummy", cv::FileStorage::WRITE | cv::FileStorage::MEMORY | cv::FileStorage::FORMAT_YAML );
+                    cv::FileStorage fs( "dummy", cv::FileStorage::WRITE | cv::FileStorage::MEMORY | cv::FileStorage::FORMAT_XML );
                     cv::SimpleBlobDetector::Params().write( fs );
                     std::cout << fs.releaseAndGetString() << std::endl;
                     exit( 0 ); // hyper quick and dirty

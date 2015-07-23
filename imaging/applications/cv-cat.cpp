@@ -165,7 +165,7 @@ int main( int argc, char** argv )
                 std::cerr << snark::cv_mat::filters::usage() << std::endl;
             }
             std::cerr << std::endl;
-            return 1;
+            return 0;
         }
         if( vm.count( "file" ) + vm.count( "camera" ) + vm.count( "id" ) > 1 ) { std::cerr << "cv-cat: --file, --camera, and --id are mutually exclusive" << std::endl; return 1; }
         if( vm.count( "discard" ) ) { discard = 1; }
