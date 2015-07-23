@@ -32,6 +32,7 @@
 #include <sstream>
 #include <boost/array.hpp>
 #include <boost/bind.hpp>
+#include <boost/filesystem/operations.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/unordered_map.hpp>
 #include <boost/static_assert.hpp>
@@ -473,7 +474,9 @@ template < typename T > static T cv_read_( const std::string& filename = "", con
 {
     if( filename.empty() ) { return T(); }
     T t;
-    cv::FileStorage f( filename, cv::FileStorage::READ );
+    if( !boost::filesystem::is_regular_file( filename ) ) { COMMA_THROW( comma::exception, "file not found: \"" << filename << "\"" ); }
+    const std::vector< std::string > v = comma::split( filename, '.' );
+    cv::FileStorage f( filename, cv::FileStorage::READ | ( v.size() > 1 || v.back() == "xml" ? cv::FileStorage::FORMAT_XML : cv::FileStorage::FORMAT_YAML ) );
     cv::FileNode n = f[path];
     t.read( n );
     return t;
