@@ -52,7 +52,7 @@ int main( int argc, char** argv )
     {
         std::string fields;
         unsigned int id;
-        unsigned int id_right;
+        unsigned int id_stereo_camera;
         std::string setattributes;
         unsigned int discard;
         boost::program_options::options_description description( "options" );
@@ -66,7 +66,7 @@ int main( int argc, char** argv )
             ( "fields,f", boost::program_options::value< std::string >( &fields )->default_value( "t,rows,cols,type" ), "header fields, possible values: t,rows,cols,type,size" )
             ( "list-attributes", "output current camera attributes" )
             ( "list-cameras", "list all cameras and exit" )
-            ( "stereo",boost::program_options::value< unsigned int >( &id_right )->default_value( 0 ), "serial of right camera for stereo. Using this will set the camera specified by --serial as the left camera" )
+            ( "stereo", boost::program_options::value< unsigned int >( &id_stereo_camera )->default_value( 0 ), "serial of right camera for stereo. Using this will set the camera specified by --serial as the left camera" )
             ( "header", "output header only" )
             ( "no-header", "output image data only" )
             ( "verbose,v", "be more verbose" );
@@ -93,7 +93,7 @@ int main( int argc, char** argv )
                           << "that you manually set shutter time as an 'auto' setting will extend the frame time, resulting in "
                           << "half the demanded frame rate. " << std::endl;
                 std::cerr << "You will need to ensure that the image size and pixel format is the same between cameras. "
-	                  << "All attrubutes passed to '--set' will only act on the master camera" << std::endl;
+                          << "All attrubutes passed to '--set' will only act on the master camera" << std::endl;
                 std::cerr << "Known bugs: frame rates above 10.0 cause de-sync between the cameras." << std::endl;
             }
             return 1;
@@ -122,9 +122,9 @@ int main( int argc, char** argv )
             attributes.insert( m.get().begin(), m.get().end() );
         }
         if( verbose ) { std::cerr << "flycapture-cat: connecting..." << std::endl; }
-        snark::camera::flycapture camera( id, attributes, id_right );
+        snark::camera::flycapture camera( id, attributes, id_stereo_camera );
         if( verbose ) { std::cerr << "flycapture-cat: connected to camera " << camera.id() << std::endl; }
-        if( verbose && vm.count( "stereo" )) { std::cerr << "flycapture-cat: connected to right camera " << camera.id_right() << std::endl; }
+        if( verbose && ( id_stereo_camera!=0 ) ) { std::cerr << "flycapture-cat: connected to right camera " << camera.id_stereo_camera() << std::endl; }
         if( verbose ) { std::cerr << "flycapture-cat: total bytes per frame: " << camera.total_bytes_per_frame() << std::endl; }
         if( vm.count( "set-and-exit" ) ) { return 0; }
         if( vm.count( "list-attributes" ) )
