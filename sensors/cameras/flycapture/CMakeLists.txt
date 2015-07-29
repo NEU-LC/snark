@@ -15,8 +15,8 @@ elseif( __WIN32__ )
     add_definitions( -MSC_VER )
 endif( UNIX )
 
-FILE( GLOB source ${SOURCE_CODE_BASE_DIR}/sensors/${PROJECT}/*.cpp )
-FILE( GLOB includes ${SOURCE_CODE_BASE_DIR}/sensors/${PROJECT}/*.h )
+FILE( GLOB source *.cpp )
+FILE( GLOB includes *.h )
 
 SOURCE_GROUP( ${TARGET_NAME} FILES ${source} ${includes} )
 

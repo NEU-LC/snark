@@ -1,14 +1,26 @@
-SET( PROJECT "dc1394" )
+SET( PROJECT "gige" )
 SET( TARGET_NAME snark_${PROJECT} )
 
-FILE( GLOB source ${SOURCE_CODE_BASE_DIR}/sensors/${PROJECT}/*.cpp )
-FILE( GLOB includes ${SOURCE_CODE_BASE_DIR}/sensors/${PROJECT}/*.h )
+INCLUDE( ${SOURCE_CODE_BASE_DIR}/CMakeFiles/FindProsilicaGigE.cmake REQUIRED )
+INCLUDE_DIRECTORIES( ${ProsilicaGigE_INCLUDE_DIR} )
+LINK_DIRECTORIES( ${ProsilicaGigE_LINK_DIRECTORIES} )
+# copy-pasted from qdevices; do we need it at all?
+# Assume we are using x86 architecture with prosilica
+ADD_DEFINITIONS( -D_x86 )
+if( UNIX )
+  add_definitions( -D_LINUX )
+elseif( __WIN32__ )
+    add_definitions( -MSC_VER )
+endif( UNIX )
+
+FILE( GLOB source *.cpp )
+FILE( GLOB includes *.h )
 
 SOURCE_GROUP( ${TARGET_NAME} FILES ${source} ${includes} )
 
 ADD_LIBRARY( ${TARGET_NAME} ${source} ${includes} )
 SET_TARGET_PROPERTIES( ${TARGET_NAME} PROPERTIES ${snark_LIBRARY_PROPERTIES} )
-TARGET_LINK_LIBRARIES( ${TARGET_NAME} ${comma_ALL_LIBRARIES} ${snark_ALL_EXTERNAL_LIBRARIES} dc1394 )
+TARGET_LINK_LIBRARIES( ${TARGET_NAME} ${comma_ALL_LIBRARIES} ${comma_ALL_EXTERNAL_LIBRARIES} PvAPI )
 
 INSTALL( FILES ${includes} DESTINATION ${snark_INSTALL_INCLUDE_DIR}/sensors/${PROJECT} )
 INSTALL(
