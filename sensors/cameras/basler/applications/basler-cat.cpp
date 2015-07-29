@@ -284,10 +284,13 @@ static unsigned int set_pixel_format_( Pylon::CBaslerGigECamera& camera, Basler_
     return channels;
 }
 
+#define QUOTED( arg ) #arg
+#define STRINGIZED( arg ) QUOTED( arg )
+
 int main( int argc, char** argv )
 {
-    ::setenv( "PYLON_ROOT", BASLER_PYLON_DIR, 0 );
-    ::setenv( "GENICAM_ROOT_V2_1", BASLER_PYLON_GENICAM_DIR, 0 );
+    ::setenv( "PYLON_ROOT", STRINGIZED( BASLER_PYLON_DIR ), 0 );
+    ::setenv( "GENICAM_ROOT_V2_1", STRINGIZED( BASLER_PYLON_GENICAM_DIR ), 0 );
     try
     {
         unsigned int id;
@@ -666,13 +669,7 @@ int main( int argc, char** argv )
         if( verbose ) { std::cerr << "basler-cat: done" << std::endl; }
         return 0;
     }
-    catch( std::exception& ex )
-    {
-        std::cerr << "basler-cat: " << ex.what() << std::endl;
-    }
-    catch( ... )
-    {
-        std::cerr << "basler-cat: unknown exception" << std::endl;
-    }
+    catch( std::exception& ex ) { std::cerr << "basler-cat: " << ex.what() << std::endl; }
+    catch( ... ) { std::cerr << "basler-cat: unknown exception" << std::endl; }
     return 1;
 }
