@@ -34,7 +34,7 @@
 #include <comma/csv/stream.h>
 #include <comma/name_value/map.h>
 #include <snark/imaging/cv_mat/pipeline.h>
-#include <snark/sensors/flycapture/flycapture.h>
+#include "../flycapture.h"
 
 typedef std::pair< boost::posix_time::ptime, cv::Mat > Pair;
 

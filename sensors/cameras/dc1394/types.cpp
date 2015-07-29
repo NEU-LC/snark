@@ -27,11 +27,11 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include <iostream>
 #include <opencv2/core/core.hpp>
 #include <opencv2/core/core_c.h>
-#include <snark/sensors/dc1394/types.h>
 #include <comma/base/exception.h>
-#include <iostream>
+#include "types.h"
 
 namespace snark { namespace camera {
 

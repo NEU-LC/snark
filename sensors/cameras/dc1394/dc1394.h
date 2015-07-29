@@ -40,7 +40,7 @@
 #include <opencv2/core/core_c.h>
 #include <comma/io/select.h>
 #include <comma/visiting/traits.h>
-#include <snark/sensors/dc1394/types.h>
+#include "types.h"
 
 namespace snark { namespace camera {
     

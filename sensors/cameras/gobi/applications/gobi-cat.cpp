@@ -35,7 +35,7 @@
 #include <comma/csv/stream.h>
 #include <comma/name_value/map.h>
 #include <snark/imaging/cv_mat/pipeline.h>
-#include <snark/sensors/gobi/gobi.h>
+#include "../gobi.h"
 
 typedef std::pair< boost::posix_time::ptime, cv::Mat > Pair;
 

@@ -28,7 +28,7 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-#include <snark/sensors/dc1394/dc1394.h>
+#include "../dc1394.h"
 #include <boost/program_options.hpp>
 #include <boost/property_tree/ini_parser.hpp>
 #include <comma/base/exception.h>

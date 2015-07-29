@@ -40,7 +40,7 @@
 #include <snark/imaging/cv_mat/filters.h>
 #include <snark/imaging/cv_mat/serialization.h>
 #include <snark/tbb/queue.h>
-#include <snark/sensors/gige/gige.h>
+#include "../gige.h"
 #include <boost/program_options.hpp>
 
 static comma::signal_flag is_shutdown;

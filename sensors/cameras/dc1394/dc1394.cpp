@@ -31,13 +31,14 @@
 
 #include <boost/optional.hpp>
 #include <boost/static_assert.hpp>
-#include <snark/sensors/dc1394/dc1394.h>
 #include <snark/timing/time.h>
 #include <comma/base/exception.h>
 #include <comma/packed/bits.h>
 
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
+
+#include "dc1394.h"
 
 namespace snark { namespace camera {
 

@@ -29,7 +29,7 @@
 
 
 #include <snark/imaging/cv_mat/pipeline.h>
-#include <snark/sensors/dc1394/dc1394.h>
+#include "../dc1394.h"
 #include <boost/program_options.hpp>
 #include <boost/scoped_ptr.hpp>
 #include <boost/property_tree/ini_parser.hpp>
