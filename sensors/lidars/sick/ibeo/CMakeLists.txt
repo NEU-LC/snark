@@ -7,4 +7,4 @@ SOURCE_GROUP( ${TARGET_NAME} FILES ${source} ${includes} )
 
 ADD_LIBRARY( ${TARGET_NAME} OBJECT ${source} ${includes} )
 
-INSTALL( FILES ${includes} DESTINATION ${snark_INSTALL_INCLUDE_DIR}/sensors/${PROJECT}/ibeo )
+INSTALL( FILES ${includes} DESTINATION ${snark_INSTALL_INCLUDE_DIR}/sensors/lidars/${PROJECT}/ibeo )
