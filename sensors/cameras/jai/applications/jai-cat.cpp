@@ -33,12 +33,12 @@
 #include <comma/base/exception.h>
 #include <comma/csv/stream.h>
 #include <comma/name_value/map.h>
-#include <snark/imaging/cv_mat/pipeline.h>
-#include "../jai.h"
+#include "../../../../imaging/cv_mat/pipeline.h"
+#include "../camera.h"
 
 typedef std::pair< boost::posix_time::ptime, cv::Mat > pair_t;
 boost::scoped_ptr< snark::tbb::bursty_reader< pair_t > > reader;
-static pair_t capture( snark::camera::jai& camera )
+static pair_t capture( snark::jai::camera& camera )
 { 
     static comma::signal_flag is_shutdown;
     if( is_shutdown ) { reader->stop(); return pair_t(); }
@@ -50,7 +50,7 @@ int main( int argc, char** argv )
     try
     {
         std::string fields;
-        std::string address;
+        //std::string address;
         std::string setattributes;
         std::string calibration_file;
         std::string directory;
@@ -60,7 +60,7 @@ int main( int argc, char** argv )
             ( "help,h", "display help message" )
             ( "set", boost::program_options::value< std::string >( &setattributes ), "set camera attributes as semicolon-separated name-value pairs" )
             ( "set-and-exit", "set camera attributes specified in --set and exit" )
-            ( "address", boost::program_options::value< std::string >( &address )->default_value( "" ), "ip address of the camera" )
+            //( "address", boost::program_options::value< std::string >( &address )->default_value( "" ), "ip address of the camera" )
             ( "discard", "discard frames, if cannot keep up; same as --buffer=1" )
             ( "buffer", boost::program_options::value< unsigned int >( &discard )->default_value( 0 ), "maximum buffer size before discarding frames, default: unlimited" )
             ( "fields,f", boost::program_options::value< std::string >( &fields )->default_value( "t,rows,cols,type" ), "header fields, possible values: t,rows,cols,type,size" )
@@ -76,6 +76,7 @@ int main( int argc, char** argv )
         boost::program_options::store( boost::program_options::parse_command_line( argc, argv, description), vm );
         boost::program_options::parsed_options parsed = boost::program_options::command_line_parser(argc, argv).options( description ).allow_unregistered().run();
         boost::program_options::notify( vm );
+        bool verbose = vm.count( "verbose" );
         if ( vm.count( "help" ) )
         {
             std::cerr << "acquire images from a jai camera" << std::endl;
@@ -83,34 +84,35 @@ int main( int argc, char** argv )
             std::cerr << "usage: jai-cat [<options>] [<filters>]\n" << std::endl;
             std::cerr << "output header format: fields: t,cols,rows,type; binary: t,3ui\n" << std::endl;
             std::cerr << description << std::endl;
-            std::cerr << snark::cv_mat::filters::usage() << std::endl;
+            if( verbose ) { std::cerr << snark::cv_mat::filters::usage() << std::endl; }
+            else { std::cerr << "run: jai-cat --help --verbose for more..." << std::endl; }
             return 0;
         }
         if( vm.count( "header" ) && vm.count( "no-header" ) ) { COMMA_THROW( comma::exception, "--header and --no-header are mutually exclusive" ); }
         if( vm.count( "fields" ) && vm.count( "no-header" ) ) { COMMA_THROW( comma::exception, "--fields and --no-header are mutually exclusive" ); }
         if( vm.count( "buffer" ) == 0 && vm.count( "discard" ) ) { discard = 1; }
-        bool verbose = vm.count( "verbose" );
+        
         if( vm.count( "list-cameras" ) )
         {
             std::cerr << "jai-cat: list-cameras: todo" << std::endl;
             return 1;
         }
         discard = vm.count( "discard" ) ? 1 : 0;
-        snark::camera::jai::attributes_type attributes;
+        snark::jai::camera::attributes_type attributes;
         if( vm.count( "set" ) )
         {
             comma::name_value::map m( setattributes, ';', '=' );
             attributes.insert( m.get().begin(), m.get().end() );
         }   
         if( verbose ) { std::cerr << "jai-cat: connecting..." << std::endl; }
-        snark::camera::jai camera( address, attributes );
-        if( verbose ) { std::cerr << "jai-cat: connected to a camera at address " << camera.address() << std::endl; }
+        snark::jai::camera camera;
+        if( verbose ) { std::cerr << "jai-cat: connected to a camera" << std::endl; }
         if( verbose ) { std::cerr << "jai-cat: total bytes per frame: " << camera.total_bytes_per_frame() << std::endl; }
         if( vm.count( "set-and-exit" ) ) { return 0; }
         if( vm.count( "list-attributes" ) )
         {
-            const snark::camera::jai::attributes_type& a = camera.attributes();
-            for( snark::camera::jai::attributes_type::const_iterator it = a.begin(); it != a.end(); ++it )
+            const snark::jai::camera::attributes_type& a = camera.attributes();
+            for( snark::jai::camera::attributes_type::const_iterator it = a.begin(); it != a.end(); ++it )
             {
                 std::cout << it->first;
                 if( !it->second.empty() ) { std::cout << '=' << it->second; }
