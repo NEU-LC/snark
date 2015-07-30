@@ -28,59 +28,77 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-#ifndef SNARK_SENSORS_GOBI_H_
-#define SNARK_SENSORS_GOBI_H_
+#include <boost/lexical_cast.hpp>
+#include <boost/optional.hpp>
+#include <boost/thread.hpp>
+#include <comma/base/exception.h>
+#include <fstream>
+#include "jai.h"
 
-#include <XCamera.h>
-#include <XFooters.h>
-#include <XFilters.h>
-#include <boost/date_time/posix_time/posix_time.hpp>
-#include <boost/function.hpp>
+namespace snark { namespace camera {
 
-#include <opencv2/core/core.hpp>
-
-namespace snark{ namespace camera{
-
-class gobi
+struct jai::impl
 {
-    public:
-        typedef std::map< std::string, std::string > attributes_type;       
-        
-        gobi( const std::string& address, const attributes_type& attributes = attributes_type() );
+    impl( const std::string& address, const jai::attributes_type& attributes ) : address( address )
+    {
+        // todo
+    }
+    
+    std::pair< boost::posix_time::ptime, cv::Mat > read()
+    {
+        // todo
+        return std::pair< boost::posix_time::ptime, cv::Mat >();
+    }
+    
+    void close()
+    { 
+        // todo
+    }
 
-        ~gobi();
-
-        attributes_type attributes() const;
-        
-        void set( const attributes_type& attributes );
-
-        std::pair< boost::posix_time::ptime, cv::Mat > read();
-
-        std::string address() const;
-        
-        std::string temperature_unit() const;
-
-        unsigned long total_bytes_per_frame() const;
-        
-        void close();
-        
-        bool closed() const;
-
-        static std::vector< XDeviceInformation > list_cameras();
-        
-        static std::string format_camera_info(const XDeviceInformation& camera_info);
-        
-        void enable_thermography( std::string temperature_unit, std::string calibration_file );
-        
-        void disable_thermography();
-        
-        void output_conversion( std::string file_name );
-        
-    private:
-        class impl;
-        impl* pimpl_;
+    bool closed() const
+    { 
+        // todo
+        return true;
+    }
+    
+    unsigned long total_bytes_per_frame() const
+    {
+        // todo
+        return 0;
+    }
+    
+    void set( const jai::attributes_type& attributes )
+    { 
+        // todo
+    }
+    
+    jai::attributes_type attributes() const
+    { 
+        // todo
+        return jai::attributes_type();
+    }
+    
+    std::string address;
 };
 
-} } // namespace snark{ namespace camera{
+jai::jai( const std::string& address, const jai::attributes_type& attributes ) : pimpl_( new impl( address, attributes ) ) {}
 
-#endif // SNARK_SENSORS_GOBI_H_
+jai::~jai() { delete pimpl_; }
+
+std::pair< boost::posix_time::ptime, cv::Mat > jai::read() { return pimpl_->read(); }
+
+void jai::close() { pimpl_->close(); }
+
+bool jai::closed() const { return pimpl_->closed(); }
+
+//std::vector< XDeviceInformation > jai::list_cameras() { return jai::impl::list_cameras(); }
+
+const std::string& jai::address() const { return pimpl_->address; }
+
+unsigned long jai::total_bytes_per_frame() const { return pimpl_->total_bytes_per_frame(); }
+
+jai::attributes_type jai::attributes() const { return pimpl_->attributes(); }
+
+void jai::set(const jai::attributes_type& attributes ) { pimpl_->set( attributes ); }
+
+} } // namespace snark{ namespace camera{

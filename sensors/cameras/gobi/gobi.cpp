@@ -213,7 +213,7 @@ static cv::Mat xenics_temperature_to_cvmat_( unsigned long height, unsigned long
 class gobi::impl
 {
     public:
-        impl( std::string address, const attributes_type& attributes ) :
+        impl( const std::string& address, const attributes_type& attributes ) :
             address_( address )
             , closed_( false )
             , thermography_is_enabled_( false )
@@ -417,7 +417,7 @@ class gobi::impl
 
 namespace snark{ namespace camera{
 
-gobi::gobi( std::string address, const gobi::attributes_type& attributes ) : pimpl_( new impl( address, attributes ) ) {}
+gobi::gobi( const std::string& address, const gobi::attributes_type& attributes ) : pimpl_( new impl( address, attributes ) ) {}
 
 gobi::~gobi() { delete pimpl_; }
 

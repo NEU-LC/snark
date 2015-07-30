@@ -17,3 +17,7 @@ ENDIF( snark_build_sensors_flycapture )
 IF( snark_build_sensors_gobi )
     ADD_SUBDIRECTORY( gobi )
 ENDIF( snark_build_sensors_gobi )
+
+if( snark_build_sensors_jai )
+    add_subdirectory( jai )
+endif( snark_build_sensors_jai )
