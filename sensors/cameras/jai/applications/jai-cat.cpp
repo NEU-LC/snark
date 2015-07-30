@@ -78,7 +78,7 @@ int main( int argc, char** argv )
         boost::program_options::notify( vm );
         if ( vm.count( "help" ) )
         {
-            std::cerr << "acquire images from a xenics jai camera" << std::endl;
+            std::cerr << "acquire images from a jai camera" << std::endl;
             std::cerr << "output to stdout as serialized cv::Mat" << std::endl;
             std::cerr << "usage: jai-cat [<options>] [<filters>]\n" << std::endl;
             std::cerr << "output header format: fields: t,cols,rows,type; binary: t,3ui\n" << std::endl;
