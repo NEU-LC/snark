@@ -12,7 +12,7 @@ libtiff_3=$( locate libtiff.so | grep "/usr" | grep "libtiff.3.so$" )
 if [[ -z "$libtiff_3" ]] ; then
     libtiff=$( locate libtiff.so | grep "/usr" | grep "libtiff.so$" )
     [[ -n "$libtiff" ]] || { echo "jai-generate-ld-conf: failed to find libtiff.so" ; exit 1 ; }
-    ln -s $libtiff $1/libtiff.so.3
+    [[ -e $1/libtiff.so.3 ]] || ln -s $libtiff $1/libtiff.so.3
 fi
 echo "/usr/$lib" > jai.conf
 echo "/usr/local/$lib" >> jai.conf

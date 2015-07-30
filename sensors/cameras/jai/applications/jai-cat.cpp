@@ -65,7 +65,7 @@ int main( int argc, char** argv )
             ( "buffer", boost::program_options::value< unsigned int >( &discard )->default_value( 0 ), "maximum buffer size before discarding frames, default: unlimited" )
             ( "fields,f", boost::program_options::value< std::string >( &fields )->default_value( "t,rows,cols,type" ), "header fields, possible values: t,rows,cols,type,size" )
             ( "list-attributes", "output current camera attributes" )
-            ( "list-cameras", "list all cameras" )
+            ( "list-cameras,l", "list all cameras" )
             ( "header", "output header only" )
             ( "no-header", "output image data only" )
             ( "calibration", boost::program_options::value< std::string >( &calibration_file ), "calibration file for thermography")
@@ -91,11 +91,18 @@ int main( int argc, char** argv )
         if( vm.count( "header" ) && vm.count( "no-header" ) ) { COMMA_THROW( comma::exception, "--header and --no-header are mutually exclusive" ); }
         if( vm.count( "fields" ) && vm.count( "no-header" ) ) { COMMA_THROW( comma::exception, "--fields and --no-header are mutually exclusive" ); }
         if( vm.count( "buffer" ) == 0 && vm.count( "discard" ) ) { discard = 1; }
-        
+        snark::jai::factory factory;
         if( vm.count( "list-cameras" ) )
         {
-            std::cerr << "jai-cat: list-cameras: todo" << std::endl;
-            return 1;
+            const std::vector< std::string >& ids = factory.list_devices();
+            std::cerr << "jai-cat: found " << ids.size() << " device(s); output readable part only for now; todo: implement camera id parsing" << std::endl;
+            for( unsigned int i = 0; i < ids.size(); ++i )
+            {
+                unsigned int size = 0;
+                for( ; size < ids[i].size() && ids[i][size] > 31; ++size );
+                std::cout << ids[i].substr( 0, size ) << std::endl;
+            }
+            return 0;
         }
         discard = vm.count( "discard" ) ? 1 : 0;
         snark::jai::camera::attributes_type attributes;
@@ -105,13 +112,13 @@ int main( int argc, char** argv )
             attributes.insert( m.get().begin(), m.get().end() );
         }   
         if( verbose ) { std::cerr << "jai-cat: connecting..." << std::endl; }
-        snark::jai::camera camera;
+        boost::scoped_ptr< snark::jai::camera > camera( factory.make_camera() );
         if( verbose ) { std::cerr << "jai-cat: connected to a camera" << std::endl; }
-        if( verbose ) { std::cerr << "jai-cat: total bytes per frame: " << camera.total_bytes_per_frame() << std::endl; }
+        if( verbose ) { std::cerr << "jai-cat: total bytes per frame: " << camera->total_bytes_per_frame() << std::endl; }
         if( vm.count( "set-and-exit" ) ) { return 0; }
         if( vm.count( "list-attributes" ) )
         {
-            const snark::jai::camera::attributes_type& a = camera.attributes();
+            const snark::jai::camera::attributes_type& a = camera->attributes();
             for( snark::jai::camera::attributes_type::const_iterator it = a.begin(); it != a.end(); ++it )
             {
                 std::cout << it->first;
@@ -134,7 +141,7 @@ int main( int argc, char** argv )
         boost::scoped_ptr< snark::cv_mat::serialization > serialization;
         if( vm.count( "no-header" ) ) { serialization.reset( new snark::cv_mat::serialization( "", format ) ); }
         else { serialization.reset( new snark::cv_mat::serialization( fields, format, vm.count( "header" ) ) ); }
-        reader.reset( new snark::tbb::bursty_reader< pair_t >( boost::bind( &capture, boost::ref( camera ) ), discard ) );
+        reader.reset( new snark::tbb::bursty_reader< pair_t >( boost::bind( &capture, boost::ref( *camera ) ), discard ) );
         snark::imaging::applications::pipeline pipeline( *serialization, filters, *reader );
         pipeline.run();
         return 0;

@@ -28,6 +28,7 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <Jai_Factory.h>
+#include <boost/array.hpp>
 #include <comma/base/exception.h>
 #include "camera.h"
 
@@ -104,22 +105,33 @@ namespace snark { namespace jai {
 //    return true;
 // }
 
-struct factory
+static const char* error_to_string( J_STATUS_TYPE r )
 {
-    FACTORY_HANDLE handle;
-    
-    factory()
-    {
-        if( J_Factory_Open( ( int8_t* )( "" ), &handle ) != J_ST_SUCCESS ) { COMMA_THROW( comma::exception, "failed to create jai camera factory" ); }
-    }
-};
+   switch( r )
+   {
+      case J_ST_SUCCESS: return "ok";
+      case J_ST_INVALID_BUFFER_SIZE: return "invalid buffer size";
+      case J_ST_INVALID_HANDLE: return "invalid handle";
+      case J_ST_INVALID_ID: return "invalid id";
+      case J_ST_ACCESS_DENIED: return "access denied";
+      case J_ST_NO_DATA: return "no data";
+      case J_ST_ERROR: return "error";
+      case J_ST_INVALID_PARAMETER: return "invalid parameter";
+      case J_ST_TIMEOUT: return "timeout";
+      case J_ST_INVALID_FILENAME: return "invalid filename";
+      case J_ST_INVALID_ADDRESS: return "invalid address";
+      case J_ST_FILE_IO: return "file i/o error";
+      case J_ST_GC_ERROR: return "genicam error";
+      default: return "unknown error code";
+   }
+}
 
 struct jai::camera::impl
 {
-    jai::factory factory;
+    std::string id;
     CAM_HANDLE handle;
     
-    impl()
+    impl() : id( J_CAMERA_ID_SIZE, ' ' )
     {
         // todo
     }
@@ -159,7 +171,73 @@ struct jai::camera::impl
     }
 };
 
-jai::camera::camera() : pimpl_( new impl ) {}
+struct factory::impl
+{
+    FACTORY_HANDLE handle;
+    
+    impl()
+    {
+        J_STATUS_TYPE r = J_Factory_Open( ( int8_t* )( "" ), &handle );
+        if( r != J_ST_SUCCESS ) { COMMA_THROW( comma::exception, "failed to create jai camera factory: " << error_to_string( r ) << " (error " << r << ")" ); }
+    }
+    
+    std::vector< std::string > list_devices()
+    {
+        bool8_t has_change;
+        uint32_t number_of_devices;
+        J_STATUS_TYPE r = J_Factory_UpdateCameraList( handle, &has_change );
+        if( r != J_ST_SUCCESS ) { COMMA_THROW( comma::exception, "failed to update camera list: " << error_to_string( r ) << " (error " << r << ")" ); }
+        r = J_Factory_GetNumOfCameras( handle, &number_of_devices );
+        if( r != J_ST_SUCCESS ) { COMMA_THROW( comma::exception, "failed to get number of devices: " << error_to_string( r ) << " (error " << r << ")" ); }
+        std::vector< std::string > ids( number_of_devices );
+        uint32_t size = J_CAMERA_ID_SIZE;
+        boost::array< int8_t, J_CAMERA_ID_SIZE > id;
+        for( unsigned int i = 0; i < ids.size(); ++i )
+        {            
+            r = J_Factory_GetCameraIDByIndex( handle, i, &id[0], &size );
+            if( r != J_ST_SUCCESS ) { COMMA_THROW( comma::exception, "failed to get device id for " << i << " camera of " << number_of_devices << " (numbered from 0): " << error_to_string( r ) << " (error " << r << ")" ); }
+            ids[i].resize( J_CAMERA_ID_SIZE );
+            ::memcpy( &ids[i][0], &id[0], J_CAMERA_ID_SIZE ); // sigh...
+        }
+        return ids;
+    }
+    
+    jai::camera* make_camera( const std::string& s )
+    {
+        boost::array< int8_t, J_CAMERA_ID_SIZE > id;
+        if( id.empty() )
+        {
+            const std::vector< std::string >& v = list_devices();
+            if( v.empty() ) { COMMA_THROW( comma::exception, "no jai cameras found" ); }
+            ::memcpy( &id[0], &v[0][0], J_CAMERA_ID_SIZE );
+        }
+        else if( s.size() <= J_CAMERA_ID_SIZE )
+        {
+            ::memcpy( &id[0], &s[0], s.size() );
+        }
+        else
+        {
+            COMMA_THROW( comma::exception, "expected id of size not greater than " << J_CAMERA_ID_SIZE << "; got: " << id.size() );
+        }        
+        CAM_HANDLE h;
+        J_STATUS_TYPE r = J_Camera_Open( handle, &id[0], &h );
+        if( r != J_ST_SUCCESS ) { COMMA_THROW( comma::exception, "failed to make camera: " << error_to_string( r ) << " (error " << r << ")" ); }
+        camera* c = new camera;
+        c->pimpl_->handle = h;
+        c->pimpl_->id = s;
+        return c;
+    }
+};
+
+jai::factory::factory() : pimpl_( new jai::factory::impl ) {}
+
+jai::factory::~factory() { delete pimpl_; }
+
+std::vector< std::string > jai::factory::list_devices() { return pimpl_->list_devices(); }
+
+camera* jai::factory::make_camera( const std::string& id ) { return pimpl_->make_camera( id ); }
+
+jai::camera::camera() : pimpl_( new jai::camera::impl ) {}
 
 jai::camera::~camera() { delete pimpl_; }
 

@@ -36,14 +36,12 @@
 #include <opencv2/core/core.hpp>
 
 namespace snark { namespace jai {
-
+    
 class camera
 {
     public:
         typedef std::map< std::string, std::string > attributes_type;       
         
-        camera();
-
         ~camera();
 
         attributes_type attributes() const;
@@ -57,8 +55,24 @@ class camera
         void close();
         
         bool closed() const;
+        
+    private:
+        camera();
+        friend class factory;
+        class impl;
+        impl* pimpl_;
+};
 
-        //static std::vector< XDeviceInformation > list_cameras();
+class factory
+{
+    public:
+        factory();
+        
+        ~factory();
+        
+        std::vector< std::string > list_devices(); // todo? make const
+        
+        camera* make_camera( const std::string& id = "" ); // todo? make const
         
     private:
         class impl;
