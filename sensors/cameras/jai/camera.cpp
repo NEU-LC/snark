@@ -131,10 +131,9 @@ struct jai::camera::impl
     std::string id;
     CAM_HANDLE handle;
     
-    impl() : id( J_CAMERA_ID_SIZE, ' ' )
-    {
-        // todo
-    }
+    impl() : handle( NULL ) {}
+    
+    ~impl() { close(); }
     
     std::pair< boost::posix_time::ptime, cv::Mat > read()
     {
@@ -144,14 +143,11 @@ struct jai::camera::impl
     
     void close()
     { 
-        // todo
+        J_Camera_Close( handle );
+        handle = NULL;
     }
 
-    bool closed() const
-    { 
-        // todo
-        return true;
-    }
+    bool closed() const { return handle == NULL; }
     
     unsigned long total_bytes_per_frame() const
     {
@@ -180,6 +176,8 @@ struct factory::impl
         J_STATUS_TYPE r = J_Factory_Open( ( int8_t* )( "" ), &handle );
         if( r != J_ST_SUCCESS ) { COMMA_THROW( comma::exception, "failed to create jai camera factory: " << error_to_string( r ) << " (error " << r << ")" ); }
     }
+    
+    ~impl() { J_Factory_Close( handle ); }
     
     std::vector< std::string > list_devices()
     {
