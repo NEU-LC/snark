@@ -66,9 +66,17 @@ struct jai::camera::impl
 {
     std::string id;
     CAM_HANDLE handle;
-    THRD_HANDLE thread;
+    J_tIMAGE_INFO image_info;
+    HANDLE event;
+    J_COND_WAIT_RESULT condition;
     
-    impl() : handle( NULL ), thread( NULL ) {}
+    impl()
+        : handle( NULL )
+        , event( NULL )
+    {
+        validate( "creating event", J_Event_CreateCondition( &event ) );
+        if( !event ) { COMMA_THROW( comma::exception, "failed to create event condition" ); }
+    }
     
     ~impl() { close(); }
     
@@ -84,7 +92,8 @@ struct jai::camera::impl
     }
     
     void close()
-    { 
+    {
+        stop_acquisition();
         J_Camera_Close( handle );
         handle = NULL;
     }
@@ -110,11 +119,6 @@ struct jai::camera::impl
     
     void start_acquisition()
     {
-        if( thread ) { return; }
-        int64_t width, height;
-        validate( "getting width", J_Camera_GetValueInt64( handle, ( int8_t* )"Width", &width ) );
-        validate( "getting width", J_Camera_GetValueInt64( handle, ( int8_t* )"Height", &height ) );
-        NODE_HANDLE node;
         // todo
     }
     
@@ -128,10 +132,7 @@ struct factory::impl
 {
     FACTORY_HANDLE handle;
     
-    impl()
-    {
-        validate( "creating camera factory", J_Factory_Open( ( int8_t* )( "" ), &handle ) );
-    }
+    impl() { validate( "creating camera factory", J_Factory_Open( ( int8_t* )( "" ), &handle ) ); }
     
     ~impl() { J_Factory_Close( handle ); }
     
