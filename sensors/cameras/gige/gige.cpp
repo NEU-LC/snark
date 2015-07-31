@@ -39,15 +39,16 @@ static void PVDECL pv_callback_( tPvFrame *frame );
 namespace snark{ namespace camera{
 
 static const unsigned int timeOutFactor = 3;
-static const unsigned int maxRetries = 15; 
-    
+static const unsigned int timeOutMaxAddition = 500;
+static const unsigned int maxRetries = 15;
+
 static const char *pv_error_to_string_( tPvErr error )
 {
     switch( error )
     {
         case ePvErrSuccess: return "ePvErrSuccess";
-        case ePvErrCameraFault: return "ePvErrCameraFault"; 
-        case ePvErrInternalFault: return "ePvErrInternalFault"; 
+        case ePvErrCameraFault: return "ePvErrCameraFault";
+        case ePvErrInternalFault: return "ePvErrInternalFault";
         case ePvErrBadHandle: return "ePvErrBadHandle";
         case ePvErrBadParameter: return "ePvErrBadParameter";
         case ePvErrBadSequence: return "ePvErrBadSequence";
@@ -242,10 +243,35 @@ class gige::impl
             buffer_.resize( total_bytes_per_frame_ );
             frame_.ImageBuffer = &buffer_[0];
             frame_.ImageBufferSize = total_bytes_per_frame_;
-            float frameRate;
-            PvAttrFloat32Get( handle_, "FrameRate", &frameRate);
-            timeOut_ = 1000 / frameRate;
-            timeOut_ *= timeOutFactor;
+            // calculate sensible default timeout from camera settings
+            tPvFloat32 frameRate;
+            PvAttrFloat32Get( handle_, "FrameRate", &frameRate );
+            tPvUint32 exposureValue;
+            PvAttrUint32Get( handle_, "ExposureValue", &exposureValue );
+            float effectiveMinFramerate = 1.0e6 / exposureValue;
+            std::string exposureMode = pv_get_attribute_( handle_, "ExposureMode" );
+            if ( exposureMode == "Auto" || exposureMode == "AutoOnce" )
+            {
+                tPvUint32 exposureAutoMax;
+                PvAttrUint32Get( handle_, "ExposureAutoMax", &exposureAutoMax );
+                effectiveMinFramerate = 1.0e6 / exposureAutoMax;
+                if ( effectiveMinFramerate < frameRate ) { std::cerr << "Warning: ExposureAutoMax=" << exposureAutoMax << " may limit effecitve frame rate to " << effectiveMinFramerate << " in low light conditions (less than configured FrameRate=" << frameRate << ")." << std::endl; }
+                // also ensure initial exposure setting doesn't immediately cause timeouts unnecessarily
+                if ( exposureValue > exposureAutoMax ) { PvAttrUint32Set( handle_, "ExposureValue", exposureAutoMax ); }
+            }
+            else if ( exposureMode == "Manual" || exposureMode == "PieceWiseLinearHDR" )
+            {
+                if ( effectiveMinFramerate < frameRate ) { std::cerr << "Warning: ExposureValue=" << exposureValue << " limits effective frame rate to " << effectiveMinFramerate << " (less than configured FrameRate=" << frameRate << ")." << std::endl; }
+            }
+            else
+            {
+                // else exposureMode is External or something else as yet undocumented
+                // this probably requires an explicit timeout setting to be provided
+            }
+            // timeout up to 3x max time between frames, capped at frame period + 500ms
+            timeOut_ = 1000.0 / std::min( frameRate, effectiveMinFramerate );
+            timeOut_ = std::min( timeOut_ * timeOutFactor, timeOut_ + timeOutMaxAddition );
+            // std::cerr << "Frame timeout set to " << timeOut_ << " ms" << std::endl;
         }
 
         ~impl() { close(); }
@@ -313,9 +339,9 @@ class gige::impl
             if( success ) { return pair; }
             COMMA_THROW( comma::exception, "got lots of missing frames or timeouts" << std::endl << std::endl << "it is likely that MTU size on your machine is less than packet size" << std::endl << "check PacketSize attribute (gige-cat --list-attributes)" << std::endl << "set packet size (e.g. gige-cat --set=PacketSize=1500)" << std::endl << "or increase MTU size on your machine" );
         }
-        
+
         const tPvHandle& handle() const { return handle_; }
-        
+
         tPvHandle& handle() { return handle_; }
 
         unsigned int id() const { return *id_; }
@@ -340,7 +366,7 @@ class gige::impl
             }
             return list;
         }
-        
+
     private:
         friend class gige::callback::impl;
         tPvHandle handle_;
@@ -361,7 +387,7 @@ class gige::callback::impl
 {
     public:
         typedef boost::function< void ( const std::pair< boost::posix_time::ptime, cv::Mat >& ) > OnFrame;
-        
+
         impl( gige& gige, OnFrame on_frame )
             : on_frame( on_frame )
             , handle( gige.pimpl_->handle() )
