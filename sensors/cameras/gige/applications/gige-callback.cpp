@@ -125,6 +125,7 @@ int main( int argc, char** argv )
     try
     {
         unsigned int id;
+        unsigned int timeout;
         std::string fields;
         std::string setattributes;
         unsigned int discard;
@@ -133,6 +134,7 @@ int main( int argc, char** argv )
             ( "help,h", "display help message" )
             ( "set", boost::program_options::value< std::string >( &setattributes ), "set camera attributes as comma-separated name-value pairs and exit" )
             ( "id", boost::program_options::value< unsigned int >( &id )->default_value( 0 ), "camera id; default: first available camera" )
+            ( "frame-timeout,t", boost::program_options::value< unsigned int >( &timeout )->default_value( 0 ), "timeout requesting frames from camera; default: 3x max frame interval up to interval + 500ms" )
             ( "discard,d", "discard frames, if cannot keep up; same as --buffer=1" )
             ( "buffer", boost::program_options::value< unsigned int >( &discard )->default_value( 0 ), "maximum buffer size before discarding frames" )
             ( "fields,f", boost::program_options::value< std::string >( &fields )->default_value( "t,rows,cols,type" ), "header fields, possible values: t,rows,cols,type,size" )
@@ -189,6 +191,8 @@ int main( int argc, char** argv )
         snark::camera::gige gige( id, attributes );
         if( verbose ) { std::cerr << "gige-cat: connected to camera " << gige.id() << std::endl; }
         if( verbose ) { std::cerr << "gige-cat: total bytes per frame: " << gige.total_bytes_per_frame() << std::endl; }
+        if( timeout > 0 ) { gige.set_frame_timeout( timeout ); }
+        if( verbose ) { std::cerr << "gige-cat: frame timeout: " << gige.frame_timeout() << " ms" << std::endl; }
         if( !attributes.empty() ) { return 0; }
         if( vm.count( "list-attributes" ) )
         {

@@ -46,7 +46,7 @@ class gige
     public:
         /// attributes map type
         typedef std::map< std::string, std::string > attributes_type;
-        
+
         /// constructor; default id: connect to any available camera
         gige( unsigned int id = 0, const attributes_type& attributes = attributes_type() );
 
@@ -61,6 +61,12 @@ class gige
 
         /// return camera id
         unsigned int id() const;
+
+        /// set frame timeout manually
+        void set_frame_timeout( unsigned int timeout );
+
+        /// get frame timeout
+        unsigned int frame_timeout() const;
 
         /// return total bytes per frame
         unsigned long total_bytes_per_frame() const;
@@ -80,18 +86,18 @@ class gige
 
                 /// destructor: stop capture
                 ~callback();
-                
+
                 /// implementation class, a hack: has to be public to use pvAPI callback, sigh...
                 class impl;
-                
+
                 /// return true, if callback status is ok
                 bool good() const;
-                
+
             private:
                 friend class gige;
                 impl* pimpl_;
         };
-        
+
     private:
         friend class callback::impl;
         class impl;

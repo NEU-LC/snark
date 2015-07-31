@@ -346,6 +346,10 @@ class gige::impl
 
         unsigned int id() const { return *id_; }
 
+        void set_frame_timeout( unsigned int timeout ) { timeOut_ = timeout; }
+
+        unsigned int frame_timeout() const { return timeOut_; }
+
         unsigned long total_bytes_per_frame() const { return total_bytes_per_frame_; }
 
         static std::vector< tPvCameraInfo > list_cameras()
@@ -447,6 +451,10 @@ void gige::close() { pimpl_->close(); }
 std::vector< tPvCameraInfo > gige::list_cameras() { return gige::impl::list_cameras(); }
 
 unsigned int gige::id() const { return pimpl_->id(); }
+
+void gige::set_frame_timeout( unsigned int timeout ) { pimpl_->set_frame_timeout(timeout); }
+
+unsigned int gige::frame_timeout() const { return pimpl_->frame_timeout(); }
 
 unsigned long gige::total_bytes_per_frame() const { return pimpl_->total_bytes_per_frame(); }
 
