@@ -34,77 +34,6 @@
 
 namespace snark { namespace jai {
 
-// bool OpenFactoryAndCamera()
-// {
-//    J_STATUS_TYPE    retval;
-//    uint32_t         iSize;
-//    uint32_t         iNumDev;
-//    bool8_t          bHasChange;
-// 
-//    // Open factory
-//    retval = J_Factory_Open((int8_t*)"" , &m_hFactory);
-//    if (retval != J_ST_SUCCESS)
-//    {
-//       printf("Error: Could not open the factory!\n");
-//       PrintErrorcode(retval);
-//       return false;
-//    }
-// 
-//    printf("Opened the factory\n");
-// 
-//    // Update camera list
-//    retval = J_Factory_UpdateCameraList(m_hFactory, &bHasChange);
-//    if (retval != J_ST_SUCCESS)
-//    {
-//       printf("Error: Could not update the camera list!\n");
-//       PrintErrorcode(retval);
-//       return false;
-//    }
-// 
-//    printf("Updated the camera list\n");
-// 
-//    // Get the number of Cameras
-//    retval = J_Factory_GetNumOfCameras(m_hFactory, &iNumDev);
-//    if (retval != J_ST_SUCCESS)
-//    {
-//       printf("Error: Could not get the number of cameras!\n");
-//       PrintErrorcode(retval);
-//       return false;
-//    }
-//    if (iNumDev == 0)
-//    {
-//       printf("Warning: There is no camera!\n");
-//       return false;
-//    }
-// 
-//    printf("%d cameras were found\n", iNumDev);
-// 
-//    // Get camera ID
-//    iSize = (uint32_t)sizeof(m_sCameraId);
-//    retval = J_Factory_GetCameraIDByIndex(m_hFactory, 0, m_sCameraId, &iSize);
-//    if (retval != J_ST_SUCCESS)
-//    {
-//       printf("Error: Could not get the camera ID!");
-//       PrintErrorcode(retval);
-//       return false;
-//    }
-// 
-//    printf("Camera ID = %s\n", m_sCameraId);
-// 
-//    // Open camera
-//    retval = J_Camera_Open(m_hFactory, m_sCameraId, &m_hCam);
-//    if (retval != J_ST_SUCCESS)
-//    {
-//       printf("Error: Could not open the camera!\n");
-//       PrintErrorcode(retval);
-//       return false;
-//    }
-// 
-//    printf("Opened the camera\n");
-// 
-//    return true;
-// }
-
 static const char* error_to_string( J_STATUS_TYPE r )
 {
    switch( r )
@@ -126,14 +55,27 @@ static const char* error_to_string( J_STATUS_TYPE r )
    }
 }
 
+static void validate( J_STATUS_TYPE r, const std::string& what = "operation" )
+{
+    if( r != J_ST_SUCCESS ) { COMMA_THROW( comma::exception, what << " failed: " << error_to_string( r ) << " (error " << r << ")" ); }
+}
+
+static void validate( const std::string& what, J_STATUS_TYPE r ) { validate( r, what ); }
+
 struct jai::camera::impl
 {
     std::string id;
     CAM_HANDLE handle;
+    THRD_HANDLE thread;
     
-    impl() : handle( NULL ) {}
+    impl() : handle( NULL ), thread( NULL ) {}
     
     ~impl() { close(); }
+    
+    void run()
+    {
+        // todo?
+    }
     
     std::pair< boost::posix_time::ptime, cv::Mat > read()
     {
@@ -165,6 +107,21 @@ struct jai::camera::impl
         // todo
         return jai::camera::attributes_type();
     }
+    
+    void start_acquisition()
+    {
+        if( thread ) { return; }
+        int64_t width, height;
+        validate( "getting width", J_Camera_GetValueInt64( handle, ( int8_t* )"Width", &width ) );
+        validate( "getting width", J_Camera_GetValueInt64( handle, ( int8_t* )"Height", &height ) );
+        NODE_HANDLE node;
+        // todo
+    }
+    
+    void stop_acquisition()
+    {
+        // todo
+    }
 };
 
 struct factory::impl
@@ -173,8 +130,7 @@ struct factory::impl
     
     impl()
     {
-        J_STATUS_TYPE r = J_Factory_Open( ( int8_t* )( "" ), &handle );
-        if( r != J_ST_SUCCESS ) { COMMA_THROW( comma::exception, "failed to create jai camera factory: " << error_to_string( r ) << " (error " << r << ")" ); }
+        validate( "creating camera factory", J_Factory_Open( ( int8_t* )( "" ), &handle ) );
     }
     
     ~impl() { J_Factory_Close( handle ); }
@@ -183,16 +139,14 @@ struct factory::impl
     {
         bool8_t has_change;
         uint32_t number_of_devices;
-        J_STATUS_TYPE r = J_Factory_UpdateCameraList( handle, &has_change );
-        if( r != J_ST_SUCCESS ) { COMMA_THROW( comma::exception, "failed to update camera list: " << error_to_string( r ) << " (error " << r << ")" ); }
-        r = J_Factory_GetNumOfCameras( handle, &number_of_devices );
-        if( r != J_ST_SUCCESS ) { COMMA_THROW( comma::exception, "failed to get number of devices: " << error_to_string( r ) << " (error " << r << ")" ); }
+        validate( "updating camera list", J_Factory_UpdateCameraList( handle, &has_change ) );
+        validate( "getting number of devices", J_Factory_GetNumOfCameras( handle, &number_of_devices ) );
         std::vector< std::string > ids( number_of_devices );
         uint32_t size = J_CAMERA_ID_SIZE;
         boost::array< int8_t, J_CAMERA_ID_SIZE > id;
         for( unsigned int i = 0; i < ids.size(); ++i )
         {            
-            r = J_Factory_GetCameraIDByIndex( handle, i, &id[0], &size );
+            J_STATUS_TYPE r = J_Factory_GetCameraIDByIndex( handle, i, &id[0], &size );
             if( r != J_ST_SUCCESS ) { COMMA_THROW( comma::exception, "failed to get device id for " << i << " camera of " << number_of_devices << " (numbered from 0): " << error_to_string( r ) << " (error " << r << ")" ); }
             ids[i].resize( J_CAMERA_ID_SIZE );
             ::memcpy( &ids[i][0], &id[0], J_CAMERA_ID_SIZE ); // sigh...
@@ -218,8 +172,7 @@ struct factory::impl
             COMMA_THROW( comma::exception, "expected id of size not greater than " << J_CAMERA_ID_SIZE << "; got: " << id.size() );
         }        
         CAM_HANDLE h;
-        J_STATUS_TYPE r = J_Camera_Open( handle, &id[0], &h );
-        if( r != J_ST_SUCCESS ) { COMMA_THROW( comma::exception, "failed to make camera: " << error_to_string( r ) << " (error " << r << ")" ); }
+        validate( "making camera", J_Camera_Open( handle, &id[0], &h ) );
         camera* c = new camera;
         c->pimpl_->handle = h;
         c->pimpl_->id = s;
@@ -252,5 +205,9 @@ unsigned long jai::camera::total_bytes_per_frame() const { return pimpl_->total_
 jai::camera::attributes_type jai::camera::attributes() const { return pimpl_->attributes(); }
 
 void jai::camera::set(const jai::camera::attributes_type& attributes ) { pimpl_->set( attributes ); }
+
+void jai::camera::start_acquisition() { pimpl_->start_acquisition(); }
+
+void jai::camera::stop_acquisition() { pimpl_->stop_acquisition(); }
 
 } } // namespace snark { namespace jai {

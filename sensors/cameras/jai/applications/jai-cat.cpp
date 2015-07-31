@@ -66,6 +66,7 @@ int main( int argc, char** argv )
             ( "fields,f", boost::program_options::value< std::string >( &fields )->default_value( "t,rows,cols,type" ), "header fields, possible values: t,rows,cols,type,size" )
             ( "list-attributes", "output current camera attributes" )
             ( "list-cameras,l", "list all cameras" )
+            ( "list-cameras-human-readable", "list all camera ids, output only human-readable part" )
             ( "header", "output header only" )
             ( "no-header", "output image data only" )
             ( "calibration", boost::program_options::value< std::string >( &calibration_file ), "calibration file for thermography")
@@ -92,12 +93,14 @@ int main( int argc, char** argv )
         if( vm.count( "fields" ) && vm.count( "no-header" ) ) { COMMA_THROW( comma::exception, "--fields and --no-header are mutually exclusive" ); }
         if( vm.count( "buffer" ) == 0 && vm.count( "discard" ) ) { discard = 1; }
         snark::jai::factory factory;
-        if( vm.count( "list-cameras" ) )
+        if( vm.count( "list-cameras" ) || vm.count( "list-cameras-human-readable" ) )
         {
+            bool human_readable = vm.count( "list-cameras-human-readable" );
             const std::vector< std::string >& ids = factory.list_devices();
             std::cerr << "jai-cat: found " << ids.size() << " device(s); output readable part only for now; todo: implement camera id parsing" << std::endl;
             for( unsigned int i = 0; i < ids.size(); ++i )
             {
+                if( !human_readable ) { std::cout.write( &ids[i][0], ids[i].size() ); continue; }  
                 unsigned int size = 0;
                 for( ; size < ids[i].size() && ids[i][size] > 31; ++size );
                 std::cout << ids[i].substr( 0, size ) << std::endl;

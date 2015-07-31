@@ -56,6 +56,10 @@ class camera
         
         bool closed() const;
         
+        void start_acquisition();
+        
+        void stop_acquisition();
+        
     private:
         camera();
         friend class factory;
