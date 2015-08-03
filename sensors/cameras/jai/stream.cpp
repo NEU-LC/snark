@@ -168,11 +168,17 @@ struct jai::stream::impl
                 p.y = j;
                 boost::array< char, 6 > pixel; // quick and dirty: up to 8 bytes
                 J_Image_GetPixel( &tmp, &p, &pixel[0] );
-                
-                
-                // todo: copy the pixel for pete's sake
-                
-                
+                switch( tmp.iPixelType )
+                {
+                    case J_GVSP_PIX_MONO:
+                        pair.second.at< uchar >( cv::Point( i, j ) ) = pixel[0];
+                        break;
+                    case J_GVSP_PIX_RGB:
+                        pair.second.at< cv::Vec3b >( cv::Point( i, j ) ) = cv::Vec3b( pixel[0], pixel[1], pixel[2] );
+                        break;
+                    default:
+                        break; // never here
+                }
             }
         }
         J_Image_Free( &tmp ); // it sucks
