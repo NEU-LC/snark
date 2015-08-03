@@ -29,64 +29,39 @@
 
 /// @author vsevolod vlaskine
 
-#ifndef SNARK_SENSORS_JAI_CAMERA_H_
-#define SNARK_SENSORS_JAI_CAMERA_H_
-
-#include <map>
-#include <boost/date_time/posix_time/posix_time.hpp>
-#include <opencv2/core/core.hpp>
 #include <Jai_Factory.h>
+#include <comma/base/exception.h>
+#include <comma/base/types.h>
+#include "error.h"
 
 namespace snark { namespace jai {
-    
-class camera
+
+const char* error_to_string( J_STATUS_TYPE r )
 {
-    public:
-        typedef std::map< std::string, std::string > attributes_type;       
-        
-        ~camera();
+   switch( r )
+   {
+      case J_ST_SUCCESS: return "ok";
+      case J_ST_INVALID_BUFFER_SIZE: return "invalid buffer size";
+      case J_ST_INVALID_HANDLE: return "invalid handle";
+      case J_ST_INVALID_ID: return "invalid id";
+      case J_ST_ACCESS_DENIED: return "access denied";
+      case J_ST_NO_DATA: return "no data";
+      case J_ST_ERROR: return "error";
+      case J_ST_INVALID_PARAMETER: return "invalid parameter";
+      case J_ST_TIMEOUT: return "timeout";
+      case J_ST_INVALID_FILENAME: return "invalid filename";
+      case J_ST_INVALID_ADDRESS: return "invalid address";
+      case J_ST_FILE_IO: return "file i/o error";
+      case J_ST_GC_ERROR: return "genicam error";
+      default: return "unknown error code";
+   }
+}
 
-        attributes_type attributes() const;
-        
-        void set( const attributes_type& attributes );
-        
-        unsigned int width() const;
-        
-        unsigned int height() const;
-        
-        unsigned long total_bytes_per_frame() const;
-        
-        void close();
-        
-        bool closed() const;
-        
-        CAM_HANDLE handle();
-        
-        CAM_HANDLE handle() const;
-        
-    private:
-        friend class factory;
-        class impl;
-        impl* pimpl_;
-        camera( impl* i = NULL );
-};
-
-class factory
+void validate( J_STATUS_TYPE r, const std::string& what )
 {
-    public:
-        factory();
-        
-        ~factory();
-        
-        std::vector< std::string > list_devices(); // todo? make const
-        
-        camera* make_camera( const std::string& id = "" ); // todo? make const
-        
-    private:
-        class impl;
-        impl* pimpl_;
-};
+    if( r != J_ST_SUCCESS ) { COMMA_THROW( comma::exception, what << " failed: " << error_to_string( r ) << " (error " << r << ")" ); }
+}
 
-} } // namespace snark{ namespace camera{
+void validate( const std::string& what, J_STATUS_TYPE r ) { validate( r, what ); }
 
-#endif // SNARK_SENSORS_JAI_CAMERA_H_
+} } // namespace snark { namespace jai {
