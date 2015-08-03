@@ -27,6 +27,8 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+/// @author vsevolod vlaskine
+
 #include <boost/program_options.hpp>
 #include <boost/scoped_ptr.hpp>
 #include <comma/application/signal_flag.h>
@@ -35,14 +37,15 @@
 #include <comma/name_value/map.h>
 #include "../../../../imaging/cv_mat/pipeline.h"
 #include "../camera.h"
+#include "../stream.h"
 
 typedef std::pair< boost::posix_time::ptime, cv::Mat > pair_t;
 boost::scoped_ptr< snark::tbb::bursty_reader< pair_t > > reader;
-static pair_t capture( snark::jai::camera& camera )
+static pair_t capture( snark::jai::stream& stream )
 { 
     static comma::signal_flag is_shutdown;
     if( is_shutdown ) { reader->stop(); return pair_t(); }
-    return camera.read();    
+    return stream.read();
 }
 
 int main( int argc, char** argv )
@@ -144,7 +147,8 @@ int main( int argc, char** argv )
         boost::scoped_ptr< snark::cv_mat::serialization > serialization;
         if( vm.count( "no-header" ) ) { serialization.reset( new snark::cv_mat::serialization( "", format ) ); }
         else { serialization.reset( new snark::cv_mat::serialization( fields, format, vm.count( "header" ) ) ); }
-        reader.reset( new snark::tbb::bursty_reader< pair_t >( boost::bind( &capture, boost::ref( *camera ) ), discard ) );
+        snark::jai::stream stream( *camera );
+        reader.reset( new snark::tbb::bursty_reader< pair_t >( boost::bind( &capture, boost::ref( stream ) ), discard ) );
         snark::imaging::applications::pipeline pipeline( *serialization, filters, *reader );
         pipeline.run();
         return 0;

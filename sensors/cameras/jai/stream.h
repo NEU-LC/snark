@@ -29,58 +29,27 @@
 
 /// @author vsevolod vlaskine
 
-#ifndef SNARK_SENSORS_JAI_CAMERA_H_
-#define SNARK_SENSORS_JAI_CAMERA_H_
+#ifndef SNARK_SENSORS_JAI_STREAM_H_
+#define SNARK_SENSORS_JAI_STREAM_H_
 
-#include <map>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <opencv2/core/core.hpp>
-#include <Jai_Factory.h>
+#include "camera.h"
 
 namespace snark { namespace jai {
     
-class camera
+class stream
 {
     public:
-        typedef std::map< std::string, std::string > attributes_type;       
+        stream( const camera& c, unsigned int number_of_buffers = 1 );
         
-        ~camera();
+        ~stream();
 
-        attributes_type attributes() const;
-        
-        void set( const attributes_type& attributes );
-        
-        unsigned int width() const;
-        
-        unsigned int height() const;
-        
-        unsigned long total_bytes_per_frame() const;
-        
+        std::pair< boost::posix_time::ptime, cv::Mat > read();
+
         void close();
         
         bool closed() const;
-        
-        CAM_HANDLE handle();
-        
-        CAM_HANDLE handle() const;
-        
-    private:
-        friend class factory;
-        class impl;
-        impl* pimpl_;
-        camera( impl* i = NULL );
-};
-
-class factory
-{
-    public:
-        factory();
-        
-        ~factory();
-        
-        std::vector< std::string > list_devices(); // todo? make const
-        
-        camera* make_camera( const std::string& id = "" ); // todo? make const
         
     private:
         class impl;
@@ -89,4 +58,4 @@ class factory
 
 } } // namespace snark{ namespace camera{
 
-#endif // SNARK_SENSORS_JAI_CAMERA_H_
+#endif // SNARK_SENSORS_JAI_STREAM_H_

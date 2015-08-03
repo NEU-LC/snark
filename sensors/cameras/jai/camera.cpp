@@ -27,105 +27,67 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include <Jai_Factory.h>
+/// @author vsevolod vlaskine
+
 #include <boost/array.hpp>
 #include <comma/base/exception.h>
+#include <comma/base/types.h>
 #include "camera.h"
+#include "error.h"
 
 namespace snark { namespace jai {
 
-static const char* error_to_string( J_STATUS_TYPE r )
-{
-   switch( r )
-   {
-      case J_ST_SUCCESS: return "ok";
-      case J_ST_INVALID_BUFFER_SIZE: return "invalid buffer size";
-      case J_ST_INVALID_HANDLE: return "invalid handle";
-      case J_ST_INVALID_ID: return "invalid id";
-      case J_ST_ACCESS_DENIED: return "access denied";
-      case J_ST_NO_DATA: return "no data";
-      case J_ST_ERROR: return "error";
-      case J_ST_INVALID_PARAMETER: return "invalid parameter";
-      case J_ST_TIMEOUT: return "timeout";
-      case J_ST_INVALID_FILENAME: return "invalid filename";
-      case J_ST_INVALID_ADDRESS: return "invalid address";
-      case J_ST_FILE_IO: return "file i/o error";
-      case J_ST_GC_ERROR: return "genicam error";
-      default: return "unknown error code";
-   }
-}
-
-static void validate( J_STATUS_TYPE r, const std::string& what = "operation" )
-{
-    if( r != J_ST_SUCCESS ) { COMMA_THROW( comma::exception, what << " failed: " << error_to_string( r ) << " (error " << r << ")" ); }
-}
-
-static void validate( const std::string& what, J_STATUS_TYPE r ) { validate( r, what ); }
+template < typename T > struct value_traits {};
+template <> struct value_traits < comma::uint32 > { typedef int64_t internal_type; };
+template <> struct value_traits < comma::int32 > { typedef int64_t internal_type; };
+template <> struct value_traits < comma::int64 > { typedef int64_t internal_type; };
 
 struct jai::camera::impl
 {
+    mutable CAM_HANDLE device;
     std::string id;
-    CAM_HANDLE handle;
-    J_tIMAGE_INFO image_info;
-    HANDLE event;
-    J_COND_WAIT_RESULT condition;
+    unsigned int width;
+    unsigned int height;
     
-    impl()
-        : handle( NULL )
-        , event( NULL )
+    impl( CAM_HANDLE device, const std::string& id )
+        : device( device )
+        , id( id )
+        , width( get< unsigned int >( "Width" ) )
+        , height( get< unsigned int >( "height" ) )
     {
-        validate( "creating event", J_Event_CreateCondition( &event ) );
-        if( !event ) { COMMA_THROW( comma::exception, "failed to create event condition" ); }
     }
     
     ~impl() { close(); }
     
-    void run()
-    {
-        // todo?
-    }
-    
-    std::pair< boost::posix_time::ptime, cv::Mat > read()
-    {
-        // todo
-        return std::pair< boost::posix_time::ptime, cv::Mat >();
-    }
-    
     void close()
     {
-        stop_acquisition();
-        J_Camera_Close( handle );
-        handle = NULL;
+        if( !device ) { return; }
+        J_Camera_Close( device );
+        device = NULL;
     }
 
-    bool closed() const { return handle == NULL; }
+    bool closed() const { return device == NULL; }
     
-    unsigned long total_bytes_per_frame() const
+    template < typename T > T get( const char* what ) const
     {
-        // todo
-        return 0;
+        NODE_HANDLE node;
+        validate( "getting node", J_Camera_GetNodeByName( device, ( int8_t * )what, &node ) );
+        typename value_traits< T >::internal_type value;
+        validate( what, J_Node_GetValueInt64( node, false, &value ) );
+        return value;
     }
+    
+    unsigned long total_bytes_per_frame() const { return width * height * J_MAX_BPP; } // todo: debug
     
     void set( const jai::camera::attributes_type& attributes )
     { 
-        // todo
+        COMMA_THROW( comma::exception, "todo" );
     }
     
     jai::camera::attributes_type attributes() const
-    { 
-        // todo
-        return jai::camera::attributes_type();
-    }
-    
-    void start_acquisition()
     {
-        // todo
-    }
-    
-    void stop_acquisition()
-    {
-        // todo
-    }
+        COMMA_THROW( comma::exception, "todo" );
+    }    
 };
 
 struct factory::impl
@@ -172,12 +134,9 @@ struct factory::impl
         {
             COMMA_THROW( comma::exception, "expected id of size not greater than " << J_CAMERA_ID_SIZE << "; got: " << id.size() );
         }        
-        CAM_HANDLE h;
-        validate( "making camera", J_Camera_Open( handle, &id[0], &h ) );
-        camera* c = new camera;
-        c->pimpl_->handle = h;
-        c->pimpl_->id = s;
-        return c;
+        CAM_HANDLE device;
+        validate( "making camera", J_Camera_Open( handle, &id[0], &device ) );
+        return new camera( new camera::impl( device, s ) );
     }
 };
 
@@ -189,17 +148,17 @@ std::vector< std::string > jai::factory::list_devices() { return pimpl_->list_de
 
 camera* jai::factory::make_camera( const std::string& id ) { return pimpl_->make_camera( id ); }
 
-jai::camera::camera() : pimpl_( new jai::camera::impl ) {}
+jai::camera::camera( jai::camera::impl* i ) : pimpl_( i ) {}
 
-jai::camera::~camera() { delete pimpl_; }
+jai::camera::~camera() { if( pimpl_ ) { delete pimpl_; } }
 
-std::pair< boost::posix_time::ptime, cv::Mat > jai::camera::read() { return pimpl_->read(); }
+unsigned int jai::camera::width() const { return pimpl_->width; }
+
+unsigned int jai::camera::height() const { return pimpl_->height; }
 
 void jai::camera::close() { pimpl_->close(); }
 
 bool jai::camera::closed() const { return pimpl_->closed(); }
-
-//std::vector< XDeviceInformation > jai::camera::list_cameras() { return jai::camera::impl::list_cameras(); }
 
 unsigned long jai::camera::total_bytes_per_frame() const { return pimpl_->total_bytes_per_frame(); }
 
@@ -207,8 +166,8 @@ jai::camera::attributes_type jai::camera::attributes() const { return pimpl_->at
 
 void jai::camera::set(const jai::camera::attributes_type& attributes ) { pimpl_->set( attributes ); }
 
-void jai::camera::start_acquisition() { pimpl_->start_acquisition(); }
+CAM_HANDLE jai::camera::handle() { return pimpl_->device; }
 
-void jai::camera::stop_acquisition() { pimpl_->stop_acquisition(); }
+CAM_HANDLE jai::camera::handle() const { return pimpl_->device; }
 
 } } // namespace snark { namespace jai {
