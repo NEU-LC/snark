@@ -39,11 +39,18 @@
 
 namespace snark { namespace jai {
 
-template < typename T > struct value_traits {};
-template <> struct value_traits < comma::uint32 > { typedef int64_t internal_type; };
-template <> struct value_traits < comma::int32 > { typedef int64_t internal_type; };
-template <> struct value_traits < comma::int64 > { typedef int64_t internal_type; };
-
+unsigned int cv_type_from_jai( comma::uint32 pixel_type )
+{
+    switch( pixel_type )
+    {
+        case J_GVSP_PIX_MONO: return CV_8UC1;
+        case J_GVSP_PIX_RGB: return CV_8UC3;
+        case J_GVSP_PIX_CUSTOM: COMMA_THROW( comma::exception, "custom pixel format (J_GVSP_PIX_CUSTOM, 0x80000000) not supported" );
+        case J_GVSP_PIX_COLOR_MASK: COMMA_THROW( comma::exception, "expected pixel format, got color mask (J_GVSP_PIX_COLOR_MASK, 0xFF000000)" );
+        default: COMMA_THROW( comma::exception, "expected pixel format, got: " << pixel_type );
+    }
+}
+    
 struct jai::stream::impl
 {
     struct buffer
@@ -85,16 +92,99 @@ struct jai::stream::impl
     
     ~impl() { close(); }
     
+    class event_buffer
+    {
+        public:
+            event_buffer( STREAM_HANDLE h, EVT_HANDLE e ) : stream_( h )
+            {
+                uint32_t size = sizeof( void * );
+                J_Event_GetData( e, &buffer_,  &size );
+            }
+            
+            template < typename T > void get( _J_BUFFER_INFO_CMD_TYPE what, T& t ) const
+            {
+                uint32_t size = sizeof( T );
+                J_DataStream_GetBufferInfo( stream_, buffer_, what, &t, &size );
+            }
+            
+            BUF_HANDLE buffer() const { return buffer_; }
+            
+        private:
+            mutable STREAM_HANDLE stream_;
+            mutable BUF_HANDLE buffer_;
+    };
+    
     std::pair< boost::posix_time::ptime, cv::Mat > read()
     {
-        // todo
-        return std::pair< boost::posix_time::ptime, cv::Mat >();
+        std::pair< boost::posix_time::ptime, cv::Mat > pair;
+        while( true )
+        {
+            static const unsigned int timeout = 1000;
+            J_COND_WAIT_RESULT wait_result;
+            validate( J_Event_WaitForCondition( event, timeout, &wait_result ) ); // todo: will exception work with tbb?
+            if( closed() ) { return std::pair< boost::posix_time::ptime, cv::Mat >(); } // todo: make thread-safe?
+            switch( wait_result )
+            {
+                case J_COND_WAIT_SIGNAL:
+                    break;
+                case J_COND_WAIT_EXIT:
+                    return std::pair< boost::posix_time::ptime, cv::Mat >();
+                case J_COND_WAIT_TIMEOUT:
+                    continue;
+                case J_COND_WAIT_ERROR:
+                    COMMA_THROW( comma::exception, "error on wait" ); // todo: will exception work with tbb?
+                default:
+                    COMMA_THROW( comma::exception, "wait returned unexpected status: " << wait_result ); // todo: will exception work with tbb?
+            }
+        }
+        pair.first = boost::posix_time::microsec_clock::universal_time(); // todo? use timestamp from the camera?
+        event_buffer e( handle, event_handle );
+        J_tIMAGE_INFO image_info;
+        e.get( BUFFER_INFO_BASE, image_info.pImageBuffer );
+        e.get( BUFFER_INFO_SIZE, image_info.iImageSize );
+        e.get( BUFFER_INFO_PIXELTYPE, image_info.iPixelType );
+        e.get( BUFFER_INFO_WIDTH, image_info.iSizeX );
+        e.get( BUFFER_INFO_HEIGHT, image_info.iSizeY );
+        e.get( BUFFER_INFO_TIMESTAMP, image_info.iTimeStamp );
+        //e.get( BUFFER_INFO_NUM_PACKETS_MISSING, image_info.iMissingPackets ); todo? do we need that?
+        e.get( BUFFER_INFO_XOFFSET, image_info.iOffsetX );
+        e.get( BUFFER_INFO_YOFFSET, image_info.iOffsetY );
+        // todo? example in stream_thread.cc also sets pointer to valid and queued buffers; do we even need it?
+        J_tIMAGE_INFO tmp;
+        validate( "image allocation", J_Image_Malloc( &image_info, &tmp ) );
+        J_STATUS_TYPE r = J_Image_FromRawToImage( &image_info, &tmp );
+        if( r != J_ST_SUCCESS )
+        {
+            J_Image_Free( &tmp ); // it sucks
+            COMMA_THROW( comma::exception, "conversion from raw to image failed: " << error_to_string( r ) ); // todo: will exception work with tbb?
+        }
+        pair.second = cv::Mat( image_info.iSizeY, image_info.iSizeX, cv_type_from_jai( tmp.iPixelType ) );
+        for( unsigned int i = 0; i < image_info.iSizeX; ++i ) // todo: replace with memcpy, once jai memory layout is clear
+        {
+            for( unsigned int j = 0; j < image_info.iSizeY; ++j )
+            {
+                POINT p;
+                p.x = i;
+                p.y = j;
+                boost::array< char, 6 > pixel; // quick and dirty: up to 8 bytes
+                J_Image_GetPixel( &tmp, &p, &pixel[0] );
+                
+                
+                // todo: copy the pixel for pete's sake
+                
+                
+            }
+        }
+        J_Image_Free( &tmp ); // it sucks
+        J_DataStream_QueueBuffer( handle, e.buffer() );
+        J_Event_SignalCondition( event );
     }
     
     void close()
     {
         if( !handle ) { return; }
         J_DataStream_StopAcquisition( handle, ACQ_STOP_FLAG_KILL );
+        J_Event_CloseCondition( event );
         J_Event_ExitCondition( event );
         J_DataStream_FlushQueue( handle, ACQ_QUEUE_INPUT_TO_OUTPUT );
         J_DataStream_FlushQueue( handle, ACQ_QUEUE_OUTPUT_DISCARD );
