@@ -30,14 +30,17 @@
 /// @author vsevolod vlaskine
 
 #include <boost/program_options.hpp>
+#include <boost/regex.hpp>
 #include <boost/scoped_ptr.hpp>
 #include <comma/application/signal_flag.h>
 #include <comma/base/exception.h>
 #include <comma/csv/stream.h>
 #include <comma/name_value/map.h>
+#include <comma/name_value/serialize.h>
 #include "../../../../imaging/cv_mat/pipeline.h"
 #include "../camera.h"
 #include "../stream.h"
+#include "../traits.h"
 
 typedef std::pair< boost::posix_time::ptime, cv::Mat > pair_t;
 boost::scoped_ptr< snark::tbb::bursty_reader< pair_t > > reader;
@@ -69,6 +72,7 @@ int main( int argc, char** argv )
             ( "fields,f", boost::program_options::value< std::string >( &fields )->default_value( "t,rows,cols,type" ), "header fields, possible values: t,rows,cols,type,size" )
             ( "list-attributes", "output current camera attributes" )
             ( "list-cameras,l", "list all cameras" )
+            ( "camera-info", "camera info for given camera --id" )
             ( "list-cameras-human-readable,L", "list all camera ids, output only human-readable part" )
             ( "header", "output header only" )
             ( "no-header", "output image data only" )
@@ -88,23 +92,26 @@ int main( int argc, char** argv )
             std::cerr << "usage: jai-cat [<options>] [<filters>]\n" << std::endl;
             std::cerr << "output header format: fields: t,cols,rows,type; binary: t,3ui\n" << std::endl;
             std::cerr << description << std::endl;
-            if( verbose ) { std::cerr << snark::cv_mat::filters::usage() << std::endl; }
+            if( verbose )
+            {
+//                 std::cerr << "genicam error codes (it was hard to find and I still am not sure they are the right ones)" << std::endl;
+//                 std::cerr << "    GC_ERR_SUCCESS             = 0" << std::endl;
+//                 std::cerr << "    GC_ERR_INVALID_BUFFER_SIZE = -1" << std::endl;
+//                 std::cerr << "    GC_ERR_INVALID_HANDLE      = -2" << std::endl;
+//                 std::cerr << "    GC_ERR_INVALID_ID          = -3" << std::endl;
+//                 std::cerr << "    GC_ERR_ACCESS_DENIED       = -4" << std::endl;
+//                 std::cerr << "    GC_ERR_NO_DATA             = -5" << std::endl;
+//                 std::cerr << "    GC_ERR_ERROR               = -6" << std::endl;
+//                 std::cerr << "    GC_ERR_INVALID_PARAMETER   = -7" << std::endl;
+//                 std::cerr << "    GC_ERR_TIMEOUT             = -8" << std::endl;
+//                 std::cerr << "    GC_ERR_INVALID_FILENAME    = -9" << std::endl;
+//                 std::cerr << "    GC_ERR_INVALID_ADDRESS     = -10" << std::endl;
+//                 std::cerr << "    GC_ERR_FILE_IO             = -11" << std::endl;
+//                 std::cerr << std::endl;
+                std::cerr << snark::cv_mat::filters::usage() << std::endl;                
+            }
             else
             {
-                std::cerr << "genicam error codes (it was hard to find and I still am not sure they are the right ones)" << std::endl;
-                std::cerr << "    GC_ERR_SUCCESS             = 0" << std::endl;
-                std::cerr << "    GC_ERR_INVALID_BUFFER_SIZE = -1" << std::endl;
-                std::cerr << "    GC_ERR_INVALID_HANDLE      = -2" << std::endl;
-                std::cerr << "    GC_ERR_INVALID_ID          = -3" << std::endl;
-                std::cerr << "    GC_ERR_ACCESS_DENIED       = -4" << std::endl;
-                std::cerr << "    GC_ERR_NO_DATA             = -5" << std::endl;
-                std::cerr << "    GC_ERR_ERROR               = -6" << std::endl;
-                std::cerr << "    GC_ERR_INVALID_PARAMETER   = -7" << std::endl;
-                std::cerr << "    GC_ERR_TIMEOUT             = -8" << std::endl;
-                std::cerr << "    GC_ERR_INVALID_FILENAME    = -9" << std::endl;
-                std::cerr << "    GC_ERR_INVALID_ADDRESS     = -10" << std::endl;
-                std::cerr << "    GC_ERR_FILE_IO             = -11" << std::endl;
-                std::cerr << std::endl;
                 std::cerr << "run: jai-cat --help --verbose for more..." << std::endl;
             }
             std::cerr << std::endl;
@@ -125,6 +132,17 @@ int main( int argc, char** argv )
                 unsigned int size = 0;
                 for( ; size < ids[i].size() && ids[i][size] > 31; ++size );
                 std::cout << ids[i].substr( 0, size ) << std::endl;
+            }
+            return 0;
+        }
+        if( vm.count( "camera-info" ) )
+        {
+            boost::regex regex( id );
+            const std::vector< std::string >& ids = factory.list_devices();
+            for( unsigned int i = 0; i < ids.size(); ++i )
+            {
+                if( !boost::regex_search( ids[i], regex ) ) { continue; }
+                comma::write_path_value( factory.camera_info( ids[i] ), std::cout );
             }
             return 0;
         }

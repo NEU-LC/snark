@@ -33,6 +33,7 @@
 #define SNARK_SENSORS_JAI_CAMERA_H_
 
 #include <map>
+#include <string>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <opencv2/core/core.hpp>
 #include <Jai_Factory.h>
@@ -42,6 +43,17 @@ namespace snark { namespace jai {
 class camera
 {
     public:
+        struct info
+        {
+            std::string manufacturer;
+            std::string model_name;
+            std::string ip_address;
+            std::string mac_address;
+            std::string serial_number;
+            std::string username;
+            //std::string interface_id; // seems to be a binary implementation detail
+        };
+        
         typedef std::map< std::string, std::string > attributes_type;       
         
         ~camera();
@@ -81,6 +93,8 @@ class factory
         std::vector< std::string > list_devices(); // todo? make const
         
         camera* make_camera( const std::string& id = "" ); // todo? make const
+        
+        camera::info camera_info( const std::string& id ) const;
         
     private:
         class impl;
