@@ -30,6 +30,7 @@
 /// @author vsevolod vlaskine
 
 #include <boost/array.hpp>
+#include <boost/regex.hpp>
 #include <comma/base/exception.h>
 #include <comma/base/types.h>
 #include "camera.h"
@@ -119,21 +120,14 @@ struct factory::impl
     
     jai::camera* make_camera( const std::string& s )
     {
+        if( s.size() > J_CAMERA_ID_SIZE ) { COMMA_THROW( comma::exception, "expected id of size not greater than " << J_CAMERA_ID_SIZE << "; got: \"" << s << "\"" ); }
+        const std::vector< std::string >& v = list_devices();
+        if( v.empty() ) { COMMA_THROW( comma::exception, "no cameras found" ); }
+        unsigned int index = 0;
+        for( boost::regex regex( s ); index < v.size() && !boost::regex_search( v[index], regex ); ++index );
+        if( index == v.size() ) { COMMA_THROW( comma::exception, "no cameras found with id matching \"" << s << "\"" ); }
         boost::array< int8_t, J_CAMERA_ID_SIZE > id;
-        if( id.empty() )
-        {
-            const std::vector< std::string >& v = list_devices();
-            if( v.empty() ) { COMMA_THROW( comma::exception, "no jai cameras found" ); }
-            ::memcpy( &id[0], &v[0][0], J_CAMERA_ID_SIZE );
-        }
-        else if( s.size() <= J_CAMERA_ID_SIZE )
-        {
-            ::memcpy( &id[0], &s[0], s.size() );
-        }
-        else
-        {
-            COMMA_THROW( comma::exception, "expected id of size not greater than " << J_CAMERA_ID_SIZE << "; got: " << id.size() );
-        }        
+        ::memcpy( &id[0], &v[index][0], J_CAMERA_ID_SIZE );
         CAM_HANDLE device;
         validate( "making camera", J_Camera_Open( handle, &id[0], &device ) );
         return new camera( new camera::impl( device, s ) );
