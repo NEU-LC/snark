@@ -30,6 +30,7 @@
 /// @author vsevolod vlaskine
 
 #include <boost/array.hpp>
+#include <boost/regex.hpp>
 #include <comma/base/exception.h>
 #include <comma/base/types.h>
 #include "camera.h"
@@ -119,24 +120,40 @@ struct factory::impl
     
     jai::camera* make_camera( const std::string& s )
     {
+        if( s.size() > J_CAMERA_ID_SIZE ) { COMMA_THROW( comma::exception, "expected id of size not greater than " << J_CAMERA_ID_SIZE << "; got: \"" << s << "\"" ); }
+        const std::vector< std::string >& v = list_devices();
+        if( v.empty() ) { COMMA_THROW( comma::exception, "no cameras found" ); }
+        unsigned int index = 0;
+        for( boost::regex regex( s ); index < v.size() && !boost::regex_search( v[index], regex ); ++index );
+        if( index == v.size() ) { COMMA_THROW( comma::exception, "no cameras found with id matching \"" << s << "\"" ); }
         boost::array< int8_t, J_CAMERA_ID_SIZE > id;
-        if( id.empty() )
-        {
-            const std::vector< std::string >& v = list_devices();
-            if( v.empty() ) { COMMA_THROW( comma::exception, "no jai cameras found" ); }
-            ::memcpy( &id[0], &v[0][0], J_CAMERA_ID_SIZE );
-        }
-        else if( s.size() <= J_CAMERA_ID_SIZE )
-        {
-            ::memcpy( &id[0], &s[0], s.size() );
-        }
-        else
-        {
-            COMMA_THROW( comma::exception, "expected id of size not greater than " << J_CAMERA_ID_SIZE << "; got: " << id.size() );
-        }        
+        ::memcpy( &id[0], &v[index][0], J_CAMERA_ID_SIZE ); // sigh...
         CAM_HANDLE device;
         validate( "making camera", J_Camera_Open( handle, &id[0], &device ) );
-        return new camera( new camera::impl( device, s ) );
+        return new camera( new camera::impl( device, v[index] ) );
+    }
+    
+    std::string camera_info( int8_t* id, J_CAMERA_INFO what ) const
+    {
+        boost::array< int8_t, J_CAMERA_INFO_SIZE > buf;
+        uint32_t size = J_CAMERA_INFO_SIZE;
+        validate( "getting camera info", J_Factory_GetCameraInfo( handle, &id[0], what, &buf[0], &size ) );
+        return std::string( ( const char* )( &buf[0] ), size );
+    }
+    
+    camera::info camera_info( const std::string& s ) const
+    {
+        boost::array< int8_t, J_CAMERA_ID_SIZE > id;
+        ::memcpy( &id[0], &s[0], J_CAMERA_ID_SIZE ); // sigh... otherwise we would need to do const cast
+        camera::info info;
+        info.manufacturer = camera_info( &id[0], CAM_INFO_MANUFACTURER );
+        info.model_name = camera_info( &id[0], CAM_INFO_MODELNAME );
+        info.ip_address = camera_info( &id[0], CAM_INFO_IP );
+        info.mac_address = camera_info( &id[0], CAM_INFO_MAC );
+        info.serial_number = camera_info( &id[0], CAM_INFO_SERIALNUMBER );
+        info.username = camera_info( &id[0], CAM_INFO_USERNAME );
+        //info.interface_id = camera_info( &id[0], CAM_INFO_INTERFACE_ID );
+        return info;
     }
 };
 
@@ -147,6 +164,8 @@ jai::factory::~factory() { delete pimpl_; }
 std::vector< std::string > jai::factory::list_devices() { return pimpl_->list_devices(); }
 
 camera* jai::factory::make_camera( const std::string& id ) { return pimpl_->make_camera( id ); }
+
+jai::camera::info jai::factory::camera_info( const std::string& id ) const { return pimpl_->camera_info( id ); }
 
 jai::camera::camera( jai::camera::impl* i ) : pimpl_( i ) {}
 

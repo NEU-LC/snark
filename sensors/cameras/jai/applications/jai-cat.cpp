@@ -30,14 +30,17 @@
 /// @author vsevolod vlaskine
 
 #include <boost/program_options.hpp>
+#include <boost/regex.hpp>
 #include <boost/scoped_ptr.hpp>
 #include <comma/application/signal_flag.h>
 #include <comma/base/exception.h>
 #include <comma/csv/stream.h>
 #include <comma/name_value/map.h>
+#include <comma/name_value/serialize.h>
 #include "../../../../imaging/cv_mat/pipeline.h"
 #include "../camera.h"
 #include "../stream.h"
+#include "../traits.h"
 
 typedef std::pair< boost::posix_time::ptime, cv::Mat > pair_t;
 boost::scoped_ptr< snark::tbb::bursty_reader< pair_t > > reader;
@@ -53,7 +56,7 @@ int main( int argc, char** argv )
     try
     {
         std::string fields;
-        //std::string address;
+        std::string id;
         std::string setattributes;
         std::string calibration_file;
         std::string directory;
@@ -63,13 +66,14 @@ int main( int argc, char** argv )
             ( "help,h", "display help message" )
             ( "set", boost::program_options::value< std::string >( &setattributes ), "set camera attributes as semicolon-separated name-value pairs" )
             ( "set-and-exit", "set camera attributes specified in --set and exit" )
-            //( "address", boost::program_options::value< std::string >( &address )->default_value( "" ), "ip address of the camera" )
+            ( "id", boost::program_options::value< std::string >( &id )->default_value( "" ), "any fragment of user-readable part of camera id; connect to the first device with matching id" )
             ( "discard", "discard frames, if cannot keep up; same as --buffer=1" )
             ( "buffer", boost::program_options::value< unsigned int >( &discard )->default_value( 0 ), "maximum buffer size before discarding frames, default: unlimited" )
             ( "fields,f", boost::program_options::value< std::string >( &fields )->default_value( "t,rows,cols,type" ), "header fields, possible values: t,rows,cols,type,size" )
             ( "list-attributes", "output current camera attributes" )
             ( "list-cameras,l", "list all cameras" )
-            ( "list-cameras-human-readable", "list all camera ids, output only human-readable part" )
+            ( "camera-info", "camera info for given camera --id" )
+            ( "list-cameras-human-readable,L", "list all camera ids, output only human-readable part" )
             ( "header", "output header only" )
             ( "no-header", "output image data only" )
             ( "calibration", boost::program_options::value< std::string >( &calibration_file ), "calibration file for thermography")
@@ -88,8 +92,29 @@ int main( int argc, char** argv )
             std::cerr << "usage: jai-cat [<options>] [<filters>]\n" << std::endl;
             std::cerr << "output header format: fields: t,cols,rows,type; binary: t,3ui\n" << std::endl;
             std::cerr << description << std::endl;
-            if( verbose ) { std::cerr << snark::cv_mat::filters::usage() << std::endl; }
-            else { std::cerr << "run: jai-cat --help --verbose for more..." << std::endl; }
+            if( verbose )
+            {
+//                 std::cerr << "genicam error codes (it was hard to find and I still am not sure they are the right ones)" << std::endl;
+//                 std::cerr << "    GC_ERR_SUCCESS             = 0" << std::endl;
+//                 std::cerr << "    GC_ERR_INVALID_BUFFER_SIZE = -1" << std::endl;
+//                 std::cerr << "    GC_ERR_INVALID_HANDLE      = -2" << std::endl;
+//                 std::cerr << "    GC_ERR_INVALID_ID          = -3" << std::endl;
+//                 std::cerr << "    GC_ERR_ACCESS_DENIED       = -4" << std::endl;
+//                 std::cerr << "    GC_ERR_NO_DATA             = -5" << std::endl;
+//                 std::cerr << "    GC_ERR_ERROR               = -6" << std::endl;
+//                 std::cerr << "    GC_ERR_INVALID_PARAMETER   = -7" << std::endl;
+//                 std::cerr << "    GC_ERR_TIMEOUT             = -8" << std::endl;
+//                 std::cerr << "    GC_ERR_INVALID_FILENAME    = -9" << std::endl;
+//                 std::cerr << "    GC_ERR_INVALID_ADDRESS     = -10" << std::endl;
+//                 std::cerr << "    GC_ERR_FILE_IO             = -11" << std::endl;
+//                 std::cerr << std::endl;
+                std::cerr << snark::cv_mat::filters::usage() << std::endl;                
+            }
+            else
+            {
+                std::cerr << "run: jai-cat --help --verbose for more..." << std::endl;
+            }
+            std::cerr << std::endl;
             return 0;
         }
         if( vm.count( "header" ) && vm.count( "no-header" ) ) { COMMA_THROW( comma::exception, "--header and --no-header are mutually exclusive" ); }
@@ -100,13 +125,24 @@ int main( int argc, char** argv )
         {
             bool human_readable = vm.count( "list-cameras-human-readable" );
             const std::vector< std::string >& ids = factory.list_devices();
-            std::cerr << "jai-cat: found " << ids.size() << " device(s); output readable part only for now; todo: implement camera id parsing" << std::endl;
+            std::cerr << "jai-cat: found " << ids.size() << " device(s)" << std::endl;
             for( unsigned int i = 0; i < ids.size(); ++i )
             {
                 if( !human_readable ) { std::cout.write( &ids[i][0], ids[i].size() ); continue; }  
                 unsigned int size = 0;
                 for( ; size < ids[i].size() && ids[i][size] > 31; ++size );
                 std::cout << ids[i].substr( 0, size ) << std::endl;
+            }
+            return 0;
+        }
+        if( vm.count( "camera-info" ) )
+        {
+            boost::regex regex( id );
+            const std::vector< std::string >& ids = factory.list_devices();
+            for( unsigned int i = 0; i < ids.size(); ++i )
+            {
+                if( !boost::regex_search( ids[i], regex ) ) { continue; }
+                comma::write_path_value( factory.camera_info( ids[i] ), std::cout );
             }
             return 0;
         }
@@ -118,7 +154,7 @@ int main( int argc, char** argv )
             attributes.insert( m.get().begin(), m.get().end() );
         }   
         if( verbose ) { std::cerr << "jai-cat: connecting..." << std::endl; }
-        boost::scoped_ptr< snark::jai::camera > camera( factory.make_camera() );
+        boost::scoped_ptr< snark::jai::camera > camera( factory.make_camera( id ) );
         if( verbose ) { std::cerr << "jai-cat: connected to a camera" << std::endl; }
         if( verbose ) { std::cerr << "jai-cat: total bytes per frame: " << camera->total_bytes_per_frame() << std::endl; }
         if( vm.count( "set-and-exit" ) ) { return 0; }
