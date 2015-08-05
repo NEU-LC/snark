@@ -54,19 +54,11 @@ class camera
             //std::string interface_id; // seems to be a binary implementation detail
         };
         
-        typedef std::map< std::string, std::string > attributes_type;       
-        
         ~camera();
 
-        attributes_type attributes() const;
-        
-        void set( const attributes_type& attributes );
-        
         unsigned int width() const;
         
         unsigned int height() const;
-        
-        unsigned long total_bytes_per_frame() const;
         
         void close();
         
@@ -75,6 +67,28 @@ class camera
         CAM_HANDLE handle();
         
         CAM_HANDLE handle() const;
+        
+        class settings
+        {
+            public:
+                settings( camera& c );
+                
+                enum save_t { save_auto = SAVE_AUTO, save_streamable_only = SAVE_STREAMABLE_ONLY, save_force_all = SAVE_FORCE_ALL };
+                
+                /// save all settings to file
+                void save( const std::string& filename, save_t which = save_auto ) const;
+        
+                /// load settings to camera from file
+                void load( const std::string& filename, bool force = false );
+                
+                /// return empty string, if settings in file are valid; otherwise return string with error information
+                std::string validate( const std::string& filename ) const;
+                
+                // todo: get and set features by name
+                
+            private:
+                CAM_HANDLE camera_;
+        };
         
     private:
         friend class factory;

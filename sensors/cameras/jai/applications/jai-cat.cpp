@@ -57,20 +57,19 @@ int main( int argc, char** argv )
     {
         std::string fields;
         std::string id;
-        std::string setattributes;
+        std::string attributes_to_set;
         std::string calibration_file;
         std::string directory;
         unsigned int discard;
         boost::program_options::options_description description( "options" );
         description.add_options()
             ( "help,h", "display help message" )
-            ( "set", boost::program_options::value< std::string >( &setattributes ), "set camera attributes as semicolon-separated name-value pairs" )
+            ( "set", boost::program_options::value< std::string >( &attributes_to_set ), "set camera attributes as semicolon-separated name-value pairs: todo" )
             ( "set-and-exit", "set camera attributes specified in --set and exit" )
             ( "id", boost::program_options::value< std::string >( &id )->default_value( "" ), "any fragment of user-readable part of camera id; connect to the first device with matching id" )
             ( "discard", "discard frames, if cannot keep up; same as --buffer=1" )
             ( "buffer", boost::program_options::value< unsigned int >( &discard )->default_value( 0 ), "maximum buffer size before discarding frames, default: unlimited" )
             ( "fields,f", boost::program_options::value< std::string >( &fields )->default_value( "t,rows,cols,type" ), "header fields, possible values: t,rows,cols,type,size" )
-            ( "list-attributes", "output current camera attributes" )
             ( "list-cameras,l", "list all cameras" )
             ( "camera-info", "camera info for given camera --id" )
             ( "list-cameras-human-readable,L", "list all camera ids, output only human-readable part" )
@@ -143,32 +142,15 @@ int main( int argc, char** argv )
             {
                 if( !boost::regex_search( ids[i], regex ) ) { continue; }
                 comma::write_path_value( factory.camera_info( ids[i] ), std::cout );
+                std::cout << std::endl;
             }
             return 0;
         }
         discard = vm.count( "discard" ) ? 1 : 0;
-        snark::jai::camera::attributes_type attributes;
-        if( vm.count( "set" ) )
-        {
-            comma::name_value::map m( setattributes, ';', '=' );
-            attributes.insert( m.get().begin(), m.get().end() );
-        }   
         if( verbose ) { std::cerr << "jai-cat: connecting..." << std::endl; }
         boost::scoped_ptr< snark::jai::camera > camera( factory.make_camera( id ) );
         if( verbose ) { std::cerr << "jai-cat: connected to a camera" << std::endl; }
-        if( verbose ) { std::cerr << "jai-cat: total bytes per frame: " << camera->total_bytes_per_frame() << std::endl; }
         if( vm.count( "set-and-exit" ) ) { return 0; }
-        if( vm.count( "list-attributes" ) )
-        {
-            const snark::jai::camera::attributes_type& a = camera->attributes();
-            for( snark::jai::camera::attributes_type::const_iterator it = a.begin(); it != a.end(); ++it )
-            {
-                std::cout << it->first;
-                if( !it->second.empty() ) { std::cout << '=' << it->second; }
-                std::cout << std::endl;
-            }            
-            return 0;
-        }
         const std::vector< std::string >& v = comma::split( fields, "," );
         comma::csv::format format;
         for( unsigned int i = 0; i < v.size(); ++i )

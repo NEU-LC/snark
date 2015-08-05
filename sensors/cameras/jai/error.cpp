@@ -59,7 +59,7 @@ const char* error_to_string( J_STATUS_TYPE r )
 
 void validate( J_STATUS_TYPE r, const std::string& what )
 {
-    if( r != J_ST_SUCCESS ) { COMMA_THROW( comma::exception, what << " failed: " << error_to_string( r ) << " (error " << r << ")" ); }
+    if( r != J_ST_SUCCESS ) { COMMA_THROW( comma::exception, what << " failed: " << error_to_string( r ) << " (error code: " << r << ")" ); }
 }
 
 void validate( const std::string& what, J_STATUS_TYPE r ) { validate( r, what ); }
