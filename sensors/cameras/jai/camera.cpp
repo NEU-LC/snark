@@ -77,18 +77,6 @@ struct jai::camera::impl
         validate( what, J_Node_GetValueInt64( node, false, &value ) );
         return value;
     }
-    
-    unsigned long total_bytes_per_frame() const { return width * height * J_MAX_BPP; } // todo: debug
-    
-    void set( const jai::camera::attributes_type& attributes )
-    { 
-        COMMA_THROW( comma::exception, "todo" );
-    }
-    
-    jai::camera::attributes_type attributes() const
-    {
-        COMMA_THROW( comma::exception, "todo" );
-    }    
 };
 
 struct factory::impl
@@ -157,6 +145,39 @@ struct factory::impl
     }
 };
 
+camera::settings::settings( camera& c ) : camera_( c.handle() ) {}
+
+void camera::settings::save( const std::string& filename, camera::settings::save_t which ) const
+{
+    jai::validate( "saving settings to file", J_Camera_SaveSettings( camera_, ( int8_t* )&filename[0], ( _J_SAVE_SETTINGS_FLAG )( which ) ) );
+}
+
+void camera::settings::load( const std::string& filename, bool force )
+{
+    jai::validate( "loading settings from file", J_Camera_LoadSettings( camera_, ( int8_t* )&filename[0], force ? LOAD_FORCE_WRITE : LOAD_AUTO ) );
+}
+
+std::string camera::settings::validate( const std::string& filename ) const
+{
+    J_STATUS_TYPE r = J_Camera_LoadSettings( camera_, ( int8_t* )&filename[0], LOAD_VALIDATE_ONLY );
+    switch( r )
+    {
+        case J_ST_SUCCESS:
+            return std::string();
+        case J_ST_VALIDATION_ERROR:
+        case J_ST_VALIDATION_WARNING:
+        {
+            uint32_t size = 0;
+            jai::validate( "getting camera settings validation error info", J_Camera_GetSettingsValidationErrorInfo( camera_, NULL, &size ) );
+            std::string s( std::size_t( size ), ' ' );
+            J_Camera_GetSettingsValidationErrorInfo( camera_, ( int8_t* )&s[0], &size );
+            return s;
+        }
+        default:
+            COMMA_THROW( comma::exception, "camera settings validation failed: " << error_to_string( r ) );
+    }
+}
+
 jai::factory::factory() : pimpl_( new jai::factory::impl ) {}
 
 jai::factory::~factory() { delete pimpl_; }
@@ -178,12 +199,6 @@ unsigned int jai::camera::height() const { return pimpl_->height; }
 void jai::camera::close() { pimpl_->close(); }
 
 bool jai::camera::closed() const { return pimpl_->closed(); }
-
-unsigned long jai::camera::total_bytes_per_frame() const { return pimpl_->total_bytes_per_frame(); }
-
-jai::camera::attributes_type jai::camera::attributes() const { return pimpl_->attributes(); }
-
-void jai::camera::set(const jai::camera::attributes_type& attributes ) { pimpl_->set( attributes ); }
 
 CAM_HANDLE jai::camera::handle() { return pimpl_->device; }
 
