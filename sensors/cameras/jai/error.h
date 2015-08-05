@@ -38,7 +38,7 @@
 
 namespace snark { namespace jai {
 
-const char* error_to_string( J_STATUS_TYPE r );
+std::string error_to_string( J_STATUS_TYPE r );
 
 void validate( J_STATUS_TYPE r, const std::string& what = "operation" );
 

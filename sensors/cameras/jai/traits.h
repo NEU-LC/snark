@@ -29,44 +29,39 @@
 
 /// @author vsevolod vlaskine
 
-#include <Jai_Factory.h>
-#include <comma/base/exception.h>
-#include <comma/base/types.h>
-#include "error.h"
+#ifndef SNARK_SENSORS_JAI_TRAITS_H_
+#define SNARK_SENSORS_JAI_TRAITS_H_
 
-namespace snark { namespace jai {
+#include <comma/visiting/traits.h>
+#include "camera.h"
 
-std::string error_to_string( J_STATUS_TYPE r )
+namespace comma { namespace visiting {
+
+template <> struct traits< snark::jai::camera::info >
 {
-   switch( r )
-   {
-      case J_ST_SUCCESS: return "ok";
-      case J_ST_INVALID_BUFFER_SIZE: return "invalid buffer size";
-      case J_ST_INVALID_HANDLE: return "invalid handle";
-      case J_ST_INVALID_ID: return "invalid id";
-      case J_ST_ACCESS_DENIED: return "access denied";
-      case J_ST_NO_DATA: return "no data";
-      case J_ST_ERROR: return "error";
-      case J_ST_INVALID_PARAMETER: return "invalid parameter";
-      case J_ST_TIMEOUT: return "timeout";
-      case J_ST_INVALID_FILENAME: return "invalid filename";
-      case J_ST_INVALID_ADDRESS: return "invalid address";
-      case J_ST_FILE_IO: return "file i/o error";
-      case J_ST_GC_ERROR:
-      {
-          tGenICamErrorInfo gc;
-          J_Factory_GetGenICamErrorInfo( &gc );
-          return std::string( "genicam error: " ) + gc.sDescription;
-      }
-      default: return "unknown error code";
-   }
-}
+    template < typename K, typename V > static void visit( const K&, snark::jai::camera::info& t, V& v )
+    {
+        v.apply( "manufacturer", t.manufacturer );
+        v.apply( "model_name", t.model_name );
+        v.apply( "ip_address", t.ip_address );
+        v.apply( "mac_address", t.mac_address );
+        v.apply( "serial_number", t.serial_number );
+        v.apply( "username", t.username );
+        //v.apply( "interface_id", t.interface_id );
+    }
+    
+    template < typename K, typename V > static void visit( const K&, const snark::jai::camera::info& t, V& v )
+    {
+        v.apply( "manufacturer", t.manufacturer );
+        v.apply( "model_name", t.model_name );
+        v.apply( "ip_address", t.ip_address );
+        v.apply( "mac_address", t.mac_address );
+        v.apply( "serial_number", t.serial_number );
+        v.apply( "username", t.username );
+        //v.apply( "interface_id", t.interface_id );
+    }
+};
+    
+} } // namespace comma { namespace visiting {
 
-void validate( J_STATUS_TYPE r, const std::string& what )
-{
-    if( r != J_ST_SUCCESS ) { COMMA_THROW( comma::exception, what << " failed: " << error_to_string( r ) << " (error code: " << r << ")" ); }
-}
-
-void validate( const std::string& what, J_STATUS_TYPE r ) { validate( r, what ); }
-
-} } // namespace snark { namespace jai {
+#endif // SNARK_SENSORS_JAI_TRAITS_H_
