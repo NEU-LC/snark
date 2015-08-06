@@ -51,8 +51,19 @@ static pair_t capture( snark::jai::stream& stream )
     return stream.read();
 }
 
+// todo: quick and dirty, move to camera.cpp?
+
+#define QUOTED( arg ) #arg
+#define STRINGIZED( arg ) QUOTED( arg )
+
 int main( int argc, char** argv )
 {
+    // todo: quick and dirty, move to camera.cpp?
+    ::setenv( "GENICAM_ROOT", STRINGIZED( JAI_GENICAM_ROOT ), 0 );
+    ::setenv( STRINGIZED( JAI_GENICAM_ROOT_NAME ), STRINGIZED( JAI_GENICAM_ROOT ), 0 );
+    ::setenv( "GENICAM_CONFIG", STRINGIZED( JAI_GENICAM_CONFIG ), 0 );
+    ::setenv( "GENICAM_CACHE", STRINGIZED( JAI_GENICAM_CACHE ), 0 );
+    
     try
     {
         std::string fields;

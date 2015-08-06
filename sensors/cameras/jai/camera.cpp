@@ -54,7 +54,7 @@ struct jai::camera::impl
         : device( device )
         , id( id )
         , width( get< unsigned int >( "Width" ) )
-        , height( get< unsigned int >( "height" ) )
+        , height( get< unsigned int >( "Height" ) )
     {
     }
     
@@ -72,7 +72,7 @@ struct jai::camera::impl
     template < typename T > T get( const char* what ) const
     {
         NODE_HANDLE node;
-        validate( "getting node", J_Camera_GetNodeByName( device, ( int8_t * )what, &node ) );
+        validate( std::string( "getting node " ) + what, J_Camera_GetNodeByName( device, ( int8_t * )what, &node ) );
         typename value_traits< T >::internal_type value;
         validate( what, J_Node_GetValueInt64( node, false, &value ) );
         return value;

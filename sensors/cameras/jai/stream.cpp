@@ -63,7 +63,7 @@ struct jai::stream::impl
         void allocate( CAM_HANDLE device, std::size_t size )
         {
             data.resize( size );
-            validate( "announcing buffer", J_DataStream_AnnounceBuffer( device, &data[0], size, NULL, &handle ) );
+            validate( "announcing buffer of size " + boost::lexical_cast< std::string >( size ), J_DataStream_AnnounceBuffer( device, &data[0], size, NULL, &handle ) );
             validate( "queueing buffer", J_DataStream_QueueBuffer( device, handle ) );
         }
     };
