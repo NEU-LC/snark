@@ -52,6 +52,7 @@ static void usage( bool more = false )
     std::cerr << std::endl;
     std::cerr << "usage examples" << std::endl;
     std::cerr << "    cat points.csv | points-calc distance > results.csv" << std::endl;
+    std::cerr << "    echo -e \"0\\n1\\n3\\n6\" | points-calc distance --fields x --next" << std::endl;
     std::cerr << "    cat points.csv | points-calc cumulative-distance > results.csv" << std::endl;
     std::cerr << "    cat points.csv | points-calc thin --resolution <resolution> > results.csv" << std::endl;
     std::cerr << "    cat points.csv | points-calc discretise --step <step> > results.csv" << std::endl;
@@ -73,6 +74,9 @@ static void usage( bool more = false )
     std::cerr << std::endl;
     std::cerr << "        input fields: " << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
     std::cerr << "                      " << comma::join( comma::csv::names< point_pair_t >( true ), ',' ) << std::endl;
+    std::cerr << "        options: " << std::endl;
+    std::cerr << "            --next: for subsequent points only, append distance to next point (default: append distance to previous point)" << std::endl;
+    std::cerr << "                    fake zero is appended to the final point (since there is no next point)" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    cumulative-distance: cumulative distance between subsequent points" << std::endl;
     std::cerr << std::endl;
@@ -150,6 +154,32 @@ static void calculate_distance( bool cumulative )
         {
             std::cout << comma::join( istream.ascii().last(), csv.delimiter ) << csv.delimiter << distance << std::endl;
         }
+    }
+}
+
+static void calculate_distance_next()
+{
+    comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, csv );
+    boost::optional< Eigen::Vector3d > last;
+    while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
+    {
+        const Eigen::Vector3d* p = istream.read();
+        if( !p ) { break; }
+        if( last )
+        {
+            double distance = ( *p - *last ).norm();
+            if( csv.binary() ) { std::cout.write( reinterpret_cast< const char* >( &distance ), sizeof( double ) ); }
+            else { std::cout << csv.delimiter << distance << std::endl; }
+        }
+        if( csv.binary() ) { std::cout.write( istream.binary().last(), istream.binary().binary().format().size() ); }
+        else { std::cout << comma::join( istream.ascii().last(), csv.delimiter ); }
+        last = *p;
+    }
+    if( last )
+    {
+        double fake_final_distance = 0;
+        if( csv.binary() ) { std::cout.write( reinterpret_cast< const char* >( &fake_final_distance ), sizeof( double ) ); }
+        else { std::cout << csv.delimiter << fake_final_distance << std::endl; }
     }
 }
 
@@ -383,7 +413,7 @@ int main( int ac, char** av )
         csv = comma::csv::options( options );
         csv.full_xpath = true;
         ascii = comma::csv::ascii< Eigen::Vector3d >( "x,y,z", csv.delimiter );
-        const std::vector< std::string >& operations = options.unnamed( "--verbose,-v,--trace,--no-antialiasing", "-.*" );
+        const std::vector< std::string >& operations = options.unnamed( "--verbose,-v,--trace,--no-antialiasing,--next", "-.*" );
         if( operations.size() != 1 ) { std::cerr << "points-calc: expected one operation, got " << operations.size() << ": " << comma::join( operations, ' ' ) << std::endl; return 1; }
         const std::string& operation = operations[0];
         if( operation == "distance" )
@@ -396,7 +426,8 @@ int main( int ac, char** av )
                 calculate_distance_for_pairs();
                 return 0;
             }
-            calculate_distance( false );
+            if ( options.exists( "--next" ) ) { calculate_distance_next(); }
+            else { calculate_distance( false ); }
             return 0;
         }
         if( operation == "cumulative-distance" )
