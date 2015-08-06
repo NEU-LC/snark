@@ -56,6 +56,7 @@ struct jai::camera::impl
         , width( get< unsigned int >( "Width" ) )
         , height( get< unsigned int >( "Height" ) )
     {
+        std::cerr << "--> camera: width: " << width << " height: " << height << std::endl;
     }
     
     ~impl() { close(); }
