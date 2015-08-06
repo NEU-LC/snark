@@ -38,32 +38,22 @@
 #include "camera.h"
 #include "stream.h"
 
+#include <iostream>
+
 namespace snark { namespace jai {
 
-unsigned int cv_type_from_jai( comma::uint32 pixel_type )
+unsigned int cv_type_from_jai( uint32_t pixel_type )
 {
-    return CV_8UC3;
-    switch( pixel_type )
-    {
-        case J_GVSP_PIX_MONO: return CV_8UC1;
-        case J_GVSP_PIX_RGB: return CV_8UC3;
-        case J_GVSP_PIX_CUSTOM: COMMA_THROW( comma::exception, "custom pixel format (J_GVSP_PIX_CUSTOM, 0x80000000) not supported" );
-        case J_GVSP_PIX_COLOR_MASK: COMMA_THROW( comma::exception, "expected pixel format, got color mask (J_GVSP_PIX_COLOR_MASK, 0xFF000000)" );
-        default: COMMA_THROW( comma::exception, "expected pixel format, got: " << pixel_type );
-    }
+    if( pixel_type & J_GVSP_PIX_MONO ) { return CV_8UC1; }
+    if( pixel_type & J_GVSP_PIX_RGB ) { return CV_8UC3; }
+    COMMA_THROW( comma::exception, "expected pixel format, got 0 in both mono and rgb bits in: " << pixel_type );
 }
 
-unsigned int number_of_channels_from_jai( comma::uint32 pixel_type )
+unsigned int number_of_channels_from_jai( uint32_t pixel_type )
 {
-    return 3;
-    switch( pixel_type )
-    {
-        case J_GVSP_PIX_MONO: return 1;
-        case J_GVSP_PIX_RGB: return 3;
-        case J_GVSP_PIX_CUSTOM: COMMA_THROW( comma::exception, "custom pixel format (J_GVSP_PIX_CUSTOM, 0x80000000) not supported" );
-        case J_GVSP_PIX_COLOR_MASK: COMMA_THROW( comma::exception, "expected pixel format, got color mask (J_GVSP_PIX_COLOR_MASK, 0xFF000000)" );
-        default: COMMA_THROW( comma::exception, "expected pixel format, got: " << pixel_type );
-    }
+    if( pixel_type & J_GVSP_PIX_MONO ) { return 1; }
+    if( pixel_type & J_GVSP_PIX_RGB ) { return 3; }
+    COMMA_THROW( comma::exception, "expected pixel format, got 0 in both mono and rgb bits in: " << pixel_type );
 }
     
 struct jai::stream::impl
