@@ -29,6 +29,10 @@ add_custom_command( TARGET jai.conf POST_BUILD COMMAND ${CMAKE_CURRENT_SOURCE_DI
 install( FILES ${BINARY_DIR}/jai.conf DESTINATION /etc/ld.so.conf.d )
 install( CODE "message( \"sensors/cameras/jai: running ldconfig\" )" )
 install( CODE "execute_process( COMMAND ldconfig )" )
+set( JAI_GENICAM_ROOT_SYMLINK_HACK "/opt/GenICam_v${JAI_GENICAM_VERSION_MAJOR}_${JAI_GENICAM_VERSION_MINOR}" )
+install( CODE "message( \"sensors/cameras/jai: a hack: created symlink: ln -s ${JAI_GENICAM_ROOT} ${JAI_GENICAM_ROOT_SYMLINK_HACK}\" )" ) # HACK 
+install( CODE "execute_process( COMMAND rm -rf ${JAI_GENICAM_ROOT_SYMLINK_HACK} )" ) # HACK
+install( CODE "execute_process( COMMAND ln -s ${JAI_GENICAM_ROOT} ${JAI_GENICAM_ROOT_SYMLINK_HACK} )" ) # HACK
 
 file( GLOB source *.cpp )
 file( GLOB includes *.h )
