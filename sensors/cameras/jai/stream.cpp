@@ -60,11 +60,11 @@ struct jai::stream::impl
         
         buffer() : handle( NULL ) {}
         
-        void allocate( CAM_HANDLE device, std::size_t size )
+        void allocate( STREAM_HANDLE stream_handle, std::size_t size )
         {
             data.resize( size );
-            validate( "announcing buffer of size " + boost::lexical_cast< std::string >( size ), J_DataStream_AnnounceBuffer( device, &data[0], size, NULL, &handle ) );
-            validate( "queueing buffer", J_DataStream_QueueBuffer( device, handle ) );
+            validate( "announcing buffer of size " + boost::lexical_cast< std::string >( size ), J_DataStream_AnnounceBuffer( stream_handle, &data[0], size, NULL, &handle ) );
+            validate( "queueing buffer", J_DataStream_QueueBuffer( stream_handle, handle ) );
         }
     };
     
@@ -75,18 +75,18 @@ struct jai::stream::impl
     J_COND_WAIT_RESULT condition;
     std::vector< buffer > buffers;
     
-    impl( CAM_HANDLE device, std::size_t size, unsigned int buffers_size = 1 )
+    impl( CAM_HANDLE device, std::size_t size, unsigned int number_of_buffers = 1 )
         : handle( NULL )
         , device( device )
         , event( NULL )
-        , buffers( buffers_size )
+        , buffers( number_of_buffers )
     {
         validate( "creating data stream", J_Camera_CreateDataStreamMc( device, 0, &handle, 0  ));
+        for( unsigned int i = 0; i < buffers.size(); ++i ) { buffers[i].allocate( handle, size ); }
         if( !handle ) { COMMA_THROW( comma::exception, "creating data stream failed" ); }
         validate( "creating condition", J_Event_CreateCondition( &event ) );
         if( !event ) { COMMA_THROW( comma::exception, "creating condition failed" ); }
         J_DataStream_RegisterEvent( handle, EVENT_NEW_BUFFER, event, (void **)&event_handle );
-        for( unsigned int i = 0; i < buffers.size(); ++i ) { buffers[i].allocate( device, size ); }
         validate( "starting acquisition", J_DataStream_StartAcquisition( handle, ACQ_START_NEXT_IMAGE, 0 ) );
     }
     
@@ -121,7 +121,7 @@ struct jai::stream::impl
         {
             static const unsigned int timeout = 1000;
             J_COND_WAIT_RESULT wait_result;
-            validate( J_Event_WaitForCondition( event, timeout, &wait_result ) ); // todo: will exception work with tbb?
+            validate( "waiting for condition", J_Event_WaitForCondition( event, timeout, &wait_result ) ); // todo: will exception work with tbb?
             if( closed() ) { return std::pair< boost::posix_time::ptime, cv::Mat >(); } // todo: make thread-safe?
             switch( wait_result )
             {
