@@ -6,15 +6,19 @@ if( WIN32 )
 endif( WIN32 )
 
 if( IS_64_BIT )
-    set( JAI_GENICAM_PATH "/usr/local/genicam/lib64" )
+    set( JAI_GENICAM_LIB "lib64" )
     link_directories( "/usr/lib64" )
     link_directories( "/usr/local/lib64" )
 else( IS_64_BIT )
-    set( JAI_GENICAM_PATH "/usr/local/genicam/lib" )
+    set( JAI_GENICAM_LIB "lib" )
 endif( IS_64_BIT )
 
-set( JAI_INCLUDE_DIR /usr/include/JAI CACHE PATH "jai camera include directory" )
-set( JAI_GENICAM_LIB_DIR ${JAI_GENICAM_PATH} CACHE PATH "jai camera genicam lib directory" )
+set( JAI_INCLUDE_DIR "/usr/include/JAI" CACHE PATH "jai camera include directory" )
+set( JAI_GENICAM_ROOT "/usr/local/genicam" CACHE PATH "jai camera genicam directory" )
+set( JAI_GENICAM_CACHE "/usr/local/xml/GenApi/Cache" CACHE PATH "jai camera genicam cache directory" )
+set( JAI_GENICAM_VERSION_MAJOR "2" CACHE STRING "jai camera genicam version major" )
+set( JAI_GENICAM_VERSION_MINOR "4" CACHE STRING "jai camera genicam version minor; todo: autodetect" )
+set( JAI_GENICAM_LIB_DIR "${JAI_GENICAM_ROOT}/${JAI_GENICAM_LIB}" CACHE PATH "jai camera genicam lib directory" )
 include_directories( ${JAI_INCLUDE_DIR} )
 link_directories( ${JAI_GENICAM_LIB_DIR} )
 set( JAI_SDK_LIBRARIES "JAIFactory" )
@@ -43,5 +47,10 @@ install(
    LIBRARY DESTINATION ${snark_INSTALL_LIB_DIR} COMPONENT Runtime     # .so, mod.dll
    ARCHIVE DESTINATION ${snark_INSTALL_LIB_DIR} COMPONENT Development # .a, .lib
 )
+
+set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DJAI_GENICAM_ROOT=\"${JAI_GENICAM_ROOT}\"" )
+set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DJAI_GENICAM_ROOT_NAME=\"GENICAM_ROOT_V${JAI_GENICAM_VERSION_MAJOR}_${JAI_GENICAM_VERSION_MINOR}\"" )
+set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DJAI_GENICAM_CONFIG=\"${JAI_GENICAM_ROOT}/share/genicam/log/config/DefaultLogging.properties\"" )
+set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DJAI_GENICAM_CACHE=\"${JAI_GENICAM_CACHE}\"" )
 
 add_subdirectory( applications )

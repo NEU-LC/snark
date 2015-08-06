@@ -51,21 +51,35 @@ static pair_t capture( snark::jai::stream& stream )
     return stream.read();
 }
 
+// todo: quick and dirty, move to camera.cpp?
+
+#define QUOTED( arg ) #arg
+#define STRINGIZED( arg ) QUOTED( arg )
+
 int main( int argc, char** argv )
 {
+    // todo: quick and dirty, move to camera.cpp?
+    ::setenv( "GENICAM_ROOT", STRINGIZED( JAI_GENICAM_ROOT ), 0 );
+    ::setenv( STRINGIZED( JAI_GENICAM_ROOT_NAME ), STRINGIZED( JAI_GENICAM_ROOT ), 0 );
+    ::setenv( "GENICAM_CONFIG", STRINGIZED( JAI_GENICAM_CONFIG ), 0 );
+    ::setenv( "GENICAM_CACHE", STRINGIZED( JAI_GENICAM_CACHE ), 0 );
+    
     try
     {
         std::string fields;
         std::string id;
         std::string attributes_to_set;
-        std::string calibration_file;
+        std::string settings_file;
         std::string directory;
         unsigned int discard;
         boost::program_options::options_description description( "options" );
         description.add_options()
             ( "help,h", "display help message" )
             ( "set", boost::program_options::value< std::string >( &attributes_to_set ), "set camera attributes as semicolon-separated name-value pairs: todo" )
-            ( "set-and-exit", "set camera attributes specified in --set and exit" )
+            ( "save-settings", boost::program_options::value< std::string >( &settings_file ), "save camera settings to file specified in <arg> in camera" )
+            ( "load-settings", boost::program_options::value< std::string >( &settings_file ), "load camera settings from file specified in <arg> in camera" )
+            ( "validate-settings", boost::program_options::value< std::string >( &settings_file ), "validate camera settings saved in file specified in <arg> in camera" )
+            ( "do-and-exit", "perform --set, or --load-settings, or --save-settings and exit" )
             ( "id", boost::program_options::value< std::string >( &id )->default_value( "" ), "any fragment of user-readable part of camera id; connect to the first device with matching id" )
             ( "discard", "discard frames, if cannot keep up; same as --buffer=1" )
             ( "buffer", boost::program_options::value< unsigned int >( &discard )->default_value( 0 ), "maximum buffer size before discarding frames, default: unlimited" )
@@ -75,7 +89,6 @@ int main( int argc, char** argv )
             ( "list-cameras-human-readable,L", "list all camera ids, output only human-readable part" )
             ( "header", "output header only" )
             ( "no-header", "output image data only" )
-            ( "calibration", boost::program_options::value< std::string >( &calibration_file ), "calibration file for thermography")
             ( "output-conversion", boost::program_options::value< std::string >( &directory ), "output conversion table to a timestamped csv file in the specified directory")
             ( "verbose,v", "be more verbose" );
 
@@ -91,33 +104,14 @@ int main( int argc, char** argv )
             std::cerr << "usage: jai-cat [<options>] [<filters>]\n" << std::endl;
             std::cerr << "output header format: fields: t,cols,rows,type; binary: t,3ui\n" << std::endl;
             std::cerr << description << std::endl;
-            if( verbose )
-            {
-//                 std::cerr << "genicam error codes (it was hard to find and I still am not sure they are the right ones)" << std::endl;
-//                 std::cerr << "    GC_ERR_SUCCESS             = 0" << std::endl;
-//                 std::cerr << "    GC_ERR_INVALID_BUFFER_SIZE = -1" << std::endl;
-//                 std::cerr << "    GC_ERR_INVALID_HANDLE      = -2" << std::endl;
-//                 std::cerr << "    GC_ERR_INVALID_ID          = -3" << std::endl;
-//                 std::cerr << "    GC_ERR_ACCESS_DENIED       = -4" << std::endl;
-//                 std::cerr << "    GC_ERR_NO_DATA             = -5" << std::endl;
-//                 std::cerr << "    GC_ERR_ERROR               = -6" << std::endl;
-//                 std::cerr << "    GC_ERR_INVALID_PARAMETER   = -7" << std::endl;
-//                 std::cerr << "    GC_ERR_TIMEOUT             = -8" << std::endl;
-//                 std::cerr << "    GC_ERR_INVALID_FILENAME    = -9" << std::endl;
-//                 std::cerr << "    GC_ERR_INVALID_ADDRESS     = -10" << std::endl;
-//                 std::cerr << "    GC_ERR_FILE_IO             = -11" << std::endl;
-//                 std::cerr << std::endl;
-                std::cerr << snark::cv_mat::filters::usage() << std::endl;                
-            }
-            else
-            {
-                std::cerr << "run: jai-cat --help --verbose for more..." << std::endl;
-            }
+            if( verbose ) { std::cerr << snark::cv_mat::filters::usage() << std::endl; }
+            else { std::cerr << "run: jai-cat --help --verbose for more..." << std::endl; }
             std::cerr << std::endl;
             return 0;
         }
-        if( vm.count( "header" ) && vm.count( "no-header" ) ) { COMMA_THROW( comma::exception, "--header and --no-header are mutually exclusive" ); }
-        if( vm.count( "fields" ) && vm.count( "no-header" ) ) { COMMA_THROW( comma::exception, "--fields and --no-header are mutually exclusive" ); }
+        if( vm.count( "save-settings" ) + vm.count( "load-settings" ) + vm.count( "validate-settings" ) > 1 ) { std::cerr << "jai-cat: --save-settings, --load-settings, and --validate-settings mutually exclusive" << std::endl; return 1; }
+        if( vm.count( "header" ) && vm.count( "no-header" ) ) { std::cerr << "jai-cat: --header and --no-header are mutually exclusive" << std::endl; return 1; }
+        if( vm.count( "fields" ) && vm.count( "no-header" ) ) { std::cerr << "jai-cat: --fields and --no-header are mutually exclusive" << std::endl; return 1; }
         if( vm.count( "buffer" ) == 0 && vm.count( "discard" ) ) { discard = 1; }
         snark::jai::factory factory;
         if( vm.count( "list-cameras" ) || vm.count( "list-cameras-human-readable" ) )
@@ -150,7 +144,24 @@ int main( int argc, char** argv )
         if( verbose ) { std::cerr << "jai-cat: connecting..." << std::endl; }
         boost::scoped_ptr< snark::jai::camera > camera( factory.make_camera( id ) );
         if( verbose ) { std::cerr << "jai-cat: connected to a camera" << std::endl; }
-        if( vm.count( "set-and-exit" ) ) { return 0; }
+        if( vm.count( "--save-settings" ) )
+        {
+            snark::jai::camera::settings settings( *camera );
+            settings.save( settings_file ); // todo: implement flags
+        }
+        else if( vm.count( "--load-settings" ) )
+        {
+            snark::jai::camera::settings settings( *camera );
+            settings.load( settings_file ); // todo: implement flags
+        }
+        else if( vm.count( "--validate-settings" ) )
+        {
+            snark::jai::camera::settings settings( *camera );
+            const std::string& status = settings.validate( settings_file );
+            if( !status.empty() ) { std::cerr << "jai-cat: settings in " << settings_file << " are invalid: " << status << std::endl; return 1; }
+            std::cerr << "jai-cat: settings in " << settings_file << " are valid" << std::endl;
+        }
+        if( vm.count( "do-and-exit" ) ) { return 0; }
         const std::vector< std::string >& v = comma::split( fields, "," );
         comma::csv::format format;
         for( unsigned int i = 0; i < v.size(); ++i )
