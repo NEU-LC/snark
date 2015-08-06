@@ -60,6 +60,8 @@ class camera
         
         unsigned int height() const;
         
+        void start_acquisition();
+        
         void close();
         
         bool closed() const;

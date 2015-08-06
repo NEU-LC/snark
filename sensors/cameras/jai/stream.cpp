@@ -30,6 +30,7 @@
 /// @author vsevolod vlaskine
 
 #include <boost/array.hpp>
+#include <boost/static_assert.hpp>
 #include <Jai_Factory.h>
 #include <comma/base/exception.h>
 #include <comma/base/types.h>
@@ -45,6 +46,18 @@ unsigned int cv_type_from_jai( comma::uint32 pixel_type )
     {
         case J_GVSP_PIX_MONO: return CV_8UC1;
         case J_GVSP_PIX_RGB: return CV_8UC3;
+        case J_GVSP_PIX_CUSTOM: COMMA_THROW( comma::exception, "custom pixel format (J_GVSP_PIX_CUSTOM, 0x80000000) not supported" );
+        case J_GVSP_PIX_COLOR_MASK: COMMA_THROW( comma::exception, "expected pixel format, got color mask (J_GVSP_PIX_COLOR_MASK, 0xFF000000)" );
+        default: COMMA_THROW( comma::exception, "expected pixel format, got: " << pixel_type );
+    }
+}
+
+unsigned int number_of_channels_from_jai( comma::uint32 pixel_type )
+{
+    switch( pixel_type )
+    {
+        case J_GVSP_PIX_MONO: return 1;
+        case J_GVSP_PIX_RGB: return 3;
         case J_GVSP_PIX_CUSTOM: COMMA_THROW( comma::exception, "custom pixel format (J_GVSP_PIX_CUSTOM, 0x80000000) not supported" );
         case J_GVSP_PIX_COLOR_MASK: COMMA_THROW( comma::exception, "expected pixel format, got color mask (J_GVSP_PIX_COLOR_MASK, 0xFF000000)" );
         default: COMMA_THROW( comma::exception, "expected pixel format, got: " << pixel_type );
@@ -68,30 +81,6 @@ struct jai::stream::impl
         }
     };
     
-    STREAM_HANDLE handle;
-    CAM_HANDLE device;
-    HANDLE event;
-    EVT_HANDLE event_handle;
-    J_COND_WAIT_RESULT condition;
-    std::vector< buffer > buffers;
-    
-    impl( CAM_HANDLE device, std::size_t size, unsigned int number_of_buffers = 1 )
-        : handle( NULL )
-        , device( device )
-        , event( NULL )
-        , buffers( number_of_buffers )
-    {
-        validate( "creating data stream", J_Camera_CreateDataStreamMc( device, 0, &handle, 0  ));
-        for( unsigned int i = 0; i < buffers.size(); ++i ) { buffers[i].allocate( handle, size ); }
-        if( !handle ) { COMMA_THROW( comma::exception, "creating data stream failed" ); }
-        validate( "creating condition", J_Event_CreateCondition( &event ) );
-        if( !event ) { COMMA_THROW( comma::exception, "creating condition failed" ); }
-        J_DataStream_RegisterEvent( handle, EVENT_NEW_BUFFER, event, (void **)&event_handle );
-        validate( "starting acquisition", J_DataStream_StartAcquisition( handle, ACQ_START_NEXT_IMAGE, 0 ) );
-    }
-    
-    ~impl() { close(); }
-    
     class event_buffer
     {
         public:
@@ -114,10 +103,34 @@ struct jai::stream::impl
             mutable BUF_HANDLE buffer_;
     };
     
+    STREAM_HANDLE handle;
+    CAM_HANDLE device;
+    HANDLE event;
+    EVT_HANDLE event_handle;
+    std::vector< buffer > buffers;
+    
+    impl( CAM_HANDLE device, std::size_t size, unsigned int number_of_buffers = 1 )
+        : handle( NULL )
+        , device( device )
+        , event( NULL )
+        , buffers( number_of_buffers )
+    {
+        validate( "creating data stream", J_Camera_CreateDataStream( device, 0, &handle ));
+        for( unsigned int i = 0; i < buffers.size(); ++i ) { buffers[i].allocate( handle, size ); }
+        if( !handle ) { COMMA_THROW( comma::exception, "creating data stream failed" ); }
+        validate( "creating condition", J_Event_CreateCondition( &event ) );
+        if( !event ) { COMMA_THROW( comma::exception, "creating condition failed" ); }
+        J_DataStream_RegisterEvent( handle, EVENT_NEW_BUFFER, event, ( void ** )&event_handle );
+        validate( "starting acquisition", J_DataStream_StartAcquisition( handle, ACQ_START_NEXT_IMAGE, 0 ) );
+    }
+    
+    ~impl() { close(); }
+    
     std::pair< boost::posix_time::ptime, cv::Mat > read()
     {
         std::pair< boost::posix_time::ptime, cv::Mat > pair;
-        while( true )
+        bool ready = false;
+        while( !ready )
         {
             static const unsigned int timeout = 1000;
             J_COND_WAIT_RESULT wait_result;
@@ -126,6 +139,7 @@ struct jai::stream::impl
             switch( wait_result )
             {
                 case J_COND_WAIT_SIGNAL:
+                    ready = true;
                     break;
                 case J_COND_WAIT_EXIT:
                     return std::pair< boost::posix_time::ptime, cv::Mat >();
@@ -158,6 +172,14 @@ struct jai::stream::impl
             J_Image_Free( &tmp ); // it sucks
             COMMA_THROW( comma::exception, "conversion from raw to image failed: " << error_to_string( r ) ); // todo: will exception work with tbb?
         }
+
+        std::cerr << "--> J_GVSP_PIX_MONO: " << J_GVSP_PIX_MONO << std::endl;
+        std::cerr << "--> J_GVSP_PIX_RGB: " << J_GVSP_PIX_RGB << std::endl;
+        std::cerr << "--> J_GVSP_PIX_CUSTOM: " << J_GVSP_PIX_CUSTOM << std::endl;
+        std::cerr << "--> J_GVSP_PIX_COLOR_MASK: " << J_GVSP_PIX_COLOR_MASK << std::endl;
+        std::cerr << "--> image_info.iPixelType: " << image_info.iPixelType << std::endl;
+        std::cerr << "--> tmp.iPixelType: " << tmp.iPixelType << std::endl;
+        
         pair.second = cv::Mat( image_info.iSizeY, image_info.iSizeX, cv_type_from_jai( tmp.iPixelType ) );
         for( unsigned int i = 0; i < image_info.iSizeX; ++i ) // todo: replace with memcpy, once jai memory layout is clear
         {
@@ -168,12 +190,12 @@ struct jai::stream::impl
                 p.y = j;
                 boost::array< char, 6 > pixel; // quick and dirty: up to 8 bytes
                 J_Image_GetPixel( &tmp, &p, &pixel[0] );
-                switch( tmp.iPixelType )
+                switch( number_of_channels_from_jai( tmp.iPixelType ) )
                 {
-                    case J_GVSP_PIX_MONO:
+                    case 1:
                         pair.second.at< uchar >( cv::Point( i, j ) ) = pixel[0];
                         break;
-                    case J_GVSP_PIX_RGB:
+                    case 3:
                         pair.second.at< cv::Vec3b >( cv::Point( i, j ) ) = cv::Vec3b( pixel[0], pixel[1], pixel[2] );
                         break;
                     default:
@@ -184,6 +206,7 @@ struct jai::stream::impl
         J_Image_Free( &tmp ); // it sucks
         J_DataStream_QueueBuffer( handle, e.buffer() );
         J_Event_SignalCondition( event );
+        return pair;
     }
     
     void close()
@@ -201,7 +224,9 @@ struct jai::stream::impl
     bool closed() const { return handle == NULL; }    
 };
 
-jai::stream::stream::stream( const jai::camera& c, unsigned int number_of_buffers ) { new impl( c.handle(), c.width() * c.height() * J_MAX_BPP, number_of_buffers ); }
+//jai::stream::stream::stream( const jai::camera& c, unsigned int number_of_buffers ) { new impl( c.handle(), c.width() * c.height() * J_MAX_BPP, number_of_buffers ); }
+
+jai::stream::stream::stream( const jai::camera& c, unsigned int number_of_buffers ) : pimpl_( new impl( c.handle(), c.width() * c.height() * J_MAX_BPP, number_of_buffers ) ) {}
 
 jai::stream::~stream() { if( pimpl_ ) { delete pimpl_; } }
 

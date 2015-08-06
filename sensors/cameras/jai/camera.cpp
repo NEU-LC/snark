@@ -60,9 +60,19 @@ struct jai::camera::impl
     
     ~impl() { close(); }
     
+    void start_acquisition()
+    {
+        NODE_HANDLE node;
+        J_Camera_GetNodeByName( device, ( int8_t * )"AcquisitionStart", &node );
+        J_Node_ExecuteCommand( node );
+    }
+    
     void close()
     {
         if( !device ) { return; }
+        NODE_HANDLE node;
+        J_Camera_GetNodeByName( device, ( int8_t * )"AcquisitionStop", &node );
+        J_Node_ExecuteCommand( node );
         J_Camera_Close( device );
         device = NULL;
     }
@@ -191,6 +201,8 @@ jai::camera::info jai::factory::camera_info( const std::string& id ) const { ret
 jai::camera::camera( jai::camera::impl* i ) : pimpl_( i ) {}
 
 jai::camera::~camera() { if( pimpl_ ) { delete pimpl_; } }
+
+void jai::camera::start_acquisition() { pimpl_->start_acquisition(); }
 
 unsigned int jai::camera::width() const { return pimpl_->width; }
 

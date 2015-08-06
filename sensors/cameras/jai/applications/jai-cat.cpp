@@ -44,11 +44,20 @@
 
 typedef std::pair< boost::posix_time::ptime, cv::Mat > pair_t;
 boost::scoped_ptr< snark::tbb::bursty_reader< pair_t > > reader;
+
 static pair_t capture( snark::jai::stream& stream )
 { 
     static comma::signal_flag is_shutdown;
     if( is_shutdown ) { reader->stop(); return pair_t(); }
-    return stream.read();
+    try
+    {
+        return stream.read();
+    }
+    catch( std::exception& ex )
+    {
+        std::cerr << "jai-cat: " << ex.what() << std::endl;
+    }
+    return pair_t();
 }
 
 // todo: quick and dirty, move to camera.cpp?
@@ -176,9 +185,10 @@ int main( int argc, char** argv )
         boost::scoped_ptr< snark::cv_mat::serialization > serialization;
         if( vm.count( "no-header" ) ) { serialization.reset( new snark::cv_mat::serialization( "", format ) ); }
         else { serialization.reset( new snark::cv_mat::serialization( fields, format, vm.count( "header" ) ) ); }
-        std::cerr << "jai-cat: data acquisition: starting..." << std::endl;
+        if( verbose ) { std::cerr << "jai-cat: data acquisition: starting..." << std::endl; }
         snark::jai::stream stream( *camera, 10 ); // snark::jai::stream stream( *camera );
-        std::cerr << "jai-cat: data acquisition: started" << std::endl;
+        camera->start_acquisition();
+        if( verbose ) { std::cerr << "jai-cat: data acquisition: started" << std::endl; }
         reader.reset( new snark::tbb::bursty_reader< pair_t >( boost::bind( &capture, boost::ref( stream ) ), discard ) );
         snark::imaging::applications::pipeline pipeline( *serialization, filters, *reader );
         pipeline.run();
