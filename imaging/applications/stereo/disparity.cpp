@@ -71,11 +71,7 @@ void disparity::process( const cv::Mat& left, const cv::Mat& right, const cv::St
         disparity = cloud.get_disparity( left, right );
     }
 
-    cv::Mat disparity16;
-    unsigned int numberOfDisparities = ((left.cols/8) + 15) & -16;
-    disparity.convertTo( disparity16, CV_16U, 65535 / ( numberOfDisparities *16.0 ) );
-
-    m_serialization.write( std::cout, std::make_pair( time, disparity16 ) );
+    m_serialization.write( std::cout, std::make_pair( time, disparity ) );
 }
 
 } }
