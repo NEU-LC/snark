@@ -42,6 +42,7 @@ namespace snark { namespace jai {
 
 unsigned int cv_type_from_jai( comma::uint32 pixel_type )
 {
+    return CV_8UC3;
     switch( pixel_type )
     {
         case J_GVSP_PIX_MONO: return CV_8UC1;
@@ -54,6 +55,7 @@ unsigned int cv_type_from_jai( comma::uint32 pixel_type )
 
 unsigned int number_of_channels_from_jai( comma::uint32 pixel_type )
 {
+    return 3;
     switch( pixel_type )
     {
         case J_GVSP_PIX_MONO: return 1;
@@ -172,40 +174,13 @@ struct jai::stream::impl
             J_Image_Free( &tmp ); // it sucks
             COMMA_THROW( comma::exception, "conversion from raw to image failed: " << error_to_string( r ) ); // todo: will exception work with tbb?
         }
-
-        std::cerr << "--> J_GVSP_PIX_MONO: " << J_GVSP_PIX_MONO << std::endl;
-        std::cerr << "--> J_GVSP_PIX_RGB: " << J_GVSP_PIX_RGB << std::endl;
-        std::cerr << "--> J_GVSP_PIX_CUSTOM: " << J_GVSP_PIX_CUSTOM << std::endl;
-        std::cerr << "--> J_GVSP_PIX_COLOR_MASK: " << J_GVSP_PIX_COLOR_MASK << std::endl;
-        std::cerr << "--> image_info.iPixelType: " << image_info.iPixelType << std::endl;
-        std::cerr << "--> tmp.iPixelType: " << tmp.iPixelType << std::endl;
-        
-        pair.second = cv::Mat( image_info.iSizeY, image_info.iSizeX, cv_type_from_jai( tmp.iPixelType ) );
-        for( unsigned int i = 0; i < image_info.iSizeX; ++i ) // todo: replace with memcpy, once jai memory layout is clear
-        {
-            for( unsigned int j = 0; j < image_info.iSizeY; ++j )
-            {
-                POINT p;
-                p.x = i;
-                p.y = j;
-                boost::array< char, 6 > pixel; // quick and dirty: up to 8 bytes
-                J_Image_GetPixel( &tmp, &p, &pixel[0] );
-                switch( number_of_channels_from_jai( tmp.iPixelType ) )
-                {
-                    case 1:
-                        pair.second.at< uchar >( cv::Point( i, j ) ) = pixel[0];
-                        break;
-                    case 3:
-                        pair.second.at< cv::Vec3b >( cv::Point( i, j ) ) = cv::Vec3b( pixel[0], pixel[1], pixel[2] );
-                        break;
-                    default:
-                        break; // never here
-                }
-            }
-        }
+        pair.second = cv::Mat( tmp.iSizeY, tmp.iSizeX, cv_type_from_jai( tmp.iPixelType ) );
+        ::memcpy( pair.second.datastart, tmp.pImageBuffer, tmp.iImageSize );
         J_Image_Free( &tmp ); // it sucks
         J_DataStream_QueueBuffer( handle, e.buffer() );
-        J_Event_SignalCondition( event );
+        uint64_t pending = 0;
+        uint32_t size = sizeof( uint64_t );
+        if( J_DataStream_GetStreamInfo( handle, STREAM_INFO_CMD_NUMBER_OF_FRAMES_AWAIT_DELIVERY, &pending, &size ) == J_ST_SUCCESS && pending > 0 ) { J_Event_SignalCondition( event ); }
         return pair;
     }
     
