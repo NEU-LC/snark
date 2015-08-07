@@ -62,33 +62,31 @@ struct db
             angle vertical;
         };
         
-        struct distance_correction_t
-        {
-            double x;
-            double y;
-            distance_correction_t(double a, double b):x(a),y(b){}
-        };
-
+        typedef Eigen::Vector2d distance_correction_t;
+        
         //for intensity correction by distance
-        struct focal_t
+        struct intensity_correction_t
         {
-            double distance;
-            double slope;
-            focal_t(double d,double s):distance(d),slope(s){}
+            double min_intensity;
+            double max_intensity;
+            double focal_distance;
+            double focal_slope;
+            intensity_correction_t(double a, double b, double c,double d):min_intensity(a),max_intensity(b),focal_distance(c),focal_slope(d){}
+            double calc(double intensity, double distance) const;
         };
 
         double horizontal_offset;
 
         double vertical_offset;
 
-        double far_distance_correction;
+        double distance_correction;
 
         corrention_angles_type correction_angles;
 
         double elevation;
         
         boost::optional<distance_correction_t> near_distance_correction;
-        boost::optional<focal_t> focal;
+        boost::optional<intensity_correction_t> intensity_correction;
 
         laser_data();
 
@@ -101,6 +99,9 @@ struct db
         double range( double range ) const;
 
         double azimuth( double azimuth ) const;
+        //in: intensity between 0..255 and uncorrected distance in meters
+        //out: intensity corrected for distance and scaled to 0..1
+        double intensity(unsigned char intensity, double distance) const;
     };
 
     boost::array< laser_data, 64 > lasers;

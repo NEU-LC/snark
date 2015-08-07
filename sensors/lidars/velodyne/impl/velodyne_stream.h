@@ -36,6 +36,7 @@
 #endif
 #include <snark/visiting/eigen.h>
 #include "../stream.h"
+#include "../db.h"
 
 namespace snark {
 
@@ -59,13 +60,15 @@ class velodyne_stream
 public:    
     velodyne_stream( const velodyne::db& db
                   , bool outputInvalidpoints
-                  , boost::optional< std::size_t > from = boost::optional< std::size_t >(), boost::optional< std::size_t > to = boost::optional< std::size_t >() );
+                  , boost::optional< std::size_t > from = boost::optional< std::size_t >(), boost::optional< std::size_t > to = boost::optional< std::size_t >()
+                   , bool raw_intensity = false);
 
     template < typename P >
     velodyne_stream( const P& p
                   , const velodyne::db& db
                   , bool outputInvalidpoints
-                  , boost::optional< std::size_t > from = boost::optional< std::size_t >(), boost::optional< std::size_t > to = boost::optional< std::size_t >() );
+                  , boost::optional< std::size_t > from = boost::optional< std::size_t >(), boost::optional< std::size_t > to = boost::optional< std::size_t >() 
+                   , bool raw_intensity = false);
 
     bool read();
     const velodyne_point& point() const { return m_point; }
@@ -75,15 +78,18 @@ private:
     velodyne::db m_db;
     velodyne_point m_point;
     boost::optional< std::size_t > m_to;
+    bool m_raw_intensity;
 };
 
 template < typename S >
 velodyne_stream< S >::velodyne_stream ( const velodyne::db& db, bool outputInvalidpoints
                     , boost::optional< std::size_t > from
-                    , boost::optional< std::size_t > to ):
+                    , boost::optional< std::size_t > to 
+                    , bool raw_intensity):
     m_stream( new S, outputInvalidpoints ),
     m_db( db ),
-    m_to( to )
+    m_to( to ),
+    m_raw_intensity(raw_intensity)
 {
     if( from ) { while( m_stream.scan() < *from ) { m_stream.skip_scan(); } }
 }
@@ -92,10 +98,12 @@ template < typename S >
 template < typename P >
 velodyne_stream< S >::velodyne_stream ( const P& p, const velodyne::db& db, bool outputInvalidpoints
                     , boost::optional< std::size_t > from
-                    , boost::optional< std::size_t > to ):
+                    , boost::optional< std::size_t > to 
+                    , bool raw_intensity):
     m_stream( new S( p ), outputInvalidpoints ),
     m_db( db ),
-    m_to( to )
+    m_to( to ),
+    m_raw_intensity(raw_intensity)
 {
     if( from ) { while( m_stream.scan() < *from ) { m_stream.skip_scan(); } }
 }
@@ -110,7 +118,8 @@ bool velodyne_stream< S >::read()
     if( r == NULL ) { return false; }
     m_point.timestamp = r->timestamp;
     m_point.id = r->id;
-    m_point.intensity = r->intensity;
+    // multiply by 255 to keep with the old format
+    m_point.intensity = m_raw_intensity ? r->intensity : (m_db.lasers[ m_point.id ].intensity(r->intensity, r->range) * 255);
     m_point.valid = !comma::math::equal( r->range, 0 ); // quick and dirty
     m_point.ray = m_db.lasers[ m_point.id ].ray( r->range, r->azimuth );
     m_point.range = m_db.lasers[ m_point.id ].range( r->range );
