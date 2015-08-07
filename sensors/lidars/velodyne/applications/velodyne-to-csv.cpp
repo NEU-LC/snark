@@ -83,6 +83,7 @@ static void usage()
     std::cerr << "                               e.g. 1:3 for scans 1, 2, 3" << std::endl;
     std::cerr << "                                    5: for scans 5, 6, ..." << std::endl;
     std::cerr << "                                    :3 for scans 0, 1, 2, 3" << std::endl;
+    std::cerr << "    --raw-intensity: output intensity data without any correction" << std::endl;
     std::cerr << "    default output columns: " << comma::join( comma::csv::names< velodyne_point >(), ',' ) << std::endl;
     std::cerr << "    default binary format: " << comma::csv::format::value< velodyne_point >() << std::endl;
     std::cerr << std::endl;
