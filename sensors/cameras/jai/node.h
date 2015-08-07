@@ -45,11 +45,12 @@ struct node
     J_NODE_ACCESSMODE access;
     J_NODE_TYPE type;
     
-    node( const std::string& name = "" );
+    node( const std::string& name = "", const std::string& value = "" );
     bool readable() const;
+    bool writable() const;
     bool implemented() const; // quick and dirty
-    std::string type_as_string() const;
-    std::string access_as_string() const;
+    const char* type_as_string() const;
+    const char* access_as_string() const;
     void send_to( const camera& c ) const; // quick and dirty
     void get_from( const camera& c ); // quick and dirty
     void get_from( const camera& c, NODE_HANDLE h ); // quick and dirty

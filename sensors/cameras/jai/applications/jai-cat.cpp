@@ -50,14 +50,8 @@ static pair_t capture( snark::jai::stream& stream )
 { 
     static comma::signal_flag is_shutdown;
     if( is_shutdown ) { reader->stop(); return pair_t(); }
-    try
-    {
-        return stream.read();
-    }
-    catch( std::exception& ex )
-    {
-        std::cerr << "jai-cat: " << ex.what() << std::endl;
-    }
+    try { return stream.read(); }
+    catch( std::exception& ex ) { std::cerr << "jai-cat: " << ex.what() << std::endl; }
     return pair_t();
 }
 
@@ -78,14 +72,14 @@ int main( int argc, char** argv )
     {
         std::string fields;
         std::string id;
-        std::string attributes_to_set;
+        std::string settings_to_set;
         std::string settings_file;
         std::string directory;
         unsigned int discard;
         boost::program_options::options_description description( "options" );
         description.add_options()
             ( "help,h", "display help message" )
-            ( "set", boost::program_options::value< std::string >( &attributes_to_set ), "set camera attributes as semicolon-separated name-value pairs: todo" )
+            ( "set", boost::program_options::value< std::string >( &settings_to_set ), "set camera settings as semicolon-separated name-value pairs: todo" )
             ( "save-settings", boost::program_options::value< std::string >( &settings_file ), "save camera settings to file specified in <arg> in camera" )
             ( "load-settings", boost::program_options::value< std::string >( &settings_file ), "load camera settings from file specified in <arg> in camera" )
             ( "validate-settings", boost::program_options::value< std::string >( &settings_file ), "validate camera settings saved in file specified in <arg> in camera" )
@@ -95,9 +89,9 @@ int main( int argc, char** argv )
             ( "buffer", boost::program_options::value< unsigned int >( &discard )->default_value( 0 ), "maximum buffer size before discarding frames, default: unlimited" )
             ( "fields,f", boost::program_options::value< std::string >( &fields )->default_value( "t,rows,cols,type" ), "header fields, possible values: t,rows,cols,type,size" )
             ( "list-cameras,l", "list all cameras" )
-            ( "list-nodes", "list relevant nodes for given camera" )
-            ( "all", "if --list-nodes, list all nodes, including write-only, unimplemented, and unavailable" )
-            ( "implemented", "if --list-nodes, list only read-write nodes implemented in jai-cat" )
+            ( "list-settings", "list relevant implemented settings for given camera; todo: output settings tree as json" )
+            ( "all", "if --list-settings, list all settings, including write-only, unimplemented, and unavailable" )
+            ( "unimplemented", "if --list-settings, list only read-write settings still not implemented in jai-cat" )
             ( "camera-info", "camera info for given camera --id" )
             ( "list-cameras-human-readable,L", "list all camera ids, output only human-readable part" )
             ( "header", "output header only" )
@@ -157,16 +151,25 @@ int main( int argc, char** argv )
         if( verbose ) { std::cerr << "jai-cat: connecting..." << std::endl; }
         boost::scoped_ptr< snark::jai::camera > camera( factory.make_camera( id ) );
         if( verbose ) { std::cerr << "jai-cat: connected to a camera" << std::endl; }
-        if( vm.count( "list-nodes" ) )
+        if( vm.count( "list-settings" ) )
         {
             bool all = vm.count( "all" );
-            bool implemented_only = vm.count( "implemented" );
+            bool unimplemented_only = vm.count( "unimplemented" );
             comma::csv::options csv;
             csv.quote.reset();
             comma::csv::output_stream< snark::jai::node > os( std::cout, csv );
             const std::vector< snark::jai::node >& nodes = snark::jai::nodes( *camera );
-            for( std::size_t i = 0; i < nodes.size(); ++i ) { if( all || ( nodes[i].readable() && ( !implemented_only || nodes[i].implemented() ) ) ) { os.write( nodes[i] ); } }
+            for( std::size_t i = 0; i < nodes.size(); ++i ) { if( all || ( nodes[i].readable() && ( unimplemented_only == !nodes[i].implemented() ) ) ) { os.write( nodes[i] ); } }
             return 0;
+        }
+        if( !settings_to_set.empty() )
+        {
+            comma::name_value::map m( settings_to_set );
+            typedef comma::name_value::map::map_type map_t;
+            for( map_t::const_iterator it = m.get().begin(); it != m.get().end(); ++it )
+            {
+                snark::jai::node( it->first, it->second ).send_to( *camera );
+            }
         }
         if( vm.count( "--save-settings" ) )
         {

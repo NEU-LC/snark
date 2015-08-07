@@ -33,17 +33,107 @@
 #include "node.h"
 
 namespace snark { namespace jai {
- 
-node::node( const std::string& name ) : name( name ), access( _UndefinedAccesMode ), type( J_UnknowNodeType ) {}
+
+static const char* type_as_string( J_NODE_TYPE type )
+{
+    switch( type )
+    {
+        case J_UnknowNodeType: return "unknown";
+        case J_INode: return "INode";
+        case J_ICategory: return "ICategory";
+        case J_IInteger: return "integer";
+        case J_IEnumeration: return "enumeration";
+        case J_IEnumEntry: return "IEnumEntry";
+        case J_IMaskedIntReg: return "IMaskedIntReg";
+        case J_IRegister: return "IRegister";
+        case J_IIntReg: return "IIntReg";
+        case J_IFloat: return "float";
+        case J_IFloatReg: return "IFloatReg";
+        case J_ISwissKnife: return "ISwissKnife";
+        case J_IIntSwissKnife: return "IIntSwissKnife";
+        case J_IIntKey: return "IIntKey";
+        case J_ITextDesc: return "ITextDesc";
+        case J_IPort: return "IPort";
+        case J_IConfRom: return "IConfRom";
+        case J_IAdvFeatureLock: return "IAdvFeatureLock";
+        case J_ISmartFeature: return "ISmartFeature";
+        case J_IStringReg: return "IStringReg";
+        case J_IBoolean: return "IBoolean";
+        case J_ICommand: return "ICommand";
+        case J_IConverter: return "IConverter";
+        case J_IIntConverter: return "IIntConverter";
+        case J_IChunkPort: return "IChunkPort";
+        case J_INodeMap: return "INodeMap";
+        case J_INodeMapDyn: return "INodeMapDyn";
+        case J_IDeviceInfo: return "IDeviceInfo";
+        case J_ISelector: return "ISelector";
+        case J_IPortConstruct: return "IPortConstruct";
+        default: return "undefined";
+    }
+}
+
+static const char* access_as_string( J_NODE_ACCESSMODE access )
+{
+    switch( access )
+    {
+        case NI: return "not implemented";
+        case NA: return "not available";
+        case WO: return "write-only";
+        case RO: return "read-only";
+        case RW: return "read-write";
+        case _UndefinedAccesMode: return "undefined";
+        default: return "unknown";
+    }
+}
+
+static bool readable( J_NODE_ACCESSMODE access ) { return access == RO || access == RW; }
+
+static bool writable( J_NODE_ACCESSMODE access ) { return access == WO || access == RW; }
+
+static bool implemented( J_NODE_TYPE type ) { return type == J_IInteger || type == J_IFloat || type == J_IEnumeration; }
+    
+node::node( const std::string& name, const std::string& value ) : name( name ), value( value ), access( _UndefinedAccesMode ), type( J_UnknowNodeType ) {}
 
 void node::send_to( const camera& c ) const
 {
-    // todo
+    NODE_HANDLE handle;
+    validate( "getting node by name", J_Camera_GetNodeByName( c.handle(), ( int8_t * )&name[0], &handle ) );
+    if( !handle ) { COMMA_THROW( comma::exception, "node \"" << name << "\" not found" ); }
+    J_NODE_ACCESSMODE a;
+    validate( "getting node access mode", J_Node_GetAccessMode( handle, &a ) );
+    if( !jai::writable( a ) ) { COMMA_THROW( comma::exception, "node \"" << name << "\" is not writable (" << jai::access_as_string( a ) << ")" ); }
+    J_NODE_TYPE t;
+    validate( "getting node type", J_Node_GetType( handle, &t ) );
+    if( !jai::implemented( t ) ) { COMMA_THROW( comma::exception, "node \"" << name << "\" is not implemented in snark (" << jai::type_as_string( t ) << ")" ); }
+    switch( t )
+    {
+        case J_IInteger:
+        {
+            int64_t v = boost::lexical_cast< int64_t >( value );
+            validate( "setting integer", J_Node_SetValueInt64( handle, true, v ) );
+            break;
+        }
+        case J_IFloat:
+        {
+            double v = boost::lexical_cast< double >( value );
+            validate( "setting double", J_Node_SetValueDouble( handle, true, v ) );
+            break;
+        }
+        case J_IEnumeration:
+        {
+            validate( "setting enumeration as string", J_Node_SetValueString( handle, true, ( int8_t* )&value[0] ) );
+            break;
+        }
+        default:
+            return; // unimplemented
+    }
 }
 
-bool node::readable() const { return access == RO || access == RW; }
+bool node::readable() const { return jai::readable( access ); }
 
-bool node::implemented() const { return type == J_IInteger || type == J_IFloat || type == J_IEnumeration; }
+bool node::writable() const { return jai::writable( access ); }
+
+bool node::implemented() const { return jai::implemented( type ); }
 
 void node::get_from( const camera& c )
 {
@@ -87,58 +177,10 @@ void node::get_from( const camera& c, NODE_HANDLE handle )
     }
 }
 
-std::string node::type_as_string() const
-{
-    switch( type )
-    {
-        case J_UnknowNodeType: return "unknown";
-        case J_INode: return "INode";
-        case J_ICategory: return "ICategory";
-        case J_IInteger: return "integer";
-        case J_IEnumeration: return "enumeration";
-        case J_IEnumEntry: return "IEnumEntry";
-        case J_IMaskedIntReg: return "IMaskedIntReg";
-        case J_IRegister: return "IRegister";
-        case J_IIntReg: return "IIntReg";
-        case J_IFloat: return "float";
-        case J_IFloatReg: return "IFloatReg";
-        case J_ISwissKnife: return "ISwissKnife";
-        case J_IIntSwissKnife: return "IIntSwissKnife";
-        case J_IIntKey: return "IIntKey";
-        case J_ITextDesc: return "ITextDesc";
-        case J_IPort: return "IPort";
-        case J_IConfRom: return "IConfRom";
-        case J_IAdvFeatureLock: return "IAdvFeatureLock";
-        case J_ISmartFeature: return "ISmartFeature";
-        case J_IStringReg: return "IStringReg";
-        case J_IBoolean: return "IBoolean";
-        case J_ICommand: return "ICommand";
-        case J_IConverter: return "IConverter";
-        case J_IIntConverter: return "IIntConverter";
-        case J_IChunkPort: return "IChunkPort";
-        case J_INodeMap: return "INodeMap";
-        case J_INodeMapDyn: return "INodeMapDyn";
-        case J_IDeviceInfo: return "IDeviceInfo";
-        case J_ISelector: return "ISelector";
-        case J_IPortConstruct: return "IPortConstruct";
-        default: return "undefined";
-    }
-}
+const char* node::type_as_string() const { return jai::type_as_string( type ); }
 
-std::string node::access_as_string() const
-{
-    switch( access )
-    {
-        case NI: return "not implemented";
-        case NA: return "not available";
-        case WO: return "write-only";
-        case RO: return "read-only";
-        case RW: return "read-write";
-        case _UndefinedAccesMode: return "undefined";
-        default: return "unknown";
-    }
-}
-    
+const char* node::access_as_string() const { return jai::access_as_string( access ); }
+
 std::vector< node > nodes( const camera& c )
 {
     uint32_t number_of_nodes;

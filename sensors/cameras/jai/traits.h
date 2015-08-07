@@ -32,6 +32,7 @@
 #ifndef SNARK_SENSORS_JAI_TRAITS_H_
 #define SNARK_SENSORS_JAI_TRAITS_H_
 
+#include <string>
 #include <comma/visiting/traits.h>
 #include "camera.h"
 #include "node.h"
@@ -69,8 +70,8 @@ template <> struct traits< snark::jai::node >
     {
         v.apply( "name", t.name );
         v.apply( "value", t.value );
-        v.apply( "type", t.type_as_string() );
-        v.apply( "access", t.access_as_string() );
+        v.apply( "type", std::string( t.type_as_string() ) );
+        v.apply( "access", std::string( t.access_as_string() ) );
     }
 };
 
