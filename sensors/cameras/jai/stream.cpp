@@ -30,8 +30,6 @@
 /// @author vsevolod vlaskine
 
 #include <boost/array.hpp>
-#include <boost/static_assert.hpp>
-#include <Jai_Factory.h>
 #include <comma/base/exception.h>
 #include <comma/base/types.h>
 #include "error.h"

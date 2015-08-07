@@ -1,0 +1,58 @@
+INSTALLATION NOTES
+
+1. Download and install JAI rpm package, as described here:
+   http://www.jai.com/SiteCollectionDocuments/Camera_Solutions_Manuals/LinuxSDK_getting_started_guide.pdf
+   
+2. Don't worry about the environment variables; they are taken care of in snark.
+
+   Known issues with JAI RPM (all patched in snark):
+   
+   - Some library paths are incorrect; snark cmake patches it by creating symlinks
+   
+   - If compiled with optimization (e.g. g++ -O2), genicam event handler times out
+     on receiving frames. There possibly is a bug in genicam code, e.g missing
+     volatile keyword. snark cmake fixes it by disabling optimization specifically
+     for jai-cat
+
+3. Enable building jai-cat in ccmake (set snark_build_sensors_jai to ON)
+
+CHECKING THE CAMERA
+
+1. If you connect the camera to a switch, make sure the switch can handle jumbo frames.
+   Also set MTU size to jumbo size in your /etc/network/interfaces file.
+
+2. If you connect the camera directly to the ethernet card on your machine, make sure
+   your interface (/etc/network/interfaces) is configured correctly. I should look
+   similar to the example below. Make sure MTU size is set to jumbo size.
+
+        auto eth1
+        iface eth1 inet static
+        address 192.168.0.3
+        netmask 255.255.255.0
+        mtu 8228
+
+3. Connect the camera to the switch or an ethernet port on your computer.
+
+4. Turn on the camera; wait until the LED behind turns from orange to green (it takes
+   around 30 seconds).
+
+5. If you connect directly to your computer, e.g. over eth1, run:
+
+        sudo ifdown eth1
+        sudo ifup eth1
+        ping 192.168.0.4 # if you know that camera ip address is 192.168.0.4
+
+   List cameras:
+    
+        > jai-cat --list-cameras-human-readable
+        jai-cat: found 1 device(s)
+        TL=>GevTL , INT=>::MAC->90-B1-1C-5D-73-A2::eth1 , DEV=>::MAC->00-0C-DF-08-01-54::JAI Ltd., Japan::AD-130GE_#0
+        
+   Take a look at the camera output (a window with the image from the camera should
+   pop up - if it does not, please talk to Vsevolod Vlaskine):
+    
+        > jai-cat --id JAI "timestamp;view;null"
+        
+   If your computer is slow, try:
+   
+        > jai-cat --id JAI "timestamp;view;null" --discard
