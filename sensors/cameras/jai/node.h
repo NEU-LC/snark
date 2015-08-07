@@ -29,51 +29,34 @@
 
 /// @author vsevolod vlaskine
 
-#ifndef SNARK_SENSORS_JAI_TRAITS_H_
-#define SNARK_SENSORS_JAI_TRAITS_H_
+#ifndef SNARK_SENSORS_JAI_NODE_H_
+#define SNARK_SENSORS_JAI_NODE_H_
 
-#include <comma/visiting/traits.h>
+#include <vector>
+#include <boost/property_tree/ptree.hpp>
 #include "camera.h"
-#include "node.h"
 
-namespace comma { namespace visiting {
+namespace snark { namespace jai {
 
-template <> struct traits< snark::jai::camera::info >
+struct node
 {
-    template < typename K, typename V > static void visit( const K&, snark::jai::camera::info& t, V& v )
-    {
-        v.apply( "manufacturer", t.manufacturer );
-        v.apply( "model_name", t.model_name );
-        v.apply( "ip_address", t.ip_address );
-        v.apply( "mac_address", t.mac_address );
-        v.apply( "serial_number", t.serial_number );
-        v.apply( "username", t.username );
-        //v.apply( "interface_id", t.interface_id );
-    }
+    std::string name;
+    std::string value;
+    J_NODE_ACCESSMODE access;
+    J_NODE_TYPE type;
     
-    template < typename K, typename V > static void visit( const K&, const snark::jai::camera::info& t, V& v )
-    {
-        v.apply( "manufacturer", t.manufacturer );
-        v.apply( "model_name", t.model_name );
-        v.apply( "ip_address", t.ip_address );
-        v.apply( "mac_address", t.mac_address );
-        v.apply( "serial_number", t.serial_number );
-        v.apply( "username", t.username );
-        //v.apply( "interface_id", t.interface_id );
-    }
+    node( const std::string& name = "" );
+    bool readable() const;
+    bool implemented() const; // quick and dirty
+    std::string type_as_string() const;
+    std::string access_as_string() const;
+    void send_to( const camera& c ) const; // quick and dirty
+    void get_from( const camera& c ); // quick and dirty
+    void get_from( const camera& c, NODE_HANDLE h ); // quick and dirty
 };
+    
+std::vector< node > nodes( const camera& c );
+    
+} } // namespace snark { namespace jai {
 
-template <> struct traits< snark::jai::node >
-{
-    template < typename K, typename V > static void visit( const K&, const snark::jai::node& t, V& v )
-    {
-        v.apply( "name", t.name );
-        v.apply( "value", t.value );
-        v.apply( "type", t.type_as_string() );
-        v.apply( "access", t.access_as_string() );
-    }
-};
-
-} } // namespace comma { namespace visiting {
-
-#endif // SNARK_SENSORS_JAI_TRAITS_H_
+#endif // SNARK_SENSORS_JAI_NODE_H_

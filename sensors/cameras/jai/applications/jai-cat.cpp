@@ -39,6 +39,7 @@
 #include <comma/name_value/serialize.h>
 #include "../../../../imaging/cv_mat/pipeline.h"
 #include "../camera.h"
+#include "../node.h"
 #include "../stream.h"
 #include "../traits.h"
 
@@ -94,6 +95,9 @@ int main( int argc, char** argv )
             ( "buffer", boost::program_options::value< unsigned int >( &discard )->default_value( 0 ), "maximum buffer size before discarding frames, default: unlimited" )
             ( "fields,f", boost::program_options::value< std::string >( &fields )->default_value( "t,rows,cols,type" ), "header fields, possible values: t,rows,cols,type,size" )
             ( "list-cameras,l", "list all cameras" )
+            ( "list-nodes", "list relevant nodes for given camera" )
+            ( "all", "if --list-nodes, list all nodes, including write-only, unimplemented, and unavailable" )
+            ( "implemented", "if --list-nodes, list only read-write nodes implemented in jai-cat" )
             ( "camera-info", "camera info for given camera --id" )
             ( "list-cameras-human-readable,L", "list all camera ids, output only human-readable part" )
             ( "header", "output header only" )
@@ -153,6 +157,17 @@ int main( int argc, char** argv )
         if( verbose ) { std::cerr << "jai-cat: connecting..." << std::endl; }
         boost::scoped_ptr< snark::jai::camera > camera( factory.make_camera( id ) );
         if( verbose ) { std::cerr << "jai-cat: connected to a camera" << std::endl; }
+        if( vm.count( "list-nodes" ) )
+        {
+            bool all = vm.count( "all" );
+            bool implemented_only = vm.count( "implemented" );
+            comma::csv::options csv;
+            csv.quote.reset();
+            comma::csv::output_stream< snark::jai::node > os( std::cout, csv );
+            const std::vector< snark::jai::node >& nodes = snark::jai::nodes( *camera );
+            for( std::size_t i = 0; i < nodes.size(); ++i ) { if( all || ( nodes[i].readable() && ( !implemented_only || nodes[i].implemented() ) ) ) { os.write( nodes[i] ); } }
+            return 0;
+        }
         if( vm.count( "--save-settings" ) )
         {
             snark::jai::camera::settings settings( *camera );
