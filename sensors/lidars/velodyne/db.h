@@ -36,6 +36,7 @@
 #include <comma/base/types.h>
 #include <Eigen/Core>
 #include "impl/serializable_db.h"
+#include <boost/optional.hpp>
 
 namespace snark {  namespace velodyne {
 
@@ -60,16 +61,34 @@ struct db
             angle rotational;
             angle vertical;
         };
+        
+        struct distance_correction_t
+        {
+            double x;
+            double y;
+            distance_correction_t(double a, double b):x(a),y(b){}
+        };
+
+        //for intensity correction by distance
+        struct focal_t
+        {
+            double distance;
+            double slope;
+            focal_t(double d,double s):distance(d),slope(s){}
+        };
 
         double horizontal_offset;
 
         double vertical_offset;
 
-        double distance_correction;
+        double far_distance_correction;
 
         corrention_angles_type correction_angles;
 
         double elevation;
+        
+        boost::optional<distance_correction_t> near_distance_correction;
+        boost::optional<focal_t> focal;
 
         laser_data();
 

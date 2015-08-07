@@ -133,8 +133,12 @@ struct px_type
         , rotCorrection_( 0 )
         , vertCorrection_( 0 )
         , distCorrection_( 0 )
+        , distCorrectionX_( 0 )
+        , distCorrectionY_( 0 )
         , vertOffsetCorrection_( 0 )
         , horizOffsetCorrection_( 0 )
+        , focalDistance_( 0 )
+        , focalSlope_( 0 )
     {
     }
     
@@ -142,18 +146,34 @@ struct px_type
     double rotCorrection_;
     double vertCorrection_;
     float distCorrection_;
+    float distCorrectionX_;
+    float distCorrectionY_;
     float vertOffsetCorrection_;
     float horizOffsetCorrection_;
+    float focalDistance_;
+    float focalSlope_;
+    unsigned int version_;
 
     template< class Archive >
-    void serialize( Archive & ar, const unsigned int /* file_version */ )
+    void serialize( Archive & ar, const unsigned int version )
     {
+        version_=version;
         ar & BOOST_SERIALIZATION_NVP( id_ )
            & BOOST_SERIALIZATION_NVP( rotCorrection_ )
            & BOOST_SERIALIZATION_NVP( vertCorrection_ )
-           & BOOST_SERIALIZATION_NVP( distCorrection_ )
-           & BOOST_SERIALIZATION_NVP( vertOffsetCorrection_ )
+           & BOOST_SERIALIZATION_NVP( distCorrection_ );
+        if (version > 0)
+        {
+           ar & BOOST_SERIALIZATION_NVP( distCorrectionX_ )
+           & BOOST_SERIALIZATION_NVP( distCorrectionY_ );
+        }
+        ar & BOOST_SERIALIZATION_NVP( vertOffsetCorrection_ )
            & BOOST_SERIALIZATION_NVP( horizOffsetCorrection_ );
+        if (version > 0)
+        {
+           ar & BOOST_SERIALIZATION_NVP( focalDistance_ )
+           & BOOST_SERIALIZATION_NVP( focalSlope_ );
+        }
     }
 };
 

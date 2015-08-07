@@ -63,7 +63,7 @@ db::laser_data::angle::angle( double v )
 
 db::laser_data::angle::angle( double v, double s, double c ) : value( v ), sin( s ), cos( c ) {}
 
-db::laser_data::laser_data() : horizontal_offset( 0 ), vertical_offset( 0 ), distance_correction( 0 ) {}
+db::laser_data::laser_data() : horizontal_offset( 0 ), vertical_offset( 0 ), far_distance_correction( 0 ) {}
 
 db::laser_data::laser_data(   comma::uint32 id
                           , double horizOffsetCorrection
@@ -74,12 +74,12 @@ db::laser_data::laser_data(   comma::uint32 id
     //: id( id )
     : horizontal_offset( horizOffsetCorrection )
     , vertical_offset( vertOffsetCorrection )
-    , distance_correction( distCorrection )
+    , far_distance_correction( distCorrection )
 {
     correction_angles.rotational = rotCorrection;
     correction_angles.vertical = vertCorrection;
     elevation = std::asin( vertical_offset * correction_angles.vertical.cos
-                         + distance_correction * correction_angles.vertical.sin );
+                         + far_distance_correction * correction_angles.vertical.sin );
 }
 
 ::Eigen::Vector3d db::laser_data::point( double distance, double angle ) const
@@ -89,7 +89,7 @@ db::laser_data::laser_data(   comma::uint32 id
 
 double db::laser_data::range( double range ) const
 {
-    return range + distance_correction;
+    return range + far_distance_correction;
 }
 
 double db::laser_data::azimuth( double azimuth ) const
@@ -104,7 +104,8 @@ double db::laser_data::azimuth( double azimuth ) const
 std::pair< ::Eigen::Vector3d, ::Eigen::Vector3d > db::laser_data::ray( double distance, double a ) const
 {
     angle angle( a );
-    distance += distance_correction;
+    double distance_original = distance; // why is DistLSB factor missing?
+    distance += far_distance_correction;
     // add 90 degrees for our system of coordinates
     //double angleSin( angle.cos ); // could also be added to the nav to velodyne offset
     //double angleCos( -angle.sin );
@@ -121,8 +122,19 @@ std::pair< ::Eigen::Vector3d, ::Eigen::Vector3d > db::laser_data::ray( double di
     ray.first.z() = static_cast< double >( vertical_offset * correction_angles.vertical.cos );
     // laser reading position relative to the laser
     double distanceXYProjection( distance * correction_angles.vertical.cos );
-    ray.second.x() = static_cast< double >( distanceXYProjection * correctedangleCos );
-    ray.second.y() = static_cast< double >( distanceXYProjection * correctedangleSin );
+    double dist_coorection_lateral=far_distance_correction;
+    double dist_coorection_forward=far_distance_correction;
+    if(near_distance_correction && distance_original < 25.00)
+    {
+        double xx = distanceXYProjection * correctedangleSin;
+        double yy = distanceXYProjection * correctedangleCos;
+        if (xx<0)   xx=-xx;
+        if (yy<0)   yy=-yy;
+        dist_coorection_lateral = (far_distance_correction - near_distance_correction->x)*(xx-2.40)/(25.04-2.40) + near_distance_correction->x;
+        dist_coorection_forward = (far_distance_correction - near_distance_correction->y)*(yy-1.93)/(25.04-1.93) + near_distance_correction->y;
+    }
+    ray.second.x() = static_cast< double >( (distance_original+dist_coorection_forward) * correction_angles.vertical.cos * correctedangleCos );
+    ray.second.y() = static_cast< double >( (distance_original+dist_coorection_lateral) * correction_angles.vertical.cos * correctedangleSin );
     ray.second.z() = static_cast< double >( distance * correction_angles.vertical.sin );
     // laser reading position relative to the velodyne base
     ray.second += ray.first;
@@ -136,21 +148,27 @@ static db::laser_data laserDataFromSerializable( const impl::serializable_db& se
     // y axis: 90 degrees clockwise from x axis
     // z axis: vertical, pointing down
     // positive rotation angle: clockwise (from x to y)
+    const impl::px_type& px = serializable.points_()[ i ].px;
     db::laser_data laser(   i
                          // velodyne: from velodyne source code snippet, positive seems to be to the left
                          // ours: positive it to the right
-                         , -serializable.points_()[ i ].px.horizOffsetCorrection_ / 100.0
+                         , -px.horizOffsetCorrection_ / 100.0
                          // velodyne: positive is upwards, if seen from the back of the laser
                          // ours: positive is downwards
-                         , -serializable.points_()[ i ].px.vertOffsetCorrection_ / 100.0
+                         , -px.vertOffsetCorrection_ / 100.0
                          // distance correction: velodyne and ours are the same
-                         , serializable.points_()[ i ].px.distCorrection_ / 100.0
+                         , px.distCorrection_ / 100.0
                          // velodyne: positive is counter-clockwise, if seen from the back of the laser
                          // ours: positive is clockwise
-                         , db::laser_data::angle( -serializable.points_()[ i ].px.rotCorrection_ )
+                         , db::laser_data::angle( -px.rotCorrection_ )
                          // velodyne: positive is upwards, if seen from the back of the laser
                          // ours: positive is downwards
-                         , db::laser_data::angle( -serializable.points_()[ i ].px.vertCorrection_ ) );
+                         , db::laser_data::angle( -px.vertCorrection_  ) );
+    if (px.version_ > 0)
+    {
+        laser.near_distance_correction = db::laser_data::distance_correction_t(px.distCorrectionX_/100.0, px.distCorrectionY_/100.0);
+        laser.focal = db::laser_data::focal_t(px.focalDistance_/100.0, px.focalSlope_);
+    }
     return laser;
 }
 

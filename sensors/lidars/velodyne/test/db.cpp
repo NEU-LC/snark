@@ -40,7 +40,7 @@ db zerodb()
     {
         db.lasers[i].horizontal_offset = 0;
         db.lasers[i].vertical_offset = 0;
-        db.lasers[i].distance_correction = 0;
+        db.lasers[i].far_distance_correction = 0;
     }
     return db;
 }

@@ -58,6 +58,10 @@ static void usage()
     std::cerr << "Takes velodyne packets and outputs coordinate datapoints to stdout" << std::endl;
     std::cerr << "Usage: cat velodyne*.bin | velodyne-to-csv <options>" << std::endl;
     std::cerr << std::endl;
+    std::cerr << "options" << std::endl;
+    std::cerr << "    --output-fields: print output fields and exit" << std::endl;
+    std::cerr << "    --output-format: print output format and exit" << std::endl;
+    std::cerr << std::endl;
     std::cerr << "input options" << std::endl;
     std::cerr << "    default : read velodyne data directly from stdin in the format: <timestamp><packet>" << std::endl;
     std::cerr << "              <timestamp>: 8-byte unsigned int, microseconds from linux epoch" << std::endl;
@@ -160,6 +164,8 @@ int main( int ac, char** av )
     {
         comma::command_line_options options( ac, av );
         if( options.exists( "--help" ) || options.exists( "-h" ) ) { usage(); }
+        if(options.exists("--output-fields")) {std::cout << comma::join( comma::csv::names< velodyne_point >(), ',' ) << std::endl; return 0;}
+        if(options.exists("--output-format")) {std::cout << comma::csv::format::value< velodyne_point >() << std::endl; return 0;}
         std::string fields = fields_( options.value< std::string >( "--fields", "" ) );
         comma::csv::format format = format_( options.value< std::string >( "--binary,-b", "" ), fields );
         if( options.exists( "--format" ) ) { std::cout << format.string(); exit( 0 ); }
