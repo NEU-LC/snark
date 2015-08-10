@@ -77,7 +77,7 @@ int main( int ac, char** av )
         {
             boost::property_tree::ptree p;
             comma::property_tree::from_path_value_string( config_parameters, '=', ';', comma::property_tree::path_value::no_check, true );
-            comma::from_ptree from_ptree( p );
+            comma::from_ptree from_ptree( p, true );
             comma::visiting::apply( from_ptree ).to( config );
         }
         comma::csv::options csv( options );
