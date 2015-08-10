@@ -49,6 +49,7 @@ void usage( bool verbose )
     std::cerr << "    --camera-config,--camera,--config,-c=<parameters>: camera configuration" << std::endl;
     std::cerr << "        <parameters>: filename of json configuration file or ';'-separated path-value pairs" << std::endl;
     std::cerr << "                      e.g: --config=\"focal_length/x=123;focal_length/y=123.1;...\"" << std::endl;
+    std::cerr << "    --config-units,--units=<units>: mm or px (pixels); default px" << std::endl;
     std::cerr << "    --input-fields: output input fields" << std::endl;
     std::cerr << "    --output-config,--sample-config: output sample config and exit" << std::endl;
     std::cerr << "    --output-fields: output appended fields and exit" << std::endl;
@@ -68,10 +69,16 @@ int main( int ac, char** av )
         if( options.exists( "--output-fields" ) ) { std::cerr << comma::join( comma::csv::names< Eigen::Vector3d >(), ',' ) << std::endl; return 0; }
         std::string config_parameters = options.value< std::string >( "--camera-config,--camera,--config,-c" );
         snark::camera::config config;
-        if( boost::filesystem::exists( config_parameters ) ) { comma::read_json( config, config_parameters ); }
+        if( boost::filesystem::exists( config_parameters ) )
+        {
+            comma::read_json( config, config_parameters );
+        }
         else
         {
-            // todo
+            boost::property_tree::ptree p;
+            comma::property_tree::from_path_value_string( config_parameters, '=', ';', comma::property_tree::path_value::no_check, true );
+            comma::from_ptree from_ptree( p );
+            comma::visiting::apply( from_ptree ).to( config );
         }
         comma::csv::options csv( options );
         comma::csv::input_stream< Eigen::Vector2d > is( std::cin, csv );
@@ -83,7 +90,13 @@ int main( int ac, char** av )
         {
             const Eigen::Vector2d* p = is.read();
             if( !p ) { break; }
-            // todo
+            Eigen::Vector3d q = Eigen::Vector3d::Zero();
+            
+            
+            // todo: calculate
+            
+            
+            tied.append( q );
         }
     }
     catch( std::exception& ex ) { std::cerr << "image-project: " << ex.what() << std::endl; }
