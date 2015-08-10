@@ -63,7 +63,7 @@ db::laser_data::angle::angle( double v )
 
 db::laser_data::angle::angle( double v, double s, double c ) : value( v ), sin( s ), cos( c ) {}
 
-db::laser_data::laser_data() : horizontal_offset( 0 ), vertical_offset( 0 ), far_distance_correction( 0 ) {}
+db::laser_data::laser_data() : horizontal_offset( 0 ), vertical_offset( 0 ), distance_correction( 0 ) {}
 
 db::laser_data::laser_data(   comma::uint32 id
                           , double horizOffsetCorrection
@@ -74,12 +74,12 @@ db::laser_data::laser_data(   comma::uint32 id
     //: id( id )
     : horizontal_offset( horizOffsetCorrection )
     , vertical_offset( vertOffsetCorrection )
-    , far_distance_correction( distCorrection )
+    , distance_correction( distCorrection )
 {
     correction_angles.rotational = rotCorrection;
     correction_angles.vertical = vertCorrection;
     elevation = std::asin( vertical_offset * correction_angles.vertical.cos
-                         + far_distance_correction * correction_angles.vertical.sin );
+                         + distance_correction * correction_angles.vertical.sin );
 }
 
 ::Eigen::Vector3d db::laser_data::point( double distance, double angle ) const
@@ -89,7 +89,7 @@ db::laser_data::laser_data(   comma::uint32 id
 
 double db::laser_data::range( double range ) const
 {
-    return range + far_distance_correction;
+    return range + distance_correction;
 }
 
 double db::laser_data::azimuth( double azimuth ) const
@@ -105,7 +105,7 @@ std::pair< ::Eigen::Vector3d, ::Eigen::Vector3d > db::laser_data::ray( double di
 {
     angle angle( a );
     double distance_original = distance; // why is DistLSB factor missing?
-    distance += far_distance_correction;
+    distance += distance_correction;
     // add 90 degrees for our system of coordinates
     //double angleSin( angle.cos ); // could also be added to the nav to velodyne offset
     //double angleCos( -angle.sin );
@@ -122,16 +122,15 @@ std::pair< ::Eigen::Vector3d, ::Eigen::Vector3d > db::laser_data::ray( double di
     ray.first.z() = static_cast< double >( vertical_offset * correction_angles.vertical.cos );
     // laser reading position relative to the laser
     double distanceXYProjection( distance * correction_angles.vertical.cos );
-    double dist_coorection_lateral=far_distance_correction;
-    double dist_coorection_forward=far_distance_correction;
+    double dist_coorection_lateral=distance_correction;
+    double dist_coorection_forward=distance_correction;
     if(near_distance_correction && distance_original < 25.00)
     {
-        double xx = distanceXYProjection * correctedangleSin;
-        double yy = distanceXYProjection * correctedangleCos;
-        if (xx<0)   xx=-xx;
-        if (yy<0)   yy=-yy;
-        dist_coorection_lateral = (far_distance_correction - near_distance_correction->x)*(xx-2.40)/(25.04-2.40) + near_distance_correction->x;
-        dist_coorection_forward = (far_distance_correction - near_distance_correction->y)*(yy-1.93)/(25.04-1.93) + near_distance_correction->y;
+        double xx = std::abs( distanceXYProjection * correctedangleSin );
+        double yy = std::abs( distanceXYProjection * correctedangleCos );
+        // hard coded numbers are two point calibration coordinates, from velodyne source/documentation
+        dist_coorection_lateral = (distance_correction - near_distance_correction->x())*(xx-2.40)/(25.04-2.40) + near_distance_correction->x();
+        dist_coorection_forward = (distance_correction - near_distance_correction->y())*(yy-1.93)/(25.04-1.93) + near_distance_correction->y();
     }
     ray.second.x() = static_cast< double >( (distance_original+dist_coorection_forward) * correction_angles.vertical.cos * correctedangleCos );
     ray.second.y() = static_cast< double >( (distance_original+dist_coorection_lateral) * correction_angles.vertical.cos * correctedangleSin );
@@ -139,6 +138,32 @@ std::pair< ::Eigen::Vector3d, ::Eigen::Vector3d > db::laser_data::ray( double di
     // laser reading position relative to the velodyne base
     ray.second += ray.first;
     return ray;
+}
+
+double db::laser_data::intensity(unsigned char intensity, double distance) const
+{
+    if (intensity_correction)
+    {
+        return intensity_correction->calc(double(intensity), distance);
+    }
+    return double(intensity)/255;
+}
+
+template<typename T>
+inline T square(T x){return x*x;}
+
+double db::laser_data::intensity_correction_t::calc(double intensity, double distance) const
+{
+    // this only works when DistLSB is 0.2 (2 mm resolution)
+    //max distance in meters
+    static const double max_distance= 65535 / 500; 
+    //focal_offset on 0..1 scale
+    double focal_offset = square(1-focal_distance/131.00);
+    intensity+=256*focal_slope*std::abs(focal_offset - square(1-distance/max_distance));
+    intensity=std::max(intensity, min_intensity);
+    intensity=std::min(intensity, max_intensity);
+    //scale to 0 to 1
+    return (intensity - min_intensity)/(max_intensity-min_intensity);
 }
 
 static db::laser_data laserDataFromSerializable( const impl::serializable_db& serializable, unsigned int i )
@@ -167,7 +192,7 @@ static db::laser_data laserDataFromSerializable( const impl::serializable_db& se
     if (px.version_ > 0)
     {
         laser.near_distance_correction = db::laser_data::distance_correction_t(px.distCorrectionX_/100.0, px.distCorrectionY_/100.0);
-        laser.focal = db::laser_data::focal_t(px.focalDistance_/100.0, px.focalSlope_);
+        laser.intensity_correction = db::laser_data::intensity_correction_t(serializable.minIntensity_()[ i ], serializable.maxIntensity_()[ i ], px.focalDistance_/100.0, px.focalSlope_);
     }
     return laser;
 }

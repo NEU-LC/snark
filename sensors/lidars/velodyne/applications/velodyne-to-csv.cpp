@@ -60,7 +60,6 @@ static void usage()
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    --output-fields: print output fields and exit" << std::endl;
-    std::cerr << "    --output-format: print output format and exit" << std::endl;
     std::cerr << std::endl;
     std::cerr << "input options" << std::endl;
     std::cerr << "    default : read velodyne data directly from stdin in the format: <timestamp><packet>" << std::endl;
@@ -84,6 +83,7 @@ static void usage()
     std::cerr << "                               e.g. 1:3 for scans 1, 2, 3" << std::endl;
     std::cerr << "                                    5: for scans 5, 6, ..." << std::endl;
     std::cerr << "                                    :3 for scans 0, 1, 2, 3" << std::endl;
+    std::cerr << "    --raw-intensity: output intensity data without any correction" << std::endl;
     std::cerr << "    default output columns: " << comma::join( comma::csv::names< velodyne_point >(), ',' ) << std::endl;
     std::cerr << "    default binary format: " << comma::csv::format::value< velodyne_point >() << std::endl;
     std::cerr << std::endl;
@@ -165,7 +165,6 @@ int main( int ac, char** av )
         comma::command_line_options options( ac, av );
         if( options.exists( "--help" ) || options.exists( "-h" ) ) { usage(); }
         if(options.exists("--output-fields")) {std::cout << comma::join( comma::csv::names< velodyne_point >(), ',' ) << std::endl; return 0;}
-        if(options.exists("--output-format")) {std::cout << comma::csv::format::value< velodyne_point >() << std::endl; return 0;}
         std::string fields = fields_( options.value< std::string >( "--fields", "" ) );
         comma::csv::format format = format_( options.value< std::string >( "--binary,-b", "" ), fields );
         if( options.exists( "--format" ) ) { std::cout << format.string(); exit( 0 ); }
@@ -188,34 +187,35 @@ int main( int ac, char** av )
         if( options.exists( "--binary,-b" ) ) { csv.format( format ); }
         options.assert_mutually_exclusive( "--pcap,--thin,--udp-port,--proprietary,-q" );
         double min_range = options.value( "--min-range", 0.0 );
+        bool raw_intensity=options.exists( "--raw-intensity" );
         if( options.exists( "--pcap" ) )
         {
-            velodyne_stream< snark::pcap_reader > v( db, outputInvalidpoints, from, to );
+            velodyne_stream< snark::pcap_reader > v( db, outputInvalidpoints, from, to, raw_intensity );
             run( v, csv, min_range );
         }
         else if( options.exists( "--thin" ) )
         {
-            velodyne_stream< snark::thin_reader > v( db, outputInvalidpoints, from, to );
+            velodyne_stream< snark::thin_reader > v( db, outputInvalidpoints, from, to, raw_intensity );
             run( v, csv, min_range );
         }
         else if( options.exists( "--udp-port" ) )
         {
-            velodyne_stream< snark::udp_reader > v( options.value< unsigned short >( "--udp-port" ), db, outputInvalidpoints, from, to );
+            velodyne_stream< snark::udp_reader > v( options.value< unsigned short >( "--udp-port" ), db, outputInvalidpoints, from, to, raw_intensity );
             run( v, csv, min_range );
         }
         else if( options.exists( "--proprietary,-q" ) )
         {
-            velodyne_stream< snark::proprietary_reader > v( db, outputInvalidpoints, from, to );
+            velodyne_stream< snark::proprietary_reader > v( db, outputInvalidpoints, from, to, raw_intensity );
             run( v, csv, min_range );
         }
         else
         {
-            velodyne_stream< snark::stream_reader > v( db, outputInvalidpoints, from, to );
+            velodyne_stream< snark::stream_reader > v( db, outputInvalidpoints, from, to, raw_intensity );
             run( v, csv, min_range );
         }
         return 0;
     }
     catch( std::exception& ex ) { std::cerr << "velodyne-to-csv: " << ex.what() << std::endl; }
     catch( ... ) { std::cerr << "velodyne-to-csv: unknown exception" << std::endl; }
-    usage();
+    //usage();
 }
