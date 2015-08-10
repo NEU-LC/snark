@@ -33,11 +33,30 @@
 
 #include <Eigen/Core>
 #include <Eigen/Geometry>
-#include <comma/visiting/apply.h>
-#include <comma/visiting/visit.h>
+#include <comma/visiting/traits.h>
 
 namespace comma { namespace visiting {
 
+template < typename T, int Rows > struct traits< ::Eigen::Matrix< T, Rows, 1 > > // sigh... eigen is using int for size
+{
+    template < typename Key, class Visitor >
+    static void visit( const Key& k, ::Eigen::Matrix< T, Rows, 1 >& p, Visitor& v )
+    {
+        boost::array< T, Rows > a; // quick and dirty
+        for( unsigned int i = 0; i < Rows; ++i ) { a[i] = p[i]; }
+        comma::visiting::traits< boost::array< T, Rows > >::visit( k, a, v );
+        for( unsigned int i = 0; i < Rows; ++i ) { p[i] = a[i]; }
+    }
+
+    template < typename Key, class Visitor >
+    static void visit( const Key& k, const ::Eigen::Matrix< T, Rows, 1 >& p, Visitor& v )
+    {
+        boost::array< T, Rows > a; // quick and dirty
+        for( unsigned int i = 0; i < Rows; ++i ) { a[i] = p[i]; }
+        comma::visiting::traits< boost::array< T, Rows > >::visit( k, a, v );
+    }
+};
+    
 template < typename T > struct traits< ::Eigen::Matrix< T, 2, 1 > >
 {
     template < typename Key, class Visitor >
@@ -94,7 +113,6 @@ template < typename T > struct traits< ::Eigen::Matrix< T, 4, 1 > >
         v.apply( "w", p.w() );
     }
 };
-
 
 template < typename T > struct traits< ::Eigen::Quaternion< T > >
 {
