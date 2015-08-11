@@ -115,6 +115,43 @@ double azimuth( const packet& packet, unsigned int block, unsigned int laser, do
     return azimuth( double( packet.blocks[block].rotation() ) / 100, laser, angularSpeed );
 }
 
+const int lasers_per_block=32;
+const int block_count=12;
+struct hdl64_s2_fw_v48
+{
+    static const double ethernet_trasnfer_duration;
+    typedef double block_time_table[lasers_per_block];
+    static block_time_table time_table[block_count];
+    static boost::posix_time::time_duration time_offset( unsigned int block, unsigned int laser )
+    {
+        double delay = time_table[block][laser%lasers_per_block] + ethernet_trasnfer_duration;
+        return boost::posix_time::microseconds( - delay);
+    }
+    static double azimuth(const packet& packet, unsigned int block)
+    {
+        return double( packet.blocks[block].rotation() ) / 100 + 90;
+    }
+};
+const double hdl64_s2_fw_v48::ethernet_trasnfer_duration=1200 * 8 /100 ;//1200 bytes on 100 Mbps = 96 microseconds
+//delay in microseconds for each data block, laser
+//each upper lasers is fired with a lower laser at the same time, e.g. lasers 0 and 32 fire at the same time then 1 and 33 ...
+//each row is for one block and each column is for one laser id 
+hdl64_s2_fw_v48::block_time_table hdl64_s2_fw_v48::time_table[block_count]=
+{
+    { 288, 286.74, 285.54, 284.34, 282, 280.74, 279.54, 278.34, 276, 274.74, 273.54, 272.34, 270, 268.74, 267.54, 266.34, 264, 262.74, 261.54, 260.34, 258, 256.74, 255.54, 254.34, 252, 250.74, 249.54, 248.34, 246, 244.74, 243.54, 242.34 },
+    { 288, 286.74, 285.54, 284.34, 282, 280.74, 279.54, 278.34, 276, 274.74, 273.54, 272.34, 270, 268.74, 267.54, 266.34, 264, 262.74, 261.54, 260.34, 258, 256.74, 255.54, 254.34, 252, 250.74, 249.54, 248.34, 246, 244.74, 243.54, 242.34 }, 
+    { 240, 238.74, 237.54, 236.34, 234, 232.74, 231.54, 230.34, 228, 226.74, 225.54, 224.34, 222, 220.74, 219.54, 218.34, 216, 214.74, 213.54, 212.34, 210, 208.74, 207.54, 206.34, 204, 202.74, 201.54, 200.34, 198, 196.74, 195.54, 194.34 }, 
+    { 240, 238.74, 237.54, 236.34, 234, 232.74, 231.54, 230.34, 228, 226.74, 225.54, 224.34, 222, 220.74, 219.54, 218.34, 216, 214.74, 213.54, 212.34, 210, 208.74, 207.54, 206.34, 204, 202.74, 201.54, 200.34, 198, 196.74, 195.54, 194.34 }, 
+    { 192, 190.74, 189.54, 188.34, 186, 184.74, 183.54, 182.34, 180, 178.74, 177.54, 176.34, 174, 172.74, 171.54, 170.34, 168, 166.74, 165.54, 164.34, 162, 160.74, 159.54, 158.34, 156, 154.74, 153.54, 152.34, 150, 148.74, 147.54, 146.34 }, 
+    { 192, 190.74, 189.54, 188.34, 186, 184.74, 183.54, 182.34, 180, 178.74, 177.54, 176.34, 174, 172.74, 171.54, 170.34, 168, 166.74, 165.54, 164.34, 162, 160.74, 159.54, 158.34, 156, 154.74, 153.54, 152.34, 150, 148.74, 147.54, 146.34 }, 
+    { 144, 142.74, 141.54, 140.34, 138, 136.74, 135.54, 134.34, 132, 130.74, 129.54, 128.34, 126, 124.74, 123.54, 122.34, 120, 118.74, 117.54, 116.34, 114, 112.74, 111.54, 110.34, 108, 106.74, 105.54, 104.34, 102, 100.74, 99.54, 98.34 }, 
+    { 144, 142.74, 141.54, 140.34, 138, 136.74, 135.54, 134.34, 132, 130.74, 129.54, 128.34, 126, 124.74, 123.54, 122.34, 120, 118.74, 117.54, 116.34, 114, 112.74, 111.54, 110.34, 108, 106.74, 105.54, 104.34, 102, 100.74, 99.54, 98.34 }, 
+    { 96, 94.74, 93.54, 92.34, 90, 88.74, 87.54, 86.34, 84, 82.74, 81.54, 80.34, 78, 76.74, 75.54, 74.34, 72, 70.74, 69.54, 68.34, 66, 64.74, 63.54, 62.34, 60, 58.74, 57.54, 56.34, 54, 52.74, 51.54, 50.34 }, 
+    { 96, 94.74, 93.54, 92.34, 90, 88.74, 87.54, 86.34, 84, 82.74, 81.54, 80.34, 78, 76.74, 75.54, 74.34, 72, 70.74, 69.54, 68.34, 66, 64.74, 63.54, 62.34, 60, 58.74, 57.54, 56.34, 54, 52.74, 51.54, 50.34 }, 
+    { 48, 46.74, 45.54, 44.34, 42, 40.74, 39.54, 38.34, 36, 34.74, 33.54, 32.34, 30, 28.74, 27.54, 26.34, 24, 22.74, 21.54, 20.34, 18, 16.74, 15.54, 14.34, 12, 10.74, 9.54, 8.34, 6, 4.74, 3.54, 2.34 }, 
+    { 48, 46.74, 45.54, 44.34, 42, 40.74, 39.54, 38.34, 36, 34.74, 33.54, 32.34, 30, 28.74, 27.54, 26.34, 24, 22.74, 21.54, 20.34, 18, 16.74, 15.54, 14.34, 12, 10.74, 9.54, 8.34, 6, 4.74, 3.54, 2.34 }, 
+};
+
 static bool is_upper( unsigned int block ) { return ( block & 0x1 ) == 0; }
 
 laser_return get_laser_return( const packet& packet
@@ -122,21 +159,21 @@ laser_return get_laser_return( const packet& packet
                              , unsigned int laser
                              , const boost::posix_time::ptime& timestamp
                              , double angularSpeed
-                             , bool raw )
+                             , bool legacy)
 {
     laser_return r;
     r.id = laser + ( is_upper( block ) ? 0 : 32 );
     r.intensity = packet.blocks[block].lasers[laser].intensity();
     r.range = double( packet.blocks[block].lasers[laser].range() ) / 500;
-    if( raw )
-    {
-        r.timestamp = timestamp;
-        r.azimuth = double( packet.blocks[block].rotation() ) / 100;
-    }
-    else
+    if (legacy)
     {
         r.timestamp = timestamp + time_offset( block, laser );
         r.azimuth = azimuth( packet, block, laser, angularSpeed );
+    }
+    else
+    {
+        r.timestamp = timestamp + hdl64_s2_fw_v48::time_offset( block, laser );
+        r.azimuth = hdl64_s2_fw_v48::azimuth(packet, block);
     }
     return r;
 }

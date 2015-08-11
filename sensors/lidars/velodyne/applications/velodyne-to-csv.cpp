@@ -66,6 +66,7 @@ static void usage()
     std::cerr << "              <timestamp>: 8-byte unsigned int, microseconds from linux epoch" << std::endl;
     std::cerr << "              <packet>: regular velodyne 1206-byte packet" << std::endl;
     std::cerr << "    --db <db.xml file> ; default /usr/local/etc/db.xml" << std::endl;
+    std::cerr << "              if the file is a version 0 then the legacy option is used for timing and azimuth calculation" << std::endl;
     std::cerr << "    --pcap : if present, velodyne data is read from pcap packets" << std::endl;
     std::cerr << "    --thin : if present, velodyne data is thinned (e.g. by velodyne-thin)" << std::endl;
     std::cerr << "    --udp-port <port> : read velodyne data directly from udp port" << std::endl;
@@ -84,6 +85,7 @@ static void usage()
     std::cerr << "                                    5: for scans 5, 6, ..." << std::endl;
     std::cerr << "                                    :3 for scans 0, 1, 2, 3" << std::endl;
     std::cerr << "    --raw-intensity: output intensity data without any correction" << std::endl;
+    std::cerr << "    --legacy: use old timetable and old algorithm for azimuth calculation" << std::endl;
     std::cerr << "    default output columns: " << comma::join( comma::csv::names< velodyne_point >(), ',' ) << std::endl;
     std::cerr << "    default binary format: " << comma::csv::format::value< velodyne_point >() << std::endl;
     std::cerr << std::endl;
@@ -188,29 +190,33 @@ int main( int ac, char** av )
         options.assert_mutually_exclusive( "--pcap,--thin,--udp-port,--proprietary,-q" );
         double min_range = options.value( "--min-range", 0.0 );
         bool raw_intensity=options.exists( "--raw-intensity" );
+        bool legacy = options.exists( "--legacy");
+        //use old algorithm for old database
+        if (!legacy && db.version == 0){legacy=true; std::cerr<<"using legacy option for old database"<<std::endl;}
+        if(legacy && db.version > 0){std::cerr<<"using new calibration with legacy option"<<std::endl;}
         if( options.exists( "--pcap" ) )
         {
-            velodyne_stream< snark::pcap_reader > v( db, outputInvalidpoints, from, to, raw_intensity );
+            velodyne_stream< snark::pcap_reader > v( db, outputInvalidpoints, from, to, raw_intensity, legacy );
             run( v, csv, min_range );
         }
         else if( options.exists( "--thin" ) )
         {
-            velodyne_stream< snark::thin_reader > v( db, outputInvalidpoints, from, to, raw_intensity );
+            velodyne_stream< snark::thin_reader > v( db, outputInvalidpoints, from, to, raw_intensity, legacy );
             run( v, csv, min_range );
         }
         else if( options.exists( "--udp-port" ) )
         {
-            velodyne_stream< snark::udp_reader > v( options.value< unsigned short >( "--udp-port" ), db, outputInvalidpoints, from, to, raw_intensity );
+            velodyne_stream< snark::udp_reader > v( options.value< unsigned short >( "--udp-port" ), db, outputInvalidpoints, from, to, raw_intensity, legacy );
             run( v, csv, min_range );
         }
         else if( options.exists( "--proprietary,-q" ) )
         {
-            velodyne_stream< snark::proprietary_reader > v( db, outputInvalidpoints, from, to, raw_intensity );
+            velodyne_stream< snark::proprietary_reader > v( db, outputInvalidpoints, from, to, raw_intensity, legacy );
             run( v, csv, min_range );
         }
         else
         {
-            velodyne_stream< snark::stream_reader > v( db, outputInvalidpoints, from, to, raw_intensity );
+            velodyne_stream< snark::stream_reader > v( db, outputInvalidpoints, from, to, raw_intensity, legacy );
             run( v, csv, min_range );
         }
         return 0;

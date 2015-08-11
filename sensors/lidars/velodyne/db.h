@@ -117,6 +117,8 @@ struct db
     static bool is_lower( unsigned int laser );
 
     void operator<<( std::istream& s );
+    
+    unsigned int version;
 };
 
 template < class Istream > inline void operator>>( Istream& s, db& db ) { db << s; }

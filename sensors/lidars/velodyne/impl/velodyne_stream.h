@@ -61,14 +61,16 @@ public:
     velodyne_stream( const velodyne::db& db
                   , bool outputInvalidpoints
                   , boost::optional< std::size_t > from = boost::optional< std::size_t >(), boost::optional< std::size_t > to = boost::optional< std::size_t >()
-                   , bool raw_intensity = false);
+                   , bool raw_intensity = false
+                   , bool legacy = false);
 
     template < typename P >
     velodyne_stream( const P& p
                   , const velodyne::db& db
                   , bool outputInvalidpoints
                   , boost::optional< std::size_t > from = boost::optional< std::size_t >(), boost::optional< std::size_t > to = boost::optional< std::size_t >() 
-                   , bool raw_intensity = false);
+                   , bool raw_intensity = false
+                   , bool legacy = false);
 
     bool read();
     const velodyne_point& point() const { return m_point; }
@@ -85,8 +87,9 @@ template < typename S >
 velodyne_stream< S >::velodyne_stream ( const velodyne::db& db, bool outputInvalidpoints
                     , boost::optional< std::size_t > from
                     , boost::optional< std::size_t > to 
-                    , bool raw_intensity):
-    m_stream( new S, outputInvalidpoints ),
+                    , bool raw_intensity
+                    , bool legacy):
+    m_stream( new S, outputInvalidpoints, legacy ),
     m_db( db ),
     m_to( to ),
     m_raw_intensity(raw_intensity)
@@ -99,8 +102,9 @@ template < typename P >
 velodyne_stream< S >::velodyne_stream ( const P& p, const velodyne::db& db, bool outputInvalidpoints
                     , boost::optional< std::size_t > from
                     , boost::optional< std::size_t > to 
-                    , bool raw_intensity):
-    m_stream( new S( p ), outputInvalidpoints ),
+                    , bool raw_intensity
+                    , bool legacy):
+    m_stream( new S( p ), outputInvalidpoints, legacy ),
     m_db( db ),
     m_to( to ),
     m_raw_intensity(raw_intensity)
