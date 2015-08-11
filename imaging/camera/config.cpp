@@ -41,5 +41,37 @@ config::distortion_t::operator Eigen::Matrix< double, 5, 1 >() const
     m[4] = radial.k3;
     return m;
 }
-    
+
+Eigen::Vector2d config::pixel_size() const { return Eigen::Vector2d( sensor_size.x() / image_size.x(), sensor_size.y() / image_size.y() ); }
+
+static double squared_radius( const Eigen::Vector2d& p, const snark::camera::config& c )
+{
+    return ( p - ( c.principal_point ? *c.principal_point : Eigen::Vector2d( c.image_size / 2 ) ) ).squaredNorm();
+}
+
+Eigen::Vector2d config::radially_corrected( const Eigen::Vector2d& p ) const
+{
+    double r2 = squared_radius( p, *this );
+    double k = 1 + distortion.radial.k1 * r2 + distortion.radial.k2 * r2 * r2 + distortion.radial.k3 * r2 * r2 * r2;
+    return p * k;
+}
+
+Eigen::Vector2d config::tangentially_corrected( const Eigen::Vector2d& p ) const
+{
+    double r2 = squared_radius( p, *this );
+    double xy = p.x() * p.y();
+    return p + Eigen::Vector2d( distortion.tangential.p1 * 2 * xy + distortion.tangential.p2 * ( r2 + p.x() * p.x() * 2 )
+                              , distortion.tangential.p2 * 2 * xy + distortion.tangential.p1 * ( r2 + p.y() * p.y() * 2 ) );
+}
+
+Eigen::Vector2d config::undistorted( const Eigen::Vector2d& p ) const { return tangentially_corrected( radially_corrected( p ) ); }
+
+Eigen::Vector3d config::to_cartesian( const Eigen::Vector2d& p, bool undistort ) const
+{
+    Eigen::Vector2d q = ( undistort ? undistorted( p ) : p ) - ( principal_point ? *principal_point : Eigen::Vector2d( image_size / 2 ) );
+    Eigen::Vector2d s = pixel_size();
+    return Eigen::Vector3d( q.x() * s.x(), -q.y() * s.x(), -focal_length ); // todo: verify signs
+}
+
+
 } } // namespace snark { namespace camera {

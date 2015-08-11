@@ -60,6 +60,9 @@ struct config
         
         operator Eigen::Matrix< double, 5, 1 >() const;
     };
+    
+    /// focal length in metres
+    double focal_length;
 
     /// sensor size in metres
     Eigen::Vector2d sensor_size;
@@ -67,18 +70,31 @@ struct config
     /// image size in pixels
     Eigen::Vector2d image_size;
     
-    /// focal length in pixels
-    Eigen::Vector2d focal_length;
-    
     /// principal point in pixels; if not defined, then image centre
     boost::optional< Eigen::Vector2d > principal_point;
     
     /// distortion
     distortion_t distortion;
     
-    config() : sensor_size( Eigen::Vector2d::Zero() ), image_size( Eigen::Vector2d::Zero() ), focal_length( Eigen::Vector2d::Zero() ), principal_point( Eigen::Vector2d::Zero() ) {}
-};
+    /// default constructor
+    config() : focal_length( 0 ), sensor_size( Eigen::Vector2d::Zero() ), image_size( Eigen::Vector2d::Zero() ), principal_point( Eigen::Vector2d::Zero() ) {}
     
+    /// return pixel size in metres
+    Eigen::Vector2d pixel_size() const;
+    
+    /// return radially corrected pixel
+    Eigen::Vector2d radially_corrected( const Eigen::Vector2d& p ) const;
+    
+    /// return tangentially corrected pixel
+    Eigen::Vector2d tangentially_corrected( const Eigen::Vector2d& p ) const;
+
+    /// return radially and then tangentially corrected pixel
+    Eigen::Vector2d undistorted( const Eigen::Vector2d& p ) const;
+    
+    /// return pixel coordinates in camera frame
+    Eigen::Vector3d to_cartesian( const Eigen::Vector2d& p, bool undistort = true ) const;
+};
+
 } } // namespace snark { namespace camera {
 
 #endif // SNARK_IMAGING_CAMERA_CONFIG_H

@@ -45,15 +45,9 @@ void usage( bool verbose )
     std::cerr << "usage: cat pixels.csv | image-pinhole <operation> <options> > points.csv" << std::endl;
     std::cerr << std::endl;
     std::cerr << "operations" << std::endl;
-    std::cerr << "    project: take on stdin pixels, undistort image, append pixel's cartesian coordinates in camera frame" << std::endl;
-    std::cerr << "    unproject: take on stdin cartesian coordinates in camera frame, append their coordinates in pixels" << std::endl;
+    std::cerr << "    to-cartesian: take on stdin pixels, undistort image, append pixel's cartesian coordinates in camera frame" << std::endl;
+    std::cerr << "    to-pixels: take on stdin cartesian coordinates in camera frame, append their coordinates in pixels" << std::endl;
     std::cerr << "    undistort: take on stdin pixels, append their undistorted values" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "    project" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "    unproject" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "    undistort" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    --help,-h: print help; --help --verbose for more help" << std::endl;
@@ -96,31 +90,6 @@ static snark::camera::config make_config( const std::string& config_parameters )
     return config;
 }
 
-static double squared_radius( const Eigen::Vector2d& p, const snark::camera::config& config )
-{
-    return ( p - ( config.principal_point ? *config.principal_point : Eigen::Vector2d( config.image_size / 2 ) ) ).squaredNorm();
-}
-
-static Eigen::Vector2d radially_corrected( const Eigen::Vector2d& p, const snark::camera::config& config )
-{
-    double r2 = squared_radius( p, config );
-    double k = 1 + config.distortion.radial.k1 * r2 + config.distortion.radial.k2 * r2 * r2 + config.distortion.radial.k3 * r2 * r2 * r2;
-    return p * k;
-}
-
-static Eigen::Vector2d tangentially_corrected( const Eigen::Vector2d& p, const snark::camera::config& config )
-{
-    double r2 = squared_radius( p, config );
-    double xy = p.x() * p.y();
-    return p + Eigen::Vector2d( config.distortion.tangential.p1 * 2 * xy + config.distortion.tangential.p2 * ( r2 + p.x() * p.x() * 2 )
-                              , config.distortion.tangential.p2 * 2 * xy + config.distortion.tangential.p1 * ( r2 + p.y() * p.y() * 2 ) );
-}
-
-static Eigen::Vector2d undistorted( const Eigen::Vector2d& p, const snark::camera::config& config )
-{
-    return tangentially_corrected( radially_corrected( p, config ), config );
-}
-
 int main( int ac, char** av )
 {
     try
@@ -130,14 +99,14 @@ int main( int ac, char** av )
         const std::vector< std::string >& unnamed = options.unnamed( "--input-fields,--output-fields,--output-format,--verbose,-v", "-.*" );
         if( unnamed.empty() ) { std::cerr << "image-pinhole: please specify operation" << std::endl; return 1; }
         std::string operation = unnamed[0];
-        output_details< Eigen::Vector2d, Eigen::Vector3d >( operation, "project", options );
-        output_details< Eigen::Vector3d, Eigen::Vector2d >( operation, "unproject", options );
+        output_details< Eigen::Vector2d, Eigen::Vector3d >( operation, "to-cartesian", options );
+        output_details< Eigen::Vector3d, Eigen::Vector2d >( operation, "to-pixels", options );
         output_details< Eigen::Vector2d, Eigen::Vector2d >( operation, "undistort", options );
         snark::camera::config config = make_config( options.value< std::string >( "--camera-config,--camera,--config,-c" ) );
         comma::csv::options csv( options );
         comma::csv::options output_csv;
         if( csv.binary() ) { output_csv.format( comma::csv::format::value< Eigen::Vector3d >() ); }
-        if( operation == "project" )
+        if( operation == "to-cartesian" )
         {
             comma::csv::input_stream< Eigen::Vector2d > is( std::cin, csv );
             comma::csv::output_stream< Eigen::Vector3d > os( std::cout, output_csv );
@@ -146,19 +115,13 @@ int main( int ac, char** av )
             {
                 const Eigen::Vector2d* p = is.read();
                 if( !p ) { break; }
-                Eigen::Vector2d q = undistorted( *p, config );
-                
-                
-                // todo
-                
-                
-                Eigen::Vector3d r = Eigen::Vector3d::Zero();
-                tied.append( r );
+                tied.append( config.to_cartesian( *p ) );
             }
             return 0;
         }
-        if( operation == "unproject" )
+        if( operation == "to-pixels" )
         {
+            std::cerr << "image-pinhole: to-pixels: todo" << std::endl; return 1;
             comma::csv::input_stream< Eigen::Vector3d > is( std::cin, csv );
             comma::csv::output_stream< Eigen::Vector2d > os( std::cout, output_csv );
             comma::csv::tied< Eigen::Vector3d, Eigen::Vector2d > tied( is, os );
@@ -167,7 +130,7 @@ int main( int ac, char** av )
                 const Eigen::Vector3d* p = is.read();
                 if( !p ) { break; }
                 
-                // todo: project
+                // todo
                 
                 Eigen::Vector2d q = Eigen::Vector2d::Zero();
                 tied.append( q );
@@ -183,7 +146,7 @@ int main( int ac, char** av )
             {
                 const Eigen::Vector2d* p = is.read();
                 if( !p ) { break; }
-                tied.append( undistorted( *p, config ) );
+                tied.append( config.undistorted( *p ) );
             }
             return 0;
         }
