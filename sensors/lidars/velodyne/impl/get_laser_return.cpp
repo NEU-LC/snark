@@ -119,12 +119,11 @@ const int lasers_per_block=32;
 const int block_count=12;
 struct hdl64_s2_fw_v48
 {
-    static const double ethernet_trasnfer_duration;
     typedef double block_time_table[lasers_per_block];
     static block_time_table time_table[block_count];
     static boost::posix_time::time_duration time_offset( unsigned int block, unsigned int laser )
     {
-        double delay = time_table[block][laser%lasers_per_block] + ethernet_trasnfer_duration;
+        double delay = time_table[block][laser%lasers_per_block] + timestamps::ethernetOutputDuration;
         return boost::posix_time::microseconds( - delay);
     }
     static double azimuth(const packet& packet, unsigned int block)
@@ -132,7 +131,6 @@ struct hdl64_s2_fw_v48
         return double( packet.blocks[block].rotation() ) / 100 + 90;
     }
 };
-const double hdl64_s2_fw_v48::ethernet_trasnfer_duration=1200 * 8 /100 ;//1200 bytes on 100 Mbps = 96 microseconds
 //delay in microseconds for each data block, laser
 //each upper lasers is fired with a lower laser at the same time, e.g. lasers 0 and 32 fire at the same time then 1 and 33 ...
 //each row is for one block and each column is for one laser id 
