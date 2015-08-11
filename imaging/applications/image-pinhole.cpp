@@ -69,7 +69,7 @@ template < typename S, typename T > static void output_details( const std::strin
     if( operation != expected ) { return; }
     if( options.exists( "--input-fields" ) ) { std::cerr << comma::join( comma::csv::names< S >(), ',' ) << std::endl; exit( 0 ); }
     if( options.exists( "--output-fields" ) ) { std::cerr << comma::join( comma::csv::names< T >(), ',' ) << std::endl; exit( 0 ); }
-    if( options.exists( "--output-format" ) ) { std::cerr << comma::join( comma::csv::format::value< T >(), ',' ) << std::endl; exit( 0 ); }
+    if( options.exists( "--output-format" ) ) { std::cerr << comma::csv::format::value< T >() << std::endl; exit( 0 ); }
 }
 
 static snark::camera::pinhole make_pinhole( const std::string& config_parameters )
