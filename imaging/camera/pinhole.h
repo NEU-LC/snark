@@ -68,7 +68,7 @@ struct pinhole
     Eigen::Vector2d sensor_size;
     
     /// image size in pixels
-    Eigen::Vector2d image_size;
+    Eigen::Vector2i image_size;
     
     /// principal point in pixels; if not defined, then image centre
     boost::optional< Eigen::Vector2d > principal_point;
@@ -77,10 +77,13 @@ struct pinhole
     distortion_t distortion;
     
     /// default constructor
-    pinhole() : focal_length( 0 ), sensor_size( Eigen::Vector2d::Zero() ), image_size( Eigen::Vector2d::Zero() ), principal_point( Eigen::Vector2d::Zero() ) {}
+    pinhole() : focal_length( 0 ), sensor_size( Eigen::Vector2d::Zero() ), image_size( Eigen::Vector2i::Zero() ), principal_point( Eigen::Vector2d::Zero() ) {}
     
     /// return pixel size in metres
     Eigen::Vector2d pixel_size() const;
+    
+    /// return image centre in pixels
+    Eigen::Vector2d image_centre() const;
     
     /// return radially corrected pixel
     Eigen::Vector2d radially_corrected( const Eigen::Vector2d& p ) const;

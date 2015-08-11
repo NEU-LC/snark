@@ -46,7 +46,7 @@ Eigen::Vector2d pinhole::pixel_size() const { return Eigen::Vector2d( sensor_siz
 
 static double squared_radius( const Eigen::Vector2d& p, const snark::camera::pinhole& c )
 {
-    return ( p - ( c.principal_point ? *c.principal_point : Eigen::Vector2d( c.image_size / 2 ) ) ).squaredNorm();
+    return ( p - ( c.principal_point ? *c.principal_point : c.image_centre() ) ).squaredNorm();
 }
 
 Eigen::Vector2d pinhole::radially_corrected( const Eigen::Vector2d& p ) const
@@ -68,10 +68,11 @@ Eigen::Vector2d pinhole::undistorted( const Eigen::Vector2d& p ) const { return 
 
 Eigen::Vector3d pinhole::to_cartesian( const Eigen::Vector2d& p, bool undistort ) const
 {
-    Eigen::Vector2d q = ( undistort ? undistorted( p ) : p ) - ( principal_point ? *principal_point : Eigen::Vector2d( image_size / 2 ) );
+    Eigen::Vector2d q = ( undistort ? undistorted( p ) : p ) - ( principal_point ? *principal_point : image_centre() );
     Eigen::Vector2d s = pixel_size();
     return Eigen::Vector3d( q.x() * s.x(), -q.y() * s.x(), -focal_length ); // todo: verify signs
 }
 
+Eigen::Vector2d pinhole::image_centre() const { return Eigen::Vector2d( double( image_size.x() ) / 2, double( image_size.y() ) / 2 ); }
 
 } } // namespace snark { namespace camera {

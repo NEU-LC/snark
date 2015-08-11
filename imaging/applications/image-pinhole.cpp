@@ -86,7 +86,7 @@ static snark::camera::pinhole make_pinhole( const std::string& config_parameters
         comma::from_ptree from_ptree( p, true );
         comma::visiting::apply( from_ptree ).to( pinhole );
     }
-    if( !pinhole.principal_point ) { pinhole.principal_point = pinhole.image_size / 2; }
+    if( !pinhole.principal_point ) { pinhole.principal_point = pinhole.image_centre(); }
     return pinhole;
 }
 
