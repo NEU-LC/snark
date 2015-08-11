@@ -42,14 +42,10 @@ laser_return get_laser_return( const packet& packet
                              , unsigned int block
                              , unsigned int laser
                              , const boost::posix_time::ptime& timestamp
-                             , double angularSpeed
-                             , bool raw = false );
+                             , double angularSpeed 
+                             , bool legacy = false );
 
 boost::posix_time::time_duration time_offset( unsigned int block, unsigned int laser );
-
-double azimuth( const packet& packet, unsigned int block, unsigned int laser, double angularSpeed );
-
-double azimuth( double rotation, unsigned int laser, double angularSpeed );
 
 } } } // namespace snark {  namespace velodyne { namespace impl {
 

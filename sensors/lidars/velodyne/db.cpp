@@ -206,6 +206,7 @@ void db::operator<<( std::istream& s )
     assert( s.good() );
     boost::archive::xml_iarchive ia( s );
     ia >> boost::serialization::make_nvp( "DB", serializable );
+    version = serializable.points_()[0].px.version_;
     for( std::size_t i = 0; i < lasers.size(); ++i ) { lasers[i] = laserDataFromSerializable( serializable, i ); }
 }
 

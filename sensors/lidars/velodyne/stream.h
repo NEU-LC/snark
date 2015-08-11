@@ -50,10 +50,10 @@ class stream : public boost::noncopyable
 {
     public:
         /// constructor
-        stream( S* stream, unsigned int rpm, bool outputInvalid = false, bool outputRaw = false );
+        stream( S* stream, unsigned int rpm, bool outputInvalid = false, bool legacy = false );
 
         /// constructor
-        stream( S* stream, bool outputInvalid = false, bool outputRaw = false );
+        stream( S* stream, bool outputInvalid = false, bool legacy = false );
 
         /// read point, return NULL, if end of stream
         laser_return* read();
@@ -71,7 +71,6 @@ class stream : public boost::noncopyable
     private:
         boost::optional< double > m_angularSpeed;
         bool m_outputInvalid;
-        bool m_outputRaw;
         boost::scoped_ptr< S > m_stream;
         boost::posix_time::ptime m_timestamp;
         const packet* m_packet;
@@ -104,27 +103,28 @@ class stream : public boost::noncopyable
         bool m_closed;
         laser_return m_laserReturn;
         double angularSpeed();
+        bool m_legacy;
 };
 
 template < typename S >
-inline stream< S >::stream( S* stream, unsigned int rpm, bool outputInvalid, bool outputRaw )
+inline stream< S >::stream( S* stream, unsigned int rpm, bool outputInvalid, bool legacy )
     : m_angularSpeed( ( 360 / 60 ) * rpm )
     , m_outputInvalid( outputInvalid )
-    , m_outputRaw( outputRaw )
     , m_stream( stream )
     , m_scan( 0 )
     , m_closed( false )
+    , m_legacy(legacy)
 {
     m_index.idx = m_size;
 }
 
 template < typename S >
-inline stream< S >::stream( S* stream, bool outputInvalid, bool outputRaw )
+inline stream< S >::stream( S* stream, bool outputInvalid, bool legacy )
     : m_outputInvalid( outputInvalid )
-    , m_outputRaw( outputRaw )
     , m_stream( stream )
     , m_scan( 0 )
     , m_closed( false )
+    , m_legacy(legacy)
 {
     m_index.idx = m_size;
 }
@@ -152,8 +152,8 @@ inline laser_return* stream< S >::read()
             if( impl::stream_traits< S >::is_new_scan( m_tick, *m_stream, *m_packet ) ) { ++m_scan; }
             m_timestamp = impl::stream_traits< S >::timestamp( *m_stream );
         }
-        // todo: scan number will be slightly different, depending on m_outputRaw value
-        m_laserReturn = impl::get_laser_return( *m_packet, m_index.block, m_index.laser, m_timestamp, angularSpeed(), m_outputRaw );
+        if(m_timestamp == boost::posix_time::ptime(boost::date_time::not_a_date_time)) {m_timestamp = impl::stream_traits< S >::timestamp( *m_stream );}
+        m_laserReturn = impl::get_laser_return( *m_packet, m_index.block, m_index.laser, m_timestamp, angularSpeed(), m_legacy );
         ++m_index;
         bool valid = !comma::math::equal( m_laserReturn.range, 0 );
         if( valid || m_outputInvalid ) { return &m_laserReturn; }
