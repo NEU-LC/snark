@@ -23,6 +23,6 @@ INSTALL( TARGETS image-undistort-map cv-cat image-accumulate stereo-to-points
          RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR}
          COMPONENT Runtime )
          
-add_executable( image-project image-project.cpp )
-target_link_libraries( image-project snark_imaging ${comma_ALL_LIBRARIES} ${OpenCV_LIBS} ) #target_link_libraries( image-project snark_imaging ${comma_ALL_LIBRARIES} ${OpenCV_LIBS} tbb )
-install( TARGETS image-project RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
+add_executable( image-pinhole image-pinhole.cpp )
+target_link_libraries( image-pinhole snark_imaging ${comma_ALL_LIBRARIES} ${OpenCV_LIBS} ) #target_link_libraries( image-pinhole snark_imaging ${comma_ALL_LIBRARIES} ${OpenCV_LIBS} tbb )
+install( TARGETS image-pinhole RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )

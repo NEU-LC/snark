@@ -42,18 +42,4 @@ config::distortion_t::operator Eigen::Matrix< double, 5, 1 >() const
     return m;
 }
     
-config config::to_mm( double pixel_size ) const
-{
-    config c = *this;
-    // todo
-    return c;
-}
-
-config config::to_pixels( double pixel_size ) const
-{
-    config c = *this;
-    // todo
-    return c;
-}
-    
 } } // namespace snark { namespace camera {

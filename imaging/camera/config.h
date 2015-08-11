@@ -32,32 +32,25 @@
 #ifndef SNARK_IMAGING_CAMERA_CONFIG_H
 #define SNARK_IMAGING_CAMERA_CONFIG_H
 
+#include <boost/optional.hpp>
 #include <Eigen/Core>
 
 namespace snark { namespace camera {
 
 struct config
 {
-    Eigen::Vector2d sensor_size;
-    Eigen::Vector2d image_size;
-    Eigen::Vector2d focal_length;
-    Eigen::Vector2d principal_point;
-    
     struct distortion_t
     {
         struct radial_t
         {
-            double k1;
-            double k2;
-            double k3;
+            double k1, k2, k3;
             
             radial_t() : k1( 0 ), k2( 0 ), k3( 0 ) {}
         };
         
         struct tangential_t
         {
-            double p1;
-            double p2;
+            double p1, p2;
             
             tangential_t() : p1( 0 ), p2( 0 ) {}
         };
@@ -67,12 +60,21 @@ struct config
         
         operator Eigen::Matrix< double, 5, 1 >() const;
     };
+
+    /// sensor size in metres
+    Eigen::Vector2d sensor_size;
     
+    /// image size in pixels
+    Eigen::Vector2d image_size;
+    
+    /// focal length in pixels
+    Eigen::Vector2d focal_length;
+    
+    /// principal point in pixels; if not defined, then image centre
+    boost::optional< Eigen::Vector2d > principal_point;
+    
+    /// distortion
     distortion_t distortion;
-    
-    config to_mm( double pixel_size ) const;
-    
-    config to_pixels( double pixel_size ) const;
     
     config() : sensor_size( Eigen::Vector2d::Zero() ), image_size( Eigen::Vector2d::Zero() ), focal_length( Eigen::Vector2d::Zero() ), principal_point( Eigen::Vector2d::Zero() ) {}
 };
