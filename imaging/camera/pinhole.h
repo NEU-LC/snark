@@ -29,15 +29,15 @@
 
 /// @authors vsevolod vlaskine, zhe xu
 
-#ifndef SNARK_IMAGING_CAMERA_CONFIG_H
-#define SNARK_IMAGING_CAMERA_CONFIG_H
+#ifndef SNARK_IMAGING_CAMERA_PINHOLE_H
+#define SNARK_IMAGING_CAMERA_PINHOLE_H
 
 #include <boost/optional.hpp>
 #include <Eigen/Core>
 
 namespace snark { namespace camera {
 
-struct config
+struct pinhole
 {
     struct distortion_t
     {
@@ -77,7 +77,7 @@ struct config
     distortion_t distortion;
     
     /// default constructor
-    config() : focal_length( 0 ), sensor_size( Eigen::Vector2d::Zero() ), image_size( Eigen::Vector2d::Zero() ), principal_point( Eigen::Vector2d::Zero() ) {}
+    pinhole() : focal_length( 0 ), sensor_size( Eigen::Vector2d::Zero() ), image_size( Eigen::Vector2d::Zero() ), principal_point( Eigen::Vector2d::Zero() ) {}
     
     /// return pixel size in metres
     Eigen::Vector2d pixel_size() const;
@@ -97,4 +97,4 @@ struct config
 
 } } // namespace snark { namespace camera {
 
-#endif // SNARK_IMAGING_CAMERA_CONFIG_H
+#endif // SNARK_IMAGING_CAMERA_PINHOLE_H
