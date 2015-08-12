@@ -56,6 +56,7 @@
 #include "filters.h"
 #include "serialization.h"
 #include "traits.h"
+#include "../vegetation/filters.h"
 
 struct map_input_t
 {
@@ -309,7 +310,7 @@ static filters::value_type transpose_impl_( filters::value_type m )
     return n;
 }
 
-static int single_channel_type_( int t )
+int single_channel_type( int t )
 {
     switch( t )
     {
@@ -356,7 +357,7 @@ static filters::value_type split_impl_( filters::value_type m )
 {
     filters::value_type n;
     n.first = m.first;
-    n.second = cv::Mat( m.second.rows * m.second.channels(), m.second.cols, single_channel_type_( m.second.type() ) ); // todo: check number of channels!
+    n.second = cv::Mat( m.second.rows * m.second.channels(), m.second.cols, single_channel_type( m.second.type() ) ); // todo: check number of channels!
     std::vector< cv::Mat > channels;
     channels.reserve( m.second.channels() );    
     for( unsigned int i = 0; i < static_cast< unsigned int >( m.second.channels() ); ++i )
@@ -440,7 +441,7 @@ static comma::csv::options make_header_csv()
 static filters::value_type histogram_impl_( filters::value_type m )
 {
     static comma::csv::output_stream< serialization::header > os( std::cout, make_header_csv() ); // todo: quick and dirty; generalize imaging::serialization::pipeline
-    if( single_channel_type_( m.second.type() ) != CV_8UC1 ) { std::cerr << "cv-cat: histogram: expected an unsigned char image type; got " << type_as_string( m.second.type() ) << std::endl; exit( 1 ); }
+    if( single_channel_type( m.second.type() ) != CV_8UC1 ) { std::cerr << "cv-cat: histogram: expected an unsigned char image type; got " << type_as_string( m.second.type() ) << std::endl; exit( 1 ); }
     typedef boost::array< comma::uint32, 256 > channel_t;
     std::vector< channel_t > channels( m.second.channels() );
     for( unsigned int i = 0; i < channels.size(); ++i ) { ::memset( ( char* )( &channels[i][0] ), 0, sizeof( comma::uint32 ) * 256 ); }
@@ -1118,7 +1119,9 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
         }
         else
         {
-            COMMA_THROW( comma::exception, "expected filter, got \"" << v[i] << "\"" );
+            const boost::optional< filter >& vf = imaging::vegetation::filters::make( v[i] );
+            if( !vf ) { COMMA_THROW( comma::exception, "expected filter, got \"" << v[i] << "\"" ); }
+            f.push_back( *vf );
         }
         modified = ( v[i] != "view" && v[i] != "thumb" && v[i] != "split" );
     }
@@ -1161,6 +1164,7 @@ static std::string usage_impl_()
     oss << "        head=<n>: output <n> frames and exit" << std::endl;
     oss << "        histogram: calculate image histogram and output in binary format: t,3ui,256ui for ub images; t,3ui,256ui,256ui,256ui for 3ub images, etc" << std::endl;
     oss << "        invert: invert image (to negative)" << std::endl;
+    oss << "        linear-combination=<k1>,<k2>,<k3>,...: output grey-scale image that is linear combination of input channels with given coefficients" << std::endl;
     oss << "        magnitude: calculate magnitude for a 2-channel image; see cv::magnitude() for details" << std::endl;    
     oss << "        map=<map file>[&<csv options>][&permissive]: map integer values to floating point values read from the map file" << std::endl;
     oss << "             <csv options>: usual csv options for map file, but &-separated (running out of separator characters)" << std::endl;
@@ -1201,6 +1205,8 @@ static std::string usage_impl_()
     oss << "                <filename>[:<path>]: simple blob detector params config file and optionally cv file node path in it" << std::endl;
     oss << "                                     e.g: my-params.txt:blob" << std::endl;
     oss << "                                     if not present, defaults will be used" << std::endl;
+    oss << std::endl;
+    oss << snark::imaging::vegetation::filters::usage() << std::endl;
     return oss.str();
 }
 
