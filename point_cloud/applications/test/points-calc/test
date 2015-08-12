@@ -1,0 +1,20 @@
+#!/bin/bash
+source $( which comma-application-util ) || { echo "cannot source 'comma-application-util'" >&2; exit 1; }
+
+out="output/out"
+args=
+fields=
+#first line is the args, second fields can be empty
+read args
+read fields
+if [[ -z $fields ]]; then fields=$(points-calc $args --input-fields); fi
+echo "args: $args" >&2
+echo "fields: $fields" >&2
+out_fields=$(points-calc $args --output-fields)
+echo "out_fields: $out_fields" >&2
+#echo "input: $input" >&2
+echo "running: points-calc $args --fields=\"$fields\" | csv-shuffle --fields=\"$fields,$out_fields\" --output=\"$out_fields\" >\"$out\"" >&2
+points-calc $args --fields="$fields" | csv-shuffle --fields="$fields,$out_fields" --output="$out_fields" >"$out"
+if ! comma_status_ok; then echo "test failed" >&2; exit 1; fi
+#cat "$out" | name-value-from-csv --fields="$out_fields" --line-number --prefix="output"
+cat -n output/out | sed 's#^ *#output[#;s#\t#]="#;s#$#"#'

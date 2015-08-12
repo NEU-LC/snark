@@ -44,6 +44,7 @@ typedef std::pair< Eigen::Vector3d, Eigen::Vector3d > point_pair_t;
 
 static comma::csv::options csv;
 static comma::csv::ascii< Eigen::Vector3d > ascii;
+static bool verbose;
 
 static void usage( bool more = false )
 {
@@ -127,11 +128,13 @@ static void usage( bool more = false )
     std::cerr << std::endl;
     std::cerr << "    plane-intersection: read points and plane normals from stdin, output intersection of the ray with the plane" << std::endl;
     std::cerr << "        input fields: x,y,z,normal/x,normal/y,normal/z" << std::endl;
-    std::cerr << "        todo: elaborate help" << std::endl;
-    std::cerr << "        todo: --input-fields" << std::endl;
-    std::cerr << "        todo: --output-fields" << std::endl;
-    std::cerr << "        todo: --output-format" << std::endl;
-    std::cerr << "        todo: --normal=<x>,<y>,<z>: default normal" << std::endl;
+    std::cerr << "        the plane passes through the normal and is perpendicular to it" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "        options:" << std::endl;
+    std::cerr << "            --input-fields: print input field names" << std::endl;
+    std::cerr << "            --output-fields: print output field names" << std::endl;
+    std::cerr << "            --output-format: print output fields format" << std::endl;
+    std::cerr << "            --normal=<x>,<y>,<z>: default normal; uses this value when normal is empty or any of its fields are omitted" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    discretise, discretize: read input data and discretise intervals between adjacent points with --step" << std::endl;
     std::cerr << "        skip discretised points that are closer to the end of the interval than --tolerance (default: --tolerance=0)" << std::endl;
@@ -412,12 +415,65 @@ struct record
 
 } // namespace remove_outliers {
 
+struct plane_intersection
+{
+    struct input_t
+    {
+        Eigen::Vector3d point;
+        Eigen::Vector3d normal;
+        input_t():point( Eigen::Vector3d::Zero() ),normal(Eigen::Vector3d::Zero()){}
+        input_t( const Eigen::Vector3d&  default_normal):point( Eigen::Vector3d::Zero() ),normal(default_normal){}
+    };
+    typedef Eigen::Vector3d output_t;
+    static void run( const comma::csv::options& csv_opt, const Eigen::Vector3d& normal)
+    {
+        comma::csv::input_stream<input_t> is( std::cin, csv_opt, input_t(normal));
+        comma::csv::output_stream<output_t> os( std::cout, csv_opt.binary() );
+        comma::csv::tied<input_t,output_t> tied(is,os);
+        const double inf=std::numeric_limits<double>::infinity();
+        while(is.ready() || std::cin.good())
+        {
+            const input_t* rec=is.read();
+            if(!rec){break;}
+            if(verbose)
+            {
+                std::cerr<<"p: "<<rec->point.x()<<", "<<rec->point.y()<<", "<<rec->point.z()<<std::endl;
+                std::cerr<<"n: "<<rec->normal.x()<<", "<<rec->normal.y()<<", "<<rec->normal.z()<<std::endl;
+            }
+            double d=rec->point.dot(rec->normal);
+            double n2=rec->normal.squaredNorm();
+            if(verbose){std::cerr<<"d "<<d<<", n2 "<<n2<<std::endl;}
+            output_t out = (d == 0) ? Eigen::Vector3d(inf,inf,inf) : Eigen::Vector3d(( n2/d)*rec->point);
+            tied.append(out);
+        }
+    }
+};
+
+namespace comma { namespace visiting {
+
+template <> struct traits< plane_intersection::input_t >
+{
+    template< typename K, typename V > static void visit( const K& k, plane_intersection::input_t& t, V& v )
+    {
+        traits<Eigen::Vector3d>::visit(k, t.point, v);
+        v.apply( "normal", t.normal);
+    }
+    template< typename K, typename V > static void visit( const K& k, const plane_intersection::input_t& t, V& v )
+    {
+        traits<Eigen::Vector3d>::visit(k, t.point, v);
+        v.apply( "normal", t.normal);
+    }
+};
+
+} } // namespace comma { namespace visiting {
+    
+
 int main( int ac, char** av )
 {
     try
     {
         comma::command_line_options options( ac, av );
-        bool verbose = options.exists( "--verbose,-v" );
+        verbose = options.exists( "--verbose,-v" );
         if( options.exists( "--help,-h" ) ) { usage( verbose ); }
         csv = comma::csv::options( options );
         csv.full_xpath = true;
@@ -425,6 +481,14 @@ int main( int ac, char** av )
         const std::vector< std::string >& operations = options.unnamed( "--verbose,-v,--trace,--no-antialiasing,--next", "-.*" );
         if( operations.size() != 1 ) { std::cerr << "points-calc: expected one operation, got " << operations.size() << ": " << comma::join( operations, ' ' ) << std::endl; return 1; }
         const std::string& operation = operations[0];
+        if( operation == "plane-intersection" )
+        {
+            if(options.exists("--input-fields")){std::cout<<comma::join( comma::csv::names<plane_intersection::input_t>(true), ',' ) << std::endl; return 0; }
+            if(options.exists("--output-fields")){std::cout<<comma::join( comma::csv::names<plane_intersection::output_t>(false), ',' ) << std::endl; return 0; }
+            if(options.exists("--output-format")){std::cout<<comma::csv::format::value<plane_intersection::output_t>() << std::endl; return 0; }
+            plane_intersection::run(csv, comma::csv::ascii< Eigen::Vector3d >().get(options.value< std::string >( "--normal",  "0,0,0")));
+            return 0;
+        }
         if( operation == "distance" )
         {
             if(    csv.has_field( "first" )   || csv.has_field( "second" )
