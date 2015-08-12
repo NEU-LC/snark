@@ -30,9 +30,12 @@
 
 #include <fstream>
 #include <iostream>
+#include <boost/filesystem/operations.hpp>
 #include <boost/scoped_ptr.hpp>
 #include <comma/application/command_line_options.h>
 #include <comma/base/exception.h>
+#include <comma/name_value/ptree.h>
+#include <comma/name_value/serialize.h>
 #include <comma/string/split.h>
 
 #include <opencv2/core/core.hpp>
@@ -41,6 +44,9 @@
 #include <opencv2/highgui/highgui_c.h>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/imgproc/imgproc_c.h>
+
+#include "../camera/pinhole.h"
+#include "../camera/traits.h"
 
 static void usage()
 {
@@ -55,14 +61,36 @@ static void usage()
     std::cerr << "<file>: output file, \"-\" for stdout" << std::endl;
     std::cerr << std::endl;
     std::cerr << "<options>" << std::endl;
-    std::cerr << "    --intrinsics <fx,fy,cx,cy>: intrinsic parameters in pixel" << std::endl;
-    std::cerr << "    --distortion <k1,k2,p1,p2,k3>: distortion parameters" << std::endl;
-    std::cerr << "    --size <width>x<height>: image size in pixel" << std::endl;
+    std::cerr << "    --camera-config,--camera,--config,-c=<parameters>: camera configuration" << std::endl;
+    std::cerr << "        <parameters>: filename of json configuration file or ';'-separated path-value pairs" << std::endl;
+    std::cerr << "                      e.g: --config=\"focal_length/x=123;focal_length/y=123.1;...\"" << std::endl;
+    std::cerr << "    --output-config,--sample-config: output sample config and exit" << std::endl;
+    std::cerr << "    --intrinsics <fx,fy,cx,cy>: deprecated, use --config; intrinsic parameters in pixel" << std::endl;
+    std::cerr << "    --distortion <k1,k2,p1,p2,k3>: deprecated, use --config; distortion parameters" << std::endl;
+    std::cerr << "    --size <width>x<height>: deprecated, use --config; image size in pixel" << std::endl;
     std::cerr << std::endl;
     std::cerr << "example: " << std::endl;
     std::cerr << "    image-undistort-map --intrinsics \"830.2,832.4,308.8,232.6\" --distortion \"-0.42539,0.14800,0.00218,0.00061\" --size 1280x960 bumblebee-undistort-map.bin " << std::endl;
     std::cerr << std::endl;
     exit( 1 );
+}
+
+static snark::camera::pinhole make_pinhole( const std::string& config_parameters )
+{
+    snark::camera::pinhole pinhole;
+    if( boost::filesystem::exists( config_parameters ) )
+    {
+        comma::read_json( pinhole, config_parameters );
+    }
+    else
+    {
+        boost::property_tree::ptree p;
+        comma::property_tree::from_path_value_string( config_parameters, '=', ';', comma::property_tree::path_value::no_check, true );
+        comma::from_ptree from_ptree( p, true );
+        comma::visiting::apply( from_ptree ).to( pinhole );
+    }
+    if( !pinhole.principal_point ) { pinhole.principal_point = pinhole.image_centre(); }
+    return pinhole;
 }
 
 static std::pair< unsigned int, unsigned int> get_size( const std::string& size )
@@ -80,39 +108,70 @@ int main(int argc, char *argv[])
     {
         comma::command_line_options options( argc, argv );
         if( options.exists( "--help,-h" ) ) { usage(); }
-
-        // intrisic parameters
-        std::string intrinsicString = options.value< std::string >( "--intrinsics" );
-        std::vector< std::string > intrinsics = comma::split( intrinsicString, ',' );
-        if( intrinsics.size() != 4u )
+        std::string config_parameters = options.value< std::string >( "--camera-config,--camera,--config,-c", "" );
+        double fx;
+        double fy;
+        double cx;
+        double cy;
+        double k1;
+        double k2;
+        double p1;
+        double p2;
+        double k3;
+        std::pair< unsigned int, unsigned int> size;
+        if( config_parameters.empty() )
         {
-            std::cerr << "image-undistort-map: please specify intrinsic parameters as fx,fy,cx,cy" << std::endl; exit( 1 );
+            // intrisic parameters
+            std::string intrinsicString = options.value< std::string >( "--intrinsics" );
+            std::vector< std::string > intrinsics = comma::split( intrinsicString, ',' );
+            if( intrinsics.size() != 4u )
+            {
+                std::cerr << "image-undistort-map: please specify intrinsic parameters as fx,fy,cx,cy" << std::endl; exit( 1 );
+            }
+            fx = boost::lexical_cast< double >( intrinsics[0] );
+            fy = boost::lexical_cast< double >( intrinsics[1] );
+            cx = boost::lexical_cast< double >( intrinsics[2] );
+            cy = boost::lexical_cast< double >( intrinsics[3] );
+            
+            // distortion parameters
+            std::string distortionString = options.value< std::string >( "--distortion" );
+            std::vector< std::string > distortion = comma::split( distortionString, ',' );
+            if( distortion.size() != 5u )
+            {
+                std::cerr << "image-undistort-map: please specify intrinsic parameters as k1,k2,p1,p2,k3" << std::endl; exit( 1 );
+            }
+            k1 = boost::lexical_cast< double >( distortion[0] );
+            k2 = boost::lexical_cast< double >( distortion[1] );
+            p1 = boost::lexical_cast< double >( distortion[2] );
+            p2 = boost::lexical_cast< double >( distortion[3] );
+            k3 = boost::lexical_cast< double >( distortion[4] );
+            
+            // image size
+            std::string sizeString = options.value< std::string >( "--size" );
+            size = get_size( sizeString );
         }
-        double fx = boost::lexical_cast< double >( intrinsics[0] );
-        double fy = boost::lexical_cast< double >( intrinsics[1] );
-        double cx = boost::lexical_cast< double >( intrinsics[2] );
-        double cy = boost::lexical_cast< double >( intrinsics[3] );
+        else
+        {
+            snark::camera::pinhole pinhole = make_pinhole( config_parameters );
+            Eigen::Vector2d pixel_size = pinhole.pixel_size();
+            fx = pinhole.focal_length / pixel_size.x();
+            fy = pinhole.focal_length / pixel_size.y();
+            cx = pinhole.principal_point->x();
+            cy = pinhole.principal_point->y();
+            k1 = pinhole.distortion.radial.k1;
+            k2 = pinhole.distortion.radial.k2;
+            k3 = pinhole.distortion.radial.k3;
+            p1 = pinhole.distortion.tangential.p1;
+            p2 = pinhole.distortion.tangential.p2;
+            size.first = pinhole.image_size.x();
+            size.second = pinhole.image_size.y();
+        }
+        
         cv::Mat cameraMatrix = (cv::Mat_<double>(3,3) << fx, 0,  cx,
                                                          0,  fy, cy,
                                                          0,  0,  1);
-        // distortion parameters
-        std::string distortionString = options.value< std::string >( "--distortion" );
-        std::vector< std::string > distortion = comma::split( distortionString, ',' );
-        if( distortion.size() != 5u )
-        {
-            std::cerr << "image-undistort-map: please specify intrinsic parameters as k1,k2,p1,p2,k3" << std::endl; exit( 1 );
-        }
-        double k1 = boost::lexical_cast< double >( distortion[0] );
-        double k2 = boost::lexical_cast< double >( distortion[1] );
-        double p1 = boost::lexical_cast< double >( distortion[2] );
-        double p2 = boost::lexical_cast< double >( distortion[3] );
-        double k3 = boost::lexical_cast< double >( distortion[4] );
         cv::Mat distCoeffs = ( cv::Mat_<double>(5,1) << k1, k2, p1, p2, k3 );
         
-        // image size
-        std::string sizeString = options.value< std::string >( "--size" );
-        std::pair< unsigned int, unsigned int> size = get_size( sizeString );
-
         // compute maps
         cv::Mat map1;
         cv::Mat map2;

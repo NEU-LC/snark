@@ -27,11 +27,11 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "config.h"
+#include "pinhole.h"
 
 namespace snark { namespace camera {
 
-config::distortion_t::operator Eigen::Matrix< double, 5, 1 >() const
+pinhole::distortion_t::operator Eigen::Matrix< double, 5, 1 >() const
 {
     Eigen::Matrix< double, 5, 1 > m;
     m[0] = radial.k1;
@@ -42,21 +42,21 @@ config::distortion_t::operator Eigen::Matrix< double, 5, 1 >() const
     return m;
 }
 
-Eigen::Vector2d config::pixel_size() const { return Eigen::Vector2d( sensor_size.x() / image_size.x(), sensor_size.y() / image_size.y() ); }
+Eigen::Vector2d pinhole::pixel_size() const { return Eigen::Vector2d( sensor_size.x() / image_size.x(), sensor_size.y() / image_size.y() ); }
 
-static double squared_radius( const Eigen::Vector2d& p, const snark::camera::config& c )
+static double squared_radius( const Eigen::Vector2d& p, const snark::camera::pinhole& c )
 {
-    return ( p - ( c.principal_point ? *c.principal_point : Eigen::Vector2d( c.image_size / 2 ) ) ).squaredNorm();
+    return ( p - ( c.principal_point ? *c.principal_point : c.image_centre() ) ).squaredNorm();
 }
 
-Eigen::Vector2d config::radially_corrected( const Eigen::Vector2d& p ) const
+Eigen::Vector2d pinhole::radially_corrected( const Eigen::Vector2d& p ) const
 {
     double r2 = squared_radius( p, *this );
     double k = 1 + distortion.radial.k1 * r2 + distortion.radial.k2 * r2 * r2 + distortion.radial.k3 * r2 * r2 * r2;
     return p * k;
 }
 
-Eigen::Vector2d config::tangentially_corrected( const Eigen::Vector2d& p ) const
+Eigen::Vector2d pinhole::tangentially_corrected( const Eigen::Vector2d& p ) const
 {
     double r2 = squared_radius( p, *this );
     double xy = p.x() * p.y();
@@ -64,14 +64,15 @@ Eigen::Vector2d config::tangentially_corrected( const Eigen::Vector2d& p ) const
                               , distortion.tangential.p2 * 2 * xy + distortion.tangential.p1 * ( r2 + p.y() * p.y() * 2 ) );
 }
 
-Eigen::Vector2d config::undistorted( const Eigen::Vector2d& p ) const { return tangentially_corrected( radially_corrected( p ) ); }
+Eigen::Vector2d pinhole::undistorted( const Eigen::Vector2d& p ) const { return tangentially_corrected( radially_corrected( p ) ); }
 
-Eigen::Vector3d config::to_cartesian( const Eigen::Vector2d& p, bool undistort ) const
+Eigen::Vector3d pinhole::to_cartesian( const Eigen::Vector2d& p, bool undistort ) const
 {
-    Eigen::Vector2d q = ( undistort ? undistorted( p ) : p ) - ( principal_point ? *principal_point : Eigen::Vector2d( image_size / 2 ) );
+    Eigen::Vector2d q = ( undistort ? undistorted( p ) : p ) - ( principal_point ? *principal_point : image_centre() );
     Eigen::Vector2d s = pixel_size();
     return Eigen::Vector3d( q.x() * s.x(), -q.y() * s.x(), -focal_length ); // todo: verify signs
 }
 
+Eigen::Vector2d pinhole::image_centre() const { return Eigen::Vector2d( double( image_size.x() ) / 2, double( image_size.y() ) / 2 ); }
 
 } } // namespace snark { namespace camera {

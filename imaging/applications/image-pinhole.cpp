@@ -34,7 +34,7 @@
 #include <comma/csv/stream.h>
 #include <comma/name_value/ptree.h>
 #include <comma/name_value/serialize.h>
-#include "../camera/config.h"
+#include "../camera/pinhole.h"
 #include "../camera/traits.h"
 
 void usage( bool verbose )
@@ -69,25 +69,25 @@ template < typename S, typename T > static void output_details( const std::strin
     if( operation != expected ) { return; }
     if( options.exists( "--input-fields" ) ) { std::cerr << comma::join( comma::csv::names< S >(), ',' ) << std::endl; exit( 0 ); }
     if( options.exists( "--output-fields" ) ) { std::cerr << comma::join( comma::csv::names< T >(), ',' ) << std::endl; exit( 0 ); }
-    if( options.exists( "--output-format" ) ) { std::cerr << comma::join( comma::csv::format::value< T >(), ',' ) << std::endl; exit( 0 ); }
+    if( options.exists( "--output-format" ) ) { std::cerr << comma::csv::format::value< T >() << std::endl; exit( 0 ); }
 }
 
-static snark::camera::config make_config( const std::string& config_parameters )
+static snark::camera::pinhole make_pinhole( const std::string& config_parameters )
 {
-    snark::camera::config config;
+    snark::camera::pinhole pinhole;
     if( boost::filesystem::exists( config_parameters ) )
     {
-        comma::read_json( config, config_parameters );
+        comma::read_json( pinhole, config_parameters );
     }
     else
     {
         boost::property_tree::ptree p;
         comma::property_tree::from_path_value_string( config_parameters, '=', ';', comma::property_tree::path_value::no_check, true );
         comma::from_ptree from_ptree( p, true );
-        comma::visiting::apply( from_ptree ).to( config );
+        comma::visiting::apply( from_ptree ).to( pinhole );
     }
-    if( !config.principal_point ) { config.principal_point = config.image_size / 2; }
-    return config;
+    if( !pinhole.principal_point ) { pinhole.principal_point = pinhole.image_centre(); }
+    return pinhole;
 }
 
 int main( int ac, char** av )
@@ -95,14 +95,14 @@ int main( int ac, char** av )
     try
     {
         comma::command_line_options options( ac, av, usage );
-        if( options.exists( "--output-config,--sample-config" ) ) { comma::write_json( snark::camera::config(), std::cout ); return 0; }
+        if( options.exists( "--output-config,--sample-config" ) ) { comma::write_json( snark::camera::pinhole(), std::cout ); return 0; }
         const std::vector< std::string >& unnamed = options.unnamed( "--input-fields,--output-fields,--output-format,--verbose,-v", "-.*" );
         if( unnamed.empty() ) { std::cerr << "image-pinhole: please specify operation" << std::endl; return 1; }
         std::string operation = unnamed[0];
         output_details< Eigen::Vector2d, Eigen::Vector3d >( operation, "to-cartesian", options );
         output_details< Eigen::Vector3d, Eigen::Vector2d >( operation, "to-pixels", options );
         output_details< Eigen::Vector2d, Eigen::Vector2d >( operation, "undistort", options );
-        snark::camera::config config = make_config( options.value< std::string >( "--camera-config,--camera,--config,-c" ) );
+        snark::camera::pinhole pinhole = make_pinhole( options.value< std::string >( "--camera-config,--camera,--config,-c" ) );
         comma::csv::options csv( options );
         comma::csv::options output_csv;
         if( csv.binary() ) { output_csv.format( comma::csv::format::value< Eigen::Vector3d >() ); }
@@ -115,7 +115,7 @@ int main( int ac, char** av )
             {
                 const Eigen::Vector2d* p = is.read();
                 if( !p ) { break; }
-                tied.append( config.to_cartesian( *p ) );
+                tied.append( pinhole.to_cartesian( *p ) );
             }
             return 0;
         }
@@ -146,7 +146,7 @@ int main( int ac, char** av )
             {
                 const Eigen::Vector2d* p = is.read();
                 if( !p ) { break; }
-                tied.append( config.undistorted( *p ) );
+                tied.append( pinhole.undistorted( *p ) );
             }
             return 0;
         }

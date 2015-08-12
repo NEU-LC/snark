@@ -8,7 +8,7 @@ FILE( GLOB stereo_includes ${dir}/stereo/*.h )
 SOURCE_GROUP( ${TARGET_NAME} FILES ${source} ${includes} )
 
 ADD_EXECUTABLE( image-undistort-map image-undistort-map.cpp )
-TARGET_LINK_LIBRARIES( image-undistort-map ${comma_ALL_LIBRARIES} ${OpenCV_LIBS} )
+TARGET_LINK_LIBRARIES( image-undistort-map snark_imaging ${comma_ALL_LIBRARIES} ${OpenCV_LIBS} )
 
 ADD_EXECUTABLE( cv-cat cv-cat.cpp )
 TARGET_LINK_LIBRARIES( cv-cat snark_imaging ${comma_ALL_LIBRARIES} ${OpenCV_LIBS} ${Boost_LIBRARIES} tbb )
