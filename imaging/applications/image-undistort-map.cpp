@@ -78,9 +78,11 @@ static void usage()
 static snark::camera::pinhole make_pinhole( const std::string& config_parameters )
 {
     snark::camera::pinhole pinhole;
-    if( boost::filesystem::exists( config_parameters ) )
+    if( config_parameters.find_first_of( '=' ) == std::string::npos )
     {
-        comma::read_json( pinhole, config_parameters );
+        const std::vector< std::string >& v = comma::split( config_parameters, ":#@" );
+        if( v.size() == 1 ) { comma::read_json( pinhole, config_parameters, true ); }
+        else { comma::read_json( pinhole, config_parameters.substr( 0, config_parameters.size() - v.back().size() - 1 ), v.back(), true ); }
     }
     else
     {
