@@ -1151,6 +1151,7 @@ static std::string usage_impl_()
     oss << "            deprecated: old syntax <i>,<j>,<ncols>,<nrows> is used for one tile if i < ncols and j < ncols" << std::endl;
     oss << "        cross[=<x>,<y>]: draw cross-hair at x,y; default: at image center" << std::endl;
     oss << "        encode=<format>: encode images to the specified format. <format>: jpg|ppm|png|tiff..., make sure to use --no-header" << std::endl;
+    oss << "        equalize-histogram: todo: equalize each channel by its histogram" << std::endl;
     oss << "        fft[=<options>]: do fft on a floating point image" << std::endl;
     oss << "            options: inverse: do inverse fft" << std::endl;
     oss << "                     real: output real part only" << std::endl;
@@ -1174,6 +1175,9 @@ static std::string usage_impl_()
     oss << "                  default: filter fails with an error message if it encounters an integer value which is not in the map" << std::endl;
     oss << "             example: \"map=map.bin&fields=,key,value&binary=2ui,d\"" << std::endl;
     oss << "        merge=<n>: split an image into n horizontal bands of equal height and merge them into an n-channel image (the number of rows must be a multiple of n)" << std::endl;
+    oss << "        normalize=<how>: todo: normalize image" << std::endl;
+    oss << "            normalize=max: normalize each pixel channel by its max value" << std::endl;
+    oss << "            normalize=sum: normalize each pixel channel by the sum of all channels" << std::endl;
     oss << "        null: same as linux /dev/null (since windows does not have it)" << std::endl;
     oss << "        resize=<width>,<height>: e.g:" << std::endl;
     oss << "            resize=512,1024 : resize to 512x1024 pixels" << std::endl;
