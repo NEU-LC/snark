@@ -27,50 +27,24 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#ifndef SNARK_IMAGING_VEGETATION_FILTERS_H_
+#define SNARK_IMAGING_VEGETATION_FILTERS_H_
 
-#ifndef SNARK_IMAGING_CVMAT_FILTERS_H_
-#define SNARK_IMAGING_CVMAT_FILTERS_H_
+#include <boost/optional.hpp>
+#include "../cv_mat/filters.h"
 
-#include <vector>
-#include <boost/function.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
-
-#include <opencv2/core/core.hpp>
-
-namespace snark{ namespace cv_mat {
-
-template < typename Output = cv::Mat >
-struct operation
-{
-    typedef std::pair< boost::posix_time::ptime, cv::Mat > input_type;
-    typedef std::pair< boost::posix_time::ptime, Output > output_type;
-    typedef input_type value_type; // quick and dirty for now
-    operation( boost::function< output_type( value_type ) > f, bool p = true ): filter_function( f ), parallel( p ) {}
-    boost::function< output_type( value_type ) > filter_function;
-    bool parallel;
-};
-
-typedef operation<> filter;
+namespace snark { namespace imaging { namespace vegetation {
 
 /// filter pipeline helpers
 struct filters
 {
-    /// value type
-    typedef std::pair< boost::posix_time::ptime, cv::Mat > value_type;
-
-    /// return filters from name-value string
-    static std::vector< filter > make( const std::string& how, unsigned int default_delay = 1 );
-
-    /// apply filters (a helper)
-    static value_type apply( std::vector< filter >& filters, value_type m );
-
-    /// return filter usage
+    /// take name-value string, return filter
+    static boost::optional< cv_mat::filter > make( const std::string& what );
+    
+    /// return usage for all filters
     static const std::string& usage();
 };
-
-/// a helper: e.g. take CV_8UC3, return CV_8UC1
-int single_channel_type( int t );
     
-} }  // namespace snark{ namespace cv_mat {
+} } }  // namespace snark { namespace imaging { namespace vegetation {
 
-#endif // SNARK_IMAGING_CVMAT_FILTERS_H_
+#endif // SNARK_IMAGING_VEGETATION_FILTERS_H_

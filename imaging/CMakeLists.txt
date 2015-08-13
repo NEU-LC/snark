@@ -5,16 +5,23 @@ SET( DIR ${SOURCE_CODE_BASE_DIR}/${PROJECT} )
 FILE( GLOB source ${SOURCE_CODE_BASE_DIR}/${PROJECT}/*.cpp )
 FILE( GLOB includes ${SOURCE_CODE_BASE_DIR}/${PROJECT}/*.h )
 
+FILE( GLOB camera_source ${SOURCE_CODE_BASE_DIR}/${PROJECT}/camera/*.cpp )
+FILE( GLOB camera_includes ${SOURCE_CODE_BASE_DIR}/${PROJECT}/camera/*.h )
+
 FILE( GLOB cvmat_source ${SOURCE_CODE_BASE_DIR}/${PROJECT}/cv_mat/*.cpp )
 FILE( GLOB cvmat_includes ${SOURCE_CODE_BASE_DIR}/${PROJECT}/cv_mat/*.h )
 
 FILE( GLOB stereo_source ${SOURCE_CODE_BASE_DIR}/${PROJECT}/stereo/*.cpp )
 FILE( GLOB stereo_includes ${SOURCE_CODE_BASE_DIR}/${PROJECT}/stereo/*.h )
 
-FILE( GLOB camera_source ${SOURCE_CODE_BASE_DIR}/${PROJECT}/camera/*.cpp )
-FILE( GLOB camera_includes ${SOURCE_CODE_BASE_DIR}/${PROJECT}/camera/*.h )
+FILE( GLOB vegetation_source ${SOURCE_CODE_BASE_DIR}/${PROJECT}/vegetation/*.cpp )
+FILE( GLOB vegetation_includes ${SOURCE_CODE_BASE_DIR}/${PROJECT}/vegetation/*.h )
 
-ADD_LIBRARY( ${TARGET_NAME} ${source} ${includes} ${cvmat_source} ${cvmat_includes} ${stereo_source} ${stereo_includes} ${camera_source} ${camera_includes} )
+ADD_LIBRARY( ${TARGET_NAME} ${source} ${includes}
+                            ${camera_source} ${camera_includes}
+                            ${cvmat_source} ${cvmat_includes}
+                            ${stereo_source} ${stereo_includes}
+                            ${vegetation_source} ${vegetation_includes} )
 SET_TARGET_PROPERTIES( ${TARGET_NAME} PROPERTIES ${snark_LIBRARY_PROPERTIES} )
 TARGET_LINK_LIBRARIES( ${TARGET_NAME} ${comma_ALL_LIBRARIES} ${comma_ALL_EXTERNAL_LIBRARIES} ${OpenCV_LIBS} tbb ${pgrey_libs} )
 #TARGET_LINK_LIBRARIES( ${TARGET_NAME} ${comma_ALL_LIBRARIES} ${comma_ALL_EXTERNAL_LIBRARIES} ${OpenCV_LIBS} tbb fftw3 ${pgrey_libs} )
@@ -23,6 +30,7 @@ INSTALL( FILES ${includes} DESTINATION ${snark_INSTALL_INCLUDE_DIR}/${PROJECT} )
 INSTALL( FILES ${camera_includes} DESTINATION ${snark_INSTALL_INCLUDE_DIR}/${PROJECT}/camera )
 INSTALL( FILES ${cvmat_includes} DESTINATION ${snark_INSTALL_INCLUDE_DIR}/${PROJECT}/cv_mat )
 INSTALL( FILES ${stereo_includes} DESTINATION ${snark_INSTALL_INCLUDE_DIR}/${PROJECT}/stereo )
+INSTALL( FILES ${vegetation_includes} DESTINATION ${snark_INSTALL_INCLUDE_DIR}/${PROJECT}/vegetation )
 
 INSTALL(
     TARGETS ${TARGET_NAME}
