@@ -610,12 +610,12 @@ template <> struct traits< vector_calc::vector_scalarpair >
     template< typename K, typename V > static void visit( const K& k, vector_calc::vector_scalarpair& t, V& v )
     {
         v.apply( "v", t.first);
-        v.apply( "a", t.second.a);
+        v.apply( "scalar", t.second.a);
     }
     template< typename K, typename V > static void visit( const K& k, const vector_calc::vector_scalarpair& t, V& v )
     {
         v.apply( "v", t.first);
-        v.apply( "a", t.second.a);
+        v.apply( "scalar", t.second.a);
     }
 };
 
@@ -623,11 +623,11 @@ template <> struct traits< vector_calc::scalar >
 {
     template< typename K, typename V > static void visit( const K& k, vector_calc::scalar& t, V& v )
     {
-        v.apply( "a", t.a);
+        v.apply( "scalar", t.a);
     }
     template< typename K, typename V > static void visit( const K& k, const vector_calc::scalar& t, V& v )
     {
-        v.apply( "a", t.a);
+        v.apply( "scalar", t.a);
     }
 };
 
