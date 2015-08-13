@@ -62,16 +62,24 @@ namespace snark { namespace imaging { namespace vegetation {
 
 template < typename T > static void set_ndvi_pixel_( cv::Mat& red, const cv::Mat& nir )
 {
-    for( int i = 0; i < red.cols; ++i ) // watch performance
+    T* r = &red.at< T >( 0, 0 );
+    const T* n = &nir.at< T >( 0, 0 );
+    const T* end = r + red.cols * red.rows;
+    for( ; r != end; ++r, ++n ) // slightly faster perhaps?
     {
-        for( int j = 0; j < red.rows; ++j )
-        {
-            T& r = red.at< T >( i, j );
-            const T& n = nir.at< T >( i, j );
-            T s = r + n;
-            r = s == 0 ? 0: ( ( n - r ) / s );
-        }
+        T s = *r + *n;
+        *r = s == 0 ? 0: ( ( *n - *r ) / s );
     }
+//     for( int i = 0; i < red.cols; ++i ) // watch performance
+//     {
+//         for( int j = 0; j < red.rows; ++j )
+//         {
+//             T& r = red.at< T >( i, j );
+//             const T& n = nir.at< T >( i, j );
+//             T s = r + n;
+//             r = s == 0 ? 0: ( ( n - r ) / s );
+//         }
+//     }
 }
     
 static cv_mat::filters::value_type ndvi_impl_( cv_mat::filters::value_type m ) // too quick, too dirty?
@@ -80,10 +88,10 @@ static cv_mat::filters::value_type ndvi_impl_( cv_mat::filters::value_type m ) /
     int type;
     switch( m.second.type() )
     {
-        case CV_8SC4: type = CV_8SC3; break;
-        case CV_8UC4: type = CV_8UC3; break;
         case CV_32FC4: type = CV_32FC3; break;
-        default: std::cerr << "cv vegetation filters: expected type CV_8SC4, CV_8UC4, or CV_32FC4; got: " << m.second.type() << std::endl; return cv_mat::filters::value_type();
+        case CV_8SC4: //type = CV_8SC3; break;
+        case CV_8UC4: //type = CV_8UC3; break;
+        default: std::cerr << "cv vegetation filters: expected type CV_32FC4; got: " << m.second.type() << std::endl; return cv_mat::filters::value_type();
     }
     cv::Mat split( m.second.rows * m.second.channels(), m.second.cols, cv_mat::single_channel_type( m.second.type() ) ); // todo: check number of channels!
     std::vector< cv::Mat > channels;
@@ -95,15 +103,15 @@ static cv_mat::filters::value_type ndvi_impl_( cv_mat::filters::value_type m ) /
     cv::split( m.second, channels ); // watch performance, do we really need to split?
     switch( channels[0].type() )
     {
-        case CV_8SC1: set_ndvi_pixel_< char >( channels[0], channels[3] ); break;
-        case CV_8UC1: set_ndvi_pixel_< char >( channels[0], channels[3] ); break;
         case CV_32FC1: set_ndvi_pixel_< float >( channels[0], channels[3] ); break;
+        case CV_8SC1: //set_ndvi_pixel_< char >( channels[0], channels[3] ); break;
+        case CV_8UC1: //set_ndvi_pixel_< char >( channels[0], channels[3] ); break;
         default: break; // never here
     }
     cv_mat::filters::value_type n;
     n.first = m.first;
     n.second = cv::Mat( m.second.rows, m.second.cols, type );
-    channels.resize( 3 );
+    //channels.resize( 3 );
     cv::merge( channels, n.second );
     return n;
 }
