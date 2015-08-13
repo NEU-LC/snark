@@ -128,9 +128,11 @@ struct hdl64_s2_fw_v48
     }
     static double azimuth(const packet& packet, unsigned int block)
     {
-        // todo: angular angular
-        // todo: compare to 360
-        return double( packet.blocks[block].rotation() ) / 100 + 90;
+        // todo: angular speed correction with offset for angular velocity that calibration was measured on
+        double a = double( packet.blocks[block].rotation() ) / 100 + 90;
+        if( comma::math::less( a, 360 ) ) { if( comma::math::less( a, 0 ) ) { a += 360; } }
+        else { a -= 360; }
+        return a;
     }
 };
 //delay in microseconds for each data block, laser
