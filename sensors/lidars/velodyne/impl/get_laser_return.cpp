@@ -83,7 +83,7 @@ const double timestamps::ethernetOutputDuration( 0.0001 ); // Ethernet output du
 // each block issuing single laser pulses at a time. That is, each upper block laser fires in
 // sequence and in unison to a corresponding laser from the lower block. For example, laser 32
 // fires simultaneously with laser 0, laser 33 fires with laser 1, and so on. Unlike the HDL-64E,
-// which issued three upper block returns for every lower block return, the HDL-64E S2 has an
+// which issued three upper block returns for every lowestepr block return, the HDL-64E S2 has an
 // equal number of upper and lower block returns. This is why when interpreting the delay table
 // each sequential pair of data blocks will represent the upper and lower block respectively,
 // and each upper and lower block pair of data blocks in the Ethernet packet will have the same
@@ -128,6 +128,8 @@ struct hdl64_s2_fw_v48
     }
     static double azimuth(const packet& packet, unsigned int block)
     {
+        // todo: angular angular
+        // todo: compare to 360
         return double( packet.blocks[block].rotation() ) / 100 + 90;
     }
 };

@@ -1,0 +1,24 @@
+    vector calculations: following operations perform calculations on 3d vectors and scalars
+        common options:
+            --input-fields: print input field names and exit
+            --output-fields: print output field names and exit
+            --output-format: print output format and exit
+    
+        corss: calculate vector cross product; output: vector
+            input fields: v1, v2
+            --v1=<x>,<y>,<z>: default value for vector 1
+            --v2=<x>,<y>,<z>: default value for vector 2
+        dot: calculate vector dot product; output: scalar
+            input fields: v1, v2
+            --v1=<x>,<y>,<z>: default value for vector 1
+            --v2=<x>,<y>,<z>: default value for vector 2
+        norm: calculate vector's norm 
+            --v1=<x>,<y>,<z>: default value for vecotr
+            --square: calculate norm square
+            --invert: calculate invert of norm; use with --square for invert of norm square
+        scale: calculate multiplication of scalar and vector;output vector
+            input fields: a (scalar), v1
+            --v1=<x>,<y>,<z>: default value for vecotr
+            --scalar: default value for a
+            --invert: invert the scalar first and then multiply it by vecotr, i.e. (1/a)*v1
+
