@@ -162,7 +162,7 @@ static std::string type_as_string( int t ) // to avoid compilation warning
     boost::unordered_map< int, std::string >::const_iterator it = types_as_string.find( t );
     return it == types_as_string.end() ? boost::lexical_cast< std::string >( t ) : it->second;
 }
-    
+
 static filters::value_type cvt_color_impl_( filters::value_type m, unsigned int which )
 {
     filters::value_type n;
@@ -185,7 +185,9 @@ static filters::value_type head_impl_( filters::value_type m, unsigned int numbe
 
 static filters::value_type crop_impl_( filters::value_type m, unsigned int x, unsigned int y, unsigned int w, unsigned int h )
 {
-    return filters::value_type( m.first, cv::Mat( m.second, cv::Rect( x, y, w, h ) ) );
+    cv::Mat cropped;
+    m.second( cv::Rect( x, y, w, h ) ).copyTo( cropped );
+    return filters::value_type( m.first, cropped );
 }
 
 typedef std::pair< unsigned int, unsigned int > tile_t;
@@ -221,7 +223,7 @@ class accumulate_impl_
                 accumulated_image_ = cv::Mat::zeros( rows_, cols_, type_ );
                 rect_for_new_data_ = cv::Rect( 0, 0, cols_, h_ );
                 rect_for_old_data_ = cv::Rect( 0, h_, cols_, rows_ - h_ );
-                rect_to_keep_ = cv::Rect( 0, 0, cols_, rows_ - h_ );                
+                rect_to_keep_ = cv::Rect( 0, 0, cols_, rows_ - h_ );
                 defined_ = true;
             }
             if( input.second.cols != cols_ ) { COMMA_THROW( comma::exception, "accumulate: expected input image with " << cols_ << " columns, got " << input.second.cols << " columns"); }
@@ -282,7 +284,7 @@ struct threshold_t
                , trunc = CV_THRESH_TRUNC
                , tozero = CV_THRESH_TOZERO
                , tozero_inv = CV_THRESH_TOZERO_INV };
-               
+
     static types from_string( const std::string& s )
     {
         if( s.empty() || s == "binary" ) { return binary; }
@@ -359,7 +361,7 @@ static filters::value_type split_impl_( filters::value_type m )
     n.first = m.first;
     n.second = cv::Mat( m.second.rows * m.second.channels(), m.second.cols, single_channel_type( m.second.type() ) ); // todo: check number of channels!
     std::vector< cv::Mat > channels;
-    channels.reserve( m.second.channels() );    
+    channels.reserve( m.second.channels() );
     for( unsigned int i = 0; i < static_cast< unsigned int >( m.second.channels() ); ++i )
     {
         channels.push_back( cv::Mat( n.second, cv::Rect( 0, i * m.second.rows, m.second.cols, m.second.rows ) ) );
@@ -375,7 +377,7 @@ static filters::value_type merge_impl_( filters::value_type m, unsigned int ncha
     if( m.second.rows % nchannels != 0 ) { COMMA_THROW( comma::exception, "merge: expected " << nchannels << " horizontal strips of equal height, got " << m.second.rows << " rows, which is not a multiple of " << nchannels ); }
     std::vector< cv::Mat > channels( nchannels );
     for( std::size_t i = 0; i < nchannels; ++i ) { channels[i] = cv::Mat( m.second, cv::Rect( 0, i * m.second.rows / nchannels, m.second.cols, m.second.rows / nchannels ) ); }
-    cv::merge( channels, n.second ); 
+    cv::merge( channels, n.second );
     return n;
 }
 
@@ -519,9 +521,9 @@ static filters::value_type timestamp_impl_( filters::value_type m )
 struct count_impl_
 {
     count_impl_() : count( 0 ) {}
-    
+
     unsigned int count;
-    
+
     filters::value_type operator()( filters::value_type m )
     {
         cv::rectangle( m.second, cv::Point( 5, 5 ), cv::Point( 80, 25 ), cv::Scalar( 0xffff, 0xffff, 0xffff ), CV_FILLED, CV_AA );
@@ -624,7 +626,7 @@ class map_impl_
             {
                 if( !csv_options.has_field( "value" ) ) { COMMA_THROW( comma::exception, "map filter: fields option is given but \"value\" field is not found" ); }
                 no_key_field = !csv_options.has_field( "key" );
-            }    
+            }
             std::ifstream ifs( &csv_options.filename[0] );
             if( !ifs ) { COMMA_THROW( comma::exception, "map filter: failed to open \"" << csv_options.filename << "\"" ); }
             BOOST_STATIC_ASSERT( ( boost::is_same< map_input_t::key_type, key_type >::value ) );
@@ -638,12 +640,12 @@ class map_impl_
                 map_.insert( std::pair< key_type, output_value_type >( key, map_input->value ) );
             }
         }
-        
+
         filters::value_type operator()( filters::value_type m )
         {
             if( m.second.channels() != 1 ) { std::cerr << "map filter: expected single channel cv type, got " << m.second.channels() << " channels" << std::endl; return filters::value_type(); }
             filters::value_type n( m.first, cv::Mat( m.second.size(), cv::DataType< output_value_type >::type ) );
-            try 
+            try
             {
                 switch( m.second.type() )
                 {
@@ -652,17 +654,17 @@ class map_impl_
                     case cv::DataType< char >::type : apply_map< char >( m.second, n.second ); break;
                     case cv::DataType< comma::int16 >::type : apply_map< comma::int16 >( m.second, n.second ); break;
                     case cv::DataType< comma::int32 >::type : apply_map< comma::int32 >( m.second, n.second ); break;
-                    default: std::cerr << "map filter: expected integer cv type, got " << m.second.type() << std::endl; return filters::value_type(); 
+                    default: std::cerr << "map filter: expected integer cv type, got " << m.second.type() << std::endl; return filters::value_type();
                 }
             } catch ( std::out_of_range ) { return filters::value_type(); }
             return n;
         }
-        
+
     private:
         typedef boost::unordered_map< key_type, output_value_type > map_t_;
         map_t_ map_;
         bool permissive_;
-        
+
         template < typename input_value_type >
         void apply_map( const cv::Mat& input, cv::Mat& output )
         {
@@ -675,7 +677,7 @@ class map_impl_
                     if( it != map_.end() ) { output.at< output_value_type >(i,j) = map_.at( key ); }
                     else
                     {
-                        if( permissive_ ) { output.at< output_value_type >(i,j) = key; } 
+                        if( permissive_ ) { output.at< output_value_type >(i,j) = key; }
                         else { std::cerr << "map filter: expected a pixel value from the map, got: pixel at " << i << "," << j << " with value " << key << std::endl; throw std::out_of_range(""); }
                     }
                 }
@@ -739,12 +741,12 @@ static filters::value_type convert( filters::value_type m, bool magnitude, bool 
 
     int cx = n.second.cols / 2 ;
     int cy = n.second.rows / 2 ;
-    
+
     cv::Mat q0(n.second, cv::Rect(0, 0, cx, cy));   // Top-Left - Create a ROI per quadrant
     cv::Mat q1(n.second, cv::Rect(cx, 0, cx, cy));  // Top-Right
     cv::Mat q2(n.second, cv::Rect(0, cy, cx, cy));  // Bottom-Left
     cv::Mat q3(n.second, cv::Rect(cx, cy, cx, cy)); // Bottom-Right
-    
+
     cv::Mat tmp;
     q0.copyTo( tmp ); // swap top-left with bottom-right
     q3.copyTo( q0 );
@@ -752,7 +754,7 @@ static filters::value_type convert( filters::value_type m, bool magnitude, bool 
     q1.copyTo( tmp ); // swap top-right with bottom-left
     q2.copyTo( q1 );
     tmp.copyTo( q2 );
-    
+
     if( normalize ) { cv::normalize( n.second, n.second, 0, 1, CV_MINMAX ); }
     return n;
 }
@@ -850,9 +852,9 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
                 number_of_tile_cols = v[0];
                 number_of_tile_rows = v[1];
                 for( std::size_t i=2; i < v.size()-1; i+=2 )
-                { 
+                {
                     if( v[i] >= number_of_tile_cols || v[i+1] >= number_of_tile_rows ) { COMMA_THROW( comma::exception, "crop-tile: encountered an invalid tile " << v[i] << "," << v[i+1] ); }
-                    tiles.push_back( tile_t( v[i], v[i+1] ) ); 
+                    tiles.push_back( tile_t( v[i], v[i+1] ) );
                 }
             }
             if( number_of_tile_cols == 0 || number_of_tile_rows == 0 ) { COMMA_THROW( comma::exception, "crop-tile: expected positive number of tiles along x and y, got " << number_of_tile_cols << "," << number_of_tile_rows ); }
@@ -990,7 +992,7 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
             unsigned int nchannels = e.size() == 1 ? default_number_of_channels : boost::lexical_cast< unsigned int >( e[1] );
             if ( nchannels == 0 ) { COMMA_THROW( comma::exception, "expected positive number of channels in merge filter, got " << nchannels ); }
             f.push_back( filter( boost::bind( &merge_impl_, _1, nchannels ) ) );
-        }        
+        }
         else if( e[0] == "undistort" )
         {
             f.push_back( filter( undistort_impl_( e[1] ) ) );
@@ -1013,7 +1015,7 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
                 std::vector< std::string > v = comma::split( e[1], ',' );
                 if( v.size() >= 1 ) { cols = boost::lexical_cast< unsigned int >( v[0] ); }
                 if( v.size() >= 2 ) { delay = boost::lexical_cast< unsigned int >( v[1] ); }
-            }   
+            }
             f.push_back( filter( boost::bind( &thumb_impl_, _1, name, cols, delay ), false ) );
         }
         else if( e[0] == "encode" )
@@ -1021,7 +1023,7 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
             if( i < v.size()-1 )
             {
                 std::string next_filter = comma::split( v[i+1], '=' )[0];
-                if( next_filter != "head" ) COMMA_THROW( comma::exception, "cannot have a filter after encode unless next filter is head" ); 
+                if( next_filter != "head" ) COMMA_THROW( comma::exception, "cannot have a filter after encode unless next filter is head" );
             }
             if( e.size() < 2 ) { COMMA_THROW( comma::exception, "expected encoding type like jpg, ppm, etc" ); }
             std::string s = e[1];
@@ -1054,7 +1056,7 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
             std::string config;
             std::string path;
             for( unsigned int i = 0; i < s.size(); ++i )
-            { 
+            {
                 if( s[i] == "output-binary" ) { binary = true; }
                 if( s[i] == "output-fields" ) { std::cout << comma::join( comma::csv::names< snark::timestamped< cv::KeyPoint > >( false ), ',' ) << std::endl; exit( 0 ); }
                 if( s[i] == "output-format" ) { std::cout << comma::csv::format::value< snark::timestamped< cv::KeyPoint > >() << std::endl; exit( 0 ); }
@@ -1087,7 +1089,7 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
             double scale = boost::lexical_cast< double >( s[0] );
             double offset = s.size() == 1 ? 0.0 : boost::lexical_cast< double >( s[1] );
             f.push_back( filter( boost::bind( &brightness_impl_, _1, scale, offset ) ) );
-        }        
+        }
         else if( e[0] == "map" )
         {
             if( e.size() < 2 ) { COMMA_THROW( comma::exception, "expected file name with the map, e.g. map=f.csv" ); }
@@ -1165,7 +1167,7 @@ static std::string usage_impl_()
     oss << "        histogram: calculate image histogram and output in binary format: t,3ui,256ui for ub images; t,3ui,256ui,256ui,256ui for 3ub images, etc" << std::endl;
     oss << "        invert: invert image (to negative)" << std::endl;
     oss << "        linear-combination=<k1>,<k2>,<k3>,...: output grey-scale image that is linear combination of input channels with given coefficients" << std::endl;
-    oss << "        magnitude: calculate magnitude for a 2-channel image; see cv::magnitude() for details" << std::endl;    
+    oss << "        magnitude: calculate magnitude for a 2-channel image; see cv::magnitude() for details" << std::endl;
     oss << "        map=<map file>[&<csv options>][&permissive]: map integer values to floating point values read from the map file" << std::endl;
     oss << "             <csv options>: usual csv options for map file, but &-separated (running out of separator characters)" << std::endl;
     oss << "                  fields: key,value; default: value" << std::endl;
@@ -1193,7 +1195,7 @@ static std::string usage_impl_()
     oss << "        transpose: transpose the image (swap rows and columns)" << std::endl;
     oss << "        undistort=<undistort map file>: undistort" << std::endl;
     oss << "        view[=<wait-interval>]: view image; press <space> to save image (timestamp or system time as filename); <esc>: to close" << std::endl;
-    oss << "                                <wait-interval>: a hack for now; milliseconds to wait for image display and key press; default 1" << std::endl;    
+    oss << "                                <wait-interval>: a hack for now; milliseconds to wait for image display and key press; default 1" << std::endl;
     oss << std::endl;
     oss << "    cv::Mat image operations:" << std::endl;
     oss << "        simple-blob[=<parameters>]: wraps cv::SimpleBlobDetector, outputs as csv key points timestamped by image timestamp" << std::endl;
