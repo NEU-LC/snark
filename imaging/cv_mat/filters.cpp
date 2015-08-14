@@ -846,7 +846,7 @@ static filters::value_type linear_combination_impl_( filters::value_type m, std:
         case CV_64FC3: return per_element_dot< CV_64FC3 >( m, c );
         case CV_64FC4: return per_element_dot< CV_64FC4 >( m, c );
         default:
-            std::cerr << "linear-combination: unrecognised image depth " << m.second.depth() << std::endl;
+            std::cerr << "linear-combination: unrecognised image type " << m.second.type() << std::endl;
             return filters::value_type();
     }
 }
