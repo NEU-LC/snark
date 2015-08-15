@@ -56,7 +56,7 @@
 #include "filters.h"
 #include "serialization.h"
 #include "traits.h"
-#include "type_traits.h"
+#include "depth_traits.h"
 #include "../vegetation/filters.h"
 
 struct map_input_t
@@ -786,13 +786,11 @@ filters::value_type fft_impl_( filters::value_type m, bool direct, bool complex,
     }
 }
 
-template< int type >
-static filters::value_type per_element_dot( filters::value_type m, const cv::Mat& coefficients )
+template< int Depth >
+static filters::value_type per_element_dot( const filters::value_type m, const std::vector< double >& coefficients )
 {
-    typedef typename type_traits< type >::value_t value_t;
-    const unsigned int channels = type_traits< type >::channels;
-    cv::Vec< double, type_traits< type >::channels > c( coefficients );
-    cv::Mat result( m.second.size(), type_traits< type >::single_channel_type );
+    cv::Mat result( m.second.size(), single_channel_type( m.second.type() ) );
+    const unsigned int channels = m.second.channels();
     unsigned int rows = m.second.rows;
     unsigned int cols = m.second.cols * channels;
     if( m.second.isContinuous() )
@@ -800,16 +798,15 @@ static filters::value_type per_element_dot( filters::value_type m, const cv::Mat
         cols *= rows;
         rows = 1;
     }
-    value_t* in;
-    value_t* out;
+    typedef typename depth_traits< Depth >::value_t value_t;
     for( unsigned int i = 0; i < rows; ++i )
     {
-        in = m.second.ptr< value_t >(i);
-        out = result.ptr< value_t >(i);
+        const value_t* in = m.second.ptr< value_t >(i);
+        value_t* out = result.ptr< value_t >(i);
         for( unsigned int j = 0; j < cols; j += channels )
         {
             double dot = 0;
-            for( unsigned int k = 0; k < channels; ++k ) { dot += in[j + k] * c[k]; }
+            for( unsigned int k = 0; k < channels; ++k ) { dot += in[j + k] * coefficients[k]; }
             if( dot > std::numeric_limits< value_t >::max() ) { dot = std::numeric_limits< value_t >::max(); }
             *out++ = dot;
         }
@@ -817,38 +814,21 @@ static filters::value_type per_element_dot( filters::value_type m, const cv::Mat
     return filters::value_type( m.first, result );
 }
 
-static filters::value_type linear_combination_impl_( filters::value_type m, std::vector< double > coefficients )
+static filters::value_type linear_combination_impl_( const filters::value_type m, const std::vector< double >& coefficients )
 {
-    if( m.second.channels() != coefficients.size() ) { COMMA_THROW( comma::exception, "linear-combination: the number of coefficients does not match the number of channels; channels = " << m.second.channels() << ", coefficients = " << coefficients.size() ); }
+    if( m.second.channels() != static_cast< int >( coefficients.size() ) ) { COMMA_THROW( comma::exception, "linear-combination: the number of coefficients does not match the number of channels; channels = " << m.second.channels() << ", coefficients = " << coefficients.size() ); }
     if( m.second.channels() == 1 ) { return filters::value_type( m.first, m.second * coefficients[0] ); }
-    cv::Mat c( coefficients.size(), 1, CV_64F, &coefficients[0] );
-    switch( m.second.type() )
+    switch( m.second.depth() )
     {
-        case CV_8UC2:  return per_element_dot< CV_8UC2 >( m, c );
-        case CV_8UC3:  return per_element_dot< CV_8UC3 >( m, c );
-        case CV_8UC4:  return per_element_dot< CV_8UC4 >( m, c );
-        case CV_8SC2:  return per_element_dot< CV_8SC2 >( m, c );
-        case CV_8SC3:  return per_element_dot< CV_8SC3 >( m, c );
-        case CV_8SC4:  return per_element_dot< CV_8SC4 >( m, c );
-        case CV_16UC2: return per_element_dot< CV_16UC2 >( m, c );
-        case CV_16UC3: return per_element_dot< CV_16UC3 >( m, c );
-        case CV_16UC4: return per_element_dot< CV_16UC4 >( m, c );
-        case CV_16SC2: return per_element_dot< CV_16SC2 >( m, c );
-        case CV_16SC3: return per_element_dot< CV_16SC3 >( m, c );
-        case CV_16SC4: return per_element_dot< CV_16SC4 >( m, c );
-        case CV_32SC2: return per_element_dot< CV_32SC2 >( m, c );
-        case CV_32SC3: return per_element_dot< CV_32SC3 >( m, c );
-        case CV_32SC4: return per_element_dot< CV_32SC4 >( m, c );
-        case CV_32FC2: return per_element_dot< CV_32FC2 >( m, c );
-        case CV_32FC3: return per_element_dot< CV_32FC3 >( m, c );
-        case CV_32FC4: return per_element_dot< CV_32FC4 >( m, c );
-        case CV_64FC2: return per_element_dot< CV_64FC2 >( m, c );
-        case CV_64FC3: return per_element_dot< CV_64FC3 >( m, c );
-        case CV_64FC4: return per_element_dot< CV_64FC4 >( m, c );
-        default:
-            std::cerr << "linear-combination: unrecognised image type " << m.second.type() << std::endl;
-            return filters::value_type();
+        case CV_8U : return per_element_dot< CV_8U  >( m, coefficients );
+        case CV_8S : return per_element_dot< CV_8S  >( m, coefficients );
+        case CV_16U: return per_element_dot< CV_16U >( m, coefficients );
+        case CV_16S: return per_element_dot< CV_16S >( m, coefficients );
+        case CV_32S: return per_element_dot< CV_32S >( m, coefficients );
+        case CV_32F: return per_element_dot< CV_32F >( m, coefficients );
+        case CV_64F: return per_element_dot< CV_64F >( m, coefficients );
     }
+    COMMA_THROW( comma::exception, "linear-combination: unrecognised image type " << m.second.type() );
 }
 
 std::vector< filter > filters::make( const std::string& how, unsigned int default_delay )
