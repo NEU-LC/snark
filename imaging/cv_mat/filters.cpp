@@ -538,7 +538,68 @@ static filters::value_type invert_impl_( filters::value_type m )
     for( unsigned char* c = m.second.datastart; c < m.second.dataend; *c = 255 - *c, ++c );
     return m;
 }
+static filters::value_type equalize_histogram_impl_(filters::value_type m)
+{
+    if( single_channel_type(m.second.type()) != CV_8UC1 ) { COMMA_THROW( comma::exception, "expected image type ub, 2ub, 3ub, 4ub; got: " << type_as_string( m.second.type() ) ); }
+    int chs=m.second.channels();
+    //split
+    std::vector<cv::Mat> planes;
+    for(int i=0;i<chs;i++)
+        planes.push_back(cv::Mat(1,1,single_channel_type(m.second.type())));
+    cv::split(m.second,planes);
+    //equalize
+    for(int i=0;i<chs;i++)
+        cv::equalizeHist(planes[i],planes[i]);
+    //merge
+    cv::merge(planes,m.second);
+    return m;
+}
+static filters::value_type normalize_cv_impl_( filters::value_type m )
+{
+    //std::cerr<<"my type: "<<m.second.type()<<" ,CV_8UC3: "<<int(CV_8UC3)<<" ,CV_32FC3: "<<int(CV_32FC3)<<" ,CV_8UC1: "<<CV_8UC1<<std::endl;
+    cv::normalize(m.second,m.second,1,0,cv::NORM_INF,CV_32FC(m.second.channels()));
+    return m;
+}
+static filters::value_type normalize_max_impl_( filters::value_type m )
+{
+    int chs=m.second.channels();
+    int single_type=single_channel_type(m.second.type());
+    //split
+    std::vector<cv::Mat> planes;
+    planes.reserve( chs );
+    for(int i=0;i<chs;i++)
+        planes.push_back(cv::Mat(1,1,single_type));
+    cv::split(m.second,planes);
+    //normalize
+    for(int i=0;i<chs;i++)
+        cv::normalize(planes[i],planes[i],1,0,cv::NORM_INF,single_type==CV_64FC1?CV_64FC1:CV_32FC1);
+    //merge
+    cv::merge(planes,m.second);
+     return m;
+}
 
+static filters::value_type normalize_sum_impl_( filters::value_type m )
+{
+    int single_type=single_channel_type(m.second.type());
+    if( single_type != CV_32FC1 && single_type != CV_64FC1) { COMMA_THROW( comma::exception, "expected image type CV_32FC1 or CV_64FC1; got: " << type_as_string( m.second.type() ) << "single type: " <<type_as_string(single_type) ); }
+    int chs=m.second.channels();
+    cv::Mat sum(m.second.rows,m.second.cols,single_channel_type(m.second.type()));//or CV_32FC1
+    //split
+    std::vector<cv::Mat> planes;
+    for(int i=0;i<chs;i++)
+        planes.push_back(cv::Mat(1,1,single_type));
+    cv::split(m.second,planes);
+    //calc sum
+    planes[0].copyTo(sum);
+    for(int i=1;i<chs;i++)
+        cv::add(sum,planes[i],sum);
+    //scale
+    for(int i=0;i<chs;i++)
+        cv::divide(planes[i],sum,planes[i]);
+    //merge
+    cv::merge(planes,m.second);
+    return m;
+}
 static filters::value_type text_impl_( filters::value_type m, const std::string& s, const cv::Point& origin, const cv::Scalar& colour )
 {
     cv::putText( m.second, s, origin, cv::FONT_HERSHEY_SIMPLEX, 1.0, colour, 1, CV_AA );
@@ -1000,6 +1061,22 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
         else if( e[0] == "invert" )
         {
             f.push_back( filter( &invert_impl_ ) );
+        }
+        else if(e[0]=="normalize")
+        {
+            //const std::vector< std::string >& s = comma::split( e[1], ',' );
+            if(e[1]=="max")
+                f.push_back(filter(&normalize_max_impl_));
+            else if(e[1]=="sum")
+                f.push_back( filter( &normalize_sum_impl_) );
+            else if(e[1]=="cv")
+                f.push_back( filter( &normalize_cv_impl_) );
+            else
+                { COMMA_THROW( comma::exception, "expected max or sum option for normalize, got" << e[1] ); }
+        }
+        else if(e[0]=="equalize-histogram")
+        {
+            f.push_back(filter(&equalize_histogram_impl_));
         }
         else if( e[0] == "view" )
         {
