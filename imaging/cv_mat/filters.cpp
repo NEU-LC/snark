@@ -51,6 +51,8 @@
 #include <opencv2/imgproc/imgproc_c.h>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/highgui/highgui_c.h>
+#include <tbb/parallel_for.h>
+#include <tbb/blocked_range.h>
 #include "../../timing/timestamped.h"
 #include "../../timing/traits.h"
 #include "filters.h"
@@ -847,24 +849,16 @@ filters::value_type fft_impl_( filters::value_type m, bool direct, bool complex,
     }
 }
 
-template< int Depth >
-static filters::value_type per_element_dot( const filters::value_type m, const std::vector< double >& coefficients )
+template< typename T >
+static void dot( const tbb::blocked_range< std::size_t >& r, const cv::Mat& m, const std::vector< double >& coefficients, cv::Mat& result )
 {
-    cv::Mat result( m.second.size(), single_channel_type( m.second.type() ) );
-    const unsigned int channels = m.second.channels();
-    unsigned int rows = m.second.rows;
-    unsigned int cols = m.second.cols * channels;
-    if( m.second.isContinuous() )
+    const unsigned int channels = m.channels();
+    const unsigned int cols = m.cols * channels;
+    static const T max = std::numeric_limits< T >::max();
+    for( unsigned int i = r.begin(); i < r.end(); ++i )
     {
-        cols *= rows;
-        rows = 1;
-    }
-    typedef typename depth_traits< Depth >::value_t value_t;
-    static const value_t max = std::numeric_limits< value_t >::max();
-    for( unsigned int i = 0; i < rows; ++i )
-    {
-        const value_t* in = m.second.ptr< value_t >(i);
-        value_t* out = result.ptr< value_t >(i);
+        const T* in = m.ptr< T >(i);
+        T* out = result.ptr< T >(i);
         for( unsigned int j = 0; j < cols; j += channels )
         {
             double dot = 0;
@@ -872,6 +866,14 @@ static filters::value_type per_element_dot( const filters::value_type m, const s
             *out++ = dot > max ? max : dot < -max ? -max : dot;
         }
     }
+}
+
+template< int Depth >
+static filters::value_type per_element_dot( const filters::value_type m, const std::vector< double >& coefficients )
+{
+    typedef typename depth_traits< Depth >::value_t value_t;
+    cv::Mat result( m.second.size(), single_channel_type( m.second.type() ) );
+    tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, m.second.rows ), boost::bind( &dot< value_t >, _1, m.second, coefficients, boost::ref( result ) ) );
     return filters::value_type( m.first, result );
 }
 
