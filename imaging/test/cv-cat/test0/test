@@ -1,0 +1,7 @@
+#!/bin/bash
+cat >output/in
+rows=$(cat output/in | wc -l)
+echo "rows: $rows" >&2
+cat output/in | csv-to-bin 3f | cv-cat --input "no-header;rows=$rows;cols=1;type=CV_32FC3" "normalize=sum" --output no-header \
+    | csv-from-bin 3f >output/out
+cat -n output/out | sed 's#^ *#output[#;s#\t#]="#;s#$#"#'
