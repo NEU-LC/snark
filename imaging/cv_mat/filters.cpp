@@ -896,7 +896,7 @@ static filters::value_type per_element_dot( const filters::value_type m, const s
 {
     typedef typename depth_traits< Depth >::value_t value_t;
     cv::Mat result( m.second.size(), single_channel_type( m.second.type() ) );
-    tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, m.second.rows ), boost::bind( &dot< value_t >, _1, boost::cref( m.second ), boost::cref( coefficients ), boost::ref( result ) ) );
+    tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, m.second.rows ), boost::bind( &dot< value_t >, _1, m.second, coefficients, boost::ref( result ) ) );
     return filters::value_type( m.first, result );
 }
 
