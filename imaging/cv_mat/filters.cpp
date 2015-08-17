@@ -56,6 +56,7 @@
 #include "filters.h"
 #include "serialization.h"
 #include "traits.h"
+#include "depth_traits.h"
 #include "../vegetation/filters.h"
 
 struct map_input_t
@@ -846,6 +847,51 @@ filters::value_type fft_impl_( filters::value_type m, bool direct, bool complex,
     }
 }
 
+template< int Depth >
+static filters::value_type per_element_dot( const filters::value_type m, const std::vector< double >& coefficients )
+{
+    cv::Mat result( m.second.size(), single_channel_type( m.second.type() ) );
+    const unsigned int channels = m.second.channels();
+    unsigned int rows = m.second.rows;
+    unsigned int cols = m.second.cols * channels;
+    if( m.second.isContinuous() )
+    {
+        cols *= rows;
+        rows = 1;
+    }
+    typedef typename depth_traits< Depth >::value_t value_t;
+    static const value_t max = std::numeric_limits< value_t >::max();
+    for( unsigned int i = 0; i < rows; ++i )
+    {
+        const value_t* in = m.second.ptr< value_t >(i);
+        value_t* out = result.ptr< value_t >(i);
+        for( unsigned int j = 0; j < cols; j += channels )
+        {
+            double dot = 0;
+            for( unsigned int k = 0; k < channels; ++k ) { dot += *in++ * coefficients[k]; }
+            *out++ = dot > max ? max : dot < -max ? -max : dot;
+        }
+    }
+    return filters::value_type( m.first, result );
+}
+
+static filters::value_type linear_combination_impl_( const filters::value_type m, const std::vector< double >& coefficients )
+{
+    if( m.second.channels() != static_cast< int >( coefficients.size() ) ) { COMMA_THROW( comma::exception, "linear-combination: the number of coefficients does not match the number of channels; channels = " << m.second.channels() << ", coefficients = " << coefficients.size() ); }
+    if( m.second.channels() == 1 ) { return filters::value_type( m.first, m.second * coefficients[0] ); }
+    switch( m.second.depth() )
+    {
+        case CV_8U : return per_element_dot< CV_8U  >( m, coefficients );
+        case CV_8S : return per_element_dot< CV_8S  >( m, coefficients );
+        case CV_16U: return per_element_dot< CV_16U >( m, coefficients );
+        case CV_16S: return per_element_dot< CV_16S >( m, coefficients );
+        case CV_32S: return per_element_dot< CV_32S >( m, coefficients );
+        case CV_32F: return per_element_dot< CV_32F >( m, coefficients );
+        case CV_64F: return per_element_dot< CV_64F >( m, coefficients );
+    }
+    COMMA_THROW( comma::exception, "linear-combination: unrecognised image type " << m.second.type() );
+}
+
 std::vector< filter > filters::make( const std::string& how, unsigned int default_delay )
 {
     std::vector< std::string > v = comma::split( how, ';' );
@@ -1195,6 +1241,14 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
             double maxval = s.size() < 2 ? 255 : boost::lexical_cast< double >( s[1] );
             threshold_t::types type = threshold_t::from_string( s.size() < 3 ? "" : s[2] );
             f.push_back( filter( boost::bind( &threshold_impl_, _1, threshold, maxval, type ) ) );
+        }
+        else if( e[0] == "linear-combination" )
+        {
+            const std::vector< std::string >& s = comma::split( e[1], ',' );
+            if( s[0].empty() ) { COMMA_THROW( comma::exception, "linear-combination: expected coefficients got: \"" << v[i] << "\"" ); }
+            std::vector< double > coefficients( s.size() );
+            for( unsigned int j = 0; j < s.size(); ++j ) { coefficients[j] = boost::lexical_cast< double >( s[j] ); }
+            f.push_back( filter( boost::bind( &linear_combination_impl_, _1, coefficients ) ) );
         }
         else
         {

@@ -27,50 +27,27 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
-#ifndef SNARK_IMAGING_CVMAT_FILTERS_H_
-#define SNARK_IMAGING_CVMAT_FILTERS_H_
-
-#include <vector>
-#include <boost/function.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
+#ifndef SNARK_IMAGING_CV_MAT_DEPTH_TRAITS_H_
+#define SNARK_IMAGING_CV_MAT_DEPTH_TRAITS_H_
 
 #include <opencv2/core/core.hpp>
 
-namespace snark{ namespace cv_mat {
+namespace snark { namespace cv_mat {
 
-template < typename Output = cv::Mat >
-struct operation
+template< typename T > struct base_depth_traits
 {
-    typedef std::pair< boost::posix_time::ptime, cv::Mat > input_type;
-    typedef std::pair< boost::posix_time::ptime, Output > output_type;
-    typedef input_type value_type; // quick and dirty for now
-    operation( boost::function< output_type( value_type ) > f, bool p = true ): filter_function( f ), parallel( p ) {}
-    boost::function< output_type( value_type ) > filter_function;
-    bool parallel;
+    typedef T value_t;
 };
 
-typedef operation<> filter;
+template< int Depth > struct depth_traits;
+template<> struct depth_traits< CV_8U  > : base_depth_traits< unsigned char > {};
+template<> struct depth_traits< CV_8S  > : base_depth_traits< char > {};
+template<> struct depth_traits< CV_16U > : base_depth_traits< comma::uint16 > {};
+template<> struct depth_traits< CV_16S > : base_depth_traits< comma::int16 > {};
+template<> struct depth_traits< CV_32S > : base_depth_traits< comma::int32 > {};
+template<> struct depth_traits< CV_32F > : base_depth_traits< float > {};
+template<> struct depth_traits< CV_64F > : base_depth_traits< double > {};
 
-/// filter pipeline helpers
-struct filters
-{
-    /// value type
-    typedef std::pair< boost::posix_time::ptime, cv::Mat > value_type;
+} } // namespace snark { namespace cv_mat {
 
-    /// return filters from name-value string
-    static std::vector< filter > make( const std::string& how, unsigned int default_delay = 1 );
-
-    /// apply filters (a helper)
-    static value_type apply( std::vector< filter >& filters, value_type m );
-
-    /// return filter usage
-    static const std::string& usage();
-};
-
-/// a helper: e.g. take CV_8UC3, return CV_8UC1
-int single_channel_type( int t );
-
-} }  // namespace snark{ namespace cv_mat {
-
-#endif // SNARK_IMAGING_CVMAT_FILTERS_H_
+#endif // SNARK_IMAGING_CV_MAT_DEPTH_TRAITS_H_
