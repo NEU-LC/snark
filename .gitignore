@@ -3,3 +3,6 @@
 .
 html/
 *.kdev4
+
+output
+stats
