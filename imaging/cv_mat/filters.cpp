@@ -799,6 +799,7 @@ static filters::value_type per_element_dot( const filters::value_type m, const s
         rows = 1;
     }
     typedef typename depth_traits< Depth >::value_t value_t;
+    static const value_t max = std::numeric_limits< value_t >::max();
     for( unsigned int i = 0; i < rows; ++i )
     {
         const value_t* in = m.second.ptr< value_t >(i);
@@ -806,9 +807,8 @@ static filters::value_type per_element_dot( const filters::value_type m, const s
         for( unsigned int j = 0; j < cols; j += channels )
         {
             double dot = 0;
-            for( unsigned int k = 0; k < channels; ++k ) { dot += in[j + k] * coefficients[k]; }
-            if( dot > std::numeric_limits< value_t >::max() ) { dot = std::numeric_limits< value_t >::max(); }
-            *out++ = dot;
+            for( unsigned int k = 0; k < channels; ++k ) { dot += *in++ * coefficients[k]; }
+            *out++ = dot > max ? max : dot < -max ? -max : dot;
         }
     }
     return filters::value_type( m.first, result );
