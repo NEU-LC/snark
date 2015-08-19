@@ -878,6 +878,7 @@ static void dot( const tbb::blocked_range< std::size_t >& r, const cv::Mat& m, c
     const unsigned int channels = m.channels();
     const unsigned int cols = m.cols * channels;
     static const T max = std::numeric_limits< T >::max();
+    static const T lowest = std::numeric_limits< T >::is_integer ? std::numeric_limits< T >::min() : -max;
     for( unsigned int i = r.begin(); i < r.end(); ++i )
     {
         const T* in = m.ptr< T >(i);
@@ -886,7 +887,7 @@ static void dot( const tbb::blocked_range< std::size_t >& r, const cv::Mat& m, c
         {
             double dot = 0;
             for( unsigned int k = 0; k < channels; ++k ) { dot += *in++ * coefficients[k]; }
-            *out++ = dot > max ? max : dot < -max ? -max : dot;
+            *out++ = dot > max ? max : dot < lowest ? lowest : dot;
         }
     }
 }
