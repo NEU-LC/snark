@@ -60,6 +60,7 @@
 #include "traits.h"
 #include "depth_traits.h"
 #include "../vegetation/filters.h"
+#include "tbb/parallel_reduce.h"
 
 struct map_input_t
 {
@@ -541,6 +542,7 @@ static filters::value_type invert_impl_( filters::value_type m )
     for( unsigned char* c = m.second.datastart; c < m.second.dataend; *c = 255 - *c, ++c );
     return m;
 }
+
 static filters::value_type equalize_histogram_impl_(filters::value_type m)
 {
     if( single_channel_type(m.second.type()) != CV_8UC1 ) { COMMA_THROW( comma::exception, "expected image type ub, 2ub, 3ub, 4ub; got: " << type_as_string( m.second.type() ) ); }
@@ -552,7 +554,10 @@ static filters::value_type equalize_histogram_impl_(filters::value_type m)
     cv::split(m.second,planes);
     //equalize
     for(int i=0;i<chs;i++)
+    {
+        //cv::equalizeHist only supports 8-bit single channel
         cv::equalizeHist(planes[i],planes[i]);
+    }
     //merge
     cv::merge(planes,m.second);
     return m;
@@ -563,53 +568,155 @@ static filters::value_type normalize_cv_impl_( filters::value_type m )
     cv::normalize(m.second,m.second,1,0,cv::NORM_INF,CV_32FC(m.second.channels()));
     return m;
 }
-static filters::value_type normalize_max_impl_( filters::value_type m )
+
+static cv::Scalar max_scalar(const cv::Scalar& s, const cv::Scalar& t)
 {
-    int chs=m.second.channels();
-    int single_type=single_channel_type(m.second.type());
-    //split
-    std::vector<cv::Mat> planes;
-    planes.reserve( chs );
-    for(int i=0;i<chs;i++)
-        planes.push_back(cv::Mat(1,1,single_type));
-    cv::split(m.second,planes);
-    //normalize
-    for(int i=0;i<chs;i++)
-        cv::normalize(planes[i],planes[i],1,0,cv::NORM_INF,single_type==CV_64FC1?CV_64FC1:CV_32FC1);
-    //merge
-    cv::merge(planes,m.second);
-     return m;
+    cv::Scalar out;
+    for(int i=0;i<4;i++)
+        out[i]=std::max(s[i],t[i]);
+    return out;
 }
 
+struct filter_table_t
+{
+    struct filter_i
+    {
+        virtual cv::Mat normalize_max(const cv::Mat& v)=0;
+        virtual cv::Mat normalize_sum(const cv::Mat& v)=0;
+        virtual ~filter_i(){}
+    };
+    std::vector<filter_i*> filters_;
+    filter_i& filter(int depth){return *filters_[depth];}
+    static const int number_of_partitions=8;
+    //typed filter
+    template<int Depth>
+    struct filter_t:public filter_i
+    {
+        typedef typename depth_traits< Depth >::value_t value_t;
+        cv::Mat normalize_max(const cv::Mat& mat)
+        {
+            bool use_double=(single_channel_type(mat.type()) == CV_64FC1);
+            int partition_size=mat.rows/number_of_partitions;
+            //max
+            cv::Scalar s(0,0,0,0);
+            s=tbb::parallel_reduce(tbb::blocked_range<int>(0,mat.rows, partition_size), s, boost::bind(max_,_1,mat,_2), max_scalar);
+            //invert
+            s=cv::Scalar(1/(s[0]?s[0]:1),1/(s[1]?s[1]:1),1/(s[2]?s[2]:1),1/(s[3]?s[3]:1));
+            //scale
+            cv::Mat result(mat.rows,mat.cols,use_double?CV_64FC(mat.channels()):CV_32FC(mat.channels()));
+            if(use_double)
+                tbb::parallel_for(tbb::blocked_range<int>(0,mat.rows, partition_size), boost::bind(scale_<CV_64F>, _1, mat, s, boost::ref(result)));
+            else
+                tbb::parallel_for(tbb::blocked_range<int>(0,mat.rows, partition_size), boost::bind(scale_<CV_32F>, _1, mat, s, boost::ref(result)));
+            return result;
+        }
+        cv::Mat normalize_sum(const cv::Mat& mat)
+        {
+            bool use_double=(single_channel_type(mat.type()) == CV_64FC1);
+            cv::Mat result(mat.rows,mat.cols, use_double?CV_64FC(mat.channels()):CV_32FC(mat.channels()));
+            int partition_size=mat.rows/number_of_partitions;
+            if(use_double)
+                tbb::parallel_for(tbb::blocked_range<int>(0,mat.rows, partition_size), boost::bind(normalize_sum_<CV_64F>, _1, mat, boost::ref(result)));
+            else
+                tbb::parallel_for(tbb::blocked_range<int>(0,mat.rows, partition_size), boost::bind(normalize_sum_<CV_32F>, _1, mat, boost::ref(result)));
+            return result;
+        }
+        static cv::Scalar max_(const tbb::blocked_range<int>& r, const cv::Mat& v, cv::Scalar s)
+        {
+            int chs=v.channels();
+            for(int i=r.begin();i<r.end();i++)
+            {
+                const value_t* row=v.ptr<value_t>(i);
+                for(int j=0;j<v.cols;j++)
+                    for(int k=0;k<chs;k++)
+                        s[k]=std::max(s[k],double(*row++));
+            }
+            return s;
+        }
+        // Output_depth: CV_32FC or CV_64FC for float or double precision
+        template<int Output_depth>
+        static void scale_(const tbb::blocked_range<int>& r, const cv::Mat& v, const cv::Scalar& s, cv::Mat& out)
+        {
+            typedef typename depth_traits<Output_depth>::value_t output_t;
+            int chs=v.channels();
+            if(out.cols!=v.cols || out.rows!=v.rows || out.channels()!=chs)
+            {
+                COMMA_THROW(comma::exception, "scale: in and out Matrix mismatch");
+            }
+            if(single_channel_type(out.type())!=CV_MAKETYPE(Output_depth,1))
+                COMMA_THROW(comma::exception, "scale: invalid output type: "<<type_as_string(out.type()) << " expected :"<<type_as_string(CV_MAKETYPE(Output_depth,1)));
+            for(int i=r.begin();i<r.end();i++)
+            {
+                const value_t* in=v.ptr<value_t>(i);
+                output_t* outp=out.ptr<output_t>(i);
+                for(int j=0;j<v.cols;j++)
+                    for(int k=0;k<chs;k++)
+                        *outp++=output_t(*in++)*s[k];
+            }
+        }
+        // Output_depth: CV_32FC or CV_64FC for float or double precision
+        template<int Output_depth>
+        static void normalize_sum_(const tbb::blocked_range<int>& r, const cv::Mat& v, cv::Mat& out)
+        {
+            typedef typename depth_traits<Output_depth>::value_t output_t;
+            int chs=v.channels();
+            if(out.cols!=v.cols || out.rows!=v.rows || out.channels()!=chs)
+            {
+                COMMA_THROW(comma::exception, "normalize_sum: in and out Matrix mismatch");
+            }
+            if(single_channel_type(out.type())!=CV_MAKETYPE(Output_depth,1))
+                COMMA_THROW(comma::exception, "normalize_sum: invalid output type: "<<type_as_string(out.type()) << " expected :"<<type_as_string(CV_MAKETYPE(Output_depth,1)));
+            for(int i=r.begin();i<r.end();i++)
+            {
+                const value_t* in=v.ptr<value_t>(i);
+                output_t* outp=out.ptr<output_t>(i);
+                for(int j=0;j<v.cols;j++)
+                {
+                    output_t sum=0;
+                    for(int k=0;k<chs;k++)
+                        sum+=output_t(in[k]);
+                    for(int k=0;k<chs;k++)
+                        *outp++=output_t(*in++)/(sum?sum:1);
+                }
+            }
+        }
+    };
+    filter_table_t()
+    {
+        filters_.resize(7);
+        filters_[CV_8U]=new filter_t<CV_8U>();
+        filters_[CV_8S]=new filter_t<CV_8S>();
+        filters_[CV_16U]=new filter_t<CV_16U>();
+        filters_[CV_16S]=new filter_t<CV_16S>();
+        filters_[CV_32S]=new filter_t<CV_32S>();
+        filters_[CV_32F]=new filter_t<CV_32F>();
+        filters_[CV_64F]=new filter_t<CV_64F>();
+    }
+    ~filter_table_t()
+    {
+        for(int i=0;i<=CV_64F;i++)
+            delete filters_[i];
+    }
+};
+filter_table_t filter_table;
+
+static filters::value_type normalize_max_impl_( filters::value_type m )
+{
+    filter_table_t::filter_i& filter=filter_table.filter(m.second.depth());
+    return filters::value_type(m.first, filter.normalize_max(m.second));
+}
 static filters::value_type normalize_sum_impl_( filters::value_type m )
 {
-    int single_type=single_channel_type(m.second.type());
-    if( single_type != CV_32FC1 && single_type != CV_64FC1) { COMMA_THROW( comma::exception, "expected image type CV_32FC1 or CV_64FC1; got: " << type_as_string( m.second.type() ) << "single type: " <<type_as_string(single_type) ); }
-    int chs=m.second.channels();
-    cv::Mat sum(m.second.rows,m.second.cols,single_channel_type(m.second.type()));//or CV_32FC1
-    //split
-    std::vector<cv::Mat> planes;
-    for(int i=0;i<chs;i++)
-        planes.push_back(cv::Mat(1,1,single_type));
-    cv::split(m.second,planes);
-    //calc sum
-    planes[0].copyTo(sum);
-    for(int i=1;i<chs;i++)
-        cv::add(sum,planes[i],sum);
-    //scale
-    for(int i=0;i<chs;i++)
-        cv::divide(planes[i],sum,planes[i]);
-    //merge
-    cv::merge(planes,m.second);
-    return m;
+    filter_table_t::filter_i& filter=filter_table.filter(m.second.depth());
+    return filters::value_type(m.first, filter.normalize_sum(m.second));
 }
-static filters::value_type exponential_combination_impl_( const filters::value_type m, const std::vector< double >& powers )
+static filters::value_type exponential_combination_impl_( const filters::value_type m, const std::vector< double >& powers)
 {
     if( m.second.channels() != static_cast< int >( powers.size() ) ) { COMMA_THROW( comma::exception, "exponential-combination: the number of powers does not match the number of channels; channels = " << m.second.channels() << ", powers = " << powers.size() ); }
     int single_type=single_channel_type(m.second.type());
     if( single_type != CV_32FC1 && single_type != CV_64FC1) { COMMA_THROW( comma::exception, "expected image type CV_32FC1 or CV_64FC1; got: " << type_as_string( m.second.type() ) << "single type: " <<type_as_string(single_type) ); }
     int chs=m.second.channels();
-    cv::Mat result( m.second.rows,m.second.cols, single_type );
+    cv::Mat result( m.second.rows,m.second.cols, single_type== CV_32FC1? CV_32FC1:CV_64FC1 );
     //split
     std::vector<cv::Mat> planes;
     planes.reserve(chs);
@@ -620,8 +727,8 @@ static filters::value_type exponential_combination_impl_( const filters::value_t
     for(int i=0;i<chs;i++)
         cv::pow(planes[i],powers[i],planes[i]);
     //combine
-    planes[0].copyTo(result);
-    for(int i=1;i<chs;i++)
+    result.setTo(cv::Scalar(1,1,1,1));
+    for(int i=0;i<chs;i++)
         cv::multiply(result,planes[i],result);
     return filters::value_type(m.first, result);
 }
@@ -1140,7 +1247,7 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
                 f.push_back(filter(&normalize_max_impl_));
             else if(e[1]=="sum")
                 f.push_back( filter( &normalize_sum_impl_) );
-            else if(e[1]=="cv")
+            else if(e[1]=="all")
                 f.push_back( filter( &normalize_cv_impl_) );
             else
                 { COMMA_THROW( comma::exception, "expected max or sum option for normalize, got" << e[1] ); }
@@ -1344,7 +1451,7 @@ static std::string usage_impl_()
     oss << "        normalize=<how>: normalize image and scale to 0 to 1 float (or double if input is CV_64F)" << std::endl;
     oss << "            normalize=max: normalize each pixel channel by its max value" << std::endl;
     oss << "            normalize=sum: normalize each pixel channel by the sum of all channels" << std::endl;
-    oss << "            normalize=cv: normalize each pixel by max of all channels" << std::endl;
+    oss << "            normalize=all: normalize each pixel by max of all channels (see cv::normalize with NORM_INF)" << std::endl;
     oss << "        exponential-combination=<e1>,<e2>,<e3>,...: output single channel float/double: multiplication of each channel powered to the exponent" << std::endl;
     oss << "        null: same as linux /dev/null (since windows does not have it)" << std::endl;
     oss << "        resize=<width>,<height>: e.g:" << std::endl;
