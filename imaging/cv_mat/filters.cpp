@@ -986,6 +986,7 @@ static void dot( const tbb::blocked_range< std::size_t >& r, const cv::Mat& m, c
     const unsigned int cols = m.cols * channels;
     static const T max = std::numeric_limits< T >::max();
     static const T lowest = std::numeric_limits< T >::is_integer ? std::numeric_limits< T >::min() : -max;
+    double offset = coefficients.size() > channels ? coefficients[coefficients.size()-1]:0;
     for( unsigned int i = r.begin(); i < r.end(); ++i )
     {
         const T* in = m.ptr< T >(i);
@@ -994,6 +995,7 @@ static void dot( const tbb::blocked_range< std::size_t >& r, const cv::Mat& m, c
         {
             double dot = 0;
             for( unsigned int k = 0; k < channels; ++k ) { dot += *in++ * coefficients[k]; }
+            dot+=offset;
             *out++ = dot > max ? max : dot < lowest ? lowest : dot;
         }
     }
@@ -1010,8 +1012,8 @@ static filters::value_type per_element_dot( const filters::value_type m, const s
 
 static filters::value_type linear_combination_impl_( const filters::value_type m, const std::vector< double >& coefficients )
 {
-    if( m.second.channels() != static_cast< int >( coefficients.size() ) ) { COMMA_THROW( comma::exception, "linear-combination: the number of coefficients does not match the number of channels; channels = " << m.second.channels() << ", coefficients = " << coefficients.size() ); }
-    if( m.second.channels() == 1 ) { return filters::value_type( m.first, m.second * coefficients[0] ); }
+    if( m.second.channels() != static_cast< int >( coefficients.size() ) && static_cast< int >( coefficients.size() ) != m.second.channels()+1 )
+        { COMMA_THROW( comma::exception, "linear-combination: the number of coefficients does not match the number of channels; channels = " << m.second.channels() << ", coefficients = " << coefficients.size() ); }
     switch( m.second.depth() )
     {
         case CV_8U : return per_element_dot< CV_8U  >( m, coefficients );
@@ -1439,7 +1441,7 @@ static std::string usage_impl_()
     oss << "        head=<n>: output <n> frames and exit" << std::endl;
     oss << "        histogram: calculate image histogram and output in binary format: t,3ui,256ui for ub images; t,3ui,256ui,256ui,256ui for 3ub images, etc" << std::endl;
     oss << "        invert: invert image (to negative)" << std::endl;
-    oss << "        linear-combination=<k1>,<k2>,<k3>,...: output grey-scale image that is linear combination of input channels with given coefficients" << std::endl;
+    oss << "        linear-combination=<k1>,<k2>,<k3>,...[<c>]: output grey-scale image that is linear combination of input channels with given coefficients and optioanl offset" << std::endl;
     oss << "        magnitude: calculate magnitude for a 2-channel image; see cv::magnitude() for details" << std::endl;
     oss << "        map=<map file>[&<csv options>][&permissive]: map integer values to floating point values read from the map file" << std::endl;
     oss << "             <csv options>: usual csv options for map file, but &-separated (running out of separator characters)" << std::endl;
