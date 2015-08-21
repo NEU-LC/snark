@@ -153,6 +153,8 @@ var ImageStreamFeed = function(feed_name, config) {
         }
     });
 }
+ImageStreamFeed.prototype.init = function() {
+}
 ImageStreamFeed.prototype.onload = function(data) {
     if (data.substr(0, 5) === 'data:') {
         this.target.attr('src', data);
@@ -767,11 +769,11 @@ function initialize(frontend_config) {
                 });
                 folder.add(feed.config.csv, 'min').onFinishChange(function(value) {
                     var feed_name = $(this.__gui.__ul).find('li.title').text();
-                    feeds[feed_name].init_styles();
+                    feeds[feed_name].init_ranges();
                 });
                 folder.add(feed.config.csv, 'max').onFinishChange(function(value) {
                     var feed_name = $(this.__gui.__ul).find('li.title').text();
-                    feeds[feed_name].init_styles();
+                    feeds[feed_name].init_ranges();
                 });
                 folder.add(feed.config.csv, 'threshold_alert').name('threshold alert');
             }
@@ -892,10 +894,10 @@ function initialize(frontend_config) {
 
 function toggle_sortable(enable) {
     if (enable) {
-        $('#container').sortable('enable');
+        try { $('#container').sortable('enable'); } catch (e) { }
         $('.panel').css('cursor', 'move');
     } else {
-        $('#container').sortable('disable');
+        try { $('#container').sortable('disable'); } catch (e) { }
         $('.panel').css('cursor', 'auto');
     }
 }
