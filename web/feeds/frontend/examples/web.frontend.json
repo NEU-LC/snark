@@ -1,6 +1,6 @@
 {
     "host": "http://ladybird.nuvo:7000",
-    "websocket": "ws://ladybird.nuvo:8888/snark-frames",
+    "websocket": "ws://ladybird.nuvo:8888/snark-image-frames",
     "sensors":
     {
         "battery-charge":

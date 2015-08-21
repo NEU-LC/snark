@@ -8,7 +8,7 @@ function bye()
     exit 1
 }
 
-CONFIG=/usr/local/etc/websocketd/snark-frames.json
+CONFIG=/usr/local/etc/websocketd/$scriptname.json
 
 if [[ ! -e "$CONFIG" ]]; then
     echo "error: $scriptname config file not found"
@@ -44,6 +44,6 @@ args="--backend-config=$BACKEND_CONFIG --robot-config=$ROBOT_CONFIG --publish-co
 [[ "${query_string[data_uri]}" == true ]] && args+=" --data-uri"
 [[ -n "${query_string[count]}" ]] && args+=" --count=${query_string[count]}"
 
-snark-frames $args &
+snark-image-stream $args &
 
 wait $!
