@@ -70,6 +70,7 @@ struct filters
 
 /// a helper: e.g. take CV_8UC3, return CV_8UC1
 int single_channel_type( int t );
+std::string type_as_string( int t );
 
 } }  // namespace snark{ namespace cv_mat {
 

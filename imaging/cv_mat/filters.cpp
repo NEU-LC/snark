@@ -161,7 +161,7 @@ static boost::unordered_map< int, std::string > fill_types_as_string_()
 static const boost::unordered_map< std::string, int > types_ = fill_types_();
 static const boost::unordered_map< int, std::string > types_as_string = fill_types_as_string_();
 
-static std::string type_as_string( int t ) // to avoid compilation warning
+std::string type_as_string( int t ) // to avoid compilation warning
 {
     boost::unordered_map< int, std::string >::const_iterator it = types_as_string.find( t );
     return it == types_as_string.end() ? boost::lexical_cast< std::string >( t ) : it->second;
@@ -709,28 +709,6 @@ static filters::value_type normalize_sum_impl_( filters::value_type m )
 {
     filter_table_t::filter_i& filter=filter_table.filter(m.second.depth());
     return filters::value_type(m.first, filter.normalize_sum(m.second));
-}
-static filters::value_type exponential_combination_impl_( const filters::value_type m, const std::vector< double >& powers)
-{
-    if( m.second.channels() != static_cast< int >( powers.size() ) ) { COMMA_THROW( comma::exception, "exponential-combination: the number of powers does not match the number of channels; channels = " << m.second.channels() << ", powers = " << powers.size() ); }
-    int single_type=single_channel_type(m.second.type());
-    if( single_type != CV_32FC1 && single_type != CV_64FC1) { COMMA_THROW( comma::exception, "expected image type CV_32FC1 or CV_64FC1; got: " << type_as_string( m.second.type() ) << "single type: " <<type_as_string(single_type) ); }
-    int chs=m.second.channels();
-    cv::Mat result( m.second.rows,m.second.cols, single_type== CV_32FC1? CV_32FC1:CV_64FC1 );
-    //split
-    std::vector<cv::Mat> planes;
-    planes.reserve(chs);
-    for(int i=0;i<chs;i++)
-        planes.push_back(cv::Mat(1,1,single_type));
-    cv::split(m.second,planes);
-    //calc exponent
-    for(int i=0;i<chs;i++)
-        cv::pow(planes[i],powers[i],planes[i]);
-    //combine
-    result.setTo(cv::Scalar(1,1,1,1));
-    for(int i=0;i<chs;i++)
-        cv::multiply(result,planes[i],result);
-    return filters::value_type(m.first, result);
 }
 
 static filters::value_type text_impl_( filters::value_type m, const std::string& s, const cv::Point& origin, const cv::Scalar& colour )
@@ -1385,14 +1363,6 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
             for( unsigned int j = 0; j < s.size(); ++j ) { coefficients[j] = boost::lexical_cast< double >( s[j] ); }
             f.push_back( filter( boost::bind( &linear_combination_impl_, _1, coefficients ) ) );
         }
-        else if(e[0]=="exponential-combination")
-        {
-            const std::vector< std::string >& s = comma::split( e[1], ',' );
-            if( s[0].empty() ) { COMMA_THROW( comma::exception, "exponential-combination: expected powers got: \"" << v[i] << "\"" ); }
-            std::vector< double > power( s.size() );
-            for( unsigned int j = 0; j < s.size(); ++j ) { power[j] = boost::lexical_cast< double >( s[j] ); }
-            f.push_back( filter( boost::bind( &exponential_combination_impl_, _1, power ) ) );
-        }
         else
         {
             const boost::optional< filter >& vf = imaging::vegetation::filters::make( v[i] );
@@ -1455,7 +1425,6 @@ static std::string usage_impl_()
     oss << "            normalize=max: normalize each pixel channel by its max value" << std::endl;
     oss << "            normalize=sum: normalize each pixel channel by the sum of all channels" << std::endl;
     oss << "            normalize=all: normalize each pixel by max of all channels (see cv::normalize with NORM_INF)" << std::endl;
-    oss << "        exponential-combination=<e1>,<e2>,<e3>,...: output single channel float/double: multiplication of each channel powered to the exponent" << std::endl;
     oss << "        null: same as linux /dev/null (since windows does not have it)" << std::endl;
     oss << "        resize=<width>,<height>: e.g:" << std::endl;
     oss << "            resize=512,1024 : resize to 512x1024 pixels" << std::endl;
