@@ -1,0 +1,101 @@
+#!/bin/bash
+
+scriptname=$( basename $0 )
+
+source $( which comma-application-util )
+
+DEFAULT_FORMAT=jpg
+
+function option_description
+{
+    cat <<EOF
+--backend-config=<config>; backend config
+--robot-config=<config>; robot config
+--publish-config=<config>; publish config
+--xpath=<xpath>; xpath to backend config
+--count=[<count>]; frame count (default: stream)
+--format=[<format>]; encoding format as recognised by cv-cat encode (default:$DEFAULT_FORMAT)
+EOF
+}
+
+function usage
+{
+    cat >&2 <<EOF
+
+    $scriptname: outputs images as base64 encoded strings, one image per line
+
+usage:
+    $scriptname --backend-config=<config> --robot-config=<config> --publish-config=<config> --xpath=<xpath> [--count=<count>] [--data-uri]
+
+options:
+$( option_description | sed 's/^/    /g' )
+
+to see further details use:
+    $scriptname -h -v
+
+EOF
+
+    local mode=$1
+    if [[ "$mode" == "verbose" ]]; then
+    cat >&2 <<EOF
+TODO
+EOF
+    fi
+    exit
+}
+
+function bye
+{
+    pkill -P $$
+}
+
+function image_base64_encode
+{
+    local format=$1
+    local count=$2
+    for (( i=0; !count || i++ < count; )); do
+        IFS=, read t height width type < <( head -c 20 | csv-from-bin t,3ui )
+        [[ -z "$height" ]] && break
+        head -c $height | { echo -n "data:image/$format;base64,"; base64 -w 0; echo; }
+    done
+}
+
+if (( $( comma_options_has --help "$@" ) || $( comma_options_has -h "$@" ) )) ; then
+    if (( $( comma_options_has --verbose "$@" ) || $( comma_options_has -v "$@" ) )) ; then
+        usage verbose
+    else
+        usage
+    fi
+fi
+
+comma_path_value_to_var --prefix=options < <( option_description | comma-options-to-name-value "$@" | grep -v '^"' )
+
+FROM_FORMAT=""
+if [[ ${options_backend_config##*.} == 'json' ]]; then FROM_FORMAT="--from json"; fi
+xpath=$( name-value-get $FROM_FORMAT $options_xpath/xpath < $options_backend_config )
+[[ -z "$xpath" ]] && xpath=$options_xpath
+
+FROM_FORMAT=""
+if [[ ${options_publish_config##*.} == 'json' ]]; then FROM_FORMAT="--from json"; fi
+address=$( name-value-get $FROM_FORMAT $xpath/address < $options_publish_config )
+port=$( name-value-get $FROM_FORMAT $xpath/port < $options_publish_config )
+
+FROM_FORMAT=""
+if [[ ${options_robot_config##*.} == 'json' ]]; then FROM_FORMAT="--from json"; fi
+if [[ -z $address ]]; then address=$( name-value-get $FROM_FORMAT $xpath/address < $options_robot_config ); fi
+if [[ -z $port ]]; then port=$( name-value-get $FROM_FORMAT $xpath/port < $options_robot_config ); fi
+
+if [[ -n "$port" ]]; then
+    [[ -n "$address" ]] || address="localhost"
+    address="tcp:$address:$port"
+fi
+
+[[ -z "$address" ]] && { echo "$scriptname: no address configured for $xpath" >&2; exit 1; }
+
+format=${options_format:-$DEFAULT_FORMAT}
+
+trap bye INT TERM
+
+io-cat -u $address | cv-cat --discard "timestamp;encode=$format" | { image_base64_encode $format $options_count; kill $$; } &
+
+wait
