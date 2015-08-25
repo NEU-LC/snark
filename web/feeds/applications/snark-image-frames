@@ -96,6 +96,6 @@ format=${options_format:-$DEFAULT_FORMAT}
 
 trap bye INT TERM
 
-io-cat -u $address | cv-cat --discard "timestamp;encode=$format" | { image_base64_encode $format $options_count; kill $$; } &
+io-cat -u $address | cv-cat --discard "timestamp;encode=$format" | image_base64_encode $format $options_count &
 
 wait

@@ -25,7 +25,7 @@ NAME=snark-webframes
 DAEMON=/usr/local/bin/$NAME
 PIDFILE=/var/run/$NAME.pid
 SCRIPTNAME=/etc/init.d/$NAME
-DAEMON_ARGS="--config /usr/local/etc/snark/web.backend.json"
+DAEMON_ARGS="--config /usr/local/etc/web.backend.json"
 
 # Exit if the package is not installed
 [ -x "$DAEMON" ] || exit 0

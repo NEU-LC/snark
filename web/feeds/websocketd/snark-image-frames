@@ -8,16 +8,18 @@ function bye()
     exit 1
 }
 
-CONFIG=/usr/local/etc/websocketd/$scriptname.json
+DEFAULT_CONFIG=/usr/local/etc/websocketd/$scriptname.json
+
+CONFIG=${WEBSOCKETD_CONFIG:-$DEFAULT_CONFIG}
 
 if [[ ! -e "$CONFIG" ]]; then
-    echo "error: $scriptname config file not found"
+    echo "error: $scriptname config file not found (CONFIG=$CONFIG)"
     exit 1
 fi
 
-BACKEND_CONFIG=$( name-value-get --from json config/backend < "$CONFIG" )
-ROBOT_CONFIG=$( name-value-get --from json config/robot < "$CONFIG" )
-PUBLISH_CONFIG=$( name-value-get --from json config/publish < "$CONFIG" )
+BACKEND_CONFIG=$( name-value-get --from json snark-image-frames/config/backend < "$CONFIG" )
+ROBOT_CONFIG=$( name-value-get --from json snark-image-frames/config/robot < "$CONFIG" )
+PUBLISH_CONFIG=$( name-value-get --from json snark-image-frames/config/publish < "$CONFIG" )
 
 if [[ -z "$BACKEND_CONFIG" || -z "$ROBOT_CONFIG" || -z "$PUBLISH_CONFIG" ]]; then
     echo "error: $scriptname configuration missing"
@@ -44,6 +46,6 @@ args="--backend-config=$BACKEND_CONFIG --robot-config=$ROBOT_CONFIG --publish-co
 [[ "${query_string[data_uri]}" == true ]] && args+=" --data-uri"
 [[ -n "${query_string[count]}" ]] && args+=" --count=${query_string[count]}"
 
-snark-image-stream $args &
+snark-image-frames $args &
 
 wait $!

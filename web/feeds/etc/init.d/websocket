@@ -24,6 +24,8 @@ PATH=/sbin:/usr/sbin:/bin:/usr/bin:/usr/local/bin
 DESC="websocket daemon"
 NAME=websocketd
 DAEMON=/usr/local/bin/$NAME
+PIDFILE=/var/run/$NAME.pid
+SCRIPTNAME=/etc/init.d/websocket
 DEFAULT_PORT=8888
 DEFAULT_DIR=/usr/local/lib/websocketd
 CONFIG=/usr/local/etc/websocketd.json
@@ -31,15 +33,15 @@ PORT=$( test -f $CONFIG && name-value-get --from json port < $CONFIG )
 PORT=${PORT:-$DEFAULT_PORT}
 DIR=$( test -f $CONFIG && name-value-get --from json dir < $CONFIG )
 DIR=${DIR:-$DEFAULT_DIR}
-DAEMON_ARGS="--port $PORT --devconsole --dir $DIR"
-PIDFILE=/var/run/$NAME.pid
-SCRIPTNAME=/etc/init.d/websocket
+DAEMON_ARGS="--port $PORT --devconsole --dir $DIR --passenv WEBSOCKETD_CONFIG"
 
 # Exit if the package is not installed
 [ -x "$DAEMON" ] || exit 0
 
 # Read configuration variable file if it is present
 [ -r /etc/default/$NAME ] && . /etc/default/$NAME
+
+export WEBSOCKET_CONFIG
 
 # Load the VERBOSE setting and other rcS variables
 . /lib/init/vars.sh
