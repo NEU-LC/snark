@@ -87,7 +87,7 @@ template <> struct traits< snark::camera::pinhole >
 {
     template < typename Key, class Visitor > static void visit( const Key&, snark::camera::pinhole& p, Visitor& v )
     {
-        v.apply( "sensor_size", p.image_size );
+        v.apply( "sensor_size", p.sensor_size );
         v.apply( "image_size", p.image_size );
         v.apply( "focal_length", p.focal_length );
         v.apply( "principal_point", p.principal_point );
@@ -96,7 +96,7 @@ template <> struct traits< snark::camera::pinhole >
     
     template < typename Key, class Visitor > static void visit( const Key&, const snark::camera::pinhole& p, Visitor& v )
     {
-        v.apply( "sensor_size", p.image_size );
+        v.apply( "sensor_size", p.sensor_size );
         v.apply( "image_size", p.image_size );
         v.apply( "focal_length", p.focal_length );
         v.apply( "principal_point", p.principal_point );

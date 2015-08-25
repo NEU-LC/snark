@@ -70,7 +70,7 @@ Eigen::Vector3d pinhole::to_cartesian( const Eigen::Vector2d& p, bool undistort 
 {
     Eigen::Vector2d q = ( undistort ? undistorted( p ) : p ) - ( principal_point ? *principal_point : image_centre() );
     Eigen::Vector2d s = pixel_size();
-    return Eigen::Vector3d( q.x() * s.x(), -q.y() * s.x(), -focal_length ); // todo: verify signs
+    return Eigen::Vector3d( q.x() * s.x(), -q.y() * s.y(), -focal_length ); // todo: verify signs
 }
 
 Eigen::Vector2d pinhole::image_centre() const { return Eigen::Vector2d( double( image_size.x() ) / 2, double( image_size.y() ) / 2 ); }
