@@ -40,6 +40,7 @@
 #include <comma/application/signal_flag.h>
 #include <comma/csv/ascii.h>
 #include <comma/csv/binary.h>
+#include <comma/csv/stream.h>
 #include <comma/csv/traits.h>
 #include <comma/math/compare.h>
 #include <comma/name_value/parser.h>
@@ -47,7 +48,7 @@
 #include <snark/visiting/eigen.h>
 #include "frame.h"
 
-static void usage()
+static void usage( bool verbose = false )
 {
     std::cerr << std::endl;
     std::cerr << "convert timestamped Cartesian points from a reference frame to a target coordinate frame[s]" << std::endl;
@@ -70,6 +71,18 @@ static void usage()
     std::cerr << "                     can be individually specified for a frame, e.g.:" << std::endl;
     std::cerr << "                     --from \"novatel.csv;output-frame\"" << std::endl;
     std::cerr << std::endl;
+    std::cerr << "    fields" << std::endl;
+    std::cerr << "        t: timestamp" << std::endl;
+    std::cerr << "        x,y,z: coordinates" << std::endl;
+    std::cerr << "        roll,pitch,yaw: rotation" << std::endl;
+    std::cerr << "        frame/coordinates/x,frame/coordinates/y,frame/coordinates/z,frame/orientation/roll,frame/orientation/pitch,frame/orientation/yaw: frame" << std::endl;
+    std::cerr << "            if frame fields are present, get frame from them, apply to" << std::endl;
+    std::cerr << "            coordinates (x,y,z) and output input line with converted" << std::endl;
+    std::cerr << "            coordinates and rotation appended as x,y,z,roll,pitch,yaw" << std::endl;
+    std::cerr << "            --from: if present, conversion is from reference frame, default" << std::endl;
+    std::cerr << "            --to: if present, conversion is to reference frame" << std::endl;
+    std::cerr << "        default: t,x,y,z" << std::endl;
+    std::cerr << std::endl;
     std::cerr << "    IMPORTANT: <frame> is the transformation from reference frame to frame" << std::endl;
     std::cerr << std::endl;
     std::cerr << "               If still confused, try simple coordinate transformations," << std::endl;
@@ -82,21 +95,32 @@ static void usage()
     std::cerr << "echo 20101010T101010,1,0,0 | points-frame --from \"100,100,0\"" << std::endl;
     std::cerr << "20101010T101010,101,100,0" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "echo 20101010T101010,1,0,0 | points-frame --from \"100,100,0,$(math-deg2rad 0,0,90)\"" << std::endl;
+    std::cerr << "echo 20101010T101010,1,0,0 | points-frame --from \"100,100,0,0,$(math-deg2rad 90),0\"" << std::endl;
     std::cerr << "20101010T101010,100,101,0" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "echo 20101010T101010,1,0,0 | points-frame --from \"0,-3,2,$(math-deg2rad 90,0,0)\"" << std::endl;
+    std::cerr << "echo 20101010T101010,1,0,0 | points-frame --from \"0,-3,2,$(math-deg2rad 90),0,0\"" << std::endl;
     std::cerr << "20101010T101010,1,-3,2" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "echo 20101010T101010,1,0,0 | points-frame --from \"3,2,0,$(math-deg2rad 0,90,0)\"" << std::endl;
+    std::cerr << "echo 20101010T101010,1,0,0 | points-frame --from \"3,2,0,0,$( math-deg2rad 90 ),0\"" << std::endl;
     std::cerr << "20101010T101010,3,2,-1" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "echo 20101010T101010,1,0,0 | points-frame --from \"-2,1,3,$(math-deg2rad 0,0,90)\"" << std::endl;
+    std::cerr << "echo 20101010T101010,1,0,0 | points-frame --from \"-2,1,3,0,0,$(math-deg2rad 90)\"" << std::endl;
     std::cerr << "20101010T101010,-2,1,3" << std::endl;
     std::cerr << std::endl;
     std::cerr << "echo 1,2,3 | points-frame --from \"3,2,1\" --fields=x,y,z" << std::endl;
     std::cerr << std::endl;
     std::cerr << "cat log.csv | points-frame --from nav.csv > log.world.csv" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "frame is passed on stdin" << std::endl;
+    std::cerr << "    translation and rotation" << std::endl;
+    std::cerr << "        echo 1,2,3,10,20,30,0,0,0 | points-frame --fields x,y,z,frame" << std::endl;
+    std::cerr << "        1,2,3,10,20,30,0,0,0,11,22,33,0,-0,0" << std::endl;
+    std::cerr << "    translation only" << std::endl;
+    std::cerr << "        echo 1,2,3,10,20,30 | points-frame --fields x,y,z,frame/x,frame/y,frame/z" << std::endl;
+    std::cerr << "        1,2,3,10,20,30,11,22,33,0,-0,0" << std::endl;
+    std::cerr << "    rotation only" << std::endl;
+    std::cerr << "        echo 1,2,3,0,$( math-deg2rad 90 ),0 | points-frame --fields x,y,z,frame/roll,frame/pitch,frame/yaw" << std::endl;
+    std::cerr << "        1,2,3,0,1.57079632679,0,3,2,-1,0,1.57079632679,0" << std::endl;
     std::cerr << std::endl;
     exit( -1 );
 }
@@ -258,12 +282,68 @@ void run( const std::vector< boost::shared_ptr< snark::applications::frame > >& 
     }
 }
 
+struct position_and_frame
+{
+    snark::applications::position position;
+    snark::applications::position frame;
+};
+
+namespace comma { namespace visiting {
+
+template <> struct traits< position_and_frame >
+{
+    template < typename Key, class Visitor > static void visit( const Key&, position_and_frame& p, Visitor& v )
+    {
+        v.apply( "position", p.position );
+        v.apply( "frame", p.frame );
+    }
+
+    template < typename Key, class Visitor > static void visit( const Key&, const position_and_frame& p, Visitor& v )
+    {
+        v.apply( "position", p.position );
+        v.apply( "frame", p.frame );
+    }
+};
+
+} } // namespace comma { namespace visiting {
+
 int main( int ac, char** av )
 {
     try
     {
-        comma::command_line_options options( ac, av );
-        if( options.exists( "--help,-h" ) || ac == 1 ) { usage(); }
+        comma::command_line_options options( ac, av, usage );
+        comma::csv::options csv( options );
+        if( csv.fields == "" ) { csv.fields="t,x,y,z"; }
+        csv.precision = 12;
+        std::vector< std::string > v = comma::split( csv.fields, ',' );
+        bool stdin_has_frame = false;
+        for( unsigned int i = 0; i < v.size() && !stdin_has_frame; ++i ) { stdin_has_frame = v[i] == "frame" || v[i] == "frame/x" || v[i] == "frame/y" || v[i] == "frame/z" || v[i] == "frame/roll" || v[i] == "frame/pitch" || v[i] == "frame/yaw"; }
+        bool rotation_present = false;
+        for( unsigned int i = 0; i < v.size() && !rotation_present; ++i ) { rotation_present = v[i] == "roll" || v[i] == "pitch" || v[i] == "yaw"; }
+        if( stdin_has_frame ) // quick and dirty
+        {            
+            for( unsigned int i = 0; i < v.size(); ++i ) { if( v[i] == "x" || v[i] == "y" || v[i] == "z" || v[i] == "roll" || v[i] == "pitch" || v[i] == "yaw" ) { v[i] = "position/" + v[i]; } }
+            csv.fields = comma::join( v, ',' );
+            csv.full_xpath = true;
+            comma::csv::input_stream< position_and_frame > is( std::cin, csv );
+            comma::csv::options output_csv;
+            if( csv.binary() ) { output_csv.format( comma::csv::format::value< snark::applications::position >() ); }
+            comma::csv::output_stream< snark::applications::position > os( std::cout, output_csv );
+            comma::csv::tied< position_and_frame, snark::applications::position > tied( is, os );
+            bool from = !options.exists( "--to" );
+            while( is.ready() || std::cin.good() )
+            {
+                const position_and_frame* p = is.read();
+                if( !p ) { break; }
+                Eigen::Translation3d translation( p->frame.coordinates );
+                Eigen::Matrix3d rotation = snark::rotation_matrix::rotation( p->frame.orientation );
+                Eigen::Affine3d transform = from ? ( translation * rotation ) : ( rotation.transpose() * translation.inverse() );
+                Eigen::Matrix3d m = snark::rotation_matrix::rotation( p->position.orientation );
+                if( from ) { m = rotation * m; } else { m = rotation.transpose() * m; }
+                tied.append( snark::applications::position( transform * p->position.coordinates, snark::rotation_matrix::roll_pitch_yaw( m ) ) );
+            }
+            return 0;
+        }
         bool discard_out_of_order = options.exists( "--discard-out-of-order,--discard" );
         bool from = options.exists( "--from" );
         bool to = options.exists( "--to" );
@@ -282,20 +362,16 @@ int main( int ac, char** av )
             if( !comma::math::less( 0, d ) ) { std::cerr << "points-frame: expected --max-gap in seconds, got " << d << std::endl; usage(); }
             max_gap = boost::posix_time::seconds( int( d ) ) + boost::posix_time::microseconds( int( 1000000.0 * ( d - int( d ) ) ) );
         }
-        comma::csv::options csv( options );
-        if( csv.fields == "" ) { csv.fields="t,x,y,z"; }
-        bool rotation_present = comma::csv::fields_exist( csv.fields, "roll,pitch,yaw" );
         std::vector< boost::shared_ptr< snark::applications::frame > > frames = parse_frames( options.values< std::string >( "--from,--to" )
-                                                                      , csv
-                                                                      , discard_out_of_order
-                                                                      , options.exists( "--output-frame" )
-                                                                      , to_vector
-                                                                      , interpolate
-                                                                      , rotation_present );
+                                                                                            , csv
+                                                                                            , discard_out_of_order
+                                                                                            , options.exists( "--output-frame" )
+                                                                                            , to_vector
+                                                                                            , interpolate
+                                                                                            , rotation_present );
         //if( timestamp_required ) { if( csv.fields != "" && !comma::csv::namesValid( comma::split( csv.fields, ',' ), comma::split( "t,x,y,z", ',' ) ) ) { COMMA_THROW( comma::exception, "expected mandatory fields t,x,y,z; got " << csv.fields ); } }
         //else { if( csv.fields != "" && !comma::csv::namesValid( comma::split( csv.fields, ',' ), comma::split( "x,y,z", ',' ) ) ) { COMMA_THROW( comma::exception, "expected mandatory fields x,y,z; got " << csv.fields ); } }
         if( timestamp_required ) { if( csv.fields != "" && !comma::csv::fields_exist( csv.fields, "t" ) ) { COMMA_THROW( comma::exception, "expected mandatory field t; got " << csv.fields ); } }
-        csv.precision = 12;
         run( frames, csv );
         return 0;
     }
