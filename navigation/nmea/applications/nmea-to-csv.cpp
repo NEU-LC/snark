@@ -33,6 +33,7 @@
 #include <comma/application/command_line_options.h>
 #include <comma/csv/impl/fieldwise.h>
 #include <comma/csv/stream.h>
+#include <comma/csv/traits.h>
 #include "../../../math/spherical_geometry/coordinates.h"
 #include "../../../math/spherical_geometry/traits.h"
 #include "../../../timing/timestamped.h"
@@ -50,10 +51,12 @@ static void usage( bool verbose )
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    --help,-h: output help; --help --verbose: more help" << std::endl;
-    std::cerr << "    --fields=<fields>: output fields" << std::endl;
+    std::cerr << "    --fields,-f=<fields>: select output fields" << std::endl;
     std::cerr << "    --permissive: parse even if checksum invalid, e.g. for debugging" << std::endl;
     std::cerr << "    --output-all,--all: if present, output records on every gps update," << std::endl;
     std::cerr << "                        even if values of output fields have not changed" << std::endl;
+    std::cerr << "    --output-fields: print output fields and exit" << std::endl;
+    std::cerr << "    --output-format: print output format and exit" << std::endl;
     std::cerr << "    --verbose,-v: more output to stderr" << std::endl;
     std::cerr << std::endl;
     std::cerr << "fields" << std::endl;
@@ -67,7 +70,7 @@ struct position
 {
     snark::spherical::coordinates coordinates;
     double z;
-    
+
     position() : z( 0 ) {}
     position( const snark::spherical::coordinates& coordinates, double z ) : coordinates( coordinates ), z( z ) {}
 };
@@ -77,7 +80,7 @@ struct orientation
     double roll;
     double pitch;
     double yaw;
-    
+
     orientation() : roll( 0 ), pitch( 0 ), yaw( 0 ) {}
     orientation( double roll, double pitch, double yaw ) : roll( roll ), pitch( pitch ), yaw( yaw ) {}
 };
@@ -89,10 +92,10 @@ struct output
         ::position position; // todo: make optional? or simply check for zeroes?
         ::orientation orientation; // todo: make optional? or simply check for zeroes?
         comma::uint32 number_of_satellites;
-        
+
         data() : number_of_satellites( 0 ) {}
     };
-    
+
     typedef snark::timestamped< data > type;
 };
 
@@ -105,14 +108,14 @@ template <> struct traits< position >
         v.apply( "coordinates", p.coordinates );
         v.apply( "z", p.z );
     }
-    
+
     template < typename Key, class Visitor > static void visit( const Key&, const position& p, Visitor& v )
     {
         v.apply( "coordinates", p.coordinates );
         v.apply( "z", p.z );
     }
 };
-    
+
 template <> struct traits< orientation >
 {
     template < typename Key, class Visitor > static void visit( const Key&, orientation& p, Visitor& v )
@@ -121,7 +124,7 @@ template <> struct traits< orientation >
         v.apply( "pitch", p.pitch );
         v.apply( "yaw", p.yaw );
     }
-    
+
     template < typename Key, class Visitor > static void visit( const Key&, const orientation& p, Visitor& v )
     {
         v.apply( "roll", p.roll );
@@ -129,7 +132,7 @@ template <> struct traits< orientation >
         v.apply( "yaw", p.yaw );
     }
 };
-    
+
 template <> struct traits< output::data >
 {
     template < typename Key, class Visitor > static void visit( const Key&, output::data& p, Visitor& v )
@@ -138,7 +141,7 @@ template <> struct traits< output::data >
         v.apply( "orientation", p.orientation );
         v.apply( "number_of_satellites", p.number_of_satellites );
     }
-    
+
     template < typename Key, class Visitor > static void visit( const Key&, const output::data& p, Visitor& v )
     {
         v.apply( "position", p.position );
@@ -150,7 +153,7 @@ template <> struct traits< output::data >
 } } // namespace comma { namespace visiting {
 
 static output::type output_;
-    
+
 static comma::csv::fieldwise make_fieldwise( const comma::csv::options& csv )
 {
     std::vector< std::string > v = comma::split( csv.fields, ',' );
@@ -168,7 +171,7 @@ static void output( const comma::csv::fieldwise& fieldwise, const output::type& 
     {
         current.resize( os.binary().binary().format().size() );
         os.binary().binary().put( v, &current[0] );
-        if( !fieldwise.binary().equal( &last[0], &current[0] ) ) { std::cout.write( &current[0], os.binary().binary().format().size() ); }
+        if( !fieldwise.binary().equal( &last[0], &current[0] ) ) { std::cout.write( &current[0], os.binary().binary().format().size() ); std::cout.flush(); }
     }
     else
     {
@@ -208,21 +211,27 @@ int main( int ac, char** av )
     try
     {
         comma::command_line_options options( ac, av, usage );
+        if( options.exists( "--output-fields" ) ) { std::cout << comma::join( comma::csv::names< output::type >( false ), ',' ) << std::endl; return 0; }
+        if( options.exists( "--output-format" ) ) { std::cout << comma::csv::format::value< output::type >( options.value< std::string >( "--fields,-f", "" ), false ) << std::endl; return 0; }
         bool output_all = options.exists( "--output-all,--all" );
         bool verbose = options.exists( "--verbose,-v" );
         bool permissive = options.exists( "--permissive" );
         comma::csv::options csv( options );
         csv.full_xpath = true; // for future, e.g. to plug in errors
-        if( csv.fields.empty() ) { csv.fields = "t,latitude,longitude,z,roll,pitch,yaw,number_of_satellites"; }
-        std::vector< std::string > v = comma::split( csv.fields, ',' );
-        for( unsigned int i = 0; i < v.size(); ++i )
+        if( csv.fields.empty() ) { csv.fields = comma::join( comma::csv::names< output::type >( csv.full_xpath ), ',' ); }
+        else if( csv.full_xpath )
         {
-            if( v[i] == "latitude" || v[i] == "longitude" ) { v[i] = "data/position/coordinates/" + v[i]; }
-            else if( v[i] == "z" ) { v[i] = "data/position/" + v[i]; }
-            if( v[i] == "roll" || v[i] == "pitch" || v[i] == "yaw" ) { v[i] = "data/orientation/" + v[i]; }
-            else if( v[i] == "number_of_satellites" ) { v[i] = "data/" + v[i]; }
+            std::vector< std::string > v = comma::split( csv.fields, ',' );
+            for( unsigned int i = 0; i < v.size(); ++i )
+            {
+                if( v[i] == "latitude" || v[i] == "longitude" ) { v[i] = "data/position/coordinates/" + v[i]; }
+                else if( v[i] == "z" ) { v[i] = "data/position/" + v[i]; }
+                if( v[i] == "roll" || v[i] == "pitch" || v[i] == "yaw" ) { v[i] = "data/orientation/" + v[i]; }
+                else if( v[i] == "number_of_satellites" ) { v[i] = "data/" + v[i]; }
+            }
+            csv.fields = comma::join( v, ',' );
         }
-        csv.fields = comma::join( v, ',' );
+        if( options.exists( "--binary" ) ) { csv.format( comma::csv::format::value< output::type >( csv.fields, csv.full_xpath ) ); }
         comma::csv::fieldwise fieldwise = make_fieldwise( csv ); // todo: plug in
         comma::csv::output_stream< output::type > os( std::cout, csv );
         while( std::cin.good() )
