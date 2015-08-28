@@ -49,6 +49,9 @@ class gige
 
         /// constructor; default id: connect to any available camera
         gige( unsigned int id = 0, const attributes_type& attributes = attributes_type() );
+        
+        /// constructor; default id: connect to any available camera
+        gige( unsigned int id, bool use_camera_timestamp, const attributes_type& attributes = attributes_type() );
 
         /// destructor
         ~gige();

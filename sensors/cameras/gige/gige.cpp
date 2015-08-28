@@ -32,6 +32,7 @@
 #include <boost/optional.hpp>
 #include <boost/thread.hpp>
 #include <comma/base/exception.h>
+#include <comma/base/types.h>
 #include "gige.h"
 
 static void PVDECL pv_callback_( tPvFrame *frame );
@@ -186,9 +187,10 @@ static cv::Mat pv_as_cvmat_( const tPvFrame& frame )
 class gige::impl
 {
     public:
-        impl( unsigned int id, const attributes_type& attributes ) :
-            started_( false ),
-            timeOut_( 1000 )
+        impl( unsigned int id, bool use_camera_timestamp, const attributes_type& attributes )
+            : started_( false )
+            , timeOut_( 1000 )
+            , use_camera_timestamp_( use_camera_timestamp )
         {
             initialize_();
             static const boost::posix_time::time_duration timeout = boost::posix_time::seconds( 5 ); // quick and dirty; make configurable?
@@ -240,6 +242,20 @@ class gige::impl
             ::memset( &frame_, 0, sizeof( tPvFrame ) ); // voodoo
             result = PvAttrUint32Get( handle_, "TotalBytesPerFrame", &total_bytes_per_frame_ );
             if( result != ePvErrSuccess ) { close(); COMMA_THROW( comma::exception, "failed to get TotalBytesPerFrame from gige camera " << *id_ << ": " << pv_error_to_string_( result ) << " (" << result << ")" ); }
+            if( use_camera_timestamp_ ) // quick and dirty, is it even correct?
+            {
+                tPvUint32 v;
+                if( PvAttrUint32Get( handle_, "TimeStampFrequency", &v ) != ePvErrSuccess ) { close(); COMMA_THROW( comma::exception, "failed to get TimeStampFrequency from gige camera " << *id_ << ": " << pv_error_to_string_( result ) << " (" << result << ")" ); }
+                timestamp_frequency_ = v;
+                double ticks;
+                start_time_ = boost::posix_time::microsec_clock::universal_time();
+                if( PvAttrUint32Get( handle_, "TimeStampValueHi", &v ) != ePvErrSuccess) { close(); COMMA_THROW( comma::exception, "failed to get TimeStampValueHi from gige camera " << *id_ << ": " << pv_error_to_string_( result ) << " (" << result << ")" ); }
+                ticks = comma::uint64( v ) << 32;
+                if( PvAttrUint32Get( handle_, "TimeStampValueLo", &v ) != ePvErrSuccess) { close(); COMMA_THROW( comma::exception, "failed to get TimeStampValueLo from gige camera " << *id_ << ": " << pv_error_to_string_( result ) << " (" << result << ")" ); }
+                ticks += v;
+                double elapsed = ticks / timestamp_frequency_;
+                start_time_ -= ( boost::posix_time::seconds( comma::uint32( elapsed ) ) + boost::posix_time::microseconds( ( elapsed - comma::uint32( elapsed ) ) * 1000000 ) );
+            }
             buffer_.resize( total_bytes_per_frame_ );
             frame_.ImageBuffer = &buffer_[0];
             frame_.ImageBufferSize = total_bytes_per_frame_;
@@ -284,6 +300,14 @@ class gige::impl
             PvUnInitialize();
             //std::cerr << "the camera has been closed" << std::endl;
         }
+        
+        boost::posix_time::ptime timestamp_( comma::uint32 hi, comma::uint32 lo )
+        {
+            double s = double( ( comma::uint64( hi ) << 32 ) + lo ) / timestamp_frequency_;
+            comma::uint32 seconds = s;
+            comma::uint32 microseconds = ( double( s ) - seconds ) * 1000000;
+            return start_time_ + boost::posix_time::seconds( seconds ) + boost::posix_time::microseconds( microseconds );
+        }
 
         std::pair< boost::posix_time::ptime, cv::Mat > read()
         {
@@ -314,7 +338,9 @@ class gige::impl
                             {
                                 result = frame_.Status;
                             }
-                            pair.first = boost::posix_time::microsec_clock::universal_time();
+                            pair.first = use_camera_timestamp_
+                                       ? timestamp_( frame_.TimestampHi, frame_.TimestampLo )
+                                       : boost::posix_time::microsec_clock::universal_time();
                         }
                     }
                 }
@@ -378,8 +404,11 @@ class gige::impl
         std::vector< char > buffer_;
         boost::optional< unsigned int > id_;
         unsigned long total_bytes_per_frame_;
+        comma::uint32 timestamp_frequency_;
+        boost::posix_time::ptime start_time_;
         bool started_;
         unsigned int timeOut_; // milliseconds
+        bool use_camera_timestamp_;
         static void initialize_() // quick and dirty
         {
             static tPvErr result = PvInitialize(); // should it be a singleton?
@@ -440,7 +469,9 @@ static void PVDECL pv_callback_( tPvFrame *frame )
 
 namespace snark{ namespace camera{
 
-gige::gige( unsigned int id, const gige::attributes_type& attributes ) : pimpl_( new impl( id, attributes ) ) {}
+gige::gige( unsigned int id, const gige::attributes_type& attributes ) : pimpl_( new impl( id, false, attributes ) ) {}
+
+gige::gige( unsigned int id, bool use_camera_timestamp, const attributes_type& attributes ) : pimpl_( new impl( id, false, attributes ) ) {}
 
 gige::~gige() { delete pimpl_; }
 

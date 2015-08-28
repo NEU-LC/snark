@@ -58,6 +58,7 @@ int main( int argc, char** argv )
         boost::program_options::options_description description( "options" );
         description.add_options()
             ( "help,h", "display help message" )
+            ( "camera-clock", "use camera clock; todo: debug, does it even make sense without ptp" )
             ( "set", boost::program_options::value< std::string >( &setattributes ), "set camera attributes as semicolon-separated name-value pairs" )
             ( "set-and-exit", "set camera attributes specified in --set and exit" )
             ( "id", boost::program_options::value< unsigned int >( &id )->default_value( 0 ), "camera id; default: first available camera" )
@@ -110,7 +111,7 @@ int main( int argc, char** argv )
             attributes.insert( m.get().begin(), m.get().end() );
         }
         if( verbose ) { std::cerr << "gige-cat: connecting..." << std::endl; }
-        snark::camera::gige camera( id, attributes );
+        snark::camera::gige camera( id, vm.count( "camera-clock" ), attributes );
         if( verbose ) { std::cerr << "gige-cat: connected to camera " << camera.id() << std::endl; }
         if( verbose ) { std::cerr << "gige-cat: total bytes per frame: " << camera.total_bytes_per_frame() << std::endl; }
         if( timeout > 0 ) { camera.set_frame_timeout( timeout ); }
