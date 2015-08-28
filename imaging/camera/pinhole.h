@@ -34,6 +34,7 @@
 
 #include <boost/optional.hpp>
 #include <Eigen/Core>
+#include <opencv2/core/core.hpp>
 
 namespace snark { namespace camera {
 
@@ -56,8 +57,21 @@ struct pinhole
         };
         
         radial_t radial;
+        
         tangential_t tangential;
         
+        std::string map;
+        
+        struct map_t
+        {
+            cv::Mat x, y;
+            
+            map_t() {}
+            map_t( const std::string& filename, const Eigen::Vector2i& image_size ) { load( filename, image_size ); }
+            void load( const std::string& filename, const Eigen::Vector2i& image_size );
+        };
+        
+        /// return distortion as a k1,k2,p1,p2,k3 vector, since opencv and others often use it that way
         operator Eigen::Matrix< double, 5, 1 >() const;
     };
     
@@ -96,6 +110,9 @@ struct pinhole
     
     /// return pixel coordinates in camera frame
     Eigen::Vector3d to_cartesian( const Eigen::Vector2d& p, bool undistort = true ) const;
+    
+    /// load distortion map from file
+    distortion_t::map_t load_distortion_map() const { return distortion_t::map_t( distortion.map, image_size ); }
 };
 
 } } // namespace snark { namespace camera {

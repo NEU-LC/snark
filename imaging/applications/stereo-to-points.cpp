@@ -41,16 +41,25 @@
 
 cv::StereoSGBM sgbm;    
 
-template< typename T >
-void run( const snark::imaging::camera_parser& left_parameters, const snark::imaging::camera_parser& right_parameters,
-          unsigned int width, unsigned int height, const comma::csv::options& csv, const cv::Mat& left, const cv::Mat& right, bool input_rectified = false )
+template< typename T > static void run( const snark::imaging::camera_parser& left_parameters
+                                      , const snark::imaging::camera_parser& right_parameters
+                                      , unsigned int width
+                                      , unsigned int height
+                                      , const comma::csv::options& csv
+                                      , const cv::Mat& left
+                                      , const cv::Mat& right
+                                      , bool input_rectified = false )
 {
     if( left_parameters.has_map() )
     {
-        T stereoPipeline( left_parameters, right_parameters,
-                          left_parameters.map_x(), left_parameters.map_y(),
-                          right_parameters.map_x(), right_parameters.map_y(),
-                          csv, input_rectified );
+        T stereoPipeline( left_parameters
+                        , right_parameters
+                        , left_parameters.map_x()
+                        , left_parameters.map_y()
+                        , right_parameters.map_x()
+                        , right_parameters.map_y()
+                        , csv
+                        , input_rectified );
         stereoPipeline.process( left, right, sgbm );
     }
     else
@@ -66,22 +75,22 @@ void run_stream( const snark::imaging::camera_parser& left_parameters, const sna
 {
     if( left_parameters.has_map() )
     {
-        snark::imaging::stereo_stream< T > stream( left_parameters, right_parameters, roi,
-                          left_parameters.map_x(), left_parameters.map_y(),
-                          right_parameters.map_x(), right_parameters.map_y(),
-                          input_csv, output_csv, input_rectified );
-        while( std::cin.good() && !std::cin.eof() )
-        {
-            stream.read( sgbm );
-        }
+        snark::imaging::stereo_stream< T > stream( left_parameters
+                                                 , right_parameters
+                                                 , roi
+                                                 , left_parameters.map_x()
+                                                 , left_parameters.map_y()
+                                                 , right_parameters.map_x()
+                                                 , right_parameters.map_y()
+                                                 , input_csv
+                                                 , output_csv
+                                                 , input_rectified );
+        while( std::cin.good() && !std::cin.eof() ) { stream.read( sgbm ); }
     }
     else
     {
         snark::imaging::stereo_stream< T > stream( left_parameters, right_parameters, roi, input_csv, output_csv, input_rectified );
-        while( std::cin.good() && !std::cin.eof() )
-        {
-            stream.read( sgbm );
-        }
+        while( std::cin.good() && !std::cin.eof() ) { stream.read( sgbm ); }
     }
 }
 
@@ -200,103 +209,109 @@ int main( int argc, char** argv )
             std::cerr << std::endl;
             return 1;
         }
-
-        sgbm.fullDP = ( vm.count( "full-dp" ) );
-        
-        if( !vm.count( "config" ) )
-        {
-            std::cerr << argv[0] << ": please specify --config file to read configuration parameters" << std::endl;
-            return 1;
-        }
-        if( !vm.count( "left-path" ) || !vm.count( "right-path" ) )
-        {
-            std::cerr << argv[0] << ": please specify --left-path and --right-path to read camera configuration parameters" << std::endl;
-            return 1;
-        }
-        std::vector< std::string > v = comma::split( configFile, ':' );
+        sgbm.fullDP = vm.count( "full-dp" );
+        if( !vm.count( "config" ) ) { std::cerr << argv[0] << ": please specify --config file to read configuration parameters" << std::endl; return 1; }
+        if( !vm.count( "left-path" ) || !vm.count( "right-path" ) ) { std::cerr << argv[0] << ": please specify --left-path and --right-path to read camera configuration parameters" << std::endl; return 1; }
+        const std::vector< std::string >& v = comma::split( configFile, ':' );
         std::string filename = v[0];
         std::string xpath_to_camera = ( v.size() == 1 ) ? "" : v[1] + "/";
         snark::imaging::camera_parser leftParameters( filename, xpath_to_camera + leftPath );
         snark::imaging::camera_parser rightParameters( filename, xpath_to_camera + rightPath );
-
-        cv::Mat left = cv::imread( leftImage, 1 );
-        cv::Mat right = cv::imread( rightImage, 1 );
-
         comma::csv::options csv = comma::csv::program_options::get( vm );
         if( vm.count( "disparity" ) || vm.count( "output-rectified" ) )
         {
             csv.fields = "t,rows,cols,type";
             csv.format( "t,3ui" );
         }
-
-        if( vm.count( "left" ) || vm.count( "right" ) )
+        bool input_rectified = vm.count( "input-rectified" );
+        if( vm.count( "left" ) != vm.count( "right" ) ) { std::cerr << argv[0] << ": expected either both --left and --right or none" << std::endl; return 1; }
+        if( vm.count( "left" ) )
         {
-            if( !( vm.count( "left" ) && vm.count( "right" ) ) )
+            cv::Mat left = cv::imread( leftImage, 1 );
+            cv::Mat right = cv::imread( rightImage, 1 );
+            if( !( vm.count( "left" ) && vm.count( "right" ) ) ) { std::cerr << argv[0] << ": need both --left and --right" << std::endl; return 1; }
+            if( vm.count( "roi" ) ) { std::cerr << argv[0] << ": specify either --roi when reading from stdin, or --left and --right when reading from files" << std::endl; return 1; }
+            if( !vm.count( "disparity" ) && !vm.count( "output-rectified" ) )
             {
-                std::cerr << argv[0] << ": need both --left and --right" << std::endl;
-                return 1;
-            }
-            if( vm.count( "roi" ) )
-            {
-                std::cerr << argv[0] << ": specify either --roi when reading from stdin, or --left and --right when reading from files" << std::endl;
-                return 1;
-            }
-            if( vm.count( "disparity" ) == 0 && vm.count( "output-rectified" ) == 0 )
-            {
-                run< snark::imaging::stereo >( leftParameters, rightParameters, left.cols, left.rows, csv, left, right, vm.count( "input-rectified" ) );
+                run< snark::imaging::stereo >( leftParameters
+                                             , rightParameters
+                                             , left.cols
+                                             , left.rows
+                                             , csv
+                                             , left
+                                             , right
+                                             , input_rectified );
             }
             else
             {
                 if( vm.count( "disparity" ) )
-                    run< snark::imaging::disparity >( leftParameters, rightParameters, left.cols, left.rows, csv, left, right, vm.count( "input-rectified" ) );
+                {
+                    run< snark::imaging::disparity >( leftParameters
+                                                    , rightParameters
+                                                    , left.cols
+                                                    , left.rows
+                                                    , csv
+                                                    , left
+                                                    , right
+                                                    , input_rectified );
+                }
                 if( vm.count( "output-rectified" ) )
-                    run< snark::imaging::rectified >( leftParameters, rightParameters, left.cols, left.rows, csv, left, right, vm.count( "input-rectified" ) );
+                {
+                    run< snark::imaging::rectified >( leftParameters
+                                                    , rightParameters
+                                                    , left.cols
+                                                    , left.rows
+                                                    , csv
+                                                    , left
+                                                    , right
+                                                    , input_rectified );
+                }
             }
         }
         else
         {
-            // read from std in
-            if( !vm.count( "roi" ) )
-            {
-                std::cerr << argv[0] << ": please specify --roi to read from stdin or --left and --right to read from files" << std::endl;
-                return 1;
-            }
+            if( !vm.count( "roi" ) ) { std::cerr << argv[0] << ": please specify --roi to read from stdin or --left and --right to read from files" << std::endl; return 1; }
             std::vector< std::string > v = comma::split( roi, ',' );
-            if( v.size() != 6 )
-            {
-                std::cerr << argv[0] << ": please specify --roi as <left-pos-x,left-pos-y,right-pos-x,right-pos-y,width,height>" << std::endl;
-                return 1;
-            }
+            if( v.size() != 6 ) { std::cerr << argv[0] << ": please specify --roi as <left-pos-x,left-pos-y,right-pos-x,right-pos-y,width,height>" << std::endl; return 1; }
             boost::array< unsigned int, 6 > roiArray;
-            for( unsigned int i = 0; i < 6; i++ )
-            {
-                roiArray[i] = boost::lexical_cast< unsigned int >( v[i] );
-            }
+            for( unsigned int i = 0; i < 6; roiArray[i] = boost::lexical_cast< unsigned int >( v[i] ), ++i );
             comma::csv::options input_csv;
             input_csv.fields = "t,rows,cols,type";
             input_csv.format( "t,3ui" );
             if( vm.count( "disparity" ) == 0 && vm.count( "output-rectified" ) == 0 )
             {
-                run_stream< snark::imaging::stereo >( leftParameters, rightParameters, roiArray, input_csv, csv, vm.count( "input-rectified" ) );
+                run_stream< snark::imaging::stereo >( leftParameters
+                                                    , rightParameters
+                                                    , roiArray
+                                                    , input_csv
+                                                    , csv
+                                                    , input_rectified );
             }
             else
             {
                 if( vm.count( "disparity" ) )
-                    run_stream< snark::imaging::disparity >( leftParameters, rightParameters, roiArray, input_csv, csv, vm.count( "input-rectified" ) );
+                {
+                    run_stream< snark::imaging::disparity >( leftParameters
+                                                    , rightParameters
+                                                    , roiArray
+                                                    , input_csv
+                                                    , csv
+                                                    , input_rectified );
+                }
                 if( vm.count( "output-rectified" ) )
-                    run_stream< snark::imaging::rectified >( leftParameters, rightParameters, roiArray, input_csv, csv, vm.count( "input-rectified" ) );
+                {
+                    run_stream< snark::imaging::rectified >( leftParameters
+                                                    , rightParameters
+                                                    , roiArray
+                                                    , input_csv
+                                                    , csv
+                                                    , input_rectified );
+                }
             }
         }
-
         return 0;
     }
-    catch( std::exception& ex )
-    {
-        std::cerr << argv[0] << ": " << ex.what() << std::endl;
-    }
-    catch( ... )
-    {
-        std::cerr << argv[0] << ": unknown exception" << std::endl;
-    }
+    catch( std::exception& ex ) { std::cerr << argv[0] << ": " << ex.what() << std::endl; }
+    catch( ... ) { std::cerr << argv[0] << ": unknown exception" << std::endl; }
     return 1;
 }

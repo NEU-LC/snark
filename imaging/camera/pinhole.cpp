@@ -27,6 +27,8 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include <fstream>
+#include <comma/base/exception.h>
 #include "pinhole.h"
 
 namespace snark { namespace camera {
@@ -74,5 +76,19 @@ Eigen::Vector3d pinhole::to_cartesian( const Eigen::Vector2d& p, bool undistort 
 }
 
 Eigen::Vector2d pinhole::image_centre() const { return Eigen::Vector2d( double( image_size.x() ) / 2, double( image_size.y() ) / 2 ); }
+
+void pinhole::distortion_t::map_t::load( const std::string& filename, const Eigen::Vector2i& image_size )
+{
+    if( filename.empty() ) { COMMA_THROW( comma::exception, "distortion map filename not specified" ); }
+    std::ifstream ifs( &filename[0], std::ios::binary );
+    if( ifs.is_open() ) { COMMA_THROW( comma::exception, "failed to open " << filename ); }
+    std::vector< char > buffer( image_size.x() * image_size.y() * 4 );
+    ifs.read( &buffer[0], buffer.size() );
+    if( ifs.gcount() < int( buffer.size() ) ) { COMMA_THROW( comma::exception, "expected to read " << buffer.size() << " bytes, got " << ifs.gcount() ); }
+    x = cv::Mat( image_size.y(), image_size.x(), CV_32FC1, &buffer[0] ).clone();
+    ifs.read( &buffer[0], buffer.size() );
+    if( ifs.gcount() < int( buffer.size() ) ) { COMMA_THROW( comma::exception, "expected to read " << buffer.size() << " bytes, got " << ifs.gcount() ); }
+    y = cv::Mat( image_size.y(), image_size.x(), CV_32FC1, &buffer[0] ).clone();
+}
 
 } } // namespace snark { namespace camera {

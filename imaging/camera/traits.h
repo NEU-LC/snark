@@ -74,12 +74,14 @@ template <> struct traits< snark::camera::pinhole::distortion_t >
     {
         v.apply( "radial", p.radial );
         v.apply( "tangential", p.tangential );
+        v.apply( "map", p.map );
     }
     
     template < typename Key, class Visitor > static void visit( const Key&, const snark::camera::pinhole::distortion_t& p, Visitor& v )
     {
         v.apply( "radial", p.radial );
         v.apply( "tangential", p.tangential );
+        v.apply( "map", p.map );
     }
 };
     
