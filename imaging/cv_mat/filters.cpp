@@ -1256,7 +1256,7 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
         }
         else if( e[0] == "encode" )
         {
-            if( i < v.size()-1 )
+            if( i < v.size() - 1 )
             {
                 std::string next_filter = comma::split( v[i+1], '=' )[0];
                 if( next_filter != "head" ) COMMA_THROW( comma::exception, "cannot have a filter after encode unless next filter is head" );
@@ -1340,7 +1340,7 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
             if( i < v.size()-1 )
             {
                 std::string next_filter = comma::split( v[i+1], '=' )[0];
-                if( next_filter != "null" ) { COMMA_THROW( comma::exception, "cannot have a filter after encode unless next filter is null" ); }
+                if( next_filter != "null" && next_filter != "encode" ) { COMMA_THROW( comma::exception, "cannot have a filter after head unless next filter is null or encode" ); }
             }
             if( e.size() < 2 ) { COMMA_THROW( comma::exception, "expected number of frames, e.g. head=1" ); }
             unsigned int n = boost::lexical_cast< unsigned int >( e[1] );
