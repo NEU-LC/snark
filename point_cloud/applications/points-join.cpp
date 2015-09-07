@@ -152,9 +152,12 @@ int main( int ac, char** av )
                                 {
                                     std::cout.write( istream.binary().last(), stdin_csv.format().size() );
                                     std::cout.write( &it->second[k]->line[0], filter_csv.format().size() );
-                                } else {
-                                    std::cout << comma::join( istream.ascii().last(), stdin_csv.delimiter )
-                                              << stdin_csv.delimiter << &it->second[k]->line[0] << std::endl;
+                                }
+                                else
+                                {
+                                    std::cout << comma::join( istream.ascii().last(), stdin_csv.delimiter ) << stdin_csv.delimiter;
+                                    if( filter_csv.binary() ) { std::cout << filter_csv.format().bin_to_csv( &it->second[k]->line[0], stdin_csv.delimiter, stdin_csv.precision ) << std::endl; }
+                                    else { std::cout << &it->second[k]->line[0] << std::endl; }
                                 }
                             }
                             else
@@ -183,7 +186,9 @@ int main( int ac, char** av )
                 }
                 else
                 {
-                    std::cout << comma::join( istream.ascii().last(), stdin_csv.delimiter ) << stdin_csv.delimiter << nearest->line << std::endl;
+                    std::cout << comma::join( istream.ascii().last(), stdin_csv.delimiter ) << stdin_csv.delimiter;
+                    if( filter_csv.binary() ) { std::cout << filter_csv.format().bin_to_csv( &nearest->line[0], stdin_csv.delimiter, stdin_csv.precision ) << std::endl; }
+                    else { std::cout << nearest->line << std::endl; }
                 }
             }
             ++count;
@@ -191,13 +196,7 @@ int main( int ac, char** av )
         std::cerr << "points-join: processed " << count << " records; discarded " << discarded << " record" << ( count == 1 ? "" : "s" ) << " with no matches" << std::endl;
         return 0;
     }
-    catch( std::exception& ex )
-    {
-        std::cerr << "points-join: " << ex.what() << std::endl;
-    }
-    catch( ... )
-    {
-        std::cerr << "points-join: unknown exception" << std::endl;
-    }
+    catch( std::exception& ex ) { std::cerr << "points-join: " << ex.what() << std::endl; }
+    catch( ... ) { std::cerr << "points-join: unknown exception" << std::endl; }
     return 1;
 }
