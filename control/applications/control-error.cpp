@@ -88,6 +88,7 @@ static void usage( bool verbose = false )
     std::cerr << "    --proximity,-p=<proximity>: a wayline is traversed as soon as current position is within proximity of the endpoint (default: " << default_proximity << ")" << std::endl;
     std::cerr << "    --past-endpoint: a wayline is traversed as soon as current position is past the endpoint (or proximity condition is met)" << std::endl;
     std::cerr << "    --frequency,-f=<frequency>: control frequency (the rate at which " << name <<" outputs control errors using latest feedback)" << std::endl;
+    std::cerr << "    --global-heading: interpret heading offset as global heading by default" << std::endl;
     std::cerr << "    --format: show binary format of default input stream fields and exit" << std::endl;
     std::cerr << "    --output-format: show binary format of output stream and exit (for wayline and control error fields only)" << std::endl;
     std::cerr << "    --output-fields: show output fields and exit (for wayline and control error fields only)" << std::endl;
@@ -128,6 +129,7 @@ int main( int ac, char** av )
         if( options.exists( "--output-format" ) ) { std::cout << format< snark::control::control_data_t >( output_csv.fields, true ) << std::endl; return 0; }
         if( options.exists( "--output-fields" ) ) { std::cout << output_csv.fields << std::endl; return 0; }
         double proximity = options.value< double >( "--proximity", default_proximity );
+        snark::control::heading_offset_is_absolute_default = options.exists( "--global-heading" );
         if( proximity <= 0 ) { std::cerr << name << ": expected positive proximity, got " << proximity << std::endl; return 1; }
         control_mode_t mode = mode_from_string( options.value< std::string >( "--mode", default_mode ) );
         bool use_past_endpoint = options.exists( "--past-endpoint" );
@@ -141,7 +143,7 @@ int main( int ac, char** av )
             delay = boost::posix_time::microseconds( static_cast< long >( 1000000 / frequency ) );
         }
         bool verbose = options.exists( "--verbose,-v" );
-        std::vector< std::string > unnamed = options.unnamed( "--help,-h,--verbose,-v,--format,--output-format,--output-fields,--past-endpoint", "-.*,--.*" );
+        std::vector< std::string > unnamed = options.unnamed( "--help,-h,--verbose,-v,--format,--output-format,--output-fields,--past-endpoint,--global-heading", "-.*,--.*" );
         if( unnamed.empty() ) { std::cerr << name << ": feedback stream is not given" << std::endl; return 1; }
         comma::csv::options feedback_csv = comma::name_value::parser( "filename", ';', '=', false ).get< comma::csv::options >( unnamed[0] );
         if( input_csv.binary() && !feedback_csv.binary() ) { std::cerr << name << ": cannot join binary input stream with ascii feedback stream" << std::endl; return 1; }
@@ -160,7 +162,6 @@ int main( int ac, char** av )
             const snark::control::target_t* target = input_stream.read();
             if( !target ) { break; }
             snark::control::vector_t to = target->position;
-            double heading_offset = target->heading_offset;
             if( verbose ) { std::cerr << name << ": received target waypoint " << snark::control::serialise( to ) << std::endl; }
             if( from && snark::control::distance( *from, to ) < proximity ) { continue; }
             if( from ) { wayline.reset( new snark::control::wayline_t( *from, to, verbose ) ); }
@@ -195,7 +196,8 @@ int main( int ac, char** av )
                     }
                     snark::control::error_t error;
                     error.cross_track = wayline->cross_track_error( feedback->position );
-                    error.heading = wayline->heading_error( feedback->yaw, heading_offset );
+                    if( target->is_absolute ) { error.heading = snark::control::wrap_angle( target->heading_offset - feedback->yaw ); }
+                    else { error.heading = wayline->heading_error( feedback->yaw, target->heading_offset ); }
                     if( input_csv.binary() ) { std::cout.write( input_stream.binary().last(), input_csv.format().size() ); }
                     else { std::cout << comma::join( input_stream.ascii().last(), delimiter ) << delimiter; }
                     if( feedback_csv.binary() ) { std::cout.write( feedback_stream.binary().last(), feedback_csv.format().size() ); }

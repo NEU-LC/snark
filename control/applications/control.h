@@ -38,6 +38,7 @@ namespace snark { namespace control {
 
 static std::string command_app_name = "control-command";
 static std::string error_app_name = "control-error";
+static bool heading_offset_is_absolute_default = false;
 
 struct feedback_t
 {
@@ -49,9 +50,10 @@ struct feedback_t
 
 struct target_t
 {
-    target_t() : heading_offset( 0 ) {}
+    target_t() : heading_offset( 0 ), is_absolute( heading_offset_is_absolute_default ) {}
     vector_t position;
     double heading_offset;
+    bool is_absolute;
 };
 
 struct error_t
@@ -107,12 +109,14 @@ template <> struct traits< snark::control::target_t >
     {
         v.apply( "position", p.position );
         v.apply( "heading_offset", p.heading_offset );
+        v.apply( "is_absolute", p.is_absolute );
     }
 
     template < typename K, typename V > static void visit( const K&, const snark::control::target_t& p, V& v )
     {
         v.apply( "position", p.position );
         v.apply( "heading_offset", p.heading_offset );
+        v.apply( "is_absolute", p.is_absolute );
     }
 };
 

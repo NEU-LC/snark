@@ -1,4 +1,4 @@
-format/input="d,d,d"
+format/input="d,d,d,b"
 format/output="d,d,d"
 binary/output[0]/x=1 +/- 0.0001
 binary/output[0]/y=0 +/- 0.0001
