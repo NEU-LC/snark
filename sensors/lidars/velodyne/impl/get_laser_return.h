@@ -46,6 +46,7 @@ laser_return get_laser_return( const packet& packet
                              , bool legacy = false );
 
 boost::posix_time::time_duration time_offset( unsigned int block, unsigned int laser );
+double azimuth( double rotation, unsigned int laser, double angularSpeed );
 
 } } } // namespace snark {  namespace velodyne { namespace impl {
 
