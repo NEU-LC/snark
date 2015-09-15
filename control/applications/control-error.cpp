@@ -119,6 +119,7 @@ int main( int ac, char** av )
         comma::command_line_options options( ac, av, usage );
         comma::csv::options input_csv( options, field_names< snark::control::target_t >() );
         const char delimiter = input_csv.delimiter;
+        snark::control::heading_offset_is_absolute_default = options.exists( "--global-heading" );
         comma::csv::input_stream< snark::control::target_t > input_stream( std::cin, input_csv );
         comma::csv::options output_csv( options );
         output_csv.full_xpath = true;
@@ -129,7 +130,6 @@ int main( int ac, char** av )
         if( options.exists( "--output-format" ) ) { std::cout << format< snark::control::control_data_t >( output_csv.fields, true ) << std::endl; return 0; }
         if( options.exists( "--output-fields" ) ) { std::cout << output_csv.fields << std::endl; return 0; }
         double proximity = options.value< double >( "--proximity", default_proximity );
-        snark::control::heading_offset_is_absolute_default = options.exists( "--global-heading" );
         if( proximity <= 0 ) { std::cerr << name << ": expected positive proximity, got " << proximity << std::endl; return 1; }
         control_mode_t mode = mode_from_string( options.value< std::string >( "--mode", default_mode ) );
         bool use_past_endpoint = options.exists( "--past-endpoint" );
