@@ -166,6 +166,7 @@ fi
 if [[ -z "$mode" ]]; then echo "$scriptname: mode is not found in $config" >&2; exit 1; fi
 if [[ -z "$proximity" ]]; then echo "$scriptname: proximity is not found in $config" >&2; exit 1; fi
 if [[ -z "$past_endpoint" ]]; then echo "$scriptname: past-endpoint is not found in $config" >&2; exit 1; fi
+if [[ -z "$heading_is_absolute_default" ]]; then echo "$scriptname: heading-is-absolute-default is not found in $config" >&2; exit 1; fi
 if [[ -z "$frequency" ]]; then echo "$scriptname: frequency is not found in $config" >&2; exit 1; fi
 if [[ -z "$reset" ]]; then echo "$scriptname: reset is not found in $config" >&2; exit 1; fi
 if [[ -z "$waypoints_port" ]]; then echo "$scriptname: waypoints/port is not found in $config" >&2; exit 1; fi
