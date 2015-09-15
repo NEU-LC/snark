@@ -25,7 +25,7 @@ cat <<END | csv-to-bin ${feedback[format]} > $feedback_file
 1.0,1,1
 END
 output=( $( echo -e "0.5,10,1,1" | csv-to-bin ${target[format]} \
-    | control-error "$feedback_file;fields=${feedback[fields]};binary=${feedback[format]}" --global-heading --fields=${target[fields]} --binary=${target[format]} --verbose \
+    | control-error "$feedback_file;fields=${feedback[fields]};binary=${feedback[format]}" --heading-is-absolute --fields=${target[fields]} --binary=${target[format]} --verbose \
     | csv-from-bin ${target[format]},${feedback[format]},$( control-error --output-format ) ) )
 
 function echo_result

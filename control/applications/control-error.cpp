@@ -88,7 +88,7 @@ static void usage( bool verbose = false )
     std::cerr << "    --proximity,-p=<proximity>: a wayline is traversed as soon as current position is within proximity of the endpoint (default: " << default_proximity << ")" << std::endl;
     std::cerr << "    --past-endpoint: a wayline is traversed as soon as current position is past the endpoint (or proximity condition is met)" << std::endl;
     std::cerr << "    --frequency,-f=<frequency>: control frequency (the rate at which " << name <<" outputs control errors using latest feedback)" << std::endl;
-    std::cerr << "    --global-heading: interpret heading offset as global heading by default" << std::endl;
+    std::cerr << "    --heading-is-absolute: interpret heading offset as global heading by default" << std::endl;
     std::cerr << "    --format: show binary format of default input stream fields and exit" << std::endl;
     std::cerr << "    --output-format: show binary format of output stream and exit (for wayline and control error fields only)" << std::endl;
     std::cerr << "    --output-fields: show output fields and exit (for wayline and control error fields only)" << std::endl;
@@ -119,7 +119,7 @@ int main( int ac, char** av )
         comma::command_line_options options( ac, av, usage );
         comma::csv::options input_csv( options, field_names< snark::control::target_t >() );
         const char delimiter = input_csv.delimiter;
-        snark::control::heading_offset_is_absolute_default = options.exists( "--global-heading" );
+        snark::control::heading_offset_is_absolute_default = options.exists( "--heading-is-absolute" );
         comma::csv::input_stream< snark::control::target_t > input_stream( std::cin, input_csv );
         comma::csv::options output_csv( options );
         output_csv.full_xpath = true;
@@ -143,7 +143,7 @@ int main( int ac, char** av )
             delay = boost::posix_time::microseconds( static_cast< long >( 1000000 / frequency ) );
         }
         bool verbose = options.exists( "--verbose,-v" );
-        std::vector< std::string > unnamed = options.unnamed( "--help,-h,--verbose,-v,--format,--output-format,--output-fields,--past-endpoint,--global-heading", "-.*,--.*" );
+        std::vector< std::string > unnamed = options.unnamed( "--help,-h,--verbose,-v,--format,--output-format,--output-fields,--past-endpoint,--heading-is-absolute", "-.*,--.*" );
         if( unnamed.empty() ) { std::cerr << name << ": feedback stream is not given" << std::endl; return 1; }
         comma::csv::options feedback_csv = comma::name_value::parser( "filename", ';', '=', false ).get< comma::csv::options >( unnamed[0] );
         if( input_csv.binary() && !feedback_csv.binary() ) { std::cerr << name << ": cannot join binary input stream with ascii feedback stream" << std::endl; return 1; }

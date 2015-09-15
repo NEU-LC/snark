@@ -30,7 +30,7 @@ example config file:
         "steering": "omni",
         "proximity": "0.15",
         "past-endpoint": 1,
-        "global-heading": 1,
+        "heading-is-absolute": 0,
         "frequency": "20.0",
         "reset": 0,
         "waypoints":
@@ -58,7 +58,7 @@ example config file:
     proximity: distance for deciding when a waypoint is reached
     past-endpoint: 1 -> besides proximity condition, consider a waypoint as reached if the vehicle has moved past the end line, 0 -> use only proximity condition
         ( the end line is a line which goes through the target waypoint and is perpendicular to the current wayline)
-    global-heading: interpret heading_offset as the desired global heading (global-heading=1) or as the local offset from the wayline heading (global-offset=0)
+    heading-is-absolute: 1 -> interpret heading_offset as the desired global (absolute) heading, 0 -> heading_offset is relative offset wrt the wayline heading
         ( this describes default behaviour when is_absolute is not provided in the input; when is_absolute is given, it takes precedence )
     frequency: control frequency (the rate at which wheel commands are output)
     reset: 1 -> reset pid integral upon reaching every target waypoint, 0 -> no reset
@@ -174,7 +174,7 @@ if [[ -z "$pid_cross_track" ]]; then echo "$scriptname: pid/cross-track is not f
 if [[ -z "$pid_heading" ]]; then echo "$scriptname: pid/heading is not found in $config" >&2; exit 1; fi
 
 (( past_endpoint )) && past_endpoint_option="--past-endpoint"  || past_endpoint_option=""
-(( global_heading )) && global_heading_option="--global-heading"  || global_heading_option=""
+(( heading_is_absolute )) && heading_is_absolute_option="--heading-is-absolute"  || heading_is_absolute_option=""
 (( reset )) && reset_option="--reset"  || reset_option=""
 
 mkdir -p ${dir:-.}
@@ -186,7 +186,7 @@ rm -f $waypoints_socket $feedback_socket ${commands_log}.* ${control_log}.*
 
 control_pipeline="control-error --fields=$waypoints_fields ${waypoints_binary:+--binary=$waypoints_binary} \
     'local:$feedback_socket;fields=${feedback_fields}${feedback_binary:+;binary=$feedback_binary}' \
-    --mode=$mode --proximity=$proximity --frequency=$frequency $past_endpoint_option $global_heading_option --verbose --flush \
+    --mode=$mode --proximity=$proximity --frequency=$frequency $past_endpoint_option $heading_is_absolute_option --verbose --flush \
     | control-command --fields=$passed_fields,$error_fields ${passed_format:+--binary=$passed_format,$error_format} \
     --cross-track-pid=$pid_cross_track --heading-pid=$pid_heading --steering=$steering $reset_option --verbose --flush \
     | csv-shuffle --fields=$all_fields ${all_format:+--binary=$all_format} --output-fields=$output_fields --flush"
