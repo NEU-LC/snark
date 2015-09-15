@@ -38,7 +38,6 @@ namespace snark { namespace control {
 
 static const std::string command_app_name = "control-command";
 static const std::string error_app_name = "control-error";
-static bool heading_offset_is_absolute_default = false;
 
 struct feedback_t
 {
@@ -50,7 +49,7 @@ struct feedback_t
 
 struct target_t
 {
-    target_t() : heading_offset( 0 ), is_absolute( heading_offset_is_absolute_default ) {}
+    target_t( bool is_absolute = false ) : heading_offset( 0 ), is_absolute( is_absolute ) {}
     vector_t position;
     double heading_offset;
     bool is_absolute;

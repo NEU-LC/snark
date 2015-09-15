@@ -119,8 +119,7 @@ int main( int ac, char** av )
         comma::command_line_options options( ac, av, usage );
         comma::csv::options input_csv( options, field_names< snark::control::target_t >() );
         const char delimiter = input_csv.delimiter;
-        snark::control::heading_offset_is_absolute_default = options.exists( "--heading-is-absolute" );
-        comma::csv::input_stream< snark::control::target_t > input_stream( std::cin, input_csv );
+        comma::csv::input_stream< snark::control::target_t > input_stream( std::cin, input_csv, snark::control::target_t( options.exists( "--heading-is-absolute" ) ) );
         comma::csv::options output_csv( options );
         output_csv.full_xpath = true;
         output_csv.fields = "wayline/heading,error/cross_track,error/heading";
