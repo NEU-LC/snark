@@ -30,7 +30,7 @@ example config file:
         "steering": "omni",
         "proximity": "0.15",
         "past-endpoint": 1,
-        "heading-is-absolute": 0,
+        "heading-is-absolute-default": 0,
         "frequency": "20.0",
         "reset": 0,
         "waypoints":
@@ -58,7 +58,7 @@ example config file:
     proximity: distance for deciding when a waypoint is reached
     past-endpoint: 1 -> besides proximity condition, consider a waypoint as reached if the vehicle has moved past the end line, 0 -> use only proximity condition
         ( the end line is a line which goes through the target waypoint and is perpendicular to the current wayline)
-    heading-is-absolute: 1 -> interpret heading_offset as the desired global (absolute) heading, 0 -> heading_offset is relative offset wrt the wayline heading
+    heading-is-absolute-default: 1 -> interpret heading_offset as the desired global (absolute) heading, 0 -> heading_offset is relative offset wrt the wayline heading
         ( this describes default behaviour when is_absolute is not provided in the input; when is_absolute is given, it takes precedence )
     frequency: control frequency (the rate at which wheel commands are output)
     reset: 1 -> reset pid integral upon reaching every target waypoint, 0 -> no reset
@@ -138,8 +138,8 @@ if [[ -z "$feedback_fields" ]]; then echo "$scriptname: feedback/fields is not f
 
 passed_fields=$( add_xpath target $waypoints_fields ),$( add_xpath feedback $feedback_fields )
 all_fields=$passed_fields,$error_fields,$command_fields
-required_waypoints_fields="x,y"; [[ "$steering" == "omni" ]] && required_waypoints_fields+=",heading_offset"
-keep_waypoints_fields=$( add_xpath target $( csv-fields clear --remove $required_waypoints_fields <<< $waypoints_fields ) )
+expected_waypoints_fields="x,y"; [[ "$steering" == "omni" ]] && expected_waypoints_fields+=",heading_offset,is_absolute"
+keep_waypoints_fields=$( add_xpath target $( csv-fields clear --remove $expected_waypoints_fields <<< $waypoints_fields ) )
 output_fields_mask=$( csv-fields clear --keep $keep_waypoints_fields,$command_fields <<< $all_fields )
 output_fields=$( compress_commas <<< $output_fields_mask )
 
@@ -174,7 +174,7 @@ if [[ -z "$pid_cross_track" ]]; then echo "$scriptname: pid/cross-track is not f
 if [[ -z "$pid_heading" ]]; then echo "$scriptname: pid/heading is not found in $config" >&2; exit 1; fi
 
 (( past_endpoint )) && past_endpoint_option="--past-endpoint"  || past_endpoint_option=""
-(( heading_is_absolute )) && heading_is_absolute_option="--heading-is-absolute"  || heading_is_absolute_option=""
+(( heading_is_absolute_default )) && heading_is_absolute_option="--heading-is-absolute"  || heading_is_absolute_option=""
 (( reset )) && reset_option="--reset"  || reset_option=""
 
 mkdir -p ${dir:-.}
