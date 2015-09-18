@@ -239,7 +239,10 @@ int main( int ac, char **av )
             {
                 if( csv.fields.empty() ) { csv.fields = "latitude,longitude,z"; }
                 comma::csv::input_stream< convert_::coordinates_ > is( std::cin, csv );
-                comma::csv::output_stream< convert_::ned_ > os( std::cout, csv.binary() );
+                comma::csv::options ocsv;
+                if( csv.binary() ) { ocsv.format( comma::csv::format::value< convert_::ned_ >() ); }
+                ocsv.flush = options.exists( "--flush" );
+                comma::csv::output_stream< convert_::ned_ > os( std::cout, ocsv );
                 comma::csv::tied< convert_::coordinates_, convert_::ned_ > tied( is, os );
                 while ( is.ready() || ( std::cin.good() && !std::cin.eof() ) )
                 {
