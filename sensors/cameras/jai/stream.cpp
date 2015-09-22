@@ -35,18 +35,85 @@
 #include "error.h"
 #include "camera.h"
 #include "stream.h"
-
+#include "pixel_type_names.h"
 #include <iostream>
 
 namespace snark { namespace jai {
 
 unsigned int cv_type_from_jai( uint32_t pixel_type )
 {
-    if( pixel_type & J_GVSP_PIX_MONO ) { return CV_8UC1; }
-    if( pixel_type & J_GVSP_PIX_RGB ) { return CV_8UC3; }
-    COMMA_THROW( comma::exception, "expected pixel format, got 0 in both mono and rgb bits in: " << pixel_type );
+    //if( pixel_type & J_GVSP_PIX_MONO ) { return CV_8UC1; }
+    //if( pixel_type & J_GVSP_PIX_RGB ) { return CV_8UC3; }
+    //COMMA_THROW( comma::exception, "expected pixel format, got 0 in both mono and rgb bits in: " << pixel_type );
+    static bool output_pixel_type = true;
+    if( output_pixel_type )
+    {
+        if( snark::jai::pixel_type_names.left.find( pixel_type ) == snark::jai::pixel_type_names.left.end() ) { std::cerr << "Jai: pixel type: " << std::hex << pixel_type << std::endl; }
+        else { std::cerr << "Jai: pixel type: '" << snark::jai::pixel_type_names.left.at( pixel_type ) << "'" << std::endl; }
+        output_pixel_type = false;
+    }
+    switch( pixel_type )
+    {
+        case J_GVSP_PIX_MONO8: return CV_8UC1;
+        case J_GVSP_PIX_MONO8_SIGNED: return CV_8SC1;
+        case J_GVSP_PIX_MONO10: return CV_16UC1;
+        case J_GVSP_PIX_MONO12: return CV_16UC1;
+        case J_GVSP_PIX_MONO14: return CV_16UC1;
+        case J_GVSP_PIX_MONO16: return CV_16UC1;
+        case J_GVSP_PIX_BAYGR8: return CV_8UC3;
+        case J_GVSP_PIX_BAYRG8: return CV_8UC3;
+        case J_GVSP_PIX_BAYGB8: return CV_8UC3;
+        case J_GVSP_PIX_BAYBG8: return CV_8UC3;
+        case J_GVSP_PIX_BAYGR10: return CV_16UC3;
+        case J_GVSP_PIX_BAYRG10: return CV_16UC3;
+        case J_GVSP_PIX_BAYGB10: return CV_16UC3;
+        case J_GVSP_PIX_BAYBG10: return CV_16UC3;
+        case J_GVSP_PIX_BAYGR12: return CV_16UC3;
+        case J_GVSP_PIX_BAYRG12: return CV_16UC3;
+        case J_GVSP_PIX_BAYGB12: return CV_16UC3;
+        case J_GVSP_PIX_BAYBG12: return CV_16UC3;
+        case J_GVSP_PIX_BAYGR16: return CV_16UC3;
+        case J_GVSP_PIX_BAYRG16: return CV_16UC3;
+        case J_GVSP_PIX_BAYGB16: return CV_16UC3;
+        case J_GVSP_PIX_BAYBG16: return CV_16UC3;
+        case J_GVSP_PIX_RGB8_PACKED: return CV_8UC3;
+        case J_GVSP_PIX_BGR8_PACKED: return CV_8UC3;
+        case J_GVSP_PIX_BGR16_PACKED_INTERNAL: return CV_16UC3;
+        case J_GVSP_PIX_MONO10_PACKED:
+        case J_GVSP_PIX_MONO12_PACKED:
+        case J_GVSP_PIX_BAYGR10_PACKED:
+        case J_GVSP_PIX_BAYRG10_PACKED:
+        case J_GVSP_PIX_BAYGB10_PACKED:
+        case J_GVSP_PIX_BAYBG10_PACKED:
+        case J_GVSP_PIX_BAYGR12_PACKED:
+        case J_GVSP_PIX_BAYRG12_PACKED:
+        case J_GVSP_PIX_BAYGB12_PACKED:
+        case J_GVSP_PIX_BAYBG12_PACKED:
+        case J_GVSP_PIX_RGBA8_PACKED:
+        case J_GVSP_PIX_BGRA8_PACKED:
+        case J_GVSP_PIX_RGB10_PACKED:
+        case J_GVSP_PIX_BGR10_PACKED:
+        case J_GVSP_PIX_RGB12_PACKED:
+        case J_GVSP_PIX_BGR12_PACKED:
+        case J_GVSP_PIX_RGB16_PACKED:
+        case J_GVSP_PIX_RGB10V1_PACKED:
+        case J_GVSP_PIX_RGB10V2_PACKED:
+        case J_GVSP_PIX_RGB12V1_PACKED:
+        case J_GVSP_PIX_YUV411_PACKED:
+        case J_GVSP_PIX_YUV422_PACKED:
+        case J_GVSP_PIX_YUV422_YUYV_PACKED:
+        case J_GVSP_PIX_YUV444_PACKED:
+        case J_GVSP_PIX_RGB8_PLANAR:
+        case J_GVSP_PIX_RGB10_PLANAR:
+        case J_GVSP_PIX_RGB12_PLANAR:
+        case J_GVSP_PIX_RGB16_PLANAR:
+            COMMA_THROW( comma::exception, "conversion to OpenCV type from Jai pixel type '" << snark::jai::pixel_type_names.left.at( pixel_type ) << "' is not implemented" );
+        default:
+            COMMA_THROW( comma::exception, "received unrecognized pixel type " << std::hex << "0x" << std::setfill('0') << std::setw(8) << pixel_type );
+    }
 }
 
+// this function is not used anywhere, should it be deleted?
 unsigned int number_of_channels_from_jai( uint32_t pixel_type )
 {
     if( pixel_type & J_GVSP_PIX_MONO ) { return 1; }
