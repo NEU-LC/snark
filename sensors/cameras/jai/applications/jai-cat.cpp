@@ -96,6 +96,7 @@ int main( int argc, char** argv )
             ( "list-cameras-human-readable,L", "list all camera ids, output only human-readable part" )
             ( "header", "output header only" )
             ( "no-header", "output image data only" )
+            ( "raw", "output raw image data" )
             ( "output-conversion", boost::program_options::value< std::string >( &directory ), "output conversion table to a timestamped csv file in the specified directory")
             ( "verbose,v", "be more verbose" );
 
@@ -204,7 +205,7 @@ int main( int argc, char** argv )
         if( vm.count( "no-header" ) ) { serialization.reset( new snark::cv_mat::serialization( "", format ) ); }
         else { serialization.reset( new snark::cv_mat::serialization( fields, format, vm.count( "header" ) ) ); }
         if( verbose ) { std::cerr << "jai-cat: data acquisition: starting..." << std::endl; }
-        snark::jai::stream stream( *camera, 10 ); // snark::jai::stream stream( *camera );
+        snark::jai::stream stream( *camera, 10, vm.count( "raw" ) ); // snark::jai::stream stream( *camera );
         camera->start_acquisition();
         if( verbose ) { std::cerr << "jai-cat: data acquisition: started" << std::endl; }
         reader.reset( new snark::tbb::bursty_reader< pair_t >( boost::bind( &capture, boost::ref( stream ) ), discard ) );

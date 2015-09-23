@@ -41,7 +41,7 @@ namespace snark { namespace jai {
 class stream
 {
     public:
-        stream( const camera& c, unsigned int number_of_buffers = 1 );
+        stream( const camera& c, unsigned int number_of_buffers = 1, bool output_raw_image = false );
         
         ~stream();
 
