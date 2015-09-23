@@ -113,6 +113,12 @@ int main( int argc, char** argv )
             std::cerr << "output header format: fields: t,cols,rows,type; binary: t,3ui\n" << std::endl;
             std::cerr << description << std::endl;
             if( verbose ) { std::cerr << snark::cv_mat::filters::usage() << std::endl; }
+            if( verbose )
+            {
+                std::cerr << "Available options for PixelFormat ( raw image data output only ):" << std::endl;
+                std::cerr << "    visible camera: BayerRG8, BayerRG10, BayerRG12" << std::endl;
+                std::cerr << "    NIR camera: Mono8, Mono10, Mono12" << std::endl;
+            }
             else { std::cerr << "run: jai-cat --help --verbose for more..." << std::endl; }
             std::cerr << std::endl;
             return 0;

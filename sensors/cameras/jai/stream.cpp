@@ -40,34 +40,29 @@
 
 namespace snark { namespace jai {
 
-unsigned int cv_type_from_jai( uint32_t pixel_type )
+unsigned int cv_type_from_jai( uint32_t pixel_type, bool raw_output = false )
 {
-    if( pixel_type & J_GVSP_PIX_MONO ) { return CV_8UC1; }
-    if( pixel_type & J_GVSP_PIX_RGB ) { return CV_8UC3; }
-    COMMA_THROW( comma::exception, "expected pixel format, got 0 in both mono and rgb bits in: " << pixel_type );
-}
-
-unsigned int cv_type_from_jai_raw( uint32_t pixel_type )
-{
-    switch( pixel_type )
+    if( raw_output )
     {
-        case J_GVSP_PIX_MONO8:
-        case J_GVSP_PIX_BAYRG8:
-            return CV_8UC1;
-        case J_GVSP_PIX_MONO10:
-        case J_GVSP_PIX_MONO12:
-        case J_GVSP_PIX_BAYRG10:
-        case J_GVSP_PIX_BAYRG12:
-            return CV_16UC1;
-        default:
-            if( snark::jai::pixel_type_names.left.find( pixel_type ) != snark::jai::pixel_type_names.left.end() )
-            {
-                COMMA_THROW( comma::exception, "conversion to OpenCV type from Jai pixel type '" << snark::jai::pixel_type_names.left.at( pixel_type ) << "' is not implemented" );
-            }
-            else
-            {
-                COMMA_THROW( comma::exception, "received unrecognized pixel type " << std::hex << "0x" << std::setfill('0') << std::setw(8) << pixel_type );
-            }
+        switch( pixel_type )
+        {
+            case J_GVSP_PIX_MONO8:
+            case J_GVSP_PIX_BAYRG8:
+                return CV_8UC1;
+            case J_GVSP_PIX_MONO10:
+            case J_GVSP_PIX_MONO12:
+            case J_GVSP_PIX_BAYRG10:
+            case J_GVSP_PIX_BAYRG12:
+                return CV_16UC1;
+        }
+        if( pixel_type_names.left.find( pixel_type ) != pixel_type_names.left.end() ) { COMMA_THROW( comma::exception, "conversion to OpenCV type from Jai pixel type '" << snark::jai::pixel_type_names.left.at( pixel_type ) << "' is not implemented" ); }
+        else { COMMA_THROW( comma::exception, "received unrecognized pixel type " << std::hex << "0x" << std::setfill('0') << std::setw(8) << pixel_type ); }
+    }
+    else
+    {
+        if( pixel_type & J_GVSP_PIX_MONO ) { return CV_8UC1; }
+        if( pixel_type & J_GVSP_PIX_RGB ) { return CV_8UC3; }
+        COMMA_THROW( comma::exception, "expected pixel format, got 0 in both mono and rgb bits in: " << pixel_type );
     }
 }
 
@@ -175,7 +170,7 @@ struct jai::stream::impl
         // todo? example in stream_thread.cc also sets pointer to valid and queued buffers; do we even need it?
         if( output_raw_image )
         {
-            pair.second = cv::Mat( raw.iSizeY, raw.iSizeX, cv_type_from_jai_raw( raw.iPixelType ) );
+            pair.second = cv::Mat( raw.iSizeY, raw.iSizeX, cv_type_from_jai( raw.iPixelType, true ) );
             ::memcpy( pair.second.datastart, raw.pImageBuffer, pair.second.total() * pair.second.elemSize() );
         }
         else
