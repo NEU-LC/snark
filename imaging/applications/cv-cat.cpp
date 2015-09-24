@@ -86,6 +86,9 @@ static pair read( snark::cv_mat::serialization& input, rate_limit& rate )
     return input.read( std::cin );
 }
 
+void skip( unsigned int number_of_frames_to_skip, cv::VideoCapture& video_capture, rate_limit& rate ) { for( unsigned int i=0; i<number_of_frames_to_skip; i++ ) { capture( video_capture, rate ); } }
+void skip( unsigned int number_of_frames_to_skip, snark::cv_mat::serialization& input, rate_limit& rate ) { for( unsigned int i=0; i<number_of_frames_to_skip; i++ ) { read( input, rate ); } }
+
 int main( int argc, char** argv )
 {
     try
@@ -192,18 +195,18 @@ int main( int argc, char** argv )
         if( vm.count( "file" ) )
         {
             video_capture.open( name );
-            for( unsigned int i=0; i<number_of_frames_to_skip; i++ ) { capture( video_capture, rate ); }
+            skip( number_of_frames_to_skip, video_capture, rate );
             reader.reset( new bursty_reader< pair >( boost::bind( &capture, boost::ref( video_capture ), boost::ref( rate ) ), discard, capacity ) );
         }
         else if( vm.count( "camera" ) || vm.count( "id" ) )
         {
             video_capture.open( device );
-            for( unsigned int i=0; i<number_of_frames_to_skip; i++ ) { capture( video_capture, rate ); }
+            skip( number_of_frames_to_skip, video_capture, rate );
             reader.reset( new bursty_reader< pair >( boost::bind( &capture, boost::ref( video_capture ), boost::ref( rate ) ), discard ) );
         }
         else
         {
-            for( unsigned int i=0; i<number_of_frames_to_skip; i++ ) { read( input, rate ); }
+            skip( number_of_frames_to_skip, input, rate );
             reader.reset( new bursty_reader< pair >( boost::bind( &read, boost::ref( input ), boost::ref( rate ) ), discard, capacity ) );
         }
         const unsigned int default_delay = vm.count( "file" ) == 0 ? 1 : 200; // HACK to make view work on single files
