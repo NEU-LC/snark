@@ -1,0 +1,11 @@
+#!/bin/bash
+
+while read type; do
+    size=${type::1}; [[ $size =~ [0-9] ]] || size=1
+    for what in jpg png; do
+        seq $size | paste -sd, | csv-to-bin $type | cv-cat --input="rows=1;cols=1;no-header;type=$type" --output=no-header "encode=$what;head=1" &>/dev/null
+        status=$?
+        echo "$what/$type/status=$status"
+    done
+done < input
+

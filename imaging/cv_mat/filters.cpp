@@ -426,6 +426,13 @@ static filters::value_type cross_impl_( filters::value_type m, boost::optional< 
 
 static filters::value_type encode_impl_( filters::value_type m, const std::string& type )
 {
+    int channels = m.second.channels();
+    int size = m.second.elemSize() / channels;
+    int cv_type = m.second.type();
+    if( !( channels == 1 || channels == 3 ) ) { COMMA_THROW( comma::exception, "expected image with 1 or 3 channel, got " << channels << " channels" ); }
+    if( !( size == 1 || size == 2 ) ) { COMMA_THROW( comma::exception, "expected 8- or 16-bit image, got " << size*8 << "-bit image" ); }
+    if( size == 2 && !( cv_type == CV_16UC1 || cv_type == CV_16UC3 ) ) {  COMMA_THROW( comma::exception, "expected 16-bit image with unsigned elements, got image of type " << type_as_string( cv_type ) ); }
+    if( size == 2 && !( type == "tiff" || type == "tif" || type == "png" || type == "jp2" ) ) { COMMA_THROW( comma::exception, "cannot convert 16-bit image to type " << type << "; use tif or png instead" ); }
     std::vector< unsigned char > buffer;
     std::string format = "." + type;
     cv::imencode( format, m.second, buffer );
