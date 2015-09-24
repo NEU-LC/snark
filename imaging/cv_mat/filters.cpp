@@ -1356,7 +1356,7 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
                 if( next_filter != "null" && next_filter != "encode" ) { COMMA_THROW( comma::exception, "cannot have a filter after head unless next filter is null or encode" ); }
             }
             unsigned int n = e.size() < 2 ? 1 : boost::lexical_cast< unsigned int >( e[1] );
-            f.push_back( filter( boost::bind( &head_impl_, _1, n ) ) );
+            f.push_back( filter( boost::bind( &head_impl_, _1, n ), false)  );
         }
         else if( e[0] == "threshold" )
         {
