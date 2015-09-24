@@ -402,8 +402,8 @@ struct reply_me_data : comma::packed::packed_struct< reply_me_data< STEPS >, siz
 static const char* name_tmp = "hokuyo-to-csv: ";
 
 /// Read the reply, if 0 (GD & GE ) or 99 (for MD or ME) is returned then data is filled, else we found an error.
-template < typename T > 
-comma::uint32 read( T& reply, std::istream& iss )
+template < typename T, typename S > 
+comma::uint32 read( T& reply, S& iss )
 {
     typename T::status_type status; // peek and see if it is success
     

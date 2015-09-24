@@ -28,41 +28,24 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-#include <boost/lexical_cast.hpp>
-#include <boost/scoped_ptr.hpp>
-#include <boost/asio.hpp>
 #include <comma/application/command_line_options.h>
 #include <comma/application/signal_flag.h>
 #include <comma/base/exception.h>
 #include <comma/csv/stream.h>
 #include <comma/io/stream.h>
-#include <comma/io/publisher.h>
 #include <comma/string/string.h>
 #include <comma/visiting/traits.h>
 #include "../message.h"
 #include "../sensors.h"
 #include "../traits.h"
+#include "../streams.h"
+#include "../detail/scip2.h"
+#include "../detail/ust.h"
 
 const char* name() { return "hokuyo-to-csv: "; }
-
+using namespace snark::hokuyo;
 namespace hok = snark::hokuyo;
-
-namespace ip = boost::asio::ip;
-/// On exit just send a QT command, although it does not seem to be needed.
-class app_exit
-{
-    ip::tcp::iostream& oss_;
-public:
-    app_exit( ip::tcp::iostream& oss ) : oss_( oss ) {}
-    ~app_exit()
-    {
-        const hok::state_command stop( "QT" );
-        oss_.write( stop.data(), hok::state_command::size );
-        oss_.flush();
-        oss_.close();
-    }
-};
-
+bool debug_verbose=false;
 static void usage()
 {
     std::cerr << std::endl;
@@ -96,121 +79,125 @@ static void usage()
     std::vector< std::string > names = comma::csv::names< hok::data_point >();
     std::cerr << "   fields: " << comma::join( names, ','  ) << " number of fields: " << names.size() << std::endl;
     std::cerr << std::endl;
-    std::cerr << "author:" << std::endl;
-    std::cerr << "    dewey nguyen, duynii@gmail.com" << std::endl;
+    scip2_device::usage();
     std::cerr << std::endl;
     exit( -1 );
 }
 
-static bool is_omit_error = false;
 
-template < int STEPS >
-bool scanning( int start_step, comma::uint32 num_of_scans, // 0 for unlimited
-               comma::signal_flag& signaled,
-               std::iostream& iostream, comma::csv::output_stream< hok::data_point >& output )
+comma::signal_flag signaled;
+std::auto_ptr<stream_base> ios; //this must have a higher scope than turn_laser_on
+bool reboot_on_error=false;
+static bool is_omit_error = false;
+int start_step=-1;
+comma::uint32 scan_break=20;
+comma::uint32 num_of_scans=100;
+comma::csv::options csv;
+int end_step=-1; //should be zero for ust, as currently not supported
+
+
+struct sample_interface
 {
-    hok::request_md me( true );
-    me.header.start_step = start_step;
-    me.header.end_step = start_step + STEPS-1;
-    me.num_of_scans = num_of_scans;
-    
-    iostream.write( me.data(), hok::request_md::size );
-    iostream.flush();
-    
-    hok::reply_md state;
-    iostream.read( state.data(), hok::reply_md::size );
-    
-    if( state.request.message_id != me.message_id ) { 
-        COMMA_THROW( comma::exception, "message id mismatch for ME status reply, got: " << me.message_id.str() 
-                                        << " expected: " << state.request.message_id.str() ); 
-    }
-    if( state.status.status() != 0 ) 
-    { 
-        std::ostringstream ss;
-        ss << "status reply to ME request is not success: " << state.status.status(); // to change to string
-        COMMA_THROW( comma::exception, ss.str() ); 
-    }
-    
-    hok::reply_me_data< STEPS > response; // reply with data
-    typename hok::di_data< STEPS >::rays rays;
+    typedef int data_t;
+    typedef int output_t;
+    //turn_laser_on/off or use common method
+    //start receiving data
+    void request_scan(stream_base& ios, int start_step, int end_step, int num_of_scans);
+    //return false if num_of_scans in response is zero
+    bool receive_response(stream_base& ios);
+    //use after response is received
+    data_t get_data(int scan);
+    //is data valid
+    bool is_valid(data_t& data) const;
+    output_t convert(data_t& data);
+    int get_steps() const;
+};
+
+//send one request scan and process multiple response
+//T like test_interface
+template<typename T>
+bool one_scan(T& device, comma::csv::output_stream< typename T::output_t >& output_stream)
+{
+    device.request_scan(*ios, start_step, end_step, num_of_scans);
     while( !signaled && std::cin.good() )
     {
-        // TODO just read the status response first, or timeout on read()
-        // iostream.read( response.data(), hok::reply_me_data< STEPS >::size );
-        int status = hok::read( response, iostream );
-        if( status != hok::status::data_success ) 
+        bool more=device.receive_response(*ios);
+        int steps=device.get_steps();
+        for( std::size_t i=0; i<steps; ++i )
         {
-            COMMA_THROW( comma::exception, "failure dectected when reading data, status: " << status );
+            typename T::data_t data;
+            data=device.get_data(i);
+            if( is_omit_error && !device.is_valid(data)){ continue; }
+            output_stream.write(device.convert(data));
         }
-        if( response.header.request.message_id != me.message_id ) { 
-            COMMA_THROW( comma::exception, "message id mismatch for ME data reply, got: " << me.message_id.str() << " expected: " << response.header.request.message_id.str() ); 
-        }
-        
-        response.encoded.get_values( rays );
-        hok::data_point point3d;
-        for( std::size_t i=0; i<STEPS; ++i )
-        {
-            double distance = rays.steps[i].distance();
-            if( is_omit_error && 
-                ( distance == hok::ust_10lx::distance_nan || distance <= hok::ust_10lx::distance_min ) ) { continue; }
-                
-                
-            point3d.set( distance, 
-                         rays.steps[i].intensity(), 
-                         hok::ust_10lx::step_to_bearing( i + start_step ) );
-            output.write( point3d );
-
-
-        }
-
-        output.flush();
-
+        output_stream.flush();
         // This means we are done
-        if( num_of_scans != 0 && response.header.request.num_of_scans == 0 ) { 
-
-            return true; 
-        }   
+        if( num_of_scans != 0 && !more ) { return true; }
     }
-    
     return false;
+
 }
 
-/// Connect to the TCP server within the allowed timeout
-/// Needed because comma::io::iostream is not available
-bool tcp_connect( const std::string& conn_str, 
-                  ip::tcp::iostream& io, 
-                  const boost::posix_time::time_duration& timeout=boost::posix_time::seconds(1)
-)
+template<typename T>
+void process(T& device)
 {
-    std::vector< std::string > v = comma::split( conn_str, ':' );
-    boost::asio::io_service service;
-    ip::tcp::resolver resolver( service );
-    ip::tcp::resolver::query query( v[0] == "localhost" ? "127.0.0.1" : v[0], v[1] );
-    ip::tcp::resolver::iterator it = resolver.resolve( query );
-    
-    io.expires_from_now( timeout );
-    io.connect( it->endpoint() );
-    
-    io.expires_at( boost::posix_time::pos_infin );
-    
-    return io.error() == 0;
-} 
+    // Let put the laser into scanning mode
+    turn_laser_on laser_on(*ios, (laser_device&)device, reboot_on_error);
+    comma::csv::output_stream< typename T::output_t > output_stream( std::cout, csv );  
+    while( one_scan( device, output_stream ) ) 
+    { 
+        usleep( scan_break ); 
+    }
+}
+
+void output_samples()
+{
+    comma::csv::output_stream< hok::data_point > output( std::cout, csv );
+    data_point pt;
+    pt.x = 1; pt.y = 2; pt.z = 3;
+    pt.intensity = 100;
+    while( !signaled && std::cout.good() )
+    {
+        pt.timestamp = boost::posix_time::microsec_clock::local_time();
+        output.write( pt );
+        usleep( 0.1 * 1000000u );
+    }
+}
+
+// it is higher than 1080 because 0 is a step
+static const int UST_MAX_STEPS = 1081;
+static const int UST_SMALL_STEPS = 271;
+
 
 int main( int ac, char** av )
 {
-    comma::signal_flag signaled;
     comma::command_line_options options( ac, av );
     if( options.exists( "--help,-h" ) ) { usage(); }
-    
+
     try
     {
         is_omit_error = options.exists( "--omit-error" );
-
-        comma::uint32 scan_break = options.value< comma::uint32 > ( "--scan-break", 20 ); // time in us
-        comma::uint32 num_of_scans = options.value< comma::uint32 > ( "--num-of-scans", 100 ); // time in us
+        scan_break = options.value< comma::uint32 > ( "--scan-break", 20 ); // time in us
+        num_of_scans = options.value< comma::uint32 > ( "--num-of-scans", 100 ); // time in us
+        reboot_on_error = options.exists( "--reboot-on-error" );
+        start_step=options.value<int>("--start-step", -1);
+        end_step=options.value<int>("--end-step", -1);
+        debug_verbose=options.exists("--debug");
+        std::vector< std::string > unnamed = options.unnamed( "--omit-error,--reboot-on-error,--debug,--scip2,--output-samples",
+                                                              "--scan-break,--num-of-scans,--start-step,--end-step,--serial,--port,--laser,--fields,--format,--binary,-b,--baud-rate");
+        if(!unnamed.empty())
+        {
+            std::cerr<<"invalid option(s):"<< comma::join(unnamed, ',') <<std::endl;
+            return 1;
+        }
+        
+        scip2_device scip2;
+        ust_device<UST_SMALL_STEPS> ust_small;
+        ust_device<UST_MAX_STEPS> ust_max;
+        bool serial=options.exists("--scip2") || options.exists( "--serial");
+        laser_device& device = serial ? scip2 : (start_step ?  (laser_device&)ust_small : (laser_device&)ust_max);
         
         // Sets up output data
-        comma::csv::options csv;
         csv.fields = options.value< std::string >( "--fields", "" );
         std::vector< std::string > v = comma::split( csv.fields, ',' );
         for( std::size_t i = 0; i < v.size(); ++i ) // convenience shortcuts
@@ -224,84 +211,39 @@ int main( int ac, char** av )
         csv.fields = comma::join( v, ',' );
         csv.full_xpath = false;
         // see sick-ldmrs-to-csv
-        if( options.exists( "--format" ) ) { std::cout << comma::csv::format::value< hok::data_point >( csv.fields, false ) << std::endl; return 0; }
-        if( options.exists( "--binary,-b" ) ) csv.format( comma::csv::format::value< hok::data_point >( csv.fields, false ) );
-        comma::csv::output_stream< hok::data_point > output( std::cout, csv );  
-        
-        if( options.exists( "--output-samples" ) )
+        if( options.exists( "--format" ) ) 
         {
-            hok::data_point pt;
-            pt.x = 1; pt.y = 2; pt.z = 3;
-            pt.intensity = 100;
-            while( !signaled && std::cout.good() )
-            {
-                pt.timestamp = boost::posix_time::microsec_clock::local_time();
-                output.write( pt );
-                usleep( 0.1 * 1000000u );
-            }
+            if(serial) { std::cout << comma::csv::format::value< scip2_device::output_t >( csv.fields, false ) << std::endl; }
+            else { std::cout << comma::csv::format::value< hok::data_point >( csv.fields, false ) << std::endl; }
+            return 0; 
             
-            return 0;
+        }
+        if( options.exists( "--binary,-b" ) ) 
+        {
+            if(serial) { csv.format( comma::csv::format::value< scip2_device::output_t >( csv.fields, false ) ); }
+            else { csv.format( comma::csv::format::value< hok::data_point >( csv.fields, false ) ); }
         }
         
+        if( options.exists( "--output-samples" ) ) { output_samples(); return 0; }
+        
+        device.init(options);
         /// Connect to the laser
-        ip::tcp::iostream iostream;
-        if( !tcp_connect( options.value< std::string >( "--laser" ), iostream ) ) {
-            COMMA_THROW( comma::exception, "failed to connect to the hokuyo laser at: " << options.value< std::string >( "--laser" ) );
-        }
-        
-        bool reboot_on_error = options.exists( "--reboot-on-error" );
-        
-        // Let put the laser into scanning mode
+        ios=device.connect();
+        device.setup(*ios);
+        if(serial)
         {
-            hok::state_command start( "BM" ); // starts transmission
-            hok::state_reply start_reply;
-    
-            iostream.write( start.data(), hok::state_command::size  );
-            iostream.flush();
-            
-            comma::io::select select;
-            select.read().add( iostream.rdbuf()->native() );
-            
-            select.wait( 1 ); // wait one select for reply, it can be much smaller
-            if( !select.read().ready( iostream.rdbuf()->native() ) ) { 
-                COMMA_THROW( comma::exception, "no reply received from laser scanner after a startup (BM) command: " << std::string( start.data(), hok::state_command::size ) ); 
-            }
-            iostream.read( start_reply.data(), hok::state_reply::size  );
-            
-            if( start_reply.status() != 0 && 
-                start_reply.status() != 10 &&
-                start_reply.status() != 2 ) // 0 = success, 2 seems to be returned when it is already in scanning mode but idle
-            {
-                if( reboot_on_error )
-                {
-                    // it must be sent twice within one second
-                    iostream << "RB\n"; iostream.flush();
-                    iostream << "RB\n"; iostream.flush();
-                    sleep( 1 );
-                }
-                COMMA_THROW( comma::exception, std::string("Starting laser with BM command failed, status: ") + std::string( start_reply.status.data(), 2 ) ); 
-            }
+            if(debug_verbose)
+                ((serial_stream&)*ios).dump_setting();
+//             debug_msg("change serial settings");
+//             const char* ss_cmd="SS500000\n";
+            process(scip2);
         }
-    
+        else
         {
-            app_exit onexit( iostream );
-        
-            // it is higher than 1080 because 0 is a step
-            static const int MAX_STEPS = 1081;
-            static const int SCANS = num_of_scans;
-            
-            comma::uint32 start_encoder_step = 0;
-            if( options.exists( "--start-step" ) ) 
-            { 
-                static const int SMALL_STEPS = 271;
-                start_encoder_step = options.value< comma::uint32 >( "--start-step", 0 );
-                if( start_encoder_step >= ( hok::ust_10lx::step_max - SMALL_STEPS ) ) { COMMA_THROW( comma::exception, "start step is too high" ); }
-
-                while( scanning< SMALL_STEPS >( start_encoder_step, SCANS, signaled, iostream, output ) ) { usleep( scan_break ); }
-            }
-            else {
-                while( scanning< MAX_STEPS >(   start_encoder_step, SCANS, signaled, iostream, output ) ) { usleep( scan_break ); }
-            }
+            if(start_step)
+                process(ust_small);
+            else
+                process(ust_max);
         }
     }
     catch( std::exception& ex )
@@ -312,5 +254,5 @@ int main( int ac, char** av )
     {
         std::cerr << name() << "unknown exception" << std::endl; return 1;
     }
-    
+    return 0;
 }
