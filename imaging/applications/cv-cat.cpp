@@ -86,6 +86,9 @@ static pair read( snark::cv_mat::serialization& input, rate_limit& rate )
     return input.read( std::cin );
 }
 
+void skip( unsigned int number_of_frames_to_skip, cv::VideoCapture& video_capture, rate_limit& rate ) { for( unsigned int i=0; i<number_of_frames_to_skip; i++ ) { capture( video_capture, rate ); } }
+void skip( unsigned int number_of_frames_to_skip, snark::cv_mat::serialization& input, rate_limit& rate ) { for( unsigned int i=0; i<number_of_frames_to_skip; i++ ) { read( input, rate ); } }
+
 int main( int argc, char** argv )
 {
     try
@@ -103,6 +106,7 @@ int main( int argc, char** argv )
         std::string output_options_string;
         unsigned int capacity = 16;
         unsigned int number_of_threads = 0;
+        unsigned int number_of_frames_to_skip = 0;
         boost::program_options::options_description description( "options" );
         description.add_options()
             ( "help,h", "display help message" )
@@ -117,6 +121,7 @@ int main( int argc, char** argv )
             ( "output", boost::program_options::value< std::string >( &output_options_string ), "output options (see --help --verbose); default: same as --input" )
             ( "capacity", boost::program_options::value< unsigned int >( &capacity )->default_value( 16 ), "maximum input queue size before the reader thread blocks" )
             ( "threads", boost::program_options::value< unsigned int >( &number_of_threads )->default_value( 0 ), "number of threads; default: 0 (auto)" )
+            ( "skip", boost::program_options::value< unsigned int >( &number_of_frames_to_skip )->default_value( 0 ), "number of initial frames to skip; default: 0" )
             ( "stay", "do not close at end of stream" );
         boost::program_options::variables_map vm;
         boost::program_options::store( boost::program_options::parse_command_line( argc, argv, description), vm );
@@ -190,15 +195,18 @@ int main( int argc, char** argv )
         if( vm.count( "file" ) )
         {
             video_capture.open( name );
+            skip( number_of_frames_to_skip, video_capture, rate );
             reader.reset( new bursty_reader< pair >( boost::bind( &capture, boost::ref( video_capture ), boost::ref( rate ) ), discard, capacity ) );
         }
         else if( vm.count( "camera" ) || vm.count( "id" ) )
         {
             video_capture.open( device );
+            skip( number_of_frames_to_skip, video_capture, rate );
             reader.reset( new bursty_reader< pair >( boost::bind( &capture, boost::ref( video_capture ), boost::ref( rate ) ), discard ) );
         }
         else
         {
+            skip( number_of_frames_to_skip, input, rate );
             reader.reset( new bursty_reader< pair >( boost::bind( &read, boost::ref( input ), boost::ref( rate ) ), discard, capacity ) );
         }
         const unsigned int default_delay = vm.count( "file" ) == 0 ? 1 : 200; // HACK to make view work on single files

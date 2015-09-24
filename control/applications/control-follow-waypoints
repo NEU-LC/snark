@@ -166,6 +166,7 @@ fi
 if [[ -z "$mode" ]]; then echo "$scriptname: mode is not found in $config" >&2; exit 1; fi
 if [[ -z "$proximity" ]]; then echo "$scriptname: proximity is not found in $config" >&2; exit 1; fi
 if [[ -z "$past_endpoint" ]]; then echo "$scriptname: past-endpoint is not found in $config" >&2; exit 1; fi
+if [[ -z "$heading_is_absolute_default" ]]; then echo "$scriptname: heading-is-absolute-default is not found in $config" >&2; exit 1; fi
 if [[ -z "$frequency" ]]; then echo "$scriptname: frequency is not found in $config" >&2; exit 1; fi
 if [[ -z "$reset" ]]; then echo "$scriptname: reset is not found in $config" >&2; exit 1; fi
 if [[ -z "$waypoints_port" ]]; then echo "$scriptname: waypoints/port is not found in $config" >&2; exit 1; fi
@@ -191,7 +192,7 @@ control_pipeline="control-error --fields=$waypoints_fields ${waypoints_binary:+-
     --cross-track-pid=$pid_cross_track --heading-pid=$pid_heading --steering=$steering $reset_option --verbose --flush \
     | csv-shuffle --fields=$all_fields ${all_format:+--binary=$all_format} --output-fields=$output_fields --flush"
 
-daemonize "$feedback_command | io-publish ${feedback_binary:+--size $( csv-size $feedback_binary )} local:$feedback_socket" & feedback_pid=$!
+daemonize "$( echo $feedback_command | sed 's@\$@\\\$@g' ) | io-publish ${feedback_binary:+--size $( csv-size $feedback_binary )} local:$feedback_socket" & feedback_pid=$!
 
 declare -i client=0
 declare -i is_shutdown=0

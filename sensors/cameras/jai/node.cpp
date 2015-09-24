@@ -169,7 +169,7 @@ void node::get_from( const camera& c, NODE_HANDLE handle )
             boost::array< char, 1024 > buf;
             uint32_t size = buf.size();
             validate( "getting enumeration as string", J_Node_GetValueString( handle, false, ( int8_t* )&buf[0], &size ) );
-            value = std::string( &buf[0], size );
+            value = std::string( &buf[0] );
             break;
         }
         default:
@@ -193,7 +193,7 @@ std::vector< node > nodes( const camera& c )
         uint32_t size = 256;
         boost::array< char, 256 > name;
         validate( "getting node name", J_Node_GetName( handle, ( int8_t* )&name[0], &size, 0 ) );
-        n[i].name = std::string( &name[0], size );
+        n[i].name = std::string( &name[0] );
         n[i].get_from( c, handle );
     }
     return n;
