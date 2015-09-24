@@ -72,6 +72,8 @@ struct filters
 int single_channel_type( int t );
 std::string type_as_string( int t );
 
+inline bool is_empty( filters::value_type m ) { return ( m.first == boost::posix_time::not_a_date_time ) && m.second.empty(); }
+
 } }  // namespace snark{ namespace cv_mat {
 
 #endif // SNARK_IMAGING_CVMAT_FILTERS_H_
