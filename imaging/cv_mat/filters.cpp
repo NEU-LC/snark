@@ -424,7 +424,7 @@ static filters::value_type cross_impl_( filters::value_type m, boost::optional< 
     return m;
 }
 
-static filters::value_type encode_impl_( filters::value_type m, const std::string& type )
+void encode_impl_check_type( const filters::value_type& m, const std::string& type )
 {
     int channels = m.second.channels();
     int size = m.second.elemSize() / channels;
@@ -433,6 +433,11 @@ static filters::value_type encode_impl_( filters::value_type m, const std::strin
     if( !( size == 1 || size == 2 ) ) { COMMA_THROW( comma::exception, "expected 8- or 16-bit image, got " << size*8 << "-bit image" ); }
     if( size == 2 && !( cv_type == CV_16UC1 || cv_type == CV_16UC3 ) ) {  COMMA_THROW( comma::exception, "expected 16-bit image with unsigned elements, got image of type " << type_as_string( cv_type ) ); }
     if( size == 2 && !( type == "tiff" || type == "tif" || type == "png" || type == "jp2" ) ) { COMMA_THROW( comma::exception, "cannot convert 16-bit image to type " << type << "; use tif or png instead" ); }
+}
+
+static filters::value_type encode_impl_( filters::value_type m, const std::string& type )
+{
+    encode_impl_check_type( m, type );
     std::vector< unsigned char > buffer;
     std::string format = "." + type;
     cv::imencode( format, m.second, buffer );
@@ -516,6 +521,7 @@ static filters::value_type grab_impl_( filters::value_type m, const std::string&
 
 static filters::value_type file_impl_( filters::value_type m, const std::string& type )
 {
+    encode_impl_check_type( m, type );
     std::string filename = boost::posix_time::to_iso_string( m.first.is_not_a_date_time() ? boost::posix_time::microsec_clock::universal_time() : m.first );
     filename += "." + type;
     cv::imwrite( filename, m.second );
