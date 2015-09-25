@@ -46,6 +46,7 @@ const char* name() { return "hokuyo-to-csv: "; }
 using namespace snark::hokuyo;
 namespace hok = snark::hokuyo;
 bool debug_verbose=false;
+bool verbose=false;
 static void usage()
 {
     std::cerr << std::endl;
@@ -69,9 +70,11 @@ static void usage()
     std::cerr << "    --start-step=<0-890>: Scan starting at a start step and go to (step+270) wich covers 67.75\" which is 270\"/4." << std::endl;
     std::cerr << "                          Does not perform a full 270\" scan." << std::endl;
     std::cerr << "    --reboot-on-error:    if failed to put scanner into scanning mode, reboot the scanner." << std::endl;
-    std::cerr << "    --omit-error:         if a ray cannot detect an object in range, or very low reflectivity, omit ray from output." << std::endl;
+    std::cerr << "    --strict:         include invalid records; default false: if a ray cannot detect an object in range, or very low reflectivity, omit ray from output." << std::endl;
     std::cerr << "    --num-of-scans:       How many scans is requested for ME requests, default is 100 - 0 for continuous ( data verification problem with 0 )." << std::endl;
     std::cerr << "    --scan-break:         How many usec of sleep time between ME request and reponses received before issuing another ME request, default is 20us." << std::endl;
+    std::cerr << "    --verbose: show more information" << std::endl;
+    std::cerr << "    --output-fields: output fields to std out and exit; use --scip2 for scip2 fields" << std::endl;
     std::cerr << std::endl;
     std::cerr << "Output format:" << std::endl;
     comma::csv::binary< hok::data_point > binary( "", "" );
@@ -88,7 +91,7 @@ static void usage()
 comma::signal_flag signaled;
 std::auto_ptr<stream_base> ios; //this must have a higher scope than turn_laser_on
 bool reboot_on_error=false;
-static bool is_omit_error = false;
+static bool strict = false;
 int start_step=-1;
 comma::uint32 scan_break=20;
 comma::uint32 num_of_scans=100;
@@ -127,7 +130,7 @@ bool one_scan(T& device, comma::csv::output_stream< typename T::output_t >& outp
         {
             typename T::data_t data;
             data=device.get_data(i);
-            if( is_omit_error && !device.is_valid(data)){ continue; }
+            if(!device.is_valid(data)&&!strict) { continue; }
             output_stream.write(device.convert(data));
         }
         output_stream.flush();
@@ -176,15 +179,16 @@ int main( int ac, char** av )
 
     try
     {
-        is_omit_error = options.exists( "--omit-error" );
+        verbose=options.exists( "--verbose" );
+        strict = options.exists( "--strict" );
         scan_break = options.value< comma::uint32 > ( "--scan-break", 20 ); // time in us
         num_of_scans = options.value< comma::uint32 > ( "--num-of-scans", 100 ); // time in us
         reboot_on_error = options.exists( "--reboot-on-error" );
         start_step=options.value<int>("--start-step", -1);
         end_step=options.value<int>("--end-step", -1);
         debug_verbose=options.exists("--debug");
-        std::vector< std::string > unnamed = options.unnamed( "--omit-error,--reboot-on-error,--debug,--scip2,--output-samples",
-                                                              "--scan-break,--num-of-scans,--start-step,--end-step,--serial,--port,--laser,--fields,--format,--binary,-b,--baud-rate");
+        std::vector< std::string > unnamed = options.unnamed( "--output-fields,--verbose,--strict,--reboot-on-error,--debug,--scip2,--output-samples",
+                                                              "--scan-break,--num-of-scans,--start-step,--end-step,--serial,--port,--laser,--fields,--format,--binary,-b,--baud-rate,--set-baud-rate");
         if(!unnamed.empty())
         {
             std::cerr<<"invalid option(s):"<< comma::join(unnamed, ',') <<std::endl;
@@ -217,6 +221,13 @@ int main( int ac, char** av )
             else { std::cout << comma::csv::format::value< hok::data_point >( csv.fields, false ) << std::endl; }
             return 0; 
             
+        }
+        if(options.exists("--output-fields"))
+        {
+            if(!csv.fields.empty()) {std::cout<<csv.fields<<std::endl;}
+            else if(serial) { std::cout<<comma::join(comma::csv::names<scip2_device::output_t>(), ',')<<std::endl;}
+            else {std::cout<<comma::join(comma::csv::names<hok::data_point>(), ',')<<std::endl;}
+            return 0;
         }
         if( options.exists( "--binary,-b" ) ) 
         {

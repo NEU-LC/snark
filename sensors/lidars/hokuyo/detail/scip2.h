@@ -31,8 +31,10 @@ struct scip2_profile
     int max_step;
     int slit_division;  //number of steps in full circle
     int sensor_front_step;
+    double min_distance;
     double step_to_bearing(int step);
     virtual void range_check(int start_step, int end_step);   //throw exception if invalid range
+    scip2_profile():min_step(0),max_step(0),slit_division(1),sensor_front_step(0),min_distance(0.000001) { }
 };
 struct urg_04lx : public scip2_profile
 { 
@@ -85,6 +87,7 @@ struct scip2_device:public laser_device
     scip2_profile* profile; //typically points to one of static members above
     //options
     int baud_rate;
+    int set_baud_rate;
     std::string port;
     scip2_device():profile(&urg_04lx_), baud_rate(0)
     {
@@ -92,16 +95,11 @@ struct scip2_device:public laser_device
     virtual void init(comma::command_line_options options)
     {
         //get args
-        baud_rate=options.value<int>("--baud-rate",19200);
+        baud_rate=options.value<int>("--baud-rate", 0);
         port=options.value<std::string>("--serial,--port");
+        set_baud_rate=options.value<int>("--set-baud-rate", 500000);
     }
-    virtual std::auto_ptr<stream_base> connect()
-    {
-        //setup communication
-        return std::auto_ptr<stream_base>(new serial_stream(port,baud_rate,8,boost::asio::serial_port_base::parity::none,boost::asio::serial_port_base::stop_bits::one));
-        //auto baud rate
-        //change baud rate
-    }
+    virtual std::auto_ptr<stream_base> connect();
     //e.g. switch to scip2
     virtual void setup(stream_base& ios);
     virtual void reboot(stream_base& ios) { }    //doesn't support reboot
