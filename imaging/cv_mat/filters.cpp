@@ -437,6 +437,7 @@ void encode_impl_check_type( const filters::value_type& m, const std::string& ty
 
 static filters::value_type encode_impl_( filters::value_type m, const std::string& type )
 {
+    if( is_empty( m ) ) { return m; }
     encode_impl_check_type( m, type );
     std::vector< unsigned char > buffer;
     std::string format = "." + type;
@@ -1356,7 +1357,7 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
                 if( next_filter != "null" && next_filter != "encode" ) { COMMA_THROW( comma::exception, "cannot have a filter after head unless next filter is null or encode" ); }
             }
             unsigned int n = e.size() < 2 ? 1 : boost::lexical_cast< unsigned int >( e[1] );
-            f.push_back( filter( boost::bind( &head_impl_, _1, n ), false)  );
+            f.push_back( filter( boost::bind( &head_impl_, _1, n ), false ) );
         }
         else if( e[0] == "threshold" )
         {
