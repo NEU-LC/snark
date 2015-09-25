@@ -13,8 +13,8 @@ output the header and append specified statistical properties of each image in t
 """
 epilog="""
 examples:
-    cat image.bin | {script_name} amin,amax,mean,median,std,var,ptp
-    cat image.bin | {script_name} mean --binary
+    cat ladybug.bin | {script_name} amin,amax,mean,median,std,var,ptp
+    cat ladybug.bin | {script_name} mean --binary
     {script_name} mean --output-format
 
 operations:
