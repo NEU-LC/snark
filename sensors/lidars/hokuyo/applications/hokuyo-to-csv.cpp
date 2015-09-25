@@ -74,6 +74,7 @@ static void usage()
     std::cerr << "    --num-of-scans:       How many scans is requested for ME requests, default is 100 - 0 for continuous ( data verification problem with 0 )." << std::endl;
     std::cerr << "    --scan-break:         How many usec of sleep time between ME request and reponses received before issuing another ME request, default is 20us." << std::endl;
     std::cerr << "    --verbose: show more information" << std::endl;
+    std::cerr << "    --output-fields: output fields to std out and exit; use --scip2 for scip2 fields" << std::endl;
     std::cerr << std::endl;
     std::cerr << "Output format:" << std::endl;
     comma::csv::binary< hok::data_point > binary( "", "" );
@@ -186,7 +187,7 @@ int main( int ac, char** av )
         start_step=options.value<int>("--start-step", -1);
         end_step=options.value<int>("--end-step", -1);
         debug_verbose=options.exists("--debug");
-        std::vector< std::string > unnamed = options.unnamed( "--verbose,--strict,--reboot-on-error,--debug,--scip2,--output-samples",
+        std::vector< std::string > unnamed = options.unnamed( "--output-fields,--verbose,--strict,--reboot-on-error,--debug,--scip2,--output-samples",
                                                               "--scan-break,--num-of-scans,--start-step,--end-step,--serial,--port,--laser,--fields,--format,--binary,-b,--baud-rate,--set-baud-rate");
         if(!unnamed.empty())
         {
@@ -220,6 +221,13 @@ int main( int ac, char** av )
             else { std::cout << comma::csv::format::value< hok::data_point >( csv.fields, false ) << std::endl; }
             return 0; 
             
+        }
+        if(options.exists("--output-fields"))
+        {
+            if(!csv.fields.empty()) {std::cout<<csv.fields<<std::endl;}
+            else if(serial) { std::cout<<comma::join(comma::csv::names<scip2_device::output_t>(), ',')<<std::endl;}
+            else {std::cout<<comma::join(comma::csv::names<hok::data_point>(), ',')<<std::endl;}
+            return 0;
         }
         if( options.exists( "--binary,-b" ) ) 
         {
