@@ -2,7 +2,11 @@
 #include <vector>
 #include "../message.h"
 #include <comma/csv/stream.h>
+#include <comma/io/select.h>
+#include <cstdio>
+
 extern bool debug_verbose;
+extern bool verbose;
 
 namespace snark { namespace hokuyo {
 
@@ -18,8 +22,9 @@ void scip2_device::usage()
     std::cerr << "    --scip2: use SCIP2 protocol (for URG-04LX device using serial communication, optional" << std::endl;
     std::cerr << "    --serial,--port=<device_name>: device filename for serial port to connect to (e.g. COM1 or /dev/ttyS0 or /dev/usb/ttyUSB0) " << std::endl;
     std::cerr << "        either this option or --laser must be specified, the protocol will be selected to match" << std::endl;
-    std::cerr << "    --baud-rate=<bps> connect using this baud rate, default 19200" << std::endl;
+    std::cerr << "    --baud-rate=<bps>: connect using this baud rate, default 0 which means auto (tries all different settings)" << std::endl;
     std::cerr << "        supported baud rates for URG-04LX: 19200, 57600, 115200, 500000, (750000)" << std::endl;
+    std::cerr << "    --set-baud-rate=<bps>: change the device's baud rate to <bps>, default 500000; pass 0 to disable changing baud-rate" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    output:" << std::endl;
     comma::csv::binary< output_t > binary( "", "" );
@@ -39,14 +44,13 @@ scip2_device::output_t::output_t() :
 {
 }
 
-scip2_device::output_t::output_t(double distance, double bearing) : 
+scip2_device::output_t::output_t(double distance, double abearing) : 
             timestamp( boost::posix_time::microsec_clock::local_time() ), 
-            x(0), y(0), z(0), block(0), range(0), bearing(0), elevation(0)
+            x(0), y(0), z(0), block(0), range(0), bearing(abearing), elevation(0)
 {
     range = distance / 1000.0;
-    bearing = bearing;
     x = range * std::cos( bearing );
-    y = range * -std::sin( bearing );
+    y = range * std::sin( bearing );
 }
 
 static std::string raw_receive(stream_base& ios)
@@ -66,13 +70,62 @@ static std::string raw_receive(stream_base& ios)
 }
 static bool raw_send(stream_base& ios, const char* cmd)
 {
-    //std::cerr<<"-> "<<cmd<<std::endl;
+    if(debug_verbose) { std::cerr<<"->"<<cmd<<std::endl; }
     ios.write(cmd,strlen(cmd));
     std::string s=raw_receive(ios);
-    if(debug_verbose)
-        std::cerr<<s;
+    if(debug_verbose) { std::cerr<<"<-"<<s; }
     int len=s.size();
     return len>2 && s[len-1]=='\n' && s[len-2]=='\n';
+}
+std::string try_receive(stream_base& ios, int timeout_seconds = 1)
+{
+    comma::io::select select;
+    select.read().add( ios.native() );
+    select.wait( timeout_seconds ); // wait one select for reply, it can be much smaller
+    if(!select.read().ready( ios.native() )) { return std::string(); }
+    return raw_receive(ios);
+}
+bool try_connect(stream_base& ios, int baud_rate)
+{
+    if(debug_verbose){std::cerr<<"trying baud rate "<<baud_rate<<std::endl;}
+    static const char* cmd="VV\n";
+    ((serial_stream&)ios).set_baud_rate(baud_rate);
+    ios.write(cmd, strlen(cmd));
+    return (try_receive(ios).find("\n\n") != std::string::npos);
+}
+std::auto_ptr<stream_base> scip2_device::connect()
+{
+    //setup communication
+    stream_base* ios=new serial_stream(port,19200,8,boost::asio::serial_port_base::parity::none,boost::asio::serial_port_base::stop_bits::one);
+    //auto baud rate
+    bool connected=false;
+    if(baud_rate ==0)
+    {
+        static int supported_baud_rates[]={19200, 57600, 115200, 500000};
+        for(int i=sizeof(supported_baud_rates)/sizeof(supported_baud_rates[0])-1;i>=0;i--)
+        {
+            baud_rate=supported_baud_rates[i];
+            connected=try_connect(*ios, baud_rate);
+            if(connected) { break; }
+        }
+    }
+    else { connected=try_connect(*ios, baud_rate); }
+    if(!connected) { COMMA_THROW(comma::exception, "failed to connect to device on port: " <<port); }
+    else if(verbose) { std::cerr<<"connected to "<<port << " on "<< baud_rate<<" bps"<<std::endl; }
+    //change baud rate
+    if(set_baud_rate && set_baud_rate!=baud_rate)
+    {
+        char cmd[20];
+        std::sprintf(cmd, "SS%06d\n", set_baud_rate);
+        ios->write(cmd,strlen(cmd));
+        if(try_receive(*ios).find("\n00")!=std::string::npos && try_connect(*ios, set_baud_rate))
+        {
+            //connected
+            if(verbose){std::cerr<<"successfully changed baud rate to: "<<set_baud_rate<<std::endl;}
+        }
+        else {std::cerr<<"failed to change baud rate to "<<set_baud_rate<<std::endl;}
+    }
+    return std::auto_ptr<stream_base>(ios);
 }
 void scip2_device::setup(stream_base& ios)
 {
@@ -84,14 +137,12 @@ void scip2_device::setup(stream_base& ios)
 void scip2_device::request_scan(stream_base& ios, int start_step, int end_step, int num_of_scans)
 {
     //these are for URG-04LX, use PP command to get device's parameters
-    if(start_step==-1)
-        start_step=profile->min_step;
-    if(end_step==-1)
-        end_step=profile->max_step;
+    if(start_step==-1) { start_step=profile->min_step; }
+    if(end_step==-1) { end_step=profile->max_step; }
     
-    if(start_step>=end_step) {COMMA_THROW( comma::exception, "start step should be less than end step: " << start_step <<","<<end_step );}
-    if(start_step<0){COMMA_THROW( comma::exception, "start step should be greater than 0 : " << start_step);}
-    if(end_step<0){COMMA_THROW( comma::exception, "end step should be greater than 0 : " << end_step);}
+    if(start_step>=end_step) { COMMA_THROW( comma::exception, "start step should be less than end step: " << start_step <<","<<end_step ); }
+    if(start_step<0) { COMMA_THROW( comma::exception, "start step should be greater than 0 : " << start_step); }
+    if(end_step<0) { COMMA_THROW( comma::exception, "end step should be greater than 0 : " << end_step); }
     profile->range_check(start_step,end_step);
 
     md=std::auto_ptr<request_md>(new request_md(false));
@@ -105,16 +156,8 @@ void scip2_device::request_scan(stream_base& ios, int start_step, int end_step, 
     reply_md reply;
     ios.read( reply.data(), reply_md::size );
     
-    if( reply.request.message_id != md->message_id ) { 
-        COMMA_THROW( comma::exception, "message id mismatch for MD status reply, got: " << md->message_id.str() 
-                                        << " expected: " << reply.request.message_id.str() ); 
-    }
-    if( reply.status.status() != 0 ) 
-    { 
-        std::ostringstream ss;
-        ss << "status reply to ME request is not success: " << reply.status.status(); // to change to string
-        COMMA_THROW( comma::exception, ss.str() ); 
-    }
+    if( reply.request.message_id != md->message_id ) { COMMA_THROW( comma::exception, "message id mismatch for MD status reply, got: " << md->message_id.str() << " expected: " << reply.request.message_id.str() ); }
+    if( reply.status.status() != 0 ) { COMMA_THROW( comma::exception, "status reply to ME request is not success: " << reply.status.status() ); }
 }
 
 struct reply_md_header : comma::packed::packed_struct< reply_md_header, sizeof( reply::md_header ) >
@@ -128,8 +171,7 @@ static unsigned int block=0;
 bool scip2_device::receive_response(stream_base& ios)
 {
     block++;
-    if(debug_verbose)
-        std::cerr<<"receive_response"<<std::endl;
+    if(debug_verbose) { std::cerr<<"receive_response2"<<std::endl; }
     //read header
     reply_md_header reply;
     int status = read( reply, ios );
@@ -140,14 +182,12 @@ bool scip2_device::receive_response(stream_base& ios)
     if( reply.header.request.message_id != md->message_id ) { 
         COMMA_THROW( comma::exception, "message id mismatch for MD data reply, got: " << reply.header.request.message_id.str()  << " expected: " << md->message_id.str()); 
     }
-    if(debug_verbose)
-        std::cerr<<"/header"<<std::endl;
+    if(debug_verbose) { std::cerr<<"/header"<<std::endl; }
 
     //now read data
     int start=reply.header.request.header.start_step.unpack(reply.header.request.header.start_step.data());
     int end=reply.header.request.header.end_step.unpack(reply.header.request.header.end_step.data());
-    if(debug_verbose)
-        std::cerr<<"start "<<start<<" end "<<end<<std::endl;
+    if(debug_verbose) { std::cerr<<"start "<<start<<" end "<<end<<std::endl; }
     scan_data.set_param(start, end-start+1);
     ios.read( scan_data.buf, scan_data.buf_size );
     //read second linefeed
@@ -161,8 +201,7 @@ bool scip2_device::receive_response(stream_base& ios)
             std::string s=raw_receive(ios);
             std::cerr<<"dumping "<<s.size()<<" chars:"<<serial_stream::dump(s.c_str(),s.size())<<std::endl;
         }
-        else
-            COMMA_THROW(comma::exception, "expected \\n, got: "<<int(lf) );
+        else { COMMA_THROW(comma::exception, "expected \\n, got: "<<int(lf) ); }
     }
     scan_data.unpack();
     
@@ -178,7 +217,7 @@ scip2_device::data_t scip2_device::get_data(int scan)
 
 bool scip2_device::is_valid(data_t& data) const
 {
-    return data.distance>0.000001;
+    return (data.distance > profile->min_distance);
 }
 
 scip2_device::output_t scip2_device::convert(data_t& data)
@@ -223,10 +262,8 @@ static void strip_checksum( const char* raw, std::size_t raw_size, char* target 
 //         std::cerr << "final block: '" << std::string( raw, size-1 ) << '\'' << std::endl; 
         if( !verify_checksum( std::string( raw, size-1 ) ) ) 
         { 
-            if(debug_verbose)
-                std::cerr<<"checksum of data failed at final odd data block: " << std::string( raw, size-1 )<<std::endl;
-            else
-                COMMA_THROW( comma::exception, "checksum of data failed at final odd data block: " << std::string( raw, size-1 ) );  
+            if(debug_verbose) { std::cerr<<"checksum of data failed at final odd data block: " << std::string( raw, size-1 )<<std::endl; }
+            else { COMMA_THROW( comma::exception, "checksum of data failed at final odd data block: " << std::string( raw, size-1 ) ); }
         }
         // if size is 1, 2 or 3, then it is an error
         memcpy( target, raw, size-2 ); // it ends in triplet <sum, lf>
@@ -297,11 +334,12 @@ urg_04lx::urg_04lx()
     max_step=725;  //last measurement; max valid step: 768
     slit_division=1024;
     sensor_front_step=384;
+    min_distance=0.020;
 }
 void urg_04lx::range_check(int start_step, int end_step)
 {
     static const int MAX_VALID_STEP=768;
-    if(end_step>MAX_VALID_STEP){COMMA_THROW( comma::exception, "end step should be less than MAX_VALID_STEP("<<MAX_VALID_STEP<<") : " << end_step);}
+    if(end_step>MAX_VALID_STEP) { COMMA_THROW( comma::exception, "end step should be less than MAX_VALID_STEP("<<MAX_VALID_STEP<<") : " << end_step); }
 }
 
 uhg_08lx::uhg_08lx()

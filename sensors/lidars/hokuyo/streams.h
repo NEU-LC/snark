@@ -70,6 +70,10 @@ struct serial_stream:public stream_base
         port.set_option(boost::asio::serial_port_base::parity(parity));
         port.set_option(boost::asio::serial_port_base::stop_bits(stop_bits));
     }
+    void set_baud_rate(int baud_rate)
+    {
+        port.set_option(boost::asio::serial_port_base::baud_rate(baud_rate));
+    }
     void dump_setting()
     {
         boost::asio::serial_port_base::baud_rate baud_rate;
