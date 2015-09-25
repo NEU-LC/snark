@@ -1,0 +1,48 @@
+#!/usr/bin/python
+
+import sys
+import cv2
+import numpy
+import argparse
+from snark.imaging import cv_image
+from comma.io import windows_binary
+
+description="""
+output the header and append specified statistical properties of each image in the input stream
+"""
+epilog="""
+examples:
+    cat image.bin | {script_name} amin,amax,mean,median,std,var,ptp
+    cat image.bin | {script_name} mean --binary
+    {script_name} mean --output-format
+
+operations:
+    see http://docs.scipy.org/doc/numpy/reference/routines.statistics.html
+""".format( script_name=sys.argv[0].split('/')[-1] )
+
+parser = argparse.ArgumentParser( description=description, epilog=epilog, formatter_class=argparse.RawDescriptionHelpFormatter )
+parser.add_argument( "operations", help="comma-separated list of operations" )
+parser.add_argument( "--binary", action="store_true", help="binary output" )
+parser.add_argument( "--output-format", action="store_true", help="output binary format to stdout and exit" )
+args = parser.parse_args()
+
+operations = map( lambda _: getattr( numpy, _ ), args.operations.split(',') )
+header_format = 'u8,u4,u4,u4'
+properties_format = ','.join( ['f8'] * len( operations ) )
+output_format = header_format + ',' + properties_format
+
+if args.output_format:
+    comma_binary_format_from_numpy = dict( u8='t', u4='ui', f8='d' ) # assuming the first field of the header is time
+    print ','.join( map( lambda _: comma_binary_format_from_numpy[_], output_format.split(',') ) )
+    sys.exit( 0 )
+
+for i in cv_image.iterator( sys.stdin ):
+    time = i.header['time'].astype( 'u8' ) if args.binary else i.header['time'].item().isoformat().replace('-','').replace(':','')
+    header = ( time, i.header['rows'], i.header['cols'], i.header['type'] )
+    properties = tuple( operation( i.data ) for operation in operations )
+    output = header + properties
+    if args.binary:
+        numpy.array( output, dtype=output_format ).tofile( sys.stdout )
+        sys.stdout.flush()
+    else:
+        print >> sys.stdout, ','.join( map( str, output ) )
