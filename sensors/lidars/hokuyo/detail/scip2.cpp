@@ -87,8 +87,8 @@ std::string try_receive(stream_base& ios, int timeout_seconds = 1)
 }
 bool try_connect(stream_base& ios, int baud_rate)
 {
-    if(debug_verbose){std::cerr<<"trying baud rate "<<baud_rate<<std::endl;}
-    static const char* cmd="VV\n";
+    if(verbose){std::cerr<<"trying to connect on "<<baud_rate<<" bps"<<std::endl;}
+    static const char* cmd="SCIP2.0\n";
     ((serial_stream&)ios).set_baud_rate(baud_rate);
     ios.write(cmd, strlen(cmd));
     return (try_receive(ios).find("\n\n") != std::string::npos);
@@ -131,7 +131,7 @@ void scip2_device::setup(stream_base& ios)
 {
     //swtich to scip2
     //if(raw_send(ios,"V\n"))
-    raw_send(ios,"SCIP2.0\n");
+    //raw_send(ios,"SCIP2.0\n");
     //raw_send(ios,"VV\n");
 }
 void scip2_device::request_scan(stream_base& ios, int start_step, int end_step, int num_of_scans)
