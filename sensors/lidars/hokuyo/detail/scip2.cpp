@@ -68,15 +68,15 @@ static std::string raw_receive(stream_base& ios)
     }
     return s;
 }
-static bool raw_send(stream_base& ios, const char* cmd)
-{
-    if(debug_verbose) { std::cerr<<"->"<<cmd<<std::endl; }
-    ios.write(cmd,strlen(cmd));
-    std::string s=raw_receive(ios);
-    if(debug_verbose) { std::cerr<<"<-"<<s; }
-    int len=s.size();
-    return len>2 && s[len-1]=='\n' && s[len-2]=='\n';
-}
+// static bool raw_send(stream_base& ios, const char* cmd)
+// {
+//     if(debug_verbose) { std::cerr<<"->"<<cmd<<std::endl; }
+//     ios.write(cmd,strlen(cmd));
+//     std::string s=raw_receive(ios);
+//     if(debug_verbose) { std::cerr<<"<-"<<s; }
+//     int len=s.size();
+//     return len>2 && s[len-1]=='\n' && s[len-2]=='\n';
+// }
 std::string try_receive(stream_base& ios, int timeout_seconds = 1)
 {
     comma::io::select select;

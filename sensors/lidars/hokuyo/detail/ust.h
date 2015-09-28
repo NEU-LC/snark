@@ -46,7 +46,7 @@ template < int STEPS >
 void ust_device<STEPS>::request_scan(stream_base& iostream, int start, int end_step, int num_of_scans)
 {
     start_step= (start==-1) ? 0 : start;
-    if( start_step != 0 && start_step >= ( hok::ust_10lx::step_max - STEPS ) ) { COMMA_THROW( comma::exception, "start step is too high" ); }
+    if( start_step != 0 && start_step >= int( hok::ust_10lx::step_max - STEPS ) ) { COMMA_THROW( comma::exception, "start step is too high" ); }
     if(end_step!=0&&end_step!=STEPS){COMMA_THROW( comma::exception, "--end-step is not supported for UST implementation" );}
 
     me=request_md( true );

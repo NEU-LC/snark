@@ -124,7 +124,7 @@ bool one_scan(T& device, comma::csv::output_stream< typename T::output_t >& outp
     {
         bool more=device.receive_response(*ios);
         int steps=device.get_steps();
-        for( std::size_t i=0; i<steps; ++i )
+        for( int i=0; i<steps; ++i )
         {
             typename T::data_t data;
             data=device.get_data(i);
