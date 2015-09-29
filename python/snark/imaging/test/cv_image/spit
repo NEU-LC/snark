@@ -1,8 +1,0 @@
-#!/usr/bin/python
-
-import sys
-from snark.imaging import cv_image
-from comma.io import windows_binary
-
-for i in cv_image.iterator(sys.stdin):
-    cv_image.write(i)
