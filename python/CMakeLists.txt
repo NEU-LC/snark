@@ -4,7 +4,7 @@ IF( NOT PYTHON )
     message( FATAL_ERROR "python modules and scripts cannot be installed: python not found" )
 ENDIF( NOT PYTHON )
     
-SET( PYTHON_PACKAGE_INSTALL_PREFIX "" CACHE STRING "install prefix for python packages, leave empty for python default prefix" )
+SET( PYTHON_PACKAGE_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX} CACHE STRING "install prefix for python packages, leave empty for python default prefix" )
 
 SET( INSTALL_PREFIX_OPTION "" )
 IF( PYTHON_PACKAGE_INSTALL_PREFIX )
