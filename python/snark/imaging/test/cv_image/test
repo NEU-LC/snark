@@ -1,0 +1,22 @@
+#!/bin/bash
+
+function spit
+{
+    python -c "$( cat <<END
+import sys
+from snark.imaging import cv_image
+from comma.io import windows_binary
+
+print >> sys.stderr, "spit loaded comma and snark"
+for i in cv_image.iterator(sys.stdin):
+    cv_image.write(i)
+
+print >> sys.stderr, "spit finished"
+END
+)"
+}
+
+output=$( csv-to-bin t,3ui,6ub | spit | csv-from-bin t,3ui,6ub )
+status=$?
+echo "test/output=\"$output\""
+echo "test/status=$status"
