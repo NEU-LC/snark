@@ -152,7 +152,7 @@ static void usage( bool more = false )
     std::cerr << "            --output-fields: print output field names and exit" << std::endl;
     std::cerr << "            --output-format: print output format and exit" << std::endl;
     std::cerr << "    " << std::endl;
-    std::cerr << "        corss: calculate vector cross product; output: vector" << std::endl;
+    std::cerr << "        cross: calculate vector cross product; output: vector" << std::endl;
     std::cerr << "            input fields: v, u" << std::endl;
     std::cerr << "            --v=<x>,<y>,<z>: default value for vector 1" << std::endl;
     std::cerr << "            --u=<x>,<y>,<z>: default value for vector 2" << std::endl;
