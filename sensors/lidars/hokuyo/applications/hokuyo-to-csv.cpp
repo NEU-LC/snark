@@ -95,6 +95,8 @@ comma::uint32 scan_break=20;
 comma::uint32 num_of_scans=100;
 comma::csv::options csv;
 int end_step=-1; //should be zero for ust, as currently not supported
+int frames=-1;
+bool omit_on_error=true;
 
 
 struct sample_interface
@@ -128,11 +130,13 @@ bool one_scan(T& device, comma::csv::output_stream< typename T::output_t >& outp
         {
             typename T::data_t data;
             data=device.get_data(i);
-            if(!device.is_valid(data)) { continue; }
+            if(!device.is_valid(data) && omit_on_error) { continue; }
             output_stream.write(device.convert(data));
         }
         output_stream.flush();
         // This means we are done
+        if(frames!=-1 && --frames==0 )
+            return false;
         if( num_of_scans != 0 && !more ) { return true; }
     }
     return false;
@@ -184,8 +188,10 @@ int main( int ac, char** av )
         start_step=options.value<int>("--start-step", -1);
         end_step=options.value<int>("--end-step", -1);
         debug_verbose=options.exists("--debug");
-        std::vector< std::string > unnamed = options.unnamed( "--output-fields,--verbose,--reboot-on-error,--debug,--scip2,--output-samples",
-                                                              "--scan-break,--num-of-scans,--start-step,--end-step,--serial,--port,--laser,--fields,--format,--binary,-b,--baud-rate,--set-baud-rate");
+        frames=options.value<int>("--frames",-1);
+        omit_on_error = ! options.exists("--dont-omit-on-error");
+        std::vector< std::string > unnamed = options.unnamed( "--output-fields,--verbose,--reboot-on-error,--debug,--scip2,--output-samples,--dont-omit-on-error",
+                                                              "--frames,--scan-break,--num-of-scans,--start-step,--end-step,--serial,--port,--laser,--fields,--format,--binary,-b,--baud-rate,--set-baud-rate");
         if(!unnamed.empty())
         {
             std::cerr<<"invalid option(s):"<< comma::join(unnamed, ',') <<std::endl;
