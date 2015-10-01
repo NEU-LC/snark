@@ -103,17 +103,12 @@ static cv_mat::filters::value_type ndvi_impl_( cv_mat::filters::value_type m ) /
     cv::split( m.second, channels ); // watch performance, do we really need to split?
     switch( channels[0].type() )
     {
-        case CV_32FC1: set_ndvi_pixel_< float >( channels[0], channels[3] ); break;
-        case CV_8SC1: //set_ndvi_pixel_< char >( channels[0], channels[3] ); break;
-        case CV_8UC1: //set_ndvi_pixel_< char >( channels[0], channels[3] ); break;
+        case CV_32FC1: set_ndvi_pixel_< float >( channels[2], channels[3] ); break;
+        case CV_8SC1: //set_ndvi_pixel_< char >( channels[2], channels[3] ); break;
+        case CV_8UC1: //set_ndvi_pixel_< char >( channels[2], channels[3] ); break;
         default: break; // never here
     }
-    cv_mat::filters::value_type n;
-    n.first = m.first;
-    n.second = cv::Mat( m.second.rows, m.second.cols, type );
-    //channels.resize( 3 );
-    cv::merge( channels, n.second );
-    return n;
+    return cv_mat::filters::value_type( m.first, channels[2] );
 }
 
 static cv_mat::filters::value_type exponential_combination_impl_( const cv_mat::filters::value_type m, const std::vector< double >& powers)
