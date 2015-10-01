@@ -61,8 +61,8 @@ int main( int argc, char** argv )
             ( "resolution", boost::program_options::value< std::string >( &resolution_string ), "voxel map resolution, e.g. \"0.2\" or \"0.2,0.2,0.5\"" )
             ( "origin", boost::program_options::value< std::string >( &origin_string )->default_value( "0,0,0" ), "voxel map origin" )
             ( "begin", boost::program_options::value< std::string >( &origin_string )->default_value( "0,0,0" ), "an alias for --origin; voxel map origin" )
-            ( "extents", boost::program_options::value< std::string >( &extents_string ), "voxel map extents, e.g. 10,10,10; needed only if --enumerate is present" )
-            ( "end", boost::program_options::value< std::string >( &extents_string ), "an alias for --extents" )
+            ( "extents", boost::program_options::value< std::string >( &extents_string ), "voxel map extents, i.e. its bounding box counting from origin, e.g. 10,10,10; needed only if --enumerate is present" )
+            ( "end", boost::program_options::value< std::string >( &extents_string ), "can be used instead --extents, means origin + extents" )
             ( "enumerate", "append voxel id in a grid with given origin and extents; note that only voxels inside of the box defined by origin and extents are guaranteed to be enumerated correctly" );
         description.add( comma::csv::program_options::description( "x,y,z" ) );
         boost::program_options::variables_map vm;
