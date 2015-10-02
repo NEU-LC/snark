@@ -13,13 +13,16 @@ TARGET_LINK_LIBRARIES( image-undistort-map snark_imaging ${comma_ALL_LIBRARIES} 
 ADD_EXECUTABLE( cv-cat cv-cat.cpp )
 TARGET_LINK_LIBRARIES( cv-cat snark_imaging ${comma_ALL_LIBRARIES} ${OpenCV_LIBS} ${Boost_LIBRARIES} tbb )
 
+ADD_EXECUTABLE( image-to-csv image-to-csv.cpp )
+TARGET_LINK_LIBRARIES( image-to-csv snark_imaging ${comma_ALL_LIBRARIES} ${OpenCV_LIBS} )
+
 ADD_EXECUTABLE( image-accumulate image-accumulate.cpp )
 TARGET_LINK_LIBRARIES( image-accumulate snark_imaging ${comma_ALL_LIBRARIES} ${OpenCV_LIBS} tbb )
 
 ADD_EXECUTABLE( stereo-to-points stereo-to-points.cpp ${stereo_source}  )
 TARGET_LINK_LIBRARIES( stereo-to-points snark_imaging snark_math ${comma_ALL_LIBRARIES} ${OpenCV_LIBS} ${Boost_LIBRARIES} )
 
-INSTALL( TARGETS image-undistort-map cv-cat image-accumulate stereo-to-points
+INSTALL( TARGETS image-undistort-map cv-cat image-accumulate stereo-to-points image-to-csv
          RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR}
          COMPONENT Runtime )
          
