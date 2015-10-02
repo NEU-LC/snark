@@ -281,13 +281,46 @@ static filters::value_type brightness_impl_( filters::value_type m, double scale
     return n;
 }
 
+struct blur_t
+{
+    enum types { box, gaussian };
+    types blur_type;
+    cv::Size kernel_size;
+    cv::Point2d std;
+
+    static types from_string( const std::string& s )
+    {
+        if( s == "box" ) { return box; }
+        if( s == "gaussian" ) { return gaussian; }
+        COMMA_THROW( comma::exception, "unexpected blur type" );
+    }
+};
+
+static filters::value_type blur_impl_( filters::value_type m, blur_t params )
+{
+    filters::value_type n;
+    n.first = m.first;
+    switch( params.blur_type )
+    {
+        case blur_t::box:
+            cv::blur(m.second, n.second, params.kernel_size);
+            break;
+        case blur_t::gaussian:
+            cv::GaussianBlur(m.second, n.second, params.kernel_size, params.std.x, params.std.y);
+            break;
+    }
+    return n;
+}
+
 struct threshold_t
 {
     enum types { binary = CV_THRESH_BINARY
                , binary_inv = CV_THRESH_BINARY_INV
                , trunc = CV_THRESH_TRUNC
                , tozero = CV_THRESH_TOZERO
-               , tozero_inv = CV_THRESH_TOZERO_INV };
+               , tozero_inv = CV_THRESH_TOZERO_INV
+               , otsu = CV_THRESH_OTSU 
+               , otsu_inv = (CV_THRESH_OTSU | CV_THRESH_BINARY_INV) };
 
     static types from_string( const std::string& s )
     {
@@ -296,6 +329,8 @@ struct threshold_t
         if( s == "trunc" ) { return trunc; }
         if( s == "tozero" ) { return tozero; }
         if( s == "tozero_inv" ) { return tozero_inv; }
+        if( s == "otsu" ) { return otsu; }
+        if( s == "otsu_inv" ) { return otsu_inv; }
         COMMA_THROW( comma::exception, "expected threshold type, got: \"" << s << "\"" );
     }
 };
@@ -1340,6 +1375,37 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
             double offset = s.size() == 1 ? 0.0 : boost::lexical_cast< double >( s[1] );
             f.push_back( filter( boost::bind( &brightness_impl_, _1, scale, offset ) ) );
         }
+        else if( e[0] == "blur" )
+        {
+            const std::vector< std::string >& s = comma::split( e[1], ',' );
+            if( s.size() < 2 ) { COMMA_THROW( comma::exception, "expected blur type, kernel size, optional gaussian std" ); }
+            
+            blur_t params;
+            params.blur_type = blur_t::from_string(s[0]);
+            if (s[0] == "box")
+            {
+                params.kernel_size.width = boost::lexical_cast< int >( s[1] );
+                params.kernel_size.height = (s.size() == 3 ? boost::lexical_cast< int >( s[2] ) : params.kernel_size.width);
+            }
+            else if (s[0] == "gaussian")
+            {
+                if (s.size() == 3) // ksize,std
+                {
+                    params.kernel_size.width = params.kernel_size.height = boost::lexical_cast< int >( s[1] );
+                    params.std.x = params.std.y = boost::lexical_cast< double >( s[2] );
+                } 
+                else if (s.size() == 5) // ksizeX,ksizeY,stdX,stdY
+                {
+                    params.kernel_size.width = boost::lexical_cast< int >( s[1] );
+                    params.kernel_size.height = boost::lexical_cast< int >( s[2] );
+                    params.std.x = boost::lexical_cast< double >( s[3] );
+                    params.std.y = boost::lexical_cast< double >( s[4] );
+                }
+                else COMMA_THROW( comma::exception, "blur=gaussian expected either 2 or 4 parameters" );
+            }
+            else COMMA_THROW( comma::exception, "invalid blur type" );
+            f.push_back( filter( boost::bind( &blur_impl_, _1, params) ) );
+        }
         else if( e[0] == "map" )
         {
             if( e.size() < 2 ) { COMMA_THROW( comma::exception, "expected file name with the map, e.g. map=f.csv" ); }
@@ -1400,6 +1466,9 @@ static std::string usage_impl_()
     oss << "        accumulate=<n>: accumulate the last n images and concatenate them vertically (useful for slit-scan and spectral cameras like pika2)" << std::endl;
     oss << "            example: cat slit-scan.bin | cv-cat \"accumulate=400;view;null\"" << std::endl;
     oss << "        bayer=<mode>: convert from bayer, <mode>=1-4" << std::endl;
+    oss << "        blur=<type>,<kernel size>[,<std>]: apply blur to the image" << std::endl;
+    oss << "            options for blur=box: (1 or 2 parameters) kernel size <x>[,<y>]" << std::endl;
+    oss << "            options for blur=gaussian: (2 or 4 parameters) kernel size (positive and odd) and standard deviation <x>[,<y>],<std x>[,<std y>]. Set kernel size or std to 0 to calculate missing parameter." << std::endl;
     oss << "        brightness=<scale>[,<offset>]: output=(scale*input)+offset; default offset=0" << std::endl;
     oss << "        convert-to,convert_to=<type>[,<scale>[,<offset>]]: convert to given type; should be the same number of channels; see opencv convertTo for details" << std::endl;
     oss << "        count: write frame number on images" << std::endl;
@@ -1449,7 +1518,7 @@ static std::string usage_impl_()
     oss << "        split: split n-channel image into a nx1 grey-scale image" << std::endl;
     oss << "        text=<text>[,x,y][,colour]: print text; default x,y: 10,10; default colour: yellow" << std::endl;
     oss << "        threshold=<threshold>[,<maxval>,[<type>]]: threshold image; same semantics as cv::threshold()" << std::endl;
-    oss << "            <type>: binary, binary_inv, trunc, tozero, tozero_inv" << std::endl;
+    oss << "            <type>: binary, binary_inv, trunc, tozero, tozero_inv, otsu, otsu_inv" << std::endl;
     oss << "        thumb[=<cols>[,<wait-interval>]]: view resized image; a convenience for debugging and filter pipeline monitoring" << std::endl;
     oss << "                                          <cols>: image width in pixels; default: 100" << std::endl;
     oss << "                                          <wait-interval>: a hack for now; milliseconds to wait for image display and key press; default: 1" << std::endl;
