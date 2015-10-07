@@ -1,0 +1,7 @@
+plane-intersection --extended --verbose --plane=0,0,1,0,0,1
+line/first/x,line/first/y,line/first/z,line/second/x,line/second/y,line/second/z
+0,0,0,1,1,1
+0,0,0,2,2,2
+1,1,0,1,1,1
+1,2,3,1,1,0
+1,2,1,1,1,0
