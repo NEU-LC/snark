@@ -45,7 +45,7 @@ std::ostream* cverbose=&nullstream;
 snark::cv_mat::serialization::options input_options;
 snark::cv_mat::serialization::header header;
 comma::csv::options csv;
-int channels=3;
+std::size_t channels=3;
 int depth=0;
 comma::signal_flag signaled;
 
@@ -82,7 +82,7 @@ template <typename T> struct traits< output_t<T> >
         v.apply( "t", r.t );
         v.apply( "x", r.x );
         v.apply( "y", r.y );
-        for(int i=0;i<r.channel.size();i++)
+        for(std::size_t i=0;i<r.channel.size();i++)
         {
             std::string s="channel[";
             s+=boost::lexical_cast<std::string>(i);
@@ -97,7 +97,7 @@ template <typename T> struct traits< output_t<T> >
         v.apply( "t", r.t );
         v.apply( "x", r.x );
         v.apply( "y", r.y );
-        for(int i=0;i<r.channel.size();i++)
+        for(std::size_t i=0;i<r.channel.size();i++)
         {
             std::string s="channel[";
             s+=boost::lexical_cast<std::string>(i);
@@ -170,11 +170,11 @@ bool output_t<T>::process_image()
     output_t<T> out;
     out.channel.resize(channels);
     out.t=header.timestamp;
-    int size=channels*sizeof(T);
+    std::size_t size=channels*sizeof(T);
     //process one image
-    for(int j=0;j<header.rows;j++)
+    for(comma::uint32 j=0;j<header.rows;j++)
     {
-        for(int i=0;i<header.cols;i++)
+        for(comma::uint32 i=0;i<header.cols;i++)
         {
             if(!std::cin.good() || std::cin.eof()  || signaled) { return false; }
             out.x=i;
