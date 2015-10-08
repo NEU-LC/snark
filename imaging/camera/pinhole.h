@@ -72,6 +72,7 @@ struct pinhole
         };
         /// return distortion as a k1,k2,p1,p2,k3 vector, since opencv and others often use it that way
         operator Eigen::Matrix< double, 5, 1 >() const;
+        //TODO distortion map lookup is too slow; clarify usage before optimizing
         boost::optional<map_t> map;
     };
     void init_distortion_map();
