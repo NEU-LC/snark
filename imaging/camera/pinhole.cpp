@@ -30,6 +30,7 @@
 #include <fstream>
 #include <comma/base/exception.h>
 #include "pinhole.h"
+#include <iostream>
 
 namespace snark { namespace camera {
 
@@ -65,8 +66,50 @@ Eigen::Vector2d pinhole::tangentially_corrected( const Eigen::Vector2d& p ) cons
     return p + Eigen::Vector2d( distortion.tangential.p1 * 2 * xy + distortion.tangential.p2 * ( r2 + p.x() * p.x() * 2 )
                               , distortion.tangential.p2 * 2 * xy + distortion.tangential.p1 * ( r2 + p.y() * p.y() * 2 ) );
 }
-
-Eigen::Vector2d pinhole::undistorted( const Eigen::Vector2d& p ) const { return tangentially_corrected( radially_corrected( p ) ); }
+// double binary_search(cv::Mat array, double value)
+// {
+//     //lookup value in a one row array ; assume array is sorted
+//     
+// }
+double extrapolate_reverse_map(cv::MatIterator_<float> first, cv::MatIterator_<float> last, double value)
+{
+    cv::MatIterator_<float> right=std::upper_bound(first,last, value);
+    if(right == last)
+        right--;
+    if(right == first)
+        right++;
+    cv::MatIterator_<float> left = right - 1;
+    //std::cerr<<"extrapolate_reverse_map: left [" <<int(left - first)<<"]: " << *left<< " right ["<<int(right - first)<<"]:"<<*right<<" /"<<int(last-first)<<" value "<<value<<std::endl;
+    double o=double(value - *left) / double(*right - *left) + int(left - first);
+    //std::cerr<<"a "<<(value - *left)<<" b "<<(*right - *left)<<" -> "<<o<<std::endl;
+    return o;
+}
+Eigen::Vector2d pinhole::undistorted( const Eigen::Vector2d& p ) const
+{
+    //std::cerr<<"pinhole::undistorted: "<<distortion.map_filename<<" image size "<<image_size.x()<<","<<image_size.y()<< std::endl;
+    if(distortion.map)
+    {
+        //std::cerr<<"map not empty"<<std::endl;
+        //distortion_map.load();
+        Eigen::Vector2d dst;
+        //lookup p.x on map.x
+        cv::Mat xrow=distortion.map->x.row(p.y());
+        double ox=extrapolate_reverse_map(xrow.begin<float>(),xrow.end<float>(), p.x());
+        //double ox=std::lower_bound(xrow.begin<float>(),xrow.end<float>(), p.x())- xrow.begin<float>();
+//         float* row=xrow.ptr<float>();
+//         double ox=binary_search(row, image_size.x(), p.x());
+        cv::Mat ycol=distortion.map->y.col(p.x()).t();
+        double oy=extrapolate_reverse_map(ycol.begin<float>(), ycol.end<float>(), p.y());
+        //double oy=std::lower_bound(ycol.begin<float>(), ycol.end<float>(), p.y()) - ycol.begin<float>();
+//         float* col=ycol.ptr<float>();
+//         double oy=binary_search(col, image_size.y(), p.y());
+        //lookup p.y on map.y
+        //cv::remap( p, dst, map.x, map.y, cv::INTER_LINEAR, cv::BORDER_TRANSPARENT );
+        return Eigen::Vector2d(ox,oy);
+    }
+    else
+        return tangentially_corrected( radially_corrected( p ) ); 
+}
 
 Eigen::Vector3d pinhole::to_cartesian( const Eigen::Vector2d& p, bool undistort ) const
 {
@@ -81,7 +124,7 @@ void pinhole::distortion_t::map_t::load( const std::string& filename, const Eige
 {
     if( filename.empty() ) { COMMA_THROW( comma::exception, "distortion map filename not specified" ); }
     std::ifstream ifs( &filename[0], std::ios::binary );
-    if( ifs.is_open() ) { COMMA_THROW( comma::exception, "failed to open " << filename ); }
+    if( !ifs.is_open() ) { COMMA_THROW( comma::exception, "failed to open " << filename ); }
     std::vector< char > buffer( image_size.x() * image_size.y() * 4 );
     ifs.read( &buffer[0], buffer.size() );
     if( ifs.gcount() < int( buffer.size() ) ) { COMMA_THROW( comma::exception, "expected to read " << buffer.size() << " bytes, got " << ifs.gcount() ); }
@@ -89,6 +132,15 @@ void pinhole::distortion_t::map_t::load( const std::string& filename, const Eige
     ifs.read( &buffer[0], buffer.size() );
     if( ifs.gcount() < int( buffer.size() ) ) { COMMA_THROW( comma::exception, "expected to read " << buffer.size() << " bytes, got " << ifs.gcount() ); }
     y = cv::Mat( image_size.y(), image_size.x(), CV_32FC1, &buffer[0] ).clone();
+    loaded=true;
+}
+void pinhole::init_distortion_map()
+{
+    //std::cerr<<"init_distortion_map: "<<distortion.map_filename<<std::endl;
+    if (!distortion.map_filename.empty()) 
+    { 
+        distortion.map=distortion_t::map_t(distortion.map_filename, image_size);
+    }
 }
 
 } } // namespace snark { namespace camera {

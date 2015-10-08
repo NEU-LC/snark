@@ -176,8 +176,7 @@ bool output_t<T>::process_image()
     {
         for(int i=0;i<header.cols;i++)
         {
-            if(signaled) { std::cerr<<app_name<<": exiting; signaled"<<std::endl; }
-            if(!std::cin.good() || std::cin.eof() ) { std::cerr<<app_name<<": exiting; can't read from stdin (col: "<<i<<" row: "<<j<<")"<<std::endl; }
+            if(!std::cin.good() || std::cin.eof()  || signaled) { return false; }
             out.x=i;
             out.y=j;
             std::cin.read((char*)(T*)&out.channel[0],size);

@@ -60,20 +60,21 @@ struct pinhole
         
         tangential_t tangential;
         
-        std::string map;
+        std::string map_filename;
         
         struct map_t
         {
             cv::Mat x, y;
-            
-            map_t() {}
-            map_t( const std::string& filename, const Eigen::Vector2i& image_size ) { load( filename, image_size ); }
+            bool loaded;
+            map_t():loaded(false) {}
+            map_t( const std::string& filename, const Eigen::Vector2i& image_size ):loaded(false) { load( filename, image_size ); }
             void load( const std::string& filename, const Eigen::Vector2i& image_size );
         };
-        
         /// return distortion as a k1,k2,p1,p2,k3 vector, since opencv and others often use it that way
         operator Eigen::Matrix< double, 5, 1 >() const;
+        boost::optional<map_t> map;
     };
+    void init_distortion_map();
     
     /// focal length in metres
     double focal_length;
@@ -112,7 +113,7 @@ struct pinhole
     Eigen::Vector3d to_cartesian( const Eigen::Vector2d& p, bool undistort = true ) const;
     
     /// load distortion map from file
-    distortion_t::map_t load_distortion_map() const { return distortion_t::map_t( distortion.map, image_size ); }
+    distortion_t::map_t load_distortion_map() const { return distortion_t::map_t( distortion.map_filename, image_size ); }
 };
 
 } } // namespace snark { namespace camera {

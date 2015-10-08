@@ -89,6 +89,7 @@ static snark::camera::pinhole make_pinhole( const std::string& config_parameters
         comma::visiting::apply( from_ptree ).to( pinhole );
     }
     if( !pinhole.principal_point ) { pinhole.principal_point = pinhole.image_centre(); }
+    pinhole.init_distortion_map();
     return pinhole;
 }
 
