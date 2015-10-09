@@ -40,13 +40,16 @@
 #include <snark/point_cloud/voxel_map.h>
 #include <snark/visiting/eigen.h>
 
+#include "detail/plane-intersection.h"
+#include "detail/vector-calc.h"
+
+//can't declare static; because declared extern in other header source files
+comma::csv::options csv;
+bool verbose;
+std::string app_name="points-calc";
 typedef std::pair< Eigen::Vector3d, Eigen::Vector3d > point_pair_t;
 
-static comma::csv::options csv;
 static comma::csv::ascii< Eigen::Vector3d > ascii;
-static bool verbose;
-static std::string plane_intersection_input_fields();
-static std::string plane_intersection_input2_fields();
 
 static void usage( bool more = false )
 {
@@ -132,56 +135,8 @@ static void usage( bool more = false )
     std::cerr << "            --min-number-of-points-per-voxel,--size=<number>: min number of points for a voxel to keep" << std::endl;
     std::cerr << "            --no-antialiasing: don't check neighbour voxels, which is faster, but may remove points in borderline voxels" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "    plane-intersection: read points and planes from stdin, output intersection of the ray with the plane" << std::endl;
-    std::cerr << "        to use extended form" << std::endl;
-    std::cerr << "        simple form: " << std::endl;
-    std::cerr << "            input fields: " << plane_intersection_input_fields() << std::endl;
-    std::cerr << "                the plane passes through the normal and is perpendicular to it" << std::endl;
-    std::cerr << "            options: --normal=<x>,<y>,<z>: default normal; uses this value when normal is empty or any of its fields are omitted" << std::endl;
-    std::cerr << "        extended form: when --extended is specified" << std::endl;
-    std::cerr << "            input fields: " << plane_intersection_input2_fields() << std::endl;
-    std::cerr << "                line: first point is on the line, second point is direction of the line; plane: first point is on the plane, second point is plane's normal (direction perpendicular to plane)" << std::endl;
-    std::cerr << "            options: --plane=<first/x>,<first/y>,<first/z>,<second/x>,<second/y>,<second/z>: default values for plane" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "        options:" << std::endl;
-    std::cerr << "            --input-fields: print input field names" << std::endl;
-    std::cerr << "            --output-fields: print output field names" << std::endl;
-    std::cerr << "            --output-format: print output fields format" << std::endl;
-    std::cerr << "            --extended: use extended form for input fields" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "    discretise, discretize: read input data and discretise intervals between adjacent points with --step" << std::endl;
-    std::cerr << "        skip discretised points that are closer to the end of the interval than --tolerance (default: --tolerance=0)" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "        input fields" << std::endl;
-    std::cerr << "            " << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "    vector calculations: following operations perform calculations on 3d vectors and scalars" << std::endl;
-    std::cerr << "        common options:" << std::endl;
-    std::cerr << "            --input-fields: print input field names and exit" << std::endl;
-    std::cerr << "            --output-fields: print output field names and exit" << std::endl;
-    std::cerr << "            --output-format: print output format and exit" << std::endl;
-    std::cerr << "    " << std::endl;
-    std::cerr << "        cross: calculate vector cross product; output: vector" << std::endl;
-    std::cerr << "            input fields: v, u" << std::endl;
-    std::cerr << "            --v=<x>,<y>,<z>: default value for vector 1" << std::endl;
-    std::cerr << "            --u=<x>,<y>,<z>: default value for vector 2" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "        dot: calculate vector dot product; output: scalar" << std::endl;
-    std::cerr << "            input fields: v, u" << std::endl;
-    std::cerr << "            --v=<x>,<y>,<z>: default value for vector 1" << std::endl;
-    std::cerr << "            --u=<x>,<y>,<z>: default value for vector 2" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "        norm: calculate vector's norm " << std::endl;
-    std::cerr << "            --v=<x>,<y>,<z>: default value for vecotr" << std::endl;
-    std::cerr << "            --square: calculate norm square" << std::endl;
-    std::cerr << "            --invert: calculate invert of norm; use with --square for invert of norm square" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "        scale: calculate multiplication of scalar and vector;output vector" << std::endl;
-    std::cerr << "            input fields:  v,a (scalar)" << std::endl;
-    std::cerr << "            --v=<x>,<y>,<z>: default value for vecotr" << std::endl;
-    std::cerr << "            --scalar: default value for a" << std::endl;
-    std::cerr << "            --invert: invert the scalar first and then multiply it by vecotr, i.e. (1/a)*v" << std::endl;
-    std::cerr << "" << std::endl;
+    plane_intersection::usage();
+    vector_calc::usage();
     exit( 0 );
 }
 
@@ -455,246 +410,6 @@ struct record
 
 } // namespace remove_outliers {
 
-struct plane_intersection
-{
-    struct input_t
-    {
-        Eigen::Vector3d point;
-        Eigen::Vector3d normal;
-        input_t():point( Eigen::Vector3d::Zero() ),normal(Eigen::Vector3d::Zero()){}
-        input_t( const Eigen::Vector3d&  default_normal):point( Eigen::Vector3d::Zero() ),normal(default_normal){}
-    };
-    typedef Eigen::Vector3d output_t;
-    static void run( const comma::csv::options& csv_opt, const Eigen::Vector3d& normal)
-    {
-        comma::csv::input_stream<input_t> is( std::cin, csv_opt, input_t(normal));
-        comma::csv::output_stream<output_t> os( std::cout, csv_opt.binary() );
-        comma::csv::tied<input_t,output_t> tied(is,os);
-        const double inf=std::numeric_limits<double>::infinity();
-        while(is.ready() || std::cin.good())
-        {
-            const input_t* rec=is.read();
-            if(!rec){break;}
-            if(verbose)
-            {
-                std::cerr<<"p: "<<rec->point.x()<<", "<<rec->point.y()<<", "<<rec->point.z()<<std::endl;
-                std::cerr<<"n: "<<rec->normal.x()<<", "<<rec->normal.y()<<", "<<rec->normal.z()<<std::endl;
-            }
-            double d=rec->point.dot(rec->normal);
-            double n2=rec->normal.squaredNorm();
-            if(verbose){std::cerr<<"d "<<d<<", n2 "<<n2<<std::endl;}
-            //when d is 0 the line is parallel with the plane, so we return infinity
-            output_t out = (d == 0) ? Eigen::Vector3d(inf,inf,inf) : Eigen::Vector3d(( n2/d)*rec->point);
-            tied.append(out);
-        }
-    }
-    struct input2_t
-    {
-        //first point on the line, second point direction of the line
-        std::pair<Eigen::Vector3d,Eigen::Vector3d> line;
-        //first point on the plane, second is the plane normal (direction perpendicular to plane)
-        std::pair<Eigen::Vector3d,Eigen::Vector3d> plane;
-        input2_t():line( Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero() ),plane(Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero()){}
-        input2_t( const std::pair<Eigen::Vector3d,Eigen::Vector3d>&  default_plane):line( Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero() ),plane(default_plane){}
-    };
-    typedef Eigen::Vector3d output2_t;
-    static void run( const comma::csv::options& csv_opt, const std::pair<Eigen::Vector3d,Eigen::Vector3d>& plane)
-    {
-        comma::csv::input_stream<input2_t> is( std::cin, csv_opt, input2_t(plane));
-        comma::csv::output_stream<output2_t> os( std::cout, csv_opt.binary() );
-        comma::csv::tied<input2_t,output2_t> tied(is,os);
-        const double inf=std::numeric_limits<double>::infinity();
-        while(is.ready() || std::cin.good())
-        {
-            const input2_t* rec=is.read();
-            if(!rec){break;}
-            if(verbose)
-            {
-                std::cerr<<"line: "<<" first("<<rec->line.first.x()<<", "<<rec->line.first.y()<<", "<<rec->line.first.z()<<")"
-                    <<" second("<<rec->line.second.x()<<", "<<rec->line.second.y()<<", "<<rec->line.second.z()<<");"
-                    <<" plane: "<<" first("<<rec->plane.first.x()<<", "<<rec->plane.first.y()<<", "<<rec->plane.first.z()<<")"
-                    <<" second("<<rec->plane.second.x()<<", "<<rec->plane.second.y()<<", "<<rec->plane.second.z()<<")"<<std::endl;
-            }
-            double u=(rec->plane.first - rec->line.first).dot(rec->plane.second);
-            double d=rec->line.second.dot(rec->plane.second);
-            if(verbose){std::cerr<<"u "<<u<<", d "<<d<<std::endl;}
-            // if both d and u are 0 then the line is contained on the plane, we just return the first point of line
-            output2_t out = (d == 0) ? ( (u == 0) ? rec->line.first : Eigen::Vector3d(inf,inf,inf))
-                : Eigen::Vector3d(( u/d)*rec->line.second + rec->line.first);
-            tied.append(out);
-        }
-    }
-};
-std::string plane_intersection_input_fields() { return comma::join( comma::csv::names<plane_intersection::input_t>(true), ',' ); }
-std::string plane_intersection_input2_fields() { return comma::join( comma::csv::names<plane_intersection::input2_t>(true), ',' ); }
-
-struct vector_calc
-{
-    typedef Eigen::Vector3d vector;
-    //typedef double scalar;
-    static vector vzero;
-    template<typename input_t,typename output_t>
-    struct operation_t
-    {
-        virtual output_t calc(const input_t& in)=0;
-        input_t default_input;
-        operation_t(const input_t& def):default_input(def){}
-        operation_t(){}
-        void run(const comma::csv::options& csv_opt)
-        {
-            comma::csv::input_stream<input_t> is( std::cin, csv_opt, default_input);
-            comma::csv::output_stream<output_t> os( std::cout, csv_opt.binary() );
-            comma::csv::tied<input_t,output_t> tied(is,os);
-            while(is.ready() || std::cin.good())
-            {
-                const input_t* rec=is.read();
-                if(!rec){break;}
-                tied.append(calc(*rec));
-            }
-        }
-        void input_fields(){std::cout<<comma::join( comma::csv::names<input_t>(true), ',' ) << std::endl; }
-        void output_fields(){std::cout<<comma::join( comma::csv::names<output_t>(false), ',' ) << std::endl; }
-        void output_format(){std::cout<<comma::csv::format::value<output_t>() << std::endl; }
-    };
-    struct vector_pair
-    {
-        vector v;
-        vector u;
-        vector_pair():v(vzero),u(vzero){}
-        vector_pair(const vector& d1,const vector& d2):v(d1),u(d2){}
-    };
-    struct scalar
-    {
-        double a;
-        scalar():a(0){}
-        scalar(double d):a(d){}
-    };
-    struct cross:operation_t<vector_pair,vector>
-    {
-        cross(){}
-        cross(const vector& default1, const vector& default2 ):operation_t(vector_pair(default1,default2)){}
-        vector calc(const vector_pair& in)
-        {
-            return in.v.cross(in.u);
-        }
-    };
-    struct dot:operation_t<vector_pair,scalar>
-    {
-        dot(){}
-        dot(const vector& default1, const vector& default2 ):operation_t(vector_pair(default1,default2)){}
-        scalar calc(const vector_pair& in)
-        {
-            return in.v.dot(in.u);
-        }
-    };
-    struct norm:operation_t<vector,scalar>
-    {
-        norm(){}
-        norm(const vector& default1, bool squre=false, bool invert=false ) :
-            operation_t(default1)
-            ,_squre(squre)
-            ,_invert(invert)
-        {
-        }
-        scalar calc(const vector& in)
-        {
-            double d=_squre?in.squaredNorm(): in.norm();
-            return _invert?1/d:d;
-        }
-        bool _squre;
-        bool _invert;
-    };
-    typedef std::pair<vector,scalar> vector_scalarpair;
-    struct scale:operation_t<vector_scalarpair,vector>
-    {
-        scale(){}
-        scale(const vector& v, const scalar& s, bool invert=false ) :
-            operation_t(vector_scalarpair(v,s))
-            ,_invert(invert)
-        {
-        }
-        vector calc(const vector_scalarpair& in)
-        {
-            double d=_invert?1/in.second.a:in.second.a;
-            return d*in.first;
-        }
-        bool _invert;
-    };
-};
-vector_calc::vector vector_calc::vzero=Eigen::Vector3d::Zero();
-
-namespace comma { namespace visiting {
-
-template <> struct traits< plane_intersection::input_t >
-{
-    template< typename K, typename V > static void visit( const K& k, plane_intersection::input_t& t, V& v )
-    {
-        traits<Eigen::Vector3d>::visit(k, t.point, v);
-        v.apply( "normal", t.normal);
-    }
-    template< typename K, typename V > static void visit( const K& k, const plane_intersection::input_t& t, V& v )
-    {
-        traits<Eigen::Vector3d>::visit(k, t.point, v);
-        v.apply( "normal", t.normal);
-    }
-};
-
-template <> struct traits< plane_intersection::input2_t >
-{
-    template< typename K, typename V > static void visit( const K& k, plane_intersection::input2_t& t, V& v )
-    {
-        v.apply( "line", t.line);
-        v.apply( "plane", t.plane);
-    }
-    template< typename K, typename V > static void visit( const K& k, const plane_intersection::input2_t& t, V& v )
-    {
-        v.apply( "line", t.line);
-        v.apply( "plane", t.plane);
-    }
-};
-
-template <> struct traits< vector_calc::vector_pair >
-{
-    template< typename K, typename V > static void visit( const K& k, vector_calc::vector_pair& t, V& v )
-    {
-        v.apply( "v", t.v);
-        v.apply( "u", t.u);
-    }
-    template< typename K, typename V > static void visit( const K& k, const vector_calc::vector_pair& t, V& v )
-    {
-        v.apply( "v", t.v);
-        v.apply( "u", t.u);
-    }
-};
-
-template <> struct traits< vector_calc::vector_scalarpair >
-{
-    template< typename K, typename V > static void visit( const K& k, vector_calc::vector_scalarpair& t, V& v )
-    {
-        v.apply( "v", t.first);
-        v.apply( "scalar", t.second.a);
-    }
-    template< typename K, typename V > static void visit( const K& k, const vector_calc::vector_scalarpair& t, V& v )
-    {
-        v.apply( "v", t.first);
-        v.apply( "scalar", t.second.a);
-    }
-};
-
-template <> struct traits< vector_calc::scalar >
-{
-    template< typename K, typename V > static void visit( const K& k, vector_calc::scalar& t, V& v )
-    {
-        v.apply( "scalar", t.a);
-    }
-    template< typename K, typename V > static void visit( const K& k, const vector_calc::scalar& t, V& v )
-    {
-        v.apply( "scalar", t.a);
-    }
-};
-
-} } // namespace comma { namespace visiting {
-
 int main( int ac, char** av )
 {
     try
@@ -708,63 +423,14 @@ int main( int ac, char** av )
         const std::vector< std::string >& operations = options.unnamed( "--verbose,-v,--trace,--no-antialiasing,--next", "-.*" );
         if( operations.size() != 1 ) { std::cerr << "points-calc: expected one operation, got " << operations.size() << ": " << comma::join( operations, ' ' ) << std::endl; return 1; }
         const std::string& operation = operations[0];
-        if(operation=="cross")
+        if (vector_calc::has_operation(operation))
         {
-            if(options.exists("--input-fields")){vector_calc::cross().input_fields(); return 0; }
-            if(options.exists("--output-fields")){vector_calc::cross().output_fields(); return 0; }
-            if(options.exists("--output-format")){vector_calc::cross().output_format(); return 0; }
-            Eigen::Vector3d v1_default=comma::csv::ascii< Eigen::Vector3d >().get(options.value< std::string >( "--v",  "0,0,0"));
-            Eigen::Vector3d v2_default=comma::csv::ascii< Eigen::Vector3d >().get(options.value< std::string >( "--u",  "0,0,0"));
-            vector_calc::cross(v1_default,v2_default).run(csv);
-            return 0;
-        }
-        if(operation=="dot")
-        {
-            if(options.exists("--input-fields")){vector_calc::dot().input_fields(); return 0; }
-            if(options.exists("--output-fields")){vector_calc::dot().output_fields(); return 0; }
-            if(options.exists("--output-format")){vector_calc::dot().output_format(); return 0; }
-            Eigen::Vector3d v1_default=comma::csv::ascii< Eigen::Vector3d >().get(options.value< std::string >( "--v",  "0,0,0"));
-            Eigen::Vector3d v2_default=comma::csv::ascii< Eigen::Vector3d >().get(options.value< std::string >( "--u",  "0,0,0"));
-            vector_calc::dot(v1_default,v2_default).run(csv);
-            return 0;
-        }
-        if(operation=="norm")
-        {
-            if(options.exists("--input-fields")){vector_calc::norm().input_fields(); return 0; }
-            if(options.exists("--output-fields")){vector_calc::norm().output_fields(); return 0; }
-            if(options.exists("--output-format")){vector_calc::norm().output_format(); return 0; }
-            Eigen::Vector3d v1_default=comma::csv::ascii< Eigen::Vector3d >().get(options.value< std::string >( "--v",  "0,0,0"));
-            vector_calc::norm(v1_default,options.exists("--square"),options.exists("--invert")).run(csv);
-            return 0;
-        }
-        if(operation=="scale")
-        {
-            if(options.exists("--input-fields")){vector_calc::scale().input_fields(); return 0; }
-            if(options.exists("--output-fields")){vector_calc::scale().output_fields(); return 0; }
-            if(options.exists("--output-format")){vector_calc::scale().output_format(); return 0; }
-            Eigen::Vector3d v=comma::csv::ascii< Eigen::Vector3d >().get(options.value< std::string >( "--v",  "0,0,0"));
-            vector_calc::scalar s=comma::csv::ascii< double >().get(options.value< std::string >( "--scalar", "0"));
-            vector_calc::scale(v, s, options.exists("--invert")).run(csv);
+            vector_calc::process(operation, options);
             return 0;
         }
         if( operation == "plane-intersection" )
         {
-            if(options.exists("--input-fields"))
-            {
-                if(options.exists("--extended")) { std::cout<<comma::join( comma::csv::names<plane_intersection::input2_t>(true), ',' ) << std::endl; }
-                else { std::cout<<comma::join( comma::csv::names<plane_intersection::input_t>(true), ',' ) << std::endl; }
-                return 0; 
-            }
-            if(options.exists("--output-fields")){std::cout<<comma::join( comma::csv::names<plane_intersection::output_t>(false), ',' ) << std::endl; return 0; }
-            if(options.exists("--output-format")){std::cout<<comma::csv::format::value<plane_intersection::output_t>() << std::endl; return 0; }
-            if (csv.fields.find("plane")!=std::string::npos || csv.fields.find("line")!=std::string::npos || options.exists("--extended"))
-            {
-                plane_intersection::run(csv, comma::csv::ascii< std::pair<Eigen::Vector3d, Eigen::Vector3d> >().get(options.value< std::string >( "--plane", "0,0,0,0,0,0")));
-            }
-            else
-            {
-                plane_intersection::run(csv, comma::csv::ascii< Eigen::Vector3d >().get(options.value< std::string >( "--normal",  "0,0,0")));
-            }
+            plane_intersection::process(options);
             return 0;
         }
         if( operation == "distance" )
