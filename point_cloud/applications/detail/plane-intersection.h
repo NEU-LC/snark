@@ -55,6 +55,7 @@ struct plane_intersection
         input_t(const P& p):plane_(p) { }
         const line_t& line() const { return (const line_t&)line_; }
         const plane_t& plane() const { return (const plane_t&)plane_; }
+        static void usage();
     };
     struct line0_t : public line_t
     {
@@ -62,6 +63,7 @@ struct plane_intersection
         virtual vector point0() const { return zero(); }
         virtual vector direction() const { return dir; }
         line0_t() : dir(zero()) { }
+        static std::string help() { return "x,y,z  is direction of the line, line passes through (0, 0, 0) "; }
     };
     struct line1_t : public line_t
     {
@@ -69,6 +71,7 @@ struct plane_intersection
         virtual vector point0() const { return points.first; }
         virtual vector direction() const { return points.second - points.first; }
         line1_t() : points(zero(), zero()) { }
+        static std::string help() { return "first and second points are on the line (direction is second - first)"; }
     };
     struct line2_t : public line_t
     {
@@ -77,6 +80,7 @@ struct plane_intersection
         virtual vector point0() const { return point; }
         virtual vector direction() const { return dir; }
         line2_t() : point(zero()), dir(zero()) { }
+        static std::string help() { return "x,y,z is a point on the line, dir is direction of the line"; }
     };
     struct plane0_t : public plane_t
     {
@@ -85,6 +89,7 @@ struct plane_intersection
         virtual vector normal() const { return norm;}
         plane0_t() : norm(zero()) { }
         //plane0_t(const plane0_t& rhs) : norm(rhs.norm) { }
+        static std::string help() { return "x,y,z is plane's normal vector (perpendicular to plane), plane passes through x,y,z as well"; }
     };
     struct plane1_t : public plane_t
     {
@@ -94,6 +99,7 @@ struct plane_intersection
         virtual vector normal() const { return norm;}
         plane1_t() : point(zero()), norm(zero()) { }
         plane1_t(const plane1_t& rhs) : point(rhs.point), norm(rhs.norm) { }
+        static std::string help() { return "x,y,z is a point on the plane, normal is plane's normal vector"; }
     };
     struct plane2_t : public plane_t
     {
@@ -101,6 +107,7 @@ struct plane_intersection
         virtual vector point0() const { return points.first; }
         virtual vector normal() const { return points.second - points.first;}
         plane2_t() : points(zero(), zero()) { }
+        static std::string help() { return "first point is on the plane, plane's normal is calculated as (second - first)"; }
     };
     struct plane3_t : public plane_t
     {
@@ -108,6 +115,7 @@ struct plane_intersection
         virtual vector point0() const { return points[0]; }
         virtual vector normal() const { return (points[2] - points[0]).cross(points[1] - points[0]) ;}
         plane3_t() { for (std::size_t i=0;i<sizeof(points)/sizeof(points[0]);i++) { points[i]=zero(); } }
+        static std::string help() { return "the three points are on the plane (normal is calculated implicitly)"; }
     };
     template<typename L, typename P>
     static void run( const comma::csv::options& csv_opt, boost::optional<std::string> plane_option);
@@ -266,21 +274,60 @@ static std::ostream& operator <<(std::ostream& stream, const plane_intersection:
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++
+template < typename V >
+inline std::string join_embraced( const std::string& left, const V& v, const std::string& right , const std::string comma=",")
+{ 
+    std::ostringstream oss;
+    for( typename V::const_iterator it = v.begin(); it != v.end(); it++)
+    {
+        if(it != v.begin()) { oss << comma; }
+        oss << left << *it << right;
+    }
+    return oss.str();
+}
+
+template <typename L, typename P>
+void plane_intersection::input_t<L,P>::usage()
+{
+    std::cerr << "            input fields: combiation of line fields and plane fields" << comma::join( comma::csv::names<plane_intersection::input_t<L, P> >(true), ',' ) << std::endl;
+    std::cerr << "                line: "<< L::help()  << std::endl;
+    std::cerr << "                plane: " << P::help() << std::endl;
+    std::cerr << "            options: --plane=" << join_embraced( "<", comma::csv::names<P>(true), ">") <<  ": default values for plane" << std::endl;
+    
+}
 void plane_intersection::usage()
 {
     std::cerr << "    plane-intersection: read points and planes from stdin, output intersection of the ray with the plane" << std::endl;
-    std::cerr << "        to use extended form" << std::endl;
-    std::cerr << "        simple form: " << std::endl;
+    std::cerr << "        original form: " << std::endl;
     std::cerr << "            input fields: " << comma::join( comma::csv::names<plane_intersection::input1_t>(true), ',' ) << std::endl;
-    std::cerr << "                the plane passes through the normal and is perpendicular to it" << std::endl;
+    std::cerr << "                x,y,z is direction of the line passing through (0,0,0); the plane passes through the normal/x,y,z and is perpendicular to it" << std::endl;
     std::cerr << "            options: --normal=<x>,<y>,<z>: default normal; uses this value when normal is empty or any of its fields are omitted" << std::endl;
-    std::cerr << "        extended form: when --extended is specified" << std::endl;
-    std::cerr << "            input fields: " << comma::join( comma::csv::names<plane_intersection::input_t<plane_intersection::line2_t, plane_intersection::plane1_t> >(true), ',' ) << std::endl;
-    std::cerr << "                line: first point is on the line, second point is direction of the line; plane: first point is on the plane, second point is plane's normal (direction perpendicular to plane)" << std::endl;
-    std::cerr << "            options: --plane=<first/x>,<first/y>,<first/z>,<second/x>,<second/y>,<second/z>: default values for plane" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "        default extended form, when --extended is specified without field names:" << std::endl;
+    plane_intersection::input_t<plane_intersection::line2_t, plane_intersection::plane1_t>::usage();
+    std::cerr << std::endl;
+    std::cerr << "        other extended forms: if the field names match, one of following forms will be used" << std::endl;
+    std::cerr << "        input fields: combination of line fields and plane fields" << std::endl;
+    std::cerr << "        options: --plane=<values matching plane field names>: default values for plane" << std::endl;
+    std::cerr << "        line can be defined as: "<< std::endl;
+    std::cerr << "            line fields: "<<comma::join( comma::csv::names<plane_intersection::line1_t>(true), ',' ) << std::endl;
+    std::cerr << "            description: "<<plane_intersection::line1_t::help() << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "            line fields: "<<comma::join( comma::csv::names<plane_intersection::line2_t>(true), ',' ) << std::endl;
+    std::cerr << "            description: "<<plane_intersection::line2_t::help() << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "        plane can be defined as: "<< std::endl;
+    std::cerr << "            plane fields: "<<comma::join( comma::csv::names<plane_intersection::plane1_t>(true), ',' ) << std::endl;
+    std::cerr << "            description: "<<plane_intersection::plane1_t::help() << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "            plane fields: "<<comma::join( comma::csv::names<plane_intersection::plane2_t>(true), ',' ) << std::endl;
+    std::cerr << "            description: "<<plane_intersection::plane2_t::help() << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "            plane fields: "<<comma::join( comma::csv::names<plane_intersection::plane3_t>(true), ',' ) << std::endl;
+    std::cerr << "            description: "<<plane_intersection::plane3_t::help() << std::endl;
     std::cerr << std::endl;
     std::cerr << "        options:" << std::endl;
-    std::cerr << "            --input-fields: print input field names" << std::endl;
+    std::cerr << "            --input-fields: print default input field names (use --extended for default extended form)" << std::endl;
     std::cerr << "            --output-fields: print output field names" << std::endl;
     std::cerr << "            --output-format: print output fields format" << std::endl;
     std::cerr << "            --extended: use extended form for input fields" << std::endl;
