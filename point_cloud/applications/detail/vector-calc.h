@@ -40,7 +40,7 @@ struct vector_calc
     }
     static bool has_operation(const std::string& operation)
     {
-        return false;
+        return (operation=="cross") || (operation=="dot") || (operation=="norm") || (operation=="scale");
     }
     static void process(const std::string& operation, const comma::command_line_options& options)
     {
