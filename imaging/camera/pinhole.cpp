@@ -162,8 +162,8 @@ void pinhole::make_distortion_map()
     camera.at<double>(0,0)=focal_length;
     camera.at<double>(1,1)=focal_length;
     Eigen::Vector2d c= principal_point ? *principal_point : image_centre();
-    camera.at<double>(2,0)=c.x();
-    camera.at<double>(2,1)=c.y();
+    camera.at<double>(0,2)=c.x();
+    camera.at<double>(1,2)=c.y();
     camera.at<double>(2,2)=1;
     cv::Vec<double,5> distortion_coeff;
     distortion_coeff[0]=distortion.radial.k1;
