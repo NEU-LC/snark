@@ -32,6 +32,7 @@
 #ifndef SNARK_IMAGING_CAMERA_PINHOLE_H
 #define SNARK_IMAGING_CAMERA_PINHOLE_H
 
+#include <vector>
 #include <boost/optional.hpp>
 #include <Eigen/Core>
 #include <opencv2/core/core.hpp>
@@ -64,15 +65,15 @@ struct pinhole
         
         struct map_t
         {
-            cv::Mat x, y;
-            bool loaded;
-            map_t():loaded(false) {}
-            map_t( const std::string& filename, const Eigen::Vector2i& image_size ):loaded(false) { load( filename, image_size ); }
+            std::vector<float> x_rows;
+            std::vector<float> y_cols;
+            map_t() {}
+            map_t( const std::string& filename, const Eigen::Vector2i& image_size ) { load( filename, image_size ); }
             void load( const std::string& filename, const Eigen::Vector2i& image_size );
         };
         /// return distortion as a k1,k2,p1,p2,k3 vector, since opencv and others often use it that way
         operator Eigen::Matrix< double, 5, 1 >() const;
-        //TODO distortion map lookup is too slow; clarify usage before optimizing
+
         boost::optional<map_t> map;
     };
     void init_distortion_map();

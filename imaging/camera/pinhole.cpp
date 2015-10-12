@@ -28,6 +28,7 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <fstream>
+#include <cstring>
 #include <comma/base/exception.h>
 #include "pinhole.h"
 #include <iostream>
@@ -67,18 +68,17 @@ Eigen::Vector2d pinhole::tangentially_corrected( const Eigen::Vector2d& p ) cons
     return p + Eigen::Vector2d( distortion.tangential.p1 * 2 * xy + distortion.tangential.p2 * ( r2 + p.x() * p.x() * 2 )
                               , distortion.tangential.p2 * 2 * xy + distortion.tangential.p1 * ( r2 + p.y() * p.y() * 2 ) );
 }
-static double extrapolate_map(cv::MatIterator_<float> first, cv::MatIterator_<float> last, double value)
+static double extrapolate_map(const float* first, int width, double value)
 {
-    cv::MatIterator_<float> left=first + int(value);
+    const float* left=first + int(value);
     if(value<0)
         left=first;
     else
     {
-        int width = last - first;
         if(value>=width-1)
-            left=last-2;
+            left=first+width-2;
     }
-    cv::MatIterator_<float> right=left+1;
+    const float* right=left+1;
     double frac=value - (left - first);
     double step = *right - *left;
     return double(frac * step + *left);
@@ -105,11 +105,24 @@ void pinhole::distortion_t::map_t::load( const std::string& filename, const Eige
     std::vector< char > buffer( image_size.x() * image_size.y() * 4 );
     ifs.read( &buffer[0], buffer.size() );
     if( ifs.gcount() < int( buffer.size() ) ) { COMMA_THROW( comma::exception, "expected to read " << buffer.size() << " bytes, got " << ifs.gcount() ); }
-    x = cv::Mat( image_size.y(), image_size.x(), CV_32FC1, &buffer[0] ).clone();
+    cv::Mat mat = cv::Mat( image_size.y(), image_size.x(), CV_32FC1, &buffer[0] ).clone();
+    x_rows.resize(mat.rows*mat.cols);
+    for(int i=0;i<mat.rows;i++)
+    {
+        cv::Mat mat_row=mat.row(i);
+        float* ptr=mat_row.ptr<float>();
+        std::memcpy(&x_rows[mat.cols*i],ptr,mat.cols*sizeof(float));
+    }
     ifs.read( &buffer[0], buffer.size() );
     if( ifs.gcount() < int( buffer.size() ) ) { COMMA_THROW( comma::exception, "expected to read " << buffer.size() << " bytes, got " << ifs.gcount() ); }
-    y = cv::Mat( image_size.y(), image_size.x(), CV_32FC1, &buffer[0] ).clone();
-    loaded=true;
+    mat = cv::Mat( image_size.y(), image_size.x(), CV_32FC1, &buffer[0] ).clone();
+    y_cols.resize(mat.rows*mat.cols);
+    for(int i=0;i<mat.cols;i++)
+    {
+        cv::Mat mat_col=mat.col(i).t();
+        float* ptr=mat_col.ptr<float>();
+        std::memcpy(&y_cols[mat.rows*i],ptr,mat.rows*sizeof(float));
+    }
 }
 void pinhole::init_distortion_map()
 {
@@ -125,11 +138,9 @@ Eigen::Vector2d pinhole::distort( const Eigen::Vector2d& p ) const
         Eigen::Vector2d dst;
         //lookup p.x on map.x
         int y_index=p.y()<0?0:(p.y()>image_size.y()?image_size.y()-1:p.y());
-        cv::Mat xrow=distortion.map->x.row(y_index);
-        double ox=extrapolate_map(xrow.begin<float>(),xrow.end<float>(), p.x());
+        double ox=extrapolate_map(&distortion.map->x_rows[y_index*image_size.x()],image_size.x(), p.x());
         int x_index=p.x()<0?0:(p.x()>image_size.x()?image_size.x()-1:p.x());
-        cv::Mat ycol=distortion.map->y.col(x_index).t();
-        double oy=extrapolate_map(ycol.begin<float>(), ycol.end<float>(), p.y());
+        double oy=extrapolate_map(&distortion.map->y_cols[x_index*image_size.y()], image_size.y(), p.y());
         return Eigen::Vector2d(ox,oy);
     }
     else
