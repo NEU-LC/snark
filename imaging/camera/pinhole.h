@@ -115,6 +115,12 @@ struct pinhole
     
     /// load distortion map from file
     distortion_t::map_t load_distortion_map() const { return distortion_t::map_t( distortion.map_filename, image_size ); }
+
+    // reverse undistorted projection using the projection map
+    Eigen::Vector2d distort( const Eigen::Vector2d& p ) const;
+    
+    //create distortion map from parameters
+    void make_distortion_map();
 };
 
 } } // namespace snark { namespace camera {

@@ -31,6 +31,7 @@
 #include <comma/base/exception.h>
 #include "pinhole.h"
 #include <iostream>
+#include <opencv2/imgproc/imgproc.hpp>
 
 namespace snark { namespace camera {
 
@@ -66,33 +67,25 @@ Eigen::Vector2d pinhole::tangentially_corrected( const Eigen::Vector2d& p ) cons
     return p + Eigen::Vector2d( distortion.tangential.p1 * 2 * xy + distortion.tangential.p2 * ( r2 + p.x() * p.x() * 2 )
                               , distortion.tangential.p2 * 2 * xy + distortion.tangential.p1 * ( r2 + p.y() * p.y() * 2 ) );
 }
-double extrapolate_reverse_map(cv::MatIterator_<float> first, cv::MatIterator_<float> last, double value)
+static double extrapolate_map(cv::MatIterator_<float> first, cv::MatIterator_<float> last, double value)
 {
-    cv::MatIterator_<float> right=std::upper_bound(first,last, value);
-    if(right == last)
-        right--;
-    if(right == first)
-        right++;
-    cv::MatIterator_<float> left = right - 1;
-    //std::cerr<<"extrapolate_reverse_map: left [" <<int(left - first)<<"]: " << *left<< " right ["<<int(right - first)<<"]:"<<*right<<" /"<<int(last-first)<<" value "<<value<<std::endl;
-    double o=double(value - *left) / double(*right - *left) + int(left - first);
-    //std::cerr<<"a "<<(value - *left)<<" b "<<(*right - *left)<<" -> "<<o<<std::endl;
-    return o;
+    cv::MatIterator_<float> left=first + int(value);
+    if(value<0)
+        left=first;
+    else
+    {
+        int width = last - first;
+        if(value>=width-1)
+            left=last-2;
+    }
+    cv::MatIterator_<float> right=left+1;
+    double frac=value - (left - first);
+    double step = *right - *left;
+    return double(frac * step + *left);
 }
 Eigen::Vector2d pinhole::undistorted( const Eigen::Vector2d& p ) const
 {
-    if(distortion.map)
-    {
-        Eigen::Vector2d dst;
-        //lookup p.x on map.x
-        cv::Mat xrow=distortion.map->x.row(p.y());
-        double ox=extrapolate_reverse_map(xrow.begin<float>(),xrow.end<float>(), p.x());
-        cv::Mat ycol=distortion.map->y.col(p.x()).t();
-        double oy=extrapolate_reverse_map(ycol.begin<float>(), ycol.end<float>(), p.y());
-        return Eigen::Vector2d(ox,oy);
-    }
-    else
-        return tangentially_corrected( radially_corrected( p ) ); 
+    return tangentially_corrected( radially_corrected( p ) ); 
 }
 
 Eigen::Vector3d pinhole::to_cartesian( const Eigen::Vector2d& p, bool undistort ) const
@@ -124,6 +117,56 @@ void pinhole::init_distortion_map()
     { 
         distortion.map=distortion_t::map_t(distortion.map_filename, image_size);
     }
+}
+Eigen::Vector2d pinhole::distort( const Eigen::Vector2d& p ) const
+{
+    if(distortion.map)
+    {
+        Eigen::Vector2d dst;
+        //lookup p.x on map.x
+        int y_index=p.y()<0?0:(p.y()>image_size.y()?image_size.y()-1:p.y());
+        cv::Mat xrow=distortion.map->x.row(y_index);
+        double ox=extrapolate_map(xrow.begin<float>(),xrow.end<float>(), p.x());
+        int x_index=p.x()<0?0:(p.x()>image_size.x()?image_size.x()-1:p.x());
+        cv::Mat ycol=distortion.map->y.col(x_index).t();
+        double oy=extrapolate_map(ycol.begin<float>(), ycol.end<float>(), p.y());
+        return Eigen::Vector2d(ox,oy);
+    }
+    else
+        COMMA_THROW(comma::exception , "distrot without map is not implemented yet" );
+}
+//write a 2-d image matrix data to stream (no header)
+inline void save(std::ostream& os, const cv::Mat& mat)
+{
+    std::streamsize len=(std::streamsize)mat.cols*mat.elemSize();
+    for(int i=0;i<mat.rows;i++)
+        std::cout.write((const char*)mat.ptr(i),len);
+}
+void pinhole::make_distortion_map()
+{
+//     int width=image_size.x();
+//     int heigth=image_size.y();
+//     i:{0..w},j:{0..h} undistorted(i,j)
+    cv::Mat camera=cv::Mat_<double>(3,3);
+    camera.at<double>(0,0)=focal_length;
+    camera.at<double>(1,1)=focal_length;
+    Eigen::Vector2d c= principal_point ? *principal_point : image_centre();
+    camera.at<double>(2,0)=c.x();
+    camera.at<double>(2,1)=c.y();
+    camera.at<double>(2,2)=1;
+    cv::Vec<double,5> distortion_coeff;
+    distortion_coeff[0]=distortion.radial.k1;
+    distortion_coeff[1]=distortion.radial.k2;
+    distortion_coeff[2]=distortion.tangential.p1;
+    distortion_coeff[3]=distortion.tangential.p2;
+    distortion_coeff[4]=distortion.radial.k3;
+    cv::Size size(image_size.x(),image_size.y());
+    cv::Mat map_x;
+    cv::Mat map_y;
+    cv::initUndistortRectifyMap(camera, distortion_coeff,cv::Mat(),camera,size,CV_32FC1,map_x,map_y);
+     std::cerr<<"made distortion maps x.rows: "<<map_x.rows<<" x.cols: "<<map_x.cols<<" y.rows: "<<map_y.rows<<" y.cols: "<<map_y.cols<<std::endl;
+    save(std::cout, map_x);
+    save(std::cout, map_y);
 }
 
 } } // namespace snark { namespace camera {

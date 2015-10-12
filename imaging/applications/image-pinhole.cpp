@@ -48,6 +48,8 @@ void usage( bool verbose )
     std::cerr << "    to-cartesian: take on stdin pixels, undistort image, append pixel's cartesian coordinates in camera frame" << std::endl;
     std::cerr << "    to-pixels: take on stdin cartesian coordinates in camera frame, append their coordinates in pixels" << std::endl;
     std::cerr << "    undistort: take on stdin pixels, append their undistorted values" << std::endl;
+    std::cerr << "    distort: take on stdin undistorted pixels, append their distorted values (uses distortion map file)" << std::endl;
+    std::cerr << "    distortion-map: build distortion map from camera parameters in config and write to stdout (binary image matrix of map x, map y)" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    --help,-h: print help; --help --verbose for more help" << std::endl;
@@ -105,14 +107,13 @@ int main( int ac, char** av )
         output_details< Eigen::Vector2d, Eigen::Vector3d >( operation, "to-cartesian", options );
         output_details< Eigen::Vector3d, Eigen::Vector2d >( operation, "to-pixels", options );
         output_details< Eigen::Vector2d, Eigen::Vector2d >( operation, "undistort", options );
+        output_details< Eigen::Vector2d, Eigen::Vector2d >( operation, "distort", options );
         snark::camera::pinhole pinhole = make_pinhole( options.value< std::string >( "--camera-config,--camera,--config,-c" ) );
         comma::csv::options csv( options );
-        comma::csv::options output_csv;
-        if( csv.binary() ) { output_csv.format( comma::csv::format::value< Eigen::Vector3d >() ); }
         if( operation == "to-cartesian" )
         {
             comma::csv::input_stream< Eigen::Vector2d > is( std::cin, csv );
-            comma::csv::output_stream< Eigen::Vector3d > os( std::cout, output_csv );
+            comma::csv::output_stream< Eigen::Vector3d > os( std::cout, csv.binary() );
             comma::csv::tied< Eigen::Vector2d, Eigen::Vector3d > tied( is, os );
             while( is.ready() || std::cin.good() )
             {
@@ -126,7 +127,7 @@ int main( int ac, char** av )
         {
             std::cerr << "image-pinhole: to-pixels: todo" << std::endl; return 1;
             comma::csv::input_stream< Eigen::Vector3d > is( std::cin, csv );
-            comma::csv::output_stream< Eigen::Vector2d > os( std::cout, output_csv );
+            comma::csv::output_stream< Eigen::Vector2d > os( std::cout, csv.binary() );
             comma::csv::tied< Eigen::Vector3d, Eigen::Vector2d > tied( is, os );
             while( is.ready() || std::cin.good() )
             {
@@ -143,7 +144,7 @@ int main( int ac, char** av )
         if( operation == "undistort" )
         {
             comma::csv::input_stream< Eigen::Vector2d > is( std::cin, csv );
-            comma::csv::output_stream< Eigen::Vector2d > os( std::cout, output_csv );
+            comma::csv::output_stream< Eigen::Vector2d > os( std::cout, csv.binary() );
             comma::csv::tied< Eigen::Vector2d, Eigen::Vector2d > tied( is, os );
             while( is.ready() || std::cin.good() )
             {
@@ -153,7 +154,26 @@ int main( int ac, char** av )
             }
             return 0;
         }
-        
+        if ( operation == "distort" )
+        {
+            comma::csv::input_stream< Eigen::Vector2d > is( std::cin, csv );
+            comma::csv::output_stream< Eigen::Vector2d > os( std::cout, csv.binary() );
+            comma::csv::tied< Eigen::Vector2d, Eigen::Vector2d > tied( is, os );
+            while( is.ready() || std::cin.good() )
+            {
+                const Eigen::Vector2d* p = is.read();
+                if( !p ) { break; }
+                tied.append( pinhole.distort( *p ) );
+            }
+            return 0;
+        }
+        if(operation=="distortion-map")
+        {
+            pinhole.make_distortion_map();
+            return 0;
+        }
+        std::cerr << "image-pinhole: error: unrecognized operation: "<< operation << std::endl;
+        return 1;
     }
     catch( std::exception& ex ) { std::cerr << "image-pinhole: " << ex.what() << std::endl; }
     catch( ... ) { std::cerr << "image-pinhole: unknown exception" << std::endl; }
