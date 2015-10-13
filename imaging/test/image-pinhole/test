@@ -1,0 +1,8 @@
+#!/bin/bash
+
+read params
+image-pinhole $params >output/out
+result=$?
+if [[ $result != 0 ]]; then echo "image-pinhole exited non-zero status: $result"; exit 1; fi
+#cat -n output/out | sed 's#^ *#output[#;s#\t#]="#;s#$#"#'
+cat output/out | csv-shuffle --fields=,,,x,y --output-fields=x,y | name-value-from-csv --prefix=out --line-number --fields=x,y | sed 's#"##g'

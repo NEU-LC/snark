@@ -1,0 +1,6 @@
+near( out[0]/x, 0.1, 1.0e-6)
+near( out[0]/y, 0.1, 0.000001)
+out[1]/x="0"
+out[1]/y="0"
+near( out[2]/x, 2.36, 1e-6)
+near( out[2]/y, 2.12, 1e-6)
