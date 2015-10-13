@@ -169,7 +169,7 @@ int main( int ac, char** av )
         }
         if(operation=="distortion-map")
         {
-            pinhole.make_distortion_map();
+            pinhole.output_distortion_map(std::cout);
             return 0;
         }
         std::cerr << "image-pinhole: error: unrecognized operation: "<< operation << std::endl;

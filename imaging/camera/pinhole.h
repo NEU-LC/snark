@@ -36,6 +36,7 @@
 #include <boost/optional.hpp>
 #include <Eigen/Core>
 #include <opencv2/core/core.hpp>
+#include <iostream>
 
 namespace snark { namespace camera {
 
@@ -61,6 +62,9 @@ struct pinhole
         
         tangential_t tangential;
         
+        //returns true if all distortion parameters are zero
+        bool all_zero() const;
+        
         std::string map_filename;
         
         struct map_t
@@ -68,15 +72,14 @@ struct pinhole
             std::vector<float> x_rows;
             std::vector<float> y_cols;
             map_t() {}
-            map_t( const std::string& filename, const Eigen::Vector2i& image_size ) { load( filename, image_size ); }
-            void load( const std::string& filename, const Eigen::Vector2i& image_size );
+            map_t(const cv::Mat& map_x,const cv::Mat& map_y);
         };
         /// return distortion as a k1,k2,p1,p2,k3 vector, since opencv and others often use it that way
         operator Eigen::Matrix< double, 5, 1 >() const;
 
         boost::optional<map_t> map;
     };
-    void init_distortion_map();
+    void init_distortion_map() { if (!distortion.map_filename.empty()) { distortion.map=load_distortion_map(); } }
     
     /// focal length in metres
     double focal_length;
@@ -115,13 +118,16 @@ struct pinhole
     Eigen::Vector3d to_cartesian( const Eigen::Vector2d& p, bool undistort = true ) const;
     
     /// load distortion map from file
-    distortion_t::map_t load_distortion_map() const { return distortion_t::map_t( distortion.map_filename, image_size ); }
+    distortion_t::map_t load_distortion_map() const;
 
     // reverse undistorted projection using the projection map
-    Eigen::Vector2d distort( const Eigen::Vector2d& p ) const;
+    Eigen::Vector2d distort( const Eigen::Vector2d& p );    //not const: builds map from parameters
     
-    //create distortion map from parameters
-    void make_distortion_map();
+    //build distortion map from parameters
+    void make_distortion_map(cv::Mat& map_x,cv::Mat& map_y) const;
+    
+    //build distortion map from parameters and output to std::cout
+    void output_distortion_map(std::ostream& os) const;
 };
 
 } } // namespace snark { namespace camera {

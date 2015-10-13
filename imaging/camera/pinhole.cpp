@@ -31,7 +31,6 @@
 #include <cstring>
 #include <comma/base/exception.h>
 #include "pinhole.h"
-#include <iostream>
 #include <opencv2/imgproc/imgproc.hpp>
 
 namespace snark { namespace camera {
@@ -97,7 +96,7 @@ Eigen::Vector3d pinhole::to_cartesian( const Eigen::Vector2d& p, bool undistort 
 
 Eigen::Vector2d pinhole::image_centre() const { return Eigen::Vector2d( double( image_size.x() ) / 2, double( image_size.y() ) / 2 ); }
 
-void pinhole::distortion_t::map_t::load( const std::string& filename, const Eigen::Vector2i& image_size )
+static void load( const std::string& filename, const Eigen::Vector2i& image_size, cv::Mat& map_x, cv::Mat& map_y )
 {
     if( filename.empty() ) { COMMA_THROW( comma::exception, "distortion map filename not specified" ); }
     std::ifstream ifs( &filename[0], std::ios::binary );
@@ -105,46 +104,55 @@ void pinhole::distortion_t::map_t::load( const std::string& filename, const Eige
     std::vector< char > buffer( image_size.x() * image_size.y() * 4 );
     ifs.read( &buffer[0], buffer.size() );
     if( ifs.gcount() < int( buffer.size() ) ) { COMMA_THROW( comma::exception, "expected to read " << buffer.size() << " bytes, got " << ifs.gcount() ); }
-    cv::Mat mat = cv::Mat( image_size.y(), image_size.x(), CV_32FC1, &buffer[0] ).clone();
-    x_rows.resize(mat.rows*mat.cols);
-    for(int i=0;i<mat.rows;i++)
-    {
-        cv::Mat mat_row=mat.row(i);
-        float* ptr=mat_row.ptr<float>();
-        std::memcpy(&x_rows[mat.cols*i],ptr,mat.cols*sizeof(float));
-    }
+    map_x = cv::Mat( image_size.y(), image_size.x(), CV_32FC1, &buffer[0] ).clone();
     ifs.read( &buffer[0], buffer.size() );
     if( ifs.gcount() < int( buffer.size() ) ) { COMMA_THROW( comma::exception, "expected to read " << buffer.size() << " bytes, got " << ifs.gcount() ); }
-    mat = cv::Mat( image_size.y(), image_size.x(), CV_32FC1, &buffer[0] ).clone();
-    y_cols.resize(mat.rows*mat.cols);
-    for(int i=0;i<mat.cols;i++)
+    map_y = cv::Mat( image_size.y(), image_size.x(), CV_32FC1, &buffer[0] ).clone();
+}
+pinhole::distortion_t::map_t::map_t(const cv::Mat& map_x, const cv::Mat& map_y)
+{
+    x_rows.resize(map_x.rows*map_x.cols);
+    for(int i=0;i<map_x.rows;i++)
     {
-        cv::Mat mat_col=mat.col(i).t();
+        cv::Mat mat_row=map_x.row(i);
+        float* ptr=mat_row.ptr<float>();
+        std::memcpy(&x_rows[map_x.cols*i],ptr,map_x.cols*sizeof(float));
+    }
+    //
+    y_cols.resize(map_y.rows*map_y.cols);
+    for(int i=0;i<map_y.cols;i++)
+    {
+        cv::Mat mat_col=map_y.col(i).t();
         float* ptr=mat_col.ptr<float>();
-        std::memcpy(&y_cols[mat.rows*i],ptr,mat.rows*sizeof(float));
+        std::memcpy(&y_cols[map_y.rows*i],ptr,map_y.rows*sizeof(float));
     }
 }
-void pinhole::init_distortion_map()
+pinhole::distortion_t::map_t pinhole::load_distortion_map() const 
 {
-    if (!distortion.map_filename.empty()) 
-    { 
-        distortion.map=distortion_t::map_t(distortion.map_filename, image_size);
-    }
+    cv::Mat map_x;
+    cv::Mat map_y;
+    load(distortion.map_filename, image_size, map_x,map_y);
+    return pinhole::distortion_t::map_t(map_x,map_y);
 }
-Eigen::Vector2d pinhole::distort( const Eigen::Vector2d& p ) const
+bool pinhole::distortion_t::all_zero() const { return radial.k1==0 && radial.k2==0 && radial.k3==0 && tangential.p1==0 && tangential.p2 == 0; }
+Eigen::Vector2d pinhole::distort( const Eigen::Vector2d& p )
 {
-    if(distortion.map)
+    if(!distortion.map)
     {
-        Eigen::Vector2d dst;
-        //lookup p.x on map.x
-        int y_index=p.y()<0?0:(p.y()>image_size.y()?image_size.y()-1:p.y());
-        double ox=extrapolate_map(&distortion.map->x_rows[y_index*image_size.x()],image_size.x(), p.x());
-        int x_index=p.x()<0?0:(p.x()>image_size.x()?image_size.x()-1:p.x());
-        double oy=extrapolate_map(&distortion.map->y_cols[x_index*image_size.y()], image_size.y(), p.y());
-        return Eigen::Vector2d(ox,oy);
+        if(distortion.all_zero()) { return p; }
+        cv::Mat map_x;
+        cv::Mat map_y;
+        make_distortion_map(map_x,map_y);
+        distortion.map=distortion_t::map_t(map_x,map_y);
+        std::cerr<<"pinhole::distort made distortion map from parameters"<<std::endl;
     }
-    else
-        COMMA_THROW(comma::exception , "distrot without map is not implemented yet" );
+    Eigen::Vector2d dst;
+    //lookup p.x on map.x
+    int y_index=p.y()<0?0:(p.y()>image_size.y()?image_size.y()-1:p.y());
+    double ox=extrapolate_map(&distortion.map->x_rows[y_index*image_size.x()],image_size.x(), p.x());
+    int x_index=p.x()<0?0:(p.x()>image_size.x()?image_size.x()-1:p.x());
+    double oy=extrapolate_map(&distortion.map->y_cols[x_index*image_size.y()], image_size.y(), p.y());
+    return Eigen::Vector2d(ox,oy);
 }
 //write a 2-d image matrix data to stream (no header)
 inline void save(std::ostream& os, const cv::Mat& mat)
@@ -153,7 +161,7 @@ inline void save(std::ostream& os, const cv::Mat& mat)
     for(int i=0;i<mat.rows;i++)
         std::cout.write((const char*)mat.ptr(i),len);
 }
-void pinhole::make_distortion_map()
+void pinhole::make_distortion_map(cv::Mat& map_x,cv::Mat& map_y) const
 {
 //     int width=image_size.x();
 //     int heigth=image_size.y();
@@ -172,12 +180,16 @@ void pinhole::make_distortion_map()
     distortion_coeff[3]=distortion.tangential.p2;
     distortion_coeff[4]=distortion.radial.k3;
     cv::Size size(image_size.x(),image_size.y());
+    cv::initUndistortRectifyMap(camera, distortion_coeff,cv::Mat(),camera,size,CV_32FC1,map_x,map_y);
+}
+void pinhole::output_distortion_map(std::ostream& os) const
+{
     cv::Mat map_x;
     cv::Mat map_y;
-    cv::initUndistortRectifyMap(camera, distortion_coeff,cv::Mat(),camera,size,CV_32FC1,map_x,map_y);
-     std::cerr<<"made distortion maps x.rows: "<<map_x.rows<<" x.cols: "<<map_x.cols<<" y.rows: "<<map_y.rows<<" y.cols: "<<map_y.cols<<std::endl;
-    save(std::cout, map_x);
-    save(std::cout, map_y);
+    make_distortion_map(map_x,map_y);
+     //std::cerr<<"made distortion maps x.rows: "<<map_x.rows<<" x.cols: "<<map_x.cols<<" y.rows: "<<map_y.rows<<" y.cols: "<<map_y.cols<<std::endl;
+    save(os, map_x);
+    save(os, map_y);
 }
 
 } } // namespace snark { namespace camera {
