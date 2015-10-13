@@ -37,6 +37,8 @@
 #include "../camera/pinhole.h"
 #include "../camera/traits.h"
 
+static bool verbose=false;
+
 void usage( bool verbose )
 {
     std::cerr << std::endl;
@@ -91,7 +93,7 @@ static snark::camera::pinhole make_pinhole( const std::string& config_parameters
         comma::visiting::apply( from_ptree ).to( pinhole );
     }
     if( !pinhole.principal_point ) { pinhole.principal_point = pinhole.image_centre(); }
-    pinhole.init_distortion_map();
+    pinhole.init(verbose);
     return pinhole;
 }
 
@@ -100,6 +102,7 @@ int main( int ac, char** av )
     try
     {
         comma::command_line_options options( ac, av, usage );
+        verbose=options.exists("--verbose");
         if( options.exists( "--output-config,--sample-config" ) ) { comma::write_json( snark::camera::pinhole(), std::cout ); return 0; }
         const std::vector< std::string >& unnamed = options.unnamed( "--input-fields,--output-fields,--output-format,--verbose,-v", "-.*" );
         if( unnamed.empty() ) { std::cerr << "image-pinhole: please specify operation" << std::endl; return 1; }

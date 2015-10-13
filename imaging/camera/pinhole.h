@@ -79,7 +79,10 @@ struct pinhole
 
         boost::optional<map_t> map;
     };
-    void init_distortion_map() { if (!distortion.map_filename.empty()) { distortion.map=load_distortion_map(); } }
+    
+    //call after parameters are loaded
+    void init(bool verbose);
+
     
     /// focal length in metres
     double focal_length;

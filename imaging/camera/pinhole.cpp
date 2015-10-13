@@ -32,8 +32,12 @@
 #include <comma/base/exception.h>
 #include "pinhole.h"
 #include <opencv2/imgproc/imgproc.hpp>
+#include <boost/test/utils/nullstream.hpp>
 
 namespace snark { namespace camera {
+    
+boost::onullstream nullstream;
+static std::ostream* cverbose=&nullstream;
 
 pinhole::distortion_t::operator Eigen::Matrix< double, 5, 1 >() const
 {
@@ -139,12 +143,13 @@ Eigen::Vector2d pinhole::distort( const Eigen::Vector2d& p )
 {
     if(!distortion.map)
     {
+        *cverbose<<"pinhole::distort no map found"<<std::endl;
         if(distortion.all_zero()) { return p; }
         cv::Mat map_x;
         cv::Mat map_y;
         make_distortion_map(map_x,map_y);
         distortion.map=distortion_t::map_t(map_x,map_y);
-        std::cerr<<"pinhole::distort made distortion map from parameters"<<std::endl;
+        *cverbose<<"pinhole::distort made distortion map from parameters"<<std::endl;
     }
     Eigen::Vector2d dst;
     //lookup p.x on map.x
@@ -153,6 +158,14 @@ Eigen::Vector2d pinhole::distort( const Eigen::Vector2d& p )
     int x_index=p.x()<0?0:(p.x()>image_size.x()?image_size.x()-1:p.x());
     double oy=extrapolate_map(&distortion.map->y_cols[x_index*image_size.y()], image_size.y(), p.y());
     return Eigen::Vector2d(ox,oy);
+}
+void pinhole::init(bool verbose)
+{ 
+    if(verbose)
+        cverbose=&std::cerr;
+    if (!distortion.map_filename.empty()) { distortion.map=load_distortion_map(); } 
+    *cverbose<<"pinhole::init_distortion_map map:"<<distortion.map_filename<<" no map: "<< !distortion.map<<" image size "<< image_size.x()<<","<<image_size.y()<<std::endl;
+    
 }
 //write a 2-d image matrix data to stream (no header)
 inline void save(std::ostream& os, const cv::Mat& mat)
@@ -187,7 +200,7 @@ void pinhole::output_distortion_map(std::ostream& os) const
     cv::Mat map_x;
     cv::Mat map_y;
     make_distortion_map(map_x,map_y);
-     //std::cerr<<"made distortion maps x.rows: "<<map_x.rows<<" x.cols: "<<map_x.cols<<" y.rows: "<<map_y.rows<<" y.cols: "<<map_y.cols<<std::endl;
+     *cverbose<<"made distortion maps x.rows: "<<map_x.rows<<" x.cols: "<<map_x.cols<<" y.rows: "<<map_y.rows<<" y.cols: "<<map_y.cols<<std::endl;
     save(os, map_x);
     save(os, map_y);
 }
