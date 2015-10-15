@@ -53,4 +53,8 @@ ADD_EXECUTABLE( points-join points-join.cpp )
 TARGET_LINK_LIBRARIES( points-join snark_math snark_point_cloud ${comma_ALL_LIBRARIES} ${snark_ALL_EXTERNAL_LIBRARIES} )
 INSTALL( TARGETS points-join RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
 
+add_executable( points-rays points-rays.cpp )
+target_link_libraries( points-rays snark_math ${comma_ALL_LIBRARIES} ) #profiler )
+install( TARGETS points-rays RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
+
 add_subdirectory(detail)
