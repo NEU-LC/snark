@@ -192,8 +192,8 @@ int main( int ac, char** av )
         bool raw_intensity=options.exists( "--raw-intensity" );
         bool legacy = options.exists( "--legacy");
         //use old algorithm for old database
-        if (!legacy && db.version == 0){legacy=true; std::cerr<<"using legacy option for old database"<<std::endl;}
-        if(legacy && db.version > 0){std::cerr<<"using new calibration with legacy option"<<std::endl;}
+        if (!legacy && db.version == 0){legacy=true; std::cerr<<"velodyne-to-csv: using legacy option for old database"<<std::endl;}
+        if(legacy && db.version > 0){std::cerr<<"velodyne-to-csv: using new calibration with legacy option"<<std::endl;}
         if( options.exists( "--pcap" ) )
         {
             velodyne_stream< snark::pcap_reader > v( db, outputInvalidpoints, from, to, raw_intensity, legacy );
