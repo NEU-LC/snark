@@ -65,11 +65,13 @@ void usage( bool verbose = false )
     std::cerr << "    --verbose,-v: more debug output" << std::endl;
     std::cerr << std::endl;
     std::cerr << "operations" << std::endl;
+    std::cerr << std::endl;
     std::cerr << "    trace: for each point on stdin output its distance from the point on the ray with the shortest range and id of that point" << std::endl;
     std::cerr << "           if id field is not present in the input, point number in the input will be used" << std::endl;
     std::cerr << "        fields: r,b,e,block: range, bearing, elevation; default: r,b,e" << std::endl;
     std::cerr << "        output fields: id,distance" << std::endl;
     std::cerr << "        output format: ui,d" << std::endl;
+    std::cerr << std::endl;
     if( verbose ) { std::cerr << std::endl << comma::csv::options::usage() << std::endl; }
     std::cerr << std::endl;
     exit( 0 );
@@ -125,32 +127,11 @@ template <> struct traits< trace_output_t >
 
 } } // namespace comma { namespace visiting {
 
-//std::ostream& operator<<( std::ostream& os, const point_t& p ) { os << p.range() << "," << p.bearing() << "," << p.elevation(); return os; }
-
 static double abs_bearing_distance_( double m, double b ) // quick and dirty
 {
     double m1 = m < 0 ? m + ( M_PI * 2 ) : m;
     double b1 = b < 0 ? b + ( M_PI * 2 ) : b;
     return std::abs( m1 - b1 );
-}
-
-static bool bearing_between_( double b, double min, double max )
-{
-    return comma::math::equal( abs_bearing_distance_( b, min ) + abs_bearing_distance_( b, max ), abs_bearing_distance_( min, max ) ); // quick and dirty: watch performance
-}
-
-static double bearing_min_( double m, double b )
-{
-    double m1 = m < 0 ? m + ( M_PI * 2 ) : m;
-    double b1 = b < 0 ? b + ( M_PI * 2 ) : b;
-    return comma::math::less( m1, b1 ) ? m : b;
-}
-
-static double bearing_max_( double m, double b )
-{
-    double m1 = m < 0 ? m + ( M_PI * 2 ) : m;
-    double b1 = b < 0 ? b + ( M_PI * 2 ) : b;
-    return comma::math::less( b1, m1 ) ? m : b;
 }
 
 static bool verbose;
@@ -163,37 +144,16 @@ struct cell
 
     const input_t* trace( const point_t& p, double threshold ) const
     {
-        const input_t* e = NULL;
-        double threshold_square = threshold * threshold; // static: quick and dirty
-        point_t* min = NULL;
-        point_t* max = NULL;
+        const input_t* min = NULL;
+        double threshold_square = threshold * threshold;
         for( std::size_t i = 0; i < points.size(); ++i )
         {
             double db = abs_bearing_distance_( p.bearing(), points[i]->point.bearing() );
             double de = p.elevation() - points[i]->point.elevation();
             if( ( db * db + de * de ) > threshold_square ) { continue; }
-            if( min ) // todo: quick and dirty, fix point_tRBE and use extents
-            {
-                if( points[i]->point.range() < min->range() )
-                {
-                    min->range( points[i]->point.range() );
-                    e = points[i];
-                }
-                min->bearing( bearing_min_( min->bearing(), points[i]->point.bearing() ) );
-                min->elevation( std::min( min->elevation(), points[i]->point.elevation() ) );
-                max->bearing( bearing_max_( max->bearing(), points[i]->point.bearing() ) );
-                max->elevation( std::max( max->elevation(), points[i]->point.elevation() ) );
-            }
-            else
-            {
-                e = points[i];
-                min = max = &( points[i]->point );
-            }
+            if( !min || points[i]->point.range() < min->point.range() ) { min = points[i]; }
         }
-        return    !min
-               || !bearing_between_( p.bearing(), min->bearing(), max->bearing() )
-               || !comma::math::less( min->elevation(), p.elevation() )
-               || !comma::math::less( p.elevation(), max->elevation() ) ? NULL : e;
+        return min;
     }
 };
 
@@ -248,7 +208,7 @@ int main( int argc, char** argv )
             while( istream.ready() || std::cin.good() )
             {
                 grid_t grid( resolution );
-                if( verbose ) { std::cerr << "points-rays: loading block..." << std::endl; }
+                if( verbose ) { std::cerr << "points-rays: block" << ( last ? boost::lexical_cast< std::string >( last->first.block ) : std::string() ) << ": loading..." << std::endl; }
                 std::deque< pair_t > records;
                 if( last ) { records.push_back( *last ); }
                 while( istream.ready() || std::cin.good() )
