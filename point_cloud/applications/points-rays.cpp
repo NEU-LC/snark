@@ -134,10 +134,6 @@ static double abs_bearing_distance_( double m, double b ) // quick and dirty
     return std::abs( m1 - b1 );
 }
 
-static bool verbose;
-static snark::voxel_map< int, 2 >::point_type resolution;
-static double threshold;
-
 struct cell
 {
     std::vector< input_t* > points;
@@ -160,7 +156,7 @@ struct cell
 typedef std::pair< input_t, std::vector< char > > pair_t;
 typedef snark::voxel_map< cell, 2 > grid_t;
 
-static void trace_points( const tbb::blocked_range< std::size_t >& range, std::deque< pair_t >& records, const grid_t& grid )
+static void trace_points( const tbb::blocked_range< std::size_t >& range, std::deque< pair_t >& records, const grid_t& grid, double threshold )
 {
     for( std::size_t i = range.begin(); i < range.end(); ++i )
     {
@@ -182,7 +178,7 @@ int main( int argc, char** argv )
     try
     {
         comma::command_line_options options( argc, argv, usage );
-        verbose = options.exists( "--verbose,-v" );
+        bool verbose = options.exists( "--verbose,-v" );
         std::vector< std::string > unnamed = options.unnamed( "--verbose,-v", "-.*" );
         if( unnamed.empty() ) { std::cerr << "points-rays: please specify operation" << std::endl; return 1; }
         const std::string& operation = unnamed[0];
@@ -200,9 +196,9 @@ int main( int argc, char** argv )
             }
             csv.fields = comma::join( v, ',' );
             csv.full_xpath = false;
-            threshold = options.value< double >( "--angle-threshold,-a" );
+            double threshold = options.value< double >( "--angle-threshold,-a" );
             comma::csv::input_stream< input_t > istream( std::cin, csv );
-            resolution = grid_t::point_type( threshold, threshold );
+            snark::voxel_map< int, 2 >::point_type resolution = grid_t::point_type( threshold, threshold );
             comma::uint32 id = 0;
             boost::optional< pair_t > last;
             while( istream.ready() || std::cin.good() )
@@ -249,7 +245,7 @@ int main( int argc, char** argv )
                 if( records.empty() ) { break; }
                 if( verbose ) { std::cerr << "points-rays: block " << records[0].first.block << ": loaded " << records.size() << " points in a grid of size " << grid.size() << " voxels" << std::endl; }
                 if( verbose ) { std::cerr << "points-rays: block " << records[0].first.block << ": tracing..." << std::endl; }
-                tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, records.size(), records.size() / 4 ), boost::bind( &trace_points, _1, boost::ref( records ), boost::cref( grid ) ) );
+                tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, records.size(), records.size() / 4 ), boost::bind( &trace_points, _1, boost::ref( records ), boost::cref( grid ), threshold ) );
                 if( verbose ) { std::cerr << "points-rays: block " << records[0].first.block << ": outputting..." << std::endl; }
                 for( std::size_t i = 0; i < records.size(); ++i )
                 {
