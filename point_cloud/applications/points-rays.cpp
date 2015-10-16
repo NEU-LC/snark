@@ -38,8 +38,9 @@
 #include <cmath>
 #include <string.h>
 #include <fstream>
-#include <boost/array.hpp>
+#include <boost/bind.hpp>
 #include <boost/optional.hpp>
+#include <tbb/parallel_for.h>
 #include <comma/application/command_line_options.h>
 #include <comma/base/types.h>
 #include <comma/csv/stream.h>
@@ -153,7 +154,8 @@ static double bearing_max_( double m, double b )
 }
 
 static bool verbose;
-snark::voxel_map< int, 2 >::point_type resolution;
+static snark::voxel_map< int, 2 >::point_type resolution;
+static double threshold;
 
 struct cell
 {
@@ -162,9 +164,9 @@ struct cell
     const input_t* trace( const point_t& p, double threshold ) const
     {
         const input_t* e = NULL;
-        static const double threshold_square = threshold * threshold; // static: quick and dirty
-        point_t* min( NULL );
-        point_t* max( NULL );
+        double threshold_square = threshold * threshold; // static: quick and dirty
+        point_t* min = NULL;
+        point_t* max = NULL;
         for( std::size_t i = 0; i < points.size(); ++i )
         {
             double db = abs_bearing_distance_( p.bearing(), points[i]->point.bearing() );
@@ -195,6 +197,26 @@ struct cell
     }
 };
 
+typedef std::pair< input_t, std::vector< char > > pair_t;
+typedef snark::voxel_map< cell, 2 > grid_t;
+
+static void trace_points( const tbb::blocked_range< std::size_t >& range, std::deque< pair_t >& records, const grid_t& grid )
+{
+    for( std::size_t i = range.begin(); i < range.end(); ++i )
+    {
+        grid_t::const_iterator it = grid.find( grid_t::point_type( records[i].first.point.bearing(), records[i].first.point.elevation() ) );
+        if( it == grid.end() )
+        { 
+            records[i].first.traced = &records[i].first;
+        }
+        else
+        {
+            records[i].first.traced = it->second.trace( records[i].first.point, threshold );
+            if( !records[i].first.traced ) { records[i].first.traced = &records[i].first; }
+        }
+    }
+}
+
 int main( int argc, char** argv )
 {
     try
@@ -218,12 +240,10 @@ int main( int argc, char** argv )
             }
             csv.fields = comma::join( v, ',' );
             csv.full_xpath = false;
-            double threshold = options.value< double >( "--angle-threshold,-a" );
+            threshold = options.value< double >( "--angle-threshold,-a" );
             comma::csv::input_stream< input_t > istream( std::cin, csv );
-            typedef snark::voxel_map< cell, 2 > grid_t;
             resolution = grid_t::point_type( threshold, threshold );
             comma::uint32 id = 0;
-            typedef std::pair< input_t, std::vector< char > > pair_t;
             boost::optional< pair_t > last;
             while( istream.ready() || std::cin.good() )
             {
@@ -269,18 +289,10 @@ int main( int argc, char** argv )
                 if( records.empty() ) { break; }
                 if( verbose ) { std::cerr << "points-rays: block " << records[0].first.block << ": loaded " << records.size() << " points in a grid of size " << grid.size() << " voxels" << std::endl; }
                 if( verbose ) { std::cerr << "points-rays: block " << records[0].first.block << ": tracing..." << std::endl; }
+                tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, records.size(), records.size() / 4 ), boost::bind( &trace_points, _1, boost::ref( records ), boost::cref( grid ) ) );
+                if( verbose ) { std::cerr << "points-rays: block " << records[0].first.block << ": outputting..." << std::endl; }
                 for( std::size_t i = 0; i < records.size(); ++i )
                 {
-                    grid_t::const_iterator it = grid.find( grid_t::point_type( records[i].first.point.bearing(), records[i].first.point.elevation() ) );
-                    if( it == grid.end() )
-                    { 
-                        records[i].first.traced = &records[i].first;
-                    }
-                    else
-                    {
-                        records[i].first.traced = it->second.trace( records[i].first.point, threshold );
-                        if( !records[i].first.traced ) { records[i].first.traced = &records[i].first; }
-                    }
                     double distance = records[i].first.point.range() - records[i].first.traced->point.range();
                     std::cout.write( &records[i].second[0], records[i].second.size() );
                     if( csv.binary() )
@@ -294,6 +306,7 @@ int main( int argc, char** argv )
                     }
                 }
                 if( csv.flush ) { std::cout.flush(); }
+                if( verbose ) { std::cerr << "points-rays: block " << records[0].first.block << ": done" << std::endl; }
             }
         }
         return 0;
