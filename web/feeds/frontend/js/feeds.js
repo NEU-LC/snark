@@ -645,11 +645,23 @@ var globals = {
     }
 }
 
+function audioContextCheck() {
+    if (typeof AudioContext !== "undefined") {
+        return new AudioContext();
+    } else if (typeof webkitAudioContext !== "undefined") {
+        return new webkitAudioContext();
+    } else if (typeof mozAudioContext !== "undefined") {
+        return new mozAudioContext();
+    } else {
+        // Do stuff with soundmanager or something else if Web Audio API is not supported
+    }
+}
+
 var gui;
 var feeds = {};
 var pending = {};
 var config_files = [];
-var audio_context = new AudioContext();
+var audio_context = audioContextCheck();
 var current_config_file;
 var container_width;
 
