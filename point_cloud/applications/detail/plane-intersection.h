@@ -332,12 +332,6 @@ void plane_intersection::usage()
     std::cerr << "            --output-format: print output fields format" << std::endl;
     std::cerr << "            --extended: use extended form for input fields" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "    discretise, discretize: read input data and discretise intervals between adjacent points with --step" << std::endl;
-    std::cerr << "        skip discretised points that are closer to the end of the interval than --tolerance (default: --tolerance=0)" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "        input fields" << std::endl;
-    std::cerr << "            " << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
-    std::cerr << std::endl;
 }
 
 bool plane_intersection::fields_t::contains(const std::string& name) const
