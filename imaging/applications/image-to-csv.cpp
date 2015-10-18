@@ -62,8 +62,8 @@ struct output_t:public app_t
     boost::posix_time::ptime t;
     int x;
     int y;
-    std::vector<T> channel;
-    output_t() : x(0), y(0), channel(channels)
+    std::vector<T> channels;
+    output_t() : x(0), y(0), channels(::channels)
     {
         
     }
@@ -82,13 +82,14 @@ template <typename T> struct traits< output_t<T> >
         v.apply( "t", r.t );
         v.apply( "x", r.x );
         v.apply( "y", r.y );
-        for(std::size_t i=0;i<r.channel.size();i++)
-        {
-            std::string s="channel[";
-            s+=boost::lexical_cast<std::string>(i);
-            s+= "]";
-            v.apply( s.c_str(), r.channel[i] );
-        }
+        v.apply( "channels", r.channels );
+//         for(std::size_t i=0;i<r.channel.size();i++)
+//         {
+//             std::string s="channel[";
+//             s+=boost::lexical_cast<std::string>(i);
+//             s+= "]";
+//             v.apply( s.c_str(), r.channel[i] );
+//         }
     }
 
     template < typename K, typename V >
@@ -97,13 +98,14 @@ template <typename T> struct traits< output_t<T> >
         v.apply( "t", r.t );
         v.apply( "x", r.x );
         v.apply( "y", r.y );
-        for(std::size_t i=0;i<r.channel.size();i++)
-        {
-            std::string s="channel[";
-            s+=boost::lexical_cast<std::string>(i);
-            s+= "]";
-            v.apply( s.c_str(), r.channel[i] );
-        }
+        v.apply( "channels", r.channels );
+//         for(std::size_t i=0;i<r.channel.size();i++)
+//         {
+//             std::string s="channel[";
+//             s+=boost::lexical_cast<std::string>(i);
+//             s+= "]";
+//             v.apply( s.c_str(), r.channel[i] );
+//         }
     }
 };
 
@@ -168,9 +170,9 @@ bool output_t<T>::process_image()
 {
     comma::csv::output_stream<output_t<T> > os(std::cout, csv);
     output_t<T> out;
-    out.channel.resize(channels);
+    out.channels.resize(::channels);
     out.t=header.timestamp;
-    std::size_t size=channels*sizeof(T);
+    std::size_t size=::channels*sizeof(T);
     //process one image
     for(comma::uint32 j=0;j<header.rows;j++)
     {
@@ -179,7 +181,7 @@ bool output_t<T>::process_image()
             if(!std::cin.good() || std::cin.eof()  || signaled) { return false; }
             out.x=i;
             out.y=j;
-            std::cin.read((char*)(T*)&out.channel[0],size);
+            std::cin.read( reinterpret_cast< char* >( &out.channels[0] ),size );
             os.write(out);
         }
     }
