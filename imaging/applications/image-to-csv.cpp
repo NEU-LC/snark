@@ -272,11 +272,11 @@ int main( int ac, char** av )
     }
     catch( std::exception& ex )
     {
-        std::cerr << ex.what() << std::endl;
+        std::cerr << "image-to-csv: " << ex.what() << std::endl;
     }
     catch( ... )
     {
-        std::cerr << "unknown exception" << std::endl;
+        std::cerr << "image-to-csv: unknown exception" << std::endl;
     }
     return 1;
 }

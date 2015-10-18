@@ -13,6 +13,10 @@ TARGET_LINK_LIBRARIES( image-undistort-map snark_imaging ${comma_ALL_LIBRARIES} 
 ADD_EXECUTABLE( cv-cat cv-cat.cpp )
 TARGET_LINK_LIBRARIES( cv-cat snark_imaging ${comma_ALL_LIBRARIES} ${OpenCV_LIBS} ${Boost_LIBRARIES} tbb )
 
+add_executable( image-from-csv image-from-csv.cpp )
+target_link_libraries( image-from-csv snark_imaging ${comma_ALL_LIBRARIES} ${OpenCV_LIBS} )
+install( TARGETS image-from-csv RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
+
 ADD_EXECUTABLE( image-to-csv image-to-csv.cpp )
 TARGET_LINK_LIBRARIES( image-to-csv snark_imaging ${comma_ALL_LIBRARIES} ${OpenCV_LIBS} )
 
