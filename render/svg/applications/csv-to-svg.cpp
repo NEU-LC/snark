@@ -220,6 +220,7 @@ int main( int ac, char** av )
         std::string what = unnamed[0];
 
         comma::csv::options csv( options );
+        std::cout.precision( csv.precision );
         snark::render::colour_map colour_map;
         bool parse_colour = true;
         if( ( what == "point" || what == "circle" || what == "line" || what == "lines" ) && csv.has_field( "scalar" ) )
