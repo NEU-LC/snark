@@ -64,9 +64,8 @@ static void usage( bool more = false )
     std::cerr << "    cat points.csv | points-calc discretise --step <step> > results.csv" << std::endl;
     std::cerr << std::endl;
     std::cerr << "operations" << std::endl;
-    std::cerr << "    distance" << std::endl;
     std::cerr << "    cumulative-distance" << std::endl;
-    std::cerr << "    thin" << std::endl;
+    std::cerr << "    distance" << std::endl;
     std::cerr << "    discretise" << std::endl;
     std::cerr << "    find-outliers" << std::endl;
     std::cerr << "    local-min" << std::endl;
@@ -76,10 +75,14 @@ static void usage( bool more = false )
     std::cerr << "    nearest-any" << std::endl;
     std::cerr << "    nearest" << std::endl;
     std::cerr << "    plane-intersection" << std::endl;
+    std::cerr << "    thin" << std::endl;
     std::cerr << "    cross" << std::endl;
     std::cerr << "    dot" << std::endl;
     std::cerr << "    norm" << std::endl;
     std::cerr << "    scale" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "operation details" << std::endl;
+    std::cerr << "    cumulative-distance: cumulative distance between subsequent points" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    distance: distance between subsequent points or, if input is pairs, between the points of the same record" << std::endl;
     std::cerr << std::endl;
@@ -89,9 +92,28 @@ static void usage( bool more = false )
     std::cerr << "            --next: for subsequent points only, append distance to next point (default: append distance to previous point)" << std::endl;
     std::cerr << "                    fake zero is appended to the final point (since there is no next point)" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "    cumulative-distance: cumulative distance between subsequent points" << std::endl;
-    std::cerr << std::endl;
     std::cerr << "        input fields: " << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    discretise, discretize: read input data and discretise intervals between adjacent points with --step" << std::endl;
+    std::cerr << "        skip discretised points that are closer to the end of the interval than --tolerance (default: --tolerance=0)" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "        input fields" << std::endl;
+    std::cerr << "            " << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    find-outliers: find points in low density areas" << std::endl;
+    std::cerr << "                   currently quick and dirty, may have aliasing problems" << std::endl;
+    std::cerr << "                   unless --no-antialiasing defined, will not remove points" << std::endl;
+    std::cerr << "                   on the border of a denser cloud" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "        input fields" << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "        output: input line with appended 0 for outliers, 1 for non-outliers" << std::endl;
+    std::cerr << "                binary output: flag as unsigned byte (ub)" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "        options" << std::endl;
+    std::cerr << "            --resolution=<resolution>: size of the voxel to remove outliers" << std::endl;
+    std::cerr << "            --min-number-of-points-per-voxel,--size=<number>: min number of points for a voxel to keep" << std::endl;
+    std::cerr << "            --no-antialiasing: don't check neighbour voxels, which is faster, but may remove points in borderline voxels" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    local-min: output local minimums inside of given radius" << std::endl;
     std::cerr << "    local-max: output local maximums inside of given radius" << std::endl;
@@ -119,21 +141,6 @@ static void usage( bool more = false )
     std::cerr << "    thin: read input data and thin them down by the given --resolution" << std::endl;
     std::cerr << std::endl;
     std::cerr << "        input fields" << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "    find-outliers: find points in low density areas" << std::endl;
-    std::cerr << "                   currently quick and dirty, may have aliasing problems" << std::endl;
-    std::cerr << "                   unless --no-antialiasing defined, will not remove points" << std::endl;
-    std::cerr << "                   on the border of a denser cloud" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "        input fields" << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "        output: input line with appended 0 for outliers, 1 for non-outliers" << std::endl;
-    std::cerr << "                binary output: flag as unsigned byte (ub)" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "        options" << std::endl;
-    std::cerr << "            --resolution=<resolution>: size of the voxel to remove outliers" << std::endl;
-    std::cerr << "            --min-number-of-points-per-voxel,--size=<number>: min number of points for a voxel to keep" << std::endl;
-    std::cerr << "            --no-antialiasing: don't check neighbour voxels, which is faster, but may remove points in borderline voxels" << std::endl;
     std::cerr << std::endl;
     plane_intersection::usage();
     vector_calc::usage();
@@ -420,7 +427,7 @@ int main( int ac, char** av )
         csv = comma::csv::options( options );
         csv.full_xpath = true;
         ascii = comma::csv::ascii< Eigen::Vector3d >( "x,y,z", csv.delimiter );
-        const std::vector< std::string >& operations = options.unnamed( "--verbose,-v,--trace,--no-antialiasing,--next", "-.*" );
+        const std::vector< std::string >& operations = options.unnamed( "--verbose,-v,--trace,--no-antialiasing,--next,--basic", "-.*" );
         if( operations.size() != 1 ) { std::cerr << "points-calc: expected one operation, got " << operations.size() << ": " << comma::join( operations, ' ' ) << std::endl; return 1; }
         const std::string& operation = operations[0];
         if (vector_calc::has_operation(operation))
@@ -430,6 +437,30 @@ int main( int ac, char** av )
         }
         if( operation == "plane-intersection" )
         {
+            if( options.exists( "--basic" ) ) // todo: tear down, once the proper implementation (in plane_intersection.h) is fixed
+            {
+                bool discard_collinear = options.exists( "--discard-collinear" );
+                typedef std::pair< Eigen::Vector3d, Eigen::Vector3d > pair_t;
+                pair_t plane = comma::csv::ascii< pair_t >().get( options.value< std::string >( "--plane" ) );
+                const Eigen::Vector3d& normal = plane.second / plane.second.norm();
+                const Eigen::Vector3d& plane_point = plane.first;
+                pair_t zero( Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero() );
+                comma::csv::input_stream< pair_t > is( std::cin, csv, zero );
+                comma::csv::output_stream< Eigen::Vector3d > os( std::cout, csv.binary() );
+                comma::csv::tied< pair_t, Eigen::Vector3d > tied( is, os );
+                static const Eigen::Vector3d infinity( std::numeric_limits< double >::infinity(), std::numeric_limits< double >::infinity(), std::numeric_limits< double >::infinity() );
+                while( is.ready() || std::cin.good() )
+                {
+                    const pair_t* p = is.read();
+                    if( !p ) { break; }
+                    const Eigen::Vector3d& f = p->first - p->second;
+                    double d = f.dot( normal );
+                    if( comma::math::equal( d, 0 ) ) { if( !discard_collinear ) { tied.append( infinity ); } continue; }
+                    const Eigen::Vector3d& r = normal * normal.dot( plane_point - p->second );
+                    tied.append( p->second + f * r.norm() / d );
+                }
+                return 0;
+            }
             plane_intersection::process(options);
             return 0;
         }
