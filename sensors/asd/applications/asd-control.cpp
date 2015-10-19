@@ -38,7 +38,7 @@
 #include <comma/csv/options.h>
 #include <comma/application/signal_flag.h>
 #include <comma/name_value/serialize.h>
-#include <comma/application/cverbose.h>
+#include <comma/application/verbose.h>
 #include <comma/csv/stream.h>
 
 comma::signal_flag signaled;
@@ -53,8 +53,8 @@ struct app
     {
         std::cerr<< "    "<< T::name() << std::endl
                         << "        command: " << T::command() << std::endl
-                        << "        reply fileds: "<<comma::join(comma::csv::names<reply_t>(),',') << std::endl
-                        << "        reply format: "<<comma::csv::format::value<reply_t>() << std::endl;
+                        << "        fileds: "<<comma::join(comma::csv::names<reply_t>(),',') << std::endl
+                        << "        format: "<<comma::csv::format::value<reply_t>() << std::endl;
     }
     static bool process(snark::asd::protocol& protocol, const std::string& cmd)
     {
@@ -69,21 +69,38 @@ struct app
         }
         return false;
     }
+    void resolve_linker()
+    {
+    }
 };
+
+//for acquaire_data command
+static bool process_acquire_data(snark::asd::protocol& protocol, const std::string& cmd)
+{
+    if(cmd.find(snark::asd::commands::acquire_data::command()) ==0 )
+    {
+        snark::asd::commands::acquire_data::spectrum_data reply = protocol.send_acquire_data(cmd);
+        if(raw)
+            std::cout.write(reply.data(),reply.size);
+        else
+            comma::write_json(reply, std::cout);
+        return true;
+    }
+    return false;
+}
 
 void usage(bool detail)
 {
     std::cerr<<"    read control command from stdin, send it to asd device and output reply in json or raw format" << std::endl
                     <<std::endl;
     if( !detail ) { std::cerr << "    see --help --verbose for more details" << std::endl<< std::endl; }
-    std::cerr<< "usage: " << comma::cverbose.app_name() << " <options>" << std::endl
+    std::cerr<< "usage: " << comma::verbose.app_name() << " <address> [ <options> ]" << std::endl
+                    << "    <address>: device address of form tcp:<ip>:<port> e.g. tcp:10.1.1.11:8080 " << std::endl
                     << std::endl
                     << "options" << std::endl
                     << "    --help,-h: show help" << std::endl
                     << "    --verbose,-v: show detailed messages" << std::endl
-                    << "    --address=<tcp_address>: device address of form tcp:<ip>:<port> e.g. tcp:10.1.1.11:8080 " << std::endl
                     << "    --raw: send raw binary reply to stdout; default when not specified it outputs json format of reply" << std::endl
-                    << "    --trace: show messages being sent and received" << std::endl
                     << std::endl
                     << std::endl;
     if(detail)
@@ -92,11 +109,20 @@ void usage(bool detail)
         app<snark::asd::commands::version>::usage();
         app<snark::asd::commands::abort>::usage();
         app<snark::asd::commands::optimize>::usage();
+        app<snark::asd::commands::restore>::usage();
+        app<snark::asd::commands::init>::usage();
+        app<snark::asd::commands::save>::usage();
+        app<snark::asd::commands::erase>::usage();
+        app<snark::asd::commands::instrument_gain_control>::usage();
+        std::cerr<< "    "<< snark::asd::commands::acquire_data::name() << std::endl
+                        << "        command: " << snark::asd::commands::acquire_data::command() << std::endl
+                        << "        fileds: "<<comma::join(comma::csv::names<snark::asd::commands::acquire_data::spectrum_data>(),',') << std::endl
+                        << "        format: "<<comma::csv::format::value<snark::asd::commands::acquire_data::spectrum_data>() << std::endl;
         std::cerr<< std::endl;
         
     }
     std::cerr<< "example" << std::endl
-                    << "      echo \"V,\" | " << comma::cverbose.app_name() << " --address=\"tcp:10.1.1.11:8080\" --verbose --trace" << std::endl
+                    << "      echo \"V,\" | " << comma::verbose.app_name() << " \"tcp:10.1.1.11:8080\" --verbose" << std::endl
                     << std::endl;
     exit(0);
 }
@@ -107,27 +133,40 @@ int main( int ac, char** av )
     char buf[2000];
     try
     {
-        comma::cverbose<<"asd-control"<<std::endl;
-        snark::asd::protocol protocol(options.value<std::string>("--address"),options.exists("--trace"));
+        comma::verbose<<"asd-control"<<std::endl;
+        std::vector<std::string> unnamed=options.unnamed("--verbose,-v,--raw", "");
+        if(unnamed.size() != 1) { COMMA_THROW(comma::exception, "expected one unnamed arg (address) got " << unnamed.size() ); }
+        snark::asd::protocol protocol(unnamed[0]);
         while(std::cin.good() && !signaled)
         {
-            comma::cverbose<<"reading stdin..."<<std::endl;
+            //comma::verbose<<"reading stdin..."<<std::endl;
             std::cin.getline(buf,sizeof(buf));
             buf[sizeof(buf)-1]='\0';
             std::string cmd(buf);
             cmd+="\n";
+            comma::verbose<<"sending command: "<<cmd<<std::endl;
+            bool processed = 
             app<snark::asd::commands::version>::process(protocol,cmd)
                 || app<snark::asd::commands::abort>::process(protocol,cmd)
-                || app<snark::asd::commands::optimize>::process(protocol,cmd);
+                || app<snark::asd::commands::restore>::process(protocol,cmd)
+                || app<snark::asd::commands::optimize>::process(protocol,cmd)
+                || app<snark::asd::commands::init>::process(protocol,cmd)
+                || app<snark::asd::commands::save>::process(protocol,cmd)
+                || app<snark::asd::commands::erase>::process(protocol,cmd)
+                || app<snark::asd::commands::instrument_gain_control>::process(protocol,cmd)
+                || process_acquire_data(protocol,cmd);
+            if ( !processed )
+                COMMA_THROW(comma::exception, "invalid command " << cmd ); 
+            return 0;
         }
     }
     catch( std::exception& ex )
     {
-        std::cerr << "asd-control" << ex.what() << std::endl; return 1;
+        std::cerr << comma::verbose.app_name() << ": " << ex.what() << std::endl; return 1;
     }
     catch( ... )
     {
-        std::cerr << "asd-control" << "unknown exception" << std::endl; return 1;
+        std::cerr << comma::verbose.app_name() << ": " << "unknown exception" << std::endl; return 1;
     }
     return 0;
 }

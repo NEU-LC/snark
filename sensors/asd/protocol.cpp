@@ -31,31 +31,34 @@
 #include <comma/io/publisher.h>
 
 namespace snark { namespace asd {
-    
 
-protocol::protocol(const std::string& address, bool t) : ios(address), trace(t)
+protocol::protocol(const std::string& address) : ios(address)
 {
-    comma::cverbose<<"asd::protocol"<<std::endl;
-//     comma::io::select select;
-//     select.read().add( ios->rdbuf()->native() );
-//     select.wait(3);
-//     if( !select.read().ready( ios->rdbuf()->native() ) )
-//         COMMA_THROW( comma::exception, "no reply received from asd device on connection" ); 
+    comma::verbose<<"asd::protocol: connected on "<<address<<std::endl;
     ios->getline(buf,sizeof(buf),'\n');
-    if(trace) 
-        comma::cverbose<<"<- "<<buf<<std::endl;
+    comma::verbose<<"<- "<<buf<<std::endl;
     ios->getline(buf,sizeof(buf));
-    if(trace) 
-        comma::cverbose<<"<- "<<buf<<std::endl;
+    comma::verbose<<"<- "<<buf<<std::endl;
 }
 
 void protocol::handle_reply(const commands::reply_header& header)
 {
-    if(trace)
-        comma::cverbose<<"reply header: "<<header.header()<<" error: "<<header.error()<<std::endl;
+    if(header.header() != 100)
+        comma::verbose<<"reply header: "<<header.header()<<" error: "<<header.error()<<std::endl;
     if(header.error() != 0)
         COMMA_THROW(comma::exception, "asd reply error: " << header.error() );
 }
+
+snark::asd::commands::acquire_data::spectrum_data protocol::send_acquire_data(const std::string& command)
+{
+    *ios<<command<<std::flush;
+    commands::acquire_data::spectrum_data reply;
+    ios->read(reply.data(),reply.size);
+    //error handling
+    handle_reply(reply.header.header);
+    return reply;
+}
+
 
 } }//namespace snark { namespace asd {
     

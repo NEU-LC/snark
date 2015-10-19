@@ -30,9 +30,12 @@
 #pragma once
 #include <comma/packed/packed.h>
 #include <comma/packed/big_endian.h>
+#include <boost/graph/graph_concepts.hpp>
 
 namespace snark { namespace asd { namespace commands {
 
+const int flash_count=200;
+    
 struct reply_header : public comma::packed::packed_struct< reply_header, 8 >
 {
     comma::packed::big_endian_int32 header;
@@ -41,8 +44,9 @@ struct reply_header : public comma::packed::packed_struct< reply_header, 8 >
 
 struct name_value : public comma::packed::packed_struct< name_value, 38 >
 {
-    char name[30];
+    comma::packed::string<30> name;
     comma::packed::big_endian_float64 value;
+    //comma::packed::float64 value;
 };
 
 struct version
@@ -91,8 +95,8 @@ struct optimize
     {
         reply_header header;
         comma::packed::big_endian_int32 itime;
-        comma::packed::big_endian_int32 gain[2];
-        comma::packed::big_endian_int32 offset[2];
+        boost::array<comma::packed::big_endian_int32,2> gain;
+        boost::array<comma::packed::big_endian_int32,2> offset;
     };
 };
 
@@ -100,14 +104,125 @@ struct restore
 {
     static const char* command() { return "RESTORE";  }
     static const char* name() { return "restore"; }
-    static const int entry_count=200;
-    struct reply:public comma::packed::packed_struct<reply, reply_header::size + entry_count * name_value::size + 8>
+    struct reply:public comma::packed::packed_struct<reply, reply_header::size + flash_count * name_value::size + 8>
     {
         reply_header header;
-        name_value entry[entry_count];
+        boost::array<comma::packed::string<30>,flash_count> names;
+        boost::array<comma::packed::big_endian_float64, flash_count> values;
         comma::packed::big_endian_int32 count;
         comma::packed::big_endian_int32 verify;
     };
 };
 
+struct init
+{
+    static const char* command() { return "INIT";  }
+    static const char* name() { return "init"; }
+    struct reply:public comma::packed::packed_struct<reply, reply_header::size + name_value::size + 4>
+    {
+        reply_header header;
+        name_value entry;
+        comma::packed::big_endian_int32 count;
+    };
+};
+
+struct save
+{
+    static const char* command() { return "SAVE";  }
+    static const char* name() { return "save"; }
+    struct reply:public comma::packed::packed_struct<reply, reply_header::size + flash_count * name_value::size + 8>
+    {
+        reply_header header;
+        boost::array<comma::packed::string<30>,flash_count> names;
+        boost::array<comma::packed::big_endian_float64, flash_count> values;
+        comma::packed::big_endian_int32 count;
+        comma::packed::big_endian_int32 verify;
+    };
+};
+
+struct erase
+{
+    static const char* command() { return "ERASE";  }
+    static const char* name() { return "erase"; }
+    struct reply:public comma::packed::packed_struct<reply, reply_header::size + flash_count * name_value::size + 8>
+    {
+        reply_header header;
+        boost::array<comma::packed::string<30>,flash_count> names;
+        boost::array<comma::packed::big_endian_float64, flash_count> values;
+        comma::packed::big_endian_int32 count;
+        comma::packed::big_endian_int32 verify;
+    };
+};
+
+struct instrument_gain_control
+{
+    static const char* command() { return "IC";  }
+    static const char* name() { return "instrument gain control"; }
+    struct reply:public comma::packed::packed_struct<reply,reply_header::size + 12>
+    {
+        reply_header header;
+        comma::packed::big_endian_int32 detector;
+        comma::packed::big_endian_int32 command_type;
+        comma::packed::big_endian_int32 value;
+    };
+};
+
+struct acquire_data
+{
+    static const char* command() { return "A";  }
+    static const char* name() { return "acquire data"; }
+    struct vnir_header : public comma::packed::packed_struct<vnir_header, 16 * 4>
+    {
+        comma::packed::big_endian_int32 integration_time;   //IT
+        comma::packed::big_endian_int32 scans;
+        comma::packed::big_endian_int32 max_channel;
+        comma::packed::big_endian_int32 min_channel;
+        comma::packed::big_endian_int32 saturation;
+        comma::packed::big_endian_int32 shutter;
+        boost::array<comma::packed::big_endian_int32,10> reserved;
+    };
+    struct swir_header : public comma::packed::packed_struct<swir_header, 16 * 4>
+    {
+        comma::packed::big_endian_int32 tec_status;
+        comma::packed::big_endian_int32 tec_current;
+        comma::packed::big_endian_int32 max_channel;
+        comma::packed::big_endian_int32 min_channel;
+        comma::packed::big_endian_int32 saturation;
+        comma::packed::big_endian_int32 a_scans;    //A scan
+        comma::packed::big_endian_int32 b_scans;    //B scan
+        comma::packed::big_endian_int32 dark_current;
+        comma::packed::big_endian_int32 gain;
+        comma::packed::big_endian_int32 offset;
+        comma::packed::big_endian_int32 scan_size_1;
+        comma::packed::big_endian_int32 scan_size_2;
+        boost::array<comma::packed::big_endian_int32,4> reserved;
+    };
+    struct spectrum_header : public comma::packed::packed_struct<spectrum_header, reply_header::size + vnir_header::size + ( 2 * swir_header::size ) + 14*4 >
+    {
+        reply_header header;
+        comma::packed::big_endian_int32 sample_count;
+        comma::packed::big_endian_int32 trigger;
+        comma::packed::big_endian_int32 voltage;
+        comma::packed::big_endian_int32 current;
+        comma::packed::big_endian_int32 temprature;
+        comma::packed::big_endian_int32 motor_current;
+        comma::packed::big_endian_int32 instrument_hours;
+        comma::packed::big_endian_int32 instrument_minutes;
+        comma::packed::big_endian_int32 instrument_type;
+        comma::packed::big_endian_int32 ab; //AB
+        boost::array<comma::packed::big_endian_int32,4> reserved;
+        vnir_header v_header;
+        swir_header s1_header;
+        swir_header s2_header;
+    };
+    enum {data_count=2151};
+    //FRInterpSpecStruct
+    struct spectrum_data : public comma::packed::packed_struct<spectrum_data, spectrum_header::size + data_count * 4>
+    {
+        spectrum_header header;
+        boost::array<comma::packed::big_endian_float32, data_count> values;
+    };
+};
+
 } } } // namespace snark { namespace asd { namespace commands {
+
