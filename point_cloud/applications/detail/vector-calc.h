@@ -8,6 +8,7 @@ extern bool verbose;
 
 struct vector_calc
 {
+    typedef Eigen::Vector3d vector;
     static void usage()
     {
         std::cerr << "    vector calculations: following operations perform calculations on 3d vectors and scalars" << std::endl;
@@ -37,10 +38,36 @@ struct vector_calc
         std::cerr << "            --scalar: default value for a" << std::endl;
         std::cerr << "            --invert: invert the scalar first and then multiply it by vector, i.e. (1/a)*v" << std::endl;
         std::cerr << "" << std::endl;
+        std::cerr << "        add: add two vectors: v + u " << std::endl;
+        std::cerr << "            input fields: v, u" << std::endl;
+        std::cerr << "            --v=<x>,<y>,<z>: default value for vector 1" << std::endl;
+        std::cerr << "            --u=<x>,<y>,<z>: default value for vector 2" << std::endl;
+        std::cerr << std::endl;
+        std::cerr << "        subtract: subtract two vectors: u - v " << std::endl;
+        std::cerr << "            input fields: v, u" << std::endl;
+        std::cerr << "            --v=<x>,<y>,<z>: default value for vector 1" << std::endl;
+        std::cerr << "            --u=<x>,<y>,<z>: default value for vector 2" << std::endl;
+        std::cerr << std::endl;
+        std::cerr << "        normal: calculate normal vector given three points as: (w-v) x (u-v)" << std::endl;
+        std::cerr << "            input fields: v, u, w" << std::endl;
+        std::cerr << "            --v=<x>,<y>,<z>: default value for vector 1" << std::endl;
+        std::cerr << "            --u=<x>,<y>,<z>: default value for vector 2" << std::endl;
+        std::cerr << "            --w=<x>,<y>,<z>: default value for vector 3" << std::endl;
+        std::cerr << std::endl;
+    }
+    static void usage_list_operations()
+    {
+        std::cerr << "    cross" << std::endl;
+        std::cerr << "    dot" << std::endl;
+        std::cerr << "    norm" << std::endl;
+        std::cerr << "    scale" << std::endl;
+        std::cerr << "    add" << std::endl;
+        std::cerr << "    subtract" << std::endl;
+        std::cerr << "    normal" << std::endl;
     }
     static bool has_operation(const std::string& operation)
     {
-        return (operation=="cross") || (operation=="dot") || (operation=="norm") || (operation=="scale");
+        return (operation=="cross") || (operation=="dot") || (operation=="norm") || (operation=="scale") || (operation=="add") || (operation=="subtract") || (operation=="normal");
     }
     static void process(const std::string& operation, const comma::command_line_options& options)
     {
@@ -83,9 +110,39 @@ struct vector_calc
             vector_calc::scale(v, s, options.exists("--invert")).run(csv);
             return;
         }
+        if(operation=="subtract")
+        {
+            if(options.exists("--input-fields")){vector_calc::subtract().input_fields(); return; }
+            if(options.exists("--output-fields")){vector_calc::subtract().output_fields(); return; }
+            if(options.exists("--output-format")){vector_calc::subtract().output_format(); return; }
+            Eigen::Vector3d v1_default=comma::csv::ascii< Eigen::Vector3d >().get(options.value< std::string >( "--v",  "0,0,0"));
+            Eigen::Vector3d v2_default=comma::csv::ascii< Eigen::Vector3d >().get(options.value< std::string >( "--u",  "0,0,0"));
+            vector_calc::subtract(v1_default,v2_default).run(csv);
+            return;
+        }
+        if(operation=="add")
+        {
+            if(options.exists("--input-fields")){vector_calc::add().input_fields(); return; }
+            if(options.exists("--output-fields")){vector_calc::add().output_fields(); return; }
+            if(options.exists("--output-format")){vector_calc::add().output_format(); return; }
+            Eigen::Vector3d v1_default=comma::csv::ascii< Eigen::Vector3d >().get(options.value< std::string >( "--v",  "0,0,0"));
+            Eigen::Vector3d v2_default=comma::csv::ascii< Eigen::Vector3d >().get(options.value< std::string >( "--u",  "0,0,0"));
+            vector_calc::add(v1_default,v2_default).run(csv);
+            return;
+        }
+        if(operation=="normal")
+        {
+            if(options.exists("--input-fields")){vector_calc::normal().input_fields(); return; }
+            if(options.exists("--output-fields")){vector_calc::normal().output_fields(); return; }
+            if(options.exists("--output-format")){vector_calc::normal().output_format(); return; }
+            Eigen::Vector3d v_default=comma::csv::ascii< Eigen::Vector3d >().get(options.value< std::string >( "--v",  "0,0,0"));
+            Eigen::Vector3d u_default=comma::csv::ascii< Eigen::Vector3d >().get(options.value< std::string >( "--u",  "0,0,0"));
+            Eigen::Vector3d w_default=comma::csv::ascii< Eigen::Vector3d >().get(options.value< std::string >( "--w",  "0,0,0"));
+            vector_calc::normal(v_default,u_default,w_default).run(csv);
+            return;
+        }
         COMMA_THROW( comma::exception, "vector_calc operation not supported :" << operation );
     }
-    typedef Eigen::Vector3d vector;
     //typedef double scalar;
     static vector vzero;
     template<typename input_t,typename output_t>
@@ -117,6 +174,14 @@ struct vector_calc
         vector u;
         vector_pair():v(vzero),u(vzero){}
         vector_pair(const vector& d1,const vector& d2):v(d1),u(d2){}
+    };
+    struct vector_triple
+    {
+        vector v;
+        vector u;
+        vector w;
+        vector_triple():v(vzero),u(vzero),w(vzero){}
+        vector_triple(const vector& d1,const vector& d2,const vector& d3):v(d1),u(d2),w(d3){}
     };
     struct scalar
     {
@@ -175,6 +240,33 @@ struct vector_calc
         }
         bool _invert;
     };
+    struct add:operation_t<vector_pair,vector>
+    {
+        add(){}
+        add(const vector& default1, const vector& default2 ):operation_t(vector_pair(default1,default2)){}
+        vector calc(const vector_pair& in)
+        {
+            return in.v+in.u;
+        }
+    };
+    struct subtract:operation_t<vector_pair,vector>
+    {
+        subtract(){}
+        subtract(const vector& default1, const vector& default2 ):operation_t(vector_pair(default1,default2)){}
+        vector calc(const vector_pair& in)
+        {
+            return in.u-in.v;
+        }
+    };
+    struct normal:operation_t<vector_triple,vector>
+    {
+        normal(){}
+        normal(const vector& default1, const vector& default2, const vector& default3 ):operation_t(vector_triple(default1,default2,default3)){}
+        vector calc(const vector_triple& in)
+        {
+            return (in.w-in.v).cross(in.u-in.v);
+        }
+    };
 };
 vector_calc::vector vector_calc::vzero=Eigen::Vector3d::Zero();
 
@@ -192,6 +284,22 @@ template <> struct traits< vector_calc::vector_pair >
     {
         v.apply( "v", t.v);
         v.apply( "u", t.u);
+    }
+};
+
+template <> struct traits< vector_calc::vector_triple >
+{
+    template< typename K, typename V > static void visit( const K& k, vector_calc::vector_triple& t, V& v )
+    {
+        v.apply( "v", t.v);
+        v.apply( "u", t.u);
+        v.apply( "w", t.w);
+    }
+    template< typename K, typename V > static void visit( const K& k, const vector_calc::vector_triple& t, V& v )
+    {
+        v.apply( "v", t.v);
+        v.apply( "u", t.u);
+        v.apply( "w", t.w);
     }
 };
 

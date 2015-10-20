@@ -76,10 +76,7 @@ static void usage( bool more = false )
     std::cerr << "    nearest" << std::endl;
     std::cerr << "    plane-intersection" << std::endl;
     std::cerr << "    thin" << std::endl;
-    std::cerr << "    cross" << std::endl;
-    std::cerr << "    dot" << std::endl;
-    std::cerr << "    norm" << std::endl;
-    std::cerr << "    scale" << std::endl;
+    vector_calc::usage_list_operations();
     std::cerr << std::endl;
     std::cerr << "operation details" << std::endl;
     std::cerr << "    cumulative-distance: cumulative distance between subsequent points" << std::endl;
@@ -437,31 +434,7 @@ int main( int ac, char** av )
         }
         if( operation == "plane-intersection" )
         {
-            if( options.exists( "--basic" ) ) // todo: tear down, once the proper implementation (in plane_intersection.h) is fixed
-            {
-                bool discard_collinear = options.exists( "--discard-collinear" );
-                typedef std::pair< Eigen::Vector3d, Eigen::Vector3d > pair_t;
-                pair_t plane = comma::csv::ascii< pair_t >().get( options.value< std::string >( "--plane" ) );
-                const Eigen::Vector3d& normal = plane.second / plane.second.norm();
-                const Eigen::Vector3d& plane_point = plane.first;
-                pair_t zero( Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero() );
-                comma::csv::input_stream< pair_t > is( std::cin, csv, zero );
-                comma::csv::output_stream< Eigen::Vector3d > os( std::cout, csv.binary() );
-                comma::csv::tied< pair_t, Eigen::Vector3d > tied( is, os );
-                static const Eigen::Vector3d infinity( std::numeric_limits< double >::infinity(), std::numeric_limits< double >::infinity(), std::numeric_limits< double >::infinity() );
-                while( is.ready() || std::cin.good() )
-                {
-                    const pair_t* p = is.read();
-                    if( !p ) { break; }
-                    const Eigen::Vector3d& f = p->first - p->second;
-                    double d = f.dot( normal );
-                    if( comma::math::equal( d, 0 ) ) { if( !discard_collinear ) { tied.append( infinity ); } continue; }
-                    const Eigen::Vector3d& r = normal * normal.dot( plane_point - p->second );
-                    tied.append( p->second + f * r.norm() / d );
-                }
-                return 0;
-            }
-            plane_intersection::process(options);
+            plane_intersection::process(options, csv);
             return 0;
         }
         if( operation == "distance" )
