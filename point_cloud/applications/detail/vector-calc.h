@@ -53,6 +53,7 @@ struct vector_calc
         std::cerr << "            --v=<x>,<y>,<z>: default value for vector 1" << std::endl;
         std::cerr << "            --u=<x>,<y>,<z>: default value for vector 2" << std::endl;
         std::cerr << "            --w=<x>,<y>,<z>: default value for vector 3" << std::endl;
+        std::cerr << "            --unit: normalize the output to unit length" << std::endl;
         std::cerr << std::endl;
     }
     static void usage_list_operations()
@@ -138,7 +139,7 @@ struct vector_calc
             Eigen::Vector3d v_default=comma::csv::ascii< Eigen::Vector3d >().get(options.value< std::string >( "--v",  "0,0,0"));
             Eigen::Vector3d u_default=comma::csv::ascii< Eigen::Vector3d >().get(options.value< std::string >( "--u",  "0,0,0"));
             Eigen::Vector3d w_default=comma::csv::ascii< Eigen::Vector3d >().get(options.value< std::string >( "--w",  "0,0,0"));
-            vector_calc::normal(v_default,u_default,w_default).run(csv);
+            vector_calc::normal(v_default,u_default,w_default,options.exists("--unit")).run(csv);
             return;
         }
         COMMA_THROW( comma::exception, "vector_calc operation not supported :" << operation );
@@ -260,11 +261,14 @@ struct vector_calc
     };
     struct normal:operation_t<vector_triple,vector>
     {
+        bool unit_;
         normal(){}
-        normal(const vector& default1, const vector& default2, const vector& default3 ):operation_t(vector_triple(default1,default2,default3)){}
+        normal(const vector& default1, const vector& default2, const vector& default3, bool unit ):operation_t(vector_triple(default1,default2,default3)),unit_(unit){}
         vector calc(const vector_triple& in)
         {
-            return (in.w-in.v).cross(in.u-in.v);
+            vector normal=(in.u-in.v).cross(in.w-in.v);
+            if(unit_) { normal /= normal.norm(); }
+            return normal;
         }
     };
 };

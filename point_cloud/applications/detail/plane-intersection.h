@@ -149,6 +149,8 @@ void plane_intersection::run( const comma::csv::options& csv_opt, boost::optiona
         double u=(rec->plane.point - rec->line.points.first).dot(rec->plane.normal);
         double d=rec->line.direction().dot(rec->plane.normal);
         comma::verbose<<"u "<<u<<", d "<<d<<std::endl;
+        //if both u and d are 0 then line is on the plane and we just output first point
+        if ( comma::math::equal(u,0)) { tied.append(rec->line.points.first); continue; }
         if( comma::math::equal( d, 0 ) ) { if( !discard_collinear ) { tied.append( infinity ); } continue; }
         tied.append( (u/d) * rec->line.direction() + rec->line.points.first );
     }
