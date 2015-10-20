@@ -1,0 +1,16 @@
+#!/bin/bash
+source $( which comma-application-util ) || { echo "cannot source 'comma-application-util'" >&2; exit 1; }
+
+read args
+read fields0
+
+fields=$(points-calc plane-intersection --input-fields)
+points-calc add | csv-shuffle --input-fields="a0,a1,a2,d0,d1,d2,p0,p1,p2,p3,p4,p5,b0,b1,b2" \
+    --output-fields="a0,a1,a2,b0,b1,b2,p0,p1,p2,p3,p4,p5" >output/mid
+cat output/mid | points-calc plane-intersection --verbose \
+    | csv-shuffle --fields="$fields,x,y,z" --output="x,y,z" >"output/out"
+    
+if ! comma_status_ok; then echo "test failed" >&2; exit 1; fi
+cat -n output/out | sed 's#^ *#output[#;s#\t#]="#;s#$#"#'
+
+
