@@ -51,6 +51,7 @@ comma::signal_flag signaled;
 
 struct app_t
 {
+    virtual ~app_t(){}
     virtual void output_fields()=0;
     virtual void output_format()=0;
     virtual bool process_image()=0;
@@ -83,13 +84,6 @@ template <typename T> struct traits< output_t<T> >
         v.apply( "x", r.x );
         v.apply( "y", r.y );
         v.apply( "channels", r.channels );
-//         for(std::size_t i=0;i<r.channel.size();i++)
-//         {
-//             std::string s="channel[";
-//             s+=boost::lexical_cast<std::string>(i);
-//             s+= "]";
-//             v.apply( s.c_str(), r.channel[i] );
-//         }
     }
 
     template < typename K, typename V >
@@ -99,13 +93,6 @@ template <typename T> struct traits< output_t<T> >
         v.apply( "x", r.x );
         v.apply( "y", r.y );
         v.apply( "channels", r.channels );
-//         for(std::size_t i=0;i<r.channel.size();i++)
-//         {
-//             std::string s="channel[";
-//             s+=boost::lexical_cast<std::string>(i);
-//             s+= "]";
-//             v.apply( s.c_str(), r.channel[i] );
-//         }
     }
 };
 
@@ -174,48 +161,64 @@ bool output_t<T>::process_image()
     out.t=header.timestamp;
     std::size_t size=::channels*sizeof(T);
     //process one image
+    std::vector<char> buffer(header.rows*header.cols*size);
+    std::cin.read(&buffer[0], buffer.size());
+    char* ptr=&buffer[0];
     for(comma::uint32 j=0;j<header.rows;j++)
     {
         for(comma::uint32 i=0;i<header.cols;i++)
         {
-            if(!std::cin.good() || std::cin.eof()  || signaled) { return false; }
+            if(!std::cin.good() || std::cin.eof() ) { return false; }
             out.x=i;
             out.y=j;
-            std::cin.read( reinterpret_cast< char* >( &out.channels[0] ),size );
+            std::memcpy(&out.channels[0], ptr, size);
+            ptr+=size;
             os.write(out);
         }
     }
     return true;
 }
-std::auto_ptr<app_t> get_app()
+struct get_app
 {
+    app_t* app;
+    get_app():app(NULL)
+    {
         switch(depth)
         {
             case CV_8U:
-                return std::auto_ptr<app_t>(new output_t<unsigned char>());
+                app=new output_t<unsigned char>();
                 break;
             case CV_8S:
-                return std::auto_ptr<app_t>(new output_t<char>());
+                app=new output_t<char>();
                 break;
             case CV_16U:
-                return std::auto_ptr<app_t>(new output_t<comma::uint16>());
+                app=new output_t<comma::uint16>();
                 break;
             case CV_16S:
-                return std::auto_ptr<app_t>(new output_t<comma::int16>());
+                app=new output_t<comma::int16>();
                 break;
             case CV_32S:
-                return std::auto_ptr<app_t>(new output_t<comma::int32>());
+                app=new output_t<comma::uint32>();
                 break;
             case CV_32F:
-                return std::auto_ptr<app_t>(new output_t<float>());
+                app=new output_t<float>();
                 break;
             case CV_64F:
-                return std::auto_ptr<app_t>(new output_t<double>());
+                app=new output_t<double>();
                 break;
             default:
                 COMMA_THROW(comma::exception, "unsupported depth " <<  depth);
         }
-}
+    }
+    ~get_app()
+    {
+        if(app!=NULL)
+        {
+            delete app;
+            app=NULL;
+        }
+    }
+};
 
 void process()
 {
@@ -235,7 +238,8 @@ void process()
         *cverbose<<app_name<<": timestamp: "<<header.timestamp<<" cols: "<<header.cols<<" rows: "<<header.rows<<" type: "<<header.type<<std::endl;
         *cverbose<<app_name<<": channels: "<<channels<<" depth: "<<depth<<std::endl;
         //we need new app_t because channel/depth may change after reading header
-        if(!get_app()->process_image()) { break; }
+        get_app g;
+        if(!g.app->process_image()) { break; }
     }
 }
 int main( int ac, char** av )
@@ -263,8 +267,9 @@ int main( int ac, char** av )
             return 1;
         }
         
-        if (options.exists("--output-fields")) { get_app()->output_fields();exit(0); }
-        if (options.exists("--output-format")) { get_app()->output_format(); exit(0); }
+        get_app g;
+        if (options.exists("--output-fields")) { g.app->output_fields();exit(0); }
+        if (options.exists("--output-format")) { g.app->output_format(); exit(0); }
         if (options.exists("--output-header-fields")) { std::cout<<comma::join( comma::csv::names< snark::cv_mat::serialization::header >(input_options.fields), ','  ) << std::endl; exit(0); }
         if (options.exists("--output-header-format")) { std::cout<<comma::csv::format::value< snark::cv_mat::serialization::header >(input_options.fields, false) << std::endl; exit(0); }
         process();
