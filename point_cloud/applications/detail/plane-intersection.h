@@ -122,6 +122,11 @@ void plane_intersection::usage()
     std::cerr << "            --output-format: print output fields format" << std::endl;
     std::cerr << "            --discard-collinear: don't output records when line is in parallel with plane (when not sepcified it outputs <inf,inf,inf>)" << std::endl;
     std::cerr << std::endl;
+    std::cerr << "        example:" << std::endl;
+    std::cerr << "            to find intersection of a line going from 0,0,0 to 1,1,1 and a plane at 0,0,4 perpendicular to z axis:" << std::endl;
+    std::cerr << "                echo 1,1,1,4 | points-calc plane-intersection --plane=0,0,0,0,0,1 --fields=second,plane/point/z" << std::endl;
+    std::cerr << "            outputs:  1,1,1,4,4,4,4" << std::endl;
+    std::cerr << std::endl;
 }
 
 void plane_intersection::process(const comma::command_line_options& options, comma::csv::options csv)
