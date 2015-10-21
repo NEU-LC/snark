@@ -102,6 +102,7 @@ public:
     double range() const { return range_; }
     double bearing() const { return bearing_elevation_.b(); }
     double elevation() const { return bearing_elevation_.e(); }
+    const snark::bearing_elevation& bearing_elevation() const { return bearing_elevation_; }
 
     /// set coordinates
     double range( double t );
@@ -122,7 +123,7 @@ public:
 
 private:
     double range_;
-    bearing_elevation bearing_elevation_;
+    snark::bearing_elevation bearing_elevation_;
 };
 
 /// a short-hand for lazy
