@@ -119,6 +119,9 @@ struct pinhole
     
     /// return pixel coordinates in camera frame
     Eigen::Vector3d to_cartesian( const Eigen::Vector2d& p, bool undistort = true ) const;
+
+    //returns converts from camera frame to image pixel col,row
+    Eigen::Vector2d to_pixel( const Eigen::Vector3d& p, bool distort = true );
     
     /// load distortion map from file
     distortion_t::map_t load_distortion_map() const;

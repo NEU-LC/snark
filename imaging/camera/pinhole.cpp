@@ -98,6 +98,14 @@ Eigen::Vector3d pinhole::to_cartesian( const Eigen::Vector2d& p, bool undistort 
     return Eigen::Vector3d( q.x() * s.x(), -q.y() * s.y(), -focal_length ); // todo: verify signs
 }
 
+Eigen::Vector2d pinhole::to_pixel( const Eigen::Vector3d& p, bool do_distort )
+{
+    Eigen::Vector2d s = pixel_size();
+    Eigen::Vector2d q(p.x() / s.x(), -p.y() / s.y());
+    q +=  principal_point ? *principal_point : image_centre();
+    return do_distort ? distort(q) : q;
+}
+
 Eigen::Vector2d pinhole::image_centre() const { return Eigen::Vector2d( double( image_size.x() ) / 2, double( image_size.y() ) / 2 ); }
 
 static void load( const std::string& filename, const Eigen::Vector2i& image_size, cv::Mat& map_x, cv::Mat& map_y )

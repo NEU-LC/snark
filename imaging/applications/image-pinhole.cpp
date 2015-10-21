@@ -71,9 +71,9 @@ void usage( bool verbose )
 template < typename S, typename T > static void output_details( const std::string& operation, const char* expected, const comma::command_line_options& options )
 {
     if( operation != expected ) { return; }
-    if( options.exists( "--input-fields" ) ) { std::cerr << comma::join( comma::csv::names< S >(), ',' ) << std::endl; exit( 0 ); }
-    if( options.exists( "--output-fields" ) ) { std::cerr << comma::join( comma::csv::names< T >(), ',' ) << std::endl; exit( 0 ); }
-    if( options.exists( "--output-format" ) ) { std::cerr << comma::csv::format::value< T >() << std::endl; exit( 0 ); }
+    if( options.exists( "--input-fields" ) ) { std::cout << comma::join( comma::csv::names< S >(), ',' ) << std::endl; exit( 0 ); }
+    if( options.exists( "--output-fields" ) ) { std::cout << comma::join( comma::csv::names< T >(), ',' ) << std::endl; exit( 0 ); }
+    if( options.exists( "--output-format" ) ) { std::cout << comma::csv::format::value< T >() << std::endl; exit( 0 ); }
 }
 
 static snark::camera::pinhole make_pinhole( const std::string& config_parameters )
@@ -128,7 +128,6 @@ int main( int ac, char** av )
         }
         if( operation == "to-pixels" )
         {
-            std::cerr << "image-pinhole: to-pixels: todo" << std::endl; return 1;
             comma::csv::input_stream< Eigen::Vector3d > is( std::cin, csv );
             comma::csv::output_stream< Eigen::Vector2d > os( std::cout, csv.binary() );
             comma::csv::tied< Eigen::Vector3d, Eigen::Vector2d > tied( is, os );
@@ -136,11 +135,7 @@ int main( int ac, char** av )
             {
                 const Eigen::Vector3d* p = is.read();
                 if( !p ) { break; }
-                
-                // todo
-                
-                Eigen::Vector2d q = Eigen::Vector2d::Zero();
-                tied.append( q );
+                tied.append( pinhole.to_pixel(*p) );
             }
             return 0;
         }
