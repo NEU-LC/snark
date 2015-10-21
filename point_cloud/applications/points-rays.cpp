@@ -48,6 +48,7 @@
 #include <comma/string/string.h>
 #include <comma/visiting/traits.h>
 #include <snark/math/range_bearing_elevation.h>
+#include <snark/math/spherical_geometry/great_circle.h>
 #include <snark/point_cloud/voxel_map.h>
 #include <snark/visiting/traits.h>
 //#include <google/profiler.h>
@@ -127,26 +128,21 @@ template <> struct traits< trace_output_t >
 
 } } // namespace comma { namespace visiting {
 
-static double abs_bearing_distance_( double m, double b ) // quick and dirty
+static double distance( const point_t& p, const point_t& q ) // todo: quick and dirty, watch performance
 {
-    double m1 = m < 0 ? m + ( M_PI * 2 ) : m;
-    double b1 = b < 0 ? b + ( M_PI * 2 ) : b;
-    return std::abs( m1 - b1 );
+    return snark::spherical::great_circle::arc( snark::spherical::coordinates( p.bearing_elevation() ), snark::spherical::coordinates( q.bearing_elevation() ) ).angle();
 }
 
 struct cell
 {
     std::vector< input_t* > points;
-
+    
     const input_t* trace( const point_t& p, double threshold ) const
     {
         const input_t* min = NULL;
-        double threshold_square = threshold * threshold;
         for( std::size_t i = 0; i < points.size(); ++i )
         {
-            double db = abs_bearing_distance_( p.bearing(), points[i]->point.bearing() );
-            double de = p.elevation() - points[i]->point.elevation();
-            if( ( db * db + de * de ) > threshold_square ) { continue; }
+            if( distance( p, points[i]->point ) > threshold ) { continue; }
             if( !min || points[i]->point.range() < min->point.range() ) { min = points[i]; }
         }
         return min;

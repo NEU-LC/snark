@@ -64,6 +64,24 @@ void usage( bool verbose )
     std::cerr << "    --output-format: output appended fields binary format for given operation and exit" << std::endl;
     std::cerr << "    --verbose,-v: more output" << std::endl;
     std::cerr << std::endl;
+    std::cerr << "camera config: for a sample, try image-pinhole --output-config" << std::endl;
+    std::cerr << "    sensor_size/x: sensor width, meters" << std::endl;
+    std::cerr << "    sensor_size/y: sensor height, m, meters" << std::endl;
+    std::cerr << "    image_size/x: image width, pixels" << std::endl;
+    std::cerr << "    image_size/y: image height, pixels" << std::endl;
+    std::cerr << "    focal_length: focal length, meters" << std::endl;
+    std::cerr << "    principal_point/x: image centre, pixels, default: geometrical image centre" << std::endl;
+    std::cerr << "        principal_point/x" << std::endl;
+    std::cerr << "        principal_point/y" << std::endl;
+    std::cerr << "    distortion parameters" << std::endl;
+    std::cerr << "        distortion/radial/k1" << std::endl;
+    std::cerr << "        distortion/radial/k2" << std::endl;
+    std::cerr << "        distortion/radial/k3" << std::endl;
+    std::cerr << "        distortion/tangential/p1" << std::endl;
+    std::cerr << "        distortion/tangential/p2" << std::endl;
+    std::cerr << "        distortion/map=<filename>: distortion map as two concatenated binary distortion maps for x and y" << std::endl;
+    std::cerr << "                                   each map is matrix of floats of size image_size/x X image_size/y" << std::endl;
+    std::cerr << std::endl;
     if( verbose ) { std::cerr << comma::csv::options::usage() << std::endl; }
     exit( 0 );
 }

@@ -142,7 +142,7 @@ const range_bearing_elevation& range_bearing_elevation::from_cartesian( double x
 const range_bearing_elevation& range_bearing_elevation::from_cartesian( const Eigen::Vector3d& v )
 {
     range_ = v.norm();
-    if( comma::math::equal( range_, 0 ) ) { bearing_elevation_ = bearing_elevation( 0, 0 ); return *this; }
+    if( comma::math::equal( range_, 0 ) ) { bearing_elevation_ = snark::bearing_elevation( 0, 0 ); return *this; }
     const Eigen::AngleAxis< double >& a =  Eigen::AngleAxis< double >( Eigen::Quaternion< double >::FromTwoVectors( v, Eigen::Vector3d( 0, 0, 1 ) ) );
     double e = M_PI / 2 - a.angle();
     Eigen::AngleAxis< double > c( -e, a.axis() );
