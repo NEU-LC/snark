@@ -149,11 +149,17 @@ int main( int ac, char** av )
             comma::csv::input_stream< Eigen::Vector3d > is( std::cin, csv );
             comma::csv::output_stream< Eigen::Vector2d > os( std::cout, csv.binary() );
             comma::csv::tied< Eigen::Vector3d, Eigen::Vector2d > tied( is, os );
+            bool keep = options.exists("--keep");
             while( is.ready() || std::cin.good() )
             {
                 const Eigen::Vector3d* p = is.read();
                 if( !p ) { break; }
-                tied.append( pinhole.to_pixel(*p) );
+                Eigen::Vector2d pixel=pinhole.to_pixel(*p);
+                if ( keep || (pixel.x()>=0 && pixel.x()< pinhole.image_size.x() && pixel.y()>=0 && pixel.y()<pinhole.image_size.y()) )
+                {
+                    tied.append( pixel );
+                    //else discard
+                }
             }
             return 0;
         }
