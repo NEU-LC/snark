@@ -12,13 +12,6 @@ struct plane_intersection
     static void usage();
     //updates csv with default fields if --plane option specified
     static void process(const comma::command_line_options& options, comma::csv::options csv);
-//     struct input_t
-//     {
-//         Eigen::Vector3d point;
-//         Eigen::Vector3d normal;
-//         input1_t():point( Eigen::Vector3d::Zero() ),normal(Eigen::Vector3d::Zero()){}
-//         input1_t( const Eigen::Vector3d&  default_normal):point( Eigen::Vector3d::Zero() ),normal(default_normal){}
-//     };
     static inline vector zero() { return Eigen::Vector3d::Zero(); }
     struct line_t
     {
@@ -39,8 +32,9 @@ struct plane_intersection
         plane_t plane;
         input_t() { }
         input_t(const plane_t& p):plane(p) { }
+        input_t(const plane_t& p, const line_t& l):plane(p),line(l) { }
     };
-    static void run( const comma::csv::options& csv_opt, boost::optional<std::string> plane_option, bool discard_collinear);
+    static void run( const comma::csv::options& csv_opt, const plane_intersection::input_t& default_value, bool discard_collinear);
 };
 
 namespace comma { namespace visiting {
@@ -110,23 +104,27 @@ static std::ostream& operator <<(std::ostream& stream, const plane_intersection:
 
 void plane_intersection::usage()
 {
-    std::cerr << "    plane-intersection: read points and plane from stdin, output intersection of the ray with the plane" << std::endl;
-    std::cerr << "        input fields: " << comma::join( comma::csv::names<plane_intersection::input_t>(true), ',' ) << std::endl;
-    std::cerr << "            first and second are two points on the line; the plane passes through the plane/point and is perpendicular to the direction vector plane/normal" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "        options:" << std::endl;
-    std::cerr << "            --plane=<" << comma::join( comma::csv::names<plane_intersection::plane_t>(true), ',') <<  ">: default values for plane" << std::endl;
-    std::cerr << "                if --plane specified, default fields for input are: " << comma::join( comma::csv::names<plane_intersection::line_t>(true), ',') <<  std::endl;
-    std::cerr << "            --input-fields: print default input field names" << std::endl;
-    std::cerr << "            --output-fields: print output field names" << std::endl;
-    std::cerr << "            --output-format: print output fields format" << std::endl;
-    std::cerr << "            --discard-collinear: don't output records when line is in parallel with plane (when not sepcified it outputs <inf,inf,inf>)" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "        example:" << std::endl;
-    std::cerr << "            to find intersection of a line going from 0,0,0 to 1,1,1 and a plane at 0,0,4 perpendicular to z axis:" << std::endl;
-    std::cerr << "                echo 1,1,1,4 | points-calc plane-intersection --plane=0,0,0,0,0,1 --fields=second,plane/point/z" << std::endl;
-    std::cerr << "            outputs:  1,1,1,4,4,4,4" << std::endl;
-    std::cerr << std::endl;
+    std::cerr
+        << "    plane-intersection: read points and plane from stdin, output intersection of the ray with the plane" << std::endl
+        << "        input fields: " << comma::join( comma::csv::names<plane_intersection::input_t>(true), ',' ) << std::endl
+        << "            first and second are two points on the line; the plane passes through the plane/point and is perpendicular to the direction vector plane/normal" << std::endl
+        << std::endl;
+    std::cerr
+        << "        options:" << std::endl
+        << "            --plane=<" << comma::join( comma::csv::names<plane_intersection::plane_t>(true), ',') <<  ">: default values for plane" << std::endl
+        << "                if --plane specified, default fields for input are: " << comma::join( comma::csv::names<plane_intersection::line_t>(true), ',') <<  std::endl
+        << "            --line=<" << comma::join( comma::csv::names<plane_intersection::line_t>(true), ',') <<  ">: default values for line" << std::endl
+        << "            --input-fields: print default input field names" << std::endl
+        << "            --output-fields: print output field names" << std::endl
+        << "            --output-format: print output fields format" << std::endl
+        << "            --discard-collinear: don't output records when line is in parallel with plane (when not sepcified it outputs <inf,inf,inf>)" << std::endl
+        << std::endl;
+    std::cerr
+        << "        example:" << std::endl
+        << "            to find intersection of a line going from 0,0,0 to 1,1,1 and a plane at 0,0,4 perpendicular to z axis:" << std::endl
+        << "                echo 1,1,1,4 | points-calc plane-intersection --plane=0,0,0,0,0,1 --fields=second,plane/point/z" << std::endl
+        << "            outputs:  1,1,1,4,4,4,4" << std::endl
+        << std::endl;
 }
 
 void plane_intersection::process(const comma::command_line_options& options, comma::csv::options csv)
@@ -135,14 +133,15 @@ void plane_intersection::process(const comma::command_line_options& options, com
     if(options.exists("--output-fields")){std::cout<<comma::join( comma::csv::names<plane_intersection::output_t>(false), ',' ) << std::endl; return; }
     if(options.exists("--output-format")){std::cout<<comma::csv::format::value<plane_intersection::output_t>() << std::endl; return; }
     boost::optional<std::string> plane_option=options.optional<std::string>("--plane");
+    plane_t default_plane=comma::csv::ascii<plane_t>().get(options.optional<std::string>("--plane"));
+    line_t default_line=comma::csv::ascii<line_t>().get(options.optional<std::string>("--line"));
     if(plane_option && csv.fields.empty()) { csv.fields=comma::join( comma::csv::names<plane_intersection::line_t>(true), ','); }
-    run(csv, plane_option, options.exists( "--discard-collinear" ));
+    run(csv, plane_intersection::input_t(default_plane,default_line), options.exists( "--discard-collinear" ));
 }
 
-void plane_intersection::run( const comma::csv::options& csv_opt, boost::optional<std::string> plane_option, bool discard_collinear)
+void plane_intersection::run( const comma::csv::options& csv_opt, const plane_intersection::input_t& default_value, bool discard_collinear)
 {
-    plane_t plane = plane_option ? comma::csv::ascii<plane_t>().get(*plane_option) : plane_t();
-    comma::csv::input_stream<plane_intersection::input_t > is( std::cin, csv_opt, plane_intersection::input_t (plane));
+    comma::csv::input_stream<plane_intersection::input_t > is( std::cin, csv_opt, default_value);
     comma::csv::output_stream<plane_intersection::output_t> os( std::cout, csv_opt.binary() );
     comma::csv::tied<plane_intersection::input_t ,plane_intersection::output_t> tied(is,os);
     static const Eigen::Vector3d infinity( std::numeric_limits< double >::infinity(), std::numeric_limits< double >::infinity(), std::numeric_limits< double >::infinity() );

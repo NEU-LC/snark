@@ -1,0 +1,7 @@
+plane-intersection --line=0,0,0,1,1,1 --verbose
+first/x,first/y,first/z,plane/point/x,plane/point/y,plane/point/z,plane/normal/x,plane/normal/y,plane/normal/z
+0,0,0,0,0,1,0,0,1
+0,0,0,0,0,2,0,0,1
+.5,.5,0,0,0,3,0,0,1
+1,2,1,0,0,2,0,0,1
+1,2,1,0,0,1,0,0,1
