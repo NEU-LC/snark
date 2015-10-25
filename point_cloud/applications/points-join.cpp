@@ -39,6 +39,7 @@
 #include <comma/csv/traits.h>
 #include <comma/math/compare.h>
 #include <comma/name_value/parser.h>
+#include "../../math/geometry/triangle.h"
 #include "../../math/interval.h"
 #include "../../point_cloud/voxel_map.h"
 #include "../../visiting/eigen.h"
@@ -65,12 +66,14 @@ static void usage( bool more = false )
     exit( 0 );
 }
 
+// todo: add block field
 struct record
 { 
-    Eigen::Vector3d point;
+    Eigen::Vector3d value;
     std::string line;
-    record() : point( Eigen::Vector3d::Zero() ) {}
-    record( const Eigen::Vector3d& point, const std::string& line ) : point( point ), line( line ) {}
+    record() : value( Eigen::Vector3d::Zero() ) {}
+    record( const Eigen::Vector3d& value, const std::string& line ) : value( value ), line( line ) {}
+    boost::optional< Eigen::Vector3d > nearest_to( const Eigen::Vector3d& rhs ) const { return value; } // watch performance
 };
     
 int main( int ac, char** av )
@@ -118,7 +121,7 @@ int main( int ac, char** av )
         typedef std::vector< record* > voxel_t; // todo: is vector a good container? use deque
         typedef snark::voxel_map< voxel_t, 3 > grid_t;
         grid_t grid( extents.min(), resolution );
-        for( std::size_t i = 0; i < filter_points.size(); ++i ) { ( grid.touch_at( filter_points[i].point ) )->second.push_back( &filter_points[i] ); }
+        for( std::size_t i = 0; i < filter_points.size(); ++i ) { ( grid.touch_at( filter_points[i].value ) )->second.push_back( &filter_points[i] ); }
         if( verbose ) { std::cerr << "points-join: joining..." << std::endl; }
         comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, stdin_csv, Eigen::Vector3d::Zero() );
         #ifdef WIN32
@@ -144,7 +147,7 @@ int main( int ac, char** av )
                         if( it == grid.end() ) { continue; }
                         for( std::size_t k = 0; k < it->second.size(); ++k )
                         {
-                            double norm = ( *p - it->second[k]->point ).norm();
+                            double norm = ( *p - it->second[k]->value ).norm();
                             if( norm > radius ) { continue; }
                             if( all )
                             {
