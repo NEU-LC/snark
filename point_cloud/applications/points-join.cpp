@@ -39,7 +39,7 @@
 #include <comma/csv/traits.h>
 #include <comma/math/compare.h>
 #include <comma/name_value/parser.h>
-#include "../../math/geometry/triangle.h"
+#include "../../math/geometry/polygon.h"
 #include "../../math/interval.h"
 #include "../../point_cloud/voxel_map.h"
 #include "../../visiting/eigen.h"

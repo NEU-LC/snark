@@ -29,26 +29,62 @@
 
 /// @author vsevolod vlaskine
 
-#include <comma/math/compare.h>
-#include "triangle.h"
+#ifndef SNARK_MATH_GEOMETRY_POLYGON_
+#define SNARK_MATH_GEOMETRY_POLYGON_
+
+#include <Eigen/Core>
+#include <vector>
+#include <boost/array.hpp>
 
 namespace snark {
 
-Eigen::Vector3d triangle::normal() const
+/// planar convex polygon
+struct convex_polygon
 {
-    Eigen::Vector3d cross = ( corners[1] - corners[0] ).cross( corners[2] - corners[1] );
-    return cross / cross.norm();
-}
+    /// corners
+    std::vector< Eigen::Vector3d > corners;
     
-boost::optional< Eigen::Vector3d > triangle::nearest_to( const Eigen::Vector3d& rhs ) const
+    /// default constructor
+    convex_polygon() {}
+    
+    /// constructor
+    convex_polygon( const std::vector< Eigen::Vector3d >& corners ) : corners( corners ) {}
+    
+    /// normal to polygon plane
+    Eigen::Vector3d normal() const;
+    
+    /// return true, if planar and convex
+    bool is_valid() const;
+    
+    /// return projection of a point on the polygon plane
+    Eigen::Vector3d projection_of( const Eigen::Vector3d& rhs ) const;
+    
+    /// return true, if a point is inside of the polygon, borders included
+    bool includes( const Eigen::Vector3d& rhs ) const;
+};
+
+/// triangle, a convenience class, since it's so commonly used
+struct triangle
 {
-    const Eigen::Vector3d& n = normal();
-    double d = ( rhs - corners[0] ).dot( n );
-    const Eigen::Vector3d& p = rhs - n * d;
+    /// corners
+    boost::array< Eigen::Vector3d, 3 > corners;
     
-    // todo: check whether inside of the triangle
+    /// default constructor
+    triangle() {}
     
-    return boost::none;
-}
+    /// constructor
+    triangle( const Eigen::Vector3d& a, const Eigen::Vector3d& b, const Eigen::Vector3d& c ) { corners[0] = a; corners[1] = b; corners[2] = c; }
+    
+    /// normal to triangle plane
+    Eigen::Vector3d normal() const;
+    
+    /// return projection of a point on the triangle plane
+    Eigen::Vector3d projection_of( const Eigen::Vector3d& rhs ) const;
+    
+    /// return true, if a point is inside of the triangle, borders included
+    bool includes( const Eigen::Vector3d& rhs ) const;
+};
 
 } // namespace snark {
+    
+#endif // #ifndef SNARK_MATH_GEOMETRY_POLYGON_

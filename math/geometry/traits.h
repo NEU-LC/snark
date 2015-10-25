@@ -34,9 +34,15 @@
 
 #include <comma/visiting/traits.h>
 #include <snark/visiting/eigen.h>
-#include "triangle.h"
+#include "polygon.h"
 
 namespace comma { namespace visiting {
+
+template <> struct traits< snark::convex_polygon >
+{
+    template< typename K, typename V > static void visit( const K&, snark::convex_polygon& t, V& v ) { v.apply( "corners", t.corners ); }
+    template< typename K, typename V > static void visit( const K&, const snark::convex_polygon& t, V& v ) { v.apply( "corners", t.corners ); }
+};
 
 template <> struct traits< snark::triangle >
 {

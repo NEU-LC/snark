@@ -29,28 +29,52 @@
 
 /// @author vsevolod vlaskine
 
-#ifndef SNARK_MATH_GEOMETRY_TRIANGLE_
-#define SNARK_MATH_GEOMETRY_TRIANGLE_
-
-#include <Eigen/Core>
-#include <boost/array.hpp>
-#include <boost/optional.hpp>
+#include <comma/base/exception.h>
+#include <comma/math/compare.h>
+#include "polygon.h"
 
 namespace snark {
 
-struct triangle
+template < typename C > static Eigen::Vector3d normal_impl( const C& corners )
 {
-    boost::array< Eigen::Vector3d, 3 > corners;
+    Eigen::Vector3d cross = ( corners[1] - corners[0] ).cross( corners[2] - corners[1] );
+    return cross / cross.norm();
+}
+
+template < typename C > static Eigen::Vector3d projection_impl( const C& corners, const Eigen::Vector3d& rhs )
+{
+    const Eigen::Vector3d& n = normal_impl( corners );
+    double d = ( rhs - corners[0] ).dot( n );
+    return rhs - n * d;
+}
+
+template < typename C > static bool includes_impl( const C& corners, const Eigen::Vector3d& rhs )
+{
+    for( std::size_t i = 1; i < corners.size(); ++i ) { if( comma::math::less( ( corners[i] - corners[ i - 1 ] ).dot( rhs - corners[ i - 1 ] ), 0 ) ) { return false; } }
+    return !comma::math::less( ( corners[0] - corners.back() ).dot( rhs - corners.back() ), 0 );
+}
     
-    triangle() { corners[0] = corners[1] = corners[2] = Eigen::Vector3d::Zero(); }
+Eigen::Vector3d convex_polygon::normal() const { return normal_impl( corners ); }
+
+bool convex_polygon::is_valid() const
+{
+    if( corners.size() < 3 ) { return false; }
+    COMMA_THROW( comma::exception, "todo" );
+    for( std::size_t i = 1; i < corners.size(); ++i )
+    {
+        // todo
+    }
+    return true;
+}
     
-    triangle( const Eigen::Vector3d& a, const Eigen::Vector3d& b, const Eigen::Vector3d& c ) { corners[0] = a; corners[1] = b; corners[2] = c; }
-    
-    Eigen::Vector3d normal() const;
-    
-    boost::optional< Eigen::Vector3d > nearest_to( const Eigen::Vector3d& rhs ) const;
-};
+Eigen::Vector3d convex_polygon::projection_of( const Eigen::Vector3d& rhs ) const { return projection_impl( corners, rhs ); }
+
+bool convex_polygon::includes( const Eigen::Vector3d& rhs ) const { return includes_impl( corners, rhs ); }
+
+Eigen::Vector3d triangle::normal() const { return normal_impl( corners ); }
+
+Eigen::Vector3d triangle::projection_of( const Eigen::Vector3d& rhs ) const { return projection_impl( corners, rhs ); }
+
+bool triangle::includes( const Eigen::Vector3d& rhs ) const { return includes_impl( corners, rhs ); }
 
 } // namespace snark {
-    
-#endif // #ifndef SNARK_MATH_GEOMETRY_TRIANGLE_
