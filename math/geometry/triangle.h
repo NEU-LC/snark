@@ -41,8 +41,13 @@ namespace snark {
 struct triangle
 {
     boost::array< Eigen::Vector3d, 3 > corners;
+    
     triangle() { corners[0] = corners[1] = corners[2] = Eigen::Vector3d::Zero(); }
+    
     triangle( const Eigen::Vector3d& a, const Eigen::Vector3d& b, const Eigen::Vector3d& c ) { corners[0] = a; corners[1] = b; corners[2] = c; }
+    
+    Eigen::Vector3d normal() const;
+    
     boost::optional< Eigen::Vector3d > nearest_to( const Eigen::Vector3d& rhs ) const;
 };
 

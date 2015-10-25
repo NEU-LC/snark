@@ -29,13 +29,25 @@
 
 /// @author vsevolod vlaskine
 
+#include <comma/math/compare.h>
 #include "triangle.h"
 
 namespace snark {
 
+Eigen::Vector3d triangle::normal() const
+{
+    Eigen::Vector3d cross = ( corners[1] - corners[0] ).cross( corners[2] - corners[1] );
+    return cross / cross.norm();
+}
+    
 boost::optional< Eigen::Vector3d > triangle::nearest_to( const Eigen::Vector3d& rhs ) const
 {
-    // todo
+    const Eigen::Vector3d& n = normal();
+    double d = ( rhs - corners[0] ).dot( n );
+    const Eigen::Vector3d& p = rhs - n * d;
+    
+    // todo: check whether inside of the triangle
+    
     return boost::none;
 }
 
