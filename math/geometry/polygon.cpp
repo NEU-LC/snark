@@ -79,4 +79,12 @@ Eigen::Vector3d triangle::projection_of( const Eigen::Vector3d& rhs ) const { re
 
 bool triangle::includes( const Eigen::Vector3d& rhs ) const { return includes_impl( corners, rhs ); }
 
+double triangle::circumscribing_radius() const
+{
+    const Eigen::Vector3d& a = corners[1] - corners[0];
+    const Eigen::Vector3d& b = corners[2] - corners[1];
+    const Eigen::Vector3d& c = corners[0] - corners[2];
+    return a.norm() / ( std::sqrt( 1 - b.dot( c ) / ( b.squaredNorm() * c.squaredNorm() ) ) * 2 );
+}
+
 } // namespace snark {

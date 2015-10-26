@@ -93,6 +93,7 @@ struct triangle_record
 
 bool verbose;
 bool strict;
+double radius;
 comma::csv::options stdin_csv;
 comma::csv::options filter_csv;
 
@@ -122,12 +123,17 @@ template <> struct traits< snark::triangle >
     }
     static bool touch( grid_t& grid, const record_t& record )
     {
-        return false;
+        if( record.value.circumscribing_radius() > radius )
+        {
+            if( verbose || strict ) { std::cerr << "points-join: expected triangles that fit into voxels; got: " << std::endl << record.value.corners[0].transpose() << ";" << record.value.corners[1].transpose() << ";" << record.value.corners[2].transpose() << std::endl; }
+            return false;
+        }
         
-        // todo
-        
+        // todo: touch once per index
+        // typename grid_t::index_type i0 = grid.index_of( record.value.corners[0] );
         //( grid.touch_at( record.value ) )->second.push_back( &record );
-        //return true;
+
+        return true;
     }
 };
 
@@ -138,7 +144,7 @@ template < typename V > static int run( const comma::command_line_options& optio
     std::ifstream ifs( &filter_csv.filename[0] );
     if( !ifs.is_open() ) { std::cerr << "points-join: failed to open \"" << filter_csv.filename << "\"" << std::endl; }
     strict = options.exists( "--strict" );
-    double radius = options.value< double >( "--radius" );
+    radius = options.value< double >( "--radius" );
     bool all = options.exists( "--all" );
     Eigen::Vector3d resolution( radius, radius, radius );
     comma::csv::input_stream< V > ifstream( ifs, filter_csv, traits< V >::default_value() );
@@ -165,7 +171,7 @@ template < typename V > static int run( const comma::command_line_options& optio
     if( verbose ) { std::cerr << "points-join: loading " << filter_points.size() << " points into grid..." << std::endl; }
     typedef typename traits< V >::grid_t grid_t;
     grid_t grid( extents.min(), resolution );
-    for( std::size_t i = 0; i < filter_points.size(); ++i ) { traits< V >::touch( grid, filter_points[i] ); }
+    for( std::size_t i = 0; i < filter_points.size(); ++i ) { if( !traits< V >::touch( grid, filter_points[i] ) && strict ) { return 1; } }
     if( verbose ) { std::cerr << "points-join: joining..." << std::endl; }
     comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, stdin_csv, Eigen::Vector3d::Zero() );
     #ifdef WIN32
@@ -191,7 +197,7 @@ template < typename V > static int run( const comma::command_line_options& optio
                     if( it == grid.end() ) { continue; }
                     for( std::size_t k = 0; k < it->second.size(); ++k )
                     {
-                        boost::optional< Eigen::Vector3d > q = it->second[k]->nearest_to( *p );
+                        boost::optional< Eigen::Vector3d > q = it->second[k]->nearest_to( *p ); // todo: fix! currently, visiting each triangle 3 times
                         if( !q ) { continue; }
                         double norm = ( *p - *q ).norm();
                         if( norm > radius ) { continue; }
