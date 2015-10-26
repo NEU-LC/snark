@@ -1,5 +1,5 @@
 // This file is part of snark, a generic and flexible library for robotics research
-// Copyright (c) 2011 The University of Sydney
+// Copyright (c) 2014 The University of Sydney
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -29,22 +29,62 @@
 
 /// @author vsevolod vlaskine
 
-#ifndef SNARK_NAVIGATION_NMEA_MESSAGE_H_
-#define SNARK_NAVIGATION_NMEA_MESSAGE_H_
+#ifndef SNARK_MATH_GEOMETRY_POLYGON_
+#define SNARK_MATH_GEOMETRY_POLYGON_
 
-#include <string>
+#include <Eigen/Core>
+#include <vector>
+#include <boost/array.hpp>
 
-namespace snark { namespace nmea {
+namespace snark {
 
-template < typename T >
-struct message
+/// planar convex polygon
+struct convex_polygon
 {
-    typedef T value_type;
+    /// corners
+    std::vector< Eigen::Vector3d > corners;
     
-    std::string type;
-    value_type value;
+    /// default constructor
+    convex_polygon() {}
+    
+    /// constructor
+    convex_polygon( const std::vector< Eigen::Vector3d >& corners ) : corners( corners ) {}
+    
+    /// normal to polygon plane
+    Eigen::Vector3d normal() const;
+    
+    /// return true, if planar and convex
+    bool is_valid() const;
+    
+    /// return projection of a point on the polygon plane
+    Eigen::Vector3d projection_of( const Eigen::Vector3d& rhs ) const;
+    
+    /// return true, if a point is inside of the polygon, borders included
+    bool includes( const Eigen::Vector3d& rhs ) const;
 };
-    
-} } // namespace snark { namespace nmea {
 
-#endif // SNARK_NAVIGATION_NMEA_MESSAGE_H_
+/// triangle, a convenience class, since it's so commonly used
+struct triangle
+{
+    /// corners
+    boost::array< Eigen::Vector3d, 3 > corners;
+    
+    /// default constructor
+    triangle() { corners[0] = corners[1] = corners[2] = Eigen::Vector3d::Zero(); }
+    
+    /// constructor
+    triangle( const Eigen::Vector3d& a, const Eigen::Vector3d& b, const Eigen::Vector3d& c ) { corners[0] = a; corners[1] = b; corners[2] = c; }
+    
+    /// normal to triangle plane
+    Eigen::Vector3d normal() const;
+    
+    /// return projection of a point on the triangle plane
+    Eigen::Vector3d projection_of( const Eigen::Vector3d& rhs ) const;
+    
+    /// return true, if a point is inside of the triangle, borders included
+    bool includes( const Eigen::Vector3d& rhs ) const;
+};
+
+} // namespace snark {
+    
+#endif // #ifndef SNARK_MATH_GEOMETRY_POLYGON_

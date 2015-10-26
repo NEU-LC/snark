@@ -81,7 +81,7 @@ static void usage( bool verbose )
               << std::endl
               << "options" << std::endl
               << "    --help,-h: show help; --help --verbose: more help" << std::endl
-              << "    --output: input options if image has no header (see --help --verbose)" << std::endl
+              << "    --output: output options, same as --input for image-to-csv or cv-cat (see --help --verbose)" << std::endl
               << "    --verbose,-v: more output" << std::endl
               << std::endl
               << "fields: t,x,y,r,g,b,block or t,x,y,grey,block" << std::endl

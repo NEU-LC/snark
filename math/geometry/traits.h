@@ -1,5 +1,5 @@
 // This file is part of snark, a generic and flexible library for robotics research
-// Copyright (c) 2014 The University of Sydney
+// Copyright (c) 2011 The University of Sydney
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -27,48 +27,29 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/// @author abdallah kassir
+/// @author vsevolod vlaskine
 
-#ifndef SNARK_MATH_GEOMETRY_POLYTOPE_
-#define SNARK_MATH_GEOMETRY_POLYTOPE_
+#ifndef SNARK_MATH_GEOMETRY_TRAITS_H_
+#define SNARK_MATH_GEOMETRY_TRAITS_H_
 
-#include <Eigen/Core>
-#include <vector>
+#include <comma/visiting/traits.h>
+#include <snark/visiting/eigen.h>
+#include "polygon.h"
 
-namespace snark{ namespace geometry{
+namespace comma { namespace visiting {
 
-/// convex_polytope is used to check if a point is inside a convex polytope
-/// The constructor is given a convex polytope specified by a set of half-spaces. Several constructor methods exist.
-/// The class works for any dimension (as long as it makes sense and your computer can handle it).
-/// See test for a usage example.
-
-class convex_polytope
+template <> struct traits< snark::convex_polygon >
 {
-public:
-    /// @param normals to the planes
-    /// @param offsets from the origins to the planes
-    convex_polytope( const std::vector< Eigen::VectorXd >& normals, const std::vector< double >& offsets );
-    
-    /// @param normals to the planes
-    /// @param offsets from the origins to the planes
-    convex_polytope( const Eigen::MatrixXd& normals, const Eigen::VectorXd& offsets );
-    
-    /// @param planes normals and offsets concatenated into one matrix
-    convex_polytope( const Eigen::MatrixXd& planes );
-
-    /// @return true, if point is inside of the polytope with a given tolerance
-    bool has( const Eigen::VectorXd& x);
-    
-    const Eigen::MatrixXd& normals() const;
-    
-    const Eigen::VectorXd& offsets() const;
-    
-private:
-    //polytope defined by the set of inequalities: Ax>=b
-    Eigen::MatrixXd normals_; //A
-    Eigen::VectorXd offsets_; //b
+    template< typename K, typename V > static void visit( const K&, snark::convex_polygon& t, V& v ) { v.apply( "corners", t.corners ); }
+    template< typename K, typename V > static void visit( const K&, const snark::convex_polygon& t, V& v ) { v.apply( "corners", t.corners ); }
 };
 
-}} // namespace snark{ namepsace geometry{
+template <> struct traits< snark::triangle >
+{
+    template< typename K, typename V > static void visit( const K&, snark::triangle& t, V& v ) { v.apply( "corners", t.corners ); }
+    template< typename K, typename V > static void visit( const K&, const snark::triangle& t, V& v ) { v.apply( "corners", t.corners ); }
+};
 
-#endif // SNARK_MATH_GEOMETRY_POLYTOPE_
+} } // namespace comma { namespace visiting {
+
+#endif // #ifndef SNARK_MATH_GEOMETRY_TRAITS_H_
