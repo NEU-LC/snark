@@ -378,7 +378,8 @@ ENDIF( snark_build_web )
 
 # Package
 #the following set up optional parameters for cpack
-SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "This is a description of snark. It's great!")
+SET(CPACK_PACKAGE_NAME "snark")
+SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Snark contains various libraries and utilities for interacting with robots and working with sensor data.")
 SET(CPACK_PACKAGE_VENDOR "ACFR")
 SET(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/COPYING")
 SET(CPACK_PACKAGE_VERSION_MAJOR "1")
