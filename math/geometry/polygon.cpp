@@ -29,6 +29,7 @@
 
 /// @author vsevolod vlaskine
 
+#include <Eigen/Geometry>
 #include <comma/base/exception.h>
 #include <comma/math/compare.h>
 #include "polygon.h"
@@ -37,7 +38,7 @@ namespace snark {
 
 template < typename C > static Eigen::Vector3d normal_impl( const C& corners )
 {
-    Eigen::Vector3d cross = ( corners[1] - corners[0] ).cross( corners[2] - corners[1] );
+    const Eigen::Vector3d& cross = ( corners[1] - corners[0] ).cross( corners[2] - corners[1] );
     return cross / cross.norm();
 }
 

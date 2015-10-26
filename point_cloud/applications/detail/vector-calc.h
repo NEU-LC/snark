@@ -1,4 +1,5 @@
-#pragma once
+#ifndef DETAIL_VECTOR_CALC_H
+#define DETAIL_VECTOR_CALC_H
 #include <iostream>
 #include <comma/csv/stream.h>
 #include <snark/visiting/eigen.h>
@@ -335,3 +336,4 @@ template <> struct traits< vector_calc::scalar >
 
 } } // namespace comma { namespace visiting {
     
+#endif

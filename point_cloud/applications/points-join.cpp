@@ -40,6 +40,7 @@
 #include <comma/math/compare.h>
 #include <comma/name_value/parser.h>
 #include "../../math/geometry/polygon.h"
+#include "../../math/geometry/traits.h"
 #include "../../math/interval.h"
 #include "../../point_cloud/voxel_map.h"
 #include "../../visiting/eigen.h"
@@ -90,23 +91,45 @@ struct triangle_record
     } 
 };
 
+bool verbose;
+bool strict;
+comma::csv::options stdin_csv;
+comma::csv::options filter_csv;
+
 template < typename V > struct traits;
 
 template <> struct traits< Eigen::Vector3d >
 {
     typedef record record_t;
+    typedef std::vector< const record_t* > voxel_t; // todo: is vector a good container? use deque
+    typedef snark::voxel_map< voxel_t, 3 > grid_t;
     static Eigen::Vector3d default_value() { return Eigen::Vector3d::Zero(); }
+    static void set_hull( snark::math::closed_interval< double, 3 >& extents, const Eigen::Vector3d& p ) { extents.set_hull( p ); }
+    static bool touch( grid_t& grid, const record_t& record ) { ( grid.touch_at( record.value ) )->second.push_back( &record ); return true; }
 };
 
 template <> struct traits< snark::triangle >
 {
     typedef triangle_record record_t;
+    typedef std::vector< const record_t* > voxel_t; // todo: is vector a good container? use deque
+    typedef snark::voxel_map< voxel_t, 3 > grid_t;
     static snark::triangle default_value() { return snark::triangle(); }
+    static void set_hull( snark::math::closed_interval< double, 3 >& extents, const snark::triangle& t )
+    { 
+        extents.set_hull( t.corners[0] );
+        extents.set_hull( t.corners[1] );
+        extents.set_hull( t.corners[2] );
+    }
+    static bool touch( grid_t& grid, const record_t& record )
+    {
+        return false;
+        
+        // todo
+        
+        //( grid.touch_at( record.value ) )->second.push_back( &record );
+        //return true;
+    }
 };
-
-bool verbose;
-comma::csv::options stdin_csv;
-comma::csv::options filter_csv;
 
 template < typename V > static int run( const comma::command_line_options& options )
 {
@@ -114,7 +137,7 @@ template < typename V > static int run( const comma::command_line_options& optio
     typedef typename traits< V >::record_t filter_record_t;
     std::ifstream ifs( &filter_csv.filename[0] );
     if( !ifs.is_open() ) { std::cerr << "points-join: failed to open \"" << filter_csv.filename << "\"" << std::endl; }
-    bool strict = options.exists( "--strict" );
+    strict = options.exists( "--strict" );
     double radius = options.value< double >( "--radius" );
     bool all = options.exists( "--all" );
     Eigen::Vector3d resolution( radius, radius, radius );
@@ -137,13 +160,12 @@ template < typename V > static int run( const comma::command_line_options& optio
             line = comma::join( ifstream.ascii().last(), filter_csv.delimiter );
         }
         filter_points.push_back( filter_record_t( *p, line ) );
-        extents.set_hull( *p );
+        traits< V >::set_hull( extents, *p );
     }
     if( verbose ) { std::cerr << "points-join: loading " << filter_points.size() << " points into grid..." << std::endl; }
-    typedef std::vector< filter_record_t* > voxel_t; // todo: is vector a good container? use deque
-    typedef snark::voxel_map< voxel_t, 3 > grid_t;
+    typedef typename traits< V >::grid_t grid_t;
     grid_t grid( extents.min(), resolution );
-    for( std::size_t i = 0; i < filter_points.size(); ++i ) { ( grid.touch_at( filter_points[i].value ) )->second.push_back( &filter_points[i] ); }
+    for( std::size_t i = 0; i < filter_points.size(); ++i ) { traits< V >::touch( grid, filter_points[i] ); }
     if( verbose ) { std::cerr << "points-join: joining..." << std::endl; }
     comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, stdin_csv, Eigen::Vector3d::Zero() );
     #ifdef WIN32
@@ -157,7 +179,7 @@ template < typename V > static int run( const comma::command_line_options& optio
         if( !p ) { break; }
         typename grid_t::index_type index = grid.index_of( *p );
         typename grid_t::index_type i;
-        filter_record_t* nearest = NULL;
+        const filter_record_t* nearest = NULL;
         double distance = 0;
         for( i[0] = index[0] - 1; i[0] < index[0] + 2; ++i[0] )
         {
@@ -236,15 +258,13 @@ int main( int ac, char** av )
         if( unnamed.size() > 1 ) { std::cerr << "points-join: expected one file or stream to join, got " << comma::join( unnamed, ' ' ) << std::endl; return 1; }
         comma::name_value::parser parser( "filename", ';', '=', false );
         filter_csv = parser.get< comma::csv::options >( unnamed[0] );
+        filter_csv.full_xpath = true;
         if( stdin_csv.binary() && !filter_csv.binary() ) { std::cerr << "points-join: stdin stream binary and filter stream ascii: this combination is not supported" << std::endl; return 1; }
-        
-        
-        
-        // todo
-        
-        
-        
-        return run< Eigen::Vector3d >( options );
+        const std::vector< std::string >& v = comma::split( filter_csv.fields, ',' );
+        bool filter_triangulated = false;
+        for( unsigned int i = 0; !filter_triangulated && i < v.size(); ++i ) { filter_triangulated = v[i].substr( 0, ::strlen( "corners" ) ) == "corners"; }
+        return filter_triangulated ? run< snark::triangle >( options )
+                                   : run< Eigen::Vector3d >( options );
     }
     catch( std::exception& ex ) { std::cerr << "points-join: " << ex.what() << std::endl; }
     catch( ... ) { std::cerr << "points-join: unknown exception" << std::endl; }

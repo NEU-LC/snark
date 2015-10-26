@@ -218,8 +218,8 @@ if( snark_build_graphics )
 endif( snark_build_graphics )
 
 if( snark_build_math_geometry )
-    SET( snark_ALL_LIBRARIES ${snark_ALL_LIBRARIES} debug snark_geometry-d
-                             optimized snark_geometry )
+    SET( snark_ALL_LIBRARIES ${snark_ALL_LIBRARIES} debug snark_math_geometry-d
+                             optimized snark_math_geometry )
 endif( snark_build_math_geometry )
 
 if( snark_build_point_cloud )
