@@ -81,14 +81,15 @@ struct pinhole
     };
     
     //call after parameters are loaded
-    void init(bool verbose);
+    void init();
 
     
-    /// focal length in metres
+    /// focal length in metres (if sensor_size is empty then focal length is effectively in pixels) TODO change config or something
     double focal_length;
+    //quick and dirty: if sensor_size is empty we are taking pixel size to be 1 meter !?
 
     /// sensor size in metres
-    Eigen::Vector2d sensor_size;
+    boost::optional<Eigen::Vector2d> sensor_size;
     
     /// image size in pixels
     Eigen::Vector2i image_size;
@@ -100,12 +101,12 @@ struct pinhole
     distortion_t distortion;
     
     /// default constructor
-    pinhole() : focal_length( 0 ), sensor_size( Eigen::Vector2d::Zero() ), image_size( Eigen::Vector2i::Zero() ), principal_point( Eigen::Vector2d::Zero() ) {}
+    pinhole();
     
-    /// return pixel size in metres
+    /// return pixel size in metres or 1,1 if sensor_size is empty
     Eigen::Vector2d pixel_size() const;
     
-    /// return image centre in pixels
+    /// return principal_point or if empty returns half image size in pixels
     Eigen::Vector2d image_centre() const;
     
     /// return radially corrected pixel
@@ -121,7 +122,7 @@ struct pinhole
     Eigen::Vector3d to_cartesian( const Eigen::Vector2d& p, bool undistort = true ) const;
 
     //returns converts from camera frame to image pixel col,row
-    Eigen::Vector2d to_pixel( const Eigen::Vector3d& p, bool distort = true );
+    Eigen::Vector2d to_pixel( const Eigen::Vector3d& p);
     
     /// load distortion map from file
     distortion_t::map_t load_distortion_map() const;
@@ -134,6 +135,9 @@ struct pinhole
     
     //build distortion map from parameters and output to std::cout
     void output_distortion_map(std::ostream& os) const;
+    
+    //print camera config help to std::cerr (in usage format)
+    static void usage();
 };
 
 } } // namespace snark { namespace camera {
