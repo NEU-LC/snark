@@ -28,8 +28,8 @@ struct plane_intersection
     };
     struct input_t
     {
-        line_t line;
         plane_t plane;
+        line_t line;
         input_t() { }
         input_t(const plane_t& p):plane(p) { }
         input_t(const plane_t& p, const line_t& l):plane(p),line(l) { }
