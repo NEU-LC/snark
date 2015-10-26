@@ -36,6 +36,7 @@
 #include <comma/name_value/serialize.h>
 #include "../camera/pinhole.h"
 #include "../camera/traits.h"
+#include <comma/application/verbose.h>
 
 static bool verbose=false;
 
@@ -64,24 +65,7 @@ void usage( bool verbose )
     std::cerr << "    --output-format: output appended fields binary format for given operation and exit" << std::endl;
     std::cerr << "    --verbose,-v: more output" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "camera config: for a sample, try image-pinhole --output-config" << std::endl;
-    std::cerr << "    sensor_size/x: sensor width, meters" << std::endl;
-    std::cerr << "    sensor_size/y: sensor height, m, meters" << std::endl;
-    std::cerr << "    image_size/x: image width, pixels" << std::endl;
-    std::cerr << "    image_size/y: image height, pixels" << std::endl;
-    std::cerr << "    focal_length: focal length, meters" << std::endl;
-    std::cerr << "    principal_point/x: image centre, pixels, default: geometrical image centre" << std::endl;
-    std::cerr << "        principal_point/x" << std::endl;
-    std::cerr << "        principal_point/y" << std::endl;
-    std::cerr << "    distortion parameters" << std::endl;
-    std::cerr << "        distortion/radial/k1" << std::endl;
-    std::cerr << "        distortion/radial/k2" << std::endl;
-    std::cerr << "        distortion/radial/k3" << std::endl;
-    std::cerr << "        distortion/tangential/p1" << std::endl;
-    std::cerr << "        distortion/tangential/p2" << std::endl;
-    std::cerr << "        distortion/map=<filename>: distortion map as two concatenated binary distortion maps for x and y" << std::endl;
-    std::cerr << "                                   each map is matrix of floats of size image_size/x X image_size/y" << std::endl;
-    std::cerr << std::endl;
+    snark::camera::pinhole::usage();
     if( verbose ) { std::cerr << comma::csv::options::usage() << std::endl; }
     exit( 0 );
 }
@@ -110,8 +94,7 @@ static snark::camera::pinhole make_pinhole( const std::string& config_parameters
         comma::from_ptree from_ptree( p, true );
         comma::visiting::apply( from_ptree ).to( pinhole );
     }
-    if( !pinhole.principal_point ) { pinhole.principal_point = pinhole.image_centre(); }
-    pinhole.init(verbose);
+    pinhole.init();
     return pinhole;
 }
 
@@ -122,7 +105,7 @@ int main( int ac, char** av )
         comma::command_line_options options( ac, av, usage );
         verbose=options.exists("--verbose");
         if( options.exists( "--output-config,--sample-config" ) ) { comma::write_json( snark::camera::pinhole(), std::cout ); return 0; }
-        const std::vector< std::string >& unnamed = options.unnamed( "--input-fields,--output-fields,--output-format,--verbose,-v", "-.*" );
+        const std::vector< std::string >& unnamed = options.unnamed( "--input-fields,--output-fields,--output-format,--verbose,-v,--keep,--dont-distort", "-.*" );
         if( unnamed.empty() ) { std::cerr << "image-pinhole: please specify operation" << std::endl; return 1; }
         std::string operation = unnamed[0];
         output_details< Eigen::Vector2d, Eigen::Vector3d >( operation, "to-cartesian", options );
@@ -150,6 +133,7 @@ int main( int ac, char** av )
             comma::csv::output_stream< Eigen::Vector2d > os( std::cout, csv.binary() );
             comma::csv::tied< Eigen::Vector3d, Eigen::Vector2d > tied( is, os );
             bool keep = options.exists("--keep");
+            bool distort = !options.exists("--dont-distort");   //for debugging purposes only
             while( is.ready() || std::cin.good() )
             {
                 const Eigen::Vector3d* p = is.read();
@@ -157,7 +141,7 @@ int main( int ac, char** av )
                 Eigen::Vector2d pixel=pinhole.to_pixel(*p);
                 if ( keep || (pixel.x()>=0 && pixel.x()< pinhole.image_size.x() && pixel.y()>=0 && pixel.y()<pinhole.image_size.y()) )
                 {
-                    tied.append( pixel );
+                    tied.append( distort ? pinhole.distort(pixel) : pixel );
                     //else discard
                 }
             }

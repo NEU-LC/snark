@@ -32,6 +32,7 @@
 #include <Eigen/Geometry>
 #include <comma/base/exception.h>
 #include <comma/math/compare.h>
+#include <Eigen/Eigen>
 #include "polygon.h"
 
 namespace snark {
