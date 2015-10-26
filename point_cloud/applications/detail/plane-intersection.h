@@ -1,4 +1,5 @@
-#pragma once
+#ifndef DETAIL_PLANE_INTERSECTION_H
+#define DETAIL_PLANE_INTERSECTION_H
 #include <iostream>
 #include <comma/csv/stream.h>
 #include <comma/base/exception.h>
@@ -159,3 +160,4 @@ void plane_intersection::run( const comma::csv::options& csv_opt, const plane_in
         tied.append( (u/d) * rec->line.direction() + rec->line.points.first );
     }
 }
+#endif

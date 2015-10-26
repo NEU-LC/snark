@@ -29,6 +29,7 @@
 
 /// @author vsevolod vlaskine
 
+#include <Eigen/Geometry>
 #include <comma/base/exception.h>
 #include <comma/math/compare.h>
 #include <Eigen/Eigen>
@@ -38,7 +39,7 @@ namespace snark {
 
 template < typename C > static Eigen::Vector3d normal_impl( const C& corners )
 {
-    Eigen::Vector3d cross = ( corners[1] - corners[0] ).cross( corners[2] - corners[1] );
+    const Eigen::Vector3d& cross = ( corners[1] - corners[0] ).cross( corners[2] - corners[1] );
     return cross / cross.norm();
 }
 
@@ -77,5 +78,13 @@ Eigen::Vector3d triangle::normal() const { return normal_impl( corners ); }
 Eigen::Vector3d triangle::projection_of( const Eigen::Vector3d& rhs ) const { return projection_impl( corners, rhs ); }
 
 bool triangle::includes( const Eigen::Vector3d& rhs ) const { return includes_impl( corners, rhs ); }
+
+double triangle::circumscribing_radius() const
+{
+    const Eigen::Vector3d& a = corners[1] - corners[0];
+    const Eigen::Vector3d& b = corners[2] - corners[1];
+    const Eigen::Vector3d& c = corners[0] - corners[2];
+    return a.norm() / ( std::sqrt( 1 - b.dot( c ) / ( b.squaredNorm() * c.squaredNorm() ) ) * 2 );
+}
 
 } // namespace snark {

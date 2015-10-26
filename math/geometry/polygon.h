@@ -83,6 +83,9 @@ struct triangle
     
     /// return true, if a point is inside of the triangle, borders included
     bool includes( const Eigen::Vector3d& rhs ) const;
+    
+    /// return circumscribing radius
+    double circumscribing_radius() const;
 };
 
 } // namespace snark {

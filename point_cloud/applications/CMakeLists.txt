@@ -14,7 +14,7 @@ ADD_EXECUTABLE( points-to-voxel-indices points-to-voxel-indices.cpp )
 IF( snark_build_math_geometry )
     IF( NOT WIN32 )
         ADD_EXECUTABLE( points-grep points-grep.cpp )
-        TARGET_LINK_LIBRARIES( points-grep snark_geometry snark_math ${comma_ALL_LIBRARIES} boost_filesystem )
+        TARGET_LINK_LIBRARIES( points-grep snark_math_geometry snark_math ${comma_ALL_LIBRARIES} boost_filesystem )
         INSTALL( TARGETS points-grep RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
     ENDIF( NOT WIN32 )
 ENDIF( snark_build_math_geometry )
@@ -50,7 +50,7 @@ TARGET_LINK_LIBRARIES( points-calc snark_math snark_point_cloud ${comma_ALL_LIBR
 INSTALL( TARGETS points-calc RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
 
 ADD_EXECUTABLE( points-join points-join.cpp )
-TARGET_LINK_LIBRARIES( points-join snark_math snark_point_cloud ${comma_ALL_LIBRARIES} ${snark_ALL_EXTERNAL_LIBRARIES} )
+TARGET_LINK_LIBRARIES( points-join snark_math snark_math_geometry snark_point_cloud ${comma_ALL_LIBRARIES} ${snark_ALL_EXTERNAL_LIBRARIES} )
 INSTALL( TARGETS points-join RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
 
 add_executable( points-rays points-rays.cpp )

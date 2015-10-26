@@ -29,7 +29,6 @@
 
 #include <gtest/gtest.h>
 #include "../spherical_geometry/ellipsoid.h"
-#include <boost/graph/graph_concepts.hpp>
 #include <cstdlib>
 #include <iostream>
 
