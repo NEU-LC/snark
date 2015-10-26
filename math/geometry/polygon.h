@@ -70,7 +70,7 @@ struct triangle
     boost::array< Eigen::Vector3d, 3 > corners;
     
     /// default constructor
-    triangle() {}
+    triangle() { corners[0] = corners[1] = corners[2] = Eigen::Vector3d::Zero(); }
     
     /// constructor
     triangle( const Eigen::Vector3d& a, const Eigen::Vector3d& b, const Eigen::Vector3d& c ) { corners[0] = a; corners[1] = b; corners[2] = c; }
