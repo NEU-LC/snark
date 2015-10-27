@@ -60,12 +60,37 @@ static void usage( bool more = false )
     std::cerr << "    --radius=<radius>: lookup radius" << std::endl;
     std::cerr << "    --strict: exit, if nearest point not found" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "fields: x,y,z" << std::endl;
+    std::cerr << "points filter (default): for each input point find the nearest point of the filter in given radius" << std::endl;
+    std::cerr << "    input: points; fields: x,y,z" << std::endl;
+    std::cerr << "    filter: points; fields: x,y,z" << std::endl;
+    std::cerr << "    output: concatenated input and corresponding line of filter" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "triangulated filter: for each input point find the nearest triangle of the filter, if any, in given radius; i.e." << std::endl;
+    std::cerr << "                     nearest point of a triangle is the input point projection onto the triangle plane" << std::endl;
+    std::cerr << "                     if the projection is inside of the triangle, border included" << std::endl;
+    std::cerr << "    input: points; fields: x,y,z" << std::endl;
+    std::cerr << "    filter: triangles; fields: corners; or corners[0],corners[1],corners[2]; or corners[0]/x,or corners[0]/y,or corners[0]/z etc" << std::endl;
+    std::cerr << "    output: concatenated input, corresponding line of filter, and nearest point of triangle (3d in binary)" << std::endl;
+    std::cerr << "    options" << std::endl;
+    std::cerr << "        --face-depth=<distance>: how deep behind the triangle the point is allowed to be (otherwise it's discarded)" << std::endl;
+    std::cerr << "                                 default: 0, i.e. input points behind the triangle will be discarded" << std::endl;
+    std::cerr << "                                 triangle front is defined by direction of triangle normal" << std::endl;
+    std::cerr << "                                 triangle normal is derived from the order of corners in the record and right-hand screw rule" << std::endl;
     std::cerr << std::endl;
     std::cerr << "todo: add support for block field" << std::endl;
     std::cerr << std::endl;
+    if( more ) { std::cerr << "csv options" << std::endl << comma::csv::options::usage() << std::endl << std::endl; }
+    std::cerr << "examples: todo" << std::endl;
+    std::cerr << std::endl;
     exit( 0 );
 }
+
+bool verbose;
+bool strict;
+double radius;
+double face_depth;
+comma::csv::options stdin_csv;
+comma::csv::options filter_csv;
 
 // todo: add block field
 struct record
@@ -84,18 +109,12 @@ struct triangle_record
     std::string line;
     triangle_record() {}
     triangle_record( const snark::triangle& value, const std::string& line ) : value( value ), line( line ) {}
-    boost::optional< Eigen::Vector3d > nearest_to( const Eigen::Vector3d& rhs ) const // watch performance
+    boost::optional< Eigen::Vector3d > nearest_to( const Eigen::Vector3d& rhs ) const // quick and dirty, watch performance
     {
         boost::optional< Eigen::Vector3d > p = value.projection_of( rhs );
-        return value.includes( *p ) ? p : boost::none;
+        return value.includes( *p ) && !comma::math::less( value.normal().dot( rhs - *p ), face_depth ) ? p : boost::none;
     } 
 };
-
-bool verbose;
-bool strict;
-double radius;
-comma::csv::options stdin_csv;
-comma::csv::options filter_csv;
 
 template < typename V > struct traits;
 
@@ -107,6 +126,20 @@ template <> struct traits< Eigen::Vector3d >
     static Eigen::Vector3d default_value() { return Eigen::Vector3d::Zero(); }
     static void set_hull( snark::math::closed_interval< double, 3 >& extents, const Eigen::Vector3d& p ) { extents.set_hull( p ); }
     static bool touch( grid_t& grid, const record_t& record ) { ( grid.touch_at( record.value ) )->second.push_back( &record ); return true; }
+    template < typename S > static void output( const S& istream, const record_t& nearest, const Eigen::Vector3d& nearest_point )
+    {
+        if( stdin_csv.binary() ) // quick and dirty
+        {
+            std::cout.write( istream.binary().last(), stdin_csv.format().size() );
+            std::cout.write( &nearest.line[0], filter_csv.format().size() );
+        }
+        else
+        {
+            std::cout << comma::join( istream.ascii().last(), stdin_csv.delimiter ) << stdin_csv.delimiter;
+            if( filter_csv.binary() ) { std::cout << filter_csv.format().bin_to_csv( &nearest.line[0], stdin_csv.delimiter, stdin_csv.precision ) << std::endl; }
+            else { std::cout << nearest.line << std::endl; }
+        }
+    }
 };
 
 template <> struct traits< snark::triangle >
@@ -136,6 +169,25 @@ template <> struct traits< snark::triangle >
         if( i2 != i0 && i2 != i1 ) { i2->second.push_back( &record ); }
         return true;
     }
+    template < typename S > static void output( const S& istream, const record_t& nearest, const Eigen::Vector3d& nearest_point )
+    {
+        if( stdin_csv.binary() ) // quick and dirty
+        {
+            std::cout.write( istream.binary().last(), stdin_csv.format().size() );
+            std::cout.write( &nearest.line[0], filter_csv.format().size() );
+            static comma::csv::binary< Eigen::Vector3d > b;
+            static std::vector< char > buf( b.format().size() );
+            b.put( nearest_point, &buf[0] );
+            std::cout.write( &buf[0], buf.size() );
+        }
+        else
+        {
+            std::cout << comma::join( istream.ascii().last(), stdin_csv.delimiter ) << stdin_csv.delimiter;
+            if( filter_csv.binary() ) { std::cout << filter_csv.format().bin_to_csv( &nearest.line[0], stdin_csv.delimiter, stdin_csv.precision ); }
+            else { std::cout << nearest.line; }
+            std::cout << stdin_csv.delimiter << nearest_point.x() << stdin_csv.delimiter << nearest_point.y() << stdin_csv.delimiter << nearest_point.z() << std::endl;
+        }
+    }
 };
 
 template < typename V > static int run( const comma::command_line_options& options )
@@ -146,6 +198,7 @@ template < typename V > static int run( const comma::command_line_options& optio
     if( !ifs.is_open() ) { std::cerr << "points-join: failed to open \"" << filter_csv.filename << "\"" << std::endl; }
     strict = options.exists( "--strict" );
     radius = options.value< double >( "--radius" );
+    face_depth = options.value< double >( "--face-depth", 0 );
     bool all = options.exists( "--all" );
     Eigen::Vector3d resolution( radius, radius, radius );
     comma::csv::input_stream< V > ifstream( ifs, filter_csv, traits< V >::default_value() );
@@ -169,15 +222,16 @@ template < typename V > static int run( const comma::command_line_options& optio
         filter_points.push_back( filter_record_t( *p, line ) );
         traits< V >::set_hull( extents, *p );
     }
-    if( verbose ) { std::cerr << "points-join: loading " << filter_points.size() << " points into grid..." << std::endl; }
+    if( verbose ) { std::cerr << "points-join: loading " << filter_points.size() << " records into grid..." << std::endl; }
     typedef typename traits< V >::grid_t grid_t;
     grid_t grid( extents.min(), resolution );
     for( std::size_t i = 0; i < filter_points.size(); ++i ) { if( !traits< V >::touch( grid, filter_points[i] ) && strict ) { return 1; } }
     if( verbose ) { std::cerr << "points-join: joining..." << std::endl; }
     comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, stdin_csv, Eigen::Vector3d::Zero() );
     #ifdef WIN32
-    _setmode( _fileno( stdout ), _O_BINARY );
+    if( stdin_csv.binary() ) { _setmode( _fileno( stdout ), _O_BINARY ); }
     #endif
+    if( !stdin_csv.binary() ) { std::cout.precision( stdin_csv.precision ); }
     std::size_t count = 0;
     std::size_t discarded = 0;
     while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
@@ -187,6 +241,7 @@ template < typename V > static int run( const comma::command_line_options& optio
         typename grid_t::index_type index = grid.index_of( *p );
         typename grid_t::index_type i;
         const filter_record_t* nearest = NULL;
+        Eigen::Vector3d nearest_point;
         double distance = 0;
         for( i[0] = index[0] - 1; i[0] < index[0] + 2; ++i[0] )
         {
@@ -220,6 +275,7 @@ template < typename V > static int run( const comma::command_line_options& optio
                         {
                             if( nearest && distance < norm ) { continue; }
                             nearest = it->second[k];
+                            nearest_point = *q;
                             distance = norm;
                         }
                     }
@@ -235,17 +291,7 @@ template < typename V > static int run( const comma::command_line_options& optio
                 ++discarded;
                 continue;
             }
-            if( stdin_csv.binary() ) // quick and dirty
-            {
-                std::cout.write( istream.binary().last(), stdin_csv.format().size() );
-                std::cout.write( &nearest->line[0], filter_csv.format().size() );
-            }
-            else
-            {
-                std::cout << comma::join( istream.ascii().last(), stdin_csv.delimiter ) << stdin_csv.delimiter;
-                if( filter_csv.binary() ) { std::cout << filter_csv.format().bin_to_csv( &nearest->line[0], stdin_csv.delimiter, stdin_csv.precision ) << std::endl; }
-                else { std::cout << nearest->line << std::endl; }
-            }
+            traits< V >::output( istream, *nearest, nearest_point );
         }
         ++count;
     }

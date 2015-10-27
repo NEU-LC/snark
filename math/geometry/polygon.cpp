@@ -32,30 +32,41 @@
 #include <Eigen/Geometry>
 #include <comma/base/exception.h>
 #include <comma/math/compare.h>
-#include <Eigen/Eigen>
 #include "polygon.h"
 
 namespace snark {
 
 template < typename C > static Eigen::Vector3d normal_impl( const C& corners )
 {
-    const Eigen::Vector3d& cross = ( corners[1] - corners[0] ).cross( corners[2] - corners[1] );
+    const Eigen::Vector3d& cross = ( corners[1] - corners[0] ).cross( corners[2] - corners[0] );
     return cross / cross.norm();
 }
 
 template < typename C > static Eigen::Vector3d projection_impl( const C& corners, const Eigen::Vector3d& rhs )
 {
     const Eigen::Vector3d& n = normal_impl( corners );
-    double d = ( rhs - corners[0] ).dot( n );
-    return rhs - n * d;
+    return rhs - n * ( rhs - corners[0] ).dot( n );
+}
+
+static inline Eigen::Vector3d normal_to_edge( const Eigen::Vector3d& a, const Eigen::Vector3d& b, const Eigen::Vector3d& c )
+{
+    const Eigen::Vector3d& u = b - a;
+    const Eigen::Vector3d& v = c - b;
+    return v * u.squaredNorm() - u * u.dot( v );
+}
+
+static inline bool is_outside( const Eigen::Vector3d& a, const Eigen::Vector3d& b, const Eigen::Vector3d& c, const Eigen::Vector3d& d )
+{
+    return comma::math::less( normal_to_edge( a, b, c ).dot( d - a ), 0 );
 }
 
 template < typename C > static bool includes_impl( const C& corners, const Eigen::Vector3d& rhs )
 {
-    for( std::size_t i = 1; i < corners.size(); ++i ) { if( comma::math::less( ( corners[i] - corners[ i - 1 ] ).dot( rhs - corners[ i - 1 ] ), 0 ) ) { return false; } }
-    return !comma::math::less( ( corners[0] - corners.back() ).dot( rhs - corners.back() ), 0 );
+    for( std::size_t i = 2; i < corners.size(); ++i ) { if( is_outside( corners[i-2], corners[i-1], corners[i], rhs ) ) { return false; } }
+    if( is_outside( corners.back(), corners[0], corners[1], rhs ) ) { return false; }
+    return !is_outside( corners[ corners.size() - 2 ], corners.back(), corners[0], rhs );
 }
-    
+
 Eigen::Vector3d convex_polygon::normal() const { return normal_impl( corners ); }
 
 bool convex_polygon::is_valid() const
