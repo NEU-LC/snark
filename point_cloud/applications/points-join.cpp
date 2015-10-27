@@ -60,9 +60,27 @@ static void usage( bool more = false )
     std::cerr << "    --radius=<radius>: lookup radius" << std::endl;
     std::cerr << "    --strict: exit, if nearest point not found" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "fields: x,y,z" << std::endl;
+    std::cerr << "points filter (default): for each input point find the nearest point of the filter in given radius" << std::endl;
+    std::cerr << "    input: points; fields: x,y,z" << std::endl;
+    std::cerr << "    filter: points; fields: x,y,z" << std::endl;
+    std::cerr << "    output: concatenated input and corresponding line of filter" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "triangulated filter: for each input point find the nearest triangle of the filter, if any, in given radius; i.e." << std::endl;
+    std::cerr << "                     nearest point of a triangle is the input point projection onto the triangle plane" << std::endl;
+    std::cerr << "                     if the projection is inside of the triangle, border included" << std::endl;
+    std::cerr << "    input: points; fields: x,y,z" << std::endl;
+    std::cerr << "    filter: triangles; fields: corners; or corners[0],corners[1],corners[2]; or corners[0]/x,or corners[0]/y,or corners[0]/z etc" << std::endl;
+    std::cerr << "    output: concatenated input, corresponding line of filter, and nearest point of triangle (3d in binary)" << std::endl;
+    std::cerr << "    options" << std::endl;
+    std::cerr << "        --face-depth=<distance>: how deep behind the triangle the point is allowed to be (otherwise it's discarded)" << std::endl;
+    std::cerr << "                                 default: 0, i.e. input points behind the triangle will be discarded" << std::endl;
+    std::cerr << "                                 triangle front is defined by direction of triangle normal" << std::endl;
+    std::cerr << "                                 triangle normal is derived from the order of corners in the record and right-hand screw rule" << std::endl;
     std::cerr << std::endl;
     std::cerr << "todo: add support for block field" << std::endl;
+    std::cerr << std::endl;
+    if( more ) { std::cerr << "csv options" << std::endl << comma::csv::options::usage() << std::endl << std::endl; }
+    std::cerr << "examples: todo" << std::endl;
     std::cerr << std::endl;
     exit( 0 );
 }
@@ -223,7 +241,7 @@ template < typename V > static int run( const comma::command_line_options& optio
         typename grid_t::index_type index = grid.index_of( *p );
         typename grid_t::index_type i;
         const filter_record_t* nearest = NULL;
-        boost::optional< Eigen::Vector3d > nearest_point;
+        Eigen::Vector3d nearest_point;
         double distance = 0;
         for( i[0] = index[0] - 1; i[0] < index[0] + 2; ++i[0] )
         {
@@ -235,9 +253,9 @@ template < typename V > static int run( const comma::command_line_options& optio
                     if( it == grid.end() ) { continue; }
                     for( std::size_t k = 0; k < it->second.size(); ++k )
                     {
-                        nearest_point = it->second[k]->nearest_to( *p ); // todo: fix! currently, visiting each triangle 3 times
-                        if( !nearest_point ) { continue; }
-                        double norm = ( *p - *nearest_point ).norm();
+                        boost::optional< Eigen::Vector3d > q = it->second[k]->nearest_to( *p ); // todo: fix! currently, visiting each triangle 3 times
+                        if( !q ) { continue; }
+                        double norm = ( *p - *q ).norm();
                         if( norm > radius ) { continue; }
                         if( all )
                         {
@@ -257,6 +275,7 @@ template < typename V > static int run( const comma::command_line_options& optio
                         {
                             if( nearest && distance < norm ) { continue; }
                             nearest = it->second[k];
+                            nearest_point = *q;
                             distance = norm;
                         }
                     }
@@ -272,7 +291,7 @@ template < typename V > static int run( const comma::command_line_options& optio
                 ++discarded;
                 continue;
             }
-            traits< V >::output( istream, *nearest, *nearest_point );
+            traits< V >::output( istream, *nearest, nearest_point );
         }
         ++count;
     }
