@@ -28,33 +28,46 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
-#include <comma/io/stream.h>
-#include <comma/application/verbose.h>
 #include "commands.h"
+#include <utility>
+#include <boost/date_time/posix_time/posix_time.hpp>
+#include <comma/io/stream.h>
+#include <snark/timing/timestamped.h>
 
 namespace snark { namespace asd {
 
+    
 class protocol
 {
-    char buf[2000];
     comma::io::iostream ios;
+    //number of acquire_data responses expected to receive
+    int more;
+    //throw exception on error if strict
+    bool strict;
 public:
-    protocol(const std::string& address);
+    typedef snark::timestamped<snark::asd::commands::acquire_data::spectrum_data> acquire_reply_t;
+    //tcp address
+    protocol(const std::string& address, bool strict);
     template<typename T>
-    typename T::reply send(const std::string& command);
-    snark::asd::commands::acquire_data::spectrum_data send_acquire_data(const std::string& command);
+    snark::timestamped<typename T::reply> send(const std::string& command);
+    acquire_reply_t send_acquire_data(const std::string& command);
     void handle_reply(const commands::reply_header& header);
+    //these functions use internal state (not concurrent safe)
+    void send_acquire_cmd(const std::string& command);
+    bool more_acquire_data();
+    acquire_reply_t get_acquire_response();
 };
 
 template<typename T>
-typename T::reply protocol::send(const std::string& command)
+snark::timestamped<typename T::reply> protocol::send(const std::string& command)
 {
     *ios<<command<<std::flush;
     typename T::reply reply;
     ios->read(reply.data(),reply.size);
+    boost::posix_time::ptime time=boost::posix_time::microsec_clock::local_time();
     //error handling
     handle_reply(reply.header);
-    return reply;
+    return snark::timestamped<typename T::reply>(time, reply);
 }
 
 } }//namespace snark { namespace asd {
