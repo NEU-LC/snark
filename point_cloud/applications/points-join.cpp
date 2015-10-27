@@ -67,6 +67,13 @@ static void usage( bool more = false )
     exit( 0 );
 }
 
+bool verbose;
+bool strict;
+double radius;
+double face_depth;
+comma::csv::options stdin_csv;
+comma::csv::options filter_csv;
+
 // todo: add block field
 struct record
 { 
@@ -84,18 +91,12 @@ struct triangle_record
     std::string line;
     triangle_record() {}
     triangle_record( const snark::triangle& value, const std::string& line ) : value( value ), line( line ) {}
-    boost::optional< Eigen::Vector3d > nearest_to( const Eigen::Vector3d& rhs ) const // watch performance
+    boost::optional< Eigen::Vector3d > nearest_to( const Eigen::Vector3d& rhs ) const // quick and dirty, watch performance
     {
         boost::optional< Eigen::Vector3d > p = value.projection_of( rhs );
-        return value.includes( *p ) ? p : boost::none;
+        return value.includes( *p ) && !comma::math::less( value.normal().dot( rhs - *p ), face_depth ) ? p : boost::none;
     } 
 };
-
-bool verbose;
-bool strict;
-double radius;
-comma::csv::options stdin_csv;
-comma::csv::options filter_csv;
 
 template < typename V > struct traits;
 
@@ -179,6 +180,7 @@ template < typename V > static int run( const comma::command_line_options& optio
     if( !ifs.is_open() ) { std::cerr << "points-join: failed to open \"" << filter_csv.filename << "\"" << std::endl; }
     strict = options.exists( "--strict" );
     radius = options.value< double >( "--radius" );
+    face_depth = options.value< double >( "--face-depth", 0 );
     bool all = options.exists( "--all" );
     Eigen::Vector3d resolution( radius, radius, radius );
     comma::csv::input_stream< V > ifstream( ifs, filter_csv, traits< V >::default_value() );
