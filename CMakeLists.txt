@@ -367,10 +367,7 @@ IF( snark_build_terrain )
     add_subdirectory( terrain )
 ENDIF( snark_build_terrain )
 
-
-IF( snark_build_python )
-    add_subdirectory( python )
-ENDIF( snark_build_python )
+add_subdirectory( python )
 
 IF( snark_build_web )
     add_subdirectory( web )
