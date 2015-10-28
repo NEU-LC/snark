@@ -36,6 +36,9 @@
 #include <comma/name_value/serialize.h>
 #include "../camera/pinhole.h"
 #include "../camera/traits.h"
+#include <comma/application/verbose.h>
+
+static bool verbose=false;
 
 void usage( bool verbose )
 {
@@ -48,6 +51,8 @@ void usage( bool verbose )
     std::cerr << "    to-cartesian: take on stdin pixels, undistort image, append pixel's cartesian coordinates in camera frame" << std::endl;
     std::cerr << "    to-pixels: take on stdin cartesian coordinates in camera frame, append their coordinates in pixels" << std::endl;
     std::cerr << "    undistort: take on stdin pixels, append their undistorted values" << std::endl;
+    std::cerr << "    distort: take on stdin undistorted pixels, append their distorted values (uses distortion map file)" << std::endl;
+    std::cerr << "    distortion-map: build distortion map from camera parameters in config and write to stdout (binary image matrix of map x, map y)" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    --help,-h: print help; --help --verbose for more help" << std::endl;
@@ -60,6 +65,7 @@ void usage( bool verbose )
     std::cerr << "    --output-format: output appended fields binary format for given operation and exit" << std::endl;
     std::cerr << "    --verbose,-v: more output" << std::endl;
     std::cerr << std::endl;
+    snark::camera::pinhole::usage();
     if( verbose ) { std::cerr << comma::csv::options::usage() << std::endl; }
     exit( 0 );
 }
@@ -67,9 +73,9 @@ void usage( bool verbose )
 template < typename S, typename T > static void output_details( const std::string& operation, const char* expected, const comma::command_line_options& options )
 {
     if( operation != expected ) { return; }
-    if( options.exists( "--input-fields" ) ) { std::cerr << comma::join( comma::csv::names< S >(), ',' ) << std::endl; exit( 0 ); }
-    if( options.exists( "--output-fields" ) ) { std::cerr << comma::join( comma::csv::names< T >(), ',' ) << std::endl; exit( 0 ); }
-    if( options.exists( "--output-format" ) ) { std::cerr << comma::csv::format::value< T >() << std::endl; exit( 0 ); }
+    if( options.exists( "--input-fields" ) ) { std::cout << comma::join( comma::csv::names< S >(), ',' ) << std::endl; exit( 0 ); }
+    if( options.exists( "--output-fields" ) ) { std::cout << comma::join( comma::csv::names< T >(), ',' ) << std::endl; exit( 0 ); }
+    if( options.exists( "--output-format" ) ) { std::cout << comma::csv::format::value< T >() << std::endl; exit( 0 ); }
 }
 
 static snark::camera::pinhole make_pinhole( const std::string& config_parameters )
@@ -88,7 +94,7 @@ static snark::camera::pinhole make_pinhole( const std::string& config_parameters
         comma::from_ptree from_ptree( p, true );
         comma::visiting::apply( from_ptree ).to( pinhole );
     }
-    if( !pinhole.principal_point ) { pinhole.principal_point = pinhole.image_centre(); }
+    pinhole.init();
     return pinhole;
 }
 
@@ -97,21 +103,21 @@ int main( int ac, char** av )
     try
     {
         comma::command_line_options options( ac, av, usage );
+        verbose=options.exists("--verbose");
         if( options.exists( "--output-config,--sample-config" ) ) { comma::write_json( snark::camera::pinhole(), std::cout ); return 0; }
-        const std::vector< std::string >& unnamed = options.unnamed( "--input-fields,--output-fields,--output-format,--verbose,-v", "-.*" );
+        const std::vector< std::string >& unnamed = options.unnamed( "--input-fields,--output-fields,--output-format,--verbose,-v,--keep,--dont-distort", "-.*" );
         if( unnamed.empty() ) { std::cerr << "image-pinhole: please specify operation" << std::endl; return 1; }
         std::string operation = unnamed[0];
         output_details< Eigen::Vector2d, Eigen::Vector3d >( operation, "to-cartesian", options );
         output_details< Eigen::Vector3d, Eigen::Vector2d >( operation, "to-pixels", options );
         output_details< Eigen::Vector2d, Eigen::Vector2d >( operation, "undistort", options );
+        output_details< Eigen::Vector2d, Eigen::Vector2d >( operation, "distort", options );
         snark::camera::pinhole pinhole = make_pinhole( options.value< std::string >( "--camera-config,--camera,--config,-c" ) );
         comma::csv::options csv( options );
-        comma::csv::options output_csv;
-        if( csv.binary() ) { output_csv.format( comma::csv::format::value< Eigen::Vector3d >() ); }
         if( operation == "to-cartesian" )
         {
             comma::csv::input_stream< Eigen::Vector2d > is( std::cin, csv );
-            comma::csv::output_stream< Eigen::Vector3d > os( std::cout, output_csv );
+            comma::csv::output_stream< Eigen::Vector3d > os( std::cout, csv.binary() );
             comma::csv::tied< Eigen::Vector2d, Eigen::Vector3d > tied( is, os );
             while( is.ready() || std::cin.good() )
             {
@@ -123,26 +129,28 @@ int main( int ac, char** av )
         }
         if( operation == "to-pixels" )
         {
-            std::cerr << "image-pinhole: to-pixels: todo" << std::endl; return 1;
             comma::csv::input_stream< Eigen::Vector3d > is( std::cin, csv );
-            comma::csv::output_stream< Eigen::Vector2d > os( std::cout, output_csv );
+            comma::csv::output_stream< Eigen::Vector2d > os( std::cout, csv.binary() );
             comma::csv::tied< Eigen::Vector3d, Eigen::Vector2d > tied( is, os );
+            bool keep = options.exists("--keep");
+            bool distort = !options.exists("--dont-distort");   //for debugging purposes only
             while( is.ready() || std::cin.good() )
             {
                 const Eigen::Vector3d* p = is.read();
                 if( !p ) { break; }
-                
-                // todo
-                
-                Eigen::Vector2d q = Eigen::Vector2d::Zero();
-                tied.append( q );
+                Eigen::Vector2d pixel=pinhole.to_pixel(*p);
+                if ( keep || (pixel.x()>=0 && pixel.x()< pinhole.image_size.x() && pixel.y()>=0 && pixel.y()<pinhole.image_size.y()) )
+                {
+                    tied.append( distort ? pinhole.distort(pixel) : pixel );
+                    //else discard
+                }
             }
             return 0;
         }
         if( operation == "undistort" )
         {
             comma::csv::input_stream< Eigen::Vector2d > is( std::cin, csv );
-            comma::csv::output_stream< Eigen::Vector2d > os( std::cout, output_csv );
+            comma::csv::output_stream< Eigen::Vector2d > os( std::cout, csv.binary() );
             comma::csv::tied< Eigen::Vector2d, Eigen::Vector2d > tied( is, os );
             while( is.ready() || std::cin.good() )
             {
@@ -152,7 +160,26 @@ int main( int ac, char** av )
             }
             return 0;
         }
-        
+        if ( operation == "distort" )
+        {
+            comma::csv::input_stream< Eigen::Vector2d > is( std::cin, csv );
+            comma::csv::output_stream< Eigen::Vector2d > os( std::cout, csv.binary() );
+            comma::csv::tied< Eigen::Vector2d, Eigen::Vector2d > tied( is, os );
+            while( is.ready() || std::cin.good() )
+            {
+                const Eigen::Vector2d* p = is.read();
+                if( !p ) { break; }
+                tied.append( pinhole.distort( *p ) );
+            }
+            return 0;
+        }
+        if(operation=="distortion-map")
+        {
+            pinhole.output_distortion_map(std::cout);
+            return 0;
+        }
+        std::cerr << "image-pinhole: error: unrecognized operation: "<< operation << std::endl;
+        return 1;
     }
     catch( std::exception& ex ) { std::cerr << "image-pinhole: " << ex.what() << std::endl; }
     catch( ... ) { std::cerr << "image-pinhole: unknown exception" << std::endl; }

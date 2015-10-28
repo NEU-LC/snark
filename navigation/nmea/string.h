@@ -47,39 +47,25 @@ class string
         bool valid() const;
         
         bool complete() const;
-        
-        const std::string& type() const;
+
+        bool is_proprietary() const;
+
+        std::string manufacturer_code() const;
+
+        std::string talker_id() const;
+
+        std::string message_type() const;
         
         const std::vector< std::string >& values() const;
-        
-        template < typename T > class as;
+
+        static unsigned char checksum( const std::string& s );
         
     private:
-        template < typename T > friend class as;
         bool valid_;
         bool complete_;
         std::vector< std::string > values_;
 };
 
-template < typename T >
-class string::as
-{
-    public:
-        T from( const string& m );
-        
-    private:
-        comma::csv::ascii< T > ascii_;
-};
-
-template < typename T >
-T string::as< T >::from( const string& s )
-{
-    //if( !s.valid() ) { COMMA_THROW( comma::exception, "checksum check failed on: " << comma::join( s.values_, ',' ) ); }
-    //if( !s.complete() ) { COMMA_THROW( comma::exception, "incomplete message: " << comma::join( s.values_, ',' ) ); }
-    if( T::value_type::name() != s.type() ) { COMMA_THROW( comma::exception, "expected message of type: " << T::value_type::name() << ", got: " << s.type() ); }
-    return ascii_.get( s.values_ );
-}
-    
 } } // namespace snark { namespace nmea {
 
 #endif // SNARK_NAVIGATION_NMEA_STRING_H_

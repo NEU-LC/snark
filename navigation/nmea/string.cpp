@@ -37,8 +37,8 @@ namespace snark { namespace nmea {
 static unsigned int hex_to_int( char c )
 {
     if( '0' <= c && c <= '9' ) { return c - '0'; }
-    if( 'A' <= c && c <= 'F' ) { return c - 'A'; }
-    if( 'a' <= c && c <= 'f' ) { return c - 'a'; }
+    if( 'A' <= c && c <= 'F' ) { return c - 'A' + 10; }
+    if( 'a' <= c && c <= 'f' ) { return c - 'a' + 10; }
     COMMA_THROW( comma::exception, "expected a hexadecimal digit, got: " << c );
 }
 
@@ -65,8 +65,25 @@ bool string::valid() const { return valid_; }
 
 bool string::complete() const { return complete_; }
 
-const std::string& string::type() const { return values_[0]; }
+bool string::is_proprietary() const { return values_[0][0] == 'P'; }
+
+std::string string::manufacturer_code() const { return values_[0].substr( 1, 3 ); }
+
+std::string string::talker_id() const { return values_[0].substr( 0, 2 ); }
+
+std::string string::message_type() const { return values_[0].substr( 2, 3 ); }
 
 const std::vector< std::string >& string::values() const { return values_; }
+
+unsigned char string::checksum( const std::string& s )
+{
+    if( s.empty() ) { COMMA_THROW( comma::exception, "expected non-empty string" ); }
+    unsigned int begin = s[0] != '$' ? 0 : 1;
+    std::string::size_type checksum_delimiter = s.find_last_of( '*' );
+    unsigned int end = checksum_delimiter != std::string::npos ? checksum_delimiter : s.size();
+    unsigned char sum = 0;
+    for( unsigned int i = begin; i < end; sum ^= s[i++] );
+    return sum;
+}
     
 } } // namespace snark { namespace nmea {

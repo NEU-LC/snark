@@ -36,7 +36,7 @@
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <comma/visiting/apply.h>
 #include <comma/visiting/traits.h>
-#include "message.h"
+#include "messages.h"
 
 namespace comma { namespace visiting {
 
@@ -100,48 +100,32 @@ template <> struct traits< snark::nmea::messages::time > // pain
     }
 };
 
-template < typename T > struct traits< snark::nmea::message< T > >
+template <> struct traits< snark::nmea::message >
 {
     template < typename Key, class Visitor >
-    static void visit( const Key&, snark::nmea::message< T >& p, Visitor& v ) // hyper-quick and monster-dirty
+    static void visit( const Key&, snark::nmea::message& p, Visitor& v )
     {
-        v.apply( "type", p.type );
-        v.apply( "value", p.value );
+        v.apply( "id", p.id );
     }
-    
+
     template < typename Key, class Visitor >
-    static void visit( const Key&, const snark::nmea::message< T >& p, Visitor& v ) // hyper-quick and monster-dirty
+    static void visit( const Key&, const snark::nmea::message& p, Visitor& v )
     {
-        v.apply( "type", p.type );
-        v.apply( "value", p.value );
+        v.apply( "id", p.id );
     }
 };
 
-template < typename T > struct traits< snark::nmea::messages::ptnl::value< T > >
+template <> struct traits< snark::nmea::messages::gga >
 {
     template < typename Key, class Visitor >
-    static void visit( const Key& k, snark::nmea::messages::ptnl::value< T >& p, Visitor& v ) // hyper-quick and monster-dirty
+    static void visit( const Key&, snark::nmea::messages::gga& p, Visitor& v ) // hyper-quick and monster-dirty
     {
-        v.apply( k, static_cast< snark::nmea::message< T >& >( p ) );
-    }
-    
-    template < typename Key, class Visitor >
-    static void visit( const Key& k, const snark::nmea::messages::ptnl::value< T >& p, Visitor& v ) // hyper-quick and monster-dirty
-    {
-        v.apply( k, static_cast< const snark::nmea::message< T >& >( p ) );
-    }
-};
-
-template <> struct traits< snark::nmea::messages::gpgga >
-{
-    template < typename Key, class Visitor >
-    static void visit( const Key&, snark::nmea::messages::gpgga& p, Visitor& v ) // hyper-quick and monster-dirty
-    {
+        v.apply( "", static_cast< snark::nmea::message& >( p ) );
         v.apply( "time", p.time );
         v.apply( "coordinates", p.coordinates );
         unsigned int q = static_cast< unsigned int >( p.quality );
         v.apply( "quality", q );
-        p.quality = static_cast< snark::nmea::messages::gpgga::quality_t::values >( q );
+        p.quality = static_cast< snark::nmea::messages::gga::quality_t::values >( q );
         v.apply( "satellites_in_use", p.satellites_in_use );
         v.apply( "hdop", p.hdop );
         v.apply( "orthometric_height", p.orthometric_height );
@@ -153,8 +137,9 @@ template <> struct traits< snark::nmea::messages::gpgga >
     }
     
     template < typename Key, class Visitor >
-    static void visit( const Key&, const snark::nmea::messages::gpgga& p, Visitor& v ) // hyper-quick and monster-dirty
+    static void visit( const Key&, const snark::nmea::messages::gga& p, Visitor& v ) // hyper-quick and monster-dirty
     {
+        v.apply( "", static_cast< const snark::nmea::message& >( p ) );
         v.apply( "time", p.time );
         v.apply( "coordinates", p.coordinates );
         v.apply( "quality", static_cast< unsigned int >( p.quality ) );        
@@ -187,11 +172,29 @@ template <> struct traits< snark::nmea::messages::angle >
     }
 };
 
-template <> struct traits< snark::nmea::messages::ptnl::avr >
+template <> struct traits< snark::nmea::messages::trimble::message >
 {
     template < typename Key, class Visitor >
-    static void visit( const Key&, snark::nmea::messages::ptnl::avr& p, Visitor& v )
+    static void visit( const Key&, snark::nmea::messages::trimble::message& p, Visitor& v )
     {
+        v.apply( "", static_cast< snark::nmea::message& >( p ) );
+        v.apply( "message_type", p.message_type );
+    }
+
+    template < typename Key, class Visitor >
+    static void visit( const Key&, const snark::nmea::messages::trimble::message& p, Visitor& v )
+    {
+        v.apply( "", static_cast< const snark::nmea::message& >( p ) );
+        v.apply( "message_type", p.message_type );
+    }
+};
+
+template <> struct traits< snark::nmea::messages::trimble::avr >
+{
+    template < typename Key, class Visitor >
+    static void visit( const Key&, snark::nmea::messages::trimble::avr& p, Visitor& v )
+    {
+        v.apply( "", static_cast< snark::nmea::messages::trimble::message& >( p ) );
         v.apply( "time", p.time );
         v.apply( "yaw", p.yaw );
         v.apply( "yaw_string", p.yaw_string );
@@ -202,14 +205,15 @@ template <> struct traits< snark::nmea::messages::ptnl::avr >
         v.apply( "range", p.range );
         unsigned int q = static_cast< unsigned int >( p.quality );
         v.apply( "quality", q );
-        p.quality = static_cast< snark::nmea::messages::ptnl::avr::quality_t::values >( q );
+        p.quality = static_cast< snark::nmea::messages::trimble::avr::quality_t::values >( q );
         v.apply( "pdop", p.pdop );
         v.apply( "satellites_in_use", p.satellites_in_use );
     }
     
     template < typename Key, class Visitor >
-    static void visit( const Key&, const snark::nmea::messages::ptnl::avr& p, Visitor& v )
+    static void visit( const Key&, const snark::nmea::messages::trimble::avr& p, Visitor& v )
     {
+        v.apply( "", static_cast< const snark::nmea::messages::trimble::message& >( p ) );
         v.apply( "time", p.time );
         v.apply( "yaw", p.yaw );
         v.apply( "yaw_string", p.yaw_string );

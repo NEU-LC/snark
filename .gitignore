@@ -6,3 +6,5 @@ html/
 
 output
 stats
+actuators/universal_robots/test/disabled
+control/test/disabled

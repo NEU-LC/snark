@@ -1,5 +1,5 @@
 SET( PROJECT "geometry" )
-SET( TARGET_NAME snark_${PROJECT} )
+SET( TARGET_NAME snark_math_${PROJECT} )
 SET( dir ${SOURCE_CODE_BASE_DIR}/math/${PROJECT} )
 
 FILE( GLOB source ${dir}/*.cpp )

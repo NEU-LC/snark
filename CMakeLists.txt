@@ -183,6 +183,7 @@ CMAKE_DEPENDENT_OPTION( snark_build_sensors_hokuyo "build hokuyo components" ON 
 CMAKE_DEPENDENT_OPTION( snark_build_sensors_gobi "build gobi components" OFF "snark_build_sensors" OFF )
 CMAKE_DEPENDENT_OPTION( snark_build_sensors_jai "build jai components" OFF "snark_build_sensors" OFF )
 CMAKE_DEPENDENT_OPTION( snark_build_sensors_basler "build basler components" OFF "snark_build_sensors" OFF )
+CMAKE_DEPENDENT_OPTION( snark_build_sensors_asd "build asd components" OFF "snark_build_sensors" OFF )
 
 CMAKE_DEPENDENT_OPTION( snark_build_actuators_quickset "build quickset components" OFF "snark_build_actuators" OFF )
 CMAKE_DEPENDENT_OPTION( snark_build_actuators_wheels "build wheels components" OFF "snark_build_actuators" OFF )
@@ -217,8 +218,8 @@ if( snark_build_graphics )
 endif( snark_build_graphics )
 
 if( snark_build_math_geometry )
-    SET( snark_ALL_LIBRARIES ${snark_ALL_LIBRARIES} debug snark_geometry-d
-                             optimized snark_geometry )
+    SET( snark_ALL_LIBRARIES ${snark_ALL_LIBRARIES} debug snark_math_geometry-d
+                             optimized snark_math_geometry )
 endif( snark_build_math_geometry )
 
 if( snark_build_point_cloud )
@@ -246,6 +247,11 @@ IF( snark_build_sensors_hokuyo )
     SET( snark_ALL_LIBRARIES ${snark_ALL_LIBRARIES} debug snark_hokuyo-d
                              optimized snark_hokuyo )
 ENDIF( snark_build_sensors_hokuyo )
+
+IF( snark_build_sensors_asd )
+    SET( snark_ALL_LIBRARIES ${snark_ALL_LIBRARIES} debug snark_asd-d
+                             optimized snark_asd )
+ENDIF( snark_build_sensors_asd )
 
 SET( snark_ALL_LIBRARIES ${snark_ALL_LIBRARIES} debug snark_math-d
                          optimized snark_math
@@ -361,10 +367,7 @@ IF( snark_build_terrain )
     add_subdirectory( terrain )
 ENDIF( snark_build_terrain )
 
-
-IF( snark_build_python )
-    add_subdirectory( python )
-ENDIF( snark_build_python )
+add_subdirectory( python )
 
 IF( snark_build_web )
     add_subdirectory( web )
@@ -372,7 +375,8 @@ ENDIF( snark_build_web )
 
 # Package
 #the following set up optional parameters for cpack
-SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "This is a description of snark. It's great!")
+SET(CPACK_PACKAGE_NAME "snark")
+SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Snark contains various libraries and utilities for interacting with robots and working with sensor data.")
 SET(CPACK_PACKAGE_VENDOR "ACFR")
 SET(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/COPYING")
 SET(CPACK_PACKAGE_VERSION_MAJOR "1")

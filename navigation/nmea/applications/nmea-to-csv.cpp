@@ -183,7 +183,7 @@ static void output( const comma::csv::fieldwise& fieldwise, const output::type& 
 
 using namespace snark;
 
-void handle( const nmea::messages::gpgga& v )
+void handle( const nmea::messages::gga& v )
 {
     output_.t = v.time.value;
     output_.data.position.coordinates = v.coordinates();
@@ -191,19 +191,19 @@ void handle( const nmea::messages::gpgga& v )
     output_.data.number_of_satellites = v.satellites_in_use;
 }
 
-void handle( const nmea::message< nmea::messages::ptnl::avr >& m )
+void handle( const nmea::messages::trimble::avr& m )
 {
-    output_.t = m.value.time.value;
-    output_.data.orientation.roll = m.value.roll.value;
-    output_.data.orientation.pitch = m.value.tilt.value;
-    output_.data.orientation.yaw = m.value.yaw.value;
+    output_.t = m.time.value;
+    output_.data.orientation.roll = m.roll.value;
+    output_.data.orientation.pitch = m.tilt.value;
+    output_.data.orientation.yaw = m.yaw.value;
     //output_.data.number_of_satellites = m.value.satellites_in_use;
 }
 
 template < typename T > void handle( const nmea::string& s )
 {
-    static nmea::string::as< nmea::message< T > > m;
-    handle( m.from( s ).value );
+    static comma::csv::ascii< T > ascii;
+    handle( ascii.get( s.values() ) );
 }
 
 int main( int ac, char** av )
@@ -245,13 +245,17 @@ int main( int ac, char** av )
                 if( permissive ) { if( verbose ) { std::cerr << "nmea-to-csv: invalid nmea string, but parse anyway: \"" << line << "\"" << std::endl; } }
                 else { if( verbose ) { std::cerr << "nmea-to-csv: discarded invalid nmea string: \"" << line << "\"" << std::endl; } continue; }
             }
-            if( s.type() == "GPGGA" ) { handle< nmea::messages::gpgga >( s ); }
-            else if( s.type() == "PTNL" )
+            if( s.is_proprietary() )
             {
-                if( static_cast< const nmea::messages::ptnl::string& >( s ).ptnl_type() == "AVR" ) { handle< nmea::messages::ptnl::value< nmea::messages::ptnl::avr > >( s ); }
-                else { if( verbose ) { std::cerr << "nmea-to-csv: discarded unimplemented string: \"" << line << "\"" << std::endl; } }
+                if( s.manufacturer_code() == nmea::messages::trimble::manufacturer_code )
+                {
+                    if( static_cast< const nmea::messages::trimble::string& >( s ).message_type() == nmea::messages::trimble::avr::type ) { handle< nmea::messages::trimble::avr >( s ); }
+                    else { if( verbose ) { std::cerr << "nmea-to-csv: discarded unimplemented trimble message: \"" << line << "\"" << std::endl; } continue; }
+                }
+                else { if( verbose ) { std::cerr << "nmea-to-csv: discarded unimplemented proprietary nmea message: \"" << line << "\"" << std::endl; } continue; }
             }
-            else { if( verbose ) { std::cerr << "nmea-to-csv: discarded unimplemented string: \"" << line << "\"" << std::endl; } }
+            else if( s.message_type() == nmea::messages::gga::type ) { handle< nmea::messages::gga >( s ); }
+            else { if( verbose ) { std::cerr << "nmea-to-csv: discarded unimplemented string: \"" << line << "\"" << std::endl; } continue; }
             if( output_all ) { os.write( output_ ); } else { output( fieldwise, output_, os ); }
         }
         return 0;

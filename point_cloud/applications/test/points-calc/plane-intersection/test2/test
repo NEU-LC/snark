@@ -2,16 +2,16 @@
 source $( which comma-application-util ) || { echo "cannot source 'comma-application-util'" >&2; exit 1; }
 
 out="output/out"
-normal="3,3,3"
-echo "normal: $normal" >&2
+plane="3,3,3,3,3,3"
+echo "plane: $plane" >&2
 format="3d"
-fields="x,y,z"
+fields="second/x,second/y,second/z"
 out_fields=$(points-calc plane-intersection  --output-fields)
 out_format=$(points-calc plane-intersection --output-format)
 #echo "running: csv-shuffle --format=\"$format,$out_format\" --fields=\"$fields,$out_fields\" --output=\"$out_fields\"" >&2
 csv-to-bin "$format" >"output/in.bin"
-echo "running: cat \"output/in.bin\" | points-calc plane-intersection --normal=\"$normal\" --format=\"$format\" --fields=\"$fields\"" >&2
-cat "output/in.bin" | points-calc plane-intersection --normal="$normal" --binary="$format" --fields="$fields" | \
+echo "running: cat \"output/in.bin\" | points-calc plane-intersection --plane=\"$plane\" --format=\"$format\" --fields=\"$fields\"" >&2
+cat "output/in.bin" | points-calc plane-intersection --plane="$plane" --binary="$format" --fields="$fields" | \
     csv-shuffle --binary="$format,$out_format" --fields="$fields,$out_fields" --output="$out_fields" >"$out.bin"
 if ! comma_status_ok; then echo "test failed" >&2; exit 1; fi
 cat "$out.bin" | csv-from-bin "$out_format" >"$out"

@@ -32,9 +32,11 @@
 #ifndef SNARK_IMAGING_CAMERA_PINHOLE_H
 #define SNARK_IMAGING_CAMERA_PINHOLE_H
 
+#include <vector>
 #include <boost/optional.hpp>
 #include <Eigen/Core>
 #include <opencv2/core/core.hpp>
+#include <iostream>
 
 namespace snark { namespace camera {
 
@@ -60,26 +62,34 @@ struct pinhole
         
         tangential_t tangential;
         
-        std::string map;
+        //returns true if all distortion parameters are zero
+        bool all_zero() const;
+        
+        std::string map_filename;
         
         struct map_t
         {
-            cv::Mat x, y;
-            
+            std::vector<float> x_rows;
+            std::vector<float> y_cols;
             map_t() {}
-            map_t( const std::string& filename, const Eigen::Vector2i& image_size ) { load( filename, image_size ); }
-            void load( const std::string& filename, const Eigen::Vector2i& image_size );
+            map_t(const cv::Mat& map_x,const cv::Mat& map_y);
         };
-        
         /// return distortion as a k1,k2,p1,p2,k3 vector, since opencv and others often use it that way
         operator Eigen::Matrix< double, 5, 1 >() const;
+
+        boost::optional<map_t> map;
     };
     
-    /// focal length in metres
+    //call after parameters are loaded
+    void init();
+
+    
+    /// focal length in metres (if sensor_size is empty then focal length is effectively in pixels) TODO change config or something
     double focal_length;
+    //quick and dirty: if sensor_size is empty we are taking pixel size to be 1 meter !?
 
     /// sensor size in metres
-    Eigen::Vector2d sensor_size;
+    boost::optional<Eigen::Vector2d> sensor_size;
     
     /// image size in pixels
     Eigen::Vector2i image_size;
@@ -91,12 +101,12 @@ struct pinhole
     distortion_t distortion;
     
     /// default constructor
-    pinhole() : focal_length( 0 ), sensor_size( Eigen::Vector2d::Zero() ), image_size( Eigen::Vector2i::Zero() ), principal_point( Eigen::Vector2d::Zero() ) {}
+    pinhole();
     
-    /// return pixel size in metres
+    /// return pixel size in metres or 1,1 if sensor_size is empty
     Eigen::Vector2d pixel_size() const;
     
-    /// return image centre in pixels
+    /// return principal_point or if empty returns half image size in pixels
     Eigen::Vector2d image_centre() const;
     
     /// return radially corrected pixel
@@ -110,9 +120,24 @@ struct pinhole
     
     /// return pixel coordinates in camera frame
     Eigen::Vector3d to_cartesian( const Eigen::Vector2d& p, bool undistort = true ) const;
+
+    //returns converts from camera frame to image pixel col,row
+    Eigen::Vector2d to_pixel( const Eigen::Vector3d& p);
     
     /// load distortion map from file
-    distortion_t::map_t load_distortion_map() const { return distortion_t::map_t( distortion.map, image_size ); }
+    distortion_t::map_t load_distortion_map() const;
+
+    // reverse undistorted projection using the projection map
+    Eigen::Vector2d distort( const Eigen::Vector2d& p );    //not const: builds map from parameters
+    
+    //build distortion map from parameters
+    void make_distortion_map(cv::Mat& map_x,cv::Mat& map_y) const;
+    
+    //build distortion map from parameters and output to std::cout
+    void output_distortion_map(std::ostream& os) const;
+    
+    //print camera config help to std::cerr (in usage format)
+    static void usage();
 };
 
 } } // namespace snark { namespace camera {

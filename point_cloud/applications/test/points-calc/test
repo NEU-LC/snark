@@ -14,7 +14,10 @@ out_fields=$(points-calc $args --output-fields)
 echo "out_fields: $out_fields" >&2
 #echo "input: $input" >&2
 echo "running: points-calc $args --fields=\"$fields\" | csv-shuffle --fields=\"$fields,$out_fields\" --output=\"$out_fields\" >\"$out\"" >&2
-points-calc $args --fields="$fields" | csv-shuffle --fields="$fields,$out_fields" --output="$out_fields" >"$out"
+#echo "running: points-calc $args --fields=\"$fields\" " >&2
+points-calc $args --fields="$fields" >output/mid
+#echo "running csv-shuffle --fields=\"$fields,$out_fields\" --output=\"$out_fields\"" >&2
+cat output/mid | csv-shuffle --fields="$fields,$out_fields" --output="$out_fields" >"$out"
 if ! comma_status_ok; then echo "test failed" >&2; exit 1; fi
 #cat "$out" | name-value-from-csv --fields="$out_fields" --line-number --prefix="output"
 cat -n output/out | sed 's#^ *#output[#;s#\t#]="#;s#$#"#'

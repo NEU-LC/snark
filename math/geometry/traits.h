@@ -29,22 +29,27 @@
 
 /// @author vsevolod vlaskine
 
-#ifndef SNARK_NAVIGATION_NMEA_MESSAGE_H_
-#define SNARK_NAVIGATION_NMEA_MESSAGE_H_
+#ifndef SNARK_MATH_GEOMETRY_TRAITS_H_
+#define SNARK_MATH_GEOMETRY_TRAITS_H_
 
-#include <string>
+#include <comma/visiting/traits.h>
+#include <snark/visiting/eigen.h>
+#include "polygon.h"
 
-namespace snark { namespace nmea {
+namespace comma { namespace visiting {
 
-template < typename T >
-struct message
+template <> struct traits< snark::convex_polygon >
 {
-    typedef T value_type;
-    
-    std::string type;
-    value_type value;
+    template< typename K, typename V > static void visit( const K&, snark::convex_polygon& t, V& v ) { v.apply( "corners", t.corners ); }
+    template< typename K, typename V > static void visit( const K&, const snark::convex_polygon& t, V& v ) { v.apply( "corners", t.corners ); }
 };
-    
-} } // namespace snark { namespace nmea {
 
-#endif // SNARK_NAVIGATION_NMEA_MESSAGE_H_
+template <> struct traits< snark::triangle >
+{
+    template< typename K, typename V > static void visit( const K&, snark::triangle& t, V& v ) { v.apply( "corners", t.corners ); }
+    template< typename K, typename V > static void visit( const K&, const snark::triangle& t, V& v ) { v.apply( "corners", t.corners ); }
+};
+
+} } // namespace comma { namespace visiting {
+
+#endif // #ifndef SNARK_MATH_GEOMETRY_TRAITS_H_

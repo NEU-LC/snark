@@ -35,10 +35,16 @@
 #include <boost/date_time/posix_time/ptime.hpp>
 #include <comma/string/string.h>
 #include "../../math/spherical_geometry/coordinates.h"
-#include "message.h"
 #include "string.h"
 
-namespace snark { namespace nmea { namespace messages {
+namespace snark { namespace nmea {
+
+struct message
+{
+    std::string id;
+};
+    
+namespace messages {
 
 struct coordinate { double value; };
 
@@ -54,14 +60,14 @@ struct time { boost::posix_time::ptime value; };
 
 struct angle { double value; };
     
-struct gpgga
+struct gga : message
 {
-    static const char* name() { return "GPGGA"; }
+    static const std::string type;
     
     struct quality_t { enum values { fix_not_valid = 0, gps_fix = 1, differential_gps_fix = 2, real_time_kinematic_fixed_integers = 4, real_time_kinematic_float_integers = 5 }; };
-    
+
     nmea::messages::time time;
-    messages::coordinates coordinates;
+    nmea::messages::coordinates coordinates;
     quality_t::values quality;
     unsigned int satellites_in_use;
     double hdop;
@@ -73,36 +79,43 @@ struct gpgga
     std::string reference_station_id;
 };
 
-namespace ptnl
+namespace trimble {
+
+static const std::string manufacturer_code = "TNL";
+
+struct message : nmea::message
 {
-    struct string : public nmea::string { const std::string& ptnl_type() const { return values()[1]; } };
-    
-    template < typename T > struct value : public nmea::message< T >
-    { 
-        static const char* name() { return "PTNL"; }
-        typedef nmea::message< T > type;
-    };
-    
-    struct avr
-    {
-        static const char* name() { return "AVR"; }
-        
-        struct quality_t { enum values { fix_not_valid = 0, autonomous_gps_fix = 1, differential_carrier_phase_solution_rtk_float = 2, differential_carrier_phase_solution_rtk_int = 3, differential_code_based_solution_dgps = 4 }; };
-        
-        nmea::messages::time time;
-        nmea::messages::angle yaw;
-        std::string yaw_string;
-        nmea::messages::angle tilt;
-        std::string tilt_string;
-        nmea::messages::angle roll;
-        std::string roll_string;
-        double range;
-        quality_t::values quality;
-        double pdop;
-        unsigned int satellites_in_use;
-    };
+    std::string message_type;
 };
+
+struct string : nmea::string { std::string message_type() const { return values()[1]; } };
+
+struct avr : message
+{
+    static const std::string type;
+
+    struct quality_t { enum values { fix_not_valid = 0, autonomous_gps_fix = 1, differential_carrier_phase_solution_rtk_float = 2, differential_carrier_phase_solution_rtk_int = 3, differential_code_based_solution_dgps = 4 }; };
     
-} } } // namespace snark { namespace nmea { namespace messages {
+    nmea::messages::time time;
+    nmea::messages::angle yaw;
+    std::string yaw_string;
+    nmea::messages::angle tilt;
+    std::string tilt_string;
+    nmea::messages::angle roll;
+    std::string roll_string;
+    double range;
+    quality_t::values quality;
+    double pdop;
+    unsigned int satellites_in_use;
+};
+
+}; // namespace trimble {
+
+const std::string gga::type = "GGA";
+const std::string trimble::avr::type = "AVR";
+
+} // namespace messages {
+
+} } // namespace snark { namespace nmea {
 
 #endif // SNARK_NAVIGATION_NMEA_MESSAGES_H_

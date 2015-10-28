@@ -29,8 +29,8 @@
 
 /// @author abdallah kassir
 
-#ifndef SNARK_MATH_GEOMETRY_POLYGON_
-#define SNARK_MATH_GEOMETRY_POLYGON_
+#ifndef SNARK_MATH_GEOMETRY_POLYTOPE_
+#define SNARK_MATH_GEOMETRY_POLYTOPE_
 
 #include <Eigen/Core>
 #include <vector>
@@ -71,4 +71,4 @@ private:
 
 }} // namespace snark{ namepsace geometry{
 
-#endif // SNARK_MATH_GEOMETRY_POLYGON_
+#endif // SNARK_MATH_GEOMETRY_POLYTOPE_

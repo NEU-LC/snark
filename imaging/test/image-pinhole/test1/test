@@ -1,0 +1,7 @@
+#!/bin/bash
+
+read params
+image-pinhole distortion-map --verbose --config=config.json | csv-from-bin 4f >output/out
+result=$?
+if [[ $result != 0 ]]; then echo "image-pinhole exited non-zero status: $result"; exit 1; fi
+cat -n output/out | sed 's#^ *#output[#;s#\t#]="#;s#$#"#'

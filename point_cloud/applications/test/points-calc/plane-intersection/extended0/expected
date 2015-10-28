@@ -1,0 +1,6 @@
+output[1]="1,1,1"
+output[2]="1,1,1"
+output[3]="2,2,2"
+output[4]="2,2,1"
+output[5]="inf,inf,inf"
+output[6]="1,2,1"
