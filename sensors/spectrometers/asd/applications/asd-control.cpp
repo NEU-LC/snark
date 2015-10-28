@@ -43,10 +43,12 @@
 #include <comma/csv/stream.h>
 #include <snark/timing/timestamped.h>
 
-comma::signal_flag signaled;
-
 bool raw=false;
 bool add_timestamp=false;
+//throw exception on error if strict
+bool strict=false;
+//loop over acquire command
+bool acquire=false;
 
 template<typename T>
 static void write_output(const T& timestamped)
@@ -62,10 +64,21 @@ static void write_output(const T& timestamped)
     }
 }
 
+void handle_reply(const snark::asd::commands::reply_header& header)
+{
+    if(header.header() != 100) { comma::verbose<<"reply header: "<<header.header()<<" error: "<<header.error()<<std::endl; }
+    if(header.error() != 0)
+    {
+        if(strict) { COMMA_THROW(comma::exception, "asd reply error: " << header.error() ); }
+        else { std::cerr<< comma::verbose.app_name() << ": asd reply error: " << header.error()<<std::endl; }
+    }
+}
+
 template<typename T>
 struct app
 {
     typedef typename T::reply reply_t;
+    typedef snark::timestamped<typename T::reply> timestamped_reply_t;
     static void usage()
     {
         std::cerr<< "    "<< T::name() << std::endl
@@ -76,23 +89,31 @@ struct app
     static bool process(snark::asd::protocol& protocol, const std::string& cmd)
     {
         if(cmd.find(T::command()) !=0 ) { return false; }
-        write_output(protocol.send<T>(cmd));
+        timestamped_reply_t reply=protocol.send<T>(cmd);
+        handle_reply(reply.data.header);
+        write_output(reply);
         return true;
     }
 };
 
+
 //for acquaire_data command
 static bool process_acquire_data(snark::asd::protocol& protocol, const std::string& cmd)
 {
-    if(cmd.find(snark::asd::commands::acquire_data::command()) !=0 ) { return false; }
-    //send one command
-    protocol.send_acquire_cmd(cmd);
-    //while reply is expected
-    while(protocol.more_acquire_data())
+    if(cmd.find(snark::asd::commands::acquire_data::command()) !=0 ) 
     {
-        //read a response and output
-        write_output(protocol.get_acquire_response());
+        if(acquire) { COMMA_THROW( comma::exception, "process_acquire_data command mismatch; --acquire can only be used with A (acquire data) command"); }
+        return false; 
     }
+    //do it once if !acquire
+    do
+    {
+        //send one command
+        snark::asd::protocol::acquire_reply_t reply=protocol.send_acquire_data(cmd);
+        handle_reply(reply.data.header.header);
+        write_output(reply);
+    }
+    while(acquire);
     return true;
 }
 
@@ -109,6 +130,7 @@ void usage(bool detail)
     std::cerr << "    --raw: send raw binary reply to stdout; default when not specified it outputs json format of reply" << std::endl;
     std::cerr << "        --timestamp: prepend output with timestamp of receiving response (only works with --raw)" << std::endl;
     std::cerr << "    --strict: throw exception if asd returns error (reply.error!=0)" << std::endl;
+    std::cerr << "    --acquire: loop over acquire command (one line from stdin)" << std::endl;
     std::cerr << std::endl;
     std::cerr << std::endl;
     if(detail)
@@ -137,46 +159,45 @@ void usage(bool detail)
 int main( int ac, char** av )
 {
     comma::command_line_options options( ac, av, usage );
-    raw=options.exists("--raw");
-    add_timestamp=options.exists("--timestamp");
-    if(add_timestamp && !raw) { COMMA_THROW(comma::exception, "--timestamp option only works with --raw");}
-    std::vector<char> buf(2000);
     try
     {
+        raw=options.exists("--raw");
+        add_timestamp=options.exists("--timestamp");
+        if(add_timestamp && !raw) { COMMA_THROW(comma::exception, "--timestamp option only works with --raw");}
         comma::verbose<<"asd-control"<<std::endl;
-        std::vector<std::string> unnamed=options.unnamed("--verbose,-v,--raw,--timestamp,--strict", "");
+        std::vector<std::string> unnamed=options.unnamed("--verbose,-v,--raw,--timestamp,--strict,--acquire", "");
         if(unnamed.size() != 1) { COMMA_THROW(comma::exception, "expected address (one unnamed arg); got " << unnamed.size() ); }
-        snark::asd::protocol protocol(unnamed[0],options.exists("--strict"));
-        while(std::cin.good() && !signaled)
+        strict=options.exists("--strict");
+        acquire=options.exists("--acquire");
+        snark::asd::protocol protocol(unnamed[0]);
+        while(std::cin.good())
         {
             //comma::verbose<<"reading stdin..."<<std::endl;
-            std::cin.getline(&buf[0],buf.size());
-            buf[buf.size()-1]='\0';
-            std::string cmd(&buf[0]);
-            cmd+="\n";
+            std::string cmd;
+            std::getline( std::cin, cmd );
+            if( cmd.empty() ) { continue; }
+            cmd += '\n';
             comma::verbose<<"sending command: "<<cmd<<std::endl;
-            bool processed = 
-            app<snark::asd::commands::version>::process(protocol,cmd)
+            bool processed =  process_acquire_data(protocol,cmd)
+                || app<snark::asd::commands::version>::process(protocol,cmd)
                 || app<snark::asd::commands::abort>::process(protocol,cmd)
                 || app<snark::asd::commands::restore>::process(protocol,cmd)
                 || app<snark::asd::commands::optimize>::process(protocol,cmd)
                 || app<snark::asd::commands::init>::process(protocol,cmd)
                 || app<snark::asd::commands::save>::process(protocol,cmd)
                 || app<snark::asd::commands::erase>::process(protocol,cmd)
-                || app<snark::asd::commands::instrument_gain_control>::process(protocol,cmd)
-                || process_acquire_data(protocol,cmd);
-            if ( !processed )
-                COMMA_THROW(comma::exception, "invalid command " << cmd ); 
-            return 0;
+                || app<snark::asd::commands::instrument_gain_control>::process(protocol,cmd);
+            if ( !processed ) { COMMA_THROW(comma::exception, "invalid command " << cmd );  }
         }
+        return 0;
     }
     catch( std::exception& ex )
     {
-        std::cerr << comma::verbose.app_name() << ": " << ex.what() << std::endl; return 1;
+        std::cerr << comma::verbose.app_name() << ": " << ex.what() << std::endl;
     }
     catch( ... )
     {
-        std::cerr << comma::verbose.app_name() << ": " << "unknown exception" << std::endl; return 1;
+        std::cerr << comma::verbose.app_name() << ": " << "unknown exception" << std::endl;
     }
-    return 0;
+    return 1;
 }

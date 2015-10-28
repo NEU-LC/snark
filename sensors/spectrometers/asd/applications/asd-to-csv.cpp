@@ -47,7 +47,7 @@ template <> struct traits< timestamped_output_t >
 {
     template< typename K, typename V > static void visit( const K& k, const timestamped_output_t& p, V& v )
     {
-        v.apply( "timestamp", p.t );
+        v.apply( "t", p.t );
         traits<output_t>::visit(k, p.data, v);
     }
 };

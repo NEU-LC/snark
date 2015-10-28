@@ -36,39 +36,17 @@
 
 namespace snark { namespace asd {
 
-    
 class protocol
 {
     comma::io::iostream ios;
-    //number of acquire_data responses expected to receive
-    int more;
-    //throw exception on error if strict
-    bool strict;
 public:
     typedef snark::timestamped<snark::asd::commands::acquire_data::spectrum_data> acquire_reply_t;
     //tcp address
-    protocol(const std::string& address, bool strict);
+    protocol(const std::string& address);
     template<typename T>
     snark::timestamped<typename T::reply> send(const std::string& command);
     acquire_reply_t send_acquire_data(const std::string& command);
-    void handle_reply(const commands::reply_header& header);
-    //these functions use internal state (not concurrent safe)
-    void send_acquire_cmd(const std::string& command);
-    bool more_acquire_data();
-    acquire_reply_t get_acquire_response();
 };
-
-template<typename T>
-snark::timestamped<typename T::reply> protocol::send(const std::string& command)
-{
-    *ios<<command<<std::flush;
-    typename T::reply reply;
-    ios->read(reply.data(),reply.size);
-    boost::posix_time::ptime time=boost::posix_time::microsec_clock::local_time();
-    //error handling
-    handle_reply(reply.header);
-    return snark::timestamped<typename T::reply>(time, reply);
-}
 
 } }//namespace snark { namespace asd {
 

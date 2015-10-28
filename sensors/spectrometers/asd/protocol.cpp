@@ -34,52 +34,48 @@
 
 namespace snark { namespace asd {
 
-protocol::protocol(const std::string& address, bool b) : ios(address), more(0), strict(b)
+protocol::protocol(const std::string& address) : ios(address)
 {
     comma::verbose<<"asd::protocol: connected on "<<address<<std::endl;
-    std::vector<char> buf(2000);
-    ios->getline(&buf[0],buf.size(),'\n');
-    comma::verbose<<"<- "<<buf.data()<<std::endl;
-    ios->getline(&buf[0],buf.size());
-    comma::verbose<<"<- "<<buf.data()<<std::endl;
-}
-
-void protocol::handle_reply(const commands::reply_header& header)
-{
-    if(header.header() != 100)
-        comma::verbose<<"reply header: "<<header.header()<<" error: "<<header.error()<<std::endl;
-    if(header.error() != 0)
-    {
-        if(strict) { COMMA_THROW(comma::exception, "asd reply error: " << header.error() ); }
-        else { std::cerr<< comma::verbose.app_name() << ": asd reply error: " << header.error()<<std::endl; }
-    }
+    std::string str;
+    std::getline(*ios, str);
+    comma::verbose<<str<<std::endl;
+    std::getline(*ios, str);
+    comma::verbose<<str<<std::endl;
 }
 
 protocol::acquire_reply_t protocol::send_acquire_data(const std::string& command)
 {
-    send_acquire_cmd(command);
-    return get_acquire_response();
-}
-
-void protocol::send_acquire_cmd(const std::string& command)
-{
-    std::vector< std::string > sv=comma::split(command,',');
-    if(sv.size()>2 && sv[1]=="1") { more = boost::lexical_cast<int>(sv[2]); }
-    else { more=1; }
-    if(more<1 || more>32767) { COMMA_THROW( comma::exception, "parameter out of range " <<more << " (valid range: 1..32767)"); }
     *ios<<command<<std::flush;
-}
-bool protocol::more_acquire_data() { return more > 0; }
-protocol::acquire_reply_t protocol::get_acquire_response()
-{
-    //TODO update more with sample_count from A header, if it counts down on device?
     snark::asd::commands::acquire_data::spectrum_data reply;
     ios->read(reply.data(),reply.size);
     boost::posix_time::ptime time=boost::posix_time::microsec_clock::local_time();
-    more--;
     //error handling
-    handle_reply(reply.header.header);
     return acquire_reply_t(time, reply);
+}
+
+template<typename T>
+snark::timestamped<typename T::reply> protocol::send(const std::string& command)
+{
+    *ios<<command<<std::flush;
+    typename T::reply reply;
+    ios->read(reply.data(),reply.size);
+    boost::posix_time::ptime time=boost::posix_time::microsec_clock::local_time();
+    //error handling
+    return snark::timestamped<typename T::reply>(time, reply);
+}
+
+void protocol_sample_instantiate()
+{
+    protocol p("");
+    p.send<snark::asd::commands::optimize>("");
+    p.send<snark::asd::commands::instrument_gain_control>("");
+    p.send<snark::asd::commands::restore>("");
+    p.send<snark::asd::commands::save>("");
+    p.send<snark::asd::commands::erase>("");
+    p.send<snark::asd::commands::init>("");
+    p.send<snark::asd::commands::version>("");
+    p.send<snark::asd::commands::abort>("");
 }
 
 } }//namespace snark { namespace asd {
