@@ -1,4 +1,4 @@
-SET(KIT battery/ocean )
+SET(KIT batteries/ocean )
 
 FILE( GLOB source ${SOURCE_CODE_BASE_DIR}/${KIT}/test/*_test.cpp )
 FILE( GLOB extras ${SOURCE_CODE_BASE_DIR}/${KIT}/test/*.cpp
