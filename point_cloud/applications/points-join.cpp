@@ -204,7 +204,7 @@ template < typename V > static int run( const comma::command_line_options& optio
     comma::csv::input_stream< V > ifstream( ifs, filter_csv, traits< V >::default_value() );
     std::deque< filter_record_t > filter_points;
     snark::math::closed_interval< double, 3 > extents;
-    if( verbose ) { std::cerr << "points-join: reading input points..." << std::endl; }
+    if( verbose ) { std::cerr << "points-join: reading filter records..." << std::endl; }
     while( ifstream.ready() || ( ifs.good() && !ifs.eof() ) )
     {
         const filter_value_t* p = ifstream.read();
