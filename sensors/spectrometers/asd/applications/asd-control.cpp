@@ -44,7 +44,7 @@
 #include <snark/timing/timestamped.h>
 
 bool raw=false;
-bool add_timestamp=false;
+bool timestamp=false;
 //throw exception on error if strict
 bool strict=false;
 //loop over acquire command
@@ -55,7 +55,7 @@ static void write_output(const T& timestamped)
 {
     if(raw)
     {
-        if(add_timestamp) { std::cout.write(reinterpret_cast<const char*>(&timestamped.t),sizeof(boost::posix_time::ptime)); }
+        if(timestamp) { std::cout.write(reinterpret_cast<const char*>(&timestamped.t),sizeof(boost::posix_time::ptime)); }
         std::cout.write(timestamped.data.data(),timestamped.data.size);
     }
     else
@@ -131,6 +131,8 @@ void usage(bool detail)
     std::cerr << "        --timestamp: prepend output with timestamp of receiving response (only works with --raw)" << std::endl;
     std::cerr << "    --strict: throw exception if asd returns error (reply.error!=0)" << std::endl;
     std::cerr << "    --acquire: loop over acquire command (one line from stdin)" << std::endl;
+    std::cerr << "    --output-size: print size of acquire data to stdout and exit" << std::endl;
+    
     std::cerr << std::endl;
     std::cerr << std::endl;
     if(detail)
@@ -162,8 +164,15 @@ int main( int ac, char** av )
     try
     {
         raw=options.exists("--raw");
-        add_timestamp=options.exists("--timestamp");
-        if(add_timestamp && !raw) { COMMA_THROW(comma::exception, "--timestamp option only works with --raw");}
+        timestamp=options.exists("--timestamp");
+        if(options.exists("--output-size"))
+        {
+            std::size_t size=snark::asd::commands::acquire_data::spectrum_data::size;
+            if (timestamp) { size += sizeof(boost::posix_time::ptime);}
+            std::cout<< size << std::endl;
+            return 0;
+        }
+        if(timestamp && !raw) { COMMA_THROW(comma::exception, "--timestamp option only works with --raw");}
         comma::verbose<<"asd-control"<<std::endl;
         std::vector<std::string> unnamed=options.unnamed("--verbose,-v,--raw,--timestamp,--strict,--acquire", "");
         if(unnamed.size() != 1) { COMMA_THROW(comma::exception, "expected address (one unnamed arg); got " << unnamed.size() ); }
