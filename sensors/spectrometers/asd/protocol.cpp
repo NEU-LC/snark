@@ -27,35 +27,56 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#pragma once
-#include <comma/io/stream.h>
+#include "protocol.h"
+#include <vector>
+#include <comma/io/publisher.h>
 #include <comma/application/verbose.h>
-#include "commands.h"
 
 namespace snark { namespace asd {
 
-class protocol
+protocol::protocol(const std::string& address) : ios(address)
 {
-    char buf[2000];
-    comma::io::iostream ios;
-public:
-    protocol(const std::string& address);
-    template<typename T>
-    typename T::reply send(const std::string& command);
-    snark::asd::commands::acquire_data::spectrum_data send_acquire_data(const std::string& command);
-    void handle_reply(const commands::reply_header& header);
-};
+    comma::verbose<<"asd::protocol: connected on "<<address<<std::endl;
+    std::string str;
+    std::getline(*ios, str);
+    comma::verbose<<str<<std::endl;
+    std::getline(*ios, str);
+    comma::verbose<<str<<std::endl;
+}
+
+protocol::acquire_reply_t protocol::send_acquire_data(const std::string& command)
+{
+    *ios<<command<<std::flush;
+    snark::asd::commands::acquire_data::spectrum_data reply;
+    ios->read(reply.data(),reply.size);
+    boost::posix_time::ptime time=boost::posix_time::microsec_clock::local_time();
+    //error handling
+    return acquire_reply_t(time, reply);
+}
 
 template<typename T>
-typename T::reply protocol::send(const std::string& command)
+snark::timestamped<typename T::reply> protocol::send(const std::string& command)
 {
     *ios<<command<<std::flush;
     typename T::reply reply;
     ios->read(reply.data(),reply.size);
+    boost::posix_time::ptime time=boost::posix_time::microsec_clock::local_time();
     //error handling
-    handle_reply(reply.header);
-    return reply;
+    return snark::timestamped<typename T::reply>(time, reply);
+}
+
+void protocol_sample_instantiate()
+{
+    protocol p("");
+    p.send<snark::asd::commands::optimize>("");
+    p.send<snark::asd::commands::instrument_gain_control>("");
+    p.send<snark::asd::commands::restore>("");
+    p.send<snark::asd::commands::save>("");
+    p.send<snark::asd::commands::erase>("");
+    p.send<snark::asd::commands::init>("");
+    p.send<snark::asd::commands::version>("");
+    p.send<snark::asd::commands::abort>("");
 }
 
 } }//namespace snark { namespace asd {
-
+    

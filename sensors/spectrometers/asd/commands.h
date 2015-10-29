@@ -30,11 +30,10 @@
 #pragma once
 #include <comma/packed/packed.h>
 #include <comma/packed/big_endian.h>
-#include <boost/graph/graph_concepts.hpp>
 
 namespace snark { namespace asd { namespace commands {
 
-const int flash_count=200;
+enum { flash_count = 200 };
     
 struct reply_header : public comma::packed::packed_struct< reply_header, 8 >
 {

@@ -27,38 +27,26 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "protocol.h"
-#include <comma/io/publisher.h>
+#pragma once
+#include "commands.h"
+#include <utility>
+#include <boost/date_time/posix_time/posix_time.hpp>
+#include <comma/io/stream.h>
+#include <snark/timing/timestamped.h>
 
 namespace snark { namespace asd {
 
-protocol::protocol(const std::string& address) : ios(address)
+class protocol
 {
-    comma::verbose<<"asd::protocol: connected on "<<address<<std::endl;
-    ios->getline(buf,sizeof(buf),'\n');
-    comma::verbose<<"<- "<<buf<<std::endl;
-    ios->getline(buf,sizeof(buf));
-    comma::verbose<<"<- "<<buf<<std::endl;
-}
-
-void protocol::handle_reply(const commands::reply_header& header)
-{
-    if(header.header() != 100)
-        comma::verbose<<"reply header: "<<header.header()<<" error: "<<header.error()<<std::endl;
-    if(header.error() != 0)
-        COMMA_THROW(comma::exception, "asd reply error: " << header.error() );
-}
-
-snark::asd::commands::acquire_data::spectrum_data protocol::send_acquire_data(const std::string& command)
-{
-    *ios<<command<<std::flush;
-    commands::acquire_data::spectrum_data reply;
-    ios->read(reply.data(),reply.size);
-    //error handling
-    handle_reply(reply.header.header);
-    return reply;
-}
-
+    comma::io::iostream ios;
+public:
+    typedef snark::timestamped<snark::asd::commands::acquire_data::spectrum_data> acquire_reply_t;
+    //tcp address
+    protocol(const std::string& address);
+    template<typename T>
+    snark::timestamped<typename T::reply> send(const std::string& command);
+    acquire_reply_t send_acquire_data(const std::string& command);
+};
 
 } }//namespace snark { namespace asd {
-    
+
