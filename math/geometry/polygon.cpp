@@ -38,7 +38,7 @@ namespace snark {
 
 template < typename C > static Eigen::Vector3d normal_impl( const C& corners )
 {
-    const Eigen::Vector3d& cross = ( corners[1] - corners[0] ).cross( corners[2] - corners[0] );
+    const Eigen::Vector3d& cross = ( corners[1] - corners[0] ).cross( corners[0] - corners[2] );
     return cross / cross.norm();
 }
 
