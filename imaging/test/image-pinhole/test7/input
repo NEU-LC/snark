@@ -1,0 +1,5 @@
+undistort --config=config.json --verbose
+0.0293,0.0282
+1.0043,1.004
+2.3992,3.0985
+

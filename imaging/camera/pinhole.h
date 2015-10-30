@@ -69,7 +69,9 @@ struct pinhole
         
         struct map_t
         {
+            //rows of undsitort map x
             std::vector<float> x_rows;
+            //transposed columns of undistort map y
             std::vector<float> y_cols;
             map_t() {}
             map_t(const cv::Mat& map_x,const cv::Mat& map_y);
@@ -116,10 +118,11 @@ struct pinhole
     Eigen::Vector2d tangentially_corrected( const Eigen::Vector2d& p ) const;
 
     /// return radially and then tangentially corrected pixel
-    Eigen::Vector2d undistorted( const Eigen::Vector2d& p ) const;
+    //can't be undistorted(..) const because it may build map on demand
+    Eigen::Vector2d undistorted( const Eigen::Vector2d& p );
     
     /// return pixel coordinates in camera frame
-    Eigen::Vector3d to_cartesian( const Eigen::Vector2d& p, bool undistort = true ) const;
+    Eigen::Vector3d to_cartesian( const Eigen::Vector2d& p, bool undistort = true );
 
     //returns converts from camera frame to image pixel col,row
     Eigen::Vector2d to_pixel( const Eigen::Vector3d& p);
@@ -138,6 +141,10 @@ struct pinhole
     
     //print camera config help to std::cerr (in usage format)
     static void usage();
+    
+    //check if distortion map is not loaded makes it from distortion parameters
+    //returns true if there is a map; false if no map and distortion parameters are zero (ie distortion map is identity function)
+    bool check_distortion_map();
 };
 
 } } // namespace snark { namespace camera {
