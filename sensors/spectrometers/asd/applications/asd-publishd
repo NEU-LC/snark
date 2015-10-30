@@ -29,7 +29,7 @@ function bye
 
 trap bye INT TERM HUP
 
-#if (( $# == 0 )); then usage; fi
+
 for arg in $@ ; do if [[ "$arg" == "--help" || "$arg" == "-h" ]] ; then usage; fi; done
 config="$1"
 if [[ -z "$config" ]]; then config="/usr/local/etc/shrimp.json"; fi
@@ -79,17 +79,6 @@ function init_device()
     fi
 }
 
-while [[ $state != "run" ]]; do
-    echo "$name: state: $state"
-    case "$state" in
-        begin) check_connection ;;
-#        query) query_data ;;
-        init) init_device ;;
-    esac;
-done
-
-echo "$name: running..." >&2
-
 daemon=${command%% *}
 if [[ ! -x $( which $daemon ) ]]; then echo "$name: daemon '$daemon' is not found" >&2; exit 1; fi
 
@@ -105,6 +94,17 @@ fi
 
 socat -U tcp4-listen:$port,reuseaddr,fork exec:"zero-cat $zero_options 'ipc://$socket'"$exec_options 2>/dev/null &
 socat_pid=$!
+
+while [[ $state != "run" ]]; do
+    echo "$name: state: $state"
+    case "$state" in
+        begin) check_connection ;;
+#        query) query_data ;;
+        init) init_device ;;
+    esac;
+done
+
+echo "$name: running..." >&2
 
 function daemonize
 {
