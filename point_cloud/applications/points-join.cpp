@@ -68,16 +68,21 @@ static void usage( bool more = false )
     std::cerr << "triangulated filter: for each input point find the nearest triangle of the filter, if any, in given radius; i.e." << std::endl;
     std::cerr << "                     nearest point of a triangle is the input point projection onto the triangle plane" << std::endl;
     std::cerr << "                     if the projection is inside of the triangle, border included" << std::endl;
-    std::cerr << "    input: points; fields: x,y,z" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    input fields: x,y,z" << std::endl;
+    std::cerr << std::endl;
     std::cerr << "    filter: triangles; fields: corners; or corners[0],corners[1],corners[2]; or corners[0]/x,or corners[0]/y,or corners[0]/z etc" << std::endl;
     std::cerr << "    output: concatenated input, corresponding line of filter, and nearest point of triangle (3d in binary)" << std::endl;
     std::cerr << "    options" << std::endl;
-    std::cerr << "        --face-depth=<distance>: how deep behind the triangle the point is allowed to be (otherwise it's discarded)" << std::endl;
-    std::cerr << "                                 default: 0, i.e. input points behind the triangle will be discarded" << std::endl;
-    std::cerr << "                                 triangle front is defined by direction of triangle normal" << std::endl;
-    std::cerr << "                                 triangle normal is derived from the order of corners in the record and right-hand screw rule" << std::endl;
+    std::cerr << "        --max-triangle-circumscribing-radius,--triangle-size=<value>: triangles of greater size will be discarded; default: value of --radius" << std::endl;
+    std::cerr << "        --origin=<x>,<y>,<z>: point from which the input points were seen" << std::endl;
+    std::cerr << "                              if the angle between the normal of the triangle and the vector from" << std::endl;
+    std::cerr << "                              the point to the origin greater or equal 90 degrees, the triangle" << std::endl;
+    std::cerr << "                              will not be considered" << std::endl;
+    std::cerr << "                              default: 0,0,0" << std::endl;
     std::cerr << std::endl;
     std::cerr << "todo: add support for block field" << std::endl;
+    std::cerr << "todo: add normal/x,normal/y,normal/z to the input fields" << std::endl;
     std::cerr << std::endl;
     if( more ) { std::cerr << "csv options" << std::endl << comma::csv::options::usage() << std::endl << std::endl; }
     std::cerr << "examples: todo" << std::endl;
@@ -85,12 +90,13 @@ static void usage( bool more = false )
     exit( 0 );
 }
 
-bool verbose;
-bool strict;
-double radius;
-double face_depth;
-comma::csv::options stdin_csv;
-comma::csv::options filter_csv;
+static bool verbose;
+static bool strict;
+static double radius;
+static Eigen::Vector3d origin = Eigen::Vector3d::Zero();
+static Eigen::Vector3d resolution;
+static comma::csv::options stdin_csv;
+static comma::csv::options filter_csv;
 
 // todo: add block field
 struct record
@@ -112,7 +118,7 @@ struct triangle_record
     boost::optional< Eigen::Vector3d > nearest_to( const Eigen::Vector3d& rhs ) const // quick and dirty, watch performance
     {
         boost::optional< Eigen::Vector3d > p = value.projection_of( rhs );
-        return value.includes( *p ) && !comma::math::less( value.normal().dot( rhs - *p ), face_depth ) ? p : boost::none;
+        return value.includes( *p ) && !comma::math::less( value.normal().dot( origin - rhs ), 0 ) ? p : boost::none;
     } 
 };
 
@@ -197,10 +203,7 @@ template < typename V > static int run( const comma::command_line_options& optio
     std::ifstream ifs( &filter_csv.filename[0] );
     if( !ifs.is_open() ) { std::cerr << "points-join: failed to open \"" << filter_csv.filename << "\"" << std::endl; }
     strict = options.exists( "--strict" );
-    radius = options.value< double >( "--radius" );
-    face_depth = options.value< double >( "--face-depth", 0 );
     bool all = options.exists( "--all" );
-    Eigen::Vector3d resolution( radius, radius, radius );
     comma::csv::input_stream< V > ifstream( ifs, filter_csv, traits< V >::default_value() );
     std::deque< filter_record_t > filter_points;
     snark::math::closed_interval< double, 3 > extents;
@@ -306,6 +309,7 @@ int main( int ac, char** av )
         comma::command_line_options options( ac, av, usage );
         verbose = options.exists( "--verbose,-v" );
         stdin_csv = comma::csv::options( options );
+        if( stdin_csv.fields.empty() ) { stdin_csv.fields = "x,y,z"; }
         std::vector< std::string > unnamed = options.unnamed( "--verbose,-v,--strict,--all", "-.*" );
         if( unnamed.empty() ) { std::cerr << "points-join: please specify the second source; self-join: todo" << std::endl; return 1; }
         if( unnamed.size() > 1 ) { std::cerr << "points-join: expected one file or stream to join, got " << comma::join( unnamed, ' ' ) << std::endl; return 1; }
@@ -316,6 +320,14 @@ int main( int ac, char** av )
         const std::vector< std::string >& v = comma::split( filter_csv.fields, ',' );
         bool filter_triangulated = false;
         for( unsigned int i = 0; !filter_triangulated && i < v.size(); ++i ) { filter_triangulated = v[i].substr( 0, ::strlen( "corners" ) ) == "corners"; }
+        radius = options.value< double >( "--radius" );
+        double r = radius;
+        if( filter_triangulated ) // quick and dirty
+        {
+            r = options.value< double >( "--max-triangle-circumscribing-radius,--triangle-size", radius );
+            origin = options.exists( "--origin" ) ? comma::csv::ascii< Eigen::Vector3d >().get( options.value< std::string >( "--origin" ) ) : Eigen::Vector3d::Zero();
+        }
+        resolution = Eigen::Vector3d( r, r, r );
         return filter_triangulated ? run< snark::triangle >( options )
                                    : run< Eigen::Vector3d >( options );
     }
