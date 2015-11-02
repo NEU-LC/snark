@@ -324,7 +324,9 @@ int main( int ac, char** av )
         double r = radius;
         if( filter_triangulated ) // quick and dirty
         {
-            r = options.value< double >( "--max-triangle-circumscribing-radius,--triangle-size", radius );
+            double s = options.value< double >( "--max-triangle-circumscribing-radius,--triangle-size", 0 );
+            if( s > r ) { r = s; }
+            r *= 2; // todo: quick and dirty, calculate precise upper bound; needed to contain all triangles in given radius
             origin = options.exists( "--origin" ) ? comma::csv::ascii< Eigen::Vector3d >().get( options.value< std::string >( "--origin" ) ) : Eigen::Vector3d::Zero();
         }
         resolution = Eigen::Vector3d( r, r, r );
