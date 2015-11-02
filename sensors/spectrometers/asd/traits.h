@@ -30,8 +30,6 @@
 #pragma once
 #include "commands.h"
 #include <comma/visiting/traits.h>
-#include <boost/graph/graph_concepts.hpp>
-#include <boost/lexical_cast.hpp>
 #include <comma/packed/traits.h>
 
 namespace comma { namespace visiting {
