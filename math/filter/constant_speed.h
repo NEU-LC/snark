@@ -43,7 +43,7 @@ struct constant_speed
 typedef Eigen::Matrix< double, ( N << 1 ), 1 > state_type;
 typedef Eigen::Matrix< double, ( N << 1 ), ( N << 1 ) > covariance_type;
     
-/// state is [ position velocity ]
+/// state is of shape [2N x 1] in format: [ position[1:N]; speed[1:N] ]
 struct state
 {
     state();
@@ -59,6 +59,7 @@ struct state
 struct model
 {
     model( double noiseSigma );
+    model( double noise_sigma_position, double noise_sigma_speed );
 
     const covariance_type& jacobian( const state & s, double dt );
 
@@ -126,10 +127,8 @@ void constant_speed< N >::state::set_innovation( const Eigen::Matrix< double, ( 
     state_vector += innovation;
 }
 
-
 /// constructor
 /// @param noiseSigma process noise for speed and position
-/// TODO separate noise for position and speed ?
 template< unsigned int N >
 constant_speed< N >::model::model( double noiseSigma ):
     sigma( state_type::Ones() * noiseSigma ),
@@ -137,6 +136,18 @@ constant_speed< N >::model::model( double noiseSigma ):
     noise( covariance_type::Zero() )
 {
 
+}
+
+/// constructor
+/// @param noise_sigma_position process noise for position
+/// @param noise_sigma_speed process noise for speed
+template< unsigned int N >
+constant_speed< N >::model::model( double noise_sigma_position, double noise_sigma_speed ):
+    A( covariance_type::Identity() ),
+    noise( covariance_type::Zero() )
+{
+    sigma << Eigen::Matrix< double, N, 1 >::Ones() * noise_sigma_position,
+             Eigen::Matrix< double, N, 1 >::Ones() * noise_sigma_speed;
 }
 
 /// get the jacobian of the motion model
