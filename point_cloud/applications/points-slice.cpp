@@ -149,7 +149,7 @@ int main( int argc, char** argv )
         #ifdef WIN32
             _setmode( _fileno( stdout ), _O_BINARY ); /// @todo move to a library
         #endif
-        comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, csv );
+        comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, csv, Eigen::Vector3d::Zero() );
         comma::signal_flag is_shutdown;
         comma::csv::ascii< Eigen::Vector3d > ascii( "x,y,z", csv.delimiter );
         comma::csv::binary< Eigen::Vector3d > binary( "3d", "x,y,z" );
