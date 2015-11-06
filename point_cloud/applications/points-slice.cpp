@@ -86,7 +86,7 @@ int main( int argc, char** argv )
             std::cerr << std::endl;
             std::cerr << "if --intersections is specified, assume the input represents a trajectory, find its intersections with the plane," << std::endl;
             std::cerr << "for each intersection, output adjacent points between which it occurs, the intersection point, and the direction of intersection (-1,0,+1)," << std::endl;
-            std::cerr << "where 0 indicates that both adjacent points are in the plane" << std::endl;
+            std::cerr << "where 0 indicates that both adjacent points are in the plane, +1 if the trajectory's direction is the same as normal of the plane, and -1 otherwise" << std::endl;
             std::cerr << std::endl;
             std::cerr << "usage: " << std::endl;
             std::cerr << "    cat points.csv | points-slice [options] > points_with_distance.csv" << std::endl;
@@ -105,7 +105,7 @@ int main( int argc, char** argv )
             std::cerr << "        x,y,z,distance, where distance is signed distance to the plane" << std::endl;
             std::cerr << std::endl;
             std::cerr << "    if --intersections is specified:" << std::endl;
-            std::cerr << "        x1,y1,z1,x2,y2,z2,p1,p2,p3,i, where x1,y1,z1,x2,y2,z2 are the adjacent points, p1,p2,p3 is the intersection, and i is the direction" << std::endl;
+            std::cerr << "        previous_input_line,input_line,intersection,direction" << std::endl;
             std::cerr << std::endl;
             std::cerr << "examples:" << std::endl;
             std::cerr << "   echo -e \"0,0,-1\\n0,0,0\\n0,0,1\" | points-slice --points 0,0,0,0,1,0,1,0,0" << std::endl;
@@ -189,8 +189,8 @@ int main( int argc, char** argv )
                         intersection_point = line.intersectionPoint( plane );
                     }
                     comma::int32 direction;
-                    if( d_last != 0 ) { direction = ( d_last > 0 ) ? 1 : -1; }
-                    else if( d != 0 ) { direction = ( d < 0 ) ? 1 : -1; }
+                    if( d_last != 0 ) { direction = ( d_last < 0 ) ? 1 : -1; }
+                    else if( d != 0 ) { direction = ( d > 0 ) ? 1 : -1; }
                     else { direction = 0; }
                     if( csv.binary() )
                     {
