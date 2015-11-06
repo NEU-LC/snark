@@ -160,6 +160,8 @@ int main( int argc, char** argv )
             double d_last = 0;
             boost::optional< double > threshold;
             if( vm.count("threshold") ) { threshold.reset( vm["threshold"].as< double >() ); }
+            std::string previous_line_ascii;
+            std::vector< char > previous_data_binary;
             while( !is_shutdown && ( istream.ready() || ( !std::cin.eof() && std::cin.good() ) ) )
             {
                 const Eigen::Vector3d* p = istream.read();
@@ -192,19 +194,31 @@ int main( int argc, char** argv )
                     else { direction = 0; }
                     if( csv.binary() )
                     {
-                        std::cout.write( reinterpret_cast< const char* >( &( *last ) ), sizeof( double ) * 3 );
+                        std::cout.write( &previous_data_binary[0], previous_data_binary.size() );
                         std::cout.write( istream.binary().last(), istream.binary().binary().format().size() );
                         std::cout.write( reinterpret_cast< const char* >( &intersection_point ), sizeof( double ) * 3 );
                         std::cout.write( reinterpret_cast< const char* >( &direction ), sizeof( comma::int32 ) );
                     }
                     else
                     {
-                        std::cout << ascii.put( *last ) << csv.delimiter << comma::join( istream.ascii().last(), csv.delimiter ) << csv.delimiter
+                        std::cout << previous_line_ascii << csv.delimiter << comma::join( istream.ascii().last(), csv.delimiter ) << csv.delimiter
                                     << ascii.put( intersection_point ) << csv.delimiter << direction << std::endl;
                     }
                 }
-                last.reset( *p );
+                last = *p;
                 d_last = d;
+                if( csv.binary() )
+                {
+                    if( previous_data_binary.size() != istream.binary().binary().format().size() )
+                    {
+                        previous_data_binary.resize( istream.binary().binary().format().size() );
+                    }
+                    ::memcpy( &previous_data_binary[0], istream.binary().last(), previous_data_binary.size() );
+                }
+                else
+                {
+                    previous_line_ascii = comma::join( istream.ascii().last(), csv.delimiter );
+                }
             }
         }
         else
