@@ -25,7 +25,18 @@ NAME=snark-webframes
 DAEMON=/usr/local/bin/$NAME
 PIDFILE=/var/run/$NAME.pid
 SCRIPTNAME=/etc/init.d/$NAME
-DAEMON_ARGS="--config /usr/local/etc/web.backend.json"
+#DAEMON_ARGS="--config /usr/local/etc/web.backend.json"
+
+CMD=$1
+if [ $# -gt 1 ]
+then
+    shift       # Remove first argument (which is now in $CMD)
+    ARGS="$@"   # Send rest of the arguments to $DAEMON 
+else
+    # Default arguments
+    host=$( hostname | cut -d- -f1 )
+    ARGS="--port=7000 --config=/usr/local/etc/${host}.web.backend.json --publish-config=/usr/local/etc/${host}.publish.json --robot-config=/usr/local/etc/${host}.json"
+fi
 
 # Exit if the package is not installed
 [ -x "$DAEMON" ] || exit 0
@@ -71,7 +82,7 @@ do_start()
     #   1 if daemon was already running
     #   2 if daemon could not be started
     start-stop-daemon --start --quiet --pidfile $PIDFILE --make-pidfile --startas $DAEMON --name $NAME --background --test > /dev/null || return 1
-    start-stop-daemon --start --quiet --pidfile $PIDFILE --make-pidfile --startas $DAEMON --name $NAME --background -- $DAEMON_ARGS || return 2
+    start-stop-daemon --start --quiet --pidfile $PIDFILE --make-pidfile --startas $DAEMON --name $NAME --background -- $ARGS || return 2
     # Add code here, if necessary, that waits for the process to be ready
     # to handle requests from services started subsequently which depend
     # on this one.  As a last resort, sleep for some time.
@@ -116,7 +127,7 @@ do_reload() {
     return 0
 }
 
-case "$1" in
+case "$CMD" in
   start)
     is_running && return 1
     [ "$VERBOSE" != no ] && log_daemon_msg "Starting $DESC" "$NAME"
