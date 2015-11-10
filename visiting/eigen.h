@@ -56,7 +56,48 @@ template < typename T, int Rows > struct traits< ::Eigen::Matrix< T, Rows, 1 > >
         comma::visiting::traits< boost::array< T, Rows > >::visit( k, a, v );
     }
 };
-    
+
+namespace detail {
+
+template < typename T, int Cols > struct cols { boost::array< T, Cols > cols; };
+
+} // namespace detail {
+
+template < typename T, int Cols > struct traits< detail::cols< T, Cols > >
+{
+    template < typename Key, class Visitor >
+    static void visit( const Key&, detail::cols< T, Cols >& p, Visitor& v )
+    {
+        v.apply( "cols", p.cols );
+    }
+
+    template < typename Key, class Visitor >
+    static void visit( const Key&, const detail::cols< T, Cols >& p, Visitor& v )
+    {
+        v.apply( "cols", p.cols );
+    }
+};
+
+template < typename T, int Rows, int Cols > struct traits< ::Eigen::Matrix< T, Rows, Cols > > // sigh... eigen is using int for size
+{
+    template < typename Key, class Visitor >
+    static void visit( const Key& k, ::Eigen::Matrix< T, Rows, Cols >& p, Visitor& v )
+    {
+        boost::array< detail::cols< T, Cols >, Rows > rows; // quick and dirty
+        for( unsigned int i = 0; i < Rows; ++i ) { for( unsigned int j = 0; j < Cols; ++j ) { rows[i].cols[j] = p( i, j ); } }
+        v.apply( "rows", rows );
+        for( unsigned int i = 0; i < Rows; ++i ) { for( unsigned int j = 0; j < Cols; ++j ) { p( i, j ) = rows[i].cols[j]; } }
+    }
+
+    template < typename Key, class Visitor >
+    static void visit( const Key& k, const ::Eigen::Matrix< T, Rows, Cols >& p, Visitor& v )
+    {
+        boost::array< detail::cols< T, Cols >, Rows > rows; // quick and dirty
+        for( unsigned int i = 0; i < Rows; ++i ) { for( unsigned int j = 0; j < Cols; ++j ) { rows[i].cols[j] = p( i, j ); } }
+        v.apply( "rows", rows );
+    }
+};
+
 template < typename T > struct traits< ::Eigen::Matrix< T, 2, 1 > >
 {
     template < typename Key, class Visitor >
@@ -158,4 +199,3 @@ template < typename T > struct traits< ::Eigen::Translation< T, 3 > >
 } }
 
 #endif // SNARK_VISITING_EIGEN_H
-
