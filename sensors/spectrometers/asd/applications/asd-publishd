@@ -79,7 +79,7 @@ function init_device()
     fi
 }
 
-daemon=${command%% *}
+daemon="asd-control"
 if [[ ! -x $( which $daemon ) ]]; then echo "$name: daemon '$daemon' is not found" >&2; exit 1; fi
 
 socket=/tmp/$( basename $daemon )$$
