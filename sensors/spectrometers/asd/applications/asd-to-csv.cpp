@@ -97,6 +97,16 @@ struct app
     static void process(const comma::csv::options& csv);
 };
 
+template<typename T>
+T* read_packet(std::istream& is, T& t)
+{
+    is.read(t.data(),t.size);
+    std::streamsize read_count=is.gcount();
+    if(read_count==0&&!is.good()){return NULL;}
+    if(read_count != t.size) { COMMA_THROW(comma::exception, "read count mismatch, expected: " << t.size << " bytes; got: " << read_count );}
+    return &t;
+}
+
 template<>
 const timestamped_output_t* app<timestamped_output_t>::read()
 {
@@ -104,7 +114,7 @@ const timestamped_output_t* app<timestamped_output_t>::read()
     if(!std::cin.good()) { return NULL; }
     std::cin.read(reinterpret_cast<char*>(&reply.t), sizeof(boost::posix_time::ptime));
     if(!std::cin.good()) { return NULL; }
-    std::cin.read(reply.data.data(),reply.data.size);
+    if(read_packet(std::cin, reply.data)==NULL){return NULL;}
     return &reply;
 }
 
@@ -113,8 +123,7 @@ const output_t* app<output_t>::read()
 {
     static output_t reply;
     if(!std::cin.good()) { return NULL; }
-    std::cin.read(reply.data(),reply.size);
-    return &reply;
+    return read_packet(std::cin, reply);
 }
 
 template<typename T>
