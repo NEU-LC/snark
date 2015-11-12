@@ -7,4 +7,4 @@ LIST( REMOVE_ITEM extras ${source} )
 
 ADD_EXECUTABLE( ocean_test ${source} ${extras} )
 
-TARGET_LINK_LIBRARIES( ocean_test snark_ocean boost_system ${comma_ALL_LIBRARIES} ${GTEST_BOTH_LIBRARIES} )
+TARGET_LINK_LIBRARIES( ocean_test snark_ocean ${Boost_SYSTEM_LIBRARY} ${comma_ALL_LIBRARIES} ${GTEST_BOTH_LIBRARIES} )

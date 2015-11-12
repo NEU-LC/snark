@@ -198,7 +198,8 @@ SET( snark_system_manager "auto" CACHE STRING "the system and service manager of
 IF( snark_system_manager STREQUAL "auto" )
     EXECUTE_PROCESS( COMMAND cat /proc/1/comm
                      OUTPUT_VARIABLE snark_system_manager
-                     OUTPUT_STRIP_TRAILING_WHITESPACE )
+                     OUTPUT_STRIP_TRAILING_WHITESPACE
+                     ERROR_QUIET )
     MESSAGE( STATUS "auto detected system manager: ${snark_system_manager}" )
 ENDIF( snark_system_manager STREQUAL "auto" )
 
