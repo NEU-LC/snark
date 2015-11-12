@@ -49,6 +49,7 @@ bool timestamp=false;
 bool strict=false;
 //loop over acquire command
 bool acquire=false;
+unsigned int sleep_seconds=0;
 
 template<typename T>
 static void write_output(const T& timestamped)
@@ -112,6 +113,7 @@ static bool process_acquire_data(snark::asd::protocol& protocol, const std::stri
         snark::asd::protocol::acquire_reply_t reply=protocol.send_acquire_data(cmd);
         handle_reply(reply.data.header.header);
         write_output(reply);
+        if(sleep_seconds) { sleep(sleep_seconds);}
     }
     while(acquire);
     return true;
@@ -133,7 +135,7 @@ void usage(bool detail)
     std::cerr << "    --acquire: loop over acquire command (one line from stdin)" << std::endl;
     std::cerr << "    --output-size: print size of acquire data to stdout and exit" << std::endl;
     std::cerr << "    --timeout=<seconds>: if it doesn't receive any data from device after timeout seconds it will exit with error" << std::endl;
-    std::cerr << "    --sleep=<seconds>: sleep this many seconds between receiving response and sending the next request" << std::endl;
+    std::cerr << "    --sleep=<seconds>: sleep this many seconds between receiving response and sending the next request; used with --acquire only" << std::endl;
     
     std::cerr << std::endl;
     std::cerr << std::endl;
@@ -181,7 +183,7 @@ int main( int ac, char** av )
         strict=options.exists("--strict");
         acquire=options.exists("--acquire");
         snark::asd::protocol protocol(unnamed[0], options.value("--timeout",0));
-        unsigned int sleep_seconds=options.value("--sleep",0);
+        sleep_seconds=options.value("--sleep",0);
         while(std::cin.good())
         {
             //comma::verbose<<"reading stdin..."<<std::endl;
@@ -200,7 +202,6 @@ int main( int ac, char** av )
                 || app<snark::asd::commands::erase>::process(protocol,cmd)
                 || app<snark::asd::commands::instrument_gain_control>::process(protocol,cmd);
             if ( !processed ) { COMMA_THROW(comma::exception, "invalid command " << cmd );  }
-            if(sleep_seconds) { sleep(sleep_seconds);}
         }
         return 0;
     }
