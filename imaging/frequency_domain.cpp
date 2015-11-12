@@ -115,7 +115,7 @@ void frequency_domain::shift( cv::Mat& image )
         return;
     }
 
-    cv::vector< cv::Mat > planes;
+    std::vector< cv::Mat > planes;
     cv::split( image, planes );
 
     int xMid = image.cols >> 1;
