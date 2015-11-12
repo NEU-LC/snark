@@ -32,6 +32,7 @@
 #include <utility>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <comma/io/stream.h>
+#include <comma/io/select.h>
 #include <snark/timing/timestamped.h>
 
 namespace snark { namespace asd {
@@ -39,10 +40,14 @@ namespace snark { namespace asd {
 class protocol
 {
     comma::io::iostream ios;
+    comma::io::select select;
+    unsigned int timeout_seconds;
+    template<typename T>
+    void read_packet(T& t);
 public:
     typedef snark::timestamped<snark::asd::commands::acquire_data::spectrum_data> acquire_reply_t;
     //tcp address
-    protocol(const std::string& address);
+    protocol(const std::string& address, unsigned int timeout_seconds=0);
     template<typename T>
     snark::timestamped<typename T::reply> send(const std::string& command);
     acquire_reply_t send_acquire_data(const std::string& command);

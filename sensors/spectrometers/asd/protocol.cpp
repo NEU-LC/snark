@@ -34,21 +34,40 @@
 
 namespace snark { namespace asd {
 
-protocol::protocol(const std::string& address) : ios(address)
+protocol::protocol(const std::string& address,unsigned int t) : ios(address), timeout_seconds(t)
 {
+    select.read().add( ios.fd());
     comma::verbose<<"asd::protocol: connected on "<<address<<std::endl;
     std::string str;
+    if(timeout_seconds)
+    {
+        select.wait( timeout_seconds );
+        if(!select.read().ready( ios.fd() )) { COMMA_THROW(comma::exception, "timeout waiting for read" ); }
+    }
     std::getline(*ios, str);
     comma::verbose<<str<<std::endl;
     std::getline(*ios, str);
     comma::verbose<<str<<std::endl;
 }
 
+template<typename T>
+void protocol::read_packet(T& t)
+{
+    if(timeout_seconds)
+    {
+        select.wait( timeout_seconds );
+        if(!select.read().ready( ios.fd() )) { COMMA_THROW(comma::exception, "timeout waiting for read" ); }
+    }
+    ios->read(t.data(),t.size);
+    std::streamsize read_count=ios->gcount();
+    if(read_count != t.size) { COMMA_THROW(comma::exception, "read count mismatch, expected: " << t.size << " bytes; got: " << read_count );}
+}
+
 protocol::acquire_reply_t protocol::send_acquire_data(const std::string& command)
 {
     *ios<<command<<std::flush;
     snark::asd::commands::acquire_data::spectrum_data reply;
-    ios->read(reply.data(),reply.size);
+    read_packet(reply);
     boost::posix_time::ptime time=boost::posix_time::microsec_clock::local_time();
     //error handling
     return acquire_reply_t(time, reply);
@@ -59,7 +78,7 @@ snark::timestamped<typename T::reply> protocol::send(const std::string& command)
 {
     *ios<<command<<std::flush;
     typename T::reply reply;
-    ios->read(reply.data(),reply.size);
+    read_packet(reply);
     boost::posix_time::ptime time=boost::posix_time::microsec_clock::local_time();
     //error handling
     return snark::timestamped<typename T::reply>(time, reply);
@@ -67,6 +86,7 @@ snark::timestamped<typename T::reply> protocol::send(const std::string& command)
 
 void protocol_sample_instantiate()
 {
+    //this adds template instances for linker
     protocol p("");
     p.send<snark::asd::commands::optimize>("");
     p.send<snark::asd::commands::instrument_gain_control>("");
