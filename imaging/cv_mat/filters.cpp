@@ -186,7 +186,7 @@ static filters::value_type unpack12_impl_( filters::value_type m )
     if(m.second.type()!=CV_8UC1 && m.second.type()!=CV_16UC1) { COMMA_THROW( comma::exception, "expected CV_8UC1("<<int(CV_8UC1)<<") or CV_16UC1("<<int(CV_16UC1)<<") , got: "<< m.second.type() );}
     //number of bytes
     int size=m.second.cols;
-    if(m.second.type()!=CV_16UC1){size*=2;}
+    if(m.second.type()==CV_16UC1){size*=2;}
     if(size%3!=0) { COMMA_THROW( comma::exception, "size is not divisible by three: "<<size);}
     cv::Mat mat(m.second.rows, (2*size)/3, CV_16UC1);
     for(int j=0;j<m.second.rows;j++)
