@@ -136,6 +136,7 @@ void usage(bool detail)
     std::cerr << "    --output-size: print size of acquire data to stdout and exit" << std::endl;
     std::cerr << "    --timeout=<seconds>: if it doesn't receive any data from device after timeout seconds it will exit with error" << std::endl;
     std::cerr << "    --sleep=<seconds>: sleep this many seconds between receiving response and sending the next request; used with --acquire only" << std::endl;
+    std::cerr << "    --omit-new-line: don't add \\n to command (input)" << std::endl;
     
     std::cerr << std::endl;
     std::cerr << std::endl;
@@ -182,6 +183,7 @@ int main( int ac, char** av )
         if(unnamed.size() != 1) { COMMA_THROW(comma::exception, "expected address (one unnamed arg); got " << unnamed.size() ); }
         strict=options.exists("--strict");
         acquire=options.exists("--acquire");
+        bool omit_new_line=options.exists("--omit-new-line");
         snark::asd::protocol protocol(unnamed[0], options.value("--timeout",0));
         sleep_seconds=options.value("--sleep",0);
         while(std::cin.good())
@@ -190,7 +192,7 @@ int main( int ac, char** av )
             std::string cmd;
             std::getline( std::cin, cmd );
             if( cmd.empty() ) { continue; }
-            cmd += '\n';
+            if(!omit_new_line) { cmd += '\n'; }
             comma::verbose<<"sending command: "<<cmd<<std::endl;
             bool processed =  process_acquire_data(protocol,cmd)
                 || app<snark::asd::commands::version>::process(protocol,cmd)
