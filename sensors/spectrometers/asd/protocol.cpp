@@ -50,19 +50,6 @@ protocol::protocol(const std::string& address,unsigned int t) : ios(address), ti
     comma::verbose<<str<<std::endl;
 }
 
-template<typename T>
-void protocol::read_packet(T& t)
-{
-    if(timeout_seconds)
-    {
-        select.wait( timeout_seconds );
-        if(!select.read().ready( ios.fd() )) { COMMA_THROW(comma::exception, "timeout waiting for read" ); }
-    }
-    ios->read(t.data(),t.size);
-    std::streamsize read_count=ios->gcount();
-    if(read_count != t.size) { COMMA_THROW(comma::exception, "read count mismatch, expected: " << t.size << " bytes; got: " << read_count );}
-}
-
 protocol::acquire_reply_t protocol::send_acquire_data(const std::string& command)
 {
     *ios<<command<<std::flush;
@@ -73,17 +60,7 @@ protocol::acquire_reply_t protocol::send_acquire_data(const std::string& command
     return acquire_reply_t(time, reply);
 }
 
-template<typename T>
-snark::timestamped<typename T::reply> protocol::send(const std::string& command)
-{
-    *ios<<command<<std::flush;
-    typename T::reply reply;
-    read_packet(reply);
-    boost::posix_time::ptime time=boost::posix_time::microsec_clock::local_time();
-    //error handling
-    return snark::timestamped<typename T::reply>(time, reply);
-}
-
+/*
 void protocol_sample_instantiate()
 {
     //this adds template instances for linker
@@ -97,6 +74,7 @@ void protocol_sample_instantiate()
     p.send<snark::asd::commands::version>("");
     p.send<snark::asd::commands::abort>("");
 }
+*/
 
 } }//namespace snark { namespace asd {
     
