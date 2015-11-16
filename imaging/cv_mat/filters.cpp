@@ -180,6 +180,27 @@ static filters::value_type cvt_color_impl_( filters::value_type m, unsigned int 
     cv::cvtColor( m.second, n.second, which + 45u ); // HACK, bayer as unsigned int, but I don't find enum { BG2RGB, GB2BGR ... } more usefull
     return n;
 }
+static filters::value_type unpack12_impl_( filters::value_type m )
+{
+    //if(m.second.channels()!=1) { COMMA_THROW( comma::exception, "expected one channel input, got: ", m.second.channels() );}
+    if(m.second.type()!=CV_8UC1 && m.second.type()!=CV_16UC1) { COMMA_THROW( comma::exception, "expected CV_8UC1("<<int(CV_8UC1)<<") or CV_16UC1("<<int(CV_16UC1)<<") , got: "<< m.second.type() );}
+    //number of bytes
+    int size=m.second.cols;
+    if(m.second.type()!=CV_16UC1){size*=2;}
+    if(size%3!=0) { COMMA_THROW( comma::exception, "size is not divisible by three: "<<size);}
+    cv::Mat mat(m.second.rows, (2*size)/3, CV_16UC1);
+    for(int j=0;j<m.second.rows;j++)
+    {
+        const unsigned char* ptr=m.second.ptr<unsigned char>(j);
+        unsigned short* out_ptr=mat.ptr<unsigned short>(j);
+        for(int col=0, i=0;i<size;i+=3)
+        {
+            out_ptr[col++] = ptr[i] | ( (ptr[i+1]&0xF) << 8 );
+            out_ptr[col++] = (ptr[i+1]>>4) | (ptr[i+2]<<4);
+        }
+    }
+    return filters::value_type(m.first, mat);
+}
 
 static filters::value_type head_impl_( filters::value_type m, unsigned int number_of_frames )
 {
@@ -1069,6 +1090,12 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
             if( modified ) { COMMA_THROW( comma::exception, "cannot covert from bayer after transforms: " << name ); }
             unsigned int which = boost::lexical_cast< unsigned int >( e[1] );
             f.push_back( filter( boost::bind( &cvt_color_impl_, _1, which ) ) );
+        }
+        else if( e[0] == "unpack12" )
+        {
+            if( modified ) { COMMA_THROW( comma::exception, "cannot covert from 12 bit packed after transforms: " << name ); }
+            if(e.size()!=1) { COMMA_THROW( comma::exception, "unexpected arguement: "<<e[1]); }
+            f.push_back( filter(boost::bind(&unpack12_impl_, _1 )) );
         }
         else if( e[0] == "count" )
         {

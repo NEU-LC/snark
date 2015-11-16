@@ -180,6 +180,16 @@ static cv::Mat pv_as_cvmat_( const tPvFrame& frame )
             COMMA_THROW( comma::exception, "unsupported format " << frame.Format );
         default:
             COMMA_THROW( comma::exception, "unknown format " << frame.Format );
+        case ePvFmtBayer12Packed:
+        {
+            if(frame.ImageBufferSize != frame.Height*frame.Width*1.5) 
+            { 
+                COMMA_THROW( comma::exception, "12bit packed size mismatch; frame.{ ImageBufferSize" << frame.ImageBufferSize
+                    <<" frame.Height "<<frame.Height <<" frame.Width "<<frame.Width<<"}");
+                
+            }
+            return cv::Mat( frame.Height, frame.Width*1.5, CV_8UC1, frame.ImageBuffer );
+        }
     };
     return cv::Mat( frame.Height, frame.Width, type, frame.ImageBuffer );
 }
