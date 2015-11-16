@@ -101,10 +101,10 @@ struct app
 //for acquaire_data command
 static bool process_acquire_data(snark::asd::protocol& protocol, const std::string& cmd)
 {
-    if(cmd.find(snark::asd::commands::acquire_data::command()) !=0 ) 
+    if(cmd.find(snark::asd::commands::acquire_data::command()) !=0 && cmd[0]!='C')
     {
         if(acquire) { COMMA_THROW( comma::exception, "process_acquire_data command mismatch; --acquire can only be used with A (acquire data) command"); }
-        return false; 
+        return false;
     }
     //do it once if !acquire
     do
