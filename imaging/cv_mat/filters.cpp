@@ -191,14 +191,15 @@ static filters::value_type unpack12_impl_( filters::value_type m )
     cv::Mat mat(m.second.rows, (2*size)/3, CV_16UC1);
     for(int j=0;j<m.second.rows;j++)
     {
-        const unsigned char* ptr=m.second.ptr<unsigned char>(j);
+        const unsigned char* ptr=m.second.ptr(j);
         unsigned short* out_ptr=mat.ptr<unsigned short>(j);
         for(int col=0, i=0;i<size;i+=3)
         {
-            out_ptr[col++] = ptr[i] | ( (ptr[i+1]&0xF) << 8 );
-            out_ptr[col++] = (ptr[i+1]>>4) | (ptr[i+2]<<4);
+            out_ptr[col++] = ((unsigned(ptr[i])<<4) +  (unsigned(ptr[i+1]&0xF0) >> 4)) << 4;
+            out_ptr[col++] = ((unsigned(ptr[i+2])<<4) + unsigned(ptr[i+1]&0x0F)) << 4;
+            //out_ptr[col++] = (unsigned(ptr[i+2])<<4 | unsigned(ptr[i+1]&0x0F) >> 4) << 4;
         }
-    }
+   }
     return filters::value_type(m.first, mat);
 }
 
@@ -1475,7 +1476,7 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
             if( !vf ) { COMMA_THROW( comma::exception, "expected filter, got \"" << v[i] << "\"" ); }
             f.push_back( *vf );
         }
-        modified = ( v[i] != "view" && v[i] != "thumb" && v[i] != "split" );
+        modified = ( v[i] != "view" && v[i] != "thumb" && v[i] != "split" && v[i]!="unpack12" );
     }
     return f;
 }
@@ -1493,6 +1494,7 @@ static std::string usage_impl_()
     oss << "        accumulate=<n>: accumulate the last n images and concatenate them vertically (useful for slit-scan and spectral cameras like pika2)" << std::endl;
     oss << "            example: cat slit-scan.bin | cv-cat \"accumulate=400;view;null\"" << std::endl;
     oss << "        bayer=<mode>: convert from bayer, <mode>=1-4" << std::endl;
+    oss << "        unpack12: convert from 12-bit packed (2 pixels in 3 bytes) to 16UC1; use before other filters" << std::endl;
     oss << "        blur=<type>,<kernel size>[,<std>]: apply blur to the image" << std::endl;
     oss << "            options for blur=box: (1 or 2 parameters) kernel size <x>[,<y>]" << std::endl;
     oss << "            options for blur=gaussian: (2 or 4 parameters) kernel size (positive and odd) and standard deviation <x>[,<y>],<std x>[,<std y>]. Set kernel size or std to 0 to calculate missing parameter." << std::endl;
