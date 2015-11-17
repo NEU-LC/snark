@@ -101,11 +101,7 @@ struct app
 //for acquaire_data command
 static bool process_acquire_data(snark::asd::protocol& protocol, const std::string& cmd)
 {
-    if(cmd.find(snark::asd::commands::acquire_data::command()) !=0 && cmd[0]!='C')
-    {
-        if(acquire) { COMMA_THROW( comma::exception, "process_acquire_data command mismatch; --acquire can only be used with A (acquire data) command"); }
-        return false;
-    }
+    if(cmd.find(snark::asd::commands::acquire_data::command()) !=0 && cmd[0]!='C') { return false; }
     //do it once if !acquire
     do
     {
@@ -132,7 +128,7 @@ void usage(bool detail)
     std::cerr << "    --raw: send raw binary reply to stdout; default when not specified it outputs json format of reply" << std::endl;
     std::cerr << "        --timestamp: prepend output with timestamp of receiving response (only works with --raw)" << std::endl;
     std::cerr << "    --strict: throw exception if asd returns error (reply.error!=0)" << std::endl;
-    std::cerr << "    --acquire: loop over acquire command (one line from stdin)" << std::endl;
+    std::cerr << "    --acquire: loop over acquire command; any command other than A will be executed once, the A command will be repeated in an infinite loop" << std::endl;
     std::cerr << "    --output-size: print size of acquire data to stdout and exit" << std::endl;
     std::cerr << "    --timeout=<seconds>: if it doesn't receive any data from device after timeout seconds it will exit with error" << std::endl;
     std::cerr << "    --sleep=<seconds>: sleep this many seconds between receiving response and sending the next request; used with --acquire only" << std::endl;
