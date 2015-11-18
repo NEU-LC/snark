@@ -19,4 +19,3 @@ INSTALL( TARGETS asd-to-csv
          RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR}
          COMPONENT Runtime )
 
-INSTALL( PROGRAMS asd-publishd DESTINATION ${snark_INSTALL_BIN_DIR} )
