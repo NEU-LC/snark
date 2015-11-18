@@ -168,7 +168,7 @@ struct instrument_gain_control
 
 struct acquire_data
 {
-    static const char* command() { return "A";  }
+    static const char* command() { return "A,";  }
     static const char* name() { return "acquire data"; }
     struct vnir_header : public comma::packed::packed_struct<vnir_header, 16 * 4>
     {

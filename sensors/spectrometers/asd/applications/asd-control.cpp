@@ -102,6 +102,7 @@ struct app
 static bool process_acquire_data(snark::asd::protocol& protocol, const std::string& cmd)
 {
     if(cmd.find(snark::asd::commands::acquire_data::command()) !=0 && cmd[0]!='C') { return false; }
+    comma::verbose<<"process_acquire_data"<<std::endl;
     //do it once if !acquire
     do
     {
@@ -175,7 +176,7 @@ int main( int ac, char** av )
         }
         if(timestamp && !raw) { COMMA_THROW(comma::exception, "--timestamp option only works with --raw");}
         comma::verbose<<"asd-control"<<std::endl;
-        std::vector<std::string> unnamed=options.unnamed("--verbose,-v,--raw,--timestamp,--strict,--acquire", "--timeout,--sleep");
+        std::vector<std::string> unnamed=options.unnamed("--verbose,-v,--raw,--timestamp,--strict,--acquire,--omit-new-line", "--timeout,--sleep");
         if(unnamed.size() != 1) { COMMA_THROW(comma::exception, "expected address (one unnamed arg); got " << unnamed.size() ); }
         strict=options.exists("--strict");
         acquire=options.exists("--acquire");
