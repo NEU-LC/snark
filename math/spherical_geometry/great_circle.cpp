@@ -189,7 +189,7 @@ great_circle::arc::operator std::string() const
 //
 // static count_t count;
 
-#define USE_NEW_IMPLEMENTATION 0
+#define USE_NEW_IMPLEMENTATION 1
 
 static const double two_pi = M_PI * 2;
 bool great_circle::arc::may_intersect(const great_circle::arc& target) const
