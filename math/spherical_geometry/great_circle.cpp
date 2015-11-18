@@ -3,6 +3,7 @@
 #include <comma/base/exception.h>
 #include <comma/math/compare.h>
 #include "great_circle.h"
+// #include <iomanip>
 
 namespace snark { namespace spherical {
 
@@ -201,9 +202,12 @@ bool great_circle::arc::may_intersect(const great_circle::arc& target) const
     double other_end_longitude = target.end_coordinates_.longitude;
     // if either self or target wraps longitude over 180, unwrap
     bool wrap_self = false;
-    if ( std::abs( self_end_longitude  - self_begin_longitude  ) > std::abs( self_end_longitude  + two_pi - self_begin_longitude  ) ) { self_end_longitude  += two_pi; wrap_self  = true; }
+    if ( std::abs( self_end_longitude  - self_begin_longitude  ) > M_PI ) { self_end_longitude  += two_pi; wrap_self  = true; }
     bool wrap_other = false;
-    if ( std::abs( other_end_longitude - other_begin_longitude ) > std::abs( other_end_longitude + two_pi - other_begin_longitude ) ) { other_end_longitude += two_pi; wrap_other = true; }
+    if ( std::abs( other_end_longitude - other_begin_longitude ) > M_PI ) { other_end_longitude += two_pi; wrap_other = true; }
+    // double conv = 180.0/M_PI;
+    // std::cerr << std::setprecision(12) << "self:  [" << begin_coordinates_.longitude*conv        << "," << end_coordinates_.longitude*conv        << "], [" << self_begin_longitude*conv  << "," << self_end_longitude*conv  << "], " << wrap_self << std::endl;
+    // std::cerr << std::setprecision(12) << "other: [" << target.begin_coordinates_.longitude*conv << "," << target.end_coordinates_.longitude*conv << "], [" << other_begin_longitude*conv << "," << other_end_longitude*conv << "], " << wrap_self << std::endl;
     // now both intervals are unwrapped; the may overlap directly or with a shift
     if (               has_overlap( other_begin_longitude,          other_end_longitude,          self_begin_longitude,          self_end_longitude          ) ) return true;
     if ( wrap_self  && has_overlap( other_begin_longitude + two_pi, other_end_longitude + two_pi, self_begin_longitude,          self_end_longitude          ) ) return true;
