@@ -42,6 +42,7 @@
 #include <comma/application/verbose.h>
 #include <comma/csv/stream.h>
 #include <snark/timing/timestamped.h>
+#include <sstream>
 
 bool raw=false;
 bool timestamp=false;
@@ -92,7 +93,13 @@ struct app
         if(cmd.find(T::command()) !=0 ) { return false; }
         timestamped_reply_t reply=protocol.send<T>(cmd);
         handle_reply(reply.data.header);
-        write_output(reply);
+        if(!acquire) { write_output(reply); }   //don't write output in --acquire mode
+        else if(comma::verbose)
+        {
+            std::stringstream ss;
+            comma::write_json(reply.data, ss);
+            comma::verbose<<ss.str()<<std::endl;
+        }
         return true;
     }
 };
@@ -129,7 +136,9 @@ void usage(bool detail)
     std::cerr << "    --raw: send raw binary reply to stdout; default when not specified it outputs json format of reply" << std::endl;
     std::cerr << "        --timestamp: prepend output with timestamp of receiving response (only works with --raw)" << std::endl;
     std::cerr << "    --strict: throw exception if asd returns error (reply.error!=0)" << std::endl;
-    std::cerr << "    --acquire: loop over acquire command; any command other than A will be executed once, the A command will be repeated in an infinite loop" << std::endl;
+    std::cerr << "    --acquire: loop over acquire command" << std::endl;
+    std::cerr << "        command 'A,' will be repeated in an infinite loop; so it should be the last input line" << std::endl;
+    std::cerr << "        any other command will be executed once, the output will be sent to std err in json form if in --verbose mode" << std::endl;
     std::cerr << "    --output-size: print size of acquire data to stdout and exit" << std::endl;
     std::cerr << "    --timeout=<seconds>: if it doesn't receive any data from device after timeout seconds it will exit with error" << std::endl;
     std::cerr << "    --sleep=<seconds>: sleep this many seconds between receiving response and sending the next request; used with --acquire only" << std::endl;
