@@ -38,7 +38,7 @@ if [[ -s "$config" ]]; then echo "$name: reading $config" >&2; else echo "$name:
 comma_path_value_to_var --prefix=config < <(cat "$config" | name-value-get asd; echo ) 
 port=$config_port
 size=$config_size
-command="echo A, | asd-control $config_device --raw --timestamp --acquire "
+command="(echo 'OPT,7'; echo 'A,1,1,0') | asd-control $config_device --raw --timestamp --acquire | tail -c+37"
 
 if [[ -z "$port" ]]; then echo "$name: port is not given" >&2; exit 1; fi
 if [[ -z "$size" ]]; then echo "$name: size is not given" >&2; exit 1; fi
@@ -67,14 +67,12 @@ function check_connection()
 function init_device()
 {
     #eval "$command" >&2
+    sleep 1
     if echo "RESTORE,1" | asd-control "$config_device" --strict $verbose >&2 ; then
+        sleep 1
         echo "ABORT," | asd-control "$config_device" $verbose >&2 & abort_pid=$!
-        sleep 10;
+        sleep 10
         kill $abort_pid
-        echo "OPT,7" | asd-control "$config_device" $verbose >&2 
-#         & opt7_pid=$!
-#         sleep 10;
-#         kill $opt7_pid
         state=run
     else
         #something didn't work
