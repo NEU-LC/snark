@@ -21,3 +21,7 @@ install(
     LIBRARY DESTINATION ${snark_INSTALL_LIB_DIR} COMPONENT Runtime     # .so, mod.dll
     ARCHIVE DESTINATION ${snark_INSTALL_LIB_DIR} COMPONENT Development # .a, .lib
 )
+
+IF( BUILD_TESTS )
+    ADD_SUBDIRECTORY( test )
+ENDIF( BUILD_TESTS )
