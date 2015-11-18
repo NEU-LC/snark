@@ -93,10 +93,11 @@ struct great_circle
 
             bool may_intersect( const great_circle::arc& target ) const;
 
+            /// @param force do not rely on may_intersect check, always try to compute
             /// @return intersection with an arc
             /// @note can be only one point, since we do not consider
             ///       arcs greater than pi
-            boost::optional< coordinates > intersection_with( const arc& rhs ) const;
+            boost::optional< coordinates > intersection_with( const arc& rhs, bool force = false ) const;
             
             static Eigen::AngleAxis< double > angle_axis(const Eigen::Vector3d &begin, const Eigen::Vector3d &end)
             { return Eigen::AngleAxis< double >( Eigen::Quaternion< double >::FromTwoVectors( begin, end ) ); }
