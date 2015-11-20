@@ -116,21 +116,52 @@ TEST(geometry, may_intersect_05)
     }
 }
 
+namespace {
+
+    struct performance_input
+    {
+        performance_input( double latitude_shift, double longitude_shift, size_t count, const great_circle::arc & lhs_base, const great_circle::arc & rhs_base ) {
+            lhs.reserve( count );
+            rhs.reserve( count );
+            for ( size_t i = 0 ; i < count ; ++i )
+            {
+                coordinates offset( coordinates_( latitude_shift * i, longitude_shift * i ) );
+                lhs.push_back( great_circle::arc( lhs_base.begin_coordinates() + offset, lhs_base.end_coordinates() + offset ) );
+                rhs.push_back( great_circle::arc( rhs_base.begin_coordinates() + offset, rhs_base.end_coordinates() + offset ) );
+            }
+        }
+        std::vector< great_circle::arc > lhs;
+        std::vector< great_circle::arc > rhs;
+    };
+
+    const performance_input & get_performance_input()
+    {
+        // spin a pair of non-intersecting arcs in latitude: shall never report intersection regardless of latitude shift
+        great_circle::arc lhs_base( coordinates_( -10.0,10.0 ), coordinates_( 10.0,15.0 ) );
+        great_circle::arc rhs_base( coordinates_( 5.0,17.0 ), coordinates_( -5.0,37.0 ) );
+        EXPECT_FALSE( lhs_base.may_intersect( rhs_base ) );
+        size_t upper = 1000000;
+        double shift = 400.0 / double(upper);
+        static performance_input pi( 0.0, shift, upper, lhs_base, rhs_base );
+        return pi;
+    }
+
+} // anonymous
+
+TEST(geometry, setup_performance)
+{
+    const performance_input & pi = get_performance_input();
+    EXPECT_EQ( pi.lhs.size(), 1000000 );
+    EXPECT_EQ( pi.rhs.size(), 1000000 );
+}
+
 TEST(geometry, may_intersect_performance)
 {
     {
-        // spin a pair of non-intersecting arcs in latitude: shall never report intersection regardless of latitude shift
-        great_circle::arc arc1_base( coordinates_( -10.0,10.0 ), coordinates_( 10.0,15.0 ) );
-        great_circle::arc arc2_base( coordinates_( 5.0,17.0 ), coordinates_( -5.0,37.0 ) );
-        EXPECT_FALSE( arc1_base.may_intersect( arc2_base ) );
-        size_t upper = 1000000;
-        for ( size_t i = 0 ; i <= upper ; ++i )
+        const performance_input & pi = get_performance_input();
+        for ( size_t i = 0 ; i < pi.lhs.size() ; ++i )
         {
-            double shift = -80 + 160.0 / double(upper) * i;
-            coordinates offset( coordinates_( shift, 0 ) );
-            great_circle::arc arc1( arc1_base.begin_coordinates() + offset, arc1_base.end_coordinates() + offset );
-            great_circle::arc arc2( arc2_base.begin_coordinates() + offset, arc2_base.end_coordinates() + offset );
-            EXPECT_FALSE( arc1.may_intersect( arc2 ) );
+            EXPECT_FALSE( pi.lhs[i].may_intersect( pi.rhs[i] ) );
         }
     }
 }
@@ -138,18 +169,10 @@ TEST(geometry, may_intersect_performance)
 TEST(geometry, intersection_with_performance)
 {
     {
-        // spin a pair of non-intersecting arcs in latitude: shall never report intersection regardless of latitude shift
-        great_circle::arc arc1_base( coordinates_( -10.0,10.0 ), coordinates_( 10.0,15.0 ) );
-        great_circle::arc arc2_base( coordinates_( 5.0,17.0 ), coordinates_( -5.0,37.0 ) );
-        EXPECT_FALSE( arc1_base.intersection_with( arc2_base ) );
-        size_t upper = 1000000;
-        for ( size_t i = 0 ; i <= upper ; ++i )
+        const performance_input & pi = get_performance_input();
+        for ( size_t i = 0 ; i < pi.lhs.size() ; ++i )
         {
-            double shift = -80 + 160.0 / double(upper) * i;
-            coordinates offset( coordinates_( shift, 0 ) );
-            great_circle::arc arc1( arc1_base.begin_coordinates() + offset, arc1_base.end_coordinates() + offset );
-            great_circle::arc arc2( arc2_base.begin_coordinates() + offset, arc2_base.end_coordinates() + offset );
-            EXPECT_FALSE( arc1.intersection_with( arc2 ) );
+            EXPECT_FALSE( pi.lhs[i].intersection_with( pi.rhs[i] ) );
         }
     }
 }
