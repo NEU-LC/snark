@@ -50,7 +50,7 @@ TEST(geometry, may_intersect_02)
         great_circle::arc arc2_base( coordinates_( 5.0,0.0 ), coordinates_( -5.0,20.0 ) );
         EXPECT_TRUE( arc1_base.may_intersect( arc2_base ) );
         EXPECT_TRUE( arc1_base.intersection_with( arc2_base, force ) );
-        for ( size_t shift = 0 ; shift < 400; ++shift )
+        for ( size_t shift = 0 ; shift < 400 ; ++shift )
         {
             coordinates offset( coordinates_( 0, shift ) );
             great_circle::arc arc1( arc1_base.begin_coordinates() + offset, arc1_base.end_coordinates() + offset );
@@ -70,7 +70,7 @@ TEST(geometry, may_intersect_03)
         great_circle::arc arc2_base( coordinates_( 5.0,17.0 ), coordinates_( -5.0,37.0 ) );
         EXPECT_FALSE( arc1_base.may_intersect( arc2_base ) );
         EXPECT_FALSE( arc1_base.intersection_with( arc2_base, force ) );
-        for ( size_t shift = 0 ; shift < 400; ++shift )
+        for ( size_t shift = 0 ; shift < 400 ; ++shift )
         {
             coordinates offset( coordinates_( 0, shift ) );
             great_circle::arc arc1( arc1_base.begin_coordinates() + offset, arc1_base.end_coordinates() + offset );
@@ -90,7 +90,7 @@ TEST(geometry, may_intersect_04)
         great_circle::arc arc2_base( coordinates_( 5.0,0.0 ), coordinates_( -5.0,20.0 ) );
         EXPECT_TRUE( arc1_base.may_intersect( arc2_base ) );
         EXPECT_TRUE( arc1_base.intersection_with( arc2_base, force ) );
-        for ( size_t shift = -180 ; shift < 180; ++shift )
+        for ( int shift = -80 ; shift < 80 ; ++shift )
         {
             coordinates offset( coordinates_( shift, 0 ) );
             great_circle::arc arc1( arc1_base.begin_coordinates() + offset, arc1_base.end_coordinates() + offset );
@@ -110,7 +110,7 @@ TEST(geometry, may_intersect_05)
         great_circle::arc arc2_base( coordinates_( 5.0,17.0 ), coordinates_( -5.0,37.0 ) );
         EXPECT_FALSE( arc1_base.may_intersect( arc2_base ) );
         EXPECT_FALSE( arc1_base.intersection_with( arc2_base, force ) );
-        for ( size_t shift = -180 ; shift < 180; ++shift )
+        for ( int shift = -80 ; shift < 80 ; ++shift )
         {
             coordinates offset( coordinates_( shift, 0 ) );
             great_circle::arc arc1( arc1_base.begin_coordinates() + offset, arc1_base.end_coordinates() + offset );
