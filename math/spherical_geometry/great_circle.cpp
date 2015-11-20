@@ -190,12 +190,9 @@ great_circle::arc::operator std::string() const
 //
 // static count_t count;
 
-#define USE_NEW_IMPLEMENTATION 1
-
 static const double two_pi = M_PI * 2;
 bool great_circle::arc::may_intersect(const great_circle::arc& target) const
 {
-#if ( USE_NEW_IMPLEMENTATION > 0 )
     double self_begin_longitude = begin_coordinates_.longitude;
     double self_end_longitude = end_coordinates_.longitude;
     double other_begin_longitude = target.begin_coordinates_.longitude;
@@ -213,54 +210,6 @@ bool great_circle::arc::may_intersect(const great_circle::arc& target) const
     if ( wrap_self  && has_overlap( other_begin_longitude + two_pi, other_end_longitude + two_pi, self_begin_longitude,          self_end_longitude          ) ) return true;
     if ( wrap_other && has_overlap( other_begin_longitude,          other_end_longitude,          self_begin_longitude + two_pi, self_end_longitude + two_pi ) ) return true;
     return false;
-#else
-    coordinates c1 = begin_coordinates_;
-    coordinates c2 = end_coordinates_;
-    coordinates d1 = target.begin_coordinates_;
-    coordinates d2 = target.end_coordinates_;
-    // std::cerr << d1.longitude * 180/M_PI << "," << d2.longitude * 180/M_PI << "," << c1.longitude * 180/M_PI << "," << c2.longitude * 180/M_PI << std::endl;
-
-//                 if (!aero::has_overlap(c1.latitude, c2.latitude, d1.latitude, d2.latitude))
-//                 { return false; }
-
-    if (c1.longitude > M_PI_2 && c2.longitude < -M_PI_2)
-    {
-        c2.longitude += two_pi;
-        if (d1.longitude < -M_PI_2)
-            d1.longitude += two_pi;
-        if (d2.longitude < -M_PI_2)
-            d2.longitude += two_pi;
-    }
-    else if (c1.longitude < -M_PI_2 && c2.longitude > M_PI_2)
-    {
-        c1.longitude += two_pi;
-        if (d1.longitude < -M_PI_2)
-            d1.longitude += two_pi;
-        if (d2.longitude < -M_PI_2)
-            d2.longitude += two_pi;
-    }
-
-    if (d1.longitude > M_PI_2 && d2.longitude < -M_PI_2)
-    {
-        d2.longitude += two_pi;
-        if (c1.longitude < -M_PI_2)
-            c1.longitude += two_pi;
-        if (c2.longitude < -M_PI_2)
-            c2.longitude += two_pi;
-    }
-    else if (d1.longitude < -M_PI_2 && d2.longitude > M_PI_2)
-    {
-        d1.longitude += two_pi;
-        if (c1.longitude < -M_PI_2)
-            c1.longitude += two_pi;
-        if (c2.longitude < -M_PI_2)
-            c2.longitude += two_pi;
-    }
-
-    bool result = has_overlap(d1.longitude, d2.longitude, c1.longitude, c2.longitude);
-//     if( result ) { ++count.accepted; } else { ++count.rejected; }
-    return result;
-#endif
 }
 
 bool great_circle::arc::has( const coordinates& p ) const
