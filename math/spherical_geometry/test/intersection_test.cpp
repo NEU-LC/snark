@@ -116,6 +116,44 @@ TEST(geometry, may_intersect_05)
     }
 }
 
+TEST(geometry, may_intersect_performance)
+{
+    {
+        // spin a pair of non-intersecting arcs in latitude: shall never report intersection regardless of latitude shift
+        great_circle::arc arc1_base( coordinates_( -10.0,10.0 ), coordinates_( 10.0,15.0 ) );
+        great_circle::arc arc2_base( coordinates_( 5.0,17.0 ), coordinates_( -5.0,37.0 ) );
+        EXPECT_FALSE( arc1_base.may_intersect( arc2_base ) );
+        size_t upper = 1000000;
+        for ( size_t i = 0 ; i <= upper ; ++i )
+        {
+            double shift = -80 + 160.0 / double(upper) * i;
+            coordinates offset( coordinates_( shift, 0 ) );
+            great_circle::arc arc1( arc1_base.begin_coordinates() + offset, arc1_base.end_coordinates() + offset );
+            great_circle::arc arc2( arc2_base.begin_coordinates() + offset, arc2_base.end_coordinates() + offset );
+            EXPECT_FALSE( arc1.may_intersect( arc2 ) );
+        }
+    }
+}
+
+TEST(geometry, intersection_with_performance)
+{
+    {
+        // spin a pair of non-intersecting arcs in latitude: shall never report intersection regardless of latitude shift
+        great_circle::arc arc1_base( coordinates_( -10.0,10.0 ), coordinates_( 10.0,15.0 ) );
+        great_circle::arc arc2_base( coordinates_( 5.0,17.0 ), coordinates_( -5.0,37.0 ) );
+        EXPECT_FALSE( arc1_base.intersection_with( arc2_base ) );
+        size_t upper = 1000000;
+        for ( size_t i = 0 ; i <= upper ; ++i )
+        {
+            double shift = -80 + 160.0 / double(upper) * i;
+            coordinates offset( coordinates_( shift, 0 ) );
+            great_circle::arc arc1( arc1_base.begin_coordinates() + offset, arc1_base.end_coordinates() + offset );
+            great_circle::arc arc2( arc2_base.begin_coordinates() + offset, arc2_base.end_coordinates() + offset );
+            EXPECT_FALSE( arc1.intersection_with( arc2 ) );
+        }
+    }
+}
+
 int main(int argc, char *argv[])
 {
     ::testing::InitGoogleTest(&argc, argv);
