@@ -91,9 +91,12 @@ struct great_circle
 
             operator std::string() const;
 
+            /// TODO document what it does
             bool may_intersect( const great_circle::arc& target ) const;
 
             /// @param force do not rely on may_intersect check, always try to compute
+            /// TODO: remove force; do not call may_intersect in intersection_with
+            /// TODO: add performance monitoring in the backlog
             /// @return intersection with an arc
             /// @note can be only one point, since we do not consider
             ///       arcs greater than pi
