@@ -94,7 +94,6 @@ struct great_circle
             /// quickly checks if the arcs may potentially intersect; faster than calling intersection_with directly
             bool may_intersect( const great_circle::arc& target ) const;
 
-            /// TODO: add performance monitoring in the backlog
             /// @return intersection with an arc
             /// @note can be only one point, since we do not consider
             ///       arcs greater than pi
