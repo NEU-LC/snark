@@ -245,6 +245,10 @@ bool great_circle::arc::has( const Eigen::Vector3d& p ) const
 
 boost::optional< coordinates > great_circle::arc::intersection_with( const arc& rhs ) const
 {
+    if ( !may_intersect(rhs) )  {
+        // std::cerr << "cannot intersect" << std::endl;
+        return boost::optional< coordinates >();
+    }
     if( equal_( axis(), rhs.axis() ) || equal_( axis(), -rhs.axis() ) ) {
         // std::cerr << "are equal" << std::endl;
         return boost::optional< coordinates >();
