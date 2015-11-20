@@ -91,7 +91,7 @@ struct great_circle
 
             operator std::string() const;
 
-            /// TODO document what it does
+            /// quickly checks if the arcs may potentially intersect; faster than calling intersection_with directly
             bool may_intersect( const great_circle::arc& target ) const;
 
             /// @param force do not rely on may_intersect check, always try to compute
