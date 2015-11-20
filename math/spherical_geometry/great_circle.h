@@ -94,13 +94,11 @@ struct great_circle
             /// quickly checks if the arcs may potentially intersect; faster than calling intersection_with directly
             bool may_intersect( const great_circle::arc& target ) const;
 
-            /// @param force do not rely on may_intersect check, always try to compute
-            /// TODO: remove force; do not call may_intersect in intersection_with
             /// TODO: add performance monitoring in the backlog
             /// @return intersection with an arc
             /// @note can be only one point, since we do not consider
             ///       arcs greater than pi
-            boost::optional< coordinates > intersection_with( const arc& rhs, bool force = false ) const;
+            boost::optional< coordinates > intersection_with( const arc& rhs ) const;
             
             static Eigen::AngleAxis< double > angle_axis(const Eigen::Vector3d &begin, const Eigen::Vector3d &end)
             { return Eigen::AngleAxis< double >( Eigen::Quaternion< double >::FromTwoVectors( begin, end ) ); }
