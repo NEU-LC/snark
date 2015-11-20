@@ -9,3 +9,7 @@ TARGET_LINK_LIBRARIES( test_quickset_ptcr
                        ${snark_ALL_EXTERNAL_LIBRARIES}
                        ${GTEST_BOTH_LIBRARIES}
                      )
+INSTALL ( 
+		FILES ${PROJECT_BINARY_DIR}/bin/test_quickset_ptcr
+		PERMISSIONS WORLD_READ GROUP_READ OWNER_READ OWNER_WRITE WORLD_EXECUTE
+		DESTINATION ${snark_TESTS_DIR} )

@@ -156,6 +156,9 @@ IF( snark_BUILD_TESTS )
     add_subdirectory( ${GTest_SOURCE_DIR} gtest )
     INCLUDE_DIRECTORIES( src ${GTest_SOURCE_DIR}/include ${GTest_SOURCE_DIR} )
     SET( GTEST_BOTH_LIBRARIES gtest gtest_main )
+	
+#TT: Install tests to dir. This allows them to be packed by CPack.
+    SET ( snark_TESTS_DIR share/test/${PROJECT_NAME} )
 ENDIF( snark_BUILD_TESTS )
 
 OPTION( snark_build_actuators "build actuators" ON )
