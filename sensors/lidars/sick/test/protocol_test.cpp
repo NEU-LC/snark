@@ -38,7 +38,7 @@
 #include <gtest/gtest.h>
 #include "../ibeo/protocol.h"
 
-TEST( sick, protocol )
+TEST( sick, DISABLED_protocol )
 {
     boost::asio::ip::tcp::endpoint e( boost::asio::ip::address::from_string( "127.0.0.1" ), 1234 );
 

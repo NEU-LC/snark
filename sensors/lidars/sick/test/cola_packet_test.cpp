@@ -112,7 +112,7 @@ TEST( cola, scan_packet_from_documentation )
     EXPECT_EQ( 0, p.event().data_present() );
 }
 
-TEST( cola, scan_packet_with_remission8b_and_timestamp )
+TEST( cola, DISABLED_scan_packet_with_remission8b_and_timestamp )
 {
     // example from lidar
     // % sick-lms151-stream -v --skip=25 --hex --no_stop --start_angle=0 --stop_angle=0.25 --frequency=25 --resolution=0.25 --remission --remission_resolution=8 192.168.1.12
@@ -131,7 +131,7 @@ TEST( cola, scan_packet_with_remission8b_and_timestamp )
     EXPECT_EQ( 0, p.event().data_present() );
 }
 
-TEST( cola, scan_packet_with_remission8b_encoder_and_timestamp )
+TEST( cola, DISABLED_scan_packet_with_remission8b_encoder_and_timestamp )
 {
     // example from lidar
     // % sick-lms151-stream -v --skip=25 --hex --no_stop --start_angle=0 --stop_angle=0.25 --frequency=25 --resolution=0.25 --remission --remission_resolution=8 --encoder 192.168.1.12
