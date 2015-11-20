@@ -148,14 +148,14 @@ namespace {
 
 } // anonymous
 
-TEST(geometry, setup_performance)
+TEST(geometry, DISABLED_setup_performance)
 {
     const performance_input & pi = get_performance_input();
     EXPECT_EQ( pi.lhs.size(), 1000000 );
     EXPECT_EQ( pi.rhs.size(), 1000000 );
 }
 
-TEST(geometry, may_intersect_performance)
+TEST(geometry, DISABLED_may_intersect_performance)
 {
     {
         const performance_input & pi = get_performance_input();
@@ -166,7 +166,7 @@ TEST(geometry, may_intersect_performance)
     }
 }
 
-TEST(geometry, intersection_with_performance)
+TEST(geometry, DISABLED_intersection_with_performance)
 {
     {
         const performance_input & pi = get_performance_input();
