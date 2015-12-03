@@ -64,8 +64,6 @@ struct coordinates
     
     bool operator!=( const coordinates& rhs ) const { return !operator==( rhs ); }
 
-    bool operator<( const coordinates& rhs ) const { return longitude == rhs.longitude ? latitude < rhs.latitude : longitude < rhs.longitude; }
-
     /// @return true if the two coordinates are close to each other (within +/-epsilon)
     /// @note this is highly approximate, since longitude distorts with latitude
     /// @note an espilon of 0.0003 is about 1 minute of latitude
