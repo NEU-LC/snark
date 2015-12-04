@@ -34,6 +34,7 @@
 #include <comma/math/compare.h>
 #include <snark/math/angle.h>
 #include "coordinates.h"
+#include <boost/functional/hash.hpp>
 
 namespace snark { namespace spherical {
 
@@ -113,6 +114,14 @@ std::pair< double, double > coordinates::to_degrees() const
 {
     return std::make_pair( snark::math::degrees( snark::math::radians( latitude ) ).value
                          , snark::math::degrees( snark::math::radians( longitude ) ).value );
+}
+
+std::size_t coordinates::hash::operator()( const coordinates& c ) const
+{
+    std::size_t seed = 0;
+    boost::hash_combine( seed, c.latitude );
+    boost::hash_combine( seed, c.longitude );
+    return seed;
 }
 
 } } // namespace snark { namespace spherical {
