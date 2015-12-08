@@ -32,11 +32,11 @@
 #include <boost/program_options.hpp>
 #include <comma/base/exception.h>
 #include <comma/application/command_line_options.h>
-#include <comma/application/signal_flag.h>
 #include <comma/base/types.h>
 #include <comma/csv/ascii.h>
 #include <comma/csv/stream.h>
 #include <comma/csv/impl/program_options.h>
+#include <comma/math/compare.h>
 #include <comma/string/string.h>
 #include <comma/visiting/traits.h>
 #include <snark/point_cloud/voxel_map.h>
@@ -45,25 +45,43 @@
 typedef Eigen::Vector3d input_point;
 typedef snark::voxel_map< input_point, 3 >::index_type index_type;
 
-static comma::int32 id_( const index_type& i, const index_type& end ) { return ( i[0] * end[1] + i[1] ) * end[2] + i[2]; }
+static comma::int32 id_( const index_type& i, const index_type& size ) { return ( i[2] * size[1] + i[1] ) * size[0] + i[0]; }
+
+static bool permissive;
+
+static bool is_inside_( const index_type& i, const index_type& size )
+{
+    for( unsigned int k = 0; k < i.size(); ++k ) { if( i[k] < 0 || i[k] >= size[k] ) { return false; } }
+    return true;
+}
+
+static void validate_id_( const index_type& i, const index_type& size, const input_point& p )
+{
+    if( permissive || is_inside_( i, size ) ) { return; }
+    COMMA_THROW( comma::exception, "on point: " << p.x() << "," << p.y() << "," << p.z() << ": expected positive index less than " << size[0] << "," << size[1] << "," << size[2] << "; got: " << i[0] << "," << i[1] << "," << i[2] );
+}
 
 int main( int argc, char** argv )
 {
     try
     {
         std::string binary;
+        std::string begin_string;
         std::string origin_string;
+        std::string end_string;
         std::string extents_string;
         std::string resolution_string;
         boost::program_options::options_description description( "options" );
         description.add_options()
             ( "help,h", "display help message" )
-            ( "resolution", boost::program_options::value< std::string >( &resolution_string ), "voxel map resolution, e.g. \"0.2\" or \"0.2,0.2,0.5\"" )
-            ( "origin", boost::program_options::value< std::string >( &origin_string )->default_value( "0,0,0" ), "voxel map origin" )
-            ( "begin", boost::program_options::value< std::string >( &origin_string )->default_value( "0,0,0" ), "an alias for --origin; voxel map origin" )
+            ( "begin", boost::program_options::value< std::string >( &begin_string )->default_value( "0,0,0" ), "an alias for --origin; voxel map origin" )
+            ( "discard", "discard points outside of the given voxel map extents" )
+            ( "end", boost::program_options::value< std::string >( &end_string ), "can be used instead --extents, means origin + extents" )
+            ( "enumerate", "append voxel id in a grid with given origin and extents; note that only voxels inside of the box defined by origin and extents are guaranteed to be enumerated correctly" )
             ( "extents", boost::program_options::value< std::string >( &extents_string ), "voxel map extents, i.e. its bounding box counting from origin, e.g. 10,10,10; needed only if --enumerate is present" )
-            ( "end", boost::program_options::value< std::string >( &extents_string ), "can be used instead --extents, means origin + extents" )
-            ( "enumerate", "append voxel id in a grid with given origin and extents; note that only voxels inside of the box defined by origin and extents are guaranteed to be enumerated correctly" );
+            ( "origin", boost::program_options::value< std::string >( &origin_string )->default_value( "0,0,0" ), "voxel map origin" )
+            ( "permissive", "if --enumerate given, allows points outside of the given voxel map extents" )
+            ( "resolution", boost::program_options::value< std::string >( &resolution_string ), "voxel map resolution, e.g. \"0.2\" or \"0.2,0.2,0.5\"" );
         description.add( comma::csv::program_options::description( "x,y,z" ) );
         boost::program_options::variables_map vm;
         boost::program_options::store( boost::program_options::parse_command_line( argc, argv, description), vm );
@@ -91,67 +109,82 @@ int main( int argc, char** argv )
         }
         if( vm.count( "resolution" ) == 0 ) { std::cerr << "points-to-voxel-indices: please specify --resolution" << std::endl; return 1; }
         bool output_number = vm.count( "enumerate" );
-        if( output_number && extents_string.empty() ) { std::cerr << "points-to-voxel-indices: if using --enumerate, please specify --extents" << std::endl; return 1; }
+        permissive = vm.count( "permissive" );
+        bool discard = vm.count( "discard" );
         comma::csv::options csv = comma::csv::program_options::get( vm );
-        Eigen::Vector3d origin;
+        if( begin_string != "0,0,0" ) { origin_string = begin_string; } // quick and dirty
+        Eigen::Vector3d origin = comma::csv::ascii< Eigen::Vector3d >().get( origin, origin_string );
         Eigen::Vector3d resolution;
-        index_type end;
-        comma::csv::ascii< Eigen::Vector3d >().get( origin, origin_string );
+        index_type size;
         if( resolution_string.find_first_of( ',' ) == std::string::npos ) { resolution_string = resolution_string + ',' + resolution_string + ',' + resolution_string; }
         comma::csv::ascii< Eigen::Vector3d >().get( resolution, resolution_string );
         if( output_number )
         {
-            Eigen::Vector3d extents;
-            comma::csv::ascii< Eigen::Vector3d >().get( extents, extents_string );
-            end = snark::voxel_map< input_point, 3 >::index_of( origin + extents, origin, resolution );
+            if( end_string.empty() && extents_string.empty() ) { std::cerr << "points-to-voxel-indices: if using --enumerate, please specify --extents" << std::endl; return 1; }
+            if( !end_string.empty() && !extents_string.empty() ) { std::cerr << "points-to-voxel-indices: --end and --extents are mutually exclusive" << std::endl; return 1; }
+            Eigen::Vector3d end;
+            if( !extents_string.empty() )
+            {
+                Eigen::Vector3d extents;
+                comma::csv::ascii< Eigen::Vector3d >().get( extents, extents_string );
+                if(    comma::math::less( extents.x(), 0 )
+                    || comma::math::less( extents.y(), 0 )
+                    || comma::math::less( extents.z(), 0 ) ) { std::cerr.precision( 16 ); std::cerr << "points-to-voxel-indices: expected extents greater or equal to 0,0,0; got: " << extents.x() << "," << extents.y() << "," << extents.z() << std::endl; return 1; }
+                end = origin + extents;
+            }
+            else
+            {
+                comma::csv::ascii< Eigen::Vector3d >().get( end, end_string );
+                if(    comma::math::less( end.x(), origin.x() )
+                    || comma::math::less( end.y(), origin.y() )
+                    || comma::math::less( end.z(), origin.z() ) ) { std::cerr.precision( 16 ); std::cerr << "points-to-voxel-indices: expected end greater or equal to origin " << origin.x() << "," << origin.y() << "," << origin.z() << "; got: " << end.x() << "," << end.y() << "," << end.z() << std::endl; return 1; }
+            }
+            size = snark::voxel_map< input_point, 3 >::index_of( end, origin, resolution );
+            for( unsigned int k = 0; k < size.size(); size[k] += 1, ++k ); // to position beyond the last voxel
         }
         comma::csv::input_stream< input_point > istream( std::cin, csv );
-        comma::signal_flag is_shutdown;
         if( csv.binary() )
         {
             #ifdef WIN32
             _setmode( _fileno( stdout ), _O_BINARY );
             #endif
-            while( !is_shutdown && !std::cin.eof() && std::cin.good() )
+            while( !std::cin.eof() && std::cin.good() )
             {
                 const input_point* point = istream.read();
                 if( !point ) { break; }
                 index_type index = snark::voxel_map< input_point, 3 >::index_of( *point, origin, resolution );
+                if( discard && !is_inside_( index, size ) ) { continue; }
+                if( output_number ) { validate_id_( index, size, *point ); }
                 std::cout.write( istream.binary().last(), csv.format().size() );
                 std::cout.write( reinterpret_cast< const char* >( &index[0] ), 3 * sizeof( comma::int32 ) );
                 if( output_number )
                 {
-                    comma::int32 id = id_( index, end );
+                    comma::int32 id = id_( index, size );
                     std::cout.write( reinterpret_cast< const char* >( &id ), sizeof( comma::int32 ) );
                 }
-                std::cout.flush();
+                if( csv.flush ) { std::cout.flush(); }
             }
         }
         else
         {
-            while( !is_shutdown && !std::cin.eof() && std::cin.good() )
+            while( !std::cin.eof() && std::cin.good() )
             {
                 const input_point* point = istream.read();
                 if( !point ) { break; }
                 index_type index = snark::voxel_map< input_point, 3 >::index_of( *point, origin, resolution );
+                if( discard && !is_inside_( index, size ) ) { continue; }
+                if( output_number ) { validate_id_( index, size, *point ); }
                 std::cout << comma::join( istream.ascii().last(), csv.delimiter )
                           << csv.delimiter << index[0]
                           << csv.delimiter << index[1]
                           << csv.delimiter << index[2];
-                if( output_number ) { std::cout << csv.delimiter << id_( index, end ); }
+                if( output_number ) { std::cout << csv.delimiter << id_( index, size ); }
                 std::cout << std::endl;
             }
         }
-        if( is_shutdown ) { std::cerr << "points-to-voxels: caught signal" << std::endl; return 1; }
         return 0;
     }
-    catch( std::exception& ex )
-    {
-        std::cerr << argv[0] << ": " << ex.what() << std::endl;
-    }
-    catch( ... )
-    {
-        std::cerr << argv[0] << ": unknown exception" << std::endl;
-    }
+    catch( std::exception& ex ) { std::cerr << argv[0] << ": " << ex.what() << std::endl; }
+    catch( ... ) { std::cerr << argv[0] << ": unknown exception" << std::endl; }
     return 1;
 }
