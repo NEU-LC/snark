@@ -48,10 +48,16 @@ static comma::int32 id_( const index_type& i, const index_type& size ) { return 
 
 static bool permissive;
 
+static bool is_inside_( const index_type& i, const index_type& size )
+{
+    for( unsigned int k = 0; k < i.size(); ++k ) { if( i[k] < 0 || i[k] >= size[k] ) { return false; } }
+    return true;
+}
+
 static void validate_id_( const index_type& i, const index_type& size, const input_point& p )
 {
-    if( permissive ) { return; }
-    for( unsigned int k = 0; k < i.size(); ++k ) { if( i[k] < 0 || i[k] >= size[k] ) { COMMA_THROW( comma::exception, "on point: " << p.x() << "," << p.y() << "," << p.z() << ": expected positive index " << k << " less than " << size[k] << "; got: " << i[k] ); } }
+    if( permissive || is_inside_( i, size ) ) { return; }
+    COMMA_THROW( comma::exception, "on point: " << p.x() << "," << p.y() << "," << p.z() << ": expected positive index less than " << size[0] << "," << size[1] << "," << size[2] << "; got: " << i[0] << "," << i[1] << "," << i[2] );
 }
 
 int main( int argc, char** argv )
@@ -65,13 +71,14 @@ int main( int argc, char** argv )
         boost::program_options::options_description description( "options" );
         description.add_options()
             ( "help,h", "display help message" )
-            ( "resolution", boost::program_options::value< std::string >( &resolution_string ), "voxel map resolution, e.g. \"0.2\" or \"0.2,0.2,0.5\"" )
-            ( "origin", boost::program_options::value< std::string >( &origin_string )->default_value( "0,0,0" ), "voxel map origin" )
             ( "begin", boost::program_options::value< std::string >( &origin_string )->default_value( "0,0,0" ), "an alias for --origin; voxel map origin" )
+            ( "discard", "discard points outside of the given voxel map extents" )
             ( "end", boost::program_options::value< std::string >( &extents_string ), "can be used instead --extents, means origin + extents" )
             ( "enumerate", "append voxel id in a grid with given origin and extents; note that only voxels inside of the box defined by origin and extents are guaranteed to be enumerated correctly" )
             ( "extents", boost::program_options::value< std::string >( &extents_string ), "voxel map extents, i.e. its bounding box counting from origin, e.g. 10,10,10; needed only if --enumerate is present" )
-            ( "permissive", "if --enumerate given, allows points outside of the given voxel map extents" );
+            ( "origin", boost::program_options::value< std::string >( &origin_string )->default_value( "0,0,0" ), "voxel map origin" )
+            ( "permissive", "if --enumerate given, allows points outside of the given voxel map extents" )
+            ( "resolution", boost::program_options::value< std::string >( &resolution_string ), "voxel map resolution, e.g. \"0.2\" or \"0.2,0.2,0.5\"" );
         description.add( comma::csv::program_options::description( "x,y,z" ) );
         boost::program_options::variables_map vm;
         boost::program_options::store( boost::program_options::parse_command_line( argc, argv, description), vm );
@@ -100,6 +107,7 @@ int main( int argc, char** argv )
         if( vm.count( "resolution" ) == 0 ) { std::cerr << "points-to-voxel-indices: please specify --resolution" << std::endl; return 1; }
         bool output_number = vm.count( "enumerate" );
         permissive = vm.count( "permissive" );
+        bool discard = vm.count( "discard" );
         if( output_number && extents_string.empty() ) { std::cerr << "points-to-voxel-indices: if using --enumerate, please specify --extents" << std::endl; return 1; }
         comma::csv::options csv = comma::csv::program_options::get( vm );
         Eigen::Vector3d origin;
@@ -126,6 +134,7 @@ int main( int argc, char** argv )
                 const input_point* point = istream.read();
                 if( !point ) { break; }
                 index_type index = snark::voxel_map< input_point, 3 >::index_of( *point, origin, resolution );
+                if( discard && !is_inside_( index, size ) ) { continue; }
                 if( output_number ) { validate_id_( index, size, *point ); }
                 std::cout.write( istream.binary().last(), csv.format().size() );
                 std::cout.write( reinterpret_cast< const char* >( &index[0] ), 3 * sizeof( comma::int32 ) );
@@ -144,6 +153,7 @@ int main( int argc, char** argv )
                 const input_point* point = istream.read();
                 if( !point ) { break; }
                 index_type index = snark::voxel_map< input_point, 3 >::index_of( *point, origin, resolution );
+                if( discard && !is_inside_( index, size ) ) { continue; }
                 if( output_number ) { validate_id_( index, size, *point ); }
                 std::cout << comma::join( istream.ascii().last(), csv.delimiter )
                           << csv.delimiter << index[0]
