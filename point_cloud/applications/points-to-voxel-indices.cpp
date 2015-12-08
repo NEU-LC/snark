@@ -36,6 +36,7 @@
 #include <comma/csv/ascii.h>
 #include <comma/csv/stream.h>
 #include <comma/csv/impl/program_options.h>
+#include <comma/math/compare.h>
 #include <comma/string/string.h>
 #include <comma/visiting/traits.h>
 #include <snark/point_cloud/voxel_map.h>
@@ -65,15 +66,17 @@ int main( int argc, char** argv )
     try
     {
         std::string binary;
+        std::string begin_string;
         std::string origin_string;
+        std::string end_string;
         std::string extents_string;
         std::string resolution_string;
         boost::program_options::options_description description( "options" );
         description.add_options()
             ( "help,h", "display help message" )
-            ( "begin", boost::program_options::value< std::string >( &origin_string )->default_value( "0,0,0" ), "an alias for --origin; voxel map origin" )
+            ( "begin", boost::program_options::value< std::string >( &begin_string )->default_value( "0,0,0" ), "an alias for --origin; voxel map origin" )
             ( "discard", "discard points outside of the given voxel map extents" )
-            ( "end", boost::program_options::value< std::string >( &extents_string ), "can be used instead --extents, means origin + extents" )
+            ( "end", boost::program_options::value< std::string >( &end_string ), "can be used instead --extents, means origin + extents" )
             ( "enumerate", "append voxel id in a grid with given origin and extents; note that only voxels inside of the box defined by origin and extents are guaranteed to be enumerated correctly" )
             ( "extents", boost::program_options::value< std::string >( &extents_string ), "voxel map extents, i.e. its bounding box counting from origin, e.g. 10,10,10; needed only if --enumerate is present" )
             ( "origin", boost::program_options::value< std::string >( &origin_string )->default_value( "0,0,0" ), "voxel map origin" )
@@ -108,19 +111,35 @@ int main( int argc, char** argv )
         bool output_number = vm.count( "enumerate" );
         permissive = vm.count( "permissive" );
         bool discard = vm.count( "discard" );
-        if( output_number && extents_string.empty() ) { std::cerr << "points-to-voxel-indices: if using --enumerate, please specify --extents" << std::endl; return 1; }
         comma::csv::options csv = comma::csv::program_options::get( vm );
-        Eigen::Vector3d origin;
+        if( begin_string != "0,0,0" ) { origin_string = begin_string; } // quick and dirty
+        Eigen::Vector3d origin = comma::csv::ascii< Eigen::Vector3d >().get( origin, origin_string );
         Eigen::Vector3d resolution;
         index_type size;
-        comma::csv::ascii< Eigen::Vector3d >().get( origin, origin_string );
         if( resolution_string.find_first_of( ',' ) == std::string::npos ) { resolution_string = resolution_string + ',' + resolution_string + ',' + resolution_string; }
         comma::csv::ascii< Eigen::Vector3d >().get( resolution, resolution_string );
         if( output_number )
         {
-            Eigen::Vector3d extents;
-            comma::csv::ascii< Eigen::Vector3d >().get( extents, extents_string );
-            size = snark::voxel_map< input_point, 3 >::index_of( origin + extents, origin, resolution );
+            if( end_string.empty() && extents_string.empty() ) { std::cerr << "points-to-voxel-indices: if using --enumerate, please specify --extents" << std::endl; return 1; }
+            if( !end_string.empty() && !extents_string.empty() ) { std::cerr << "points-to-voxel-indices: --end and --extents are mutually exclusive" << std::endl; return 1; }
+            Eigen::Vector3d end;
+            if( !extents_string.empty() )
+            {
+                Eigen::Vector3d extents;
+                comma::csv::ascii< Eigen::Vector3d >().get( extents, extents_string );
+                if(    comma::math::less( extents.x(), 0 )
+                    || comma::math::less( extents.y(), 0 )
+                    || comma::math::less( extents.z(), 0 ) ) { std::cerr.precision( 16 ); std::cerr << "points-to-voxel-indices: expected extents greater or equal to 0,0,0; got: " << extents.x() << "," << extents.y() << "," << extents.z() << std::endl; return 1; }
+                end = origin + extents;
+            }
+            else
+            {
+                comma::csv::ascii< Eigen::Vector3d >().get( end, end_string );
+                if(    comma::math::less( end.x(), origin.x() )
+                    || comma::math::less( end.y(), origin.y() )
+                    || comma::math::less( end.z(), origin.z() ) ) { std::cerr.precision( 16 ); std::cerr << "points-to-voxel-indices: expected end greater or equal to origin " << origin.x() << "," << origin.y() << "," << origin.z() << "; got: " << end.x() << "," << end.y() << "," << end.z() << std::endl; return 1; }
+            }
+            size = snark::voxel_map< input_point, 3 >::index_of( end, origin, resolution );
             for( unsigned int k = 0; k < size.size(); size[k] += 1, ++k ); // to position beyond the last voxel
         }
         comma::csv::input_stream< input_point > istream( std::cin, csv );
