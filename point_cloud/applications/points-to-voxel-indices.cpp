@@ -49,6 +49,8 @@ static comma::int32 id_( const index_type& i, const index_type& size ) { return 
 
 static bool permissive;
 
+static comma::uint64 count = 0;
+
 static bool is_inside_( const index_type& i, const index_type& size )
 {
     for( unsigned int k = 0; k < i.size(); ++k ) { if( i[k] < 0 || i[k] >= size[k] ) { return false; } }
@@ -58,7 +60,9 @@ static bool is_inside_( const index_type& i, const index_type& size )
 static void validate_id_( const index_type& i, const index_type& size, const input_point& p )
 {
     if( permissive || is_inside_( i, size ) ) { return; }
-    COMMA_THROW( comma::exception, "on point: " << p.x() << "," << p.y() << "," << p.z() << ": expected positive index less than " << size[0] << "," << size[1] << "," << size[2] << "; got: " << i[0] << "," << i[1] << "," << i[2] );
+    std::cerr.precision( 16 );
+    std::cerr << "on record " << count << ": expected positive index less than " << size[0] << "," << size[1] << "," << size[2] << "; got: " << i[0] << "," << i[1] << "," << i[2] << std::endl;
+    exit( 1 );
 }
 
 int main( int argc, char** argv )
@@ -137,12 +141,12 @@ int main( int argc, char** argv )
                 comma::csv::ascii< Eigen::Vector3d >().get( end, end_string );
                 if(    comma::math::less( end.x(), origin.x() )
                     || comma::math::less( end.y(), origin.y() )
-                    || comma::math::less( end.z(), origin.z() ) ) { std::cerr.precision( 16 ); std::cerr << "points-to-voxel-indices: expected end greater or equal to origin " << origin.x() << "," << origin.y() << "," << origin.z() << "; got: " << end.x() << "," << end.y() << "," << end.z() << std::endl; return 1; }
+                    || comma::math::less( end.z(), origin.z() ) ) { std::cerr << "points-to-voxel-indices: expected end greater or equal to origin " << origin.x() << "," << origin.y() << "," << origin.z() << "; got: " << end.x() << "," << end.y() << "," << end.z() << std::endl; return 1; }
             }
             size = snark::voxel_map< input_point, 3 >::index_of( end, origin, resolution );
             for( unsigned int k = 0; k < size.size(); size[k] += 1, ++k ); // to position beyond the last voxel
         }
-        comma::csv::input_stream< input_point > istream( std::cin, csv );
+        comma::csv::input_stream< input_point > istream( std::cin, csv, origin );
         if( csv.binary() )
         {
             #ifdef WIN32
@@ -153,7 +157,7 @@ int main( int argc, char** argv )
                 const input_point* point = istream.read();
                 if( !point ) { break; }
                 index_type index = snark::voxel_map< input_point, 3 >::index_of( *point, origin, resolution );
-                if( discard && !is_inside_( index, size ) ) { continue; }
+                if( discard && !is_inside_( index, size ) ) { ++count; continue; }
                 if( output_number ) { validate_id_( index, size, *point ); }
                 std::cout.write( istream.binary().last(), csv.format().size() );
                 std::cout.write( reinterpret_cast< const char* >( &index[0] ), 3 * sizeof( comma::int32 ) );
@@ -163,6 +167,7 @@ int main( int argc, char** argv )
                     std::cout.write( reinterpret_cast< const char* >( &id ), sizeof( comma::int32 ) );
                 }
                 if( csv.flush ) { std::cout.flush(); }
+                ++count;
             }
         }
         else
@@ -172,7 +177,7 @@ int main( int argc, char** argv )
                 const input_point* point = istream.read();
                 if( !point ) { break; }
                 index_type index = snark::voxel_map< input_point, 3 >::index_of( *point, origin, resolution );
-                if( discard && !is_inside_( index, size ) ) { continue; }
+                if( discard && !is_inside_( index, size ) ) { ++count; continue; }
                 if( output_number ) { validate_id_( index, size, *point ); }
                 std::cout << comma::join( istream.ascii().last(), csv.delimiter )
                           << csv.delimiter << index[0]
@@ -180,6 +185,7 @@ int main( int argc, char** argv )
                           << csv.delimiter << index[2];
                 if( output_number ) { std::cout << csv.delimiter << id_( index, size ); }
                 std::cout << std::endl;
+                ++count;
             }
         }
         return 0;
