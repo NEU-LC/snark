@@ -87,11 +87,6 @@ struct coordinates
 
     operator std::string() const;
 
-    struct hash : public std::unary_function< coordinates, std::size_t >
-    {
-        std::size_t operator()( const coordinates& c ) const;
-    };
-
 };
 
 /// convert to navigation frame at given coordinates
