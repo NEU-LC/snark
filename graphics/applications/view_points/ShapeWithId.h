@@ -45,11 +45,19 @@
 
 namespace snark { namespace graphics { namespace View {
 
+namespace detail {
+
+template < typename S > struct shape_traits { static S zero() { return S(); } };
+template <> struct shape_traits< Eigen::Vector3d > { static Eigen::Vector3d zero() { return Eigen::Vector3d::Zero(); } };
+template <> struct shape_traits< std::pair< Eigen::Vector3d, Eigen::Vector3d > > { static std::pair< Eigen::Vector3d, Eigen::Vector3d > zero() { return std::make_pair( Eigen::Vector3d::Zero(),Eigen::Vector3d::Zero() ); } };
+
+} // namespace detail {
+
 template < class S >
 struct ShapeWithId // quick and dirty
 {
     typedef S Shape;
-    ShapeWithId() : id( 0 ), block( 0 ) {}
+    ShapeWithId() : shape( detail::shape_traits< S >::zero() ), id( 0 ), block( 0 ) {}
     ShapeWithId( const S& shape ) : shape( shape ), id( 0 ), block( 0 ) {}
     S shape;
     comma::uint32 id;
@@ -140,6 +148,7 @@ struct Ellipse
 {
     Eigen::Vector3d center;
     Eigen::Vector3d orientation;
+    Ellipse() : center( 0, 0, 0 ), orientation( 0, 0, 0 ) {}
     double major;
     double minor;
 };
@@ -319,7 +328,7 @@ struct Shapetraits< Eigen::Vector3d, How >
     static const Eigen::Vector3d& center( const Eigen::Vector3d& point ) { return point; }
 };
 
-} } }
+} } } // namespace snark { namespace graphics { namespace View {
 
 namespace comma { namespace visiting {
 

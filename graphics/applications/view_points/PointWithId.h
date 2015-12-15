@@ -42,7 +42,7 @@ namespace snark { namespace graphics { namespace View {
 
 struct PointWithId // quick and dirty
 {
-    PointWithId() : id( 0 ), block( 0 ) {}
+    PointWithId() : point( 0, 0, 0 ), orientation( 0, 0, 0 ), id( 0 ), block( 0 ) {}
     Eigen::Vector3d point;
     Eigen::Vector3d orientation;
     comma::uint32 id;

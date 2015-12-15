@@ -49,6 +49,7 @@ struct point_with_orientation // quick and dirty
 {
     Eigen::Vector3d point;
     Eigen::Vector3d orientation;
+    point_with_orientation() : point( 0, 0, 0 ), orientation( 0, 0, 0 ) {}
     bool operator==( const point_with_orientation& rhs ) const { return point == rhs.point && orientation == rhs.orientation; }
     bool operator!=( const point_with_orientation& rhs ) const { return !operator==( rhs ); }
 };
