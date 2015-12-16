@@ -41,7 +41,7 @@ struct PointWithId // quick and dirty
 {
     Eigen::Vector3d point;
     comma::uint32 id;
-    PointWithId() {}
+    PointWithId() : point( 0, 0, 0 ), id( 0 ) {}
     PointWithId( Eigen::Vector3d point_ ) : point( point_ ), id( 0 ) {}
     PointWithId( std::pair< Eigen::Vector3d, comma::uint32 > p ) : point( p.first ), id( p.second ) {}
 };
