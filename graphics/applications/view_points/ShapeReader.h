@@ -140,9 +140,6 @@ inline void ShapeReader< S, How >::render( QGLPainter* painter )
     if( !m_label.empty() ) { draw_label( painter, m_translation ); }
 }
 
-template < typename S > inline void debug_output( S v ) {}
-template <> inline void debug_output( std::pair< Eigen::Vector3d, Eigen::Vector3d > v ) { std::cerr << " -> shape: " << v.first.x() << ',' << v.first.y() << ',' << v.first.z() << ';' << v.second.x() << ',' << v.second.y() << ',' << v.second.z() << std::endl; }
-
 template< typename S, typename How >
 inline bool ShapeReader< S, How >::read_once()
 {
@@ -171,7 +168,6 @@ inline bool ShapeReader< S, How >::read_once()
         v.color = m_colored->color( center, p->id, p->scalar, p->color );
         boost::mutex::scoped_lock lock( m_mutex );
         m_deque.push_back( v );
-        debug_output( v.shape );
         m_point = Shapetraits< S, How >::somePoint( v.shape );
         m_color = v.color;
         return true;
