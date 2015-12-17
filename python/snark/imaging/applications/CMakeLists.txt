@@ -1,0 +1,1 @@
+INSTALL( PROGRAMS image-intensity DESTINATION ${snark_INSTALL_BIN_DIR} )

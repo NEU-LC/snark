@@ -33,5 +33,7 @@ IF( snark_build_python )
                         COMMAND ${PYTHON} ${SETUP_PY} build --build-base ${BUILD_BASE} install ${INSTALL_PREFIX_OPTION}
                         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} )" )
 
+    ADD_SUBDIRECTORY( snark )
+
     SET_DIRECTORY_PROPERTIES( PROPERTIES ADDITIONAL_MAKE_CLEAN_FILES build )
 ENDIF( snark_build_python )
