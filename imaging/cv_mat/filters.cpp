@@ -614,6 +614,16 @@ static filters::value_type invert_impl_( filters::value_type m )
     return m;
 }
 
+static filters::value_type invert_brightness_impl_( filters::value_type m )
+{
+    if( m.second.type() != CV_8UC3 ) { COMMA_THROW( comma::exception, "expected image type 3ub; got: " << type_as_string( m.second.type() ) ); }
+    cv::Mat n;
+    cv::cvtColor( m.second, n, CV_RGB2HSV );
+    for( unsigned char* c = n.datastart + 2; c < n.dataend; *c = 255 - *c, c += 3 );
+    cv::cvtColor( n, m.second, CV_HSV2RGB );
+    return m;
+}
+
 static filters::value_type equalize_histogram_impl_(filters::value_type m)
 {
     if( single_channel_type(m.second.type()) != CV_8UC1 ) { COMMA_THROW( comma::exception, "expected image type ub, 2ub, 3ub, 4ub; got: " << type_as_string( m.second.type() ) ); }
@@ -1296,7 +1306,8 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
         }
         else if( e[0] == "invert" )
         {
-            f.push_back( filter( &invert_impl_ ) );
+            if( e.size() == 1 ) { f.push_back( filter( &invert_impl_ ) ); }
+            else if( e[1] == "brightness" ) { f.push_back( filter( &invert_brightness_impl_ ) ); } // quick and dirty, a secret option
         }
         else if(e[0]=="normalize")
         {
