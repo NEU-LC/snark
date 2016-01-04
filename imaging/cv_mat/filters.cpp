@@ -70,6 +70,11 @@ struct map_input_t
     value_type value;
 };
 
+namespace comma {
+typedef unsigned char uint8;
+typedef char int8;
+} // namespace comma {
+	
 namespace comma { namespace visiting {
 
 template <> struct traits< map_input_t >
@@ -167,17 +172,41 @@ std::string type_as_string( int t ) // to avoid compilation warning
     return it == types_as_string.end() ? boost::lexical_cast< std::string >( t ) : it->second;
 }
 
+static boost::unordered_map< std::string, unsigned int > fill_cvt_color_types_()
+{
+    boost::unordered_map<std::string, unsigned int> types;
+    //note RGB is exactly the same as BGR
+    types[ "CV_BGR2GRAY" ] = types[ "BGR,GRAY" ] = types[ "CV_RGB2GRAY" ] = types[ "RGB,GRAY" ] = CV_BGR2GRAY;
+    types[ "CV_GRAY2BGR" ] = types[ "GRAY,BGR" ] = types[ "CV_GRAY2RGB" ] = types[ "GRAY,RGB" ] = CV_GRAY2BGR;
+    types[ "CV_BGR2XYZ" ] = types[ "BGR,XYZ" ] = types[ "CV_RGB2XYZ" ] = types[ "RGB,XYZ" ] = CV_BGR2XYZ;
+    types[ "CV_XYZ2BGR" ] = types[ "XYZ,BGR" ] = types[ "CV_XYZ2RGB" ] = types[ "XYZ,RGB" ] = CV_XYZ2BGR;
+    types[ "CV_BGR2HSV" ] = types[ "BGR,HSV" ] = types[ "CV_RGB2HSV" ] = types[ "RGB,HSV" ] = CV_BGR2HSV;
+    types[ "CV_HSV2BGR" ] = types[ "HSV,BGR" ] = types[ "CV_HSV2RGB" ] = types[ "HSV,RGB" ] = CV_HSV2BGR;
+    types[ "CV_BGR2Lab" ] = types[ "BGR,Lab" ] = types[ "CV_RGB2Lab" ] = types[ "RGB,Lab" ] = CV_BGR2Lab;
+    types[ "CV_Lab2BGR" ] = types[ "Lab,BGR" ] = types[ "CV_Lab2RGB" ] = types[ "Lab,RGB" ] = CV_Lab2BGR;
+    types[ "CV_BayerBG2BGR" ] = types[ "BayerBG,BGR" ] = types[ "CV_BayerBG2RGB" ] = types[ "BayerBG,RGB" ] = CV_BayerBG2BGR;
+    types[ "CV_BayerGB2BGR" ] = types[ "BayerGB,BGR" ] = types[ "CV_BayerGB2RGB" ] = types[ "BayerGB,RGB" ] = CV_BayerGB2BGR;
+    types[ "CV_BayerRG2BGR" ] = types[ "BayerRG,BGR" ] = types[ "CV_BayerRG2RGB" ] = types[ "BayerRG,RGB" ] = CV_BayerRG2BGR;
+    types[ "CV_BayerGR2BGR" ] = types[ "BayerGR,BGR" ] = types[ "CV_BayerGR2RGB" ] = types[ "BayerGR,RGB" ] = CV_BayerGR2BGR;
+    types[ "CV_BayerBG2GRAY" ] = types[ "BayerBG,GRAY" ] = CV_BayerBG2GRAY;
+    types[ "CV_BayerGB2GRAY" ] = types[ "BayerGB,GRAY" ] = CV_BayerGB2GRAY;
+    types[ "CV_BayerRG2GRAY" ] = types[ "BayerRG,GRAY" ] = CV_BayerRG2GRAY;
+    types[ "CV_BayerGR2GRAY" ] = types[ "BayerGR,GRAY" ] = CV_BayerGR2GRAY;
+    return types;
+}
+static boost::unordered_map< std::string, unsigned int > cvt_color_types_ = fill_cvt_color_types_();
+unsigned int cvt_color_type_from_string( const std::string& t ) // to avoid compilation warning
+{
+    boost::unordered_map< std::string, unsigned int >::const_iterator it = cvt_color_types_.find( t );
+    if (it == cvt_color_types_.end()) { COMMA_THROW(comma::exception, "unknown conversion enum '" << t << "' for convert-color"); } 
+    return it->second;
+}
+
 static filters::value_type cvt_color_impl_( filters::value_type m, unsigned int which )
 {
     filters::value_type n;
     n.first = m.first;
-    if( m.second.channels() == 3 )
-    {
-        cv::Mat grey;
-        cv::cvtColor( m.second, grey, CV_RGB2GRAY );
-        m.second = grey;
-    }
-    cv::cvtColor( m.second, n.second, which + 45u ); // HACK, bayer as unsigned int, but I don't find enum { BG2RGB, GB2BGR ... } more usefull
+    cv::cvtColor( m.second, n.second, which ); 
     return n;
 }
 static filters::value_type unpack12_impl_( filters::value_type m )
@@ -305,17 +334,24 @@ static filters::value_type brightness_impl_( filters::value_type m, double scale
 
 struct blur_t
 {
-    enum types { box, gaussian };
+    enum types { box, gaussian, median, bilateral, adaptive_bilateral };
     types blur_type;
     cv::Size kernel_size;
     cv::Point2d std;
+    int neighbourhood_size;
+    double sigma_colour;
+    double sigma_space;
 
     static types from_string( const std::string& s )
     {
         if( s == "box" ) { return box; }
         if( s == "gaussian" ) { return gaussian; }
+        if( s == "median") { return median; }
+        if( s == "bilateral") { return bilateral; }
+        if( s == "adaptive-bilateral") { return adaptive_bilateral; }
         COMMA_THROW( comma::exception, "unexpected blur type" );
     }
+    blur_t() : neighbourhood_size(0), sigma_colour(0), sigma_space(0) {}
 };
 
 static filters::value_type blur_impl_( filters::value_type m, blur_t params )
@@ -329,6 +365,15 @@ static filters::value_type blur_impl_( filters::value_type m, blur_t params )
             break;
         case blur_t::gaussian:
             cv::GaussianBlur(m.second, n.second, params.kernel_size, params.std.x, params.std.y);
+            break;
+        case blur_t::median:
+            cv::medianBlur(m.second, n.second, params.neighbourhood_size);
+            break;
+        case blur_t::bilateral:
+            cv::bilateralFilter(m.second, n.second, params.neighbourhood_size, params.sigma_colour, params.sigma_space);
+            break;
+        case blur_t::adaptive_bilateral:
+            cv::adaptiveBilateralFilter(m.second, n.second, params.kernel_size, params.sigma_colour, params.sigma_space);
             break;
     }
     return n;
@@ -1086,6 +1131,67 @@ static filters::value_type linear_combination_impl_( const filters::value_type m
     COMMA_THROW( comma::exception, "linear-combination: unrecognised image type " << m.second.type() );
 }
 
+template < unsigned int Depth > struct gamma_traits {};
+template <> struct gamma_traits< CV_8U >
+{
+	typedef comma::uint8 type;
+	enum { is_signed = false };
+	static const type min = 0;
+	static const type max = 255;
+};
+template <> struct gamma_traits< CV_8S >
+{
+	typedef comma::int8 type;
+	enum { is_signed = true };
+	static const type min = -128;
+	static const type max = 127;
+};
+
+
+template < unsigned int Depth > static cv::Mat lut_matrix_gamma_( double gamma )
+{
+	double num_states = gamma_traits< Depth >::max - gamma_traits< Depth >::min; //std::numeric_limits< gamma_traits< Depth >::type >::max();
+	cv::Mat lut_matrix( 1, num_states + 1, Depth );
+    uchar * ptr = lut_matrix.ptr();
+    double scale = std::abs( gamma_traits< Depth >::max );
+    for( unsigned int i = 0, j = gamma_traits< Depth >::min; i <= num_states; i++, j++ )
+    {
+    	ptr[i] = std::pow( j / scale, 1.0 / gamma ) * scale;
+    }
+    return lut_matrix;
+}
+
+template < unsigned int Depth >
+static filters::value_type gamma_( const filters::value_type m, const double gamma )
+{
+	static double gamma_ = gamma;
+	if( gamma_ != gamma ) { COMMA_THROW( comma::exception, "multiple filters with different gamma values: todo" ); }
+    static cv::Mat lut_matrix = lut_matrix_gamma_<Depth>( gamma );
+    cv::LUT( m.second, lut_matrix, m.second );
+    return m;
+}
+
+static filters::value_type gamma_impl_(const filters::value_type m, const double gamma )
+{
+    switch (m.second.depth())
+    {
+        case CV_8U: return gamma_< CV_8U >( m, gamma ); break;
+        // case CV_8S: return gamma_< CV_8S >( m, gamma ); break;
+        default: break;
+    }
+    COMMA_THROW(comma::exception, "gamma is unimplemented for types other than CV_8U, CV_8S");
+}
+
+static filters::value_type remove_mean_impl_(const filters::value_type m, const cv::Size kernel_size, const double ratio )
+{
+    filters::value_type n;
+    n.first = m.first;
+    cv::GaussianBlur(m.second, n.second, kernel_size, 0, 0);
+    n.second = m.second - ratio * n.second;
+
+    return n;
+}
+
 std::vector< filter > filters::make( const std::string& how, unsigned int default_delay )
 {
     std::vector< std::string > v = comma::split( how, ';' );
@@ -1096,10 +1202,15 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
     for( std::size_t i = 0; i < v.size(); name += ( i > 0 ? ";" : "" ) + v[i], ++i )
     {
         std::vector< std::string > e = comma::split( v[i], '=' );
-        if( e[0] == "bayer" )
+        if( e[0] == "bayer" ) // kept for backwards-compatibility, use convert-color=BayerBG,BGR etc..
         {
             if( modified ) { COMMA_THROW( comma::exception, "cannot covert from bayer after transforms: " << name ); }
-            unsigned int which = boost::lexical_cast< unsigned int >( e[1] );
+            unsigned int which = boost::lexical_cast< unsigned int >( e[1] ) + 45u; // HACK, bayer as unsigned int, but I don't find enum { BG2RGB, GB2BGR ... } more usefull
+            f.push_back( filter( boost::bind( &cvt_color_impl_, _1, which ) ) );
+        }
+        else if( e[0] == "convert-color" || e[0] == "convert_color" )
+        {
+            unsigned int which = cvt_color_type_from_string(e[1]);
             f.push_back( filter( boost::bind( &cvt_color_impl_, _1, which ) ) );
         }
         else if( e[0] == "unpack12" )
@@ -1185,6 +1296,20 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
                 center->y() = boost::lexical_cast< unsigned int >( s[1] );
             }
             f.push_back( filter( boost::bind( &cross_impl_, _1, center ) ) );
+        }
+        else if( e[0] == "gamma")
+        {
+            double gamma = boost::lexical_cast< double >( e[1] );
+            f.push_back( filter( boost::bind( &gamma_impl_, _1, gamma ) ) );
+        }
+        else if( e[0] == "remove-mean")
+        {
+            std::vector< std::string > s = comma::split( e[1], ',' );
+            if( s.size() != 2 ) { COMMA_THROW( comma::exception, "remove-mean expected 2 parameters" ); }
+            unsigned int neighbourhood_size = boost::lexical_cast< unsigned int >( s[0] );
+            cv::Size kernel_size(neighbourhood_size, neighbourhood_size);
+            double ratio = boost::lexical_cast< double >( s[1] );
+            f.push_back( filter( boost::bind( &remove_mean_impl_, _1, kernel_size, ratio ) ) );
         }
         else if( e[0] == "fft" )
         {
@@ -1417,32 +1542,41 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
         else if( e[0] == "blur" )
         {
             const std::vector< std::string >& s = comma::split( e[1], ',' );
-            if( s.size() < 2 ) { COMMA_THROW( comma::exception, "expected blur type, kernel size, optional gaussian std" ); }
+            if( s.size() < 2 ) { COMMA_THROW( comma::exception, "expected blur=<blur_type>,<blur_type_parameters>" ); }
             
             blur_t params;
             params.blur_type = blur_t::from_string(s[0]);
             if (s[0] == "box")
-            {
-                params.kernel_size.width = boost::lexical_cast< int >( s[1] );
-                params.kernel_size.height = (s.size() == 3 ? boost::lexical_cast< int >( s[2] ) : params.kernel_size.width);
-            }
+        	{
+        		params.kernel_size.height = params.kernel_size.width = boost::lexical_cast< int >( s[1] );
+        	}
             else if (s[0] == "gaussian")
             {
-                if (s.size() == 3) // ksize,std
-                {
-                    params.kernel_size.width = params.kernel_size.height = boost::lexical_cast< int >( s[1] );
-                    params.std.x = params.std.y = boost::lexical_cast< double >( s[2] );
-                } 
-                else if (s.size() == 5) // ksizeX,ksizeY,stdX,stdY
-                {
-                    params.kernel_size.width = boost::lexical_cast< int >( s[1] );
-                    params.kernel_size.height = boost::lexical_cast< int >( s[2] );
-                    params.std.x = boost::lexical_cast< double >( s[3] );
-                    params.std.y = boost::lexical_cast< double >( s[4] );
-                }
-                else COMMA_THROW( comma::exception, "blur=gaussian expected either 2 or 4 parameters" );
+                if (s.size() != 3) { COMMA_THROW( comma::exception, "expected blur=gaussian,kernel_size,std" ); }
+                params.kernel_size.width = params.kernel_size.height = boost::lexical_cast< int >( s[1] );
+                params.std.x = params.std.y = boost::lexical_cast< double >( s[2] );
             }
-            else COMMA_THROW( comma::exception, "invalid blur type" );
+            else if (s[0] == "median")
+            {
+                if (s.size() != 2) { COMMA_THROW( comma::exception, "blur=median,kernel_size" ); }
+                params.neighbourhood_size = boost::lexical_cast< int >( s[1] );
+            }
+            else if (s[0] == "bilateral")
+            {
+                if (s.size() != 4) // nsize,std_space,std_colour
+                { COMMA_THROW( comma::exception, "blur=bilateral expected 3 parameters" ); }
+                params.neighbourhood_size = boost::lexical_cast< int >( s[1] );
+                params.sigma_space = boost::lexical_cast< double >( s[2] );
+                params.sigma_colour = boost::lexical_cast< double >( s[3] ); 
+            }
+            else if (s[0] == "adaptive-bilateral")
+            {
+                if (s.size() != 4) { COMMA_THROW( comma::exception, "expected blur=adaptive-bilateral,kernel_size,std_space,std_colour_max" ); }
+                params.kernel_size.width = params.kernel_size.height = boost::lexical_cast< int >( s[1] );
+                params.sigma_space = boost::lexical_cast< double >( s[2] );
+                params.sigma_colour = boost::lexical_cast< double >( s[3] ); // max sigma color
+	        }
+            else { COMMA_THROW( comma::exception, "invalid blur type" ); }
             f.push_back( filter( boost::bind( &blur_impl_, _1, params) ) );
         }
         else if( e[0] == "map" )
@@ -1504,13 +1638,17 @@ static std::string usage_impl_()
     oss << "    cv::Mat image filters usage (';'-separated):" << std::endl;
     oss << "        accumulate=<n>: accumulate the last n images and concatenate them vertically (useful for slit-scan and spectral cameras like pika2)" << std::endl;
     oss << "            example: cat slit-scan.bin | cv-cat \"accumulate=400;view;null\"" << std::endl;
-    oss << "        bayer=<mode>: convert from bayer, <mode>=1-4" << std::endl;
+    oss << "        bayer=<mode>: convert from bayer, <mode>=1-4 (see also convert-color)" << std::endl;
     oss << "        unpack12: convert from 12-bit packed (2 pixels in 3 bytes) to 16UC1; use before other filters" << std::endl;
-    oss << "        blur=<type>,<kernel size>[,<std>]: apply blur to the image" << std::endl;
-    oss << "            options for blur=box: (1 or 2 parameters) kernel size <x>[,<y>]" << std::endl;
-    oss << "            options for blur=gaussian: (2 or 4 parameters) kernel size (positive and odd) and standard deviation <x>[,<y>],<std x>[,<std y>]. Set kernel size or std to 0 to calculate missing parameter." << std::endl;
+    oss << "        blur=<type>,<parameters>: apply a blur to the image (positive and odd kernel sizes)" << std::endl;
+    oss << "            blur=box,<kernel_size> " << std::endl;
+    oss << "            blur=median,<kernel_size>" << std::endl;
+    oss << "            blur=gaussian,<kernel_size>,<std_size>. Set either std or kernel size to 0 to calculate based on other parameter." << std::endl;
+    oss << "            blur=bilateral,<neighbourhood_size>,<sigma_space>,<sigma_colour>; preserves edges" << std::endl;
+    oss << "            blur=adaptive-bilateral: <kernel_size>,<sigma_space>,<sigma_colour_max>; preserve edges, automatically calculate sigma_colour (and cap to sigma_colour_max)" << std::endl;
     oss << "        brightness=<scale>[,<offset>]: output=(scale*input)+offset; default offset=0" << std::endl;
     oss << "        convert-to,convert_to=<type>[,<scale>[,<offset>]]: convert to given type; should be the same number of channels; see opencv convertTo for details" << std::endl;
+	oss << "        convert-color,convert_color=<from>,<to>: convert from colour space to new colour space (BGR, RGB, Lab, XYZ, Bayer**, GRAY); eg: BGR,GRAY or CV_BGR2GRAY" << std::endl;
     oss << "        count: write frame number on images" << std::endl;
     oss << "        crop=[<x>,<y>],<width>,<height>: crop the portion of the image starting at x,y with size width x height" << std::endl;
     oss << "        crop-tile=<ncols>,<nrows>,<i>,<j>,...[&horizontal]: divide the image into a grid of tiles (ncols-by-nrows), and output an image made of the croped tiles defined by i,j (count from zero)" << std::endl;
@@ -1555,6 +1693,7 @@ static std::string usage_impl_()
     oss << "            resize=0.5,1024 : 50% of width; heigth 1024 pixels" << std::endl;
     oss << "            note: if no decimal dot '.', size is in pixels; if decimal dot present, size as a fraction" << std::endl;
     oss << "                  i.e. 5 means 5 pixels; 5.0 means 5 times" << std::endl;
+    oss << "        remove-mean=<kernel_size>,<ratio>: simple high-pass filter removing <ratio> times the mean component on <kernel_size> scale" << std::endl;
     oss << "        split: split n-channel image into a nx1 grey-scale image" << std::endl;
     oss << "        text=<text>[,x,y][,colour]: print text; default x,y: 10,10; default colour: yellow" << std::endl;
     oss << "        threshold=<threshold>[,<maxval>,[<type>]]: threshold image; same semantics as cv::threshold()" << std::endl;
@@ -1590,3 +1729,4 @@ const std::string& filters::usage()
 }
 
 } } // namespace snark{ namespace cv_mat {
+
