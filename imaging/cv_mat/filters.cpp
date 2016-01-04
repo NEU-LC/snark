@@ -65,7 +65,7 @@
 struct map_input_t
 {
     typedef double value_type;
-    typedef int key_type;
+    typedef comma::int32 key_type;
     key_type key;
     value_type value;
 };
@@ -74,7 +74,7 @@ namespace comma {
 typedef unsigned char uint8;
 typedef char int8;
 } // namespace comma {
-	
+
 namespace comma { namespace visiting {
 
 template <> struct traits< map_input_t >
