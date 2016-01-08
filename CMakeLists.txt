@@ -371,6 +371,8 @@ IF( snark_build_terrain )
     add_subdirectory( terrain )
 ENDIF( snark_build_terrain )
 
+add_subdirectory( etc/bash_completion.d )
+
 add_subdirectory( python )
 
 IF( snark_build_web )

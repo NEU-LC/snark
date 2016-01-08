@@ -1,0 +1,20 @@
+#!/bin/bash 
+
+_snark_bash_completion()
+{
+    local cur prev opts
+    COMPREPLY=()
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+    # These tests are necessary because bash will attempt completion on
+    # ./name if there is a name in its completion list
+    # even if ./name does not exist 
+    if [[ -x "${COMP_WORDS[0]}" ]] ; then
+        opts=$( "${COMP_WORDS[0]}" --bash-completion )
+    elif type -p "${COMP_WORDS[0]}" > /dev/null 2> /dev/null ; then
+        opts=$( "${COMP_WORDS[0]}" --bash-completion )
+    fi
+    COMPREPLY=( $( compgen -f -d -W "${opts}" -- ${cur}) )
+}
+
+complete -F _snark_bash_completion view-points
