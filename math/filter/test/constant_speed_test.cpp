@@ -70,14 +70,14 @@ TEST( constant_speed, simple )
     {
         constant_speed<2>::position m( meas, 0.3 );
         filter.predict( deltaT );
-        EXPECT_GT( filter.state().covariance.determinant(), previouscovariance.determinant() );
-        previouscovariance = filter.state().covariance;
+        EXPECT_GT( filter.state.covariance.determinant(), previouscovariance.determinant() );
+        previouscovariance = filter.state.covariance;
         filter.update(m);
-        EXPECT_LT( filter.state().covariance.determinant(), previouscovariance.determinant() );
-        previouscovariance = filter.state().covariance;
-        Eigen::Vector4d diff = filter.state().state_vector - previousstate;
+        EXPECT_LT( filter.state.covariance.determinant(), previouscovariance.determinant() );
+        previouscovariance = filter.state.covariance;
+        Eigen::Vector4d diff = filter.state.state_vector - previousstate;
         EXPECT_TRUE( diff.array().abs().isApprox( diff.array() ) );
-        previousstate = filter.state().state_vector;
+        previousstate = filter.state.state_vector;
     }
 }
 
