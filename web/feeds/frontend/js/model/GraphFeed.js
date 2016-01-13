@@ -11,7 +11,7 @@ define('GraphFeed', ["jquery", "Feed"], function ($) {
         this.default_exceeded_threshold = {value: Number.MAX_VALUE, color: '#d9534f', alert: true};
         this.text = $(this.id + ' .graph-text');
         this.bars = $(this.id + ' .graph-bars');
-        this.bars.append('<div class="graph-bar-col"><span class="graph-bar"></span></div>');
+        this.bars.append('<div class="graph-bar-col"><span class="graph-bar-bottom"></span><span class="graph-bar-top"></span></div>');
         this.bars_width = Number($('.graph-bars').css('width').replace('px', ''));
         this.bar_width = Number($('.graph-bar-col').css('width').replace('px', ''));
         this.bar_height = Number($('.graph-bar-col').css('height').replace('px', ''));
@@ -20,7 +20,7 @@ define('GraphFeed', ["jquery", "Feed"], function ($) {
             throw 'invalid graph bar styles; calculated bar count: ' + this.bar_count;
         }
         for (var i = 1; i < this.bar_count; ++i) {
-            this.bars.append('<div class="graph-bar-col"><span class="graph-bar"></span></div>');
+            this.bars.append('<div class="graph-bar-col"><span class="graph-bar-bottom"></span><span class="graph-bar-top"></span></div>');
         }
         var _this = this;
         this.bars.find('.graph-bar-col').each(function (i, e) {
@@ -56,17 +56,19 @@ define('GraphFeed', ["jquery", "Feed"], function ($) {
         var bar = this.bars.children().first();
         this.bars.append(bar);
         var value = isNaN(data) ? this.config.graph.min : Number(data);
-        var height = this.get_bar_height(value);
+        var bottom_height = this.get_bar_bottom(value);
+        var top_height = this.get_bar_top(value);
         var threshold = this.get_threshold(value);
-        bar.find('.graph-bar').css('height', height);
-        bar.css('background', threshold.color);
+        bar.find('.graph-bar-bottom').css('height', bottom_height).css('background', threshold.color);
+        bar.find('.graph-bar-top').css('height', top_height);
         if (this.config.alert) {
             this.alert(threshold.alert);
         }
         bar.data('bs.tooltip').options.title = text + ' @ ' + this.refresh_time;
         bar.find('.graph-threshold').each(function (index, value) {
             var e = $(value);
-            if (Number(e.css('height').replace('px', '')) >= height) {
+            var height = Number(e.css('height').replace('px', ''));
+            if (height > top_height && height < bottom_height) {
                 e.hide();
             } else {
                 e.show();
@@ -81,6 +83,30 @@ define('GraphFeed', ["jquery", "Feed"], function ($) {
             scale = 0;
         }
         return this.bar_height - scale * this.bar_height;
+    };
+    GraphFeed.prototype.get_bar_top = function (value) {
+        if (this.config.graph.max > 0 && this.config.graph.min < 0) {
+            if (value < 0) {
+                return this.get_bar_height(0);
+            }
+            return this.get_bar_height(value);
+        }
+        if (this.config.graph.max <= 0) {
+            return this.get_bar_height(this.config.graph.max);
+        }
+        return this.get_bar_height(value);
+    };
+    GraphFeed.prototype.get_bar_bottom = function (value) {
+        if (this.config.graph.max > 0 && this.config.graph.min < 0) {
+            if (value >= 0) {
+                return this.get_bar_height(0);
+            }
+            return this.get_bar_height(value);
+        }
+        if (this.config.graph.min >= 0) {
+            return this.get_bar_height(this.config.graph.min);
+        }
+        return this.get_bar_height(value);
     };
     GraphFeed.prototype.get_threshold = function (value) {
         if (!this.config.graph.thresholds.length) {
