@@ -44,189 +44,228 @@
 #include <snark/graphics/applications/view_points/TextureReader.h>
 #include <QApplication>
 
-void usage()
+static void bash_completion( unsigned const ac, char const * const * av )
 {
-    std::cerr << std::endl;
-    std::cerr << "view 3D point clouds:" << std::endl;
-    std::cerr << "view points from given files/streams and stdin" << std::endl;
-    std::cerr << "(see examples below for a quick start)" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "note: scene radius, centre and point of view will be decided" << std::endl;
-    std::cerr << "      depending on the extents of the first data source" << std::endl;
-    std::cerr << "      (if you want it to be stdin, specify \"-\" as the" << std::endl;
-    std::cerr << "      explicitly as the first data source); see also" << std::endl;
-    std::cerr << "      --scene-radius option and examples" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "usage: view-points [<options>] [<filenames>]" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "input data options" << std::endl;
-    std::cerr << "    --colour,--color,-c <how>: how to colour points" << std::endl;
-    std::cerr << "        <how>:" << std::endl;
-    std::cerr << "            colour maps" << std::endl;
-    std::cerr << "                <min>:<max>: if scalar field present, stretch by scalar (see section <fields>)" << std::endl;
-    std::cerr << "                <min>:<max>,<from-colour>:<to-colour>: if scalar field present, stretch by scalar (see section <fields>)" << std::endl;
-    std::cerr << "                <min>:<max>,<colourmap>: if scalar field present, stretch by scalar (see section <fields>)" << std::endl;
-    std::cerr << "                    <colourmap>: jet, hot, red, green" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "            fixed colour" << std::endl;
-    std::cerr << "                white, black, red, green, blue, yellow, cyan, magenta, grey, pink, sky, salad: fixed colour" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "            colour by id" << std::endl;
-    std::cerr << "                if there is \"id\" field in --fields, colour by id, with or without scalar (see section <fields>)" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "            colour by elevation" << std::endl;
-    std::cerr << "                [<min>:<max>][,<from-colour>:<to-colour>][,cyclic][,sharp][,quadratic] (in any order)" << std::endl;
-    std::cerr << "                    stretch colours by elevation" << std::endl;
-    std::cerr << "                    <min>:<max>: from-to in metres, e.g. -3:10" << std::endl;
-    std::cerr << "                    <from-colour>:<to-colour>: from which to which colour" << std::endl;
-    std::cerr << "                    cyclic: if present, colour cyclically with <min> and <max>" << std::endl;
-    std::cerr << "                            meaning the height of the corresponding stip" << std::endl;
-    std::cerr << "                    sharp: if present (for cyclic only), do not make smooth borders" << std::endl;
-    std::cerr << "                           between the colours" << std::endl;
-    std::cerr << "                    quadratic: if present (for cyclic only), parabolic stretching, quick and dirty" << std::endl;
-    std::cerr << "                                default: stretch colours linearly" << std::endl;
-    std::cerr << "                    e.g.: cat data.csv | view-points --colour=blue:yellow,1:2,cyclic" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "            default: stretched by elevation from cyan to magenta from 0:1" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "      hide: e.g. \"test.csv;hide\": hide the source, when shown first time (useful, when there are very many inputs" << std::endl;
-    std::cerr << "    --label <label>: text label displayed next to the latest point" << std::endl;
-    std::cerr << "    --no-stdin: do not read from stdin" << std::endl;
-    std::cerr << "    --point-size,--weight <point size>: default: 1" << std::endl;
-    std::cerr << "    --shape <shape>: \"point\", \"extents\", \"line\", \"label\"; default \"point\"" << std::endl;
-    std::cerr << "                     \"arc\": e.g: --shape=arc --fields=,,begin,end,centre," << std::endl;
-    std::cerr << "                               or: --shape=arc --fields=,,begin,middle,end,,," << std::endl;
-    std::cerr << "                                   where 'begin' and 'end' are x,y,z points" << std::endl;
-    std::cerr << "                                   and 'middle' is a point between begin and end on the arc" << std::endl;
-    std::cerr << "                                   default: 'begin,end', with centre 0,0,0" << std::endl;
-    std::cerr << "                     \"ellipse\": e.g. --shape=ellipse --fields=,,center,orientation,minor,major," << std::endl;
-    std::cerr << "                                  orientation: roll,pitch,yaw; default: in x,y plane" << std::endl;
-    std::cerr << "                     \"extents\": e.g. --shape=extents --fields=,,min,max,,," << std::endl;
-    std::cerr << "                     \"line\": e.g. --shape=line --fields=,,first,second,,," << std::endl;
-    std::cerr << "                     \"lines\": connect all points of a block from first to the last; fields same as for 'point'" << std::endl;
-    std::cerr << "                     \"loop\": connect all points of a block; fields same as for 'point'" << std::endl;
-    std::cerr << "                     \"label\": e.g. --shape=label --fields=,x,y,z,,,label" << std::endl;
-    std::cerr << "                     \"<model file ( obj, ply... )>[;<options>]\": e.g. --shape=vehicle.obj" << std::endl;
-    std::cerr << "                     \"    <options>" << std::endl;
-    std::cerr << "                     \"        flip\": flip the model around the x-axis" << std::endl;
-    std::cerr << "                     \"        scale=<value>\": resize model (ply only, todo), e.g. show model half-size: scale=0.5" << std::endl;
-    std::cerr << "                     \"<image file>[,<image options>]:<image file>[,<image options>]\": show image, e.g. --shape=\"vehicle-lights-on.jpg,vehicle-lights-off.jpg\"" << std::endl;
-    std::cerr << "                            <image options>: <width>,<height> or <pixel-size>" << std::endl;
-    std::cerr << "                                <width>,<height>: image width and height in meters when displaying images in the scene; default: 1,1" << std::endl;
-    std::cerr << "                                <pixel size>: single pixel size in metres" << std::endl;
-    std::cerr << "                            note 1: just like for the cad models, the images will be pinned to the latest point in the stream" << std::endl;
-    std::cerr << "                            note 2: specify id in fields to switch between multiple images, see examples below" << std::endl;
-    std::cerr << "    --size <size> : render last <size> points (or other shapes)" << std::endl;
-    std::cerr << "                    default 2000000 for points, for 200000 for other shapes" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "camera options" << std::endl;
-    std::cerr << "    --camera=\"<options>\"" << std::endl;
-    std::cerr << "          <options>: [<fov>];[<type>]" << std::endl;
-    std::cerr << "          <fov>: field of view in degrees, default 45 degrees" << std::endl;
-    std::cerr << "          <type>: orthographic | perspective" << std::endl;
-    std::cerr << "              default: perspective" << std::endl;
-    std::cerr << "    --fov=<fov>: set camera field of view in degrees" << std::endl;
-    std::cerr << "    --camera-config=<filename>: camera config in json; to see an example, run --output-camera-config" << std::endl;
-    std::cerr << "    --camera-position=\"<options>\"" << std::endl;
-    std::cerr << "          <options>: <position>|<stream>" << std::endl;
-    std::cerr << "          <position>: <x>,<y>,<z>,<roll>,<pitch>,<yaw>" << std::endl;
-    std::cerr << "          <stream>: position csv stream with options; default fields: x,y,z,roll,pitch,yaw" << std::endl;
-    std::cerr << "    --orthographic: use orthographic projection instead of perspective" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "more options" << std::endl;
-    std::cerr << "    --background-colour <colour> : default: black" << std::endl;
-    std::cerr << "    --output-camera-config,--output-camera: output camera position as t,x,y,z,r,p,y to stdout" << std::endl;
-    std::cerr << "    --scene-center,--center=<value>: fixed scene center as \"x,y,z\"" << std::endl;
-    std::cerr << "    --scene-radius,--radius=<value>: fixed scene radius in metres, since sometimes it is hard to imply" << std::endl;
-    std::cerr << "                            scene size from the dataset (e.g. for streams)" << std::endl;
-    std::cerr << "    --z-is-up : z-axis is pointing up, default: pointing down ( north-east-down system )" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "csv options" << std::endl;
-    std::cerr << comma::csv::options::usage() << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "    fields:" << std::endl;
-    std::cerr << "        default: x,y,z" << std::endl;
-    std::cerr << "        x,y,z: coordinates (%d in binary)" << std::endl;
-    std::cerr << "        id: if present, colour by id (%ui in binary)" << std::endl;
-    std::cerr << "        block: if present, clear screen once block id changes (%ui in binary)" << std::endl;
-    std::cerr << "        r,g,b: if present, specify RGB colour (0-255; %uc in binary)" << std::endl;
-    std::cerr << "        a: if present, specifies colour transparency (0-255, %uc in binary); default 255" << std::endl;
-    std::cerr << "        scalar: if present, colour by scalar" << std::endl;
-    std::cerr << "                  use --colour=<from>:<to>[,<from colour>:<to colour>]" << std::endl;
-    std::cerr << "                  default: 0:1,red:blue" << std::endl;
-    std::cerr << "                  todo: implement for shapes (currently works only for points)" << std::endl;
-    std::cerr << "        label: text label (currenly implemented for ascii only)" << std::endl;
-    std::cerr << "        roll,pitch,yaw: if present, show orientation" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "    most of the options can be set for individual files (see examples)" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "mouse clicks:" << std::endl;
-    std::cerr << "    left press and hold: rotate the scene around the centre" << std::endl;
-    std::cerr << "    right press and hold: translate the scene" << std::endl;
-    std::cerr << "    double left click: change the centre of the scene" << std::endl;
-    std::cerr << "    double right click: output to stdout approximate coordinates of the clicked point" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "examples" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "basics" << std::endl;
-    std::cerr << "    view points from file:" << std::endl;
-    std::cerr << "        view-points xyz.csv" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "    hint that the file contains not more than 200000 points" << std::endl;
-    std::cerr << "        cat $(ls *.csv) | view-points --size=200000" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "    view points from all the binary files in the directory" << std::endl;
-    std::cerr << "        cat $(ls *.bin) | view-points --size=200000 --binary \"%d%d%d\"" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "    colour points" << std::endl;
-    std::cerr << "        view-points --colour blue $(ls labeled.*.csv)" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "    each point has an individual color:" << std::endl;
-    std::cerr << "        cat xyzrgb.csv | view-points --fields=\"x,y,z,r,g,b\"" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "    view multiple files" << std::endl;
-    std::cerr << "        view-points \"raw.csv;colour=0:20\" \"partitioned.csv;fields=x,y,z,id\";point-size=2" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "    view a cad model" << std::endl;
-    std::cerr << "        echo \"0,0,0\" | view-points --shape /usr/local/etc/segway.shrimp.obj --z-is-up --orthographic" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "    use stdin as the primary source for scene radius:" << std::endl;
-    std::cerr << "        cat xyz.csv | view-points \"-\" scan.csv" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "    specify fixed scene radius explicitly:" << std::endl;
-    std::cerr << "        cat xyz.csv | view-points --scene-radius=100" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "using images" << std::endl;
-    std::cerr << "    show image with given position" << std::endl;
-    std::cerr << "        echo 0,0,0 | view-points \"-;shape=image.jpg\"" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "    show resized image" << std::endl;
-    std::cerr << "        echo 0,0,0 | view-points \"-;shape=image.jpg,3,4\"" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "    specify pixel size instead of image size" << std::endl;
-    std::cerr << "        echo 0,0,0 | view-points \"-;shape=image.jpg,0.1\"" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "    show image with given position and orientation" << std::endl;
-    std::cerr << "        echo 0,0,0,0,0,0 | view-points \"-;shape=image.jpg;fields=x,y,z,roll,pitch,yaw\"" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "    switch between images by their index" << std::endl;
-    std::cerr << "        echo 0,0,0,0 > points.csv" << std::endl;
-    std::cerr << "        echo 0,0,0,1 >> points.csv" << std::endl;
-    std::cerr << "        echo 0,0,0,2 >> points.csv" << std::endl;
-    std::cerr << "        echo points.csv | view-points \"-;shape=image1.jpg,image2.jpg,image3.jpg;fields=x,y,z,id\"" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "    show points selected with a double right click" << std::endl;
-    std::cerr << "        rm -rf pipe && mkfifo pipe && cat pipe | view-points \"rose.st.ground.csv;fields=x,y,z,r,g,b\" \"-;colour=sky;weight=10\" > pipe" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "    publish a real time playback of georeferenced velodyne data on port 12345, visualise the data in real time and show points selected with a double right click" << std::endl;
-    std::cerr << "        cat velodyne-georeferenced.bin | csv-play --binary t,3d,ui | io-publish --size $( csv-size t,3d,ui ) -m 10000 tcp:12345" << std::endl;
-    std::cerr << "        rm -rf pipe && mkfifo pipe && cat pipe | view-points \"tcp:localhost:12345;binary=t,3d,ui;fields=,x,y,z,block\" \"-;fields=x,y,z;colour=sky;weight=10\" > pipe" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "    similar to above but uses different colours for the shown points and adds labels next to the points indicating the click order " << std::endl;
-    std::cerr << "        cat velodyne-georeferenced.bin | csv-play --binary t,3d,ui | io-publish --size $( csv-size t,3d,ui ) -m 10000 tcp:12345" << std::endl;
-    std::cerr << "        rm -rf pipe && mkfifo pipe && cat pipe | view-points \"tcp:localhost:12345;binary=t,3d,ui;fields=,x,y,z,block\" \"-;fields=x,y,z,id,label;weight=10\" | csv-paste \"-\" line-number line-number > pipe" << std::endl;
-    std::cerr << std::endl;
-    exit( -1 );
+    static const char * completion_options =
+        "--help -h"
+        "\n--colour --color -c maps fixed colour by id elevation cyclic sharp quadratic default"
+        "\n--label"
+        "\n--no-stdin"
+        "\n--point-size --weight"
+        "\n--shape 'point' 'extents' 'line' lines 'loop' 'label'"
+        "\n--size"
+        "\n--camera orthographic perspective"
+        "\n--fov"
+        "\n--camera-config"
+        "\n--camera-position"
+        "\n--orthographic"
+        "\n--background-colour black"
+        "\n--output-camera-confi ,--output-camera"
+        "\n--scene-center --center=<value>"
+        "\n--scene-radius --radius=<value>"
+        "\n--z-is-up";
+   
+    std::cout << completion_options << std::endl;
+    exit( 0 );
+}
+
+static void usage()
+{
+    static const char * const usage_synopsis = 
+        "\n"
+        "\nview 3D point clouds:"
+        "\nview points from given files/streams and stdin"
+        "\n(see examples below for a quick start)"
+        "\n"
+        "\nnote: scene radius, centre and point of view will be decided"
+        "\n      depending on the extents of the first data source"
+        "\n      (if you want it to be stdin, specify \"-\" as the"
+        "\n      explicitly as the first data source); see also"
+        "\n      --scene-radius option and examples"
+        "\n"
+        "\nusage: view-points [<options>] [<filenames>]"
+        "\n";
+        
+    static const char * const usage_options = 
+        "\ninput data options"
+        "\n    --colour,--color,-c <how>: how to colour points"
+        "\n        <how>:"
+        "\n            colour maps"
+        "\n                <min>:<max>: if scalar field present, stretch by scalar (see section <fields>)"
+        "\n                <min>:<max>,<from-colour>:<to-colour>: if scalar field present, stretch by scalar (see section <fields>)"
+        "\n                <min>:<max>,<colourmap>: if scalar field present, stretch by scalar (see section <fields>)"
+        "\n                    <colourmap>: jet, hot, red, green"
+        "\n"
+        "\n            fixed colour"
+        "\n                white, black, red, green, blue, yellow, cyan, magenta, grey, pink, sky, salad: fixed colour"
+        "\n"
+        "\n            colour by id"
+        "\n                if there is \"id\" field in --fields, colour by id, with or without scalar (see section <fields>)"
+        "\n"
+        "\n            colour by elevation"
+        "\n                [<min>:<max>][,<from-colour>:<to-colour>][,cyclic][,sharp][,quadratic] (in any order)"
+        "\n                    stretch colours by elevation"
+        "\n                    <min>:<max>: from-to in metres, e.g. -3:10"
+        "\n                    <from-colour>:<to-colour>: from which to which colour"
+        "\n                    cyclic: if present, colour cyclically with <min> and <max>"
+        "\n                            meaning the height of the corresponding stip"
+        "\n                    sharp: if present (for cyclic only), do not make smooth borders"
+        "\n                           between the colours"
+        "\n                    quadratic: if present (for cyclic only), parabolic stretching, quick and dirty"
+        "\n                                default: stretch colours linearly"
+        "\n                    e.g.: cat data.csv | view-points --colour=blue:yellow,1:2,cyclic"
+        "\n"
+        "\n            default: stretched by elevation from cyan to magenta from 0:1"
+        "\n"
+        "\n      hide: e.g. \"test.csv;hide\": hide the source, when shown first time (useful, when there are very many inputs"
+        "\n    --label <label>: text label displayed next to the latest point"
+        "\n    --no-stdin: do not read from stdin"
+        "\n    --point-size,--weight <point size>: default: 1"
+        "\n    --shape <shape>: \"point\", \"extents\", \"line\", \"label\"; default \"point\""
+        "\n                     \"arc\": e.g: --shape=arc --fields=,,begin,end,centre,"
+        "\n                               or: --shape=arc --fields=,,begin,middle,end,,,"
+        "\n                                   where 'begin' and 'end' are x,y,z points"
+        "\n                                   and 'middle' is a point between begin and end on the arc"
+        "\n                                   default: 'begin,end', with centre 0,0,0"
+        "\n                     \"ellipse\": e.g. --shape=ellipse --fields=,,center,orientation,minor,major,"
+        "\n                                  orientation: roll,pitch,yaw; default: in x,y plane"
+        "\n                     \"extents\": e.g. --shape=extents --fields=,,min,max,,,"
+        "\n                     \"line\": e.g. --shape=line --fields=,,first,second,,,"
+        "\n                     \"lines\": connect all points of a block from first to the last; fields same as for 'point'"
+        "\n                     \"loop\": connect all points of a block; fields same as for 'point'"
+        "\n                     \"label\": e.g. --shape=label --fields=,x,y,z,,,label"
+        "\n                     \"<model file ( obj, ply... )>[;<options>]\": e.g. --shape=vehicle.obj"
+        "\n                     \"    <options>"
+        "\n                     \"        flip\": flip the model around the x-axis"
+        "\n                     \"        scale=<value>\": resize model (ply only, todo), e.g. show model half-size: scale=0.5"
+        "\n                     \"<image file>[,<image options>]:<image file>[,<image options>]\": show image, e.g. --shape=\"vehicle-lights-on.jpg,vehicle-lights-off.jpg\""
+        "\n                            <image options>: <width>,<height> or <pixel-size>"
+        "\n                                <width>,<height>: image width and height in meters when displaying images in the scene; default: 1,1"
+        "\n                                <pixel size>: single pixel size in metres"
+        "\n                            note 1: just like for the cad models, the images will be pinned to the latest point in the stream"
+        "\n                            note 2: specify id in fields to switch between multiple images, see examples below"
+        "\n    --size <size> : render last <size> points (or other shapes)"
+        "\n                    default 2000000 for points, for 200000 for other shapes"
+        "\n"
+        "\ncamera options"
+        "\n    --camera=\"<options>\""
+        "\n          <options>: [<fov>];[<type>]"
+        "\n          <fov>: field of view in degrees, default 45 degrees"
+        "\n          <type>: orthographic | perspective"
+        "\n              default: perspective"
+        "\n    --fov=<fov>: set camera field of view in degrees"
+        "\n    --camera-config=<filename>: camera config in json; to see an example, run --output-camera-config"
+        "\n    --camera-position=\"<options>\""
+        "\n          <options>: <position>|<stream>"
+        "\n          <position>: <x>,<y>,<z>,<roll>,<pitch>,<yaw>"
+        "\n          <stream>: position csv stream with options; default fields: x,y,z,roll,pitch,yaw"
+        "\n    --orthographic: use orthographic projection instead of perspective"
+        "\n"
+        "\nmore options"
+        "\n    --background-colour <colour> : default: black"
+        "\n    --output-camera-config,--output-camera: output camera position as t,x,y,z,r,p,y to stdout"
+        "\n    --scene-center,--center=<value>: fixed scene center as \"x,y,z\""
+        "\n    --scene-radius,--radius=<value>: fixed scene radius in metres, since sometimes it is hard to imply"
+        "\n                            scene size from the dataset (e.g. for streams)"
+        "\n    --z-is-up : z-axis is pointing up, default: pointing down ( north-east-down system )"
+        "\n";
+        
+    static const char * const usage_csv_options = 
+        "\n"
+        "\n    fields:"
+        "\n        default: x,y,z"
+        "\n        x,y,z: coordinates (%d in binary)"
+        "\n        id: if present, colour by id (%ui in binary)"
+        "\n        block: if present, clear screen once block id changes (%ui in binary)"
+        "\n        r,g,b: if present, specify RGB colour (0-255; %uc in binary)"
+        "\n        a: if present, specifies colour transparency (0-255, %uc in binary); default 255"
+        "\n        scalar: if present, colour by scalar"
+        "\n                  use --colour=<from>:<to>[,<from colour>:<to colour>]"
+        "\n                  default: 0:1,red:blue"
+        "\n                  todo: implement for shapes (currently works only for points)"
+        "\n        label: text label (currenly implemented for ascii only)"
+        "\n        roll,pitch,yaw: if present, show orientation"
+        "\n"
+        "\n    most of the options can be set for individual files (see examples)"
+        "\n";
+        
+    static const char * const usage_examples = 
+        "\nmouse clicks:"
+        "\n    left press and hold: rotate the scene around the centre"
+        "\n    right press and hold: translate the scene"
+        "\n    double left click: change the centre of the scene"
+        "\n    double right click: output to stdout approximate coordinates of the clicked point"
+        "\n"
+        "\nexamples"
+        "\n"
+        "\nbasics"
+        "\n    view points from file:"
+        "\n        view-points xyz.csv"
+        "\n"
+        "\n    hint that the file contains not more than 200000 points"
+        "\n        cat $(ls *.csv) | view-points --size=200000"
+        "\n"
+        "\n    view points from all the binary files in the directory"
+        "\n        cat $(ls *.bin) | view-points --size=200000 --binary \"%d%d%d\""
+        "\n"
+        "\n    colour points"
+        "\n        view-points --colour blue $(ls labeled.*.csv)"
+        "\n"
+        "\n    each point has an individual color:"
+        "\n        cat xyzrgb.csv | view-points --fields=\"x,y,z,r,g,b\""
+        "\n"
+        "\n    view multiple files"
+        "\n        view-points \"raw.csv;colour=0:20\" \"partitioned.csv;fields=x,y,z,id\";point-size=2"
+        "\n"
+        "\n    view a cad model"
+        "\n        echo \"0,0,0\" | view-points --shape /usr/local/etc/segway.shrimp.obj --z-is-up --orthographic"
+        "\n"
+        "\n    use stdin as the primary source for scene radius:"
+        "\n        cat xyz.csv | view-points \"-\" scan.csv"
+        "\n"
+        "\n    specify fixed scene radius explicitly:"
+        "\n        cat xyz.csv | view-points --scene-radius=100"
+        "\n"
+        "\nusing images"
+        "\n    show image with given position"
+        "\n        echo 0,0,0 | view-points \"-;shape=image.jpg\""
+        "\n"
+        "\n    show resized image"
+        "\n        echo 0,0,0 | view-points \"-;shape=image.jpg,3,4\""
+        "\n"
+        "\n    specify pixel size instead of image size"
+        "\n        echo 0,0,0 | view-points \"-;shape=image.jpg,0.1\""
+        "\n"
+        "\n    show image with given position and orientation"
+        "\n        echo 0,0,0,0,0,0 | view-points \"-;shape=image.jpg;fields=x,y,z,roll,pitch,yaw\""
+        "\n"
+        "\n    switch between images by their index"
+        "\n        echo 0,0,0,0 > points.csv"
+        "\n        echo 0,0,0,1 >> points.csv"
+        "\n        echo 0,0,0,2 >> points.csv"
+        "\n        echo points.csv | view-points \"-;shape=image1.jpg,image2.jpg,image3.jpg;fields=x,y,z,id\""
+        "\n"
+        "\n    show points selected with a double right click"
+        "\n        rm -rf pipe && mkfifo pipe && cat pipe | view-points \"rose.st.ground.csv;fields=x,y,z,r,g,b\" \"-;colour=sky;weight=10\" > pipe"
+        "\n"
+        "\n    publish a real time playback of georeferenced velodyne data on port 12345, visualise the data in real time and show points selected with a double right click"
+        "\n        cat velodyne-georeferenced.bin | csv-play --binary t,3d,ui | io-publish --size $( csv-size t,3d,ui ) -m 10000 tcp:12345"
+        "\n        rm -rf pipe && mkfifo pipe && cat pipe | view-points \"tcp:localhost:12345;binary=t,3d,ui;fields=,x,y,z,block\" \"-;fields=x,y,z;colour=sky;weight=10\" > pipe"
+        "\n"
+        "\n    similar to above but uses different colours for the shown points and adds labels next to the points indicating the click order "
+        "\n        cat velodyne-georeferenced.bin | csv-play --binary t,3d,ui | io-publish --size $( csv-size t,3d,ui ) -m 10000 tcp:12345"
+        "\n        rm -rf pipe && mkfifo pipe && cat pipe | view-points \"tcp:localhost:12345;binary=t,3d,ui;fields=,x,y,z,block\" \"-;fields=x,y,z,id,label;weight=10\" | csv-paste \"-\" line-number line-number > pipe"
+        "\n";
+
+    std::cerr
+        << usage_synopsis
+        << usage_options
+        << "\ncsv options\n"
+        << comma::csv::options::usage()
+        << usage_csv_options
+        << usage_examples 
+        << std::endl;
+    exit( 1 );
 }
 
 struct model_options
@@ -426,6 +465,7 @@ int main( int argc, char** argv )
     try
     {
         comma::command_line_options options( argc, argv );
+        if( options.exists( "--bash-completion" ) ) bash_completion( argc, argv );
         if( options.exists( "--help" ) || options.exists( "-h" ) ) { usage(); }
         comma::csv::options csvOptions( argc, argv );
         std::vector< std::string > properties = options.unnamed( "--z-is-up,--orthographic,--flush,--no-stdin,--output-camera-config,--output-camera"

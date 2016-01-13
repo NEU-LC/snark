@@ -156,13 +156,15 @@ ul.target li {
     position: relative;
     border-left: 1px solid #232323;
     box-sizing: border-box;
+    background: #232323;
 }
 
 .graph-bar-col:hover {
     opacity: 0.8;
 }
 
-.graph-bar-col:hover .graph-bar {
+.graph-bar-col:hover .graph-bar-bottom,
+.graph-bar-col:hover .graph-bar-top {
     border-bottom: 1px solid white;
 }
 
@@ -175,7 +177,8 @@ ul.target li {
     opacity: 0.6;
 }
 
-.graph-bar {
+.graph-bar-bottom,
+.graph-bar-top {
     width: 100%;
     height: 100%;
     position: absolute;
