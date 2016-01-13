@@ -44,39 +44,47 @@ public:
     /// constructor
     /// @param state container for state and covariance
     /// @param model motion model
-    kalman_filter( const State& initialstate, Model& model ) : m_state( initialstate ), m_model( model ) {}
+    kalman_filter( const State& initial_state, Model& model ) : state( initial_state ), model_( model ) {}
 
     /// predict step
     /// @param deltaT time in seconds since last prediction
-    void predict( double deltaT )
+    void predict( double deltaT ) { predict( deltaT, model_ ); }
+
+    template < typename M >
+    void predict( double deltaT, M& model )
     {
-        const Eigen::Matrix< double, State::dimension, State::dimension >& A = m_model.jacobian( m_state, deltaT );
-        m_state.covariance = A * m_state.covariance * A.transpose() + m_model.noise_covariance( deltaT );
-        m_model.update_state( m_state, deltaT );
+        const Eigen::Matrix< double, State::dimension, State::dimension >& A = model.jacobian( state, deltaT );
+        state.covariance = A * state.covariance * A.transpose() + model.noise_covariance( deltaT );
+        model.update_state( state, deltaT );
     }
 
     /// update step
     /// @param m measurement model with jacobian and covariance
+    /// @param chi_squared_threshold mahalanobis rejection threshold chosen from chi-squared table or empirically
     template< class Measurement >
-    void update( const Measurement& m )
+    bool update( const Measurement& m, double chi_squared_threshold=0.0)
     {
-        const Eigen::Matrix<double,Measurement::dimension,State::dimension>& H = m.measurement_jacobian( m_state );
-        const Eigen::Matrix<double,Measurement::dimension,Measurement::dimension>& R = m.measurement_covariance( m_state );
-        const Eigen::Matrix<double,Measurement::dimension,1>& innovation = m.innovation( m_state );
-        
-        const Eigen::Matrix<double,State::dimension, Measurement::dimension> PHt = m_state.covariance * H.transpose();
+        const Eigen::Matrix<double,Measurement::dimension,State::dimension>& H = m.measurement_jacobian( state );
+        const Eigen::Matrix<double,Measurement::dimension,Measurement::dimension>& R = m.measurement_covariance( state );
+        const Eigen::Matrix<double,Measurement::dimension,1>& innovation = m.innovation( state );
+
+        const Eigen::Matrix<double,State::dimension, Measurement::dimension> PHt = state.covariance * H.transpose();
         const Eigen::LDLT< Eigen::Matrix<double,Measurement::dimension,Measurement::dimension> > S = ( H * PHt + R ).ldlt();
-        
-        m_state.covariance -= PHt * S.solve( PHt.transpose() );
-        m_state.set_innovation( PHt * S.solve( innovation ) );
+
+        if ( chi_squared_threshold > 0.0 )
+        {
+            double mahalanobis_distance = sqrt((innovation.transpose() * S.solve(innovation))(0,0));
+            if ( mahalanobis_distance > chi_squared_threshold) { return false; }
+        }
+        state.covariance -= PHt * S.solve( PHt.transpose() );
+        state.set_innovation( PHt * S.solve( innovation ) );
+        return true;
     }
 
-    /// get state
-    const State& state() const { return m_state; }
+    State state;
 
 private:
-    State m_state; /// state
-    Model& m_model; /// process model
+    Model& model_; /// process model
 };
 
 } 
