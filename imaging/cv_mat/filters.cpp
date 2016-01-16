@@ -316,11 +316,11 @@ static filters::value_type flip_impl_( filters::value_type m, int how )
     return n;
 }
 
-static filters::value_type resize_impl_( filters::value_type m, unsigned int width, unsigned int height, double w, double h )
+static filters::value_type resize_impl_( filters::value_type m, unsigned int width, unsigned int height, double w, double h, int interpolation )
 {
     filters::value_type n;
     n.first = m.first;
-    cv::resize( m.second, n.second, cv::Size( width ? width : m.second.cols * w, height ? height : m.second.rows * h ) );
+    cv::resize( m.second, n.second, cv::Size( width ? width : m.second.cols * w, height ? height : m.second.rows * h ), 0, 0, interpolation );
     return n;
 }
 
@@ -807,9 +807,8 @@ struct filter_table_t
             }
         }
     };
-    filter_table_t()
+    filter_table_t() : filters_(7)
     {
-        filters_.resize(7);
         filters_[CV_8U]=new filter_t<CV_8U>();
         filters_[CV_8S]=new filter_t<CV_8S>();
         filters_[CV_16U]=new filter_t<CV_16U>();
@@ -818,13 +817,9 @@ struct filter_table_t
         filters_[CV_32F]=new filter_t<CV_32F>();
         filters_[CV_64F]=new filter_t<CV_64F>();
     }
-    ~filter_table_t()
-    {
-        for(int i=0;i<=CV_64F;i++)
-            delete filters_[i];
-    }
+    ~filter_table_t() { for(int i=0;i<=CV_64F;i++) { delete filters_[i]; } }
 };
-filter_table_t filter_table;
+static filter_table_t filter_table;
 
 static filters::value_type normalize_max_impl_( filters::value_type m )
 {
@@ -1382,12 +1377,26 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
             double w = 0;
             double h = 0;
             const std::vector< std::string >& r = comma::split( e[1], ',' );
-            switch( r.size() )
+            int interpolation = cv::INTER_LINEAR;
+            unsigned int size = r.size();
+            if( r.size() > 1 && r.back()[0] >= 'a' && r.back()[0] <= 'z' )
+            {
+                if( r.back() == "nearest" ) { interpolation = cv::INTER_NEAREST; }
+                else if( r.back() == "linear" ) { interpolation = cv::INTER_LINEAR; }
+                else if( r.back() == "area" ) { interpolation = cv::INTER_AREA; }
+                else if( r.back() == "cubic" ) { interpolation = cv::INTER_CUBIC; }
+                else if( r.back() == "lanczos4" ) { interpolation = cv::INTER_LANCZOS4; }
+                else COMMA_THROW( comma::exception, "resize: expected interpolation type, got: \"" << e[1] << "\"" );
+                --size;
+            }
+            else if( r.size() == 3 ) { interpolation = boost::lexical_cast< int >( r[3] ); }
+            switch( size )
             {
                 case 1:
                     w = h = boost::lexical_cast< double >( r[0] );
                     break;
                 case 2:
+                case 3:
                     try { width = boost::lexical_cast< unsigned int >( r[0] ); }
                     catch ( ... ) { w = boost::lexical_cast< double >( r[0] ); }
                     try { height = boost::lexical_cast< unsigned int >( r[1] ); }
@@ -1396,7 +1405,7 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
                 default:
                     COMMA_THROW( comma::exception, "expected resize=<width>,<height>, got: \"" << e[1] << "\"" );
             }
-            f.push_back( filter( boost::bind( &resize_impl_, _1, width, height, w, h ) ) );
+            f.push_back( filter( boost::bind( &resize_impl_, _1, width, height, w, h, interpolation ) ) );
         }
         else if( e[0] == "max" ) // todo: remove this filter; not thread-safe, should be run with --threads=1
         {
@@ -1686,11 +1695,15 @@ static std::string usage_impl_()
     oss << "            normalize=sum: normalize each pixel channel by the sum of all channels" << std::endl;
     oss << "            normalize=all: normalize each pixel by max of all channels (see cv::normalize with NORM_INF)" << std::endl;
     oss << "        null: same as linux /dev/null (since windows does not have it)" << std::endl;
-    oss << "        resize=<width>,<height>: e.g:" << std::endl;
-    oss << "            resize=512,1024 : resize to 512x1024 pixels" << std::endl;
-    oss << "            resize=0.2,0.4 : resize to 20% of width and 40% of height" << std::endl;
-    oss << "            resize=0.5 : resize proportionally to 50%" << std::endl;
-    oss << "            resize=0.5,1024 : 50% of width; heigth 1024 pixels" << std::endl;
+    oss << "        resize=<factor>[,<interpolation>]; resize=<width>,<height>[,<interpolation>]" << std::endl;
+    oss << "            <interpolation>: nearest, linear, area, cubic, lanczos4; default: linear" << std::endl;
+    oss << "                             in format <width>,<height>,<interpolation> corresponding numeric values can be used: " << cv::INTER_NEAREST << ", " << cv::INTER_LINEAR << ", " << cv::INTER_AREA << ", " << cv::INTER_CUBIC << ", " << cv::INTER_LANCZOS4 << std::endl;
+    oss << "            examples" << std::endl;
+    oss << "                resize=0.5,1024 : 50% of width; heigth 1024 pixels" << std::endl;
+    oss << "                resize=512,1024,cubic : resize to 512x1024 pixels, cubic interpolation" << std::endl;
+    oss << "                resize=0.2,0.4 : resize to 20% of width and 40% of height" << std::endl;
+    oss << "                resize=0.5 : resize proportionally to 50%" << std::endl;
+    oss << "                resize=0.5,1024 : 50% of width; heigth 1024 pixels" << std::endl;
     oss << "            note: if no decimal dot '.', size is in pixels; if decimal dot present, size as a fraction" << std::endl;
     oss << "                  i.e. 5 means 5 pixels; 5.0 means 5 times" << std::endl;
     oss << "        remove-mean=<kernel_size>,<ratio>: simple high-pass filter removing <ratio> times the mean component on <kernel_size> scale" << std::endl;
