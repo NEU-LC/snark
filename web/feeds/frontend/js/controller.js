@@ -195,6 +195,12 @@ require(['jquery', "jquery_ui",
         });
     }
 
+    function hex2rgb(hex) {
+        var r = parseInt(hex.substr(1,2), 16);
+        var g = parseInt(hex.substr(3,2), 16);
+        var b = parseInt(hex.substr(5,2), 16);
+        return [r,g,b];
+    }
 
     function initialize(frontend_config) {
         current_config_file = globals.config_file;
@@ -218,7 +224,6 @@ require(['jquery', "jquery_ui",
             width: 500
         });
         gui.add(globals, 'config_file', config_files).name('config file').onFinishChange(function (value) {
-            save(current_config_file);
             load_config(globals.config_file);
         });
         var folder = gui.addFolder('globals');
@@ -228,6 +233,7 @@ require(['jquery', "jquery_ui",
         folder.add(globals, "show");
         folder.add(globals, "compact");
         folder.add(globals, "hide");
+        folder.add(globals, "save");
         folder.add(globals, "reset");
         folder.add(globals, "enable_alerting").name("enable alerting");
         folder.add(globals, "disable_alerting").name("disable alerting");
@@ -336,6 +342,12 @@ require(['jquery', "jquery_ui",
                 if (!('strokeWidth' in config.track)) {
                     config.track.strokeWidth = 1;
                 }
+                if (config.track.fill.constructor !== Array) {
+                    config.track.fill = hex2rgb(config.track.fill);
+                }
+                if (config.track.stroke.constructor !== Array) {
+                    config.track.stroke = hex2rgb(config.track.stroke);
+                }
             }
             if (!('alert' in config)) {
                 config.alert = true;
@@ -403,14 +415,6 @@ require(['jquery', "jquery_ui",
                     });
                     folder.add(feed.config.track, 'alpha_step', 0, 0.9).name('alpha step').step(0.01);
                     folder.add(feed.config.track, 'radius', 0.5, 10).step(0.25);
-
-                    function hex2rgb(hex) {
-                        var r = parseInt(hex.substr(1,2), 16);
-                        var g = parseInt(hex.substr(3,2), 16);
-                        var b = parseInt(hex.substr(5,2), 16);
-                        return [r,g,b];
-                    }
-
                     folder.addColor(feed.config.track, 'fill').onChange(function (value) {
                         var feed_name = $(this.__gui.__ul).find('li.title').text();
                         feeds[feed_name].config.track.fill = value.constructor === Array ? value.map(Math.round) : hex2rgb(value);
@@ -542,7 +546,7 @@ require(['jquery', "jquery_ui",
             toggle_sortable(true);
         });
         $(window).on('beforeunload', function (e) {
-            save(current_config_file);
+            save_last_config_file(current_config_file);
         });
     }
 
