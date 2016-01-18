@@ -53,7 +53,7 @@ static void usage( bool verbose )
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    --help,-h: --help --verbose for more help" << std::endl;
-    std::cerr << "    --amplitude,--volume=[<value>]: if duration field absent, use this duration for all the samples" << std::endl;
+    std::cerr << "    --amplitude,--volume=[<value>]: if amplitude field absent, use this amplitude for all the samples" << std::endl;
     //std::cerr << "    --attenuation=[<rate>]: attenuation rate per second (currently square root only; todo: implement properly)" << std::endl;
     std::cerr << "    --antiphase-randomization,--antiphase: randomize frequencies in sample by phase/antiphase to reduce click artefact" << std::endl;
     std::cerr << "    --attack=<duration>: attack/decline duration, quick and dirty, simple linear attack used; default 0" << std::endl;
@@ -130,8 +130,8 @@ int main( int ac, char** av )
         //double attenuation = options.value( "--attenuation", 1.0 );
         comma::csv::options csv( options );
         input default_input( options.value( "--frequency", 0.0 )
-                           , options.value( "--duration", 0.0 )
-                           , options.value( "--amplitude,--volume", 0.0 ) );
+                           , options.value( "--amplitude,--volume", 0.0 )
+                           , options.value( "--duration", 0.0 ) );
         bool randomize = !options.exists( "--no-phase-randomization" );
         bool antiphase = options.exists( "--antiphase-randomization,--antiphase" );
         bool anticlick = options.exists( "--anticlick" );
