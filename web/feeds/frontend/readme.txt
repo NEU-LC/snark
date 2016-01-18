@@ -4,19 +4,19 @@ configuration files must be in json format and end in '.json'.
 web.frontend.json description:
 
 {
-    "host": "http://host:port",                 // default sensor server, optional
-                                                // if a sensor entry in the "sensors" section does not have a url
-                                                // then the url is formed by <host>/<sensor-name>
-    "websocket": "ws://host:port/endpoint",     // default stream sensor server, optional
-    "sensors":
+    "host": "http://host:port",                 // default feed server, optional
+                                                // if a feed entry in the "feeds" section does not have a url
+                                                // then the url is formed by <host>/<feed-name>
+    "websocket": "ws://host:port/endpoint",     // default stream feed server, optional
+    "feeds":
     {
-        "<sensor-name>":
+        "<feed-name>":
         {
-            "type": "image"|"text"|"graph"      // optional, default: image
+            "type": <type>,                     // optional, type: "image", "text", "graph", "track"; default: "image"
             "url": "http://host:port/path"      // optional
             "refresh":                          // optional
             {
-                "interval": <number>            // optional, refresh interval in seconds, default: 2
+                "interval": <number>,           // optional, refresh interval in seconds, 0 = refresh as soon as possible, default: 2
                 "auto": true|false              // optional, auto refresh, default: false
                                                 // if a non-zero interval is given then auto is true unless specified
             },
@@ -36,7 +36,7 @@ web.frontend.json description:
             {
                 "min": <number>,                // optional, min value, default: 0
                 "max": <number>,                // optional, max value, default: 100
-                "units": "unit"                 // optional, value units
+                "units": "unit",                // optional, value units
                 "thresholds": [                 // optional, array of thresholds
                     {
                         "value": <number>,      // graph values less than or equal to this value will be colored by the corresponding color
@@ -49,9 +49,18 @@ web.frontend.json description:
             {
                 "autoplay": true|false          // autoplay stream on load, default: false
             },
+            "track":                            // optiona, only applicable when "type": "track"
+            {
+                "background_url": <url>,        // optional, url to background image, may be relative path or http://...
+                "draw_interval": <number>,      // optional, canvas draw interval in milliseconds, default: 100
+                "alpha_step": <number>,         // optional, alpha decrement step on each draw (fade out), default: 0.05
+                "fill": <color>,                // optional, point fill color in hex format '#rrggbb' or RGB16 array [r,g,b], default: [57,220,31]
+                "stroke": <color>,              // optional, point stroke color in hex format '#rrggbb' or RGB16 array [r,g,b], default: [23,140,45]
+                "strokeWidth": <number>         // optional, point stroke width, 0 = no stroke, default: 1
+            },
             "alert": true|false                 // optional, enable alerting, default: true
         },
-        "<sensor-name>":
+        "<feed-name>":
         {
         }
         ...

@@ -10,6 +10,7 @@ define('GraphFeed', ["jquery", "Feed"], function ($) {
         this.default_threshold = {value: this.config.graph.max, color: '#5cb85c'};
         this.default_exceeded_threshold = {value: Number.MAX_VALUE, color: '#d9534f', alert: true};
         this.text = $(this.id + ' .graph-text');
+        this.y_labels = $(this.id + ' .graph-y-labels');
         this.bars = $(this.id + ' .graph-bars');
         this.bars.append('<div class="graph-bar-col"><span class="graph-bar-bottom"></span><span class="graph-bar-top"></span></div>');
         this.bars_width = Number($('.graph-bars').css('width').replace('px', ''));
@@ -23,6 +24,16 @@ define('GraphFeed', ["jquery", "Feed"], function ($) {
             this.bars.append('<div class="graph-bar-col"><span class="graph-bar-bottom"></span><span class="graph-bar-top"></span></div>');
         }
         var _this = this;
+        this.config.graph.thresholds.forEach(function (threshold, index) {
+            var span = $('<span class="graph-y-label">' + threshold.value + _this.config.graph.units + '</span>');
+            span.css('top', _this.get_bar_height(threshold.value) - 9);
+            span.appendTo(_this.y_labels);
+        });
+        {
+            var span = $('<span class="graph-y-label">' + this.config.graph.min +  _this.config.graph.units +'</span>');
+            span.css('top', _this.get_bar_height(this.config.graph.min) - 9);
+            span.appendTo(this.y_labels);
+        }
         this.bars.find('.graph-bar-col').each(function (i, e) {
             _this.config.graph.thresholds.forEach(function (threshold, index) {
                 if (threshold.value > _this.config.graph.max) {

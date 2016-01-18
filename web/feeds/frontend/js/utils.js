@@ -66,10 +66,11 @@ var globals = {
             }
         });
     },
+    save: function() {
+        save(globals.config_file);
+    },
     reset: function () {
         reset(globals.config_file);
-        $('#container').width(container_width);
-        load_config(globals.config_file);
     },
     enable_alerting: function () {
         $.each(feeds, function (index, feed) {
@@ -236,7 +237,6 @@ function save(config_file) {
     }
     save_layout(config_file);
     save_gui_config(config_file);
-    save_last_config_file(config_file);
 }
 
 function load(config_file) {
