@@ -798,7 +798,7 @@ require(['jquery', "jquery_ui",
             add_poll_body(feed_name, '<table class="target"><thead></thead></table>');
             return type == 'text' ? new TextFeed(feed_name, config) : new CsvFeed(feed_name, config);
         } else if (type == 'graph') {
-            add_poll_body(feed_name, '<div class="target graph"><div class="graph-text">&nbsp;</div><div class="graph-bars"></div></div>');
+            add_poll_body(feed_name, '<div class="target graph"><div class="graph-text">&nbsp;</div><div class="graph-y-labels"></div><div class="graph-bars"></div></div>');
             return new GraphFeed(feed_name, config);
         } else if (type == 'stream') {
             add_stream_body(feed_name, '<img class="target"/>');
