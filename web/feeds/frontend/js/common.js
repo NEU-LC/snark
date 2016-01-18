@@ -55,8 +55,9 @@ require.config({
         CsvFeed: 'js/model/CsvFeed',
         GraphFeed: 'js/model/GraphFeed',
         ImageFeed: 'js/model/ImageFeed',
-        'ImageStreamFeed': 'js/model/ImageStreamFeed',
-        'TextFeed': 'js/model/TextFeed',
+        ImageStreamFeed: 'js/model/ImageStreamFeed',
+        TextFeed: 'js/model/TextFeed',
+        TrackFeed: 'js/model/TrackFeed',
         // -----------------------------//
         // models
         // -----------------------------//

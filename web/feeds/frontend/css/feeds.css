@@ -18,6 +18,11 @@ body {
     line-height: normal !important;
 }
 
+.dg .selector {
+    box-sizing: initial !important;
+    margin-top: 22px !important;
+}
+
 #container {
     background: #080808;
     width: 80%;
