@@ -12,6 +12,12 @@ define('GraphFeed', ["jquery", "Feed"], function ($) {
         this.text = $(this.id + ' .graph-text');
         this.y_labels = $(this.id + ' .graph-y-labels');
         this.bars = $(this.id + ' .graph-bars');
+        this.set_labels();
+    };
+    GraphFeed.prototype = Object.create(Feed.prototype);
+    GraphFeed.prototype.set_labels = function() {
+        this.y_labels.empty();
+        this.bars.empty();
         this.bars.append('<div class="graph-bar-col"><span class="graph-bar-bottom"></span><span class="graph-bar-top"></span></div>');
         this.bars_width = Number($('.graph-bars').css('width').replace('px', ''));
         this.bar_width = Number($('.graph-bar-col').css('width').replace('px', ''));
@@ -24,11 +30,23 @@ define('GraphFeed', ["jquery", "Feed"], function ($) {
             this.bars.append('<div class="graph-bar-col"><span class="graph-bar-bottom"></span><span class="graph-bar-top"></span></div>');
         }
         var _this = this;
+        var got_max = false;
         this.config.graph.thresholds.forEach(function (threshold, index) {
+            if (threshold.value < _this.config.graph.min || threshold.value > _this.config.graph.max) {
+                return;
+            }
+            if (threshold.value == _this.config.graph.max) {
+                got_max = true;
+            }
             var span = $('<span class="graph-y-label">' + threshold.value + _this.config.graph.units + '</span>');
             span.css('top', _this.get_bar_height(threshold.value) - 9);
             span.appendTo(_this.y_labels);
         });
+        if (!got_max) {
+            var span = $('<span class="graph-y-label">' + this.config.graph.max +  _this.config.graph.units +'</span>');
+            span.css('top', _this.get_bar_height(this.config.graph.max) - 9);
+            span.appendTo(this.y_labels);
+        }
         {
             var span = $('<span class="graph-y-label">' + this.config.graph.min +  _this.config.graph.units +'</span>');
             span.css('top', _this.get_bar_height(this.config.graph.min) - 9);
@@ -46,8 +64,7 @@ define('GraphFeed', ["jquery", "Feed"], function ($) {
             });
         });
         $('.graph-bar-col').tooltip();
-    };
-    GraphFeed.prototype = Object.create(Feed.prototype);
+    }
     GraphFeed.prototype.load = function () {
         $.ajax({
             context: this,

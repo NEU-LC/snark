@@ -404,6 +404,16 @@ require(['jquery', "jquery_ui",
                     });
                     folder.add(feed.config.csv, 'threshold_alert').name('threshold alert');
                 }
+                if (config.type == 'graph') {
+                    folder.add(feed.config.graph, 'max').onFinishChange(function (value) {
+                        var feed_name = $(this.__gui.__ul).find('li.title').text();
+                        feeds[feed_name].set_labels();
+                    });
+                    folder.add(feed.config.graph, 'min').onFinishChange(function (value) {
+                        var feed_name = $(this.__gui.__ul).find('li.title').text();
+                        feeds[feed_name].set_labels();
+                    });
+                }
                 if (config.type == 'track') {
                     folder.add(feed.config.track, 'background_url').name('background url').onFinishChange(function (value) {
                         var feed_name = $(this.__gui.__ul).find('li.title').text();

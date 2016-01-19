@@ -23,6 +23,10 @@ body {
     margin-top: 22px !important;
 }
 
+.dg .cr.object {
+    border-left: 3px solid #1ed36f;
+}
+
 #container {
     background: #080808;
     width: 80%;

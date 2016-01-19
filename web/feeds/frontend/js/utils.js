@@ -91,7 +91,7 @@ var globals = {
     },
     config_dir: 'config',
     config_file: 'config/web.frontend.json',
-    alert_beep: true,
+    alert_beep: false,
     beep: function () {
         if (audio_context != undefined) {
             var oscillator = audio_context.createOscillator();

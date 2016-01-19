@@ -24,6 +24,10 @@ body {
     margin-top: 22px !important;
 }
 
+.dg .cr.object {
+    border-left: 3px solid #1ed36f;
+}
+
 #container {
     /*background: #585858;*/
     width: 90%;
@@ -141,7 +145,7 @@ ul.target li {
 }
 
 .graph {
-    padding: 3px;
+    padding: 10px;
 }
 
 .graph-text {
@@ -149,7 +153,24 @@ ul.target li {
     text-align: right;
 }
 
+.graph-y-labels {
+    color: #abcdef;
+    width: 30px;
+    margin-right: 5px;
+    height: 222px;
+    display: inline-block;
+    position: relative;
+}
+
+.graph-y-label {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    text-align: right;
+}
+
 .graph-bars {
+    display: inline-block;
     width: 300px;
     height: 222px;
     background: #fff;
