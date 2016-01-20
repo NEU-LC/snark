@@ -55,33 +55,19 @@ struct input_point
 {
     boost::posix_time::ptime timestamp;
     Eigen::Vector3d point;
-    //Eigen::Vector3d normal;
-    union
+    Eigen::Vector3d normal;
+    struct colour_
     {
-        double normal[3];
-        struct
-        {
-            double normal_x;
-            double normal_y;
-            double normal_z;
-        };
-    };
-    union
-    {
-        float color;
-        struct
-        {
-            unsigned char r;
-            unsigned char g;
-            unsigned char b;
-            unsigned char a;
-        };
-    };
+    	unsigned char r;
+    	unsigned char g;
+    	unsigned char b;
+    	unsigned char a;
+    } colour;
     comma::uint32 intensity;
     comma::uint32 id;
     comma::uint32 block;
 
-    input_point() : point( Eigen::Vector3d::Zero() ), block( 0 ) {}
+    input_point() : point( Eigen::Vector3d::Zero() ), normal( Eigen::Vector3d::Zero() ), block( 0 ) {}
 };
 
 struct input_fields
@@ -100,24 +86,24 @@ struct input_fields
 
 namespace comma { namespace visiting {
 
-// template <> struct traits< input_point::color >
-// {
-//     template < typename K, typename V > static void visit( const K&, input_point::colour& p, V& v )
-//     {
-//         v.apply( "r", p.r );
-//         v.apply( "g", p.g );
-//         v.apply( "b", p.b );
-//         v.apply( "a", p.a );
-//     }
-//     
-//     template < typename K, typename V > static void visit( const K&, const input_point::colour& p, V& v )
-//     {
-//         v.apply( "r", p.r );
-//         v.apply( "g", p.g );
-//         v.apply( "b", p.b );
-//         v.apply( "a", p.a );
-//     }
-// };
+ template <> struct traits< input_point::colour_ >
+ {
+     template < typename K, typename V > static void visit( const K&, input_point::colour_& p, V& v )
+     {
+         v.apply( "r", p.r );
+         v.apply( "g", p.g );
+         v.apply( "b", p.b );
+         v.apply( "a", p.a );
+     }
+
+     template < typename K, typename V > static void visit( const K&, const input_point::colour_& p, V& v )
+     {
+         v.apply( "r", p.r );
+         v.apply( "g", p.g );
+         v.apply( "b", p.b );
+         v.apply( "a", p.a );
+     }
+ };
     
 template <> struct traits< input_point >
 {
@@ -125,14 +111,8 @@ template <> struct traits< input_point >
     {
         v.apply( "t", p.timestamp );
         v.apply( "point", p.point );
-        v.apply( "normal/x", p.normal_x ); // quick and dirty
-        v.apply( "normal/y", p.normal_y ); // quick and dirty
-        v.apply( "normal/z", p.normal_z ); // quick and dirty
-        // todo: v.apply( "color", p.color )
-        v.apply( "r", p.r );
-        v.apply( "g", p.g );
-        v.apply( "b", p.b );
-        v.apply( "a", p.a );
+        v.apply( "normal", p.normal );
+        v.apply("colour",p.colour);
         v.apply( "intensity", p.intensity );
         v.apply( "id", p.id );
         v.apply( "block", p.block );
@@ -140,18 +120,13 @@ template <> struct traits< input_point >
 
     template < typename K, typename V > static void visit( const K&, const input_point& p, V& v )
     {
-        v.apply( "t", p.timestamp );
-        v.apply( "point", p.point );
-        v.apply( "normal/x", p.normal_x ); // quick and dirty
-        v.apply( "normal/y", p.normal_y ); // quick and dirty
-        v.apply( "normal/z", p.normal_z ); // quick and dirty
-        v.apply( "r", p.r );
-        v.apply( "g", p.g );
-        v.apply( "b", p.b );
-        v.apply( "a", p.a );
-        v.apply( "intensity", p.intensity );
-        v.apply( "id", p.id );
-        v.apply( "block", p.block );
+    	v.apply( "t", p.timestamp );
+		v.apply( "point", p.point );
+		v.apply( "normal", p.normal );
+		v.apply("colour",p.colour);
+		v.apply( "intensity", p.intensity );
+		v.apply( "id", p.id );
+		v.apply( "block", p.block );
     }
 };
 
@@ -175,12 +150,12 @@ static void usage()
     static const char * const usage_csv_options =
         "\n"
         "\n    fields:"
-        "\n        default: x,y,z"
+        "\n        default: point/x,point/y,point/z"
         "\n        t: if present, use timestamp from the packet as pcd filename; if absent, use system time"
-        "\n        x,y,z: coordinates (%d in binary)"
+        "\n        point/x,point/y,point/z: coordinates (%d in binary)"
         "\n        normal/x,normal/y,normal/z: if present, add normal coordinates in PCL types PointXYZINormal (%d in binary)"
-        "\n        r,g,b: if present, add RGB colour in PCL types PointXYZRGB, PointXYZRGBL and PointXYZRGBNormal (0-255; %uc in binary)"
-        "\n        a: if present, add colour transparency in PCL type PointXYZRGBA (0-255, %uc in binary); default 255"
+        "\n        colour/r,colour/g,colour/b: if present, add RGB colour in PCL types PointXYZRGB, PointXYZRGBL and PointXYZRGBNormal (0-255; %uc in binary)"
+        "\n        colour/a: if present, add colour transparency in PCL type PointXYZRGBA (0-255, %uc in binary); default 255"
         "\n        intensity: if present, add intensity in PCL types PointXYZI and PointXYZINormal and PointXYZRGBNormal (%ui in binary)"
         "\n        id: if present, add id as label in PCL types PointXYZL and PointXYZRGBL (%ui in binary)"
         "\n        block: if present, accumulate and save each data block separately (%ui in binary)"
@@ -192,10 +167,10 @@ static void usage()
         "\n        echo 1,2,3 | points-to-pcd"
         "\n"
         "\n    convert a single point with intensity and normal:"
-        "\n        echo 1,2,3,10,0,0,1 | points-to-pcd --fields=x,y,z,intensity,normal/x,normal/y,normal/z"
+        "\n        echo 1,2,3,10,0,0,1 | points-to-pcd --fields=point/x,point/y,point/z,intensity,normal/x,normal/y,normal/z"
         "\n"
         "\n    convert multiple points and split by block:"
-        "\n        echo -e \"0,1,2,1\\n0,1,3,1\\n1,2,3,3\" | points-to-pcd --fields=x,y,z,block"
+        "\n        echo -e \"0,1,2,1\\n0,1,3,1\\n1,2,3,3\" | points-to-pcd --fields=point,block"
         "\n"
         "\n";
 
@@ -223,11 +198,11 @@ int csv2pcd(const std::deque< input_point > &cloudIn, pcl::PointCloud<PointT> &c
         pcl::for_each_type<FieldList> (pcl::SetIfFieldExists<PointT,float> (tmp, "y", cloudIn[i].point(1)));
         pcl::for_each_type<FieldList> (pcl::SetIfFieldExists<PointT,float> (tmp, "z", cloudIn[i].point(2)));
         pcl::for_each_type<FieldList> (pcl::SetIfFieldExists<PointT,float> (tmp, "intensity", cloudIn[i].intensity));
-        pcl::for_each_type<FieldList> (pcl::SetIfFieldExists<PointT,float> (tmp, "normal_x", cloudIn[i].normal_x));
-        pcl::for_each_type<FieldList> (pcl::SetIfFieldExists<PointT,float> (tmp, "normal_y", cloudIn[i].normal_y));
-        pcl::for_each_type<FieldList> (pcl::SetIfFieldExists<PointT,float> (tmp, "normal_z", cloudIn[i].normal_z));
-        uint32_t rgb = (static_cast<uint32_t>(cloudIn[i].r) << 16 | static_cast<uint32_t>(cloudIn[i].g) << 8 | static_cast<uint32_t>(cloudIn[i].b));
-        uint32_t rgba = (static_cast<uint32_t>(cloudIn[i].a) << 24 | rgb);
+        pcl::for_each_type<FieldList> (pcl::SetIfFieldExists<PointT,float> (tmp, "normal_x", cloudIn[i].normal(0)));
+        pcl::for_each_type<FieldList> (pcl::SetIfFieldExists<PointT,float> (tmp, "normal_y", cloudIn[i].normal(1)));
+        pcl::for_each_type<FieldList> (pcl::SetIfFieldExists<PointT,float> (tmp, "normal_z", cloudIn[i].normal(2)));
+        uint32_t rgb = (static_cast<uint32_t>(cloudIn[i].colour.r) << 16 | static_cast<uint32_t>(cloudIn[i].colour.g) << 8 | static_cast<uint32_t>(cloudIn[i].colour.b));
+        uint32_t rgba = (static_cast<uint32_t>(cloudIn[i].colour.a) << 24 | rgb);
         pcl::for_each_type<FieldList> (pcl::SetIfFieldExists<PointT,float> (tmp, "rgb", *reinterpret_cast<float*>(&rgb)));
         pcl::for_each_type<FieldList> (pcl::SetIfFieldExists<PointT,uint32_t> (tmp, "rgba", rgba));
         pcl::for_each_type<FieldList> (pcl::SetIfFieldExists<PointT,uint32_t> (tmp, "label", static_cast<uint32_t>(cloudIn[i].id)));
@@ -262,9 +237,9 @@ int main( int ac, char** av )
         if( options.exists( "--help,-h" ) ) { usage(); }
 
         comma::csv::options input_options( ac, av );
-        //input_options.full_xpath = true;
-        //if( input_options.fields == "" ) { input_options.fields = "point"; }
-        if( input_options.fields == "" ) { input_options.fields = "x,y,z"; }
+        input_options.full_xpath = true;
+
+        if( input_options.fields == "" ) { input_options.fields = "point"; }
 
         bool to_binary = false;
         if( options.exists( "--to-binary" ) ) { to_binary=true; }
@@ -275,26 +250,28 @@ int main( int ac, char** av )
         comma::csv::output_stream< input_point > os( std::cout, output_options );
 
         std::vector< std::string > fields = comma::split( input_options.fields, input_options.delimiter );
-//		input_options.fields = comma::join( fields, ',' );
-        //replace "x" with "point/x", "y" with "point/y", ...
-        //replace "r" with "color/r", "g" with "color/g", ...
+
         input_fields fields_set;
         for( std::size_t i = 0; i < fields.size(); ++i )
         {
             if (fields[i] == "t" ) { fields_set.timestamp = true; }
-            if( fields[i] == "x" ) { fields_set.point = true; }
-            else if( fields[i] == "y" ) { fields_set.point = true; }
-            else if( fields[i] == "z" ) { fields_set.point = true; }
-            if( fields[i] == "normal/x" ) { fields_set.normal = true; }
+            else if( fields[i] == "point" ) { fields_set.point = true; }
+            else if( fields[i] == "point/x" ) { fields_set.point = true; }
+            else if( fields[i] == "point/y" ) { fields_set.point = true; }
+            else if( fields[i] == "point/z" ) { fields_set.point = true; }
+            else if( fields[i] == "normal" ) { fields_set.normal = true; }
+            else if( fields[i] == "normal/x" ) { fields_set.normal = true; }
             else if( fields[i] == "normal/y" ) { fields_set.normal = true; }
             else if( fields[i] == "normal/z" ) { fields_set.normal = true; }
-            if( fields[i] == "r" ) { fields_set.color = true; }
-            else if( fields[i] == "g" ) { fields_set.color = true; }
-            else if( fields[i] == "b" ) { fields_set.color = true; }
-            if( fields[i] == "a" ) { fields_set.alpha = true; }
-            if( fields[i] == "intensity" ) { fields_set.intensity = true; }
-            if( fields[i] == "id" ) { fields_set.id = true; }
-            if( fields[i] == "block" ) { fields_set.block = true; }
+            else if( fields[i] == "colour" ) { fields_set.color = true; fields_set.alpha = true; }
+            else if( fields[i] == "colour/r" ) { fields_set.color = true; }
+            else if( fields[i] == "colour/g" ) { fields_set.color = true; }
+            else if( fields[i] == "colour/b" ) { fields_set.color = true; }
+            else if( fields[i] == "colour/a" ) { fields_set.color = true; fields_set.alpha = true; }
+            else if( fields[i] == "intensity" ) { fields_set.intensity = true; }
+            else if( fields[i] == "id" ) { fields_set.id = true; }
+            else if( fields[i] == "block" ) { fields_set.block = true; }
+            else { std::cerr<<"unknown field: "<<fields[i]<<std::endl; return 1; }
         }
 
         boost::optional< input_point > last;
