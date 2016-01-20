@@ -175,6 +175,7 @@ OPTION( snark_build_sensors "build sensors" ON )
 OPTION( snark_build_python "build python packages" OFF )
 OPTION( snark_build_web "build web" OFF )
 OPTION( snark_build_terrain "build terrain" OFF )
+OPTION( BUILD_POINTS_CLOUD_PCL "build points cloud pcl" OFF )
 
 INCLUDE( CMakeDependentOption )
 CMAKE_DEPENDENT_OPTION( snark_build_sensors_dc1394 "build dc1394 components" ON "snark_build_sensors" OFF )
