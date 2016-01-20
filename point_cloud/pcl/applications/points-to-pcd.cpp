@@ -40,7 +40,6 @@
 #include <string>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <comma/application/command_line_options.h>
-#include <comma/application/signal_flag.h>
 #include <comma/base/types.h>
 #include <comma/csv/stream.h>
 #include <comma/string/string.h>
@@ -56,6 +55,7 @@ struct input_point
 {
     boost::posix_time::ptime timestamp;
     Eigen::Vector3d point;
+    //Eigen::Vector3d normal;
     union
     {
         double normal[3];
@@ -81,7 +81,7 @@ struct input_point
     comma::uint32 id;
     comma::uint32 block;
 
-    input_point() : block( 0 ) {}
+    input_point() : point( Eigen::Vector3d::Zero() ), block( 0 ) {}
 };
 
 struct input_fields
@@ -100,6 +100,25 @@ struct input_fields
 
 namespace comma { namespace visiting {
 
+// template <> struct traits< input_point::color >
+// {
+//     template < typename K, typename V > static void visit( const K&, input_point::colour& p, V& v )
+//     {
+//         v.apply( "r", p.r );
+//         v.apply( "g", p.g );
+//         v.apply( "b", p.b );
+//         v.apply( "a", p.a );
+//     }
+//     
+//     template < typename K, typename V > static void visit( const K&, const input_point::colour& p, V& v )
+//     {
+//         v.apply( "r", p.r );
+//         v.apply( "g", p.g );
+//         v.apply( "b", p.b );
+//         v.apply( "a", p.a );
+//     }
+// };
+    
 template <> struct traits< input_point >
 {
     template < typename K, typename V > static void visit( const K&, input_point& p, V& v )
@@ -109,6 +128,7 @@ template <> struct traits< input_point >
         v.apply( "normal/x", p.normal_x ); // quick and dirty
         v.apply( "normal/y", p.normal_y ); // quick and dirty
         v.apply( "normal/z", p.normal_z ); // quick and dirty
+        // todo: v.apply( "color", p.color )
         v.apply( "r", p.r );
         v.apply( "g", p.g );
         v.apply( "b", p.b );
@@ -190,8 +210,6 @@ static void usage()
     exit( 1 );
 }
 
-static comma::signal_flag is_shutdown;
-
 template <typename PointT>
 int csv2pcd(const std::deque< input_point > &cloudIn, pcl::PointCloud<PointT> &cloudOut, bool to_binary)
 {
@@ -244,7 +262,8 @@ int main( int ac, char** av )
         if( options.exists( "--help,-h" ) ) { usage(); }
 
         comma::csv::options input_options( ac, av );
-        input_options.full_xpath = true;
+        //input_options.full_xpath = true;
+        //if( input_options.fields == "" ) { input_options.fields = "point"; }
         if( input_options.fields == "" ) { input_options.fields = "x,y,z"; }
 
         bool to_binary = false;
@@ -257,6 +276,8 @@ int main( int ac, char** av )
 
         std::vector< std::string > fields = comma::split( input_options.fields, input_options.delimiter );
 //		input_options.fields = comma::join( fields, ',' );
+        //replace "x" with "point/x", "y" with "point/y", ...
+        //replace "r" with "color/r", "g" with "color/g", ...
         input_fields fields_set;
         for( std::size_t i = 0; i < fields.size(); ++i )
         {
