@@ -131,8 +131,8 @@ body {
 
 img.target {
     display: block;
-    min-width: 250px;
-    min-height: 250px;
+    min-width: 269px;
+    min-height: 269px;
     width: 100%;
 }
 
@@ -141,6 +141,11 @@ ul.target li {
     border: none;
     color: #bcdefa;
     padding: 0px 5px;
+}
+
+canvas.target {
+    min-width: 269px;
+    min-height: 269px;
 }
 
 .graph {

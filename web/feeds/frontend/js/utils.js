@@ -71,6 +71,7 @@ var globals = {
     },
     reset: function () {
         reset(globals.config_file);
+        location.reload();
     },
     enable_alerting: function () {
         $.each(feeds, function (index, feed) {
@@ -189,7 +190,7 @@ function parse_query_string() {
 function set_properties(config, folder_name) {
     for (var id in config) {
         var value = config[id];
-        if (typeof value === 'object') {
+        if (typeof value === 'object' && value.constructor !== Array) {
             set_properties(value, folder_name);
         } else {
             gui.setProperty(id, value, folder_name);

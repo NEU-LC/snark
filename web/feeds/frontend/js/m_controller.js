@@ -216,6 +216,10 @@ require(['jquery', 'jquery_mobile',
         return [r,g,b];
     }
 
+    function get_feed_name(element) {
+        return $(element).closest('ul').find('li.title').text();
+    }
+
     function initialize(frontend_config) {
         current_config_file = globals.config_file;
         globals.stop();
@@ -240,7 +244,6 @@ require(['jquery', 'jquery_mobile',
             //autoPlace: false
         });
         gui.add(globals, 'config_file', config_files).name('config file').onFinishChange(function (value) {
-            save(current_config_file);
             load_config(globals.config_file);
         });
         var folder = gui.addFolder('globals');
@@ -341,23 +344,29 @@ require(['jquery', 'jquery_mobile',
                 if (!('background_url' in config.track)) {
                     config.track.background_url = '';
                 }
+                if (!('scale' in config.track)) {
+                    config.track.scale = 100;
+                }
+                if (!('trail' in config.track)) {
+                    config.track.trail = false;
+                }
                 if (!('draw_interval' in config.track)) {
                     config.track.draw_interval = 100
                 }
                 if (!('alpha_step' in config.track)) {
-                    config.track.alpha_step = 0.05;
+                    config.track.alpha_step = 0;
                 }
                 if (!('radius' in config.track)) {
-                    config.track.radius = 3;
+                    config.track.radius = 5;
                 }
                 if (!('fill' in config.track)) {
-                    config.track.fill = [57, 220, 31];
+                    config.track.fill = [16, 168, 26];
                 }
                 if (!('stroke' in config.track)) {
-                    config.track.stroke = [23, 140, 45];
+                    config.track.stroke = [58, 238, 35];
                 }
-                if (!('strokeWidth' in config.track)) {
-                    config.track.strokeWidth = 1;
+                if (!('stroke_width' in config.track)) {
+                    config.track.stroke_width = 2;
                 }
                 if (config.track.fill.constructor !== Array) {
                     config.track.fill = hex2rgb(config.track.fill);
@@ -373,19 +382,19 @@ require(['jquery', 'jquery_mobile',
             var folder = gui.addFolder(feed_name);
             folder.close();
             folder.add(feed.config, 'url').onFinishChange(function (value) {
-                var feed_name = $(this.__gui.__ul).find('li.title').text();
+                var feed_name = get_feed_name(this.domElement);
                 feeds[feed_name].reset();
             });
             if (config.type != 'stream') {
                 folder.add(feed.config, 'view', Feed.views).onFinishChange(function (value) {
-                    var feed_name = $(this.__gui.__ul).find('li.title').text();
+                    var feed_name = get_feed_name(this.domElement);
                     feeds[feed_name].update_view();
                     if (value == 'hide') {
                         gui.setProperty('auto', false, feed_name);
                     }
                 });
                 folder.add(feed.config.refresh, 'auto').name("auto refresh").onFinishChange(function (value) {
-                    var feed_name = $(this.__gui.__ul).find('li.title').text();
+                    var feed_name = get_feed_name(this.domElement);
                     var feed = feeds[feed_name];
                     if (value && feed.config.view == 'hide') {
                         gui.setProperty('view', 'show', feed_name);
@@ -393,74 +402,87 @@ require(['jquery', 'jquery_mobile',
                     feed.reset();
                 });
                 folder.add(feed.config.refresh, 'interval', 0, 90).name("refresh interval").step(1).onFinishChange(function (value) {
-                    var feed_name = $(this.__gui.__ul).find('li.title').text();
+                    var feed_name = get_feed_name(this.domElement);
                     feeds[feed_name].reset();
                 });
                 if (config.type == 'text') {
                     folder.add(feed.config.text, 'show_items', 0, 20).name("show items").step(1).onFinishChange(function (value) {
-                        var feed_name = $(this.__gui.__ul).find('li.title').text();
+                        var feed_name = get_feed_name(this.domElement);
                         feeds[feed_name].draw();
                     });
                 }
                 if (config.type == 'csv' || config.type == 'csv-table') {
                     folder.add(feed.config.csv, 'show_items', 0, 20).name("show items").step(1).onFinishChange(function (value) {
-                        var feed_name = $(this.__gui.__ul).find('li.title').text();
+                        var feed_name = get_feed_name(this.domElement);
                         feeds[feed_name].draw();
                     });
                     folder.add(feed.config.csv, 'fields').onChange(function (value) {
-                        var feed_name = $(this.__gui.__ul).find('li.title').text();
+                        var feed_name = get_feed_name(this.domElement);
                         feeds[feed_name].init_fields();
                     });
                     folder.add(feed.config.csv, 'min').onFinishChange(function (value) {
-                        var feed_name = $(this.__gui.__ul).find('li.title').text();
+                        var feed_name = get_feed_name(this.domElement);
                         feeds[feed_name].init_ranges();
                     });
                     folder.add(feed.config.csv, 'max').onFinishChange(function (value) {
-                        var feed_name = $(this.__gui.__ul).find('li.title').text();
+                        var feed_name = get_feed_name(this.domElement);
                         feeds[feed_name].init_ranges();
                     });
                     folder.add(feed.config.csv, 'threshold_alert').name('threshold alert');
                 }
                 if (config.type == 'graph') {
                     folder.add(feed.config.graph, 'max').onFinishChange(function (value) {
-                        var feed_name = $(this.__gui.__ul).find('li.title').text();
+                        var feed_name = get_feed_name(this.domElement);
                         feeds[feed_name].set_labels();
                     });
                     folder.add(feed.config.graph, 'min').onFinishChange(function (value) {
-                        var feed_name = $(this.__gui.__ul).find('li.title').text();
+                        var feed_name = get_feed_name(this.domElement);
                         feeds[feed_name].set_labels();
                     });
                 }
                 if (config.type == 'track') {
                     folder.add(feed.config.track, 'background_url').name('background url').onFinishChange(function (value) {
-                        var feed_name = $(this.__gui.__ul).find('li.title').text();
+                        var feed_name = get_feed_name(this.domElement);
                         feeds[feed_name].set_background();
                     });
+                    folder.add(feed.config.track, 'scale', 1, 300).name('scale (%)').step(0.01).onChange(function (value) {
+                        var feed_name = get_feed_name(this.domElement);
+                        if (value < feeds[feed_name].min_scale()) {
+                            return;
+                        }
+                        feeds[feed_name].resize();
+                    });
+                    folder.add(feed.config.track, 'trail').onChange(function (value) {
+                        var feed_name = get_feed_name(this.domElement);
+                        if (!value) {
+                            feeds[feed_name].remove_trail();
+                        }
+                    });
                     folder.add(feed.config.track, 'draw_interval', 1, 1000).name('draw interval (ms)').step(10).onChange(function (value) {
-                        var feed_name = $(this.__gui.__ul).find('li.title').text();
+                        var feed_name = get_feed_name(this.domElement);
                         feeds[feed_name].reset_draw_interval();
                     });
                     folder.add(feed.config.track, 'alpha_step', 0, 0.9).name('alpha step').step(0.01);
-                    folder.add(feed.config.track, 'radius', 0.5, 10).step(0.25);
+                    folder.add(feed.config.track, 'radius', 0.5, 20).step(0.1);
                     folder.addColor(feed.config.track, 'fill').onChange(function (value) {
-                        var feed_name = $(this.__gui.__ul).find('li.title').text();
+                        var feed_name = get_feed_name(this.domElement);
                         feeds[feed_name].config.track.fill = value.constructor === Array ? value.map(Math.round) : hex2rgb(value);
                     });
                     folder.addColor(feed.config.track, 'stroke').onChange(function (value) {
-                        var feed_name = $(this.__gui.__ul).find('li.title').text();
+                        var feed_name = get_feed_name(this.domElement);
                         feeds[feed_name].config.track.stroke = value.constructor === Array ? value.map(Math.round) : hex2rgb(value);
                     });
-                    folder.add(feed.config.track, 'strokeWidth', 0, 5).name('stroke width').step(0.5);
+                    folder.add(feed.config.track, 'stroke_width', 0, 5).name('stroke width').step(0.5);
                 }
                 folder.add(feed.config, 'alert').name('feed alert').onFinishChange(function (value) {
-                    var feed_name = $(this.__gui.__ul).find('li.title').text();
+                    var feed_name = get_feed_name(this.domElement);
                     if (!value) {
                         feeds[feed_name].alert(false);
                     }
                 });
             } else {
                 folder.add(feed.config, 'show').onFinishChange(function (value) {
-                    var feed_name = $(this.__gui.__ul).find('li.title').text();
+                    var feed_name = get_feed_name(this.domElement);
                     feeds[feed_name].toggle_show();
                     if (!value) {
                         gui.setProperty('auto', false, feed_name);
@@ -811,7 +833,25 @@ require(['jquery', 'jquery_mobile',
         for (var i in this.__controllers) {
             var controller = this.__controllers[i];
             if (controller.property == property) {
+                var tmp = controller.__onChange;
+                if (!tmp && controller.__onFinishChange) {
+                    controller.__onChange = controller.__onFinishChange;
+                }
                 controller.setValue(value);
+                controller.__onChange = tmp;
+                break;
+            }
+        }
+    };
+
+    dat.GUI.prototype.updateDisplay = function (property, opt_folder_name) {
+        if (opt_folder_name && opt_folder_name in this.__folders) {
+            return this.__folders[opt_folder_name].updateDisplay(property);
+        }
+        for (var i in this.__controllers) {
+            var controller = this.__controllers[i];
+            if (controller.property == property) {
+                controller.updateDisplay();
                 break;
             }
         }
