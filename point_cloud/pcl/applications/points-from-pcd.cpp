@@ -184,7 +184,7 @@ int main( int ac, char** av )
         comma::command_line_options options( ac, av, usage );
         comma::csv::options output_options( ac, av );
         output_options.full_xpath = true;
-        comma::uint32 n = 1;
+        comma::uint32 n = 0;
         while ( !std::cin.eof() && std::cin.good() )
         {
             std::string filename;
@@ -302,7 +302,7 @@ int main( int ac, char** av )
                     out.timestamp = boost::posix_time::microsec_clock::universal_time();
                 }
 
-                out.block = static_cast<comma::uint32>(n);
+                out.block = static_cast<comma::uint32>( n );
 
                 if (has_xyz)
                 {
