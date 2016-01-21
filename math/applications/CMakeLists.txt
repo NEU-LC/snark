@@ -38,3 +38,9 @@ INSTALL( TARGETS points-to-polar RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} CO
 ADD_EXECUTABLE( ellipsoid-calc ellipsoid-calc.cpp )
 TARGET_LINK_LIBRARIES( ellipsoid-calc snark_math_spherical_geometry ${comma_ALL_LIBRARIES} ${snark_ALL_EXTERNAL_LIBRARIES} )
 INSTALL( TARGETS ellipsoid-calc RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
+
+if(snark_build_math_fft)
+    add_executable( math-fft math-fft.cpp )
+    target_link_libraries( math-fft ${comma_ALL_LIBRARIES} ${snark_ALL_EXTERNAL_LIBRARIES} fftw3 )
+    install( TARGETS math-fft RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
+endif(snark_build_math_fft)
