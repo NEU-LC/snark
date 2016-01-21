@@ -19,6 +19,7 @@ logging = False
 class TcpServerProtocol(WebSocketServerProtocol):
 
     def __init__(self):
+        WebSocketServerProtocol.__init__(self)
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.ready = False
 
