@@ -171,6 +171,7 @@ OPTION( snark_build_imaging "build imaging" ON )
 OPTION( snark_build_math_geometry "build math geometry" ON )
 OPTION( snark_build_navigation "build navigation" OFF )
 OPTION( snark_build_point_cloud "build point cloud" ON )
+OPTION( snark_build_point_cloud_pcl "build points cloud pcl" OFF )
 OPTION( snark_build_sensors "build sensors" ON )
 OPTION( snark_build_python "build python packages" OFF )
 OPTION( snark_build_web "build web" OFF )
@@ -178,6 +179,8 @@ OPTION( snark_build_terrain "build terrain" OFF )
 option( snark_build_math_fft "build math-fft" OFF )
 
 INCLUDE( CMakeDependentOption )
+CMAKE_DEPENDENT_OPTION( ADD_PYTHON_PACKAGES_TO_RPM "add snark python packages to RPM" OFF "snark_build_python" ON )
+
 CMAKE_DEPENDENT_OPTION( snark_build_sensors_dc1394 "build dc1394 components" ON "snark_build_sensors" OFF )
 CMAKE_DEPENDENT_OPTION( snark_build_sensors_gige "build gige components" OFF "snark_build_sensors" OFF )
 CMAKE_DEPENDENT_OPTION( snark_build_sensors_flycapture "build flycapture components for pointgrey" OFF "snark_build_sensors" OFF )
@@ -390,7 +393,17 @@ SET(CPACK_PACKAGE_VERSION_MAJOR "1")
 SET(CPACK_PACKAGE_VERSION_MINOR ${COMMITDATE})
 SET(CPACK_PACKAGE_VERSION_PATCH ${COMMITHASH})
 SET(CPACK_PACKAGE_CONTACT "t.teo@acfr.usyd.edu.au")
-SET(CPACK_RPM_PACKAGE_REQUIRES "comma")
+
+
+IF( snark_build_python AND ADD_PYTHON_PACKAGES_TO_RPM )
+    SET(CPACK_RPM_PACKAGE_REQUIRES "comma")
+    SET(CPACK_RPM_POST_INSTALL_SCRIPT_FILE "${CMAKE_SOURCE_DIR}/python/snark-rpm-post-install.sh" )
+    SET(CPACK_RPM_PRE_INSTALL_SCRIPT_FILE "${CMAKE_SOURCE_DIR}/python/snark-rpm-pre-install.sh" )
+	# Prevents /tmp from permission change when installing RPM package
+	SET(CPACK_RPM_EXCLUDE_FROM_AUTO_FILELIST_ADDITION "/tmp" )
+ELSE( snark_build_python AND ADD_PYTHON_PACKAGES_TO_RPM )
+    SET(CPACK_RPM_PACKAGE_REQUIRES "comma")
+ENDIF( snark_build_python AND ADD_PYTHON_PACKAGES_TO_RPM )
 
 # Additional Win32 handling for CPack.
 IF( WIN32 )

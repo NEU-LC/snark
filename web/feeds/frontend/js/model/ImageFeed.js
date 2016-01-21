@@ -30,8 +30,8 @@ define('ImageFeed', ["jquery", "Feed"], function ($) {
             this.target.resizable({
                 aspectRatio: true,
                 autoHide: true,
-                minWidth: 250,
-                minHeight: 250
+                minWidth: 269,
+                minHeight: 269
             });
             this.is_resizable = true;
         }

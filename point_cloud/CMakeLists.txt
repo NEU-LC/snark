@@ -28,3 +28,7 @@ IF( BUILD_TESTS )
     ADD_SUBDIRECTORY( test )
 ENDIF( BUILD_TESTS )
 
+IF( snark_build_point_cloud_pcl )
+    ADD_SUBDIRECTORY( pcl )
+ENDIF( snark_build_point_cloud_pcl )
+

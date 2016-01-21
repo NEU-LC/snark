@@ -52,11 +52,14 @@ web.frontend.json description:
             "track":                            // optiona, only applicable when "type": "track"
             {
                 "background_url": <url>,        // optional, url to background image, may be relative path or http://...
+                "scale": <number>,              // optional, scale background image in percentage, default: 100
+                "trail": true|false,            // optional, show track with trail, default: false
                 "draw_interval": <number>,      // optional, canvas draw interval in milliseconds, default: 100
-                "alpha_step": <number>,         // optional, alpha decrement step on each draw (fade out), default: 0.05
-                "fill": <color>,                // optional, point fill color in hex format '#rrggbb' or RGB16 array [r,g,b], default: [57,220,31]
-                "stroke": <color>,              // optional, point stroke color in hex format '#rrggbb' or RGB16 array [r,g,b], default: [23,140,45]
-                "strokeWidth": <number>         // optional, point stroke width, 0 = no stroke, default: 1
+                "alpha_step": <number>,         // optional, alpha decrement step on each draw (fade out) where alpha between 0 and 1, default: 0
+                "radius": <number>,             // optional, radius of each track point, default: 5
+                "fill": <color>,                // optional, point fill color in hex format '#rrggbb' or RGB16 array [r,g,b], default: [16,168,26] (#10a81a)
+                "stroke": <color>,              // optional, point stroke color in hex format '#rrggbb' or RGB16 array [r,g,b], default: [58,238,35] (#3aee23)
+                "strokeWidth": <number>         // optional, point stroke width, 0 = no stroke, default: 2
             },
             "alert": true|false                 // optional, enable alerting, default: true
         },

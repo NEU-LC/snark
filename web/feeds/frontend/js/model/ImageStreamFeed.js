@@ -18,8 +18,8 @@ define('ImageStreamFeed', ["jquery", "Feed"], function ($) {
                 feed.target.resizable({
                     aspectRatio: true,
                     autoHide: true,
-                    minWidth: 250,
-                    minHeight: 250
+                    minWidth: 269,
+                    minHeight: 269
                 });
                 feed.is_resizable = true;
             }
