@@ -275,7 +275,7 @@ int main( int ac, char** av )
                 { 
                     last = *p;
                     if( csv.binary() ) { std::cout.write( is.binary().last(), csv.format().size() ); }
-                    else { std::cout << comma::join( is.ascii().last(), csv.delimiter ); }
+                    else { std::cout << comma::join( is.ascii().last(), csv.delimiter ) << std::endl; }
                 }
             }
 
