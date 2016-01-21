@@ -53,16 +53,18 @@
 
 struct input_point
 {
+    struct colour_t
+    {
+        unsigned char r;
+        unsigned char g;
+        unsigned char b;
+        unsigned char a;
+    };
+    
     boost::posix_time::ptime timestamp;
     Eigen::Vector3d point;
     Eigen::Vector3d normal;
-    struct colour_
-    {
-    	unsigned char r;
-    	unsigned char g;
-    	unsigned char b;
-    	unsigned char a;
-    } colour;
+    colour_t colour;
     comma::uint32 intensity;
     comma::uint32 id;
     comma::uint32 block;
@@ -86,9 +88,9 @@ struct input_fields
 
 namespace comma { namespace visiting {
 
- template <> struct traits< input_point::colour_ >
+ template <> struct traits< input_point::colour_t >
  {
-     template < typename K, typename V > static void visit( const K&, input_point::colour_& p, V& v )
+     template < typename K, typename V > static void visit( const K&, input_point::colour_t& p, V& v )
      {
          v.apply( "r", p.r );
          v.apply( "g", p.g );
@@ -96,7 +98,7 @@ namespace comma { namespace visiting {
          v.apply( "a", p.a );
      }
 
-     template < typename K, typename V > static void visit( const K&, const input_point::colour_& p, V& v )
+     template < typename K, typename V > static void visit( const K&, const input_point::colour_t& p, V& v )
      {
          v.apply( "r", p.r );
          v.apply( "g", p.g );
@@ -133,32 +135,36 @@ template <> struct traits< input_point >
 } } // namespace comma { namespace visiting {
 
 
-static void usage()
+static void usage( bool verbose )
 {
     static const char * const usage_synopsis =
         "\n"
         "\nconvert points to .pcd files using Point Cloud Library (PCL):"
         "\n"
-        "\nusage: points-to-pcd [<options>]"
+        "\nusage: points-to-pcd <filename> [<options>]"
+        "\n"
+        "\n<filename>: output pcd filename"
+        "\n            if block field present, output filename prefix, e.g: points-to-pcd cloud --fields=point,block"
+        "\n            will output blocks into files like: cloud.0.pcd, cloud.3.pcd, cloud.29.pcd, etc, where 0,3,29 are block ids"
         "\n";
 
     static const char * const usage_options =
-        "\ninput data options"
-        "\n    --to-binary: save to binary pcd format instead of csv format"
+        "\noutput options"
+        "\n    --to-binary: save to binary pcd format instead of csv format; default ascii pcd"
         "\n";
 
     static const char * const usage_csv_options =
         "\n"
-        "\n    fields:"
-        "\n        default: point/x,point/y,point/z"
-        "\n        t: if present, use timestamp from the packet as pcd filename; if absent, use system time"
-        "\n        point/x,point/y,point/z: coordinates (%d in binary)"
-        "\n        normal/x,normal/y,normal/z: if present, add normal coordinates in PCL types PointXYZINormal (%d in binary)"
-        "\n        colour/r,colour/g,colour/b: if present, add RGB colour in PCL types PointXYZRGB, PointXYZRGBL and PointXYZRGBNormal (0-255; %uc in binary)"
-        "\n        colour/a: if present, add colour transparency in PCL type PointXYZRGBA (0-255, %uc in binary); default 255"
-        "\n        intensity: if present, add intensity in PCL types PointXYZI and PointXYZINormal and PointXYZRGBNormal (%ui in binary)"
-        "\n        id: if present, add id as label in PCL types PointXYZL and PointXYZRGBL (%ui in binary)"
-        "\n        block: if present, accumulate and save each data block separately (%ui in binary)"
+        "\nfields:"
+        "\n    default: point/x,point/y,point/z"
+        "\n    t: if present, use timestamp from the packet as pcd filename; if absent, use system time"
+        "\n    point/x,point/y,point/z or x,y,z: coordinates (%d in binary)"
+        "\n    normal/x,normal/y,normal/z: if present, add normal coordinates in PCL types PointXYZINormal (%d in binary)"
+        "\n    colour/r,colour/g,colour/b or r,g,b: if present, add RGB colour in PCL types PointXYZRGB, PointXYZRGBL and PointXYZRGBNormal (0-255; %uc in binary)"
+        "\n    colour/a or a: if present, add colour transparency in PCL type PointXYZRGBA (0-255, %uc in binary); default 255"
+        "\n    intensity: if present, add intensity in PCL types PointXYZI and PointXYZINormal and PointXYZRGBNormal (%ui in binary)"
+        "\n    id: if present, add id as label in PCL types PointXYZL and PointXYZRGBL (%ui in binary)"
+        "\n    block: if present, accumulate and save each data block separately (%ui in binary)"
         "\n";
 
     static const char * const usage_examples =
@@ -177,20 +183,23 @@ static void usage()
     std::cerr
         << usage_synopsis
         << usage_options
-        << "\ncsv options\n"
-        << comma::csv::options::usage()
-        << usage_csv_options
+        << usage_csv_options;
+    if( verbose ) { std::cerr << "\ncsv options\n" << comma::csv::options::usage(); }
+    std::cerr
         << usage_examples
         << std::endl;
-    exit( 1 );
+    exit( 0 );
 }
 
+static std::string filename;
+input_fields fields_set;
+
 template <typename PointT>
-int csv2pcd(const std::deque< input_point > &cloudIn, pcl::PointCloud<PointT> &cloudOut, bool to_binary)
+int csv2pcd(const std::deque< input_point > &cloudIn, bool to_binary)
 {
-    // Set all relevant fields
+    pcl::PointCloud< PointT > cloudOut;
     typedef typename pcl::traits::fieldList<PointT>::type FieldList;
-    for (unsigned int i=0;i<cloudIn.size();i++)
+    for (std::size_t i=0;i<cloudIn.size();i++)
     {
         PointT tmp;
 
@@ -201,31 +210,18 @@ int csv2pcd(const std::deque< input_point > &cloudIn, pcl::PointCloud<PointT> &c
         pcl::for_each_type<FieldList> (pcl::SetIfFieldExists<PointT,float> (tmp, "normal_x", cloudIn[i].normal(0)));
         pcl::for_each_type<FieldList> (pcl::SetIfFieldExists<PointT,float> (tmp, "normal_y", cloudIn[i].normal(1)));
         pcl::for_each_type<FieldList> (pcl::SetIfFieldExists<PointT,float> (tmp, "normal_z", cloudIn[i].normal(2)));
-        uint32_t rgb = (static_cast<uint32_t>(cloudIn[i].colour.r) << 16 | static_cast<uint32_t>(cloudIn[i].colour.g) << 8 | static_cast<uint32_t>(cloudIn[i].colour.b));
-        uint32_t rgba = (static_cast<uint32_t>(cloudIn[i].colour.a) << 24 | rgb);
+        comma::uint32 rgb = (static_cast<comma::uint32>(cloudIn[i].colour.r) << 16 | static_cast<comma::uint32>(cloudIn[i].colour.g) << 8 | static_cast<comma::uint32>(cloudIn[i].colour.b));
+        comma::uint32 rgba = (static_cast<comma::uint32>(cloudIn[i].colour.a) << 24 | rgb);
         pcl::for_each_type<FieldList> (pcl::SetIfFieldExists<PointT,float> (tmp, "rgb", *reinterpret_cast<float*>(&rgb)));
-        pcl::for_each_type<FieldList> (pcl::SetIfFieldExists<PointT,uint32_t> (tmp, "rgba", rgba));
-        pcl::for_each_type<FieldList> (pcl::SetIfFieldExists<PointT,uint32_t> (tmp, "label", static_cast<uint32_t>(cloudIn[i].id)));
+        pcl::for_each_type<FieldList> (pcl::SetIfFieldExists<PointT,comma::uint32> (tmp, "rgba", rgba));
+        pcl::for_each_type<FieldList> (pcl::SetIfFieldExists<PointT,comma::uint32> (tmp, "label", static_cast<comma::uint32>(cloudIn[i].id)));
 
         cloudOut.push_back(tmp);
     }
 
-    // Use timestamp as filename
-    boost::posix_time::ptime timestamp;
-    if (cloudIn[0].timestamp.is_not_a_date_time()) // If no timestamp is provided, use system time
-        timestamp = boost::posix_time::microsec_clock::universal_time();
-    else
-        timestamp = cloudIn[0].timestamp;
-
-    std::string timestamp_str = boost::posix_time::to_iso_string(timestamp);
-    std::string filename = timestamp_str + boost::lexical_cast<std::string>(cloudIn[0].block) + ".pcd";
-
-    // Save to file
-    if (to_binary)
-        pcl::io::savePCDFileBinary(filename, cloudOut);
-    else
-        pcl::io::savePCDFileASCII (filename, cloudOut);
-
+    std::string f = fields_set.block ? filename + "." + boost::lexical_cast< std::string >( cloudIn[0].block ) + ".pcd" : filename;
+    if( to_binary ) { pcl::io::savePCDFileBinary( f, cloudOut ); }
+    else { pcl::io::savePCDFileASCII( f, cloudOut ); }
     return 0;
 }
 
@@ -233,87 +229,73 @@ int main( int ac, char** av )
 {
     try
     {
-        comma::command_line_options options( ac, av );
-        if( options.exists( "--help,-h" ) ) { usage(); }
-
-        comma::csv::options input_options( ac, av );
-        input_options.full_xpath = true;
-
-        if( input_options.fields == "" ) { input_options.fields = "point"; }
-
-        bool to_binary = false;
-        if( options.exists( "--to-binary" ) ) { to_binary=true; }
-
-        comma::csv::options output_options = input_options;
-
-        comma::csv::input_stream< input_point > is( std::cin, input_options );
-        comma::csv::output_stream< input_point > os( std::cout, output_options );
-
-        std::vector< std::string > fields = comma::split( input_options.fields, input_options.delimiter );
-
-        input_fields fields_set;
+        comma::command_line_options options( ac, av, usage );
+        const std::vector< std::string >& unnamed = options.unnamed( "--verbose,-v,--to-binary", "-.*" );
+        if( unnamed.empty() ) { std::cerr << "points-to-pcd: please specify output filename" << std::endl; return 1; }
+        filename = unnamed[0];
+        bool to_binary = options.exists( "--to-binary" );
+        comma::csv::options csv( ac, av );
+        csv.full_xpath = true;
+        if( csv.fields.empty() ) { csv.fields = "point"; }
+        std::vector< std::string > fields = comma::split( csv.fields, csv.delimiter );
         for( std::size_t i = 0; i < fields.size(); ++i )
         {
             if (fields[i] == "t" ) { fields_set.timestamp = true; }
-            else if( fields[i] == "point" ) { fields_set.point = true; }
-            else if( fields[i] == "point/x" ) { fields_set.point = true; }
-            else if( fields[i] == "point/y" ) { fields_set.point = true; }
-            else if( fields[i] == "point/z" ) { fields_set.point = true; }
-            else if( fields[i] == "normal" ) { fields_set.normal = true; }
-            else if( fields[i] == "normal/x" ) { fields_set.normal = true; }
-            else if( fields[i] == "normal/y" ) { fields_set.normal = true; }
-            else if( fields[i] == "normal/z" ) { fields_set.normal = true; }
-            else if( fields[i] == "colour" ) { fields_set.color = true; fields_set.alpha = true; }
-            else if( fields[i] == "colour/r" ) { fields_set.color = true; }
-            else if( fields[i] == "colour/g" ) { fields_set.color = true; }
-            else if( fields[i] == "colour/b" ) { fields_set.color = true; }
-            else if( fields[i] == "colour/a" ) { fields_set.color = true; fields_set.alpha = true; }
+            else if( fields[i] == "point" || fields[i] == "point/x" || fields[i] == "point/y" || fields[i] == "point/z" ) { fields_set.point = true; }
+            else if( fields[i] == "x" || fields[i] == "y" || fields[i] == "z" ) { fields[i] = "point/" + fields[i] ; fields_set.point = true; }
+            else if( fields[i] == "normal" || fields[i] == "normal/x" || fields[i] == "normal/y" || fields[i] == "normal/z" ) { fields_set.normal = true; }
+            else if( fields[i] == "r" || fields[i] == "g" || fields[i] == "b" ) { fields[i] = "colour/" + fields[i]; fields_set.color = true; }
+            else if( fields[i] == "colour/r" || fields[i] == "colour/g" || fields[i] == "colour/b" ) { fields_set.color = true; }
+            else if( fields[i] == "colour" || fields[i] == "colour/a" ) { fields_set.color = true; fields_set.alpha = true; }
+            else if( fields[i] == "a" ) { fields[i] = "colour/a"; fields_set.color = true; fields_set.alpha = true; }
             else if( fields[i] == "intensity" ) { fields_set.intensity = true; }
             else if( fields[i] == "id" ) { fields_set.id = true; }
             else if( fields[i] == "block" ) { fields_set.block = true; }
-            else { std::cerr<<"unknown field: "<<fields[i]<<std::endl; return 1; }
+            else { std::cerr<< "expected field name, got: \""<< fields[i] << "\"" << std::endl; return 1; }
         }
-
+        csv.fields = comma::join( fields, ',' );
+        comma::csv::input_stream< input_point > is( std::cin, csv );
+        #ifdef WIN32
+        if( is.binary() ) { _setmode( _fileno( stdout ), _O_BINARY ); }
+        #endif
         boost::optional< input_point > last;
-        while ( !std::cin.eof() && std::cin.good() )
+        while( !std::cin.eof() && std::cin.good() )
         {
             std::deque< input_point > input_buffer;
             const input_point* p;
-            for( bool block_done = false; !block_done;  )
+            for( bool block_done = false; !block_done; )
             {
                 p = is.read();
                 block_done = last && ( !p || p->block != last->block );
-
                 if( last )
                 {
                     input_buffer.push_back( *last );
-                    input_point out;
-                    out = *last;
-
-                    if( input_options.binary() ) { os.write( out, is.binary().last()); }
-                    else { os.write( out, is.ascii().last()); }
                 }
-
-                if (p) { last = *p; }
+                if( p )
+                { 
+                    last = *p;
+                    if( csv.binary() ) { std::cout.write( is.binary().last(), csv.format().size() ); }
+                    else { std::cout << comma::join( is.ascii().last(), csv.delimiter ); }
+                }
             }
 
-            // Cast to relevant PCL point cloud type
+            if( input_buffer.empty() ) { break; }
             if (fields_set.point & fields_set.intensity & fields_set.normal)
-                csv2pcd(input_buffer,* new pcl::PointCloud<pcl::PointXYZINormal> (),to_binary);
+                csv2pcd<pcl::PointXYZINormal>(input_buffer,to_binary);
             else if (fields_set.point & fields_set.intensity)
-                csv2pcd(input_buffer,* new pcl::PointCloud<pcl::PointXYZI> (),to_binary);
+                csv2pcd<pcl::PointXYZI>(input_buffer,to_binary);
             else if (fields_set.point & fields_set.color & fields_set.normal)
-                csv2pcd(input_buffer,* new pcl::PointCloud<pcl::PointXYZRGBNormal> (),to_binary);
+                csv2pcd<pcl::PointXYZRGBNormal>(input_buffer,to_binary);
             else if (fields_set.point & fields_set.color & fields_set.alpha)
-                csv2pcd(input_buffer,* new pcl::PointCloud<pcl::PointXYZRGBA> (),to_binary);
+                csv2pcd<pcl::PointXYZRGBA>(input_buffer,to_binary);
             else if (fields_set.point & fields_set.color & fields_set.id)
-                csv2pcd(input_buffer,* new pcl::PointCloud<pcl::PointXYZRGBL> (),to_binary);
+                csv2pcd<pcl::PointXYZRGBL>(input_buffer,to_binary);
             else if (fields_set.point & fields_set.color)
-                csv2pcd(input_buffer,* new pcl::PointCloud<pcl::PointXYZRGB> (),to_binary);
+                csv2pcd<pcl::PointXYZRGB>(input_buffer, to_binary);
             else if (fields_set.point & fields_set.id)
-                csv2pcd(input_buffer,* new pcl::PointCloud<pcl::PointXYZL> (),to_binary);
+                csv2pcd<pcl::PointXYZL>(input_buffer, to_binary);
             else if (fields_set.point)
-                csv2pcd(input_buffer,* new pcl::PointCloud<pcl::PointXYZ> (),to_binary);
+                csv2pcd<pcl::PointXYZ>(input_buffer, to_binary);
 
             if( !p ) { break; }
         }
