@@ -267,16 +267,11 @@ int main( int ac, char** av )
             {
                 p = is.read();
                 block_done = last && ( !p || p->block != last->block );
-                if( last )
-                {
-                    input_buffer.push_back( *last );
-                }
-                if( p )
-                { 
-                    last = *p;
-                    if( csv.binary() ) { std::cout.write( is.binary().last(), csv.format().size() ); }
-                    else { std::cout << comma::join( is.ascii().last(), csv.delimiter ) << std::endl; }
-                }
+                if( last ) { input_buffer.push_back( *last ); }
+                if( !p ) { break; }
+                last = *p;
+                if( csv.binary() ) { std::cout.write( is.binary().last(), csv.format().size() ); }
+                else { std::cout << comma::join( is.ascii().last(), csv.delimiter ) << std::endl; }
             }
 
             if( input_buffer.empty() ) { break; }
