@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>point cloud test</title>
+<style>
+table, th, td {
+    border: 1px solid black;
+    border-collapse: collapse;
+}
+table {
+    margin: 5px;
+}
+th, td {
+    width: 200px;
+}
+td {
+    text-align: right;
+}
+</style>
+        <script type="text/javascript" src="lib/jquery/dist/jquery.min.js"></script>
+        <script type="text/javascript" src="lib/dat-gui/build/dat.gui.min.js"></script>
+<script type="text/javascript">
+'use strict';
+
+var options_point_cloud = {
+    websocket_url: 'ws://' + location.hostname + ':9999',
+    host: location.hostname,
+    port: 0,
+    size: 12,
+    points: 10,
+    stream: false,
+    start: function() {
+        init_stream(this.url);
+    },
+    stop: function() {
+        if (ws) {
+            ws.close();
+            ws = null;
+        }
+    },
+    toggle: function() {
+        return (ws && ws.readyState === WebSocket.OPEN) ? this.stop() : this.start();
+    }
+}
+
+var ws;
+function init_stream(url) {
+    if (ws) {
+        ws.close();
+        ws = null;
+    }
+    ws = new WebSocket(options_point_cloud.websocket_url);
+    ws.binaryType = 'arraybuffer';
+    ws.onopen = function() {
+        console.log('WebSocket opened: ' + this.url);
+        ws.send(JSON.stringify({
+            host: options_point_cloud.host,
+            port: Number(options_point_cloud.port),
+            size: Number(options_point_cloud.size)
+        }));
+        ws.send(options_point_cloud.points);
+    }
+    ws.onclose = function(e) {
+        (e.code == 1000 ? console.log : console.error).call(console, 'WebSocket closed: Code: ' + e.code + (e.reason ? ' Reason: ' + e.reason : ''));
+    }
+    ws.onmessage = function(e) {
+        if (options_point_cloud.stream && ws) {
+            ws.send(options_point_cloud.points);
+        } else {
+            this.close();
+        }
+        display_points(e.data);
+    }
+}
+
+var gui;
+function init_gui() {
+    gui = new dat.GUI({
+        width: 400
+    });
+    gui_point_cloud();
+}
+
+function gui_point_cloud() {
+    var folder = gui.addFolder('point cloud');
+    folder.open();
+    folder.add(options_point_cloud, 'websocket_url').name('websocket server').onFinishChange(function(value) {
+        init_stream(options_point_cloud.url);
+    });
+    folder.add(options_point_cloud, 'host');
+    folder.add(options_point_cloud, 'port');
+    folder.add(options_point_cloud, 'points', 1, 100).step(1);
+    folder.add(options_point_cloud, 'stream');
+    folder.add(options_point_cloud, 'toggle').name('start/stop <kbd>spacebar</kbd>');
+}
+
+function display_points(data) {
+    var dataview = new DataView(data);
+    var length = dataview.byteLength / Float32Array.BYTES_PER_ELEMENT;
+    var points = new Float32Array(length);
+    var tbody = $('table tbody');
+    tbody.empty();
+    for (var i = 0; i < length; ++i) {
+        points[i] = dataview.getFloat32(i * Float32Array.BYTES_PER_ELEMENT, true);
+        if (i % 3 == 2) {
+            var tr = $('<tr>')
+            for (var j = 3; j--; ) {
+                var td = $('<td>')
+                tr.append(td.append(points[i - j]));
+            }
+            tbody.append(tr);
+        }
+    }
+}
+
+function key_toggle(e) {
+    var key = typeof e.which === 'number' ? e.which : e.keyCode;
+    if (key === 32) {
+        options_point_cloud.toggle();
+    }
+}
+
+$(function() {
+    init_gui();
+    document.addEventListener('keypress', key_toggle, false);
+    $(':input').focusin(function() { document.removeEventListener('keypress', key_toggle); });
+    $(':input').focusout(function() { document.addEventListener('keypress', key_toggle, false); });
+});
+</script>
+    </head>
+    <body>
+      <table><thead><tr><th>x</th><th>y</th><th>z</th></tr></thead><tbody></tbody></table>
+    </body>
+</html>

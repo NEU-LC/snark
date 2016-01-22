@@ -86,7 +86,7 @@ function gui_point_cloud() {
     folder.add(options_point_cloud, 'host');
     folder.add(options_point_cloud, 'port');
     //folder.add(options_point_cloud, 'size');
-    folder.add(options_point_cloud, 'points', 1000, 60000).step(1000);
+    folder.add(options_point_cloud, 'points', 1, 60000).step(100);
     folder.add(options_point_cloud, 'point_size', 0.01, 0.3).name('point size').onChange(function(value) {
         point_cloud_material.size = options_point_cloud.point_size;
     });
