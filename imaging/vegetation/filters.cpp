@@ -85,10 +85,9 @@ template < typename T > static void set_ndvi_pixel_( cv::Mat& red, const cv::Mat
 static cv_mat::filters::value_type ndvi_impl_( cv_mat::filters::value_type m ) // too quick, too dirty?
 {
     if( m.second.channels() != 4 ) { std::cerr << "cv vegetation filters: expected 4 channels, got " << m.second.channels() << std::endl; return cv_mat::filters::value_type(); }
-    int type;
     switch( m.second.type() )
     {
-        case CV_32FC4: type = CV_32FC3; break;
+        case CV_32FC4: break; //type = CV_32FC3; break;
         case CV_8SC4: //type = CV_8SC3; break;
         case CV_8UC4: //type = CV_8UC3; break;
         default: std::cerr << "cv vegetation filters: expected type CV_32FC4; got: " << m.second.type() << std::endl; return cv_mat::filters::value_type();

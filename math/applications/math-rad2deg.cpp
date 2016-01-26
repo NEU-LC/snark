@@ -33,7 +33,6 @@
 #include <boost/array.hpp>
 #include <boost/lexical_cast.hpp>
 #include <comma/application/command_line_options.h>
-#include <comma/application/signal_flag.h>
 #include <comma/csv/stream.h>
 #include <comma/string/string.h>
 #include <comma/visiting/traits.h>
@@ -95,8 +94,7 @@ int main( int ac, char** av )
         csv.fields = comma::join( v, ',' );
         comma::csv::input_stream< Line > istream( std::cin, csv );
         comma::csv::output_stream< Line > ostream( std::cout, csv );
-        comma::signal_flag is_shutdown;
-        while( !is_shutdown && std::cin.good() && !std::cin.eof() )
+        while( std::cin.good() && !std::cin.eof() )
         {
             const Line* input = istream.read();
             if( !input ) { break; }

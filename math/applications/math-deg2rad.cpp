@@ -27,13 +27,11 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
 #include <cmath>
 #include <iostream>
 #include <boost/array.hpp>
 #include <boost/lexical_cast.hpp>
 #include <comma/application/command_line_options.h>
-#include <comma/application/signal_flag.h>
 #include <comma/csv/stream.h>
 #include <comma/string/string.h>
 #include <comma/visiting/traits.h>
