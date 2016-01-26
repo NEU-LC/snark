@@ -77,7 +77,7 @@ void usage( bool verbose )
     exit( 0 );
 }
 
-boost::optional< unsigned int > size;
+static boost::optional< unsigned int > size;
 
 namespace snark { namespace eigen {
 
@@ -185,23 +185,34 @@ int main( int ac, char** av )
         if( operation == "eigen" )
         {
             size = options.optional< unsigned int >( "--size" );
+            if( csv.fields.empty() ) { csv.fields = "data"; }
+            std::string first;
             if( !size )
             {
                 const std::vector< std::string >& fields = comma::split( csv.fields, ',' );
-                if( csv.fields.empty() )
-                { 
-                    csv.fields = "data";
-                    std::cerr << "math-eigen: todo: deduce size" << std::endl; return 1;
-                }
                 if( csv.has_field( "data" ) )
                 {
-                    // todo: count fields
-                    std::cerr << "math-eigen: todo: deduce size" << std::endl; return 1;
+                    unsigned int count;
+                    if( csv.binary() )
+                    {
+                        count = csv.format().count();
+                    }
+                    else
+                    {
+                        while( std::cin.good() && first.empty() ) { std::getline( std::cin, first ); }
+                        count = comma::split( first, csv.delimiter ).size(); // quick and dirty, wasteful
+                    }
+                    size = count - fields.size() + 1;
                 }
                 else
                 {
-                    // todo: count fields
-                    std::cerr << "math-eigen: todo: deduce size" << std::endl; return 1;
+                    unsigned int max = 0;
+                    for( unsigned int i = 0; i < fields.size(); ++i )
+                    {
+                        if( fields[i].substr( 0, 5 ) == "data[" && *fields[i].rbegin() == ']' ) { unsigned int k = boost::lexical_cast< unsigned int >( fields[i].substr( 5, fields[i].size() - 6 ) ) + 1; if( k > max ) { max = k; } }
+                    }
+                    if( max == 0 ) { std::cerr << "math-eigen: please specify valid data fields" << std::endl; return 1; }
+                    size = max;
                 }
             }
             bool normalize = options.exists( "--normalize" );
@@ -210,12 +221,18 @@ int main( int ac, char** av )
             output_csv.fields = has_block ? "vector,value,block" : "vector,value";
             std::string s = boost::lexical_cast< std::string >( *size + 1 );
             if( csv.binary() ) { output_csv.format( has_block ? s + ",ui" : s ); }
+            boost::optional< snark::eigen::input_t > last;
+            if( !first.empty() ) { last = comma::csv::ascii< snark::eigen::input_t >( csv ).get( first ); }
             comma::csv::input_stream< snark::eigen::input_t > istream( std::cin, csv );
             comma::csv::output_stream< snark::eigen::output_t > ostream( std::cout, output_csv );
             while( std::cin.good() )
             {
                 // todo: read block
                 // todo: calculate
+                if( normalize )
+                {
+                    // todo: normalize eigen values
+                }
                 // todo: output
             }
             return 0;
