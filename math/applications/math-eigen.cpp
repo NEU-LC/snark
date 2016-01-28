@@ -227,6 +227,9 @@ int main( int ac, char** av )
             if( !first.empty() ) { buffer.push_back( comma::csv::ascii< snark::eigen::input_t >( csv ).get( first ) ); }
             comma::csv::input_stream< snark::eigen::input_t > istream( std::cin, csv );
             comma::csv::output_stream< snark::eigen::output_t > ostream( std::cout, output_csv );
+            
+            comma::csv::output_stream< snark::eigen::input_t > errstream( std::cerr, csv );
+            
             while( true )
             {
                 const snark::eigen::input_t* p = istream.read();
@@ -234,9 +237,12 @@ int main( int ac, char** av )
                 {
                     if( buffer.size() == 1 ) { std::cerr << "math-eigen: on block " << buffer.front().block << ": expected block with at least two entries, got only one" << std::endl; return 1; }
                     Eigen::MatrixXd sample( buffer.size(), *size );
+                    std::cerr << "A: --------------------------" << std::endl;
                     for( std::size_t i = 0; i < buffer.size(); ++i ) // todo: hm... dodgy? use Eigen::Map instead?
                     {
-                        ::memcpy( &sample( i, 0 ), &buffer[i].data[0], buffer[i].data.size() * sizeof( double ) );
+                        errstream.write( buffer[i] );
+                        //::memcpy( &sample( i, 0 ), &buffer[i].data[0], buffer[i].data.size() * sizeof( double ) );
+                        ::memcpy( &sample( 0, i ), &buffer[i].data[0], buffer[i].data.size() * sizeof( double ) );
                     }
                     
                     // todo: fix populating sample
@@ -253,18 +259,20 @@ int main( int ac, char** av )
                     // todo: get the two major eigenvectors and omit the others.
                     // Eigen::MatrixXf evecs = eig.eigenvectors();
                     // Eigen::MatrixXfpcaTransform = evecs.rightCols(2);
+                    
+                    std::cerr << "c: --------------------------" << std::endl;
+                    std::cerr << vectors << std::endl;
+                    std::cerr << "d: --------------------------" << std::endl;
+                    std::cerr << values << std::endl;
+                    std::cerr << "e: --------------------------" << std::endl;
+                    std::cerr << "size: " << *size << std::endl;
+                    
                     for( std::size_t i = 0; i < *size; ++i )
                     {
                         snark::eigen::output_t output;
                         output.block = buffer.front().block;
-                        
-                        std::cerr << "c: --------------------------" << std::endl;
-                        std::cerr << vectors << std::endl;
-                        std::cerr << "d: --------------------------" << std::endl;
-                        std::cerr << values << std::endl;
-                        std::cerr << "e: --------------------------" << std::endl;
-                        
-                        ::memcpy( &output.vector[0], &vectors( i, 0 ), *size );
+                        //::memcpy( &output.vector[0], &vectors( i, 0 ), *size );
+                        ::memcpy( &output.vector[0], &vectors( 0, i ), *size );
                         output.value = values[i];
                         ostream.write( output );
                     }
