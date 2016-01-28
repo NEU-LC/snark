@@ -182,10 +182,10 @@ void Viewer::paintGL( QGLPainter *painter )
     for( unsigned int i = 0; i < readers.size(); ++i )
     {
         if( !readers[i]->show() ) { continue; }
-        if( readers[i]->pointSize > 1 ) { ::glEnable( GL_POINT_SMOOTH ); }
-        ::glPointSize( readers[i]->pointSize );
+        if( readers[i]->point_size > 1 ) { ::glEnable( GL_POINT_SMOOTH ); }
+        ::glPointSize( readers[i]->point_size );
         readers[i]->render( painter );
-        if( readers[i]->pointSize > 1 ) { ::glDisable( GL_POINT_SMOOTH ); }
+        if( readers[i]->point_size > 1 ) { ::glDisable( GL_POINT_SMOOTH ); }
     }
     draw_coordinates( painter );
     if( camera_position_output_ ) { camera_position_output_->write(); }

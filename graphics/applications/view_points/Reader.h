@@ -60,10 +60,10 @@ class Reader
 {
     public:
         const std::size_t size;
-        const unsigned int pointSize;
+        const unsigned int point_size;
         const comma::csv::options options;
 
-        Reader( QGLView& viewer, comma::csv::options& options, std::size_t size, coloured* c, unsigned int pointSize, const std::string& label, const QVector3D& offset = QVector3D( 0, 0, 0 ) );
+        Reader( QGLView& viewer, comma::csv::options& options, std::size_t size, coloured* c, unsigned int point_size, const std::string& label, const QVector3D& offset = QVector3D( 0, 0, 0 ) );
 
         virtual ~Reader() {}
 

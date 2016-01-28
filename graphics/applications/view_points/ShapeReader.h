@@ -49,7 +49,7 @@ template< typename S, typename How = how_t::points >
 class ShapeReader : public Reader
 {
     public:
-        ShapeReader( QGLView& viewer, comma::csv::options& options, std::size_t size, coloured* c, unsigned int pointSize, const std::string& label, const S& sample = ShapeWithId< S >().shape );
+        ShapeReader( QGLView& viewer, comma::csv::options& options, std::size_t size, coloured* c, unsigned int point_size, const std::string& label, const S& sample = ShapeWithId< S >().shape );
 
         void start();
         std::size_t update( const Eigen::Vector3d& offset );
@@ -77,8 +77,8 @@ class ShapeReader : public Reader
 };
 
 template< typename S, typename How >
-ShapeReader< S, How >::ShapeReader( QGLView& viewer, comma::csv::options& options, std::size_t size, coloured* c, unsigned int pointSize, const std::string& label, const S& sample  )
-    : Reader( viewer, options, size, c, pointSize, label )
+ShapeReader< S, How >::ShapeReader( QGLView& viewer, comma::csv::options& options, std::size_t size, coloured* c, unsigned int point_size, const std::string& label, const S& sample  )
+    : Reader( viewer, options, size, c, point_size, label )
     , buffer_( size * Shapetraits< S, How >::size )
     , labels_( size )
     , sample_( sample )
