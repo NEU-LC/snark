@@ -52,8 +52,6 @@
 #include <snark/graphics/qt3d/vertex_buffer.h>
 #include <Qt3D/qglview.h>
 
-class QGLAbstractScene;
-
 namespace snark { namespace graphics { namespace View {
 
 class Viewer;
