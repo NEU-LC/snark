@@ -52,10 +52,8 @@
 
 namespace snark { namespace graphics { namespace View {
 
-Reader::Reader( QGLView& viewer, comma::csv::options& options, std::size_t size, coloured* c, unsigned int point_size, const std::string& label, const QVector3D& offset )
-    : size( size )
-    , point_size( point_size )
-    , options( options )
+Reader::Reader( QGLView& viewer, const reader_parameters& params, coloured* c, const std::string& label, const QVector3D& offset )
+    : reader_parameters( params )
     , m_viewer( viewer )
     , m_num_points( 0 )
     , m_colored( c )
