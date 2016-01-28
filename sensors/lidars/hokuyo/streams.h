@@ -48,6 +48,10 @@ struct tcp_stream:public stream_base
     {
         ios.close();
     }
+    std::streamsize bytes_read() const
+    {
+        return ios.gcount();
+    }
 };
 
 struct serial_stream:public stream_base
