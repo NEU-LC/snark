@@ -47,23 +47,23 @@
 static void bash_completion( unsigned const ac, char const * const * av )
 {
     static const char * completion_options =
-        "--help -h"
-        "\n--colour --color -c maps fixed colour by id elevation cyclic sharp quadratic default"
-        "\n--label"
-        "\n--no-stdin"
-        "\n--point-size --weight"
-        "\n--shape 'point' 'extents' 'line' lines 'loop' 'label'"
-        "\n--size"
-        "\n--camera orthographic perspective"
-        "\n--fov"
-        "\n--camera-config"
-        "\n--camera-position"
-        "\n--orthographic"
-        "\n--background-colour black"
-        "\n--output-camera-confi ,--output-camera"
-        "\n--scene-center --center=<value>"
-        "\n--scene-radius --radius=<value>"
-        "\n--z-is-up";
+        " --help -h"
+        " --colour --color -c"
+        " --label"
+        " --no-stdin"
+        " --point-size --weight"
+        " --shape"
+        " --size"
+        " --camera"
+        " --fov"
+        " --camera-config"
+        " --camera-position"
+        " --orthographic"
+        " --background-colour"
+        " --output-camera-config --output-camera"
+        " --scene-center --center"
+        " --scene-radius --radius"
+        " --z-is-up";
    
     std::cout << completion_options << std::endl;
     exit( 0 );
