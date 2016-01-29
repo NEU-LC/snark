@@ -30,11 +30,6 @@
 
 /// @author Vsevolod Vlaskine
 
-#include <limits>
-#include <map>
-#include <boost/bind.hpp>
-#include <boost/filesystem/path.hpp>
-#include <boost/lexical_cast.hpp>
 #include "qglobal.h"
 #if QT_VERSION >= 0x050000
 #include <QtWidgets>

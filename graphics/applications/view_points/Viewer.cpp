@@ -30,13 +30,7 @@
 
 /// @author Vsevolod Vlaskine, Cedric Wohlleber
 
-#ifndef WIN32
-#include <sys/stat.h>
-#include <fcntl.h>
 #include <signal.h>
-#else
-#include <signal.h>
-#endif
 #include <boost/filesystem/operations.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/thread/thread_time.hpp>
