@@ -60,9 +60,10 @@ void ust_device<STEPS>::request_scan(stream_base& iostream, int start, int end_s
     reply_md state;
     iostream.read( state.data(), reply_md::size );
     
-    if( state.request.message_id != me.message_id ) { 
-        COMMA_THROW( comma::exception, "message id mismatch for ME status reply, got: " << me.message_id.str() 
-                                        << " expected: " << state.request.message_id.str() ); 
+    if( state.request.message_id != me.message_id )
+    { 
+        COMMA_THROW( comma::exception, "message id mismatch for ME status reply, read: " << dynamic_cast< tcp_stream& >( iostream ).bytes_read()
+                                        << " bytes, expected: " << me.message_id.str() << " got: " << state.request.message_id.str() );
     }
     if( state.status.status() != 0 ) 
     { 
@@ -83,8 +84,9 @@ bool ust_device<STEPS>::receive_response(stream_base& iostream)
     {
         COMMA_THROW( comma::exception, "failure dectected when reading data, status: " << status );
     }
-    if( response.header.request.message_id != me.message_id ) { 
-        COMMA_THROW( comma::exception, "message id mismatch for ME data reply, got: " << me.message_id.str() << " expected: " << response.header.request.message_id.str() ); 
+    if( response.header.request.message_id != me.message_id )
+    { 
+        COMMA_THROW( comma::exception, "message id mismatch for ME data reply, expected: " << me.message_id.str() << " got: " << response.header.request.message_id.str() ); 
     }
     
     response.encoded.get_values( rays );
