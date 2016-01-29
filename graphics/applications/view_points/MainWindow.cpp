@@ -139,27 +139,24 @@ void MainWindow::updateFileFrame() // quick and dirty
         static const std::size_t maxLength = 30; // arbitrary
         std::string title = m_viewer.readers[i]->title;
 
-        if( title != "none" )
+        if( title.length() > maxLength )
         {
-            if( title.length() > maxLength )
-            {
-                #ifdef WIN32
-                std::string leaf = comma::split( title, '\\' ).back();
-                #else
-                std::string leaf = comma::split( title, '/' ).back();
-                #endif
-                title = leaf.length() >= maxLength ? leaf : std::string( "..." ) + title.substr( title.length() - maxLength );
-            }
-            if( !sameFields ) { title += ": \"" + m_viewer.readers[i]->options.fields + "\""; }
-            m_fileLayout->addWidget( new QLabel( title.c_str() ), i + 1, 0, Qt::AlignLeft | Qt::AlignTop );
-            CheckBox* viewBox = new CheckBox( boost::bind( &Reader::show, boost::ref( *m_viewer.readers[i] ), _1 ) );
-            viewBox->setCheckState( m_viewer.readers[i]->show() ? Qt::Checked : Qt::Unchecked );
-            connect( viewBox, SIGNAL( toggled( bool ) ), &m_viewer, SLOT( update() ) ); // redraw when box is toggled
-            viewBox->setToolTip( ( std::string( "check to make " ) + title + " visible" ).c_str() );
-            m_fileLayout->addWidget( viewBox, i + 1, 1, Qt::AlignRight | Qt::AlignTop );
-            m_fileLayout->setRowStretch( i + 1, i + 1 == m_viewer.readers.size() ? 1 : 0 );
-            m_fileGroups[ m_viewer.readers[i]->options.fields ].push_back( viewBox );
+            #ifdef WIN32
+            std::string leaf = comma::split( title, '\\' ).back();
+            #else
+            std::string leaf = comma::split( title, '/' ).back();
+            #endif
+            title = leaf.length() >= maxLength ? leaf : std::string( "..." ) + title.substr( title.length() - maxLength );
         }
+        if( !sameFields ) { title += ": \"" + m_viewer.readers[i]->options.fields + "\""; }
+        m_fileLayout->addWidget( new QLabel( title.c_str() ), i + 1, 0, Qt::AlignLeft | Qt::AlignTop );
+        CheckBox* viewBox = new CheckBox( boost::bind( &Reader::show, boost::ref( *m_viewer.readers[i] ), _1 ) );
+        viewBox->setCheckState( m_viewer.readers[i]->show() ? Qt::Checked : Qt::Unchecked );
+        connect( viewBox, SIGNAL( toggled( bool ) ), &m_viewer, SLOT( update() ) ); // redraw when box is toggled
+        viewBox->setToolTip( ( std::string( "check to make " ) + title + " visible" ).c_str() );
+        m_fileLayout->addWidget( viewBox, i + 1, 1, Qt::AlignRight | Qt::AlignTop );
+        m_fileLayout->setRowStretch( i + 1, i + 1 == m_viewer.readers.size() ? 1 : 0 );
+        m_fileGroups[ m_viewer.readers[i]->options.fields ].push_back( viewBox );
     }
     std::size_t i = 1 + m_viewer.readers.size();
     QLabel* titleLabel = new QLabel( "<b>groups</b>" );

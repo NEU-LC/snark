@@ -149,7 +149,7 @@ static void usage()
         "\n                   default 2000000 for points, for 200000 for other shapes"
         "\n    --title <title>: title for source, defaults to filename"
         "\n                     if set to \"none\" don't show source in selection box"
-        "\n                     (but still display data)"
+        "\n                     (but still display data and checkbox)"
         "\n"
         "\ncamera options"
         "\n    --camera=\"<options>\""
@@ -334,6 +334,7 @@ boost::shared_ptr< snark::graphics::View::Reader > makeReader( QGLView& viewer
         label = m.value( "label", label );
         show = !m.exists( "hide" );
     }
+    if( param.title == "none" ) param.title = "";
     if( !show ) { std::cerr << "view-points: " << param.options.filename << " will be hidden on startup; tick the box next to filename to make it visible" << std::endl; }
     snark::graphics::View::coloured* coloured = snark::graphics::View::colourFromString( colour, param.options.fields, backgroundcolour );
     if( shape == "point" )
