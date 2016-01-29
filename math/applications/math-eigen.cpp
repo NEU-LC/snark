@@ -227,52 +227,32 @@ int main( int ac, char** av )
             if( !first.empty() ) { buffer.push_back( comma::csv::ascii< snark::eigen::input_t >( csv ).get( first ) ); }
             comma::csv::input_stream< snark::eigen::input_t > istream( std::cin, csv );
             comma::csv::output_stream< snark::eigen::output_t > ostream( std::cout, output_csv );
-            
-            comma::csv::output_stream< snark::eigen::input_t > errstream( std::cerr, csv );
-            
             while( true )
             {
+                typedef Eigen::Matrix< double, -1, -1, Eigen::RowMajor > matrix_t;
                 const snark::eigen::input_t* p = istream.read();
                 if( !p || ( !buffer.empty() && buffer.front().block != p->block ) )
                 {
                     if( buffer.size() == 1 ) { std::cerr << "math-eigen: on block " << buffer.front().block << ": expected block with at least two entries, got only one" << std::endl; return 1; }
-                    Eigen::MatrixXd sample( buffer.size(), *size );
-                    std::cerr << "A: --------------------------" << std::endl;
+                    matrix_t sample( buffer.size(), *size );
                     for( std::size_t i = 0; i < buffer.size(); ++i ) // todo: hm... dodgy? use Eigen::Map instead?
                     {
-                        errstream.write( buffer[i] );
-                        //::memcpy( &sample( i, 0 ), &buffer[i].data[0], buffer[i].data.size() * sizeof( double ) );
-                        ::memcpy( &sample( 0, i ), &buffer[i].data[0], buffer[i].data.size() * sizeof( double ) );
+                        ::memcpy( &sample( i, 0 ), &buffer[i].data[0], buffer[i].data.size() * sizeof( double ) );
                     }
-                    
-                    // todo: fix populating sample
-                    std::cerr << "a: --------------------------" << std::endl;
-                    std::cerr << sample << std::endl;
-                    std::cerr << "b: --------------------------" << std::endl;
-                    
-                    Eigen::MatrixXd covariance = sample.adjoint() * sample;
+                    matrix_t covariance = sample.adjoint() * sample;
                     covariance = covariance / ( sample.rows() - 1 );                    
-                    Eigen::SelfAdjointEigenSolver< Eigen::MatrixXd > e( covariance );
+                    Eigen::SelfAdjointEigenSolver< matrix_t > e( covariance );
                     Eigen::VectorXd values = e.eigenvalues();
                     if( normalize ) { values = values / e.eigenvalues().sum(); }
-                    const Eigen::MatrixXd& vectors = e.eigenvectors();
+                    const matrix_t& vectors = e.eigenvectors();
                     // todo: get the two major eigenvectors and omit the others.
                     // Eigen::MatrixXf evecs = eig.eigenvectors();
                     // Eigen::MatrixXfpcaTransform = evecs.rightCols(2);
-                    
-                    std::cerr << "c: --------------------------" << std::endl;
-                    std::cerr << vectors << std::endl;
-                    std::cerr << "d: --------------------------" << std::endl;
-                    std::cerr << values << std::endl;
-                    std::cerr << "e: --------------------------" << std::endl;
-                    std::cerr << "size: " << *size << std::endl;
-                    
                     for( std::size_t i = 0; i < *size; ++i )
                     {
                         snark::eigen::output_t output;
                         output.block = buffer.front().block;
-                        //::memcpy( &output.vector[0], &vectors( i, 0 ), *size );
-                        ::memcpy( &output.vector[0], &vectors( 0, i ), *size );
+                        ::memcpy( &output.vector[0], &vectors( i, 0 ), *size * sizeof( double ) );
                         output.value = values[i];
                         ostream.write( output );
                     }
