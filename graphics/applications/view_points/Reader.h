@@ -59,6 +59,7 @@ class Viewer;
 struct reader_parameters
 {
     const comma::csv::options options;
+    const std::string title;
     const std::size_t size;
     const unsigned int point_size;
 
@@ -68,8 +69,9 @@ struct reader_parameters
         , point_size( 1 )
     {}
 
-    reader_parameters( const comma::csv::options& options, std::size_t size, unsigned int point_size )
+    reader_parameters( const comma::csv::options& options, const std::string& title, std::size_t size, unsigned int point_size )
         : options( options )
+        , title( title )
         , size( size )
         , point_size( point_size )
     {}
