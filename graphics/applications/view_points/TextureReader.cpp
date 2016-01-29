@@ -61,7 +61,7 @@ TextureReader::image_::image_( const TextureReader::image_options& o ) : image( 
 TextureReader::TextureReader( QGLView& viewer
                             , comma::csv::options& csv
                             , const std::vector< image_options >& io )
-    : Reader( viewer, csv, 1, NULL, 1, "", QVector3D( 0, 1, 1 ) )
+    : Reader( viewer, reader_parameters( csv ), NULL, "", QVector3D( 0, 1, 1 ) )
 {
     for( unsigned int i = 0; i < io.size(); ++i ) { images_.push_back( new image_( io[i] ) ); }
 }

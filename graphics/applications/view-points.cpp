@@ -47,23 +47,24 @@
 static void bash_completion( unsigned const ac, char const * const * av )
 {
     static const char * completion_options =
-        "--help -h"
-        "\n--colour --color -c maps fixed colour by id elevation cyclic sharp quadratic default"
-        "\n--label"
-        "\n--no-stdin"
-        "\n--point-size --weight"
-        "\n--shape 'point' 'extents' 'line' lines 'loop' 'label'"
-        "\n--size"
-        "\n--camera orthographic perspective"
-        "\n--fov"
-        "\n--camera-config"
-        "\n--camera-position"
-        "\n--orthographic"
-        "\n--background-colour black"
-        "\n--output-camera-confi ,--output-camera"
-        "\n--scene-center --center=<value>"
-        "\n--scene-radius --radius=<value>"
-        "\n--z-is-up";
+        " --help -h"
+        " --colour --color -c"
+        " --label"
+        " --no-stdin"
+        " --point-size --weight"
+        " --shape"
+        " --size"
+        " --camera"
+        " --fov"
+        " --camera-config"
+        " --camera-position"
+        " --orthographic"
+        " --background-colour"
+        " --output-camera-config --output-camera"
+        " --scene-center --center"
+        " --scene-radius --radius"
+        " --title"
+        " --z-is-up";
    
     std::cout << completion_options << std::endl;
     exit( 0 );
@@ -144,8 +145,11 @@ static void usage()
         "\n                                <pixel size>: single pixel size in metres"
         "\n                            note 1: just like for the cad models, the images will be pinned to the latest point in the stream"
         "\n                            note 2: specify id in fields to switch between multiple images, see examples below"
-        "\n    --size <size> : render last <size> points (or other shapes)"
-        "\n                    default 2000000 for points, for 200000 for other shapes"
+        "\n    --size <size>: render last <size> points (or other shapes)"
+        "\n                   default 2000000 for points, for 200000 for other shapes"
+        "\n    --title <title>: title for source, defaults to filename"
+        "\n                     if set to \"none\" don't show source in selection box"
+        "\n                     (but still display data and checkbox)"
         "\n"
         "\ncamera options"
         "\n    --camera=\"<options>\""
@@ -215,7 +219,10 @@ static void usage()
         "\n        cat xyzrgb.csv | view-points --fields=\"x,y,z,r,g,b\""
         "\n"
         "\n    view multiple files"
-        "\n        view-points \"raw.csv;colour=0:20\" \"partitioned.csv;fields=x,y,z,id\";point-size=2"
+        "\n        view-points \"raw.csv;colour=0:20\" \"partitioned.csv;fields=x,y,z,id;point-size=2\""
+        "\n"
+        "\n    view multiple files with titles"
+        "\n        view-points \"raw.csv;colour=0:20;title=raw\" \"partitioned.csv;fields=x,y,z,id;point-size=2;title=partitioned\""
         "\n"
         "\n    view a cad model"
         "\n        echo \"0,0,0\" | view-points --shape /usr/local/etc/segway.shrimp.obj --z-is-up --orthographic"
@@ -304,85 +311,88 @@ boost::shared_ptr< snark::graphics::View::Reader > makeReader( QGLView& viewer
                                                              , const std::string& properties = "" )
 {
     QColor4ub backgroundcolour( QColor( QString( options.value< std::string >( "--background-colour", "#000000" ).c_str() ) ) );
-    comma::csv::options csv = csvOptions;
     std::string shape = options.value< std::string >( "--shape", "point" );
-    std::size_t size = options.value< std::size_t >( "--size", shape == "point" ? 2000000 : 200000 );
-    unsigned int pointSize = options.value( "--point-size,--weight", 1u );
+    snark::graphics::View::Reader::reader_parameters param( csvOptions
+                                                          , options.value( "--title", csvOptions.filename )
+                                                          , options.value< std::size_t >( "--size", shape == "point" ? 2000000 : 200000 )
+                                                          , options.value( "--point-size,--weight", 1u ) );
     std::string colour = options.exists( "--colour" ) ? options.value< std::string >( "--colour" ) : options.value< std::string >( "-c", "-10:10" );
-    std::string label = options.value< std::string >( "--label", "" );
+    std::string label = options.value( "--label", std::string() );
     bool show = true;
     if( properties != "" )
     {
         comma::name_value::parser nameValue( "filename", ';', '=', false );
-        csv = nameValue.get( properties, csvOptions );
+        param.options = nameValue.get( properties, csvOptions );
         comma::name_value::map m( properties, "filename", ';', '=' );
-        size = m.value( "size", size );
-        pointSize = m.value( "point-size", pointSize );
-        pointSize = m.value( "weight", pointSize );
+        param.size = m.value( "size", param.size );
+        param.point_size = m.value( "point-size", param.point_size );
+        param.point_size = m.value( "weight", param.point_size );
+        param.title = m.value( "title", param.title.empty() ? param.options.filename : param.title );
         shape = m.value( "shape", shape );
         if( m.exists( "colour" ) ) { colour = m.value( "colour", colour ); }
         else if( m.exists( "color" ) ) { colour = m.value( "color", colour ); }
         label = m.value( "label", label );
         show = !m.exists( "hide" );
     }
-    if( !show ) { std::cerr << "view-points: " << csv.filename << " will be hidden on startup; tick the box next to filename to make it visible" << std::endl; }
-    snark::graphics::View::coloured* coloured = snark::graphics::View::colourFromString( colour, csv.fields, backgroundcolour );
+    if( param.title == "none" ) param.title = "";
+    if( !show ) { std::cerr << "view-points: " << ( param.title.empty() ? param.options.filename : param.title )<< " will be hidden on startup; tick the box next to the name to make it visible" << std::endl; }
+    snark::graphics::View::coloured* coloured = snark::graphics::View::colourFromString( colour, param.options.fields, backgroundcolour );
     if( shape == "point" )
     {
-        if( csv.fields == "" ) { csv.fields="x,y,z"; }
-        std::vector< std::string > v = comma::split( csv.fields, ',' );
+        if( param.options.fields == "" ) { param.options.fields="x,y,z"; }
+        std::vector< std::string > v = comma::split( param.options.fields, ',' );
         bool has_orientation = false;
         for( unsigned int i = 0; !has_orientation && i < v.size(); ++i ) { has_orientation = v[i] == "roll" || v[i] == "pitch" || v[i] == "yaw"; }
-        boost::shared_ptr< snark::graphics::View::Reader > reader( new snark::graphics::View::ShapeReader< Eigen::Vector3d >( viewer, csv, size, coloured, pointSize, label ) );
+        boost::shared_ptr< snark::graphics::View::Reader > reader( new snark::graphics::View::ShapeReader< Eigen::Vector3d >( viewer, param, coloured, label ) );
         reader->show( show );
         return reader;
     }
     if( shape == "loop" )
     {
-        if( csv.fields == "" ) { csv.fields="x,y,z"; }
-        boost::shared_ptr< snark::graphics::View::Reader > reader( new snark::graphics::View::ShapeReader< Eigen::Vector3d, snark::graphics::View::how_t::loop >( viewer, csv, size, coloured, pointSize, label ) );
+        if( param.options.fields == "" ) { param.options.fields="x,y,z"; }
+        boost::shared_ptr< snark::graphics::View::Reader > reader( new snark::graphics::View::ShapeReader< Eigen::Vector3d, snark::graphics::View::how_t::loop >( viewer, param, coloured, label ) );
         reader->show( show );
         return reader;
     }
     if( shape == "lines" ) // todo: get a better name
     {
-        if( csv.fields == "" ) { csv.fields="x,y,z"; }
-        boost::shared_ptr< snark::graphics::View::Reader > reader( new snark::graphics::View::ShapeReader< Eigen::Vector3d, snark::graphics::View::how_t::connected >( viewer, csv, size, coloured, pointSize, label ) );
+        if( param.options.fields == "" ) { param.options.fields="x,y,z"; }
+        boost::shared_ptr< snark::graphics::View::Reader > reader( new snark::graphics::View::ShapeReader< Eigen::Vector3d, snark::graphics::View::how_t::connected >( viewer, param, coloured, label ) );
         reader->show( show );
         return reader;
     }
     if( shape == "label" )
     {
-        if( csv.fields == "" ) { csv.fields="x,y,z,label"; }
+        if( param.options.fields == "" ) { param.options.fields="x,y,z,label"; }
         // TODO
     }
     else if( shape == "ellipse" )
     {
-        if( csv.fields == "" ) { csv.fields="center,orientation,major,minor"; }
-        std::vector< std::string > v = comma::split( csv.fields, ',' );
+        if( param.options.fields == "" ) { param.options.fields="center,orientation,major,minor"; }
+        std::vector< std::string > v = comma::split( param.options.fields, ',' );
         for( std::size_t i = 0; i < v.size(); ++i )
         {
             if( v[i] == "x" || v[i] == "y" || v[i] == "z" ) { v[i] = "center/" + v[i]; }
             else if( v[i] == "roll" || v[i] == "pitch" || v[i] == "yaw" ) { v[i] = "orientation/" + v[i]; }
         }
-        csv.fields = comma::join( v, ',' );
+        param.options.fields = comma::join( v, ',' );
     }
     else if( shape == "arc" )
     {
-        if( csv.fields == "" ) { csv.fields="begin,end"; }
-        std::vector< std::string > v = comma::split( csv.fields, ',' );
+        if( param.options.fields == "" ) { param.options.fields="begin,end"; }
+        std::vector< std::string > v = comma::split( param.options.fields, ',' );
     }
     else if( shape == "extents" )
     {
-        if( csv.fields == "" ) { csv.fields="min,max"; }
+        if( param.options.fields == "" ) { param.options.fields="min,max"; }
     }
     else if( shape == "line" )
     {
-        if( csv.fields == "" ) { csv.fields="first,second"; }
+        if( param.options.fields == "" ) { param.options.fields="first,second"; }
     }
     else
     {
-        if( csv.fields == "" ) { csv.fields="point,orientation"; csv.full_xpath = true; }
+        if( param.options.fields == "" ) { param.options.fields="point,orientation"; param.options.full_xpath = true; }
         std::vector< snark::graphics::View::TextureReader::image_options > image_options;
         std::vector< std::string > v = comma::split( shape, ':' );
         for( unsigned int i = 0; i < v.size(); ++i )
@@ -403,18 +413,18 @@ boost::shared_ptr< snark::graphics::View::Reader > makeReader( QGLView& viewer
             model_options m = comma::name_value::parser( ';', '=' ).get< model_options >( properties );
             m.filename = shape;
             if( !boost::filesystem::exists( m.filename ) ) { COMMA_THROW( comma::exception, "file does not exist: " << m.filename ); }
-            boost::shared_ptr< snark::graphics::View::Reader > reader( new snark::graphics::View::ModelReader( viewer, csv, shape, m.flip, m.scale, coloured, label ) );
+            boost::shared_ptr< snark::graphics::View::Reader > reader( new snark::graphics::View::ModelReader( viewer, param.options, shape, m.flip, m.scale, coloured, label ) );
             reader->show( show );
             return reader;
         }
         else
         {
-            boost::shared_ptr< snark::graphics::View::Reader > reader( new snark::graphics::View::TextureReader( viewer, csv, image_options ) );
+            boost::shared_ptr< snark::graphics::View::Reader > reader( new snark::graphics::View::TextureReader( viewer, param.options, image_options ) );
             reader->show( show );
             return reader;
         }
     }
-    std::vector< std::string > v = comma::split( csv.fields, ',' );
+    std::vector< std::string > v = comma::split( param.options.fields, ',' );
     for( std::size_t i = 0; i < v.size(); ++i )
     {
         if(    v[i] != "id"
@@ -429,31 +439,31 @@ boost::shared_ptr< snark::graphics::View::Reader > makeReader( QGLView& viewer
             && v[i] != "" ) { v[i] = "shape/" + v[i]; }
         if( v[i] == "r" || v[i] == "g" || v[i] == "b" || v[i] == "a" ) { v[i] = "colour/" + v[i]; }
     }
-    csv.fields = comma::join( v, ',' );
-    csv.full_xpath = true;
+    param.options.fields = comma::join( v, ',' );
+    param.options.full_xpath = true;
     if( shape == "extents" )
     {
-        boost::shared_ptr< snark::graphics::View::Reader > reader( new snark::graphics::View::ShapeReader< snark::math::closed_interval< double, 3 > >( viewer, csv, size, coloured, pointSize, label, snark::math::closed_interval< double, 3 >( Eigen::Vector3d( 0, 0, 0 ), Eigen::Vector3d( 0, 0, 0 ) ) ) );
+        boost::shared_ptr< snark::graphics::View::Reader > reader( new snark::graphics::View::ShapeReader< snark::math::closed_interval< double, 3 > >( viewer, param, coloured, label, snark::math::closed_interval< double, 3 >( Eigen::Vector3d( 0, 0, 0 ), Eigen::Vector3d( 0, 0, 0 ) ) ) );
         reader->show( show );
         return reader;
     }
     else if( shape == "line" )
     {
-        boost::shared_ptr< snark::graphics::View::Reader > reader( new snark::graphics::View::ShapeReader< std::pair< Eigen::Vector3d, Eigen::Vector3d > >( viewer, csv, size, coloured, pointSize, label ) );
+        boost::shared_ptr< snark::graphics::View::Reader > reader( new snark::graphics::View::ShapeReader< std::pair< Eigen::Vector3d, Eigen::Vector3d > >( viewer, param, coloured, label ) );
         reader->show( show );
         return reader;
     }
     else if( shape == "ellipse" )
     {
-        boost::shared_ptr< snark::graphics::View::Reader > reader( new snark::graphics::View::ShapeReader< snark::graphics::View::Ellipse< 25 > >( viewer, csv, size, coloured, pointSize, label ) );
+        boost::shared_ptr< snark::graphics::View::Reader > reader( new snark::graphics::View::ShapeReader< snark::graphics::View::Ellipse< 25 > >( viewer, param, coloured, label ) );
         reader->show( show );
         return reader;
     }
     else if( shape == "arc" )
     {
         snark::graphics::View::arc< 20 > sample; // quick and dirty
-        if( csv.has_field( "middle" ) || csv.has_field( "middle/x" ) || csv.has_field( "middle/y" ) || csv.has_field( "middle/z" ) ) { sample.middle = Eigen::Vector3d(); }
-        boost::shared_ptr< snark::graphics::View::Reader > reader( new snark::graphics::View::ShapeReader< snark::graphics::View::arc< 20 > >( viewer, csv, size, coloured, pointSize, label, sample ) );
+        if( param.options.has_field( "middle" ) || param.options.has_field( "middle/x" ) || param.options.has_field( "middle/y" ) || param.options.has_field( "middle/z" ) ) { sample.middle = Eigen::Vector3d(); }
+        boost::shared_ptr< snark::graphics::View::Reader > reader( new snark::graphics::View::ShapeReader< snark::graphics::View::arc< 20 > >( viewer, param, coloured, label, sample ) );
         reader->show( show );
         return reader;
     }
@@ -469,7 +479,7 @@ int main( int argc, char** argv )
         if( options.exists( "--help" ) || options.exists( "-h" ) ) { usage(); }
         comma::csv::options csvOptions( argc, argv );
         std::vector< std::string > properties = options.unnamed( "--z-is-up,--orthographic,--flush,--no-stdin,--output-camera-config,--output-camera"
-                , "--binary,--bin,-b,--fields,--size,--delimiter,-d,--colour,-c,--point-size,--weight,--background-colour,--scene-center,--center,--scene-radius,--radius,--shape,--label,--camera,--camera-position,--camera-config,--fov,--model,--full-xpath" );
+                , "--binary,--bin,-b,--fields,--size,--delimiter,-d,--colour,-c,--point-size,--weight,--background-colour,--scene-center,--center,--scene-radius,--radius,--shape,--label,--title,--camera,--camera-position,--camera-config,--fov,--model,--full-xpath" );
         QColor4ub backgroundcolour( QColor( QString( options.value< std::string >( "--background-colour", "#000000" ).c_str() ) ) );
         boost::optional< comma::csv::options > camera_csv;
         boost::optional< Eigen::Vector3d > cameraposition;

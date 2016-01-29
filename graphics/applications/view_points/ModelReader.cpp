@@ -50,7 +50,7 @@ ModelReader::ModelReader( QGLView& viewer
                         , double scale
                         , snark::graphics::View::coloured* c
                         , const std::string& label )
-    : Reader( viewer, options, 1, c, 1, label, QVector3D( 0, 1, 1 ) ) // TODO make offset configurable ?
+    : Reader( viewer, reader_parameters( options ), c, label, QVector3D( 0, 1, 1 ) ) // TODO make offset configurable ?
     , m_file( file )
     , m_flip( flip )
     , scale_( scale )

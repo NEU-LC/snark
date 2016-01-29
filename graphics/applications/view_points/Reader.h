@@ -52,20 +52,35 @@
 #include <snark/graphics/qt3d/vertex_buffer.h>
 #include <Qt3D/qglview.h>
 
-class QGLAbstractScene;
-
 namespace snark { namespace graphics { namespace View {
 
 class Viewer;
 
-class Reader
+struct reader_parameters
+{
+    comma::csv::options options;
+    std::string title;
+    std::size_t size;
+    unsigned int point_size;
+
+    reader_parameters( const comma::csv::options& options )
+        : options( options )
+        , size( 1 )
+        , point_size( 1 )
+    {}
+
+    reader_parameters( const comma::csv::options& options, const std::string& title, std::size_t size, unsigned int point_size )
+        : options( options )
+        , title( title )
+        , size( size )
+        , point_size( point_size )
+    {}
+};
+
+class Reader : public reader_parameters
 {
     public:
-        const std::size_t size;
-        const unsigned int pointSize;
-        const comma::csv::options options;
-
-        Reader( QGLView& viewer, comma::csv::options& options, std::size_t size, coloured* c, unsigned int pointSize, const std::string& label, const QVector3D& offset = QVector3D( 0, 0, 0 ) );
+        Reader( QGLView& viewer, const reader_parameters& params, coloured* c, const std::string& label, const QVector3D& offset = QVector3D( 0, 0, 0 ) );
 
         virtual ~Reader() {}
 
