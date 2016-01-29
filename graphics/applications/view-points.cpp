@@ -335,7 +335,7 @@ boost::shared_ptr< snark::graphics::View::Reader > makeReader( QGLView& viewer
         show = !m.exists( "hide" );
     }
     if( param.title == "none" ) param.title = "";
-    if( !show ) { std::cerr << "view-points: " << param.options.filename << " will be hidden on startup; tick the box next to filename to make it visible" << std::endl; }
+    if( !show ) { std::cerr << "view-points: " << ( param.title.empty() ? param.options.filename : param.title )<< " will be hidden on startup; tick the box next to the name to make it visible" << std::endl; }
     snark::graphics::View::coloured* coloured = snark::graphics::View::colourFromString( colour, param.options.fields, backgroundcolour );
     if( shape == "point" )
     {
