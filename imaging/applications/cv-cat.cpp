@@ -36,6 +36,7 @@
 #include <boost/program_options.hpp>
 #include <comma/application/signal_flag.h>
 #include <comma/name_value/parser.h>
+#include <comma/application/verbose.h>
 #include <snark/imaging/cv_mat/pipeline.h>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/features2d/features2d.hpp>
@@ -127,7 +128,8 @@ int main( int argc, char** argv )
         boost::program_options::store( boost::program_options::parse_command_line( argc, argv, description), vm );
         boost::program_options::parsed_options parsed = boost::program_options::command_line_parser(argc, argv).options( description ).allow_unregistered().run();
         boost::program_options::notify( vm );
-        if ( vm.count( "help" ) || vm.count( "verbose" ) )
+        comma::verbose.init(vm.count( "verbose" ), argv[0]);
+        if ( vm.count( "help" ) )
         {
             std::cerr << "acquire images using opencv, apply filters and output with header" << std::endl;
             if( !vm.count( "verbose" ) ) { std::cerr << "see --help --verbose for filters usage" << std::endl; }

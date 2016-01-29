@@ -45,6 +45,7 @@
 #include <comma/csv/options.h>
 #include <comma/string/string.h>
 #include <comma/name_value/parser.h>
+#include <comma/application/verbose.h>
 #include <Eigen/Core>
 #include <opencv2/features2d/features2d.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -1126,6 +1127,119 @@ static filters::value_type linear_combination_impl_( const filters::value_type m
     COMMA_THROW( comma::exception, "linear-combination: unrecognised image type " << m.second.type() );
 }
 
+static double max_value(int depth)
+{
+    switch(depth)
+    {
+        case CV_8U : return depth_traits< CV_8U  >::max_value();
+        case CV_8S : return depth_traits< CV_8S  >::max_value();
+        case CV_16U: return depth_traits< CV_16U >::max_value();
+        case CV_16S: return depth_traits< CV_16S >::max_value();
+        case CV_32S: return depth_traits< CV_32S >::max_value();
+        case CV_32F: return depth_traits< CV_32F >::max_value();
+        case CV_64F: return depth_traits< CV_64F >::max_value();
+        default: { COMMA_THROW(comma::exception, "invalid depth: "<<depth ); } 
+    }
+}
+
+static cv::Mat convert_and_scale(const cv::Mat& m, int depth)
+{
+    cv::Mat result;
+    double scale=max_value(depth)/max_value(m.depth());
+    m.convertTo(result, CV_MAKETYPE(depth, m.channels()), scale);
+    return result;
+}
+
+struct overlay_impl_
+{
+    int x;
+    int y;
+    cv::Mat overlay;
+    int alpha;
+    overlay_impl_(const std::string& image_file, int a, int b) : x(a), y(b), alpha(0)
+    {
+//         comma::verbose<<"overlay_impl_: image_file "<<image_file<<std::endl;
+//         comma::verbose<<"overlay_impl_: x,y "<<x<<","<<y<<std::endl;
+        overlay=cv::imread(image_file,-1);
+        if(overlay.data==NULL) { COMMA_THROW( comma::exception, "failed to load image file: "<<image_file); }
+    }
+    filters::value_type operator()( filters::value_type m )
+    {
+        cv::Mat& mat=m.second;
+//         comma::verbose<<"mat rows,cols,type;channels,depth "<<mat.rows<<","<<mat.cols<<","<<type_as_string(mat.type())<<";"<<mat.channels()<<","<<mat.depth()<<std::endl;
+//         comma::verbose<<"overlay rows,cols,type;channels,depth "<<overlay.rows<<","<<overlay.cols<<","<<type_as_string(overlay.type())<<";"<<overlay.channels()<<","<<overlay.depth()<<std::endl;
+        if(mat.channels()!=overlay.channels()-1) { COMMA_THROW(comma::exception, "mat's channels ("<<mat.channels()<<") should be one less than overlay's channel: "<<overlay.channels()); }
+        if(mat.depth() != overlay.depth()) 
+        {
+            comma::verbose<<"converting overlay from depth "<<overlay.depth()<<" to "<<mat.depth()<<std::endl;
+            overlay=convert_and_scale(overlay, mat.depth());
+        }
+        cv::Mat result(mat.rows, mat.cols, CV_MAKETYPE(overlay.depth(), overlay.channels()-1));
+        switch(mat.depth())
+        {
+            case CV_8U: process<CV_8U>(mat, overlay, x, y, result); break;
+            case CV_8S: process<CV_8S>(mat, overlay, x, y, result); break;
+            case CV_16U: process<CV_16U>(mat, overlay, x, y, result); break;
+            case CV_16S: process<CV_16S>(mat, overlay, x, y, result); break;
+            case CV_32S: process<CV_32S>(mat, overlay, x, y, result); break;
+            case CV_32F: process<CV_32F>(mat, overlay, x, y, result); break;
+            case CV_64F: process<CV_64F>(mat, overlay, x, y, result); break;
+            default: { COMMA_THROW( comma::exception, "invalid depth: " << mat.depth()); }
+        }
+        return filters::value_type(m.first, result);
+    }
+    template<int Depth> static void process(const cv::Mat& mat, const cv::Mat& overlay, int x, int y, cv::Mat& result)
+    {
+        double max_a=depth_traits< Depth >::max_value();
+//         comma::verbose<<"overrlay process<Depth="<<Depth<<">: x,y "<<x<<","<<y<<" max_a "<<max_a<<std::endl;
+        if(mat.depth() != Depth) { COMMA_THROW( comma::exception, "mat depth ("<<mat.depth() <<")mismatch, expected: "<< Depth); }
+        if(overlay.depth() != Depth) { COMMA_THROW( comma::exception, "overlay depth ("<<overlay.depth() <<")mismatch, expected: "<< Depth); }
+        typedef typename depth_traits< Depth >::value_t value_t;
+        int alpha;
+        int ch=overlay.channels();
+        switch(ch)
+        {
+            case 2: alpha=1; break;
+            case 4: alpha=3; break;
+            default: { COMMA_THROW( comma::exception, "overlay needs to have alpha channel; expected number of channels 2 or 4, got "<<ch ); }
+        }
+//         comma::verbose<<"alpha: "<<alpha<<" ;result rows,cols,channels "<< result.rows<<","<<result.cols<<","<<result.channels()<<std::endl;
+        //assert result.rows==mat.rows && result.cols==mat.cols
+        int channels=result.channels();
+        int y2=y+overlay.rows;
+        int x2=x+overlay.cols;
+        for(int j=0;j<result.rows;j++)
+        {
+            const value_t* mat_ptr=mat.ptr<value_t>(j);
+            const value_t* overlay_ptr=NULL;
+            if(j>=y && j<y2) { overlay_ptr=overlay.ptr<value_t>(j-y); }
+            value_t* data=result.ptr<value_t>(j);
+            int index=0;
+            for(int i=0;i<result.cols;i++)
+            {
+                if(overlay_ptr!=NULL && i>=x && i<x2)
+                {
+                    double a=static_cast<double>(overlay_ptr[alpha]) / max_a;
+                    for(int c=0;c<channels;c++)
+                    {
+                        double m=static_cast<double>(*mat_ptr++);
+                        double o=static_cast<double>(*overlay_ptr++);
+                        data[index++]= o * a + m * (1-a);
+                    }
+                    //skip alpha
+                    overlay_ptr++;
+                }
+                else
+                {
+                    //just copy
+                    for(int c=0;c<channels;c++)
+                        data[index++]=*mat_ptr++;
+                }
+            }
+        }
+    }
+};
+
 template < unsigned int Depth > struct gamma_traits {};
 template <> struct gamma_traits< CV_8U >
 {
@@ -1624,6 +1738,19 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
             for( unsigned int j = 0; j < s.size(); ++j ) { coefficients[j] = boost::lexical_cast< double >( s[j] ); }
             f.push_back( filter( boost::bind( &linear_combination_impl_, _1, coefficients ) ) );
         }
+        else if( e[0] == "overlay" )
+        {
+            if( e.size() != 2 ) { COMMA_THROW( comma::exception, "expected file name (and optional x,y) with the overlay, e.g. overlay=a.svg" ); }
+            std::vector< std::string > s = comma::split( e[1], ',' );
+            if(s.size()!=1 && s.size()!=3) { COMMA_THROW( comma::exception, "expected one or three parameters (file[,x,y]); found " << s.size() ); }
+            int x=0, y=0;
+            if(s.size()>1)
+            {
+                x=boost::lexical_cast<int>(s[1]);
+                y=boost::lexical_cast<int>(s[2]);
+            }
+            f.push_back( filter( overlay_impl_( s[0], x, y ) ) );
+        }
         else
         {
             const boost::optional< filter >& vf = imaging::vegetation::filters::make( v[i] );
@@ -1695,6 +1822,7 @@ static std::string usage_impl_()
     oss << "            normalize=sum: normalize each pixel channel by the sum of all channels" << std::endl;
     oss << "            normalize=all: normalize each pixel by max of all channels (see cv::normalize with NORM_INF)" << std::endl;
     oss << "        null: same as linux /dev/null (since windows does not have it)" << std::endl;
+    oss << "        overlay=<image_file>[,x,y]: overlay image_file on top of current stream at optional x,y location; overlay image should have alpha channel" << std::endl;
     oss << "        resize=<factor>[,<interpolation>]; resize=<width>,<height>[,<interpolation>]" << std::endl;
     oss << "            <interpolation>: nearest, linear, area, cubic, lanczos4; default: linear" << std::endl;
     oss << "                             in format <width>,<height>,<interpolation> corresponding numeric values can be used: " << cv::INTER_NEAREST << ", " << cv::INTER_LINEAR << ", " << cv::INTER_AREA << ", " << cv::INTER_CUBIC << ", " << cv::INTER_LANCZOS4 << std::endl;
