@@ -164,6 +164,12 @@ int main( int argc, char** argv )
             std::cerr << "    create a video ( -b: bitrate, -r: input/output framerate:" << std::endl;
             std::cerr << "        gige-cat | cv-cat \"encode=ppm\" --output=no-header | avconv -y -f image2pipe -vcodec ppm -r 25 -i pipe: -vcodec libx264  -threads 0 -b 2000k -r 25 video.mkv" << std::endl;
             std::cerr << std::endl;
+            std::cerr << "    overlay a ruler on input stream to show scale (the overlay image can be created in a script using csv-to-svg)" << std::endl;
+            std::cerr << std::endl;
+            std::cerr << "        create_ruler_svg > tmp/r.svg" << std::endl;
+            std::cerr << "        convert -background transparent tmp/r.svg tmp/r.png" << std::endl;
+            std::cerr << "        ...  | cv-cat \"overlay=tmp/r.png,10,10;view;null\" " << std::endl;
+            std::cerr << std::endl;
             if( vm.count( "verbose" ) )
             {
                 std::cerr << std::endl;
