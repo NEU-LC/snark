@@ -33,23 +33,12 @@
 #ifndef SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_READER_H_
 #define SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_READER_H_
 
-#include <deque>
-#include <fstream>
-#include <iostream>
-#include <cmath>
-#include <sstream>
 #include <boost/scoped_ptr.hpp>
 #include <boost/thread.hpp>
-#include <comma/base/types.h>
 #include <comma/csv/options.h>
 #include <comma/csv/stream.h>
-#include <comma/io/file_descriptor.h>
 #include <comma/io/stream.h>
-#include <comma/sync/synchronized.h>
-#include <snark/math/interval.h>
 #include "Coloured.h"
-#include "PointWithId.h"
-#include <snark/graphics/qt3d/vertex_buffer.h>
 #include <Qt3D/qglview.h>
 
 namespace snark { namespace graphics { namespace View {

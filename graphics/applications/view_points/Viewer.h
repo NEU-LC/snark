@@ -38,10 +38,7 @@
 //#include <windows.h>
 #endif
 
-#include <vector>
-#include <boost/optional.hpp>
 #include <boost/property_tree/ptree.hpp>
-#include <boost/thread.hpp>
 #include <snark/graphics/qt3d/view.h>
 #include "CameraReader.h"
 #include "Reader.h"

@@ -31,12 +31,8 @@
 /// @author Cedric Wohlleber
 
 #include <fstream>
-#include <cstring>
-#include <iostream>
-#include <boost/lexical_cast.hpp>
 #include <comma/base/exception.h>
 #include <comma/csv/ascii.h>
-#include <comma/csv/options.h>
 #include <comma/string/split.h>
 #include <snark/visiting/eigen.h>
 #include "PlyLoader.h"

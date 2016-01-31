@@ -29,8 +29,6 @@
 
 /// @author Cedric Wohlleber
 
-#include <Eigen/Core>
-#include <comma/base/exception.h>
 #include "TextureReader.h"
 
 namespace snark { namespace graphics { namespace View {

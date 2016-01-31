@@ -30,7 +30,6 @@
 
 /// @author Cedric Wohlleber
 
-#include <Eigen/Core>
 #include "ModelReader.h"
 #include "Texture.h"
 

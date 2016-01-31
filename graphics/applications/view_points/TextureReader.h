@@ -33,8 +33,6 @@
 #ifndef SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_TEXTURE_READER_H_
 #define SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_TEXTURE_READER_H_
 
-#include <vector>
-#include <boost/optional.hpp>
 #include <boost/ptr_container/ptr_vector.hpp>
 #include "Reader.h"
 #include <Qt3D/qglbuilder.h>

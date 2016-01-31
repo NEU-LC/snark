@@ -227,9 +227,9 @@ int main( int ac, char** av )
             if( !first.empty() ) { buffer.push_back( comma::csv::ascii< snark::eigen::input_t >( csv ).get( first ) ); }
             comma::csv::input_stream< snark::eigen::input_t > istream( std::cin, csv );
             comma::csv::output_stream< snark::eigen::output_t > ostream( std::cout, output_csv );
+            typedef Eigen::Matrix< double, -1, -1, Eigen::RowMajor > matrix_t;
             while( true )
             {
-                typedef Eigen::Matrix< double, -1, -1, Eigen::RowMajor > matrix_t;
                 const snark::eigen::input_t* p = istream.read();
                 if( !p || ( !buffer.empty() && buffer.front().block != p->block ) )
                 {
@@ -241,10 +241,10 @@ int main( int ac, char** av )
                     }
                     matrix_t covariance = sample.adjoint() * sample;
                     covariance = covariance / ( sample.rows() - 1 );                    
-                    Eigen::SelfAdjointEigenSolver< matrix_t > e( covariance );
-                    Eigen::VectorXd values = e.eigenvalues();
-                    if( normalize ) { values = values / e.eigenvalues().sum(); }
-                    const matrix_t& vectors = e.eigenvectors();
+                    Eigen::SelfAdjointEigenSolver< matrix_t > solver( covariance );
+                    Eigen::VectorXd values = solver.eigenvalues();
+                    if( normalize ) { values = values / solver.eigenvalues().sum(); }
+                    const matrix_t& vectors = solver.eigenvectors().transpose();
                     // todo: get the two major eigenvectors and omit the others.
                     // Eigen::MatrixXf evecs = eig.eigenvectors();
                     // Eigen::MatrixXfpcaTransform = evecs.rightCols(2);

@@ -33,12 +33,8 @@
 #ifndef SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_MAINWINDOW_H_
 #define SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_MAINWINDOW_H_
 
-#include <map>
-#include <string>
-#include <vector>
 #include <QCheckBox>
 #include <QMainWindow>
-#include <comma/base/types.h>
 #include "Viewer.h"
 
 QT_BEGIN_NAMESPACE

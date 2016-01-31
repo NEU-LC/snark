@@ -30,20 +30,6 @@
 
 /// @author Vsevolod Vlaskine, Cedric Wohlleber
 
-#ifndef WIN32
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <signal.h>
-#endif
-#include <deque>
-#include <iostream>
-#include <cmath>
-#include <sstream>
-#include <boost/bind.hpp>
-#include <comma/base/exception.h>
-#include <comma/base/types.h>
-#include <comma/csv/stream.h>
-#include <comma/io/select.h>
 #include "CameraReader.h"
 
 namespace snark { namespace graphics { namespace View {

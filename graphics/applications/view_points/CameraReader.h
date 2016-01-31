@@ -33,10 +33,6 @@
 #ifndef SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_CAMERAREADER_H_
 #define SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_CAMERAREADER_H_
 
-#include <deque>
-#include <iostream>
-#include <cmath>
-#include <sstream>
 #include <boost/scoped_ptr.hpp>
 #include <boost/thread.hpp>
 #include <comma/csv/stream.h>
