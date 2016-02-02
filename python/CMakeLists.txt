@@ -1,6 +1,32 @@
-IF( NOT snark_build_python )
+MACRO( enable_python_testing )
+    EXECUTE_PROCESS( COMMAND rm -f ${CMAKE_CURRENT_SOURCE_DIR}/disabled )
+    MESSAGE( STATUS "${CMAKE_CURRENT_SOURCE_DIR}/disabled has been removed: testing python modules and applications is enabled" )
+ENDMACRO( enable_python_testing )
+
+MACRO( disable_python_testing )
     EXECUTE_PROCESS( COMMAND touch ${CMAKE_CURRENT_SOURCE_DIR}/disabled )
     MESSAGE( STATUS "disabled file has been dropped in ${CMAKE_CURRENT_SOURCE_DIR}: testing python modules and applications is disabled" )
+ENDMACRO( disable_python_testing )
+
+MACRO( check_python_module module )
+    EXECUTE_PROCESS( COMMAND ${PYTHON} -c "import ${module}; print( ${module}.__version__ );"
+        RESULT_VARIABLE MODULE_EXIT_CODE
+        OUTPUT_VARIABLE MODULE_VERSION_STRING
+        ERROR_VARIABLE MODULE_ERROR
+        OUTPUT_STRIP_TRAILING_WHITESPACE )
+    IF( MODULE_EXIT_CODE MATCHES 0 )
+        MESSAGE( STATUS "found python ${module} module version ${MODULE_VERSION_STRING}" )
+    ELSE( MODULE_EXIT_CODE MATCHES 0 )
+        MESSAGE( WARNING "python ${module} module not found; install it or disable BUILD_PYTHON_PACKAGES" )
+        MESSAGE( STATUS "snark/python modules and scripts will not be installed" )
+        EXECUTE_PROCESS( COMMAND disable_testing )
+        RETURN()
+    ENDIF( MODULE_EXIT_CODE MATCHES 0 )
+ENDMACRO( check_python_module )
+
+
+IF( NOT snark_build_python )
+    disable_python_testing()
     RETURN()
 ENDIF( NOT snark_build_python )
 
@@ -9,45 +35,14 @@ FIND_PROGRAM( PYTHON "python" )
 IF( NOT PYTHON )
     MESSAGE( WARNING "python not found" )
     MESSAGE( STATUS "snark/python modules and scripts will not be installed" )
-    EXECUTE_PROCESS( COMMAND touch ${CMAKE_CURRENT_SOURCE_DIR}/disabled )
-    MESSAGE( STATUS "disabled file has been dropped in ${CMAKE_CURRENT_SOURCE_DIR}: testing python modules and applications is disabled" )
+    disable_python_testing()
     RETURN()
 ENDIF( NOT PYTHON )
 
-EXECUTE_PROCESS( COMMAND ${PYTHON} -c "import numpy; print( numpy.__version__ );"
-    RESULT_VARIABLE NUMPY_EXIT_CODE
-    OUTPUT_VARIABLE NUMPY_VERSION_STRING
-    ERROR_VARIABLE NUMPY_ERROR
-    OUTPUT_STRIP_TRAILING_WHITESPACE )
-
-IF( NUMPY_EXIT_CODE MATCHES 0 )
-    MESSAGE( STATUS "found python numpy module version ${NUMPY_VERSION_STRING}" )
-ELSE( NUMPY_EXIT_CODE MATCHES 0 )
-    MESSAGE( WARNING "python numpy module not found; install it or disable BUILD_PYTHON_PACKAGES" )
-    MESSAGE( STATUS "snark/python modules and scripts will not be installed" )
-    EXECUTE_PROCESS( COMMAND touch ${CMAKE_CURRENT_SOURCE_DIR}/disabled )
-    MESSAGE( STATUS "disabled file has been dropped in ${CMAKE_CURRENT_SOURCE_DIR}: testing python modules and applications is disabled" )
-    RETURN()
-ENDIF( NUMPY_EXIT_CODE MATCHES 0 )
-
-EXECUTE_PROCESS( COMMAND ${PYTHON} -c "import cv2; print( cv2.__version__ );"
-    RESULT_VARIABLE CV2_EXIT_CODE
-    OUTPUT_VARIABLE CV2_VERSION_STRING
-    ERROR_VARIABLE CV2_ERROR
-    OUTPUT_STRIP_TRAILING_WHITESPACE )
-
-IF( CV2_EXIT_CODE MATCHES 0 )
-    MESSAGE( STATUS "found python cv2 module version ${CV2_VERSION_STRING}" )
-ELSE( CV2_EXIT_CODE MATCHES 0 )
-    MESSAGE( WARNING "python cv2 module not found: install it or disable BUILD_PYTHON_PACKAGES" )
-    MESSAGE( STATUS "snark/python modules and scripts will not be installed" )
-    EXECUTE_PROCESS( COMMAND touch ${CMAKE_CURRENT_SOURCE_DIR}/disabled )
-    MESSAGE( STATUS "disabled file has been dropped in ${CMAKE_CURRENT_SOURCE_DIR}: testing python modules and applications is disabled" )
-    RETURN()
-ENDIF( CV2_EXIT_CODE MATCHES 0 )
-
-EXECUTE_PROCESS( COMMAND rm -f ${CMAKE_CURRENT_SOURCE_DIR}/disabled )
-MESSAGE( STATUS "${CMAKE_CURRENT_SOURCE_DIR}/disabled has been removed: testing python modules and applications is enabled" )
+check_python_module( comma )
+check_python_module( numpy )
+check_python_module( cv2 )
+enable_python_testing()
 
 SET( PYTHON_PACKAGE_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX} CACHE STRING "install prefix for python packages, leave empty for python default prefix" )
 
