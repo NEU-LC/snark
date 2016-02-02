@@ -1,11 +1,11 @@
-__author__ = 'suchet'
+#!/usr/bin/python
 
+__author__ = 'suchet'
 
 import sys
 import datetime
 import numpy as np
 import Pysolar
-
 
 def logStrToTime(strTime):
     """
