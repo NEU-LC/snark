@@ -3,4 +3,4 @@
 # Strip comments and blank lines, then feed stdin through solar-sun-position
 sed -r 's/#.*//;s/[ \t]*$//' | grep -v '^$' \
     | solar-sun-position \
-    | name-value-from-csv elevation,azimuth,body/elevation,body/azimuth --prefix output --line-number
+    | name-value-from-csv input/timestamp,input/latitude,input/longitude,elevation,azimuth --prefix output --line-number

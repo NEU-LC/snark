@@ -1,0 +1,4 @@
+The two sets of tests are:
+
+position - input is timestamp,latitude,longitude
+body_angle - input is timestamp,latitude,longitude,roll,pitch,yaw

@@ -197,7 +197,7 @@ def sun_position():
     """
 
     for line in sys.stdin:
-        csv_values = line.split(',')
+        csv_values = line.strip().split(',')
         timestr, latitude, longitude = csv_values[:3]
 
         # Evaluate the sun position
@@ -211,7 +211,7 @@ def sun_position():
             output += [elevation_body, azimuth_body]
 
         # Print to stdout
-        print (','.join([str(x) for x in output]))
+        print (','.join([str(x) for x in csv_values + output]))
 
 
 if __name__ == '__main__':
