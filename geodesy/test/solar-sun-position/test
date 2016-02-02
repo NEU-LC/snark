@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# Strip comments and blank lines, then feed stdin through solar-sun-position
+sed -r 's/#.*//;s/[ \t]*$//' | grep -v '^$' \
+    | solar-sun-position \
+    | name-value-from-csv elevation,azimuth,body/elevation,body/azimuth --prefix output --line-number

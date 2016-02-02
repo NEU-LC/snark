@@ -1,0 +1,19 @@
+# Northern hemisphere summer solstice (midday)
+20150621T120000,23.44,0   # northern hemisphere
+20150621T120000,0,0       # equator
+20150621T120000,-23.44,0  # southern hemisphere
+
+# Northern hemisphere winter solstice (midday)
+20151222T120000,23.44,0   # northern hemisphere
+20151222T120000,0,0       # equator            
+20151222T120000,-23.44,0  # southern hemisphere
+
+# Northern hemisphere summer solstice (midday), with body angle
+20150621T120000,23.44,0,10,10,10   # northern hemisphere
+20150621T120000,0,0,10,10,10       # equator
+20150621T120000,-23.44,0,10,10,10  # southern hemisphere
+
+# Northern hemisphere winter solstice (midday), with body angle
+20151222T120000,23.44,0,10,10,10   # northern hemisphere
+20151222T120000,0,0,10,10,10       # equator            
+20151222T120000,-23.44,0,10,10,10  # southern hemisphere
