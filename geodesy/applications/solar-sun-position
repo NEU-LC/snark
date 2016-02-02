@@ -13,7 +13,7 @@ def datetime_str_to_datetime(datetime_str):
     """
     t_str = '-'.join([datetime_str[0:4],datetime_str[4:6], datetime_str[6:9]])
     t_str += ':'.join((datetime_str[9:11], datetime_str[11:13], datetime_str[13:])) + 'Z'
-    return np.datetime64(np.datetime64(t_str).astype(datetime.datetime))
+    return np.datetime64(t_str, 'us')
 
 def lat_long_to_elaz(latitude, longitude, utc_datetime):
     """
