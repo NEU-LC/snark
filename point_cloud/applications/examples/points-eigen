@@ -41,7 +41,7 @@ comma_path_value_to_var --prefix=options <<< $options
 filter="$1"
 filter_fields="x,y,z"
 comma_path_value_to_var --prefix=filter < <( echo "filename=$filter" | tr ';' '\n' )
-filter_parameters=( $( echo "$filter" | tr ';' '\n' | grep '=' | tr '\n' ';' ) )
+filter_parameters="$( echo "$filter" | tr ';' '\n' | grep '=' | tr '\n' ';' | sed 's/;$//' )"
 [[ -z "$options_normalize" ]] || normalize="--normalize"
 
 function expand_fields()
