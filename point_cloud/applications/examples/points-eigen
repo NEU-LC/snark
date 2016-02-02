@@ -1,0 +1,83 @@
+#!/bin/bash
+
+source $( type -p comma-application-util )
+
+function description()
+{
+    cat <<eof
+--binary=[<format>]; input binary format
+--fields=<fields>; default=x,y,z,id; input fields
+--normalize; normalize eigen values
+--output-fields; output fields; todo
+--output-format; output format; todo
+--radius=<metres>; point neighbourhood radius
+--view; run view-points at the end
+eof
+}
+
+function usage()
+{
+    cat <<eof
+
+todo
+    
+usage: points-eigen <filename>[;<csv_options>] [<filter_filename>] <options>
+
+options
+$( description | sed 's/^/    /' )
+
+examples
+    todo
+
+eof
+    exit
+}
+
+options_fields="x,y,z,id"
+if (( $( comma_options_has --help $@ ) || $( comma_options_has -h $@ ) )) ; then usage ; fi
+options="$( description | comma-options-to-name-value ${@:2} ; comma_status_ok || exit 1 )"
+comma_status_ok || exit 1
+comma_path_value_to_var --prefix=options <<< "$options"
+filter="$1"
+filter_fields="x,y,z"
+comma_path_value_to_var --prefix=filter < <( echo "filename=$filter" | tr ';' '\n' )
+filter_parameters="$( echo "$filter" | tr ';' '\n' | grep '=' | tr '\n' ';' | sed 's/;$//' )"
+[[ -z "$options_normalize" ]] || normalize="--normalize"
+
+function expand_fields()
+{
+    local fields=$1
+    local binary=$2
+    local count=$( echo $fields | tr ',' '\n' | wc -l )
+    if [[ -n "$binary" ]] ; then
+        local full_count=$( csv-size $binary --count )
+    else
+        read line
+        local full_count=$( echo $line | tr ',' '\n' | wc -l )
+    fi
+    local diff=$(( $full_count - $count ))
+    echo "$fields$( python -c "print ',' * $diff" )"
+}
+
+function do_cat() { [[ -z "$2" ]] || echo $2 ; cat $1 ; }
+
+[[ -n "$options_binary" ]] || read input_line
+[[ -n "$filter_binary" ]] || read filter_line < $filter_filename
+options_fields=$( echo $input_line | expand_fields $options_fields $options_binary | csv-fields clear --except x,y,z,id )
+filter_fields=$( echo $filter_line | expand_fields $filter_fields $filter_binary | csv-fields clear --except x,y,z )
+points_calc_fields="$( echo $options_fields | csv-fields prefix --path v ),$( echo $filter_fields | csv-fields prefix --path u )"
+math_eigen_fields="$( echo $points_calc_fields | csv-fields rename --fields v/id --to block ),data[0],data[1],data[2]"
+if [[ -n "$options_binary" ]] ; then
+    points_join_binary="--binary=$options_binary"
+    points_calc_binary="--binary=$options_binary,$filter_binary"
+    math_eigen_binary="--binary=$points_calc_binary,4d,ui"
+fi
+
+do_cat - "$input_line" \
+    | points-join --all \
+                  --radius=$options_radius \
+                  --fields=$options_fields \
+                  $points_join_binary \
+                  <( do_cat $filter_filename "$filter_line" )";$filter_parameters" \
+    | points-calc subtract --fields=$points_calc_fields $points_calc_binary \
+    | math-eigen --fields=$math_eigen_fields $math_eigen_binary $normalize
