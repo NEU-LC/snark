@@ -7,12 +7,12 @@ import datetime
 import numpy as np
 import Pysolar
 
-def logStrToTime(strTime):
+def datetime_str_to_datetime(datetime_str):
     """
     Convert log time string to np.datetime format
     """
-    t_str = '-'.join([strTime[0:4],strTime[4:6], strTime[6:9]])
-    t_str += ':'.join((strTime[9:11], strTime[11:13], strTime[13:])) + 'Z'
+    t_str = '-'.join([datetime_str[0:4],datetime_str[4:6], datetime_str[6:9]])
+    t_str += ':'.join((datetime_str[9:11], datetime_str[11:13], datetime_str[13:])) + 'Z'
     return np.datetime64(np.datetime64(t_str).astype(datetime.datetime))
 
 def lat_long_to_elaz(latitude, longitude, utc_datetime):
@@ -188,7 +188,7 @@ def convert_to_body(elevation, azimuth, roll, pitch, yaw):
     return elevation_BODY, azimuth_BODY
 
 
-def eval_sunpos_from_stdin():
+def sun_position():
     """
     Read stdin and evaluate the sun position - output to stdout
     sys.stdin needs to be csv data containing log time, latitude and longitude
@@ -201,7 +201,7 @@ def eval_sunpos_from_stdin():
         timestr, latitude, longitude = csv_values[:3]
 
         # Evaluate the sun position
-        elevation_ned, azimuth_ned = lat_long_to_elaz(float(latitude), float(longitude), logStrToTime(timestr).astype(datetime.datetime))
+        elevation_ned, azimuth_ned = lat_long_to_elaz(float(latitude), float(longitude), datetime_str_to_datetime(timestr).astype(datetime.datetime))
         output = [elevation_ned, azimuth_ned]
 
         # Evaluate the relative position of the sun if vehicle position is given
@@ -216,4 +216,4 @@ def eval_sunpos_from_stdin():
 
 if __name__ == '__main__':
     # Evalute position using stdin
-    eval_sunpos_from_stdin()
+    sun_position()
