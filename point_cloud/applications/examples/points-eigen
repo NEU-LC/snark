@@ -37,7 +37,7 @@ options_fields="x,y,z,id"
 if (( $( comma_options_has --help $@ ) || $( comma_options_has -h $@ ) )) ; then usage ; fi
 options="$( description | comma-options-to-name-value ${@:2} ; comma_status_ok || exit 1 )"
 comma_status_ok || exit 1
-comma_path_value_to_var --prefix=options <<< $options
+comma_path_value_to_var --prefix=options <<< "$options"
 filter="$1"
 filter_fields="x,y,z"
 comma_path_value_to_var --prefix=filter < <( echo "filename=$filter" | tr ';' '\n' )
