@@ -57,4 +57,6 @@ add_executable( points-rays points-rays.cpp )
 target_link_libraries( points-rays snark_math snark_math_spherical_geometry ${comma_ALL_LIBRARIES} tbb ) #profiler )
 install( TARGETS points-rays RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
 
+install( PROGRAMS examples/points-eigen DESTINATION ${snark_INSTALL_BIN_DIR} )
+
 add_subdirectory(detail)
