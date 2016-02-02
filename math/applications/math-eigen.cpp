@@ -138,44 +138,6 @@ template <> struct traits< snark::eigen::output_t >
 
 } } // namespace comma { namespace visiting {
 
-// Eigen::VectorXf normalize(Eigen::VectorXf vec) {
-//   for (int i = 0; i < vec.size(); i++) { // normalize each feature.
-//       vec[i] = (vec[i] - minCoeffs[i]) / scalingFactors[i];
-//   }
-//   return vec;
-// }
-// 
-// // Calculate normalization coefficients (globals of type Eigen::VectorXf). 
-// maxCoeffs = traindata.colwise().maxCoeff();
-// minCoeffs = traindata.colwise().minCoeff();
-// scalingFactors = maxCoeffs - minCoeffs;
-// 
-// // For each datapoint.
-// for (int i = 0; i < traindata.rows(); i++) { // Normalize each datapoint.
-//   traindata.row(i) = normalize(traindata.row(i));
-// }
-// 
-// // Mean centering data.
-// Eigen::VectorXf featureMeans = traindata.colwise().mean();
-// Eigen::MatrixXf centered = traindata.rowwise() - featureMeans;
-// 
-// // Compute the covariance matrix.
-// Eigen::MatrixXf cov = centered.adjoint() * centered;
-// cov = cov / (traindata.rows() - 1);
-// 
-// Eigen::SelfAdjointEigenSolver<Eigen::MatrixXf> eig(cov);
-// // Normalize eigenvalues to make them represent percentages.
-// Eigen::VectorXf normalizedEigenValues =  eig.eigenvalues() / eig.eigenvalues().sum();
-// 
-// 
-// // Get the two major eigenvectors and omit the others.
-// Eigen::MatrixXf evecs = eig.eigenvectors();
-// Eigen::MatrixXfpcaTransform = evecs.rightCols(2);
-// 
-// 
-// // Map the dataset in the new two dimensional space.
-// traindata = traindata * pcaTransform;
-
 int main( int ac, char** av )
 {
     try
@@ -233,7 +195,7 @@ int main( int ac, char** av )
                 const snark::eigen::input_t* p = istream.read();
                 if( !p || ( !buffer.empty() && buffer.front().block != p->block ) )
                 {
-                    if( buffer.size() == 1 ) { std::cerr << "math-eigen: on block " << buffer.front().block << ": expected block with at least two entries, got only one" << std::endl; return 1; }
+                    //if( buffer.size() == 1 ) { std::cerr << "math-eigen: on block " << buffer.front().block << ": expected block with at least two entries, got only one" << std::endl; return 1; }
                     matrix_t sample( buffer.size(), *size );
                     for( std::size_t i = 0; i < buffer.size(); ++i ) // todo: hm... dodgy? use Eigen::Map instead?
                     {
@@ -245,9 +207,6 @@ int main( int ac, char** av )
                     Eigen::VectorXd values = solver.eigenvalues();
                     if( normalize ) { values = values / solver.eigenvalues().sum(); }
                     const matrix_t& vectors = solver.eigenvectors().transpose();
-                    // todo: get the two major eigenvectors and omit the others.
-                    // Eigen::MatrixXf evecs = eig.eigenvectors();
-                    // Eigen::MatrixXfpcaTransform = evecs.rightCols(2);
                     for( std::size_t i = 0; i < *size; ++i )
                     {
                         snark::eigen::output_t output;

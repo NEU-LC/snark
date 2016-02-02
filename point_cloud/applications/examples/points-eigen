@@ -61,8 +61,8 @@ function expand_fields()
 
 function do_cat() { [[ -z "$2" ]] || echo $2 ; cat $1 ; }
 
-[[ -n "$options_binary" ]] || read input_line < <( cat )
-[[ -n "$filter_binary" ]] || read filter_line < <( cat $filter_filename )
+[[ -n "$options_binary" ]] || read input_line
+[[ -n "$filter_binary" ]] || read filter_line < $filter_filename
 options_fields=$( echo $input_line | expand_fields $options_fields $options_binary | csv-fields clear --except x,y,z,id )
 filter_fields=$( echo $filter_line | expand_fields $filter_fields $filter_binary | csv-fields clear --except x,y,z )
 points_calc_fields="$( echo $options_fields | csv-fields prefix --path v ),$( echo $filter_fields | csv-fields prefix --path u )"
