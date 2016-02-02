@@ -4,7 +4,7 @@ from distutils.core import setup
 
 setup(
         name                = 'snark',
-        version             = '1.0',
+        version             = open('snark/version.py').readlines()[-1].strip().split()[-1].strip('\"'),
         description         = 'snark python utilties',
         url                 = 'https://github.com/acfr/snark',
         license             = 'BSD 3-Clause',
