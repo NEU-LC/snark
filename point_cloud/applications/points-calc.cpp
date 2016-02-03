@@ -50,6 +50,58 @@ typedef std::pair< Eigen::Vector3d, Eigen::Vector3d > point_pair_t;
 
 static comma::csv::ascii< Eigen::Vector3d > ascii;
 
+namespace snark { namespace points_calc { namespace saliency {
+
+struct input
+{
+    std::vector< Eigen::Vector3d > eigen_vectors;
+    std::vector< double > eigen_values;
+    
+    input() : eigen_vectors( 3, Eigen::Vector3d::Zero() ), eigen_values( 3, 0 ) {}
+};
+
+struct output
+{
+    struct types { enum values { scatter = 0, linear = 1, planar = 2 }; };
+    
+    Eigen::Vector3d direction;
+    double value;
+    comma::uint32 type;
+    
+    output() : direction( Eigen::Vector3d::Zero() ), value( 0 ), type( types::scatter ) {}
+};
+    
+} } } // namespace snark { namespace points_calc { namespace saliency {
+
+namespace comma { namespace visiting {
+
+template <> struct traits< snark::points_calc::saliency::input >
+{
+    template < typename K, typename V > static void visit( const K&, snark::points_calc::saliency::input& p, V& v )
+    {
+        v.apply( "eigen_vectors", p.eigen_vectors );
+        v.apply( "eigen_values", p.eigen_values );
+    }
+
+    template < typename K, typename V > static void visit( const K&, const snark::points_calc::saliency::input& p, V& v )
+    {
+        v.apply( "eigen_vectors", p.eigen_vectors );
+        v.apply( "eigen_values", p.eigen_values );
+    }
+};
+
+template <> struct traits< snark::points_calc::saliency::output >
+{
+    template < typename K, typename V > static void visit( const K&, const snark::points_calc::saliency::output& p, V& v )
+    {
+        v.apply( "direction", p.direction );
+        v.apply( "value", p.value );
+        v.apply( "type", p.type );
+    }
+};
+
+} } // namespace comma { namespace visiting {
+
 static void usage( bool more = false )
 {
     std::cerr << std::endl;
@@ -133,6 +185,17 @@ static void usage( bool more = false )
     std::cerr << std::endl;
     std::cerr << "        options:" << std::endl;
     std::cerr << "            --point,--to=<x>,<y>,<z>" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    saliency: for each set of eigen values, append saliency (scatterness, linearity, or planarity)" << std::endl;
+    std::cerr << "              todo: cite paper" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "        input fields: todo" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "        output fields: todo" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "        options" << std::endl;
+    std::cerr << "            --epsilon=<epsilon>: epsilon to compare eigen values" << std::endl;
+    std::cerr << "            --types: output types as name-value pairs and exit" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    thin: read input data and thin them down by the given --resolution" << std::endl;
     std::cerr << std::endl;
@@ -482,6 +545,29 @@ int main( int ac, char** av )
                 
                 return 0;
             }
+        }
+        if( operation == "saliency" )
+        {
+            if( options.exists( "--types" ) ) { std::cout << "scatter=" << snark::points_calc::saliency::output::types::scatter << std::endl
+                                                          << "linear=" << snark::points_calc::saliency::output::types::linear << std::endl
+                                                          << "planar=" << snark::points_calc::saliency::output::types::planar << std::endl; return 0; }
+            comma::csv::input_stream< snark::points_calc::saliency::input > istream( std::cin, csv );
+            comma::csv::options output_csv;
+            output_csv.full_xpath = true;
+            if( csv.binary() ) { output_csv.format( "4d,ui" ); }
+            comma::csv::output_stream< snark::points_calc::saliency::output > ostream( std::cout, output_csv );
+            comma::csv::tied< snark::points_calc::saliency::input, snark::points_calc::saliency::output > tied( istream, ostream );
+            while( istream.ready() || std::cin.good() )
+            {
+                const snark::points_calc::saliency::input* p = istream.read();
+                if( !p ) { break; }
+                snark::points_calc::saliency::output output;
+                
+                // todo: calculate
+                
+                tied.append( output );
+            }
+            return 0;
         }
         if( operation == "thin" )
         {
