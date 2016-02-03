@@ -63,6 +63,8 @@ void usage( bool verbose )
     std::cerr << "            binary format: 32-bit unsigned integer for block, doubles for other output fields" << std::endl;
     std::cerr << "        options" << std::endl;
     std::cerr << "            --normalize,-n: output normalized eigen values" << std::endl;
+    std::cerr << "            --rsort,--descending: output eigen vectors and values in descending order of eigen values" << std::endl;
+    std::cerr << "            --sort,-s,--ascending: output eigen vectors and values in ascending order of eigen values" << std::endl;
     std::cerr << "            --single-line-output,--single-line,--single: output eigen vectors and eigen values all as one line:" << std::endl;
     std::cerr << "                                                         vector[0],vector[1],...,value[0],value[1],...,block" << std::endl;
     std::cerr << "            --size: a hint of number of elements in the data vector, ignored, if data indices" << std::endl;
@@ -174,7 +176,7 @@ int main( int ac, char** av )
     {
         comma::command_line_options options( ac, av, usage );
         comma::csv::options csv( options );
-        const std::vector< std::string >& unnamed = options.unnamed( "--flush,--normalize,-n,--single-line-output,--single-line,--single,--verbose,-v" );
+        const std::vector< std::string >& unnamed = options.unnamed( "--flush,--normalize,-n,--sort,-s,--ascending,--rsort,--descending,--single-line-output,--single-line,--single,--verbose,-v" );
         std::string operation = unnamed.empty() ? std::string( "eigen" ) : unnamed[0];
         if( operation == "eigen" )
         {
@@ -211,10 +213,12 @@ int main( int ac, char** av )
                 }
             }
             bool normalize = options.exists( "--normalize,-n" );
+            bool sort = options.exists( "--sort,--ascending,-s,--descending,--rsort" );
+            bool ascending = sort && !options.exists( "--descending,--rsort" );
             comma::csv::options output_csv;
             bool has_block = csv.has_field( "block" );
             output_csv.fields = single_line_output ? has_block ? "vectors,values,block" : "vectors,values"
-                                                   : has_block ? "vector,value,block" : "vector,value";
+                                                   : has_block ? "vector,value,block" : "vector,value";            
             if( csv.binary() )
             {
                 std::string s = boost::lexical_cast< std::string >( single_line_output ? *size * ( *size + 1 ) : ( *size + 1 ) );
@@ -228,6 +232,8 @@ int main( int ac, char** av )
             if( single_line_output ) { single_line_ostream.reset( new comma::csv::output_stream< snark::eigen::single_line_output_t >( std::cout, output_csv ) ); }
             else { ostream.reset( new comma::csv::output_stream< snark::eigen::output_t >( std::cout, output_csv ) ); }
             typedef Eigen::Matrix< double, -1, -1, Eigen::RowMajor > matrix_t;
+            std::vector< unsigned int > indices( *size ); // quick and dirty
+            for( unsigned int i = 0; i < indices.size(); indices[i] = i, ++i );
             while( true )
             {
                 const snark::eigen::input_t* p = istream.read();
@@ -245,12 +251,30 @@ int main( int ac, char** av )
                     Eigen::VectorXd values = solver.eigenvalues();
                     if( normalize ) { values = values / solver.eigenvalues().sum(); }
                     const matrix_t& vectors = solver.eigenvectors().transpose();
+                    if( sort )
+                    {
+                        std::map< double, unsigned int > m; // quick and dirty, watch performance
+                        for( unsigned int i = 0; i < indices.size(); m[ values[i] * ascending ? 1 : -1 ] = i, ++i );
+                        unsigned int i = 0;
+                        for( std::map< double, unsigned int >::const_iterator it = m.begin(); it != m.end(); indices[i] = it->second, ++it, ++i );
+                    }
                     if( single_line_output )
                     {
                         snark::eigen::single_line_output_t output;
                         output.block = buffer.front().block;
-                        ::memcpy( &output.vectors[0], &vectors( 0, 0 ), *size * *size * sizeof( double ) ); // quick and dirty
-                        ::memcpy( &output.values[0], &values[0], *size * sizeof( double ) );
+                        if( sort )
+                        {
+                            for( unsigned int i = 0; i < indices.size(); ++i )
+                            {
+                                output.values[i] = values[ indices[i] ];
+                                ::memcpy( &output.vectors[ indices[i] * *size * sizeof( double ) ], &vectors( i, 0 ), *size * sizeof( double ) ); // quick and dirty
+                            }
+                        }
+                        else
+                        {
+                            ::memcpy( &output.vectors[0], &vectors( 0, 0 ), *size * *size * sizeof( double ) ); // quick and dirty
+                            ::memcpy( &output.values[0], &values[0], *size * sizeof( double ) );
+                        }
                         single_line_ostream->write( output );
                     }
                     else
@@ -259,8 +283,8 @@ int main( int ac, char** av )
                         {
                             snark::eigen::output_t output;
                             output.block = buffer.front().block;
-                            ::memcpy( &output.vector[0], &vectors( i, 0 ), *size * sizeof( double ) );
-                            output.value = values[i];
+                            ::memcpy( &output.vector[0], &vectors( indices[i], 0 ), *size * sizeof( double ) );
+                            output.value = values[ indices[i] ];
                             ostream->write( output );
                         }
                     }
