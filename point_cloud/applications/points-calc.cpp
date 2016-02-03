@@ -64,11 +64,12 @@ struct output
 {
     struct types { enum values { scatter = 0, linear = 1, planar = 2 }; };
     
-    Eigen::Vector3d direction;
+    //Eigen::Vector3d direction;
+    std::vector< double > ordered_eigen_values;
     double value;
     comma::uint32 type;
     
-    output() : direction( Eigen::Vector3d::Zero() ), value( 0 ), type( types::scatter ) {}
+    output() : ordered_eigen_values( 3, 0 ), value( 0 ), type( types::scatter ) {}
 };
     
 } } } // namespace snark { namespace points_calc { namespace saliency {
@@ -94,7 +95,7 @@ template <> struct traits< snark::points_calc::saliency::output >
 {
     template < typename K, typename V > static void visit( const K&, const snark::points_calc::saliency::output& p, V& v )
     {
-        v.apply( "direction", p.direction );
+        v.apply( "ordered_eigen_values", p.ordered_eigen_values );
         v.apply( "value", p.value );
         v.apply( "type", p.type );
     }
@@ -562,8 +563,10 @@ int main( int ac, char** av )
                 const snark::points_calc::saliency::input* p = istream.read();
                 if( !p ) { break; }
                 snark::points_calc::saliency::output output;
+                output.ordered_eigen_values = p->eigen_values;
+                std::sort( output.ordered_eigen_values.begin(), output.ordered_eigen_values.end() );
                 
-                // todo: calculate
+                // todo: calculate value, type, direction
                 
                 tied.append( output );
             }
