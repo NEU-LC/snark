@@ -80,4 +80,4 @@ do_cat - "$input_line" \
                   $points_join_binary \
                   <( do_cat $filter_filename "$filter_line" )";$filter_parameters" \
     | points-calc subtract --fields=$points_calc_fields $points_calc_binary \
-    | math-eigen --fields=$math_eigen_fields $math_eigen_binary $normalize
+    | math-eigen --fields=$math_eigen_fields $math_eigen_binary $normalize --single-line-output
