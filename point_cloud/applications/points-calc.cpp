@@ -43,9 +43,8 @@
 #include "detail/plane-intersection.h"
 #include "detail/vector-calc.h"
 
-//can't declare static; because declared extern in other header source files
-comma::csv::options csv;
-bool verbose;
+static comma::csv::options csv;
+static bool verbose;
 std::string app_name="points-calc";
 typedef std::pair< Eigen::Vector3d, Eigen::Vector3d > point_pair_t;
 
@@ -429,7 +428,7 @@ int main( int ac, char** av )
         const std::string& operation = operations[0];
         if (vector_calc::has_operation(operation))
         {
-            vector_calc::process(operation, options);
+            vector_calc::process(operation, options, csv);
             return 0;
         }
         if( operation == "plane-intersection" )
