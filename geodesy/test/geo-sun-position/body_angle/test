@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Strip comments and blank lines, then feed stdin through solar-sun-position
+# Strip comments and blank lines, then feed stdin through geo-sun-position
 sed -r 's/#.*//;s/[ \t]*$//' | grep -v '^$' \
-    | solar-sun-position \
+    | geo-sun-position \
     | name-value-from-csv input/timestamp,input/latitude,input/longitude,input/roll,input/pitch,input/yaw,elevation,azimuth,body/elevation,body/azimuth --prefix output --line-number
