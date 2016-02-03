@@ -194,7 +194,7 @@ static void usage( bool more = false )
     std::cerr << "        output fields: todo" << std::endl;
     std::cerr << std::endl;
     std::cerr << "        options" << std::endl;
-    std::cerr << "            --epsilon=<epsilon>: epsilon to compare eigen values" << std::endl;
+    std::cerr << "            --epsilon=<epsilon>: epsilon to compare eigen values, fractions of absolute value" << std::endl;
     std::cerr << "            --types: output types as name-value pairs and exit" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    thin: read input data and thin them down by the given --resolution" << std::endl;
