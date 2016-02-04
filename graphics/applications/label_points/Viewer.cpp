@@ -30,10 +30,12 @@
 
 #include <cmath>
 #include <vector>
+#ifndef Q_MOC_RUN
 #include <boost/array.hpp>
 #include <boost/filesystem/operations.hpp>
 #include <boost/lexical_cast.hpp>
 #include <comma/math/compare.h>
+#endif
 #include "Viewer.h"
 
 namespace snark { namespace graphics { namespace View {

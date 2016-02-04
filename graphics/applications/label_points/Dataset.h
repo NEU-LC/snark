@@ -32,10 +32,12 @@
 #define SNARK_GRAPHICS_APPLICATIONS_LABELPOINTS_DATASET_H_
 
 #include <deque>
+#ifndef Q_MOC_RUN
 #include <comma/base/types.h>
 #include <comma/csv/options.h>
-#include <snark/math/interval.h>
-#include <snark/graphics/qt3d/vertex_buffer.h>
+#include "../../../math/interval.h"
+#endif
+#include "../../../graphics/qt3d/vertex_buffer.h"
 #include "PointMap.h"
 #include "PointWithId.h"
 #include <Qt3D/qglpainter.h>

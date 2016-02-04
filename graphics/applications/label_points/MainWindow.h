@@ -36,7 +36,9 @@
 #include <QGridLayout>
 #include <QMenu>
 #include <QCheckBox>
+#ifndef Q_MOC_RUN
 #include <comma/base/types.h>
+#endif
 #include "Actions.h"
 #include "IdEdit.h"
 #include "Viewer.h"

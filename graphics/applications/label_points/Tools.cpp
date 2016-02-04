@@ -29,7 +29,9 @@
 
 
 #include <algorithm>
+#ifndef Q_MOC_RUN
 #include <boost/array.hpp>
+#endif
 #include "Viewer.h"
 #include "Tools.h"
 #include <Qt3D/qglcube.h>

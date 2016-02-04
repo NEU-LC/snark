@@ -34,9 +34,11 @@
 #include <map>
 #include <sstream>
 #include <string>
+#ifndef Q_MOC_RUN
 #include <boost/optional.hpp>
 #include <boost/static_assert.hpp>
 #include <comma/math/compare.h>
+#endif
 
 namespace snark {
 

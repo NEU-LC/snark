@@ -31,13 +31,17 @@
 #ifndef SNARK_GRAPHICS_APPLICATIONS_LABELPOINTS_IDEDIT_H_
 #define SNARK_GRAPHICS_APPLICATIONS_LABELPOINTS_IDEDIT_H_
 
+#ifndef Q_MOC_RUN
 #include <boost/optional.hpp>
+#endif
 #include <qobject.h>
 #include <qlineedit.h>
 #include <QFrame>
 #include <QLabel>
 #include <QLineEdit>
+#ifndef Q_MOC_RUN
 #include <comma/base/types.h>
+#endif
 
 namespace snark { namespace graphics { namespace View {
 

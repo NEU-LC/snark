@@ -31,12 +31,14 @@
 /// @author Vsevolod Vlaskine, Cedric Wohlleber
 
 #include <signal.h>
+#ifndef Q_MOC_RUN
 #include <boost/filesystem/operations.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/thread/thread_time.hpp>
 #include <comma/csv/stream.h>
 #include <comma/name_value/ptree.h>
 #include <comma/visiting/apply.h>
+#endif
 #include "Viewer.h"
 #include <QTimer>
 

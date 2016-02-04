@@ -38,8 +38,10 @@
 #include <Eigen/Core>
 #include <Qt3D/qglview.h>
 #include <QMouseEvent>
+#ifndef Q_MOC_RUN
 #include <comma/visiting/traits.h> // quick and dirty
 #include "coordinates.h"
+#endif
 
 namespace snark { namespace graphics { namespace qt3d {
 

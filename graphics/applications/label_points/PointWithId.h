@@ -31,9 +31,11 @@
 #ifndef SNARK_GRAPHICS_APPLICATIONS_LABELPOINTS_POINTWITHID_H_
 #define SNARK_GRAPHICS_APPLICATIONS_LABELPOINTS_POINTWITHID_H_
 
+#ifndef Q_MOC_RUN
 #include <comma/base/types.h>
 #include <comma/visiting/traits.h>
-#include <snark/visiting/eigen.h>
+#include "../../../visiting/eigen.h"
+#endif
 
 namespace snark { namespace graphics { namespace View {
 
