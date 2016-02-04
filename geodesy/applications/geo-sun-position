@@ -10,17 +10,17 @@ import Pysolar
 import comma.csv
 
 
-def message (msg):
-    sys.stderr.write ("geo-sun-position: %s\n" % msg)
+def message( msg ):
+    sys.stderr.write ( "geo-sun-position: %s\n" % msg )
 
 
-def datetime_to_datetime(datetime):
+def datetime_to_datetime( datetime ):
     """
     Convert log time string to np.datetime format
     """
-    return np.datetime64(datetime, 'us')
+    return np.datetime64( datetime, 'us' )
 
-def lat_long_to_elaz(latitude, longitude, utc_datetime):
+def lat_long_to_elaz( latitude, longitude, utc_datetime ):
     """
     Obtain the sun position using latitude, longitude and time
     :param latitude: in degrees
@@ -37,16 +37,16 @@ def lat_long_to_elaz(latitude, longitude, utc_datetime):
     """
 
     # Calculate azimuth
-    south_azimuth = Pysolar.GetAzimuth(latitude, longitude, utc_datetime=utc_datetime)
+    south_azimuth = Pysolar.GetAzimuth( latitude, longitude, utc_datetime=utc_datetime )
     # Reorient azimuth so that positive measures East from North
-    azimuth = 180 - (south_azimuth+360) % 360
+    azimuth = 180 - ( south_azimuth + 360 ) % 360
 
     # Calculate elevation
-    elevation = Pysolar.GetAltitude(latitude, longitude, utc_datetime=utc_datetime)
+    elevation = Pysolar.GetAltitude( latitude, longitude, utc_datetime=utc_datetime )
 
     return elevation, azimuth
 
-def spherical_to_cartesian(spherical_vect):
+def spherical_to_cartesian( spherical_vect ):
     """Convert the spherical coordinate vector [r, theta, phi] to the Cartesian vector [x, y, z].
 
     The parameter r is the radial distance, theta is the polar angle, and phi is the azimuth.
@@ -59,17 +59,17 @@ def spherical_to_cartesian(spherical_vect):
     """
 
     # Trig alias.
-    sin_theta = np.sin(spherical_vect[:, 1])
+    sin_theta = np.sin( spherical_vect[:, 1] )
 
     # The vector.
-    cart_vect = np.ones(spherical_vect.shape)
-    cart_vect[:, 0] = spherical_vect[:, 0] * np.cos(spherical_vect[:, 2]) * sin_theta
-    cart_vect[:, 1] = spherical_vect[:, 0] * np.sin(spherical_vect[:, 2]) * sin_theta
-    cart_vect[:, 2] = spherical_vect[:, 0] * np.cos(spherical_vect[:, 1])
+    cart_vect = np.ones( spherical_vect.shape )
+    cart_vect[:, 0] = spherical_vect[:, 0] * np.cos( spherical_vect[:, 2] ) * sin_theta
+    cart_vect[:, 1] = spherical_vect[:, 0] * np.sin( spherical_vect[:, 2] ) * sin_theta
+    cart_vect[:, 2] = spherical_vect[:, 0] * np.cos( spherical_vect[:, 1] )
 
     return cart_vect
 
-def angle2dcm(yaw, pitch, roll, input_units='rad', rotation_sequence='321'):
+def angle2dcm( yaw, pitch, roll, input_units='rad', rotation_sequence='321' ):
     """
     Returns a transformation matrix (aka direction cosine matrix or DCM) which
     transforms from navigation to body frame.  Other names commonly used,
@@ -123,12 +123,12 @@ def angle2dcm(yaw, pitch, roll, input_units='rad', rotation_sequence='321'):
     if input_units == 'rad':
         pass
     elif input_units == 'deg':
-        yaw, pitch, roll = np.radians([yaw, pitch, roll])
+        yaw, pitch, roll = np.radians( [yaw, pitch, roll] )
 
     # Build transformation matrix Rnav2body.
-    s_r, c_r = np.sin(roll) , np.cos(roll)
-    s_p, c_p = np.sin(pitch), np.cos(pitch)
-    s_y, c_y = np.sin(yaw)  , np.cos(yaw)
+    s_r, c_r = np.sin( roll ) , np.cos( roll )
+    s_p, c_p = np.sin( pitch ), np.cos( pitch )
+    s_y, c_y = np.sin( yaw )  , np.cos( yaw )
 
     if rotation_sequence == '321':
         # This is equivalent to Rnav2body = R(roll) * R(pitch) * R(yaw)
@@ -137,17 +137,17 @@ def angle2dcm(yaw, pitch, roll, input_units='rad', rotation_sequence='321'):
         Rnav2body = np.matrix([
                 [c_y*c_p               ,  s_y*c_p              , -s_p    ],
                 [-s_y*c_r + c_y*s_p*s_r,  c_y*c_r + s_y*s_p*s_r,  c_p*s_r],
-                [ s_y*s_r + c_y*s_p*c_r, -c_y*s_r + s_y*s_p*c_r,  c_p*c_r]])
+                [ s_y*s_r + c_y*s_p*c_r, -c_y*s_r + s_y*s_p*c_r,  c_p*c_r]
+                ])
 
     else:
         # No other rotation sequence is currently implemented
-        print('WARNING (angle2dcm): requested rotation_sequence is unavailable.')
-        print('                     NaN returned.')
+        message( 'WARNING (angle2dcm): requested rotation_sequence is unavailable - NaN returned.' )
         Rnav2body = np.nan
 
     return Rnav2body
 
-def cartesian_to_spherical(cart_array):
+def cartesian_to_spherical( cart_array ):
     """Convert the Cartesian vector [x, y, z] to spherical coordinates [r, theta, phi].
 
     The parameter r is the radial distance, theta is the polar angle, and phi is the azimuth.
@@ -160,35 +160,35 @@ def cartesian_to_spherical(cart_array):
     """
 
     # The radial distance.
-    r = np.linalg.norm(cart_array, axis=1)
+    r = np.linalg.norm( cart_array, axis=1 )
 
     # Unit vector.
     unit = cart_array / r[..., None]
 
     # The polar angle.
-    theta = np.arccos(unit[:, 2])
+    theta = np.arccos( unit[:, 2] )
 
     # The azimuth.
-    phi = np.arctan2(unit[:,1], unit[:,0])
+    phi = np.arctan2( unit[:,1], unit[:,0] )
 
     # Return the spherical coordinate vector.
-    return np.array([r, theta, phi], np.float64).T
+    return np.array( [r, theta, phi], np.float64 ).T
 
 
-def convert_to_body(elevation, azimuth, roll, pitch, yaw):
+def convert_to_body( elevation, azimuth, roll, pitch, yaw ):
     # Convert to cartesian co-ordinates
-    sunpos_NED_cart = spherical_to_cartesian(np.array([1., np.radians(elevation), np.radians(azimuth)])[None, ...])
+    sunpos_NED_cart = spherical_to_cartesian( np.array( [1., np.radians( elevation ), np.radians( azimuth )])[None, ...] )
 
     # Transform to body frame
-    RMat = angle2dcm(yaw, pitch, roll, input_units='rad', rotation_sequence='321')
-    sunpos_BODY_cart = np.dot(RMat, sunpos_NED_cart.T)
+    RMat = angle2dcm( yaw, pitch, roll, input_units='rad', rotation_sequence='321' )
+    sunpos_BODY_cart = np.dot( RMat, sunpos_NED_cart.T )
 
     # Get azimuth and elevation relative to body frame
-    r, elevation_BODY, azimuth_BODY = cartesian_to_spherical(sunpos_BODY_cart.T)[0]
+    r, elevation_BODY, azimuth_BODY = cartesian_to_spherical( sunpos_BODY_cart.T )[0]
 
-    # Conver to degrees
-    elevation_BODY = np.degrees(elevation_BODY)
-    azimuth_BODY = np.degrees(azimuth_BODY)
+    # Convert to degrees
+    elevation_BODY = np.degrees( elevation_BODY )
+    azimuth_BODY = np.degrees( azimuth_BODY )
 
     return elevation_BODY, azimuth_BODY
 
