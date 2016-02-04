@@ -46,7 +46,7 @@ class ModelReader : public Reader
 {
     public:
         ModelReader( QGLView& viewer
-                   , comma::csv::options& options
+                   , const reader_parameters& params
                    , const std::string& file
                    , bool flip
                    , double scale
