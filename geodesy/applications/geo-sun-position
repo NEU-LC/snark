@@ -3,17 +3,22 @@
 __author__ = 'suchet'
 
 import sys
+import argparse
 import datetime
 import numpy as np
 import Pysolar
+import comma.csv
 
-def datetime_str_to_datetime(datetime_str):
+
+def message (msg):
+    sys.stderr.write ("geo-sun-position: %s\n" % msg)
+
+
+def datetime_to_datetime(datetime):
     """
     Convert log time string to np.datetime format
     """
-    t_str = '-'.join([datetime_str[0:4],datetime_str[4:6], datetime_str[6:9]])
-    t_str += ':'.join((datetime_str[9:11], datetime_str[11:13], datetime_str[13:])) + 'Z'
-    return np.datetime64(t_str, 'us')
+    return np.datetime64(datetime, 'us')
 
 def lat_long_to_elaz(latitude, longitude, utc_datetime):
     """
@@ -188,7 +193,7 @@ def convert_to_body(elevation, azimuth, roll, pitch, yaw):
     return elevation_BODY, azimuth_BODY
 
 
-def sun_position():
+def sun_position( record, output ):
     """
     Read stdin and evaluate the sun position - output to stdout
     sys.stdin needs to be csv data containing log time, latitude and longitude
@@ -196,24 +201,132 @@ def sun_position():
     :return: stdout output
     """
 
-    for line in sys.stdin:
-        csv_values = line.strip().split(',')
-        timestr, latitude, longitude = csv_values[:3]
+    # Evaluate the sun position
+    output['elevation'], output['azimuth'] = lat_long_to_elaz( record['latitude'],
+                                                               record['longitude'],
+                                                               record['time'].astype( datetime.datetime ))
 
-        # Evaluate the sun position
-        elevation_ned, azimuth_ned = lat_long_to_elaz(float(latitude), float(longitude), datetime_str_to_datetime(timestr).astype(datetime.datetime))
-        output = [elevation_ned, azimuth_ned]
+    # Evaluate the relative position of the sun if vehicle position is given
+    try:
+        output['body_elevation'], output['body_azimuth'] = convert_to_body( output['elevation'],
+                                                                            output['azimuth'],
+                                                                            record['roll'],
+                                                                            record['pitch'],
+                                                                            record['yaw'] )
+    except IndexError:
+        pass                    # expected if there are no roll, pitch and yaw fields
 
-        # Evaluate the relative position of the sun if vehicle position is given
-        if len(csv_values) == 6:
-            r, p, y = [float(x) for x in csv_values[3:]]
-            elevation_body, azimuth_body = convert_to_body(elevation_ned, azimuth_ned, r, p, y)
-            output += [elevation_body, azimuth_body]
 
-        # Print to stdout
-        print (','.join([str(x) for x in csv_values + output]))
+# ------------------------------------------------------------
+# Field handling
+
+REQUIRED_FIELDS="time,latitude,longitude"
+OPTIONAL_FIELDS="roll,pitch,yaw"
+
+def field_to_format( field_name ):
+    formats = {
+        'time': 't',
+        'latitude': 'd',
+        'longitude': 'd',
+        'roll': 'd',
+        'pitch': 'd',
+        'yaw': 'd',
+    }
+    return formats.get( field_name, 's[256]' )
+
+class stream:
+    def __init__( self, args ):
+        self.args = args
+        self.csv_options = dict( full_xpath=False,
+                                 flush=self.args.flush,
+                                 delimiter=self.args.delimiter,
+                                 precision=self.args.precision )
+        self.initialize_input()
+        self.initialize_output()
+
+    def initialize_input( self ):
+        field_list = self.args.fields.split(',')
+        named_fields = filter( None, field_list )
+        if not set( REQUIRED_FIELDS.split(',') ).issubset( named_fields ):
+            raise RuntimeError( "%s fields are required" % REQUIRED_FIELDS )
+        if self.args.binary:
+            types = comma.csv.format.to_numpy( self.args.binary )
+            # We have to define all the types, but if we didn't define all the fields add the missing ones
+            # e.g. format=4d; fields=x,y => x,y,,
+            omitted_fields = [''] * ( len( types ) - len( field_list ) )
+            all_fields = [ "__blank{}".format( index ) if not name else name
+                           for index,name in enumerate( field_list + omitted_fields ) ]
+            input_t = comma.csv.struct( ','.join( all_fields ), *types )
+            self.input = comma.csv.stream( input_t, binary=True, **self.csv_options )
+        else:
+            types = comma.csv.format.to_numpy(','.join([ field_to_format(i) for i in named_fields ]))
+            input_t = comma.csv.struct( ','.join( named_fields ), *types )
+            self.input = comma.csv.stream( input_t, fields=self.args.fields, **self.csv_options )
+
+    def initialize_output( self ):
+        fields = 'elevation,azimuth'
+        if set( OPTIONAL_FIELDS.split(',') ).issubset( self.input.fields ):
+            fields += ',body_elevation,body_azimuth'
+        format = ','.join(( 'd', ) * len( fields.split( ',' )))
+        self.output = comma.csv.stream( comma.csv.struct( fields, *comma.csv.format.to_numpy( format )),
+                                        tied=self.input,
+                                        binary=bool( self.args.binary ),
+                                        **self.csv_options )
+
+
+def add_csv_options( parser ):
+    parser.add_argument( "-f", "--fields", default='time,latitude,longitude', metavar='<names>',
+                         help="field names of input stream (default: %(default)s)" )
+    parser.add_argument( "-b", "--binary", default='', metavar='<format>',
+                         help="format for binary stream (default: ascii)" )
+    parser.add_argument( "-d", "--delimiter", default=',', metavar='<char>',
+                         help="csv delimiter of ascii stream (default: %(default)s)" )
+    parser.add_argument( "--precision", default=12, metavar='<precision>',
+                         help="floating point precision of ascii output (default: %(default)s)" )
+    parser.add_argument( "--flush", "--unbuffered", action="store_true",
+                         help="flush stdout after each record (stream is unbuffered)" )
+
+
+def main():
+    description="""
+evaluate sun position and append to input csv stream
+"""
+    epilog="""
+Supported input fields are:
+
+time,latitude,longitude
+
+    Append the sun elevation and azimuth to the input stream.
+
+time,latitude,longitude,roll,pitch,yaw
+
+    Also append the elevation and aximuth relative to the vehicle body as
+    defined by the roll, pitch and yaw.
+
+Field names can occur in any order and can be interspersed with other fields.
+
+examples:
+    echo 20150621T120000.123456,23.44,0 | {script_name}
+    echo 20150621T120000.123456,23.44,0,10,10,10 | {script_name} --fields time,latitude,longitude,roll,pitch,yaw
+""".format( script_name=sys.argv[0].split('/')[-1] )
+    fmt=lambda prog: argparse.RawDescriptionHelpFormatter( prog, max_help_position=50 )
+    parser = argparse.ArgumentParser( description=description,
+                                      epilog=epilog,
+                                      formatter_class=fmt )
+    add_csv_options( parser )
+    args = parser.parse_args()
+
+    comma.csv.time.zone( 'UTC' )
+    try:
+        s = stream( args )
+        output = np.empty( s.input.size, dtype=s.output.struct )
+        for line in s.input.iter( size=1 ):
+            if output.size != line.size: output = np.empty( line.size, dtype=s.output.struct )
+            sun_position( line[0], output )
+            s.output.write( output )
+    except RuntimeError as e:
+        message( "Error: %s" % e )
 
 
 if __name__ == '__main__':
-    # Evalute position using stdin
-    sun_position()
+    main()

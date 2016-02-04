@@ -1,3 +1,6 @@
+fields=time,latitude,longitude
+format=t,2d
+
 # Northern hemisphere summer solstice (midday)
 20150621T120000,23.44,0   # northern hemisphere
 20150621T120000,0,0       # equator

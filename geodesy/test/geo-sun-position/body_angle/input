@@ -1,3 +1,6 @@
+fields=time,latitude,longitude,roll,pitch,yaw
+format=t,5d
+
 # Northern hemisphere summer solstice (midday), with body angle
 20150621T120000,23.44,0,10,10,10   # northern hemisphere
 20150621T120000,0,0,10,10,10       # equator
