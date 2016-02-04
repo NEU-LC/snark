@@ -136,13 +136,6 @@ template <> struct traits< snark::eigen::input_t >
 
 template <> struct traits< snark::eigen::output_t >
 {
-    template < typename K, typename V > static void visit( const K&, snark::eigen::output_t& p, V& v )
-    {
-        v.apply( "vector", p.vector );
-        v.apply( "value", p.value );
-        v.apply( "block", p.block );
-    }
-
     template < typename K, typename V > static void visit( const K&, const snark::eigen::output_t& p, V& v )
     {
         v.apply( "vector", p.vector );
@@ -153,13 +146,6 @@ template <> struct traits< snark::eigen::output_t >
 
 template <> struct traits< snark::eigen::single_line_output_t >
 {
-    template < typename K, typename V > static void visit( const K&, snark::eigen::single_line_output_t& p, V& v )
-    {
-        v.apply( "vectors", p.vectors );
-        v.apply( "values", p.values );
-        v.apply( "block", p.block );
-    }
-
     template < typename K, typename V > static void visit( const K&, const snark::eigen::single_line_output_t& p, V& v )
     {
         v.apply( "vectors", p.vectors );
@@ -218,11 +204,11 @@ int main( int ac, char** av )
             comma::csv::options output_csv;
             bool has_block = csv.has_field( "block" );
             output_csv.fields = single_line_output ? has_block ? "vectors,values,block" : "vectors,values"
-                                                   : has_block ? "vector,value,block" : "vector,value";            
+                                                   : has_block ? "vector,value,block" : "vector,value";
             if( csv.binary() )
             {
                 std::string s = boost::lexical_cast< std::string >( single_line_output ? *size * ( *size + 1 ) : ( *size + 1 ) );
-                output_csv.format( has_block ? s + ",ui" : s );
+                output_csv.format( has_block ? s + "d,ui" : s + "d" );
             }
             std::deque< snark::eigen::input_t > buffer;
             if( !first.empty() ) { buffer.push_back( comma::csv::ascii< snark::eigen::input_t >( csv ).get( first ) ); }
@@ -243,7 +229,7 @@ int main( int ac, char** av )
                     matrix_t sample( buffer.size(), *size );
                     for( std::size_t i = 0; i < buffer.size(); ++i ) // todo: hm... dodgy? use Eigen::Map instead?
                     {
-                        ::memcpy( &sample( i, 0 ), &buffer[i].data[0], buffer[i].data.size() * sizeof( double ) );
+                        ::memcpy( &sample( i, 0 ), &buffer[i].data[0], *size * sizeof( double ) );
                     }
                     matrix_t covariance = sample.adjoint() * sample;
                     covariance = covariance / ( sample.rows() - 1 );                    
@@ -254,7 +240,7 @@ int main( int ac, char** av )
                     if( sort )
                     {
                         std::map< double, unsigned int > m; // quick and dirty, watch performance
-                        for( unsigned int i = 0; i < indices.size(); m[ values[i] * ascending ? 1 : -1 ] = i, ++i );
+                        for( unsigned int i = 0; i < indices.size(); m[ ascending ? values[i] : -values[i] ] = i, ++i );
                         unsigned int i = 0;
                         for( std::map< double, unsigned int >::const_iterator it = m.begin(); it != m.end(); indices[i] = it->second, ++it, ++i );
                     }
@@ -267,7 +253,7 @@ int main( int ac, char** av )
                             for( unsigned int i = 0; i < indices.size(); ++i )
                             {
                                 output.values[i] = values[ indices[i] ];
-                                ::memcpy( &output.vectors[ indices[i] * *size * sizeof( double ) ], &vectors( i, 0 ), *size * sizeof( double ) ); // quick and dirty
+                                ::memcpy( &output.vectors[ i * *size ], &vectors( indices[i], 0 ), *size * sizeof( double ) ); // quick and dirty
                             }
                         }
                         else

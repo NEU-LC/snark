@@ -96,10 +96,11 @@ options_fields=$( echo $input_line | expand_fields $options_fields $options_bina
 filter_fields=$( echo $filter_line | expand_fields $filter_fields $filter_binary | csv-fields clear --except x,y,z )
 points_calc_fields="$( echo $options_fields | csv-fields prefix --path v ),$( echo $filter_fields | csv-fields prefix --path u )"
 math_eigen_fields="$( echo $points_calc_fields | csv-fields rename --fields v/id --to block ),data[0],data[1],data[2]"
+
 if [[ -n "$options_binary" ]] ; then
     points_join_binary="--binary=$options_binary"
     points_calc_binary="--binary=$options_binary,$filter_binary"
-    math_eigen_binary="--binary=$points_calc_binary,4d,ui"
+    math_eigen_binary="--binary=$options_binary,$filter_binary,3d"
 fi
 
 do_cat - "$input_line" \
