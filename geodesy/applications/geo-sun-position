@@ -319,9 +319,9 @@ examples:
     comma.csv.time.zone( 'UTC' )
     try:
         s = stream( args )
-        for line in s.input.iter( size=1 ):
-            output = np.empty( line.size, dtype=s.output.struct )
-            sun_position( line[0], output )
+        for records in s.input.iter( size=1 ):
+            output = np.empty( records.size, dtype=s.output.struct )
+            sun_position( records[0], output )
             s.output.write( output )
     except RuntimeError as e:
         message( "Error: %s" % e )
