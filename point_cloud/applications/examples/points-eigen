@@ -48,15 +48,27 @@ function usage()
 {
     cat <<eof
 
-todo
+for each input point output eigen vectors and eigen values for all the points
+of the filter in a given radius
+
+for each input point, eigen vectors and eigen values are ordered in descending order of eigen values
     
-usage: points-eigen <filename>[;<csv_options>] [<filter_filename>] <options>
+usage: cat points.bin | points-eigen <filter filename>[;<csv_options>] <options> > eigen.bin
 
 options
 $( description | sed 's/^/    /' )
 
 examples
-    todo
+    # number input points
+    cat xyz.bin | csv-paste "-;binary=3d" line-number > numbered.bin
+    # calculate eigen values
+    cat numbered.bin | points-eigen "numbered.bin;binary=3d,ui" --binary=3d,ui --normalize --radius 0.4 > eigen.bin
+    # scale values to view as colours
+    cat eigen.bin | csv-shuffle --fields ,,,,,,,,,v0,v1,v2,id --output-fields v0,v1,v2,id --binary 12d,ui | csv-eval --fields v0,v1,v2 "r=round( v0 * 255 ); g=round( v1 * 255 ); b=round( v2 * 255 )" --binary 3d,ui | csv-shuffle --fields ,,,id,r,g,b --output-fields r,g,b,id --binary=3d,ui,3d > rgb.bin
+    # join colours with the original points
+    cat numbered.bin | csv-join --fields ,,,id --binary 3d,ui "rgb.bin;fields=,,,id;binary=3d,ui" | csv-shuffle --fields x,y,z,id,r,g,b --output-fields x,y,z,r,g,b --binary 3d,ui,3d,ui > coloured.bin
+    # view the result
+    view-points "coloured.bin;fields=x,y,z,r,g,b;binary=6d"
 
 eof
     exit
@@ -64,6 +76,8 @@ eof
 
 options_fields="x,y,z,id"
 if (( $( comma_options_has --help $@ ) || $( comma_options_has -h $@ ) )) ; then usage ; fi
+if (( $( comma_options_has --output-fields $@ ) )) ; then echo "vectors[0]/x,vectors[0]/y,vectors[0]/z,vectors[1]/x,vectors[1]/y,vectors[1]/z,vectors[2]/x,vectors[2]/y,vectors[2]/z,values[0],values[1],values[2],id" ; exit 0 ; fi
+if (( $( comma_options_has --output-format $@ ) )) ; then echo "12d,ui" ; exit 0 ; fi
 options="$( description | comma-options-to-name-value ${@:2} ; comma_status_ok || exit 1 )"
 comma_status_ok || exit 1
 comma_path_value_to_var --prefix=options <<< "$options"
