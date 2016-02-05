@@ -274,6 +274,12 @@ class stream:
                                         **self.csv_options )
 
 
+def bash_completion (parser):
+    print " ".join(
+        [ o for o in parser._option_string_actions.keys()
+          if o != "--bash-completion" ])
+
+
 def parse_args():
     description="""
 evaluate sun position and append to input csv stream
@@ -315,7 +321,16 @@ examples:
     parser.add_argument( "--flush", "--unbuffered", action="store_true",
                          help="flush stdout after each record (stream is unbuffered)" )
 
-    return parser.parse_args()
+    parser.add_argument ('--bash-completion', action='store_true',
+                         help='list arguments.')
+
+    args = parser.parse_args()
+
+    if args.bash_completion:
+        bash_completion( parser )
+        sys.exit( 0 )
+
+    return args
 
 
 def main():
