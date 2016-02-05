@@ -12,13 +12,8 @@ cd output
 sed -e 's/#.*//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' | grep -v '^$' > test-input
 comma_path_value_to_var < <( grep '^[a-z_]*=' test-input )
 
-output_fields=$fields,elevation,azimuth
-output_format=$format,2d
-
-[[ $fields =~ roll ]] && {
-    output_fields+=",body/elevation,body/azimuth"
-    output_format+=",2d"
-}
+output_fields=$( geo-sun-position --fields=$fields --output-fields )
+output_format=$( geo-sun-position --fields=$fields --format=$format --output-format )
 
 grep -v '^[a-z_]*=' test-input \
     | geo-sun-position --fields=$fields \

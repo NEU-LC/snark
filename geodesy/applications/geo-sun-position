@@ -220,8 +220,8 @@ def sun_position( record, output ):
 # ------------------------------------------------------------
 # Field handling
 
-REQUIRED_FIELDS="time,latitude,longitude"
-OPTIONAL_FIELDS="roll,pitch,yaw"
+REQUIRED_FIELDS = ( 'time', 'latitude' ,'longitude' )
+OPTIONAL_FIELDS = ( 'roll', 'pitch', 'yaw' )
 
 def field_to_format( field_name ):
     formats = {
@@ -231,8 +231,22 @@ def field_to_format( field_name ):
         'roll': 'd',
         'pitch': 'd',
         'yaw': 'd',
+        'elevation': 'd',
+        'azimuth': 'd',
+        'body_elevation': 'd',
+        'body_azimuth': 'd',
     }
     return formats.get( field_name, 's[256]' )
+
+
+def output_fields( input_fields ):
+    fields = []
+    if set( REQUIRED_FIELDS ).issubset( input_fields ):
+        fields += [ 'elevation', 'azimuth' ]
+    if set( OPTIONAL_FIELDS ).issubset( input_fields ):
+        fields += [ 'body_elevation', 'body_azimuth' ]
+    return fields
+
 
 class stream:
     def __init__( self, args ):
@@ -247,8 +261,8 @@ class stream:
     def initialize_input( self ):
         field_list = self.args.fields.split(',')
         named_fields = filter( None, field_list )
-        if not set( REQUIRED_FIELDS.split(',') ).issubset( named_fields ):
-            raise RuntimeError( "%s fields are required" % REQUIRED_FIELDS )
+        if not set( REQUIRED_FIELDS ).issubset( named_fields ):
+            raise RuntimeError( "%s fields are required" % ','.join( REQUIRED_FIELDS ))
         if self.args.binary:
             types = comma.csv.format.to_numpy( self.args.binary )
             # We have to define all the types, but if we didn't define all the fields add the missing ones
@@ -264,11 +278,10 @@ class stream:
             self.input = comma.csv.stream( input_t, fields=self.args.fields, **self.csv_options )
 
     def initialize_output( self ):
-        fields = 'elevation,azimuth'
-        if set( OPTIONAL_FIELDS.split(',') ).issubset( self.input.fields ):
-            fields += ',body_elevation,body_azimuth'
-        format = ','.join(( 'd', ) * len( fields.split( ',' )))
-        self.output = comma.csv.stream( comma.csv.struct( fields, *comma.csv.format.to_numpy( format )),
+        fields = output_fields( self.input.fields )
+        format_csv = ','.join([ field_to_format( f ) for f in fields ])
+        self.output = comma.csv.stream( comma.csv.struct( ','.join( fields ),
+                                                          *comma.csv.format.to_numpy( format_csv )),
                                         tied=self.input,
                                         binary=bool( self.args.binary ),
                                         **self.csv_options )
@@ -302,6 +315,8 @@ Field names can occur in any order and can be interspersed with other fields.
 examples:
     echo 20150621T120000.123456,23.44,0 | {script_name}
     echo 20150621T120000.123456,23.44,0,10,10,10 | {script_name} --fields time,latitude,longitude,roll,pitch,yaw
+
+    echo label,time,longitude,latitude | {script_name} --output-fields
 """.format( script_name=sys.argv[0].split('/')[-1] )
 
     fmt=lambda prog: argparse.RawDescriptionHelpFormatter( prog, max_help_position=50 )
@@ -310,13 +325,28 @@ examples:
                                       epilog=epilog,
                                       formatter_class=fmt )
 
-    parser.add_argument( "-f", "--fields", default='time,latitude,longitude', metavar='<names>',
+    parser.add_argument( "-f", "--fields", default="time,latitude,longitude", metavar="<names>",
                          help="field names of input stream (default: %(default)s)" )
-    parser.add_argument( "-b", "--binary", default='', metavar='<format>',
+
+    parser.add_argument( "--format", metavar="<types>",
+                         help='''format of input stream:
+                         only required for --output-format with non-default input''' )
+
+    parser.add_argument( "-b", "--binary", default="", metavar="<format>",
                          help="format for binary stream (default: ascii)" )
-    parser.add_argument( "-d", "--delimiter", default=',', metavar='<char>',
+
+    parser.add_argument ("--input-fields", action="store_true",
+                         help="list of possible input fields")
+
+    parser.add_argument ("--output-fields", action="store_true",
+                         help="list of the output fields for a given input")
+
+    parser.add_argument ("--output-format", action="store_true",
+                         help="list of the output types for a given input")
+
+    parser.add_argument( "-d", "--delimiter", default=",", metavar="<char>",
                          help="csv delimiter of ascii stream (default: %(default)s)" )
-    parser.add_argument( "--precision", default=12, metavar='<precision>',
+    parser.add_argument( "--precision", default=12, metavar="<precision>",
                          help="floating point precision of ascii output (default: %(default)s)" )
     parser.add_argument( "--flush", "--unbuffered", action="store_true",
                          help="flush stdout after each record (stream is unbuffered)" )
@@ -335,6 +365,27 @@ examples:
 
 def main():
     args = parse_args()
+
+    if args.input_fields:
+        print "\n".join ( REQUIRED_FIELDS + OPTIONAL_FIELDS )
+        sys.exit( 0 )
+
+    if args.output_fields:
+        input_fields = args.fields.split(',')
+        print ','.join([ f.replace('_','/') for f in input_fields + output_fields( input_fields )])
+        sys.exit( 0 )
+
+    if args.output_format:
+        input_fields = args.fields.split(',')
+        if args.format:
+            input_format = args.format.split(',')
+        elif args.binary:
+            input_format = args.binary.split(',')
+        else:
+            input_format = [ field_to_format(f) for f in input_fields ]
+        print ','.join( input_format + [ field_to_format(f) for f in output_fields( input_fields )])
+        sys.exit( 0 )
+
     comma.csv.time.zone( 'UTC' )
 
     try:
