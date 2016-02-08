@@ -20,7 +20,7 @@ INSTALL(
     ARCHIVE DESTINATION ${snark_INSTALL_LIB_DIR} COMPONENT Development # .a, .lib
 )
 
-add_subdirectory( agd84 )
-add_subdirectory( grs67 )
-add_subdirectory( wgs84 )
-add_subdirectory( applications )
+ADD_SUBDIRECTORY( agd84 )
+ADD_SUBDIRECTORY( grs67 )
+ADD_SUBDIRECTORY( wgs84 )
+ADD_SUBDIRECTORY( applications )
