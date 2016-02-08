@@ -265,12 +265,7 @@ class stream:
             raise RuntimeError( "%s fields are required" % ','.join( REQUIRED_FIELDS ))
         if self.args.binary:
             types = comma.csv.format.to_numpy( self.args.binary )
-            # We have to define all the types, but if we didn't define all the fields add the missing ones
-            # e.g. format=4d; fields=x,y => x,y,,
-            omitted_fields = [''] * ( len( types ) - len( field_list ) )
-            all_fields = [ "__blank{}".format( index ) if not name else name
-                           for index,name in enumerate( field_list + omitted_fields ) ]
-            input_t = comma.csv.struct( ','.join( all_fields ), *types )
+            input_t = comma.csv.struct( self.args.fields, *types )
             self.input = comma.csv.stream( input_t, binary=True, **self.csv_options )
         else:
             types = comma.csv.format.to_numpy(','.join([ field_to_format(i) for i in named_fields ]))
