@@ -236,7 +236,7 @@ def field_to_format( field_name ):
         'body_elevation': 'd',
         'body_azimuth': 'd',
     }
-    return formats.get( field_name, 's[256]' )
+    return formats.get( field_name, 's[0]' )
 
 
 def output_fields( input_fields ):
