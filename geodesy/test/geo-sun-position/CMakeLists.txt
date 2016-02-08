@@ -1,0 +1,15 @@
+MACRO( enable_testing )
+    EXECUTE_PROCESS( COMMAND rm -f ${CMAKE_CURRENT_SOURCE_DIR}/disabled )
+    MESSAGE( STATUS "${CMAKE_CURRENT_SOURCE_DIR}/disabled has been removed: testing is enabled" )
+ENDMACRO( enable_testing )
+
+MACRO( disable_testing )
+    EXECUTE_PROCESS( COMMAND touch ${CMAKE_CURRENT_SOURCE_DIR}/disabled )
+    MESSAGE( STATUS "disabled file has been dropped in ${CMAKE_CURRENT_SOURCE_DIR}: testing is disabled" )
+ENDMACRO( disable_testing )
+
+IF( NOT snark_build_python )
+    DISABLE_TESTING()
+ELSE()
+    ENABLE_TESTING()
+ENDIF()
