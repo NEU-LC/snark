@@ -390,11 +390,10 @@ def main():
 
     try:
         s = stream( args )
-        # This could be more efficient (removing "size=1") if sun_position()
-        # handled numpy arrays rather than just single records
-        for records in s.input.iter( size=1 ):
+        for records in s.input.iter():
             output = np.empty( records.size, dtype=s.output.struct )
-            sun_position( records[0], output )
+            for i, record in enumerate( records ):
+                sun_position( record, output[i] )
             s.output.write( output )
     except RuntimeError as e:
         message( "Error: %s" % e )
