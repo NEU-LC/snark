@@ -260,17 +260,16 @@ class stream:
 
     def initialize_input( self ):
         field_list = self.args.fields.split(',')
-        named_fields = filter( None, field_list )
-        if not set( REQUIRED_FIELDS ).issubset( named_fields ):
+        if not set( REQUIRED_FIELDS ).issubset( field_list ):
             raise RuntimeError( "%s fields are required" % ','.join( REQUIRED_FIELDS ))
         if self.args.binary:
             types = comma.csv.format.to_numpy( self.args.binary )
             input_t = comma.csv.struct( self.args.fields, *types )
             self.input = comma.csv.stream( input_t, binary=True, **self.csv_options )
         else:
-            types = comma.csv.format.to_numpy(','.join([ field_to_format(i) for i in named_fields ]))
-            input_t = comma.csv.struct( ','.join( named_fields ), *types )
-            self.input = comma.csv.stream( input_t, fields=self.args.fields, **self.csv_options )
+            types = comma.csv.format.to_numpy(','.join([ field_to_format(i) for i in field_list ]))
+            input_t = comma.csv.struct( self.args.fields, *types )
+            self.input = comma.csv.stream( input_t, **self.csv_options )
 
     def initialize_output( self ):
         fields = output_fields( self.input.fields )
