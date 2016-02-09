@@ -41,15 +41,17 @@
 #include <sstream>
 #include <limits>
 #include <math.h>
+#ifndef Q_MOC_RUN
 #include <boost/filesystem/operations.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/scoped_ptr.hpp>
 #include <boost/optional.hpp>
 #include <comma/string/string.h>
 #include <comma/csv/stream.h>
+#endif
 #include "../label_points/PointWithId.h"
 
-#include <snark/graphics/qt3d/view.h>
+#include "../../qt3d/view.h"
 
 #include "Dataset.h"
 #include "PointWithId.h"

@@ -52,12 +52,6 @@ struct reader_parameters
     std::size_t size;
     unsigned int point_size;
 
-    reader_parameters( const comma::csv::options& options )
-        : options( options )
-        , size( 1 )
-        , point_size( 1 )
-    {}
-
     reader_parameters( const comma::csv::options& options, const std::string& title, std::size_t size, unsigned int point_size )
         : options( options )
         , title( title )

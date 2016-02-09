@@ -1,11 +1,8 @@
-#ifndef DETAIL_VECTOR_CALC_H
+#ifndef SNARK_POINT_CLOUD_APPLICATIONS_DETAIL_VECTOR_CALC_H
 #define DETAIL_VECTOR_CALC_H
 #include <iostream>
 #include <comma/csv/stream.h>
 #include <snark/visiting/eigen.h>
-
-extern comma::csv::options csv;
-extern bool verbose;
 
 struct vector_calc
 {
@@ -71,7 +68,7 @@ struct vector_calc
     {
         return (operation=="cross") || (operation=="dot") || (operation=="norm") || (operation=="scale") || (operation=="add") || (operation=="subtract") || (operation=="normal");
     }
-    static void process(const std::string& operation, const comma::command_line_options& options)
+    static void process(const std::string& operation, const comma::command_line_options& options, const comma::csv::options& csv)
     {
         if(operation=="cross")
         {

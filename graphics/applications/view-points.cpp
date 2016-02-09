@@ -413,13 +413,13 @@ boost::shared_ptr< snark::graphics::View::Reader > makeReader( QGLView& viewer
             model_options m = comma::name_value::parser( ';', '=' ).get< model_options >( properties );
             m.filename = shape;
             if( !boost::filesystem::exists( m.filename ) ) { COMMA_THROW( comma::exception, "file does not exist: " << m.filename ); }
-            boost::shared_ptr< snark::graphics::View::Reader > reader( new snark::graphics::View::ModelReader( viewer, param.options, shape, m.flip, m.scale, coloured, label ) );
+            boost::shared_ptr< snark::graphics::View::Reader > reader( new snark::graphics::View::ModelReader( viewer, param, shape, m.flip, m.scale, coloured, label ) );
             reader->show( show );
             return reader;
         }
         else
         {
-            boost::shared_ptr< snark::graphics::View::Reader > reader( new snark::graphics::View::TextureReader( viewer, param.options, image_options ) );
+            boost::shared_ptr< snark::graphics::View::Reader > reader( new snark::graphics::View::TextureReader( viewer, param, image_options ) );
             reader->show( show );
             return reader;
         }

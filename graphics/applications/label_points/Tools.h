@@ -31,14 +31,18 @@
 #ifndef SNARK_GRAPHICS_APPLICATIONS_LABELPOINTS_TOOLS_H_
 #define SNARK_GRAPHICS_APPLICATIONS_LABELPOINTS_TOOLS_H_
 
+#ifndef Q_MOC_RUN
 #include <boost/optional.hpp>
 #include <boost/scoped_ptr.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
+#endif
 #include <qcursor.h>
 #include <qevent.h>
 #include <qobject.h>
+#ifndef Q_MOC_RUN
 #include <comma/base/types.h>
-#include <snark/math/interval.h>
+#include "../../../math/interval.h"
+#endif
 #include <Eigen/Core>
 #include <Qt3D/qcolor4ub.h>
 #include <Qt3D/qglpainter.h>

@@ -29,7 +29,9 @@
 
 
 #include <sstream>
+#ifndef Q_MOC_RUN
 #include <boost/lexical_cast.hpp>
+#endif
 #include <QHBoxLayout>
 #include "IdEdit.h"
 #include "Tools.h"

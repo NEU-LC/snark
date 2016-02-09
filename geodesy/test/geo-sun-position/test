@@ -1,0 +1,28 @@
+#!/bin/bash
+
+# Test the geo-sun-position application in both ascii and binary mode
+
+source $( type -p comma-application-util )
+
+[[ -d output ]] || mkdir output
+
+cd output
+
+# Strip leading and trailing white-space, comments and blank lines
+sed -e 's/#.*//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' | grep -v '^$' > test-input
+comma_path_value_to_var < <( grep '^[a-z_]*=' test-input )
+
+output_fields=$( geo-sun-position --fields=$fields --output-fields )
+output_format=$( geo-sun-position --fields=$fields --format=$format --output-format )
+
+grep -v '^[a-z_]*=' test-input \
+    | geo-sun-position --fields=$fields \
+    | name-value-from-csv $output_fields --prefix ascii --line-number \
+    | csv-quote --unquote --delimiter = | csv-quote --delimiter = --fields ,v
+
+grep -v '^[a-z_]*=' test-input \
+    | csv-to-bin $format \
+    | geo-sun-position --fields=$fields --binary=$format \
+    | csv-from-bin $output_format \
+    | name-value-from-csv $output_fields --prefix binary --line-number \
+    | csv-quote --unquote --delimiter = | csv-quote --delimiter = --fields ,v

@@ -396,7 +396,7 @@ SET(CPACK_PACKAGE_CONTACT "t.teo@acfr.usyd.edu.au")
 
 
 IF( snark_build_python AND ADD_PYTHON_PACKAGES_TO_RPM )
-    SET(CPACK_RPM_PACKAGE_REQUIRES "comma")
+    SET(CPACK_RPM_PACKAGE_REQUIRES "comma python numpy python-opencv")
     SET(CPACK_RPM_POST_INSTALL_SCRIPT_FILE "${CMAKE_SOURCE_DIR}/python/snark-rpm-post-install.sh" )
     SET(CPACK_RPM_PRE_INSTALL_SCRIPT_FILE "${CMAKE_SOURCE_DIR}/python/snark-rpm-pre-install.sh" )
 	# Prevents /tmp from permission change when installing RPM package

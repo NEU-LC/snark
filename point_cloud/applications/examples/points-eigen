@@ -1,0 +1,127 @@
+#!/bin/bash
+
+# This file is part of comma, a generic and flexible library
+# Copyright (c) 2011 The University of Sydney
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+# 1. Redistributions of source code must retain the above copyright
+#    notice, this list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright
+#    notice, this list of conditions and the following disclaimer in the
+#    documentation and/or other materials provided with the distribution.
+# 3. Neither the name of the University of Sydney nor the
+#    names of its contributors may be used to endorse or promote products
+#    derived from this software without specific prior written permission.
+#
+# NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
+# GRANTED BY THIS LICENSE.  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
+# HOLDERS AND CONTRIBUTORS \"AS IS\" AND ANY EXPRESS OR IMPLIED
+# WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+# BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+# WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+# OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
+# IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+source $( type -p comma-application-util )
+
+function description()
+{
+    cat <<eof
+--binary=[<format>]; input binary format
+--fields=<fields>; default=x,y,z,id; input fields
+--normalize; normalize eigen values
+--output-fields; output fields; todo
+--output-format; output format; todo
+--radius=<metres>; point neighbourhood radius
+--view; run view-points at the end
+eof
+}
+
+function usage()
+{
+    cat <<eof
+
+for each input point output eigen vectors and eigen values for all the points
+of the filter in a given radius
+
+for each input point, eigen vectors and eigen values are ordered in descending order of eigen values
+    
+usage: cat points.bin | points-eigen <filter filename>[;<csv_options>] <options> > eigen.bin
+
+options
+$( description | sed 's/^/    /' )
+
+examples
+    # number input points
+    cat xyz.bin | csv-paste "-;binary=3d" line-number > numbered.bin
+    # calculate eigen values
+    cat numbered.bin | points-eigen "numbered.bin;binary=3d,ui" --binary=3d,ui --normalize --radius 0.4 > eigen.bin
+    # scale values to view as colours
+    cat eigen.bin | csv-shuffle --fields ,,,,,,,,,v0,v1,v2,id --output-fields v0,v1,v2,id --binary 12d,ui | csv-eval --fields v0,v1,v2 "r=round( v0 * 255 ); g=round( v1 * 255 ); b=round( v2 * 255 )" --binary 3d,ui | csv-shuffle --fields ,,,id,r,g,b --output-fields r,g,b,id --binary=3d,ui,3d > rgb.bin
+    # join colours with the original points
+    cat numbered.bin | csv-join --fields ,,,id --binary 3d,ui "rgb.bin;fields=,,,id;binary=3d,ui" | csv-shuffle --fields x,y,z,id,r,g,b --output-fields x,y,z,r,g,b --binary 3d,ui,3d,ui > coloured.bin
+    # view the result
+    view-points "coloured.bin;fields=x,y,z,r,g,b;binary=6d"
+
+eof
+    exit
+}
+
+options_fields="x,y,z,id"
+if (( $( comma_options_has --help $@ ) || $( comma_options_has -h $@ ) )) ; then usage ; fi
+if (( $( comma_options_has --output-fields $@ ) )) ; then echo "vectors[0]/x,vectors[0]/y,vectors[0]/z,vectors[1]/x,vectors[1]/y,vectors[1]/z,vectors[2]/x,vectors[2]/y,vectors[2]/z,values[0],values[1],values[2],id" ; exit 0 ; fi
+if (( $( comma_options_has --output-format $@ ) )) ; then echo "12d,ui" ; exit 0 ; fi
+options="$( description | comma-options-to-name-value ${@:2} ; comma_status_ok || exit 1 )"
+comma_status_ok || exit 1
+comma_path_value_to_var --prefix=options <<< "$options"
+filter="$1"
+filter_fields="x,y,z"
+comma_path_value_to_var --prefix=filter < <( echo "filename=$filter" | tr ';' '\n' )
+filter_parameters="$( echo "$filter" | tr ';' '\n' | grep '=' | tr '\n' ';' | sed 's/;$//' )"
+[[ -z "$options_normalize" ]] || normalize="--normalize"
+
+function expand_fields()
+{
+    local fields=$1
+    local binary=$2
+    local count=$( echo $fields | tr ',' '\n' | wc -l )
+    if [[ -n "$binary" ]] ; then
+        local full_count=$( csv-size $binary --count )
+    else
+        read line
+        local full_count=$( echo $line | tr ',' '\n' | wc -l )
+    fi
+    local diff=$(( $full_count - $count ))
+    echo "$fields$( python -c "print ',' * $diff" )"
+}
+
+function do_cat() { [[ -z "$2" ]] || echo $2 ; cat $1 ; }
+
+[[ -n "$options_binary" ]] || read input_line
+[[ -n "$filter_binary" ]] || read filter_line < $filter_filename
+options_fields=$( echo $input_line | expand_fields $options_fields $options_binary | csv-fields clear --except x,y,z,id )
+filter_fields=$( echo $filter_line | expand_fields $filter_fields $filter_binary | csv-fields clear --except x,y,z )
+points_calc_fields="$( echo $options_fields | csv-fields prefix --path v ),$( echo $filter_fields | csv-fields prefix --path u )"
+math_eigen_fields="$( echo $points_calc_fields | csv-fields rename --fields v/id --to block ),data[0],data[1],data[2]"
+
+if [[ -n "$options_binary" ]] ; then
+    points_join_binary="--binary=$options_binary"
+    points_calc_binary="--binary=$options_binary,$filter_binary"
+    math_eigen_binary="--binary=$options_binary,$filter_binary,3d"
+fi
+
+do_cat - "$input_line" \
+    | points-join --all \
+                  --radius=$options_radius \
+                  --fields=$options_fields \
+                  $points_join_binary \
+                  <( do_cat $filter_filename "$filter_line" )";$filter_parameters" \
+    | points-calc subtract --fields=$points_calc_fields $points_calc_binary \
+    | math-eigen --fields=$math_eigen_fields $math_eigen_binary $normalize --single-line-output --descending

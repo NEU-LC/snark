@@ -114,7 +114,7 @@ void Reader::draw_label( QGLPainter *painter, const QVector3D& position, const Q
            ? ( 0.25 * m_viewer.camera()->viewSize().width() )
            : ( 0.2 * Eigen::Vector3d( world( 0, 3 ) , world( 1, 3 ), world( 2, 3 ) ).norm() );
     painter->modelViewMatrix().scale( scale ); // TODO make size configurable ?
-    drawText( painter, &label[0], color );
+    drawText( painter, QString::fromUtf8( &label[0] ), color );
     painter->modelViewMatrix().pop();
 }
 

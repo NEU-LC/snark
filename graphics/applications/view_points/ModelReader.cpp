@@ -37,19 +37,19 @@ namespace snark { namespace graphics { namespace View {
 
 /// constructor
 /// @param viewer reference to the viewer
-/// @param options csv options for the position input
+/// @param params csv options for the position input
 /// @param file model filename
 /// @param flip flip model around the x-axis
 /// @param c color used for the label
 /// @param label text displayed as label
 ModelReader::ModelReader( QGLView& viewer
-                        , comma::csv::options& options
+                        , const reader_parameters& params
                         , const std::string& file
                         , bool flip
                         , double scale
                         , snark::graphics::View::coloured* c
                         , const std::string& label )
-    : Reader( viewer, reader_parameters( options ), c, label, QVector3D( 0, 1, 1 ) ) // TODO make offset configurable ?
+    : Reader( viewer, reader_parameters( params ), c, label, QVector3D( 0, 1, 1 ) ) // TODO make offset configurable ?
     , m_file( file )
     , m_flip( flip )
     , scale_( scale )

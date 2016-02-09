@@ -33,7 +33,9 @@
 #ifndef SNARK_GRAPHICS_APPLICATIONS_LABELPOINTS_ACTION_H_
 #define SNARK_GRAPHICS_APPLICATIONS_LABELPOINTS_ACTION_H_
 
+#ifndef Q_MOC_RUN
 #include <boost/function.hpp>
+#endif
 #include <qaction.h>
 #include <qactiongroup.h>
 #include <qicon.h>

@@ -1,0 +1,398 @@
+#!/usr/bin/python
+
+__author__ = 'suchet'
+
+import sys
+import argparse
+import datetime
+import numpy as np
+import Pysolar
+import comma.csv
+
+
+def message( msg ):
+    sys.stderr.write ( "geo-sun-position: %s\n" % msg )
+
+
+def datetime_to_datetime( datetime ):
+    """
+    Convert log time string to np.datetime format
+    """
+    return np.datetime64( datetime, 'us' )
+
+def lat_long_to_elaz( latitude, longitude, utc_datetime ):
+    """
+    Obtain the sun position using latitude, longitude and time
+    :param latitude: in degrees
+    :param longitude: in degrees
+    :param utc_datetime: in datetime.datetime format
+    :return: azimuth and elevation of the sun
+
+    Notes:
+    ------------
+    Azimuth and elevation is calculated according to the Pysolar library.
+    Documentation: http://docs.pysolar.org/en/latest/
+    The authors measure positive azimuth as estimates east of south. This is converted instead to positive estimates
+    measured EAST from NORTH instead.
+    """
+
+    # Calculate azimuth
+    south_azimuth = Pysolar.GetAzimuth( latitude, longitude, utc_datetime=utc_datetime )
+    # Reorient azimuth so that positive measures East from North
+    azimuth = 180 - ( south_azimuth + 360 ) % 360
+
+    # Calculate elevation
+    elevation = Pysolar.GetAltitude( latitude, longitude, utc_datetime=utc_datetime )
+
+    return elevation, azimuth
+
+def spherical_to_cartesian( spherical_vect ):
+    """Convert the spherical coordinate vector [r, theta, phi] to the Cartesian vector [x, y, z].
+
+    The parameter r is the radial distance, theta is the polar angle, and phi is the azimuth.
+
+
+    @param spherical_vect:  The spherical coordinate vector [r, theta, phi].
+    @type spherical_vect:   3D array or list
+    @param cart_vect:       The Cartesian vector [x, y, z].
+    @type cart_vect:        3D array or list
+    """
+
+    # Trig alias.
+    sin_theta = np.sin( spherical_vect[:, 1] )
+
+    # The vector.
+    cart_vect = np.ones( spherical_vect.shape )
+    cart_vect[:, 0] = spherical_vect[:, 0] * np.cos( spherical_vect[:, 2] ) * sin_theta
+    cart_vect[:, 1] = spherical_vect[:, 0] * np.sin( spherical_vect[:, 2] ) * sin_theta
+    cart_vect[:, 2] = spherical_vect[:, 0] * np.cos( spherical_vect[:, 1] )
+
+    return cart_vect
+
+def angle2dcm( yaw, pitch, roll, input_units='rad', rotation_sequence='321' ):
+    """
+    Returns a transformation matrix (aka direction cosine matrix or DCM) which
+    transforms from navigation to body frame.  Other names commonly used,
+    besides DCM, are `Cbody2nav` or `Rbody2nav`.  The rotation sequence
+    specifies the order of rotations when going from navigation-frame to
+    body-frame.  The default is '321' (i.e Yaw -> Pitch -> Roll).
+
+    Parameters
+    ----------
+    yaw   : yaw angle, units of input_units.
+    pitch : pitch angle, units of input_units.
+    roll  : roll angle , units of input_units.
+    input_units: units for input angles {'rad', 'deg'}, optional.
+    rotationSequence: assumed rotation sequence {'321', others can be
+                                                implemented in the future}.
+
+    Returns
+    -------
+    Rnav2body: 3x3 transformation matrix (numpy matrix data type).  This can be
+               used to convert from navigation-frame (e.g NED) to body frame.
+
+    Notes
+    -----
+    Since Rnav2body is a proper transformation matrix, the inverse
+    transformation is simply the transpose.  Hence, to go from body->nav,
+    simply use: Rbody2nav = Rnav2body.T
+
+    Examples:
+    ---------
+    >>> import numpy as np
+    >>> from nav import angle2dcm
+    >>> g_ned = np.matrix([[0, 0, 9.8]]).T # gravity vector in NED frame
+    >>> yaw, pitch, roll = np.deg2rad([90, 15, 0]) # vehicle orientation
+    >>> g_body = Rnav2body * g_ned
+    >>> g_body
+    matrix([[-2.53642664],
+            [ 0.        ],
+            [ 9.4660731 ]])
+
+    >>> g_ned_check = Rnav2body.T * g_body
+    >>> np.linalg.norm(g_ned_check - g_ned) < 1e-10 # should match g_ned
+    True
+
+    Reference
+    ---------
+    [1] Equation 2.4, Aided Navigation: GPS with High Rate Sensors, Jay A. Farrel 2008
+    [2] eul2Cbn.m function (note, this function gives body->nav) at:
+    http://www.gnssapplications.org/downloads/chapter7/Chapter7_GNSS_INS_Functions.tar.gz
+    """
+    # Apply necessary unit transformations.
+    if input_units == 'rad':
+        pass
+    elif input_units == 'deg':
+        yaw, pitch, roll = np.radians( [yaw, pitch, roll] )
+
+    # Build transformation matrix Rnav2body.
+    s_r, c_r = np.sin( roll ) , np.cos( roll )
+    s_p, c_p = np.sin( pitch ), np.cos( pitch )
+    s_y, c_y = np.sin( yaw )  , np.cos( yaw )
+
+    if rotation_sequence == '321':
+        # This is equivalent to Rnav2body = R(roll) * R(pitch) * R(yaw)
+        # where R() is the single axis rotation matrix.  We implement
+        # the expanded form for improved efficiency.
+        Rnav2body = np.matrix([
+                [c_y*c_p               ,  s_y*c_p              , -s_p    ],
+                [-s_y*c_r + c_y*s_p*s_r,  c_y*c_r + s_y*s_p*s_r,  c_p*s_r],
+                [ s_y*s_r + c_y*s_p*c_r, -c_y*s_r + s_y*s_p*c_r,  c_p*c_r]
+                ])
+
+    else:
+        # No other rotation sequence is currently implemented
+        message( 'WARNING (angle2dcm): requested rotation_sequence is unavailable - NaN returned.' )
+        Rnav2body = np.nan
+
+    return Rnav2body
+
+def cartesian_to_spherical( cart_array ):
+    """Convert the Cartesian vector [x, y, z] to spherical coordinates [r, theta, phi].
+
+    The parameter r is the radial distance, theta is the polar angle, and phi is the azimuth.
+
+
+    @param vector:  The Cartesian vector [x, y, z].
+    @type vector:   numpy rank-1, 3D array
+    @return:        The spherical coordinate vector [r, theta, phi].
+    @rtype:         numpy rank-1, 3D array
+    """
+
+    # The radial distance.
+    r = np.linalg.norm( cart_array, axis=1 )
+
+    # Unit vector.
+    unit = cart_array / r[..., None]
+
+    # The polar angle.
+    theta = np.arccos( unit[:, 2] )
+
+    # The azimuth.
+    phi = np.arctan2( unit[:,1], unit[:,0] )
+
+    # Return the spherical coordinate vector.
+    return np.array( [r, theta, phi], np.float64 ).T
+
+
+def convert_to_body( elevation, azimuth, roll, pitch, yaw ):
+    # Convert to cartesian co-ordinates
+    sunpos_NED_cart = spherical_to_cartesian( np.array( [1., np.radians( elevation ), np.radians( azimuth )])[None, ...] )
+
+    # Transform to body frame
+    RMat = angle2dcm( yaw, pitch, roll, input_units='rad', rotation_sequence='321' )
+    sunpos_BODY_cart = np.dot( RMat, sunpos_NED_cart.T )
+
+    # Get azimuth and elevation relative to body frame
+    r, elevation_BODY, azimuth_BODY = cartesian_to_spherical( sunpos_BODY_cart.T )[0]
+
+    # Convert to degrees
+    elevation_BODY = np.degrees( elevation_BODY )
+    azimuth_BODY = np.degrees( azimuth_BODY )
+
+    return elevation_BODY, azimuth_BODY
+
+
+def sun_position( record, output ):
+    """
+    Read stdin and evaluate the sun position - output to stdout
+    sys.stdin needs to be csv data containing log time, latitude and longitude
+    if sys.stdin also contains 3 more entries - roll, pitch, yaw, this function will also output the relative position of the sun from the vehicle
+    :return: stdout output
+    """
+
+    # Evaluate the sun position
+    output['elevation'], output['azimuth'] = lat_long_to_elaz( record['latitude'],
+                                                               record['longitude'],
+                                                               record['time'].astype( datetime.datetime ))
+
+    # Evaluate the relative position of the sun if vehicle position is given
+    try:
+        output['body_elevation'], output['body_azimuth'] = convert_to_body( output['elevation'],
+                                                                            output['azimuth'],
+                                                                            record['roll'],
+                                                                            record['pitch'],
+                                                                            record['yaw'] )
+    except IndexError:
+        pass                    # expected if there are no roll, pitch and yaw fields
+
+
+# ------------------------------------------------------------
+# Field handling
+
+REQUIRED_FIELDS = ( 'time', 'latitude' ,'longitude' )
+OPTIONAL_FIELDS = ( 'roll', 'pitch', 'yaw' )
+
+def field_to_format( field_name ):
+    formats = {
+        'time': 't',
+        'latitude': 'd',
+        'longitude': 'd',
+        'roll': 'd',
+        'pitch': 'd',
+        'yaw': 'd',
+        'elevation': 'd',
+        'azimuth': 'd',
+        'body_elevation': 'd',
+        'body_azimuth': 'd',
+    }
+    return formats.get( field_name, 's[0]' )
+
+
+def output_fields( input_fields ):
+    fields = []
+    if set( REQUIRED_FIELDS ).issubset( input_fields ):
+        fields += [ 'elevation', 'azimuth' ]
+    if set( OPTIONAL_FIELDS ).issubset( input_fields ):
+        fields += [ 'body_elevation', 'body_azimuth' ]
+    return fields
+
+
+class stream:
+    def __init__( self, args ):
+        self.args = args
+        self.csv_options = dict( full_xpath=False,
+                                 flush=self.args.flush,
+                                 delimiter=self.args.delimiter,
+                                 precision=self.args.precision )
+        self.initialize_input()
+        self.initialize_output()
+
+    def initialize_input( self ):
+        field_list = self.args.fields.split(',')
+        named_fields = filter( None, field_list )
+        if not set( REQUIRED_FIELDS ).issubset( named_fields ):
+            raise RuntimeError( "%s fields are required" % ','.join( REQUIRED_FIELDS ))
+        if self.args.binary:
+            types = comma.csv.format.to_numpy( self.args.binary )
+            input_t = comma.csv.struct( self.args.fields, *types )
+            self.input = comma.csv.stream( input_t, binary=True, **self.csv_options )
+        else:
+            types = comma.csv.format.to_numpy(','.join([ field_to_format(i) for i in named_fields ]))
+            input_t = comma.csv.struct( ','.join( named_fields ), *types )
+            self.input = comma.csv.stream( input_t, fields=self.args.fields, **self.csv_options )
+
+    def initialize_output( self ):
+        fields = output_fields( self.input.fields )
+        format_csv = ','.join([ field_to_format( f ) for f in fields ])
+        self.output = comma.csv.stream( comma.csv.struct( ','.join( fields ),
+                                                          *comma.csv.format.to_numpy( format_csv )),
+                                        tied=self.input,
+                                        binary=bool( self.args.binary ),
+                                        **self.csv_options )
+
+
+def bash_completion (parser):
+    print " ".join(
+        [ o for o in parser._option_string_actions.keys()
+          if o != "--bash-completion" ])
+
+
+def parse_args():
+    description="""
+evaluate sun position and append to input csv stream
+"""
+
+    epilog="""
+Supported input fields are:
+
+time,latitude,longitude
+
+    Append the sun elevation and azimuth to the input stream.
+
+time,latitude,longitude,roll,pitch,yaw
+
+    Also append the elevation and aximuth relative to the vehicle body as
+    defined by the roll, pitch and yaw.
+
+Field names can occur in any order and can be interspersed with other fields.
+
+examples:
+    echo 20150621T120000.123456,23.44,0 | {script_name}
+    echo 20150621T120000.123456,23.44,0,10,10,10 | {script_name} --fields time,latitude,longitude,roll,pitch,yaw
+
+    echo label,time,longitude,latitude | {script_name} --output-fields
+""".format( script_name=sys.argv[0].split('/')[-1] )
+
+    fmt=lambda prog: argparse.RawDescriptionHelpFormatter( prog, max_help_position=50 )
+
+    parser = argparse.ArgumentParser( description=description,
+                                      epilog=epilog,
+                                      formatter_class=fmt )
+
+    parser.add_argument( "-f", "--fields", default="time,latitude,longitude", metavar="<names>",
+                         help="field names of input stream (default: %(default)s)" )
+
+    parser.add_argument( "--format", metavar="<types>",
+                         help='''format of input stream:
+                         only required for --output-format with non-default input''' )
+
+    parser.add_argument( "-b", "--binary", default="", metavar="<format>",
+                         help="format for binary stream (default: ascii)" )
+
+    parser.add_argument ("--input-fields", action="store_true",
+                         help="list of possible input fields")
+
+    parser.add_argument ("--output-fields", action="store_true",
+                         help="list of the output fields for a given input")
+
+    parser.add_argument ("--output-format", action="store_true",
+                         help="list of the output types for a given input")
+
+    parser.add_argument( "-d", "--delimiter", default=",", metavar="<char>",
+                         help="csv delimiter of ascii stream (default: %(default)s)" )
+    parser.add_argument( "--precision", default=12, metavar="<precision>",
+                         help="floating point precision of ascii output (default: %(default)s)" )
+    parser.add_argument( "--flush", "--unbuffered", action="store_true",
+                         help="flush stdout after each record (stream is unbuffered)" )
+
+    parser.add_argument ('--bash-completion', action='store_true',
+                         help='list arguments.')
+
+    args = parser.parse_args()
+
+    if args.bash_completion:
+        bash_completion( parser )
+        sys.exit( 0 )
+
+    return args
+
+
+def main():
+    args = parse_args()
+
+    if args.input_fields:
+        print "\n".join ( REQUIRED_FIELDS + OPTIONAL_FIELDS )
+        sys.exit( 0 )
+
+    if args.output_fields:
+        input_fields = args.fields.split(',')
+        print ','.join([ f.replace('_','/') for f in input_fields + output_fields( input_fields )])
+        sys.exit( 0 )
+
+    if args.output_format:
+        input_fields = args.fields.split(',')
+        if args.format:
+            input_format = args.format.split(',')
+        elif args.binary:
+            input_format = args.binary.split(',')
+        else:
+            input_format = [ field_to_format(f) for f in input_fields ]
+        print ','.join( input_format + [ field_to_format(f) for f in output_fields( input_fields )])
+        sys.exit( 0 )
+
+    comma.csv.time.zone( 'UTC' )
+
+    try:
+        s = stream( args )
+        for records in s.input.iter():
+            output = np.empty( records.size, dtype=s.output.struct )
+            for i, record in enumerate( records ):
+                sun_position( record, output[i] )
+            s.output.write( output )
+    except RuntimeError as e:
+        message( "Error: %s" % e )
+
+
+if __name__ == '__main__':
+    main()

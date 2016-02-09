@@ -1,0 +1,12 @@
+fields=label,time,latitude,longitude
+format=s[10],t,2d
+
+# Northern hemisphere summer solstice (midday)
+test1,20150621T120000,23.44,0   # northern hemisphere
+test2,20150621T120000,0,0       # equator
+test3,20150621T120000,-23.44,0  # southern hemisphere
+
+# Northern hemisphere winter solstice (midday)
+test4,20151222T120000,23.44,0   # northern hemisphere
+test5,20151222T120000,0,0       # equator            
+test6,20151222T120000,-23.44,0  # southern hemisphere

@@ -38,10 +38,14 @@
 //#include <windows.h>
 #endif
 
+#ifndef Q_MOC_RUN
 #include <boost/property_tree/ptree.hpp>
+#endif
 #include <snark/graphics/qt3d/view.h>
+#ifndef Q_MOC_RUN
 #include "CameraReader.h"
 #include "Reader.h"
+#endif
 
 namespace snark { namespace graphics { namespace View {
 

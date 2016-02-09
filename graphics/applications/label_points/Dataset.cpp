@@ -33,8 +33,10 @@
 #endif
 
 #include <fstream>
+#ifndef Q_MOC_RUN
 #include <boost/filesystem/operations.hpp>
 #include <comma/csv/stream.h>
+#endif
 #include "Dataset.h"
 #include "Tools.h"
 

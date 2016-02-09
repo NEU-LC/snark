@@ -30,9 +30,11 @@
 
 #include <limits>
 #include <map>
+#ifndef Q_MOC_RUN
 #include <boost/bind.hpp>
 #include <boost/filesystem/path.hpp>
 #include <boost/lexical_cast.hpp>
+#endif
 #include "qglobal.h"
 #if QT_VERSION >= 0x050000
 #include <QtWidgets>
@@ -41,7 +43,9 @@
 #endif
 #include <QDialog>
 #include <QLabel>
+#ifndef Q_MOC_RUN
 #include <comma/base/types.h>
+#endif
 #include "Actions.h"
 #include "MainWindow.h"
 #include "Viewer.h"
