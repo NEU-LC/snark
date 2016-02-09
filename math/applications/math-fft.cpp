@@ -41,20 +41,26 @@
 std::size_t input_size=0;
 bool filter_input=true;
 bool logarithmic_output=true;
+bool magnitude=false;
+bool real=false;
 
 void usage(bool detail)
 {
     std::cerr<<"    perform fft on input data" << std::endl;
     std::cerr << std::endl;
     std::cerr<< "usage: " << comma::verbose.app_name() << " [ <options> ]" << std::endl;
-    std::cerr<< "    output is binary array of double with half the size of input"  << std::endl;
+    std::cerr<< "    output is binary array of pair (real, complex) of double with half the size of input"  << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    --help,-h: show help" << std::endl;
     std::cerr << "    --verbose,-v: show detailed messages" << std::endl;
     std::cerr << "    --size: size of input vector" << std::endl;
+    std::cerr << "    --magnitude: output magnitude only" << std::endl;
+    std::cerr<< "        output is binary array of double with half the size of input"  << std::endl;
+    std::cerr << "    --real: output real part only" << std::endl;
+    std::cerr<< "        output is binary array of double with half the size of input"  << std::endl;
     std::cerr << "    --no-filter: when not specified, filters input using a cut window to get limited output" << std::endl;
-    std::cerr << "    --linear: output as linear; when not specified, output will be scaled to lograithm of 10" << std::endl;
+    std::cerr << "    --linear: output as linear; when not specified, output will be scaled to lograithm of 10 for --magnitude and --real" << std::endl;
     std::cerr << "    --output-size: print size of output record in bytes and exit" << std::endl;
     std::cerr << "    --output-format: print binary format of output and exit" << std::endl;
     std::cerr << std::endl;
@@ -135,19 +141,47 @@ void calculate(const input_t* input, std::vector<double>& output)
         for(std::size_t i=0;i<input_size;i++) { fft.input[i] = fft.h[i] * input->data[i]; }
     }
     else { memcpy(fft.input, input->data.data(), input->data.size() * sizeof(double)); }
+    
     fft.calculate();
-    for(std::size_t j=0;j<output.size();j++)
+    
+    if(magnitude)
     {
-        double a= std::abs( std::complex<double>( fft.output[j][0], fft.output[j][1] ) );
-        if(logarithmic_output) { a = (a == 0) ? 0 : (std::log10(a)); }
-        output[j]=a;
+        for(std::size_t j=0;j<output.size();j++)
+        {
+            double a= std::abs( std::complex<double>( fft.output[j][0], fft.output[j][1] ) );
+            if(logarithmic_output) { a = (a == 0) ? 0 : (std::log10(a)); }
+            output[j]=a;
+        }
+    }
+    else if(real)
+    {
+        for(std::size_t j=0;j<output.size();j++)
+        {
+            double a= fft.output[j][0];
+            if(logarithmic_output) { a = (a == 0) ? 0 : (std::log10(a)); }
+            output[j]=a;
+        }
+    }
+    else
+    {
+        std::size_t k=0;
+        for(std::size_t j=0;j<output.size()/2;j++)
+        {
+            output[k++]=fft.output[j][0];
+            output[k++]=fft.output[j][1];
+        }
     }
 }
 
 struct app
 {
     std::vector<double> output;
-    app() : output(input_size/2) { }
+    app()
+    {
+        std::size_t len=input_size;
+        if(magnitude || real) { len/=2; }
+        output.resize(len);
+    }
     void process(const comma::csv::options& csv)
     {
         input_t sample;
@@ -186,7 +220,9 @@ int main( int argc, char** argv )
         filter_input=options.exists("--no-filter");
         logarithmic_output=options.exists("--linear");
         input_size=options.value<std::size_t>("--size");
-        std::vector<std::string> unnamed=options.unnamed("--verbose,-v,--output-size,--output-format,--no-filter,--linear,--timestamp", 
+        magnitude=options.exists("--magnitude");
+        real=options.exists("--real");
+        std::vector<std::string> unnamed=options.unnamed("--verbose,-v,--output-size,--output-format,--no-filter,--linear,--timestamp,--magnitude,--real", 
                                                          "--binary,-b,--fields,-f,--delimiter,-d,--size");
         if(unnamed.size() != 0) { COMMA_THROW(comma::exception, "invalid option(s): " << unnamed ); }
         app app;
