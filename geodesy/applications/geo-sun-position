@@ -223,7 +223,8 @@ def sun_position( record, output ):
 REQUIRED_FIELDS = ( 'time', 'latitude' ,'longitude' )
 OPTIONAL_FIELDS = ( 'roll', 'pitch', 'yaw' )
 
-def field_to_format( field_name ):
+
+def fields_to_format( field_names ):
     formats = {
         'time': 't',
         'latitude': 'd',
@@ -236,7 +237,7 @@ def field_to_format( field_name ):
         'body_elevation': 'd',
         'body_azimuth': 'd',
     }
-    return formats.get( field_name, 's[0]' )
+    return [ formats.get( f, 's[0]' ) for f in field_names ]
 
 
 def output_fields( input_fields ):
@@ -265,13 +266,13 @@ class stream:
         if self.args.binary:
             types = comma.csv.format.to_numpy( self.args.binary )
         else:
-            types = comma.csv.format.to_numpy(','.join([ field_to_format(i) for i in field_list ]))
+            types = comma.csv.format.to_numpy( ','.join( fields_to_format( field_list )))
         input_t = comma.csv.struct( self.args.fields, *types )
         self.input = comma.csv.stream( input_t, binary=bool( self.args.binary ), **self.csv_options )
 
     def initialize_output( self ):
         fields = output_fields( self.input.fields )
-        format_csv = ','.join([ field_to_format( f ) for f in fields ])
+        format_csv = ','.join( fields_to_format( fields ))
         self.output = comma.csv.stream( comma.csv.struct( ','.join( fields ),
                                                           *comma.csv.format.to_numpy( format_csv )),
                                         tied=self.input,
@@ -374,8 +375,8 @@ def main():
         elif args.binary:
             input_format = args.binary.split(',')
         else:
-            input_format = [ field_to_format(f) for f in input_fields ]
-        print ','.join( input_format + [ field_to_format(f) for f in output_fields( input_fields )])
+            input_format = fields_to_format( input_fields )
+        print ','.join( input_format + fields_to_format( output_fields( input_fields )))
         sys.exit( 0 )
 
     comma.csv.time.zone( 'UTC' )
