@@ -3,6 +3,7 @@ ADD_SUBDIRECTORY( applications )
 SET( snark_web_feeds_dir "/var/www/html/feeds" CACHE STRING "web server directory to install snark web feeds frontend" )
 INSTALL( DIRECTORY frontend/ DESTINATION ${snark_web_feeds_dir} USE_SOURCE_PERMISSIONS )
 INSTALL( CODE "EXECUTE_PROCESS( COMMAND mkdir -p ${snark_web_feeds_dir}/config )" )
+INSTALL( CODE "EXECUTE_PROCESS( COMMAND mkdir -p ${snark_web_feeds_dir}/models )" )
 
 INSTALL( DIRECTORY websocketd DESTINATION /usr/local/lib USE_SOURCE_PERMISSIONS )
 

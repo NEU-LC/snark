@@ -14,9 +14,8 @@ var options_point_cloud = {
     scans: 1,
     points: 60000,
     point_size: 0.15,
-    height_min: -2.89654266502,
-    height_range: 5.52007555834,
-    distance_max: 110,
+    height_range: 2.5,
+    distance_range: 110,
     stats: true,
     refresh: function() {
         is_refresh = true;
@@ -37,6 +36,14 @@ var options_point_cloud = {
     clear: function() {
         while (point_clouds.length) {
             remove_point_cloud();
+        }
+    },
+    axes: function() {
+        axes.visible = !axes.visible;
+        if (axes.visible) {
+            scene.add(axes);
+        } else {
+            scene.remove(axes);
         }
     }
 }
@@ -94,12 +101,12 @@ function gui_point_cloud() {
     folder.add(options_point_cloud, 'color_scheme', [0,1,2]).name('color scheme').onFinishChange(function(value) {
         options_point_cloud.color_scheme = Number(value);
     });
-    //folder.add(options_point_cloud, 'height_min', -4, -2).step(0.001).name('height min');
-    //folder.add(options_point_cloud, 'height_range', 1, 6).step(0.001).name('height range');
-    //folder.add(options_point_cloud, 'distance_max', 1, 150).step(1).name('distance max');
+    folder.add(options_point_cloud, 'height_range', 1, 10).step(0.01).name('height range');
+    folder.add(options_point_cloud, 'distance_range', 1, 150).step(1).name('distance range');
     //folder.add(options_point_cloud, 'refresh');
     folder.add(options_point_cloud, 'toggle').name('start/stop <kbd>spacebar</kbd>');
     folder.add(options_point_cloud, 'clear');
+    folder.add(options_point_cloud, 'axes');
     folder.add(options_point_cloud, 'stats').onFinishChange(function(value) {
         if (options_point_cloud.stats) {
             $(stats.domElement).show();
@@ -117,7 +124,13 @@ renderer.setSize(width, height);
 var camera = new THREE.PerspectiveCamera(45, width/height, 0.1, 10000);
 camera.position.z = 50;
 camera.position.y = 25;
-var controls = new THREE.OrbitControls(camera, renderer.domElement);
+camera.up = new THREE.Vector3(0, 1, 0);
+var controls = new THREE.TrackballControls(camera);
+controls.rotateSpeed = 2.5;
+controls.zoomSpeed = 1.0;
+controls.panSpeed = 1.0;
+var axes = new THREE.AxisHelper(2);
+axes.visible = false;
 
 window.addEventListener('resize', function() {
     width = window.innerWidth;
@@ -129,6 +142,7 @@ window.addEventListener('resize', function() {
 
 function animate() {
     renderer.render(scene, camera);
+    controls.update();
     stats.update();
     requestAnimationFrame(animate);
 }
@@ -145,34 +159,35 @@ function add_point_cloud(data) {
     var positions = new Float32Array(length);
     var colors = new Float32Array(length);
     var color = new THREE.Color();
-    var height_min = options_point_cloud.height_min;
     var height_range = options_point_cloud.height_range;
-    var distance_max = options_point_cloud.distance_max;
+    var distance_range = options_point_cloud.distance_range;
     for (var i = 0, i_1, i_2; i < length; ++i) {
         positions[i] = dataview.getFloat32(i * Float32Array.BYTES_PER_ELEMENT, true);
         if (i % 3 == 2) {
             i_1 = i - 1;
             i_2 = i - 2;
-            var x =  positions[i_2];
-            var y = -positions[i  ];
-            var z =  positions[i_1];
-            positions[i_1] = y;
-            positions[i  ] = z;
-            var distance = (new THREE.Vector2(x, z)).length();
+            var x = positions[i_2];
+            var y = positions[i_1];
+            var z = positions[i  ];
+            var distance = (new THREE.Vector2(x, y)).length();
             var h;
+            // colour schemes:
+            //   1: hue by height
+            //   2: hue by distance
+            //   3: hue by direction
             switch (options_point_cloud.color_scheme) {
                 case 0:
-                    h = (y - height_min) / height_range * 2.5;
+                    h = z / height_range;
                     break;
                 case 1:
-                    h = 1 - (distance / distance_max * 4);
+                    h = distance / 25;
                     break;
                 default:
-                    h = (Math.atan2(z, x) + Math.PI) / (Math.PI * 2);
+                    h = (Math.atan2(y, x) + Math.PI) / (Math.PI * 2);
                     break;
             }
-            var s = 1 - (distance / distance_max);
-            var l = (y - height_min) / height_range * s;
+            var s = (1 - (z / height_range)) * 0.8 + 0.2;
+            var l = (1 - (Math.min(distance, distance_range) / distance_range)) * 0.6;
             color.setHSL(h, s, l);
             colors[i_2] = color.r;
             colors[i_1] = color.g;
@@ -209,5 +224,6 @@ $(function() {
     document.addEventListener('keypress', key_toggle, false);
     $(':input').focusin(function() { document.removeEventListener('keypress', key_toggle); });
     $(':input').focusout(function() { document.addEventListener('keypress', key_toggle, false); });
+    $('.dg.ac').hover(function() { controls.enabled = false; }, function() { controls.enabled = true; });
     requestAnimationFrame(animate);
 });
