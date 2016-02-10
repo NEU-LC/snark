@@ -22,6 +22,7 @@ struct stream_base
     }
     virtual int native()=0;
     virtual void close()=0;
+    virtual std::size_t bytes_read() const = 0;
 };
 
 struct tcp_stream:public stream_base
@@ -48,7 +49,7 @@ struct tcp_stream:public stream_base
     {
         ios.close();
     }
-    std::streamsize bytes_read() const
+    virtual std::size_t bytes_read() const
     {
         return ios.gcount();
     }
@@ -59,7 +60,8 @@ struct serial_stream:public stream_base
     // name: port filename eg "COM1" or  "/dev/ttyS0"
     boost::asio::io_service service;
     boost::asio::serial_port port;
-    serial_stream(const std::string& name) : service(), port(service,name)
+    std::size_t last_read;
+    serial_stream(const std::string& name) : service(), port(service,name), last_read(0)
     {
     }
     serial_stream(const std::string& name,
@@ -67,7 +69,7 @@ struct serial_stream:public stream_base
                   int char_size, 
                   boost::asio::serial_port_base::parity::type parity,
                   boost::asio::serial_port_base::stop_bits::type stop_bits
-                 ) : service(), port(service,name)
+                 ) : service(), port(service,name), last_read(0)
     {
         port.set_option(boost::asio::serial_port_base::baud_rate(baud_rate));
         port.set_option(boost::asio::serial_port_base::character_size(char_size));
@@ -116,7 +118,7 @@ struct serial_stream:public stream_base
     }
     virtual void read(char* data, std::size_t size)
     {
-        boost::asio::read(port,boost::asio::buffer(data,size));
+        last_read = boost::asio::read( port, boost::asio::buffer( data, size ) );
         if(debug_verbose)
             std::cerr<<"<-["<<(int)size<<"]"<<dump(data,size)<<std::endl;
     }
@@ -137,6 +139,10 @@ struct serial_stream:public stream_base
     virtual void close()
     {
         port.close();
+    }
+    virtual std::size_t bytes_read() const
+    {
+        return last_read;
     }
     const char* to_string(boost::asio::serial_port_base::parity::type t)
     {

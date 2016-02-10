@@ -26,6 +26,8 @@ struct ust_device:public laser_device
     request_md me;
     int start_step;
     std::string address;
+    bool permissive;
+    ust_device( const bool permissive ) : permissive( permissive ) {}
     virtual void init(comma::command_line_options options)
     {
         //get args
@@ -42,6 +44,8 @@ struct ust_device:public laser_device
     int get_steps() const { return STEPS; }
 };
 
+static boost::optional< sequence_string > prev_message_id;
+
 template < int STEPS >
 void ust_device<STEPS>::request_scan(stream_base& iostream, int start, int end_step, int num_of_scans)
 {
@@ -56,21 +60,23 @@ void ust_device<STEPS>::request_scan(stream_base& iostream, int start, int end_s
     
     iostream.write( me.data(), request_md::size );
     iostream.flush();
-    
+
     reply_md state;
     iostream.read( state.data(), reply_md::size );
-    
+    // possible scanner bug: occasionally, after completing a request the scanner resends the response message
+    // after sending a new request, if a response message for the previous request is received then ignore and re-read
+    if( permissive && prev_message_id && state.request.message_id == *prev_message_id )
+    {
+        //std::cerr << "got response to previous message: " << state.request.message_id.str() << std::endl;
+        iostream.read( state.data(), reply_md::size );
+    }
     if( state.request.message_id != me.message_id )
     { 
-        COMMA_THROW( comma::exception, "message id mismatch for ME status reply, read: " << dynamic_cast< tcp_stream& >( iostream ).bytes_read()
+        COMMA_THROW( comma::exception, "message id mismatch for ME status reply, read: " << iostream.bytes_read()
                                         << " bytes, expected: " << me.message_id.str() << " got: " << state.request.message_id.str() );
     }
-    if( state.status.status() != 0 ) 
-    { 
-        std::ostringstream ss;
-        ss << "status reply to ME request is not success: " << state.status.status(); // to change to string
-        COMMA_THROW( comma::exception, ss.str() ); 
-    }
+    if( state.status.status() != 0 ) { COMMA_THROW( comma::exception, "status reply to ME request is not success: " << state.status.status() ); }
+    prev_message_id = me.message_id;
 }
 
 template < int STEPS >
