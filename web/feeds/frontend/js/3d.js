@@ -377,12 +377,9 @@ function drag_start(event) {
         selection.material = select_material;
 
         // Calculate angle on plane
-        // TODO: support arbitrary plane
         var intersects = raycaster.intersectObject(selection.plane_mesh);
         var point = selection.plane_mesh.worldToLocal(intersects[0].point);
-        plane_angle_prev = Math.abs(point.x) < 1e-9 ? Math.atan2(point.z, point.y) :
-                           Math.abs(point.y) < 1e-9 ? Math.atan2(point.x, point.y) :
-                                                      Math.atan2(point.y, point.x) ;
+        plane_angle_prev = Math.atan2(point.y, point.x);
     }
 }
 
@@ -397,12 +394,9 @@ function drag_move(event) {
     raycaster.setFromCamera( move_curr, camera );
 
     // Calculate angle on plane
-    // TODO: support arbitrary plane
     var intersects = raycaster.intersectObject(selection.plane_mesh);
     var point = selection.plane_mesh.worldToLocal(intersects[0].point);
-    var plane_angle = Math.abs(point.x) < 1e-9 ? Math.atan2(point.z, point.y) :
-                      Math.abs(point.y) < 1e-9 ? Math.atan2(point.x, point.y) :
-                                                 Math.atan2(point.y, point.x) ;
+    var plane_angle = Math.atan2(point.y, point.x);
 
     // Calculate change in angle
     var delta = plane_angle - plane_angle_prev;
