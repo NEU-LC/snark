@@ -15,7 +15,7 @@ install(
 )
 add_subdirectory( applications )
 
-if( BUILD_TESTS )
+if( snark_BUILD_TESTS )
     add_subdirectory( test )
-endif( BUILD_TESTS )
+endif( snark_BUILD_TESTS )
 

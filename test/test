@@ -1,0 +1,17 @@
+#!/bin/bash
+
+#set environment PATH=$PATH:/usr/local/shared/test
+
+readonly output_dir=output
+readonly input_file=$output_dir/input.backup
+declare count=0
+mkdir -p $output_dir
+
+for ii in $( cat | grep -v "^#" )
+do
+    echo "test[$count]/name=\"$ii\""
+    $ii >&2
+    [[ $? == 0 ]] && echo "test[$count]/status=\"success\"" || echo "test[$count]/status=\"failed\""
+    (( count++ ))
+done
+
