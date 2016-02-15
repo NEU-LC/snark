@@ -9,9 +9,8 @@ mkdir -p $output_dir
 
 for ii in $( cat | grep -v "^#" )
 do
-    echo "test[$count]/name=\"$ii\""
     $ii >&2
-    [[ $? == 0 ]] && echo "test[$count]/status=\"success\"" || echo "test[$count]/status=\"failed\""
+    [[ $? == 0 ]] && echo "test[$count]/status=\"$ii:success\"" || echo "test[$count]/status=\"$ii:failed\""
     (( count++ ))
 done
 

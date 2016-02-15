@@ -4,5 +4,5 @@
 #prerequisites: install google unit tests and set add install path to PATH (PATH=$PATH:/usr/local/share/test)
 
 for ii in range( 0, number_of( test ) ):
-    expect test[ii]/status == "success"
+    expect ends_with( test[ii]/status, ":success" )
 
