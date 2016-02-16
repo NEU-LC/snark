@@ -6,9 +6,33 @@ import sys
 import signal
 import argparse
 import datetime
-import numpy as np
-import Pysolar
-import comma.csv
+
+def import_advice( module ):
+    debian_pkg = {
+        "numpy": "python-numpy",
+        "Pysolar": "python-pysolar"
+        }
+    preamble = "Install"
+    if debian_pkg.has_key( module ):
+        print "On debian/ubuntu install with \"apt-get install %s\"" % debian_pkg[ module ]
+        preamble = "On other systems install"
+    print "%s with \"pip install %s\"" % ( preamble, module )
+
+try:
+    import numpy as np
+    import Pysolar
+except ImportError as e:
+    print "ImportError:", e
+    module = e.args[0].split(' ')[-1]
+    import_advice( module )
+    sys.exit( 1 )
+
+try:
+    import comma.csv
+except ImportError:
+    print "ImportError: No module named comma.csv"
+    print "Enable BUILD_PYTHON_PACKAGES in comma"
+    sys.exit( 1 )
 
 
 def message( msg ):
