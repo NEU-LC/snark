@@ -28,5 +28,5 @@ ELSE( NOT snark_build_control )
 
     IF( snark_BUILD_TESTS )
         ADD_SUBDIRECTORY( test )
-    ENDIF( BUILD_TESTS )
+    ENDIF( snark_BUILD_TESTS )
 ENDIF( NOT snark_build_control )
