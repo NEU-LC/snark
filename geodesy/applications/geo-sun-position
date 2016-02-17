@@ -3,11 +3,36 @@
 __author__ = 'suchet'
 
 import sys
+import signal
 import argparse
 import datetime
-import numpy as np
-import Pysolar
-import comma.csv
+
+def import_advice( module ):
+    debian_pkg = {
+        "numpy": "python-numpy",
+        "Pysolar": "python-pysolar"
+        }
+    preamble = "Install"
+    if debian_pkg.has_key( module ):
+        print "On debian/ubuntu install with \"apt-get install %s\"" % debian_pkg[ module ]
+        preamble = "On other systems install"
+    print "%s with \"pip install %s\"" % ( preamble, module )
+
+try:
+    import numpy as np
+    import Pysolar
+except ImportError as e:
+    print "ImportError:", e
+    module = e.args[0].split(' ')[-1]
+    import_advice( module )
+    sys.exit( 1 )
+
+try:
+    import comma.csv
+except ImportError:
+    print "ImportError: No module named comma.csv"
+    print "Enable BUILD_PYTHON_PACKAGES in comma"
+    sys.exit( 1 )
 
 
 def message( msg ):
@@ -223,7 +248,8 @@ def sun_position( record, output ):
 REQUIRED_FIELDS = ( 'time', 'latitude' ,'longitude' )
 OPTIONAL_FIELDS = ( 'roll', 'pitch', 'yaw' )
 
-def field_to_format( field_name ):
+
+def fields_to_format( field_names ):
     formats = {
         'time': 't',
         'latitude': 'd',
@@ -236,7 +262,7 @@ def field_to_format( field_name ):
         'body_elevation': 'd',
         'body_azimuth': 'd',
     }
-    return formats.get( field_name, 's[0]' )
+    return [ formats.get( f, 's[0]' ) for f in field_names ]
 
 
 def output_fields( input_fields ):
@@ -260,25 +286,20 @@ class stream:
 
     def initialize_input( self ):
         field_list = self.args.fields.split(',')
-        named_fields = filter( None, field_list )
-        if not set( REQUIRED_FIELDS ).issubset( named_fields ):
+        if not set( REQUIRED_FIELDS ).issubset( field_list ):
             raise RuntimeError( "%s fields are required" % ','.join( REQUIRED_FIELDS ))
-        if self.args.binary:
-            types = comma.csv.format.to_numpy( self.args.binary )
-            input_t = comma.csv.struct( self.args.fields, *types )
-            self.input = comma.csv.stream( input_t, binary=True, **self.csv_options )
-        else:
-            types = comma.csv.format.to_numpy(','.join([ field_to_format(i) for i in named_fields ]))
-            input_t = comma.csv.struct( ','.join( named_fields ), *types )
-            self.input = comma.csv.stream( input_t, fields=self.args.fields, **self.csv_options )
+        format = self.args.binary if self.args.binary else ','.join( fields_to_format( field_list ))
+        types = comma.csv.format.to_numpy( format )
+        input_t = comma.csv.struct( self.args.fields, *types )
+        self.input = comma.csv.stream( input_t, binary=bool( self.args.binary ), **self.csv_options )
 
     def initialize_output( self ):
-        fields = output_fields( self.input.fields )
-        format_csv = ','.join([ field_to_format( f ) for f in fields ])
-        self.output = comma.csv.stream( comma.csv.struct( ','.join( fields ),
-                                                          *comma.csv.format.to_numpy( format_csv )),
-                                        tied=self.input,
+        field_list = output_fields( self.input.fields )
+        types = comma.csv.format.to_numpy( ','.join( fields_to_format( field_list )))
+        output_t = comma.csv.struct( ','.join( field_list ), *types )
+        self.output = comma.csv.stream( output_t,
                                         binary=bool( self.args.binary ),
+                                        tied=self.input,
                                         **self.csv_options )
 
 
@@ -359,6 +380,15 @@ examples:
 
 
 def main():
+    # Reset SIGPIPE and SIGINT to their default OS behaviour.
+    # This stops python dumping a stack-trace on ctrl-c or broken pipe.
+    signal.signal( signal.SIGPIPE, signal.SIG_DFL )
+    s = signal.signal( signal.SIGINT, signal.SIG_DFL )
+    # but don't reset SIGINT if it's been assigned to something other
+    # than the Python default
+    if s != signal.default_int_handler:
+        signal.signal( signal.SIGINT, s )
+
     args = parse_args()
 
     if args.input_fields:
@@ -377,8 +407,8 @@ def main():
         elif args.binary:
             input_format = args.binary.split(',')
         else:
-            input_format = [ field_to_format(f) for f in input_fields ]
-        print ','.join( input_format + [ field_to_format(f) for f in output_fields( input_fields )])
+            input_format = fields_to_format( input_fields )
+        print ','.join( input_format + fields_to_format( output_fields( input_fields )))
         sys.exit( 0 )
 
     comma.csv.time.zone( 'UTC' )

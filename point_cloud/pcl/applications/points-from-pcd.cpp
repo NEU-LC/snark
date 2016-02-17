@@ -272,9 +272,11 @@ int main( int ac, char** av )
                 {
                     if (fields[i]=="t") { format+="t"; }
                     else if (fields[i]=="t") { format+="t"; }
+                    else if (fields[i]=="point") { format+="3d"; }
                     else if (fields[i]=="point/x") { format+="d"; }
                     else if (fields[i]=="point/y") { format+="d"; }
                     else if (fields[i]=="point/z") { format+="d"; }
+                    else if (fields[i]=="normal") { format+="3d"; }
                     else if (fields[i]=="normal/x") { format+="d"; }
                     else if (fields[i]=="normal/y") { format+="d"; }
                     else if (fields[i]=="normal/z") { format+="d"; }

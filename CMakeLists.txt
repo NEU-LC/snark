@@ -158,7 +158,8 @@ IF( snark_BUILD_TESTS )
     SET( GTEST_BOTH_LIBRARIES gtest gtest_main )
 	
 #TT: Install tests to dir. This allows them to be packed by CPack.
-    SET ( snark_TESTS_DIR share/test/${PROJECT_NAME} )
+SET ( snark_CPP_TESTS_INSTALL_DIR bin CACHE PATH "Install directory for cpp unit tests" )
+    #SET ( snark_CPP_TESTS_INSTALL_DIR share/test/${PROJECT_NAME} )
 ENDIF( snark_BUILD_TESTS )
 
 OPTION( snark_build_actuators "build actuators" ON )

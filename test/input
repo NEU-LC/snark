@@ -1,0 +1,12 @@
+snark_test_filter
+snark_test_gaussian_process
+snark_test_geometry
+snark_test_math
+snark_test_point_cloud
+snark_test_spherical_geometry
+snark_test_timing
+
+# following tests are not installed
+#snark_test_hokuyo
+#snark_test_sick
+#snark_test_velodyne

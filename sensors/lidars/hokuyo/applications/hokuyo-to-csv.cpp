@@ -190,7 +190,8 @@ int main( int ac, char** av )
         debug_verbose=options.exists("--debug");
         frames=options.value<int>("--frames",-1);
         omit_on_error = ! options.exists("--dont-omit-on-error");
-        std::vector< std::string > unnamed = options.unnamed( "--output-fields,--verbose,--reboot-on-error,--debug,--scip2,--output-samples,--dont-omit-on-error",
+        bool permissive = options.exists( "--permissive" );
+        std::vector< std::string > unnamed = options.unnamed( "--output-fields,--verbose,--reboot-on-error,--debug,--scip2,--output-samples,--dont-omit-on-errork,--permissive",
                                                               "--frames,--scan-break,--num-of-scans,--start-step,--end-step,--serial,--port,--laser,--fields,--format,--binary,-b,--baud-rate,--set-baud-rate");
         if(!unnamed.empty())
         {
@@ -199,8 +200,8 @@ int main( int ac, char** av )
         }
         
         scip2_device scip2;
-        ust_device<UST_SMALL_STEPS> ust_small;
-        ust_device<UST_MAX_STEPS> ust_max;
+        ust_device<UST_SMALL_STEPS> ust_small( permissive );
+        ust_device<UST_MAX_STEPS> ust_max( permissive );
         bool serial=options.exists("--scip2") || options.exists( "--serial");
         laser_device& device = serial ? scip2 : (start_step ?  (laser_device&)ust_small : (laser_device&)ust_max);
         

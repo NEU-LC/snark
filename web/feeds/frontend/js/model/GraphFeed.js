@@ -81,9 +81,12 @@ define('GraphFeed', ["jquery", "Feed"], function ($) {
             text += ' ' + this.config.graph.units;
         }
         this.text.html(text);
+        var value = this.config.graph.min < 0 && this.config.graph.max > 0 ? 0 : this.config.graph.max <= 0 ? this.config.graph.max : this.config.graph.min;
+        if (!isNaN(data)) {
+            value = Number(data);
+        }
         var bar = this.bars.children().first();
         this.bars.append(bar);
-        var value = isNaN(data) ? this.config.graph.min : Number(data);
         var bottom_height = this.get_bar_bottom(value);
         var top_height = this.get_bar_top(value);
         var threshold = this.get_threshold(value);
