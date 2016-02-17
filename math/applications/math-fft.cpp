@@ -44,13 +44,14 @@ bool logarithmic_output=true;
 bool magnitude=false;
 bool real=false;
 bool split=false;
+bool timestamp=false;
 
 void usage(bool detail)
 {
     std::cerr<<"    perform fft on input data" << std::endl;
     std::cerr << std::endl;
     std::cerr<< "usage: " << comma::verbose.app_name() << " [ <options> ]" << std::endl;
-    std::cerr<< "    output is binary array of pair (real, complex) of double with half the size of input"  << std::endl;
+    std::cerr<< "    output is binary array of pair (real, complex) of double with half the size of input; plus optional timestamp"  << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    --help,-h: show help" << std::endl;
@@ -65,6 +66,7 @@ void usage(bool detail)
     std::cerr << "    --split: output array of real followed by array of complex part; when not specified real and complex parts are interleaved" << std::endl;
     std::cerr << "    --output-size: print size of output record in bytes and exit" << std::endl;
     std::cerr << "    --output-format: print binary format of output and exit" << std::endl;
+    std::cerr << "    --timestamp: prepend timestamp to the output data" << std::endl;
     std::cerr << std::endl;
     if(detail)
     {
@@ -84,6 +86,7 @@ void usage(bool detail)
 
 struct input_t
 {
+    boost::posix_time::ptime time;
     std::vector<double> data;
     input_t() : data(input_size) {}
 
@@ -96,10 +99,12 @@ template <> struct traits< input_t >
 {
     template< typename K, typename V > static void visit( const K& k, input_t& p, V& v )
     {
+        v.apply( "t", p.time );
         v.apply( "data", p.data );
     }
     template< typename K, typename V > static void visit( const K& k, const input_t& p, V& v )
     {
+        v.apply( "t", p.time );
         v.apply( "data", p.data );
     }
 };
@@ -183,7 +188,12 @@ void calculate(const input_t* input, std::vector<double>& output)
         }
     }
 }
-
+void write_timestamp_bin(std::ostream& os, const boost::posix_time::ptime& time)
+{
+    static char buf[comma::csv::format::traits< boost::posix_time::ptime, comma::csv::format::time >::size];
+    comma::csv::format::traits< boost::posix_time::ptime, comma::csv::format::time >::to_bin( time, buf );
+    os.write(buf, sizeof(buf));
+}
 struct app
 {
     std::vector<double> output;
@@ -205,13 +215,22 @@ struct app
             {
                 calculate(input, output);
                 //write output
-                write_output();
+                write_output(*input);
             }
         }
     }
-    void write_output()
+    void write_output(const input_t& input)
     {
+        if(timestamp) { write_timestamp_bin(std::cout, input.time); }
         std::cout.write(reinterpret_cast<const char*>(&output[0]),output.size()*sizeof(double));
+    }
+    std::size_t get_output_size()
+    {
+        return output.size() + (timestamp ? comma::csv::format::traits< boost::posix_time::ptime, comma::csv::format::time >::size : 0);
+    }
+    std::string get_output_format()
+    {
+        return (timestamp ? "t," : "") + boost::lexical_cast<std::string>(output.size()) + "d";
     }
 };
 
@@ -221,25 +240,25 @@ std::ostream& operator<< (std::ostream& o, const std::vector<T>& v)
     std::copy(v.begin(), v.end(), std::ostream_iterator<T>(o, " "));
     return o;
 }
-
 int main( int argc, char** argv )
 {
     comma::command_line_options options( argc, argv, usage );
     try
     {
-        comma::csv::options csv(options);
+        comma::csv::options csv(options,"data");
         filter_input= ! options.exists("--no-filter");
         logarithmic_output= ! options.exists("--linear");
         input_size=options.value<std::size_t>("--size");
         magnitude=options.exists("--magnitude");
         real=options.exists("--real");
         split=options.exists("--split");
+        timestamp=options.exists("--timestamp");
         std::vector<std::string> unnamed=options.unnamed("--verbose,-v,--output-size,--output-format,--no-filter,--linear,--timestamp,--magnitude,--real,--split", 
                                                          "--binary,-b,--fields,-f,--delimiter,-d,--size");
         if(unnamed.size() != 0) { COMMA_THROW(comma::exception, "invalid option(s): " << unnamed ); }
         app app;
-        if(options.exists("--output-size")) { std::cout<< app.output.size() << std::endl; return 0; }
-        if(options.exists("--output-format")) { std::cout<< app.output.size() << "d" << std::endl; return 0; }
+        if(options.exists("--output-size")) { std::cout<< app.get_output_size() << std::endl; return 0; }
+        if(options.exists("--output-format")) { std::cout<< app.get_output_format() << std::endl; return 0; }
         app.process(csv);
         return 0;
     }
