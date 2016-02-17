@@ -43,6 +43,7 @@ bool filter_input=true;
 bool logarithmic_output=true;
 bool magnitude=false;
 bool real=false;
+bool split=false;
 
 void usage(bool detail)
 {
@@ -60,7 +61,8 @@ void usage(bool detail)
     std::cerr << "    --real: output real part only" << std::endl;
     std::cerr<< "        output is binary array of double with half the size of input"  << std::endl;
     std::cerr << "    --no-filter: when not specified, filters input using a cut window to get limited output" << std::endl;
-    std::cerr << "    --linear: output as linear; when not specified, output will be scaled to lograithm of 10 for --magnitude and --real" << std::endl;
+    std::cerr << "    --linear: output as linear; when not specified, output will be scaled to lograithm of 10 for magnitude or real part (phase is not affected)" << std::endl;
+    std::cerr << "    --split: output array of real followed by array of complex part; when not specified real and complex parts are interleaved" << std::endl;
     std::cerr << "    --output-size: print size of output record in bytes and exit" << std::endl;
     std::cerr << "    --output-format: print binary format of output and exit" << std::endl;
     std::cerr << std::endl;
@@ -165,10 +167,19 @@ void calculate(const input_t* input, std::vector<double>& output)
     else
     {
         std::size_t k=0;
-        for(std::size_t j=0;j<output.size()/2;j++)
+        std::size_t step=2;
+        std::size_t off=1;
+        if(split)
         {
-            output[k++]=fft.output[j][0];
-            output[k++]=fft.output[j][1];
+            step=1;
+            off=output.size()/2;
+        }
+        for(std::size_t j=0; j<output.size()/2; j++, k+=step)
+        {
+            double a= fft.output[j][0];
+            if(logarithmic_output) { a = (a == 0) ? 0 : (std::log10(a)); }
+            output[k]=a;
+            output[k+off]=fft.output[j][1];
         }
     }
 }
@@ -217,12 +228,13 @@ int main( int argc, char** argv )
     try
     {
         comma::csv::options csv(options);
-        filter_input=options.exists("--no-filter");
-        logarithmic_output=options.exists("--linear");
+        filter_input= ! options.exists("--no-filter");
+        logarithmic_output= ! options.exists("--linear");
         input_size=options.value<std::size_t>("--size");
         magnitude=options.exists("--magnitude");
         real=options.exists("--real");
-        std::vector<std::string> unnamed=options.unnamed("--verbose,-v,--output-size,--output-format,--no-filter,--linear,--timestamp,--magnitude,--real", 
+        split=options.exists("--split");
+        std::vector<std::string> unnamed=options.unnamed("--verbose,-v,--output-size,--output-format,--no-filter,--linear,--timestamp,--magnitude,--real,--split", 
                                                          "--binary,-b,--fields,-f,--delimiter,-d,--size");
         if(unnamed.size() != 0) { COMMA_THROW(comma::exception, "invalid option(s): " << unnamed ); }
         app app;
