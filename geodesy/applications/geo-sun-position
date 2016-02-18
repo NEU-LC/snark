@@ -268,9 +268,9 @@ def fields_to_format( field_names ):
 def output_fields( input_fields ):
     fields = []
     if set( REQUIRED_FIELDS ).issubset( input_fields ):
-        fields += [ 'elevation', 'azimuth' ]
+        fields += [ 'azimuth', 'elevation' ]
     if set( OPTIONAL_FIELDS ).issubset( input_fields ):
-        fields += [ 'body_elevation', 'body_azimuth' ]
+        fields += [ 'body_azimuth', 'body_elevation' ]
     return fields
 
 
@@ -319,11 +319,11 @@ Supported input fields are:
 
 time,latitude,longitude
 
-    Append the sun elevation and azimuth to the input stream.
+    Append the sun azimuth and elevation to the input stream.
 
 time,latitude,longitude,roll,pitch,yaw
 
-    Also append the elevation and azimuth relative to the vehicle body as
+    Also append the azimuth and elevation relative to the vehicle body as
     defined by the roll, pitch and yaw.
 
 Field names can occur in any order and can be interspersed with other fields.
