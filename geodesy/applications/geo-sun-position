@@ -341,15 +341,9 @@ examples:
                                       epilog=epilog,
                                       formatter_class=fmt )
 
-    parser.add_argument( "-f", "--fields", default="time,latitude,longitude", metavar="<names>",
-                         help="field names of input stream (default: %(default)s)" )
-
     parser.add_argument( "--format", metavar="<types>",
                          help='''format of input stream:
                          only required for --output-format with non-default input''' )
-
-    parser.add_argument( "-b", "--binary", default="", metavar="<format>",
-                         help="format for binary stream (default: ascii)" )
 
     parser.add_argument ("--input-fields", action="store_true",
                          help="list of possible input fields")
@@ -360,12 +354,7 @@ examples:
     parser.add_argument ("--output-format", action="store_true",
                          help="list of the output types for a given input")
 
-    parser.add_argument( "-d", "--delimiter", default=",", metavar="<char>",
-                         help="csv delimiter of ascii stream (default: %(default)s)" )
-    parser.add_argument( "--precision", default=12, metavar="<precision>",
-                         help="floating point precision of ascii output (default: %(default)s)" )
-    parser.add_argument( "--flush", "--unbuffered", action="store_true",
-                         help="flush stdout after each record (stream is unbuffered)" )
+    comma.csv.options.standard_csv_options( parser, { 'fields': 'time,latitude,longitude' } )
 
     parser.add_argument( '--bash-completion', action='store_true', help=argparse.SUPPRESS )
 
