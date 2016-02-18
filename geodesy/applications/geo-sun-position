@@ -323,7 +323,7 @@ time,latitude,longitude
 
 time,latitude,longitude,roll,pitch,yaw
 
-    Also append the elevation and aximuth relative to the vehicle body as
+    Also append the elevation and azimuth relative to the vehicle body as
     defined by the roll, pitch and yaw.
 
 Field names can occur in any order and can be interspersed with other fields.
