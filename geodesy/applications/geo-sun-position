@@ -367,8 +367,7 @@ examples:
     parser.add_argument( "--flush", "--unbuffered", action="store_true",
                          help="flush stdout after each record (stream is unbuffered)" )
 
-    parser.add_argument ('--bash-completion', action='store_true',
-                         help='list arguments.')
+    parser.add_argument( '--bash-completion', action='store_true', help=argparse.SUPPRESS )
 
     args = parser.parse_args()
 
