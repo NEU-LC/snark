@@ -71,6 +71,7 @@ void usage(bool detail)
     if(detail)
     {
         std::cerr << "csv options:" << std::endl;
+        std::cerr<< comma::csv::options::usage() << std::endl;
         std::cerr << std::endl;
     }
     else
