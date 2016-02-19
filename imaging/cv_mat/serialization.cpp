@@ -173,13 +173,10 @@ std::pair< boost::posix_time::ptime, cv::Mat > serialization::read( std::istream
     p.first = h.timestamp;
     p.second = cv::Mat( h.rows, h.cols, h.type );
     std::size_t size = p.second.dataend - p.second.datastart;
-    is.read( reinterpret_cast< char* >( p.second.datastart ), size );
+    // todo: accumulate
+    is.read( const_cast< char* >( reinterpret_cast< const char* >( p.second.datastart ) ), size ); // quick and dirty
     int count = is.gcount();
-    if( count < int( size ) )
-    {
-        return std::pair< boost::posix_time::ptime, cv::Mat >();
-    }
-    return p;
+    return count < int( size ) ? std::pair< boost::posix_time::ptime, cv::Mat >() : p;
 }
 
 void serialization::write( std::ostream& os, const std::pair< boost::posix_time::ptime, cv::Mat >& m )
