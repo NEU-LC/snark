@@ -344,6 +344,10 @@ require(['jquery', 'jquery_mobile',
                 if (!('background_url' in config.track)) {
                     config.track.background_url = '';
                 }
+                if (!('extent' in config.track)) {
+                    config.track.extent = '';
+                }
+                config.track.extent_string = config.track.extent.constructor === Array ? JSON.stringify(config.track.extent) : config.track.extent;
                 if (!('scale' in config.track)) {
                     config.track.scale = 100;
                 }
@@ -444,6 +448,17 @@ require(['jquery', 'jquery_mobile',
                     folder.add(feed.config.track, 'background_url').name('background url').onFinishChange(function (value) {
                         var feed_name = get_feed_name(this.domElement);
                         feeds[feed_name].set_background();
+                    });
+                    folder.add(feed.config.track, 'extent_string').name('extent').onFinishChange(function (value) {
+                        var feed_name = get_feed_name(this.domElement);
+                        var feed = feeds[feed_name];
+                        try {
+                            feed.config.track.extent = JSON.parse(value);
+                        }
+                        catch (e) {
+                            feed.config.track.extent = value;
+                        }
+                        feed.set_extent();
                     });
                     folder.add(feed.config.track, 'scale', 1, 300).name('scale (%)').step(0.01).onChange(function (value) {
                         var feed_name = get_feed_name(this.domElement);

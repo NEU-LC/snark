@@ -26,6 +26,7 @@ define('TrackFeed', ["jquery", "Feed"], function ($) {
             _this.ctx.canvas.width = this.width;
             _this.ctx.canvas.height = this.height;
             _this.resize();
+            _this.set_extent();
         };
 
         this.set_background();
@@ -47,6 +48,33 @@ define('TrackFeed', ["jquery", "Feed"], function ($) {
         }
         this.image_loader.src = this.config.track.background_url;
     }
+    TrackFeed.prototype.set_extent = function() {
+        var extent = this.config.track.extent;
+        if (extent) {
+            switch (extent.constructor) {
+                case Array:
+                    this.extent = extent;
+                    break;
+                case String:
+                    var _this = this;
+                    var width = this.original_width;
+                    var height = this.original_height;
+                    $.get(extent, function (data) {
+                        data = data.trim().split('\n').map(Number);
+                        _this.extent = [
+                            data[4],                       // min x
+                            data[5] + data[3] * height,    // min y
+                            data[4] + data[0] * width,     // max x
+                            data[5],                       // max y
+                        ]
+                    });
+                    break;
+            }
+        } else {
+            this.extent = extent;
+        }
+    }
+
     TrackFeed.prototype.resize = function() {
         if (this.target.resizable('instance')) {
             this.target.resizable('destroy');
@@ -111,6 +139,10 @@ define('TrackFeed', ["jquery", "Feed"], function ($) {
         if (!data) { return; }
         var p = data.split(',').map(Number);
         var point = new TrackPoint(p[0], p[1]);
+        if (this.extent) {
+            point.x = this.ctx.canvas.width * (point.x - this.extent[0]) / (this.extent[2] - this.extent[0]) ;
+            point.y = this.ctx.canvas.height * (1 - (point.y - this.extent[1]) / (this.extent[3] - this.extent[1]));
+        }
         if (this.config.track.trail) {
             this.points.push(point);
         } else {
