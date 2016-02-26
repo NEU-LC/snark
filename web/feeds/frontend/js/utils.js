@@ -328,6 +328,15 @@ function load_layout(config_file) {
     });
 }
 
+function hex2rgb(hex, a) {
+    var r = parseInt(hex.substr(1,2), 16);
+    var g = parseInt(hex.substr(3,2), 16);
+    var b = parseInt(hex.substr(5,2), 16);
+    if (a) {
+        return "rgba(" + r + "," + g + "," + b + "," + a + ")";
+    }
+    return "rgb(" + r + "," + g + "," + b + ")";
+}
 
 //function load_layout(config_file) {
 //    var key = 'feeds.layout[' + config_file + ']';

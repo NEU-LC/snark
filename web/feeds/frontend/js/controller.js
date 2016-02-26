@@ -141,10 +141,10 @@ var gui;
 //var audio_context = audioContextCheck();
 require(['jquery', "jquery_ui",
     "jquery_timeago",
-    "bootstrap",
+    "bootstrap", "ol",
     "dat_gui", "Feed", "CsvFeed",
     'TextFeed', 'ImageFeed',
-    'GraphFeed', 'ImageStreamFeed', 'TrackFeed', 'utils'], function ($) {
+    'GraphFeed', 'ImageStreamFeed', 'TrackFeed', 'MapFeed', 'utils'], function ($) {
 
     var Feed = require('Feed');
     var ImageFeed = require('ImageFeed');
@@ -153,6 +153,7 @@ require(['jquery', "jquery_ui",
     var ImageStreamFeed = require('ImageStreamFeed');
     var CsvFeed = require('CsvFeed');
     var TrackFeed = require('TrackFeed');
+    var MapFeed = require('MapFeed');
 
 
     var current_config_file;
@@ -193,13 +194,6 @@ require(['jquery', "jquery_ui",
             }
             load_config(globals.config_file);
         });
-    }
-
-    function hex2rgb(hex) {
-        var r = parseInt(hex.substr(1,2), 16);
-        var g = parseInt(hex.substr(3,2), 16);
-        var b = parseInt(hex.substr(5,2), 16);
-        return [r,g,b];
     }
 
     function get_feed_name(element) {
@@ -325,8 +319,8 @@ require(['jquery', "jquery_ui",
                 if (!('track' in config)) {
                     config.track = {};
                 }
-                if (!('background_url' in config.track)) {
-                    config.track.background_url = '';
+                if (!('image' in config.track)) {
+                    config.track.image = '';
                 }
                 if (!('extent' in config.track)) {
                     config.track.extent = '';
@@ -347,20 +341,55 @@ require(['jquery', "jquery_ui",
                 if (!('radius' in config.track)) {
                     config.track.radius = 5;
                 }
-                if (!('fill' in config.track)) {
-                    config.track.fill = [16, 168, 26];
+                if (!('fill' in config.track) || config.track.fill.constructor !== String) {
+                    config.track.fill = '#3aee23';
                 }
-                if (!('stroke' in config.track)) {
-                    config.track.stroke = [58, 238, 35];
+                if (!('stroke' in config.track) || config.track.stroke.constructor !== String) {
+                    config.track.stroke = '#10a81a';
                 }
                 if (!('stroke_width' in config.track)) {
                     config.track.stroke_width = 2;
                 }
-                if (config.track.fill.constructor !== Array) {
-                    config.track.fill = hex2rgb(config.track.fill);
+            } else if (config.type == 'map') {
+                if (!('map' in config)) {
+                    config.map = {};
                 }
-                if (config.track.stroke.constructor !== Array) {
-                    config.track.stroke = hex2rgb(config.track.stroke);
+                if ('bing_maps_key' in frontend_config) {
+                    config.map.bing_maps_key = frontend_config.bing_maps_key;
+                }
+                if (!('imagery_set' in config.map)) {
+                    config.map.imagery_set = config.map.image ? '' : 'Aerial';
+                }
+                if (!('image' in config.map)) {
+                    config.map.image = '';
+                }
+                if (!('extent' in config.map)) {
+                    config.map.extent = '';
+                }
+                config.map.extent_string = config.map.extent.constructor === Array ? JSON.stringify(config.map.extent) : config.map.extent;
+                if (!('follow' in config.map)) {
+                    config.map.follow = false;
+                }
+                if (!('trail' in config.map)) {
+                    config.map.trail = false;
+                }
+                if (!('draw_interval' in config.map)) {
+                    config.map.draw_interval = 100
+                }
+                if (!('alpha_step' in config.map)) {
+                    config.map.alpha_step = 0;
+                }
+                if (!('radius' in config.map)) {
+                    config.map.radius = 5;
+                }
+                if (!('fill' in config.map) || config.map.fill.constructor !== String) {
+                    config.map.fill = '#3aee23';
+                }
+                if (!('stroke' in config.map) || config.map.stroke.constructor !== String) {
+                    config.map.stroke = '#10a81a';
+                }
+                if (!('stroke_width' in config.map)) {
+                    config.map.stroke_width = 2;
                 }
             }
             if (!('alert' in config)) {
@@ -429,7 +458,7 @@ require(['jquery', "jquery_ui",
                     });
                 }
                 if (config.type == 'track') {
-                    folder.add(feed.config.track, 'background_url').name('background url').onFinishChange(function (value) {
+                    folder.add(feed.config.track, 'image').onFinishChange(function (value) {
                         var feed_name = get_feed_name(this.domElement);
                         feeds[feed_name].set_background();
                     });
@@ -463,15 +492,45 @@ require(['jquery', "jquery_ui",
                     });
                     folder.add(feed.config.track, 'alpha_step', 0, 0.9).name('alpha step').step(0.01);
                     folder.add(feed.config.track, 'radius', 0.5, 20).step(0.1);
-                    folder.addColor(feed.config.track, 'fill').onChange(function (value) {
-                        var feed_name = get_feed_name(this.domElement);
-                        feeds[feed_name].config.track.fill = value.constructor === Array ? value.map(Math.round) : hex2rgb(value);
-                    });
-                    folder.addColor(feed.config.track, 'stroke').onChange(function (value) {
-                        var feed_name = get_feed_name(this.domElement);
-                        feeds[feed_name].config.track.stroke = value.constructor === Array ? value.map(Math.round) : hex2rgb(value);
-                    });
+                    folder.addColor(feed.config.track, 'fill');
+                    folder.addColor(feed.config.track, 'stroke');
                     folder.add(feed.config.track, 'stroke_width', 0, 5).name('stroke width').step(0.5);
+                }
+                if (config.type == 'map') {
+                    folder.add(feed.config.map, 'imagery_set', ['', 'Aerial', 'AerialWithLabels', 'Road']).onFinishChange(function (value) {
+                        var feed_name = get_feed_name(this.domElement);
+                        var feed = feeds[feed_name];
+                        if (value) {
+                            feed.set_base_tile();
+                        } else {
+                            feed.set_base_layer();
+                        }
+                    });
+                    folder.add(feed.config.map, 'image').onFinishChange(function (value) {
+                        var feed_name = get_feed_name(this.domElement);
+                        feeds[feed_name].set_base_layer();
+                    });
+                    folder.add(feed.config.map, 'extent_string').name('extent').onFinishChange(function (value) {
+                        var feed_name = get_feed_name(this.domElement);
+                        var feed = feeds[feed_name];
+                        try {
+                            feed.config.map.extent = JSON.parse(value);
+                        }
+                        catch (e) {
+                            feed.config.map.extent = value;
+                        }
+                    });
+                    folder.add(feed.config.map, 'follow');
+                    folder.add(feed.config.map, 'trail');
+                    folder.add(feed.config.map, 'draw_interval', 1, 1000).name('draw interval (ms)').step(10).onChange(function (value) {
+                        var feed_name = get_feed_name(this.domElement);
+                        feeds[feed_name].reset_draw_interval();
+                    });
+                    folder.add(feed.config.map, 'alpha_step', 0, 0.9).name('alpha step').step(0.01);
+                    folder.add(feed.config.map, 'radius', 0.5, 20).step(0.1);
+                    folder.addColor(feed.config.map, 'fill');
+                    folder.addColor(feed.config.map, 'stroke');
+                    folder.add(feed.config.map, 'stroke_width', 0, 5).name('stroke width').step(0.5);
                 }
                 folder.add(feed.config, 'alert').name('feed alert').onFinishChange(function (value) {
                     var feed_name = get_feed_name(this.domElement);
@@ -517,6 +576,8 @@ require(['jquery', "jquery_ui",
         }).resizable({
             handles: 'e'
         });
+
+        $('.map').hover(function() { $('#container').sortable('disable') }, function() { $('#container').sortable('enable') });
 
         $('.panel').on('mouseover', function () {
             $(this).find('.hideable').removeClass('transparent');
@@ -876,6 +937,9 @@ require(['jquery', "jquery_ui",
         } else if (type == 'track') {
             add_poll_body(feed_name, '<canvas class="target" resize></canvas>');
             return new TrackFeed(feed_name, config);
+        } else if (type == 'map') {
+            add_poll_body(feed_name, '<div class="target map"></div>');
+            return new MapFeed(feed_name, config);
         }
         throw 'unrecognised feed type: ' + type;
     };

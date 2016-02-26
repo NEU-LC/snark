@@ -1,4 +1,4 @@
-define('TrackFeed', ["jquery", "Feed"], function ($) {
+define('TrackFeed', ["jquery", "Feed", "utils"], function ($) {
     var Feed = require('Feed');
 
     var TrackPoint = function(x, y, alpha) {
@@ -42,11 +42,11 @@ define('TrackFeed', ["jquery", "Feed"], function ($) {
         this.draw_interval = setInterval(this.draw.bind(this), this.config.track.draw_interval);
     }
     TrackFeed.prototype.set_background = function() {
-        if (!this.config.track.background_url) {
+        if (!this.config.track.image) {
             this.target.css('background', '');
             return;
         }
-        this.image_loader.src = this.config.track.background_url;
+        this.image_loader.src = this.config.track.image;
     }
     TrackFeed.prototype.set_extent = function() {
         var extent = this.config.track.extent;
@@ -99,26 +99,20 @@ define('TrackFeed', ["jquery", "Feed"], function ($) {
     }
     TrackFeed.prototype.draw = function() {
         this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
-        for (var i in this.points) {
-            var point = this.points[i];
-            this.ctx.beginPath();
-            this.ctx.arc(point.x, point.y, this.config.track.radius, 0, 2 * Math.PI);
-            this.ctx.fillStyle = "rgba(" + this.config.track.fill.concat(point.alpha).join(',') + ")";
-            this.ctx.fill();
-            if (this.config.track.stroke_width) {
-                this.ctx.lineWidth = this.config.track.stroke_width;
-                this.ctx.strokeStyle = "rgba(" + this.config.track.stroke.concat(point.alpha).join(',') + ")";
-                this.ctx.stroke();
+        var _this = this;
+        this.points = this.points.filter(function (point) {
+            _this.ctx.beginPath();
+            _this.ctx.arc(point.x, point.y, _this.config.track.radius, 0, 2 * Math.PI);
+            _this.ctx.fillStyle = hex2rgb(_this.config.track.fill, point.alpha);
+            _this.ctx.fill();
+            if (_this.config.track.stroke_width) {
+                _this.ctx.lineWidth = _this.config.track.stroke_width;
+                _this.ctx.strokeStyle = hex2rgb(_this.config.track.stroke, point.alpha);
+                _this.ctx.stroke();
             }
-            point.alpha -= this.config.track.alpha_step;
-        }
-        var length = this.points.length;
-        for (var i = length; i-- && this.points.length >= length; ) {
-            var point = this.points[i];
-            if (point.alpha <= 0) {
-                this.points.splice(i, 1);
-            }
-        }
+            point.alpha -= _this.config.track.alpha_step;
+            return point.alpha > 0;
+        });
     }
     TrackFeed.prototype.remove_trail = function() {
         if (this.points.length > 1) {
