@@ -92,6 +92,7 @@ bool triangle::includes( const Eigen::Vector3d& rhs ) const { return includes_im
 
 double triangle::circumscribing_radius() const
 {
+    COMMA_THROW( comma::exception, "todo" );
     const Eigen::Vector3d& a = corners[1] - corners[0];
     const Eigen::Vector3d& b = corners[2] - corners[1];
     const Eigen::Vector3d& c = corners[0] - corners[2];
