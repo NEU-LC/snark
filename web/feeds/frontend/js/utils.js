@@ -173,18 +173,31 @@ function load_gui_config(config_file) {
     return true;
 }
 
-
 function parse_query_string() {
     var query = location.search.substring(1);
-    var pairs = query.split('&');
-    var result = {}
-    for (var i in pairs) {
-        var pair = pairs[i].split('=');
-        var key = decodeURIComponent(pair[0]);
-        var value = decodeURIComponent(pair[1]);
-        result[key] = value;
+    var parameters = query.split('&');
+    var object = {};
+    for (var i in parameters) {
+        var key_value = parameters[i].match(/(.*?)=(.*)/);
+        if (key_value) {
+            var key = decodeURIComponent(key_value[1]);
+            var value = decodeURIComponent(key_value[2]);
+            if (value.match(/^["'].*["']$/)) {
+                value = eval(value); // TODO better unquote
+            }
+            if (key in object) {
+                if (!object[key] || object[key].constructor !== Array) {
+                    object[key] = [object[key]];
+                }
+                object[key].push(value);
+            } else {
+                object[key] = value;
+            }
+        } else {
+            object[parameters[i]] = undefined;
+        }
     }
-    return result;
+    return object;
 }
 
 function set_properties(config, folder_name) {
@@ -336,6 +349,15 @@ function hex2rgb(hex, a) {
         return "rgba(" + r + "," + g + "," + b + "," + a + ")";
     }
     return "rgb(" + r + "," + g + "," + b + ")";
+}
+
+function world_to_extent(world_array, width, height) {
+    return [
+        world_array[4],                             // min x
+        world_array[5] + world_array[3] * height,   // min y
+        world_array[4] + world_array[0] * width,    // max x
+        world_array[5],                             // max y
+    ];
 }
 
 //function load_layout(config_file) {

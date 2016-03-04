@@ -97,12 +97,7 @@ define('MapFeed', ["jquery", "ol", "Feed", "utils"], function ($, ol) {
             if (extent) {
                 $.get(extent, function (data) {
                     data = data.trim().split('\n').map(Number);
-                    var e = [
-                        data[4],                            // min x
-                        data[5] + data[3] * image.height,   // min y
-                        data[4] + data[0] * image.width,    // max x
-                        data[5],                            // max y
-                    ];
+                    var e = world_to_extent(data, image.width, image.height);
                     feed.set_base_image(source, ol.proj.transformExtent(e, 'EPSG:4326', 'EPSG:3857'));
                 });
             } else {

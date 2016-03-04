@@ -837,50 +837,6 @@ require(['jquery', "jquery_ui",
     var query_string = parse_query_string();
 
 
-    dat.GUI.prototype.setProperty = function (property, value, opt_folder_name) {
-        if (opt_folder_name && opt_folder_name in this.__folders) {
-            return this.__folders[opt_folder_name].setProperty(property, value);
-        }
-        for (var i in this.__controllers) {
-            var controller = this.__controllers[i];
-            if (controller.property == property) {
-                var tmp = controller.__onChange;
-                if (!tmp && controller.__onFinishChange) {
-                    controller.__onChange = controller.__onFinishChange;
-                }
-                controller.setValue(value);
-                controller.__onChange = tmp;
-                break;
-            }
-        }
-    };
-
-    dat.GUI.prototype.updateDisplay = function (property, opt_folder_name) {
-        if (opt_folder_name && opt_folder_name in this.__folders) {
-            return this.__folders[opt_folder_name].updateDisplay(property);
-        }
-        for (var i in this.__controllers) {
-            var controller = this.__controllers[i];
-            if (controller.property == property) {
-                controller.updateDisplay();
-                break;
-            }
-        }
-    };
-
-    dat.GUI.prototype.toggleProperty = function (property, opt_folder_name) {
-        if (opt_folder_name && opt_folder_name in this.__folders) {
-            return this.__folders[opt_folder_name].toggleProperty(property);
-        }
-        for (var i in this.__controllers) {
-            var controller = this.__controllers[i];
-            if (controller.property == property) {
-                controller.setValue(!controller.getValue());
-                break;
-            }
-        }
-    };
-
     var add_panel = function (feed_name) {
         var class_str = " transparent  ";
         $('#container').append(
