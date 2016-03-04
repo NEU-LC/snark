@@ -31,6 +31,7 @@
 #include <iostream>
 #include <iterator>
 #include <math.h>
+#include <boost/optional.hpp>
 #include <comma/visiting/traits.h>
 #include <comma/application/command_line_options.h>
 #include <comma/application/verbose.h>
@@ -45,6 +46,8 @@ bool magnitude=false;
 bool real=false;
 bool split=false;
 bool timestamp=false;
+std::size_t bin_size=0;
+boost::optional<double> bin_overlap;
 
 void usage(bool detail)
 {
@@ -56,7 +59,9 @@ void usage(bool detail)
     std::cerr << "options" << std::endl;
     std::cerr << "    --help,-h: show help" << std::endl;
     std::cerr << "    --verbose,-v: show detailed messages" << std::endl;
-    std::cerr << "    --size: size of input vector" << std::endl;
+    std::cerr << "    --size=<size>: size of input vector" << std::endl;
+    std::cerr << "    --bin-size=[<size>]: cut data into several bins of this size and perform fft on each bin, when not speificed calculates fft on the whole data" << std::endl;
+    std::cerr << "    --bin-overlap=[<overlap>]: if specified, each bin will contain this portion of the last bin's data, range: 0 (no overlap) to 1"<<std::endl;
     std::cerr << "    --magnitude: output magnitude only" << std::endl;
     std::cerr<< "        output is binary array of double with half the size of input"  << std::endl;
     std::cerr << "    --real: output real part only" << std::endl;
@@ -139,22 +144,24 @@ struct fft
         fftw_free( output ); // seems that fftw_destroy_plan() releases it
     }
     void calculate() { fftw_execute( plan); }
+    std::size_t output_size() const { return h.size() / 2; }
 };
 
-void calculate(const input_t* input, std::vector<double>& output)
+void calculate(const double* data, std::size_t size, std::vector<double>& output)
 {
-    static fft fft(input_size);
+    fft fft(size);
     if(filter_input)
     {
-        for(std::size_t i=0;i<input_size;i++) { fft.input[i] = fft.h[i] * input->data[i]; }
+        for(std::size_t i=0;i<size;i++) { fft.input[i] = fft.h[i] * data[i]; }
     }
-    else { memcpy(fft.input, input->data.data(), input->data.size() * sizeof(double)); }
+    else { memcpy(fft.input, data, size * sizeof(double)); }
     
     fft.calculate();
     
     if(magnitude)
     {
-        for(std::size_t j=0;j<output.size();j++)
+        if(fft.output_size()>output.size()) { COMMA_THROW(comma::exception, "size mismatch, output "<<output.size()<<" fft output "<<fft.output_size()); }
+        for(std::size_t j=0;j<fft.output_size();j++)
         {
             double a= std::abs( std::complex<double>( fft.output[j][0], fft.output[j][1] ) );
             if(logarithmic_output) { a = (a == 0) ? 0 : (std::log10(a)); }
@@ -163,7 +170,8 @@ void calculate(const input_t* input, std::vector<double>& output)
     }
     else if(real)
     {
-        for(std::size_t j=0;j<output.size();j++)
+        if(fft.output_size()>output.size()) { COMMA_THROW(comma::exception, "size mismatch, output "<<output.size()<<" fft output "<<fft.output_size()); }
+        for(std::size_t j=0;j<fft.output_size();j++)
         {
             double a= fft.output[j][0];
             if(logarithmic_output) { a = (a == 0) ? 0 : (std::log10(a)); }
@@ -180,7 +188,8 @@ void calculate(const input_t* input, std::vector<double>& output)
             step=1;
             off=output.size()/2;
         }
-        for(std::size_t j=0; j<output.size()/2; j++, k+=step)
+        if(2*fft.output_size()>output.size()) { COMMA_THROW(comma::exception, "size mismatch, output "<<output.size()<<" fft output "<<fft.output_size()); }
+        for(std::size_t j=0; j<fft.output_size(); j++, k+=step)
         {
             double a= fft.output[j][0];
             if(logarithmic_output) { a = (a == 0) ? 0 : (std::log10(a)); }
@@ -200,7 +209,7 @@ struct app
     std::vector<double> output;
     app()
     {
-        std::size_t len=input_size;
+        std::size_t len=bin_size;
         if(magnitude || real) { len/=2; }
         output.resize(len);
     }
@@ -214,9 +223,14 @@ struct app
             const input_t* input=is.read();
             if(input != NULL)
             {
-                calculate(input, output);
-                //write output
-                write_output(*input);
+                if(bin_overlap && int(bin_size*(1-*bin_overlap)) <= 0) { COMMA_THROW( comma::exception, "bin size and overlap don't work" ); }
+                for(std::size_t bin_offset=0;bin_offset<input_size;bin_offset+=(bin_overlap ? bin_size*(1-*bin_overlap) : bin_size))
+                {
+                    memset(output.data(),0,output.size()*sizeof(output[0]));
+                    calculate(&input->data.data()[bin_offset], std::min(bin_size,input_size-bin_offset), output);
+                    //write output
+                    write_output(*input);
+                }
             }
         }
     }
@@ -241,6 +255,12 @@ std::ostream& operator<< (std::ostream& o, const std::vector<T>& v)
     std::copy(v.begin(), v.end(), std::ostream_iterator<T>(o, " "));
     return o;
 }
+template<typename T>
+void range_check(T value, T min, T max, const char* label)
+{
+    if(value<min || value>max) { COMMA_THROW(comma::exception, label<<" out of range "<<min<<" to "<<max ); }
+}
+
 int main( int argc, char** argv )
 {
     comma::command_line_options options( argc, argv, usage );
@@ -254,8 +274,13 @@ int main( int argc, char** argv )
         real=options.exists("--real");
         split=options.exists("--split");
         timestamp=options.exists("--timestamp");
+        bin_size=options.value<std::size_t>("--bin-size", input_size);
+        range_check<std::size_t>(bin_size,0,input_size,"bin_size");
+        bin_overlap=options.optional<double>("--bin-overlap");
+        if(bin_overlap)
+            range_check<double>(*bin_overlap,0,1,"bin_overlap");
         std::vector<std::string> unnamed=options.unnamed("--verbose,-v,--output-size,--output-format,--no-filter,--linear,--timestamp,--magnitude,--real,--split", 
-                                                         "--binary,-b,--fields,-f,--delimiter,-d,--size");
+                                                         "--binary,-b,--fields,-f,--delimiter,-d,--size,--bin-size,--bin-overlap");
         if(unnamed.size() != 0) { COMMA_THROW(comma::exception, "invalid option(s): " << unnamed ); }
         app app;
         if(options.exists("--output-size")) { std::cout<< app.get_output_size() << std::endl; return 0; }
