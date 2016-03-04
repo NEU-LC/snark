@@ -74,7 +74,7 @@ static void usage( bool more = false )
     std::cerr << "    filter: triangles; fields: corners; or corners[0],corners[1],corners[2]; or corners[0]/x,or corners[0]/y,or corners[0]/z etc" << std::endl;
     std::cerr << "    output: concatenated input, corresponding line of filter, and nearest point of triangle (3d in binary)" << std::endl;
     std::cerr << "    options" << std::endl;
-    std::cerr << "        --max-triangle-circumscribing-radius,--triangle-size=<value>: triangles of greater size will be discarded; default: value of --radius" << std::endl;
+    std::cerr << "        --max-triangle-side=<value>: triangles with any side longer than <value> will be discarded; default: value of --radius" << std::endl;
     std::cerr << "        --origin=<x>,<y>,<z>: point from which the input points were seen" << std::endl;
     std::cerr << "                              if the angle between the normal of the triangle and the vector from" << std::endl;
     std::cerr << "                              the point to the origin greater or equal 90 degrees, the triangle" << std::endl;
@@ -93,10 +93,12 @@ static void usage( bool more = false )
 static bool verbose;
 static bool strict;
 static double radius;
+static double max_triangle_side;
 static Eigen::Vector3d origin = Eigen::Vector3d::Zero();
 static Eigen::Vector3d resolution;
 static comma::csv::options stdin_csv;
 static comma::csv::options filter_csv;
+
 
 // todo: add block field
 struct record
@@ -162,9 +164,11 @@ template <> struct traits< snark::triangle >
     }
     static bool touch( grid_t& grid, const record_t& record )
     {
-        if( record.value.circumscribing_radius() > radius )
+        if(    ( record.value.corners[0] - record.value.corners[1] ).norm() > max_triangle_side
+            || ( record.value.corners[1] - record.value.corners[2] ).norm() > max_triangle_side
+            || ( record.value.corners[2] - record.value.corners[0] ).norm() > max_triangle_side )
         {
-            if( verbose || strict ) { std::cerr << "points-join: expected triangles that fit into voxels; got: " << std::endl << record.value.corners[0].transpose() << ";" << record.value.corners[1].transpose() << ";" << record.value.corners[2].transpose() << std::endl; }
+            if( verbose || strict ) { std::cerr << "points-join: expected triangles with longest side of " << max_triangle_side << "; got: " << std::endl << record.value.corners[0].transpose() << ";" << record.value.corners[1].transpose() << ";" << record.value.corners[2].transpose() << std::endl; }
             return false;
         }
         typename grid_t::iterator i0 = grid.touch_at( record.value.corners[0] );
@@ -324,8 +328,8 @@ int main( int ac, char** av )
         double r = radius;
         if( filter_triangulated ) // quick and dirty
         {
-            double s = options.value< double >( "--max-triangle-circumscribing-radius,--triangle-size", 0 );
-            if( s > r ) { r = s; }
+            max_triangle_side = options.value< double >( "--max-triangle-side", r );
+            if( max_triangle_side > r ) { r = max_triangle_side; }
             r *= 2; // todo: quick and dirty, calculate precise upper bound; needed to contain all triangles in given radius
             origin = options.exists( "--origin" ) ? comma::csv::ascii< Eigen::Vector3d >().get( options.value< std::string >( "--origin" ) ) : Eigen::Vector3d::Zero();
         }

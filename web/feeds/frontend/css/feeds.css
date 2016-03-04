@@ -148,6 +148,13 @@ canvas.target {
     min-height: 269px;
 }
 
+.map {
+    min-width: 269px;
+    min-height: 269px;
+    width: 500px;
+    height: 500px;
+}
+
 .graph {
     padding: 10px;
 }

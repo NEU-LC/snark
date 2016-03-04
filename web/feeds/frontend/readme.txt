@@ -5,14 +5,14 @@ web.frontend.json description:
 
 {
     "host": "http://host:port",                 // default feed server, optional
-                                                // if a feed entry in the "feeds" section does not have a url
-                                                // then the url is formed by <host>/<feed-name>
+                                                // if a feed entry in the "feeds" section does not have a url then the url is formed by <host>/<feed-name>
     "websocket": "ws://host:port/endpoint",     // default stream feed server, optional
+    "bing_maps_key": <string>                   // required if using map imagery sets, Bing Maps API key. Get yours at http://bingmapsportal.com/.
     "feeds":
     {
         "<feed-name>":
         {
-            "type": <type>,                     // optional, type: "image", "text", "graph", "track"; default: "image"
+            "type": <type>,                     // optional, type: "image", "text", "graph", "track", "map"; default: "image"
             "url": "http://host:port/path"      // optional
             "refresh":                          // optional
             {
@@ -49,16 +49,35 @@ web.frontend.json description:
             {
                 "autoplay": true|false          // autoplay stream on load, default: false
             },
-            "track":                            // optiona, only applicable when "type": "track"
+            "track":                            // optional, only applicable when "type": "track"
             {
-                "background_url": <url>,        // optional, url to background image, may be relative path or http://...
+                "image": <url>,                 // optional, url to background image, may be relative path or http://...
+                "extent": <array|string>,       // optional, extent of image, default: input points are pixels
+                                                             array: [min-x, min-y, max-x, max-y] (positive y is up)
+                                                             string: url to world file
                 "scale": <number>,              // optional, scale background image in percentage, default: 100
                 "trail": true|false,            // optional, show track with trail, default: false
                 "draw_interval": <number>,      // optional, canvas draw interval in milliseconds, default: 100
                 "alpha_step": <number>,         // optional, alpha decrement step on each draw (fade out) where alpha between 0 and 1, default: 0
                 "radius": <number>,             // optional, radius of each track point, default: 5
-                "fill": <color>,                // optional, point fill color in hex format '#rrggbb' or RGB16 array [r,g,b], default: [16,168,26] (#10a81a)
-                "stroke": <color>,              // optional, point stroke color in hex format '#rrggbb' or RGB16 array [r,g,b], default: [58,238,35] (#3aee23)
+                "fill": <color>,                // optional, point fill color in hex format '#rrggbb', default: #10a81a
+                "stroke": <color>,              // optional, point stroke color in hex format '#rrggbb', default: #3aee23
+                "strokeWidth": <number>         // optional, point stroke width, 0 = no stroke, default: 2
+            },
+            "map":                              // optiona, only applicable when "type": "map"
+            {
+                "imagery_set": <string>         // optional, map imagery set options: "Aerial, "AerialWithLabels", "Road", default: "Aerial"
+                "image": <url>,                 // optional, url to background image, may be relative path or http://...
+                "extent": <array|string>,       // optional, extent of image, default: '' - input points are pixels
+                                                             array: [min-x, min-y, max-x, max-y] (positive y is up), units: pixels
+                                                             string: url to world file, units: degrees
+                "follow": true|false,           // optional, follow input points, default: false
+                "trail": true|false,            // optional, show track with trail, default: false
+                "draw_interval": <number>,      // optional, canvas draw interval in milliseconds, default: 100
+                "alpha_step": <number>,         // optional, alpha decrement step on each draw (fade out) where alpha between 0 and 1, default: 0
+                "radius": <number>,             // optional, radius of each track point, default: 5
+                "fill": <color>,                // optional, point fill color in hex format '#rrggbb', default: #10a81a
+                "stroke": <color>,              // optional, point stroke color in hex format '#rrggbb', default: #3aee23
                 "strokeWidth": <number>         // optional, point stroke width, 0 = no stroke, default: 2
             },
             "alert": true|false                 // optional, enable alerting, default: true

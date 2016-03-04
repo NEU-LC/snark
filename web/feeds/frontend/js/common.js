@@ -42,9 +42,10 @@ require.config({
         jquery_mobile: "lib/jquery-mobile/jquery.mobile-1.4.5",
         jquery_timeago: 'lib/jquery-timeago/jquery.timeago',
         bootstrap: ['lib/bootstrap/dist/js/bootstrap.min'],
-        dat_gui: ['lib/dat-gui/build/dat.gui.min'],
+        dat_gui: ['lib/dat-gui/build/dat.gui.snark'],
         dat_gui_mobile: ['lib/dat-gui/build/dat.gui.mobile'],
         mobile_detect: ['lib/Mobile-Detect/mobile-detect'],
+        ol: ['lib/OpenLayers/build/ol'],
         // --------------------------------------------//
         //
         // app scripts
@@ -58,6 +59,7 @@ require.config({
         ImageStreamFeed: 'js/model/ImageStreamFeed',
         TextFeed: 'js/model/TextFeed',
         TrackFeed: 'js/model/TrackFeed',
+        MapFeed: 'js/model/MapFeed',
         // -----------------------------//
         // models
         // -----------------------------//
