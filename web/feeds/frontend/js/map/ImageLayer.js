@@ -9,7 +9,7 @@ define(['jquery', 'ol', 'utils'], function () {
         image.onload = function () {
             $.get(_this.options.extent, function (data) {
                 var extent;
-                if (_this.options.extent.endsWith('.csv')) {
+                if (data.indexOf(',') >= 0) {
                     extent = data.trim().split(',').map(Number);
                 } else {
                     data = data.trim().split('\n').map(Number);
