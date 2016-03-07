@@ -37,5 +37,8 @@ define(['jquery', 'ol', 'utils'], function () {
     ImageLayer.prototype.get_center = function () {
         return ol.extent.getCenter(this.extent);
     }
+    ImageLayer.prototype.get_extent = function () {
+        return this.extent;
+    }
     return ImageLayer;
 });

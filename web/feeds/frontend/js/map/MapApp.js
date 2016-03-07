@@ -164,10 +164,7 @@ define(['handlebars', 'CsvLayer', 'ImageLayer', 'jquery', 'jquery_ui', 'dat_gui'
         var _this = this;
         layer.onload = function () {
             _this.reorder_layer(this);
-            var center = this.get_center();
-            if (center) {
-                _this.map.getView().setCenter(center);
-            }
+            _this.center_on_layer(layer.id, true);
         }
         layer.load();
         this.layers[layer.id] = layer;
@@ -181,7 +178,12 @@ define(['handlebars', 'CsvLayer', 'ImageLayer', 'jquery', 'jquery_ui', 'dat_gui'
         li.find('input').on('click', this.toggle_layer.bind(this));
         var remove_icon = li.find('.remove-icon');
         remove_icon.on('click', this.remove_layer.bind(this));
-        li.find('.center-icon').on('click', this.center_on_layer.bind(this));
+        li.find('.center-icon').on('click', function(event) {
+            var input = event.target;
+            var li = $(input).closest('li');
+            var layer_id = li.attr('id');
+            _this.center_on_layer(layer_id, event.shiftKey);
+        });
     }
     MapApp.prototype.toggle_layer = function(event) {
         var input = event.target;
@@ -203,13 +205,22 @@ define(['handlebars', 'CsvLayer', 'ImageLayer', 'jquery', 'jquery_ui', 'dat_gui'
         li.remove();
         delete this.layers[layer_id];
     }
-    MapApp.prototype.center_on_layer = function(event) {
-        var input = event.target;
-        var li = $(input).closest('li');
-        var layer_id = li.attr('id');
-        var center = this.layers[layer_id].get_center();
-        if (center) {
-            this.map.getView().setCenter(center);
+    MapApp.prototype.center_on_layer = function(layer_id, fit) {
+        var layer = this.layers[layer_id];
+        var center = layer.get_center();
+        if (!center) {
+            return;
+        }
+        var view = this.map.getView();
+        view.setCenter(center);
+        if (fit) {
+            view.setZoom(40);
+            var layer_extent = layer.get_extent();
+            var view_extent = view.calculateExtent(this.map.getSize());
+            while (layer_extent[1] < view_extent[1] || view_extent[3] < layer_extent[3]) {
+                view.setZoom(view.getZoom() - 1);
+                view_extent = view.calculateExtent(this.map.getSize());
+            }
         }
     }
     MapApp.prototype.get_layer_order = function() {

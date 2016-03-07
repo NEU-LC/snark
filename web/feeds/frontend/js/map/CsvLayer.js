@@ -29,24 +29,24 @@ define(['Csv', 'jquery', 'ol', 'utils'], function (Csv) {
     };
     CsvLayer.prototype.load_data = function (data) {
         this.csv = new Csv(this.options, data);
-        var coordinates = [];
-        while (true) {
-            var o = this.csv.readObject();
-            if (!o || !o.longitude || !o.latitude) {
-                break;
-            }
-            coordinates.push([o.longitude, o.latitude]);
-        }
-        if (!coordinates.length) {
-            console.warn(this.options.filename + ' has no points');
-            return;
-        }
         var feature = new ol.Feature();
         var stroke = new ol.style.Stroke({
             color: this.options.stroke,
             width: this.options.stroke_width
         });
         if (this.options.geometry == 'point') {
+            var coordinates = [];
+            while (true) {
+                var o = this.csv.readObject();
+                if (!o || !o.longitude || !o.latitude) {
+                    break;
+                }
+                coordinates.push([o.longitude, o.latitude]);
+            }
+            if (!coordinates.length) {
+                console.warn(this.options.filename + ' has no points');
+                return;
+            }
             feature.setGeometry(new ol.geom.MultiPoint(coordinates));
             feature.setStyle(new ol.style.Style({
                 image: new ol.style.Circle({
@@ -58,10 +58,33 @@ define(['Csv', 'jquery', 'ol', 'utils'], function (Csv) {
                 })
             }));
         } else {
-            feature.setGeometry(new ol.geom.LineString(coordinates));
+            var geometry = new ol.geom.MultiLineString();
+            var line = new ol.geom.LineString();
+            var prev;
+            var cross_antimeridian = false;
+            while (true) {
+                var o = this.csv.readObject();
+                if (!o || !o.longitude || !o.latitude) {
+                    break;
+                }
+                if (prev && Math.abs(o.longitude - prev.longitude) >= 180) {
+                    cross_antimeridian = true;
+                    geometry.appendLineString(line);
+                    line = new ol.geom.LineString();
+                }
+                line.appendCoordinate([o.longitude, o.latitude]);
+                prev = o;
+            }
+            geometry.appendLineString(line);
+            feature.setGeometry(geometry);
             feature.setStyle(new ol.style.Style({
                 stroke: stroke
             }));
+            if (cross_antimeridian) {
+                var center = ol.extent.getCenter(geometry.getExtent());
+                center[0] += (center[0] >= 0 ? 1 : -1) * 180;
+                this.center = ol.proj.transform(center, 'EPSG:4326', 'EPSG:3857');
+            }
         }
         feature.getGeometry().transform('EPSG:4326', 'EPSG:3857');
         this.source.addFeature(feature);
@@ -74,7 +97,17 @@ define(['Csv', 'jquery', 'ol', 'utils'], function (Csv) {
         if (!feature) {
             return;
         }
+        if (this.center) {
+            return this.center;
+        }
         return ol.extent.getCenter(feature.getGeometry().getExtent());
+    }
+    CsvLayer.prototype.get_extent = function () {
+        var feature = this.source.getFeatures()[0];
+        if (!feature) {
+            return;
+        }
+        return feature.getGeometry().getExtent();
     }
     return CsvLayer;
 });
