@@ -171,9 +171,9 @@ template <> struct traits< snark::triangle >
             if( verbose || strict ) { std::cerr << "points-join: expected triangles with longest side of " << max_triangle_side << "; got: " << std::endl << record.value.corners[0].transpose() << ";" << record.value.corners[1].transpose() << ";" << record.value.corners[2].transpose() << std::endl; }
             return false;
         }
-        typename grid_t::iterator i0 = grid.touch_at( record.value.corners[0] );
-        typename grid_t::iterator i1 = grid.touch_at( record.value.corners[1] );
-        typename grid_t::iterator i2 = grid.touch_at( record.value.corners[2] );
+        grid_t::iterator i0 = grid.touch_at( record.value.corners[0] );
+        grid_t::iterator i1 = grid.touch_at( record.value.corners[1] );
+        grid_t::iterator i2 = grid.touch_at( record.value.corners[2] );
         i0->second.push_back( &record );
         if( i1 != i0 ) { i1->second.push_back( &record ); }
         if( i2 != i0 && i2 != i1 ) { i2->second.push_back( &record ); }
