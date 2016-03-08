@@ -59,20 +59,20 @@ template < typename T, int Rows > struct traits< ::Eigen::Matrix< T, Rows, 1 > >
 
 namespace detail {
 
-template < typename T, int Cols > struct cols { boost::array< T, Cols > cols; };
+template < typename T, int Cols > struct cols_t { boost::array< T, Cols > cols; };
 
 } // namespace detail {
 
-template < typename T, int Cols > struct traits< detail::cols< T, Cols > >
+template < typename T, int Cols > struct traits< detail::cols_t< T, Cols > >
 {
     template < typename Key, class Visitor >
-    static void visit( const Key&, detail::cols< T, Cols >& p, Visitor& v )
+    static void visit( const Key&, detail::cols_t< T, Cols >& p, Visitor& v )
     {
         v.apply( "cols", p.cols );
     }
 
     template < typename Key, class Visitor >
-    static void visit( const Key&, const detail::cols< T, Cols >& p, Visitor& v )
+    static void visit( const Key&, const detail::cols_t< T, Cols >& p, Visitor& v )
     {
         v.apply( "cols", p.cols );
     }
@@ -83,7 +83,7 @@ template < typename T, int Rows, int Cols > struct traits< ::Eigen::Matrix< T, R
     template < typename Key, class Visitor >
     static void visit( const Key& k, ::Eigen::Matrix< T, Rows, Cols >& p, Visitor& v )
     {
-        boost::array< detail::cols< T, Cols >, Rows > rows; // quick and dirty
+        boost::array< detail::cols_t< T, Cols >, Rows > rows; // quick and dirty
         for( unsigned int i = 0; i < Rows; ++i ) { for( unsigned int j = 0; j < Cols; ++j ) { rows[i].cols[j] = p( i, j ); } }
         v.apply( "rows", rows );
         for( unsigned int i = 0; i < Rows; ++i ) { for( unsigned int j = 0; j < Cols; ++j ) { p( i, j ) = rows[i].cols[j]; } }
@@ -92,7 +92,7 @@ template < typename T, int Rows, int Cols > struct traits< ::Eigen::Matrix< T, R
     template < typename Key, class Visitor >
     static void visit( const Key& k, const ::Eigen::Matrix< T, Rows, Cols >& p, Visitor& v )
     {
-        boost::array< detail::cols< T, Cols >, Rows > rows; // quick and dirty
+        boost::array< detail::cols_t< T, Cols >, Rows > rows; // quick and dirty
         for( unsigned int i = 0; i < Rows; ++i ) { for( unsigned int j = 0; j < Cols; ++j ) { rows[i].cols[j] = p( i, j ); } }
         v.apply( "rows", rows );
     }
