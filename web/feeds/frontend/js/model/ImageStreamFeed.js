@@ -1,8 +1,4 @@
-/**
- * Created by vrushali on 15/10/15.
- */
-define('ImageStreamFeed', ["jquery", "Feed"], function ($) {
-    var Feed = require('Feed');
+define(['jquery', 'Grid'], function ($, Grid) {
 
     var ImageStreamFeed = function (feed_name, config) {
         this.feed_name = feed_name;
@@ -11,25 +7,24 @@ define('ImageStreamFeed', ["jquery", "Feed"], function ($) {
         this.el = $(this.id);
         this.target = $(this.id + ' .target');
         this.control = $(this.id + ' .panel-stream-control span');
-        this.target.on('load', function () {
-            var id = $(this).closest('li').attr('id');
-            var feed = feeds[id];
-            if (!feed.is_resizable) {
-                feed.target.resizable({
-                    aspectRatio: true,
-                    autoHide: true,
-                    minWidth: 269,
-                    minHeight: 269
-                });
-                feed.is_resizable = true;
-            }
-        });
+        this.init();
     };
     ImageStreamFeed.prototype.init = function () {
+        this.target.resizable({
+            aspectRatio: true,
+            autoHide: true,
+            minWidth: 269,
+            minHeight: 269
+        });
+        this.img = $('<img>').appendTo(this.target);
+        var _this = this;
+        this.img.one('load', function (event) {
+            _this.check_grid();
+        });
     };
     ImageStreamFeed.prototype.onload = function (data) {
         if (data.substr(0, 5) === 'data:') {
-            this.target.attr('src', data);
+            this.img.attr('src', data);
         } else {
             console.log(data);
         }
@@ -83,11 +78,11 @@ define('ImageStreamFeed', ["jquery", "Feed"], function ($) {
         }
     };
     ImageStreamFeed.prototype.started = function () {
-        this.control.removeClass('text-muted').addClass('text-success');
+        this.control.removeClass('text-muted glyphicon-stop').addClass('text-success glyphicon-play');
     };
 
     ImageStreamFeed.prototype.stopped = function () {
-        this.control.removeClass('text-success').addClass('text-muted');
+        this.control.removeClass('text-success glyphicon-play').addClass('text-muted glyphicon-stop');
     };
     ImageStreamFeed.prototype.refresh = function () {
         if (!this.is_open()) {
@@ -97,5 +92,25 @@ define('ImageStreamFeed', ["jquery", "Feed"], function ($) {
     ImageStreamFeed.prototype.start = function () {
         this.reset(this.config.stream.autoplay ? {} : {count: 1});
     };
+    ImageStreamFeed.prototype.check_grid = function () {
+        if (this.config.grid && this.config.grid.show) {
+            this.remove_grid();
+            this.add_grid();
+        }
+    }
+    ImageStreamFeed.prototype.add_grid = function () {
+        this.grid = new Grid(this.target, this.config.grid, this.img.width(), this.img.height());
+    }
+    ImageStreamFeed.prototype.remove_grid = function () {
+        if (this.grid) {
+            this.grid.remove();
+            delete this.grid;
+        }
+    }
+    ImageStreamFeed.prototype.draw_grid = function () {
+        if (this.grid) {
+            this.grid.draw();
+        }
+    }
     return ImageStreamFeed;
 });

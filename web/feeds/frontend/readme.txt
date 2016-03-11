@@ -78,7 +78,7 @@ web.frontend.json description:
                 "radius": <number>,             // optional, radius of each track point, default: 5
                 "fill": <color>,                // optional, point fill color in hex format '#rrggbb', default: #10a81a
                 "stroke": <color>,              // optional, point stroke color in hex format '#rrggbb', default: #3aee23
-                "strokeWidth": <number>         // optional, point stroke width, 0 = no stroke, default: 2
+                "stroke_width": <number>         // optional, point stroke width, 0 = no stroke, default: 2
             },
             "alert": true|false                 // optional, enable alerting, default: true
         },
@@ -90,3 +90,77 @@ web.frontend.json description:
 }
 
 see: examples/web.frontend.json
+
+
+map.html
+
+This page can display datasets over maps. Layers and map options can be specified through the controls on the page, a config file or through the URL query
+
+config: configuration file of map options and layer definitions (default: 'config/map.json')
+
+    query example:
+        
+        http://<web-server>/map.html?config=config/map-with-layers.json
+
+imagery_set:        specifies which Bing Maps imagery set to use - 'Aerial', 'AerialWithLabels', 'Road' (default: 'Road')
+
+bing_maps_key:      Bing Maps API key. Get yours at http://bingmapsportal.com
+
+    query example:
+        
+        http://<web-server>/map.html?imagery_set=AerialWithLabels&bing_maps_key=<Your Bing Maps API Key>
+
+layer: defines a layer, 2 types of layers are supported: image and data layers
+
+    data layer
+
+        data options
+            filename:       url to data file
+            fields:         the fields of the data file, in particular 'latitude' and 'longitude' are required
+            binary:         if the data is binary, then the binary format of the fields (similar type specifiers used in comma)
+
+        style options
+            geometry:       geometry used to display datasets, 'line' or 'point' (default: 'line')
+            fill:           fill color, applicable when geometry is 'point', rgba() or hex '#rrggbb' (default: rgba(255, 255, 255, 0.4))
+                            when hex is used in the URL query then the '#' must be URI encoded: (i.e. '%23')
+            stroke:         stroke color (default: #3399CC)
+            stroke_width:   stroke width (default: 1.25)
+            radius:         point radius (default: 5)
+
+        query example:
+
+            http://<web-server>/map.html?layer=filename=data/lat-lon.bin;fields=,latitude,longitude;binary=t,2d;fill=rgba(123,45,67,0.5)
+
+    image layer
+
+        image:              url to image file
+        extent:             url to image extents file, can be csv (min-x,min-y,max-x,max-y) or World file
+                            if none is provided, a default World file is assumed at <url to image file>w (e.g. if the image is 'images/sydney.png', assume extent file is 'images/sydney.pngw')
+
+        query example:
+
+            http://<web-server>/map.html?layer=image=images/sydney.png;extent=images/sydney.png.csv
+            http://<web-server>/map.html?layer=image=images/sydney.png;extent=images/sydney.png.csv&layer=filename=data/lat-lon.csv;fields=latitude,longitude
+
+example map config file:
+
+{
+    "imagery_set": "Road",
+    "bing_maps_key": "Get yours at http://bingmapsportal.com",
+    "layers":
+    [
+        {
+            "image": "images/sydney.png"
+        },
+        {
+            "filename": "data/lat-lon.bin",
+            "fields": ",latitude,longitude",
+            "binary": "t,2d"
+            "geometry": "point",
+            "fill": "rgba(235,115,115,0.6)",
+            "stroke": "#8333cc",
+            "stroke_width": 2,
+            "radius": 3
+        }
+    ]
+}

@@ -106,15 +106,12 @@ var globals = {
 
 var add_poll_body = function (feed_name, element, popup_div) {
     var id = '#' + feed_name;
-    var class_str = " ";
-    if (!globals.isMobile) {
-        class_str += " transparent  ";
-    }
+    var class_str = globals.isMobile ? '' : ' transparent';
     $(id).append(
         '<h3>' + feed_name +
-        '  <button class="panel-refresh hideable ' + class_str + '" title="<kbd>click</kbd>: refresh<br><kbd>shift+click</kbd>: auto refresh"><span class="status text-muted glyphicon glyphicon-refresh"></span></button>' +
-        '  <button class="panel-settings hideable  ' + class_str + '" title="settings"><span class="text-muted glyphicon glyphicon-cog"></span></button>' +
-        '  <button class="panel-compact hideable  ' + class_str + '" title="compact"><span class="text-muted glyphicon glyphicon-resize-small"></span></button>' +
+        '  <button class="panel-refresh hideable' + class_str + '" title="<kbd>click</kbd>: refresh<br><kbd>shift+click</kbd>: auto refresh"><span class="status text-muted glyphicon glyphicon-refresh"></span></button>' +
+        '  <button class="panel-settings hideable' + class_str + '" title="settings"><span class="text-muted glyphicon glyphicon-cog"></span></button>' +
+        '  <button class="panel-compact hideable' + class_str + '" title="compact"><span class="text-muted glyphicon glyphicon-resize-small"></span></button>' +
         '</h3>' +
         '<div class="panel-body">' +
         '  <time class="timestring time small">&nbsp;</time>' +
@@ -130,10 +127,11 @@ var add_poll_body = function (feed_name, element, popup_div) {
 };
 var add_stream_body = function (feed_name, element) {
     var id = '#' + feed_name;
+    var class_str = globals.isMobile ? '' : ' transparent';
     $(id).append(
         '<h3>' + feed_name +
-        '  <button class="panel-stream-control" title="<kbd>click</kbd>: refresh<br><kbd>shift+click</kbd>: start/stop"><span class="status text-muted glyphicon glyphicon-stop"></span></button>' +
-        '  <button class="panel-settings hideable transparent" title="settings"><span class="text-muted glyphicon glyphicon-cog"></span></button></h3>' +
+        '  <button class="panel-stream-control hideable' + class_str + '" title="<kbd>click</kbd>: refresh<br><kbd>shift+click</kbd>: start/stop"><span class="status text-muted glyphicon glyphicon-stop"></span></button>' +
+        '  <button class="panel-settings hideable ' + class_str + '" title="settings"><span class="text-muted glyphicon glyphicon-cog"></span></button></h3>' +
         '<div class="panel-body">' +
         element +
         '</div>'
@@ -142,13 +140,10 @@ var add_stream_body = function (feed_name, element) {
 
 
 var add_panel = function (feed_name) {
-    var class_str = " ";
-    if (!globals.isMobile) {
-        class_str += " transparent  ";
-    }
+    var class_str = globals.isMobile ? '' : ' transparent';
     $('#container').append(
         '<li id="' + feed_name + '" class="panel ">' +
-        '  <button type="button" class="panel-close hideable text-muted  ' + class_str + 'pull-right" title="close"><span>&times;</span></button>' +
+        '  <button type="button" class="panel-close hideable text-muted pull-right' + class_str + '" title="close"><span>&times;</span></button>' +
         '</li>'
     );
 };

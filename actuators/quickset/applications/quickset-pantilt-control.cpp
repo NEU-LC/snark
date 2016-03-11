@@ -53,7 +53,11 @@ static void usage()
     std::cerr << "output pan/tilt status to stdout" << std::endl;
     std::cerr << std::endl;
     std::cerr << "usage" << std::endl;
-    std::cerr << "    cat commands.csv | quickset-pantilt-control <serial port> [<options>]" << std::endl;
+    std::cerr << "    cat commands.csv | quickset-pantilt-control <address> [<options>]" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "<address>: tcp address or serial port" << std::endl;
+    std::cerr << "    tcp address: e.g: tcp:192.168.0.1:12345" << std::endl;
+    std::cerr << "    serial port: e.g: /dev/ttyS0" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    --help,-h: show this message" << std::endl;
