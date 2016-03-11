@@ -1,0 +1,5 @@
+#!/bin/bash
+
+points-align \
+    | name-value-from-csv $( points-align --output-fields ) \
+    | csv-quote --delimiter='=' --fields=,value
