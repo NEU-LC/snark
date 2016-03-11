@@ -2532,8 +2532,51 @@ dat.GUI = dat.gui.GUI = (function (css, saveDialogueContents, styleSheet, contro
                 this.__listening.push(controller);
                 if (init) updateDisplays(this.__listening);
 
-            }
+            },
 
+            setProperty: function (property, value, opt_folder_name) {
+                if (opt_folder_name && opt_folder_name in this.__folders) {
+                    return this.__folders[opt_folder_name].setProperty(property, value);
+                }
+                for (var i in this.__controllers) {
+                    var controller = this.__controllers[i];
+                    if (controller.property == property) {
+                        var tmp = controller.__onChange;
+                        if (!tmp && controller.__onFinishChange) {
+                            controller.__onChange = controller.__onFinishChange;
+                        }
+                        controller.setValue(value);
+                        controller.__onChange = tmp;
+                        break;
+                    }
+                }
+            },
+
+            updateDisplay: function (property, opt_folder_name) {
+                if (opt_folder_name && opt_folder_name in this.__folders) {
+                    return this.__folders[opt_folder_name].updateDisplay(property);
+                }
+                for (var i in this.__controllers) {
+                    var controller = this.__controllers[i];
+                    if (controller.property == property) {
+                        controller.updateDisplay();
+                        break;
+                    }
+                }
+            },
+
+            toggleProperty: function (property, opt_folder_name) {
+                if (opt_folder_name && opt_folder_name in this.__folders) {
+                    return this.__folders[opt_folder_name].toggleProperty(property);
+                }
+                for (var i in this.__controllers) {
+                    var controller = this.__controllers[i];
+                    if (controller.property == property) {
+                        controller.setValue(!controller.getValue());
+                        break;
+                    }
+                }
+            }
         }
     );
 

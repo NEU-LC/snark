@@ -153,7 +153,7 @@ var gui;
 
 require(['jquery', 'jquery_mobile',
     "jquery_timeago", "bootstrap", "ol", "dat_gui_mobile", "Feed", "CsvFeed",
-    'TextFeed', 'ImageFeed', 'GraphFeed', 'ImageStreamFeed', 'TrackFeed', 'MapFeed', 'utils'], function ($) {
+    'TextFeed', 'ImageFeed', 'GraphFeed', 'ImageStreamFeed', 'TrackFeed', 'MapFeed', 'GridOptions', 'utils'], function ($) {
     var Feed = require('Feed');
     var ImageFeed = require('ImageFeed');
     var TextFeed = require('TextFeed');
@@ -162,6 +162,7 @@ require(['jquery', 'jquery_mobile',
     var CsvFeed = require('CsvFeed');
     var TrackFeed = require('TrackFeed');
     var MapFeed = require('MapFeed');
+    var GridOptions = require('GridOptions');
 
     globals.config_file = 'config/tab.frontend.json';
     globals.isMobile = true;
@@ -211,7 +212,87 @@ require(['jquery', 'jquery_mobile',
     }
 
     function get_feed_name(element) {
-        return $(element).closest('ul').find('li.title').text();
+        return $(element).closest('ul').find('li.title').first().text();
+    }
+
+    function add_grid_gui_options(folder, config) {
+        var grid_folder = folder.addFolder('grid options');
+        $(grid_folder.domElement).closest('li.folder').find('li.title').first().addClass('subfolder');
+        grid_folder.add(config.grid, 'show').onChange(function (value) {
+            var feed_name = get_feed_name(grid_folder.domElement);
+            var feed = feeds[feed_name];
+            value ? feed.add_grid() : feed.remove_grid();
+        });
+        grid_folder.add(config.grid.x, 'min', -100, 100).step(1).name('x min').onChange(function (value) {
+            var feed_name = get_feed_name(grid_folder.domElement);
+            var feed = feeds[feed_name];
+            feed.draw_grid();
+        });
+        grid_folder.add(config.grid.x, 'max', -100, 100).step(1).name('x max').onChange(function (value) {
+            var feed_name = get_feed_name(grid_folder.domElement);
+            var feed = feeds[feed_name];
+            feed.draw_grid();
+        });
+        grid_folder.add(config.grid.x, 'step', 0, 100).step(1).name('x step').onChange(function (value) {
+            var feed_name = get_feed_name(grid_folder.domElement);
+            var feed = feeds[feed_name];
+            feed.draw_grid();
+        });
+        grid_folder.addColor(config.grid.x, 'color').name('x color').onChange(function (value) {
+            var feed_name = get_feed_name(grid_folder.domElement);
+            var feed = feeds[feed_name];
+            feed.draw_grid();
+        });
+        grid_folder.add(config.grid.y, 'min', -100, 100).step(1).name('y min').onChange(function (value) {
+            var feed_name = get_feed_name(grid_folder.domElement);
+            var feed = feeds[feed_name];
+            feed.draw_grid();
+        });
+        grid_folder.add(config.grid.y, 'max', -100, 100).step(1).name('y max').onChange(function (value) {
+            var feed_name = get_feed_name(grid_folder.domElement);
+            var feed = feeds[feed_name];
+            feed.draw_grid();
+        });
+        grid_folder.add(config.grid.y, 'step', 0, 100).step(1).name('y step').onChange(function (value) {
+            var feed_name = get_feed_name(grid_folder.domElement);
+            var feed = feeds[feed_name];
+            feed.draw_grid();
+        });
+        grid_folder.addColor(config.grid.y, 'color').name('y color').onChange(function (value) {
+            var feed_name = get_feed_name(grid_folder.domElement);
+            var feed = feeds[feed_name];
+            feed.draw_grid();
+        });
+        grid_folder.add(config.grid, 'axis_width', 0.5, 20).step(0.5).name('axis width').onChange(function (value) {
+            var feed_name = get_feed_name(grid_folder.domElement);
+            var feed = feeds[feed_name];
+            feed.draw_grid();
+        });
+        grid_folder.add(config.grid.grid_lines, 'show').name('grid lines').onChange(function (value) {
+            var feed_name = get_feed_name(grid_folder.domElement);
+            var feed = feeds[feed_name];
+            feed.draw_grid();
+        });
+        grid_folder.addColor(config.grid.grid_lines, 'color').name('grid lines color').onChange(function (value) {
+            var feed_name = get_feed_name(grid_folder.domElement);
+            var feed = feeds[feed_name];
+            feed.draw_grid();
+        });
+        grid_folder.add(config.grid.grid_lines, 'width', 0.5, 10).step(0.1).name('grid lines width').onChange(function (value) {
+            var feed_name = get_feed_name(grid_folder.domElement);
+            var feed = feeds[feed_name];
+            feed.draw_grid();
+        });
+        grid_folder.add(config.grid, 'x_offset', -100, 100).step(1).name('x offset (pixels)').onChange(function (value) {
+            var feed_name = get_feed_name(grid_folder.domElement);
+            var feed = feeds[feed_name];
+            feed.draw_grid();
+        });
+        grid_folder.add(config.grid, 'y_offset', -100, 100).step(1).name('y offset (pixels)').onChange(function (value) {
+            var feed_name = get_feed_name(grid_folder.domElement);
+            var feed = feeds[feed_name];
+            feed.draw_grid();
+        });
     }
 
     function initialize(frontend_config) {
@@ -254,10 +335,15 @@ require(['jquery', 'jquery_mobile',
         folder.add(globals, "clear_alerts").name("clear alerts");
         folder.add(globals, "alert_beep").name("alert beep");
 
+        var grid_types = ['image', 'stream', 'track'];
+
         for (var feed_name in frontend_config.feeds) {
             var config = frontend_config.feeds[feed_name];
             if (!('type' in config)) {
                 config.type = 'image';
+            }
+            if (grid_types.indexOf(config.type) >= 0) {
+                config.grid = new GridOptions(config.grid);
             }
             if (config.type == 'stream') {
                 config.show = true;
@@ -563,6 +649,9 @@ require(['jquery', 'jquery_mobile',
                     }
                 });
             }
+            if (grid_types.indexOf(config.type) >= 0) {
+                add_grid_gui_options(folder, feed.config);
+            }
             feeds[feed_name] = feed;
         }
 
@@ -863,14 +952,6 @@ require(['jquery', 'jquery_mobile',
 
     var query_string = parse_query_string();
 
-    var add_panel = function (feed_name) {
-        $('#container').append(
-            '<li id="' + feed_name + '" class="panel ">' +
-            '  <button type="button" class="panel-close hideable text-muted pull-right" title="close"><span>&times;</span></button>' +
-            '</li>'
-        );
-    };
-
     var load_mobile_menu = function (config_data) {
         //var menu_items = [];
         for (var feed_name in config_data.feeds) {
@@ -899,50 +980,6 @@ require(['jquery', 'jquery_mobile',
         });
 
 
-    };
-
-    dat.GUI.prototype.setProperty = function (property, value, opt_folder_name) {
-        if (opt_folder_name && opt_folder_name in this.__folders) {
-            return this.__folders[opt_folder_name].setProperty(property, value);
-        }
-        for (var i in this.__controllers) {
-            var controller = this.__controllers[i];
-            if (controller.property == property) {
-                var tmp = controller.__onChange;
-                if (!tmp && controller.__onFinishChange) {
-                    controller.__onChange = controller.__onFinishChange;
-                }
-                controller.setValue(value);
-                controller.__onChange = tmp;
-                break;
-            }
-        }
-    };
-
-    dat.GUI.prototype.updateDisplay = function (property, opt_folder_name) {
-        if (opt_folder_name && opt_folder_name in this.__folders) {
-            return this.__folders[opt_folder_name].updateDisplay(property);
-        }
-        for (var i in this.__controllers) {
-            var controller = this.__controllers[i];
-            if (controller.property == property) {
-                controller.updateDisplay();
-                break;
-            }
-        }
-    };
-
-    dat.GUI.prototype.toggleProperty = function (property, opt_folder_name) {
-        if (opt_folder_name && opt_folder_name in this.__folders) {
-            return this.__folders[opt_folder_name].toggleProperty(property);
-        }
-        for (var i in this.__controllers) {
-            var controller = this.__controllers[i];
-            if (controller.property == property) {
-                controller.setValue(!controller.getValue());
-                break;
-            }
-        }
     };
 
     //var add_poll_body = function (feed_name, element, popup_div) {
@@ -979,7 +1016,7 @@ require(['jquery', 'jquery_mobile',
     var create_feed = function (type, feed_name, config) {
         add_panel(feed_name);
         if (type == 'image') {
-            var element_str = '<a href="#popup' + feed_name + '" data-rel="popup" data-position-to="window" data-transition="fade"><img class="target"/></a>';
+            var element_str = '<a href="#popup' + feed_name + '" data-rel="popup" data-position-to="window" data-transition="fade"><div class="target"/></a>';
             var popup_div = '<div data-role="popup" id="popup' + feed_name + '" data-overlay-theme="b" data-theme="b" data-corners="false">' +
                 '<a href="#" data-rel="back" class="ui-btn ui-corner-all ui-shadow ui-btn-a ui-icon-delete ui-btn-icon-notext ui-btn-right">Close</a><img class="popphoto" style="max-height:512px;" >' +
                 '</div>';
@@ -992,10 +1029,10 @@ require(['jquery', 'jquery_mobile',
             add_poll_body(feed_name, '<div class="target graph"><div class="graph-text">&nbsp;</div><div class="graph-y-labels"></div><div class="graph-bars"></div></div>');
             return new GraphFeed(feed_name, config);
         } else if (type == 'stream') {
-            add_stream_body(feed_name, '<img class="target"/>');
+            add_stream_body(feed_name, '<div class="target stream"/>');
             return new ImageStreamFeed(feed_name, config);
         } else if (type == 'track') {
-            add_poll_body(feed_name, '<canvas class="target" resize></canvas>');
+            add_poll_body(feed_name, '<div class="target"/>');
             return new TrackFeed(feed_name, config);
         } else if (type == 'map') {
             add_poll_body(feed_name, '<div class="target map"></div>');

@@ -123,17 +123,6 @@ define('MapFeed', ["jquery", "ol", "Feed", "utils"], function ($, ol) {
         }
         this.draw_interval = setInterval(this.draw.bind(this), this.config.map.draw_interval);
     }
-    MapFeed.prototype.resize = function() {
-        if (this.target.resizable('instance')) {
-            this.target.resizable('destroy');
-        }
-        this.target.css('margin-top', '5px');
-        this.target.resizable({
-            aspectRatio: true,
-            autoHide: true,
-            minHeight: 269,
-        });
-    }
     MapFeed.prototype.draw = function() {
         var feed = this;
         var features = this.feature_source.getFeatures().filter(function (feature) {

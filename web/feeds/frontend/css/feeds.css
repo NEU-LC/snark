@@ -27,6 +27,11 @@ body {
     border-left: 3px solid #1ed36f;
 }
 
+.dg .subfolder {
+    background-color: #1a1a1a !important;
+    border-bottom: 1px solid #2c2c2c !important;
+}
+
 #container {
     background: #080808;
     width: 80%;
@@ -129,23 +134,11 @@ body {
     border: 1px solid #2c2c2c;
 }
 
-img.target {
-    display: block;
-    min-width: 269px;
-    min-height: 269px;
-    width: 100%;
-}
-
 ul.target li {
     font: monospace;
     border: none;
     color: #bcdefa;
     padding: 0px 5px;
-}
-
-canvas.target {
-    min-width: 269px;
-    min-height: 269px;
 }
 
 .map {
@@ -265,4 +258,26 @@ table.target {
 
 .transparent {
     opacity: 0;
+}
+
+div.target {
+    position: relative;
+    min-width: 269px;
+    min-height: 269px;
+}
+
+div.target.stream {
+    margin-top: 21px;
+}
+
+div.target > img,
+div.target > canvas {
+    width: 100%;
+    height: 100%;
+}
+
+canvas.grid {
+    position: absolute;
+    top: 0;
+    left: 0;
 }

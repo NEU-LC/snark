@@ -1,5 +1,4 @@
-define('TrackFeed', ["jquery", "Feed", "utils"], function ($) {
-    var Feed = require('Feed');
+define(['jquery', 'Feed', 'Grid', 'utils'], function ($, Feed, Grid) {
 
     var TrackPoint = function(x, y, alpha) {
         this.x = x;
@@ -11,7 +10,8 @@ define('TrackFeed', ["jquery", "Feed", "utils"], function ($) {
     var TrackFeed = function (feed_name, config) {
         this.base = Feed;
         this.base(feed_name, config);
-        this.ctx = this.target[0].getContext('2d');
+        this.canvas = $('<canvas>', { class: 'track' }).appendTo(this.target);
+        this.ctx = this.canvas[0].getContext('2d');
         this.points = [];
 
         this.image_loader = new Image();
@@ -19,14 +19,13 @@ define('TrackFeed', ["jquery", "Feed", "utils"], function ($) {
         this.image_loader.onload = function () {
             _this.original_width = this.width;
             _this.original_height = this.height;
-            _this.target.width(this.width);
-            _this.target.height(this.height);
-            _this.target.css('background', 'url(' + this.src + ')');
-            _this.target.css('background-size', 'cover');
+            _this.canvas.css('background', 'url(' + this.src + ')');
+            _this.canvas.css('background-size', 'cover');
             _this.ctx.canvas.width = this.width;
             _this.ctx.canvas.height = this.height;
             _this.resize();
             _this.set_extent();
+            _this.check_grid();
         };
 
         this.set_background();
@@ -79,7 +78,6 @@ define('TrackFeed', ["jquery", "Feed", "utils"], function ($) {
         if (this.target.resizable('instance')) {
             this.target.resizable('destroy');
         }
-        this.target.css('margin-top', '5px');
         var scale = Math.max(this.config.track.scale, this.min_scale()) / 100;
         this.target.width(this.original_width * scale);
         this.target.height(this.original_height * scale);
@@ -143,6 +141,26 @@ define('TrackFeed', ["jquery", "Feed", "utils"], function ($) {
             this.points = [point];
         }
     };
+    TrackFeed.prototype.check_grid = function () {
+        if (this.config.grid && this.config.grid.show) {
+            this.remove_grid();
+            this.add_grid();
+        }
+    }
+    TrackFeed.prototype.add_grid = function () {
+        this.grid = new Grid(this.target, this.config.grid, this.original_width, this.original_height);
+    }
+    TrackFeed.prototype.remove_grid = function () {
+        if (this.grid) {
+            this.grid.remove();
+            delete this.grid;
+        }
+    }
+    TrackFeed.prototype.draw_grid = function () {
+        if (this.grid) {
+            this.grid.draw();
+        }
+    }
 
     return TrackFeed;
 });

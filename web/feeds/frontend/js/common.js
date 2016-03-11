@@ -60,6 +60,8 @@ require.config({
         TextFeed: 'js/model/TextFeed',
         TrackFeed: 'js/model/TrackFeed',
         MapFeed: 'js/model/MapFeed',
+        Grid: 'js/model/Grid',
+        GridOptions: 'js/model/GridOptions',
         // -----------------------------//
         // models
         // -----------------------------//
