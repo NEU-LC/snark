@@ -3,6 +3,7 @@ FILE( GLOB source   ${dir}/*.cpp)
 FILE( GLOB includes ${dir}/*.h)
 SOURCE_GROUP( ${TARGET_NAME} FILES ${source} ${includes} )
 
+ADD_EXECUTABLE( points-align points-align.cpp )
 ADD_EXECUTABLE( points-calc points-calc.cpp )
 ADD_EXECUTABLE( points-detect-change points-detect-change.cpp )
 ADD_EXECUTABLE( points-foreground-partitions points-foreground-partitions.cpp )
@@ -15,6 +16,7 @@ ADD_EXECUTABLE( points-to-voxels points-to-voxels.cpp )
 ADD_EXECUTABLE( points-to-voxel-indices points-to-voxel-indices.cpp )
 ADD_EXECUTABLE( points-track-partitions points-track-partitions.cpp )
 
+TARGET_LINK_LIBRARIES( points-align snark_math ${comma_ALL_LIBRARIES} ${snark_ALL_EXTERNAL_LIBRARIES} )
 TARGET_LINK_LIBRARIES( points-calc snark_math snark_point_cloud ${comma_ALL_LIBRARIES} ${snark_ALL_EXTERNAL_LIBRARIES} )
 TARGET_LINK_LIBRARIES( points-detect-change snark_math ${comma_ALL_LIBRARIES} ) #profiler )
 TARGET_LINK_LIBRARIES( points-foreground-partitions snark_point_cloud ${comma_ALL_LIBRARIES} tbb )
@@ -31,7 +33,8 @@ IF( PROFILE )
     TARGET_LINK_LIBRARIES ( points-to-partitions profiler )
 ENDIF( PROFILE )
 
-INSTALL( TARGETS points-calc
+INSTALL( TARGETS points-align
+                 points-calc
                  points-detect-change
                  points-join
                  points-slice
