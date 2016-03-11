@@ -33,8 +33,10 @@
 #ifndef SNARK_GRAPHICS_GL_VIEW_H_
 #define SNARK_GRAPHICS_GL_VIEW_H_
 
+#ifndef Q_MOC_RUN
 #include <boost/optional.hpp>
 #include <boost/thread.hpp>
+#endif
 #include <Eigen/Core>
 #include <Qt3D/qglview.h>
 #include <QMouseEvent>
