@@ -43,7 +43,7 @@ static const std::string output_fields = comma::join( comma::csv::names< snark::
 static void usage( bool verbose = false )
 {
     std::cerr << std::endl;
-    std::cerr << "align point cloud with reference point cloud" << std::endl;
+    std::cerr << "give the transform that will align a point cloud with a reference point cloud" << std::endl;
     std::cerr << std::endl;
     std::cerr << "usage: " << comma::verbose.app_name() << " [<options>]" << std::endl;
     std::cerr << std::endl;
@@ -51,8 +51,8 @@ static void usage( bool verbose = false )
     std::cerr << std::endl;
     std::cerr << "The input data is assumed to consist of matched points from the reference" << std::endl;
     std::cerr << "point cloud and the point cloud to be aligned. The output is a transform" << std::endl;
-    std::cerr << "in the form " << output_fields << " that can be given to points-frame to align" << std::endl;
-    std::cerr << "the data." << std::endl;
+    std::cerr << "in the form " << output_fields << " (angles in radians) that can be given to" << std::endl;
+    std::cerr << "points-frame to align the data." << std::endl;
     std::cerr << std::endl;
     if( verbose )
     {
