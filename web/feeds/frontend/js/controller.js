@@ -144,7 +144,7 @@ require(['jquery', "jquery_ui",
     "bootstrap", "ol",
     "dat_gui", "Feed", "CsvFeed",
     'TextFeed', 'ImageFeed',
-    'GraphFeed', 'ImageStreamFeed', 'TrackFeed', 'MapFeed', 'GridOptions', 'utils'], function ($) {
+    'GraphFeed', 'ImageStreamFeed', 'TrackFeed', 'TrackOptions', 'MapFeed', 'MapOptions', 'GridOptions', 'utils'], function ($) {
 
     var Feed = require('Feed');
     var ImageFeed = require('ImageFeed');
@@ -153,12 +153,13 @@ require(['jquery', "jquery_ui",
     var ImageStreamFeed = require('ImageStreamFeed');
     var CsvFeed = require('CsvFeed');
     var TrackFeed = require('TrackFeed');
+    var TrackOptions = require('TrackOptions');
     var MapFeed = require('MapFeed');
+    var MapOptions = require('MapOptions');
     var GridOptions = require('GridOptions');
 
     var current_config_file;
     var container_width;
-
 
     $(function () {
         container_width = $('#container').width();
@@ -200,80 +201,154 @@ require(['jquery', "jquery_ui",
         return $(element).closest('ul').find('li.title').first().text();
     }
 
-    function add_grid_gui_options(folder, config) {
+    function add_gui_track_options(folder, config) {
+        var track_folder = folder.addFolder('track options');
+        $(track_folder.domElement).closest('li.folder').find('li.title').first().addClass('subfolder');
+        track_folder.add(config, 'image').onFinishChange(function (value) {
+            var feed_name = get_feed_name(track_folder.domElement);
+            feeds[feed_name].set_background();
+        });
+        track_folder.add(config, 'extent').onFinishChange(function (value) {
+            var feed_name = get_feed_name(track_folder.domElement);
+            var feed = feeds[feed_name];
+            feed.set_extent();
+        });
+        track_folder.add(config, 'scale', 1, 300).name('scale (%)').step(0.01).onChange(function (value) {
+            var feed_name = get_feed_name(track_folder.domElement);
+            if (value < feeds[feed_name].min_scale()) {
+                return;
+            }
+            feeds[feed_name].resize();
+        });
+        track_folder.add(config, 'trail').onChange(function (value) {
+            var feed_name = get_feed_name(track_folder.domElement);
+            if (!value) {
+                feeds[feed_name].remove_trail();
+            }
+        });
+        track_folder.add(config, 'draw_interval', 1, 1000).name('draw interval (ms)').step(10).onChange(function (value) {
+            var feed_name = get_feed_name(track_folder.domElement);
+            feeds[feed_name].reset_draw_interval();
+        });
+        track_folder.add(config, 'alpha_step', 0, 0.9).name('alpha step').step(0.01);
+        track_folder.add(config, 'radius', 0.5, 20).step(0.1);
+        track_folder.addColor(config, 'fill');
+        track_folder.addColor(config, 'stroke');
+        track_folder.add(config, 'stroke_width', 0, 5).name('stroke width').step(0.5);
+    }
+
+    function add_gui_map_options(folder, config) {
+        var map_folder = folder.addFolder('map options');
+        $(map_folder.domElement).closest('li.folder').find('li.title').first().addClass('subfolder');
+        map_folder.add(config, 'imagery_set', ['', 'Aerial', 'AerialWithLabels', 'Road']).onFinishChange(function (value) {
+            var feed_name = get_feed_name(map_folder.domElement);
+            var feed = feeds[feed_name];
+            if (value) {
+                feed.set_base_tile();
+            } else {
+                feed.set_base_layer();
+            }
+        });
+        map_folder.add(config, 'bing_maps_key').name('bing maps key').onFinishChange(function (value) {
+            var feed_name = get_feed_name(map_folder.domElement);
+            var feed = feeds[feed_name];
+            feed.set_base_tile();
+        });
+        map_folder.add(config, 'image').onFinishChange(function (value) {
+            var feed_name = get_feed_name(map_folder.domElement);
+            feeds[feed_name].set_base_layer();
+        });
+        map_folder.add(config, 'extent').onFinishChange(function (value) {
+            var feed_name = get_feed_name(map_folder.domElement);
+            feeds[feed_name].set_base_layer();
+        });
+        map_folder.add(config, 'follow');
+        map_folder.add(config, 'trail');
+        map_folder.add(config, 'draw_interval', 1, 1000).name('draw interval (ms)').step(10).onChange(function (value) {
+            var feed_name = get_feed_name(map_folder.domElement);
+            feeds[feed_name].reset_draw_interval();
+        });
+        map_folder.add(config, 'alpha_step', 0, 0.9).name('alpha step').step(0.01);
+        map_folder.add(config, 'radius', 0.5, 20).step(0.1);
+        map_folder.addColor(config, 'fill');
+        map_folder.addColor(config, 'stroke');
+        map_folder.add(config, 'stroke_width', 0, 5).name('stroke width').step(0.5);
+    }
+
+    function add_gui_grid_options(folder, config) {
         var grid_folder = folder.addFolder('grid options');
         $(grid_folder.domElement).closest('li.folder').find('li.title').first().addClass('subfolder');
-        grid_folder.add(config.grid, 'show').onChange(function (value) {
+        grid_folder.add(config, 'show').onChange(function (value) {
             var feed_name = get_feed_name(grid_folder.domElement);
             var feed = feeds[feed_name];
             value ? feed.add_grid() : feed.remove_grid();
         });
-        grid_folder.add(config.grid.x, 'min', -100, 100).step(1).name('x min').onChange(function (value) {
+        grid_folder.add(config.x, 'min', -100, 100).step(1).name('x min').onChange(function (value) {
             var feed_name = get_feed_name(grid_folder.domElement);
             var feed = feeds[feed_name];
             feed.draw_grid();
         });
-        grid_folder.add(config.grid.x, 'max', -100, 100).step(1).name('x max').onChange(function (value) {
+        grid_folder.add(config.x, 'max', -100, 100).step(1).name('x max').onChange(function (value) {
             var feed_name = get_feed_name(grid_folder.domElement);
             var feed = feeds[feed_name];
             feed.draw_grid();
         });
-        grid_folder.add(config.grid.x, 'step', 0, 100).step(1).name('x step').onChange(function (value) {
+        grid_folder.add(config.x, 'step', 0, 100).step(1).name('x step').onChange(function (value) {
             var feed_name = get_feed_name(grid_folder.domElement);
             var feed = feeds[feed_name];
             feed.draw_grid();
         });
-        grid_folder.addColor(config.grid.x, 'color').name('x color').onChange(function (value) {
+        grid_folder.addColor(config.x, 'color').name('x color').onChange(function (value) {
             var feed_name = get_feed_name(grid_folder.domElement);
             var feed = feeds[feed_name];
             feed.draw_grid();
         });
-        grid_folder.add(config.grid.y, 'min', -100, 100).step(1).name('y min').onChange(function (value) {
+        grid_folder.add(config.y, 'min', -100, 100).step(1).name('y min').onChange(function (value) {
             var feed_name = get_feed_name(grid_folder.domElement);
             var feed = feeds[feed_name];
             feed.draw_grid();
         });
-        grid_folder.add(config.grid.y, 'max', -100, 100).step(1).name('y max').onChange(function (value) {
+        grid_folder.add(config.y, 'max', -100, 100).step(1).name('y max').onChange(function (value) {
             var feed_name = get_feed_name(grid_folder.domElement);
             var feed = feeds[feed_name];
             feed.draw_grid();
         });
-        grid_folder.add(config.grid.y, 'step', 0, 100).step(1).name('y step').onChange(function (value) {
+        grid_folder.add(config.y, 'step', 0, 100).step(1).name('y step').onChange(function (value) {
             var feed_name = get_feed_name(grid_folder.domElement);
             var feed = feeds[feed_name];
             feed.draw_grid();
         });
-        grid_folder.addColor(config.grid.y, 'color').name('y color').onChange(function (value) {
+        grid_folder.addColor(config.y, 'color').name('y color').onChange(function (value) {
             var feed_name = get_feed_name(grid_folder.domElement);
             var feed = feeds[feed_name];
             feed.draw_grid();
         });
-        grid_folder.add(config.grid, 'axis_width', 0.5, 20).step(0.5).name('axis width').onChange(function (value) {
+        grid_folder.add(config, 'axis_width', 0.5, 20).step(0.5).name('axis width').onChange(function (value) {
             var feed_name = get_feed_name(grid_folder.domElement);
             var feed = feeds[feed_name];
             feed.draw_grid();
         });
-        grid_folder.add(config.grid.grid_lines, 'show').name('grid lines').onChange(function (value) {
+        grid_folder.add(config.grid_lines, 'show').name('grid lines').onChange(function (value) {
             var feed_name = get_feed_name(grid_folder.domElement);
             var feed = feeds[feed_name];
             feed.draw_grid();
         });
-        grid_folder.addColor(config.grid.grid_lines, 'color').name('grid lines color').onChange(function (value) {
+        grid_folder.addColor(config.grid_lines, 'color').name('grid lines color').onChange(function (value) {
             var feed_name = get_feed_name(grid_folder.domElement);
             var feed = feeds[feed_name];
             feed.draw_grid();
         });
-        grid_folder.add(config.grid.grid_lines, 'width', 0.5, 10).step(0.1).name('grid lines width').onChange(function (value) {
+        grid_folder.add(config.grid_lines, 'width', 0.5, 10).step(0.1).name('grid lines width').onChange(function (value) {
             var feed_name = get_feed_name(grid_folder.domElement);
             var feed = feeds[feed_name];
             feed.draw_grid();
         });
-        grid_folder.add(config.grid, 'x_offset', -100, 100).step(1).name('x offset (pixels)').onChange(function (value) {
+        grid_folder.add(config, 'x_offset', -100, 100).step(1).name('x offset (pixels)').onChange(function (value) {
             var feed_name = get_feed_name(grid_folder.domElement);
             var feed = feeds[feed_name];
             feed.draw_grid();
         });
-        grid_folder.add(config.grid, 'y_offset', -100, 100).step(1).name('y offset (pixels)').onChange(function (value) {
+        grid_folder.add(config, 'y_offset', -100, 100).step(1).name('y offset (pixels)').onChange(function (value) {
             var feed_name = get_feed_name(grid_folder.domElement);
             var feed = feeds[feed_name];
             feed.draw_grid();
@@ -401,81 +476,9 @@ require(['jquery', "jquery_ui",
                     return a.value - b.value;
                 });
             } else if (config.type == 'track') {
-                if (!('track' in config)) {
-                    config.track = {};
-                }
-                if (!('image' in config.track)) {
-                    config.track.image = '';
-                }
-                if (!('extent' in config.track)) {
-                    config.track.extent = '';
-                }
-                config.track.extent_string = config.track.extent.constructor === Array ? JSON.stringify(config.track.extent) : config.track.extent;
-                if (!('scale' in config.track)) {
-                    config.track.scale = 100;
-                }
-                if (!('trail' in config.track)) {
-                    config.track.trail = false;
-                }
-                if (!('draw_interval' in config.track)) {
-                    config.track.draw_interval = 100
-                }
-                if (!('alpha_step' in config.track)) {
-                    config.track.alpha_step = 0;
-                }
-                if (!('radius' in config.track)) {
-                    config.track.radius = 5;
-                }
-                if (!('fill' in config.track) || config.track.fill.constructor !== String) {
-                    config.track.fill = '#3aee23';
-                }
-                if (!('stroke' in config.track) || config.track.stroke.constructor !== String) {
-                    config.track.stroke = '#10a81a';
-                }
-                if (!('stroke_width' in config.track)) {
-                    config.track.stroke_width = 2;
-                }
+                config.track = new TrackOptions(config.track);
             } else if (config.type == 'map') {
-                if (!('map' in config)) {
-                    config.map = {};
-                }
-                if ('bing_maps_key' in frontend_config) {
-                    config.map.bing_maps_key = frontend_config.bing_maps_key;
-                }
-                if (!('imagery_set' in config.map)) {
-                    config.map.imagery_set = config.map.image ? '' : 'Aerial';
-                }
-                if (!('image' in config.map)) {
-                    config.map.image = '';
-                }
-                if (!('extent' in config.map)) {
-                    config.map.extent = '';
-                }
-                config.map.extent_string = config.map.extent.constructor === Array ? JSON.stringify(config.map.extent) : config.map.extent;
-                if (!('follow' in config.map)) {
-                    config.map.follow = false;
-                }
-                if (!('trail' in config.map)) {
-                    config.map.trail = false;
-                }
-                if (!('draw_interval' in config.map)) {
-                    config.map.draw_interval = 100
-                }
-                if (!('alpha_step' in config.map)) {
-                    config.map.alpha_step = 0;
-                }
-                if (!('radius' in config.map)) {
-                    config.map.radius = 5;
-                }
-                if (!('fill' in config.map) || config.map.fill.constructor !== String) {
-                    config.map.fill = '#3aee23';
-                }
-                if (!('stroke' in config.map) || config.map.stroke.constructor !== String) {
-                    config.map.stroke = '#10a81a';
-                }
-                if (!('stroke_width' in config.map)) {
-                    config.map.stroke_width = 2;
-                }
+                config.map = new MapOptions(config.map, frontend_config);
             }
             if (!('alert' in config)) {
                 config.alert = true;
@@ -506,6 +509,12 @@ require(['jquery', "jquery_ui",
                 folder.add(feed.config.refresh, 'interval', 0, 90).name("refresh interval").step(1).onFinishChange(function (value) {
                     var feed_name = get_feed_name(this.domElement);
                     feeds[feed_name].reset();
+                });
+                folder.add(feed.config, 'alert').name('feed alert').onFinishChange(function (value) {
+                    var feed_name = get_feed_name(this.domElement);
+                    if (!value) {
+                        feeds[feed_name].alert(false);
+                    }
                 });
                 if (config.type == 'text') {
                     folder.add(feed.config.text, 'show_items', 0, 20).name("show items").step(1).onFinishChange(function (value) {
@@ -543,86 +552,11 @@ require(['jquery', "jquery_ui",
                     });
                 }
                 if (config.type == 'track') {
-                    folder.add(feed.config.track, 'image').onFinishChange(function (value) {
-                        var feed_name = get_feed_name(this.domElement);
-                        feeds[feed_name].set_background();
-                    });
-                    folder.add(feed.config.track, 'extent_string').name('extent').onFinishChange(function (value) {
-                        var feed_name = get_feed_name(this.domElement);
-                        var feed = feeds[feed_name];
-                        try {
-                            feed.config.track.extent = JSON.parse(value);
-                        }
-                        catch (e) {
-                            feed.config.track.extent = value;
-                        }
-                        feed.set_extent();
-                    });
-                    folder.add(feed.config.track, 'scale', 1, 300).name('scale (%)').step(0.01).onChange(function (value) {
-                        var feed_name = get_feed_name(this.domElement);
-                        if (value < feeds[feed_name].min_scale()) {
-                            return;
-                        }
-                        feeds[feed_name].resize();
-                    });
-                    folder.add(feed.config.track, 'trail').onChange(function (value) {
-                        var feed_name = get_feed_name(this.domElement);
-                        if (!value) {
-                            feeds[feed_name].remove_trail();
-                        }
-                    });
-                    folder.add(feed.config.track, 'draw_interval', 1, 1000).name('draw interval (ms)').step(10).onChange(function (value) {
-                        var feed_name = get_feed_name(this.domElement);
-                        feeds[feed_name].reset_draw_interval();
-                    });
-                    folder.add(feed.config.track, 'alpha_step', 0, 0.9).name('alpha step').step(0.01);
-                    folder.add(feed.config.track, 'radius', 0.5, 20).step(0.1);
-                    folder.addColor(feed.config.track, 'fill');
-                    folder.addColor(feed.config.track, 'stroke');
-                    folder.add(feed.config.track, 'stroke_width', 0, 5).name('stroke width').step(0.5);
+                    add_gui_track_options(folder, feed.config.track);
                 }
                 if (config.type == 'map') {
-                    folder.add(feed.config.map, 'imagery_set', ['', 'Aerial', 'AerialWithLabels', 'Road']).onFinishChange(function (value) {
-                        var feed_name = get_feed_name(this.domElement);
-                        var feed = feeds[feed_name];
-                        if (value) {
-                            feed.set_base_tile();
-                        } else {
-                            feed.set_base_layer();
-                        }
-                    });
-                    folder.add(feed.config.map, 'image').onFinishChange(function (value) {
-                        var feed_name = get_feed_name(this.domElement);
-                        feeds[feed_name].set_base_layer();
-                    });
-                    folder.add(feed.config.map, 'extent_string').name('extent').onFinishChange(function (value) {
-                        var feed_name = get_feed_name(this.domElement);
-                        var feed = feeds[feed_name];
-                        try {
-                            feed.config.map.extent = JSON.parse(value);
-                        }
-                        catch (e) {
-                            feed.config.map.extent = value;
-                        }
-                    });
-                    folder.add(feed.config.map, 'follow');
-                    folder.add(feed.config.map, 'trail');
-                    folder.add(feed.config.map, 'draw_interval', 1, 1000).name('draw interval (ms)').step(10).onChange(function (value) {
-                        var feed_name = get_feed_name(this.domElement);
-                        feeds[feed_name].reset_draw_interval();
-                    });
-                    folder.add(feed.config.map, 'alpha_step', 0, 0.9).name('alpha step').step(0.01);
-                    folder.add(feed.config.map, 'radius', 0.5, 20).step(0.1);
-                    folder.addColor(feed.config.map, 'fill');
-                    folder.addColor(feed.config.map, 'stroke');
-                    folder.add(feed.config.map, 'stroke_width', 0, 5).name('stroke width').step(0.5);
+                    add_gui_map_options(folder, feed.config.map);
                 }
-                folder.add(feed.config, 'alert').name('feed alert').onFinishChange(function (value) {
-                    var feed_name = get_feed_name(this.domElement);
-                    if (!value) {
-                        feeds[feed_name].alert(false);
-                    }
-                });
             } else {
                 folder.add(feed.config, 'show').onFinishChange(function (value) {
                     var feed_name = get_feed_name(this.domElement);
@@ -633,7 +567,7 @@ require(['jquery', "jquery_ui",
                 });
             }
             if (grid_types.indexOf(config.type) >= 0) {
-                add_grid_gui_options(folder, feed.config);
+                add_gui_grid_options(folder, feed.config.grid);
             }
             feeds[feed_name] = feed;
         }

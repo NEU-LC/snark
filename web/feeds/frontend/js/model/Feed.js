@@ -110,10 +110,10 @@ define('Feed', ["jquery", "jquery_timeago", "utils"], function ($) {
         if (on) {
             this.el.addClass('panel-alert');
             if (globals.isMobile) {
-                gui_folder.closest('li').find('a.ui-collapsible-heading-toggle').addClass('panel-alert');
+                gui_folder.closest('li').find('a.ui-collapsible-heading-toggle').first().addClass('panel-alert');
             }
             else {
-                gui_folder.find('.title').addClass('panel-alert');
+                gui_folder.find('.title').first().addClass('panel-alert');
             }
 
             if (globals.alert_beep) {

@@ -49,28 +49,21 @@ define(['jquery', 'Feed', 'Grid', 'utils'], function ($, Feed, Grid) {
     }
     TrackFeed.prototype.set_extent = function() {
         var extent = this.config.track.extent;
+        this.extent = undefined;
         if (extent) {
-            switch (extent.constructor) {
-                case Array:
-                    this.extent = extent;
-                    break;
-                case String:
-                    var _this = this;
-                    var width = this.original_width;
-                    var height = this.original_height;
-                    $.get(extent, function (data) {
+            if (extent.indexOf(',') >= 0) {
+                this.extent = extent.trim().split(',').map(Number);
+            } else {
+                var _this = this;
+                $.get(extent, function (data) {
+                    if (data.indexOf(',') >= 0) {
+                        _this.extent = data.trim().split(',').map(Number);
+                    } else {
                         data = data.trim().split('\n').map(Number);
-                        _this.extent = [
-                            data[4],                       // min x
-                            data[5] + data[3] * height,    // min y
-                            data[4] + data[0] * width,     // max x
-                            data[5],                       // max y
-                        ]
-                    });
-                    break;
+                        _this.extent = world_to_extent(data, _this.original_width, _this.original_height);
+                    }
+                });
             }
-        } else {
-            this.extent = extent;
         }
     }
 

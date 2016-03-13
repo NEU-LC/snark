@@ -1,5 +1,4 @@
-define('MapFeed', ["jquery", "ol", "Feed", "utils"], function ($, ol) {
-    var Feed = require('Feed');
+define(['jquery', 'ol', 'Feed', 'utils'], function ($, ol, Feed) {
 
     var MapFeed = function (feed_name, config) {
         this.base = Feed;
@@ -37,7 +36,8 @@ define('MapFeed', ["jquery", "ol", "Feed", "utils"], function ($, ol) {
         var image = this.config.map.image;
         if (this.config.map.image) {
             var extent = this.config.map.extent;
-            if (extent && extent.constructor === Array) {
+            if (extent && extent.indexOf(',') >= 0) {
+                extent = extent.trim().split(',').map(Number);
                 return this.set_base_image(image, extent, new ol.proj.Projection({
                     code: 'pixels',
                     units: 'pixels',
@@ -84,8 +84,9 @@ define('MapFeed', ["jquery", "ol", "Feed", "utils"], function ($, ol) {
             center: ol.extent.getCenter(extent),
             projection: this.projection,
             minZoom: 1,
-            maxZoom: 30,
-            zoom: this.projection.getCode() == 'EPSG:3857' ? 18 : 1
+            maxZoom: 40,
+            zoom: this.projection.getCode() == 'EPSG:3857' ? 30 : 1,
+            zoomFactor: 1.5
         });
         this.map.getLayers().insertAt(0, this.base_layer);
         this.map.setView(this.view);

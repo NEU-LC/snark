@@ -59,7 +59,9 @@ require.config({
         ImageStreamFeed: 'js/model/ImageStreamFeed',
         TextFeed: 'js/model/TextFeed',
         TrackFeed: 'js/model/TrackFeed',
+        TrackOptions: 'js/model/TrackOptions',
         MapFeed: 'js/model/MapFeed',
+        MapOptions: 'js/model/MapOptions',
         Grid: 'js/model/Grid',
         GridOptions: 'js/model/GridOptions',
         // -----------------------------//
