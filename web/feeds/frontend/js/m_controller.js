@@ -292,68 +292,17 @@ require(['jquery', 'jquery_mobile',
 
     function add_gui_grid_options(folder, config) {
         var grid_folder = folder.addFolder('grid options');
-        $(grid_folder.domElement).closest('li.folder').find('li.title').first().addClass('subfolder');
         grid_folder.add(config, 'show').onChange(function (value) {
             var feed_name = get_feed_name(grid_folder.domElement);
             var feed = feeds[feed_name];
             value ? feed.add_grid() : feed.remove_grid();
-        });
-        grid_folder.add(config.x, 'min', -100, 100).step(1).name('x min').onChange(function (value) {
-            var feed_name = get_feed_name(grid_folder.domElement);
-            var feed = feeds[feed_name];
-            feed.draw_grid();
-        });
-        grid_folder.add(config.x, 'max', -100, 100).step(1).name('x max').onChange(function (value) {
-            var feed_name = get_feed_name(grid_folder.domElement);
-            var feed = feeds[feed_name];
-            feed.draw_grid();
-        });
-        grid_folder.add(config.x, 'step', 0, 100).step(1).name('x step').onChange(function (value) {
-            var feed_name = get_feed_name(grid_folder.domElement);
-            var feed = feeds[feed_name];
-            feed.draw_grid();
-        });
-        grid_folder.addColor(config.x, 'color').name('x color').onChange(function (value) {
-            var feed_name = get_feed_name(grid_folder.domElement);
-            var feed = feeds[feed_name];
-            feed.draw_grid();
-        });
-        grid_folder.add(config.y, 'min', -100, 100).step(1).name('y min').onChange(function (value) {
-            var feed_name = get_feed_name(grid_folder.domElement);
-            var feed = feeds[feed_name];
-            feed.draw_grid();
-        });
-        grid_folder.add(config.y, 'max', -100, 100).step(1).name('y max').onChange(function (value) {
-            var feed_name = get_feed_name(grid_folder.domElement);
-            var feed = feeds[feed_name];
-            feed.draw_grid();
-        });
-        grid_folder.add(config.y, 'step', 0, 100).step(1).name('y step').onChange(function (value) {
-            var feed_name = get_feed_name(grid_folder.domElement);
-            var feed = feeds[feed_name];
-            feed.draw_grid();
-        });
-        grid_folder.addColor(config.y, 'color').name('y color').onChange(function (value) {
-            var feed_name = get_feed_name(grid_folder.domElement);
-            var feed = feeds[feed_name];
-            feed.draw_grid();
         });
         grid_folder.add(config, 'axis_width', 0.5, 20).step(0.5).name('axis width').onChange(function (value) {
             var feed_name = get_feed_name(grid_folder.domElement);
             var feed = feeds[feed_name];
             feed.draw_grid();
         });
-        grid_folder.add(config.grid_lines, 'show').name('grid lines').onChange(function (value) {
-            var feed_name = get_feed_name(grid_folder.domElement);
-            var feed = feeds[feed_name];
-            feed.draw_grid();
-        });
-        grid_folder.addColor(config.grid_lines, 'color').name('grid lines color').onChange(function (value) {
-            var feed_name = get_feed_name(grid_folder.domElement);
-            var feed = feeds[feed_name];
-            feed.draw_grid();
-        });
-        grid_folder.add(config.grid_lines, 'width', 0.5, 10).step(0.1).name('grid lines width').onChange(function (value) {
+        grid_folder.add(config, 'step_length', 0.5, 20).step(0.5).name('step length').onChange(function (value) {
             var feed_name = get_feed_name(grid_folder.domElement);
             var feed = feeds[feed_name];
             feed.draw_grid();
@@ -368,6 +317,81 @@ require(['jquery', 'jquery_mobile',
             var feed = feeds[feed_name];
             feed.draw_grid();
         });
+        var x_folder = grid_folder.addFolder('x-axis options');
+        x_folder.add(config.x, 'min', -100, 100).step(1).onChange(function (value) {
+            var feed_name = get_feed_name(grid_folder.domElement);
+            var feed = feeds[feed_name];
+            feed.draw_grid();
+        });
+        x_folder.add(config.x, 'max', -100, 100).step(1).onChange(function (value) {
+            var feed_name = get_feed_name(grid_folder.domElement);
+            var feed = feeds[feed_name];
+            feed.draw_grid();
+        });
+        x_folder.add(config.x, 'step', 0, 100).step(1).onChange(function (value) {
+            var feed_name = get_feed_name(grid_folder.domElement);
+            var feed = feeds[feed_name];
+            feed.draw_grid();
+        });
+        x_folder.addColor(config.x, 'color').onChange(function (value) {
+            var feed_name = get_feed_name(grid_folder.domElement);
+            var feed = feeds[feed_name];
+            feed.draw_grid();
+        });
+        var y_folder = grid_folder.addFolder('y-axis options');
+        y_folder.add(config.y, 'min', -100, 100).step(1).onChange(function (value) {
+            var feed_name = get_feed_name(grid_folder.domElement);
+            var feed = feeds[feed_name];
+            feed.draw_grid();
+        });
+        y_folder.add(config.y, 'max', -100, 100).step(1).onChange(function (value) {
+            var feed_name = get_feed_name(grid_folder.domElement);
+            var feed = feeds[feed_name];
+            feed.draw_grid();
+        });
+        y_folder.add(config.y, 'step', 0, 100).step(1).onChange(function (value) {
+            var feed_name = get_feed_name(grid_folder.domElement);
+            var feed = feeds[feed_name];
+            feed.draw_grid();
+        });
+        y_folder.addColor(config.y, 'color').onChange(function (value) {
+            var feed_name = get_feed_name(grid_folder.domElement);
+            var feed = feeds[feed_name];
+            feed.draw_grid();
+        });
+        var grid_lines_folder = grid_folder.addFolder('grid line options');
+        grid_lines_folder.add(config.grid_lines, 'show').onChange(function (value) {
+            var feed_name = get_feed_name(grid_folder.domElement);
+            var feed = feeds[feed_name];
+            feed.draw_grid();
+        });
+        grid_lines_folder.addColor(config.grid_lines, 'color').onChange(function (value) {
+            var feed_name = get_feed_name(grid_folder.domElement);
+            var feed = feeds[feed_name];
+            feed.draw_grid();
+        });
+        grid_lines_folder.add(config.grid_lines, 'width', 0.5, 10).step(0.1).onChange(function (value) {
+            var feed_name = get_feed_name(grid_folder.domElement);
+            var feed = feeds[feed_name];
+            feed.draw_grid();
+        });
+        var labels_folder = grid_folder.addFolder('label options');
+        labels_folder.add(config.labels, 'show').onChange(function (value) {
+            var feed_name = get_feed_name(grid_folder.domElement);
+            var feed = feeds[feed_name];
+            feed.draw_grid();
+        });
+        labels_folder.addColor(config.labels, 'color').onChange(function (value) {
+            var feed_name = get_feed_name(grid_folder.domElement);
+            var feed = feeds[feed_name];
+            feed.draw_grid();
+        });
+        labels_folder.add(config.labels, 'font').onChange(function (value) {
+            var feed_name = get_feed_name(grid_folder.domElement);
+            var feed = feeds[feed_name];
+            feed.draw_grid();
+        });
+        $(grid_folder.domElement).closest('li.folder').find('li.title').addClass('subfolder');
     }
 
     function initialize(frontend_config) {
