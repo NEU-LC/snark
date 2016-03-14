@@ -4,23 +4,15 @@ readonly scriptname=$( basename $0 )
 
 source $( type -p comma-name-value-util ) || { echo "$scriptname: cannot source 'comma-name-value-util'" >&2; exit 1; }
 
-function rand
-{
-    local min=$1
-    local max=$2
-    echo "$RANDOM * ( $max - $min ) / 32767 + $min" | bc
-}
-
 function random_cloud
 {
-    local num_points=$1
-    local i x y z
-    for i in $( seq 1 $num_points ); do
-        x=$( echo "$i / 10" | bc -l )
-        y=$( rand -10 10 )
-        z=$( rand -10 10 )
-        echo $x,$y,$z
-    done
+    # Unless seeded with srand(), rand() will always give the same sequence
+    gawk -v num_points=$1 -v l=$2 -v w=$3 -v h=$4 '
+    function r(min,max) { return rand()*(max-min)+min; }
+    BEGIN {
+        for( i = 0; i < num_points; i++)
+            printf( "%f,%f,%f\n", i / num_points * l, r( -w, w ), r( -h, h ));
+    }'
 }
 
 function max_diff
@@ -45,7 +37,7 @@ comma_path_value_to_var
 
 if [[ $reference =~ "random" ]]; then
     num_points=${reference#random }
-    random_cloud $num_points > reference.csv
+    random_cloud $num_points 100 10 10 > reference.csv
 else
     echo -e $reference > reference.csv
 fi
@@ -70,5 +62,5 @@ cat source.csv | points-frame --from $transform --fields=x,y,z > recreated.csv
 echo $transform | name-value-from-csv $( points-align --output-fields ) --prefix transform
 echo "max_error=$( max_diff reference.csv recreated.csv )"
 
-(( options_view )) && view-points "reference.csv;colour=green" "source.csv;colour=blue"
+(( options_view )) && view-points "reference.csv;colour=red" "source.csv;colour=yellow" "recreated.csv;colour=green"
 exit 0
