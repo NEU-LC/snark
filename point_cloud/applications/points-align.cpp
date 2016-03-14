@@ -33,7 +33,7 @@
 #include <comma/application/verbose.h>
 #include <comma/csv/options.h>
 #include <comma/csv/stream.h>
-#include <snark/math/applications/frame.h>
+#include "../../math/applications/frame.h"
 
 typedef std::pair< Eigen::Vector3d, Eigen::Vector3d > point_pair_t;
 
@@ -65,6 +65,7 @@ static void usage( bool verbose = false )
     std::cerr << "    --verbose,-v; more output" << std::endl;
     std::cerr << "    --output-fields: show output fields and exit" << std::endl;
     std::cerr << "    --output-format: show output format and exit" << std::endl;
+    std::cerr << "    --include-error: include the error estimate in output" << std::endl;
     std::cerr << std::endl;
     std::cerr << "examples: " << std::endl;
     std::cerr << "    -- output the " << output_fields << " transform --" << std::endl;
@@ -77,6 +78,49 @@ static void usage( bool verbose = false )
     exit( 0 );
 }
 
+struct position_with_error
+{
+    snark::applications::position position;
+    double error;
+
+    position_with_error() : error( 0 ) {}
+    position_with_error( const snark::applications::position& position, double error )
+        : position( position )
+        , error( error )
+    {}
+};
+
+namespace comma { namespace visiting {
+
+template <> struct traits< position_with_error >
+{
+    template < typename Key, class Visitor >
+    static void visit( const Key&, position_with_error& p, Visitor& v )
+    {
+        v.apply( "x", p.position.coordinates.x() );
+        v.apply( "y", p.position.coordinates.y() );
+        v.apply( "z", p.position.coordinates.z() );
+        v.apply( "roll", p.position.orientation.x() );
+        v.apply( "pitch", p.position.orientation.y() );
+        v.apply( "yaw", p.position.orientation.z() );
+        v.apply( "error", p.error );
+    }
+
+    template < typename Key, class Visitor >
+    static void visit( const Key&, const position_with_error& p, Visitor& v )
+    {
+        v.apply( "x", p.position.coordinates.x() );
+        v.apply( "y", p.position.coordinates.y() );
+        v.apply( "z", p.position.coordinates.z() );
+        v.apply( "roll", p.position.orientation.x() );
+        v.apply( "pitch", p.position.orientation.y() );
+        v.apply( "yaw", p.position.orientation.z() );
+        v.apply( "error", p.error );
+    }
+};
+
+} } // namespace comma { namespace visiting {
+
 int main( int ac, char** av )
 {
     try
@@ -88,13 +132,20 @@ int main( int ac, char** av )
 
         if( options.exists( "--output-fields" ))
         {
-            std::cout << comma::join( comma::csv::names< snark::applications::position >(), ',' ) << std::endl;
+            std::cout << comma::join( options.exists( "--include-error" )
+                                    ? comma::csv::names< position_with_error >()
+                                    : comma::csv::names< snark::applications::position >(),
+                                    ',' ) << std::endl;
             return 0;
         }
 
         if( options.exists( "--output-format" ))
         {
-            std::cout << comma::csv::format::value< snark::applications::position >() << std::endl;
+            std::cout <<
+                ( options.exists( "--include-error" )
+                ? comma::csv::format::value< position_with_error >()
+                : comma::csv::format::value< snark::applications::position >() )
+                      << std::endl;
             return 0;
         }
 
@@ -136,21 +187,29 @@ int main( int ac, char** av )
         comma::verbose << "orientation (deg) ( " << comma::join( orientation * 180 / M_PI, ',' ) << " )" << std::endl;
 
         snark::applications::position position( translation, orientation );
-
         comma::csv::options output_csv;
-        comma::csv::output_stream< snark::applications::position > ostream( std::cout, output_csv );
 
-        ostream.write( position );
+        if( ! options.exists( "--include-error" ))
+        {
+            comma::csv::output_stream< snark::applications::position > ostream( std::cout, output_csv );
+            ostream.write( position );
+        }
+        else
+        {
+            // Convert src and tgt to a form that allows multiplication by estimate.
+            // Change each vector from size 3 to size 4 and store 1 in the fourth row.
+            src.conservativeResize( src.rows()+1, Eigen::NoChange );
+            src.row( src.rows()-1 ) = Eigen::MatrixXd::Constant( 1, src.cols(), 1 );
 
-        // comma::verbose << "\nchecking:\n" << estimate * src << std::endl;
+            tgt.conservativeResize( tgt.rows()+1, Eigen::NoChange );
+            tgt.row( tgt.rows()-1 ) = Eigen::MatrixXd::Constant( 1, tgt.cols(), 1 );
 
-        // comma::verbose << "residual:\n" << ( estimate * src - tgt ) << std::endl;
-        // comma::verbose << "\nnormal:\n" << ( estimate * src - tgt ).norm() << std::endl;
-        // comma::verbose << "\ntgt normal:\n" << tgt.norm() << std::endl;
+            const double error = ( estimate * src - tgt ).norm() / tgt.norm();
 
-        // const double error = ( estimate * src - tgt ).norm() / tgt.norm();
-        // comma::verbose << "\nerror: " << error
-        //                << "; threshold: " << double(40)*std::numeric_limits<double>::epsilon() << std::endl;
+            comma::csv::output_stream< position_with_error > ostream( std::cout, output_csv );
+            const position_with_error pe( position, error );
+            ostream.write( pe );
+        }
     }
     catch( std::exception& ex )
     {
