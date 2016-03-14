@@ -27,6 +27,21 @@ function max_diff
         | csv-calc max --format=d
 }
 
+function perturb
+{
+    local perturbation=$1
+    if [[ -z $perturbation ]]; then
+        cat
+    else
+        gawk -v p=$perturbation '
+        function r(min,max) { return rand()*(max-min)+min; }
+        function perturb(x,p) { f = r(1-p,1+p); return x*f; }
+        BEGIN { FS=","; OFS=","; OFMT="%.12f"; }
+        { for( i=1; i<=NF; i++ ) $i = perturb( $i, p ); print }
+        '
+    fi
+}
+
 [[ $1 == "--view" ]] && { options_view=1; shift; }
 
 output_dir=output
@@ -51,7 +66,8 @@ frame=$( echo $frame,$scalar | points-calc scale --fields=$frame_format,scalar \
              | csv-shuffle --fields=$frame_format,scalar,x,y,z \
                            --output=u/x,u/y,u/z,x,y,z )
 
-cat reference.csv | points-frame --to $frame --fields=x,y,z > source.csv
+cat reference.csv | points-frame --to $frame --fields=x,y,z > pure_source.csv
+cat pure_source.csv | perturb $perturbation > source.csv
 
 paste -d, reference.csv source.csv > combined.csv
 
