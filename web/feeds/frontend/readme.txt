@@ -37,7 +37,8 @@ web.frontend.json description:
                 "min": <number>,                // optional, min value, default: 0
                 "max": <number>,                // optional, max value, default: 100
                 "units": "unit",                // optional, value units
-                "thresholds": [                 // optional, array of thresholds
+                "thresholds":                   // optional, array of thresholds
+                [
                     {
                         "value": <number>,      // graph values less than or equal to this value will be colored by the corresponding color
                         "color": <css-color>,
@@ -53,7 +54,7 @@ web.frontend.json description:
             {
                 "image": <url>,                 // optional, url to background image, may be relative path or http://...
                 "extent": <array|string>,       // optional, extent of image, default: input points are pixels
-                                                             array: [min-x, min-y, max-x, max-y] (positive y is up)
+                                                             csv: min-x, min-y, max-x, max-y (positive y is up)
                                                              string: url to world file
                 "scale": <number>,              // optional, scale background image in percentage, default: 100
                 "trail": true|false,            // optional, show track with trail, default: false
@@ -62,14 +63,14 @@ web.frontend.json description:
                 "radius": <number>,             // optional, radius of each track point, default: 5
                 "fill": <color>,                // optional, point fill color in hex format '#rrggbb', default: #10a81a
                 "stroke": <color>,              // optional, point stroke color in hex format '#rrggbb', default: #3aee23
-                "strokeWidth": <number>         // optional, point stroke width, 0 = no stroke, default: 2
+                "stroke_width": <number>        // optional, point stroke width, 0 = no stroke, default: 2
             },
-            "map":                              // optiona, only applicable when "type": "map"
+            "map":                              // optional, only applicable when "type": "map"
             {
                 "imagery_set": <string>         // optional, map imagery set options: "Aerial, "AerialWithLabels", "Road", default: "Aerial"
                 "image": <url>,                 // optional, url to background image, may be relative path or http://...
                 "extent": <array|string>,       // optional, extent of image, default: '' - input points are pixels
-                                                             array: [min-x, min-y, max-x, max-y] (positive y is up), units: pixels
+                                                             csv: min-x, min-y, max-x, max-y (positive y is up), units: pixels
                                                              string: url to world file, units: degrees
                 "follow": true|false,           // optional, follow input points, default: false
                 "trail": true|false,            // optional, show track with trail, default: false
@@ -78,7 +79,34 @@ web.frontend.json description:
                 "radius": <number>,             // optional, radius of each track point, default: 5
                 "fill": <color>,                // optional, point fill color in hex format '#rrggbb', default: #10a81a
                 "stroke": <color>,              // optional, point stroke color in hex format '#rrggbb', default: #3aee23
-                "stroke_width": <number>         // optional, point stroke width, 0 = no stroke, default: 2
+                "stroke_width": <number>        // optional, point stroke width, 0 = no stroke, default: 2
+            },
+            "grid":                             // optional, if present display grid on panel, available to types: 'image', 'stream', 'track'
+            {
+                "x":                            // optional, x-axis options
+                {
+                    "min": <number>,            // optional, min x value, default: 0
+                    "max": <number>,            // optional, max x value, default: 10
+                    "step": <number>,           // optional, x value steps relative to 0, default: 1
+                    "color": <color>            // optional, x axis color, default: 'rgba(255, 0, 0, 0.5)' (red)
+                },
+                "y":                            // optional, y-axis options
+                {
+                    "min": <number>,            // optional, min y value, default: 0
+                    "max": <number>,            // optional, max y value, default: 10
+                    "step": <number>,           // optional, y value steps relative to 0, default: 1
+                    "color": <color>            // optional, y axis color, default: 'rgba(0, 255, 0, 0.5)' (green)
+                },
+                "grid_lines":                   // optional, grid line options
+                {
+                    "show": true|false,         // optional, show grid lines, default: true
+                    "color": <color>,           // optional, grid line color, default: 'rgba(100, 100, 100, 0.4)'
+                    "width": <number>           // optional, grid line width, default: 1
+                },
+                "axis_width": <number>,         // optional, x-/y-axis width, default: 2
+                "step_length": <number>,        // optional, length of each step on the axis, default: 5
+                "x_offset": <number>,           // optional, x offset in pixels, default: 0
+                "y_offset": <number>            // optional, y offset in pixels, default: 0
             },
             "alert": true|false                 // optional, enable alerting, default: true
         },
