@@ -16,6 +16,13 @@ define(function () {
             this.width = this.width || 1;
         }
 
+        function LabelOptions(options) {
+            Object.assign(this, options);
+            this.show = this.show || false;
+            this.color = this.color || 'rgba(0, 0, 0, 0.9)';
+            this.font = this.font || '18px sans-serif';
+        }
+
         Object.assign(this, options);
         this.show = typeof options !== 'undefined';
         this.x = new AxisOptions(this.x, { color: 'rgba(255, 0, 0, 0.5)' });
@@ -25,6 +32,7 @@ define(function () {
         this.grid_lines = new GridLineOptions(this.grid_lines);
         this.x_offset = this.x_offset || 0;
         this.y_offset = this.y_offset || 0;
+        this.labels = new LabelOptions(this.labels);
     }
 
     return GridOptions;

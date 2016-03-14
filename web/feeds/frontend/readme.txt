@@ -83,6 +83,10 @@ web.frontend.json description:
             },
             "grid":                             // optional, if present display grid on panel, available to types: 'image', 'stream', 'track'
             {
+                "axis_width": <number>,         // optional, x-/y-axis width, default: 2
+                "step_length": <number>,        // optional, length of each step on the axis, default: 5
+                "x_offset": <number>,           // optional, x offset in pixels, default: 0
+                "y_offset": <number>,           // optional, y offset in pixels, default: 0
                 "x":                            // optional, x-axis options
                 {
                     "min": <number>,            // optional, min x value, default: 0
@@ -103,10 +107,12 @@ web.frontend.json description:
                     "color": <color>,           // optional, grid line color, default: 'rgba(100, 100, 100, 0.4)'
                     "width": <number>           // optional, grid line width, default: 1
                 },
-                "axis_width": <number>,         // optional, x-/y-axis width, default: 2
-                "step_length": <number>,        // optional, length of each step on the axis, default: 5
-                "x_offset": <number>,           // optional, x offset in pixels, default: 0
-                "y_offset": <number>            // optional, y offset in pixels, default: 0
+                "labels":                       // optional, label options
+                {
+                    "show": true|false,         // optional, show labels, default: true
+                    "color": <color>,           // optional, label color, default: 'rgba(0, 0, 0, 0.9)'
+                    "font": <font>              // optional, label font, default: '18px sans-serif'
+                }
             },
             "alert": true|false                 // optional, enable alerting, default: true
         },
