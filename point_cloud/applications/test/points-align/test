@@ -1,0 +1,74 @@
+#!/bin/bash
+
+readonly scriptname=$( basename $0 )
+
+source $( type -p comma-name-value-util ) || { echo "$scriptname: cannot source 'comma-name-value-util'" >&2; exit 1; }
+
+function rand
+{
+    local min=$1
+    local max=$2
+    echo "$RANDOM * ( $max - $min ) / 32767 + $min" | bc
+}
+
+function random_cloud
+{
+    local num_points=$1
+    local i x y z
+    for i in $( seq 1 $num_points ); do
+        x=$( echo "$i / 10" | bc -l )
+        y=$( rand -10 10 )
+        z=$( rand -10 10 )
+        echo $x,$y,$z
+    done
+}
+
+function max_diff
+{
+    paste -d, $1 $2 \
+        | points-calc subtract \
+        | csv-shuffle --fields $( points-calc subtract --input-fields),$( points-calc subtract --output-fields ) \
+                      --output $( points-calc subtract --output-fields ) \
+        | points-calc norm \
+        | csv-shuffle --fields $( points-calc norm --input-fields),$( points-calc norm --output-fields ) \
+                      --output $( points-calc norm --output-fields ) \
+        | csv-calc max --format=d
+}
+
+[[ $1 == "--view" ]] && { options_view=1; shift; }
+
+output_dir=output
+[[ -d $output_dir ]] || mkdir $output_dir
+cd $output_dir
+
+comma_path_value_to_var
+
+if [[ $reference =~ "random" ]]; then
+    num_points=${reference#random }
+    random_cloud $num_points > reference.csv
+else
+    echo -e $reference > reference.csv
+fi
+
+(( $( cat reference.csv | wc -l ) >= 3 )) || { echo "Error: need at least three input points" >&2; exit 1; }
+
+# Treat displacement and rotation as vectors to convert from degrees to radians
+scalar=$( echo "3.14159265359 / 180" | bc -l )
+frame_format=u/x,u/y,u/z,v/x,v/y,v/z
+frame=$( echo $frame,$scalar | points-calc scale --fields=$frame_format,scalar \
+             | csv-shuffle --fields=$frame_format,scalar,x,y,z \
+                           --output=u/x,u/y,u/z,x,y,z )
+
+cat reference.csv | points-frame --to $frame --fields=x,y,z > source.csv
+
+paste -d, reference.csv source.csv > combined.csv
+
+transform=$( cat combined.csv | points-align )
+
+cat source.csv | points-frame --from $transform --fields=x,y,z > recreated.csv
+
+echo $transform | name-value-from-csv $( points-align --output-fields ) --prefix transform
+echo "max_error=$( max_diff reference.csv recreated.csv )"
+
+(( options_view )) && view-points "reference.csv;colour=green" "source.csv;colour=blue"
+exit 0
