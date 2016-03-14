@@ -156,16 +156,6 @@ function load_gui_config(config_file) {
         return false;
     }
     gui.setProperty('alert_beep', config['globals'].alert_beep, 'globals');
-    for (var id in feeds) {
-        if (!(id in config)) {
-            return;
-        }
-    }
-    for (var id in feeds) {
-        set_properties(config[id], id);
-        feeds[id].init();
-    }
-    return true;
 }
 
 function parse_query_string() {
@@ -252,11 +242,10 @@ function load(config_file) {
     if (!config_file) {
         return;
     }
-    if (!load_gui_config(config_file)) {
-        return;
-    }
+    load_gui_config(config_file);
     load_layout(config_file);
 }
+
 function toggle_sortable(enable) {
     if (enable) {
         try {

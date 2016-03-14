@@ -19,9 +19,6 @@ define('Feed', ["jquery", "jquery_timeago", "utils"], function ($) {
         this.isMobile = false;
     };
 
-    Feed.prototype.init = function () {
-
-    };
     Feed.prototype.reset = function () {
         if (this.config.refresh.auto) {
             this.refresh();
