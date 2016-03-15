@@ -193,8 +193,6 @@ int main( int ac, char** av )
 
         snark::applications::position position( translation, orientation );
         comma::csv::options output_csv;
-        // todo: if( csv.binary() ) { output_csv.format( output_error ); }
-
         output_csv.fields = output_fields( output_error );
 
         double error( std::numeric_limits<double>::quiet_NaN() );

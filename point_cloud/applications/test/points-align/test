@@ -71,7 +71,11 @@ cat pure_source.csv | perturb $perturbation > source.csv
 
 paste -d, reference.csv source.csv > combined.csv
 
-transform_with_error=$( cat combined.csv | points-align --output-error )
+binary_transform=cat
+binary_option=
+[[ $mode == "binary" ]] && { binary_transform="csv-to-bin 6d"; binary_option="--binary=6d"; }
+
+transform_with_error=$( cat combined.csv | $binary_transform | points-align $binary_option --output-error )
 transform=$( echo $transform_with_error \
     | csv-shuffle --fields $( points-align --output-fields --output-error ) \
                   --output $( points-align --output-fields ) )
