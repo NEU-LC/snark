@@ -38,7 +38,7 @@
 typedef std::pair< Eigen::Vector3d, Eigen::Vector3d > point_pair_t;
 
 static const std::string default_fields = comma::join( comma::csv::names< point_pair_t >(), ',' );
-static const std::string output_fields = comma::join( comma::csv::names< snark::applications::position >(), ',' );
+static const std::string standard_output_fields = comma::join( comma::csv::names< snark::applications::position >(), ',' );
 
 static void usage( bool verbose = false )
 {
@@ -51,7 +51,7 @@ static void usage( bool verbose = false )
     std::cerr << std::endl;
     std::cerr << "The input data is assumed to consist of matched points from the reference" << std::endl;
     std::cerr << "point cloud and the point cloud to be aligned. The output is a transform" << std::endl;
-    std::cerr << "in the form " << output_fields << " (angles in radians) that can be given to" << std::endl;
+    std::cerr << "in the form " << standard_output_fields << " (angles in radians) that can be given to" << std::endl;
     std::cerr << "points-frame to align the data." << std::endl;
     std::cerr << std::endl;
     if( verbose )
@@ -68,7 +68,7 @@ static void usage( bool verbose = false )
     std::cerr << "    --output-error: include the error estimate in output" << std::endl;
     std::cerr << std::endl;
     std::cerr << "examples: " << std::endl;
-    std::cerr << "    -- output the " << output_fields << " transform --" << std::endl;
+    std::cerr << "    -- output the " << standard_output_fields << " transform --" << std::endl;
     std::cerr << "    cat combined-points.csv | points-align" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    -- align the point cloud to the reference point cloud --" << std::endl;
@@ -121,6 +121,13 @@ template <> struct traits< position_with_error >
 
 } } // namespace comma { namespace visiting {
 
+std::string output_fields( bool output_error )
+{
+    return( output_error
+          ? comma::join( comma::csv::names< position_with_error >(), ',' )
+          : standard_output_fields );
+}
+
 int main( int ac, char** av )
 {
     try
@@ -133,10 +140,7 @@ int main( int ac, char** av )
 
         if( options.exists( "--output-fields" ))
         {
-            std::cout << comma::join( output_error
-                                    ? comma::csv::names< position_with_error >()
-                                    : comma::csv::names< snark::applications::position >(),
-                                    ',' ) << std::endl;
+            std::cout << output_fields( output_error ) << std::endl;
             return 0;
         }
 
@@ -189,15 +193,13 @@ int main( int ac, char** av )
 
         snark::applications::position position( translation, orientation );
         comma::csv::options output_csv;
-        // todo: ... output_csv.fields = output_error ? "x,y,z...
         // todo: if( csv.binary() ) { output_csv.format( output_error ); }
 
-        if( ! output_error )
-        {
-            comma::csv::output_stream< snark::applications::position > ostream( std::cout, output_csv );
-            ostream.write( position );
-        }
-        else
+        output_csv.fields = output_fields( output_error );
+
+        double error( std::numeric_limits<double>::quiet_NaN() );
+
+        if( output_error )
         {
             // Convert source and target to a form that allows multiplication by estimate.
             // Change each vector from size 3 to size 4 and store 1 in the fourth row.
@@ -207,11 +209,10 @@ int main( int ac, char** av )
             target.conservativeResize( target.rows()+1, Eigen::NoChange );
             target.row( target.rows()-1 ) = Eigen::MatrixXd::Constant( 1, target.cols(), 1 );
 
-            const double error = ( estimate * source - target ).norm() / target.norm();
-
-            comma::csv::output_stream< position_with_error > ostream( std::cout, output_csv );
-            ostream.write( position_with_error( position, error ));
+            error = ( estimate * source - target ).norm() / target.norm();
         }
+        comma::csv::output_stream< position_with_error > ostream( std::cout, output_csv );
+        ostream.write( position_with_error( position, error ));
     }
     catch( std::exception& ex )
     {
