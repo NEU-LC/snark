@@ -149,8 +149,8 @@ int main( int ac, char** av )
             return 0;
         }
 
-        Eigen::MatrixXd src( 3, 0 );
-        Eigen::MatrixXd tgt( 3, 0 );
+        Eigen::MatrixXd source( 3, 0 );
+        Eigen::MatrixXd target( 3, 0 );
 
         comma::csv::input_stream< point_pair_t > istream( std::cin, csv );
         while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
@@ -158,21 +158,21 @@ int main( int ac, char** av )
             const point_pair_t* p = istream.read();
             if( !p ) break;
 
-            tgt.conservativeResize( Eigen::NoChange, tgt.cols()+1 );
-            src.conservativeResize( Eigen::NoChange, src.cols()+1 );
+            target.conservativeResize( Eigen::NoChange, target.cols()+1 );
+            source.conservativeResize( Eigen::NoChange, source.cols()+1 );
             
-            tgt(0, tgt.cols()-1) = p->first(0);
-            tgt(1, tgt.cols()-1) = p->first(1);
-            tgt(2, tgt.cols()-1) = p->first(2);
+            target(0, target.cols()-1) = p->first(0);
+            target(1, target.cols()-1) = p->first(1);
+            target(2, target.cols()-1) = p->first(2);
 
-            src(0, src.cols()-1) = p->second(0);
-            src(1, src.cols()-1) = p->second(1);
-            src(2, src.cols()-1) = p->second(2);
+            source(0, source.cols()-1) = p->second(0);
+            source(1, source.cols()-1) = p->second(1);
+            source(2, source.cols()-1) = p->second(2);
         }
 
-        comma::verbose << "Loaded " << tgt.cols() << " pairs of points" << std::endl;
+        comma::verbose << "Loaded " << target.cols() << " pairs of points" << std::endl;
 
-        Eigen::Matrix4d estimate = Eigen::umeyama( src, tgt );
+        Eigen::Matrix4d estimate = Eigen::umeyama( source, target );
 
         comma::verbose << "umeyama estimate\n" << estimate << std::endl;
 
@@ -199,19 +199,18 @@ int main( int ac, char** av )
         }
         else
         {
-            // Convert src and tgt to a form that allows multiplication by estimate.
+            // Convert source and target to a form that allows multiplication by estimate.
             // Change each vector from size 3 to size 4 and store 1 in the fourth row.
-            src.conservativeResize( src.rows()+1, Eigen::NoChange );
-            src.row( src.rows()-1 ) = Eigen::MatrixXd::Constant( 1, src.cols(), 1 );
+            source.conservativeResize( source.rows()+1, Eigen::NoChange );
+            source.row( source.rows()-1 ) = Eigen::MatrixXd::Constant( 1, source.cols(), 1 );
 
-            tgt.conservativeResize( tgt.rows()+1, Eigen::NoChange );
-            tgt.row( tgt.rows()-1 ) = Eigen::MatrixXd::Constant( 1, tgt.cols(), 1 );
+            target.conservativeResize( target.rows()+1, Eigen::NoChange );
+            target.row( target.rows()-1 ) = Eigen::MatrixXd::Constant( 1, target.cols(), 1 );
 
-            const double error = ( estimate * src - tgt ).norm() / tgt.norm();
+            const double error = ( estimate * source - target ).norm() / target.norm();
 
             comma::csv::output_stream< position_with_error > ostream( std::cout, output_csv );
-            const position_with_error pe( position, error );
-            ostream.write( pe );
+            ostream.write( position_with_error( position, error ));
         }
     }
     catch( std::exception& ex )
