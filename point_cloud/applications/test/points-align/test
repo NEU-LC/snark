@@ -71,15 +71,15 @@ cat pure_source.csv | perturb $perturbation > source.csv
 
 paste -d, reference.csv source.csv > combined.csv
 
-transform_with_error=$( cat combined.csv | points-align --include-error )
+transform_with_error=$( cat combined.csv | points-align --output-error )
 transform=$( echo $transform_with_error \
-    | csv-shuffle --fields $( points-align --output-fields --include-error ) \
+    | csv-shuffle --fields $( points-align --output-fields --output-error ) \
                   --output $( points-align --output-fields ) )
 
 cat source.csv | points-frame --from $transform --fields=x,y,z > recreated.csv
 
 echo $transform_with_error \
-    | name-value-from-csv $( points-align --output-fields --include-error ) --prefix transform \
+    | name-value-from-csv $( points-align --output-fields --output-error ) --prefix transform \
     | csv-quote --delimiter='=' --fields=,value
 
 echo "max_error=$( max_diff reference.csv recreated.csv )"

@@ -65,7 +65,7 @@ static void usage( bool verbose = false )
     std::cerr << "    --verbose,-v; more output" << std::endl;
     std::cerr << "    --output-fields: show output fields and exit" << std::endl;
     std::cerr << "    --output-format: show output format and exit" << std::endl;
-    std::cerr << "    --output-error,--include-error: include the error estimate in output" << std::endl;
+    std::cerr << "    --output-error: include the error estimate in output" << std::endl;
     std::cerr << std::endl;
     std::cerr << "examples: " << std::endl;
     std::cerr << "    -- output the " << output_fields << " transform --" << std::endl;
@@ -132,7 +132,7 @@ int main( int ac, char** av )
 
         if( options.exists( "--output-fields" ))
         {
-            std::cout << comma::join( options.exists( "--output-error,--include-error" )
+            std::cout << comma::join( options.exists( "--output-error" )
                                     ? comma::csv::names< position_with_error >()
                                     : comma::csv::names< snark::applications::position >(),
                                     ',' ) << std::endl;
@@ -142,7 +142,7 @@ int main( int ac, char** av )
         if( options.exists( "--output-format" ))
         {
             std::cout <<
-                ( options.exists( "--output-error,--include-error" )
+                ( options.exists( "--output-error" )
                 ? comma::csv::format::value< position_with_error >()
                 : comma::csv::format::value< snark::applications::position >() )
                       << std::endl;
@@ -192,7 +192,7 @@ int main( int ac, char** av )
         // todo: ... output_csv.fields = output_error ? "x,y,z...
         // todo: if( csv.binary() ) { output_csv.format( output_error ); }
 
-        if( ! options.exists( "--output-error,--include-error" ))
+        if( ! options.exists( "--output-error" ))
         {
             comma::csv::output_stream< snark::applications::position > ostream( std::cout, output_csv );
             ostream.write( position );
