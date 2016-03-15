@@ -57,8 +57,6 @@ else
     echo -e $reference > reference.csv
 fi
 
-(( $( cat reference.csv | wc -l ) >= 3 )) || { echo "Error: need at least three input points" >&2; exit 1; }
-
 # Treat displacement and rotation as vectors to convert from degrees to radians
 scalar=$( echo "3.14159265359 / 180" | bc -l )
 frame_format=u/x,u/y,u/z,v/x,v/y,v/z
@@ -76,6 +74,8 @@ binary_option=
 [[ $mode == "binary" ]] && { binary_transform="csv-to-bin 6d"; binary_option="--binary=6d"; }
 
 transform_with_error=$( cat combined.csv | $binary_transform | points-align $binary_option --output-error )
+echo "exit_code=$?"
+
 transform=$( echo $transform_with_error \
     | csv-shuffle --fields $( points-align --output-fields --output-error ) \
                   --output $( points-align --output-fields ) )
