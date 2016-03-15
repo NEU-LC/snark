@@ -37,6 +37,14 @@
 
 typedef std::pair< Eigen::Vector3d, Eigen::Vector3d > point_pair_t;
 
+struct input_points
+{
+    point_pair_t points;
+    comma::uint32 block;
+
+    input_points() : block( 0 ) {}
+};
+
 static const std::string default_fields = comma::join( comma::csv::names< point_pair_t >(), ',' );
 static const std::string standard_output_fields = comma::join( comma::csv::names< snark::applications::position >(), ',' );
 
@@ -80,23 +88,43 @@ static void usage( bool verbose = false )
 
 struct position_with_error
 {
+    comma::uint32 block;
     snark::applications::position position;
     double error;
 
-    position_with_error() : error( 0 ) {}
-    position_with_error( const snark::applications::position& position, double error )
-        : position( position )
+    position_with_error() : block( 0 ), error( 0 ) {}
+    position_with_error( comma::uint32 block, const snark::applications::position& position, double error )
+        : block( block )
+        , position( position )
         , error( error )
     {}
 };
 
 namespace comma { namespace visiting {
 
+template <> struct traits< input_points >
+{
+    template < typename K, typename V > static void visit( const K&, input_points& p, V& v )
+    {
+        v.apply( "block", p.block );
+        v.apply( "first", p.points.first );
+        v.apply( "second", p.points.second );
+    }
+
+    template < typename K, typename V > static void visit( const K&, const input_points& p, V& v )
+    {
+        v.apply( "block", p.block );
+        v.apply( "first", p.points.first );
+        v.apply( "second", p.points.second );
+    }
+};
+
 template <> struct traits< position_with_error >
 {
     template < typename Key, class Visitor >
     static void visit( const Key&, position_with_error& p, Visitor& v )
     {
+        v.apply( "block", p.block );
         v.apply( "x", p.position.coordinates.x() );
         v.apply( "y", p.position.coordinates.y() );
         v.apply( "z", p.position.coordinates.z() );
@@ -109,6 +137,7 @@ template <> struct traits< position_with_error >
     template < typename Key, class Visitor >
     static void visit( const Key&, const position_with_error& p, Visitor& v )
     {
+        v.apply( "block", p.block );
         v.apply( "x", p.position.coordinates.x() );
         v.apply( "y", p.position.coordinates.y() );
         v.apply( "z", p.position.coordinates.z() );
@@ -121,11 +150,53 @@ template <> struct traits< position_with_error >
 
 } } // namespace comma { namespace visiting {
 
-std::string output_fields( bool output_error )
+std::string get_output_fields( comma::csv::options csv_options, bool output_error )
 {
-    return( output_error
-          ? comma::join( comma::csv::names< position_with_error >(), ',' )
-          : standard_output_fields );
+    std::string output_fields( standard_output_fields );
+    if( csv_options.has_field( "block" ))
+        output_fields = "block," + output_fields;
+    if( output_error )
+        output_fields += ",error";
+    return output_fields;
+}
+
+void output_transform( Eigen::MatrixXd source, Eigen::MatrixXd target
+                     , comma::uint32 block, const std::string& output_fields )
+{
+    comma::verbose << "Loaded " << target.cols() << " pairs of points" << std::endl;
+
+    Eigen::Matrix4d estimate = Eigen::umeyama( source, target );
+
+    comma::verbose << "umeyama estimate\n" << estimate << std::endl;
+
+    Eigen::Matrix3d rotation( estimate.block< 3, 3 >( 0, 0 ));
+    Eigen::Vector3d translation( estimate.block< 3, 1 >( 0, 3 ));
+
+    Eigen::Vector3d orientation( snark::rotation_matrix::roll_pitch_yaw( rotation ));
+
+    comma::verbose << "rotation matrix\n" << rotation << std::endl;
+    comma::verbose << "translation ( " << comma::join( translation, ',' ) << " )" << std::endl;
+    comma::verbose << "orientation (rad) ( " << comma::join( orientation, ',' ) << " )" << std::endl;
+    comma::verbose << "orientation (deg) ( " << comma::join( orientation * 180 / M_PI, ',' ) << " )" << std::endl;
+
+    // Convert source and target to a form that allows multiplication by estimate.
+    // Change each vector from size 3 to size 4 and store 1 in the fourth row.
+    source.conservativeResize( source.rows()+1, Eigen::NoChange );
+    source.row( source.rows()-1 ) = Eigen::MatrixXd::Constant( 1, source.cols(), 1 );
+
+    target.conservativeResize( target.rows()+1, Eigen::NoChange );
+    target.row( target.rows()-1 ) = Eigen::MatrixXd::Constant( 1, target.cols(), 1 );
+
+    double error = ( estimate * source - target ).norm() / target.norm();
+
+    comma::csv::options output_csv;
+    output_csv.fields = output_fields;
+    comma::verbose << "output fields=" << output_fields << std::endl;
+
+    comma::csv::output_stream< position_with_error > ostream( std::cout, output_csv );
+    ostream.write( position_with_error( block
+                                      , snark::applications::position( translation, orientation )
+                                      , error ));
 }
 
 int main( int ac, char** av )
@@ -136,11 +207,14 @@ int main( int ac, char** av )
         comma::csv::options csv( options );
         csv.full_xpath = true;
         if( csv.fields.empty() ) { csv.fields = default_fields; }
+        comma::verbose << "csv.fields=" << csv.fields << std::endl;
         bool output_error = options.exists( "--output-error" );
+
+        std::string output_fields = get_output_fields( csv, output_error );
 
         if( options.exists( "--output-fields" ))
         {
-            std::cout << output_fields( output_error ) << std::endl;
+            std::cout << output_fields << std::endl;
             return 0;
         }
 
@@ -156,61 +230,36 @@ int main( int ac, char** av )
 
         Eigen::MatrixXd source( 3, 0 );
         Eigen::MatrixXd target( 3, 0 );
+        unsigned int block = 0;
 
-        comma::csv::input_stream< point_pair_t > istream( std::cin, csv );
+        comma::csv::input_stream< input_points > istream( std::cin, csv );
         while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
         {
-            const point_pair_t* p = istream.read();
+            const input_points* p = istream.read();
             if( !p ) break;
+
+            comma::verbose << "block " << p->block << std::endl;
+
+            if( p->block != block )
+            {
+                output_transform( source, target, block, output_fields );
+                source.resize( Eigen::NoChange, 0 );
+                target.resize( Eigen::NoChange, 0 );
+                block = p->block;
+            }
 
             target.conservativeResize( Eigen::NoChange, target.cols()+1 );
             source.conservativeResize( Eigen::NoChange, source.cols()+1 );
             
-            target(0, target.cols()-1) = p->first(0);
-            target(1, target.cols()-1) = p->first(1);
-            target(2, target.cols()-1) = p->first(2);
+            target(0, target.cols()-1) = p->points.first(0);
+            target(1, target.cols()-1) = p->points.first(1);
+            target(2, target.cols()-1) = p->points.first(2);
 
-            source(0, source.cols()-1) = p->second(0);
-            source(1, source.cols()-1) = p->second(1);
-            source(2, source.cols()-1) = p->second(2);
+            source(0, source.cols()-1) = p->points.second(0);
+            source(1, source.cols()-1) = p->points.second(1);
+            source(2, source.cols()-1) = p->points.second(2);
         }
-
-        comma::verbose << "Loaded " << target.cols() << " pairs of points" << std::endl;
-
-        Eigen::Matrix4d estimate = Eigen::umeyama( source, target );
-
-        comma::verbose << "umeyama estimate\n" << estimate << std::endl;
-
-        Eigen::Matrix3d rotation( estimate.block< 3, 3 >( 0, 0 ));
-        Eigen::Vector3d translation( estimate.block< 3, 1 >( 0, 3 ));
-
-        Eigen::Vector3d orientation( snark::rotation_matrix::roll_pitch_yaw( rotation ));
-
-        comma::verbose << "rotation matrix\n" << rotation << std::endl;
-        comma::verbose << "translation ( " << comma::join( translation, ',' ) << " )" << std::endl;
-        comma::verbose << "orientation (rad) ( " << comma::join( orientation, ',' ) << " )" << std::endl;
-        comma::verbose << "orientation (deg) ( " << comma::join( orientation * 180 / M_PI, ',' ) << " )" << std::endl;
-
-        comma::csv::options output_csv;
-        output_csv.fields = output_fields( output_error );
-
-        double error( std::numeric_limits<double>::quiet_NaN() );
-
-        if( output_error )
-        {
-            // Convert source and target to a form that allows multiplication by estimate.
-            // Change each vector from size 3 to size 4 and store 1 in the fourth row.
-            source.conservativeResize( source.rows()+1, Eigen::NoChange );
-            source.row( source.rows()-1 ) = Eigen::MatrixXd::Constant( 1, source.cols(), 1 );
-
-            target.conservativeResize( target.rows()+1, Eigen::NoChange );
-            target.row( target.rows()-1 ) = Eigen::MatrixXd::Constant( 1, target.cols(), 1 );
-
-            error = ( estimate * source - target ).norm() / target.norm();
-        }
-        comma::csv::output_stream< position_with_error > ostream( std::cout, output_csv );
-        ostream.write( position_with_error( snark::applications::position( translation, orientation )
-                                          , error ));
+        output_transform( source, target, block, output_fields );
     }
     catch( std::exception& ex )
     {

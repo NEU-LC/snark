@@ -15,9 +15,15 @@ function random_cloud
     }'
 }
 
+function pair_fields
+{
+    echo $( echo $1 | csv-fields prefix --path "first" ),$( echo $1 | csv-fields prefix --path "second" )
+}
+
 function max_diff
 {
     paste -d, $1 $2 \
+        | csv-shuffle --fields $( pair_fields $fields ) --output $( pair_fields x,y,z ) \
         | points-calc subtract \
         | csv-shuffle --fields $( points-calc subtract --input-fields),$( points-calc subtract --output-fields ) \
                       --output $( points-calc subtract --output-fields ) \
@@ -48,6 +54,8 @@ output_dir=output
 [[ -d $output_dir ]] || mkdir $output_dir
 cd $output_dir
 
+fields="x,y,z"
+
 comma_path_value_to_var
 
 if [[ $reference =~ "random" ]]; then
@@ -64,26 +72,34 @@ frame=$( echo $frame,$scalar | points-calc scale --fields=$frame_format,scalar \
              | csv-shuffle --fields=$frame_format,scalar,x,y,z \
                            --output=u/x,u/y,u/z,x,y,z )
 
-cat reference.csv | points-frame --to $frame --fields=x,y,z > pure_source.csv
+cat reference.csv | points-frame --to $frame --fields=$fields > pure_source.csv
 cat pure_source.csv | perturb $perturbation > source.csv
 
-paste -d, reference.csv source.csv > combined.csv
+pasted_fields=$( pair_fields $fields )
+combined_fields=$( echo $pasted_fields | csv-fields cut --fields second/block )
+
+paste -d, reference.csv source.csv \
+    | csv-shuffle --fields=$pasted_fields --output=$combined_fields \
+    > combined.csv
+
+combined_fields=$( echo $combined_fields | csv-fields rename --fields first/block --to block )
 
 binary_transform=cat
 binary_option=
 [[ $mode == "binary" ]] && { binary_transform="csv-to-bin 6d"; binary_option="--binary=6d"; }
 
-transform_with_error=$( cat combined.csv | $binary_transform | points-align $binary_option --output-error )
+transform_with_error=$( cat combined.csv | $binary_transform \
+    | points-align $binary_option --fields=$combined_fields --output-error )
 echo "exit_code=$?"
 
 transform=$( echo $transform_with_error \
-    | csv-shuffle --fields $( points-align --output-fields --output-error ) \
+    | csv-shuffle --fields $( points-align --output-fields --output-error --fields=$combined_fields ) \
                   --output $( points-align --output-fields ) )
 
-cat source.csv | points-frame --from $transform --fields=x,y,z > recreated.csv
+cat source.csv | points-frame --from $transform --fields=$fields > recreated.csv
 
-echo $transform_with_error \
-    | name-value-from-csv $( points-align --output-fields --output-error ) --prefix transform \
+echo -e "$transform_with_error" \
+    | name-value-from-csv $( points-align --output-fields --output-error --fields=$combined_fields ) --prefix transform --line-number\
     | csv-quote --delimiter='=' --fields=,value
 
 echo "max_error=$( max_diff reference.csv recreated.csv )"

@@ -1,0 +1,4 @@
+# We need at least three points for a distinct solution
+reference="0,1,2,3\\n0,4,5,8\\n0,6,12,13\\n1,5,3,4\\n1,5,6,9\\n1,7,13,15"
+frame="5,5,5,10,20,30"
+fields="block,x,y,z"
