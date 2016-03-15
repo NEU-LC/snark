@@ -191,7 +191,6 @@ int main( int ac, char** av )
         comma::verbose << "orientation (rad) ( " << comma::join( orientation, ',' ) << " )" << std::endl;
         comma::verbose << "orientation (deg) ( " << comma::join( orientation * 180 / M_PI, ',' ) << " )" << std::endl;
 
-        snark::applications::position position( translation, orientation );
         comma::csv::options output_csv;
         output_csv.fields = output_fields( output_error );
 
@@ -210,7 +209,8 @@ int main( int ac, char** av )
             error = ( estimate * source - target ).norm() / target.norm();
         }
         comma::csv::output_stream< position_with_error > ostream( std::cout, output_csv );
-        ostream.write( position_with_error( position, error ));
+        ostream.write( position_with_error( snark::applications::position( translation, orientation )
+                                          , error ));
     }
     catch( std::exception& ex )
     {
