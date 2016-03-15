@@ -129,10 +129,11 @@ int main( int ac, char** av )
         comma::csv::options csv( options );
         csv.full_xpath = true;
         if( csv.fields.empty() ) { csv.fields = default_fields; }
+        bool output_error = options.exists( "--output-error" );
 
         if( options.exists( "--output-fields" ))
         {
-            std::cout << comma::join( options.exists( "--output-error" )
+            std::cout << comma::join( output_error
                                     ? comma::csv::names< position_with_error >()
                                     : comma::csv::names< snark::applications::position >(),
                                     ',' ) << std::endl;
@@ -142,7 +143,7 @@ int main( int ac, char** av )
         if( options.exists( "--output-format" ))
         {
             std::cout <<
-                ( options.exists( "--output-error" )
+                ( output_error
                 ? comma::csv::format::value< position_with_error >()
                 : comma::csv::format::value< snark::applications::position >() )
                       << std::endl;
@@ -188,11 +189,10 @@ int main( int ac, char** av )
 
         snark::applications::position position( translation, orientation );
         comma::csv::options output_csv;
-        // todo: bool output_error = options.exists( "--output-error,--include-error" );
         // todo: ... output_csv.fields = output_error ? "x,y,z...
         // todo: if( csv.binary() ) { output_csv.format( output_error ); }
 
-        if( ! options.exists( "--output-error" ))
+        if( ! output_error )
         {
             comma::csv::output_stream< snark::applications::position > ostream( std::cout, output_csv );
             ostream.write( position );
