@@ -160,8 +160,18 @@ std::string get_output_fields( comma::csv::options csv_options, bool output_erro
     return output_fields;
 }
 
+std::string get_output_format( comma::csv::options csv_options, bool output_error )
+{
+    std::string output_format( comma::csv::format::value< snark::applications::position >() );
+    if( csv_options.has_field( "block" ))
+        output_format = "ui," + output_format;
+    if( output_error )
+        output_format += ",d";
+    return output_format;
+}
+
 void output_transform( Eigen::MatrixXd source, Eigen::MatrixXd target
-                     , comma::uint32 block, const std::string& output_fields )
+                     , comma::uint32 block, comma::csv::options output_csv )
 {
     comma::verbose << "Loaded " << target.cols() << " pairs of points" << std::endl;
 
@@ -189,10 +199,6 @@ void output_transform( Eigen::MatrixXd source, Eigen::MatrixXd target
 
     double error = ( estimate * source - target ).norm() / target.norm();
 
-    comma::csv::options output_csv;
-    output_csv.fields = output_fields;
-    comma::verbose << "output fields=" << output_fields << std::endl;
-
     comma::csv::output_stream< position_with_error > ostream( std::cout, output_csv );
     ostream.write( position_with_error( block
                                       , snark::applications::position( translation, orientation )
@@ -211,6 +217,7 @@ int main( int ac, char** av )
         bool output_error = options.exists( "--output-error" );
 
         std::string output_fields = get_output_fields( csv, output_error );
+        std::string output_format = get_output_format( csv, output_error );
 
         if( options.exists( "--output-fields" ))
         {
@@ -220,13 +227,14 @@ int main( int ac, char** av )
 
         if( options.exists( "--output-format" ))
         {
-            std::cout <<
-                ( output_error
-                ? comma::csv::format::value< position_with_error >()
-                : comma::csv::format::value< snark::applications::position >() )
-                      << std::endl;
+            std::cout << output_format << std::endl;
             return 0;
         }
+
+        comma::csv::options output_csv;
+        output_csv.fields = output_fields;
+        comma::verbose << "output fields=" << output_fields << std::endl;
+        if( csv.binary() ) { output_csv.format( output_format ); }
 
         Eigen::MatrixXd source( 3, 0 );
         Eigen::MatrixXd target( 3, 0 );
@@ -242,7 +250,7 @@ int main( int ac, char** av )
 
             if( p->block != block )
             {
-                output_transform( source, target, block, output_fields );
+                output_transform( source, target, block, output_csv );
                 source.resize( Eigen::NoChange, 0 );
                 target.resize( Eigen::NoChange, 0 );
                 block = p->block;
@@ -259,7 +267,7 @@ int main( int ac, char** av )
             source(1, source.cols()-1) = p->points.second(1);
             source(2, source.cols()-1) = p->points.second(2);
         }
-        output_transform( source, target, block, output_fields );
+        output_transform( source, target, block, output_csv );
     }
     catch( std::exception& ex )
     {

@@ -92,12 +92,18 @@ paste -d, reference.csv source.csv \
 
 combined_fields=$( echo $pasted_output_fields | csv-fields rename --fields first/block --to block )
 
-binary_transform=cat
+binary_input_transform=cat
+binary_output_transform=cat
 binary_option=
-[[ $mode == "binary" ]] && { binary_transform="csv-to-bin 6d"; binary_option="--binary=6d"; }
+if [[ $mode == "binary" ]]; then
+    binary_input_transform="csv-to-bin 6d"
+    binary_output_transform="csv-from-bin $( points-align --output-error --output-format )"
+    binary_option="--binary=6d"
+fi
 
-transform_with_error=$( cat combined.csv | $binary_transform \
-    | points-align $binary_option --fields=$combined_fields --output-error )
+transform_with_error=$( cat combined.csv | $binary_input_transform \
+    | points-align $binary_option --fields=$combined_fields --output-error \
+    | $binary_output_transform )
 echo "exit_code=$?"
 
 transform=$( echo $transform_with_error \
