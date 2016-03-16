@@ -22,15 +22,23 @@ function pair_fields
 
 function max_diff
 {
+    local block
+    local csv_calc_format="d"
+    if [[ $fields =~ "block" ]]; then
+        block="block,"
+        csv_calc_format="ui,$csv_calc_format"
+    fi
+
     paste -d, $1 $2 \
-        | csv-shuffle --fields $( pair_fields $fields ) --output $( pair_fields x,y,z ) \
-        | points-calc subtract \
-        | csv-shuffle --fields $( points-calc subtract --input-fields),$( points-calc subtract --output-fields ) \
-                      --output $( points-calc subtract --output-fields ) \
-        | points-calc norm \
-        | csv-shuffle --fields $( points-calc norm --input-fields),$( points-calc norm --output-fields ) \
-                      --output $( points-calc norm --output-fields ) \
-        | csv-calc max --format=d
+        | csv-shuffle --fields $pasted_input_fields --output $pasted_output_fields \
+        | points-calc subtract --fields ${block}$( points-calc subtract --input-fields ) \
+        | csv-shuffle --fields ${block}$( points-calc subtract --input-fields),$( points-calc subtract --output-fields ) \
+                      --output ${block}$( points-calc subtract --output-fields ) \
+        | points-calc norm --fields ${block}$( points-calc norm --input-fields ) \
+        | csv-shuffle --fields ${block}$( points-calc norm --input-fields),$( points-calc norm --output-fields ) \
+                      --output ${block}$( points-calc norm --output-fields ) \
+        | csv-calc max --format $csv_calc_format --fields ${block}x \
+        | csv-shuffle --fields $( csv-calc max --fields ${block}x --output-fields ) --output x/max
 }
 
 function perturb
@@ -75,14 +83,14 @@ frame=$( echo $frame,$scalar | points-calc scale --fields=$frame_format,scalar \
 cat reference.csv | points-frame --to $frame --fields=$fields > pure_source.csv
 cat pure_source.csv | perturb $perturbation > source.csv
 
-pasted_fields=$( pair_fields $fields )
-combined_fields=$( echo $pasted_fields | csv-fields cut --fields second/block )
+pasted_input_fields=$( pair_fields $fields )
+pasted_output_fields=$( echo $pasted_input_fields | csv-fields cut --fields second/block )
 
 paste -d, reference.csv source.csv \
-    | csv-shuffle --fields=$pasted_fields --output=$combined_fields \
+    | csv-shuffle --fields=$pasted_input_fields --output=$pasted_output_fields \
     > combined.csv
 
-combined_fields=$( echo $combined_fields | csv-fields rename --fields first/block --to block )
+combined_fields=$( echo $pasted_output_fields | csv-fields rename --fields first/block --to block )
 
 binary_transform=cat
 binary_option=
@@ -102,7 +110,9 @@ echo -e "$transform_with_error" \
     | name-value-from-csv $( points-align --output-fields --output-error --fields=$combined_fields ) --prefix transform --line-number\
     | csv-quote --delimiter='=' --fields=,value
 
-echo "max_error=$( max_diff reference.csv recreated.csv )"
+max_diff reference.csv recreated.csv \
+    | name-value-from-csv value --prefix max_error --line-number \
+    | csv-quote --delimiter='=' --fields=,value
 
 (( options_view )) && view-points "reference.csv;colour=red" "source.csv;colour=yellow" "recreated.csv;colour=green"
 exit 0
