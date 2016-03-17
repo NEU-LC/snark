@@ -25,20 +25,20 @@ function max_diff
     local block
     local csv_calc_format="d"
     if [[ $fields =~ "block" ]]; then
-        block="block,"
-        csv_calc_format="ui,$csv_calc_format"
+        block=",block"
+        csv_calc_format="$csv_calc_format,ui"
     fi
 
     paste -d, $1 $2 \
         | csv-shuffle --fields $pasted_input_fields --output $pasted_output_fields \
-        | points-calc subtract --fields ${block}$( points-calc subtract --input-fields ) \
-        | csv-shuffle --fields ${block}$( points-calc subtract --input-fields),$( points-calc subtract --output-fields ) \
-                      --output ${block}$( points-calc subtract --output-fields ) \
-        | points-calc norm --fields ${block}$( points-calc norm --input-fields ) \
-        | csv-shuffle --fields ${block}$( points-calc norm --input-fields),$( points-calc norm --output-fields ) \
-                      --output ${block}$( points-calc norm --output-fields ) \
-        | csv-calc max --format $csv_calc_format --fields ${block}x \
-        | csv-shuffle --fields $( csv-calc max --fields ${block}x --output-fields ) --output x/max
+        | points-calc subtract --fields $( points-calc subtract --input-fields )${block} \
+        | csv-shuffle --fields $( points-calc subtract --input-fields)${block},$( points-calc subtract --output-fields ) \
+                      --output $( points-calc subtract --output-fields )${block} \
+        | points-calc norm --fields $( points-calc norm --input-fields )${block} \
+        | csv-shuffle --fields $( points-calc norm --input-fields)${block},$( points-calc norm --output-fields ) \
+                      --output $( points-calc norm --output-fields )${block} \
+        | csv-calc max --format $csv_calc_format --fields x${block} \
+        | csv-shuffle --fields $( csv-calc max --fields x${block} --output-fields ) --output x/max
 }
 
 function perturb
@@ -84,13 +84,13 @@ cat reference.csv | points-frame --to $frame --fields=$fields > pure_source.csv
 cat pure_source.csv | perturb $perturbation > source.csv
 
 pasted_input_fields=$( pair_fields $fields )
-pasted_output_fields=$( echo $pasted_input_fields | csv-fields cut --fields second/block )
+pasted_output_fields=$( echo $pasted_input_fields | csv-fields cut --fields first/block )
 
 paste -d, reference.csv source.csv \
     | csv-shuffle --fields=$pasted_input_fields --output=$pasted_output_fields \
     > combined.csv
 
-combined_fields=$( echo $pasted_output_fields | csv-fields rename --fields first/block --to block )
+combined_fields=$( echo $pasted_output_fields | csv-fields rename --fields second/block --to block )
 
 binary_input_transform=cat
 binary_output_transform=cat
