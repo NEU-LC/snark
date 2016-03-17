@@ -1,4 +1,4 @@
 # We need at least three points for a distinct solution
-reference="0,1,2,3\\n0,4,5,8\\n0,6,12,13\\n1,5,3,4\\n1,5,6,9\\n1,7,13,15"
+reference="1,2,3,0\\n4,5,8,0\\n6,12,13,0\\n5,3,4,1\\n5,6,9,1\\n7,13,15,1"
 frame="5,5,5,10,20,30"
-fields="block,x,y,z"
+fields="x,y,z,block"

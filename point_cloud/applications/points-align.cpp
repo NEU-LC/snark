@@ -153,22 +153,18 @@ template <> struct traits< position_with_error >
 std::string get_output_fields( comma::csv::options csv_options, bool output_error )
 {
     std::string output_fields( standard_output_fields );
-    if( csv_options.has_field( "block" ))
-        output_fields = "block," + output_fields;
-    if( output_error )
-        output_fields += ",error";
+    if( output_error ) { output_fields += ",error"; }
+    if( csv_options.has_field( "block" )) { output_fields = output_fields + ",block"; }
     return output_fields;
 }
 
 std::string get_output_format( comma::csv::options csv_options, bool output_error )
 {
     std::string output_format( comma::csv::format::value< snark::applications::position >() );
-    if( csv_options.has_field( "block" ))
-        output_format = "ui," + output_format;
-    if( output_error )
-        output_format += ",d";
+    if( output_error ) { output_format += ",d"; }
+    if( csv_options.has_field( "block" )) { output_format = output_format + ",ui"; }
     return output_format;
-}
+} 
 
 void output_transform( Eigen::MatrixXd source, Eigen::MatrixXd target
                      , comma::uint32 block, comma::csv::options output_csv )
