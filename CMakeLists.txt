@@ -217,6 +217,35 @@ IF( snark_build_imaging )
     ENDIF( WIN32 )
     SET( OpenCV_FIND_REQUIRED )
     FIND_PACKAGE(OpenCV REQUIRED)
+######## start
+#    message( "OpenCV_VERSION: ${OpenCV_VERSION}")
+#     "${OpenCV_VERSION}" STREQUAL "2.4.11"
+    if( "${OpenCV_VERSION}"  STRGREATER "2.4.10" )
+#        message( "greater than 2.4.10")
+        EXECUTE_PROCESS( COMMAND qmake -v COMMAND grep "Qt version" COMMAND sed "s/.* \\([0-9]\\)\\.[0-9]\\.[0-9] .*/\\1/" OUTPUT_VARIABLE snark_QT_DEFAULT_VERSION )
+        IF( snark_QT_DEFAULT_VERSION EQUAL "5" )
+            SET( snark_QT_VERSION "5" CACHE STRING "Qt version" )
+        ELSE( snark_QT_DEFAULT_VERSION EQUAL "5" )
+            IF( snark_QT_DEFAULT_VERSION EQUAL "4" )
+                SET( snark_QT_VERSION "4" CACHE STRING "Qt version" )
+            ENDIF( snark_QT_DEFAULT_VERSION EQUAL "4" )
+        ENDIF( snark_QT_DEFAULT_VERSION EQUAL "5" ) 
+
+        IF( snark_QT_VERSION EQUAL "5" )
+            FIND_PACKAGE( Qt5 COMPONENTS Core Gui OpenGL Xml 3D 3DQuick REQUIRED )
+        ELSE ( snark_QT_VERSION EQUAL "5" )
+            IF( snark_QT_VERSION EQUAL "4" )
+                FIND_PACKAGE( Qt4 COMPONENTS QtCore QtGui QtOpenGl QtXml REQUIRED )
+                INCLUDE( ${QT_USE_FILE} )
+                FIND_LIBRARY( Qt3D_LIB NAMES Qt3D REQUIRED )
+            ELSE ( snark_QT_VERSION EQUAL "4" )
+                MESSAGE( FATAL_ERROR "please specify 4 or 5 as QT_VERSION" )
+            ENDIF ( snark_QT_VERSION EQUAL "4" )
+        ENDIF( snark_QT_VERSION EQUAL "5" )
+    endif()
+######### end
+    
+    
 ENDIF( snark_build_imaging )
 
 FIND_PACKAGE( comma PATHS ${comma_DIR} /usr/local/CMakeFiles )
