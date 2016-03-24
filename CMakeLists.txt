@@ -219,43 +219,6 @@ IF( snark_build_imaging )
     FIND_PACKAGE(OpenCV REQUIRED)
 ENDIF( snark_build_imaging )
 
-IF( snark_build_imaging OR snark_build_graphics )
-
-    # Use qmake to find Qt version
-    EXECUTE_PROCESS( COMMAND qmake -v COMMAND grep "Qt version"
-                     OUTPUT_VARIABLE blah 
-                     OUTPUT_STRIP_TRAILING_WHITESPACE)
-    message( "debug: qmake -v: ${blah}" )
-
-    # Use qmake to find Qt version
-    EXECUTE_PROCESS( COMMAND qmake -v COMMAND grep "Qt version" COMMAND sed "s/.* \\([0-9]\\.[0-9]\\.[0-9]\\) .*/\\1/" 
-                     OUTPUT_VARIABLE snark_QT_DEFAULT_VERSION 
-                     OUTPUT_STRIP_TRAILING_WHITESPACE)
-    set( snark_QT_VERSION "${snark_QT_DEFAULT_VERSION}" CACHE STRING "Qt version" )
-    
-    message( "snark_QT_VERSION: ${snark_QT_VERSION}" )
-    
-    string( REPLACE "." ";" QT_VERSION_LIST ${snark_QT_VERSION} )
-    list( GET QT_VERSION_LIST 0 QT_VERSION_MAJOR )
-    list( GET QT_VERSION_LIST 1 QT_VERSION_MINOR )
-    list( GET QT_VERSION_LIST 2 QT_VERSION_PATCH )
-
-    ADD_DEFINITIONS(-DQT_VERSION_MAJOR=${QT_VERSION_MAJOR} -DQT_VERSION_MINOR=${QT_VERSION_MINOR})
-    
-    IF( QT_VERSION_MAJOR LESS 4 OR QT_VERSION_MAJOR GREATER 5 )
-        MESSAGE( FATAL_ERROR "Qt version 4 or 5 required" )
-    ENDIF( QT_VERSION_MAJOR LESS 4 OR QT_VERSION_MAJOR GREATER 5 )
-    
-    IF( QT_VERSION_MAJOR EQUAL 4 )
-        FIND_PACKAGE( Qt4 COMPONENTS QtCore QtGui QtOpenGl REQUIRED )
-        INCLUDE( ${QT_USE_FILE} )
-        FIND_LIBRARY( Qt3D_LIB NAMES Qt3D REQUIRED )
-    ELSEIF( QT_VERSION_MAJOR EQUAL 5 )
-        FIND_PACKAGE( Qt5 COMPONENTS Core Gui Widgets Test Concurrent OpenGL REQUIRED )
-    ENDIF( QT_VERSION_MAJOR EQUAL 4 )
-    
-ENDIF(  snark_build_imaging OR snark_build_graphics )
-
 FIND_PACKAGE( comma PATHS ${comma_DIR} /usr/local/CMakeFiles )
 
 if( snark_build_graphics )
