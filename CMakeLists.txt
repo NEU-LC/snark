@@ -222,6 +222,12 @@ ENDIF( snark_build_imaging )
 IF( snark_build_imaging OR snark_build_graphics )
 
     # Use qmake to find Qt version
+    EXECUTE_PROCESS( COMMAND qmake -v COMMAND grep "Qt version"
+                     OUTPUT_VARIABLE blah 
+                     OUTPUT_STRIP_TRAILING_WHITESPACE)
+    message( "debug: qmake -v: ${blah}" )
+
+    # Use qmake to find Qt version
     EXECUTE_PROCESS( COMMAND qmake -v COMMAND grep "Qt version" COMMAND sed "s/.* \\([0-9]\\.[0-9]\\.[0-9]\\) .*/\\1/" 
                      OUTPUT_VARIABLE snark_QT_DEFAULT_VERSION 
                      OUTPUT_STRIP_TRAILING_WHITESPACE)
