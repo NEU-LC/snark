@@ -227,6 +227,8 @@ IF( snark_build_imaging OR snark_build_graphics )
                      OUTPUT_STRIP_TRAILING_WHITESPACE)
     set( snark_QT_VERSION "${snark_QT_DEFAULT_VERSION}" CACHE STRING "Qt version" )
     
+    message( "snark_QT_VERSION: ${snark_QT_VERSION}" )
+    
     string( REPLACE "." ";" QT_VERSION_LIST ${snark_QT_VERSION} )
     list( GET QT_VERSION_LIST 0 QT_VERSION_MAJOR )
     list( GET QT_VERSION_LIST 1 QT_VERSION_MINOR )
