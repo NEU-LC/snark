@@ -217,6 +217,60 @@ IF( snark_build_imaging )
     ENDIF( WIN32 )
     SET( OpenCV_FIND_REQUIRED )
     FIND_PACKAGE(OpenCV REQUIRED)
+######## start
+    #message( "OpenCV_VERSION: ${OpenCV_VERSION}")
+#     "${OpenCV_VERSION}" STREQUAL "2.4.11"
+    if( "${OpenCV_VERSION}"  STRGREATER "2.4.10" )
+        #message( "greater than 2.4.10")
+        IF(DEFINED QT_VERSION)
+            SET(snark_QT_DEFAULT_VERSION ${QT_VERSION})
+        ELSE(DEFINED QT_VERSION)
+            # Use qmake to find Qt version                 
+            EXECUTE_PROCESS( COMMAND qmake -v COMMAND grep "Qt version" COMMAND sed "s/.* \\([0-9]\\.[0-9]\\.[0-9]\\) .*/\\1/" 
+                            OUTPUT_VARIABLE snark_QT_DEFAULT_VERSION 
+                            OUTPUT_STRIP_TRAILING_WHITESPACE)
+                            
+            IF(NOT(DEFINED snark_QT_DEFAULT_VERSION) OR snark_QT_DEFAULT_VERSION EQUAL "")
+                MESSAGE(FATAL_ERROR "Please set QT_VERSION to the Qt version number")
+            ENDIF(NOT(DEFINED snark_QT_DEFAULT_VERSION) OR snark_QT_DEFAULT_VERSION EQUAL "")
+        ENDIF(DEFINED QT_VERSION)
+
+        set( snark_QT_VERSION "${snark_QT_DEFAULT_VERSION}" CACHE STRING "Qt version" )
+
+        IF(snark_QT_VERSION MATCHES "^[0-9]+\\.[0-9]+")
+            STRING( REPLACE "." ";" QT_VERSION_LIST ${snark_QT_VERSION} )
+            LIST( GET QT_VERSION_LIST 0 QT_VERSION_MAJOR )
+            LIST( GET QT_VERSION_LIST 1 QT_VERSION_MINOR )
+        ELSEIF(snark_QT_VERSION MATCHES "^[0-9]+$")
+            SET(QT_VERSION_MAJOR ${snark_QT_VERSION})
+            SET(QT_VERSION_MINOR "0")
+        ELSE(snark_QT_VERSION MATCHES "^[0-9]+\\.[0-9]+")
+            MESSAGE( FATAL_ERROR "Malformed QT version: ${snark_QT_VERSION}" )
+        ENDIF(snark_QT_VERSION MATCHES "^[0-9]+\\.[0-9]+")
+
+        IF( QT_VERSION_MAJOR LESS 4 OR QT_VERSION_MAJOR GREATER 5 )
+            MESSAGE( FATAL_ERROR "Qt version 4 or 5 required" )
+        ENDIF( QT_VERSION_MAJOR LESS 4 OR QT_VERSION_MAJOR GREATER 5 )
+
+        ADD_DEFINITIONS(-DQT_VERSION_MAJOR=${QT_VERSION_MAJOR} -DQT_VERSION_MINOR=${QT_VERSION_MINOR})
+
+        IF( QT_VERSION_MAJOR EQUAL "5" )
+           # message("using qt 5")
+            FIND_PACKAGE( Qt5 COMPONENTS Core Gui Widgets Test Concurrent OpenGL REQUIRED )
+        ELSE ( QT_VERSION_MAJOR EQUAL "5" )
+            IF( QT_VERSION_MAJOR EQUAL "4" )
+               # message("using qt 4")
+                FIND_PACKAGE( Qt4 COMPONENTS QtCore QtGui QtOpenGl REQUIRED )
+                INCLUDE( ${QT_USE_FILE} )
+                FIND_LIBRARY( Qt3D_LIB NAMES Qt3D REQUIRED )
+            ELSE ( QT_VERSION_MAJOR EQUAL "4" )
+                # MESSAGE( FATAL_ERROR "please specify 4 or 5 as QT_VERSION" )
+            ENDIF ( QT_VERSION_MAJOR EQUAL "4" )
+        ENDIF( QT_VERSION_MAJOR EQUAL "5" )
+    endif()
+######### end
+    
+    
 ENDIF( snark_build_imaging )
 
 FIND_PACKAGE( comma PATHS ${comma_DIR} /usr/local/CMakeFiles )
