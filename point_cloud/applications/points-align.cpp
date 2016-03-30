@@ -69,11 +69,11 @@ static void usage( bool verbose = false )
         std::cerr << std::endl;
     }
     std::cerr << "options: " << std::endl;
-    std::cerr << "    --help,-h; show this help, --help --verbose for more help" << std::endl;
-    std::cerr << "    --verbose,-v; more output" << std::endl;
+    std::cerr << "    --help,-h:       show this help; --help --verbose for more help" << std::endl;
+    std::cerr << "    --verbose,-v:    more output" << std::endl;
     std::cerr << "    --output-fields: show output fields and exit" << std::endl;
     std::cerr << "    --output-format: show output format and exit" << std::endl;
-    std::cerr << "    --output-error: include the error estimate in output" << std::endl;
+    std::cerr << "    --output-error:  include the error estimate in output" << std::endl;
     std::cerr << std::endl;
     std::cerr << "examples: " << std::endl;
     std::cerr << "    -- output the " << standard_output_fields << " transform --" << std::endl;
