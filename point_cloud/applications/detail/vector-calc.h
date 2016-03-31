@@ -35,6 +35,10 @@ struct vector_calc
         std::cerr << "            --v=<x>,<y>,<z>: default value for vector" << std::endl;
         std::cerr << "            --scalar: default value for a" << std::endl;
         std::cerr << "            --invert: invert the scalar first and then multiply it by vector, i.e. (1/a)*v" << std::endl;
+        std::cerr << std::endl;
+        std::cerr << "        normalize: calculate normalized vector" << std::endl;
+        std::cerr << "            input fields:  v" << std::endl;
+        std::cerr << "            --v=<x>,<y>,<z>: default value for vector" << std::endl;
         std::cerr << "" << std::endl;
         std::cerr << "        add: add two vectors: v + u " << std::endl;
         std::cerr << "            input fields: v, u" << std::endl;
@@ -59,14 +63,15 @@ struct vector_calc
         std::cerr << "    cross" << std::endl;
         std::cerr << "    dot" << std::endl;
         std::cerr << "    norm" << std::endl;
+        std::cerr << "    normal" << std::endl;
+        std::cerr << "    normalize" << std::endl;
         std::cerr << "    scale" << std::endl;
         std::cerr << "    add" << std::endl;
         std::cerr << "    subtract" << std::endl;
-        std::cerr << "    normal" << std::endl;
     }
     static bool has_operation(const std::string& operation)
     {
-        return (operation=="cross") || (operation=="dot") || (operation=="norm") || (operation=="scale") || (operation=="add") || (operation=="subtract") || (operation=="normal");
+        return (operation=="cross") || (operation=="dot") || (operation=="norm") || (operation=="scale") || (operation=="add") || (operation=="subtract") || (operation=="normal") || (operation=="normalize");
     }
     static void process(const std::string& operation, const comma::command_line_options& options, const comma::csv::options& csv)
     {
@@ -107,6 +112,15 @@ struct vector_calc
             Eigen::Vector3d v=comma::csv::ascii< Eigen::Vector3d >().get(options.value< std::string >( "--v",  "0,0,0"));
             vector_calc::scalar s=comma::csv::ascii< double >().get(options.value< std::string >( "--scalar", "0"));
             vector_calc::scale(v, s, options.exists("--invert")).run(csv);
+            return;
+        }
+        if(operation=="normalize")
+        {
+            if(options.exists("--input-fields")){vector_calc::normalize().input_fields(); return; }
+            if(options.exists("--output-fields")){vector_calc::normalize().output_fields(); return; }
+            if(options.exists("--output-format")){vector_calc::normalize().output_format(); return; }
+            Eigen::Vector3d v=comma::csv::ascii< Eigen::Vector3d >().get(options.value< std::string >( "--v",  "0,0,0"));
+            vector_calc::normalize( v ).run( csv );
             return;
         }
         if(operation=="subtract")
@@ -238,6 +252,12 @@ struct vector_calc
             return d*in.first;
         }
         bool _invert;
+    };
+    struct normalize:operation_t<vector,vector>
+    {
+        normalize(){}
+        normalize(const vector& v ) : operation_t(v) {}
+        vector calc(const vector& in) { return in.normalized(); }
     };
     struct add:operation_t<vector_pair,vector>
     {
