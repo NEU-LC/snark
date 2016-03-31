@@ -58,7 +58,7 @@ void usage( bool verbose )
     std::cerr << "    --help,-h: print help; --help --verbose for more help" << std::endl;
     std::cerr << "    --camera-config,--camera,--config,-c=<parameters>: camera configuration" << std::endl;
     std::cerr << "        <parameters>: filename of json configuration file or ';'-separated path-value pairs" << std::endl;
-    std::cerr << "                      e.g: --config=\"focal_length/x=123;focal_length/y=123.1;...\"" << std::endl;
+    std::cerr << "                      e.g: --config=\"focal_length=123;image_size/x=222;image_size/y=123.1;...\"" << std::endl;
     std::cerr << "    --input-fields: output input fields for given operation and exit" << std::endl;
     std::cerr << "    --output-config,--sample-config: output sample config and exit" << std::endl;
     std::cerr << "    --output-fields: output appended fields for given operation and exit" << std::endl;
