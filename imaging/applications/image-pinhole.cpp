@@ -104,7 +104,13 @@ int main( int ac, char** av )
     {
         comma::command_line_options options( ac, av, usage );
         verbose=options.exists("--verbose");
-        if( options.exists( "--output-config,--sample-config" ) ) { comma::write_json( snark::camera::pinhole(), std::cout ); return 0; }
+        if( options.exists( "--output-config,--sample-config" ) )
+        {
+            snark::camera::pinhole config;
+            config.sensor_size = Eigen::Vector2d( 0.1, 0.2 );
+            comma::write_json( config, std::cout );
+            return 0;
+        }
         const std::vector< std::string >& unnamed = options.unnamed( "--input-fields,--output-fields,--output-format,--verbose,-v,--keep,--dont-distort", "-.*" );
         if( unnamed.empty() ) { std::cerr << "image-pinhole: please specify operation" << std::endl; return 1; }
         std::string operation = unnamed[0];

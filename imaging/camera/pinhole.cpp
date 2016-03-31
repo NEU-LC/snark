@@ -253,15 +253,17 @@ void pinhole::output_distortion_map(std::ostream& os) const
 void pinhole::usage()
 {
     std::cerr << "camera config: for a sample, try image-pinhole --output-config" << std::endl;
-    std::cerr << "    sensor_size/x: sensor width, meters" << std::endl;
-    std::cerr << "    sensor_size/y: sensor height, m, meters" << std::endl;
-    std::cerr << "    image_size/x: image width, pixels" << std::endl;
-    std::cerr << "    image_size/y: image height, pixels" << std::endl;
+    std::cerr << "    sensor_size: sensor dimensions; optional; if absent, focal_length should be effectively defined in pixels" << std::endl;
+    std::cerr << "        sensor_size/x: sensor width, meters" << std::endl;
+    std::cerr << "        sensor_size/y: sensor height, m, meters" << std::endl;
+    std::cerr << "    image_size: image dimensions, pixels" << std::endl;
+    std::cerr << "        image_size/x: image width, pixels" << std::endl;
+    std::cerr << "        image_size/y: image height, pixels" << std::endl;
     std::cerr << "    focal_length: focal length, meters" << std::endl;
-    std::cerr << "    principal_point/x: image centre, pixels, default: geometrical image centre" << std::endl;
+    std::cerr << "    principal_point: image centre, pixels, default: geometrical image centre" << std::endl;
     std::cerr << "        principal_point/x" << std::endl;
     std::cerr << "        principal_point/y" << std::endl;
-    std::cerr << "    distortion parameters" << std::endl;
+    std::cerr << "    distortion: optional" << std::endl;
     std::cerr << "        distortion/radial/k1" << std::endl;
     std::cerr << "        distortion/radial/k2" << std::endl;
     std::cerr << "        distortion/radial/k3" << std::endl;
