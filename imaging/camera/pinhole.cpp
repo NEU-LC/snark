@@ -225,8 +225,8 @@ void pinhole::make_distortion_map(cv::Mat& map_x,cv::Mat& map_y) const
 //     int heigth=image_size.y();
 //     i:{0..w},j:{0..h} undistorted(i,j)
     cv::Mat camera=cv::Mat_<double>(3,3);
-    camera.at<double>(0,0)=focal_length;
-    camera.at<double>(1,1)=focal_length;
+    camera.at< double >( 0, 0 ) = focal_length * ( sensor_size ? double( image_size.x() ) / sensor_size->x() : 1.0 );
+    camera.at< double >( 1, 1 ) = focal_length * ( sensor_size ? double( image_size.y() ) / sensor_size->y() : 1.0 );
     Eigen::Vector2d c= image_centre();
     camera.at<double>(0,2)=c.x();
     camera.at<double>(1,2)=c.y();

@@ -36,7 +36,6 @@
 #include <boost/optional.hpp>
 #include <Eigen/Core>
 #include <opencv2/core/core.hpp>
-#include <iostream>
 
 namespace snark { namespace camera {
 
