@@ -125,7 +125,7 @@ static void usage(bool detail)
                         << std::endl;
     }
     std::cerr<< "example" << std::endl
-                    << "      cv-cat --input=image.jpg | " << app_name << " >pixels.csv" << std::endl
+                    << "      cv-cat --file image.jpg | " << app_name << " > pixels.csv" << std::endl
                     << std::endl;
     exit(0);
 }
@@ -137,10 +137,8 @@ void read_header()
     csvh.format(comma::csv::format::value< snark::cv_mat::serialization::header >(input_options.fields, false));
     comma::csv::input_stream<snark::cv_mat::serialization::header> is(std::cin, csvh);
     const snark::cv_mat::serialization::header* p=is.read();
-    if(p!=NULL)
-        header = *p;
-    else
-        exit(0);
+    if( !p ) { exit( 0 ); }
+    header = *p;
 }
 template<typename T>
 void output_t<T>::output_fields()
