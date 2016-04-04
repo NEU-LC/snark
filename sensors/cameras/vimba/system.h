@@ -27,21 +27,28 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef SNARK_SENSORS_VIMBA_FEATURE_H_
-#define SNARK_SENSORS_VIMBA_FEATURE_H_
+#ifndef SNARK_SENSORS_VIMBA_SYSTEM_H_
+#define SNARK_SENSORS_VIMBA_SYSTEM_H_
 
-#include <string>
-#include <VimbaCPP/Include/Camera.h>
-#include <VimbaCPP/Include/Feature.h>
+#include <VimbaCPP/Include/VimbaSystem.h>
 
 namespace snark { namespace vimba {
 
-void print_features( AVT::VmbAPI::FeaturePtrVector features, bool verbose );
+class system
+{
+    public:
+        system();
+        ~system() { instance.Shutdown(); }
 
-void set_feature( AVT::VmbAPI::CameraPtr camera
-                , std::string feature_name
-                , std::string value = "" );
+        static VmbVersionInfo_t version();
+        static AVT::VmbAPI::CameraPtrVector get_cameras();
+        static AVT::VmbAPI::CameraPtr open_camera( std::string id );
+        static AVT::VmbAPI::CameraPtr open_first_camera();
+
+    private:
+        static AVT::VmbAPI::VimbaSystem& instance;
+};
 
 } } // namespace snark { namespace vimba {
 
-#endif // SNARK_SENSORS_VIMBA_FEATURE_H_
+#endif // SNARK_SENSORS_VIMBA_SYSTEM_H_

@@ -27,21 +27,33 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef SNARK_SENSORS_VIMBA_FEATURE_H_
-#define SNARK_SENSORS_VIMBA_FEATURE_H_
+#ifndef SNARK_SENSORS_VIMBA_CAMERA_H_
+#define SNARK_SENSORS_VIMBA_CAMERA_H_
 
-#include <string>
 #include <VimbaCPP/Include/Camera.h>
-#include <VimbaCPP/Include/Feature.h>
+#include "snark/imaging/cv_mat/serialization.h"
 
 namespace snark { namespace vimba {
 
-void print_features( AVT::VmbAPI::FeaturePtrVector features, bool verbose );
+class camera
+{
+    public:
+        camera( const std::string& camera_id );
+        camera( const AVT::VmbAPI::CameraPtr& camera_ptr ) : camera_( camera_ptr ) {}
+        ~camera();
 
-void set_feature( AVT::VmbAPI::CameraPtr camera
-                , std::string feature_name
-                , std::string value = "" );
+        void print_info();
+        void list_attributes( bool verbose );
+        void set_feature( std::string feature_name, std::string value = "" );
+        void capture_images( std::unique_ptr< snark::cv_mat::serialization > serialization );
+
+    private:
+        VmbErrorType start_continuous_image_acquisition( std::unique_ptr< snark::cv_mat::serialization > serialization );
+        void stop_continuous_image_acquisition();
+
+        AVT::VmbAPI::CameraPtr camera_;
+};
 
 } } // namespace snark { namespace vimba {
 
-#endif // SNARK_SENSORS_VIMBA_FEATURE_H_
+#endif // SNARK_SENSORS_VIMBA_CAMERA_H_
