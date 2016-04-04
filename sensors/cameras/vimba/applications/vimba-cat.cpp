@@ -27,19 +27,13 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include <VimbaCPP/Include/VimbaSystem.h>
-
 #include <comma/application/verbose.h>
 #include <comma/base/exception.h>
-#include <comma/csv/options.h>
-#include <comma/csv/stream.h>
 #include <comma/name_value/map.h>
 
+#include "../camera.h"
 #include "../error.h"
-#include "../feature.h"
-#include "../frame_observer.h"
-
-AVT::VmbAPI::VimbaSystem& vimba_system( AVT::VmbAPI::VimbaSystem::GetInstance() );
+#include "../system.h"
 
 static const std::string possible_fields = "t,rows,cols,type,size";
 static const std::string default_fields = "t,rows,cols,type";
@@ -102,117 +96,13 @@ static void usage( bool verbose = false )
 void write_version_string()
 {
     VmbVersionInfo_t version = { 0, 0, 0 };
-    VmbErrorType error = vimba_system.QueryVersion( version );
+    VmbErrorType error = snark::vimba::system.QueryVersion( version );
     if( error == VmbErrorSuccess ) {
         std::cerr << "Vimba library version: " << version.major << "." << version.minor << "." << version.patch << std::endl;
     } else {
         snark::vimba::write_error( "QueryVersion() failed", error );
     }
 }
-
-void print_camera_info( const AVT::VmbAPI::CameraPtr &camera )
-{
-    std::string id;
-    std::string name;
-    std::string model;
-    std::string serial_number;
-    std::string interface_id;
-
-    VmbErrorType error = camera->GetID( id );
-    if( error != VmbErrorSuccess ) { snark::vimba::write_error( "Could not get camera ID", error ); }
-                
-    error = camera->GetName( name );
-    if( error != VmbErrorSuccess ) { snark::vimba::write_error( "Could not get camera name", error ); }
-
-    error = camera->GetModel( model );
-    if( error != VmbErrorSuccess ) { snark::vimba::write_error( "Could not get camera mode name", error ); }
-
-    error = camera->GetSerialNumber( serial_number );
-    if( error != VmbErrorSuccess ) { snark::vimba::write_error( "Could not get camera serial number", error ); }
-
-    error = camera->GetInterfaceID( interface_id );
-    if( error != VmbErrorSuccess ) { snark::vimba::write_error( "Could not get interface ID", error ); }
-
-    std::cout << "Camera Name  : " << name          << "\n"
-              << "Model Name   : " << model         << "\n"
-              << "Camera ID    : " << id            << "\n"
-              << "Serial Number: " << serial_number << "\n"
-              << "Interface ID : " << interface_id  << std::endl;
-}
-
-void list_cameras()
-{
-    AVT::VmbAPI::CameraPtrVector cameras;
-
-    VmbErrorType error = vimba_system.GetCameras( cameras );            // Fetch all cameras known to Vimba
-    if( error == VmbErrorSuccess )
-    {
-        std::cout << "Cameras found: " << cameras.size() << "\n\n";
-
-        // Query all static details of all known cameras and print them out.
-        // We don't have to open the cameras for that.
-        std::for_each( cameras.begin(), cameras.end(), print_camera_info );
-    }
-    else
-    {
-        snark::vimba::write_error( "Could not list cameras", error );
-    }
-}
-
-AVT::VmbAPI::CameraPtr open_camera( boost::optional< std::string > camera_id )
-{
-    AVT::VmbAPI::CameraPtr camera = AVT::VmbAPI::CameraPtr();
-    VmbErrorType error = VmbErrorSuccess;
-
-    if( camera_id )
-    {
-        // Get and open the camera
-        error = vimba_system.OpenCameraByID( camera_id->c_str(), VmbAccessModeFull, camera );
-    }
-    else                                // Use the first camera
-    {
-        AVT::VmbAPI::CameraPtrVector cameras;
-        error = vimba_system.GetCameras( cameras );
-        if( error == VmbErrorSuccess )
-        {
-            if( !cameras.empty() )
-            {
-                camera = cameras[0];
-                error = camera->Open( VmbAccessModeFull );
-            }
-            else
-            {
-                std::cerr << "No cameras found" << std::endl;
-            }
-        }
-    }
-
-    if( error != VmbErrorSuccess )
-    {
-        snark::vimba::write_error( "Could not open camera", error );
-        camera = AVT::VmbAPI::CameraPtr(); // Reset camera pointer
-    }
-    return camera;
-}
-
-// Prints all features and their values of a camera
-void list_attributes( AVT::VmbAPI::CameraPtr camera, bool verbose )
-{
-    AVT::VmbAPI::FeaturePtrVector features;
-    VmbErrorType error = VmbErrorSuccess;
-
-    error = camera->GetFeatures( features );
-    if( error == VmbErrorSuccess )
-    {
-        snark::vimba::print_features( features, verbose );
-    }
-    else
-    {
-        snark::vimba::write_error( "Could not get features", error );
-    }
-}
-
-#define NUM_FRAMES 3
 
 comma::csv::format format_from_fields( const std::string& fields )
 {
@@ -224,25 +114,6 @@ comma::csv::format format_from_fields( const std::string& fields )
         else { format += "ui"; }
     }
     return format;
-}
-
-VmbErrorType start_continuous_image_acquisition( AVT::VmbAPI::CameraPtr camera
-                                               , std::unique_ptr< snark::cv_mat::serialization > serialization )
-{
-    // Set the GeV packet size to the highest possible value
-    snark::vimba::set_feature( camera, "GVSPAdjustPacketSize" );
-
-    // Create a frame observer for this camera
-    // (This will be wrapped in a shared_ptr so we don't delete it)
-    snark::vimba::frame_observer* fo = new snark::vimba::frame_observer( camera, std::move( serialization ));
-    // Start streaming
-    VmbErrorType status = camera->StartContinuousImageAcquisition( NUM_FRAMES, AVT::VmbAPI::IFrameObserverPtr( fo ));
-    return status;
-}
-
-void stop_continuous_image_acquisition( AVT::VmbAPI::CameraPtr camera )
-{
-    camera->StopContinuousImageAcquisition();
 }
 
 std::unique_ptr< snark::cv_mat::serialization > create_serializer( const comma::command_line_options& options )
@@ -264,78 +135,35 @@ std::unique_ptr< snark::cv_mat::serialization > create_serializer( const comma::
     return serialization;
 }
 
-// "command": "gige-cat  --id 180711 --set \\\"SyncOut3Invert=Off;SyncOut3Mode=Exposing;ExposureMode=Manual;ExposureValue=60;GainValue=12;PixelFormat=Bayer12Packed;StreamBytesPerSecond=120000000;PacketSize=9216;FrameRate=5\\\""
-
-/*
-Vimba:
-ExposureAuto=Off
-ExposureAutoAdjustTol=5
-ExposureAutoAlg=Mean
-ExposureAutoMax=500000
-ExposureAutoMin=10
-ExposureAutoOutliers=0
-ExposureAutoRate=100
-ExposureAutoTarget=50
-ExposureMode=Timed
-ExposureTimeAbs=60
-*/
-
-void capture_images( AVT::VmbAPI::CameraPtr camera, const comma::command_line_options& options )
-{
-    std::cerr << "capture_images" << std::endl;
-    VmbErrorType error;
-
-    error = start_continuous_image_acquisition( camera, create_serializer( options ));
-    if ( error == VmbErrorSuccess )
-    {
-        std::cerr << "Press <enter> to stop acquisition..." << std::endl;
-        getchar();
-
-        stop_continuous_image_acquisition( camera );
-    }
-}
-
 int run_cmd( const comma::command_line_options& options )
 {
     if( options.exists( "--list-cameras" ))
     {
-        list_cameras();
+        snark::vimba::list_cameras();
         return 0;
     }
 
     // These options require a camera
-    // TODO: Wrap in RAII
-    AVT::VmbAPI::CameraPtr camera = open_camera( options.optional< std::string >( "--id" ));
-    if( camera )
+    snark::vimba::camera camera( options.optional< std::string >( "--id" ));
+    // TODO: error handling
+
+    if( options.exists( "--list-attributes" ))
     {
-        if( options.exists( "--list-attributes" ))
-        {
-            list_attributes( camera, comma::verbose );
-            camera->Close();
-            return 0;
-        }
-
-        if( options.exists( "--set" ))
-        {
-            comma::name_value::map m( options.value<std::string>( "--set" ));
-            for( auto it = m.get().cbegin(); it != m.get().cend(); ++it )
-            {
-                snark::vimba::set_feature( camera, it->first, it->second );
-                // if( comma::verbose )
-                //     std::cerr << "Setting " << it->first << "=" << it->second << std::endl;
-                // VmbErrorType status = set_feature( camera, it->first, it->second );
-                // if( status != VmbErrorSuccess )
-                // {
-                //     std::ostringstream msg;
-                //     msg << "Warning: couldn't set " << it->first << "=" << it->second;
-                //     snark::vimba::write_error( msg.str(), status );
-                // }
-            }
-        }
-
-        capture_images( camera, options );
-        camera->Close();
+        camera.list_attributes( comma::verbose );
+        return 0;
     }
+
+    if( options.exists( "--set" ))
+    {
+        comma::name_value::map m( options.value<std::string>( "--set" ));
+        for( auto it = m.get().cbegin(); it != m.get().cend(); ++it )
+        {
+            camera.set_feature( it->first, it->second );
+        }
+    }
+
+    camera.capture_images( create_serializer( options ));
+
     return 0;
 }
 
@@ -369,7 +197,7 @@ int main( int argc, char** argv )
             COMMA_THROW( comma::exception, "GENICAM_GENTL64_PATH is not set" );
         }
 
-        VmbErrorType error = vimba_system.Startup();               // Initialize the Vimba API
+        VmbErrorType error = snark::vimba::system.Startup(); // Initialize the Vimba API
         if( error != VmbErrorSuccess )
         {
             COMMA_THROW( comma::exception, snark::vimba::error_msg( "", error ));
@@ -386,6 +214,6 @@ int main( int argc, char** argv )
         std::cerr << comma::verbose.app_name() << ": unknown exception" << std::endl;
         ret_code = 1;
     }
-    vimba_system.Shutdown();                             // Close Vimba
+    snark::vimba::system.Shutdown();    // Close Vimba
     return ret_code;
 }

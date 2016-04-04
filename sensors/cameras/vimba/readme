@@ -1,0 +1,17 @@
+Original gige command:
+
+"gige-cat  --id 180711 --set \\\"SyncOut3Invert=Off;SyncOut3Mode=Exposing;ExposureMode=Manual;ExposureValue=60;GainValue=12;PixelFormat=Bayer12Packed;StreamBytesPerSecond=120000000;PacketSize=9216;FrameRate=5\\\""
+
+
+Vimba exposure settings:
+
+ExposureAuto=Off
+ExposureAutoAdjustTol=5
+ExposureAutoAlg=Mean
+ExposureAutoMax=500000
+ExposureAutoMin=10
+ExposureAutoOutliers=0
+ExposureAutoRate=100
+ExposureAutoTarget=50
+ExposureMode=Timed
+ExposureTimeAbs=60

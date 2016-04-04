@@ -1,0 +1,184 @@
+// This file is part of snark, a generic and flexible library for robotics research
+// Copyright (c) 2016 The University of Sydney
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+// 1. Redistributions of source code must retain the above copyright
+//    notice, this list of conditions and the following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright
+//    notice, this list of conditions and the following disclaimer in the
+//    documentation and/or other materials provided with the distribution.
+// 3. Neither the name of the University of Sydney nor the
+//    names of its contributors may be used to endorse or promote products
+//    derived from this software without specific prior written permission.
+//
+// NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
+// GRANTED BY THIS LICENSE.  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
+// HOLDERS AND CONTRIBUTORS \"AS IS\" AND ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+// BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+// OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
+// IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+#include <algorithm>
+#include <iostream>
+
+#include "camera.h"
+#include "error.h"
+#include "feature.h"
+#include "frame_observer.h"
+#include "system.h"
+
+namespace snark { namespace vimba {
+
+const unsigned int num_frames = 3;
+
+void list_cameras()
+{
+    AVT::VmbAPI::CameraPtrVector cameras;
+
+    VmbErrorType error = system.GetCameras( cameras );            // Fetch all cameras known to Vimba
+    if( error == VmbErrorSuccess )
+    {
+        std::cout << "Cameras found: " << cameras.size() << "\n\n";
+
+        // Query all static details of all known cameras and print them out.
+        // We don't have to open the cameras for that.
+        std::for_each( cameras.begin(), cameras.end(), print_camera_info );
+    }
+    else
+    {
+        snark::vimba::write_error( "Could not list cameras", error );
+    }
+}
+
+void print_camera_info( const AVT::VmbAPI::CameraPtr &camera )
+{
+    std::string id;
+    std::string name;
+    std::string model;
+    std::string serial_number;
+    std::string interface_id;
+
+    VmbErrorType error = camera->GetID( id );
+    if( error != VmbErrorSuccess ) { snark::vimba::write_error( "Could not get camera ID", error ); }
+                
+    error = camera->GetName( name );
+    if( error != VmbErrorSuccess ) { snark::vimba::write_error( "Could not get camera name", error ); }
+
+    error = camera->GetModel( model );
+    if( error != VmbErrorSuccess ) { snark::vimba::write_error( "Could not get camera mode name", error ); }
+
+    error = camera->GetSerialNumber( serial_number );
+    if( error != VmbErrorSuccess ) { snark::vimba::write_error( "Could not get camera serial number", error ); }
+
+    error = camera->GetInterfaceID( interface_id );
+    if( error != VmbErrorSuccess ) { snark::vimba::write_error( "Could not get interface ID", error ); }
+
+    std::cout << "Camera Name  : " << name          << "\n"
+              << "Model Name   : " << model         << "\n"
+              << "Camera ID    : " << id            << "\n"
+              << "Serial Number: " << serial_number << "\n"
+              << "Interface ID : " << interface_id  << std::endl;
+}
+
+camera::camera( boost::optional< std::string > camera_id )
+{
+    VmbErrorType status;
+
+    if( camera_id )
+    {
+        status = system.OpenCameraByID( camera_id->c_str(), VmbAccessModeFull, camera_ );
+        if( status != VmbErrorSuccess )
+        {
+            write_error( "Could not open camera", status );
+            camera_ = AVT::VmbAPI::CameraPtr(); // Reset camera pointer
+        }
+    }
+    else
+    {
+        AVT::VmbAPI::CameraPtrVector cameras;
+        status = system.GetCameras( cameras );
+        if( status == VmbErrorSuccess )
+        {
+            if( !cameras.empty() )
+            {
+                camera_ = cameras[0];
+                status = camera_->Open( VmbAccessModeFull );
+            }
+            else
+            {
+                std::cerr << "No cameras found" << std::endl;
+            }
+        }
+    }
+}
+
+camera::~camera()
+{
+    if( camera_ ) camera_->Close();
+}
+
+// Prints all features and their values of a camera
+void camera::list_attributes( bool verbose )
+{
+    AVT::VmbAPI::FeaturePtrVector features;
+    VmbErrorType status = VmbErrorSuccess;
+
+    status = camera_->GetFeatures( features );
+    if( status == VmbErrorSuccess )
+    {
+        print_features( features, verbose );
+    }
+    else
+    {
+        write_error( "Could not get features", status );
+    }
+}
+
+void camera::set_feature( std::string feature_name, std::string value )
+{
+    snark::vimba::set_feature( camera_, feature_name, value );
+}
+
+void camera::capture_images( std::unique_ptr< snark::cv_mat::serialization > serialization )
+{
+    std::cerr << "capture_images" << std::endl;
+    VmbErrorType status;
+
+    status = start_continuous_image_acquisition( std::move( serialization ));
+    if ( status == VmbErrorSuccess )
+    {
+        std::cerr << "Press <enter> to stop acquisition..." << std::endl;
+        getchar();
+
+        stop_continuous_image_acquisition();
+    }
+}
+
+VmbErrorType camera::start_continuous_image_acquisition( std::unique_ptr< snark::cv_mat::serialization > serialization )
+{
+    // Set the GeV packet size to the highest possible value
+    set_feature( "GVSPAdjustPacketSize" );
+
+    // Create a frame observer for this camera
+    // (This will be wrapped in a shared_ptr so we don't delete it)
+    frame_observer* fo = new frame_observer( camera_, std::move( serialization ));
+    // Start streaming
+    VmbErrorType status = camera_->StartContinuousImageAcquisition( num_frames, AVT::VmbAPI::IFrameObserverPtr( fo ));
+    return status;
+}
+
+void camera::stop_continuous_image_acquisition()
+{
+    camera_->StopContinuousImageAcquisition();
+}
+
+} } // namespace snark { namespace vimba {
