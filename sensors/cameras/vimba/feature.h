@@ -27,8 +27,8 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef SNARK_SENSORS_VIMBA_FEATURES_H_
-#define SNARK_SENSORS_VIMBA_FEATURES_H_
+#ifndef SNARK_SENSORS_VIMBA_FEATURE_H_
+#define SNARK_SENSORS_VIMBA_FEATURE_H_
 
 #include <string>
 #include <VimbaCPP/Include/Camera.h>
@@ -44,4 +44,4 @@ void set_feature( AVT::VmbAPI::CameraPtr camera
 
 } } // namespace snark { namespace vimba {
 
-#endif // SNARK_SENSORS_VIMBA_FEATURES_H_
+#endif // SNARK_SENSORS_VIMBA_FEATURE_H_
