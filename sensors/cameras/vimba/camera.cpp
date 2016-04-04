@@ -56,19 +56,19 @@ void print_camera_info( const AVT::VmbAPI::CameraPtr &camera )
     std::string interface_id;
 
     VmbErrorType error = camera->GetID( id );
-    if( error != VmbErrorSuccess ) { snark::vimba::write_error( "Could not get camera ID", error ); }
+    if( error != VmbErrorSuccess ) { write_error( "Could not get camera ID", error ); }
                 
     error = camera->GetName( name );
-    if( error != VmbErrorSuccess ) { snark::vimba::write_error( "Could not get camera name", error ); }
+    if( error != VmbErrorSuccess ) { write_error( "Could not get camera name", error ); }
 
     error = camera->GetModel( model );
-    if( error != VmbErrorSuccess ) { snark::vimba::write_error( "Could not get camera mode name", error ); }
+    if( error != VmbErrorSuccess ) { write_error( "Could not get camera mode name", error ); }
 
     error = camera->GetSerialNumber( serial_number );
-    if( error != VmbErrorSuccess ) { snark::vimba::write_error( "Could not get camera serial number", error ); }
+    if( error != VmbErrorSuccess ) { write_error( "Could not get camera serial number", error ); }
 
     error = camera->GetInterfaceID( interface_id );
-    if( error != VmbErrorSuccess ) { snark::vimba::write_error( "Could not get interface ID", error ); }
+    if( error != VmbErrorSuccess ) { write_error( "Could not get interface ID", error ); }
 
     std::cout << "Camera Name  : " << name          << "\n"
               << "Model Name   : " << model         << "\n"
