@@ -126,7 +126,7 @@ Eigen::Vector3d pinhole::to_cartesian( const Eigen::Vector2d& p, bool undistort 
     return Eigen::Vector3d( -q.x() * s.x(), -q.y() * s.y(), -focal_length );
 }
 
-Eigen::Vector2d pinhole::to_pixel( const Eigen::Vector3d& p ) const
+Eigen::Vector2d pinhole::to_pixel( const Eigen::Vector2d& p ) const
 {
     Eigen::Vector2d s = pixel_size();
     return Eigen::Vector2d( -p.x() / s.x(), -p.y() / s.y() ) + image_centre();
@@ -139,7 +139,7 @@ Eigen::Vector3d pinhole::to_cartesian_deprecated( const Eigen::Vector2d& p, bool
     return Eigen::Vector3d( q.x() * s.x(), -q.y() * s.y(), -focal_length ); // todo: verify signs
 }
 
-Eigen::Vector2d pinhole::to_pixel_deprecated( const Eigen::Vector3d& p ) const
+Eigen::Vector2d pinhole::to_pixel_deprecated( const Eigen::Vector2d& p ) const
 {
     Eigen::Vector2d s = pixel_size();
     Eigen::Vector2d q( p.x() / s.x(), p.y() / s.y() );

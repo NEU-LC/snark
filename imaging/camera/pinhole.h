@@ -128,8 +128,8 @@ class pinhole
         Eigen::Vector3d to_cartesian_deprecated( const Eigen::Vector2d& p, bool undistort = true ) const;
 
         //returns converts from camera frame to image pixel col,row
-        Eigen::Vector2d to_pixel( const Eigen::Vector3d& p ) const;
-        Eigen::Vector2d to_pixel_deprecated( const Eigen::Vector3d& p ) const;
+        Eigen::Vector2d to_pixel( const Eigen::Vector2d& p ) const;
+        Eigen::Vector2d to_pixel_deprecated( const Eigen::Vector2d& p ) const;
         
         /// reverse undistorted projection using the projection map
         Eigen::Vector2d distort( const Eigen::Vector2d& p ) const;

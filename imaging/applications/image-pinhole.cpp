@@ -123,7 +123,7 @@ int main( int ac, char** av )
         if( unnamed.empty() ) { std::cerr << "image-pinhole: please specify operation" << std::endl; return 1; }
         std::string operation = unnamed[0];
         output_details< Eigen::Vector2d, Eigen::Vector3d >( operation, "to-cartesian", options );
-        output_details< Eigen::Vector3d, Eigen::Vector2d >( operation, "to-pixels", options );
+        output_details< Eigen::Vector2d, Eigen::Vector2d >( operation, "to-pixels", options );
         output_details< Eigen::Vector2d, Eigen::Vector2d >( operation, "undistort", options );
         output_details< Eigen::Vector2d, Eigen::Vector2d >( operation, "distort", options );
         snark::camera::pinhole pinhole = make_pinhole( options.value< std::string >( "--camera-config,--camera,--config,-c" ) );
@@ -146,13 +146,13 @@ int main( int ac, char** av )
         }
         if( operation == "to-pixels" )
         {
-            comma::csv::input_stream< Eigen::Vector3d > is( std::cin, csv );
+            comma::csv::input_stream< Eigen::Vector2d > is( std::cin, csv );
             comma::csv::output_stream< Eigen::Vector2d > os( std::cout, csv.binary() );
-            comma::csv::tied< Eigen::Vector3d, Eigen::Vector2d > tied( is, os );
+            comma::csv::tied< Eigen::Vector2d, Eigen::Vector2d > tied( is, os );
             bool clip = options.exists( "--clip" ) || ( options.exists( "--deprecated" ) && !options.exists( "--keep" ) );
             while( is.ready() || std::cin.good() )
             {
-                const Eigen::Vector3d* p = is.read();
+                const Eigen::Vector2d* p = is.read();
                 if( !p ) { break; }
                 Eigen::Vector2d pixel = deprecated ? pinhole.to_pixel_deprecated( *p ) : pinhole.to_pixel( *p );
                 if ( !clip || (    !comma::math::less( pixel.x(), 0 )
