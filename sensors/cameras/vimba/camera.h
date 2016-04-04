@@ -31,7 +31,6 @@
 #define SNARK_SENSORS_VIMBA_CAMERA_H_
 
 #include <VimbaCPP/Include/Camera.h>
-#include <comma/csv/options.h>
 #include "snark/imaging/cv_mat/serialization.h"
 
 namespace snark { namespace vimba {
