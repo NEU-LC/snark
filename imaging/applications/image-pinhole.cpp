@@ -119,7 +119,7 @@ int main( int ac, char** av )
             comma::write_json( config, std::cout );
             return 0;
         }
-        const std::vector< std::string >& unnamed = options.unnamed( "--input-fields,--output-fields,--output-format,--verbose,-v,--clip,--deprecated", "-.*" );
+        const std::vector< std::string >& unnamed = options.unnamed( "--input-fields,--output-fields,--output-format,--verbose,-v,--clip,--deprecated,--keep,--normalize", "-.*" );
         if( unnamed.empty() ) { std::cerr << "image-pinhole: please specify operation" << std::endl; return 1; }
         std::string operation = unnamed[0];
         output_details< Eigen::Vector2d, Eigen::Vector3d >( operation, "to-cartesian", options );
@@ -149,7 +149,7 @@ int main( int ac, char** av )
             comma::csv::input_stream< Eigen::Vector3d > is( std::cin, csv );
             comma::csv::output_stream< Eigen::Vector2d > os( std::cout, csv.binary() );
             comma::csv::tied< Eigen::Vector3d, Eigen::Vector2d > tied( is, os );
-            bool clip = options.exists( "--clip" ) || options.exists( "--deprecated" );
+            bool clip = options.exists( "--clip" ) || ( options.exists( "--deprecated" ) && !options.exists( "--keep" ) );
             while( is.ready() || std::cin.good() )
             {
                 const Eigen::Vector3d* p = is.read();

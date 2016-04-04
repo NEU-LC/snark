@@ -1,4 +1,4 @@
-to-pixels --config=config.json --verbose --keep
+to-pixels --config=config.json --verbose --keep --deprecated
 -6.45448181152,-4.693671875,-1604.5567627
 -6.44448181152,-4.683671875,-1604.5567627
 -6.39448181152,-4.653671875,-1604.5567627

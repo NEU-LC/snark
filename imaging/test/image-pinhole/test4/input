@@ -1,4 +1,4 @@
-to-cartesian --config=config.json --verbose
+to-cartesian --config=config.json --verbose --deprecated
 0,0
 1,1
 6,4
