@@ -30,7 +30,6 @@
 #ifndef SNARK_SENSORS_VIMBA_CAMERA_H_
 #define SNARK_SENSORS_VIMBA_CAMERA_H_
 
-#include <boost/optional.hpp>
 #include <VimbaCPP/Include/Camera.h>
 #include <comma/csv/options.h>
 #include "snark/imaging/cv_mat/serialization.h"
@@ -43,7 +42,8 @@ void print_camera_info( const AVT::VmbAPI::CameraPtr &camera );
 class camera
 {
     public:
-        camera( boost::optional< std::string > camera_id );
+        camera( const std::string& camera_id );
+        camera( const AVT::VmbAPI::CameraPtr& camera_ptr ) : camera_( camera_ptr ) {}
         ~camera();
 
         void list_attributes( bool verbose );

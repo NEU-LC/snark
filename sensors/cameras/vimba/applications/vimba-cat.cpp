@@ -132,7 +132,9 @@ int run_cmd( const comma::command_line_options& options )
         return 0;
     }
 
-    snark::vimba::camera camera( options.optional< std::string >( "--id" ));
+    snark::vimba::camera camera( options.exists( "--id" )
+                               ? snark::vimba::camera( options.value<std::string>( "--id" ))
+                               : snark::vimba::camera( snark::vimba::system::open_first_camera()));
 
     if( options.exists( "--list-attributes" ))
     {

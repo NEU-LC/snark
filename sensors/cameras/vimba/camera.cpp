@@ -77,16 +77,9 @@ void print_camera_info( const AVT::VmbAPI::CameraPtr &camera )
               << "Interface ID : " << interface_id  << std::endl;
 }
 
-camera::camera( boost::optional< std::string > camera_id )
+camera::camera( const std::string& camera_id )
 {
-    if( camera_id )
-    {
-        camera_ = system::open_camera( *camera_id );
-    }
-    else
-    {
-        camera_ = system::open_first_camera();
-    }
+    camera_ = system::open_camera( camera_id );
 }
 
 camera::~camera()
