@@ -27,10 +27,44 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include <comma/base/exception.h>
+#include "error.h"
 #include "system.h"
 
 namespace snark { namespace vimba {
 
-AVT::VmbAPI::VimbaSystem& system( AVT::VmbAPI::VimbaSystem::GetInstance() );
+AVT::VmbAPI::VimbaSystem& system::instance = AVT::VmbAPI::VimbaSystem::GetInstance();
+
+system::system()
+{
+    VmbErrorType status = instance.Startup();
+    if( status != VmbErrorSuccess ) {
+        COMMA_THROW( comma::exception, error_msg( "Failed to start API", status ));
+    }
+}
+
+VmbVersionInfo_t system::version()
+{
+    VmbVersionInfo_t version;
+    VmbErrorType status = instance.QueryVersion( version );
+    if( status == VmbErrorSuccess ) { return version; }
+    COMMA_THROW( comma::exception, error_msg( "QueryVersion() failed", status ));
+}
+
+AVT::VmbAPI::CameraPtrVector system::get_cameras()
+{
+    AVT::VmbAPI::CameraPtrVector cameras;
+    VmbErrorType status = system::instance.GetCameras( cameras ); // Fetch all cameras
+    if( status == VmbErrorSuccess ) { return cameras; }
+    COMMA_THROW( comma::exception, error_msg( "GetCameras() failed", status ));
+}
+
+AVT::VmbAPI::CameraPtr system::open_camera( std::string id )
+{
+    AVT::VmbAPI::CameraPtr camera;
+    VmbErrorType status = system::instance.OpenCameraByID( id.c_str(), VmbAccessModeFull, camera );
+    if( status == VmbErrorSuccess ) { return camera; }
+    COMMA_THROW( comma::exception, error_msg( "OpenCameraById() failed", status ));
+}
 
 } } // namespace snark { namespace vimba {

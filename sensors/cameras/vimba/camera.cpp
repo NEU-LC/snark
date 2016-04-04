@@ -42,21 +42,9 @@ const unsigned int num_frames = 3;
 
 void list_cameras()
 {
-    AVT::VmbAPI::CameraPtrVector cameras;
-
-    VmbErrorType error = system.GetCameras( cameras );            // Fetch all cameras known to Vimba
-    if( error == VmbErrorSuccess )
-    {
-        std::cout << "Cameras found: " << cameras.size() << "\n\n";
-
-        // Query all static details of all known cameras and print them out.
-        // We don't have to open the cameras for that.
-        std::for_each( cameras.begin(), cameras.end(), print_camera_info );
-    }
-    else
-    {
-        snark::vimba::write_error( "Could not list cameras", error );
-    }
+    AVT::VmbAPI::CameraPtrVector cameras = system::get_cameras();
+    std::cout << "Cameras found: " << cameras.size() << "\n\n";
+    std::for_each( cameras.begin(), cameras.end(), print_camera_info );
 }
 
 void print_camera_info( const AVT::VmbAPI::CameraPtr &camera )
@@ -91,32 +79,25 @@ void print_camera_info( const AVT::VmbAPI::CameraPtr &camera )
 
 camera::camera( boost::optional< std::string > camera_id )
 {
-    VmbErrorType status;
-
     if( camera_id )
     {
-        status = system.OpenCameraByID( camera_id->c_str(), VmbAccessModeFull, camera_ );
-        if( status != VmbErrorSuccess )
-        {
-            write_error( "Could not open camera", status );
-            camera_ = AVT::VmbAPI::CameraPtr(); // Reset camera pointer
-        }
+        camera_ = system::open_camera( *camera_id );
     }
     else
     {
-        AVT::VmbAPI::CameraPtrVector cameras;
-        status = system.GetCameras( cameras );
-        if( status == VmbErrorSuccess )
+        AVT::VmbAPI::CameraPtrVector cameras = system::get_cameras();
+        if( !cameras.empty() )
         {
-            if( !cameras.empty() )
+            camera_ = cameras[0];
+            VmbErrorType status = camera_->Open( VmbAccessModeFull );
+            if( status != VmbErrorSuccess )
             {
-                camera_ = cameras[0];
-                status = camera_->Open( VmbAccessModeFull );
+                COMMA_THROW( comma::exception, error_msg( "camera::Open() failed", status ));
             }
-            else
-            {
-                std::cerr << "No cameras found" << std::endl;
-            }
+        }
+        else
+        {
+            std::cerr << "No cameras found" << std::endl;
         }
     }
 }

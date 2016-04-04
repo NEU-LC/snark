@@ -34,7 +34,19 @@
 
 namespace snark { namespace vimba {
 
-extern AVT::VmbAPI::VimbaSystem& system;
+class system
+{
+    public:
+        system();
+        ~system() { instance.Shutdown(); }
+
+        static VmbVersionInfo_t version();
+        static AVT::VmbAPI::CameraPtrVector get_cameras();
+        static AVT::VmbAPI::CameraPtr open_camera( std::string id );
+
+    private:
+        static AVT::VmbAPI::VimbaSystem& instance;
+};
 
 } } // namespace snark { namespace vimba {
 

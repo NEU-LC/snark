@@ -93,17 +93,6 @@ static void usage( bool verbose = false )
     exit( 0 );
 }
 
-void write_version_string()
-{
-    VmbVersionInfo_t version = { 0, 0, 0 };
-    VmbErrorType error = snark::vimba::system.QueryVersion( version );
-    if( error == VmbErrorSuccess ) {
-        std::cerr << "Vimba library version: " << version.major << "." << version.minor << "." << version.patch << std::endl;
-    } else {
-        snark::vimba::write_error( "QueryVersion() failed", error );
-    }
-}
-
 comma::csv::format format_from_fields( const std::string& fields )
 {
     std::vector< std::string > v = comma::split( fields, "," );
@@ -143,9 +132,7 @@ int run_cmd( const comma::command_line_options& options )
         return 0;
     }
 
-    // These options require a camera
     snark::vimba::camera camera( options.optional< std::string >( "--id" ));
-    // TODO: error handling
 
     if( options.exists( "--list-attributes" ))
     {
@@ -183,7 +170,8 @@ int main( int argc, char** argv )
 
         if( options.exists( "--version" ))
         {
-            write_version_string();
+            VmbVersionInfo_t version = snark::vimba::system::version();
+            std::cerr << "Vimba library version: " << version.major << "." << version.minor << "." << version.patch << std::endl;
             return 0;
         }
 
@@ -197,11 +185,7 @@ int main( int argc, char** argv )
             COMMA_THROW( comma::exception, "GENICAM_GENTL64_PATH is not set" );
         }
 
-        VmbErrorType error = snark::vimba::system.Startup(); // Initialize the Vimba API
-        if( error != VmbErrorSuccess )
-        {
-            COMMA_THROW( comma::exception, snark::vimba::error_msg( "", error ));
-        }
+        snark::vimba::system system;                                   // Initialize the Vimba API
         ret_code = run_cmd( options );
     }
     catch( std::exception& ex )
@@ -214,6 +198,5 @@ int main( int argc, char** argv )
         std::cerr << comma::verbose.app_name() << ": unknown exception" << std::endl;
         ret_code = 1;
     }
-    snark::vimba::system.Shutdown();    // Close Vimba
     return ret_code;
 }
