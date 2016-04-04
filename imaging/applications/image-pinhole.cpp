@@ -32,6 +32,7 @@
 #include <boost/filesystem/operations.hpp>
 #include <comma/application/command_line_options.h>
 #include <comma/csv/stream.h>
+#include <comma/math/compare.h>
 #include <comma/name_value/ptree.h>
 #include <comma/name_value/serialize.h>
 #include "../camera/pinhole.h"
@@ -52,6 +53,7 @@ void usage( bool verbose )
     std::cerr << "        --normalize: normalize cartesian coordinates in camera frame" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    to-pixels: take on stdin cartesian coordinates in camera frame, append their coordinates in pixels" << std::endl;
+    std::cerr << "        --clip: clip pixels outside of image; if --deprecated present, clip by default, the latter behaviour will be removed soon" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    undistort: take on stdin pixels, append their undistorted values" << std::endl;
     std::cerr << std::endl;
@@ -64,6 +66,7 @@ void usage( bool verbose )
     std::cerr << "    --camera-config,--camera,--config,-c=<parameters>: camera configuration" << std::endl;
     std::cerr << "        <parameters>: filename of json configuration file or ';'-separated path-value pairs" << std::endl;
     std::cerr << "                      e.g: --config=\"focal_length=123;image_size/x=222;image_size/y=123.1;...\"" << std::endl;
+    std::cerr << "    --deprecated: use deprecated calculations for to-cartesian and to-pixels; will be removed soon" << std::endl;
     std::cerr << "    --input-fields: output input fields for given operation and exit" << std::endl;
     std::cerr << "    --output-config,--sample-config: output sample config and exit" << std::endl;
     std::cerr << "    --output-fields: output appended fields for given operation and exit" << std::endl;
@@ -116,7 +119,7 @@ int main( int ac, char** av )
             comma::write_json( config, std::cout );
             return 0;
         }
-        const std::vector< std::string >& unnamed = options.unnamed( "--input-fields,--output-fields,--output-format,--verbose,-v,--keep,--dont-distort", "-.*" );
+        const std::vector< std::string >& unnamed = options.unnamed( "--input-fields,--output-fields,--output-format,--verbose,-v,--clip,--deprecated", "-.*" );
         if( unnamed.empty() ) { std::cerr << "image-pinhole: please specify operation" << std::endl; return 1; }
         std::string operation = unnamed[0];
         output_details< Eigen::Vector2d, Eigen::Vector3d >( operation, "to-cartesian", options );
@@ -125,6 +128,7 @@ int main( int ac, char** av )
         output_details< Eigen::Vector2d, Eigen::Vector2d >( operation, "distort", options );
         snark::camera::pinhole pinhole = make_pinhole( options.value< std::string >( "--camera-config,--camera,--config,-c" ) );
         comma::csv::options csv( options );
+        bool deprecated = options.exists( "--deprecated" );
         if( operation == "to-cartesian" )
         {
             comma::csv::input_stream< Eigen::Vector2d > is( std::cin, csv );
@@ -135,7 +139,8 @@ int main( int ac, char** av )
             {
                 const Eigen::Vector2d* p = is.read();
                 if( !p ) { break; }
-                tied.append( normalize ? pinhole.to_cartesian( *p ).normalized() : pinhole.to_cartesian( *p ) );
+                Eigen::Vector3d q = deprecated ? pinhole.to_cartesian_deprecated( *p ) : pinhole.to_cartesian( *p );
+                tied.append( normalize ? q.normalized() : q );
             }
             return 0;
         }
@@ -144,17 +149,18 @@ int main( int ac, char** av )
             comma::csv::input_stream< Eigen::Vector3d > is( std::cin, csv );
             comma::csv::output_stream< Eigen::Vector2d > os( std::cout, csv.binary() );
             comma::csv::tied< Eigen::Vector3d, Eigen::Vector2d > tied( is, os );
-            bool keep = options.exists("--keep");
-            bool distort = !options.exists("--dont-distort");   //for debugging purposes only
+            bool clip = options.exists( "--clip" ) || options.exists( "--deprecated" );
             while( is.ready() || std::cin.good() )
             {
                 const Eigen::Vector3d* p = is.read();
                 if( !p ) { break; }
-                Eigen::Vector2d pixel=pinhole.to_pixel(*p);
-                if ( keep || (pixel.x()>=0 && pixel.x()< pinhole.image_size.x() && pixel.y()>=0 && pixel.y()<pinhole.image_size.y()) )
+                Eigen::Vector2d pixel = deprecated ? pinhole.to_pixel_deprecated( *p ) : pinhole.to_pixel( *p );
+                if ( !clip || (    !comma::math::less( pixel.x(), 0 )
+                                && comma::math::less( pixel.x(), pinhole.image_size.x() )
+                                && !comma::math::less( pixel.y(), 0 )
+                                && comma::math::less( pixel.y(), pinhole.image_size.y() ) ) )
                 {
-                    tied.append( distort ? pinhole.distort(pixel) : pixel );
-                    //else discard
+                    tied.append( pinhole.distort( pixel ) );
                 }
             }
             return 0;
