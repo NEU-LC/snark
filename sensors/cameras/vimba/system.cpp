@@ -59,6 +59,28 @@ AVT::VmbAPI::CameraPtrVector system::get_cameras()
     COMMA_THROW( comma::exception, error_msg( "GetCameras() failed", status ));
 }
 
+AVT::VmbAPI::CameraPtr system::open_first_camera()
+{
+    AVT::VmbAPI::CameraPtrVector cameras = get_cameras();
+    if( !cameras.empty() )
+    {
+        AVT::VmbAPI::CameraPtr camera = cameras[0];
+        VmbErrorType status = camera->Open( VmbAccessModeFull );
+        if( status == VmbErrorSuccess )
+        {
+            return camera;
+        }
+        else
+        {
+            COMMA_THROW( comma::exception, error_msg( "camera::Open() failed", status ));
+        }
+    }
+    else
+    {
+        COMMA_THROW( comma::exception, "No cameras found" );
+    }
+}
+
 AVT::VmbAPI::CameraPtr system::open_camera( std::string id )
 {
     AVT::VmbAPI::CameraPtr camera;

@@ -85,20 +85,7 @@ camera::camera( boost::optional< std::string > camera_id )
     }
     else
     {
-        AVT::VmbAPI::CameraPtrVector cameras = system::get_cameras();
-        if( !cameras.empty() )
-        {
-            camera_ = cameras[0];
-            VmbErrorType status = camera_->Open( VmbAccessModeFull );
-            if( status != VmbErrorSuccess )
-            {
-                COMMA_THROW( comma::exception, error_msg( "camera::Open() failed", status ));
-            }
-        }
-        else
-        {
-            std::cerr << "No cameras found" << std::endl;
-        }
+        camera_ = system::open_first_camera();
     }
 }
 
