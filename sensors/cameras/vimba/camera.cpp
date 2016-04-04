@@ -120,7 +120,7 @@ void camera::list_attributes( bool verbose )
     }
     else
     {
-        write_error( "Could not get features", status );
+        COMMA_THROW( comma::exception, error_msg( "GetFeatures() failed", status ));
     }
 }
 
