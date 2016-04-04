@@ -27,9 +27,6 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include <algorithm>
-#include <iostream>
-
 #include "camera.h"
 #include "error.h"
 #include "feature.h"
@@ -40,43 +37,6 @@ namespace snark { namespace vimba {
 
 const unsigned int num_frames = 3;
 
-void list_cameras()
-{
-    AVT::VmbAPI::CameraPtrVector cameras = system::get_cameras();
-    std::cout << "Cameras found: " << cameras.size() << "\n\n";
-    std::for_each( cameras.begin(), cameras.end(), print_camera_info );
-}
-
-void print_camera_info( const AVT::VmbAPI::CameraPtr &camera )
-{
-    std::string id;
-    std::string name;
-    std::string model;
-    std::string serial_number;
-    std::string interface_id;
-
-    VmbErrorType error = camera->GetID( id );
-    if( error != VmbErrorSuccess ) { write_error( "Could not get camera ID", error ); }
-                
-    error = camera->GetName( name );
-    if( error != VmbErrorSuccess ) { write_error( "Could not get camera name", error ); }
-
-    error = camera->GetModel( model );
-    if( error != VmbErrorSuccess ) { write_error( "Could not get camera mode name", error ); }
-
-    error = camera->GetSerialNumber( serial_number );
-    if( error != VmbErrorSuccess ) { write_error( "Could not get camera serial number", error ); }
-
-    error = camera->GetInterfaceID( interface_id );
-    if( error != VmbErrorSuccess ) { write_error( "Could not get interface ID", error ); }
-
-    std::cout << "Camera Name  : " << name          << "\n"
-              << "Model Name   : " << model         << "\n"
-              << "Camera ID    : " << id            << "\n"
-              << "Serial Number: " << serial_number << "\n"
-              << "Interface ID : " << interface_id  << std::endl;
-}
-
 camera::camera( const std::string& camera_id )
 {
     camera_ = system::open_camera( camera_id );
@@ -85,6 +45,36 @@ camera::camera( const std::string& camera_id )
 camera::~camera()
 {
     if( camera_ ) camera_->Close();
+}
+
+void camera::print_info()
+{
+    std::string id;
+    std::string name;
+    std::string model;
+    std::string serial_number;
+    std::string interface_id;
+
+    VmbErrorType error = camera_->GetID( id );
+    if( error != VmbErrorSuccess ) { write_error( "Could not get camera ID", error ); }
+                
+    error = camera_->GetName( name );
+    if( error != VmbErrorSuccess ) { write_error( "Could not get camera name", error ); }
+
+    error = camera_->GetModel( model );
+    if( error != VmbErrorSuccess ) { write_error( "Could not get camera mode name", error ); }
+
+    error = camera_->GetSerialNumber( serial_number );
+    if( error != VmbErrorSuccess ) { write_error( "Could not get camera serial number", error ); }
+
+    error = camera_->GetInterfaceID( interface_id );
+    if( error != VmbErrorSuccess ) { write_error( "Could not get interface ID", error ); }
+
+    std::cout << "Camera Name  : " << name          << "\n"
+              << "Model Name   : " << model         << "\n"
+              << "Camera ID    : " << id            << "\n"
+              << "Serial Number: " << serial_number << "\n"
+              << "Interface ID : " << interface_id  << std::endl;
 }
 
 // Prints all features and their values of a camera

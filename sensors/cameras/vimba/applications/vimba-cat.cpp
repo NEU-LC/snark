@@ -128,7 +128,13 @@ int run_cmd( const comma::command_line_options& options )
 {
     if( options.exists( "--list-cameras" ))
     {
-        snark::vimba::list_cameras();
+        AVT::VmbAPI::CameraPtrVector cameras = snark::vimba::system::get_cameras();
+        std::cout << "Cameras found: " << cameras.size() << "\n\n";
+        for( auto iter = cameras.cbegin(); iter != cameras.cend(); ++iter )
+        {
+            snark::vimba::camera camera( *iter );
+            camera.print_info();
+        }
         return 0;
     }
 

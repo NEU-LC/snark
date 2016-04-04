@@ -36,9 +36,6 @@
 
 namespace snark { namespace vimba {
 
-void list_cameras();
-void print_camera_info( const AVT::VmbAPI::CameraPtr &camera );
-
 class camera
 {
     public:
@@ -46,6 +43,7 @@ class camera
         camera( const AVT::VmbAPI::CameraPtr& camera_ptr ) : camera_( camera_ptr ) {}
         ~camera();
 
+        void print_info();
         void list_attributes( bool verbose );
         void set_feature( std::string feature_name, std::string value = "" );
         void capture_images( std::unique_ptr< snark::cv_mat::serialization > serialization );
