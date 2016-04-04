@@ -124,7 +124,10 @@ struct input
     double angle;
     unsigned int id;
     std::vector< double > values;
-    input() : block( 0 ), row( 0 ), angle( 0 ), id( 0 ) {}
+    input() : block( 0 ), row( 0 ), angle( 0 ), id( 0 ) 
+    {
+        timestamp=boost::posix_time::microsec_clock::universal_time();
+    }
 };
 
 namespace comma { namespace visiting {
@@ -423,7 +426,7 @@ class channel
                     || ( !has_block && row_count_ >= block_size )
                     || ( p && block_ && *block_ != p->block ) )
                 {
-                    output_once_( boost::posix_time::microsec_clock::universal_time() );
+                    output_once_( p->timestamp );
                     image.setTo( 0 );
                     row_count_ = 0;
                 }
