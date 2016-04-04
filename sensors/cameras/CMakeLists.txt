@@ -21,3 +21,7 @@ ENDIF( snark_build_sensors_gobi )
 if( snark_build_sensors_jai )
     add_subdirectory( jai )
 endif( snark_build_sensors_jai )
+
+IF( snark_build_sensors_vimba )
+    ADD_SUBDIRECTORY( vimba )
+ENDIF( snark_build_sensors_vimba )
