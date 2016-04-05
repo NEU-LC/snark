@@ -73,8 +73,9 @@ void usage( bool verbose )
     std::cerr << "    --output-format: output appended fields binary format for given operation and exit" << std::endl;
     std::cerr << "    --verbose,-v: more output" << std::endl;
     std::cerr << std::endl;
-    snark::camera::pinhole::usage();
+    std:: cerr << snark::camera::pinhole::usage() << std::endl;
     if( verbose ) { std::cerr << comma::csv::options::usage() << std::endl; }
+    std::cerr << std::endl;
     exit( 0 );
 }
 
@@ -97,8 +98,7 @@ static snark::camera::pinhole make_pinhole( const std::string& config_parameters
     }
     else
     {
-        boost::property_tree::ptree p;
-        comma::property_tree::from_path_value_string( config_parameters, '=', ';', comma::property_tree::path_value::no_check, true );
+        boost::property_tree::ptree p = comma::property_tree::from_path_value_string( config_parameters, '=', ';', comma::property_tree::path_value::no_check, true );
         comma::from_ptree from_ptree( p, true );
         comma::visiting::apply( from_ptree ).to( pinhole );
     }
