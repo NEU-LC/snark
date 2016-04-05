@@ -176,8 +176,10 @@ int run_cmd( const comma::command_line_options& options )
 
 int main( int argc, char** argv )
 {
-    // TODO: allow this to be overridden if the environment variable is already set
-    ::setenv( "GENICAM_GENTL64_PATH", STRINGIZED( VIMBA_GENICAM_GENTL64_PATH ), 0 );
+    if( !getenv( "GENICAM_GENTL64_PATH" ))
+    {
+        setenv( "GENICAM_GENTL64_PATH", STRINGIZED( VIMBA_GENICAM_GENTL64_PATH ), 0 );
+    }
 
     int ret_code = 0;
 
@@ -190,17 +192,8 @@ int main( int argc, char** argv )
         {
             VmbVersionInfo_t version = snark::vimba::system::version();
             std::cout << "Vimba library version: " << version.major << "." << version.minor << "." << version.patch << std::endl;
+            std::cout << "GENICAM_GENTL64_PATH=" << getenv( "GENICAM_GENTL64_PATH" ) << std::endl;
             return 0;
-        }
-
-        if( getenv( "GENICAM_GENTL64_PATH" ))
-        {
-            if( comma::verbose )
-                std::cerr << "GENICAM_GENTL64_PATH=" << getenv( "GENICAM_GENTL64_PATH" ) << std::endl;
-        }
-        else
-        {
-            COMMA_THROW( comma::exception, "GENICAM_GENTL64_PATH is not set" );
         }
 
         ret_code = run_cmd( options );
