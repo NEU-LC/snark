@@ -42,86 +42,72 @@ namespace snark { namespace camera {
 class pinhole
 {
     public:
-        struct distortion_t
+        struct config_t
         {
-            struct radial_t
+            struct distortion_t
             {
-                double k1, k2, k3;
+                struct radial_t
+                {
+                    double k1, k2, k3;
+                    
+                    radial_t() : k1( 0 ), k2( 0 ), k3( 0 ) {}
+                    
+                    bool empty() const;
+                };
                 
-                radial_t() : k1( 0 ), k2( 0 ), k3( 0 ) {}
+                struct tangential_t
+                {
+                    double p1, p2;
+                    
+                    tangential_t() : p1( 0 ), p2( 0 ) {}
+                    
+                    bool empty() const;
+                };
+                
+                radial_t radial;
+                
+                tangential_t tangential;
+                
+                std::string map_filename;
+                
+                bool empty() const;
+                                
+                template < typename V > V as() const;
             };
             
-            struct tangential_t
-            {
-                double p1, p2;
-                
-                tangential_t() : p1( 0 ), p2( 0 ) {}
-            };
-            
-            radial_t radial;
-            
-            tangential_t tangential;
-            
-            /// returns true if all distortion parameters are zero
-            bool all_zero() const;
-            
-            std::string map_filename;
-            
-            struct map_t
-            {
-                /// rows of undsitort map x
-                std::vector<float> x_rows;
-                
-                /// transposed columns of undistort map y
-                std::vector<float> y_cols;
-                
-                map_t() {}
-                
-                map_t( const cv::Mat& map_x, const cv::Mat& map_y );
-            };
-            
-            /// return distortion as a k1,k2,p1,p2,k3 vector, since opencv and others often use it that way
-            operator Eigen::Matrix< double, 5, 1 >() const;
+            /// focal length in metres (if sensor_size is empty then focal length is effectively in pixels)
+            double focal_length;
+            //quick and dirty: if sensor_size is empty we are taking pixel size to be 1 meter !?
 
-            boost::optional< map_t > map;
+            /// sensor size in metres
+            boost::optional< Eigen::Vector2d > sensor_size;
+            
+            /// image size in pixels
+            Eigen::Vector2i image_size;
+            
+            /// principal point in pixels; if not defined, then image_size / 2
+            boost::optional< Eigen::Vector2d > principal_point;
+            
+            /// distortion
+            boost::optional< distortion_t > distortion;
+            
+            /// default constructor
+            config_t();
+            
+            /// return pixel size in metres or 1,1 if sensor_size is empty
+            Eigen::Vector2d pixel_size() const;
+            
+            /// return principal_point or if empty returns half image size in pixels
+            Eigen::Vector2d image_centre() const;
+            
+            /// return radially corrected pixel
+            Eigen::Vector2d radially_corrected( const Eigen::Vector2d& p ) const;
+            
+            /// return tangentially corrected pixel
+            Eigen::Vector2d tangentially_corrected( const Eigen::Vector2d& p ) const;
         };
         
-        /// focal length in metres (if sensor_size is empty then focal length is effectively in pixels) TODO change config or something
-        double focal_length;
-        //quick and dirty: if sensor_size is empty we are taking pixel size to be 1 meter !?
-
-        /// sensor size in metres
-        boost::optional<Eigen::Vector2d> sensor_size;
-        
-        /// image size in pixels
-        Eigen::Vector2i image_size;
-        
-        /// principal point in pixels; if not defined, then image centre
-        boost::optional< Eigen::Vector2d > principal_point;
-        
-        /// distortion
-        distortion_t distortion;
-        
-        /// default constructor
-        pinhole();
-        
-        /// call after parameters are loaded
-        void init();
-        
-        /// return pixel size in metres or 1,1 if sensor_size is empty
-        Eigen::Vector2d pixel_size() const;
-        
-        /// return principal_point or if empty returns half image size in pixels
-        Eigen::Vector2d image_centre() const;
-        
-        /// return radially corrected pixel
-        Eigen::Vector2d radially_corrected( const Eigen::Vector2d& p ) const;
-        
-        /// return tangentially corrected pixel
-        Eigen::Vector2d tangentially_corrected( const Eigen::Vector2d& p ) const;
-
-        /// return radially and then tangentially corrected pixel
-        Eigen::Vector2d undistorted( const Eigen::Vector2d& p ) const;
+        pinhole( const pinhole::config_t& config );
         
         /// return pixel coordinates in camera frame
         Eigen::Vector3d to_cartesian( const Eigen::Vector2d& p, bool undistort = true ) const;
@@ -131,23 +117,42 @@ class pinhole
         Eigen::Vector2d to_pixel( const Eigen::Vector2d& p ) const;
         Eigen::Vector2d to_pixel_deprecated( const Eigen::Vector2d& p ) const;
         
+        /// return radially and then tangentially corrected pixel
+        Eigen::Vector2d undistorted( const Eigen::Vector2d& p ) const;
+        
         /// reverse undistorted projection using the projection map
         Eigen::Vector2d distort( const Eigen::Vector2d& p ) const;
         
-        /// load distortion map from file
-        distortion_t::map_t load_distortion_map() const;
+        const pinhole::config_t& config() const { return config_; } 
         
-        /// build distortion map from parameters
-        void make_distortion_map( cv::Mat& map_x,cv::Mat& map_y ) const;
-        
-        /// build distortion map from parameters and output to std::cout
-        void output_distortion_map( std::ostream& os ) const;
-        
-        /// return usage
         static std::string usage();
         
+        class distortion_map_t
+        {
+            public:
+                cv::Mat map_x;
+                
+                cv::Mat map_y;
+                
+                distortion_map_t( const cv::Mat& map_x, const cv::Mat& map_y );
+            
+                void write( std::ostream& os ) const;
+                
+            private:
+                friend class pinhole; // quick and dirty
+                std::vector< float > x_rows_; // quick and dirty, hide for now, refactor later; rows of undistort map x
+                std::vector< float > y_cols_; // quick and dirty, hide for now, refactor later; transposed columns of undistort map y
+        };
+        
+        const boost::optional< distortion_map_t >& distortion_map() const;
+        
     private:
-        bool make_distortion_map_impl_();
+        pinhole::config_t config_;
+        mutable boost::optional< distortion_map_t > distortion_map_; // since it's a slow operation, initialize on demand
+        Eigen::Vector2d pixel_size_;
+        Eigen::Vector2d image_centre_;
+        bool has_distortion_;
+        void make_distortion_map_( cv::Mat& map_x, cv::Mat& map_y ) const;
 };
 
 } } // namespace snark { namespace camera {

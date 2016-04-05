@@ -27,7 +27,6 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include <cstring>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -38,41 +37,53 @@
 
 namespace snark { namespace camera {
     
-//sensor_size and principal_point are optional (set to empty)
-pinhole::pinhole() : focal_length( 0 ), image_size( Eigen::Vector2i::Zero() ) {}
-pinhole::distortion_t::operator Eigen::Matrix< double, 5, 1 >() const
+pinhole::config_t::config_t() : focal_length( 0 ), image_size( Eigen::Vector2i::Zero() ) {}
+
+template < typename V > V pinhole::config_t::distortion_t::as() const
 {
-    Eigen::Matrix< double, 5, 1 > m;
-    m[0] = radial.k1;
-    m[1] = radial.k2;
-    m[2] = tangential.p1;
-    m[3] = tangential.p2;
-    m[4] = radial.k3;
-    return m;
+    V v;
+    v[0] = radial.k1;
+    v[1] = radial.k2;
+    v[2] = tangential.p1;
+    v[3] = tangential.p2;
+    v[4] = radial.k3;
+    return v;
 }
 
-//quick and dirty: if sensor_size is empty we are taking pixel size to be 1 meter !?
-Eigen::Vector2d pinhole::pixel_size() const { return sensor_size ? Eigen::Vector2d( sensor_size->x() / image_size.x(), sensor_size->y() / image_size.y() ) : Eigen::Vector2d(1,1); }
+bool pinhole::config_t::distortion_t::radial_t::empty() const { return k1 == 0 && k2 == 0 && k3 == 0; }
 
-static double squared_radius( const Eigen::Vector2d& p, const snark::camera::pinhole& c )
+bool pinhole::config_t::distortion_t::tangential_t::empty() const { return p1 == 0 && p2 == 0; }
+
+bool pinhole::config_t::distortion_t::empty() const { return map_filename.empty() && radial.empty() && tangential.empty(); }
+
+template Eigen::Matrix< double, 5, 1 > pinhole::config_t::distortion_t::as< Eigen::Matrix< double, 5, 1 > >() const;
+template cv::Vec< double, 5 > pinhole::config_t::distortion_t::as< cv::Vec< double, 5 > >() const;
+
+//quick and dirty: if sensor_size is empty we are taking pixel size to be 1 meter !?
+Eigen::Vector2d pinhole::config_t::pixel_size() const { return sensor_size ? Eigen::Vector2d( sensor_size->x() / image_size.x(), sensor_size->y() / image_size.y() ) : Eigen::Vector2d( 1, 1 ); }
+
+static double squared_radius( const Eigen::Vector2d& p, const snark::camera::pinhole::config_t& c )
 {
     return ( p - c.image_centre() ).squaredNorm();
 }
 
-Eigen::Vector2d pinhole::radially_corrected( const Eigen::Vector2d& p ) const
+Eigen::Vector2d pinhole::config_t::radially_corrected( const Eigen::Vector2d& p ) const
 {
+    if( !distortion ) { return p; }
     double r2 = squared_radius( p, *this );
-    double k = 1 + distortion.radial.k1 * r2 + distortion.radial.k2 * r2 * r2 + distortion.radial.k3 * r2 * r2 * r2;
+    double k = 1 + distortion->radial.k1 * r2 + distortion->radial.k2 * r2 * r2 + distortion->radial.k3 * r2 * r2 * r2;
     return p * k;
 }
 
-Eigen::Vector2d pinhole::tangentially_corrected( const Eigen::Vector2d& p ) const
+Eigen::Vector2d pinhole::config_t::tangentially_corrected( const Eigen::Vector2d& p ) const
 {
+    if( !distortion ) { return p; }
     double r2 = squared_radius( p, *this );
     double xy = p.x() * p.y();
-    return p + Eigen::Vector2d( distortion.tangential.p1 * 2 * xy + distortion.tangential.p2 * ( r2 + p.x() * p.x() * 2 )
-                              , distortion.tangential.p2 * 2 * xy + distortion.tangential.p1 * ( r2 + p.y() * p.y() * 2 ) );
+    return p + Eigen::Vector2d( distortion->tangential.p1 * 2 * xy + distortion->tangential.p2 * ( r2 + p.x() * p.x() * 2 )
+                              , distortion->tangential.p2 * 2 * xy + distortion->tangential.p1 * ( r2 + p.y() * p.y() * 2 ) );
 }
+
 static double reverse_map(std::vector<float>::const_iterator first, unsigned int width, double value)
 {
     std::vector<float>::const_iterator last=first + width;
@@ -87,7 +98,8 @@ static double reverse_map(std::vector<float>::const_iterator first, unsigned int
     //std::cerr<<"a "<<(value - *left)<<" b "<<(*right - *left)<<" -> "<<o<<std::endl;
     return o;
 }
-static double extrapolate_map(const float* first, unsigned int width, double value)
+
+static double extrapolate_map( const float* first, unsigned int width, double value )
 {
     const float* left=first + int(value);
     if(value<0)
@@ -102,56 +114,42 @@ static double extrapolate_map(const float* first, unsigned int width, double val
     double step = *right - *left;
     return double(frac * step + *left);
 }
-Eigen::Vector2d pinhole::undistorted( const Eigen::Vector2d& p ) const
+
+Eigen::Vector2d pinhole_to_distorted(const pinhole& pinhole, const Eigen::Vector2d& p )
 {
-    if( !const_cast< pinhole* >( this )->make_distortion_map_impl_() ) { return p; } // quick and dirty
-    //lookup the map to undistort coordinates
-    int y_index= (p.y()<0) ? 0 : (p.y()>image_size.y()?image_size.y()-1:p.y());
-    double ox=reverse_map(distortion.map->x_rows.begin() + y_index*image_size.x(), (unsigned int)image_size.x(), p.x());
-    int x_index= (p.x()<0) ? 0 : (p.x()>image_size.x()?image_size.x()-1:p.x());
-    double oy=reverse_map(distortion.map->y_cols.begin() + x_index*image_size.y(), (unsigned int)image_size.y(), p.y());
-    return Eigen::Vector2d(ox,oy);
-}
-//Eigen::Vector2d pinhole::undistorted( const Eigen::Vector2d& p ) const
-Eigen::Vector2d pinhole_to_distorted(const pinhole& pinhole, const Eigen::Vector2d& p ) //const
-{
-    return pinhole.tangentially_corrected( pinhole.radially_corrected( p ) ); 
+    return pinhole.config().tangentially_corrected( pinhole.config().radially_corrected( p ) ); 
 }
 
 // todo: temporarily parametrize on the frame required
 Eigen::Vector3d pinhole::to_cartesian( const Eigen::Vector2d& p, bool undistort ) const
 {
-    Eigen::Vector2d q = ( undistort ? undistorted( p ) : p ) - image_centre();
-    Eigen::Vector2d s = pixel_size();
-    return Eigen::Vector3d( -q.x() * s.x(), -q.y() * s.y(), -focal_length );
+    Eigen::Vector2d q = ( undistort ? undistorted( p ) : p ) - image_centre_;
+    Eigen::Vector2d s = pixel_size_;
+    return Eigen::Vector3d( -q.x() * s.x(), -q.y() * s.y(), -config_.focal_length );
 }
 
 Eigen::Vector2d pinhole::to_pixel( const Eigen::Vector2d& p ) const
 {
-    Eigen::Vector2d s = pixel_size();
-    return Eigen::Vector2d( -p.x() / s.x(), -p.y() / s.y() ) + image_centre();
+    Eigen::Vector2d s = config_.pixel_size();
+    return Eigen::Vector2d( -p.x() / s.x(), -p.y() / s.y() ) + image_centre_;
 }
 
 Eigen::Vector3d pinhole::to_cartesian_deprecated( const Eigen::Vector2d& p, bool undistort ) const
 {
-    Eigen::Vector2d q = ( undistort ? undistorted( p ) : p ) - image_centre();
-    Eigen::Vector2d s = pixel_size();
-    return Eigen::Vector3d( q.x() * s.x(), -q.y() * s.y(), -focal_length ); // todo: verify signs
+    Eigen::Vector2d q = ( undistort ? undistorted( p ) : p ) - image_centre_;
+    return Eigen::Vector3d( q.x() * pixel_size_.x(), -q.y() * pixel_size_.y(), -config_.focal_length ); // todo: verify signs
 }
 
 Eigen::Vector2d pinhole::to_pixel_deprecated( const Eigen::Vector2d& p ) const
 {
-    Eigen::Vector2d s = pixel_size();
-    Eigen::Vector2d q( p.x() / s.x(), p.y() / s.y() );
-    q += image_centre();
-    return q;
+    Eigen::Vector2d q( p.x() / pixel_size_.x(), p.y() / pixel_size_.y() );
+    return q + image_centre_;
 }
 
-Eigen::Vector2d pinhole::image_centre() const { return principal_point ? *principal_point : Eigen::Vector2d( double( image_size.x() ) / 2, double( image_size.y() ) / 2 ); }
+Eigen::Vector2d pinhole::config_t::image_centre() const { return principal_point ? *principal_point : Eigen::Vector2d( double( image_size.x() ) / 2, double( image_size.y() ) / 2 ); }
 
 static void load( const std::string& filename, const Eigen::Vector2i& image_size, cv::Mat& map_x, cv::Mat& map_y )
 {
-    if( filename.empty() ) { COMMA_THROW( comma::exception, "distortion map filename not specified" ); }
     std::ifstream ifs( &filename[0], std::ios::binary );
     if( !ifs.is_open() ) { COMMA_THROW( comma::exception, "failed to open " << filename ); }
     std::vector< char > buffer( image_size.x() * image_size.y() * 4 );
@@ -162,95 +160,100 @@ static void load( const std::string& filename, const Eigen::Vector2i& image_size
     if( ifs.gcount() < int( buffer.size() ) ) { COMMA_THROW( comma::exception, "expected to read " << buffer.size() << " bytes, got " << ifs.gcount() ); }
     map_y = cv::Mat( image_size.y(), image_size.x(), CV_32FC1, &buffer[0] ).clone();
 }
-pinhole::distortion_t::map_t::map_t(const cv::Mat& map_x, const cv::Mat& map_y)
-{
-    x_rows.resize(map_x.rows*map_x.cols);
-    for(int i=0;i<map_x.rows;i++)
-    {
-        cv::Mat mat_row=map_x.row(i);
-        float* ptr=mat_row.ptr<float>();
-        std::memcpy(&x_rows[map_x.cols*i],ptr,map_x.cols*sizeof(float));
-    }
-    //
-    y_cols.resize(map_y.rows*map_y.cols);
-    for(int i=0;i<map_y.cols;i++)
-    {
-        cv::Mat mat_col=map_y.col(i).t();
-        float* ptr=mat_col.ptr<float>();
-        std::memcpy(&y_cols[map_y.rows*i],ptr,map_y.rows*sizeof(float));
-    }
-}
-pinhole::distortion_t::map_t pinhole::load_distortion_map() const 
-{
-    cv::Mat map_x;
-    cv::Mat map_y;
-    load(distortion.map_filename, image_size, map_x,map_y);
-    return pinhole::distortion_t::map_t(map_x,map_y);
-}
-bool pinhole::make_distortion_map_impl_()
-{
-    if( distortion.map ) { return true; }
-    if( distortion.all_zero() ) { return false; }
-    cv::Mat map_x;
-    cv::Mat map_y;
-    make_distortion_map( map_x, map_y );
-    distortion.map = distortion_t::map_t( map_x, map_y ); // quick and uber-dirty; not proud of it, not proud
-    return true;
-}
-bool pinhole::distortion_t::all_zero() const { return radial.k1==0 && radial.k2==0 && radial.k3==0 && tangential.p1==0 && tangential.p2 == 0; }
 
-Eigen::Vector2d pinhole::distort( const Eigen::Vector2d& p ) const
+pinhole::distortion_map_t::distortion_map_t( const cv::Mat& map_x, const cv::Mat& map_y )
+    : map_x( map_x )
+    , map_y( map_y )
+    , x_rows_( map_x.rows * map_x.cols )
+    , y_cols_( map_y.rows * map_y.cols )
 {
-    if( !const_cast< pinhole* >( this )->make_distortion_map_impl_() ) { return p; } // quick and dirty
-    //lookup p.x on map.x
-    int y_index= (p.y()<0) ? 0 : (p.y()>image_size.y()?image_size.y()-1:p.y());
-    double ox=extrapolate_map(&distortion.map->x_rows[y_index*image_size.x()], (unsigned int)image_size.x(), p.x());
-    int x_index= (p.x()<0) ? 0 : (p.x()>image_size.x()?image_size.x()-1:p.x());
-    double oy=extrapolate_map(&distortion.map->y_cols[x_index*image_size.y()], (unsigned int)image_size.y(), p.y());
-    return Eigen::Vector2d(ox,oy);
+    for( int i = 0; i < map_x.rows; ++i )
+    {
+        cv::Mat mat_row = map_x.row( i );
+        float* ptr = mat_row.ptr< float >();
+        std::memcpy( &x_rows_[ map_x.cols * i ], ptr, map_x.cols * sizeof( float ) );
+    }
+    for( int i = 0; i < map_y.cols; ++i )
+    {
+        cv::Mat mat_col = map_y.col( i ).t();
+        float* ptr = mat_col.ptr< float >();
+        std::memcpy( &y_cols_[ map_y.rows * i ], ptr, map_y.rows * sizeof( float ) );
+    }
 }
-void pinhole::init()
-{ 
-    if( !distortion.map_filename.empty() ) { distortion.map=load_distortion_map(); }
-    comma::verbose<<"pinhole::init_distortion_map map:"<<distortion.map_filename<<" no map: "<< !distortion.map<<" image size "<< image_size.x()<<","<<image_size.y()<<std::endl;
-    
-}
-//write a 2-d image matrix data to stream (no header)
+
 static void save( std::ostream& os, const cv::Mat& mat )
 {
     std::streamsize len=(std::streamsize)mat.cols*mat.elemSize();
     for(int i=0;i<mat.rows;i++) { os.write((const char*)mat.ptr(i),len); }
 }
 
-void pinhole::make_distortion_map(cv::Mat& map_x,cv::Mat& map_y) const
+void pinhole::distortion_map_t::write( std::ostream& os ) const
 {
+    save( os, map_x );
+    save( os, map_y );
+}
+
+Eigen::Vector2d pinhole::undistorted( const Eigen::Vector2d& p ) const
+{
+    if( !distortion_map() ) { return p; }
+    //lookup the map to undistort coordinates
+    int y_index = ( p.y() < 0 ) ? 0 : ( p.y() > config().image_size.y() ? config().image_size.y() - 1 : p.y() );
+    double ox = reverse_map( distortion_map()->x_rows_.begin() + y_index*config_.image_size.x(), (unsigned int)config_.image_size.x(), p.x());
+    int x_index= (p.x()<0) ? 0 : (p.x()>config_.image_size.x()?config_.image_size.x()-1:p.x());
+    double oy=reverse_map(distortion_map()->y_cols_.begin() + x_index*config_.image_size.y(), (unsigned int)config_.image_size.y(), p.y());
+    return Eigen::Vector2d(ox,oy);
+}
+
+Eigen::Vector2d pinhole::distort( const Eigen::Vector2d& p ) const
+{
+    if( !distortion_map() ) { return p; }
+    Eigen::Vector2d distorted;
+    int y_index = p.y() < 0 ? 0 : p.y() > config_.image_size.y() ? config_.image_size.y() - 1 : p.y();
+    distorted[0] = extrapolate_map( &distortion_map()->x_rows_[ y_index * config_.image_size.x() ]
+                                  , static_cast< unsigned int >( config_.image_size.x() ), p.x() );
+    int x_index = p.x() < 0 ? 0 : p.x() > config_.image_size.x() ? config_.image_size.x() - 1 : p.x();
+    distorted[1] = extrapolate_map( &distortion_map()->y_cols_[ x_index * config_.image_size.y() ]
+                                  , static_cast< unsigned int >( config_.image_size.y() ), p.y() );
+    return distorted;
+}
+
+pinhole::pinhole( const pinhole::config_t& config )
+    : config_( config )
+    , pixel_size_( config.pixel_size() )
+    , image_centre_( config.image_centre() )
+    , has_distortion_( config.distortion && !config.distortion->empty() )
+{
+}
+
+void pinhole::make_distortion_map_( cv::Mat& map_x,cv::Mat& map_y ) const
+{
+    if( !config_.distortion ) { COMMA_THROW( comma::exception, "distortion parameters or map filename not defined" ); }
 //     int width=image_size.x();
 //     int heigth=image_size.y();
 //     i:{0..w},j:{0..h} undistorted(i,j)
-    cv::Mat camera=cv::Mat_<double>(3,3);
-    camera.at< double >( 0, 0 ) = focal_length * ( sensor_size ? double( image_size.x() ) / sensor_size->x() : 1.0 );
-    camera.at< double >( 1, 1 ) = focal_length * ( sensor_size ? double( image_size.y() ) / sensor_size->y() : 1.0 );
-    Eigen::Vector2d c= image_centre();
-    camera.at<double>(0,2)=c.x();
-    camera.at<double>(1,2)=c.y();
-    camera.at<double>(2,2)=1;
-    cv::Vec<double,5> distortion_coeff;
-    distortion_coeff[0]=distortion.radial.k1;
-    distortion_coeff[1]=distortion.radial.k2;
-    distortion_coeff[2]=distortion.tangential.p1;
-    distortion_coeff[3]=distortion.tangential.p2;
-    distortion_coeff[4]=distortion.radial.k3;
-    cv::Size size(image_size.x(),image_size.y());
-    cv::initUndistortRectifyMap(camera, distortion_coeff,cv::Mat(),camera,size,CV_32FC1,map_x,map_y);
+    cv::Mat camera = cv::Mat_< double >( 3, 3 );
+    camera.at< double >( 0, 0 ) = config_.focal_length * ( config_.sensor_size ? double( config_.image_size.x() ) / config_.sensor_size->x() : 1.0 );
+    camera.at< double >( 1, 1 ) = config_.focal_length * ( config_.sensor_size ? double( config_.image_size.y() ) / config_.sensor_size->y() : 1.0 );
+    Eigen::Vector2d c = config_.image_centre();
+    camera.at< double >( 0, 2 ) = c.x();
+    camera.at< double >( 1, 2 ) = c.y();
+    camera.at< double >( 2, 2 ) = 1;
+    cv::Vec< double, 5 > distortion_coeff = config_.distortion->as< cv::Vec< double, 5 > >();
+    cv::Size size( config_.image_size.x(), config_.image_size.y() );
+    cv::initUndistortRectifyMap( camera, distortion_coeff, cv::Mat(), camera, size, CV_32FC1, map_x, map_y );
 }
 
-void pinhole::output_distortion_map( std::ostream& os ) const
+const boost::optional< pinhole::distortion_map_t >& pinhole::distortion_map() const
 {
-    cv::Mat map_x;
-    cv::Mat map_y;
-    make_distortion_map( map_x, map_y );
-    save( os, map_x );
-    save( os, map_y );
+    if( has_distortion_ && !distortion_map_ )
+    {
+        cv::Mat map_x;
+        cv::Mat map_y;
+        if( config_.distortion->map_filename.empty() ) { make_distortion_map_( map_x, map_y ); }
+        else { load( config_.distortion->map_filename, config_.image_size, map_x, map_y ); }
+        distortion_map_.reset( pinhole::distortion_map_t( map_x, map_y ) );
+    }
+    return distortion_map_;
 }
 
 std::string pinhole::usage()
@@ -273,9 +276,9 @@ std::string pinhole::usage()
     oss << "        distortion/radial/k3" << std::endl;
     oss << "        distortion/tangential/p1" << std::endl;
     oss << "        distortion/tangential/p2" << std::endl;
-    oss << "        distortion/map=<filename>: distortion map as two concatenated binary distortion maps for x and y" << std::endl;
+    oss << "        distortion/map_filename=<filename>: distortion map as two concatenated binary distortion maps for x and y" << std::endl;
     oss << "                                   each map is matrix of floats of size image_size/x X image_size/y" << std::endl;
-    oss << "    calculated fields (don't specify in config):" << std::endl;
+    oss << "    calculated values" << std::endl;
     oss << "        pixel size: calculated as sensor_size/image_size; this is used to convert between cartesian frame (meter) and image frame (pixels)" << std::endl;
     oss << "            if sensor_size is empty (not specified) then pixel_size is assumed to be 1 meter; which means focal_length is effectively in pixels and no scaling when converting between cartesian/image frame" << std::endl;
     return oss.str();

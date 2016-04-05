@@ -63,7 +63,7 @@ static void usage()
     std::cerr << "<options>" << std::endl;
     std::cerr << "    --camera-config,--camera,--config,-c=<parameters>: camera configuration" << std::endl;
     std::cerr << "        <parameters>: filename of json configuration file or ';'-separated path-value pairs" << std::endl;
-    std::cerr << "                      e.g: --config=\"focal_length/x=123;focal_length/y=123.1;...\"" << std::endl;
+    std::cerr << "                      e.g: --config=\"focal_length=123;image_size/x=2000;image_size/y=1000;...\"" << std::endl;
     std::cerr << "    --output-config,--sample-config: output sample config and exit" << std::endl;
     std::cerr << "    --intrinsics <fx,fy,cx,cy>: deprecated, use --config; intrinsic parameters in pixel" << std::endl;
     std::cerr << "    --distortion <k1,k2,p1,p2,k3>: deprecated, use --config; distortion parameters" << std::endl;
@@ -75,24 +75,22 @@ static void usage()
     exit( 1 );
 }
 
-static snark::camera::pinhole make_pinhole( const std::string& config_parameters )
+static snark::camera::pinhole::config_t make_config( const std::string& config_parameters )
 {
-    snark::camera::pinhole pinhole;
+    snark::camera::pinhole::config_t config;
     if( config_parameters.find_first_of( '=' ) == std::string::npos )
     {
         const std::vector< std::string >& v = comma::split( config_parameters, ":#@" );
-        if( v.size() == 1 ) { comma::read_json( pinhole, config_parameters, true ); }
-        else { comma::read_json( pinhole, config_parameters.substr( 0, config_parameters.size() - v.back().size() - 1 ), v.back(), true ); }
+        if( v.size() == 1 ) { comma::read_json( config, config_parameters, true ); }
+        else { comma::read_json( config, config_parameters.substr( 0, config_parameters.size() - v.back().size() - 1 ), v.back(), true ); }
     }
     else
     {
-        boost::property_tree::ptree p;
-        comma::property_tree::from_path_value_string( config_parameters, '=', ';', comma::property_tree::path_value::no_check, true );
+        boost::property_tree::ptree p = comma::property_tree::from_path_value_string( config_parameters, '=', ';', comma::property_tree::path_value::no_check, true );
         comma::from_ptree from_ptree( p, true );
-        comma::visiting::apply( from_ptree ).to( pinhole );
+        comma::visiting::apply( from_ptree ).to( config );
     }
-    if( !pinhole.principal_point ) { pinhole.principal_point = pinhole.image_centre(); }
-    return pinhole;
+    return config;
 }
 
 static std::pair< unsigned int, unsigned int> get_size( const std::string& size )
@@ -154,19 +152,19 @@ int main(int argc, char *argv[])
         }
         else
         {
-            snark::camera::pinhole pinhole = make_pinhole( config_parameters );
-            Eigen::Vector2d pixel_size = pinhole.pixel_size();
-            fx = pinhole.focal_length / pixel_size.x();
-            fy = pinhole.focal_length / pixel_size.y();
-            cx = pinhole.principal_point->x();
-            cy = pinhole.principal_point->y();
-            k1 = pinhole.distortion.radial.k1;
-            k2 = pinhole.distortion.radial.k2;
-            k3 = pinhole.distortion.radial.k3;
-            p1 = pinhole.distortion.tangential.p1;
-            p2 = pinhole.distortion.tangential.p2;
-            size.first = pinhole.image_size.x();
-            size.second = pinhole.image_size.y();
+            snark::camera::pinhole::config_t config( make_config( config_parameters ) );
+            Eigen::Vector2d pixel_size = config.pixel_size();
+            fx = config.focal_length / pixel_size.x();
+            fy = config.focal_length / pixel_size.y();
+            cx = config.principal_point->x();
+            cy = config.principal_point->y();
+            k1 = config.distortion ? config.distortion->radial.k1 : 0;
+            k2 = config.distortion ? config.distortion->radial.k2 : 0;
+            k3 = config.distortion ? config.distortion->radial.k3 : 0;
+            p1 = config.distortion ? config.distortion->tangential.p1 : 0;
+            p2 = config.distortion ? config.distortion->tangential.p2 : 0;
+            size.first = config.image_size.x();
+            size.second = config.image_size.y();
         }
         
         cv::Mat cameraMatrix = (cv::Mat_<double>(3,3) << fx, 0,  cx,

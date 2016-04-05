@@ -36,16 +36,16 @@
 
 namespace comma { namespace visiting {
 
-template <> struct traits< snark::camera::pinhole::distortion_t::radial_t >
+template <> struct traits< snark::camera::pinhole::config_t::distortion_t::radial_t >
 {
-    template < typename Key, class Visitor > static void visit( const Key&, snark::camera::pinhole::distortion_t::radial_t& p, Visitor& v )
+    template < typename Key, class Visitor > static void visit( const Key&, snark::camera::pinhole::config_t::distortion_t::radial_t& p, Visitor& v )
     {
         v.apply( "k1", p.k1 );
         v.apply( "k2", p.k2 );
         v.apply( "k3", p.k3 );
     }
     
-    template < typename Key, class Visitor > static void visit( const Key&, const snark::camera::pinhole::distortion_t::radial_t& p, Visitor& v )
+    template < typename Key, class Visitor > static void visit( const Key&, const snark::camera::pinhole::config_t::distortion_t::radial_t& p, Visitor& v )
     {
         v.apply( "k1", p.k1 );
         v.apply( "k2", p.k2 );
@@ -53,31 +53,31 @@ template <> struct traits< snark::camera::pinhole::distortion_t::radial_t >
     }
 };
 
-template <> struct traits< snark::camera::pinhole::distortion_t::tangential_t >
+template <> struct traits< snark::camera::pinhole::config_t::distortion_t::tangential_t >
 {
-    template < typename Key, class Visitor > static void visit( const Key&, snark::camera::pinhole::distortion_t::tangential_t& p, Visitor& v )
+    template < typename Key, class Visitor > static void visit( const Key&, snark::camera::pinhole::config_t::distortion_t::tangential_t& p, Visitor& v )
     {
         v.apply( "p1", p.p1 );
         v.apply( "p2", p.p2 );
     }
     
-    template < typename Key, class Visitor > static void visit( const Key&, const snark::camera::pinhole::distortion_t::tangential_t& p, Visitor& v )
+    template < typename Key, class Visitor > static void visit( const Key&, const snark::camera::pinhole::config_t::distortion_t::tangential_t& p, Visitor& v )
     {
         v.apply( "p1", p.p1 );
         v.apply( "p2", p.p2 );
     }
 };
     
-template <> struct traits< snark::camera::pinhole::distortion_t >
+template <> struct traits< snark::camera::pinhole::config_t::distortion_t >
 {
-    template < typename Key, class Visitor > static void visit( const Key&, snark::camera::pinhole::distortion_t& p, Visitor& v )
+    template < typename Key, class Visitor > static void visit( const Key&, snark::camera::pinhole::config_t::distortion_t& p, Visitor& v )
     {
         v.apply( "radial", p.radial );
         v.apply( "tangential", p.tangential );
         v.apply( "map", p.map_filename );
     }
     
-    template < typename Key, class Visitor > static void visit( const Key&, const snark::camera::pinhole::distortion_t& p, Visitor& v )
+    template < typename Key, class Visitor > static void visit( const Key&, const snark::camera::pinhole::config_t::distortion_t& p, Visitor& v )
     {
         v.apply( "radial", p.radial );
         v.apply( "tangential", p.tangential );
@@ -85,9 +85,9 @@ template <> struct traits< snark::camera::pinhole::distortion_t >
     }
 };
     
-template <> struct traits< snark::camera::pinhole >
+template <> struct traits< snark::camera::pinhole::config_t >
 {
-    template < typename Key, class Visitor > static void visit( const Key&, snark::camera::pinhole& p, Visitor& v )
+    template < typename Key, class Visitor > static void visit( const Key&, snark::camera::pinhole::config_t& p, Visitor& v )
     {
         v.apply( "sensor_size", p.sensor_size );
         v.apply( "image_size", p.image_size );
@@ -96,7 +96,7 @@ template <> struct traits< snark::camera::pinhole >
         v.apply( "distortion", p.distortion );
     }
     
-    template < typename Key, class Visitor > static void visit( const Key&, const snark::camera::pinhole& p, Visitor& v )
+    template < typename Key, class Visitor > static void visit( const Key&, const snark::camera::pinhole::config_t& p, Visitor& v )
     {
         v.apply( "sensor_size", p.sensor_size );
         v.apply( "image_size", p.image_size );

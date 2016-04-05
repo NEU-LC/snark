@@ -31,13 +31,13 @@
 
 #include <boost/filesystem/operations.hpp>
 #include <comma/application/command_line_options.h>
+#include <comma/application/verbose.h>
 #include <comma/csv/stream.h>
 #include <comma/math/compare.h>
 #include <comma/name_value/ptree.h>
 #include <comma/name_value/serialize.h>
 #include "../camera/pinhole.h"
 #include "../camera/traits.h"
-#include <comma/application/verbose.h>
 
 static bool verbose=false;
 
@@ -87,23 +87,22 @@ template < typename S, typename T > static void output_details( const std::strin
     if( options.exists( "--output-format" ) ) { std::cout << comma::csv::format::value< T >() << std::endl; exit( 0 ); }
 }
 
-static snark::camera::pinhole make_pinhole( const std::string& config_parameters )
+static snark::camera::pinhole::config_t make_config( const std::string& config_parameters )
 {
-    snark::camera::pinhole pinhole;
+    snark::camera::pinhole::config_t config;
     if( config_parameters.find_first_of( '=' ) == std::string::npos )
     {
         const std::vector< std::string >& v = comma::split( config_parameters, ":#@" );
-        if( v.size() == 1 ) { comma::read_json( pinhole, config_parameters, true ); }
-        else { comma::read_json( pinhole, config_parameters.substr( 0, config_parameters.size() - v.back().size() - 1 ), v.back(), true ); }
+        if( v.size() == 1 ) { comma::read_json( config, config_parameters, true ); }
+        else { comma::read_json( config, config_parameters.substr( 0, config_parameters.size() - v.back().size() - 1 ), v.back(), true ); }
     }
     else
     {
         boost::property_tree::ptree p = comma::property_tree::from_path_value_string( config_parameters, '=', ';', comma::property_tree::path_value::no_check, true );
         comma::from_ptree from_ptree( p, true );
-        comma::visiting::apply( from_ptree ).to( pinhole );
+        comma::visiting::apply( from_ptree ).to( config );
     }
-    pinhole.init();
-    return pinhole;
+    return config;
 }
 
 int main( int ac, char** av )
@@ -114,8 +113,9 @@ int main( int ac, char** av )
         verbose=options.exists("--verbose");
         if( options.exists( "--output-config,--sample-config" ) )
         {
-            snark::camera::pinhole config;
+            snark::camera::pinhole::config_t config;
             config.sensor_size = Eigen::Vector2d( 0.1, 0.2 );
+            config.distortion = snark::camera::pinhole::config_t::distortion_t();
             comma::write_json( config, std::cout );
             return 0;
         }
@@ -126,7 +126,7 @@ int main( int ac, char** av )
         output_details< Eigen::Vector2d, Eigen::Vector2d >( operation, "to-pixels", options );
         output_details< Eigen::Vector2d, Eigen::Vector2d >( operation, "undistort", options );
         output_details< Eigen::Vector2d, Eigen::Vector2d >( operation, "distort", options );
-        snark::camera::pinhole pinhole = make_pinhole( options.value< std::string >( "--camera-config,--camera,--config,-c" ) );
+        snark::camera::pinhole pinhole( make_config( options.value< std::string >( "--camera-config,--camera,--config,-c" ) ) );
         comma::csv::options csv( options );
         bool deprecated = options.exists( "--deprecated" );
         if( operation == "to-cartesian" )
@@ -156,9 +156,9 @@ int main( int ac, char** av )
                 if( !p ) { break; }
                 Eigen::Vector2d pixel = deprecated ? pinhole.to_pixel_deprecated( *p ) : pinhole.to_pixel( *p );
                 if ( !clip || (    !comma::math::less( pixel.x(), 0 )
-                                && comma::math::less( pixel.x(), pinhole.image_size.x() )
+                                && comma::math::less( pixel.x(), pinhole.config().image_size.x() )
                                 && !comma::math::less( pixel.y(), 0 )
-                                && comma::math::less( pixel.y(), pinhole.image_size.y() ) ) )
+                                && comma::math::less( pixel.y(), pinhole.config().image_size.y() ) ) )
                 {
                     tied.append( pinhole.distort( pixel ) );
                 }
@@ -178,7 +178,7 @@ int main( int ac, char** av )
             }
             return 0;
         }
-        if ( operation == "distort" )
+        if( operation == "distort" )
         {
             comma::csv::input_stream< Eigen::Vector2d > is( std::cin, csv );
             comma::csv::output_stream< Eigen::Vector2d > os( std::cout, csv.binary() );
@@ -191,9 +191,10 @@ int main( int ac, char** av )
             }
             return 0;
         }
-        if(operation=="distortion-map")
+        if( operation=="distortion-map" )
         {
-            pinhole.output_distortion_map(std::cout);
+            if( !pinhole.distortion_map() ) { std::cerr << "image-pinhole: no distortion specified in config" << std::endl; return 1; }
+            pinhole.distortion_map()->write( std::cout );
             return 0;
         }
         std::cerr << "image-pinhole: error: unrecognized operation: "<< operation << std::endl;
