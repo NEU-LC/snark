@@ -27,7 +27,10 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include <comma/application/signal_flag.h>
+#include <comma/application/verbose.h>
 #include <comma/name_value/map.h>
+
 #include "camera.h"
 #include "error.h"
 #include "feature.h"
@@ -111,14 +114,15 @@ void camera::set_features( std::string name_value_pairs )
 
 void camera::capture_images( std::unique_ptr< snark::cv_mat::serialization > serialization )
 {
-    std::cerr << "capture_images" << std::endl;
     VmbErrorType status;
 
     status = start_continuous_image_acquisition( std::move( serialization ));
     if ( status == VmbErrorSuccess )
     {
-        std::cerr << "Press <enter> to stop acquisition..." << std::endl;
-        getchar();
+        comma::signal_flag is_shutdown;
+        do {
+            sleep( 1 );
+        } while( !is_shutdown );
 
         stop_continuous_image_acquisition();
     }
@@ -126,6 +130,8 @@ void camera::capture_images( std::unique_ptr< snark::cv_mat::serialization > ser
 
 VmbErrorType camera::start_continuous_image_acquisition( std::unique_ptr< snark::cv_mat::serialization > serialization )
 {
+    if( comma::verbose ) std::cerr << "Start continuous image acquisition" << std::endl;
+
     // Set the GeV packet size to the highest possible value
     set_feature( "GVSPAdjustPacketSize" );
 
@@ -139,6 +145,7 @@ VmbErrorType camera::start_continuous_image_acquisition( std::unique_ptr< snark:
 
 void camera::stop_continuous_image_acquisition()
 {
+    if( comma::verbose ) std::cerr << "Stop continuous image acquisition" << std::endl;
     camera_->StopContinuousImageAcquisition();
 }
 
