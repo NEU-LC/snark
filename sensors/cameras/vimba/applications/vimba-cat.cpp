@@ -29,7 +29,6 @@
 
 #include <comma/application/verbose.h>
 #include <comma/base/exception.h>
-#include <comma/name_value/map.h>
 
 #include "../camera.h"
 #include "../error.h"
@@ -47,6 +46,7 @@ static void bash_completion( unsigned const ac, char const * const * av )
         " --list-cameras"
         " --list-attributes"
         " --id"
+        " --set --set-and-exit"
         " --header --no-header"
         ;
 
@@ -63,18 +63,23 @@ static void usage( bool verbose = false )
     std::cerr << "Usage: " << comma::verbose.app_name() << " [<options>] [<filters>]" << std::endl;
     std::cerr << std::endl;
     std::cerr << "Options: " << std::endl;
-    std::cerr << "    --help,-h:         show this help, --help --verbose for more help" << std::endl;
-    std::cerr << "    --verbose,-v:      more output" << std::endl;
-    std::cerr << "    --version:         output the library version" << std::endl;
-    std::cerr << "    --list-cameras:    list all cameras and exit" << std::endl;
-    std::cerr << "    --list-attributes: list camera attributes, --verbose for more detail" << std::endl;
-    std::cerr << "    --id=<camera id>:  default: first available camera" << std::endl;
-    std::cerr << "    --fields=<fields>: header fields; default: " << default_fields << std::endl;
-    std::cerr << "    --header:          output header only" << std::endl;
-    std::cerr << "    --no-header:       output image data only" << std::endl;
+    std::cerr << "    --help,-h:          show this help, --help --verbose for more help" << std::endl;
+    std::cerr << "    --verbose,-v:       more output" << std::endl;
+    std::cerr << "    --version:          output the library version" << std::endl;
+    std::cerr << "    --list-cameras:     list all cameras and exit" << std::endl;
+    std::cerr << "    --list-attributes:  list camera attributes, --verbose for more detail" << std::endl;
+    std::cerr << "    --set <attributes>: set camera attributes" << std::endl;
+    std::cerr << "    --set-and-exit <attributes>: set attributes and exit" << std::endl;
+    std::cerr << "    --id=<camera id>:   default: first available camera" << std::endl;
+    std::cerr << "    --fields=<fields>:  header fields; default: " << default_fields << std::endl;
+    std::cerr << "    --header:           output header only" << std::endl;
+    std::cerr << "    --no-header:        output image data only" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "    Possible values for <fields> are: " << possible_fields << std::endl;
-
+    std::cerr << "    Possible values for <fields> are: " << possible_fields << "." << std::endl;
+    std::cerr << "    <attributes> are semicolon-separated name-value pairs." << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "Examples:" << std::endl;
+    std::cerr << "    " << comma::verbose.app_name() << " --set \"ExposureAuto=Off;ExposureTimeAbs=60\"" << std::endl;
     std::cerr << std::endl;
     if( verbose )
     {
@@ -126,6 +131,8 @@ std::unique_ptr< snark::cv_mat::serialization > create_serializer( const comma::
 
 int run_cmd( const comma::command_line_options& options )
 {
+    snark::vimba::system system;                                   // Initialize the Vimba API
+
     if( options.exists( "--list-cameras" ))
     {
         AVT::VmbAPI::CameraPtrVector cameras = snark::vimba::system::get_cameras();
@@ -148,13 +155,15 @@ int run_cmd( const comma::command_line_options& options )
         return 0;
     }
 
+    if( options.exists( "--set-and-exit" ))
+    {
+        camera.set_features( options.value<std::string>( "--set-and-exit" ));
+        return 0;
+    }
+
     if( options.exists( "--set" ))
     {
-        comma::name_value::map m( options.value<std::string>( "--set" ));
-        for( auto it = m.get().cbegin(); it != m.get().cend(); ++it )
-        {
-            camera.set_feature( it->first, it->second );
-        }
+        camera.set_features( options.value<std::string>( "--set" ));
     }
 
     camera.capture_images( create_serializer( options ));
@@ -193,7 +202,6 @@ int main( int argc, char** argv )
             COMMA_THROW( comma::exception, "GENICAM_GENTL64_PATH is not set" );
         }
 
-        snark::vimba::system system;                                   // Initialize the Vimba API
         ret_code = run_cmd( options );
     }
     catch( std::exception& ex )

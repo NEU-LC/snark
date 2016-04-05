@@ -27,34 +27,37 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef SNARK_SENSORS_VIMBA_CAMERA_H_
-#define SNARK_SENSORS_VIMBA_CAMERA_H_
+#ifndef SNARK_SENSORS_VIMBA_FRAME_H_
+#define SNARK_SENSORS_VIMBA_FRAME_H_
 
-#include <VimbaCPP/Include/Camera.h>
-#include "snark/imaging/cv_mat/serialization.h"
+#include <VimbaCPP/Include/Frame.h>
 
 namespace snark { namespace vimba {
 
-class camera
+class frame
 {
     public:
-        camera( const std::string& camera_id );
-        camera( const AVT::VmbAPI::CameraPtr& camera_ptr ) : camera_( camera_ptr ) {}
-        ~camera();
+        frame( const AVT::VmbAPI::FramePtr& frame_ptr );
 
-        void print_info();
-        void list_attributes( bool verbose );
-        void set_feature( std::string feature_name, std::string value = "" );
-        void set_features( std::string name_value_pairs );
-        void capture_images( std::unique_ptr< snark::cv_mat::serialization > serialization );
+        void check_status();
+        void check_id();
+
+        VmbUint32_t get_height() { return height_; }
+        VmbUint32_t get_width() { return width_; }
+        VmbUchar_t* get_image_buffer() { return image_buffer_; }
 
     private:
-        VmbErrorType start_continuous_image_acquisition( std::unique_ptr< snark::cv_mat::serialization > serialization );
-        void stop_continuous_image_acquisition();
+        std::string frame_status_string();
 
-        AVT::VmbAPI::CameraPtr camera_;
+        VmbUint64_t frame_id_;
+        VmbFrameStatusType frame_status_;
+        VmbUint32_t height_;
+        VmbUint32_t width_;
+        VmbUint32_t size_;
+        VmbUchar_t* image_buffer_;
+        VmbUint64_t last_frame_id_;
 };
 
 } } // namespace snark { namespace vimba {
 
-#endif // SNARK_SENSORS_VIMBA_CAMERA_H_
+#endif // SNARK_SENSORS_VIMBA_FRAME_H_
