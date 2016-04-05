@@ -45,6 +45,7 @@ class camera
         void print_info();
         void list_attributes( bool verbose );
         void set_feature( std::string feature_name, std::string value = "" );
+        void set_features( std::string name_value_pairs );
         void capture_images( std::unique_ptr< snark::cv_mat::serialization > serialization );
 
     private:

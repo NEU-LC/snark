@@ -27,6 +27,7 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include <comma/name_value/map.h>
 #include "camera.h"
 #include "error.h"
 #include "feature.h"
@@ -97,6 +98,15 @@ void camera::list_attributes( bool verbose )
 void camera::set_feature( std::string feature_name, std::string value )
 {
     snark::vimba::set_feature( camera_, feature_name, value );
+}
+
+void camera::set_features( std::string name_value_pairs )
+{
+    comma::name_value::map m( name_value_pairs );
+    for( auto it = m.get().cbegin(); it != m.get().cend(); ++it )
+    {
+        set_feature( it->first, it->second );
+    }
 }
 
 void camera::capture_images( std::unique_ptr< snark::cv_mat::serialization > serialization )
