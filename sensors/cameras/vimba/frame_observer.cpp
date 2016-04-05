@@ -44,8 +44,6 @@ frame_observer::frame_observer( AVT::VmbAPI::CameraPtr camera
     std::cerr << "Creating frame_observer" << std::endl;
 }
 
-typedef std::pair< boost::posix_time::ptime, cv::Mat > output_data_t;
-
 void frame_observer::FrameReceived( const AVT::VmbAPI::FramePtr frame )
 {
     check_frame_id( frame );
@@ -74,11 +72,8 @@ void frame_observer::FrameReceived( const AVT::VmbAPI::FramePtr frame )
     // TODO: different image formats
     cv::Mat cv_mat( height, width * 1.5, CV_8UC1, image_buffer );
 
-    output_data_t output_data;
-    output_data.second = cv_mat;
-    output_data.first = boost::posix_time::microsec_clock::universal_time();
-
-    serialization_->write( std::cout, output_data );
+    serialization_->write( std::cout
+                         , std::make_pair( boost::posix_time::microsec_clock::universal_time(), cv_mat ));
 
     m_pCamera->QueueFrame( frame );
 }
