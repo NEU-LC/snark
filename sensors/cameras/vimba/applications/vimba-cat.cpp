@@ -79,7 +79,7 @@ static void usage( bool verbose = false )
     std::cerr << "    <attributes> are semicolon-separated name-value pairs." << std::endl;
     std::cerr << std::endl;
     std::cerr << "Examples:" << std::endl;
-    std::cerr << "    " << comma::verbose.app_name() << " --set \"ExposureAuto=Off;ExposureTimeAbs=60\"" << std::endl;
+    std::cerr << "    " << comma::verbose.app_name() << " --id=\"02-2623A-07136\" --set \"ExposureAuto=Off;ExposureTimeAbs=60\"" << std::endl;
     std::cerr << std::endl;
     if( verbose )
     {
