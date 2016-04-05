@@ -176,6 +176,7 @@ int run_cmd( const comma::command_line_options& options )
 
 int main( int argc, char** argv )
 {
+    // TODO: allow this to be overridden if the environment variable is already set
     ::setenv( "GENICAM_GENTL64_PATH", STRINGIZED( VIMBA_GENICAM_GENTL64_PATH ), 0 );
 
     int ret_code = 0;

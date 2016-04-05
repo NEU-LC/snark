@@ -15,3 +15,6 @@ ExposureAutoRate=100
 ExposureAutoTarget=50
 ExposureMode=Timed
 ExposureTimeAbs=60
+
+TODO: installation of shared libraries and CTI files
+TODO: set up shrimp.publish.json command (check id and attributes)
