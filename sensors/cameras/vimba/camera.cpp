@@ -51,7 +51,7 @@ camera::~camera()
     if( camera_ ) camera_->Close();
 }
 
-void camera::print_info()
+void camera::print_info( bool verbose )
 {
     std::string id;
     std::string name;
@@ -74,11 +74,18 @@ void camera::print_info()
     error = camera_->GetInterfaceID( interface_id );
     if( error != VmbErrorSuccess ) { write_error( "Could not get interface ID", error ); }
 
-    std::cout << "Camera Name  : " << name          << "\n"
-              << "Model Name   : " << model         << "\n"
-              << "Camera ID    : " << id            << "\n"
-              << "Serial Number: " << serial_number << "\n"
-              << "Interface ID : " << interface_id  << std::endl;
+    if( verbose )
+    {
+        std::cout << "\nCamera ID    : " << id
+                  << "\nCamera Name  : " << name
+                  << "\nModel Name   : " << model
+                  << "\nSerial Number: " << serial_number
+                  << "\nInterface ID : " << interface_id  << std::endl;
+    }
+    else
+    {
+        std::cout << "id=\"" << id << "\",name=\"" << name << "\",serial=\"" << serial_number << "\"" << std::endl;
+    }
 }
 
 // Prints all features and their values of a camera

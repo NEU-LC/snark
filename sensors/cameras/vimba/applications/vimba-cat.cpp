@@ -66,7 +66,7 @@ static void usage( bool verbose = false )
     std::cerr << "    --help,-h:          show this help, --help --verbose for more help" << std::endl;
     std::cerr << "    --verbose,-v:       more output" << std::endl;
     std::cerr << "    --version:          output the library version" << std::endl;
-    std::cerr << "    --list-cameras:     list all cameras and exit" << std::endl;
+    std::cerr << "    --list-cameras:     list all cameras and exit, --verbose for more detail" << std::endl;
     std::cerr << "    --list-attributes:  list camera attributes, --verbose for more detail" << std::endl;
     std::cerr << "    --set <attributes>: set camera attributes" << std::endl;
     std::cerr << "    --set-and-exit <attributes>: set attributes and exit" << std::endl;
@@ -136,11 +136,11 @@ int run_cmd( const comma::command_line_options& options )
     if( options.exists( "--list-cameras" ))
     {
         AVT::VmbAPI::CameraPtrVector cameras = snark::vimba::system::get_cameras();
-        std::cout << "Cameras found: " << cameras.size() << "\n\n";
+        if( comma::verbose ) { std::cout << "Cameras found: " << cameras.size() << std::endl; }
         for( auto iter = cameras.cbegin(); iter != cameras.cend(); ++iter )
         {
             snark::vimba::camera camera( *iter );
-            camera.print_info();
+            camera.print_info( comma::verbose );
         }
         return 0;
     }

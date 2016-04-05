@@ -42,7 +42,7 @@ class camera
         camera( const AVT::VmbAPI::CameraPtr& camera_ptr ) : camera_( camera_ptr ) {}
         ~camera();
 
-        void print_info();
+        void print_info( bool verbose );
         void list_attributes( bool verbose );
         void set_feature( std::string feature_name, std::string value = "" );
         void set_features( std::string name_value_pairs );
