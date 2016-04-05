@@ -189,7 +189,7 @@ int main( int argc, char** argv )
         if( options.exists( "--version" ))
         {
             VmbVersionInfo_t version = snark::vimba::system::version();
-            std::cerr << "Vimba library version: " << version.major << "." << version.minor << "." << version.patch << std::endl;
+            std::cout << "Vimba library version: " << version.major << "." << version.minor << "." << version.patch << std::endl;
             return 0;
         }
 
