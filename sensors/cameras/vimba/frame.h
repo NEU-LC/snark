@@ -27,37 +27,37 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include <iostream>
-#include <comma/application/verbose.h>
-#include "snark/imaging/cv_mat/serialization.h"
-#include "error.h"
-#include "frame.h"
-#include "frame_observer.h"
+#ifndef SNARK_SENSORS_VIMBA_FRAME_H_
+#define SNARK_SENSORS_VIMBA_FRAME_H_
+
+#include <VimbaCPP/Include/Frame.h>
 
 namespace snark { namespace vimba {
 
-frame_observer::frame_observer( AVT::VmbAPI::CameraPtr camera
-                              , std::unique_ptr< snark::cv_mat::serialization > serialization )
-    : IFrameObserver( camera )
-    , serialization_( std::move( serialization ))
+class frame
 {
-    std::cerr << "Creating frame_observer" << std::endl;
-}
+    public:
+        frame( const AVT::VmbAPI::FramePtr& frame_ptr );
 
-void frame_observer::FrameReceived( const AVT::VmbAPI::FramePtr frame_ptr )
-{
-    frame frame( frame_ptr );
+        void check_status();
+        void check_id();
 
-    frame.check_id();
-    frame.check_status();
+        VmbUint32_t get_height() { return height_; }
+        VmbUint32_t get_width() { return width_; }
+        VmbUchar_t* get_image_buffer() { return image_buffer_; }
 
-    // TODO: different image formats
-    cv::Mat cv_mat( frame.get_height(), frame.get_width() * 1.5, CV_8UC1, frame.get_image_buffer() );
+    private:
+        std::string frame_status_string();
 
-    serialization_->write( std::cout
-                         , std::make_pair( boost::posix_time::microsec_clock::universal_time(), cv_mat ));
-
-    m_pCamera->QueueFrame( frame_ptr );
-}
+        VmbUint64_t frame_id_;
+        VmbFrameStatusType frame_status_;
+        VmbUint32_t height_;
+        VmbUint32_t width_;
+        VmbUint32_t size_;
+        VmbUchar_t* image_buffer_;
+        VmbUint64_t last_frame_id_;
+};
 
 } } // namespace snark { namespace vimba {
+
+#endif // SNARK_SENSORS_VIMBA_FRAME_H_

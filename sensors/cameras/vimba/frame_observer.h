@@ -45,11 +45,6 @@ class frame_observer : virtual public AVT::VmbAPI::IFrameObserver
         virtual void FrameReceived( const AVT::VmbAPI::FramePtr pFrame );
 
     private:
-        static std::string frame_status_to_string( VmbFrameStatusType frame_status );
-        static void check_frame_status( const AVT::VmbAPI::FramePtr& frame );
-        void check_frame_id( const AVT::VmbAPI::FramePtr& frame );
-
-        VmbUint64_t last_frame_id_;
         std::unique_ptr< snark::cv_mat::serialization > serialization_;
 };
 
