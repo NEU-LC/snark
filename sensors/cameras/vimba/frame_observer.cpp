@@ -71,6 +71,7 @@ void frame_observer::FrameReceived( const AVT::VmbAPI::FramePtr frame )
     //     std::cerr << "Got frame " << frame_id << ": " << width << "x" << height << " with " << size << " bytes" << std::endl;
     // }
 
+    // TODO: different image formats
     cv::Mat cv_mat( height, width * 1.5, CV_8UC1, image_buffer );
 
     output_data_t output_data;
