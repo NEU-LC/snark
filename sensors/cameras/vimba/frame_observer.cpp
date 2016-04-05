@@ -46,28 +46,17 @@ frame_observer::frame_observer( AVT::VmbAPI::CameraPtr camera
 
 void frame_observer::FrameReceived( const AVT::VmbAPI::FramePtr frame )
 {
-    check_frame_id( frame );
-    check_frame_status( frame );
-
     VmbUint32_t height;
     SP_ACCESS( frame )->GetHeight( height );
 
     VmbUint32_t width;
     SP_ACCESS( frame )->GetWidth( width );
-    
+
     VmbUchar_t* image_buffer;
     SP_ACCESS( frame )->GetImage( image_buffer );
 
-    VmbUint32_t size;
-    SP_ACCESS( frame )->GetImageSize( size );
-
-    VmbUint64_t frame_id;
-    SP_ACCESS( frame )->GetFrameID( frame_id );
-
-    // if( comma::verbose )
-    // {
-    //     std::cerr << "Got frame " << frame_id << ": " << width << "x" << height << " with " << size << " bytes" << std::endl;
-    // }
+    check_frame_id( frame );
+    check_frame_status( frame );
 
     // TODO: different image formats
     cv::Mat cv_mat( height, width * 1.5, CV_8UC1, image_buffer );
@@ -124,8 +113,24 @@ void frame_observer::check_frame_status( const AVT::VmbAPI::FramePtr& frame )
     {
         if( frame_status != VmbFrameStatusComplete )
         {
-            std::cerr << "Warning: frame status "
-                      << frame_status_to_string( frame_status ) << std::endl;
+            VmbUint32_t height;
+            SP_ACCESS( frame )->GetHeight( height );
+
+            VmbUint32_t width;
+            SP_ACCESS( frame )->GetWidth( width );
+
+            VmbUchar_t* image_buffer;
+            SP_ACCESS( frame )->GetImage( image_buffer );
+
+            VmbUint32_t size;
+            SP_ACCESS( frame )->GetImageSize( size );
+
+            VmbUint64_t frame_id;
+            SP_ACCESS( frame )->GetFrameID( frame_id );
+
+            std::cerr << "Warning: frame " << frame_id << " status "
+                      << frame_status_to_string( frame_status )
+                      << " (" << width << "x" << height << " with " << size << " bytes)" << std::endl;
         }
     }
 }
