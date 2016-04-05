@@ -47,6 +47,7 @@ static void bash_completion( unsigned const ac, char const * const * av )
         " --list-cameras"
         " --list-attributes"
         " --id"
+        " --set"
         " --header --no-header"
         ;
 
@@ -63,18 +64,21 @@ static void usage( bool verbose = false )
     std::cerr << "Usage: " << comma::verbose.app_name() << " [<options>] [<filters>]" << std::endl;
     std::cerr << std::endl;
     std::cerr << "Options: " << std::endl;
-    std::cerr << "    --help,-h:         show this help, --help --verbose for more help" << std::endl;
-    std::cerr << "    --verbose,-v:      more output" << std::endl;
-    std::cerr << "    --version:         output the library version" << std::endl;
-    std::cerr << "    --list-cameras:    list all cameras and exit" << std::endl;
-    std::cerr << "    --list-attributes: list camera attributes, --verbose for more detail" << std::endl;
-    std::cerr << "    --id=<camera id>:  default: first available camera" << std::endl;
-    std::cerr << "    --fields=<fields>: header fields; default: " << default_fields << std::endl;
-    std::cerr << "    --header:          output header only" << std::endl;
-    std::cerr << "    --no-header:       output image data only" << std::endl;
+    std::cerr << "    --help,-h:          show this help, --help --verbose for more help" << std::endl;
+    std::cerr << "    --verbose,-v:       more output" << std::endl;
+    std::cerr << "    --version:          output the library version" << std::endl;
+    std::cerr << "    --list-cameras:     list all cameras and exit" << std::endl;
+    std::cerr << "    --list-attributes:  list camera attributes, --verbose for more detail" << std::endl;
+    std::cerr << "    --set <attributes>: set attributes as semicolon-separated name-value pairs" << std::endl;
+    std::cerr << "    --id=<camera id>:   default: first available camera" << std::endl;
+    std::cerr << "    --fields=<fields>:  header fields; default: " << default_fields << std::endl;
+    std::cerr << "    --header:           output header only" << std::endl;
+    std::cerr << "    --no-header:        output image data only" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    Possible values for <fields> are: " << possible_fields << std::endl;
-
+    std::cerr << std::endl;
+    std::cerr << "Examples:" << std::endl;
+    std::cerr << "    " << comma::verbose.app_name() << " --set \"ExposureAuto=Off;ExposureTimeAbs=60\"" << std::endl;
     std::cerr << std::endl;
     if( verbose )
     {
