@@ -131,6 +131,8 @@ std::unique_ptr< snark::cv_mat::serialization > create_serializer( const comma::
 
 int run_cmd( const comma::command_line_options& options )
 {
+    snark::vimba::system system;                                   // Initialize the Vimba API
+
     if( options.exists( "--list-cameras" ))
     {
         AVT::VmbAPI::CameraPtrVector cameras = snark::vimba::system::get_cameras();
@@ -200,7 +202,6 @@ int main( int argc, char** argv )
             COMMA_THROW( comma::exception, "GENICAM_GENTL64_PATH is not set" );
         }
 
-        snark::vimba::system system;                                   // Initialize the Vimba API
         ret_code = run_cmd( options );
     }
     catch( std::exception& ex )
