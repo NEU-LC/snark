@@ -139,9 +139,6 @@ VmbErrorType camera::start_continuous_image_acquisition( std::unique_ptr< snark:
 {
     if( comma::verbose ) std::cerr << "Start continuous image acquisition" << std::endl;
 
-    // Set the GeV packet size to the highest possible value
-    set_feature( "GVSPAdjustPacketSize" );
-
     // Create a frame observer for this camera
     // (This will be wrapped in a shared_ptr so we don't delete it)
     frame_observer* fo = new frame_observer( camera_, std::move( serialization ));
