@@ -107,6 +107,7 @@ void frame_observer::check_frame_id( const AVT::VmbAPI::FramePtr& frame )
                           << " detected" << std::endl;
             }
         }
+        last_frame_id_ = frame_id;
     }
     else
     {
