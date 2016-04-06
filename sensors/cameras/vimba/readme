@@ -1,20 +1,27 @@
-Original gige command:
+The original gige command was:
 
-"gige-cat  --id 180711 --set \\\"SyncOut3Invert=Off;SyncOut3Mode=Exposing;ExposureMode=Manual;ExposureValue=60;GainValue=12;PixelFormat=Bayer12Packed;StreamBytesPerSecond=120000000;PacketSize=9216;FrameRate=5\\\""
+gige-cat --id 180711 --set "SyncOut3Invert=Off;SyncOut3Mode=Exposing;ExposureMode=Manual;ExposureValue=60;GainValue=12;PixelFormat=Bayer12Packed;StreamBytesPerSecond=120000000;PacketSize=9216;FrameRate=5"
 
+The equivalent vimba settings are:
 
-Vimba exposure settings:
+PvAPI                           Vimba
+------------------------------  -------------------------------
+                                SyncOutSelector=SyncOut3
+SyncOut3Invert=Off              SyncOutPolarity=Normal
+SyncOut3Mode=Exposing           SyncOutSource=Exposing
 
-ExposureAuto=Off
-ExposureAutoAdjustTol=5
-ExposureAutoAlg=Mean
-ExposureAutoMax=500000
-ExposureAutoMin=10
-ExposureAutoOutliers=0
-ExposureAutoRate=100
-ExposureAutoTarget=50
-ExposureMode=Timed
-ExposureTimeAbs=60
+ExposureMode=Manual             ExposureAuto=Off
+ExposureValue=60                ExposureTimeAbs=60
+GainValue=12                    Gain=12
+
+PixelFormat=Bayer12Packed       PixelFormat=BayerGR12Packed
+
+StreamBytesPerSecond=120000000  StreamBytesPerSecond=120000000
+PacketSize=9215                 GVSPPacketSize=9215
+
+FrameRate=5                     AcquisitionFrameRateAbs=5
+
+An alternative to explicitly setting GVSPPacketSize is to use GVSPAdjustPacketSize.
 
 TODO: installation of shared libraries and CTI files
 TODO: set up shrimp.publish.json command (check id and attributes)
