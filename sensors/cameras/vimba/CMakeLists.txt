@@ -1,6 +1,14 @@
 set( PROJECT "vimba" )
 set( TARGET_NAME snark_${PROJECT} )
 
+if( WIN32 )
+    message( FATAL "snark/sensors/cameras/vimba: not implemented for windows" )
+endif( WIN32 )
+
+if( NOT IS_64_BIT )
+    message( FATAL "snark/sensors/cameras/vimba: only implemented for 64 bit systems" )
+endif( NOT IS_64_BIT )
+
 file( GLOB source *.cpp )
 file( GLOB includes *.h )
 
@@ -10,13 +18,12 @@ add_library( ${TARGET_NAME} ${source} ${includes} )
 set_target_properties( ${TARGET_NAME} PROPERTIES ${snark_LIBRARY_PROPERTIES} )
 target_link_libraries( ${TARGET_NAME} )
 
-# install( FILES ${includes} DESTINATION ${snark_INSTALL_INCLUDE_DIR}/sensors/cameras/${PROJECT} )
-# install(
-#    TARGETS ${TARGET_NAME}
-#    RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime     # .exe, .dll
-#    LIBRARY DESTINATION ${snark_INSTALL_LIB_DIR} COMPONENT Runtime     # .so, mod.dll
-#    ARCHIVE DESTINATION ${snark_INSTALL_LIB_DIR} COMPONENT Development # .a, .lib
-# )
+install( FILES ${includes} DESTINATION ${snark_INSTALL_INCLUDE_DIR}/sensors/cameras/${PROJECT} )
+install(
+   TARGETS ${TARGET_NAME}
+   LIBRARY DESTINATION ${snark_INSTALL_LIB_DIR} COMPONENT Runtime     # .so, mod.dll
+   ARCHIVE DESTINATION ${snark_INSTALL_LIB_DIR} COMPONENT Development # .a, .lib
+)
 
 # We're using from c++11 features
 
