@@ -107,6 +107,38 @@ std::string feature_value( const AVT::VmbAPI::FeaturePtr& feature )
     return value.str();
 }
 
+std::string wrap( std::string text, size_t width = 80, std::string prefix = "")
+{
+    std::istringstream words( text );
+    std::ostringstream wrapped;
+    std::string word;
+
+    size_t wrap_width = width - prefix.length();
+
+    if( words >> word )
+    {
+        wrapped << word;
+        size_t space_left = wrap_width - word.length();
+        while( words >> word )
+        {
+            if( space_left < word.length() + 1 ) {
+                wrapped << '\n' << prefix << word;
+                space_left = wrap_width - word.length();
+            } else {
+                wrapped << ' ' << word;
+                space_left -= word.length() + 1;
+            }
+        }
+    }
+    return wrapped.str();
+}
+
+void print_feature_entry( std::string label, std::string value )
+{
+    std::string prefix( label.length() + 2, ' ' );
+    std::cout << label << ": " << wrap( value, 80, prefix ) << "\n";
+}
+
 // Prints all details of a feature
 void print_feature( const AVT::VmbAPI::FeaturePtr& feature, bool verbose )
 {
@@ -133,10 +165,9 @@ void print_feature( const AVT::VmbAPI::FeaturePtr& feature, bool verbose )
         {
             write_error( "Could not get feature description", status );
         }
-
-        std::cout << "Feature Name: " << name        << "\n";
-        std::cout << "Description : " << wrap( description ) << "\n";
-        std::cout << "Value       : " << value       << "\n";
+        print_feature_entry( "Name       ", name );
+        print_feature_entry( "Value      ", value );
+        print_feature_entry( "Description", description );
         std::cout << std::endl;
     }
 }
