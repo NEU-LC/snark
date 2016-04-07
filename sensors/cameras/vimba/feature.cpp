@@ -54,6 +54,27 @@ std::string feature_value( const AVT::VmbAPI::FeaturePtr& feature )
         switch( type )
         {
             case VmbFeatureDataEnum:
+                {
+                    std::string string_value;
+                    status = feature->GetValue( string_value );
+                    if ( status == VmbErrorSuccess )
+                    {
+                        AVT::VmbAPI::EnumEntry enum_entry;
+                        status = feature->GetEntry( enum_entry, string_value.c_str() );
+                        if ( status == VmbErrorSuccess )
+                        {
+                            // If you're debugging, you can use this enum_value to map back to
+                            // the actual enum in VmbCommonTypes.h. Just look at the last byte.
+                            VmbInt64_t enum_value;
+                            status = enum_entry.GetValue( enum_value );
+                            if ( status == VmbErrorSuccess )
+                            {
+                                value << string_value << " (0x" << std::hex << enum_value << ")";
+                            }
+                        }
+                    }
+                }
+                break;
             case VmbFeatureDataString:
                 {
                     std::string string_value;
