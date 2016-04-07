@@ -346,8 +346,17 @@ void set_feature( AVT::VmbAPI::CameraPtr camera
     }
     if( status != VmbErrorSuccess )
     {
-        // TODO: offer suggestions for legal values for enumeration or legal ranges for other types
-        COMMA_THROW( comma::exception, "failed to set feature \"" << feature_name << " to " << value << ", Error: " << status << ": " << error_code_to_string( status ));
+        std::string allowed_error_msg;
+        std::string allowed = allowed_values( feature );
+        if( !allowed.empty() )
+        {
+            allowed_error_msg = "; allowed values: ";
+            allowed_error_msg += allowed;
+        }
+        COMMA_THROW( comma::exception
+                   , "failed to set feature \"" << feature_name << " to " << value
+                   << ", Error: " << status << ": " << error_code_to_string( status )
+                   << allowed_error_msg );
     }
 }
 
