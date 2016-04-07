@@ -43,11 +43,11 @@ std::string feature_value( const AVT::VmbAPI::FeaturePtr& feature )
 {
     std::ostringstream value;
     VmbFeatureDataType type;
-    VmbErrorType error = feature->GetDataType( type );
+    VmbErrorType status = feature->GetDataType( type );
     
-    if( error != VmbErrorSuccess )
+    if( status != VmbErrorSuccess )
     {
-        write_error( "Could not get feature Data Type", error );
+        write_error( "Could not get feature Data Type", status );
     }
     else
     {
@@ -57,8 +57,8 @@ std::string feature_value( const AVT::VmbAPI::FeaturePtr& feature )
             case VmbFeatureDataString:
                 {
                     std::string string_value;
-                    error = feature->GetValue( string_value );
-                    if ( error == VmbErrorSuccess )
+                    status = feature->GetValue( string_value );
+                    if ( status == VmbErrorSuccess )
                     {
                         return string_value;
                     }
@@ -67,8 +67,8 @@ std::string feature_value( const AVT::VmbAPI::FeaturePtr& feature )
             case VmbFeatureDataBool:
                 {
                     VmbBool_t bool_value;
-                    error = feature->GetValue( bool_value );
-                    if ( error == VmbErrorSuccess )
+                    status = feature->GetValue( bool_value );
+                    if ( status == VmbErrorSuccess )
                     {
                         value << bool_value;
                     }
@@ -77,8 +77,8 @@ std::string feature_value( const AVT::VmbAPI::FeaturePtr& feature )
             case VmbFeatureDataFloat:
                 {
                     double float_value;
-                    error = feature->GetValue( float_value );
-                    if( error == VmbErrorSuccess)
+                    status = feature->GetValue( float_value );
+                    if( status == VmbErrorSuccess)
                     {
                         value << float_value;
                     }
@@ -87,8 +87,8 @@ std::string feature_value( const AVT::VmbAPI::FeaturePtr& feature )
             case VmbFeatureDataInt:
                 {
                     VmbInt64_t int_value;
-                    error = feature->GetValue( int_value );
-                    if( error == VmbErrorSuccess)
+                    status = feature->GetValue( int_value );
+                    if( status == VmbErrorSuccess)
                     {
                         value << int_value;
                     }
@@ -99,9 +99,9 @@ std::string feature_value( const AVT::VmbAPI::FeaturePtr& feature )
                 value << "[None]";
                 break;
         }
-        if( error != VmbErrorSuccess )
+        if( status != VmbErrorSuccess )
         {
-            write_error( "Could not get feature value", error );
+            write_error( "Could not get feature value", status );
         }
     }
     return value.str();
@@ -120,10 +120,10 @@ void print_feature( const AVT::VmbAPI::FeaturePtr& feature, bool verbose )
 
     value = feature_value( feature );
 
-    VmbErrorType error = feature->GetName( name );
-    if( error != VmbErrorSuccess )
+    VmbErrorType status = feature->GetName( name );
+    if( status != VmbErrorSuccess )
     {
-        write_error( "Could not get feature name", error );
+        write_error( "Could not get feature name", status );
     }
 
     if( !verbose )
@@ -132,34 +132,34 @@ void print_feature( const AVT::VmbAPI::FeaturePtr& feature, bool verbose )
     }
     else
     {
-        error = feature->GetDisplayName( display_name );
-        if( error != VmbErrorSuccess )
+        status = feature->GetDisplayName( display_name );
+        if( status != VmbErrorSuccess )
         {
-            write_error( "Could not get feature display name", error );
+            write_error( "Could not get feature display name", status );
         }
 
-        error = feature->GetToolTip( tool_tip );
-        if( error != VmbErrorSuccess )
+        status = feature->GetToolTip( tool_tip );
+        if( status != VmbErrorSuccess )
         {
-            write_error( "Could not get feature tooltip", error );
+            write_error( "Could not get feature tooltip", status );
         }
 
-        error = feature->GetDescription( description );
-        if( error != VmbErrorSuccess )
+        status = feature->GetDescription( description );
+        if( status != VmbErrorSuccess )
         {
-            write_error( "Could not get feature description", error );
+            write_error( "Could not get feature description", status );
         }
 
-        error = feature->GetCategory( category );
-        if( error != VmbErrorSuccess )
+        status = feature->GetCategory( category );
+        if( status != VmbErrorSuccess )
         {
-            write_error( "Could not get feature category", error );
+            write_error( "Could not get feature category", status );
         }
 
-        error = feature->GetSFNCNamespace( sfnc_namespace );
-        if( error != VmbErrorSuccess )
+        status = feature->GetSFNCNamespace( sfnc_namespace );
+        if( status != VmbErrorSuccess )
         {
-            write_error( "Could not get feature SNFC namespace" , error );
+            write_error( "Could not get feature SNFC namespace" , status );
         }
 
         std::cout << "Feature Name   : " << name           << "\n";

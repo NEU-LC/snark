@@ -59,20 +59,20 @@ void camera::print_info( bool verbose )
     std::string serial_number;
     std::string interface_id;
 
-    VmbErrorType error = camera_->GetID( id );
-    if( error != VmbErrorSuccess ) { write_error( "Could not get camera ID", error ); }
+    VmbErrorType status = camera_->GetID( id );
+    if( status != VmbErrorSuccess ) { write_error( "Could not get camera ID", status ); }
                 
-    error = camera_->GetName( name );
-    if( error != VmbErrorSuccess ) { write_error( "Could not get camera name", error ); }
+    status = camera_->GetName( name );
+    if( status != VmbErrorSuccess ) { write_error( "Could not get camera name", status ); }
 
-    error = camera_->GetModel( model );
-    if( error != VmbErrorSuccess ) { write_error( "Could not get camera mode name", error ); }
+    status = camera_->GetModel( model );
+    if( status != VmbErrorSuccess ) { write_error( "Could not get camera mode name", status ); }
 
-    error = camera_->GetSerialNumber( serial_number );
-    if( error != VmbErrorSuccess ) { write_error( "Could not get camera serial number", error ); }
+    status = camera_->GetSerialNumber( serial_number );
+    if( status != VmbErrorSuccess ) { write_error( "Could not get camera serial number", status ); }
 
-    error = camera_->GetInterfaceID( interface_id );
-    if( error != VmbErrorSuccess ) { write_error( "Could not get interface ID", error ); }
+    status = camera_->GetInterfaceID( interface_id );
+    if( status != VmbErrorSuccess ) { write_error( "Could not get interface ID", status ); }
 
     if( verbose )
     {
