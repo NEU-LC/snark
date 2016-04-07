@@ -111,11 +111,7 @@ std::string feature_value( const AVT::VmbAPI::FeaturePtr& feature )
 void print_feature( const AVT::VmbAPI::FeaturePtr& feature, bool verbose )
 {
     std::string name;                    // The name of the feature
-    std::string display_name;            // The display name of the feature
-    std::string tool_tip;                // A short description of the feature
     std::string description;             // A long description of the feature
-    std::string category;                // A category to group features
-    std::string sfnc_namespace;          // The Standard Feature Naming Convention namespace
     std::string value;                   // The value of the feature
 
     value = feature_value( feature );
@@ -132,42 +128,15 @@ void print_feature( const AVT::VmbAPI::FeaturePtr& feature, bool verbose )
     }
     else
     {
-        status = feature->GetDisplayName( display_name );
-        if( status != VmbErrorSuccess )
-        {
-            write_error( "Could not get feature display name", status );
-        }
-
-        status = feature->GetToolTip( tool_tip );
-        if( status != VmbErrorSuccess )
-        {
-            write_error( "Could not get feature tooltip", status );
-        }
-
         status = feature->GetDescription( description );
         if( status != VmbErrorSuccess )
         {
             write_error( "Could not get feature description", status );
         }
 
-        status = feature->GetCategory( category );
-        if( status != VmbErrorSuccess )
-        {
-            write_error( "Could not get feature category", status );
-        }
-
-        status = feature->GetSFNCNamespace( sfnc_namespace );
-        if( status != VmbErrorSuccess )
-        {
-            write_error( "Could not get feature SNFC namespace" , status );
-        }
-
-        std::cout << "Feature Name   : " << name           << "\n";
-        std::cout << "Display Name   : " << display_name   << "\n";
-        std::cout << "Tooltip        : " << tool_tip       << "\n";
-        std::cout << "Description    : " << description    << "\n";
-        std::cout << "SNFC Namespace : " << sfnc_namespace << "\n";
-        std::cout << "Value          : " << value          << "\n";
+        std::cout << "Feature Name: " << name        << "\n";
+        std::cout << "Description : " << wrap( description ) << "\n";
+        std::cout << "Value       : " << value       << "\n";
         std::cout << std::endl;
     }
 }
