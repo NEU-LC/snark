@@ -92,6 +92,14 @@ static void usage( bool verbose = false )
         std::cerr << "    to the path to the transport layer cti file. See the Vimba Manual for" << std::endl;
         std::cerr << "    more detail." << std::endl;
         std::cerr << std::endl;
+        std::cerr << "Differences compared to gige-cat:" << std::endl;
+        std::cerr << "    " << comma::verbose.app_name() << " does not support the integer id's supported by gige-cat." << std::endl;
+        std::cerr << "    e.g. \"--id 180711\". Instead use one of the id's given by \"--list-cameras\"." << std::endl;
+        std::cerr << std::endl;
+        std::cerr << "    Many attributes have changed name or are configured in a different way." << std::endl;
+        std::cerr << "    Use \"--list-attributes\" and \"--list-attributes --verbose\" to find the" << std::endl;
+        std::cerr << "    appropriate new attribute." << std::endl;
+        std::cerr << std::endl;
         // std::cerr << "Image Filters:" << std::endl;
         // std::cerr << snark::cv_mat::filters::usage() << std::endl;
     }
