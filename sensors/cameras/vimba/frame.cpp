@@ -97,8 +97,8 @@ std::string frame::frame_status_string()
         case VmbFrameStatusIncomplete: return "Incomplete";
         case VmbFrameStatusTooSmall:   return "Too small";
         case VmbFrameStatusInvalid:    return "Invalid";
-        default:                       return "unknown frame status";
     }
+    return "";                          // Quiet gcc warning
 }
 
 } } // namespace snark { namespace vimba {
