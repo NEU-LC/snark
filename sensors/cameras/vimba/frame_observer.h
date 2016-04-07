@@ -45,7 +45,10 @@ class frame_observer : virtual public AVT::VmbAPI::IFrameObserver
         };
 
         frame_observer( AVT::VmbAPI::CameraPtr camera,
-                        std::unique_ptr< snark::cv_mat::serialization > serialization );
+                        std::unique_ptr< snark::cv_mat::serialization > serialization )
+            : IFrameObserver( camera )
+            , serialization_( std::move( serialization ))
+        {}
     
         // This is our callback routine that will be executed on every received frame
         virtual void FrameReceived( const AVT::VmbAPI::FramePtr pFrame );

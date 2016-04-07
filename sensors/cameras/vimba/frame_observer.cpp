@@ -28,21 +28,10 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <iostream>
-#include <comma/application/verbose.h>
-#include "snark/imaging/cv_mat/serialization.h"
-#include "error.h"
 #include "frame.h"
 #include "frame_observer.h"
 
 namespace snark { namespace vimba {
-
-frame_observer::frame_observer( AVT::VmbAPI::CameraPtr camera
-                              , std::unique_ptr< snark::cv_mat::serialization > serialization )
-    : IFrameObserver( camera )
-    , serialization_( std::move( serialization ))
-{
-    std::cerr << "Creating frame_observer" << std::endl;
-}
 
 void frame_observer::FrameReceived( const AVT::VmbAPI::FramePtr frame_ptr )
 {
