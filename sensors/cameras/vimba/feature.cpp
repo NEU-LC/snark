@@ -139,12 +139,95 @@ void print_feature_entry( std::string label, std::string value )
     std::cout << label << ": " << wrap( value, 80, prefix ) << "\n";
 }
 
+std::string allowed_values( const AVT::VmbAPI::FeaturePtr& feature )
+{
+    std::ostringstream allowed_values;
+    VmbFeatureDataType type;
+    VmbErrorType status = feature->GetDataType( type );
+    if( status != VmbErrorSuccess )
+    {
+        write_error( "Could not get feature Data Type", status );
+    }
+    else
+    {
+        switch( type )
+        {
+            case VmbFeatureDataEnum:
+                {
+                    AVT::VmbAPI::EnumEntryVector entries;
+                    status = feature->GetEntries( entries );
+                    if( status == VmbErrorSuccess)
+                    {
+                        bool first = true;
+                        for( auto it = entries.cbegin(); it != entries.cend(); ++it )
+                        {
+                            std::string name;
+                            status = it->GetName( name );
+                            if( status != VmbErrorSuccess )
+                                name = "<error - GetName()>";
+
+                            if( !first )
+                                allowed_values << ", ";
+                            else
+                                first = false;
+                            allowed_values << name;
+                        }
+                    }
+                }
+                break;
+            case VmbFeatureDataInt:
+                {
+                    VmbInt64_t minimum, maximum;
+                    status = feature->GetRange( minimum, maximum );
+                    if( status == VmbErrorSuccess)
+                    {
+                        allowed_values << minimum << " to " << maximum;
+                    }
+                }
+                break;
+            case VmbFeatureDataFloat:
+                {
+                    double minimum, maximum;
+                    status = feature->GetRange( minimum, maximum );
+                    if( status == VmbErrorSuccess)
+                    {
+                        allowed_values << minimum << " to " << maximum;
+                    }
+                }
+                break;
+            default:
+                break;
+        }
+        if( status != VmbErrorSuccess )
+        {
+            write_error( "Could not get allowed values", status );
+        }
+    }
+    return allowed_values.str();
+}
+
+std::string data_type_to_string( VmbFeatureDataType data_type )
+{
+    switch( data_type )
+    {
+        case VmbFeatureDataUnknown: return "unknown";
+        case VmbFeatureDataInt:     return "integer";
+        case VmbFeatureDataFloat:   return "floating point";
+        case VmbFeatureDataEnum:    return "enumeration";
+        case VmbFeatureDataString:  return "string";
+        case VmbFeatureDataBool:    return "boolean";
+        case VmbFeatureDataCommand: return "command";
+        case VmbFeatureDataRaw:     return "raw";
+        case VmbFeatureDataNone:    return "no data";
+    }
+    return "";                          // Quiet gcc warning
+}
+
 // Prints all details of a feature
 void print_feature( const AVT::VmbAPI::FeaturePtr& feature, bool verbose )
 {
-    std::string name;                    // The name of the feature
-    std::string description;             // A long description of the feature
-    std::string value;                   // The value of the feature
+    std::string name;
+    std::string value;
 
     value = feature_value( feature );
 
@@ -160,14 +243,28 @@ void print_feature( const AVT::VmbAPI::FeaturePtr& feature, bool verbose )
     }
     else
     {
+        VmbFeatureDataType data_type;
+        std::string description;
+
+        status = feature->GetDataType( data_type );
+        if( status != VmbErrorSuccess )
+        {
+            write_error( "Could not get feature data type", status );
+        }
+
         status = feature->GetDescription( description );
         if( status != VmbErrorSuccess )
         {
             write_error( "Could not get feature description", status );
         }
-        print_feature_entry( "Name       ", name );
-        print_feature_entry( "Value      ", value );
-        print_feature_entry( "Description", description );
+
+        print_feature_entry( "Name          ", name );
+        print_feature_entry( "Type          ", data_type_to_string( data_type ));
+        print_feature_entry( "Value         ", value );
+        print_feature_entry( "Description   ", description );
+        std::string allowed = allowed_values( feature );
+        if( !allowed.empty() )
+            print_feature_entry( "Allowed Values", allowed );
         std::cout << std::endl;
     }
 }
@@ -194,23 +291,6 @@ VmbErrorType run_command( AVT::VmbAPI::FeaturePtr feature )
         } while( !is_command_done );
     }
     return status;
-}
-
-std::string data_type_to_string( VmbFeatureDataType data_type )
-{
-    switch( data_type )
-    {
-        case VmbFeatureDataUnknown: return "unknown";
-        case VmbFeatureDataInt:     return "integer";
-        case VmbFeatureDataFloat:   return "floating point";
-        case VmbFeatureDataEnum:    return "enumeration";
-        case VmbFeatureDataString:  return "string";
-        case VmbFeatureDataBool:    return "boolean";
-        case VmbFeatureDataCommand: return "command";
-        case VmbFeatureDataRaw:     return "raw";
-        case VmbFeatureDataNone:    return "no data";
-    }
-    return "";                          // Quiet gcc warning
 }
 
 void set_feature( AVT::VmbAPI::CameraPtr camera
