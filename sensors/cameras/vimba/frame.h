@@ -42,20 +42,23 @@ class frame
         void check_status();
         void check_id();
 
-        VmbUint32_t get_height() { return height_; }
-        VmbUint32_t get_width() { return width_; }
-        VmbUchar_t* get_image_buffer() { return image_buffer_; }
+        VmbUint32_t        get_height() { return height_; }
+        VmbUint32_t        get_width() { return width_; }
+        VmbUchar_t*        get_image_buffer() { return image_buffer_; }
+        VmbPixelFormatType get_pixel_format() { return pixel_format_; }
 
     private:
         std::string frame_status_string();
 
-        VmbUint64_t frame_id_;
+        VmbUint64_t        frame_id_;
         VmbFrameStatusType frame_status_;
-        VmbUint32_t height_;
-        VmbUint32_t width_;
-        VmbUint32_t size_;
-        VmbUchar_t* image_buffer_;
-        VmbUint64_t last_frame_id_;
+        VmbUint32_t        height_;
+        VmbUint32_t        width_;
+        VmbUint32_t        size_;
+        VmbUchar_t*        image_buffer_;
+        VmbPixelFormatType pixel_format_;
+
+        VmbUint64_t        last_frame_id_;
 };
 
 } } // namespace snark { namespace vimba {

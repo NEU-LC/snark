@@ -51,13 +51,65 @@ void frame_observer::FrameReceived( const AVT::VmbAPI::FramePtr frame_ptr )
     frame.check_id();
     frame.check_status();
 
-    // TODO: different image formats
-    cv::Mat cv_mat( frame.get_height(), frame.get_width() * 1.5, CV_8UC1, frame.get_image_buffer() );
+    pixel_format_desc format_desc = get_format_desc( frame.get_pixel_format() );
+
+    cv::Mat cv_mat( frame.get_height()
+                  , frame.get_width() * format_desc.width_adjustment
+                  , format_desc.type
+                  , frame.get_image_buffer() );
 
     serialization_->write( std::cout
                          , std::make_pair( boost::posix_time::microsec_clock::universal_time(), cv_mat ));
 
     m_pCamera->QueueFrame( frame_ptr );
+}
+
+frame_observer::pixel_format_desc frame_observer::get_format_desc( VmbPixelFormatType pixel_format )
+{
+    switch( pixel_format )
+    {
+        // Run vimba-cat --list-attributes --verbose to see all allowed formats for a given camera
+        // However, actually trying them shows that many don't work. They are marked below.
+
+        case VmbPixelFormatBayerGR12Packed: // BayerGR12Packed maps to VmbPixelFormatBayerGB12Packed
+        case VmbPixelFormatBayerRG12Packed: // BayerRG12Packed (fails to set)
+        case VmbPixelFormatBayerGB12Packed: // BayerGB12Packed (fails to set)
+        case VmbPixelFormatBayerBG12Packed: // BayerBG12Packed (fails to set)
+            return { CV_8UC1, 1.5 };
+
+        case VmbPixelFormatMono8:       // Mono8
+        case VmbPixelFormatBayerGR8:    // BayerGR8
+        case VmbPixelFormatBayerRG8:    // BayerRG8 (fails to set)
+        case VmbPixelFormatBayerBG8:    // BayerGB8 (fails to set)
+            return { CV_8UC1, 1.0 };
+
+        case VmbPixelFormatRgb8:        // RGB8Packed
+        case VmbPixelFormatBgr8:        // BGR8Packed
+            return { CV_8UC3, 1.0 };
+
+        case VmbPixelFormatRgba8:       // RGBA8Packed
+        case VmbPixelFormatBgra8:       // BGRA8Packed
+            return { CV_8UC4, 1.0 };
+
+        case VmbPixelFormatMono10:      // Mono10 (fails to set)
+        case VmbPixelFormatMono12:      // Mono12 (fails to set)
+        case VmbPixelFormatMono12Packed:// Mono12Packed (fails to set)
+        case VmbPixelFormatMono14:      // Mono14 (fails to set)
+
+        case VmbPixelFormatBayerBG10:   // BayerBG10 (fails to set)
+        case VmbPixelFormatBayerGR12:   // BayerGR12
+        case VmbPixelFormatBayerRG12:   // BayerRG12 (fails to set)
+
+                                        // RGB10Packed (fails to set, no obvious mapping)
+        case VmbPixelFormatRgb12:       // RGB12Packed (fails to set)
+
+        case VmbPixelFormatYuv411:      // YUV411Packed
+        case VmbPixelFormatYuv422:      // YUV422Packed
+        case VmbPixelFormatYuv444:      // YUV444Packed
+
+        default:
+            COMMA_THROW( comma::exception, "unsupported format " << std::hex << pixel_format );
+    }
 }
 
 } } // namespace snark { namespace vimba {

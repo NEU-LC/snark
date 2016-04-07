@@ -62,6 +62,10 @@ frame::frame( const AVT::VmbAPI::FramePtr& frame_ptr )
     if( status != VmbErrorSuccess ) {
         COMMA_THROW( comma::exception, error_msg( "GetImage() failed", status ));
     }
+    status = SP_ACCESS( frame_ptr )->GetPixelFormat( pixel_format_ );
+    if( status != VmbErrorSuccess ) {
+        COMMA_THROW( comma::exception, error_msg( "GetPixelFormat() failed", status ));
+    }
 }
 
 void frame::check_id()
