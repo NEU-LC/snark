@@ -40,7 +40,4 @@ else()
     set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --std=c++0x" )
 endif()
 
-set( VIMBA_GENICAM_GENTL64_PATH "/usr/local/lib" CACHE PATH "path to GenTL provider library" )
-set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DVIMBA_GENICAM_GENTL64_PATH=\"${VIMBA_GENICAM_GENTL64_PATH}\"" )
-
 add_subdirectory( applications )
