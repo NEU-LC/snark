@@ -27,6 +27,30 @@ install(
     ARCHIVE DESTINATION ${snark_INSTALL_LIB_DIR} COMPONENT Development # .a, .lib
 )
 
+set( VIMBA_SDK_ROOT "/opt/vimba" CACHE PATH "Vimba SDK root directory" )
+if( NOT EXISTS ${VIMBA_SDK_ROOT} )
+    message( FATAL_ERROR "\nPlease install the Vimba SDK at ${VIMBA_SDK_ROOT} "
+        "or set VIMBA_SDK_ROOT to point to the SDK installation directory.\n"
+        "The SDK is available from https://www.alliedvision.com/en/products/software.html.\n"
+        "The code in this project has been developed and tested against version 1.4 of the SDK."
+        )
+endif()
+
+# Set up Vimba SDK shared libraries
+set( VIMBA_SDK_LIB_DIR "${VIMBA_SDK_ROOT}/VimbaCPP/DynamicLib/x86_64bit" CACHE PATH "Path to Vimba SDK shared libraries" )
+link_directories( ${VIMBA_SDK_LIB_DIR} )
+
+set( vimba_conf ${CMAKE_CURRENT_BINARY_DIR}/vimba.conf )
+add_custom_command( OUTPUT vimba.conf
+                    COMMAND echo ${VIMBA_SDK_LIB_DIR} > ${vimba_conf}
+                    COMMENT "generating vimba.conf with VIMBA_SDK_LIB_DIR=${VIMBA_SDK_LIB_DIR}"
+                    VERBATIM )
+add_custom_target( create_vimba_conf DEPENDS vimba.conf )
+add_dependencies( ${TARGET_NAME} create_vimba_conf )
+install( FILES ${vimba_conf} DESTINATION /etc/ld.so.conf.d )
+install( CODE "message( \"${project_path}: running ldconfig\" )" )
+install( CODE "execute_process( COMMAND ldconfig )" )
+
 # We're using from c++11 features
 
 execute_process( COMMAND ${CMAKE_CXX_COMPILER} -dumpversion
