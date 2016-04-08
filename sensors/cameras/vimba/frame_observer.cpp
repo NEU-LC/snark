@@ -58,7 +58,9 @@ frame_observer::pixel_format_desc frame_observer::get_format_desc( VmbPixelForma
     switch( pixel_format )
     {
         // Run vimba-cat --list-attributes --verbose to see all allowed formats for a given camera
-        // However, actually trying them shows that many don't work. They are marked below.
+        //
+        // Below are the formats listed for the Prosilica GT3300. However,
+        // actually trying them shows that many don't work. They are marked below.
 
         case VmbPixelFormatBayerGR12Packed: // BayerGR12Packed maps to VmbPixelFormatBayerGB12Packed
         case VmbPixelFormatBayerRG12Packed: // BayerRG12Packed (fails to set)
