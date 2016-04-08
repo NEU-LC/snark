@@ -35,6 +35,9 @@ if( NOT EXISTS ${VIMBA_SDK_ROOT} )
         )
 endif()
 
+set( VIMBA_SDK_INCLUDE_DIR "${VIMBA_SDK_ROOT}" CACHE PATH "Path to Vimba SDK include directory" )
+include_directories( ${VIMBA_SDK_INCLUDE_DIR} )
+
 # Set up Vimba SDK shared libraries
 set( VIMBA_SDK_LIB_DIR "${VIMBA_SDK_ROOT}/VimbaCPP/DynamicLib/x86_64bit" CACHE PATH "Path to Vimba SDK shared libraries" )
 link_directories( ${VIMBA_SDK_LIB_DIR} )
