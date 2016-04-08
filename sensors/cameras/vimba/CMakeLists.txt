@@ -21,8 +21,7 @@ set_target_properties( ${TARGET_NAME} PROPERTIES ${snark_LIBRARY_PROPERTIES} )
 target_link_libraries( ${TARGET_NAME} )
 
 install( FILES ${includes} DESTINATION ${snark_INSTALL_INCLUDE_DIR}/sensors/cameras/${PROJECT} )
-install(
-    TARGETS ${TARGET_NAME}
+install( TARGETS ${TARGET_NAME}
     LIBRARY DESTINATION ${snark_INSTALL_LIB_DIR} COMPONENT Runtime     # .so, mod.dll
     ARCHIVE DESTINATION ${snark_INSTALL_LIB_DIR} COMPONENT Development # .a, .lib
 )
@@ -51,17 +50,17 @@ install( FILES ${vimba_conf} DESTINATION /etc/ld.so.conf.d )
 install( CODE "message( \"${project_path}: running ldconfig\" )" )
 install( CODE "execute_process( COMMAND ldconfig )" )
 
-# We're using from c++11 features
+# We're using some c++11 features
 
 execute_process( COMMAND ${CMAKE_CXX_COMPILER} -dumpversion
                  OUTPUT_VARIABLE GCC_VERSION
                  OUTPUT_STRIP_TRAILING_WHITESPACE )
 if( GCC_VERSION VERSION_EQUAL 4.7 OR GCC_VERSION VERSION_GREATER 4.7 )
-    message( STATUS "gcc ${GCC_VERSION} >= 4.7" )
-    set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --std=c++11" )
+    set( gcc_std_flag "--std=c++11" )
 else()
-    message( STATUS "gcc ${GCC_VERSION} < 4.7" )
-    set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --std=c++0x" )
+    set( gcc_std_flag "--std=c++0x" )
 endif()
+message( STATUS "Using ${gcc_std_flag} for gcc ${GCC_VERSION}" )
+set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${gcc_std_flag}" )
 
 add_subdirectory( applications )
