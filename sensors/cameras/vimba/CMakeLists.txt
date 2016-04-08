@@ -3,11 +3,11 @@ set( TARGET_NAME snark_${PROJECT} )
 
 if( WIN32 )
     message( FATAL "snark/sensors/cameras/vimba: not implemented for windows" )
-endif( WIN32 )
+endif()
 
 if( NOT IS_64_BIT )
     message( FATAL "snark/sensors/cameras/vimba: only implemented for 64 bit systems" )
-endif( NOT IS_64_BIT )
+endif()
 
 file( GLOB source *.cpp )
 file( GLOB includes *.h )
@@ -33,10 +33,10 @@ execute_process( COMMAND ${CMAKE_CXX_COMPILER} -dumpversion
 if( GCC_VERSION VERSION_EQUAL 4.7 OR GCC_VERSION VERSION_GREATER 4.7 )
     message( STATUS "gcc ${GCC_VERSION} >= 4.7" )
     set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --std=c++11" )
-else( GCC_VERSION VERSION_EQUAL 4.7 OR GCC_VERSION VERSION_GREATER 4.7 )
+else()
     message( STATUS "gcc ${GCC_VERSION} < 4.7" )
     set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --std=c++0x" )
-endif( GCC_VERSION VERSION_EQUAL 4.7 OR GCC_VERSION VERSION_GREATER 4.7 )
+endif()
 
 set( VIMBA_GENICAM_GENTL64_PATH "/usr/local/lib" CACHE PATH "path to GenTL provider library" )
 set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DVIMBA_GENICAM_GENTL64_PATH=\"${VIMBA_GENICAM_GENTL64_PATH}\"" )
