@@ -2,11 +2,11 @@ set( PROJECT "vimba" )
 set( TARGET_NAME snark_${PROJECT} )
 
 if( WIN32 )
-    message( FATAL "snark/sensors/cameras/vimba: not implemented for windows" )
+    message( FATAL_ERROR "snark/sensors/cameras/vimba: not implemented for windows" )
 endif()
 
 if( NOT IS_64_BIT )
-    message( FATAL "snark/sensors/cameras/vimba: only implemented for 64 bit systems" )
+    message( FATAL_ERROR "snark/sensors/cameras/vimba: only implemented for 64 bit systems" )
 endif()
 
 file( GLOB source *.cpp )
