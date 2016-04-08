@@ -53,6 +53,10 @@ install( FILES ${vimba_conf} DESTINATION /etc/ld.so.conf.d )
 install( CODE "message( \"${project_path}: running ldconfig\" )" )
 install( CODE "execute_process( COMMAND ldconfig )" )
 
+# Set up an environment variable default
+set( VIMBA_GENICAM_GENTL64_PATH "${VIMBA_SDK_ROOT}/VimbaGigETL/CTI/x86_64bit" CACHE PATH "Path to GenTL provider library" )
+set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DVIMBA_GENICAM_GENTL64_PATH=\"${VIMBA_GENICAM_GENTL64_PATH}\"" )
+
 # We're using some c++11 features
 
 execute_process( COMMAND ${CMAKE_CXX_COMPILER} -dumpversion

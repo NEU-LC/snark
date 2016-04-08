@@ -1,7 +1,3 @@
-# Set up an environment variable default
-set( VIMBA_GENICAM_GENTL64_PATH "${VIMBA_SDK_ROOT}/VimbaGigETL/CTI/x86_64bit" CACHE PATH "Path to GenTL provider library" )
-set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DVIMBA_GENICAM_GENTL64_PATH=\"${VIMBA_GENICAM_GENTL64_PATH}\"" )
-
 source_group( vimba-cat FILES vimba-cat.cpp )
 add_executable( vimba-cat vimba-cat.cpp )
 target_link_libraries( vimba-cat snark_vimba snark_imaging VimbaCPP ${comma_ALL_LIBRARIES} )
