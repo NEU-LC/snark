@@ -36,6 +36,7 @@
 #include <boost/optional.hpp>
 #include <Eigen/Core>
 #include <opencv2/core/core.hpp>
+#include <comma/sync/lazy.h>
 
 namespace snark { namespace camera {
 
@@ -134,7 +135,7 @@ class pinhole
                 
                 cv::Mat map_y;
                 
-                distortion_map_t( const cv::Mat& map_x, const cv::Mat& map_y );
+                distortion_map_t( const pinhole::config_t& config );
             
                 void write( std::ostream& os ) const;
                 
@@ -148,11 +149,9 @@ class pinhole
         
     private:
         pinhole::config_t config_;
-        mutable boost::optional< distortion_map_t > distortion_map_; // since it's a slow operation, initialize on demand
         Eigen::Vector2d pixel_size_;
         Eigen::Vector2d image_centre_;
-        bool has_distortion_;
-        void make_distortion_map_( cv::Mat& map_x, cv::Mat& map_y ) const;
+        comma::lazy< boost::optional< distortion_map_t > > distortion_map_; // since it's a slow operation, initialize on demand
 };
 
 } } // namespace snark { namespace camera {

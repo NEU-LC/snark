@@ -30,9 +30,11 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
+#include <boost/bind.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <comma/application/verbose.h>
 #include <comma/base/exception.h>
+#include <comma/base/types.h>
 #include "pinhole.h"
 
 namespace snark { namespace camera {
@@ -161,19 +163,38 @@ static void load( const std::string& filename, const Eigen::Vector2i& image_size
     map_y = cv::Mat( image_size.y(), image_size.x(), CV_32FC1, &buffer[0] ).clone();
 }
 
-pinhole::distortion_map_t::distortion_map_t( const cv::Mat& map_x, const cv::Mat& map_y )
-    : map_x( map_x )
-    , map_y( map_y )
-    , x_rows_( map_x.rows * map_x.cols )
-    , y_cols_( map_y.rows * map_y.cols )
+static void make_distortion_map( const pinhole::config_t& config, cv::Mat& map_x,cv::Mat& map_y )
 {
-    for( int i = 0; i < map_x.rows; ++i )
+    if( !config.distortion ) { COMMA_THROW( comma::exception, "distortion parameters or map filename not defined" ); }
+//     int width=image_size.x();
+//     int heigth=image_size.y();
+//     i:{0..w},j:{0..h} undistorted(i,j)
+    cv::Mat camera = cv::Mat_< double >( 3, 3 );
+    camera.at< double >( 0, 0 ) = config.focal_length * ( config.sensor_size ? double( config.image_size.x() ) / config.sensor_size->x() : 1.0 );
+    camera.at< double >( 1, 1 ) = config.focal_length * ( config.sensor_size ? double( config.image_size.y() ) / config.sensor_size->y() : 1.0 );
+    Eigen::Vector2d c = config.image_centre();
+    camera.at< double >( 0, 2 ) = c.x();
+    camera.at< double >( 1, 2 ) = c.y();
+    camera.at< double >( 2, 2 ) = 1;
+    cv::Vec< double, 5 > distortion_coeff = config.distortion->as< cv::Vec< double, 5 > >();
+    cv::Size size( config.image_size.x(), config.image_size.y() );
+    cv::initUndistortRectifyMap( camera, distortion_coeff, cv::Mat(), camera, size, CV_32FC1, map_x, map_y );
+}
+
+pinhole::distortion_map_t::distortion_map_t( const pinhole::config_t& config )
+{
+    if( config.distortion->map_filename.empty() ) { make_distortion_map( config, map_x, map_y ); }
+    else if( !config.distortion->empty() ) { load( config.distortion->map_filename, config.image_size, map_x, map_y ); }
+    std::size_t size = map_x.rows * map_x.cols;
+    x_rows_.resize( size );
+    y_cols_.resize( size );
+    for( int i = 0; i < map_x.rows; ++i ) // todo: phase out x_rows_, y_cols_
     {
         cv::Mat mat_row = map_x.row( i );
         float* ptr = mat_row.ptr< float >();
         std::memcpy( &x_rows_[ map_x.cols * i ], ptr, map_x.cols * sizeof( float ) );
     }
-    for( int i = 0; i < map_y.cols; ++i )
+    for( int i = 0; i < map_y.cols; ++i ) // todo: phase out x_rows_, y_cols_
     {
         cv::Mat mat_col = map_y.col( i ).t();
         float* ptr = mat_col.ptr< float >();
@@ -217,44 +238,21 @@ Eigen::Vector2d pinhole::distort( const Eigen::Vector2d& p ) const
     return distorted;
 }
 
+static boost::optional< pinhole::distortion_map_t > make_distortion_map( const pinhole::config_t& config )
+{
+    if( !config.distortion || config.distortion->empty() ) { return boost::none; }
+    return pinhole::distortion_map_t( config );
+}
+
 pinhole::pinhole( const pinhole::config_t& config )
     : config_( config )
     , pixel_size_( config.pixel_size() )
     , image_centre_( config.image_centre() )
-    , has_distortion_( config.distortion && !config.distortion->empty() )
+    , distortion_map_( boost::bind( &make_distortion_map, boost::cref( config_ ) ) )
 {
 }
 
-void pinhole::make_distortion_map_( cv::Mat& map_x,cv::Mat& map_y ) const
-{
-    if( !config_.distortion ) { COMMA_THROW( comma::exception, "distortion parameters or map filename not defined" ); }
-//     int width=image_size.x();
-//     int heigth=image_size.y();
-//     i:{0..w},j:{0..h} undistorted(i,j)
-    cv::Mat camera = cv::Mat_< double >( 3, 3 );
-    camera.at< double >( 0, 0 ) = config_.focal_length * ( config_.sensor_size ? double( config_.image_size.x() ) / config_.sensor_size->x() : 1.0 );
-    camera.at< double >( 1, 1 ) = config_.focal_length * ( config_.sensor_size ? double( config_.image_size.y() ) / config_.sensor_size->y() : 1.0 );
-    Eigen::Vector2d c = config_.image_centre();
-    camera.at< double >( 0, 2 ) = c.x();
-    camera.at< double >( 1, 2 ) = c.y();
-    camera.at< double >( 2, 2 ) = 1;
-    cv::Vec< double, 5 > distortion_coeff = config_.distortion->as< cv::Vec< double, 5 > >();
-    cv::Size size( config_.image_size.x(), config_.image_size.y() );
-    cv::initUndistortRectifyMap( camera, distortion_coeff, cv::Mat(), camera, size, CV_32FC1, map_x, map_y );
-}
-
-const boost::optional< pinhole::distortion_map_t >& pinhole::distortion_map() const
-{
-    if( has_distortion_ && !distortion_map_ )
-    {
-        cv::Mat map_x;
-        cv::Mat map_y;
-        if( config_.distortion->map_filename.empty() ) { make_distortion_map_( map_x, map_y ); }
-        else { load( config_.distortion->map_filename, config_.image_size, map_x, map_y ); }
-        distortion_map_.reset( pinhole::distortion_map_t( map_x, map_y ) );
-    }
-    return distortion_map_;
-}
+const boost::optional< pinhole::distortion_map_t >& pinhole::distortion_map() const { return *distortion_map_; }
 
 std::string pinhole::usage()
 {
