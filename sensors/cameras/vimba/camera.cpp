@@ -39,7 +39,7 @@
 
 namespace snark { namespace vimba {
 
-const unsigned int num_frames = 3;
+static const unsigned int num_frames = 3;
 
 camera::camera( const std::string& camera_id )
 {
