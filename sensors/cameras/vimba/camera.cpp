@@ -137,7 +137,7 @@ void camera::capture_images( std::unique_ptr< snark::cv_mat::serialization > ser
 
 VmbErrorType camera::start_continuous_image_acquisition( std::unique_ptr< snark::cv_mat::serialization > serialization ) const
 {
-    if( comma::verbose ) std::cerr << "Start continuous image acquisition" << std::endl;
+    comma::verbose << "Start continuous image acquisition" << std::endl;
 
     // Create a frame observer for this camera
     // (This will be wrapped in a shared_ptr so we don't delete it)
@@ -149,7 +149,7 @@ VmbErrorType camera::start_continuous_image_acquisition( std::unique_ptr< snark:
 
 void camera::stop_continuous_image_acquisition() const
 {
-    if( comma::verbose ) std::cerr << "Stop continuous image acquisition" << std::endl;
+    comma::verbose << "Stop continuous image acquisition" << std::endl;
     camera_->StopContinuousImageAcquisition();
 }
 
