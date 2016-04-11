@@ -128,7 +128,7 @@ std::string feature_value( const AVT::VmbAPI::FeaturePtr& feature )
     return value.str();
 }
 
-std::string wrap( std::string text, size_t width = 80, std::string prefix = "")
+std::string wrap( const std::string& text, size_t width = 80, const std::string& prefix = "")
 {
     std::istringstream words( text );
     std::ostringstream wrapped;
@@ -154,7 +154,7 @@ std::string wrap( std::string text, size_t width = 80, std::string prefix = "")
     return wrapped.str();
 }
 
-void print_feature_entry( std::string label, std::string value )
+void print_feature_entry( const std::string& label, const std::string& value )
 {
     std::string prefix( label.length() + 2, ' ' );
     std::cout << label << ": " << wrap( value, 80, prefix ) << "\n";

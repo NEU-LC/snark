@@ -65,7 +65,7 @@ std::string error_code_to_string( VmbError_t error_code )
     return error_str;
 }
 
-std::string error_msg( std::string prologue, VmbErrorType error )
+std::string error_msg( const std::string& prologue, VmbErrorType error )
 {
     std::ostringstream msg;
     if( !prologue.empty() ) { msg << prologue << ", "; }
@@ -73,7 +73,7 @@ std::string error_msg( std::string prologue, VmbErrorType error )
     return msg.str();
 }
 
-void write_error( std::string prologue, VmbErrorType error )
+void write_error( const std::string& prologue, VmbErrorType error )
 {
     std::cerr << error_msg( prologue, error ) << std::endl;
 }

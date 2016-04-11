@@ -42,7 +42,7 @@ class system
 
         static VmbVersionInfo_t version();
         static AVT::VmbAPI::CameraPtrVector get_cameras();
-        static AVT::VmbAPI::CameraPtr open_camera( std::string id );
+        static AVT::VmbAPI::CameraPtr open_camera( const std::string& id );
         static AVT::VmbAPI::CameraPtr open_first_camera();
 
     private:

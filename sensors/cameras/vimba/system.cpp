@@ -81,7 +81,7 @@ AVT::VmbAPI::CameraPtr system::open_first_camera()
     }
 }
 
-AVT::VmbAPI::CameraPtr system::open_camera( std::string id )
+AVT::VmbAPI::CameraPtr system::open_camera( const std::string& id )
 {
     AVT::VmbAPI::CameraPtr camera;
     VmbErrorType status = system::instance.OpenCameraByID( id.c_str(), VmbAccessModeFull, camera );

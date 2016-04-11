@@ -36,8 +36,8 @@
 namespace snark { namespace vimba {
 
 std::string error_code_to_string( VmbError_t error_code );
-std::string error_msg( std::string prologue, VmbErrorType error );
-void write_error( std::string prologue, VmbErrorType error );
+std::string error_msg( const std::string& prologue, VmbErrorType error );
+void write_error( const std::string& prologue, VmbErrorType error );
 
 } } // namespace snark { namespace vimba {
 

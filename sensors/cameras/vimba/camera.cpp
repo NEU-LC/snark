@@ -105,12 +105,12 @@ void camera::list_attributes( bool verbose )
     }
 }
 
-void camera::set_feature( std::string feature_name, std::string value )
+void camera::set_feature( const std::string& feature_name, const std::string& value )
 {
     snark::vimba::set_feature( camera_, feature_name, value );
 }
 
-void camera::set_features( std::string name_value_pairs )
+void camera::set_features( const std::string& name_value_pairs )
 {
     comma::name_value::map m( name_value_pairs );
     for( auto it = m.get().cbegin(); it != m.get().cend(); ++it )
