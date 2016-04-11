@@ -38,25 +38,15 @@ namespace snark { namespace vimba {
 class frame_observer : virtual public AVT::VmbAPI::IFrameObserver
 {
     public:
-        frame_observer( AVT::VmbAPI::CameraPtr camera,
-                        std::unique_ptr< snark::cv_mat::serialization > serialization )
-            : IFrameObserver( camera )
-            , serialization_( std::move( serialization ))
-        {}
+        frame_observer( AVT::VmbAPI::CameraPtr camera
+                      , std::unique_ptr< snark::cv_mat::serialization > serialization );
     
         // This is our callback routine that will be executed on every received frame
         virtual void FrameReceived( const AVT::VmbAPI::FramePtr pFrame );
 
     private:
-        struct pixel_format_desc
-        {
-            int type;
-            float width_adjustment;
-        };
-
-        pixel_format_desc format_desc( VmbPixelFormatType pixel_format ) const;
-
         std::unique_ptr< snark::cv_mat::serialization > serialization_;
+        VmbUint64_t last_frame_id_;
 };
 
 } } // namespace snark { namespace vimba {

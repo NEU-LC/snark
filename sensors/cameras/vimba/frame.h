@@ -37,19 +37,24 @@ namespace snark { namespace vimba {
 class frame
 {
     public:
+        struct pixel_format_desc
+        {
+            int type;
+            float width_adjustment;
+        };
+
         frame( const AVT::VmbAPI::FramePtr& frame_ptr );
 
-        void check_status() const;
-        void check_id();
-
+        VmbUint64_t        id() const { return frame_id_; }
+        VmbFrameStatusType status() const { return frame_status_; }
+        std::string        status_as_string() const;
         VmbUint32_t        height() const { return height_; }
         VmbUint32_t        width() const { return width_; }
         VmbUchar_t*        image_buffer() const { return image_buffer_; }
         VmbPixelFormatType pixel_format() const { return pixel_format_; }
+        pixel_format_desc  format_desc() const;
 
     private:
-        std::string        frame_status_string() const;
-
         VmbUint64_t        frame_id_;
         VmbFrameStatusType frame_status_;
         VmbUint32_t        height_;
@@ -57,8 +62,6 @@ class frame
         VmbUint32_t        size_;
         VmbUchar_t*        image_buffer_;
         VmbPixelFormatType pixel_format_;
-
-        VmbUint64_t        last_frame_id_;
 };
 
 } } // namespace snark { namespace vimba {

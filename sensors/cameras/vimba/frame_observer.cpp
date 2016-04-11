@@ -33,74 +33,47 @@
 
 namespace snark { namespace vimba {
 
+frame_observer::frame_observer( AVT::VmbAPI::CameraPtr camera
+                              , std::unique_ptr< snark::cv_mat::serialization > serialization )
+    : IFrameObserver( camera )
+    , serialization_( std::move( serialization ))
+    , last_frame_id_( 0 )
+{}
+
 void frame_observer::FrameReceived( const AVT::VmbAPI::FramePtr frame_ptr )
 {
     frame frame( frame_ptr );
 
-    frame.check_id();
-    frame.check_status();
+    if( frame.status() == VmbFrameStatusComplete )
+    {
+        if( last_frame_id_ != 0 )
+        {
+            VmbUint64_t missing_frames = frame.id() - last_frame_id_ - 1;
+            if( missing_frames > 0 )
+            {
+                std::cerr << "Warning: " << missing_frames << " missing frame"
+                          << ( missing_frames == 1 ? "" : "s" )
+                          << " detected" << std::endl;
+            }
+        }
+        last_frame_id_ = frame.id();
 
-    pixel_format_desc fd = format_desc( frame.pixel_format() );
+        frame::pixel_format_desc fd = frame.format_desc();
 
-    cv::Mat cv_mat( frame.height()
-                  , frame.width() * fd.width_adjustment
-                  , fd.type
-                  , frame.image_buffer() );
+        cv::Mat cv_mat( frame.height()
+                      , frame.width() * fd.width_adjustment
+                      , fd.type
+                      , frame.image_buffer() );
 
-    serialization_->write( std::cout
-                         , std::make_pair( boost::posix_time::microsec_clock::universal_time(), cv_mat ));
+        serialization_->write( std::cout
+                             , std::make_pair( boost::posix_time::microsec_clock::universal_time(), cv_mat ));
+    }
+    else
+    {
+        std::cerr << "Warning: frame " << frame.id() << " status " << frame.status_as_string() << std::endl;
+    }
 
     m_pCamera->QueueFrame( frame_ptr );
-}
-
-frame_observer::pixel_format_desc frame_observer::format_desc( VmbPixelFormatType pixel_format ) const
-{
-    switch( pixel_format )
-    {
-        // Run vimba-cat --list-attributes --verbose to see all allowed formats for a given camera
-        //
-        // Below are the formats listed for the Prosilica GT3300. However,
-        // actually trying them shows that many don't work. They are marked below.
-
-        case VmbPixelFormatBayerGR12Packed: // BayerGR12Packed maps to VmbPixelFormatBayerGB12Packed
-        case VmbPixelFormatBayerRG12Packed: // BayerRG12Packed (fails to set)
-        case VmbPixelFormatBayerGB12Packed: // BayerGB12Packed (fails to set)
-        case VmbPixelFormatBayerBG12Packed: // BayerBG12Packed (fails to set)
-            return { CV_8UC1, 1.5 };
-
-        case VmbPixelFormatMono8:       // Mono8
-        case VmbPixelFormatBayerGR8:    // BayerGR8
-        case VmbPixelFormatBayerRG8:    // BayerRG8 (fails to set)
-        case VmbPixelFormatBayerBG8:    // BayerGB8 (fails to set)
-            return { CV_8UC1, 1.0 };
-
-        case VmbPixelFormatRgb8:        // RGB8Packed
-        case VmbPixelFormatBgr8:        // BGR8Packed
-            return { CV_8UC3, 1.0 };
-
-        case VmbPixelFormatRgba8:       // RGBA8Packed
-        case VmbPixelFormatBgra8:       // BGRA8Packed
-            return { CV_8UC4, 1.0 };
-
-        case VmbPixelFormatMono10:      // Mono10 (fails to set)
-        case VmbPixelFormatMono12:      // Mono12 (fails to set)
-        case VmbPixelFormatMono12Packed:// Mono12Packed (fails to set)
-        case VmbPixelFormatMono14:      // Mono14 (fails to set)
-
-        case VmbPixelFormatBayerBG10:   // BayerBG10 (fails to set)
-        case VmbPixelFormatBayerGR12:   // BayerGR12
-        case VmbPixelFormatBayerRG12:   // BayerRG12 (fails to set)
-
-                                        // RGB10Packed (fails to set, no obvious mapping)
-        case VmbPixelFormatRgb12:       // RGB12Packed (fails to set)
-
-        case VmbPixelFormatYuv411:      // YUV411Packed
-        case VmbPixelFormatYuv422:      // YUV422Packed
-        case VmbPixelFormatYuv444:      // YUV444Packed
-
-        default:
-            COMMA_THROW( comma::exception, "unsupported format " << std::hex << pixel_format );
-    }
 }
 
 } } // namespace snark { namespace vimba {
