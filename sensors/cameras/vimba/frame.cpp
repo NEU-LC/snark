@@ -83,7 +83,7 @@ void frame::check_id()
     last_frame_id_ = frame_id_;
 }
 
-void frame::check_status()
+void frame::check_status() const
 {
     if( frame_status_ != VmbFrameStatusComplete )
     {
@@ -93,7 +93,7 @@ void frame::check_status()
     }
 }
 
-std::string frame::frame_status_string()
+std::string frame::frame_status_string() const
 {
     switch( frame_status_ )
     {

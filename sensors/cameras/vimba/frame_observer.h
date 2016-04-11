@@ -54,7 +54,7 @@ class frame_observer : virtual public AVT::VmbAPI::IFrameObserver
         virtual void FrameReceived( const AVT::VmbAPI::FramePtr pFrame );
 
     private:
-        pixel_format_desc get_format_desc( VmbPixelFormatType pixel_format );
+        pixel_format_desc get_format_desc( VmbPixelFormatType pixel_format ) const;
 
         std::unique_ptr< snark::cv_mat::serialization > serialization_;
 };

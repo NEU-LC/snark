@@ -39,16 +39,16 @@ class frame
     public:
         frame( const AVT::VmbAPI::FramePtr& frame_ptr );
 
-        void check_status();
+        void check_status() const;
         void check_id();
 
-        VmbUint32_t        get_height() { return height_; }
-        VmbUint32_t        get_width() { return width_; }
-        VmbUchar_t*        get_image_buffer() { return image_buffer_; }
-        VmbPixelFormatType get_pixel_format() { return pixel_format_; }
+        VmbUint32_t        get_height() const { return height_; }
+        VmbUint32_t        get_width() const { return width_; }
+        VmbUchar_t*        get_image_buffer() const { return image_buffer_; }
+        VmbPixelFormatType get_pixel_format() const { return pixel_format_; }
 
     private:
-        std::string frame_status_string();
+        std::string        frame_status_string() const;
 
         VmbUint64_t        frame_id_;
         VmbFrameStatusType frame_status_;

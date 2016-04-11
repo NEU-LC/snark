@@ -51,7 +51,7 @@ camera::~camera()
     if( camera_ ) camera_->Close();
 }
 
-void camera::print_info( bool verbose )
+void camera::print_info( bool verbose ) const
 {
     std::string id;
     std::string name;
@@ -89,7 +89,7 @@ void camera::print_info( bool verbose )
 }
 
 // Prints all features and their values of a camera
-void camera::list_attributes( bool verbose )
+void camera::list_attributes( bool verbose ) const
 {
     AVT::VmbAPI::FeaturePtrVector features;
     VmbErrorType status = VmbErrorSuccess;
@@ -105,12 +105,12 @@ void camera::list_attributes( bool verbose )
     }
 }
 
-void camera::set_feature( const std::string& feature_name, const std::string& value )
+void camera::set_feature( const std::string& feature_name, const std::string& value ) const
 {
     snark::vimba::set_feature( camera_, feature_name, value );
 }
 
-void camera::set_features( const std::string& name_value_pairs )
+void camera::set_features( const std::string& name_value_pairs ) const
 {
     comma::name_value::map m( name_value_pairs );
     for( auto it = m.get().cbegin(); it != m.get().cend(); ++it )
@@ -119,7 +119,7 @@ void camera::set_features( const std::string& name_value_pairs )
     }
 }
 
-void camera::capture_images( std::unique_ptr< snark::cv_mat::serialization > serialization )
+void camera::capture_images( std::unique_ptr< snark::cv_mat::serialization > serialization ) const
 {
     VmbErrorType status;
 
@@ -135,7 +135,7 @@ void camera::capture_images( std::unique_ptr< snark::cv_mat::serialization > ser
     }
 }
 
-VmbErrorType camera::start_continuous_image_acquisition( std::unique_ptr< snark::cv_mat::serialization > serialization )
+VmbErrorType camera::start_continuous_image_acquisition( std::unique_ptr< snark::cv_mat::serialization > serialization ) const
 {
     if( comma::verbose ) std::cerr << "Start continuous image acquisition" << std::endl;
 
@@ -147,7 +147,7 @@ VmbErrorType camera::start_continuous_image_acquisition( std::unique_ptr< snark:
     return status;
 }
 
-void camera::stop_continuous_image_acquisition()
+void camera::stop_continuous_image_acquisition() const
 {
     if( comma::verbose ) std::cerr << "Stop continuous image acquisition" << std::endl;
     camera_->StopContinuousImageAcquisition();

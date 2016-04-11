@@ -42,15 +42,15 @@ class camera
         camera( const AVT::VmbAPI::CameraPtr& camera_ptr ) : camera_( camera_ptr ) {}
         ~camera();
 
-        void print_info( bool verbose );
-        void list_attributes( bool verbose );
-        void set_feature( const std::string& feature_name, const std::string& value = "" );
-        void set_features( const std::string& name_value_pairs );
-        void capture_images( std::unique_ptr< snark::cv_mat::serialization > serialization );
+        void print_info( bool verbose ) const;
+        void list_attributes( bool verbose ) const;
+        void set_feature( const std::string& feature_name, const std::string& value = "" ) const;
+        void set_features( const std::string& name_value_pairs ) const;
+        void capture_images( std::unique_ptr< snark::cv_mat::serialization > serialization ) const;
 
     private:
-        VmbErrorType start_continuous_image_acquisition( std::unique_ptr< snark::cv_mat::serialization > serialization );
-        void stop_continuous_image_acquisition();
+        VmbErrorType start_continuous_image_acquisition( std::unique_ptr< snark::cv_mat::serialization > serialization ) const;
+        void stop_continuous_image_acquisition() const;
 
         AVT::VmbAPI::CameraPtr camera_;
 };

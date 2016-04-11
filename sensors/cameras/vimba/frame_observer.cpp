@@ -53,7 +53,7 @@ void frame_observer::FrameReceived( const AVT::VmbAPI::FramePtr frame_ptr )
     m_pCamera->QueueFrame( frame_ptr );
 }
 
-frame_observer::pixel_format_desc frame_observer::get_format_desc( VmbPixelFormatType pixel_format )
+frame_observer::pixel_format_desc frame_observer::get_format_desc( VmbPixelFormatType pixel_format ) const
 {
     switch( pixel_format )
     {
