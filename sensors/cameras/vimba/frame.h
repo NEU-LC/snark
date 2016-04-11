@@ -42,10 +42,10 @@ class frame
         void check_status() const;
         void check_id();
 
-        VmbUint32_t        get_height() const { return height_; }
-        VmbUint32_t        get_width() const { return width_; }
-        VmbUchar_t*        get_image_buffer() const { return image_buffer_; }
-        VmbPixelFormatType get_pixel_format() const { return pixel_format_; }
+        VmbUint32_t        height() const { return height_; }
+        VmbUint32_t        width() const { return width_; }
+        VmbUchar_t*        image_buffer() const { return image_buffer_; }
+        VmbPixelFormatType pixel_format() const { return pixel_format_; }
 
     private:
         std::string        frame_status_string() const;

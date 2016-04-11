@@ -40,12 +40,12 @@ void frame_observer::FrameReceived( const AVT::VmbAPI::FramePtr frame_ptr )
     frame.check_id();
     frame.check_status();
 
-    pixel_format_desc format_desc = get_format_desc( frame.get_pixel_format() );
+    pixel_format_desc fd = format_desc( frame.pixel_format() );
 
-    cv::Mat cv_mat( frame.get_height()
-                  , frame.get_width() * format_desc.width_adjustment
-                  , format_desc.type
-                  , frame.get_image_buffer() );
+    cv::Mat cv_mat( frame.height()
+                  , frame.width() * fd.width_adjustment
+                  , fd.type
+                  , frame.image_buffer() );
 
     serialization_->write( std::cout
                          , std::make_pair( boost::posix_time::microsec_clock::universal_time(), cv_mat ));
@@ -53,7 +53,7 @@ void frame_observer::FrameReceived( const AVT::VmbAPI::FramePtr frame_ptr )
     m_pCamera->QueueFrame( frame_ptr );
 }
 
-frame_observer::pixel_format_desc frame_observer::get_format_desc( VmbPixelFormatType pixel_format ) const
+frame_observer::pixel_format_desc frame_observer::format_desc( VmbPixelFormatType pixel_format ) const
 {
     switch( pixel_format )
     {

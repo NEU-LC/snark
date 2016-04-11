@@ -143,9 +143,9 @@ int run_cmd( const comma::command_line_options& options )
 
     if( options.exists( "--list-cameras" ))
     {
-        AVT::VmbAPI::CameraPtrVector cameras = snark::vimba::system::get_cameras();
-        if( comma::verbose ) { std::cout << "Cameras found: " << cameras.size() << std::endl; }
-        for( auto iter = cameras.cbegin(); iter != cameras.cend(); ++iter )
+        AVT::VmbAPI::CameraPtrVector c = snark::vimba::system::cameras();
+        if( comma::verbose ) { std::cout << "Cameras found: " << c.size() << std::endl; }
+        for( auto iter = c.cbegin(); iter != c.cend(); ++iter )
         {
             snark::vimba::camera camera( *iter );
             camera.print_info( comma::verbose );

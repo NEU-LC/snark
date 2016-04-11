@@ -51,7 +51,7 @@ VmbVersionInfo_t system::version()
     COMMA_THROW( comma::exception, error_msg( "QueryVersion() failed", status ));
 }
 
-AVT::VmbAPI::CameraPtrVector system::get_cameras()
+AVT::VmbAPI::CameraPtrVector system::cameras()
 {
     AVT::VmbAPI::CameraPtrVector cameras;
     VmbErrorType status = system::instance.GetCameras( cameras ); // Fetch all cameras
@@ -61,10 +61,10 @@ AVT::VmbAPI::CameraPtrVector system::get_cameras()
 
 AVT::VmbAPI::CameraPtr system::open_first_camera()
 {
-    AVT::VmbAPI::CameraPtrVector cameras = get_cameras();
-    if( !cameras.empty() )
+    AVT::VmbAPI::CameraPtrVector c = cameras();
+    if( !c.empty() )
     {
-        AVT::VmbAPI::CameraPtr camera = cameras[0];
+        AVT::VmbAPI::CameraPtr camera = c[0];
         VmbErrorType status = camera->Open( VmbAccessModeFull );
         if( status == VmbErrorSuccess )
         {
