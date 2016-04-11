@@ -35,7 +35,8 @@
 namespace snark { namespace vimba {
 
 frame::frame( const AVT::VmbAPI::FramePtr& frame_ptr )
-    : last_frame_id_( 0 )
+    : image_buffer_( NULL )
+    , last_frame_id_( 0 )
 {
     VmbErrorType status;
     status = SP_ACCESS( frame_ptr )->GetFrameID( frame_id_ );
