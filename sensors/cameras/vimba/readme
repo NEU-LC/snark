@@ -22,6 +22,3 @@ PacketSize=9215                 GVSPPacketSize=9215
 FrameRate=5                     AcquisitionFrameRateAbs=5
 
 An alternative to explicitly setting GVSPPacketSize is to use GVSPAdjustPacketSize.
-
-TODO: installation of shared libraries and CTI files
-TODO: set up shrimp.publish.json command (check id and attributes)
