@@ -229,7 +229,7 @@ std::string allowed_values( const AVT::VmbAPI::FeaturePtr& feature )
     return allowed_values.str();
 }
 
-std::string data_type_to_string( VmbFeatureDataType data_type )
+const char* data_type_to_string( VmbFeatureDataType data_type )
 {
     switch( data_type )
     {

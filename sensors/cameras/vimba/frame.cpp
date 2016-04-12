@@ -69,7 +69,7 @@ frame::frame( const AVT::VmbAPI::FramePtr& frame_ptr )
     }
 }
 
-std::string frame::status_as_string() const
+const char* frame::status_as_string() const
 {
     switch( frame_status_ )
     {

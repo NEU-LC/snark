@@ -51,7 +51,7 @@ class frame
 
         VmbUint64_t        id() const { return frame_id_; }
         VmbFrameStatusType status() const { return frame_status_; }
-        std::string        status_as_string() const;
+        const char*        status_as_string() const;
         VmbUint32_t        height() const { return height_; }
         VmbUint32_t        width() const { return width_; }
         VmbUchar_t*        image_buffer() const { return image_buffer_; }
