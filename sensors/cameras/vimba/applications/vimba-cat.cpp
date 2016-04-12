@@ -118,7 +118,7 @@ comma::csv::format format_from_fields( const std::string& fields )
     return format;
 }
 
-std::unique_ptr< snark::cv_mat::serialization > create_serializer( const comma::command_line_options& options )
+boost::shared_ptr< snark::cv_mat::serialization > create_serializer( const comma::command_line_options& options )
 {
     std::string        fields = options.value< std::string >( "--fields", default_fields );
     comma::csv::format format = format_from_fields( fields );
@@ -132,7 +132,7 @@ std::unique_ptr< snark::cv_mat::serialization > create_serializer( const comma::
     {
         header_only = ( options.exists( "--header" ));
     }
-    std::unique_ptr< snark::cv_mat::serialization > serialization
+    boost::shared_ptr< snark::cv_mat::serialization > serialization
         ( new snark::cv_mat::serialization( fields, format, header_only ));
     return serialization;
 }
@@ -145,7 +145,7 @@ int run_cmd( const comma::command_line_options& options )
     {
         AVT::VmbAPI::CameraPtrVector c = snark::vimba::system::cameras();
         if( comma::verbose ) { std::cout << "Cameras found: " << c.size() << std::endl; }
-        for( auto iter = c.cbegin(); iter != c.cend(); ++iter )
+        for( AVT::VmbAPI::CameraPtrVector::const_iterator iter = c.begin(); iter != c.end(); ++iter )
         {
             snark::vimba::camera camera( *iter );
             camera.print_info( comma::verbose );

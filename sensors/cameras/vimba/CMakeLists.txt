@@ -57,17 +57,4 @@ install( CODE "execute_process( COMMAND ldconfig )" )
 set( VIMBA_GENICAM_GENTL64_PATH "${VIMBA_SDK_ROOT}/VimbaGigETL/CTI/x86_64bit" CACHE PATH "Path to GenTL provider library" )
 set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DVIMBA_GENICAM_GENTL64_PATH=\"${VIMBA_GENICAM_GENTL64_PATH}\"" )
 
-# We're using some c++11 features
-
-execute_process( COMMAND ${CMAKE_CXX_COMPILER} -dumpversion
-                 OUTPUT_VARIABLE GCC_VERSION
-                 OUTPUT_STRIP_TRAILING_WHITESPACE )
-if( GCC_VERSION VERSION_EQUAL 4.7 OR GCC_VERSION VERSION_GREATER 4.7 )
-    set( gcc_std_flag "--std=c++11" )
-else()
-    set( gcc_std_flag "--std=c++0x" )
-endif()
-message( STATUS "Using ${gcc_std_flag} for gcc ${GCC_VERSION}" )
-set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${gcc_std_flag}" )
-
 add_subdirectory( applications )

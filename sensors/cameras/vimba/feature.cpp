@@ -180,7 +180,9 @@ std::string allowed_values( const AVT::VmbAPI::FeaturePtr& feature )
                     if( status == VmbErrorSuccess)
                     {
                         bool first = true;
-                        for( auto it = entries.cbegin(); it != entries.cend(); ++it )
+                        for( AVT::VmbAPI::EnumEntryVector::const_iterator it = entries.begin();
+                             it != entries.end();
+                             ++it )
                         {
                             std::string name;
                             status = it->GetName( name );
@@ -292,8 +294,12 @@ void print_feature( const AVT::VmbAPI::FeaturePtr& feature, bool verbose )
 
 void print_features( AVT::VmbAPI::FeaturePtrVector features, bool verbose )
 {
-    std::for_each( features.begin(), features.end(),
-                 [verbose] ( AVT::VmbAPI::FeaturePtr& f ) { print_feature( f, verbose ); } );
+    for( AVT::VmbAPI::FeaturePtrVector::const_iterator it = features.begin();
+         it != features.end();
+         ++it )
+    {
+        print_feature( *it, verbose );
+    }
 }
 
 VmbErrorType run_command( AVT::VmbAPI::FeaturePtr feature )

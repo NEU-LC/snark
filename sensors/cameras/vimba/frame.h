@@ -39,6 +39,10 @@ class frame
     public:
         struct pixel_format_desc
         {
+            pixel_format_desc( int type_, float width_adjustment_ )
+                : type( type_ )
+                , width_adjustment( width_adjustment_ )
+            {}
             int type;
             float width_adjustment;
         };

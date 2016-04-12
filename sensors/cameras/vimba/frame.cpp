@@ -94,21 +94,21 @@ frame::pixel_format_desc frame::format_desc() const
         case VmbPixelFormatBayerRG12Packed: // BayerRG12Packed (fails to set)
         case VmbPixelFormatBayerGB12Packed: // BayerGB12Packed (fails to set)
         case VmbPixelFormatBayerBG12Packed: // BayerBG12Packed (fails to set)
-            return { CV_8UC1, 1.5 };
+            return pixel_format_desc( CV_8UC1, 1.5 );
 
         case VmbPixelFormatMono8:       // Mono8
         case VmbPixelFormatBayerGR8:    // BayerGR8
         case VmbPixelFormatBayerRG8:    // BayerRG8 (fails to set)
         case VmbPixelFormatBayerBG8:    // BayerGB8 (fails to set)
-            return { CV_8UC1, 1.0 };
+            return pixel_format_desc( CV_8UC1, 1.0 );
 
         case VmbPixelFormatRgb8:        // RGB8Packed
         case VmbPixelFormatBgr8:        // BGR8Packed
-            return { CV_8UC3, 1.0 };
+            return pixel_format_desc( CV_8UC3, 1.0 );
 
         case VmbPixelFormatRgba8:       // RGBA8Packed
         case VmbPixelFormatBgra8:       // BGRA8Packed
-            return { CV_8UC4, 1.0 };
+            return pixel_format_desc( CV_8UC4, 1.0 );
 
         case VmbPixelFormatMono10:      // Mono10 (fails to set)
         case VmbPixelFormatMono12:      // Mono12 (fails to set)

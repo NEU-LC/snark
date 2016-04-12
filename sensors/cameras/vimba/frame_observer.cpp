@@ -34,9 +34,9 @@
 namespace snark { namespace vimba {
 
 frame_observer::frame_observer( AVT::VmbAPI::CameraPtr camera
-                              , std::unique_ptr< snark::cv_mat::serialization > serialization )
+                              , boost::shared_ptr< snark::cv_mat::serialization > serialization )
     : IFrameObserver( camera )
-    , serialization_( std::move( serialization ))
+    , serialization_( serialization )
     , last_frame_id_( 0 )
 {}
 
