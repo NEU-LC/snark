@@ -27,6 +27,7 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include <sstream>
 #include <comma/application/signal_flag.h>
 #include <comma/application/verbose.h>
 #include <comma/name_value/map.h>
@@ -50,40 +51,32 @@ camera::~camera()
     if( camera_ ) camera_->Close();
 }
 
-void camera::print_info( bool verbose ) const
+camera::name_values camera::info() const
 {
-    std::string id;
-    std::string name;
-    std::string model;
-    std::string serial_number;
-    std::string interface_id;
+    name_values name_value_pairs;
 
-    VmbErrorType status = camera_->GetID( id );
-    if( status != VmbErrorSuccess ) { write_error( "Could not get camera ID", status ); }
-                
-    status = camera_->GetName( name );
-    if( status != VmbErrorSuccess ) { write_error( "Could not get camera name", status ); }
+    add_name_value( "id",            &AVT::VmbAPI::Camera::GetID,           name_value_pairs );
+    add_name_value( "name",          &AVT::VmbAPI::Camera::GetName,         name_value_pairs );
+    add_name_value( "model",         &AVT::VmbAPI::Camera::GetModel,        name_value_pairs );
+    add_name_value( "serial_number", &AVT::VmbAPI::Camera::GetSerialNumber, name_value_pairs );
+    add_name_value( "interface_id",  &AVT::VmbAPI::Camera::GetInterfaceID,  name_value_pairs );
 
-    status = camera_->GetModel( model );
-    if( status != VmbErrorSuccess ) { write_error( "Could not get camera mode name", status ); }
+    return name_value_pairs;
+}
 
-    status = camera_->GetSerialNumber( serial_number );
-    if( status != VmbErrorSuccess ) { write_error( "Could not get camera serial number", status ); }
-
-    status = camera_->GetInterfaceID( interface_id );
-    if( status != VmbErrorSuccess ) { write_error( "Could not get interface ID", status ); }
-
-    if( verbose )
+void camera::add_name_value( const char* label, getter_fn fn, name_values& name_value_pairs ) const
+{
+    std::string value;
+    VmbErrorType status = ( *camera_.*fn )( value );
+    if( status == VmbErrorSuccess )
     {
-        std::cout << "\nCamera ID    : " << id
-                  << "\nCamera Name  : " << name
-                  << "\nModel Name   : " << model
-                  << "\nSerial Number: " << serial_number
-                  << "\nInterface ID : " << interface_id  << std::endl;
+        name_value_pairs[ label ] = value;
     }
     else
     {
-        std::cout << "id=\"" << id << "\",name=\"" << name << "\",serial=\"" << serial_number << "\"" << std::endl;
+        std::ostringstream msg;
+        msg << "Count not get " << label;
+        write_error( msg.str(), status );
     }
 }
 

@@ -180,7 +180,20 @@ int run_cmd( const comma::command_line_options& options )
         for( AVT::VmbAPI::CameraPtrVector::const_iterator iter = c.begin(); iter != c.end(); ++iter )
         {
             snark::vimba::camera camera( *iter );
-            camera.print_info( comma::verbose );
+            snark::vimba::camera::name_values info = camera.info();
+            if( comma::verbose )
+            {
+                std::cout << "\nCamera ID    : " << info["id"]
+                          << "\nCamera Name  : " << info["name"]
+                          << "\nModel Name   : " << info["model"]
+                          << "\nSerial Number: " << info["serial_number"]
+                          << "\nInterface ID : " << info["interface_id"]  << std::endl;
+            }
+            else
+            {
+                std::cout << "id=\"" << info["id"] << "\",name=\"" << info["name"]
+                          << "\",serial=\"" << info["serial_number"] << "\"" << std::endl;
+            }
         }
         return 0;
     }

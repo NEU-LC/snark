@@ -30,6 +30,7 @@
 #ifndef SNARK_SENSORS_VIMBA_CAMERA_H_
 #define SNARK_SENSORS_VIMBA_CAMERA_H_
 
+#include <map>
 #include <vector>
 #include <VimbaCPP/Include/Camera.h>
 #include "snark/imaging/cv_mat/serialization.h"
@@ -40,17 +41,25 @@ namespace snark { namespace vimba {
 class camera
 {
     public:
+        typedef std::map< std::string, std::string> name_values;
+
         camera( const std::string& camera_id );
         camera( const AVT::VmbAPI::CameraPtr& camera_ptr ) : camera_( camera_ptr ) {}
         ~camera();
 
-        void print_info( bool verbose ) const;
+        name_values info() const;
         std::vector< attribute > attributes() const;
+
         void set_feature( const std::string& name, const std::string& value = "" ) const;
-        void set_features( const std::string& name_value_pairs ) const;
+        void set_features( const std::string& name_values ) const;
+
         void capture_images( boost::shared_ptr< snark::cv_mat::serialization > serialization ) const;
 
     private:
+        typedef VmbErrorType ( AVT::VmbAPI::Camera::*getter_fn )( std::string& ) const;
+
+        void add_name_value( const char* label, getter_fn fn, name_values& name_value_pairs ) const;
+
         VmbErrorType start_continuous_image_acquisition( boost::shared_ptr< snark::cv_mat::serialization > serialization ) const;
         void stop_continuous_image_acquisition() const;
 
