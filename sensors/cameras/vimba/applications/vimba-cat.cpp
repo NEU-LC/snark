@@ -106,7 +106,7 @@ static void usage( bool verbose = false )
     exit( 0 );
 }
 
-comma::csv::format format_from_fields( const std::string& fields )
+static comma::csv::format format_from_fields( const std::string& fields )
 {
     std::vector< std::string > v = comma::split( fields, "," );
     comma::csv::format format;
@@ -118,7 +118,7 @@ comma::csv::format format_from_fields( const std::string& fields )
     return format;
 }
 
-boost::shared_ptr< snark::cv_mat::serialization > create_serializer( const comma::command_line_options& options )
+static boost::shared_ptr< snark::cv_mat::serialization > create_serializer( const comma::command_line_options& options )
 {
     std::string        fields = options.value< std::string >( "--fields", default_fields );
     comma::csv::format format = format_from_fields( fields );
@@ -137,7 +137,7 @@ boost::shared_ptr< snark::cv_mat::serialization > create_serializer( const comma
     return serialization;
 }
 
-std::string wrap( const std::string& text, size_t width = 80, const std::string& prefix = "")
+static std::string wrap( const std::string& text, size_t width = 80, const std::string& prefix = "")
 {
     std::istringstream words( text );
     std::ostringstream wrapped;
@@ -163,13 +163,13 @@ std::string wrap( const std::string& text, size_t width = 80, const std::string&
     return wrapped.str();
 }
 
-void print_attribute_entry( const std::string& label, const std::string& value )
+static void print_attribute_entry( const std::string& label, const std::string& value )
 {
     std::string prefix( label.length() + 2, ' ' );
     std::cout << label << ": " << wrap( value, 80, prefix ) << "\n";
 }
 
-int run_cmd( const comma::command_line_options& options )
+static int run_cmd( const comma::command_line_options& options )
 {
     snark::vimba::system system;                                   // Initialize the Vimba API
 
