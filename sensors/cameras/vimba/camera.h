@@ -46,7 +46,7 @@ class camera
 
         void print_info( bool verbose ) const;
         std::vector< attribute > attributes() const;
-        void set_feature( const std::string& feature_name, const std::string& value = "" ) const;
+        void set_feature( const std::string& name, const std::string& value = "" ) const;
         void set_features( const std::string& name_value_pairs ) const;
         void capture_images( boost::shared_ptr< snark::cv_mat::serialization > serialization ) const;
 
