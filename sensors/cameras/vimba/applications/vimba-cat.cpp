@@ -34,8 +34,8 @@
 #include "../error.h"
 #include "../system.h"
 
-static const std::string possible_fields = "t,rows,cols,type,size";
-static const std::string default_fields = "t,rows,cols,type";
+static const char* possible_fields = "t,rows,cols,type,size";
+static const char* default_fields = "t,rows,cols,type";
 
 static void bash_completion( unsigned const ac, char const * const * av )
 {
