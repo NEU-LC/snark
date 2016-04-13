@@ -33,7 +33,6 @@
 
 #include "camera.h"
 #include "error.h"
-#include "feature.h"
 #include "frame_observer.h"
 #include "system.h"
 
@@ -88,26 +87,41 @@ void camera::print_info( bool verbose ) const
     }
 }
 
-// Prints all features and their values of a camera
-void camera::list_attributes( bool verbose ) const
+std::vector< attribute > camera::attributes() const
 {
+    std::vector< attribute > attributes;
     AVT::VmbAPI::FeaturePtrVector features;
-    VmbErrorType status = VmbErrorSuccess;
-
-    status = camera_->GetFeatures( features );
+    VmbErrorType status = camera_->GetFeatures( features );
     if( status == VmbErrorSuccess )
     {
-        print_features( features, verbose );
+        for( AVT::VmbAPI::FeaturePtrVector::iterator it = features.begin();
+             it != features.end();
+             ++it )
+        {
+            attribute a( *it );
+            attributes.push_back( a );
+        }
     }
     else
     {
         COMMA_THROW( comma::exception, error_msg( "GetFeatures() failed", status ));
     }
+    return attributes;
 }
 
 void camera::set_feature( const std::string& feature_name, const std::string& value ) const
 {
-    snark::vimba::set_feature( camera_, feature_name, value );
+    AVT::VmbAPI::FeaturePtr feature;
+    VmbErrorType status = camera_->GetFeatureByName( feature_name.c_str(), feature );
+    if( status == VmbErrorSuccess )
+    {
+        attribute a( feature );
+        a.set( value );
+    }
+    else
+    {
+        COMMA_THROW( comma::exception, error_msg( "GetFeatureByName() failed", status ));
+    }
 }
 
 void camera::set_features( const std::string& name_value_pairs ) const

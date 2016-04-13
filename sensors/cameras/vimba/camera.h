@@ -30,8 +30,10 @@
 #ifndef SNARK_SENSORS_VIMBA_CAMERA_H_
 #define SNARK_SENSORS_VIMBA_CAMERA_H_
 
+#include <vector>
 #include <VimbaCPP/Include/Camera.h>
 #include "snark/imaging/cv_mat/serialization.h"
+#include "attribute.h"
 
 namespace snark { namespace vimba {
 
@@ -43,7 +45,7 @@ class camera
         ~camera();
 
         void print_info( bool verbose ) const;
-        void list_attributes( bool verbose ) const;
+        std::vector< attribute > attributes() const;
         void set_feature( const std::string& feature_name, const std::string& value = "" ) const;
         void set_features( const std::string& name_value_pairs ) const;
         void capture_images( boost::shared_ptr< snark::cv_mat::serialization > serialization ) const;

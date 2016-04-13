@@ -137,6 +137,38 @@ boost::shared_ptr< snark::cv_mat::serialization > create_serializer( const comma
     return serialization;
 }
 
+std::string wrap( const std::string& text, size_t width = 80, const std::string& prefix = "")
+{
+    std::istringstream words( text );
+    std::ostringstream wrapped;
+    std::string word;
+
+    size_t wrap_width = width - prefix.length();
+
+    if( words >> word )
+    {
+        wrapped << word;
+        size_t space_left = wrap_width - word.length();
+        while( words >> word )
+        {
+            if( space_left < word.length() + 1 ) {
+                wrapped << '\n' << prefix << word;
+                space_left = wrap_width - word.length();
+            } else {
+                wrapped << ' ' << word;
+                space_left -= word.length() + 1;
+            }
+        }
+    }
+    return wrapped.str();
+}
+
+void print_attribute_entry( const std::string& label, const std::string& value )
+{
+    std::string prefix( label.length() + 2, ' ' );
+    std::cout << label << ": " << wrap( value, 80, prefix ) << "\n";
+}
+
 int run_cmd( const comma::command_line_options& options )
 {
     snark::vimba::system system;                                   // Initialize the Vimba API
@@ -159,7 +191,26 @@ int run_cmd( const comma::command_line_options& options )
 
     if( options.exists( "--list-attributes" ))
     {
-        camera.list_attributes( comma::verbose );
+        std::vector< snark::vimba::attribute > attributes = camera.attributes();
+        for( std::vector< snark::vimba::attribute >::const_iterator it = attributes.begin();
+             it != attributes.end();
+             ++it )
+        {
+            if( comma::verbose )
+            {
+                print_attribute_entry( "Name          ", it->name() );
+                print_attribute_entry( "Type          ", it->type_as_string() );
+                print_attribute_entry( "Value         ", it->value_as_string() );
+                print_attribute_entry( "Description   ", it->description() );
+                if( !it->allowed_values().empty() )
+                    print_attribute_entry( "Allowed Values", it->allowed_values_as_string() );
+                std::cout << std::endl;
+            }
+            else
+            {
+                std::cout << it->name() << "=" << it->value_as_string() << std::endl;
+            }
+        }
         return 0;
     }
 
