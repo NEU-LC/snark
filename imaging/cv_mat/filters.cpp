@@ -513,7 +513,7 @@ static filters::value_type thumb_impl_( filters::value_type m, std::string name,
     return c == 27 ? filters::value_type() : m; // HACK to notify application to exit
 }
 
-static filters::value_type cross_impl_( filters::value_type m, boost::optional< Eigen::Vector2i > xy )
+static filters::value_type cross_impl_( filters::value_type m, boost::optional< Eigen::Vector2i > xy ) // todo: move to draw
 {
     if( !xy )
     {
@@ -526,6 +526,42 @@ static filters::value_type cross_impl_( filters::value_type m, boost::optional< 
     cv::line( m.second, cv::Point( 0, xy->y() ), cv::Point( m.second.size().width, xy->y() ), cv::Scalar( 0, 255, 0 ) );
     return m;
 }
+
+namespace drawing {
+    
+struct shape
+{
+    cv::Scalar color;
+    int thickness;
+    int line_type;
+    int shift;
+    shape() : thickness( 1 ), line_type( 8 ), shift( 0 ) {}
+    shape( const cv::Scalar& color, int thickness = 1, int line_type = 8, int shift = 0 ) : color( color ), thickness( thickness ), line_type( line_type ), shift( shift ) {}
+};
+
+struct circle : public shape
+{
+    cv::Point center;
+    int radius;
+    circle() {}
+    circle( const cv::Point& center, int radius, const cv::Scalar& color, int thickness = 1, int line_type = 8, int shift = 0 ) : shape( color, thickness, line_type, shift ), center( center ), radius( radius ) {}
+    void draw( cv::Mat m ) const { cv::circle( m, center, radius, color, thickness, line_type, shift ); }
+};
+
+struct rectangle : public shape
+{
+    cv::Point upper_left;
+    cv::Point lower_right;
+    rectangle() {};
+    rectangle( const cv::Point& upper_left, const cv::Point& lower_right, const cv::Scalar& color, int thickness = 1, int line_type = 8, int shift = 0 ) : shape( color, thickness, line_type, shift ), upper_left( upper_left ), lower_right( lower_right ) {}
+    void draw( cv::Mat m ) const { cv::rectangle( m, upper_left, lower_right, color, thickness, line_type, shift ); }
+};
+    
+} // namespace drawing {
+
+static filters::value_type circle_impl_( filters::value_type m, const drawing::circle& circle ) { circle.draw( m.second ); return m; }
+
+static filters::value_type rectangle_impl_( filters::value_type m, const drawing::rectangle& rectangle ) { rectangle.draw( m.second ); return m; }
 
 void encode_impl_check_type( const filters::value_type& m, const std::string& type )
 {
@@ -1406,6 +1442,20 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
             }
             f.push_back( filter( boost::bind( &cross_impl_, _1, center ) ) );
         }
+        else if( e[0] == "circle" ) // todo: quick and dirty, implement using traits
+        {
+            boost::array< int, 9 > p = {{ 0, 0, 0, 0, 0, 0, 1, 8, 0 }};
+            const std::vector< std::string > v = comma::split( e[1], ',' );
+            for( unsigned int i = 0; i < v.size(); ++i ) { if( !v[i].empty() ) { p[i] = boost::lexical_cast< int >( v[i] ); } }
+            f.push_back( filter( boost::bind( &circle_impl_, _1, drawing::circle( cv::Point( p[0], p[1] ), p[2], cv::Scalar( p[5], p[4], p[3] ), p[6], p[7], p[8] ) ) ) );
+        }
+        else if( e[0] == "rectangle" || e[0] == "box" ) // todo: quick and dirty, implement using traits
+        {
+            boost::array< int, 10 > p = {{ 0, 0, 0, 0, 0, 0, 0, 1, 8, 0 }};
+            const std::vector< std::string > v = comma::split( e[1], ',' );
+            for( unsigned int i = 0; i < v.size(); ++i ) { if( !v[i].empty() ) { p[i] = boost::lexical_cast< int >( v[i] ); } }
+            f.push_back( filter( boost::bind( &rectangle_impl_, _1, drawing::rectangle( cv::Point( p[0], p[1] ), cv::Point( p[2], p[3] ), cv::Scalar( p[6], p[5], p[4] ), p[7], p[8], p[9] ) ) ) );
+        }
         else if( e[0] == "gamma")
         {
             double gamma = boost::lexical_cast< double >( e[1] );
@@ -1791,7 +1841,6 @@ static std::string usage_impl_()
     oss << "            <horizontal>: if present, tiles will be stacked horizontally (by default, vertical stacking is used)" << std::endl;
     oss << "            example: \"crop-tile=2,5,1,0,1,4&horizontal\"" << std::endl;
     oss << "            deprecated: old syntax <i>,<j>,<ncols>,<nrows> is used for one tile if i < ncols and j < ncols" << std::endl;
-    oss << "        cross[=<x>,<y>]: draw cross-hair at x,y; default: at image center" << std::endl;
     oss << "        encode=<format>: encode images to the specified format. <format>: jpg|ppm|png|tiff..., make sure to use --no-header" << std::endl;
     oss << "        equalize-histogram: todo: equalize each channel by its histogram" << std::endl;
     oss << "        fft[=<options>]: do fft on a floating point image" << std::endl;
@@ -1847,6 +1896,11 @@ static std::string usage_impl_()
     oss << "        undistort=<undistort map file>: undistort" << std::endl;
     oss << "        view[=<wait-interval>]: view image; press <space> to save image (timestamp or system time as filename); <esc>: to close" << std::endl;
     oss << "                                <wait-interval>: a hack for now; milliseconds to wait for image display and key press; default 1" << std::endl;
+    oss << std::endl;
+    oss << "    basic drawing on images" << std::endl;
+    oss << "        cross[=<x>,<y>]: draw cross-hair at x,y; default: at image center" << std::endl;
+    oss << "        circle=<x>,<y>,<radius>[,<r>,<g>,<b>,<thickness>,<line_type>,<shift>]: draw circle; see cv::circle for details on parameters and defaults" << std::endl;
+    oss << "        rectangle,box=<x>,<y>,<x>,<y>[,<r>,<g>,<b>,<thickness>,<line_type>,<shift>]: draw rectangle; see cv::rectangle for details on parameters and defaults" << std::endl;
     oss << std::endl;
     oss << "    cv::Mat image operations:" << std::endl;
     oss << "        simple-blob[=<parameters>]: wraps cv::SimpleBlobDetector, outputs as csv key points timestamped by image timestamp" << std::endl;
