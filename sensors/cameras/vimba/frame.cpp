@@ -27,9 +27,8 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include <iostream>
 #include <comma/base/exception.h>
-#include "snark/imaging/cv_mat/serialization.h"
+#include <snark/imaging/cv_mat/serialization.h>
 #include "error.h"
 #include "frame.h"
 

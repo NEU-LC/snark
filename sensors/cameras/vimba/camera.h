@@ -33,7 +33,7 @@
 #include <map>
 #include <vector>
 #include <VimbaCPP/Include/Camera.h>
-#include "snark/imaging/cv_mat/serialization.h"
+#include <snark/imaging/cv_mat/serialization.h>
 #include "attribute.h"
 
 namespace snark { namespace vimba {

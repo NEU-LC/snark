@@ -32,7 +32,7 @@
 
 #include <boost/shared_ptr.hpp>
 #include <VimbaCPP/Include/VimbaCPP.h>
-#include "snark/imaging/cv_mat/serialization.h"
+#include <snark/imaging/cv_mat/serialization.h>
 
 namespace snark { namespace vimba {
 
