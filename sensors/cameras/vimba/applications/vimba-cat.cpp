@@ -27,14 +27,17 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include <boost/shared_ptr.hpp>
+#include <boost/bind.hpp>
+#include <comma/application/signal_flag.h>
 #include <comma/application/verbose.h>
 #include <comma/base/exception.h>
 #include <snark/imaging/cv_mat/filters.h>
 #include <snark/imaging/cv_mat/serialization.h>
 
+#include "../attribute.h"
 #include "../camera.h"
 #include "../error.h"
+#include "../frame.h"
 #include "../system.h"
 
 static const char* possible_fields = "t,rows,cols,type,size";
@@ -157,50 +160,47 @@ static void print_attribute_entry( const std::string& label, const std::string& 
     std::cout << label << ": " << wrap( value, 80, prefix ) << "\n";
 }
 
-static std::vector< snark::cv_mat::filter > filters( const comma::command_line_options& options )
+static void output_frame( const snark::vimba::frame& frame
+                        , snark::cv_mat::serialization& serialization
+                        , std::vector< snark::cv_mat::filter >& filters
+                        , bool output_null )
 {
-    std::string valueless_options_csv( valueless_options );
-    std::replace( valueless_options_csv.begin(), valueless_options_csv.end(), ' ', ',' );
-    std::string options_with_values_csv( options_with_values );
-    std::replace( options_with_values_csv.begin(), options_with_values_csv.end(), ' ', ',' );
+    static VmbUint64_t last_frame_id = 0;
 
-    std::vector< std::string > filter_strings = options.unnamed( valueless_options_csv, options_with_values_csv );
-    std::string filter_string;
-    if( filter_strings.size() == 1 )
+    // Take the timestamp immediately
+    boost::posix_time::ptime timestamp( boost::posix_time::microsec_clock::universal_time() );
+
+    // TODO: option to use timestamp from the frame
+
+    if( frame.status() == VmbFrameStatusComplete )
     {
-        filter_string = filter_strings[0];
-    }
-    if( filter_strings.size() > 1 )
-    {
-        COMMA_THROW( comma::exception, "please provide filters as name-value string" );
-    }
+        if( last_frame_id != 0 )
+        {
+            VmbUint64_t missing_frames = frame.id() - last_frame_id - 1;
+            if( missing_frames > 0 )
+            {
+                std::cerr << "Warning: " << missing_frames << " missing frame"
+                          << ( missing_frames == 1 ? "" : "s" )
+                          << " detected" << std::endl;
+            }
+        }
+        last_frame_id = frame.id();
 
-    return snark::cv_mat::filters::make( filter_string );
-}
+        snark::vimba::frame::pixel_format_desc fd = frame.format_desc();
 
-static boost::shared_ptr< snark::cv_mat::serialization > serializer( const comma::command_line_options& options )
-{
-    std::string        fields = options.value< std::string >( "--fields", default_fields );
-    comma::csv::format format = format_from_fields( fields );
-    bool               header_only = false;
+        cv::Mat cv_mat( frame.height()
+                      , frame.width() * fd.width_adjustment
+                      , fd.type
+                      , frame.image_buffer() );
 
-    if( options.exists( "--no-header" ))
-    {
-        fields = "";
+        snark::cv_mat::filters::value_type timestamped_data( std::make_pair( timestamp, cv_mat ));
+        snark::cv_mat::filters::value_type filtered_data = snark::cv_mat::filters::apply( filters, timestamped_data );
+        if( !output_null ) serialization.write( std::cout, filtered_data );
     }
     else
     {
-        header_only = ( options.exists( "--header" ));
+        std::cerr << "Warning: frame " << frame.id() << " status " << frame.status_as_string() << std::endl;
     }
-    boost::shared_ptr< snark::cv_mat::serialization > serialization
-        ( new snark::cv_mat::serialization( fields, format, header_only ));
-    return serialization;
-}
-
-static void output_frame( snark::vimba::frame* frame, snark::cv_mat::serialization& serialization )
-{
-    if( !frame ) { /* handle null */ }
-    // handle, apply filters, serialize, ...
 }
 
 static int run_cmd( const comma::command_line_options& options )
@@ -272,10 +272,63 @@ static int run_cmd( const comma::command_line_options& options )
         camera.set_features( options.value<std::string>( "--set" ));
     }
 
-    camera.capture_images( filters( options ), serializer( options ));
-    
-    // todo
-    //camera.start_acquisition( boost::bind( &output_frame, _1, boost::cref( serialization ), boost::ref( filters ) );
+    std::string        fields = options.value< std::string >( "--fields", default_fields );
+    comma::csv::format format = format_from_fields( fields );
+    bool               header_only = false;
+
+    if( options.exists( "--no-header" ))
+    {
+        fields = "";
+    }
+    else
+    {
+        header_only = ( options.exists( "--header" ));
+    }
+    snark::cv_mat::serialization serialization( fields, format, header_only );
+
+    std::string valueless_options_csv( valueless_options );
+    std::replace( valueless_options_csv.begin(), valueless_options_csv.end(), ' ', ',' );
+    std::string options_with_values_csv( options_with_values );
+    std::replace( options_with_values_csv.begin(), options_with_values_csv.end(), ' ', ',' );
+
+    std::vector< std::string > filter_strings = options.unnamed( valueless_options_csv, options_with_values_csv );
+    std::string filter_string;
+    if( filter_strings.size() == 1 )
+    {
+        filter_string = filter_strings[0];
+    }
+    if( filter_strings.size() > 1 )
+    {
+        COMMA_THROW( comma::exception, "please provide filters as name-value string" );
+    }
+
+    std::vector< snark::cv_mat::filter > filters = snark::cv_mat::filters::make( filter_string );
+
+    bool output_null = false;
+
+    if( !filters.empty() )
+    {
+        // Check if the last filter is "null"
+        if( !filters.back().filter_function )
+        {
+            // In which case remove it and disable output
+            output_null = true;
+            filters.pop_back();
+        }
+    }
+
+    camera.start_acquisition( boost::bind( &output_frame
+                                         , _1
+                                         , boost::ref( serialization )
+                                         , boost::ref( filters )
+                                         , output_null ));
+
+    comma::signal_flag is_shutdown;
+    do {
+        sleep( 1 );
+    } while( !is_shutdown );
+
+    camera.stop_acquisition();
 
     return 0;
 }

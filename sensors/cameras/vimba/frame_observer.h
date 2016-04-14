@@ -30,28 +30,27 @@
 #ifndef SNARK_SENSORS_VIMBA_FRAME_OBSERVER_H_
 #define SNARK_SENSORS_VIMBA_FRAME_OBSERVER_H_
 
-#include <boost/shared_ptr.hpp>
+#include <boost/function.hpp>
 #include <VimbaCPP/Include/VimbaCPP.h>
-#include <snark/imaging/cv_mat/filters.h>
-#include <snark/imaging/cv_mat/serialization.h>
 
 namespace snark { namespace vimba {
+
+class frame;
 
 class frame_observer : virtual public AVT::VmbAPI::IFrameObserver
 {
     public:
+        typedef const boost::function< void( const vimba::frame& ) > callback_fn;
+
         frame_observer( AVT::VmbAPI::CameraPtr camera
-                      , std::vector< snark::cv_mat::filter > filters
-                      , boost::shared_ptr< snark::cv_mat::serialization > serialization );
-    
-        // This is our callback routine that will be executed on every received frame
+                      , callback_fn callback );
+
+        // Overridden method which is called by the Vimba library
         virtual void FrameReceived( const AVT::VmbAPI::FramePtr pFrame );
 
     private:
-        std::vector< snark::cv_mat::filter > filters_;
-        boost::shared_ptr< snark::cv_mat::serialization > serialization_;
-        VmbUint64_t last_frame_id_;
-        bool output_null_;
+        // This holds our callback routine that will be executed on every received frame
+        callback_fn callback_;
 };
 
 } } // namespace snark { namespace vimba {
