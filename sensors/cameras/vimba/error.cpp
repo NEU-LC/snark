@@ -29,6 +29,7 @@
 
 #include <iostream>
 #include <sstream>
+#include <stdlib.h>
 #include "error.h"
 
 namespace snark { namespace vimba {
@@ -56,7 +57,14 @@ std::string error_code_to_string( VmbError_t error_code )
     case VmbErrorOther:          error_str = "Other error"; break;
     case VmbErrorResources:      error_str = "Resources not available (e.g memory)"; break;
     case VmbErrorInvalidCall:    error_str = "Call is invalid in the current context (e.g callback)"; break;
-    case VmbErrorNoTL:           error_str = "No transport layers were found. Have you set GENICAM_GENTL64_PATH?"; break;
+    case VmbErrorNoTL:
+        {
+            std::ostringstream error_oss;
+            error_oss << "No transport layers were found. GENICAM_GENTL64_PATH is set to \""
+                      << getenv( "GENICAM_GENTL64_PATH" ) << "\". Is it correct?";
+            error_str = error_oss.str();
+        }
+        break;
     case VmbErrorNotImplemented: error_str = "API feature is not implemented"; break;
     case VmbErrorNotSupported:   error_str = "API feature is not supported"; break;
     case VmbErrorIncomplete:     error_str = "A multiple register read or write was partially completed"; break;

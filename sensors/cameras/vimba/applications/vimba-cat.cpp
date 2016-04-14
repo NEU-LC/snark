@@ -96,8 +96,8 @@ static void usage( bool verbose = false )
         std::cerr << std::endl;
         std::cerr << "Trouble-shooting:" << std::endl;
         std::cerr << "    Before running any vimba application you need to set GENICAM_GENTL64_PATH" << std::endl;
-        std::cerr << "    to the path to the transport layer cti file. See the Vimba Manual for" << std::endl;
-        std::cerr << "    more detail." << std::endl;
+        std::cerr << "    to the path to the transport layer cti file. It is currently set to" << std::endl;
+        std::cerr << "    " << getenv( "GENICAM_GENTL64_PATH" ) << "." << std::endl;
         std::cerr << std::endl;
         std::cerr << "Differences compared to gige-cat:" << std::endl;
         std::cerr << "    " << comma::verbose.app_name() << " does not support the integer id's supported by gige-cat." << std::endl;
