@@ -66,6 +66,10 @@ frame::frame( const AVT::VmbAPI::FramePtr& frame_ptr )
     if( status != VmbErrorSuccess ) {
         COMMA_THROW( comma::exception, error_msg( "GetPixelFormat() failed", status ));
     }
+    status = SP_ACCESS( frame_ptr )->GetTimestamp( timestamp_ );
+    if( status != VmbErrorSuccess ) {
+        COMMA_THROW( comma::exception, error_msg( "GetTimeStamp() failed", status ));
+    }
 }
 
 const char* frame::status_as_string() const

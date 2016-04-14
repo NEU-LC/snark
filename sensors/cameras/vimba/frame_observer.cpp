@@ -59,6 +59,8 @@ void frame_observer::FrameReceived( const AVT::VmbAPI::FramePtr frame_ptr )
     // Take the timestamp immediately
     boost::posix_time::ptime timestamp( boost::posix_time::microsec_clock::universal_time() );
 
+    // TODO: option to use timestamp from the frame
+
     frame frame( frame_ptr );
 
     if( frame.status() == VmbFrameStatusComplete )

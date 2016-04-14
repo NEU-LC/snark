@@ -56,6 +56,7 @@ class frame
         VmbUint32_t        width() const { return width_; }
         VmbUchar_t*        image_buffer() const { return image_buffer_; }
         VmbPixelFormatType pixel_format() const { return pixel_format_; }
+        VmbUint64_t        timestamp() const { return timestamp_; }
         pixel_format_desc  format_desc() const;
 
     private:
@@ -66,6 +67,7 @@ class frame
         VmbUint32_t        size_;
         VmbUchar_t*        image_buffer_;
         VmbPixelFormatType pixel_format_;
+        VmbUint64_t        timestamp_;
 };
 
 } } // namespace snark { namespace vimba {
