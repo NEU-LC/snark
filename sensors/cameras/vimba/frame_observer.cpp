@@ -56,6 +56,9 @@ frame_observer::frame_observer( AVT::VmbAPI::CameraPtr camera
 
 void frame_observer::FrameReceived( const AVT::VmbAPI::FramePtr frame_ptr )
 {
+    // Take the timestamp immediately
+    boost::posix_time::ptime timestamp( boost::posix_time::microsec_clock::universal_time() );
+
     frame frame( frame_ptr );
 
     if( frame.status() == VmbFrameStatusComplete )
@@ -79,7 +82,7 @@ void frame_observer::FrameReceived( const AVT::VmbAPI::FramePtr frame_ptr )
                       , fd.type
                       , frame.image_buffer() );
 
-        snark::cv_mat::filters::value_type timestamped_data( std::make_pair( boost::posix_time::microsec_clock::universal_time(), cv_mat ));
+        snark::cv_mat::filters::value_type timestamped_data( std::make_pair( timestamp, cv_mat ));
         snark::cv_mat::filters::value_type filtered_data = snark::cv_mat::filters::apply( filters_, timestamped_data );
         if( !output_null_ ) serialization_->write( std::cout, filtered_data );
     }
