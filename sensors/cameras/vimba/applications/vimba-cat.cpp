@@ -197,6 +197,12 @@ static boost::shared_ptr< snark::cv_mat::serialization > serializer( const comma
     return serialization;
 }
 
+static void output_frame( snark::vimba::frame* frame, snark::cv_mat::serialization& serialization )
+{
+    if( !frame ) { /* handle null */ }
+    // handle, apply filters, serialize, ...
+}
+
 static int run_cmd( const comma::command_line_options& options )
 {
     snark::vimba::system system;                                   // Initialize the Vimba API
@@ -267,6 +273,9 @@ static int run_cmd( const comma::command_line_options& options )
     }
 
     camera.capture_images( filters( options ), serializer( options ));
+    
+    // todo
+    //camera.start_acquisition( boost::bind( &output_frame, _1, boost::cref( serialization ), boost::ref( filters ) );
 
     return 0;
 }

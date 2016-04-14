@@ -32,6 +32,7 @@
 
 #include <map>
 #include <vector>
+#include <boost/function.hpp>
 #include <VimbaCPP/Include/Camera.h>
 #include <snark/imaging/cv_mat/filters.h>
 #include <snark/imaging/cv_mat/serialization.h>
@@ -53,6 +54,10 @@ class camera
 
         void set_feature( const std::string& name, const std::string& value = "" ) const;
         void set_features( const std::string& name_values ) const;
+        
+        void start_acquisition( const boost::function< void( vimba::frame* ) >& callback ) { callback( NULL ); /* todo */ }
+        void start_acquisition( boost::function< void( vimba::frame* ) >& callback ) { callback( NULL ); /* todo */ }
+        void stop_acquisition();
 
         void capture_images( std::vector< snark::cv_mat::filter > filters
                            , boost::shared_ptr< snark::cv_mat::serialization > serialization ) const;
