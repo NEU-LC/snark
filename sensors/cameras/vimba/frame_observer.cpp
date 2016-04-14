@@ -34,11 +34,25 @@
 namespace snark { namespace vimba {
 
 frame_observer::frame_observer( AVT::VmbAPI::CameraPtr camera
+                              , std::vector< snark::cv_mat::filter > filters
                               , boost::shared_ptr< snark::cv_mat::serialization > serialization )
     : IFrameObserver( camera )
+    , filters_( filters )
     , serialization_( serialization )
     , last_frame_id_( 0 )
-{}
+    , output_null_( false )
+{
+    if( !filters_.empty() )
+    {
+        // Check if the last filter is "null"
+        if( !filters_.back().filter_function )
+        {
+            // In which case remove it and disable output
+            output_null_ = true;
+            filters_.pop_back();
+        }
+    }
+}
 
 void frame_observer::FrameReceived( const AVT::VmbAPI::FramePtr frame_ptr )
 {
@@ -65,8 +79,9 @@ void frame_observer::FrameReceived( const AVT::VmbAPI::FramePtr frame_ptr )
                       , fd.type
                       , frame.image_buffer() );
 
-        serialization_->write( std::cout
-                             , std::make_pair( boost::posix_time::microsec_clock::universal_time(), cv_mat ));
+        snark::cv_mat::filters::value_type timestamped_data( std::make_pair( boost::posix_time::microsec_clock::universal_time(), cv_mat ));
+        snark::cv_mat::filters::value_type filtered_data = snark::cv_mat::filters::apply( filters_, timestamped_data );
+        if( !output_null_ ) serialization_->write( std::cout, filtered_data );
     }
     else
     {

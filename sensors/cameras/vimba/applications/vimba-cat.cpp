@@ -30,6 +30,7 @@
 #include <boost/shared_ptr.hpp>
 #include <comma/application/verbose.h>
 #include <comma/base/exception.h>
+#include <snark/imaging/cv_mat/filters.h>
 #include <snark/imaging/cv_mat/serialization.h>
 
 #include "../camera.h"
@@ -39,20 +40,24 @@
 static const char* possible_fields = "t,rows,cols,type,size";
 static const char* default_fields = "t,rows,cols,type";
 
+static const char* valueless_options =
+    "--help -h"
+    " --verbose -v"
+    " --version"
+    " --list-cameras"
+    " --list-attributes"
+    " --header --no-header"
+    ;
+
+static const char* options_with_values =
+    "--set --set-and-exit"
+    " --id"
+    " --fields"
+    ;
+
 static void bash_completion( unsigned const ac, char const * const * av )
 {
-    static const char * completion_options =
-        " --help -h"
-        " --verbose -v"
-        " --version"
-        " --list-cameras"
-        " --list-attributes"
-        " --id"
-        " --set --set-and-exit"
-        " --header --no-header"
-        ;
-
-    std::cout << completion_options << std::endl;
+    std::cout << valueless_options << " " << options_with_values << std::endl;
     exit( 0 );
 }
 
@@ -102,8 +107,8 @@ static void usage( bool verbose = false )
         std::cerr << "    Use \"--list-attributes\" and \"--list-attributes --verbose\" to find the" << std::endl;
         std::cerr << "    appropriate new attribute." << std::endl;
         std::cerr << std::endl;
-        // std::cerr << "Image Filters:" << std::endl;
-        // std::cerr << snark::cv_mat::filters::usage() << std::endl;
+        std::cerr << "Image Filters:" << std::endl;
+        std::cerr << snark::cv_mat::filters::usage() << std::endl;
     }
     exit( 0 );
 }
@@ -118,25 +123,6 @@ static comma::csv::format format_from_fields( const std::string& fields )
         else { format += "ui"; }
     }
     return format;
-}
-
-static boost::shared_ptr< snark::cv_mat::serialization > create_serializer( const comma::command_line_options& options )
-{
-    std::string        fields = options.value< std::string >( "--fields", default_fields );
-    comma::csv::format format = format_from_fields( fields );
-    bool               header_only = false;
-
-    if( options.exists( "--no-header" ))
-    {
-        fields = "";
-    }
-    else
-    {
-        header_only = ( options.exists( "--header" ));
-    }
-    boost::shared_ptr< snark::cv_mat::serialization > serialization
-        ( new snark::cv_mat::serialization( fields, format, header_only ));
-    return serialization;
 }
 
 static std::string wrap( const std::string& text, size_t width = 80, const std::string& prefix = "")
@@ -169,6 +155,46 @@ static void print_attribute_entry( const std::string& label, const std::string& 
 {
     std::string prefix( label.length() + 2, ' ' );
     std::cout << label << ": " << wrap( value, 80, prefix ) << "\n";
+}
+
+static std::vector< snark::cv_mat::filter > filters( const comma::command_line_options& options )
+{
+    std::string valueless_options_csv( valueless_options );
+    std::replace( valueless_options_csv.begin(), valueless_options_csv.end(), ' ', ',' );
+    std::string options_with_values_csv( options_with_values );
+    std::replace( options_with_values_csv.begin(), options_with_values_csv.end(), ' ', ',' );
+
+    std::vector< std::string > filter_strings = options.unnamed( valueless_options_csv, options_with_values_csv );
+    std::string filter_string;
+    if( filter_strings.size() == 1 )
+    {
+        filter_string = filter_strings[0];
+    }
+    if( filter_strings.size() > 1 )
+    {
+        COMMA_THROW( comma::exception, "please provide filters as name-value string" );
+    }
+
+    return snark::cv_mat::filters::make( filter_string );
+}
+
+static boost::shared_ptr< snark::cv_mat::serialization > serializer( const comma::command_line_options& options )
+{
+    std::string        fields = options.value< std::string >( "--fields", default_fields );
+    comma::csv::format format = format_from_fields( fields );
+    bool               header_only = false;
+
+    if( options.exists( "--no-header" ))
+    {
+        fields = "";
+    }
+    else
+    {
+        header_only = ( options.exists( "--header" ));
+    }
+    boost::shared_ptr< snark::cv_mat::serialization > serialization
+        ( new snark::cv_mat::serialization( fields, format, header_only ));
+    return serialization;
 }
 
 static int run_cmd( const comma::command_line_options& options )
@@ -240,7 +266,7 @@ static int run_cmd( const comma::command_line_options& options )
         camera.set_features( options.value<std::string>( "--set" ));
     }
 
-    camera.capture_images( create_serializer( options ));
+    camera.capture_images( filters( options ), serializer( options ));
 
     return 0;
 }

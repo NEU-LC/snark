@@ -33,6 +33,7 @@
 #include <map>
 #include <vector>
 #include <VimbaCPP/Include/Camera.h>
+#include <snark/imaging/cv_mat/filters.h>
 #include <snark/imaging/cv_mat/serialization.h>
 #include "attribute.h"
 
@@ -53,14 +54,16 @@ class camera
         void set_feature( const std::string& name, const std::string& value = "" ) const;
         void set_features( const std::string& name_values ) const;
 
-        void capture_images( boost::shared_ptr< snark::cv_mat::serialization > serialization ) const;
+        void capture_images( std::vector< snark::cv_mat::filter > filters
+                           , boost::shared_ptr< snark::cv_mat::serialization > serialization ) const;
 
     private:
         typedef VmbErrorType ( AVT::VmbAPI::Camera::*getter_fn )( std::string& ) const;
 
         void add_name_value( const char* label, getter_fn fn, name_values& name_value_pairs ) const;
 
-        VmbErrorType start_continuous_image_acquisition( boost::shared_ptr< snark::cv_mat::serialization > serialization ) const;
+        VmbErrorType start_continuous_image_acquisition( std::vector< snark::cv_mat::filter > filters
+                                                       , boost::shared_ptr< snark::cv_mat::serialization > serialization ) const;
         void stop_continuous_image_acquisition() const;
 
         AVT::VmbAPI::CameraPtr camera_;

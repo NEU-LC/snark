@@ -126,11 +126,12 @@ void camera::set_features( const std::string& name_value_pairs ) const
     }
 }
 
-void camera::capture_images( boost::shared_ptr< snark::cv_mat::serialization > serialization ) const
+void camera::capture_images( std::vector< snark::cv_mat::filter > filters
+                           , boost::shared_ptr< snark::cv_mat::serialization > serialization ) const
 {
     VmbErrorType status;
 
-    status = start_continuous_image_acquisition( serialization );
+    status = start_continuous_image_acquisition( filters, serialization );
     if ( status == VmbErrorSuccess )
     {
         comma::signal_flag is_shutdown;
@@ -142,13 +143,14 @@ void camera::capture_images( boost::shared_ptr< snark::cv_mat::serialization > s
     }
 }
 
-VmbErrorType camera::start_continuous_image_acquisition( boost::shared_ptr< snark::cv_mat::serialization > serialization ) const
+VmbErrorType camera::start_continuous_image_acquisition( std::vector< snark::cv_mat::filter > filters
+                                                       , boost::shared_ptr< snark::cv_mat::serialization > serialization ) const
 {
     comma::verbose << "Start continuous image acquisition" << std::endl;
 
     // Create a frame observer for this camera
     // (This will be wrapped in a shared_ptr so we don't delete it)
-    frame_observer* fo = new frame_observer( camera_, serialization );
+    frame_observer* fo = new frame_observer( camera_, filters, serialization );
     // Start streaming
     VmbErrorType status = camera_->StartContinuousImageAcquisition( num_frames, AVT::VmbAPI::IFrameObserverPtr( fo ));
     return status;
