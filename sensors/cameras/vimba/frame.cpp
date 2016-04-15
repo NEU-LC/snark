@@ -88,21 +88,19 @@ frame::pixel_format_desc frame::format_desc() const
 {
     switch( pixel_format_ )
     {
-        // Run vimba-cat --list-attributes --verbose to see all allowed formats for a given camera
-        //
-        // Below are the formats listed for the Prosilica GT3300. However,
-        // actually trying them shows that many don't work. They are marked below.
+        // Run vimba-cat --list-attributes --verbose and search for PixelFormat
+        // to see all allowed formats for a given camera
 
-        case VmbPixelFormatBayerGR12Packed: // BayerGR12Packed maps to VmbPixelFormatBayerGB12Packed
-        case VmbPixelFormatBayerRG12Packed: // BayerRG12Packed (fails to set)
-        case VmbPixelFormatBayerGB12Packed: // BayerGB12Packed (fails to set)
-        case VmbPixelFormatBayerBG12Packed: // BayerBG12Packed (fails to set)
+        case VmbPixelFormatBayerGR12Packed: // BayerGR12Packed
+        case VmbPixelFormatBayerRG12Packed: // BayerRG12Packed
+        case VmbPixelFormatBayerGB12Packed: // BayerGB12Packed
+        case VmbPixelFormatBayerBG12Packed: // BayerBG12Packed
             return pixel_format_desc( CV_8UC1, 1.5 );
 
         case VmbPixelFormatMono8:       // Mono8
         case VmbPixelFormatBayerGR8:    // BayerGR8
-        case VmbPixelFormatBayerRG8:    // BayerRG8 (fails to set)
-        case VmbPixelFormatBayerBG8:    // BayerGB8 (fails to set)
+        case VmbPixelFormatBayerRG8:    // BayerRG8
+        case VmbPixelFormatBayerBG8:    // BayerGB8
             return pixel_format_desc( CV_8UC1, 1.0 );
 
         case VmbPixelFormatRgb8:        // RGB8Packed
@@ -113,17 +111,17 @@ frame::pixel_format_desc frame::format_desc() const
         case VmbPixelFormatBgra8:       // BGRA8Packed
             return pixel_format_desc( CV_8UC4, 1.0 );
 
-        case VmbPixelFormatMono10:      // Mono10 (fails to set)
-        case VmbPixelFormatMono12:      // Mono12 (fails to set)
-        case VmbPixelFormatMono12Packed:// Mono12Packed (fails to set)
-        case VmbPixelFormatMono14:      // Mono14 (fails to set)
+        case VmbPixelFormatMono10:      // Mono10
+        case VmbPixelFormatMono12:      // Mono12
+        case VmbPixelFormatMono12Packed:// Mono12Packed
+        case VmbPixelFormatMono14:      // Mono14
 
-        case VmbPixelFormatBayerBG10:   // BayerBG10 (fails to set)
+        case VmbPixelFormatBayerBG10:   // BayerBG10
         case VmbPixelFormatBayerGR12:   // BayerGR12
-        case VmbPixelFormatBayerRG12:   // BayerRG12 (fails to set)
+        case VmbPixelFormatBayerRG12:   // BayerRG12
 
-                                        // RGB10Packed (fails to set, no obvious mapping)
-        case VmbPixelFormatRgb12:       // RGB12Packed (fails to set)
+                                        // RGB10Packed (no obvious mapping)
+        case VmbPixelFormatRgb12:       // RGB12Packed
 
         case VmbPixelFormatYuv411:      // YUV411Packed
         case VmbPixelFormatYuv422:      // YUV422Packed
