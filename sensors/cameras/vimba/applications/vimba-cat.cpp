@@ -167,10 +167,12 @@ static void output_frame( const snark::vimba::frame& frame
 {
     static VmbUint64_t last_frame_id = 0;
 
-    // Take the timestamp immediately
+    // Take the timestamp immediately.
+    //
+    // The alternative is to use frame.timestamp() but that requires some
+    // additional work to turn it into an actual timestamp and probably
+    // isn't worth it without PTP.
     boost::posix_time::ptime timestamp( boost::posix_time::microsec_clock::universal_time() );
-
-    // TODO: option to use timestamp from the frame
 
     if( frame.status() == VmbFrameStatusComplete )
     {
