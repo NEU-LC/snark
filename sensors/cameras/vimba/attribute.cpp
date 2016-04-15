@@ -150,7 +150,33 @@ void attribute::init_allowed_values()
                         status = it->GetName( name );
                         if( status != VmbErrorSuccess )
                             name = "<error - GetName()>";
-                        allowed_values_.push_back( name );
+
+                        VmbInt64_t value;
+                        status = it->GetValue( value );
+                        if( status != VmbErrorSuccess )
+                        {
+                            std::ostringstream msg;
+                            msg << "Could not get value for " << name << " enum";
+                            write_error( msg.str(), status );
+                        }
+                        else
+                        {
+                            bool is_available;
+                            status = feature_->IsValueAvailable( value, is_available );
+                            if( status != VmbErrorSuccess )
+                            {
+                                std::ostringstream msg;
+                                msg << "Could not get availability status for " << name << " enum";
+                                write_error( msg.str(), status );
+                            }
+                            else
+                            {
+                                if( is_available )
+                                {
+                                    allowed_values_.push_back( name );
+                                }
+                            }
+                        }
                     }
                 }
             }
