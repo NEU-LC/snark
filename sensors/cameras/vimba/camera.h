@@ -59,9 +59,9 @@ class camera
         void stop_acquisition() const;
 
     private:
-        typedef VmbErrorType ( AVT::VmbAPI::Camera::*getter_fn )( std::string& ) const;
+        typedef const boost::function< VmbErrorType( std::string& ) > getter_fn;
 
-        void add_name_value( const char* label, getter_fn fn, name_values& name_value_pairs ) const;
+        static void add_name_value( const char* label, getter_fn fn, name_values& name_value_pairs );
 
         AVT::VmbAPI::CameraPtr camera_;
 };

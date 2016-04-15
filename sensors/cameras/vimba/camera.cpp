@@ -28,6 +28,7 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <sstream>
+#include <boost/bind.hpp>
 #include <comma/application/verbose.h>
 #include <comma/name_value/map.h>
 
@@ -57,19 +58,19 @@ camera::name_values camera::info() const
 {
     name_values name_value_pairs;
 
-    add_name_value( "id",            &AVT::VmbAPI::Camera::GetID,           name_value_pairs );
-    add_name_value( "name",          &AVT::VmbAPI::Camera::GetName,         name_value_pairs );
-    add_name_value( "model",         &AVT::VmbAPI::Camera::GetModel,        name_value_pairs );
-    add_name_value( "serial_number", &AVT::VmbAPI::Camera::GetSerialNumber, name_value_pairs );
-    add_name_value( "interface_id",  &AVT::VmbAPI::Camera::GetInterfaceID,  name_value_pairs );
+    add_name_value( "id",            boost::bind( &AVT::VmbAPI::Camera::GetID,           boost::cref( *camera_ ), _1 ), name_value_pairs );
+    add_name_value( "name",          boost::bind( &AVT::VmbAPI::Camera::GetName,         boost::cref( *camera_ ), _1 ), name_value_pairs );
+    add_name_value( "model",         boost::bind( &AVT::VmbAPI::Camera::GetModel,        boost::cref( *camera_ ), _1 ), name_value_pairs );
+    add_name_value( "serial_number", boost::bind( &AVT::VmbAPI::Camera::GetSerialNumber, boost::cref( *camera_ ), _1 ), name_value_pairs );
+    add_name_value( "interface_id",  boost::bind( &AVT::VmbAPI::Camera::GetInterfaceID,  boost::cref( *camera_ ), _1 ), name_value_pairs );
 
     return name_value_pairs;
 }
 
-void camera::add_name_value( const char* label, getter_fn fn, name_values& name_value_pairs ) const
+void camera::add_name_value( const char* label, getter_fn fn, name_values& name_value_pairs )
 {
     std::string value;
-    VmbErrorType status = ( *camera_.*fn )( value );
+    VmbErrorType status = fn( value );
     if( status == VmbErrorSuccess )
     {
         name_value_pairs[ label ] = value;
