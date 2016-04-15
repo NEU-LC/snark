@@ -39,6 +39,8 @@
 
 namespace snark { namespace vimba {
 
+// In tests double-buffering seems sufficient but we'll use three frames to
+// allow for possible jitter in processing time
 static const unsigned int num_frames = 3;
 
 camera::camera( const std::string& camera_id )
