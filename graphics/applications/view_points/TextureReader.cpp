@@ -59,7 +59,7 @@ TextureReader::image_::image_( const TextureReader::image_options& o ) : image( 
 TextureReader::TextureReader( QGLView& viewer
                             , const reader_parameters& params
                             , const std::vector< image_options >& io )
-    : Reader( viewer, reader_parameters( params ), NULL, "", QVector3D( 0, 1, 1 ) )
+    : Reader( viewer, reader_parameters( params ), NULL, "", Eigen::Vector3d( 0, 1, 1 ) )
 {
     for( unsigned int i = 0; i < io.size(); ++i ) { images_.push_back( new image_( io[i] ) ); }
 }
@@ -89,7 +89,8 @@ void TextureReader::render( QGLPainter* painter )
     if( id >= images_.size() ) { return; }
     painter->setStandardEffect( QGL::FlatReplaceTexture2D );
     painter->modelViewMatrix().push();
-    painter->modelViewMatrix().translate( m_translation - m_offset );
+    Eigen::Vector3d d = m_translation - m_offset;
+    painter->modelViewMatrix().translate( QVector3D( d.x(), d.y(), d.z() ) );
     painter->modelViewMatrix().rotate( m_quaternion );
     images_[id].node->draw( painter );
     painter->modelViewMatrix().pop();

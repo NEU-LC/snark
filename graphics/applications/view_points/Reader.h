@@ -35,6 +35,7 @@
 
 #include <boost/scoped_ptr.hpp>
 #include <boost/thread.hpp>
+#include <Eigen/Core>
 #include <comma/csv/options.h>
 #include <comma/csv/stream.h>
 #include <comma/io/stream.h>
@@ -63,7 +64,7 @@ struct reader_parameters
 class Reader : public reader_parameters
 {
     public:
-        Reader( QGLView& viewer, const reader_parameters& params, coloured* c, const std::string& label, const QVector3D& offset = QVector3D( 0, 0, 0 ) );
+        Reader( QGLView& viewer, const reader_parameters& params, coloured* c, const std::string& label, const Eigen::Vector3d& offset = Eigen::Vector3d( 0, 0, 0 ) );
 
         virtual ~Reader() {}
 
@@ -83,10 +84,10 @@ class Reader : public reader_parameters
 
     protected:
         bool updatePoint( const Eigen::Vector3d& offset );
-        void draw_label( QGLPainter* painter, const QVector3D& position, const std::string& label );
-        void draw_label( QGLPainter* painter, const QVector3D& position, const QColor4ub& color, const std::string& label );
-        void draw_label( QGLPainter* painter, const QVector3D& position );
-        void draw_label( QGLPainter* painter, const QVector3D& position, const QColor4ub& color );
+        void draw_label( QGLPainter* painter, const Eigen::Vector3d& position, const QColor4ub& color, const std::string& label );
+        void draw_label( QGLPainter* painter, const Eigen::Vector3d& position, const QColor4ub& color );
+        void draw_label( QGLPainter* painter, const Eigen::Vector3d& position, const std::string& label );
+        void draw_label( QGLPainter* painter, const Eigen::Vector3d& position );
 
         friend class Viewer;
         QGLView& m_viewer;
@@ -104,10 +105,10 @@ class Reader : public reader_parameters
         boost::optional< Eigen::Vector3d > m_orientation;
         comma::uint32 id_; // todo: quick and dirty; replace m_point, m_orientation, etc with PointWithId point_;
         QColor4ub m_color;
-        QVector3D m_translation;
-        QQuaternion m_quaternion;
         std::string m_label;
-        QVector3D m_offset;
+        Eigen::Vector3d m_translation;
+        Eigen::Vector3d m_offset;
+        QQuaternion m_quaternion;
 
     private:
         void drawText( QGLPainter *painter, const QString& string, const QColor4ub& color );

@@ -35,7 +35,7 @@
 
 namespace snark { namespace graphics { namespace View {
 
-Reader::Reader( QGLView& viewer, const reader_parameters& params, coloured* c, const std::string& label, const QVector3D& offset )
+Reader::Reader( QGLView& viewer, const reader_parameters& params, coloured* c, const std::string& label, const Eigen::Vector3d& offset )
     : reader_parameters( params )
     , m_viewer( viewer )
     , m_num_points( 0 )
@@ -77,8 +77,8 @@ bool Reader::updatePoint( const Eigen::Vector3d& offset )
     if( !m_point ) { return false; } // is it safe to do it without locking the mutex?
     boost::mutex::scoped_lock lock( m_mutex );
     if( !updated_ ) { return false; }
-    m_translation = QVector3D( m_point->x(), m_point->y(), m_point->z() );
-    m_offset = QVector3D( offset.x(), offset.y(), offset.z() );
+    m_translation = *m_point;
+    m_offset = offset;
     if( m_orientation )
     {
         const Eigen::Quaterniond& q = snark::rotation_matrix( *m_orientation ).quaternion();
@@ -88,17 +88,18 @@ bool Reader::updatePoint( const Eigen::Vector3d& offset )
     return true;
 }
 
-void Reader::draw_label( QGLPainter *painter, const QVector3D& position, const std::string& label ) { draw_label( painter, position, m_color, label ); }
+void Reader::draw_label( QGLPainter *painter, const Eigen::Vector3d& position, const std::string& label ) { draw_label( painter, position, m_color, label ); }
 
-void Reader::draw_label( QGLPainter *painter, const QVector3D& position, const QColor4ub& color ) { draw_label( painter, position, color, m_label ); }
+void Reader::draw_label( QGLPainter *painter, const Eigen::Vector3d& position, const QColor4ub& color ) { draw_label( painter, position, color, m_label ); }
 
-void Reader::draw_label( QGLPainter *painter, const QVector3D& position ) { draw_label( painter, position, m_color, m_label ); }
+void Reader::draw_label( QGLPainter *painter, const Eigen::Vector3d& position ) { draw_label( painter, position, m_color, m_label ); }
 
-void Reader::draw_label( QGLPainter *painter, const QVector3D& position, const QColor4ub& color, const std::string& label )
+void Reader::draw_label( QGLPainter *painter, const Eigen::Vector3d& position, const QColor4ub& color, const std::string& label )
 {
     if( label.empty() ) { return; }
     painter->modelViewMatrix().push();
-    painter->modelViewMatrix().translate( position - m_offset ); // painter->modelViewMatrix().translate( position );
+    Eigen::Vector3d d = position - m_offset;
+    painter->modelViewMatrix().translate( QVector3D( d.x(), d.y(), d.z() ) ); // painter->modelViewMatrix().translate( position );
     QMatrix4x4 world = painter->modelViewMatrix().top();
     Eigen::Matrix3d R;
     R << world( 0, 0 ) , world( 0, 1 ), world( 0, 2 ),

@@ -64,11 +64,11 @@ class ShapeReader : public Reader
         qt3d::vertex_buffer buffer_;
         struct label_t_ // quick and dirty
         {
-            QVector3D position;
+            Eigen::Vector3d position;
             QColor4ub color;
             std::string text;
             label_t_() {}
-            label_t_( const QVector3D& position, const QColor4ub& color, const std::string& text ) : position( position ), color( color ), text( text ) {}
+            label_t_( const Eigen::Vector3d& position, const QColor4ub& color, const std::string& text ) : position( position ), color( color ), text( text ) {}
         };
         block_buffer< label_t_ > labels_;
         ShapeWithId< S > sample_;
@@ -96,8 +96,7 @@ inline std::size_t ShapeReader< S, How >::update( const Eigen::Vector3d& offset 
     for( typename deque_t_::iterator it = m_deque.begin(); it != m_deque.end(); ++it )
     {
         Shapetraits< S, How >::update( it->shape, offset, it->color, it->block, buffer_, m_extents );
-        const Eigen::Vector3d& center = Shapetraits< S, How >::center( it->shape );
-        labels_.add( label_t_( QVector3D( center.x(), center.y(), center.z() ), it->color, it->label ), it->block );
+        labels_.add( label_t_( Shapetraits< S, How >::center( it->shape ), it->color, it->label ), it->block );
     }
     if( m_shutdown )
     {
