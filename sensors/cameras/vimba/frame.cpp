@@ -38,35 +38,35 @@ frame::frame( const AVT::VmbAPI::FramePtr& frame_ptr )
     : image_buffer_( NULL )
 {
     VmbErrorType status;
-    status = SP_ACCESS( frame_ptr )->GetFrameID( frame_id_ );
+    status = frame_ptr->GetFrameID( frame_id_ );
     if( status != VmbErrorSuccess ) {
         COMMA_THROW( comma::exception, error_msg( "GetFrameID() failed", status ));
     }
-    status = SP_ACCESS( frame_ptr )->GetReceiveStatus( frame_status_ );
+    status = frame_ptr->GetReceiveStatus( frame_status_ );
     if( status != VmbErrorSuccess ) {
         COMMA_THROW( comma::exception, error_msg( "GetReceiveStatus() failed", status ));
     }
-    status = SP_ACCESS( frame_ptr )->GetHeight( height_ );
+    status = frame_ptr->GetHeight( height_ );
     if( status != VmbErrorSuccess ) {
         COMMA_THROW( comma::exception, error_msg( "GetHeight() failed", status ));
     }
-    status = SP_ACCESS( frame_ptr )->GetWidth( width_ );
+    status = frame_ptr->GetWidth( width_ );
     if( status != VmbErrorSuccess ) {
         COMMA_THROW( comma::exception, error_msg( "GetWidth() failed", status ));
     }
-    status = SP_ACCESS( frame_ptr )->GetImageSize( size_ );
+    status = frame_ptr->GetImageSize( size_ );
     if( status != VmbErrorSuccess ) {
         COMMA_THROW( comma::exception, error_msg( "GetImageSize() failed", status ));
     }
-    status = SP_ACCESS( frame_ptr )->GetImage( image_buffer_ );
+    status = frame_ptr->GetImage( image_buffer_ );
     if( status != VmbErrorSuccess ) {
         COMMA_THROW( comma::exception, error_msg( "GetImage() failed", status ));
     }
-    status = SP_ACCESS( frame_ptr )->GetPixelFormat( pixel_format_ );
+    status = frame_ptr->GetPixelFormat( pixel_format_ );
     if( status != VmbErrorSuccess ) {
         COMMA_THROW( comma::exception, error_msg( "GetPixelFormat() failed", status ));
     }
-    status = SP_ACCESS( frame_ptr )->GetTimestamp( timestamp_ );
+    status = frame_ptr->GetTimestamp( timestamp_ );
     if( status != VmbErrorSuccess ) {
         COMMA_THROW( comma::exception, error_msg( "GetTimeStamp() failed", status ));
     }
