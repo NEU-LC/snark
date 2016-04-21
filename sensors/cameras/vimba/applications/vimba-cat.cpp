@@ -128,6 +128,7 @@ static comma::csv::format format_from_fields( const std::string& fields )
     return format;
 }
 
+// Word wrap input text to the given width, optionally inserting a prefix on each line
 static std::string wrap( const std::string& text, size_t width = 80, const std::string& prefix = "")
 {
     std::istringstream words( text );
