@@ -55,7 +55,7 @@ class camera
         void set_feature( const std::string& name, const std::string& value = "" ) const;
         void set_features( const std::string& name_values ) const;
         
-        void start_acquisition( frame_observer::callback_fn callback );
+        void start_acquisition( frame_observer::callback_fn callback ) const;
         void stop_acquisition() const;
 
     private:

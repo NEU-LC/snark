@@ -129,7 +129,7 @@ void camera::set_features( const std::string& name_value_pairs ) const
     }
 }
 
-void camera::start_acquisition( frame_observer::callback_fn callback )
+void camera::start_acquisition( frame_observer::callback_fn callback ) const
 {
     comma::verbose << "Start image acquisition" << std::endl;
 
