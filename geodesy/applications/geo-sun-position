@@ -354,7 +354,7 @@ examples:
     parser.add_argument ("--output-format", action="store_true",
                          help="list of the output types for a given input")
 
-    comma.csv.add_standard_options( parser, { 'fields': 'time,latitude,longitude' } )
+    comma.csv.add_options( parser, { 'fields': 'time,latitude,longitude' } )
 
     parser.add_argument( '--bash-completion', action='store_true', help=argparse.SUPPRESS )
 
