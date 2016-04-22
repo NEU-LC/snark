@@ -119,7 +119,7 @@ static void usage( bool more = false )
     std::cerr << std::endl;
     std::cerr << "        options" << std::endl;
     std::cerr << "            --radius=<metres>: radius of the local region to search" << std::endl;
-    std::cerr << "            --trace: local min/max only; if a points's reference point is not local" << std::endl;
+    std::cerr << "            --trace: for local min/max only; if a points's reference point is not local" << std::endl;
     std::cerr << "                     extremum, replace it with its reference" << std::endl;
     std::cerr << std::endl;
     std::cerr << "        input fields: x,y,z,scalar,id" << std::endl;
@@ -136,7 +136,7 @@ static void usage( bool more = false )
     std::cerr << std::endl;
     std::cerr << "    thin: read input data and thin them down by the given --resolution" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "        input fields" << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
+    std::cerr << "        input fields: " << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
     std::cerr << std::endl;
     plane_intersection::usage();
     vector_calc::usage();
@@ -327,7 +327,7 @@ static void evaluate_local_extremum( record* i, record* j, double radius, double
     if( i->is_extremum ) { j->is_extremum = false; }
 }
 
-static void update_nearest_extremum( record* i, record* j, double radius )
+static void update_nearest_extremum( record* i, record* j, double radius, bool trace )
 {
     if( i->is_extremum )
     {
@@ -337,13 +337,15 @@ static void update_nearest_extremum( record* i, record* j, double radius )
         i->reference_record = i; // todo: dump extremum_id, reference_record is enough
         return;
     }
-    if( !j->is_extremum ) { return; }
-    double norm = ( i->point.coordinates - j->point.coordinates ).norm();
+    record* k = j;
+    for( ; trace && k->reference_record != k && !k->reference_record->is_extremum; k = k->reference_record );
+    if( !trace && !k->is_extremum ) { return; }
+    double norm = ( i->point.coordinates - k->point.coordinates ).norm();
     if( norm > radius ) { return; }
     if( i->extremum_id != record::invalid_id && i->distance < norm ) { return; }
-    i->extremum_id = j->point.id;
+    i->extremum_id = k->point.id;
     i->distance = norm;
-    i->reference_record = j; // todo: dump extremum_id, reference_record is enough
+    i->reference_record = k; // todo: dump extremum_id, reference_record is enough
 }
 
 static void update_nearest( record* i, record* j, double radius, double sign, bool any )
@@ -602,7 +604,7 @@ int main( int ac, char** av )
                             {                            
                                 for( std::size_t k = 0; k < git->second.size(); ++k )
                                 {
-                                    local_operation::update_nearest_extremum( it->second[n], git->second[k], radius );
+                                    local_operation::update_nearest_extremum( it->second[n], git->second[k], radius, trace );
                                 }
                             }
                         }
