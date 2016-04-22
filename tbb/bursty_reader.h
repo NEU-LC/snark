@@ -103,7 +103,7 @@ bursty_reader< T >::bursty_reader( boost::function0< T > read, unsigned int size
     m_thread.reset( new boost::thread( boost::bind( &bursty_reader< T >::push_thread, this ) ) );
 }
 
-/// desctructor
+/// destructor
 template< typename T >
 bursty_reader< T >::~bursty_reader()
 {
