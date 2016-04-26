@@ -31,7 +31,6 @@
 #include <comma/application/signal_flag.h>
 #include <comma/application/verbose.h>
 #include <comma/base/exception.h>
-#include <snark/imaging/cv_mat/filters.h>
 #include <snark/imaging/cv_mat/serialization.h>
 
 #include "../attribute.h"
@@ -43,24 +42,20 @@
 static const char* possible_fields = "t,rows,cols,type,size";
 static const char* default_fields = "t,rows,cols,type";
 
-static const char* valueless_options =
-    "--help -h"
-    " --verbose -v"
-    " --version"
-    " --list-cameras"
-    " --list-attributes"
-    " --header --no-header"
-    ;
-
-static const char* options_with_values =
-    "--set --set-and-exit"
-    " --id"
-    " --fields"
-    ;
-
 static void bash_completion( unsigned const ac, char const * const * av )
 {
-    std::cout << valueless_options << " " << options_with_values << std::endl;
+    static const char* completion_options =
+        " --help -h"
+        " --verbose -v"
+        " --version"
+        " --list-cameras"
+        " --list-attributes"
+        " --set --set-and-exit"
+        " --id --fields"
+        " --header --no-header"
+        ;
+
+    std::cout << completion_options << std::endl;
     exit( 0 );
 }
 
@@ -70,7 +65,7 @@ static void usage( bool verbose = false )
     std::cerr << "Capture data from an Allied Vision GigE camera" << std::endl;
     std::cerr << "Output to stdout as serialized cv::Mat" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "Usage: " << comma::verbose.app_name() << " [<options>] [<filters>]" << std::endl;
+    std::cerr << "Usage: " << comma::verbose.app_name() << " [<options>]" << std::endl;
     std::cerr << std::endl;
     std::cerr << "Options: " << std::endl;
     std::cerr << "    --help,-h:          show this help, --help --verbose for more help" << std::endl;
@@ -110,8 +105,8 @@ static void usage( bool verbose = false )
         std::cerr << "    Use \"--list-attributes\" and \"--list-attributes --verbose\" to find the" << std::endl;
         std::cerr << "    appropriate new attribute." << std::endl;
         std::cerr << std::endl;
-        std::cerr << "Image Filters:" << std::endl;
-        std::cerr << snark::cv_mat::filters::usage() << std::endl;
+        std::cerr << "    " << comma::verbose.app_name() << " does not support image filters. Pipe to cv-cat instead." << std::endl;
+        std::cerr << std::endl;
     }
     exit( 0 );
 }
@@ -162,9 +157,7 @@ static void print_attribute_entry( const std::string& label, const std::string& 
 }
 
 static void output_frame( const snark::vimba::frame& frame
-                        , snark::cv_mat::serialization& serialization
-                        , std::vector< snark::cv_mat::filter >& filters
-                        , bool output_null )
+                        , snark::cv_mat::serialization& serialization )
 {
     static VmbUint64_t last_frame_id = 0;
 
@@ -196,9 +189,7 @@ static void output_frame( const snark::vimba::frame& frame
                       , fd.type
                       , frame.image_buffer() );
 
-        snark::cv_mat::filters::value_type timestamped_data( std::make_pair( timestamp, cv_mat ));
-        snark::cv_mat::filters::value_type filtered_data = snark::cv_mat::filters::apply( filters, timestamped_data );
-        if( !output_null ) serialization.write( std::cout, filtered_data );
+        serialization.write( std::cout, std::make_pair( timestamp, cv_mat ));
     }
     else
     {
@@ -289,42 +280,7 @@ static int run_cmd( const comma::command_line_options& options )
     }
     snark::cv_mat::serialization serialization( fields, format, header_only );
 
-    std::string valueless_options_csv( valueless_options );
-    std::replace( valueless_options_csv.begin(), valueless_options_csv.end(), ' ', ',' );
-    std::string options_with_values_csv( options_with_values );
-    std::replace( options_with_values_csv.begin(), options_with_values_csv.end(), ' ', ',' );
-
-    std::vector< std::string > filter_strings = options.unnamed( valueless_options_csv, options_with_values_csv );
-    std::string filter_string;
-    if( filter_strings.size() == 1 )
-    {
-        filter_string = filter_strings[0];
-    }
-    if( filter_strings.size() > 1 )
-    {
-        COMMA_THROW( comma::exception, "please provide filters as name-value string" );
-    }
-
-    std::vector< snark::cv_mat::filter > filters = snark::cv_mat::filters::make( filter_string );
-
-    bool output_null = false;
-
-    if( !filters.empty() )
-    {
-        // Check if the last filter is "null"
-        if( !filters.back().filter_function )
-        {
-            // In which case remove it and disable output
-            output_null = true;
-            filters.pop_back();
-        }
-    }
-
-    camera.start_acquisition( boost::bind( &output_frame
-                                         , _1
-                                         , boost::ref( serialization )
-                                         , boost::ref( filters )
-                                         , output_null ));
+    camera.start_acquisition( boost::bind( &output_frame, _1, boost::ref( serialization )));
 
     comma::signal_flag is_shutdown;
     do {
