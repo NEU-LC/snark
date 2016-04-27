@@ -1,0 +1,37 @@
+#!/usr/bin/python
+import sys
+import cv2 as cv
+import numpy as np
+import argparse
+from snark.imaging import cv_image
+from comma.io import windows_binary
+
+description = """
+
+apply watershed algorithm to image stream
+
+pixel labels will be output as single-channel 32-bit integer image (type CV_32SC1)
+of the same size as the original
+
+see cv-cat --help --verbose for input and output format details
+
+usage
+    read images from image stream; see cv-cat --help --verbose for image format details
+        cat images.bin | image-watershed [<options>] > labels.bin
+       
+    read image from file
+        cv-cat --file image.jpg | image-watershed [<options>] | cv-cat --output no-header > labels.bin
+
+"""
+
+parser = argparse.ArgumentParser( description = description )
+args = parser.parse_args()
+
+for i in cv_image.iterator( sys.stdin ):
+    header = i.header
+    header['type'] = cv.CV_32SC1
+    watershed = np.zeros( ( header['rows'], header['cols'], 1 ), np.int32 )
+    
+    # todo: apply watershed algorithm
+    
+    cv_image.write( cv_image.image( header, watershed ) )
