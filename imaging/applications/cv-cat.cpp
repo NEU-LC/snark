@@ -80,6 +80,14 @@ static pair capture( cv::VideoCapture& capture, rate_limit& rate )
     return std::make_pair( boost::posix_time::microsec_clock::universal_time(), image );
 }
 
+static pair output_single_image( const cv::Mat& image )
+{
+    static bool done = false;
+    if( done ) { return pair(); }
+    done = true;
+    return std::make_pair( boost::posix_time::microsec_clock::universal_time(), image );
+}
+
 static pair read( snark::cv_mat::serialization& input, rate_limit& rate )
 {
     if( is_shutdown || std::cin.eof() || std::cin.bad() || !std::cin.good() ) { return pair(); }
@@ -123,7 +131,8 @@ int main( int argc, char** argv )
             ( "capacity", boost::program_options::value< unsigned int >( &capacity )->default_value( 16 ), "maximum input queue size before the reader thread blocks" )
             ( "threads", boost::program_options::value< unsigned int >( &number_of_threads )->default_value( 0 ), "number of threads; default: 0 (auto)" )
             ( "skip", boost::program_options::value< unsigned int >( &number_of_frames_to_skip )->default_value( 0 ), "number of initial frames to skip; default: 0" )
-            ( "stay", "do not close at end of stream" );
+            ( "stay", "do not close at end of stream" )
+            ( "video", "has effect in opencv versions 2.12(?) and above; explicitly specify that filename given by --file refers to a video; e.g. --file ABC_0001.jpg will read a single image, --file ABC_0001.jpg will read images ABC_0001.jpg, ABC_0002.jpg, etc, if present" );
         boost::program_options::variables_map vm;
         boost::program_options::store( boost::program_options::parse_command_line( argc, argv, description), vm );
         boost::program_options::parsed_options parsed = boost::program_options::command_line_parser(argc, argv).options( description ).allow_unregistered().run();
@@ -200,11 +209,20 @@ int main( int argc, char** argv )
         snark::cv_mat::serialization input( input_options );
         snark::cv_mat::serialization output( output_options );
         boost::scoped_ptr< bursty_reader< pair > > reader;
+        cv::Mat image;
         if( vm.count( "file" ) )
         {
-            video_capture.open( name );
-            skip( number_of_frames_to_skip, video_capture, rate );
-            reader.reset( new bursty_reader< pair >( boost::bind( &capture, boost::ref( video_capture ), boost::ref( rate ) ), discard, capacity ) );
+            if( !vm.count( "video" ) ) { image = cv::imread( name ); }
+            if( image.data )
+            {
+                reader.reset( new bursty_reader< pair >( boost::bind( &output_single_image, boost::cref( image ) ), discard, capacity ) );
+            }
+            else
+            {
+                video_capture.open( name );
+                skip( number_of_frames_to_skip, video_capture, rate );
+                reader.reset( new bursty_reader< pair >( boost::bind( &capture, boost::ref( video_capture ), boost::ref( rate ) ), discard, capacity ) );
+            }
         }
         else if( vm.count( "camera" ) || vm.count( "id" ) )
         {
@@ -223,13 +241,7 @@ int main( int argc, char** argv )
         if( vm.count( "stay" ) ) { while( !is_shutdown ) { boost::this_thread::sleep( boost::posix_time::seconds( 1 ) ); } }
         return 0;
     }
-    catch( std::exception& ex )
-    {
-        std::cerr << argv[0] << ": " << ex.what() << std::endl;
-    }
-    catch( ... )
-    {
-        std::cerr << argv[0] << ": unknown exception" << std::endl;
-    }
+    catch( std::exception& ex ) { std::cerr << argv[0] << ": " << ex.what() << std::endl; }
+    catch( ... ) { std::cerr << argv[0] << ": unknown exception" << std::endl; }
     return 1;
 }
