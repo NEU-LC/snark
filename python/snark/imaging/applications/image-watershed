@@ -62,12 +62,12 @@ for i in cv_image.iterator( sys.stdin ):
     header = i.header
     header['type'] = cv.CV_32SC1
     watershed = np.zeros( ( header['rows'], header['cols'], 1 ), np.int32 )
-    ret, thresholded = cv.threshold( i.data, config['threshold']['min'], config['threshold']['max'], cv.THRESH_BINARY )
+    ret, thresholded = cv.threshold( i.data, float( config['threshold']['min'] ), float( config['threshold']['max'] ), cv.THRESH_BINARY )
 
-    kernel = np.ones( ( config['blur']['radius'], config['blur']['radius'] ), np.uint8 )
-    blurred = cv.morphologyEx( thresholded, cv.MORPH_OPEN,kernel, iterations = config['blur']['iterations'] )
+    kernel = np.ones( ( float( config['blur']['radius'] ), float( config['blur']['radius'] ) ), np.uint8 )
+    blurred = cv.morphologyEx( thresholded, cv.MORPH_OPEN,kernel, iterations = int( config['blur']['iterations'] ) )
 
-    dilated = cv.dilate( blurred, kernel, iterations = config['dilation']['iterations'] )
+    dilated = cv.dilate( blurred, kernel, iterations = int( config['dilation']['iterations'] ) )
 
     contours, hierarchy = cv.findContours( dilated, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE )
 
