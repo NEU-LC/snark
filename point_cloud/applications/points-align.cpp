@@ -72,7 +72,6 @@ static void usage( bool verbose = false )
     std::cerr << "    --help,-h:       show this help; --help --verbose for more help" << std::endl;
     std::cerr << "    --verbose,-v:    more output" << std::endl;
     std::cerr << "    --output-fields: show output fields and exit" << std::endl;
-    std::cerr << "    --output-format: show output format and exit" << std::endl;
     std::cerr << "    --output-error:  include the error estimate in output" << std::endl;
     std::cerr << std::endl;
     std::cerr << "examples: " << std::endl;
@@ -158,14 +157,6 @@ std::string get_output_fields( comma::csv::options csv_options, bool output_erro
     return output_fields;
 }
 
-std::string get_output_format( comma::csv::options csv_options, bool output_error )
-{
-    std::string output_format( comma::csv::format::value< snark::applications::position >() );
-    if( output_error ) { output_format += ",d"; }
-    if( csv_options.has_field( "block" )) { output_format = output_format + ",ui"; }
-    return output_format;
-} 
-
 void output_transform( Eigen::MatrixXd source, Eigen::MatrixXd target
                      , comma::uint32 block, comma::csv::options output_csv )
 {
@@ -213,7 +204,6 @@ int main( int ac, char** av )
         bool output_error = options.exists( "--output-error" );
 
         std::string output_fields = get_output_fields( csv, output_error );
-        std::string output_format = get_output_format( csv, output_error );
 
         if( options.exists( "--output-fields" ))
         {
@@ -221,16 +211,9 @@ int main( int ac, char** av )
             return 0;
         }
 
-        if( options.exists( "--output-format" ))
-        {
-            std::cout << output_format << std::endl;
-            return 0;
-        }
-
         comma::csv::options output_csv;
         output_csv.fields = output_fields;
         comma::verbose << "output fields=" << output_fields << std::endl;
-        if( csv.binary() ) { output_csv.format( output_format ); }
 
         Eigen::MatrixXd source( 3, 0 );
         Eigen::MatrixXd target( 3, 0 );
