@@ -233,13 +233,12 @@ def sun_position( record, output ):
 
     # Evaluate the relative position of the sun if vehicle position is given
     try:
-        output['body_elevation'], output['body_azimuth'] = convert_to_body( output['elevation'],
-                                                                            output['azimuth'],
-                                                                            record['roll'],
-                                                                            record['pitch'],
-                                                                            record['yaw'] )
-    except IndexError:
-        pass                    # expected if there are no roll, pitch and yaw fields
+        params = ( output['elevation'], output['azimuth'], record['roll'], record['pitch'], record['yaw'] )
+    except:
+        # expected if there are no roll, pitch and yaw fields
+        params = None
+    if params:
+        output['body_elevation'], output['body_azimuth'] = convert_to_body( *params )
 
 
 # ------------------------------------------------------------
