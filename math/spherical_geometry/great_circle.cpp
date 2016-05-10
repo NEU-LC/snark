@@ -58,8 +58,8 @@ great_circle::arc::arc( const Eigen::Vector3d& begin, const Eigen::Vector3d& end
 great_circle::arc::arc( const coordinates& begin, const coordinates& end )
     : begin_coordinates_( begin )
     , end_coordinates_( end )
-    , begin_( begin )
-    , end_( end )
+    , begin_( begin.to_cartesian() )
+    , end_( end.to_cartesian() )
     , angle_axis_( Eigen::Quaternion< double >::FromTwoVectors( begin_, end_ ) )
 {
     if( comma::math::less( M_PI, angle() ) ) { COMMA_THROW( comma::exception, "only arcs less than pi supported; got " << angle() << " radian for begin: " << std::string(begin_coordinates_) << " end: " << std::string(end_coordinates_)); }
@@ -70,7 +70,7 @@ great_circle::arc::arc( const Eigen::Vector3d& begin, const coordinates& end )
     : begin_coordinates_( begin )
     , end_coordinates_( end )
     , begin_( begin )
-    , end_( end )
+    , end_( end.to_cartesian() )
     , angle_axis_( Eigen::Quaternion< double >::FromTwoVectors( begin_, end_ ) )
 {
     if( comma::math::less( M_PI, angle() ) ) { COMMA_THROW( comma::exception, "only arcs less than pi supported; got " << angle() << " radian for begin: " << std::string(begin_coordinates_) << " end: " << std::string(end_coordinates_)); }
@@ -80,7 +80,7 @@ great_circle::arc::arc( const Eigen::Vector3d& begin, const coordinates& end )
 great_circle::arc::arc( const coordinates& begin, const Eigen::Vector3d& end )
     : begin_coordinates_( begin )
     , end_coordinates_( end )
-    , begin_( begin )
+    , begin_( begin.to_cartesian() )
     , end_( end )
     , angle_axis_( Eigen::Quaternion< double >::FromTwoVectors( begin_, end_ ) )
 {
@@ -147,7 +147,7 @@ bool great_circle::arc::overlaps( const great_circle::arc& rhs ) const // quick 
 
 great_circle::arc great_circle::arc::shortest_path( const coordinates &c ) const
 {
-    Eigen::Vector3d cc(c);
+    Eigen::Vector3d cc(c.to_cartesian());
     if (angle() == 0) { return arc(cc, begin()); }
     if (has_inside(c)) { return arc(cc, cc); }
 
