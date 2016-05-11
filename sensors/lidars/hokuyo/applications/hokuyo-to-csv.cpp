@@ -163,7 +163,7 @@ void output_samples()
     pt.intensity = 100;
     while( !signaled && std::cout.good() )
     {
-        pt.timestamp = boost::posix_time::microsec_clock::local_time();
+        pt.timestamp = boost::posix_time::microsec_clock::universal_time();
         output.write( pt );
         usleep( 0.1 * 1000000u );
     }
