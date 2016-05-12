@@ -39,13 +39,13 @@ void scip2_device::usage()
 }
 
 scip2_device::output_t::output_t() : 
-            timestamp( boost::posix_time::microsec_clock::local_time() ), 
+            timestamp( boost::posix_time::microsec_clock::universal_time() ), 
             x(0), y(0), z(0), block(0), range(0), bearing(0), elevation(0) 
 {
 }
 
 scip2_device::output_t::output_t(double distance, double abearing) : 
-            timestamp( boost::posix_time::microsec_clock::local_time() ), 
+            timestamp( boost::posix_time::microsec_clock::universal_time() ), 
             x(0), y(0), z(0), block(0), range(0), bearing(abearing), elevation(0)
 {
     range = distance / 1000.0;
