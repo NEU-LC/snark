@@ -95,6 +95,18 @@ static void usage( bool verbose = false )
     std::cerr << "    frame=$( cat combined-points.csv | points-align )" << std::endl;
     std::cerr << "    cat points.csv | points-frame --from $frame --fields=x,y,z" << std::endl;
     std::cerr << std::endl;
+    if( verbose )
+    {
+        std::cerr << "algorithm: " << std::endl;
+        std::cerr << "    " << comma::verbose.app_name() << " uses the Umeyama algorithm as implemented by Eigen::umeyama()." << std::endl;
+        std::cerr << std::endl;
+        std::cerr << "    \"Least-squares estimation of transformation parameters between two point" << std::endl;
+        std::cerr << "    patterns\", Shinji Umeyama, PAMI 1991, DOI: 10.1109/34.88573" << std::endl;
+        std::cerr << std::endl;
+        std::cerr << "    See http://eigen.tuxfamily.org/dox/group__Geometry__Module.html" << std::endl;
+        std::cerr << "    for implementation details." << std::endl;
+        std::cerr << std::endl;
+    }
     exit( 0 );
 }
 
