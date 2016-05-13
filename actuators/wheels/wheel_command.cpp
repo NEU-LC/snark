@@ -34,7 +34,7 @@
 
 namespace snark { namespace wheels {
 
-wheel_command compute_wheel_command( const steer_command &desired, Eigen::Matrix4d wheel_pose, double wheel_offset, boost::optional< limit > angle_limit, boost::optional< double > current_angle )
+wheel_command compute_wheel_command( const steer_command &desired, Eigen::Matrix4d wheel_pose, double wheel_offset, boost::optional< limit > angle_limit, boost::optional< double > current_angle, bool wrap )
 {
     wheel_command command;
 
@@ -103,6 +103,15 @@ wheel_command compute_wheel_command( const steer_command &desired, Eigen::Matrix
         {
             delta = delta > 0 ? delta - M_PI : delta + M_PI;
             positive_direction = !positive_direction;
+        }
+
+        if( wrap )
+        {
+            command.turnrate = *current_angle + delta;
+            if( command.turnrate > M_PI ) { command.turnrate -= 2 * M_PI; }
+            else if( command.turnrate < -M_PI ) { command.turnrate += 2 * M_PI; }
+            command.velocity = positive_direction ? positive_velocity : negative_velocity;
+            return command;
         }
 
         // if |delta| > 60 then bias towards keeping wheel on the "outside"

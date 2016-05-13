@@ -1096,3 +1096,73 @@ TEST_F( wheels_test_no_limit, spot_turn_nearest )
         EXPECT_NEAR( -std::sqrt(2), rear_right.velocity, 1e-9 );
     }
 }
+
+TEST_F( wheels_test_no_limit, wrap_crab_nearest_north )
+{
+    steer_command steer( 1, 0, 0 );
+    bool wrap = true;
+    boost::optional< double > current_angle;
+    wheel_command rear_left = compute_wheel_command( steer, rear_left_pose, wheel_offset, angle_limit, M_PI * -0.25, wrap );
+    wheel_command front_left = compute_wheel_command( steer, front_left_pose, wheel_offset, angle_limit, M_PI * -0.75, wrap );
+    wheel_command front_right = compute_wheel_command( steer, front_right_pose, wheel_offset, angle_limit, M_PI * 0.25, wrap );
+    wheel_command rear_right = compute_wheel_command( steer, rear_right_pose, wheel_offset, angle_limit, M_PI * 0.75, wrap );
+    EXPECT_NEAR(  0, rear_left.turnrate, 1e-9 );
+    EXPECT_NEAR( -1, rear_left.velocity, 1e-9 );
+    EXPECT_NEAR(  M_PI*-1, front_left.turnrate, 1e-9 );
+    EXPECT_NEAR(  1, front_left.velocity, 1e-9 );
+    EXPECT_NEAR(  0, front_right.turnrate, 1e-9 );
+    EXPECT_NEAR(  1, front_right.velocity, 1e-9 );
+    EXPECT_NEAR(  M_PI, rear_right.turnrate, 1e-9 );
+    EXPECT_NEAR( -1, rear_right.velocity, 1e-9 );
+}
+
+TEST_F( wheels_test_no_limit, wrap_spot_turn_nearest )
+{
+    steer_command steer( 0, 0, 1 );
+    bool wrap = true;
+    {
+        boost::optional< double > current_angle( 0 );
+        wheel_command rear_left = compute_wheel_command( steer, rear_left_pose, wheel_offset, angle_limit, current_angle, wrap );
+        wheel_command front_left = compute_wheel_command( steer, front_left_pose, wheel_offset, angle_limit, current_angle, wrap );
+        wheel_command front_right = compute_wheel_command( steer, front_right_pose, wheel_offset, angle_limit, current_angle, wrap );
+        wheel_command rear_right = compute_wheel_command( steer, rear_right_pose, wheel_offset, angle_limit, current_angle, wrap );
+        EXPECT_NEAR(  M_PI*0.25, rear_left.turnrate, 1e-9 );
+        EXPECT_NEAR(  std::sqrt(2), rear_left.velocity, 1e-9 );
+        EXPECT_NEAR( -M_PI*0.25, front_left.turnrate, 1e-9 );
+        EXPECT_NEAR(  std::sqrt(2), front_left.velocity, 1e-9 );
+        EXPECT_NEAR(  M_PI*0.25, front_right.turnrate, 1e-9 );
+        EXPECT_NEAR(  std::sqrt(2), front_right.velocity, 1e-9 );
+        EXPECT_NEAR( -M_PI*0.25, rear_right.turnrate, 1e-9 );
+        EXPECT_NEAR(  std::sqrt(2), rear_right.velocity, 1e-9 );
+    }
+    {
+        boost::optional< double > current_angle( M_PI );
+        wheel_command rear_left = compute_wheel_command( steer, rear_left_pose, wheel_offset, angle_limit, current_angle, wrap );
+        wheel_command front_left = compute_wheel_command( steer, front_left_pose, wheel_offset, angle_limit, current_angle, wrap );
+        wheel_command front_right = compute_wheel_command( steer, front_right_pose, wheel_offset, angle_limit, current_angle, wrap );
+        wheel_command rear_right = compute_wheel_command( steer, rear_right_pose, wheel_offset, angle_limit, current_angle, wrap );
+        EXPECT_NEAR( -M_PI*0.75, rear_left.turnrate, 1e-9 );
+        EXPECT_NEAR( -std::sqrt(2), rear_left.velocity, 1e-9 );
+        EXPECT_NEAR(  M_PI*0.75, front_left.turnrate, 1e-9 );
+        EXPECT_NEAR( -std::sqrt(2), front_left.velocity, 1e-9 );
+        EXPECT_NEAR( -M_PI*0.75, front_right.turnrate, 1e-9 );
+        EXPECT_NEAR( -std::sqrt(2), front_right.velocity, 1e-9 );
+        EXPECT_NEAR(  M_PI*0.75, rear_right.turnrate, 1e-9 );
+        EXPECT_NEAR( -std::sqrt(2), rear_right.velocity, 1e-9 );
+    }
+    {
+        boost::optional< double > current_angle( -M_PI );
+        wheel_command rear_left = compute_wheel_command( steer, rear_left_pose, wheel_offset, angle_limit, current_angle, wrap );
+        wheel_command front_left = compute_wheel_command( steer, front_left_pose, wheel_offset, angle_limit, current_angle, wrap );
+        wheel_command front_right = compute_wheel_command( steer, front_right_pose, wheel_offset, angle_limit, current_angle, wrap );
+        wheel_command rear_right = compute_wheel_command( steer, rear_right_pose, wheel_offset, angle_limit, current_angle, wrap );
+        EXPECT_NEAR( -M_PI*0.75, rear_left.turnrate, 1e-9 );
+        EXPECT_NEAR( -std::sqrt(2), rear_left.velocity, 1e-9 );
+        EXPECT_NEAR(  M_PI*0.75, front_left.turnrate, 1e-9 );
+        EXPECT_NEAR( -std::sqrt(2), front_left.velocity, 1e-9 );
+        EXPECT_NEAR( -M_PI*0.75, front_right.turnrate, 1e-9 );
+        EXPECT_NEAR( -std::sqrt(2), front_right.velocity, 1e-9 );
+        EXPECT_NEAR(  M_PI*0.75, rear_right.turnrate, 1e-9 );
+        EXPECT_NEAR( -std::sqrt(2), rear_right.velocity, 1e-9 );
+    }
+}
