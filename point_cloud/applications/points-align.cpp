@@ -48,6 +48,19 @@ struct input_points
 static const std::string default_fields = comma::join( comma::csv::names< point_pair_t >(), ',' );
 static const std::string standard_output_fields = comma::join( comma::csv::names< snark::applications::position >(), ',' );
 
+static void bash_completion( unsigned const ac, char const * const * av )
+{
+    static const char* completion_options =
+        " --help -h"
+        " --verbose -v"
+        " --output-fields"
+        " --output-error"
+        ;
+
+    std::cout << completion_options << std::endl;
+    exit( 0 );
+}
+
 static void usage( bool verbose = false )
 {
     std::cerr << std::endl;
@@ -197,6 +210,9 @@ int main( int ac, char** av )
     try
     {
         comma::command_line_options options( ac, av, usage );
+
+        if( options.exists( "--bash-completion" ) ) bash_completion( ac, av );
+
         comma::csv::options csv( options );
         csv.full_xpath = true;
         if( csv.fields.empty() ) { csv.fields = default_fields; }
