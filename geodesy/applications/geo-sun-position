@@ -234,7 +234,7 @@ def sun_position( record, output ):
     # Evaluate the relative position of the sun if vehicle position is given
     try:
         params = ( output['elevation'], output['azimuth'], record['roll'], record['pitch'], record['yaw'] )
-    except StandardError:
+    except StandardError:  # different versions of numpy throw different exceptions (bugs?), so catching standard error here
         # expected if there are no roll, pitch and yaw fields
         params = None
     if params:
