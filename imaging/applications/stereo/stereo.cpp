@@ -101,7 +101,7 @@ void stereo::process( const cv::Mat& left, const cv::Mat& right, const cv::Stere
             {
                 point *= 16.0; // disparity has a factor 16
                 cv::Vec3b color = leftRectified.at< cv::Vec3b >( i, j );
-                colored_point point_color( point.x, point.y, point.z, color[2], color[1], color[0] );
+                colored_point point_color( j, i, cloud.disparity().at<short int>(i,j), point.x, point.y, point.z, color[2], color[1], color[0] );
                 point_color.time = time;
                 point_color.block = m_frame_counter;
                 if( m_binary )
