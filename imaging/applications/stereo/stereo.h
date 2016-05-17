@@ -40,9 +40,12 @@ namespace snark { namespace imaging {
 
 struct colored_point
 {
-    colored_point() : x( 0 ), y( 0 ), z( 0 ), red( 0 ), green( 0 ), blue( 0 ), block( 0 ) {}
-    colored_point( double xx, double yy, double zz, unsigned char r, unsigned char g, unsigned char b ) : x( xx ), y( yy ), z( zz ), red( r ), green( g ), blue( b ), block( 0 ) {}
+    colored_point() : i( 0 ), j( 0 ), disparity( 0 ), x( 0 ), y( 0 ), z( 0 ), red( 0 ), green( 0 ), blue( 0 ), block( 0 ) {}
+    colored_point( unsigned int ii, unsigned int jj, short int d, double xx, double yy, double zz, unsigned char r, unsigned char g, unsigned char b ) : i( ii ), j( jj ), disparity( d ), x( xx ), y( yy ), z( zz ), red( r ), green( g ), blue( b ), block( 0 ) {}
     boost::posix_time::ptime time;
+    unsigned int i;
+    unsigned int j;
+    short int disparity;
     double x;
     double y;
     double z;
@@ -84,6 +87,9 @@ template <> struct traits< snark::imaging::colored_point >
     static void visit( Key, snark::imaging::colored_point& p, Visitor& v )
     {
         v.apply( "t", p.time );
+        v.apply( "i", p.i );
+        v.apply( "j", p.j );
+        v.apply( "disparity", p.disparity );
         v.apply( "x", p.x );
         v.apply( "y", p.y );
         v.apply( "z", p.z );
@@ -97,6 +103,9 @@ template <> struct traits< snark::imaging::colored_point >
     static void visit( Key, const snark::imaging::colored_point& p, Visitor& v )
     {
         v.apply( "t", p.time );
+        v.apply( "i", p.i );
+        v.apply( "j", p.j );
+        v.apply( "disparity", p.disparity );
         v.apply( "x", p.x );
         v.apply( "y", p.y );
         v.apply( "z", p.z );

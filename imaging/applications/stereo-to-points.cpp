@@ -132,7 +132,7 @@ int main( int argc, char** argv )
             ( "disp12-max", boost::program_options::value< int >( &sgbm.disp12MaxDiff )->default_value(1), "sgbm disp12MaxDiff" )
             ( "pre-filter-cap", boost::program_options::value< int >( &sgbm.preFilterCap )->default_value(63), "sgbm preFilterCap" )
             ( "full-dp,f", "use fullDP, uses a lot of memory" );
-        description.add( comma::csv::program_options::description( "t,x,y,z,r,g,b,block" ) );
+        description.add( comma::csv::program_options::description( "t,i,j,disparity,x,y,z,r,g,b,block" ) );
         boost::program_options::variables_map vm;
         boost::program_options::store( boost::program_options::parse_command_line( argc, argv, description), vm );
         boost::program_options::parsed_options parsed = boost::program_options::command_line_parser(argc, argv).options( description ).allow_unregistered().run();
@@ -142,7 +142,7 @@ int main( int argc, char** argv )
             std::cerr << "read stereo images from files or stdin, outputs point cloud or disparity image or rectified image pair to stdout" << std::endl;
             std::cerr << description << std::endl;
             std::cerr << std::endl;
-            std::cerr << "output format: t,x,y,z,r,g,b,block for point cloud " << std::endl;
+            std::cerr << "output format: t,i,j,disparity,x,y,z,r,g,b,block for point cloud " << std::endl;
             std::cerr << "               t,rows,cols,type for disparity image or rectified image pair " << std::endl;
             std::cerr << std::endl;
             std::cerr << "example config file with pre-computed rectify maps (eg. with the bumblebee camera factory calibration):\n" << std::endl;
@@ -158,8 +158,8 @@ int main( int argc, char** argv )
            std::cerr << std::endl;
             std::cerr << "examples: " << std::endl;
             std::cerr << "  output and view point cloud from 2 image files: " << std::endl;
-            std::cerr << "    stereo-to-points --left left.bmp --right right.bmp --config bumblebee.config --left-path left --right-path right --binary t,3d,3ub,ui \\" << std::endl;
-            std::cerr << "    | view-points --fields t,x,y,z,r,g,b,block --binary t,3d,3ub,ui" << std::endl;
+            std::cerr << "    stereo-to-points --left left.bmp --right right.bmp --config bumblebee.config --left-path left --right-path right --binary t,2ui,w,3d,3ub,ui \\" << std::endl;
+            std::cerr << "    | view-points --fields t,,,,x,y,z,r,g,b,block --binary t,2ui,w,3d,3ub,ui" << std::endl;
             std::cerr << std::endl;
             std::cerr << "  output and view disparity from 2 image files: " << std::endl;
             std::cerr << "    stereo-to-points --left left.bmp --right right.bmp --config bumblebee.config --left-path left --right-path right \\" << std::endl;
@@ -176,8 +176,8 @@ int main( int argc, char** argv )
             std::cerr <<  "       this would not be sensible as is, but you might have rectified images to start with, or wish to save rectified images." << std::endl;
             std::cerr <<  "   cat file.bin | cv-cat \"split;bayer=4\" | " << std::endl;
             std::cerr <<  "   stereo-to-points --config=bb.matlab.config --left-path=left --right-path=right --roi=\"0,1920,0,0,1280,960\" --output-rectified | \\ " << std::endl;
-            std::cerr <<  "   stereo-to-points --config=bb.matlab.config --left-path=left --right-path=right --roi=\"0,0,1280,0,1280,960\" --input-rectified --binary t,3d,3ub,ui | \\ " << std::endl;
-            std::cerr <<  "   csv-select --binary=t,3d,3ub,ui --fields=,,,,,,,block --to=0 --sorted > pointcloud.bin" << std::endl;
+            std::cerr <<  "   stereo-to-points --config=bb.matlab.config --left-path=left --right-path=right --roi=\"0,0,1280,0,1280,960\" --input-rectified --binary t,2ui,w,3d,3ub,ui | \\ " << std::endl;
+            std::cerr <<  "   csv-select --binary=t,2ui,4d,3ub,ui --fields=,,,,,,,,,,,block --to=0 --sorted > pointcloud.bin" << std::endl;
             std::cerr << std::endl;
             std::cerr << "  stream QLib data and output disparity (old proprietary format - needs q-cat): " << std::endl;
             std::cerr << "    cat BumblebeeVideo*.bin | q-cat | cv-cat \"split;bayer=4\" | stereo-to-points --config /usr/local/etc/shrimp.config --left-path bumblebee/camera-left\\" << std::endl;
@@ -185,7 +185,7 @@ int main( int argc, char** argv )
             std::cerr << std::endl;
             std::cerr << "  stream data and output point cloud: " << std::endl;
             std::cerr << "    cat 2013*.bin | cv-cat \"split;bayer=4\" | stereo-to-points --config /usr/local/etc/shrimp.config --left-path bumblebee/camera-left\\" << std::endl;
-            std::cerr << "    --right-path bumblebee/camera-right --roi 0,1920,0,0,1280,960 --binary t,3d,3ub,ui | view-points --fields t,x,y,z,r,g,b,block --binary t,3d,3ub,ui" << std::endl;
+            std::cerr << "    --right-path bumblebee/camera-right --roi 0,1920,0,0,1280,960 --binary t,2ui,w,3d,3ub,ui | view-points --fields t,,,,x,y,z,r,g,b,block --binary t,2ui,w,3d,3ub,ui" << std::endl;
             std::cerr << std::endl;
             std::cerr << "  view disparity live from shrimp: " << std::endl;
             std::cerr << "    netcat shrimp.server 55003 | cv-cat \"split;bayer=4\" | stereo-to-points --config /usr/local/etc/shrimp.config \\" << std::endl;
@@ -194,8 +194,8 @@ int main( int argc, char** argv )
             std::cerr << std::endl;
             std::cerr << "  view point cloud live from shrimp: ( does not seem to work on shrimp, maybe due to OpenCV 2.3, works with OpenCV 2.4 )" << std::endl;
             std::cerr << "    netcat shrimp.server 55003 | cv-cat \"split;bayer=4\" | stereo-to-points --config /usr/local/etc/shrimp.config \\" << std::endl;
-            std::cerr << "    --left-path bumblebee/camera-left --right-path bumblebee/camera-right --roi 0,1920,0,0,1280,960 --binary t,3d,3ub,ui  \\" << std::endl;
-            std::cerr << "    | view-points --fields t,x,y,z,r,g,b,block --binary t,3d,3ub,ui" << std::endl;
+            std::cerr << "    --left-path bumblebee/camera-left --right-path bumblebee/camera-right --roi 0,1920,0,0,1280,960 --binary t,2ui,w,3d,3ub,ui  \\" << std::endl;
+            std::cerr << "    | view-points --fields t,,,,x,y,z,r,g,b,block --binary t,2ui,w,3d,3ub,ui" << std::endl;
             std::cerr << std::endl;
             std::cerr << "  batch process images from files, assuming you have ppm images with the same names in left/ and right/ directories: " << std::endl;
             std::cerr << "    disparity: " << std::endl;
@@ -203,7 +203,7 @@ int main( int argc, char** argv )
             std::cerr << "    --left-path left --right-path right --disparity --full-dp | cv-cat --output=no-header encode=ppm > disparity-{/}'" << std::endl;
             std::cerr << "    point cloud: " << std::endl;
             std::cerr << "    find left -name '*.ppm' | sort | parallel  'stereo-to-points --left left/{/} --right right/{/} --config bumblebee.config \\" << std::endl;;
-            std::cerr << "    --left-path left --right-path right --binary t,3d,3ub,ui --full-dp > cloud-{/.}.bin" << std::endl;
+            std::cerr << "    --left-path left --right-path right --binary t,2ui,w,3d,3ub,ui --full-dp > cloud-{/.}.bin" << std::endl;
             std::cerr << std::endl;
             std::cerr << "  known bugs: point cloud doesn't seem to work with opencv 2.3 ( e.g. on shrimp ), works with opencv 2.4 " << std::endl;
             std::cerr << std::endl;
