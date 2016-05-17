@@ -64,6 +64,9 @@ for i in cv_image.iterator( sys.stdin ):
     watershed = np.zeros( ( header['rows'], header['cols'], 1 ), np.int32 )
     ret, thresholded = cv.threshold( i.data, float( config['threshold']['min'] ), float( config['threshold']['max'] ), cv.THRESH_BINARY )
 
+    if( i.header['type'] != cv.CV_8UC1 ):
+        thresholded = cv.cvtColor( thresholded, cv.COLOR_BGR2GRAY )
+
     kernel = np.ones( ( float( config['blur']['radius'] ), float( config['blur']['radius'] ) ), np.uint8 )
     blurred = cv.morphologyEx( thresholded, cv.MORPH_OPEN,kernel, iterations = int( config['blur']['iterations'] ) )
 
