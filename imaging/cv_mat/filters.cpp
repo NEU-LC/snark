@@ -47,6 +47,7 @@
 #include <comma/name_value/parser.h>
 #include <comma/application/verbose.h>
 #include <Eigen/Core>
+#include <opencv2/contrib/contrib.hpp>
 #include <opencv2/features2d/features2d.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/imgproc/imgproc_c.h>
@@ -330,6 +331,14 @@ static filters::value_type brightness_impl_( filters::value_type m, double scale
     filters::value_type n;
     n.first = m.first;
     n.second = (m.second * scale) + offset;
+    return n;
+}
+
+static filters::value_type colour_map_impl_( filters::value_type m, int type )
+{
+    filters::value_type n;
+    n.first = m.first;
+    cv::applyColorMap( m.second, n.second, type );
     return n;
 }
 
@@ -1712,6 +1721,25 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
             double offset = s.size() == 1 ? 0.0 : boost::lexical_cast< double >( s[1] );
             f.push_back( filter( boost::bind( &brightness_impl_, _1, scale, offset ) ) );
         }
+        else if( e[0] == "color-map" )
+        {
+            if( e.size() != 2 ) { COMMA_THROW( comma::exception, "expected colour-map=<type>; got: \"" << e[1] << "\"" ); }
+            int type;
+            if( e[1] == "autumn" ) { type = cv::COLORMAP_AUTUMN; }
+            else if( e[1] == "bone" ) { type = cv::COLORMAP_BONE; }
+            else if( e[1] == "jet" ) { type = cv::COLORMAP_JET; }
+            else if( e[1] == "winter" ) { type = cv::COLORMAP_WINTER; }
+            else if( e[1] == "rainbow" ) { type = cv::COLORMAP_RAINBOW; }
+            else if( e[1] == "ocean" ) { type = cv::COLORMAP_OCEAN; }
+            else if( e[1] == "summer" ) { type = cv::COLORMAP_SUMMER; }
+            else if( e[1] == "spring" ) { type = cv::COLORMAP_SPRING; }
+            else if( e[1] == "cool" ) { type = cv::COLORMAP_COOL; }
+            else if( e[1] == "hsv" ) { type = cv::COLORMAP_HSV; }
+            else if( e[1] == "pink" ) { type = cv::COLORMAP_PINK; }
+            else if( e[1] == "hot" ) { type = cv::COLORMAP_HOT; }
+            else { COMMA_THROW( comma::exception, "expected colour-map type; got: \"" << e[1] << "\"" ); }
+            f.push_back( filter( boost::bind( &colour_map_impl_, _1, type ) ) );
+        }
         else if( e[0] == "blur" )
         {
             const std::vector< std::string >& s = comma::split( e[1], ',' );
@@ -1833,6 +1861,8 @@ static std::string usage_impl_()
     oss << "            blur=bilateral,<neighbourhood_size>,<sigma_space>,<sigma_colour>; preserves edges" << std::endl;
     oss << "            blur=adaptive-bilateral: <kernel_size>,<sigma_space>,<sigma_colour_max>; preserve edges, automatically calculate sigma_colour (and cap to sigma_colour_max)" << std::endl;
     oss << "        brightness=<scale>[,<offset>]: output=(scale*input)+offset; default offset=0" << std::endl;
+    oss << "        color-map=<type>: take image, apply colour map; see cv::applyColorMap for detail" << std::endl;
+    oss << "            <type>: autumn, bone, jet, winter, rainbow, ocean, summer, spring, cool, hsv, pink, hot" << std::endl;
     oss << "        convert-to,convert_to=<type>[,<scale>[,<offset>]]: convert to given type; should be the same number of channels; see opencv convertTo for details" << std::endl;
 	oss << "        convert-color,convert_color=<from>,<to>: convert from colour space to new colour space (BGR, RGB, Lab, XYZ, Bayer**, GRAY); eg: BGR,GRAY or CV_BGR2GRAY" << std::endl;
     oss << "        count: write frame number on images" << std::endl;
