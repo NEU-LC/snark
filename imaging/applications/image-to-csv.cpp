@@ -47,7 +47,6 @@ snark::cv_mat::serialization::header header;
 comma::csv::options csv;
 std::size_t channels=3;
 int depth=0;
-comma::signal_flag signaled;
 
 struct app_t
 {
@@ -159,14 +158,14 @@ bool output_t<T>::process_image()
     out.t=header.timestamp;
     std::size_t size=::channels*sizeof(T);
     //process one image
-    std::vector<char> buffer(header.rows*header.cols*size);
-    std::cin.read(&buffer[0], buffer.size());
-    char* ptr=&buffer[0];
-    for(comma::uint32 j=0;j<header.rows;j++)
+    for(comma::uint32 j=0;j<header.rows && std::cin.good() ;j++)
     {
+        std::vector<char> buffer(header.cols*size);
+        std::cin.read(&buffer[0], buffer.size());
+        if(std::cin.gcount()!=buffer.size()) { return false; }
+        char* ptr=&buffer[0];
         for(comma::uint32 i=0;i<header.cols;i++)
         {
-            if(!std::cin.good() || std::cin.eof() ) { return false; }
             out.x=i;
             out.y=j;
             std::memcpy(&out.channels[0], ptr, size);
@@ -223,9 +222,7 @@ void process()
     #ifdef WIN32
     _setmode( _fileno( stdin ), _O_BINARY );
     #endif
-    std::ios_base::sync_with_stdio( false ); // std::cin, std::cout access are thread-unsafe now (safe by default)
-    std::cin.tie( NULL ); // std::cin is tied to std::cout by default, which is thread-unsafe now
-    while(std::cin.good() && !signaled && std::cin.peek()!=-1)
+    while(std::cin.good() && std::cin.peek()!=-1)
     {
         if(!input_options.no_header) 
         {
