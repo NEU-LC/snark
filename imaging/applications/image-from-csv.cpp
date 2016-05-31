@@ -169,8 +169,6 @@ int main( int ac, char** av )
         while( is.ready() || std::cin.good() )
         {
             std::pair< boost::posix_time::ptime, cv::Mat > pair;
-            if( last ) { pair.first = last->t; }
-            
             pair.second = cv::Mat::zeros( output_options.rows, output_options.cols, type );
             if( last ) { set_pixel( pair.second, *last ); }
             while( is.ready() || std::cin.good() )
@@ -180,6 +178,7 @@ int main( int ac, char** av )
                 if( p ) { last = *p; }
                 if( block_done )
                 {
+                    pair.first = last->t;
                     output.write( std::cout, pair );
                     std::cout.flush();
                     break;
