@@ -211,7 +211,7 @@ double error( Eigen::MatrixXd source
 void output_transform( Eigen::MatrixXd source, Eigen::MatrixXd target
                      , comma::uint32 block, comma::csv::options output_csv )
 {
-    comma::verbose << "Loaded " << target.cols() << " pairs of points" << std::endl;
+    comma::verbose << "loaded " << target.cols() << " pairs of points" << std::endl;
 
     Eigen::Matrix4d estimate = Eigen::umeyama( source, target );
 
@@ -290,8 +290,6 @@ int main( int ac, char** av )
                 }
             }
             if( discard ) continue;
-
-            comma::verbose << "block " << p->block << std::endl;
 
             if( p->block != block )
             {
