@@ -55,6 +55,7 @@ static void bash_completion( unsigned const ac, char const * const * av )
         " --verbose -v"
         " --output-fields"
         " --output-error"
+        " --initial-error"
         ;
 
     std::cout << completion_options << std::endl;
@@ -87,6 +88,7 @@ static void usage( bool verbose = false )
     std::cerr << "    --output-fields: show output fields and exit" << std::endl;
     std::cerr << "    --output-format: show output format and exit" << std::endl;
     std::cerr << "    --output-error:  include the error estimate in output" << std::endl;
+    std::cerr << "    --initial-error: don't run alignment, just output initial error" << std::endl;
     std::cerr << std::endl;
     std::cerr << "examples: " << std::endl;
     std::cerr << "    -- output the " << standard_output_fields << " transform --" << std::endl;
@@ -189,7 +191,22 @@ std::string get_output_format( comma::csv::options csv_options, bool output_erro
     if( output_error ) { output_format += ",d"; }
     if( csv_options.has_field( "block" )) { output_format = output_format + ",ui"; }
     return output_format;
-} 
+}
+
+double error( Eigen::MatrixXd source
+            , Eigen::MatrixXd target
+            , Eigen::Matrix4d estimate=Eigen::Matrix4d::Identity() )
+{
+    // Convert source and target to a form that allows multiplication by estimate.
+    // Change each vector from size 3 to size 4 and store 1 in the fourth row.
+    source.conservativeResize( source.rows()+1, Eigen::NoChange );
+    source.row( source.rows()-1 ) = Eigen::MatrixXd::Constant( 1, source.cols(), 1 );
+
+    target.conservativeResize( target.rows()+1, Eigen::NoChange );
+    target.row( target.rows()-1 ) = Eigen::MatrixXd::Constant( 1, target.cols(), 1 );
+
+    return ( estimate * source - target ).norm() / target.norm();
+}
 
 void output_transform( Eigen::MatrixXd source, Eigen::MatrixXd target
                      , comma::uint32 block, comma::csv::options output_csv )
@@ -210,20 +227,10 @@ void output_transform( Eigen::MatrixXd source, Eigen::MatrixXd target
     comma::verbose << "orientation (rad) ( " << comma::join( orientation, ',' ) << " )" << std::endl;
     comma::verbose << "orientation (deg) ( " << comma::join( orientation * 180 / M_PI, ',' ) << " )" << std::endl;
 
-    // Convert source and target to a form that allows multiplication by estimate.
-    // Change each vector from size 3 to size 4 and store 1 in the fourth row.
-    source.conservativeResize( source.rows()+1, Eigen::NoChange );
-    source.row( source.rows()-1 ) = Eigen::MatrixXd::Constant( 1, source.cols(), 1 );
-
-    target.conservativeResize( target.rows()+1, Eigen::NoChange );
-    target.row( target.rows()-1 ) = Eigen::MatrixXd::Constant( 1, target.cols(), 1 );
-
-    double error = ( estimate * source - target ).norm() / target.norm();
-
     comma::csv::output_stream< position_with_error > ostream( std::cout, output_csv );
     ostream.write( position_with_error( block
                                       , snark::applications::position( translation, orientation )
-                                      , error ));
+                                      , error( source, target, estimate )));
 }
 
 int main( int ac, char** av )
@@ -239,6 +246,7 @@ int main( int ac, char** av )
         if( csv.fields.empty() ) { csv.fields = default_fields; }
         comma::verbose << "csv.fields=" << csv.fields << std::endl;
         bool output_error = options.exists( "--output-error" );
+        bool initial_error = options.exists( "--initial-error" );
 
         std::string output_fields = get_output_fields( csv, output_error );
         std::string output_format = get_output_format( csv, output_error );
@@ -273,7 +281,10 @@ int main( int ac, char** av )
 
             if( p->block != block )
             {
-                output_transform( source, target, block, output_csv );
+                if( initial_error )
+                    std::cout << error( source, target ) << std::endl;
+                else
+                    output_transform( source, target, block, output_csv );
                 source.resize( Eigen::NoChange, 0 );
                 target.resize( Eigen::NoChange, 0 );
                 block = p->block;
@@ -290,7 +301,10 @@ int main( int ac, char** av )
             source(1, source.cols()-1) = p->points.second(1);
             source(2, source.cols()-1) = p->points.second(2);
         }
-        output_transform( source, target, block, output_csv );
+        if( initial_error )
+            std::cout << error( source, target ) << std::endl;
+        else
+            output_transform( source, target, block, output_csv );
     }
     catch( std::exception& ex )
     {

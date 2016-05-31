@@ -1,0 +1,4 @@
+#!/bin/bash
+
+points-align --initial-error --fields="first/x,first/y,first/z,second/x,second/y,second/z,block" \
+    | name-value-from-csv value --prefix block --line-number
