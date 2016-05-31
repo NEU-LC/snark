@@ -191,10 +191,10 @@ int main( int ac, char** av )
                 case 3:
                 case 4:
                 case 5:
-                    std::cerr << "las-to-csv: point data format " << header.point_data_format() << ": todo" << std::endl;
+                    std::cerr << "las-to-csv: point data format " << int( header.point_data_format() ) << ": todo" << std::endl;
                     return 1;
                 default:
-                    std::cerr << "las-to-csv: expected point data format between 0 and 5, got: " << header.point_data_format() << std::endl;
+                    std::cerr << "las-to-csv: expected point data format between 0 and 5, got: " << int( header.point_data_format() ) << std::endl;
                     return 1;
             }
             return 0;
