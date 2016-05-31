@@ -211,7 +211,7 @@ double error( Eigen::MatrixXd source
 void output_transform( Eigen::MatrixXd source, Eigen::MatrixXd target
                      , comma::uint32 block, comma::csv::options output_csv )
 {
-    comma::verbose << "Loaded " << target.cols() << " pairs of points" << std::endl;
+    comma::verbose << "loaded " << target.cols() << " pairs of points" << std::endl;
 
     Eigen::Matrix4d estimate = Eigen::umeyama( source, target );
 
@@ -270,6 +270,7 @@ int main( int ac, char** av )
         Eigen::MatrixXd source( 3, 0 );
         Eigen::MatrixXd target( 3, 0 );
         unsigned int block = 0;
+        unsigned int discarded_records = 0;
 
         comma::csv::input_stream< input_points > istream( std::cin, csv );
         while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
@@ -277,7 +278,18 @@ int main( int ac, char** av )
             const input_points* p = istream.read();
             if( !p ) break;
 
-            comma::verbose << "block " << p->block << std::endl;
+            // Discard any records that have a NaN value
+            bool discard = false;
+            for( int i = 0; i <=2; i++ )
+            {
+                discard = ( isnan( p->points.first(i) ) || isnan( p->points.second(i) ));
+                if( discard )
+                {
+                    discarded_records++;
+                    break;
+                }
+            }
+            if( discard ) continue;
 
             if( p->block != block )
             {
@@ -292,15 +304,21 @@ int main( int ac, char** av )
 
             target.conservativeResize( Eigen::NoChange, target.cols()+1 );
             source.conservativeResize( Eigen::NoChange, source.cols()+1 );
-            
-            target(0, target.cols()-1) = p->points.first(0);
-            target(1, target.cols()-1) = p->points.first(1);
-            target(2, target.cols()-1) = p->points.first(2);
 
-            source(0, source.cols()-1) = p->points.second(0);
-            source(1, source.cols()-1) = p->points.second(1);
-            source(2, source.cols()-1) = p->points.second(2);
+            for( int i = 0; i <=2; i++ )
+            {
+                target(i, target.cols()-1) = p->points.first(i);
+                source(i, source.cols()-1) = p->points.second(i);
+            }
         }
+        if( discarded_records > 0 )
+        {
+            std::cerr << comma::verbose.app_name()
+                      << ": discarded " << discarded_records
+                      << " out of " << ( target.cols() + discarded_records )
+                      << " records" << std::endl;
+        }
+
         if( initial_error )
             std::cout << error( source, target ) << std::endl;
         else
