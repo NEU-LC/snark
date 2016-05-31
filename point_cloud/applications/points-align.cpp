@@ -270,12 +270,26 @@ int main( int ac, char** av )
         Eigen::MatrixXd source( 3, 0 );
         Eigen::MatrixXd target( 3, 0 );
         unsigned int block = 0;
+        unsigned int discarded_records = 0;
 
         comma::csv::input_stream< input_points > istream( std::cin, csv );
         while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
         {
             const input_points* p = istream.read();
             if( !p ) break;
+
+            // Discard any records that have a NaN value
+            bool discard = false;
+            for( int i = 0; i <=2; i++ )
+            {
+                discard = ( isnan( p->points.first(i) ) || isnan( p->points.second(i) ));
+                if( discard )
+                {
+                    discarded_records++;
+                    break;
+                }
+            }
+            if( discard ) continue;
 
             comma::verbose << "block " << p->block << std::endl;
 
@@ -299,6 +313,14 @@ int main( int ac, char** av )
                 source(i, source.cols()-1) = p->points.second(i);
             }
         }
+        if( discarded_records > 0 )
+        {
+            std::cerr << comma::verbose.app_name()
+                      << ": discarded " << discarded_records
+                      << " out of " << ( target.cols() + discarded_records )
+                      << " records" << std::endl;
+        }
+
         if( initial_error )
             std::cout << error( source, target ) << std::endl;
         else
