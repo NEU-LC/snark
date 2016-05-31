@@ -105,7 +105,27 @@ template <> struct point< 1 > : public comma::packed::packed_struct< point< 1 >,
     comma::packed::little_endian_uint16 point_source_id;
     comma::packed::float64 gps_time;
 };
-  
+
+struct colour : public comma::packed::packed_struct< colour, 6 >
+{
+    comma::packed::little_endian_uint16 red;
+    comma::packed::little_endian_uint16 green;
+    comma::packed::little_endian_uint16 blue;
+};
+
+template <> struct point< 2 > : public comma::packed::packed_struct< point< 2 >, 26 >
+{
+    struct returns_t { unsigned char number: 3, size: 3, scan_direction: 1, edge_of_flight_line: 1; };
+    las::xyz< comma::packed::little_endian32 > coordinates;
+    comma::packed::little_endian_uint16 intensity;
+    comma::packed::bits< returns_t > returns;
+    comma::packed::byte classification;
+    comma::packed::byte scan_angle; // -90 to 90
+    comma::packed::byte user_data;
+    comma::packed::little_endian_uint16 point_source_id;
+    las::colour colour;
+};
+
 } }  // namespace snark { namespace las {
 
 #endif // SNARK_SENSORS_LAS_PACKETS_H

@@ -63,7 +63,7 @@ static void usage( bool verbose = false )
 
 template < unsigned int I > struct point;
 
-template <> struct point< 1 >
+struct point_base
 {
     Eigen::Vector3d coordinates;
     comma::uint16 intensity;
@@ -75,10 +75,10 @@ template <> struct point< 1 >
     char scan_angle;
     unsigned char user_data;
     comma::uint16 point_source_id;
-    double gps_time;
     
-    point() {}
-    point( const snark::las::point< 1 >& p, const Eigen::Vector3d& factor, const Eigen::Vector3d& offset )
+    point_base() {}
+    template < typename P >
+    point_base( const P& p, const Eigen::Vector3d& factor, const Eigen::Vector3d& offset )
         : coordinates( Eigen::Vector3d( factor.x() * p.coordinates.x()
                                       , factor.y() * p.coordinates.y()
                                       , factor.z() * p.coordinates.z() ) + offset )
@@ -91,16 +91,42 @@ template <> struct point< 1 >
         , scan_angle( p.scan_angle() )
         , user_data( p.user_data() )
         , point_source_id( p.point_source_id() )
-        , gps_time( p.gps_time() )
     {
     }
 };
 
+template <> struct point< 1 > : public point_base
+{
+    double gps_time;
+    
+    point() {}
+    point( const snark::las::point< 1 >& p, const Eigen::Vector3d& factor, const Eigen::Vector3d& offset ) : point_base( p, factor, offset ), gps_time( p.gps_time() ) {}
+};
+
+struct colour
+{
+    comma::uint16 red;
+    comma::uint16 green;
+    comma::uint16 blue;
+    colour() : red( 0 ), green( 0 ), blue( 0 ) {};
+    colour( comma::uint16 red, comma::uint16 green, comma::uint16 blue ) : red( red ), green( green ), blue( blue ) {};
+};
+
+template <> struct point< 2 > : public point_base
+{
+    ::colour colour;
+    
+    point() {}
+    point( const snark::las::point< 2 >& p, const Eigen::Vector3d& factor, const Eigen::Vector3d& offset ) : point_base( p, factor, offset ), colour( p.colour.red(), p.colour.green(), p.colour.blue() ) {}
+};
+
+
+
 namespace comma { namespace visiting {
 
-template <> struct traits< point< 1 > >
+template <> struct traits< point_base >
 {
-    template< typename K, typename V > static void visit( const K&, const point< 1 >& t, V& v ) // todo
+    template< typename K, typename V > static void visit( const K&, const point_base& t, V& v ) // todo
     {
         v.apply( "coordinates", t.coordinates );
         v.apply( "intensity", t.intensity );
@@ -112,7 +138,34 @@ template <> struct traits< point< 1 > >
         v.apply( "scan_angle", t.scan_angle );
         v.apply( "user_data", t.user_data );
         v.apply( "point_source_id", t.point_source_id );
+    }
+};
+    
+template <> struct traits< point< 1 > >
+{
+    template< typename K, typename V > static void visit( const K& k, const point< 1 >& t, V& v ) // todo
+    {
+        traits< point_base >::visit( k, t, v );
         v.apply( "gps_time", t.gps_time );
+    }
+};
+
+template <> struct traits< colour>
+{
+    template< typename K, typename V > static void visit( const K&, const colour& t, V& v ) // todo
+    {
+        v.apply( "red", t.red );
+        v.apply( "green", t.green );
+        v.apply( "blue", t.blue );
+    }
+};
+
+template <> struct traits< point< 2 > >
+{
+    template< typename K, typename V > static void visit( const K& k, const point< 2 >& t, V& v ) // todo
+    {
+        traits< point_base >::visit( k, t, v );
+        v.apply( "colour", t.colour );
     }
 };
 
@@ -157,11 +210,9 @@ int main( int ac, char** av )
             unsigned int type = s.empty() || s == "-" ? read_header( std::cin ).point_data_format() : boost::lexical_cast< unsigned int >( s );
             switch( type )
             {
-                case 1:
-                    std::cout << comma::join( comma::csv::names< point< 1 > >( false ), ',' ) << std::endl;
-                    return 0;
+                case 1: std::cout << comma::join( comma::csv::names< point< 1 > >( false ), ',' ) << std::endl; return 0;
+                case 2: std::cout << comma::join( comma::csv::names< point< 2 > >( false ), ',' ) << std::endl; return 0;
                 case 0:
-                case 2:
                 case 3:
                 case 4:
                 case 5:
@@ -184,10 +235,9 @@ int main( int ac, char** av )
             if( count < int( offset.size() ) ) { std::cerr << "las-to-csv: expected " << offset.size() << " bytes, got only: " << count << std::endl; return 1; }
             switch( header.point_data_format() )
             {
-                case 1:
-                    return read_points< 1 >( header, comma::csv::options( options ) );
+                case 1: return read_points< 1 >( header, comma::csv::options( options ) );
+                case 2: return read_points< 2 >( header, comma::csv::options( options ) );
                 case 0:
-                case 2:
                 case 3:
                 case 4:
                 case 5:
