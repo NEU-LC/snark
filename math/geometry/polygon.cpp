@@ -86,6 +86,13 @@ bool convex_polygon::includes( const Eigen::Vector3d& rhs ) const { return inclu
 
 Eigen::Vector3d triangle::normal() const { return normal_impl( corners ); }
 
+bool triangle::is_valid() const
+{
+    if( corners.size() != 3 ) { return false; }
+    const Eigen::Vector3d& cross = ( corners[1] - corners[0] ).cross( corners[0] - corners[2] );
+    return !comma::math::equal( cross.norm(), 0 );
+}
+
 Eigen::Vector3d triangle::projection_of( const Eigen::Vector3d& rhs ) const { return projection_impl( corners, rhs ); }
 
 bool triangle::includes( const Eigen::Vector3d& rhs ) const { return includes_impl( corners, rhs ); }

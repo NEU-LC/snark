@@ -77,6 +77,9 @@ struct triangle
     
     /// normal to triangle plane
     Eigen::Vector3d normal() const;
+
+    /// return true, if corners describe a triangle
+    bool is_valid() const;
     
     /// return projection of a point on the triangle plane
     Eigen::Vector3d projection_of( const Eigen::Vector3d& rhs ) const;

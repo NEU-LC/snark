@@ -59,6 +59,7 @@ static void usage( bool more = false )
     std::cerr << "    --all: output all points in the given radius instead of the nearest" << std::endl;
     std::cerr << "    --radius=<radius>: lookup radius" << std::endl;
     std::cerr << "    --strict: exit, if nearest point not found" << std::endl;
+    std::cerr << "    --permissive: discard invalid points or triangles and continue" << std::endl;
     std::cerr << std::endl;
     std::cerr << "points filter (default): for each input point find the nearest point of the filter in given radius" << std::endl;
     std::cerr << "    input: points; fields: x,y,z" << std::endl;
@@ -92,6 +93,7 @@ static void usage( bool more = false )
 
 static bool verbose;
 static bool strict;
+static bool permissive;
 static double radius;
 static double max_triangle_side;
 static Eigen::Vector3d origin = Eigen::Vector3d::Zero();
@@ -108,6 +110,7 @@ struct record
     record() : value( Eigen::Vector3d::Zero() ) {}
     record( const Eigen::Vector3d& value, const std::string& line ) : value( value ), line( line ) {}
     boost::optional< Eigen::Vector3d > nearest_to( const Eigen::Vector3d& rhs ) const { return value; } // watch performance
+    bool is_valid() const { return true; }
 };
 
 // todo: add block field
@@ -122,6 +125,7 @@ struct triangle_record
         boost::optional< Eigen::Vector3d > p = value.projection_of( rhs );
         return value.includes( *p ) && !comma::math::less( value.normal().dot( origin - rhs ), 0 ) ? p : boost::none;
     } 
+    bool is_valid() const { return value.is_valid(); }
 };
 
 template < typename V > struct traits;
@@ -207,11 +211,13 @@ template < typename V > static int run( const comma::command_line_options& optio
     std::ifstream ifs( &filter_csv.filename[0] );
     if( !ifs.is_open() ) { std::cerr << "points-join: failed to open \"" << filter_csv.filename << "\"" << std::endl; }
     strict = options.exists( "--strict" );
+    permissive = options.exists( "--permissive" );
     bool all = options.exists( "--all" );
     comma::csv::input_stream< V > ifstream( ifs, filter_csv, traits< V >::default_value() );
     std::deque< filter_record_t > filter_points;
     snark::math::closed_interval< double, 3 > extents;
     if( verbose ) { std::cerr << "points-join: reading filter records..." << std::endl; }
+    std::size_t count = 0;
     while( ifstream.ready() || ( ifs.good() && !ifs.eof() ) )
     {
         const filter_value_t* p = ifstream.read();
@@ -226,8 +232,18 @@ template < typename V > static int run( const comma::command_line_options& optio
         {
             line = comma::join( ifstream.ascii().last(), filter_csv.delimiter );
         }
-        filter_points.push_back( filter_record_t( *p, line ) );
-        traits< V >::set_hull( extents, *p );
+        filter_record_t filter_record( filter_record_t( *p, line ) );
+        if( filter_record.is_valid() )
+        {
+            filter_points.push_back( filter_record );
+            traits< V >::set_hull( extents, *p );
+        }
+        else
+        {
+            if( !permissive ) { std::cerr << "points-join: filter point " << count << " invalid; use --permissive" << std::endl; return 1; }
+            if( verbose ) { std::cerr << "points-join: filter point " << count << " invalid; discarded" << std::endl; }
+        }
+        ++count;
     }
     if( verbose ) { std::cerr << "points-join: loading " << filter_points.size() << " records into grid..." << std::endl; }
     typedef typename traits< V >::grid_t grid_t;
@@ -239,7 +255,7 @@ template < typename V > static int run( const comma::command_line_options& optio
     if( stdin_csv.binary() ) { _setmode( _fileno( stdout ), _O_BINARY ); }
     #endif
     if( !stdin_csv.binary() ) { std::cout.precision( stdin_csv.precision ); }
-    std::size_t count = 0;
+    count = 0;
     std::size_t discarded = 0;
     while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
     {
