@@ -292,14 +292,12 @@ int main( int ac, char** av )
 
             target.conservativeResize( Eigen::NoChange, target.cols()+1 );
             source.conservativeResize( Eigen::NoChange, source.cols()+1 );
-            
-            target(0, target.cols()-1) = p->points.first(0);
-            target(1, target.cols()-1) = p->points.first(1);
-            target(2, target.cols()-1) = p->points.first(2);
 
-            source(0, source.cols()-1) = p->points.second(0);
-            source(1, source.cols()-1) = p->points.second(1);
-            source(2, source.cols()-1) = p->points.second(2);
+            for( int i = 0; i <=2; i++ )
+            {
+                target(i, target.cols()-1) = p->points.first(i);
+                source(i, source.cols()-1) = p->points.second(i);
+            }
         }
         if( initial_error )
             std::cout << error( source, target ) << std::endl;
