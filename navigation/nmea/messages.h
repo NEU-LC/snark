@@ -33,10 +33,12 @@
 #define SNARK_NAVIGATION_NMEA_MESSAGES_H_
 
 #include <boost/date_time/posix_time/ptime.hpp>
+#include <boost/lexical_cast.hpp>
 #include <comma/string/string.h>
 #include "../../math/spherical_geometry/coordinates.h"
 #include "string.h"
 
+// http://www.nmea.org/
 namespace snark { namespace nmea {
 
 struct message
@@ -79,6 +81,24 @@ struct gga : message
     std::string reference_station_id;
 };
 
+// http://www.gpsinformation.org/dale/nmea.htm#ZDA
+// http://www.trimble.com/OEM_ReceiverHelp/V4.44/en/NMEA-0183messages_ZDA.html
+struct zda : message
+{
+    static const std::string type;
+    // $GPZDA, hhmmss.ss, dd, mm, yyyy, tzh, tzm
+    zda() { }
+    zda(const nmea::string& s)
+    {
+        const std::vector< std::string >& values=s.values();
+        time=boost::posix_time::from_iso_string( values[4] + values[3] + values[2] + "T"+ values[1]);
+        local_time_zone_offset = boost::lexical_cast<int>(values[5]) * 3600 + boost::lexical_cast<int>(values[6]) * 60;
+    }
+    boost::posix_time::ptime time;
+    // num ber of seconds offset, between -13 * 3600 to 13 * 3600
+    int local_time_zone_offset;
+};
+
 namespace trimble {
 
 static const std::string manufacturer_code = "TNL";
@@ -112,6 +132,7 @@ struct avr : message
 }; // namespace trimble {
 
 const std::string gga::type = "GGA";
+const std::string zda::type = "ZDA";
 const std::string trimble::avr::type = "AVR";
 
 } // namespace messages {
