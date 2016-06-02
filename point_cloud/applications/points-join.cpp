@@ -45,6 +45,10 @@
 #include "../../point_cloud/voxel_map.h"
 #include "../../visiting/eigen.h"
 
+#ifdef SNARK_USE_CUDA
+#include "points-join/points_join_cuda.h"
+#endif
+
 static void usage( bool more = false )
 {
     std::cerr << std::endl;
@@ -101,7 +105,6 @@ static Eigen::Vector3d resolution;
 static comma::csv::options stdin_csv;
 static comma::csv::options filter_csv;
 
-
 // todo: add block field
 struct record
 { 
@@ -133,11 +136,27 @@ template < typename V > struct traits;
 template <> struct traits< Eigen::Vector3d >
 {
     typedef record record_t;
-    typedef std::vector< const record_t* > voxel_t; // todo: is vector a good container? use deque
+    struct voxel_t
+    {
+        std::vector< const record_t* > records;
+        #ifdef SNARK_USE_CUDA
+        snark::cuda::buffer< 3 > buffer;
+        #endif
+    };
     typedef snark::voxel_map< voxel_t, 3 > grid_t;
     static Eigen::Vector3d default_value() { return Eigen::Vector3d::Zero(); }
     static void set_hull( snark::math::closed_interval< double, 3 >& extents, const Eigen::Vector3d& p ) { extents.set_hull( p ); }
-    static bool touch( grid_t& grid, const record_t& record ) { ( grid.touch_at( record.value ) )->second.push_back( &record ); return true; }
+    static bool touch( grid_t& grid, const record_t& record )
+    {
+        grid_t::iterator i = grid.touch_at( record.value );
+        i->second.records.push_back( &record );
+        #ifdef SNARK_USE_CUDA
+        i->second.buffer.in.push_back( record.value.x() );
+        i->second.buffer.in.push_back( record.value.y() );
+        i->second.buffer.in.push_back( record.value.z() );
+        #endif
+        return true;
+    }
     template < typename S > static void output( const S& istream, const record_t& nearest, const Eigen::Vector3d& nearest_point )
     {
         if( stdin_csv.binary() ) // quick and dirty
@@ -157,7 +176,13 @@ template <> struct traits< Eigen::Vector3d >
 template <> struct traits< snark::triangle >
 {
     typedef triangle_record record_t;
-    typedef std::vector< const record_t* > voxel_t; // todo: is vector a good container? use deque
+    struct voxel_t
+    {
+        std::vector< const record_t* > records;
+        #ifdef SNARK_USE_CUDA
+        snark::cuda::buffer< 9 > buffer;
+        #endif
+    };
     typedef snark::voxel_map< voxel_t, 3 > grid_t;
     static snark::triangle default_value() { return snark::triangle(); }
     static void set_hull( snark::math::closed_interval< double, 3 >& extents, const snark::triangle& t )
@@ -178,9 +203,9 @@ template <> struct traits< snark::triangle >
         grid_t::iterator i0 = grid.touch_at( record.value.corners[0] );
         grid_t::iterator i1 = grid.touch_at( record.value.corners[1] );
         grid_t::iterator i2 = grid.touch_at( record.value.corners[2] );
-        i0->second.push_back( &record );
-        if( i1 != i0 ) { i1->second.push_back( &record ); }
-        if( i2 != i0 && i2 != i1 ) { i2->second.push_back( &record ); }
+        i0->second.records.push_back( &record ); // todo: cuda
+        if( i1 != i0 ) { i1->second.records.push_back( &record ); } // todo: cuda
+        if( i2 != i0 && i2 != i1 ) { i2->second.records.push_back( &record ); } // todo: cuda
         return true;
     }
     template < typename S > static void output( const S& istream, const record_t& nearest, const Eigen::Vector3d& nearest_point )
@@ -274,9 +299,9 @@ template < typename V > static int run( const comma::command_line_options& optio
                 {
                     typename grid_t::iterator it = grid.find( i );
                     if( it == grid.end() ) { continue; }
-                    for( std::size_t k = 0; k < it->second.size(); ++k )
+                    for( std::size_t k = 0; k < it->second.records.size(); ++k )
                     {
-                        boost::optional< Eigen::Vector3d > q = it->second[k]->nearest_to( *p ); // todo: fix! currently, visiting each triangle 3 times
+                        boost::optional< Eigen::Vector3d > q = it->second.records[k]->nearest_to( *p ); // todo: fix! currently, visiting each triangle 3 times
                         if( !q ) { continue; }
                         double norm = ( *p - *q ).norm();
                         if( norm > radius ) { continue; }
@@ -285,19 +310,19 @@ template < typename V > static int run( const comma::command_line_options& optio
                             if( stdin_csv.binary() )
                             {
                                 std::cout.write( istream.binary().last(), stdin_csv.format().size() );
-                                std::cout.write( &it->second[k]->line[0], filter_csv.format().size() );
+                                std::cout.write( &it->second.records[k]->line[0], filter_csv.format().size() );
                             }
                             else
                             {
                                 std::cout << comma::join( istream.ascii().last(), stdin_csv.delimiter ) << stdin_csv.delimiter;
-                                if( filter_csv.binary() ) { std::cout << filter_csv.format().bin_to_csv( &it->second[k]->line[0], stdin_csv.delimiter, stdin_csv.precision ) << std::endl; }
-                                else { std::cout << &it->second[k]->line[0] << std::endl; }
+                                if( filter_csv.binary() ) { std::cout << filter_csv.format().bin_to_csv( &it->second.records[k]->line[0], stdin_csv.delimiter, stdin_csv.precision ) << std::endl; }
+                                else { std::cout << &it->second.records[k]->line[0] << std::endl; }
                             }
                         }
                         else
                         {
                             if( nearest && distance < norm ) { continue; }
-                            nearest = it->second[k];
+                            nearest = it->second.records[k];
                             nearest_point = *q;
                             distance = norm;
                         }
@@ -319,11 +344,15 @@ template < typename V > static int run( const comma::command_line_options& optio
         ++count;
     }
     std::cerr << "points-join: processed " << count << " records; discarded " << discarded << " record" << ( count == 1 ? "" : "s" ) << " with no matches" << std::endl;
+    #ifdef SNARK_USE_CUDA
+    cudaDeviceReset();
+    #endif
     return 0;
 }
 
 int main( int ac, char** av )
 {
+    std::cerr << "===> " << cudaGetErrorString( snark_cuda_square_norms( 0, 0, 0, NULL, NULL, 0 ) ) << std::endl;
     try
     {
         comma::command_line_options options( ac, av, usage );
@@ -355,5 +384,8 @@ int main( int ac, char** av )
     }
     catch( std::exception& ex ) { std::cerr << "points-join: " << ex.what() << std::endl; }
     catch( ... ) { std::cerr << "points-join: unknown exception" << std::endl; }
+    #ifdef SNARK_USE_CUDA
+    cudaDeviceReset();
+    #endif
     return 1;
 }

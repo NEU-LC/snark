@@ -115,6 +115,24 @@ IF( APPLE )
     SET( CMAKE_INSTALL_NAME_DIR ${CMAKE_INSTALL_PREFIX}/${snark_INSTALL_LIB_DIR} )
 ENDIF( APPLE )
 
+OPTION( USE_CUDA "use cuda in (some) applications" OFF )
+if( USE_CUDA )
+    find_package( CUDA REQUIRED )
+    include( FindCUDA )
+    list( APPEND CUDA_NVCC_FLAGS --compiler-options -fno-strict-aliasing -lineinfo -use_fast_math -Xptxas -dlcm=cg )
+#    list( APPEND CUDA_NVCC_FLAGS -gencode arch=compute_20,code=sm_20 ) # todo: make sms configurable?
+#    list( APPEND CUDA_NVCC_FLAGS -gencode arch=compute_30,code=sm_30 )
+#    list( APPEND CUDA_NVCC_FLAGS -gencode arch=compute_35,code=sm_35 )
+#    list( APPEND CUDA_NVCC_FLAGS -gencode arch=compute_37,code=sm_37 )
+#    list( APPEND CUDA_NVCC_FLAGS -gencode arch=compute_50,code=sm_50 )
+#    list( APPEND CUDA_NVCC_FLAGS -gencode arch=compute_52,code=sm_52 )
+    message( "CUDA_NVCC_FLAGS: ${CUDA_NVCC_FLAGS}" )
+    set( CUDA_ATTACH_VS_BUILD_RULE_TO_CUDA_FILE ON ) # todo: what is this?
+    set( CUDA_SEPARABLE_COMPILATION ON ) # todo: what is this?
+    set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DSNARK_USE_CUDA" )
+    set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSNARK_USE_CUDA" )
+endif( USE_CUDA )
+
 OPTION( BUILD_TESTS "build unit tests" OFF )
 SET( snark_BUILD_TESTS ${BUILD_TESTS} )
 
