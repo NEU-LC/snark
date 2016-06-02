@@ -99,6 +99,7 @@ static bool verbose;
 static bool strict;
 static bool permissive;
 static double radius;
+static double squared_radius;
 static double max_triangle_side;
 static Eigen::Vector3d origin = Eigen::Vector3d::Zero();
 static Eigen::Vector3d resolution;
@@ -127,7 +128,7 @@ struct triangle_record
     {
         boost::optional< Eigen::Vector3d > p = value.projection_of( rhs );
         return value.includes( *p ) && !comma::math::less( value.normal().dot( origin - rhs ), 0 ) ? p : boost::none;
-    } 
+    }
     bool is_valid() const { return value.is_valid(); }
 };
 
@@ -141,7 +142,11 @@ template <> struct traits< Eigen::Vector3d >
         std::vector< const record_t* > records;
         #ifdef SNARK_USE_CUDA
         snark::cuda::buffer< 3 > buffer;
-        #endif
+        void calculate_squared_norms( const Eigen::Vector3d& rhs ) { snark::cuda::squared_norms( rhs, buffer ); }
+        boost::optional< std::pair< Eigen::Vector3d, double > > nearest_to( const Eigen::Vector3d& rhs, unsigned int k ) const { return std::make_pair( records[k]->value, buffer.out[k] ); }
+        #else // SNARK_USE_CUDA
+        boost::optional< std::pair< Eigen::Vector3d, double > > nearest_to( const Eigen::Vector3d& rhs, unsigned int k ) const { return std::make_pair( records[k]->value, ( records[k]->value - rhs ).squaredNorm() ); }
+        #endif // SNARK_USE_CUDA
     };
     typedef snark::voxel_map< voxel_t, 3 > grid_t;
     static Eigen::Vector3d default_value() { return Eigen::Vector3d::Zero(); }
@@ -181,7 +186,15 @@ template <> struct traits< snark::triangle >
         std::vector< const record_t* > records;
         #ifdef SNARK_USE_CUDA
         snark::cuda::buffer< 9 > buffer;
+        void calculate_squared_norms( const Eigen::Vector3d& ) {}
         #endif
+        boost::optional< std::pair< Eigen::Vector3d, double > > nearest_to( const Eigen::Vector3d& rhs, unsigned int k ) const
+        {
+            // todo: #ifdef SNARK_USE_CUDA
+            const boost::optional< Eigen::Vector3d >& n = records[k]->nearest_to( rhs );
+            if( !n ) { return boost::none; }
+            return std::make_pair( *n, ( *n - rhs ).squaredNorm() );
+        }
     };
     typedef snark::voxel_map< voxel_t, 3 > grid_t;
     static snark::triangle default_value() { return snark::triangle(); }
@@ -290,7 +303,7 @@ template < typename V > static int run( const comma::command_line_options& optio
         typename grid_t::index_type i;
         const filter_record_t* nearest = NULL;
         Eigen::Vector3d nearest_point;
-        double distance = 0;
+        double min_squared_distance = 0;
         for( i[0] = index[0] - 1; i[0] < index[0] + 2; ++i[0] )
         {
             for( i[1] = index[1] - 1; i[1] < index[1] + 2; ++i[1] )
@@ -299,12 +312,16 @@ template < typename V > static int run( const comma::command_line_options& optio
                 {
                     typename grid_t::iterator it = grid.find( i );
                     if( it == grid.end() ) { continue; }
+                    #ifdef SNARK_USE_CUDA
+                    //std::cerr << "--> on p: " << p->transpose() << " index: " << i[0] << "," << i[1] << "," << i[2] << std::endl;
+                    it->second.calculate_squared_norms( *p );
+                    #endif
                     for( std::size_t k = 0; k < it->second.records.size(); ++k )
                     {
-                        boost::optional< Eigen::Vector3d > q = it->second.records[k]->nearest_to( *p ); // todo: fix! currently, visiting each triangle 3 times
+                        const boost::optional< std::pair< Eigen::Vector3d, double > >& q = it->second.nearest_to( *p, k ); // todo: fix! currently, visiting each triangle 3 times
                         if( !q ) { continue; }
-                        double norm = ( *p - *q ).norm();
-                        if( norm > radius ) { continue; }
+                        // double squared_norm = ( *p - *q ).squaredNorm();
+                        if( q->second > squared_radius ) { continue; }
                         if( all )
                         {
                             if( stdin_csv.binary() )
@@ -321,10 +338,10 @@ template < typename V > static int run( const comma::command_line_options& optio
                         }
                         else
                         {
-                            if( nearest && distance < norm ) { continue; }
+                            if( nearest && min_squared_distance < q->second ) { continue; }
                             nearest = it->second.records[k];
-                            nearest_point = *q;
-                            distance = norm;
+                            nearest_point = q->first;
+                            min_squared_distance = q->second;
                         }
                     }
                 }
@@ -352,9 +369,6 @@ template < typename V > static int run( const comma::command_line_options& optio
 
 int main( int ac, char** av )
 {
-    #ifdef SNARK_USE_CUDA
-    std::cerr << "===> remove me: " << cudaGetErrorString( snark_cuda_square_norms( 0, 0, 0, NULL, NULL, 0 ) ) << std::endl;
-    #endif
     try
     {
         comma::command_line_options options( ac, av, usage );
@@ -372,6 +386,7 @@ int main( int ac, char** av )
         bool filter_triangulated = false;
         for( unsigned int i = 0; !filter_triangulated && i < v.size(); ++i ) { filter_triangulated = v[i].substr( 0, ::strlen( "corners" ) ) == "corners"; }
         radius = options.value< double >( "--radius" );
+        squared_radius = radius * radius;
         double r = radius;
         if( filter_triangulated ) // quick and dirty
         {

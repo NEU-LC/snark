@@ -30,7 +30,7 @@
 #include <assert.h>
 #include "points_join_cuda.h"
 
-__global__ void snark_cuda_square_norms_impl( double x, double y, double z, const double *points, double *square_norms, unsigned int size )
+__global__ void snark_cuda_squared_norms_impl( double x, double y, double z, const double *points, double *square_norms, unsigned int size )
 {
     unsigned int i = blockDim.x * blockIdx.x + threadIdx.x;
     if( i >= size ) { return; }
@@ -41,24 +41,24 @@ __global__ void snark_cuda_square_norms_impl( double x, double y, double z, cons
     square_norms[i] = x * x + y * y + z * z;
 }
 
-cudaError_t snark_cuda_square_norms( double x, double y, double z, const double *points, double *square_norms, unsigned int size )
+cudaError_t snark_cuda_squared_norms( double x, double y, double z, const double *points, double *square_norms, unsigned int size )
 {
     int threads = 256; // quick and dirty
     int blocks = ( size - 1 ) / threads + 1;
-    snark_cuda_square_norms_impl<<<blocks, threads>>>( x, y, z, points, square_norms, size );
+    snark_cuda_squared_norms_impl<<<blocks, threads>>>( x, y, z, points, square_norms, size );
     return cudaGetLastError();
 }
 
 namespace snark { namespace cuda {
 
-void square_norms( const Eigen::Vector3d& v, buffer< 3 >& b, bool deallocate )
+void squared_norms( const Eigen::Vector3d& v, buffer< 3 >& b, bool deallocate )
 {
     b.copy_once();
     unsigned int size = b.in.size() / 3;
-    cudaError_t err = snark_cuda_square_norms( v.x(), v.y(), v.z(), b.cuda_in, b.cuda_out, size );
+    cudaError_t err = snark_cuda_squared_norms( v.x(), v.y(), v.z(), b.cuda_in, b.cuda_out, size );
     if( err != cudaSuccess ) { COMMA_THROW( comma::exception, "cuda: square norm calculation failed; " << cudaGetErrorString( err ) ); }
     b.out.resize( size );
-    err = cudaMemcpy( b.cuda_out, &b.out[0], size * sizeof( double ), cudaMemcpyDeviceToHost );
+    err = cudaMemcpy( &b.out[0], b.cuda_out, size * sizeof( double ), cudaMemcpyDeviceToHost );
     if( err != cudaSuccess ) { COMMA_THROW( comma::exception, "cuda: copy failed; " << cudaGetErrorString( err ) ); }
     if( deallocate ) { b.deallocate(); }
 }

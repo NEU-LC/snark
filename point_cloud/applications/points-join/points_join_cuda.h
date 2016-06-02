@@ -34,7 +34,7 @@
 #include <comma/base/exception.h>
 #include <cuda_runtime.h>
 
-cudaError_t snark_cuda_square_norms( double x, double y, double z, const double *points, double *square_norms, unsigned int size );
+cudaError_t snark_cuda_squared_norms( double x, double y, double z, const double *points, double *square_norms, unsigned int size );
 
 namespace snark { namespace cuda {
     
@@ -65,6 +65,6 @@ struct buffer
     }
 };
 
-void square_norms( const Eigen::Vector3d& v, buffer< 3 >& b, bool deallocate = true );
+void squared_norms( const Eigen::Vector3d& v, buffer< 3 >& b, bool deallocate = true );
 
 } } // namespace snark { namespace cuda {
