@@ -143,7 +143,12 @@ template <> struct traits< Eigen::Vector3d >
         #ifdef SNARK_USE_CUDA
         snark::cuda::buffer< 3 > buffer;
         void calculate_squared_norms( const Eigen::Vector3d& rhs ) { snark::cuda::squared_norms( rhs, buffer ); }
-        boost::optional< std::pair< Eigen::Vector3d, double > > nearest_to( const Eigen::Vector3d& rhs, unsigned int k ) const { return std::make_pair( records[k]->value, buffer.out[k] ); }
+        
+        // todo: commented function below works, but is needs superslow preps
+        //boost::optional< std::pair< Eigen::Vector3d, double > > nearest_to( const Eigen::Vector3d& rhs, unsigned int k ) const { return std::make_pair( records[k]->value, buffer.out[k] ); }
+        
+        boost::optional< std::pair< Eigen::Vector3d, double > > nearest_to( const Eigen::Vector3d& rhs, unsigned int k ) const { return std::make_pair( records[k]->value, ( records[k]->value - rhs ).squaredNorm() ); }
+        
         #else // SNARK_USE_CUDA
         boost::optional< std::pair< Eigen::Vector3d, double > > nearest_to( const Eigen::Vector3d& rhs, unsigned int k ) const { return std::make_pair( records[k]->value, ( records[k]->value - rhs ).squaredNorm() ); }
         #endif // SNARK_USE_CUDA
@@ -313,14 +318,13 @@ template < typename V > static int run( const comma::command_line_options& optio
                     typename grid_t::iterator it = grid.find( i );
                     if( it == grid.end() ) { continue; }
                     #ifdef SNARK_USE_CUDA
-                    //std::cerr << "--> on p: " << p->transpose() << " index: " << i[0] << "," << i[1] << "," << i[2] << std::endl;
-                    it->second.calculate_squared_norms( *p );
+                    // todo: it is superslow; try to copy voxels adaptively
+                    //it->second.calculate_squared_norms( *p );
                     #endif
                     for( std::size_t k = 0; k < it->second.records.size(); ++k )
                     {
                         const boost::optional< std::pair< Eigen::Vector3d, double > >& q = it->second.nearest_to( *p, k ); // todo: fix! currently, visiting each triangle 3 times
                         if( !q ) { continue; }
-                        // double squared_norm = ( *p - *q ).squaredNorm();
                         if( q->second > squared_radius ) { continue; }
                         if( all )
                         {

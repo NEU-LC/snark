@@ -50,8 +50,8 @@ struct buffer
     ~buffer() { deallocate(); }
     void deallocate()
     { 
-        if( cuda_in ) { cudaFree( cuda_in ); }
-        if( cuda_out ) { cudaFree( cuda_out ); }
+        if( cuda_in ) { cudaFree( cuda_in ); cuda_in = NULL; }
+        if( cuda_out ) { cudaFree( cuda_out ); cuda_out = NULL; }
     }
     void copy_once()
     {
