@@ -351,8 +351,8 @@ int main( int ac, char** av )
         if( options.exists( "--format" ) ) { std::cout << "%t%2d%b"; return 0; }
         verbose = options.exists( "--verbose,-v,--pan-limits,--tilt-limits" );
         std::vector< std::string > v = options.unnamed( "--diff,--help,-h,--verbose,-v,--format,--output-if-changed", "--binary,-b,--fields,-f,--delimiter,-d,--pan-limits,--tilt-limits,--camera" );
-        if( v.empty() ) { std::cerr << "quickset-pantilt-control: please specify port name" << std::endl; usage(); }
-        if( v.size() > 1 ) { std::cerr << "quickset-pantilt-control: expected one serial port name, got \"" << comma::join( v, ' ' ) << std::endl; usage(); }
+        if( v.empty() ) { std::cerr << "quickset-pantilt-control: please specify port name" << std::endl; exit( 1 ); }
+        if( v.size() > 1 ) { std::cerr << "quickset-pantilt-control: expected one serial port name, got \"" << comma::join( v, ' ' ) << std::endl; exit( 1 ); }
         std::string name = v[0];
         output_if_changed = options.exists( "--output-if-changed" );
         differential = options.exists( "--diff" );
@@ -406,5 +406,5 @@ int main( int ac, char** av )
         std::cerr << "quickset-pantilt-control: unknown exception" << std::endl;
     }
     if( protocol ) { protocol->close(); }
-    usage();
+    exit( 0 );
 }
