@@ -352,7 +352,9 @@ template < typename V > static int run( const comma::command_line_options& optio
 
 int main( int ac, char** av )
 {
-    std::cerr << "===> " << cudaGetErrorString( snark_cuda_square_norms( 0, 0, 0, NULL, NULL, 0 ) ) << std::endl;
+    #ifdef SNARK_USE_CUDA
+    std::cerr << "===> remove me: " << cudaGetErrorString( snark_cuda_square_norms( 0, 0, 0, NULL, NULL, 0 ) ) << std::endl;
+    #endif
     try
     {
         comma::command_line_options options( ac, av, usage );
