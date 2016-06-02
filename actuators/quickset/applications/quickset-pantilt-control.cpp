@@ -197,12 +197,12 @@ static bool handle_status()
 template < typename command >
 static bool handle_move_to( const position& p )
 {
-    command moveTo;
+    command move_to;
     static const double factor = double( 18000 ) / M_PI;
-    moveTo.pan = static_cast< int >( p.pan * factor );
-    moveTo.tilt = static_cast< int >( p.tilt * factor );
-    if( verbose ) { std::cerr << "quickset-pantilt-control: sending move-to" << ( differential ? "-delta" : "" ) << " command: pan/tilt: " << target->pan << "," << target->tilt << " ~ " << moveTo.pan() << "," << moveTo.tilt() << "..." << std::endl; }
-    const quickset::ptcr::packet< typename command::response >* response = protocol->send( moveTo );
+    move_to.pan = static_cast< int >( p.pan * factor );
+    move_to.tilt = static_cast< int >( p.tilt * factor );
+    if( verbose ) { std::cerr << "quickset-pantilt-control: sending move-to" << ( differential ? "-delta" : "" ) << " command: pan/tilt: " << target->pan << "," << target->tilt << " ~ " << move_to.pan() << "," << move_to.tilt() << "..." << std::endl; }
+    const quickset::ptcr::packet< typename command::response >* response = protocol->send( move_to );
     if( !response )
     {
         std::cerr << "quickset-pantilt-control: failed to get response to command; resync and resend" << std::endl;
@@ -213,7 +213,7 @@ static bool handle_move_to( const position& p )
         case quickset::ptcr::constants::ack:
             if( response->body.response_pan_status.value() || response->body.response_tilt_status.value() )
             {
-                std::cerr << "quickset-pantilt-control: move-to command (" << target->pan << "," << target->tilt << " ~ " << moveTo.pan() << "," << moveTo.tilt() << ") failed:" << std::endl;
+                std::cerr << "quickset-pantilt-control: move-to command (" << target->pan << "," << target->tilt << " ~ " << move_to.pan() << "," << move_to.tilt() << ") failed:" << std::endl;
                 if( response->body.response_pan_status.value() ) { std::cerr << "    pan status not ok: " << response->body.response_pan_status.to_string() << std::endl; }
                 if( response->body.response_tilt_status.value() ) { std::cerr << "    tilt status not ok: " << response->body.response_tilt_status.to_string() << std::endl; }
                 if( response->body.response_pan_status.fault() || response->body.response_tilt_status.fault() )
@@ -237,7 +237,7 @@ static bool handle_move_to( const position& p )
                     }
                 }
             }
-            if( verbose ) { std::cerr << "quickset-pantilt-control: sent command move-to command: pan/tilt: " << target->pan << "," << target->tilt << " ~ " << moveTo.pan() << "," << moveTo.tilt() << "..." << std::endl; }
+            if( verbose ) { std::cerr << "quickset-pantilt-control: sent command move-to command: pan/tilt: " << target->pan << "," << target->tilt << " ~ " << move_to.pan() << "," << move_to.tilt() << "..." << std::endl; }
             break;
         case quickset::ptcr::constants::nak:
             std::cerr << "quickset-pantilt-control: move-to command failed" << std::endl;
@@ -366,13 +366,13 @@ int main( int ac, char** av )
         protocol.reset( new quickset::ptcr::protocol( name ) );
         if( verbose ) { std::cerr << "quickset-pantilt-control: connected to " << name << std::endl; }
         comma::csv::options input_csv( options );
-        comma::csv::options outputCsv;
+        comma::csv::options output_csv;
         if( input_csv.fields == "" )
         {
             input_csv.fields = "pan,tilt";
-            if( input_csv.binary() ) { outputCsv.format( "%t%2d%20b" ); }
+            if( input_csv.binary() ) { output_csv.format( "%t%2d%20b" ); }
         }
-        output.reset( new comma::csv::output_stream< status >( std::cout, outputCsv ) );
+        output.reset( new comma::csv::output_stream< status >( std::cout, output_csv ) );
         set_limits( options.optional< std::string >( "--pan-limits" ), options.optional< std::string >( "--tilt-limits" ) );
         if( options.exists( "--camera" ) ) { set_camera( options.value< std::string >( "--camera" ) == "on" ); }
         input.reset( new comma::csv::input_stream< position >( std::cin, input_csv ) );
@@ -385,10 +385,10 @@ int main( int ac, char** av )
         while( !is_shutdown && std::cin.good() && !std::cin.eof() && std::cout.good() )
         {
             boost::posix_time::ptime now = boost::posix_time::microsec_clock::universal_time();
-            bool wasOk = ok;
+            bool was_ok = ok;
             get_status.command = ok ? 0 : quickset::ptcr::commands::get_status::command::res;
             if( now > deadline || get_status.command() ) { ok = handle_status(); deadline = now + timeout; }
-            if( wasOk != ok ) { std::cerr << "quickset-pantilt-control: " << ( ok ? "synchronized" : "lost sync, synchronizing..." ) << std::endl; }
+            if( was_ok != ok ) { std::cerr << "quickset-pantilt-control: " << ( ok ? "synchronized" : "lost sync, synchronizing..." ) << std::endl; }
             if( ok )
             {
                 if( target || select.wait( timeout ) != 0 ) { ok = handle_move_to(); }
