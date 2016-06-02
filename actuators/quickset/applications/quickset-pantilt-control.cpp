@@ -73,8 +73,14 @@ static void usage()
     std::cerr << "fields" << std::endl;
     std::cerr << "    input: default pan,tilt (%2d)" << std::endl;
     std::cerr << "    output: default t,pan,tilt,... (%t%2d) (todo)" << std::endl;
+    std::cerr << "    angles are in radians" << std::endl;
     std::cerr << std::endl;
-    std::cerr << comma::csv::options::usage() << std::endl;
+    std::cerr << comma::csv::options::usage();
+    std::cerr << std::endl;
+    std::cerr << "examples" << std::endl;
+    std::cerr << "    echo 0.1,0.2 | quickset-pantilt-control \"tcp:192.168.1.1:10001\"" << std::endl;
+    std::cerr << "    echo 45,45 | csv-units --from degrees --fields a,b | quickset-pantilt-control \"tcp:192.168.1.1:10001\"" << std::endl;
+    std::cerr << "    io-console | quickset-pantilt-from-console | quickset-pantilt-control \"tcp:192.168.1.1:10001\"" << std::endl;
     std::cerr << std::endl;
     exit( 0 );
 }
