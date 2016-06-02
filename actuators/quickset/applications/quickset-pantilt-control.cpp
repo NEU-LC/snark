@@ -76,7 +76,7 @@ static void usage()
     std::cerr << std::endl;
     std::cerr << comma::csv::options::usage() << std::endl;
     std::cerr << std::endl;
-    exit( -1 );
+    exit( 0 );
 }
 
 struct position // quick and dirty
@@ -276,13 +276,13 @@ static void set_limit( double limit, direction::values direction )
     bool is_pan = direction == direction::left || direction == direction::right;
     int value = limit * double( 18000 ) / M_PI;
     int maximum = is_pan ? 36000 : 18000;
-    if( value < -maximum || value > maximum ) { std::cerr << "quickset-pantilt-control: " << ( is_pan ? "pan" : "tilt" ) << " exceeded: " << limit << std::endl; exit( -1 ); }
+    if( value < -maximum || value > maximum ) { std::cerr << "quickset-pantilt-control: " << ( is_pan ? "pan" : "tilt" ) << " exceeded: " << limit << std::endl; exit( 1 ); }
     target = is_pan ? position( limit, 0 ) : position( 0, limit );
-    if( !handle_move_to() ) { std::cerr << "quickset-pantilt-control: failed to reach " << limit << std::endl; exit( -1 ); }
+    if( !handle_move_to() ) { std::cerr << "quickset-pantilt-control: failed to reach " << limit << std::endl; exit( 1 ); }
     while( !handle_status() || current_status->status_response.status.exec() ) { boost::thread::sleep( boost::posix_time::microsec_clock::universal_time() + boost::posix_time::millisec( 20 ) ); }
     quickset::ptcr::commands::set_limits set_limits( direction, value );
     const quickset::ptcr::packet< quickset::ptcr::commands::set_limits::response >* response = protocol->send( set_limits );
-    if( !response || response->packet_header.type() != quickset::ptcr::constants::ack ) { std::cerr << "quickset-pantilt-control: failed to set " << ( is_pan ? "pan" : "tilt" ) << " limit " << limit << std::endl; exit( -1 );  }
+    if( !response || response->packet_header.type() != quickset::ptcr::constants::ack ) { std::cerr << "quickset-pantilt-control: failed to set " << ( is_pan ? "pan" : "tilt" ) << " limit " << limit << std::endl; exit( 1 );  }
     std::cerr << "quickset-pantilt-control: " << ( is_pan ? "pan" : "tilt" ) << " limit " << limit << " is set" << std::endl;
 }
 
@@ -337,7 +337,7 @@ static void set_camera( bool on )
     command.flags[0] = response->body.flags[0]() & 0x7f;
     command.flags[1] = on ? 0x0c : 0x00; // quick and dirty
     response = protocol->send( command );
-    if( !response || response->packet_header.type() != quickset::ptcr::constants::ack ) { std::cerr << "quickset-pantilt-control: failed to turn cameras " << ( on ? "on" : "off" ) << std::endl; exit( -1 );  }
+    if( !response || response->packet_header.type() != quickset::ptcr::constants::ack ) { std::cerr << "quickset-pantilt-control: failed to turn cameras " << ( on ? "on" : "off" ) << std::endl; exit( 1 );  }
     std::cerr << "quickset-pantilt-control: cameras turned " << ( on ? "on" : "off" ) << std::endl;
     exit( 0 );
 }
