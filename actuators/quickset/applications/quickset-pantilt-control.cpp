@@ -284,7 +284,7 @@ static void set_limit( double limit, direction::values direction )
     int maximum = is_pan ? 36000 : 18000;
     if( value < -maximum || value > maximum ) { std::cerr << "quickset-pantilt-control: " << ( is_pan ? "pan" : "tilt" ) << " exceeded: " << limit << std::endl; exit( 1 ); }
     target = is_pan ? position( limit, 0 ) : position( 0, limit );
-    if( !handle_move_to() ) { std::cerr << "quickset-pantilt-control: failed to reach " << limit << std::endl; exit( 1 ); }
+    if( !handle_move_to< quickset::ptcr::commands::move_to >( *target ) ) { std::cerr << "quickset-pantilt-control: failed to reach " << limit << std::endl; exit( 1 ); }
     while( !handle_status() || current_status->status_response.status.exec() ) { boost::thread::sleep( boost::posix_time::microsec_clock::universal_time() + boost::posix_time::millisec( 20 ) ); }
     quickset::ptcr::commands::set_limits set_limits( direction, value );
     const quickset::ptcr::packet< quickset::ptcr::commands::set_limits::response >* response = protocol->send( set_limits );
@@ -324,7 +324,7 @@ static void set_limits( boost::optional< std::string > pan, boost::optional< std
     set_limits( tilt, direction::up, direction::down );
     std::cerr << "quickset-pantilt-control: going home..." << std::endl;
     target = position( 0, 0 );
-    handle_move_to();
+    handle_move_to< quickset::ptcr::commands::move_to >( *target );
     while( handle_status() && current_status->status_response.status.exec() ) { boost::thread::sleep( boost::posix_time::microsec_clock::universal_time() + boost::posix_time::milliseconds( 20 ) ); }
     std::cerr << "quickset-pantilt-control: done" << std::endl;
     exit( 0 );
