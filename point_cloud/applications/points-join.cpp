@@ -462,8 +462,8 @@ template < typename V > static int run( const comma::command_line_options& optio
 //                 }
 //             }
 //             tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, nearests.size() ), boost::bind( &traits< V >::nearest_impl, _1, boost::cref( *p ), boost::ref( nearests ) ) ); // todo: reimplement as lambda function, once snark moves to c++11
-            typename traits< V >::nearest_t nearest;
-            for( unsigned int i = 0; i < nearests.size(); ++i ) { if( nearests[i].second.record && ( !nearest.record || nearest.squared_distance > nearests[i].second.squared_distance ) ) { nearest = nearests[i].second; } }
+//             typename traits< V >::nearest_t nearest;
+//             for( unsigned int i = 0; i < nearests.size(); ++i ) { if( nearests[i].second.record && ( !nearest.record || nearest.squared_distance > nearests[i].second.squared_distance ) ) { nearest = nearests[i].second; } }
             typename traits< V >::nearest_t nearest;
             for( i[0] = index[0] - 1; i[0] < index[0] + 2; ++i[0] )
             {
