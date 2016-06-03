@@ -61,6 +61,9 @@ static void usage( bool more = false )
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    --all: output all points in the given radius instead of the nearest" << std::endl;
+    #ifdef SNARK_USE_CUDA
+    std::cerr << "    --use-cuda,--cuda: experimental option; currently 40 times slower then normal operation, thus don't use it, yet" << std::endl;
+    #endif
     std::cerr << "    --radius=<radius>: lookup radius" << std::endl;
     std::cerr << "    --strict: exit, if nearest point not found" << std::endl;
     std::cerr << "    --permissive: discard invalid points or triangles and continue" << std::endl;
@@ -105,6 +108,16 @@ static Eigen::Vector3d origin = Eigen::Vector3d::Zero();
 static Eigen::Vector3d resolution;
 static comma::csv::options stdin_csv;
 static comma::csv::options filter_csv;
+#ifdef SNARK_USE_CUDA
+bool use_cuda;
+void* cuda_buf = NULL;
+static void cuda_deallocate()
+{
+    if( !use_cuda ) { return; }
+    if( cuda_buf ) { cudaFree( cuda_buf ); }
+    cudaDeviceReset();
+}
+#endif
 
 // todo: add block field
 struct record
@@ -141,16 +154,11 @@ template <> struct traits< Eigen::Vector3d >
     {
         std::vector< const record_t* > records;
         #ifdef SNARK_USE_CUDA
-        snark::cuda::buffer< 3 > buffer;
-        void calculate_squared_norms( const Eigen::Vector3d& rhs ) { snark::cuda::squared_norms( rhs, buffer ); }
-        
-        // todo: commented function below works, but is needs superslow preps
-        //boost::optional< std::pair< Eigen::Vector3d, double > > nearest_to( const Eigen::Vector3d& rhs, unsigned int k ) const { return std::make_pair( records[k]->value, buffer.out[k] ); }
-        
-        boost::optional< std::pair< Eigen::Vector3d, double > > nearest_to( const Eigen::Vector3d& rhs, unsigned int k ) const { return std::make_pair( records[k]->value, ( records[k]->value - rhs ).squaredNorm() ); }
-        
+            snark::cuda::buffer buffer;
+            void calculate_squared_norms( const Eigen::Vector3d& rhs ) { snark::cuda::squared_norms( rhs, buffer ); }
+            boost::optional< std::pair< Eigen::Vector3d, double > > nearest_to( const Eigen::Vector3d& rhs, unsigned int k ) const { return std::make_pair( records[k]->value, use_cuda ? buffer.out[k] : ( records[k]->value - rhs ).squaredNorm() ); }
         #else // SNARK_USE_CUDA
-        boost::optional< std::pair< Eigen::Vector3d, double > > nearest_to( const Eigen::Vector3d& rhs, unsigned int k ) const { return std::make_pair( records[k]->value, ( records[k]->value - rhs ).squaredNorm() ); }
+            boost::optional< std::pair< Eigen::Vector3d, double > > nearest_to( const Eigen::Vector3d& rhs, unsigned int k ) const { return std::make_pair( records[k]->value, ( records[k]->value - rhs ).squaredNorm() ); }
         #endif // SNARK_USE_CUDA
     };
     typedef snark::voxel_map< voxel_t, 3 > grid_t;
@@ -160,13 +168,33 @@ template <> struct traits< Eigen::Vector3d >
     {
         grid_t::iterator i = grid.touch_at( record.value );
         i->second.records.push_back( &record );
-        #ifdef SNARK_USE_CUDA
-        i->second.buffer.in.push_back( record.value.x() );
-        i->second.buffer.in.push_back( record.value.y() );
-        i->second.buffer.in.push_back( record.value.z() );
-        #endif
         return true;
     }
+    #ifdef SNARK_USE_CUDA
+    static void* to_cuda( grid_t& grid, const std::deque< record_t >& records )
+    {
+        if( !use_cuda ) { return NULL; }
+        char* buf = NULL;
+        cudaError_t err = cudaMalloc( &buf, records.size() * sizeof( double ) * 4 );
+        if( err != cudaSuccess ) { COMMA_THROW( comma::exception, "failed to allocate cuda memory for " << records.size() << " records (" << ( records.size() * sizeof( double ) * 4 ) << " bytes); " << cudaGetErrorString( err ) ); }
+        char* cur = buf;
+        std::vector< double > v;
+        for( grid_t::iterator it = grid.begin(); it != grid.end(); ++it )
+        {
+            v.resize( it->second.records.size() * 3 ); // quick and dirty
+            for( std::size_t i( 0 ), k( 0 ); i < it->second.records.size(); ++i ) { v[ k++ ] = it->second.records[i]->value.x(); v[ k++ ] = it->second.records[i]->value.y(); v[ k++ ] = it->second.records[i]->value.z(); }
+            err = cudaMemcpy( cur, &v[0], v.size() * sizeof( double ), cudaMemcpyHostToDevice );
+            if( err != cudaSuccess ) { COMMA_THROW( comma::exception, "failed to copy; " << cudaGetErrorString( err ) ); }
+            it->second.buffer.cuda_in = reinterpret_cast< double* >( cur );
+            cur += v.size() * sizeof( double );
+            it->second.buffer.cuda_out = reinterpret_cast< double* >( cur );
+            cudaMemset( cur, 0, it->second.records.size() * sizeof( double ) );
+            cur += it->second.records.size() * sizeof( double );
+            it->second.buffer.out.resize( it->second.records.size() );
+        }
+        return buf;
+    }
+    #endif // #ifdef SNARK_USE_CUDA
     template < typename S > static void output( const S& istream, const record_t& nearest, const Eigen::Vector3d& nearest_point )
     {
         if( stdin_csv.binary() ) // quick and dirty
@@ -190,7 +218,7 @@ template <> struct traits< snark::triangle >
     {
         std::vector< const record_t* > records;
         #ifdef SNARK_USE_CUDA
-        snark::cuda::buffer< 9 > buffer;
+        snark::cuda::buffer buffer;
         void calculate_squared_norms( const Eigen::Vector3d& ) {}
         #endif
         boost::optional< std::pair< Eigen::Vector3d, double > > nearest_to( const Eigen::Vector3d& rhs, unsigned int k ) const
@@ -226,6 +254,9 @@ template <> struct traits< snark::triangle >
         if( i2 != i0 && i2 != i1 ) { i2->second.records.push_back( &record ); } // todo: cuda
         return true;
     }
+    #ifdef SNARK_USE_CUDA
+    static double* to_cuda( grid_t& grid, const std::deque< record_t >& records ) { /* todo */ return NULL; }
+    #endif // #ifdef SNARK_USE_CUDA
     template < typename S > static void output( const S& istream, const record_t& nearest, const Eigen::Vector3d& nearest_point )
     {
         if( stdin_csv.binary() ) // quick and dirty
@@ -292,6 +323,9 @@ template < typename V > static int run( const comma::command_line_options& optio
     typedef typename traits< V >::grid_t grid_t;
     grid_t grid( extents.min(), resolution );
     for( std::size_t i = 0; i < filter_points.size(); ++i ) { if( !traits< V >::touch( grid, filter_points[i] ) && strict ) { return 1; } }
+    #ifdef SNARK_USE_CUDA
+    cuda_buf = traits< V >::to_cuda( grid, filter_points );
+    #endif
     if( verbose ) { std::cerr << "points-join: joining..." << std::endl; }
     comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, stdin_csv, Eigen::Vector3d::Zero() );
     #ifdef WIN32
@@ -318,8 +352,7 @@ template < typename V > static int run( const comma::command_line_options& optio
                     typename grid_t::iterator it = grid.find( i );
                     if( it == grid.end() ) { continue; }
                     #ifdef SNARK_USE_CUDA
-                    // todo: it is superslow; try to copy voxels adaptively
-                    //it->second.calculate_squared_norms( *p );
+                    if( use_cuda ) { it->second.calculate_squared_norms( *p ); }
                     #endif
                     for( std::size_t k = 0; k < it->second.records.size(); ++k )
                     {
@@ -366,7 +399,7 @@ template < typename V > static int run( const comma::command_line_options& optio
     }
     std::cerr << "points-join: processed " << count << " records; discarded " << discarded << " record" << ( count == 1 ? "" : "s" ) << " with no matches" << std::endl;
     #ifdef SNARK_USE_CUDA
-    cudaDeviceReset();
+    cuda_deallocate();
     #endif
     return 0;
 }
@@ -379,12 +412,15 @@ int main( int ac, char** av )
         verbose = options.exists( "--verbose,-v" );
         stdin_csv = comma::csv::options( options );
         if( stdin_csv.fields.empty() ) { stdin_csv.fields = "x,y,z"; }
-        std::vector< std::string > unnamed = options.unnamed( "--verbose,-v,--strict,--all", "-.*" );
+        std::vector< std::string > unnamed = options.unnamed( "--use-cuda,--cuda,--verbose,-v,--strict,--all", "-.*" );
         if( unnamed.empty() ) { std::cerr << "points-join: please specify the second source; self-join: todo" << std::endl; return 1; }
         if( unnamed.size() > 1 ) { std::cerr << "points-join: expected one file or stream to join, got " << comma::join( unnamed, ' ' ) << std::endl; return 1; }
         comma::name_value::parser parser( "filename", ';', '=', false );
         filter_csv = parser.get< comma::csv::options >( unnamed[0] );
         filter_csv.full_xpath = true;
+        #ifdef SNARK_USE_CUDA
+        use_cuda = options.exists( "--use-cuda,--cuda" );
+        #endif
         if( stdin_csv.binary() && !filter_csv.binary() ) { std::cerr << "points-join: stdin stream binary and filter stream ascii: this combination is not supported" << std::endl; return 1; }
         const std::vector< std::string >& v = comma::split( filter_csv.fields, ',' );
         bool filter_triangulated = false;
@@ -406,7 +442,7 @@ int main( int ac, char** av )
     catch( std::exception& ex ) { std::cerr << "points-join: " << ex.what() << std::endl; }
     catch( ... ) { std::cerr << "points-join: unknown exception" << std::endl; }
     #ifdef SNARK_USE_CUDA
-    cudaDeviceReset();
+    cuda_deallocate();
     #endif
     return 1;
 }

@@ -38,33 +38,17 @@ cudaError_t snark_cuda_squared_norms( double x, double y, double z, const double
 
 namespace snark { namespace cuda {
     
-template < unsigned int Factor >
 struct buffer
 {
-    std::vector< double > in;
     std::vector< double > out;
     double* cuda_in;
     double* cuda_out;
 
     buffer() : cuda_in( NULL ), cuda_out( NULL ) {}
-    ~buffer() { deallocate(); }
-    void deallocate()
-    { 
-        if( cuda_in ) { cudaFree( cuda_in ); cuda_in = NULL; }
-        if( cuda_out ) { cudaFree( cuda_out ); cuda_out = NULL; }
-    }
-    void copy_once()
-    {
-        if( cuda_in ) { return; }
-        cudaError_t err = cudaMalloc( ( void ** )&cuda_in, in.size() * sizeof( double ) );
-        if( err != cudaSuccess ) { COMMA_THROW( comma::exception, "cuda: failed to allocate " << in.size() << " of doubles for input values; " << cudaGetErrorString( err ) ); }
-        err = cudaMalloc( ( void ** )&cuda_out, in.size() / Factor * sizeof( double ) );
-        if( err != cudaSuccess ) { COMMA_THROW( comma::exception, "cuda: failed to allocate " << ( in.size() / Factor ) << " of doubles for output values; " << cudaGetErrorString( err ) ); }
-        err = cudaMemcpy( cuda_in, &in[0], in.size() * sizeof( double ), cudaMemcpyHostToDevice );
-        if( err != cudaSuccess ) { COMMA_THROW( comma::exception, "cuda: copy failed; " << cudaGetErrorString( err ) ); }
-    }
+    template < typename V >
+    buffer( const V& v, double* cuda_in, double* cuda_out ) : out( v.size() ), cuda_in( cuda_in ), cuda_out( cuda_out ) {}
 };
 
-void squared_norms( const Eigen::Vector3d& v, buffer< 3 >& b, bool deallocate = true );
+void squared_norms( const Eigen::Vector3d& v, buffer& b );
 
 } } // namespace snark { namespace cuda {
