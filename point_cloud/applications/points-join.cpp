@@ -178,31 +178,22 @@ template <> struct traits< Eigen::Vector3d >
     
     // todo! remove code duplication
     
-    static void nearest_impl( const tbb::blocked_range< std::size_t >& r
-                            , const Eigen::Vector3d& v
-                            , grid_t& grid
-                            , boost::array< nearest_t, 27 >& nearests
-                            , const grid_t::index_type& index )
+    static void nearest_impl( const tbb::blocked_range< std::size_t >& r, const Eigen::Vector3d& v, std::vector< std::pair< voxel_t*, nearest_t > >& nearests )
     {
         for( unsigned int j = r.begin(); j < r.end(); ++j )
         {
-            grid_t::index_type i = index;
-            unsigned int i0 = j / 9; unsigned int i1 = j / 3 - i0 * 3; unsigned int i2 = j - i0 * 9 - i1 * 3; // quick and dirty
-            i[0] += ( i0 - 1 ); i[1] += ( i1 - 1 ); i[2] += ( i2 - 1 );
-            grid_t::iterator it = grid.find( i );
-            if( it == grid.end() ) { continue; }
             #ifdef SNARK_USE_CUDA
             //if( use_cuda ) { it->second.calculate_squared_norms( v ); }
             #endif
-            for( std::size_t k = 0; k < it->second.records.size(); ++k )
+            for( std::size_t k = 0; k < nearests[j].first->records.size(); ++k )
             {
-                const boost::optional< std::pair< Eigen::Vector3d, double > >& q = it->second.nearest_to( v, k ); // todo: fix! currently, visiting each triangle 3 times
+                const boost::optional< std::pair< Eigen::Vector3d, double > >& q = nearests[j].first->nearest_to( v, k ); // todo: fix! currently, visiting each triangle 3 times
                 if( !q || q->second > squared_radius ) { continue; }
-                if( nearests[j].record && nearests[j].squared_distance < q->second ) { continue; }
-                nearests[j].record = it->second.records[k];
-                nearests[j].point = q->first;
-                nearests[j].squared_distance = q->second;
-            }
+                if( nearests[j].second.record && nearests[j].second.squared_distance < q->second ) { continue; }
+                nearests[j].second.record = nearests[j].first->records[k];
+                nearests[j].second.point = q->first;
+                nearests[j].second.squared_distance = q->second;
+           }
         }
     }
     
@@ -287,31 +278,22 @@ template <> struct traits< snark::triangle >
     
     // todo! remove code duplication
     
-    static void nearest_impl( const tbb::blocked_range< std::size_t >& r
-                            , const Eigen::Vector3d& v
-                            , grid_t& grid
-                            , boost::array< nearest_t, 27 >& nearests
-                            , const grid_t::index_type& index )
+    static void nearest_impl( const tbb::blocked_range< std::size_t >& r, const Eigen::Vector3d& v, std::vector< std::pair< voxel_t*, nearest_t > >& nearests )
     {
         for( unsigned int j = r.begin(); j < r.end(); ++j )
         {
-            grid_t::index_type i = index;
-            unsigned int i0 = j / 9; unsigned int i1 = j / 3 - i0 * 3; unsigned int i2 = j - i0 * 9 - i1 * 3; // quick and dirty
-            i[0] += ( i0 - 1 ); i[1] += ( i1 - 1 ); i[2] += ( i2 - 1 );
-            grid_t::iterator it = grid.find( i );
-            if( it == grid.end() ) { continue; }
             #ifdef SNARK_USE_CUDA
             //if( use_cuda ) { it->second.calculate_squared_norms( v ); }
             #endif
-            for( std::size_t k = 0; k < it->second.records.size(); ++k )
+            for( std::size_t k = 0; k < nearests[j].first->records.size(); ++k )
             {
-                const boost::optional< std::pair< Eigen::Vector3d, double > >& q = it->second.nearest_to( v, k ); // todo: fix! currently, visiting each triangle 3 times
+                const boost::optional< std::pair< Eigen::Vector3d, double > >& q = nearests[j].first->nearest_to( v, k ); // todo: fix! currently, visiting each triangle 3 times
                 if( !q || q->second > squared_radius ) { continue; }
-                if( nearests[j].record && nearests[j].squared_distance < q->second ) { continue; }
-                nearests[j].record = it->second.records[k];
-                nearests[j].point = q->first;
-                nearests[j].squared_distance = q->second;
-            }
+                if( nearests[j].second.record && nearests[j].second.squared_distance < q->second ) { continue; }
+                nearests[j].second.record = nearests[j].first->records[k];
+                nearests[j].second.point = q->first;
+                nearests[j].second.squared_distance = q->second;
+           }
         }
     }
     
@@ -465,10 +447,23 @@ template < typename V > static int run( const comma::command_line_options& optio
         }
         else
         {
-//             boost::array< typename traits< V >::nearest_t, 27 > nearests;
-//             tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, 27 ), boost::bind( &traits< V >::nearest_impl, _1, boost::cref( *p ), boost::ref( grid ), boost::ref( nearests ), boost::cref( index ) ) ); // todo: reimplement as lambda function, once snark moves to c++11
-//             typename traits< V >::nearest_t nearest;
-//             for( unsigned int i = 0; i < nearests.size(); ++i ) { if( nearests[i].record && ( !nearest.record || nearest.squared_distance > nearests[i].squared_distance ) ) { nearest = nearests[i]; } }
+            // a bad idea to parallelize on each input point: thread management overhead seems to be too high
+//             std::vector< std::pair< typename traits< V >::voxel_t*, typename traits< V >::nearest_t > > nearests;
+//             nearests.reserve( 27 );
+//             for( i[0] = index[0] - 1; i[0] < index[0] + 2; ++i[0] )
+//             {
+//                 for( i[1] = index[1] - 1; i[1] < index[1] + 2; ++i[1] )
+//                 {
+//                     for( i[2] = index[2] - 1; i[2] < index[2] + 2; ++i[2] )
+//                     {
+//                         typename grid_t::iterator it = grid.find( i );
+//                         if( it != grid.end() ) { nearests.push_back( std::make_pair( &( it->second ), typename traits< V >::nearest_t() ) ); }
+//                     }
+//                 }
+//             }
+//             tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, nearests.size() ), boost::bind( &traits< V >::nearest_impl, _1, boost::cref( *p ), boost::ref( nearests ) ) ); // todo: reimplement as lambda function, once snark moves to c++11
+            typename traits< V >::nearest_t nearest;
+            for( unsigned int i = 0; i < nearests.size(); ++i ) { if( nearests[i].second.record && ( !nearest.record || nearest.squared_distance > nearests[i].second.squared_distance ) ) { nearest = nearests[i].second; } }
             typename traits< V >::nearest_t nearest;
             for( i[0] = index[0] - 1; i[0] < index[0] + 2; ++i[0] )
             {
