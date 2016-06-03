@@ -43,7 +43,7 @@ __global__ void snark_cuda_squared_norms_impl( double x, double y, double z, con
 
 cudaError_t snark_cuda_squared_norms( double x, double y, double z, const double *points, double *square_norms, unsigned int size )
 {
-    int threads = 128; // todo: allocate depending on size
+    int threads = 128;
     int blocks = ( size - 1 ) / threads + 1;
     snark_cuda_squared_norms_impl<<<blocks, threads>>>( x, y, z, points, square_norms, size );
     return cudaGetLastError();

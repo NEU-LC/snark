@@ -33,7 +33,11 @@
 #include <deque>
 #include <fstream>
 #include <iostream>
+#include <boost/array.hpp>
+#include <boost/bind.hpp>
+#include <boost/function.hpp>
 #include <boost/optional.hpp>
+#include <tbb/parallel_for.h>
 #include <comma/application/command_line_options.h>
 #include <comma/csv/stream.h>
 #include <comma/csv/traits.h>
@@ -149,6 +153,7 @@ template < typename V > struct traits;
 
 template <> struct traits< Eigen::Vector3d >
 {
+    typedef Eigen::Vector3d value_t;
     typedef record record_t;
     struct voxel_t
     {
@@ -162,6 +167,46 @@ template <> struct traits< Eigen::Vector3d >
         #endif // SNARK_USE_CUDA
     };
     typedef snark::voxel_map< voxel_t, 3 > grid_t;
+    struct nearest_t // quick and dirty
+    {
+        const record_t* record;
+        Eigen::Vector3d point;
+        double squared_distance;
+        nearest_t() : record( NULL ), squared_distance( 0 ) {}
+    };
+    
+    
+    // todo! remove code duplication
+    
+    static void nearest_impl( const tbb::blocked_range< std::size_t >& r
+                            , const Eigen::Vector3d& v
+                            , grid_t& grid
+                            , boost::array< nearest_t, 27 >& nearests
+                            , const grid_t::index_type& index )
+    {
+        for( unsigned int j = r.begin(); j < r.end(); ++j )
+        {
+            grid_t::index_type i = index;
+            unsigned int i0 = j / 9; unsigned int i1 = j / 3 - i0 * 3; unsigned int i2 = j - i0 * 9 - i1 * 3; // quick and dirty
+            i[0] += ( i0 - 1 ); i[1] += ( i1 - 1 ); i[2] += ( i2 - 1 );
+            grid_t::iterator it = grid.find( i );
+            if( it == grid.end() ) { continue; }
+            #ifdef SNARK_USE_CUDA
+            //if( use_cuda ) { it->second.calculate_squared_norms( v ); }
+            #endif
+            for( std::size_t k = 0; k < it->second.records.size(); ++k )
+            {
+                const boost::optional< std::pair< Eigen::Vector3d, double > >& q = it->second.nearest_to( v, k ); // todo: fix! currently, visiting each triangle 3 times
+                if( !q || q->second > squared_radius ) { continue; }
+                if( nearests[j].record && nearests[j].squared_distance < q->second ) { continue; }
+                nearests[j].record = it->second.records[k];
+                nearests[j].point = q->first;
+                nearests[j].squared_distance = q->second;
+            }
+        }
+    }
+    
+    
     static Eigen::Vector3d default_value() { return Eigen::Vector3d::Zero(); }
     static void set_hull( snark::math::closed_interval< double, 3 >& extents, const Eigen::Vector3d& p ) { extents.set_hull( p ); }
     static bool touch( grid_t& grid, const record_t& record )
@@ -214,6 +259,7 @@ template <> struct traits< Eigen::Vector3d >
 template <> struct traits< snark::triangle >
 {
     typedef triangle_record record_t;
+    typedef snark::triangle value_t;
     struct voxel_t
     {
         std::vector< const record_t* > records;
@@ -230,6 +276,46 @@ template <> struct traits< snark::triangle >
         }
     };
     typedef snark::voxel_map< voxel_t, 3 > grid_t;
+    struct nearest_t // quick and dirty
+    {
+        const record_t* record;
+        Eigen::Vector3d point;
+        double squared_distance;
+        nearest_t() : record( NULL ), squared_distance( 0 ) {}
+    };
+    
+    
+    // todo! remove code duplication
+    
+    static void nearest_impl( const tbb::blocked_range< std::size_t >& r
+                            , const Eigen::Vector3d& v
+                            , grid_t& grid
+                            , boost::array< nearest_t, 27 >& nearests
+                            , const grid_t::index_type& index )
+    {
+        for( unsigned int j = r.begin(); j < r.end(); ++j )
+        {
+            grid_t::index_type i = index;
+            unsigned int i0 = j / 9; unsigned int i1 = j / 3 - i0 * 3; unsigned int i2 = j - i0 * 9 - i1 * 3; // quick and dirty
+            i[0] += ( i0 - 1 ); i[1] += ( i1 - 1 ); i[2] += ( i2 - 1 );
+            grid_t::iterator it = grid.find( i );
+            if( it == grid.end() ) { continue; }
+            #ifdef SNARK_USE_CUDA
+            //if( use_cuda ) { it->second.calculate_squared_norms( v ); }
+            #endif
+            for( std::size_t k = 0; k < it->second.records.size(); ++k )
+            {
+                const boost::optional< std::pair< Eigen::Vector3d, double > >& q = it->second.nearest_to( v, k ); // todo: fix! currently, visiting each triangle 3 times
+                if( !q || q->second > squared_radius ) { continue; }
+                if( nearests[j].record && nearests[j].squared_distance < q->second ) { continue; }
+                nearests[j].record = it->second.records[k];
+                nearests[j].point = q->first;
+                nearests[j].squared_distance = q->second;
+            }
+        }
+    }
+    
+    
     static snark::triangle default_value() { return snark::triangle(); }
     static void set_hull( snark::math::closed_interval< double, 3 >& extents, const snark::triangle& t )
     { 
@@ -287,6 +373,10 @@ template < typename V > static int run( const comma::command_line_options& optio
     strict = options.exists( "--strict" );
     permissive = options.exists( "--permissive" );
     bool all = options.exists( "--all" );
+    #ifdef SNARK_USE_CUDA
+    use_cuda = options.exists( "--use-cuda,--cuda" );
+    if( !all && use_cuda ) { std::cerr << "points-join: --use-cuda for --all not supported" << std::endl; return 1; }
+    #endif
     comma::csv::input_stream< V > ifstream( ifs, filter_csv, traits< V >::default_value() );
     std::deque< filter_record_t > filter_points;
     snark::math::closed_interval< double, 3 > extents;
@@ -324,7 +414,7 @@ template < typename V > static int run( const comma::command_line_options& optio
     grid_t grid( extents.min(), resolution );
     for( std::size_t i = 0; i < filter_points.size(); ++i ) { if( !traits< V >::touch( grid, filter_points[i] ) && strict ) { return 1; } }
     #ifdef SNARK_USE_CUDA
-    cuda_buf = traits< V >::to_cuda( grid, filter_points );
+    if( use_cuda ) { cuda_buf = traits< V >::to_cuda( grid, filter_points ); }
     #endif
     if( verbose ) { std::cerr << "points-join: joining..." << std::endl; }
     comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, stdin_csv, Eigen::Vector3d::Zero() );
@@ -340,27 +430,23 @@ template < typename V > static int run( const comma::command_line_options& optio
         if( !p ) { break; }
         typename grid_t::index_type index = grid.index_of( *p );
         typename grid_t::index_type i;
-        const filter_record_t* nearest = NULL;
-        Eigen::Vector3d nearest_point;
-        double min_squared_distance = 0;
-        for( i[0] = index[0] - 1; i[0] < index[0] + 2; ++i[0] )
+        if( all )
         {
-            for( i[1] = index[1] - 1; i[1] < index[1] + 2; ++i[1] )
+            for( i[0] = index[0] - 1; i[0] < index[0] + 2; ++i[0] )
             {
-                for( i[2] = index[2] - 1; i[2] < index[2] + 2; ++i[2] )
+                for( i[1] = index[1] - 1; i[1] < index[1] + 2; ++i[1] )
                 {
-                    typename grid_t::iterator it = grid.find( i );
-                    if( it == grid.end() ) { continue; }
-                    #ifdef SNARK_USE_CUDA
-                    if( use_cuda ) { it->second.calculate_squared_norms( *p ); }
-                    #endif
-                    for( std::size_t k = 0; k < it->second.records.size(); ++k )
+                    for( i[2] = index[2] - 1; i[2] < index[2] + 2; ++i[2] )
                     {
-                        const boost::optional< std::pair< Eigen::Vector3d, double > >& q = it->second.nearest_to( *p, k ); // todo: fix! currently, visiting each triangle 3 times
-                        if( !q ) { continue; }
-                        if( q->second > squared_radius ) { continue; }
-                        if( all )
+                        typename grid_t::iterator it = grid.find( i );
+                        if( it == grid.end() ) { continue; }
+                        #ifdef SNARK_USE_CUDA
+                        if( use_cuda ) { it->second.calculate_squared_norms( *p ); }
+                        #endif
+                        for( std::size_t k = 0; k < it->second.records.size(); ++k )
                         {
+                            const boost::optional< std::pair< Eigen::Vector3d, double > >& q = it->second.nearest_to( *p, k ); // todo: fix! currently, visiting each triangle 3 times
+                            if( !q || q->second > squared_radius ) { continue; }
                             if( stdin_csv.binary() )
                             {
                                 std::cout.write( istream.binary().last(), stdin_csv.format().size() );
@@ -373,27 +459,48 @@ template < typename V > static int run( const comma::command_line_options& optio
                                 else { std::cout << &it->second.records[k]->line[0] << std::endl; }
                             }
                         }
-                        else
-                        {
-                            if( nearest && min_squared_distance < q->second ) { continue; }
-                            nearest = it->second.records[k];
-                            nearest_point = q->first;
-                            min_squared_distance = q->second;
-                        }
                     }
                 }
             }
         }
-        if( !all )
+        else
         {
-            if( !nearest )
+//             boost::array< typename traits< V >::nearest_t, 27 > nearests;
+//             tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, 27 ), boost::bind( &traits< V >::nearest_impl, _1, boost::cref( *p ), boost::ref( grid ), boost::ref( nearests ), boost::cref( index ) ) ); // todo: reimplement as lambda function, once snark moves to c++11
+//             typename traits< V >::nearest_t nearest;
+//             for( unsigned int i = 0; i < nearests.size(); ++i ) { if( nearests[i].record && ( !nearest.record || nearest.squared_distance > nearests[i].squared_distance ) ) { nearest = nearests[i]; } }
+            typename traits< V >::nearest_t nearest;
+            for( i[0] = index[0] - 1; i[0] < index[0] + 2; ++i[0] )
+            {
+                for( i[1] = index[1] - 1; i[1] < index[1] + 2; ++i[1] )
+                {
+                    for( i[2] = index[2] - 1; i[2] < index[2] + 2; ++i[2] )
+                    {
+                        typename grid_t::iterator it = grid.find( i );
+                        if( it == grid.end() ) { continue; }
+                        #ifdef SNARK_USE_CUDA
+                        if( use_cuda ) { it->second.calculate_squared_norms( *p ); }
+                        #endif
+                        for( std::size_t k = 0; k < it->second.records.size(); ++k )
+                        {
+                            const boost::optional< std::pair< Eigen::Vector3d, double > >& q = it->second.nearest_to( *p, k ); // todo: fix! currently, visiting each triangle 3 times
+                            if( !q || q->second > squared_radius ) { continue; }
+                            if( nearest.record && nearest.squared_distance < q->second ) { continue; }
+                            nearest.record = it->second.records[k];
+                            nearest.point = q->first;
+                            nearest.squared_distance = q->second;
+                        }
+                    }
+                }
+            }
+            if( !nearest.record )
             {
                 if( verbose ) { std::cerr.precision( 12 ); std::cerr << "points-join: record " << count << " at " << p->x() << "," << p->y() << "," << p->z() << ": no matches found" << std::endl; }
                 if( strict ) { return 1; }
                 ++discarded;
                 continue;
             }
-            traits< V >::output( istream, *nearest, nearest_point );
+            traits< V >::output( istream, *nearest.record, nearest.point );
         }
         ++count;
     }
@@ -418,9 +525,6 @@ int main( int ac, char** av )
         comma::name_value::parser parser( "filename", ';', '=', false );
         filter_csv = parser.get< comma::csv::options >( unnamed[0] );
         filter_csv.full_xpath = true;
-        #ifdef SNARK_USE_CUDA
-        use_cuda = options.exists( "--use-cuda,--cuda" );
-        #endif
         if( stdin_csv.binary() && !filter_csv.binary() ) { std::cerr << "points-join: stdin stream binary and filter stream ascii: this combination is not supported" << std::endl; return 1; }
         const std::vector< std::string >& v = comma::split( filter_csv.fields, ',' );
         bool filter_triangulated = false;
