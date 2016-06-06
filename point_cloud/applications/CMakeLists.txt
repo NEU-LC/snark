@@ -53,7 +53,7 @@ else( USE_CUDA )
     add_executable( points-join points-join.cpp )
 endif( USE_CUDA )
 
-target_link_libraries( points-join snark_math snark_math_geometry snark_point_cloud ${comma_ALL_LIBRARIES} ${snark_ALL_EXTERNAL_LIBRARIES} tbb )
+target_link_libraries( points-join snark_math snark_math_geometry snark_point_cloud ${comma_ALL_LIBRARIES} ${snark_ALL_EXTERNAL_LIBRARIES} ) #tbb )
 install( TARGETS points-join RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
 
 IF( snark_build_math_geometry )
