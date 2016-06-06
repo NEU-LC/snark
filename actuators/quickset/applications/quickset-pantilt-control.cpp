@@ -69,6 +69,7 @@ static void usage()
     std::cerr << "        <limits> ::= <lower>:<upper> (radians)" << std::endl;
     std::cerr << "    --camera=<on/off>: turn camera power on/off and exit" << std::endl;
     std::cerr << "    --verbose,-v: more output to stderr" << std::endl;
+    std::cerr << "    --debug: even more output to stderr" << std::endl;
     std::cerr << std::endl;
     std::cerr << "fields" << std::endl;
     std::cerr << "    input: default pan,tilt (%2d)" << std::endl;
@@ -162,6 +163,7 @@ template <> struct traits< status >
 } } // namespace comma { namespace visiting {
 
 static bool verbose = false;
+static bool debug = false;
 static boost::scoped_ptr< quickset::ptcr::protocol > protocol;
 quickset::ptcr::commands::get_status get_status;
 static boost::optional< status > current_status;
@@ -174,7 +176,7 @@ static bool differential;
 
 static bool handle_status()
 {
-    const quickset::ptcr::packet< quickset::ptcr::commands::get_status::response >* response = protocol->send( get_status );
+    const quickset::ptcr::packet< quickset::ptcr::commands::get_status::response >* response = protocol->send( get_status, debug );
     if( !response ) { return false; }
     switch( response->packet_header.type() )
     {
@@ -202,7 +204,7 @@ static bool handle_move_to( const position& p )
     move_to.pan = static_cast< int >( p.pan * factor );
     move_to.tilt = static_cast< int >( p.tilt * factor );
     if( verbose ) { std::cerr << "quickset-pantilt-control: sending move-to" << ( differential ? "-delta" : "" ) << " command: pan/tilt: " << target->pan << "," << target->tilt << " ~ " << move_to.pan() << "," << move_to.tilt() << "..." << std::endl; }
-    const quickset::ptcr::packet< typename command::response >* response = protocol->send( move_to );
+    const quickset::ptcr::packet< typename command::response >* response = protocol->send( move_to, debug );
     if( !response )
     {
         std::cerr << "quickset-pantilt-control: failed to get response to command; resync and resend" << std::endl;
@@ -287,7 +289,7 @@ static void set_limit( double limit, direction::values direction )
     if( !handle_move_to< quickset::ptcr::commands::move_to >( *target ) ) { std::cerr << "quickset-pantilt-control: failed to reach " << limit << std::endl; exit( 1 ); }
     while( !handle_status() || current_status->status_response.status.exec() ) { boost::thread::sleep( boost::posix_time::microsec_clock::universal_time() + boost::posix_time::millisec( 20 ) ); }
     quickset::ptcr::commands::set_limits set_limits( direction, value );
-    const quickset::ptcr::packet< quickset::ptcr::commands::set_limits::response >* response = protocol->send( set_limits );
+    const quickset::ptcr::packet< quickset::ptcr::commands::set_limits::response >* response = protocol->send( set_limits, debug );
     if( !response || response->packet_header.type() != quickset::ptcr::constants::ack ) { std::cerr << "quickset-pantilt-control: failed to set " << ( is_pan ? "pan" : "tilt" ) << " limit " << limit << std::endl; exit( 1 );  }
     std::cerr << "quickset-pantilt-control: " << ( is_pan ? "pan" : "tilt" ) << " limit " << limit << " is set" << std::endl;
 }
@@ -335,14 +337,14 @@ static void set_camera( bool on )
     synchronize();
     quickset::ptcr::commands::set_camera query;
     query.flags[0] = 0x80; // quick and dirty: query
-    const quickset::ptcr::packet< quickset::ptcr::commands::set_camera::response >* response = protocol->send( query );
+    const quickset::ptcr::packet< quickset::ptcr::commands::set_camera::response >* response = protocol->send( query, debug );
     if( !response ) { std::cerr << "quickset-pantilt-control: no response to query camera state" << std::endl; exit( 1 );  }
     if( response->packet_header.type() != quickset::ptcr::constants::ack ) { std::cerr << "quickset-pantilt-control: failed to query camera state" << std::endl; exit( 1 );  }
     //std::cerr << "quickset-pantilt-control: cameras turned " << ( on ? "on" : "off" ) << std::endl;
     quickset::ptcr::commands::set_camera command;
     command.flags[0] = response->body.flags[0]() & 0x7f;
     command.flags[1] = on ? 0x0c : 0x00; // quick and dirty
-    response = protocol->send( command );
+    response = protocol->send( command, debug );
     if( !response || response->packet_header.type() != quickset::ptcr::constants::ack ) { std::cerr << "quickset-pantilt-control: failed to turn cameras " << ( on ? "on" : "off" ) << std::endl; exit( 1 );  }
     std::cerr << "quickset-pantilt-control: cameras turned " << ( on ? "on" : "off" ) << std::endl;
     exit( 0 );
@@ -356,7 +358,9 @@ int main( int ac, char** av )
         if( options.exists( "--help,-h" ) ) { usage(); }
         if( options.exists( "--format" ) ) { std::cout << "%t%2d%b"; return 0; }
         verbose = options.exists( "--verbose,-v,--pan-limits,--tilt-limits" );
-        std::vector< std::string > v = options.unnamed( "--diff,--help,-h,--verbose,-v,--format,--output-if-changed", "--binary,-b,--fields,-f,--delimiter,-d,--pan-limits,--tilt-limits,--camera" );
+        debug = options.exists( "--debug" );
+        if( debug ) verbose = true;
+        std::vector< std::string > v = options.unnamed( "--diff,--help,-h,--verbose,-v,--debug,--format,--output-if-changed", "--binary,-b,--fields,-f,--delimiter,-d,--pan-limits,--tilt-limits,--camera" );
         if( v.empty() ) { std::cerr << "quickset-pantilt-control: please specify port name" << std::endl; exit( 1 ); }
         if( v.size() > 1 ) { std::cerr << "quickset-pantilt-control: expected one serial port name, got \"" << comma::join( v, ' ' ) << std::endl; exit( 1 ); }
         std::string name = v[0];

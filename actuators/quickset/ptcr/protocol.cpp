@@ -95,17 +95,19 @@ class protocol::impl
         }
 
         template < typename C >
-        const packet< typename C::response >* send( const C& command )
+        const packet< typename C::response >* send( const C& command, bool debug )
         {
             if( command_pending ) { COMMA_THROW( comma::exception, "cannot send command 0x" << std::hex << ( 0xff & C::id ) << std::dec << " since command 0x" << std::hex << ( 0xff & *command_pending ) << std::dec << " is pending" ); }
             BOOST_STATIC_ASSERT( packet< C >::size < 64 );
             BOOST_STATIC_ASSERT( packet< typename C::response >::size < 64 );
             packet< C > p( command );
             escape_( p );
+            if( debug ) print_buf_( "send", txbuf_.data(), txbuf_.size(), constants::etx );
             send_();
             command_pending = C::id;
             bool ok = receive_();
             command_pending.reset();
+            if( debug ) print_buf_( "recv", rxbuf_.data(), rxbuf_.size(), constants::etx );
             if( !ok ) { return NULL; }
             if( !unescape_< packet< typename C::response > >() ) { return NULL; }
             const packet< typename C::response >* r = reinterpret_cast< const packet< typename C::response >* >( &response_[0] );
@@ -203,6 +205,17 @@ class protocol::impl
             }
             return false;
         }
+
+        void print_buf_( const char* label, char* buf, size_t size, char stop_char )
+        {
+            fprintf( stderr, "%s:", label );
+            for( size_t i = 0; i < size; i++ )
+            {
+                fprintf( stderr, " %.2x", static_cast<unsigned char>( buf[i] ));
+                if( buf[i] == stop_char ) break;
+            }
+            fprintf( stderr, "\n" );
+        }
 };
 
 boost::array< bool, 256 > protocol::impl::escaped_ = protocol::impl::init_escaped();
@@ -214,14 +227,16 @@ protocol::~protocol() { close(); delete pimpl_; }
 void protocol::close() { pimpl_->close(); }
 
 template < typename C >
-const packet< typename C::response >* protocol::send( const C& command ) { return pimpl_->send( command ); }
+const packet< typename C::response >* protocol::send( const C& command, bool debug )
+{
+    return pimpl_->send( command, debug );
+}
 
-template const packet< commands::get_status::response >* protocol::send< commands::get_status >( const commands::get_status& );
-template const packet< commands::move_to::response >* protocol::send< commands::move_to >( const commands::move_to& );
-template const packet< commands::move_to_delta::response >* protocol::send< commands::move_to_delta >( const commands::move_to_delta& );
-template const packet< commands::get_limits::response >* protocol::send< commands::get_limits >( const commands::get_limits& );
-template const packet< commands::set_limits::response >* protocol::send< commands::set_limits >( const commands::set_limits& );
-template const packet< commands::set_camera::response >* protocol::send< commands::set_camera >( const commands::set_camera& );
+template const packet< commands::get_status::response >* protocol::send< commands::get_status >( const commands::get_status&, bool debug );
+template const packet< commands::move_to::response >* protocol::send< commands::move_to >( const commands::move_to&, bool debug );
+template const packet< commands::move_to_delta::response >* protocol::send< commands::move_to_delta >( const commands::move_to_delta&, bool debug );
+template const packet< commands::get_limits::response >* protocol::send< commands::get_limits >( const commands::get_limits&, bool debug );
+template const packet< commands::set_limits::response >* protocol::send< commands::set_limits >( const commands::set_limits&, bool debug );
+template const packet< commands::set_camera::response >* protocol::send< commands::set_camera >( const commands::set_camera&, bool debug );
 
 } } } // namespace snark { namespace quickset { namespace ptcr {
-    

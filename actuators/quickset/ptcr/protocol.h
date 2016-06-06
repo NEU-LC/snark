@@ -46,7 +46,7 @@ class protocol : public boost::noncopyable
         ~protocol();
         
         template < typename C >
-        const packet< typename C::response >* send( const C& command );
+        const packet< typename C::response >* send( const C& command, bool debug=false );
 
         void close();
         
