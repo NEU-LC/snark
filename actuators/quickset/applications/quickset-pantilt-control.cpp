@@ -64,8 +64,8 @@ static void usage()
     std::cerr << "    --diff: if present, take differential input" << std::endl;
     std::cerr << "    --format: print binary output format to stdout and exit" << std::endl;
     std::cerr << "    --output-if-changed: output position, only when changed" << std::endl;
-    std::cerr << "    --pan-limits <limits>: set pan limits and exit" << std::endl;
-    std::cerr << "    --tilt-limits <limits>: set tilt limits and exit" << std::endl;
+    std::cerr << "    --pan-limits <limits>: set pan limits and exit; range -2PI:2PI" << std::endl;
+    std::cerr << "    --tilt-limits <limits>: set tilt limits and exit; range -PI:PI" << std::endl;
     std::cerr << "        <limits> ::= <lower>:<upper> (radians)" << std::endl;
     std::cerr << "    --camera=<on/off>: turn camera power on/off and exit" << std::endl;
     std::cerr << "    --verbose,-v: more output to stderr" << std::endl;
@@ -82,6 +82,10 @@ static void usage()
     std::cerr << "    echo 0.1,0.2 | quickset-pantilt-control \"tcp:192.168.1.1:10001\"" << std::endl;
     std::cerr << "    echo 45,45 | csv-units --from degrees --fields a,b | quickset-pantilt-control \"tcp:192.168.1.1:10001\"" << std::endl;
     std::cerr << "    io-console | quickset-pantilt-from-console | quickset-pantilt-control \"tcp:192.168.1.1:10001\"" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    quickset-pantilt-control \"tcp:192.168.1.1:10001\" \\" << std::endl;
+    std::cerr << "        --pan-limits $( echo -180:180 | csv-units --from degrees --fields a,b -d=: ) \\" << std::endl;
+    std::cerr << "        --tilt-limits $( echo -90:90 | csv-units --from degrees --fields a,b -d=: )" << std::endl;
     std::cerr << std::endl;
     exit( 0 );
 }
