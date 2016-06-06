@@ -72,8 +72,8 @@ static void usage()
     std::cerr << "    --debug: even more output to stderr" << std::endl;
     std::cerr << std::endl;
     std::cerr << "fields" << std::endl;
-    std::cerr << "    input: default pan,tilt (%2d)" << std::endl;
-    std::cerr << "    output: default t,pan,tilt,... (%t%2d) (todo)" << std::endl;
+    std::cerr << "    input: default pan,tilt (2d)" << std::endl;
+    std::cerr << "    output: default t,pan,tilt,... (t,2d) (todo)" << std::endl;
     std::cerr << "    angles are in radians" << std::endl;
     std::cerr << std::endl;
     std::cerr << comma::csv::options::usage();
@@ -356,7 +356,7 @@ int main( int ac, char** av )
     {
         comma::command_line_options options( ac, av );
         if( options.exists( "--help,-h" ) ) { usage(); }
-        if( options.exists( "--format" ) ) { std::cout << "%t%2d%b"; return 0; }
+        if( options.exists( "--format" ) ) { std::cout << "t,2d,b" << std::endl; return 0; }
         verbose = options.exists( "--verbose,-v,--pan-limits,--tilt-limits" );
         debug = options.exists( "--debug" );
         if( debug ) verbose = true;
@@ -374,7 +374,7 @@ int main( int ac, char** av )
         if( input_csv.fields == "" )
         {
             input_csv.fields = "pan,tilt";
-            if( input_csv.binary() ) { output_csv.format( "%t%2d%20b" ); }
+            if( input_csv.binary() ) { output_csv.format( "t,2d,20b" ); }
         }
         output.reset( new comma::csv::output_stream< status >( std::cout, output_csv ) );
         set_limits( options.optional< std::string >( "--pan-limits" ), options.optional< std::string >( "--tilt-limits" ) );
