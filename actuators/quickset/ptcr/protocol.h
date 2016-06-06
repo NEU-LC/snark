@@ -48,6 +48,8 @@ class protocol : public boost::noncopyable
         template < typename C >
         const packet< typename C::response >* send( const C& command, bool debug=false );
 
+        bool receive( boost::posix_time::time_duration timeout = boost::posix_time::seconds( 1 ));
+
         void close();
         
     private:

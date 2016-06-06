@@ -386,6 +386,8 @@ int main( int ac, char** av )
         boost::posix_time::ptime deadline = boost::posix_time::microsec_clock::universal_time();
         bool ok = false;
         if( verbose ) { std::cerr << "quickset-pantilt-control: synchronizing..." << std::endl; }
+        // Consume any messages already queued for reading
+        while( protocol->receive( boost::posix_time::millisec( 500 ))) {}
         while( !is_shutdown && std::cin.good() && !std::cin.eof() && std::cout.good() )
         {
             boost::posix_time::ptime now = boost::posix_time::microsec_clock::universal_time();

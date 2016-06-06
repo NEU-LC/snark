@@ -117,6 +117,8 @@ class protocol::impl
             return r;
         }
 
+        bool receive( boost::posix_time::time_duration timeout ) { return receive_( timeout ); }
+
         void close() { transport_.close(); }
 
     private:
@@ -193,9 +195,9 @@ class protocol::impl
             }
         }
 
-        bool receive_() // todo: quick and dirty, reading 1 byte at time may be slow - watch
+        // todo: quick and dirty, reading 1 byte at time may be slow - watch
+        bool receive_( boost::posix_time::time_duration timeout = boost::posix_time::seconds( 1 ))
         {
-            static const boost::posix_time::time_duration timeout = boost::posix_time::seconds( 1 ); // arbitrary
             for( char* cur = &rxbuf_[0]; select_.wait( timeout ) != 0; ++cur )
             {
                 int r = ::read( transport_.fd(), cur, 1 );
@@ -238,5 +240,7 @@ template const packet< commands::move_to_delta::response >* protocol::send< comm
 template const packet< commands::get_limits::response >* protocol::send< commands::get_limits >( const commands::get_limits&, bool debug );
 template const packet< commands::set_limits::response >* protocol::send< commands::set_limits >( const commands::set_limits&, bool debug );
 template const packet< commands::set_camera::response >* protocol::send< commands::set_camera >( const commands::set_camera&, bool debug );
+
+bool protocol::receive( boost::posix_time::time_duration timeout ) { return pimpl_->receive( timeout ); }
 
 } } } // namespace snark { namespace quickset { namespace ptcr {
