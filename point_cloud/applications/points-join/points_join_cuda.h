@@ -31,10 +31,6 @@
 
 #include <vector>
 #include <Eigen/Core>
-#include <comma/base/exception.h>
-#include <cuda_runtime.h>
-
-cudaError_t snark_cuda_squared_norms( double x, double y, double z, const double *points, double *square_norms, unsigned int size );
 
 namespace snark { namespace cuda {
     

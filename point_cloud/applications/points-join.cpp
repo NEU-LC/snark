@@ -50,6 +50,7 @@
 #include "../../visiting/eigen.h"
 
 #ifdef SNARK_USE_CUDA
+#include <cuda_runtime.h>
 #include "points-join/points_join_cuda.h"
 #endif
 
@@ -309,7 +310,7 @@ template < typename V > static int run( const comma::command_line_options& optio
     bool all = options.exists( "--all" );
     #ifdef SNARK_USE_CUDA
     use_cuda = options.exists( "--use-cuda,--cuda" );
-    if( !all && use_cuda ) { std::cerr << "points-join: --use-cuda for --all not supported" << std::endl; return 1; }
+    options.assert_mutually_exclusive( "--use-cuda,--cuda,--all" );
     #endif
     comma::csv::input_stream< V > ifstream( ifs, filter_csv, traits< V >::default_value() );
     std::deque< filter_record_t > filter_points;
