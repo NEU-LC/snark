@@ -203,12 +203,12 @@ static bool handle_status()
 template < typename command >
 static bool handle_move_to( const position& p )
 {
-    command move_to;
+    command move_to_cmd;
     static const double factor = double( 18000 ) / M_PI;
-    move_to.pan = static_cast< int >( p.pan * factor );
-    move_to.tilt = static_cast< int >( p.tilt * factor );
-    comma::verbose << "sending move-to" << ( differential ? "-delta" : "" ) << " command: pan/tilt: " << target->pan << "," << target->tilt << " ~ " << move_to.pan() << "," << move_to.tilt() << "..." << std::endl;
-    const quickset::ptcr::packet< typename command::response >* response = protocol->send( move_to, debug );
+    move_to_cmd.pan = static_cast< int >( p.pan * factor );
+    move_to_cmd.tilt = static_cast< int >( p.tilt * factor );
+    comma::verbose << "sending move-to" << ( differential ? "-delta" : "" ) << " command: pan/tilt: " << target->pan << "," << target->tilt << " ~ " << move_to_cmd.pan() << "," << move_to_cmd.tilt() << "..." << std::endl;
+    const quickset::ptcr::packet< typename command::response >* response = protocol->send( move_to_cmd, debug );
     if( !response )
     {
         std::cerr << comma::verbose.app_name() << ": failed to get response to command; resync and resend" << std::endl;
@@ -219,7 +219,7 @@ static bool handle_move_to( const position& p )
         case quickset::ptcr::constants::ack:
             if( response->body.response_pan_status.value() || response->body.response_tilt_status.value() )
             {
-                std::cerr << comma::verbose.app_name() << ": move-to command (" << target->pan << "," << target->tilt << " ~ " << move_to.pan() << "," << move_to.tilt() << ") failed:" << std::endl;
+                std::cerr << comma::verbose.app_name() << ": move-to command (" << target->pan << "," << target->tilt << " ~ " << move_to_cmd.pan() << "," << move_to_cmd.tilt() << ") failed:" << std::endl;
                 if( response->body.response_pan_status.value() ) { std::cerr << "    pan status not ok: " << response->body.response_pan_status.to_string() << std::endl; }
                 if( response->body.response_tilt_status.value() ) { std::cerr << "    tilt status not ok: " << response->body.response_tilt_status.to_string() << std::endl; }
                 if( response->body.response_pan_status.fault() || response->body.response_tilt_status.fault() )
@@ -243,7 +243,7 @@ static bool handle_move_to( const position& p )
                     }
                 }
             }
-            comma::verbose << "sent command move-to command: pan/tilt: " << target->pan << "," << target->tilt << " ~ " << move_to.pan() << "," << move_to.tilt() << "..." << std::endl;
+            comma::verbose << "sent command move-to command: pan/tilt: " << target->pan << "," << target->tilt << " ~ " << move_to_cmd.pan() << "," << move_to_cmd.tilt() << "..." << std::endl;
             break;
         case quickset::ptcr::constants::nak:
             std::cerr << comma::verbose.app_name() << ": move-to command failed" << std::endl;
