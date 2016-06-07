@@ -207,7 +207,7 @@ static bool handle_move_to( const position& p )
     static const double factor = double( 18000 ) / M_PI;
     move_to_cmd.pan = static_cast< int >( p.pan * factor );
     move_to_cmd.tilt = static_cast< int >( p.tilt * factor );
-    comma::verbose << "sending " << move_to_cmd.name << " command: pan/tilt: " << target->pan << "," << target->tilt << " ~ " << move_to_cmd.pan() << "," << move_to_cmd.tilt() << "..." << std::endl;
+    comma::verbose << "sending " << move_to_cmd.name << " command: pan/tilt: " << p.pan << "," << p.tilt << " ~ " << move_to_cmd.pan() << "," << move_to_cmd.tilt() << "..." << std::endl;
     const quickset::ptcr::packet< typename command::response >* response = protocol->send( move_to_cmd, debug );
     if( !response )
     {
@@ -219,7 +219,7 @@ static bool handle_move_to( const position& p )
         case quickset::ptcr::constants::ack:
             if( response->body.response_pan_status.value() || response->body.response_tilt_status.value() )
             {
-                std::cerr << comma::verbose.app_name() << ": " << move_to_cmd.name << " command (" << target->pan << "," << target->tilt << " ~ " << move_to_cmd.pan() << "," << move_to_cmd.tilt() << ") failed:" << std::endl;
+                std::cerr << comma::verbose.app_name() << ": " << move_to_cmd.name << " command (" << p.pan << "," << p.tilt << " ~ " << move_to_cmd.pan() << "," << move_to_cmd.tilt() << ") failed:" << std::endl;
                 if( response->body.response_pan_status.value() ) { std::cerr << "    pan status not ok: " << response->body.response_pan_status.to_string() << std::endl; }
                 if( response->body.response_tilt_status.value() ) { std::cerr << "    tilt status not ok: " << response->body.response_tilt_status.to_string() << std::endl; }
                 if( response->body.response_pan_status.fault() || response->body.response_tilt_status.fault() )
@@ -243,7 +243,7 @@ static bool handle_move_to( const position& p )
                     }
                 }
             }
-            comma::verbose << "sent command " << move_to_cmd.name << " command: pan/tilt: " << target->pan << "," << target->tilt << " ~ " << move_to_cmd.pan() << "," << move_to_cmd.tilt() << "..." << std::endl;
+            comma::verbose << "sent command " << move_to_cmd.name << " command: pan/tilt: " << p.pan << "," << p.tilt << " ~ " << move_to_cmd.pan() << "," << move_to_cmd.tilt() << "..." << std::endl;
             break;
         case quickset::ptcr::constants::nak:
             std::cerr << comma::verbose.app_name() << ": " << move_to_cmd.name << " command failed" << std::endl;
