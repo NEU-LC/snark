@@ -96,6 +96,7 @@ struct get_status : public comma::packed::packed_struct< get_status, 7 >
         static const unsigned char res = 0x01;
     };
     
+    static const char* const name;
     enum { id = 0x31 }; // static const unsigned char id = 0x31;
     comma::packed::byte command;
     comma::packed::byte pan_jog_command;
@@ -132,6 +133,7 @@ struct get_status : public comma::packed::packed_struct< get_status, 7 >
 
 struct move_to : public comma::packed::packed_struct< move_to, 6 >
 {
+    static const char* const name;
     enum { id = 0x33 }; // static const unsigned char id = 0x33;
     comma::packed::int24 pan;
     comma::packed::int24 tilt;
@@ -154,6 +156,7 @@ struct move_to : public comma::packed::packed_struct< move_to, 6 >
 
 struct move_to_delta : public comma::packed::packed_struct< move_to_delta, 6 >
 {
+    static const char* const name;
     enum { id = 0x34 }; // static const unsigned char id = 0x34;
     comma::packed::int24 pan;
     comma::packed::int24 tilt;
@@ -176,6 +179,7 @@ struct move_to_delta : public comma::packed::packed_struct< move_to_delta, 6 >
 
 struct get_limits : public comma::packed::packed_struct< get_limits, 1 >
 {
+    static const char* const name;
     enum { id = 0x81 }; // static const unsigned char id = 0x81;
     struct direction { enum values { clockwise = 0, right = clockwise, counterclockwise = 1, left = counterclockwise, up = 2, down = 3 }; };
     static const unsigned char query = 0x80;
@@ -194,6 +198,7 @@ struct get_limits : public comma::packed::packed_struct< get_limits, 1 >
 
 struct set_limits : public comma::packed::packed_struct< set_limits, 4 >
 {
+    static const char* const name;
     enum { id = get_limits::id }; // static const unsigned char id = get_limits::id;
     typedef get_limits::direction direction;
     comma::packed::byte direction_byte;
@@ -212,6 +217,7 @@ struct set_limits : public comma::packed::packed_struct< set_limits, 4 >
 
 struct set_camera : public comma::packed::packed_struct< set_camera, 2 >
 {
+    static const char* const name;
     enum { id = 0x64 }; // static const unsigned char id = get_limits::id;
     boost::array< comma::packed::byte, 2 > flags;
     set_camera() { flags[0] = flags[1] = 0; }
