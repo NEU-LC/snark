@@ -42,6 +42,8 @@
 #include "../string.h"
 #include "../traits.h"
 
+bool zda_only=true;
+
 static void usage( bool verbose )
 {
     std::cerr << std::endl;
@@ -58,9 +60,9 @@ static void usage( bool verbose )
     std::cerr << "    --output-fields: print output fields and exit" << std::endl;
     std::cerr << "    --output-format: print output format and exit" << std::endl;
     std::cerr << "    --verbose,-v: more output to stderr" << std::endl;
+    std::cerr << "    --no-zda; (WARNING: for backward compatibility only) updates time from any message, used when input has no ZDA message"<< std::endl;
+    std::cerr << "        when not specified, time field is only updated from ZDA messages"<< std::endl;
     std::cerr << std::endl;
-    std::cerr << "notes" << std::endl;
-    std::cerr << "    time field is only updated from ZDA messages"<< std::endl;
     std::cerr << std::endl;
     std::cerr << "fields" << std::endl;
     std::cerr << "    default: t,latitude,longitude,z,roll,pitch,yaw,number_of_satellites" << std::endl;
@@ -193,8 +195,11 @@ void handle( const nmea::messages::zda& zda )
 
 void handle( const nmea::messages::gga& v )
 {
-    //this is a bug, day comes from system and time from GPS on day rollover it can jump 24h
-    //output_.t = v.time.value; 
+    if(!zda_only)
+    {
+        //this is a bug, date comes from system, time from GPS => on day rollover it can jump 24h
+        output_.t = v.time.value;
+    }
     output_.data.position.coordinates = v.coordinates();
     output_.data.position.z = v.orthometric_height;
     output_.data.number_of_satellites = v.satellites_in_use;
@@ -202,7 +207,11 @@ void handle( const nmea::messages::gga& v )
 
 void handle( const nmea::messages::trimble::avr& m )
 {
-    //output_.t = m.time.value;
+    if(!zda_only)
+    {
+        //this is a bug, date comes from system, time from GPS => on day rollover it can jump 24h
+        output_.t = m.time.value;
+    }
     output_.data.orientation.roll = m.roll.value;
     output_.data.orientation.pitch = m.tilt.value;
     output_.data.orientation.yaw = m.yaw.value;
@@ -225,6 +234,7 @@ int main( int ac, char** av )
         bool output_all = options.exists( "--output-all,--all" );
         bool verbose = options.exists( "--verbose,-v" );
         bool permissive = options.exists( "--permissive" );
+        zda_only=!options.exists("--no-zda");
         comma::csv::options csv( options );
         csv.full_xpath = true; // for future, e.g. to plug in errors
         if( csv.fields.empty() ) { csv.fields = comma::join( comma::csv::names< output::type >( csv.full_xpath ), ',' ); }
