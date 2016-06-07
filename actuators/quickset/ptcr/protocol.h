@@ -32,6 +32,7 @@
 #define SNARK_ACTUATORS_QUICKSET_ptcr_PROTOCOL_H_
 
 #include <string>
+#include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/noncopyable.hpp>
 #include "commands.h"
 #include "packet.h"
