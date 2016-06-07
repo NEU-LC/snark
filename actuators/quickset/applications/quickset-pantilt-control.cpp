@@ -36,6 +36,7 @@
 #include <boost/thread.hpp>
 #include <comma/application/command_line_options.h>
 #include <comma/application/signal_flag.h>
+#include <comma/application/verbose.h>
 #include <comma/base/exception.h>
 #include <comma/csv/stream.h>
 #include <comma/io/select.h>
@@ -46,14 +47,14 @@
 
 using namespace snark;
 
-static void usage()
+static void usage( bool verbose = false )
 {
     std::cerr << std::endl;
     std::cerr << "control a quickset pan/tilt unit via serial port or tcp" << std::endl;
     std::cerr << "output pan/tilt status to stdout" << std::endl;
     std::cerr << std::endl;
     std::cerr << "usage" << std::endl;
-    std::cerr << "    cat commands.csv | quickset-pantilt-control <address> [<options>]" << std::endl;
+    std::cerr << "    cat commands.csv | " << comma::verbose.app_name() << " <address> [<options>]" << std::endl;
     std::cerr << std::endl;
     std::cerr << "<address>: tcp address or serial port" << std::endl;
     std::cerr << "    tcp address: e.g: tcp:192.168.0.1:12345" << std::endl;
@@ -79,11 +80,11 @@ static void usage()
     std::cerr << comma::csv::options::usage();
     std::cerr << std::endl;
     std::cerr << "examples" << std::endl;
-    std::cerr << "    echo 0.1,0.2 | quickset-pantilt-control \"tcp:192.168.1.1:10001\"" << std::endl;
-    std::cerr << "    echo 45,45 | csv-units --from degrees --fields a,b | quickset-pantilt-control \"tcp:192.168.1.1:10001\"" << std::endl;
-    std::cerr << "    io-console | quickset-pantilt-from-console | quickset-pantilt-control \"tcp:192.168.1.1:10001\"" << std::endl;
+    std::cerr << "    echo 0.1,0.2 | " << comma::verbose.app_name() << " \"tcp:192.168.1.1:10001\"" << std::endl;
+    std::cerr << "    echo 45,45 | csv-units --from degrees --fields a,b | " << comma::verbose.app_name() << " \"tcp:192.168.1.1:10001\"" << std::endl;
+    std::cerr << "    io-console | quickset-pantilt-from-console | " << comma::verbose.app_name() << " \"tcp:192.168.1.1:10001\"" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "    quickset-pantilt-control \"tcp:192.168.1.1:10001\" \\" << std::endl;
+    std::cerr << "    " << comma::verbose.app_name() << " \"tcp:192.168.1.1:10001\" \\" << std::endl;
     std::cerr << "        --pan-limits $( echo -180:180 | csv-units --from degrees --fields a,b -d=: ) \\" << std::endl;
     std::cerr << "        --tilt-limits $( echo -90:90 | csv-units --from degrees --fields a,b -d=: )" << std::endl;
     std::cerr << std::endl;
@@ -166,7 +167,6 @@ template <> struct traits< status >
     
 } } // namespace comma { namespace visiting {
 
-static bool verbose = false;
 static bool debug = false;
 static boost::scoped_ptr< quickset::ptcr::protocol > protocol;
 quickset::ptcr::commands::get_status get_status;
@@ -191,10 +191,10 @@ static bool handle_status()
             output->write( *current_status );
             break;
         case quickset::ptcr::constants::nak:
-            if( verbose ) { std::cerr << "quickset-pantilt-control: get-status command failed" << std::endl; }
+            comma::verbose << "get-status command failed" << std::endl;
             break;
         default: // never here
-            if( verbose ) { std::cerr << "quickset-pantilt-control: expected ack or nak, got 0x" << std::hex << ( 0xff & response->packet_header.type() ) << std::dec << std::endl; }
+            comma::verbose << "expected ack or nak, got 0x" << std::hex << ( 0xff & response->packet_header.type() ) << std::dec << std::endl;
             break;
     }
     return true;
@@ -207,11 +207,11 @@ static bool handle_move_to( const position& p )
     static const double factor = double( 18000 ) / M_PI;
     move_to.pan = static_cast< int >( p.pan * factor );
     move_to.tilt = static_cast< int >( p.tilt * factor );
-    if( verbose ) { std::cerr << "quickset-pantilt-control: sending move-to" << ( differential ? "-delta" : "" ) << " command: pan/tilt: " << target->pan << "," << target->tilt << " ~ " << move_to.pan() << "," << move_to.tilt() << "..." << std::endl; }
+    comma::verbose << "sending move-to" << ( differential ? "-delta" : "" ) << " command: pan/tilt: " << target->pan << "," << target->tilt << " ~ " << move_to.pan() << "," << move_to.tilt() << "..." << std::endl;
     const quickset::ptcr::packet< typename command::response >* response = protocol->send( move_to, debug );
     if( !response )
     {
-        std::cerr << "quickset-pantilt-control: failed to get response to command; resync and resend" << std::endl;
+        std::cerr << comma::verbose.app_name() << ": failed to get response to command; resync and resend" << std::endl;
         return false;
     }
     switch( response->packet_header.type() )
@@ -219,12 +219,12 @@ static bool handle_move_to( const position& p )
         case quickset::ptcr::constants::ack:
             if( response->body.response_pan_status.value() || response->body.response_tilt_status.value() )
             {
-                std::cerr << "quickset-pantilt-control: move-to command (" << target->pan << "," << target->tilt << " ~ " << move_to.pan() << "," << move_to.tilt() << ") failed:" << std::endl;
+                std::cerr << comma::verbose.app_name() << ": move-to command (" << target->pan << "," << target->tilt << " ~ " << move_to.pan() << "," << move_to.tilt() << ") failed:" << std::endl;
                 if( response->body.response_pan_status.value() ) { std::cerr << "    pan status not ok: " << response->body.response_pan_status.to_string() << std::endl; }
                 if( response->body.response_tilt_status.value() ) { std::cerr << "    tilt status not ok: " << response->body.response_tilt_status.to_string() << std::endl; }
                 if( response->body.response_pan_status.fault() || response->body.response_tilt_status.fault() )
                 {
-                    std::cerr << "quickset-pantilt-control: hard fault, clearing..." << std::endl;
+                    std::cerr << comma::verbose.app_name() << ": hard fault, clearing..." << std::endl;
                     return false;
                 }
                 if( differential ) // quick and dirty
@@ -238,18 +238,18 @@ static bool handle_move_to( const position& p )
                         || response->body.response_tilt_status.dhl()
                         || response->body.response_tilt_status.dsl() )
                     {
-                        std::cerr << "quickset-pantilt-control: command failed, soft limit reached" << std::endl;
+                        std::cerr << comma::verbose.app_name() << ": command failed, soft limit reached" << std::endl;
                         return false;
                     }
                 }
             }
-            if( verbose ) { std::cerr << "quickset-pantilt-control: sent command move-to command: pan/tilt: " << target->pan << "," << target->tilt << " ~ " << move_to.pan() << "," << move_to.tilt() << "..." << std::endl; }
+            comma::verbose << "sent command move-to command: pan/tilt: " << target->pan << "," << target->tilt << " ~ " << move_to.pan() << "," << move_to.tilt() << "..." << std::endl;
             break;
         case quickset::ptcr::constants::nak:
-            std::cerr << "quickset-pantilt-control: move-to command failed" << std::endl;
+            std::cerr << comma::verbose.app_name() << ": move-to command failed" << std::endl;
             break;
         default: // never here
-            std::cerr << "quickset-pantilt-control: expected ack or nak, got 0x" << std::hex << ( 0xff & response->packet_header.type() ) << std::dec << std::endl;
+            std::cerr << comma::verbose.app_name() << ": expected ack or nak, got 0x" << std::hex << ( 0xff & response->packet_header.type() ) << std::dec << std::endl;
             return false;
     }
     return true;    
@@ -288,14 +288,14 @@ static void set_limit( double limit, direction::values direction )
     bool is_pan = direction == direction::left || direction == direction::right;
     int value = limit * double( 18000 ) / M_PI;
     int maximum = is_pan ? 36000 : 18000;
-    if( value < -maximum || value > maximum ) { std::cerr << "quickset-pantilt-control: " << ( is_pan ? "pan" : "tilt" ) << " exceeded: " << limit << std::endl; exit( 1 ); }
+    if( value < -maximum || value > maximum ) { std::cerr << comma::verbose.app_name() << ": " << ( is_pan ? "pan" : "tilt" ) << " exceeded: " << limit << std::endl; exit( 1 ); }
     target = is_pan ? position( limit, 0 ) : position( 0, limit );
-    if( !handle_move_to< quickset::ptcr::commands::move_to >( *target ) ) { std::cerr << "quickset-pantilt-control: failed to reach " << limit << std::endl; exit( 1 ); }
+    if( !handle_move_to< quickset::ptcr::commands::move_to >( *target ) ) { std::cerr << comma::verbose.app_name() << ": failed to reach " << limit << std::endl; exit( 1 ); }
     while( !handle_status() || current_status->status_response.status.exec() ) { boost::thread::sleep( boost::posix_time::microsec_clock::universal_time() + boost::posix_time::millisec( 20 ) ); }
     quickset::ptcr::commands::set_limits set_limits( direction, value );
     const quickset::ptcr::packet< quickset::ptcr::commands::set_limits::response >* response = protocol->send( set_limits, debug );
-    if( !response || response->packet_header.type() != quickset::ptcr::constants::ack ) { std::cerr << "quickset-pantilt-control: failed to set " << ( is_pan ? "pan" : "tilt" ) << " limit " << limit << std::endl; exit( 1 );  }
-    std::cerr << "quickset-pantilt-control: " << ( is_pan ? "pan" : "tilt" ) << " limit " << limit << " is set" << std::endl;
+    if( !response || response->packet_header.type() != quickset::ptcr::constants::ack ) { std::cerr << comma::verbose.app_name() << ": failed to set " << ( is_pan ? "pan" : "tilt" ) << " limit " << limit << std::endl; exit( 1 );  }
+    std::cerr << comma::verbose.app_name() << ": " << ( is_pan ? "pan" : "tilt" ) << " limit " << limit << " is set" << std::endl;
 }
 
 static void set_limits( boost::optional< std::string > limits, direction::values forth, direction::values back )
@@ -312,12 +312,12 @@ static void set_limits( boost::optional< std::string > limits, direction::values
 
 static void synchronize( bool osl = false )
 {
-    std::cerr << "quickset-pantilt-control: synchronizing..." << std::endl;
+    std::cerr << comma::verbose.app_name() << ": synchronizing..." << std::endl;
     const boost::posix_time::time_duration timeout = boost::posix_time::milliseconds( 20 );
     get_status.command = quickset::ptcr::commands::get_status::command::res;
     if( osl ) { get_status.command = get_status.command() | quickset::ptcr::commands::get_status::command::osl; }
     while( !handle_status() ) { boost::thread::sleep( boost::posix_time::microsec_clock::universal_time() + timeout ); }
-    std::cerr << "quickset-pantilt-control: synchronized" << std::endl;    
+    std::cerr << comma::verbose.app_name() << ": synchronized" << std::endl;    
 }
 
 static void set_limits( boost::optional< std::string > pan, boost::optional< std::string > tilt )
@@ -328,11 +328,11 @@ static void set_limits( boost::optional< std::string > pan, boost::optional< std
     synchronize( true );
     set_limits( pan, direction::clockwise, direction::counterclockwise );
     set_limits( tilt, direction::up, direction::down );
-    std::cerr << "quickset-pantilt-control: going home..." << std::endl;
+    std::cerr << comma::verbose.app_name() << ": going home..." << std::endl;
     target = position( 0, 0 );
     handle_move_to< quickset::ptcr::commands::move_to >( *target );
     while( handle_status() && current_status->status_response.status.exec() ) { boost::thread::sleep( boost::posix_time::microsec_clock::universal_time() + boost::posix_time::milliseconds( 20 ) ); }
-    std::cerr << "quickset-pantilt-control: done" << std::endl;
+    std::cerr << comma::verbose.app_name() << ": done" << std::endl;
     exit( 0 );
 }
 
@@ -342,15 +342,15 @@ static void set_camera( bool on )
     quickset::ptcr::commands::set_camera query;
     query.flags[0] = 0x80; // quick and dirty: query
     const quickset::ptcr::packet< quickset::ptcr::commands::set_camera::response >* response = protocol->send( query, debug );
-    if( !response ) { std::cerr << "quickset-pantilt-control: no response to query camera state" << std::endl; exit( 1 );  }
-    if( response->packet_header.type() != quickset::ptcr::constants::ack ) { std::cerr << "quickset-pantilt-control: failed to query camera state" << std::endl; exit( 1 );  }
-    //std::cerr << "quickset-pantilt-control: cameras turned " << ( on ? "on" : "off" ) << std::endl;
+    if( !response ) { std::cerr << comma::verbose.app_name() << ": no response to query camera state" << std::endl; exit( 1 );  }
+    if( response->packet_header.type() != quickset::ptcr::constants::ack ) { std::cerr << comma::verbose.app_name() << ": failed to query camera state" << std::endl; exit( 1 );  }
+    //std::cerr << comma::verbose.app_name() << ": cameras turned " << ( on ? "on" : "off" ) << std::endl;
     quickset::ptcr::commands::set_camera command;
     command.flags[0] = response->body.flags[0]() & 0x7f;
     command.flags[1] = on ? 0x0c : 0x00; // quick and dirty
     response = protocol->send( command, debug );
-    if( !response || response->packet_header.type() != quickset::ptcr::constants::ack ) { std::cerr << "quickset-pantilt-control: failed to turn cameras " << ( on ? "on" : "off" ) << std::endl; exit( 1 );  }
-    std::cerr << "quickset-pantilt-control: cameras turned " << ( on ? "on" : "off" ) << std::endl;
+    if( !response || response->packet_header.type() != quickset::ptcr::constants::ack ) { std::cerr << comma::verbose.app_name() << ": failed to turn cameras " << ( on ? "on" : "off" ) << std::endl; exit( 1 );  }
+    std::cerr << comma::verbose.app_name() << ": cameras turned " << ( on ? "on" : "off" ) << std::endl;
     exit( 0 );
 }
 
@@ -358,21 +358,19 @@ int main( int ac, char** av )
 {
     try
     {
-        comma::command_line_options options( ac, av );
-        if( options.exists( "--help,-h" ) ) { usage(); }
+        comma::command_line_options options( ac, av, usage );
         if( options.exists( "--format" ) ) { std::cout << "t,2d,b" << std::endl; return 0; }
-        verbose = options.exists( "--verbose,-v,--pan-limits,--tilt-limits" );
+        if( options.exists( "--pan-limits,--tilt-limits,--debug" )) { comma::verbose.init( true, "" ); }
         debug = options.exists( "--debug" );
-        if( debug ) verbose = true;
         std::vector< std::string > v = options.unnamed( "--diff,--help,-h,--verbose,-v,--debug,--format,--output-if-changed", "--binary,-b,--fields,-f,--delimiter,-d,--pan-limits,--tilt-limits,--camera" );
-        if( v.empty() ) { std::cerr << "quickset-pantilt-control: please specify port name" << std::endl; exit( 1 ); }
-        if( v.size() > 1 ) { std::cerr << "quickset-pantilt-control: expected one serial port name, got \"" << comma::join( v, ' ' ) << std::endl; exit( 1 ); }
+        if( v.empty() ) { std::cerr << comma::verbose.app_name() << ": please specify port name" << std::endl; exit( 1 ); }
+        if( v.size() > 1 ) { std::cerr << comma::verbose.app_name() << ": expected one serial port name, got \"" << comma::join( v, ' ' ) << std::endl; exit( 1 ); }
         std::string name = v[0];
         output_if_changed = options.exists( "--output-if-changed" );
         differential = options.exists( "--diff" );
-        if( verbose ) { std::cerr << "quickset-pantilt-control: connecting to " << name << "..." << std::endl; }
+        comma::verbose << "connecting to " << name << "..." << std::endl;
         protocol.reset( new quickset::ptcr::protocol( name ) );
-        if( verbose ) { std::cerr << "quickset-pantilt-control: connected to " << name << std::endl; }
+        comma::verbose << "connected to " << name << std::endl;
         comma::csv::options input_csv( options );
         comma::csv::options output_csv;
         if( input_csv.fields == "" )
@@ -389,7 +387,7 @@ int main( int ac, char** av )
         const boost::posix_time::time_duration timeout = boost::posix_time::millisec( 20 );
         boost::posix_time::ptime deadline = boost::posix_time::microsec_clock::universal_time();
         bool ok = false;
-        if( verbose ) { std::cerr << "quickset-pantilt-control: synchronizing..." << std::endl; }
+        comma::verbose << "synchronizing..." << std::endl;
         // Consume any messages already queued for reading
         while( protocol->receive( boost::posix_time::millisec( 500 ))) {}
         while( !is_shutdown && std::cin.good() && !std::cin.eof() && std::cout.good() )
@@ -398,7 +396,7 @@ int main( int ac, char** av )
             bool was_ok = ok;
             get_status.command = ok ? 0 : quickset::ptcr::commands::get_status::command::res;
             if( now > deadline || get_status.command() ) { ok = handle_status(); deadline = now + timeout; }
-            if( was_ok != ok ) { std::cerr << "quickset-pantilt-control: " << ( ok ? "synchronized" : "lost sync, synchronizing..." ) << std::endl; }
+            if( was_ok != ok ) { std::cerr << comma::verbose.app_name() << ": " << ( ok ? "synchronized" : "lost sync, synchronizing..." ) << std::endl; }
             if( ok )
             {
                 if( target || select.wait( timeout ) != 0 ) { ok = handle_move_to(); }
@@ -408,18 +406,18 @@ int main( int ac, char** av )
                 boost::thread::sleep( deadline );
             }
         }
-        if( is_shutdown ) { std::cerr << "quickset-pantilt-control: interrupted by signal" << std::endl; }
+        if( is_shutdown ) { std::cerr << comma::verbose.app_name() << ": interrupted by signal" << std::endl; }
         protocol->close();
-        if( verbose ) { std::cerr << "quickset-pantilt-control: done" << std::endl; }
+        comma::verbose << "done" << std::endl;
         return 0;
     }
     catch( std::exception& ex )
     {
-        std::cerr << "quickset-pantilt-control: " << ex.what() << std::endl;
+        std::cerr << comma::verbose.app_name() << ": " << ex.what() << std::endl;
     }
     catch( ... )
     {
-        std::cerr << "quickset-pantilt-control: unknown exception" << std::endl;
+        std::cerr << comma::verbose.app_name() << ": unknown exception" << std::endl;
     }
     if( protocol ) { protocol->close(); }
     exit( 0 );
