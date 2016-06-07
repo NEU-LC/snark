@@ -1,0 +1,58 @@
+#!/bin/bash
+
+scriptname=$( basename $0 )
+
+source $( type -p comma-application-util )
+
+function description()
+{
+    cat <<EOF
+--from=<pan>,<tilt>
+--to=<pan>,<tilt>
+--step=<pan>,<tilt>
+--loop; return to start
+EOF
+}
+
+function usage()
+{
+    cat <<EOF >&2
+
+Generate input values to describe a raster sweep
+
+Usage: $scriptname <options>
+
+Options
+$( description | sed 's/^/    /' )
+
+Example
+    $scriptname --from=-20,0 --to=20,45 --step=5,5
+
+EOF
+    exit 0
+}
+
+if (( $( comma_options_has "--help" $@ ) || $( comma_options_has "-h" $@ ) )); then
+    usage
+fi
+
+comma_path_value_to_var --prefix=options < <( description | comma-options-to-name-value $@ | grep '=' )
+
+IFS="," read pan_from tilt_from <<< $options_from
+IFS="," read pan_to tilt_to <<< $options_to
+IFS="," read pan_step tilt_step <<< $options_step
+
+forward=1
+
+for tilt in $( seq $tilt_from $tilt_step $tilt_to ); do
+    (( forward )) \
+        && pan_seq=$( seq $pan_from $pan_step $pan_to ) \
+        || pan_seq=$( seq $pan_to -$pan_step $pan_from )
+
+    for pan in $pan_seq; do
+        echo $pan,$tilt
+    done
+    forward=$(( !forward ))
+done
+
+(( options_loop )) && echo $pan_from,$tilt_from
