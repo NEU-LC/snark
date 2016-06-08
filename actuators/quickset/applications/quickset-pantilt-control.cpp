@@ -61,7 +61,7 @@ static void usage( bool verbose = false )
     std::cerr << "    serial port: e.g: /dev/ttyS0" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
-    std::cerr << "    --help,-h: show this message" << std::endl;
+    std::cerr << "    --help,-h: show this help; --help --verbose for more help" << std::endl;
     std::cerr << "    --diff: if present, take differential input" << std::endl;
     std::cerr << "    --format: print binary output format to stdout and exit" << std::endl;
     std::cerr << "    --output-if-changed: output position, only when changed" << std::endl;
@@ -77,8 +77,12 @@ static void usage( bool verbose = false )
     std::cerr << "    output: default t,pan,tilt,... (t,2d) (todo)" << std::endl;
     std::cerr << "    angles are in radians" << std::endl;
     std::cerr << std::endl;
-    std::cerr << comma::csv::options::usage();
-    std::cerr << std::endl;
+    if( verbose )
+    {
+        std::cerr << "csv stream options: " << std::endl;
+        std::cerr << comma::csv::options::usage() << std::endl;
+        std::cerr << std::endl;
+    }
     std::cerr << "examples" << std::endl;
     std::cerr << "    echo 0.1,0.2 | " << comma::verbose.app_name() << " \"tcp:192.168.1.1:10001\"" << std::endl;
     std::cerr << "    echo 45,45 | csv-units --from degrees --fields a,b | " << comma::verbose.app_name() << " \"tcp:192.168.1.1:10001\"" << std::endl;
