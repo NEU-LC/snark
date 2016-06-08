@@ -51,6 +51,9 @@ static void usage()
     std::cerr << "    --no-inertial: if present, output multiple steps, if key held and decrease, once released" << std::endl;
     std::cerr << "    --verbose,-v: more output" << std::endl;
     std::cerr << std::endl;
+    std::cerr << "example" << std::endl;
+    std::cerr << "    io-console | quickset-pantilt-from-console | quickset-pantilt-control <address>" << std::endl;
+    std::cerr << std::endl;
     exit( -1 );
 }
 
