@@ -54,7 +54,7 @@ static void usage()
     std::cerr << "example" << std::endl;
     std::cerr << "    io-console | quickset-pantilt-from-console | quickset-pantilt-control <address>" << std::endl;
     std::cerr << std::endl;
-    exit( -1 );
+    exit( 0 );
 }
 
 class Inertial
