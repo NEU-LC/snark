@@ -42,7 +42,8 @@ Default behaviour is to hold for 0 seconds, ie keep moving.
 Example
     quickset-pantilt-raster-coords --from=-45,0 --to=45,40 --step=10,5 \\
         | csv-unit --from degrees --fields a,b \\
-        | $scriptname "tcp:192.168.1.1:10001" --hold-for=3
+        | $scriptname "tcp:192.168.1.1:10001" --hold-for=3 \\
+        | view-points --fields t,x,y,,id
 
 EOF
     exit 0
@@ -63,19 +64,16 @@ if [[ $options_move_every ]]; then
     csv-paste line-number - \
         | csv-time --from seconds \
         | csv-play --slow $options_move_every \
-        | quickset-pantilt-control $address --fields ,$options_fields \
-        | tee output.csv \
-        | view-points --fields t,x,y
+        | quickset-pantilt-control $address --fields ,$options_fields
 elif [[ $options_hold_for ]]; then
     coproc pantilt { quickset-pantilt-control $address --fields $options_fields; }
-    coproc viewpoints { view-points --fields x,y,id; }
+    echo "fd's: ${pantilt[0]} ${pantilt[1]}" >&2
     while read pan_tilt; do
         echo $pan_tilt >&"${pantilt[1]}"
         moving=0
         while : ; do
             IFS="," read t x y a b z <&"${pantilt[0]}"
-            echo $t,$x,$y,$a,$b,$z >&2
-            echo $x,$y,$b >&"${viewpoints[1]}"
+            echo $t,$x,$y,$a,$b,$z
             (( !moving && b )) && moving=1
             (( moving && !b )) && break
         done
