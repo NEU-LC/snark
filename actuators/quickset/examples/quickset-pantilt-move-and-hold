@@ -20,13 +20,15 @@ function usage()
 {
     cat <<EOF >&2
 
-Drive the QuickSet Pan & Tilt
+Drive the QuickSet Pan & Tilt, holding at each point
 
 Usage: cat pantilt.csv | $scriptname <address> [<options>]
 
 <address>: tcp address or serial port
     tcp address: e.g: tcp:192.168.0.1:12345
     serial port: e.g: /dev/ttyS0
+
+Input data consists of pan/tilt coordinates in radians.
 
 Options
 $( description | sed 's/^/    /' )
