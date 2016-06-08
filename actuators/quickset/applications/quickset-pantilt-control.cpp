@@ -257,7 +257,7 @@ static bool handle_move_to( const position& p )
 
 static bool handle_move_to()
 {
-    while( input->ready() )
+    while( input->ready() || ( std::cin.good() && !std::cin.eof() ) )
     {
         if( differential )
         {

@@ -79,5 +79,4 @@ elif [[ $options_hold_for ]]; then
         done
         sleep $options_hold_for
     done
-    kill $pantilt_PID
 fi
