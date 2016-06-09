@@ -73,6 +73,8 @@ void usage( bool verbose = false )
     std::cerr << "    --name=<name>; name" << std::endl;
     std::cerr << std::endl;
     std::cerr << "examples" << std::endl;
+    std::cerr << "    plot a trajectory: " << std::endl;
+    std::cerr << std::endl;
     std::cerr << "    csv-to-kml header > test.kml" << std::endl;
     std::cerr << "    cat <<EOF | csv-to-kml trajectory >> test.kml" << std::endl;
     std::cerr << "-33.9461111111,151.177222222,21" << std::endl;
@@ -87,6 +89,10 @@ void usage( bool verbose = false )
     std::cerr << "-34.495,131.5,38000" << std::endl;
     std::cerr << "EOF" << std::endl;
     std::cerr << "    csv-to-kml footer >> test.kml" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    apply styles: " << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    echo -e \"0,0\\n0,1\" | csv-to-kml trajectory --style='url=#my_style;line-color=ff00ff00;line-width=3'" << std::endl;
     std::cerr << std::endl;
     std::cerr << comma::contact_info << std::endl;
     std::cerr << std::endl;
