@@ -43,10 +43,10 @@ laser_return get_laser_return( const packet& packet
                              , unsigned int laser
                              , const boost::posix_time::ptime& timestamp
                              , double angularSpeed 
-                             , bool legacy = false );
+                             , bool legacy = true );
 
-boost::posix_time::time_duration time_offset( unsigned int block, unsigned int laser );
 double azimuth( double rotation, unsigned int laser, double angularSpeed );
+double time_span(bool legacy = true);   //return time span between block 11 and block 0 (laser id 0) in seconds
 
 } } } // namespace snark {  namespace velodyne { namespace impl {
 

@@ -86,6 +86,7 @@ static void usage()
     std::cerr << "                                    :3 for scans 0, 1, 2, 3" << std::endl;
     std::cerr << "    --raw-intensity: output intensity data without any correction" << std::endl;
     std::cerr << "    --legacy: use old timetable and old algorithm for azimuth calculation" << std::endl;
+    std::cerr << "    --adjusted-time: adjust input time to match velodyne period; when using on log files, the timestamps may change depending on start of data" << std::endl;
     std::cerr << "    default output columns: " << comma::join( comma::csv::names< velodyne_point >(), ',' ) << std::endl;
     std::cerr << "    default binary format: " << comma::csv::format::value< velodyne_point >() << std::endl;
     std::cerr << std::endl;
@@ -191,32 +192,33 @@ int main( int ac, char** av )
         double min_range = options.value( "--min-range", 0.0 );
         bool raw_intensity=options.exists( "--raw-intensity" );
         bool legacy = options.exists( "--legacy");
+        bool adjusted_time=options.exists("--adjusted-time");
         //use old algorithm for old database
         if (!legacy && db.version == 0){legacy=true; std::cerr<<"velodyne-to-csv: using legacy option for old database"<<std::endl;}
         if(legacy && db.version > 0){std::cerr<<"velodyne-to-csv: using new calibration with legacy option"<<std::endl;}
         if( options.exists( "--pcap" ) )
         {
-            velodyne_stream< snark::pcap_reader > v( db, outputInvalidpoints, from, to, raw_intensity, legacy );
+            velodyne_stream< snark::pcap_reader > v( db, outputInvalidpoints, from, to, raw_intensity, legacy, adjusted_time );
             run( v, csv, min_range );
         }
         else if( options.exists( "--thin" ) )
         {
-            velodyne_stream< snark::thin_reader > v( db, outputInvalidpoints, from, to, raw_intensity, legacy );
+            velodyne_stream< snark::thin_reader > v( db, outputInvalidpoints, from, to, raw_intensity, legacy, adjusted_time );
             run( v, csv, min_range );
         }
         else if( options.exists( "--udp-port" ) )
         {
-            velodyne_stream< snark::udp_reader > v( options.value< unsigned short >( "--udp-port" ), db, outputInvalidpoints, from, to, raw_intensity, legacy );
+            velodyne_stream< snark::udp_reader > v( options.value< unsigned short >( "--udp-port" ), db, outputInvalidpoints, from, to, raw_intensity, legacy, adjusted_time );
             run( v, csv, min_range );
         }
         else if( options.exists( "--proprietary,-q" ) )
         {
-            velodyne_stream< snark::proprietary_reader > v( db, outputInvalidpoints, from, to, raw_intensity, legacy );
+            velodyne_stream< snark::proprietary_reader > v( db, outputInvalidpoints, from, to, raw_intensity, legacy, adjusted_time );
             run( v, csv, min_range );
         }
         else
         {
-            velodyne_stream< snark::stream_reader > v( db, outputInvalidpoints, from, to, raw_intensity, legacy );
+            velodyne_stream< snark::stream_reader > v( db, outputInvalidpoints, from, to, raw_intensity, legacy, adjusted_time );
             run( v, csv, min_range );
         }
         return 0;

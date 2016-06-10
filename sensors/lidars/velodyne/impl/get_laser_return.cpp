@@ -30,6 +30,7 @@
 
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <comma/math/compare.h>
+#include <comma/base/exception.h>
 #include "angle.h"
 #include "get_laser_return.h"
 
@@ -121,20 +122,26 @@ struct hdl64_s2_fw_v48
 {
     typedef double block_time_table[lasers_per_block];
     static block_time_table time_table[block_count];
-    static boost::posix_time::time_duration time_offset( unsigned int block, unsigned int laser )
+    static boost::posix_time::time_duration time_delay( unsigned int block, unsigned int laser )
     {
-        double delay = time_table[block][laser%lasers_per_block] + timestamps::ethernetOutputDuration;
-        return boost::posix_time::microseconds( - delay);
+        if(laser<0 ||laser>=lasers_per_block) { COMMA_THROW( comma::exception, "laser id out of range" << laser ); }
+        if(block<0||block>=block_count) { COMMA_THROW(comma::exception, "block id out of range"<<block ); }
+        double delay = (time_table[block][laser] ) + timestamps::ethernetOutputDuration * 1e6;
+        return boost::posix_time::microseconds( delay);
     }
-    static double azimuth(const packet& packet, unsigned int block)
+    static double azimuth(const packet& packet, unsigned int block, unsigned int laser, double angularSpeed )
     {
         // todo: angular speed correction with offset for angular velocity that calibration was measured on
-        double a = double( packet.blocks[block].rotation() ) / 100 + 90;
+        double rotation = double( packet.blocks[block].rotation() ) / 100;
+        double laser_time = (time_table[block][0] - time_table[block][laser%lasers_per_block]) * 1e-6;
+        double a = rotation + 90;
+        a+=angularSpeed * laser_time;
         if( comma::math::less( a, 360 ) ) { if( comma::math::less( a, 0 ) ) { a += 360; } }
         else { a -= 360; }
         return a;
     }
 };
+
 //delay in microseconds for each data block, laser
 //each upper lasers is fired with a lower laser at the same time, e.g. lasers 0 and 32 fire at the same time then 1 and 33 ...
 //each row is for one block and each column is for one laser id 
@@ -174,10 +181,18 @@ laser_return get_laser_return( const packet& packet
     }
     else
     {
-        r.timestamp = timestamp + hdl64_s2_fw_v48::time_offset( block, laser );
-        r.azimuth = hdl64_s2_fw_v48::azimuth(packet, block);
+        r.timestamp = timestamp - hdl64_s2_fw_v48::time_delay( block, laser );
+        r.azimuth = hdl64_s2_fw_v48::azimuth(packet, block, laser, angularSpeed);
     }
     return r;
+}
+
+double time_span(bool legacy)
+{
+    if(legacy)
+        return double( ( time_offset( 0, 0 ) - time_offset( 11, 0 ) ).total_microseconds() ) / 1e6;
+    else
+        return double( (hdl64_s2_fw_v48::time_delay(0,0) - hdl64_s2_fw_v48::time_delay(11,0) ).total_microseconds() ) / 1e6;
 }
 
 } } } // namespace snark {  namespace velodyne { namespace impl {

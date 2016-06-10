@@ -118,7 +118,7 @@ static double angularSpeed( const snark::velodyne::packet& packet )
 {
     if( angularSpeed_ ) { return *angularSpeed_; }
     double da = double( packet.blocks[0].rotation() - packet.blocks[11].rotation() ) / 100;
-    double dt = double( ( snark::velodyne::impl::time_offset( 0, 0 ) - snark::velodyne::impl::time_offset( 11, 0 ) ).total_microseconds() ) / 1e6;
+    double dt = snark::velodyne::impl::time_span();
     return da / dt;
 }
 
