@@ -102,6 +102,7 @@ bool TextureReader::read_once()
     {
         if( !m_istream() ) { return true; }
         m_stream.reset( new comma::csv::input_stream< PointWithId >( *m_istream(), options ) );
+        m_stream->set_pass_through( m_pass_through );
     }
     const PointWithId* p = m_stream->read();
     if( p == NULL ) { m_shutdown = true; return false; }

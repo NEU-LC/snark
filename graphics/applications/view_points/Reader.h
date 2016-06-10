@@ -52,12 +52,19 @@ struct reader_parameters
     std::string title;
     std::size_t size;
     unsigned int point_size;
+    bool pass_through;
 
-    reader_parameters( const comma::csv::options& options, const std::string& title, std::size_t size, unsigned int point_size )
+    reader_parameters( const comma::csv::options& options
+                     , const std::string& title
+                     , std::size_t size
+                     , unsigned int point_size
+                     , bool pass_through
+                     )
         : options( options )
         , title( title )
         , size( size )
         , point_size( point_size )
+        , pass_through( pass_through )
     {}
 };
 
@@ -98,6 +105,7 @@ class Reader : public reader_parameters
         bool m_isStdIn;
         bool m_show;
         comma::io::istream m_istream;
+        std::ostream* m_pass_through;
         boost::scoped_ptr< boost::thread > m_thread;
         mutable boost::mutex m_mutex;
         boost::optional< Eigen::Vector3d > m_point;

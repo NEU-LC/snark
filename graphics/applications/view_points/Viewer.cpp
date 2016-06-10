@@ -76,6 +76,7 @@ Viewer::Viewer( const QColor4ub& background_color
     , m_lookAt( false )
     , m_cameraposition( cameraposition )
     , m_cameraorientation( cameraorientation )
+    , m_stdout_allowed( true )
 {
     if( output_camera_position ) { camera_position_output_.reset( new camera_position_output( *this ) ); }
     QTimer* timer = new QTimer( this );
@@ -184,7 +185,7 @@ void Viewer::paintGL( QGLPainter *painter )
         if( readers[i]->point_size > 1 ) { ::glDisable( GL_POINT_SMOOTH ); }
     }
     draw_coordinates( painter );
-    if( camera_position_output_ ) { camera_position_output_->write(); }
+    if( camera_position_output_ && m_stdout_allowed ) { camera_position_output_->write(); }
 }
 
 void Viewer::setCameraPosition ( const Eigen::Vector3d& position, const Eigen::Vector3d& orientation )
@@ -205,6 +206,11 @@ void Viewer::setCameraPosition ( const Eigen::Vector3d& position, const Eigen::V
 
 void Viewer::mouse_double_right_click_event(  QMouseEvent *e )
 {
+    if( !m_stdout_allowed )
+    {
+        std::cerr << "point under mouse output is disabled when \"pass\" option is in use" << std::endl;
+        return;
+    }
     boost::optional< QVector3D > point = getPoint( e->pos() );
     if( !point ) { std::cerr << "warning: no point found near the double right click" << std::endl; return; }
     Eigen::Vector3d p( point->x(), point->y(), point->z() );
