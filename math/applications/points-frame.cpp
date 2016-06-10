@@ -127,6 +127,8 @@ static void usage( bool verbose = false )
 
 bool timestamp_required = false; // quick and dirty
 boost::optional< boost::posix_time::time_duration > max_gap;
+uint64_t discarded_counter=0;
+boost::posix_time::time_duration discarded_time_diff_max;
 
 std::vector< boost::shared_ptr< snark::applications::frame > > parse_frames( const std::vector< std::string >& values
                                                     , const comma::csv::options& options
@@ -225,7 +227,13 @@ void run( const std::vector< boost::shared_ptr< snark::applications::frame > >& 
         {
             c = frames[i]->converted( converted );
             discarded = frames[i]->discarded();
-            if( discarded ) { break; }
+            if( discarded ) 
+            {
+                if(discarded_time_diff_max < frames[i]->discarded_time_diff())
+                    discarded_time_diff_max = frames[i]->discarded_time_diff();
+                discarded_counter++;
+                break; 
+            }
             if( c == NULL ) { return; }
             converted = *c;
         }
@@ -373,6 +381,7 @@ int main( int ac, char** av )
         //else { if( csv.fields != "" && !comma::csv::namesValid( comma::split( csv.fields, ',' ), comma::split( "x,y,z", ',' ) ) ) { COMMA_THROW( comma::exception, "expected mandatory fields x,y,z; got " << csv.fields ); } }
         if( timestamp_required ) { if( csv.fields != "" && !comma::csv::fields_exist( csv.fields, "t" ) ) { COMMA_THROW( comma::exception, "expected mandatory field t; got " << csv.fields ); } }
         run( frames, csv );
+        if(discarded_counter) { std::cerr<<"discarded "<<discarded_counter<<" points; max time diff: "<< discarded_time_diff_max.total_microseconds()<<" microseconds"<<std::endl; }
         return 0;
     }
     catch( std::exception& ex ) { std::cerr << "points-frame: " << ex.what() << std::endl; }

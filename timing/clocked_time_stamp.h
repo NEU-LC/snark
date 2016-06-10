@@ -40,7 +40,7 @@
 namespace snark{ namespace timing {
 
 /// Helps calculate a better approximation for the timestamp that happens
-/// with a very frequency (e.g. laser firing).
+/// with a very precise frequency (e.g. laser firing).
 ///
 /// The first few timestamps may be inaccurate, but eventually (quite fast,
 /// if the system is not under heavy load) the adjusted timestamp will

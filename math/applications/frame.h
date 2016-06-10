@@ -111,6 +111,8 @@ class frame
         const position& last() const { return m_position; }
 
         const bool outputframe;
+        
+        boost::posix_time::time_duration discarded_time_diff() const { return m_discarded_time_diff; }
 
     private:
         void set_position( const position& p );
@@ -133,6 +135,7 @@ class frame
         bool m_discarded;
         boost::optional< boost::posix_time::time_duration > m_maxGap;
         bool rotation_present_;
+        boost::posix_time::time_duration m_discarded_time_diff;
 };
 
 } } // namespace snark{ namespace applications {

@@ -27,48 +27,50 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include "velodyne_stream.h"
 
-#include <comma/base/exception.h>
-#include "stream_reader.h"
-#include <snark/timing/time.h>
-#ifdef WIN32
-#include <fcntl.h>
-#include <io.h>
-#endif
+namespace snark { namespace velodyne {
 
-namespace snark {
+db_calculator::db_calculator( const velodyne::db& db ) : db( db ) {}
 
-stream_reader::stream_reader( std::istream& is ) : istream_( is ), m_epoch( timing::epoch )
+std::pair< ::Eigen::Vector3d, ::Eigen::Vector3d > db_calculator::ray( unsigned int laser, double range, double angle ) const { return db.lasers[ laser ].ray( range, angle ); }
+
+::Eigen::Vector3d db_calculator::point( unsigned int laser, double range, double angle ) const { return db.lasers[ laser ].point( range, angle ); }
+
+double db_calculator::range( unsigned int laser, double range ) const { return db.lasers[ laser ].range( range ); }
+
+double db_calculator::azimuth( unsigned int laser, double azimuth ) const { return db.lasers[ laser ].azimuth( azimuth ); }
+
+double db_calculator::intensity( unsigned int laser, unsigned char intensity, double distance ) const { return db.lasers[ laser ].intensity( intensity, distance ); }
+
+std::pair< ::Eigen::Vector3d, ::Eigen::Vector3d > puck_calculator::ray( unsigned int laser, double range, double angle ) const
 {
-    #ifdef WIN32
-    if( is == std::cin ) { _setmode( _fileno( stdin ), _O_BINARY ); }
-    #endif
+    // todo
+    return std::pair< ::Eigen::Vector3d, ::Eigen::Vector3d >();
 }
 
-stream_reader::stream_reader( const std::string& filename )
-    : ifstream_( new std::ifstream( &filename[0], std::ios::binary ) )
-    , istream_( *ifstream_ )
-    , m_epoch( timing::epoch )
+::Eigen::Vector3d puck_calculator::point( unsigned int laser, double range, double angle ) const
 {
+    // todo
+    return ::Eigen::Vector3d();
 }
 
-stream_reader::~stream_reader() { if( ifstream_ ) { ifstream_->close(); } }
-
-const char* stream_reader::read()
+double puck_calculator::range( unsigned int laser, double range ) const
 {
-    istream_.read( reinterpret_cast< char* >( &m_microseconds ), sizeof( m_microseconds ) );
-    istream_.read( m_packet.data(), payload_size );
-    if( istream_.bad() || istream_.eof() ) { return NULL; }
-    comma::uint64 seconds = m_microseconds / 1000000; //to avoid time overflow on 32bit systems with boost::posix_time::microseconds( m_microseconds ), apparently due to a bug in boost
-    comma::uint64 microseconds = m_microseconds % 1000000;
-    m_timestamp = m_epoch + boost::posix_time::seconds( seconds ) + boost::posix_time::microseconds( microseconds ); // todo: encapsulate time conversion (use a wrapper from comma)
-    return &m_packet[0];
+    // todo
+    return 0;
 }
 
-const boost::posix_time::ptime& stream_reader::timestamp() const
+double puck_calculator::azimuth( unsigned int laser, double azimuth ) const
 {
-    return m_timestamp;
+    // todo
+    return 0;
 }
 
-} // namespace snark {
+double puck_calculator::intensity( unsigned int laser, unsigned char intensity, double distance ) const
+{
+    // todo
+    return 0;
+}
 
+} } // namespace snark { namespace velodyne {
