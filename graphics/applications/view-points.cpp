@@ -48,6 +48,7 @@ static void bash_completion( unsigned const ac, char const * const * av )
 {
     static const char * completion_options =
         " --help -h"
+        " --version"
         " --colour --color -c"
         " --label"
         " --no-stdin"
@@ -494,6 +495,7 @@ int main( int argc, char** argv )
     {
         comma::command_line_options options( argc, argv );
         if( options.exists( "--bash-completion" ) ) bash_completion( argc, argv );
+        if( options.exists( "--version" )) { std::cerr << "Qt version " << QT_VERSION_STR << std::endl; exit(0); }
         if( options.exists( "--help" ) || options.exists( "-h" ) ) { usage(); }
         comma::csv::options csvOptions( argc, argv );
         std::vector< std::string > properties = options.unnamed( "--z-is-up,--orthographic,--flush,--no-stdin,--output-camera-config,--output-camera,--pass-through,--pass"
