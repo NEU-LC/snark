@@ -32,6 +32,7 @@
 #define SNARK_ACTUATORS_QUICKSET_ptcr_PROTOCOL_H_
 
 #include <string>
+#include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/noncopyable.hpp>
 #include "commands.h"
 #include "packet.h"
@@ -46,7 +47,9 @@ class protocol : public boost::noncopyable
         ~protocol();
         
         template < typename C >
-        const packet< typename C::response >* send( const C& command );
+        const packet< typename C::response >* send( const C& command, bool debug=false );
+
+        bool receive( boost::posix_time::time_duration timeout = boost::posix_time::seconds( 1 ));
 
         void close();
         

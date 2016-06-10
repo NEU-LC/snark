@@ -28,6 +28,8 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <assert.h>
+#include <comma/base/exception.h>
+#include <cuda_runtime.h>
 #include "points_join_cuda.h"
 
 __global__ void snark_cuda_squared_norms_impl( double x, double y, double z, const double *points, double *squared_norms, unsigned int size )
@@ -54,9 +56,9 @@ namespace snark { namespace cuda {
 void squared_norms( const Eigen::Vector3d& v, buffer& b )
 {
     unsigned int size = b.out.size();
-    cudaError_t err = snark_cuda_squared_norms( v.x(), v.y(), v.z(), b.cuda_in, b.cuda_out, size );
+    cudaError_t err = snark_cuda_squared_norms( v.x(), v.y(), v.z(), b.cuda_in, b.cuda_out, size ); // this call comprises 25% of (massive) overhead
     if( err != cudaSuccess ) { COMMA_THROW( comma::exception, "cuda: square norm calculation failed; " << cudaGetErrorString( err ) ); }
-    err = cudaMemcpy( &b.out[0], b.cuda_out, size * sizeof( double ), cudaMemcpyDeviceToHost );
+    err = cudaMemcpy( &b.out[0], b.cuda_out, size * sizeof( double ), cudaMemcpyDeviceToHost ); // this memcpy comprises 75% of (massive) overhead
     if( err != cudaSuccess ) { COMMA_THROW( comma::exception, "cuda: copy failed; " << cudaGetErrorString( err ) ); }
 }
 

@@ -1,0 +1,82 @@
+#!/bin/bash
+
+scriptname=$( basename $0 )
+
+source $( type -p comma-application-util )
+
+readonly default_fields="pan,tilt"
+readonly default_hold_for=0
+
+function description()
+{
+    cat <<EOF
+--fields=[<input-fields>]; default: $default_fields
+--hold-for=[<seconds>]; hold for n seconds between each move
+--move-every=[<seconds>]; move again n seconds after last move
+EOF
+}
+
+function usage()
+{
+    cat <<EOF >&2
+
+Drive the QuickSet Pan & Tilt, holding at each point
+
+Usage: cat pantilt.csv | $scriptname <address> [<options>]
+
+<address>: tcp address or serial port
+    tcp address: e.g: tcp:192.168.0.1:12345
+    serial port: e.g: /dev/ttyS0
+
+Input data consists of pan/tilt coordinates in radians.
+
+Options
+$( description | sed 's/^/    /' )
+
+The difference between --hold-for and --move-every is that --hold-for starts
+the timer after the last move is complete, --move-every starts the timer when
+the last move starts.
+
+Default behaviour is to hold for 0 seconds, ie keep moving.
+
+Example
+    quickset-pantilt-raster-coords --from=-45,0 --to=45,40 --step=10,5 \\
+        | csv-unit --from degrees --fields a,b \\
+        | $scriptname "tcp:192.168.1.1:10001" --hold-for=3 \\
+        | view-points --fields t,x,y,,id
+
+EOF
+    exit 0
+}
+
+if (( $( comma_options_has "--help" $@ ) || $( comma_options_has "-h" $@ ) )); then
+    usage
+fi
+
+comma_path_value_to_var --prefix=options < <( description | comma-options-to-name-value $@ | grep '=' )
+options_fields=${options_fields:-$default_fields}
+options_hold_for=${options_hold_for:-$default_hold_for}
+
+address=$( echo $( description | comma-options-to-name-value $@ | grep -v '=' | sed 's/"//g' ))
+[[ $address ]] || usage
+
+if [[ $options_move_every ]]; then
+    csv-paste line-number - \
+        | csv-time --from seconds \
+        | csv-play --slow $options_move_every \
+        | quickset-pantilt-control $address --fields ,$options_fields
+elif [[ $options_hold_for ]]; then
+    coproc pantilt { quickset-pantilt-control $address --fields $options_fields; }
+    echo "fd's: ${pantilt[0]} ${pantilt[1]}" >&2
+    while read pan_tilt; do
+        echo $pan_tilt >&"${pantilt[1]}"
+        moving=0
+        while : ; do
+            IFS="," read t x y a b z <&"${pantilt[0]}"
+            echo $t,$x,$y,$a,$b,$z
+            (( !moving && b )) && moving=1
+            (( moving && !b )) && break
+        done
+        sleep $options_hold_for
+    done
+fi

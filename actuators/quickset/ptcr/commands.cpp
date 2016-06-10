@@ -27,24 +27,15 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#pragma once
+#include "commands.h"
 
-#include <vector>
-#include <Eigen/Core>
+namespace snark { namespace quickset { namespace ptcr { namespace commands {
 
-namespace snark { namespace cuda {
-    
-struct buffer
-{
-    std::vector< double > out;
-    double* cuda_in;
-    double* cuda_out;
+const char* const get_status::name    = "get-status";
+const char* const move_to::name       = "move-to";
+const char* const move_to_delta::name = "move-to-delta";
+const char* const get_limits::name    = "get-limits";
+const char* const set_limits::name    = "set-limits";
+const char* const set_camera::name    = "set-camera";
 
-    buffer() : cuda_in( NULL ), cuda_out( NULL ) {}
-    template < typename V >
-    buffer( const V& v, double* cuda_in, double* cuda_out ) : out( v.size() ), cuda_in( cuda_in ), cuda_out( cuda_out ) {}
-};
-
-void squared_norms( const Eigen::Vector3d& v, buffer& b );
-
-} } // namespace snark { namespace cuda {
+} } } } // namespace snark { namespace quickset { namespace ptcr { namespace commands {
