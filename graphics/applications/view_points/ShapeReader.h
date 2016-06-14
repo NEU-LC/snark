@@ -153,6 +153,7 @@ inline bool ShapeReader< S, How >::read_once()
                 return true;
             }
             m_stream.reset( new comma::csv::input_stream< ShapeWithId< S > >( *m_istream(), options, sample_ ) );
+            m_stream->set_pass_through( m_pass_through );
         }
         const ShapeWithId< S >* p = m_stream->read();
         if( p == NULL )

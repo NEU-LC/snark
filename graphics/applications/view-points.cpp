@@ -48,9 +48,11 @@ static void bash_completion( unsigned const ac, char const * const * av )
 {
     static const char * completion_options =
         " --help -h"
+        " --version"
         " --colour --color -c"
         " --label"
         " --no-stdin"
+        " --pass-through --pass"
         " --point-size --weight"
         " --shape"
         " --size"
@@ -121,6 +123,7 @@ static void usage()
         "\n      hide: e.g. \"test.csv;hide\": hide the source, when shown first time (useful, when there are very many inputs"
         "\n    --label <label>: text label displayed next to the latest point"
         "\n    --no-stdin: do not read from stdin"
+        "\n    --pass-through,--pass; pass input data to stdout"
         "\n    --point-size,--weight <point size>: default: 1"
         "\n    --shape <shape>: \"point\", \"extents\", \"line\", \"label\"; default \"point\""
         "\n                     \"arc\": e.g: --shape=arc --fields=,,begin,end,centre,"
@@ -233,6 +236,9 @@ static void usage()
         "\n    specify fixed scene radius explicitly:"
         "\n        cat xyz.csv | view-points --scene-radius=100"
         "\n"
+        "\n    passing input data through:"
+        "\n        cat xyz.csv | view-points \"-;pass-through\" scan.csv"
+        "\n"
         "\nusing images"
         "\n    show image with given position"
         "\n        echo 0,0,0 | view-points \"-;shape=image.jpg\""
@@ -304,6 +310,8 @@ template <> struct traits< model_options >
 
 } } // namespace comma { namespace visiting {
 
+static bool data_passed_through = false;
+
 // quick and dirty, todo: a proper structure, as well as a visitor for command line options
 boost::shared_ptr< snark::graphics::View::Reader > makeReader( QGLView& viewer
                                                              , const comma::command_line_options& options
@@ -315,7 +323,9 @@ boost::shared_ptr< snark::graphics::View::Reader > makeReader( QGLView& viewer
     snark::graphics::View::Reader::reader_parameters param( csvOptions
                                                           , options.value( "--title", csvOptions.filename )
                                                           , options.value< std::size_t >( "--size", shape == "point" ? 2000000 : 200000 )
-                                                          , options.value( "--point-size,--weight", 1u ) );
+                                                          , options.value( "--point-size,--weight", 1u )
+                                                          , options.exists( "--pass-through,--pass" )
+                                                          );
     std::string colour = options.exists( "--colour" ) ? options.value< std::string >( "--colour" ) : options.value< std::string >( "-c", "-10:10" );
     std::string label = options.value( "--label", std::string() );
     bool show = true;
@@ -333,6 +343,15 @@ boost::shared_ptr< snark::graphics::View::Reader > makeReader( QGLView& viewer
         else if( m.exists( "color" ) ) { colour = m.value( "color", colour ); }
         label = m.value( "label", label );
         show = !m.exists( "hide" );
+        param.pass_through = ( m.exists( "pass-through" ) || m.exists( "pass" ));
+        if( param.pass_through )
+        {
+            if( data_passed_through )
+            {
+                COMMA_THROW( comma::exception, "only one input stream can be given \"pass-through\" option" );
+            }
+            data_passed_through = true;
+        }
     }
     if( param.title == "none" ) param.title = "";
     if( !show ) { std::cerr << "view-points: " << ( param.title.empty() ? param.options.filename : param.title )<< " will be hidden on startup; tick the box next to the name to make it visible" << std::endl; }
@@ -476,9 +495,10 @@ int main( int argc, char** argv )
     {
         comma::command_line_options options( argc, argv );
         if( options.exists( "--bash-completion" ) ) bash_completion( argc, argv );
+        if( options.exists( "--version" )) { std::cerr << "Qt version " << QT_VERSION_STR << std::endl; exit(0); }
         if( options.exists( "--help" ) || options.exists( "-h" ) ) { usage(); }
         comma::csv::options csvOptions( argc, argv );
-        std::vector< std::string > properties = options.unnamed( "--z-is-up,--orthographic,--flush,--no-stdin,--output-camera-config,--output-camera"
+        std::vector< std::string > properties = options.unnamed( "--z-is-up,--orthographic,--flush,--no-stdin,--output-camera-config,--output-camera,--pass-through,--pass"
                 , "--binary,--bin,-b,--fields,--size,--delimiter,-d,--colour,-c,--point-size,--weight,--background-colour,--scene-center,--center,--scene-radius,--radius,--shape,--label,--title,--camera,--camera-position,--camera-config,--fov,--model,--full-xpath" );
         QColor4ub backgroundcolour( QColor( QString( options.value< std::string >( "--background-colour", "#000000" ).c_str() ) ) );
         boost::optional< comma::csv::options > camera_csv;
@@ -566,6 +586,14 @@ int main( int argc, char** argv )
         {
             csvOptions.filename = "-";
             viewer->readers.push_back( makeReader( *viewer, options, csvOptions ) );
+        }
+        if( data_passed_through )
+        {
+            viewer->inhibit_stdout();
+            if( options.exists( "--output-camera-config,--output-camera" ))
+            {
+                std::cerr << "warning: disabling --output-camera-config whilst \"pass-through\" option is in use" << std::endl;
+            }
         }
         snark::graphics::View::MainWindow mainWindow( comma::join( argv, argc, ' ' ), viewer );
         mainWindow.show();
