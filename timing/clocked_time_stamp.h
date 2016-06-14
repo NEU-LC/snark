@@ -39,6 +39,15 @@
 
 namespace snark{ namespace timing {
 
+struct adjusted_time_config
+{
+    boost::posix_time::time_duration period;
+    boost::posix_time::time_duration threshold;
+    boost::posix_time::time_duration reset;
+    adjusted_time_config() { }
+    adjusted_time_config(boost::posix_time::time_duration p, boost::posix_time::time_duration th, boost::posix_time::time_duration r) : period(p), threshold(th), reset(r) { }
+};
+
 /// Helps calculate a better approximation for the timestamp that happens
 /// with a very precise frequency (e.g. laser firing).
 ///
@@ -82,6 +91,19 @@ class clocked_time_stamp : public boost::noncopyable
     private:
         class impl;
         impl* m_pimpl;
+};
+
+class periodic_time_stamp
+{
+public:
+    periodic_time_stamp(const adjusted_time_config& config);
+    boost::posix_time::ptime adjusted(const boost::posix_time::ptime& t,std::size_t ticks=1);
+    void reset();
+    const adjusted_time_config& config() const;
+private:
+    adjusted_time_config config_;
+    boost::posix_time::ptime last_;
+    boost::posix_time::ptime last_reset_;
 };
 
 } } // namespace snark{ namespace timing

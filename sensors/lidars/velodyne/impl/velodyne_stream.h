@@ -62,7 +62,7 @@ public:
                   , bool outputInvalidpoints
                   , boost::optional< std::size_t > from = boost::optional< std::size_t >(), boost::optional< std::size_t > to = boost::optional< std::size_t >()
                    , bool raw_intensity = false
-                   , bool legacy = false, bool adjusted_time=false);
+                   , bool legacy = false, unsigned adjusted_time=0, boost::optional<snark::timing::adjusted_time_config> adjusted_time_config=boost::optional<snark::timing::adjusted_time_config>());
 
     template < typename P >
     velodyne_stream( const P& p
@@ -70,7 +70,7 @@ public:
                   , bool outputInvalidpoints
                   , boost::optional< std::size_t > from = boost::optional< std::size_t >(), boost::optional< std::size_t > to = boost::optional< std::size_t >() 
                    , bool raw_intensity = false
-                   , bool legacy = false, bool adjusted_time=false);
+                   , bool legacy = false, unsigned adjusted_time=0, boost::optional<snark::timing::adjusted_time_config> adjusted_time_config=boost::optional<snark::timing::adjusted_time_config>());
 
     bool read();
     const velodyne_point& point() const { return m_point; }
@@ -88,8 +88,8 @@ velodyne_stream< S >::velodyne_stream ( const velodyne::db& db, bool outputInval
                     , boost::optional< std::size_t > from
                     , boost::optional< std::size_t > to 
                     , bool raw_intensity
-                    , bool legacy, bool adjusted_time):
-    m_stream( new S, outputInvalidpoints, legacy, adjusted_time ),
+                    , bool legacy, unsigned adjusted_time, boost::optional<snark::timing::adjusted_time_config> adjusted_time_config):
+    m_stream( new S, outputInvalidpoints, legacy, adjusted_time, adjusted_time_config ),
     m_db( db ),
     m_to( to ),
     m_raw_intensity(raw_intensity)
@@ -103,8 +103,8 @@ velodyne_stream< S >::velodyne_stream ( const P& p, const velodyne::db& db, bool
                     , boost::optional< std::size_t > from
                     , boost::optional< std::size_t > to 
                     , bool raw_intensity
-                    , bool legacy, bool adjusted_time):
-    m_stream( new S( p ), outputInvalidpoints, legacy, adjusted_time ),
+                    , bool legacy, unsigned adjusted_time,boost::optional<snark::timing::adjusted_time_config> adjusted_time_config):
+    m_stream( new S( p ), outputInvalidpoints, legacy, adjusted_time, adjusted_time_config ),
     m_db( db ),
     m_to( to ),
     m_raw_intensity(raw_intensity)

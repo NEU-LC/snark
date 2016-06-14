@@ -47,6 +47,7 @@
 #include "../impl/udp_reader.h"
 #include "../impl/stream_reader.h"
 #include "../impl/velodyne_stream.h"
+#include "../../../../timing/clocked_time_stamp.h"
 
 //#include <google/profiler.h>
 
@@ -86,7 +87,15 @@ static void usage()
     std::cerr << "                                    :3 for scans 0, 1, 2, 3" << std::endl;
     std::cerr << "    --raw-intensity: output intensity data without any correction" << std::endl;
     std::cerr << "    --legacy: use old timetable and old algorithm for azimuth calculation" << std::endl;
-    std::cerr << "    --adjusted-time: adjust input time to match velodyne period; when using on log files, the timestamps may change depending on start of data" << std::endl;
+    std::cerr << "    --adjusted-time=<mode>: adjust input time to match velodyne period; " << std::endl;
+    std::cerr << "        mode is string name for method of adjustment:" << std::endl;
+    std::cerr << "            'average': adjust total deviation" << std::endl;
+    std::cerr << "            'hard': use closest point as base then add period for later points" << std::endl;
+    std::cerr << "        when using on log files, the timestamps may change depending on start of data" << std::endl;
+    std::cerr << "    --adjusted-time-threshold=<threshold>: upper bound for adjusting timestamp, only effective with --adjusted-time; unit: microseconds, default: "<< snark::velodyne::VELODYNE_ADJUSTED_TIME_THRESHOLD << std::endl;
+    std::cerr << "        if input timestamp is greater than period * ticks + <threshold>, it will reset adjusted time and the input timestamp will be used without change" << std::endl;
+    std::cerr << "    --adjusted-time-reset=<reset>: reset adjusted time after this time, only effective with --adjusted-time; unit: seconds, default: "<< snark::velodyne::VELODYNE_ADJUSTED_TIME_RESET << std::endl;
+    std::cerr << "        if input timestamp + <reset> is greater than last reset time, it will reset adjusted time and the input timestamp will be used without change" << std::endl;
     std::cerr << "    default output columns: " << comma::join( comma::csv::names< velodyne_point >(), ',' ) << std::endl;
     std::cerr << "    default binary format: " << comma::csv::format::value< velodyne_point >() << std::endl;
     std::cerr << std::endl;
@@ -192,33 +201,37 @@ int main( int ac, char** av )
         double min_range = options.value( "--min-range", 0.0 );
         bool raw_intensity=options.exists( "--raw-intensity" );
         bool legacy = options.exists( "--legacy");
-        bool adjusted_time=options.exists("--adjusted-time");
+        snark::timing::adjusted_time_config adjusted_time_config;
+        unsigned adjusted_time=snark::velodyne::adjusted_time_t::from_string(options.value<std::string>("--adjusted-time",""));
+        adjusted_time_config.period=boost::posix_time::microseconds(snark::velodyne::VELODYNE_ADJUSTED_TIME_PERIOD);
+        adjusted_time_config.threshold=boost::posix_time::microseconds(options.value<unsigned>("--adjusted-time-threshold",snark::velodyne::VELODYNE_ADJUSTED_TIME_THRESHOLD));
+        adjusted_time_config.reset=boost::posix_time::seconds(options.value<unsigned>("--adjusted-time-reset",snark::velodyne::VELODYNE_ADJUSTED_TIME_RESET));
         //use old algorithm for old database
         if (!legacy && db.version == 0){legacy=true; std::cerr<<"velodyne-to-csv: using legacy option for old database"<<std::endl;}
         if(legacy && db.version > 0){std::cerr<<"velodyne-to-csv: using new calibration with legacy option"<<std::endl;}
         if( options.exists( "--pcap" ) )
         {
-            velodyne_stream< snark::pcap_reader > v( db, outputInvalidpoints, from, to, raw_intensity, legacy, adjusted_time );
+            velodyne_stream< snark::pcap_reader > v( db, outputInvalidpoints, from, to, raw_intensity, legacy, adjusted_time, adjusted_time_config );
             run( v, csv, min_range );
         }
         else if( options.exists( "--thin" ) )
         {
-            velodyne_stream< snark::thin_reader > v( db, outputInvalidpoints, from, to, raw_intensity, legacy, adjusted_time );
+            velodyne_stream< snark::thin_reader > v( db, outputInvalidpoints, from, to, raw_intensity, legacy, adjusted_time, adjusted_time_config );
             run( v, csv, min_range );
         }
         else if( options.exists( "--udp-port" ) )
         {
-            velodyne_stream< snark::udp_reader > v( options.value< unsigned short >( "--udp-port" ), db, outputInvalidpoints, from, to, raw_intensity, legacy, adjusted_time );
+            velodyne_stream< snark::udp_reader > v( options.value< unsigned short >( "--udp-port" ), db, outputInvalidpoints, from, to, raw_intensity, legacy, adjusted_time, adjusted_time_config );
             run( v, csv, min_range );
         }
         else if( options.exists( "--proprietary,-q" ) )
         {
-            velodyne_stream< snark::proprietary_reader > v( db, outputInvalidpoints, from, to, raw_intensity, legacy, adjusted_time );
+            velodyne_stream< snark::proprietary_reader > v( db, outputInvalidpoints, from, to, raw_intensity, legacy, adjusted_time, adjusted_time_config );
             run( v, csv, min_range );
         }
         else
         {
-            velodyne_stream< snark::stream_reader > v( db, outputInvalidpoints, from, to, raw_intensity, legacy, adjusted_time );
+            velodyne_stream< snark::stream_reader > v( db, outputInvalidpoints, from, to, raw_intensity, legacy, adjusted_time, adjusted_time_config );
             run( v, csv, min_range );
         }
         return 0;

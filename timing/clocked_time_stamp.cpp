@@ -106,6 +106,31 @@ boost::posix_time::ptime clocked_time_stamp::adjusted( const boost::posix_time::
 boost::posix_time::time_duration clocked_time_stamp::period() const { return m_pimpl->m_period; }
 
 void clocked_time_stamp::reset(){m_pimpl->reset();}
+
+/***************************************************************************************************/
+
+periodic_time_stamp::periodic_time_stamp(const adjusted_time_config& config) : config_(config) { }
+boost::posix_time::ptime periodic_time_stamp::adjusted(const boost::posix_time::ptime& timestamp,std::size_t ticks)
+{
+    boost::posix_time::ptime newt;
+    newt=timestamp;
+    if(!last_.is_not_a_date_time() && (timestamp-last_reset_)<config_.reset)
+    {
+        boost::posix_time::time_duration delta=timestamp-last_;
+        if( delta > config_.period * ticks && delta < config_.period * ticks + config_.threshold )
+        {
+            newt=last_+config_.period*ticks;
+        }
+        else
+                last_reset_=timestamp;
+    }
+    else
+        last_reset_=timestamp;
+    last_=newt;
+    return newt;
+}
+void periodic_time_stamp::reset() { last_ = boost::posix_time::not_a_date_time; }
+const adjusted_time_config& periodic_time_stamp::config() const { return config_; }
     
 } } // namespace snark{ namespace timing
 
