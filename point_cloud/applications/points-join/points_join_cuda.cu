@@ -43,6 +43,21 @@ __global__ void snark_cuda_squared_norms_impl( double x, double y, double z, con
     squared_norms[i] = x * x + y * y + z * z;
 }
 
+// __global__ void snark_cuda_min_impl( const double* inputs, unsigned int input_size, unsigned int* offsets, unsigned int* sizes, double** results, double *values, double threshold )
+// {
+//     unsigned int i = blockDim.x * blockIdx.x + threadIdx.x;
+//     if( i >= size ) { return; }
+//     double* result = NULL;
+//     double min_squared_norm = 0;
+//     double* cur = values + offsets[i];
+//     for( unsigned int k = 0; k < sizes[i]; ++k, ++cur )
+//     {
+//         double squared_norm = 
+//         if( !result || *result > *cur ) { result = cur; }
+//     }
+//     results[i] = result;
+// }
+
 cudaError_t snark_cuda_squared_norms( double x, double y, double z, const double *points, double *square_norms, unsigned int size )
 {
     int threads = 128;
@@ -50,6 +65,14 @@ cudaError_t snark_cuda_squared_norms( double x, double y, double z, const double
     snark_cuda_squared_norms_impl<<<blocks, threads>>>( x, y, z, points, square_norms, size );
     return cudaGetLastError();
 }
+
+// cudaError_t snark_cuda_min( double* input, unsigned int input_size, const double *points, double *square_norms, unsigned int size )
+// {
+//     int threads = 256;
+//     int blocks = ( input_size - 1 ) / threads + 1;
+//     snark_cuda_squared_norms_impl<<<blocks, threads>>>( x, y, z, points, square_norms, size );
+//     return cudaGetLastError();
+// }
 
 namespace snark { namespace cuda {
 

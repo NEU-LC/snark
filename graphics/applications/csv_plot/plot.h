@@ -33,8 +33,10 @@
 #define SNARK_GRAPHICS_APPLICATIONS_CSV_PLOT_PLOT_H_
 
 #include <qwt/qwt_plot.h>
+#ifndef Q_MOC_RUN
 #include <boost/ptr_container/ptr_vector.hpp>
 #include "stream.h"
+#endif
 
 namespace snark { namespace graphics { namespace plotting {
     

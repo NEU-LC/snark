@@ -68,6 +68,8 @@ class Viewer : public qt3d::view
               , boost::optional< double > scene_radius = boost::optional< double >()
               , bool output_camera_position = false );
 
+        void inhibit_stdout() { m_stdout_allowed = false; }
+
         void shutdown();
 
     private slots:
@@ -97,6 +99,7 @@ class Viewer : public qt3d::view
         };
         friend class camera_position_output;
         boost::scoped_ptr< camera_position_output > camera_position_output_;
+        bool m_stdout_allowed;
 };
 
 } } } // namespace snark { namespace graphics { namespace View {

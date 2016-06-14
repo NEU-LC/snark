@@ -34,6 +34,8 @@
 #ifndef WIN32
 #include <stdlib.h>
 #endif
+#include <boost/scoped_ptr.hpp>
+#include <comma/csv/stream.h>
 #include <snark/visiting/eigen.h>
 #include "../stream.h"
 #include "../db.h"
@@ -52,6 +54,41 @@ struct velodyne_point
     bool valid;
     comma::uint32 scan;
 };
+
+namespace velodyne {
+
+struct calculator
+{
+    virtual ~calculator() {}
+    virtual std::pair< ::Eigen::Vector3d, ::Eigen::Vector3d > ray( unsigned int laser, double range, double angle ) const = 0;
+    virtual ::Eigen::Vector3d point( unsigned int laser, double range, double angle ) const = 0;
+    virtual double range( unsigned int laser, double range ) const = 0;
+    virtual double azimuth( unsigned int laser, double azimuth ) const = 0;
+    virtual double intensity( unsigned int laser, unsigned char intensity, double distance ) const = 0;
+};
+    
+struct db_calculator : public calculator
+{
+    const velodyne::db& db;
+    
+    db_calculator( const velodyne::db& db );
+    std::pair< ::Eigen::Vector3d, ::Eigen::Vector3d > ray( unsigned int laser, double range, double angle ) const;
+    ::Eigen::Vector3d point( unsigned int laser, double range, double angle ) const;
+    double range( unsigned int laser, double range ) const;
+    double azimuth( unsigned int laser, double azimuth ) const;
+    double intensity( unsigned int laser, unsigned char intensity, double distance ) const;
+};
+
+struct puck_calculator : public calculator
+{
+    std::pair< ::Eigen::Vector3d, ::Eigen::Vector3d > ray( unsigned int laser, double range, double angle ) const;
+    ::Eigen::Vector3d point( unsigned int laser, double range, double angle ) const;
+    double range( unsigned int laser, double range ) const;
+    double azimuth( unsigned int laser, double azimuth ) const;
+    double intensity( unsigned int laser, unsigned char intensity, double distance ) const;
+};
+
+} // namespace velodyne {
 
 /// convert stream of raw velodyne data into velodyne points
 template < typename S >

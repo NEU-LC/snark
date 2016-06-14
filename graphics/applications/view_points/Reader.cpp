@@ -44,6 +44,7 @@ Reader::Reader( QGLView& viewer, const reader_parameters& params, coloured* c, c
     , m_isStdIn( options.filename == "-" )
     , m_show( true )
     , m_istream( options.filename, options.binary() ? comma::io::mode::binary : comma::io::mode::ascii, comma::io::mode::non_blocking )
+    , m_pass_through( params.pass_through ? &std::cout : 0 )
     , updated_( false )
     , id_( 0 )
     , m_label( label )
@@ -70,6 +71,8 @@ void Reader::read()
     for( ; !m_shutdown && read_once(); ++m_num_points );
     std::cerr << "view-points: end of " << options.filename << "; read " << m_num_points << " record(s)" << std::endl;
     m_shutdown = true;
+    // This probably shouldn't be here, but shutdown() is never called, so it can't be there.
+    if( m_pass_through ) { close( STDOUT_FILENO ); }
 }
 
 bool Reader::updatePoint( const Eigen::Vector3d& offset )
