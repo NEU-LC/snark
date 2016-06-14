@@ -66,6 +66,7 @@ class TextureReader : public Reader
 
     protected:
         boost::scoped_ptr< comma::csv::input_stream< PointWithId > > m_stream;
+        boost::scoped_ptr< comma::csv::passed< PointWithId > > m_passed;
         struct image_
         {
             QImage image;

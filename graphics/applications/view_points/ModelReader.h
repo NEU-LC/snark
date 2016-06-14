@@ -62,6 +62,7 @@ class ModelReader : public Reader
 
     protected:
         boost::scoped_ptr< comma::csv::input_stream< PointWithId > > m_stream;
+        boost::scoped_ptr< comma::csv::passed< PointWithId > > m_passed;
         const std::string m_file;
         QGLAbstractScene* m_scene;
         bool m_flip;

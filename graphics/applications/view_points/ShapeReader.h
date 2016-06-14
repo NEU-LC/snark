@@ -61,6 +61,7 @@ class ShapeReader : public Reader
         deque_t_ m_deque;
         mutable boost::mutex m_mutex;
         boost::scoped_ptr< comma::csv::input_stream< ShapeWithId< S > > > m_stream;
+        boost::scoped_ptr< comma::csv::passed< ShapeWithId< S > > > m_passed;
         qt3d::vertex_buffer buffer_;
         struct label_t_ // quick and dirty
         {
@@ -153,7 +154,8 @@ inline bool ShapeReader< S, How >::read_once()
                 return true;
             }
             m_stream.reset( new comma::csv::input_stream< ShapeWithId< S > >( *m_istream(), options, sample_ ) );
-            m_stream->set_pass_through( m_pass_through );
+            if( m_pass_through ) { m_passed.reset( new comma::csv::passed< ShapeWithId< S > >( *m_stream, *m_pass_through )); }
+            else { m_passed.reset(); }
         }
         const ShapeWithId< S >* p = m_stream->read();
         if( p == NULL )
@@ -161,6 +163,7 @@ inline bool ShapeReader< S, How >::read_once()
             m_shutdown = true;
             return false;
         }
+        if( m_passed ) { m_passed->write(); }
         ShapeWithId< S > v = *p;
         const Eigen::Vector3d& center = Shapetraits< S, How >::center( v.shape );
         v.color = m_colored->color( center, p->id, p->scalar, p->color );
