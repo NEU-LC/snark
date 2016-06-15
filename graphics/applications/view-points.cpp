@@ -344,14 +344,14 @@ boost::shared_ptr< snark::graphics::View::Reader > makeReader( QGLView& viewer
         label = m.value( "label", label );
         show = !m.exists( "hide" );
         param.pass_through = ( m.exists( "pass-through" ) || m.exists( "pass" ));
-        if( param.pass_through )
+    }
+    if( param.pass_through )
+    {
+        if( data_passed_through )
         {
-            if( data_passed_through )
-            {
-                COMMA_THROW( comma::exception, "only one input stream can be given \"pass-through\" option" );
-            }
-            data_passed_through = true;
+            COMMA_THROW( comma::exception, "only one input stream can be given \"pass-through\" option" );
         }
+        data_passed_through = true;
     }
     if( param.title == "none" ) param.title = "";
     if( !show ) { std::cerr << "view-points: " << ( param.title.empty() ? param.options.filename : param.title )<< " will be hidden on startup; tick the box next to the name to make it visible" << std::endl; }
@@ -592,13 +592,14 @@ int main( int argc, char** argv )
             viewer->inhibit_stdout();
             if( options.exists( "--output-camera-config,--output-camera" ))
             {
-                std::cerr << "warning: disabling --output-camera-config whilst \"pass-through\" option is in use" << std::endl;
+                COMMA_THROW( comma::exception, "cannot use --output-camera-config whilst \"pass-through\" option is in use" );
             }
         }
         snark::graphics::View::MainWindow mainWindow( comma::join( argv, argc, ' ' ), viewer );
         mainWindow.show();
-        /*return*/ application.exec();
+        application.exec();
         delete viewer;
+        return 0;       // We never actually reach this line because we raise SIGINT when closing
     }
     catch( std::exception& ex )
     {
@@ -608,4 +609,5 @@ int main( int argc, char** argv )
     {
         std::cerr << "view-points: unknown exception" << std::endl;
     }
+    return 1;
 }
