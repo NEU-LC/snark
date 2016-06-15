@@ -42,16 +42,8 @@
 #include "laser_return.h"
 #include "impl/stream_traits.h"
 #include "scan_tick.h"
-#include "snark/timing/clocked_time_stamp.h"
 
 namespace snark {  namespace velodyne {
-
-struct adjusted_time_t
-{
-    enum { none=0, average, hard };
-    static unsigned from_string(const std::string& s);
-    static snark::timing::adjusted_time_config config_default();
-};
 
 /// velodyne point stream
 template < typename S >
@@ -59,10 +51,10 @@ class stream : public boost::noncopyable
 {
     public:
         /// constructor
-        stream( S* stream, unsigned int rpm, bool outputInvalid = false, bool legacy = false, unsigned adjusted_time = adjusted_time_t::none, boost::optional<snark::timing::adjusted_time_config> adjusted_time_config=boost::optional<snark::timing::adjusted_time_config>() );
+        stream( S* stream, unsigned int rpm, bool outputInvalid = false, bool legacy = false );
 
         /// constructor
-        stream( S* stream, bool outputInvalid = false, bool legacy = false, unsigned adjusted_time = adjusted_time_t::none, boost::optional<snark::timing::adjusted_time_config> adjusted_time_config=boost::optional<snark::timing::adjusted_time_config>() );
+        stream( S* stream, bool outputInvalid = false, bool legacy = false );
 
         /// read point, return NULL, if end of stream
         laser_return* read();
@@ -113,39 +105,28 @@ class stream : public boost::noncopyable
         laser_return m_laserReturn;
         double angularSpeed();
         bool m_legacy;
-        unsigned adjusted_time_;
-        snark::timing::clocked_time_stamp adjusted_timestamp_;
-        snark::timing::periodic_time_stamp periodic_time_stamp_;
-        boost::posix_time::ptime last_timestamp_;
-        void adjust_timestamp();
 };
 
 
 template < typename S >
-inline stream< S >::stream( S* stream, unsigned int rpm, bool outputInvalid, bool legacy, unsigned adjusted_time, boost::optional<snark::timing::adjusted_time_config> adjusted_time_config )
+inline stream< S >::stream( S* stream, unsigned int rpm, bool outputInvalid, bool legacy )
     : m_angularSpeed( ( 360 / 60 ) * rpm )
     , m_outputInvalid( outputInvalid )
     , m_stream( stream )
     , m_scan( 0 )
     , m_closed( false )
     , m_legacy(legacy)
-    , adjusted_time_(adjusted_time)
-    , adjusted_timestamp_(adjusted_time_t::config_default().period)
-    , periodic_time_stamp_(adjusted_time_config ? *adjusted_time_config : adjusted_time_t::config_default())
 {
     m_index.idx = m_size;
 }
 
 template < typename S >
-inline stream< S >::stream( S* stream, bool outputInvalid, bool legacy, unsigned adjusted_time, boost::optional<snark::timing::adjusted_time_config> adjusted_time_config )
+inline stream< S >::stream( S* stream, bool outputInvalid, bool legacy )
     : m_outputInvalid( outputInvalid )
     , m_stream( stream )
     , m_scan( 0 )
     , m_closed( false )
     , m_legacy(legacy)
-    , adjusted_time_(adjusted_time)
-    , adjusted_timestamp_(adjusted_time_t::config_default().period)
-    , periodic_time_stamp_(adjusted_time_config ? *adjusted_time_config : adjusted_time_t::config_default())
 {
     m_index.idx = m_size;
 }
@@ -157,29 +138,6 @@ inline double stream< S >::angularSpeed()
     double da = double( m_packet->blocks[0].rotation() - m_packet->blocks[11].rotation() ) / 100;
     double dt = impl::time_span(m_legacy);
     return da / dt;
-}
-template < typename S >
-inline void stream< S >::adjust_timestamp()
-{
-    if(!adjusted_time_)
-        return;
-    if( ! last_timestamp_.is_not_a_date_time() && 
-        (m_timestamp - last_timestamp_) > adjusted_time_t::config_default().threshold )
-    {
-            adjusted_timestamp_.reset();
-            //periodic_time_stamp_.reset();
-    }
-    last_timestamp_=m_timestamp;
-    switch(adjusted_time_)
-    {
-        case adjusted_time_t::average:
-            m_timestamp=adjusted_timestamp_.adjusted(m_timestamp);
-            break;
-        case adjusted_time_t::hard:
-            m_timestamp=periodic_time_stamp_.adjusted(m_timestamp);
-            break;
-        default: { COMMA_THROW(comma::exception, "invalid adjust time mode "<< adjusted_time_ ); }
-    }
 }
 
 template < typename S >
@@ -195,16 +153,10 @@ inline laser_return* stream< S >::read()
             //if( m_tick.is_new_scan( *m_packet ) ) { ++m_scan; }
             if( impl::stream_traits< S >::is_new_scan( m_tick, *m_stream, *m_packet ) ) { ++m_scan; }
             m_timestamp = impl::stream_traits< S >::timestamp( *m_stream );
-            if(adjusted_time_)
-                adjust_timestamp();
-            //comma::verbose << "timestamp "<<boost::posix_time::to_iso_string(m_timestamp) << std::endl;
         }
         if(m_timestamp == boost::posix_time::ptime(boost::date_time::not_a_date_time)) 
         {
             m_timestamp = impl::stream_traits< S >::timestamp( *m_stream );
-            if(adjusted_time_)
-                adjust_timestamp();
-            //comma::verbose << "timestamp "<<boost::posix_time::to_iso_string(m_timestamp) << std::endl;
         }
         m_laserReturn = impl::get_laser_return( *m_packet, m_index.block, m_index.laser, m_timestamp, angularSpeed(), m_legacy );
         ++m_index;

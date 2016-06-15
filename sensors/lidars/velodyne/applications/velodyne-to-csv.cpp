@@ -53,6 +53,21 @@
 
 using namespace snark;
 
+struct adjusted_time_t
+{
+    enum { none=0, average, hard };
+    static unsigned from_string(const std::string& s);
+    static snark::timing::adjusted_time_config config_default();
+    adjusted_time_t();
+    boost::posix_time::ptime adjust_timestamp(boost::posix_time::ptime t);
+    snark::timing::clocked_time_stamp adjusted_timestamp_;
+    snark::timing::periodic_time_stamp periodic_time_stamp_;
+    boost::posix_time::ptime last_timestamp_;
+};
+
+unsigned adjusted_time_mode=adjusted_time_t::none;
+snark::timing::adjusted_time_config adjusted_time_config=adjusted_time_t::config_default();
+
 static void usage( bool )
 {
     std::cerr << std::endl;
@@ -95,9 +110,9 @@ static void usage( bool )
     std::cerr << "            'average': adjust total deviation" << std::endl;
     std::cerr << "            'hard': use closest point as base then add period for later points" << std::endl;
     std::cerr << "        when using on log files, the timestamps may change depending on start of data" << std::endl;
-    std::cerr << "    --adjusted-time-threshold=<threshold>: upper bound for adjusting timestamp, only effective with --adjusted-time; unit: microseconds, default: "<< snark::velodyne::adjusted_time_t::config_default().threshold.total_microseconds() << std::endl;
+    std::cerr << "    --adjusted-time-threshold=<threshold>: upper bound for adjusting timestamp, only effective with --adjusted-time; unit: microseconds, default: "<< adjusted_time_config.threshold.total_microseconds() << std::endl;
     std::cerr << "        if input timestamp is greater than period * ticks + <threshold>, it will reset adjusted time and the input timestamp will be used without change" << std::endl;
-    std::cerr << "    --adjusted-time-reset=<reset>: reset adjusted time after this time, only effective with --adjusted-time; unit: seconds, default: "<< snark::velodyne::adjusted_time_t::config_default().reset.total_seconds() << std::endl;
+    std::cerr << "    --adjusted-time-reset=<reset>: reset adjusted time after this time, only effective with --adjusted-time; unit: seconds, default: "<< adjusted_time_config.reset.total_seconds() << std::endl;
     std::cerr << "        if input timestamp + <reset> is greater than last reset time, it will reset adjusted time and the input timestamp will be used without change" << std::endl;
     std::cerr << "    default output columns: " << comma::join( comma::csv::names< velodyne_point >(), ',' ) << std::endl;
     std::cerr << "    default binary format: " << comma::csv::format::value< velodyne_point >() << std::endl;
@@ -124,13 +139,68 @@ static void usage( bool )
     exit( 0 );
 }
 
+
+adjusted_time_t::adjusted_time_t():
+    adjusted_timestamp_(adjusted_time_config.period)
+    , periodic_time_stamp_(adjusted_time_config)
+{
+    
+}
+boost::posix_time::ptime adjusted_time_t::adjust_timestamp(boost::posix_time::ptime timestamp)
+{
+    if(!adjusted_time_mode)
+        return timestamp;
+    if( ! last_timestamp_.is_not_a_date_time() && 
+        (timestamp - last_timestamp_) > adjusted_time_config.threshold )
+    {
+            adjusted_timestamp_.reset();
+            //periodic_time_stamp_.reset();
+    }
+    last_timestamp_=timestamp;
+    switch(adjusted_time_mode)
+    {
+        case adjusted_time_t::average:
+            return adjusted_timestamp_.adjusted(timestamp);
+        case adjusted_time_t::hard:
+            return periodic_time_stamp_.adjusted(timestamp);
+        default: { COMMA_THROW(comma::exception, "invalid adjust time mode "<< adjusted_time_mode ); }
+    }
+}
+unsigned adjusted_time_t::from_string(const std::string& s)
+{
+    if(s.empty())
+        return none;
+    if(s=="average")
+        return average;
+    if(s=="hard")
+        return hard;
+    COMMA_THROW(comma::exception, "invalid name for adjusted time: "<<s<<" (valid values: average, hard)");
+}
+snark::timing::adjusted_time_config adjusted_time_t::config_default()
+{
+    return snark::timing::adjusted_time_config(
+        boost::posix_time::microseconds(288), 
+        boost::posix_time::microseconds(550), 
+        boost::posix_time::seconds(300) );
+}
+    
+//*********************
 template < typename S >
 inline static void run( velodyne_stream< S >& v, const comma::csv::options& csv, double min_range )
 {
+    adjusted_time_t adjusted_time;
     comma::signal_flag isShutdown;
     comma::csv::output_stream< velodyne_point > ostream( std::cout, csv );
     //Profilerstart( "velodyne-to-csv.prof" );{
-    while( !isShutdown && v.read() ) { if( v.point().range > min_range ) { ostream.write( v.point() ); } }
+    //while( !isShutdown && v.read() ) { if( v.point().range > min_range ) { ostream.write( v.point() ); } }
+    while( !isShutdown && v.read() )
+    { 
+        if( v.point().range < min_range ) { continue; }
+        snark::velodyne_point p = v.point();
+        p.timestamp=adjusted_time.adjust_timestamp(p.timestamp);
+        comma::verbose << "timestamp "<<boost::posix_time::to_iso_string(p.timestamp) << std::endl;
+        ostream.write( p );
+    }
     //Profilerstop(); }
     if( isShutdown ) { std::cerr << "velodyne-to-csv: interrupted by signal" << std::endl; }
     else { std::cerr << "velodyne-to-csv: done, no more data" << std::endl; }
@@ -204,36 +274,40 @@ int main( int ac, char** av )
         double min_range = options.value( "--min-range", 0.0 );
         bool raw_intensity=options.exists( "--raw-intensity" );
         bool legacy = options.exists( "--legacy");
-        snark::timing::adjusted_time_config adjusted_time_config=snark::velodyne::adjusted_time_t::config_default();
-        unsigned adjusted_time=snark::velodyne::adjusted_time_t::from_string(options.value<std::string>("--adjusted-time",""));
+        adjusted_time_mode=adjusted_time_t::from_string(options.value<std::string>("--adjusted-time",""));
         adjusted_time_config.threshold=boost::posix_time::microseconds(options.value<unsigned>("--adjusted-time-threshold",adjusted_time_config.threshold.total_microseconds()));
         adjusted_time_config.reset=boost::posix_time::seconds(options.value<unsigned>("--adjusted-time-reset",adjusted_time_config.reset.total_seconds()));
         //use old algorithm for old database
         if (!legacy && db.version == 0){legacy=true; std::cerr<<"velodyne-to-csv: using legacy option for old database"<<std::endl;}
         if(legacy && db.version > 0){std::cerr<<"velodyne-to-csv: using new calibration with legacy option"<<std::endl;}
+        velodyne::calculator* calculator=NULL;
+        if(options.exists("--puck"))
+            calculator=new velodyne::puck_calculator();
+        else
+            calculator=new velodyne::db_calculator(db);
         if( options.exists( "--pcap" ) )
         {
-            velodyne_stream< snark::pcap_reader > v( db, outputInvalidpoints, from, to, raw_intensity, legacy, adjusted_time, adjusted_time_config );
+            velodyne_stream< snark::pcap_reader > v( calculator, outputInvalidpoints, from, to, raw_intensity, legacy );
             run( v, csv, min_range );
         }
         else if( options.exists( "--thin" ) )
         {
-            velodyne_stream< snark::thin_reader > v( db, outputInvalidpoints, from, to, raw_intensity, legacy, adjusted_time, adjusted_time_config );
+            velodyne_stream< snark::thin_reader > v( calculator, outputInvalidpoints, from, to, raw_intensity, legacy );
             run( v, csv, min_range );
         }
         else if( options.exists( "--udp-port" ) )
         {
-            velodyne_stream< snark::udp_reader > v( options.value< unsigned short >( "--udp-port" ), db, outputInvalidpoints, from, to, raw_intensity, legacy, adjusted_time, adjusted_time_config );
+            velodyne_stream< snark::udp_reader > v( options.value< unsigned short >( "--udp-port" ), calculator, outputInvalidpoints, from, to, raw_intensity, legacy );
             run( v, csv, min_range );
         }
         else if( options.exists( "--proprietary,-q" ) )
         {
-            velodyne_stream< snark::proprietary_reader > v( db, outputInvalidpoints, from, to, raw_intensity, legacy, adjusted_time, adjusted_time_config );
+            velodyne_stream< snark::proprietary_reader > v( calculator, outputInvalidpoints, from, to, raw_intensity, legacy );
             run( v, csv, min_range );
         }
         else
         {
-            velodyne_stream< snark::stream_reader > v( db, outputInvalidpoints, from, to, raw_intensity, legacy, adjusted_time, adjusted_time_config );
+            velodyne_stream< snark::stream_reader > v( calculator, outputInvalidpoints, from, to, raw_intensity, legacy );
             run( v, csv, min_range );
         }
         return 0;

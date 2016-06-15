@@ -43,4 +43,34 @@ double db_calculator::azimuth( unsigned int laser, double azimuth ) const { retu
 
 double db_calculator::intensity( unsigned int laser, unsigned char intensity, double distance ) const { return db.lasers[ laser ].intensity( intensity, distance ); }
 
+std::pair< ::Eigen::Vector3d, ::Eigen::Vector3d > puck_calculator::ray( unsigned int laser, double range, double angle ) const
+{
+    // todo
+    return std::pair< ::Eigen::Vector3d, ::Eigen::Vector3d >();
+}
+
+::Eigen::Vector3d puck_calculator::point( unsigned int laser, double range, double angle ) const
+{
+    // todo
+    return ::Eigen::Vector3d();
+}
+
+double puck_calculator::range( unsigned int laser, double range ) const
+{
+    // todo
+    return 0;
+}
+
+double puck_calculator::azimuth( unsigned int laser, double azimuth ) const
+{
+    // todo
+    return 0;
+}
+
+double puck_calculator::intensity( unsigned int laser, unsigned char intensity, double distance ) const
+{
+    // todo
+    return 0;
+}
+
 } } // namespace snark { namespace velodyne {
