@@ -592,7 +592,7 @@ int main( int argc, char** argv )
             viewer->inhibit_stdout();
             if( options.exists( "--output-camera-config,--output-camera" ))
             {
-                std::cerr << "warning: disabling --output-camera-config whilst \"pass-through\" option is in use" << std::endl;
+                COMMA_THROW( comma::exception, "cannot use --output-camera-config whilst \"pass-through\" option is in use" );
             }
         }
         snark::graphics::View::MainWindow mainWindow( comma::join( argv, argc, ' ' ), viewer );
