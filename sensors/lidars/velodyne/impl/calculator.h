@@ -27,20 +27,21 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "velodyne_stream.h"
+#pragma once
+
+#include <Eigen/Core>
 
 namespace snark { namespace velodyne {
 
-db_calculator::db_calculator( const velodyne::db& db ) : db( db ) {}
-
-std::pair< ::Eigen::Vector3d, ::Eigen::Vector3d > db_calculator::ray( unsigned int laser, double range, double angle ) const { return db.lasers[ laser ].ray( range, angle ); }
-
-::Eigen::Vector3d db_calculator::point( unsigned int laser, double range, double angle ) const { return db.lasers[ laser ].point( range, angle ); }
-
-double db_calculator::range( unsigned int laser, double range ) const { return db.lasers[ laser ].range( range ); }
-
-double db_calculator::azimuth( unsigned int laser, double azimuth ) const { return db.lasers[ laser ].azimuth( azimuth ); }
-
-double db_calculator::intensity( unsigned int laser, unsigned char intensity, double distance ) const { return db.lasers[ laser ].intensity( intensity, distance ); }
+/// quick and dirty: interface class for different models of velodyne
+struct calculator
+{
+    virtual ~calculator() {}
+    virtual std::pair< ::Eigen::Vector3d, ::Eigen::Vector3d > ray( unsigned int laser, double range, double angle ) const = 0;
+    virtual ::Eigen::Vector3d point( unsigned int laser, double range, double angle ) const = 0;
+    virtual double range( unsigned int laser, double range ) const = 0;
+    virtual double azimuth( unsigned int laser, double azimuth ) const = 0;
+    virtual double intensity( unsigned int laser, unsigned char intensity, double distance ) const = 0;
+};
 
 } } // namespace snark { namespace velodyne {

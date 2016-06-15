@@ -39,6 +39,7 @@
 #include <snark/visiting/eigen.h>
 #include "../stream.h"
 #include "../db.h"
+#include "calculator.h"
 
 namespace snark {
 
@@ -57,30 +58,11 @@ struct velodyne_point
 
 namespace velodyne {
 
-struct calculator
-{
-    virtual ~calculator() {}
-    virtual std::pair< ::Eigen::Vector3d, ::Eigen::Vector3d > ray( unsigned int laser, double range, double angle ) const = 0;
-    virtual ::Eigen::Vector3d point( unsigned int laser, double range, double angle ) const = 0;
-    virtual double range( unsigned int laser, double range ) const = 0;
-    virtual double azimuth( unsigned int laser, double azimuth ) const = 0;
-    virtual double intensity( unsigned int laser, unsigned char intensity, double distance ) const = 0;
-};
-    
 struct db_calculator : public calculator
 {
     const velodyne::db& db;
     
     db_calculator( const velodyne::db& db );
-    std::pair< ::Eigen::Vector3d, ::Eigen::Vector3d > ray( unsigned int laser, double range, double angle ) const;
-    ::Eigen::Vector3d point( unsigned int laser, double range, double angle ) const;
-    double range( unsigned int laser, double range ) const;
-    double azimuth( unsigned int laser, double azimuth ) const;
-    double intensity( unsigned int laser, unsigned char intensity, double distance ) const;
-};
-
-struct puck_calculator : public calculator
-{
     std::pair< ::Eigen::Vector3d, ::Eigen::Vector3d > ray( unsigned int laser, double range, double angle ) const;
     ::Eigen::Vector3d point( unsigned int laser, double range, double angle ) const;
     double range( unsigned int laser, double range ) const;
@@ -98,16 +80,16 @@ public:
     velodyne_stream( const velodyne::db& db
                   , bool outputInvalidpoints
                   , boost::optional< std::size_t > from = boost::optional< std::size_t >(), boost::optional< std::size_t > to = boost::optional< std::size_t >()
-                   , bool raw_intensity = false
-                   , bool legacy = false, unsigned adjusted_time=0, boost::optional<snark::timing::adjusted_time_config> adjusted_time_config=boost::optional<snark::timing::adjusted_time_config>());
+                  , bool raw_intensity = false
+                  , bool legacy = false, unsigned adjusted_time=0, boost::optional<snark::timing::adjusted_time_config> adjusted_time_config=boost::optional<snark::timing::adjusted_time_config>());
 
     template < typename P >
     velodyne_stream( const P& p
                   , const velodyne::db& db
                   , bool outputInvalidpoints
                   , boost::optional< std::size_t > from = boost::optional< std::size_t >(), boost::optional< std::size_t > to = boost::optional< std::size_t >() 
-                   , bool raw_intensity = false
-                   , bool legacy = false, unsigned adjusted_time=0, boost::optional<snark::timing::adjusted_time_config> adjusted_time_config=boost::optional<snark::timing::adjusted_time_config>());
+                  , bool raw_intensity = false
+                  , bool legacy = false, unsigned adjusted_time=0, boost::optional<snark::timing::adjusted_time_config> adjusted_time_config=boost::optional<snark::timing::adjusted_time_config>());
 
     bool read();
     const velodyne_point& point() const { return m_point; }
@@ -190,17 +172,12 @@ private:
 inline bool velodyne_stream< comma::csv::input_stream< velodyne_point> >::read()
 {
     const velodyne_point* point = m_stream.read();
-    if( point == NULL )
-    {
-        return false;
-    }
+    if( point == NULL ) { return false; }
     m_point = *point;
     return true;
 }
 
-
 } 
-
 
 namespace comma { namespace visiting {
 

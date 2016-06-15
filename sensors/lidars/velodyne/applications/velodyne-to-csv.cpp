@@ -53,7 +53,7 @@
 
 using namespace snark;
 
-static void usage()
+static void usage( bool )
 {
     std::cerr << std::endl;
     std::cerr << "Takes velodyne packets and outputs coordinate datapoints to stdout" << std::endl;
@@ -62,17 +62,20 @@ static void usage()
     std::cerr << "options" << std::endl;
     std::cerr << "    --output-fields: print output fields and exit" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "input options" << std::endl;
+    std::cerr << "input stream options" << std::endl;
     std::cerr << "    default : read velodyne data directly from stdin in the format: <timestamp><packet>" << std::endl;
     std::cerr << "              <timestamp>: 8-byte unsigned int, microseconds from linux epoch" << std::endl;
     std::cerr << "              <packet>: regular velodyne 1206-byte packet" << std::endl;
-    std::cerr << "    --db <db.xml file> ; default /usr/local/etc/db.xml" << std::endl;
-    std::cerr << "              if the file is a version 0 then the legacy option is used for timing and azimuth calculation" << std::endl;
     std::cerr << "    --pcap : if present, velodyne data is read from pcap packets" << std::endl;
     std::cerr << "    --thin : if present, velodyne data is thinned (e.g. by velodyne-thin)" << std::endl;
     std::cerr << "    --udp-port <port> : read velodyne data directly from udp port" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "input format options" << std::endl;
+    std::cerr << "    --db <db.xml file> ; default /usr/local/etc/db.xml" << std::endl;
+    std::cerr << "              if the file is a version 0 then the legacy option is used for timing and azimuth calculation" << std::endl;
     std::cerr << "    --proprietary,-q : read velodyne data directly from stdin using the proprietary protocol" << std::endl;
     std::cerr << "        <header, 16 bytes><timestamp, 12 bytes><packet, 1206 bytes><footer, 4 bytes>" << std::endl;
+    std::cerr << "    --puck : velodyne puck data" << std::endl;
     std::cerr << "    default input format: <timestamp, 8 bytes><packet, 1206 bytes>" << std::endl;
     std::cerr << std::endl;
     std::cerr << "output options:" << std::endl;
@@ -118,7 +121,7 @@ static void usage()
     std::cerr << "authors" << std::endl;
     std::cerr << "    Vsevolod Vlaskine, v.vlaskine@acfr.usyd.edu.au" << std::endl;
     std::cerr << std::endl;
-    exit( -1 );
+    exit( 0 );
 }
 
 template < typename S >
@@ -174,9 +177,8 @@ int main( int ac, char** av )
 {
     try
     {
-        comma::command_line_options options( ac, av );
-        if( options.exists( "--help" ) || options.exists( "-h" ) ) { usage(); }
-        if(options.exists("--output-fields")) {std::cout << comma::join( comma::csv::names< velodyne_point >(), ',' ) << std::endl; return 0;}
+        comma::command_line_options options( ac, av, usage );
+        if( options.exists( "--output-fields" ) ) {std::cout << comma::join( comma::csv::names< velodyne_point >(), ',' ) << std::endl; return 0; }
         std::string fields = fields_( options.value< std::string >( "--fields", "" ) );
         comma::csv::format format = format_( options.value< std::string >( "--binary,-b", "" ), fields );
         if( options.exists( "--format" ) ) { std::cout << format.string(); exit( 0 ); }
@@ -198,6 +200,7 @@ int main( int ac, char** av )
         csv.full_xpath = true;
         if( options.exists( "--binary,-b" ) ) { csv.format( format ); }
         options.assert_mutually_exclusive( "--pcap,--thin,--udp-port,--proprietary,-q" );
+        options.assert_mutually_exclusive( "--puck,--db" );
         double min_range = options.value( "--min-range", 0.0 );
         bool raw_intensity=options.exists( "--raw-intensity" );
         bool legacy = options.exists( "--legacy");
