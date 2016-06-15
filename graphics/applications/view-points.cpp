@@ -597,8 +597,9 @@ int main( int argc, char** argv )
         }
         snark::graphics::View::MainWindow mainWindow( comma::join( argv, argc, ' ' ), viewer );
         mainWindow.show();
-        /*return*/ application.exec();
+        application.exec();
         delete viewer;
+        return 0;       // We never actually reach this line because we raise SIGINT when closing
     }
     catch( std::exception& ex )
     {
@@ -608,4 +609,5 @@ int main( int argc, char** argv )
     {
         std::cerr << "view-points: unknown exception" << std::endl;
     }
+    return 1;
 }
