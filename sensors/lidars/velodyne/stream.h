@@ -46,30 +46,11 @@
 
 namespace snark {  namespace velodyne {
 
-const long VELODYNE_ADJUSTED_TIME_PERIOD=288;    //microseconds
-const long VELODYNE_ADJUSTED_TIME_THRESHOLD=550;
-const long VELODYNE_ADJUSTED_TIME_RESET=300;
-
 struct adjusted_time_t
 {
     enum { none=0, average, hard };
-    static unsigned from_string(const std::string& s)
-    {
-        if(s.empty())
-            return none;
-        if(s=="average")
-            return average;
-        if(s=="hard")
-            return hard;
-        COMMA_THROW(comma::exception, "invalid name for adjusted time: "<<s<<" (valid values: average, hard)");
-    }
-    static snark::timing::adjusted_time_config config_default()
-    {
-        return snark::timing::adjusted_time_config(
-            boost::posix_time::microseconds(VELODYNE_ADJUSTED_TIME_PERIOD), 
-            boost::posix_time::microseconds(VELODYNE_ADJUSTED_TIME_THRESHOLD), 
-            boost::posix_time::seconds(VELODYNE_ADJUSTED_TIME_RESET) );
-    }
+    static unsigned from_string(const std::string& s);
+    static snark::timing::adjusted_time_config config_default();
 };
 
 /// velodyne point stream
@@ -136,7 +117,7 @@ class stream : public boost::noncopyable
         snark::timing::clocked_time_stamp adjusted_timestamp_;
         snark::timing::periodic_time_stamp periodic_time_stamp_;
         boost::posix_time::ptime last_timestamp_;
-        void adjut_timestamp();
+        void adjust_timestamp();
 };
 
 
@@ -149,7 +130,7 @@ inline stream< S >::stream( S* stream, unsigned int rpm, bool outputInvalid, boo
     , m_closed( false )
     , m_legacy(legacy)
     , adjusted_time_(adjusted_time)
-    , adjusted_timestamp_(boost::posix_time::microseconds(VELODYNE_ADJUSTED_TIME_PERIOD))
+    , adjusted_timestamp_(adjusted_time_t::config_default().period)
     , periodic_time_stamp_(adjusted_time_config ? *adjusted_time_config : adjusted_time_t::config_default())
 {
     m_index.idx = m_size;
@@ -163,7 +144,7 @@ inline stream< S >::stream( S* stream, bool outputInvalid, bool legacy, unsigned
     , m_closed( false )
     , m_legacy(legacy)
     , adjusted_time_(adjusted_time)
-    , adjusted_timestamp_(boost::posix_time::microseconds(VELODYNE_ADJUSTED_TIME_PERIOD))
+    , adjusted_timestamp_(adjusted_time_t::config_default().period)
     , periodic_time_stamp_(adjusted_time_config ? *adjusted_time_config : adjusted_time_t::config_default())
 {
     m_index.idx = m_size;
@@ -178,12 +159,12 @@ inline double stream< S >::angularSpeed()
     return da / dt;
 }
 template < typename S >
-inline void stream< S >::adjut_timestamp()
+inline void stream< S >::adjust_timestamp()
 {
     if(!adjusted_time_)
         return;
     if( ! last_timestamp_.is_not_a_date_time() && 
-        (m_timestamp - last_timestamp_).total_microseconds() > VELODYNE_ADJUSTED_TIME_THRESHOLD )
+        (m_timestamp - last_timestamp_) > adjusted_time_t::config_default().threshold )
     {
             adjusted_timestamp_.reset();
             //periodic_time_stamp_.reset();
@@ -215,15 +196,15 @@ inline laser_return* stream< S >::read()
             if( impl::stream_traits< S >::is_new_scan( m_tick, *m_stream, *m_packet ) ) { ++m_scan; }
             m_timestamp = impl::stream_traits< S >::timestamp( *m_stream );
             if(adjusted_time_)
-                adjut_timestamp();
-            comma::verbose << "timestamp "<<boost::posix_time::to_iso_string(m_timestamp) << std::endl;
+                adjust_timestamp();
+            //comma::verbose << "timestamp "<<boost::posix_time::to_iso_string(m_timestamp) << std::endl;
         }
         if(m_timestamp == boost::posix_time::ptime(boost::date_time::not_a_date_time)) 
         {
             m_timestamp = impl::stream_traits< S >::timestamp( *m_stream );
             if(adjusted_time_)
-                adjut_timestamp();
-            comma::verbose << "timestamp "<<boost::posix_time::to_iso_string(m_timestamp) << std::endl;
+                adjust_timestamp();
+            //comma::verbose << "timestamp "<<boost::posix_time::to_iso_string(m_timestamp) << std::endl;
         }
         m_laserReturn = impl::get_laser_return( *m_packet, m_index.block, m_index.laser, m_timestamp, angularSpeed(), m_legacy );
         ++m_index;
