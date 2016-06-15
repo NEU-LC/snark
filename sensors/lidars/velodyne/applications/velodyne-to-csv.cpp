@@ -47,6 +47,7 @@
 #include "../impl/udp_reader.h"
 #include "../impl/stream_reader.h"
 #include "../impl/velodyne_stream.h"
+#include "../puck.h"
 #include "../../../../timing/clocked_time_stamp.h"
 
 //#include <google/profiler.h>
@@ -281,10 +282,8 @@ int main( int ac, char** av )
         if (!legacy && db.version == 0){legacy=true; std::cerr<<"velodyne-to-csv: using legacy option for old database"<<std::endl;}
         if(legacy && db.version > 0){std::cerr<<"velodyne-to-csv: using new calibration with legacy option"<<std::endl;}
         velodyne::calculator* calculator=NULL;
-        if(options.exists("--puck"))
-            calculator=new velodyne::puck_calculator();
-        else
-            calculator=new velodyne::db_calculator(db);
+        if( options.exists( "--puck" ) ) { calculator= new velodyne::puck; }
+        else { calculator = new velodyne::db_calculator( db ); }
         if( options.exists( "--pcap" ) )
         {
             velodyne_stream< snark::pcap_reader > v( calculator, outputInvalidpoints, from, to, raw_intensity, legacy );

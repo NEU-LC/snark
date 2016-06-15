@@ -70,15 +70,6 @@ struct db_calculator : public calculator
     double intensity( unsigned int laser, unsigned char intensity, double distance ) const;
 };
 
-struct puck_calculator : public calculator
-{
-    std::pair< ::Eigen::Vector3d, ::Eigen::Vector3d > ray( unsigned int laser, double range, double angle ) const;
-    ::Eigen::Vector3d point( unsigned int laser, double range, double angle ) const;
-    double range( unsigned int laser, double range ) const;
-    double azimuth( unsigned int laser, double azimuth ) const;
-    double intensity( unsigned int laser, unsigned char intensity, double distance ) const;
-};
-
 } // namespace velodyne {
 
 /// convert stream of raw velodyne data into velodyne points
@@ -131,7 +122,7 @@ velodyne_stream< S, Traits >::velodyne_stream ( const P& p, velodyne::calculator
                     , boost::optional< std::size_t > from
                     , boost::optional< std::size_t > to 
                     , bool raw_intensity
-                    , bool legacy):
+                    , bool legacy ):
     m_stream( new S( p ), outputInvalidpoints, legacy ),
     point_calculator_( calculator ),
     m_to( to ),

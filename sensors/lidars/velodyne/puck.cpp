@@ -70,7 +70,11 @@ static boost::array< double, 16 > elevation_cos_ = get_cos_( elevation_ );
 
 std::pair< ::Eigen::Vector3d, ::Eigen::Vector3d > puck::ray( unsigned int laser, double range, double angle ) const { return std::make_pair( ::Eigen::Vector3d::Zero(), point( laser, range, angle ) ); }
 
-::Eigen::Vector3d puck::point( unsigned int laser, double range, double angle ) const { return ::Eigen::Vector3d( range * elevation_cos_[laser] * std::sin( angle ), range * elevation_cos_[laser] * std::cos( angle ), range * elevation_sin_[laser] ); }
+::Eigen::Vector3d puck::point( unsigned int laser, double range, double angle ) const
+{
+    laser = laser % 16; // todo: fix it!
+    return ::Eigen::Vector3d( range * elevation_cos_[laser] * std::sin( angle ), range * elevation_cos_[laser] * std::cos( angle ), range * elevation_sin_[laser] );
+}
 
 double puck::range( unsigned int, double range ) const { return range; }
 
