@@ -344,14 +344,14 @@ boost::shared_ptr< snark::graphics::View::Reader > makeReader( QGLView& viewer
         label = m.value( "label", label );
         show = !m.exists( "hide" );
         param.pass_through = ( m.exists( "pass-through" ) || m.exists( "pass" ));
-        if( param.pass_through )
+    }
+    if( param.pass_through )
+    {
+        if( data_passed_through )
         {
-            if( data_passed_through )
-            {
-                COMMA_THROW( comma::exception, "only one input stream can be given \"pass-through\" option" );
-            }
-            data_passed_through = true;
+            COMMA_THROW( comma::exception, "only one input stream can be given \"pass-through\" option" );
         }
+        data_passed_through = true;
     }
     if( param.title == "none" ) param.title = "";
     if( !show ) { std::cerr << "view-points: " << ( param.title.empty() ? param.options.filename : param.title )<< " will be hidden on startup; tick the box next to the name to make it visible" << std::endl; }
