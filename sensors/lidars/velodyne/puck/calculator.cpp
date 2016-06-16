@@ -29,7 +29,9 @@
 
 #include <cmath>
 #include <boost/array.hpp>
-#include "puck.h"
+#include <boost/graph/graph_concepts.hpp>
+#include "calculator.h"
+#include "packet.h"
 
 namespace snark { namespace velodyne { namespace puck {
 
@@ -50,19 +52,55 @@ static boost::array< double, 16 > elevation_ = {{ -15.0 * 180 / M_PI
                                                 , -1 * 180 / M_PI
                                                 , 15 * 180 / M_PI }};
 
-boost::array< double, 16 > get_sin_( const boost::array< double, 16 >& e )
+static boost::array< double, 16 > get_sin_( const boost::array< double, 16 >& e )
 {
     boost::array< double, 16 > s;
     for( unsigned int i = 0; i < s.size(); ++i ) { s[i] = std::sin( e[i] ); }
     return s;
 }
 
-boost::array< double, 16 > get_cos_( const boost::array< double, 16 >& e )
+static boost::array< double, 16 > get_cos_( const boost::array< double, 16 >& e )
 {
     boost::array< double, 16 > s;
     for( unsigned int i = 0; i < s.size(); ++i ) { s[i] = std::cos( e[i] ); }
     return s;
 }
+
+namespace timing {
+    
+static double firing_interval = ( 2.304 / 1000000 );
+
+static double recharge_interval = ( 18.43 / 1000000 );
+
+static boost::array< double, puck::packet::number_of_returns_per_packet > get_single_offsets()
+{
+    boost::array< double, puck::packet::number_of_returns_per_packet > offsets;
+    unsigned int i = 0;
+    double offset = 0;
+    for( unsigned int j = 0; j < puck::packet::number_of_blocks; ++j, offset += recharge_interval )
+    {
+        for( unsigned int j = 0; j < puck::packet::number_of_lasers * 2; ++j, ++i, offset += firing_interval ) { offsets[i] = offset; }
+    }
+    return offsets;
+}
+
+static boost::array< double, puck::packet::number_of_returns_per_packet > get_dual_offsets()
+{
+    boost::array< double, puck::packet::number_of_returns_per_packet > offsets;
+    unsigned int i = 0;
+    double offset = 0;
+    for( unsigned int j = 0; j < puck::packet::number_of_blocks; ++j, i += puck::packet::number_of_lasers, offset += recharge_interval )
+    {
+        for( unsigned int j = 0; j < puck::packet::number_of_lasers; ++j, ++i, offset += firing_interval ) { offsets[i] = offsets[ i + puck::packet::number_of_lasers ] = offset; }
+    }
+    return offsets;
+}
+
+static boost::array< double, puck::packet::number_of_returns_per_packet > single_offsets = get_single_offsets();
+
+static boost::array< double, puck::packet::number_of_returns_per_packet > dual_offsets = get_dual_offsets();
+
+} // namespace timing {
 
 static boost::array< double, 16 > elevation_sin_ = get_sin_( elevation_ );
 

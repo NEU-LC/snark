@@ -47,7 +47,8 @@
 #include "../impl/udp_reader.h"
 #include "../impl/stream_reader.h"
 #include "../impl/velodyne_stream.h"
-#include "../puck.h"
+#include "../puck/calculator.h"
+#include "../puck/packet.h"
 #include "../../../../timing/clocked_time_stamp.h"
 
 //#include <google/profiler.h>
