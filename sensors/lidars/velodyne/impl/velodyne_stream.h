@@ -142,7 +142,7 @@ bool velodyne_stream< S, Traits >::read()
     m_point.timestamp = r->timestamp;
     m_point.id = r->id;
     // multiply by 255 to keep with the old format
-    m_point.intensity = m_raw_intensity ? r->intensity : ( point_calculator_->intensity( m_point.id, r->intensity, r->range ) * 255);
+    m_point.intensity = m_raw_intensity ? r->intensity : ( point_calculator_->intensity( m_point.id, r->intensity, r->range ) * 255 );
     m_point.valid = !comma::math::equal( r->range, 0 ); // quick and dirty
     m_point.ray = point_calculator_->ray( m_point.id, r->range, r->azimuth );
     m_point.range = point_calculator_->range( m_point.id, r->range );

@@ -31,7 +31,7 @@
 #include <boost/array.hpp>
 #include "puck.h"
 
-namespace snark { namespace velodyne {
+namespace snark { namespace velodyne { namespace puck {
 
 static boost::array< double, 16 > elevation_ = {{ -15.0 * 180 / M_PI
                                                 , 1 * 180 / M_PI
@@ -68,18 +68,18 @@ static boost::array< double, 16 > elevation_sin_ = get_sin_( elevation_ );
 
 static boost::array< double, 16 > elevation_cos_ = get_cos_( elevation_ );
 
-std::pair< ::Eigen::Vector3d, ::Eigen::Vector3d > puck::ray( unsigned int laser, double range, double angle ) const { return std::make_pair( ::Eigen::Vector3d::Zero(), point( laser, range, angle ) ); }
+std::pair< ::Eigen::Vector3d, ::Eigen::Vector3d > calculator::ray( unsigned int laser, double range, double angle ) const { return std::make_pair( ::Eigen::Vector3d::Zero(), point( laser, range, angle ) ); }
 
-::Eigen::Vector3d puck::point( unsigned int laser, double range, double angle ) const
+::Eigen::Vector3d calculator::point( unsigned int laser, double range, double angle ) const
 {
-    laser = laser % 16; // todo: fix it!
+    laser %= 16; // todo: fix it!
     return ::Eigen::Vector3d( range * elevation_cos_[laser] * std::sin( angle ), range * elevation_cos_[laser] * std::cos( angle ), range * elevation_sin_[laser] );
 }
 
-double puck::range( unsigned int, double range ) const { return range; }
+double calculator::range( unsigned int, double range ) const { return range; }
 
-double puck::azimuth( unsigned int, double azimuth ) const { return azimuth; }
+double calculator::azimuth( unsigned int, double azimuth ) const { return azimuth; }
 
-double puck::intensity( unsigned int, unsigned char intensity, double ) const { return intensity; }
+double calculator::intensity( unsigned int, unsigned char intensity, double ) const { return intensity; }
 
-} } // namespace snark { namespace velodyne {
+} } } // namespace snark { namespace velodyne { namespace puck {

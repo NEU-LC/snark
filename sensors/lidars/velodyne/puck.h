@@ -31,9 +31,9 @@
 
 #include "impl/calculator.h"
 
-namespace snark { namespace velodyne {
+namespace snark { namespace velodyne { namespace puck {
 
-struct puck : public calculator
+struct calculator : public velodyne::calculator
 {
     std::pair< ::Eigen::Vector3d, ::Eigen::Vector3d > ray( unsigned int laser, double range, double angle ) const;
     
@@ -46,4 +46,4 @@ struct puck : public calculator
     double intensity( unsigned int laser, unsigned char intensity, double distance ) const;
 };
 
-} } // namespace snark { namespace velodyne {
+} } } // namespace snark { namespace velodyne { namespace puck {

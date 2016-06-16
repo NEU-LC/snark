@@ -33,7 +33,6 @@
 
 #include <boost/optional.hpp>
 #include "packet.h"
-#include "impl/get_laser_return.h"
 
 namespace snark {  namespace velodyne {
 
