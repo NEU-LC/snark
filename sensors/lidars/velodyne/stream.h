@@ -75,7 +75,7 @@ class stream : public boost::noncopyable
         boost::scoped_ptr< S > m_stream;
         boost::posix_time::ptime m_timestamp;
         const packet* m_packet;
-        enum { m_size = 12 * 32 };
+        enum { m_size = packet::number_of_blocks * packet::returns_per_block };
         struct index // quick and dirty
         {
             unsigned int idx;
@@ -88,7 +88,7 @@ class stream : public boost::noncopyable
                 if( block & 0x1 )
                 {
                     ++laser;
-                    if( laser < 32 ) { --block; } else { laser = 0; ++block; }
+                    if( laser < packet::returns_per_block ) { --block; } else { laser = 0; ++block; }
                 }
                 else
                 {
@@ -135,7 +135,7 @@ template < typename S >
 inline double stream< S >::angularSpeed()
 {
     if( m_angularSpeed ) { return *m_angularSpeed; }
-    double da = double( m_packet->blocks[0].rotation() - m_packet->blocks[11].rotation() ) / 100;
+    double da = double( m_packet->blocks[0].rotation() - m_packet->blocks[ packet::returns_per_block - 1 ].rotation() ) / 100;
     double dt = impl::time_span(m_legacy);
     return da / dt;
 }
@@ -154,10 +154,7 @@ inline laser_return* stream< S >::read()
             if( impl::stream_traits< S >::is_new_scan( m_tick, *m_stream, *m_packet ) ) { ++m_scan; }
             m_timestamp = impl::stream_traits< S >::timestamp( *m_stream );
         }
-        if(m_timestamp == boost::posix_time::ptime(boost::date_time::not_a_date_time)) 
-        {
-            m_timestamp = impl::stream_traits< S >::timestamp( *m_stream );
-        }
+        if( m_timestamp.is_not_a_date_time() ) { m_timestamp = impl::stream_traits< S >::timestamp( *m_stream ); }
         m_laserReturn = impl::get_laser_return( *m_packet, m_index.block, m_index.laser, m_timestamp, angularSpeed(), m_legacy );
         ++m_index;
         bool valid = !comma::math::equal( m_laserReturn.range, 0 );

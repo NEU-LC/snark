@@ -282,7 +282,7 @@ int main( int ac, char** av )
         if (!legacy && db.version == 0){legacy=true; std::cerr<<"velodyne-to-csv: using legacy option for old database"<<std::endl;}
         if(legacy && db.version > 0){std::cerr<<"velodyne-to-csv: using new calibration with legacy option"<<std::endl;}
         velodyne::calculator* calculator=NULL;
-        if( options.exists( "--puck" ) ) { calculator= new velodyne::puck; }
+        if( options.exists( "--puck" ) ) { calculator= new velodyne::puck::calculator; }
         else { calculator = new velodyne::db_calculator( db ); }
         if( options.exists( "--pcap" ) )
         {

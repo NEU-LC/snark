@@ -43,17 +43,19 @@ namespace snark {  namespace velodyne {
 
 struct packet : public comma::packed::packed_struct< packet, 1206 >
 {
+    enum { returns_per_block = 32, number_of_blocks = 12 };
+    
     struct laser_return : public comma::packed::packed_struct< laser_return, 3 >
     {
         comma::packed::uint16 range;
         comma::packed::byte intensity;
     };
     
-    struct laser_block : public comma::packed::packed_struct< laser_block, 2 + 2 + 32 * sizeof( laser_return ) >
+    struct laser_block : public comma::packed::packed_struct< laser_block, 2 + 2 + returns_per_block * sizeof( laser_return ) >
     {
         comma::packed::string< 2 > id;
         comma::packed::uint16 rotation;
-        boost::array< laser_return, 32 > lasers;
+        boost::array< laser_return, returns_per_block > lasers;
     };
     
     struct status : public comma::packed::packed_struct< status, 6 >
@@ -83,7 +85,7 @@ struct packet : public comma::packed::packed_struct< packet, 1206 >
     
     static const char* lower_block_id() { return "\xFF\xDD"; }
 
-    boost::array< laser_block, 12 > blocks;
+    boost::array< laser_block, number_of_blocks > blocks;
     status status;
 };
 
