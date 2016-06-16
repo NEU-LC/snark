@@ -34,6 +34,7 @@
 #include <comma/csv/impl/fieldwise.h>
 #include <comma/csv/stream.h>
 #include <comma/csv/traits.h>
+#include <comma/application/verbose.h>
 #include "../../../math/spherical_geometry/coordinates.h"
 #include "../../../math/spherical_geometry/traits.h"
 #include "../../../timing/timestamped.h"
@@ -188,13 +189,15 @@ static void output( const comma::csv::fieldwise& fieldwise, const output::type& 
 
 using namespace snark;
 
-void handle( const nmea::messages::zda& zda )
+bool handle( const nmea::messages::zda& zda )
 {
     output_.t = zda.time;
+    return true;
 }
 
-void handle( const nmea::messages::gga& v )
+bool handle( const nmea::messages::gga& v )
 {
+    if(v.quality==snark::nmea::messages::gga::quality_t::fix_not_valid) { return false; }
     if(!zda_only)
     {
         //this is a bug, date comes from system, time from GPS => on day rollover it can jump 24h
@@ -203,10 +206,12 @@ void handle( const nmea::messages::gga& v )
     output_.data.position.coordinates = v.coordinates();
     output_.data.position.z = v.orthometric_height;
     output_.data.number_of_satellites = v.satellites_in_use;
+    return true;
 }
 
-void handle( const nmea::messages::trimble::avr& m )
+bool handle( const nmea::messages::trimble::avr& m )
 {
+    if(m.quality==snark::nmea::messages::trimble::avr::quality_t::fix_not_valid) { return false; }
     if(!zda_only)
     {
         //this is a bug, date comes from system, time from GPS => on day rollover it can jump 24h
@@ -216,12 +221,13 @@ void handle( const nmea::messages::trimble::avr& m )
     output_.data.orientation.pitch = m.tilt.value;
     output_.data.orientation.yaw = m.yaw.value;
     //output_.data.number_of_satellites = m.value.satellites_in_use;
+    return true;
 }
 
-template < typename T > void handle( const nmea::string& s )
+template < typename T > bool handle( const nmea::string& s )
 {
     static comma::csv::ascii< T > ascii;
-    handle( ascii.get( s.values() ) );
+    return handle( ascii.get( s.values() ) );
 }
 
 int main( int ac, char** av )
@@ -255,6 +261,7 @@ int main( int ac, char** av )
         comma::csv::output_stream< output::type > os( std::cout, csv );
         while( std::cin.good() )
         {
+            bool valid=true;
             std::string line;
             std::getline( std::cin, line );
             if( line.empty() ) { continue; }
@@ -268,15 +275,18 @@ int main( int ac, char** av )
             {
                 if( s.manufacturer_code() == nmea::messages::trimble::manufacturer_code )
                 {
-                    if( static_cast< const nmea::messages::trimble::string& >( s ).message_type() == nmea::messages::trimble::avr::type ) { handle< nmea::messages::trimble::avr >( s ); }
+                    if( static_cast< const nmea::messages::trimble::string& >( s ).message_type() == nmea::messages::trimble::avr::type ) { valid=handle< nmea::messages::trimble::avr >( s ); }
                     else { if( verbose ) { std::cerr << "nmea-to-csv: discarded unimplemented trimble message: \"" << line << "\"" << std::endl; } continue; }
                 }
                 else { if( verbose ) { std::cerr << "nmea-to-csv: discarded unimplemented proprietary nmea message: \"" << line << "\"" << std::endl; } continue; }
             }
-            else if( s.message_type() == nmea::messages::gga::type ) { handle< nmea::messages::gga >( s ); }
-            else if( s.message_type() == nmea::messages::zda::type ) { handle(nmea::messages::zda(s)); }
+            else if( s.message_type() == nmea::messages::gga::type ) { valid=handle< nmea::messages::gga >( s ); }
+            else if( s.message_type() == nmea::messages::zda::type ) { valid=handle(nmea::messages::zda(s)); }
             else { if( verbose ) { std::cerr << "nmea-to-csv: discarded unimplemented string: \"" << line << "\"" << std::endl; } continue; }
-            if( output_all ) { os.write( output_ ); } else { output( fieldwise, output_, os ); }
+            if(valid)
+            {
+                if( output_all ) { os.write( output_ ); } else { output( fieldwise, output_, os ); }
+            }
         }
         return 0;
     }
