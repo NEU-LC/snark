@@ -29,21 +29,51 @@
 
 #pragma once
 
-#include "impl/calculator.h"
+#include <boost/array.hpp>
+#include <boost/static_assert.hpp>
+#include <comma/base/types.h>
+#include <comma/packed/byte.h>
+#include <comma/packed/little_endian.h>
+#include <comma/packed/string.h>
+#include <comma/packed/struct.h>
 
 namespace snark { namespace velodyne { namespace puck {
 
-struct calculator : public velodyne::calculator
+struct packet : public comma::packed::packed_struct< packet, 1206 >
 {
-    std::pair< ::Eigen::Vector3d, ::Eigen::Vector3d > ray( unsigned int laser, double range, double angle ) const;
+    enum { number_of_lasers = 16, number_of_blocks = 12, number_of_returns_per_packet = number_of_lasers * 2 * number_of_blocks };
     
-    ::Eigen::Vector3d point( unsigned int laser, double range, double angle ) const;
+    struct laser_return : public comma::packed::packed_struct< laser_return, 3 >
+    {
+        comma::packed::little_endian_uint16 range;
+        comma::packed::byte reflectivity;
+        
+        double range_as_meters() const { return 0.002 * range(); }
+    };
     
-    double range( unsigned int laser, double range ) const;
+    struct block : public comma::packed::packed_struct< block, 2 + 2 + number_of_lasers * 2 * sizeof( laser_return ) >
+    {
+        static const char* ffee() { return "\xFF\xEE"; }
+        
+        comma::packed::string< 2 > flag;
+        comma::packed::little_endian_uint16 azimuth;
+        boost::array< boost::array< laser_return, number_of_lasers >, 2 > channels;
+        
+        double azimuth_as_radians() const { return ( double( azimuth() ) / 100 ) * M_PI / 180; }
+    };
     
-    double azimuth( unsigned int laser, double azimuth ) const;
-    
-    double intensity( unsigned int laser, unsigned char intensity, double distance ) const;
+    struct factory_t : public comma::packed::packed_struct< factory_t, 2 >
+    {
+        struct modes { enum values { dual_return = 0x39 }; };
+        struct sources { enum values { vlp16 = 0x22 }; };
+        
+        comma::packed::byte mode;
+        comma::packed::byte source;
+    };
+
+    boost::array< block, number_of_blocks > blocks;
+    comma::packed::little_endian_uint64 timestamp; // time of first shot of the first block (firing sequence), microseconds since past the hour
+    factory_t factory;
 };
 
 } } } // namespace snark { namespace velodyne { namespace puck {
