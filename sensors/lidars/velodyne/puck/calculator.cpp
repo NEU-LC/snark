@@ -32,39 +32,26 @@
 #include <boost/graph/graph_concepts.hpp>
 #include "calculator.h"
 #include "packet.h"
+#include "../../las/packets.h"
 
 namespace snark { namespace velodyne { namespace puck {
 
-static boost::array< double, 16 > elevation_ = {{ -15.0 * 180 / M_PI
-                                                , 1 * 180 / M_PI
-                                                , -13 * 180 / M_PI
-                                                , -3 * 180 / M_PI
-                                                , -11 * 180 / M_PI
-                                                , 5 * 180 / M_PI
-                                                , -9 * 180 / M_PI
-                                                , 7 * 180 / M_PI
-                                                , -7 * 180 / M_PI
-                                                , 9 * 180 / M_PI
-                                                , -5 * 180 / M_PI
-                                                , 11 * 180 / M_PI
-                                                , -3 * 180 / M_PI
-                                                , 13 * 180 / M_PI
-                                                , -1 * 180 / M_PI
-                                                , 15 * 180 / M_PI }};
-
-static boost::array< double, 16 > get_sin_( const boost::array< double, 16 >& e )
-{
-    boost::array< double, 16 > s;
-    for( unsigned int i = 0; i < s.size(); ++i ) { s[i] = std::sin( e[i] ); }
-    return s;
-}
-
-static boost::array< double, 16 > get_cos_( const boost::array< double, 16 >& e )
-{
-    boost::array< double, 16 > s;
-    for( unsigned int i = 0; i < s.size(); ++i ) { s[i] = std::cos( e[i] ); }
-    return s;
-}
+static boost::array< double, 16 > elevation_ = {{ -15.0 * M_PI / 180
+                                                , 1 * M_PI / 180
+                                                , -13 * M_PI / 180
+                                                , -3 * M_PI / 180
+                                                , -11 * M_PI / 180
+                                                , 5 * M_PI / 180
+                                                , -9 * M_PI / 180
+                                                , 7 * M_PI / 180
+                                                , -7 * M_PI / 180
+                                                , 9 * M_PI / 180
+                                                , -5 * M_PI / 180
+                                                , 11 * M_PI / 180
+                                                , -3 * M_PI / 180
+                                                , 13 * M_PI / 180
+                                                , -1 * M_PI / 180
+                                                , 15 * M_PI / 180 }};
 
 namespace timing {
     
@@ -72,46 +59,64 @@ static double firing_interval = ( 2.304 / 1000000 );
 
 static double recharge_interval = ( 18.43 / 1000000 );
 
-static boost::array< double, puck::packet::number_of_returns_per_packet > get_single_offsets()
-{
-    boost::array< double, puck::packet::number_of_returns_per_packet > offsets;
-    unsigned int i = 0;
-    double offset = 0;
-    for( unsigned int j = 0; j < puck::packet::number_of_blocks; ++j, offset += recharge_interval )
-    {
-        for( unsigned int j = 0; j < puck::packet::number_of_lasers * 2; ++j, ++i, offset += firing_interval ) { offsets[i] = offset; }
-    }
-    return offsets;
-}
-
-static boost::array< double, puck::packet::number_of_returns_per_packet > get_dual_offsets()
-{
-    boost::array< double, puck::packet::number_of_returns_per_packet > offsets;
-    unsigned int i = 0;
-    double offset = 0;
-    for( unsigned int j = 0; j < puck::packet::number_of_blocks; ++j, i += puck::packet::number_of_lasers, offset += recharge_interval )
-    {
-        for( unsigned int j = 0; j < puck::packet::number_of_lasers; ++j, ++i, offset += firing_interval ) { offsets[i] = offsets[ i + puck::packet::number_of_lasers ] = offset; }
-    }
-    return offsets;
-}
-
-static boost::array< double, puck::packet::number_of_returns_per_packet > single_offsets = get_single_offsets();
-
-static boost::array< double, puck::packet::number_of_returns_per_packet > dual_offsets = get_dual_offsets();
-
 } // namespace timing {
 
-static boost::array< double, 16 > elevation_sin_ = get_sin_( elevation_ );
+struct laser
+{
+    double sin;
+    double cos;
+    
+    laser() {}
+    laser( unsigned int index )
+        : sin( std::sin( elevation_[ index % puck::packet::number_of_lasers ] ) )
+        , cos( std::cos( elevation_[ index % puck::packet::number_of_lasers ] ) )
+    {
+    }
+};
 
-static boost::array< double, 16 > elevation_cos_ = get_cos_( elevation_ );
+struct channel
+{
+    double single_mode_delay;
+    double dual_mode_delay;
+    
+    channel() {}
+    channel( unsigned int block, unsigned int index )
+        : single_mode_delay( timing::firing_interval * index + timing::recharge_interval * ( index / puck::packet::number_of_lasers ) + timing::recharge_interval * block * 2 )
+        , dual_mode_delay( timing::firing_interval * ( index % puck::packet::number_of_lasers ) + timing::recharge_interval * block )
+    {
+    }
+};
+
+typedef boost::array< boost::array< channel, puck::packet::number_of_lasers * 2 >, puck::packet::number_of_blocks > channels_t;
+
+static channels_t init_channels()
+{
+    channels_t channels;
+    for( unsigned int i = 0; i < puck::packet::number_of_blocks; ++i )
+    {
+        for( unsigned int j = 0; j < puck::packet::number_of_lasers * 2; ++j ) { channels[i][j] = channel( i, j ); }
+    }
+    return channels;
+}
+
+typedef boost::array< laser, puck::packet::number_of_lasers > lasers_t;
+
+static lasers_t init_lasers()
+{
+    lasers_t lasers;
+    for( unsigned int j = 0; j < puck::packet::number_of_lasers; ++j ) { lasers[j] = laser( j ); }
+    return lasers;
+}
+
+static channels_t channels = init_channels();
+static lasers_t lasers = init_lasers();
 
 std::pair< ::Eigen::Vector3d, ::Eigen::Vector3d > calculator::ray( unsigned int laser, double range, double angle ) const { return std::make_pair( ::Eigen::Vector3d::Zero(), point( laser, range, angle ) ); }
 
 ::Eigen::Vector3d calculator::point( unsigned int laser, double range, double angle ) const
 {
     laser %= 16; // todo: fix it!
-    return ::Eigen::Vector3d( range * elevation_cos_[laser] * std::sin( angle ), range * elevation_cos_[laser] * std::cos( angle ), range * elevation_sin_[laser] );
+    return ::Eigen::Vector3d( range * lasers[laser].cos * std::sin( angle ), range * lasers[laser].cos * std::cos( angle ), range * lasers[laser].sin );
 }
 
 double calculator::range( unsigned int, double range ) const { return range; }
