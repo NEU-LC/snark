@@ -101,6 +101,7 @@ class stream : public boost::noncopyable
             bool operator==( const index& rhs ) const { return idx == rhs.idx; }
         };
         index m_index;
+        boost::optional< puck::packet::const_iterator > puck_packet_iterator_;
         unsigned int m_scan;
         scan_tick m_tick;
         bool m_closed;
@@ -147,40 +148,45 @@ inline double stream< S >::angularSpeed()
 template < typename S >
 inline laser_return* stream< S >::read()
 {
-//     while( !m_closed )
-//     {
-//         if( !buffer_ )
-//         {
-//             buffer_ = impl::stream_traits< S >::read( *m_stream, sizeof( packet ) );
-//             if( !buffer_ ) { m_closed = true; return NULL; }
-//             m_packet = reinterpret_cast< const packet* >( buffer_ );
-//             m_index = index();
-//             if( impl::stream_traits< S >::is_new_scan( m_tick, *m_stream, *m_packet ) ) { ++m_scan; } //if( m_tick.is_new_scan( *m_packet ) ) { ++m_scan; }
-//             m_timestamp = impl::stream_traits< S >::timestamp( *m_stream );
-//         }
-//         if( m_timestamp.is_not_a_date_time() ) { m_timestamp = impl::stream_traits< S >::timestamp( *m_stream ); }
-//         m_laserReturn = impl::get_laser_return( *m_packet, m_index.block, m_index.laser, m_timestamp, angularSpeed(), m_legacy );
-//         ++m_index;
-//         if( m_index.idx >= m_size ) { buffer_ = NULL; }
-//         bool valid = !comma::math::equal( m_laserReturn.range, 0 );
-//         if( valid || m_outputInvalid ) { return &m_laserReturn; }
-//     }
-//     return NULL;
-
     while( !m_closed )
     {
-        if( m_index.idx >= m_size )
+        if( !buffer_ )
         {
-            m_index = index();
-            m_packet = reinterpret_cast< const packet* >( impl::stream_traits< S >::read( *m_stream, sizeof( packet ) ) );
-            if( m_packet == NULL ) { return NULL; }
-            //if( m_tick.is_new_scan( *m_packet ) ) { ++m_scan; }
-            if( impl::stream_traits< S >::is_new_scan( m_tick, *m_stream, *m_packet ) ) { ++m_scan; }
+            buffer_ = impl::stream_traits< S >::read( *m_stream, sizeof( packet ) );
+            if( !buffer_ ) { m_closed = true; return NULL; }
+            if( reinterpret_cast< const puck::packet* >( buffer_ )->factory.model() == puck::packet::factory_t::models::vlp16 ) // quickish and dirtyish
+            {
+                puck_packet_iterator_ = puck::packet::const_iterator( reinterpret_cast< const puck::packet* >( buffer_ ) );
+                
+                // todo: scan tick
+                
+            }
+            else
+            {
+                m_packet = reinterpret_cast< const packet* >( buffer_ );
+                if( impl::stream_traits< S >::is_new_scan( m_tick, *m_stream, *m_packet ) ) { ++m_scan; } //if( m_tick.is_new_scan( *m_packet ) ) { ++m_scan; }
+                m_index = index();
+            }
             m_timestamp = impl::stream_traits< S >::timestamp( *m_stream );
         }
         if( m_timestamp.is_not_a_date_time() ) { m_timestamp = impl::stream_traits< S >::timestamp( *m_stream ); }
-        m_laserReturn = impl::get_laser_return( *m_packet, m_index.block, m_index.laser, m_timestamp, angularSpeed(), m_legacy );
-        ++m_index;
+        if( puck_packet_iterator_ ) // quickish and dirtyish
+        {
+            const puck::packet::const_iterator::value_type& v = **puck_packet_iterator_;
+            m_laserReturn.id = v.id; // todo? use laser_return type in puck?
+            m_laserReturn.azimuth = v.azimuth;
+            m_laserReturn.intensity = v.reflectivity;
+            m_laserReturn.range = v.range;
+            m_laserReturn.timestamp = m_timestamp + boost::posix_time::microseconds( v.delay );
+            ++( *puck_packet_iterator_ );
+            if( puck_packet_iterator_->done() ) { buffer_ = NULL; }
+        }
+        else
+        {
+            m_laserReturn = impl::get_laser_return( *m_packet, m_index.block, m_index.laser, m_timestamp, angularSpeed(), m_legacy );
+            ++m_index;
+            if( m_index.idx >= m_size ) { buffer_ = NULL; }
+        }
         bool valid = !comma::math::equal( m_laserReturn.range, 0 );
         if( valid || m_outputInvalid ) { return &m_laserReturn; }
     }

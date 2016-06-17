@@ -31,7 +31,6 @@
 
 #include <boost/array.hpp>
 #include <boost/static_assert.hpp>
-#include <boost/graph/graph_concepts.hpp>
 #include <Eigen/Core>
 #include <comma/base/types.h>
 #include <comma/packed/byte.h>
@@ -100,9 +99,9 @@ class packet::const_iterator
 
         void operator++();
 
-        value_type operator->() const;
+        const value_type& operator->() const { return value_; }
 
-        value_type operator*() const;
+        const value_type& operator*() const { return value_; }
 
         bool done();
 
@@ -110,9 +109,13 @@ class packet::const_iterator
         const packet* packet_;
         unsigned int block_;
         unsigned int subblock_;
-        double azimuth_step_;
+        double firing_azimuth_step_;
+        double recharge_azimuth_step_;
         value_type value_;
+        bool is_dual_return_;
         bool done_;
+        void update_value_( double step = 0, double delay = 0 );
+        void update_azimuth_step_();
 };
 
 } } } // namespace snark { namespace velodyne { namespace puck {
