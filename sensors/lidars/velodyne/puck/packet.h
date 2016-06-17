@@ -31,6 +31,8 @@
 
 #include <boost/array.hpp>
 #include <boost/static_assert.hpp>
+#include <boost/graph/graph_concepts.hpp>
+#include <Eigen/Core>
 #include <comma/base/types.h>
 #include <comma/packed/byte.h>
 #include <comma/packed/little_endian.h>
@@ -64,16 +66,50 @@ struct packet : public comma::packed::packed_struct< packet, 1206 >
     
     struct factory_t : public comma::packed::packed_struct< factory_t, 2 >
     {
-        struct modes { enum values { dual_return = 0x39 }; };
-        struct sources { enum values { vlp16 = 0x22 }; };
+        struct modes { enum values { strongest_return = 0x37, last_return = 0x38, dual_return = 0x39 }; };
+        struct models { enum values { hdl32 = 0x21, vlp16 = 0x22 }; };
         
         comma::packed::byte mode;
-        comma::packed::byte source;
+        comma::packed::byte model;
     };
 
     boost::array< block, number_of_blocks > blocks;
     comma::packed::little_endian_uint64 timestamp; // time of first shot of the first block (firing sequence), microseconds since past the hour
     factory_t factory;
+    
+    class const_iterator;
+};
+
+class packet::const_iterator
+{
+    public:
+        struct value_type
+        {
+            comma::uint32 id;
+            double azimuth;
+            double range;
+            comma::uint32 reflectivity;
+        };
+        
+        const_iterator();
+        
+        const_iterator( const packet* p );
+        
+        void operator++();
+        
+        value_type operator->() const;
+        
+        value_type operator*() const;
+        
+        bool done();
+        
+    private:
+        const packet* packet_;
+        unsigned int block_;
+        std::pair< unsigned int, unsigned int > channel_;
+        double azimuth_step_;
+        double azimuth_;
+        bool done_;
 };
 
 } } } // namespace snark { namespace velodyne { namespace puck {
