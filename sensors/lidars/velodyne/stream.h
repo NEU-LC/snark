@@ -40,8 +40,9 @@
 #include <comma/application/verbose.h>
 #include "db.h"
 #include "laser_return.h"
-#include "impl/stream_traits.h"
 #include "scan_tick.h"
+#include "impl/stream_traits.h"
+#include "puck/packet.h"
 
 namespace snark {  namespace velodyne {
 
@@ -74,6 +75,7 @@ class stream : public boost::noncopyable
         bool m_outputInvalid;
         boost::scoped_ptr< S > m_stream;
         boost::posix_time::ptime m_timestamp;
+        const char* buffer_;
         const packet* m_packet;
         enum { m_size = packet::number_of_blocks * packet::returns_per_block };
         struct index // quick and dirty
@@ -113,6 +115,7 @@ inline stream< S >::stream( S* stream, unsigned int rpm, bool outputInvalid, boo
     : m_angularSpeed( ( 360 / 60 ) * rpm )
     , m_outputInvalid( outputInvalid )
     , m_stream( stream )
+    , buffer_( NULL )
     , m_scan( 0 )
     , m_closed( false )
     , m_legacy(legacy)
@@ -124,6 +127,7 @@ template < typename S >
 inline stream< S >::stream( S* stream, bool outputInvalid, bool legacy )
     : m_outputInvalid( outputInvalid )
     , m_stream( stream )
+    , buffer_( NULL )
     , m_scan( 0 )
     , m_closed( false )
     , m_legacy(legacy)
@@ -143,6 +147,26 @@ inline double stream< S >::angularSpeed()
 template < typename S >
 inline laser_return* stream< S >::read()
 {
+//     while( !m_closed )
+//     {
+//         if( !buffer_ )
+//         {
+//             buffer_ = impl::stream_traits< S >::read( *m_stream, sizeof( packet ) );
+//             if( !buffer_ ) { m_closed = true; return NULL; }
+//             m_packet = reinterpret_cast< const packet* >( buffer_ );
+//             m_index = index();
+//             if( impl::stream_traits< S >::is_new_scan( m_tick, *m_stream, *m_packet ) ) { ++m_scan; } //if( m_tick.is_new_scan( *m_packet ) ) { ++m_scan; }
+//             m_timestamp = impl::stream_traits< S >::timestamp( *m_stream );
+//         }
+//         if( m_timestamp.is_not_a_date_time() ) { m_timestamp = impl::stream_traits< S >::timestamp( *m_stream ); }
+//         m_laserReturn = impl::get_laser_return( *m_packet, m_index.block, m_index.laser, m_timestamp, angularSpeed(), m_legacy );
+//         ++m_index;
+//         if( m_index.idx >= m_size ) { buffer_ = NULL; }
+//         bool valid = !comma::math::equal( m_laserReturn.range, 0 );
+//         if( valid || m_outputInvalid ) { return &m_laserReturn; }
+//     }
+//     return NULL;
+
     while( !m_closed )
     {
         if( m_index.idx >= m_size )
