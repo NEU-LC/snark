@@ -27,30 +27,45 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include <cmath>
 #include "packet.h"
 
 namespace snark { namespace velodyne { namespace puck {
+
+namespace timing {
+
+static double firing_interval = ( 2.304 / 1000000 );
+
+static double recharge_interval = ( 18.43 / 1000000 );
+
+} // namespace timing {
+
+static double azimuth_step( double from, double to )
+{
+    static double ratio = timing::firing_interval / ( timing::firing_interval + timing::recharge_interval / packet::number_of_lasers );
+    double diff = to - from;
+    if( diff < 0 ) { diff += M_PI * 2; }
+    return diff * ratio;
+}
 
 packet::const_iterator::const_iterator() : packet_( NULL ), done_( true ) {}
 
 packet::const_iterator::const_iterator( const packet* p )
     : packet_( p )
     , block_( 0 )
-    , channel_( std::make_pair( 0, 0 ) )
-    , azimuth_( packet_->blocks[0].azimuth_as_radians() )
+    , subblock_( 0 )
     , done_( false )
 {
-    azimuth_step_ = 0; // todo
+    value_.azimuth = packet_->blocks[0].azimuth_as_radians();
+    azimuth_step_ = azimuth_step( value_.azimuth, packet_->blocks[1].azimuth_as_radians() );
 }
 
 packet::const_iterator::value_type packet::const_iterator::operator->() const { return operator*(); }
-        
+
 packet::const_iterator::value_type packet::const_iterator::operator*() const
 {
     packet::const_iterator::value_type v;
-    v.id = channel_.second;
-    const packet::laser_return& r = packet_->blocks[block_].channels[channel_.first][channel_.second];
-    v.azimuth = azimuth_;
+    const packet::laser_return& r = packet_->blocks[block_].channels[subblock_][value_.id];
     v.range = r.range_as_meters();
     v.reflectivity = r.reflectivity();
     return v;
@@ -58,15 +73,30 @@ packet::const_iterator::value_type packet::const_iterator::operator*() const
 
 void packet::const_iterator::operator++()
 {
-    ++channel_.second;
-    if( channel_.second < packet::number_of_lasers ) { return; }
-    channel_.second = 0;
-    ++channel_.first;
-    if( channel_.first < 2 ) { return; }
-    channel_.first = 0;
+    if( packet_->factory.mode() == packet::factory_t::modes::dual_return )
+    {
+        ++subblock_;
+        if( subblock_ < packet::number_of_subblocks ) { return; }
+        subblock_ = 0;
+        ++value_.id;
+        if( value_.id < packet::number_of_lasers ) { return; }
+        value_.id = 0;
+        value_.delay += timing::firing_interval;
+    }
+    else
+    {
+        ++value_.id;
+        if( value_.id < packet::number_of_lasers ) { value_.delay += timing::firing_interval; return; }
+        value_.id = 0;
+        ++subblock_;
+        if( subblock_ < packet::number_of_subblocks ) { value_.delay += timing::recharge_interval; return; }
+        subblock_ = 0;
+    }
     ++block_;
-    if( block_ < packet::number_of_blocks ) { return; }
-    done_ = true;
+    value_.delay += timing::recharge_interval;
+    if( block_ == packet::number_of_blocks ) { done_ = true; return; }
+    value_.azimuth = packet_->blocks[block_].azimuth_as_radians();
+    if( block_ < ( packet::number_of_blocks - 1 ) ) { azimuth_step_ = azimuth_step( value_.azimuth, packet_->blocks[ block_ + 1 ].azimuth_as_radians() ); }
 }
 
 bool packet::const_iterator::done() { return done_; }

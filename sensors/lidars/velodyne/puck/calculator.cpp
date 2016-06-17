@@ -53,14 +53,6 @@ static boost::array< double, 16 > elevation_ = {{ -15.0 * M_PI / 180
                                                 , -1 * M_PI / 180
                                                 , 15 * M_PI / 180 }};
 
-namespace timing {
-    
-static double firing_interval = ( 2.304 / 1000000 );
-
-static double recharge_interval = ( 18.43 / 1000000 );
-
-} // namespace timing {
-
 struct laser
 {
     double sin;
@@ -74,30 +66,32 @@ struct laser
     }
 };
 
-struct channel
-{
-    double single_mode_delay;
-    double dual_mode_delay;
-    
-    channel() {}
-    channel( unsigned int block, unsigned int index )
-        : single_mode_delay( timing::firing_interval * index + timing::recharge_interval * ( index / puck::packet::number_of_lasers ) + timing::recharge_interval * block * 2 )
-        , dual_mode_delay( timing::firing_interval * ( index % puck::packet::number_of_lasers ) + timing::recharge_interval * block )
-    {
-    }
-};
-
-typedef boost::array< boost::array< channel, puck::packet::number_of_lasers * 2 >, puck::packet::number_of_blocks > channels_t;
-
-static channels_t init_channels()
-{
-    channels_t channels;
-    for( unsigned int i = 0; i < puck::packet::number_of_blocks; ++i )
-    {
-        for( unsigned int j = 0; j < puck::packet::number_of_lasers * 2; ++j ) { channels[i][j] = channel( i, j ); }
-    }
-    return channels;
-}
+// struct channel
+// {
+//     double single_mode_delay;
+//     double dual_mode_delay;
+//     
+//     channel() {}
+//     channel( unsigned int block, unsigned int index )
+//         : single_mode_delay( timing::firing_interval * index + timing::recharge_interval * ( index / puck::packet::number_of_lasers ) + timing::recharge_interval * block * 2 )
+//         , dual_mode_delay( timing::firing_interval * ( index % puck::packet::number_of_lasers ) + timing::recharge_interval * block )
+//     {
+//     }
+// };
+// 
+// typedef boost::array< boost::array< channel, puck::packet::number_of_lasers * 2 >, puck::packet::number_of_blocks > channels_t;
+// 
+// static channels_t init_channels()
+// {
+//     channels_t channels;
+//     for( unsigned int i = 0; i < puck::packet::number_of_blocks; ++i )
+//     {
+//         for( unsigned int j = 0; j < puck::packet::number_of_lasers * 2; ++j ) { channels[i][j] = channel( i, j ); }
+//     }
+//     return channels;
+// }
+//
+// static channels_t channels = init_channels();
 
 typedef boost::array< laser, puck::packet::number_of_lasers > lasers_t;
 
@@ -108,7 +102,6 @@ static lasers_t init_lasers()
     return lasers;
 }
 
-static channels_t channels = init_channels();
 static lasers_t lasers = init_lasers();
 
 std::pair< ::Eigen::Vector3d, ::Eigen::Vector3d > calculator::ray( unsigned int laser, double range, double angle ) const { return std::make_pair( ::Eigen::Vector3d::Zero(), point( laser, range, angle ) ); }

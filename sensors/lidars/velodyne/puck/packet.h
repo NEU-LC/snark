@@ -43,7 +43,7 @@ namespace snark { namespace velodyne { namespace puck {
 
 struct packet : public comma::packed::packed_struct< packet, 1206 >
 {
-    enum { number_of_lasers = 16, number_of_blocks = 12, number_of_returns_per_packet = number_of_lasers * 2 * number_of_blocks };
+    enum { number_of_lasers = 16, number_of_blocks = 12, number_of_subblocks = 2, number_of_returns_per_packet = number_of_lasers * number_of_subblocks * number_of_blocks };
     
     struct laser_return : public comma::packed::packed_struct< laser_return, 3 >
     {
@@ -53,7 +53,7 @@ struct packet : public comma::packed::packed_struct< packet, 1206 >
         double range_as_meters() const { return 0.002 * range(); }
     };
     
-    struct block : public comma::packed::packed_struct< block, 2 + 2 + number_of_lasers * 2 * sizeof( laser_return ) >
+    struct block : public comma::packed::packed_struct< block, 2 + 2 + number_of_lasers * number_of_subblocks * sizeof( laser_return ) >
     {
         static const char* ffee() { return "\xFF\xEE"; }
         
@@ -86,29 +86,32 @@ class packet::const_iterator
         struct value_type
         {
             comma::uint32 id;
+            double delay;
             double azimuth;
             double range;
             comma::uint32 reflectivity;
+
+            value_type() : id( 0 ), delay( 0 ), azimuth( 0 ), range( 0 ), reflectivity( 0 ) {}
         };
-        
+
         const_iterator();
-        
+
         const_iterator( const packet* p );
-        
+
         void operator++();
-        
+
         value_type operator->() const;
-        
+
         value_type operator*() const;
-        
+
         bool done();
-        
+
     private:
         const packet* packet_;
         unsigned int block_;
-        std::pair< unsigned int, unsigned int > channel_;
+        unsigned int subblock_;
         double azimuth_step_;
-        double azimuth_;
+        value_type value_;
         bool done_;
 };
 
