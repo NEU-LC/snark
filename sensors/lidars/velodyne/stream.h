@@ -139,7 +139,7 @@ template < typename S >
 inline double stream< S >::angularSpeed()
 {
     if( m_angularSpeed ) { return *m_angularSpeed; }
-    double da = double( m_packet->blocks[0].rotation() - m_packet->blocks[ packet::returns_per_block - 1 ].rotation() ) / 100;
+    double da = double( m_packet->blocks[0].rotation() - m_packet->blocks[ packet::number_of_blocks - 1 ].rotation() ) / 100;
     double dt = impl::time_span(m_legacy);
     return da / dt;
 }
