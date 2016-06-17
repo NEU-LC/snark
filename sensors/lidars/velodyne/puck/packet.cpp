@@ -31,15 +31,13 @@
 #include <boost/tuple/tuple.hpp>
 #include "packet.h"
 
-#include <iostream>
-
 namespace snark { namespace velodyne { namespace puck {
 
 namespace timing {
 
-static double firing_interval = ( 2.304 ); // attention! microseconds
+static double firing_interval = 2.304; // attention! microseconds
 
-static double recharge_interval = ( 18.43 ); // attention! microseconds
+static double recharge_interval = 18.43; // attention! microseconds
 
 } // namespace timing {
 
@@ -78,8 +76,6 @@ void packet::const_iterator::update_azimuth_step_() // quick and dirty
 {
     double next_azimuth = packet_->blocks[ block_ + 1 ].azimuth_as_radians();
     boost::tie( firing_azimuth_step_, recharge_azimuth_step_ ) = azimuth_step( value_.azimuth, next_azimuth, is_dual_return_ ? 1 : 2 );
-    
-    std::cerr << "--> cur: " << ( value_.azimuth * 180 / M_PI ) << " next: " << ( next_azimuth * 180 / M_PI ) << " firing step: " << ( firing_azimuth_step_ * 180 / M_PI ) << " recharge step: " << ( recharge_azimuth_step_ * 180 / M_PI ) << std::endl;
 }
 
 void packet::const_iterator::operator++()

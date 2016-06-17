@@ -186,21 +186,17 @@ snark::timing::adjusted_time_config adjusted_time_t::config_default()
         boost::posix_time::seconds(300) );
 }
     
-//*********************
-template < typename S >
-inline static void run( velodyne_stream< S >& v, const comma::csv::options& csv, double min_range )
+template < typename S > inline static void run( velodyne_stream< S >& v, const comma::csv::options& csv, double min_range )
 {
     adjusted_time_t adjusted_time;
     comma::signal_flag isShutdown;
     comma::csv::output_stream< velodyne_point > ostream( std::cout, csv );
     //Profilerstart( "velodyne-to-csv.prof" );{
-    //while( !isShutdown && v.read() ) { if( v.point().range > min_range ) { ostream.write( v.point() ); } }
     while( !isShutdown && v.read() )
     { 
         if( v.point().range < min_range ) { continue; }
         snark::velodyne_point p = v.point();
         p.timestamp=adjusted_time.adjust_timestamp(p.timestamp);
-        comma::verbose << "timestamp "<<boost::posix_time::to_iso_string(p.timestamp) << std::endl;
         ostream.write( p );
     }
     //Profilerstop(); }

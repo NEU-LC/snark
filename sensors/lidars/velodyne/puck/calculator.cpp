@@ -29,10 +29,8 @@
 
 #include <cmath>
 #include <boost/array.hpp>
-#include <boost/graph/graph_concepts.hpp>
 #include "calculator.h"
 #include "packet.h"
-#include "../../las/packets.h"
 
 namespace snark { namespace velodyne { namespace puck {
 
@@ -59,39 +57,8 @@ struct laser
     double cos;
     
     laser() {}
-    laser( unsigned int index )
-        : sin( std::sin( elevation_[ index % puck::packet::number_of_lasers ] ) )
-        , cos( std::cos( elevation_[ index % puck::packet::number_of_lasers ] ) )
-    {
-    }
+    laser( unsigned int index ) : sin( std::sin( elevation_[ index ] ) ), cos( std::cos( elevation_[ index ] ) ) {}
 };
-
-// struct channel
-// {
-//     double single_mode_delay;
-//     double dual_mode_delay;
-//     
-//     channel() {}
-//     channel( unsigned int block, unsigned int index )
-//         : single_mode_delay( timing::firing_interval * index + timing::recharge_interval * ( index / puck::packet::number_of_lasers ) + timing::recharge_interval * block * 2 )
-//         , dual_mode_delay( timing::firing_interval * ( index % puck::packet::number_of_lasers ) + timing::recharge_interval * block )
-//     {
-//     }
-// };
-// 
-// typedef boost::array< boost::array< channel, puck::packet::number_of_lasers * 2 >, puck::packet::number_of_blocks > channels_t;
-// 
-// static channels_t init_channels()
-// {
-//     channels_t channels;
-//     for( unsigned int i = 0; i < puck::packet::number_of_blocks; ++i )
-//     {
-//         for( unsigned int j = 0; j < puck::packet::number_of_lasers * 2; ++j ) { channels[i][j] = channel( i, j ); }
-//     }
-//     return channels;
-// }
-//
-// static channels_t channels = init_channels();
 
 typedef boost::array< laser, puck::packet::number_of_lasers > lasers_t;
 
@@ -108,7 +75,6 @@ std::pair< ::Eigen::Vector3d, ::Eigen::Vector3d > calculator::ray( unsigned int 
 
 ::Eigen::Vector3d calculator::point( unsigned int laser, double range, double angle ) const
 {
-    laser %= 16; // todo: fix it!
     return ::Eigen::Vector3d( range * lasers[laser].cos * std::sin( angle ), range * lasers[laser].cos * std::cos( angle ), range * lasers[laser].sin );
 }
 

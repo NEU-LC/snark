@@ -154,11 +154,22 @@ inline laser_return* stream< S >::read()
         {
             buffer_ = impl::stream_traits< S >::read( *m_stream, sizeof( packet ) );
             if( !buffer_ ) { m_closed = true; return NULL; }
+            
+            
+            
+            // todo: pass model to the constructor
+            
+            
+            
             if( reinterpret_cast< const puck::packet* >( buffer_ )->factory.model() == puck::packet::factory_t::models::vlp16 ) // quickish and dirtyish
             {
                 puck_packet_iterator_ = puck::packet::const_iterator( reinterpret_cast< const puck::packet* >( buffer_ ) );
                 
-                // todo: scan tick
+                
+                // todo: calculate scan
+                
+                // todo: debug timestamp
+                
                 
             }
             else
