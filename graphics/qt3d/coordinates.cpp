@@ -30,6 +30,8 @@
 
 /// @author Cedric Wohlleber
 
+#include <Qt3D/qglbuilder.h>
+#include <Qt3D/qglcylinder.h>
 #include "coordinates.h"
 
 namespace snark { namespace graphics { namespace qt3d {

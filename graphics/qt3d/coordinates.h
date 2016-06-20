@@ -33,11 +33,7 @@
 #ifndef SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_COORDINATES_H_
 #define SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_COORDINATES_H_
 
-#include <Qt3D/qgltexture2d.h>
 #include <Qt3D/qglscenenode.h>
-#include <Qt3D/qglbuilder.h>
-#include <Qt3D/qglpainter.h>
-#include <Qt3D/qglcylinder.h>
 
 namespace snark { namespace graphics { namespace qt3d {
 
