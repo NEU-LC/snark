@@ -27,9 +27,7 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
-#ifndef SNARK_SENSORS_VELODYNE_VELODYNESTREAM_H_
-#define SNARK_SENSORS_VELODYNE_VELODYNESTREAM_H_
+#pragma once
 
 #ifndef WIN32
 #include <stdlib.h>
@@ -210,5 +208,3 @@ template <> struct traits< snark::velodyne_point >
 };
 
 } } // namespace comma { namespace visiting {
-
-#endif // SNARK_SENSORS_VELODYNE_VELODYNESTREAM_H_

@@ -27,9 +27,7 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
-#ifndef SNARK_SENSORS_VELODYNE_STREAM_H_
-#define SNARK_SENSORS_VELODYNE_STREAM_H_
+#pragma once
 
 #include <stdlib.h>
 #include <boost/noncopyable.hpp>
@@ -37,14 +35,12 @@
 #include <boost/scoped_ptr.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <comma/math/compare.h>
-#include <comma/application/verbose.h>
 #include "db.h"
 #include "laser_return.h"
 #include "scan_tick.h"
 #include "impl/stream_traits.h"
-#include "puck/packet.h"
 
-namespace snark {  namespace velodyne {
+namespace snark { namespace velodyne {
 
 /// velodyne point stream
 template < typename S >
@@ -101,7 +97,6 @@ class stream : public boost::noncopyable
             bool operator==( const index& rhs ) const { return idx == rhs.idx; }
         };
         index m_index;
-        boost::optional< puck::packet::const_iterator > puck_packet_iterator_;
         unsigned int m_scan;
         scan_tick m_tick;
         bool m_closed;
@@ -109,7 +104,6 @@ class stream : public boost::noncopyable
         double angularSpeed();
         bool m_legacy;
 };
-
 
 template < typename S >
 inline stream< S >::stream( S* stream, unsigned int rpm, bool outputInvalid, bool legacy )
@@ -154,50 +148,15 @@ inline laser_return* stream< S >::read()
         {
             buffer_ = impl::stream_traits< S >::read( *m_stream, sizeof( packet ) );
             if( !buffer_ ) { m_closed = true; return NULL; }
-            
-            
-            
-            // todo: pass model to the constructor
-            
-            
-            
-            if( reinterpret_cast< const puck::packet* >( buffer_ )->factory.model() == puck::packet::factory_t::models::vlp16 ) // quickish and dirtyish
-            {
-                puck_packet_iterator_ = puck::packet::const_iterator( reinterpret_cast< const puck::packet* >( buffer_ ) );
-                
-                
-                // todo: calculate scan
-                
-                // todo: debug timestamp
-                
-                
-            }
-            else
-            {
-                m_packet = reinterpret_cast< const packet* >( buffer_ );
-                if( impl::stream_traits< S >::is_new_scan( m_tick, *m_stream, *m_packet ) ) { ++m_scan; } //if( m_tick.is_new_scan( *m_packet ) ) { ++m_scan; }
-                m_index = index();
-            }
+            m_packet = reinterpret_cast< const packet* >( buffer_ );
+            if( impl::stream_traits< S >::is_new_scan( m_tick, *m_stream, *m_packet ) ) { ++m_scan; } //if( m_tick.is_new_scan( *m_packet ) ) { ++m_scan; }
+            m_index = index();
             m_timestamp = impl::stream_traits< S >::timestamp( *m_stream );
         }
         if( m_timestamp.is_not_a_date_time() ) { m_timestamp = impl::stream_traits< S >::timestamp( *m_stream ); }
-        if( puck_packet_iterator_ ) // quickish and dirtyish
-        {
-            const puck::packet::const_iterator::value_type& v = **puck_packet_iterator_;
-            m_laserReturn.id = v.id; // todo? use laser_return type in puck?
-            m_laserReturn.azimuth = v.azimuth;
-            m_laserReturn.intensity = v.reflectivity;
-            m_laserReturn.range = v.range;
-            m_laserReturn.timestamp = m_timestamp + boost::posix_time::microseconds( v.delay );
-            ++( *puck_packet_iterator_ );
-            if( puck_packet_iterator_->done() ) { buffer_ = NULL; }
-        }
-        else
-        {
-            m_laserReturn = impl::get_laser_return( *m_packet, m_index.block, m_index.laser, m_timestamp, angularSpeed(), m_legacy );
-            ++m_index;
-            if( m_index.idx >= m_size ) { buffer_ = NULL; }
-        }
+        m_laserReturn = impl::get_laser_return( *m_packet, m_index.block, m_index.laser, m_timestamp, angularSpeed(), m_legacy );
+        ++m_index;
+        if( m_index.idx >= m_size ) { buffer_ = NULL; }
         bool valid = !comma::math::equal( m_laserReturn.range, 0 );
         if( valid || m_outputInvalid ) { return &m_laserReturn; }
     }
@@ -224,5 +183,3 @@ inline void stream< S >::skip_scan()
 }
 
 } } // namespace snark {  namespace velodyne {
-
-#endif /*SNARK_SENSORS_VELODYNE_STREAM_H_*/
