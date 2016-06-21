@@ -38,8 +38,9 @@
 //#include <windows.h>
 #endif
 
-#include <snark/graphics/block_buffer.h>
+#include "../../block_buffer.h"
 #include "Reader.h"
+#include "ShapeWithId.h"
 
 namespace snark { namespace graphics { namespace View {
     
@@ -62,7 +63,8 @@ class ShapeReader : public Reader
         mutable boost::mutex m_mutex;
         boost::scoped_ptr< comma::csv::input_stream< ShapeWithId< S > > > m_stream;
         boost::scoped_ptr< comma::csv::passed< ShapeWithId< S > > > m_passed;
-        qt3d::vertex_buffer buffer_;
+        block_buffer< vertex_t > buffer_;
+
         struct label_t_ // quick and dirty
         {
             Eigen::Vector3d position;
@@ -130,10 +132,24 @@ inline void ShapeReader< S, How >::render( QGLPainter* painter )
 {
     painter->setStandardEffect(QGL::FlatPerVertexColor);
     painter->clearAttributes();
-    painter->setVertexAttribute(QGL::Position, buffer_.points() );
-    painter->setVertexAttribute(QGL::Color, buffer_.color() );
 
-    Shapetraits< S, How >::draw( painter, buffer_.size(), buffer_.index() );
+    QGLAttributeValue position_attribute( sizeof((( vertex_t* )0 )->position ) / sizeof( float )
+                                        , GL_FLOAT
+                                        , sizeof( vertex_t )
+                                        , (char *)buffer_.values().data() + offsetof( vertex_t, position )
+                                        , buffer_.size() );
+
+    QGLAttributeValue color_attribute( sizeof((( vertex_t* )0 )->color ) / sizeof( char )
+                                     , GL_UNSIGNED_BYTE
+                                     , sizeof( vertex_t )
+                                     , (char *)buffer_.values().data() + offsetof( vertex_t, color )
+                                     , buffer_.size());
+
+    painter->setVertexAttribute( QGL::Position, position_attribute );
+    painter->setVertexAttribute( QGL::Color, color_attribute );
+
+    // TODO: we can change draw() to no longer require the index argument
+    Shapetraits< S, How >::draw( painter, buffer_.size(), 0 );
     for( unsigned int i = 0; i < labels_.size(); i++ ) { draw_label( painter, labels_.values()[i].position, labels_.values()[i].color, labels_.values()[i].text ); }
     if( !m_label.empty() ) { draw_label( painter, m_translation ); }
 }

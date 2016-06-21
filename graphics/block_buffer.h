@@ -39,8 +39,6 @@ namespace snark { namespace graphics {
 
 /// circular double buffer accumulating values blockwise
 /// until the block is complete, then it becomes available for reading
-///
-/// @todo reuse for qt3d::vertex_buffer
 template < typename T, typename Storage = std::vector< T > >
 class block_buffer
 {

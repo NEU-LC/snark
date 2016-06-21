@@ -39,11 +39,20 @@
 #include <comma/visiting/traits.h>
 #include <snark/math/interval.h>
 #include <snark/math/rotation_matrix.h>
-#include <snark/graphics/qt3d/vertex_buffer.h>
+#include <snark/graphics/block_buffer.h>
 #include <Qt3D/qglnamespace.h>
 #include <Qt3D/qglpainter.h>
 
 namespace snark { namespace graphics { namespace View {
+
+struct vertex_t
+{
+    QVector3D position;
+    QColor4ub color;
+    vertex_t() {}
+    vertex_t( const QVector3D& position, const QColor4ub& color )
+        : position( position ), color( color ) {}
+};
 
 namespace detail {
 
@@ -76,18 +85,20 @@ template<>
 struct Shapetraits< snark::math::closed_interval< double, 3 > >
 {
     static const unsigned int size = 8;
-    static void update( const snark::math::closed_interval< double, 3 >& e, const Eigen::Vector3d& offset, const QColor4ub& color, unsigned int block, qt3d::vertex_buffer& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents  )
+    static void update( const snark::math::closed_interval< double, 3 >& e, const Eigen::Vector3d& offset, const QColor4ub& color, unsigned int block, block_buffer< vertex_t >& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents  )
     {
         Eigen::Vector3f min = ( e.min() - offset ).cast< float >();
         Eigen::Vector3f max = ( e.max() - offset ).cast< float >();
-        buffer.add_vertex( QVector3D( min.x(), min.y(), min.z() ), color, block );
-        buffer.add_vertex( QVector3D( min.x(), min.y(), max.z() ), color, block );
-        buffer.add_vertex( QVector3D( min.x(), max.y(), max.z() ), color, block );
-        buffer.add_vertex( QVector3D( min.x(), max.y(), min.z() ), color, block );
-        buffer.add_vertex( QVector3D( max.x(), min.y(), min.z() ), color, block );
-        buffer.add_vertex( QVector3D( max.x(), min.y(), max.z() ), color, block );
-        buffer.add_vertex( QVector3D( max.x(), max.y(), max.z() ), color, block );
-        buffer.add_vertex( QVector3D( max.x(), max.y(), min.z() ), color, block );
+
+        buffer.add( vertex_t( QVector3D( min.x(), min.y(), min.z() ), color ), block );
+        buffer.add( vertex_t( QVector3D( min.x(), min.y(), max.z() ), color ), block );
+        buffer.add( vertex_t( QVector3D( min.x(), max.y(), max.z() ), color ), block );
+        buffer.add( vertex_t( QVector3D( min.x(), max.y(), min.z() ), color ), block );
+        buffer.add( vertex_t( QVector3D( max.x(), min.y(), min.z() ), color ), block );
+        buffer.add( vertex_t( QVector3D( max.x(), min.y(), max.z() ), color ), block );
+        buffer.add( vertex_t( QVector3D( max.x(), max.y(), max.z() ), color ), block );
+        buffer.add( vertex_t( QVector3D( max.x(), max.y(), min.z() ), color ), block );
+
         extents = extents
                 ? extents->hull( snark::math::closed_interval< float, 3 >( min, max ) )
                 : snark::math::closed_interval< float, 3 >( min, max );
@@ -118,15 +129,16 @@ template<>
 struct Shapetraits< std::pair< Eigen::Vector3d, Eigen::Vector3d > >
 {
     static const unsigned int size = 2;
-    static void update( const std::pair< Eigen::Vector3d, Eigen::Vector3d >& p, const Eigen::Vector3d& offset, const QColor4ub& color, unsigned int block, qt3d::vertex_buffer& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents  )
+    static void update( const std::pair< Eigen::Vector3d, Eigen::Vector3d >& p, const Eigen::Vector3d& offset, const QColor4ub& color, unsigned int block, block_buffer< vertex_t >& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents  )
     {
         Eigen::Vector3f first = ( p.first - offset ).cast< float >();
         Eigen::Vector3f second = ( p.second - offset ).cast< float >();
         //if(    comma::math::equal( first.x(), second.x() )
         //    && comma::math::equal( first.y(), second.y() )
         //    && comma::math::equal( first.z(), second.z() ) ) { return; } // todo: draw a point instead?
-        buffer.add_vertex( QVector3D( first.x(), first.y(), first.z() ), color, block );
-        buffer.add_vertex( QVector3D( second.x(), second.y(), second.z() ), color, block );
+        buffer.add( vertex_t( QVector3D( first.x(), first.y(), first.z() ), color ), block );
+        buffer.add( vertex_t( QVector3D( second.x(), second.y(), second.z() ), color ), block );
+
         extents = extents
                 ? extents->hull( snark::math::closed_interval< float, 3 >( first ) )
                 : snark::math::closed_interval< float, 3 >( first );
@@ -157,7 +169,7 @@ template < std::size_t Size >
 struct Shapetraits< Ellipse< Size > >
 {
     static const unsigned int size = Size;
-    static void update( const Ellipse< Size >& ellipse, const Eigen::Vector3d& offset, const QColor4ub& color, unsigned int block, qt3d::vertex_buffer& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents  )
+    static void update( const Ellipse< Size >& ellipse, const Eigen::Vector3d& offset, const QColor4ub& color, unsigned int block, block_buffer< vertex_t >& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents  )
     {
         Eigen::Vector3d c = ellipse.center - offset;
         const Eigen::Matrix3d& r = rotation_matrix::rotation( ellipse.orientation );
@@ -169,7 +181,7 @@ struct Shapetraits< Ellipse< Size > >
             Eigen::Vector3d v = r * Eigen::Vector3d( std::cos( angle ) * ellipse.major, std::sin( angle ) * ellipse.minor, 0 );
             Eigen::Vector3d p( v.x(), v.y(), v.z() );
             Eigen::Vector3f point = ( p + c ).cast< float >();
-            buffer.add_vertex( QVector3D( point.x(), point.y(), point.z() ), color, block );
+            buffer.add( vertex_t( QVector3D( point.x(), point.y(), point.z() ), color ), block );
             extents = extents ? extents->hull( point ) : snark::math::closed_interval< float, 3 >( point );
         }
     }
@@ -204,7 +216,7 @@ struct Shapetraits< arc< Size > >
 
     BOOST_STATIC_ASSERT( Size % 2 == 0 ); // quick and dirty: for simplicity support only only even sizes
 
-    static void update( const arc< Size >& a, const Eigen::Vector3d& offset, const QColor4ub& color, unsigned int block, qt3d::vertex_buffer& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents  )
+    static void update( const arc< Size >& a, const Eigen::Vector3d& offset, const QColor4ub& color, unsigned int block, block_buffer< vertex_t >& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents  )
     {
         if( ( a.begin - a.end ).squaredNorm() < ( 0.001 * 0.001 ) ) // real quick and dirty: if begin and end coincide
         {
@@ -213,7 +225,7 @@ struct Shapetraits< arc< Size > >
             for( std::size_t i = 0; i < Size; ++i, v += step ) // just to make the gl buffer sizes right
             {
                 Eigen::Vector3f point = ( v - offset ).cast< float >();
-                buffer.add_vertex( QVector3D( point.x(), point.y(), point.z() ), color, block );
+                buffer.add( vertex_t( QVector3D( point.x(), point.y(), point.z() ), color ), block );
                 extents = extents ? extents->hull( point ) : snark::math::closed_interval< float, 3 >( point );
             }
             return;
@@ -250,7 +262,7 @@ struct Shapetraits< arc< Size > >
         for( std::size_t i = 0; i < Size; ++i, v = r * v ) // todo: use native opengl rotation and normals instead
         {
             Eigen::Vector3f point = ( v + c ).cast< float >();
-            buffer.add_vertex( QVector3D( point.x(), point.y(), point.z() ), color, block );
+            buffer.add( vertex_t( QVector3D( point.x(), point.y(), point.z() ), color ), block );
             extents = extents ? extents->hull( point ) : snark::math::closed_interval< float, 3 >( point );
         }
     }
@@ -309,10 +321,10 @@ struct Shapetraits< Eigen::Vector3d, How >
     static const QGL::DrawingMode drawingMode = draw_traits_< How >::drawing_mode;
     static const unsigned int size = 1;
 
-    static void update( const Eigen::Vector3d& p, const Eigen::Vector3d& offset, const QColor4ub& color, unsigned int block, qt3d::vertex_buffer& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents  )
+    static void update( const Eigen::Vector3d& p, const Eigen::Vector3d& offset, const QColor4ub& color, unsigned int block, block_buffer< vertex_t >& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents  )
     {
         Eigen::Vector3d point = p - offset;
-        buffer.add_vertex( QVector3D( point.x(), point.y(), point.z() ), color, block );
+        buffer.add( vertex_t( QVector3D( point.x(), point.y(), point.z() ), color ), block );
         extents = extents
                 ? extents->hull( point.cast< float >() )
                 : snark::math::closed_interval< float, 3 >( point.cast< float >() );
