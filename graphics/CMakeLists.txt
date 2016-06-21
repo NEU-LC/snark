@@ -57,16 +57,25 @@ IF( QT_VERSION_MAJOR EQUAL 4 )
     INCLUDE( ${QT_USE_FILE} )
     FIND_LIBRARY( Qt3D_LIB NAMES Qt3D REQUIRED )
 ELSEIF( QT_VERSION_MAJOR EQUAL 5 )
-    IF( QT_VERSION_MINOR LESS 5 )
-        # If Qt is installed in a non-standard location (e.g. /opt/) find_package will
-        # need some help. Check for a tell-tale directory and set Qt5_DIR if found.
-        IF( IS_DIRECTORY "${snark_qt_lib_path}/cmake/Qt5" )
-            SET( Qt5_DIR "${snark_qt_lib_path}/cmake/Qt5" )
-        ENDIF()
-        FIND_PACKAGE( Qt5 COMPONENTS Core Gui OpenGL Xml 3D 3DQuick REQUIRED )
-    ELSE( QT_VERSION_MINOR LESS 5 )
-        MESSAGE( FATAL_ERROR "Qt5.5+ 3D support not yet implemented" )
-    ENDIF( QT_VERSION_MINOR LESS 5 )
+    # If Qt is installed in a non-standard location (e.g. /opt/) find_package will
+    # need some help. Check for a tell-tale directory and set Qt5_DIR if found.
+    if( IS_DIRECTORY "${snark_qt_lib_path}/cmake/Qt5" )
+        set( Qt5_DIR "${snark_qt_lib_path}/cmake/Qt5" )
+        # In this case "make install" will fail unless rpath is set.
+        # It would be preferable to set LD_LIBRARY_PATH at runtime.
+        set( CMAKE_INSTALL_RPATH "${snark_qt_lib_path}" )
+    endif()
+    find_package( Qt5 COMPONENTS Core Gui OpenGL Xml REQUIRED )
+    if( QT_VERSION_MINOR LESS 5 )
+        find_package( Qt5 COMPONENTS 3D REQUIRED )
+    else()
+        # 3D libraries changed significantly with Qt5.5
+        find_package( Qt5 COMPONENTS 3DCore REQUIRED )
+        message( STATUS "Qt5Core_INCLUDE_DIRS=${Qt5Core_INCLUDE_DIRS}" )
+        # Should be able to do this by setting target_link_libraries
+        # but that doesn't seem to work
+        include_directories(${Qt5OpenGL_INCLUDE_DIRS})
+    endif()
 ELSE()
     MESSAGE( FATAL_ERROR "Qt version 4 or 5 required" )
 ENDIF( QT_VERSION_MAJOR EQUAL 4 )
