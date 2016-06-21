@@ -41,6 +41,8 @@
 #include <comma/csv/stream.h>
 #include <comma/string/string.h>
 #include <comma/visiting/traits.h>
+#include "../../../../timing/clocked_time_stamp.h"
+#include "../hdl64/stream.h"
 #include "../impl/pcap_reader.h"
 #include "../impl/proprietary_reader.h"
 #include "../impl/thin_reader.h"
@@ -49,7 +51,7 @@
 #include "../impl/velodyne_stream.h"
 #include "../puck/calculator.h"
 #include "../puck/packet.h"
-#include "../../../../timing/clocked_time_stamp.h"
+#include "../puck/stream.h"
 
 //#include <google/profiler.h>
 
@@ -185,24 +187,6 @@ snark::timing::adjusted_time_config adjusted_time_t::config_default()
         boost::posix_time::microseconds(550), 
         boost::posix_time::seconds(300) );
 }
-    
-template < typename S > inline static void run( velodyne_stream< S >& v, const comma::csv::options& csv, double min_range )
-{
-    adjusted_time_t adjusted_time;
-    comma::signal_flag isShutdown;
-    comma::csv::output_stream< velodyne_point > ostream( std::cout, csv );
-    //Profilerstart( "velodyne-to-csv.prof" );{
-    while( !isShutdown && v.read() )
-    { 
-        if( v.point().range < min_range ) { continue; }
-        snark::velodyne_point p = v.point();
-        p.timestamp=adjusted_time.adjust_timestamp(p.timestamp);
-        ostream.write( p );
-    }
-    //Profilerstop(); }
-    if( isShutdown ) { std::cerr << "velodyne-to-csv: interrupted by signal" << std::endl; }
-    else { std::cerr << "velodyne-to-csv: done, no more data" << std::endl; }
-}
 
 static std::string fields_( const std::string& s ) // parsing fields, quick and dirty
 {
@@ -278,34 +262,41 @@ int main( int ac, char** av )
         //use old algorithm for old database
         if (!legacy && db.version == 0){legacy=true; std::cerr<<"velodyne-to-csv: using legacy option for old database"<<std::endl;}
         if(legacy && db.version > 0){std::cerr<<"velodyne-to-csv: using new calibration with legacy option"<<std::endl;}
-        velodyne::calculator* calculator=NULL;
-        if( options.exists( "--puck" ) ) { calculator= new velodyne::puck::calculator; }
-        else { calculator = new velodyne::db_calculator( db ); }
-        if( options.exists( "--pcap" ) )
+        velodyne::calculator* calculator = NULL;
+        velodyne::stream* s = NULL;
+        if( options.exists( "--puck" ) )
         {
-            velodyne_stream< snark::pcap_reader > v( calculator, outputInvalidpoints, from, to, raw_intensity, legacy );
-            run( v, csv, min_range );
-        }
-        else if( options.exists( "--thin" ) )
-        {
-            velodyne_stream< snark::thin_reader > v( calculator, outputInvalidpoints, from, to, raw_intensity, legacy );
-            run( v, csv, min_range );
-        }
-        else if( options.exists( "--udp-port" ) )
-        {
-            velodyne_stream< snark::udp_reader > v( options.value< unsigned short >( "--udp-port" ), calculator, outputInvalidpoints, from, to, raw_intensity, legacy );
-            run( v, csv, min_range );
-        }
-        else if( options.exists( "--proprietary,-q" ) )
-        {
-            velodyne_stream< snark::proprietary_reader > v( calculator, outputInvalidpoints, from, to, raw_intensity, legacy );
-            run( v, csv, min_range );
+            calculator= new velodyne::puck::calculator;
+            if( options.exists( "--pcap" ) ) { s = new velodyne::puck::stream< snark::pcap_reader >( new snark::pcap_reader, outputInvalidpoints ); }
+            else if( options.exists( "--thin" ) ) { s = new velodyne::puck::stream< snark::thin_reader >( new snark::thin_reader, outputInvalidpoints ); }
+            else if( options.exists( "--udp-port" ) ) { s = new velodyne::puck::stream< snark::udp_reader >( new snark::udp_reader( options.value< unsigned short >( "--udp-port" ) ), outputInvalidpoints ); }
+            else if( options.exists( "--proprietary,-q" ) ) { s = new velodyne::puck::stream< snark::proprietary_reader >( new snark::proprietary_reader, outputInvalidpoints ); }
+            else { s = new velodyne::puck::stream< snark::stream_reader >( new snark::stream_reader, outputInvalidpoints ); }
         }
         else
         {
-            velodyne_stream< snark::stream_reader > v( calculator, outputInvalidpoints, from, to, raw_intensity, legacy );
-            run( v, csv, min_range );
+            calculator = new velodyne::db_calculator( db );
+            if( options.exists( "--pcap" ) ) { s = new velodyne::hdl64::stream< snark::pcap_reader >( new snark::pcap_reader, outputInvalidpoints, legacy ); }
+            else if( options.exists( "--thin" ) ) { s = new velodyne::hdl64::stream< snark::thin_reader >( new snark::thin_reader, outputInvalidpoints, legacy ); }
+            else if( options.exists( "--udp-port" ) ) { s = new velodyne::hdl64::stream< snark::udp_reader >( new snark::udp_reader( options.value< unsigned short >( "--udp-port" ) ), outputInvalidpoints, legacy ); }
+            else if( options.exists( "--proprietary,-q" ) ) { s = new velodyne::hdl64::stream< snark::proprietary_reader >( new snark::proprietary_reader, outputInvalidpoints, legacy ); }
+            else { s = new velodyne::hdl64::stream< snark::stream_reader >( new snark::stream_reader, outputInvalidpoints, legacy ); }
         }
+        velodyne_stream v( s, calculator, from, to, raw_intensity );
+        adjusted_time_t adjusted_time;
+        comma::signal_flag is_shutdown;
+        comma::csv::output_stream< velodyne_point > ostream( std::cout, csv );
+        //Profilerstart( "velodyne-to-csv.prof" );{
+        while( !is_shutdown && v.read() )
+        { 
+            if( v.point().range < min_range ) { continue; }
+            snark::velodyne_point p = v.point();
+            p.timestamp=adjusted_time.adjust_timestamp(p.timestamp);
+            ostream.write( p );
+        }
+        //Profilerstop(); }
+        if( is_shutdown ) { std::cerr << "velodyne-to-csv: interrupted by signal" << std::endl; }
+        else { std::cerr << "velodyne-to-csv: done, no more data" << std::endl; }
         return 0;
     }
     catch( std::exception& ex ) { std::cerr << "velodyne-to-csv: " << ex.what() << std::endl; }

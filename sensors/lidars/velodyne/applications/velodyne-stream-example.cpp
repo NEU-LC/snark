@@ -35,7 +35,7 @@
 #include <comma/string/string.h>
 #include <snark/visiting/eigen.h>
 #include "../impl/pcap_reader.h"
-#include "../stream.h"
+#include "../hdl64/stream.h"
 
 using namespace snark;
 
@@ -107,7 +107,7 @@ int main( int ac, char** av )
         velodyne::db db( options.value< std::string >( "--db", "/usr/local/etc/db.calibrated.xml" ) );
     
         // create velodyne point stream
-        velodyne::stream< snark::pcap_reader > stream( new snark::pcap_reader, outputInvalid );
+        velodyne::hdl64::stream< snark::pcap_reader > stream( new snark::pcap_reader, outputInvalid );
     
         // read velodyne points, get the scan id, and output to stdout
         while( !isShutdown )

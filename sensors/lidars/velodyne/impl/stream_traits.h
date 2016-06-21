@@ -43,10 +43,8 @@ namespace snark {  namespace velodyne { namespace impl {
 template < typename S >
 struct stream_traits
 {
-    //static const char* read( S& s, std::size_t size ) { return s.read( size ); }
-    static const char* read( S& s, std::size_t size ) { return s.read(); }
+    static const char* read( S& s, std::size_t size ) { return s.read(); } // static const char* read( S& s, std::size_t size ) { return s.read( size ); }
 
-    //static boost::posix_time::ptime timestamp( const S& ) { return boost::posix_time::microsec_clock::local_time(); }
     static boost::posix_time::ptime timestamp( const S& s ) { return s.timestamp(); }
 
     static void close( S& s ) { s.close(); }
@@ -85,10 +83,8 @@ struct stream_traits< pcap_reader >
 
 template <> struct stream_traits< thin_reader >
 {
-    //static const char* read( S& s, std::size_t size ) { return s.read( size ); }
-    static const char* read( thin_reader& s, std::size_t size ) { return s.read(); }
+    static const char* read( thin_reader& s, std::size_t size ) { return s.read(); } // static const char* read( S& s, std::size_t size ) { return s.read( size ); }
 
-    //static boost::posix_time::ptime timestamp( const S& ) { return boost::posix_time::microsec_clock::local_time(); }
     static boost::posix_time::ptime timestamp( const thin_reader& s ) { return s.timestamp(); }
 
     static void close( thin_reader& s ) { s.close(); }

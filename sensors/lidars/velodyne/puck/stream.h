@@ -37,17 +37,18 @@
 #include "../laser_return.h" // quick and dirty
 #include "../scan_tick.h" // todo: quick and dirty
 #include "../impl/stream_traits.h"
+#include "../stream.h"
 #include "packet.h"
 
 namespace snark {  namespace velodyne { namespace puck {
 
 /// velodyne puck point stream
 template < typename S >
-class stream : public boost::noncopyable
+class stream : public boost::noncopyable, public velodyne::stream
 {
     public:
         /// constructor
-        stream( S* stream );
+        stream( S* stream, bool output_invalid = false );
 
         /// read point, return NULL, if end of stream
         laser_return* read();
@@ -72,11 +73,12 @@ class stream : public boost::noncopyable
         scan_tick tick_;
         bool closed_;
         laser_return laser_return_;
+        bool output_invalid_;
 };
 
 
 template < typename S >
-inline stream< S >::stream( S* stream ) : stream_( stream ), buffer_( NULL ), scan_( 0 ), closed_( false ) {}
+inline stream< S >::stream( S* stream, bool output_invalid ) : stream_( stream ), buffer_( NULL ), scan_( 0 ), closed_( false ), output_invalid_( output_invalid ) {}
 
 template < typename S >
 inline laser_return* stream< S >::read()
@@ -92,7 +94,7 @@ inline laser_return* stream< S >::read()
         }
         if( timestamp_.is_not_a_date_time() ) { timestamp_ = impl::stream_traits< S >::timestamp( *stream_ ); }
         const puck::packet::const_iterator::value_type& v = *puck_packet_iterator_;
-        laser_return_.id = v.id; // todo? use laser_return type in puck?
+        laser_return_.id = v.id; // todo? reuse laser_return type in puck?
         laser_return_.azimuth = v.azimuth;
         laser_return_.intensity = v.reflectivity;
         laser_return_.range = v.range;
@@ -100,7 +102,7 @@ inline laser_return* stream< S >::read()
         ++puck_packet_iterator_;
         if( puck_packet_iterator_.done() ) { buffer_ = NULL; }
         bool valid = !comma::math::equal( laser_return_.range, 0 );
-        return &laser_return_;
+        if( valid || output_invalid_ ) { return &laser_return_; }
     }
     return NULL;
 }
@@ -109,7 +111,7 @@ template < typename S >
 inline unsigned int stream< S >::scan() const { return scan_; }
 
 template < typename S >
-inline void stream< S >::close() { m_closed = true; impl::stream_traits< S >::close( *stream_ ); }
+inline void stream< S >::close() { closed_ = true; impl::stream_traits< S >::close( *stream_ ); }
 
 template < typename S >
 inline void stream< S >::skip_scan()
@@ -119,8 +121,11 @@ inline void stream< S >::skip_scan()
         puck_packet_iterator_ = puck::packet::const_iterator( reinterpret_cast< const puck::packet* >( buffer_ ) );
         packet_ = reinterpret_cast< const packet* >( impl::stream_traits< S >::read( *stream_, sizeof( packet ) ) );
         if( packet_ == NULL ) { return; }
-        if( tick_.is_new_scan( *packet_ ) ) { ++scan_; return; }
-        if( impl::stream_traits< S >::is_new_scan( tick_, *stream_, *packet_ ) ) { ++scan_; return; }
+        
+        // todo
+        
+        //if( tick_.is_new_scan( *packet_ ) ) { ++scan_; return; }
+        //if( impl::stream_traits< S >::is_new_scan( tick_, *stream_, *packet_ ) ) { ++scan_; return; }
     }
 }
 

@@ -62,6 +62,9 @@ class stream_reader
 
         /// return current timestamp
         const boost::posix_time::ptime& timestamp() const;
+        
+        /// close
+        void close();
 
     private:
         boost::scoped_ptr< std::ifstream > ifstream_;

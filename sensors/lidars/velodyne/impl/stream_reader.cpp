@@ -52,7 +52,9 @@ stream_reader::stream_reader( const std::string& filename )
 {
 }
 
-stream_reader::~stream_reader() { if( ifstream_ ) { ifstream_->close(); } }
+void stream_reader::close() { if( ifstream_ ) { ifstream_->close(); } }
+
+stream_reader::~stream_reader() { close(); }
 
 const char* stream_reader::read()
 {
@@ -65,10 +67,7 @@ const char* stream_reader::read()
     return &m_packet[0];
 }
 
-const boost::posix_time::ptime& stream_reader::timestamp() const
-{
-    return m_timestamp;
-}
+const boost::posix_time::ptime& stream_reader::timestamp() const { return m_timestamp; }
 
 } // namespace snark {
 
