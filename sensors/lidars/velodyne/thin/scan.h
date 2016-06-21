@@ -31,6 +31,7 @@
 #ifndef SNARK_SENSORS_VELODYNE_THIN_SCAN
 #define SNARK_SENSORS_VELODYNE_THIN_SCAN
 
+#include "../packet.h"
 #include "../scan_tick.h"
 
 namespace snark {  namespace velodyne { namespace thin {

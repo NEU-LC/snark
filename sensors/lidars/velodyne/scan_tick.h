@@ -27,21 +27,20 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
-#ifndef SNARK_SENSORS_VELODYNE_SCAN_TICK_H_
-#define SNARK_SENSORS_VELODYNE_SCAN_TICK_H_
+#pragma once
 
 #include <boost/optional.hpp>
-#include "packet.h"
 
 namespace snark {  namespace velodyne {
 
 class scan_tick
 {
     public:
-        bool is_new_scan( const packet& packet );
+        template < typename P >
+        bool is_new_scan( const P& packet );
 
-        static bool is_new_scan( const packet& packet, unsigned int last_angle );
+        template < typename P >
+        static bool is_new_scan( const P& packet, unsigned int last_angle );
 
     private:
         unsigned int angle_;
@@ -49,5 +48,3 @@ class scan_tick
 };
 
 } } // namespace snark {  namespace velodyne {
-
-#endif /*SNARK_SENSORS_VELODYNE_STREAM_H_*/

@@ -67,7 +67,6 @@ class stream : public boost::noncopyable, public velodyne::stream
         boost::scoped_ptr< S > stream_;
         boost::posix_time::ptime timestamp_;
         const char* buffer_;
-        const packet* packet_;
         packet::const_iterator puck_packet_iterator_;
         unsigned int scan_;
         scan_tick tick_;
@@ -89,11 +88,13 @@ inline laser_return* stream< S >::read()
         {
             buffer_ = impl::stream_traits< S >::read( *stream_, sizeof( packet ) );
             if( !buffer_ ) { closed_ = true; return NULL; }
-            puck_packet_iterator_ = puck::packet::const_iterator( reinterpret_cast< const puck::packet* >( buffer_ ) );
+            const packet* p = reinterpret_cast< const packet* >( buffer_ );
+            if( impl::stream_traits< S >::is_new_scan( tick_, *stream_, *p ) ) { ++scan_; }
+            puck_packet_iterator_ = packet::const_iterator( p );
             timestamp_ = impl::stream_traits< S >::timestamp( *stream_ );
         }
         if( timestamp_.is_not_a_date_time() ) { timestamp_ = impl::stream_traits< S >::timestamp( *stream_ ); }
-        const puck::packet::const_iterator::value_type& v = *puck_packet_iterator_;
+        const packet::const_iterator::value_type& v = *puck_packet_iterator_;
         laser_return_.id = v.id; // todo? reuse laser_return type in puck?
         laser_return_.azimuth = v.azimuth;
         laser_return_.intensity = v.reflectivity;
@@ -118,14 +119,10 @@ inline void stream< S >::skip_scan()
 {
     while( !closed_ )
     {
-        puck_packet_iterator_ = puck::packet::const_iterator( reinterpret_cast< const puck::packet* >( buffer_ ) );
-        packet_ = reinterpret_cast< const packet* >( impl::stream_traits< S >::read( *stream_, sizeof( packet ) ) );
-        if( packet_ == NULL ) { return; }
-        
-        // todo
-        
-        //if( tick_.is_new_scan( *packet_ ) ) { ++scan_; return; }
-        //if( impl::stream_traits< S >::is_new_scan( tick_, *stream_, *packet_ ) ) { ++scan_; return; }
+        const packet* p = reinterpret_cast< const packet* >( impl::stream_traits< S >::read( *stream_, sizeof( packet ) ) );
+        if( p == NULL ) { return; }
+        if( tick_.is_new_scan( *p ) ) { ++scan_; return; }
+        if( impl::stream_traits< S >::is_new_scan( tick_, *stream_, *p ) ) { ++scan_; return; }
     }
 }
 

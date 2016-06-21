@@ -27,26 +27,42 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
 #include "scan_tick.h"
+#include "packet.h"
+#include "puck/packet.h"
 
 namespace snark {  namespace velodyne {
 
-bool scan_tick::is_new_scan( const packet& packet, unsigned int last_angle )
+namespace detail {
+    
+static unsigned int packet_angle_( const velodyne::packet& p ) { return p.blocks[0].rotation() + 9000; }
+
+static unsigned int packet_angle_( const velodyne::puck::packet& p ) { return p.blocks[0].azimuth(); }
+
+} // namespace detail {
+    
+template < typename P >
+bool scan_tick::is_new_scan( const P& packet, unsigned int last_angle )
 {
-    unsigned int angle = packet.blocks[0].rotation() + 9000; // 0 = behind the vehicle
+    unsigned int angle = detail::packet_angle_( packet ); // 0 = behind the vehicle
     if( angle > 36000 ) { angle -= 36000; }
     return angle < last_angle;
 }
 
-bool scan_tick::is_new_scan( const packet& packet )
+template < typename P >
+bool scan_tick::is_new_scan( const P& packet )
 {
     bool tick = false;
-    unsigned int angle = packet.blocks[0].rotation() + 9000; // seriously quick and dirty: 0 = behind the vehicle
+    unsigned int angle = detail::packet_angle_( packet ); // seriously quick and dirty: 0 = behind the vehicle
     if( angle > 36000 ) { angle -= 36000; }
     if( !last_angle_ || angle < *last_angle_ ) { tick = true; }
     last_angle_ = angle;
     return tick;
 }
+
+template bool scan_tick::is_new_scan< packet >( const packet& packet );
+template bool scan_tick::is_new_scan< puck::packet >( const puck::packet& packet );
+template bool scan_tick::is_new_scan< packet >( const packet& packet, unsigned int last_angle );
+template bool scan_tick::is_new_scan< puck::packet >( const puck::packet& packet, unsigned int last_angle );
 
 } } // namespace snark {  namespace velodyne {

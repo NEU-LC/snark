@@ -40,8 +40,7 @@
 
 namespace snark {  namespace velodyne { namespace impl {
 
-template < typename S >
-struct stream_traits
+template < typename S > struct stream_traits
 {
     static const char* read( S& s, std::size_t size ) { return s.read(); } // static const char* read( S& s, std::size_t size ) { return s.read( size ); }
 
@@ -49,11 +48,10 @@ struct stream_traits
 
     static void close( S& s ) { s.close(); }
 
-    static bool is_new_scan( scan_tick& tick, const S&, const packet& p ) { return tick.is_new_scan( p ); }
+    template < typename P > static bool is_new_scan( scan_tick& tick, const S&, const P& p ) { return tick.is_new_scan( p ); }
 };
 
-template <>
-struct stream_traits< proprietary_reader >
+template <> struct stream_traits< proprietary_reader >
 {
     static const char* read( proprietary_reader& s, std::size_t ) { return s.read(); }
 
@@ -61,11 +59,10 @@ struct stream_traits< proprietary_reader >
 
     static void close( proprietary_reader& s ) { s.close(); }
 
-    static bool is_new_scan( scan_tick& tick, const proprietary_reader&, const packet& p ) { return tick.is_new_scan( p ); }
+    template < typename P > static bool is_new_scan( scan_tick& tick, const proprietary_reader&, const P& p ) { return tick.is_new_scan( p ); }
 };
 
-template <>
-struct stream_traits< pcap_reader >
+template <> struct stream_traits< pcap_reader >
 {
     static const char* read( pcap_reader& s, std::size_t size )
     {
@@ -78,7 +75,7 @@ struct stream_traits< pcap_reader >
 
     static void close( pcap_reader& s ) { s.close(); }
 
-    static bool is_new_scan( scan_tick& tick, const pcap_reader&, const packet& p ) { return tick.is_new_scan( p ); }
+    template < typename P > static bool is_new_scan( scan_tick& tick, const pcap_reader&, const P& p ) { return tick.is_new_scan( p ); }
 };
 
 template <> struct stream_traits< thin_reader >
@@ -89,7 +86,7 @@ template <> struct stream_traits< thin_reader >
 
     static void close( thin_reader& s ) { s.close(); }
 
-    static bool is_new_scan( const scan_tick&, thin_reader& r, const packet& ) { return r.is_new_scan(); }
+    template < typename P > static bool is_new_scan( const scan_tick&, thin_reader& r, const P& ) { return r.is_new_scan(); }
 };
 
 } } } // namespace snark {  namespace velodyne { namespace impl {
