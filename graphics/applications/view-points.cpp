@@ -37,12 +37,12 @@
 #include <comma/csv/traits.h>
 #include <comma/name_value/parser.h>
 #include <comma/string/string.h>
-#include <snark/graphics/applications/view_points/MainWindow.h>
-#include <snark/graphics/applications/view_points/Viewer.h>
-#include <snark/graphics/applications/view_points/ShapeReader.h>
-#include <snark/graphics/applications/view_points/ModelReader.h>
-#include <snark/graphics/applications/view_points/TextureReader.h>
 #include <QApplication>
+#include "view_points/MainWindow.h"
+#include "view_points/Viewer.h"
+#include "view_points/ShapeReader.h"
+#include "view_points/ModelReader.h"
+#include "view_points/TextureReader.h"
 
 static void bash_completion( unsigned const ac, char const * const * av )
 {
