@@ -52,11 +52,11 @@ endif( snark_qt_version MATCHES "^[0-9]+\\.[0-9]+" )
 
 ADD_DEFINITIONS(-DQT_VERSION_MAJOR=${QT_VERSION_MAJOR} -DQT_VERSION_MINOR=${QT_VERSION_MINOR})
 
-IF( QT_VERSION_MAJOR EQUAL 4 )
-    FIND_PACKAGE( Qt4 COMPONENTS QtCore QtGui QtOpenGl QtXml REQUIRED )
-    INCLUDE( ${QT_USE_FILE} )
-    FIND_LIBRARY( Qt3D_LIB NAMES Qt3D REQUIRED )
-ELSEIF( QT_VERSION_MAJOR EQUAL 5 )
+if( QT_VERSION_MAJOR EQUAL 4 )
+    find_package( Qt4 COMPONENTS QtCore QtGui QtOpenGl QtXml REQUIRED )
+    include( ${QT_USE_FILE} )
+    find_library( Qt3D_LIB NAMES Qt3D REQUIRED )
+elseif( QT_VERSION_MAJOR EQUAL 5 )
     # If Qt is installed in a non-standard location (e.g. /opt/) find_package will
     # need some help. Check for a tell-tale directory and set Qt5_DIR if found.
     if( IS_DIRECTORY "${snark_qt_lib_path}/cmake/Qt5" )
@@ -76,9 +76,9 @@ ELSEIF( QT_VERSION_MAJOR EQUAL 5 )
         # but that doesn't seem to work
         include_directories(${Qt5OpenGL_INCLUDE_DIRS})
     endif()
-ELSE()
-    MESSAGE( FATAL_ERROR "Qt version 4 or 5 required" )
-ENDIF( QT_VERSION_MAJOR EQUAL 4 )
+else()
+    message( FATAL_ERROR "Qt version 4 or 5 required" )
+endif( QT_VERSION_MAJOR EQUAL 4 )
 
 SET( dir ${SOURCE_CODE_BASE_DIR}/${PROJECT} )
 FILE( GLOB source   ${dir}/*.cpp)
