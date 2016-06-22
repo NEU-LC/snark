@@ -50,6 +50,7 @@ static void bash_completion( unsigned const ac, char const * const * av )
         " --help -h"
         " --version"
         " --colour --color -c"
+        " --exit-on-end-of-input"
         " --label"
         " --no-stdin"
         " --pass-through --pass"
@@ -121,6 +122,7 @@ static void usage()
         "\n            default: stretched by elevation from cyan to magenta from 0:1"
         "\n"
         "\n      hide: e.g. \"test.csv;hide\": hide the source, when shown first time (useful, when there are very many inputs"
+        "\n    --exit-on-end-of-input: exit immediately on end of input stream"
         "\n    --label <label>: text label displayed next to the latest point"
         "\n    --no-stdin: do not read from stdin"
         "\n    --pass-through,--pass; pass input data to stdout"
@@ -506,7 +508,7 @@ int main( int argc, char** argv )
         if( options.exists( "--version" )) { std::cerr << "Qt version " << QT_VERSION_STR << std::endl; exit(0); }
         if( options.exists( "--help" ) || options.exists( "-h" ) ) { usage(); }
         comma::csv::options csvOptions( argc, argv );
-        std::vector< std::string > properties = options.unnamed( "--z-is-up,--orthographic,--flush,--no-stdin,--output-camera-config,--output-camera,--pass-through,--pass"
+        std::vector< std::string > properties = options.unnamed( "--z-is-up,--orthographic,--flush,--no-stdin,--output-camera-config,--output-camera,--pass-through,--pass,--exit-on-end-of-input"
                 , "--binary,--bin,-b,--fields,--size,--delimiter,-d,--colour,-c,--point-size,--weight,--background-colour,--scene-center,--center,--scene-radius,--radius,--shape,--label,--title,--camera,--camera-position,--camera-config,--fov,--model,--full-xpath" );
         QColor4ub backgroundcolour( QColor( QString( options.value< std::string >( "--background-colour", "#000000" ).c_str() ) ) );
         boost::optional< comma::csv::options > camera_csv;
@@ -576,6 +578,7 @@ int main( int argc, char** argv )
         snark::graphics::View::Viewer* viewer = new snark::graphics::View::Viewer( backgroundcolour
                                                                                  , fieldOfView
                                                                                  , z_up
+                                                                                 , options.exists( "--exit-on-end-of-input" )
                                                                                  , camera_orthographic
                                                                                  , camera_csv
                                                                                  , cameraposition

@@ -59,6 +59,7 @@ class Viewer : public qt3d::view
         Viewer( const QColor4ub& background_color
               , double fov
               , bool z_up
+              , bool exit_on_end_of_input
               , bool orthographic = false
               , boost::optional< comma::csv::options > cameracsv = boost::optional< comma::csv::options >()
               , boost::optional< Eigen::Vector3d > cameraposition = boost::optional< Eigen::Vector3d >()
@@ -100,6 +101,7 @@ class Viewer : public qt3d::view
         friend class camera_position_output;
         boost::scoped_ptr< camera_position_output > camera_position_output_;
         bool m_stdout_allowed;
+        bool m_exit_on_end_of_input;
 };
 
 } } } // namespace snark { namespace graphics { namespace View {

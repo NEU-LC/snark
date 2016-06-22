@@ -57,6 +57,7 @@ void Viewer::camera_position_output::write()
 Viewer::Viewer( const QColor4ub& background_color
               , double fov
               , bool z_up
+              , bool exit_on_end_of_input
               , bool orthographic
               , boost::optional< comma::csv::options > camera_csv, boost::optional< Eigen::Vector3d > cameraposition
               , boost::optional< Eigen::Vector3d > cameraorientation
@@ -77,6 +78,7 @@ Viewer::Viewer( const QColor4ub& background_color
     , m_cameraposition( cameraposition )
     , m_cameraorientation( cameraorientation )
     , m_stdout_allowed( true )
+    , m_exit_on_end_of_input( exit_on_end_of_input )
 {
     if( output_camera_position ) { camera_position_output_.reset( new camera_position_output( *this ) ); }
     QTimer* timer = new QTimer( this );
@@ -172,6 +174,7 @@ void Viewer::read()
         }
     }
     if( need_update ) { update(); }
+    if( m_shutdown && m_exit_on_end_of_input ) { shutdown(); }
 }
 
 void Viewer::paintGL( QGLPainter *painter )
