@@ -104,18 +104,18 @@ struct Shapetraits< snark::math::closed_interval< double, 3 > >
                 : snark::math::closed_interval< float, 3 >( min, max );
     }
 
-    static void draw( QGLPainter* painter, unsigned int size, unsigned int index )
+    static void draw( QGLPainter* painter, unsigned int size )
     {
         const boost::array< unsigned short, 8  > baseIndices = { { 0, 4, 1, 5, 2, 6, 3, 7 } };
         for( unsigned int i = 0; i < size; i += 8 )
         {
             // 2 line loops
-            painter->draw( QGL::LineLoop, 4, index + i );
-            painter->draw( QGL::LineLoop, 4, index + i + 4 );
+            painter->draw( QGL::LineLoop, 4, i );
+            painter->draw( QGL::LineLoop, 4, i + 4 );
 
             // 4 lines
             boost::array< unsigned short, 8  > lineIndices = baseIndices;
-            for( unsigned int k = 0; k < lineIndices.size(); ++k ) { lineIndices[k] += index + i; }
+            for( unsigned int k = 0; k < lineIndices.size(); ++k ) { lineIndices[k] += i; }
             painter->draw( QGL::Lines, &lineIndices[0], 8 );
         }
     }
@@ -145,9 +145,9 @@ struct Shapetraits< std::pair< Eigen::Vector3d, Eigen::Vector3d > >
         extents = extents->hull( snark::math::closed_interval< float, 3 >( second ) );
     }
 
-    static void draw( QGLPainter* painter, unsigned int size, unsigned int index )
+    static void draw( QGLPainter* painter, unsigned int size )
     {
-        painter->draw( QGL::Lines, size, index );
+        painter->draw( QGL::Lines, size );
     }
 
     static const Eigen::Vector3d& somePoint( const std::pair< Eigen::Vector3d, Eigen::Vector3d >& line ) { return line.first; }
@@ -186,11 +186,11 @@ struct Shapetraits< Ellipse< Size > >
         }
     }
 
-    static void draw( QGLPainter* painter, unsigned int size, unsigned int index )
+    static void draw( QGLPainter* painter, unsigned int size )
     {
         for( unsigned int i = 0; i < size; i += Size )
         {
-            painter->draw( QGL::LineLoop, Size, index + i );
+            painter->draw( QGL::LineLoop, Size, i );
         }
     }
 
@@ -267,12 +267,12 @@ struct Shapetraits< arc< Size > >
         }
     }
 
-    static void draw( QGLPainter* painter, unsigned int size, unsigned int index )
+    static void draw( QGLPainter* painter, unsigned int size )
     {
         for( unsigned int i = 0; i < size; i += Size )
         {
-            painter->draw( QGL::Lines, Size, index + i );
-            painter->draw( QGL::Lines, Size - 1, index + i + 1 );
+            painter->draw( QGL::Lines, Size, i );
+            painter->draw( QGL::Lines, Size - 1, i + 1 );
         }
     }
 
@@ -288,9 +288,9 @@ template <> struct draw_traits_< how_t::points >
 {
     static const QGL::DrawingMode drawing_mode = QGL::Points;
 
-    static void draw( QGLPainter* painter, unsigned int size, unsigned int index )
+    static void draw( QGLPainter* painter, unsigned int size )
     {
-        painter->draw( QGL::Points, size, index );
+        painter->draw( QGL::Points, size );
     }
 };
 
@@ -298,9 +298,9 @@ template <> struct draw_traits_< how_t::loop >
 {
     static const QGL::DrawingMode drawing_mode = QGL::DrawingMode();
 
-    static void draw( QGLPainter* painter, unsigned int size, unsigned int index )
+    static void draw( QGLPainter* painter, unsigned int size )
     {
-        painter->draw( QGL::LineLoop, size, index );
+        painter->draw( QGL::LineLoop, size );
     }
 };
 
@@ -308,10 +308,10 @@ template <> struct draw_traits_< how_t::connected >
 {
     static const QGL::DrawingMode drawing_mode = QGL::DrawingMode();
 
-    static void draw( QGLPainter* painter, unsigned int size, unsigned int index )
+    static void draw( QGLPainter* painter, unsigned int size )
     {
-        painter->draw( QGL::Lines, size, index );
-        if( size > 1 ) { painter->draw( QGL::Lines, size - 1, index + 1 ); }
+        painter->draw( QGL::Lines, size );
+        if( size > 1 ) { painter->draw( QGL::Lines, size - 1, 1 ); }
     }
 };
 
@@ -330,9 +330,9 @@ struct Shapetraits< Eigen::Vector3d, How >
                 : snark::math::closed_interval< float, 3 >( point.cast< float >() );
     }
 
-    static void draw( QGLPainter* painter, unsigned int size, unsigned int index )
+    static void draw( QGLPainter* painter, unsigned int size )
     {
-        draw_traits_< How >::draw( painter, size, index );
+        draw_traits_< How >::draw( painter, size );
     }
 
     static const Eigen::Vector3d& somePoint( const Eigen::Vector3d& point ) { return point; }

@@ -148,8 +148,7 @@ inline void ShapeReader< S, How >::render( QGLPainter* painter )
     painter->setVertexAttribute( QGL::Position, position_attribute );
     painter->setVertexAttribute( QGL::Color, color_attribute );
 
-    // TODO: we can change draw() to no longer require the index argument
-    Shapetraits< S, How >::draw( painter, buffer_.size(), 0 );
+    Shapetraits< S, How >::draw( painter, buffer_.size() );
     for( unsigned int i = 0; i < labels_.size(); i++ ) { draw_label( painter, labels_.values()[i].position, labels_.values()[i].color, labels_.values()[i].text ); }
     if( !m_label.empty() ) { draw_label( painter, m_translation ); }
 }
