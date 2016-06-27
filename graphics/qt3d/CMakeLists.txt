@@ -8,7 +8,7 @@ FILE( GLOB includes ${dir}/*.h )
 IF( QT_VERSION_MAJOR EQUAL 4 )
     QT4_WRAP_CPP( snark_graphics_qt3d_moc ${dir}/view.h OPTIONS -DBOOST_TT_HAS_OPERATOR_HPP_INCLUDED )
 ELSEIF( QT_VERSION_MAJOR EQUAL 5 )
-    QT5_WRAP_CPP( snark_graphics_qt3d_moc ${dir}/view.h OPTIONS -DBOOST_TT_HAS_OPERATOR_HPP_INCLUDED )
+    QT5_WRAP_CPP( snark_graphics_qt3d_moc ${dir}/view.h )
 ENDIF( QT_VERSION_MAJOR EQUAL 4 )
 
 SOURCE_GROUP( ${TARGET_NAME} FILES ${source} ${includes} ${snark_graphics_qt3d_moc} )
