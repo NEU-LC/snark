@@ -39,7 +39,7 @@
 #include <comma/name_value/ptree.h>
 #include <comma/visiting/apply.h>
 #endif
-#include "Viewer.h"
+#include "viewer.h"
 #include <QTimer>
 
 namespace snark { namespace graphics { namespace View {

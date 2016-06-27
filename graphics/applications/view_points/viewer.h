@@ -43,8 +43,8 @@
 #endif
 #include <snark/graphics/qt3d/view.h>
 #ifndef Q_MOC_RUN
-#include "CameraReader.h"
-#include "Reader.h"
+#include "camera_reader.h"
+#include "reader.h"
 #endif
 
 namespace snark { namespace graphics { namespace View {

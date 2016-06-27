@@ -39,8 +39,8 @@
 #include <QFrame>
 #include <QLabel>
 #include <QLayout>
-#include "Action.h"
-#include "MainWindow.h"
+#include "action.h"
+#include "main_window.h"
 
 namespace snark { namespace graphics { namespace View {
 

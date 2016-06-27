@@ -30,7 +30,7 @@
 
 /// @author Vsevolod Vlaskine, Cedric Wohlleber
 
-#include "CameraReader.h"
+#include "camera_reader.h"
 
 namespace snark { namespace graphics { namespace View {
 

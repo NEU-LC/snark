@@ -39,8 +39,8 @@
 #endif
 
 #include "../../block_buffer.h"
-#include "Reader.h"
-#include "ShapeWithId.h"
+#include "reader.h"
+#include "shape_with_id.h"
 
 namespace snark { namespace graphics { namespace View {
     

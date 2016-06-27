@@ -30,8 +30,8 @@
 
 /// @author Vsevolod Vlaskine, Cedric Wohlleber
 
-#include "Reader.h"
-#include "Texture.h"
+#include "reader.h"
+#include "texture.h"
 
 namespace snark { namespace graphics { namespace View {
 

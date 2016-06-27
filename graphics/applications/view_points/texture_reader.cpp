@@ -27,95 +27,81 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
 /// @author Cedric Wohlleber
 
-#include "ModelReader.h"
-#include "Texture.h"
+#include "texture_reader.h"
 
 namespace snark { namespace graphics { namespace View {
 
-/// constructor
-/// @param viewer reference to the viewer
-/// @param params csv options for the position input
-/// @param file model filename
-/// @param flip flip model around the x-axis
-/// @param c color used for the label
-/// @param label text displayed as label
-ModelReader::ModelReader( QGLView& viewer
-                        , const reader_parameters& params
-                        , const std::string& file
-                        , bool flip
-                        , double scale
-                        , snark::graphics::View::coloured* c
-                        , const std::string& label )
-    : Reader( viewer, reader_parameters( params ), c, label, Eigen::Vector3d( 0, 1, 1 ) ) // TODO make offset configurable ?
-    , m_file( file )
-    , m_flip( flip )
-    , scale_( scale )
-    , coloured_( c )
+TextureReader::image_::image_( const TextureReader::image_options& o ) : image( &o.filename[0] )
 {
+    texture.setImage( image );
+    material.setTexture( &texture );
+    comma::uint32 width = o.pixel_size ? *o.pixel_size * image.width() : o.width;
+    comma::uint32 height = o.pixel_size ? *o.pixel_size * image.height() : o.height;
+    if( width == 0 ) { COMMA_THROW( comma::exception, "got zero width for image " << o.filename ); }
+    if( height == 0 ) { COMMA_THROW( comma::exception, "got zero height for image " << o.filename ); }
+    QVector3D a( 0, 0, 0 );
+    QVector3D b( width, 0, 0 );
+    QVector3D c( width, height, 0 );
+    QVector3D d( 0, height, 0 );
+    QVector2D ta( 0, 0 );
+    QVector2D tb( 1, 0 );
+    QVector2D tc( 1, 1 );
+    QVector2D td( 0, 1 );
+    geometry.appendVertex( a, b, c, d );
+    geometry.appendTexCoord(ta, tb, tc, td);
+    builder.addQuads( geometry );
+    node = builder.finalizedSceneNode();
+    node->setMaterial( &material );
 }
 
-void ModelReader::start()
+TextureReader::TextureReader( QGLView& viewer
+                            , const reader_parameters& params
+                            , const std::vector< image_options >& io )
+    : Reader( viewer, reader_parameters( params ), NULL, "", Eigen::Vector3d( 0, 1, 1 ) )
 {
-    if( m_file.substr( m_file.size() - 3, 3 ) == "ply" )
-    {
-        boost::optional< QColor4ub > color;
-        if( dynamic_cast< const Fixed* >( coloured_ ) ) { color = coloured_->color( Eigen::Vector3d( 0, 0, 0 ), 0, 0, QColor4ub() ); } // quick and dirty
-        m_plyLoader = PlyLoader( m_file, color, scale_ );
-    }
-    if( !m_plyLoader )
-    {
-        if( !comma::math::equal( scale_, 1.0 ) ) { std::cerr << "view-points: warning: scale supported only for ply models; others: todo" << std::endl; }
-        m_scene = QGLAbstractScene::loadScene( QLatin1String( m_file.c_str() ) );
-    }
+    for( unsigned int i = 0; i < io.size(); ++i ) { images_.push_back( new image_( io[i] ) ); }
+}
+
+void TextureReader::start()
+{
     m_thread.reset( new boost::thread( boost::bind( &Reader::read, boost::ref( *this ) ) ) );
 }
 
-std::size_t ModelReader::update( const Eigen::Vector3d& offset )
+std::size_t TextureReader::update( const Eigen::Vector3d& offset )
 {
     return updatePoint( offset ) ? 1 : 0;
 }
 
-bool ModelReader::empty() const
-{
-    return !m_point;
-}
+bool TextureReader::empty() const { return !m_point; }
 
-const Eigen::Vector3d& ModelReader::somePoint() const
+const Eigen::Vector3d& TextureReader::somePoint() const
 {
     boost::mutex::scoped_lock lock( m_mutex );
     return *m_point;
 }
 
-void ModelReader::render( QGLPainter* painter )
+void TextureReader::render( QGLPainter* painter )
 {
+    if( !m_point ) { return; }
+    comma::uint32 id = id_;
+    if( id >= images_.size() ) { return; }
+    painter->setStandardEffect( QGL::FlatReplaceTexture2D );
     painter->modelViewMatrix().push();
     Eigen::Vector3d d = m_translation - m_offset;
     painter->modelViewMatrix().translate( QVector3D( d.x(), d.y(), d.z() ) );
     painter->modelViewMatrix().rotate( m_quaternion );
-    if( m_flip ) { painter->modelViewMatrix().rotate( 180, 1, 0, 0 ); }
-    if( m_plyLoader ) { m_plyLoader->draw( painter ); }
-    else
-    {
-        QGLSceneNode* node = m_scene->mainNode();
-    //     painter->setStandardEffect( QGL::LitMaterial ); // no effect ?
-        node->draw(painter);
-    }
+    images_[id].node->draw( painter );
     painter->modelViewMatrix().pop();
-    if( !m_label.empty() ) { draw_label( painter, m_translation ); }
 }
 
-bool ModelReader::read_once()
+bool TextureReader::read_once()
 {
     if( !m_stream ) // quick and dirty: handle named pipes
     {
         if( !m_istream() ) { return true; }
-        PointWithId default_point;
-        default_point.point = Eigen::Vector3d( 0, 0, 0 );
-        default_point.orientation = Eigen::Vector3d( 0, 0, 0 );
-        m_stream.reset( new comma::csv::input_stream< PointWithId >( *m_istream(), options, default_point ) );
+        m_stream.reset( new comma::csv::input_stream< PointWithId >( *m_istream(), options ) );
         if( m_pass_through ) { m_passed.reset( new comma::csv::passed< PointWithId >( *m_stream, *m_pass_through )); }
         else { m_passed.reset(); }
     }
@@ -125,10 +111,11 @@ bool ModelReader::read_once()
     boost::mutex::scoped_lock lock( m_mutex );
     m_point = p->point;
     m_orientation = p->orientation;
-    m_color = m_colored->color( p->point, p->id, p->scalar, p->color );
+    id_ = p->id;
     updated_ = true;
     return true;
 }
 
 
 } } } // namespace snark { namespace graphics { namespace View {
+

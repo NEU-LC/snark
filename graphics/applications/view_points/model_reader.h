@@ -30,32 +30,28 @@
 
 /// @author Cedric Wohlleber
 
-#ifndef SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_TEXTURE_READER_H_
-#define SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_TEXTURE_READER_H_
+#ifndef SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_MODEL_READER_H_
+#define SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_MODEL_READER_H_
 
-#include <boost/ptr_container/ptr_vector.hpp>
-#include "Reader.h"
-#include <Qt3D/qglbuilder.h>
+
+#include "reader.h"
+#include "ply_loader.h"
+
+class QGLAbstractScene;
 
 namespace snark { namespace graphics { namespace View {
 
-/// display an image as a texture, set its position from an input csv stream
-class TextureReader : public Reader
+/// display 3d models ( obj or 3ds ), set its position from an input csv stream
+class ModelReader : public Reader
 {
     public:
-        struct image_options
-        {
-            std::string filename;
-            double width;
-            double height;
-            boost::optional< double > pixel_size;
-            image_options() : width( 1 ), height( 1 ) {}
-            image_options( const std::string& filename ) : filename( filename ), width( 1 ), height( 1 ) {}
-            image_options( const std::string& filename, double pixel_size ) : filename( filename ), width( 0 ), height( 0 ), pixel_size( pixel_size ) {}
-            image_options( const std::string& filename, double width, double height ) : filename( filename ), width( width ), height( height ) {}
-        };
-
-        TextureReader( QGLView& viewer, const reader_parameters& params, const std::vector< image_options >& io );
+        ModelReader( QGLView& viewer
+                   , const reader_parameters& params
+                   , const std::string& file
+                   , bool flip
+                   , double scale
+                   , coloured* c
+                   , const std::string& label );
 
         void start();
         std::size_t update( const Eigen::Vector3d& offset );
@@ -67,20 +63,14 @@ class TextureReader : public Reader
     protected:
         boost::scoped_ptr< comma::csv::input_stream< PointWithId > > m_stream;
         boost::scoped_ptr< comma::csv::passed< PointWithId > > m_passed;
-        struct image_
-        {
-            QImage image;
-            QGeometryData geometry;
-            QGLBuilder builder;
-            QGLSceneNode* node;
-            QGLTexture2D texture;
-            QGLMaterial material;
-
-            image_( const image_options& o );
-        };
-        boost::ptr_vector< image_ > images_;
+        const std::string m_file;
+        QGLAbstractScene* m_scene;
+        bool m_flip;
+        double scale_;
+        boost::optional< PlyLoader > m_plyLoader;
+        const coloured* coloured_;
 };
 
 } } } // namespace snark { namespace graphics { namespace View {
 
-#endif /*SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_TEXTURE_READER_H_*/
+#endif /*SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_MODEL_READER_H_*/

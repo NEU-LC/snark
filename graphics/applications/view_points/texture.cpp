@@ -30,47 +30,66 @@
 
 /// @author Cedric Wohlleber
 
-#ifndef SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_MODEL_READER_H_
-#define SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_MODEL_READER_H_
-
-
-#include "Reader.h"
-#include "PlyLoader.h"
-
-class QGLAbstractScene;
+#include <iostream>
+#include "texture.h"
 
 namespace snark { namespace graphics { namespace View {
 
-/// display 3d models ( obj or 3ds ), set its position from an input csv stream
-class ModelReader : public Reader
+Quad::Quad ( const QImage& image )
 {
-    public:
-        ModelReader( QGLView& viewer
-                   , const reader_parameters& params
-                   , const std::string& file
-                   , bool flip
-                   , double scale
-                   , coloured* c
-                   , const std::string& label );
+    QVector3D a( 0, 0, 0 );
+    QVector3D b( image.width(), 0, 0 );
+    QVector3D c( image.width(), image.height(), 0 );
+    QVector3D d( 0, image.height(), 0 );
+    QVector2D ta( 0, 0 );
+    QVector2D tb( 1, 0 );
+    QVector2D tc( 1, 1 );
+    QVector2D td( 0, 1 );
+    m_geometry.appendVertex( a, b, c, d );
+    m_geometry.appendTexCoord(ta, tb, tc, td);
+    m_builder.addQuads( m_geometry );
+    m_sceneNode = m_builder.finalizedSceneNode();
+    m_texture.setImage( image );
+    m_material.setTexture( &m_texture );
+    m_sceneNode->setMaterial( &m_material );
+}
 
-        void start();
-        std::size_t update( const Eigen::Vector3d& offset );
-        const Eigen::Vector3d& somePoint() const;
-        bool read_once();
-        void render( QGLPainter *painter );
-        bool empty() const;
 
-    protected:
-        boost::scoped_ptr< comma::csv::input_stream< PointWithId > > m_stream;
-        boost::scoped_ptr< comma::csv::passed< PointWithId > > m_passed;
-        const std::string m_file;
-        QGLAbstractScene* m_scene;
-        bool m_flip;
-        double scale_;
-        boost::optional< PlyLoader > m_plyLoader;
-        const coloured* coloured_;
-};
+QGLSceneNode* Quad::node() const
+{
+    return m_sceneNode;
+}
 
-} } } // namespace snark { namespace graphics { namespace View {
 
-#endif /*SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_MODEL_READER_H_*/
+    
+Texture::Texture ( const QString& string, const QColor4ub& color )
+{
+    QFont font( "System", 64 ); //QFont font( "helvetica", 64 ); font sizes seem to be poorly supported for helvetica
+    font.setStyleHint( QFont::System );
+    QFontMetrics metrics( font );
+    QRect rect = metrics.boundingRect(string);
+    m_image = QImage( rect.size(), QImage::Format_ARGB32 );
+    m_image.fill( Qt::transparent );
+    QPainter p2( &m_image );
+    p2.setRenderHint(QPainter::Antialiasing);
+    p2.setFont( font );
+    p2.setPen( color.toColor() );
+    p2.drawText( -rect.x(), -rect.y(), string );
+    p2.end();
+}
+
+void Texture::draw ( QGLPainter* painter )
+{
+    Quad quad( m_image );
+    painter->setStandardEffect( QGL::FlatReplaceTexture2D );
+    glDepthMask(GL_FALSE);
+//     glEnable(GL_BLEND);
+    quad.node()->draw( painter );
+//     glDisable(GL_BLEND);
+    glDepthMask(GL_TRUE);
+}
+
+
+
+} } } // namespace snark { namespace graphics
+

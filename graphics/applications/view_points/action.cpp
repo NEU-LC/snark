@@ -30,64 +30,39 @@
 
 /// @author Vsevolod Vlaskine
 
-#ifndef SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_POINTWITHID_H_
-#define SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_POINTWITHID_H_
+#include <iostream>
+#include "action.h"
 
-#include <comma/base/types.h>
-#include <snark/visiting/eigen.h>
-#include <Qt3D/qcolor4ub.h>
-#include "ShapeWithId.h"
 
 namespace snark { namespace graphics { namespace View {
 
-struct PointWithId // quick and dirty
+Action::Action( const std::string& name, boost::function< void() > f )
+    : QAction( name.c_str(), NULL )
+    , m_action( f )
 {
-    PointWithId() : point( 0, 0, 0 ), orientation( 0, 0, 0 ), id( 0 ), block( 0 ) {}
-    Eigen::Vector3d point;
-    Eigen::Vector3d orientation;
-    comma::uint32 id;
-    comma::uint32 block;
-    QColor4ub color;
-    std::string label;
-    double scalar;
-};
+    connect( this, SIGNAL( triggered() ), this, SLOT( action() ) );
+}
+
+void Action::action() { m_action(); }
+
+ToggleAction::ToggleAction( const std::string& name, boost::function< void( bool ) > f, const std::string& key )
+    : QAction( tr( name.c_str() ), NULL )
+    , m_functor( f )
+{
+    setCheckable( true );
+    if( key != "" ) { setShortcut( QKeySequence( tr( key.c_str() ) ) ); }
+    connect( this, SIGNAL( toggled( bool ) ), this, SLOT( action( bool ) ) );
+}
+
+ToggleAction::ToggleAction( const QIcon& icon, const std::string& name, boost::function< void( bool ) > f, const std::string& key )
+    : QAction( icon, tr( name.c_str() ), NULL )
+    , m_functor( f )
+{
+    setCheckable( true );
+    if( key != "" ) { setShortcut( QKeySequence( tr( key.c_str() ) ) ); }
+    connect( this, SIGNAL( toggled( bool ) ), this, SLOT( action( bool ) ) );
+}
+
+void ToggleAction::action( bool checked ) { m_functor( checked ); }
 
 } } } // namespace snark { namespace graphics { namespace View {
-
-namespace comma { namespace visiting {
-
-template <> struct traits< snark::graphics::View::PointWithId >
-{
-    template < typename Key, class Visitor >
-    static void visit( Key, snark::graphics::View::PointWithId& p, Visitor& v )
-    {
-        v.apply( "point", p.point );
-        v.apply( "roll", p.orientation.x() );
-        v.apply( "pitch", p.orientation.y() );
-        v.apply( "yaw", p.orientation.z() );
-        v.apply( "id", p.id );
-        v.apply( "block", p.block );
-        v.apply( "colour", p.color );
-        v.apply( "label", p.label );
-        v.apply( "scalar", p.scalar );
-    }
-
-    template < typename Key, class Visitor >
-    static void visit( Key, const snark::graphics::View::PointWithId& p, Visitor& v )
-    {
-        v.apply( "point", p.point );
-        v.apply( "roll", p.orientation.x() );
-        v.apply( "pitch", p.orientation.y() );
-        v.apply( "yaw", p.orientation.z() );
-        v.apply( "id", p.id );
-        v.apply( "block", p.block );
-        v.apply( "color", p.color );
-        v.apply( "label", p.label );
-        v.apply( "scalar", p.scalar );
-    }
-};
-
-
-} } // namespace comma { namespace visiting {
-
-#endif /*SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_POINTWITHID_H_*/

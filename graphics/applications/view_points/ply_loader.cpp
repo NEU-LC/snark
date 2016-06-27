@@ -35,7 +35,7 @@
 #include <comma/csv/ascii.h>
 #include <comma/string/split.h>
 #include <snark/visiting/eigen.h>
-#include "PlyLoader.h"
+#include "ply_loader.h"
 
 namespace snark { namespace graphics { namespace View {
 

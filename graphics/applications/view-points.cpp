@@ -38,11 +38,11 @@
 #include <comma/name_value/parser.h>
 #include <comma/string/string.h>
 #include <QApplication>
-#include "view_points/MainWindow.h"
-#include "view_points/Viewer.h"
-#include "view_points/ShapeReader.h"
-#include "view_points/ModelReader.h"
-#include "view_points/TextureReader.h"
+#include "view_points/main_window.h"
+#include "view_points/viewer.h"
+#include "view_points/shape_reader.h"
+#include "view_points/model_reader.h"
+#include "view_points/texture_reader.h"
 
 static void bash_completion( unsigned const ac, char const * const * av )
 {

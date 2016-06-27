@@ -39,7 +39,7 @@
 #include <comma/csv/options.h>
 #include <comma/csv/stream.h>
 #include <comma/io/stream.h>
-#include "Coloured.h"
+#include "coloured.h"
 #include <Qt3D/qglview.h>
 
 namespace snark { namespace graphics { namespace View {

@@ -30,39 +30,64 @@
 
 /// @author Vsevolod Vlaskine
 
-#include <iostream>
-#include "Action.h"
+#ifndef SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_MAINWINDOW_H_
+#define SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_MAINWINDOW_H_
 
+#include <QCheckBox>
+#include <QMainWindow>
+#include "viewer.h"
+
+QT_BEGIN_NAMESPACE
+class QAction;
+class QActionGroup;
+class QFrame;
+class QGridLayout;
+class QMenu;
+class QToolBar;
+QT_END_NAMESPACE
 
 namespace snark { namespace graphics { namespace View {
 
-Action::Action( const std::string& name, boost::function< void() > f )
-    : QAction( name.c_str(), NULL )
-    , m_action( f )
+class CheckBox;
+
+class MainWindow : public QMainWindow
 {
-    connect( this, SIGNAL( triggered() ), this, SLOT( action() ) );
-}
+    Q_OBJECT
 
-void Action::action() { m_action(); }
+    public:
+        MainWindow( const std::string& title, snark::graphics::View::Viewer* viewer );
+    
+    private:
+        QMenu* m_viewMenu;
+        Viewer& m_viewer;
+        QFrame* m_fileFrame;
+        QGridLayout* m_fileLayout;
+        bool m_fileFrameVisible;
+        typedef std::map< std::string, std::vector< CheckBox* > > FileGroupMap;
+        FileGroupMap m_fileGroups; // quick and dirty
+    
+        void closeEvent( QCloseEvent* event );
+        void keyPressEvent( QKeyEvent *e );
+        void updateFileFrame();
+        void toggleFileFrame( bool shown );
+        void makeFileGroups();
+        void showFileGroup( std::string name, bool shown );
+};
 
-ToggleAction::ToggleAction( const std::string& name, boost::function< void( bool ) > f, const std::string& key )
-    : QAction( tr( name.c_str() ), NULL )
-    , m_functor( f )
+class CheckBox : public QCheckBox // quick and dirty
 {
-    setCheckable( true );
-    if( key != "" ) { setShortcut( QKeySequence( tr( key.c_str() ) ) ); }
-    connect( this, SIGNAL( toggled( bool ) ), this, SLOT( action( bool ) ) );
-}
-
-ToggleAction::ToggleAction( const QIcon& icon, const std::string& name, boost::function< void( bool ) > f, const std::string& key )
-    : QAction( icon, tr( name.c_str() ), NULL )
-    , m_functor( f )
-{
-    setCheckable( true );
-    if( key != "" ) { setShortcut( QKeySequence( tr( key.c_str() ) ) ); }
-    connect( this, SIGNAL( toggled( bool ) ), this, SLOT( action( bool ) ) );
-}
-
-void ToggleAction::action( bool checked ) { m_functor( checked ); }
+    Q_OBJECT
+    
+    public:
+        CheckBox( boost::function< void( bool ) > f );
+    
+    public slots:
+        void action( bool checked );
+    
+    private:
+        boost::function< void( bool ) > m_f;
+};
 
 } } } // namespace snark { namespace graphics { namespace View {
+
+#endif /*SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_MAINWINDOW_H_*/
