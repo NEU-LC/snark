@@ -166,6 +166,19 @@ FIND_PACKAGE( Boost COMPONENTS thread filesystem system serialization date_time 
 INCLUDE_DIRECTORIES( ${Boost_INCLUDE_DIRS} )
 LINK_DIRECTORIES( ${Boost_LIBRARY_DIRS} )
 
+if( USE_CXX11 )
+    # Work around a boost bug in Boost 1.56 and below when the library is compiled
+    # against one C++ version and the application is compiled against another.
+    # It will manifest itself as a linker error.
+    # ref: https://svn.boost.org/trac/boost/ticket/6124
+    if( Boost_MAJOR_VERSION EQUAL 1 )
+        if( Boost_MINOR_VERSION LESS 51 )
+            set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DBOOST_NO_SCOPED_ENUMS" )
+        elseif( Boost_MINOR_VERSION LESS 57 )
+            set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DBOOST_NO_CXX11_SCOPED_ENUMS" )
+        endif()
+    endif()
+endif()
 
 IF( WIN32 )
     # improve later
