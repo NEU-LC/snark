@@ -46,7 +46,7 @@ class QMenu;
 class QToolBar;
 QT_END_NAMESPACE
 
-namespace snark { namespace graphics { namespace View {
+namespace snark { namespace graphics { namespace view {
 
 class CheckBox;
 
@@ -55,7 +55,7 @@ class MainWindow : public QMainWindow
     Q_OBJECT
 
     public:
-        MainWindow( const std::string& title, snark::graphics::View::Viewer* viewer );
+        MainWindow( const std::string& title, snark::graphics::view::Viewer* viewer );
     
     private:
         QMenu* m_viewMenu;
@@ -88,6 +88,6 @@ class CheckBox : public QCheckBox // quick and dirty
         boost::function< void( bool ) > m_f;
 };
 
-} } } // namespace snark { namespace graphics { namespace View {
+} } } // namespace snark { namespace graphics { namespace view {
 
 #endif /*SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_MAINWINDOW_H_*/

@@ -37,7 +37,7 @@
 #include <snark/visiting/eigen.h>
 #include "ply_loader.h"
 
-namespace snark { namespace graphics { namespace View {
+namespace snark { namespace graphics { namespace view {
 
 struct ply_vertex
 {
@@ -47,13 +47,13 @@ struct ply_vertex
     ply_vertex() : point( 0, 0, 0 ), normal( 0, 0, 0 ), color( 255, 255, 255, 255 ) {} //ply_vertex() : point( 0, 0, 0 ), normal( 0, 0, 0 ), r( 0 ), g( 0 ), b( 0 ), a( 255 ) {}
 };
 
-} } } // namespace snark { namespace graphics { namespace View {
+} } } // namespace snark { namespace graphics { namespace view {
 
 namespace comma { namespace visiting {
 
-template <> struct traits< snark::graphics::View::ply_vertex >
+template <> struct traits< snark::graphics::view::ply_vertex >
 {
-    template < typename Key, class Visitor > static void visit( const Key&, snark::graphics::View::ply_vertex& p, Visitor& v )
+    template < typename Key, class Visitor > static void visit( const Key&, snark::graphics::view::ply_vertex& p, Visitor& v )
     {
         v.apply( "point", p.point );
         v.apply( "normal", p.normal );
@@ -71,7 +71,7 @@ template <> struct traits< snark::graphics::View::ply_vertex >
         p.color.setAlpha( i );
     }
 
-    template < typename Key, class Visitor > static void visit( const Key&, const snark::graphics::View::ply_vertex& p, Visitor& v )
+    template < typename Key, class Visitor > static void visit( const Key&, const snark::graphics::view::ply_vertex& p, Visitor& v )
     {
         v.apply( "point", p.point );
         v.apply( "normal", p.normal );
@@ -84,7 +84,7 @@ template <> struct traits< snark::graphics::View::ply_vertex >
 
 } } // namespace comma { namespace visiting {
 
-namespace snark { namespace graphics { namespace View {
+namespace snark { namespace graphics { namespace view {
 
 PlyLoader::PlyLoader( const std::string& file, boost::optional< QColor4ub > color, double scale ) : color_( color ), scale_( scale )
 {

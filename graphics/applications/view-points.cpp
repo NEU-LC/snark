@@ -323,14 +323,14 @@ template <> struct traits< model_options >
 static bool data_passed_through = false;
 
 // quick and dirty, todo: a proper structure, as well as a visitor for command line options
-boost::shared_ptr< snark::graphics::View::Reader > makeReader( QGLView& viewer
+boost::shared_ptr< snark::graphics::view::Reader > makeReader( QGLView& viewer
                                                              , const comma::command_line_options& options
                                                              , const comma::csv::options& csvOptions
                                                              , const std::string& properties = "" )
 {
     QColor4ub backgroundcolour( QColor( QString( options.value< std::string >( "--background-colour", "#000000" ).c_str() ) ) );
     std::string shape = options.value< std::string >( "--shape", "point" );
-    snark::graphics::View::Reader::reader_parameters param( csvOptions
+    snark::graphics::view::Reader::reader_parameters param( csvOptions
                                                           , options.value( "--title", csvOptions.filename )
                                                           , options.value< std::size_t >( "--size", shape == "point" ? 2000000 : 200000 )
                                                           , options.value( "--point-size,--weight", 1u )
@@ -365,28 +365,28 @@ boost::shared_ptr< snark::graphics::View::Reader > makeReader( QGLView& viewer
     }
     if( param.title == "none" ) param.title = "";
     if( !show ) { std::cerr << "view-points: " << ( param.title.empty() ? param.options.filename : param.title )<< " will be hidden on startup; tick the box next to the name to make it visible" << std::endl; }
-    snark::graphics::View::coloured* coloured = snark::graphics::View::colourFromString( colour, param.options.fields, backgroundcolour );
+    snark::graphics::view::coloured* coloured = snark::graphics::view::colourFromString( colour, param.options.fields, backgroundcolour );
     if( shape == "point" )
     {
         if( param.options.fields == "" ) { param.options.fields="x,y,z"; }
         std::vector< std::string > v = comma::split( param.options.fields, ',' );
         bool has_orientation = false;
         for( unsigned int i = 0; !has_orientation && i < v.size(); ++i ) { has_orientation = v[i] == "roll" || v[i] == "pitch" || v[i] == "yaw"; }
-        boost::shared_ptr< snark::graphics::View::Reader > reader( new snark::graphics::View::ShapeReader< Eigen::Vector3d >( viewer, param, coloured, label ) );
+        boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< Eigen::Vector3d >( viewer, param, coloured, label ) );
         reader->show( show );
         return reader;
     }
     if( shape == "loop" )
     {
         if( param.options.fields == "" ) { param.options.fields="x,y,z"; }
-        boost::shared_ptr< snark::graphics::View::Reader > reader( new snark::graphics::View::ShapeReader< Eigen::Vector3d, snark::graphics::View::how_t::loop >( viewer, param, coloured, label ) );
+        boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< Eigen::Vector3d, snark::graphics::view::how_t::loop >( viewer, param, coloured, label ) );
         reader->show( show );
         return reader;
     }
     if( shape == "lines" ) // todo: get a better name
     {
         if( param.options.fields == "" ) { param.options.fields="x,y,z"; }
-        boost::shared_ptr< snark::graphics::View::Reader > reader( new snark::graphics::View::ShapeReader< Eigen::Vector3d, snark::graphics::View::how_t::connected >( viewer, param, coloured, label ) );
+        boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< Eigen::Vector3d, snark::graphics::view::how_t::connected >( viewer, param, coloured, label ) );
         reader->show( show );
         return reader;
     }
@@ -422,7 +422,7 @@ boost::shared_ptr< snark::graphics::View::Reader > makeReader( QGLView& viewer
     else
     {
         if( param.options.fields == "" ) { param.options.fields="point,orientation"; param.options.full_xpath = true; }
-        std::vector< snark::graphics::View::TextureReader::image_options > image_options;
+        std::vector< snark::graphics::view::TextureReader::image_options > image_options;
         std::vector< std::string > v = comma::split( shape, ':' );
         for( unsigned int i = 0; i < v.size(); ++i )
         {
@@ -431,9 +431,9 @@ boost::shared_ptr< snark::graphics::View::Reader > makeReader( QGLView& viewer
             if( e != "png" && e != "jpg" && e != "jpeg" && e != "bmp" && e != "gif" ) { break; }
             switch( w.size() )
             {
-                case 1: image_options.push_back( snark::graphics::View::TextureReader::image_options( w[0] ) ); break;
-                case 2: image_options.push_back( snark::graphics::View::TextureReader::image_options( w[0], boost::lexical_cast< double >( w[1] ) ) ); break;
-                case 3: image_options.push_back( snark::graphics::View::TextureReader::image_options( w[0], boost::lexical_cast< double >( w[1] ), boost::lexical_cast< double >( w[2] ) ) ); break;
+                case 1: image_options.push_back( snark::graphics::view::TextureReader::image_options( w[0] ) ); break;
+                case 2: image_options.push_back( snark::graphics::view::TextureReader::image_options( w[0], boost::lexical_cast< double >( w[1] ) ) ); break;
+                case 3: image_options.push_back( snark::graphics::view::TextureReader::image_options( w[0], boost::lexical_cast< double >( w[1] ), boost::lexical_cast< double >( w[2] ) ) ); break;
                 default: COMMA_THROW( comma::exception, "expected <image>[,<width>,<height>]; got: " << shape );
             }
         }
@@ -442,13 +442,13 @@ boost::shared_ptr< snark::graphics::View::Reader > makeReader( QGLView& viewer
             model_options m = comma::name_value::parser( ';', '=' ).get< model_options >( properties );
             m.filename = shape;
             if( !boost::filesystem::exists( m.filename ) ) { COMMA_THROW( comma::exception, "file does not exist: " << m.filename ); }
-            boost::shared_ptr< snark::graphics::View::Reader > reader( new snark::graphics::View::ModelReader( viewer, param, shape, m.flip, m.scale, coloured, label ) );
+            boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ModelReader( viewer, param, shape, m.flip, m.scale, coloured, label ) );
             reader->show( show );
             return reader;
         }
         else
         {
-            boost::shared_ptr< snark::graphics::View::Reader > reader( new snark::graphics::View::TextureReader( viewer, param, image_options ) );
+            boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::TextureReader( viewer, param, image_options ) );
             reader->show( show );
             return reader;
         }
@@ -472,27 +472,27 @@ boost::shared_ptr< snark::graphics::View::Reader > makeReader( QGLView& viewer
     param.options.full_xpath = true;
     if( shape == "extents" )
     {
-        boost::shared_ptr< snark::graphics::View::Reader > reader( new snark::graphics::View::ShapeReader< snark::math::closed_interval< double, 3 > >( viewer, param, coloured, label, snark::math::closed_interval< double, 3 >( Eigen::Vector3d( 0, 0, 0 ), Eigen::Vector3d( 0, 0, 0 ) ) ) );
+        boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< snark::math::closed_interval< double, 3 > >( viewer, param, coloured, label, snark::math::closed_interval< double, 3 >( Eigen::Vector3d( 0, 0, 0 ), Eigen::Vector3d( 0, 0, 0 ) ) ) );
         reader->show( show );
         return reader;
     }
     else if( shape == "line" )
     {
-        boost::shared_ptr< snark::graphics::View::Reader > reader( new snark::graphics::View::ShapeReader< std::pair< Eigen::Vector3d, Eigen::Vector3d > >( viewer, param, coloured, label ) );
+        boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< std::pair< Eigen::Vector3d, Eigen::Vector3d > >( viewer, param, coloured, label ) );
         reader->show( show );
         return reader;
     }
     else if( shape == "ellipse" )
     {
-        boost::shared_ptr< snark::graphics::View::Reader > reader( new snark::graphics::View::ShapeReader< snark::graphics::View::Ellipse< 25 > >( viewer, param, coloured, label ) );
+        boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< snark::graphics::view::Ellipse< 25 > >( viewer, param, coloured, label ) );
         reader->show( show );
         return reader;
     }
     else if( shape == "arc" )
     {
-        snark::graphics::View::arc< 20 > sample; // quick and dirty
+        snark::graphics::view::arc< 20 > sample; // quick and dirty
         if( param.options.has_field( "middle" ) || param.options.has_field( "middle/x" ) || param.options.has_field( "middle/y" ) || param.options.has_field( "middle/z" ) ) { sample.middle = Eigen::Vector3d(); }
-        boost::shared_ptr< snark::graphics::View::Reader > reader( new snark::graphics::View::ShapeReader< snark::graphics::View::arc< 20 > >( viewer, param, coloured, label, sample ) );
+        boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< snark::graphics::view::arc< 20 > >( viewer, param, coloured, label, sample ) );
         reader->show( show );
         return reader;
     }
@@ -548,10 +548,10 @@ int main( int argc, char** argv )
         {
             std::string position = options.value< std::string >( "--camera-position" );
             comma::name_value::parser parser( "x,y,z,roll,pitch,yaw", ',', '=', false );
-            snark::graphics::View::point_with_orientation pose;
+            snark::graphics::view::point_with_orientation pose;
             try
             {
-                pose = parser.get< snark::graphics::View::point_with_orientation >( position );
+                pose = parser.get< snark::graphics::view::point_with_orientation >( position );
                 cameraposition = pose.point;
                 cameraorientation = pose.orientation;
             }
@@ -575,7 +575,7 @@ int main( int argc, char** argv )
         if( s ) { scene_center = comma::csv::ascii< Eigen::Vector3d >( "x,y,z", ',' ).get( *s ); }
         boost::property_tree::ptree camera_config; // quick and dirty
         if( options.exists( "--camera-config" ) ) { boost::property_tree::read_json( options.value< std::string >( "--camera-config" ), camera_config ); }
-        snark::graphics::View::Viewer* viewer = new snark::graphics::View::Viewer( backgroundcolour
+        snark::graphics::view::Viewer* viewer = new snark::graphics::view::Viewer( backgroundcolour
                                                                                  , fieldOfView
                                                                                  , z_up
                                                                                  , options.exists( "--exit-on-end-of-input" )
@@ -606,7 +606,7 @@ int main( int argc, char** argv )
                 COMMA_THROW( comma::exception, "cannot use --output-camera-config whilst \"pass-through\" option is in use" );
             }
         }
-        snark::graphics::View::MainWindow mainWindow( comma::join( argv, argc, ' ' ), viewer );
+        snark::graphics::view::MainWindow mainWindow( comma::join( argv, argc, ' ' ), viewer );
         mainWindow.show();
         application.exec();
         delete viewer;

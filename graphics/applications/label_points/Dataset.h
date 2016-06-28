@@ -42,7 +42,7 @@
 #include "PointWithId.h"
 #include <Qt3D/qglpainter.h>
 
-namespace snark { namespace graphics { namespace View {
+namespace snark { namespace graphics { namespace view {
 
 class BasicDataset
 {
@@ -120,6 +120,6 @@ class Dataset : public BasicDataset
         bool m_valid;
 };
 
-} } } // namespace snark { namespace graphics { namespace View {
+} } } // namespace snark { namespace graphics { namespace view {
 
 #endif // SNARK_GRAPHICS_APPLICATIONS_LABELPOINTS_DATASET_H_

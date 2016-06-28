@@ -34,7 +34,7 @@
 #include "action.h"
 
 
-namespace snark { namespace graphics { namespace View {
+namespace snark { namespace graphics { namespace view {
 
 Action::Action( const std::string& name, boost::function< void() > f )
     : QAction( name.c_str(), NULL )
@@ -65,4 +65,4 @@ ToggleAction::ToggleAction( const QIcon& icon, const std::string& name, boost::f
 
 void ToggleAction::action( bool checked ) { m_functor( checked ); }
 
-} } } // namespace snark { namespace graphics { namespace View {
+} } } // namespace snark { namespace graphics { namespace view {

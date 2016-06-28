@@ -47,7 +47,7 @@
 #include "reader.h"
 #endif
 
-namespace snark { namespace graphics { namespace View {
+namespace snark { namespace graphics { namespace view {
 
 class Viewer : public qt3d::view
 {
@@ -104,6 +104,6 @@ class Viewer : public qt3d::view
         bool m_exit_on_end_of_input;
 };
 
-} } } // namespace snark { namespace graphics { namespace View {
+} } } // namespace snark { namespace graphics { namespace view {
 
 #endif /*SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_VIEWER_H_*/

@@ -37,7 +37,7 @@
 #include "Tools.h"
 #include "Viewer.h"
 
-namespace snark { namespace graphics { namespace View {
+namespace snark { namespace graphics { namespace view {
 
 IdEdit::IdEdit( Viewer* viewer )
     : m_viewer( viewer )
@@ -124,4 +124,4 @@ void IdEdit::setValue( comma::uint32 id )
     m_size->setText( oss.str().c_str() );
 }
 
-} } } // namespace snark { namespace graphics { namespace View {
+} } } // namespace snark { namespace graphics { namespace view {

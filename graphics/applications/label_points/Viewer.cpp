@@ -38,7 +38,7 @@
 #endif
 #include "Viewer.h"
 
-namespace snark { namespace graphics { namespace View {
+namespace snark { namespace graphics { namespace view {
 
 Viewer::Viewer( const std::vector< comma::csv::options >& options
               , const comma::csv::options& csv_out
@@ -228,4 +228,4 @@ boost::optional< point_and_id > Viewer::pointSelection( const QPoint& point, boo
 
 void Viewer::handleId( comma::uint32 id ) { m_id = id; }
 
-} } } // namespace snark { namespace graphics { namespace View {
+} } } // namespace snark { namespace graphics { namespace view {

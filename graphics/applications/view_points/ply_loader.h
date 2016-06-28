@@ -39,7 +39,7 @@
 #include <Qt3D/qglbuilder.h>
 #include <Qt3D/qglpainter.h>
 
-namespace snark { namespace graphics { namespace View {
+namespace snark { namespace graphics { namespace view {
 
 /// loader for simple ply models
 class PlyLoader
@@ -56,6 +56,6 @@ private:
     double scale_;
 };
 
-} } } // namespace snark { namespace graphics { namespace View {
+} } } // namespace snark { namespace graphics { namespace view {
 
 #endif /*SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_PLY_LOADER_H_*/

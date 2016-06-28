@@ -33,7 +33,7 @@
 #include <iostream>
 #include "texture.h"
 
-namespace snark { namespace graphics { namespace View {
+namespace snark { namespace graphics { namespace view {
 
 Quad::Quad ( const QImage& image )
 {

@@ -36,7 +36,7 @@
 #include "Tools.h"
 #include <Qt3D/qglcube.h>
 
-namespace snark { namespace graphics { namespace View {  namespace Tools {
+namespace snark { namespace graphics { namespace view {  namespace Tools {
 
 namespace impl { // quick and dirty
 
@@ -332,4 +332,4 @@ void SelectClip::draw( QGLPainter* painter )
     painter->draw( QGL::Lines, &indices[0], 8 );
 }
 
-} } } } // namespace snark { namespace graphics { namespace View { namespace Tools {
+} } } } // namespace snark { namespace graphics { namespace view { namespace Tools {

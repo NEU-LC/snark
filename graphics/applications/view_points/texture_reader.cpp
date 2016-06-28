@@ -31,7 +31,7 @@
 
 #include "texture_reader.h"
 
-namespace snark { namespace graphics { namespace View {
+namespace snark { namespace graphics { namespace view {
 
 TextureReader::image_::image_( const TextureReader::image_options& o ) : image( &o.filename[0] )
 {
@@ -117,5 +117,5 @@ bool TextureReader::read_once()
 }
 
 
-} } } // namespace snark { namespace graphics { namespace View {
+} } } // namespace snark { namespace graphics { namespace view {
 

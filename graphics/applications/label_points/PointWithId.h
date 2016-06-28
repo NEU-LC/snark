@@ -37,7 +37,7 @@
 #include "../../../visiting/eigen.h"
 #endif
 
-namespace snark { namespace graphics { namespace View {
+namespace snark { namespace graphics { namespace view {
 
 struct PointWithId // quick and dirty
 {
@@ -48,21 +48,21 @@ struct PointWithId // quick and dirty
     PointWithId( std::pair< Eigen::Vector3d, comma::uint32 > p ) : point( p.first ), id( p.second ) {}
 };
 
-} } } // namespace snark { namespace graphics { namespace View {
+} } } // namespace snark { namespace graphics { namespace view {
 
 namespace comma { namespace visiting {
 
-template <> struct traits< snark::graphics::View::PointWithId >
+template <> struct traits< snark::graphics::view::PointWithId >
 {
     template < typename Key, class Visitor >
-    static void visit( Key, snark::graphics::View::PointWithId& p, Visitor& v )
+    static void visit( Key, snark::graphics::view::PointWithId& p, Visitor& v )
     {
         v.apply( "point", p.point );
         v.apply( "id", p.id );
     }
     
     template < typename Key, class Visitor >
-    static void visit( Key, const snark::graphics::View::PointWithId& p, Visitor& v )
+    static void visit( Key, const snark::graphics::view::PointWithId& p, Visitor& v )
     {
         v.apply( "point", p.point );
         v.apply( "id", p.id );

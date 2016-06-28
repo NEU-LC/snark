@@ -37,7 +37,7 @@
 #include "reader.h"
 #include <Qt3D/qglbuilder.h>
 
-namespace snark { namespace graphics { namespace View {
+namespace snark { namespace graphics { namespace view {
 
 /// display an image as a texture, set its position from an input csv stream
 class TextureReader : public Reader
@@ -81,6 +81,6 @@ class TextureReader : public Reader
         boost::ptr_vector< image_ > images_;
 };
 
-} } } // namespace snark { namespace graphics { namespace View {
+} } } // namespace snark { namespace graphics { namespace view {
 
 #endif /*SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_TEXTURE_READER_H_*/

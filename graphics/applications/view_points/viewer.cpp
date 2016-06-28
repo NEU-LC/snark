@@ -42,7 +42,7 @@
 #include "viewer.h"
 #include <QTimer>
 
-namespace snark { namespace graphics { namespace View {
+namespace snark { namespace graphics { namespace view {
 
 Viewer::camera_position_output::camera_position_output( const Viewer& viewer ) : viewer_( viewer ) {}
 
@@ -222,4 +222,4 @@ void Viewer::mouse_double_right_click_event(  QMouseEvent *e )
     std::cout << std::setprecision(16) << p.x() << "," << p.y() << "," << p.z() << std::endl;
 }
 
-} } } // namespace snark { namespace graphics { namespace View {
+} } } // namespace snark { namespace graphics { namespace view {

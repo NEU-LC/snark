@@ -43,7 +43,7 @@
 #include <Qt3D/qglnamespace.h>
 #include <Qt3D/qglpainter.h>
 
-namespace snark { namespace graphics { namespace View {
+namespace snark { namespace graphics { namespace view {
 
 struct vertex_t
 {
@@ -340,7 +340,7 @@ struct Shapetraits< Eigen::Vector3d, How >
     static const Eigen::Vector3d& center( const Eigen::Vector3d& point ) { return point; }
 };
 
-} } } // namespace snark { namespace graphics { namespace View {
+} } } // namespace snark { namespace graphics { namespace view {
 
 namespace comma { namespace visiting {
 
@@ -370,10 +370,10 @@ template <> struct traits< QColor4ub >
     }
 };
 
-template < typename S > struct traits< snark::graphics::View::ShapeWithId< S > >
+template < typename S > struct traits< snark::graphics::view::ShapeWithId< S > >
 {
     template < typename Key, class Visitor >
-    static void visit( Key, snark::graphics::View::ShapeWithId< S >& p, Visitor& v )
+    static void visit( Key, snark::graphics::view::ShapeWithId< S >& p, Visitor& v )
     {
         v.apply( "shape", p.shape );
         v.apply( "id", p.id );
@@ -384,7 +384,7 @@ template < typename S > struct traits< snark::graphics::View::ShapeWithId< S > >
     }
 
     template < typename Key, class Visitor >
-    static void visit( Key, const snark::graphics::View::ShapeWithId< S >& p, Visitor& v )
+    static void visit( Key, const snark::graphics::view::ShapeWithId< S >& p, Visitor& v )
     {
         v.apply( "shape", p.shape );
         v.apply( "id", p.id );
@@ -395,10 +395,10 @@ template < typename S > struct traits< snark::graphics::View::ShapeWithId< S > >
     }
 };
 
-template < std::size_t Size > struct traits< snark::graphics::View::Ellipse< Size > >
+template < std::size_t Size > struct traits< snark::graphics::view::Ellipse< Size > >
 {
     template < typename Key, class Visitor >
-    static void visit( Key, snark::graphics::View::Ellipse< Size >& p, Visitor& v )
+    static void visit( Key, snark::graphics::view::Ellipse< Size >& p, Visitor& v )
     {
         v.apply( "center", p.center );
         v.apply( "orientation", p.orientation );
@@ -407,7 +407,7 @@ template < std::size_t Size > struct traits< snark::graphics::View::Ellipse< Siz
     }
 
     template < typename Key, class Visitor >
-    static void visit( Key, const snark::graphics::View::Ellipse< Size >& p, Visitor& v )
+    static void visit( Key, const snark::graphics::view::Ellipse< Size >& p, Visitor& v )
     {
         v.apply( "center", p.center );
         v.apply( "orientation", p.orientation );
@@ -416,10 +416,10 @@ template < std::size_t Size > struct traits< snark::graphics::View::Ellipse< Siz
     }
 };
 
-template < std::size_t Size > struct traits< snark::graphics::View::arc< Size > >
+template < std::size_t Size > struct traits< snark::graphics::view::arc< Size > >
 {
     template < typename Key, class Visitor >
-    static void visit( Key, snark::graphics::View::arc< Size >& p, Visitor& v )
+    static void visit( Key, snark::graphics::view::arc< Size >& p, Visitor& v )
     {
         v.apply( "begin", p.begin );
         if( p.middle ) { v.apply( "middle", *p.middle ); } // quick and dirty
@@ -428,7 +428,7 @@ template < std::size_t Size > struct traits< snark::graphics::View::arc< Size > 
     }
 
     template < typename Key, class Visitor >
-    static void visit( Key, const snark::graphics::View::arc< Size >& p, Visitor& v )
+    static void visit( Key, const snark::graphics::view::arc< Size >& p, Visitor& v )
     {
         v.apply( "begin", p.begin );
         if( p.middle ) { v.apply( "middle", *p.middle ); } // quick and dirty

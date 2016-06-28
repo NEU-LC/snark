@@ -32,7 +32,7 @@
 
 #include "camera_reader.h"
 
-namespace snark { namespace graphics { namespace View {
+namespace snark { namespace graphics { namespace view {
 
 CameraReader::CameraReader( comma::csv::options& options )
     : options( options )
@@ -96,4 +96,4 @@ Eigen::Vector3d CameraReader::orientation() const
     return m_orientation;
 };
 
-} } } // namespace snark { namespace graphics { namespace View {
+} } } // namespace snark { namespace graphics { namespace view {

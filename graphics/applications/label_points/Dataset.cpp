@@ -40,7 +40,7 @@
 #include "Dataset.h"
 #include "Tools.h"
 
-namespace snark { namespace graphics { namespace View {
+namespace snark { namespace graphics { namespace view {
 
 BasicDataset::BasicDataset() : m_visible( true ) {}
 
@@ -314,4 +314,4 @@ void Dataset::repair( const comma::csv::options& options ) // quick and dirty
     std::cerr << "label-points: repaired " << options.filename << std::endl;
 }
 
-} } } // namespace snark { namespace graphics { namespace View {
+} } } // namespace snark { namespace graphics { namespace view {

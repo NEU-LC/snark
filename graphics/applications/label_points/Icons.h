@@ -33,7 +33,7 @@
 
 #include <qicon.h>
 
-namespace snark { namespace graphics { namespace View {
+namespace snark { namespace graphics { namespace view {
 
 struct Icons
 {    
@@ -46,7 +46,7 @@ struct Icons
     static QIcon pointer() { return QIcon( ":/images/pointer.png" ); }
 };
 
-} } } // namespace snark { namespace graphics { namespace View {
+} } } // namespace snark { namespace graphics { namespace view {
 
 #endif // SNARK_GRAPHICS_APPLICATIONS_LABELPOINTS_ICONS_H_
 

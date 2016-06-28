@@ -38,7 +38,7 @@
 #include "snark/render/colour_map.h"
 #include "point_with_id.h"
 
-namespace snark { namespace graphics { namespace View {
+namespace snark { namespace graphics { namespace view {
 
 struct coloured
 {
@@ -136,6 +136,6 @@ struct ByRGB : public coloured
 
 coloured* colourFromString( const std::string& s, const std::string& fields, const QColor4ub& backgroundcolour );
 
-} } } // namespace snark { namespace graphics { namespace View {
+} } } // namespace snark { namespace graphics { namespace view {
 
 #endif /*SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_COLOURED_H_*/

@@ -43,7 +43,7 @@
 #include "IdEdit.h"
 #include "Viewer.h"
 
-namespace snark { namespace graphics { namespace View {
+namespace snark { namespace graphics { namespace view {
 
 class CheckBox;
     
@@ -52,7 +52,7 @@ class MainWindow : public QMainWindow
     Q_OBJECT
 
     public:
-        MainWindow( const std::string& title, snark::graphics::View::Viewer* viewer );
+        MainWindow( const std::string& title, snark::graphics::view::Viewer* viewer );
     
     public slots:
         void viewerInitialized();
@@ -94,6 +94,6 @@ class CheckBox : public QCheckBox // quick and dirty
         boost::function< void( bool ) > m_f;
 };
 
-} } } // namespace snark { namespace graphics { namespace View {
+} } } // namespace snark { namespace graphics { namespace view {
 
 #endif

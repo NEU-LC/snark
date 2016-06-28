@@ -38,7 +38,7 @@
 #include <qaction.h>
 #include <qactiongroup.h>
 
-namespace snark { namespace graphics { namespace View { namespace Actions {
+namespace snark { namespace graphics { namespace view { namespace Actions {
 
 class Action : public QAction // quick and dirty
 {
@@ -75,6 +75,6 @@ class ToggleAction : public QAction
         boost::function< void( bool ) > m_functor;
 };
 
-} } } } // namespace snark { namespace graphics { namespace View { namespace Actions {
+} } } } // namespace snark { namespace graphics { namespace view { namespace Actions {
 
 #endif // SNARK_GRAPHICS_APPLICATIONS_LABELPOINTS_ACTIONS_H_

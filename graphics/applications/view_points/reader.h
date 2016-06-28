@@ -42,7 +42,7 @@
 #include "coloured.h"
 #include <Qt3D/qglview.h>
 
-namespace snark { namespace graphics { namespace View {
+namespace snark { namespace graphics { namespace view {
 
 class Viewer;
 
@@ -122,6 +122,6 @@ class Reader : public reader_parameters
         void drawText( QGLPainter *painter, const QString& string, const QColor4ub& color );
 };
 
-} } } // namespace snark { namespace graphics { namespace View {
+} } } // namespace snark { namespace graphics { namespace view {
 
 #endif /*SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_READER_H_*/

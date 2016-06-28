@@ -48,9 +48,9 @@
 #include <Qt3D/qglpainter.h>
 #include "Icons.h"
 
-namespace snark { namespace graphics { namespace View { class Viewer; } } }
+namespace snark { namespace graphics { namespace view { class Viewer; } } }
 
-namespace snark { namespace graphics { namespace View { namespace Tools {
+namespace snark { namespace graphics { namespace view { namespace Tools {
 
 QColor4ub colorFromId( comma::uint32 id );
 
@@ -127,6 +127,6 @@ class SelectClip : public Tool
         Eigen::Vector3d m_radius;
 };
 
-} } } } // namespace snark { namespace graphics { namespace View { namespace Tools {
+} } } } // namespace snark { namespace graphics { namespace view { namespace Tools {
 
 #endif // SNARK_GRAPHICS_APPLICATIONS_LABELPOINTS_TOOLS_H_

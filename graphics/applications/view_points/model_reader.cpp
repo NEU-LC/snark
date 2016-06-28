@@ -33,7 +33,7 @@
 #include "model_reader.h"
 #include "texture.h"
 
-namespace snark { namespace graphics { namespace View {
+namespace snark { namespace graphics { namespace view {
 
 /// constructor
 /// @param viewer reference to the viewer
@@ -47,7 +47,7 @@ ModelReader::ModelReader( QGLView& viewer
                         , const std::string& file
                         , bool flip
                         , double scale
-                        , snark::graphics::View::coloured* c
+                        , snark::graphics::view::coloured* c
                         , const std::string& label )
     : Reader( viewer, reader_parameters( params ), c, label, Eigen::Vector3d( 0, 1, 1 ) ) // TODO make offset configurable ?
     , m_file( file )
@@ -131,4 +131,4 @@ bool ModelReader::read_once()
 }
 
 
-} } } // namespace snark { namespace graphics { namespace View {
+} } } // namespace snark { namespace graphics { namespace view {

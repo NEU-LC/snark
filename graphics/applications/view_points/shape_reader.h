@@ -42,7 +42,7 @@
 #include "reader.h"
 #include "shape_with_id.h"
 
-namespace snark { namespace graphics { namespace View {
+namespace snark { namespace graphics { namespace view {
     
 template< typename S, typename How = how_t::points >
 class ShapeReader : public Reader
@@ -193,6 +193,6 @@ inline bool ShapeReader< S, How >::read_once()
     return false;
 }
 
-} } } // namespace snark { namespace graphics { namespace View {
+} } } // namespace snark { namespace graphics { namespace view {
 
 #endif // SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_SHAPE_READER_H_

@@ -50,7 +50,7 @@
 #include "MainWindow.h"
 #include "Viewer.h"
 
-namespace snark { namespace graphics { namespace View {
+namespace snark { namespace graphics { namespace view {
 
 MainWindow::MainWindow( const std::string& title, Viewer* viewer )
     : m_viewer( *viewer )
@@ -362,4 +362,4 @@ void MainWindow::keyPressEvent(QKeyEvent *e)
         QWidget::keyPressEvent(e);
 }
 
-} } } // namespace snark { namespace graphics { namespace View {
+} } } // namespace snark { namespace graphics { namespace view {

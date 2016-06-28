@@ -39,7 +39,7 @@
 #include <comma/io/stream.h>
 #include <snark/visiting/eigen.h>
 
-namespace snark { namespace graphics { namespace View {
+namespace snark { namespace graphics { namespace view {
 
 struct point_with_orientation // quick and dirty
 {
@@ -79,14 +79,14 @@ class CameraReader
 
 };
 
-} } } // namespace snark { namespace graphics { namespace View {
+} } } // namespace snark { namespace graphics { namespace view {
 
 namespace comma { namespace visiting {
 
-template <> struct traits< snark::graphics::View::point_with_orientation >
+template <> struct traits< snark::graphics::view::point_with_orientation >
 {
     template < typename Key, class Visitor >
-    static void visit( Key, snark::graphics::View::point_with_orientation& p, Visitor& v )
+    static void visit( Key, snark::graphics::view::point_with_orientation& p, Visitor& v )
     {
         v.apply( "point", p.point );
         v.apply( "roll", p.orientation.x() );
@@ -95,7 +95,7 @@ template <> struct traits< snark::graphics::View::point_with_orientation >
     }
 
     template < typename Key, class Visitor >
-    static void visit( Key, const snark::graphics::View::point_with_orientation& p, Visitor& v )
+    static void visit( Key, const snark::graphics::view::point_with_orientation& p, Visitor& v )
     {
         v.apply( "point", p.point );
         v.apply( "roll", p.orientation.x() );

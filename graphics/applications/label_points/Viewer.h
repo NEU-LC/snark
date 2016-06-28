@@ -57,7 +57,7 @@
 #include "PointWithId.h"
 #include "Tools.h"
 
-namespace snark { namespace graphics { namespace View {
+namespace snark { namespace graphics { namespace view {
 
 static const long double pi_ = 3.14159265358979323846l;
 
@@ -132,6 +132,6 @@ class Viewer : public qt3d::view
         bool verbose_;
 };
 
-} } } // namespace snark { namespace graphics { namespace View {
+} } } // namespace snark { namespace graphics { namespace view {
 
 #endif // SNARK_GRAPHICS_APPLICATIONS_LABELPOINTS_VIEWER_H_

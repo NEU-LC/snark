@@ -39,7 +39,7 @@
 
 class QGLAbstractScene;
 
-namespace snark { namespace graphics { namespace View {
+namespace snark { namespace graphics { namespace view {
 
 /// display 3d models ( obj or 3ds ), set its position from an input csv stream
 class ModelReader : public Reader
@@ -71,6 +71,6 @@ class ModelReader : public Reader
         const coloured* coloured_;
 };
 
-} } } // namespace snark { namespace graphics { namespace View {
+} } } // namespace snark { namespace graphics { namespace view {
 
 #endif /*SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_MODEL_READER_H_*/

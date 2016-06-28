@@ -37,7 +37,7 @@
 #include <comma/string/string.h>
 #include "coloured.h"
 
-namespace snark { namespace graphics { namespace View {
+namespace snark { namespace graphics { namespace view {
 
 static QColor4ub color_from_name( const std::string& name )
 {
@@ -281,7 +281,7 @@ coloured* colourFromString( const std::string& s, const std::string& fields, con
         if( f[i] == "b" ) { b = true; }
         if( f[i] == "a" ) { a = true; }
     }
-    snark::graphics::View::coloured* c;
+    snark::graphics::view::coloured* c;
     try
     {
         if( hasId )
@@ -297,16 +297,16 @@ coloured* colourFromString( const std::string& s, const std::string& fields, con
                     from = boost::lexical_cast< double >( v[0] );
                     to = boost::lexical_cast< double >( v[1] );
                 }
-                c = new snark::graphics::View::ById( backgroundcolour, from, to );
+                c = new snark::graphics::view::ById( backgroundcolour, from, to );
             }
             else
             {
-                c = new snark::graphics::View::ById( backgroundcolour );
+                c = new snark::graphics::view::ById( backgroundcolour );
             }
         }
         else if( r || g || b || a )
         {
-            c = new snark::graphics::View::ByRGB;
+            c = new snark::graphics::view::ByRGB;
         }
         else if( hasScalar )
         {
@@ -377,12 +377,12 @@ coloured* colourFromString( const std::string& s, const std::string& fields, con
                         COMMA_THROW( comma::exception, "expected range (e.g. -5:20,red:blue or 3:10), or colour map name, got " << s );
                 }
             }
-            c = map ? new snark::graphics::View::ByScalar( from, to, *map )
-                    : new snark::graphics::View::ByScalar( from, to, from_color, to_color );
+            c = map ? new snark::graphics::view::ByScalar( from, to, *map )
+                    : new snark::graphics::view::ByScalar( from, to, from_color, to_color );
         }
         else
         {
-            c = new snark::graphics::View::Fixed( s );
+            c = new snark::graphics::view::Fixed( s );
         }
     }
     catch( ... )
@@ -419,9 +419,9 @@ coloured* colourFromString( const std::string& s, const std::string& fields, con
             }
         }
         if( !from ) { from = cyclic ? 1 : 0; }
-        c = new snark::graphics::View::ByHeight( *from, to, from_color, to_color, cyclic, linear,sharp );
+        c = new snark::graphics::view::ByHeight( *from, to, from_color, to_color, cyclic, linear,sharp );
     }
     return c;
 }
 
-} } } // namespace snark { namespace graphics { namespace View {
+} } } // namespace snark { namespace graphics { namespace view {

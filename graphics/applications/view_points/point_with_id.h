@@ -38,7 +38,7 @@
 #include <Qt3D/qcolor4ub.h>
 #include "shape_with_id.h"
 
-namespace snark { namespace graphics { namespace View {
+namespace snark { namespace graphics { namespace view {
 
 struct PointWithId // quick and dirty
 {
@@ -52,14 +52,14 @@ struct PointWithId // quick and dirty
     double scalar;
 };
 
-} } } // namespace snark { namespace graphics { namespace View {
+} } } // namespace snark { namespace graphics { namespace view {
 
 namespace comma { namespace visiting {
 
-template <> struct traits< snark::graphics::View::PointWithId >
+template <> struct traits< snark::graphics::view::PointWithId >
 {
     template < typename Key, class Visitor >
-    static void visit( Key, snark::graphics::View::PointWithId& p, Visitor& v )
+    static void visit( Key, snark::graphics::view::PointWithId& p, Visitor& v )
     {
         v.apply( "point", p.point );
         v.apply( "roll", p.orientation.x() );
@@ -73,7 +73,7 @@ template <> struct traits< snark::graphics::View::PointWithId >
     }
 
     template < typename Key, class Visitor >
-    static void visit( Key, const snark::graphics::View::PointWithId& p, Visitor& v )
+    static void visit( Key, const snark::graphics::view::PointWithId& p, Visitor& v )
     {
         v.apply( "point", p.point );
         v.apply( "roll", p.orientation.x() );

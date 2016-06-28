@@ -33,7 +33,7 @@
 #include "reader.h"
 #include "texture.h"
 
-namespace snark { namespace graphics { namespace View {
+namespace snark { namespace graphics { namespace view {
 
 Reader::Reader( QGLView& viewer, const reader_parameters& params, coloured* c, const std::string& label, const Eigen::Vector3d& offset )
     : reader_parameters( params )
@@ -128,4 +128,4 @@ void Reader::drawText( QGLPainter *painter, const QString& string, const QColor4
     texture.draw( painter );
 }
 
-} } } // namespace snark { namespace graphics { namespace View {
+} } } // namespace snark { namespace graphics { namespace view {

@@ -94,8 +94,8 @@ int main( int argc, char** argv )
         if( csvOptions.fields == "" ) { csvOptions.fields = "x,y,z,id"; }
         comma::csv::options csv_out( csvOptions );
         csv_out.fields = options.value< std::string >( "--output-fields", "x,y,z,id" );
-        if( csvOptions.binary() ) { csv_out.format( comma::csv::format::value< snark::graphics::View::PointWithId >( csv_out.fields, csv_out.full_xpath ) ); }
-        if( options.exists( "--show-output-format" ) ) { std::cout << comma::csv::format::value< snark::graphics::View::PointWithId >( csv_out.fields, csv_out.full_xpath ) << std::endl; return 0; }
+        if( csvOptions.binary() ) { csv_out.format( comma::csv::format::value< snark::graphics::view::PointWithId >( csv_out.fields, csv_out.full_xpath ) ); }
+        if( options.exists( "--show-output-format" ) ) { std::cout << comma::csv::format::value< snark::graphics::view::PointWithId >( csv_out.fields, csv_out.full_xpath ) << std::endl; return 0; }
         std::vector< std::string > files = options.unnamed( "--repair,--fix-duplicated,--flush,--verbose,-v,--show-output-format",
                                                             "--binary,--bin,-b,--fields,--delimiter,-d,--background-colour,--precision,--output-fields,--orthographic,--fov" );
         if( files.empty() ) { std::cerr << "label-points: please specify input files" << std::endl; return 1; }
@@ -107,7 +107,7 @@ int main( int argc, char** argv )
         }
         if( options.exists( "--repair" ) ) // quick and dirty
         {
-            for( std::size_t i = 0; i < dataset_csv_options.size(); ++i ) { snark::graphics::View::Dataset::repair( dataset_csv_options[i] ); }
+            for( std::size_t i = 0; i < dataset_csv_options.size(); ++i ) { snark::graphics::view::Dataset::repair( dataset_csv_options[i] ); }
             return 0;
         }
         else
@@ -115,8 +115,8 @@ int main( int argc, char** argv )
             QApplication application( argc, argv );
             bool orthographic = options.exists( "--orthographic" );
             double fieldOfView = options.value< double >( "--fov", 45 );
-            boost::scoped_ptr< snark::graphics::View::Viewer > viewer( new snark::graphics::View::Viewer( dataset_csv_options, csv_out, fixDuplicated, backgroundcolour, orthographic, fieldOfView, verbose ) );
-            snark::graphics::View::MainWindow mainWindow( comma::join( argv, argc, ' ' ), viewer.get() );
+            boost::scoped_ptr< snark::graphics::view::Viewer > viewer( new snark::graphics::view::Viewer( dataset_csv_options, csv_out, fixDuplicated, backgroundcolour, orthographic, fieldOfView, verbose ) );
+            snark::graphics::view::MainWindow mainWindow( comma::join( argv, argc, ' ' ), viewer.get() );
             mainWindow.show();
             /*return*/ application.exec();
             viewer.reset(); // HACK to prevent segfault on exit TODO fix properly or maybe it is a bug in Qt3D ?

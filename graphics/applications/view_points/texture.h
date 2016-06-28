@@ -39,7 +39,7 @@
 #include <Qt3D/qglabstractscene.h>
 #include <Qt3D/qglpainter.h>
 
-namespace snark { namespace graphics { namespace View {
+namespace snark { namespace graphics { namespace view {
 
 class Quad
 {

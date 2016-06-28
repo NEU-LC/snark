@@ -43,7 +43,7 @@
 #include <comma/base/types.h>
 #endif
 
-namespace snark { namespace graphics { namespace View {
+namespace snark { namespace graphics { namespace view {
 
 class Viewer;
 
@@ -68,6 +68,6 @@ class IdEdit : public QFrame
         QLabel* m_size;
 };
 
-} } } // namespace snark { namespace graphics { namespace View {
+} } } // namespace snark { namespace graphics { namespace view {
 
 #endif // SNARK_GRAPHICS_APPLICATIONS_LABELPOINTS_IDEDIT_H_
