@@ -30,8 +30,8 @@
 
 /// @author Vsevolod Vlaskine
 
-#ifndef SNARK_GRAPHICS_APPLICATIONS_LABELPOINTS_ACTION_H_
-#define SNARK_GRAPHICS_APPLICATIONS_LABELPOINTS_ACTION_H_
+#ifndef SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_ACTION_H_
+#define SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_ACTION_H_
 
 #ifndef Q_MOC_RUN
 #include <boost/function.hpp>
@@ -79,4 +79,4 @@ class ToggleAction : public QAction
 
 } } } // namespace snark { namespace graphics { namespace view {
 
-#endif // SNARK_GRAPHICS_APPLICATIONS_LABELPOINTS_ACTION_H_
+#endif // SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_ACTION_H_
