@@ -5,7 +5,11 @@ SET( label_points label-points )
 
 set( build_view_points "TRUE" )
 set( build_label_points "TRUE" )
-if( Qt3D_VERSION GREATER 1 )
+set( build_test_pattern "TRUE" )
+
+if( Qt3D_VERSION EQUAL 1 )
+    set( build_test_pattern "FALSE" )
+else()
     set( build_label_points "FALSE" )
 endif()
 
@@ -89,6 +93,12 @@ if( build_view_points )
                                snark_graphics_qt3d
                                ${comma_ALL_LIBRARIES} )
     endif()
+endif()
+
+if( build_test_pattern )
+    list( APPEND snark_graphics_applications_install_targets test-pattern )
+    add_executable( test-pattern test-pattern.cpp )
+    target_link_libraries( test-pattern Qt5::Gui ${comma_ALL_LIBRARIES} )
 endif()
 
 OPTION( snark_build_graphics_csv_plot "build csv-plot" OFF )
