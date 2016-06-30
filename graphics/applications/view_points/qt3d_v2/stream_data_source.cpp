@@ -1,5 +1,5 @@
 // This file is part of snark, a generic and flexible library for robotics research
-// Copyright (c) 2011 The University of Sydney
+// Copyright (c) 2016 The University of Sydney
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -27,89 +27,21 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
-/// @author Vsevolod Vlaskine
-
-#ifndef SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_MAINWINDOW_H_
-#define SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_MAINWINDOW_H_
-
-#if Qt3D_VERSION==1
-
-#include <QCheckBox>
-#include <QMainWindow>
-#include "qt3d_v1/viewer.h"
-
-QT_BEGIN_NAMESPACE
-class QAction;
-class QActionGroup;
-class QFrame;
-class QGridLayout;
-class QMenu;
-class QToolBar;
-QT_END_NAMESPACE
+#include <comma/csv/stream.h>
+#include <comma/io/stream.h>
+#include "stream_data_source.h"
 
 namespace snark { namespace graphics { namespace view {
 
-class CheckBox;
-
-class MainWindow : public QMainWindow
+stream_data_source::stream_data_source( std::string input_filename )
+    : buffer_( 10000000 )
 {
-    Q_OBJECT
-
-    public:
-        MainWindow( const std::string& title, snark::graphics::view::Viewer* viewer );
-    
-    private:
-        QMenu* m_viewMenu;
-        Viewer& m_viewer;
-        QFrame* m_fileFrame;
-        QGridLayout* m_fileLayout;
-        bool m_fileFrameVisible;
-        typedef std::map< std::string, std::vector< CheckBox* > > FileGroupMap;
-        FileGroupMap m_fileGroups; // quick and dirty
-    
-        void closeEvent( QCloseEvent* event );
-        void keyPressEvent( QKeyEvent *e );
-        void updateFileFrame();
-        void toggleFileFrame( bool shown );
-        void makeFileGroups();
-        void showFileGroup( std::string name, bool shown );
-};
-
-class CheckBox : public QCheckBox // quick and dirty
-{
-    Q_OBJECT
-    
-    public:
-        CheckBox( boost::function< void( bool ) > f );
-    
-    public slots:
-        void action( bool checked );
-    
-    private:
-        boost::function< void( bool ) > m_f;
-};
+    bool binary = false;
+    comma::io::istream istream( input_filename
+                              , binary ? comma::io::mode::binary : comma::io::mode::ascii
+                              , comma::io::mode::non_blocking );
+    comma::csv::input_stream< qt3d::vertex_t > stream( *istream() );
+    while( const qt3d::vertex_t* v = stream.read() ) buffer_.add( *v );
+}
 
 } } } // namespace snark { namespace graphics { namespace view {
-
-#elif Qt3D_VERSION==2
-
-#include <QMainWindow>
-
-namespace snark { namespace graphics { namespace view {
-
-class main_window : public QMainWindow
-{
-    Q_OBJECT
-
-public:
-    main_window();
-};
-
-} } } // namespace snark { namespace graphics { namespace view {
-
-#else
-#error Qt3D_VERSION must be 1 or 2
-#endif
-
-#endif /*SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_MAINWINDOW_H_*/

@@ -38,9 +38,9 @@
 //#include <windows.h>
 #endif
 
-#include "../../block_buffer.h"
+#include "snark/graphics/block_buffer.h"
+#include "../shape_with_id.h"
 #include "reader.h"
-#include "shape_with_id.h"
 
 namespace snark { namespace graphics { namespace view {
     

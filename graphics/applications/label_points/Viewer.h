@@ -51,7 +51,7 @@
 #endif
 #include "../label_points/PointWithId.h"
 
-#include "../../qt3d/view.h"
+#include "snark/graphics/qt3d/qt3d_v1/view.h"
 
 #include "Dataset.h"
 #include "PointWithId.h"

@@ -30,6 +30,8 @@
 
 /// @author Vsevolod Vlaskine
 
+#if Qt3D_VERSION==1
+
 #include "qglobal.h"
 #if QT_VERSION >= 0x050000
 #include <QtWidgets>
@@ -186,3 +188,21 @@ void MainWindow::keyPressEvent(QKeyEvent *e)
 }
 
 } } } // namespace snark { namespace graphics { namespace view {
+
+#elif Qt3D_VERSION==2
+
+#include "qt3d_v2/gl_window.h"
+#include "main_window.h"
+
+namespace snark { namespace graphics { namespace view {
+
+main_window::main_window()
+{
+    setCentralWidget( new gl_window( this ));
+}
+
+} } } // namespace snark { namespace graphics { namespace view {
+
+#else
+#error Qt3D_VERSION must be 1 or 2
+#endif

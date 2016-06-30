@@ -50,9 +50,8 @@ else( snark_qt_version MATCHES "^[0-9]+\\.[0-9]+" )
     message( FATAL_ERROR "Malformed QT version: ${snark_qt_version}" )
 endif( snark_qt_version MATCHES "^[0-9]+\\.[0-9]+" )
 
-ADD_DEFINITIONS(-DQT_VERSION_MAJOR=${QT_VERSION_MAJOR} -DQT_VERSION_MINOR=${QT_VERSION_MINOR})
-
 if( QT_VERSION_MAJOR EQUAL 4 )
+    set( Qt3D_VERSION 1 )
     find_package( Qt4 COMPONENTS QtCore QtGui QtOpenGl QtXml REQUIRED )
     include( ${QT_USE_FILE} )
     find_library( Qt3D_LIB NAMES Qt3D REQUIRED )
@@ -67,18 +66,25 @@ elseif( QT_VERSION_MAJOR EQUAL 5 )
     endif()
     find_package( Qt5 COMPONENTS Core Gui OpenGL Xml REQUIRED )
     if( QT_VERSION_MINOR LESS 5 )
+        set( Qt3D_VERSION 1 )
         find_package( Qt5 COMPONENTS 3D REQUIRED )
     else()
         # 3D libraries changed significantly with Qt5.5
+        set( Qt3D_VERSION 2 )
         find_package( Qt5 COMPONENTS 3DCore REQUIRED )
-        message( STATUS "Qt5Core_INCLUDE_DIRS=${Qt5Core_INCLUDE_DIRS}" )
-        # Should be able to do this by setting target_link_libraries
-        # but that doesn't seem to work
-        include_directories(${Qt5OpenGL_INCLUDE_DIRS})
+
+        if( QT_VERSION_MINOR GREATER 6 )
+            # Qt5.7+ requires c++11
+            if( NOT USE_CXX11 )
+                message( FATAL_ERROR "\nQt ${snark_qt_version} requires C++11 support. Do one of:\n* set USE_CXX11 to ON\n* Disable graphics (via snark_build_graphics)\n* Set Qt to a version below 5.7 (via QT_QMAKE_EXECUTABLE)" )
+            endif()
+        endif()
     endif()
 else()
     message( FATAL_ERROR "Qt version 4 or 5 required" )
 endif( QT_VERSION_MAJOR EQUAL 4 )
+
+add_definitions( -DQt3D_VERSION=${Qt3D_VERSION} )
 
 SET( dir ${SOURCE_CODE_BASE_DIR}/${PROJECT} )
 FILE( GLOB source   ${dir}/*.cpp)

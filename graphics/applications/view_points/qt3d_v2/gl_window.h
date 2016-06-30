@@ -1,5 +1,5 @@
 // This file is part of snark, a generic and flexible library for robotics research
-// Copyright (c) 2011 The University of Sydney
+// Copyright (c) 2016 The University of Sydney
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -27,89 +27,46 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#ifndef SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_GLWINDOW_H_
+#define SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_GLWINDOW_H_
 
-/// @author Vsevolod Vlaskine
-
-#ifndef SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_MAINWINDOW_H_
-#define SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_MAINWINDOW_H_
-
-#if Qt3D_VERSION==1
-
-#include <QCheckBox>
-#include <QMainWindow>
-#include "qt3d_v1/viewer.h"
+#include <QWidget>
 
 QT_BEGIN_NAMESPACE
-class QAction;
-class QActionGroup;
-class QFrame;
-class QGridLayout;
-class QMenu;
-class QToolBar;
+class QSlider;
 QT_END_NAMESPACE
 
+namespace snark { namespace graphics { namespace qt3d {
+class gl_widget;
+class data_source;
+} } }
+
 namespace snark { namespace graphics { namespace view {
 
-class CheckBox;
+class main_window;
 
-class MainWindow : public QMainWindow
+class gl_window : public QWidget
 {
     Q_OBJECT
 
     public:
-        MainWindow( const std::string& title, snark::graphics::view::Viewer* viewer );
-    
-    private:
-        QMenu* m_viewMenu;
-        Viewer& m_viewer;
-        QFrame* m_fileFrame;
-        QGridLayout* m_fileLayout;
-        bool m_fileFrameVisible;
-        typedef std::map< std::string, std::vector< CheckBox* > > FileGroupMap;
-        FileGroupMap m_fileGroups; // quick and dirty
-    
-        void closeEvent( QCloseEvent* event );
-        void keyPressEvent( QKeyEvent *e );
-        void updateFileFrame();
-        void toggleFileFrame( bool shown );
-        void makeFileGroups();
-        void showFileGroup( std::string name, bool shown );
-};
+        gl_window( main_window *mw );
+        ~gl_window();
 
-class CheckBox : public QCheckBox // quick and dirty
-{
-    Q_OBJECT
-    
-    public:
-        CheckBox( boost::function< void( bool ) > f );
-    
-    public slots:
-        void action( bool checked );
-    
+    protected:
+        void keyPressEvent( QKeyEvent *event ) Q_DECL_OVERRIDE;
+
     private:
-        boost::function< void( bool ) > m_f;
+        QSlider *create_slider();
+
+        qt3d::gl_widget *gl_widget_;
+        QSlider *x_slider_;
+        QSlider *y_slider_;
+        QSlider *z_slider_;
+        main_window *main_window_;
+        qt3d::data_source *data_source_;
 };
 
 } } } // namespace snark { namespace graphics { namespace view {
 
-#elif Qt3D_VERSION==2
-
-#include <QMainWindow>
-
-namespace snark { namespace graphics { namespace view {
-
-class main_window : public QMainWindow
-{
-    Q_OBJECT
-
-public:
-    main_window();
-};
-
-} } } // namespace snark { namespace graphics { namespace view {
-
-#else
-#error Qt3D_VERSION must be 1 or 2
-#endif
-
-#endif /*SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_MAINWINDOW_H_*/
+#endif /*SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_GLWINDOW_H_*/

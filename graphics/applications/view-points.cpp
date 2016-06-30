@@ -37,12 +37,17 @@
 #include <comma/csv/traits.h>
 #include <comma/name_value/parser.h>
 #include <comma/string/string.h>
+#include <snark/visiting/eigen.h>
 #include <QApplication>
+#if Qt3D_VERSION==1
 #include "view_points/main_window.h"
-#include "view_points/viewer.h"
-#include "view_points/shape_reader.h"
-#include "view_points/model_reader.h"
-#include "view_points/texture_reader.h"
+#include "view_points/qt3d_v1/viewer.h"
+#include "view_points/qt3d_v1/shape_reader.h"
+#include "view_points/qt3d_v1/model_reader.h"
+#include "view_points/qt3d_v1/texture_reader.h"
+#else
+#include "view_points/main_window.h"
+#endif
 
 static void bash_completion( unsigned const ac, char const * const * av )
 {
@@ -75,8 +80,14 @@ static void bash_completion( unsigned const ac, char const * const * av )
 
 static void usage()
 {
+#if Qt3D_VERSION==2
+    static const char * const usage_qt55_warning =
+        "\nWARNING: this version of view-points is compiled against Qt5.5+"
+        "\nIt will not be fully functional (yet)."
+        "\n";
+#endif
+
     static const char * const usage_synopsis = 
-        "\n"
         "\nview 3D point clouds:"
         "\nview points from given files/streams and stdin"
         "\n(see examples below for a quick start)"
@@ -281,6 +292,9 @@ static void usage()
         "\n";
 
     std::cerr
+        #if Qt3D_VERSION==2
+        << usage_qt55_warning
+        #endif
         << usage_synopsis
         << usage_options
         << "\ncsv options\n"
@@ -320,6 +334,7 @@ template <> struct traits< model_options >
 
 } } // namespace comma { namespace visiting {
 
+#if Qt3D_VERSION==1
 static bool data_passed_through = false;
 
 // quick and dirty, todo: a proper structure, as well as a visitor for command line options
@@ -498,6 +513,7 @@ boost::shared_ptr< snark::graphics::view::Reader > makeReader( QGLView& viewer
     }
     COMMA_THROW( comma::exception, "expected shape, got \"" << shape << "\"" ); // never here
 }
+#endif
 
 int main( int argc, char** argv )
 {
@@ -510,6 +526,7 @@ int main( int argc, char** argv )
         comma::csv::options csvOptions( argc, argv );
         std::vector< std::string > properties = options.unnamed( "--z-is-up,--orthographic,--flush,--no-stdin,--output-camera-config,--output-camera,--pass-through,--pass,--exit-on-end-of-input"
                 , "--binary,--bin,-b,--fields,--size,--delimiter,-d,--colour,-c,--point-size,--weight,--background-colour,--scene-center,--center,--scene-radius,--radius,--shape,--label,--title,--camera,--camera-position,--camera-config,--fov,--model,--full-xpath" );
+        #if Qt3D_VERSION==1
         QColor4ub backgroundcolour( QColor( QString( options.value< std::string >( "--background-colour", "#000000" ).c_str() ) ) );
         boost::optional< comma::csv::options > camera_csv;
         boost::optional< Eigen::Vector3d > cameraposition;
@@ -541,7 +558,9 @@ int main( int argc, char** argv )
                 }
             }
         }
+        #endif
 
+        #if Qt3D_VERSION==1
         QApplication application( argc, argv );
         bool z_up = options.exists( "--z-is-up" );
         if( options.exists( "--camera-position" ) )
@@ -569,12 +588,14 @@ int main( int argc, char** argv )
                 catch( ... ) {}
             }
         }
+        #endif
         boost::optional< double > scene_radius = options.optional< double >( "--scene-radius,--radius" );
         boost::optional< Eigen::Vector3d > scene_center;
         boost::optional< std::string > s = options.optional< std::string >( "--scene-center,--center" );
         if( s ) { scene_center = comma::csv::ascii< Eigen::Vector3d >( "x,y,z", ',' ).get( *s ); }
         boost::property_tree::ptree camera_config; // quick and dirty
         if( options.exists( "--camera-config" ) ) { boost::property_tree::read_json( options.value< std::string >( "--camera-config" ), camera_config ); }
+        #if Qt3D_VERSION==1
         snark::graphics::view::Viewer* viewer = new snark::graphics::view::Viewer( backgroundcolour
                                                                                  , fieldOfView
                                                                                  , z_up
@@ -611,6 +632,15 @@ int main( int argc, char** argv )
         application.exec();
         delete viewer;
         return 0;       // We never actually reach this line because we raise SIGINT when closing
+        #else
+
+        QApplication app(argc, argv);
+        snark::graphics::view::main_window main_window;
+        main_window.resize( main_window.sizeHint() );
+        main_window.show();
+        return app.exec();
+
+        #endif
     }
     catch( std::exception& ex )
     {
