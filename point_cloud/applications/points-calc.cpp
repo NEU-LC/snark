@@ -283,6 +283,9 @@ static void discretise( double step, double tolerance )
         BOOST_STATIC_ASSERT( sizeof( Eigen::Vector3d ) == sizeof( double ) * 3 );
         comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, csv );
         boost::optional< Eigen::Vector3d > previous_point;
+        comma::csv::options output_csv;
+        if( csv.binary() ) { output_csv.format( "3d" ); }
+        comma::csv::output_stream< Eigen::Vector3d > ostream( std::cout, output_csv );
         while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
         {
             const Eigen::Vector3d* current_point = istream.read();
