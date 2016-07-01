@@ -292,7 +292,7 @@ static void discretise( double step, double tolerance )
             if( !current_point ) { break; }
             if( previous_point )
             {
-                output_points( *previous_point, *previous_point );
+                comma::csv::append( istream, ostream, *previous_point );
                 double distance = ( *previous_point - *current_point ).norm();
                 if( comma::math::less( step, distance ) )
                 {
@@ -300,13 +300,13 @@ static void discretise( double step, double tolerance )
                     for( double t = step; comma::math::less( t + tolerance, distance ); t += step )
                     {
                         Eigen::Vector3d point = line.pointAt( t );
-                        output_points( *previous_point, point );
+                        comma::csv::append( istream, ostream, point );
                     }
                 }
             }
             previous_point.reset( *current_point );
         }
-        output_points( *previous_point, *previous_point );
+        comma::csv::append( istream, ostream, *previous_point );
     }
 }
 
