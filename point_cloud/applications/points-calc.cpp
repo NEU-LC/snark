@@ -32,6 +32,7 @@
 #include <cmath>
 #include <deque>
 #include <iostream>
+#include <limits>
 #include <boost/optional.hpp>
 #include <comma/application/command_line_options.h>
 #include <comma/csv/stream.h>
@@ -65,7 +66,7 @@ static void usage( bool more = false )
     std::cerr << "operations" << std::endl;
     std::cerr << "    cumulative-distance" << std::endl;
     std::cerr << "    distance" << std::endl;
-    std::cerr << "    discretise" << std::endl;
+    std::cerr << "    discretise,discretize" << std::endl;
     std::cerr << "    find-outliers" << std::endl;
     std::cerr << "    local-min" << std::endl;
     std::cerr << "    local-max" << std::endl;
@@ -91,10 +92,14 @@ static void usage( bool more = false )
     std::cerr << "        input fields: " << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
     std::cerr << std::endl;
     std::cerr << "    discretise, discretize: read input data and discretise intervals between adjacent points with --step" << std::endl;
-    std::cerr << "        skip discretised points that are closer to the end of the interval than --tolerance (default: --tolerance=0)" << std::endl;
+    std::cerr << "        skip discretised points that are closer to the end of the interval than --tolerance" << std::endl;
     std::cerr << std::endl;
     std::cerr << "        input fields" << std::endl;
     std::cerr << "            " << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "        options" << std::endl;
+    std::cerr << "            --step=<step>: linear step of discretisation" << std::endl;
+    std::cerr << "            --tolerance=<tolerance>: tolerance; default: " << std::numeric_limits< double >::min() << std::endl;
     std::cerr << std::endl;
     std::cerr << "    find-outliers: find points in low density areas" << std::endl;
     std::cerr << "                   currently quick and dirty, may have aliasing problems" << std::endl;
@@ -255,30 +260,51 @@ void output_points(const Eigen::Vector3d& p1, const Eigen::Vector3d& p2)
 
 static void discretise( double step, double tolerance )
 {
-    BOOST_STATIC_ASSERT( sizeof( Eigen::Vector3d ) == sizeof( double ) * 3 );
-    comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, csv );
-    boost::optional< Eigen::Vector3d > previous_point;
-    while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
+    if( csv.has_some_of_fields( "first,first/x,first/y,first/z,second,second/x,second/y,second/z" ) )
     {
-        const Eigen::Vector3d* current_point = istream.read();
-        if( !current_point ) { break; }
-        if( previous_point )
+        comma::csv::input_stream< std::pair< Eigen::Vector3d, Eigen::Vector3d > > istream( std::cin, csv );
+        comma::csv::options output_csv;
+        if( csv.binary() ) { output_csv.format( "3d" ); }
+        comma::csv::output_stream< Eigen::Vector3d > ostream( std::cout, output_csv );
+        while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
         {
-            output_points( *previous_point, *previous_point );
-            double distance = ( *previous_point - *current_point ).norm();
-            if( comma::math::less( step, distance ) )
+            const std::pair< Eigen::Vector3d, Eigen::Vector3d >* p = istream.read();
+            if( !p ) { break; }
+            Eigen::ParametrizedLine< double, 3 > line = Eigen::ParametrizedLine< double, 3 >::Through( p->first, p->second );
+            double norm = ( p->first - p->second ).norm();
+            unsigned int size = norm / step;
+            if( ( line.pointAt( step * size ) - p->second ).norm() > tolerance ) { ++size; }
+            for( unsigned int i = 0; i < size; ++i ) { comma::csv::append( istream, ostream, line.pointAt( step * i ) ); }
+            comma::csv::append( istream, ostream, p->second );
+        }
+    }
+    else
+    {
+        BOOST_STATIC_ASSERT( sizeof( Eigen::Vector3d ) == sizeof( double ) * 3 );
+        comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, csv );
+        boost::optional< Eigen::Vector3d > previous_point;
+        while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
+        {
+            const Eigen::Vector3d* current_point = istream.read();
+            if( !current_point ) { break; }
+            if( previous_point )
             {
-                Eigen::ParametrizedLine< double, 3 > line = Eigen::ParametrizedLine< double, 3 >::Through( *previous_point, *current_point );
-                for( double t = step; comma::math::less( t + tolerance, distance ); t += step )
+                output_points( *previous_point, *previous_point );
+                double distance = ( *previous_point - *current_point ).norm();
+                if( comma::math::less( step, distance ) )
                 {
-                    Eigen::Vector3d point = line.pointAt( t );
-                    output_points( *previous_point, point );
+                    Eigen::ParametrizedLine< double, 3 > line = Eigen::ParametrizedLine< double, 3 >::Through( *previous_point, *current_point );
+                    for( double t = step; comma::math::less( t + tolerance, distance ); t += step )
+                    {
+                        Eigen::Vector3d point = line.pointAt( t );
+                        output_points( *previous_point, point );
+                    }
                 }
             }
+            previous_point.reset( *current_point );
         }
-        previous_point.reset( *current_point );
+        output_points( *previous_point, *previous_point );
     }
-    output_points( *previous_point, *previous_point );
 }
 
 namespace local_operation {
@@ -495,11 +521,11 @@ int main( int ac, char** av )
         if( operation == "discretise" || operation == "discretize" )
         {
             if( !options.exists( "--step" ) ) { std::cerr << "points-calc: --step is not specified " << std::endl; return 1; }
-            double step = options.value( "--step" , 0.0 );
+            double step = options.value< double >( "--step" );
             if( step <= 0 ) { std::cerr << "points-calc: expected positive step, got " << step << std::endl; return 1; }
             // the last discretised point can be very close to the end of the interval, in which case the last two points can be identical in the output since ascii.put uses 12 digits by default
             // setting --tolerance=1e-12 will not allow the last discretised point to be too close to the end of the interval and therefore the output will have two distinct points at the end
-            double tolerance = options.value( "--tolerance" , 0.0 ); 
+            double tolerance = options.value( "--tolerance", std::numeric_limits< double >::min() ); 
             if( tolerance < 0 ) { std::cerr << "points-calc: expected non-negative tolerance, got " << tolerance << std::endl; return 1; }
             discretise( step, tolerance );
             return 0;
