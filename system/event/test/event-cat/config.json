@@ -1,0 +1,30 @@
+{
+    "streams" :
+    [
+        {
+            "input": "tcp:localhost:10001",
+            "output": "tcp:9999",
+            "preprocess": "csv-shuffle --fields \"a,b,c\" --output-fields \"c,b,a\" --binary 3d",
+            "binary": "3d",
+            "fields": ",s,t",
+            "conditions":
+            [
+                { "event" : 1, "condition" : "s < t" },
+                { "event" : 5, "condition" : "s >= t" }
+            ]
+        },
+        {
+            "input": "tcp:localhost:10000",
+            "output": "tcp:8888",
+            "fields": ",,a",
+            "binary": "4ui",
+            "conditions":
+            [
+                { "event" : 1, "condition" : "a < 123" },
+                { "event" : 5, "condition" : "logical_and( a >= 123, a < 456 )" },
+                { "event" : 3, "condition" : "a > 256" },
+                { "event" : 3, "condition" : "a > 300" }
+            ]
+        }
+    ]
+}

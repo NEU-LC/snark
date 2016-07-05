@@ -1,0 +1,229 @@
+#!/bin/bash
+
+source $( type -p comma-application-util )
+source $( type -p comma-name-value-util )
+source $( type -p comma-process-util )
+
+function options()
+{
+    cat <<eof
+--add-stream-index,--stream-index,--index; for each stream, prepend event with stream index
+--dry-run,--dry; print commands and exit
+--merge-connect-timeout,--connect-timeout,--timeout=<seconds>; default=5; run command: timeout for trying to connect to streams
+--sample-config; output sample config
+eof
+}
+
+function usage()
+{
+    cat <<eof >&2
+
+take multiple data streams convert to event streams, merge and output to stdout
+
+usage: event-cat <operation> [<options>]
+
+operations
+    run-stream: parse stream config, make stream command
+
+        usage: cat stream.json | event-cat run-stream
+
+    run-streams: run streams in background
+
+        usage cat streams.json | event-cat run-streams
+
+    merge: merge streams into a single event stream
+
+        usage cat streams.json | event-cat merge
+        
+    run-all: run streams in background, merge streams into a single event stream, todo
+
+        usage cat streams.json | event-cat run
+
+examples
+    event-cat run-stream --sample-config | event-cat run-stream --dry-run
+    event-cat run-streams --sample-config | event-cat run-streams --dry-run
+    event-cat run-streams --sample-config | event-cat merge --dry-run
+
+eof
+    exit 0
+}
+
+function say() { echo "event-cat: $@" >&2 ; }
+
+function die() { say $@ ; exit 1 ; }
+
+function run-stream-sample-config()
+{
+    cat <<eof
+{
+    "input": "-",
+    "output": "tcp:8888",
+    "fields": ",,a",
+    "binary": "4ui",
+    "conditions":
+    [
+        { "event" : 1, "condition" : "a < 123" },
+        { "event" : 5, "condition" : "logical_and( a >= 123, a < 456 )" },
+        { "event" : 3, "condition" : "a > 256" },
+        { "event" : 3, "condition" : "a > 300" }
+    ]
+}
+eof
+}
+
+function run-streams-sample-config()
+{
+    cat <<eof
+{
+    "streams" :
+    [
+        {
+            "input": "-",
+            "output": "tcp:8888",
+            "fields": ",,a",
+            "binary": "4ui",
+            "conditions":
+            [
+                { "event" : 1, "condition" : "a < 123" },
+                { "event" : 5, "condition" : "logical_and( a >= 123, a < 456 )" },
+                { "event" : 3, "condition" : "a > 256" },
+                { "event" : 3, "condition" : "a > 300" }
+            ]
+        },
+        {
+            "input": "tcp:localhost:12345",
+            "output": "tcp:9999",
+            "preprocess": "do-something-useful --fields \"a,b,c\"",
+            "fields": ",,s,t",
+            "binary": "6d",
+            "conditions":
+            [
+                { "event" : 1, "condition" : "s < t" },
+                { "event" : 5, "condition" : "s >= t" }
+            ]
+        }
+    ]
+}
+eof
+}
+
+function run-sample-config() { run-streams-sample-config ; }
+
+function make_stream_command()
+{
+    local index=$1
+    local config
+    config=$( name-value-convert --to path-value || exit 1 ) || die "invalid config"
+    local delimiter=','
+    eval "$( grep -v "conditions" <<< "$config" | comma_path_value_mangle | sed 's/^/local /' )"
+    [[ -n "$input" ]] || die "please specify stream input address"
+    [[ -n "$fields" ]] || die "please specify stream fields"
+    if [[ -z "$binary" ]] ; then
+        [[ -n "$format" ]] || die "please specify ascii stream format"
+        local format_option="--format=$format"
+    else
+        local format_option="--binary=$binary"
+        local size_option="--size=$( csv-size $binary )"
+        local format="$binary"
+    fi
+    local io_cat_command="io-cat \"$input\" $size_option"
+    local command="$io_cat_command"
+    [[ -z "$preprocess" ]] || command+=" | $preprocess"
+    local -A conditions
+    local event condition
+    while IFS='@' read event condition ; do
+        (( event > 0 )) || die "expected positive event; got $event"
+        if [[ -z "${conditions[$event]}" ]] ; then conditions[$event]="$condition" ; else conditions[$event]="logical_or( ${conditions[$event]}, $condition )" ; fi
+    done < <( name-value-to-csv --delimiter='@' --fields="event,condition" --prefix="conditions" <<< "$config" | csv-quote --delimiter '@' --unquote )
+    local expressions plus semicolon
+    for e in "${!conditions[@]}" ; do
+        expressions+="${semicolon}condition_${e}_ = ${conditions[$e]}"
+        event+="$plus$e * condition_${e}_"
+        plus=' + '
+        semicolon='; '
+    done
+    expressions+="; event__ = $event"
+    local csv_eval_command="csv-eval --fields=\"$fields\" $format_option --output-fields \"event__\" --output-format=\"ui\" \"$expressions\""
+    if [[ -z "$binary" ]] ; then local cut_command="csv-bin-cut $binary --fields $event_fields"
+    else local cut_command="cut -d\"$delimiter\" --fields $(( $( csv-format count <<< "$format" ) + 1 ))" ; fi
+    command+=" | $csv_eval_command | $cut_command"
+    if [[ -n "$index" ]] ; then if [[ -z "$binary" ]] ; then command+=" | csv-paste value=$index -" ; else command+=" | csv-paste value=\"$index;binary=ui\" -" ; fi ; fi
+    if [[ -n "$output" ]] ; then
+        local output_command="io-publish \"$output\""
+        [[ -z "$binary" ]] || if [[ -z "$index" ]] ; then output_command+=" --size $( csv-size "ui" )" ; else output_command+=" --size $( csv-size "2ui" )" ; fi
+        command+=" | $output_command"
+    fi
+    echo "$command"
+}
+
+function make_stream_commands()
+{
+    local config stream local
+    config=$( name-value-convert --to path-value ) || die "invalid config"
+    local count=0
+    while true ; do # quick and dirty, quadratic complexity, but for the files as small as the configuration files are it should not matter
+        stream=$( name-value-get --from path-value "streams[$count]" <<< "$config" ) || die "run-streams: invalid config for streams[$count]"
+        [[ -n "$stream" ]] || break
+        local index
+        (( options_add_stream_index )) && index=$count
+        make_stream_command $index <<< "$stream"
+        (( ++count ))
+    done
+}
+
+function make_merge_command()
+{
+    local outputs command output binary has_ascii has_binary
+    outputs=( "$( name-value-to-csv --prefix "streams" --fields "output,binary" | sed 's/tcp:/tcp:localhost:/' ; comma_status_ok || exit 1 )" ) || die "run: invalid outputs"
+    command="io-cat --round-robin=1 --exit-on-first-closed"
+    while IFS=',' read output binary ; do
+        if [[ -z "$binary" ]] ; then has_ascii=1 ; else has_binary=1 ; fi
+        (( has_binary && has_ascii )) && die "mix of binary and ascii data: todo"
+        command+=" $output"
+    done <<< "$outputs"
+    (( has_binary )) && command+=" --size $( csv-size 2ui )"
+    echo "$command"
+}
+
+function run_streams() { echo "$commands" | tr '\n' '\0' | xargs -0 -L1 --max-proc=0 -I{} /bin/bash -c "{}" ; }
+
+export -f run_streams
+
+if (( $( comma_options_has "--help" $@ ) || $( comma_options_has "-h" $@ ) )) ; then usage ; fi
+options_merge_connect_timeout=5
+eval $( options | comma-options-to-name-value $@ | comma_path_value_mangle | sed 's/^/options_/' )
+operation=$1
+(( options_sample_config )) && { $operation-sample-config ; exit 0 ; }
+case "$operation" in
+    run-stream)
+        command=$( make_stream_command ) || die "run-stream: failed to make stream command"
+        (( options_dry_run )) && { echo "$command" ; exit 0 ; }
+        $command
+        exit 0
+        ;;
+    run-streams)
+        commands=$( make_stream_commands ) || die "run-streams: failed to make stream commands"
+        (( options_dry_run )) && { echo "$commands" ; exit 0 ; }
+        export commands
+        comma_execute_and_wait --group "bash -c run_streams"
+        exit 0
+        ;;
+    merge)
+        config=$( name-value-convert --to path-value ) || die "invalid config"
+        command=$( make_merge_command <<< "$config" ) || die "run: failed to make merge command"
+        (( options_dry_run )) && { echo "$command" ; exit 0 ; }
+        deadline=$(( $( date +%s ) + options_merge_connect_timeout ))
+        while (( $( date +%s ) < deadline )) ; do
+            say "connecting..."
+            sleep 0.5
+            comma_execute_and_wait $command
+        done
+        die "one or more streams exited"
+        ;;
+    run-all)
+        die "run-all: todo"
+        ;;
+    *)
+        die "expected operation, got: \"$operation\""
+        ;;
+esac
