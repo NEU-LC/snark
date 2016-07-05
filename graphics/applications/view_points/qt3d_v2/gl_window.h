@@ -38,19 +38,19 @@ QT_END_NAMESPACE
 
 namespace snark { namespace graphics { namespace qt3d {
 class gl_widget;
-class data_source;
 } } }
 
 namespace snark { namespace graphics { namespace view {
 
 class main_window;
+class Reader;
 
 class gl_window : public QWidget
 {
     Q_OBJECT
 
     public:
-        gl_window( main_window *mw );
+        gl_window( main_window *mw, Reader* reader );
         ~gl_window();
 
     protected:
@@ -64,7 +64,7 @@ class gl_window : public QWidget
         QSlider *y_slider_;
         QSlider *z_slider_;
         main_window *main_window_;
-        qt3d::data_source *data_source_;
+        Reader* reader_;
 };
 
 } } } // namespace snark { namespace graphics { namespace view {

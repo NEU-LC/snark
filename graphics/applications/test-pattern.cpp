@@ -34,7 +34,7 @@
 #include <comma/application/command_line_options.h>
 #include <comma/application/verbose.h>
 #include <comma/csv/stream.h>
-#include "snark/graphics/qt3d/qt3d_v2/data_source.h"
+#include "snark/graphics/qt3d/qt3d_v2/types.h"
 
 static void bash_completion( unsigned const ac, char const * const * av )
 {

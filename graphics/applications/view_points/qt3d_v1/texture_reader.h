@@ -34,7 +34,7 @@
 #define SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_TEXTURE_READER_H_
 
 #include <boost/ptr_container/ptr_vector.hpp>
-#include "reader.h"
+#include "../reader.h"
 #include <Qt3D/qglbuilder.h>
 
 namespace snark { namespace graphics { namespace view {

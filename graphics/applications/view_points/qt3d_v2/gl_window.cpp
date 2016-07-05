@@ -33,16 +33,15 @@
 #include <QKeyEvent>
 #include "snark/graphics/qt3d/qt3d_v2/gl_widget.h"
 #include "../main_window.h"
-#include "stream_data_source.h"
 #include "gl_window.h"
 
 namespace snark { namespace graphics { namespace view {
 
-gl_window::gl_window( main_window *mw )
+gl_window::gl_window( main_window *mw, Reader* reader )
     : main_window_(mw)
+    , reader_( reader )
 {
-    data_source_ = new stream_data_source( "-" );
-    gl_widget_ = new qt3d::gl_widget( data_source_ );
+    gl_widget_ = new qt3d::gl_widget( reader_ );
 
     x_slider_ = create_slider();
     y_slider_ = create_slider();
@@ -76,7 +75,6 @@ gl_window::gl_window( main_window *mw )
 gl_window::~gl_window()
 {
     delete gl_widget_;
-    delete data_source_;
 }
 
 QSlider *gl_window::create_slider()

@@ -31,10 +31,16 @@
 /// @author Vsevolod Vlaskine, Cedric Wohlleber
 
 #include "reader.h"
-#include "texture.h"
+#if Qt3D_VERSION==1
+#include "qt3d_v1/texture.h"
+#else
+#include <Eigen/Geometry>
+#include "snark/math/rotation_matrix.h"
+#endif
 
 namespace snark { namespace graphics { namespace view {
 
+#if Qt3D_VERSION==1
 Reader::Reader( QGLView& viewer, const reader_parameters& params, coloured* c, const std::string& label, const Eigen::Vector3d& offset )
     : reader_parameters( params )
     , m_viewer( viewer )
@@ -52,6 +58,22 @@ Reader::Reader( QGLView& viewer, const reader_parameters& params, coloured* c, c
 {
     std::vector< std::string > v = comma::split( options.fields, ',' ); // quick and dirty
 }
+#else
+Reader::Reader( const reader_parameters& params, const Eigen::Vector3d& offset )
+    : reader_parameters( params )
+    , m_num_points( 0 )
+    , m_shutdown( false )
+    , m_isStdIn( options.filename == "-" )
+    , m_show( true )
+    , m_istream( options.filename, options.binary() ? comma::io::mode::binary : comma::io::mode::ascii, comma::io::mode::non_blocking )
+    , m_pass_through( params.pass_through ? &std::cout : 0 )
+    , updated_( false )
+    , id_( 0 )
+    , m_offset( offset )
+{
+    std::vector< std::string > v = comma::split( options.fields, ',' ); // quick and dirty
+}
+#endif
 
 void Reader::shutdown()
 {
@@ -91,6 +113,7 @@ bool Reader::updatePoint( const Eigen::Vector3d& offset )
     return true;
 }
 
+#if Qt3D_VERSION==1
 void Reader::draw_label( QGLPainter *painter, const Eigen::Vector3d& position, const std::string& label ) { draw_label( painter, position, m_color, label ); }
 
 void Reader::draw_label( QGLPainter *painter, const Eigen::Vector3d& position, const QColor4ub& color ) { draw_label( painter, position, color, m_label ); }
@@ -127,5 +150,6 @@ void Reader::drawText( QGLPainter *painter, const QString& string, const QColor4
     Texture texture( string, color );
     texture.draw( painter );
 }
+#endif
 
 } } } // namespace snark { namespace graphics { namespace view {

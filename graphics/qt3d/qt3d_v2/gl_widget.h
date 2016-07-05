@@ -35,7 +35,7 @@
 #include <QOpenGLVertexArrayObject>
 #include <QOpenGLBuffer>
 #include <QMatrix4x4>
-#include "data_source.h"
+#include "snark/graphics/applications/view_points/reader.h"
 
 QT_FORWARD_DECLARE_CLASS(QOpenGLShaderProgram)
 
@@ -46,7 +46,7 @@ class gl_widget : public QOpenGLWidget, protected QOpenGLFunctions
     Q_OBJECT
 
     public:
-        gl_widget( data_source* data_source, QWidget *parent = 0 );
+        gl_widget( view::Reader* reader, QWidget *parent = 0 );
         ~gl_widget();
 
         QSize minimumSizeHint() const Q_DECL_OVERRIDE;
@@ -77,7 +77,7 @@ class gl_widget : public QOpenGLWidget, protected QOpenGLFunctions
         int yRot_;
         int zRot_;
         QPoint last_pos_;
-        data_source* data_source_;
+        view::Reader* reader_;
         QOpenGLVertexArrayObject vao_;
         QOpenGLBuffer vbo_;
         QOpenGLShaderProgram *program_;

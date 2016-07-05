@@ -98,12 +98,14 @@ class CheckBox : public QCheckBox // quick and dirty
 
 namespace snark { namespace graphics { namespace view {
 
+class Reader;
+
 class main_window : public QMainWindow
 {
     Q_OBJECT
 
 public:
-    main_window();
+    main_window( Reader* reader );
 };
 
 } } } // namespace snark { namespace graphics { namespace view {

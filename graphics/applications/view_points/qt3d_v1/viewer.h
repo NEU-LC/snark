@@ -44,7 +44,7 @@
 #include <snark/graphics/qt3d/qt3d_v1/view.h>
 #ifndef Q_MOC_RUN
 #include "../camera_reader.h"
-#include "reader.h"
+#include "../reader.h"
 #endif
 
 namespace snark { namespace graphics { namespace view {

@@ -27,12 +27,12 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef SNARK_GRAPHICS_QT3D_DATASOURCE_H_
-#define SNARK_GRAPHICS_QT3D_DATASOURCE_H_
+#ifndef SNARK_GRAPHICS_QT3D_TYPES_H_
+#define SNARK_GRAPHICS_QT3D_TYPES_H_
 
 #include <array>
-#include <QColor>
 #include <Eigen/Core>
+#include <QColor>
 #include <GL/gl.h>
 #include <comma/visiting/traits.h>
 #include <snark/visiting/eigen.h>
@@ -70,14 +70,6 @@ struct vertex_t
         : position( position ), color( color ) {}
     vertex_t( const Eigen::Vector3f& position, const QColor& color )
         : position( position ), color( color ) {}
-};
-
-class data_source
-{
-    public:
-        virtual ~data_source() {}
-        virtual const vertex_t* data() const = 0;
-        virtual int count() const = 0;
 };
 
 } } } // namespace snark { namespace graphics { namespace qt3d {
@@ -129,4 +121,4 @@ template <> struct traits< snark::graphics::qt3d::vertex_t >
 
 } } // namespace comma { namespace visiting {
 
-#endif /*SNARK_GRAPHICS_QT3D_DATASOURCE_H_*/
+#endif /*SNARK_GRAPHICS_QT3D_TYPES_H_*/

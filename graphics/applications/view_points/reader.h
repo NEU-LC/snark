@@ -39,8 +39,14 @@
 #include <comma/csv/options.h>
 #include <comma/csv/stream.h>
 #include <comma/io/stream.h>
-#include "coloured.h"
+#if Qt3D_VERSION==1
 #include <Qt3D/qglview.h>
+#include "qt3d_v1/coloured.h"
+#else
+#include <QQuaternion>
+#include "snark/math/interval.h"
+#include "snark/graphics/qt3d/qt3d_v2/types.h"
+#endif
 
 namespace snark { namespace graphics { namespace view {
 
@@ -71,7 +77,11 @@ struct reader_parameters
 class Reader : public reader_parameters
 {
     public:
+        #if Qt3D_VERSION==1
         Reader( QGLView& viewer, const reader_parameters& params, coloured* c, const std::string& label, const Eigen::Vector3d& offset = Eigen::Vector3d( 0, 0, 0 ) );
+        #else
+        Reader( const reader_parameters& params, const Eigen::Vector3d& offset = Eigen::Vector3d( 0, 0, 0 ) );
+        #endif
 
         virtual ~Reader() {}
 
@@ -79,7 +89,12 @@ class Reader : public reader_parameters
         virtual std::size_t update( const Eigen::Vector3d& offset ) = 0;
         virtual const Eigen::Vector3d& somePoint() const = 0;
         virtual bool read_once() = 0;
+        #if Qt3D_VERSION==1
         virtual void render( QGLPainter *painter ) = 0;
+        #else
+        virtual const char* buffer_data() const = 0;
+        virtual std::size_t buffer_size() const = 0;
+        #endif
         virtual bool empty() const = 0;
 
         void show( bool s );
@@ -91,16 +106,22 @@ class Reader : public reader_parameters
 
     protected:
         bool updatePoint( const Eigen::Vector3d& offset );
+        #if Qt3D_VERSION==1
         void draw_label( QGLPainter* painter, const Eigen::Vector3d& position, const QColor4ub& color, const std::string& label );
         void draw_label( QGLPainter* painter, const Eigen::Vector3d& position, const QColor4ub& color );
         void draw_label( QGLPainter* painter, const Eigen::Vector3d& position, const std::string& label );
         void draw_label( QGLPainter* painter, const Eigen::Vector3d& position );
+        #endif
 
+        #if Qt3D_VERSION==1
         friend class Viewer;
         QGLView& m_viewer;
+        #endif
         boost::optional< snark::math::closed_interval< float, 3 > > m_extents;
         unsigned int m_num_points;
+        #if Qt3D_VERSION==1
         boost::scoped_ptr< coloured > m_colored;
+        #endif
         bool m_shutdown;
         bool m_isStdIn;
         bool m_show;
@@ -112,14 +133,20 @@ class Reader : public reader_parameters
         bool updated_; // quick and dirty, terrible
         boost::optional< Eigen::Vector3d > m_orientation;
         comma::uint32 id_; // todo: quick and dirty; replace m_point, m_orientation, etc with PointWithId point_;
+        #if Qt3D_VERSION==1
         QColor4ub m_color;
+        #else
+        qt3d::gl_color_t m_color;
+        #endif
         std::string m_label;
         Eigen::Vector3d m_translation;
         Eigen::Vector3d m_offset;
         QQuaternion m_quaternion;
 
     private:
+        #if Qt3D_VERSION==1
         void drawText( QGLPainter *painter, const QString& string, const QColor4ub& color );
+        #endif
 };
 
 } } } // namespace snark { namespace graphics { namespace view {

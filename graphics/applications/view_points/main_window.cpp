@@ -196,9 +196,9 @@ void MainWindow::keyPressEvent(QKeyEvent *e)
 
 namespace snark { namespace graphics { namespace view {
 
-main_window::main_window()
+main_window::main_window( Reader* reader )
 {
-    setCentralWidget( new gl_window( this ));
+    setCentralWidget( new gl_window( this, reader ));
 }
 
 } } } // namespace snark { namespace graphics { namespace view {
