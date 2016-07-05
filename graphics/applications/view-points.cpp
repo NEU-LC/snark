@@ -82,6 +82,11 @@ static void usage()
     static const char * const usage_qt55_warning =
         "\nWARNING: this version of view-points is compiled against Qt5.5+"
         "\nIt will not be fully functional (yet)."
+        "\n"
+        "\nFor an example of current functionality try:"
+        "\n    test-pattern cube 100000 0.1 0.01 | view-points --fields=x,y,z,r,g,b,a"
+        "\n"
+        "\n----------------------------------------------"
         "\n";
 #endif
 
