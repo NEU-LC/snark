@@ -7,14 +7,15 @@
 # Default-Stop:      0 1 6
 # Short-Description: snark web frame server
 # Description:       accepts http requests and serves frames from sensors
+#                    
 ### END INIT INFO
 
 # Run update-rc.d to install and remove System-V style init script links
 # e.g.
 #   Insert links using the defaults:
-#       update-rc.d snark-webframes defaults
+#       sudo update-rc.d snark-webframes defaults
 #   Enable links in the runlevels to start:
-#       update-rc.d snark-webframes enable
+#       sudo update-rc.d snark-webframes enable
 
 # Do NOT "set -e"
 
@@ -26,7 +27,7 @@ DAEMON=/usr/local/bin/$NAME
 PIDFILE=/var/run/$NAME.pid
 SCRIPTNAME=/etc/init.d/$NAME
 DAEMON_ARGS="--config /usr/local/etc/web.backend.json"
-
+as_user=
 # Exit if the package is not installed
 [ -x "$DAEMON" ] || exit 0
 
@@ -43,23 +44,9 @@ if [ -t 1 ]; then VERBOSE=yes; fi
 # and status_of_proc is working.
 . /lib/lsb/init-functions
 
-# Function that checks if the daemon/service is running
-is_running()
-{
-    if [ -z "$PIDFILE" ]; then return 1; fi
 
-    if [ -e "$PIDFILE" ]; then
-        pid=`cat "$PIDFILE"`
-        if [ -n "$pid" ] && ps -p "$pid" -o comm= | grep -q "^$NAME$"; then
-            [ $VERBOSE != 'no' ] && echo " * $NAME is already running, process $pid"
-            return 0
-        fi
-        [ $VERBOSE != 'no' ] && echo "removing stale pidfile"
-        rm -f "$PIDFILE"
-    fi
-
-    return 1
-}
+__as_user=
+[[ -z "$as_user" ]] || __as_user="-c $as_user"
 
 #
 # Function that starts the daemon/service
@@ -70,8 +57,12 @@ do_start()
     #   0 if daemon has been started
     #   1 if daemon was already running
     #   2 if daemon could not be started
-    start-stop-daemon --start --quiet --pidfile $PIDFILE --make-pidfile --startas $DAEMON --name $NAME --background --test > /dev/null || return 1
-    start-stop-daemon --start --quiet --pidfile $PIDFILE --make-pidfile --startas $DAEMON --name $NAME --background -- $DAEMON_ARGS || return 2
+    echo "starting: $__as_user" >&2
+    start-stop-daemon --start --quiet --pidfile $PIDFILE --make-pidfile --exec $DAEMON --background $__as_user --test > /dev/null \
+        || return 1
+    start-stop-daemon --start --quiet --pidfile $PIDFILE --make-pidfile --exec $DAEMON --background $__as_user -- \
+        $DAEMON_ARGS \
+        || return 2
     # Add code here, if necessary, that waits for the process to be ready
     # to handle requests from services started subsequently which depend
     # on this one.  As a last resort, sleep for some time.
@@ -87,7 +78,7 @@ do_stop()
     #   1 if daemon was already stopped
     #   2 if daemon could not be stopped
     #   other if a failure occurred
-    start-stop-daemon --stop --quiet --retry=TERM/30/KILL/5 --pidfile $PIDFILE --name $NAME
+    start-stop-daemon --stop --quiet --retry=TERM/30/KILL/5 --pidfile $PIDFILE $__as_user
     RETVAL="$?"
     [ "$RETVAL" = 2 ] && return 2
     # Wait for children to finish too if this is a daemon that forks
@@ -96,8 +87,8 @@ do_stop()
     # that waits for the process to drop all resources that could be
     # needed by services started subsequently.  A last resort is to
     # sleep for some time.
-    #start-stop-daemon --stop --quiet --oknodo --retry=0/30/KILL/5 --name $NAME
-    #[ "$?" = 2 ] && return 2
+    start-stop-daemon --stop --quiet --oknodo --retry=0/30/KILL/5 --pidfile $PIDFILE
+    [ "$?" = 2 ] && return 2
     # Many daemons don't delete their pidfiles when they exit.
     rm -f $PIDFILE
     return "$RETVAL"
@@ -112,13 +103,12 @@ do_reload() {
     # restarting (for example, when it is sent a SIGHUP),
     # then implement that here.
     #
-    start-stop-daemon --stop --signal 1 --quiet --pidfile $PIDFILE --name $NAME
+    start-stop-daemon --stop --signal 1 --quiet --pidfile $PIDFILE $__as_user
     return 0
 }
 
 case "$1" in
   start)
-    is_running && return 1
     [ "$VERBOSE" != no ] && log_daemon_msg "Starting $DESC" "$NAME"
     do_start
     case "$?" in
@@ -135,8 +125,8 @@ case "$1" in
     esac
     ;;
   status)
-       status_of_proc "$DAEMON" "$NAME" && exit 0 || exit $?
-       ;;
+    status_of_proc "$DAEMON" "$NAME" && exit 0 || exit $?
+    ;;
   #reload|force-reload)
     #
     # If do_reload() is not implemented then leave this commented out
