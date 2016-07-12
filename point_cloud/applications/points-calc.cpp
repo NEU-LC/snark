@@ -120,7 +120,7 @@ static void usage( bool more = false )
     std::cerr << "    local-max: output local maximums inside of given radius" << std::endl;
     std::cerr << "    nearest-min: for each point, output nearest minimums inside of given radius" << std::endl;
     std::cerr << "    nearest-max: for each point, output local maximums inside of given radius" << std::endl;
-    std::cerr << "    nearest-any: for each point, output any nearest point inside of given radius" << std::endl;
+    std::cerr << "    nearest-any: for each point, output the single nearest point id (if any) inside the given radius" << std::endl;
     std::cerr << std::endl;
     std::cerr << "        options" << std::endl;
     std::cerr << "            --radius=<metres>: radius of the local region to search" << std::endl;
