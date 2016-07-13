@@ -27,54 +27,25 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef TRANSFORMS_H
-#define TRANSFORMS_H
+#pragma once
 
 #include <Eigen/Core>
-#include <Eigen/Geometry>
-#include "roll_pitch_yaw.h"
 
-namespace snark { namespace frame_transforms {
-
-///Denavit-Hartenberg parameters for robotic link
-struct dh_transform
+namespace snark {
+    
+struct roll_pitch_yaw : public Eigen::Vector3d
 {
-    dh_transform() : d(0), theta(0), r(0), alpha(0) {}
-    dh_transform(double d_, double theta_, double r_, double alpha_) : d(d_), theta(theta_), r(r_), alpha(alpha_) {}
-    double d;
-    double theta;
-    double r;
-    double alpha;
+    double roll() const { return x(); }
+    double pitch() const { return y(); }
+    double yaw() const { return z(); }
+    
+    void roll( double r ) { x() = r; }
+    void pitch( double p ) { y() = p; }
+    void yaw( double w ) { z() = w; }
+    
+    roll_pitch_yaw() : Eigen::Vector3d( Eigen::Vector3d::Zero() ) {}
+    roll_pitch_yaw( const Eigen::Vector3d& v ) : Eigen::Vector3d( v ) {}
+    roll_pitch_yaw( double roll, double pitch, double yaw ) : Eigen::Vector3d( roll, pitch, yaw ) {}
 };
-
-struct transform
-{
-    Eigen::Vector3d translation;
-    snark::roll_pitch_yaw rotation;
-};
-
-struct tr_transform
-{
-    tr_transform() : translation(Eigen::Vector3d::Zero()), rotation(1,0,0,0){}
-    Eigen::Vector3d translation;
-    Eigen::Quaternion<double> rotation;
-};
-
-/// inverts a homogeneous transform using transpose formula
-Eigen::Matrix4d inverse_transform(const Eigen::Matrix4d& T);
-
-/// provides the homogeneous transform from rotation matrix and translation vector
-Eigen::Matrix4d homogeneous_transform(const Eigen::Matrix3d& R, const Eigen::Vector3d& t);
-
-/// converts homogeneous transform to tr
-tr_transform matrix_to_tr(const Eigen::Matrix4d& T);
-
-/// provides the homogeneous transform from the dh parameters
-Eigen::Matrix4d dh_to_matrix(const dh_transform& T_dh);
-
-/// dh to tr
-tr_transform dh_to_tr(const dh_transform& T_dh);
-
-}} // namespace snark { namespace frame_transforms {
-
-#endif // TRANSFORMS_H
+    
+} // namespace snark {

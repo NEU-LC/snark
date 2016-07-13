@@ -34,9 +34,10 @@
 #include <comma/visiting/apply.h>
 #include <comma/visiting/visit.h>
 #include <snark/math/interval.h>
-#include <snark/math/range_bearing_elevation.h>
-#include <snark/math/frame_transforms.h>
-#include <snark/visiting/eigen.h>
+#include "../math/range_bearing_elevation.h"
+#include "../math/frame_transforms.h"
+#include "../math/roll_pitch_yaw.h"
+#include "eigen.h"
 
 namespace comma { namespace visiting {
 
@@ -64,6 +65,47 @@ struct traits< snark::range_bearing_elevation >
         v.apply( "bearing", b );
         v.apply( "elevation", e );
         p = snark::range_bearing_elevation( r, b, e );
+    }
+};
+
+template <>
+struct traits< snark::bearing_elevation >
+{
+    template < typename Key, class Visitor > static void visit( const Key&, const snark::bearing_elevation& p, Visitor& v )
+    {
+        v.apply( "bearing", p.bearing() );
+        v.apply( "elevation", p.elevation() );
+    }
+
+    template < typename Key, class Visitor > static void visit( const Key&, snark::bearing_elevation& p, Visitor& v )
+    {
+        double b = p.b();
+        double e = p.e();
+        v.apply( "bearing", b );
+        v.apply( "elevation", e );
+        p = snark::bearing_elevation( b, e );
+    }
+};
+
+template <>
+struct traits< snark::roll_pitch_yaw >
+{
+    template < typename Key, class Visitor > static void visit( const Key&, const snark::roll_pitch_yaw& p, Visitor& v )
+    {
+        v.apply( "roll", p.roll() );
+        v.apply( "pitch", p.pitch() );
+        v.apply( "yaw", p.yaw() );
+    }
+
+    template < typename Key, class Visitor > static void visit( const Key&, snark::roll_pitch_yaw& t, Visitor& v )
+    {
+        double r = t.roll();
+        double p = t.pitch();
+        double y = t.yaw();
+        v.apply( "roll", r );
+        v.apply( "pitch", p );
+        v.apply( "yaw", y );
+        t = snark::roll_pitch_yaw( r, p, y );
     }
 };
 
@@ -101,6 +143,21 @@ template <> struct traits< snark::frame_transforms::tr_transform >
     }
 
     template< typename K, typename V > static void visit( const K& k, const snark::frame_transforms::tr_transform& t, V& v )
+    {
+        v.apply( "translation", t.translation );
+        v.apply( "rotation", t.rotation );
+    }
+};
+
+template <> struct traits< snark::frame_transforms::transform >
+{
+    template< typename K, typename V > static void visit( const K& k, snark::frame_transforms::transform& t, V& v )
+    {
+        v.apply( "translation", t.translation );
+        v.apply( "rotation", t.rotation );
+    }
+
+    template< typename K, typename V > static void visit( const K& k, const snark::frame_transforms::transform& t, V& v )
     {
         v.apply( "translation", t.translation );
         v.apply( "rotation", t.rotation );
