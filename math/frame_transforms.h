@@ -51,6 +51,8 @@ struct transform
 {
     Eigen::Vector3d translation;
     snark::roll_pitch_yaw rotation;
+    
+    transform() : translation( Eigen::Vector3d::Zero() ), rotation( 0, 0, 0 ) {}
 };
 
 struct tr_transform
