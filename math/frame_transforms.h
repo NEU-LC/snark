@@ -54,7 +54,7 @@ struct transform
     
     transform() : translation( Eigen::Vector3d::Zero() ), rotation( 0, 0, 0 ) {}
     
-    ::Eigen::Affine3d operator()() const;
+    ::Eigen::Affine3d affine() const;
 };
 
 struct tr_transform

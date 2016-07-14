@@ -32,7 +32,7 @@
 
 namespace snark { namespace frame_transforms {
 
-::Eigen::Affine3d transform::operator()() const
+::Eigen::Affine3d transform::affine() const
 {
     ::Eigen::Translation3d t;
     t.vector() = translation;
