@@ -38,6 +38,13 @@ namespace snark { namespace frame_transforms {
     t.vector() = translation;
     return ::Eigen::Affine3d( t * snark::rotation_matrix::rotation( rotation ) );
 }
+
+::Eigen::Affine3d transform::inverse_affine() const
+{
+    ::Eigen::Translation3d t;
+    t.vector() = translation;
+    return ::Eigen::Affine3d( snark::rotation_matrix::rotation( rotation ).transpose() * t.inverse() );
+}
     
 Eigen::Matrix4d inverse_transform(const Eigen::Matrix4d& T)
 {
