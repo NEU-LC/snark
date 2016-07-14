@@ -27,10 +27,18 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include <snark/math/frame_transforms.h>
+#include "frame_transforms.h"
+#include "rotation_matrix.h"
 
 namespace snark { namespace frame_transforms {
 
+::Eigen::Affine3d transform::operator()() const
+{
+    ::Eigen::Translation3d t;
+    t.vector() = translation;
+    return ::Eigen::Affine3d( t * snark::rotation_matrix::rotation( rotation ) );
+}
+    
 Eigen::Matrix4d inverse_transform(const Eigen::Matrix4d& T)
 {
     return homogeneous_transform(T.topLeftCorner(3,3).transpose(),-T.topLeftCorner(3,3).transpose()*T.topRightCorner(3,1));

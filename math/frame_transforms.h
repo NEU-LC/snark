@@ -53,6 +53,8 @@ struct transform
     snark::roll_pitch_yaw rotation;
     
     transform() : translation( Eigen::Vector3d::Zero() ), rotation( 0, 0, 0 ) {}
+    
+    ::Eigen::Affine3d operator()() const;
 };
 
 struct tr_transform
