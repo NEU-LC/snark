@@ -196,6 +196,7 @@ static boost::unordered_map< std::string, unsigned int > fill_cvt_color_types_()
     types[ "CV_BayerGR2GRAY" ] = types[ "BayerGR,GRAY" ] = CV_BayerGR2GRAY;
     return types;
 }
+
 static boost::unordered_map< std::string, unsigned int > cvt_color_types_ = fill_cvt_color_types_();
 unsigned int cvt_color_type_from_string( const std::string& t ) // to avoid compilation warning
 {
@@ -211,6 +212,20 @@ static filters::value_type cvt_color_impl_( filters::value_type m, unsigned int 
     cv::cvtColor( m.second, n.second, which ); 
     return n;
 }
+
+static cv::Scalar scalar_from_strings( const std::string* begin, unsigned int size )
+{
+    switch( size )
+    {
+        case 1: return cv::Scalar( boost::lexical_cast< float >( begin[0] ) );
+        case 2: return cv::Scalar( boost::lexical_cast< float >( begin[0] ), boost::lexical_cast< float >( begin[1] ) );
+        case 3: return cv::Scalar( boost::lexical_cast< float >( begin[0] ), boost::lexical_cast< float >( begin[1] ), boost::lexical_cast< float >( begin[2] ) );
+        case 4: return cv::Scalar( boost::lexical_cast< float >( begin[0] ), boost::lexical_cast< float >( begin[1] ), boost::lexical_cast< float >( begin[2] ), boost::lexical_cast< float >( begin[3] ) );
+        default: break;
+    }
+    COMMA_THROW( comma::exception, "expected a scalar of the size up to 4, got: " << size << " elements" );
+}
+
 static filters::value_type unpack12_impl_( filters::value_type m )
 {
     //if(m.second.channels()!=1) { COMMA_THROW( comma::exception, "expected one channel input, got: ", m.second.channels() );}
@@ -1327,13 +1342,21 @@ static filters::value_type gamma_( const filters::value_type m, const double gam
 
 static filters::value_type gamma_impl_(const filters::value_type m, const double gamma )
 {
-    switch (m.second.depth())
+    switch( m.second.depth() )
     {
-        case CV_8U: return gamma_< CV_8U >( m, gamma ); break;
-        // case CV_8S: return gamma_< CV_8S >( m, gamma ); break;
+        case CV_8U: { return gamma_< CV_8U >( m, gamma ); break; }
         default: break;
     }
     COMMA_THROW(comma::exception, "gamma is unimplemented for types other than CV_8U, CV_8S");
+}
+
+static filters::value_type inrange_impl_( const filters::value_type m, const cv::Scalar& lower, const cv::Scalar& upper )
+{
+    filters::value_type n;
+    n.first = m.first;
+    n.second = cv::Mat( m.second.rows, m.second.cols, single_channel_type( m.second.type() ) );
+    cv::inRange( m.second, lower, upper, n.second );
+    return n;
 }
 
 static filters::value_type remove_mean_impl_(const filters::value_type m, const cv::Size kernel_size, const double ratio )
@@ -1342,7 +1365,6 @@ static filters::value_type remove_mean_impl_(const filters::value_type m, const 
     n.first = m.first;
     cv::GaussianBlur(m.second, n.second, kernel_size, 0, 0);
     n.second = m.second - ratio * n.second;
-
     return n;
 }
 
@@ -1791,13 +1813,21 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
         }
         else if ( e[0] == "head" )
         {
-            if( i < v.size()-1 )
+            if( i < v.size() - 1 )
             {
                 std::string next_filter = comma::split( v[i+1], '=' )[0];
                 if( next_filter != "null" && next_filter != "encode" ) { COMMA_THROW( comma::exception, "cannot have a filter after head unless next filter is null or encode" ); }
             }
             unsigned int n = e.size() < 2 ? 1 : boost::lexical_cast< unsigned int >( e[1] );
             f.push_back( filter( boost::bind( &head_impl_, _1, n ), false ) );
+        }
+        else if( e[0] == "inrange" )
+        {
+            const std::vector< std::string >& s = comma::split( e[1], ',' );
+            if( s.size() < 2 || s.size() % 2 != 0 ) { COMMA_THROW( comma::exception, "inrange: expected <upper>,<lower> got: \"" << v[i] << "\"" ); }
+            cv::Scalar lower = scalar_from_strings( &s[0], s.size() / 2 );
+            cv::Scalar upper = scalar_from_strings( &s[ s.size() / 2 ], s.size() / 2 );
+            f.push_back( filter( boost::bind( &inrange_impl_, _1, lower, upper ) ) );
         }
         else if( e[0] == "threshold" )
         {
@@ -1884,7 +1914,7 @@ static std::string usage_impl_()
     oss << "        flop: flip horizontally" << std::endl;
     oss << "        grab=<format>: write an image to file with timestamp as name in the specified format. <format>: jpg|ppm|png|tiff..., if no timestamp, system time is used" << std::endl;
     oss << "        head=<n>: output <n> frames and exit" << std::endl;
-    oss << "        histogram: calculate image histogram and output in binary format: t,3ui,256ui for ub images; t,3ui,256ui,256ui,256ui for 3ub images, etc" << std::endl;
+    oss << "        inrange=<lower>,<upper>: a band filter on r,g,b or greyscale image; for rgb: <lower>::=<r>,<g>,<b>; <upper>::=<r>,<g>,<b>; see cv::inRange() for detail" << std::endl;
     oss << "        invert: invert image (to negative)" << std::endl;
     oss << "        linear-combination=<k1>,<k2>,<k3>,...[<c>]: output grey-scale image that is linear combination of input channels with given coefficients and optioanl offset" << std::endl;
     oss << "        magnitude: calculate magnitude for a 2-channel image; see cv::magnitude() for details" << std::endl;
@@ -1933,6 +1963,7 @@ static std::string usage_impl_()
     oss << "        rectangle,box=<x>,<y>,<x>,<y>[,<r>,<g>,<b>,<thickness>,<line_type>,<shift>]: draw rectangle; see cv::rectangle for details on parameters and defaults" << std::endl;
     oss << std::endl;
     oss << "    cv::Mat image operations:" << std::endl;
+    oss << "        histogram: calculate image histogram and output in binary format: t,3ui,256ui for ub images; t,3ui,256ui,256ui,256ui for 3ub images, etc" << std::endl;
     oss << "        simple-blob[=<parameters>]: wraps cv::SimpleBlobDetector, outputs as csv key points timestamped by image timestamp" << std::endl;
     oss << "            <parameters>" << std::endl;
     oss << "                output-binary: output key points as binary" << std::endl;

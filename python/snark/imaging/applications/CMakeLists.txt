@@ -1,3 +1,2 @@
 INSTALL( PROGRAMS image-intensity DESTINATION ${snark_INSTALL_BIN_DIR} )
 INSTALL( PROGRAMS image-watershed DESTINATION ${snark_INSTALL_BIN_DIR} )
-INSTALL( PROGRAMS image-threshold-mask DESTINATION ${snark_INSTALL_BIN_DIR} )
