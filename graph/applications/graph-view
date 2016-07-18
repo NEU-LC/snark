@@ -114,7 +114,7 @@ function clean_()
     rm -rf "$tmp_dir"
 }
 
-trap clean_ INT TERM HUP
+trap clean_ EXIT
 
 if [[ "$view_only" != "true" && "$arg_nodes" == "" ]] ; then echo "$name: please specify the file with nodes, e.g. --nodes=nodes.csv" >&2 ; exit 1 ; fi
 if [[ "$view_only" != "true" ]] ; then rm -rf "$tmp_dir"; mkdir "$tmp_dir"; fi
@@ -164,4 +164,3 @@ fi
 
 view-points --orthographic --z-is-up "${view_points_options[@]}" "${user_view_points_options[@]}"
 
-clean_
