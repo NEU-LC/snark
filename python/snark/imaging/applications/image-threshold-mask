@@ -39,82 +39,67 @@ from comma.io import windows_binary
 
 description = """
 
-apply watershed algorithm to image stream
+threshold image in colour space
 
-pixel labels will be output as single-channel 32-bit integer image (type CV_32SC1)
-of the same size as the original
-
-see cv-cat --help --verbose for input and output format details
 
 usage
     read images from image stream; see cv-cat --help --verbose for image format details
-        cat images.bin | image-watershed [<options>] > labels.bin
-       
+        cat images.bin | image-threshold [<options>] > labels.bin
+
     read image from file
-        cv-cat --file image.jpg | image-watershed [<options>] | cv-cat --output no-header > labels.bin
+        cv-cat --file image.jpg | image-threshold [<options>] | cv-cat --output no-header > labels.bin
 
     read image from file and save results in new file
-        cv-cat --file image.jpg | image-watershed [<options>] | cv-cat --output no-header "convert-to=ub;encode=jpg" > results.jpg
+        cv-cat --file image.jpg | image-threshold [<options>] | cv-cat --output no-header "convert-to=ub;encode=jpg" > results.jpg
 
 """
 
 parser = argparse.ArgumentParser( description = description )
-parser.add_argument( '--view', action="store_true", help = 'view result' )
 parser.add_argument( '--config', action="store", help = 'configuration file name' )
 parser.add_argument( '--default-config', action="store_true", help = 'output default config and exit' )
 args = parser.parse_args()
 
 # set defaults
 default_config = dict()
-default_config['threshold'] = dict()
-default_config['threshold']['min'] = 200
-default_config['threshold']['max'] = 255
-default_config['blur'] = dict()
-default_config['blur']['radius'] = 5
-default_config['blur']['iterations'] = 2
-default_config['dilation'] = dict()
-default_config['dilation']['iterations'] = 3
+default_config['space'] = "rgb"
+default_config['r'] = dict()
+default_config['r']['min'] = 0
+default_config['r']['max'] = 255
+default_config['g'] = dict()
+default_config['g']['min'] = 0
+default_config['g']['max'] = 255
+default_config['b'] = dict()
+default_config['b']['min'] = 0
+default_config['b']['max'] = 255
 
 if( args.default_config ):
     print json.dumps( default_config )
     exit(0)
 
-view_resize_factor = 0.25
-
-# override defaults in config
 config = default_config
 if args.config:
     with open( args.config ) as config_file:
         loaded_config = json.load( config_file )
         config.update( loaded_config )
 
+r_min = config['r']['min']
+r_max = config['r']['max']
+g_min = config['g']['min']
+g_max = config['g']['max']
+b_min = config['b']['min']
+b_max = config['b']['max']
+
 for i in cv_image.iterator( sys.stdin ):
     header = i.header
-    type = i.header['type']
-    header['type'] = cv.CV_32SC1
-    watershed = np.zeros( ( header['rows'], header['cols'], 1 ), np.int32 )
+    header['type'] = cv.CV_8UC1
+    mask = np.zeros( ( header['rows'], header['cols'], 1 ), np.uint8 )
 
-    ret, thresholded = cv.threshold( i.data, float( config['threshold']['min'] ), float( config['threshold']['max'] ), cv.THRESH_BINARY )
+    for j in range( header['rows'] ):
+        for k in range( header['cols'] ):
+            if( i.data[j][k][2] >= r_min and i.data[j][k][2] <= r_max
+             and i.data[j][k][1] >= g_min and i.data[j][k][1] <= g_max
+             and i.data[j][k][0] >= b_min and i.data[j][k][0] <= b_max ):
+                mask[j][k] = 255
 
-    if( type != cv.CV_8UC1 ):
-        thresholded = cv.cvtColor( thresholded, cv.COLOR_BGR2GRAY )
-
-    kernel = np.ones( ( float( config['blur']['radius'] ), float( config['blur']['radius'] ) ), np.uint8 )
-    blurred = cv.morphologyEx( thresholded, cv.MORPH_OPEN,kernel, iterations = int( config['blur']['iterations'] ) )
-
-    dilated = cv.dilate( blurred, kernel, iterations = int( config['dilation']['iterations'] ) )
-
-    contours, hierarchy = cv.findContours( dilated, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE )
-
-    for j in range( len( contours ) ):
-        for k in range( len( contours[j] ) ):
-            u = contours[j][k][0][0]
-            v = contours[j][k][0][1]
-            watershed[v][u] = j
-
-    w = cv_image.image( header, watershed )
-    if args.view :
-        resized = cv.resize( w.data, None, fx=view_resize_factor, fy=view_resize_factor, interpolation = cv.INTER_NEAREST )
-        cv.imshow( 'watershed', resized )
-        cv.waitKey(10000)
+    w = cv_image.image( header, mask )
     cv_image.write( w )
