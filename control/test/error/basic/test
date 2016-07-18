@@ -8,10 +8,7 @@ function clean
 {
     pkill -P $$
     rm -f $feedback_file
-    return 0
 }
-function bye { clean; exit 1; }
-trap bye INT TERM HUP
 trap clean EXIT
 
 echo "format/input=\"$( control-error --format )\""

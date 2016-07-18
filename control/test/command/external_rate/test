@@ -3,10 +3,7 @@
 function clean
 {
     pkill -P $$
-    return 0
 }
-function bye { clean; exit 1; }
-trap bye INT TERM HUP
 trap clean EXIT
 
 fields="feedback/yaw,feedback/yaw_rate,wayline/heading,error/cross_track,error/heading"

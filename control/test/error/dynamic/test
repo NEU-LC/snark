@@ -12,10 +12,7 @@ function clean
     pkill -P $$
     rm -f $input $feedback $output
     kill -9 $pid $feedback_pid &>/dev/null
-    return 0
 }
-function bye { clean; exit 1; }
-trap bye INT TERM HUP
 trap clean EXIT
 
 rm -f $feedback $input $output
