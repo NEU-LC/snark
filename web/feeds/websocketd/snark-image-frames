@@ -28,7 +28,7 @@ fi
 
 exec 2>/dev/null
 
-trap bye INT
+trap bye INT TERM
 
 # parse query string
 declare -A query_string
