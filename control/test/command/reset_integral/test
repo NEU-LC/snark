@@ -39,4 +39,3 @@ function echo_result
 
 for(( i=0; i < ${#output[@]}; i++ )); do echo_result "output[$i]" ${output[i]}; done
 
-clean

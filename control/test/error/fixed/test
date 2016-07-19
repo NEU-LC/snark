@@ -153,5 +153,3 @@ send_feedback $x,$y,0.46364760900080609
 wait_for_new_output && reached=0 || reached=1
 echo "past_endpoint/reached=$reached"
 
-clean
-

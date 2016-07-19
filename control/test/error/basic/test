@@ -40,4 +40,3 @@ echo_result "binary/output[0]" "${output[0]}"
 echo_result "binary/output[1]" "${output[1]}"
 echo_result "binary/output[2]" "${output[2]}"
 
-clean

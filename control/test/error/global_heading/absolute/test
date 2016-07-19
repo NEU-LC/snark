@@ -42,4 +42,3 @@ function echo_result
 
 for(( i=0; i<5; i++ )); do echo_result "binary/output[$i]" "${output[i]}"; done
 
-clean

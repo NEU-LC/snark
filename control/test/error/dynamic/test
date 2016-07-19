@@ -80,4 +80,3 @@ test_feedback "from_01_to_00/feedback[0]" 0.5,1,-2.0344439357957027
 test_feedback "from_01_to_00/feedback[1]" 0.25,0.5,-2.0344439357957027
 send_feedback 0,0,-2.0344439357957027
 
-clean

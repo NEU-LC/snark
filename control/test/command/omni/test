@@ -37,4 +37,3 @@ function echo_omni_result
 
 for(( i=0; i < ${#output[@]}; i++ )); do echo_omni_result "omni/output[$i]" ${output[i]}; done
 
-clean

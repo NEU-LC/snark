@@ -33,4 +33,3 @@ function echo_skid_result
 
 for(( i=0; i < ${#output[@]}; i++ )); do echo_skid_result "skid/output[$i]" ${output[i]}; done
 
-clean
