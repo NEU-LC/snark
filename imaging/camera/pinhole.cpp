@@ -86,38 +86,30 @@ Eigen::Vector2d pinhole::config_t::tangentially_corrected( const Eigen::Vector2d
                               , distortion->tangential.p2 * 2 * xy + distortion->tangential.p1 * ( r2 + p.y() * p.y() * 2 ) );
 }
 
-static double reverse_map(std::vector<float>::const_iterator first, unsigned int width, double value)
+static double reverse_map( std::vector< float >::const_iterator first, unsigned int width, double value )
 {
-    std::vector<float>::const_iterator last=first + width;
-    std::vector<float>::const_iterator right=std::upper_bound(first,last, value);
-    if(right == last)
-        right--;
-    if(right == first)
-        right++;
-    std::vector<float>::const_iterator left = right - 1;
+    std::vector< float >::const_iterator last = first + width;
+    std::vector< float >::const_iterator right = std::upper_bound( first, last, value );
+    if( right == last ) { --right; }
+    if( right == first ) { ++right; }
+    std::vector< float >::const_iterator left = right - 1;
     //std::cerr<<"extrapolate_reverse_map: left [" <<int(left - first)<<"]: " << *left<< " right ["<<int(right - first)<<"]:"<<*right<<" /"<<int(last-first)<<" value "<<value<<std::endl;
-    double o=double(value - *left) / double(*right - *left) + int(left - first);
-    //std::cerr<<"a "<<(value - *left)<<" b "<<(*right - *left)<<" -> "<<o<<std::endl;
+    double o = double( value - *left ) / double( *right - *left ) + int( left - first );
     return o;
 }
 
 static double extrapolate_map( const float* first, unsigned int width, double value )
 {
     const float* left=first + int(value);
-    if(value<0)
-        left=first;
-    else
-    {
-        if(value>=width-1)
-            left=first+width-2;
-    }
+    if( value < 0 ) { left=first; }
+    else { if( value >= width - 1 ) { left = first + width - 2; } }
     const float* right=left+1;
     double frac=value - (left - first);
     double step = *right - *left;
     return double(frac * step + *left);
 }
 
-Eigen::Vector2d pinhole_to_distorted(const pinhole& pinhole, const Eigen::Vector2d& p )
+Eigen::Vector2d pinhole_to_distorted( const camera::pinhole& pinhole, const Eigen::Vector2d& p )
 {
     return pinhole.config().tangentially_corrected( pinhole.config().radially_corrected( p ) ); 
 }
@@ -169,7 +161,7 @@ static void make_distortion_map( const pinhole::config_t& config, cv::Mat& map_x
 //     int width=image_size.x();
 //     int heigth=image_size.y();
 //     i:{0..w},j:{0..h} undistorted(i,j)
-    cv::Mat camera = cv::Mat_< double >( 3, 3 );
+    cv::Mat camera = cv::Mat_< double >::zeros( 3, 3 );
     camera.at< double >( 0, 0 ) = config.focal_length * ( config.sensor_size ? double( config.image_size.x() ) / config.sensor_size->x() : 1.0 );
     camera.at< double >( 1, 1 ) = config.focal_length * ( config.sensor_size ? double( config.image_size.y() ) / config.sensor_size->y() : 1.0 );
     Eigen::Vector2d c = config.image_centre();
@@ -217,12 +209,11 @@ void pinhole::distortion_map_t::write( std::ostream& os ) const
 Eigen::Vector2d pinhole::undistorted( const Eigen::Vector2d& p ) const
 {
     if( !distortion_map() ) { return p; }
-    //lookup the map to undistort coordinates
-    int y_index = ( p.y() < 0 ) ? 0 : ( p.y() > config().image_size.y() ? config().image_size.y() - 1 : p.y() );
-    double ox = reverse_map( distortion_map()->x_rows_.begin() + y_index*config_.image_size.x(), (unsigned int)config_.image_size.x(), p.x());
-    int x_index= (p.x()<0) ? 0 : (p.x()>config_.image_size.x()?config_.image_size.x()-1:p.x());
-    double oy=reverse_map(distortion_map()->y_cols_.begin() + x_index*config_.image_size.y(), (unsigned int)config_.image_size.y(), p.y());
-    return Eigen::Vector2d(ox,oy);
+    int y_index = p.y() < 0 ? 0 : ( p.y() > config().image_size.y() ? config().image_size.y() - 1 : p.y() );
+    double ox = reverse_map( distortion_map()->x_rows_.begin() + y_index * config_.image_size.x(), static_cast< unsigned int >( config_.image_size.x() ), p.x() );
+    int x_index = p.x() < 0 ? 0 : (p.x()>config_.image_size.x()?config_.image_size.x()-1:p.x());
+    double oy = reverse_map( distortion_map()->y_cols_.begin() + x_index * config_.image_size.y(), static_cast< unsigned int >( config_.image_size.y() ), p.y() );
+    return Eigen::Vector2d( ox, oy );
 }
 
 Eigen::Vector2d pinhole::distort( const Eigen::Vector2d& p ) const
