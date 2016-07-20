@@ -282,7 +282,7 @@ int main( int ac, char** av )
             bool discard = false;
             for( int i = 0; i <=2; i++ )
             {
-                discard = ( isnan( p->points.first(i) ) || isnan( p->points.second(i) ));
+                discard = ( std::isnan( p->points.first(i) ) || std::isnan( p->points.second(i) ));
                 if( discard )
                 {
                     discarded_records++;

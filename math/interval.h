@@ -57,7 +57,7 @@ class closed_interval
         closed_interval() {} //interval(): m_interval( std::make_pair( vector_type::Zero(), vector_type::Zero() ) ) {}
 
         /// return true, if initialized
-        operator bool() const { return m_interval; }
+        operator bool() const { return (bool)m_interval; }
 
         /// return value
         const std::pair< vector_type, vector_type >& operator()() const { assert( m_interval ); return m_interval; }
