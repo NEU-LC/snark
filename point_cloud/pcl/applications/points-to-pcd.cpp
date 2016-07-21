@@ -44,7 +44,7 @@
 #include <comma/csv/stream.h>
 #include <comma/string/string.h>
 #include <comma/visiting/traits.h>
-#include <snark/visiting/eigen.h>
+#include "../../../visiting/eigen.h"
 #include <pcl/io/pcd_io.h>
 #include <pcl/point_types.h>
 #include <pcl/point_traits.h>

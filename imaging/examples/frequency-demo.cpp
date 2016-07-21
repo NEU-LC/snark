@@ -28,7 +28,7 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-#include <snark/imaging/frequency_domain.h>
+#include "../frequency_domain.h"
 #include <iostream>
 
 #include <opencv2/highgui/highgui.hpp>

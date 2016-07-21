@@ -29,6 +29,11 @@
 
 /// @author abdallah kassir
 
+#include <iostream>
+#include <string>
+#include <boost/tokenizer.hpp>
+#include <boost/thread.hpp>
+#include <Eigen/Dense>
 #include <comma/application/command_line_options.h>
 #include <comma/application/signal_flag.h>
 #include <comma/csv/stream.h>
@@ -36,16 +41,10 @@
 #include <comma/io/select.h>
 #include <comma/io/stream.h>
 #include <comma/name_value/parser.h>
-#include <snark/visiting/eigen.h>
-#include <iostream>
-#include <boost/tokenizer.hpp>
-#include <boost/thread.hpp>
-#include <Eigen/Dense>
-#include <snark/math/rotation_matrix.h>
-#include <snark/math/geometry/polytope.h>
-#include <snark/math/applications/frame.h>
-#include <string>
-
+#include "../../visiting/eigen.h"
+#include "../../math/rotation_matrix.h"
+#include "../../math/geometry/polytope.h"
+#include "../../math/applications/frame.h"
 
 struct bounds_t
 {

@@ -31,7 +31,7 @@
 
 #include <boost/optional.hpp>
 #include <boost/static_assert.hpp>
-#include <snark/timing/time.h>
+#include "../../../timing/time.h"
 #include <comma/base/exception.h>
 #include <comma/packed/bits.h>
 

@@ -37,7 +37,7 @@
 #include <comma/csv/options.h>
 #include "../../../math/interval.h"
 #endif
-#include "snark/graphics/qt3d/qt3d_v1/vertex_buffer.h"
+#include "../../qt3d/qt3d_v1/vertex_buffer.h"
 #include "PointMap.h"
 #include "PointWithId.h"
 #include <Qt3D/qglpainter.h>

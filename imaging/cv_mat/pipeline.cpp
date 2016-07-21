@@ -27,10 +27,9 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
-#include <snark/imaging/cv_mat/pipeline.h>
-#include <tbb/tbb_thread.h>
 #include <boost/bind.hpp>
+#include <tbb/tbb_thread.h>
+#include "pipeline.h"
 
 namespace snark{ namespace imaging { namespace applications {
 

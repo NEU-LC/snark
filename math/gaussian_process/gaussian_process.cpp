@@ -30,7 +30,7 @@
 
 #include <boost/noncopyable.hpp>
 #include <comma/base/exception.h>
-#include <snark/math/gaussian_process/gaussian_process.h>
+#include "gaussian_process.h"
 
 namespace snark{ 
 

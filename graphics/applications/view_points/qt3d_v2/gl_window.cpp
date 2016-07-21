@@ -31,7 +31,7 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QKeyEvent>
-#include "snark/graphics/qt3d/qt3d_v2/gl_widget.h"
+#include "../../../qt3d/qt3d_v2/gl_widget.h"
 #include "../main_window.h"
 #include "gl_window.h"
 

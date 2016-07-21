@@ -28,7 +28,7 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-#include <snark/imaging/region_properties.h>
+#include "../region_properties.h"
 #include <iostream>
 
 #include <opencv2/highgui/highgui.hpp>

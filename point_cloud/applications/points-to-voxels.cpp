@@ -39,8 +39,8 @@
 #include <comma/csv/stream.h>
 #include <comma/csv/impl/program_options.h>
 #include <comma/visiting/traits.h>
-#include <snark/visiting/eigen.h>
-#include <snark/point_cloud/voxel_map.h>
+#include "../../visiting/eigen.h"
+#include "../voxel_map.h"
 
 struct input_point
 {

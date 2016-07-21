@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 #include <boost/optional.hpp>
-#include <snark/actuators/wheels/wheel_command.h>
+#include "../wheel_command.h"
 
 using namespace snark::wheels;
 

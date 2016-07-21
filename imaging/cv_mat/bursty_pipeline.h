@@ -33,7 +33,7 @@
 
 #include <tbb/task_scheduler_init.h>
 #include <tbb/pipeline.h>
-#include <snark/tbb/bursty_reader.h>
+#include "../../tbb/bursty_reader.h"
 
 namespace snark { namespace tbb {
 

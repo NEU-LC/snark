@@ -37,9 +37,9 @@
 #include <comma/application/command_line_options.h>
 #include <comma/csv/stream.h>
 #include <comma/math/compare.h>
-#include <snark/point_cloud/voxel_grid.h>
-#include <snark/point_cloud/voxel_map.h>
-#include <snark/visiting/eigen.h>
+#include "../voxel_grid.h"
+#include "../voxel_map.h"
+#include "../../visiting/eigen.h"
 
 #include "detail/plane-intersection.h"
 #include "detail/vector-calc.h"

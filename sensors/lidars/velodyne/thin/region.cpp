@@ -33,7 +33,7 @@
 #include <cmath>
 #include <comma/base/exception.h>
 #include <comma/math/compare.h>
-#include <snark/math/range_bearing_elevation.h>
+#include "../../../../math/range_bearing_elevation.h"
 #include "focus.h"
 
 #include <iostream>

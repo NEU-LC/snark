@@ -29,7 +29,7 @@
 
 
 #include <comma/base/exception.h>
-#include <snark/timing/ntp.h>
+#include "ntp.h"
 
 namespace snark{ namespace timing {
 

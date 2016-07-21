@@ -28,12 +28,12 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-#include <snark/imaging/stereo/point_cloud.h>
-#include <snark/imaging/stereo/rectify_map.h>
+#include "../stereo/point_cloud.h"
+#include "../stereo/rectify_map.h"
 #include <iostream>
 
 #include <opencv2/highgui/highgui.hpp>
-#include <snark/math/rotation_matrix.h>
+#include "../../math/rotation_matrix.h"
 
 
 

@@ -30,8 +30,8 @@
 #ifndef SNARK_MATH_SPHERICAL_GEOMETRY_COORDINATES_H_
 #define SNARK_MATH_SPHERICAL_GEOMETRY_COORDINATES_H_
 
-#include <snark/math/range_bearing_elevation.h>
-#include <snark/math/angle.h>
+#include "../range_bearing_elevation.h"
+#include "../angle.h"
 
 namespace snark { namespace spherical {
 

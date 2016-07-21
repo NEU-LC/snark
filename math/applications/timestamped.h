@@ -31,7 +31,7 @@
 #ifndef SNARK_APPLICATIONS_TIMESTAMPEDPOSITION_H_
 #define SNARK_APPLICATIONS_TIMESTAMPEDPOSITION_H_
 
-#include <snark/timing/time.h>
+#include "../../timing/time.h"
 #include <comma/visiting/traits.h>
 
 namespace snark{ namespace applications {

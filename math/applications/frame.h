@@ -43,8 +43,8 @@
 #include <comma/csv/names.h>
 #include <comma/csv/stream.h>
 #include <comma/io/stream.h>
-#include <snark/math/rotation_matrix.h>
-#include <snark/visiting/eigen.h>
+#include "../../visiting/eigen.h"
+#include "../rotation_matrix.h"
 #include "timestamped.h"
 
 namespace snark{ namespace applications {

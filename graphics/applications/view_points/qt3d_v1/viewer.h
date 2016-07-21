@@ -41,7 +41,7 @@
 #ifndef Q_MOC_RUN
 #include <boost/property_tree/ptree.hpp>
 #endif
-#include <snark/graphics/qt3d/qt3d_v1/view.h>
+#include "../../../qt3d/qt3d_v1/view.h"
 #ifndef Q_MOC_RUN
 #include "../camera_reader.h"
 #include "../reader.h"

@@ -37,15 +37,15 @@
 #include <boost/static_assert.hpp>
 #include <comma/base/types.h>
 #include <comma/visiting/traits.h>
-#include <snark/math/interval.h>
-#include <snark/math/rotation_matrix.h>
-#include <snark/graphics/block_buffer.h>
+#include "../../../math/interval.h"
+#include "../../../math/rotation_matrix.h"
+#include "../../../graphics/block_buffer.h"
 #if Qt3D_VERSION==1
 #include <Qt3D/qglnamespace.h>
 #include <Qt3D/qglpainter.h>
 #else
 #include <Eigen/Core>
-#include "snark/graphics/qt3d/qt3d_v2/types.h"
+#include "../../../graphics/qt3d/qt3d_v2/types.h"
 #endif
 
 namespace snark { namespace graphics { namespace view {

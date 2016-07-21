@@ -29,7 +29,7 @@
 
 
 #include <comma/base/exception.h>
-#include <snark/timing/time.h>
+#include "../../../../timing/time.h"
 #include "pcap_reader.h"
 
 namespace snark {

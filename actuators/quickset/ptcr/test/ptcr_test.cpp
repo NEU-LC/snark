@@ -29,9 +29,9 @@
 
 
 #include <gtest/gtest.h>
-#include <snark/actuators/quickset/ptcr/commands.h>
-#include <snark/actuators/quickset/ptcr/packet.h>
-#include <snark/actuators/quickset/ptcr/protocol.h>
+#include "../commands.h"
+#include "../packet.h"
+#include "../protocol.h"
 
 using namespace snark::quickset;
 

@@ -35,11 +35,10 @@
 #include <winsock2.h>
 #endif
 
-//#include <comma/application/signal_flag.h>
-#include <snark/tbb/bursty_reader.h>
-#include <snark/imaging/cv_mat/bursty_pipeline.h>
-#include <snark/imaging/cv_mat/serialization.h>
-#include <snark/imaging/cv_mat/filters.h>
+#include "../../tbb/bursty_reader.h"
+#include "bursty_pipeline.h"
+#include "filters.h"
+#include "serialization.h"
 
 namespace snark {
 
@@ -51,7 +50,7 @@ struct bursty_reader_traits< std::pair< boost::posix_time::ptime, cv::Mat > >
     static bool valid( const std::pair< boost::posix_time::ptime, cv::Mat >& p ) { return ( p.second.size().width > 0 ); }
 };
 
-}
+} // namespace tbb {
 
 namespace imaging { namespace applications {
 

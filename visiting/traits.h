@@ -33,7 +33,7 @@
 
 #include <comma/visiting/apply.h>
 #include <comma/visiting/visit.h>
-#include <snark/math/interval.h>
+#include "../math/interval.h"
 #include "../math/range_bearing_elevation.h"
 #include "../math/frame_transforms.h"
 #include "../math/roll_pitch_yaw.h"

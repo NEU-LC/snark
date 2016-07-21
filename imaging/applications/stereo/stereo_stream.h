@@ -32,7 +32,7 @@
 #define SNARK_IMAGING_APPLICATIONS_STEREO_STREAM_H
 
 #include "stereo.h"
-#include <snark/imaging/cv_mat/serialization.h>
+#include "../../cv_mat/serialization.h"
 
 namespace snark { namespace imaging {
 

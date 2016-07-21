@@ -31,7 +31,7 @@
 #define SNARK_MATH_SPHERICAL_GEOMETRY_TRAITS_H_
 
 #include <comma/visiting/traits.h>
-#include <snark/math/angle.h>
+#include "../angle.h"
 #include "coordinates.h"
 #include "ellipsoid.h"
 

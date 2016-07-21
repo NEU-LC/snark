@@ -27,12 +27,9 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
-#include <snark/timing/play.h>
-
 #include <boost/thread/thread.hpp>
 #include <boost/thread/thread_time.hpp>
-
+#include "play.h"
 
 namespace snark
 {

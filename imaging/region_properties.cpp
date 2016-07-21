@@ -34,7 +34,7 @@
 #include <boost/geometry/geometries/adapted/boost_tuple.hpp>
 #include <boost/foreach.hpp>
 #include <Eigen/Core>
-#include <snark/imaging/region_properties.h>
+#include "region_properties.h"
 #include <comma/base/exception.h>
 
 #include <opencv2/imgproc/imgproc.hpp>

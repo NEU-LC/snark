@@ -27,9 +27,8 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
-#include <snark/point_cloud/voxel_map.h>
 #include <gtest/gtest.h>
+#include "../voxel_map.h"
 
 namespace snark { namespace Robotics {
 

@@ -31,7 +31,7 @@
 #include <stdlib.h>
 #include <vector>
 #include <gtest/gtest.h>
-#include <snark/point_cloud/voxel_grid.h>
+#include "../voxel_grid.h"
 
 namespace snark { namespace test {
 

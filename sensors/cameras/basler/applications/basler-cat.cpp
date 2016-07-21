@@ -37,8 +37,8 @@
 #include <comma/csv/stream.h>
 #include <comma/name_value/map.h>
 #include <comma/visiting/traits.h>
-#include <snark/imaging/cv_mat/pipeline.h>
-#include <snark/imaging/cv_mat/bursty_pipeline.h>
+#include "../../../../imaging/cv_mat/pipeline.h"
+#include "../../../../imaging/cv_mat/bursty_pipeline.h"
 #include <pylon/PylonIncludes.h>
 #include <pylon/gige/BaslerGigECamera.h>
 #include <opencv2/imgproc/imgproc.hpp>

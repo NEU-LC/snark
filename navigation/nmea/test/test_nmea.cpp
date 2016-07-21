@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 #include <boost/date_time/posix_time/posix_time.hpp>
-#include <snark/navigation/nmea/traits.h>
+#include "../traits.h"
 
 static double deg2rad( double degrees ) { return degrees / 180.0 * M_PI; }
 

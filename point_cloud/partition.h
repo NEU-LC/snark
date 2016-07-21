@@ -33,8 +33,8 @@
 
 #include <Eigen/Core>
 #include <comma/base/types.h>
-#include <snark/math/interval.h>
-#include <snark/point_cloud/voxel_grid.h>
+#include "../math/interval.h"
+#include "voxel_grid.h"
 
 namespace snark {
 

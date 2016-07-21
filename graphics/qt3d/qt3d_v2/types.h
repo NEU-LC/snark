@@ -34,8 +34,7 @@
 #include <Eigen/Core>
 #include <QColor>
 #include <GL/gl.h>
-#include <comma/visiting/traits.h>
-#include <snark/visiting/eigen.h>
+#include "../../../visiting/eigen.h"
 
 namespace snark { namespace graphics { namespace qt3d {
 

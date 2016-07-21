@@ -54,8 +54,8 @@
 #include <comma/string/string.h>
 #include <comma/sync/synchronized.h>
 #include <comma/visiting/traits.h>
-#include <snark/math/interval.h>
-#include <snark/tbb/bursty_reader.h>
+#include "../../math/interval.h"
+#include "../../tbb/bursty_reader.h"
 
 #ifdef PROFILE
 #include <google/profiler.h>

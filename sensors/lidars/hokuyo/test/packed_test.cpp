@@ -35,7 +35,7 @@
 #include <iostream>
 #include <list>
 #include <boost/asio/streambuf.hpp>
-#include <snark/timing/time.h>
+#include "../../../../timing/time.h"
 #include <gtest/gtest.h>
 #include <comma/csv/stream.h>
 #include "../message.h"

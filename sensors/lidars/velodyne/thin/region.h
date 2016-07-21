@@ -34,7 +34,7 @@
 #include <Eigen/Core>
 #include <comma/math/cyclic.h>
 #include <comma/visiting/traits.h>
-#include <snark/math/interval.h>
+#include "../../../../math/interval.h"
 
 namespace snark {  namespace velodyne { namespace thin {
 

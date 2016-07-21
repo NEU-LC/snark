@@ -28,10 +28,8 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <boost/thread/thread_time.hpp>
-#include <snark/math/rotation_matrix.h>
-#include <snark/math/applications/frame.h>
+#include "../../math/rotation_matrix.h"
 #include "frame.h"
-#include <comma/application/verbose.h>
 
 namespace snark{ namespace applications {
 
@@ -116,7 +114,6 @@ const frame::point_type* frame::converted( const point_type& rhs )
     if( !m_discardOutOfOrder ) { COMMA_THROW( comma::exception, "expected timestamp not earlier than " << boost::posix_time::to_iso_string( m_pair.first.t ) << "; got " << boost::posix_time::to_iso_string( rhs.t ) << "; use --discard" ); }
     m_discarded = true;
     m_discarded_time_diff=m_pair.first.t - rhs.t;
-    //comma::verbose<<"discarded "<< boost::posix_time::to_iso_string(m_pair.first.t)<< " > "<<boost::posix_time::to_iso_string(rhs.t)<<std::endl;
     return NULL;
 }
 
@@ -138,7 +135,6 @@ const frame::point_type& frame::convert( const point_type& rhs )
     if( rotation_present_ )
     {
         Eigen::Matrix3d m = snark::rotation_matrix::rotation( rhs.value.orientation );
-        //comma::verbose<<"frame::convert: m \n" << m <<"\n m_rotation \n"<<m_rotation <<std::endl;
         if( m_to ) { m = m_rotation.transpose() * m; }
         else { m = m_rotation * m; }
         m_converted.value.orientation = snark::rotation_matrix::roll_pitch_yaw( m );

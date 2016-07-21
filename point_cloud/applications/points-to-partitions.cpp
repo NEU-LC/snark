@@ -54,10 +54,10 @@
 #include <comma/string/string.h>
 #include <comma/sync/synchronized.h>
 #include <comma/visiting/traits.h>
-#include <snark/math/interval.h>
-#include <snark/point_cloud/partition.h>
-#include <snark/tbb/bursty_reader.h>
-#include <snark/visiting/eigen.h>
+#include "../../math/interval.h"
+#include "../../point_cloud/partition.h"
+#include "../../tbb/bursty_reader.h"
+#include "../../visiting/eigen.h"
 
 #ifdef PROFILE
 #include <google/profiler.h>

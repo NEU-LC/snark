@@ -37,9 +37,9 @@
 #include <comma/base/exception.h>
 #include <comma/csv/stream.h>
 #include <comma/name_value/map.h>
-#include <snark/imaging/cv_mat/filters.h>
-#include <snark/imaging/cv_mat/serialization.h>
-#include <snark/tbb/queue.h>
+#include "../../../../imaging/cv_mat/filters.h"
+#include "../../../../imaging/cv_mat/serialization.h"
+#include "../../../../tbb/queue.h"
 #include "../gige.h"
 #include <boost/program_options.hpp>
 

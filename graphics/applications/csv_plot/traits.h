@@ -32,7 +32,7 @@
 #ifndef SNARK_GRAPHICS_APPLICATIONS_CSV_PLOT_TRAITS_H_
 #define SNARK_GRAPHICS_APPLICATIONS_CSV_PLOT_TRAITS_H_
 
-#include <snark/visiting/eigen.h>
+#include "../../../visiting/eigen.h"
 #include "point.h"
 #include "stream.h"
 

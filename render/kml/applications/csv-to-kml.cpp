@@ -38,8 +38,8 @@
 #include <comma/name_value/to_xml.h>
 #include <comma/visiting/apply.h>
 #include <comma/visiting/traits.h>
-#include <snark/render/kml/document.h>
-#include <snark/render/kml/traits.h>
+#include "../document.h"
+#include "../traits.h"
 
 void usage( bool verbose = false )
 {

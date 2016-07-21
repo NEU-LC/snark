@@ -31,17 +31,16 @@
 
 #include <fstream>
 #include <iostream>
+#include <boost/static_assert.hpp>
 #include <Eigen/Geometry>
 #include <comma/application/command_line_options.h>
 #include <comma/csv/traits.h>
 #include <comma/name_value/parser.h>
-#include <comma/visiting/traits.h>
-#include <snark/graph/search.h>
-#include <snark/graph/search_graph.h>
-#include <snark/graph/serialization.h>
-#include <snark/graph/traits.h>
-#include <snark/visiting/traits.h>
-#include <boost/static_assert.hpp>
+#include "../../visiting/traits.h"
+#include "../search.h"
+#include "../search_graph.h"
+#include "../serialization.h"
+#include "../traits.h"
 
 static void usage( bool verbose )
 {

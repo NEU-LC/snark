@@ -30,7 +30,7 @@
 #include <cmath>
 #include <Eigen/Geometry>
 #include <comma/math/compare.h>
-#include <snark/math/range_bearing_elevation.h>
+#include "range_bearing_elevation.h"
 
 namespace snark {
 

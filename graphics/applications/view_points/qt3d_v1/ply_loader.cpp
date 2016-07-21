@@ -34,7 +34,7 @@
 #include <comma/base/exception.h>
 #include <comma/csv/ascii.h>
 #include <comma/string/split.h>
-#include <snark/visiting/eigen.h>
+#include "../../../../visiting/eigen.h"
 #include "ply_loader.h"
 
 namespace snark { namespace graphics { namespace view {

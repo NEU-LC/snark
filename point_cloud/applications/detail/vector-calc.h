@@ -31,7 +31,7 @@
 #define DETAIL_VECTOR_CALC_H
 #include <iostream>
 #include <comma/csv/stream.h>
-#include <snark/visiting/eigen.h>
+#include "../../../visiting/eigen.h"
 
 struct vector_calc
 {

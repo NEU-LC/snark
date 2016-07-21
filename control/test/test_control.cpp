@@ -31,7 +31,7 @@
 #include <comma/base/exception.h>
 #include <boost/date_time/posix_time/ptime.hpp>
 #include <comma/csv/stream.h>
-#include "snark/control/pid.h"
+#include "../pid.h"
 
 namespace snark { namespace test {
 

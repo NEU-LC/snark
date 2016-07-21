@@ -38,7 +38,7 @@
 //#include <windows.h>
 #endif
 
-#include "snark/graphics/block_buffer.h"
+#include "../../block_buffer.h"
 #include "shape_with_id.h"
 #include "reader.h"
 

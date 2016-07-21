@@ -43,7 +43,7 @@
 #include <comma/math/compare.h>
 #include <comma/string/string.h>
 #include <comma/visiting/traits.h>
-#include <snark/actuators/quickset/ptcr/protocol.h>
+#include "../ptcr/protocol.h"
 
 using namespace snark;
 

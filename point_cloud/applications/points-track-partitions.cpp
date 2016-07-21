@@ -45,10 +45,10 @@
 #include <comma/base/types.h>
 #include <comma/csv/stream.h>
 #include <comma/visiting/traits.h>
-#include <snark/math/interval.h>
-#include <snark/point_cloud/voted_tracking.h>
-#include <snark/point_cloud/voxel_map.h>
-#include <snark/visiting/eigen.h>
+#include "../../math/interval.h"
+#include "../../visiting/eigen.h"
+#include "../voted_tracking.h"
+#include "../voxel_map.h"
 
 /// @author vsevolod vlaskine
 
