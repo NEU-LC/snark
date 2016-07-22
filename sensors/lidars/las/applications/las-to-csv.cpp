@@ -199,7 +199,6 @@ static int read_points( const snark::las::header& header, const comma::csv::opti
     {
         snark::las::point< I > p;
         std::cin.read( reinterpret_cast< char* >( &p ), snark::las::point< I >::size ); // todo: watch performance
-        //std::cerr << "--> " << p.coordinates.x() << " " << p.coordinates.y() << " " << p.coordinates.z() << std::endl;
         int count = std::cin.gcount();
         if( count == 0 ) { break; }
         if( count < snark::las::point< I >::size ) { std::cerr << "las-to-csv: expected las point record format " << I << " of " << snark::las::point< I >::size << " bytes, got only: " << count << std::endl; return 1; }
@@ -268,7 +267,7 @@ int main( int ac, char** av )
         if( what == "header" ) { comma::write_json( header, std::cout ); return 0; }
         if( what == "points" )
         {
-            std::vector< char > offset( header.offset_to_point_data() - header.header_size() );
+            std::vector< char > offset( header.offset_to_point_data() - snark::las::header::size );
             std::cin.read( &offset[0], offset.size() );
             int count = std::cin.gcount();
             if( count < int( offset.size() ) ) { std::cerr << "las-to-csv: expected " << offset.size() << " bytes, got only: " << count << std::endl; return 1; }
