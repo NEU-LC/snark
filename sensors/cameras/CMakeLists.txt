@@ -25,3 +25,7 @@ endif( snark_build_sensors_jai )
 IF( snark_build_sensors_vimba )
     ADD_SUBDIRECTORY( vimba )
 ENDIF( snark_build_sensors_vimba )
+
+if(snark_build_sensors_realsense)
+    add_subdirectory(realsense)
+endif()
