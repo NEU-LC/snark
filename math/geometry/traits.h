@@ -32,8 +32,7 @@
 #ifndef SNARK_MATH_GEOMETRY_TRAITS_H_
 #define SNARK_MATH_GEOMETRY_TRAITS_H_
 
-#include <comma/visiting/traits.h>
-#include <snark/visiting/eigen.h>
+#include "../../visiting/eigen.h"
 #include "polygon.h"
 
 namespace comma { namespace visiting {

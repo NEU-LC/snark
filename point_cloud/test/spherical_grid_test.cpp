@@ -29,7 +29,7 @@
 
 #include <gtest/gtest.h>
 #include <cmath>
-#include <snark/point_cloud/spherical_grid.h>
+#include "../spherical_grid.h"
 
 namespace snark {
 

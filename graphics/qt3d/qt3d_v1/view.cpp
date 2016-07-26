@@ -32,7 +32,7 @@
 
 #include <QTimer>
 #include <boost/array.hpp>
-#include <snark/math/rotation_matrix.h>
+#include "../../../math/rotation_matrix.h"
 #include "view.h"
 
 namespace snark { namespace graphics { namespace qt3d {

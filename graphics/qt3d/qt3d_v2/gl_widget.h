@@ -35,7 +35,9 @@
 #include <QOpenGLVertexArrayObject>
 #include <QOpenGLBuffer>
 #include <QMatrix4x4>
-#include "snark/graphics/applications/view_points/reader.h"
+
+// todo! library should not depend on the application
+#include "../../applications/view_points/reader.h"
 
 QT_FORWARD_DECLARE_CLASS(QOpenGLShaderProgram)
 

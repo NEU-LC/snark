@@ -32,8 +32,8 @@
 #define SNARK_IMAGING_APPLICATIONS_STEREO_H
 
 #include <comma/csv/stream.h>
-#include <snark/imaging/stereo/rectify_map.h>
-#include <snark/imaging/stereo/point_cloud.h>
+#include "../../stereo/rectify_map.h"
+#include "../../stereo/point_cloud.h"
 #include "parameters.h"
 
 namespace snark { namespace imaging {

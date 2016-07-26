@@ -33,7 +33,7 @@
 #include <comma/csv/stream.h>
 #include <comma/base/exception.h>
 #include <comma/application/verbose.h>
-#include <snark/visiting/eigen.h>
+#include "../../../visiting/eigen.h"
 
 struct plane_intersection
 {

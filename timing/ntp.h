@@ -32,7 +32,7 @@
 #define SNARK_TIMING_NTP_H_
 
 #include <comma/base/types.h>
-#include <snark/timing/time.h>
+#include "../timing/time.h"
 
 namespace snark{ namespace timing {
 

@@ -31,8 +31,8 @@
 #include <iostream>
 #include <gtest/gtest.h>
 #include <boost/foreach.hpp>
-#include <snark/math/filter/kalman_filter.h>
-#include <snark/math/filter/constant_speed.h>
+#include "../kalman_filter.h"
+#include "../constant_speed.h"
 #include <Eigen/Dense>
 
 namespace snark{

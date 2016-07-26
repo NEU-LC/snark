@@ -33,10 +33,10 @@
 #include <comma/application/contact_info.h>
 #include <comma/csv/stream.h>
 #include <comma/visiting/traits.h>
-#include <snark/render/svg/svg.h>
-#include <snark/render/svg/traits.h>
-#include <snark/render/colours.h>
-#include <snark/render/colour_map.h>
+#include "../svg.h"
+#include "../../colours.h"
+#include "../traits.h"
+#include "../../colour_map.h"
 
 void usage( bool verbose = false )
 {

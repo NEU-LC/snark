@@ -33,7 +33,7 @@
 #include <comma/base/exception.h>
 #include <comma/csv/stream.h>
 #include <comma/name_value/map.h>
-#include <snark/imaging/cv_mat/pipeline.h>
+#include "../../../../imaging/cv_mat/pipeline.h"
 #include "../gige.h"
 
 typedef std::pair< boost::posix_time::ptime, cv::Mat > Pair;

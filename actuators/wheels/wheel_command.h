@@ -32,7 +32,7 @@
 
 #include <boost/math/constants/constants.hpp>
 #include <Eigen/Core>
-#include <snark/math/frame_transforms.h>
+#include "../../math/frame_transforms.h"
 
 namespace snark { namespace wheels {
 

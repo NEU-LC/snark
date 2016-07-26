@@ -29,8 +29,7 @@
 
 /// @author vsevolod vlaskine
 
-#ifndef SNARK_SENSORS_LAS_TRAITS_H 
-#define SNARK_SENSORS_LAS_TRAITS_H 
+#pragma once
 
 #include <vector>
 #include <comma/visiting/traits.h>
@@ -94,5 +93,3 @@ template <> struct traits< snark::las::header >
 };
     
 } } // namespace comma { namespace visiting {
-
-#endif // SNARK_SENSORS_LAS_TRAITS_H 

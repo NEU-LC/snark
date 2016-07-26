@@ -41,7 +41,7 @@
 #include <comma/csv/impl/program_options.h>
 #include <comma/math/compare.h>
 #include <comma/visiting/traits.h>
-#include <snark/visiting/eigen.h>
+#include "../../visiting/eigen.h"
 
 // #include <boost/random/mersenne_twister.hpp>
 // #include <boost/random/uniform_real.hpp>

@@ -30,7 +30,7 @@
 
 #include <set>
 #include <gtest/gtest.h>
-#include <snark/point_cloud/impl/pin_screen.h>
+#include "../impl/pin_screen.h"
 
 namespace snark { namespace Robotics {
 

@@ -34,7 +34,7 @@
 #include <boost/array.hpp>
 #include <boost/optional/optional.hpp>
 #include <comma/math/cyclic.h>
-#include <snark/render/colour.h>
+#include "colour.h"
 
 namespace snark { namespace render {
 

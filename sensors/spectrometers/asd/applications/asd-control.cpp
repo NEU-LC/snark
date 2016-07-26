@@ -41,7 +41,7 @@
 #include <comma/name_value/serialize.h>
 #include <comma/application/verbose.h>
 #include <comma/csv/stream.h>
-#include <snark/timing/timestamped.h>
+#include "../../../../timing/timestamped.h"
 #include <sstream>
 
 bool raw=false;

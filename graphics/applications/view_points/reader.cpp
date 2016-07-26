@@ -35,7 +35,7 @@
 #include "qt3d_v1/texture.h"
 #else
 #include <Eigen/Geometry>
-#include "snark/math/rotation_matrix.h"
+#include "../../../math/rotation_matrix.h"
 #endif
 
 namespace snark { namespace graphics { namespace view {

@@ -35,7 +35,7 @@
 #include <stdlib.h>
 #endif
 #include <boost/noncopyable.hpp>
-#include <snark/timing/time.h>
+#include "../timing/time.h"
 
 namespace snark{ namespace timing {
 

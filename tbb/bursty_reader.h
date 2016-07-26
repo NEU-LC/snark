@@ -31,10 +31,10 @@
 #ifndef SNARK_TBB_BURSTY_READER_H_
 #define SNARK_TBB_BURSTY_READER_H_
 
-#include <snark/tbb/queue.h>
 #include <boost/thread.hpp>
 #include <boost/scoped_ptr.hpp>
 #include <tbb/pipeline.h>
+#include "queue.h"
 
 namespace snark{ namespace tbb{
 

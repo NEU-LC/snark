@@ -5,8 +5,8 @@
 #include <comma/packed/struct.h>
 #include <comma/packed/string.h>
 #include <comma/application/signal_flag.h>
-#include <snark/timing/timestamped.h>
-#include <snark/timing/traits.h>
+#include "../../../timing/timestamped.h"
+#include "../../../timing/traits.h"
 
 static void usage( bool verbose )
 {

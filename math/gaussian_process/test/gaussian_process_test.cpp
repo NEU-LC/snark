@@ -31,8 +31,8 @@
 #include <gtest/gtest.h>
 #include <boost/bind.hpp>
 #include <Eigen/Core>
-#include <snark/math/gaussian_process/covariance.h>
-#include <snark/math/gaussian_process/gaussian_process.h>
+#include "../covariance.h"
+#include "../gaussian_process.h"
 
 static const int nTestPoints = 10;
 static const double tolerance = 1e-10;

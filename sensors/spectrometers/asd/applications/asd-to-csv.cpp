@@ -35,7 +35,7 @@
 #include <comma/csv/stream.h>
 #include <comma/io/stream.h>
 #include <comma/application/verbose.h>
-#include <snark/timing/timestamped.h>
+#include "../../../../timing/timestamped.h"
 
 typedef snark::asd::commands::acquire_data::spectrum_data output_t;
 typedef snark::timestamped<output_t> timestamped_output_t;

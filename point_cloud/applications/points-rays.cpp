@@ -47,10 +47,10 @@
 #include <comma/math/compare.h>
 #include <comma/string/string.h>
 #include <comma/visiting/traits.h>
-#include <snark/math/range_bearing_elevation.h>
-#include <snark/math/spherical_geometry/great_circle.h>
-#include <snark/point_cloud/voxel_map.h>
-#include <snark/visiting/traits.h>
+#include "../../math/range_bearing_elevation.h"
+#include "../../math/spherical_geometry/great_circle.h"
+#include "../../point_cloud/voxel_map.h"
+#include "../../visiting/traits.h"
 //#include <google/profiler.h>
 
 void usage( bool verbose = false )

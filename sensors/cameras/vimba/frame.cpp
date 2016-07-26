@@ -28,7 +28,7 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <comma/base/exception.h>
-#include <snark/imaging/cv_mat/serialization.h>
+#include "../../../imaging/cv_mat/serialization.h"
 #include "error.h"
 #include "frame.h"
 

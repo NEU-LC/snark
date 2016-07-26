@@ -42,7 +42,7 @@
 #include <comma/io/select.h>
 #endif // #ifndef WIN32
 #include <comma/visiting/traits.h>
-#include <snark/visiting/traits.h>
+#include "../../visiting/traits.h"
 
 static void usage( bool verbose )
 {

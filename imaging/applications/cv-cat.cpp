@@ -31,20 +31,17 @@
 #ifdef WIN32
 #include <winsock2.h>
 #include <windows.h>
-#endif
-#include <iostream>
-#include <boost/program_options.hpp>
-#include <comma/application/signal_flag.h>
-#include <comma/name_value/parser.h>
-#include <comma/application/verbose.h>
-#include <snark/imaging/cv_mat/pipeline.h>
-#include <opencv2/highgui/highgui.hpp>
-#include <opencv2/features2d/features2d.hpp>
-
-#ifdef WIN32
 #include <fcntl.h>
 #include <io.h>
 #endif
+#include <iostream>
+#include <boost/program_options.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/features2d/features2d.hpp>
+#include <comma/application/signal_flag.h>
+#include <comma/name_value/parser.h>
+#include <comma/application/verbose.h>
+#include "../cv_mat/pipeline.h"
 
 typedef std::pair< boost::posix_time::ptime, cv::Mat > pair;
 using snark::tbb::bursty_reader;

@@ -29,8 +29,8 @@
 
 
 #include <gtest/gtest.h>
-#include <snark/math/interval.h>
-#include <snark/math/range_bearing_elevation.h>
+#include "../interval.h"
+#include "../range_bearing_elevation.h"
 
 namespace snark { namespace math {
 

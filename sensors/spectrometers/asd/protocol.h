@@ -33,7 +33,7 @@
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <comma/io/stream.h>
 #include <comma/io/select.h>
-#include <snark/timing/timestamped.h>
+#include "../../../timing/timestamped.h"
 
 namespace snark { namespace asd {
 

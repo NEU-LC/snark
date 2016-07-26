@@ -53,17 +53,27 @@ static void usage( bool verbose = false )
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    --help,-h: help; --help --verbose: more help" << std::endl;
-    std::cerr << "    --output-fields=<point format>: output fields for a given point format (0-5) and exit" << std::endl;
-    std::cerr << "                                    use \"--output-fields -\" to read point format from a las file on stdin" << std::endl;
+    std::cerr << "    --output-fields: output fields for a given point format (0-5) and exit; if --type not given, las data on stdin used" << std::endl;
+    std::cerr << "    --output-format: output format for a given point format (0-5) and exit; if --type not given, las data on stdin used" << std::endl;
+    std::cerr << "    --type,--point-format=<point format>: enforce point format" << std::endl;
     std::cerr << "    --verbose,-v: more output" << std::endl;
     if( verbose ) { std::cerr << comma::csv::options::usage() << std::endl; }
     std::cerr << std::endl;
     exit( 0 );
 }
 
+struct colour
+{
+    comma::uint16 red;
+    comma::uint16 green;
+    comma::uint16 blue;
+    colour() : red( 0 ), green( 0 ), blue( 0 ) {};
+    colour( comma::uint16 red, comma::uint16 green, comma::uint16 blue ) : red( red ), green( green ), blue( blue ) {};
+};
+
 template < unsigned int I > struct point;
 
-struct point_base
+template <> struct point< 0 >
 {
     Eigen::Vector3d coordinates;
     comma::uint16 intensity;
@@ -76,9 +86,9 @@ struct point_base
     unsigned char user_data;
     comma::uint16 point_source_id;
     
-    point_base() {}
+    point< 0 >() {}
     template < typename P >
-    point_base( const P& p, const Eigen::Vector3d& factor, const Eigen::Vector3d& offset )
+    point< 0 >( const P& p, const Eigen::Vector3d& factor, const Eigen::Vector3d& offset )
         : coordinates( Eigen::Vector3d( factor.x() * p.coordinates.x()
                                       , factor.y() * p.coordinates.y()
                                       , factor.z() * p.coordinates.z() ) + offset )
@@ -95,38 +105,36 @@ struct point_base
     }
 };
 
-template <> struct point< 1 > : public point_base
+template <> struct point< 1 > : public point< 0 >
 {
     double gps_time;
     
     point() {}
-    point( const snark::las::point< 1 >& p, const Eigen::Vector3d& factor, const Eigen::Vector3d& offset ) : point_base( p, factor, offset ), gps_time( p.gps_time() ) {}
+    point( const snark::las::point< 1 >& p, const Eigen::Vector3d& factor, const Eigen::Vector3d& offset ) : point< 0 >( p, factor, offset ), gps_time( p.gps_time() ) {}
 };
 
-struct colour
-{
-    comma::uint16 red;
-    comma::uint16 green;
-    comma::uint16 blue;
-    colour() : red( 0 ), green( 0 ), blue( 0 ) {};
-    colour( comma::uint16 red, comma::uint16 green, comma::uint16 blue ) : red( red ), green( green ), blue( blue ) {};
-};
-
-template <> struct point< 2 > : public point_base
+template <> struct point< 2 > : public point< 0 >
 {
     ::colour colour;
     
     point() {}
-    point( const snark::las::point< 2 >& p, const Eigen::Vector3d& factor, const Eigen::Vector3d& offset ) : point_base( p, factor, offset ), colour( p.colour.red(), p.colour.green(), p.colour.blue() ) {}
+    point( const snark::las::point< 2 >& p, const Eigen::Vector3d& factor, const Eigen::Vector3d& offset ) : point< 0 >( p, factor, offset ), colour( p.colour.red(), p.colour.green(), p.colour.blue() ) {}
 };
 
-
+template <> struct point< 3 > : public point< 0 >
+{
+    double gps_time;
+    ::colour colour;
+    
+    point() {}
+    point( const snark::las::point< 3 >& p, const Eigen::Vector3d& factor, const Eigen::Vector3d& offset ) : point< 0 >( p, factor, offset ), gps_time( p.gps_time() ), colour( p.colour.red(), p.colour.green(), p.colour.blue() ) {}
+};
 
 namespace comma { namespace visiting {
 
-template <> struct traits< point_base >
+template <> struct traits< point< 0 > >
 {
-    template< typename K, typename V > static void visit( const K&, const point_base& t, V& v ) // todo
+    template< typename K, typename V > static void visit( const K&, const point< 0 >& t, V& v ) // todo
     {
         v.apply( "coordinates", t.coordinates );
         v.apply( "intensity", t.intensity );
@@ -140,17 +148,8 @@ template <> struct traits< point_base >
         v.apply( "point_source_id", t.point_source_id );
     }
 };
-    
-template <> struct traits< point< 1 > >
-{
-    template< typename K, typename V > static void visit( const K& k, const point< 1 >& t, V& v ) // todo
-    {
-        traits< point_base >::visit( k, t, v );
-        v.apply( "gps_time", t.gps_time );
-    }
-};
 
-template <> struct traits< colour>
+template <> struct traits< colour >
 {
     template< typename K, typename V > static void visit( const K&, const colour& t, V& v ) // todo
     {
@@ -160,11 +159,30 @@ template <> struct traits< colour>
     }
 };
 
+template <> struct traits< point< 1 > >
+{
+    template< typename K, typename V > static void visit( const K& k, const point< 1 >& t, V& v ) // todo
+    {
+        traits< point< 0 > >::visit( k, t, v );
+        v.apply( "gps_time", t.gps_time );
+    }
+};
+
 template <> struct traits< point< 2 > >
 {
     template< typename K, typename V > static void visit( const K& k, const point< 2 >& t, V& v ) // todo
     {
-        traits< point_base >::visit( k, t, v );
+        traits< point< 0 > >::visit( k, t, v );
+        v.apply( "colour", t.colour );
+    }
+};
+
+template <> struct traits< point< 3 > >
+{
+    template< typename K, typename V > static void visit( const K& k, const point< 3 >& t, V& v ) // todo
+    {
+        traits< point< 0 > >::visit( k, t, v );
+        v.apply( "gps_time", t.gps_time );
         v.apply( "colour", t.colour );
     }
 };
@@ -203,48 +221,68 @@ int main( int ac, char** av )
     try
     {
         comma::command_line_options options( ac, av, usage );
+        boost::optional< unsigned int > point_format = options.optional< unsigned int >( "--type,--point-format" );
         if( ac < 2 ) { usage(); }
         if( options.exists( "--output-fields" ) )
         {
-            std::string s = options.value< std::string >( "--output-fields" );
-            unsigned int type = s.empty() || s == "-" ? read_header( std::cin ).point_data_format() : boost::lexical_cast< unsigned int >( s );
-            switch( type )
+            if( !point_format ) { point_format = read_header( std::cin ).point_data_format(); }
+            switch( *point_format )
             {
+                case 0: std::cout << comma::join( comma::csv::names< point< 0 > >( false ), ',' ) << std::endl; return 0;
                 case 1: std::cout << comma::join( comma::csv::names< point< 1 > >( false ), ',' ) << std::endl; return 0;
                 case 2: std::cout << comma::join( comma::csv::names< point< 2 > >( false ), ',' ) << std::endl; return 0;
-                case 0:
-                case 3:
+                case 3: std::cout << comma::join( comma::csv::names< point< 3 > >( false ), ',' ) << std::endl; return 0;
                 case 4:
                 case 5:
-                    std::cerr << "las-to-csv: output fields for point data format " << type << ": todo" << std::endl;
+                    std::cerr << "las-to-csv: output fields for point data format " << *point_format << ": todo" << std::endl;
                     return 1;
                 default:
-                    std::cerr << "las-to-csv: expected point data format between 0 and 5, got: " << type << std::endl;
+                    std::cerr << "las-to-csv: expected point data format between 0 and 5, got: " << *point_format << std::endl;
+                    return 1;
+            }
+            return 0;
+        }
+        if( options.exists( "--output-format" ) )
+        {
+            if( !point_format ) { point_format = read_header( std::cin ).point_data_format(); }
+            switch( *point_format )
+            {
+                case 0: std::cout << comma::csv::format::value< point< 0 > >() << std::endl; return 0;
+                case 1: std::cout << comma::csv::format::value< point< 1 > >() << std::endl; return 0;
+                case 2: std::cout << comma::csv::format::value< point< 2 > >() << std::endl; return 0;
+                case 3: std::cout << comma::csv::format::value< point< 3 > >() << std::endl; return 0;
+                case 4:
+                case 5:
+                    std::cerr << "las-to-csv: output fields for point data format " << *point_format << ": todo" << std::endl;
+                    return 1;
+                default:
+                    std::cerr << "las-to-csv: expected point data format between 0 and 5, got: " << *point_format << std::endl;
                     return 1;
             }
             return 0;
         }
         std::string what = av[1];
         snark::las::header header = read_header( std::cin );
+        if( !point_format ) { point_format = header.point_data_format(); }
         if( what == "header" ) { comma::write_json( header, std::cout ); return 0; }
         if( what == "points" )
         {
-            std::vector< char > offset( header.offset_to_point_data() - header.header_size() );
+            std::vector< char > offset( header.offset_to_point_data() - snark::las::header::size );
             std::cin.read( &offset[0], offset.size() );
             int count = std::cin.gcount();
             if( count < int( offset.size() ) ) { std::cerr << "las-to-csv: expected " << offset.size() << " bytes, got only: " << count << std::endl; return 1; }
-            switch( header.point_data_format() )
+            switch( *point_format )
             {
+                case 0: return read_points< 0 >( header, comma::csv::options( options ) );
                 case 1: return read_points< 1 >( header, comma::csv::options( options ) );
                 case 2: return read_points< 2 >( header, comma::csv::options( options ) );
-                case 0:
-                case 3:
+                case 3: return read_points< 3 >( header, comma::csv::options( options ) );
                 case 4:
                 case 5:
-                    std::cerr << "las-to-csv: point data format " << int( header.point_data_format() ) << ": todo" << std::endl;
+                    std::cerr << "las-to-csv: point data format " << point_format << ": todo" << std::endl;
                     return 1;
                 default:
-                    std::cerr << "las-to-csv: expected point data format between 0 and 5, got: " << int( header.point_data_format() ) << std::endl;
+                    std::cerr << "las-to-csv: expected point data format between 0 and 5, got: " << point_format << std::endl;
                     return 1;
             }
             return 0;
@@ -252,13 +290,7 @@ int main( int ac, char** av )
         std::cerr << "las-to-csv: expected operation, got: \"" << what << "\"" << std::endl;
         return 1;
     }
-    catch( std::exception& ex )
-    {
-        std::cerr << "las-to-csv: " << ex.what() << std::endl;
-    }
-    catch( ... )
-    {
-        std::cerr << "las-to-csv: unknown exception" << std::endl;
-    }
+    catch( std::exception& ex ) { std::cerr << "las-to-csv: " << ex.what() << std::endl; }
+    catch( ... ) { std::cerr << "las-to-csv: unknown exception" << std::endl; }
     return 1;
 }

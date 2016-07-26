@@ -42,7 +42,7 @@
 #include <comma/name_value/parser.h>
 #include <comma/string/string.h>
 #include <comma/csv/format.h>
-#include "snark/graphics/applications/label_points/MainWindow.h"
+#include "label_points/MainWindow.h"
 
 void usage( bool verbose )
 {

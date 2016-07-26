@@ -37,7 +37,7 @@
 #include <comma/csv/traits.h>
 #include <comma/name_value/parser.h>
 #include <comma/string/string.h>
-#include <snark/visiting/eigen.h>
+#include "../../visiting/eigen.h"
 #include <QApplication>
 #include "view_points/shape_reader.h"
 #include "view_points/main_window.h"

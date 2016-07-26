@@ -31,9 +31,9 @@
 #ifndef SNARK_IMAGING_APPLICATIONS_STEREO_DISPARITY_H
 #define SNARK_IMAGING_APPLICATIONS_STEREO_DISPARITY_H
 
-#include <snark/imaging/stereo/rectify_map.h>
-#include <snark/imaging/stereo/point_cloud.h>
-#include <snark/imaging/cv_mat/serialization.h>
+#include "../../stereo/rectify_map.h"
+#include "../../stereo/point_cloud.h"
+#include "../../cv_mat/serialization.h"
 #include "parameters.h"
 
 namespace snark { namespace imaging {

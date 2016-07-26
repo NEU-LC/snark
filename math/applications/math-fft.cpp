@@ -32,12 +32,12 @@
 #include <iterator>
 #include <math.h>
 #include <boost/optional.hpp>
+#include <fftw3.h>
 #include <comma/visiting/traits.h>
 #include <comma/application/command_line_options.h>
 #include <comma/application/verbose.h>
 #include <comma/csv/options.h>
 #include <comma/csv/stream.h>
-#include <fftw3.h>
 
 std::size_t input_size=0;
 bool filter_input=true;

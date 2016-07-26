@@ -55,7 +55,7 @@
 #include <comma/name_value/parser.h>
 #include <comma/string/string.h>
 #include <comma/visiting/traits.h>
-#include <snark/imaging/cv_mat/serialization.h>
+#include "../cv_mat/serialization.h"
 
 void usage()
 {

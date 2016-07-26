@@ -28,7 +28,7 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-#include <snark/imaging/cv_mat/pipeline.h>
+#include "../../../../imaging/cv_mat/pipeline.h"
 #include "../dc1394.h"
 #include <boost/program_options.hpp>
 #include <boost/scoped_ptr.hpp>

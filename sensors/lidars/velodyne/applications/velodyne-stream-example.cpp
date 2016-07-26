@@ -33,7 +33,7 @@
 #include <comma/application/signal_flag.h>
 #include <comma/csv/stream.h>
 #include <comma/string/string.h>
-#include <snark/visiting/eigen.h>
+#include "../../../../visiting/eigen.h"
 #include "../impl/pcap_reader.h"
 #include "../hdl64/stream.h"
 

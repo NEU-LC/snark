@@ -27,9 +27,7 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
-#include <snark/imaging/stereo/point_cloud.h>
-#include <iostream>
+#include "point_cloud.h"
 
 namespace snark { namespace imaging {
 

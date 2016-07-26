@@ -33,8 +33,8 @@
 #include <comma/application/signal_flag.h>
 #include <comma/csv/stream.h>
 #include <comma/string/string.h>
-#include <snark/math/range_bearing_elevation.h>
-#include <snark/visiting/traits.h>
+#include "../../math/range_bearing_elevation.h"
+#include "../../visiting/traits.h"
 
 template< typename IStream, typename OStream >
 int run( IStream& is, OStream& os )

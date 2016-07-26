@@ -44,8 +44,8 @@
 #include "qt3d_v1/coloured.h"
 #else
 #include <QQuaternion>
-#include "snark/math/interval.h"
-#include "snark/graphics/qt3d/qt3d_v2/types.h"
+#include "../../../math/interval.h"
+#include "../../qt3d/qt3d_v2/types.h"
 #endif
 
 namespace snark { namespace graphics { namespace view {

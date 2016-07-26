@@ -27,13 +27,10 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
-#ifndef SNARK_RENDER_COLOURED_H_
-#define SNARK_RENDER_COLOURED_H_
+#pragma once
 
 #include <boost/array.hpp>
-#include <comma/Visiting/traits.h>
-#include <snark/render/Vertex.h>
+#include <comma/visiting/traits.h>
 
 namespace snark { namespace render {
 
@@ -71,5 +68,3 @@ template < typename T, typename S > struct traits< snark::render::coloured< T, S
 };
 
 } } // namespace snark { namespace Visiting {
-
-#endif /*SNARK_RENDER_GL_COLOURED_H_*/

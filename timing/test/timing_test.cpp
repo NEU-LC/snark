@@ -30,12 +30,12 @@
 
 #include <gtest/gtest.h>
 #include <comma/math/compare.h>
-#include <snark/timing/clocked_time_stamp.h>
-#include <snark/timing/play.h>
-#include <snark/timing/ntp.h>
-#include <snark/timing/time.h>
-#include <snark/timing/timestamped.h>
-#include <snark/timing/traits.h>
+#include "../clocked_time_stamp.h"
+#include "../play.h"
+#include "../ntp.h"
+#include "../time.h"
+#include "../timestamped.h"
+#include "../traits.h"
 #include <comma/csv/stream.h>
 #include <comma/csv/options.h>
 

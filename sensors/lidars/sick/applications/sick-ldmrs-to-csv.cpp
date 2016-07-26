@@ -37,10 +37,10 @@
 #include <comma/name_value/map.h>
 #include <comma/string/string.h>
 #include <comma/visiting/traits.h>
-#include <snark/math/range_bearing_elevation.h>
-#include <snark/timing/ntp.h>
-#include <snark/visiting/eigen.h>
-#include <snark/visiting/traits.h>
+#include "../../../../math/range_bearing_elevation.h"
+#include "../../../../timing/ntp.h"
+#include "../../../../visiting/eigen.h"
+#include "../../../../visiting/traits.h"
 #include "../ibeo/protocol.h"
 #include <fcntl.h>
 

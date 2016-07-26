@@ -37,7 +37,7 @@
 #include <boost/thread.hpp>
 #include <comma/csv/stream.h>
 #include <comma/io/stream.h>
-#include <snark/visiting/eigen.h>
+#include "../../../visiting/eigen.h"
 
 namespace snark { namespace graphics { namespace view {
 

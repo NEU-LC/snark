@@ -34,7 +34,7 @@
 #define SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_POINTWITHID_H_
 
 #include <comma/base/types.h>
-#include <snark/visiting/eigen.h>
+#include "../../../visiting/eigen.h"
 #include <Qt3D/qcolor4ub.h>
 #include "shape_with_id.h"
 

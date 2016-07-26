@@ -28,7 +28,7 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-#include <snark/timing/timer.h>
+#include "timer.h"
 
 namespace snark {
 

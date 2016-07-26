@@ -35,7 +35,7 @@
 #include <boost/scoped_ptr.hpp>
 #include <comma/csv/stream.h>
 #include <comma/math/compare.h>
-#include <snark/visiting/eigen.h>
+#include "../../../../visiting/eigen.h"
 #include "../stream.h"
 #include "../db.h"
 #include "calculator.h"

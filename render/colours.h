@@ -33,7 +33,7 @@
 
 #include <comma/base/exception.h>
 #include <comma/math/compare.h>
-#include <snark/render/colour.h>
+#include "colour.h"
 
 namespace snark { namespace render {
 

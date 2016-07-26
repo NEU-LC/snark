@@ -36,8 +36,8 @@
 #include <boost/none_t.hpp>
 #include <Eigen/Core>
 #include <boost/optional.hpp>
-#include <snark/math/interval.h>
-#include <snark/point_cloud/impl/pin_screen.h>
+#include "../math/interval.h"
+#include "../point_cloud/impl/pin_screen.h"
 
 namespace snark {
 

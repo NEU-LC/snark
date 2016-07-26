@@ -36,7 +36,7 @@
 #endif
 #include <boost/noncopyable.hpp>
 #include <boost/optional.hpp>
-#include <snark/timing/time.h>
+#include "../../../../timing/time.h"
 #include "../thin/thin.h"
 
 namespace snark {

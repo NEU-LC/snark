@@ -30,9 +30,9 @@
 /// @author vsevolod vlaskine
 
 #include <cmath>
-#include <snark/point_cloud/equivalence_classes.h>
-#include <snark/point_cloud/partition.h>
-#include <snark/point_cloud/voxel_grid.h>
+#include "equivalence_classes.h"
+#include "partition.h"
+#include "voxel_grid.h"
 
 namespace snark {
 

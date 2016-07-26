@@ -2,7 +2,7 @@
 #define SNARK_POINT_CLOUD_SPHERICAL_GRID_H_
 
 #include <boost/multi_array.hpp>
-#include <snark/math/range_bearing_elevation.h>
+#include "../math/range_bearing_elevation.h"
 
 namespace snark {
 

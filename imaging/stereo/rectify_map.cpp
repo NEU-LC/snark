@@ -27,11 +27,10 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
-#include <snark/imaging/stereo/rectify_map.h>
+#include <Eigen/Core>
 #include <opencv2/core/eigen.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
-#include <iostream>
+#include "rectify_map.h"
 
 namespace snark { namespace imaging {
 

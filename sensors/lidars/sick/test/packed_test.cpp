@@ -33,7 +33,7 @@
 #endif
 
 #include <iostream>
-#include <snark/timing/time.h>
+#include "../../../../timing/time.h"
 #include "../ibeo/packets.h"
 #include <gtest/gtest.h>
 

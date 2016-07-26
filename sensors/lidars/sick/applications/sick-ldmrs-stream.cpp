@@ -37,7 +37,7 @@
 #include <comma/base/exception.h>
 #include <comma/name_value/map.h>
 #include <comma/string/string.h>
-#include <snark/timing/ntp.h>
+#include "../../../../timing/ntp.h"
 #include <comma/io/publisher.h>
 #include "../ibeo/protocol.h"
 #ifdef WIN32

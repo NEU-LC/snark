@@ -39,8 +39,8 @@
 #include <comma/math/compare.h>
 #include <comma/string/string.h>
 #include <comma/visiting/traits.h>
-#include <snark/point_cloud/voxel_map.h>
-#include <snark/visiting/eigen.h>
+#include "../voxel_map.h"
+#include "../../visiting/eigen.h"
 
 typedef Eigen::Vector3d input_point;
 typedef snark::voxel_map< input_point, 3 >::index_type index_type;

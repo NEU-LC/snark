@@ -31,7 +31,7 @@
 #include <comma/application/signal_flag.h>
 #include <comma/application/verbose.h>
 #include <comma/base/exception.h>
-#include <snark/imaging/cv_mat/serialization.h>
+#include "../../../../imaging/cv_mat/serialization.h"
 
 #include "../attribute.h"
 #include "../camera.h"

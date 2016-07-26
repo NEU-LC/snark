@@ -31,8 +31,8 @@
 #include <comma/csv/stream.h>
 #include <comma/csv/options.h>
 #include <comma/math/compare.h>
-#include <snark/visiting/eigen.h>
-#include <snark/math/rotation_matrix.h>
+#include "../../visiting/eigen.h"
+#include "../rotation_matrix.h"
 
 static std::string name() { return "math-rotation-convert"; }
 
