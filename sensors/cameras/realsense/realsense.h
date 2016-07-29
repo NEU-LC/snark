@@ -1,3 +1,32 @@
+// This file is part of snark, a generic and flexible library for robotics research
+// Copyright (c) 2011 The University of Sydney
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+// 1. Redistributions of source code must retain the above copyright
+//    notice, this list of conditions and the following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright
+//    notice, this list of conditions and the following disclaimer in the
+//    documentation and/or other materials provided with the distribution.
+// 3. Neither the name of the University of Sydney nor the
+//    names of its contributors may be used to endorse or promote products
+//    derived from this software without specific prior written permission.
+//
+// NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
+// GRANTED BY THIS LICENSE.  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
+// HOLDERS AND CONTRIBUTORS \"AS IS\" AND ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+// BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+// OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
+// IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 #pragma once
 #include <librealsense/rs.hpp>
 #include <iostream>
@@ -26,31 +55,58 @@ struct format_t
 };
 
 //individual camera stream
-struct stream_t
+struct camera_stream_t
 {
     rs::device& device;
     rs::stream value;
     format_t format;
     boost::posix_time::ptime start_time;
-    stream_t(rs::device& device, rs::stream id,format_t format=format_t());
-    stream_t(rs::device& device, const std::string& s,format_t format=format_t());
+    camera_stream_t(rs::device& device, rs::stream id);
+    camera_stream_t(rs::device& device, const std::string& s);
+    ~camera_stream_t();
+    void init(format_t format=format_t());
+    void init(rs::preset preset);
     std::pair<boost::posix_time::ptime,cv::Mat> get_frame();
 private:
     //size_t size;
-    int width;
-    int height;
-    void init(format_t format);
+    unsigned width;
+    unsigned height;
+    void init_();
 };
 
 struct points_cloud
 {
     points_cloud(rs::device& device);
-    Eigen::Vector3d get(int i);
-    Eigen::Vector2i project(int i);
-    int count();
-    void scan();
+    ~points_cloud();
+    void init(rs::stream tex_stream);
+    Eigen::Vector3d get(unsigned index)
+    {
+        return Eigen::Vector3d(points[index].x,points[index].y,points[index].z);
+    }
+    //map point at index to texture coordinate
+    rs::float2 deproject(unsigned index)
+    {
+        int x=index%depth_intrin.width;
+        int y=index/depth_intrin.width;
+        return identical ? tex_intrin.pixel_to_texcoord({static_cast<float>(x),static_cast<float>(y)}) : tex_intrin.project_to_texcoord(extrin.transform(points[index])); 
+    }
+    const std::vector<rs::float3>& scan();
+    unsigned count() { return points.size(); }
+    unsigned width() { return depth_intrin.width; }
+    unsigned height() { return depth_intrin.height; }
+private:
     rs::device& device;
-    const float* points;
+    /*
+    std::vector<std::int16_t> depth;
+    rs::format format;
+    unsigned height_;
+    unsigned width_;
+    */
+    std::vector<rs::float3> points;
+    rs::extrinsics extrin;
+    rs::intrinsics depth_intrin;
+    rs::intrinsics tex_intrin;
+    bool identical;
 };
 
 struct run_stream
