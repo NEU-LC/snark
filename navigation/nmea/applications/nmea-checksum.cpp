@@ -8,7 +8,10 @@ static void usage( bool verbose )
     std::cerr << std::endl;
     std::cerr << "read nmea sentence and calculate checksum" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "if start of sequence '$' and/or checksum delimiter '*' are present, only the characters between will be used" << std::endl;
+    std::cerr << "usage: echo <nmea-sentence> | nmea-checksum" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "if start of sequence '$' and/or checksum delimiter '*' are present," << std::endl;
+    std::cerr << "only the characters between will be used." << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    --help,-h: output help" << std::endl;
