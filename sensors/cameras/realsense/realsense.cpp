@@ -132,7 +132,10 @@ size_t format_t::size() const
         { COMMA_THROW(comma::exception, "unknown format size: "<<value); }
     }
 }
-
+std::string format_t::name_list()
+{
+    return "any,z16,disparity16,xyz32f,yuyv,rgb8,bgr8,rgba8,bgra8,y8,y16,raw10";
+}
 /*********************************************************/
 camera_stream_t::camera_stream_t(rs::device& device, const std::string& s) : device(device), value(impl::parse_stream(s)) { }
 camera_stream_t::camera_stream_t(rs::device& device, rs::stream id) : device(device), value(id) { }
@@ -155,31 +158,23 @@ void camera_stream_t::init_()
     format=device.get_stream_format(value);
     width=device.get_stream_width(value);
     height=device.get_stream_height(value);
-    //size=width*height*format.size();
     comma::verbose<<"stream_writer: stream "<<value<<" width "<<width<<" height "<<height<<" format "<<format<<std::endl;
 }
-std::pair<boost::posix_time::ptime,cv::Mat> camera_stream_t::get_frame()
+std::pair<boost::posix_time::ptime,cv::Mat> camera_stream_t::get_frame() const
 {
     boost::posix_time::ptime time=start_time+boost::posix_time::milliseconds(device.get_frame_timestamp(value));
     cv::Mat mat(height,width,format.cv_type());
     memcpy(mat.ptr(), device.get_frame_data(value), width*height*format.size());
     return std::pair<boost::posix_time::ptime,cv::Mat>(time,mat);
 }
+std::string camera_stream_t::name_list()
+{
+    return "depth,color,infrared,infrared2";
+}
 /*********************************************************/
 points_cloud::points_cloud(rs::device& device) : device(device)
 {
-    //device.enable_stream(rs::stream::depth,0,0,rs::format::any,0);
-    /*
-    format=device.get_stream_format(rs::stream::depth);
-    width_=device.get_stream_width(rs::stream::depth);
-    height_=device.get_stream_height(rs::stream::depth);
-    //depth.resize(width_*height_);
-    comma::verbose<<"points_cloud: depth stream: width "<<width_<<" height "<<height_<<" format "<<format<<std::endl;
-    //if(format!=rs::format::xyz32f) { COMMA_THROW( comma::exception, "expected points_cloud (depth) format rs::format::xyz32f, got: "<<format);}
-    if(format!=rs::format::z16) { COMMA_THROW( comma::exception, "expected points_cloud (depth) format rs::format::z16, got: "<<format);}
-    */
 }
-
 points_cloud::~points_cloud()
 {
     device.disable_stream(rs::stream::depth);
@@ -187,61 +182,20 @@ points_cloud::~points_cloud()
 void points_cloud::init(rs::stream tex_stream)
 {
     device.enable_stream(rs::stream::depth,rs::preset::best_quality);
-    extrin=device.get_extrinsics(rs::stream::depth, tex_stream);
     depth_intrin=device.get_stream_intrinsics(rs::stream::depth);
+    depth_to_tex=device.get_extrinsics(rs::stream::depth, tex_stream);
     tex_intrin=device.get_stream_intrinsics(tex_stream);
-    identical=depth_intrin == tex_intrin && extrin.is_identity();
+    //identical=depth_intrin == tex_intrin && extrin.is_identity();
+    depth_scale=device.get_depth_scale();
     
-    points.resize(depth_intrin.width*depth_intrin.height);
-
-    /*
-    const float depth_scale=device.get_depth_scale();
-    const rs::extrinsics extrin = device.get_extrinsics(rs::stream::depth, tex_stream);
-    const rs::intrinsics depth_intrin = device.get_stream_intrinsics(rs::stream::depth);
-    const rs::intrinsics tex_intrin = device.get_stream_intrinsics(tex_stream);
-    bool identical = depth_intrin == tex_intrin && extrin.is_identity();
-
-    auto points = reinterpret_cast<const rs::float3 *>(device.get_frame_data(rs::stream::points));
-    auto depth = reinterpret_cast<const uint16_t *>(device.get_frame_data(rs::stream::depth));
-    
-    for(int y=0; y<depth_intrin.height; ++y)
-    {
-        for(int x=0; x<depth_intrin.width; ++x)
-        {
-            if(points->z) //if(uint16_t d = *depth++)
-            {
-                //const rs::float3 point = depth_intrin.deproject({static_cast<float>(x),static_cast<float>(y)}, d*depth_scale);
-                rs::float2 tex_coord=identical ? tex_intrin.pixel_to_texcoord({static_cast<float>(x),static_cast<float>(y)}) : tex_intrin.project_to_texcoord(extrin.transform(*points));
-                rs::float3 point_xyz=*points;
-            }
-            ++points;
-        }
-    }
-    */
+    depth.resize(depth_intrin.width*depth_intrin.height);
 }
-const std::vector<rs::float3>& points_cloud::scan()
+void points_cloud::scan()
 {
-    //if(sizeof(points[0])!=4) { COMMA_THROW( comma::exception, "expected float to be 32-bit, got"<<sizeof(points[0])); }
-    //points=static_cast<const float*>(device.get_frame_data(rs::stream::points));
-    
-    //memcpy(&depth[0], device.get_frame_data(rs::stream::points), depth.size()*sizeof(depth[0]));
-    comma::verbose<<"points_cloud::scan: width "<<width()<<" height "<<height()<<" points.size() "<<points.size()<<std::endl;
-    const void* data=device.get_frame_data(rs::stream::points);
-    if(!data) { COMMA_THROW(comma::exception, "points data is null" ); }
-    memcpy(&points[0],data,points.size()*sizeof(rs::float3));
-    return points;
+    const void* data=device.get_frame_data(rs::stream::depth);
+    if(!data) { COMMA_THROW(comma::exception, "depth data is null" ); }
+    memcpy(&depth[0],data,depth.size()*sizeof(depth[0]));
 }
-/*
-Eigen::Vector3d points_cloud::get(unsigned index)
-{
-    //return Eigen::Vector3d(index%width_,index/width_,depth[index]);
-}
-
-Eigen::Vector2i points_cloud::project(unsigned index)
-{
-    //return Eigen::Vector2i(index%width_,index/width_);
-}
-*/
 /*********************************************************/
 run_stream::run_stream(rs::device& d):device(d) 
 { 

@@ -52,6 +52,8 @@ struct format_t
     unsigned cv_type() const; //e.g. CV_8UC3
     size_t size() const;  //size in bytes
     operator rs::format();
+    //csv name of formats
+    static std::string name_list();
 };
 
 //individual camera stream
@@ -66,7 +68,9 @@ struct camera_stream_t
     ~camera_stream_t();
     void init(format_t format=format_t());
     void init(rs::preset preset);
-    std::pair<boost::posix_time::ptime,cv::Mat> get_frame();
+    std::pair<boost::posix_time::ptime,cv::Mat> get_frame() const;
+    //csv name of streams
+    static std::string name_list();
 private:
     //size_t size;
     unsigned width;
@@ -78,35 +82,21 @@ struct points_cloud
 {
     points_cloud(rs::device& device);
     ~points_cloud();
-    void init(rs::stream tex_stream);
-    Eigen::Vector3d get(unsigned index)
-    {
-        return Eigen::Vector3d(points[index].x,points[index].y,points[index].z);
-    }
-    //map point at index to texture coordinate
-    rs::float2 deproject(unsigned index)
-    {
-        int x=index%depth_intrin.width;
-        int y=index/depth_intrin.width;
-        return identical ? tex_intrin.pixel_to_texcoord({static_cast<float>(x),static_cast<float>(y)}) : tex_intrin.project_to_texcoord(extrin.transform(points[index])); 
-    }
-    const std::vector<rs::float3>& scan();
-    unsigned count() { return points.size(); }
-    unsigned width() { return depth_intrin.width; }
-    unsigned height() { return depth_intrin.height; }
+    void init(rs::stream tex_stream=rs::stream::color);
+    void scan();
+    bool get(unsigned index,rs::float3& point) const;
+    //map point to texture coordinate
+    rs::float2 project(const rs::float3& point) const;
+    unsigned count() const;
+    unsigned width() const;
+    unsigned height() const;
 private:
     rs::device& device;
-    /*
-    std::vector<std::int16_t> depth;
-    rs::format format;
-    unsigned height_;
-    unsigned width_;
-    */
-    std::vector<rs::float3> points;
-    rs::extrinsics extrin;
+    std::vector<std::uint16_t> depth;
+    rs::extrinsics depth_to_tex;
     rs::intrinsics depth_intrin;
     rs::intrinsics tex_intrin;
-    bool identical;
+    float depth_scale;
 };
 
 struct run_stream
@@ -118,5 +108,26 @@ struct run_stream
 };
 
 inline std::ostream& operator<<(std::ostream& o,format_t format) { return o << format.value; }
+
+/*********************************************************/
+// defined inline for performance
+inline bool points_cloud::get(unsigned index,rs::float3& point) const
+{
+    std::uint16_t d=depth[index];
+    if(d==0)
+        return false;
+    int x=index%depth_intrin.width;
+    int y=index/depth_intrin.width;
+    rs::float2 depth_pixel={(float)x, (float)y};
+    point=depth_intrin.deproject(depth_pixel, d*depth_scale);
+    return true;
+}
+inline rs::float2 points_cloud::project(const rs::float3& point) const
+{
+    return tex_intrin.project(depth_to_tex.transform(point));
+}
+inline unsigned points_cloud::count() const { return depth.size(); }
+inline unsigned points_cloud::width() const { return depth_intrin.width; }
+inline unsigned points_cloud::height() const { return depth_intrin.height; }
 
 } } //namespace snark { namespace realsense {
