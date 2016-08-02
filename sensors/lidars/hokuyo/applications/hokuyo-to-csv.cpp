@@ -73,17 +73,16 @@ static void usage()
     std::cerr << "    --num-of-scans:       How many scans is requested for ME requests, default is 100 - 0 for continuous ( data verification problem with 0 )." << std::endl;
     std::cerr << "    --scan-break:         How many usec of sleep time between ME request and reponses received before issuing another ME request, default is 20us." << std::endl;
     std::cerr << "    --verbose: show more information" << std::endl;
-    std::cerr << "    --output-fields: output fields to std out and exit; use --scip2 for scip2 fields" << std::endl;
+    std::cerr << "    --output-fields: output fields to stdout and exit; use --scip2 for scip2 fields" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "Output format:" << std::endl;
-    comma::csv::binary< hok::data_point > binary( "", "" );
-    std::cerr << "   format: " << binary.format().string() << " total size is " << binary.format().size() << " bytes" << std::endl;
-    std::vector< std::string > names = comma::csv::names< hok::data_point >();
-    std::cerr << "   fields: " << comma::join( names, ','  ) << " number of fields: " << names.size() << std::endl;
+    std::cerr << "Output" << std::endl;
+    std::cerr << "   fields: " << comma::join( comma::csv::names< snark::hokuyo::data_point >(), ','  ) << std::endl;
+    std::cerr << "   format: " << comma::csv::format::value< snark::hokuyo::data_point >() << std::endl;
+    
     std::cerr << std::endl;
     scip2_device::usage();
     std::cerr << std::endl;
-    exit( -1 );
+    exit( 0 );
 }
 
 
@@ -157,7 +156,7 @@ void process(T& device)
 
 void output_samples()
 {
-    comma::csv::output_stream< hok::data_point > output( std::cout, csv );
+    comma::csv::output_stream< snark::hokuyo::data_point > output( std::cout, csv );
     data_point pt;
     pt.x = 1; pt.y = 2; pt.z = 3;
     pt.intensity = 100;
@@ -191,7 +190,7 @@ int main( int ac, char** av )
         frames=options.value<int>("--frames",-1);
         omit_on_error = ! options.exists("--dont-omit-on-error");
         bool permissive = options.exists( "--permissive" );
-        std::vector< std::string > unnamed = options.unnamed( "--output-fields,--verbose,--reboot-on-error,--debug,--scip2,--output-samples,--dont-omit-on-errork,--permissive",
+        std::vector< std::string > unnamed = options.unnamed( "--output-fields,--verbose,-v,--flush,--reboot-on-error,--debug,--scip2,--output-samples,--dont-omit-on-errork,--permissive",
                                                               "--frames,--scan-break,--num-of-scans,--start-step,--end-step,--serial,--port,--laser,--fields,--format,--binary,-b,--baud-rate,--set-baud-rate");
         if(!unnamed.empty())
         {
@@ -222,7 +221,7 @@ int main( int ac, char** av )
         if( options.exists( "--format" ) ) 
         {
             if(serial) { std::cout << comma::csv::format::value< scip2_device::output_t >( csv.fields, false ) << std::endl; }
-            else { std::cout << comma::csv::format::value< hok::data_point >( csv.fields, false ) << std::endl; }
+            else { std::cout << comma::csv::format::value< snark::hokuyo::data_point >( csv.fields, false ) << std::endl; }
             return 0; 
             
         }
@@ -230,13 +229,13 @@ int main( int ac, char** av )
         {
             if(!csv.fields.empty()) {std::cout<<csv.fields<<std::endl;}
             else if(serial) { std::cout<<comma::join(comma::csv::names<scip2_device::output_t>(), ',')<<std::endl;}
-            else {std::cout<<comma::join(comma::csv::names<hok::data_point>(), ',')<<std::endl;}
+            else {std::cout<<comma::join(comma::csv::names<snark::hokuyo::data_point>(), ',')<<std::endl;}
             return 0;
         }
         if( options.exists( "--binary,-b" ) ) 
         {
             if(serial) { csv.format( comma::csv::format::value< scip2_device::output_t >( csv.fields, false ) ); }
-            else { csv.format( comma::csv::format::value< hok::data_point >( csv.fields, false ) ); }
+            else { csv.format( comma::csv::format::value< snark::hokuyo::data_point >( csv.fields, false ) ); }
         }
         
         if( options.exists( "--output-samples" ) ) { output_samples(); return 0; }
