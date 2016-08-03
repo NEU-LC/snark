@@ -52,15 +52,15 @@ struct format_t
 };
 
 //individual camera stream
-struct camera_stream_t
+struct stream
 {
     rs::device& device;
     rs::stream value;
     format_t format;
     boost::posix_time::ptime start_time;
-    camera_stream_t(rs::device& device, rs::stream id);
-    camera_stream_t(rs::device& device, const std::string& s);
-    ~camera_stream_t();
+    stream(rs::device& device, rs::stream id);
+    stream(rs::device& device, const std::string& s);
+    ~stream();
     void init(format_t format=format_t());
     void init(rs::preset preset);
     std::pair<boost::posix_time::ptime,cv::Mat> get_frame() const;
@@ -100,18 +100,6 @@ struct run_stream
     boost::posix_time::ptime start_time;
     run_stream(rs::device& d);
     ~run_stream();
-};
-
-struct camera
-{
-    rs::device& device;
-    camera(rs::device& device);
-};
-
-struct options
-{
-    std::map<std::string,rs::option> names;
-    options();
 };
 
 struct option

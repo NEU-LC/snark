@@ -35,6 +35,12 @@
 
 namespace snark { namespace realsense {
 
+struct options
+{
+    std::map<std::string,rs::option> names;
+    options();
+};
+
 options options;
     
 namespace impl {
@@ -140,37 +146,37 @@ std::string format_t::name_list()
     return "any,z16,disparity16,xyz32f,yuyv,rgb8,bgr8,rgba8,bgra8,y8,y16,raw10";
 }
 /*********************************************************/
-camera_stream_t::camera_stream_t(rs::device& device, const std::string& s) : device(device), value(impl::parse_stream(s)) { }
-camera_stream_t::camera_stream_t(rs::device& device, rs::stream id) : device(device), value(id) { }
-void camera_stream_t::init(format_t f)
+stream::stream(rs::device& device, const std::string& s) : device(device), value(impl::parse_stream(s)) { }
+stream::stream(rs::device& device, rs::stream id) : device(device), value(id) { }
+void stream::init(format_t f)
 {
     device.enable_stream(value,0,0,f,0);
     init_();
 }
-void camera_stream_t::init(rs::preset preset)
+void stream::init(rs::preset preset)
 {
     device.enable_stream(value,preset);
     init_();
 }
-camera_stream_t::~camera_stream_t()
+stream::~stream()
 {
     device.disable_stream(value);
 }
-void camera_stream_t::init_()
+void stream::init_()
 {
     format=device.get_stream_format(value);
     width=device.get_stream_width(value);
     height=device.get_stream_height(value);
     comma::verbose<<"stream_writer: stream "<<value<<" width "<<width<<" height "<<height<<" format "<<format<<std::endl;
 }
-std::pair<boost::posix_time::ptime,cv::Mat> camera_stream_t::get_frame() const
+std::pair<boost::posix_time::ptime,cv::Mat> stream::get_frame() const
 {
     boost::posix_time::ptime time=start_time+boost::posix_time::milliseconds(device.get_frame_timestamp(value));
     cv::Mat mat(height,width,format.cv_type());
     memcpy(mat.ptr(), device.get_frame_data(value), width*height*format.size());
     return std::pair<boost::posix_time::ptime,cv::Mat>(time,mat);
 }
-std::string camera_stream_t::name_list()
+std::string stream::name_list()
 {
     return "depth,color,infrared,infrared2";
 }

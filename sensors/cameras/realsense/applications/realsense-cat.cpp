@@ -39,6 +39,8 @@
 
 using namespace snark::realsense;
 comma::signal_flag signaled;
+std::vector<uchar> margin_color={255,255,255};
+bool discard_margin=false;
 
 void usage(bool detail)
 {
@@ -52,7 +54,7 @@ void usage(bool detail)
     std::cerr << "    --output-format: print output format and exit"<<std::endl;
     std::cerr << "    --output-fields: print output fields and exit"<<std::endl;
     std::cerr << "    --camera-stream,--stream=<stream>: output cv images of the specified camera stream, instead of points cloud csv" << std::endl;
-    std::cerr << "        <stream>: "<<camera_stream_t::name_list()<<std::endl;
+    std::cerr << "        <stream>: "<<stream::name_list()<<std::endl;
     std::cerr << "    --image-format=<format>: use the specified format for cv image, when not specified uses default format"<<std::endl;
     std::cerr << "        <format>: "<<format_t::name_list()<<std::endl;
     std::cerr << "    --usb-port,--port=<port>: use device on given usb port" << std::endl;
@@ -62,8 +64,8 @@ void usage(bool detail)
     std::cerr << "    --options,--camera-options=<options>: set camera options, <options> is a comma serparated list of <option_name>=<value>"<<std::endl;
     std::cerr << "    --list-options: list device options as csv and exit, fields are name,value,min,max,step"<<std::endl;
     std::cerr << "    --get-options=<options>: get device options and exit; <options>: comma separated option names to be retrieved"<<std::endl;
-    //device doesn't save options
-//     std::cerr << "    --set-options=<options>: set device options and exit; <options>: comma separated list of option name=value"<<std::endl;
+    std::cerr << "    --margin-color=<color>: color for points that are outside image camera; <color>: <r>,<g>,<b> default: 255,255,255"<<std::endl;
+    std::cerr << "    --discard-margin: don't include marginal points in the output"<<std::endl;
     std::cerr << std::endl;
     if(detail)
     {
@@ -85,16 +87,13 @@ void usage(bool detail)
     std::cerr << "    to view points cloud mapped with color:" << std::endl;
     std::cerr << "        " << comma::verbose.app_name() << " --binary t,ui,3d,3ub | csv-select --binary t,ui,3d,3ub --fields t,s,x,y,z \"z;less=4\" | view-points --binary t,ui,3d,3ub --fields t,scan,x,y,z,r,g,b" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "    to output points cloud without color map:"<< std::endl;
-    std::cerr << "        " << comma::verbose.app_name() << " --fields t,scan,x,y,z --binary t,ui,3d | csv-from-bin t,ui,3d | head"<< std::endl;
+    std::cerr << "    to view points cloud without color map:"<< std::endl;
+    std::cerr << "        " << comma::verbose.app_name() << " --binary t,ui,3d --fields t,scan,x,y,z | csv-select --binary t,ui,3d --fields t,s,x,y,z \"z;less=4\" | view-points --binary t,ui,3d --fields t,scan,x,y,z"<< std::endl;
     std::cerr << std::endl;
 }
 
 struct color_t
 {
-//     unsigned char red;
-//     unsigned char green;
-//     unsigned char blue;
     std::vector<unsigned char> buf;
     color_t() : buf(3) { }
     void set(const uchar* ptr)
@@ -139,14 +138,7 @@ struct list : public app_t<list>
 };
 
 // todo
-// - use render/colour
-//   - move traits from render/colour.h to render/traits.h
-// - --uncolored-color=<color>, default: white
-// - --discard-uncolored
 // - realsense.h
-//   - struct format_t: rename to struct format
-//   - struct camera_stream_t rename to stream
-//   - struct camera: remove?
 //   - use tbb::parallel_for to project colours
 
 namespace comma { namespace visiting {
@@ -187,7 +179,7 @@ template <> struct traits< points_t::output_t >
 
 void process(rs::device& device,const std::string& stream_name,format_t format)
 {
-    camera_stream_t stream(device,stream_name);
+    stream stream(device,stream_name);
     stream.init(format);
     run_stream runner(device);
     stream.start_time=runner.start_time;
@@ -201,7 +193,7 @@ void process(rs::device& device,const std::string& stream_name,format_t format)
     }
     comma::verbose<<"signaled!"<<std::endl;
 }
-uchar white[4]={255,255,255,255};
+
 void points_t::process(rs::device& device,const comma::csv::options& csv)
 {
     comma::verbose<<"points_t::process"<<std::endl;
@@ -211,7 +203,7 @@ void points_t::process(rs::device& device,const comma::csv::options& csv)
     if(!has_color)
         comma::verbose<<"not processing color"<<std::endl;
     //
-    camera_stream_t color(device,rs::stream::color);
+    stream color(device,rs::stream::color);
     color.init(rs::preset::best_quality);
     if(color.format.value!=rs::format::rgb8) { COMMA_THROW( comma::exception, "expected image format "<<rs::format::rgb8<<", got "<<color.format); }
     points_cloud points_cloud(device);
@@ -233,6 +225,7 @@ void points_t::process(rs::device& device,const comma::csv::options& csv)
         rs::float3 point;
         for(unsigned index=0;index<points_cloud.count();index++)
         {
+            bool discard=false;
             if(points_cloud.get(index,point))
             {
                 out.coordinates=Eigen::Vector3d(point.x,point.y,point.z);
@@ -243,14 +236,15 @@ void points_t::process(rs::device& device,const comma::csv::options& csv)
                     const int cy = (int)std::round(color_pixel.y);
                     if(cx < 0 || cy < 0 || cx >= mat.cols || cy >= mat.rows)
                     {
-                        out.color.set(white);
+                        if(discard_margin) {discard=true;}
+                        out.color.set(&margin_color[0]);
                     }
                     else
                     {
                         out.color.set(mat.ptr(cy,cx));
                     }
                 }
-                os.write(out);
+                if(!discard) {os.write(out);}
             }
         }
     }
@@ -324,7 +318,20 @@ struct options_t
         }
     }
 };
-
+void set_margin_color(boost::optional<std::string> s)
+{
+    if(s)
+    {
+        std::vector<std::string> v=comma::split(*s,",");
+        if(v.size()!=margin_color.size()) {COMMA_THROW(comma::exception,"--margin-color expected "<<margin_color.size()<<" numbers for color, got: "<<v.size());} 
+        for(std::size_t i=0;i<v.size();i++)
+        {
+            unsigned c=boost::lexical_cast<unsigned>(v[i]);
+            if(c>255) {COMMA_THROW(comma::exception,"--margin-color item, expected value between 0 and 255, got "<<c);}
+            margin_color[i]=uchar(c);
+        }
+    }
+}
 int main( int argc, char** argv )
 {
     comma::command_line_options options( argc, argv, usage );
@@ -354,7 +361,8 @@ int main( int argc, char** argv )
         format_t format(options.value<std::string>("--image-format",""));
         std::string port=options.value<std::string>("--usb-port,--port","");
         std::string serial=options.value<std::string>("--serial-number,--serial","");
-        
+        set_margin_color(options.optional<std::string>("--margin-color"));
+        discard_margin=options.exists("--discard-margin");
         //select device
         int count=context.get_device_count();
         comma::verbose<<"device count: "<<count<<std::endl;
