@@ -259,6 +259,7 @@ void run( const std::vector< boost::shared_ptr< snark::applications::frame > >& 
                     ++count;
                 }
                 std::cout.write( &buf[0], size );
+                if( csv.flush ) { std::cout.flush(); }
             }
             else
             {
@@ -335,6 +336,7 @@ int main( int ac, char** av )
             csv.full_xpath = true;
             comma::csv::input_stream< position_and_frame > is( std::cin, csv );
             comma::csv::options output_csv;
+            output_csv.flush = csv.flush;
             if( csv.binary() ) { output_csv.format( comma::csv::format::value< snark::applications::position >() ); }
             comma::csv::output_stream< snark::applications::position > os( std::cout, output_csv );
             comma::csv::tied< position_and_frame, snark::applications::position > tied( is, os );
