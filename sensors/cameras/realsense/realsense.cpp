@@ -84,11 +84,11 @@ rs::stream parse_stream(const std::string& s)
 
 }   //namespace impl {
 
-format_t::format_t():value(rs::format::any) { }
-format_t::format_t(const std::string& s):value(impl::parse_format(s)) { }
-format_t::format_t(rs::format f):value(f) { }
-format_t::operator rs::format() { return value; }
-unsigned format_t::cv_type() const
+format::format():value(rs::format::any) { }
+format::format(const std::string& s):value(impl::parse_format(s)) { }
+format::format(rs::format f):value(f) { }
+format::operator rs::format() { return value; }
+unsigned format::cv_type() const
 {
     switch(value)
     {
@@ -112,7 +112,7 @@ unsigned format_t::cv_type() const
         { COMMA_THROW( comma::exception, "format not supported: "<<value); }
     }
 }
-size_t format_t::size() const
+size_t format::size() const
 {
     switch(value)
     {
@@ -141,14 +141,14 @@ size_t format_t::size() const
         { COMMA_THROW(comma::exception, "unknown format size: "<<value); }
     }
 }
-std::string format_t::name_list()
+std::string format::name_list()
 {
     return "any,z16,disparity16,xyz32f,yuyv,rgb8,bgr8,rgba8,bgra8,y8,y16,raw10";
 }
 /*********************************************************/
 stream::stream(rs::device& device, const std::string& s) : device(device), value(impl::parse_stream(s)) { }
 stream::stream(rs::device& device, rs::stream id) : device(device), value(id) { }
-void stream::init(format_t f)
+void stream::init(realsense::format f)
 {
     device.enable_stream(value,0,0,f,0);
     init_();
@@ -171,7 +171,8 @@ void stream::init_()
 }
 std::pair<boost::posix_time::ptime,cv::Mat> stream::get_frame() const
 {
-    boost::posix_time::ptime time=start_time+boost::posix_time::milliseconds(device.get_frame_timestamp(value));
+    //boost::posix_time::ptime time=start_time+boost::posix_time::milliseconds(device.get_frame_timestamp(value));
+    boost::posix_time::ptime time=boost::posix_time::microsec_clock::universal_time();
     cv::Mat mat(height,width,format.cv_type());
     memcpy(mat.ptr(), device.get_frame_data(value), width*height*format.size());
     return std::pair<boost::posix_time::ptime,cv::Mat>(time,mat);
@@ -199,11 +200,13 @@ void points_cloud::init(rs::stream tex_stream)
     
     depth.resize(depth_intrin.width*depth_intrin.height);
 }
-void points_cloud::scan()
+unsigned points_cloud::scan()
 {
+    unsigned counter=device.get_frame_timestamp(rs::stream::depth);
     const void* data=device.get_frame_data(rs::stream::depth);
     if(!data) { COMMA_THROW(comma::exception, "depth data is null" ); }
     memcpy(&depth[0],data,depth.size()*sizeof(depth[0]));
+    return counter;
 }
 /*********************************************************/
 run_stream::run_stream(rs::device& d):device(d) 

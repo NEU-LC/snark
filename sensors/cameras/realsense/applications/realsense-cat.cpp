@@ -56,7 +56,7 @@ void usage(bool detail)
     std::cerr << "    --camera-stream,--stream=<stream>: output cv images of the specified camera stream, instead of points cloud csv" << std::endl;
     std::cerr << "        <stream>: "<<stream::name_list()<<std::endl;
     std::cerr << "    --image-format=<format>: use the specified format for cv image, when not specified uses default format"<<std::endl;
-    std::cerr << "        <format>: "<<format_t::name_list()<<std::endl;
+    std::cerr << "        <format>: "<<format::name_list()<<std::endl;
     std::cerr << "    --usb-port,--port=<port>: use device on given usb port" << std::endl;
     std::cerr << "    --serial-number,--serial=<number>: use device with given serial number" << std::endl;
     std::cerr << "    --list-devices,--list: output available devices and exit" << std::endl;
@@ -81,14 +81,14 @@ void usage(bool detail)
     std::cerr << "example" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    to view camera streams:" << std::endl;
-    std::cerr << "        " << comma::verbose.app_name() << "  --stream=color --image-format=bgr8 -v | cv-cat \"resize=2;view;null\" " << std::endl;
-    std::cerr << "        " << comma::verbose.app_name() << "  --stream=depth -v | cv-cat \"brightness=10;resize=2;view;null\" " << std::endl;
+    std::cerr << "        " << comma::verbose.app_name() << "  --stream=color --image-format=bgr8 | cv-cat \"resize=2;view;null\" " << std::endl;
+    std::cerr << "        " << comma::verbose.app_name() << "  --stream=depth | cv-cat \"brightness=10;resize=2;view;null\" " << std::endl;
     std::cerr << std::endl;
     std::cerr << "    to view points cloud mapped with color:" << std::endl;
-    std::cerr << "        " << comma::verbose.app_name() << " --binary t,ui,3d,3ub | csv-select --binary t,ui,3d,3ub --fields t,s,x,y,z \"z;less=4\" | view-points --binary t,ui,3d,3ub --fields t,scan,x,y,z,r,g,b" << std::endl;
+    std::cerr << "        " << comma::verbose.app_name() << " --binary t,2ui,3d,3ub | csv-select --binary t,2ui,3d,3ub --fields t,,,x,y,z \"z;less=4\" | view-points --binary t,2ui,3d,3ub --fields t,,block,x,y,z,r,g,b" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    to view points cloud without color map:"<< std::endl;
-    std::cerr << "        " << comma::verbose.app_name() << " --binary t,ui,3d --fields t,scan,x,y,z | csv-select --binary t,ui,3d --fields t,s,x,y,z \"z;less=4\" | view-points --binary t,ui,3d --fields t,scan,x,y,z"<< std::endl;
+    std::cerr << "        " << comma::verbose.app_name() << " --binary t,ui,3d --fields t,block,x,y,z | csv-select --binary t,ui,3d --fields t,b,x,y,z \"z;less=4\" | view-points --binary t,ui,3d --fields t,block,x,y,z"<< std::endl;
     std::cerr << std::endl;
 }
 
@@ -115,7 +115,8 @@ struct points_t : public app_t<points_t>
     struct output_t
     {
         boost::posix_time::ptime t;
-        unsigned scan;
+        unsigned counter;
+        unsigned block;
         Eigen::Vector3d coordinates;
         // todo: any more point attributes available?
         //cv::Mat?
@@ -136,10 +137,6 @@ struct list : public app_t<list>
     };
     static void process(rs::context& context, const comma::csv::options& csv);
 };
-
-// todo
-// - realsense.h
-//   - use tbb::parallel_for to project colours
 
 namespace comma { namespace visiting {
     
@@ -169,7 +166,8 @@ template <> struct traits< points_t::output_t >
     template< typename K, typename V > static void visit( const K& k, const points_t::output_t& p, V& v )
     {
         v.apply( "t", p.t );
-        v.apply( "scan", p.scan );
+        v.apply( "counter", p.counter );
+        v.apply( "block", p.block );
         v.apply( "coordinates", p.coordinates );
         v.apply( "color", p.color );
     }
@@ -177,7 +175,7 @@ template <> struct traits< points_t::output_t >
 
 } } // namespace comma { namespace visiting {
 
-void process(rs::device& device,const std::string& stream_name,format_t format)
+void process(rs::device& device,const std::string& stream_name,format format)
 {
     stream stream(device,stream_name);
     stream.init(format);
@@ -211,16 +209,16 @@ void points_t::process(rs::device& device,const comma::csv::options& csv)
     run_stream runner(device);
     color.start_time=runner.start_time;
     comma::verbose<<"points_t::process running "<<device.is_streaming()<< " start_time "<< boost::posix_time::to_iso_string(runner.start_time) <<std::endl;
-    for(unsigned scan=0;!signaled;scan++)
+    for(unsigned block=0;!signaled;block++)
     {
         if(!device.is_streaming()) { COMMA_THROW(comma::exception, "device not streaming" ); }
         device.wait_for_frames();
         //get points
         output_t out;
         auto pair=color.get_frame();
-        points_cloud.scan();
-        out.t=pair.first;
-        out.scan=scan;
+        out.t=boost::posix_time::microsec_clock::universal_time();
+        out.counter=points_cloud.scan();
+        out.block=block;
         cv::Mat& mat=pair.second;
         rs::float3 point;
         for(unsigned index=0;index<points_cloud.count();index++)
@@ -358,7 +356,7 @@ int main( int argc, char** argv )
         if(do_list) { list::process(context,csv); return 0; }
         //
         std::string stream=options.value<std::string>("--camera-stream,--stream","");
-        format_t format(options.value<std::string>("--image-format",""));
+        format format(options.value<std::string>("--image-format",""));
         std::string port=options.value<std::string>("--usb-port,--port","");
         std::string serial=options.value<std::string>("--serial-number,--serial","");
         set_margin_color(options.optional<std::string>("--margin-color"));

@@ -38,12 +38,12 @@
 namespace snark { namespace realsense {
 
 //pixel format helper
-struct format_t
+struct format
 {
     rs::format value;
-    format_t();
-    format_t(const std::string& s);
-    format_t(rs::format f);
+    format();
+    format(const std::string& s);
+    format(rs::format f);
     unsigned cv_type() const; //e.g. CV_8UC3
     size_t size() const;  //size in bytes
     operator rs::format();
@@ -56,12 +56,12 @@ struct stream
 {
     rs::device& device;
     rs::stream value;
-    format_t format;
+    realsense::format format;
     boost::posix_time::ptime start_time;
     stream(rs::device& device, rs::stream id);
     stream(rs::device& device, const std::string& s);
     ~stream();
-    void init(format_t format=format_t());
+    void init(realsense::format format=realsense::format());
     void init(rs::preset preset);
     std::pair<boost::posix_time::ptime,cv::Mat> get_frame() const;
     //csv name of streams
@@ -78,7 +78,8 @@ struct points_cloud
     points_cloud(rs::device& device);
     ~points_cloud();
     void init(rs::stream tex_stream=rs::stream::color);
-    void scan();
+    //return millisecond counter of retrieved frame
+    unsigned scan();
     bool get(unsigned index,rs::float3& point) const;
     //map point to texture coordinate
     rs::float2 project(const rs::float3& point) const;
@@ -128,7 +129,7 @@ struct option_range : public option
     virtual void read(rs::device& device);
 };
 
-inline std::ostream& operator<<(std::ostream& o,format_t format) { return o << format.value; }
+inline std::ostream& operator<<(std::ostream& o,format format) { return o << format.value; }
 
 /*********************************************************/
 // defined inline for performance
