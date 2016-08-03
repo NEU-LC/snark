@@ -32,16 +32,14 @@
 #include "message.h"
 #include "output.h"
 
-namespace hok = snark::hokuyo;
-
 namespace comma { namespace visiting {
 
 /// Does not work when template is partialially specialised with < int N >
-template <  > 
+template <> 
 struct traits< boost::array< typename comma::packed::scip_3chars_t, 11 > >
 {
 
-    template< typename K, typename V > static void visit( const K& k, const boost::array< comma::packed::scip_3chars_t, 11 >& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, const boost::array< comma::packed::scip_3chars_t, 11 >& t, V& v ) // todo: most certainly reimplement properly
     {
         for( std::size_t i=0; i<11; ++i )
         {
@@ -50,9 +48,9 @@ struct traits< boost::array< typename comma::packed::scip_3chars_t, 11 > >
     }
 };
 
-template < > struct traits< hok::data_point >
+template <> struct traits< snark::hokuyo::data_point >
 {
-    template< typename K, typename V > static void visit( const K& k, hok::data_point& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, snark::hokuyo::data_point& t, V& v )
     {
         v.apply( "timestamp", t.timestamp );
         v.apply( "x", t.x );
@@ -64,7 +62,7 @@ template < > struct traits< hok::data_point >
         v.apply( "intensity", t.intensity );
     }
     
-    template< typename K, typename V > static void visit( const K& k, const hok::data_point& t, V& v )
+    template< typename K, typename V > static void visit( const K& k, const snark::hokuyo::data_point& t, V& v )
     {
         v.apply( "timestamp", t.timestamp );
         v.apply( "x", t.x );
