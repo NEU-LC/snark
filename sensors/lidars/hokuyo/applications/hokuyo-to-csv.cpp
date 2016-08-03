@@ -27,7 +27,8 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
+#include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/thread/thread.hpp> 
 #include <comma/application/command_line_options.h>
 #include <comma/application/signal_flag.h>
 #include <comma/base/exception.h>
@@ -151,7 +152,7 @@ void process(T& device)
     comma::csv::output_stream< typename T::output_t > output_stream( std::cout, csv );  
     while( one_scan( device, output_stream ) ) 
     { 
-        usleep( scan_break ); 
+        boost::this_thread::sleep_for( boost::posix_time::microseconds( scan_break) );
     }
 }
 
@@ -165,7 +166,7 @@ void output_samples()
     {
         pt.timestamp = boost::posix_time::microsec_clock::universal_time();
         output.write( pt );
-        usleep( 0.1 * 1000000u );
+        boost::this_thread::sleep_for( boost::posix_time::milliseconds(0.1 * 1000u) );
     }
 }
 
