@@ -33,14 +33,9 @@
 #include <opencv2/core/core.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <Eigen/Core>
+#include <map>
 
 namespace snark { namespace realsense {
-
-struct camera
-{
-    rs::device& device;
-    camera(rs::device& device);
-};
 
 //pixel format helper
 struct format_t
@@ -105,6 +100,44 @@ struct run_stream
     boost::posix_time::ptime start_time;
     run_stream(rs::device& d);
     ~run_stream();
+};
+
+struct camera
+{
+    rs::device& device;
+    camera(rs::device& device);
+};
+
+struct options
+{
+    std::map<std::string,rs::option> names;
+    options();
+};
+
+struct option
+{
+    rs::option key;
+    double value;
+    option();
+    option(const std::string& name);
+    option(const rs::option& option);
+    void name(const std::string& name);
+    std::string name() const;
+    //read option from device
+    virtual void read(rs::device& device);
+    //write option to device
+    void write(rs::device& device);
+    static const std::map<std::string,rs::option>& get_names();
+};
+
+struct option_range : public option
+{
+    option_range() { }
+    option_range(const rs::option& o);
+    double min;
+    double max;
+    double step;
+    virtual void read(rs::device& device);
 };
 
 inline std::ostream& operator<<(std::ostream& o,format_t format) { return o << format.value; }

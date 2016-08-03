@@ -31,9 +31,12 @@
 #include <comma/application/verbose.h>
 #include <comma/base/exception.h>
 #include <boost/lexical_cast.hpp>
+#include <sstream>
 
 namespace snark { namespace realsense {
 
+options options;
+    
 namespace impl {
 rs::format parse_format(const std::string& s)
 {
@@ -203,5 +206,106 @@ run_stream::run_stream(rs::device& d):device(d)
     start_time=boost::posix_time::microsec_clock::universal_time();
 }
 run_stream::~run_stream() { device.stop(); }
+/*********************************************************/
+options::options()
+{
+    names["color_backlight_compensation"]=rs::option::color_backlight_compensation;
+    names["color_brightness"]=rs::option::color_brightness;
+    names["color_contrast"]=rs::option::color_contrast;
+    names["color_exposure"]=rs::option::color_exposure;
+    names["color_gain"]=rs::option::color_gain;
+    names["color_gamma"]=rs::option::color_gamma;
+    names["color_hue"]=rs::option::color_hue;
+    names["color_saturation"]=rs::option::color_saturation;
+    names["color_sharpness"]=rs::option::color_sharpness;
+    names["color_white_balance"]=rs::option::color_white_balance;
+    names["color_enable_auto_exposure"]=rs::option::color_enable_auto_exposure;
+    names["color_enable_auto_white_balance"]=rs::option::color_enable_auto_white_balance;
+    names["f200_laser_power"]=rs::option::f200_laser_power;
+    names["f200_accuracy"]=rs::option::f200_accuracy;
+    names["f200_motion_range"]=rs::option::f200_motion_range;
+    names["f200_filter_option"]=rs::option::f200_filter_option;
+    names["f200_confidence_threshold"]=rs::option::f200_confidence_threshold;
+    names["sr300_dynamic_fps"]=rs::option::sr300_dynamic_fps;
+    names["sr300_auto_range_enable_motion_versus_range"]=rs::option::sr300_auto_range_enable_motion_versus_range;
+    names["sr300_auto_range_enable_laser"]=rs::option::sr300_auto_range_enable_laser;
+    names["sr300_auto_range_min_motion_versus_range"]=rs::option::sr300_auto_range_min_motion_versus_range;
+    names["sr300_auto_range_max_motion_versus_range"]=rs::option::sr300_auto_range_max_motion_versus_range;
+    names["sr300_auto_range_start_motion_versus_range"]=rs::option::sr300_auto_range_start_motion_versus_range;
+    names["sr300_auto_range_min_laser"]=rs::option::sr300_auto_range_min_laser;
+    names["sr300_auto_range_max_laser"]=rs::option::sr300_auto_range_max_laser;
+    names["sr300_auto_range_start_laser"]=rs::option::sr300_auto_range_start_laser;
+    names["sr300_auto_range_upper_threshold"]=rs::option::sr300_auto_range_upper_threshold;
+    names["sr300_auto_range_lower_threshold"]=rs::option::sr300_auto_range_lower_threshold;
+    names["sr300_wakeup_dev_phase1_period"]=rs::option::sr300_wakeup_dev_phase1_period;
+    names["sr300_wakeup_dev_phase1_fps"]=rs::option::sr300_wakeup_dev_phase1_fps;
+    names["sr300_wakeup_dev_phase2_period"]=rs::option::sr300_wakeup_dev_phase2_period;
+    names["sr300_wakeup_dev_phase2_fps"]=rs::option::sr300_wakeup_dev_phase2_fps;
+    names["sr300_wakeup_dev_reset"]=rs::option::sr300_wakeup_dev_reset;
+    names["sr300_wake_on_usb_reason"]=rs::option::sr300_wake_on_usb_reason;
+    names["sr300_wake_on_usb_confidence"]=rs::option::sr300_wake_on_usb_confidence;
+    names["r200_lr_auto_exposure_enabled"]=rs::option::r200_lr_auto_exposure_enabled;
+    names["r200_lr_gain"]=rs::option::r200_lr_gain;
+    names["r200_lr_exposure"]=rs::option::r200_lr_exposure;
+    names["r200_emitter_enabled"]=rs::option::r200_emitter_enabled;
+    names["r200_depth_units"]=rs::option::r200_depth_units;
+    names["r200_depth_clamp_min"]=rs::option::r200_depth_clamp_min;
+    names["r200_depth_clamp_max"]=rs::option::r200_depth_clamp_max;
+    names["r200_disparity_multiplier"]=rs::option::r200_disparity_multiplier;
+    names["r200_disparity_shift"]=rs::option::r200_disparity_shift;
+    names["r200_auto_exposure_mean_intensity_set_point"]=rs::option::r200_auto_exposure_mean_intensity_set_point;
+    names["r200_auto_exposure_bright_ratio_set_point"]=rs::option::r200_auto_exposure_bright_ratio_set_point;
+    names["r200_auto_exposure_kp_gain"]=rs::option::r200_auto_exposure_kp_gain;
+    names["r200_auto_exposure_kp_exposure"]=rs::option::r200_auto_exposure_kp_exposure;
+    names["r200_auto_exposure_kp_dark_threshold"]=rs::option::r200_auto_exposure_kp_dark_threshold;
+    names["r200_auto_exposure_top_edge"]=rs::option::r200_auto_exposure_top_edge;
+    names["r200_auto_exposure_bottom_edge"]=rs::option::r200_auto_exposure_bottom_edge;
+    names["r200_auto_exposure_left_edge"]=rs::option::r200_auto_exposure_left_edge;
+    names["r200_auto_exposure_right_edge"]=rs::option::r200_auto_exposure_right_edge;
+    names["r200_depth_control_estimate_median_decrement"]=rs::option::r200_depth_control_estimate_median_decrement;
+    names["r200_depth_control_estimate_median_increment"]=rs::option::r200_depth_control_estimate_median_increment;
+    names["r200_depth_control_median_threshold"]=rs::option::r200_depth_control_median_threshold;
+    names["r200_depth_control_score_minimum_threshold"]=rs::option::r200_depth_control_score_minimum_threshold;
+    names["r200_depth_control_score_maximum_threshold"]=rs::option::r200_depth_control_score_maximum_threshold;
+    names["r200_depth_control_texture_count_threshold"]=rs::option::r200_depth_control_texture_count_threshold;
+    names["r200_depth_control_texture_difference_threshold"]=rs::option::r200_depth_control_texture_difference_threshold;
+    names["r200_depth_control_second_peak_threshold"]=rs::option::r200_depth_control_second_peak_threshold;
+    names["r200_depth_control_neighbor_threshold"]=rs::option::r200_depth_control_neighbor_threshold;
+    names["r200_depth_control_lr_threshold"]=rs::option::r200_depth_control_lr_threshold;
+
+}
+const std::map<std::string,rs::option>& option::get_names()
+{
+    return options.names;
+}
+option::option() { }
+option::option(const std::string& s) { name(s); }
+option::option(const rs::option& o) : key(o) { }
+void option::name(const std::string& name)
+{
+    auto it=options.names.find(name);
+    if(it==options.names.end()) { COMMA_THROW( comma::exception, "option name not found: "<<name); }
+    key=it->second;
+}
+std::string option::name() const
+{
+    std::ostringstream out;
+    out<<key;
+    return boost::algorithm::to_lower_copy(out.str());
+}
+void option::read(rs::device& device)
+{
+    value=device.get_option(key);
+}
+void option::write(rs::device& device)
+{
+    device.set_option(key,value);
+}
+option_range::option_range(const rs::option& o) : option(o) { }
+void option_range::read(rs::device& device)
+{
+    option::read(device);
+    device.get_option_range(key,min,max,step);
+}
 
 } } //namespace snark { namespace realsense {
