@@ -149,12 +149,8 @@ void process(T& device)
     // Let put the laser into scanning mode
     turn_laser_on laser_on(*ios, (laser_device&)device, reboot_on_error);
     comma::csv::output_stream< typename T::output_t > output_stream( std::cout, csv );  
-    while( one_scan( device, output_stream ) ) 
-    { 
-        // Boost 1.54 has this
-        //boost::this_thread::sleep_for( boost::posix_time::microseconds( scan_break) );
-        // This call will be deprecated
-        boost::this_thread::sleep( boost::posix_time::microseconds( scan_break) );
+    while( one_scan( device, output_stream ) ) { 
+        boost::this_thread::sleep_for( boost::chrono::microseconds(scan_break) );
     }
 }
 
@@ -168,9 +164,7 @@ void output_samples()
     {
         pt.timestamp = boost::posix_time::microsec_clock::universal_time();
         output.write( pt );
-        // boost::this_thread::sleep_for( boost::posix_time::milliseconds(0.1 * 1000u) );
-        // This call will be deprecated
-        boost::this_thread::sleep( boost::posix_time::milliseconds(0.1 * 1000u) );
+        boost::this_thread::sleep_for( boost::chrono::milliseconds(100) );
     }
 }
 
