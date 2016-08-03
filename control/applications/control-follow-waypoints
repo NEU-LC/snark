@@ -204,7 +204,7 @@ while (( ! is_shutdown )); do
     while ! test -S $waypoints_socket; do sleep 0.1; done
     (( client++ ))
     echo "$scriptname: client $client has connected" >&2
-    daemonize "socat -u unix:$waypoints_socket - | $control_pipeline | tee ${commands_log}.$client" 2>${control_log}.$client & pipeline_pid=$!
+    daemonize "socat -u unix:$waypoints_socket - | $control_pipeline" & pipeline_pid=$!
     echo "$scriptname: control pipeline for client $client has started (pid=$pipeline_pid)" >&2
     wait $pipeline_pid
     rm -f $waypoints_socket
