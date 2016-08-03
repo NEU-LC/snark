@@ -58,6 +58,7 @@ static void usage( bool verbose )
     std::cerr << "    --permissive: parse even if checksum invalid, e.g. for debugging" << std::endl;
     std::cerr << "    --output-all,--all: if present, output records on every gps update," << std::endl;
     std::cerr << "                        even if values of output fields have not changed" << std::endl;
+    std::cerr << "    --output-on-gga-only: output on every GGA message only" << std::endl;
     std::cerr << "    --output-fields: print output fields and exit" << std::endl;
     std::cerr << "    --output-format: print output format and exit" << std::endl;
     std::cerr << "    --verbose,-v: more output to stderr" << std::endl;
@@ -238,6 +239,7 @@ int main( int ac, char** av )
         if( options.exists( "--output-fields" ) ) { std::cout << comma::join( comma::csv::names< output::type >( false ), ',' ) << std::endl; return 0; }
         if( options.exists( "--output-format" ) ) { std::cout << comma::csv::format::value< output::type >( options.value< std::string >( "--fields,-f", "" ), false ) << std::endl; return 0; }
         bool output_all = options.exists( "--output-all,--all" );
+        bool output_on_gga_only = options.exists( "--output-on-gga-only" );
         bool verbose = options.exists( "--verbose,-v" );
         bool permissive = options.exists( "--permissive" );
         zda_only=!options.exists("--no-zda");
@@ -285,7 +287,9 @@ int main( int ac, char** av )
             else { if( verbose ) { std::cerr << "nmea-to-csv: discarded unimplemented string: \"" << line << "\"" << std::endl; } continue; }
             if(valid)
             {
-                if( output_all ) { os.write( output_ ); } else { output( fieldwise, output_, os ); }
+                if( output_on_gga_only ) { if( s.message_type() == nmea::messages::gga::type ) { os.write( output_ ); } }
+                else if( output_all ) { os.write( output_ ); }
+                else { output( fieldwise, output_, os ); }
             }
         }
         return 0;
