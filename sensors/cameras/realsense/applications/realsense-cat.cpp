@@ -33,6 +33,7 @@
 #include <comma/base/exception.h>
 #include <comma/application/signal_flag.h>
 #include <comma/csv/stream.h>
+#include <comma/io/stream.h>
 #include "../../../../imaging/cv_mat/serialization.h"
 #include "../realsense.h"
 #include "../../../../visiting/eigen.h"
@@ -41,6 +42,31 @@ using namespace snark::realsense;
 comma::signal_flag signaled;
 std::vector<uchar> margin_color={255,255,255};
 bool discard_margin=false;
+
+struct list
+{
+    struct output_t
+    {
+        std::string name;
+        std::string usb_port;
+        std::string serial_number;
+    };
+    static void process(rs::context& context, const comma::csv::options& csv);
+    static std::string field_names();
+};
+
+struct device_t
+{
+    rs::context& context;
+    rs::device* device;
+    std::string output;
+    std::string device_options;
+    device_t(rs::context& context);
+    device_t(rs::context& context,const std::string& s);
+    void parse_option(const std::string& s);
+    rs::device* find_device(const std::string& name, const std::string& value, std::function<bool (rs::device*,const std::string& s)> fn);
+    static void help(std::ostream& out, const std::string& indent="    ");
+};
 
 void usage(bool detail)
 {
@@ -57,13 +83,16 @@ void usage(bool detail)
     std::cerr << "        <stream>: "<<stream::name_list()<<std::endl;
     std::cerr << "    --image-format=<format>: use the specified format for cv image, when not specified uses default format"<<std::endl;
     std::cerr << "        <format>: "<<format::name_list()<<std::endl;
-    std::cerr << "    --usb-port,--port=<port>: use device on given usb port" << std::endl;
-    std::cerr << "    --serial-number,--serial=<number>: use device with given serial number" << std::endl;
-    std::cerr << "    --list-devices,--list: output available devices and exit" << std::endl;
+    std::cerr << "    --device=<param>: specify device and its parameters, multiple --device=<param> can be specified"<<std::endl;
+    std::cerr << "        <param>:"<<std::endl;
+    device_t::help(std::cerr,"            ");
+    std::cerr << "    --list,--list-devices: output available devices and exit, csv fields: "<<list::field_names()<< std::endl;
     std::cerr << "    --verbose,-v: show detailed messages" << std::endl;
-    std::cerr << "    --options,--camera-options=<options>: set camera options, <options> is a comma serparated list of <option_name>=<value>"<<std::endl;
-    std::cerr << "    --list-options: list device options as csv and exit, fields are name,value,min,max,step"<<std::endl;
+    std::cerr << "    --options,--camera-options=<options>: set options for all devices, <options> is a comma serparated list of <option_name>=<value>"<<std::endl;
+    std::cerr << "    --list-options: list device options and exit"<<std::endl;
+    std::cerr << "        output fields: device_index,name,value,min,max,step"<<std::endl;
     std::cerr << "    --get-options=<options>: get device options and exit; <options>: comma separated option names to be retrieved"<<std::endl;
+    std::cerr << "        output fields: device_index,name,value"<<std::endl;
     std::cerr << "    --margin-color=<color>: color for points that are outside image camera; <color>: <r>,<g>,<b> default: 255,255,255"<<std::endl;
     std::cerr << "    --discard-margin: don't include marginal points in the output"<<std::endl;
     std::cerr << std::endl;
@@ -85,7 +114,7 @@ void usage(bool detail)
     std::cerr << "        " << comma::verbose.app_name() << "  --stream=depth | cv-cat \"brightness=10;resize=2;view;null\" " << std::endl;
     std::cerr << std::endl;
     std::cerr << "    to view points cloud mapped with color:" << std::endl;
-    std::cerr << "        " << comma::verbose.app_name() << " --binary t,2ui,3d,3ub | csv-select --binary t,2ui,3d,3ub --fields t,,,x,y,z \"z;less=4\" | view-points --binary t,2ui,3d,3ub --fields t,,block,x,y,z,r,g,b" << std::endl;
+    std::cerr << "        " << comma::verbose.app_name() << " --binary t,ui,3d,3ub --fields t,block,x,y,z,r,g,b | csv-select --binary t,ui,3d,3ub --fields t,,x,y,z \"z;less=4\" | view-points --binary t,ui,3d,3ub --fields t,block,x,y,z,r,g,b" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    to view points cloud without color map:"<< std::endl;
     std::cerr << "        " << comma::verbose.app_name() << " --binary t,ui,3d --fields t,block,x,y,z | csv-select --binary t,ui,3d --fields t,b,x,y,z \"z;less=4\" | view-points --binary t,ui,3d --fields t,block,x,y,z"<< std::endl;
@@ -103,14 +132,7 @@ struct color_t
     size_t size() const { return buf.size()*sizeof(unsigned char); }
 };
 
-template<typename T>
-struct app_t
-{
-    static void output_format();
-    static void output_fields();
-};
-
-struct points_t : public app_t<points_t>
+struct points_t
 {
     struct output_t
     {
@@ -122,20 +144,20 @@ struct points_t : public app_t<points_t>
         //cv::Mat?
         color_t color;
     };
-
+    
+    rs::device& device;
+    bool has_color;
+    stream color;
+    snark::realsense::points_cloud points_cloud;
+    comma::io::ostream out_stream;
+    comma::csv::output_stream<output_t> os;
+    
+    points_t(device_t& device,bool has_color,const comma::csv::options& csv);
+    void scan(unsigned block);
     //process points cloud
-    static void process(rs::device& device,const comma::csv::options& csv);
-};
-
-struct list : public app_t<list>
-{
-    struct output_t
-    {
-        std::string name;
-        std::string usb_port;
-        std::string serial_number;
-    };
-    static void process(rs::context& context, const comma::csv::options& csv);
+    static void process(std::vector<device_t>& devices,const comma::csv::options& csv);
+    static void output_format();
+    static void output_fields();
 };
 
 namespace comma { namespace visiting {
@@ -175,92 +197,125 @@ template <> struct traits< points_t::output_t >
 
 } } // namespace comma { namespace visiting {
 
-void process(rs::device& device,const std::string& stream_name,format format)
+struct camera_stream
 {
-    stream stream(device,stream_name);
-    stream.init(format);
-    run_stream runner(device);
-    stream.start_time=runner.start_time;
-    snark::cv_mat::serialization::options opt;
-    snark::cv_mat::serialization serializer(opt);
-    while(!signaled)
+    static void process(rs::device& device,const std::string& stream_name,format format)
     {
-        if(!device.is_streaming()) { COMMA_THROW(comma::exception, "device not streaming" ); }
-        device.wait_for_frames();
-        serializer.write(std::cout,stream.get_frame());
+        stream stream(device,stream_name);
+        stream.init(format);
+        run_stream runner(device);
+        stream.start_time=runner.start_time;
+        snark::cv_mat::serialization::options opt;
+        snark::cv_mat::serialization serializer(opt);
+        while(!signaled)
+        {
+            if(!device.is_streaming()) { COMMA_THROW(comma::exception, "device not streaming" ); }
+            device.wait_for_frames();
+            serializer.write(std::cout,stream.get_frame());
+        }
+        comma::verbose<<"signaled!"<<std::endl;
     }
-    comma::verbose<<"signaled!"<<std::endl;
-}
+};
 
-void points_t::process(rs::device& device,const comma::csv::options& csv)
+void points_t::process(std::vector<device_t>& devices,const comma::csv::options& csv)
 {
     comma::verbose<<"points_t::process"<<std::endl;
-    comma::csv::output_stream<output_t> os(std::cout, csv);
     bool has_color=csv.fields.empty() || csv.has_some_of_fields("r,g,b");
     comma::verbose<<"csv.fields "<<csv.fields<<std::endl;
     if(!has_color)
-        comma::verbose<<"not processing color"<<std::endl;
+    { comma::verbose<<"not processing color"<<std::endl; }
     //
-    stream color(device,rs::stream::color);
-    color.init(rs::preset::best_quality);
-    if(color.format.value!=rs::format::rgb8) { COMMA_THROW( comma::exception, "expected image format "<<rs::format::rgb8<<", got "<<color.format); }
-    points_cloud points_cloud(device);
-    points_cloud.init(rs::stream::color);
-    run_stream runner(device);
-    color.start_time=runner.start_time;
-    comma::verbose<<"points_t::process running "<<device.is_streaming()<< " start_time "<< boost::posix_time::to_iso_string(runner.start_time) <<std::endl;
-    for(unsigned block=0;!signaled;block++)
+    std::vector<std::unique_ptr<points_t>> all;
+    for(unsigned i=0;i<devices.size();i++)
     {
-        if(!device.is_streaming()) { COMMA_THROW(comma::exception, "device not streaming" ); }
-        device.wait_for_frames();
-        //get points
-        output_t out;
-        auto pair=color.get_frame();
-        out.t=boost::posix_time::microsec_clock::universal_time();
-        out.counter=points_cloud.scan();
-        out.block=block;
-        cv::Mat& mat=pair.second;
-        rs::float3 point;
-        for(unsigned index=0;index<points_cloud.count();index++)
+        all.push_back(std::unique_ptr<points_t>(new points_t(devices[i],has_color,csv)));
+    }
+    //comma::verbose<<"points_t::process running "<<device.is_streaming()<< " start_time "<< boost::posix_time::to_iso_string(runner.start_time) <<std::endl;
+    if(devices.size()==1)
+    {
+        run_stream runner(*devices[0].device);
+        for(unsigned block=0;!signaled;block++)
         {
-            bool discard=false;
-            if(points_cloud.get(index,point))
+            all[0]->scan(block);
+        }
+    }
+    else
+    {
+        unsigned block=0;
+        while(!signaled)
+        {
+            for(unsigned i=0;i<all.size()&&!signaled;i++)
             {
-                out.coordinates=Eigen::Vector3d(point.x,point.y,point.z);
-                if(has_color)
-                {
-                    auto color_pixel=points_cloud.project(point);
-                    const int cx = (int)std::round(color_pixel.x);
-                    const int cy = (int)std::round(color_pixel.y);
-                    if(cx < 0 || cy < 0 || cx >= mat.cols || cy >= mat.rows)
-                    {
-                        if(discard_margin) {discard=true;}
-                        out.color.set(&margin_color[0]);
-                    }
-                    else
-                    {
-                        out.color.set(mat.ptr(cy,cx));
-                    }
-                }
-                if(!discard) {os.write(out);}
+                run_stream runner(*devices[i].device);
+                all[i]->scan(block++);
             }
         }
     }
     comma::verbose<<"received a signal"<<std::endl;
 }
 
-template<typename T>
-void app_t<T>::output_format()
+points_t::points_t(device_t& dev,bool has_color,const comma::csv::options& csv) : 
+    device(*dev.device),has_color(has_color),color(device,rs::stream::color),points_cloud(device),
+    out_stream(dev.output), //,csv.binary()?comma::io::mode::binary : comma::io::mode::ascii),
+    os(*out_stream, csv)
 {
-    std::cout<<comma::csv::format::value<typename T::output_t>() << std::endl;
+    if(has_color)
+    {
+        color.init(rs::preset::best_quality);
+        if(color.format.value!=rs::format::rgb8) { COMMA_THROW( comma::exception, "expected image format "<<rs::format::rgb8<<", got "<<color.format); }
+    }
+    points_cloud.init(rs::stream::color);
 }
-template<typename T>
-void app_t<T>::output_fields()
+void points_t::scan(unsigned block)
 {
-    std::cout<<comma::join( comma::csv::names<typename T::output_t>(false), ',' ) << std::endl;
-    //std::cout<<"t,scan,x,y,z,r,g,b"<< std::endl; 
+    if(!device.is_streaming()) { COMMA_THROW(comma::exception, "device not streaming" ); }
+    device.wait_for_frames();
+    //get points
+    output_t out;
+    out.t=boost::posix_time::microsec_clock::universal_time();
+    out.counter=points_cloud.scan();
+    out.block=block;
+    auto pair=color.get_frame();
+    cv::Mat& mat=pair.second;
+    rs::float3 point;
+    for(unsigned index=0;index<points_cloud.count();index++)
+    {
+        bool discard=false;
+        if(points_cloud.get(index,point))
+        {
+            out.coordinates=Eigen::Vector3d(point.x,point.y,point.z);
+            if(has_color)
+            {
+                auto color_pixel=points_cloud.project(point);
+                const int cx = (int)std::round(color_pixel.x);
+                const int cy = (int)std::round(color_pixel.y);
+                if(cx < 0 || cy < 0 || cx >= mat.cols || cy >= mat.rows)
+                {
+                    if(discard_margin) {discard=true;}
+                    out.color.set(&margin_color[0]);
+                }
+                else
+                {
+                    out.color.set(mat.ptr(cy,cx));
+                }
+            }
+            if(!discard) {os.write(out);}
+        }
+    }
 }
 
+void points_t::output_format()
+{
+    std::cout<<comma::csv::format::value<points_t::output_t>() << std::endl;
+}
+void points_t::output_fields()
+{
+    std::cout<<comma::join( comma::csv::names<points_t::output_t>(false), ',' ) << std::endl;
+}
+std::string list::field_names()
+{
+    return comma::join( comma::csv::names<list::output_t>(false), ',' );
+}
 void list::process(rs::context& context, const comma::csv::options& csv)
 {
     int count=context.get_device_count();
@@ -277,33 +332,44 @@ void list::process(rs::context& context, const comma::csv::options& csv)
 }
 struct options_t
 {
-    static void get(rs::device& device,const std::string& list)
+    static void get(std::vector<device_t> devices,const std::string& list)
     {
         std::vector<std::string> v=comma::split(list,",");
-        for(auto s : v)
+        for(unsigned i=0;i<devices.size();i++)
         {
-            option o(s);
-            o.read(device);
-            std::cout<<o.name()<<","<<o.value<<std::endl;
+            for(auto s : v)
+            {
+                option o(s);
+                o.read(*devices[i].device);
+                std::cout<<i<<","<<o.name()<<","<<o.value<<std::endl;
+            }
         }
     }
-    static void list(rs::device& device)
+    static void list(std::vector<device_t> devices)
     {
-        for(const auto a : option::get_names())
+        for(unsigned i=0;i<devices.size();i++)
         {
-            option_range o(a.second);
-            try
+            for(const auto a : option::get_names())
             {
-                o.read(device);
-                std::cout<<o.name()<<","<<o.value<<","<<o.min<<","<<o.max<<","<<o.step<<std::endl;
-            }
-            catch(std::exception& ex)
-            {
-                comma::verbose<<o.name()<<"; error: "<<ex.what()<<std::endl;
+                option_range o(a.second);
+                try
+                {
+                    o.read(*devices[i].device);
+                    std::cout<<i<<","<<o.name()<<","<<o.value<<","<<o.min<<","<<o.max<<","<<o.step<<std::endl;
+                }
+                catch(std::exception& ex)
+                {
+                    comma::verbose<<o.name()<<"; error: "<<ex.what()<<std::endl;
+                }
             }
         }
     }
-    static void set(rs::device& device,const std::string& list)
+    static void set(device_t& device,const std::string& list)
+    {
+        std::vector<device_t> v={device};
+        set(v,list);
+    }
+    static void set(std::vector<device_t>& devices,const std::string& list)
     {
         std::vector<std::string> v=comma::split(list,",");
         for(auto s : v)
@@ -312,7 +378,10 @@ struct options_t
             if(name_value.size()!=2) { COMMA_THROW( comma::exception, "expected name=value, got: "<<s); }
             option o(name_value[0]);
             o.value=boost::lexical_cast<double>(name_value[1]);
-            o.write(device);
+            for(auto d : devices)
+            {
+                o.write(*d.device);
+            }
         }
     }
 };
@@ -330,6 +399,116 @@ void set_margin_color(boost::optional<std::string> s)
         }
     }
 }
+
+void device_t::help(std::ostream& out, const std::string& indent)
+{
+//     std::cerr << "    --usb-port,--port=<port>: use device on given usb port" << std::endl;
+//     std::cerr << "    --serial-number,--serial=<number>: use device with given serial number" << std::endl;
+    out<<indent<<"semicolon separated list of options for device"<<std::endl;
+    out<<indent<<"    <identifier>=<value>: <identifier> is either 'port' or 'serial' and <value> is usb port id or serial number"<<std::endl;
+    out<<indent<<"    output=<stream>: stream name to publish data to, default '-' for stdout"<<std::endl;
+    out<<indent<<"    options:<name_value_csv>: options to set for this device only, comma separated list of <option_name>=<value>"<<std::endl;
+    out<<indent<<"example: "<<std::endl;
+    out<<indent<<"    --device \"port=4-1;output=tcp:1234;options:color_brightness=50,color_contrast=75\" --device \"port=4-2\" --device \"serial=987654;output=tcp:5678\""<<std::endl;
+}
+device_t::device_t(rs::context& context) : context(context), device(NULL), output("-")
+{
+    auto count=context.get_device_count();
+    if(count!=1) { COMMA_THROW( comma::exception, "multiple camera present, please specify --device"); }
+    device=context.get_device(0);
+    comma::verbose<<"using: "<<device->get_name()<<", usb port id: "<<device->get_usb_port_id()<<", serial: "<<device->get_serial()<<std::endl;
+}
+device_t::device_t(rs::context& context, const std::string& opt_str) : context(context), device(NULL), output("-")
+{
+    std::vector<std::string> v=comma::split(opt_str,";");
+    for(const auto& s : v)
+    {
+        parse_option(s);
+    }
+    if(device==NULL)
+    {
+        auto count=context.get_device_count();
+        if(count!=1) {COMMA_THROW(comma::exception,"multiple camera present, please specify port=<s> or serial=<s> in --device");}
+        device=context.get_device(0);
+        comma::verbose<<"using: "<<device->get_name()<<", usb port id: "<<device->get_usb_port_id()<<", serial: "<<device->get_serial()<<std::endl;
+    }
+    if(!device_options.empty()) {options_t::set(*this,device_options);}
+}
+void device_t::parse_option(const std::string& str)
+{
+    std::vector<std::string> v=comma::split(str,"=");
+    if(v.size()==2)
+    {
+        if(v[0]=="port")
+        {
+            device=find_device(v[0], v[1], [](rs::device* device, const std::string& s) { return device->get_usb_port_id()==s;} );
+            return;
+        }
+        else if(v[0]=="serial")
+        {
+            device=find_device(v[0], v[1], [](rs::device* device, const std::string& s) { return device->get_serial()==s;} );
+            return;
+        }
+        else if(v[0]=="output")
+        {
+            output=v[1];
+            return;
+        }
+        //else fall through
+    }
+    v=comma::split(str,":");
+    if(v.size()!=2 || v[0]!="options") {COMMA_THROW(comma::exception,"invalid device option "<<str);}
+    device_options=v[1];
+}
+rs::device* device_t::find_device(const std::string& name, const std::string& value, std::function<bool (rs::device*,const std::string& s)> fn)
+{
+    auto count=context.get_device_count();
+    for(int i=0;i<count;i++)
+    {
+        rs::device* device=context.get_device(i);
+        if(fn(device,value))
+        {
+            comma::verbose<<"matched: "<<device->get_name()<<", usb port id: "<<device->get_usb_port_id()<<", serial: "<<device->get_serial()<<std::endl;
+            return device;
+        }
+    }
+    COMMA_THROW(comma::exception,"no device matched "<<name<<"="<<value);
+}
+
+// rs::device* match_device(rs::context& context,std::string s)
+// {
+//     std::vector<std::string> v=comma::split(s,"=");
+//     if(v.size()!=2) {COMMA_THROW(comma::exception,"exepcted <name>=<value>, got "<<s);}
+//     int count=context.get_device_count();
+//     if(v[0]=="port")
+//     {
+//         for(int i=0;i<count;i++)
+//         {
+//             rs::device* device=context.get_device(i);
+//             if(v[1]==device->get_usb_port_id())
+//             {
+//                 comma::verbose<<"matched: "<<device->get_name()<<", usb port id: "<<device->get_usb_port_id()<<std::endl;
+//                 return device;
+//             }
+//         }
+//         COMMA_THROW(comma::exception,"no device matched port="<<v[1]);
+//     }
+//     else if(v[0]=="serial")
+//     {
+//         for(int i=0;i<count;i++)
+//         {
+//             rs::device* device=context.get_device(i);
+//             if(v[1]==device->get_serial())
+//             {
+//                 comma::verbose<<"matched: "<<device->get_name()<<", serial: "<<device->get_serial()<<std::endl;
+//                 return device;
+//             }
+//         }
+//         COMMA_THROW(comma::exception,"no device matched serial="<<v[1]);
+//     }
+//     else {COMMA_THROW(comma::exception,"expected <name>: port or serial, got "<<v[0]);}
+// }
+
 int main( int argc, char** argv )
 {
     comma::command_line_options options( argc, argv, usage );
@@ -345,11 +524,8 @@ int main( int argc, char** argv )
         }
         if(options.exists("--output-fields"))
         {
-            if(do_list)
-                { list::output_fields(); }
-            else
-                { points_t::output_fields(); }
-            return 0;
+            points_t::output_fields();
+            return 0;       
         }
         //
         rs::context context;
@@ -357,59 +533,51 @@ int main( int argc, char** argv )
         //
         std::string stream=options.value<std::string>("--camera-stream,--stream","");
         format format(options.value<std::string>("--image-format",""));
-        std::string port=options.value<std::string>("--usb-port,--port","");
-        std::string serial=options.value<std::string>("--serial-number,--serial","");
         set_margin_color(options.optional<std::string>("--margin-color"));
         discard_margin=options.exists("--discard-margin");
-        //select device
-        int count=context.get_device_count();
+        //select devices
+        auto count=context.get_device_count();
         comma::verbose<<"device count: "<<count<<std::endl;
-        rs::device* device=NULL;
-        std::vector<int> selected;
-        for(int i=0;i<count;i++)
+        if(count==0) { COMMA_THROW( comma::exception, "no realsense camera found!"); }
+        std::vector<std::string> devices=options.values<std::string>("--device");
+        std::vector<device_t> selected;
+        if(devices.size()==0)
         {
-            device=context.get_device(i);
-            if( (port.empty() || port==device->get_usb_port_id()) &&
-                (serial.empty() || serial==device->get_serial() ))
+            selected.push_back(device_t(context));
+        }
+        else
+        {
+            for(const std::string& s : devices)
             {
-                selected.push_back(i);
-                comma::verbose<<"selected index "<<i<<" name: "<<device->get_name()<<", usb port id: "<<device->get_usb_port_id()<<std::endl;
+                selected.push_back(device_t(context,s));
             }
         }
-        if(count==0) { COMMA_THROW( comma::exception, "no realsense camera found!"); }
-        if(selected.size()==0) { COMMA_THROW( comma::exception, "no camera matched (port "<<port <<" serial "<<serial<<")"); }
-        if(selected.size()!=1) { COMMA_THROW( comma::exception, "multiple camera not implemented yet!"); }
+        if(selected.size()==0) { COMMA_THROW( comma::exception, "no device match found"); }
         //
         std::string camera_options=options.value<std::string>("--options,--camera-options","");
         if(!camera_options.empty())
         {
-            options_t::set(*context.get_device(selected[0]),camera_options);
+            options_t::set(selected,camera_options);
         }
         if(options.exists("--list-options"))
         {
-            options_t::list(*context.get_device(selected[0]));
+            options_t::list(selected);
             return 0;
         }
-        /*
-        //device doesn't save options
-        std::string set_options=options.value<std::string>("--set-options","");
-        if(!set_options.empty())
-        {
-            options_t::set(*context.get_device(selected[0]),set_options);
-            return 0;
-        }
-        */
         std::string get_options=options.value<std::string>("--get-options","");
         if(!get_options.empty())
         {
-            options_t::get(*context.get_device(selected[0]),get_options);
+            options_t::get(selected,get_options);
             return 0;
         }
         if(!stream.empty())
-            process(*context.get_device(selected[0]),stream,format);
+        {
+            if(selected.size()!=1) { COMMA_THROW( comma::exception, "multiple camera not implemented yet!"); }
+            camera_stream::process(*selected[0].device,stream,format);
+        }
         else
         {
-            points_t::process(*context.get_device(selected[0]),csv);
+            points_t::process(selected,csv);
         }
         return 0;
     }
