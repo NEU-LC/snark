@@ -36,14 +36,13 @@
 namespace snark { namespace control {
 
 wayline_t::wayline_t() {}
-wayline_t::wayline_t( const vector_t& start, const vector_t& end, bool verbose ) :
+wayline_t::wayline_t( const vector_t& start, const vector_t& end ) :
       v( normalise( end - start ) )
     , line( Eigen::ParametrizedLine< double, dimensions >::Through( start, end ) )
     , perpendicular_line_at_end( v, end )
     , heading( atan2( v.y(), v.x() ) )
     {
         BOOST_STATIC_ASSERT( dimensions == 2 );
-        if( verbose ) { std::cerr << "wayline from " << serialise( start ) << " to " << serialise( end ) << std::endl; }
     }
 
 bool wayline_t::is_past_endpoint( const vector_t& location ) const

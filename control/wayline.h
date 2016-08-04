@@ -30,6 +30,7 @@
 #ifndef SNARK_CONTROL_WAYLINE_H
 #define SNARK_CONTROL_WAYLINE_H
 
+#include <iomanip>
 #include <comma/math/cyclic.h>
 #include <comma/visiting/traits.h>
 #include "../visiting/eigen.h"
@@ -41,7 +42,7 @@ typedef Eigen::Matrix< double, dimensions, 1 > vector_t;
 
 inline double distance( const vector_t& p1, const vector_t& p2 ) { return ( p1 - p2 ).norm(); }
 inline vector_t normalise( const vector_t& v ) { return v.normalized(); }
-inline std::string serialise( const vector_t& p ) { std::stringstream s; s << p.x() << ',' << p.y(); return s.str(); }
+inline std::string serialise( const vector_t& p ) { std::stringstream s; s << std::fixed << std::setprecision(12) << p.x() << ',' << p.y(); return s.str(); }
 
 inline double wrap_angle( double value ) { return comma::math::cyclic< double >( comma::math::interval< double >( -M_PI, M_PI ), value )(); }
 
@@ -49,7 +50,7 @@ struct wayline_t
 {
 public:
     wayline_t();
-    wayline_t( const vector_t& start, const vector_t& end, bool verbose = false );
+    wayline_t( const vector_t& start, const vector_t& end );
     bool is_past_endpoint( const vector_t& location ) const;
     double cross_track_error( const vector_t& location ) const;
     double heading_error( double yaw, double heading_offset ) const;

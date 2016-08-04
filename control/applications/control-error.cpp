@@ -163,7 +163,11 @@ int main( int ac, char** av )
             snark::control::vector_t to = target->position;
             if( verbose ) { std::cerr << name << ": received target waypoint " << snark::control::serialise( to ) << std::endl; }
             if( from && snark::control::distance( *from, to ) < proximity ) { continue; }
-            if( from ) { wayline.reset( new snark::control::wayline_t( *from, to, verbose ) ); }
+            if( from )
+            {
+                wayline.reset( new snark::control::wayline_t( *from, to ) );
+                //if( verbose ) { std::cerr << "control-error: wayline from " << snark::control::serialise( *from ) << " to " << snark::control::serialise( to ) << std::endl; }
+            }
             while( !is_shutdown && std::cout.good() )
             {
                 if( input_stream.ready() )
@@ -181,13 +185,14 @@ int main( int ac, char** av )
                     if( !from )
                     {
                         from = feedback->position;
-                        wayline.reset( new snark::control::wayline_t( *from, to, verbose ) );
+                        wayline.reset( new snark::control::wayline_t( *from, to ) );
+                        if( verbose ) { std::cerr << "control-error: wayline from " << snark::control::serialise( *from ) << " to " << snark::control::serialise( to ) << std::endl; }
                     }
                     if( snark::control::distance( feedback->position, to ) < proximity ) { reached = reached_t( "proximity" ); }
                     if( use_past_endpoint && wayline->is_past_endpoint( feedback->position ) ) { reached = reached_t( "past endpoint" ); }
                     if( reached )
                     {
-                        if( verbose ) { std::cerr << name << ": waypoint " << snark::control::serialise( to ) << " is reached (" << reached.reason << ")" << std::endl; }
+                        if( verbose ) { std::cerr << name << ": reached waypoint " << snark::control::serialise( to ) << " (" << reached.reason << "), current position: " << snark::control::serialise( feedback->position ) << std::endl; }
                         if( mode == fixed ) { from = to; }
                         else if( mode == dynamic ) { from = boost::none; }
                         else { std::cerr << name << ": control mode '" << mode_to_string( mode ) << "' is not implemented" << std::endl; return 1; }
