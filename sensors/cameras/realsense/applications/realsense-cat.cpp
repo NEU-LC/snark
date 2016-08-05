@@ -34,9 +34,11 @@
 #include <comma/application/signal_flag.h>
 #include <comma/csv/stream.h>
 #include <comma/io/stream.h>
+#include <comma/io/publisher.h>
 #include "../../../../imaging/cv_mat/serialization.h"
 #include "../realsense.h"
 #include "../../../../visiting/eigen.h"
+#include <sstream>
 
 using namespace snark::realsense;
 comma::signal_flag signaled;
@@ -119,6 +121,13 @@ void usage(bool detail)
     std::cerr << "    to view points cloud without color map:"<< std::endl;
     std::cerr << "        " << comma::verbose.app_name() << " --binary t,ui,3d --fields t,block,x,y,z | csv-select --binary t,ui,3d --fields t,b,x,y,z \"z;less=4\" | view-points --binary t,ui,3d --fields t,block,x,y,z"<< std::endl;
     std::cerr << std::endl;
+    std::cerr << "    to publish points cloud and then view them:"<< std::endl;
+    std::cerr << "        " << comma::verbose.app_name() << " --binary t,ui,3d,3ub --fields t,block,x,y,z,r,g,b --device \"output=tcp:12345\"" << std::endl;
+    std::cerr << "        socat -u tcp:localhost:12345 - | csv-select --binary t,ui,3d,3ub --fields t,,x,y,z \"z;less=4\" | view-points --binary t,ui,3d,3ub --fields t,block,x,y,z,r,g,b" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    to publish points cloud from mutliple devices:"<< std::endl;
+    std::cerr << "        " << comma::verbose.app_name() << " --binary t,ui,3d,3ub --fields t,block,x,y,z,r,g,b --device \"port=4-1;output=tcp:12345\" \"port=4-2;output=tcp:6789\"" << std::endl;
+    std::cerr << std::endl;
 }
 
 struct color_t
@@ -131,6 +140,17 @@ struct color_t
     }
     size_t size() const { return buf.size()*sizeof(unsigned char); }
 };
+
+template<typename T>
+struct writer
+{
+    comma::io::publisher publisher;
+    std::stringstream sbuf;
+    comma::csv::output_stream<T> os;
+    writer(const std::string& name,const comma::csv::options& csv);
+    void write(const T& t);
+};
+
 
 struct points_t
 {
@@ -149,8 +169,7 @@ struct points_t
     bool has_color;
     stream color;
     snark::realsense::points_cloud points_cloud;
-    comma::io::ostream out_stream;
-    comma::csv::output_stream<output_t> os;
+    ::writer<output_t> writer;
     
     points_t(device_t& device,bool has_color,const comma::csv::options& csv);
     void scan(unsigned block);
@@ -254,10 +273,25 @@ void points_t::process(std::vector<device_t>& devices,const comma::csv::options&
     comma::verbose<<"received a signal"<<std::endl;
 }
 
+template<typename T>
+writer<T>::writer(const std::string& name,const comma::csv::options& csv) : 
+    publisher(name, csv.binary()?comma::io::mode::binary : comma::io::mode::ascii),
+    os(sbuf, csv)
+{ }
+template<typename T>
+void writer<T>::write(const T& t)
+{
+    os.write(t);
+    std::string s=sbuf.str();
+    publisher.write(&s[0],s.size());
+    sbuf.str(std::string());
+    sbuf.clear();
+}
+
+
 points_t::points_t(device_t& dev,bool has_color,const comma::csv::options& csv) : 
     device(*dev.device),has_color(has_color),color(device,rs::stream::color),points_cloud(device),
-    out_stream(dev.output), //,csv.binary()?comma::io::mode::binary : comma::io::mode::ascii),
-    os(*out_stream, csv)
+    writer(dev.output,csv)
 {
     if(has_color)
     {
@@ -299,7 +333,7 @@ void points_t::scan(unsigned block)
                     out.color.set(mat.ptr(cy,cx));
                 }
             }
-            if(!discard) {os.write(out);}
+            if(!discard) {writer.write(out);}
         }
     }
 }
