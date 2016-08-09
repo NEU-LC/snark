@@ -69,6 +69,7 @@ class gl_widget : public QOpenGLWidget, protected QOpenGLFunctions
         void resizeGL( int width, int height ) Q_DECL_OVERRIDE;
         void mousePressEvent( QMouseEvent *event ) Q_DECL_OVERRIDE;
         void mouseMoveEvent( QMouseEvent *event ) Q_DECL_OVERRIDE;
+        void wheelEvent( QWheelEvent *event ) Q_DECL_OVERRIDE;
 
     private:
         void setup_vertex_attribs();

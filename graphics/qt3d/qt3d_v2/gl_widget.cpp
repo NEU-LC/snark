@@ -238,4 +238,10 @@ void gl_widget::mouseMoveEvent( QMouseEvent *event )
     last_pos_ = event->pos();
 }
 
+void gl_widget::wheelEvent( QWheelEvent *event )
+{
+    camera_.translate( 0, 0, event->delta() / 1000.0f );
+    update();
+}
+
 } } } // namespace snark { namespace graphics { namespace qt3d {
