@@ -37,12 +37,12 @@
 namespace snark { namespace graphics { namespace qt3d {
 
 gl_widget::gl_widget( buffer_provider* buffer, QWidget *parent )
-    : QOpenGLWidget(parent),
-      x_rot_(0),
-      y_rot_(0),
-      z_rot_(0),
-      buffer_( buffer ),
-      program_(0)
+    : QOpenGLWidget( parent )
+    , x_rot_( 0 )
+    , y_rot_( 0 )
+    , z_rot_( 0 )
+    , buffer_( buffer )
+    , program_( 0 )
 {}
 
 gl_widget::~gl_widget()
@@ -52,48 +52,49 @@ gl_widget::~gl_widget()
 
 QSize gl_widget::minimumSizeHint() const
 {
-    return QSize(50, 50);
+    return QSize( 50, 50 );
 }
 
 QSize gl_widget::sizeHint() const
 {
-    return QSize(400, 400);
+    return QSize( 400, 400 );
 }
 
-static void normalize_angle(int &angle)
+static void normalize_angle( int &angle )
 {
-    while (angle < 0)
-        angle += 360 * 16;
-    while (angle > 360 * 16)
-        angle -= 360 * 16;
+    while( angle < 0 )        angle += 360 * 16;
+    while( angle > 360 * 16 ) angle -= 360 * 16;
 }
 
-void gl_widget::set_x_rotation(int angle)
+void gl_widget::set_x_rotation( int angle )
 {
-    normalize_angle(angle);
-    if (angle != x_rot_) {
+    normalize_angle( angle );
+    if( angle != x_rot_ )
+    {
         x_rot_ = angle;
-        emit x_rotation_changed(angle);
+        emit x_rotation_changed( angle );
         update();
     }
 }
 
-void gl_widget::set_y_rotation(int angle)
+void gl_widget::set_y_rotation( int angle )
 {
-    normalize_angle(angle);
-    if (angle != y_rot_) {
+    normalize_angle( angle );
+    if( angle != y_rot_ )
+    {
         y_rot_ = angle;
-        emit y_rotation_changed(angle);
+        emit y_rotation_changed( angle );
         update();
     }
 }
 
-void gl_widget::set_z_rotation(int angle)
+void gl_widget::set_z_rotation( int angle )
 {
-    normalize_angle(angle);
-    if (angle != z_rot_) {
+    normalize_angle( angle );
+    if( angle != z_rot_ )
+    {
         z_rot_ = angle;
-        emit z_rotation_changed(angle);
+        emit z_rotation_changed( angle );
         update();
     }
 }
@@ -182,11 +183,11 @@ void gl_widget::initializeGL()
 void gl_widget::setup_vertex_attribs()
 {
     vbo_.bind();
-    QOpenGLFunctions *f = QOpenGLContext::currentContext()->functions();
+    QOpenGLFunctions* f = QOpenGLContext::currentContext()->functions();
     f->glEnableVertexAttribArray( 0 );
     f->glEnableVertexAttribArray( 1 );
-    f->glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof( vertex_t ), reinterpret_cast<void *>( offsetof( vertex_t, position )));
-    f->glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof( vertex_t ), reinterpret_cast<void *>( offsetof( vertex_t, color )));
+    f->glVertexAttribPointer( 0, 3, GL_FLOAT, GL_FALSE, sizeof( vertex_t ), reinterpret_cast<void *>( offsetof( vertex_t, position )));
+    f->glVertexAttribPointer( 1, 4, GL_FLOAT, GL_FALSE, sizeof( vertex_t ), reinterpret_cast<void *>( offsetof( vertex_t, color )));
     vbo_.release();
 }
 
@@ -198,8 +199,8 @@ void gl_widget::paintGL()
 
     world_.setToIdentity();
     world_.rotate( 180.0f - ( x_rot_ / 16.0f ), 1, 0, 0 );
-    world_.rotate( y_rot_ / 16.0f, 0, 1, 0 );
-    world_.rotate( z_rot_ / 16.0f, 0, 0, 1 );
+    world_.rotate(            y_rot_ / 16.0f,   0, 1, 0 );
+    world_.rotate(            z_rot_ / 16.0f,   0, 0, 1 );
 
     QOpenGLVertexArrayObject::Binder vaoBinder( &vao_ );
     program_->bind();
@@ -214,7 +215,7 @@ void gl_widget::paintGL()
 void gl_widget::resizeGL( int w, int h )
 {
     projection_.setToIdentity();
-    projection_.perspective( 45.0f, GLfloat(w) / h, 0.01f, 100.0f );
+    projection_.perspective( 45.0f, GLfloat( w ) / h, 0.01f, 100.0f );
 }
 
 void gl_widget::mousePressEvent( QMouseEvent *event )
@@ -227,7 +228,7 @@ void gl_widget::mouseMoveEvent( QMouseEvent *event )
     int dx = event->x() - last_pos_.x();
     int dy = event->y() - last_pos_.y();
 
-    if (event->buttons() & Qt::LeftButton) {
+    if ( event->buttons() & Qt::LeftButton ) {
         set_x_rotation( x_rot_ + 8 * dy );
         set_y_rotation( y_rot_ + 8 * dx );
     } else if ( event->buttons() & Qt::RightButton ) {
