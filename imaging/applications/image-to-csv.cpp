@@ -162,7 +162,7 @@ bool output_t<T>::process_image()
     {
         std::vector<char> buffer(header.cols*size);
         std::cin.read(&buffer[0], buffer.size());
-        if(std::cin.gcount()!=buffer.size()) { return false; }
+        if(std::size_t(std::cin.gcount())!=buffer.size()) { return false; }
         char* ptr=&buffer[0];
         for(comma::uint32 i=0;i<header.cols;i++)
         {
