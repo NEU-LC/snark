@@ -44,49 +44,20 @@ gl_window::gl_window( main_window *mw, Reader* reader )
 {
     gl_widget_ = new qt3d::gl_widget( reader_ );
 
-    x_slider_ = create_slider();
-    y_slider_ = create_slider();
-    z_slider_ = create_slider();
-
-    connect( x_slider_,  &QSlider::valueChanged, gl_widget_, &qt3d::gl_widget::set_x_rotation );
-    connect( gl_widget_, &qt3d::gl_widget::x_rotation_changed,  x_slider_, &QSlider::setValue );
-    connect( y_slider_,  &QSlider::valueChanged, gl_widget_, &qt3d::gl_widget::set_y_rotation );
-    connect( gl_widget_, &qt3d::gl_widget::y_rotation_changed,  y_slider_, &QSlider::setValue );
-    connect( z_slider_,  &QSlider::valueChanged, gl_widget_, &qt3d::gl_widget::set_z_rotation );
-    connect( gl_widget_, &qt3d::gl_widget::z_rotation_changed,  z_slider_, &QSlider::setValue );
-
     QVBoxLayout *main_layout = new QVBoxLayout;
     QHBoxLayout *container = new QHBoxLayout;
     container->addWidget( gl_widget_ );
-    container->addWidget( x_slider_ );
-    container->addWidget( y_slider_ );
-    container->addWidget( z_slider_ );
 
     QWidget *w = new QWidget;
     w->setLayout( container );
     main_layout->addWidget( w );
 
     setLayout( main_layout );
-
-    x_slider_->setValue( 15 * 16 );
-    y_slider_->setValue( 345 * 16 );
-    z_slider_->setValue( 0 * 16 );
 }
 
 gl_window::~gl_window()
 {
     delete gl_widget_;
-}
-
-QSlider *gl_window::create_slider()
-{
-    QSlider *slider = new QSlider(Qt::Vertical);
-    slider->setRange(0, 360 * 16);
-    slider->setSingleStep(16);
-    slider->setPageStep(15 * 16);
-    slider->setTickInterval(15 * 16);
-    slider->setTickPosition(QSlider::TicksRight);
-    return slider;
 }
 
 void gl_window::keyPressEvent(QKeyEvent *e)

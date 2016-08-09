@@ -53,15 +53,7 @@ class gl_widget : public QOpenGLWidget, protected QOpenGLFunctions
         QSize sizeHint() const Q_DECL_OVERRIDE;
 
     public slots:
-        void set_x_rotation( int angle );
-        void set_y_rotation( int angle );
-        void set_z_rotation( int angle );
         void cleanup();
-
-    signals:
-        void x_rotation_changed( int angle );
-        void y_rotation_changed( int angle );
-        void z_rotation_changed( int angle );
 
     protected:
         void initializeGL() Q_DECL_OVERRIDE;
@@ -74,9 +66,6 @@ class gl_widget : public QOpenGLWidget, protected QOpenGLFunctions
     private:
         void setup_vertex_attribs();
 
-        int x_rot_;
-        int y_rot_;
-        int z_rot_;
         QPoint last_pos_;
         buffer_provider* buffer_;
         QOpenGLVertexArrayObject vao_;

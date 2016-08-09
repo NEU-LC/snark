@@ -32,10 +32,6 @@
 
 #include <QWidget>
 
-QT_BEGIN_NAMESPACE
-class QSlider;
-QT_END_NAMESPACE
-
 namespace snark { namespace graphics { namespace qt3d {
 class gl_widget;
 } } }
@@ -57,12 +53,7 @@ class gl_window : public QWidget
         void keyPressEvent( QKeyEvent *event ) Q_DECL_OVERRIDE;
 
     private:
-        QSlider *create_slider();
-
         qt3d::gl_widget *gl_widget_;
-        QSlider *x_slider_;
-        QSlider *y_slider_;
-        QSlider *z_slider_;
         main_window *main_window_;
         Reader* reader_;
 };

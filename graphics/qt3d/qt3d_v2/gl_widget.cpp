@@ -38,9 +38,6 @@ namespace snark { namespace graphics { namespace qt3d {
 
 gl_widget::gl_widget( buffer_provider* buffer, QWidget *parent )
     : QOpenGLWidget( parent )
-    , x_rot_( 0 )
-    , y_rot_( 0 )
-    , z_rot_( 0 )
     , buffer_( buffer )
     , program_( 0 )
 {}
@@ -58,45 +55,6 @@ QSize gl_widget::minimumSizeHint() const
 QSize gl_widget::sizeHint() const
 {
     return QSize( 400, 400 );
-}
-
-static void normalize_angle( int &angle )
-{
-    while( angle < 0 )        angle += 360 * 16;
-    while( angle > 360 * 16 ) angle -= 360 * 16;
-}
-
-void gl_widget::set_x_rotation( int angle )
-{
-    normalize_angle( angle );
-    if( angle != x_rot_ )
-    {
-        x_rot_ = angle;
-        emit x_rotation_changed( angle );
-        update();
-    }
-}
-
-void gl_widget::set_y_rotation( int angle )
-{
-    normalize_angle( angle );
-    if( angle != y_rot_ )
-    {
-        y_rot_ = angle;
-        emit y_rotation_changed( angle );
-        update();
-    }
-}
-
-void gl_widget::set_z_rotation( int angle )
-{
-    normalize_angle( angle );
-    if( angle != z_rot_ )
-    {
-        z_rot_ = angle;
-        emit z_rotation_changed( angle );
-        update();
-    }
 }
 
 void gl_widget::cleanup()
