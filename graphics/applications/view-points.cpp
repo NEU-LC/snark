@@ -223,9 +223,9 @@ static void usage()
         
     static const char * const usage_examples = 
         "\nmouse clicks:"
-        qt55_unsupported_marker_start
         "\n    left press and hold: rotate the scene around the centre"
         "\n    right press and hold: translate the scene"
+        qt55_unsupported_marker_start
         "\n    double left click: change the centre of the scene"
         "\n    double right click: output to stdout approximate coordinates of the clicked point"
         qt55_unsupported_marker_end

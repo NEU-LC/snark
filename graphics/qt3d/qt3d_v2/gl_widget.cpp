@@ -173,11 +173,13 @@ void gl_widget::initializeGL()
     // Store the vertex attribute bindings for the program.
     setup_vertex_attribs();
 
+    program_->release();
+
     // Our camera never changes at the moment, we are moving the object
     camera_.setToIdentity();
     camera_.translate( 0, 0, -1 );
 
-    program_->release();
+    world_.setToIdentity();
 }
 
 void gl_widget::setup_vertex_attribs()
@@ -196,11 +198,6 @@ void gl_widget::paintGL()
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
     glEnable( GL_DEPTH_TEST );
     glEnable( GL_CULL_FACE );
-
-    world_.setToIdentity();
-    world_.rotate( 180.0f - ( x_rot_ / 16.0f ), 1, 0, 0 );
-    world_.rotate(            y_rot_ / 16.0f,   0, 1, 0 );
-    world_.rotate(            z_rot_ / 16.0f,   0, 0, 1 );
 
     QOpenGLVertexArrayObject::Binder vaoBinder( &vao_ );
     program_->bind();
@@ -225,15 +222,16 @@ void gl_widget::mousePressEvent( QMouseEvent *event )
 
 void gl_widget::mouseMoveEvent( QMouseEvent *event )
 {
-    int dx = event->x() - last_pos_.x();
-    int dy = event->y() - last_pos_.y();
+    float dx = event->x() - last_pos_.x();
+    float dy = event->y() - last_pos_.y();
 
     if ( event->buttons() & Qt::LeftButton ) {
-        set_x_rotation( x_rot_ + 8 * dy );
-        set_y_rotation( y_rot_ + 8 * dx );
+        world_.rotate( dy, 1, 0, 0 );
+        world_.rotate( dx, 0, 1, 0 );
+        update();
     } else if ( event->buttons() & Qt::RightButton ) {
-        set_x_rotation( x_rot_ + 8 * dy );
-        set_z_rotation( z_rot_ + 8 * dx );
+        world_.translate( dx / 500, -dy / 500, 0 );
+        update();
     }
     last_pos_ = event->pos();
 }
