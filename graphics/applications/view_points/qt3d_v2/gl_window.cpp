@@ -48,12 +48,12 @@ gl_window::gl_window( main_window *mw, Reader* reader )
     y_slider_ = create_slider();
     z_slider_ = create_slider();
 
-    connect( x_slider_,  &QSlider::valueChanged, gl_widget_, &qt3d::gl_widget::setXRotation );
-    connect( gl_widget_, &qt3d::gl_widget::xRotationChanged,  x_slider_, &QSlider::setValue );
-    connect( y_slider_,  &QSlider::valueChanged, gl_widget_, &qt3d::gl_widget::setYRotation );
-    connect( gl_widget_, &qt3d::gl_widget::yRotationChanged,  y_slider_, &QSlider::setValue );
-    connect( z_slider_,  &QSlider::valueChanged, gl_widget_, &qt3d::gl_widget::setZRotation );
-    connect( gl_widget_, &qt3d::gl_widget::zRotationChanged,  z_slider_, &QSlider::setValue );
+    connect( x_slider_,  &QSlider::valueChanged, gl_widget_, &qt3d::gl_widget::set_x_rotation );
+    connect( gl_widget_, &qt3d::gl_widget::x_rotation_changed,  x_slider_, &QSlider::setValue );
+    connect( y_slider_,  &QSlider::valueChanged, gl_widget_, &qt3d::gl_widget::set_y_rotation );
+    connect( gl_widget_, &qt3d::gl_widget::y_rotation_changed,  y_slider_, &QSlider::setValue );
+    connect( z_slider_,  &QSlider::valueChanged, gl_widget_, &qt3d::gl_widget::set_z_rotation );
+    connect( gl_widget_, &qt3d::gl_widget::z_rotation_changed,  z_slider_, &QSlider::setValue );
 
     QVBoxLayout *main_layout = new QVBoxLayout;
     QHBoxLayout *container = new QHBoxLayout;

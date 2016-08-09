@@ -38,9 +38,9 @@ namespace snark { namespace graphics { namespace qt3d {
 
 gl_widget::gl_widget( buffer_provider* buffer, QWidget *parent )
     : QOpenGLWidget(parent),
-      xRot_(0),
-      yRot_(0),
-      zRot_(0),
+      x_rot_(0),
+      y_rot_(0),
+      z_rot_(0),
       buffer_( buffer ),
       program_(0)
 {}
@@ -60,7 +60,7 @@ QSize gl_widget::sizeHint() const
     return QSize(400, 400);
 }
 
-static void qNormalizeAngle(int &angle)
+static void normalize_angle(int &angle)
 {
     while (angle < 0)
         angle += 360 * 16;
@@ -68,32 +68,32 @@ static void qNormalizeAngle(int &angle)
         angle -= 360 * 16;
 }
 
-void gl_widget::setXRotation(int angle)
+void gl_widget::set_x_rotation(int angle)
 {
-    qNormalizeAngle(angle);
-    if (angle != xRot_) {
-        xRot_ = angle;
-        emit xRotationChanged(angle);
+    normalize_angle(angle);
+    if (angle != x_rot_) {
+        x_rot_ = angle;
+        emit x_rotation_changed(angle);
         update();
     }
 }
 
-void gl_widget::setYRotation(int angle)
+void gl_widget::set_y_rotation(int angle)
 {
-    qNormalizeAngle(angle);
-    if (angle != yRot_) {
-        yRot_ = angle;
-        emit yRotationChanged(angle);
+    normalize_angle(angle);
+    if (angle != y_rot_) {
+        y_rot_ = angle;
+        emit y_rotation_changed(angle);
         update();
     }
 }
 
-void gl_widget::setZRotation(int angle)
+void gl_widget::set_z_rotation(int angle)
 {
-    qNormalizeAngle(angle);
-    if (angle != zRot_) {
-        zRot_ = angle;
-        emit zRotationChanged(angle);
+    normalize_angle(angle);
+    if (angle != z_rot_) {
+        z_rot_ = angle;
+        emit z_rotation_changed(angle);
         update();
     }
 }
@@ -170,7 +170,7 @@ void gl_widget::initializeGL()
     vbo_.allocate( buffer_->buffer_data(), buffer_->buffer_size() * sizeof( vertex_t ));
 
     // Store the vertex attribute bindings for the program.
-    setupVertexAttribs();
+    setup_vertex_attribs();
 
     // Our camera never changes at the moment, we are moving the object
     camera_.setToIdentity();
@@ -179,7 +179,7 @@ void gl_widget::initializeGL()
     program_->release();
 }
 
-void gl_widget::setupVertexAttribs()
+void gl_widget::setup_vertex_attribs()
 {
     vbo_.bind();
     QOpenGLFunctions *f = QOpenGLContext::currentContext()->functions();
@@ -197,9 +197,9 @@ void gl_widget::paintGL()
     glEnable( GL_CULL_FACE );
 
     world_.setToIdentity();
-    world_.rotate( 180.0f - ( xRot_ / 16.0f ), 1, 0, 0 );
-    world_.rotate( yRot_ / 16.0f, 0, 1, 0 );
-    world_.rotate( zRot_ / 16.0f, 0, 0, 1 );
+    world_.rotate( 180.0f - ( x_rot_ / 16.0f ), 1, 0, 0 );
+    world_.rotate( y_rot_ / 16.0f, 0, 1, 0 );
+    world_.rotate( z_rot_ / 16.0f, 0, 0, 1 );
 
     QOpenGLVertexArrayObject::Binder vaoBinder( &vao_ );
     program_->bind();
@@ -228,11 +228,11 @@ void gl_widget::mouseMoveEvent( QMouseEvent *event )
     int dy = event->y() - last_pos_.y();
 
     if (event->buttons() & Qt::LeftButton) {
-        setXRotation( xRot_ + 8 * dy );
-        setYRotation( yRot_ + 8 * dx );
+        set_x_rotation( x_rot_ + 8 * dy );
+        set_y_rotation( y_rot_ + 8 * dx );
     } else if ( event->buttons() & Qt::RightButton ) {
-        setXRotation( xRot_ + 8 * dy );
-        setZRotation( zRot_ + 8 * dx );
+        set_x_rotation( x_rot_ + 8 * dy );
+        set_z_rotation( z_rot_ + 8 * dx );
     }
     last_pos_ = event->pos();
 }
