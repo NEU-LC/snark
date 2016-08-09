@@ -72,7 +72,7 @@ static void usage( bool more = false )
     std::cerr << "    local-max" << std::endl;
     std::cerr << "    nearest-min" << std::endl;
     std::cerr << "    nearest-max" << std::endl;
-    std::cerr << "    nearest-any" << std::endl;
+    std::cerr << "    nearest-point,nearest-any" << std::endl;
     std::cerr << "    nearest" << std::endl;
     std::cerr << "    plane-intersection" << std::endl;
     std::cerr << "    thin" << std::endl;
@@ -118,23 +118,35 @@ static void usage( bool more = false )
     std::cerr << std::endl;
     std::cerr << "    local-min: output local minimums inside of given radius" << std::endl;
     std::cerr << "    local-max: output local maximums inside of given radius" << std::endl;
-    std::cerr << "    nearest-min: for each point, output nearest minimums inside of given radius" << std::endl;
-    std::cerr << "    nearest-max: for each point, output local maximums inside of given radius" << std::endl;
-    std::cerr << "    nearest-any: for each point, output the single nearest point id (if any) inside the given radius" << std::endl;
+    std::cerr << "        input fields: x,y,z,id,scalar; default x,y,z,scalar" << std::endl;
+    std::cerr << "        output fields: <input line>,reference_id,distance" << std::endl;
+    std::cerr << "        options" << std::endl;
+    std::cerr << "            --radius=<metres>: radius of the local region to search" << std::endl;
+    std::cerr << "            --trace: if a points's reference point is not local extremum, replace it with its reference (todo: debug)" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    nearest-point,nearest-any: for each point, output the single nearest point id (if any) inside the given radius" << std::endl;
     std::cerr << std::endl;
     std::cerr << "        options" << std::endl;
-    std::cerr << "            --output-full-record,--full-record,--full: instead of extremum_id and distance, output full" << std::endl;
+    std::cerr << "            --output-full-record,--full-record,--full: instead of reference_id and distance, output full" << std::endl;
     std::cerr << "                                                       extremum record, discard points with no extremum nearby" << std::endl;
     std::cerr << "            --radius=<metres>: radius of the local region to search" << std::endl;
-    std::cerr << "            --trace: for local-min, local-max only; if a points's reference point is not local" << std::endl;
-    std::cerr << "                     extremum, replace it with its reference" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "        input fields: x,y,z,scalar,id" << std::endl;
-    std::cerr << "        output fields: <input line>,extremum_id,distance (todo: make outputs optional)" << std::endl;
+    std::cerr << "        input fields: x,y,z,id; default x,y,z" << std::endl;
+    std::cerr << "        output fields: <input line>,reference_id,distance, where reference_id is nearest point id" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    nearest-min: for each point, output nearest minimums inside of given radius" << std::endl;
+    std::cerr << "    nearest-max: for each point, output local maximums inside of given radius" << std::endl;
+    std::cerr << "        options" << std::endl;
+    std::cerr << "            --output-full-record,--full-record,--full: instead of reference_id and distance, output full" << std::endl;
+    std::cerr << "                                                       extremum record, discard points with no extremum nearby" << std::endl;
+    std::cerr << "            --radius=<metres>: radius of the local region to search" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "        input fields: x,y,z,scalar,id; default: x,y,z,id" << std::endl;
+    std::cerr << "        output fields: <input line>,reference_id,distance, where reference_id is nearest min or max id" << std::endl;
     std::cerr << "        example: get local height maxima in the radius of 5 metres:" << std::endl;
     std::cerr << "            cat xyz.csv | points-calc local-max --fields=x,y,scalar --radius=5" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "    nearest: find point nearest to the given point" << std::endl;
+    std::cerr << "    nearest: find point nearest to a given point" << std::endl;
     std::cerr << std::endl;
     std::cerr << "        input fields: " << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
     std::cerr << std::endl;
@@ -337,15 +349,15 @@ struct record // todo: it's a mess; remove code duplication: all information can
     local_operation::point point;
     std::string line;
     bool is_extremum;
-    comma::uint32 extremum_id;
+    comma::uint32 reference_id;
     double distance;
     record* reference_record;
     
     static comma::uint32 invalid_id;
     
-    record() : is_extremum( true ), extremum_id( invalid_id ), distance( std::numeric_limits< double >::max() ), reference_record( NULL ) {}
-    record( const local_operation::point& p, const std::string& line ) : point( p ), line( line ), is_extremum( true ), extremum_id( invalid_id ), distance( std::numeric_limits< double >::max() ), reference_record( NULL ) {}
-    local_operation::output output( bool force = true ) const { return !force && extremum_id == invalid_id ? local_operation::output( invalid_id, 0 ) : local_operation::output( reference_record->point.id, ( reference_record->point.coordinates - point.coordinates ).norm() ); }
+    record() : is_extremum( true ), reference_id( invalid_id ), distance( std::numeric_limits< double >::max() ), reference_record( NULL ) {}
+    record( const local_operation::point& p, const std::string& line ) : point( p ), line( line ), is_extremum( true ), reference_id( invalid_id ), distance( std::numeric_limits< double >::max() ), reference_record( NULL ) {}
+    local_operation::output output( bool force = true ) const { return !force && reference_id == invalid_id ? local_operation::output( invalid_id, 0 ) : local_operation::output( reference_record->point.id, ( reference_record->point.coordinates - point.coordinates ).norm() ); }
 };
 
 comma::uint32 record::invalid_id = std::numeric_limits< comma::uint32 >::max();
@@ -362,10 +374,10 @@ static void update_nearest_extremum( record* i, record* j, double radius, bool t
 {
     if( i->is_extremum )
     {
-        if( i->extremum_id != record::invalid_id ) { return; }
-        i->extremum_id = i->point.id;
+        if( i->reference_id != record::invalid_id ) { return; }
+        i->reference_id = i->point.id;
         i->distance = 0;
-        i->reference_record = i; // todo: dump extremum_id, reference_record is enough
+        i->reference_record = i; // todo: dump reference_id, reference_record is enough
         return;
     }
     record* k = j;
@@ -373,10 +385,10 @@ static void update_nearest_extremum( record* i, record* j, double radius, bool t
     if( !trace && !k->is_extremum ) { return; }
     double norm = ( i->point.coordinates - k->point.coordinates ).norm();
     if( norm > radius ) { return; }
-    if( i->extremum_id != record::invalid_id && i->distance < norm ) { return; }
-    i->extremum_id = k->point.id;
+    if( i->reference_id != record::invalid_id && i->distance < norm ) { return; }
+    i->reference_id = k->point.id;
     i->distance = norm;
-    i->reference_record = k; // todo: dump extremum_id, reference_record is enough
+    i->reference_record = k; // todo: dump reference_id, reference_record is enough
 }
 
 static void update_nearest( record* i, record* j, double radius, double sign, bool any )
@@ -602,13 +614,13 @@ int main( int ac, char** av )
                 }
                 else
                 { 
-                    records[i].extremum_id = local_operation::record::invalid_id; // quick and dirty for now
-//                     if( records[i].extremum_id == local_operation::record::invalid_id ) { continue; }
+                    records[i].reference_id = local_operation::record::invalid_id; // quick and dirty for now
+//                     if( records[i].reference_id == local_operation::record::invalid_id ) { continue; }
 //                     while( records[i].reference_record->point.id != records[i].reference_record->reference_record->point.id )
 //                     {
 //                         records[i].reference_record = records[i].reference_record->reference_record;
 //                     }
-//                     records[i].extremum_id = records[i].reference_record->point.id;
+//                     records[i].reference_id = records[i].reference_record->point.id;
                 }
             }
             if( verbose ) { std::cerr << "points-calc: calculating distances to " << extrema.size() << " local extrema..." << std::endl; }
@@ -639,7 +651,7 @@ int main( int ac, char** av )
                 if( verbose ) { std::cerr << "points-calc: tracing extrema..." << std::endl; }
                 for( std::size_t i = 0; i < records.size(); ++i )
                 {
-                    if( records[i].extremum_id == local_operation::record::invalid_id ) { continue; }
+                    if( records[i].reference_id == local_operation::record::invalid_id ) { continue; }
                     while( records[i].reference_record->point.id != records[i].reference_record->reference_record->point.id )
                     {
                         records[i].reference_record = records[i].reference_record->reference_record;
@@ -661,12 +673,12 @@ int main( int ac, char** av )
             if( verbose ) { std::cerr << "points-calc: done!" << std::endl; }
             return 0;
         }
-        if( operation == "nearest-max" || operation == "nearest-min" || operation == "nearest-any" )
+        if( operation == "nearest-max" || operation == "nearest-min" || operation == "nearest-any" || operation == "nearest-point" )
         {
             double sign = operation == "nearest-max" ? 1 : -1;
-            bool any = operation == "nearest-any";
+            bool any = operation == "nearest-any" || operation == "nearest-point";
             bool output_full_record = options.exists( "--output-full-record,--full-record,--full" );
-            if( csv.fields.empty() ) { csv.fields = "x,y,z,scalar"; }
+            if( csv.fields.empty() ) { csv.fields = any ? "x,y,z" : "x,y,z,scalar"; }
             csv.full_xpath = false;
             bool has_id = csv.has_field( "id" );
             comma::csv::input_stream< local_operation::point > istream( std::cin, csv );
