@@ -123,8 +123,10 @@ static void usage( bool more = false )
     std::cerr << "    nearest-any: for each point, output the single nearest point id (if any) inside the given radius" << std::endl;
     std::cerr << std::endl;
     std::cerr << "        options" << std::endl;
+    std::cerr << "            --output-full-record,--full-record,--full: instead of extremum_id and distance, output full" << std::endl;
+    std::cerr << "                                                       extremum record, discard points with no extremum nearby" << std::endl;
     std::cerr << "            --radius=<metres>: radius of the local region to search" << std::endl;
-    std::cerr << "            --trace: for local min/max only; if a points's reference point is not local" << std::endl;
+    std::cerr << "            --trace: for local-min, local-max only; if a points's reference point is not local" << std::endl;
     std::cerr << "                     extremum, replace it with its reference" << std::endl;
     std::cerr << std::endl;
     std::cerr << "        input fields: x,y,z,scalar,id" << std::endl;
@@ -454,7 +456,7 @@ int main( int ac, char** av )
         csv = comma::csv::options( options );
         csv.full_xpath = true;
         ascii = comma::csv::ascii< Eigen::Vector3d >( "x,y,z", csv.delimiter );
-        const std::vector< std::string >& operations = options.unnamed( "--verbose,-v,--trace,--no-antialiasing,--next,--unit", "-.*" );
+        const std::vector< std::string >& operations = options.unnamed( "--verbose,-v,--trace,--no-antialiasing,--next,--unit,--output-full-record,--full-record,--full", "-.*" );
         if( operations.size() != 1 ) { std::cerr << "points-calc: expected one operation, got " << operations.size() << ": " << comma::join( operations, ' ' ) << std::endl; return 1; }
         const std::string& operation = operations[0];
         if (vector_calc::has_operation(operation))
@@ -488,31 +490,23 @@ int main( int ac, char** av )
         }
         if( operation == "nearest" )
         {
-            if( options.exists( "--point,--to" ) )
+            Eigen::Vector3d point = comma::csv::ascii< Eigen::Vector3d >().get( options.value< std::string >( "--point,--to" ) );
+            comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, csv );
+            std::string record;
+            double min_distance = std::numeric_limits< double >::max();
+            while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
             {
-                Eigen::Vector3d point = comma::csv::ascii< Eigen::Vector3d >().get( options.value< std::string >( "--point,--to" ) );
-                comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, csv );
-                std::string record;
-                double min_distance = std::numeric_limits< double >::max();
-                while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
-                {
-                    const Eigen::Vector3d* p = istream.read();
-                    if( !p ) { break; }
-                    double d = ( *p - point ).norm();
-                    if( d >= min_distance ) { continue; }
-                    min_distance = d;
-                    record = csv.binary() ? std::string( istream.binary().last(), csv.format().size() ) : comma::join( istream.ascii().last(), csv.delimiter );
-                }
-                if( !record.empty() ) { std::cout << record; }
-                if( csv.binary() ) { std::cout.write( reinterpret_cast< const char* >( &min_distance ), sizeof( double ) ); }
-                else { std::cout << csv.delimiter << min_distance << std::endl; }
-                return 0;
+                const Eigen::Vector3d* p = istream.read();
+                if( !p ) { break; }
+                double d = ( *p - point ).norm();
+                if( d >= min_distance ) { continue; }
+                min_distance = d;
+                record = csv.binary() ? std::string( istream.binary().last(), csv.format().size() ) : comma::join( istream.ascii().last(), csv.delimiter );
             }
-            else
-            {
-                
-                return 0;
-            }
+            if( !record.empty() ) { std::cout << record; }
+            if( csv.binary() ) { std::cout.write( reinterpret_cast< const char* >( &min_distance ), sizeof( double ) ); }
+            else { std::cout << csv.delimiter << min_distance << std::endl; }
+            return 0;
         }
         if( operation == "thin" )
         {
@@ -671,6 +665,7 @@ int main( int ac, char** av )
         {
             double sign = operation == "nearest-max" ? 1 : -1;
             bool any = operation == "nearest-any";
+            bool output_full_record = options.exists( "--output-full-record,--full-record,--full" );
             if( csv.fields.empty() ) { csv.fields = "x,y,z,scalar"; }
             csv.full_xpath = false;
             bool has_id = csv.has_field( "id" );
@@ -732,19 +727,45 @@ int main( int ac, char** av )
             #ifdef WIN32
             _setmode( _fileno( stdout ), _O_BINARY );
             #endif
-            if( verbose ) { std::cerr << "points-calc: outputting..." << std::endl; }
-            std::string endl = csv.binary() ? "" : "\n";
-            std::string delimiter = csv.binary() ? "" : std::string( 1, csv.delimiter );
+            if( verbose ) { std::cerr << "points-calc: " << operation << ": outputting..." << std::endl; }
+            std::string endl;
+            std::string delimiter;
             comma::csv::options output_csv;
-            if( csv.binary() ) { output_csv.format( "ui,d" ); }
-            comma::csv::output_stream< local_operation::output > ostream( std::cout, output_csv );
-            for( std::size_t i = 0; i < records.size(); ++i )
+            if( csv.binary() )
             {
-                std::cout.write( &records[i].line[0], records[i].line.size() );
-                std::cout.write( &delimiter[0], delimiter.size() );
-                ostream.write( records[i].output() );
+                output_csv.format( "ui,d" );
             }
-            if( verbose ) { std::cerr << "points-calc: done!" << std::endl; }
+            else
+            {
+                std::ostringstream oss;
+                oss << std::endl;
+                endl = oss.str();
+                delimiter = std::string( 1, csv.delimiter );
+            }
+            if( output_full_record )
+            {
+                unsigned int discarded = 0;
+                for( std::size_t i = 0; i < records.size(); ++i )
+                {
+                    if( !records[i].reference_record ) { ++discarded; continue; }
+                    std::cout.write( &records[i].line[0], records[i].line.size() );
+                    std::cout.write( &delimiter[0], delimiter.size() );
+                    std::cout.write( &records[i].reference_record->line[0], records[i].reference_record->line.size() );
+                    std::cout.write( &endl[0], endl.size() );
+                }
+                if( verbose ) { std::cerr << "points-calc: " << operation << ": discarded " << discarded << " point(s) of " << records.size() << std::endl; }
+            }
+            else
+            {
+                comma::csv::output_stream< local_operation::output > ostream( std::cout, output_csv );
+                for( std::size_t i = 0; i < records.size(); ++i )
+                {
+                    std::cout.write( &records[i].line[0], records[i].line.size() );
+                    std::cout.write( &delimiter[0], delimiter.size() );
+                    ostream.write( records[i].output() );
+                }
+            }
+            if( verbose ) { std::cerr << "points-calc: " << operation << ": done!" << std::endl; }
             return 0;
         }
         if( operation == "find-outliers" )
