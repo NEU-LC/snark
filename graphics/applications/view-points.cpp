@@ -83,11 +83,19 @@ static void usage()
         "\nWARNING: this version of view-points is compiled against Qt5.5+"
         "\nIt will not be fully functional (yet)."
         "\n"
+        "\nUnsupported features are shown in dimmed text in this help"
+        "\n"
         "\nFor an example of current functionality try:"
         "\n    test-pattern cube 100000 0.1 0.01 | view-points --fields=x,y,z,r,g,b,a"
         "\n"
         "\n----------------------------------------------"
         "\n";
+
+    #define qt55_unsupported_marker_start "\x1B[0;90m"
+    #define qt55_unsupported_marker_end "\x1B[0m"
+#else
+    #define qt55_unsupported_marker_start ""
+    #define qt55_unsupported_marker_end ""
 #endif
 
     static const char * const usage_synopsis = 
@@ -105,6 +113,7 @@ static void usage()
         
     static const char * const usage_options = 
         "\ninput data options"
+        qt55_unsupported_marker_start
         "\n    --colour,--color,-c <how>: how to colour points"
         "\n        <how>:"
         "\n            colour maps"
@@ -190,6 +199,7 @@ static void usage()
         "\n    --scene-radius,--radius=<value>: fixed scene radius in metres, since sometimes it is hard to imply"
         "\n                            scene size from the dataset (e.g. for streams)"
         "\n    --z-is-up : z-axis is pointing up, default: pointing down ( north-east-down system )"
+        qt55_unsupported_marker_end
         "\n";
         
     static const char * const usage_csv_options = 
@@ -213,10 +223,12 @@ static void usage()
         
     static const char * const usage_examples = 
         "\nmouse clicks:"
+        qt55_unsupported_marker_start
         "\n    left press and hold: rotate the scene around the centre"
         "\n    right press and hold: translate the scene"
         "\n    double left click: change the centre of the scene"
         "\n    double right click: output to stdout approximate coordinates of the clicked point"
+        qt55_unsupported_marker_end
         "\n"
         "\nexamples"
         "\n"
@@ -224,6 +236,7 @@ static void usage()
         "\n    view points from file:"
         "\n        view-points xyz.csv"
         "\n"
+        qt55_unsupported_marker_start
         "\n    hint that the file contains not more than 200000 points"
         "\n        cat $(ls *.csv) | view-points --size=200000"
         "\n"
@@ -291,6 +304,7 @@ static void usage()
         "\n                  <( echo 0,0,2,0,0,0,0.5,2 )\";shape=ellipse;label=ellipse;color=salad\" \\"
         "\n                  <( echo -e \"0,0,-2,0\\n0,1,-2,1\\n0.5,1.5,-2,2\\n1,1,-2,3\\n1,0,-2,4\\n0.5,-0.5,-2,5\" )\";shape=loop;fields=x,y,z,id;label=loop\" \\"
         "\n                  <( echo 2,2,-1,-2,-1,-1 )\";shape=arc;label=arc;color=magenta\""
+        qt55_unsupported_marker_end
         "\n";
 
     std::cerr
