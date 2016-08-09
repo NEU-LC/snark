@@ -32,15 +32,16 @@
 #include <QCoreApplication>
 #include <math.h>
 #include "gl_widget.h"
+#include "types.h"
 
 namespace snark { namespace graphics { namespace qt3d {
 
-gl_widget::gl_widget( view::Reader* reader, QWidget *parent )
+gl_widget::gl_widget( buffer_provider* buffer, QWidget *parent )
     : QOpenGLWidget(parent),
       xRot_(0),
       yRot_(0),
       zRot_(0),
-      reader_( reader ),
+      buffer_( buffer ),
       program_(0)
 {}
 
@@ -166,7 +167,7 @@ void gl_widget::initializeGL()
     // Setup our vertex buffer object.
     vbo_.create();
     vbo_.bind();
-    vbo_.allocate( reader_->buffer_data(), reader_->buffer_size() * sizeof( vertex_t ));
+    vbo_.allocate( buffer_->buffer_data(), buffer_->buffer_size() * sizeof( vertex_t ));
 
     // Store the vertex attribute bindings for the program.
     setupVertexAttribs();
@@ -205,7 +206,7 @@ void gl_widget::paintGL()
     program_->setUniformValue( projection_matrix_location_, projection_ );
     program_->setUniformValue( mv_matrix_location_, camera_ * world_ );
 
-    glDrawArrays( GL_POINTS, 0, reader_->buffer_size() );
+    glDrawArrays( GL_POINTS, 0, buffer_->buffer_size() );
 
     program_->release();
 }

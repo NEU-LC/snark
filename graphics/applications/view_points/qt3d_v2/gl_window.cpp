@@ -33,6 +33,7 @@
 #include <QKeyEvent>
 #include "../../../qt3d/qt3d_v2/gl_widget.h"
 #include "../main_window.h"
+#include "../reader.h"
 #include "gl_window.h"
 
 namespace snark { namespace graphics { namespace view {

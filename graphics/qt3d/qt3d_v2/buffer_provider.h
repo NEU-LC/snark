@@ -27,67 +27,18 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef SNARK_GRAPHICS_QT3D_GLWIDGET_H_
-#define SNARK_GRAPHICS_QT3D_GLWIDGET_H_
-
-#include <QOpenGLWidget>
-#include <QOpenGLFunctions>
-#include <QOpenGLVertexArrayObject>
-#include <QOpenGLBuffer>
-#include <QMatrix4x4>
-#include "buffer_provider.h"
-
-QT_FORWARD_DECLARE_CLASS(QOpenGLShaderProgram)
+#ifndef SNARK_GRAPHICS_QT3D_BUFFERPROVIDER_H_
+#define SNARK_GRAPHICS_QT3D_BUFFERPROVIDER_H_
 
 namespace snark { namespace graphics { namespace qt3d {
 
-class gl_widget : public QOpenGLWidget, protected QOpenGLFunctions
+class buffer_provider
 {
-    Q_OBJECT
-
     public:
-        gl_widget( buffer_provider* buffer, QWidget *parent = 0 );
-        ~gl_widget();
-
-        QSize minimumSizeHint() const Q_DECL_OVERRIDE;
-        QSize sizeHint() const Q_DECL_OVERRIDE;
-
-    public slots:
-        void setXRotation( int angle );
-        void setYRotation( int angle );
-        void setZRotation( int angle );
-        void cleanup();
-
-    signals:
-        void xRotationChanged( int angle );
-        void yRotationChanged( int angle );
-        void zRotationChanged( int angle );
-
-    protected:
-        void initializeGL() Q_DECL_OVERRIDE;
-        void paintGL() Q_DECL_OVERRIDE;
-        void resizeGL( int width, int height ) Q_DECL_OVERRIDE;
-        void mousePressEvent( QMouseEvent *event ) Q_DECL_OVERRIDE;
-        void mouseMoveEvent( QMouseEvent *event ) Q_DECL_OVERRIDE;
-
-    private:
-        void setupVertexAttribs();
-
-        int xRot_;
-        int yRot_;
-        int zRot_;
-        QPoint last_pos_;
-        buffer_provider* buffer_;
-        QOpenGLVertexArrayObject vao_;
-        QOpenGLBuffer vbo_;
-        QOpenGLShaderProgram *program_;
-        int projection_matrix_location_;
-        int mv_matrix_location_;
-        QMatrix4x4 projection_;
-        QMatrix4x4 camera_;
-        QMatrix4x4 world_;
+        virtual const char* buffer_data() const = 0;
+        virtual std::size_t buffer_size() const = 0;
 };
 
 } } } // namespace snark { namespace graphics { namespace qt3d {
 
-#endif /*SNARK_GRAPHICS_QT3D_GLWIDGET_H_*/
+#endif /*SNARK_GRAPHICS_QT3D_BUFFERPROVIDER_H_*/
