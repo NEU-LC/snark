@@ -3,6 +3,7 @@
 #include "../message.h"
 #include <comma/csv/stream.h>
 #include <comma/io/select.h>
+#include "../traits.h"
 #include <cstdio>
 
 extern bool debug_verbose;
@@ -27,10 +28,8 @@ void scip2_device::usage()
     std::cerr << "    --set-baud-rate=<bps>: change the device's baud rate to <bps>, default 500000; pass 0 to disable changing baud-rate" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    output:" << std::endl;
-    comma::csv::binary< output_t > binary( "", "" );
-    std::cerr << "       format: " << binary.format().string() << " total size is " << binary.format().size() << " bytes" << std::endl;
-    std::vector< std::string > names = comma::csv::names< output_t >();
-    std::cerr << "       fields: " << comma::join( names, ','  ) << " number of fields: " << names.size() << std::endl;
+    std::cerr << "       format: " << comma::csv::format::value< output_t >() << std::endl;
+    std::cerr << "       fields: " << comma::join( comma::csv::names< output_t >(), ','  ) << std::endl;
     std::cerr << std::endl;
     std::cerr << "example:" << std::endl;
     std::cerr << "       sudo mknod /dev/usb/ttyUSB0 c 188 0" << std::endl;
