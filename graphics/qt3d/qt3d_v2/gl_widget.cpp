@@ -187,8 +187,11 @@ void gl_widget::mouseMoveEvent( QMouseEvent *event )
     float dy = event->y() - last_pos_.y();
 
     if ( event->buttons() & Qt::LeftButton ) {
-        world_.rotate( dy, 1, 0, 0 );
-        world_.rotate( dx, 0, 1, 0 );
+        QMatrix4x4 inverted_world = world_.inverted();
+        QVector4D x_axis = inverted_world * QVector4D( 1, 0, 0, 0 );
+        QVector4D y_axis = inverted_world * QVector4D( 0, 1, 0, 0 );
+        world_.rotate( dy, x_axis.toVector3D() );
+        world_.rotate( dx, y_axis.toVector3D() );
         update();
     } else if ( event->buttons() & Qt::RightButton ) {
         camera_.translate( dx / 500, -dy / 500, 0.0f );
