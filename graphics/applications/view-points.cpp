@@ -229,6 +229,7 @@ static void usage()
         "\n    double left click: change the centre of the scene"
         "\n    double right click: output to stdout approximate coordinates of the clicked point"
         qt55_unsupported_marker_end
+        "\n    scroll wheel: zoom"
         "\n"
         "\nexamples"
         "\n"
