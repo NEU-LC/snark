@@ -207,9 +207,12 @@ static void usage()
         "\n    fields:"
         "\n        default: x,y,z"
         "\n        x,y,z: coordinates (%d in binary)"
+        qt55_unsupported_marker_start
         "\n        id: if present, colour by id (%ui in binary)"
         "\n        block: if present, clear screen once block id changes (%ui in binary)"
+        qt55_unsupported_marker_end
         "\n        r,g,b: if present, specify RGB colour (0-255; %uc in binary)"
+        qt55_unsupported_marker_start
         "\n        a: if present, specifies colour transparency (0-255, %uc in binary); default 255"
         "\n        scalar: if present, colour by scalar"
         "\n                  use --colour=<from>:<to>[,<from colour>:<to colour>]"
@@ -219,6 +222,7 @@ static void usage()
         "\n        roll,pitch,yaw: if present, show orientation"
         "\n"
         "\n    most of the options can be set for individual files (see examples)"
+        qt55_unsupported_marker_end
         "\n";
         
     static const char * const usage_examples = 
@@ -247,8 +251,10 @@ static void usage()
         "\n    colour points"
         "\n        view-points --colour blue $(ls labeled.*.csv)"
         "\n"
+        qt55_unsupported_marker_end
         "\n    each point has an individual color:"
         "\n        cat xyzrgb.csv | view-points --fields=\"x,y,z,r,g,b\""
+        qt55_unsupported_marker_start
         "\n"
         "\n    view multiple files"
         "\n        view-points \"raw.csv;colour=0:20\" \"partitioned.csv;fields=x,y,z,id;point-size=2\""
