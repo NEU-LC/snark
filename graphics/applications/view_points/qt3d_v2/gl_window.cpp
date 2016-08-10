@@ -45,7 +45,9 @@ gl_window::gl_window( main_window *mw, Reader* reader )
     gl_widget_ = new qt3d::gl_widget( reader_ );
 
     QVBoxLayout *main_layout = new QVBoxLayout;
+    main_layout->setContentsMargins( 0, 0, 0, 0 );
     QHBoxLayout *container = new QHBoxLayout;
+    container->setContentsMargins( 0, 0, 0, 0 );
     container->addWidget( gl_widget_ );
 
     QWidget *w = new QWidget;
