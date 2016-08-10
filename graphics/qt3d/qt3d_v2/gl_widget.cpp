@@ -133,7 +133,10 @@ void gl_widget::initializeGL()
 
     program_->release();
 
-    // Our camera never changes at the moment, we are moving the object
+    // The camera always points along the z-axis. Pan moves the camera in x,y
+    // coordinates and zoom moves in and out on the z-axis.
+    // It starts at -1 because in OpenGL-land the transform is actually applied
+    // to the world and the camera is stationary at 0,0,0.
     camera_.setToIdentity();
     camera_.translate( 0, 0, -1 );
 
@@ -188,7 +191,7 @@ void gl_widget::mouseMoveEvent( QMouseEvent *event )
         world_.rotate( dx, 0, 1, 0 );
         update();
     } else if ( event->buttons() & Qt::RightButton ) {
-        world_.translate( dx / 500, -dy / 500, 0 );
+        camera_.translate( dx / 500, -dy / 500, 0.0f );
         update();
     }
     last_pos_ = event->pos();
