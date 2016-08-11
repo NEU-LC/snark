@@ -68,7 +68,7 @@ void usage( bool verbose )
     std::cerr << "                      e.g: --config=\"focal_length=123;image_size/x=222;image_size/y=123.1;...\"" << std::endl;
     std::cerr << "    --deprecated: use deprecated calculations for to-cartesian and to-pixels; will be removed soon" << std::endl;
     std::cerr << "    --input-fields: output input fields for given operation and exit" << std::endl;
-    std::cerr << "    --output-config,--sample-config: output sample config and exit" << std::endl;
+    std::cerr << "    --output-config,--sample-config,--config-sample: output sample config and exit" << std::endl;
     std::cerr << "    --output-fields: output appended fields for given operation and exit" << std::endl;
     std::cerr << "    --output-format: output appended fields binary format for given operation and exit" << std::endl;
     std::cerr << "    --verbose,-v: more output" << std::endl;
@@ -112,11 +112,13 @@ int main( int ac, char** av )
     {
         comma::command_line_options options( ac, av, usage );
         verbose=options.exists("--verbose");
-        if( options.exists( "--output-config,--sample-config" ) )
+        if( options.exists( "--output-config,--sample-config,--config-sample" ) )
         {
             snark::camera::pinhole::config_t config;
+            config.focal_length = 0.1;
+            config.image_size = Eigen::Vector2i( 1000, 2000 );
             config.sensor_size = Eigen::Vector2d( 0.1, 0.2 );
-            config.distortion = snark::camera::pinhole::config_t::distortion_t();
+            config.distortion = snark::camera::pinhole::config_t::distortion_t( snark::camera::pinhole::config_t::distortion_t::radial_t( 0.001, -0.0002, 0.003 ), snark::camera::pinhole::config_t::distortion_t::tangential_t( 0.0004, -0.0005 ) );
             comma::write_json( config, std::cout );
             return 0;
         }

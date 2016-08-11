@@ -51,7 +51,7 @@ class pinhole
                 {
                     double k1, k2, k3;
                     
-                    radial_t() : k1( 0 ), k2( 0 ), k3( 0 ) {}
+                    radial_t( double k1 = 0, double k2 = 0, double k3 = 0 ) : k1( k1 ), k2( k2 ), k3( k3 ) {}
                     
                     bool empty() const;
                 };
@@ -60,7 +60,7 @@ class pinhole
                 {
                     double p1, p2;
                     
-                    tangential_t() : p1( 0 ), p2( 0 ) {}
+                    tangential_t( double p1 = 0, double p2 = 0 ) : p1( p1 ), p2( p2 ) {}
                     
                     bool empty() const;
                 };
@@ -72,6 +72,8 @@ class pinhole
                 std::string map_filename;
                 
                 bool empty() const;
+                
+                distortion_t( const radial_t& radial = radial_t(), const tangential_t tangential = tangential_t() ) : radial( radial ), tangential( tangential ) {}
                                 
                 template < typename V > V as() const;
             };
