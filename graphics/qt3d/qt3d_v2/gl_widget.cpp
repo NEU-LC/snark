@@ -36,10 +36,11 @@
 
 namespace snark { namespace graphics { namespace qt3d {
 
-gl_widget::gl_widget( buffer_provider* buffer, QWidget *parent )
+gl_widget::gl_widget( buffer_provider* buffer, double perspective, QWidget *parent )
     : QOpenGLWidget( parent )
     , buffer_( buffer )
     , program_( 0 )
+    , perspective_( perspective )
 {}
 
 gl_widget::~gl_widget()
@@ -173,7 +174,7 @@ void gl_widget::paintGL()
 void gl_widget::resizeGL( int w, int h )
 {
     projection_.setToIdentity();
-    projection_.perspective( 45.0f, GLfloat( w ) / h, 0.01f, 100.0f );
+    projection_.perspective( perspective_, GLfloat( w ) / h, 0.01f, 100.0f );
 }
 
 void gl_widget::mousePressEvent( QMouseEvent *event )

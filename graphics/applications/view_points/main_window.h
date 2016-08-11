@@ -105,7 +105,7 @@ class main_window : public QMainWindow
     Q_OBJECT
 
 public:
-    main_window( Reader* reader );
+        main_window( Reader* reader, double perspective );
 };
 
 } } } // namespace snark { namespace graphics { namespace view {

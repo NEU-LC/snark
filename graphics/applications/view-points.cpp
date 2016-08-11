@@ -178,13 +178,17 @@ static void usage()
         "\n                     if set to \"none\" don't show source in selection box"
         "\n                     (but still display data and checkbox)"
         "\n"
+        qt55_unsupported_marker_end
         "\ncamera options"
+        qt55_unsupported_marker_start
         "\n    --camera=\"<options>\""
         "\n          <options>: [<fov>];[<type>]"
         "\n          <fov>: field of view in degrees, default 45 degrees"
         "\n          <type>: orthographic | perspective"
         "\n              default: perspective"
+        qt55_unsupported_marker_end
         "\n    --fov=<fov>: set camera field of view in degrees"
+        qt55_unsupported_marker_start
         "\n    --camera-config=<filename>: camera config in json; to see an example, run --output-camera-config"
         "\n    --camera-position=\"<options>\""
         "\n          <options>: <position>|<stream>"
@@ -594,7 +598,9 @@ int main( int argc, char** argv )
         boost::optional< Eigen::Vector3d > cameraorientation;
 
         bool camera_orthographic = options.exists( "--orthographic" );
+        #endif
         double fieldOfView = options.value< double >( "--fov" , 45 );
+        #if Qt3D_VERSION==1
         if( options.exists( "--camera" ) )
         {
             std::string camera = options.value< std::string >( "--camera" );
@@ -717,7 +723,7 @@ int main( int argc, char** argv )
 
         QApplication app(argc, argv);
         // TODO: currently just loads the first reader
-        snark::graphics::view::main_window main_window( readers[0].get() );
+        snark::graphics::view::main_window main_window( readers[0].get(), fieldOfView );
         main_window.resize( main_window.sizeHint() );
         main_window.show();
         return app.exec();

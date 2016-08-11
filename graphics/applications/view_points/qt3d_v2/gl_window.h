@@ -46,7 +46,7 @@ class gl_window : public QWidget
     Q_OBJECT
 
     public:
-        gl_window( main_window *mw, Reader* reader );
+        gl_window( main_window *mw, Reader* reader, double perspective );
         ~gl_window();
 
     protected:

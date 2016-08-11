@@ -46,7 +46,7 @@ class gl_widget : public QOpenGLWidget, protected QOpenGLFunctions
     Q_OBJECT
 
     public:
-        gl_widget( buffer_provider* buffer, QWidget *parent = 0 );
+        gl_widget( buffer_provider* buffer, double perspective, QWidget *parent = 0 );
         ~gl_widget();
 
         QSize minimumSizeHint() const Q_DECL_OVERRIDE;
@@ -76,6 +76,7 @@ class gl_widget : public QOpenGLWidget, protected QOpenGLFunctions
         QMatrix4x4 projection_;
         QMatrix4x4 camera_;
         QMatrix4x4 world_;
+        double perspective_;
 };
 
 } } } // namespace snark { namespace graphics { namespace qt3d {
