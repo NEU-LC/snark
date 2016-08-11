@@ -117,11 +117,9 @@ class pinhole
         
         /// return pixel coordinates in camera frame
         Eigen::Vector3d to_cartesian( const Eigen::Vector2d& p, bool undistort = true ) const;
-        Eigen::Vector3d to_cartesian_deprecated( const Eigen::Vector2d& p, bool undistort = true ) const;
 
         //returns converts from camera frame to image pixel col,row
         Eigen::Vector2d to_pixel( const Eigen::Vector2d& p ) const;
-        Eigen::Vector2d to_pixel_deprecated( const Eigen::Vector2d& p ) const;
         
         /// return radially and then tangentially corrected pixel
         Eigen::Vector2d undistorted( const Eigen::Vector2d& p ) const;
