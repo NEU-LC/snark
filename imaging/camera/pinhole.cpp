@@ -35,11 +35,19 @@
 #include <comma/application/verbose.h>
 #include <comma/base/exception.h>
 #include <comma/base/types.h>
+#include <comma/math/compare.h>
 #include "pinhole.h"
 
 namespace snark { namespace camera {
     
 pinhole::config_t::config_t() : focal_length( 0 ), image_size( Eigen::Vector2i::Zero() ) {}
+
+void pinhole::config_t::validate()
+{
+    if( !comma::math::less( 0, focal_length ) ) { COMMA_THROW( comma::exception, "pinhole config: expected positive focal length, got: " << focal_length ); }
+    if( sensor_size && ( !comma::math::less( 0, sensor_size->x() ) || !comma::math::less( 0, sensor_size->y() ) ) ) { COMMA_THROW( comma::exception, "pinhole config: expected positive sensor size, got: " << sensor_size->x() << "," << sensor_size->y() ); }
+    if( image_size.x() <= 0 || image_size.y() <= 0 ) { COMMA_THROW( comma::exception, "pinhole config: expected positive image size, got: " << image_size.x() << "," << image_size.y() ); }
+}
 
 template < typename V > V pinhole::config_t::distortion_t::as() const
 {

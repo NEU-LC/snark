@@ -106,6 +106,9 @@ class pinhole
             
             /// return tangentially corrected pixel
             Eigen::Vector2d tangentially_corrected( const Eigen::Vector2d& p ) const;
+            
+            /// throw, if basic checks on config fail
+            void validate();
         };
         
         pinhole( const pinhole::config_t& config );

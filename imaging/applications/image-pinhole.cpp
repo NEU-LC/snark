@@ -94,7 +94,8 @@ static snark::camera::pinhole::config_t make_config( const std::string& config_p
     {
         const std::vector< std::string >& v = comma::split( config_parameters, ":#@" );
         if( v.size() == 1 ) { comma::read( config, config_parameters, true ); }
-        else { comma::read_json( config, config_parameters.substr( 0, config_parameters.size() - v.back().size() - 1 ), v.back(), true ); }
+        else { comma::read( config, config_parameters.substr( 0, config_parameters.size() - v.back().size() - 1 ), v.back(), true ); }
+        config.validate();
     }
     else
     {
