@@ -38,11 +38,11 @@
 
 namespace snark { namespace graphics { namespace view {
 
-gl_window::gl_window( main_window *mw, Reader* reader, double perspective )
+gl_window::gl_window( main_window *mw, Reader* reader, const qt3d::camera_options& camera_options )
     : main_window_(mw)
     , reader_( reader )
 {
-    gl_widget_ = new qt3d::gl_widget( reader_, perspective );
+    gl_widget_ = new qt3d::gl_widget( reader_, camera_options );
 
     QVBoxLayout *main_layout = new QVBoxLayout;
     main_layout->setContentsMargins( 0, 0, 0, 0 );

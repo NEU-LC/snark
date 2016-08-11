@@ -196,9 +196,9 @@ void MainWindow::keyPressEvent(QKeyEvent *e)
 
 namespace snark { namespace graphics { namespace view {
 
-main_window::main_window( Reader* reader, double perspective )
+main_window::main_window( Reader* reader, const qt3d::camera_options& camera_options )
 {
-    setCentralWidget( new gl_window( this, reader, perspective ));
+    setCentralWidget( new gl_window( this, reader, camera_options ));
 }
 
 } } } // namespace snark { namespace graphics { namespace view {

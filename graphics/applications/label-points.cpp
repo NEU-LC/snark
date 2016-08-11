@@ -42,6 +42,7 @@
 #include <comma/name_value/parser.h>
 #include <comma/string/string.h>
 #include <comma/csv/format.h>
+#include "../qt3d/camera_options.h"
 #include "label_points/MainWindow.h"
 
 void usage( bool verbose )
@@ -113,9 +114,13 @@ int main( int argc, char** argv )
         else
         {
             QApplication application( argc, argv );
-            bool orthographic = options.exists( "--orthographic" );
-            double fieldOfView = options.value< double >( "--fov", 45 );
-            boost::scoped_ptr< snark::graphics::view::Viewer > viewer( new snark::graphics::view::Viewer( dataset_csv_options, csv_out, fixDuplicated, backgroundcolour, orthographic, fieldOfView, verbose ) );
+
+            snark::graphics::qt3d::camera_options camera_options
+                ( options.exists( "--orthographic" )
+                , options.value< double >( "--fov", 45 )
+                , false );
+            
+            boost::scoped_ptr< snark::graphics::view::Viewer > viewer( new snark::graphics::view::Viewer( dataset_csv_options, camera_options, csv_out, fixDuplicated, backgroundcolour, verbose ) );
             snark::graphics::view::MainWindow mainWindow( comma::join( argv, argc, ' ' ), viewer.get() );
             mainWindow.show();
             /*return*/ application.exec();

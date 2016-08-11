@@ -33,6 +33,7 @@
 #include <QTimer>
 #include <boost/array.hpp>
 #include "../../../math/rotation_matrix.h"
+#include "../camera_options.h"
 #include "view.h"
 
 namespace snark { namespace graphics { namespace qt3d {
@@ -45,23 +46,21 @@ static const double default_scene_radius = 10;
 /// @param z_up if true, the z-axis is pointing up, if false it is pointing down
 /// @param orthographic use orthographic projection instead of perspective
 view::view( const QColor4ub& background_color
-          , double fov
-          , bool z_up
-          , bool orthographic
+          , const camera_options& camera_options
           , boost::optional< QVector3D > scene_center
           , boost::optional< double > scene_radius )
     : m_background_color( background_color )
     , m_sceneCenter( scene_center ? *scene_center : QVector3D( 0, 0, 0 ) )
     , scene_center_fixed_( scene_center )
-    , m_z_up( z_up )
+    , m_z_up( camera_options.z_is_up )
     , scene_radius_( scene_radius ? *scene_radius : default_scene_radius )
     , scene_radius_fixed_( scene_radius )
     , m_revolve( 0, 0, 0 )
     , m_show_coordinates( false )
 {
-    camera()->setFieldOfView( fov );
+    camera()->setFieldOfView( camera_options.field_of_view );
     camera()->setNearPlane( 0.1 );
-    if( orthographic )
+    if( camera_options.orthographic )
     {
         camera()->setProjectionType( QGLCamera::Orthographic );
         camera()->setViewSize( QSize( scene_radius_, scene_radius_ ) );

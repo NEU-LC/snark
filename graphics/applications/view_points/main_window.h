@@ -96,6 +96,10 @@ class CheckBox : public QCheckBox // quick and dirty
 
 #include <QMainWindow>
 
+namespace snark { namespace graphics { namespace qt3d {
+class camera_options;
+} } }
+
 namespace snark { namespace graphics { namespace view {
 
 class Reader;
@@ -105,7 +109,7 @@ class main_window : public QMainWindow
     Q_OBJECT
 
 public:
-        main_window( Reader* reader, double perspective );
+        main_window( Reader* reader, const qt3d::camera_options& camera_options );
 };
 
 } } } // namespace snark { namespace graphics { namespace view {

@@ -1,5 +1,5 @@
 // This file is part of snark, a generic and flexible library for robotics research
-// Copyright (c) 2016 The University of Sydney
+// Copyright (c) 2011 The University of Sydney
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -27,59 +27,30 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef SNARK_GRAPHICS_QT3D_GLWIDGET_H_
-#define SNARK_GRAPHICS_QT3D_GLWIDGET_H_
-
-#include <QOpenGLWidget>
-#include <QOpenGLFunctions>
-#include <QOpenGLVertexArrayObject>
-#include <QOpenGLBuffer>
-#include <QMatrix4x4>
-#include "../camera_options.h"
-#include "buffer_provider.h"
-
-QT_FORWARD_DECLARE_CLASS(QOpenGLShaderProgram)
+#ifndef SNARK_GRAPHICS_QT3D_CAMERAOPTIONS_H_
+#define SNARK_GRAPHICS_QT3D_CAMERAOPTIONS_H_
 
 namespace snark { namespace graphics { namespace qt3d {
 
-class gl_widget : public QOpenGLWidget, protected QOpenGLFunctions
+struct camera_options
 {
-    Q_OBJECT
+    bool   orthographic;
+    double field_of_view;
+    bool   z_is_up;
 
-    public:
-        gl_widget( buffer_provider* buffer, const camera_options& camera_options, QWidget *parent = 0 );
-        ~gl_widget();
+    camera_options()
+        : orthographic( false )
+        , field_of_view( 45.0f )
+        , z_is_up( false )
+    {}
 
-        QSize minimumSizeHint() const Q_DECL_OVERRIDE;
-        QSize sizeHint() const Q_DECL_OVERRIDE;
-
-    public slots:
-        void cleanup();
-
-    protected:
-        void initializeGL() Q_DECL_OVERRIDE;
-        void paintGL() Q_DECL_OVERRIDE;
-        void resizeGL( int width, int height ) Q_DECL_OVERRIDE;
-        void mousePressEvent( QMouseEvent *event ) Q_DECL_OVERRIDE;
-        void mouseMoveEvent( QMouseEvent *event ) Q_DECL_OVERRIDE;
-        void wheelEvent( QWheelEvent *event ) Q_DECL_OVERRIDE;
-
-    private:
-        void setup_vertex_attribs();
-
-        QPoint last_pos_;
-        buffer_provider* buffer_;
-        QOpenGLVertexArrayObject vao_;
-        QOpenGLBuffer vbo_;
-        QOpenGLShaderProgram *program_;
-        int projection_matrix_location_;
-        int mv_matrix_location_;
-        QMatrix4x4 projection_;
-        QMatrix4x4 camera_;
-        QMatrix4x4 world_;
-        camera_options camera_options_;
+    camera_options( bool orthographic, double field_of_view, bool z_is_up )
+        : orthographic( orthographic )
+        , field_of_view( field_of_view )
+        , z_is_up( z_is_up )
+    {}
 };
 
 } } } // namespace snark { namespace graphics { namespace qt3d {
 
-#endif /*SNARK_GRAPHICS_QT3D_GLWIDGET_H_*/
+#endif /*SNARK_GRAPHICS_QT3D_CAMERAOPTIONS_H_*/

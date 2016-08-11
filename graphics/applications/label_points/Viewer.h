@@ -76,11 +76,10 @@ class Viewer : public qt3d::view
         Tools::Fill fill;
 
         Viewer( const std::vector< comma::csv::options >& options
+              , const qt3d::camera_options& camera_options
               , const comma::csv::options& csv_out
               , bool labelDuplicated
               , const QColor4ub& background_color
-              , bool orthographic = false
-              , double fieldOfView = pi_ / 4
               , bool verbose = false );
 
         void show( std::size_t i, bool visible ); // quick and dirty

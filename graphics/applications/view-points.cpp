@@ -41,6 +41,7 @@
 #include <QApplication>
 #include "view_points/shape_reader.h"
 #include "view_points/main_window.h"
+#include "../qt3d/camera_options.h"
 #if Qt3D_VERSION==1
 #include "view_points/qt3d_v1/viewer.h"
 #include "view_points/qt3d_v1/model_reader.h"
@@ -596,10 +597,12 @@ int main( int argc, char** argv )
         boost::optional< comma::csv::options > camera_csv;
         boost::optional< Eigen::Vector3d > cameraposition;
         boost::optional< Eigen::Vector3d > cameraorientation;
-
-        bool camera_orthographic = options.exists( "--orthographic" );
         #endif
-        double fieldOfView = options.value< double >( "--fov" , 45 );
+
+        snark::graphics::qt3d::camera_options camera_options
+            ( options.exists( "--orthographic" )
+            , options.value< double >( "--fov", 45 )
+            , options.exists( "--z-is-up" ));
         #if Qt3D_VERSION==1
         if( options.exists( "--camera" ) )
         {
@@ -609,18 +612,18 @@ int main( int argc, char** argv )
             {
                 if( v[i] == "orthographic" )
                 {
-                    camera_orthographic = true;
+                    camera_options.orthographic = true;
                 }
                 else if( v[i] == "perspective" )
                 {
-                    camera_orthographic = false;
+                    camera_options.orthographic = false;
                 }
                 else
                 {
                     std::vector< std::string > vec = comma::split( v[i], '=' );
                     if( vec.size() == 2 && vec[0] == "fov" )
                     {
-                        fieldOfView = boost::lexical_cast< double >( vec[1] );
+                        camera_options.field_of_view = boost::lexical_cast< double >( vec[1] );
                     }
                 }
             }
@@ -629,7 +632,6 @@ int main( int argc, char** argv )
 
         #if Qt3D_VERSION==1
         QApplication application( argc, argv );
-        bool z_up = options.exists( "--z-is-up" );
         if( options.exists( "--camera-position" ) )
         {
             std::string position = options.value< std::string >( "--camera-position" );
@@ -664,10 +666,8 @@ int main( int argc, char** argv )
         if( options.exists( "--camera-config" ) ) { boost::property_tree::read_json( options.value< std::string >( "--camera-config" ), camera_config ); }
         #if Qt3D_VERSION==1
         snark::graphics::view::Viewer* viewer = new snark::graphics::view::Viewer( backgroundcolour
-                                                                                 , fieldOfView
-                                                                                 , z_up
+                                                                                 , camera_options
                                                                                  , options.exists( "--exit-on-end-of-input" )
-                                                                                 , camera_orthographic
                                                                                  , camera_csv
                                                                                  , cameraposition
                                                                                  , cameraorientation
@@ -723,7 +723,7 @@ int main( int argc, char** argv )
 
         QApplication app(argc, argv);
         // TODO: currently just loads the first reader
-        snark::graphics::view::main_window main_window( readers[0].get(), fieldOfView );
+        snark::graphics::view::main_window main_window( readers[0].get(), camera_options );
         main_window.resize( main_window.sizeHint() );
         main_window.show();
         return app.exec();

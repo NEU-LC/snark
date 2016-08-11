@@ -55,10 +55,8 @@ void Viewer::camera_position_output::write()
 }
 
 Viewer::Viewer( const QColor4ub& background_color
-              , double fov
-              , bool z_up
+              , const qt3d::camera_options& camera_options
               , bool exit_on_end_of_input
-              , bool orthographic
               , boost::optional< comma::csv::options > camera_csv, boost::optional< Eigen::Vector3d > cameraposition
               , boost::optional< Eigen::Vector3d > cameraorientation
               , boost::property_tree::ptree* camera_config
@@ -66,9 +64,7 @@ Viewer::Viewer( const QColor4ub& background_color
               , boost::optional< double > scene_radius
               , bool output_camera_position )
     : qt3d::view( background_color
-                , fov
-                , z_up
-                , orthographic
+                , camera_options
                 , scene_center ? boost::optional< QVector3D >( QVector3D( scene_center->x()
                                                                         , scene_center->y()
                                                                         , scene_center->z() ) )

@@ -34,6 +34,7 @@
 
 namespace snark { namespace graphics { namespace qt3d {
 class gl_widget;
+class camera_options;
 } } }
 
 namespace snark { namespace graphics { namespace view {
@@ -46,7 +47,7 @@ class gl_window : public QWidget
     Q_OBJECT
 
     public:
-        gl_window( main_window *mw, Reader* reader, double perspective );
+        gl_window( main_window *mw, Reader* reader, const qt3d::camera_options& camera_options );
         ~gl_window();
 
     protected:

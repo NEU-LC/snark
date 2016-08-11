@@ -41,13 +41,12 @@
 namespace snark { namespace graphics { namespace view {
 
 Viewer::Viewer( const std::vector< comma::csv::options >& options
+              , const qt3d::camera_options& camera_options
               , const comma::csv::options& csv_out
               , bool labelDuplicated
               , const QColor4ub& background_color
-              , bool orthographic
-              , double fieldOfView
               , bool verbose )
-    : qt3d::view( background_color, fieldOfView, false, orthographic )
+    : qt3d::view( background_color, camera_options )
     , navigate( *this )
     , pickId( *this )
     , selectPartition( *this )
