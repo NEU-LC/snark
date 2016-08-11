@@ -195,7 +195,9 @@ static void usage()
         "\n          <options>: <position>|<stream>"
         "\n          <position>: <x>,<y>,<z>,<roll>,<pitch>,<yaw>"
         "\n          <stream>: position csv stream with options; default fields: x,y,z,roll,pitch,yaw"
+        qt55_unsupported_marker_end
         "\n    --orthographic: use orthographic projection instead of perspective"
+        qt55_unsupported_marker_start
         "\n"
         "\nmore options"
         "\n    --background-colour <colour> : default: black"

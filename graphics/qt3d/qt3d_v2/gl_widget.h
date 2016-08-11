@@ -66,6 +66,7 @@ class gl_widget : public QOpenGLWidget, protected QOpenGLFunctions
 
     private:
         void setup_vertex_attribs();
+        void set_projection();
 
         QPoint last_pos_;
         buffer_provider* buffer_;
@@ -78,6 +79,7 @@ class gl_widget : public QOpenGLWidget, protected QOpenGLFunctions
         QMatrix4x4 camera_;
         QMatrix4x4 world_;
         camera_options camera_options_;
+        double size_;
 };
 
 } } } // namespace snark { namespace graphics { namespace qt3d {

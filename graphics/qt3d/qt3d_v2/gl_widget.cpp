@@ -41,6 +41,7 @@ gl_widget::gl_widget( buffer_provider* buffer, const camera_options& camera_opti
     , buffer_( buffer )
     , program_( 0 )
     , camera_options_( camera_options )
+    , size_( 0.4f )
 {}
 
 gl_widget::~gl_widget()
@@ -171,10 +172,19 @@ void gl_widget::paintGL()
     program_->release();
 }
 
+void gl_widget::set_projection()
+{
+    double aspect_ratio = (double) width() / height();
+    projection_.setToIdentity();
+    if( camera_options_.orthographic )
+        projection_.ortho( -size_ * aspect_ratio, size_ * aspect_ratio, -size_, size_, 0.01f, 100.0f );
+    else
+        projection_.perspective( camera_options_.field_of_view, aspect_ratio, 0.01f, 100.0f );
+}
+
 void gl_widget::resizeGL( int w, int h )
 {
-    projection_.setToIdentity();
-    projection_.perspective( camera_options_.field_of_view, GLfloat( w ) / h, 0.01f, 100.0f );
+    set_projection();
 }
 
 void gl_widget::mousePressEvent( QMouseEvent *event )
@@ -206,7 +216,15 @@ void gl_widget::mouseMoveEvent( QMouseEvent *event )
 
 void gl_widget::wheelEvent( QWheelEvent *event )
 {
-    camera_.translate( 0, 0, event->delta() / 1000.0f );
+    if( camera_options_.orthographic )
+    {
+        size_ *= ( 1 - 0.001 * event->delta() );
+        set_projection();
+    }
+    else
+    {
+        camera_.translate( 0, 0, 0.0005f * event->delta() );
+    }
     update();
 }
 
