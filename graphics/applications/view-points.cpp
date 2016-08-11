@@ -181,13 +181,11 @@ static void usage()
         "\n"
         qt55_unsupported_marker_end
         "\ncamera options"
-        qt55_unsupported_marker_start
         "\n    --camera=\"<options>\""
-        "\n          <options>: [<fov>];[<type>]"
+        "\n          <options>: [fov=<fov>];[<type>]"
         "\n          <fov>: field of view in degrees, default 45 degrees"
         "\n          <type>: orthographic | perspective"
         "\n              default: perspective"
-        qt55_unsupported_marker_end
         "\n    --fov=<fov>: set camera field of view in degrees"
         qt55_unsupported_marker_start
         "\n    --camera-config=<filename>: camera config in json; to see an example, run --output-camera-config"
@@ -605,7 +603,7 @@ int main( int argc, char** argv )
             ( options.exists( "--orthographic" )
             , options.value< double >( "--fov", 45 )
             , options.exists( "--z-is-up" ));
-        #if Qt3D_VERSION==1
+
         if( options.exists( "--camera" ) )
         {
             std::string camera = options.value< std::string >( "--camera" );
@@ -630,7 +628,6 @@ int main( int argc, char** argv )
                 }
             }
         }
-        #endif
 
         #if Qt3D_VERSION==1
         QApplication application( argc, argv );
