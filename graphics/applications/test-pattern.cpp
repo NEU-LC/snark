@@ -50,12 +50,15 @@ static void usage( bool verbose = false )
     std::cerr << "\nOutput test data";
     std::cerr << "\n";
     std::cerr << "\nUsage: " << comma::verbose.app_name() << " <mode> [<options>]";
-    std::cerr << "\nwhere <mode> is \"cube\" (only mode provided at the moment)";
-    std::cerr << "\n    required parameters: count, width, thickness";
-    std::cerr << "\n    e.g. " << comma::verbose.app_name() << " cube 100000 0.1 0.02";
+    std::cerr << "\n";
+    std::cerr << "\nwhere <mode> is one of:";
+    std::cerr << "\n    cube <count> <width> <thickness>";
     std::cerr << "\n";
     std::cerr << "\nOptions: ";
     std::cerr << "\n    --help,-h:          show this help, --help --verbose for more help";
+    std::cerr << "\n";
+    std::cerr << "\nExamples: ";
+    std::cerr << "\n    " << comma::verbose.app_name() << " cube 100000 0.1 0.02";
     std::cerr << "\n";
     std::cerr << std::endl;
     exit( 0 );

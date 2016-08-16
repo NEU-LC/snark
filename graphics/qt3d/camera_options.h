@@ -1,5 +1,5 @@
 // This file is part of snark, a generic and flexible library for robotics research
-// Copyright (c) 2016 The University of Sydney
+// Copyright (c) 2011 The University of Sydney
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -27,47 +27,30 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include <QSlider>
-#include <QVBoxLayout>
-#include <QHBoxLayout>
-#include <QKeyEvent>
-#include "../../../qt3d/qt3d_v2/gl_widget.h"
-#include "../main_window.h"
-#include "../reader.h"
-#include "gl_window.h"
+#ifndef SNARK_GRAPHICS_QT3D_CAMERAOPTIONS_H_
+#define SNARK_GRAPHICS_QT3D_CAMERAOPTIONS_H_
 
-namespace snark { namespace graphics { namespace view {
+namespace snark { namespace graphics { namespace qt3d {
 
-gl_window::gl_window( main_window *mw, Reader* reader, const qt3d::camera_options& camera_options )
-    : main_window_(mw)
-    , reader_( reader )
+struct camera_options
 {
-    gl_widget_ = new qt3d::gl_widget( reader_, camera_options );
+    bool   orthographic;
+    double field_of_view;
+    bool   z_is_up;
 
-    QVBoxLayout *main_layout = new QVBoxLayout;
-    main_layout->setContentsMargins( 0, 0, 0, 0 );
-    QHBoxLayout *container = new QHBoxLayout;
-    container->setContentsMargins( 0, 0, 0, 0 );
-    container->addWidget( gl_widget_ );
+    camera_options()
+        : orthographic( false )
+        , field_of_view( 45.0f )
+        , z_is_up( false )
+    {}
 
-    QWidget *w = new QWidget;
-    w->setLayout( container );
-    main_layout->addWidget( w );
+    camera_options( bool orthographic, double field_of_view, bool z_is_up )
+        : orthographic( orthographic )
+        , field_of_view( field_of_view )
+        , z_is_up( z_is_up )
+    {}
+};
 
-    setLayout( main_layout );
-}
+} } } // namespace snark { namespace graphics { namespace qt3d {
 
-gl_window::~gl_window()
-{
-    delete gl_widget_;
-}
-
-void gl_window::keyPressEvent(QKeyEvent *e)
-{
-    if (e->key() == Qt::Key_Escape)
-        close();
-    else
-        QWidget::keyPressEvent(e);
-}
-
-} } } // namespace snark { namespace graphics { namespace view {
+#endif /*SNARK_GRAPHICS_QT3D_CAMERAOPTIONS_H_*/

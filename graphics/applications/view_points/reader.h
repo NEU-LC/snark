@@ -45,6 +45,7 @@
 #else
 #include <QQuaternion>
 #include "../../../math/interval.h"
+#include "../../qt3d/qt3d_v2/buffer_provider.h"
 #include "../../qt3d/qt3d_v2/types.h"
 #endif
 
@@ -75,6 +76,9 @@ struct reader_parameters
 };
 
 class Reader : public reader_parameters
+             #if Qt3D_VERSION==2
+             , public qt3d::buffer_provider
+             #endif
 {
     public:
         #if Qt3D_VERSION==1
@@ -91,9 +95,6 @@ class Reader : public reader_parameters
         virtual bool read_once() = 0;
         #if Qt3D_VERSION==1
         virtual void render( QGLPainter *painter ) = 0;
-        #else
-        virtual const char* buffer_data() const = 0;
-        virtual std::size_t buffer_size() const = 0;
         #endif
         virtual bool empty() const = 0;
 

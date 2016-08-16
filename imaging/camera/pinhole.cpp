@@ -35,11 +35,19 @@
 #include <comma/application/verbose.h>
 #include <comma/base/exception.h>
 #include <comma/base/types.h>
+#include <comma/math/compare.h>
 #include "pinhole.h"
 
 namespace snark { namespace camera {
     
 pinhole::config_t::config_t() : focal_length( 0 ), image_size( Eigen::Vector2i::Zero() ) {}
+
+void pinhole::config_t::validate()
+{
+    if( !comma::math::less( 0, focal_length ) ) { COMMA_THROW( comma::exception, "pinhole config: expected positive focal length, got: " << focal_length ); }
+    if( sensor_size && ( !comma::math::less( 0, sensor_size->x() ) || !comma::math::less( 0, sensor_size->y() ) ) ) { COMMA_THROW( comma::exception, "pinhole config: expected positive sensor size, got: " << sensor_size->x() << "," << sensor_size->y() ); }
+    if( image_size.x() <= 0 || image_size.y() <= 0 ) { COMMA_THROW( comma::exception, "pinhole config: expected positive image size, got: " << image_size.x() << "," << image_size.y() ); }
+}
 
 template < typename V > V pinhole::config_t::distortion_t::as() const
 {
@@ -126,18 +134,6 @@ Eigen::Vector2d pinhole::to_pixel( const Eigen::Vector2d& p ) const
 {
     Eigen::Vector2d s = config_.pixel_size();
     return Eigen::Vector2d( -p.x() / s.x(), -p.y() / s.y() ) + image_centre_;
-}
-
-Eigen::Vector3d pinhole::to_cartesian_deprecated( const Eigen::Vector2d& p, bool undistort ) const
-{
-    Eigen::Vector2d q = ( undistort ? undistorted( p ) : p ) - image_centre_;
-    return Eigen::Vector3d( q.x() * pixel_size_.x(), -q.y() * pixel_size_.y(), -config_.focal_length ); // todo: verify signs
-}
-
-Eigen::Vector2d pinhole::to_pixel_deprecated( const Eigen::Vector2d& p ) const
-{
-    Eigen::Vector2d q( p.x() / pixel_size_.x(), p.y() / pixel_size_.y() );
-    return q + image_centre_;
 }
 
 Eigen::Vector2d pinhole::config_t::image_centre() const { return principal_point ? *principal_point : Eigen::Vector2d( double( image_size.x() ) / 2, double( image_size.y() ) / 2 ); }

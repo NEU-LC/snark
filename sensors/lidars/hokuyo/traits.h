@@ -27,10 +27,11 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef SNARK_SENSORS_HOKUYO_TRAITS_H 
-#define SNARK_SENSORS_HOKUYO_TRAITS_H 
+#pragma once
+
 #include "message.h"
 #include "output.h"
+#include "detail/scip2.h"
 
 namespace comma { namespace visiting {
 
@@ -74,9 +75,32 @@ template <> struct traits< snark::hokuyo::data_point >
         v.apply( "intensity", t.intensity );
     }
 };
-    
 
+template < > struct traits< snark::hokuyo::scip2_device::output_t >
+{
+    template< typename K, typename V > static void visit( const K& k, snark::hokuyo::scip2_device::output_t& t, V& v )
+    {
+        v.apply( "timestamp", t.timestamp );
+        v.apply( "x", t.x );
+        v.apply( "y", t.y );
+        v.apply( "z", t.z );
+        v.apply( "block", t.block );
+        v.apply( "range", t.range );
+        v.apply( "bearing", t.bearing );
+        v.apply( "elevation", t.elevation );
+    }
     
-} } // namespace comma { namespace visitting {
+    template< typename K, typename V > static void visit( const K& k, const snark::hokuyo::scip2_device::output_t& t, V& v )
+    {
+        v.apply( "timestamp", t.timestamp );
+        v.apply( "x", t.x );
+        v.apply( "y", t.y );
+        v.apply( "z", t.z );
+        v.apply( "block", t.block );
+        v.apply( "range", t.range );
+        v.apply( "bearing", t.bearing );
+        v.apply( "elevation", t.elevation );
+    }
+};
 
-#endif // SNARK_SENSORS_HOKUYO_TRAITS_H 
+} } // namespace comma { namespace visiting {

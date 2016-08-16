@@ -57,10 +57,8 @@ class Viewer : public qt3d::view
 
         /// @todo split into several constructors; make camera configuration a separate class
         Viewer( const QColor4ub& background_color
-              , double fov
-              , bool z_up
+              , const qt3d::camera_options& camera_options
               , bool exit_on_end_of_input
-              , bool orthographic = false
               , boost::optional< comma::csv::options > cameracsv = boost::optional< comma::csv::options >()
               , boost::optional< Eigen::Vector3d > cameraposition = boost::optional< Eigen::Vector3d >()
               , boost::optional< Eigen::Vector3d > cameraorientation = boost::optional< Eigen::Vector3d >()

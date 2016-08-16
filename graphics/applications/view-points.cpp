@@ -41,6 +41,7 @@
 #include <QApplication>
 #include "view_points/shape_reader.h"
 #include "view_points/main_window.h"
+#include "../qt3d/camera_options.h"
 #if Qt3D_VERSION==1
 #include "view_points/qt3d_v1/viewer.h"
 #include "view_points/qt3d_v1/model_reader.h"
@@ -83,11 +84,19 @@ static void usage()
         "\nWARNING: this version of view-points is compiled against Qt5.5+"
         "\nIt will not be fully functional (yet)."
         "\n"
+        "\nUnsupported features are shown in dimmed text in this help"
+        "\n"
         "\nFor an example of current functionality try:"
         "\n    test-pattern cube 100000 0.1 0.01 | view-points --fields=x,y,z,r,g,b,a"
         "\n"
         "\n----------------------------------------------"
         "\n";
+
+    #define qt55_unsupported_marker_start "\x1B[0;90m"
+    #define qt55_unsupported_marker_end "\x1B[0m"
+#else
+    #define qt55_unsupported_marker_start ""
+    #define qt55_unsupported_marker_end ""
 #endif
 
     static const char * const usage_synopsis = 
@@ -95,10 +104,9 @@ static void usage()
         "\nview points from given files/streams and stdin"
         "\n(see examples below for a quick start)"
         "\n"
-        "\nnote: scene radius, centre and point of view will be decided"
-        "\n      depending on the extents of the first data source"
-        "\n      (if you want it to be stdin, specify \"-\" as the"
-        "\n      explicitly as the first data source); see also"
+        "\nnote: scene radius, centre and point of view will be decided depending on"
+        "\n      the extents of the first data source (if you want it to be stdin,"
+        "\n      specify \"-\" as the explicitly as the first data source); see also"
         "\n      --scene-radius option and examples"
         "\n"
         "\nusage: view-points [<options>] [<filenames>]"
@@ -106,6 +114,7 @@ static void usage()
         
     static const char * const usage_options = 
         "\ninput data options"
+        qt55_unsupported_marker_start
         "\n    --colour,--color,-c <how>: how to colour points"
         "\n        <how>:"
         "\n            colour maps"
@@ -170,19 +179,23 @@ static void usage()
         "\n                     if set to \"none\" don't show source in selection box"
         "\n                     (but still display data and checkbox)"
         "\n"
+        qt55_unsupported_marker_end
         "\ncamera options"
         "\n    --camera=\"<options>\""
-        "\n          <options>: [<fov>];[<type>]"
+        "\n          <options>: [fov=<fov>];[<type>]"
         "\n          <fov>: field of view in degrees, default 45 degrees"
         "\n          <type>: orthographic | perspective"
         "\n              default: perspective"
         "\n    --fov=<fov>: set camera field of view in degrees"
+        qt55_unsupported_marker_start
         "\n    --camera-config=<filename>: camera config in json; to see an example, run --output-camera-config"
         "\n    --camera-position=\"<options>\""
         "\n          <options>: <position>|<stream>"
         "\n          <position>: <x>,<y>,<z>,<roll>,<pitch>,<yaw>"
         "\n          <stream>: position csv stream with options; default fields: x,y,z,roll,pitch,yaw"
+        qt55_unsupported_marker_end
         "\n    --orthographic: use orthographic projection instead of perspective"
+        qt55_unsupported_marker_start
         "\n"
         "\nmore options"
         "\n    --background-colour <colour> : default: black"
@@ -191,6 +204,7 @@ static void usage()
         "\n    --scene-radius,--radius=<value>: fixed scene radius in metres, since sometimes it is hard to imply"
         "\n                            scene size from the dataset (e.g. for streams)"
         "\n    --z-is-up : z-axis is pointing up, default: pointing down ( north-east-down system )"
+        qt55_unsupported_marker_end
         "\n";
         
     static const char * const usage_csv_options = 
@@ -198,9 +212,12 @@ static void usage()
         "\n    fields:"
         "\n        default: x,y,z"
         "\n        x,y,z: coordinates (%d in binary)"
+        qt55_unsupported_marker_start
         "\n        id: if present, colour by id (%ui in binary)"
         "\n        block: if present, clear screen once block id changes (%ui in binary)"
+        qt55_unsupported_marker_end
         "\n        r,g,b: if present, specify RGB colour (0-255; %uc in binary)"
+        qt55_unsupported_marker_start
         "\n        a: if present, specifies colour transparency (0-255, %uc in binary); default 255"
         "\n        scalar: if present, colour by scalar"
         "\n                  use --colour=<from>:<to>[,<from colour>:<to colour>]"
@@ -210,6 +227,7 @@ static void usage()
         "\n        roll,pitch,yaw: if present, show orientation"
         "\n"
         "\n    most of the options can be set for individual files (see examples)"
+        qt55_unsupported_marker_end
         "\n";
         
     static const char * const usage_examples = 
@@ -217,7 +235,10 @@ static void usage()
         "\n    left press and hold: rotate the scene around the centre"
         "\n    right press and hold: translate the scene"
         "\n    double left click: change the centre of the scene"
+        qt55_unsupported_marker_start
         "\n    double right click: output to stdout approximate coordinates of the clicked point"
+        qt55_unsupported_marker_end
+        "\n    scroll wheel: zoom"
         "\n"
         "\nexamples"
         "\n"
@@ -225,6 +246,7 @@ static void usage()
         "\n    view points from file:"
         "\n        view-points xyz.csv"
         "\n"
+        qt55_unsupported_marker_start
         "\n    hint that the file contains not more than 200000 points"
         "\n        cat $(ls *.csv) | view-points --size=200000"
         "\n"
@@ -234,8 +256,10 @@ static void usage()
         "\n    colour points"
         "\n        view-points --colour blue $(ls labeled.*.csv)"
         "\n"
+        qt55_unsupported_marker_end
         "\n    each point has an individual color:"
         "\n        cat xyzrgb.csv | view-points --fields=\"x,y,z,r,g,b\""
+        qt55_unsupported_marker_start
         "\n"
         "\n    view multiple files"
         "\n        view-points \"raw.csv;colour=0:20\" \"partitioned.csv;fields=x,y,z,id;point-size=2\""
@@ -292,6 +316,7 @@ static void usage()
         "\n                  <( echo 0,0,2,0,0,0,0.5,2 )\";shape=ellipse;label=ellipse;color=salad\" \\"
         "\n                  <( echo -e \"0,0,-2,0\\n0,1,-2,1\\n0.5,1.5,-2,2\\n1,1,-2,3\\n1,0,-2,4\\n0.5,-0.5,-2,5\" )\";shape=loop;fields=x,y,z,id;label=loop\" \\"
         "\n                  <( echo 2,2,-1,-2,-1,-1 )\";shape=arc;label=arc;color=magenta\""
+        qt55_unsupported_marker_end
         "\n";
 
     std::cerr
@@ -572,9 +597,13 @@ int main( int argc, char** argv )
         boost::optional< comma::csv::options > camera_csv;
         boost::optional< Eigen::Vector3d > cameraposition;
         boost::optional< Eigen::Vector3d > cameraorientation;
+        #endif
 
-        bool camera_orthographic = options.exists( "--orthographic" );
-        double fieldOfView = options.value< double >( "--fov" , 45 );
+        snark::graphics::qt3d::camera_options camera_options
+            ( options.exists( "--orthographic" )
+            , options.value< double >( "--fov", 45 )
+            , options.exists( "--z-is-up" ));
+
         if( options.exists( "--camera" ) )
         {
             std::string camera = options.value< std::string >( "--camera" );
@@ -583,27 +612,25 @@ int main( int argc, char** argv )
             {
                 if( v[i] == "orthographic" )
                 {
-                    camera_orthographic = true;
+                    camera_options.orthographic = true;
                 }
                 else if( v[i] == "perspective" )
                 {
-                    camera_orthographic = false;
+                    camera_options.orthographic = false;
                 }
                 else
                 {
                     std::vector< std::string > vec = comma::split( v[i], '=' );
                     if( vec.size() == 2 && vec[0] == "fov" )
                     {
-                        fieldOfView = boost::lexical_cast< double >( vec[1] );
+                        camera_options.field_of_view = boost::lexical_cast< double >( vec[1] );
                     }
                 }
             }
         }
-        #endif
 
         #if Qt3D_VERSION==1
         QApplication application( argc, argv );
-        bool z_up = options.exists( "--z-is-up" );
         if( options.exists( "--camera-position" ) )
         {
             std::string position = options.value< std::string >( "--camera-position" );
@@ -638,10 +665,8 @@ int main( int argc, char** argv )
         if( options.exists( "--camera-config" ) ) { boost::property_tree::read_json( options.value< std::string >( "--camera-config" ), camera_config ); }
         #if Qt3D_VERSION==1
         snark::graphics::view::Viewer* viewer = new snark::graphics::view::Viewer( backgroundcolour
-                                                                                 , fieldOfView
-                                                                                 , z_up
+                                                                                 , camera_options
                                                                                  , options.exists( "--exit-on-end-of-input" )
-                                                                                 , camera_orthographic
                                                                                  , camera_csv
                                                                                  , cameraposition
                                                                                  , cameraorientation
@@ -697,7 +722,7 @@ int main( int argc, char** argv )
 
         QApplication app(argc, argv);
         // TODO: currently just loads the first reader
-        snark::graphics::view::main_window main_window( readers[0].get() );
+        snark::graphics::view::main_window main_window( readers[0].get(), camera_options );
         main_window.resize( main_window.sizeHint() );
         main_window.show();
         return app.exec();

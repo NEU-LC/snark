@@ -32,16 +32,16 @@
 #include <QCoreApplication>
 #include <math.h>
 #include "gl_widget.h"
+#include "types.h"
 
 namespace snark { namespace graphics { namespace qt3d {
 
-gl_widget::gl_widget( view::Reader* reader, QWidget *parent )
-    : QOpenGLWidget(parent),
-      xRot_(0),
-      yRot_(0),
-      zRot_(0),
-      reader_( reader ),
-      program_(0)
+gl_widget::gl_widget( buffer_provider* buffer, const camera_options& camera_options, QWidget *parent )
+    : QOpenGLWidget( parent )
+    , buffer_( buffer )
+    , program_( 0 )
+    , camera_options_( camera_options )
+    , size_( 0.4f )
 {}
 
 gl_widget::~gl_widget()
@@ -51,50 +51,12 @@ gl_widget::~gl_widget()
 
 QSize gl_widget::minimumSizeHint() const
 {
-    return QSize(50, 50);
+    return QSize( 50, 50 );
 }
 
 QSize gl_widget::sizeHint() const
 {
-    return QSize(400, 400);
-}
-
-static void qNormalizeAngle(int &angle)
-{
-    while (angle < 0)
-        angle += 360 * 16;
-    while (angle > 360 * 16)
-        angle -= 360 * 16;
-}
-
-void gl_widget::setXRotation(int angle)
-{
-    qNormalizeAngle(angle);
-    if (angle != xRot_) {
-        xRot_ = angle;
-        emit xRotationChanged(angle);
-        update();
-    }
-}
-
-void gl_widget::setYRotation(int angle)
-{
-    qNormalizeAngle(angle);
-    if (angle != yRot_) {
-        yRot_ = angle;
-        emit yRotationChanged(angle);
-        update();
-    }
-}
-
-void gl_widget::setZRotation(int angle)
-{
-    qNormalizeAngle(angle);
-    if (angle != zRot_) {
-        zRot_ = angle;
-        emit zRotationChanged(angle);
-        update();
-    }
+    return QSize( 400, 400 );
 }
 
 void gl_widget::cleanup()
@@ -166,26 +128,32 @@ void gl_widget::initializeGL()
     // Setup our vertex buffer object.
     vbo_.create();
     vbo_.bind();
-    vbo_.allocate( reader_->buffer_data(), reader_->buffer_size() * sizeof( vertex_t ));
+    vbo_.allocate( buffer_->buffer_data(), buffer_->buffer_size() * sizeof( vertex_t ));
 
     // Store the vertex attribute bindings for the program.
-    setupVertexAttribs();
+    setup_vertex_attribs();
 
-    // Our camera never changes at the moment, we are moving the object
+    program_->release();
+
+    // The camera always points along the z-axis. Pan moves the camera in x,y
+    // coordinates and zoom moves in and out on the z-axis.
+    // It starts at -1 because in OpenGL-land the transform is actually applied
+    // to the world and the camera is stationary at 0,0,0.
     camera_.setToIdentity();
     camera_.translate( 0, 0, -1 );
 
-    program_->release();
+    world_.setToIdentity();
+    world_.translate( centre_of_rotation_ );
 }
 
-void gl_widget::setupVertexAttribs()
+void gl_widget::setup_vertex_attribs()
 {
     vbo_.bind();
-    QOpenGLFunctions *f = QOpenGLContext::currentContext()->functions();
+    QOpenGLFunctions* f = QOpenGLContext::currentContext()->functions();
     f->glEnableVertexAttribArray( 0 );
     f->glEnableVertexAttribArray( 1 );
-    f->glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof( vertex_t ), reinterpret_cast<void *>( offsetof( vertex_t, position )));
-    f->glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof( vertex_t ), reinterpret_cast<void *>( offsetof( vertex_t, color )));
+    f->glVertexAttribPointer( 0, 3, GL_FLOAT, GL_FALSE, sizeof( vertex_t ), reinterpret_cast<void *>( offsetof( vertex_t, position )));
+    f->glVertexAttribPointer( 1, 4, GL_FLOAT, GL_FALSE, sizeof( vertex_t ), reinterpret_cast<void *>( offsetof( vertex_t, color )));
     vbo_.release();
 }
 
@@ -195,25 +163,29 @@ void gl_widget::paintGL()
     glEnable( GL_DEPTH_TEST );
     glEnable( GL_CULL_FACE );
 
-    world_.setToIdentity();
-    world_.rotate( 180.0f - ( xRot_ / 16.0f ), 1, 0, 0 );
-    world_.rotate( yRot_ / 16.0f, 0, 1, 0 );
-    world_.rotate( zRot_ / 16.0f, 0, 0, 1 );
-
     QOpenGLVertexArrayObject::Binder vaoBinder( &vao_ );
     program_->bind();
     program_->setUniformValue( projection_matrix_location_, projection_ );
     program_->setUniformValue( mv_matrix_location_, camera_ * world_ );
 
-    glDrawArrays( GL_POINTS, 0, reader_->buffer_size() );
+    glDrawArrays( GL_POINTS, 0, buffer_->buffer_size() );
 
     program_->release();
 }
 
+void gl_widget::set_projection()
+{
+    double aspect_ratio = (double) width() / height();
+    projection_.setToIdentity();
+    if( camera_options_.orthographic )
+        projection_.ortho( -size_ * aspect_ratio, size_ * aspect_ratio, -size_, size_, 0.01f, 100.0f );
+    else
+        projection_.perspective( camera_options_.field_of_view, aspect_ratio, 0.01f, 100.0f );
+}
+
 void gl_widget::resizeGL( int w, int h )
 {
-    projection_.setToIdentity();
-    projection_.perspective( 45.0f, GLfloat(w) / h, 0.01f, 100.0f );
+    set_projection();
 }
 
 void gl_widget::mousePressEvent( QMouseEvent *event )
@@ -223,17 +195,118 @@ void gl_widget::mousePressEvent( QMouseEvent *event )
 
 void gl_widget::mouseMoveEvent( QMouseEvent *event )
 {
-    int dx = event->x() - last_pos_.x();
-    int dy = event->y() - last_pos_.y();
+    float dx = event->x() - last_pos_.x();
+    float dy = event->y() - last_pos_.y();
 
-    if (event->buttons() & Qt::LeftButton) {
-        setXRotation( xRot_ + 8 * dy );
-        setYRotation( yRot_ + 8 * dx );
-    } else if ( event->buttons() & Qt::RightButton ) {
-        setXRotation( xRot_ + 8 * dy );
-        setZRotation( zRot_ + 8 * dx );
+    if ( event->buttons() & Qt::LeftButton )
+    {
+        world_.translate( centre_of_rotation_ );
+        QMatrix4x4 inverted_world = world_.inverted();
+        QVector4D x_axis = inverted_world * QVector4D( 1, 0, 0, 0 );
+        QVector4D y_axis = inverted_world * QVector4D( 0, 1, 0, 0 );
+        world_.rotate( dy, x_axis.toVector3D() );
+        world_.rotate( dx, y_axis.toVector3D() );
+        world_.translate( -centre_of_rotation_ );
+        update();
+    }
+    else if ( event->buttons() & Qt::RightButton )
+    {
+        camera_.translate( dx / 500, -dy / 500, 0.0f );
+        update();
     }
     last_pos_ = event->pos();
+}
+
+void gl_widget::mouseDoubleClickEvent( QMouseEvent *event )
+{
+    if( event->button() == Qt::LeftButton )
+    {
+        boost::optional< QVector3D > point = viewport_to_3d( event->pos() );
+        if( point ) { centre_of_rotation_ = *point; }
+    }
+}
+
+void gl_widget::wheelEvent( QWheelEvent *event )
+{
+    if( camera_options_.orthographic )
+    {
+        size_ *= ( 1 - 0.001 * event->delta() );
+        set_projection();
+    }
+    else
+    {
+        camera_.translate( 0, 0, 0.0005f * event->delta() );
+    }
+    update();
+}
+
+static const int pixel_search_width = 15;
+
+// Take a 2d point on the viewport and determine the corresponding 3d point in space.
+// The 2d point has to correspond to a pixel (or be close to one).
+boost::optional< QVector3D > gl_widget::viewport_to_3d( const QPoint& viewport_point )
+{
+    boost::optional< QVector3D > pixel = pixel_at_point( viewport_point, pixel_search_width );
+    if( pixel )
+    {
+        QVector3D point_3d = pixel->unproject( camera_ * world_, projection_
+                                             , QRect( 0, 0, width(), height() ));
+        return point_3d;
+    }
+    else
+    {
+        return boost::optional< QVector3D >();
+    }
+}
+
+// Take a viewport location and return the nearest active pixel within a square search area.
+// Also converting from Qt coordinates (0,0 at top left) to OpenGL (0,0 at bottom left)
+boost::optional< QVector3D > gl_widget::pixel_at_point( const QPoint& viewport_point
+                                                      , int search_width )
+{
+    std::vector< float > depth( search_width * search_width );
+    // Convert the coordinates to openGL, offset to corner of search,
+    // and clamp to limits to ensure we don't search outside the valid range.
+    int x_min = std::min( std::max( viewport_point.x() - search_width / 2, 0 )
+                        , width() - search_width );
+    int y_min = std::min( std::max( height() - 1 - viewport_point.y() - search_width / 2, 0 )
+                        , height() - search_width );
+    makeCurrent();
+    glReadPixels( x_min, y_min, search_width, search_width, GL_DEPTH_COMPONENT, GL_FLOAT, depth.data() );
+    doneCurrent();
+
+    boost::optional< QVector3D > best_offset = pixel_nearest_centre( depth, search_width );
+    if( best_offset ) { return *best_offset + QVector3D( x_min, y_min, 0 ); }
+    else { return boost::optional< QVector3D >(); }
+}
+
+// Given a vector of pixel depths, representing a square search area,
+// find the entry nearest the centre with a value less than 1.
+// A value of 1 represents an empty pixel.
+boost::optional< QVector3D > gl_widget::pixel_nearest_centre( const std::vector< float >& depth
+                                                            , int search_width )
+{
+    // distance represents the distance of the pixel from the centre of the search area
+    int best_distance = std::numeric_limits<int>::max();
+    boost::optional< QVector3D > best_offset;
+
+    for( int j = 0; j < search_width; j++ )
+    {
+        for( int i = 0; i < search_width; i++ )
+        {
+            float pixel_depth = depth[ j * search_width + i ];
+            if( pixel_depth < 1.0f )
+            {
+                int distance = abs( i - search_width / 2 ) + abs( j - search_width / 2 );
+                if( distance < best_distance )
+                {
+                    best_offset = QVector3D( i, j, pixel_depth );
+                    best_distance = distance;
+                }
+            }
+        }
+    }
+    return best_offset;
 }
 
 } } } // namespace snark { namespace graphics { namespace qt3d {

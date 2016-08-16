@@ -30,14 +30,14 @@
 #ifndef SNARK_GRAPHICS_QT3D_GLWIDGET_H_
 #define SNARK_GRAPHICS_QT3D_GLWIDGET_H_
 
+#include <boost/optional.hpp>
 #include <QOpenGLWidget>
 #include <QOpenGLFunctions>
 #include <QOpenGLVertexArrayObject>
 #include <QOpenGLBuffer>
 #include <QMatrix4x4>
-
-// todo! library should not depend on the application
-#include "../../applications/view_points/reader.h"
+#include "../camera_options.h"
+#include "buffer_provider.h"
 
 QT_FORWARD_DECLARE_CLASS(QOpenGLShaderProgram)
 
@@ -48,22 +48,14 @@ class gl_widget : public QOpenGLWidget, protected QOpenGLFunctions
     Q_OBJECT
 
     public:
-        gl_widget( view::Reader* reader, QWidget *parent = 0 );
+        gl_widget( buffer_provider* buffer, const camera_options& camera_options, QWidget *parent = 0 );
         ~gl_widget();
 
         QSize minimumSizeHint() const Q_DECL_OVERRIDE;
         QSize sizeHint() const Q_DECL_OVERRIDE;
 
     public slots:
-        void setXRotation( int angle );
-        void setYRotation( int angle );
-        void setZRotation( int angle );
         void cleanup();
-
-    signals:
-        void xRotationChanged( int angle );
-        void yRotationChanged( int angle );
-        void zRotationChanged( int angle );
 
     protected:
         void initializeGL() Q_DECL_OVERRIDE;
@@ -71,15 +63,19 @@ class gl_widget : public QOpenGLWidget, protected QOpenGLFunctions
         void resizeGL( int width, int height ) Q_DECL_OVERRIDE;
         void mousePressEvent( QMouseEvent *event ) Q_DECL_OVERRIDE;
         void mouseMoveEvent( QMouseEvent *event ) Q_DECL_OVERRIDE;
+        void mouseDoubleClickEvent( QMouseEvent *event ) Q_DECL_OVERRIDE;
+        void wheelEvent( QWheelEvent *event ) Q_DECL_OVERRIDE;
 
     private:
-        void setupVertexAttribs();
+        void setup_vertex_attribs();
+        void set_projection();
 
-        int xRot_;
-        int yRot_;
-        int zRot_;
+        boost::optional< QVector3D > viewport_to_3d( const QPoint& point_2d );
+        boost::optional< QVector3D > pixel_at_point( const QPoint& viewport_point, int search_width );
+        boost::optional< QVector3D > pixel_nearest_centre( const std::vector< float >& depth, int search_width );
+
         QPoint last_pos_;
-        view::Reader* reader_;
+        buffer_provider* buffer_;
         QOpenGLVertexArrayObject vao_;
         QOpenGLBuffer vbo_;
         QOpenGLShaderProgram *program_;
@@ -88,6 +84,9 @@ class gl_widget : public QOpenGLWidget, protected QOpenGLFunctions
         QMatrix4x4 projection_;
         QMatrix4x4 camera_;
         QMatrix4x4 world_;
+        QVector3D centre_of_rotation_;
+        camera_options camera_options_;
+        double size_;
 };
 
 } } } // namespace snark { namespace graphics { namespace qt3d {

@@ -1,7 +1,6 @@
 #pragma once
 
 #include "device.h"
-#include <comma/visiting/traits.h>
 #include "../message.h"
 
 namespace snark { namespace hokuyo {
@@ -117,34 +116,3 @@ struct scip2_device:public laser_device
 };
 
 } }  // namespace snark { namespace hokuyo {
-
-namespace comma { namespace visiting {
-
-template < > struct traits< snark::hokuyo::scip2_device::output_t >
-{
-    template< typename K, typename V > static void visit( const K& k, snark::hokuyo::scip2_device::output_t& t, V& v )
-    {
-        v.apply( "timestamp", t.timestamp );
-        v.apply( "x", t.x );
-        v.apply( "y", t.y );
-        v.apply( "z", t.z );
-        v.apply( "block", t.block );
-        v.apply( "range", t.range );
-        v.apply( "bearing", t.bearing );
-        v.apply( "elevation", t.elevation );
-    }
-    
-    template< typename K, typename V > static void visit( const K& k, const snark::hokuyo::scip2_device::output_t& t, V& v )
-    {
-        v.apply( "timestamp", t.timestamp );
-        v.apply( "x", t.x );
-        v.apply( "y", t.y );
-        v.apply( "z", t.z );
-        v.apply( "block", t.block );
-        v.apply( "range", t.range );
-        v.apply( "bearing", t.bearing );
-        v.apply( "elevation", t.elevation );
-    }
-};
-
-} } // namespace comma { namespace visitting {

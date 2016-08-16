@@ -47,15 +47,15 @@
 
 namespace snark { namespace graphics { namespace qt3d {
 
+class camera_options;
+
 /// base class for 3d viewers with mouse navigation
 class view : public QGLView
 {
     Q_OBJECT
 public:
     view( const QColor4ub& background_color
-        , double fov
-        , bool z_up
-        , bool orthographic = false
+        , const camera_options& camera_options
         , boost::optional< QVector3D > scene_center = boost::optional< QVector3D >()
         , boost::optional< double > scene_radius = boost::optional< double >() );
 

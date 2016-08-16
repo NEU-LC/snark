@@ -27,47 +27,18 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include <QSlider>
-#include <QVBoxLayout>
-#include <QHBoxLayout>
-#include <QKeyEvent>
-#include "../../../qt3d/qt3d_v2/gl_widget.h"
-#include "../main_window.h"
-#include "../reader.h"
-#include "gl_window.h"
+#ifndef SNARK_GRAPHICS_QT3D_BUFFERPROVIDER_H_
+#define SNARK_GRAPHICS_QT3D_BUFFERPROVIDER_H_
 
-namespace snark { namespace graphics { namespace view {
+namespace snark { namespace graphics { namespace qt3d {
 
-gl_window::gl_window( main_window *mw, Reader* reader, const qt3d::camera_options& camera_options )
-    : main_window_(mw)
-    , reader_( reader )
+class buffer_provider
 {
-    gl_widget_ = new qt3d::gl_widget( reader_, camera_options );
+    public:
+        virtual const char* buffer_data() const = 0;
+        virtual std::size_t buffer_size() const = 0;
+};
 
-    QVBoxLayout *main_layout = new QVBoxLayout;
-    main_layout->setContentsMargins( 0, 0, 0, 0 );
-    QHBoxLayout *container = new QHBoxLayout;
-    container->setContentsMargins( 0, 0, 0, 0 );
-    container->addWidget( gl_widget_ );
+} } } // namespace snark { namespace graphics { namespace qt3d {
 
-    QWidget *w = new QWidget;
-    w->setLayout( container );
-    main_layout->addWidget( w );
-
-    setLayout( main_layout );
-}
-
-gl_window::~gl_window()
-{
-    delete gl_widget_;
-}
-
-void gl_window::keyPressEvent(QKeyEvent *e)
-{
-    if (e->key() == Qt::Key_Escape)
-        close();
-    else
-        QWidget::keyPressEvent(e);
-}
-
-} } } // namespace snark { namespace graphics { namespace view {
+#endif /*SNARK_GRAPHICS_QT3D_BUFFERPROVIDER_H_*/
