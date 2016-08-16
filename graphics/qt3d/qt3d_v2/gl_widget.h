@@ -30,6 +30,7 @@
 #ifndef SNARK_GRAPHICS_QT3D_GLWIDGET_H_
 #define SNARK_GRAPHICS_QT3D_GLWIDGET_H_
 
+#include <boost/optional.hpp>
 #include <QOpenGLWidget>
 #include <QOpenGLFunctions>
 #include <QOpenGLVertexArrayObject>
@@ -62,11 +63,16 @@ class gl_widget : public QOpenGLWidget, protected QOpenGLFunctions
         void resizeGL( int width, int height ) Q_DECL_OVERRIDE;
         void mousePressEvent( QMouseEvent *event ) Q_DECL_OVERRIDE;
         void mouseMoveEvent( QMouseEvent *event ) Q_DECL_OVERRIDE;
+        void mouseDoubleClickEvent( QMouseEvent *event ) Q_DECL_OVERRIDE;
         void wheelEvent( QWheelEvent *event ) Q_DECL_OVERRIDE;
 
     private:
         void setup_vertex_attribs();
         void set_projection();
+
+        boost::optional< QVector3D > viewport_to_3d( const QPoint& point_2d );
+        boost::optional< QVector3D > pixel_at_point( const QPoint& viewport_point, int search_width );
+        boost::optional< QVector3D > pixel_nearest_centre( const std::vector< float >& depth, int search_width );
 
         QPoint last_pos_;
         buffer_provider* buffer_;
@@ -78,6 +84,7 @@ class gl_widget : public QOpenGLWidget, protected QOpenGLFunctions
         QMatrix4x4 projection_;
         QMatrix4x4 camera_;
         QMatrix4x4 world_;
+        QVector3D centre_of_rotation_;
         camera_options camera_options_;
         double size_;
 };

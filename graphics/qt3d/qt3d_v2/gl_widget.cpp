@@ -143,6 +143,7 @@ void gl_widget::initializeGL()
     camera_.translate( 0, 0, -1 );
 
     world_.setToIdentity();
+    world_.translate( centre_of_rotation_ );
 }
 
 void gl_widget::setup_vertex_attribs()
@@ -199,11 +200,13 @@ void gl_widget::mouseMoveEvent( QMouseEvent *event )
 
     if ( event->buttons() & Qt::LeftButton )
     {
+        world_.translate( centre_of_rotation_ );
         QMatrix4x4 inverted_world = world_.inverted();
         QVector4D x_axis = inverted_world * QVector4D( 1, 0, 0, 0 );
         QVector4D y_axis = inverted_world * QVector4D( 0, 1, 0, 0 );
         world_.rotate( dy, x_axis.toVector3D() );
         world_.rotate( dx, y_axis.toVector3D() );
+        world_.translate( -centre_of_rotation_ );
         update();
     }
     else if ( event->buttons() & Qt::RightButton )
@@ -212,6 +215,15 @@ void gl_widget::mouseMoveEvent( QMouseEvent *event )
         update();
     }
     last_pos_ = event->pos();
+}
+
+void gl_widget::mouseDoubleClickEvent( QMouseEvent *event )
+{
+    if( event->button() == Qt::LeftButton )
+    {
+        boost::optional< QVector3D > point = viewport_to_3d( event->pos() );
+        if( point ) { centre_of_rotation_ = *point; }
+    }
 }
 
 void gl_widget::wheelEvent( QWheelEvent *event )
@@ -226,6 +238,75 @@ void gl_widget::wheelEvent( QWheelEvent *event )
         camera_.translate( 0, 0, 0.0005f * event->delta() );
     }
     update();
+}
+
+static const int pixel_search_width = 15;
+
+// Take a 2d point on the viewport and determine the corresponding 3d point in space.
+// The 2d point has to correspond to a pixel (or be close to one).
+boost::optional< QVector3D > gl_widget::viewport_to_3d( const QPoint& viewport_point )
+{
+    boost::optional< QVector3D > pixel = pixel_at_point( viewport_point, pixel_search_width );
+    if( pixel )
+    {
+        QVector3D point_3d = pixel->unproject( camera_ * world_, projection_
+                                             , QRect( 0, 0, width(), height() ));
+        return point_3d;
+    }
+    else
+    {
+        return boost::optional< QVector3D >();
+    }
+}
+
+// Take a viewport location and return the nearest active pixel within a square search area.
+// Also converting from Qt coordinates (0,0 at top left) to OpenGL (0,0 at bottom left)
+boost::optional< QVector3D > gl_widget::pixel_at_point( const QPoint& viewport_point
+                                                      , int search_width )
+{
+    std::vector< float > depth( search_width * search_width );
+    // Convert the coordinates to openGL, offset to corner of search,
+    // and clamp to limits to ensure we don't search outside the valid range.
+    int x_min = std::min( std::max( viewport_point.x() - search_width / 2, 0 )
+                        , width() - search_width );
+    int y_min = std::min( std::max( height() - 1 - viewport_point.y() - search_width / 2, 0 )
+                        , height() - search_width );
+    makeCurrent();
+    glReadPixels( x_min, y_min, search_width, search_width, GL_DEPTH_COMPONENT, GL_FLOAT, depth.data() );
+    doneCurrent();
+
+    boost::optional< QVector3D > best_offset = pixel_nearest_centre( depth, search_width );
+    if( best_offset ) { return *best_offset + QVector3D( x_min, y_min, 0 ); }
+    else { return boost::optional< QVector3D >(); }
+}
+
+// Given a vector of pixel depths, representing a square search area,
+// find the entry nearest the centre with a value less than 1.
+// A value of 1 represents an empty pixel.
+boost::optional< QVector3D > gl_widget::pixel_nearest_centre( const std::vector< float >& depth
+                                                            , int search_width )
+{
+    // distance represents the distance of the pixel from the centre of the search area
+    int best_distance = std::numeric_limits<int>::max();
+    boost::optional< QVector3D > best_offset;
+
+    for( int j = 0; j < search_width; j++ )
+    {
+        for( int i = 0; i < search_width; i++ )
+        {
+            float pixel_depth = depth[ j * search_width + i ];
+            if( pixel_depth < 1.0f )
+            {
+                int distance = abs( i - search_width / 2 ) + abs( j - search_width / 2 );
+                if( distance < best_distance )
+                {
+                    best_offset = QVector3D( i, j, pixel_depth );
+                    best_distance = distance;
+                }
+            }
+        }
+    }
+    return best_offset;
 }
 
 } } } // namespace snark { namespace graphics { namespace qt3d {
