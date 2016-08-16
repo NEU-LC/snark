@@ -191,14 +191,20 @@ void MainWindow::keyPressEvent(QKeyEvent *e)
 
 #elif Qt3D_VERSION==2
 
-#include "qt3d_v2/gl_window.h"
+#include "reader.h"
 #include "main_window.h"
 
 namespace snark { namespace graphics { namespace view {
 
 main_window::main_window( Reader* reader, const qt3d::camera_options& camera_options )
 {
-    setCentralWidget( new gl_window( this, reader, camera_options ));
+    gl_widget_ = new qt3d::gl_widget( reader, camera_options, this );
+    setCentralWidget( gl_widget_ );
+}
+
+main_window::~main_window()
+{
+    delete gl_widget_;
 }
 
 } } } // namespace snark { namespace graphics { namespace view {
