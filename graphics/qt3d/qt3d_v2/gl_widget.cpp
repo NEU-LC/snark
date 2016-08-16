@@ -29,7 +29,6 @@
 
 #include <QMouseEvent>
 #include <QOpenGLShaderProgram>
-#include <QCoreApplication>
 #include <QPainter>
 #include <math.h>
 #include "gl_widget.h"
