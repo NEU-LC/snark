@@ -1,5 +1,5 @@
 if( NOT USE_CXX11 )
-    message( FATAL_ERROR "\n  sick-ldmrs-stream requires C++11 support. \n* set USE_CXX11 to ON\n" )
+    message( FATAL_ERROR "\n  sick-ldmrs-stream requires C++11 support. \n    * set USE_CXX11 to ON\nor\n    * set snark_build_sensors_sick to OFF\n" )
 endif()
 
 
