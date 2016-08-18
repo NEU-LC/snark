@@ -1,8 +1,3 @@
-if( NOT USE_CXX11 )
-    message( FATAL_ERROR "\n  sick-ldmrs-stream requires C++11 support. \n    * set USE_CXX11 to ON\nor\n    * set snark_build_sensors_sick to OFF\n" )
-endif()
-
-
 SOURCE_GROUP( sick-ldmrs-stream FILES sick-ldmrs-stream.cpp )
 ADD_EXECUTABLE( sick-ldmrs-stream sick-ldmrs-stream.cpp )
 TARGET_LINK_LIBRARIES( sick-ldmrs-stream snark_sick snark_timing ${snark_ALL_EXTERNAL_LIBRARIES} )

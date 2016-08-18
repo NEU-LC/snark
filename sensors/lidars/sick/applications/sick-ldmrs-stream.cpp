@@ -27,7 +27,6 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/scoped_ptr.hpp>
@@ -113,7 +112,7 @@ static void update_timestamp( bool force = false )
 
 int main( int ac, char** av )
 {
-    std::unique_ptr<comma::io::iostream> stream;
+    boost::scoped_ptr< comma::io::iostream > stream;
     try
     {
         comma::command_line_options options( ac, av );
@@ -123,7 +122,7 @@ int main( int ac, char** av )
         std::string device_name=v.empty() ? std::string( "tcp:192.168.0.1:12002" ) : v[0] ;
         comma::verbose << "connecting to " << device_name << "..." << std::endl;
         stream.reset(new comma::io::iostream(device_name, comma::io::mode::binary));
-        if( (*stream)() == NULL) {COMMA_THROW( comma::exception,"failed to create iosteam");}
+        if( (*stream)() == NULL) { std::cerr << "sick-ldmrs-stream: failed to create iosteam for \"" << device_name << "\"" << std::endl; return 1; }
         comma::verbose<<"connected to " << device_name << std::endl;
         protocol.reset( new sick::ibeo::protocol( *(*stream)() ) );
         options.assert_mutually_exclusive( "--get,--get-status,--reset,--set,--reset-dsp,--start,--stop,--publish" );
