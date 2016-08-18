@@ -58,7 +58,7 @@ static void usage()
     std::cerr << "    sick-ldmrs-stream [<address:port>] [<options>]" << std::endl;
     std::cerr << "    todo? netcat ntp | sick-ldmrs-stream [<options>]" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "    <address:port>: ld-mrs laser address; default 192.168.0.1:12002" << std::endl;
+    std::cerr << "    <address:port>: ld-mrs laser address; default tcp:192.168.0.1:12002" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    --help,-h: show this message" << std::endl;
@@ -113,26 +113,19 @@ static void update_timestamp( bool force = false )
 
 int main( int ac, char** av )
 {
-    boost::scoped_ptr< boost::asio::ip::tcp::iostream > stream;
+    std::unique_ptr<comma::io::iostream> stream;
     try
     {
         comma::command_line_options options( ac, av );
         if( options.exists( "--help,-h" ) ) { usage(); }
         verbose = options.exists( "--verbose,-v" );
         std::vector< std::string > v = options.unnamed( "--help,-h,--get-status,--reset,--reset-dsp,--start,--stop,--verbose,-v,--no-discard,--no-flush", "--get,--set" );
-        std::vector< std::string > a = comma::split( ( v.empty() ? std::string( "192.168.0.1:12002" ) : v[0] ), ':' );
-        if( a.size() != 2 ) { std::cerr << "sick-ldmrs-stream: expected address, got \"" << v[0] << "\"" << std::endl; usage(); }
-        std::string address = a[0];
-        unsigned short port = boost::lexical_cast< unsigned short >( a[1] );
-        boost::asio::io_service service;
-        boost::asio::ip::tcp::resolver resolver( service );
-        boost::asio::ip::tcp::resolver::query query( a[0], a[1] );
-        boost::asio::ip::tcp::resolver::iterator it = resolver.resolve( query );
-        if( verbose ) { std::cerr << "sick-ldmrs-stream: connecting to " << it->endpoint() << "..." << std::endl; }
-        stream.reset( new boost::asio::ip::tcp::iostream( it->endpoint() ) );
-        if( !( *stream ) ) { COMMA_THROW( comma::exception, "failed to connect to " << address << ":" << port ); }
-        if( verbose ) { std::cerr << "sick-ldmrs-stream: connected to " << address << ":" << port << std::endl; }
-        protocol.reset( new sick::ibeo::protocol( *stream ) );
+        std::string device_name=v.empty() ? std::string( "tcp:192.168.0.1:12002" ) : v[0] ;
+        comma::verbose << "connecting to " << device_name << "..." << std::endl;
+        stream.reset(new comma::io::iostream(device_name, comma::io::mode::binary));
+        if( (*stream)() == NULL) {COMMA_THROW( comma::exception,"failed to create iosteam");}
+        comma::verbose<<"connected to " << device_name << std::endl;
+        protocol.reset( new sick::ibeo::protocol( *(*stream)() ) );
         options.assert_mutually_exclusive( "--get,--get-status,--reset,--set,--reset-dsp,--start,--stop,--publish" );
         bool ok = true;
         if( options.exists( "--reset" ) )
