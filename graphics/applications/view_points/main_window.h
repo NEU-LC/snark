@@ -95,6 +95,7 @@ class CheckBox : public QCheckBox // quick and dirty
 #elif Qt3D_VERSION==2
 
 #include <QMainWindow>
+#include "../../qt3d/qt3d_v2/gl_widget.h"
 
 namespace snark { namespace graphics { namespace qt3d {
 class camera_options;
@@ -108,8 +109,12 @@ class main_window : public QMainWindow
 {
     Q_OBJECT
 
-public:
+    public:
         main_window( Reader* reader, const qt3d::camera_options& camera_options );
+        ~main_window();
+
+    private:
+        qt3d::gl_widget* gl_widget_;
 };
 
 } } } // namespace snark { namespace graphics { namespace view {

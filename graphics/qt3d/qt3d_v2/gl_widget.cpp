@@ -29,7 +29,7 @@
 
 #include <QMouseEvent>
 #include <QOpenGLShaderProgram>
-#include <QCoreApplication>
+#include <QPainter>
 #include <math.h>
 #include "gl_widget.h"
 #include "types.h"
@@ -159,6 +159,9 @@ void gl_widget::setup_vertex_attribs()
 
 void gl_widget::paintGL()
 {
+    QPainter painter( this );
+    painter.beginNativePainting();
+
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
     glEnable( GL_DEPTH_TEST );
     glEnable( GL_CULL_FACE );
@@ -170,7 +173,19 @@ void gl_widget::paintGL()
 
     glDrawArrays( GL_POINTS, 0, buffer_->buffer_size() );
 
+    glDisable( GL_DEPTH_TEST );
+
     program_->release();
+    vaoBinder.release();
+
+    painter.endNativePainting();
+
+    painter.setPen( Qt::gray );
+    painter.setFont( QFont( "Arial", 10 ));
+    painter.drawText( rect(), Qt::AlignRight | Qt::AlignBottom
+                    , QString("centre of rotation: %1 %2 %3").arg( centre_of_rotation_.x() )
+                                                             .arg( centre_of_rotation_.y() )
+                                                             .arg( centre_of_rotation_.z() ));
 }
 
 void gl_widget::set_projection()
