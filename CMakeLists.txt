@@ -42,7 +42,7 @@ IF(NOT CMAKE_BUILD_TYPE)
       FORCE)
 ENDIF(NOT CMAKE_BUILD_TYPE)
 
-option( USE_CXX11 "build with C++11 support" ON )
+option( USE_CXX11 "build with C++11 support" OFF )
 if( USE_CXX11 )
     if( UNIX )
         # A much better way to do this is with CXX_STANDARD but that requires CMake 3.1
@@ -134,6 +134,9 @@ ENDIF( APPLE )
 
 OPTION( USE_CUDA "use cuda in (some) applications" OFF )
 if( USE_CUDA )
+    if( USE_CXX11 )
+        message( FATAL_ERROR "building CUDA stuff with C++: todo" )
+    endif( USE_CXX11 )
     find_package( CUDA REQUIRED )
     include( FindCUDA )
     list( APPEND CUDA_NVCC_FLAGS --compiler-options -fno-strict-aliasing -lineinfo -use_fast_math -Xptxas -dlcm=cg )
