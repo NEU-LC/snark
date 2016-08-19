@@ -112,7 +112,7 @@ if( snark_build_graphics_csv_plot ) # todo: make sure it works for qt5
                     /usr/include/qwt-qt4
                     /usr/include/qwt )
     find_library( QWT_LIBRARIES
-                    NAMES qwt-qt4 qwt
+                    NAMES qwt-qt${QT_VERSION_MAJOR} qwt
                     PATHS /usr/local/lib /usr/lib )
     include ( FindPackageHandleStandardArgs )
     find_package_handle_standard_args( Qwt DEFAULT_MSG QWT_LIBRARIES QWT_INCLUDE_DIRS )
@@ -135,7 +135,9 @@ if( snark_build_graphics_csv_plot ) # todo: make sure it works for qt5
     IF( QT_VERSION_MAJOR EQUAL 4 )
         TARGET_LINK_LIBRARIES( csv-plot ${QT_LIBRARIES} ${comma_ALL_LIBRARIES} ${QWT_LIBRARIES} ${OPENGL_LIBRARY} ) #profiler )
     ELSEIF( QT_VERSION_MAJOR EQUAL 5 )
-        TARGET_LINK_LIBRARIES( csv-plot ${comma_ALL_LIBRARIES} ${QWT_LIBRARIES} ) #profiler )
+        TARGET_LINK_LIBRARIES( csv-plot ${comma_ALL_LIBRARIES} ${QWT_LIBRARIES} Qt5::Widgets ) #profiler )
+        message( WARNING "=====================================================================" )
+        message( WARNING "csv-plot vs qt5: will build, but will segfault on running: todo" )
     ENDIF( QT_VERSION_MAJOR EQUAL 4 )
     
     INSTALL( TARGETS csv-plot RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
