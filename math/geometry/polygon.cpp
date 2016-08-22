@@ -67,6 +67,26 @@ template < typename C > static bool includes_impl( const C& corners, const Eigen
     return !is_outside( corners[ corners.size() - 2 ], corners.back(), corners[0], rhs );
 }
 
+static inline double distance_to_line( const Eigen::Vector3d from, const Eigen::Vector3d& to, const Eigen::Vector3d& point )
+{
+    typedef Eigen::ParametrizedLine< double, 3 > line_t;
+    line_t line( from, ( to - from ).normalized() );
+    Eigen::Vector3d projection = line.projection( point );
+    bool is_between = ( ( projection - from ).squaredNorm() + ( projection - to ).squaredNorm() ) <= ( to - from ).squaredNorm();
+    return is_between ? ( projection - point ).norm() : std::min( ( from - point ).norm(), ( to - point ).norm() );
+}
+
+double convex_polygon::distance_from_border_to( const Eigen::Vector3d& rhs ) const
+{
+    double distance = distance_to_line( corners.front(), corners.back(), rhs );
+    for( unsigned int i = 1; i < corners.size(); ++i )
+    {
+        double d = distance_to_line( corners[ i - 1 ], corners[i], rhs );
+        if( d < distance ) { distance = d; }
+    }
+    return distance;
+}
+
 Eigen::Vector3d convex_polygon::normal() const { return normal_impl( corners ); }
 
 bool convex_polygon::is_valid() const
