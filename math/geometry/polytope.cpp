@@ -102,7 +102,7 @@ convex_polytope::convex_polytope( const Eigen::MatrixXd& planes )
 // diag(b)-y1*A1-...-yn*An is psd
 
 /// This function checks whether a point is inside a convex polytope: Ay<=b
-bool convex_polytope::has(const Eigen::VectorXd &x)
+bool convex_polytope::has(const Eigen::VectorXd &x) const
 {
     int dimx=x.size();
     if(dimx!=normals_.cols())

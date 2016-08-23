@@ -57,7 +57,7 @@ public:
     convex_polytope( const Eigen::MatrixXd& planes );
 
     /// @return true, if point is inside of the polytope with a given tolerance
-    bool has( const Eigen::VectorXd& x);
+    bool has( const Eigen::VectorXd& x ) const;
     
     const Eigen::MatrixXd& normals() const;
     
