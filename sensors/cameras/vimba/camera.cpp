@@ -105,6 +105,15 @@ std::vector< attribute > camera::attributes() const
     return attributes;
 }
 
+boost::optional< attribute > camera::get_attribute( const std::string& name ) const
+{
+    boost::optional< attribute > a;
+    AVT::VmbAPI::FeaturePtr feature;
+    VmbErrorType status = camera_->GetFeatureByName( name.c_str(), feature );
+    if( status == VmbErrorSuccess ) { a = attribute( feature ); }
+    return a;
+}
+
 void camera::set_feature( const std::string& name, const std::string& value ) const
 {
     AVT::VmbAPI::FeaturePtr feature;

@@ -33,6 +33,7 @@
 #include <map>
 #include <vector>
 #include <boost/function.hpp>
+#include <boost/optional.hpp>
 #include <VimbaCPP/Include/Camera.h>
 #include "frame_observer.h"
 
@@ -51,6 +52,7 @@ class camera
 
         name_values info() const;
         std::vector< attribute > attributes() const;
+        boost::optional< attribute > get_attribute( const std::string& name ) const;
 
         void set_feature( const std::string& name, const std::string& value = "" ) const;
         void set_features( const std::string& name_values ) const;

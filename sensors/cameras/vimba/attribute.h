@@ -40,6 +40,7 @@ class attribute
 {
     public:
         attribute( AVT::VmbAPI::FeaturePtr feature );
+        attribute( const attribute& attribute );
 
         const std::string& name() const { return name_; }
         VmbFeatureDataType type() const { return type_; }
