@@ -131,7 +131,7 @@ void camera::set_features( const std::string& name_value_pairs ) const
 
 void camera::start_acquisition( frame_observer::callback_fn callback ) const
 {
-    comma::verbose << "Start image acquisition" << std::endl;
+    comma::verbose << "start image acquisition" << std::endl;
 
     // Create a frame observer for this camera.
     // This will be wrapped in a shared_ptr so we don't delete it.
@@ -146,7 +146,7 @@ void camera::start_acquisition( frame_observer::callback_fn callback ) const
 
 void camera::stop_acquisition() const
 {
-    comma::verbose << "Stop image acquisition" << std::endl;
+    comma::verbose << "stop image acquisition" << std::endl;
     camera_->StopContinuousImageAcquisition();
 }
 

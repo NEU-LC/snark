@@ -268,7 +268,7 @@ void attribute::set( const std::string& value )
 
     if( comma::verbose )
     {
-        std::cerr << "Setting \"" << name_ << "\" feature";
+        std::cerr << comma::verbose.app_name() << ": setting \"" << name_ << "\" feature";
         if( !value.empty() )
         {
             std::cerr << " to " << type_as_string() << " value \"" << value << "\"";
