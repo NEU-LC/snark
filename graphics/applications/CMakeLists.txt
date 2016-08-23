@@ -105,6 +105,11 @@ if( snark_build_graphics_csv_plot ) # todo: make sure it works for qt5
 
     set( CMAKE_MODULE_PATH ${SOURCE_CODE_BASE_DIR}/CMakeFiles ${CMAKE_MODULE_PATH} )
     find_package( Qwt )
+    if( QT_VERSION_MAJOR GREATER 4 )
+        if( QWT_MAJOR_VERSION LESS 6 OR ( QWT_MAJOR_VERSION EQUAL 6 AND QWT_MINOR_VERSION LESS 1 ))
+            message( FATAL_ERROR "\nQt version ${snark_qt_version} requires Qwt version 6.1 or above, found version ${QWT_VERSION_STRING}.\nUpgrade Qwt library or disable the building of csv-plot." )
+        endif()
+    endif()
 
     SET( CSV_PLOT_MOC_FILES csv_plot_moc csv_plot/plot.h ) #SET( CSV_PLOT_MOC_FILES csv_plot_Moc csv_plot/main_window.h csv_plot/plot.h )
     IF( QT_VERSION_MAJOR EQUAL 4 )
@@ -123,8 +128,6 @@ if( snark_build_graphics_csv_plot ) # todo: make sure it works for qt5
         TARGET_LINK_LIBRARIES( csv-plot ${QT_LIBRARIES} ${comma_ALL_LIBRARIES} ${QWT_LIBRARIES} ${OPENGL_LIBRARY} ) #profiler )
     ELSEIF( QT_VERSION_MAJOR EQUAL 5 )
         TARGET_LINK_LIBRARIES( csv-plot ${comma_ALL_LIBRARIES} ${QWT_LIBRARIES} Qt5::Widgets ) #profiler )
-        message( WARNING "=====================================================================" )
-        message( WARNING "csv-plot vs qt5: will build, but will segfault on running: todo" )
     ENDIF( QT_VERSION_MAJOR EQUAL 4 )
     
     INSTALL( TARGETS csv-plot RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
