@@ -54,7 +54,11 @@ if( QT_VERSION_MAJOR EQUAL 4 )
     set( Qt3D_VERSION 1 )
     find_package( Qt4 COMPONENTS QtCore QtGui QtOpenGl QtXml REQUIRED )
     include( ${QT_USE_FILE} )
-    find_library( Qt3D_LIB NAMES Qt3D REQUIRED )
+    # If the user cleared the value, look for it again
+    if( Qt3D_LIB STREQUAL "" )
+        unset( Qt3D_LIB CACHE )
+    endif()
+    find_library( Qt3D_LIB Qt3D )
 elseif( QT_VERSION_MAJOR EQUAL 5 )
     # If Qt is installed in a non-standard location (e.g. /opt/) find_package will
     # need some help. Check for a tell-tale directory and set Qt5_DIR if found.
