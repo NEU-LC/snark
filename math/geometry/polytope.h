@@ -32,10 +32,11 @@
 #ifndef SNARK_MATH_GEOMETRY_POLYTOPE_
 #define SNARK_MATH_GEOMETRY_POLYTOPE_
 
-#include <Eigen/Core>
 #include <vector>
+#include <Eigen/Core>
+#include <comma/base/exception.h>
 
-namespace snark{ namespace geometry{
+namespace snark { namespace geometry {
 
 /// convex_polytope is used to check if a point is inside a convex polytope
 /// The constructor is given a convex polytope specified by a set of half-spaces. Several constructor methods exist.
@@ -55,12 +56,21 @@ public:
     
     /// @param planes normals and offsets concatenated into one matrix
     convex_polytope( const Eigen::MatrixXd& planes );
+    
+    /// construct from vertices and faces
+    /// a convenience constructor, since it is highly redundant
+    /// no convexity checks are performed
+    /// if a face has more than 3 vertices, no planarity checks are performed
+    template < template < typename > class Container >
+    convex_polytope( const std::vector< Eigen::Vector3d >& vertices, const Container< Eigen::Vector3d >& faces );
 
-    /// @return true, if point is inside of the polytope with a given tolerance
+    /// @return true, if point is inside of the polytope
     bool has( const Eigen::VectorXd& x ) const;
     
+    /// return normals
     const Eigen::MatrixXd& normals() const;
     
+    /// return offsets
     const Eigen::VectorXd& offsets() const;
     
 private:
@@ -69,6 +79,23 @@ private:
     Eigen::VectorXd offsets_; //b
 };
 
-}} // namespace snark{ namepsace geometry{
+template < template < typename > class Container >
+inline convex_polytope::convex_polytope( const std::vector< Eigen::Vector3d >& vertices, const Container< Eigen::Vector3d >& faces )
+    : normals_( faces.size(), vertices.begin()->size() )
+    , offsets_( faces.size() )
+{
+    unsigned int k = 0;
+    for( typename Container< Eigen::Vector3d >::const_iterator it = faces.begin(); it != faces.end(); ++it, ++k )
+    {
+        std::vector< Eigen::Vector3d > face( it->size() );
+        if( face.size() < 3 ) { COMMA_THROW( comma::exception, "expected face with at least 3 vertices, got: " << face.size() ); }
+        for( unsigned int i = 0; i < 3; ++i ) { if( *it[i] >= vertices.size() ) { COMMA_THROW( comma::exception, "face " << k << " invalid: expected vertex index less than " << vertices.size() << ", got: " << *it[i] ); } }
+        const Eigen::Vector3d& normal = ( *it[2] - *it[1] ).cross( *it[2] - *it[1] ).normalized();
+        offsets_[k] = normal.dot( *it[0] ); // todo: debug
+        normals_[k] = normal; // todo: debug
+    }
+}
+
+} } // namespace snark { namepsace geometry {
 
 #endif // SNARK_MATH_GEOMETRY_POLYTOPE_
