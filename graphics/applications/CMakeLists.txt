@@ -105,6 +105,9 @@ if( snark_build_graphics_csv_plot ) # todo: make sure it works for qt5
 
     set( CMAKE_MODULE_PATH ${SOURCE_CODE_BASE_DIR}/CMakeFiles ${CMAKE_MODULE_PATH} )
     find_package( Qwt )
+    if( NOT QWT_FOUND )
+        message( FATAL_ERROR "csv-plot requires Qwt library" )
+    endif()
     if( QT_VERSION_MAJOR GREATER 4 )
         if( QWT_MAJOR_VERSION LESS 6 OR ( QWT_MAJOR_VERSION EQUAL 6 AND QWT_MINOR_VERSION LESS 1 ))
             message( FATAL_ERROR "\nQt version ${snark_qt_version} requires Qwt version 6.1 or above, found version ${QWT_VERSION_STRING}.\nUpgrade Qwt library or disable the building of csv-plot." )
