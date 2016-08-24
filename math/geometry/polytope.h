@@ -34,67 +34,39 @@
 
 #include <vector>
 #include <Eigen/Core>
-#include <comma/base/exception.h>
+#include "../roll_pitch_yaw.h"
 
 namespace snark { namespace geometry {
 
-/// convex_polytope is used to check if a point is inside a convex polytope
-/// The constructor is given a convex polytope specified by a set of half-spaces. Several constructor methods exist.
-/// The class works for any dimension (as long as it makes sense and your computer can handle it).
-/// See test for a usage example.
+/// convex_polytope is used to check if a point is inside a convex polytope specified by a set of half-spaces,
+/// i.e. by the set of inequalities: Ax <= b, where A is plane normals and b plane offsets (signed
+/// distances from zero to planes), assuming that normals point outwards of the polytope
 
 class convex_polytope
 {
-public:
-    /// @param normals to the planes
-    /// @param offsets from the origins to the planes
-    convex_polytope( const std::vector< Eigen::VectorXd >& normals, const std::vector< double >& offsets );
-    
-    /// @param normals to the planes
-    /// @param offsets from the origins to the planes
-    convex_polytope( const Eigen::MatrixXd& normals, const Eigen::VectorXd& offsets );
-    
-    /// @param planes normals and offsets concatenated into one matrix
-    convex_polytope( const Eigen::MatrixXd& planes );
-    
-    /// construct from vertices and faces
-    /// a convenience constructor, since it is highly redundant
-    /// no convexity checks are performed
-    /// if a face has more than 3 vertices, no planarity checks are performed
-    template < template < typename > class Container >
-    convex_polytope( const std::vector< Eigen::Vector3d >& vertices, const Container< Eigen::Vector3d >& faces );
+    public:
+        /// @param normals to the planes
+        /// @param offsets from the origins to the planes
+        convex_polytope( const std::vector< Eigen::VectorXd >& normals, const std::vector< double >& distances );
 
-    /// @return true, if point is inside of the polytope
-    bool has( const Eigen::VectorXd& x ) const;
-    
-    /// return normals
-    const Eigen::MatrixXd& normals() const;
-    
-    /// return offsets
-    const Eigen::VectorXd& offsets() const;
-    
-private:
-    //polytope defined by the set of inequalities: Ax>=b
-    Eigen::MatrixXd normals_; //A
-    Eigen::VectorXd offsets_; //b
+        /// @param normals to the planes
+        /// @param offsets from the origins to the planes
+        convex_polytope( const Eigen::MatrixXd& normals, const Eigen::VectorXd& offsets );
+
+        /// @return true, if point is inside of the polytope
+        bool has( const Eigen::VectorXd& rhs, double epsilon = 0 ) const;
+
+        /// @return rotated and translated polytope
+        convex_polytope transformed( const Eigen::Vector3d& translation, const snark::roll_pitch_yaw& rotation );
+
+        const Eigen::MatrixXd& normals() const { return normals_; }
+
+        const Eigen::VectorXd& distances() const { return distances_; }
+
+    private:
+        Eigen::MatrixXd normals_;
+        Eigen::VectorXd distances_;
 };
-
-template < template < typename > class Container >
-inline convex_polytope::convex_polytope( const std::vector< Eigen::Vector3d >& vertices, const Container< Eigen::Vector3d >& faces )
-    : normals_( faces.size(), vertices.begin()->size() )
-    , offsets_( faces.size() )
-{
-    unsigned int k = 0;
-    for( typename Container< Eigen::Vector3d >::const_iterator it = faces.begin(); it != faces.end(); ++it, ++k )
-    {
-        std::vector< Eigen::Vector3d > face( it->size() );
-        if( face.size() < 3 ) { COMMA_THROW( comma::exception, "expected face with at least 3 vertices, got: " << face.size() ); }
-        for( unsigned int i = 0; i < 3; ++i ) { if( *it[i] >= vertices.size() ) { COMMA_THROW( comma::exception, "face " << k << " invalid: expected vertex index less than " << vertices.size() << ", got: " << *it[i] ); } }
-        const Eigen::Vector3d& normal = ( *it[2] - *it[1] ).cross( *it[2] - *it[1] ).normalized();
-        offsets_[k] = normal.dot( *it[0] ); // todo: debug
-        normals_[k] = normal; // todo: debug
-    }
-}
 
 } } // namespace snark { namepsace geometry {
 

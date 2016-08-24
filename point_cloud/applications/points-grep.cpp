@@ -202,8 +202,8 @@ static void usage( bool verbose = false )
     std::cerr << "usage: cat points.csv | points-grep <operation> [<options>]" << std::endl;
     std::cerr << std::endl;
     std::cerr << "operations" << std::endl;
-    std::cerr << "     shape, deprecated" << std::endl;
-    std::cerr << "     stream, deprecated" << std::endl;
+    std::cerr << "     shape" << std::endl;
+    std::cerr << "     stream, deprecated, most likely broken, will be removed very soon" << std::endl;
     std::cerr << std::endl;
     std::cerr << "  stream <stream>: points are time-joined with a position stream and filtered based on a bounding box around the positions" << std::endl;
     std::cerr << std::endl;
@@ -269,26 +269,20 @@ static snark::geometry::convex_polytope make_polytope( const P& position, const 
     //convert vehicle bounds to world coordinates
     //get transformation
 
-    Eigen::MatrixXd rot_matrix = snark::rotation_matrix::rotation(position.orientation);
-
-    for(int cntr2=0; cntr2<origins.cols(); cntr2++)
-    {
-        origins.col(cntr2)=rot_matrix*origins.col(cntr2)+position.coordinates;
-    }
-
     //get plane equations
     Eigen::MatrixXd A(6,3);
     Eigen::VectorXd c(6);
 
     for(int cntr2=1; cntr2<origins.cols(); cntr2++)
     {
-        A.row(cntr2-1)<<origins.col(0).transpose()-origins.col(cntr2).transpose();
-        c(cntr2-1)=origins.col(cntr2).transpose()*(origins.col(0)-origins.col(cntr2));
+        A.row(cntr2-1) = origins.col(cntr2).transpose();
+        c(cntr2-1) = origins.col(cntr2).norm();
     }
 
     //check polygon in 3d
     // use if statement not assignment because point might already be filtered
-    return snark::geometry::convex_polytope( A, c );
+
+    return snark::geometry::convex_polytope( A, c ).transformed( position.coordinates, position.orientation );
 }
 
 static snark::geometry::convex_polytope make_polytope( const joined_point& pq, const bounds_t& b, double error_margin ) { return make_polytope( pq.bounding.value, b, error_margin ); }
@@ -296,6 +290,14 @@ static snark::geometry::convex_polytope make_polytope( const joined_point& pq, c
 static bool included( const joined_point& pq, const snark::geometry::convex_polytope& polytope ) { return polytope.has( pq.bounded.coordinates ); }
 
 static bool included( const joined_point& pq ) { return included( pq, make_polytope( pq, bounds, offset ) ); }
+
+// todo
+// template < typename Shape >
+// int shape_run( const Shape& shape
+//              , const comma::csv::input_stream< shape_input >& istream
+//              , comma::csv::output_stream< shape_output > )
+// {
+// }
 
 int main( int argc, char** argv )
 {
@@ -323,6 +325,10 @@ int main( int argc, char** argv )
             bool output_all = options.exists( "--output-all" );
             shape_input default_input;
             default_input.shape = comma::csv::ascii< ::position >().get( options.value< std::string >( "--shape-position,--position", "0,0,0,0,0,0" ) );
+            std::string polytope_planes = options.value< std::string >( "--polytope-planes,--planes", "" );
+            if( polytope_planes.empty() ) { std::cerr << "" << std::endl; } 
+            
+            
             // todo: refactor bounds
             bounds_t shape_bounds = comma::csv::ascii< bounds_t >().get( options.value< std::string >( "--shape-bounds,--bounds", "0,0,0,0,0,0" ) );
             boost::optional< snark::geometry::convex_polytope > polytope;
@@ -335,173 +341,10 @@ int main( int argc, char** argv )
             {
                 const shape_input* p = istream.read();
                 if( !p ) { break; }
-                bool keep = polytope ? make_polytope( p->shape, shape_bounds ).has( *p ) : polytope->has( *p );
+                bool keep = polytope ? polytope->has( *p ) : make_polytope( p->shape, shape_bounds ).has( *p );
                 if( output_all ) { tied.append( shape_output( keep ) ); }
                 else if( keep ) { passed.write(); }
                 if( csv.flush ) { std::cout.flush(); }
-            }
-            return 0;
-        }
-        if( operation == "stream" )
-        {
-            bool output_all = options.exists( "--output-all");
-            offset=options.value("--error-margin",0.5);
-            bounds=comma::csv::ascii<bounds_t>().get(options.value("--bounds",std::string("0,0,0,0,0,0")));
-            comma::csv::input_stream<joined_point> istream(std::cin,csv);
-            comma::csv::output_stream<joined_point> ostream(std::cout,csv);
-            std::vector<std::string> fields=comma::split(csv.fields,csv.delimiter);
-            if( csv.fields.empty() ) { csv.fields = "t,coordinates"; }
-            bool flag_exists = csv.has_field( "flag" );
-            std::string bounded_string("bounded/");
-            for(unsigned int i=0; i<fields.size(); i++)
-            {
-                if(fields[i].substr(0,bounded_string.size())!=bounded_string)
-                {
-                    fields[i]=bounded_string+fields[i];
-                }
-            }
-            csv.fields=comma::join( fields, csv.delimiter );
-            flag_exists = csv.has_field( "bounded/flag" );
-            joined_point pq;
-            comma::signal_flag is_shutdown;
-            if(unnamed.size()<2){ usage(); }
-            comma::name_value::parser parser( "filename" );
-            comma::csv::options bounding_csv = parser.get< comma::csv::options >( unnamed[1] ); // get stream options
-            comma::io::istream bounding_is( comma::split(unnamed[1],';')[0], bounding_csv.binary() ? comma::io::mode::binary : comma::io::mode::ascii ); // get stream name
-
-            //bounding stream
-            std::deque<bounding_point> bounding_queue;
-            comma::csv::input_stream<bounding_point> bounding_istream(*bounding_is, bounding_csv);
-
-            comma::io::select istream_select;
-            comma::io::select bounding_istream_select;
-
-            istream_select.read().add(0);
-            istream_select.read().add(bounding_is.fd());
-            bounding_istream_select.read().add(bounding_is.fd());
-
-            bool next=true;
-
-            while(!is_shutdown && ( istream.ready() || ( std::cin.good() && !std::cin.eof() ) ))
-            {
-                bool bounding_data_available =  bounding_istream.ready() || ( bounding_is->good() && !bounding_is->eof());
-
-                //check so we do not block
-                bool bounding_istream_ready=bounding_istream.ready();
-                bool istream_ready=istream.ready();
-
-                if(next)
-                {
-                    //only check istream if we need a new point
-                    if(!bounding_istream_ready || !istream_ready)
-                    {
-                    if(!bounding_istream_ready && !istream_ready)
-                    {
-                        istream_select.wait(boost::posix_time::milliseconds(10));
-                    }
-                    else
-                    {
-                        istream_select.check();
-                    }
-                    if(istream_select.read().ready(bounding_is.fd()))
-                    {
-                        bounding_istream_ready=true;
-                    }
-                    if(istream_select.read().ready(0))
-                    {
-                        istream_ready=true;
-                    }
-                    }
-                }
-                else
-                {
-                    if(!bounding_istream_ready)
-                    {
-                        bounding_istream_select.wait(boost::posix_time::milliseconds(10));
-                        if(bounding_istream_select.read().ready(bounding_is.fd())) { bounding_istream_ready=true; }
-                    }
-                }
-
-                //keep storing available bounding data
-                if(bounding_istream_ready)
-                {
-                    const bounding_point* q = bounding_istream.read();
-                    if( q )
-                    {
-                        bounding_queue.push_back(*q);
-                    }
-                    else
-                    {
-                        bounding_data_available=false;
-                    }
-                }
-
-                //if we are done with the last bounded point get next
-                if(next)
-                {
-                    if(!istream_ready) { continue; }
-                    const joined_point* pq_ptr = istream.read();
-                    if( !pq_ptr ) { break; }
-                    pq=*pq_ptr;
-                }
-
-                //get bound
-                while(bounding_queue.size()>=2)
-                {
-                    if( pq.bounded.timestamp < bounding_queue[1].t ) { break; }
-                    bounding_queue.pop_front();
-                }
-
-                if(bounding_queue.size()<2)
-                {
-                    //bound not found
-                    //do we have more data?
-                    if(!bounding_data_available) { break; }
-                    next=false;
-                    continue;
-                }
-
-                //bound available
-                next=true; //get new point on next iteration
-
-                //discard late points
-                if(pq.bounded.timestamp < bounding_queue[0].t)
-                {
-                    continue;
-                }
-
-                //match
-                bool is_first=( pq.bounded.timestamp - bounding_queue[0].t < bounding_queue[1].t - pq.bounded.timestamp );
-                pq.bounding = is_first ? bounding_queue[0] : bounding_queue[1]; // assign bounding point
-
-                //filter out object points
-                pq.bounded.flag = !included( pq ); // todo: invert logic, now it is really weird
-
-                if(!pq.bounded.flag && !output_all)
-                {
-                    continue;
-                }
-
-                if(flag_exists)
-                {
-                    ostream.write(pq);
-                    ostream.flush();
-                    continue;
-                }
-
-                //append flag
-                if(ostream.is_binary())
-                {
-                    ostream.write(pq,istream.binary().last());
-                    std::cout.write( reinterpret_cast< const char* >( &pq.bounded.flag ), sizeof( comma::uint32 ) );
-                }
-                else
-                {
-                    std::string line=comma::join( istream.ascii().last(), csv.delimiter );
-                    line+=csv.delimiter+boost::lexical_cast<std::string>(pq.bounded.flag);
-                    ostream.write(pq,line);
-                }
-                ostream.flush();
             }
             return 0;
         }
