@@ -51,13 +51,13 @@ class convex_polytope
 
         /// @param normals to the planes
         /// @param offsets from the origins to the planes
-        convex_polytope( const Eigen::MatrixXd& normals, const Eigen::VectorXd& offsets );
+        convex_polytope( const Eigen::MatrixXd& normals, const Eigen::VectorXd& distances );
 
         /// @return true, if point is inside of the polytope
         bool has( const Eigen::VectorXd& rhs, double epsilon = 0 ) const;
 
         /// @return rotated and translated polytope
-        convex_polytope transformed( const Eigen::Vector3d& translation, const snark::roll_pitch_yaw& rotation );
+        convex_polytope transformed( const Eigen::Vector3d& translation, const snark::roll_pitch_yaw& rotation ) const;
 
         const Eigen::MatrixXd& normals() const { return normals_; }
 

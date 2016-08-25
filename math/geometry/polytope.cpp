@@ -58,7 +58,7 @@ convex_polytope::convex_polytope( const Eigen::MatrixXd& normals, const Eigen::V
     for( unsigned int i = 0; i < normals.rows(); ++i ) { normals_.row( i ).normalize(); }
 }
 
-convex_polytope convex_polytope::transformed( const Eigen::Vector3d& translation, const snark::roll_pitch_yaw& orientation )
+convex_polytope convex_polytope::transformed( const Eigen::Vector3d& translation, const snark::roll_pitch_yaw& orientation ) const
 {
     convex_polytope p( *this );
     const Eigen::MatrixXd& rotation_matrix = snark::rotation_matrix::rotation( orientation );
