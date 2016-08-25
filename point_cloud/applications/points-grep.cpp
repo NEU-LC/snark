@@ -45,6 +45,7 @@
 #include "../../math/rotation_matrix.h"
 #include "../../math/geometry/polygon.h"
 #include "../../math/geometry/polytope.h"
+#include "../../math/geometry/traits.h"
 #include "../../math/applications/frame.h"
 #include "../../visiting/traits.h"
 
@@ -77,6 +78,14 @@ struct position
     position() : coordinates( Eigen::Vector3d::Zero() ) {}
 };
 
+struct normal
+{
+    Eigen::Vector3d coordinates;
+    double distance;
+    
+    normal() : coordinates( Eigen::Vector3d::Zero() ) {}
+};
+
 struct filter_input : public Eigen::Vector3d
 {
     filter_input() : Eigen::Vector3d( Eigen::Vector3d::Zero() ) {}
@@ -103,6 +112,21 @@ template <> struct traits< ::position >
     {
         v.apply( "coordinates", t.coordinates );
         v.apply( "orientation", t.orientation );
+    }
+};
+
+template <> struct traits< ::normal >
+{
+    template < typename K, typename V > static void visit( const K& k, ::normal& t, V& v )
+    {
+        v.apply( "coordinates", t.coordinates );
+        v.apply( "distance", t.distance );
+    }
+    
+    template < typename K, typename V > static void visit( const K& k, const ::normal& t, V& v )
+    {
+        v.apply( "coordinates", t.coordinates );
+        v.apply( "distance", t.distance );
     }
 };
     
@@ -196,31 +220,57 @@ int main( int argc, char** argv )
         Eigen::Vector3d inflate_by = comma::csv::ascii< Eigen::Vector3d >().get( options.value< std::string >( "--offset,--inflate-by", "0,0,0" ) );
         if( what == "polytope" || what == "convex-polytope" )
         {
-            std::cerr << "points-grep: polytope: todo" << std::endl; return 1;
-//             const std::string& normals = options.value< std::string >( "--normals", "" );
-//             const std::string& planes = options.value< std::string >( "--planes", "" );
-//             if( !normals.empty() )
-//             {
-//                 // todo
-//             }
-//             else if( !planes.empty() )
-//             {
-//                 comma::csv::options shape_csv = comma::name_value::parser().get< comma::csv::options >( planes );
-//                 comma::io::istream is( &shape_csv.filename[0], shape_csv.binary() ? comma::io::mode::binary : comma::io::mode::ascii );
-//                 comma::csv::input_stream< snark::triangle > istream( is(), shape_csv );
-//                 // todo
-//             }
-//             else
-//             {
-//                 std::cerr << "points-grep: polytope: please specify --planes or --normals" << std::endl;
-//                 return 1;
-//             }
-            
-            // todo
-            
-            //snark::geometry::convex_polytope polytope;
-            //return run( polytope, options );
-            return 1;
+            Eigen::MatrixXd normals;
+            Eigen::VectorXd distances;
+            const std::string& normals_input = options.value< std::string >( "--normals", "" );
+            const std::string& planes_input = options.value< std::string >( "--planes", "" );
+            if( !normals_input.empty() )
+            {
+                comma::csv::options filter_csv = comma::name_value::parser( "filename" ).get< comma::csv::options >( normals_input );
+                comma::io::istream is( filter_csv.filename, filter_csv.binary() ? comma::io::mode::binary : comma::io::mode::ascii );
+                comma::csv::input_stream< ::normal > istream( *is, filter_csv );
+                std::vector< ::normal > n;
+                while( istream.ready() || ( is->good() && !is->eof() ) )
+                {
+                    const ::normal* p = istream.read();
+                    if( !p ) { break; }
+                    n.push_back( *p );
+                }
+                normals.resize( n.size(), 3 );
+                distances.resize( n.size() );
+                for( unsigned int i; i < n.size(); ++i )
+                {
+                    normals.row( i ) = n[i].coordinates.normalized();
+                    distances[i] = n[i].distance;
+                }
+            }
+            else if( !planes_input.empty() )
+            {
+                comma::csv::options filter_csv = comma::name_value::parser( "filename" ).get< comma::csv::options >( planes_input );
+                comma::io::istream is( filter_csv.filename, filter_csv.binary() ? comma::io::mode::binary : comma::io::mode::ascii );
+                comma::csv::input_stream< snark::triangle > istream( *is, filter_csv );
+                std::vector< snark::triangle > planes;
+                while( istream.ready() || ( is->good() && !is->eof() ) )
+                {
+                    const snark::triangle* p = istream.read();
+                    if( !p ) { break; }
+                    planes.push_back( *p );
+                }
+                normals.resize( planes.size(), 3 );
+                distances.resize( planes.size() );
+                for( unsigned int i; i < planes.size(); ++i )
+                {
+                    const Eigen::Vector3d& normal = ( planes[i].corners[1] - planes[i].corners[0] ).cross( planes[i].corners[2] - planes[i].corners[0] ).normalized();
+                    normals.row( i ) = normal;
+                    distances[i] = normal.dot( planes[i].corners[0] );
+                }
+            }
+            else
+            {
+                std::cerr << "points-grep: polytope: please specify --planes or --normals" << std::endl;
+                return 1;
+            }
+            return run( snark::geometry::convex_polytope( normals, distances ), options );
         }
         else if( what == "box" )
         {
