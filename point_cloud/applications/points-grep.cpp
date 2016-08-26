@@ -207,7 +207,7 @@ template < typename Shape > int run( const Shape& shape, const comma::command_li
     input_t default_input;
     default_input.filter = comma::csv::ascii< ::position >().get( options.value< std::string >( "--position", "0,0,0,0,0,0" ) );
     boost::optional< Shape > transformed;
-    if( !csv.has_field( "filter,filter/coordinates,filter/coordinates/x,filter/coordinates/y,filter/coordinates/z,filter/orientation,filter/orientation/roll,filter/orientation/pitch,filter/orientation/yaw" ) ) { transformed = transform( shape, default_input.filter ); }
+    if( !csv.has_some_of_fields( "filter,filter/coordinates,filter/coordinates/x,filter/coordinates/y,filter/coordinates/z,filter/orientation,filter/orientation/roll,filter/orientation/pitch,filter/orientation/yaw" ) ) { transformed = transform( shape, default_input.filter ); }
     comma::csv::input_stream< input_t > istream( std::cin, csv, default_input );
     comma::csv::output_stream< output_t > ostream( std::cout, csv.binary() );
     comma::csv::passed< input_t > passed( istream, std::cout );
