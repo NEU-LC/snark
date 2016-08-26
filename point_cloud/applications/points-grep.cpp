@@ -30,15 +30,9 @@
 /// @authors abdallah kassir, vsevolod vlaskine
 
 #include <iostream>
-#include <string>
-#include <boost/tokenizer.hpp>
-#include <boost/thread.hpp>
-#include <Eigen/Dense>
 #include <comma/application/command_line_options.h>
-#include <comma/application/signal_flag.h>
 #include <comma/csv/stream.h>
 #include <comma/csv/traits.h>
-#include <comma/io/select.h>
 #include <comma/io/stream.h>
 #include <comma/name_value/parser.h>
 #include "../../math/roll_pitch_yaw.h"
@@ -48,27 +42,6 @@
 #include "../../math/geometry/traits.h"
 #include "../../math/applications/frame.h"
 #include "../../visiting/traits.h"
-
-struct bounds_t
-{
-    bounds_t(): front(0), back(0), right(0), left(0), top(0), bottom(0) {}
-    double front;
-    double back;
-    double right;
-    double left;
-    double top;
-    double bottom;
-};
-
-struct point
-{
-    point(): coordinates( Eigen::Vector3d::Zero() ), block(0), id(0), flag(1){}
-    boost::posix_time::ptime timestamp;
-    Eigen::Vector3d coordinates;
-    comma::uint32 block;
-    comma::uint32 id;
-    comma::uint32 flag;
-};
 
 struct position
 {
@@ -86,15 +59,15 @@ struct normal
     normal() : coordinates( Eigen::Vector3d::Zero() ) {}
 };
 
-struct filter_input : public Eigen::Vector3d
+struct input_t : public Eigen::Vector3d
 {
-    filter_input() : Eigen::Vector3d( Eigen::Vector3d::Zero() ) {}
+    input_t() : Eigen::Vector3d( Eigen::Vector3d::Zero() ) {}
     ::position filter; // quick and dirty
 };
 
-struct filter_output
+struct output_t
 {
-    filter_output( bool included = false ) : included( included ) {}
+    output_t( bool included = false ) : included( included ) {}
     bool included;
 };
 
@@ -130,24 +103,24 @@ template <> struct traits< ::normal >
     }
 };
     
-template <> struct traits< filter_input >
+template <> struct traits< input_t >
 {
-    template < typename K, typename V > static void visit( const K& k, filter_input& t, V& v )
+    template < typename K, typename V > static void visit( const K& k, input_t& t, V& v )
     {
         traits< Eigen::Vector3d >::visit( k, t, v );
         v.apply( "filter", t.filter );
     }
     
-    template < typename K, typename V > static void visit( const K& k, const filter_input& t, V& v )
+    template < typename K, typename V > static void visit( const K& k, const input_t& t, V& v )
     {
         traits< Eigen::Vector3d >::visit( k, t, v );
         v.apply( "filter", t.filter );
     }
 };
 
-template <> struct traits< filter_output >
+template <> struct traits< output_t >
 { 
-    template < typename K, typename V > static void visit( const K& k, const filter_output& t, V& v )
+    template < typename K, typename V > static void visit( const K& k, const output_t& t, V& v )
     {
         v.apply( "included", t.included );
     }
@@ -165,8 +138,49 @@ static void usage( bool verbose = false )
     std::cerr << "usage: cat points.csv | points-grep <what> [<options>]" << std::endl;
     std::cerr << std::endl;
     std::cerr << "<what>" << std::endl;
-    std::cerr << "     polytope: todo" << std::endl;
-    std::cerr << "     box: todo" << std::endl;
+    std::cerr << "     polytope,planes: arbitrary polytope that can be specified either as a set of planes or a set of plane normals and distances from 0,0,0" << std::endl;
+    std::cerr << "         options" << std::endl;
+    std::cerr << "             --normals=<filename>[;<csv options>]: normals specifying a polytope" << std::endl;
+    std::cerr << "             --normals-fields: output normals fields and exit" << std::endl;
+    std::cerr << "             --normals-format: output normals format and exit" << std::endl;
+    std::cerr << "             --planes=<filename>[;<csv options>]: planes specifying a polytope" << std::endl;
+    std::cerr << "             --planes-fields: output planes fields and exit" << std::endl;
+    std::cerr << "             --planes-format: output planes format and exit" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "     box: rectangular box" << std::endl;
+    std::cerr << "         options" << std::endl;
+    std::cerr << "             --begin,--origin=<x>,<y>,<z>: lower left back corner of the box" << std::endl;
+    std::cerr << "             --end=<x>,<y>,<z>: upper right front corner of the box" << std::endl;
+    std::cerr << "             --center,--centre=<x>,<y>,<z>: centre of the box; default: 0,0,0" << std::endl;
+    std::cerr << "             --size=<x>,<y>,<z>: size of the box" << std::endl;
+    std::cerr << "             any two of the options above are sufficient to specify a box" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "options" << std::endl;
+    std::cerr << "    --input-fields: print input fields and exit; default input fields: x,y,z" << std::endl;
+    std::cerr << "    --input-format: print input format and exit" << std::endl;
+    std::cerr << "    --output-all,--all: output all input points, append 1, if point is inside the shape, 0 otherwise" << std::endl;
+    std::cerr << "                        for binary data, appended field will have format: " << comma::csv::format::value< output_t >() << std::endl;
+    std::cerr << "    --output-fields: if --output-all given, print output fields and exit" << std::endl;
+    std::cerr << "    --output-format: if --output-all given, print output format and exit" << std::endl;
+    std::cerr << "    --position=<x>,<y>,<z>,<roll>,<pitch>,<yaw>: default filter shape position" << std::endl;
+    std::cerr << std::endl;
+    if( verbose) { std::cerr << comma::csv::options::usage() << std::endl << std::endl; }
+    std::cerr << "examples" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    make a sample dataset" << std::endl;
+    std::cerr << "        for i in $( seq -5 0.1 5 ) ; do for j in $( seq -5 0.1 5 ) ; do for k in $( seq -5 0.1 5 ) ; do echo $i,$j,$k ; done ; done ; done > cube.csv" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    filter by a box; view result" << std::endl;
+    std::cerr << "        cat cube.csv | points-grep box --size=1,2,3 --position=1,2,3,0.5,0.6,0.7 > filtered.csv" << std::endl;
+    std::cerr << "        view-points \"cube.csv;colour=grey;hide\" \"filtered.csv;colour=red\" <( echo 0,0,0,0:0:0 ; echo 1,2,3,1:2:3 )\";colour=green;weight=10;fields=x,y,z,label\"" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    filter by two planes; view result" << std::endl;
+    std::cerr << "        cat cube.csv | points-grep planes --normals <( echo 1,1,1,0.5 ; echo -1,1,1,0.5 ) > filtered.csv" << std::endl;
+    std::cerr << "        view-points \"cube.csv;colour=grey;hide\" \"filtered.csv;colour=red\" <( echo 0,0,0,0:0:0 )\";colour=green;weight=10;fields=x,y,z,label\"" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    filter by a polytope; view result" << std::endl;
+    std::cerr << "        cat cube.csv | points-grep planes --normals <( echo 0,0,-1,0 ; echo 0,-1,0,0 ; echo -1,0,0,0 ; echo 1,1,1,3 ) > filtered.csv" << std::endl;
+    std::cerr << "        view-points \"cube.csv;colour=grey;hide\" \"filtered.csv;colour=red\" <( echo 0,0,0,0:0:0 )\";colour=green;weight=10;fields=x,y,z,label\"" << std::endl;
     std::cerr << std::endl;
     exit( 0 );
 }
@@ -189,21 +203,21 @@ template < typename Shape > int run( const Shape& shape, const comma::command_li
         else if( fields[i] == "filter/yaw" ) { fields[i] = "filter/orientation/yaw"; }
     }
     csv.fields = comma::join( fields, ',' );
-    bool output_all = options.exists( "--output-all" );
-    filter_input default_input;
+    bool output_all = options.exists( "--output-all,--all" );
+    input_t default_input;
     default_input.filter = comma::csv::ascii< ::position >().get( options.value< std::string >( "--position", "0,0,0,0,0,0" ) );
     boost::optional< Shape > transformed;
     if( !csv.has_field( "filter,filter/coordinates,filter/coordinates/x,filter/coordinates/y,filter/coordinates/z,filter/orientation,filter/orientation/roll,filter/orientation/pitch,filter/orientation/yaw" ) ) { transformed = transform( shape, default_input.filter ); }
-    comma::csv::input_stream< filter_input > istream( std::cin, csv, default_input );
-    comma::csv::output_stream< filter_output > ostream( std::cout, csv.binary() );
-    comma::csv::passed< filter_input > passed( istream, std::cout );
-    comma::csv::tied< filter_input, filter_output > tied( istream, ostream );
+    comma::csv::input_stream< input_t > istream( std::cin, csv, default_input );
+    comma::csv::output_stream< output_t > ostream( std::cout, csv.binary() );
+    comma::csv::passed< input_t > passed( istream, std::cout );
+    comma::csv::tied< input_t, output_t > tied( istream, ostream );
     while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
     {
-        const filter_input* p = istream.read();
+        const input_t* p = istream.read();
         if( !p ) { break; }
         bool keep = transformed ? transformed->has( *p ) : transform( shape, p->filter ).has( *p );
-        if( output_all ) { tied.append( filter_output( keep ) ); }
+        if( output_all ) { tied.append( output_t( keep ) ); }
         else if( keep ) { passed.write(); }
         if( csv.flush ) { std::cout.flush(); }
     }
@@ -215,10 +229,19 @@ int main( int argc, char** argv )
     try
     {
         comma::command_line_options options( argc, argv, usage );
-        const std::vector< std::string >& unnamed = options.unnamed("--output-all,--verbose,-v,--flush","-.*");
+        bool output_all = options.exists( "--output-all,--all" );
+        if( options.exists( "--input-fields" ) ) { std::cerr << comma::join( comma::csv::names< input_t >( true ), ',' ) << std::endl; return 0; }
+        if( options.exists( "--input-format" ) ) { std::cerr << comma::csv::format::value< input_t >() << std::endl; return 0; }
+        if( options.exists( "--normals-fields" ) ) { std::cerr << comma::join( comma::csv::names< ::normal >( true ), ',' ) << std::endl; return 0; }
+        if( options.exists( "--normals-format" ) ) { std::cerr << comma::csv::format::value< ::normal >() << std::endl; return 0; }
+        if( options.exists( "--planes-fields" ) ) { std::cerr << comma::join( comma::csv::names< snark::triangle >( true ), ',' ) << std::endl; return 0; }
+        if( options.exists( "--planes-format" ) ) { std::cerr << comma::csv::format::value< snark::triangle >() << std::endl; return 0; }
+        if( options.exists( "--output-fields" ) ) { if( output_all ) { std::cerr << comma::join( comma::csv::names< output_t >( true ), ',' ) << std::endl; } return 0; }
+        if( options.exists( "--output-format" ) ) { if( output_all ) { std::cerr << comma::csv::format::value< output_t >() << std::endl; } return 0; }
+        const std::vector< std::string >& unnamed = options.unnamed("--output-all,--all,--verbose,-v,--flush","-.*");
         std::string what = unnamed[0];
         Eigen::Vector3d inflate_by = comma::csv::ascii< Eigen::Vector3d >().get( options.value< std::string >( "--offset,--inflate-by", "0,0,0" ) );
-        if( what == "polytope" || what == "convex-polytope" )
+        if( what == "polytope" || what == "planes" )
         {
             Eigen::MatrixXd normals;
             Eigen::VectorXd distances;
@@ -238,7 +261,7 @@ int main( int argc, char** argv )
                 }
                 normals.resize( n.size(), 3 );
                 distances.resize( n.size() );
-                for( unsigned int i; i < n.size(); ++i )
+                for( unsigned int i = 0; i < n.size(); ++i )
                 {
                     normals.row( i ) = n[i].coordinates.normalized();
                     distances[i] = n[i].distance;
@@ -258,7 +281,7 @@ int main( int argc, char** argv )
                 }
                 normals.resize( planes.size(), 3 );
                 distances.resize( planes.size() );
-                for( unsigned int i; i < planes.size(); ++i )
+                for( unsigned int i = 0; i < planes.size(); ++i )
                 {
                     const Eigen::Vector3d& normal = ( planes[i].corners[1] - planes[i].corners[0] ).cross( planes[i].corners[2] - planes[i].corners[0] ).normalized();
                     normals.row( i ) = normal;
