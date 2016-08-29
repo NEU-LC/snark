@@ -126,7 +126,7 @@ void usage(bool detail)
     std::cerr << "        socat -u tcp:localhost:12345 - | csv-select --binary t,ui,3d,3ub --fields t,,x,y,z \"z;less=4\" | view-points --binary t,ui,3d,3ub --fields t,block,x,y,z,r,g,b" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    to publish points cloud from mutliple devices:"<< std::endl;
-    std::cerr << "        " << comma::verbose.app_name() << " --binary t,ui,3d,3ub --fields t,block,x,y,z,r,g,b --device \"port=4-1;output=tcp:12345\" \"port=4-2;output=tcp:6789\"" << std::endl;
+    std::cerr << "        " << comma::verbose.app_name() << " --binary t,ui,3d,3ub --fields t,block,x,y,z,r,g,b --device \"port=4-1;output=tcp:12345\" --device \"port=4-2;output=tcp:6789\"" << std::endl;
     std::cerr << std::endl;
 }
 
@@ -160,6 +160,8 @@ struct points_t
         unsigned counter;
         unsigned block;
         Eigen::Vector3d coordinates;
+        int cx;
+        int cy;
         // todo: any more point attributes available?
         //cv::Mat?
         color_t color;
@@ -210,6 +212,8 @@ template <> struct traits< points_t::output_t >
         v.apply( "counter", p.counter );
         v.apply( "block", p.block );
         v.apply( "coordinates", p.coordinates );
+        v.apply( "cx", p.cx );
+        v.apply( "cy", p.cy );
         v.apply( "color", p.color );
     }
 };
@@ -323,6 +327,8 @@ void points_t::scan(unsigned block)
                 auto color_pixel=points_cloud.project(point);
                 const int cx = (int)std::round(color_pixel.x);
                 const int cy = (int)std::round(color_pixel.y);
+                out.cx=cx;
+                out.cy=cy;
                 if(cx < 0 || cy < 0 || cx >= mat.cols || cy >= mat.rows)
                 {
                     if(discard_margin) {discard=true;}
