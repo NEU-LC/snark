@@ -218,6 +218,7 @@ run_stream::~run_stream() { device.stop(); }
 /*********************************************************/
 options::options()
 {
+    if (RS_API_VERSION != 5) { COMMA_THROW(comma::exception,"expected RS_API_VERSION = 5, got "<<RS_API_VERSION<<" (please install the latest librealsense and/or upgrade snark_librealsense)");}
     names["color_backlight_compensation"]=rs::option::color_backlight_compensation;
     names["color_brightness"]=rs::option::color_brightness;
     names["color_contrast"]=rs::option::color_contrast;
@@ -235,7 +236,6 @@ options::options()
     names["f200_motion_range"]=rs::option::f200_motion_range;
     names["f200_filter_option"]=rs::option::f200_filter_option;
     names["f200_confidence_threshold"]=rs::option::f200_confidence_threshold;
-    names["sr300_dynamic_fps"]=rs::option::sr300_dynamic_fps;
     names["sr300_auto_range_enable_motion_versus_range"]=rs::option::sr300_auto_range_enable_motion_versus_range;
     names["sr300_auto_range_enable_laser"]=rs::option::sr300_auto_range_enable_laser;
     names["sr300_auto_range_min_motion_versus_range"]=rs::option::sr300_auto_range_min_motion_versus_range;
@@ -246,22 +246,9 @@ options::options()
     names["sr300_auto_range_start_laser"]=rs::option::sr300_auto_range_start_laser;
     names["sr300_auto_range_upper_threshold"]=rs::option::sr300_auto_range_upper_threshold;
     names["sr300_auto_range_lower_threshold"]=rs::option::sr300_auto_range_lower_threshold;
-    names["sr300_wakeup_dev_phase1_period"]=rs::option::sr300_wakeup_dev_phase1_period;
-    names["sr300_wakeup_dev_phase1_fps"]=rs::option::sr300_wakeup_dev_phase1_fps;
-    names["sr300_wakeup_dev_phase2_period"]=rs::option::sr300_wakeup_dev_phase2_period;
-    names["sr300_wakeup_dev_phase2_fps"]=rs::option::sr300_wakeup_dev_phase2_fps;
-    names["sr300_wakeup_dev_reset"]=rs::option::sr300_wakeup_dev_reset;
-    names["sr300_wake_on_usb_reason"]=rs::option::sr300_wake_on_usb_reason;
-    names["sr300_wake_on_usb_confidence"]=rs::option::sr300_wake_on_usb_confidence;
-    names["r200_lr_auto_exposure_enabled"]=rs::option::r200_lr_auto_exposure_enabled;
     names["r200_lr_gain"]=rs::option::r200_lr_gain;
     names["r200_lr_exposure"]=rs::option::r200_lr_exposure;
-    names["r200_emitter_enabled"]=rs::option::r200_emitter_enabled;
     names["r200_depth_units"]=rs::option::r200_depth_units;
-    names["r200_depth_clamp_min"]=rs::option::r200_depth_clamp_min;
-    names["r200_depth_clamp_max"]=rs::option::r200_depth_clamp_max;
-    names["r200_disparity_multiplier"]=rs::option::r200_disparity_multiplier;
-    names["r200_disparity_shift"]=rs::option::r200_disparity_shift;
     names["r200_auto_exposure_mean_intensity_set_point"]=rs::option::r200_auto_exposure_mean_intensity_set_point;
     names["r200_auto_exposure_bright_ratio_set_point"]=rs::option::r200_auto_exposure_bright_ratio_set_point;
     names["r200_auto_exposure_kp_gain"]=rs::option::r200_auto_exposure_kp_gain;
@@ -281,7 +268,6 @@ options::options()
     names["r200_depth_control_second_peak_threshold"]=rs::option::r200_depth_control_second_peak_threshold;
     names["r200_depth_control_neighbor_threshold"]=rs::option::r200_depth_control_neighbor_threshold;
     names["r200_depth_control_lr_threshold"]=rs::option::r200_depth_control_lr_threshold;
-
 }
 const std::map<std::string,rs::option>& option::get_names()
 {
