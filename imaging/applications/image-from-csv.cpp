@@ -89,6 +89,8 @@ static void usage( bool verbose )
               << "    x,y: pixel coordinates, if double, will get rounded to the nearest integer" << std::endl
               << "    r,g,b: red, green, blue values" << std::endl
               << "    grey: greyscale value" << std::endl
+              << "    channels[0],channels[1],channels[2]: blue, green, red values; notice that the order is bgr" << std::endl
+              << "                                         if only channels[0] given, it is the same as specifying grey field" << std::endl
               << "    block: image number, optional" << std::endl
               << std::endl;
     if( verbose )
@@ -151,10 +153,10 @@ int main( int ac, char** av )
         for( unsigned int i = 0; i < v.size(); ++i )
         {
             if( v[i] == "grey" ) { v[i] = "channels[0]"; }
-            else if( v[i] == "r" ) { v[i] = "channels[0]"; is_greyscale = false; }
+            else if( v[i] == "b" ) { v[i] = "channels[0]"; is_greyscale = false; }
             else if( v[i] == "g" ) { v[i] = "channels[1]"; is_greyscale = false; }
-            else if( v[i] == "b" ) { v[i] = "channels[2]"; is_greyscale = false; }
-            else if( v[i] == "a" ) { v[i] = "channels[4]"; is_greyscale = false; has_alpha = true; }
+            else if( v[i] == "r" ) { v[i] = "channels[2]"; is_greyscale = false; }
+            else if( v[i] == "a" ) { v[i] = "channels[3]"; is_greyscale = false; has_alpha = true; }
         }
         csv.fields = comma::join( v, ',' );
         if( has_alpha ) { std::cerr << "image-to-csv: alpha support: todo" << std::endl; return 1; }
