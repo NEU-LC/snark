@@ -43,14 +43,6 @@
 #include "../../math/applications/frame.h"
 #include "../../visiting/traits.h"
 
-struct position
-{
-    Eigen::Vector3d coordinates;
-    snark::roll_pitch_yaw orientation;
-    
-    position() : coordinates( Eigen::Vector3d::Zero() ) {}
-};
-
 struct normal
 {
     Eigen::Vector3d coordinates;
@@ -59,11 +51,27 @@ struct normal
     normal() : coordinates( Eigen::Vector3d::Zero() ) {}
 };
 
+struct position
+{
+    Eigen::Vector3d coordinates;
+    snark::roll_pitch_yaw orientation;
+    
+    position() : coordinates( Eigen::Vector3d::Zero() ) {}
+};
+
+struct filter_t : public ::position // quick and dirty
+{
+    ::position position;
+    std::vector< ::normal > normals;
+    
+    filter_t( const ::position& p = ::position() ) : ::position( p ) {}
+};
+
 struct input_t : public Eigen::Vector3d // quick and dirty
 {
-    ::position filter;
+    ::filter_t filter;
     
-    input_t( const Eigen::Vector3d& p = Eigen::Vector3d::Zero(), const ::position& filter = ::position() ) : Eigen::Vector3d( p ), filter( filter ) {}
+    input_t( const Eigen::Vector3d& p = Eigen::Vector3d::Zero(), const ::filter_t& filter = ::filter_t() ) : Eigen::Vector3d( p ), filter( filter ) {}
 };
 
 struct output_t
@@ -102,6 +110,21 @@ template <> struct traits< ::normal >
     {
         v.apply( "coordinates", t.coordinates );
         v.apply( "distance", t.distance );
+    }
+};
+
+template <> struct traits< filter_t >
+{
+    template < typename K, typename V > static void visit( const K& k, filter_t& t, V& v )
+    {
+        traits< ::position >::visit( k, t, v );
+        v.apply( "normals", t.normals );
+    }
+    
+    template < typename K, typename V > static void visit( const K& k, const filter_t& t, V& v )
+    {
+        traits< ::position >::visit( k, t, v );
+        v.apply( "normals", t.normals );
     }
 };
     
@@ -145,6 +168,7 @@ static void usage( bool verbose = false )
     std::cerr << "             --normals=<filename>[;<csv options>]: normals specifying a polytope" << std::endl;
     std::cerr << "             --normals-fields: output normals fields and exit" << std::endl;
     std::cerr << "             --normals-format: output normals format and exit" << std::endl;
+    std::cerr << "             --normals-size,--number-of-planes,--number-of-normals: if normals are given on stdin, specify the number of normals" << std::endl;
     std::cerr << "             --planes=<filename>[;<csv options>]: planes specifying a polytope" << std::endl;
     std::cerr << "             --planes-fields: output planes fields and exit" << std::endl;
     std::cerr << "             --planes-format: output planes format and exit" << std::endl;
@@ -189,9 +213,17 @@ static void usage( bool verbose = false )
     exit( 0 );
 }
 
-snark::geometry::convex_polytope transform( const snark::geometry::convex_polytope& polytope, const ::position& position ) { return polytope.transformed( position.coordinates, position.orientation ); } 
+static snark::geometry::convex_polytope transform( const snark::geometry::convex_polytope& polytope, const ::position& position ) { return polytope.transformed( position.coordinates, position.orientation ); } 
 
-template < typename Shape > int run( const Shape& shape, const comma::command_line_options& options )
+static snark::geometry::convex_polytope make_polytope( const std::vector< ::normal >& n ) // todo: quick and dirty, watch performance
+{
+    Eigen::MatrixXd normals( n.size(), 3 );
+    Eigen::VectorXd distances( n.size() );
+    for( unsigned int i = 0; i < n.size(); normals.row( i ) = n[i].coordinates.transpose().normalized(), distances( i ) = n[i].distance, ++i );
+    return snark::geometry::convex_polytope( normals, distances );
+}
+
+template < typename Shape > static int run( const boost::optional< Shape >& shape, const comma::command_line_options& options )
 {
     comma::csv::options csv( options );
     csv.full_xpath = true;
@@ -209,9 +241,14 @@ template < typename Shape > int run( const Shape& shape, const comma::command_li
     csv.fields = comma::join( fields, ',' );
     bool output_all = options.exists( "--output-all,--all" );
     input_t default_input( comma::csv::ascii< Eigen::Vector3d >().get( options.value< std::string >( "--point", "0,0,0" ) )
-                         , comma::csv::ascii< ::position >().get( options.value< std::string >( "--position", "0,0,0,0,0,0" ) ) );
+                         , filter_t( comma::csv::ascii< ::position >().get( options.value< std::string >( "--position", "0,0,0,0,0,0" ) ) ) );
+    if( !shape )
+    {
+        if( !csv.has_field( "filter/normals" ) ) { std::cerr << "points-grep: polytope: please specify --planes, or --normals, or filter/normals in input fields" << std::endl; return 1; }
+        default_input.filter.normals.resize( options.value< unsigned int >( "--normals-size,--number-of-planes,--number-of-normals" ) );
+    }
     boost::optional< Shape > transformed;
-    if( !csv.has_some_of_fields( "filter,filter/coordinates,filter/coordinates/x,filter/coordinates/y,filter/coordinates/z,filter/orientation,filter/orientation/roll,filter/orientation/pitch,filter/orientation/yaw" ) ) { transformed = transform( shape, default_input.filter ); }
+    if( !csv.has_some_of_fields( "filter,filter/coordinates,filter/coordinates/x,filter/coordinates/y,filter/coordinates/z,filter/orientation,filter/orientation/roll,filter/orientation/pitch,filter/orientation/yaw" ) ) { transformed = transform( *shape, default_input.filter ); }
     comma::csv::input_stream< input_t > istream( std::cin, csv, default_input );
     comma::csv::output_stream< output_t > ostream( std::cout, csv.binary() );
     comma::csv::passed< input_t > passed( istream, std::cout );
@@ -220,13 +257,15 @@ template < typename Shape > int run( const Shape& shape, const comma::command_li
     {
         const input_t* p = istream.read();
         if( !p ) { break; }
-        bool keep = transformed ? transformed->has( *p ) : transform( shape, p->filter ).has( *p );
+        bool keep = transformed ? transformed->has( *p ) : transform( shape ? *shape : make_polytope( p->filter.normals ), p->filter ).has( *p );
         if( output_all ) { tied.append( output_t( keep ) ); }
         else if( keep ) { passed.write(); }
         if( csv.flush ) { std::cout.flush(); }
     }
     return 0;
 }
+
+template < typename Shape > int run( const Shape& shape, const comma::command_line_options& options ) { return run( boost::optional< Shape >( shape ), options ); }
 
 int main( int argc, char** argv )
 {
