@@ -59,16 +59,18 @@ struct normal
     normal() : coordinates( Eigen::Vector3d::Zero() ) {}
 };
 
-struct input_t : public Eigen::Vector3d
+struct input_t : public Eigen::Vector3d // quick and dirty
 {
-    input_t() : Eigen::Vector3d( Eigen::Vector3d::Zero() ) {}
-    ::position filter; // quick and dirty
+    ::position filter;
+    
+    input_t( const Eigen::Vector3d& p = Eigen::Vector3d::Zero(), const ::position& filter = ::position() ) : Eigen::Vector3d( p ), filter( filter ) {}
 };
 
 struct output_t
 {
-    output_t( bool included = false ) : included( included ) {}
     bool included;
+    
+    output_t( bool included = false ) : included( included ) {}
 };
 
 namespace comma { namespace visiting {
@@ -162,6 +164,8 @@ static void usage( bool verbose = false )
     std::cerr << "                        for binary data, appended field will have format: " << comma::csv::format::value< output_t >() << std::endl;
     std::cerr << "    --output-fields: if --output-all given, print output fields and exit" << std::endl;
     std::cerr << "    --output-format: if --output-all given, print output format and exit" << std::endl;
+    std::cerr << "    --point=<x>,<y>,<z>: default point coordinates; default: 0,0,0" << std::endl;
+    std::cerr << "                         useful e.g. when we need to filter a fixed point by polytope position" << std::endl;
     std::cerr << "    --position=<x>,<y>,<z>,<roll>,<pitch>,<yaw>: default filter shape position" << std::endl;
     std::cerr << std::endl;
     if( verbose) { std::cerr << comma::csv::options::usage() << std::endl << std::endl; }
@@ -204,8 +208,8 @@ template < typename Shape > int run( const Shape& shape, const comma::command_li
     }
     csv.fields = comma::join( fields, ',' );
     bool output_all = options.exists( "--output-all,--all" );
-    input_t default_input;
-    default_input.filter = comma::csv::ascii< ::position >().get( options.value< std::string >( "--position", "0,0,0,0,0,0" ) );
+    input_t default_input( comma::csv::ascii< Eigen::Vector3d >().get( options.value< std::string >( "--point", "0,0,0" ) )
+                         , comma::csv::ascii< ::position >().get( options.value< std::string >( "--position", "0,0,0,0,0,0" ) ) );
     boost::optional< Shape > transformed;
     if( !csv.has_some_of_fields( "filter,filter/coordinates,filter/coordinates/x,filter/coordinates/y,filter/coordinates/z,filter/orientation,filter/orientation/roll,filter/orientation/pitch,filter/orientation/yaw" ) ) { transformed = transform( shape, default_input.filter ); }
     comma::csv::input_stream< input_t > istream( std::cin, csv, default_input );
