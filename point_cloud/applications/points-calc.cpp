@@ -178,6 +178,7 @@ static void calculate_distance( bool cumulative )
         {
             std::cout.write( istream.binary().last(), istream.binary().binary().format().size() );
             std::cout.write( reinterpret_cast< const char* >( &distance ), sizeof( double ) );
+            if( csv.flush ) { std::cout.flush(); }
         }
         else
         {
@@ -197,17 +198,29 @@ static void calculate_distance_next()
         if( last )
         {
             double distance = ( *p - *last ).norm();
-            if( csv.binary() ) { std::cout.write( reinterpret_cast< const char* >( &distance ), sizeof( double ) ); }
+            if( csv.binary() )
+            {
+                std::cout.write( reinterpret_cast< const char* >( &distance ), sizeof( double ) );
+                if( csv.flush ) { std::cout.flush(); }
+            }
             else { std::cout << csv.delimiter << distance << std::endl; }
         }
-        if( csv.binary() ) { std::cout.write( istream.binary().last(), istream.binary().binary().format().size() ); }
+        if( csv.binary() )
+        {
+            std::cout.write( istream.binary().last(), istream.binary().binary().format().size() );
+            if( csv.flush ) { std::cout.flush(); }
+        }
         else { std::cout << comma::join( istream.ascii().last(), csv.delimiter ); }
         last = *p;
     }
     if( last )
     {
         double fake_final_distance = 0;
-        if( csv.binary() ) { std::cout.write( reinterpret_cast< const char* >( &fake_final_distance ), sizeof( double ) ); }
+        if( csv.binary() )
+        {
+            std::cout.write( reinterpret_cast< const char* >( &fake_final_distance ), sizeof( double ) );
+            if( csv.flush ) { std::cout.flush(); }
+        }
         else { std::cout << csv.delimiter << fake_final_distance << std::endl; }
     }
 }
@@ -224,6 +237,7 @@ static void calculate_distance_for_pairs()
         {
             std::cout.write( istream.binary().last(), istream.binary().binary().format().size() );
             std::cout.write( reinterpret_cast< const char* >( &norm ), sizeof( double ) );
+            if( csv.flush ) { std::cout.flush(); }
         }
         else
         {
@@ -248,6 +262,7 @@ static void thin( double resolution )
             if( csv.binary() )
             {
                 std::cout.write( istream.binary().last(), istream.binary().binary().format().size() );
+                if( csv.flush ) { std::cout.flush(); }
             }
             else
             {
@@ -264,7 +279,7 @@ void output_points(const Eigen::Vector3d& p1, const Eigen::Vector3d& p2)
     {
         std::cout.write( reinterpret_cast< const char* >( &p1 ), sizeof( double ) * 3 );
         std::cout.write( reinterpret_cast< const char* >( &p2 ), sizeof( double ) * 3 );
-        std::cout.flush();
+        if( csv.flush ) { std::cout.flush(); }
     }
     else 
     {
@@ -279,6 +294,7 @@ static void discretise( double step, double tolerance )
         comma::csv::input_stream< std::pair< Eigen::Vector3d, Eigen::Vector3d > > istream( std::cin, csv );
         comma::csv::options output_csv;
         if( csv.binary() ) { output_csv.format( "3d" ); }
+        output_csv.flush = csv.flush;
         comma::csv::output_stream< Eigen::Vector3d > ostream( std::cout, output_csv );
         while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
         {
@@ -299,6 +315,7 @@ static void discretise( double step, double tolerance )
         boost::optional< Eigen::Vector3d > previous_point;
         comma::csv::options output_csv;
         if( csv.binary() ) { output_csv.format( "3d" ); }
+        output_csv.flush = csv.flush;
         comma::csv::output_stream< Eigen::Vector3d > ostream( std::cout, output_csv );
         while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
         {
@@ -468,7 +485,7 @@ int main( int ac, char** av )
         csv = comma::csv::options( options );
         csv.full_xpath = true;
         ascii = comma::csv::ascii< Eigen::Vector3d >( "x,y,z", csv.delimiter );
-        const std::vector< std::string >& operations = options.unnamed( "--verbose,-v,--trace,--no-antialiasing,--next,--unit,--output-full-record,--full-record,--full", "-.*" );
+        const std::vector< std::string >& operations = options.unnamed( "--verbose,-v,--trace,--no-antialiasing,--next,--unit,--output-full-record,--full-record,--full,--flush", "-.*" );
         if( operations.size() != 1 ) { std::cerr << "points-calc: expected one operation, got " << operations.size() << ": " << comma::join( operations, ' ' ) << std::endl; return 1; }
         const std::string& operation = operations[0];
         if (vector_calc::has_operation(operation))
@@ -516,7 +533,11 @@ int main( int ac, char** av )
                 record = csv.binary() ? std::string( istream.binary().last(), csv.format().size() ) : comma::join( istream.ascii().last(), csv.delimiter );
             }
             if( !record.empty() ) { std::cout << record; }
-            if( csv.binary() ) { std::cout.write( reinterpret_cast< const char* >( &min_distance ), sizeof( double ) ); }
+            if( csv.binary() )
+            {
+                std::cout.write( reinterpret_cast< const char* >( &min_distance ), sizeof( double ) );
+                if( csv.flush ) { std::cout.flush(); }
+            }
             else { std::cout << csv.delimiter << min_distance << std::endl; }
             return 0;
         }
@@ -678,7 +699,7 @@ int main( int ac, char** av )
                 endl = oss.str();
                 delimiter = std::string( 1, csv.delimiter );
             }
-            comma::csv::output_stream< local_operation::output > ostream( std::cout, output_csv );
+            output_csv.flush = csv.flush;
             if( options.exists( "--output-full-record,--full-record,--full" ) )
             {
                 unsigned int discarded = 0;
@@ -689,6 +710,7 @@ int main( int ac, char** av )
                     std::cout.write( &delimiter[0], delimiter.size() );
                     std::cout.write( &records[i].reference_record->line[0], records[i].reference_record->line.size() );
                     std::cout.write( &endl[0], endl.size() );
+                    if( csv.flush ) { std::cout.flush(); }
                 }
                 if( verbose ) { std::cerr << "points-calc: " << operation << ": discarded " << discarded << " point(s) of " << records.size() << std::endl; }
             }
@@ -785,6 +807,7 @@ int main( int ac, char** av )
                 endl = oss.str();
                 delimiter = std::string( 1, csv.delimiter );
             }
+            output_csv.flush = csv.flush;
             if( options.exists( "--output-full-record,--full-record,--full" ) )
             {
                 unsigned int discarded = 0;
@@ -795,6 +818,7 @@ int main( int ac, char** av )
                     std::cout.write( &delimiter[0], delimiter.size() );
                     std::cout.write( &records[i].reference_record->line[0], records[i].reference_record->line.size() );
                     std::cout.write( &endl[0], endl.size() );
+                    if( csv.flush ) { std::cout.flush(); }
                 }
                 if( verbose ) { std::cerr << "points-calc: " << operation << ": discarded " << discarded << " point(s) of " << records.size() << std::endl; }
             }
@@ -881,6 +905,7 @@ int main( int ac, char** av )
                 std::cout.write( &delimiter[0], delimiter.size() );
                 std::cout.write( &valid, 1 );
                 std::cout.write( &endl[0], endl.size() );
+                if( csv.flush ) { std::cout.flush(); }
             }
             if( verbose ) { std::cerr << "points-calc: done!" << std::endl; }
             return 0;

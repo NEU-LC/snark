@@ -102,23 +102,18 @@ endif()
 OPTION( snark_build_graphics_csv_plot "build csv-plot" OFF )
 
 if( snark_build_graphics_csv_plot ) # todo: make sure it works for qt5
-    
-    # todo: quick and dirty, most likely won't work on windows; do it right, sometime
-    find_path( QWT_INCLUDE_DIRS
-                    NAMES qwt_plot.h
-                    PATHS
-                    /usr/local/include/qwt-qt4
-                    /usr/local/include/qwt
-                    /usr/include/qwt-qt4
-                    /usr/include/qwt )
-    find_library( QWT_LIBRARIES
-                    NAMES qwt-qt4 qwt
-                    PATHS /usr/local/lib /usr/lib )
-    include ( FindPackageHandleStandardArgs )
-    find_package_handle_standard_args( Qwt DEFAULT_MSG QWT_LIBRARIES QWT_INCLUDE_DIRS )
-    MARK_AS_ADVANCED(QWT_LIBRARIES QWT_INCLUDE_DIRS)
 
-    include_directories( ${QWT_INCLUDE_DIRS} )
+    set( CMAKE_MODULE_PATH ${SOURCE_CODE_BASE_DIR}/CMakeFiles ${CMAKE_MODULE_PATH} )
+    find_package( Qwt )
+    if( NOT QWT_FOUND )
+        message( FATAL_ERROR "csv-plot requires Qwt library" )
+    endif()
+    if( QT_VERSION_MAJOR GREATER 4 )
+        if( QWT_MAJOR_VERSION LESS 6 OR ( QWT_MAJOR_VERSION EQUAL 6 AND QWT_MINOR_VERSION LESS 1 ))
+            message( FATAL_ERROR "\nQt version ${snark_qt_version} requires Qwt version 6.1 or above, found version ${QWT_VERSION_STRING}.\nUpgrade Qwt library or disable the building of csv-plot." )
+        endif()
+    endif()
+
     SET( CSV_PLOT_MOC_FILES csv_plot_moc csv_plot/plot.h ) #SET( CSV_PLOT_MOC_FILES csv_plot_Moc csv_plot/main_window.h csv_plot/plot.h )
     IF( QT_VERSION_MAJOR EQUAL 4 )
         QT4_WRAP_CPP( ${CSV_PLOT_MOC_FILES} OPTIONS ${MOC_OPTIONS} )
@@ -135,7 +130,7 @@ if( snark_build_graphics_csv_plot ) # todo: make sure it works for qt5
     IF( QT_VERSION_MAJOR EQUAL 4 )
         TARGET_LINK_LIBRARIES( csv-plot ${QT_LIBRARIES} ${comma_ALL_LIBRARIES} ${QWT_LIBRARIES} ${OPENGL_LIBRARY} ) #profiler )
     ELSEIF( QT_VERSION_MAJOR EQUAL 5 )
-        TARGET_LINK_LIBRARIES( csv-plot ${comma_ALL_LIBRARIES} ${QWT_LIBRARIES} ) #profiler )
+        TARGET_LINK_LIBRARIES( csv-plot ${comma_ALL_LIBRARIES} ${QWT_LIBRARIES} Qt5::Widgets ) #profiler )
     ENDIF( QT_VERSION_MAJOR EQUAL 4 )
     
     INSTALL( TARGETS csv-plot RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )

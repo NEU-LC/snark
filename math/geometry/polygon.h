@@ -61,6 +61,9 @@ struct convex_polygon
     
     /// return true, if a point is inside of the polygon, borders included
     bool includes( const Eigen::Vector3d& rhs ) const;
+    
+    /// return min distance from a point to the polygon border, quick and dirty
+    double distance_from_border_to( const Eigen::Vector3d& rhs ) const;
 };
 
 /// triangle, a convenience class, since it's so commonly used

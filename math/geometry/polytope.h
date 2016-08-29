@@ -32,43 +32,42 @@
 #ifndef SNARK_MATH_GEOMETRY_POLYTOPE_
 #define SNARK_MATH_GEOMETRY_POLYTOPE_
 
-#include <Eigen/Core>
 #include <vector>
+#include <Eigen/Core>
+#include "../roll_pitch_yaw.h"
 
-namespace snark{ namespace geometry{
+namespace snark { namespace geometry {
 
-/// convex_polytope is used to check if a point is inside a convex polytope
-/// The constructor is given a convex polytope specified by a set of half-spaces. Several constructor methods exist.
-/// The class works for any dimension (as long as it makes sense and your computer can handle it).
-/// See test for a usage example.
+/// convex_polytope is used to check if a point is inside a convex polytope specified by a set of half-spaces,
+/// i.e. by the set of inequalities: Ax <= b, where A is plane normals and b plane offsets (signed
+/// distances from zero to planes), assuming that normals point outwards of the polytope
 
 class convex_polytope
 {
-public:
-    /// @param normals to the planes
-    /// @param offsets from the origins to the planes
-    convex_polytope( const std::vector< Eigen::VectorXd >& normals, const std::vector< double >& offsets );
-    
-    /// @param normals to the planes
-    /// @param offsets from the origins to the planes
-    convex_polytope( const Eigen::MatrixXd& normals, const Eigen::VectorXd& offsets );
-    
-    /// @param planes normals and offsets concatenated into one matrix
-    convex_polytope( const Eigen::MatrixXd& planes );
+    public:
+        /// @param normals to the planes
+        /// @param offsets from the origins to the planes
+        convex_polytope( const std::vector< Eigen::VectorXd >& normals, const std::vector< double >& distances );
 
-    /// @return true, if point is inside of the polytope with a given tolerance
-    bool has( const Eigen::VectorXd& x);
-    
-    const Eigen::MatrixXd& normals() const;
-    
-    const Eigen::VectorXd& offsets() const;
-    
-private:
-    //polytope defined by the set of inequalities: Ax>=b
-    Eigen::MatrixXd normals_; //A
-    Eigen::VectorXd offsets_; //b
+        /// @param normals to the planes
+        /// @param offsets from the origins to the planes
+        convex_polytope( const Eigen::MatrixXd& normals, const Eigen::VectorXd& distances );
+
+        /// @return true, if point is inside of the polytope
+        bool has( const Eigen::VectorXd& rhs, double epsilon = 0 ) const;
+
+        /// @return rotated and translated polytope
+        convex_polytope transformed( const Eigen::Vector3d& translation, const snark::roll_pitch_yaw& rotation ) const;
+
+        const Eigen::MatrixXd& normals() const { return normals_; }
+
+        const Eigen::VectorXd& distances() const { return distances_; }
+
+    private:
+        Eigen::MatrixXd normals_;
+        Eigen::VectorXd distances_;
 };
 
-}} // namespace snark{ namepsace geometry{
+} } // namespace snark { namepsace geometry {
 
 #endif // SNARK_MATH_GEOMETRY_POLYTOPE_

@@ -119,7 +119,7 @@ int main( int ac, char** av )
             comma::write_json( config, std::cout );
             return 0;
         }
-        const std::vector< std::string >& unnamed = options.unnamed( "--input-fields,--output-fields,--output-format,--verbose,-v,--clip,--keep,--normalize", "-.*" );
+        const std::vector< std::string >& unnamed = options.unnamed( "--input-fields,--output-fields,--output-format,--verbose,-v,--flush,--clip,--keep,--normalize", "-.*" );
         if( unnamed.empty() ) { std::cerr << "image-pinhole: please specify operation" << std::endl; return 1; }
         std::string operation = unnamed[0];
         output_details< Eigen::Vector2d, Eigen::Vector3d >( operation, "to-cartesian", options );
@@ -131,7 +131,7 @@ int main( int ac, char** av )
         if( operation == "to-cartesian" )
         {
             comma::csv::input_stream< Eigen::Vector2d > is( std::cin, csv );
-            comma::csv::output_stream< Eigen::Vector3d > os( std::cout, csv.binary() );
+            comma::csv::output_stream< Eigen::Vector3d > os( std::cout, csv.binary(), false, csv.flush );
             comma::csv::tied< Eigen::Vector2d, Eigen::Vector3d > tied( is, os );
             bool normalize = options.exists( "--normalize" );
             while( is.ready() || std::cin.good() )
@@ -146,7 +146,7 @@ int main( int ac, char** av )
         if( operation == "to-pixels" )
         {
             comma::csv::input_stream< Eigen::Vector2d > is( std::cin, csv );
-            comma::csv::output_stream< Eigen::Vector2d > os( std::cout, csv.binary() );
+            comma::csv::output_stream< Eigen::Vector2d > os( std::cout, csv.binary(), false, csv.flush );
             comma::csv::tied< Eigen::Vector2d, Eigen::Vector2d > tied( is, os );
             bool clip = options.exists( "--clip" ) || ( options.exists( "--deprecated" ) && !options.exists( "--keep" ) );
             while( is.ready() || std::cin.good() )
@@ -167,7 +167,7 @@ int main( int ac, char** av )
         if( operation == "undistort" )
         {
             comma::csv::input_stream< Eigen::Vector2d > is( std::cin, csv );
-            comma::csv::output_stream< Eigen::Vector2d > os( std::cout, csv.binary() );
+            comma::csv::output_stream< Eigen::Vector2d > os( std::cout, csv.binary(), false, csv.flush );
             comma::csv::tied< Eigen::Vector2d, Eigen::Vector2d > tied( is, os );
             while( is.ready() || std::cin.good() )
             {
@@ -180,7 +180,7 @@ int main( int ac, char** av )
         if( operation == "distort" )
         {
             comma::csv::input_stream< Eigen::Vector2d > is( std::cin, csv );
-            comma::csv::output_stream< Eigen::Vector2d > os( std::cout, csv.binary() );
+            comma::csv::output_stream< Eigen::Vector2d > os( std::cout, csv.binary(), false, csv.flush );
             comma::csv::tied< Eigen::Vector2d, Eigen::Vector2d > tied( is, os );
             while( is.ready() || std::cin.good() )
             {

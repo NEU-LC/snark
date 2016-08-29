@@ -30,6 +30,7 @@
 #include <iostream>
 #include <sstream>
 #include <stdlib.h>
+#include <comma/application/verbose.h>
 #include "error.h"
 
 namespace snark { namespace vimba {
@@ -83,7 +84,7 @@ std::string error_msg( const std::string& prologue, VmbErrorType error )
 
 void write_error( const std::string& prologue, VmbErrorType error )
 {
-    std::cerr << error_msg( prologue, error ) << std::endl;
+    std::cerr << comma::verbose.app_name() << ": " << error_msg( prologue, error ) << std::endl;
 }
 
 } } // namespace snark { namespace vimba {

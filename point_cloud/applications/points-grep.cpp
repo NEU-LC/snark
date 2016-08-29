@@ -27,437 +27,312 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/// @author abdallah kassir
+/// @authors abdallah kassir, vsevolod vlaskine
 
 #include <iostream>
-#include <string>
-#include <boost/tokenizer.hpp>
-#include <boost/thread.hpp>
-#include <Eigen/Dense>
 #include <comma/application/command_line_options.h>
-#include <comma/application/signal_flag.h>
 #include <comma/csv/stream.h>
 #include <comma/csv/traits.h>
-#include <comma/io/select.h>
 #include <comma/io/stream.h>
 #include <comma/name_value/parser.h>
-#include "../../visiting/eigen.h"
+#include "../../math/roll_pitch_yaw.h"
 #include "../../math/rotation_matrix.h"
+#include "../../math/geometry/polygon.h"
 #include "../../math/geometry/polytope.h"
+#include "../../math/geometry/traits.h"
 #include "../../math/applications/frame.h"
+#include "../../visiting/traits.h"
 
-struct bounds_t
+struct position
 {
-    bounds_t(): front(0), back(0), right(0), left(0), top(0), bottom(0) {}
-    double front;
-    double back;
-    double right;
-    double left;
-    double top;
-    double bottom;
-};
-
-struct point
-{
-    point(): block(0), id(0), flag(1){}
-    boost::posix_time::ptime timestamp;
     Eigen::Vector3d coordinates;
-    comma::uint32 block;
-    comma::uint32 id;
-    comma::uint32 flag;
+    snark::roll_pitch_yaw orientation;
+    
+    position() : coordinates( Eigen::Vector3d::Zero() ) {}
 };
 
-typedef snark::applications::frame::position_type bounding_point;
-
-struct joined_point
+struct normal
 {
-    point bounded;
-    bounding_point bounding;
+    Eigen::Vector3d coordinates;
+    double distance;
+    
+    normal() : coordinates( Eigen::Vector3d::Zero() ) {}
 };
 
-namespace comma
+struct input_t : public Eigen::Vector3d
 {
-    namespace visiting
+    input_t() : Eigen::Vector3d( Eigen::Vector3d::Zero() ) {}
+    ::position filter; // quick and dirty
+};
+
+struct output_t
+{
+    output_t( bool included = false ) : included( included ) {}
+    bool included;
+};
+
+namespace comma { namespace visiting {
+    
+template <> struct traits< ::position >
+{
+    template < typename K, typename V > static void visit( const K& k, ::position& t, V& v )
     {
-        template <> struct traits< bounds_t >
-        {
-            template < typename K, typename V > static void visit( const K&, bounds_t& p, V& v )
-            {
-                v.apply( "front", p.front );
-                v.apply( "back", p.back );
-                v.apply( "right", p.right );
-                v.apply( "left", p.left );
-                v.apply( "top", p.top );
-                v.apply( "bottom", p.bottom );
-            }
-
-            template < typename K, typename V > static void visit( const K&, const bounds_t& p, V& v )
-            {
-                v.apply( "front", p.front );
-                v.apply( "back", p.back );
-                v.apply( "right", p.right );
-                v.apply( "left", p.left );
-                v.apply( "top", p.top );
-                v.apply( "bottom", p.bottom );
-            }
-        };
-        template <> struct traits< point >
-        {
-            template < typename K, typename V > static void visit( const K&, point& p, V& v )
-            {
-                v.apply( "t", p.timestamp );
-                v.apply( "coordinates", p.coordinates );
-                v.apply( "block", p.block );
-                v.apply( "id", p.id );
-                v.apply( "flag", p.flag );
-            }
-
-            template < typename K, typename V > static void visit( const K&, const point& p, V& v )
-            {
-                v.apply( "t", p.timestamp );
-                v.apply( "coordinates", p.coordinates );
-                v.apply( "block", p.block );
-                v.apply( "id", p.id );
-                v.apply( "flag", p.flag );
-            }
-        };
-        
-        template <> struct traits< joined_point >
-        {
-            template < typename K, typename V > static void visit( const K&, joined_point& p, V& v )
-            {
-                v.apply( "bounded", p.bounded );
-                v.apply( "bounding", p.bounding );
-            }
-            template < typename K, typename V > static void visit( const K&, const joined_point& p, V& v )
-            {
-                v.apply( "bounded", p.bounded );
-                v.apply( "bounding", p.bounding );
-            }
-        };
+        v.apply( "coordinates", t.coordinates );
+        v.apply( "orientation", t.orientation );
     }
-}
+    
+    template < typename K, typename V > static void visit( const K& k, const ::position& t, V& v )
+    {
+        v.apply( "coordinates", t.coordinates );
+        v.apply( "orientation", t.orientation );
+    }
+};
 
+template <> struct traits< ::normal >
+{
+    template < typename K, typename V > static void visit( const K& k, ::normal& t, V& v )
+    {
+        v.apply( "coordinates", t.coordinates );
+        v.apply( "distance", t.distance );
+    }
+    
+    template < typename K, typename V > static void visit( const K& k, const ::normal& t, V& v )
+    {
+        v.apply( "coordinates", t.coordinates );
+        v.apply( "distance", t.distance );
+    }
+};
+    
+template <> struct traits< input_t >
+{
+    template < typename K, typename V > static void visit( const K& k, input_t& t, V& v )
+    {
+        traits< Eigen::Vector3d >::visit( k, t, v );
+        v.apply( "filter", t.filter );
+    }
+    
+    template < typename K, typename V > static void visit( const K& k, const input_t& t, V& v )
+    {
+        traits< Eigen::Vector3d >::visit( k, t, v );
+        v.apply( "filter", t.filter );
+    }
+};
 
-static void usage()
+template <> struct traits< output_t >
+{ 
+    template < typename K, typename V > static void visit( const K& k, const output_t& t, V& v )
+    {
+        v.apply( "included", t.included );
+    }
+};
+
+} } // namespace comma { namespace visiting { 
+
+static void usage( bool verbose = false )
 {
     std::cerr << std::endl;
     std::cerr << "filter points from dynamic objects represented by a position and orientation stream" << std::endl;
     std::cerr << "input: point-cloud, bounding stream" << std::endl;
     std::cerr << "       bounding data may either be joined to each point or provided through a separate stream in which points-grep will time-join the two streams" << std::endl;
     std::cerr << std::endl;
-    std::cerr<< "output: each point is tagged with a flag of type ui" << std::endl;
-    std::cerr<< "        the value of flag is 0 for filtered points and 1 otherwise" << std::endl;
-    std::cerr<< "        if --output-all is not specified only non-filtered points are output" << std::endl;
+    std::cerr << "usage: cat points.csv | points-grep <what> [<options>]" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "usage: cat points.csv | points-grep <operation> [<options>]" << std::endl;
+    std::cerr << "<what>" << std::endl;
+    std::cerr << "     polytope,planes: arbitrary polytope that can be specified either as a set of planes or a set of plane normals and distances from 0,0,0" << std::endl;
+    std::cerr << "         options" << std::endl;
+    std::cerr << "             --normals=<filename>[;<csv options>]: normals specifying a polytope" << std::endl;
+    std::cerr << "             --normals-fields: output normals fields and exit" << std::endl;
+    std::cerr << "             --normals-format: output normals format and exit" << std::endl;
+    std::cerr << "             --planes=<filename>[;<csv options>]: planes specifying a polytope" << std::endl;
+    std::cerr << "             --planes-fields: output planes fields and exit" << std::endl;
+    std::cerr << "             --planes-format: output planes format and exit" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "<operation>:" << std::endl;
+    std::cerr << "     box: rectangular box" << std::endl;
+    std::cerr << "         options" << std::endl;
+    std::cerr << "             --begin,--origin=<x>,<y>,<z>: lower left back corner of the box" << std::endl;
+    std::cerr << "             --end=<x>,<y>,<z>: upper right front corner of the box" << std::endl;
+    std::cerr << "             --center,--centre=<x>,<y>,<z>: centre of the box; default: 0,0,0" << std::endl;
+    std::cerr << "             --size=<x>,<y>,<z>: size of the box" << std::endl;
+    std::cerr << "             any two of the options above are sufficient to specify a box" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "  stream <stream>: points are time-joined with a position stream and filtered based on a bounding box around the positions" << std::endl;
+    std::cerr << "options" << std::endl;
+    std::cerr << "    --input-fields: print input fields and exit; default input fields: x,y,z" << std::endl;
+    std::cerr << "    --input-format: print input format and exit" << std::endl;
+    std::cerr << "    --output-all,--all: output all input points, append 1, if point is inside the shape, 0 otherwise" << std::endl;
+    std::cerr << "                        for binary data, appended field will have format: " << comma::csv::format::value< output_t >() << std::endl;
+    std::cerr << "    --output-fields: if --output-all given, print output fields and exit" << std::endl;
+    std::cerr << "    --output-format: if --output-all given, print output format and exit" << std::endl;
+    std::cerr << "    --position=<x>,<y>,<z>,<roll>,<pitch>,<yaw>: default filter shape position" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "      <stream>: example: \"nav.csv;fields=t,x,y,z,roll,pitch,yaw\" " << std::endl;
-    std::cerr << "      fields" << std::endl;
-    std::cerr << "          bounded: " << comma::join( comma::csv::names< point >( false ), ',' ) << std::endl;
-    std::cerr << "                   default: t,x,y,z" << std::endl;
-    std::cerr << "          bounding: " << comma::join( comma::csv::names< bounding_point >( false ), ',' ) << std::endl;
-    std::cerr << "                    or shorthand: bounded,bounding" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "  shape: points are assumed to be joined with the bounding stream" << std::endl;
-    std::cerr << "      fields: " << comma::join( comma::csv::names< joined_point >( true ), ',' ) << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "<options>:" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "      --bounds=<front>,<back>,<right>,<left>,<top>,<bottom> the values represent the distances of the faces of the bounding box to the centre of the bounding stream in the bounding frame" << std::endl;
-    std::cerr << "      --error-margin=<margin> error margin value added to bounds (for user convenience), default: 0.5" << std::endl;
-    std::cerr << "      --output-all: output all points" << std::endl;
-    std::cerr << std::endl;
+    if( verbose) { std::cerr << comma::csv::options::usage() << std::endl << std::endl; }
     std::cerr << "examples" << std::endl;
-    std::cerr << "    cat points.csv | points-grep stream --fields=bounded \"nav.csv;fields=t,x,y,z,roll,pitch,yaw\" --bounds=1.0,2.0,1.0,2.0,1.0,2.0 --error-margin=0.1" << std::endl;
-    std::cerr << "    cat points.csv | points-grep stream --fields=t,coordinates,block,flag \"nav.csv;fields=t,x,y,z,roll,pitch,yaw\" --bounds=1.0,2.0,1.0,2.0,1.0,2.0 --error-margin=0.1" << std::endl;
-    std::cerr << "    cat points.csv | points-grep stream --fields=bounded/t,bounded/coordinates,bounded/block,bounded/flag \"local:/tmp/nav;fields=t,x,y,z,roll,pitch,yaw\" --bounds=1.0,2.0,1.0,2.0,1.0,2.0 --error-margin=0.5" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "    cat points.csv | points-grep shape --fields=bounded,bounding --bounds=1.0,2.0,1.0,2.0,1.0,2.0" << std::endl;
-    std::cerr << "    cat points.csv | points-grep shape --fields=bounded/t,bounded/coordinates,bounded/flag,bounding/t,bounding/x,bounding/y,bounding/z,bounding/roll,bounding/pitch,bounding/yaw --bounds=1.0,1.0,1.0,1.0,1.0,1.0 --error-margin=1.0" << std::endl;
+    std::cerr << "    make a sample dataset" << std::endl;
+    std::cerr << "        for i in $( seq -5 0.1 5 ) ; do for j in $( seq -5 0.1 5 ) ; do for k in $( seq -5 0.1 5 ) ; do echo $i,$j,$k ; done ; done ; done > cube.csv" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    filter by a box; view result" << std::endl;
+    std::cerr << "        cat cube.csv | points-grep box --size=1,2,3 --position=1,2,3,0.5,0.6,0.7 > filtered.csv" << std::endl;
+    std::cerr << "        view-points \"cube.csv;colour=grey;hide\" \"filtered.csv;colour=red\" <( echo 0,0,0,0:0:0 ; echo 1,2,3,1:2:3 )\";colour=green;weight=10;fields=x,y,z,label\"" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    filter by two planes; view result" << std::endl;
+    std::cerr << "        cat cube.csv | points-grep planes --normals <( echo 1,1,1,0.5 ; echo -1,1,1,0.5 ) > filtered.csv" << std::endl;
+    std::cerr << "        view-points \"cube.csv;colour=grey;hide\" \"filtered.csv;colour=red\" <( echo 0,0,0,0:0:0 )\";colour=green;weight=10;fields=x,y,z,label\"" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    filter by a polytope; view result" << std::endl;
+    std::cerr << "        cat cube.csv | points-grep planes --normals <( echo 0,0,-1,0 ; echo 0,-1,0,0 ; echo -1,0,0,0 ; echo 1,1,1,3 ) > filtered.csv" << std::endl;
+    std::cerr << "        view-points \"cube.csv;colour=grey;hide\" \"filtered.csv;colour=red\" <( echo 0,0,0,0:0:0 )\";colour=green;weight=10;fields=x,y,z,label\"" << std::endl;
     std::cerr << std::endl;
     exit( 0 );
 }
 
-static double offset;
-static bounds_t bounds;
+snark::geometry::convex_polytope transform( const snark::geometry::convex_polytope& polytope, const ::position& position ) { return polytope.transformed( position.coordinates, position.orientation ); } 
 
-void filter_point(joined_point& pq)
+template < typename Shape > int run( const Shape& shape, const comma::command_line_options& options )
 {
-    //get polygon from bounds
-    Eigen::MatrixXd origins(3,7); //origin, front, back, right, left, top, bottom
-
-
-    origins<<0, bounds.front + offset, -bounds.back - offset, 0, 0, 0, 0,
-             0, 0, 0, bounds.right + offset, -bounds.left - offset, 0, 0,
-             0, 0, 0, 0, 0, -bounds.top - offset, bounds.bottom + offset;
-
-
-    //convert vehicle bounds to world coordinates
-    //get transformation
-
-    Eigen::MatrixXd rot_matrix = snark::rotation_matrix::rotation(pq.bounding.value.orientation);
-
-    for(int cntr2=0; cntr2<origins.cols(); cntr2++)
+    comma::csv::options csv( options );
+    csv.full_xpath = true;
+    if( csv.fields.empty() ) { csv.fields = "x,y,z"; }
+    std::vector< std::string > fields = comma::split( csv.fields, ',' );
+    for( unsigned int i = 0; i < fields.size(); ++i )
     {
-        origins.col(cntr2)=rot_matrix*origins.col(cntr2)+pq.bounding.value.coordinates;
+        if( fields[i] == "filter/x" ) { fields[i] = "filter/coordinates/x"; }
+        else if( fields[i] == "filter/y" ) { fields[i] = "filter/coordinates/y"; }
+        else if( fields[i] == "filter/z" ) { fields[i] = "filter/coordinates/z"; }
+        else if( fields[i] == "filter/roll" ) { fields[i] = "filter/orientation/roll"; }
+        else if( fields[i] == "filter/pitch" ) { fields[i] = "filter/orientation/pitch"; }
+        else if( fields[i] == "filter/yaw" ) { fields[i] = "filter/orientation/yaw"; }
     }
-
-    //get plane equations
-    Eigen::MatrixXd A(6,3);
-    Eigen::VectorXd b(6);
-
-    for(int cntr2=1; cntr2<origins.cols(); cntr2++)
+    csv.fields = comma::join( fields, ',' );
+    bool output_all = options.exists( "--output-all,--all" );
+    input_t default_input;
+    default_input.filter = comma::csv::ascii< ::position >().get( options.value< std::string >( "--position", "0,0,0,0,0,0" ) );
+    boost::optional< Shape > transformed;
+    if( !csv.has_some_of_fields( "filter,filter/coordinates,filter/coordinates/x,filter/coordinates/y,filter/coordinates/z,filter/orientation,filter/orientation/roll,filter/orientation/pitch,filter/orientation/yaw" ) ) { transformed = transform( shape, default_input.filter ); }
+    comma::csv::input_stream< input_t > istream( std::cin, csv, default_input );
+    comma::csv::output_stream< output_t > ostream( std::cout, csv.binary() );
+    comma::csv::passed< input_t > passed( istream, std::cout );
+    comma::csv::tied< input_t, output_t > tied( istream, ostream );
+    while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
     {
-        A.row(cntr2-1)<<origins.col(0).transpose()-origins.col(cntr2).transpose();
-        b(cntr2-1)=origins.col(cntr2).transpose()*(origins.col(0)-origins.col(cntr2));
+        const input_t* p = istream.read();
+        if( !p ) { break; }
+        bool keep = transformed ? transformed->has( *p ) : transform( shape, p->filter ).has( *p );
+        if( output_all ) { tied.append( output_t( keep ) ); }
+        else if( keep ) { passed.write(); }
+        if( csv.flush ) { std::cout.flush(); }
     }
-
-    //check polygon in 3d
-    // use if statement not assignment because point might already be filtered
-    if(snark::geometry::convex_polytope(A,b).has(pq.bounded.coordinates))
-    {
-        pq.bounded.flag=0;
-    }
+    return 0;
 }
 
 int main( int argc, char** argv )
 {
-    comma::command_line_options options( argc, argv );
-    if( options.exists( "--help" ) || options.exists( "-h" ) || argc == 1 ) { usage(); }
-    offset=options.value("--error-margin",0.5);
-
-    bounds=comma::csv::ascii<bounds_t>().get(options.value("--bounds",std::string("0,0,0,0,0,0")));
-
-    bool output_all = options.exists( "--output-all");
-    std::vector<std::string> unnamed=options.unnamed("--output-all,--verbose,-v","-.*");
-
-    std::string operation=unnamed[0];
-
-    comma::csv::options csv(options);
-    csv.full_xpath=true;
-    bool flag_exists=false;
-
-    if( operation == "stream" )
+    try
     {
-        std::vector<std::string> fields=comma::split(csv.fields,csv.delimiter);
-        if( csv.fields.empty() ) { csv.fields = "t,coordinates"; }
-        flag_exists = csv.has_field( "flag" );
-        std::string bounded_string("bounded/");
-        for(unsigned int i=0; i<fields.size(); i++)
+        comma::command_line_options options( argc, argv, usage );
+        bool output_all = options.exists( "--output-all,--all" );
+        if( options.exists( "--input-fields" ) ) { std::cerr << comma::join( comma::csv::names< input_t >( true ), ',' ) << std::endl; return 0; }
+        if( options.exists( "--input-format" ) ) { std::cerr << comma::csv::format::value< input_t >() << std::endl; return 0; }
+        if( options.exists( "--normals-fields" ) ) { std::cerr << comma::join( comma::csv::names< ::normal >( true ), ',' ) << std::endl; return 0; }
+        if( options.exists( "--normals-format" ) ) { std::cerr << comma::csv::format::value< ::normal >() << std::endl; return 0; }
+        if( options.exists( "--planes-fields" ) ) { std::cerr << comma::join( comma::csv::names< snark::triangle >( true ), ',' ) << std::endl; return 0; }
+        if( options.exists( "--planes-format" ) ) { std::cerr << comma::csv::format::value< snark::triangle >() << std::endl; return 0; }
+        if( options.exists( "--output-fields" ) ) { if( output_all ) { std::cerr << comma::join( comma::csv::names< output_t >( true ), ',' ) << std::endl; } return 0; }
+        if( options.exists( "--output-format" ) ) { if( output_all ) { std::cerr << comma::csv::format::value< output_t >() << std::endl; } return 0; }
+        const std::vector< std::string >& unnamed = options.unnamed("--output-all,--all,--verbose,-v,--flush","-.*");
+        std::string what = unnamed[0];
+        Eigen::Vector3d inflate_by = comma::csv::ascii< Eigen::Vector3d >().get( options.value< std::string >( "--offset,--inflate-by", "0,0,0" ) );
+        if( what == "polytope" || what == "planes" )
         {
-            if(fields[i].substr(0,bounded_string.size())!=bounded_string)
+            Eigen::MatrixXd normals;
+            Eigen::VectorXd distances;
+            const std::string& normals_input = options.value< std::string >( "--normals", "" );
+            const std::string& planes_input = options.value< std::string >( "--planes", "" );
+            if( !normals_input.empty() )
             {
-                fields[i]=bounded_string+fields[i];
+                comma::csv::options filter_csv = comma::name_value::parser( "filename" ).get< comma::csv::options >( normals_input );
+                comma::io::istream is( filter_csv.filename, filter_csv.binary() ? comma::io::mode::binary : comma::io::mode::ascii );
+                comma::csv::input_stream< ::normal > istream( *is, filter_csv );
+                std::vector< ::normal > n;
+                while( istream.ready() || ( is->good() && !is->eof() ) )
+                {
+                    const ::normal* p = istream.read();
+                    if( !p ) { break; }
+                    n.push_back( *p );
+                }
+                normals.resize( n.size(), 3 );
+                distances.resize( n.size() );
+                for( unsigned int i = 0; i < n.size(); ++i )
+                {
+                    normals.row( i ) = n[i].coordinates.normalized();
+                    distances[i] = n[i].distance;
+                }
             }
+            else if( !planes_input.empty() )
+            {
+                comma::csv::options filter_csv = comma::name_value::parser( "filename" ).get< comma::csv::options >( planes_input );
+                comma::io::istream is( filter_csv.filename, filter_csv.binary() ? comma::io::mode::binary : comma::io::mode::ascii );
+                comma::csv::input_stream< snark::triangle > istream( *is, filter_csv );
+                std::vector< snark::triangle > planes;
+                while( istream.ready() || ( is->good() && !is->eof() ) )
+                {
+                    const snark::triangle* p = istream.read();
+                    if( !p ) { break; }
+                    planes.push_back( *p );
+                }
+                normals.resize( planes.size(), 3 );
+                distances.resize( planes.size() );
+                for( unsigned int i = 0; i < planes.size(); ++i )
+                {
+                    const Eigen::Vector3d& normal = ( planes[i].corners[1] - planes[i].corners[0] ).cross( planes[i].corners[2] - planes[i].corners[0] ).normalized();
+                    normals.row( i ) = normal;
+                    distances[i] = normal.dot( planes[i].corners[0] );
+                }
+            }
+            else
+            {
+                std::cerr << "points-grep: polytope: please specify --planes or --normals" << std::endl;
+                return 1;
+            }
+            return run( snark::geometry::convex_polytope( normals, distances ), options );
         }
-        csv.fields=comma::join( fields, csv.delimiter );
-    }
-    else if( operation == "shape" )
-    {
-    }
-    else
-    {
-        std::cerr << "points-grep: expected operation, got: \"" << operation << "\"" << std::endl;
+        else if( what == "box" )
+        {
+            boost::optional< Eigen::Vector3d > origin;
+            boost::optional< Eigen::Vector3d > end;
+            boost::optional< Eigen::Vector3d > size;
+            Eigen::Vector3d centre = comma::csv::ascii< Eigen::Vector3d >().get( options.value< std::string >( "--center,--centre", "0,0,0" ) );
+            if( options.exists( "--origin,--begin" ) ) { origin = comma::csv::ascii< Eigen::Vector3d >().get( options.value< std::string >( "--origin,--begin" ) ); }
+            if( options.exists( "--end" ) ) { end = comma::csv::ascii< Eigen::Vector3d >().get( options.value< std::string >( "--end" ) ); }
+            if( options.exists( "--size" ) ) { size = comma::csv::ascii< Eigen::Vector3d >().get( options.value< std::string >( "--size" ) ); }
+            if( !origin )
+            {
+                if( end && size ) { origin = *end - *size; }
+                else if( size ) { origin = centre - *size / 2; }
+                else { std::cerr << "points-grep: box: please specify --origin or --size" << std::endl; return 1; }
+            }
+            if( !end )
+            {
+                if( origin && size ) { end = *origin + *size; }
+                else if( size ) { end = centre + *size / 2; }
+                else { std::cerr << "points-grep: box: please specify --end or --size" << std::endl; return 1; }
+            }
+            centre = ( *origin + *end ) / 2 ;
+            Eigen::Vector3d radius = ( *end - *origin ) / 2 + inflate_by;
+            Eigen::MatrixXd normals( 6, 3 );
+            normals <<  0,  0,  1,
+                        0,  0, -1,
+                        0,  1,  0,
+                        0, -1,  0,
+                        1,  0,  0,
+                       -1,  0,  0;
+            Eigen::VectorXd distances( 6 );
+            distances << radius.x(), radius.x(), radius.y(), radius.y(), radius.z(), radius.z();
+            return run( snark::geometry::convex_polytope( normals, distances ), options );
+        }
+        std::cerr << "points-grep: expected filter name, got: \"" << what << "\"" << std::endl;
         return 1;
     }
-
-    flag_exists = csv.has_field( "bounded/flag" );
-    
-    comma::csv::input_stream<joined_point> istream(std::cin,csv);
-    comma::csv::output_stream<joined_point> ostream(std::cout,csv);
-
-    comma::signal_flag is_shutdown;
-    joined_point pq;
-
-    if(operation=="stream")
-    {
-        if(unnamed.size()<2){ usage(); }
-        comma::name_value::parser parser( "filename" );
-        comma::csv::options bounding_csv = parser.get< comma::csv::options >( unnamed[1] ); // get stream options
-        comma::io::istream bounding_is( comma::split(unnamed[1],';')[0], bounding_csv.binary() ? comma::io::mode::binary : comma::io::mode::ascii ); // get stream name
-
-        //bounding stream
-        std::deque<bounding_point> bounding_queue;
-        comma::csv::input_stream<bounding_point> bounding_istream(*bounding_is, bounding_csv);
-
-        comma::io::select istream_select;
-        comma::io::select bounding_istream_select;
-
-        istream_select.read().add(0);
-        istream_select.read().add(bounding_is.fd());
-        bounding_istream_select.read().add(bounding_is.fd());
-
-        bool next=true;
-
-        while(!is_shutdown && ( istream.ready() || ( std::cin.good() && !std::cin.eof() ) ))
-        {
-            bool bounding_data_available =  bounding_istream.ready() || ( bounding_is->good() && !bounding_is->eof());
-
-            //check so we do not block
-            bool bounding_istream_ready=bounding_istream.ready();
-            bool istream_ready=istream.ready();
-
-            if(next)
-            {
-                //only check istream if we need a new point
-                if(!bounding_istream_ready || !istream_ready)
-                {
-                   if(!bounding_istream_ready && !istream_ready)
-                   {
-                       istream_select.wait(boost::posix_time::milliseconds(10));
-                   }
-                   else
-                   {
-                       istream_select.check();
-                   }
-                   if(istream_select.read().ready(bounding_is.fd()))
-                   {
-                       bounding_istream_ready=true;
-                   }
-                   if(istream_select.read().ready(0))
-                   {
-                       istream_ready=true;
-                   }
-                }
-            }
-            else
-            {
-               if(!bounding_istream_ready)
-               {
-                   bounding_istream_select.wait(boost::posix_time::milliseconds(10));
-                   if(bounding_istream_select.read().ready(bounding_is.fd()))
-                   {
-                       bounding_istream_ready=true;
-                   }
-               }
-            }
-
-            //keep storing available bounding data
-            if(bounding_istream_ready)
-            {
-                const bounding_point* q = bounding_istream.read();
-                if( q )
-                {
-                    bounding_queue.push_back(*q);
-                }
-                else
-                {
-                    bounding_data_available=false;
-                }
-            }
-
-            //if we are done with the last bounded point get next
-            if(next)
-            {
-                if(!istream_ready) { continue; }
-                const joined_point* pq_ptr = istream.read();
-                if( !pq_ptr ) { break; }
-                pq=*pq_ptr;
-            }
-
-            //get bound
-            while(bounding_queue.size()>=2)
-            {
-                if( pq.bounded.timestamp < bounding_queue[1].t ) { break; }
-                bounding_queue.pop_front();
-            }
-
-            if(bounding_queue.size()<2)
-            {
-                //bound not found
-                //do we have more data?
-                if(!bounding_data_available) { break; }
-                next=false;
-                continue;
-            }
-
-            //bound available
-            next=true; //get new point on next iteration
-
-            //discard late points
-            if(pq.bounded.timestamp < bounding_queue[0].t)
-            {
-                continue;
-            }
-
-            //match
-            bool is_first=( pq.bounded.timestamp - bounding_queue[0].t < bounding_queue[1].t - pq.bounded.timestamp );
-            pq.bounding = is_first ? bounding_queue[0] : bounding_queue[1]; // assign bounding point
-
-            //filter out object points
-            filter_point(pq);
-
-            if(!pq.bounded.flag && !output_all)
-            {
-                continue;
-            }
-
-            if(flag_exists)
-            {
-                ostream.write(pq);
-                ostream.flush();
-                continue;
-            }
-
-            //append flag
-            if(ostream.is_binary())
-            {
-                ostream.write(pq,istream.binary().last());
-                std::cout.write( reinterpret_cast< const char* >( &pq.bounded.flag ), sizeof( comma::uint32 ) );
-            }
-            else
-            {
-                std::string line=comma::join( istream.ascii().last(), csv.delimiter );
-                line+=","+boost::lexical_cast<std::string>(pq.bounded.flag);
-                ostream.write(pq,line);
-            }
-            ostream.flush();
-        }
-    }
-    else if(operation=="shape")
-    {
-        while(!is_shutdown && ( istream.ready() || ( std::cin.good() && !std::cin.eof() ) ))
-        {
-            const joined_point* pq_ptr = istream.read();
-
-            if( !pq_ptr ) { break; }
-
-            pq=*pq_ptr;
-
-            //filter out object points
-            filter_point(pq);
-            if(!pq.bounded.flag && !output_all)
-            {
-                continue;
-            }
-
-            if(flag_exists)
-            {
-                ostream.write(pq);
-                ostream.flush();
-                continue;
-            }
-
-            //append flag
-            if(ostream.is_binary())
-            {
-                ostream.write(pq,istream.binary().last());
-                std::cout.write( reinterpret_cast< const char* >( &pq.bounded.flag ), sizeof( comma::uint32 ) );
-            }
-            else
-            {
-                std::string line=comma::join( istream.ascii().last(), csv.delimiter );
-                line+=","+boost::lexical_cast<std::string>(pq.bounded.flag);
-                ostream.write(pq,line);
-            }
-            ostream.flush();
-        }
-    }
-
-    return(0);
+    catch( std::exception& ex ) { std::cerr << "points-grep: " << ex.what() << std::endl; }
+    catch( ... ) { std::cerr << "points-grep: unknown exception" << std::endl; }
+    return 1;
 }

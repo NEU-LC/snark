@@ -71,8 +71,8 @@ static void usage( bool verbose = false )
     std::cerr << "    --help,-h:          show this help, --help --verbose for more help" << std::endl;
     std::cerr << "    --verbose,-v:       more output" << std::endl;
     std::cerr << "    --version:          output the library version" << std::endl;
-    std::cerr << "    --list-cameras:     list all cameras and exit, --verbose for more detail" << std::endl;
-    std::cerr << "    --list-attributes:  list camera attributes, --verbose for more detail" << std::endl;
+    std::cerr << "    --list-cameras:     list all cameras and exit" << std::endl;
+    std::cerr << "    --list-attributes [<names>]: list camera attributes, default: list all" << std::endl;
     std::cerr << "    --set <attributes>: set camera attributes" << std::endl;
     std::cerr << "    --set-and-exit <attributes>: set attributes and exit" << std::endl;
     std::cerr << "    --id=<camera id>:   default: first available camera" << std::endl;
@@ -82,9 +82,13 @@ static void usage( bool verbose = false )
     std::cerr << std::endl;
     std::cerr << "    Possible values for <fields> are: " << possible_fields << "." << std::endl;
     std::cerr << "    <attributes> are semicolon-separated name-value pairs." << std::endl;
+    std::cerr << "    <names> are semicolon-semicolon feature names." << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    --list-cameras and --list-attributes provide more detail with --verbose" << std::endl;
     std::cerr << std::endl;
     std::cerr << "Examples:" << std::endl;
     std::cerr << "    " << comma::verbose.app_name() << " --id=\"02-2623A-07136\" --set \"ExposureAuto=Off;ExposureTimeAbs=60\"" << std::endl;
+    std::cerr << "    " << comma::verbose.app_name() << " --list-attributes \"ExposureAuto;ExposureTimeAbs\"" << std::endl;
     std::cerr << std::endl;
     if( verbose )
     {
@@ -150,23 +154,35 @@ static std::string wrap( const std::string& text, size_t width = 80, const std::
     return wrapped.str();
 }
 
-static void print_attribute_entry( const std::string& label, const std::string& value )
-{
-    std::string prefix( label.length() + 2, ' ' );
-    std::cout << label << ": " << wrap( value, 80, prefix ) << "\n";
-}
-
 static void output_frame( const snark::vimba::frame& frame
-                        , snark::cv_mat::serialization& serialization )
+                        , snark::cv_mat::serialization& serialization
+                        , snark::vimba::camera& camera )
 {
     static VmbUint64_t last_frame_id = 0;
 
-    // Take the timestamp immediately.
-    //
-    // The alternative is to use frame.timestamp() but that requires some
-    // additional work to turn it into an actual timestamp and probably
-    // isn't worth it without PTP.
-    boost::posix_time::ptime timestamp( boost::posix_time::microsec_clock::universal_time() );
+    // For the timestamp, if PTP is available use frame.timestamp(),
+    // otherwise just use current time.
+
+    // It takes about 4ms to interrogate the camera for a feature value,
+    // so we can update this information as we run.
+
+    static std::string ptp_status = "unknown";
+    static bool use_ptp = false;
+
+    boost::optional< snark::vimba::attribute > ptp_status_attribute = camera.get_attribute( "PtpStatus" );
+    if( ptp_status_attribute && ptp_status_attribute->value_as_string() != ptp_status )
+    {
+        ptp_status = ptp_status_attribute->value_as_string();
+        comma::verbose << "PtpStatus changed value to " << ptp_status << std::endl;
+        use_ptp = ( ptp_status == "Slave" );
+        comma::verbose << ( use_ptp ? "" : "not " ) << "using PTP time source" << std::endl;
+    }
+
+    boost::posix_time::ptime timestamp =
+        ( use_ptp
+        ? boost::posix_time::ptime( boost::gregorian::date( 1970, 1, 1 ))
+              + boost::posix_time::microseconds( frame.timestamp() / 1000 )
+        : boost::posix_time::microsec_clock::universal_time() );
 
     if( frame.status() == VmbFrameStatusComplete )
     {
@@ -194,6 +210,30 @@ static void output_frame( const snark::vimba::frame& frame
     else
     {
         std::cerr << "Warning: frame " << frame.id() << " status " << frame.status_as_string() << std::endl;
+    }
+}
+
+static void print_attribute_entry( const std::string& label, const std::string& value )
+{
+    std::string prefix( label.length() + 2, ' ' );
+    std::cout << label << ": " << wrap( value, 80, prefix ) << "\n";
+}
+
+static void print_attribute( const snark::vimba::attribute& attribute, bool verbose )
+{
+    if( verbose )
+    {
+        print_attribute_entry( "Name          ", attribute.name() );
+        print_attribute_entry( "Type          ", attribute.type_as_string() );
+        print_attribute_entry( "Value         ", attribute.value_as_string() );
+        print_attribute_entry( "Description   ", attribute.description() );
+        if( !attribute.allowed_values().empty() )
+            print_attribute_entry( "Allowed Values", attribute.allowed_values_as_string() );
+        std::cout << std::endl;
+    }
+    else
+    {
+        std::cout << attribute.name() << "=" << attribute.value_as_string() << std::endl;
     }
 }
 
@@ -230,31 +270,6 @@ static int run_cmd( const comma::command_line_options& options )
                                ? snark::vimba::camera( options.value<std::string>( "--id" ))
                                : snark::vimba::camera( snark::vimba::system::open_first_camera()));
 
-    if( options.exists( "--list-attributes" ))
-    {
-        std::vector< snark::vimba::attribute > attributes = camera.attributes();
-        for( std::vector< snark::vimba::attribute >::const_iterator it = attributes.begin();
-             it != attributes.end();
-             ++it )
-        {
-            if( comma::verbose )
-            {
-                print_attribute_entry( "Name          ", it->name() );
-                print_attribute_entry( "Type          ", it->type_as_string() );
-                print_attribute_entry( "Value         ", it->value_as_string() );
-                print_attribute_entry( "Description   ", it->description() );
-                if( !it->allowed_values().empty() )
-                    print_attribute_entry( "Allowed Values", it->allowed_values_as_string() );
-                std::cout << std::endl;
-            }
-            else
-            {
-                std::cout << it->name() << "=" << it->value_as_string() << std::endl;
-            }
-        }
-        return 0;
-    }
-
     if( options.exists( "--set-and-exit" ))
     {
         camera.set_features( options.value<std::string>( "--set-and-exit" ));
@@ -264,6 +279,31 @@ static int run_cmd( const comma::command_line_options& options )
     if( options.exists( "--set" ))
     {
         camera.set_features( options.value<std::string>( "--set" ));
+    }
+
+    if( options.exists( "--list-attributes" ))
+    {
+        std::string names_str = options.value< std::string >( "--list-attributes", "" );
+        if( names_str.empty() )
+        {
+            std::vector< snark::vimba::attribute > attributes = camera.attributes();
+            for( std::vector< snark::vimba::attribute >::const_iterator it = attributes.begin();
+                 it != attributes.end();
+                 ++it )
+            {
+                print_attribute( *it, comma::verbose );
+            }
+        }
+        else
+        {
+            std::vector< std::string > names = comma::split( names_str, ";," );
+            for( std::vector< std::string >::const_iterator it = names.begin(); it != names.end(); ++it )
+            {
+                boost::optional< snark::vimba::attribute > a = camera.get_attribute( *it );
+                if( a ) { print_attribute( *a, comma::verbose ); }
+            }
+        }
+        return 0;
     }
 
     std::string        fields = options.value< std::string >( "--fields", default_fields );
@@ -280,7 +320,7 @@ static int run_cmd( const comma::command_line_options& options )
     }
     snark::cv_mat::serialization serialization( fields, format, header_only );
 
-    camera.start_acquisition( boost::bind( &output_frame, _1, boost::ref( serialization )));
+    camera.start_acquisition( boost::bind( &output_frame, _1, boost::ref( serialization ), boost::ref( camera )));
 
     comma::signal_flag is_shutdown;
     do {

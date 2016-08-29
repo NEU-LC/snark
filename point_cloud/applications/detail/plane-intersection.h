@@ -172,7 +172,7 @@ void plane_intersection::process(const comma::command_line_options& options, com
 void plane_intersection::run( const comma::csv::options& csv_opt, const plane_intersection::input_t& default_value, bool discard_collinear)
 {
     comma::csv::input_stream<plane_intersection::input_t > is( std::cin, csv_opt, default_value);
-    comma::csv::output_stream<plane_intersection::output_t> os( std::cout, csv_opt.binary() );
+    comma::csv::output_stream<plane_intersection::output_t> os( std::cout, csv_opt.binary(), false, csv_opt.flush );
     comma::csv::tied<plane_intersection::input_t ,plane_intersection::output_t> tied(is,os);
     static const Eigen::Vector3d infinity( std::numeric_limits< double >::infinity(), std::numeric_limits< double >::infinity(), std::numeric_limits< double >::infinity() );
     while(is.ready() || std::cin.good())

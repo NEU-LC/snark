@@ -61,6 +61,16 @@ attribute::attribute( AVT::VmbAPI::FeaturePtr feature )
     init_allowed_values();
 }
 
+attribute::attribute( const attribute& a )
+    : feature_( a.feature_ )
+    , name_( a.name_ )
+    , type_( a.type_ )
+    , value_( a.value_ )
+    , value_as_string_( a.value_as_string_ )
+    , description_( a.description_ )
+    , allowed_values_( a.allowed_values_ )
+{}
+
 void attribute::init_value()
 {
     VmbErrorType status = VmbErrorSuccess;
@@ -268,7 +278,7 @@ void attribute::set( const std::string& value )
 
     if( comma::verbose )
     {
-        std::cerr << "Setting \"" << name_ << "\" feature";
+        std::cerr << comma::verbose.app_name() << ": setting \"" << name_ << "\" feature";
         if( !value.empty() )
         {
             std::cerr << " to " << type_as_string() << " value \"" << value << "\"";
