@@ -197,7 +197,7 @@ struct vector_calc
         void run(const comma::csv::options& csv_opt)
         {
             comma::csv::input_stream<input_t> is( std::cin, csv_opt, default_input);
-            comma::csv::output_stream<output_t> os( std::cout, csv_opt.binary() );
+            comma::csv::output_stream<output_t> os( std::cout, csv_opt.binary(), false, csv_opt.flush );
             comma::csv::tied<input_t,output_t> tied(is,os);
             while(is.ready() || std::cin.good())
             {
