@@ -270,7 +270,7 @@ template < typename Species > struct shape_traits< Species, snark::geometry::con
     {
         Eigen::MatrixXd normals( f.normals.size(), 3 );
         Eigen::VectorXd distances( f.normals.size() );
-        for( unsigned int i = 0; i < f.normals.size(); normals.row( i ) = f.normals[i].coordinates.transpose().normalized(), distances( i ) = f.normals[i].distance, ++i );
+        for( unsigned int i = 0; i < f.normals.size(); normals.row( i ) = f.normals[i].coordinates.normalized().transpose(), distances( i ) = f.normals[i].distance, ++i );
         return snark::geometry::convex_polytope( normals, distances );
     }
     
@@ -298,12 +298,26 @@ template <> struct shape_traits< species::box, snark::geometry::convex_polytope 
 template <> struct shape_traits< species::prism, snark::geometry::convex_polytope >
 {
     static snark::geometry::convex_polytope make( const typename species::prism::filter& f )
-    { 
-        
-        // todo
-        
-        
-        COMMA_THROW( comma::exception, "making prism from stream: todo" );
+    {
+        if( f.corners.size() < 3 ) { std::cerr << "points-grep: prism: expected at least 3 corners, got: " << f.corners.size() << std::endl; exit( 1 ); }
+        unsigned int size = f.corners.size() + 2;
+        Eigen::MatrixXd normals( size, 3 );
+        Eigen::VectorXd distances( size );
+        for( unsigned int i = 1; i < f.corners.size(); ++i )
+        {
+            const Eigen::Vector3d& n = f.axis.coordinates.cross( f.corners[i] - f.corners[ i - 1 ] ).normalized(); 
+            normals.row( i ) = n.transpose();
+            distances( i ) = n.dot( f.corners[i] );
+        }
+        const Eigen::Vector3d& n = f.axis.coordinates.cross( f.corners[0] - f.corners.back() ).normalized(); 
+        normals.row( 0 ) = n.transpose();
+        distances( 0 ) = n.dot( f.corners[0] );        
+        const Eigen::Vector3d& m = ( ( f.corners[2] - f.corners[1] ).cross( f.corners[0] - f.corners[1] ) ).normalized(); 
+        normals.row( f.corners.size() ) = m.transpose();
+        distances( f.corners.size() ) = m.dot( f.corners[0] );
+        normals.row( f.corners.size() + 1 ) = -m.transpose();
+        distances( f.corners.size() + 1 ) = -m.dot( f.corners[0] + f.axis.coordinates );
+        return snark::geometry::convex_polytope( normals, distances );
     }
     
     static void set_default_filter( typename species::prism::filter& f, const comma::command_line_options& options, const comma::csv::options& csv )
