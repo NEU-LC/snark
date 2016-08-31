@@ -68,6 +68,7 @@ static void usage( bool verbose = false )
     std::cerr << "             --begin,--origin=<x>,<y>,<z>: lower left back corner of the box" << std::endl;
     std::cerr << "             --end=<x>,<y>,<z>: upper right front corner of the box" << std::endl;
     std::cerr << "             --center,--centre=<x>,<y>,<z>: centre of the box; default: 0,0,0" << std::endl;
+    std::cerr << "             --inflate-by=<x>,<y>,<z>: add it to the box size, a convenience option" << std::endl;
     std::cerr << "             --size=<x>,<y>,<z>: size of the box" << std::endl;
     std::cerr << "             any two of the options above are sufficient to specify a box" << std::endl;
     std::cerr << std::endl;
@@ -290,7 +291,7 @@ template < typename Species > struct shape_traits< Species, snark::geometry::con
 
 template <> struct shape_traits< species::box, snark::geometry::convex_polytope >
 {
-    static snark::geometry::convex_polytope make( const typename species::box::filter& f ) { std::cerr << "points-grep: box: making box from stream: not implemented" << std::endl; exit( 1 ); }
+    static snark::geometry::convex_polytope make( const typename species::box::filter& ) { std::cerr << "points-grep: box: making box from stream: not implemented" << std::endl; exit( 1 ); }
     
     static void set_default_filter( typename species::box::filter& f, const comma::command_line_options& options, const comma::csv::options& csv ) { return; }
 };
@@ -391,7 +392,6 @@ int main( int argc, char** argv )
         if( options.exists( "--output-format" ) ) { if( output_all ) { std::cerr << comma::csv::format::value< output_t >() << std::endl; } return 0; }
         const std::vector< std::string >& unnamed = options.unnamed("--output-all,--all,--verbose,-v,--flush","-.*");
         std::string what = unnamed[0];
-        Eigen::Vector3d inflate_by = comma::csv::ascii< Eigen::Vector3d >().get( options.value< std::string >( "--offset,--inflate-by", "0,0,0" ) );
         if( what == "polytope" || what == "planes" )
         {
             options.assert_mutually_exclusive( "--normals,--planes" );
@@ -474,6 +474,7 @@ int main( int argc, char** argv )
                 else { std::cerr << "points-grep: box: please specify --end or --size" << std::endl; return 1; }
             }
             centre = ( *origin + *end ) / 2 ;
+            Eigen::Vector3d inflate_by = comma::csv::ascii< Eigen::Vector3d >().get( options.value< std::string >( "--inflate-by", "0,0,0" ) );
             Eigen::Vector3d radius = ( *end - *origin ) / 2 + inflate_by;
             Eigen::MatrixXd normals( 6, 3 );
             normals <<  0,  0,  1,
