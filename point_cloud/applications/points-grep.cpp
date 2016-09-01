@@ -55,6 +55,7 @@ static void usage( bool verbose = false )
     std::cerr << "<what>" << std::endl;
     std::cerr << "     polytope,planes: arbitrary polytope that can be specified either as a set of planes or a set of plane normals and distances from 0,0,0" << std::endl;
     std::cerr << "         options" << std::endl;
+    std::cerr << "             --inflate-by=<radius>: expand prism by the given value, a convenience option" << std::endl;
     std::cerr << "             --normals=<filename>[;<csv options>]: normals specifying a polytope" << std::endl;
     std::cerr << "             --normals-fields: output normals fields and exit" << std::endl;
     std::cerr << "             --normals-format: output normals format and exit" << std::endl;
@@ -74,11 +75,12 @@ static void usage( bool verbose = false )
     std::cerr << std::endl;
     std::cerr << "     prism" << std::endl;
     std::cerr << "         options" << std::endl;
+    std::cerr << "             --axis=<x>,<y>,<z>,<length>: prism axis vector; default: 0,0,1,0" << std::endl;
     std::cerr << "             --corners=<filename>[;<csv options>]: corners of prism base" << std::endl;
     std::cerr << "             --corners-fields: output corners fields and exit" << std::endl;
     std::cerr << "             --corners-format: output corners format and exit" << std::endl;
     std::cerr << "             --corners-size,--number-of-corners: if corners fields given on stdin, specify the number of corners" << std::endl;
-    std::cerr << "             --axis=<x>,<y>,<z>,<length>: prism axis vector; default: 0,0,1,0" << std::endl;
+    std::cerr << "             --inflate-box-by=<radius>: expand prism by the given value, a convenience option" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    --input-fields: print input fields and exit; default input fields: x,y,z" << std::endl;
@@ -267,11 +269,15 @@ template < typename Species, typename Genus = snark::geometry::convex_polytope >
 
 template < typename Species > struct shape_traits< Species, snark::geometry::convex_polytope >
 {
-    static snark::geometry::convex_polytope make( const typename Species::filter& f ) // todo: quick and dirty, watch performance
+    static snark::geometry::convex_polytope make( const typename Species::filter& f, double inflate_by = 0 ) // todo: quick and dirty, watch performance
     {
         Eigen::MatrixXd normals( f.normals.size(), 3 );
         Eigen::VectorXd distances( f.normals.size() );
-        for( unsigned int i = 0; i < f.normals.size(); normals.row( i ) = f.normals[i].coordinates.normalized().transpose(), distances( i ) = f.normals[i].distance, ++i );
+        for( unsigned int i = 0; i < f.normals.size(); ++i )
+        {
+            normals.row( i ) = f.normals[i].coordinates.normalized().transpose();
+            distances( i ) = f.normals[i].distance + inflate_by;
+        }
         return snark::geometry::convex_polytope( normals, distances );
     }
     
@@ -291,14 +297,14 @@ template < typename Species > struct shape_traits< Species, snark::geometry::con
 
 template <> struct shape_traits< species::box, snark::geometry::convex_polytope >
 {
-    static snark::geometry::convex_polytope make( const typename species::box::filter& ) { std::cerr << "points-grep: box: making box from stream: not implemented" << std::endl; exit( 1 ); }
+    static snark::geometry::convex_polytope make( const typename species::box::filter&, double ) { std::cerr << "points-grep: box: making box from stream: not implemented" << std::endl; exit( 1 ); }
     
     static void set_default_filter( typename species::box::filter& f, const comma::command_line_options& options, const comma::csv::options& csv ) { return; }
 };
 
 template <> struct shape_traits< species::prism, snark::geometry::convex_polytope >
 {
-    static snark::geometry::convex_polytope make( const typename species::prism::filter& f )
+    static snark::geometry::convex_polytope make( const typename species::prism::filter& f, double inflate_by = 0 )
     {
         if( f.corners.size() < 3 ) { std::cerr << "points-grep: prism: expected at least 3 corners, got: " << f.corners.size() << std::endl; exit( 1 ); }
         unsigned int size = f.corners.size() + 2;
@@ -318,6 +324,7 @@ template <> struct shape_traits< species::prism, snark::geometry::convex_polytop
         distances( f.corners.size() ) = m.dot( f.corners[0] );
         normals.row( f.corners.size() + 1 ) = -m.transpose();
         distances( f.corners.size() + 1 ) = -m.dot( f.corners[0] + f.axis.coordinates );
+        for( unsigned int i = 0; i < distances.size(); ++i ) { distances[i] += inflate_by; }
         return snark::geometry::convex_polytope( normals, distances );
     }
     
@@ -356,6 +363,7 @@ template < typename Species, typename Genus > static int run( const boost::optio
                                     , typename Species::filter( comma::csv::ascii< ::position >().get( options.value< std::string >( "--position", "0,0,0,0,0,0" ) ) ) );
     shape_traits< Species, Genus >::set_default_filter( default_input.filter, options, csv );
     bool output_all = options.exists( "--output-all,--all" );
+    double inflate_by = options.value( "--inflate-by", 0.0 );
     boost::optional< Genus > transformed;
     if( shape && !csv.has_some_of_fields( "filter,filter/coordinates,filter/coordinates/x,filter/coordinates/y,filter/coordinates/z,filter/orientation,filter/orientation/roll,filter/orientation/pitch,filter/orientation/yaw" ) ) { transformed = transform( *shape, default_input.filter ); }
     comma::csv::input_stream< input_t< Species > > istream( std::cin, csv, default_input );
@@ -366,7 +374,7 @@ template < typename Species, typename Genus > static int run( const boost::optio
     {
         const input_t< Species >* p = istream.read();
         if( !p ) { break; }
-        bool keep = transformed ? transformed->has( *p ) : transform( shape ? *shape : shape_traits< Species, Genus >::make( p->filter ), p->filter ).has( *p );
+        bool keep = transformed ? transformed->has( *p ) : transform( shape ? *shape : shape_traits< Species, Genus >::make( p->filter, inflate_by ), p->filter ).has( *p );
         if( output_all ) { tied.append( output_t( keep ) ); }
         else if( keep ) { passed.write(); }
         if( csv.flush ) { std::cout.flush(); }
@@ -397,6 +405,7 @@ int main( int argc, char** argv )
             options.assert_mutually_exclusive( "--normals,--planes" );
             const std::string& normals_input = options.value< std::string >( "--normals", "" );
             const std::string& planes_input = options.value< std::string >( "--planes", "" );
+            double inflate_by = options.value( "--inflate-by", 0.0 );
             if( !normals_input.empty() )
             {
                 comma::csv::options filter_csv = comma::name_value::parser( "filename" ).get< comma::csv::options >( normals_input );
@@ -409,7 +418,7 @@ int main( int argc, char** argv )
                     if( !p ) { break; }
                     f.normals.push_back( *p );
                 }
-                return run< species::polytope >( shape_traits< species::polytope >::make( f ), options );
+                return run< species::polytope >( shape_traits< species::polytope >::make( f, inflate_by ), options );
             }
             else if( !planes_input.empty() )
             {
@@ -429,7 +438,7 @@ int main( int argc, char** argv )
                 {
                     const Eigen::Vector3d& normal = ( planes[i].corners[1] - planes[i].corners[0] ).cross( planes[i].corners[2] - planes[i].corners[0] ).normalized();
                     normals.row( i ) = normal;
-                    distances[i] = normal.dot( planes[i].corners[0] );
+                    distances[i] = normal.dot( planes[i].corners[0] + normal * inflate_by );
                 }
                 return run< species::polytope >( snark::geometry::convex_polytope( normals, distances ), options );
             }
@@ -450,7 +459,7 @@ int main( int argc, char** argv )
                 f.corners.push_back( *p );
             }
             f.axis = comma::csv::ascii< ::normal >().get( options.value< std::string >( "--axis", "0,0,1,0" ) );
-            return run< species::prism >( shape_traits< species::prism >::make( f ), options );
+            return run< species::prism >( shape_traits< species::prism >::make( f, options.value( "--inflate-by", 0.0 ) ), options );
         }
         else if( what == "box" )
         {
@@ -465,16 +474,16 @@ int main( int argc, char** argv )
             {
                 if( end && size ) { origin = *end - *size; }
                 else if( size ) { origin = centre - *size / 2; }
-                else { std::cerr << "points-grep: box: please specify --origin or --size" << std::endl; return 1; }
+                else { std::cerr << "points-grep: box: got --origin; please specify --end or --size" << std::endl; return 1; }
             }
             if( !end )
             {
                 if( origin && size ) { end = *origin + *size; }
                 else if( size ) { end = centre + *size / 2; }
-                else { std::cerr << "points-grep: box: please specify --end or --size" << std::endl; return 1; }
+                else { std::cerr << "points-grep: box: got --end; please specify --origin or --size" << std::endl; return 1; }
             }
             centre = ( *origin + *end ) / 2 ;
-            Eigen::Vector3d inflate_by = comma::csv::ascii< Eigen::Vector3d >().get( options.value< std::string >( "--inflate-by", "0,0,0" ) );
+            Eigen::Vector3d inflate_by = comma::csv::ascii< Eigen::Vector3d >().get( options.value< std::string >( "--inflate-box-by", "0,0,0" ) );
             Eigen::Vector3d radius = ( *end - *origin ) / 2 + inflate_by;
             Eigen::MatrixXd normals( 6, 3 );
             normals <<  0,  0,  1,
