@@ -29,7 +29,7 @@
 
 /// @authors vsevolod vlaskine, zhe xu
 
-#include <boost/filesystem/operations.hpp>
+#include <boost/array.hpp>
 #include <comma/application/command_line_options.h>
 #include <comma/application/verbose.h>
 #include <comma/csv/stream.h>
@@ -62,7 +62,7 @@ void usage( bool verbose )
     std::cerr << "options" << std::endl;
     std::cerr << "    --help,-h: print help; --help --verbose for more help" << std::endl;
     std::cerr << "    --camera-config,--camera,--config,-c=<parameters>: camera configuration" << std::endl;
-    std::cerr << "        <parameters>: filename of json configuration file or ';'-separated path-value pairs" << std::endl;
+    std::cerr << "        <parameters>: filename of json or path-value configuration file or ';'-separated path-value pairs" << std::endl;
     std::cerr << "                      e.g: --config=\"focal_length=123;image_size/x=222;image_size/y=123.1;...\"" << std::endl;
     std::cerr << "    --input-fields: output input fields for given operation and exit" << std::endl;
     std::cerr << "    --output-config,--sample-config,--config-sample: output sample config and exit" << std::endl;
@@ -73,12 +73,15 @@ void usage( bool verbose )
     std:: cerr << snark::camera::pinhole::usage() << std::endl;
     if( verbose ) { std::cerr << comma::csv::options::usage() << std::endl; }
     std::cerr << std::endl;
+    std::cerr << "examples" << std::endl;
+    std::cerr << "    config-to-normals:" << std::endl;
+    std::cerr << "        todo" << std::endl;
+    std::cerr << std::endl;
     exit( 0 );
 }
 
-template < typename S, typename T > static void output_details( const std::string& operation, const char* expected, const comma::command_line_options& options )
+template < typename S, typename T > static void output_details( const comma::command_line_options& options )
 {
-    if( operation != expected ) { return; }
     if( options.exists( "--input-fields" ) ) { std::cout << comma::join( comma::csv::names< S >(), ',' ) << std::endl; exit( 0 ); }
     if( options.exists( "--output-fields" ) ) { std::cout << comma::join( comma::csv::names< T >(), ',' ) << std::endl; exit( 0 ); }
     if( options.exists( "--output-format" ) ) { std::cout << comma::csv::format::value< T >() << std::endl; exit( 0 ); }
@@ -122,14 +125,11 @@ int main( int ac, char** av )
         const std::vector< std::string >& unnamed = options.unnamed( "--input-fields,--output-fields,--output-format,--verbose,-v,--flush,--clip,--keep,--normalize", "-.*" );
         if( unnamed.empty() ) { std::cerr << "image-pinhole: please specify operation" << std::endl; return 1; }
         std::string operation = unnamed[0];
-        output_details< Eigen::Vector2d, Eigen::Vector3d >( operation, "to-cartesian", options );
-        output_details< Eigen::Vector2d, Eigen::Vector2d >( operation, "to-pixels", options );
-        output_details< Eigen::Vector2d, Eigen::Vector2d >( operation, "undistort", options );
-        output_details< Eigen::Vector2d, Eigen::Vector2d >( operation, "distort", options );
         snark::camera::pinhole pinhole( make_config( options.value< std::string >( "--camera-config,--camera,--config,-c" ) ) );
         comma::csv::options csv( options );
         if( operation == "to-cartesian" )
         {
+            output_details< Eigen::Vector2d, Eigen::Vector3d >( options );
             comma::csv::input_stream< Eigen::Vector2d > is( std::cin, csv );
             comma::csv::output_stream< Eigen::Vector3d > os( std::cout, csv.binary(), false, csv.flush );
             comma::csv::tied< Eigen::Vector2d, Eigen::Vector3d > tied( is, os );
@@ -145,6 +145,7 @@ int main( int ac, char** av )
         }
         if( operation == "to-pixels" )
         {
+            output_details< Eigen::Vector2d, Eigen::Vector2d >( options );
             comma::csv::input_stream< Eigen::Vector2d > is( std::cin, csv );
             comma::csv::output_stream< Eigen::Vector2d > os( std::cout, csv.binary(), false, csv.flush );
             comma::csv::tied< Eigen::Vector2d, Eigen::Vector2d > tied( is, os );
@@ -166,6 +167,7 @@ int main( int ac, char** av )
         }
         if( operation == "undistort" )
         {
+            output_details< Eigen::Vector2d, Eigen::Vector2d >( options );
             comma::csv::input_stream< Eigen::Vector2d > is( std::cin, csv );
             comma::csv::output_stream< Eigen::Vector2d > os( std::cout, csv.binary(), false, csv.flush );
             comma::csv::tied< Eigen::Vector2d, Eigen::Vector2d > tied( is, os );
@@ -179,6 +181,7 @@ int main( int ac, char** av )
         }
         if( operation == "distort" )
         {
+            output_details< Eigen::Vector2d, Eigen::Vector2d >( options );
             comma::csv::input_stream< Eigen::Vector2d > is( std::cin, csv );
             comma::csv::output_stream< Eigen::Vector2d > os( std::cout, csv.binary(), false, csv.flush );
             comma::csv::tied< Eigen::Vector2d, Eigen::Vector2d > tied( is, os );
