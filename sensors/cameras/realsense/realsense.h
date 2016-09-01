@@ -32,6 +32,7 @@
 #include <iostream>
 #include <opencv2/core/core.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/optional.hpp>
 #include <Eigen/Core>
 #include <map>
 
@@ -46,9 +47,20 @@ struct format
     format(rs::format f);
     unsigned cv_type() const; //e.g. CV_8UC3
     size_t size() const;  //size in bytes
-    operator rs::format();
+    operator rs::format() const;
     //csv name of formats
     static std::string name_list();
+};
+
+struct stream_args
+{
+    boost::optional<rs::preset> preset;
+    int width;
+    int height;
+    realsense::format format;
+    int framerate;
+    stream_args(rs::preset p) : preset(p), width(0), height(0), framerate(0) { }
+    stream_args(int w=0,int h=0,realsense::format f=realsense::format(),int fps=0) : width(w), height(h), format(f), framerate(fps) { }
 };
 
 //individual camera stream
@@ -61,8 +73,7 @@ struct stream
     stream(rs::device& device, rs::stream id);
     stream(rs::device& device, const std::string& s);
     ~stream();
-    void init(realsense::format format=realsense::format());
-    void init(rs::preset preset);
+    void init(const stream_args& args);
     std::pair<boost::posix_time::ptime,cv::Mat> get_frame() const;
     //csv name of streams
     static std::string name_list();
@@ -70,14 +81,13 @@ private:
     //size_t size;
     unsigned width;
     unsigned height;
-    void init_();
 };
 
 struct points_cloud
 {
     points_cloud(rs::device& device);
     ~points_cloud();
-    void init(rs::stream tex_stream=rs::stream::color);
+    void init(const stream_args& args, rs::stream tex_stream=rs::stream::color);
     //return millisecond counter of retrieved frame
     unsigned scan();
     bool get(unsigned index,rs::float3& point) const;

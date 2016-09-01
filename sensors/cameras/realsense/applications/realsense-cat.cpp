@@ -30,6 +30,7 @@
 #include <comma/application/command_line_options.h>
 #include <comma/application/verbose.h>
 #include <comma/csv/options.h>
+#include <comma/csv/ascii.h>
 #include <comma/base/exception.h>
 #include <comma/application/signal_flag.h>
 #include <comma/csv/stream.h>
@@ -37,6 +38,7 @@
 #include <comma/io/publisher.h>
 #include "../../../../imaging/cv_mat/serialization.h"
 #include "../realsense.h"
+#include "../traits.h"
 #include "../../../../visiting/eigen.h"
 #include <sstream>
 
@@ -44,6 +46,7 @@ using namespace snark::realsense;
 comma::signal_flag signaled;
 std::vector<uchar> margin_color={255,255,255};
 bool discard_margin=false;
+stream_args image_args(rs::preset::best_quality);
 
 struct list
 {
@@ -83,8 +86,11 @@ void usage(bool detail)
     std::cerr << "    --output-fields: print output fields and exit"<<std::endl;
     std::cerr << "    --camera-stream,--stream=<stream>: output cv images of the specified camera stream, instead of points cloud csv" << std::endl;
     std::cerr << "        <stream>: "<<stream::name_list()<<std::endl;
-    std::cerr << "    --image-format=<format>: use the specified format for cv image, when not specified uses default format"<<std::endl;
+    std::cerr << "    --image-format=<width>,<height>,<format>,<frame_rate>: use the specified stream args, when not specified uses rs::preset::best_quality"<<std::endl;
+    std::cerr << "        <width>: width of image"<<std::endl;
+    std::cerr << "        <height>: height of image"<<std::endl;
     std::cerr << "        <format>: "<<format::name_list()<<std::endl;
+    std::cerr << "        <frame_rate>: camera frame rate"<<std::endl;
     std::cerr << "    --device=<param>: specify device and its parameters, multiple --device=<param> can be specified"<<std::endl;
     std::cerr << "        <param>:"<<std::endl;
     device_t::help(std::cerr,"            ");
@@ -112,7 +118,7 @@ void usage(bool detail)
     std::cerr << "example" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    to view camera streams:" << std::endl;
-    std::cerr << "        " << comma::verbose.app_name() << "  --stream=color --image-format=bgr8 | cv-cat \"resize=2;view;null\" " << std::endl;
+    std::cerr << "        " << comma::verbose.app_name() << "  --stream=color --image-format=0,0,bgr8,0 | cv-cat \"resize=2;view;null\" " << std::endl;
     std::cerr << "        " << comma::verbose.app_name() << "  --stream=depth | cv-cat \"brightness=10;resize=2;view;null\" " << std::endl;
     std::cerr << std::endl;
     std::cerr << "    to view points cloud mapped with color:" << std::endl;
@@ -222,10 +228,10 @@ template <> struct traits< points_t::output_t >
 
 struct camera_stream
 {
-    static void process(rs::device& device,const std::string& stream_name,format format)
+    static void process(rs::device& device,const std::string& stream_name)
     {
         stream stream(device,stream_name);
-        stream.init(format);
+        stream.init(image_args);
         run_stream runner(device);
         stream.start_time=runner.start_time;
         snark::cv_mat::serialization::options opt;
@@ -293,16 +299,20 @@ void writer<T>::write(const T& t)
 }
 
 
-points_t::points_t(device_t& dev,bool has_color,const comma::csv::options& csv) : 
+points_t::points_t(device_t& dev,bool has_color, const comma::csv::options& csv) : 
     device(*dev.device),has_color(has_color),color(device,rs::stream::color),points_cloud(device),
     writer(dev.output,csv)
 {
     if(has_color)
     {
-        color.init(rs::preset::best_quality);
+        if(image_args.preset)
+            color.init(image_args);
+        else
+            color.init(stream_args(image_args.width,image_args.height,rs::format::rgb8,image_args.framerate));
         if(color.format.value!=rs::format::rgb8) { COMMA_THROW( comma::exception, "expected image format "<<rs::format::rgb8<<", got "<<color.format); }
     }
-    points_cloud.init(rs::stream::color);
+    points_cloud.init(image_args, has_color ? rs::stream::color : rs::stream::depth);
+    comma::verbose<<"points_t(has_color: "<<has_color<<") done "<<std::endl;
 }
 void points_t::scan(unsigned block)
 {
@@ -313,7 +323,8 @@ void points_t::scan(unsigned block)
     out.t=boost::posix_time::microsec_clock::universal_time();
     out.counter=points_cloud.scan();
     out.block=block;
-    auto pair=color.get_frame();
+    std::pair<boost::posix_time::ptime,cv::Mat> pair;
+    if(has_color) { pair=color.get_frame(); }
     cv::Mat& mat=pair.second;
     rs::float3 point;
     for(unsigned index=0;index<points_cloud.count();index++)
@@ -572,7 +583,13 @@ int main( int argc, char** argv )
         if(do_list) { list::process(context,csv); return 0; }
         //
         std::string stream=options.value<std::string>("--camera-stream,--stream","");
-        format format(options.value<std::string>("--image-format",""));
+        std::string image_format=options.value<std::string>("--image-format","");
+        if(!image_format.empty())
+        {
+            stream_args agrs;
+            image_args=comma::csv::ascii<stream_args>().get(agrs,image_format);
+            comma::verbose<<"used image_format: "<<bool(image_args.preset)<<"; "<<image_args.width<<","<<image_args.height<<","<<image_args.format<<","<<image_args.framerate<<std::endl;
+        }
         set_margin_color(options.optional<std::string>("--margin-color"));
         discard_margin=options.exists("--discard-margin");
         //select devices
@@ -613,7 +630,7 @@ int main( int argc, char** argv )
         if(!stream.empty())
         {
             if(selected.size()!=1) { COMMA_THROW( comma::exception, "multiple camera not implemented yet!"); }
-            camera_stream::process(*selected[0].device,stream,format);
+            camera_stream::process(*selected[0].device,stream);
         }
         else
         {
