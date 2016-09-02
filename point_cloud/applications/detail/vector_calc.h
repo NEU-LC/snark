@@ -190,7 +190,7 @@ struct vector_calc
     template<typename input_t,typename output_t>
     struct operation_t
     {
-        virtual output_t calc(const input_t& in)=0;
+        virtual output_t calc(const input_t& in) const = 0;
         input_t default_input;
         operation_t(const input_t& def):default_input(def){}
         operation_t(){}
@@ -235,7 +235,7 @@ struct vector_calc
     {
         cross(){}
         cross(const vector& default1, const vector& default2 ):operation_t(vector_pair(default1,default2)){}
-        vector calc(const vector_pair& in)
+        vector calc(const vector_pair& in) const
         {
             return in.v.cross(in.u);
         }
@@ -244,7 +244,7 @@ struct vector_calc
     {
         dot(){}
         dot(const vector& default1, const vector& default2 ):operation_t(vector_pair(default1,default2)){}
-        scalar calc(const vector_pair& in)
+        scalar calc(const vector_pair& in) const
         {
             return in.v.dot(in.u);
         }
@@ -258,10 +258,10 @@ struct vector_calc
             ,_invert(invert)
         {
         }
-        scalar calc(const vector& in)
+        scalar calc(const vector& in) const
         {
             double d=_squre?in.squaredNorm(): in.norm();
-            return _invert?1/d:d;
+            return _invert?1.0/d:d;
         }
         bool _squre;
         bool _invert;
@@ -275,7 +275,7 @@ struct vector_calc
             ,_invert(invert)
         {
         }
-        vector calc(const vector_scalarpair& in)
+        vector calc(const vector_scalarpair& in) const
         {
             double d=_invert?1/in.second.a:in.second.a;
             return d*in.first;
@@ -286,32 +286,26 @@ struct vector_calc
     {
         normalize(){}
         normalize(const vector& v ) : operation_t(v) {}
-        vector calc(const vector& in) { return in.normalized(); }
+        vector calc(const vector& in) const { return in.normalized(); }
     };
     struct add:operation_t<vector_pair,vector>
     {
         add(){}
         add(const vector& default1, const vector& default2 ):operation_t(vector_pair(default1,default2)){}
-        vector calc(const vector_pair& in)
-        {
-            return in.v+in.u;
-        }
+        vector calc(const vector_pair& in) const { return in.v+in.u; }
     };
     struct subtract:operation_t<vector_pair,vector>
     {
         subtract(){}
         subtract(const vector& default1, const vector& default2 ):operation_t(vector_pair(default1,default2)){}
-        vector calc(const vector_pair& in)
-        {
-            return in.u-in.v;
-        }
+        vector calc(const vector_pair& in) const { return in.u-in.v; }
     };
     struct normal:operation_t<vector_triple,vector>
     {
         bool unit_;
         normal(){}
         normal(const vector& default1, const vector& default2, const vector& default3, bool unit ):operation_t(vector_triple(default1,default2,default3)),unit_(unit){}
-        vector calc(const vector_triple& in)
+        vector calc(const vector_triple& in) const
         {
             vector normal=(in.u-in.v).cross(in.w-in.v);
             if(unit_) { normal /= normal.norm(); }
