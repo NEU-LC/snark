@@ -27,12 +27,10 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef DETAIL_PLANE_INTERSECTION_H
-#define DETAIL_PLANE_INTERSECTION_H
-#include <iostream>
+#pragma once
+
 #include <comma/csv/stream.h>
-#include <comma/base/exception.h>
-#include <comma/application/verbose.h>
+#include <comma/math/compare.h>
 #include "../../../visiting/eigen.h"
 
 struct plane_intersection
@@ -64,7 +62,8 @@ struct plane_intersection
         input_t(const plane_t& p):plane(p) { }
         input_t(const plane_t& p, const line_t& l):plane(p),line(l) { }
     };
-    static void run( const comma::csv::options& csv_opt, const plane_intersection::input_t& default_value, bool discard_collinear);
+    static void run( const comma::csv::options& csv_opt, const plane_intersection::input_t& default_value, const comma::command_line_options& options );
+    struct condition;
 };
 
 namespace comma { namespace visiting {
@@ -111,26 +110,6 @@ template <> struct traits< plane_intersection::input_t >
 
 
 } } // namespace comma { namespace visiting {
-  
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++
-std::string to_string(const Eigen::Vector3d& v)
-{
-    std::stringstream ss;
-    ss<<"("<<v.x()<<", "<<v.y()<<", "<<v.z()<<")";
-    return ss.str();
-}
-static std::ostream& operator <<(std::ostream& stream, const plane_intersection::line_t& line)
-{
-    stream << "line_t{"<<to_string(line.points.first)<<"; "<<to_string(line.points.second)<<"}";
-    return stream;
-}
-static std::ostream& operator <<(std::ostream& stream, const plane_intersection::plane_t& plane)
-{
-    stream << "plane_t{"<<to_string(plane.point)<<"; "<<to_string(plane.normal)<<"}";
-    return stream;
-}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 void plane_intersection::usage()
 {
@@ -166,27 +145,64 @@ void plane_intersection::process(const comma::command_line_options& options, com
     plane_t default_plane=comma::csv::ascii<plane_t>().get(options.optional<std::string>("--plane"));
     line_t default_line=comma::csv::ascii<line_t>().get(options.optional<std::string>("--line"));
     if(plane_option && csv.fields.empty()) { csv.fields=comma::join( comma::csv::names<plane_intersection::line_t>(true), ','); }
-    run(csv, plane_intersection::input_t(default_plane,default_line), options.exists( "--discard-collinear" ));
+    run(csv, plane_intersection::input_t( default_plane, default_line ), options );
 }
 
-void plane_intersection::run( const comma::csv::options& csv_opt, const plane_intersection::input_t& default_value, bool discard_collinear)
+class plane_intersection::condition
 {
+    public:
+        condition( const comma::command_line_options& options ) : closed( false, false )
+        {
+            // todo: parse something like points-calc plane-intersection --condition="(inf,first]&[second,inf)" 
+        }
+        
+        bool operator()( const std::pair< Eigen::Vector3d, Eigen::Vector3d >& line, const Eigen::Vector3d& p ) const
+        {
+            if( !( sign.first || sign.second ) ) { return true; } // always true for now until the todo item above is implemented
+            const Eigen::Vector3d& d = line.second - line.first;
+            bool result = included_( d, line.first, p, sign.first, closed.first );
+            if( is_and == !result ) { return result; }
+            return included_( d, line.second, p, sign.first, closed.first );
+        }
+        
+    private:
+        std::pair< bool, bool > closed;
+        std::pair< boost::optional< int >, boost::optional< int > > sign;
+        bool is_and;
+        bool included_( const Eigen::Vector3d& d, const Eigen::Vector3d& v, const Eigen::Vector3d& p, const boost::optional< int >& sign, bool closed ) const
+        {
+            if( !sign ) { return true; }
+            const Eigen::Vector3d& e = p - v;
+            double s = d.dot( e ) * *sign;
+            return closed ? !comma::math::less( s, 0 ) : comma::math::less( 0, s ); // todo: implement optional epsilon, otherwise closed interval is dodgy
+        }
+};
+
+void plane_intersection::run( const comma::csv::options& csv_opt, const plane_intersection::input_t& default_value, const comma::command_line_options& options )
+{
+    bool discard_collinear = options.exists( "--discard-collinear" );
+    plane_intersection::condition condition( options );
     comma::csv::input_stream<plane_intersection::input_t > is( std::cin, csv_opt, default_value);
     comma::csv::output_stream<plane_intersection::output_t> os( std::cout, csv_opt.binary(), false, csv_opt.flush );
-    comma::csv::tied<plane_intersection::input_t ,plane_intersection::output_t> tied(is,os);
+    comma::csv::tied<plane_intersection::input_t ,plane_intersection::output_t> tied( is, os );
     static const Eigen::Vector3d infinity( std::numeric_limits< double >::infinity(), std::numeric_limits< double >::infinity(), std::numeric_limits< double >::infinity() );
-    while(is.ready() || std::cin.good())
+    while( is.ready() || std::cin.good() )
     {
         const plane_intersection::input_t* rec=is.read();
-        if(!rec){break;}
-        comma::verbose<<"line: "<< rec->line << ";" <<" plane: "<< rec->plane <<std::endl;
-        double u=(rec->plane.point - rec->line.points.first).dot(rec->plane.normal);
-        double d=rec->line.direction().dot(rec->plane.normal);
-        comma::verbose<<"u "<<u<<", d "<<d<<std::endl;
-        //if both u and d are 0 then line is on the plane and we just output first point
-        if ( comma::math::equal(u,0)) { tied.append(rec->line.points.first); continue; }
-        if( comma::math::equal( d, 0 ) ) { if( !discard_collinear ) { tied.append( infinity ); } continue; }
-        tied.append( (u/d) * rec->line.direction() + rec->line.points.first );
+        if( !rec ) { break; }
+        double u = ( rec->plane.point - rec->line.points.first ).dot( rec->plane.normal );
+        double d = rec->line.direction().dot( rec->plane.normal );
+        if( comma::math::equal( u, 0 ) ) // if both u and d are 0 then line is on the plane and we just output first point
+        { 
+            if( condition( rec->line.points, rec->line.points.first ) ) { tied.append( rec->line.points.first ); }
+            continue;
+        }
+        if( comma::math::equal( d, 0 ) )
+        { 
+            if( !discard_collinear ) { tied.append( infinity ); }
+            continue;
+        }
+        const Eigen::Vector3d& intersection = ( u / d ) * rec->line.direction() + rec->line.points.first;
+        if( condition( rec->line.points, intersection ) ) { tied.append( intersection ); }
     }
 }
-#endif

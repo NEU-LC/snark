@@ -40,9 +40,8 @@
 #include "../voxel_grid.h"
 #include "../voxel_map.h"
 #include "../../visiting/eigen.h"
-
-#include "detail/plane-intersection.h"
-#include "detail/vector-calc.h"
+#include "detail/plane_intersection.h"
+#include "detail/vector_calc.h"
 
 static comma::csv::options csv;
 static bool verbose;
