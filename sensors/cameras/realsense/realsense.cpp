@@ -87,7 +87,7 @@ rs::stream parse_stream(const std::string& s)
 format::format():value(rs::format::any) { }
 format::format(const std::string& s):value(impl::parse_format(s)) { }
 format::format(rs::format f):value(f) { }
-format::operator rs::format() { return value; }
+format::operator rs::format() const { return value; }
 unsigned format::cv_type() const
 {
     switch(value)
@@ -148,26 +148,25 @@ std::string format::name_list()
 /*********************************************************/
 stream::stream(rs::device& device, const std::string& s) : device(device), value(impl::parse_stream(s)) { }
 stream::stream(rs::device& device, rs::stream id) : device(device), value(id) { }
-void stream::init(realsense::format f)
+void stream::init(const stream_args& args)
 {
-    device.enable_stream(value,0,0,f,0);
-    init_();
-}
-void stream::init(rs::preset preset)
-{
-    device.enable_stream(value,preset);
-    init_();
+    if(args.preset)
+    {
+        device.enable_stream(value,*args.preset);
+    }
+    else
+    {
+        comma::verbose<<"stream::init "<<args.width<<", "<<args.height<<","<<args.format<<","<<args.framerate<<std::endl;
+        device.enable_stream(value,args.width,args.height,args.format,args.framerate);
+    }
+    format=device.get_stream_format(value);
+    width=device.get_stream_width(value);
+    height=device.get_stream_height(value);
+//     comma::verbose<<"stream_writer: stream "<<value<<" width "<<width<<" height "<<height<<" format "<<format<<std::endl;
 }
 stream::~stream()
 {
     device.disable_stream(value);
-}
-void stream::init_()
-{
-    format=device.get_stream_format(value);
-    width=device.get_stream_width(value);
-    height=device.get_stream_height(value);
-    comma::verbose<<"stream_writer: stream "<<value<<" width "<<width<<" height "<<height<<" format "<<format<<std::endl;
 }
 std::pair<boost::posix_time::ptime,cv::Mat> stream::get_frame() const
 {
@@ -189,9 +188,18 @@ points_cloud::~points_cloud()
 {
     device.disable_stream(rs::stream::depth);
 }
-void points_cloud::init(rs::stream tex_stream)
+void points_cloud::init(const stream_args& args, rs::stream tex_stream)
 {
-    device.enable_stream(rs::stream::depth,rs::preset::best_quality);
+    if(args.preset)
+    {
+        device.enable_stream(rs::stream::depth,*args.preset);
+    }
+    else
+    {
+        device.enable_stream(rs::stream::depth,args.width,args.height,rs::format::z16,args.framerate);
+    }
+    rs::format f=device.get_stream_format(rs::stream::depth);
+    if(f!=rs::format::z16) { COMMA_THROW( comma::exception,"expected depth format z16 got: "<<f);} 
     depth_intrin=device.get_stream_intrinsics(rs::stream::depth);
     depth_to_tex=device.get_extrinsics(rs::stream::depth, tex_stream);
     tex_intrin=device.get_stream_intrinsics(tex_stream);
