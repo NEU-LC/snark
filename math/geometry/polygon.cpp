@@ -62,9 +62,8 @@ static inline bool is_outside( const Eigen::Vector3d& a, const Eigen::Vector3d& 
 
 template < typename C > static bool includes_impl( const C& corners, const Eigen::Vector3d& rhs )
 {
-    for( std::size_t i = 2; i < corners.size(); ++i ) { if( !is_outside( corners[i-2], corners[i-1], corners[i], rhs ) ) { return true; } }
-    if( !is_outside( corners.back(), corners[0], corners[1], rhs ) ) { return true; }
-    return !is_outside( corners[ corners.size() - 2 ], corners.back(), corners[0], rhs );
+    for( std::size_t i = 2; i < corners.size(); ++i ) { if( !is_outside( corners[0], corners[i-1], corners[i], rhs ) ) { return true; } }
+    return false;
 }
 
 static inline double distance_to_line( const Eigen::Vector3d from, const Eigen::Vector3d& to, const Eigen::Vector3d& point )
