@@ -53,7 +53,9 @@ example config file:
         "dir": "/tmp/control"
     }
 
-    mode: waypoint following mode (fixed or dynamic)
+    mode: waypoint following mode, fixed or dynamic
+          fixed: wait until the current waypoint reached, then go to the next waypoint
+          dynamic: if a new waypoint received, while the current waypoint is not reached, go to the new waypoint straightaway
     steering: steering mode (omni or skid)
     proximity: distance for deciding when a waypoint is reached
     past-endpoint: 1 -> besides proximity condition, consider a waypoint as reached if the vehicle has moved past the end line, 0 -> use only proximity condition
