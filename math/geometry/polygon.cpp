@@ -61,7 +61,7 @@ static inline bool is_inside( const Eigen::Vector3d& a, const Eigen::Vector3d& b
     if( v_cross_w.dot( v_cross_u ) < 0 ) { return false; }
 
     const Eigen::Vector3d& u_cross_w = u.cross( w );
-    const Eigen::Vector3d& u_cross_v = u.cross( v );
+    const Eigen::Vector3d& u_cross_v = -v_cross_u;
 
     if( u_cross_w.dot( u_cross_v ) < 0 ) { return false; }
 
