@@ -48,21 +48,33 @@ template < typename C > static Eigen::Vector3d projection_impl( const C& corners
     return rhs - n * ( rhs - corners[0] ).dot( n );
 }
 
-static inline Eigen::Vector3d normal_to_edge( const Eigen::Vector3d& a, const Eigen::Vector3d& b, const Eigen::Vector3d& c )
+// See https://blogs.msdn.microsoft.com/rezanour/2011/08/07/barycentric-coordinates-and-point-in-triangle-tests
+static inline bool is_inside( const Eigen::Vector3d& a, const Eigen::Vector3d& b, const Eigen::Vector3d& c, const Eigen::Vector3d& p )
 {
     const Eigen::Vector3d& u = b - a;
-    const Eigen::Vector3d& v = c - b;
-    return v * u.squaredNorm() - u * u.dot( v );
-}
+    const Eigen::Vector3d& v = c - a;
+    const Eigen::Vector3d& w = p - a;
 
-static inline bool is_outside( const Eigen::Vector3d& a, const Eigen::Vector3d& b, const Eigen::Vector3d& c, const Eigen::Vector3d& d )
-{
-    return comma::math::less( normal_to_edge( a, b, c ).dot( d - a ), 0 );
+    const Eigen::Vector3d& v_cross_w = v.cross( w );
+    const Eigen::Vector3d& v_cross_u = v.cross( u );
+
+    if( v_cross_w.dot( v_cross_u ) < 0 ) { return false; }
+
+    const Eigen::Vector3d& u_cross_w = u.cross( w );
+    const Eigen::Vector3d& u_cross_v = u.cross( v );
+
+    if( u_cross_w.dot( u_cross_v ) < 0 ) { return false; }
+
+    double denom = u_cross_v.norm();
+    double r = v_cross_w.norm();
+    double t = u_cross_w.norm();
+
+    return( r + t <= denom );
 }
 
 template < typename C > static bool includes_impl( const C& corners, const Eigen::Vector3d& rhs )
 {
-    for( std::size_t i = 2; i < corners.size(); ++i ) { if( !is_outside( corners[0], corners[i-1], corners[i], rhs ) ) { return true; } }
+    for( std::size_t i = 2; i < corners.size(); ++i ) { if( is_inside( corners[0], corners[i-1], corners[i], rhs ) ) { return true; } }
     return false;
 }
 
