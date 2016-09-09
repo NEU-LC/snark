@@ -74,7 +74,10 @@ static inline bool is_inside( const Eigen::Vector3d& a, const Eigen::Vector3d& b
 
 template < typename C > static bool includes_impl( const C& corners, const Eigen::Vector3d& rhs )
 {
-    for( std::size_t i = 2; i < corners.size(); ++i ) { if( is_inside( corners[0], corners[i-1], corners[i], rhs ) ) { return true; } }
+    for( std::size_t i = 2; i < corners.size(); ++i )
+    {
+        if( is_inside( corners[0], corners[i-1], corners[i], rhs ) ) { return true; }
+    }
     return false;
 }
 
