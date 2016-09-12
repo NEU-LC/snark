@@ -9,6 +9,7 @@ define('Feed', ["jquery", "jquery_timeago", "utils"], function ($) {
         this.el = $(this.id);
         this.compact_icon = $(this.id + ' .panel-compact span');
         this.body = $(this.id + ' .panel-body');
+        this.panel_refresh = $(this.id + ' .panel-refresh');
         this.status = $(this.id + ' .status');
         this.timestring = $(this.id + ' .timestring').hide();
         this.timeago = $(this.id + ' .timeago').timeago();
@@ -29,6 +30,7 @@ define('Feed', ["jquery", "jquery_timeago", "utils"], function ($) {
     Feed.prototype.set_interval = function () {
         this.interval = setInterval(this.preload.bind(this), this.config.refresh.interval * 1000);
         this.status.removeClass('text-muted').addClass('text-success');
+        this.panel_refresh.removeClass('hideable transparent');
     };
 
 
@@ -36,6 +38,7 @@ define('Feed', ["jquery", "jquery_timeago", "utils"], function ($) {
         clearInterval(this.interval);
         delete pending[this.feed_name];
         this.status.removeClass('text-success').addClass('text-muted');
+        this.panel_refresh.addClass('hideable');
     };
     Feed.prototype.refresh = function () {
         this.clear_interval();
