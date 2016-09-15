@@ -35,6 +35,7 @@
 #include <limits>
 #include <boost/optional.hpp>
 #include <comma/application/command_line_options.h>
+#include <comma/application/signal_flag.h>
 #include <comma/csv/stream.h>
 #include <comma/math/compare.h>
 #include "../voxel_grid.h"
@@ -64,6 +65,7 @@ static void usage( bool more = false )
     std::cerr << std::endl;
     std::cerr << "operations" << std::endl;
     std::cerr << "    cumulative-distance" << std::endl;
+    std::cerr << "    cumulative-discretise,cumulative-discretize" << std::endl;
     std::cerr << "    distance" << std::endl;
     std::cerr << "    discretise,discretize" << std::endl;
     std::cerr << "    find-outliers" << std::endl;
@@ -79,6 +81,14 @@ static void usage( bool more = false )
     std::cerr << std::endl;
     std::cerr << "operation details" << std::endl;
     std::cerr << "    cumulative-distance: cumulative distance between subsequent points" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    cumulative-discretise, cumulative-discretize: read input data and discretise intervals with --step along the whole trajectory" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "        input fields" << std::endl;
+    std::cerr << "            " << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "        options" << std::endl;
+    std::cerr << "            --step=<step>: linear step of discretisation" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    distance: distance between subsequent points or, if input is pairs, between the points of the same record" << std::endl;
     std::cerr << std::endl;
@@ -340,6 +350,35 @@ static void discretise( double step, double tolerance )
     }
 }
 
+static int cumulative_discretise( const comma::command_line_options& options )
+{
+    double step = options.value< double >( "--step" );
+    if( step <= 0 ) { std::cerr << "points-calc: expected positive step, got " << step << std::endl; return 1; }
+    comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, csv );
+    comma::csv::options output_csv;
+    if( csv.binary() ) { output_csv.format( "3d" ); }
+    output_csv.flush = csv.flush;
+    comma::csv::output_stream< Eigen::Vector3d > ostream( std::cout, output_csv );
+    comma::signal_flag is_shutdown;
+    const Eigen::Vector3d* p = istream.read();
+    if( !p ) { return 0; }
+    Eigen::Vector3d previous_point = *p;
+    comma::csv::append( istream, ostream, previous_point );
+    double offset = step;
+    while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
+    {
+        const Eigen::Vector3d* current_point = istream.read();
+        if( !current_point ) { break; }
+        double remainder = ( previous_point - *current_point ).norm() - offset;
+        Eigen::ParametrizedLine< double, 3 > line = Eigen::ParametrizedLine< double, 3 >::Through( previous_point, *current_point );
+        for( double t = offset; !is_shutdown && comma::math::less( 0, remainder ); remainder -= step, t += step ) { comma::csv::append( istream, ostream, line.pointAt( t ) ); }
+        offset = remainder + step;
+        previous_point = *current_point;
+    }
+    if( comma::math::equal( offset, step ) ) { comma::csv::append( istream, ostream, previous_point ); }
+    return 0;
+}
+
 namespace local_operation {
 
 struct point
@@ -549,15 +588,18 @@ int main( int ac, char** av )
         }
         if( operation == "discretise" || operation == "discretize" )
         {
-            if( !options.exists( "--step" ) ) { std::cerr << "points-calc: --step is not specified " << std::endl; return 1; }
             double step = options.value< double >( "--step" );
             if( step <= 0 ) { std::cerr << "points-calc: expected positive step, got " << step << std::endl; return 1; }
             // the last discretised point can be very close to the end of the interval, in which case the last two points can be identical in the output since ascii.put uses 12 digits by default
             // setting --tolerance=1e-12 will not allow the last discretised point to be too close to the end of the interval and therefore the output will have two distinct points at the end
-            double tolerance = options.value( "--tolerance", std::numeric_limits< double >::min() ); 
+            double tolerance = options.value( "--tolerance", std::numeric_limits< double >::min() );
             if( tolerance < 0 ) { std::cerr << "points-calc: expected non-negative tolerance, got " << tolerance << std::endl; return 1; }
             discretise( step, tolerance );
             return 0;
+        }
+        if( operation == "cumulative-discretise" || operation == "cumulative-discretize" )
+        {
+            return cumulative_discretise( options );
         }
         if( operation == "local-max" || operation == "local-min" ) // todo: if( operation == "local-calc" ? )
         {
