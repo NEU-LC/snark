@@ -7,4 +7,5 @@ TARGET_LINK_LIBRARIES( control-command ${comma_ALL_LIBRARIES} ${snark_ALL_EXTERN
 INSTALL( TARGETS control-command RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
 
 INSTALL( PROGRAMS control-follow-waypoints DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
+INSTALL( PROGRAMS control-follow-waypoints-new DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
 

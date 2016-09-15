@@ -1,0 +1,3 @@
+using io-cat ( new functionality ) to get waypoints from stdin
+
+this is triggered by using waypoints/address in data/config.json (rather than waypoints/port)
