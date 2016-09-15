@@ -65,7 +65,7 @@ static void usage( bool more = false )
     std::cerr << std::endl;
     std::cerr << "operations" << std::endl;
     std::cerr << "    cumulative-distance" << std::endl;
-    std::cerr << "    cumulative-discretise,cumulative-discretize" << std::endl;
+    std::cerr << "    cumulative-discretise,cumulative-discretize,sample" << std::endl;
     std::cerr << "    distance" << std::endl;
     std::cerr << "    discretise,discretize" << std::endl;
     std::cerr << "    find-outliers" << std::endl;
@@ -82,7 +82,7 @@ static void usage( bool more = false )
     std::cerr << "operation details" << std::endl;
     std::cerr << "    cumulative-distance: cumulative distance between subsequent points" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "    cumulative-discretise, cumulative-discretize: read input data and discretise intervals with --step along the whole trajectory" << std::endl;
+    std::cerr << "    cumulative-discretise, cumulative-discretize,sample: read input data and discretise intervals with --step along the whole trajectory" << std::endl;
     std::cerr << std::endl;
     std::cerr << "        input fields" << std::endl;
     std::cerr << "            " << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
@@ -364,18 +364,19 @@ static int cumulative_discretise( const comma::command_line_options& options )
     if( !p ) { return 0; }
     Eigen::Vector3d previous_point = *p;
     comma::csv::append( istream, ostream, previous_point );
-    double offset = step;
+    double length = 0;
+    double stepped = step;
     while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
     {
         const Eigen::Vector3d* current_point = istream.read();
         if( !current_point ) { break; }
-        double remainder = ( previous_point - *current_point ).norm() - offset;
+        double end = length + ( previous_point - *current_point ).norm();
         Eigen::ParametrizedLine< double, 3 > line = Eigen::ParametrizedLine< double, 3 >::Through( previous_point, *current_point );
-        for( double t = offset; !is_shutdown && comma::math::less( 0, remainder ); remainder -= step, t += step ) { comma::csv::append( istream, ostream, line.pointAt( t ) ); }
-        offset = remainder + step;
+        for( ; !is_shutdown && comma::math::less( stepped, end ); stepped += step ) { comma::csv::append( istream, ostream, line.pointAt( stepped - length ) ); }
         previous_point = *current_point;
+        length = end;
     }
-    if( comma::math::equal( offset, step ) ) { comma::csv::append( istream, ostream, previous_point ); }
+    if( !comma::math::equal( length, stepped ) ) { comma::csv::append( istream, ostream, previous_point ); }
     return 0;
 }
 
@@ -597,7 +598,7 @@ int main( int ac, char** av )
             discretise( step, tolerance );
             return 0;
         }
-        if( operation == "cumulative-discretise" || operation == "cumulative-discretize" )
+        if( operation == "cumulative-discretise" || operation == "cumulative-discretize" || operation == "sample" )
         {
             return cumulative_discretise( options );
         }
