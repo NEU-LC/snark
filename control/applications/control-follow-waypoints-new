@@ -32,7 +32,8 @@ $( sample_config | sed 's/^/    /' )
         ( the end line is a line which goes through the target waypoint and is perpendicular to the current wayline)
     heading-is-absolute-default: 1 -> interpret heading_offset as the desired global (absolute) heading, 0 -> heading_offset is relative offset wrt the wayline heading
         ( this describes default behaviour when is_absolute is not provided in the input; when is_absolute is given, it takes precedence )
-    frequency: control frequency (the rate at which wheel commands are output)
+    frequency: control frequency, i.e. the rate at which wheel commands are output when moving towards a waypoint
+        ( when the last given waypoint is reached, no output is produced until new waypoints are given )
     reset: 1 -> reset pid integral upon reaching every target waypoint, 0 -> no reset
     pid:
         cross-track: p,i,d[,threshold] values, with optional integral threshold, for cross-track
