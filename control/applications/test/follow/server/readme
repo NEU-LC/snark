@@ -1,0 +1,7 @@
+- create feedback server ( using timed feedback from data/feedback.csv )
+- launch control server
+- pass two waypoints to server port for waypoints
+- wait enough time for control to reach the second waypoint and complete
+- kill the server
+- kill the feedback
+

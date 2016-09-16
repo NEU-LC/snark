@@ -1,0 +1,75 @@
+#!/bin/bash
+
+function option_description
+{
+    cat <<EOF
+--config=<config>; config file for control-follow-waypoints
+--port=<port>; tcp port where a client can submit waypoints
+EOF
+}
+
+function usage
+{
+    cat <<END
+
+    listen to clients connecting to a tcp port and forward waypoints received on that port to control-follow-waypoints
+
+options:
+$( option_description | sed 's/^/    /g' )
+
+END
+}
+
+function daemonize
+{
+    trap - INT TERM HUP 
+    comma_execute_and_wait --group "bash -c eval \"$1\""
+}
+
+function bye
+{
+    is_shutdown=1
+    local pid
+    for pid in $waypoints_pid $pipeline_pid; do
+        if kill -0 $pid &>/dev/null; then kill $pid; wait $pid; fi
+    done
+    if [[ -f $waypoints_socket ]]; then rm -f $waypoints_socket; fi
+    unset waypoints_pid pipeline_pid waypoints_socket
+    exit
+}
+
+
+scriptname=$( basename $0 )
+source $( which comma-application-util )
+source $( which comma-process-util )
+
+trap bye INT TERM HUP EXIT
+
+unset waypoints_pid
+unset pipeline_pid
+unset waypoints_socket
+
+if (( $( comma_options_has --help "$@" ) || $( comma_options_has -h "$@" ) )); then usage; exit; fi
+comma_path_value_to_var < <( option_description | comma-options-to-name-value "$@" )
+
+waypoints_port=$port
+
+tmp=$( mktemp --dry-run /tmp/control-follow-waypoints-server.XXXXXXXX )
+waypoints_socket=$tmp.waypoints.socket
+
+rm -f $waypoints_socket && daemonize "socat -u tcp4-listen:$waypoints_port,fork,reuseaddr,max-children=1 unix-listen:$waypoints_socket,unlink-close=1" & waypoints_pid=$!
+if ! kill -0 $waypoints_pid &>/dev/null; then echo "$scriptname: failed to create waypoints server on port $waypoints_port"; exit 1; fi
+
+declare -i client=0
+declare -i is_shutdown=0
+while (( ! is_shutdown )); do
+    echo "$scriptname: ready to accept a client on port $waypoints_port" >&2
+    while ! test -S $waypoints_socket; do sleep 0.1; done
+    (( client++ ))
+    echo "$scriptname: client $client has connected" >&2
+    daemonize "socat -u unix:$waypoints_socket - | control-follow-waypoints-new --config=$config" & pipeline_pid=$!
+    echo "$scriptname: control pipeline for client $client has started (pid=$pipeline_pid)" >&2
+    wait $pipeline_pid
+    unset pipeline_pid
+    echo "$scriptname: control pipeline for client $client has finished" >&2
+done
