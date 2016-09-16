@@ -12,7 +12,9 @@ function usage
 {
     cat <<END
 
-    listen to clients connecting to a tcp port and forward waypoints received on that port to control-follow-waypoints
+    listen to clients connecting to the given tcp port,
+    forward waypoints received on that port to control-follow-waypoints,
+    pass output of control-follow-waypoints to stdout
 
 options:
 $( option_description | sed 's/^/    /g' )
