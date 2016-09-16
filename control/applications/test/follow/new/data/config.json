@@ -9,13 +9,13 @@
     "waypoints":
     {
         "fields": "x,y,heading_offset,is_absolute,speed,index",
-        "binary": "3d,b,d,ui"
+        "binary": "d,d,d,b,d,ui"
     },
     "feedback":
     {
         "address": "tcp:localhost:60000",
         "fields": "t,x,y,yaw",
-        "binary": "t,3d"
+        "binary": "t,d,d,d"
     },
     "pid":
     {
