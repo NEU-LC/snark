@@ -32,6 +32,8 @@
 #define SNARK_SENSORS_FLYCAPTURE_H_
 
 #include "FlyCapture2.h"
+// #include "attributes.h"
+// #include "helpers.h"
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/function.hpp>
 #include <boost/bimap.hpp>
@@ -49,7 +51,7 @@ class flycapture
         typedef std::map< std::string, std::string > attributes_type;
         
         /// constructor; default id: connect to any available camera
-        flycapture( unsigned int id = 0, const attributes_type& attributes = attributes_type(), unsigned int id_stereo_camera = 0 );
+        flycapture( unsigned int id = 0, const attributes_type& attributes = attributes_type());
 
         /// destructor
         ~flycapture();
@@ -62,9 +64,6 @@ class flycapture
 
         /// return camera id
         unsigned int id() const;
-        
-        /// return camera id of right stereo pair
-        unsigned int id_stereo_camera() const;
 
         /// return total bytes per frame
         unsigned long total_bytes_per_frame() const;
@@ -73,7 +72,11 @@ class flycapture
         void close();
 
         /// list cameras
-        static std::vector< FlyCapture2::CameraInfo > list_cameras();
+        static std::vector< unsigned int > list_camera_serials();
+
+        static FlyCapture2::InterfaceType get_camera_interface(unsigned int serial);
+
+        static const std::string describe_camera(unsigned int serial);
 
         /// callback
         class callback
