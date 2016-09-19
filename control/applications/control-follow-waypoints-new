@@ -57,7 +57,6 @@ $( sample_config | sed 's/^/    /' )
         cross-track: p,i,d[,threshold] values, with optional integral threshold, for cross-track
         heading: the same for heading
     waypoints:
-        address: generic address for the source of target waypoints (if no adress is given, stdin is used)
         fields: csv fields of waypoints (required fields: $default_waypoints_fields_skid for skid steering and $default_waypoints_fields_omni for omni steering)
         binary: binary format of waypoints (ascii stream is assumed by default)
     feedback:
@@ -81,7 +80,6 @@ cat <<END
     "reset": 0,
     "waypoints":
     {
-        "address": "tcp:localhost:10100",
         "fields": "x,y,heading_offset,is_absolute,speed,index",
         "binary": "3d,b,d,ui"
     },
@@ -130,7 +128,6 @@ function prefix { csv-fields prefix --path $1; }
 function use_defaults_for_unset_parameters
 {
     [[ "$feedback_fields" ]] || feedback_fields=$default_feedback_fields
-    [[ "$waypoints_address" ]] || waypoints_address="-"
     [[ "$steering" ]] || steering=$default_steering
     if [[ -z "$waypoints_fields" ]]; then 
         case "$steering" in
@@ -150,7 +147,6 @@ default_feedback_format="t,d,d,d"
 default_steering="omni"
 default_waypoints_fields_omni="x,y,heading_offset"
 default_waypoints_fields_skid="x,y"
-default_waypoints_address="-"
 
 if (( $( comma_options_has --help "$@" ) || $( comma_options_has -h "$@" ) )); then
     (( $( comma_options_has --verbose "$@" ) || $( comma_options_has -v "$@" ) )) && verbose=1 || verbose=0
@@ -186,8 +182,7 @@ is_binary && passed_binary=$waypoints_binary,$feedback_binary,$error_binary || p
 
 verify_that_required_parameters_are_set
 
-io-cat ${waypoints_address:-$default_waypoints_address} \
-    | control-error \
+control-error \
         --fields=$waypoints_fields \
         --binary=$waypoints_binary \
         "$feedback_address;fields=$feedback_fields;binary=$feedback_binary" \
