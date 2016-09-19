@@ -2,8 +2,8 @@
     "mode": "fixed",
     "steering": "omni",
     "proximity": "0.02",
-    "past-endpoint": 1,
-    "heading-is-absolute-default": 0,
+    "past_endpoint": 1,
+    "heading_is_absolute_default": 0,
     "frequency": "20.0",
     "reset": 0,
     "waypoints":
@@ -19,7 +19,7 @@
     },
     "pid":
     {
-        "cross-track": "2.0,0,0",
+        "cross_track": "2.0,0,0",
         "heading": "1.2,0,0"
     }
 }
