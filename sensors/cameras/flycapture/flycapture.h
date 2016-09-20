@@ -31,13 +31,13 @@
 #ifndef SNARK_SENSORS_FLYCAPTURE_H_
 #define SNARK_SENSORS_FLYCAPTURE_H_
 
+#include <memory>
 #include "FlyCapture2.h"
 // #include "attributes.h"
 // #include "helpers.h"
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/function.hpp>
 #include <boost/bimap.hpp>
-
 #include <opencv2/core/core.hpp>
 
 
@@ -49,6 +49,7 @@ class flycapture
     public:
         /// attributes map type
         typedef std::map< std::string, std::string > attributes_type;
+        typedef std::pair< boost::posix_time::ptime, cv::Mat > frame_pair;
         
         /// constructor; default id: connect to any available camera
         flycapture( unsigned int id = 0, const attributes_type& attributes = attributes_type());
@@ -60,7 +61,7 @@ class flycapture
         attributes_type attributes() const;
 
         /// get timestamped frame
-        std::pair< boost::posix_time::ptime, cv::Mat > read();
+        frame_pair read();
 
         /// return camera id
         unsigned int id() const;
@@ -78,7 +79,7 @@ class flycapture
 
         static const std::string describe_camera(unsigned int serial);
 
-        /// callback
+/// callback
         class callback
         {
             public:
@@ -98,9 +99,39 @@ class flycapture
                 friend class flycapture;
                 impl* pimpl_;
         };
+
+/// multicam
+        class multicam
+        {
+            public:
+                typedef std::pair<uint, const flycapture::attributes_type&> camera_pair;
+                typedef std::pair<boost::posix_time::ptime, std::vector<cv::Mat>> frames_pair;
+
+                /// constructor: start capture, call multicam on frame update
+                multicam( std::vector<camera_pair>& cameras );
+
+                /// destructor: stop capture
+                ~multicam();
+
+                /// synchronous trigger of all cameras
+                void trigger();
+
+                /// return the images and timestamp
+                frames_pair read();
+                
+                /// return true, if multicam status is ok
+                bool good() const;
+                
+            private:
+                /// implementation class, a hack: has to be public to use pvAPI multicam, sigh...
+                class impl;
+                friend class flycapture;
+                impl* pimpl_;
+        };
         
     private:
         friend class callback::impl;
+        friend class multicam::impl;
         class impl;
         impl* pimpl_;
 };

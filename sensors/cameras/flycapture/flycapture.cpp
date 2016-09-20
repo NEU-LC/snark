@@ -65,13 +65,13 @@ namespace snark{ namespace camera{
             cv::Mat cv_image( frame_.GetRows(), frame_.GetCols(), flycapture_get_cv_type_( frame_ ), frame_.GetData() );
             cv_image.copyTo(image);
             return true;
-        } 
+        }
         else if( result == FlyCapture2::PGRERROR_IMAGE_CONSISTENCY_ERROR )
-        {  
+        {
 //report damaged frame and try again
             std::cerr << "flycapture-cat error: " << result.GetDescription() << ". Retrying..." << std::endl;
             return false; 
-        } 
+        }
         else if( ( result == FlyCapture2::PGRERROR_ISOCH_START_FAILED ) 
             || ( result == FlyCapture2::PGRERROR_ISOCH_ALREADY_STARTED )
             || ( result == FlyCapture2::PGRERROR_ISOCH_NOT_STARTED ) )
@@ -117,23 +117,12 @@ namespace snark{ namespace camera{
                 default:
                 COMMA_THROW(comma::exception, "unknown interface for camera " + std::to_string(*id_));
             }
-            FlyCapture2::PGRGuid guid;
-            static const boost::posix_time::time_duration timeout = boost::posix_time::seconds( 3 );
-            boost::posix_time::ptime now = boost::posix_time::microsec_clock::universal_time();
-            boost::posix_time::ptime end = now + timeout;
 //Get Point grey unique id (guid) from serial number. guid does not exist in CameraInfo, and so it does not appear in the camera list
-            bus_manager.GetCameraFromSerialNumber( *id_ , &guid );
-
-//Dynamic cast based on camera type (gige / serial)
-            boost::thread::sleep( now + boost::posix_time::milliseconds( 50 ) );
+            bus_manager.GetCameraFromSerialNumber( *id_ , &guid_ );
+            start();
 
             if(FlyCapture2::GigECamera* camera_gige = dynamic_cast<FlyCapture2::GigECamera*>(handle_))
             {
-                if(camera_gige->Connect(&guid) != FlyCapture2::PGRERROR_OK)
-                {
-                    close();
-                    COMMA_THROW( comma::exception, "failed to open camera: " << id );
-                }
                 for( attributes_type::const_iterator i = attributes.begin(); i != attributes.end(); ++i )
                 {
                     boost::this_thread::sleep( boost::posix_time::milliseconds( 10 ) );
@@ -142,11 +131,6 @@ namespace snark{ namespace camera{
             }
             else if(FlyCapture2::Camera* camera_serial = dynamic_cast<FlyCapture2::Camera*>(handle_))
             {
-                if(camera_serial->Connect(&guid) != FlyCapture2::PGRERROR_OK)
-                {
-                    close();
-                    COMMA_THROW( comma::exception, "failed to open camera: " << id);
-                }
                 for( attributes_type::const_iterator i = attributes.begin(); i != attributes.end(); ++i )
                 {
                     boost::this_thread::sleep( boost::posix_time::milliseconds( 10 ) );
@@ -156,7 +140,6 @@ namespace snark{ namespace camera{
             else {
                 COMMA_THROW( comma::exception, "Unsupported camera type" );
             }
-            end = now + timeout;
 
             width = boost::lexical_cast<uint>( flycapture_get_attribute_( handle_, "width" ) );
             height = boost::lexical_cast<uint>( flycapture_get_attribute_( handle_, "height" ) );
@@ -165,6 +148,39 @@ namespace snark{ namespace camera{
         }
 
         ~impl() { close(); }
+
+        void start()
+        {
+            FlyCapture2::Error error;
+            const boost::posix_time::time_duration timeout = boost::posix_time::milliseconds( 150 );
+            boost::posix_time::ptime now = boost::posix_time::microsec_clock::universal_time();
+            started_ = false;
+            for (uint i = max_retries; !started_ && i > 0; --i)
+            {
+                std::cerr << "Trying to connect..." << std::endl;
+                //Dynamic cast based on camera type (gige / serial)
+                if(FlyCapture2::GigECamera* camera = dynamic_cast<FlyCapture2::GigECamera*>(handle_))
+                {
+                    if( (error = camera->Connect(&guid_)) != FlyCapture2::PGRERROR_OK)
+                    {
+                        std::cerr << "Failed to connect (" << error.GetDescription() << ")" << std::endl;
+                    }
+                    else { started_ = true; }
+                }
+                else if(FlyCapture2::Camera* camera = dynamic_cast<FlyCapture2::Camera*>(handle_))
+                {
+                    if( (error = camera->Connect(&guid_)) != FlyCapture2::PGRERROR_OK)
+                    {
+                        std::cerr << "Failed to connect (" << error.GetDescription() << ")" << std::endl;
+                    }
+                    { started_ = true; }
+                }
+                else { COMMA_THROW( comma::exception, "Unsupported camera type" ); }
+                boost::thread::sleep( now + timeout );
+            }
+            if (!started_) { COMMA_THROW( comma::exception, "failed to open camera: " << id()); }
+            handle_->StartCapture();
+        }
 
         void close()
         {
@@ -253,20 +269,25 @@ namespace snark{ namespace camera{
             return "serial=" + std::to_string(serial) + ",interface=" + interface;
         }
 
+        void software_trigger(bool broadcast)
+        {
+            handle_->FireSoftwareTrigger(broadcast);
+        }
+
     private:
         friend class flycapture::callback::impl;
+        friend class flycapture::multicam::impl;
         FlyCapture2::CameraBase* handle_;
         boost::optional< unsigned int > id_;
-        FlyCapture2::PGRGuid guid;
+        FlyCapture2::PGRGuid guid_;
         std::vector< char > buffer_;
         uint total_bytes_per_frame_;
         bool started_;
         unsigned int timeOut_; /*milliseconds*/
         static FlyCapture2::BusManager bus_manager;
 
-static void initialize_() /*quick and dirty*/
-        {
-        }
+        static void initialize_() /*quick and dirty*/
+        { }
     };
 
     class flycapture::callback::impl
@@ -275,54 +296,139 @@ static void initialize_() /*quick and dirty*/
         typedef boost::function< void ( const std::pair< boost::posix_time::ptime, cv::Mat >& ) > OnFrame;
 
         impl( flycapture& flycapture, OnFrame on_frame )
-        : on_frame( on_frame )
-/*   , handle( flycapture.pimpl_->handle() )
-, frame( flycapture.pimpl_->frame_ )
-*/   , good( true )
-, is_shutdown( false )
-{}
+        : on_frame( on_frame ), good( true ), is_shutdown( false )
+        {
+        }
 
-~impl()
-{
-    is_shutdown = true;
-}
+        ~impl()
+        {
+            is_shutdown = true;
+        }
 
-OnFrame on_frame;
-bool good;
-bool is_shutdown;
-};
+        OnFrame on_frame;
+        bool good;
+        bool is_shutdown;
+    };
 
+// multicam
+    class flycapture::multicam::impl
+    {
+    public:
+        impl(std::vector<camera_pair>& camera_pairs)
+        : good( true )
+        {
+            for (camera_pair& pair : camera_pairs)
+            {
+                uint serial = pair.first;
+                const attributes_type attributes = pair.second;
+                std::cerr << "construct impl(" << serial << ", " << attributes.size() << ")" << std::endl;
+                boost::this_thread::sleep( boost::posix_time::milliseconds( 10 ) );
+                cameras_.push_back(std::move(flycapture::impl( serial, attributes )));
+                boost::this_thread::sleep( boost::posix_time::milliseconds( 10 ) );
+                std::cerr << "+ impl(" << serial << ", " << attributes.size() << ")" << std::endl;
+            }
+        }
+
+        ~impl()
+        {
+            for (uint i = cameras_.size(); i >= 0; --i)
+            {
+                std::cerr << "delete impl(" << cameras_[i].id() << ")" << std::endl;
+                // cameras_[i].close();
+                boost::this_thread::sleep( boost::posix_time::milliseconds( 10 ) );
+                cameras_.pop_back();
+                boost::this_thread::sleep( boost::posix_time::milliseconds( 10 ) );
+                std::cerr << "- impl(" << cameras_[i].id() << ")" << std::endl;
+            }
+        }
+
+        void trigger()
+        {
+            cameras_[0].software_trigger(true);
+        }
+
+        void start()
+        {
+           /* FlyCapture2::Camera* ptr_cameras_[cameras_.size()];
+            for (uint i = 0; i < cameras_.size(); ++i)
+            { 
+                auto cam = dynamic_cast<FlyCapture2::Camera*>(cameras_[i].handle_);
+                if (cam != nullptr)
+                { ptr_cameras_[i] = cam; }
+                else
+                {
+                    std::cerr << "error starting camera " << cameras_[i].id() << std::endl;
+                }
+            } 
+            flycapture_assert_ok_(
+                FlyCapture2::Camera::StartSyncCapture(
+                    cameras_.size(),
+                    (const FlyCapture2::Camera**)ptr_cameras_ ),
+                "couldn't synchronously start cameras");*/
+        }
+
+        flycapture::multicam::frames_pair read()
+        {
+            flycapture::multicam::frames_pair pair;
+            return pair;
+        }
+
+        bool good;
+        std::vector<flycapture::impl> cameras_;
+    };
+    
 } } /*namespace snark{ namespace camera{*/
 
-namespace snark{ namespace camera{
+    namespace snark{ namespace camera{
 
-    flycapture::flycapture( unsigned int id, const flycapture::attributes_type& attributes) : pimpl_( new impl( id, attributes ) ) {}
+// flycapture class
 
-    flycapture::~flycapture() { delete pimpl_; }
+        flycapture::flycapture( unsigned int id, const flycapture::attributes_type& attributes) : pimpl_( new impl( id, attributes ) ) {}
 
-    std::pair< boost::posix_time::ptime, cv::Mat > flycapture::read() { return pimpl_->read(); }
+        flycapture::~flycapture() { delete pimpl_; }
 
-    void flycapture::close() { pimpl_->close(); }
+        std::pair< boost::posix_time::ptime, cv::Mat > flycapture::read() { return pimpl_->read(); }
 
-    std::vector< unsigned int > flycapture::list_camera_serials() { return flycapture::impl::list_camera_serials(); }
+        void flycapture::close() { pimpl_->close(); }
 
-    const std::string flycapture::describe_camera(unsigned int serial) { return flycapture::impl::describe_camera(serial); }
+        std::vector< unsigned int > flycapture::list_camera_serials() { return flycapture::impl::list_camera_serials(); }
 
-    unsigned int flycapture::id() const { return pimpl_->id(); }
+        const std::string flycapture::describe_camera(unsigned int serial) { return flycapture::impl::describe_camera(serial); }
 
-    unsigned long flycapture::total_bytes_per_frame() const { return pimpl_->total_bytes_per_frame(); }
+        unsigned int flycapture::id() const { return pimpl_->id(); }
 
-    flycapture::attributes_type flycapture::attributes() const { return flycapture_attributes_( pimpl_->handle() ); }
+        unsigned long flycapture::total_bytes_per_frame() const { return pimpl_->total_bytes_per_frame(); }
 
-    flycapture::callback::callback( flycapture& flycapture, boost::function< void ( std::pair< boost::posix_time::ptime, cv::Mat > ) > on_frame )
-    : pimpl_( new callback::impl( flycapture, on_frame ) )
-    {
-    }
+        flycapture::attributes_type flycapture::attributes() const { return flycapture_attributes_( pimpl_->handle() ); }
 
-    flycapture::callback::~callback() { delete pimpl_; }
+// flycapture::callback class
+        flycapture::callback::callback(
+            flycapture& flycapture,
+            boost::function< void ( std::pair< boost::posix_time::ptime, cv::Mat > ) > on_frame )
+        : pimpl_( new callback::impl( flycapture, on_frame ) )
+        {
+        }
 
-    bool flycapture::callback::good() const { return pimpl_->good; }
+        flycapture::callback::~callback() { delete pimpl_; }
+
+        bool flycapture::callback::good() const { return pimpl_->good; }
+
+// flycapture::multicam class
+        flycapture::multicam::multicam(std::vector<camera_pair>& cameras)
+        : pimpl_( new multicam::impl( cameras ) )
+        {
+        }
+
+        flycapture::multicam::~multicam() { delete pimpl_; }
+
+        bool flycapture::multicam::good() const { return pimpl_->good; }
+
+        void flycapture::multicam::trigger()
+        { pimpl_->trigger(); }
+
+        flycapture::multicam::frames_pair flycapture::multicam::read()
+        { return pimpl_->read(); }
 
 } } /* namespace snark{ namespace camera{ */
 
-FlyCapture2::BusManager snark::camera::flycapture::impl::bus_manager;
+        FlyCapture2::BusManager snark::camera::flycapture::impl::bus_manager;

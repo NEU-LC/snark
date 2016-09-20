@@ -52,7 +52,7 @@ int main( int argc, char** argv )
     {
         std::string fields;
         unsigned int id;
-        // unsigned int id_stereo_camera;
+        unsigned int id_stereo_camera;
         std::string setattributes;
         unsigned int discard;
         boost::program_options::options_description description( "options" );
@@ -66,7 +66,7 @@ int main( int argc, char** argv )
             ( "fields,f", boost::program_options::value< std::string >( &fields )->default_value( "t,rows,cols,type" ), "header fields, possible values: t,rows,cols,type,size" )
             ( "list-attributes", "output current camera attributes" )
             ( "list-cameras", "list all cameras and exit" )
-            // ( "stereo", boost::program_options::value< unsigned int >( &id_stereo_camera )->default_value( 0 ), "serial of right camera for stereo. Using this will set the camera specified by --serial as the left camera" )
+            ( "stereo", boost::program_options::value< unsigned int >( &id_stereo_camera )->default_value( 0 ), "serial of right camera for stereo. Using this will set the camera specified by --serial as the left camera" )
             ( "header", "output header only" )
             ( "no-header", "output image data only" )
             ( "verbose,v", "be more verbose" );
@@ -105,7 +105,6 @@ int main( int argc, char** argv )
         if( vm.count( "list-cameras" ) )
         {
             const std::vector< unsigned int >& list = snark::camera::flycapture::list_camera_serials();
-            std::cerr << "got " << list.size() << " cameras." << std::endl;
             for( std::size_t i = 0; i < list.size(); ++i ) // todo: serialize properly with name-value
             {
                 std::cout << snark::camera::flycapture::describe_camera(list[i]) << std::endl;
@@ -123,7 +122,6 @@ int main( int argc, char** argv )
             attributes.insert( m.get().begin(), m.get().end() );
         }
         if( verbose ) { std::cerr << "flycapture-cat: connecting..." << std::endl; }
-        //todo implement stereo
         snark::camera::flycapture camera( id, attributes );
         if( verbose ) { std::cerr << "flycapture-cat: connected to camera " << camera.id() << std::endl; }
         // if( verbose && ( id_stereo_camera!=0 ) ) { std::cerr << "flycapture-cat: connected to right camera " << camera.id_stereo_camera() << std::endl; }
