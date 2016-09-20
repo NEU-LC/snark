@@ -1,0 +1,9 @@
+#!/bin/bash
+
+echo "eps=0.001"
+fields="speed,feedback/t,feedback/yaw,wayline/heading,error/cross_track,error/heading,reached"
+steering=omni
+grep -v ^# | control-command --fields=$fields --cross-track-pid=0.1,0,0 --heading-pid=0.2,0,0 --steering=$steering \
+    | name-value-from-csv $fields,$( control-command --output-fields --steering=$steering ) --prefix output --line-number \
+    | csv-quote --unquote --fields ,x --delimiter =
+
