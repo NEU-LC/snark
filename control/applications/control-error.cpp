@@ -93,7 +93,7 @@ static void usage( bool verbose = false )
     std::cerr << "    --format,--input-format: show binary format of default input stream fields and exit" << std::endl;
     std::cerr << "    --output-format: show binary format of output stream and exit (for wayline and control error fields only)" << std::endl;
     std::cerr << "    --output-fields: show output fields and exit (for wayline and control error fields only)" << std::endl;
-    std::cerr << "    --status: add reached status field to output-fields (1 if waypoint is reached, 0 otherwise)" << std::endl;
+    std::cerr << "    --status: add status field to output-fields: \"reached\" (1 if the target waypoint is reached, 0 otherwise)" << std::endl;
     std::cerr << std::endl;
     std::cerr << "control modes: " << std::endl;
     std::cerr << "    fixed: wait until the current waypoint is reached before accepting a new waypoint (first feedback position is the start of the first wayline)" << std::endl;
