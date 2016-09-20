@@ -89,13 +89,19 @@ static void usage( bool verbose = false )
     std::cerr << "    --past-endpoint: a wayline is traversed as soon as current position is past the endpoint (or proximity condition is met)" << std::endl;
     std::cerr << "    --frequency,-f=<frequency>: control frequency (the rate at which " << name <<" outputs control errors using latest feedback)" << std::endl;
     std::cerr << "    --heading-is-absolute: interpret heading offset as global heading by default" << std::endl;
-    std::cerr << "    --format: show binary format of default input stream fields and exit" << std::endl;
+    std::cerr << "    --input-fields: show default input stream fields and exit" << std::endl;
+    std::cerr << "    --format,--input-format: show binary format of default input stream fields and exit" << std::endl;
     std::cerr << "    --output-format: show binary format of output stream and exit (for wayline and control error fields only)" << std::endl;
     std::cerr << "    --output-fields: show output fields and exit (for wayline and control error fields only)" << std::endl;
+    std::cerr << "    --status: add reached status field to output-fields (1 if waypoint is reached, 0 otherwise)" << std::endl;
     std::cerr << std::endl;
     std::cerr << "control modes: " << std::endl;
     std::cerr << "    fixed: wait until the current waypoint is reached before accepting a new waypoint (first feedback position is the start of the first wayline)" << std::endl;
     std::cerr << "    dynamic: use a new waypoint as soon as it becomes available to define a new wayline form the current position to the new waypoint" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "default input fields: position/x,position/y,heading_offset,is_absolute" << std::endl;
+    std::cerr << "    required fields: position/x,position/y" << std::endl;
+    std::cerr << "    optional fields: heading_offset,is_absolute (default values: 0,1)" << std::endl;
     std::cerr << std::endl;
     std::cerr << "examples: " << std::endl;
     std::cerr << "    cat targets.bin | " << name << " \"tcp:localhost:12345;fields=t,x,y,,,,yaw;binary=t,6d\" --fields=x,y,,,speed --binary=3d,ui,d --past-endpoint" << std::endl;
@@ -123,11 +129,15 @@ int main( int ac, char** av )
         comma::csv::options output_csv( options );
         output_csv.full_xpath = true;
         output_csv.fields = "wayline/heading,error/cross_track,error/heading";
+        output_csv.fields += options.exists( "--status" ) ?  ",reached" : "";
         if( input_csv.binary() ) { output_csv.format( format< snark::control::control_data_t >( output_csv.fields, true ) ); }
         comma::csv::output_stream< snark::control::control_data_t > output_stream( std::cout, output_csv );
-        if( options.exists( "--format" ) ) { std::cout << format< snark::control::target_t >() << std::endl; return 0; }
+        if( options.exists( "--input-fields" ) ) { std::cout << field_names< snark::control::target_t >( true ) << std::endl; return 0; }
+        if( options.exists( "--format,--input-format" ) ) { std::cout << format< snark::control::target_t >() << std::endl; return 0; }
         if( options.exists( "--output-format" ) ) { std::cout << format< snark::control::control_data_t >( output_csv.fields, true ) << std::endl; return 0; }
         if( options.exists( "--output-fields" ) ) { std::cout << output_csv.fields << std::endl; return 0; }
+        bool output_when_reached = false;
+        if( options.exists( "--status" ) ) { output_when_reached = true; }
         double proximity = options.value< double >( "--proximity", default_proximity );
         if( proximity <= 0 ) { std::cerr << name << ": expected positive proximity, got " << proximity << std::endl; return 1; }
         control_mode_t mode = mode_from_string( options.value< std::string >( "--mode", default_mode ) );
@@ -142,7 +152,7 @@ int main( int ac, char** av )
             delay = boost::posix_time::microseconds( static_cast< long >( 1000000 / frequency ) );
         }
         bool verbose = options.exists( "--verbose,-v" );
-        std::vector< std::string > unnamed = options.unnamed( "--help,-h,--verbose,-v,--format,--output-format,--output-fields,--past-endpoint,--heading-is-absolute", "-.*,--.*" );
+        std::vector< std::string > unnamed = options.unnamed( "--help,-h,--verbose,-v,--format,--output-format,--output-fields,--past-endpoint,--heading-is-absolute,--status", "-.*,--.*" );
         if( unnamed.empty() ) { std::cerr << name << ": feedback stream is not given" << std::endl; return 1; }
         comma::csv::options feedback_csv = comma::name_value::parser( "filename", ';', '=', false ).get< comma::csv::options >( unnamed[0] );
         if( input_csv.binary() && !feedback_csv.binary() ) { std::cerr << name << ": cannot join binary input stream with ascii feedback stream" << std::endl; return 1; }
@@ -190,6 +200,22 @@ int main( int ac, char** av )
                     }
                     if( snark::control::distance( feedback->position, to ) < proximity ) { reached = reached_t( "proximity" ); }
                     if( use_past_endpoint && wayline->is_past_endpoint( feedback->position ) ) { reached = reached_t( "past endpoint" ); }
+                    snark::control::error_t error;
+                    if( !reached )
+                    {
+                        error.cross_track = wayline->cross_track_error( feedback->position );
+                        if( target->is_absolute ) { error.heading = snark::control::wrap_angle( target->heading_offset - feedback->yaw ); }
+                        else { error.heading = wayline->heading_error( feedback->yaw, target->heading_offset ); }
+                    }
+                    if( !reached || output_when_reached )
+                    {
+                        if( input_csv.binary() ) { std::cout.write( input_stream.binary().last(), input_csv.format().size() ); }
+                        else { std::cout << comma::join( input_stream.ascii().last(), delimiter ) << delimiter; }
+                        if( feedback_csv.binary() ) { std::cout.write( feedback_stream.binary().last(), feedback_csv.format().size() ); }
+                        else { std::cout << comma::join( feedback_stream.ascii().last(), delimiter ) << delimiter; }
+                        output_stream.write( snark::control::control_data_t( *wayline, error, reached ) );
+                        if( use_delay ) { next_output_time = boost::posix_time::microsec_clock::universal_time() + delay; }
+                    }
                     if( reached )
                     {
                         if( verbose ) { std::cerr << name << ": reached waypoint " << snark::control::serialise( to ) << " (" << reached.reason << "), current position: " << snark::control::serialise( feedback->position ) << std::endl; }
@@ -198,16 +224,6 @@ int main( int ac, char** av )
                         else { std::cerr << name << ": control mode '" << mode_to_string( mode ) << "' is not implemented" << std::endl; return 1; }
                         break;
                     }
-                    snark::control::error_t error;
-                    error.cross_track = wayline->cross_track_error( feedback->position );
-                    if( target->is_absolute ) { error.heading = snark::control::wrap_angle( target->heading_offset - feedback->yaw ); }
-                    else { error.heading = wayline->heading_error( feedback->yaw, target->heading_offset ); }
-                    if( input_csv.binary() ) { std::cout.write( input_stream.binary().last(), input_csv.format().size() ); }
-                    else { std::cout << comma::join( input_stream.ascii().last(), delimiter ) << delimiter; }
-                    if( feedback_csv.binary() ) { std::cout.write( feedback_stream.binary().last(), feedback_csv.format().size() ); }
-                    else { std::cout << comma::join( feedback_stream.ascii().last(), delimiter ) << delimiter; }
-                    output_stream.write( snark::control::control_data_t( *wayline, error ) );
-                    if( use_delay ) { next_output_time = boost::posix_time::microsec_clock::universal_time() + delay; }
                 }
             }
         }
