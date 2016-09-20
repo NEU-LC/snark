@@ -169,8 +169,8 @@ fi
 
 if (( $( comma_options_has --input-fields "$@" ) )); then echo $waypoints_fields; exit; fi
 
-error_fields=$( control-error --output-fields )
-error_binary=$( control-error --output-format )
+error_fields=$( control-error --output-fields --status )
+error_binary=$( control-error --output-format --status )
 
 command_fields=$( control-command --steering=$steering --output-fields )
 command_binary=$( control-command --steering=$steering --output-format )
@@ -198,8 +198,9 @@ control-error \
         --frequency=$frequency \
         $( (( past_endpoint )) && echo --past-endpoint ) \
         $( (( heading_is_absolute_default )) && echo --heading-is-absolute ) \
-        --verbose \
+        --status \
         --flush \
+        --verbose \
     | control-command \
         --fields=$passed_fields \
         --binary=$passed_binary \
@@ -207,5 +208,5 @@ control-error \
         --heading-pid=$pid_heading \
         --steering=$steering \
          $( (( reset )) && echo --reset ) \
-        --verbose \
-        --flush
+        --flush \
+        --verbose
