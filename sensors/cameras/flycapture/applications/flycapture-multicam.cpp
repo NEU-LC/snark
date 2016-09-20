@@ -169,10 +169,9 @@ int main( int argc, char** argv )
 
         if( vm.count( "list-cameras" ) )
         {
-            const std::vector< unsigned int >& list = snark::camera::flycapture::list_camera_serials();
-            for( std::size_t i = 0; i < list.size(); ++i ) // todo: serialize properly with name-value
+            for (const uint serial : snark::camera::flycapture::list_camera_serials())
             {
-                std::cout << snark::camera::flycapture::describe_camera(list[i]) << std::endl;
+                std::cout << snark::camera::flycapture::describe_camera(serial) << std::endl;
             }
             return 0;
         }
@@ -228,6 +227,11 @@ int main( int argc, char** argv )
             for (int i = 0; i < 20 ; ++i) 
             {
                 boost::this_thread::sleep( boost::posix_time::milliseconds( 100 ) );
+                auto frames_pair = multicam->read();
+                for (auto& frame : frames_pair.second)
+                {
+                    std::cerr << frame.cols << ", " << frame.rows << std::endl;
+                }
             }
             break;
         }

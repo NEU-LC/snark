@@ -138,8 +138,14 @@ namespace snark{ namespace camera{
             bool format_supported; // , format7_is_supported;
             // flycapture_assert_ok_(camera->GetVideoModeAndFrameRateInfo(FlyCapture2::VIDEOMODE_FORMAT7, FlyCapture2::FRAMERATE_FORMAT7, &format7_is_supported)), "couldn't get video mode and frame rate");
             // if( !format7_is_supported ) { COMMA_THROW(comma::exception, "Only format7 cameras and GigE cameras are supported"); }
-            flycapture_assert_ok_(camera->GetFormat7Info(&format_info, &format_supported), "couldn't get format7 info");
-            flycapture_assert_ok_(camera->GetFormat7Configuration( &pImageSettings, &pPacketSize, &pPercentage ), "couldn't get format7 config");
+            flycapture_assert_ok_(
+                camera->GetFormat7Info(&format_info, &format_supported),
+                "couldn't get format7 info"
+            );
+            flycapture_assert_ok_(
+                camera->GetFormat7Configuration( &pImageSettings, &pPacketSize, &pPercentage ),
+                "couldn't get format7 config"
+            );
 
             if( key == "maxWidth" ) { return std::to_string( format_info.maxWidth ); }
             else if( key == "maxHeight" ) { return std::to_string( format_info.maxHeight ); }
@@ -255,8 +261,14 @@ namespace snark{ namespace camera{
         unsigned int packetSize;
         float percentage;
 
-        flycapture_assert_ok_(handle->GetFormat7Info(&image_settings_info, &pSupported), "couldn't get format7 info");
-        flycapture_assert_ok_(handle->GetFormat7Configuration(  &image_settings, &packetSize, &percentage ), "Error getting format7 config" );
+        flycapture_assert_ok_(
+            handle->GetFormat7Info(&image_settings_info, &pSupported),
+            "couldn't get format7 info"
+        );
+        flycapture_assert_ok_(
+            handle->GetFormat7Configuration(  &image_settings, &packetSize, &percentage ),
+            "Error getting format7 config"
+        );
 
         // if( key == "offsetHStepSize" ) { image_settings_info.offsetHStepSize = boost::lexical_cast<int>(value); }
         // else if( key == "offsetVStepSize" ) { image_settings_info.offsetVStepSize = boost::lexical_cast<int>(value); }

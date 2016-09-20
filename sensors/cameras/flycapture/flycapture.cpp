@@ -46,6 +46,11 @@
 * implement a callback solution
 */
 
+boost::posix_time::ptime
+midpoint(boost::posix_time::ptime const& a, boost::posix_time::ptime const& b) {
+    return a + (b-a)/2;
+}
+
 namespace snark{ namespace camera{ 
 
     static const unsigned int max_retries = 15;
@@ -56,6 +61,7 @@ namespace snark{ namespace camera{
         FlyCapture2::Image frame_;
         FlyCapture2::Image raw_image;
 
+        if( !handle ) { COMMA_THROW(comma::exception, "read from bad camera"); }
         result = handle->RetrieveBuffer(&raw_image);
         frame_.DeepCopy(&raw_image);
         raw_image.ReleaseBuffer();
@@ -93,7 +99,7 @@ namespace snark{ namespace camera{
 //Note, for Point Grey, the serial number is used as ID
     public:
         impl( unsigned int id, const attributes_type& attributes ) :
-        id_(id), started_( false ), timeOut_( 1000 )
+        handle_(nullptr), id_(id), started_( false ), timeOut_( 1000 )
         {
             initialize_();
             FlyCapture2::PixelFormat pixel_format;
@@ -102,24 +108,11 @@ namespace snark{ namespace camera{
 // Check if id is in the camera enumeration
             if(std::find(camera_list.begin(), camera_list.end(), id) == camera_list.end())
                 { COMMA_THROW(comma::exception, "couldn't find camera with serial " + std::to_string(id)); }
-// Instantiate the right camera type based on the interface            
-            FlyCapture2::InterfaceType currInterface = flycapture::impl::get_camera_interface(*id_);
-            switch(currInterface)
-            {
-                case FlyCapture2::INTERFACE_USB2:
-                case FlyCapture2::INTERFACE_USB3:
-                case FlyCapture2::INTERFACE_IEEE1394:
-                handle_ = new FlyCapture2::Camera();
-                break;
-                case FlyCapture2::INTERFACE_GIGE:
-                handle_ = new FlyCapture2::GigECamera();
-                break;
-                default:
-                COMMA_THROW(comma::exception, "unknown interface for camera " + std::to_string(*id_));
-            }
+
+            if (!connect(id, handle_, guid_)) 
+            { COMMA_THROW(comma::exception, "couldn't connect to serial " + std::to_string(id)); }
+            // start();
 //Get Point grey unique id (guid) from serial number. guid does not exist in CameraInfo, and so it does not appear in the camera list
-            bus_manager.GetCameraFromSerialNumber( *id_ , &guid_ );
-            start();
 
             if(FlyCapture2::GigECamera* camera_gige = dynamic_cast<FlyCapture2::GigECamera*>(handle_))
             {
@@ -151,35 +144,17 @@ namespace snark{ namespace camera{
 
         void start()
         {
-            FlyCapture2::Error error;
-            const boost::posix_time::time_duration timeout = boost::posix_time::milliseconds( 150 );
-            boost::posix_time::ptime now = boost::posix_time::microsec_clock::universal_time();
-            started_ = false;
-            for (uint i = max_retries; !started_ && i > 0; --i)
-            {
-                std::cerr << "Trying to connect..." << std::endl;
-                //Dynamic cast based on camera type (gige / serial)
-                if(FlyCapture2::GigECamera* camera = dynamic_cast<FlyCapture2::GigECamera*>(handle_))
-                {
-                    if( (error = camera->Connect(&guid_)) != FlyCapture2::PGRERROR_OK)
-                    {
-                        std::cerr << "Failed to connect (" << error.GetDescription() << ")" << std::endl;
-                    }
-                    else { started_ = true; }
-                }
-                else if(FlyCapture2::Camera* camera = dynamic_cast<FlyCapture2::Camera*>(handle_))
-                {
-                    if( (error = camera->Connect(&guid_)) != FlyCapture2::PGRERROR_OK)
-                    {
-                        std::cerr << "Failed to connect (" << error.GetDescription() << ")" << std::endl;
-                    }
-                    { started_ = true; }
-                }
-                else { COMMA_THROW( comma::exception, "Unsupported camera type" ); }
-                boost::thread::sleep( now + timeout );
-            }
-            if (!started_) { COMMA_THROW( comma::exception, "failed to open camera: " << id()); }
-            handle_->StartCapture();
+            // FlyCapture2::Error error;
+            // const boost::posix_time::time_duration timeout = boost::posix_time::milliseconds( 150 );
+            // boost::posix_time::ptime now = boost::posix_time::microsec_clock::universal_time();
+            // started_ = false;
+            // for (uint i = max_retries; !started_ && i > 0; --i)
+            // {
+            //     std::cerr << "Trying to connect..." << std::endl;
+            //     boost::thread::sleep( now + timeout );
+            // }
+            // if (!started_) { COMMA_THROW( comma::exception, "failed to open camera: " << id()); }
+            // handle_->StartCapture();
         }
 
         void close()
@@ -204,10 +179,10 @@ namespace snark{ namespace camera{
             while( !success && retries < max_retries )
             {
                 FlyCapture2::Error result;
-
-                if( !started_ ) {result = handle_->StartCapture();}
+                if( !started_ ) { result = handle_->StartCapture(); }
 // error is not checked as sometimes the camera will start correctly but return an error
                 started_ = true;
+                std::cerr << "read::inner()" << std::endl;
                 success = flycapture_collect_frame_( image_, handle_ , started_ );
                 pair.first = boost::posix_time::microsec_clock::universal_time();
                 if( success ) { pair.second = image_; }
@@ -227,26 +202,31 @@ namespace snark{ namespace camera{
 
         static std::vector< unsigned int > list_camera_serials()
         {
-            initialize_();
-            boost::this_thread::sleep( boost::posix_time::milliseconds( 500 ) );
+            boost::this_thread::sleep( boost::posix_time::milliseconds( 100 ) );
             std::vector< unsigned int > list;
-            FlyCapture2::Error error;
             unsigned int num_cameras = 0;
-            flycapture_assert_ok_(bus_manager.GetNumOfCameras( &num_cameras ), "cannot find point grey cameras");
+            flycapture_assert_ok_(
+                bus_manager.GetNumOfCameras( &num_cameras ),
+                "cannot find point grey cameras"
+            );
 // USB Cameras
             for (unsigned int i = 0; i < num_cameras; ++i)
             {
-                FlyCapture2::PGRGuid pGuid;
                 unsigned int serial_number;
-                flycapture_assert_ok_(bus_manager.GetCameraFromIndex(i, &pGuid), "cannot discover point grey cameras via serial/USB interface" );
-                flycapture_assert_ok_(bus_manager.GetCameraSerialNumberFromIndex(i, &serial_number ), "Error getting camera serial");
+                flycapture_assert_ok_(
+                    bus_manager.GetCameraSerialNumberFromIndex(i, &serial_number ),
+                    "Error getting camera serial"
+                );
                 list.push_back(serial_number);
             }
 // GigE Cameras
+            // BUG DiscoverGigECameras will sometimes crash if there are devices on a different subnet
             FlyCapture2::CameraInfo cam_info[num_cameras];
-// BUG DiscoverGigECameras will sometimes crash if there are devices on a different subnet
-            flycapture_assert_ok_(FlyCapture2::BusManager::DiscoverGigECameras( cam_info, &num_cameras ), "cannot discover point grey cameras via GiGe interface" );
-// If array is not empty, convert to list and exit
+            flycapture_assert_ok_(
+                FlyCapture2::BusManager::DiscoverGigECameras( cam_info, &num_cameras ),
+                "cannot discover point grey cameras via GiGe interface"
+            );
+            // If array is not empty, convert to list and exit
             for (unsigned int i = 0; i < num_cameras; ++i)
             {
                 list.push_back(cam_info[i].serialNumber);
@@ -254,24 +234,91 @@ namespace snark{ namespace camera{
             return list;
         }
 
-        static FlyCapture2::InterfaceType get_camera_interface(unsigned int serial)
+        static void disconnect(FlyCapture2::CameraBase*& base)
         {
-            FlyCapture2::PGRGuid pGuid;
+            if (base)
+            {
+                base->StopCapture();
+                base->Disconnect();
+                delete base;
+                base = nullptr;
+            }
+            else
+            { COMMA_THROW(comma::exception, "can't disconnect because camera not connected to this handle"); }
+        }
+
+        static bool connect(uint serial, FlyCapture2::CameraBase*& base, FlyCapture2::PGRGuid& guid)
+        {
+            // Instantiate the right camera type based on the interface
             FlyCapture2::InterfaceType interface;
-            flycapture_assert_ok_(bus_manager.GetCameraFromSerialNumber(serial, &pGuid), "cannot find camera with serial " + std::to_string(serial) );
-            flycapture_assert_ok_(bus_manager.GetInterfaceTypeFromGuid( &pGuid, &interface ), "cannot determine interface for camera with serial " + std::to_string(serial));
-            return interface;
+            if (base)
+            { COMMA_THROW(comma::exception, "camera already connected to this handle"); }
+            flycapture_assert_ok_(
+                bus_manager.GetCameraFromSerialNumber(serial, &guid),
+                "cannot find camera with serial " + std::to_string(serial)
+            );
+            flycapture_assert_ok_(
+                bus_manager.GetInterfaceTypeFromGuid( &guid, &interface ),
+                "cannot determine interface for camera with serial " + std::to_string(serial)
+            );
+
+            switch(interface)
+            {
+                case FlyCapture2::INTERFACE_USB2:
+                case FlyCapture2::INTERFACE_USB3:
+                case FlyCapture2::INTERFACE_IEEE1394:
+                    base = new FlyCapture2::Camera();
+                    break;
+                case FlyCapture2::INTERFACE_GIGE:
+                    base = new FlyCapture2::GigECamera();
+                    break;
+                default:
+                COMMA_THROW(comma::exception, "unknown interface for camera " + std::to_string(serial));
+            }
+            FlyCapture2::Error error;
+            if( (error = base->Connect(&guid)) != FlyCapture2::PGRERROR_OK)
+            {
+                std::cerr << "Failed to connect (" << error.GetDescription() << ")" << std::endl;
+                return false;
+            }
+            return true;
         }
 
         static const std::string describe_camera(unsigned int serial)
         {
-            std::string interface = get_interface_string(flycapture::impl::get_camera_interface(serial));
-            return "serial=" + std::to_string(serial) + ",interface=" + interface;
+            FlyCapture2::CameraInfo camera_info;
+            FlyCapture2::CameraBase* camera;
+            FlyCapture2::PGRGuid guid;
+            FlyCapture2::InterfaceType interface;
+
+            if (!connect(serial, camera, guid))
+            { return "serial=" + std::to_string(serial) + ",ERROR"; }
+
+            flycapture_assert_ok_(
+                bus_manager.GetInterfaceTypeFromGuid( &guid, &interface ),
+                "cannot determine interface for camera with serial " + std::to_string(serial)
+            );
+
+            flycapture_assert_ok_(
+                camera->GetCameraInfo( &camera_info ),
+                "couldn't get camera info for serial " + std::to_string(serial)
+            );
+            disconnect(camera);
+
+            return 
+                "serial=" + std::to_string(camera_info.serialNumber) +
+                ",interface=" + get_interface_string(interface) +
+                ",model=" + camera_info.modelName +
+                ",vendor=" + camera_info.vendorName +
+                ",sensor=" + camera_info.sensorInfo +
+                ",resolution=" + camera_info.sensorResolution +
+                ",version=" + camera_info.firmwareVersion +
+                ",build_time=" + camera_info.firmwareBuildTime;
         }
 
         void software_trigger(bool broadcast)
         {
-            handle_->FireSoftwareTrigger(broadcast);
+            // handle_->FireSoftwareTrigger(broadcast);
         }
 
     private:
@@ -315,7 +362,7 @@ namespace snark{ namespace camera{
     {
     public:
         impl(std::vector<camera_pair>& camera_pairs)
-        : good( true )
+        : good( false )
         {
             for (camera_pair& pair : camera_pairs)
             {
@@ -323,18 +370,18 @@ namespace snark{ namespace camera{
                 const attributes_type attributes = pair.second;
                 std::cerr << "construct impl(" << serial << ", " << attributes.size() << ")" << std::endl;
                 boost::this_thread::sleep( boost::posix_time::milliseconds( 10 ) );
-                cameras_.push_back(std::move(flycapture::impl( serial, attributes )));
+                cameras_.emplace_back( serial, attributes );
                 boost::this_thread::sleep( boost::posix_time::milliseconds( 10 ) );
                 std::cerr << "+ impl(" << serial << ", " << attributes.size() << ")" << std::endl;
             }
+            if (cameras_.size()) { good = true; }
         }
 
         ~impl()
         {
-            for (uint i = cameras_.size(); i >= 0; --i)
+            for (int i = cameras_.size() - 1; i >= 0; --i)
             {
                 std::cerr << "delete impl(" << cameras_[i].id() << ")" << std::endl;
-                // cameras_[i].close();
                 boost::this_thread::sleep( boost::posix_time::milliseconds( 10 ) );
                 cameras_.pop_back();
                 boost::this_thread::sleep( boost::posix_time::milliseconds( 10 ) );
@@ -344,32 +391,25 @@ namespace snark{ namespace camera{
 
         void trigger()
         {
-            cameras_[0].software_trigger(true);
-        }
-
-        void start()
-        {
-           /* FlyCapture2::Camera* ptr_cameras_[cameras_.size()];
-            for (uint i = 0; i < cameras_.size(); ++i)
-            { 
-                auto cam = dynamic_cast<FlyCapture2::Camera*>(cameras_[i].handle_);
-                if (cam != nullptr)
-                { ptr_cameras_[i] = cam; }
-                else
-                {
-                    std::cerr << "error starting camera " << cameras_[i].id() << std::endl;
-                }
-            } 
-            flycapture_assert_ok_(
-                FlyCapture2::Camera::StartSyncCapture(
-                    cameras_.size(),
-                    (const FlyCapture2::Camera**)ptr_cameras_ ),
-                "couldn't synchronously start cameras");*/
+            if (good) { cameras_[0].software_trigger(true); }
         }
 
         flycapture::multicam::frames_pair read()
         {
+            if (!good) { COMMA_THROW(comma::exception, "multicam read without good cameras"); }
             flycapture::multicam::frames_pair pair;
+
+            trigger();
+            boost::posix_time::ptime begin = boost::posix_time::microsec_clock::universal_time();
+            for (auto& camera : cameras_)
+            {
+                // pair.second.push_back(camera.read().second);
+                const auto& image = camera.read().second;
+                std::cerr << "read: " << image.rows << ", " << image.cols << std::endl;
+            }
+            boost::posix_time::ptime end = boost::posix_time::microsec_clock::universal_time();
+            pair.first = midpoint(begin, end);
+
             return pair;
         }
 
@@ -385,7 +425,7 @@ namespace snark{ namespace camera{
 
         flycapture::flycapture( unsigned int id, const flycapture::attributes_type& attributes) : pimpl_( new impl( id, attributes ) ) {}
 
-        flycapture::~flycapture() { delete pimpl_; }
+        flycapture::~flycapture() { }
 
         std::pair< boost::posix_time::ptime, cv::Mat > flycapture::read() { return pimpl_->read(); }
 
@@ -431,4 +471,4 @@ namespace snark{ namespace camera{
 
 } } /* namespace snark{ namespace camera{ */
 
-        FlyCapture2::BusManager snark::camera::flycapture::impl::bus_manager;
+FlyCapture2::BusManager snark::camera::flycapture::impl::bus_manager;

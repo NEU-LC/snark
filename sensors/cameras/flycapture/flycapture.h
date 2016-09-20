@@ -133,7 +133,7 @@ class flycapture
         friend class callback::impl;
         friend class multicam::impl;
         class impl;
-        impl* pimpl_;
+        std::unique_ptr<impl> pimpl_;
 };
 
 } } // namespace snark{ namespace camera{
