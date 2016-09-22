@@ -65,11 +65,12 @@ struct error_t
 struct control_data_t
 {
     control_data_t() {}
-    control_data_t( const wayline_t& wayline, const error_t& error ) : wayline( wayline ), error( error ) {}
+    control_data_t( const wayline_t& wayline, const error_t& error, bool reached ) : wayline( wayline ), error( error ), reached( reached ) {}
     target_t target;
     feedback_t feedback;
     wayline_t wayline;
     error_t error;
+    bool reached;
 };
 
 struct command_t
@@ -142,6 +143,7 @@ template <> struct traits< snark::control::control_data_t >
         v.apply( "feedback", p.feedback );
         v.apply( "wayline", p.wayline );
         v.apply( "error", p.error );
+        v.apply( "reached", p.reached );
     }
 
     template < typename K, typename V > static void visit( const K&, const snark::control::control_data_t& p, V& v )
@@ -150,6 +152,7 @@ template <> struct traits< snark::control::control_data_t >
         v.apply( "feedback", p.feedback );
         v.apply( "wayline", p.wayline );
         v.apply( "error", p.error );
+        v.apply( "reached", p.reached );
     }
 };
 

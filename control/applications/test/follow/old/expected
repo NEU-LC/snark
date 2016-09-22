@@ -1,0 +1,16 @@
+# Two waypoints are fed to the control with indexes 0 and 1 (and different speeds).
+# The feedback is at the rate of 10 per second, however some of the early feedback values could be missed by the control.
+# Hence the number of output commands may vary but it cannot be greater than 21, which is when the second target waypoint is reached (see data/feedback.csv).
+
+number_of( output/commands) <= 21
+
+output/commands[0]/speed=11.1
+output/commands[0]/index=0
+
+output/commands[MAX]/speed=22.2
+output/commands[MAX]/index=1
+
+# Since yaw is changing (see data/feedback.csv), turn_rate and local heading will be changing as well.
+output/commands[0]/turn_rate <> output/commands[MAX]/turn_rate
+output/commands[0]/local_heading <> output/commands[MAX]/local_heading
+
