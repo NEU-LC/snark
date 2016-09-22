@@ -77,7 +77,10 @@ config.json:
 def extract( xpath, config ):
     subconfig = config
     for element in xpath.split('/'):
-        if element in subconfig: subconfig = subconfig[element]
+        if '[' in element and element.endswith(']'):
+            name, index = element[0:len(element)-1].partition('[')[::2]
+            subconfig=subconfig[name][int(index)]
+        elif element in subconfig: subconfig = subconfig[element]
         else: return None
     return subconfig
 
@@ -87,11 +90,25 @@ def get( key, *dictionaries ):
 
 class sensors:
     def _find_sensor_names( self, dictionary, xpath='' ):
-        for key,value in dictionary.iteritems():
-            if type( value ) == dict:
-                xpath_key = ( xpath + '/' + key ) if xpath else key
-                if 'command' in value: self._names.append( xpath_key )
-                self._find_sensor_names( value, xpath_key )
+        if type(dictionary) == list:
+            i=0
+            for item in dictionary:
+                self._find_sensor_names( item, xpath+"["+str(i)+"]" )
+                i=i+1
+        else:
+            for key,value in dictionary.iteritems():
+                if type( value ) == dict:
+                    xpath_key = ( xpath + '/' + key ) if xpath else key
+                    if 'command' in value: self._names.append( xpath_key )
+                    self._find_sensor_names( value, xpath_key )
+                elif type(value)==list:
+                    xpath_key = ( xpath + '/' + key ) if xpath else key
+                    self._find_sensor_names( value, xpath_key )
+                    
+    def print_list(self):
+        sys.stderr.write("print_list %d \n"%len(self._parameters))
+        for name,value in self._parameters.iteritems():
+            print("%s=%s;%s" % (name,value.command,value.content_type))
 
     def __init__( self, web_config, robot_config, publish_config ):
         self._names = []
@@ -159,6 +176,7 @@ parser.add_argument( '--publish-config', help='publish config file', default=Non
 parser.add_argument( '--port', help='port number for http requests', type=int, default=DEFAULT_PORT )
 parser.add_argument( '--timeout', help='default timeout for frame commands', type=float, default=DEFAULT_TIMEOUT )
 parser.add_argument( '--verbose', help='verbose logging', action='store_true' )
+parser.add_argument("--dry-run",help="don't execute, just read config and print name=commands;content_type and exit",action='store_true')
 args = parser.parse_args()
 
 def load_config( config_file_name ):
@@ -175,6 +193,10 @@ configs = {
     'publish_config': load_config( args.publish_config ) }
 
 sensors = sensors( **configs )
+if(args.dry_run):
+    sys.stderr.write("dry run\n")
+    sensors.print_list()
+    exit(0)
 running_subprocesses = []
 lock = threading.Lock()
 

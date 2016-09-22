@@ -1,8 +1,8 @@
 define(['jquery', 'Feed', 'Grid'], function ($, Feed, Grid) {
 
-    var ImageFeed = function (feed_name, config) {
+    var ImageFeed = function (feed_name, feed_path, config) {
         this.base = Feed;
-        this.base(feed_name, config);
+        this.base(feed_name, feed_path, config);
         this.popup_img = $("#popup" + this.feed_name + " img");
         this.init();
     };

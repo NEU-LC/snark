@@ -104,8 +104,12 @@ var globals = {
     isMobile: false
 };
 
+var feed_path_to_id = function(feed_path) {
+    return feed_path.replace(/\[/g,"_").replace(/\]/g,"_").replace(/\//g,"_");
+}
+
 var add_poll_body = function (feed_name, element, popup_div) {
-    var id = '#' + feed_name;
+    var id = '#' + feed_path_to_id(feed_name);
     var class_str = globals.isMobile ? '' : ' transparent';
     $(id).append(
         '<h3>' + feed_name +
@@ -126,7 +130,7 @@ var add_poll_body = function (feed_name, element, popup_div) {
 
 };
 var add_stream_body = function (feed_name, element) {
-    var id = '#' + feed_name;
+    var id = '#' + feed_path_to_id(feed_name);
     var class_str = globals.isMobile ? '' : ' transparent';
     $(id).append(
         '<h3>' + feed_name +
@@ -139,10 +143,10 @@ var add_stream_body = function (feed_name, element) {
 };
 
 
-var add_panel = function (feed_name) {
+var add_panel = function (feed_name, feed_path) {
     var class_str = globals.isMobile ? '' : ' transparent';
     $('#container').append(
-        '<li id="' + feed_name + '" class="panel ">' +
+        '<li id="' + feed_name + '" class="panel" data-name="'+feed_path+'" >' +
         '  <button type="button" class="panel-close hideable text-muted pull-right' + class_str + '" title="close"><span>&times;</span></button>' +
         '</li>'
     );

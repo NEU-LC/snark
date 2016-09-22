@@ -1,8 +1,8 @@
 define(['jquery', 'ol', 'Feed', 'utils'], function ($, ol, Feed) {
 
-    var MapFeed = function (feed_name, config) {
+    var MapFeed = function (feed_name, feed_path, config) {
         this.base = Feed;
-        this.base(feed_name, config);
+        this.base(feed_name, feed_path, config);
         this.first_point = true;
         this.init_map();
         this.set_base_layer();

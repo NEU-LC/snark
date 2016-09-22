@@ -2,10 +2,11 @@
  * Created by vrushali on 15/10/15.
  */
 define('Feed', ["jquery", "jquery_timeago", "utils"], function ($) {
-    var Feed = function (feed_name, config) {
+    var Feed = function (feed_name, feed_path, config) {
         this.feed_name = feed_name;
+        this.feed_path = feed_path;
         this.config = config;
-        this.id = '#' + this.feed_name;
+        this.id = '#' + feed_path_to_id(this.feed_name);
         this.el = $(this.id);
         this.compact_icon = $(this.id + ' .panel-compact span');
         this.body = $(this.id + ' .panel-body');
@@ -102,7 +103,7 @@ define('Feed', ["jquery", "jquery_timeago", "utils"], function ($) {
         return url + (url.indexOf('?') < 0 ? '?q=' : '&q=') + Math.random();
     };
     Feed.prototype.alert = function (on) {
-        var gui_folder = $(gui.__folders[this.feed_name].__ul);
+        var gui_folder = $(gui.__folders[this.feed_path].__ul);
 
         if (on) {
             this.el.addClass('panel-alert');
