@@ -21,7 +21,7 @@ mkfifo $input
 
 function wait_for_success
 {
-    local timeout=5
+    local timeout=5.0
     local n=100
     local dt=$( bc -l <<< "$timeout/$n" )
     for(( i=0; i < n; i++ )); do eval "$1" && return 0 || sleep $dt; done
@@ -41,7 +41,7 @@ port=$( find_free_port )
 if [[ -z "$port" ]]; then echo "failed to find a free tcp port" >&2; exit 1; fi
 
 tail -f $feedback | socat -u - tcp-listen:$port,reuseaddr,fork & feedback_pid=$!
-wait_for_success "netstat -ltn | grep $port &>/dev/null"
+wait_for_success 'netstat -ltn | grep $port &>/dev/null'
 tail -f $input | control-error "tcp:localhost:$port;fields=t,x,y,,,,yaw" --fields=x,y,speed --proximity=$proximity --past-endpoint --mode=$mode --verbose > $output & pid=$!
 
 function send_feedback
@@ -56,7 +56,7 @@ output_line_count=0
 function wait_for_new_output
 {
     (( output_line_count++ ))
-    wait_for_success "(( $( wc -l < $output ) == $output_line_count ))" && return 0
+    wait_for_success '(( $( wc -l < $output ) == $output_line_count ))' && return 0
     echo "failed to get a new line in $output" >&2
     return 1
 }
