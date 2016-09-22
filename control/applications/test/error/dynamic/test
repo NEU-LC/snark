@@ -19,8 +19,24 @@ rm -f $feedback $input $output
 mkfifo $feedback
 mkfifo $input
 
-function wait_for_success { local timeout=1; local n=100; local dt=$( bc -l <<< "$timeout/$n" ); for(( i=0; i < n; i++ )); do eval "$1" && return 0 || sleep $dt; done; return 1; }
-function find_free_port { local port; for(( i=0; i < 100; i++ )); do port=$(( RANDOM + RANDOM )) && (( port > 1023 && port < 65536 )) && ! netstat -ln | grep $port &>/dev/null && echo $port && return; done; }
+function wait_for_success
+{
+    local timeout=5
+    local n=100
+    local dt=$( bc -l <<< "$timeout/$n" )
+    for(( i=0; i < n; i++ )); do eval "$1" && return 0 || sleep $dt; done
+    echo "$FUNCNAME: timed out waiting for '$1'" >&2
+    return 1
+}
+
+function find_free_port
+{
+    local port
+    for(( i=0; i < 100; i++ )); do
+        port=$(( RANDOM + RANDOM )) && (( port > 1023 && port < 65536 )) && ! netstat -ln | grep $port &>/dev/null && echo $port && return
+    done
+}
+
 port=$( find_free_port )
 if [[ -z "$port" ]]; then echo "failed to find a free tcp port" >&2; exit 1; fi
 
