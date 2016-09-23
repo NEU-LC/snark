@@ -8,7 +8,7 @@
     "reset": 0,
     "waypoints":
     {
-        "fields": "x,y,heading_offset,is_absolute,speed,index",
+        "fields": "x,y,heading,is_absolute,speed,id",
         "binary": "d,d,d,b,d,ui"
     },
     "feedback":

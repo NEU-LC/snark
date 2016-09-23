@@ -48,7 +48,7 @@ $( sample_config | sed 's/^/    /' )
     proximity: distance for deciding when a waypoint is reached
     past_endpoint: 1 -> besides proximity condition, consider a waypoint as reached if the vehicle has moved past the end line, 0 -> use only proximity condition
         ( the end line is a line which goes through the target waypoint and is perpendicular to the current wayline)
-    heading_is_absolute_default: 1 -> interpret heading_offset as the desired global (absolute) heading, 0 -> heading_offset is relative offset wrt the wayline heading
+    heading_is_absolute_default: 1 -> interpret heading as the desired global (absolute) heading, 0 -> heading is relative offset wrt the wayline heading
         ( this describes default behaviour when is_absolute is not provided in the input; when is_absolute is given, it takes precedence )
     frequency: control frequency, i.e. the rate at which wheel commands are output when moving towards a waypoint
         ( when the last given waypoint is reached, no output is produced until new waypoints are given )
@@ -80,7 +80,7 @@ cat <<END
     "reset": 0,
     "waypoints":
     {
-        "fields": "x,y,heading_offset,is_absolute,speed,index",
+        "fields": "x,y,heading,is_absolute,speed,id",
         "binary": "3d,b,d,ui"
     },
     "feedback":
@@ -141,7 +141,7 @@ source $( which comma-application-util )
 
 # default fields (note that default fields for waypoints depend on steering type and need to be set once the steering type is known)
 feedback_fields="t,x,y,yaw"
-waypoints_fields_omni="x,y,heading_offset"
+waypoints_fields_omni="x,y,heading"
 waypoints_fields_skid="x,y"
 
 feedback_binary=""
@@ -169,6 +169,9 @@ fi
 
 if (( $( comma_options_has --input-fields "$@" ) )); then echo $waypoints_fields; exit; fi
 
+# control-error and control-command use heading_offset instead of heading
+waypoints_fields_compatible=$( csv-fields rename --fields=heading --to=heading_offset <<< $waypoints_fields )
+
 error_fields=$( control-error --output-fields --status )
 error_binary=$( control-error --output-format --status )
 
@@ -184,13 +187,13 @@ if (( $( comma_options_has --output-format "$@" ) )); then
     exit
 fi
 
-passed_fields=$( prefix target <<< $waypoints_fields ),$( prefix feedback <<< $feedback_fields ),$error_fields
+passed_fields=$( prefix target <<< $waypoints_fields_compatible ),$( prefix feedback <<< $feedback_fields ),$error_fields
 is_binary && passed_binary=$waypoints_binary,$feedback_binary,$error_binary || passed_binary=
 
 config_fields_mandatory | comma_path_assert_defined || die "found undefined config parameters"
 
 control-error \
-        --fields=$waypoints_fields \
+        --fields=$waypoints_fields_compatible \
         --binary=$waypoints_binary \
         "$feedback_address;fields=$feedback_fields;binary=$feedback_binary" \
         --mode=$mode \
