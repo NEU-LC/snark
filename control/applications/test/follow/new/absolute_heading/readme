@@ -1,0 +1,5 @@
+- pass two waypoints to control on stdin
+- provide timed feedback from data/feedback.csv (served on local tcp port)
+- wait for control to complete
+
+use absolute heading

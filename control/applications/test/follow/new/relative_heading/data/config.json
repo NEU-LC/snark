@@ -1,0 +1,25 @@
+{
+    "mode": "fixed",
+    "steering": "omni",
+    "proximity": "0.02",
+    "past_endpoint": 1,
+    "heading_is_absolute_default": 0,
+    "frequency": "20.0",
+    "reset": 0,
+    "waypoints":
+    {
+        "fields": "x,y,heading,speed,id",
+        "binary": "d,d,d,d,ui"
+    },
+    "feedback":
+    {
+        "address": "tcp:localhost:60001",
+        "fields": "t,x,y,yaw",
+        "binary": "t,d,d,d"
+    },
+    "pid":
+    {
+        "cross_track": "2.0,0,0",
+        "heading": "1.2,0,0"
+    }
+}
