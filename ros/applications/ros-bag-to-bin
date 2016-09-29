@@ -7,8 +7,8 @@ import argparse
 help_description='extract topic data from rosbag in binary format'
 help_example="""
 example
-    rosbag-to-bin "pointscloud.bag" "/camera/rgb/points" 32 | csv-from-bin 4i,4ub,3i | head
-    rosbag-to-bin "pointscloud.bag" "/camera/rgb/points" 32 --timestamp --block | view-points --binary t,ui,4i,4ub,3i --fields t,block,x,y,z,,r,g,b --point-size 3
+    ros-bag-to-bin "pointscloud.bag" "/camera/rgb/points" 32 | csv-from-bin 4i,4ub,3i | head
+    ros-bag-to-bin "pointscloud.bag" "/camera/rgb/points" 32 --timestamp --block | view-points --binary t,ui,4i,4ub,3i --fields t,block,x,y,z,,r,g,b --point-size 3
 hint
     get list of topic:
         rostopic list -b <file> 
