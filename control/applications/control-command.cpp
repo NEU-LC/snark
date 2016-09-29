@@ -27,17 +27,18 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include <cmath>
 #include <boost/bimap.hpp>
 #include <boost/assign.hpp>
 #include <comma/application/command_line_options.h>
 #include <comma/csv/options.h>
 #include <comma/csv/stream.h>
 #include <comma/io/select.h>
-#include "control.h"
-#include "../../control/pid.h"
+#include "../control.h"
+#include "../pid.h"
+#include "../traits.h"
+#include "../wrap_angle.h"
 
-static const std::string name = snark::control::command_app_name;
+static const std::string name = "control-command";
 
 template< typename T > std::string field_names( bool full_xpath = false ) { return comma::join( comma::csv::names< T >( full_xpath ), ',' ); }
 template< typename T > std::string format( const std::string& fields = "", bool full_xpath = false ) { return comma::csv::format::value< T >( !fields.empty() ? fields : field_names< T >( full_xpath ), full_xpath ); }
@@ -93,19 +94,20 @@ static void usage( bool verbose = false )
         std::cerr << std::endl;
     }
     std::cerr << "examples:" << std::endl;
-    std::cerr << "    cat targets.csv | " << snark::control::error_app_name << " \"feedback\" --mode=fixed | " << name << " --cross-track-pid=0.1,0,0 --heading-pid=0.2,0,0 --steering=omni" << std::endl;
+    std::cerr << "    cat targets.csv | control-error \"feedback\" --mode=fixed | " << name << " --cross-track-pid=0.1,0,0 --heading-pid=0.2,0,0 --steering=omni" << std::endl;
     std::cerr << std::endl;
     exit( 1 );
 }
 
-double limit_angle( double angle, double limit = M_PI/2 )
+static double limit_angle( double angle, double limit = M_PI/2 )
 {
     if( angle > limit ) { return limit; }
     else if( angle < -limit ) { return -limit; }
     else { return angle; }
 }
 
-snark::control::pid make_pid( const std::string& pid_values, char delimiter = ',' )
+template < typename PID >
+static PID make_pid( const std::string& pid_values, char delimiter = ',' )
 {
     std::vector< std::string > v = comma::split( pid_values, delimiter );
     if( v.size() != 3 && v.size() != 4 ) { COMMA_THROW( comma::exception, "expected a string with 3 or 4 elements separated by '" << delimiter << "', got " << v.size() ); }
@@ -116,11 +118,11 @@ snark::control::pid make_pid( const std::string& pid_values, char delimiter = ',
     {
         double threshold = boost::lexical_cast< double >( v[3] );
         if( threshold <= 0 ) { COMMA_THROW( comma::exception, "expected positive threshold, got " << threshold ); }
-        return snark::control::pid( p, i, d, threshold );
+        return PID( p, i, d, threshold );
     }
     else
     {
-        return snark::control::pid( p, i, d );
+        return PID( p, i, d );
     }
 }
 
@@ -147,8 +149,8 @@ int main( int ac, char** av )
         bool feedback_has_time  = input_csv.has_field( "feedback/t" );
         bool compute_yaw_rate = !input_csv.has_field( "feedback/yaw_rate" );
         bool reset_pid = options.exists( "--reset" );
-        snark::control::pid cross_track_pid = make_pid( options.value< std::string >( "--cross-track-pid" ) );
-        snark::control::pid heading_pid = make_pid( options.value< std::string >( "--heading-pid" ) );
+        snark::control::pid cross_track_pid = make_pid< snark::control::pid >( options.value< std::string >( "--cross-track-pid" ) );
+        snark::control::pid heading_pid = make_pid< snark::control::pid >( options.value< std::string >( "--heading-pid" ) );
         boost::optional< snark::control::vector_t > position;
         boost::optional< snark::control::vector_t > previous_position;
         while( input_stream.ready() || ( std::cin.good() && !std::cin.eof() ) )

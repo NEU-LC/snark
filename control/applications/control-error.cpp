@@ -32,20 +32,20 @@
 #include <boost/bimap.hpp>
 #include <boost/assign.hpp>
 #include <boost/scoped_ptr.hpp>
-#include <boost/thread/thread.hpp>
 #include <comma/application/command_line_options.h>
 #include <comma/application/signal_flag.h>
 #include <comma/csv/options.h>
 #include <comma/csv/stream.h>
 #include <comma/csv/names.h>
 #include <comma/csv/traits.h>
-#include <comma/visiting/traits.h>
 #include <comma/io/select.h>
 #include <comma/io/stream.h>
 #include <comma/name_value/name_value.h>
-#include "control.h"
+#include "../control.h"
+#include "../wrap_angle.h"
+#include "../traits.h"
 
-static const std::string name = snark::control::error_app_name;
+static const std::string name = "control-error";
 
 template< typename T > std::string field_names( bool full_xpath = false ) { return comma::join( comma::csv::names< T >( full_xpath ), ',' ); }
 template< typename T > std::string format( const std::string& fields = "", bool full_xpath = false ) { return comma::csv::format::value< T >( !fields.empty() ? fields : field_names< T >( full_xpath ), full_xpath ); }
@@ -172,7 +172,8 @@ int main( int ac, char** av )
             if( !target ) { break; }
             snark::control::vector_t to = target->position;
             if( verbose ) { std::cerr << name << ": received target waypoint " << snark::control::serialise( to ) << std::endl; }
-            if( from && snark::control::distance( *from, to ) < proximity ) { continue; }
+            
+            if( from && ( *from - to ).norm() < proximity ) { continue; }
             if( from )
             {
                 wayline.reset( new snark::control::wayline_t( *from, to ) );
@@ -198,7 +199,7 @@ int main( int ac, char** av )
                         wayline.reset( new snark::control::wayline_t( *from, to ) );
                         if( verbose ) { std::cerr << "control-error: wayline from " << snark::control::serialise( *from ) << " to " << snark::control::serialise( to ) << std::endl; }
                     }
-                    if( snark::control::distance( feedback->position, to ) < proximity ) { reached = reached_t( "proximity" ); }
+                    if( ( feedback->position - to ).norm() < proximity ) { reached = reached_t( "proximity" ); }
                     if( use_past_endpoint && wayline->is_past_endpoint( feedback->position ) ) { reached = reached_t( "past endpoint" ); }
                     snark::control::error_t error;
                     if( !reached )

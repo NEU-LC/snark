@@ -27,50 +27,18 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef SNARK_CONTROL_PID_H
-#define SNARK_CONTROL_PID_H
+#ifndef SNARK_CONTROL_WRAP_ANGLE_H
+#define SNARK_CONTROL_WRAP_ANGLE_H
 
-#include <boost/date_time/posix_time/ptime.hpp>
-#include <boost/optional.hpp>
+#include <comma/math/cyclic.h>
 
 namespace snark { namespace control {
 
-class pid
+inline double wrap_angle( double value )
 {
-public:
-    pid();
-    virtual ~pid() {}
-    pid( double p, double i, double d );
-    pid( double p, double i, double d, double threshold );
-    double operator()( double error, const boost::posix_time::ptime& t = boost::posix_time::not_a_date_time );
-    double operator()( double error, double derivative, const boost::posix_time::ptime& t = boost::posix_time::not_a_date_time );
-    void reset();
-
-protected:
-    double p;
-    double i;
-    double d;
-    double integral;
-    boost::optional< double > threshold;
-    boost::posix_time::ptime time;
-    boost::optional< double > previous_error;
-    boost::optional< double > get_time_increment( const boost::posix_time::ptime& t );
-    void clip_integral();
-    virtual double update_( double error, double derivative, const boost::posix_time::ptime& t, boost::optional< double > dt );
-    virtual double derivative_( double error, double dt );
-};
-
-class angular_pid : public pid
-{
-    public:
-        angular_pid( double p, double i, double d );
-        angular_pid( double p, double i, double d, double threshold );
-
-    private:
-        double update_( double error, double derivative, const boost::posix_time::ptime& t, boost::optional< double > dt );
-        double derivative_( double error, double dt );
-};
+    return comma::math::cyclic< double >( comma::math::interval< double >( -M_PI, M_PI ), value )();
+}
 
 } } // namespace snark { namespace control {
 
-#endif // SNARK_CONTROL_PID_HEADER
+#endif // SNARK_CONTROL_WRAP_ANGLE_H

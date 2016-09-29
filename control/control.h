@@ -27,37 +27,77 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include <cmath>
-#include <iostream>
-#include <boost/static_assert.hpp>
-#include <comma/base/exception.h>
-#include "wayline.h"
+#ifndef SNARK_CONTROL_H
+#define SNARK_CONTROL_H
+
+#include <Eigen/Geometry>
+#include <boost/date_time/posix_time/posix_time.hpp>
+#include <comma/math/cyclic.h>
 
 namespace snark { namespace control {
 
-wayline_t::wayline_t() {}
-wayline_t::wayline_t( const vector_t& start, const vector_t& end ) :
-      v( normalise( end - start ) )
-    , line( Eigen::ParametrizedLine< double, dimensions >::Through( start, end ) )
-    , perpendicular_line_at_end( v, end )
-    , heading( atan2( v.y(), v.x() ) )
-    {
-        BOOST_STATIC_ASSERT( dimensions == 2 );
-    }
+static const unsigned int dimensions = 2;
+typedef Eigen::Matrix< double, dimensions, 1 > vector_t;
 
-bool wayline_t::is_past_endpoint( const vector_t& location ) const
+std::string serialise( const vector_t& p );
+
+struct wayline_t
 {
-    return perpendicular_line_at_end.signedDistance( location ) > 0;
-}
+public:
+    wayline_t();
+    wayline_t( const vector_t& start, const vector_t& end );
+    bool is_past_endpoint( const vector_t& location ) const;
+    double cross_track_error( const vector_t& location ) const;
+    double heading_error( double yaw, double heading_offset ) const;
+private:
+    vector_t v;
+    Eigen::Hyperplane< double, dimensions > line;
+    Eigen::Hyperplane< double, dimensions > perpendicular_line_at_end;
+public:
+    double heading;
+};
 
-double wayline_t::cross_track_error( const vector_t& location ) const
+struct feedback_t
 {
-    return -line.signedDistance( location );
-}
+    boost::posix_time::ptime t;
+    vector_t position;
+    double yaw;
+    double yaw_rate;
+};
 
-double wayline_t::heading_error( double yaw, double heading_offset ) const
+struct target_t
 {
-    return wrap_angle( heading + heading_offset - yaw );
-}
+    target_t( bool is_absolute = false ) : heading_offset( 0 ), is_absolute( is_absolute ) {}
+    vector_t position;
+    double heading_offset;
+    bool is_absolute;
+};
 
-} } // namespace snark { namespace control {
+struct error_t
+{
+    error_t() : cross_track( 0 ), heading( 0 ) {}
+    double cross_track;
+    double heading;
+};
+
+struct control_data_t
+{
+    control_data_t() {}
+    control_data_t( const wayline_t& wayline, const error_t& error, bool reached ) : wayline( wayline ), error( error ), reached( reached ) {}
+    target_t target;
+    feedback_t feedback;
+    wayline_t wayline;
+    error_t error;
+    bool reached;
+};
+
+struct command_t
+{
+    command_t() : turn_rate( 0 ), local_heading( 0 ) {}
+    double turn_rate;
+    double local_heading;
+};
+
+} } // namespace snark { namespace control
+
+#endif // SNARK_CONTROL_H

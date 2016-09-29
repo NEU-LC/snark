@@ -27,64 +27,16 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef SNARK_CONTROL_H
-#define SNARK_CONTROL_H
+#ifndef SNARK_CONTROL_TRAITS_H
+#define SNARK_CONTROL_TRAITS_H
 
-#include <boost/date_time/posix_time/posix_time.hpp>
 #include <comma/visiting/traits.h>
-#include "../wayline.h"
-
-namespace snark { namespace control {
-
-static const std::string command_app_name = "control-command";
-static const std::string error_app_name = "control-error";
-
-struct feedback_t
-{
-    boost::posix_time::ptime t;
-    vector_t position;
-    double yaw;
-    double yaw_rate;
-};
-
-struct target_t
-{
-    target_t( bool is_absolute = false ) : heading_offset( 0 ), is_absolute( is_absolute ) {}
-    vector_t position;
-    double heading_offset;
-    bool is_absolute;
-};
-
-struct error_t
-{
-    error_t() : cross_track( 0 ), heading( 0 ) {}
-    double cross_track;
-    double heading;
-};
-
-struct control_data_t
-{
-    control_data_t() {}
-    control_data_t( const wayline_t& wayline, const error_t& error, bool reached ) : wayline( wayline ), error( error ), reached( reached ) {}
-    target_t target;
-    feedback_t feedback;
-    wayline_t wayline;
-    error_t error;
-    bool reached;
-};
-
-struct command_t
-{
-    command_t() : turn_rate( 0 ), local_heading( 0 ) {}
-    double turn_rate;
-    double local_heading;
-};
-
-} } // namespace snark { namespace control
+#include "../visiting/eigen.h"
+#include "control.h"
 
 namespace comma { namespace visiting {
 
-template <> struct traits< snark::control::feedback_t >
+    template <> struct traits< snark::control::feedback_t >
 {
     template < typename K, typename V > static void visit( const K&, snark::control::feedback_t& p, V& v )
     {
@@ -171,6 +123,18 @@ template <> struct traits< snark::control::command_t >
     }
 };
 
+template <> struct traits< snark::control::wayline_t >
+{
+    template < typename K, typename V > static void visit( const K&, snark::control::wayline_t& p, V& v )
+    {
+        v.apply( "heading", p.heading );
+    }
+    template < typename K, typename V > static void visit( const K&, const snark::control::wayline_t& p, V& v )
+    {
+        v.apply( "heading", p.heading );
+    }
+};
+
 } } // namespace comma { namespace visiting {
 
-#endif // SNARK_CONTROL_H
+#endif // SNARK_CONTROL_TRAITS_H
