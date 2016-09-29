@@ -8,9 +8,9 @@ define('CsvFeed', ["jquery", 'TextFeed'], function ($, Feed, TextFeed) {
     var Feed = require('Feed');
     var TextFeed = require("TextFeed");
 
-    var CsvFeed = function (feed_name, config) {
+    var CsvFeed = function (feed_name, feed_path, config) {
         this.base = Feed;
-        this.base(feed_name, config);
+        this.base(feed_name, feed_path, config);
         this.init();
     };
     CsvFeed.prototype = Object.create(TextFeed.prototype);

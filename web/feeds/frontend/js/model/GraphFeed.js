@@ -4,9 +4,9 @@
 define('GraphFeed', ["jquery", "Feed"], function ($) {
     var Feed = require('Feed');
 
-    var GraphFeed = function (feed_name, config) {
+    var GraphFeed = function (feed_name, feed_path, config) {
         this.base = Feed;
-        this.base(feed_name, config);
+        this.base(feed_name, feed_path, config);
         this.default_threshold = {value: this.config.graph.max, color: '#5cb85c'};
         this.default_exceeded_threshold = {value: Number.MAX_VALUE, color: '#d9534f', alert: true};
         this.text = $(this.id + ' .graph-text');

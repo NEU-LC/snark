@@ -265,6 +265,7 @@ OPTION( snark_build_sensors "build sensors" ON )
 OPTION( snark_build_system "build system" OFF )
 OPTION( snark_build_terrain "build terrain" OFF )
 OPTION( snark_build_web "build web" OFF )
+option( snark_build_ros "build ros" OFF )
 
 INCLUDE( CMakeDependentOption )
 CMAKE_DEPENDENT_OPTION( ADD_PYTHON_PACKAGES_TO_RPM "add snark python packages to RPM" OFF "snark_build_python" ON )
@@ -476,6 +477,10 @@ endif( snark_build_system )
 IF( snark_build_web )
     add_subdirectory( web )
 ENDIF( snark_build_web )
+
+if(snark_build_ros)
+    add_subdirectory(ros)
+endif()
 
 # Package
 #the following set up optional parameters for cpack

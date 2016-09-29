@@ -11,3 +11,6 @@ stats
 actuators/universal_robots/test/disabled
 control/test/disabled
 python/disabled
+
+.kdev_include_paths
+

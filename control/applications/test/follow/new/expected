@@ -5,10 +5,12 @@
 number_of( output/commands ) <= 21
 
 output/commands[0]/target/speed=11.1
-output/commands[0]/target/index=0
+output/commands[0]/target/id=0
+output/commands[0]/reached=0
 
 output/commands[MAX]/target/speed=22.2
-output/commands[MAX]/target/index=1
+output/commands[MAX]/target/id=1
+output/commands[MAX]/reached=1
 
 # Since yaw is changing (see data/feedback.csv), turn_rate and local heading will be changing as well.
 output/commands[0]/command/turn_rate <> output/commands[MAX]/command/turn_rate

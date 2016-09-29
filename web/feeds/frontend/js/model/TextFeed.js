@@ -3,9 +3,9 @@
  */
 define('TextFeed', ["jquery", "Feed"], function ($) {
     var Feed = require('Feed');
-    var TextFeed = function (feed_name, config) {
+    var TextFeed = function (feed_name, feed_path, config) {
         this.base = Feed;
-        this.base(feed_name, config);
+        this.base(feed_name, feed_path, config);
     };
     TextFeed.prototype = Object.create(Feed.prototype);
     TextFeed.prototype.load = function () {

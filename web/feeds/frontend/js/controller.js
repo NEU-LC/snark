@@ -198,7 +198,7 @@ require(['jquery', "jquery_ui",
     }
 
     function get_feed_name(element) {
-        return $(element).closest('ul').find('li.title').first().text();
+        return feed_path_to_id($(element).closest('ul').find('li.title').first().text());
     }
 
     function add_gui_track_options(folder, config) {
@@ -378,7 +378,204 @@ require(['jquery', "jquery_ui",
         });
         $(grid_folder.domElement).closest('li.folder').find('li.title').addClass('subfolder');
     }
-
+    
+    function add_new_feed(frontend_config,config, feed_path) {
+        var grid_types = ['image', 'stream', 'track'];
+//         var feed_name=feed_path.replace(/\[/g,"\\[").replace(/\]/g,"\\]").replace(/\//g,"\\/");
+        var feed_name=feed_path_to_id(feed_path);
+        if (!('type' in config)) {
+            config.type = 'image';
+        }
+        if (grid_types.indexOf(config.type) >= 0) {
+            config.grid = new GridOptions(config.grid);
+        }
+        if (config.type == 'stream') {
+            config.show = true;
+            if (!('stream' in config)) {
+                config.stream = {autoplay: false};
+            }
+            if (!('url' in config)) {
+                var xpath = config.xpath || feed_path;
+                config.url = frontend_config.websocket + '?xpath=' + xpath + '&data_uri=true';
+            }
+        } else {
+            config.view = Feed.views[0];
+            if (!('refresh' in config)) {
+                config.refresh = {};
+            }
+            if (!('auto' in config.refresh)) {
+                config.refresh.auto = 'interval' in config.refresh && config.refresh.interval > 0;
+            }
+            if (!('interval' in config.refresh)) {
+                config.refresh.interval = 2;
+            }
+            if (!('url' in config)) {
+                config.url = frontend_config.host + '/' + feed_path;
+            }
+        }
+        if (config.type == 'text') {
+            if (!('text' in config)) {
+                config.text = {};
+            }
+            if (!('show_items' in config.text)) {
+                config.text.show_items = 1;
+            }
+        } else if (config.type == 'csv' || config.type == 'csv-table') {
+            if (!('csv' in config)) {
+                config.csv = {};
+            }
+            if (!('show_items' in config.csv)) {
+                config.csv.show_items = 1;
+            }
+            if (!('fields' in config.csv)) {
+                config.csv.fields = '';
+            }
+            if (!('min' in config.csv)) {
+                config.csv.min = '';
+            }
+            if (!('max' in config.csv)) {
+                config.csv.max = '';
+            }
+            if (!('min_color' in config.csv) || !config.csv.min_color) {
+                config.csv.min_color = 'orange';
+            }
+            if (!('max_color' in config.csv) || !config.csv.max_color) {
+                config.csv.max_color = 'red';
+            }
+            if (!('threshold_alert' in config.csv)) {
+                config.csv.threshold_alert = false;
+            }
+        } else if (config.type == 'graph') {
+            if (!('graph' in config)) {
+                config.graph = {};
+            }
+            if (!('min' in config.graph)) {
+                config.graph.min = 0;
+            }
+            if (!('max' in config.graph)) {
+                config.graph.max = 100;
+            }
+            if (!('thresholds' in config.graph)) {
+                config.graph.thresholds = [];
+            }
+            config.graph.thresholds.sort(function (a, b) {
+                return a.value - b.value;
+            });
+        } else if (config.type == 'track') {
+            config.track = new TrackOptions(config.track);
+        } else if (config.type == 'map') {
+            config.map = new MapOptions(config.map, frontend_config);
+        }
+        if (!('alert' in config)) {
+            config.alert = true;
+        }
+        var feed = create_feed(config.type, feed_name, feed_path, config);
+        var folder = gui.addFolder(feed_path);
+        folder.close();
+        folder.add(feed.config, 'url').onFinishChange(function (value) {
+            var feed_name = get_feed_name(this.domElement);
+            feeds[feed_name].reset();
+        });
+        if (config.type != 'stream') {
+            folder.add(feed.config, 'view', Feed.views).onFinishChange(function (value) {
+                var feed_name = get_feed_name(this.domElement);
+                feeds[feed_name].update_view();
+                if (value == 'hide') {
+                    gui.setProperty('auto', false, feed_name);
+                }
+            });
+            folder.add(feed.config.refresh, 'auto').name("auto refresh").onFinishChange(function (value) {
+                var feed_name = get_feed_name(this.domElement);
+                var feed = feeds[feed_name];
+                if (value && feed.config.view == 'hide') {
+                    gui.setProperty('view', 'show', feed_name);
+                }
+                feed.reset();
+            });
+            folder.add(feed.config.refresh, 'interval', 0, 90).name("refresh interval").step(1).onFinishChange(function (value) {
+                var feed_name = get_feed_name(this.domElement);
+                feeds[feed_name].reset();
+            });
+            folder.add(feed.config, 'alert').name('feed alert').onFinishChange(function (value) {
+                var feed_name = get_feed_name(this.domElement);
+                if (!value) {
+                    feeds[feed_name].alert(false);
+                }
+            });
+            if (config.type == 'text') {
+                folder.add(feed.config.text, 'show_items', 0, 20).name("show items").step(1).onFinishChange(function (value) {
+                    var feed_name = get_feed_name(this.domElement);
+                    feeds[feed_name].draw();
+                });
+            }
+            if (config.type == 'csv' || config.type == 'csv-table') {
+                folder.add(feed.config.csv, 'show_items', 0, 20).name("show items").step(1).onFinishChange(function (value) {
+                    var feed_name = get_feed_name(this.domElement);
+                    feeds[feed_name].draw();
+                });
+                folder.add(feed.config.csv, 'fields').onChange(function (value) {
+                    var feed_name = get_feed_name(this.domElement);
+                    feeds[feed_name].init_fields();
+                });
+                folder.add(feed.config.csv, 'min').onFinishChange(function (value) {
+                    var feed_name = get_feed_name(this.domElement);
+                    feeds[feed_name].init_ranges();
+                });
+                folder.add(feed.config.csv, 'max').onFinishChange(function (value) {
+                    var feed_name = get_feed_name(this.domElement);
+                    feeds[feed_name].init_ranges();
+                });
+                folder.add(feed.config.csv, 'threshold_alert').name('threshold alert');
+            }
+            if (config.type == 'graph') {
+                folder.add(feed.config.graph, 'max').onFinishChange(function (value) {
+                    var feed_name = get_feed_name(this.domElement);
+                    feeds[feed_name].set_labels();
+                });
+                folder.add(feed.config.graph, 'min').onFinishChange(function (value) {
+                    var feed_name = get_feed_name(this.domElement);
+                    feeds[feed_name].set_labels();
+                });
+            }
+            if (config.type == 'track') {
+                add_gui_track_options(folder, feed.config.track);
+            }
+            if (config.type == 'map') {
+                add_gui_map_options(folder, feed.config.map);
+            }
+        } else {
+            folder.add(feed.config, 'show').onFinishChange(function (value) {
+                var feed_name = get_feed_name(this.domElement);
+                feeds[feed_name].toggle_show();
+                if (!value) {
+                    gui.setProperty('auto', false, feed_name);
+                }
+            });
+        }
+        if (grid_types.indexOf(config.type) >= 0) {
+            add_gui_grid_options(folder, feed.config.grid);
+        }
+        feeds[feed_name] = feed;
+    }
+    
+    function load_feed_items(frontend_config,feeds, path){
+        if(path.length!=0)
+            path=path+"/";
+        for (var feed_name in feeds) {
+            var config = feeds[feed_name];
+            if(Array.isArray(config))
+                load_feed_array(frontend_config,config, path+feed_name);
+            else
+                add_new_feed(frontend_config,config, path+feed_name);
+        }
+    }
+    
+    function load_feed_array(frontend_config,feeds, path){
+        for(var i=0;i<feeds.length;i++) {
+            load_feed_items(frontend_config,feeds[i],path+"["+i+"]");
+        }
+    }
+    
     function initialize(frontend_config) {
         current_config_file = globals.config_file;
         globals.stop();
@@ -417,184 +614,8 @@ require(['jquery', "jquery_ui",
         folder.add(globals, "clear_alerts").name("clear alerts");
         folder.add(globals, "alert_beep").name("alert beep");
 
-        var grid_types = ['image', 'stream', 'track'];
 
-        for (var feed_name in frontend_config.feeds) {
-            var config = frontend_config.feeds[feed_name];
-            if (!('type' in config)) {
-                config.type = 'image';
-            }
-            if (grid_types.indexOf(config.type) >= 0) {
-                config.grid = new GridOptions(config.grid);
-            }
-            if (config.type == 'stream') {
-                config.show = true;
-                if (!('stream' in config)) {
-                    config.stream = {autoplay: false};
-                }
-                if (!('url' in config)) {
-                    var xpath = config.xpath || feed_name;
-                    config.url = frontend_config.websocket + '?xpath=' + xpath + '&data_uri=true';
-                }
-            } else {
-                config.view = Feed.views[0];
-                if (!('refresh' in config)) {
-                    config.refresh = {};
-                }
-                if (!('auto' in config.refresh)) {
-                    config.refresh.auto = 'interval' in config.refresh && config.refresh.interval > 0;
-                }
-                if (!('interval' in config.refresh)) {
-                    config.refresh.interval = 2;
-                }
-                if (!('url' in config)) {
-                    config.url = frontend_config.host + '/' + feed_name;
-                }
-            }
-            if (config.type == 'text') {
-                if (!('text' in config)) {
-                    config.text = {};
-                }
-                if (!('show_items' in config.text)) {
-                    config.text.show_items = 1;
-                }
-            } else if (config.type == 'csv' || config.type == 'csv-table') {
-                if (!('csv' in config)) {
-                    config.csv = {};
-                }
-                if (!('show_items' in config.csv)) {
-                    config.csv.show_items = 1;
-                }
-                if (!('fields' in config.csv)) {
-                    config.csv.fields = '';
-                }
-                if (!('min' in config.csv)) {
-                    config.csv.min = '';
-                }
-                if (!('max' in config.csv)) {
-                    config.csv.max = '';
-                }
-                if (!('min_color' in config.csv) || !config.csv.min_color) {
-                    config.csv.min_color = 'orange';
-                }
-                if (!('max_color' in config.csv) || !config.csv.max_color) {
-                    config.csv.max_color = 'red';
-                }
-                if (!('threshold_alert' in config.csv)) {
-                    config.csv.threshold_alert = false;
-                }
-            } else if (config.type == 'graph') {
-                if (!('graph' in config)) {
-                    config.graph = {};
-                }
-                if (!('min' in config.graph)) {
-                    config.graph.min = 0;
-                }
-                if (!('max' in config.graph)) {
-                    config.graph.max = 100;
-                }
-                if (!('thresholds' in config.graph)) {
-                    config.graph.thresholds = [];
-                }
-                config.graph.thresholds.sort(function (a, b) {
-                    return a.value - b.value;
-                });
-            } else if (config.type == 'track') {
-                config.track = new TrackOptions(config.track);
-            } else if (config.type == 'map') {
-                config.map = new MapOptions(config.map, frontend_config);
-            }
-            if (!('alert' in config)) {
-                config.alert = true;
-            }
-            var feed = create_feed(config.type, feed_name, config);
-            var folder = gui.addFolder(feed_name);
-            folder.close();
-            folder.add(feed.config, 'url').onFinishChange(function (value) {
-                var feed_name = get_feed_name(this.domElement);
-                feeds[feed_name].reset();
-            });
-            if (config.type != 'stream') {
-                folder.add(feed.config, 'view', Feed.views).onFinishChange(function (value) {
-                    var feed_name = get_feed_name(this.domElement);
-                    feeds[feed_name].update_view();
-                    if (value == 'hide') {
-                        gui.setProperty('auto', false, feed_name);
-                    }
-                });
-                folder.add(feed.config.refresh, 'auto').name("auto refresh").onFinishChange(function (value) {
-                    var feed_name = get_feed_name(this.domElement);
-                    var feed = feeds[feed_name];
-                    if (value && feed.config.view == 'hide') {
-                        gui.setProperty('view', 'show', feed_name);
-                    }
-                    feed.reset();
-                });
-                folder.add(feed.config.refresh, 'interval', 0, 90).name("refresh interval").step(1).onFinishChange(function (value) {
-                    var feed_name = get_feed_name(this.domElement);
-                    feeds[feed_name].reset();
-                });
-                folder.add(feed.config, 'alert').name('feed alert').onFinishChange(function (value) {
-                    var feed_name = get_feed_name(this.domElement);
-                    if (!value) {
-                        feeds[feed_name].alert(false);
-                    }
-                });
-                if (config.type == 'text') {
-                    folder.add(feed.config.text, 'show_items', 0, 20).name("show items").step(1).onFinishChange(function (value) {
-                        var feed_name = get_feed_name(this.domElement);
-                        feeds[feed_name].draw();
-                    });
-                }
-                if (config.type == 'csv' || config.type == 'csv-table') {
-                    folder.add(feed.config.csv, 'show_items', 0, 20).name("show items").step(1).onFinishChange(function (value) {
-                        var feed_name = get_feed_name(this.domElement);
-                        feeds[feed_name].draw();
-                    });
-                    folder.add(feed.config.csv, 'fields').onChange(function (value) {
-                        var feed_name = get_feed_name(this.domElement);
-                        feeds[feed_name].init_fields();
-                    });
-                    folder.add(feed.config.csv, 'min').onFinishChange(function (value) {
-                        var feed_name = get_feed_name(this.domElement);
-                        feeds[feed_name].init_ranges();
-                    });
-                    folder.add(feed.config.csv, 'max').onFinishChange(function (value) {
-                        var feed_name = get_feed_name(this.domElement);
-                        feeds[feed_name].init_ranges();
-                    });
-                    folder.add(feed.config.csv, 'threshold_alert').name('threshold alert');
-                }
-                if (config.type == 'graph') {
-                    folder.add(feed.config.graph, 'max').onFinishChange(function (value) {
-                        var feed_name = get_feed_name(this.domElement);
-                        feeds[feed_name].set_labels();
-                    });
-                    folder.add(feed.config.graph, 'min').onFinishChange(function (value) {
-                        var feed_name = get_feed_name(this.domElement);
-                        feeds[feed_name].set_labels();
-                    });
-                }
-                if (config.type == 'track') {
-                    add_gui_track_options(folder, feed.config.track);
-                }
-                if (config.type == 'map') {
-                    add_gui_map_options(folder, feed.config.map);
-                }
-            } else {
-                folder.add(feed.config, 'show').onFinishChange(function (value) {
-                    var feed_name = get_feed_name(this.domElement);
-                    feeds[feed_name].toggle_show();
-                    if (!value) {
-                        gui.setProperty('auto', false, feed_name);
-                    }
-                });
-            }
-            if (grid_types.indexOf(config.type) >= 0) {
-                add_gui_grid_options(folder, feed.config.grid);
-            }
-            feeds[feed_name] = feed;
-        }
+        load_feed_items(frontend_config,frontend_config.feeds, "")
 
         load(current_config_file);
 
@@ -652,11 +673,11 @@ require(['jquery', "jquery_ui",
             }
         });
         $('.panel-settings').on('click', function (event) {
-            var id = $(this).closest('li').attr('id');
+            var gui_name = $(this).closest('li').data('name');
             $.each(gui.__folders, function (index, folder) {
                 folder.close();
             });
-            gui.__folders[id].open();
+            gui.__folders[gui_name].open();
             gui.open();
         });
         $('.panel-close').on('click', function (event) {
@@ -911,27 +932,27 @@ require(['jquery', "jquery_ui",
     //    );
     //};
 
-    var create_feed = function (type, feed_name, config) {
-        add_panel(feed_name);
+    var create_feed = function (type, feed_name, feed_path, config) {
+        add_panel(feed_name, feed_path);
         if (type == 'image') {
             var element_str = '<div class="target"/>';
-            add_poll_body(feed_name, element_str);
-            return new ImageFeed(feed_name, config);
+            add_poll_body(feed_path, element_str);
+            return new ImageFeed(feed_name, feed_path, config);
         } else if (type == 'text' || type == 'csv' || type == 'csv-table') {
-            add_poll_body(feed_name, '<table class="target"><thead></thead></table>');
-            return type == 'text' ? new TextFeed(feed_name, config) : new CsvFeed(feed_name, config);
+            add_poll_body(feed_path, '<table class="target"><thead></thead></table>');
+            return type == 'text' ? new TextFeed(feed_name, feed_path, config) : new CsvFeed(feed_name, feed_path, config);
         } else if (type == 'graph') {
-            add_poll_body(feed_name, '<div class="target graph"><div class="graph-text">&nbsp;</div><div class="graph-y-labels"></div><div class="graph-bars"></div></div>');
-            return new GraphFeed(feed_name, config);
+            add_poll_body(feed_path, '<div class="target graph"><div class="graph-text">&nbsp;</div><div class="graph-y-labels"></div><div class="graph-bars"></div></div>');
+            return new GraphFeed(feed_name, feed_path, config);
         } else if (type == 'stream') {
-            add_stream_body(feed_name, '<div class="target stream"/>');
+            add_stream_body(feed_path, '<div class="target stream"/>');
             return new ImageStreamFeed(feed_name, config);
         } else if (type == 'track') {
-            add_poll_body(feed_name, '<div class="target"/>');
-            return new TrackFeed(feed_name, config);
+            add_poll_body(feed_path, '<div class="target"/>');
+            return new TrackFeed(feed_name, feed_path, config);
         } else if (type == 'map') {
-            add_poll_body(feed_name, '<div class="target map"></div>');
-            return new MapFeed(feed_name, config);
+            add_poll_body(feed_path, '<div class="target map"></div>');
+            return new MapFeed(feed_name, feed_path, config);
         }
         throw 'unrecognised feed type: ' + type;
     };

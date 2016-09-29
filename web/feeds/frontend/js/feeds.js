@@ -1,7 +1,7 @@
 var Feed = function(feed_name, config) {
     this.feed_name = feed_name;
     this.config = config;
-    this.id = '#' + this.feed_name;
+    this.id = '#' + feed_path_to_id(this.feed_name);
     this.el = $(this.id);
     this.compact_icon = $(this.id + ' .panel-compact span');
     this.body = $(this.id + ' .panel-body');
@@ -135,7 +135,7 @@ ImageFeed.prototype.onload_ = function(data) {
 var ImageStreamFeed = function(feed_name, config) {
     this.feed_name = feed_name;
     this.config = config;
-    this.id = '#' + this.feed_name;
+    this.id = '#' + feed_path_to_id(this.feed_name);
     this.el = $(this.id);
     this.target = $(this.id + ' .target');
     this.control = $(this.id + ' .panel-stream-control span');
@@ -477,7 +477,7 @@ var add_panel = function(feed_name) {
 }
 
 var add_poll_body = function(feed_name, element) {
-    var id = '#' + feed_name;
+    var id = '#' + feed_path_to_id(feed_name);
     $(id).append(
         '<h3>' + feed_name + 
         '  <button class="panel-refresh" title="<kbd>click</kbd>: refresh<br><kbd>shift+click</kbd>: auto refresh"><span class="status text-muted glyphicon glyphicon-stop"></span></button>' +
@@ -493,7 +493,7 @@ var add_poll_body = function(feed_name, element) {
 }
 
 var add_stream_body = function(feed_name, element) {
-    var id = '#' + feed_name;
+    var id = '#' + feed_path_to_id(feed_name);
     $(id).append(
         '<h3>' + feed_name + 
         '  <button class="panel-stream-control" title="<kbd>click</kbd>: refresh<br><kbd>shift+click</kbd>: start/stop"><span class="status text-muted glyphicon glyphicon-stop"></span></button>' +

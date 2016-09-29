@@ -7,9 +7,9 @@ define(['jquery', 'Feed', 'Grid', 'utils'], function ($, Feed, Grid) {
     }
     TrackPoint.DEFAULT_ALPHA = 1;
 
-    var TrackFeed = function (feed_name, config) {
+    var TrackFeed = function (feed_name, feed_path, config) {
         this.base = Feed;
-        this.base(feed_name, config);
+        this.base(feed_name, feed_path, config);
         this.canvas = $('<canvas>', { class: 'track' }).appendTo(this.target);
         this.ctx = this.canvas[0].getContext('2d');
         this.points = [];

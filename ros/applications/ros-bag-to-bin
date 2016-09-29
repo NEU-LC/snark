@@ -1,0 +1,39 @@
+#!/usr/bin/python
+import rosbag
+import sys
+import struct
+import argparse
+
+help_description='extract topic data from rosbag in binary format'
+help_example="""
+example
+    rosbag-to-bin "pointscloud.bag" "/camera/rgb/points" 32 | csv-from-bin 4i,4ub,3i | head
+    rosbag-to-bin "pointscloud.bag" "/camera/rgb/points" 32 --timestamp --block | view-points --binary t,ui,4i,4ub,3i --fields t,block,x,y,z,,r,g,b --point-size 3
+hint
+    get list of topic:
+        rostopic list -b <file> 
+    get info about a topic:
+        rostopic echo <topic> -b <file> | less -S
+        rostopic echo /camera/rgb/points -b pointscloud.bag | head -32
+"""
+parser=argparse.ArgumentParser(description=help_description,epilog=help_example,formatter_class=argparse.RawDescriptionHelpFormatter)
+parser.add_argument('file',help='input bag file')
+parser.add_argument('topic',help='topic in bag file to be extracted')
+parser.add_argument('size',help='size of each record',type=int)
+parser.add_argument('--timestamp',help='prepend timestamp to each record',action='store_true')
+parser.add_argument('--block',help='add block field as binary unsigned int',action='store_true')
+args=parser.parse_args()
+
+bag=rosbag.Bag(sys.argv[1])
+block=0
+for topic, msg, t in bag.read_messages(topics=[sys.argv[2]]):
+    if(args.timestamp): ts=struct.pack('q',t.secs*1000000+t.nsecs/1000)
+    block_buf=struct.pack('I',block)
+    for i in range(0,len(msg.data)/args.size):
+        if(args.timestamp):
+            sys.stdout.write(ts)
+        if(args.block):
+            sys.stdout.write(block_buf)
+        sys.stdout.write(msg.data[i*args.size:(i+1)*args.size])
+    block+=1
+bag.close()

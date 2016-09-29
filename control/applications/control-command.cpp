@@ -70,7 +70,8 @@ static void usage( bool verbose = false )
     std::cerr << "    --cross-track-pid=<p>,<i>,<d>[,<integral threshold>]: cross track pid parameters" << std::endl;
     std::cerr << "    --heading-pid=<p>,<i>,<d>[,<integral threshold>]: heading pid parameters" << std::endl;
     std::cerr << "    --reset: pid's are reset every time target waypoint changes" << std::endl;
-    std::cerr << "    --format: show binary format of default input stream fields and exit" << std::endl;
+    std::cerr << "    --input-fields: show default input stream fields and exit" << std::endl;
+    std::cerr << "    --format,--input-format: show binary format of default input stream fields and exit" << std::endl;
     std::cerr << "    --output-format: show binary format of output stream and exit (for command fields only)" << std::endl;
     std::cerr << "    --output-fields: show output fields and exit (for command fields only)" << std::endl;
     std::cerr << std::endl;
@@ -128,18 +129,19 @@ int main( int ac, char** av )
     try
     {
         comma::command_line_options options( ac, av, usage );
-        steering_t steering = steering_from_string( options.value< std::string >( "--steering,-s" ) );
         comma::csv::options input_csv( options, field_names< control_data_t >( true ) );
         input_csv.full_xpath = true;
         comma::csv::input_stream< control_data_t > input_stream( std::cin, input_csv );
         comma::csv::options output_csv( options );
+        if( options.exists( "--format,--input-format" ) ) { std::cout << format< control_data_t >( true ) << std::endl; return 0; }
+        if( options.exists( "--input-fields" ) ) { std::cout << field_names< control_data_t >( true ) << std::endl; return 0; }
+        steering_t steering = steering_from_string( options.value< std::string >( "--steering,-s" ) );
         if( steering == omni ) { output_csv.fields = "turn_rate,local_heading"; }
         else if( steering == skid ) { output_csv.fields = "turn_rate"; }
         else { std::cerr << name << ": steering '" << steering_to_string( steering ) << "' is not implemented" << std::endl; return 1; }
         if( input_csv.binary() ) { output_csv.format( format< command_t >( output_csv.fields ) ); }
         comma::csv::output_stream< command_t > output_stream( std::cout, output_csv );
         comma::csv::tied< control_data_t, command_t > tied( input_stream, output_stream );
-        if( options.exists( "--format" ) ) { std::cout << format< control_data_t >( true ) << std::endl; return 0; }
         if( options.exists( "--output-format" ) ) { std::cout << format< command_t >( output_csv.fields ) << std::endl; return 0; }
         if( options.exists( "--output-fields" ) ) { std::cout << output_csv.fields << std::endl; return 0; }
         bool feedback_has_time  = input_csv.has_field( "feedback/t" );

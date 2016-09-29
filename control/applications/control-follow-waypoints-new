@@ -1,24 +1,40 @@
 #!/bin/bash
 
-function option_description
+function options_description
 {
     cat <<EOF
 --config=[<config>]; config file name
---output-fields; show output fields and exit
---output-format; show output format and exit
---sample-config; output sample config and exit
+--input-fields; show waypoint fields (config is used if provided)
+--output-fields; show output fields (config is used if provided)
+--output-format; show output format of binary stream (config is used if provided)
+--sample-config; output sample config
+--steering=[<steering>]; steering type (omni or skid)
 EOF
 }
 
 function usage
 {
-    cat << END
+    cat <<END
 
     take waypoints on stdin and output wheel commands based on the position feedback to stdout
 
 options:
-$( option_description | sed 's/^/    /g' )
+$( options_description | sed 's/^/    /g' )
 
+notes:
+    - command line options take precedence over config
+    - output is binary if both waypoints and feedback are binary
+
+examples:
+    cat waypoints.csv | $scriptname --config=config.json > commands.csv
+    $scriptname --input-fields --steering=omni
+    $scriptname --output-fields --steering=omni
+    $scriptname --output-format --steering=omni
+    $scriptname --sample-config
+
+END
+    if (( ! $verbose )); then echo "for more output: $scriptname -h -v" >&2; return; fi
+    cat <<END
 example config file:
     
 $( sample_config | sed 's/^/    /' )
@@ -26,34 +42,29 @@ $( sample_config | sed 's/^/    /' )
     mode: waypoint following mode, fixed or dynamic
           fixed: wait until the current waypoint reached, then go to the next waypoint
           dynamic: if a new waypoint received, while the current waypoint is not reached, go to the new waypoint straightaway
-    steering: steering mode (omni or skid)
+    steering: steering type, omni or skid
+              omni: wheels can rotate with respect to the body
+              skid: wheels are fixed with respect to the body
     proximity: distance for deciding when a waypoint is reached
-    past-endpoint: 1 -> besides proximity condition, consider a waypoint as reached if the vehicle has moved past the end line, 0 -> use only proximity condition
+    past_endpoint: 1 -> besides proximity condition, consider a waypoint as reached if the vehicle has moved past the end line, 0 -> use only proximity condition
         ( the end line is a line which goes through the target waypoint and is perpendicular to the current wayline)
-    heading-is-absolute-default: 1 -> interpret heading_offset as the desired global (absolute) heading, 0 -> heading_offset is relative offset wrt the wayline heading
+    heading_is_absolute_default: 1 -> interpret heading as the desired global (absolute) heading, 0 -> heading is relative offset wrt the wayline heading
         ( this describes default behaviour when is_absolute is not provided in the input; when is_absolute is given, it takes precedence )
     frequency: control frequency, i.e. the rate at which wheel commands are output when moving towards a waypoint
         ( when the last given waypoint is reached, no output is produced until new waypoints are given )
     reset: 1 -> reset pid integral upon reaching every target waypoint, 0 -> no reset
     pid:
-        cross-track: p,i,d[,threshold] values, with optional integral threshold, for cross-track
+        cross_track: p,i,d[,threshold] values, with optional integral threshold, for cross-track
         heading: the same for heading
     waypoints:
-        address: generic address for the source of target waypoints (if no adress is given, stdin is used)
-        fields: csv fields of waypoints (required fields: 'x,y' for skid and 'x,y,heading_offset' for omni steering)
-        binary: binary format of waypoints
+        fields: csv fields of waypoints (required fields: $default_waypoints_fields_skid for skid steering and $default_waypoints_fields_omni for omni steering)
+        binary: binary format of waypoints (ascii stream is assumed by default)
     feedback:
         address: generic address for feedback
-        fields: csv fields of feedback (required fields: 't,x,y,yaw')
-        binary: binary format of feedback
-
-examples:
-        $scriptname --config=config.json
-        $scriptname --output-fields --config=config.json
-        $scriptname --output-format --config=config.json
+        fields: csv fields of feedback (required fields: $default_feedback_fields)
+        binary: binary format of feedback (ascii stream is assumed by default)
 
 END
-    exit
 }
 
 function sample_config
@@ -63,14 +74,13 @@ cat <<END
     "mode": "fixed",
     "steering": "omni",
     "proximity": "0.15",
-    "past-endpoint": 1,
-    "heading-is-absolute-default": 0,
+    "past_endpoint": 1,
+    "heading_is_absolute_default": 0,
     "frequency": "20.0",
     "reset": 0,
     "waypoints":
     {
-        "address": "tcp:localhost:10100",
-        "fields": "x,y,heading_offset,is_absolute,speed,index",
+        "fields": "x,y,heading,is_absolute,speed,id",
         "binary": "3d,b,d,ui"
     },
     "feedback":
@@ -81,83 +91,109 @@ cat <<END
     },
     "pid":
     {
-        "cross-track": "0.3,0,0",
+        "cross_track": "0.3,0,0",
         "heading": "0.5,0,0"
     }
 }
 END
 }
 
-function die { echo "$scriptname: $1" >&2; exit 1; }
-
-function import_config
+function config_fields_mandatory
 {
-    local config=$1
-    waypoints_address=
-    comma_path_value_to_var < <( name-value-convert --to path-value < "$config" )
-    [[ "$config" ]] || die "config file is not given"
-    [[ -f "$config" ]] || die "config file '$config' is not found"
-    function die_if_config_does_not_have { local path=$1; [[ "${!path}" ]] || die "$path not found in '$config'"; }
-    local path
-    for path in mode \
-                steering \
-                proximity \
-                past_endpoint \
-                heading_is_absolute_default \
-                frequency \
-                reset \
-                feedback_address \
-                feedback_fields \
-                pid_cross_track \
-                pid_heading \
-                waypoints_fields; do
-        die_if_config_does_not_have "$path"
-    done
-    if [[ -z "$waypoints_binary" && -z "$feedback_binary" ]]; then binary_output=0
-    elif [[ -n "$waypoints_binary" && -n "$feedback_binary" ]]; then binary_output=1
-    else die "input and feedback streams should be both ascii or both binary"; fi
+    cat <<END
+mode
+steering
+proximity
+past_endpoint
+heading_is_absolute_default
+frequency
+reset
+feedback/address
+pid/cross_track
+pid/heading
+END
 }
 
+function is_binary
+{
+    [[ -z "$waypoints_binary" && -z "$feedback_binary" ]] && return 1
+    [[ -n "$waypoints_binary" && -n "$feedback_binary" ]] && return 0
+    die "input and feedback streams should be both ascii or both binary"
+}
+
+function die { echo "$scriptname: $1" >&2; exit 1; }
+
 function prefix { csv-fields prefix --path $1; }
+
+function set_default_waypoints_fields
+{
+    local steering=$1
+    case "$steering" in
+        omni) waypoints_fields=$waypoints_fields_omni ;;
+        skid) waypoints_fields=$waypoints_fields_skid ;;
+        *) die "steering '$steering' is not recongnised" ;;
+    esac
+}
 
 
 scriptname=$( basename $0 )
 source $( which comma-application-util )
 
-if (( $( comma_options_has --help "$@" ) || $( comma_options_has -h "$@" ) )); then usage; fi
-comma_path_value_to_var < <( option_description | comma-options-to-name-value "$@" )
+# default fields (note that default fields for waypoints depend on steering type and need to be set once the steering type is known)
+feedback_fields="t,x,y,yaw"
+waypoints_fields_omni="x,y,heading"
+waypoints_fields_skid="x,y"
 
-if (( $( comma_options_has --sample-config "$@" ) )); then
-    sample_config
+feedback_binary=""
+waypoints_binary=""
+
+feedback_format="t,d,d,d"
+
+if (( $( comma_options_has --help "$@" ) || $( comma_options_has -h "$@" ) )); then
+    (( $( comma_options_has --verbose "$@" ) || $( comma_options_has -v "$@" ) )) && verbose=1 || verbose=0
+    usage $verbose
     exit
 fi
 
-import_config "$config"
+if (( $( comma_options_has --sample-config "$@" ) )); then sample_config; exit; fi
 
-error_fields=$( control-error --output-fields )
-error_binary=$( control-error --output-format )
+eval $( options_description | grep '^--config=' | comma-options-to-name-value "$@" | comma_path_value_mangle )
+if [[ -f "$config" ]]; then
+    eval $( name-value-convert --to path-value < $config | comma_path_value_mangle; comma_status_ok ) || die "failed to import config '$config'"
+fi
+eval $( options_description | comma-options-to-name-value "$@" | comma_path_value_mangle )
+if [[ -z "$waypoints_fields" ]]; then
+    [[ "$steering" ]] || die "failed to set default waypoints/fields; steering type is required"
+    set_default_waypoints_fields $steering
+fi
+
+if (( $( comma_options_has --input-fields "$@" ) )); then echo $waypoints_fields; exit; fi
+
+# control-error and control-command use heading_offset instead of heading
+waypoints_fields_compatible=$( csv-fields rename --fields=heading --to=heading_offset <<< $waypoints_fields )
+
+error_fields=$( control-error --output-fields --status )
+error_binary=$( control-error --output-format --status )
 
 command_fields=$( control-command --steering=$steering --output-fields )
 command_binary=$( control-command --steering=$steering --output-format )
 
-passed_fields=$( prefix target <<< $waypoints_fields ),$( prefix feedback <<< $feedback_fields ),$error_fields
-output_fields=$passed_fields,$( prefix command <<< $command_fields )
-if (( $( comma_options_has --output-fields "$@" ) )); then echo $output_fields; exit; fi
-
-passed_binary=
-(( binary_output )) && passed_binary=$waypoints_binary,$feedback_binary,$error_binary
-
+if (( $( comma_options_has --output-fields "$@" ) )); then
+    echo $( prefix feedback <<< $feedback_fields ),$error_fields,$( prefix command <<< $command_fields )
+    exit
+fi
 if (( $( comma_options_has --output-format "$@" ) )); then
-    (( binary_output )) || die "failed to get output format since output is ascii"
-    echo $passed_binary,$command_binary
+    echo ${feedback_binary:-$feedback_format},$error_binary,$command_binary
     exit
 fi
 
-default_waypoints_address="-"
+passed_fields=$( prefix target <<< $waypoints_fields_compatible ),$( prefix feedback <<< $feedback_fields ),$error_fields
+is_binary && passed_binary=$waypoints_binary,$feedback_binary,$error_binary || passed_binary=
 
-io-cat ${waypoints_address:-$default_waypoints_address} \
-    | control-error \
-        --fields=$waypoints_fields \
+config_fields_mandatory | comma_path_assert_defined || die "found undefined config parameters"
+
+control-error \
+        --fields=$waypoints_fields_compatible \
         --binary=$waypoints_binary \
         "$feedback_address;fields=$feedback_fields;binary=$feedback_binary" \
         --mode=$mode \
@@ -165,8 +201,9 @@ io-cat ${waypoints_address:-$default_waypoints_address} \
         --frequency=$frequency \
         $( (( past_endpoint )) && echo --past-endpoint ) \
         $( (( heading_is_absolute_default )) && echo --heading-is-absolute ) \
-        --verbose \
+        --status \
         --flush \
+        --verbose \
     | control-command \
         --fields=$passed_fields \
         --binary=$passed_binary \
@@ -174,5 +211,5 @@ io-cat ${waypoints_address:-$default_waypoints_address} \
         --heading-pid=$pid_heading \
         --steering=$steering \
          $( (( reset )) && echo --reset ) \
-        --verbose \
-        --flush
+        --flush \
+        --verbose
