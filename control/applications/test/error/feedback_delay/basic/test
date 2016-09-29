@@ -1,0 +1,70 @@
+#!/bin/bash
+
+function wait_for_port
+{
+    local port=$1
+    local -i count=0
+    local listen_state=$( io-ls --enum-state | grep ,LISTEN$ | cut -d, -f1 )
+    while ! io-ls --fields local/port,state | grep $port,$listen_state &>/dev/null; do
+        sleep 0.1
+        if (( ++count > 100 )); then { echo "$scriptname: timed out waiting for port $port"; return 1; }; fi
+    done
+    echo "port $port is ready" >&2
+}
+
+function kill_if_exists
+{
+    local pid=$1
+    local what=$2
+    if kill -0 $pid &>/dev/null; then
+        echo "killing $what (pid=$pid): $( date +%T.%N )" >&2
+        kill $pid
+        wait $pid
+    fi
+}
+
+function bye
+{
+    kill_if_exists $feedback_pid feedback
+    exit
+}
+
+trap bye INT HUP TERM EXIT
+
+scriptname=$( readlink -f $0 )
+source $( type -p comma-application-util ) || { echo "$scriptname: failed to source comma-application-util" >&2; exit 1; }
+source $( type -p comma-process-util ) || { echo "$scriptname: failed to source comma-process-util" >&2; exit 1; }
+
+mkdir -p output
+
+fields=x,y,heading_offset
+binary=d,d,d
+
+feedback_fields=t,x,y,yaw
+feedback_binary=t,d,d,d
+
+feedback_port=$RANDOM
+feedback_pid=
+{
+    cat data/feedback.csv
+    sleep 2 # keep feedback alive
+} \
+    | csv-to-bin $feedback_binary --flush | socat -u - tcp-listen:$feedback_port & feedback_pid=$!
+wait_for_port $feedback_port
+
+output_format=$binary,$feedback_binary,$( control-error --output-format --status )
+output_fields=$( csv-fields prefix --path target <<< $fields ),$( csv-fields prefix --path feedback <<< $feedback_fields ),$( control-error --output-fields )
+
+{
+    sleep 1 # wait long enough for control-error to receive feedback
+    echo "sending waypoints at $( date +%T.%N )" >&2
+    cat data/waypoints.csv | csv-to-bin $binary --flush
+    sleep 1 # keep stdin of control-error open
+} \
+    | control-error --fields=$fields  --binary=$binary \
+        "tcp:localhost:$feedback_port;fields=$feedback_fields;binary=$feedback_binary" \
+        --mode=fixed --proximity=0.1 --frequency=20 --status --flush --verbose \
+    | csv-from-bin $output_format \
+    | name-value-from-csv $output_fields --line-number --prefix output \
+    | csv-quote --unquote --fields ,x --delimiter =
+
