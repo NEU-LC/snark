@@ -28,25 +28,18 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-#ifndef SNARK_SENSORS_FLYCAPTURE_HELPERS_H_
-#define SNARK_SENSORS_FLYCAPTURE_HELPERS_H_
+#pragma once
 
 #include "FlyCapture2.h"
 #include "flycapture.h"
-#include <boost/date_time/posix_time/posix_time.hpp>
-#include <boost/function.hpp>
-#include <boost/bimap.hpp>
 
 
-namespace snark{ namespace camera{
+namespace snark{ namespace cameras { namespace flycapture {
 
-    void flycapture_assert_ok_(const FlyCapture2::Error error, const std::string error_string);
+    void assert_ok(const FlyCapture2::Error error, const std::string& error_string);
     const std::string get_interface_string( FlyCapture2::InterfaceType interface );
-    unsigned int flycapture_bits_per_pixel_( const FlyCapture2::PixelFormat pixel_format_ );
-    cv::Mat flycapture_image_as_cvmat_( const FlyCapture2::Image& frame );
-    int flycapture_get_cv_type_( const FlyCapture2::Image& frame );
+    unsigned int bits_per_pixel( const FlyCapture2::PixelFormat pixel_format_ );
+    cv::Mat image_as_cvmat( const FlyCapture2::Image& frame );
+    int get_cv_type( const FlyCapture2::Image& frame );
 
-
-} } // namespace snark{ namespace camera{
-
-#endif // SNARK_SENSORS_FLYCAPTURE_HELPERS_H_
+} } } // namespace snark{ namespace cameras { namespace flycapture {

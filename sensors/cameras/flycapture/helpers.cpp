@@ -40,9 +40,9 @@
 #include "flycapture.h"
 #include "helpers.h"
 
-namespace snark{ namespace camera{ 
+namespace snark{ namespace cameras{ namespace flycapture{
 
-    void flycapture_assert_ok_(const FlyCapture2::Error error, const std::string error_string)
+    void assert_ok(const FlyCapture2::Error error, const std::string& error_string)
     {
         if (error != FlyCapture2::PGRERROR_OK)
             { COMMA_THROW(comma::exception, error_string + " (" + std::string(error.GetDescription()) +")"); }
@@ -65,9 +65,9 @@ namespace snark{ namespace camera{
         }
     }
 
-    unsigned int flycapture_bits_per_pixel_( const FlyCapture2::PixelFormat pixel_format_ )
+    unsigned int bits_per_pixel( const FlyCapture2::PixelFormat pixel_format )
     {
-        switch( pixel_format_ )
+        switch( pixel_format )
         {
             case FlyCapture2::PIXEL_FORMAT_MONO8:
             case FlyCapture2::PIXEL_FORMAT_RAW8:
@@ -87,17 +87,17 @@ namespace snark{ namespace camera{
             case FlyCapture2::PIXEL_FORMAT_411YUV8:
             case FlyCapture2::PIXEL_FORMAT_422YUV8:
             case FlyCapture2::PIXEL_FORMAT_444YUV8:
-            COMMA_THROW( comma::exception, "unsupported format " << pixel_format_ );
+            COMMA_THROW( comma::exception, "unsupported format " << pixel_format );
             default:
-            COMMA_THROW( comma::exception, "unknown format " << pixel_format_ );  
+            COMMA_THROW( comma::exception, "unknown format " << pixel_format );  
             return 0;
         }
     }
 
-    cv::Mat flycapture_image_as_cvmat_( const FlyCapture2::Image& frame )
+    cv::Mat image_as_cvmat( const FlyCapture2::Image& frame )
     {
         int type;
-        switch( flycapture_bits_per_pixel_(frame.GetPixelFormat() ) ) 
+        switch( bits_per_pixel(frame.GetPixelFormat() ) ) 
         {
             case 8:
             type = CV_8UC1;
@@ -121,9 +121,9 @@ namespace snark{ namespace camera{
         return cv::Mat( frame.GetRows(), frame.GetCols(), type, frame.GetData() );
     }
 
-    int flycapture_get_cv_type_( const FlyCapture2::Image& frame )
+    int get_cv_type( const FlyCapture2::Image& frame )
     {
-        switch( flycapture_bits_per_pixel_(frame.GetPixelFormat() ) ) 
+        switch( bits_per_pixel(frame.GetPixelFormat() ) ) 
         {
             case 8: return CV_8UC1;
             case 16: return CV_16UC1;
@@ -134,4 +134,4 @@ namespace snark{ namespace camera{
             COMMA_THROW( comma::exception, "unknown format " << frame.GetPixelFormat()  );
         };
     }
-}} // namespace snark{ namespace camera{ 
+} } } // namespace snark{ namespace cameras{ namespace flycapture

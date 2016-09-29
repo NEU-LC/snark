@@ -41,7 +41,7 @@
 #include "attributes.h"
 #include "helpers.h"
 
-namespace snark{ namespace camera{ 
+namespace snark{ namespace cameras{ namespace flycapture{
 
     static const pixel_format_map_t pixel_format_map = boost::assign::list_of< pixel_format_map_t::relation >
     (FlyCapture2::PIXEL_FORMAT_MONO8, "PIXEL_FORMAT_MONO8")
@@ -109,15 +109,15 @@ namespace snark{ namespace camera{
     ( "trigger_polarity" )
     ( "trigger_source" );     
 
-    std::string flycapture_get_attribute_( FlyCapture2::CameraBase* handle, const std::string& key )
+    std::string get_attribute( FlyCapture2::CameraBase* handle, const std::string& key )
     {
         FlyCapture2::Error error;
         if (FlyCapture2::GigECamera* camera = dynamic_cast<FlyCapture2::GigECamera*>(handle))
         { // GigE-only properties
             FlyCapture2::GigEImageSettings image_settings;
             FlyCapture2::GigEImageSettingsInfo image_settings_info;
-            flycapture_assert_ok_(camera->GetGigEImageSettings(&image_settings), "couldn't get GigE image settings");
-            flycapture_assert_ok_(camera->GetGigEImageSettingsInfo(&image_settings_info), "couldn't get GigE image settings info");
+            assert_ok(camera->GetGigEImageSettings(&image_settings), "couldn't get GigE image settings");
+            assert_ok(camera->GetGigEImageSettingsInfo(&image_settings_info), "couldn't get GigE image settings info");
             if( key == "maxWidth" ) { return std::to_string( image_settings_info.maxWidth ); }
             else if( key == "maxHeight" ) { return std::to_string( image_settings_info.maxHeight ); }
             else if( key == "offsetHStepSize" ) {  std::to_string( image_settings_info.offsetHStepSize ); }
@@ -136,13 +136,13 @@ namespace snark{ namespace camera{
             unsigned int pPacketSize;
             float pPercentage;
             bool format_supported; // , format7_is_supported;
-            // flycapture_assert_ok_(camera->GetVideoModeAndFrameRateInfo(FlyCapture2::VIDEOMODE_FORMAT7, FlyCapture2::FRAMERATE_FORMAT7, &format7_is_supported)), "couldn't get video mode and frame rate");
+            // assert_ok(camera->GetVideoModeAndFrameRateInfo(FlyCapture2::VIDEOMODE_FORMAT7, FlyCapture2::FRAMERATE_FORMAT7, &format7_is_supported)), "couldn't get video mode and frame rate");
             // if( !format7_is_supported ) { COMMA_THROW(comma::exception, "Only format7 cameras and GigE cameras are supported"); }
-            flycapture_assert_ok_(
+            assert_ok(
                 camera->GetFormat7Info(&format_info, &format_supported),
                 "couldn't get format7 info"
             );
-            flycapture_assert_ok_(
+            assert_ok(
                 camera->GetFormat7Configuration( &pImageSettings, &pPacketSize, &pPercentage ),
                 "couldn't get format7 config"
             );
@@ -159,7 +159,7 @@ namespace snark{ namespace camera{
 
             //Check the common property lists
             FlyCapture2::TriggerMode pTriggerMode;
-            flycapture_assert_ok_(handle->GetTriggerMode( &pTriggerMode ), "couldn't get trigger mode");
+            assert_ok(handle->GetTriggerMode( &pTriggerMode ), "couldn't get trigger mode");
 
             if( key == "trigger_on" ) { return std::to_string( pTriggerMode.onOff ); }
             else if( key == "trigger_polarity" ) { return std::to_string( pTriggerMode.polarity ); }
@@ -187,11 +187,11 @@ namespace snark{ namespace camera{
         return "Not Found"; 
     }
 
-    void flycapture_set_attribute_( FlyCapture2::CameraBase* handle, const std::string& key, const std::string& value )
+    void set_attribute( FlyCapture2::CameraBase* handle, const std::string& key, const std::string& value )
     {
         FlyCapture2::Error error;
         FlyCapture2::TriggerMode trigger_mode;
-        flycapture_assert_ok_(handle->GetTriggerMode(&trigger_mode), "error getting attributes from camera.");
+        assert_ok(handle->GetTriggerMode(&trigger_mode), "error getting attributes from camera.");
 
         if( key == "trigger_on" ) 
         {
@@ -244,15 +244,15 @@ namespace snark{ namespace camera{
                     cam_prop.absControl = true; //TODO: If needed, implement non-absolute control of camera
                     cam_prop.absValue = boost::lexical_cast<float>( value );             
                 }                
-                flycapture_assert_ok_(handle->SetProperty( &cam_prop ), "Error setting attributes");
+                assert_ok(handle->SetProperty( &cam_prop ), "Error setting attributes");
             }
         } else {
             COMMA_THROW( comma::exception,  "Error: property '" << key << "' not found!" );
         }
-        flycapture_assert_ok_(handle->SetTriggerMode( &trigger_mode ), "Error setting attributes." );
+        assert_ok(handle->SetTriggerMode( &trigger_mode ), "Error setting attributes." );
     }
 
-    void flycapture_set_attribute_( FlyCapture2::Camera* handle, const std::string& key, const std::string& value )
+    void set_attribute( FlyCapture2::Camera* handle, const std::string& key, const std::string& value )
     {
         FlyCapture2::Error error;
         FlyCapture2::Format7ImageSettings image_settings;
@@ -261,23 +261,23 @@ namespace snark{ namespace camera{
         unsigned int packetSize;
         float percentage;
 
-        flycapture_assert_ok_(
+        assert_ok(
             handle->GetFormat7Info(&image_settings_info, &pSupported),
             "couldn't get format7 info"
         );
-        flycapture_assert_ok_(
+        assert_ok(
             handle->GetFormat7Configuration(  &image_settings, &packetSize, &percentage ),
             "Error getting format7 config"
         );
 
         // if( key == "offsetHStepSize" ) { image_settings_info.offsetHStepSize = boost::lexical_cast<int>(value); }
         // else if( key == "offsetVStepSize" ) { image_settings_info.offsetVStepSize = boost::lexical_cast<int>(value); }
-        /*else*/ if( key == "offsetX" ) { image_settings.offsetX = boost::lexical_cast<int>(value); }
-        else if( key == "offsetY" ) { image_settings.offsetY = boost::lexical_cast<int>(value); }
+        /*else*/ if( key == "offsetX" ) { image_settings.offsetX = boost::lexical_cast<uint>(value); }
+        else if( key == "offsetY" ) { image_settings.offsetY = boost::lexical_cast<uint>(value); }
         else if( key == "width" )       
         {
             if( value == "max")
-                { image_settings.width = image_settings_info.maxWidth- image_settings.offsetX; }
+                { image_settings.width = image_settings_info.maxWidth - image_settings.offsetX; }
             else {
                 uint val_uint = boost::lexical_cast<uint>( value );
                 if( val_uint > image_settings_info.maxWidth  ||  val_uint < 0 )
@@ -302,30 +302,32 @@ namespace snark{ namespace camera{
                 { image_settings.pixelFormat = pixel_format_map.right.at( value ); }
             else { COMMA_THROW( comma::exception, "Error: invalid pixel format."); }
         } else {
-            flycapture_set_attribute_(dynamic_cast<FlyCapture2::CameraBase*>(handle), key, value);
+            set_attribute(dynamic_cast<FlyCapture2::CameraBase*>(handle), key, value);
             return;
         }
+
         bool is_valid_settings;
         FlyCapture2::Format7PacketInfo fmt7PacketInfo;
-
-        flycapture_assert_ok_(handle->ValidateFormat7Settings(&image_settings, &is_valid_settings, &fmt7PacketInfo )
-            , "couldn't validate format7 settings");
+        assert_ok(
+            handle->ValidateFormat7Settings(&image_settings, &is_valid_settings, &fmt7PacketInfo )
+            , "couldn't validate format7 settings"
+        );
         if (is_valid_settings)
         {
-            flycapture_assert_ok_(
+            assert_ok(
                 handle->SetFormat7Configuration(  &image_settings, fmt7PacketInfo.recommendedBytesPerPacket), 
                 "Error setting format7 config");
         }
     }
 
-    void flycapture_set_attribute_( FlyCapture2::GigECamera* handle, const std::string& key, const std::string& value )
+    void set_attribute( FlyCapture2::GigECamera* handle, const std::string& key, const std::string& value )
     {
         FlyCapture2::Error error;
         FlyCapture2::GigEImageSettings image_settings;
         FlyCapture2::GigEImageSettingsInfo image_settings_info;
 
-        flycapture_assert_ok_(handle->GetGigEImageSettings(&image_settings), "Error getting image settings from camera." );
-        flycapture_assert_ok_(handle->GetGigEImageSettingsInfo(&image_settings_info), "Error getting image settings info from camera." );
+        assert_ok(handle->GetGigEImageSettings(&image_settings), "Error getting image settings from camera." );
+        assert_ok(handle->GetGigEImageSettingsInfo(&image_settings_info), "Error getting image settings info from camera." );
 
         if( key == "offsetHStepSize" ) { image_settings_info.offsetHStepSize = boost::lexical_cast<int>(value); }
         else if( key == "offsetVStepSize" ) { image_settings_info.offsetVStepSize = boost::lexical_cast<int>(value); }
@@ -351,28 +353,28 @@ namespace snark{ namespace camera{
                 { image_settings.pixelFormat = pixel_format_map.right.at( value ); }
             else { COMMA_THROW( comma::exception, "Error: invalid pixel format."); }
         } else {
-            flycapture_set_attribute_(dynamic_cast<FlyCapture2::CameraBase*>(handle), key, value);
+            set_attribute(dynamic_cast<FlyCapture2::CameraBase*>(handle), key, value);
             return;
         }
         //Handle errors here, the SDK should do out of bounds checking 
 
-        flycapture_assert_ok_(handle->SetGigEImageSettings( &image_settings ), "Error setting attributes." );
+        assert_ok(handle->SetGigEImageSettings( &image_settings ), "Error setting attributes." );
     }
 
-    flycapture::attributes_type flycapture_attributes_( FlyCapture2::CameraBase* handle )
+    camera::attributes_type get_attributes( FlyCapture2::CameraBase* handle )
     {
-        flycapture::attributes_type attributes;
+        camera::attributes_type attributes;
         for( std::vector< std::string >::const_iterator i = explicit_attributes.begin(); i != explicit_attributes.end(); i++ )
         {
-            attributes.insert( std::make_pair( *i, flycapture_get_attribute_( handle, *i ) ) );
+            attributes.push_back( std::make_pair( *i, get_attribute( handle, *i ) ) );
         }
 
         //There is an iterable list for the remaining attributes
         for( property_map_t::const_iterator i = property_map.begin(); i != property_map.end(); ++i )
         {
-            attributes.insert( std::make_pair( i->right , flycapture_get_attribute_( handle,i->right ) ) ); 
+            attributes.push_back( std::make_pair( i->right , get_attribute( handle,i->right ) ) ); 
         }
         return attributes;
     }
 
-} }// namespace snark{ namespace camera{ 
+} } }// namespace snark{ namespace cameras{ namespace flycapture

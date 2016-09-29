@@ -31,26 +31,23 @@
 #ifndef SNARK_SENSORS_FLYCAPTURE_ATTRIBUTES_H_
 #define SNARK_SENSORS_FLYCAPTURE_ATTRIBUTES_H_
 
+#include <string>
 #include "FlyCapture2.h"
 #include "flycapture.h"
-#include <boost/date_time/posix_time/posix_time.hpp>
-#include <boost/function.hpp>
 #include <boost/bimap.hpp>
-// #include <opencv2/core/core.hpp>
 
-
-namespace snark{ namespace camera{
+namespace snark { namespace cameras { namespace flycapture {
     typedef boost::bimap<FlyCapture2::PixelFormat , std::string> pixel_format_map_t;
     typedef boost::bimap<FlyCapture2::PropertyType ,std::string > property_map_t;
 
-    std::string flycapture_get_attribute_( FlyCapture2::CameraBase* handle, const std::string& key );
-    void flycapture_set_attribute_( FlyCapture2::CameraBase* handle, const std::string& key, const std::string& value );
-    void flycapture_set_attribute_( FlyCapture2::Camera* handle, const std::string& key, const std::string& value );
-    void flycapture_set_attribute_( FlyCapture2::GigECamera* handle, const std::string& key, const std::string& value );
-    flycapture::attributes_type flycapture_attributes_( FlyCapture2::CameraBase* handle );
-    unsigned int flycapture_bits_per_pixel_( const FlyCapture2::PixelFormat pixel_format_ );
+    std::string get_attribute( FlyCapture2::CameraBase* handle, const std::string& key );
+    void set_attribute( FlyCapture2::CameraBase* handle, const std::string& key, const std::string& value );
+    void set_attribute( FlyCapture2::Camera* handle, const std::string& key, const std::string& value );
+    void set_attribute( FlyCapture2::GigECamera* handle, const std::string& key, const std::string& value );
+    camera::attributes_type get_attributes( FlyCapture2::CameraBase* handle );
+    unsigned int bits_per_pixel( const FlyCapture2::PixelFormat pixel_format_ );
     const pixel_format_map_t* get_pixel_format_map();
 
-} } // namespace snark{ namespace camera{
+} } } // namespace snark { namespace cameras { namespace flycapture {
 
 #endif // SNARK_SENSORS_FLYCAPTURE_ATTRIBUTES_H_

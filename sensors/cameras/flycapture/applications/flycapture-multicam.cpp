@@ -37,89 +37,18 @@
 #include <comma/base/exception.h>
 #include <comma/csv/stream.h>
 #include <comma/name_value/map.h>
-#include "../../../../imaging/cv_mat/filters.h"
 #include "../../../../imaging/cv_mat/serialization.h"
 #include "../../../../tbb/queue.h"
 #include "../flycapture.h"
 #include <boost/algorithm/string/join.hpp>
 #include <boost/program_options.hpp>
+#include <opencv2/highgui/highgui.hpp>
 
 static comma::signal_flag is_shutdown;
 static bool verbose;
-static unsigned int emptyFrameCounter = 0;
 static unsigned int discard_more_than;
-typedef std::pair< boost::posix_time::ptime, cv::Mat > Pair;
-static snark::tbb::queue< Pair > queue;
-static boost::scoped_ptr< snark::camera::flycapture::multicam > multicam;
+static boost::scoped_ptr< snark::cameras::flycapture::camera::multicam > multicam;
 static bool running = true;
-
-// static void spin_()
-// {
-//     static unsigned int i = 0;
-//     static char spinner[] = { '-', '/', '|', '\\' };
-//     if( i % 3 == 0 ) { std::cerr << '\r' << spinner[ i / 3 ] << "   "; }
-//     if( ++i >= 12 ) { i = 0; }
-// }
-
-// static void on_frame_( const Pair& p ) // quick and dirty
-// {
-//     std::cerr << "on_frame_" << std::endl;
-//     if( p.second.size().width == 0 )
-//     {
-//         emptyFrameCounter++;
-//         if( emptyFrameCounter > 20 )
-//         {
-//             COMMA_THROW( comma::exception, "got lots of empty frames, check that the packet size in the camera matches the mtu on your machine" );
-//         }
-//         if( verbose )
-//         {
-//             std::cerr << "flycapture-multicam: got empty frame" << std::endl;
-//         }
-//         return;
-//     }
-//     emptyFrameCounter = 0;
-//     Pair q;
-//     if( is_shutdown || !running ) { return queue.push( q ); } // to force read exit
-//     q.first = p.first;
-//     p.second.copyTo( q.second ); // quick and dirty: full copy; todo: implement circular queue in flycapture::multicam?
-//     queue.push( q );
-    
-//     if( verbose ) { spin_(); }
-//     if( discard_more_than > 0 )
-//     {
-//         int size = queue.size();
-//         if( size > 1 )
-//         {
-//             int size_to_discard = size - discard_more_than;
-//             Pair p;
-//             for( int i = 0; i < size_to_discard; ++i ) { queue.pop( p ); } // clear() is not thread-safe
-//             if( verbose && size_to_discard > 0 ) { std::cerr << "flycapture-multicam: discarded " << size_to_discard << " frames" << std::endl; }
-//         }
-//     }    
-// }
-
-// static Pair read_( tbb::flow_control& flow )
-// {
-//     if( queue.empty() || is_shutdown || !multicam->good() || !std::cout.good() || !running )
-//     {
-//         flow.stop();
-//         return Pair();
-//     }
-//     Pair p;
-//     queue.pop( p );
-//     return p;
-// }
-
-// static void write_( snark::cv_mat::serialization& serialization, Pair p )
-// {
-//     if( p.second.size().width == 0 )
-//     {
-//         running = false;
-//     }
-//     static std::vector< char > buffer;
-//     buffer.resize( serialization.size( p ) );
-//     serialization.write( std::cout, p );
-// }
 
 int main( int argc, char** argv )
 {
@@ -129,16 +58,14 @@ int main( int argc, char** argv )
         std::string fields;
         unsigned int discard;
         boost::program_options::options_description description( "options" );
-        std::vector<snark::camera::flycapture::multicam::camera_pair> cameras;
+        std::vector<snark::cameras::flycapture::camera::multicam::camera_pair> cameras;
 
         description.add_options()
             ( "help,h", "display help message" )
-            ( "camera", boost::program_options::value< std::vector<std::string> >(), "a camera_string specifying the serial to connect to as well as the attributes and filters" )
-            ( "discard,d", "discard frames, if cannot keep up; same as --buffer=1" )
-            ( "buffer", boost::program_options::value< unsigned int >( &discard )->default_value( 0 ), "maximum buffer size before discarding frames" )
+            ( "camera", boost::program_options::value< std::vector<std::string> >(), "a camera_string specifying the serial to connect to as well as any attributes to set" )
             ( "fields,f", boost::program_options::value< std::string >( &fields )->default_value( "t,rows,cols,type" ), "header fields, possible values: t,rows,cols,type,size" )
-            // ( "list-attributes", "output current camera attributes" )
             ( "list-cameras", "list all cameras and exit" )
+            ( "list-attributes", "output current camera attributes" )
             ( "verbose,v", "be more verbose" )
             ( "header", "output header only" )
             ( "no-header", "output image data only" );
@@ -151,27 +78,45 @@ int main( int argc, char** argv )
             vm
         );
         boost::program_options::notify( vm );
-        // boost::program_options::parsed_options parsed = boost::program_options::command_line_parser(argc, argv).options( description ).allow_unregistered().run();
 
         verbose = vm.count( "verbose" );
         if ( vm.count( "help" ) )
         {
-            std::cerr << "acquire images from a point grey flycapture camera, same as flycapture-multicam but using a multicam " << std::endl;
-            std::cerr << "instead of a thread to acquire the images" << std::endl;
-            std::cerr << "output to stdout as serialized cv::Mat" << std::endl;
-            std::cerr << "usage: flycapture-capture [<options>] camera_string[,camera_string,...]" << std::endl;
-            std::cerr << "  camera_string: serial[,set_pairs[,filters]]" << std::endl;
-            std::cerr << "known bug: freezes on slow consumers even with --discard, use flycapture-multicam instead" << std::endl;
-            std::cerr << description << std::endl;
-            if (verbose) { std::cerr << snark::cv_mat::filters::usage() << std::endl; }
+            std::cerr << "Acquire images from multiple point grey flycapture2 cameras" << std::endl
+                << "and append them vertically to a cv::Mat." << std::endl
+                << "usage: flycapture-multicam [<options>] camera_string[,camera_string,...]" << std::endl
+                << "  camera_string: serial[,attribute_pairs...]" << std::endl
+                << description << std::endl
+                << "Known issues:" << std::endl
+                << "  * GigE discovery may fail if there are devices on a different subnets." << std::endl
+                << "  * Using flycapture with 16.04 may segfault when application closes (driver issue)." << std::endl
+                << "  * TBB I/O unimplemented, but works at full speed with a 7Hz 12MP camera." << std::endl
+                << std::endl;
             return 1;
         }
 
         if( vm.count( "list-cameras" ) )
         {
-            for (const uint serial : snark::camera::flycapture::list_camera_serials())
+            for (const uint serial : snark::cameras::flycapture::camera::list_camera_serials())
+            { std::cout << snark::cameras::flycapture::camera::describe_camera(serial) << std::endl; }
+            return 0;
+        }
+
+        if( vm.count( "list-attributes" ) )
+        {
+            for (const uint serial : snark::cameras::flycapture::camera::list_camera_serials())
             {
-                std::cout << snark::camera::flycapture::describe_camera(serial) << std::endl;
+                std::cout << snark::cameras::flycapture::camera::describe_camera(serial) << std::endl;
+                std::unique_ptr<snark::cameras::flycapture::camera> camera;
+                camera.reset(new snark::cameras::flycapture::camera(serial));
+                const auto& attributes = camera->attributes(); // quick and dirty
+                for( snark::cameras::flycapture::camera::attributes_type::const_iterator it = attributes.begin(); it != attributes.end(); ++it )
+                {
+                    if( it != attributes.begin() ) { std::cout << std::endl; }
+                    std::cout << it->first;
+                    if( it->second != "" ) { std::cout << '=' << it->second; }
+                }
+                std::cout << std::endl << std::endl;
             }
             return 0;
         }
@@ -184,18 +129,16 @@ int main( int argc, char** argv )
         camera_strings = vm["camera"].as< std::vector<std::string> >();
         for (auto camera_string : camera_strings)
         {
-            snark::camera::flycapture::attributes_type attributes;
+            snark::cameras::flycapture::camera::attributes_type attributes;
             auto fields = comma::split( camera_string, "," );
             if (fields.size() < 1) { COMMA_THROW(comma::exception, "expected camera serial, got none"); }
             uint serial = boost::lexical_cast<uint>(fields[0]);
             if (fields.size() >= 2) {
                 std::cerr << "set " << fields[1] << std::endl;
                 comma::name_value::map set_map( fields[1], ';', '=' );
-                attributes.insert( set_map.get().begin(), set_map.get().end() );
+                for (auto attr : set_map.get())
+                { attributes.push_back( attr ); }
             }
-            // if (fields.size() >= 3) { //TODO: implement per-camera filters
-            //     auto& filterStrings = fields[2];
-            // }
             cameras.push_back( std::make_pair(serial, attributes) );
         }
         
@@ -216,24 +159,39 @@ int main( int argc, char** argv )
         { serialization.reset( new snark::cv_mat::serialization( fields, format, vm.count( "header" ) ) ); }       
         
         if( verbose ) { std::cerr << "flycapture-multicam: connecting..." << std::endl; }
-        // static snark::camera::flycapture::multicam multicam(cameras);
-        multicam.reset( new snark::camera::flycapture::multicam( cameras ) );
+        multicam.reset( new snark::cameras::flycapture::camera::multicam( cameras ) );
         if( verbose ) { std::cerr << "flycapture-multicam: connected" << std::endl; }
 
-        if( verbose ) { std::cerr << "flycapture-multicam: starting loop" << std::endl; }
+        static std::unique_ptr<cv::Mat>  output_image;
+        // Initialise output image, assumes all images of same type
+        {
+            int rows = 0, cols = 0, type = 0;
+            for (auto& frame : multicam->read().second)
+            {
+                rows += frame.rows;
+                cols = std::max(cols, frame.cols);
+                if (type != 0 && frame.type() != type)
+                { COMMA_THROW(comma::exception, "cameras do not have common data type"); }
+                type = frame.type();
+            }
+            output_image.reset( new cv::Mat(rows, cols, type));
+        }
+
         while( !is_shutdown && running )
         {
-            // queue.wait();
-            for (int i = 0; i < 20 ; ++i) 
+            auto frames_pair = multicam->read();
+            int y = 0;
+            for (uint camera_number = 0; camera_number < frames_pair.second.size(); ++camera_number)
             {
-                boost::this_thread::sleep( boost::posix_time::milliseconds( 100 ) );
-                auto frames_pair = multicam->read();
-                for (auto& frame : frames_pair.second)
-                {
-                    std::cerr << frame.cols << ", " << frame.rows << std::endl;
-                }
+                auto frame = frames_pair.second[camera_number];
+                cv::Mat output_roi(*output_image, cv::Rect(0, y, frame.cols, frame.rows));
+                frame.copyTo(output_roi);
+                y += frame.rows;
             }
-            break;
+            serialization->write(
+                std::cout,
+                std::make_pair(frames_pair.first, *output_image)
+            );
         }
         if( verbose ) { std::cerr << "flycapture-multicam: exited loop" << std::endl; }
         
