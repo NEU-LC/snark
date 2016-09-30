@@ -540,6 +540,8 @@ int main( int ac, char** av )
         }
         if( operation == "distance" )
         {
+            if( options.exists("--output-fields" )){ std::cout << "distance" << std::endl; return 0; }
+            if( options.exists("--output-format" )){ std::cout << "d" << std::endl; return 0; }
             if(    csv.has_field( "first" )   || csv.has_field( "second" )
                 || csv.has_field( "first/x" ) || csv.has_field( "second/x" )
                 || csv.has_field( "first/y" ) || csv.has_field( "second/y" )
@@ -554,6 +556,8 @@ int main( int ac, char** av )
         }
         if( operation == "cumulative-distance" )
         {
+            if( options.exists("--output-fields" )){ std::cout << "distance" << std::endl; return 0; }
+            if( options.exists("--output-format" )){ std::cout << "d" << std::endl; return 0; }
             calculate_distance( true );
             return 0;
         }
