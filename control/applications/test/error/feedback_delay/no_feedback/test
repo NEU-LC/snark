@@ -46,8 +46,8 @@ feedback_binary=t,d,d,d
 feedback_port=$(( 1024 + $RANDOM ))
 feedback_pid=
 {
+    sleep 1 # delay feedback by a small amount
     cat data/feedback.csv
-    sleep 2 # keep feedback alive
 } \
     | csv-to-bin $feedback_binary --flush | socat -u - tcp-listen:$feedback_port & feedback_pid=$!
 wait_for_port $feedback_port
@@ -56,7 +56,6 @@ output_format=$binary,$feedback_binary,$( control-error --output-format --status
 output_fields=$( csv-fields prefix --path target <<< $fields ),$( csv-fields prefix --path feedback <<< $feedback_fields ),$( control-error --output-fields )
 
 {
-    sleep 1 # wait long enough for control-error to receive feedback
     echo "sending waypoints at $( date +%T.%N )" >&2
     cat data/waypoints.csv | csv-to-bin $binary --flush
     sleep 1 # keep stdin of control-error open

@@ -118,6 +118,11 @@ struct reached_t
     operator bool() const { return state; }
 };
 
+void exit_on_nofeedback( void* p )
+{
+    if( !p ) { std::cerr << name << ": feedback is not publishing data" << std::endl; exit( 1 ); }
+}
+
 int main( int ac, char** av )
 {
     try
@@ -158,74 +163,97 @@ int main( int ac, char** av )
         if( input_csv.binary() && !feedback_csv.binary() ) { std::cerr << name << ": cannot join binary input stream with ascii feedback stream" << std::endl; return 1; }
         if( !input_csv.binary() && feedback_csv.binary() ) { std::cerr << name << ": cannot join ascii input stream with binary feedback stream" << std::endl; return 1; }
         if( feedback_csv.fields.empty() ) { feedback_csv.fields = field_names< snark::control::feedback_t >(); }
-        comma::io::istream feedback_in( feedback_csv.filename, feedback_csv.binary() ? comma::io::mode::binary : comma::io::mode::ascii, comma::io::mode::non_blocking );
+        comma::io::istream feedback_in( feedback_csv.filename, feedback_csv.binary() ? comma::io::mode::binary : comma::io::mode::ascii );
         comma::csv::input_stream< snark::control::feedback_t > feedback_stream( *feedback_in, feedback_csv );
         comma::io::select select;
+        select.read().add( comma::io::stdin_fd );
         select.read().add( feedback_in );
+        snark::control::feedback_t feedback;
+        if( feedback_stream.ready() || ( select.wait( boost::posix_time::milliseconds( 10 ) ) && select.read().ready( feedback_in ) ) )
+        {
+            const snark::control::feedback_t* p = feedback_stream.read();
+            if( !p ) { std::cerr << name << ": feedback stream error" << std::endl; return 1; }
+            feedback = *p;
+        }
+        else
+        {
+            std::cerr << name << ": feedback is not publishing data" << std::endl;
+            return 1;
+        }
+        boost::optional< snark::control::target_t > target;
+        std::deque< snark::control::target_t > targets; // for fixed mode
+        bool use_new_target = false;
         boost::optional< snark::control::vector_t > from;
-        boost::scoped_ptr< snark::control::wayline_t > wayline;
+        snark::control::vector_t to;
+        snark::control::wayline_t wayline;
         comma::signal_flag is_shutdown;
-        while( !is_shutdown && ( input_stream.ready() || ( std::cin.good() && !std::cin.eof() ) ) )
+        while( !is_shutdown && std::cin.good() && std::cout.good() )
         {
             reached_t reached;
-            const snark::control::target_t* target = input_stream.read();
-            if( !target ) { break; }
-            snark::control::vector_t to = target->position;
-            if( verbose ) { std::cerr << name << ": received target waypoint " << snark::control::serialise( to ) << std::endl; }
-            
-            if( from && ( *from - to ).norm() < proximity ) { continue; }
-            if( from )
+            if( input_stream.ready() || ( select.check() && select.read().ready( comma::io::stdin_fd ) ) )
             {
-                wayline.reset( new snark::control::wayline_t( *from, to ) );
-                //if( verbose ) { std::cerr << "control-error: wayline from " << snark::control::serialise( *from ) << " to " << snark::control::serialise( to ) << std::endl; }
+                const snark::control::target_t* p = input_stream.read();
+                if( !p ) { break; }
+                if( mode == fixed )
+                {
+                    if( targets.empty() ) { use_new_target = true; } else { targets.push_back( *p ); }
+                }
+                if( mode == dynamic ) { use_new_target = true; }
+                if( use_new_target ) { target = *p; }
             }
-            while( !is_shutdown && std::cout.good() )
+            if( feedback_stream.ready() || ( select.check() && select.read().ready( feedback_in ) ) )
             {
-                if( input_stream.ready() )
+                const snark::control::feedback_t* p = feedback_stream.read();
+                if( !p ) { std::cerr << name << ": feedback stream error" << std::endl; return 1; }
+                feedback = *p;
+            }
+            if( !target ) { continue; }
+            if( use_new_target )
+            {
+                to = target->position;
+                if( verbose ) { std::cerr << name << ": received target waypoint " << snark::control::serialise( to ) << std::endl; }
+                if( !from ) { from = feedback.position; }
+                if( ( *from - to ).norm() < proximity ) { continue; /* TODO: output reached for this point if output_when_reached */ }
+                wayline = snark::control::wayline_t( *from, to );
+                use_new_target = false;
+            }
+            if( use_delay && boost::posix_time::microsec_clock::universal_time() < next_output_time ) { continue; }
+            if( ( feedback.position - to ).norm() < proximity ) { reached = reached_t( "proximity" ); }
+            if( use_past_endpoint && wayline.is_past_endpoint( feedback.position ) ) { reached = reached_t( "past endpoint" ); }
+            snark::control::error_t error;
+            if( !reached )
+            {
+                error.cross_track = wayline.cross_track_error( feedback.position );
+                error.heading = target->is_absolute ? snark::control::wrap_angle( target->heading_offset - feedback.yaw )
+                    : wayline.heading_error( feedback.yaw, target->heading_offset );
+            }
+            if( !reached || output_when_reached )
+            {
+                if( input_csv.binary() ) { std::cout.write( input_stream.binary().last(), input_csv.format().size() ); }
+                else { std::cout << comma::join( input_stream.ascii().last(), delimiter ) << delimiter; }
+                if( feedback_csv.binary() ) { std::cout.write( feedback_stream.binary().last(), feedback_csv.format().size() ); }
+                else { std::cout << comma::join( feedback_stream.ascii().last(), delimiter ) << delimiter; }
+                output_stream.write( snark::control::control_data_t( wayline, error, reached ) );
+                if( use_delay ) { next_output_time = boost::posix_time::microsec_clock::universal_time() + delay; }
+            }
+            if( reached )
+            {
+                if( verbose ) { std::cerr << name << ": reached waypoint " << snark::control::serialise( to ) << " (" << reached.reason << "), current position: " << snark::control::serialise( feedback.position ) << std::endl; }
+                if( mode == fixed )
                 {
-                    if( mode == fixed ) {}
-                    else if( mode == dynamic ) { from = boost::none; break; }
-                    else { std::cerr << name << ": control mode '" << mode_to_string( mode ) << "' is not implemented" << std::endl; return 1; }
-                }
-                select.wait( boost::posix_time::microseconds( 10000 ) );
-                if( !is_shutdown && ( feedback_stream.ready() || select.read().ready( feedback_in ) ) )
-                {
-                    const snark::control::feedback_t* feedback = feedback_stream.read();
-                    if( !feedback ) { std::cerr << name << ": feedback stream error occurred prior to reaching waypoint " << snark::control::serialise( to ) << std::endl; return 1; }
-                    if( use_delay && boost::posix_time::microsec_clock::universal_time() < next_output_time ) { continue; }
-                    if( !from )
+                    from = to;
+                    if( targets.empty() )
                     {
-                        from = feedback->position;
-                        wayline.reset( new snark::control::wayline_t( *from, to ) );
-                        if( verbose ) { std::cerr << "control-error: wayline from " << snark::control::serialise( *from ) << " to " << snark::control::serialise( to ) << std::endl; }
+                        target = boost::none;
                     }
-                    if( ( feedback->position - to ).norm() < proximity ) { reached = reached_t( "proximity" ); }
-                    if( use_past_endpoint && wayline->is_past_endpoint( feedback->position ) ) { reached = reached_t( "past endpoint" ); }
-                    snark::control::error_t error;
-                    if( !reached )
+                    else
                     {
-                        error.cross_track = wayline->cross_track_error( feedback->position );
-                        if( target->is_absolute ) { error.heading = snark::control::wrap_angle( target->heading_offset - feedback->yaw ); }
-                        else { error.heading = wayline->heading_error( feedback->yaw, target->heading_offset ); }
-                    }
-                    if( !reached || output_when_reached )
-                    {
-                        if( input_csv.binary() ) { std::cout.write( input_stream.binary().last(), input_csv.format().size() ); }
-                        else { std::cout << comma::join( input_stream.ascii().last(), delimiter ) << delimiter; }
-                        if( feedback_csv.binary() ) { std::cout.write( feedback_stream.binary().last(), feedback_csv.format().size() ); }
-                        else { std::cout << comma::join( feedback_stream.ascii().last(), delimiter ) << delimiter; }
-                        output_stream.write( snark::control::control_data_t( *wayline, error, reached ) );
-                        if( use_delay ) { next_output_time = boost::posix_time::microsec_clock::universal_time() + delay; }
-                    }
-                    if( reached )
-                    {
-                        if( verbose ) { std::cerr << name << ": reached waypoint " << snark::control::serialise( to ) << " (" << reached.reason << "), current position: " << snark::control::serialise( feedback->position ) << std::endl; }
-                        if( mode == fixed ) { from = to; }
-                        else if( mode == dynamic ) { from = boost::none; }
-                        else { std::cerr << name << ": control mode '" << mode_to_string( mode ) << "' is not implemented" << std::endl; return 1; }
-                        break;
+                        target = targets.front();
+                        targets.pop_front();
                     }
                 }
+                if( mode == dynamic ) { from = boost::none; target = boost::none; }
+                break;
             }
         }
         return 0;

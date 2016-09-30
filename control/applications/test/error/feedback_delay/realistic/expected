@@ -1,0 +1,5 @@
+output[0]/target/x=10
+output[0]/target/y=10
+output[0]/target/heading_offset=0
+output[0]/time_diff < 0.1
+

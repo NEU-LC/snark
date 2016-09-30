@@ -43,19 +43,22 @@ binary=d,d,d
 feedback_fields=t,x,y,yaw
 feedback_binary=t,d,d,d
 
-feedback_port=$RANDOM
+feedback_port=$(( 1024 + $RANDOM ))
 feedback_pid=
-seq 0 100 \
+# feedback runs for about 2 seconds (1 point every 10 milliseconds) with first time stamp at 20150101T000000
+# the waypoints are sent after 1 second delay, so first feedback point used by control-error should be around 20150101T000001
+# note that control-error outputs errors every 0.05 seconds (--frequency=20)
+seq 0 200 \
     | csv-paste value=20150101T000000 - value=0,0 \
-    | csv-eval --fields t,i --format t,ui "t+=i*timedelta64(20,'ms')" --flush \
+    | csv-eval --fields t,i --format t,ui "t+=i*timedelta64(10,'ms')" --flush \
     | csv-play \
     | csv-to-bin $feedback_binary --flush \
     | socat -u - tcp-listen:$feedback_port & feedback_pid=$!
 #    | io-publish --size $( csv-size $feedback_binary ) tcp:$feedback_port & feedback_pid=$!
 wait_for_port $feedback_port
-
+sleep 0.1 # sleep for a short while to allow the feedback points to become available on tcp port
 output_format=$binary,$feedback_binary,$( control-error --output-format --status )
-output_fields=$( csv-fields prefix --path target <<< $fields ),$( csv-fields prefix --path feedback <<< $feedback_fields ),$( control-error --output-fields )
+output_fields=$( csv-fields prefix --path target <<< $fields ),$( csv-fields prefix --path feedback <<< $feedback_fields ),$( control-error --output-fields --status )
 
 {
     sleep 1 # wait long enough for control-error to receive a lot of feedback
@@ -67,6 +70,7 @@ output_fields=$( csv-fields prefix --path target <<< $fields ),$( csv-fields pre
         "tcp:localhost:$feedback_port;fields=$feedback_fields;binary=$feedback_binary" \
         --mode=fixed --proximity=0.1 --frequency=20 --status --flush --verbose \
     | csv-from-bin $output_format --flush \
-    | name-value-from-csv $output_fields --line-number --prefix output \
+    | csv-eval --fields $output_fields --format $output_format "time_diff=( feedback_t - datetime64('2015-01-01T00:00:01.000000') )/timedelta64(1,'s')" --full-xpath \
+    | name-value-from-csv $output_fields,time_diff --line-number --prefix output \
     | csv-quote --unquote --fields ,x --delimiter =
 
