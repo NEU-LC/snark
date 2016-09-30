@@ -139,7 +139,7 @@ int main( int ac, char** av )
             delay = boost::posix_time::microseconds( static_cast< long >( 1000000 / frequency ) );
         }
         bool verbose = options.exists( "--verbose,-v" );
-        std::vector< std::string > unnamed = options.unnamed( "--help,-h,--verbose,-v,--format,--output-format,--output-fields,--past-endpoint,--heading-is-absolute,--status", "-.*,--.*" );
+        std::vector< std::string > unnamed = options.unnamed( "--help,-h,--verbose,-v,--input-fields,--format,--input-format,--output-format,--output-fields,--past-endpoint,--heading-is-absolute", "-.*,--.*" );
         if( unnamed.empty() ) { std::cerr << name << ": feedback stream is not given" << std::endl; return 1; }
         comma::csv::options feedback_csv = comma::name_value::parser( "filename", ';', '=', false ).get< comma::csv::options >( unnamed[0] );
         if( input_csv.binary() && !feedback_csv.binary() ) { std::cerr << name << ": cannot join binary input stream with ascii feedback stream" << std::endl; return 1; }
