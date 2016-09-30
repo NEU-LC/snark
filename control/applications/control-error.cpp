@@ -187,9 +187,9 @@ int main( int ac, char** av )
         snark::control::vector_t to;
         snark::control::wayline_t wayline;
         comma::signal_flag is_shutdown;
+        reached_t reached;
         while( !is_shutdown && std::cin.good() && std::cout.good() )
         {
-            reached_t reached;
             if( input_stream.ready() || ( select.check() && select.read().ready( comma::io::stdin_fd ) ) )
             {
                 const snark::control::target_t* p = input_stream.read();
@@ -220,6 +220,7 @@ int main( int ac, char** av )
                 }
                 else
                 {
+                    reached = reached_t();
                     wayline = snark::control::wayline_t( *from, to );
                 }
                 use_new_target = false;
