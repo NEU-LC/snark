@@ -213,13 +213,23 @@ int main( int ac, char** av )
                 to = target->position;
                 if( verbose ) { std::cerr << name << ": received target waypoint " << snark::control::serialise( to ) << std::endl; }
                 if( !from ) { from = feedback.position; }
-                if( ( *from - to ).norm() < proximity ) { continue; /* TODO: output reached for this point if output_when_reached */ }
-                wayline = snark::control::wayline_t( *from, to );
+                if( ( *from - to ).norm() < proximity )
+                {
+                    reached = reached_t( "proximity" );
+                    // reuse old wayline, since a new wayline would not make much sense
+                }
+                else
+                {
+                    wayline = snark::control::wayline_t( *from, to );
+                }
                 use_new_target = false;
             }
             if( use_delay && boost::posix_time::microsec_clock::universal_time() < next_output_time ) { continue; }
-            if( ( feedback.position - to ).norm() < proximity ) { reached = reached_t( "proximity" ); }
-            if( use_past_endpoint && wayline.is_past_endpoint( feedback.position ) ) { reached = reached_t( "past endpoint" ); }
+            if( !reached )
+            {
+                if( ( feedback.position - to ).norm() < proximity ) { reached = reached_t( "proximity" ); }
+                else if( use_past_endpoint && wayline.is_past_endpoint( feedback.position ) ) { reached = reached_t( "past endpoint" ); }
+            }
             snark::control::error_t error;
             if( !reached )
             {
