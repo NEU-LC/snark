@@ -44,7 +44,7 @@ std::string serialise( const vector_t& p );
 struct wayline_t
 {
 public:
-    wayline_t();
+    wayline_t() : heading( 0 ) {} 
     wayline_t( const vector_t& start, const vector_t& end );
     bool is_past_endpoint( const vector_t& location ) const;
     double cross_track_error( const vector_t& location ) const;

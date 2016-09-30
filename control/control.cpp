@@ -44,7 +44,6 @@ std::string serialise( const vector_t& p )
 
 vector_t normalise( const vector_t& v ) { return v.normalized(); }
 
-wayline_t::wayline_t() {}
 wayline_t::wayline_t( const vector_t& start, const vector_t& end ) :
       v( normalise( end - start ) )
     , line( Eigen::ParametrizedLine< double, dimensions >::Through( start, end ) )
