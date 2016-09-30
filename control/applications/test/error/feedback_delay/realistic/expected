@@ -1,5 +1,25 @@
-output[0]/target/x=10
-output[0]/target/y=10
-output[0]/target/heading_offset=0
-output[0]/time_diff < 0.1
+#python
+
+reached_1 = reached[0]/index
+reached_2 = reached[1]/index
+
+start_1 = 0
+start_2 = reached_1 + 1
+
+expect output[start_1]/target/x = 150
+expect near( output[start_1]/time_diff, 1.0, 0.1 )
+expect near( output[start_1]/feedback/x, 100, 10 )
+
+expect output[reached_1]/target/x = 150
+expect near( output[reached_1]/time_diff, 1.5, 0.1 )
+expect near( output[reached_1]/feedback/x, 150, 10 )
+
+expect output[start_2]/target/x = 250
+expect near( output[start_2]/time_diff, 2.0, 0.1 )
+expect near( output[start_2]/feedback/x, 200, 10 )
+
+expect output[reached_2]/target/x = 250
+expect near( output[reached_2]/time_diff, 2.5, 0.1 )
+expect near( output[reached_2]/feedback/x, 250, 10 )
+
 

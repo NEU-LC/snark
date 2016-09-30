@@ -253,7 +253,6 @@ int main( int ac, char** av )
                     }
                 }
                 if( mode == dynamic ) { from = boost::none; target = boost::none; }
-                break;
             }
         }
         return 0;
