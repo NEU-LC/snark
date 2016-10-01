@@ -46,7 +46,7 @@ feedback_binary=t,d,d,d
 feedback_port=$(( 1024 + $RANDOM ))
 feedback_pid=
 {
-    sleep 1 # delay feedback by a small amount
+    sleep 5 # delay feedback by a small amount
     cat data/feedback.csv
 } \
     | csv-to-bin $feedback_binary --flush | socat -u - tcp-listen:$feedback_port & feedback_pid=$!

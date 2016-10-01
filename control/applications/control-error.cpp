@@ -148,10 +148,9 @@ int main( int ac, char** av )
         comma::io::istream feedback_in( feedback_csv.filename, feedback_csv.binary() ? comma::io::mode::binary : comma::io::mode::ascii );
         comma::csv::input_stream< snark::control::feedback_t > feedback_stream( *feedback_in, feedback_csv );
         comma::io::select select;
-        select.read().add( comma::io::stdin_fd );
         select.read().add( feedback_in );
         snark::control::feedback_t feedback;
-        if( feedback_stream.ready() || ( select.wait( boost::posix_time::milliseconds( 10 ) ) && select.read().ready( feedback_in ) ) )
+        if( select.wait( boost::posix_time::seconds( 1 ) ) )
         {
             const snark::control::feedback_t* p = feedback_stream.read();
             if( !p ) { std::cerr << name << ": feedback stream error" << std::endl; return 1; }
@@ -162,13 +161,15 @@ int main( int ac, char** av )
             std::cerr << name << ": feedback is not publishing data" << std::endl;
             return 1;
         }
+        select.read().add( comma::io::stdin_fd );
         std::deque< std::pair< snark::control::target_t, std::string > > targets;
-        boost::optional< snark::control::vector_t > from;
+        snark::control::vector_t from;
         snark::control::vector_t to;
         snark::control::wayline_t wayline;
         comma::signal_flag is_shutdown;
         bool reached = false;
         bool first_target = true;
+        bool new_target_in_dynamic_mode = false;
         while( !is_shutdown && std::cin.good() && std::cout.good() )
         {
             // todo? don't do select.check() on stdin in the loop or do it only in "dynamic" mode?
@@ -190,6 +191,7 @@ int main( int ac, char** av )
                 {
                     if( targets.empty() ) { targets.push_back( std::make_pair( *p, line ) ); }
                     else { targets.front() = std::make_pair( *p, line ); }
+                    new_target_in_dynamic_mode = true;
                 }
                 else if( mode == fixed )
                 {
@@ -204,12 +206,12 @@ int main( int ac, char** av )
             }
             if( is_shutdown ) { break; }
             if( targets.empty() ) { select.wait( boost::posix_time::millisec( 10 ) ); continue; }
-            if( reached || first_target )
+            if( first_target || reached || new_target_in_dynamic_mode )
             {
                 to = targets.front().first.position;
                 if( verbose ) { std::cerr << name << ": target waypoint " << snark::control::serialise( to ) << std::endl; }
-                if( !from ) { from = feedback.position; }
-                if( ( *from - to ).norm() < proximity )
+                if( first_target || mode == dynamic ) { from = feedback.position; }
+                if( ( from - to ).norm() < proximity )
                 {
                     reached = true;
                     wayline = snark::control::wayline_t();
@@ -217,9 +219,10 @@ int main( int ac, char** av )
                 else
                 {
                     reached = false;
-                    wayline = snark::control::wayline_t( *from, to );
+                    wayline = snark::control::wayline_t( from, to );
                 }
                 first_target = false;
+                new_target_in_dynamic_mode = false;
             }
             if( !reached ) { reached = ( ( feedback.position - to ).norm() < proximity ) || ( use_past_endpoint && wayline.is_past_endpoint( feedback.position ) ); }
             snark::control::error_t error;
@@ -253,8 +256,7 @@ int main( int ac, char** av )
             if( reached )
             {
                 if( verbose ) { std::cerr << name << ": reached waypoint " << snark::control::serialise( to ) << ", current position: " << snark::control::serialise( feedback.position ) << std::endl; }
-                if( mode == dynamic ) { from = boost::none; }
-                else if( mode == fixed ) { from = targets.front().first.position; }
+                if( mode == fixed ) { from = to; }
                 targets.pop_front();
             }
         }

@@ -1,10 +1,8 @@
-ensure that control-error attempts to use the most current feedback for computing the errors
 
-- publish feedback frequently and continuously
-- wait for a second
-- send a waypoint
-- wait for the waypoint to be reached
-- wait for a short while and then send another waypoint
-- wait for the second waypoint to be reached
-- observe that the latest feedback is used at the moment of receiving each waypoint
+- publish feedback using csv-play ( see data/readme and data/feedback.csv )
+- sleep for a while to synchronise feedback and target streams
+- send target waypoints to control-error (timed with csv-play)
+- add time_diff to output (current feedback time minus the start time); to use in expected
+- determine the indexes that correspond to reached=1 output; to use in expected
 
+the trajectory describes a square with target waypoints at the corners
