@@ -39,7 +39,7 @@
 typedef std::pair< boost::posix_time::ptime, cv::Mat > Pair;
 
 boost::scoped_ptr< snark::tbb::bursty_reader< Pair > > reader;
-static Pair capture( snark::camera::flycapture& camera ) 
+static Pair capture( snark::cameras::flycapture::camera& camera ) 
 { 
     static comma::signal_flag is_shutdown;
     if( is_shutdown ) { reader->stop(); return Pair(); }
@@ -61,8 +61,7 @@ int main( int argc, char** argv )
             ( "set", boost::program_options::value< std::string >( &setattributes ), "set camera attributes as semicolon-separated name-value pairs" )
             ( "set-and-exit", "set camera attributes specified in --set and exit" )
             ( "serial", boost::program_options::value< unsigned int >( &id )->default_value( 0 ), "camera serial number; default: first available camera" )
-            //TODO Currently this is ignored and the driver behaves as if disard is always true ( "discard", "discard frames, if cannot keep up; same as --buffer=1" )
-            //TODO ( "buffer", boost::program_options::value< unsigned int >( &discard )->default_value( 0 ), "maximum buffer size before discarding frames, default: unlimited" )
+            ( "discard", boost::program_options::value< unsigned int >( &discard ), "buffer this many frames, discard after" )
             ( "fields,f", boost::program_options::value< std::string >( &fields )->default_value( "t,rows,cols,type" ), "header fields, possible values: t,rows,cols,type,size" )
             ( "list-attributes", "output current camera attributes" )
             ( "list-cameras", "list all cameras and exit" )
@@ -75,62 +74,55 @@ int main( int argc, char** argv )
         boost::program_options::store( boost::program_options::parse_command_line( argc, argv, description), vm );
         boost::program_options::parsed_options parsed = boost::program_options::command_line_parser(argc, argv).options( description ).allow_unregistered().run();
         boost::program_options::notify( vm );
+        bool verbose = vm.count( "verbose" );
         if ( vm.count( "help" ) )
         {
-            std::cerr << "acquire images from a pointgrey flycapture camera" << std::endl;
-            std::cerr << "output to stdout as serialized cv::Mat" << std::endl;
-            std::cerr << "usage: flycapture-cat [<options>] [<filters>]\n" << std::endl;
-            std::cerr << "output header format: fields: t,cols,rows,type; binary: t,3ui\n" << std::endl;
-            std::cerr << description << std::endl;
-            if( vm.count( "verbose") ) 
-            { 
-                std::cerr << snark::cv_mat::filters::usage() << std::endl; 
-                std::cerr << "Stereo: This setting allows two point grey cameras to be used synchronously to capture stereo images. "
-                          << "The two cameras need to have their trigger and strobe wired together so that they can synchronise "
-                          << "frames through hardware. The first camera decleared with '--serial' is the master camera, "
-                          << "and its frame rate will be used for the stereo system. It is recommended that you extend packet "
-                          << "delay as two cameras on the same network will likely induce packet collision. It is also recommended "
-                          << "that you manually set shutter time as an 'auto' setting will extend the frame time, resulting in "
-                          << "half the demanded frame rate. " << std::endl;
-                std::cerr << "You will need to ensure that the image size and pixel format is the same between cameras. "
-                          << "All attrubutes passed to '--set' will only act on the master camera" << std::endl;
-                std::cerr << "Known bugs: frame rates above 10.0 cause de-sync between the cameras." << std::endl;
-            }
+            std::cerr << "acquire images from a pointgrey flycapture camera" << std::endl
+                << "output to stdout as serialized cv::Mat" << std::endl
+                << "usage: flycapture-cat [<options>] [<filters>]" << std::endl
+                << "output header format: fields: t,cols,rows,type binary: t,3ui" << std::endl
+                << description << std::endl
+                << "Known issues:" << std::endl
+                << "  * GigE discovery may fail if there are devices on a different subnets." << std::endl
+                << "  * Using flycapture with 16.04 may segfault when application closes (driver issue)." << std::endl
+                << std::endl;
             return 1;
         }
         if( vm.count( "header" ) && vm.count( "no-header" ) ) { COMMA_THROW( comma::exception, "--header and --no-header are mutually exclusive" ); }
         if( vm.count( "fields" ) && vm.count( "no-header" ) ) { COMMA_THROW( comma::exception, "--fields and --no-header are mutually exclusive" ); }
-        if( vm.count( "buffer" ) == 0 && vm.count( "discard" ) ) { discard = 1; }
-        bool verbose = vm.count( "verbose" );
         if( vm.count( "list-cameras" ) )
         {
-            const std::vector<FlyCapture2::CameraInfo >& list = snark::camera::flycapture::list_cameras();
-            for( std::size_t i = 0; i < list.size(); ++i ) // todo: serialize properly with name-value
+            const std::vector< unsigned int >& list = snark::cameras::flycapture::camera::list_camera_serials();
+            for( std::size_t i = 0; i < list.size(); ++i )
             {
-                std::cout << "serial=\"" << list[i].serialNumber << "\"," << "model=\"" << list[i].modelName << "\"" << std::endl;
+                std::cout << snark::cameras::flycapture::camera::describe_camera(list[i]) << std::endl;
             }
             return 0;
         }
-        if ( vm.count( "discard" ) )
-        {
-            discard = 1;
-        }
-        snark::camera::flycapture::attributes_type attributes;
+        snark::cameras::flycapture::camera::attributes_type attributes;
         if( vm.count( "set" ) )
         {
-            comma::name_value::map m( setattributes, ';', '=' );
-            attributes.insert( m.get().begin(), m.get().end() );
+            // comma::name_value::map attribute_map( setattributes, ';', '=' );
+
+            for (auto attr : comma::split( setattributes, ";" ))
+            {
+                auto name_value_pair = comma::split( attr, "=" );
+                if (name_value_pair.size() != 2)
+                { COMMA_THROW(comma::exception, "name-value pairs for camera settings must be in format attribute=value"); }
+                attributes.push_back( std::make_pair(name_value_pair[0], name_value_pair[1]) );
+            }
+            // attributes.insert( attribute_map.get().begin(), attribute_map.get().end() );
         }
         if( verbose ) { std::cerr << "flycapture-cat: connecting..." << std::endl; }
-        snark::camera::flycapture camera( id, attributes, id_stereo_camera );
+        snark::cameras::flycapture::camera camera( id, attributes );
         if( verbose ) { std::cerr << "flycapture-cat: connected to camera " << camera.id() << std::endl; }
-        if( verbose && ( id_stereo_camera!=0 ) ) { std::cerr << "flycapture-cat: connected to right camera " << camera.id_stereo_camera() << std::endl; }
+        // if( verbose && ( id_stereo_camera!=0 ) ) { std::cerr << "flycapture-cat: connected to right camera " << camera.id_stereo_camera() << std::endl; }
         if( verbose ) { std::cerr << "flycapture-cat: total bytes per frame: " << camera.total_bytes_per_frame() << std::endl; }
         if( vm.count( "set-and-exit" ) ) { return 0; }
         if( vm.count( "list-attributes" ) )
         {
             attributes = camera.attributes(); // quick and dirty
-            for( snark::camera::flycapture::attributes_type::const_iterator it = attributes.begin(); it != attributes.end(); ++it )
+            for( snark::cameras::flycapture::camera::attributes_type::const_iterator it = attributes.begin(); it != attributes.end(); ++it )
             {
                 if( it != attributes.begin() ) { std::cout << std::endl; }
                 std::cout << it->first;

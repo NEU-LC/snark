@@ -62,6 +62,7 @@ static void spin_()
 
 static void on_frame_( const Pair& p ) // quick and dirty
 {
+    std::cerr << "on_frame_" << std::endl;
     if( p.second.size().width == 0 )
     {
         emptyFrameCounter++;
@@ -95,7 +96,6 @@ static void on_frame_( const Pair& p ) // quick and dirty
         }
     }    
 }
-
 
 static Pair read_( tbb::flow_control& flow )
 {
@@ -132,7 +132,7 @@ int main( int argc, char** argv )
         description.add_options()
             ( "help,h", "display help message" )
             ( "set", boost::program_options::value< std::string >( &setattributes ), "set camera attributes as comma-separated name-value pairs and exit" )
-            ( "id", boost::program_options::value< unsigned int >( &id )->default_value( 0 ), "camera id; default: first available camera" )
+            ( "serial", boost::program_options::value< unsigned int >( &id )->default_value( 0 ), "camera serial; default: first available camera" )
             ( "discard,d", "discard frames, if cannot keep up; same as --buffer=1" )
             ( "buffer", boost::program_options::value< unsigned int >( &discard )->default_value( 0 ), "maximum buffer size before discarding frames" )
             ( "fields,f", boost::program_options::value< std::string >( &fields )->default_value( "t,rows,cols,type" ), "header fields, possible values: t,rows,cols,type,size" )
@@ -148,9 +148,7 @@ int main( int argc, char** argv )
         boost::program_options::notify( vm );
 
         if( vm.count( "header" ) + vm.count( "no-header" ) > 1 )
-        {
-            COMMA_THROW( comma::exception, "--header, and --no-header are mutually exclusive" );
-        }
+        { COMMA_THROW( comma::exception, "--header, and --no-header are mutually exclusive" ); }
         
         if ( vm.count( "help" ) )
         {
@@ -167,32 +165,32 @@ int main( int argc, char** argv )
         verbose = vm.count( "verbose" );
         if( vm.count( "list-cameras" ) )
         {
-     /*       const std::vector< tPvCameraInfo >& list = snark::camera::flycapture::list_cameras();
+            const std::vector< unsigned int >& list = snark::camera::flycapture::list_camera_serials();
+            std::cerr << "got " << list.size() << " cameras." << std::endl;
             for( std::size_t i = 0; i < list.size(); ++i ) // todo: serialize properly with name-value
             {
-                std::cout << "id=" << list[i].UniqueId << "," << "name=\"" << list[i].DisplayName << "\"" << "," << "serial=\"" << list[i].SerialString << "\"" << std::endl;
+                std::cout << snark::camera::flycapture::describe_camera(list[i]) << std::endl;
             }
-         */   return 0;
+            return 0;
         }
-        if ( vm.count( "discard" ) )
-        {
-            discard = 1;
-        }
+        if ( vm.count( "discard" ) ) { discard = 1; }
         discard_more_than = discard;
         snark::camera::flycapture::attributes_type attributes;
+
         if( vm.count( "set" ) )
         {
-            comma::name_value::map m( setattributes, ',', '=' );
+            comma::name_value::map m( setattributes, ';', '=' );
             attributes.insert( m.get().begin(), m.get().end() );
         }
+
         if( verbose ) { std::cerr << "flycapture-cat: connecting..." << std::endl; }
-        snark::camera::flycapture flycapture( id, attributes );
-        if( verbose ) { std::cerr << "flycapture-cat: connected to camera " << flycapture.id() << std::endl; }
-        if( verbose ) { std::cerr << "flycapture-cat: total bytes per frame: " << flycapture.total_bytes_per_frame() << std::endl; }
+        snark::camera::flycapture camera( id, attributes );
+        if( verbose ) { std::cerr << "flycapture-cat: connected to camera " << camera.id() << std::endl; }
+        if( verbose ) { std::cerr << "flycapture-cat: total bytes per frame: " << camera.total_bytes_per_frame() << std::endl; }
         if( !attributes.empty() ) { return 0; }
         if( vm.count( "list-attributes" ) )
         {
-//             attributes = flycapture.attributes(); // quick and dirty
+            attributes = camera.attributes(); // quick and dirty
             for( snark::camera::flycapture::attributes_type::const_iterator it = attributes.begin(); it != attributes.end(); ++it )
             {
                 if( it != attributes.begin() ) { std::cout << std::endl; }
@@ -227,7 +225,7 @@ int main( int argc, char** argv )
         {
             serialization.reset( new snark::cv_mat::serialization( fields, format, vm.count( "header" ) ) );
         }       
-        callback.reset( new snark::camera::flycapture::callback( flycapture, on_frame_ ) );
+        callback.reset( new snark::camera::flycapture::callback( camera, on_frame_ ) );
         tbb::task_scheduler_init init;
         tbb::filter_t< void, Pair > read( tbb::filter::serial_in_order, boost::bind( read_, _1 ) );
         tbb::filter_t< Pair, void > write( tbb::filter::serial_in_order, boost::bind( write_, boost::ref( *serialization), _1 ) );
@@ -248,11 +246,13 @@ int main( int argc, char** argv )
             }
         }
 
+        if( verbose ) { std::cerr << "flycapture-cat: starting loop" << std::endl; }
         while( !is_shutdown && running )
         {
             tbb::parallel_pipeline( init.default_num_threads(), imageFilters & write );
             queue.wait();
         }
+        if( verbose ) { std::cerr << "flycapture-cat: exited loop" << std::endl; }
         
         if( is_shutdown && verbose ) { std::cerr << "flycapture-cat: caught signal" << std::endl; }
         return 0;

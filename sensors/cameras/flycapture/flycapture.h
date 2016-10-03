@@ -31,40 +31,44 @@
 #ifndef SNARK_SENSORS_FLYCAPTURE_H_
 #define SNARK_SENSORS_FLYCAPTURE_H_
 
+#include <memory>
 #include "FlyCapture2.h"
+// #include "attributes.h"
+// #include "helpers.h"
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/function.hpp>
 #include <boost/bimap.hpp>
-
 #include <opencv2/core/core.hpp>
 
 
-namespace snark{ namespace camera{
+namespace snark { namespace cameras { namespace flycapture {
 
 /// image acquisition from flycapture camera
-class flycapture
+class camera
 {
     public:
         /// attributes map type
-        typedef std::map< std::string, std::string > attributes_type;
+        // typedef std::map< std::string, std::string > attributes_type;
+        typedef std::vector< std::pair<std::string, std::string> > attributes_type;
+        typedef std::pair< boost::posix_time::ptime, cv::Mat > frame_pair;
+        typedef std::unique_ptr<FlyCapture2::CameraBase> camerabase_ptr;
         
         /// constructor; default id: connect to any available camera
-        flycapture( unsigned int id = 0, const attributes_type& attributes = attributes_type(), unsigned int id_stereo_camera = 0 );
+        camera( unsigned int id = 0, const attributes_type& attributes = attributes_type());
 
         /// destructor
-        ~flycapture();
+        ~camera();
 
         /// return attributes
         attributes_type attributes() const;
 
         /// get timestamped frame
-        std::pair< boost::posix_time::ptime, cv::Mat > read();
+        frame_pair read();
+        
+        // void test();
 
         /// return camera id
         unsigned int id() const;
-        
-        /// return camera id of right stereo pair
-        unsigned int id_stereo_camera() const;
 
         /// return total bytes per frame
         unsigned long total_bytes_per_frame() const;
@@ -73,35 +77,50 @@ class flycapture
         void close();
 
         /// list cameras
-        static std::vector< FlyCapture2::CameraInfo > list_cameras();
+        static std::vector< unsigned int > list_camera_serials();
 
-        /// callback
-        class callback
+        static FlyCapture2::InterfaceType get_camera_interface(unsigned int serial);
+
+        static const std::string describe_camera(unsigned int serial);
+
+/// multicam
+        class multicam
         {
             public:
-                /// constructor: start capture, call callback on frame update
-                callback( flycapture& flycapture, boost::function< void ( std::pair< boost::posix_time::ptime, cv::Mat > ) > on_frame );
+                typedef std::pair<uint, const camera::attributes_type&> camera_pair;
+                typedef std::pair<boost::posix_time::ptime, std::vector<cv::Mat>> frames_pair;
+
+                /// constructor: start capture, call multicam on frame update
+                multicam( std::vector<camera_pair>& cameras );
 
                 /// destructor: stop capture
-                ~callback();
+                ~multicam();
+
+                /// synchronous trigger of all cameras
+                void trigger();
+
+                /// return the images and timestamp
+                frames_pair read();
                 
-                /// implementation class, a hack: has to be public to use pvAPI callback, sigh...
-                class impl;
-                
-                /// return true, if callback status is ok
+                /// return true, if multicam status is ok
                 bool good() const;
+
+                /// return the number of cameras in this instance
+                unsigned int num_cameras() const;
                 
             private:
-                friend class flycapture;
+                /// implementation class, a hack: has to be public to use pvAPI multicam, sigh...
+                class impl;
+                friend class camera;
                 impl* pimpl_;
         };
         
     private:
-        friend class callback::impl;
+        friend class multicam::impl;
         class impl;
-        impl* pimpl_;
+        std::unique_ptr< impl > pimpl_;
 };
 
-} } // namespace snark{ namespace camera{
+} } } // namespace snark { namespace cameras { namespace flycapture {
 
 #endif // SNARK_SENSORS_FLYCAPTURE_H_
