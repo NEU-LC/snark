@@ -64,6 +64,7 @@ static void usage( bool more = false )
     std::cerr << "    cat points.csv | points-calc discretise --step <step> > results.csv" << std::endl;
     std::cerr << std::endl;
     std::cerr << "operations" << std::endl;
+    std::cerr << "    angle-axis" << std::endl;
     std::cerr << "    cumulative-distance" << std::endl;
     std::cerr << "    cumulative-discretise,cumulative-discretize,sample" << std::endl;
     std::cerr << "    distance" << std::endl;
@@ -80,6 +81,17 @@ static void usage( bool more = false )
     vector_calc::usage_list_operations();
     std::cerr << std::endl;
     std::cerr << "operation details" << std::endl;
+    std::cerr << "    angle-axis: angle-axis between subsequent points or, if input is pairs," << std::endl;
+    std::cerr << "                between the points of the same record." << std::endl;
+    std::cerr << "                For subsequent points the first value (or last if --next" << std::endl;
+    std::cerr << "                is given) is invalid as we don't yet have a pair of points." << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "        input fields: " << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
+    std::cerr << "                      " << comma::join( comma::csv::names< point_pair_t >( true ), ',' ) << std::endl;
+    std::cerr << "        options: " << std::endl;
+    std::cerr << "            --next: subsequent points only, angle-axis to next point is appended" << std::endl;
+    std::cerr << "                    (default: angle-axis to previous point is appended)" << std::endl;
+    std::cerr << std::endl;
     std::cerr << "    cumulative-distance: cumulative distance between subsequent points" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    cumulative-discretise, cumulative-discretize,sample: read input data and discretise intervals with --step along the whole trajectory" << std::endl;
@@ -252,6 +264,113 @@ static void calculate_distance_for_pairs()
         else
         {
             std::cout << comma::join( istream.ascii().last(), csv.delimiter ) << csv.delimiter << norm << std::endl;
+        }
+    }
+}
+
+static void angle_axis()
+{
+    comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, csv );
+    boost::optional< Eigen::Vector3d > last;
+    while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
+    {
+        const Eigen::Vector3d* p = istream.read();
+        if( !p ) { break; }
+        Eigen::AngleAxis< double > angle_axis;
+        if( last ) { angle_axis = Eigen::Quaternion< double >::FromTwoVectors( *last, *p ); }
+        else { angle_axis = Eigen::AngleAxis< double >( 0, Eigen::Vector3d( 0, 0, 0 )); }
+        last = *p;
+
+        if( csv.binary() )
+        {
+            std::cout.write( istream.binary().last(), istream.binary().binary().format().size() );
+            std::cout.write( reinterpret_cast< const char* >( &angle_axis.angle() ), sizeof( double ));
+            std::cout.write( reinterpret_cast< const char* >( &angle_axis.axis() ), sizeof( double ) * 3 );
+            if( csv.flush ) { std::cout.flush(); }
+        }
+        else
+        {
+            std::cout << comma::join( istream.ascii().last(), csv.delimiter )
+                      << csv.delimiter << angle_axis.angle()
+                      << csv.delimiter << comma::join( angle_axis.axis(), csv.delimiter )
+                      << std::endl;
+        }
+    }
+}
+
+static void angle_axis_next()
+{
+    comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, csv );
+    boost::optional< Eigen::Vector3d > last;
+    while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
+    {
+        const Eigen::Vector3d* p = istream.read();
+        if( !p ) { break; }
+        if( last )
+        {
+            Eigen::AngleAxis< double > angle_axis( Eigen::Quaternion< double >::FromTwoVectors( *last, *p ));
+            if( csv.binary() )
+            {
+                std::cout.write( reinterpret_cast< const char* >( &angle_axis.angle() ), sizeof( double ));
+                std::cout.write( reinterpret_cast< const char* >( &angle_axis.axis() ), sizeof( double ) * 3 );
+                if( csv.flush ) { std::cout.flush(); }
+            }
+            else
+            {
+                std::cout << csv.delimiter << angle_axis.angle()
+                          << csv.delimiter << comma::join( angle_axis.axis(), csv.delimiter )
+                          << std::endl;
+            }
+        }
+        if( csv.binary() )
+        {
+            std::cout.write( istream.binary().last(), istream.binary().binary().format().size() );
+            if( csv.flush ) { std::cout.flush(); }
+        }
+        else { std::cout << comma::join( istream.ascii().last(), csv.delimiter ); }
+        last = *p;
+    }
+    if( last )
+    {
+        Eigen::AngleAxis< double > angle_axis( 0, Eigen::Vector3d( 0, 0, 0 ));
+        if( csv.binary() )
+        {
+            std::cout.write( reinterpret_cast< const char* >( &angle_axis.angle() ), sizeof( double ));
+            std::cout.write( reinterpret_cast< const char* >( &angle_axis.axis() ), sizeof( double ) * 3 );
+            if( csv.flush ) { std::cout.flush(); }
+        }
+        else
+        {
+            std::cout << csv.delimiter << angle_axis.angle()
+                      << csv.delimiter << comma::join( angle_axis.axis(), csv.delimiter )
+                      << std::endl;
+        }
+    }
+}
+
+static void angle_axis_for_pairs()
+{
+    comma::csv::input_stream< point_pair_t > istream( std::cin, csv );
+    while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
+    {
+        const point_pair_t* p = istream.read();
+        if( !p ) { break; }
+
+        Eigen::AngleAxis< double > angle_axis( Eigen::Quaternion< double >::FromTwoVectors( p->first, p->second ));
+
+        if( csv.binary() )
+        {
+            std::cout.write( istream.binary().last(), istream.binary().binary().format().size() );
+            std::cout.write( reinterpret_cast< const char* >( &angle_axis.angle() ), sizeof( double ));
+            std::cout.write( reinterpret_cast< const char* >( &angle_axis.axis() ), sizeof( double ) * 3 );
+            if( csv.flush ) { std::cout.flush(); }
+        }
+        else
+        {
+            std::cout << comma::join( istream.ascii().last(), csv.delimiter )
+                      << csv.delimiter << angle_axis.angle()
+                      << csv.delimiter << comma::join( angle_axis.axis(), csv.delimiter )
+                      << std::endl;
         }
     }
 }
@@ -559,6 +678,22 @@ int main( int ac, char** av )
             if( options.exists("--output-fields" )){ std::cout << "distance" << std::endl; return 0; }
             if( options.exists("--output-format" )){ std::cout << "d" << std::endl; return 0; }
             calculate_distance( true );
+            return 0;
+        }
+        if( operation == "angle-axis" )
+        {
+            if( options.exists("--output-fields" )){ std::cout << "angle,x,y,z" << std::endl; return 0; }
+            if( options.exists("--output-format" )){ std::cout << "4d" << std::endl; return 0; }
+            if(    csv.has_field( "first" )   || csv.has_field( "second" )
+                || csv.has_field( "first/x" ) || csv.has_field( "second/x" )
+                || csv.has_field( "first/y" ) || csv.has_field( "second/y" )
+                || csv.has_field( "first/z" ) || csv.has_field( "second/z" ) )
+            {
+                angle_axis_for_pairs();
+                return 0;
+            }
+            if ( options.exists( "--next" ) ) { angle_axis_next(); }
+            else { angle_axis(); }
             return 0;
         }
         if( operation == "nearest" )
