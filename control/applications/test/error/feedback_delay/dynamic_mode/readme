@@ -1,0 +1,14 @@
+dynamic mode 
+
+- publish feedback using csv-play ( see data/readme and data/feedback.csv )
+- sleep for a while to synchronise feedback and target streams
+- send target waypoints to control-error (timed with csv-play)
+- add time_diff to output (current feedback time minus the start time); to use in expected
+- determine the indexes that correspond to reached=1 output; to use in expected
+
+the trajectory describes a square with target waypoints at the corners
+
+- the first target is at 200,0
+- the second target 100,100 is sent at t=1 when the trajectory is at 100,0
+- the 3rd target is at -100,100
+- the forth target 0,0 is sent at t=3 when the trajectory is at 0,100

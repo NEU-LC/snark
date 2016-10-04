@@ -1,0 +1,6 @@
+output[0]/target/x=100
+output[0]/target/y=100
+output[0]/target/heading_offset=0.1
+near( output[0]/feedback/x, 5000, 10 )
+near( output[0]/time_diff, 50.0, 0.1 )
+

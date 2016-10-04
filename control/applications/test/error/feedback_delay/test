@@ -6,7 +6,7 @@ function wait_for_port
     local -i count=0
     local listen_state=$( io-ls --enum-state | grep ,LISTEN$ | cut -d, -f1 )
     while ! io-ls --fields local/port,state | grep $port,$listen_state &>/dev/null; do
-        sleep 0.1
+        sleep 0.01
         if (( ++count > 100 )); then { echo "$scriptname: timed out waiting for port $port"; return 1; }; fi
     done
     echo "port $port is ready" >&2
@@ -37,43 +37,59 @@ source $( type -p comma-process-util ) || { echo "$scriptname: failed to source 
 
 mkdir -p output
 
-fields=x,y,heading_offset
-binary=d,d,d
-
 feedback_fields=t,x,y,yaw
 feedback_binary=t,d,d,d
 
+fields=x,y,heading_offset
+binary=d,d,d
+
+output_format=$binary,$feedback_binary,$( control-error --output-format )
+output_fields=$( csv-fields prefix --path target <<< $fields ),$( csv-fields prefix --path feedback <<< $feedback_fields ),$( control-error --output-fields )
+
+script_dir=$( dirname $( readlink -f $scriptname ) )
+feedback=$( [[ -f data/feedback.csv ]] && echo data/feedback.csv || echo $script_dir/data/feedback.csv )
+
+input=$( cat )
+[[ "$input" ]] || exit 1
+
+dt=$( head -qn1 <( echo "$input" ) $feedback | cut -d, -f1 | paste -sd, | csv-eval --fields a,b --format 2t "dt = (a-b)/timedelta64(1,'s')" | cut -d, -f3 )
+options=$( [[ -f data/options ]] && cat data/options || cat $script_dir/data/options )
+feedback_pre_sleep=$( [[ -f data/feedback_pre_sleep ]] && cat data/feedback_pre_sleep || echo 0 )
+feedback_post_sleep=$( [[ -f data/feedback_post_sleep ]] && cat data/feedback_post_sleep || echo 0 )
+targets_pre_sleep=$( [[ -f data/targets_pre_sleep ]] && cat data/targets_pre_sleep || echo 0 )
+
+echo "dt=$dt"
+echo "feedback_pre_sleep=$feedback_pre_sleep"
+echo "feedback_post_sleep=$feedback_post_sleep"
+echo "targets_pre_sleep=$targets_pre_sleep"
+echo "options=\"$options\""
+
 feedback_port=$(( 1024 + $RANDOM ))
 feedback_pid=
-# feedback runs for about 4 seconds (1 point every 10 milliseconds) with first time stamp at 20150101T000000
-# the waypoints are sent after 1 second delay, so first feedback point used by control-error should be around 20150101T000001
-# the trajectory goes from 0,0 to 150,0 and then stays at 150,0 
-# note that control-error outputs errors every 0.05 seconds (--frequency=20)
-seq 0 400 \
-    | csv-paste value=20150101T000000 - value=0,0 \
-    | csv-eval --fields t,i --format t,ui "t+=i*timedelta64(10,'ms')" --flush \
+{
+    sleep $feedback_pre_sleep
+    cat $feedback
+    sleep $feedback_post_sleep
+} \
     | csv-play \
-    | csv-eval --fields t,i --format t,ui "i=minimum(i,150)" --flush \
     | csv-to-bin $feedback_binary --flush \
     | socat -u - tcp-listen:$feedback_port & feedback_pid=$!
+
 wait_for_port $feedback_port
-sleep 0.1 # sleep for a short while to allow the feedback points to become available on tcp port
-output_format=$binary,$feedback_binary,$( control-error --output-format --status )
-output_fields=$( csv-fields prefix --path target <<< $fields ),$( csv-fields prefix --path feedback <<< $feedback_fields ),$( control-error --output-fields --status )
+
+sleep $dt
 
 {
-    sleep 1 # wait long enough for control-error to receive a lot of feedback
-    echo "sending 1st waypoint at $( date +%T.%N )" >&2
-    echo 150,0,0
-    sleep 1 # wait before sending second waypoint (note that 1st waypoint is reached at about 1.5 seconds, but 2nd waypoint is reached immediately)
-    echo "sending 2nd waypoint at $( date +%T.%N )" >&2
-    echo 150,0,1
-    sleep 1 # keep stdin of control-error open for a while
+    sleep $targets_pre_sleep
+    echo "$input"
+    sleep 10
 } \
+    | csv-play \
+    | csv-shuffle --fields t,x,y,heading --output-fields x,y,heading \
     | csv-to-bin $binary --flush \
     | control-error --fields=$fields  --binary=$binary \
         "tcp:localhost:$feedback_port;fields=$feedback_fields;binary=$feedback_binary" \
-        --mode=fixed --proximity=10 --frequency=20 --past-endpoint --status --flush --verbose \
+        $options --verbose \
     | csv-from-bin $output_format --flush \
     | csv-eval --fields $output_fields --format $output_format \
         "time_diff=( feedback_t - datetime64('2015-01-01T00:00:00.000000') )/timedelta64(1,'s')" --full-xpath --flush \
@@ -81,10 +97,10 @@ output_fields=$( csv-fields prefix --path target <<< $fields ),$( csv-fields pre
     | name-value-from-csv $output_fields,time_diff --line-number --prefix output \
     | csv-quote --unquote --fields ,x --delimiter =
 
-
 cat output/output.csv \
     | csv-paste - line-number \
     | csv-select --fields $output_fields "reached;equals=1" \
     | rev | cut -d, -f1 | rev \
     | name-value-from-csv index --line-number --prefix reached \
     | csv-quote --unquote --fields ,x --delimiter =
+

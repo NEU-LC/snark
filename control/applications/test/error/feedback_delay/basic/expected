@@ -1,8 +1,0 @@
-output[0]/target/x=100
-output[0]/target/y=200
-output[0]/target/heading_offset=1
-output[0]/feedback/t="20150101T000005"
-output[0]/feedback/x=40
-output[0]/feedback/y=5
-output[0]/feedback/yaw=0.5
-

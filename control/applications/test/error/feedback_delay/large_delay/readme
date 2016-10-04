@@ -1,0 +1,8 @@
+ensure that control-error attempts to use the most current feedback for computing the errors
+
+note that this test takes 1 minute or so to run
+
+- send 1 minute worth of feedback points (see data/feedback.csv)
+- send a waypoint
+- observe that the last feedback point is used
+

@@ -163,13 +163,12 @@ int main( int ac, char** av )
         }
         select.read().add( comma::io::stdin_fd );
         std::deque< std::pair< snark::control::target_t, std::string > > targets;
-        snark::control::vector_t from;
+        boost::optional< snark::control::vector_t > from;
         snark::control::vector_t to;
         snark::control::wayline_t wayline;
         comma::signal_flag is_shutdown;
         bool reached = false;
         bool first_target = true;
-        bool new_target_in_dynamic_mode = false;
         while( !is_shutdown && std::cin.good() && std::cout.good() )
         {
             // todo? don't do select.check() on stdin in the loop or do it only in "dynamic" mode?
@@ -177,26 +176,17 @@ int main( int ac, char** av )
             {
                 const snark::control::target_t* p = input_stream.read();
                 if( !p ) { break; }
-                std::string line;
+                std::pair< snark::control::target_t, std::string > pair( *p, "" );
                 if( input_csv.binary() )
                 {
-                    line.resize( input_csv.format().size() );
-                    ::memcpy( &line[0], input_stream.binary().last(), line.size() );
+                    pair.second.resize( input_csv.format().size() );
+                    ::memcpy( &pair.second[0], input_stream.binary().last(), pair.second.size() );
                 }
                 else
                 {
-                    line = comma::join( input_stream.ascii().last(), input_csv.delimiter );
+                    pair.second = comma::join( input_stream.ascii().last(), input_csv.delimiter );
                 }
-                if( mode == dynamic ) 
-                {
-                    if( targets.empty() ) { targets.push_back( std::make_pair( *p, line ) ); }
-                    else { targets.front() = std::make_pair( *p, line ); }
-                    new_target_in_dynamic_mode = true;
-                }
-                else if( mode == fixed )
-                {
-                    targets.push_back( std::make_pair( *p, line ) );
-                }
+                targets.push_back( pair );
             }
             while( !is_shutdown && ( feedback_stream.ready() || ( select.check() && select.read().ready( feedback_in ) ) ) )
             {
@@ -206,23 +196,21 @@ int main( int ac, char** av )
             }
             if( is_shutdown ) { break; }
             if( targets.empty() ) { select.wait( boost::posix_time::millisec( 10 ) ); continue; }
-            if( first_target || reached || new_target_in_dynamic_mode )
+            if( !from ) { from = feedback.position; }
+            if( first_target || reached || ( mode == dynamic && targets.size() > 1 ) )
             {
+                if( mode == dynamic )
+                {
+                    from = feedback.position;
+                    std::pair< snark::control::target_t, std::string > target = targets.back();
+                    targets.clear();
+                    targets.push_back( target );
+                }
                 to = targets.front().first.position;
                 if( verbose ) { std::cerr << name << ": target waypoint " << snark::control::serialise( to ) << std::endl; }
-                if( first_target || mode == dynamic ) { from = feedback.position; }
-                if( ( from - to ).norm() < proximity )
-                {
-                    reached = true;
-                    wayline = snark::control::wayline_t();
-                }
-                else
-                {
-                    reached = false;
-                    wayline = snark::control::wayline_t( from, to );
-                }
-                first_target = false;
-                new_target_in_dynamic_mode = false;
+                reached = ( *from - to ).norm() < proximity;
+                wayline = reached ? snark::control::wayline_t() : snark::control::wayline_t( *from, to );
+                first_target = true;
             }
             if( !reached ) { reached = ( ( feedback.position - to ).norm() < proximity ) || ( use_past_endpoint && wayline.is_past_endpoint( feedback.position ) ); }
             snark::control::error_t error;
@@ -253,11 +241,11 @@ int main( int ac, char** av )
                 output_stream.write( snark::control::control_data_t( wayline, error, reached ) );
                 if( use_delay ) { next_output_time = boost::posix_time::microsec_clock::universal_time() + delay; }
             }
+            if( verbose && reached ) { std::cerr << name << ": reached waypoint " << snark::control::serialise( to ) << ", current position: " << snark::control::serialise( feedback.position ) << std::endl; }
             if( reached )
             {
-                if( verbose ) { std::cerr << name << ": reached waypoint " << snark::control::serialise( to ) << ", current position: " << snark::control::serialise( feedback.position ) << std::endl; }
-                if( mode == fixed ) { from = to; }
                 targets.pop_front();
+                from = to;
             }
         }
         return 0;

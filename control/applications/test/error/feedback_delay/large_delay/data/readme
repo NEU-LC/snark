@@ -1,0 +1,4 @@
+use the following command to generate feedback
+
+seq 0 10000 | csv-paste - value=20150101T000000 | csv-eval --fields i,t --format i,t "t+=i*timedelta64(1,'us');x=i;y=0;yaw=0" | cut -d, -f2- > feedback.csv
+

@@ -1,0 +1,3 @@
+ensure that path-endpoint condition for reaching a waypoint is used when --past-endpoint option is given
+
+this is achieved by reducing proximity to a small number and issuing a target waypoint that does not fall on a feedback point within this proximity

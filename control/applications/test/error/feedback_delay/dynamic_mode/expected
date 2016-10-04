@@ -1,0 +1,38 @@
+#python
+
+dt = 0.1
+dl = 10
+
+expect number_of( reached ) = 2
+
+reached_1 = reached[0]/index
+reached_2 = reached[1]/index
+
+expect output[0]/target/x = 200
+expect output[0]/target/y = 0
+expect near( output[0]/time_diff, 0.5, dt )
+expect near( output[0]/feedback/x, 0, dl )
+expect near( output[0]/feedback/y, 0, dl )
+
+expect output[reached_1]/reached = 1
+expect output[reached_1]/target/x = 100
+expect output[reached_1]/target/y = 100
+expect near( output[reached_1]/time_diff, 3.0, dt )
+expect near( output[reached_1]/feedback/x, 100, dl )
+expect near( output[reached_1]/feedback/y, 100, dl )
+
+i = reached_1 + 1
+
+expect output[i]/target/x = -100
+expect output[i]/target/y = 100
+expect near( output[i]/time_diff, 3.5, dt )
+expect near( output[i]/feedback/x, 50, dl )
+expect near( output[i]/feedback/y, 100, dl )
+
+expect output[reached_2]/reached = 1
+expect output[reached_2]/target/x = 0
+expect output[reached_2]/target/y = 0
+expect near( output[reached_2]/time_diff, 5.0, dt )
+expect near( output[reached_2]/feedback/x, 0, dl )
+expect near( output[reached_2]/feedback/y, 0, dl )
+

@@ -1,8 +1,0 @@
-ensure that control-error attempts to use the most current feedback for computing the errors
-
-- send several feedback points ( seed data/feedback.csv with fields t,x,y,yaw)
-- wait for a while
-- send a waypoint ( see data/waypoints.csv with fields x,y,heading_offset)
-- get output
-- observe that the last feedback point is used
-

@@ -1,4 +1,4 @@
-this test is similar to ../realistic but it uses the second waypoints at the same location as the first
-with the feedback trajectory stopping when the first waypoint is reached 
 
-the second waypoint should still produce output with reached=1
+- send a target
+- send another target at the same location as the first
+- observe that the second target yields output with reached=1
