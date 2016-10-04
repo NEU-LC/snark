@@ -130,7 +130,7 @@ int main( int ac, char** av )
         comma::csv::input_stream< snark::control::feedback_t > feedback_stream( *feedback_in, feedback_csv );
         comma::io::select select;
         select.read().add( feedback_in );
-        snark::control::feedback_t feedback;
+        boost::optional< snark::control::feedback_t > feedback;
         if( select.wait( boost::posix_time::seconds( 1 ) ) )
         {
             const snark::control::feedback_t* p = feedback_stream.read();
@@ -173,7 +173,7 @@ int main( int ac, char** av )
                 feedback = *p;
             }
             if( is_shutdown ) { break; }
-            if( targets.empty() ) { select.wait( boost::posix_time::millisec( 10 ) ); continue; }
+            if( targets.empty() || !feedback ) { select.wait( boost::posix_time::millisec( 10 ) ); continue; }
             if( first_target || follower.reached_target() || ( mode == snark::control::dynamic && targets.size() > 1 ) )
             {
                 if( mode == snark::control::dynamic )
@@ -182,11 +182,11 @@ int main( int ac, char** av )
                     targets.clear();
                     targets.push_back( pair );
                 }
-                follower.set_target( targets.front().first, feedback.position );
+                follower.set_target( targets.front().first, feedback->position );
                 first_target = false;
                 if( verbose ) { std::cerr << name << ": target waypoint " << snark::control::serialise( follower.to() ) << std::endl; }
             }
-            follower.update( feedback );
+            follower.update( *feedback );
             if( follower.reached_target() || ( use_delay && boost::posix_time::microsec_clock::universal_time() > next_output_time ) )
             {
                 if( input_csv.binary() )
@@ -208,8 +208,9 @@ int main( int ac, char** av )
                 output_stream.write( snark::control::control_data_t( follower ) );
                 if( use_delay ) { next_output_time = boost::posix_time::microsec_clock::universal_time() + delay; }
             }
-            if( verbose && follower.reached_target() ) { std::cerr << name << ": reached waypoint " << snark::control::serialise( follower.to() ) << ", current position: " << snark::control::serialise( feedback.position ) << std::endl; }
+            if( verbose && follower.reached_target() ) { std::cerr << name << ": reached waypoint " << snark::control::serialise( follower.to() ) << ", current position: " << snark::control::serialise( feedback->position ) << std::endl; }
             if( follower.reached_target() ) { targets.pop_front(); }
+            feedback.reset();
         }
         return 0;
     }
