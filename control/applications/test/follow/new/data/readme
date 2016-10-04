@@ -1,0 +1,20 @@
+use the following pipeline to create feedback file
+
+{
+    seq 0 100 \
+        | csv-paste - value=20150101T000000,0,0 \
+        | csv-eval --fields i,t --format i,t "t+=i*timedelta64(10,'ms'); yaw=-i/100." \
+        | cut -d, -f2-
+    seq 0 500 \
+        | csv-paste - value=20150101T000001 \
+        | csv-eval --fields i,t --format i,t "t+=i*timedelta64(10,'ms')" \
+        | csv-eval --fields i,t --format i,t \
+            "x = where(i>200,maximum(0,300-i),minimum(i,100)); y = where(i>300,maximum(0,400-i),where(i<200,maximum(i-100,0),100)); yaw = i/100.0" \
+        | cut -d, -f2-
+} > feedback.csv
+
+- feedback frequency is 100 per second (1 output every 0.01 seconds)
+- it stays at 0,0 for 1 second
+- it then takes 4 seconds to describe a square with the corners at 0,0 - 100,0 - 100,100 - 0,100 - 0,0
+- after that, it returns to 0,0 and stays there for another second
+

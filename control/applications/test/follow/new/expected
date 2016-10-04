@@ -1,0 +1,61 @@
+#python
+
+dt = 0.1
+dl = 10
+eps = 1e-8
+pi = 1.57079632679
+
+reached_1 = reached[0]/index
+reached_2 = reached[1]/index
+reached_3 = reached[2]/index
+reached_4 = reached[3]/index
+
+start_1 = 0
+
+expect output[start_1]/target/x = 100
+expect output[start_1]/target/y = 0
+expect near( output[start_1]/feedback/x, 0, dl )
+expect near( output[start_1]/feedback/y, 0, dl )
+
+expect output[reached_1]/target/x = 100
+expect output[reached_1]/target/y = 0
+expect near( output[reached_1]/feedback/x, 100, dl )
+expect near( output[reached_1]/feedback/y, 0, dl )
+
+start_2 = reached_1 + 1 
+
+expect output[start_2]/target/x = 100
+expect output[start_2]/target/y = 100
+expect near( output[start_2]/feedback/x, 100, dl )
+expect near( output[start_2]/feedback/y, 0, dl )
+
+expect output[reached_2]/target/x = 100
+expect output[reached_2]/target/y = 100
+expect near( output[reached_2]/feedback/x, 100, dl )
+expect near( output[reached_2]/feedback/y, 100, dl )
+
+start_3 = reached_2 + 1 
+
+expect output[start_3]/target/x = 0
+expect output[start_3]/target/y = 100
+expect near( output[start_3]/feedback/x, 50, dl )
+expect near( output[start_3]/feedback/y, 100, dl )
+
+expect output[reached_3]/target/x = 0
+expect output[reached_3]/target/y = 100
+expect near( output[reached_3]/feedback/x, 0, dl )
+expect near( output[reached_3]/feedback/y, 100, dl )
+
+start_4 = reached_3 + 1 
+
+expect output[start_4]/target/x = 0
+expect output[start_4]/target/y = 0
+expect near( output[start_4]/feedback/x, 0, dl )
+expect near( output[start_4]/feedback/y, 50, dl )
+
+expect output[reached_4]/target/x = 0
+expect output[reached_4]/target/y = 0
+expect near( output[reached_4]/feedback/x, 0, dl )
+expect near( output[reached_4]/feedback/y, 0, dl )
+
+

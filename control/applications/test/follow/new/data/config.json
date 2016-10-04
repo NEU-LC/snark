@@ -1,7 +1,7 @@
 {
     "mode": "fixed",
     "steering": "omni",
-    "proximity": "0.02",
+    "proximity": "5",
     "past_endpoint": 1,
     "heading_is_absolute_default": 0,
     "frequency": "20.0",
@@ -13,13 +13,13 @@
     },
     "feedback":
     {
-        "address": "tcp:localhost:60000",
+        "address": "",
         "fields": "t,x,y,yaw",
         "binary": "t,d,d,d"
     },
     "pid":
     {
-        "cross_track": "2.0,0,0",
-        "heading": "1.2,0,0"
+        "cross_track": "1.0,0,0",
+        "heading": "1.0,0,0"
     }
 }

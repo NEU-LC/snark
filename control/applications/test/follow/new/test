@@ -1,0 +1,91 @@
+#!/bin/bash
+
+function wait_for_port
+{
+    local port=$1
+    local -i count=0
+    local listen_state=$( io-ls --enum-state | grep ,LISTEN$ | cut -d, -f1 )
+    while ! io-ls --fields local/port,state | grep $port,$listen_state &>/dev/null; do
+        sleep 0.01
+        if (( ++count > 100 )); then { echo "$scriptname: timed out waiting for port $port"; return 1; }; fi
+    done
+    echo "port $port is ready" >&2
+}
+
+function kill_if_exists
+{
+    local pid=$1
+    local what=$2
+    if kill -0 $pid &>/dev/null; then
+        echo "killing $what (pid=$pid): $( date +%T.%N )" >&2
+        kill $pid
+        wait $pid
+    fi
+}
+
+function bye
+{
+    kill_if_exists $feedback_pid feedback
+    exit
+}
+
+trap bye INT HUP TERM EXIT
+
+scriptname=$( readlink -f $0 )
+source $( type -p comma-application-util ) || { echo "$scriptname: failed to source comma-application-util" >&2; exit 1; }
+source $( type -p comma-process-util ) || { echo "$scriptname: failed to source comma-process-util" >&2; exit 1; }
+
+mkdir -p output
+
+comma_path_value_to_var < <( name-value-convert < data/config.json )
+
+input=$( cat )
+[[ "$input" ]] || exit 1
+
+dt=$( head -qn1 <( echo "$input" ) data/feedback.csv | cut -d, -f1 | paste -sd, | csv-eval --fields a,b --format 2t "dt = (a-b)/timedelta64(1,'s')" | cut -d, -f3 )
+echo "dt=$dt"
+
+feedback_port=$(( 1024 + $RANDOM ))
+
+config=output/config.json
+cat data/config.json \
+    | { name-value-convert --to path-value; echo "feedback/address=tcp:localhost:$feedback_port"; } \
+    | name-value-convert --to json --take-last > $config 
+
+output_fields=$( control-follow-waypoints-new --output-fields --config="$config" )
+output_binary=$( control-follow-waypoints-new --output-format --config="$config" )
+target_fields=$( csv-fields prefix --path target <<< $waypoints_fields )
+
+feedback_pid=
+{
+    cat data/feedback.csv
+} \
+    | csv-play \
+    | csv-to-bin $feedback_binary --flush \
+    | socat -u - tcp-listen:$feedback_port & feedback_pid=$!
+
+wait_for_port $feedback_port
+
+sleep $dt
+
+{
+    echo "$input"
+    sleep 10
+} \
+    | csv-play \
+    | csv-shuffle --fields t,$waypoints_fields --output-fields $waypoints_fields \
+    | csv-to-bin $waypoints_binary --flush \
+    | control-follow-waypoints-new --config="$config" \
+    | csv-from-bin $waypoints_binary,$output_binary \
+    | tee output/output.csv \
+    | name-value-from-csv $target_fields,$output_fields --line-number --prefix output \
+    | csv-quote --unquote --fields ,x --delimiter =
+
+
+cat output/output.csv \
+    | csv-paste - line-number \
+    | csv-select --fields $target_fields,$output_fields "reached;equals=1" \
+    | rev | cut -d, -f1 | rev \
+    | name-value-from-csv index --line-number --prefix reached \
+    | csv-quote --unquote --fields ,x --delimiter =
+
