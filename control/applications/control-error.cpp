@@ -84,7 +84,7 @@ static void usage( bool verbose = false )
     std::cerr << std::endl;
     std::cerr << "default input fields: position/x,position/y,heading_offset,is_absolute" << std::endl;
     std::cerr << "    required fields: position/x,position/y" << std::endl;
-    std::cerr << "    optional fields: heading_offset,is_absolute (default values: 0,1)" << std::endl;
+    std::cerr << "    optional fields: heading_offset,is_absolute (default values: 0,0)" << std::endl;
     std::cerr << std::endl;
     std::cerr << "examples: " << std::endl;
     std::cerr << "    cat targets.bin | " << name << " \"tcp:localhost:12345;fields=t,x,y,,,,yaw;binary=t,6d\" --fields=x,y,,,speed --binary=3d,ui,d --past-endpoint" << std::endl;
