@@ -6,3 +6,5 @@
 - determine the indexes that correspond to reached=1 output; to use in expected
 
 the trajectory describes a square with target waypoints at the corners
+
+relative heading
