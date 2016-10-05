@@ -151,8 +151,8 @@ int main( int ac, char** av )
         bool reset_pid = options.exists( "--reset" );
         snark::control::pid cross_track_pid = make_pid< snark::control::pid >( options.value< std::string >( "--cross-track-pid" ) );
         snark::control::pid heading_pid = make_pid< snark::control::angular_pid >( options.value< std::string >( "--heading-pid" ) );
-        boost::optional< snark::control::wayline::vector > position;
-        boost::optional< snark::control::wayline::vector > previous_position;
+        boost::optional< snark::control::wayline::position_t > position;
+        boost::optional< snark::control::wayline::position_t > previous_position;
         while( input_stream.ready() || ( std::cin.good() && !std::cin.eof() ) )
         {
             const control_data_t* control_data = input_stream.read();

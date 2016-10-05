@@ -93,7 +93,7 @@ static void usage( bool verbose = false )
     exit( 1 );
 }
 
-std::string serialise( const snark::control::wayline::vector& p )
+std::string serialise( const snark::control::wayline::position_t& p )
 {
     std::stringstream s;
     s << std::fixed << std::setprecision(12) << p.x() << ',' << p.y();
@@ -127,9 +127,9 @@ public:
             if( proximity_ < 0 ) { COMMA_THROW( comma::exception, "expected positive proximity, got " << proximity_ ); }
         }
 
-    void set_target( const snark::control::target_t& target, const snark::control::wayline::vector& current_position )
+    void set_target( const snark::control::target_t& target, const snark::control::wayline::position_t& current_position )
     {
-        snark::control::wayline::vector from = ( mode_ == fixed && target_ ) ? target_->position : current_position;
+        snark::control::wayline::position_t from = ( mode_ == fixed && target_ ) ? target_->position : current_position;
         target_ = target;
         reached_ = ( from - target_->position ).norm() < proximity_;
         wayline_ = reached_ ? snark::control::wayline() : snark::control::wayline( from, target_->position );
@@ -146,7 +146,7 @@ public:
     }
     bool target_reached() const { return reached_; }
     snark::control::error_t error() const { return error_; }
-    snark::control::wayline::vector to() const { return target_->position; }
+    snark::control::wayline::position_t to() const { return target_->position; }
     snark::control::wayline wayline() const { return wayline_; }
 
 private:
@@ -326,7 +326,7 @@ int main( int ac, char** av )
                 if( verbose ) { std::cerr << name << ": reached waypoint " << serialise( follower.to() ) << ", current position: " << serialise( feedback->position ) << std::endl; }
                 targets.pop_front();
             }
-            feedback.reset(); // remove
+            feedback.reset(); // remove // - feedback.reset(): remove; put feedback check in wayline_follower::update()
         }
         return 0;
     }

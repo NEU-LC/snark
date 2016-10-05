@@ -39,37 +39,20 @@
 
 namespace snark { namespace control {
 
-// todo
-// - fix todo comments below
-// done - rename wayline_t -> wayline
-// done - rename control.h/cpp -> wayline.h/cpp
-// done - dimensions -> wayline::dimensions
-// done - vector_t -> wayline::vector
-// done - serialise: move to applications/control.h
-// done - feedback_t: move to applications/control.h
-// done - target_t: move to applications/control.h
-// done - error_t: move to applications/control.h
-// done - command_t: move to applications/control.h
-// done - control_data_t: move to applications/control.h
-// done - target_t, feedback_t, error_t, etc traits: move to applications/traits.h
-// done - wayline_follower: move to control_error
-// done - wrap_angle.h: remove, just write the expression by hand
-// - feedback.reset(): remove; put feedback check in wayline_follower::update()
-    
 struct wayline
 {
 public:
     static const unsigned int dimensions = 2;
-    typedef Eigen::Matrix< double, dimensions, 1 > vector;
+    typedef Eigen::Matrix< double, dimensions, 1 > position_t;
     wayline() : heading_( 0 ) {} 
-    wayline( const vector& from, const vector& to );
-    bool is_past_endpoint( const vector& position ) const;
-    double cross_track_error( const vector& position ) const;
+    wayline( const position_t& from, const position_t& to );
+    bool is_past_endpoint( const position_t& position ) const;
+    double cross_track_error( const position_t& position ) const;
     double heading_error( double current_heading, double target_heading ) const;    
     double heading() const { return heading_; }
 
 private:
-    vector v_;
+    Eigen::Matrix< double, dimensions, 1 > v_;
     double heading_;
     Eigen::Hyperplane< double, dimensions > line_;
     Eigen::Hyperplane< double, dimensions > perpendicular_line_at_end_;

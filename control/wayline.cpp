@@ -35,10 +35,10 @@
 
 namespace snark { namespace control {
 
-wayline::vector normalise( const wayline::vector& v ) { return v.normalized(); }
+wayline::position_t normalise( const wayline::position_t& v ) { return v.normalized(); }
 
-wayline::wayline( const vector& from, const vector& to )
-    : v_( normalise( to - from ) ) // TODO: use .normalized() directly and get rid of normalise()
+wayline::wayline( const position_t& from, const position_t& to )
+    : v_( ( to - from ).normalized() )
     , heading_( atan2( v_.y(), v_.x() ) )
     , line_( Eigen::ParametrizedLine< double, dimensions >::Through( from, to ) )
     , perpendicular_line_at_end_( v_, to )
@@ -46,12 +46,12 @@ wayline::wayline( const vector& from, const vector& to )
         BOOST_STATIC_ASSERT( dimensions == 2 );
     }
 
-bool wayline::is_past_endpoint( const vector& position ) const
+bool wayline::is_past_endpoint( const position_t& position ) const
 {
     return perpendicular_line_at_end_.signedDistance( position ) > 0;
 }
 
-double wayline::cross_track_error( const vector& position ) const
+double wayline::cross_track_error( const position_t& position ) const
 {
     return -line_.signedDistance( position );
 }

@@ -36,7 +36,7 @@ namespace snark { namespace control {
 struct feedback_t
 {
     boost::posix_time::ptime t;
-    snark::control::wayline::vector position;
+    snark::control::wayline::position_t position;
     double yaw;
     double yaw_rate;
 };
@@ -45,7 +45,7 @@ struct target_t
 {
     target_t( bool is_absolute = false ) : heading_offset( 0 ), is_absolute( is_absolute ) {}
     target_t( const target_t& rhs ) : position( rhs.position ), heading_offset( rhs.heading_offset ), is_absolute( rhs.is_absolute ) {}
-    snark::control::wayline::vector position;
+    snark::control::wayline::position_t position;
     double heading_offset;
     bool is_absolute;
 };
