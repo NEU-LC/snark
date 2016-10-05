@@ -92,13 +92,80 @@ static void usage( bool verbose = false )
     exit( 1 );
 }
 
+class output_t
+{
+public:
+    output_t( const comma::csv::input_stream< snark::control::target_t >& input_stream,
+              const comma::csv::input_stream< snark::control::feedback_t >& feedback_stream,
+              comma::csv::output_stream< snark::control::control_data_t >& output_stream )
+        : input_stream_( input_stream )
+        , feedback_stream_( feedback_stream )
+        , output_stream_( output_stream )
+        , use_delay_( false )
+    {
+        if( ! ( input_stream_.is_binary() && feedback_stream_.is_binary() && output_stream_.is_binary() )
+            && ! ( !input_stream_.is_binary() && !feedback_stream_.is_binary() && !output_stream_.is_binary() ) )
+        {
+            COMMA_THROW( comma::exception, "input, feedback, and output streams are not all binary or all ascii: "
+                << "input is " << to_str_( input_stream_.is_binary() )
+                << ", feedback is " << to_str_( feedback_stream_.is_binary() )
+                << ", output is " << to_str_( output_stream_.is_binary() ) )
+        }
+        is_binary_ = input_stream_.is_binary();
+        if( is_binary_ )
+        {
+            input_size_ = input_stream_.binary().binary().format().size();
+            feedback_size_ = feedback_stream_.binary().binary().format().size();
+        }
+        else
+        {
+            delimiter_ = output_stream.ascii().ascii().delimiter();
+        }
+    }
+    void add_delay( double frequency )
+    {
+        use_delay_ = true;
+        if( frequency <= 0 ) { COMMA_THROW( comma::exception, "expected positive frequency, got " << frequency ); }
+        delay_ = boost::posix_time::microseconds( static_cast< long >( 1000000 / frequency ) );
+        next_output_time_= boost::posix_time::microsec_clock::universal_time();
+    }
+    void write( const std::string& input_buffer, const snark::control::wayline_follower& follower )
+    {
+        if( ! ( follower.target_reached() 
+                || ( use_delay_ && boost::posix_time::microsec_clock::universal_time() > next_output_time_ ) ) ) { return; }
+        if( is_binary_ )
+        {
+            std::cout.write( &input_buffer[0], input_size_ );
+            std::cout.write( feedback_stream_.binary().last(), feedback_size_ );
+        }
+        else
+        {
+            std::cout << input_buffer << delimiter_;
+            std::cout << comma::join( feedback_stream_.ascii().last(), delimiter_ ) << delimiter_;
+        }
+        output_stream_.write( snark::control::control_data_t( follower ) );
+        if( use_delay_ ) { next_output_time_ = boost::posix_time::microsec_clock::universal_time() + delay_; }
+     }
+private:
+    std::string to_str_( bool is_binary ) { return is_binary ? "binary" : "ascii"; }
+    const comma::csv::input_stream< snark::control::target_t >& input_stream_;
+    const comma::csv::input_stream< snark::control::feedback_t >& feedback_stream_;
+    comma::csv::output_stream< snark::control::control_data_t >& output_stream_;
+    bool is_binary_;
+    std::size_t input_size_;
+    std::size_t feedback_size_;
+    char delimiter_;
+    bool use_delay_;
+    boost::posix_time::time_duration delay_;
+    boost::posix_time::ptime next_output_time_;
+};
+
 int main( int ac, char** av )
 {
     try
     {
         comma::command_line_options options( ac, av, usage );
         comma::csv::options input_csv( options, field_names< snark::control::target_t >() );
-        const char delimiter = input_csv.delimiter;
         comma::csv::input_stream< snark::control::target_t > input_stream( std::cin, input_csv, snark::control::target_t( options.exists( "--heading-is-absolute" ) ) );
         comma::csv::options output_csv( options );
         output_csv.full_xpath = true;
@@ -110,24 +177,17 @@ int main( int ac, char** av )
         if( options.exists( "--output-format" ) ) { std::cout << format< snark::control::control_data_t >( output_csv.fields, true ) << std::endl; return 0; }
         if( options.exists( "--output-fields" ) ) { std::cout << output_csv.fields << std::endl; return 0; }
         snark::control::mode_t mode = snark::control::mode_from_string( options.value< std::string >( "--mode", default_mode ) );
-        bool use_delay = options.exists( "--frequency,-f" );
-        boost::posix_time::microseconds delay( 0 );
-        boost::posix_time::ptime next_output_time( boost::posix_time::microsec_clock::universal_time() );
-        if( use_delay )
-        {
-            double frequency = options.value< double >( "--frequency,-f" );
-            if( frequency <= 0 ) { std::cerr << name << ": expected positive frequency, got " << frequency << std::endl; return 1; }
-            delay = boost::posix_time::microseconds( static_cast< long >( 1000000 / frequency ) );
-        }
+        double proximity = options.value< double >( "--proximity", default_proximity );
+        bool use_past_endpoint = options.exists( "--past-endpoint" );
         bool verbose = options.exists( "--verbose,-v" );
         std::vector< std::string > unnamed = options.unnamed( "--help,-h,--verbose,-v,--input-fields,--format,--input-format,--output-format,--output-fields,--past-endpoint,--heading-is-absolute", "-.*,--.*" );
         if( unnamed.empty() ) { std::cerr << name << ": feedback stream is not given" << std::endl; return 1; }
         comma::csv::options feedback_csv = comma::name_value::parser( "filename", ';', '=', false ).get< comma::csv::options >( unnamed[0] );
-        if( input_csv.binary() && !feedback_csv.binary() ) { std::cerr << name << ": cannot join binary input stream with ascii feedback stream" << std::endl; return 1; }
-        if( !input_csv.binary() && feedback_csv.binary() ) { std::cerr << name << ": cannot join ascii input stream with binary feedback stream" << std::endl; return 1; }
         if( feedback_csv.fields.empty() ) { feedback_csv.fields = field_names< snark::control::feedback_t >(); }
         comma::io::istream feedback_in( feedback_csv.filename, feedback_csv.binary() ? comma::io::mode::binary : comma::io::mode::ascii );
         comma::csv::input_stream< snark::control::feedback_t > feedback_stream( *feedback_in, feedback_csv );
+        output_t output( input_stream, feedback_stream, output_stream );
+        if( options.exists( "--frequency,-f" ) ) { output.add_delay( options.value< double >( "--frequency,-f" ) ); }
         comma::io::select select;
         select.read().add( feedback_in );
         boost::optional< snark::control::feedback_t > feedback;
@@ -146,7 +206,7 @@ int main( int ac, char** av )
         std::deque< std::pair< snark::control::target_t, std::string > > targets;
         comma::signal_flag is_shutdown;
         bool first_target = true;
-        snark::control::wayline_follower follower( mode, options.value< double >( "--proximity", default_proximity ), options.exists( "--past-endpoint" ) );
+        snark::control::wayline_follower follower( mode, proximity, use_past_endpoint );
         while( !is_shutdown && std::cin.good() && std::cout.good() )
         {
             // todo? don't do select.check() on stdin in the loop or do it only in "dynamic" mode?
@@ -174,7 +234,7 @@ int main( int ac, char** av )
             }
             if( is_shutdown ) { break; }
             if( targets.empty() || !feedback ) { select.wait( boost::posix_time::millisec( 10 ) ); continue; }
-            if( first_target || follower.reached_target() || ( mode == snark::control::dynamic && targets.size() > 1 ) )
+            if( first_target || follower.target_reached() || ( mode == snark::control::dynamic && targets.size() > 1 ) )
             {
                 if( mode == snark::control::dynamic )
                 {
@@ -187,29 +247,9 @@ int main( int ac, char** av )
                 if( verbose ) { std::cerr << name << ": target waypoint " << snark::control::serialise( follower.to() ) << std::endl; }
             }
             follower.update( *feedback );
-            if( follower.reached_target() || ( use_delay && boost::posix_time::microsec_clock::universal_time() > next_output_time ) )
-            {
-                if( input_csv.binary() )
-                {
-                    std::cout.write( &targets.front().second[0], input_csv.format().size() );
-                }
-                else
-                {
-                    std::cout << targets.front().second << delimiter;
-                }
-                if( feedback_csv.binary() )
-                {
-                    std::cout.write( feedback_stream.binary().last(), feedback_csv.format().size() );
-                }
-                else
-                {
-                    std::cout << comma::join( feedback_stream.ascii().last(), delimiter ) << delimiter;
-                }
-                output_stream.write( snark::control::control_data_t( follower ) );
-                if( use_delay ) { next_output_time = boost::posix_time::microsec_clock::universal_time() + delay; }
-            }
-            if( verbose && follower.reached_target() ) { std::cerr << name << ": reached waypoint " << snark::control::serialise( follower.to() ) << ", current position: " << snark::control::serialise( feedback->position ) << std::endl; }
-            if( follower.reached_target() ) { targets.pop_front(); }
+            output.write( targets.front().second, follower );
+            if( verbose && follower.target_reached() ) { std::cerr << name << ": reached waypoint " << snark::control::serialise( follower.to() ) << ", current position: " << snark::control::serialise( feedback->position ) << std::endl; }
+            if( follower.target_reached() ) { targets.pop_front(); }
             feedback.reset();
         }
         return 0;

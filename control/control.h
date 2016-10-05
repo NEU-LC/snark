@@ -107,7 +107,7 @@ public:
         }
     void set_target( const target_t& target, const vector_t& current_position );
     void update( const feedback_t& feedback );
-    bool reached_target() const { return reached_; }
+    bool target_reached() const { return reached_; }
     error_t error() const { return error_; }
     vector_t to() const { return target_->position; }
     wayline_t wayline() const { return wayline_; }
@@ -125,7 +125,7 @@ private:
 struct control_data_t
 {
     control_data_t() {}
-    control_data_t( const wayline_follower& f ) : wayline( f.wayline() ), error( f.error() ), reached( f.reached_target() ) {}
+    control_data_t( const wayline_follower& f ) : wayline( f.wayline() ), error( f.error() ), reached( f.target_reached() ) {}
     target_t target;
     feedback_t feedback;
     wayline_t wayline;
