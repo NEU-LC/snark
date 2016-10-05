@@ -33,10 +33,10 @@
 #include <comma/csv/options.h>
 #include <comma/csv/stream.h>
 #include <comma/io/select.h>
-#include "../control.h"
+#include <comma/math/cyclic.h>
 #include "../pid.h"
-#include "../traits.h"
-#include "../wrap_angle.h"
+#include "control.h"
+#include "traits.h"
 
 static const std::string name = "control-command";
 
@@ -151,8 +151,8 @@ int main( int ac, char** av )
         bool reset_pid = options.exists( "--reset" );
         snark::control::pid cross_track_pid = make_pid< snark::control::pid >( options.value< std::string >( "--cross-track-pid" ) );
         snark::control::pid heading_pid = make_pid< snark::control::angular_pid >( options.value< std::string >( "--heading-pid" ) );
-        boost::optional< snark::control::vector_t > position;
-        boost::optional< snark::control::vector_t > previous_position;
+        boost::optional< snark::control::wayline::vector > position;
+        boost::optional< snark::control::wayline::vector > previous_position;
         while( input_stream.ready() || ( std::cin.good() && !std::cin.eof() ) )
         {
             const control_data_t* control_data = input_stream.read();
@@ -176,7 +176,7 @@ int main( int ac, char** av )
                     double yaw = control_data->feedback.yaw;
                     double heading = control_data->wayline.heading;
                     double correction = limit_angle( cross_track_pid( control_data->error.cross_track, time ) );
-                    command.local_heading = snark::control::wrap_angle( heading + correction - yaw );
+                    command.local_heading = comma::math::cyclic< double >( comma::math::interval< double >( -M_PI, M_PI ), heading + correction - yaw )();
                     command.turn_rate = compute_yaw_rate ? heading_pid( control_data->error.heading, time ) : heading_pid( control_data->error.heading, control_data->feedback.yaw_rate, time );
                     break;
                 }

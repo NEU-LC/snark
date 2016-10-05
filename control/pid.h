@@ -27,8 +27,7 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef SNARK_CONTROL_PID_H
-#define SNARK_CONTROL_PID_H
+#pragma once
 
 #include <boost/date_time/posix_time/ptime.hpp>
 #include <boost/optional.hpp>
@@ -72,5 +71,3 @@ class angular_pid : public pid
 };
 
 } } // namespace snark { namespace control {
-
-#endif // SNARK_CONTROL_PID_HEADER

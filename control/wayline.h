@@ -27,18 +27,53 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef SNARK_CONTROL_WRAP_ANGLE_H
-#define SNARK_CONTROL_WRAP_ANGLE_H
+#pragma once
 
+#include <Eigen/Geometry>
+#include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/bimap.hpp>
+#include <boost/assign.hpp>
+#include <boost/optional.hpp>
 #include <comma/math/cyclic.h>
+#include <comma/base/exception.h>
 
 namespace snark { namespace control {
 
-inline double wrap_angle( double value )
+// todo
+// - fix todo comments below
+// done - rename wayline_t -> wayline
+// done - rename control.h/cpp -> wayline.h/cpp
+// done - dimensions -> wayline::dimensions
+// done - vector_t -> wayline::vector
+// done - serialise: move to applications/control.h
+// done - feedback_t: move to applications/control.h
+// done - target_t: move to applications/control.h
+// done - error_t: move to applications/control.h
+// done - command_t: move to applications/control.h
+// done - control_data_t: move to applications/control.h
+// done - target_t, feedback_t, error_t, etc traits: move to applications/traits.h
+// done - wayline_follower: move to control_error
+// done - wrap_angle.h: remove, just write the expression by hand
+// - feedback.reset(): remove; put feedback check in wayline_follower::update()
+    
+struct wayline
 {
-    return comma::math::cyclic< double >( comma::math::interval< double >( -M_PI, M_PI ), value )();
-}
+public:
+    static const unsigned int dimensions = 2;
+    typedef Eigen::Matrix< double, dimensions, 1 > vector;
+    wayline() : heading_( 0 ) {} 
+    wayline( const vector& from, const vector& to );
+    bool is_past_endpoint( const vector& position ) const;
+    double cross_track_error( const vector& position ) const;
+    double heading_error( double current_heading, double target_heading ) const;    
+    double heading() const { return heading_; }
 
-} } // namespace snark { namespace control {
+private:
+    vector v_;
+    double heading_;
+    Eigen::Hyperplane< double, dimensions > line_;
+    Eigen::Hyperplane< double, dimensions > perpendicular_line_at_end_;
+    
+};
 
-#endif // SNARK_CONTROL_WRAP_ANGLE_H
+} } // namespace snark { namespace control

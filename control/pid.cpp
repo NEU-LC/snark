@@ -31,7 +31,6 @@
 #include <comma/csv/stream.h>
 #include <comma/math/cyclic.h>
 #include "pid.h"
-#include "wrap_angle.h"
 
 namespace snark { namespace control {
 
@@ -93,12 +92,16 @@ angular_pid::angular_pid( double p, double i, double d ) : pid( p, i, d ) {}
 
 angular_pid::angular_pid( double p, double i, double d, double threshold ) : pid( p, i, d, threshold ) {}
 
+namespace impl {
+    double wrap_angle( double angle ) { return comma::math::cyclic< double >( comma::math::interval< double >( -M_PI, M_PI ), angle )(); }
+}
+
 double angular_pid::update_( double error, double derivative, const boost::posix_time::ptime& t, boost::optional< double > dt )
 {
     if( dt )
     {
         integral += error * *dt;
-        integral = wrap_angle( integral );
+        integral = impl::wrap_angle( integral );
         clip_integral();
     }
     previous_error = error;
@@ -106,6 +109,6 @@ double angular_pid::update_( double error, double derivative, const boost::posix
     return p * error + i * integral + d * derivative;
 }
 
-double angular_pid::derivative_( double error, double dt ) { return wrap_angle( ( error - *previous_error ) / dt ); }
+double angular_pid::derivative_( double error, double dt ) { return impl::wrap_angle( ( error - *previous_error ) / dt ); }
 
 } } // namespace snark { namespace control {
