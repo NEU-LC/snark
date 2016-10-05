@@ -137,6 +137,8 @@ public:
     void update( const snark::control::feedback_t& feedback )
     {
         if( reached_ ) { return; }
+        if( previous_update_time_ && feedback.t == previous_update_time_ ) { return; }
+        previous_update_time_ = feedback.t;
         reached_ = ( ( feedback.position - target_->position ).norm() < proximity_ )
             || ( use_past_endpoint_ && wayline_.is_past_endpoint( feedback.position ) );
         if( reached_ ) { return; }
@@ -158,6 +160,7 @@ private:
     bool reached_;
     snark::control::wayline wayline_;
     snark::control::error_t error_;
+    boost::optional< boost::posix_time::ptime > previous_update_time_;
 };
 
 class output_t
@@ -256,7 +259,7 @@ int main( int ac, char** av )
         if( options.exists( "--frequency,-f" ) ) { output.add_delay( options.value< double >( "--frequency,-f" ) ); }
         comma::io::select select;
         select.read().add( feedback_in );
-        boost::optional< snark::control::feedback_t > feedback;
+        snark::control::feedback_t feedback;
         if( select.wait( boost::posix_time::seconds( 1 ) ) )
         {
             const snark::control::feedback_t* p = feedback_stream.read();
@@ -306,7 +309,7 @@ int main( int ac, char** av )
             //   if( verbose ) { warning }
             //   feedback.reset();
             //}
-            if( targets.empty() || !feedback ) { select.wait( boost::posix_time::millisec( 10 ) ); continue; }
+            if( targets.empty() ) { select.wait( boost::posix_time::millisec( 10 ) ); continue; }
             if( first_target || follower.target_reached() || ( mode == dynamic && targets.size() > 1 ) )
             {
                 if( mode == dynamic )
@@ -315,18 +318,17 @@ int main( int ac, char** av )
                     targets.clear();
                     targets.push_back( pair );
                 }
-                follower.set_target( targets.front().first, feedback->position );
+                follower.set_target( targets.front().first, feedback.position );
                 first_target = false;
                 if( verbose ) { std::cerr << name << ": target waypoint " << serialise( follower.to() ) << std::endl; }
             }
-            follower.update( *feedback ); // handle the same feedback
+            follower.update( feedback );
             output.write( targets.front().second, follower );
             if( follower.target_reached() )
             {
-                if( verbose ) { std::cerr << name << ": reached waypoint " << serialise( follower.to() ) << ", current position: " << serialise( feedback->position ) << std::endl; }
+                if( verbose ) { std::cerr << name << ": reached waypoint " << serialise( follower.to() ) << ", current position: " << serialise( feedback.position ) << std::endl; }
                 targets.pop_front();
             }
-            feedback.reset(); // remove // - feedback.reset(): remove; put feedback check in wayline_follower::update()
         }
         return 0;
     }
