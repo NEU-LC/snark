@@ -168,11 +168,11 @@ class output_t
 public:
     output_t( const comma::csv::input_stream< snark::control::target_t >& input_stream,
               const comma::csv::input_stream< snark::control::feedback_t >& feedback_stream,
-              comma::csv::output_stream< snark::control::control_data_t >& output_stream )
+              comma::csv::output_stream< snark::control::control_data_t >& output_stream,
+              boost::optional< double > frequency )
         : input_stream_( input_stream )
         , feedback_stream_( feedback_stream )
         , output_stream_( output_stream )
-        , use_delay_( false )
     {
         if( ! ( input_stream_.is_binary() && feedback_stream_.is_binary() && output_stream_.is_binary() )
             && ! ( !input_stream_.is_binary() && !feedback_stream_.is_binary() && !output_stream_.is_binary() ) )
@@ -197,18 +197,17 @@ public:
             }
             delimiter_ = output_stream.ascii().ascii().delimiter();
         }
-    }
-    void add_delay( double frequency )
-    {
-        use_delay_ = true;
-        if( frequency <= 0 ) { COMMA_THROW( comma::exception, "expected positive frequency, got " << frequency ); }
-        delay_ = boost::posix_time::microseconds( static_cast< long >( 1000000 / frequency ) );
-        next_output_time_= boost::posix_time::microsec_clock::universal_time();
+        if( frequency )
+        {
+            if( *frequency <= 0 ) { COMMA_THROW( comma::exception, "expected positive frequency, got " << *frequency ); }
+            delay_ = boost::posix_time::microseconds( static_cast< long >( 1000000 / *frequency ) );
+            next_output_time_= boost::posix_time::microsec_clock::universal_time();
+        }
     }
     void write( const std::string& input_buffer, const wayline_follower& follower )
     {
         if( ! ( follower.target_reached() 
-                || ( use_delay_ && boost::posix_time::microsec_clock::universal_time() > next_output_time_ ) ) ) { return; }
+                || ( next_output_time_ && boost::posix_time::microsec_clock::universal_time() > *next_output_time_ ) ) ) { return; }
         if( is_binary_ )
         {
             std::cout.write( &input_buffer[0], input_size_ );
@@ -220,7 +219,7 @@ public:
             std::cout << comma::join( feedback_stream_.ascii().last(), delimiter_ ) << delimiter_;
         }
         output_stream_.write( snark::control::control_data_t( follower.wayline().heading(), follower.error(), follower.target_reached() ) );
-        if( use_delay_ ) { next_output_time_ = boost::posix_time::microsec_clock::universal_time() + delay_; }
+        if( next_output_time_ ) { next_output_time_ = boost::posix_time::microsec_clock::universal_time() + delay_; }
      }
 private:
     const comma::csv::input_stream< snark::control::target_t >& input_stream_;
@@ -230,9 +229,8 @@ private:
     std::size_t input_size_;
     std::size_t feedback_size_;
     char delimiter_;
-    bool use_delay_;
     boost::posix_time::time_duration delay_;
-    boost::posix_time::ptime next_output_time_;
+    boost::optional< boost::posix_time::ptime > next_output_time_;
 };
 
 int main( int ac, char** av )
@@ -260,8 +258,7 @@ int main( int ac, char** av )
         comma::csv::options feedback_csv = comma::name_value::parser( "filename", ';', '=', false ).get< comma::csv::options >( unnamed[0] );
         comma::io::istream feedback_in( feedback_csv.filename, feedback_csv.binary() ? comma::io::mode::binary : comma::io::mode::ascii );
         comma::csv::input_stream< snark::control::feedback_t > feedback_stream( *feedback_in, feedback_csv );
-        output_t output( input_stream, feedback_stream, output_stream );
-        if( options.exists( "--frequency,-f" ) ) { output.add_delay( options.value< double >( "--frequency,-f" ) ); }
+        output_t output( input_stream, feedback_stream, output_stream, options.optional< double >( "--frequency,-f" ) );
         comma::io::select select;
         select.read().add( feedback_in );
         snark::control::feedback_t feedback;
