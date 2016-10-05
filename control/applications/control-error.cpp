@@ -190,6 +190,11 @@ public:
         }
         else
         {
+            if( input_stream.ascii().ascii().delimiter() != output_stream.ascii().ascii().delimiter()
+                || input_stream.ascii().ascii().delimiter() != feedback_stream.ascii().ascii().delimiter() )
+            {
+                COMMA_THROW( comma::exception, "input, feedback, and output streams delimiters do not match" );
+            }
             delimiter_ = output_stream.ascii().ascii().delimiter();
         }
     }
