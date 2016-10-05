@@ -137,7 +137,7 @@ function set_default_waypoints_fields
 
 
 scriptname=$( basename $0 )
-source $( which comma-application-util )
+source $( which comma-application-util ) || { echo "$scriptname: failed to source comma-application-util" >&2; exit 1; }
 
 # default fields (note that default fields for waypoints depend on steering type and need to be set once the steering type is known)
 feedback_fields="t,x,y,yaw"
@@ -213,3 +213,4 @@ control-error \
          $( (( reset )) && echo --reset ) \
         --flush \
         --verbose
+comma_status_ok
