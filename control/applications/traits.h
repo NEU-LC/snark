@@ -98,10 +98,26 @@ template <> struct traits< snark::control::wayline_t >
     }
 };
 
-
-template <> struct traits< snark::control::control_data_t >
+template <> struct traits< snark::control::control_error_output_t >
 {
-    template < typename K, typename V > static void visit( const K&, snark::control::control_data_t& p, V& v )
+    template < typename K, typename V > static void visit( const K&, snark::control::control_error_output_t& p, V& v )
+    {
+        v.apply( "wayline", p.wayline );
+        v.apply( "error", p.error );
+        v.apply( "reached", p.reached );
+    }
+
+    template < typename K, typename V > static void visit( const K&, const snark::control::control_error_output_t& p, V& v )
+    {
+        v.apply( "wayline", p.wayline );
+        v.apply( "error", p.error );
+        v.apply( "reached", p.reached );
+    }
+};
+
+template <> struct traits< snark::control::control_command_input_t >
+{
+    template < typename K, typename V > static void visit( const K&, snark::control::control_command_input_t& p, V& v )
     {
         v.apply( "target", p.target );
         v.apply( "feedback", p.feedback );
@@ -110,7 +126,7 @@ template <> struct traits< snark::control::control_data_t >
         v.apply( "reached", p.reached );
     }
 
-    template < typename K, typename V > static void visit( const K&, const snark::control::control_data_t& p, V& v )
+    template < typename K, typename V > static void visit( const K&, const snark::control::control_command_input_t& p, V& v )
     {
         v.apply( "target", p.target );
         v.apply( "feedback", p.feedback );

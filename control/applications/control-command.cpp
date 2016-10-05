@@ -44,7 +44,7 @@ template< typename T > std::string field_names( bool full_xpath = false ) { retu
 template< typename T > std::string format( const std::string& fields = "", bool full_xpath = false ) { return comma::csv::format::value< T >( !fields.empty() ? fields : field_names< T >( full_xpath ), full_xpath ); }
 template< typename T > std::string format( bool full_xpath = false ) { return format< T >( "", full_xpath ); }
 
-typedef snark::control::control_data_t control_data_t;
+typedef snark::control::control_command_input_t input_t;
 typedef snark::control::command_t command_t;
 
 enum steering_t { skid, omni };
@@ -89,7 +89,7 @@ static void usage( bool verbose = false )
         std::cerr << "csv options:" << std::endl;
         std::cerr << comma::csv::options::usage() << std::endl;
         std::cerr << "default input fields:" << std::endl;
-        std::vector< std::string > v = comma::split( field_names< control_data_t >( true ), ',' );
+        std::vector< std::string > v = comma::split( field_names< input_t >( true ), ',' );
         for( std::vector< std::string >::const_iterator it = v.begin(); it != v.end(); ++it ) { std::cerr  << "    " << *it << std::endl; }
         std::cerr << std::endl;
     }
@@ -131,19 +131,19 @@ int main( int ac, char** av )
     try
     {
         comma::command_line_options options( ac, av, usage );
-        comma::csv::options input_csv( options, field_names< control_data_t >( true ) );
+        comma::csv::options input_csv( options, field_names< input_t >( true ) );
         input_csv.full_xpath = true;
-        comma::csv::input_stream< control_data_t > input_stream( std::cin, input_csv );
+        comma::csv::input_stream< input_t > input_stream( std::cin, input_csv );
         comma::csv::options output_csv( options );
-        if( options.exists( "--format,--input-format" ) ) { std::cout << format< control_data_t >( true ) << std::endl; return 0; }
-        if( options.exists( "--input-fields" ) ) { std::cout << field_names< control_data_t >( true ) << std::endl; return 0; }
+        if( options.exists( "--format,--input-format" ) ) { std::cout << format< input_t >( true ) << std::endl; return 0; }
+        if( options.exists( "--input-fields" ) ) { std::cout << field_names< input_t >( true ) << std::endl; return 0; }
         steering_t steering = steering_from_string( options.value< std::string >( "--steering,-s" ) );
         if( steering == omni ) { output_csv.fields = "turn_rate,local_heading"; }
         else if( steering == skid ) { output_csv.fields = "turn_rate"; }
         else { std::cerr << name << ": steering '" << steering_to_string( steering ) << "' is not implemented" << std::endl; return 1; }
         if( input_csv.binary() ) { output_csv.format( format< command_t >( output_csv.fields ) ); }
         comma::csv::output_stream< command_t > output_stream( std::cout, output_csv );
-        comma::csv::tied< control_data_t, command_t > tied( input_stream, output_stream );
+        comma::csv::tied< input_t, command_t > tied( input_stream, output_stream );
         if( options.exists( "--output-format" ) ) { std::cout << format< command_t >( output_csv.fields ) << std::endl; return 0; }
         if( options.exists( "--output-fields" ) ) { std::cout << output_csv.fields << std::endl; return 0; }
         bool feedback_has_time  = input_csv.has_field( "feedback/t" );
@@ -155,7 +155,7 @@ int main( int ac, char** av )
         boost::optional< snark::control::wayline::position_t > previous_position;
         while( input_stream.ready() || ( std::cin.good() && !std::cin.eof() ) )
         {
-            const control_data_t* control_data = input_stream.read();
+            const input_t* control_data = input_stream.read();
             if( !control_data ) { break; }
             if( reset_pid )
             {

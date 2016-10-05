@@ -45,10 +45,12 @@
 static const std::string name = "control-error";
 
 template< typename T > std::string field_names( bool full_xpath = false ) { return comma::join( comma::csv::names< T >( full_xpath ), ',' ); }
-template< typename T > std::string format( const std::string& fields = "", bool full_xpath = false ) { return comma::csv::format::value< T >( !fields.empty() ? fields : field_names< T >( full_xpath ), full_xpath ); }
+template< typename T > std::string format( bool full_xpath = false, const std::string& fields = "" ) { return comma::csv::format::value< T >( !fields.empty() ? fields : field_names< T >( full_xpath ), full_xpath ); }
 
 static const double default_proximity = 0.1;
 static const std::string default_mode = "fixed";
+
+typedef snark::control::control_error_output_t output_t;
 
 static void usage( bool verbose = false )
 {
@@ -163,12 +165,12 @@ private:
     boost::optional< boost::posix_time::ptime > previous_update_time_;
 };
 
-class output_t
+class full_output_t
 {
 public:
-    output_t( const comma::csv::input_stream< snark::control::target_t >& input_stream,
+    full_output_t( const comma::csv::input_stream< snark::control::target_t >& input_stream,
               const comma::csv::input_stream< snark::control::feedback_t >& feedback_stream,
-              comma::csv::output_stream< snark::control::control_data_t >& output_stream,
+              comma::csv::output_stream< output_t >& output_stream,
               boost::optional< double > frequency )
         : input_stream_( input_stream )
         , feedback_stream_( feedback_stream )
@@ -218,13 +220,13 @@ public:
             std::cout << input_buffer << delimiter_;
             std::cout << comma::join( feedback_stream_.ascii().last(), delimiter_ ) << delimiter_;
         }
-        output_stream_.write( snark::control::control_data_t( follower.wayline().heading(), follower.error(), follower.target_reached() ) );
+        output_stream_.write( output_t( follower.wayline().heading(), follower.error(), follower.target_reached() ) );
         if( next_output_time_ ) { next_output_time_ = boost::posix_time::microsec_clock::universal_time() + delay_; }
      }
 private:
     const comma::csv::input_stream< snark::control::target_t >& input_stream_;
     const comma::csv::input_stream< snark::control::feedback_t >& feedback_stream_;
-    comma::csv::output_stream< snark::control::control_data_t >& output_stream_;
+    comma::csv::output_stream< output_t >& output_stream_;
     bool is_binary_;
     std::size_t input_size_;
     std::size_t feedback_size_;
@@ -240,15 +242,11 @@ int main( int ac, char** av )
         comma::command_line_options options( ac, av, usage );
         comma::csv::options input_csv( options );
         comma::csv::input_stream< snark::control::target_t > input_stream( std::cin, input_csv, snark::control::target_t( options.exists( "--heading-is-absolute" ) ) );
-        comma::csv::options output_csv( options );
-        output_csv.full_xpath = true;
-        output_csv.fields = "wayline/heading,error/cross_track,error/heading,reached";
-        if( input_csv.binary() ) { output_csv.format( format< snark::control::control_data_t >( output_csv.fields, true ) ); }
-        comma::csv::output_stream< snark::control::control_data_t > output_stream( std::cout, output_csv );
+        comma::csv::output_stream< output_t > output_stream( std::cout, input_csv.binary(), true, input_csv.flush, output_t() );
         if( options.exists( "--input-fields" ) ) { std::cout << field_names< snark::control::target_t >( true ) << std::endl; return 0; }
         if( options.exists( "--format,--input-format" ) ) { std::cout << format< snark::control::target_t >() << std::endl; return 0; }
-        if( options.exists( "--output-format" ) ) { std::cout << format< snark::control::control_data_t >( output_csv.fields, true ) << std::endl; return 0; }
-        if( options.exists( "--output-fields" ) ) { std::cout << output_csv.fields << std::endl; return 0; }
+        if( options.exists( "--output-fields" ) ) { std::cout << field_names< output_t >( true ) << std::endl; return 0; }
+        if( options.exists( "--output-format" ) ) { std::cout << format< output_t >( true ) << std::endl; return 0; }
         control_mode_t mode = mode_from_string( options.value< std::string >( "--mode", default_mode ) );
         double proximity = options.value< double >( "--proximity", default_proximity );
         bool use_past_endpoint = options.exists( "--past-endpoint" );
@@ -258,7 +256,7 @@ int main( int ac, char** av )
         comma::csv::options feedback_csv = comma::name_value::parser( "filename", ';', '=', false ).get< comma::csv::options >( unnamed[0] );
         comma::io::istream feedback_in( feedback_csv.filename, feedback_csv.binary() ? comma::io::mode::binary : comma::io::mode::ascii );
         comma::csv::input_stream< snark::control::feedback_t > feedback_stream( *feedback_in, feedback_csv );
-        output_t output( input_stream, feedback_stream, output_stream, options.optional< double >( "--frequency,-f" ) );
+        full_output_t output( input_stream, feedback_stream, output_stream, options.optional< double >( "--frequency,-f" ) );
         comma::io::select select;
         select.read().add( feedback_in );
         snark::control::feedback_t feedback;

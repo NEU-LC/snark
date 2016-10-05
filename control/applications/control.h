@@ -64,14 +64,21 @@ struct wayline_t
     double heading;
 };
 
-struct control_data_t
+struct control_error_output_t
 {
-    control_data_t() {}
-    control_data_t( double wayline_heading, const error_t& error, bool reached )
+    control_error_output_t() {}
+    control_error_output_t( double wayline_heading, const error_t& error, bool reached )
         : wayline( wayline_heading )
         , error( error )
         , reached( reached )
         {}
+    wayline_t wayline;
+    error_t error;
+    bool reached;
+};
+
+struct control_command_input_t
+{
     target_t target;
     feedback_t feedback;
     wayline_t wayline;
