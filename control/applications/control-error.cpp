@@ -29,6 +29,8 @@
 
 #include <iostream>
 #include <boost/optional.hpp>
+#include <boost/bimap.hpp>
+#include <boost/assign.hpp>
 #include <comma/application/command_line_options.h>
 #include <comma/application/signal_flag.h>
 #include <comma/csv/options.h>
@@ -38,6 +40,7 @@
 #include <comma/io/select.h>
 #include <comma/io/stream.h>
 #include <comma/name_value/name_value.h>
+#include <comma/math/cyclic.h>
 #include "../wayline.h"
 #include "control.h"
 #include "traits.h"
@@ -125,6 +128,7 @@ public:
         , proximity_( proximity )
         , use_past_endpoint_( use_past_endpoint )
         , reached_( false )
+        , no_previous_targets_( true )
         {
             if( proximity_ < 0 ) { COMMA_THROW( comma::exception, "expected positive proximity, got " << proximity_ ); }
         }
@@ -133,6 +137,7 @@ public:
     {
         snark::control::wayline::position_t from = ( mode_ == fixed && target_ ) ? target_->position : current_position;
         target_ = target;
+        no_previous_targets_ = false;
         reached_ = ( from - target_->position ).norm() < proximity_;
         wayline_ = reached_ ? snark::control::wayline() : snark::control::wayline( from, target_->position );
     }
@@ -149,6 +154,7 @@ public:
             : wayline_.heading_error( feedback.yaw, target_->heading_offset );
     }
     bool target_reached() const { return reached_; }
+    bool no_target() const { return no_previous_targets_ || reached_; }
     snark::control::error_t error() const { return error_; }
     snark::control::wayline::position_t to() const { return target_->position; }
     snark::control::wayline wayline() const { return wayline_; }
@@ -160,6 +166,7 @@ private:
     boost::optional< snark::control::target_t > target_;
     bool verbose_;
     bool reached_;
+    bool no_previous_targets_;
     snark::control::wayline wayline_;
     snark::control::error_t error_;
     boost::optional< boost::posix_time::ptime > previous_update_time_;
@@ -195,7 +202,7 @@ public:
             if( input_stream.ascii().ascii().delimiter() != output_stream.ascii().ascii().delimiter()
                 || input_stream.ascii().ascii().delimiter() != feedback_stream.ascii().ascii().delimiter() )
             {
-                COMMA_THROW( comma::exception, "input, feedback, and output streams delimiters do not match" );
+                COMMA_THROW( comma::exception, "input, feedback, and output stream delimiters do not match" );
             }
             delimiter_ = output_stream.ascii().ascii().delimiter();
         }
@@ -275,7 +282,6 @@ int main( int ac, char** av )
         select.read().add( comma::io::stdin_fd );
         std::deque< std::pair< snark::control::target_t, std::string > > targets;
         comma::signal_flag is_shutdown;
-        bool first_target = true;
         wayline_follower follower( mode, proximity, use_past_endpoint );
         while( !is_shutdown && std::cin.good() && std::cout.good() )
         {
@@ -310,7 +316,7 @@ int main( int ac, char** av )
             //   feedback.reset();
             //}
             if( targets.empty() ) { select.wait( boost::posix_time::millisec( 10 ) ); continue; }
-            if( first_target || follower.target_reached() || ( mode == dynamic && targets.size() > 1 ) )
+            if( follower.no_target() || ( mode == dynamic && targets.size() > 1 ) )
             {
                 if( mode == dynamic )
                 {
@@ -319,7 +325,6 @@ int main( int ac, char** av )
                     targets.push_back( pair );
                 }
                 follower.set_target( targets.front().first, feedback.position );
-                first_target = false;
                 if( verbose ) { std::cerr << name << ": target waypoint " << serialise( follower.to() ) << std::endl; }
             }
             follower.update( feedback );

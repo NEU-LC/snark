@@ -30,8 +30,10 @@
 #include <boost/bimap.hpp>
 #include <boost/assign.hpp>
 #include <comma/application/command_line_options.h>
+#include <comma/application/signal_flag.h>
 #include <comma/csv/options.h>
 #include <comma/csv/stream.h>
+#include <comma/csv/names.h>
 #include <comma/io/select.h>
 #include <comma/math/cyclic.h>
 #include "../pid.h"
@@ -131,7 +133,7 @@ int main( int ac, char** av )
     try
     {
         comma::command_line_options options( ac, av, usage );
-        comma::csv::options input_csv( options, field_names< input_t >( true ) );
+        comma::csv::options input_csv( options );
         input_csv.full_xpath = true;
         comma::csv::input_stream< input_t > input_stream( std::cin, input_csv );
         comma::csv::options output_csv( options );
@@ -153,14 +155,15 @@ int main( int ac, char** av )
         snark::control::pid heading_pid = make_pid< snark::control::angular_pid >( options.value< std::string >( "--heading-pid" ) );
         boost::optional< snark::control::wayline::position_t > position;
         boost::optional< snark::control::wayline::position_t > previous_position;
-        while( input_stream.ready() || ( std::cin.good() && !std::cin.eof() ) )
+        comma::signal_flag is_shutdown;
+        while( !is_shutdown && ( input_stream.ready() || ( std::cin.good() && !std::cin.eof() ) ) )
         {
-            const input_t* control_data = input_stream.read();
-            if( !control_data ) { break; }
+            const input_t* input = input_stream.read();
+            if( !input ) { break; }
             if( reset_pid )
             {
                 if( position ) { previous_position = position; }
-                position = control_data->target.position;
+                position = input->target.position;
                 if( previous_position && !position->isApprox( *previous_position ) )
                 {
                     cross_track_pid.reset();
@@ -168,22 +171,22 @@ int main( int ac, char** av )
                 }
             }
             command_t command;
-            boost::posix_time::ptime time = feedback_has_time ? control_data->feedback.t : boost::posix_time::not_a_date_time;
+            boost::posix_time::ptime time = feedback_has_time ? input->feedback.t : boost::posix_time::not_a_date_time;
             switch( steering )
             {
                 case omni:
                 {
-                    double yaw = control_data->feedback.yaw;
-                    double heading = control_data->wayline.heading;
-                    double correction = limit_angle( cross_track_pid( control_data->error.cross_track, time ) );
+                    double yaw = input->feedback.yaw;
+                    double heading = input->wayline.heading;
+                    double correction = limit_angle( cross_track_pid( input->error.cross_track, time ) );
                     command.local_heading = comma::math::cyclic< double >( comma::math::interval< double >( -M_PI, M_PI ), heading + correction - yaw )();
-                    command.turn_rate = compute_yaw_rate ? heading_pid( control_data->error.heading, time ) : heading_pid( control_data->error.heading, control_data->feedback.yaw_rate, time );
+                    command.turn_rate = compute_yaw_rate ? heading_pid( input->error.heading, time ) : heading_pid( input->error.heading, input->feedback.yaw_rate, time );
                     break;
                 }
                 case skid:
                 {
-                    double error = control_data->error.heading - limit_angle( cross_track_pid( control_data->error.cross_track, time ) );
-                    command.turn_rate = compute_yaw_rate ? heading_pid( error, time ) : heading_pid( error, control_data->feedback.yaw_rate, time );
+                    double error = input->error.heading - limit_angle( cross_track_pid( input->error.cross_track, time ) );
+                    command.turn_rate = compute_yaw_rate ? heading_pid( error, time ) : heading_pid( error, input->feedback.yaw_rate, time );
                     break;
                 }
             }

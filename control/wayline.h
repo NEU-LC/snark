@@ -30,12 +30,6 @@
 #pragma once
 
 #include <Eigen/Geometry>
-#include <boost/date_time/posix_time/posix_time.hpp>
-#include <boost/bimap.hpp>
-#include <boost/assign.hpp>
-#include <boost/optional.hpp>
-#include <comma/math/cyclic.h>
-#include <comma/base/exception.h>
 
 namespace snark { namespace control {
 

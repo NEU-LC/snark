@@ -27,15 +27,13 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include <iostream>
-#include <iomanip>
+//#include <iostream>
+//#include <iomanip>
 #include <boost/static_assert.hpp>
-#include "wayline.h"
 #include <comma/math/cyclic.h>
+#include "wayline.h"
 
 namespace snark { namespace control {
-
-wayline::position_t normalise( const wayline::position_t& v ) { return v.normalized(); }
 
 wayline::wayline( const position_t& from, const position_t& to )
     : v_( ( to - from ).normalized() )
