@@ -124,16 +124,17 @@ output_binary=$binary,$feedback_binary,$( control-error --output-format )
 
 script_dir=$( dirname $( readlink -f $scriptname ) )
 feedback=$( [[ -f data/feedback.csv ]] && echo data/feedback.csv || echo $script_dir/data/feedback.csv )
+options=$( [[ -f data/options ]] && cat data/options || cat $script_dir/data/options )
 
 input=$( cat )
 [[ "$input" ]] || { echo "$scriptname: no input" >&2; exit 1; }
 
 targets_delay=$( head -qn1 <( echo "$input" ) $feedback | cut -d, -f1 | paste -sd, | csv-eval --fields a,b --format 2t "dt = (a-b)/timedelta64(1,'s')" | cut -d, -f3 )
-options=$( [[ -f data/options ]] && cat data/options || cat $script_dir/data/options )
+
 feedback_pre_sleep=$( [[ -f data/feedback_pre_sleep ]] && cat data/feedback_pre_sleep || echo 0 )
-feedback_post_sleep=$( [[ -f data/feedback_post_sleep ]] && cat data/feedback_post_sleep || echo 10 )
 targets_pre_sleep=$( [[ -f data/targets_pre_sleep ]] && cat data/targets_pre_sleep || echo 0 )
-targets_post_sleep=$( [[ -f data/targets_post_sleep ]] && cat data/targets_post_sleep || echo 2 )
+feedback_post_sleep=10
+targets_post_sleep=2
 
 echo "targets_delay=$targets_delay"
 echo "feedback_pre_sleep=$feedback_pre_sleep"
