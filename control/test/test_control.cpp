@@ -52,12 +52,21 @@ TEST( pid, threshold_throw )
 
 static const boost::posix_time::ptime initial_time = boost::posix_time::from_iso_string( "20101010T121212.123456" );
 
-TEST( pid, zero_time_increment_throw )
+TEST( pid, negative_time_increment_throw )
 {
     snark::control::pid pid( 0, 0, 0 );
     boost::posix_time::ptime t = initial_time;
     pid( 0, t );
-    ASSERT_THROW( pid( 0, t ), comma::exception );
+    boost::posix_time::time_duration dt = boost::posix_time::microseconds( 1 );
+    ASSERT_THROW( pid( 0, t - dt ), comma::exception );
+}
+
+TEST( pid, zero_time_increment )
+{
+    snark::control::pid pid( 0, 0, 1 );
+    boost::posix_time::ptime t = initial_time;
+    pid( 1, t );
+    EXPECT_NEAR( 0, pid( 1, t ), 1e-12 );
 }
 
 TEST( pid, proportional )

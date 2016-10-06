@@ -31,7 +31,6 @@
 #include <comma/csv/stream.h>
 #include <comma/math/cyclic.h>
 #include "pid.h"
-#include "wrap_angle.h"
 
 namespace snark { namespace control {
 
@@ -42,7 +41,7 @@ pid::pid( double p, double i, double d, double threshold ) : p( p ), i( i ), d( 
     if( threshold <= 0 ) COMMA_THROW( comma::exception, "expected positive threshold, got " << threshold );
 }
 
-double pid::derivative_( double error, double dt ) { return ( error - *previous_error ) / dt; }
+double pid::derivative_( double error, double dt ) { return ( dt == 0 ) ? 0 : ( error - *previous_error ) / dt; }
 
 double pid::operator()( double error, const boost::posix_time::ptime& t )
 {
@@ -66,7 +65,7 @@ void pid::reset()
 boost::optional< double > pid::get_time_increment( const boost::posix_time::ptime& t )
 {
     if( time == boost::posix_time::not_a_date_time || t == boost::posix_time::not_a_date_time ) { return boost::none; }
-    if( t <= time ) { COMMA_THROW( comma::exception, "expected time greater than " << boost::posix_time::to_iso_string( time ) << ", got " << boost::posix_time::to_iso_string( t ) ); }
+    if( t < time ) { COMMA_THROW( comma::exception, "expected time greater or equal to " << boost::posix_time::to_iso_string( time ) << ", got " << boost::posix_time::to_iso_string( t ) ); }
     return ( t - time ).total_microseconds() / 1e6;
 }
 
@@ -93,12 +92,16 @@ angular_pid::angular_pid( double p, double i, double d ) : pid( p, i, d ) {}
 
 angular_pid::angular_pid( double p, double i, double d, double threshold ) : pid( p, i, d, threshold ) {}
 
+namespace impl {
+    double wrap_angle( double angle ) { return comma::math::cyclic< double >( comma::math::interval< double >( -M_PI, M_PI ), angle )(); }
+}
+
 double angular_pid::update_( double error, double derivative, const boost::posix_time::ptime& t, boost::optional< double > dt )
 {
     if( dt )
     {
         integral += error * *dt;
-        integral = wrap_angle( integral );
+        integral = impl::wrap_angle( integral );
         clip_integral();
     }
     previous_error = error;
@@ -106,6 +109,6 @@ double angular_pid::update_( double error, double derivative, const boost::posix
     return p * error + i * integral + d * derivative;
 }
 
-double angular_pid::derivative_( double error, double dt ) { return wrap_angle( ( error - *previous_error ) / dt ); }
+double angular_pid::derivative_( double error, double dt ) { return impl::wrap_angle( ( dt == 0 ) ? 0 : ( error - *previous_error ) / dt ); }
 
 } } // namespace snark { namespace control {

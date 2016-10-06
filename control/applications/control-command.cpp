@@ -30,13 +30,15 @@
 #include <boost/bimap.hpp>
 #include <boost/assign.hpp>
 #include <comma/application/command_line_options.h>
+#include <comma/application/signal_flag.h>
 #include <comma/csv/options.h>
 #include <comma/csv/stream.h>
+#include <comma/csv/names.h>
 #include <comma/io/select.h>
-#include "../control.h"
+#include <comma/math/cyclic.h>
 #include "../pid.h"
-#include "../traits.h"
-#include "../wrap_angle.h"
+#include "control.h"
+#include "traits.h"
 
 static const std::string name = "control-command";
 
@@ -44,7 +46,7 @@ template< typename T > std::string field_names( bool full_xpath = false ) { retu
 template< typename T > std::string format( const std::string& fields = "", bool full_xpath = false ) { return comma::csv::format::value< T >( !fields.empty() ? fields : field_names< T >( full_xpath ), full_xpath ); }
 template< typename T > std::string format( bool full_xpath = false ) { return format< T >( "", full_xpath ); }
 
-typedef snark::control::control_data_t control_data_t;
+typedef snark::control::control_command_input_t input_t;
 typedef snark::control::command_t command_t;
 
 enum steering_t { skid, omni };
@@ -89,7 +91,7 @@ static void usage( bool verbose = false )
         std::cerr << "csv options:" << std::endl;
         std::cerr << comma::csv::options::usage() << std::endl;
         std::cerr << "default input fields:" << std::endl;
-        std::vector< std::string > v = comma::split( field_names< control_data_t >( true ), ',' );
+        std::vector< std::string > v = comma::split( field_names< input_t >( true ), ',' );
         for( std::vector< std::string >::const_iterator it = v.begin(); it != v.end(); ++it ) { std::cerr  << "    " << *it << std::endl; }
         std::cerr << std::endl;
     }
@@ -131,19 +133,19 @@ int main( int ac, char** av )
     try
     {
         comma::command_line_options options( ac, av, usage );
-        comma::csv::options input_csv( options, field_names< control_data_t >( true ) );
+        comma::csv::options input_csv( options );
         input_csv.full_xpath = true;
-        comma::csv::input_stream< control_data_t > input_stream( std::cin, input_csv );
+        comma::csv::input_stream< input_t > input_stream( std::cin, input_csv );
         comma::csv::options output_csv( options );
-        if( options.exists( "--format,--input-format" ) ) { std::cout << format< control_data_t >( true ) << std::endl; return 0; }
-        if( options.exists( "--input-fields" ) ) { std::cout << field_names< control_data_t >( true ) << std::endl; return 0; }
+        if( options.exists( "--format,--input-format" ) ) { std::cout << format< input_t >( true ) << std::endl; return 0; }
+        if( options.exists( "--input-fields" ) ) { std::cout << field_names< input_t >( true ) << std::endl; return 0; }
         steering_t steering = steering_from_string( options.value< std::string >( "--steering,-s" ) );
         if( steering == omni ) { output_csv.fields = "turn_rate,local_heading"; }
         else if( steering == skid ) { output_csv.fields = "turn_rate"; }
         else { std::cerr << name << ": steering '" << steering_to_string( steering ) << "' is not implemented" << std::endl; return 1; }
         if( input_csv.binary() ) { output_csv.format( format< command_t >( output_csv.fields ) ); }
         comma::csv::output_stream< command_t > output_stream( std::cout, output_csv );
-        comma::csv::tied< control_data_t, command_t > tied( input_stream, output_stream );
+        comma::csv::tied< input_t, command_t > tied( input_stream, output_stream );
         if( options.exists( "--output-format" ) ) { std::cout << format< command_t >( output_csv.fields ) << std::endl; return 0; }
         if( options.exists( "--output-fields" ) ) { std::cout << output_csv.fields << std::endl; return 0; }
         bool feedback_has_time  = input_csv.has_field( "feedback/t" );
@@ -151,16 +153,17 @@ int main( int ac, char** av )
         bool reset_pid = options.exists( "--reset" );
         snark::control::pid cross_track_pid = make_pid< snark::control::pid >( options.value< std::string >( "--cross-track-pid" ) );
         snark::control::pid heading_pid = make_pid< snark::control::angular_pid >( options.value< std::string >( "--heading-pid" ) );
-        boost::optional< snark::control::vector_t > position;
-        boost::optional< snark::control::vector_t > previous_position;
-        while( input_stream.ready() || ( std::cin.good() && !std::cin.eof() ) )
+        boost::optional< snark::control::wayline::position_t > position;
+        boost::optional< snark::control::wayline::position_t > previous_position;
+        comma::signal_flag is_shutdown;
+        while( !is_shutdown && ( input_stream.ready() || ( std::cin.good() && !std::cin.eof() ) ) )
         {
-            const control_data_t* control_data = input_stream.read();
-            if( !control_data ) { break; }
+            const input_t* input = input_stream.read();
+            if( !input ) { break; }
             if( reset_pid )
             {
                 if( position ) { previous_position = position; }
-                position = control_data->target.position;
+                position = input->target.position;
                 if( previous_position && !position->isApprox( *previous_position ) )
                 {
                     cross_track_pid.reset();
@@ -168,22 +171,22 @@ int main( int ac, char** av )
                 }
             }
             command_t command;
-            boost::posix_time::ptime time = feedback_has_time ? control_data->feedback.t : boost::posix_time::not_a_date_time;
+            boost::posix_time::ptime time = feedback_has_time ? input->feedback.t : boost::posix_time::not_a_date_time;
             switch( steering )
             {
                 case omni:
                 {
-                    double yaw = control_data->feedback.yaw;
-                    double heading = control_data->wayline.heading;
-                    double correction = limit_angle( cross_track_pid( control_data->error.cross_track, time ) );
-                    command.local_heading = snark::control::wrap_angle( heading + correction - yaw );
-                    command.turn_rate = compute_yaw_rate ? heading_pid( control_data->error.heading, time ) : heading_pid( control_data->error.heading, control_data->feedback.yaw_rate, time );
+                    double yaw = input->feedback.yaw;
+                    double heading = input->wayline.heading;
+                    double correction = limit_angle( cross_track_pid( input->error.cross_track, time ) );
+                    command.local_heading = comma::math::cyclic< double >( comma::math::interval< double >( -M_PI, M_PI ), heading + correction - yaw )();
+                    command.turn_rate = compute_yaw_rate ? heading_pid( input->error.heading, time ) : heading_pid( input->error.heading, input->feedback.yaw_rate, time );
                     break;
                 }
                 case skid:
                 {
-                    double error = control_data->error.heading - limit_angle( cross_track_pid( control_data->error.cross_track, time ) );
-                    command.turn_rate = compute_yaw_rate ? heading_pid( error, time ) : heading_pid( error, control_data->feedback.yaw_rate, time );
+                    double error = input->error.heading - limit_angle( cross_track_pid( input->error.cross_track, time ) );
+                    command.turn_rate = compute_yaw_rate ? heading_pid( error, time ) : heading_pid( error, input->feedback.yaw_rate, time );
                     break;
                 }
             }

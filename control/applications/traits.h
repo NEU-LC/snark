@@ -27,11 +27,10 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef SNARK_CONTROL_TRAITS_H
-#define SNARK_CONTROL_TRAITS_H
+#pragma once
 
 #include <comma/visiting/traits.h>
-#include "../visiting/eigen.h"
+#include <snark/visiting/eigen.h>
 #include "control.h"
 
 namespace comma { namespace visiting {
@@ -87,9 +86,38 @@ template <> struct traits< snark::control::error_t >
     }
 };
 
-template <> struct traits< snark::control::control_data_t >
+template <> struct traits< snark::control::wayline_t >
 {
-    template < typename K, typename V > static void visit( const K&, snark::control::control_data_t& p, V& v )
+    template < typename K, typename V > static void visit( const K&, snark::control::wayline_t& p, V& v )
+    {
+        v.apply( "heading", p.heading );
+    }
+    template < typename K, typename V > static void visit( const K&, const snark::control::wayline_t& p, V& v )
+    {
+        v.apply( "heading", p.heading );
+    }
+};
+
+template <> struct traits< snark::control::control_error_output_t >
+{
+    template < typename K, typename V > static void visit( const K&, snark::control::control_error_output_t& p, V& v )
+    {
+        v.apply( "wayline", p.wayline );
+        v.apply( "error", p.error );
+        v.apply( "reached", p.reached );
+    }
+
+    template < typename K, typename V > static void visit( const K&, const snark::control::control_error_output_t& p, V& v )
+    {
+        v.apply( "wayline", p.wayline );
+        v.apply( "error", p.error );
+        v.apply( "reached", p.reached );
+    }
+};
+
+template <> struct traits< snark::control::control_command_input_t >
+{
+    template < typename K, typename V > static void visit( const K&, snark::control::control_command_input_t& p, V& v )
     {
         v.apply( "target", p.target );
         v.apply( "feedback", p.feedback );
@@ -98,7 +126,7 @@ template <> struct traits< snark::control::control_data_t >
         v.apply( "reached", p.reached );
     }
 
-    template < typename K, typename V > static void visit( const K&, const snark::control::control_data_t& p, V& v )
+    template < typename K, typename V > static void visit( const K&, const snark::control::control_command_input_t& p, V& v )
     {
         v.apply( "target", p.target );
         v.apply( "feedback", p.feedback );
@@ -123,18 +151,4 @@ template <> struct traits< snark::control::command_t >
     }
 };
 
-template <> struct traits< snark::control::wayline_t >
-{
-    template < typename K, typename V > static void visit( const K&, snark::control::wayline_t& p, V& v )
-    {
-        v.apply( "heading", p.heading );
-    }
-    template < typename K, typename V > static void visit( const K&, const snark::control::wayline_t& p, V& v )
-    {
-        v.apply( "heading", p.heading );
-    }
-};
-
 } } // namespace comma { namespace visiting {
-
-#endif // SNARK_CONTROL_TRAITS_H

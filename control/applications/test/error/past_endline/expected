@@ -1,3 +1,6 @@
+status/control=0
+status/reached=0
+
 number_of( reached ) = 1
 output[MAX]/reached = 1
 reached[0]/index = number_of( output ) - 1

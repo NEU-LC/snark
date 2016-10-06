@@ -27,53 +27,16 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef SNARK_CONTROL_H
-#define SNARK_CONTROL_H
+#pragma once
 
-#include <Eigen/Geometry>
-#include <boost/date_time/posix_time/posix_time.hpp>
-#include <boost/bimap.hpp>
-#include <boost/assign.hpp>
-#include <boost/optional.hpp>
-#include <comma/math/cyclic.h>
-#include <comma/base/exception.h>
+#include "../wayline.h"
 
 namespace snark { namespace control {
-
-enum mode_t { fixed, dynamic };
-typedef boost::bimap< mode_t, std::string > named_mode_t;
-static const named_mode_t named_modes = boost::assign::list_of< named_mode_t::relation >
-    ( fixed, "fixed" )
-    ( dynamic, "dynamic" );
-
-mode_t mode_from_string( std::string s );
-std::string mode_to_string( mode_t m );
-
-static const unsigned int dimensions = 2;
-typedef Eigen::Matrix< double, dimensions, 1 > vector_t;
-
-std::string serialise( const vector_t& p );
-
-struct wayline_t
-{
-public:
-    wayline_t() : heading( 0 ) {} 
-    wayline_t( const vector_t& from, const vector_t& to );
-    bool is_past_endpoint( const vector_t& location ) const;
-    double cross_track_error( const vector_t& location ) const;
-    double heading_error( double yaw, double target_heading ) const;
-private:
-    vector_t v_;
-    Eigen::Hyperplane< double, dimensions > line_;
-    Eigen::Hyperplane< double, dimensions > perpendicular_line_at_end_;
-public:
-    double heading;
-};
 
 struct feedback_t
 {
     boost::posix_time::ptime t;
-    vector_t position;
+    snark::control::wayline::position_t position;
     double yaw;
     double yaw_rate;
 };
@@ -82,7 +45,7 @@ struct target_t
 {
     target_t( bool is_absolute = false ) : heading_offset( 0 ), is_absolute( is_absolute ) {}
     target_t( const target_t& rhs ) : position( rhs.position ), heading_offset( rhs.heading_offset ), is_absolute( rhs.is_absolute ) {}
-    vector_t position;
+    snark::control::wayline::position_t position;
     double heading_offset;
     bool is_absolute;
 };
@@ -94,38 +57,28 @@ struct error_t
     double heading;
 };
 
-class wayline_follower
+struct wayline_t
 {
-public:
-    wayline_follower( mode_t mode, double proximity, bool use_past_endpoint )
-        : mode_( mode )
-        , proximity_( proximity )
-        , use_past_endpoint_( use_past_endpoint )
-        , reached_( false )
-        {
-            if( proximity_ < 0 ) { COMMA_THROW( comma::exception, "expected positive proximity, got " << proximity_ ); }
-        }
-    void set_target( const target_t& target, const vector_t& current_position );
-    void update( const feedback_t& feedback );
-    bool reached_target() const { return reached_; }
-    error_t error() const { return error_; }
-    vector_t to() const { return target_->position; }
-    wayline_t wayline() const { return wayline_; }
-private:
-    mode_t mode_;
-    double proximity_;
-    bool use_past_endpoint_;
-    boost::optional< target_t > target_;
-    bool verbose_;
-    bool reached_;
-    wayline_t wayline_;
-    error_t error_;
+    wayline_t(): heading( 0 ) {}
+    wayline_t( double heading ): heading( heading ) {}
+    double heading;
 };
 
-struct control_data_t
+struct control_error_output_t
 {
-    control_data_t() {}
-    control_data_t( const wayline_follower& f ) : wayline( f.wayline() ), error( f.error() ), reached( f.reached_target() ) {}
+    control_error_output_t() {}
+    control_error_output_t( double wayline_heading, const error_t& error, bool reached )
+        : wayline( wayline_heading )
+        , error( error )
+        , reached( reached )
+        {}
+    wayline_t wayline;
+    error_t error;
+    bool reached;
+};
+
+struct control_command_input_t
+{
     target_t target;
     feedback_t feedback;
     wayline_t wayline;
@@ -141,5 +94,3 @@ struct command_t
 };
 
 } } // namespace snark { namespace control
-
-#endif // SNARK_CONTROL_H

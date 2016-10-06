@@ -27,18 +27,30 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef SNARK_CONTROL_WRAP_ANGLE_H
-#define SNARK_CONTROL_WRAP_ANGLE_H
+#pragma once
 
-#include <comma/math/cyclic.h>
+#include <Eigen/Geometry>
 
 namespace snark { namespace control {
 
-inline double wrap_angle( double value )
+struct wayline
 {
-    return comma::math::cyclic< double >( comma::math::interval< double >( -M_PI, M_PI ), value )();
-}
+public:
+    static const unsigned int dimensions = 2;
+    typedef Eigen::Matrix< double, dimensions, 1 > position_t;
+    wayline() : heading_( 0 ) {} 
+    wayline( const position_t& from, const position_t& to );
+    bool is_past_endpoint( const position_t& position ) const;
+    double cross_track_error( const position_t& position ) const;
+    double heading_error( double current_heading, double target_heading ) const;    
+    double heading() const { return heading_; }
 
-} } // namespace snark { namespace control {
+private:
+    Eigen::Matrix< double, dimensions, 1 > v_;
+    double heading_;
+    Eigen::Hyperplane< double, dimensions > line_;
+    Eigen::Hyperplane< double, dimensions > perpendicular_line_at_end_;
+    
+};
 
-#endif // SNARK_CONTROL_WRAP_ANGLE_H
+} } // namespace snark { namespace control
