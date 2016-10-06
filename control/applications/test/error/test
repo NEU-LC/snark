@@ -9,6 +9,10 @@ function start_feedback
     local binary=$5
     local port=$6
 
+    local status
+
+    source $( type -p comma-application-util ) || { echo "$FUNCNAME: failed to source comma-application-util" >&2; return 1; }
+
     {
         echo "$FUNCNAME: pre sleep for $pre_sleep seconds: $( date +%T.%N )" >&2
         sleep $pre_sleep
@@ -24,7 +28,8 @@ function start_feedback
             } \
         | csv-to-bin $binary --flush \
         | socat -u - tcp-listen:$port
-    #comma_status_ok || { echo "failed to start feedback" >&2; kill $scriptpid; }
+    comma_status_ok && status=0 || status=1
+    echo "status/feedback=$status"
 }
 export -f start_feedback
 
@@ -37,7 +42,7 @@ function start_control
         local listen_state=$( io-ls --enum-state | grep ,LISTEN$ | cut -d, -f1 )
         while ! io-ls --fields local/port,state | grep $port,$listen_state &>/dev/null; do
             sleep 0.01
-            if (( ++count > 100 )); then { echo "$scriptname: timed out waiting for port $port"; kill $scriptpid; }; fi
+            if (( ++count > 100 )); then { echo "$FUNCNAME: timed out waiting for port $port" >&2; return 1; }; fi
         done
         echo "port $port is ready" >&2
     }
@@ -58,8 +63,11 @@ function start_control
 
     local output_csv=output/output.csv
     local start_time="2015-01-01T00:00:00.000000"
+    local status
 
-    wait_for_port $feedback_port
+    source $( type -p comma-application-util ) || { echo "$FUNCNAME: failed to source comma-application-util" >&2; return 1; }
+
+    wait_for_port $feedback_port || return 1
     sleep $targets_delay
     {
         echo "$FUNCNAME: pre sleep for $pre_sleep seconds: $( date +%T.%N )" >&2
@@ -85,15 +93,16 @@ function start_control
         | tee $output_csv \
         | name-value-from-csv $output_fields,time_diff --line-number --prefix output \
         | csv-quote --unquote --fields ,x --delimiter =
-    comma_status_ok || { echo "main pipeline failed" >&2; exit 1; }
+    comma_status_ok && status=0 || status=1
+    echo "status/control=$status" 
     cat $output_csv \
         | csv-paste - line-number \
         | csv-select --fields $output_fields "reached;equals=1" \
         | rev | cut -d, -f1 | rev \
         | name-value-from-csv index --line-number --prefix reached \
         | csv-quote --unquote --fields ,x --delimiter =
-    #comma_status_ok || { echo "post pipeline failed" >&2; kill $scriptpid; }
-    #kill $scriptpid
+    comma_status_ok && status=0 || status=1
+    echo "status/reached=$status"
 }
 export -f start_control
 
@@ -158,4 +167,4 @@ comma_execute_and_wait \
         $output_fields \
         $output_binary"
 
-echo "status=$?"
+echo "status/main=$?"

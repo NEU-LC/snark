@@ -1,5 +1,9 @@
 #python
 
+expect status/control=0
+expect status/reached=0
+
+
 dt = 0.1
 dl = 10
 eps = 1e-8
