@@ -32,6 +32,7 @@
 #include <boost/date_time/posix_time/ptime.hpp>
 #include <comma/csv/stream.h>
 #include "../pid.h"
+#include "../wayline.h"
 
 namespace snark { namespace test {
 
@@ -204,6 +205,160 @@ TEST( pid, combination )
     integral += error * to_seconds( microseconds );
     derivative = ( error - previous_error ) / to_seconds( microseconds );
     EXPECT_EQ( p*error + i*integral + d*derivative, pid( error, t ) );
+}
+
+static const double eps = 1e-12;
+
+struct shift
+{
+    double dx;
+    double dy;
+    shift() : dx( 0 ), dy( 0 ) {}
+    shift( double dx, double dy) : dx( dx ), dy( dy ) {}
+    double heading( double from_x, double from_y, double to_x, double to_y )
+    {
+        snark::control::wayline::position_t from( from_x + dx, from_y + dy );
+        snark::control::wayline::position_t to( to_x + dx, to_y + dy );
+        snark::control::wayline wayline( from, to );
+        return wayline.heading();
+    }
+};
+
+TEST( wayline, heading )
+{
+    {
+        shift s;
+        EXPECT_NEAR( 0.0, s.heading(0,0,2,0), eps );
+        EXPECT_NEAR( M_PI/4, s.heading(0,0,2,2), eps );
+        EXPECT_NEAR( M_PI/2, s.heading(0,0,0,2), eps );
+        EXPECT_NEAR( 3*M_PI/4, s.heading(0,0,-2,2), eps );
+        EXPECT_NEAR( M_PI, s.heading(0,0,-2,eps/10), eps );
+
+        EXPECT_NEAR( -M_PI/4, s.heading(0,0,2,-2), eps );
+        EXPECT_NEAR( -M_PI/2, s.heading(0,0,0,-2), eps );
+        EXPECT_NEAR( -3*M_PI/4, s.heading(0,0,-2,-2), eps );
+        EXPECT_NEAR( -M_PI, s.heading(0,0,-2,-eps/10), eps );
+    }
+
+    {
+        shift s( -0.12345, -5.4321 );
+        EXPECT_NEAR( 0.0, s.heading(0,0,2,0), eps );
+        EXPECT_NEAR( M_PI/4, s.heading(0,0,2,2), eps );
+        EXPECT_NEAR( M_PI/2, s.heading(0,0,0,2), eps );
+        EXPECT_NEAR( 3*M_PI/4, s.heading(0,0,-2,2), eps );
+        EXPECT_NEAR( M_PI, s.heading(0,0,-2,eps/10), eps );
+
+        EXPECT_NEAR( -M_PI/4, s.heading(0,0,2,-2), eps );
+        EXPECT_NEAR( -M_PI/2, s.heading(0,0,0,-2), eps );
+        EXPECT_NEAR( -3*M_PI/4, s.heading(0,0,-2,-2), eps );
+        EXPECT_NEAR( -M_PI, s.heading(0,0,-2,-eps/10), eps );
+    }
+}
+
+TEST( wayline, is_past_endpoint )
+{
+    snark::control::wayline::position_t from( 1, 2 );
+    snark::control::wayline::position_t to( 3, 5 );
+    snark::control::wayline wayline( from, to );
+    EXPECT_TRUE( wayline.is_past_endpoint( snark::control::wayline::position_t( 4, 5 ) ) );
+    EXPECT_TRUE( wayline.is_past_endpoint( snark::control::wayline::position_t( 2, 6 ) ) );
+    EXPECT_FALSE( wayline.is_past_endpoint( snark::control::wayline::position_t( 4, 4 ) ) );
+    EXPECT_FALSE( wayline.is_past_endpoint( snark::control::wayline::position_t( 1, 6 ) ) );
+    EXPECT_FALSE( wayline.is_past_endpoint( snark::control::wayline::position_t( 1, 2 ) ) );
+    EXPECT_FALSE( wayline.is_past_endpoint( snark::control::wayline::position_t( 0, 0 ) ) );
+}
+
+struct wayline
+{
+    snark::control::wayline wayline_;
+    wayline( double from_x, double from_y, double to_x, double to_y )
+        : wayline_( snark::control::wayline(
+            snark::control::wayline::position_t( from_x, from_y ),
+            snark::control::wayline::position_t( to_x, to_y )
+                                                    ) ) {}
+    double cross_track_error( double x, double y )
+    {
+        return wayline_.cross_track_error( snark::control::wayline::position_t( x, y ) );
+    }
+    double heading_error( double current_heading, double target_heading )
+    {
+        return wayline_.heading_error( current_heading, target_heading );
+    }
+};
+
+TEST( wayline, heading_error )
+{
+    const double target_heading = 0;
+    {
+        wayline w( 0, 0, 1, 0 );
+        EXPECT_NEAR( 0, w.heading_error( 0, target_heading ), eps );
+        EXPECT_NEAR( -1, w.heading_error( 1, target_heading ), eps );
+        EXPECT_NEAR( 1, w.heading_error( -1, target_heading ), eps );
+        EXPECT_NEAR( -3, w.heading_error( 3, target_heading ), eps );
+        EXPECT_NEAR( 3, w.heading_error( -3, target_heading ), eps );
+        EXPECT_NEAR( -M_PI, w.heading_error( M_PI-eps/10, target_heading ), eps );
+        EXPECT_NEAR( M_PI, w.heading_error( -M_PI+eps/10, target_heading ), eps );
+    }
+    {
+        wayline w( 0, 0, 0, 1 );
+        EXPECT_NEAR( M_PI/2, w.heading_error( 0, target_heading ), eps );
+        EXPECT_NEAR( 1, w.heading_error( M_PI/2-1, target_heading ), eps );
+        EXPECT_NEAR( -1, w.heading_error( M_PI/2+1, target_heading ), eps );
+        EXPECT_NEAR( M_PI, w.heading_error( -M_PI/2+eps/10, target_heading ), eps );
+        EXPECT_NEAR( -M_PI, w.heading_error( -M_PI/2-eps/10, target_heading ), eps );
+        EXPECT_NEAR( -M_PI+1, w.heading_error( -M_PI/2-1, target_heading ), eps );
+        EXPECT_NEAR( -M_PI/2, w.heading_error( M_PI, target_heading ), eps );
+    }
+    {
+        wayline w( 0, 0, -1, 0 );
+        EXPECT_NEAR( M_PI, w.heading_error( eps/10, target_heading ), eps );
+        EXPECT_NEAR( M_PI/2, w.heading_error( M_PI/2, target_heading ), eps );
+        EXPECT_NEAR( 0, w.heading_error( M_PI, target_heading ), eps );
+        EXPECT_NEAR( -M_PI, w.heading_error( -eps/10, target_heading ), eps );
+        EXPECT_NEAR( -M_PI/2, w.heading_error( -M_PI/2, target_heading ), eps );
+    }
+    {
+        wayline w( 0, 0, 0, -1 );
+        EXPECT_NEAR( -M_PI/2, w.heading_error( 0, target_heading ), eps );
+        EXPECT_NEAR( 0, w.heading_error( -M_PI/2, target_heading ), eps );
+        EXPECT_NEAR( -M_PI, w.heading_error( M_PI/2-eps/10, target_heading ), eps );
+        EXPECT_NEAR( M_PI, w.heading_error( M_PI/2+eps/10, target_heading ), eps );
+        EXPECT_NEAR( M_PI/2, w.heading_error( M_PI, target_heading ), eps );
+    }
+}
+
+TEST( wayline, cross_track_error )
+{
+    {
+        wayline w( 1, 2, 3, 4 );
+        EXPECT_NEAR( 1/std::sqrt(2), w.cross_track_error( 2, 2 ), eps );
+        EXPECT_NEAR( -1/std::sqrt(2), w.cross_track_error( 1, 3 ), eps );
+        EXPECT_NEAR( 1/std::sqrt(2), w.cross_track_error( 0, 0 ), eps );
+        EXPECT_NEAR( -1/std::sqrt(2), w.cross_track_error( -1, 1 ), eps );
+        EXPECT_NEAR( 1/std::sqrt(2), w.cross_track_error( 4, 4 ), eps );
+        EXPECT_NEAR( -1/std::sqrt(2), w.cross_track_error( 3, 5 ), eps );
+
+        EXPECT_NEAR( 0, w.cross_track_error( 0, 1 ), eps );
+        EXPECT_NEAR( 0, w.cross_track_error( 1, 2 ), eps );
+        EXPECT_NEAR( 0, w.cross_track_error( 2, 3 ), eps );
+        EXPECT_NEAR( 0, w.cross_track_error( 3, 4 ), eps );
+        EXPECT_NEAR( 0, w.cross_track_error( 4, 5 ), eps );
+    }
+    {
+        wayline w( -1, -2, -3, -4 );
+        EXPECT_NEAR( 1/std::sqrt(2), w.cross_track_error( -2, -2 ), eps );
+        EXPECT_NEAR( -1/std::sqrt(2), w.cross_track_error( -1, -3 ), eps );
+        EXPECT_NEAR( 1/std::sqrt(2), w.cross_track_error( 0, 0 ), eps );
+        EXPECT_NEAR( -1/std::sqrt(2), w.cross_track_error( 1, -1 ), eps );
+        EXPECT_NEAR( 1/std::sqrt(2), w.cross_track_error( -4, -4 ), eps );
+        EXPECT_NEAR( -1/std::sqrt(2), w.cross_track_error( -3, -5 ), eps );
+
+        EXPECT_NEAR( 0, w.cross_track_error( 0, -1 ), eps );
+        EXPECT_NEAR( 0, w.cross_track_error( -1, -2 ), eps );
+        EXPECT_NEAR( 0, w.cross_track_error( -2, -3 ), eps );
+        EXPECT_NEAR( 0, w.cross_track_error( -3, -4 ), eps );
+        EXPECT_NEAR( 0, w.cross_track_error( -4, -5 ), eps );
+    }
 }
 
 } } // namespace snark {  namespace test {
