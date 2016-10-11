@@ -325,13 +325,13 @@ int main( int ac, char** av )
                     targets.push_back( pair );
                 }
                 follower.set_target( targets.front().first, feedback.position );
-                if( verbose ) { std::cerr << name << ": target waypoint " << serialise( follower.to() ) << std::endl; }
+                if( verbose ) { std::cerr << name << ": target waypoint " << serialise( follower.to() ) << ", current position " << serialise( feedback.position ) << std::endl; }
             }
             follower.update( feedback );
             output.write( targets.front().second, follower );
             if( follower.target_reached() )
             {
-                if( verbose ) { std::cerr << name << ": reached waypoint " << serialise( follower.to() ) << ", current position: " << serialise( feedback.position ) << std::endl; }
+                if( verbose ) { std::cerr << name << ": reached waypoint " << serialise( follower.to() ) << ", current position " << serialise( feedback.position ) << std::endl; }
                 targets.pop_front();
             }
         }
