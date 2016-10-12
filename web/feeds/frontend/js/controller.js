@@ -38,7 +38,6 @@ require(['jquery', "jquery_ui",
     var MapFeed = require('MapFeed');
     // var MapOptions = require('MapOptions');
     // var GridOptions = require('GridOptions');
-    var FormFeed = require('FormFeed');
     var base_controller = require('base_controller');
 
     var controller = function (container_width) {

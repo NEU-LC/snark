@@ -52,7 +52,6 @@ require(['jquery', 'jquery_mobile', "jquery_timeago", "bootstrap",
     var ImageStreamFeed = require('ImageStreamFeed');
     var CsvFeed = require('CsvFeed');
     var TrackFeed = require('TrackFeed');
-    var FormFeed = require('FormFeed');
     // var TrackOptions = require('TrackOptions');
     var MapFeed = require('MapFeed');
     // var MapOptions = require('MapOptions');
@@ -103,10 +102,6 @@ require(['jquery', 'jquery_mobile', "jquery_timeago", "bootstrap",
             m_controller.prototype.add_poll_body(feed_path, '<div class="target map"></div>');
             return new MapFeed(feed_name, feed_path, config);
         }
-        // {
-        //     var FormFeed = require('FormFeed');
-        //
-        // }
         throw 'unrecognised feed type: ' + type;
     };
 
