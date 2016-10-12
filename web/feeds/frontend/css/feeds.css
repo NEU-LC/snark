@@ -89,7 +89,7 @@ body {
     white-space: nowrap;
 }
 
-.panel button {
+.panel h3 button {
     border-radius: 4px;
     background-color: transparent;
     box-sizing: border-box;
