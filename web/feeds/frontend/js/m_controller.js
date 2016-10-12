@@ -102,9 +102,6 @@ require(['jquery', 'jquery_mobile', "jquery_timeago", "bootstrap",
         } else if (type == 'map') {
             m_controller.prototype.add_poll_body(feed_path, '<div class="target map"></div>');
             return new MapFeed(feed_name, feed_path, config);
-        } else if (type == 'form') {
-            m_controller.prototype.add_poll_body(feed_path, '<div class="target form"></div>');
-            return new FormFeed(feed_name, feed_path, config);
         }
         // {
         //     var FormFeed = require('FormFeed');
