@@ -51,7 +51,7 @@ require.config({
         // app scripts
         //
         // --------------------------------------------//
-
+        base_controller: 'js/base_controller',
         Feed: 'js/model/Feed',
         CsvFeed: 'js/model/CsvFeed',
         GraphFeed: 'js/model/GraphFeed',
