@@ -6,7 +6,7 @@ expect status/reached=0
 dt = 0.1
 dl = 10
 eps = 1e-8
-pi = 1.57079632679
+pi2 = 1.57079632679
 
 reached_1 = reached[0]/index
 reached_2 = reached[1]/index
@@ -35,7 +35,7 @@ expect output[start_2]/target/y = 100
 expect near( output[start_2]/time_diff, 2.0, dt )
 expect near( output[start_2]/feedback/x, 100, dl )
 expect near( output[start_2]/feedback/y, 0, dl )
-expect near( output[start_2]/error/heading, pi+0.2, eps )
+expect near( output[start_2]/error/heading, pi2+0.2, eps )
 
 expect output[reached_2]/target/x = 100
 expect output[reached_2]/target/y = 100
@@ -50,7 +50,7 @@ expect output[start_3]/target/y = 100
 expect near( output[start_3]/time_diff, 3.5, dt )
 expect near( output[start_3]/feedback/x, 50, dl )
 expect near( output[start_3]/feedback/y, 100, dl )
-expect near( output[start_3]/error/heading, 0.3-2*pi, eps )
+expect near( output[start_3]/error/heading, 0.3-2*pi2, eps )
 
 expect output[reached_3]/target/x = 0
 expect output[reached_3]/target/y = 100
@@ -65,7 +65,7 @@ expect output[start_4]/target/y = 0
 expect near( output[start_4]/time_diff, 4.5, dt )
 expect near( output[start_4]/feedback/x, 0, dl )
 expect near( output[start_4]/feedback/y, 50, dl )
-expect near( output[start_4]/error/heading, 0.4-pi, eps )
+expect near( output[start_4]/error/heading, 0.4-pi2, eps )
 
 expect output[reached_4]/target/x = 0
 expect output[reached_4]/target/y = 0

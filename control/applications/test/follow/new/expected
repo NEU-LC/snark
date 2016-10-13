@@ -1,9 +1,6 @@
 #python
 
-dt = 0.1
 dl = 10
-eps = 1e-8
-pi = 1.57079632679
 
 reached_1 = reached[0]/index
 reached_2 = reached[1]/index
