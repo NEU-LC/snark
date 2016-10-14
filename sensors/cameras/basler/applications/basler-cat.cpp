@@ -670,10 +670,10 @@ int main( int argc, char** argv )
         if( verbose ) { std::cerr << "basler-cat: done" << std::endl; }
         return 0;
     }
-    catch( std::exception& ex ) { std::cerr << "basler-cat: " << ex.what() << std::endl; }
 #if ( PYLON_VERSION_MAJOR >= 5 )
-    catch(const Pylon::GenericException& e) { std::cerr << "basler-cat: " << e.what() << std::endl; }
+    catch(const Pylon::GenericException& e) { std::cerr << "basler-cat: pylon exception: " << e.what() << std::endl; }
 #endif
+    catch( std::exception& ex ) { std::cerr << "basler-cat: " << ex.what() << std::endl; }
     catch( ... ) { std::cerr << "basler-cat: unknown exception" << std::endl; }
     return 1;
 }
