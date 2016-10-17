@@ -328,8 +328,8 @@ int main( int argc, char** argv )
             ( "header-only", "output header only" )
             ( "no-header", "output image data only" )
             ( "packet-size", boost::program_options::value< unsigned int >( &packet_size ), "mtu size on camera side, should be not greater than your lan and network interface set to" )
-            ( "exposure", boost::program_options::value< unsigned int >( &exposure )->default_value( 100 ), "exposure" )
-            ( "gain", boost::program_options::value< unsigned int >( &gain )->default_value( 100 ), "gain" )
+            ( "exposure", boost::program_options::value< unsigned int >( &exposure ), "exposure" )
+            ( "gain", boost::program_options::value< unsigned int >( &gain ), "gain" )
             ( "timeout", boost::program_options::value< double >( &timeout_seconds )->default_value( 3.0 ), " frame acquisition timeout" )
             ( "test-colour", "output colour test image" )
             ( "verbose,v", "be more verbose" );
@@ -593,6 +593,7 @@ int main( int argc, char** argv )
         if( vm.count( "exposure" ) ) { camera.ExposureTimeRaw.SetValue( exposure ); } // todo? auto exposure (see ExposureAutoEnums)
         if( vm.count( "gain" ) )
         { 
+            if(verbose) { std::cerr<<"basler-cat: setting gain="<<gain<<std::endl; }
             camera.GainSelector.SetValue( Basler_GigECamera::GainSelector_All );
             camera.GainRaw.SetValue( gain );
             if( channels == 3 ) // todo: make configurable; also is not setting all not enough?
@@ -669,6 +670,9 @@ int main( int argc, char** argv )
         if( verbose ) { std::cerr << "basler-cat: done" << std::endl; }
         return 0;
     }
+#if ( PYLON_VERSION_MAJOR >= 5 )
+    catch(const Pylon::GenericException& e) { std::cerr << "basler-cat: pylon exception: " << e.what() << std::endl; }
+#endif
     catch( std::exception& ex ) { std::cerr << "basler-cat: " << ex.what() << std::endl; }
     catch( ... ) { std::cerr << "basler-cat: unknown exception" << std::endl; }
     return 1;

@@ -89,7 +89,7 @@ body {
     white-space: nowrap;
 }
 
-.panel button {
+.panel h3 button {
     border-radius: 4px;
     background-color: transparent;
     box-sizing: border-box;
@@ -125,6 +125,23 @@ body {
     padding: 0;
 }
 
+/*form button {*/
+/*background-color: #797979;*/
+/*}*/
+
+form input {
+    margin-bottom: 5px;
+    color: #2c2c2c;
+}
+
+.form {
+    overflow: auto;
+}
+
+form label {
+    color: #bcdefa;
+}
+
 .target {
     margin-top: 5px;
     background: #181818;
@@ -135,7 +152,7 @@ body {
 }
 
 ul.target li {
-    font: monospace;
+    font-family: monospace;
     border: none;
     color: #bcdefa;
     padding: 0px 5px;
