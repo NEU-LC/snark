@@ -95,7 +95,8 @@ static void usage( bool more = false )
     std::cerr << "        input fields: " << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
     std::cerr << "                      " << comma::join( comma::csv::names< point_pair_t >( true ), ',' ) << std::endl;
     std::cerr << "        options: " << std::endl;
-    std::cerr << "            --next: for subsequent points only, append distance to next point (default: append distance to previous point)" << std::endl;
+    std::cerr << "            --next: for subsequent points only, distance to next point is appended" << std::endl;
+    std::cerr << "                    (default: distance to previous point is appended)" << std::endl;
     std::cerr << "                    fake zero is appended to the final point (since there is no next point)" << std::endl;
     std::cerr << std::endl;
     std::cerr << "        input fields: " << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
