@@ -195,6 +195,26 @@ template < typename T > struct traits< ::Eigen::Translation< T, 3 > >
     }
 };
 
+template < typename T > struct traits< ::Eigen::AngleAxis< T > >
+{
+    template < typename Key, class Visitor >
+    static void visit( const Key&, ::Eigen::AngleAxis< T >& p, Visitor& v )
+    {
+        v.apply( "angle", p.angle() );
+        v.apply( "x", p.axis().x() );
+        v.apply( "y", p.axis().y() );
+        v.apply( "z", p.axis().z() );
+    }
+
+    template < typename Key, class Visitor >
+    static void visit( const Key&, const ::Eigen::AngleAxis< T >& p, Visitor& v )
+    {
+        v.apply( "angle", p.angle() );
+        v.apply( "x", p.axis().x() );
+        v.apply( "y", p.axis().y() );
+        v.apply( "z", p.axis().z() );
+    }
+};
 
 } }
 

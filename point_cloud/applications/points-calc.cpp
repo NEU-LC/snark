@@ -270,7 +270,13 @@ static void calculate_distance_for_pairs()
 
 static void angle_axis()
 {
+    comma::csv::options output_csv( csv );
+    output_csv.fields = comma::join( comma::csv::names< Eigen::AngleAxis< double > >( false ), ',' );
+    if( output_csv.binary() ) { output_csv.format( comma::csv::format::value< Eigen::AngleAxis< double > >() ); }
     comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, csv );
+    comma::csv::output_stream< Eigen::AngleAxis< double > > ostream( std::cout, output_csv );
+    comma::csv::tied< Eigen::Vector3d, Eigen::AngleAxis< double > > tied( istream, ostream );
+
     boost::optional< Eigen::Vector3d > last;
     while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
     {
@@ -281,20 +287,7 @@ static void angle_axis()
         else { angle_axis = Eigen::AngleAxis< double >( 0, Eigen::Vector3d( 0, 0, 0 )); }
         last = *p;
 
-        if( csv.binary() )
-        {
-            std::cout.write( istream.binary().last(), istream.binary().binary().format().size() );
-            std::cout.write( reinterpret_cast< const char* >( &angle_axis.angle() ), sizeof( double ));
-            std::cout.write( reinterpret_cast< const char* >( &angle_axis.axis() ), sizeof( double ) * 3 );
-            if( csv.flush ) { std::cout.flush(); }
-        }
-        else
-        {
-            std::cout << comma::join( istream.ascii().last(), csv.delimiter )
-                      << csv.delimiter << angle_axis.angle()
-                      << csv.delimiter << comma::join( angle_axis.axis(), csv.delimiter )
-                      << std::endl;
-        }
+        tied.append( angle_axis );
     }
 }
 
@@ -350,28 +343,19 @@ static void angle_axis_next()
 
 static void angle_axis_for_pairs()
 {
+    comma::csv::options output_csv( csv );
+    output_csv.fields = comma::join( comma::csv::names< Eigen::AngleAxis< double > >( false ), ',' );
+    if( output_csv.binary() ) { output_csv.format( comma::csv::format::value< Eigen::AngleAxis< double > >() ); }
     comma::csv::input_stream< point_pair_t > istream( std::cin, csv );
+    comma::csv::output_stream< Eigen::AngleAxis< double > > ostream( std::cout, output_csv );
+    comma::csv::tied< point_pair_t, Eigen::AngleAxis< double > > tied( istream, ostream );
     while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
     {
         const point_pair_t* p = istream.read();
         if( !p ) { break; }
 
         Eigen::AngleAxis< double > angle_axis( Eigen::Quaternion< double >::FromTwoVectors( p->first, p->second ));
-
-        if( csv.binary() )
-        {
-            std::cout.write( istream.binary().last(), istream.binary().binary().format().size() );
-            std::cout.write( reinterpret_cast< const char* >( &angle_axis.angle() ), sizeof( double ));
-            std::cout.write( reinterpret_cast< const char* >( &angle_axis.axis() ), sizeof( double ) * 3 );
-            if( csv.flush ) { std::cout.flush(); }
-        }
-        else
-        {
-            std::cout << comma::join( istream.ascii().last(), csv.delimiter )
-                      << csv.delimiter << angle_axis.angle()
-                      << csv.delimiter << comma::join( angle_axis.axis(), csv.delimiter )
-                      << std::endl;
-        }
+        tied.append( angle_axis );
     }
 }
 
@@ -682,8 +666,9 @@ int main( int ac, char** av )
         }
         if( operation == "angle-axis" )
         {
-            if( options.exists("--output-fields" )){ std::cout << "angle,x,y,z" << std::endl; return 0; }
-            if( options.exists("--output-format" )){ std::cout << "4d" << std::endl; return 0; }
+            if( options.exists("--output-fields" )){ std::cout << comma::join( comma::csv::names< Eigen::AngleAxis< double > >( false ), ',' ) << std::endl; return 0; }
+            if( options.exists("--output-format" )){ std::cout << comma::csv::format::value< Eigen::AngleAxis< double > >() << std::endl; return 0; }
+
             if(    csv.has_field( "first" )   || csv.has_field( "second" )
                 || csv.has_field( "first/x" ) || csv.has_field( "second/x" )
                 || csv.has_field( "first/y" ) || csv.has_field( "second/y" )
