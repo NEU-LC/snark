@@ -226,7 +226,7 @@ run_stream::~run_stream() { device.stop(); }
 /*********************************************************/
 options::options()
 {
-    if (RS_API_VERSION != 5) { COMMA_THROW(comma::exception,"expected RS_API_VERSION = 5, got "<<RS_API_VERSION<<" (please install the latest librealsense and/or upgrade snark_librealsense)");}
+    if (RS_API_VERSION < 5) { COMMA_THROW(comma::exception,"expected RS_API_VERSION = 5 or greater, got "<<RS_API_VERSION<<" (please install the latest librealsense and/or upgrade snark_librealsense)");}
     names["color_backlight_compensation"]=rs::option::color_backlight_compensation;
     names["color_brightness"]=rs::option::color_brightness;
     names["color_contrast"]=rs::option::color_contrast;
