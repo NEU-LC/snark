@@ -125,6 +125,15 @@ html .panel-alert, .panel-alert:hover {
     padding: 0;
 }
 
+.form {
+    overflow: auto;
+}
+
+form input {
+    margin-bottom: 5px;
+    color: #2c2c2c;
+}
+
 .target {
     margin-top: 5px;
     background: #181818;

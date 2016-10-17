@@ -2017,10 +2017,7 @@ dat.GUI = dat.gui.GUI = (function (css, saveDialogueContents, styleSheet, contro
 
 
             dom.bind(this.__collapseButton, 'click', function () {
-                common.each(this.__folders, function (folder, element, key) {
-
-                    console.log()
-                });
+                gui.collapseAllFolders();
             });
 
 
@@ -2314,13 +2311,20 @@ dat.GUI = dat.gui.GUI = (function (css, saveDialogueContents, styleSheet, contro
             },
 
             open: function () {
+                $(".navmenu-panel").panel("open");
                 //this.closed = false;
             },
 
             close: function () {
                 this.closed = true;
+                $(".navmenu-panel").panel("close");
             },
 
+            collapseAllFolders: function () {
+                common.each(this.__folders, function (folder, element, key) {
+                    console.log(folder);
+                });
+            },
             onResize: function () {
 
                 var root = this.getRoot();

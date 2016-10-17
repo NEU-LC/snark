@@ -165,7 +165,7 @@ define('base_controller', ['jquery', "jquery_timeago",
 
     base_controller.prototype.add_gui_globals = function () {
         gui.add(globals, 'config_file', config_files).name('config file').onFinishChange(function (value) {
-            load_config_function(globals.config_file);
+            load_config_fn(globals.config_file);
         });
         var folder = gui.addFolder('globals');
         folder.add(globals, "refresh");
@@ -203,11 +203,11 @@ define('base_controller', ['jquery', "jquery_timeago",
             $('#container').sortable('enable')
         });
 
-        $('.panel').on('mouseover', function () {
+        $('.panel h3').on('mouseover', function () {
             $(this).find('.hideable').removeClass('transparent');
             $(this).find('div button').addClass('button-shadow');
         });
-        $('.panel').on('mouseout', function () {
+        $('.panel h3').on('mouseout', function () {
             $(this).find('.hideable').addClass('transparent');
             $(this).find('div button').removeClass('button-shadow');
         });
@@ -230,11 +230,17 @@ define('base_controller', ['jquery', "jquery_timeago",
             }
         });
         $('.panel-settings').on('click', function (event) {
-            var gui_name = $(this).closest('li').data('name');
-            $.each(gui.__folders, function (index, folder) {
-                folder.close();
-            });
-            gui.__folders[gui_name].open();
+            if (globals.isMobile) {
+                var gui_name = $(this).closest('li').attr('data-name');
+            }
+            else {
+                var gui_name = $(this).closest('li').data('name');
+                $.each(gui.__folders, function (index, folder) {
+                    folder.close();
+                });
+                gui.__folders[gui_name].open();
+
+            }
             gui.open();
         });
         $('.panel-close').on('click', function (event) {

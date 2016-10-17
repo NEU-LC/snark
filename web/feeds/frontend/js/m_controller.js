@@ -52,6 +52,7 @@ require(['jquery', 'jquery_mobile', "jquery_timeago", "bootstrap",
     var ImageStreamFeed = require('ImageStreamFeed');
     var CsvFeed = require('CsvFeed');
     var TrackFeed = require('TrackFeed');
+    var FormFeed = require('FormFeed');
     // var TrackOptions = require('TrackOptions');
     var MapFeed = require('MapFeed');
     // var MapOptions = require('MapOptions');
@@ -101,6 +102,9 @@ require(['jquery', 'jquery_mobile', "jquery_timeago", "bootstrap",
         } else if (type == 'map') {
             m_controller.prototype.add_poll_body(feed_path, '<div class="target map"></div>');
             return new MapFeed(feed_name, feed_path, config);
+        } else if (type == 'form') {
+            m_controller.prototype.add_poll_body(feed_path, '<div class="target form"></div>');
+            return new FormFeed(feed_name, feed_path, config);
         }
         throw 'unrecognised feed type: ' + type;
     };
@@ -123,9 +127,9 @@ require(['jquery', 'jquery_mobile', "jquery_timeago", "bootstrap",
         m_controller.prototype.initialize_load_config();
     }
 
-    var add_panel = function (feed_name) {
+    var add_panel = function (feed_name, feed_path) {
         $('#container').append(
-            '<li id="' + feed_name + '" class="panel ">' +
+            '<li id="' + feed_name + '" class="panel"  data-name="' + feed_path + '">' +
             '  <button type="button" class="panel-close hideable text-muted pull-right" title="close"><span>&times;</span></button>' +
             '</li>'
         );
