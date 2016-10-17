@@ -83,6 +83,7 @@ static void usage( bool verbose = false )
     std::cerr << "    --format,--input-format: show binary format of default input stream fields and exit" << std::endl;
     std::cerr << "    --output-format: show binary format of output stream and exit (for wayline and control error fields only)" << std::endl;
     std::cerr << "    --output-fields: show output fields and exit (for wayline and control error fields only)" << std::endl;
+    std::cerr << "    --strict: fail if a record with the timestamp earlier than the previous one is encountered (default: skip offending records)" << std::endl;
     std::cerr << std::endl;
     std::cerr << "control modes: " << std::endl;
     std::cerr << "    fixed: wait until the current waypoint is reached before accepting a new waypoint (first feedback position is the start of the first wayline)" << std::endl;
@@ -123,12 +124,13 @@ std::string mode_to_string( control_mode_t m ) { return  named_modes.left.at( m 
 class wayline_follower
 {
 public:
-    wayline_follower( control_mode_t mode, double proximity, bool use_past_endpoint )
+    wayline_follower( control_mode_t mode, double proximity, bool use_past_endpoint, bool strict_time )
         : mode_( mode )
         , proximity_( proximity )
         , use_past_endpoint_( use_past_endpoint )
         , reached_( false )
         , no_previous_targets_( true )
+        , strict_time_( strict_time )
         {
             if( proximity_ < 0 ) { COMMA_THROW( comma::exception, "expected positive proximity, got " << proximity_ ); }
         }
@@ -144,7 +146,11 @@ public:
     void update( const snark::control::feedback_t& feedback )
     {
         if( reached_ ) { return; }
-        if( previous_update_time_ && feedback.t == previous_update_time_ ) { return; }
+        if( previous_update_time_ && feedback.t < previous_update_time_ )
+        {
+            if( strict_time_ ) { COMMA_THROW( comma::exception, "received feedback time " << feedback.t << " that is earlier than the previous feedback time " << previous_update_time_ ); }
+            return;
+        }
         previous_update_time_ = feedback.t;
         reached_ = ( ( feedback.position - target_->position ).norm() < proximity_ )
             || ( use_past_endpoint_ && wayline_.is_past_endpoint( feedback.position ) );
@@ -167,6 +173,7 @@ private:
     bool verbose_;
     bool reached_;
     bool no_previous_targets_;
+    bool strict_time_;
     snark::control::wayline wayline_;
     snark::control::error_t error_;
     boost::optional< boost::posix_time::ptime > previous_update_time_;
@@ -258,6 +265,7 @@ int main( int ac, char** av )
         double proximity = options.value< double >( "--proximity", default_proximity );
         bool use_past_endpoint = options.exists( "--past-endpoint" );
         bool verbose = options.exists( "--verbose,-v" );
+        bool strict = options.exists( "--strict" );
         std::vector< std::string > unnamed = options.unnamed( "--help,-h,--verbose,-v,--input-fields,--format,--input-format,--output-format,--output-fields,--past-endpoint,--heading-is-absolute", "-.*,--.*" );
         if( unnamed.empty() ) { std::cerr << name << ": feedback stream is not given" << std::endl; return 1; }
         comma::csv::options feedback_csv = comma::name_value::parser( "filename", ';', '=', false ).get< comma::csv::options >( unnamed[0] );
@@ -267,7 +275,7 @@ int main( int ac, char** av )
         comma::io::select select;
         select.read().add( feedback_in );
         snark::control::feedback_t feedback;
-        if( select.wait( boost::posix_time::seconds( 1 ) ) )
+        if( select.wait( boost::posix_time::seconds( 1 ) ) ) // TODO: consider using feedback timeout (when implemented) instead of the hardcoded 1 sec
         {
             const snark::control::feedback_t* p = feedback_stream.read();
             if( !p ) { std::cerr << name << ": feedback stream error" << std::endl; return 1; }
@@ -282,7 +290,7 @@ int main( int ac, char** av )
         select.read().add( comma::io::stdin_fd );
         std::deque< std::pair< snark::control::target_t, std::string > > targets;
         comma::signal_flag is_shutdown;
-        wayline_follower follower( mode, proximity, use_past_endpoint );
+        wayline_follower follower( mode, proximity, use_past_endpoint, strict );
         while( !is_shutdown && std::cin.good() && std::cout.good() )
         {
             // todo? don't do select.check() on stdin in the loop or do it only in "dynamic" mode?
