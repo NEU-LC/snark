@@ -2321,10 +2321,32 @@ dat.GUI = dat.gui.GUI = (function (css, saveDialogueContents, styleSheet, contro
             },
 
             collapseAllFolders: function () {
-                common.each(this.__folders, function (folder, element, key) {
-                    console.log(folder);
+                var all_open_links = $(".navmenu-panel").find("a.ui-icon-minus");
+                all_open_links.each(function (index, element) {
+                    $(element).click();
                 });
             },
+
+            openFolder: function (feed_name) {
+                var lists = $("#main_menu_list").children();
+                var found = false;
+                lists.each(function (index, element) {
+                    var links = $(element).find("a.ui-icon-plus");
+                    links.each(function (index, element) {
+                        if (!found) {
+                            var element_text = $(element).text();
+                            var element_name = element_text.substr(0, element_text.indexOf(' '));
+                            if (element_name == feed_name) {
+                                $(element).click();
+                                found = true;
+                            }
+                        }
+
+                    });
+                });
+            },
+
+
             onResize: function () {
 
                 var root = this.getRoot();

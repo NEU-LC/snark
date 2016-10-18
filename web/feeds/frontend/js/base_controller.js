@@ -232,6 +232,9 @@ define('base_controller', ['jquery', "jquery_timeago",
         $('.panel-settings').on('click', function (event) {
             if (globals.isMobile) {
                 var gui_name = $(this).closest('li').attr('data-name');
+                gui.collapseAllFolders();
+                gui.open();
+                gui.openFolder(gui_name);
             }
             else {
                 var gui_name = $(this).closest('li').data('name');
@@ -239,9 +242,9 @@ define('base_controller', ['jquery', "jquery_timeago",
                     folder.close();
                 });
                 gui.__folders[gui_name].open();
-
+                gui.open();
             }
-            gui.open();
+
         });
         $('.panel-close').on('click', function (event) {
             var id = $(this).closest('li').attr('id');
