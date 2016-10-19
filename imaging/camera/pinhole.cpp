@@ -205,9 +205,11 @@ void pinhole::distortion_map_t::write( std::ostream& os ) const
 Eigen::Vector2d pinhole::undistorted( const Eigen::Vector2d& p ) const
 {
     if( !distortion_map() ) { return p; }
-    int y_index = p.y() < 0 ? 0 : ( p.y() > config().image_size.y() ? config().image_size.y() - 1 : p.y() );
+    int y_index = p.y() < 0 ? 0 : ( p.y() >= config().image_size.y() ? config().image_size.y() - 1 : p.y() );
+    if(distortion_map()->x_rows_.begin() + y_index * config_.image_size.x() == distortion_map()->x_rows_.end()) { COMMA_THROW( comma::exception, "index out of range"); }
     double ox = reverse_map( distortion_map()->x_rows_.begin() + y_index * config_.image_size.x(), static_cast< unsigned int >( config_.image_size.x() ), p.x() );
-    int x_index = p.x() < 0 ? 0 : (p.x()>config_.image_size.x()?config_.image_size.x()-1:p.x());
+    int x_index = p.x() < 0 ? 0 : (p.x() >= config_.image_size.x()?config_.image_size.x()-1:p.x());
+    if(distortion_map()->y_cols_.begin() + x_index * config_.image_size.y()==distortion_map()->y_cols_.end()) { COMMA_THROW( comma::exception, "index out of range"); }
     double oy = reverse_map( distortion_map()->y_cols_.begin() + x_index * config_.image_size.y(), static_cast< unsigned int >( config_.image_size.y() ), p.y() );
     return Eigen::Vector2d( ox, oy );
 }

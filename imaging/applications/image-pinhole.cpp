@@ -204,4 +204,5 @@ int main( int ac, char** av )
     }
     catch( std::exception& ex ) { std::cerr << "image-pinhole: " << ex.what() << std::endl; }
     catch( ... ) { std::cerr << "image-pinhole: unknown exception" << std::endl; }
+    return 1;
 }
