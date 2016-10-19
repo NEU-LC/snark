@@ -192,6 +192,7 @@ is_binary && passed_binary=$waypoints_binary,$feedback_binary,$error_binary || p
 
 config_fields_mandatory | comma_path_assert_defined || die "found undefined config parameters"
 
+echo "$scriptname: starting control pipeline" >&2
 control-error \
         --fields=$waypoints_fields_compatible \
         --binary=$waypoints_binary \
@@ -213,4 +214,6 @@ control-error \
          $( (( reset )) && echo --reset ) \
         --flush \
         --verbose
-comma_status_ok
+comma_status_ok && status=0 || status=1
+echo "$scriptname: control pipeline has ended with status=$status" >&2
+exit $status
