@@ -1,0 +1,45 @@
+#python
+
+expect status/control=0
+expect status/reached=0
+
+dl = 0.5
+
+expect number_of( reached ) = 6
+
+reached_0 = reached[0]/index
+reached_1 = reached[1]/index
+reached_2 = reached[2]/index
+reached_3 = reached[3]/index
+reached_4 = reached[4]/index
+reached_5 = reached[5]/index
+
+expect output[reached_0]/target/x = 90
+expect output[reached_0]/target/y = 0
+expect near( output[reached_0]/feedback/x, 85, dl )
+expect near( output[reached_0]/feedback/y, 0, dl )
+
+expect output[reached_1]/target/x = 91
+expect output[reached_1]/target/y = 0
+expect near( output[reached_1]/feedback/x, 86, dl )
+expect near( output[reached_1]/feedback/y, 0, dl )
+
+expect output[reached_2]/target/x = 92
+expect output[reached_2]/target/y = 0
+expect near( output[reached_2]/feedback/x, 87, dl )
+expect near( output[reached_2]/feedback/y, 0, dl )
+
+expect output[reached_3]/target/x = 93
+expect output[reached_3]/target/y = 0
+expect near( output[reached_3]/feedback/x, 88, dl )
+expect near( output[reached_3]/feedback/y, 0, dl )
+
+expect output[reached_4]/target/x = 94
+expect output[reached_4]/target/y = 0
+expect near( output[reached_4]/feedback/x, 89, dl )
+expect near( output[reached_4]/feedback/y, 0, dl )
+
+expect output[reached_5]/target/x = 95
+expect output[reached_5]/target/y = 0
+expect near( output[reached_5]/feedback/x, 90, dl )
+expect near( output[reached_5]/feedback/y, 0, dl )
