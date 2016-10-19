@@ -410,6 +410,7 @@ int main( int argc, char** argv )
             if( !normals_input.empty() )
             {
                 comma::csv::options filter_csv = comma::name_value::parser( "filename" ).get< comma::csv::options >( normals_input );
+                filter_csv.full_xpath = true;
                 comma::io::istream is( filter_csv.filename, filter_csv.binary() ? comma::io::mode::binary : comma::io::mode::ascii );
                 comma::csv::input_stream< ::normal > istream( *is, filter_csv );
                 species::polytope::filter f;
@@ -424,6 +425,7 @@ int main( int argc, char** argv )
             else if( !planes_input.empty() )
             {
                 comma::csv::options filter_csv = comma::name_value::parser( "filename" ).get< comma::csv::options >( planes_input );
+                filter_csv.full_xpath = true;
                 comma::io::istream is( filter_csv.filename, filter_csv.binary() ? comma::io::mode::binary : comma::io::mode::ascii );
                 comma::csv::input_stream< snark::triangle > istream( *is, filter_csv );
                 std::vector< snark::triangle > planes;
