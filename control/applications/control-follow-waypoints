@@ -169,9 +169,6 @@ fi
 
 if (( $( comma_options_has --input-fields "$@" ) )); then echo $waypoints_fields; exit; fi
 
-# control-error and control-command use heading_offset instead of heading
-waypoints_fields_compatible=$( csv-fields rename --fields=heading --to=heading_offset <<< $waypoints_fields )
-
 error_fields=$( control-error --output-fields --status )
 error_binary=$( control-error --output-format --status )
 
@@ -187,14 +184,14 @@ if (( $( comma_options_has --output-format "$@" ) )); then
     exit
 fi
 
-passed_fields=$( prefix target <<< $waypoints_fields_compatible ),$( prefix feedback <<< $feedback_fields ),$error_fields
+passed_fields=$( prefix target <<< $waypoints_fields ),$( prefix feedback <<< $feedback_fields ),$error_fields
 is_binary && passed_binary=$waypoints_binary,$feedback_binary,$error_binary || passed_binary=
 
 config_fields_mandatory | comma_path_assert_defined || die "found undefined config parameters"
 
 echo "$scriptname: starting control pipeline" >&2
 control-error \
-        --fields=$waypoints_fields_compatible \
+        --fields=$waypoints_fields \
         --binary=$waypoints_binary \
         "$feedback_address;fields=$feedback_fields;binary=$feedback_binary" \
         --mode=$mode \

@@ -116,7 +116,7 @@ mkdir -p output
 feedback_fields=t,x,y,yaw
 feedback_binary=t,d,d,d
 
-fields=x,y,heading_offset
+fields=x,y,heading
 binary=d,d,d
 
 output_fields=$( csv-fields prefix --path target <<< $fields ),$( csv-fields prefix --path feedback <<< $feedback_fields ),$( control-error --output-fields )

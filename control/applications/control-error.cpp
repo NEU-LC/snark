@@ -78,7 +78,7 @@ static void usage( bool verbose = false )
     std::cerr << "    --proximity,-p=<proximity>: a wayline is traversed as soon as current position is within proximity of the endpoint (default: " << default_proximity << ")" << std::endl;
     std::cerr << "    --past-endpoint: a wayline is traversed as soon as current position is past the endpoint (or proximity condition is met)" << std::endl;
     std::cerr << "    --frequency,-f=<frequency>: control frequency (the rate at which " << name <<" outputs control errors using latest feedback)" << std::endl;
-    std::cerr << "    --heading-is-absolute: interpret heading offset as global heading by default" << std::endl;
+    std::cerr << "    --heading-is-absolute: interpret target heading as global by default" << std::endl;
     std::cerr << "    --input-fields: show default input stream fields and exit" << std::endl;
     std::cerr << "    --format,--input-format: show binary format of default input stream fields and exit" << std::endl;
     std::cerr << "    --output-format: show binary format of output stream and exit (for wayline and control error fields only)" << std::endl;
@@ -89,9 +89,9 @@ static void usage( bool verbose = false )
     std::cerr << "    fixed: wait until the current waypoint is reached before accepting a new waypoint (first feedback position is the start of the first wayline)" << std::endl;
     std::cerr << "    dynamic: use a new waypoint as soon as it becomes available to define a new wayline form the current position to the new waypoint" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "default input fields: position/x,position/y,heading_offset,is_absolute" << std::endl;
+    std::cerr << "default input fields: position/x,position/y,heading,is_absolute" << std::endl;
     std::cerr << "    required fields: position/x,position/y" << std::endl;
-    std::cerr << "    optional fields: heading_offset,is_absolute (default values: 0,0)" << std::endl;
+    std::cerr << "    optional fields: heading,is_absolute (default values: 0,0)" << std::endl;
     std::cerr << std::endl;
     std::cerr << "examples: " << std::endl;
     std::cerr << "    cat targets.bin | " << name << " \"tcp:localhost:12345;fields=t,x,y,,,,yaw;binary=t,6d\" --fields=x,y,,,speed --binary=3d,ui,d --past-endpoint" << std::endl;
@@ -142,7 +142,7 @@ public:
         target_ = target;
         no_previous_targets_ = false;
         reached_ = ( current_position - target_->position ).norm() < proximity_;
-        if( reached_ || ( from - target_->position ).norm() < eps_ ) { return; }
+        if( reached_ || ( from - target_->position ).norm() < eps_ ) { return; } // if from is too close to the new target, the old wayline will be used
         wayline_ = snark::control::wayline( from, target_->position );
     }
     void update( const std::pair< snark::control::feedback_t, std::string >& feedback )
@@ -159,8 +159,8 @@ public:
             || ( use_past_endpoint_ && wayline_.is_past_endpoint( feedback.first.position ) );
         if( reached_ ) { return; }
         error_.cross_track = wayline_.cross_track_error( feedback.first.position );
-        error_.heading = target_->is_absolute ? comma::math::cyclic< double >( comma::math::interval< double >( -M_PI, M_PI ), target_->heading_offset - feedback.first.yaw )()
-            : wayline_.heading_error( feedback.first.yaw, target_->heading_offset );
+        error_.heading = target_->is_absolute ? comma::math::cyclic< double >( comma::math::interval< double >( -M_PI, M_PI ), target_->heading - feedback.first.yaw )()
+            : wayline_.heading_error( feedback.first.yaw, target_->heading );
     }
     bool target_reached() const { return reached_; }
     bool no_target() const { return no_previous_targets_ || reached_; }
@@ -268,7 +268,7 @@ int main( int ac, char** av )
         bool use_past_endpoint = options.exists( "--past-endpoint" );
         bool verbose = options.exists( "--verbose,-v" );
         bool strict = options.exists( "--strict" );
-        std::vector< std::string > unnamed = options.unnamed( "--help,-h,--verbose,-v,--input-fields,--format,--input-format,--output-format,--output-fields,--past-endpoint,--heading-is-absolute", "-.*,--.*" );
+        std::vector< std::string > unnamed = options.unnamed( "--help,-h,--verbose,-v,--input-fields,--format,--input-format,--output-format,--output-fields,--past-endpoint,--heading-is-absolute,--strict", "-.*,--.*" );
         if( unnamed.empty() ) { std::cerr << name << ": feedback stream is not given" << std::endl; return 1; }
         comma::csv::options feedback_csv = comma::name_value::parser( "filename", ';', '=', false ).get< comma::csv::options >( unnamed[0] );
         comma::io::istream feedback_in( feedback_csv.filename, feedback_csv.binary() ? comma::io::mode::binary : comma::io::mode::ascii );
