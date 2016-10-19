@@ -189,23 +189,21 @@ public:
               const comma::csv::input_stream< snark::control::feedback_t >& feedback_stream,
               comma::csv::output_stream< output_t >& output_stream,
               boost::optional< double > frequency )
-        : input_stream_( input_stream )
-        , feedback_stream_( feedback_stream )
-        , output_stream_( output_stream )
+        : output_stream_( output_stream )
     {
-        if( ! ( input_stream_.is_binary() && feedback_stream_.is_binary() && output_stream_.is_binary() )
-            && ! ( !input_stream_.is_binary() && !feedback_stream_.is_binary() && !output_stream_.is_binary() ) )
+        if( ! ( input_stream.is_binary() && feedback_stream.is_binary() && output_stream_.is_binary() )
+            && ! ( !input_stream.is_binary() && !feedback_stream.is_binary() && !output_stream_.is_binary() ) )
         {
             COMMA_THROW( comma::exception, "input, feedback, and output streams are not all binary or all ascii: "
-                << "input is " << ( input_stream_.is_binary() ? "binary" : "ascii" )
-                << ", feedback is " << ( feedback_stream_.is_binary() ? "binary" : "ascii" )
+                << "input is " << ( input_stream.is_binary() ? "binary" : "ascii" )
+                << ", feedback is " << ( feedback_stream.is_binary() ? "binary" : "ascii" )
                 << ", output is " << ( output_stream_.is_binary() ? "binary" : "ascii" ) )
         }
-        is_binary_ = input_stream_.is_binary();
+        is_binary_ = input_stream.is_binary();
         if( is_binary_ )
         {
-            input_size_ = input_stream_.binary().binary().format().size();
-            feedback_size_ = feedback_stream_.binary().binary().format().size();
+            input_size_ = input_stream.binary().binary().format().size();
+            feedback_size_ = feedback_stream.binary().binary().format().size();
         }
         else
         {
@@ -241,8 +239,6 @@ public:
         if( next_output_time_ ) { next_output_time_ = boost::posix_time::microsec_clock::universal_time() + delay_; }
      }
 private:
-    const comma::csv::input_stream< snark::control::target_t >& input_stream_;
-    const comma::csv::input_stream< snark::control::feedback_t >& feedback_stream_;
     comma::csv::output_stream< output_t >& output_stream_;
     bool is_binary_;
     std::size_t input_size_;
