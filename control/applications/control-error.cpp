@@ -124,13 +124,14 @@ std::string mode_to_string( control_mode_t m ) { return  named_modes.left.at( m 
 class wayline_follower
 {
 public:
-    wayline_follower( control_mode_t mode, double proximity, bool use_past_endpoint, bool strict_time )
+    wayline_follower( control_mode_t mode, double proximity, bool use_past_endpoint, bool strict_time, double eps=1e-6 )
         : mode_( mode )
         , proximity_( proximity )
         , use_past_endpoint_( use_past_endpoint )
         , reached_( false )
         , no_previous_targets_( true )
         , strict_time_( strict_time )
+        , eps_( eps )
         {
             if( proximity_ < 0 ) { COMMA_THROW( comma::exception, "expected positive proximity, got " << proximity_ ); }
         }
@@ -140,8 +141,9 @@ public:
         snark::control::wayline::position_t from = ( mode_ == fixed && target_ ) ? target_->position : current_position;
         target_ = target;
         no_previous_targets_ = false;
-        reached_ = ( from - target_->position ).norm() < proximity_;
-        wayline_ = reached_ ? snark::control::wayline() : snark::control::wayline( from, target_->position );
+        reached_ = ( current_position - target_->position ).norm() < proximity_;
+        if( reached_ || ( from - target_->position ).norm() < eps_ ) { return; }
+        wayline_ = snark::control::wayline( from, target_->position );
     }
     void update( const std::pair< snark::control::feedback_t, std::string >& feedback )
     {
@@ -176,6 +178,7 @@ private:
     bool reached_;
     bool no_previous_targets_;
     bool strict_time_;
+    double eps_;
     snark::control::wayline wayline_;
     snark::control::error_t error_;
     boost::optional< boost::posix_time::ptime > previous_update_time_;
