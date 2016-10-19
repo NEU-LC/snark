@@ -1,214 +1,219 @@
 #!/bin/bash
 
-scriptname=$( basename $0 )
-source $( which comma-application-util )
-source $( which comma-name-value-util )
-source $( which comma-process-util )
-
-function option_description
+function options_description
 {
     cat <<EOF
---config=<config>; config file name
---output-fields; show output fields and exit
---output-format; show output format and exit
+--config=[<config>]; config file name
+--input-fields; show waypoint fields (config is used if provided)
+--output-fields; show output fields (config is used if provided)
+--output-format; show output format of binary stream (config is used if provided)
+--sample-config; output sample config
+--steering=[<steering>]; steering type (omni or skid)
 EOF
 }
 
 function usage
 {
-    cat << END
+    cat <<END
 
-    output wheel commands based on 1) waypoints provided through a tcp socket and 2) position feedback
+    take waypoints on stdin and output wheel commands based on the position feedback to stdout
 
 options:
-$( option_description | sed 's/^/    /g' )
+$( options_description | sed 's/^/    /g' )
 
+notes:
+    - command line options take precedence over config
+    - output is binary if both waypoints and feedback are binary
+
+examples:
+    cat waypoints.csv | $scriptname --config=config.json > commands.csv
+    $scriptname --input-fields --steering=omni
+    $scriptname --output-fields --steering=omni
+    $scriptname --output-format --steering=omni
+    $scriptname --sample-config
+
+END
+    if (( ! $verbose )); then echo "for more output: $scriptname -h -v" >&2; return; fi
+    cat <<END
 example config file:
-
-    {
-        "mode": "fixed",
-        "steering": "omni",
-        "proximity": "0.15",
-        "past-endpoint": 1,
-        "heading-is-absolute-default": 0,
-        "frequency": "20.0",
-        "reset": 0,
-        "waypoints":
-        {
-            "port": "10100",
-            "fields": "x,y,heading_offset,is_absolute,speed,type",
-            "binary": "3d,b,d,ui"
-        },
-        "feedback":
-        {
-            "command": "socat -u tcp:localhost:60000 - | novatel-to-csv --binary | csv-bin-cut t,6d --fields=1,2,3,7 --flush",
-            "fields": "t,x,y,yaw",
-            "binary": "t,3d"
-        },
-        "pid":
-        {
-            "cross-track": "0.3,0,0",
-            "heading": "0.5,0,0"
-        },
-        "dir": "/tmp/control"
-    }
+    
+$( sample_config | sed 's/^/    /' )
 
     mode: waypoint following mode, fixed or dynamic
           fixed: wait until the current waypoint reached, then go to the next waypoint
           dynamic: if a new waypoint received, while the current waypoint is not reached, go to the new waypoint straightaway
-    steering: steering mode (omni or skid)
+    steering: steering type, omni or skid
+              omni: wheels can rotate with respect to the body
+              skid: wheels are fixed with respect to the body
     proximity: distance for deciding when a waypoint is reached
-    past-endpoint: 1 -> besides proximity condition, consider a waypoint as reached if the vehicle has moved past the end line, 0 -> use only proximity condition
+    past_endpoint: 1 -> besides proximity condition, consider a waypoint as reached if the vehicle has moved past the end line, 0 -> use only proximity condition
         ( the end line is a line which goes through the target waypoint and is perpendicular to the current wayline)
-    heading-is-absolute-default: 1 -> interpret heading_offset as the desired global (absolute) heading, 0 -> heading_offset is relative offset wrt the wayline heading
+    heading_is_absolute_default: 1 -> interpret heading as the desired global (absolute) heading, 0 -> heading is relative offset wrt the wayline heading
         ( this describes default behaviour when is_absolute is not provided in the input; when is_absolute is given, it takes precedence )
-    frequency: control frequency (the rate at which wheel commands are output)
+    frequency: control frequency, i.e. the rate at which wheel commands are output when moving towards a waypoint
+        ( when the last given waypoint is reached, no output is produced until new waypoints are given )
     reset: 1 -> reset pid integral upon reaching every target waypoint, 0 -> no reset
     pid:
-        cross-track: p,i,d[,threshold] values, with optional integral threshold, for cross-track
+        cross_track: p,i,d[,threshold] values, with optional integral threshold, for cross-track
         heading: the same for heading
     waypoints:
-        port: tcp port on localhost where target waypoints should be sent
-        fields: csv fields of waypoints (required fields: 'x,y' for skid and 'x,y,heading_offset' for omni steering)
-        binary: binary format of waypoints
+        fields: csv fields of waypoints (required fields: $default_waypoints_fields_skid for skid steering and $default_waypoints_fields_omni for omni steering)
+        binary: binary format of waypoints (ascii stream is assumed by default)
     feedback:
-        command: a command that outputs position feedback to stdout
-        fields: csv fields of feedback (required fields: 't,x,y,yaw')
-        binary: binary format of feedback
-    dir: directory for temporary sockets and log files (commands.log.* and control.log.*, where * is the client number); current directory by default
-
-waypoints input:
-    once $scriptname is running, target waypoints can be supplied by, e.g., running 'cat waypoints.csv | csv-to-bin 4d,ui --flush | socat -u - tcp:localhost:10100',
-    where waypoints.csv is a csv file containing target waypoints in the form specified in the config file
-    note that only one client is allowed at a time and a new client can only connect after all waypoints supplied by the previous client have been traversed
-
-output fields:
-    <optional_waypoints_fields>,<command_fields>
-    where <command_fields> is '$( control-command --steering=omni --output-fields )' (for steering=omni) or '$( control-command --steering=skid --output-fields )' (for steering=skid)
-    and <optional_waypoints_fields> consists of any csv fields of waypoints with the required fields stripped, e.g.
-    '--fields=x,y,heading_offset,speed,type --steering=omni' yields the following output-fields: speed,type,$( control-command --steering=omni --output-fields )
-    '--fields=x,y,speed --steering=skid' yields the following output-fields: speed,$( control-command --steering=skid --output-fields )
-
-examples:
-        $scriptname --config=/usr/local/etc/ladybird/follow-waypoints.json
-        $scriptname --output-fields --config=/usr/local/etc/ladybird/follow-waypoints.json
-        $scriptname --output-format --config=/usr/local/etc/ladybird/follow-waypoints.json
+        address: generic address for feedback
+        fields: csv fields of feedback (required fields: $default_feedback_fields)
+        binary: binary format of feedback (ascii stream is assumed by default)
 
 END
+}
+
+function sample_config
+{
+cat <<END
+{
+    "mode": "fixed",
+    "steering": "omni",
+    "proximity": "0.15",
+    "past_endpoint": 1,
+    "heading_is_absolute_default": 0,
+    "frequency": "20.0",
+    "reset": 0,
+    "waypoints":
+    {
+        "fields": "x,y,heading,is_absolute,speed,id",
+        "binary": "3d,b,d,ui"
+    },
+    "feedback":
+    {
+        "address": "tcp:localhost:12345",
+        "fields": "t,x,y,yaw",
+        "binary": "t,3d"
+    },
+    "pid":
+    {
+        "cross_track": "0.3,0,0",
+        "heading": "0.5,0,0"
+    }
+}
+END
+}
+
+function config_fields_mandatory
+{
+    cat <<END
+mode
+steering
+proximity
+past_endpoint
+heading_is_absolute_default
+frequency
+reset
+feedback/address
+pid/cross_track
+pid/heading
+END
+}
+
+function is_binary
+{
+    [[ -z "$waypoints_binary" && -z "$feedback_binary" ]] && return 1
+    [[ -n "$waypoints_binary" && -n "$feedback_binary" ]] && return 0
+    die "input and feedback streams should be both ascii or both binary"
+}
+
+function die { echo "$scriptname: $1" >&2; exit 1; }
+
+function prefix { csv-fields prefix --path $1; }
+
+function set_default_waypoints_fields
+{
+    local steering=$1
+    case "$steering" in
+        omni) waypoints_fields=$waypoints_fields_omni ;;
+        skid) waypoints_fields=$waypoints_fields_skid ;;
+        *) die "steering '$steering' is not recongnised" ;;
+    esac
+}
+
+
+scriptname=$( basename $0 )
+source $( which comma-application-util ) || { echo "$scriptname: failed to source comma-application-util" >&2; exit 1; }
+
+# default fields (note that default fields for waypoints depend on steering type and need to be set once the steering type is known)
+feedback_fields="t,x,y,yaw"
+waypoints_fields_omni="x,y,heading"
+waypoints_fields_skid="x,y"
+
+feedback_binary=""
+waypoints_binary=""
+
+feedback_format="t,d,d,d"
+
+if (( $( comma_options_has --help "$@" ) || $( comma_options_has -h "$@" ) )); then
+    (( $( comma_options_has --verbose "$@" ) || $( comma_options_has -v "$@" ) )) && verbose=1 || verbose=0
+    usage $verbose
     exit
-}
+fi
 
-function count_commas { echo -n $1 | sed 's/[^,]//g' | wc -c; }
-function fields_and_format_are_consistent { local fields=$1 format=$2; (( $( count_commas $fields ) == $( count_commas $( csv-format expand <<< $format ) ) )) && return 0 || return 1; }
-function compress_commas { sed -E 's/,+/,/g;s/(^,|,$)//g'; }
-function add_xpath { local path=$1 fields=$2; csv-fields prefix --fields "x,y" --path "position" <<< $fields | csv-fields prefix --path $path; }
+if (( $( comma_options_has --sample-config "$@" ) )); then sample_config; exit; fi
 
-function daemonize
-{
-    trap - INT TERM HUP 
-    comma_execute_and_wait --group "bash -c eval \"$1\""
-}
+eval $( options_description | grep '^--config=' | comma-options-to-name-value "$@" | comma_path_value_mangle )
+if [[ -f "$config" ]]; then
+    eval $( name-value-convert --to path-value < $config | comma_path_value_mangle; comma_status_ok ) || die "failed to import config '$config'"
+fi
+eval $( options_description | comma-options-to-name-value "$@" | comma_path_value_mangle )
+if [[ -z "$waypoints_fields" ]]; then
+    [[ "$steering" ]] || die "failed to set default waypoints/fields; steering type is required"
+    set_default_waypoints_fields $steering
+fi
 
-function bye
-{
-    is_shutdown=1
-    rm -f $waypoints_socket $feedback_socket
-    kill $feedback_pid $pipeline_pid $socat_pid 2>/dev/null
-    wait $feedback_pid $pipeline_pid $socat_pid
-    exit 1
-}
+if (( $( comma_options_has --input-fields "$@" ) )); then echo $waypoints_fields; exit; fi
 
-trap bye INT TERM HUP EXIT
+# control-error and control-command use heading_offset instead of heading
+waypoints_fields_compatible=$( csv-fields rename --fields=heading --to=heading_offset <<< $waypoints_fields )
 
-if (( $( comma_options_has --help "$@" ) || $( comma_options_has -h "$@" ) )); then usage; fi
-comma_path_value_to_var < <( option_description | comma-options-to-name-value "$@" )
+error_fields=$( control-error --output-fields --status )
+error_binary=$( control-error --output-format --status )
 
-if [[ -z "$config" ]]; then echo "$scriptname: config file is not given" >&2; exit 1; fi
-if [[ ! -f "$config" ]]; then echo "$scriptname: config file $config is not found" >&2; exit 1; fi
-
-comma_path_value_to_var < <( name-value-convert --to path-value < $config )
-
-if [[ -z "$steering" ]]; then echo "$scriptname: steering is not found in $config" >&2; exit 1; fi
-
-error_fields=$( control-error --output-fields )
-error_format=$( control-error --output-format )
 command_fields=$( control-command --steering=$steering --output-fields )
-command_format=$( control-command --steering=$steering --output-format )
+command_binary=$( control-command --steering=$steering --output-format )
 
-if [[ -z "$waypoints_fields" ]]; then echo "$scriptname: waypoints/fields is not found in $config" >&2; exit 1; fi
-if [[ -z "$feedback_fields" ]]; then echo "$scriptname: feedback/fields is not found in $config" >&2; exit 1; fi
-
-passed_fields=$( add_xpath target $waypoints_fields ),$( add_xpath feedback $feedback_fields )
-all_fields=$passed_fields,$error_fields,$command_fields
-expected_waypoints_fields="x,y"; [[ "$steering" == "omni" ]] && expected_waypoints_fields+=",heading_offset,is_absolute"
-keep_waypoints_fields=$( add_xpath target $( csv-fields clear --remove $expected_waypoints_fields <<< $waypoints_fields ) )
-output_fields_mask=$( csv-fields clear --keep $keep_waypoints_fields,$command_fields <<< $all_fields )
-output_fields=$( compress_commas <<< $output_fields_mask )
-
-if (( $( comma_options_has --output-fields "$@" ) )); then csv-fields prefix --basename <<< $output_fields; exit; fi
-
-if [[ -z "$waypoints_binary" && -z "$feedback_binary" ]]; then binary_output=0
-elif [[ -n "$waypoints_binary" && -n "$feedback_binary" ]]; then binary_output=1
-else echo "$scriptname: input and feedback streams should be both ascii or both binary" >&2; exit 1; fi
-
-if (( binary_output )); then
-    if ! fields_and_format_are_consistent $waypoints_fields $waypoints_binary; then echo "$scriptname: target fields and format are inconsistent $waypoints_fields $waypoints_binary" >&2; exit 1; fi
-    if ! fields_and_format_are_consistent $feedback_fields $feedback_binary; then echo "$scriptname: feedback fields and format are inconsistent $feedback_fields $feedback_binary" >&2; exit 1; fi
-    passed_format=$waypoints_binary,$feedback_binary
-    all_format=$passed_format,$error_format,$command_format
-    output_format=$( csv-format expand <<< $all_format | csv-fields clear --mask $output_fields_mask | compress_commas )
+if (( $( comma_options_has --output-fields "$@" ) )); then
+    echo $( prefix feedback <<< $feedback_fields ),$error_fields,$( prefix command <<< $command_fields )
+    exit
 fi
-
 if (( $( comma_options_has --output-format "$@" ) )); then
-    if (( ! binary_output )); then echo "$scriptname: failed to get output format since output is ascii" >&2; exit 1; fi
-    echo $output_format
+    echo ${feedback_binary:-$feedback_format},$error_binary,$command_binary
     exit
 fi
 
-if [[ -z "$mode" ]]; then echo "$scriptname: mode is not found in $config" >&2; exit 1; fi
-if [[ -z "$proximity" ]]; then echo "$scriptname: proximity is not found in $config" >&2; exit 1; fi
-if [[ -z "$past_endpoint" ]]; then echo "$scriptname: past-endpoint is not found in $config" >&2; exit 1; fi
-if [[ -z "$heading_is_absolute_default" ]]; then echo "$scriptname: heading-is-absolute-default is not found in $config" >&2; exit 1; fi
-if [[ -z "$frequency" ]]; then echo "$scriptname: frequency is not found in $config" >&2; exit 1; fi
-if [[ -z "$reset" ]]; then echo "$scriptname: reset is not found in $config" >&2; exit 1; fi
-if [[ -z "$waypoints_port" ]]; then echo "$scriptname: waypoints/port is not found in $config" >&2; exit 1; fi
-if [[ -z "$feedback_command" ]]; then echo "$scriptname: feedback/command is not found in $config" >&2; exit 1; fi
-if [[ -z "$pid_cross_track" ]]; then echo "$scriptname: pid/cross-track is not found in $config" >&2; exit 1; fi
-if [[ -z "$pid_heading" ]]; then echo "$scriptname: pid/heading is not found in $config" >&2; exit 1; fi
+passed_fields=$( prefix target <<< $waypoints_fields_compatible ),$( prefix feedback <<< $feedback_fields ),$error_fields
+is_binary && passed_binary=$waypoints_binary,$feedback_binary,$error_binary || passed_binary=
 
-(( past_endpoint )) && past_endpoint_option="--past-endpoint"  || past_endpoint_option=""
-(( heading_is_absolute_default )) && heading_is_absolute_option="--heading-is-absolute"  || heading_is_absolute_option=""
-(( reset )) && reset_option="--reset"  || reset_option=""
+config_fields_mandatory | comma_path_assert_defined || die "found undefined config parameters"
 
-mkdir -p ${dir:-.}
-commands_log="$dir/commands.log"
-control_log="$dir/control.log"
-waypoints_socket="$dir/targets.socket"
-feedback_socket="$dir/feedback.socket"
-rm -f $waypoints_socket $feedback_socket ${commands_log}.* ${control_log}.*
-
-control_pipeline="control-error --fields=$waypoints_fields ${waypoints_binary:+--binary=$waypoints_binary} \
-    'local:$feedback_socket;fields=${feedback_fields}${feedback_binary:+;binary=$feedback_binary}' \
-    --mode=$mode --proximity=$proximity --frequency=$frequency $past_endpoint_option $heading_is_absolute_option --verbose --flush \
-    | control-command --fields=$passed_fields,$error_fields ${passed_format:+--binary=$passed_format,$error_format} \
-    --cross-track-pid=$pid_cross_track --heading-pid=$pid_heading --steering=$steering $reset_option --verbose --flush \
-    | csv-shuffle --fields=$all_fields ${all_format:+--binary=$all_format} --output-fields=$output_fields --flush"
-
-daemonize "$( echo $feedback_command | sed 's@\$@\\\$@g' ) | io-publish ${feedback_binary:+--size $( csv-size $feedback_binary )} local:$feedback_socket" & feedback_pid=$!
-
-declare -i client=0
-declare -i is_shutdown=0
-while (( ! is_shutdown )); do
-    if ! ps -p $feedback_pid >/dev/null; then echo "$scriptname: feedback stream failed" >&2; exit 1; fi
-    if netstat -ltn | grep -E ":$waypoints_port\s" &>/dev/null; then echo "$scriptname: waypoints port $waypoints_port is already in use" >&2; exit 1; fi
-    socat -u tcp4-listen:$waypoints_port,reuseaddr unix-listen:$waypoints_socket,unlink-close=0 & socat_pid=$!
-    echo "$scriptname: ready to accept a client on tcp:localhost:$waypoints_port" >&2
-    while ! test -S $waypoints_socket; do sleep 0.1; done
-    (( client++ ))
-    echo "$scriptname: client $client has connected" >&2
-    daemonize "socat -u unix:$waypoints_socket - | $control_pipeline" & pipeline_pid=$!
-    echo "$scriptname: control pipeline for client $client has started (pid=$pipeline_pid)" >&2
-    wait $pipeline_pid
-    rm -f $waypoints_socket
-    echo "$scriptname: control pipeline for client $client has finished" >&2
-done
+echo "$scriptname: starting control pipeline" >&2
+control-error \
+        --fields=$waypoints_fields_compatible \
+        --binary=$waypoints_binary \
+        "$feedback_address;fields=$feedback_fields;binary=$feedback_binary" \
+        --mode=$mode \
+        --proximity=$proximity \
+        --frequency=$frequency \
+        $( (( past_endpoint )) && echo --past-endpoint ) \
+        $( (( heading_is_absolute_default )) && echo --heading-is-absolute ) \
+        --status \
+        --flush \
+        --verbose \
+    | control-command \
+        --fields=$passed_fields \
+        --binary=$passed_binary \
+        --cross-track-pid=$pid_cross_track \
+        --heading-pid=$pid_heading \
+        --steering=$steering \
+         $( (( reset )) && echo --reset ) \
+        --flush \
+        --verbose
+comma_status_ok && status=0 || status=1
+echo "$scriptname: control pipeline has ended with status=$status" >&2
+exit $status

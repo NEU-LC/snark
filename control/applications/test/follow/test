@@ -52,8 +52,8 @@ cat data/config.json \
     | { name-value-convert --to path-value; echo "feedback/address=tcp:localhost:$feedback_port"; } \
     | name-value-convert --to json --take-last > $config 
 
-output_fields=$( control-follow-waypoints-new --output-fields --config="$config" )
-output_binary=$( control-follow-waypoints-new --output-format --config="$config" )
+output_fields=$( control-follow-waypoints --output-fields --config="$config" )
+output_binary=$( control-follow-waypoints --output-format --config="$config" )
 target_fields=$( csv-fields prefix --path target <<< $waypoints_fields )
 
 feedback_pid=
@@ -75,7 +75,7 @@ sleep $dt
     | csv-play \
     | csv-shuffle --fields t,$waypoints_fields --output-fields $waypoints_fields \
     | csv-to-bin $waypoints_binary --flush \
-    | control-follow-waypoints-new --config="$config" \
+    | control-follow-waypoints --config="$config" \
     | csv-from-bin $waypoints_binary,$output_binary \
     | tee output/output.csv \
     | name-value-from-csv $target_fields,$output_fields --line-number --prefix output \
