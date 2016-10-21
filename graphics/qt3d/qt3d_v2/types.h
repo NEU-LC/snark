@@ -30,7 +30,7 @@
 #ifndef SNARK_GRAPHICS_QT3D_TYPES_H_
 #define SNARK_GRAPHICS_QT3D_TYPES_H_
 
-#include <array>
+#include <boost/array.hpp>
 #include <Eigen/Core>
 #include <QColor>
 #include <GL/gl.h>
@@ -40,17 +40,26 @@ namespace snark { namespace graphics { namespace qt3d {
 
 struct gl_color_t
 {
-    std::array< GLfloat, 4 > rgba;
+    boost::array< GLfloat, 4 > rgba;
 
-    gl_color_t() : rgba( { 0.0, 0.0, 0.0, 1.0 } ) {}
+    gl_color_t()
+    {
+        rgba[0] = 0.0; rgba[1] = 0.0; rgba[2] = 0.0; rgba[3] = 1.0;
+    }
+
     gl_color_t( GLfloat red, GLfloat green, GLfloat blue, GLfloat alpha )
-        : rgba( { red, green, blue, alpha } ) {}
+    {
+        rgba[0] = red; rgba[1] = green; rgba[2] = blue; rgba[3] = alpha;
+    }
+
     gl_color_t( const QColor& color )
-        : rgba( { static_cast< GLfloat >( color.redF() )
-                , static_cast< GLfloat >( color.greenF() )
-                , static_cast< GLfloat >( color.blueF() )
-                , static_cast< GLfloat >( color.alphaF() ) }
-              ) {}
+    {
+        rgba[0] = static_cast< GLfloat >( color.redF() );
+        rgba[0] = static_cast< GLfloat >( color.greenF() );
+        rgba[0] = static_cast< GLfloat >( color.blueF() );
+        rgba[0] = static_cast< GLfloat >( color.alphaF() );
+    }
+
     gl_color_t( const gl_color_t& color ) : rgba( color.rgba ) {}
 
     GLfloat red() const   { return rgba[0]; }
