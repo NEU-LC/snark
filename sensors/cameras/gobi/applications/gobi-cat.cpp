@@ -154,8 +154,8 @@ int main( int argc, char** argv )
         if( vm.count( "output-conversion" ) ) 
         {
             if( !vm.count( "calibration") ) { COMMA_THROW( comma::exception, "gobi-cat: unable to output conversion table, since calibration file was not provided" ); }
-            std::string local_time = boost::posix_time::to_iso_string( boost::posix_time::second_clock::local_time() );
-            std::string file_name = directory + "/" + local_time + ".csv";
+            std::string time = boost::posix_time::to_iso_string( boost::posix_time::microsec_clock::universal_time() );
+            std::string file_name = directory + "/" + time + ".csv";
             camera.output_conversion( file_name ); 
             if( verbose ) { std::cerr << "gobi-cat: conversion table for thermography has been saved to " << file_name << std::endl; }
         }
