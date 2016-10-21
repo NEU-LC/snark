@@ -55,7 +55,7 @@ protocol::acquire_reply_t protocol::send_acquire_data(const std::string& command
     *ios<<command<<std::flush;
     snark::asd::commands::acquire_data::spectrum_data reply;
     read_packet(reply);
-    boost::posix_time::ptime time=boost::posix_time::microsec_clock::local_time();
+    boost::posix_time::ptime time=boost::posix_time::microsec_clock::universal_time();
     //error handling
     return acquire_reply_t(time, reply);
 }
