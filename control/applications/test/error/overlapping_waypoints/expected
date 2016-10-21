@@ -14,7 +14,7 @@ expect reached_2 = reached_1 + 1
 expect output[reached_1]/reached = 1
 expect output[reached_1]/target/x = 100
 expect output[reached_1]/target/y = 0
-expect output[reached_1]/target/heading_offset=0.1
+expect output[reached_1]/target/heading=0.1
 expect near( output[reached_1]/time_diff, 2.0, dt )
 expect near( output[reached_1]/feedback/x, 100, dl )
 expect near( output[reached_1]/feedback/y, 0, dl )
@@ -22,7 +22,7 @@ expect near( output[reached_1]/feedback/y, 0, dl )
 expect output[reached_2]/reached = 1
 expect output[reached_2]/target/x = 100
 expect output[reached_2]/target/y = 0
-expect output[reached_2]/target/heading_offset=0.2
+expect output[reached_2]/target/heading=0.2
 expect near( output[reached_2]/time_diff, 2.0, dt )
 expect near( output[reached_2]/feedback/x, 100, dl )
 expect near( output[reached_2]/feedback/y, 0, dl )

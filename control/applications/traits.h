@@ -59,14 +59,14 @@ template <> struct traits< snark::control::target_t >
     template < typename K, typename V > static void visit( const K&, snark::control::target_t& p, V& v )
     {
         v.apply( "position", p.position );
-        v.apply( "heading_offset", p.heading_offset );
+        v.apply( "heading", p.heading );
         v.apply( "is_absolute", p.is_absolute );
     }
 
     template < typename K, typename V > static void visit( const K&, const snark::control::target_t& p, V& v )
     {
         v.apply( "position", p.position );
-        v.apply( "heading_offset", p.heading_offset );
+        v.apply( "heading", p.heading );
         v.apply( "is_absolute", p.is_absolute );
     }
 };

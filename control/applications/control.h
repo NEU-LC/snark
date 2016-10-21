@@ -43,10 +43,10 @@ struct feedback_t
 
 struct target_t
 {
-    target_t( bool is_absolute = false ) : heading_offset( 0 ), is_absolute( is_absolute ) {}
-    target_t( const target_t& rhs ) : position( rhs.position ), heading_offset( rhs.heading_offset ), is_absolute( rhs.is_absolute ) {}
+    target_t( bool is_absolute = false ) : heading( 0 ), is_absolute( is_absolute ) {}
+    target_t( const target_t& rhs ) : position( rhs.position ), heading( rhs.heading ), is_absolute( rhs.is_absolute ) {}
     snark::control::wayline::position_t position;
-    double heading_offset;
+    double heading;
     bool is_absolute;
 };
 
