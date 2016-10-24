@@ -34,18 +34,53 @@
 #include <comma/math/compare.h>
 #include "../angle.h"
 #include "coordinates.h"
+#include <iomanip>
+
+namespace {
+    bool is_far( const snark::spherical::coordinates & l, const snark::spherical::coordinates & r, double _epsilon )
+    {
+        // for very short arcs skip shortcuts and enforce thorough comparison because of numerical stability issues in Eigen
+        // the actual value is about 6 m / earth radius; enough to make AngleAxis::angle() non-zero
+        double threshold = std::max( snark::spherical::coordinates::epsilon, _epsilon );
+        // make quick decisions first; rely on the order of evaluation to return early if can avoid the last, expensive call
+        double delta_latitude = std::abs( l.latitude - r.latitude );
+        double delta_longitude = std::abs( l.longitude - r.longitude );
+        // nearly 360 delta means very close; take the shorter of the two possible arcs
+        delta_longitude = delta_longitude > M_PI ? 2 * M_PI - delta_longitude : delta_longitude;
+        // first branch: self-explanatory
+        // second branch: constants are 80 degrees in radians, cos(80 degrees)
+        //                ignore near-Pole regions
+        //                take a lower limit on cos(latitude):
+        //                    if the second latitude is lower, the arc is longer
+        //                    if the second latitude is the same, delta times times cos(latitude) is larger then same delta times the lower limit of cos
+        //                thus, the real arc length can be only larger than this estimate
+        // third branch: shortcuts failed, do lengthy computations
+        return delta_latitude > threshold ||
+               ( std::max( std::abs( l.latitude ), std::abs( r.latitude ) ) < 1.39626340159546366152 && delta_longitude * .17364817766693034887 > threshold ) ||
+               Eigen::AngleAxis< double >( Eigen::Quaternion< double >::FromTwoVectors( l.to_cartesian(), r.to_cartesian() ) ).angle() > threshold;
+    }
+}
 
 namespace snark { namespace spherical {
 
 const double coordinates::epsilon = 1e-6;
 
 bool coordinates::operator==( const coordinates& rhs ) const
-{ return is_near( rhs, epsilon ); }
+{
+    return !is_far( *this, rhs, epsilon );
+    // return is_near( rhs, epsilon );
+}
 
 bool coordinates::is_near( const coordinates& c, double epsilon ) const
 {
-    double dist = std::abs( longitude - c.longitude );
-    return comma::math::equal( latitude, c.latitude, epsilon ) && comma::math::equal( 0, std::min( dist, 2 * M_PI - dist ), epsilon );
+    return !is_far( *this, c, epsilon );
+    // double dist = std::abs( longitude - c.longitude );
+    // return comma::math::equal( latitude, c.latitude, epsilon ) && comma::math::equal( 0, std::min( dist, 2 * M_PI - dist ), epsilon );
+}
+
+bool coordinates::is_near( const coordinates & l, const coordinates & r, double _epsilon )
+{
+    return !is_far( l, r, _epsilon );
 }
 
 /// limits longitude to [-PI, PI)

@@ -67,7 +67,7 @@ struct coordinates
     /// @return true if the two coordinates are close to each other (within +/-epsilon)
     /// @note this is highly approximate, since longitude distorts with latitude
     /// @note an espilon of 0.0003 is about 1 minute of latitude
-    bool is_near( const coordinates& c, double epsilon = 0.0005 ) const;
+    bool is_near( const coordinates& c, double _epsilon = 0.0005 ) const;
 
     snark::bearing_elevation as_bearing_elevation() const { return snark::bearing_elevation( longitude, latitude ); }
     
@@ -87,6 +87,7 @@ struct coordinates
 
     operator std::string() const;
 
+    static bool is_near( const coordinates & l, const coordinates & r, double _epsilon = 0.005 );
 };
 
 /// convert to navigation frame at given coordinates
