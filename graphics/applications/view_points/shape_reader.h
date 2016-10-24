@@ -211,7 +211,7 @@ inline bool ShapeReader< S, How >::read_once()
         const Eigen::Vector3d& center = Shapetraits< S, How >::center( v.shape );
         v.color = m_colored->color( center, p->id, p->scalar, p->color );
         //#else
-        // TODO v2: set the color
+        // TODO v2: set the color - needs a v2 version of coloured.h
         //v.color = qt3d::gl_color_t( 0.5, 0.5, 0.5, 1.0 );
         #endif
         boost::mutex::scoped_lock lock( m_mutex );
