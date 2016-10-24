@@ -145,6 +145,7 @@ bool great_circle::arc::overlaps( const great_circle::arc& rhs ) const // quick 
 //                 || rhs.has( end_coordinates_ ) );
 }
 
+// TODO no unit tests
 great_circle::arc great_circle::arc::shortest_path( const coordinates &c ) const
 {
     Eigen::Vector3d cc(c.to_cartesian());
@@ -153,6 +154,8 @@ great_circle::arc great_circle::arc::shortest_path( const coordinates &c ) const
 
     Eigen::Vector3d n = end() - begin();
     Eigen::Vector3d p((n*(n.dot(cc - begin())))/n.dot(n) + begin());
+    // TODO potentially unstable
+    // because the arc from p to cc just touches the original arc, never crosses for real
     boost::optional< coordinates > t = intersection_with(arc(p, cc));
     if (! t)
     {
@@ -163,6 +166,7 @@ great_circle::arc great_circle::arc::shortest_path( const coordinates &c ) const
     return arc(cc, *t);
 }
 
+// TODO no unit tests
 double great_circle::arc::angle_towards( const coordinates &c ) const
 {
     if( has(c) ) { return 0; }
@@ -175,6 +179,7 @@ double great_circle::arc::angle_towards( const coordinates &c ) const
     return result;
 }
 
+// TODO handy but needs precision as argument
 great_circle::arc::operator std::string() const
 {
     return "[" + std::string(begin_coordinates()) + " -> " +std::string(end_coordinates()) + "]";
