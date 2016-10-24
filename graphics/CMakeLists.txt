@@ -28,12 +28,16 @@ execute_process( COMMAND ${QT_QMAKE_EXECUTABLE} -v COMMAND grep "Qt version"
                  OUTPUT_VARIABLE snark_qt_qmake_version_string
                  OUTPUT_STRIP_TRAILING_WHITESPACE )
 
+if( snark_qt_qmake_version_string STREQUAL "" )
+    message( FATAL_ERROR "\n${QT_QMAKE_EXECUTABLE} did not return a Qt version\nConsider installing qt4-default or qt5-default package\nTest with \"${QT_QMAKE_EXECUTABLE} -v\"" )
+endif()
+
+message( STATUS "${snark_qt_qmake_version_string}" )
+
 string( REGEX REPLACE ".*Qt version ([0-9]+\\.[0-9]+\\.[0-9]+).*" "\\1"
         snark_qt_version ${snark_qt_qmake_version_string} )
 string( REGEX REPLACE ".* (.*)" "\\1"
         snark_qt_lib_path ${snark_qt_qmake_version_string} )
-
-message( STATUS "${snark_qt_qmake_version_string}" )
 
 if( NOT DEFINED snark_qt_version OR snark_qt_version EQUAL "")
     message( FATAL_ERROR "Please set QT_QMAKE_EXECUTABLE to the path to qmake")
@@ -70,8 +74,6 @@ elseif( QT_VERSION_MAJOR EQUAL 5 )
     endif()
     find_package( Qt5 COMPONENTS Core Gui OpenGL Xml REQUIRED )
     include_directories( ${Qt5Widgets_INCLUDE_DIRS} )
-    #add_definitions( ${Qt5Widgets_DEFINITIONS} )
-    #set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${Qt5Widgets_EXECUTABLE_COMPILE_FLAGS}" )
     if( QT_VERSION_MINOR LESS 5 )
         set( Qt3D_VERSION 1 )
         find_package( Qt5 COMPONENTS 3D REQUIRED )

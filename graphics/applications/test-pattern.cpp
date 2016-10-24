@@ -55,7 +55,10 @@ static void usage( bool verbose = false )
     std::cerr << "\n    cube <count> <width> <thickness>";
     std::cerr << "\n";
     std::cerr << "\nOptions: ";
-    std::cerr << "\n    --help,-h:          show this help, --help --verbose for more help";
+    std::cerr << "\n    --help,-h:       show this help, --help --verbose for more help";
+    std::cerr << "\n    --output-fields: show output fields and exit";
+    std::cerr << "\n    --output-format: show binary output format and exit";
+    std::cerr << "\n    --binary,-b:     output in binary (default is ascii)";
     std::cerr << "\n";
     std::cerr << "\nExamples: ";
     std::cerr << "\n    " << comma::verbose.app_name() << " cube 100000 0.1 0.02";
@@ -105,8 +108,22 @@ int main( int argc, char** argv )
         comma::command_line_options options( argc, argv, usage );
         if( options.exists( "--bash-completion" )) { bash_completion( argc, argv ); }
 
+        typedef snark::graphics::qt3d::vertex_t output_t;
+
+        if( options.exists( "--output-fields" ))
+        {
+            std::cout << comma::join( comma::csv::names< output_t >( false ), ',' ) << std::endl;
+            exit( 0 );
+        }
+        if( options.exists( "--output-format" ))
+        {
+            std::cout << comma::csv::format::value< output_t >() << std::endl;
+            exit( 0 );
+        }
+
         comma::csv::options output_csv;
-        comma::csv::output_stream< snark::graphics::qt3d::vertex_t > ostream( std::cout, output_csv );
+        if( options.exists( "--binary,-b" )) { output_csv.format( comma::csv::format::value< output_t >() ); }
+        comma::csv::output_stream< output_t > ostream( std::cout, output_csv );
 
         std::vector< std::string > unnamed = options.unnamed( "--help,h", "-.*,--.*" );
         std::string mode = unnamed[0];
@@ -121,10 +138,10 @@ int main( int argc, char** argv )
             for( unsigned int i = 0; i < num_points; i++ )
             {
                 Eigen::Vector3f p = make_point( width, thickness );
-                snark::graphics::qt3d::vertex_t vertex( p, snark::graphics::qt3d::gl_color_t
-                                                      ( p2c( p.x(), width, thickness )
-                                                      , p2c( p.y(), width, thickness )
-                                                      , p2c( p.z(), width, thickness ), 1.0 ));
+                output_t vertex( p, snark::graphics::qt3d::gl_color_t
+                               ( p2c( p.x(), width, thickness )
+                               , p2c( p.y(), width, thickness )
+                               , p2c( p.z(), width, thickness ), 1.0 ));
                 ostream.write( vertex );
             }
         }
