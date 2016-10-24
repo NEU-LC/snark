@@ -41,7 +41,7 @@
 namespace snark { namespace graphics { namespace view {
 
 #if Qt3D_VERSION==1
-Reader::Reader( QGLView& viewer, const reader_parameters& params, coloured* c, const std::string& label, const Eigen::Vector3d& offset )
+Reader::Reader( QGLView& viewer, const reader_parameters& params, colored* c, const std::string& label, const Eigen::Vector3d& offset )
     : reader_parameters( params )
     , m_viewer( viewer )
     , m_num_points( 0 )

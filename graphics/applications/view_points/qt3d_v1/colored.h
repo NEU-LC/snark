@@ -30,8 +30,8 @@
 
 /// @author Vsevolod Vlaskine
 
-#ifndef SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_COLOURED_H_
-#define SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_COLOURED_H_
+#ifndef SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_COLORED_H_
+#define SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_COLORED_H_
 
 #include <string>
 #include <Qt3D/qcolor4ub.h>
@@ -40,9 +40,9 @@
 
 namespace snark { namespace graphics { namespace view {
 
-struct coloured
+struct colored
 {
-    virtual ~coloured() {}
+    virtual ~colored() {}
     virtual QColor4ub color( const Eigen::Vector3d& point
                              , comma::uint32 id
                              , double scalar
@@ -50,7 +50,7 @@ struct coloured
 
 };
 
-class Fixed : public coloured
+class Fixed : public colored
 {
     public:
         Fixed( const std::string& name );
@@ -63,7 +63,7 @@ class Fixed : public coloured
         QColor4ub m_color;
 };
 
-struct ByHeight : public coloured // todo: refactor and merge with byscalar
+struct ByHeight : public colored // todo: refactor and merge with byscalar
 {
     ByHeight( double from
             , double to
@@ -83,7 +83,7 @@ struct ByHeight : public coloured // todo: refactor and merge with byscalar
                      , const QColor4ub& c ) const;
 };
 
-class ByScalar : public coloured
+class ByScalar : public colored
 {
     public:
         ByScalar( double from
@@ -107,12 +107,12 @@ class ByScalar : public coloured
         QColor4ub to_color;
 };
 
-class ById : public coloured
+class ById : public colored
 {
     public:
-        ById( const QColor4ub& backgroundcolour );
+        ById( const QColor4ub& backgroundcolor );
 
-        ById( const QColor4ub& backgroundcolour
+        ById( const QColor4ub& backgroundcolor
             , double from
             , double to );
         QColor4ub color( const Eigen::Vector3d& point
@@ -126,7 +126,7 @@ class ById : public coloured
         double m_diff;
 };
 
-struct ByRGB : public coloured
+struct ByRGB : public colored
 {
     QColor4ub color( const Eigen::Vector3d& point
                      , comma::uint32 id
@@ -134,8 +134,8 @@ struct ByRGB : public coloured
                      , const QColor4ub& c ) const;
 };
 
-coloured* colourFromString( const std::string& s, const std::string& fields, const QColor4ub& backgroundcolour );
+colored* colorFromString( const std::string& s, const std::string& fields, const QColor4ub& backgroundcolor );
 
 } } } // namespace snark { namespace graphics { namespace view {
 
-#endif /*SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_COLOURED_H_*/
+#endif /*SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_COLORED_H_*/

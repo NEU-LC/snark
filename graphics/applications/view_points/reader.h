@@ -41,7 +41,7 @@
 #include <comma/io/stream.h>
 #if Qt3D_VERSION==1
 #include <Qt3D/qglview.h>
-#include "qt3d_v1/coloured.h"
+#include "qt3d_v1/colored.h"
 #else
 #include <QQuaternion>
 #include "../../../math/interval.h"
@@ -82,7 +82,7 @@ class Reader : public reader_parameters
 {
     public:
         #if Qt3D_VERSION==1
-        Reader( QGLView& viewer, const reader_parameters& params, coloured* c, const std::string& label, const Eigen::Vector3d& offset = Eigen::Vector3d( 0, 0, 0 ) );
+        Reader( QGLView& viewer, const reader_parameters& params, colored* c, const std::string& label, const Eigen::Vector3d& offset = Eigen::Vector3d( 0, 0, 0 ) );
         #else
         Reader( const reader_parameters& params, const Eigen::Vector3d& offset = Eigen::Vector3d( 0, 0, 0 ) );
         #endif
@@ -121,7 +121,7 @@ class Reader : public reader_parameters
         boost::optional< snark::math::closed_interval< float, 3 > > m_extents;
         unsigned int m_num_points;
         #if Qt3D_VERSION==1
-        boost::scoped_ptr< coloured > m_colored;
+        boost::scoped_ptr< colored > m_colored;
         #endif
         bool m_shutdown;
         bool m_isStdIn;

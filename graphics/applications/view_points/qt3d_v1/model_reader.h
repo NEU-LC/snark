@@ -50,7 +50,7 @@ class ModelReader : public Reader
                    , const std::string& file
                    , bool flip
                    , double scale
-                   , coloured* c
+                   , colored* c
                    , const std::string& label );
 
         void start();
@@ -68,7 +68,7 @@ class ModelReader : public Reader
         bool m_flip;
         double scale_;
         boost::optional< PlyLoader > m_plyLoader;
-        const coloured* coloured_;
+        const colored* colored_;
 };
 
 } } } // namespace snark { namespace graphics { namespace view {
