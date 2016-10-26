@@ -377,7 +377,7 @@ boost::shared_ptr< snark::graphics::view::Reader > makeReader( const comma::comm
 #endif
 {
     #if Qt3D_VERSION==1
-    QColor4ub backgroundcolour( QColor( QString( options.value< std::string >( "--background-colour", "#000000" ).c_str() ) ) );
+    QColor4ub backgroundcolor( QColor( QString( options.value< std::string >( "--background-colour", "#000000" ).c_str() ) ) );
     #endif
     std::string shape = options.value< std::string >( "--shape", "point" );
     snark::graphics::view::Reader::reader_parameters param( csvOptions
@@ -386,7 +386,7 @@ boost::shared_ptr< snark::graphics::view::Reader > makeReader( const comma::comm
                                                           , options.value( "--point-size,--weight", 1u )
                                                           , options.exists( "--pass-through,--pass" )
                                                           );
-    std::string colour = options.exists( "--colour" ) ? options.value< std::string >( "--colour" ) : options.value< std::string >( "-c", "-10:10" );
+    std::string color = options.exists( "--colour" ) ? options.value< std::string >( "--colour" ) : options.value< std::string >( "-c", "-10:10" );
     std::string label = options.value( "--label", std::string() );
     bool show = true;
     if( properties != "" )
@@ -399,8 +399,8 @@ boost::shared_ptr< snark::graphics::view::Reader > makeReader( const comma::comm
         param.point_size = m.value( "weight", param.point_size );
         param.title = m.value( "title", param.title.empty() ? param.options.filename : param.title );
         shape = m.value( "shape", shape );
-        if( m.exists( "colour" ) ) { colour = m.value( "colour", colour ); }
-        else if( m.exists( "color" ) ) { colour = m.value( "color", colour ); }
+        if( m.exists( "colour" ) ) { color = m.value( "colour", color ); }
+        else if( m.exists( "color" ) ) { color = m.value( "color", color ); }
         label = m.value( "label", label );
         show = !m.exists( "hide" );
         param.pass_through = ( m.exists( "pass-through" ) || m.exists( "pass" ));
@@ -416,7 +416,7 @@ boost::shared_ptr< snark::graphics::view::Reader > makeReader( const comma::comm
     if( param.title == "none" ) param.title = "";
     if( !show ) { std::cerr << "view-points: " << ( param.title.empty() ? param.options.filename : param.title )<< " will be hidden on startup; tick the box next to the name to make it visible" << std::endl; }
     #if Qt3D_VERSION==1
-    snark::graphics::view::coloured* coloured = snark::graphics::view::colourFromString( colour, param.options.fields, backgroundcolour );
+    snark::graphics::view::colored* colored = snark::graphics::view::colorFromString( color, param.options.fields, backgroundcolor );
     #endif
     if( shape == "point" )
     {
@@ -425,7 +425,7 @@ boost::shared_ptr< snark::graphics::view::Reader > makeReader( const comma::comm
         bool has_orientation = false;
         for( unsigned int i = 0; !has_orientation && i < v.size(); ++i ) { has_orientation = v[i] == "roll" || v[i] == "pitch" || v[i] == "yaw"; }
         #if Qt3D_VERSION==1
-        boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< Eigen::Vector3d >( viewer, param, coloured, label ) );
+        boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< Eigen::Vector3d >( viewer, param, colored, label ) );
         #else
         boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< Eigen::Vector3d >( param ) );
         #endif
@@ -436,7 +436,7 @@ boost::shared_ptr< snark::graphics::view::Reader > makeReader( const comma::comm
     {
         if( param.options.fields == "" ) { param.options.fields="x,y,z"; }
         #if Qt3D_VERSION==1
-        boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< Eigen::Vector3d, snark::graphics::view::how_t::loop >( viewer, param, coloured, label ) );
+        boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< Eigen::Vector3d, snark::graphics::view::how_t::loop >( viewer, param, colored, label ) );
         #else
         boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< Eigen::Vector3d, snark::graphics::view::how_t::loop >( param ) );
         #endif
@@ -447,7 +447,7 @@ boost::shared_ptr< snark::graphics::view::Reader > makeReader( const comma::comm
     {
         if( param.options.fields == "" ) { param.options.fields="x,y,z"; }
         #if Qt3D_VERSION==1
-        boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< Eigen::Vector3d, snark::graphics::view::how_t::connected >( viewer, param, coloured, label ) );
+        boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< Eigen::Vector3d, snark::graphics::view::how_t::connected >( viewer, param, colored, label ) );
         #else
         boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< Eigen::Vector3d, snark::graphics::view::how_t::connected >( param ) );
         #endif
@@ -507,7 +507,7 @@ boost::shared_ptr< snark::graphics::view::Reader > makeReader( const comma::comm
             model_options m = comma::name_value::parser( ';', '=' ).get< model_options >( properties );
             m.filename = shape;
             if( !boost::filesystem::exists( m.filename ) ) { COMMA_THROW( comma::exception, "file does not exist: " << m.filename ); }
-            boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ModelReader( viewer, param, shape, m.flip, m.scale, coloured, label ) );
+            boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ModelReader( viewer, param, shape, m.flip, m.scale, colored, label ) );
             reader->show( show );
             return reader;
         }
@@ -539,7 +539,7 @@ boost::shared_ptr< snark::graphics::view::Reader > makeReader( const comma::comm
     if( shape == "extents" )
     {
         #if Qt3D_VERSION==1
-        boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< snark::math::closed_interval< double, 3 > >( viewer, param, coloured, label, snark::math::closed_interval< double, 3 >( Eigen::Vector3d( 0, 0, 0 ), Eigen::Vector3d( 0, 0, 0 ) ) ) );
+        boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< snark::math::closed_interval< double, 3 > >( viewer, param, colored, label, snark::math::closed_interval< double, 3 >( Eigen::Vector3d( 0, 0, 0 ), Eigen::Vector3d( 0, 0, 0 ) ) ) );
         #else
         boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< snark::math::closed_interval< double, 3 > >( param, snark::math::closed_interval< double, 3 >( Eigen::Vector3d( 0, 0, 0 ), Eigen::Vector3d( 0, 0, 0 ) ) ) );
         #endif
@@ -549,7 +549,7 @@ boost::shared_ptr< snark::graphics::view::Reader > makeReader( const comma::comm
     else if( shape == "line" )
     {
         #if Qt3D_VERSION==1
-        boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< std::pair< Eigen::Vector3d, Eigen::Vector3d > >( viewer, param, coloured, label ) );
+        boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< std::pair< Eigen::Vector3d, Eigen::Vector3d > >( viewer, param, colored, label ) );
         #else
         boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< std::pair< Eigen::Vector3d, Eigen::Vector3d > >( param ) );
         #endif
@@ -559,7 +559,7 @@ boost::shared_ptr< snark::graphics::view::Reader > makeReader( const comma::comm
     else if( shape == "ellipse" )
     {
         #if Qt3D_VERSION==1
-        boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< snark::graphics::view::Ellipse< 25 > >( viewer, param, coloured, label ) );
+        boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< snark::graphics::view::Ellipse< 25 > >( viewer, param, colored, label ) );
         #else
         boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< snark::graphics::view::Ellipse< 25 > >( param ) );
         #endif
@@ -571,7 +571,7 @@ boost::shared_ptr< snark::graphics::view::Reader > makeReader( const comma::comm
         snark::graphics::view::arc< 20 > sample; // quick and dirty
         if( param.options.has_field( "middle" ) || param.options.has_field( "middle/x" ) || param.options.has_field( "middle/y" ) || param.options.has_field( "middle/z" ) ) { sample.middle = Eigen::Vector3d(); }
         #if Qt3D_VERSION==1
-        boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< snark::graphics::view::arc< 20 > >( viewer, param, coloured, label, sample ) );
+        boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< snark::graphics::view::arc< 20 > >( viewer, param, colored, label, sample ) );
         #else
         boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< snark::graphics::view::arc< 20 > >( param, sample ) );
         #endif
@@ -587,13 +587,13 @@ int main( int argc, char** argv )
     {
         comma::command_line_options options( argc, argv );
         if( options.exists( "--bash-completion" ) ) bash_completion( argc, argv );
-        if( options.exists( "--version" )) { std::cerr << "Qt version " << QT_VERSION_STR << std::endl; exit(0); }
+        if( options.exists( "--version" )) { std::cerr << "Using Qt version " << QT_VERSION_STR << std::endl; exit(0); }
         if( options.exists( "--help" ) || options.exists( "-h" ) ) { usage(); }
         comma::csv::options csvOptions( argc, argv );
         std::vector< std::string > properties = options.unnamed( "--z-is-up,--orthographic,--flush,--no-stdin,--output-camera-config,--output-camera,--pass-through,--pass,--exit-on-end-of-input"
                 , "--binary,--bin,-b,--fields,--size,--delimiter,-d,--colour,-c,--point-size,--weight,--background-colour,--scene-center,--center,--scene-radius,--radius,--shape,--label,--title,--camera,--camera-position,--camera-config,--fov,--model,--full-xpath" );
         #if Qt3D_VERSION==1
-        QColor4ub backgroundcolour( QColor( QString( options.value< std::string >( "--background-colour", "#000000" ).c_str() ) ) );
+        QColor4ub backgroundcolor( QColor( QString( options.value< std::string >( "--background-colour", "#000000" ).c_str() ) ) );
         boost::optional< comma::csv::options > camera_csv;
         boost::optional< Eigen::Vector3d > cameraposition;
         boost::optional< Eigen::Vector3d > cameraorientation;
@@ -664,7 +664,7 @@ int main( int argc, char** argv )
         boost::property_tree::ptree camera_config; // quick and dirty
         if( options.exists( "--camera-config" ) ) { boost::property_tree::read_json( options.value< std::string >( "--camera-config" ), camera_config ); }
         #if Qt3D_VERSION==1
-        snark::graphics::view::Viewer* viewer = new snark::graphics::view::Viewer( backgroundcolour
+        snark::graphics::view::Viewer* viewer = new snark::graphics::view::Viewer( backgroundcolor
                                                                                  , camera_options
                                                                                  , options.exists( "--exit-on-end-of-input" )
                                                                                  , camera_csv

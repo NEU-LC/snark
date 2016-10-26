@@ -72,7 +72,7 @@ snark::timestamped<typename T::reply> protocol::send(const std::string& command)
     *ios<<command<<std::flush;
     typename T::reply reply;
     read_packet(reply);
-    boost::posix_time::ptime time=boost::posix_time::microsec_clock::local_time();
+    boost::posix_time::ptime time=boost::posix_time::microsec_clock::universal_time();
     //error handling
     return snark::timestamped<typename T::reply>(time, reply);
 }

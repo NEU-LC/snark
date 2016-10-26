@@ -35,7 +35,7 @@
 #include <boost/lexical_cast.hpp>
 #include <qnamespace.h>
 #include <comma/string/string.h>
-#include "coloured.h"
+#include "colored.h"
 
 namespace snark { namespace graphics { namespace view {
 
@@ -220,16 +220,16 @@ static boost::array< unsigned int, 256 > colorIndices = colorInit();
 
 } // namespace impl {
 
-ById::ById( const QColor4ub& backgroundcolour )
-    : m_background( backgroundcolour )
+ById::ById( const QColor4ub& backgroundcolor )
+    : m_background( backgroundcolor )
     , m_hasScalar( false )
 {
 }
 
-ById::ById( const QColor4ub& backgroundcolour
+ById::ById( const QColor4ub& backgroundcolor
           , double from
           , double to )
-    : m_background( backgroundcolour )
+    : m_background( backgroundcolor )
     , m_hasScalar( true )
     , m_from( from )
     , m_diff( to - from )
@@ -263,7 +263,7 @@ QColor4ub ByRGB::color( const Eigen::Vector3d& , comma::uint32, double, const QC
     return c;
 }
 
-coloured* colourFromString( const std::string& s, const std::string& fields, const QColor4ub& backgroundcolour )
+colored* colorFromString( const std::string& s, const std::string& fields, const QColor4ub& backgroundcolor )
 {
     std::vector< std::string > f = comma::split( fields, ',' );
     bool hasId = false;
@@ -281,7 +281,7 @@ coloured* colourFromString( const std::string& s, const std::string& fields, con
         if( f[i] == "b" ) { b = true; }
         if( f[i] == "a" ) { a = true; }
     }
-    snark::graphics::view::coloured* c;
+    snark::graphics::view::colored* c;
     try
     {
         if( hasId )
@@ -297,11 +297,11 @@ coloured* colourFromString( const std::string& s, const std::string& fields, con
                     from = boost::lexical_cast< double >( v[0] );
                     to = boost::lexical_cast< double >( v[1] );
                 }
-                c = new snark::graphics::view::ById( backgroundcolour, from, to );
+                c = new snark::graphics::view::ById( backgroundcolor, from, to );
             }
             else
             {
-                c = new snark::graphics::view::ById( backgroundcolour );
+                c = new snark::graphics::view::ById( backgroundcolor );
             }
         }
         else if( r || g || b || a )

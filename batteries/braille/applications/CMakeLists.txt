@@ -5,7 +5,3 @@ INSTALL( TARGETS braille-to-csv
          RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/${snark_INSTALL_BIN_DIR}
          COMPONENT Runtime )
 
-INSTALL( PROGRAMS
-            braille-battery
-         DESTINATION ${CMAKE_INSTALL_PREFIX}/${snark_INSTALL_BIN_DIR} 
-         COMPONENT Runtime )

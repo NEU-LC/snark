@@ -7,7 +7,7 @@ reached[0]/index = number_of( output ) - 1
 
 output[0]/target/x=50.5
 output[0]/target/y=0
-output[0]/target/heading_offset=0.1
+output[0]/target/heading=0.1
 output[0]/feedback/x=0
 output[0]/feedback/y=0
 output[0]/reached=0
@@ -15,7 +15,7 @@ near( output[0]/time_diff, 0.5, 0.1 )
 
 output[MAX]/target/x=50.5
 output[MAX]/target/y=0
-output[MAX]/target/heading_offset=0.1
+output[MAX]/target/heading=0.1
 near( output[MAX]/feedback/x, 50, 10 )
 output[MAX]/feedback/x > 50.5
 output[MAX]/feedback/y=0

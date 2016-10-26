@@ -1,0 +1,106 @@
+#!/bin/bash
+
+function launch_feedback
+{
+    local config=$1
+    local feedback_csv=$2
+    local feedback_port=$3
+    local feedback_binary=$4
+    local status
+
+    cat $feedback_csv \
+        | csv-play \
+        | csv-to-bin $feedback_binary --flush \
+        | socat -u - tcp-listen:$feedback_port
+    comma_status_ok && status=0 || status=1
+    echo "status/feedback=$status"
+}
+export -f launch_feedback
+
+function launch_control
+{
+    function wait_for_port
+    {
+        local port=$1
+        local -i count=0
+        local listen_state=$( io-ls --enum-state | grep ,LISTEN$ | cut -d, -f1 )
+        while ! io-ls --fields local/port,state | grep $port,$listen_state &>/dev/null; do
+            sleep 0.01
+            if (( ++count > 100 )); then return 1; fi
+        done
+    }
+
+    local input=$1
+    local config=$2
+    local feedback_port=$3
+    local waypoints_delay=$4
+    local waypoints_fields=$5
+    local waypoints_binary=$6
+    local output_fields=$7
+    local output_binary=$8
+    local target_fields=$9
+    local status
+
+    wait_for_port $feedback_port || { echo "$FUNCNAME: timed out waiting for feedback port $feedback_port" >&2; return 1; }
+    sleep $waypoints_delay
+
+    {
+        echo "$input"
+        sleep 7  # keep the pipeline alive long enough for the feedback to finish
+    } \
+        | csv-play \
+        | csv-shuffle --fields t,$waypoints_fields --output-fields $waypoints_fields \
+        | csv-to-bin $waypoints_binary --flush \
+        | control-follow-waypoints --config="$config" \
+        | csv-from-bin $waypoints_binary,$output_binary \
+        | tee output/output.csv \
+        | name-value-from-csv $target_fields,$output_fields --line-number --prefix output \
+        | csv-quote --unquote --fields ,x --delimiter =
+    comma_status_ok && status=0 || status=1
+    echo "status/control=$status"
+
+    cat output/output.csv \
+        | csv-paste - line-number \
+        | csv-select --fields $target_fields,$output_fields "reached;equals=1" \
+        | rev | cut -d, -f1 | rev \
+        | name-value-from-csv index --line-number --prefix reached \
+        | csv-quote --unquote --fields ,x --delimiter =
+    comma_status_ok && status=0 || status=1
+    echo "status/reached=$status"
+}
+export -f launch_control
+
+
+scriptname=$( readlink -f $0 )
+source $( type -p comma-application-util ) || { echo "$scriptname: failed to source comma-application-util" >&2; exit 1; }
+source $( type -p comma-process-util ) || { echo "$scriptname: failed to source comma-process-util" >&2; exit 1; }
+
+mkdir -p output
+
+input=$( cat )
+[[ "$input" ]] || exit 1
+
+feedback_csv=data/feedback.csv
+
+waypoints_delay=$( head -qn1 <( echo "$input" ) $feedback_csv | cut -d, -f1 | paste -sd, | csv-eval --fields a,b --format 2t "dt = (a-b)/timedelta64(1,'s')" | cut -d, -f3 )
+echo "waypoints_delay=$waypoints_delay"
+
+feedback_port=$(( 1024 + $RANDOM ))
+
+config=output/config.json
+cat data/config.json \
+    | { name-value-convert --to path-value; echo "feedback/address=tcp:localhost:$feedback_port"; } \
+    | name-value-convert --to json --take-last > "$config"
+
+feedback_binary=$( name-value-get feedback/binary < "$config" )
+
+comma_path_value_to_var < <( name-value-convert < "$config" )
+output_fields=$( control-follow-waypoints --output-fields --config="$config" )
+output_binary=$( control-follow-waypoints --output-format --config="$config" )
+target_fields=$( csv-fields prefix --path target <<< $waypoints_fields )
+
+comma_execute_and_wait \
+    "bash -c launch_feedback \"$config\" \"$feedback_csv\" $feedback_port $feedback_binary" \
+    "bash -c launch_control \"$input\" \"$config\" $feedback_port $waypoints_delay $waypoints_fields $waypoints_binary $output_fields $output_binary $target_fields"
+
+echo "status/main=$?"

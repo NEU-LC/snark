@@ -6,7 +6,7 @@ read params
 fields="line_number,$( image-pinhole $params --input-fields )"
 output_fields="$( image-pinhole $params --output-fields | csv-fields prefix --path output )"
 csv-paste line-number - | image-pinhole $params --fields $fields > output/out
-comma_status_ok || { echo "image-pinhole exited non-zero status: $result"; exit 1; }
+comma_status_ok || { echo "image-pinhole exited non-zero status: $result" >&2; exit 1; }
 cat output/out \
     | csv-shuffle --fields="$fields,$output_fields" \
                   --output-fields="line_number,$output_fields" \

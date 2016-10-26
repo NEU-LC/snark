@@ -1,0 +1,15 @@
+use the following pipeline to create feedback file
+
+{
+    seq 0 50 \
+        | csv-paste - value=20150101T000000 \
+        | csv-eval --fields i,t --format i,t "t+=i*timedelta64(20,'ms'); x=0; y=0; yaw=-i/100."
+    seq 1 200 \
+        | csv-paste - value=20150101T000000 \
+        | csv-eval --fields i,t --format i,t "t+=(i+50)*timedelta64(20,'ms'); x=i; y=0; yaw=i/100."
+} | cut -d, -f2- > feedback.csv
+
+- feedback frequency is 50 per second (1 output every 0.02 seconds)
+- it stays at 0,0 for 1 second
+- it then moves from 0,0 to 200,0 in 4 seconds
+

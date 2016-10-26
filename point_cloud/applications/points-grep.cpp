@@ -396,9 +396,12 @@ int main( int argc, char** argv )
         if( options.exists( "--normals-format" ) ) { std::cerr << comma::csv::format::value< ::normal >() << std::endl; return 0; }
         if( options.exists( "--planes-fields" ) ) { std::cerr << comma::join( comma::csv::names< snark::triangle >( true ), ',' ) << std::endl; return 0; }
         if( options.exists( "--planes-format" ) ) { std::cerr << comma::csv::format::value< snark::triangle >() << std::endl; return 0; }
+        if( options.exists( "--corners-fields" ) ) { std::cerr << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl; return 0; }
+        if( options.exists( "--corners-format" ) ) { std::cerr << comma::csv::format::value< Eigen::Vector3d >() << std::endl; return 0; }
         if( options.exists( "--output-fields" ) ) { if( output_all ) { std::cerr << comma::join( comma::csv::names< output_t >( true ), ',' ) << std::endl; } return 0; }
         if( options.exists( "--output-format" ) ) { if( output_all ) { std::cerr << comma::csv::format::value< output_t >() << std::endl; } return 0; }
         const std::vector< std::string >& unnamed = options.unnamed("--output-all,--all,--verbose,-v,--flush","-.*");
+        if(!unnamed.size()) { std::cerr << "points-grep: expected filter name, got nothing"<< std::endl; return 1; }
         std::string what = unnamed[0];
         if( what == "polytope" || what == "planes" )
         {
@@ -409,6 +412,7 @@ int main( int argc, char** argv )
             if( !normals_input.empty() )
             {
                 comma::csv::options filter_csv = comma::name_value::parser( "filename" ).get< comma::csv::options >( normals_input );
+                filter_csv.full_xpath = true;
                 comma::io::istream is( filter_csv.filename, filter_csv.binary() ? comma::io::mode::binary : comma::io::mode::ascii );
                 comma::csv::input_stream< ::normal > istream( *is, filter_csv );
                 species::polytope::filter f;
@@ -423,6 +427,7 @@ int main( int argc, char** argv )
             else if( !planes_input.empty() )
             {
                 comma::csv::options filter_csv = comma::name_value::parser( "filename" ).get< comma::csv::options >( planes_input );
+                filter_csv.full_xpath = true;
                 comma::io::istream is( filter_csv.filename, filter_csv.binary() ? comma::io::mode::binary : comma::io::mode::ascii );
                 comma::csv::input_stream< snark::triangle > istream( *is, filter_csv );
                 std::vector< snark::triangle > planes;

@@ -47,13 +47,13 @@ ModelReader::ModelReader( QGLView& viewer
                         , const std::string& file
                         , bool flip
                         , double scale
-                        , snark::graphics::view::coloured* c
+                        , snark::graphics::view::colored* c
                         , const std::string& label )
     : Reader( viewer, reader_parameters( params ), c, label, Eigen::Vector3d( 0, 1, 1 ) ) // TODO make offset configurable ?
     , m_file( file )
     , m_flip( flip )
     , scale_( scale )
-    , coloured_( c )
+    , colored_( c )
 {
 }
 
@@ -62,7 +62,7 @@ void ModelReader::start()
     if( m_file.substr( m_file.size() - 3, 3 ) == "ply" )
     {
         boost::optional< QColor4ub > color;
-        if( dynamic_cast< const Fixed* >( coloured_ ) ) { color = coloured_->color( Eigen::Vector3d( 0, 0, 0 ), 0, 0, QColor4ub() ); } // quick and dirty
+        if( dynamic_cast< const Fixed* >( colored_ ) ) { color = colored_->color( Eigen::Vector3d( 0, 0, 0 ), 0, 0, QColor4ub() ); } // quick and dirty
         m_plyLoader = PlyLoader( m_file, color, scale_ );
     }
     if( !m_plyLoader )

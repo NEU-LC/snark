@@ -176,10 +176,8 @@ int main( int ac, char** av )
             {
                 case omni:
                 {
-                    double yaw = input->feedback.yaw;
-                    double heading = input->wayline.heading;
                     double correction = limit_angle( cross_track_pid( input->error.cross_track, time ) );
-                    command.local_heading = comma::math::cyclic< double >( comma::math::interval< double >( -M_PI, M_PI ), heading + correction - yaw )();
+                    command.local_heading = comma::math::cyclic< double >( comma::math::interval< double >( -M_PI, M_PI ), input->wayline.heading + correction - input->feedback.yaw )();
                     command.turn_rate = compute_yaw_rate ? heading_pid( input->error.heading, time ) : heading_pid( input->error.heading, input->feedback.yaw_rate, time );
                     break;
                 }
