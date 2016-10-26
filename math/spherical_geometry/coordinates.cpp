@@ -37,33 +37,55 @@
 #include <iomanip>
 
 namespace {
+
+    static const double eighty_degrees = 80 * M_PI / 180.0;
+
+    static const double scaled_cos_eighty_degrees = 2.0 / M_PI * std::cos( eighty_degrees );
+
+    bool precise_is_far( const snark::spherical::coordinates & l, const snark::spherical::coordinates & r, double _epsilon )
+    {
+        return Eigen::AngleAxis< double >( Eigen::Quaternion< double >::FromTwoVectors( l.to_cartesian(), r.to_cartesian() ) ).angle() > _epsilon;
+    }
+
     bool is_far( const snark::spherical::coordinates & l, const snark::spherical::coordinates & r, double _epsilon )
     {
         // for very short arcs skip shortcuts and enforce thorough comparison because of numerical stability issues in Eigen
         // the actual value is about 6 m / earth radius; enough to make AngleAxis::angle() non-zero
         double threshold = std::max( snark::spherical::coordinates::epsilon, _epsilon );
         // make quick decisions first; rely on the order of evaluation to return early if can avoid the last, expensive call
-        double delta_latitude = std::abs( l.latitude - r.latitude );
+        if ( std::abs( l.latitude - r.latitude ) > threshold ) { ++snark::spherical::coordinates::shortcut_latitude; return true; }
         double delta_longitude = std::abs( l.longitude - r.longitude );
         // nearly 360 delta means very close; take the shorter of the two possible arcs
         delta_longitude = delta_longitude > M_PI ? 2 * M_PI - delta_longitude : delta_longitude;
-        // first branch: self-explanatory
-        // second branch: constants are 80 degrees in radians, cos(80 degrees)
-        //                ignore near-Pole regions
-        //                take a lower limit on cos(latitude):
-        //                    if the second latitude is lower, the arc is longer
-        //                    if the second latitude is the same, delta times times cos(latitude) is larger then same delta times the lower limit of cos
-        //                thus, the real arc length can be only larger than this estimate
-        // third branch: shortcuts failed, do lengthy computations
-        return delta_latitude > threshold ||
-               ( std::max( std::abs( l.latitude ), std::abs( r.latitude ) ) < 1.39626340159546366152 && delta_longitude * .17364817766693034887 > threshold ) ||
-               Eigen::AngleAxis< double >( Eigen::Quaternion< double >::FromTwoVectors( l.to_cartesian(), r.to_cartesian() ) ).angle() > threshold;
+        // TODO unit tests
+        // first branch:  ignore near-Pole regions
+        //                take a lower limit on great circle arc length:
+        //                    the arc length at the lower (by modulo) of the two latitudes is shorter than the real length (lower estimate)
+        //                    for the same latitudes, use the lower estimate of the great circle arc derived below
+        //                if the lower limit is above the threshold, the real arc length is above the threshold as well
+        // second branch: shortcuts failed, do lengthy computations
+        //
+        // derivation of the lower limit for the same latitude
+        //    alength = 2 * asin( cos(latitude) * sin( delta_longitude / 2 ) )
+        //    estimates:  asin(x) >= x for any x in [0, 1]
+        //                sin(y) >= 2/pi * y for any y in [0, pi/2]
+        //    alength >= 2 cos(latitude) * sin( delta_longitude / 2 ) >= cos(latitude) * 2/pi * delta_longitude >= cos(80 degrees) * 2/pi * delta_longitude
+        double max_latitude = std::max( std::abs( l.latitude ), std::abs( r.latitude ) );
+        //if ( max_latitude < eighty_degrees && 2*std::asin( std::cos( max_latitude ) * std::sin( 0.5 * delta_longitude ) ) > threshold ) { ++snark::spherical::coordinates::shortcut_longitude; return true; }
+        if ( max_latitude < eighty_degrees && delta_longitude * scaled_cos_eighty_degrees > threshold ) { ++snark::spherical::coordinates::shortcut_longitude; return true; }
+        ++snark::spherical::coordinates::shortcut_none;
+        return precise_is_far( l, r, threshold );
+               //Eigen::AngleAxis< double >( Eigen::Quaternion< double >::FromTwoVectors( l.to_cartesian(), r.to_cartesian() ) ).angle() > threshold;
     }
 }
 
 namespace snark { namespace spherical {
 
 const double coordinates::epsilon = 1e-6;
+
+size_t coordinates::shortcut_latitude = 0;
+size_t coordinates::shortcut_longitude = 0;
+size_t coordinates::shortcut_none = 0;
 
 bool coordinates::operator==( const coordinates& rhs ) const
 {

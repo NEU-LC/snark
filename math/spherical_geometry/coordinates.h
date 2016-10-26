@@ -88,6 +88,10 @@ struct coordinates
     operator std::string() const;
 
     static bool is_near( const coordinates & l, const coordinates & r, double _epsilon = 0.005 );
+
+    static size_t shortcut_latitude;
+    static size_t shortcut_longitude;
+    static size_t shortcut_none;
 };
 
 /// convert to navigation frame at given coordinates
