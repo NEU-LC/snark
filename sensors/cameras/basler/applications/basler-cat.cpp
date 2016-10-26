@@ -181,7 +181,9 @@ static P capture_( Pylon::CBaslerGigECamera& camera, Pylon::CBaslerGigECamera::S
         grabber.RetrieveResult( result );
         if( !result.Succeeded() )
         { 
-            std::cerr << "basler-cat: acquisition failed: " << result.GetErrorDescription() << " (" << result.GetErrorCode() << ")" << std::endl;
+            std::cerr << "basler-cat: acquisition failed: "
+                      << result.GetErrorDescription()
+                      << " (0x" << std::hex << result.GetErrorCode() << std::dec << ")" << std::endl;
             std::cerr << "            status: " << ( result.Status() == Pylon::Idle ? "idle" :
                                                      result.Status() == Pylon::Queued ? "queued" :
                                                      result.Status() == Pylon::Grabbed ? "grabbed" :
