@@ -118,29 +118,31 @@ define('Feed', ["jquery", "jquery_timeago", "utils"], function ($) {
         return url + (url.indexOf('?') < 0 ? '?q=' : '&q=') + Math.random();
     };
     Feed.prototype.alert = function (on) {
-        var gui_folder = $(gui.__folders[this.feed_path].__ul);
+        var gui_element = gui.__folders[this.feed_path];
+        if (gui_element != undefined) {
+            var gui_folder = $(gui_element.__ul);
+            if (on) {
+                this.el.addClass('panel-alert');
+                if (globals.isMobile) {
+                    gui_folder.closest('li').find('a.ui-collapsible-heading-toggle').first().addClass('panel-alert');
+                }
+                else {
+                    gui_folder.find('.title').first().addClass('panel-alert');
+                }
 
-        if (on) {
-            this.el.addClass('panel-alert');
-            if (globals.isMobile) {
-                gui_folder.closest('li').find('a.ui-collapsible-heading-toggle').first().addClass('panel-alert');
-            }
-            else {
-                gui_folder.find('.title').first().addClass('panel-alert');
-            }
+                if (globals.alert_beep) {
+                    globals.beep();
+                }
+            } else {
+                if (globals.isMobile) {
 
-            if (globals.alert_beep) {
-                globals.beep();
+                    gui_folder.closest('li').find('a.ui-collapsible-heading-toggle').removeClass('panel-alert');
+                }
+                else {
+                    gui_folder.find('.title').removeClass('panel-alert');
+                }
+                this.el.removeClass('panel-alert');
             }
-        } else {
-            if (globals.isMobile) {
-
-                gui_folder.closest('li').find('a.ui-collapsible-heading-toggle').removeClass('panel-alert');
-            }
-            else {
-                gui_folder.find('.title').removeClass('panel-alert');
-            }
-            this.el.removeClass('panel-alert');
         }
     };
     Feed.views = ['show', 'compact', 'hide'];
