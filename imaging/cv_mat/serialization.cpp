@@ -29,6 +29,7 @@
 
 
 #include <sstream>
+#include <comma/application/verbose.h>
 #include <comma/base/exception.h>
 #include <comma/csv/binary.h>
 #include <comma/string/string.h>
@@ -171,7 +172,15 @@ std::pair< boost::posix_time::ptime, cv::Mat > serialization::read( std::istream
         h = m_header;
     }
     p.first = h.timestamp;
-    p.second = cv::Mat( h.rows, h.cols, h.type );
+    try
+    {
+        p.second = cv::Mat( h.rows, h.cols, h.type );
+    }
+    catch( cv::Exception& ex )
+    {
+        std::cerr << comma::verbose.app_name() << ": caught cv::Exception: " << ex.what() << std::endl;
+        return std::pair< boost::posix_time::ptime, cv::Mat >();
+    }
     std::size_t size = p.second.dataend - p.second.datastart;
     // todo: accumulate
     is.read( const_cast< char* >( reinterpret_cast< const char* >( p.second.datastart ) ), size ); // quick and dirty
