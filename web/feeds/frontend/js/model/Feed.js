@@ -31,7 +31,13 @@ define('Feed', ["jquery", "jquery_timeago", "utils"], function ($) {
     Feed.prototype.set_interval = function () {
         this.interval = setInterval(this.preload.bind(this), this.config.refresh.interval * 1000);
         this.status.removeClass('text-muted').addClass('text-success');
-        this.panel_refresh.removeClass('hideable transparent');
+        this.el.addClass('panel-enabled');
+        var gui_folder = $(gui.__folders[this.feed_name].__ul);
+        if (globals.isMobile) {
+            gui_folder.closest('li').find('a.ui-collapsible-heading-toggle').first().addClass('panel-enabled');
+        } else {
+            gui_folder.find('.title').first().addClass('panel-enabled');
+        }
     };
 
 
@@ -39,7 +45,13 @@ define('Feed', ["jquery", "jquery_timeago", "utils"], function ($) {
         clearInterval(this.interval);
         delete pending[this.feed_name];
         this.status.removeClass('text-success').addClass('text-muted');
-        this.panel_refresh.addClass('hideable');
+        this.el.removeClass('panel-enabled');
+        var gui_folder = $(gui.__folders[this.feed_name].__ul);
+        if (globals.isMobile) {
+            gui_folder.closest('li').find('a.ui-collapsible-heading-toggle').removeClass('panel-enabled');
+        } else {
+            gui_folder.find('.title').removeClass('panel-enabled');
+        }
     };
     Feed.prototype.refresh = function () {
         this.clear_interval();
