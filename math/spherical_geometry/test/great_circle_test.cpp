@@ -91,7 +91,7 @@ namespace {
     }
 }
 
-TEST( great_circle, angle_01 )
+TEST( great_circle, DISABLED_angle_01 )
 {
     std::vector< double > scales = setup_scales();
     std::vector< coordinates > anchors;
@@ -110,7 +110,7 @@ TEST( great_circle, angle_01 )
     }
 }
 
-TEST( great_circle, at_01 )
+TEST( great_circle, DISABLED_at_01 )
 {
     std::vector< double > scales = setup_scales();
     std::vector< coordinates > anchors;
@@ -124,7 +124,7 @@ TEST( great_circle, at_01 )
     anchors.push_back( coordinates::from_degrees( -89,  180 ) );
     for ( size_t i = 0; i < anchors.size(); ++i )
     {
-        double near = at_the_end( anchors[i], scales, true );
+        double near = at_the_end( anchors[i], scales, false );
         EXPECT_LE( near, 1.0e-6 );
     }
 }
