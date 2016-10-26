@@ -53,7 +53,7 @@ namespace {
         // the actual value is about 6 m / earth radius; enough to make AngleAxis::angle() non-zero
         double threshold = std::max( snark::spherical::coordinates::epsilon, _epsilon );
         // make quick decisions first; rely on the order of evaluation to return early if can avoid the last, expensive call
-        if ( std::abs( l.latitude - r.latitude ) > threshold ) { ++snark::spherical::coordinates::shortcut_latitude; return true; }
+        if ( std::abs( l.latitude - r.latitude ) > threshold ) { return true; }
         double delta_longitude = std::abs( l.longitude - r.longitude );
         // nearly 360 delta means very close; take the shorter of the two possible arcs
         delta_longitude = delta_longitude > M_PI ? 2 * M_PI - delta_longitude : delta_longitude;
@@ -71,9 +71,7 @@ namespace {
         //                sin(y) >= 2/pi * y for any y in [0, pi/2]
         //    alength >= 2 cos(latitude) * sin( delta_longitude / 2 ) >= cos(latitude) * 2/pi * delta_longitude >= cos(80 degrees) * 2/pi * delta_longitude
         double max_latitude = std::max( std::abs( l.latitude ), std::abs( r.latitude ) );
-        //if ( max_latitude < eighty_degrees && 2*std::asin( std::cos( max_latitude ) * std::sin( 0.5 * delta_longitude ) ) > threshold ) { ++snark::spherical::coordinates::shortcut_longitude; return true; }
-        if ( max_latitude < eighty_degrees && delta_longitude * scaled_cos_eighty_degrees > threshold ) { ++snark::spherical::coordinates::shortcut_longitude; return true; }
-        ++snark::spherical::coordinates::shortcut_none;
+        if ( max_latitude < eighty_degrees && delta_longitude * scaled_cos_eighty_degrees > threshold ) { return true; }
         return precise_is_far( l, r, threshold );
                //Eigen::AngleAxis< double >( Eigen::Quaternion< double >::FromTwoVectors( l.to_cartesian(), r.to_cartesian() ) ).angle() > threshold;
     }
@@ -82,10 +80,6 @@ namespace {
 namespace snark { namespace spherical {
 
 const double coordinates::epsilon = 1e-6;
-
-size_t coordinates::shortcut_latitude = 0;
-size_t coordinates::shortcut_longitude = 0;
-size_t coordinates::shortcut_none = 0;
 
 bool coordinates::operator==( const coordinates& rhs ) const
 {

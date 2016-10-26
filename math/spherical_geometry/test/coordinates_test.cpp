@@ -20,7 +20,6 @@ using namespace snark::spherical;
 namespace {
     std::pair< double, double > call_is_near( const coordinates & anchor, const std::vector< coordinates > & points, size_t repeat, double epsilon_near, double epsilon_far, bool verbose = false )
     {
-        coordinates::shortcut_latitude = coordinates::shortcut_longitude = coordinates::shortcut_none = 0;
         boost::posix_time::ptime start = boost::posix_time::microsec_clock::universal_time();
         {
             bool any_near = false;
@@ -33,10 +32,8 @@ namespace {
             EXPECT_FALSE( any_near );
         }
         double time_near = double( ( boost::posix_time::microsec_clock::universal_time() - start ).total_microseconds() ) / 1000000;
-        if ( verbose ) { std::cerr << "shortcut/latitude,shortcut/longitude,shortcut/none,time/near: " << coordinates::shortcut_latitude << "," << coordinates::shortcut_longitude << "," << coordinates::shortcut_none << "," << time_near << std::endl; }
 
         // if epsilon is very large, nearly all points are close
-        coordinates::shortcut_latitude = coordinates::shortcut_longitude = coordinates::shortcut_none = 0;
         start = boost::posix_time::microsec_clock::universal_time();
         {
             bool any_far = false;
@@ -49,7 +46,6 @@ namespace {
             EXPECT_FALSE( any_far );
         }
         double time_far = double( ( boost::posix_time::microsec_clock::universal_time() - start ).total_microseconds() ) / 1000000;
-        if ( verbose ) { std::cerr << "shortcut/latitude,shortcut/longitude,shortcut/none,time/far:  " << coordinates::shortcut_latitude << "," << coordinates::shortcut_longitude << "," << coordinates::shortcut_none << "," << time_far << std::endl; }
 
         return std::make_pair( time_near, time_far );
     }
