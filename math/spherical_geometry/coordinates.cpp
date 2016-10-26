@@ -52,28 +52,29 @@ namespace {
         // for very short arcs skip shortcuts and enforce thorough comparison because of numerical stability issues in Eigen
         // the actual value is about 6 m / earth radius; enough to make AngleAxis::angle() non-zero
         double threshold = std::max( snark::spherical::coordinates::epsilon, _epsilon );
-        // make quick decisions first; rely on the order of evaluation to return early if can avoid the last, expensive call
+        // make quick decisions first; for latitude shortcut no explanations needed
         if ( std::abs( l.latitude - r.latitude ) > threshold ) { return true; }
         double delta_longitude = std::abs( l.longitude - r.longitude );
         // nearly 360 delta means very close; take the shorter of the two possible arcs
         delta_longitude = delta_longitude > M_PI ? 2 * M_PI - delta_longitude : delta_longitude;
-        // TODO unit tests
-        // first branch:  ignore near-Pole regions
-        //                take a lower limit on great circle arc length:
-        //                    the arc length at the lower (by modulo) of the two latitudes is shorter than the real length (lower estimate)
-        //                    for the same latitudes, use the lower estimate of the great circle arc derived below
-        //                if the lower limit is above the threshold, the real arc length is above the threshold as well
-        // second branch: shortcuts failed, do lengthy computations
-        //
-        // derivation of the lower limit for the same latitude
-        //    alength = 2 * asin( cos(latitude) * sin( delta_longitude / 2 ) )
-        //    estimates:  asin(x) >= x for any x in [0, 1]
-        //                sin(y) >= 2/pi * y for any y in [0, pi/2]
-        //    alength >= 2 cos(latitude) * sin( delta_longitude / 2 ) >= cos(latitude) * 2/pi * delta_longitude >= cos(80 degrees) * 2/pi * delta_longitude
+        // longitude shortcut:
+        //     ignore near-Pole regions
+        //     take a lower limit on great circle arc length:
+        //         the arc at the higher (by modulo) of the two latitudes is shorter than the real arc (lower estimate)
+        //             proof not given here; differentiate the exact expression by one of the latitudes; the derivative sign is
+        //             defined by the other latitude: negative in the Northern hemisphere, positive in the Southern; therefore,
+        //             if the fixed latitude (not the one being differentiated upon) is chosen as the max by modulo, the function
+        //             may only increase as the other latitude moves either South or North, respectively
+        //         for the same latitudes, use the lower estimate of the great circle arc length:
+        //             exact length = 2 * asin( cos(latitude) * sin( delta_longitude / 2 ) )
+        //             estimates: asin(x) >= x for any x in [0, 1]
+        //                        sin(y) >= 2/pi * y for any y in [0, pi/2]
+        //             thus exact length >= 2 cos(latitude) * sin( delta_longitude / 2 ) >= cos(latitude) * 2/pi * delta_longitude >= cos(80 degrees) * 2/pi * delta_longitude
+        //     if the lower limit is above the threshold, the real arc length is above the threshold as well
         double max_latitude = std::max( std::abs( l.latitude ), std::abs( r.latitude ) );
         if ( max_latitude < eighty_degrees && delta_longitude * scaled_cos_eighty_degrees > threshold ) { return true; }
+        // shortcuts failed, do lengthy computations
         return precise_is_far( l, r, threshold );
-               //Eigen::AngleAxis< double >( Eigen::Quaternion< double >::FromTwoVectors( l.to_cartesian(), r.to_cartesian() ) ).angle() > threshold;
     }
 }
 
