@@ -2,7 +2,6 @@ SET( PROJECT "control" )
 IF( NOT snark_build_control )
     EXECUTE_PROCESS( COMMAND touch ${SOURCE_CODE_BASE_DIR}/${PROJECT}/applications/test/disabled )
 ELSE( NOT snark_build_control )
-    EXECUTE_PROCESS( COMMAND rm -f ${SOURCE_CODE_BASE_DIR}/${PROJECT}/applications/test/disabled )
     SET( TARGET_NAME snark_${PROJECT} )
 
     FILE( GLOB source ${SOURCE_CODE_BASE_DIR}/${PROJECT}/*.cpp )
@@ -24,7 +23,9 @@ ELSE( NOT snark_build_control )
 
     IF( snark_BUILD_APPLICATIONS )
         ADD_SUBDIRECTORY( applications )
-        EXECUTE_PROCESS( COMMAND rm -f ${SOURCE_CODE_BASE_DIR}/${PROJECT}/test/disabled )
+        EXECUTE_PROCESS( COMMAND rm -f ${SOURCE_CODE_BASE_DIR}/${PROJECT}/applications/test/disabled )
+    ELSE( snark_BUILD_APPLICATIONS )
+        EXECUTE_PROCESS( COMMAND touch ${SOURCE_CODE_BASE_DIR}/${PROJECT}/applications/test/disabled )
     ENDIF( snark_BUILD_APPLICATIONS )
 
     IF( snark_BUILD_TESTS )
