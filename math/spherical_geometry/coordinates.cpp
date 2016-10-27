@@ -85,14 +85,11 @@ const double coordinates::epsilon = 1e-6;
 bool coordinates::operator==( const coordinates& rhs ) const
 {
     return !is_far( *this, rhs, epsilon );
-    // return is_near( rhs, epsilon );
 }
 
 bool coordinates::is_near( const coordinates& c, double epsilon ) const
 {
     return !is_far( *this, c, epsilon );
-    // double dist = std::abs( longitude - c.longitude );
-    // return comma::math::equal( latitude, c.latitude, epsilon ) && comma::math::equal( 0, std::min( dist, 2 * M_PI - dist ), epsilon );
 }
 
 bool coordinates::is_near( const coordinates & l, const coordinates & r, double _epsilon )
