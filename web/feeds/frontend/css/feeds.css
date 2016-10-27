@@ -65,6 +65,10 @@ body {
     background: #2c2c2c;
 }
 
+.panel-enabled, .panel-enabled:hover {
+    border-color: #1CA059 !important;
+}
+
 .panel-alert, .panel-alert:hover {
     color: #012345 !important;
     text-shadow: none;

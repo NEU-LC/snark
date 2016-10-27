@@ -31,7 +31,13 @@ define('Feed', ["jquery", "jquery_timeago", "utils"], function ($) {
     Feed.prototype.set_interval = function () {
         this.interval = setInterval(this.preload.bind(this), this.config.refresh.interval * 1000);
         this.status.removeClass('text-muted').addClass('text-success');
-        this.panel_refresh.removeClass('hideable transparent');
+        this.el.addClass('panel-enabled');
+        var gui_folder = $(gui.__folders[this.feed_name].__ul);
+        if (globals.isMobile) {
+            gui_folder.closest('li').find('a.ui-collapsible-heading-toggle').first().addClass('panel-enabled');
+        } else {
+            gui_folder.find('.title').first().addClass('panel-enabled');
+        }
     };
 
 
@@ -39,7 +45,13 @@ define('Feed', ["jquery", "jquery_timeago", "utils"], function ($) {
         clearInterval(this.interval);
         delete pending[this.feed_name];
         this.status.removeClass('text-success').addClass('text-muted');
-        this.panel_refresh.addClass('hideable');
+        this.el.removeClass('panel-enabled');
+        var gui_folder = $(gui.__folders[this.feed_name].__ul);
+        if (globals.isMobile) {
+            gui_folder.closest('li').find('a.ui-collapsible-heading-toggle').removeClass('panel-enabled');
+        } else {
+            gui_folder.find('.title').removeClass('panel-enabled');
+        }
     };
     Feed.prototype.refresh = function () {
         this.clear_interval();
@@ -106,29 +118,31 @@ define('Feed', ["jquery", "jquery_timeago", "utils"], function ($) {
         return url + (url.indexOf('?') < 0 ? '?q=' : '&q=') + Math.random();
     };
     Feed.prototype.alert = function (on) {
-        var gui_folder = $(gui.__folders[this.feed_path].__ul);
+        var gui_element = gui.__folders[this.feed_path];
+        if (gui_element != undefined) {
+            var gui_folder = $(gui_element.__ul);
+            if (on) {
+                this.el.addClass('panel-alert');
+                if (globals.isMobile) {
+                    gui_folder.closest('li').find('a.ui-collapsible-heading-toggle').first().addClass('panel-alert');
+                }
+                else {
+                    gui_folder.find('.title').first().addClass('panel-alert');
+                }
 
-        if (on) {
-            this.el.addClass('panel-alert');
-            if (globals.isMobile) {
-                gui_folder.closest('li').find('a.ui-collapsible-heading-toggle').first().addClass('panel-alert');
-            }
-            else {
-                gui_folder.find('.title').first().addClass('panel-alert');
-            }
+                if (globals.alert_beep) {
+                    globals.beep();
+                }
+            } else {
+                if (globals.isMobile) {
 
-            if (globals.alert_beep) {
-                globals.beep();
+                    gui_folder.closest('li').find('a.ui-collapsible-heading-toggle').removeClass('panel-alert');
+                }
+                else {
+                    gui_folder.find('.title').removeClass('panel-alert');
+                }
+                this.el.removeClass('panel-alert');
             }
-        } else {
-            if (globals.isMobile) {
-
-                gui_folder.closest('li').find('a.ui-collapsible-heading-toggle').removeClass('panel-alert');
-            }
-            else {
-                gui_folder.find('.title').removeClass('panel-alert');
-            }
-            this.el.removeClass('panel-alert');
         }
     };
     Feed.views = ['show', 'compact', 'hide'];

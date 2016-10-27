@@ -196,6 +196,20 @@ define('base_controller', ['jquery', "jquery_timeago",
         }
     };
 
+    base_controller.prototype.add_stream_body = function (feed_name, element) {
+        var id = '#' + feed_path_to_id(feed_name);
+        var class_str = globals.isMobile ? '' : ' transparent';
+        $(id).append(
+            '<h3>' + feed_name +
+            '  <button class="panel-stream-control hideable' + class_str + '" title="<kbd>click</kbd>: refresh<br><kbd>shift+click</kbd>: start/stop"><span class="status text-muted glyphicon glyphicon-stop"></span></button>' +
+            '  <button class="panel-settings hideable ' + class_str + '" title="settings"><span class="text-muted glyphicon glyphicon-cog"></span></button></h3>' +
+            '<div class="panel-body">' +
+            element +
+            '</div>'
+        );
+    };
+
+
     base_controller.prototype.init_actions = function () {
         $('.map').hover(function () {
             $('#container').sortable('disable')
@@ -232,6 +246,9 @@ define('base_controller', ['jquery', "jquery_timeago",
         $('.panel-settings').on('click', function (event) {
             if (globals.isMobile) {
                 var gui_name = $(this).closest('li').attr('data-name');
+                gui.collapseAllFolders();
+                gui.open();
+                gui.openFolder(gui_name);
             }
             else {
                 var gui_name = $(this).closest('li').data('name');
@@ -239,9 +256,9 @@ define('base_controller', ['jquery', "jquery_timeago",
                     folder.close();
                 });
                 gui.__folders[gui_name].open();
-
+                gui.open();
             }
-            gui.open();
+
         });
         $('.panel-close').on('click', function (event) {
             var id = $(this).closest('li').attr('id');
@@ -409,20 +426,6 @@ define('base_controller', ['jquery', "jquery_timeago",
         map_folder.addColor(config, 'stroke');
         map_folder.add(config, 'stroke_width', 0, 5).name('stroke width').step(0.5);
     }
-
-
-    var add_stream_body = function (feed_name, element) {
-        var id = '#' + feed_path_to_id(feed_name);
-        var class_str = globals.isMobile ? '' : ' transparent';
-        $(id).append(
-            '<h3>' + feed_name +
-            '  <button class="panel-stream-control hideable' + class_str + '" title="<kbd>click</kbd>: refresh<br><kbd>shift+click</kbd>: start/stop"><span class="status text-muted glyphicon glyphicon-stop"></span></button>' +
-            '  <button class="panel-settings hideable ' + class_str + '" title="settings"><span class="text-muted glyphicon glyphicon-cog"></span></button></h3>' +
-            '<div class="panel-body">' +
-            element +
-            '</div>'
-        );
-    };
 
 
     function save_gui_config(config_file) {
