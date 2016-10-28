@@ -31,13 +31,16 @@ define(['jquery', 'Feed', 'Grid'], function ($, Feed, Grid) {
             if (this.target.resizable('instance')) {
                 this.target.resizable('destroy');
             }
-            this.target.width(this.loader.width);
+            var max_width = ((window.innerWidth > 0) ? window.innerWidth : screen.width ) - 100;
+            var width = (this.loader.width > max_width) ? max_width : this.loader.width;
+            this.target.width(width);
             this.target.height(this.loader.height);
             this.target.resizable({
                 aspectRatio: true,
                 autoHide: true,
                 minWidth: 269,
-                minHeight: 269
+                minHeight: 269,
+                maxWidth: 500
             });
             this.remove_grid();
         }
