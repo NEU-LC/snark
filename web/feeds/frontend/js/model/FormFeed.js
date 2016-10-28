@@ -122,7 +122,17 @@ define('FormFeed', ["jquery", "Feed"], function ($) {
         buttons.append(submit).append(space).append(clear);
         form.append(buttons);
         this.target.append(form);
-        this.target.width(500);
+        if (fields.length > 0) {
+            this.target.width(500);
+        }
+        else {
+            $(this.target).css("min-height", function () {
+                return 80;
+            });
+            $(this.target).css("min-width", function () {
+                return 200;
+            });
+        }
     };
 
     FormFeed.prototype.load = function () {
@@ -138,15 +148,15 @@ define('FormFeed', ["jquery", "Feed"], function ($) {
         //     this.onerror();
         // });
     };
+
     FormFeed.prototype.onload_ = function (data) {
         // this.target.height(100);
-        $(form).parent().find(".form-results").remove();
-        var input = $('<div>',
-            {
-                class: "form-results col-sm-12",
-                text: data
-            });
-        $(form).append(input)
+        // data = data.replace(/\n/g, '<br/>');
+        $(form).parent().find(".result-panel").remove();
+        var panel = $('<div>', {class: "panel result-panel col-sm-11"});
+        panel.append($('<span>', {class: "label label-info", text: "Output"}));
+        panel.append($('<div>', {class: "form-results", text: data}));
+        $(form).append(panel)
     };
     return FormFeed;
 });
