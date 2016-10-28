@@ -30,7 +30,7 @@
 #pragma once
 
 #include <comma/visiting/traits.h>
-#include <snark/visiting/eigen.h>
+#include "../../visiting/eigen.h"
 #include "control.h"
 
 namespace comma { namespace visiting {
