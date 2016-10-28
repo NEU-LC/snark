@@ -92,10 +92,12 @@ bool try_connect(stream_base& ios, int baud_rate)
     ios.write(cmd, strlen(cmd));
     return (try_receive(ios).find("\n\n") != std::string::npos);
 }
-stream_base* scip2_device::connect()
+boost::shared_ptr<stream_base> scip2_device::connect()
 {
     //setup communication
-    stream_base* ios=new serial_stream(port,19200,8,boost::asio::serial_port_base::parity::none,boost::asio::serial_port_base::stop_bits::one);
+    boost::shared_ptr<stream_base> ios( new serial_stream(port,19200,8,
+                                                boost::asio::serial_port_base::parity::none,
+                                                boost::asio::serial_port_base::stop_bits::one) );
     //auto baud rate
     bool connected=false;
     if(baud_rate ==0)

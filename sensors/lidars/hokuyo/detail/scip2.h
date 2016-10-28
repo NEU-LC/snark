@@ -98,7 +98,7 @@ struct scip2_device:public laser_device
         port=options.value<std::string>("--serial,--port");
         set_baud_rate=options.value<int>("--set-baud-rate", 500000);
     }
-    virtual stream_base* connect();
+    virtual boost::shared_ptr<stream_base> connect();
     //e.g. switch to scip2
     virtual void setup(stream_base& ios);
     virtual void reboot(stream_base& ios) { }    //doesn't support reboot
