@@ -11,8 +11,8 @@ struct laser_device
     //get args
     virtual void init(comma::command_line_options options)=0;
     //setup communication
-    //todo: replace with std::unique_ptr in c++11
-    virtual std::auto_ptr<stream_base> connect()=0;
+    // The caller is responsible for deleting this stream_base object - on the heap.
+    virtual stream_base* connect()=0;
     //e.g. switch to scip2
     virtual void setup(stream_base& ios)=0;
     virtual void reboot(stream_base& ios)=0;

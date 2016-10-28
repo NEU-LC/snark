@@ -33,7 +33,7 @@ struct ust_device:public laser_device
         //get args
         address=options.value< std::string >( "--laser" );
     }
-    virtual std::auto_ptr<stream_base> connect();
+    virtual stream_base* connect();
     virtual void setup(stream_base& ios) { } //nothing to do
     virtual void reboot(stream_base& ios);
     void request_scan(stream_base& ios, int start_step, int end_step, int num_of_scans);
@@ -145,14 +145,14 @@ static bool tcp_connect( const std::string& conn_str,
 } 
 
 template < int STEPS >
-std::auto_ptr<stream_base> ust_device<STEPS>::connect()
+stream_base* ust_device<STEPS>::connect()
 {
     //setup communication
     tcp_stream* tcp=new tcp_stream();
     if( !tcp_connect( address, tcp->ios ) ) {
         COMMA_THROW( comma::exception, "failed to connect to the hokuyo laser at: " << address );
     }
-    return std::auto_ptr<stream_base>(tcp);
+    return tcp;
 }
     
 template < int STEPS >

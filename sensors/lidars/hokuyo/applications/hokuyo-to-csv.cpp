@@ -29,6 +29,7 @@
 
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/thread/thread.hpp> 
+#include <boost/scoped_ptr.hpp>
 #include <comma/application/command_line_options.h>
 #include <comma/application/signal_flag.h>
 #include <comma/base/exception.h>
@@ -88,7 +89,7 @@ static void usage()
 
 
 comma::signal_flag signaled;
-std::auto_ptr<stream_base> ios; //this must have a higher scope than turn_laser_on
+boost::scoped_ptr<stream_base> ios; //this must have a higher scope than turn_laser_on
 bool reboot_on_error=false;
 int start_step=-1;
 comma::uint32 scan_break=20;
@@ -242,7 +243,7 @@ int main( int ac, char** av )
         
         device.init(options);
         /// Connect to the laser
-        ios=device.connect();
+        ios.reset( device.connect() );
         device.setup(*ios);
         if(serial)
         {
