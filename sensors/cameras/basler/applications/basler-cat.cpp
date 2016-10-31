@@ -242,14 +242,14 @@ static void write_( ChunkPair p )
     std::cout.flush();
 }
 
-static unsigned int set_pixel_format_( Pylon::CBaslerGigECamera& camera, Basler_GigECamera::PixelFormatEnums type )
+static unsigned int set_pixel_format_( Pylon::CBaslerGigECamera& camera, Basler_GigECameraParams::PixelFormatEnums type )
 {
     std::string type_string;
     unsigned int channels;
     switch( type )
     {
-        case Basler_GigECamera::PixelFormat_Mono8: type_string = "Mono8"; channels = 1; break;
-        case Basler_GigECamera::PixelFormat_RGB8Packed: type_string = "RGB8Packed"; channels = 3; break;
+        case Basler_GigECameraParams::PixelFormat_Mono8: type_string = "Mono8"; channels = 1; break;
+        case Basler_GigECameraParams::PixelFormat_RGB8Packed: type_string = "RGB8Packed"; channels = 3; break;
         default: COMMA_THROW( comma::exception, "type " << type << " not implemented" );
     }
     if( camera.PixelFormat.GetValue() == type ) { return channels; }
@@ -454,10 +454,10 @@ int main( int argc, char** argv )
         switch( options.get_header().type ) // quick and dirty
         {
             case CV_8UC1:
-                channels = set_pixel_format_( camera, Basler_GigECamera::PixelFormat_Mono8 );
+                channels = set_pixel_format_( camera, Basler_GigECameraParams::PixelFormat_Mono8 );
                 break;
             case CV_8UC3:
-                channels = set_pixel_format_( camera, Basler_GigECamera::PixelFormat_RGB8Packed );
+                channels = set_pixel_format_( camera, Basler_GigECameraParams::PixelFormat_RGB8Packed );
                 break;
             default:
                 std::cerr << "basler-cat: type \"" << options.type << "\" not implemented or not supported by camera" << std::endl;
@@ -488,7 +488,7 @@ int main( int argc, char** argv )
         //       - view grey-scale images: it works
         //       - view colour images: it still displays grey-scale
         //if( verbose ) { std::cerr << "basler-cat: getting aquisition status... (frigging voodoo...)" << std::endl; }
-        //GenApi::IEnumEntry* acquisition_status = camera.AcquisitionStatusSelector.GetEntry( Basler_GigECamera::AcquisitionStatusSelector_AcquisitionActive );
+        //GenApi::IEnumEntry* acquisition_status = camera.AcquisitionStatusSelector.GetEntry( Basler_GigECameraParams::AcquisitionStatusSelector_AcquisitionActive );
         //if( acquisition_status && GenApi::IsAvailable( acquisition_status ) && camera.AcquisitionStatus() )
         //{
         //    if( verbose ) { std::cerr << "basler-cat: stopping aquisition..." << std::endl; }
@@ -497,44 +497,44 @@ int main( int argc, char** argv )
         //}
         
         // todo: a hack for now
-        GenApi::IEnumEntry* acquisitionStart = camera.TriggerSelector.GetEntry( Basler_GigECamera::TriggerSelector_AcquisitionStart );
+        GenApi::IEnumEntry* acquisitionStart = camera.TriggerSelector.GetEntry( Basler_GigECameraParams::TriggerSelector_AcquisitionStart );
         if( acquisitionStart && GenApi::IsAvailable( acquisitionStart ) )
         {
-            camera.TriggerSelector.SetValue( Basler_GigECamera::TriggerSelector_AcquisitionStart );
-            camera.TriggerMode.SetValue( frame_trigger.empty() ? Basler_GigECamera::TriggerMode_Off : Basler_GigECamera::TriggerMode_On );
+            camera.TriggerSelector.SetValue( Basler_GigECameraParams::TriggerSelector_AcquisitionStart );
+            camera.TriggerMode.SetValue( frame_trigger.empty() ? Basler_GigECameraParams::TriggerMode_Off : Basler_GigECameraParams::TriggerMode_On );
         }
-        GenApi::IEnumEntry* frameStart = camera.TriggerSelector.GetEntry( Basler_GigECamera::TriggerSelector_FrameStart );
+        GenApi::IEnumEntry* frameStart = camera.TriggerSelector.GetEntry( Basler_GigECameraParams::TriggerSelector_FrameStart );
         if( frameStart && GenApi::IsAvailable( frameStart ) )
         {
             //if( frame_trigger.empty() ) { frame_trigger = line_trigger; }
             if( frame_trigger.empty() )
             {
-                camera.TriggerSelector.SetValue( Basler_GigECamera::TriggerSelector_FrameStart );
-                camera.TriggerMode.SetValue( Basler_GigECamera::TriggerMode_Off );
+                camera.TriggerSelector.SetValue( Basler_GigECameraParams::TriggerSelector_FrameStart );
+                camera.TriggerMode.SetValue( Basler_GigECameraParams::TriggerMode_Off );
             }
             else
             {
-                camera.TriggerSelector.SetValue( Basler_GigECamera::TriggerSelector_FrameStart );
-                camera.TriggerMode.SetValue( Basler_GigECamera::TriggerMode_On );
-                Basler_GigECamera::TriggerSourceEnums t;
-                if( frame_trigger == "line1" ) { camera.TriggerSource.SetValue( Basler_GigECamera::TriggerSource_Line1 ); }
-                if( frame_trigger == "line2" ) { camera.TriggerSource.SetValue( Basler_GigECamera::TriggerSource_Line2 ); }
-                if( frame_trigger == "line3" ) { camera.TriggerSource.SetValue( Basler_GigECamera::TriggerSource_Line3 ); }
-                else if( frame_trigger == "encoder" ) { camera.TriggerSource.SetValue( Basler_GigECamera::TriggerSource_ShaftEncoderModuleOut ); }
+                camera.TriggerSelector.SetValue( Basler_GigECameraParams::TriggerSelector_FrameStart );
+                camera.TriggerMode.SetValue( Basler_GigECameraParams::TriggerMode_On );
+                Basler_GigECameraParams::TriggerSourceEnums t;
+                if( frame_trigger == "line1" ) { camera.TriggerSource.SetValue( Basler_GigECameraParams::TriggerSource_Line1 ); }
+                if( frame_trigger == "line2" ) { camera.TriggerSource.SetValue( Basler_GigECameraParams::TriggerSource_Line2 ); }
+                if( frame_trigger == "line3" ) { camera.TriggerSource.SetValue( Basler_GigECameraParams::TriggerSource_Line3 ); }
+                else if( frame_trigger == "encoder" ) { camera.TriggerSource.SetValue( Basler_GigECameraParams::TriggerSource_ShaftEncoderModuleOut ); }
                 else { std::cerr << "basler-cat: frame trigger '" << frame_trigger << "' not implemented or invalid" << std::endl; return 1; }
-                camera.TriggerActivation.SetValue( Basler_GigECamera::TriggerActivation_RisingEdge );
-                camera.TriggerSelector.SetValue( Basler_GigECamera::TriggerSelector_LineStart );
-                camera.TriggerMode.SetValue( Basler_GigECamera::TriggerMode_On );
-                camera.TriggerActivation.SetValue( Basler_GigECamera::TriggerActivation_RisingEdge );
+                camera.TriggerActivation.SetValue( Basler_GigECameraParams::TriggerActivation_RisingEdge );
+                camera.TriggerSelector.SetValue( Basler_GigECameraParams::TriggerSelector_LineStart );
+                camera.TriggerMode.SetValue( Basler_GigECameraParams::TriggerMode_On );
+                camera.TriggerActivation.SetValue( Basler_GigECameraParams::TriggerActivation_RisingEdge );
                 if( frame_trigger == "encoder" )
                 {
                     // todo: make configurable
-                    camera.ShaftEncoderModuleLineSelector.SetValue( Basler_GigECamera::ShaftEncoderModuleLineSelector_PhaseA );
-                    camera.ShaftEncoderModuleLineSource.SetValue( Basler_GigECamera::ShaftEncoderModuleLineSource_Line1 );
-                    camera.ShaftEncoderModuleLineSelector.SetValue( Basler_GigECamera::ShaftEncoderModuleLineSelector_PhaseB );
-                    camera.ShaftEncoderModuleLineSource.SetValue( Basler_GigECamera::ShaftEncoderModuleLineSource_Line2 );
-                    camera.ShaftEncoderModuleCounterMode.SetValue( Basler_GigECamera::ShaftEncoderModuleCounterMode_FollowDirection );
-                    camera.ShaftEncoderModuleMode.SetValue( Basler_GigECamera::ShaftEncoderModuleMode_ForwardOnly );
+                    camera.ShaftEncoderModuleLineSelector.SetValue( Basler_GigECameraParams::ShaftEncoderModuleLineSelector_PhaseA );
+                    camera.ShaftEncoderModuleLineSource.SetValue( Basler_GigECameraParams::ShaftEncoderModuleLineSource_Line1 );
+                    camera.ShaftEncoderModuleLineSelector.SetValue( Basler_GigECameraParams::ShaftEncoderModuleLineSelector_PhaseB );
+                    camera.ShaftEncoderModuleLineSource.SetValue( Basler_GigECameraParams::ShaftEncoderModuleLineSource_Line2 );
+                    camera.ShaftEncoderModuleCounterMode.SetValue( Basler_GigECameraParams::ShaftEncoderModuleCounterMode_FollowDirection );
+                    camera.ShaftEncoderModuleMode.SetValue( Basler_GigECameraParams::ShaftEncoderModuleMode_ForwardOnly );
                     camera.ShaftEncoderModuleCounterMax.SetValue( encoder_ticks - 1 );
                     /// @todo compensate for mechanical jitter, if needed
                     ///       see Runner_Users_manual.pdf, 8.3, Case 2
@@ -544,28 +544,28 @@ int main( int argc, char** argv )
                 }
             }
         }
-        GenApi::IEnumEntry* lineStart = camera.TriggerSelector.GetEntry( Basler_GigECamera::TriggerSelector_LineStart );
+        GenApi::IEnumEntry* lineStart = camera.TriggerSelector.GetEntry( Basler_GigECameraParams::TriggerSelector_LineStart );
         if( lineStart && GenApi::IsAvailable( lineStart ) )
         {
             if( line_trigger.empty() )
             {
-                camera.TriggerSelector.SetValue( Basler_GigECamera::TriggerSelector_LineStart );
-                camera.TriggerMode.SetValue( Basler_GigECamera::TriggerMode_Off );
+                camera.TriggerSelector.SetValue( Basler_GigECameraParams::TriggerSelector_LineStart );
+                camera.TriggerMode.SetValue( Basler_GigECameraParams::TriggerMode_Off );
             }
             else
             {
-                camera.TriggerSelector.SetValue( Basler_GigECamera::TriggerSelector_LineStart );
-                camera.TriggerMode.SetValue( Basler_GigECamera::TriggerMode_On );
-                Basler_GigECamera::TriggerSourceEnums t;
-                if( line_trigger == "line1" ) { camera.TriggerSource.SetValue( Basler_GigECamera::TriggerSource_Line1 ); }
-                else if( line_trigger == "line2" ) { camera.TriggerSource.SetValue( Basler_GigECamera::TriggerSource_Line2 ); }
-                else if( line_trigger == "line3" ) { camera.TriggerSource.SetValue( Basler_GigECamera::TriggerSource_Line3 ); }
-                else if( line_trigger == "encoder" ) { camera.TriggerSource.SetValue( Basler_GigECamera::TriggerSource_ShaftEncoderModuleOut ); }
+                camera.TriggerSelector.SetValue( Basler_GigECameraParams::TriggerSelector_LineStart );
+                camera.TriggerMode.SetValue( Basler_GigECameraParams::TriggerMode_On );
+                Basler_GigECameraParams::TriggerSourceEnums t;
+                if( line_trigger == "line1" ) { camera.TriggerSource.SetValue( Basler_GigECameraParams::TriggerSource_Line1 ); }
+                else if( line_trigger == "line2" ) { camera.TriggerSource.SetValue( Basler_GigECameraParams::TriggerSource_Line2 ); }
+                else if( line_trigger == "line3" ) { camera.TriggerSource.SetValue( Basler_GigECameraParams::TriggerSource_Line3 ); }
+                else if( line_trigger == "encoder" ) { camera.TriggerSource.SetValue( Basler_GigECameraParams::TriggerSource_ShaftEncoderModuleOut ); }
                 else { std::cerr << "basler-cat: line trigger '" << line_trigger << "' not implemented or invalid" << std::endl; return 1; }
-                camera.TriggerActivation.SetValue( Basler_GigECamera::TriggerActivation_RisingEdge );
-                camera.TriggerSelector.SetValue( Basler_GigECamera::TriggerSelector_LineStart );
-                camera.TriggerMode.SetValue( Basler_GigECamera::TriggerMode_On );
-                camera.TriggerActivation.SetValue( Basler_GigECamera::TriggerActivation_RisingEdge );
+                camera.TriggerActivation.SetValue( Basler_GigECameraParams::TriggerActivation_RisingEdge );
+                camera.TriggerSelector.SetValue( Basler_GigECameraParams::TriggerSelector_LineStart );
+                camera.TriggerMode.SetValue( Basler_GigECameraParams::TriggerMode_On );
+                camera.TriggerActivation.SetValue( Basler_GigECameraParams::TriggerActivation_RisingEdge );
             }
         }
         if( chunk_mode )
@@ -591,26 +591,26 @@ int main( int argc, char** argv )
             if( !parser ) { std::cerr << "basler-cat: failed to create chunk parser" << std::endl; camera.Close(); return 1; }
             std::cerr << "basler-cat: set chunk mode" << std::endl;
         }
-        camera.ExposureMode.SetValue( Basler_GigECamera::ExposureMode_Timed );
+        camera.ExposureMode.SetValue( Basler_GigECameraParams::ExposureMode_Timed );
         if( vm.count( "exposure" ) ) { camera.ExposureTimeRaw.SetValue( exposure ); } // todo? auto exposure (see ExposureAutoEnums)
         if( vm.count( "gain" ) )
         { 
             if(verbose) { std::cerr<<"basler-cat: setting gain="<<gain<<std::endl; }
-            camera.GainSelector.SetValue( Basler_GigECamera::GainSelector_All );
+            camera.GainSelector.SetValue( Basler_GigECameraParams::GainSelector_All );
             camera.GainRaw.SetValue( gain );
             if( channels == 3 ) // todo: make configurable; also is not setting all not enough?
             {
-                camera.GainSelector.SetValue( Basler_GigECamera::GainSelector_Red );
+                camera.GainSelector.SetValue( Basler_GigECameraParams::GainSelector_Red );
                 camera.GainRaw.SetValue( gain );
-                camera.GainSelector.SetValue( Basler_GigECamera::GainSelector_Green );
+                camera.GainSelector.SetValue( Basler_GigECameraParams::GainSelector_Green );
                 camera.GainRaw.SetValue( gain );
-                camera.GainSelector.SetValue( Basler_GigECamera::GainSelector_Blue );
+                camera.GainSelector.SetValue( Basler_GigECameraParams::GainSelector_Blue );
                 camera.GainRaw.SetValue( gain );
             }
         }
         if( vm.count( "line-rate" ) ) { camera.AcquisitionLineRateAbs.SetValue( line_rate ); }
-        if( vm.count( "test-colour" ) ) { camera.TestImageSelector.SetValue( Basler_GigECamera::TestImageSelector_Testimage6 ); }
-        else { camera.TestImageSelector.SetValue( Basler_GigECamera::TestImageSelector_Off ); }
+        if( vm.count( "test-colour" ) ) { camera.TestImageSelector.SetValue( Basler_GigECameraParams::TestImageSelector_Testimage6 ); }
+        else { camera.TestImageSelector.SetValue( Basler_GigECameraParams::TestImageSelector_Off ); }
         unsigned int payload_size = camera.PayloadSize.GetValue();
         if( verbose )
         { 
@@ -640,7 +640,7 @@ int main( int argc, char** argv )
             snark::tbb::bursty_reader< ChunkPair > read( boost::bind( &capture_< ChunkPair >, boost::ref( camera ), boost::ref( grabber ) ), discard );
             tbb::filter_t< ChunkPair, void > write( tbb::filter::serial_in_order, boost::bind( &write_, _1 ) );
             snark::tbb::bursty_pipeline< ChunkPair > pipeline;
-            camera.AcquisitionMode.SetValue( Basler_GigECamera::AcquisitionMode_Continuous );
+            camera.AcquisitionMode.SetValue( Basler_GigECameraParams::AcquisitionMode_Continuous );
             camera.AcquisitionStart.Execute(); // continuous acquisition mode        
             if( verbose ) { std::cerr << "basler-cat: running in chunk mode..." << std::endl; }
             pipeline.run( read, write );
@@ -653,7 +653,7 @@ int main( int argc, char** argv )
             snark::cv_mat::serialization serialization( options );
             snark::tbb::bursty_reader< Pair > reader( boost::bind( &capture_< Pair >, boost::ref( camera ), boost::ref( grabber ) ), discard );
             snark::imaging::applications::pipeline pipeline( serialization, filters, reader );
-            camera.AcquisitionMode.SetValue( Basler_GigECamera::AcquisitionMode_Continuous );
+            camera.AcquisitionMode.SetValue( Basler_GigECameraParams::AcquisitionMode_Continuous );
             camera.AcquisitionStart.Execute(); // continuous acquisition mode        
             if( verbose ) { std::cerr << "basler-cat: running..." << std::endl; }
             pipeline.run();

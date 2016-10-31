@@ -130,7 +130,7 @@ require(['jquery', 'jquery_mobile', "jquery_timeago", "bootstrap",
     var add_panel = function (feed_name, feed_path) {
         $('#container').append(
             '<li id="' + feed_name + '" class="panel"  data-name="' + feed_path + '">' +
-            '  <button type="button" class="panel-close hideable text-muted pull-right" title="close"><span>&times;</span></button>' +
+            '  <button type="button" class="panel-close text-muted pull-right" title="close"><span>&times;</span></button>' +
             '</li>'
         );
     };
