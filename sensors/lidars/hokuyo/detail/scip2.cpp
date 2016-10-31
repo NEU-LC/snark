@@ -146,7 +146,7 @@ void scip2_device::request_scan(stream_base& ios, int start_step, int end_step, 
     if(end_step<0) { COMMA_THROW( comma::exception, "end step should be greater than 0 : " << end_step); }
     profile->range_check(start_step,end_step);
 
-    md=std::auto_ptr<request_md>(new request_md(false));
+    md = boost::shared_ptr<request_md>(new request_md(false));
     md->header.start_step = start_step;
     md->header.end_step = end_step;
     md->num_of_scans = num_of_scans;
