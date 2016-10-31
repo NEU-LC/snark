@@ -194,20 +194,19 @@ static P capture_( Pylon::CBaslerGigECamera& camera, Pylon::CBaslerGigECamera::S
         }
         P pair;
         static const snark::cv_mat::serialization::header header = options.get_header();
+        pair.second = cv::Mat( result.GetSizeY(), result.GetSizeX(), header.type );
+        ::memcpy( pair.second.data, reinterpret_cast< const char* >( result.Buffer() )
+                , pair.second.dataend - pair.second.datastart );
         switch( header.type )
         {
             case CV_8UC1:
-                pair.second = cv::Mat( result.GetSizeY(), result.GetSizeX(), header.type );
-                ::memcpy( pair.second.data, reinterpret_cast< const char* >( result.Buffer() ), pair.second.dataend - pair.second.datastart );
                 break;
             case CV_8UC3: // quick and dirty for now: rgb are not contiguous in basler camera frame
-                pair.second = cv::Mat( result.GetSizeY(), result.GetSizeX(), header.type );
-                ::memcpy( pair.second.data, reinterpret_cast< const char* >( result.Buffer() ), pair.second.dataend - pair.second.datastart );
                 cv::cvtColor( pair.second, pair.second, CV_RGB2BGR );
                 break;
             default: // quick and dirty for now
                 std::cerr << "basler-cat: cv::mat type " << options.type << " not supported" << std::endl;
-        }            
+        }
         set_( pair.first, t, result, camera );
         grabber.QueueBuffer( result.Handle(), NULL ); // requeue buffer
         if( is_shutdown ) { done = true; }
