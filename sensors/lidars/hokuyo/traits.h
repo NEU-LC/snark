@@ -53,7 +53,7 @@ template <> struct traits< snark::hokuyo::data_point >
 {
     template< typename K, typename V > static void visit( const K& k, snark::hokuyo::data_point& t, V& v )
     {
-        v.apply( "timestamp", t.timestamp );
+        v.apply( "t", t.t );
         v.apply( "x", t.x );
         v.apply( "y", t.y );
         v.apply( "z", t.z );
@@ -65,7 +65,7 @@ template <> struct traits< snark::hokuyo::data_point >
     
     template< typename K, typename V > static void visit( const K& k, const snark::hokuyo::data_point& t, V& v )
     {
-        v.apply( "timestamp", t.timestamp );
+        v.apply( "t", t.t );
         v.apply( "x", t.x );
         v.apply( "y", t.y );
         v.apply( "z", t.z );
@@ -80,7 +80,7 @@ template < > struct traits< snark::hokuyo::scip2_device::output_t >
 {
     template< typename K, typename V > static void visit( const K& k, snark::hokuyo::scip2_device::output_t& t, V& v )
     {
-        v.apply( "timestamp", t.timestamp );
+        v.apply( "t", t.t );
         v.apply( "x", t.x );
         v.apply( "y", t.y );
         v.apply( "z", t.z );
@@ -92,7 +92,7 @@ template < > struct traits< snark::hokuyo::scip2_device::output_t >
     
     template< typename K, typename V > static void visit( const K& k, const snark::hokuyo::scip2_device::output_t& t, V& v )
     {
-        v.apply( "timestamp", t.timestamp );
+        v.apply( "t", t.t );
         v.apply( "x", t.x );
         v.apply( "y", t.y );
         v.apply( "z", t.z );

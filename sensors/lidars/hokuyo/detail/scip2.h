@@ -74,7 +74,7 @@ struct scip2_device:public laser_device
         output_t(double distance, double bearing);
         bool is_nan() const { return ( x == 0 && y == 0 && z == 0 ); }
         
-        boost::posix_time::ptime timestamp;
+        boost::posix_time::ptime t;
         double x;
         double y;
         double z;

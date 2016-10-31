@@ -42,7 +42,7 @@ namespace snark { namespace hokuyo {
 /// Note z and elevation are always zero as laser shoots out horizontally.
 struct data_point
 {
-    data_point() : timestamp( boost::posix_time::microsec_clock::universal_time() ), 
+    data_point() : t( boost::posix_time::microsec_clock::universal_time() ), 
         x(0), y(0), z(0), range(0), bearing(0), elevation(0), intensity(0) {}
     
     bool is_nan() const { return ( x == 0 && y == 0 && z == 0 ); }
@@ -51,7 +51,7 @@ struct data_point
     /// distance in meters, bearing in (radians)
     void set( double distance, comma::uint32 intensity, double bearing );
     
-    boost::posix_time::ptime timestamp;
+    boost::posix_time::ptime t;
     double x;
     double y;
     double z;

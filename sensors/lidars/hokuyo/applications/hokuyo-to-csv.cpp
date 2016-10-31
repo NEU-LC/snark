@@ -59,23 +59,23 @@ static void usage()
     std::cerr << "    hokuyo-to-csv --laser <host:port> [ --fields t,x,y,z,range,bearing,elevation,intensity ]" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
-    std::cerr << "*   --laser=:             the TCP connection to the laser <host:port>" << std::endl;
+    std::cerr << "    --laser=:             the TCP connection to the laser <host:port>" << std::endl;
     std::cerr << "    --help,-h:            show this message" << std::endl;
     std::cerr << "    --binary,-b:          output binary equivalent of csv" << std::endl;
     std::cerr << "    --fields=<fields>:    output only given fields" << std::endl;
 //     std::cerr << "        default: " << comma::join( comma::csv::names< csv_point >( false ), ',' ) << " (" << comma::csv::format::value< csv_point >() << ")" << std::endl;
     std::cerr << "        t:                timestamp" << std::endl;
     std::cerr << "        x,y,z:            cartesian coordinates in sensor frame, where <0,0,0> is no data" << std::endl;
-    std::cerr << "                              range,bearing, elevation or r,b,e: polar coordinates in sensor frame" << std::endl;
-    std::cerr << "        i:                intensity of the data point." << std::endl;
-    std::cerr << "    --format:             output binary format for given fields to stdout and exit" << std::endl;
+    std::cerr << "        range,bearing,elevation or r,b,e: polar coordinates in sensor frame" << std::endl;
+    std::cerr << "        intensity or i:   intensity of the data point" << std::endl;
+    std::cerr << "    --output-fields:      output fields to stdout and exit; use --scip2 for scip2 fields" << std::endl;
+    std::cerr << "    --output-format,--format: output binary format for given fields to stdout and exit" << std::endl;
     std::cerr << "    --start-step=<0-890>: Scan starting at a start step and go to (step+270) wich covers 67.75\" which is 270\"/4." << std::endl;
     std::cerr << "                          Does not perform a full 270\" scan." << std::endl;
     std::cerr << "    --reboot-on-error:    if failed to put scanner into scanning mode, reboot the scanner." << std::endl;
     std::cerr << "    --num-of-scans:       How many scans is requested for ME requests, default is 100 - 0 for continuous ( data verification problem with 0 )." << std::endl;
     std::cerr << "    --scan-break:         How many usec of sleep time between ME request and reponses received before issuing another ME request, default is 20us." << std::endl;
     std::cerr << "    --verbose: show more information" << std::endl;
-    std::cerr << "    --output-fields: output fields to stdout and exit; use --scip2 for scip2 fields" << std::endl;
     std::cerr << std::endl;
     std::cerr << "Output" << std::endl;
     std::cerr << "   fields: " << comma::join( comma::csv::names< snark::hokuyo::data_point >(), ','  ) << std::endl;
@@ -163,7 +163,7 @@ void output_samples()
     pt.intensity = 100;
     while( !signaled && std::cout.good() )
     {
-        pt.timestamp = boost::posix_time::microsec_clock::universal_time();
+        pt.t = boost::posix_time::microsec_clock::universal_time();
         output.write( pt );
         boost::this_thread::sleep_for( boost::chrono::milliseconds(100) );
     }
@@ -191,8 +191,8 @@ int main( int ac, char** av )
         frames=options.value<int>("--frames",-1);
         omit_on_error = ! options.exists("--dont-omit-on-error");
         bool permissive = options.exists( "--permissive" );
-        std::vector< std::string > unnamed = options.unnamed( "--output-fields,--verbose,-v,--flush,--reboot-on-error,--debug,--scip2,--output-samples,--dont-omit-on-errork,--permissive",
-                                                              "--frames,--scan-break,--num-of-scans,--start-step,--end-step,--serial,--port,--laser,--fields,--format,--binary,-b,--baud-rate,--set-baud-rate");
+        std::vector< std::string > unnamed = options.unnamed( "--output-fields,--output-format,--format,--verbose,-v,--flush,--reboot-on-error,--debug,--scip2,--output-samples,--dont-omit-on-errork,--permissive",
+                                                              "--frames,--scan-break,--num-of-scans,--start-step,--end-step,--serial,--port,--laser,--fields,--binary,-b,--baud-rate,--set-baud-rate");
         if(!unnamed.empty())
         {
             std::cerr<<"invalid option(s):"<< comma::join(unnamed, ',') <<std::endl;
@@ -214,12 +214,11 @@ int main( int ac, char** av )
             else if( v[i] == "r" ) { v[i] = "range"; }
             else if( v[i] == "b" ) { v[i] = "bearing"; }
             else if( v[i] == "e" ) { v[i] = "elevation"; }
-            else if( v[i] == "t" ) { v[i] = "timestamp"; }
         }
         csv.fields = comma::join( v, ',' );
         csv.full_xpath = false;
         // see sick-ldmrs-to-csv
-        if( options.exists( "--format" ) ) 
+        if( options.exists( "--output-format,--format" ) ) 
         {
             if(serial) { std::cout << comma::csv::format::value< scip2_device::output_t >( csv.fields, false ) << std::endl; }
             else { std::cout << comma::csv::format::value< snark::hokuyo::data_point >( csv.fields, false ) << std::endl; }
