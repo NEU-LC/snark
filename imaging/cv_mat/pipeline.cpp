@@ -43,7 +43,7 @@ pipeline::pipeline( cv_mat::serialization& output
                   , const std::string& filters
                   , tbb::bursty_reader< pair >& reader
                   , unsigned int number_of_threads )
-    : m_output( output )
+    : m_output( &output )
     , m_filters( snark::cv_mat::filters::make( filters ) )
     , m_reader( reader )
     , m_pipeline( number_of_threads )
@@ -55,7 +55,7 @@ pipeline::pipeline( cv_mat::serialization& output
                   , const std::vector< cv_mat::filter >& filters
                   , tbb::bursty_reader< pair >& reader
                   , unsigned int number_of_threads )
-    : m_output( output )
+    : m_output( &output )
     , m_filters( filters )
     , m_reader( reader )
     , m_pipeline( number_of_threads )
@@ -75,7 +75,9 @@ void pipeline::write_( pair p )
     {
         m_reader.stop();
     }
-    m_output.write( std::cout, p );
+    comma::synchronized< cv_mat::serialization* >::scoped_transaction t( m_output );
+    cv_mat::serialization* s = *t;
+    s->write( std::cout, p );
 }
 
 void pipeline::null_( pair p )
