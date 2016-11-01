@@ -53,8 +53,8 @@ private:
 /// constructor
 /// @param numThread maximum number of threads, 0 means auto
 template< typename T >
-bursty_pipeline< T >::bursty_pipeline( unsigned int numThread )
-    : m_threads( numThread > 0 ? m_init.default_num_threads() : 0 )
+inline bursty_pipeline< T >::bursty_pipeline( unsigned int numThread )
+    : m_threads( numThread > 0 ? numThread : m_init.default_num_threads() )
 {
 }
 
