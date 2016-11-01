@@ -3,13 +3,12 @@
  */
 define('FormFeed', ["jquery", "Feed"], function ($) {
     var Feed = require('Feed');
-    var fields = [];
-    var url;
-    var form;
     var FormFeed = function (feed_name, feed_path, config) {
         this.base = Feed;
         this.base(feed_name, feed_path, config);
-        FormFeed.prototype.extract_fields(config.form);
+        this.fields = [];
+        this.form = $('<form>');
+        this.extract_fields(config.form);
         // this.directory = this.config.form.directory != undefined ? this.config.form.directory : "/logging";
 
     };
@@ -18,23 +17,23 @@ define('FormFeed', ["jquery", "Feed"], function ($) {
 
     FormFeed.prototype.extract_fields = function (form_elements) {
         if (form_elements != undefined) {
-            populate_path_values(form_elements, "");
+            this.populate_path_values(form_elements, "");
         }
-        console.log(fields);
+        console.log(this.fields);
     };
 
 
-    var populate_path_values = function (form_elements, prefix) {
+    FormFeed.prototype.populate_path_values = function (form_elements, prefix) {
         for (var element in form_elements) {
             var value = form_elements[element];
             var type = typeof value;
             if (type == "object") {
                 var p = get_prefix(element, prefix);
-                populate_path_values(value, p);
+                this.populate_path_values(value, p);
             }
             else if (type = "string") {
                 var p = get_prefix(element, prefix);
-                fields[p] = value;
+                this.fields[p] = value;
             }
             // console.log(element + " typeof " + (typeof element) + "   type= " + type);
         }
@@ -56,10 +55,12 @@ define('FormFeed', ["jquery", "Feed"], function ($) {
         }
         return p;
     };
+
     FormFeed.prototype.init = function () {
         this.target.empty();
-        form = $('<form>');
-        for (var field in fields) {
+        var url = this.get_url();
+
+        for (var field in this.fields) {
             var row = $('<div>', {class: "form-group"});
             var label = $('<label>',
                 {
@@ -71,10 +72,10 @@ define('FormFeed', ["jquery", "Feed"], function ($) {
                     type: 'text',
                     class: "col-sm-6",
                     name: field,
-                    value: fields[field]
+                    value: this.fields[field]
                 });
             row.append(label).append(input);
-            form.append(row);
+            this.form.append(row);
         }
         // var combo = $('<select>');
         //
@@ -83,6 +84,7 @@ define('FormFeed', ["jquery", "Feed"], function ($) {
         //     event.preventDefault();
         // });
         var buttons = $('<div>', {class: "form-group"});
+        var this_ = this;
 
         var submit = $('<input/>',
             {
@@ -96,7 +98,8 @@ define('FormFeed', ["jquery", "Feed"], function ($) {
                             data: $(this).closest("form").serialize(),
                             url: url
                         }).done(function (data, textStatus, jqXHR) {
-                            FormFeed.prototype.onload_(data);
+                            // FormFeed.prototype.onload_(data);
+                            this_.onload(data);
                         }).fail(function (jqXHR, textStatus, errorThrown) {
                             FormFeed.prototype.onerror();
                         });
@@ -120,9 +123,9 @@ define('FormFeed', ["jquery", "Feed"], function ($) {
         // form.append(combo).append("<br>");
         // form.append(input).append("<br>");
         buttons.append(submit).append(space).append(clear);
-        form.append(buttons);
-        this.target.append(form);
-        if (fields.length > 0) {
+        this.form.append(buttons);
+        this.target.append(this.form);
+        if (this.fields.length > 0) {
             this.target.width(500);
         }
         else {
@@ -136,7 +139,6 @@ define('FormFeed', ["jquery", "Feed"], function ($) {
     };
 
     FormFeed.prototype.load = function () {
-        url = this.get_url();
         this.init();
 
         // $.ajax({
@@ -152,11 +154,11 @@ define('FormFeed', ["jquery", "Feed"], function ($) {
     FormFeed.prototype.onload_ = function (data) {
         // this.target.height(100);
         // data = data.replace(/\n/g, '<br/>');
-        $(form).parent().find(".result-panel").remove();
+        $(this.form).parent().find(".result-panel").remove();
         var panel = $('<div>', {class: "panel result-panel col-sm-11"});
         panel.append($('<span>', {class: "label label-info", text: "Output"}));
         panel.append($('<div>', {class: "form-results", text: data}));
-        $(form).append(panel)
+        $(this.form).append(panel)
     };
     return FormFeed;
 });
