@@ -53,9 +53,9 @@ define('base_controller', ['jquery', "jquery_timeago",
         var class_str = globals.isMobile ? '' : ' hideable transparent';
         $(id).append(
             '<h3>' + feed_name +
-            '  <button class="panel-refresh" title="<kbd>click</kbd>: refresh<br><kbd>shift+click</kbd>: auto refresh"><span class="status glyphicon glyphicon-stop"></span></button>' +
-            '  <button class="panel-settings' + class_str + '" title="settings"><span class="glyphicon glyphicon-cog"></span></button>' +
-            '  <button class="panel-compact' + class_str + '" title="compact"><span class="glyphicon glyphicon-resize-small"></span></button>' +
+            '  <button class="panel-refresh" title="<kbd>click</kbd>: refresh<br><kbd>shift+click</kbd>: auto refresh"><span class="status text-muted glyphicon glyphicon-stop"></span></button>' +
+            '  <button class="panel-settings' + class_str + '" title="settings"><span class="text-muted glyphicon glyphicon-cog"></span></button>' +
+            '  <button class="panel-compact' + class_str + '" title="compact"><span class="text-muted glyphicon glyphicon-resize-small"></span></button>' +
             '</h3>' +
             '<div class="panel-body">' +
             '  <time class="timestring time small">&nbsp;</time>' +
@@ -201,8 +201,8 @@ define('base_controller', ['jquery', "jquery_timeago",
         var class_str = globals.isMobile ? '' : ' hideable transparent';
         $(id).append(
             '<h3>' + feed_name +
-            '  <button class="panel-stream-control" title="<kbd>click</kbd>: refresh<br><kbd>shift+click</kbd>: start/stop"><span class="status glyphicon glyphicon-stop"></span></button>' +
-            '  <button class="panel-settings' + class_str + '" title="settings"><span class="glyphicon glyphicon-cog"></span></button></h3>' +
+            '  <button class="panel-stream-control" title="<kbd>click</kbd>: refresh<br><kbd>shift+click</kbd>: start/stop"><span class="status text-muted glyphicon glyphicon-stop"></span></button>' +
+            '  <button class="panel-settings' + class_str + '" title="settings"><span class="text-muted glyphicon glyphicon-cog"></span></button></h3>' +
             '<div class="panel-body">' +
             element +
             '</div>'

@@ -117,7 +117,7 @@ body {
     color: #666666;
 }
 
-.panel-alert, .panel-alert:hover {
+.panel-alert {
     color: #012345 !important;
     text-shadow: none;
     background-color: #d9534f !important;
