@@ -38,13 +38,13 @@ void scip2_device::usage()
 }
 
 scip2_device::output_t::output_t() : 
-            timestamp( boost::posix_time::microsec_clock::universal_time() ), 
+            t( boost::posix_time::microsec_clock::universal_time() ), 
             x(0), y(0), z(0), block(0), range(0), bearing(0), elevation(0) 
 {
 }
 
 scip2_device::output_t::output_t(double distance, double abearing) : 
-            timestamp( boost::posix_time::microsec_clock::universal_time() ), 
+            t( boost::posix_time::microsec_clock::universal_time() ), 
             x(0), y(0), z(0), block(0), range(0), bearing(abearing), elevation(0)
 {
     range = distance / 1000.0;
@@ -146,7 +146,7 @@ void scip2_device::request_scan(stream_base& ios, int start_step, int end_step, 
     if(end_step<0) { COMMA_THROW( comma::exception, "end step should be greater than 0 : " << end_step); }
     profile->range_check(start_step,end_step);
 
-    md=std::auto_ptr<request_md>(new request_md(false));
+    md = boost::shared_ptr<request_md>(new request_md(false));
     md->header.start_step = start_step;
     md->header.end_step = end_step;
     md->num_of_scans = num_of_scans;

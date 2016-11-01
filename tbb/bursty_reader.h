@@ -27,16 +27,14 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
-#ifndef SNARK_TBB_BURSTY_READER_H_
-#define SNARK_TBB_BURSTY_READER_H_
+#pragma once
 
 #include <boost/thread.hpp>
 #include <boost/scoped_ptr.hpp>
 #include <tbb/pipeline.h>
 #include "queue.h"
 
-namespace snark{ namespace tbb{
+namespace snark { namespace tbb {
 
 /// the user can provide a method to validate the data,
 /// the pipeline will be shut down if invalid data is received
@@ -48,30 +46,34 @@ struct bursty_reader_traits
 
 /// helper class to run a tbb pipeline with bursty data
 /// the pipeline has to be closed when no data is received to prevent the main thread to spin
-template< typename T >
+template < typename T >
 class bursty_reader
 {
 public:
     bursty_reader( boost::function0< T > read, unsigned int size = 0 );
+    
     bursty_reader( boost::function0< T > read, unsigned int size, unsigned int capacity );
+    
     ~bursty_reader();
 
     bool wait();
+    
     void stop();
+    
     void join();
-    ::tbb::filter_t< void, T >& filter() { return m_read_filter; }
+    
+    ::tbb::filter_t< void, T >& filter() { return read_filter_; }
 
 private:
     T read( ::tbb::flow_control& flow );
     void push();
-    void push_thread();
 
-    queue< T > m_queue;
-    unsigned int m_size;
-    bool m_running;
-    boost::scoped_ptr< boost::thread > m_thread;
-    boost::function0< T > m_read;
-    ::tbb::filter_t< void, T > m_read_filter;
+    queue< T > queue_;
+    unsigned int size_;
+    bool running_;
+    boost::function0< T > read_;
+    ::tbb::filter_t< void, T > read_filter_;
+    boost::thread thread_;
 };
 
 
@@ -79,13 +81,13 @@ private:
 /// @param read the user-provided read functor that outputs the data
 /// @param size maximum input queue size before discarding data, 0 means infinite
 template< typename T >
-bursty_reader< T >::bursty_reader( boost::function0< T > read, unsigned int size ):
-    m_size( size ),
-    m_running( true ),
-    m_read( read ),
-    m_read_filter( ::tbb::filter::serial_in_order, boost::bind( &bursty_reader< T >::read, this, _1 ) )
+bursty_reader< T >::bursty_reader( boost::function0< T > read, unsigned int size )
+    : size_( size )
+    , running_( true )
+    , read_( read )
+    , read_filter_( ::tbb::filter::serial_in_order, boost::bind( &bursty_reader< T >::read, this, _1 ) )
+    , thread_( boost::bind( &bursty_reader< T >::push, this ) )
 {
-    m_thread.reset( new boost::thread( boost::bind( &bursty_reader< T >::push_thread, this ) ) );
 }
 
 /// constructor
@@ -93,71 +95,68 @@ bursty_reader< T >::bursty_reader( boost::function0< T > read, unsigned int size
 /// @param size maximum input queue size before discarding data, 0 means infinite
 /// @param capacity maximum input queue size before the reader thread blocks
 template< typename T >
-bursty_reader< T >::bursty_reader( boost::function0< T > read, unsigned int size, unsigned int capacity ):
-    m_queue( capacity ),
-    m_size( size ),
-    m_running( true ),
-    m_read( read ),
-    m_read_filter( ::tbb::filter::serial_in_order, boost::bind( &bursty_reader< T >::read, this, _1 ) )
+bursty_reader< T >::bursty_reader( boost::function0< T > read, unsigned int size, unsigned int capacity )
+    : queue_( capacity )
+    , size_( size )
+    , running_( true )
+    , read_( read )
+    , read_filter_( ::tbb::filter::serial_in_order, boost::bind( &bursty_reader< T >::read, this, _1 ) )
+    , thread_( boost::bind( &bursty_reader< T >::push, this ) )
 {
-    m_thread.reset( new boost::thread( boost::bind( &bursty_reader< T >::push_thread, this ) ) );
 }
 
 /// destructor
 template< typename T >
-bursty_reader< T >::~bursty_reader()
+inline bursty_reader< T >::~bursty_reader()
 {
     join();
 }
 
-
 /// wait until the queue is ready
-/// @return true if the reader is running or the queue is not empty, ie. if the pipeline should be started
+/// @return true if the reader is running or the queue is not empty, i.e. if the pipeline should be started
 template< typename T >
-bool bursty_reader< T >::wait()
+inline bool bursty_reader< T >::wait()
 {
-    if( !m_running && m_queue.empty() ) { return false; }
-    m_queue.wait();
-    return !m_queue.empty();
+    if( !running_ && queue_.empty() ) { return false; }
+    queue_.wait();
+    return !queue_.empty();
 }
 
 /// stop pushing items in the queue, will not wait until the thread actually exits, call join() if
 /// this is what you want
-template< typename T >
-void bursty_reader< T >::stop()
+template < typename T >
+inline void bursty_reader< T >::stop()
 {
-    m_running = false;
-    m_queue.shutdown();
+    running_ = false;
+    queue_.shutdown();
 }
 
 /// join the push thread
-template< typename T >
-void bursty_reader< T >::join()
+template < typename T >
+inline void bursty_reader< T >::join()
 {
     stop();
-    if( !m_thread ) { return; }
-    m_thread->join();
-    m_thread.reset();
+    thread_.join();
 }
 
 /// try to pop a frame from the queue
 /// @param flow pipeline flow control used to stop the pipeline when the queue is empty
-template< typename T >
-T bursty_reader< T >::read( ::tbb::flow_control& flow )
+template < typename T >
+inline T bursty_reader< T >::read( ::tbb::flow_control& flow )
 {
-    if( m_queue.empty() )
+    if( queue_.empty() )
     {
         flow.stop();
         return T();
     }
-    if( m_size > 0 )
+    if( size_ > 0 )
     {
-        T t;
         unsigned int n = 0;
-        while( m_queue.size() > m_size )
+        while( queue_.size() > size_ )
         {
-            m_queue.pop( t );
-            n++;
+            T t;
+            queue_.pop( t );
+            ++n;
         }
 //         if( n > 0 ) TODO how to warn the user that data is discarded ?
 //         {
@@ -165,43 +164,30 @@ T bursty_reader< T >::read( ::tbb::flow_control& flow )
 //         }
     }
     T t;
-    m_queue.pop( t );
-    if( !bursty_reader_traits< T >::valid( t ) )
-    {
-        flow.stop();
-        return T();
-    }
-    return t;
+    queue_.pop( t );
+    if( bursty_reader_traits< T >::valid( t ) ) { return t; }
+    flow.stop();
+    return T();
 }
 
-
-/// read an element from the source and push it to the queue
-template< typename T >
-void bursty_reader< T >::push()
-{
-    T t = m_read();
-    if( !bursty_reader_traits< T >::valid( t ) )
-    {
-        m_running = false;
-        m_queue.push( T() ); // HACK to signal m_queue.wait
-    }
-    else
-    {
-        m_queue.push( t );
-    }
-}
 
 /// push data to the queue in a separate thread
-template< typename T >
-void bursty_reader< T >::push_thread()
+template < typename T >
+inline void bursty_reader< T >::push()
 {
-    while( m_running )
+    while( running_ )
     {
-        push();
+        T t = read_();
+        if( bursty_reader_traits< T >::valid( t ) )
+        {
+            queue_.push( t );
+        }
+        else
+        {
+            running_ = false;
+            queue_.push( T() ); // HACK to signal queue_.wait
+        }
     }
 }
 
-
-} }
-
-#endif // SNARK_TBB_BURSTY_READER_H_
+} } // namespace snark { namespace tbb {

@@ -27,7 +27,6 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
 #ifndef SNARK_IMAGING_BURSTY_PIPELINE_H_
 #define SNARK_IMAGING_BURSTY_PIPELINE_H_
 
@@ -54,34 +53,25 @@ private:
 /// constructor
 /// @param numThread maximum number of threads, 0 means auto
 template< typename T >
-bursty_pipeline< T >::bursty_pipeline( unsigned int numThread ):
-    m_threads( numThread )
+inline bursty_pipeline< T >::bursty_pipeline( unsigned int numThread )
+    : m_threads( numThread > 0 ? numThread : m_init.default_num_threads() )
 {
-    if( numThread == 0 )
-    {
-        m_threads = m_init.default_num_threads();
-    }
 }
 
 /// run the pipeline once
 template< typename T >
-void bursty_pipeline< T >::run_once( bursty_reader< T >& reader, const ::tbb::filter_t< T, void >& filter )
+inline void bursty_pipeline< T >::run_once( bursty_reader< T >& reader, const ::tbb::filter_t< T, void >& filter )
 {
     ::tbb::parallel_pipeline( m_threads, reader.filter() & filter );
 }
 
 /// run the pipeline until the reader stops and the queue is empty
 template< typename T >
-void bursty_pipeline< T >::run( bursty_reader< T >& reader, const ::tbb::filter_t< T, void >& filter )
+inline void bursty_pipeline< T >::run( bursty_reader< T >& reader, const ::tbb::filter_t< T, void >& filter )
 {
     const ::tbb::filter_t< void, void > f = reader.filter() & filter;
-    while( reader.wait() )
-    {
-        ::tbb::parallel_pipeline( m_threads, f );
-    }
+    while( reader.wait() ) { ::tbb::parallel_pipeline( m_threads, f ); }
 }
-
-
 
 } }
 

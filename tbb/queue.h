@@ -27,14 +27,12 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
-#ifndef SNARK_TBB_QUEUE_H_
-#define SNARK_TBB_QUEUE_H_
+#pragma once
 
 #include <boost/thread/condition.hpp>
 #include <tbb/concurrent_queue.h>
 
-namespace snark{ namespace tbb{ 
+namespace snark { namespace tbb { 
 
 class counter
 {
@@ -51,10 +49,10 @@ class counter
              return value_;
         }
         
-        /// decrement; block, if 0
+        /// decrement, if greater than 0; block, if 0
         unsigned int operator--()
         {
-            boost::unique_lock<boost::mutex> lock( mutex_ );
+            boost::unique_lock< boost::mutex > lock( mutex_ );
             while( value_ == 0 && !shutdown_ ) { condition_.timed_wait( lock, boost::posix_time::milliseconds( 100 ) ); }
             if( value_ > 0 ) { --value_; }
             return value_;
@@ -63,7 +61,7 @@ class counter
         /// block until not empty
         unsigned int wait_until_non_zero()
         {
-            boost::unique_lock<boost::mutex> lock( mutex_ );
+            boost::unique_lock< boost::mutex > lock( mutex_ );
             while( value_ == 0 && !shutdown_ ) { condition_.timed_wait( lock, boost::posix_time::milliseconds( 100 ) ); }
             return value_;
         }
@@ -76,34 +74,35 @@ class counter
         boost::mutex mutex_;
         unsigned int value_;
         bool shutdown_;
-        
 };
 
 /// concurrent queue with wait function
 /// @todo use some native mechanism from tbb
 ///       or at least tbb::vector instead of
 ///       queue for locking
-template< typename T >
+template < typename T >
 class queue
 {
-public:
-    queue() {}
-    queue( unsigned int capacity ) { m_queue.set_capacity( capacity ); }
-    ~queue() {}
+    public:
+        queue() {}
+        
+        queue( unsigned int capacity ) { queue_.set_capacity( capacity ); }
 
-    void push( const T& t ) { m_queue.push( t ); ++counter_; }
-    void pop( T& t ) { m_queue.pop( t ); --counter_; }
-    unsigned int size() const { return m_queue.size(); }
-    bool empty() const { return m_queue.empty(); }
-    void wait() { counter_.wait_until_non_zero(); }
-    void shutdown() { counter_.shutdown(); }
+        void push( const T& t ) { queue_.push( t ); ++counter_; }
+        
+        void pop( T& t ) { queue_.pop( t ); --counter_; }
+        
+        unsigned int size() const { return queue_.size(); }
+        
+        bool empty() const { return queue_.empty(); }
+        
+        void wait() { counter_.wait_until_non_zero(); }
+        
+        void shutdown() { counter_.shutdown(); }
 
-private:
-    ::tbb::concurrent_bounded_queue< T > m_queue;
-    counter counter_;
-
+    private:
+        ::tbb::concurrent_bounded_queue< T > queue_;
+        counter counter_;
 };
     
-} } 
-
-#endif // SNARK_TBB_QUEUE_H_
+} } // namespace snark { namespace tbb {

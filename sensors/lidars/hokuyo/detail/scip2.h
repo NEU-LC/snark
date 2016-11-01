@@ -57,7 +57,7 @@ struct scip2_device:public laser_device
     static uhg_08lx uhg_08lx_;
     static utm_30lx utm_30lx_;
     scip2_data scan_data;
-    std::auto_ptr<request_md> md;
+    boost::shared_ptr<request_md> md;
     struct data_t
     {
         double distance;
@@ -74,7 +74,7 @@ struct scip2_device:public laser_device
         output_t(double distance, double bearing);
         bool is_nan() const { return ( x == 0 && y == 0 && z == 0 ); }
         
-        boost::posix_time::ptime timestamp;
+        boost::posix_time::ptime t;
         double x;
         double y;
         double z;

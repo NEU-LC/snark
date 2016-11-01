@@ -21,7 +21,8 @@ target_link_libraries( basler-cat
                        pylonutility )
                        
 if( ${BASLER_PYLON_MAJOR_VERSION} LESS 5 )
-    target_link_libraries( basler-cat pylongigesupp 
+    target_link_libraries( basler-cat
+        pylongigesupp
         GCBase_gcc40_v${BASLER_PYLON_MAJOR_VERSION}_${BASLER_PYLON_MINOR_VERSION} 
         GenApi_gcc40_v${BASLER_PYLON_MAJOR_VERSION}_${BASLER_PYLON_MINOR_VERSION} )
 else()

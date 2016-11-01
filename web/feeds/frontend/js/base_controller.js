@@ -50,12 +50,12 @@ define('base_controller', ['jquery', "jquery_timeago",
 
     base_controller.prototype.add_poll_body = function (feed_name, element, popup_div) {
         var id = '#' + feed_path_to_id(feed_name);
-        var class_str = globals.isMobile ? '' : ' transparent';
+        var class_str = globals.isMobile ? '' : ' hideable transparent';
         $(id).append(
             '<h3>' + feed_name +
-            '  <button class="panel-refresh hideable' + class_str + '" title="<kbd>click</kbd>: refresh<br><kbd>shift+click</kbd>: auto refresh"><span class="status text-muted glyphicon glyphicon-refresh"></span></button>' +
-            '  <button class="panel-settings hideable' + class_str + '" title="settings"><span class="text-muted glyphicon glyphicon-cog"></span></button>' +
-            '  <button class="panel-compact hideable' + class_str + '" title="compact"><span class="text-muted glyphicon glyphicon-resize-small"></span></button>' +
+            '  <button class="panel-refresh" title="<kbd>click</kbd>: refresh<br><kbd>shift+click</kbd>: auto refresh"><span class="status text-muted glyphicon glyphicon-stop"></span></button>' +
+            '  <button class="panel-settings' + class_str + '" title="settings"><span class="text-muted glyphicon glyphicon-cog"></span></button>' +
+            '  <button class="panel-compact' + class_str + '" title="compact"><span class="text-muted glyphicon glyphicon-resize-small"></span></button>' +
             '</h3>' +
             '<div class="panel-body">' +
             '  <time class="timestring time small">&nbsp;</time>' +
@@ -198,11 +198,11 @@ define('base_controller', ['jquery', "jquery_timeago",
 
     base_controller.prototype.add_stream_body = function (feed_name, element) {
         var id = '#' + feed_path_to_id(feed_name);
-        var class_str = globals.isMobile ? '' : ' transparent';
+        var class_str = globals.isMobile ? '' : ' hideable transparent';
         $(id).append(
             '<h3>' + feed_name +
-            '  <button class="panel-stream-control hideable' + class_str + '" title="<kbd>click</kbd>: refresh<br><kbd>shift+click</kbd>: start/stop"><span class="status text-muted glyphicon glyphicon-stop"></span></button>' +
-            '  <button class="panel-settings hideable ' + class_str + '" title="settings"><span class="text-muted glyphicon glyphicon-cog"></span></button></h3>' +
+            '  <button class="panel-stream-control" title="<kbd>click</kbd>: refresh<br><kbd>shift+click</kbd>: start/stop"><span class="status text-muted glyphicon glyphicon-stop"></span></button>' +
+            '  <button class="panel-settings' + class_str + '" title="settings"><span class="text-muted glyphicon glyphicon-cog"></span></button></h3>' +
             '<div class="panel-body">' +
             element +
             '</div>'
@@ -217,11 +217,11 @@ define('base_controller', ['jquery', "jquery_timeago",
             $('#container').sortable('enable')
         });
 
-        $('.panel h3').on('mouseover', function () {
+        $('.panel').on('mouseover', function () {
             $(this).find('.hideable').removeClass('transparent');
             $(this).find('div button').addClass('button-shadow');
         });
-        $('.panel h3').on('mouseout', function () {
+        $('.panel').on('mouseout', function () {
             $(this).find('.hideable').addClass('transparent');
             $(this).find('div button').removeClass('button-shadow');
         });
@@ -287,6 +287,14 @@ define('base_controller', ['jquery', "jquery_timeago",
             var feed_obj = feeds[id];
             feed_obj.timestring.hide();
             feed_obj.timeago.show();
+        });
+        $('.panel').on('mouseleave', function (e) {
+            var id = $(this).closest('li').attr('id');
+            var feed_obj = feeds[id];
+            if (feed_obj.timeago) {
+                feed_obj.timestring.hide();
+                feed_obj.timeago.show();
+            }
         });
 
 

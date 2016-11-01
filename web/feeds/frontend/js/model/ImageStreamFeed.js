@@ -78,11 +78,25 @@ define(['jquery', 'Grid'], function ($, Grid) {
         }
     };
     ImageStreamFeed.prototype.started = function () {
-        this.control.removeClass('text-muted glyphicon-stop').addClass('text-success glyphicon-play');
+        this.control.removeClass('text-muted glyphicon-stop').addClass('text-success glyphicon-refresh');
+        this.el.removeClass('panel-disabled').addClass('panel-enabled');
+        var gui_folder = $(gui.__folders[this.feed_name].__ul);
+        if (globals.isMobile) {
+            gui_folder.closest('li').find('a.ui-collapsible-heading-toggle').first().removeClass('panel-disabled').addClass('panel-enabled');
+        } else {
+            gui_folder.find('.title').first().removeClass('panel-disabled').addClass('panel-enabled');
+        }
     };
 
     ImageStreamFeed.prototype.stopped = function () {
-        this.control.removeClass('text-success glyphicon-play').addClass('text-muted glyphicon-stop');
+        this.control.removeClass('text-success glyphicon-refresh').addClass('text-muted glyphicon-stop');
+        this.el.removeClass('panel-enabled').addClass('panel-disabled');
+        var gui_folder = $(gui.__folders[this.feed_name].__ul);
+        if (globals.isMobile) {
+            gui_folder.closest('li').find('a.ui-collapsible-heading-toggle').removeClass('panel-enabled').addClass('panel-disabled');
+        } else {
+            gui_folder.find('.title').removeClass('panel-enabled').addClass('panel-disabled');
+        }
     };
     ImageStreamFeed.prototype.refresh = function () {
         if (!this.is_open()) {

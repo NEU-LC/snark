@@ -61,15 +61,20 @@ body {
     box-sizing: border-box;
 }
 
-.panel:hover {
-    background: #2c2c2c;
+.panel.panel-enabled {
+    background: #242424;
+    border-color: #323232;
 }
 
-.panel-enabled, .panel-enabled:hover {
-    border-color: #1CA059 !important;
+.panel.panel-disabled {
+    color: #666666;
 }
 
-html .panel-alert, .panel-alert:hover {
+.panel-enabled .status  {
+    color: #5cb85c;
+}
+
+.panel-alert, .panel-alert:hover {
     color: #fbfffd !important;
     text-shadow: none;
     background-color: #d9534f !important;
