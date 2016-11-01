@@ -53,10 +53,10 @@ define(['jquery', 'Feed', 'Grid'], function ($, Feed, Grid) {
                     return minHeight;
                 });
             }
-            else {
-                this.target.width(this.loader.width);
-                this.target.height(this.loader.height);
-            }
+            // else {
+            //     this.target.width(this.loader.width);
+            //     this.target.height(this.loader.height);
+            // }
             this.target.resizable({
                 aspectRatio: true,
                 autoHide: true,
