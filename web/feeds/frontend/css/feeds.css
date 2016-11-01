@@ -23,7 +23,7 @@ body {
 }
 
 .dg .title.panel-disabled:not(.subfolder) {
-    color: #777;
+    color: #636363;
 }
 
 .dg input {
@@ -80,12 +80,15 @@ body {
     opacity: 1;
 }
 
-.panel.panel-disabled {
-    color: #777;
+.panel.panel-enabled:hover {
+    background: #2c2c2c;
 }
 
-.panel:hover {
-    background: #2c2c2c;
+.panel.panel-disabled {
+    color: #666666;
+}
+
+.panel.panel-disabled:hover {
     opacity: 1;
 }
 
@@ -111,7 +114,7 @@ body {
     font-family: 'Glyphicons Halflings';
     padding-left: 5px;
     content: '\e074';
-    color: #777;
+    color: #666666;
 }
 
 .panel-alert, .panel-alert:hover {

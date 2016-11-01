@@ -67,11 +67,7 @@ body {
 }
 
 .panel.panel-disabled {
-    color: #777;
-}
-
-.panel:hover {
-    background: #2c2c2c;
+    color: #666666;
 }
 
 .panel-enabled .status  {
