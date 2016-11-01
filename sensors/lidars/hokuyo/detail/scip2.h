@@ -57,7 +57,7 @@ struct scip2_device:public laser_device
     static uhg_08lx uhg_08lx_;
     static utm_30lx utm_30lx_;
     scip2_data scan_data;
-    std::auto_ptr<request_md> md;
+    boost::shared_ptr<request_md> md;
     struct data_t
     {
         double distance;
