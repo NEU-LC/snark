@@ -268,7 +268,7 @@ function save_layout(config_file) {
         var id = this.id;
         var feed = feeds[id];
         var layout = {id: id};
-        if (feed.target.is('img') && feed.target.attr('src') && feed.target.is(':visible')) {
+        if (feed.config.type == "image" && feed.img != undefined && feed.target.is(':visible')) {
             layout.width = feed.target.width();
             layout.height = feed.target.height();
         }
