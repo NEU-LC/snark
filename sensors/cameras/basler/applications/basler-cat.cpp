@@ -324,7 +324,7 @@ int main( int argc, char** argv )
             ( "height", boost::program_options::value< unsigned int >( &height )->default_value( std::numeric_limits< unsigned int >::max() ), "number of lines in frame (in chunk mode always 1); default: max" )
             ( "frame-trigger", boost::program_options::value< std::string >( &frame_trigger ), "'line1', 'line2', 'line3', 'encoder'" ) //; if absent while --line-trigger present, same as --line-trigger" )
             ( "line-trigger", boost::program_options::value< std::string >( &line_trigger ), "'line1', 'line2', 'line3', 'encoder'" )
-            ( "line-rate", boost::program_options::value< unsigned int >( &line_rate ), "line aquisition rate" )
+            ( "line-rate", boost::program_options::value< unsigned int >( &line_rate ), "line acquisition rate" )
             ( "encoder-ticks", boost::program_options::value< unsigned int >( &encoder_ticks ), "number of encoder ticks until the counter resets (reused for line number in frame in chunk mode)" )
             ( "header-only", "output header only" )
             ( "no-header", "output image data only" )
@@ -486,13 +486,13 @@ int main( int argc, char** argv )
         //       - view colour images: it works
         //       - view grey-scale images: it works
         //       - view colour images: it still displays grey-scale
-        //if( verbose ) { std::cerr << "basler-cat: getting aquisition status... (frigging voodoo...)" << std::endl; }
-        //GenApi::IEnumEntry* acquisition_status = camera.AcquisitionStatusSelector.GetEntry( Basler_GigECameraParams::AcquisitionStatusSelector_AcquisitionActive );
+        //if( verbose ) { std::cerr << "basler-cat: getting acquisition status... (frigging voodoo...)" << std::endl; }
+        //GenApi::IEnumEntry* acquisition_status = camera.AcquisitionStatusSelector.GetEntry( Basler_CameraParams::AcquisitionStatusSelector_AcquisitionActive );
         //if( acquisition_status && GenApi::IsAvailable( acquisition_status ) && camera.AcquisitionStatus() )
         //{
-        //    if( verbose ) { std::cerr << "basler-cat: stopping aquisition..." << std::endl; }
+        //    if( verbose ) { std::cerr << "basler-cat: stopping acquisition..." << std::endl; }
         //    camera.AcquisitionStop.Execute();
-        //    if( verbose ) { std::cerr << "basler-cat: aquisition stopped" << std::endl; }
+        //    if( verbose ) { std::cerr << "basler-cat: acquisition stopped" << std::endl; }
         //}
         
         // todo: a hack for now
