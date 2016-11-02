@@ -77,11 +77,6 @@ struct map_input_t
     value_type value;
 };
 
-namespace comma {
-typedef unsigned char uint8;
-typedef char int8;
-} // namespace comma {
-
 namespace comma { namespace visiting {
 
 template <> struct traits< map_input_t >
@@ -1372,26 +1367,27 @@ struct overlay_impl_
 };
 
 template < unsigned int Depth > struct gamma_traits {};
+
 template <> struct gamma_traits< CV_8U >
 {
-	typedef comma::uint8 type;
-	enum { is_signed = false };
-	static const type min = 0;
-	static const type max = 255;
-};
-template <> struct gamma_traits< CV_8S >
-{
-	typedef comma::int8 type;
-	enum { is_signed = true };
-	static const type min = -128;
-	static const type max = 127;
+    typedef unsigned char type;
+    enum { is_signed = false };
+    static const type min = 0;
+    static const type max = 255;
 };
 
+template <> struct gamma_traits< CV_8S >
+{
+    typedef char type;
+    enum { is_signed = true };
+    static const type min = -128;
+    static const type max = 127;
+};
 
 template < unsigned int Depth > static cv::Mat lut_matrix_gamma_( double gamma )
 {
-	double num_states = gamma_traits< Depth >::max - gamma_traits< Depth >::min; //std::numeric_limits< gamma_traits< Depth >::type >::max();
-	cv::Mat lut_matrix( 1, num_states + 1, Depth );
+    double num_states = gamma_traits< Depth >::max - gamma_traits< Depth >::min; //std::numeric_limits< gamma_traits< Depth >::type >::max();
+    cv::Mat lut_matrix( 1, num_states + 1, Depth );
     uchar * ptr = lut_matrix.ptr();
     double scale = std::abs( gamma_traits< Depth >::max );
     for( unsigned int i = 0, j = gamma_traits< Depth >::min; i <= num_states; i++, j++ )

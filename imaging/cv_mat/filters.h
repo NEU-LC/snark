@@ -27,9 +27,7 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
-#ifndef SNARK_IMAGING_CVMAT_FILTERS_H_
-#define SNARK_IMAGING_CVMAT_FILTERS_H_
+#pragma once
 
 #include <vector>
 #include <boost/function.hpp>
@@ -74,6 +72,4 @@ std::string type_as_string( int t );
 
 inline bool is_empty( filters::value_type m ) { return ( m.first == boost::posix_time::not_a_date_time ) && m.second.empty(); }
 
-} }  // namespace snark{ namespace cv_mat {
-
-#endif // SNARK_IMAGING_CVMAT_FILTERS_H_
+} }  // namespace snark { namespace cv_mat {
