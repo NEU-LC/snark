@@ -514,31 +514,28 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
             public:
                 logger() : size_( 0 ), count_( 0 ) {}
                 
-                logger( const std::string& filename ) : ofstream_( new std::ofstream( &filename[0] ) ), size_( 0 ), count_( 0 ) { if( !ofstream_->is_open() ) { COMMA_THROW( comma::exception, "failed to open \"" << filename << "\"" ); } }
+                logger( const std::string& filename ) : ofstream_( new std::ofstream( &filename[0] ) ), serialization_( "t,rows,cols,type", comma::csv::format( "t,3ui" ) ), size_( 0 ), count_( 0 ) { if( !ofstream_->is_open() ) { COMMA_THROW( comma::exception, "failed to open \"" << filename << "\"" ); } }
                 
-                logger( const std::string& directory, boost::posix_time::time_duration period ) : directory_( directory ), period_( period ), size_( 0 ), count_( 0 ) {}
+                logger( const std::string& directory, boost::posix_time::time_duration period ) : directory_( directory ), serialization_( "t,rows,cols,type", comma::csv::format( "t,3ui" ) ), period_( period ), size_( 0 ), count_( 0 ) {}
                 
-                logger( const std::string& directory, unsigned int size ) : directory_( directory ), size_( size ), count_( 0 ) {}
+                logger( const std::string& directory, unsigned int size ) : directory_( directory ), serialization_( "t,rows,cols,type", comma::csv::format( "t,3ui" ) ), size_( size ), count_( 0 ) {}
+                
+                ~logger() { if( ofstream_ ) { ofstream_->close(); } }
                 
                 filters::value_type operator()( filters::value_type m )
                 {
                     if( m.first.is_not_a_date_time() ) { return m; } // quick and dirty, end of stream
                     boost::mutex::scoped_lock lock( mutex_ ); // somehow, serial_in_order still may have more than one instance of filter run at a time
                     ++count_;
-                    if( ofstream_ )
+                    if( size_ > 0 && count_ == size_ )
                     {
-                        if( size_ > 0 && count_ == size_ )
-                        {
-                            ofstream_->close();
-                            ofstream_.reset();
-                            count_ = 0;
-                        }
-                        else if( period_ && ( start_.is_not_a_date_time() || ( m.first - start_ ) >= *period_ ) )
-                        {
-                            ofstream_->close();
-                            ofstream_.reset();
-                            start_ = m.first;
-                        }
+                        if( ofstream_ ) { ofstream_->close(); ofstream_.reset(); }
+                        count_ = 0;
+                    }
+                    else if( period_ && ( start_.is_not_a_date_time() || ( m.first - start_ ) >= *period_ ) )
+                    {
+                        if( ofstream_ ) { ofstream_->close(); ofstream_.reset(); }
+                        start_ = m.first;
                     }
                     if( !ofstream_ )
                     {
@@ -1609,7 +1606,16 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
         {
             if( e.size() <= 1 ) { COMMA_THROW( comma::exception, "please specify log=<filename> or log=<directory>,<period>" ); }
             const std::vector< std::string >& w = comma::split( e[1], ',' );
-            f.push_back( filter( w.size() == 1 ? log_impl_( w[0] ) : log_impl_( w[0], boost::posix_time::seconds( boost::lexical_cast< unsigned int >( w[1] ) ) ) ) );
+            if( w.size() == 1 )
+            {
+                f.push_back( filter( log_impl_( w[0] ), false ) );
+            }
+            else
+            {
+                double d = boost::lexical_cast< unsigned int >( w[1] );
+                unsigned int seconds = static_cast< unsigned int >( d );
+                f.push_back( filter( log_impl_( w[0], boost::posix_time::seconds( seconds ) + boost::posix_time::microseconds( ( d - seconds ) * 1000000 ) ), false ) );
+            }
         }
         else if( e[0] == "magnitude" )
         {

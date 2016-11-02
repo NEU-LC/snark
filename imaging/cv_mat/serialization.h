@@ -28,8 +28,7 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-#ifndef SNARK_IMAGING_CVMAT_SERIALIZATION_H_
-#define SNARK_IMAGING_CVMAT_SERIALIZATION_H_
+#pragma once
 
 #include <iostream>
 #include <string>
@@ -39,7 +38,7 @@
 #include <comma/csv/binary.h>
 #include <comma/csv/traits.h>
 
-namespace snark{ namespace cv_mat {
+namespace snark { namespace cv_mat {
 
 class serialization
 {
@@ -109,7 +108,7 @@ class serialization
         std::pair< boost::posix_time::ptime, cv::Mat > read( std::istream& is );
 
         /// write to stream
-        void write( std::ostream& os, const std::pair< boost::posix_time::ptime, cv::Mat >& m );
+        void write( std::ostream& os, const std::pair< boost::posix_time::ptime, cv::Mat >& m, bool flush = true );
 
     private:
         boost::scoped_ptr< comma::csv::binary< header > > m_binary;
@@ -172,4 +171,3 @@ template <> struct traits< snark::cv_mat::serialization::options >
     
 } } // namespace comma { namespace visiting {
 
-#endif // SNARK_IMAGING_CVMAT_SERIALIZATION_H_

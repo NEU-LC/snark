@@ -63,7 +63,6 @@ serialization::serialization() :
     m_headerOnly( false )
     
 {
-
 }
 
 serialization::serialization( const std::string& fields, const comma::csv::format& format, bool headerOnly, const header& default_header ):
@@ -71,10 +70,7 @@ serialization::serialization( const std::string& fields, const comma::csv::forma
     m_headerOnly( headerOnly ),
     m_header( default_header )
 {
-    if( !fields.empty() )
-    {
-        m_binary.reset( new comma::csv::binary< header >( format.string(), fields, false, default_header ) );
-    }
+    if( !fields.empty() ) { m_binary.reset( new comma::csv::binary< header >( format.string(), fields, false, default_header ) ); }
 }
 
 serialization::serialization( const serialization::options& options )
@@ -110,10 +106,7 @@ std::size_t serialization::get( std::pair< boost::posix_time::ptime, cv::Mat >& 
 {
     header h = get_header( buf );
     unsigned int headerSize = 0;
-    if( m_binary )
-    {
-        headerSize = m_binary->format().size();
-    }
+    if( m_binary ) { headerSize = m_binary->format().size(); }
     cv::Mat m( h.rows, h.cols, h.type, const_cast< char* >( buf + headerSize ) );
     m.copyTo( p.second );
     return size( p.second );
@@ -134,19 +127,13 @@ serialization::header serialization::get_header( const char* buf ) const
         m_binary->get( h, buf );
         return h;
     }
-    else
-    {
-        return m_header;
-    }
+    return m_header;
 }
 
 std::size_t serialization::size( const cv::Mat& m ) const
 {
     unsigned int headerSize = 0;
-    if( m_binary )
-    {
-        headerSize = m_binary->format().size();
-    }
+    if( m_binary ) { headerSize = m_binary->format().size(); }
     return headerSize + ( m.dataend - m.datastart );
 }
 
@@ -188,7 +175,7 @@ std::pair< boost::posix_time::ptime, cv::Mat > serialization::read( std::istream
     return count < int( size ) ? std::pair< boost::posix_time::ptime, cv::Mat >() : p;
 }
 
-void serialization::write( std::ostream& os, const std::pair< boost::posix_time::ptime, cv::Mat >& m )
+void serialization::write( std::ostream& os, const std::pair< boost::posix_time::ptime, cv::Mat >& m, bool flush )
 {
     if( m_binary )
     {
@@ -196,11 +183,8 @@ void serialization::write( std::ostream& os, const std::pair< boost::posix_time:
         m_binary->put( h, &m_buffer[0] );
         os.write( &m_buffer[0], m_buffer.size() );
     }
-    if( !m_headerOnly )
-    {
-        os.write( reinterpret_cast< const char* >( m.second.datastart ), m.second.dataend - m.second.datastart );
-    }
-    os.flush();
+    if( !m_headerOnly ) { os.write( reinterpret_cast< const char* >( m.second.datastart ), m.second.dataend - m.second.datastart ); }
+    if( flush ) { os.flush(); }
 }
 
 unsigned int type_from_string_( const std::string& t )
