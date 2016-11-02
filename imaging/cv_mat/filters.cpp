@@ -36,6 +36,7 @@
 #include <boost/filesystem/operations.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/optional.hpp>
+#include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/static_assert.hpp>
 #include <boost/thread.hpp>
@@ -513,7 +514,7 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
             public:
                 logger() : size_( 0 ), count_( 0 ) {}
                 
-                logger( const std::string& filename ) : ofstream_( &filename[0] ), size_( 0 ), count_( 0 ) { if( !ofstream_.is_open() ) { COMMA_THROW( comma::exception, "failed to open \"" << filename << "\"" ); } }
+                logger( const std::string& filename ) : ofstream_( new std::ofstream( &filename[0] ) ), size_( 0 ), count_( 0 ) { if( !ofstream_->is_open() ) { COMMA_THROW( comma::exception, "failed to open \"" << filename << "\"" ); } }
                 
                 logger( const std::string& directory, boost::posix_time::time_duration period ) : directory_( directory ), period_( period ), size_( 0 ), count_( 0 ) {}
                 
@@ -524,32 +525,36 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
                     if( m.first.is_not_a_date_time() ) { return m; } // quick and dirty, end of stream
                     boost::mutex::scoped_lock lock( mutex_ ); // somehow, serial_in_order still may have more than one instance of filter run at a time
                     ++count_;
-                    bool open_file_stream = false;
-                    if( size_ > 0 && count_ == size_ )
+                    if( ofstream_ )
                     {
-                        open_file_stream = true;
-                        count_ = 0;
+                        if( size_ > 0 && count_ == size_ )
+                        {
+                            ofstream_->close();
+                            ofstream_.reset();
+                            count_ = 0;
+                        }
+                        else if( period_ && ( start_.is_not_a_date_time() || ( m.first - start_ ) >= *period_ ) )
+                        {
+                            ofstream_->close();
+                            ofstream_.reset();
+                            start_ = m.first;
+                        }
                     }
-                    else if( period_ && ( start_.is_not_a_date_time() || ( m.first - start_ ) >= *period_ ) )
+                    if( !ofstream_ )
                     {
-                        open_file_stream = true;
-                        start_ = m.first;
-                    }
-                    if( open_file_stream )
-                    {
-                        ofstream_.close();
                         std::string filename = directory_ + '/' + boost::posix_time::to_iso_string( m.first ) + ".bin";
-                        ofstream_ = std::ofstream( &filename[0] );
-                        if( !ofstream_.is_open() ) { COMMA_THROW( comma::exception, "failed to open \"" << filename << "\"" ); }
+                        ofstream_.reset( new std::ofstream( std::ofstream( &filename[0] ) ) );
+                        if( !ofstream_->is_open() ) { COMMA_THROW( comma::exception, "failed to open \"" << filename << "\"" ); }
                     }
-                    serialization_.write( ofstream_, m );
+                    if( !ofstream_ ) { std::cerr << "oops" << std::endl; }
+                    serialization_.write( *ofstream_, m );
                     return m;
                 }
                 
             private:
                 boost::mutex mutex_;
                 std::string directory_;
-                std::ofstream ofstream_;
+                boost::scoped_ptr< std::ofstream > ofstream_;
                 snark::cv_mat::serialization serialization_;
                 boost::optional< boost::posix_time::time_duration > period_;
                 boost::posix_time::ptime start_;
@@ -567,10 +572,6 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
         log_impl_( const std::string& directory, boost::posix_time::time_duration period ) : logger_( new logger( directory, period ) ) {}
         
         log_impl_( const std::string& directory, unsigned int size ) : logger_( new logger( directory, size ) ) {}
-        
-        //log_impl_( const log_impl_& rhs ) : logger_( rhs.logger_ ) {}
-        
-        //~log_impl_() { if( logger_ ) { delete logger_; } }
         
         filters::value_type operator()( filters::value_type m ) { return logger_->operator()( m ); }
 };
