@@ -29,17 +29,11 @@
 
 /// @author vsevolod vlaskine
 
-#include <stdlib.h>
-#include <boost/thread/thread_time.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <comma/application/command_line_options.h>
-#include <comma/application/signal_flag.h>
 #include <comma/csv/stream.h>
-#include <comma/name_value/map.h>
-#include <comma/visiting/traits.h>
 #include "../../../../imaging/cv_mat/pipeline.h"
 #include "../../../../imaging/cv_mat/bursty_pipeline.h"
-
 #include <pylon/PylonIncludes.h>
 #include <pylon/gige/BaslerGigECamera.h>
 #include <pylon/usb/BaslerUsbCamera.h>
