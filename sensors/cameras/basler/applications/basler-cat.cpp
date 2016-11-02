@@ -118,7 +118,7 @@ struct Counters
     comma::uint64 ticks; // number of 8ns ticks
     comma::uint64 line_count; // overall line count
     comma::uint32 line; // line number in one motor revolution
-    
+
     Counters() : line( 0 ), ticks( 0 ), line_count( 0 ) {}
 };
 
@@ -126,7 +126,7 @@ struct Header // quick and dirty
 {
     snark::cv_mat::serialization::header header;
     Counters counters;
-    
+
     Header() {}
     Header( const snark::cv_mat::serialization::header& header ) : header( header ) {}
 };
@@ -151,7 +151,7 @@ template <> struct traits< Counters >
         v.apply( "line-count", t.line_count );
         v.apply( "line", t.line );
     }
-    
+
     template < typename K, typename V >
     static void visit( const K&, const Counters& t, V& v )
     {
@@ -160,8 +160,8 @@ template <> struct traits< Counters >
         v.apply( "line-count", t.line_count );
         v.apply( "line", t.line );
     }
-};    
-    
+};
+
 template <> struct traits< Header >
 {
     template < typename K, typename V >
@@ -170,7 +170,7 @@ template <> struct traits< Header >
         v.apply( "header", t.header );
         v.apply( "counters", t.counters );
     }
-    
+
     template < typename K, typename V >
     static void visit( const K&, const Header& t, V& v )
     {
@@ -178,11 +178,11 @@ template <> struct traits< Header >
         v.apply( "counters", t.counters );
     }
 };
-    
+
 } } // namespace comma { namespace visiting {
 
 typedef std::pair< boost::posix_time::ptime, cv::Mat > Pair;
-typedef std::pair< ChunkData, cv::Mat > ChunkPair;    
+typedef std::pair< ChunkData, cv::Mat > ChunkPair;
 
 namespace gige {
 
@@ -227,7 +227,7 @@ static P capture_( Pylon::CBaslerGigECamera& camera, Pylon::CBaslerGigECamera::S
     /// If you have spatial correction enabled and you have the frame start
     /// trigger mode set to on, you must discard the first n x 2 lines from
     /// each frame transmitted by the camera.
-    
+
     static const unsigned int retries = 10; // quick and dirty: arbitrary
     for( unsigned int i = 0; !done && i < retries; ++i )
     {
@@ -244,7 +244,7 @@ static P capture_( Pylon::CBaslerGigECamera& camera, Pylon::CBaslerGigECamera::S
         boost::posix_time::ptime t = boost::get_system_time();
         grabber.RetrieveResult( result );
         if( !result.Succeeded() )
-        { 
+        {
             std::cerr << "basler-cat: acquisition failed: "
                       << result.GetErrorDescription()
                       << " (0x" << std::hex << result.GetErrorCode() << std::dec << ")" << std::endl;
@@ -329,7 +329,7 @@ static unsigned int set_pixel_format_( Pylon::CBaslerGigECamera& camera, Basler_
         supported = supported || type_string != e->GetSymbolic().c_str();
     }
     if( comma::verbose ) { std::cerr << std::endl; }
-    if( !supported ) { COMMA_THROW( comma::exception, "pixel format " << type << " is not supported" ); }    
+    if( !supported ) { COMMA_THROW( comma::exception, "pixel format " << type << " is not supported" ); }
     comma::verbose << "setting pixel format..." << std::endl;
     // the voodoo theory is that in the continuous mode the camera settings
     // cannot be changed, while the camera is acquiring a frame. now, you may think:
@@ -374,7 +374,7 @@ static P capture_( Pylon::CBaslerUsbCamera& camera, Pylon::CBaslerUsbCamera::Str
     /// If you have spatial correction enabled and you have the frame start
     /// trigger mode set to on, you must discard the first n x 2 lines from
     /// each frame transmitted by the camera.
-    
+
     static const unsigned int retries = 10; // quick and dirty: arbitrary
     for( unsigned int i = 0; !done && i < retries; ++i )
     {
@@ -391,7 +391,7 @@ static P capture_( Pylon::CBaslerUsbCamera& camera, Pylon::CBaslerUsbCamera::Str
         boost::posix_time::ptime t = boost::get_system_time();
         grabber.RetrieveResult( result );
         if( !result.Succeeded() )
-        { 
+        {
             std::cerr << "basler-cat: acquisition failed: "
                       << result.GetErrorDescription()
                       << " (0x" << std::hex << result.GetErrorCode() << std::dec << ")" << std::endl;
@@ -475,7 +475,7 @@ static unsigned int set_pixel_format_( Pylon::CBaslerUsbCamera& camera, Basler_U
         supported = supported || type_string != e->GetSymbolic().c_str();
     }
     if( comma::verbose ) { std::cerr << std::endl; }
-    if( !supported ) { COMMA_THROW( comma::exception, "pixel format " << type << " is not supported" ); }    
+    if( !supported ) { COMMA_THROW( comma::exception, "pixel format " << type << " is not supported" ); }
     comma::verbose << "setting pixel format..." << std::endl;
     // the voodoo theory is that in the continuous mode the camera settings
     // cannot be changed, while the camera is acquiring a frame. now, you may think:
@@ -511,7 +511,7 @@ int main( const comma::command_line_options& options )
     Pylon::CTlFactory& factory = Pylon::CTlFactory::GetInstance();
     Pylon::ITransportLayer* transport_layer( Pylon::CTlFactory::GetInstance().CreateTl( Camera_t::DeviceClass() ));
     if( !transport_layer )
-    { 
+    {
         std::cerr << "basler-cat: failed to create transport layer" << std::endl;
         std::cerr << "            most likely PYLON_ROOT and GENICAM_ROOT_V2_1 environment variables not set" << std::endl;
         std::cerr << "            point them to your pylon installation, e.g:" << std::endl;
@@ -571,7 +571,7 @@ int main( const comma::command_line_options& options )
     camera.Width.SetValue( width );
     unsigned int max_height = camera.Height.GetMax();
     //if( height < 512 ) { std::cerr << "basler-cat: expected height greater than 512, got " << height << std::endl; return 1; }
-        
+
     // todo: is the colour line 2098 * 3 or ( 2098 / 3 ) * 3 ?
     //offset_y *= channels;
     //height *= channels;
@@ -598,7 +598,7 @@ int main( const comma::command_line_options& options )
     //    camera.AcquisitionStop.Execute();
     //    comma::verbose << "acquisition stopped" << std::endl;
     //}
-        
+
     // todo: a hack for now
     GenApi::IEnumEntry* acquisitionStart = camera.TriggerSelector.GetEntry( Basler_GigECameraParams::TriggerSelector_AcquisitionStart );
     std::string frame_trigger = options.value< std::string >( "--frame-trigger", "" );
@@ -731,7 +731,7 @@ int main( const comma::command_line_options& options )
     grabber.PrepareGrab(); // image size now must not be changed until FinishGrab() is called.
     std::vector< Pylon::StreamBufferHandle > buffer_handles( buffers.size() );
     for( std::size_t i = 0; i < buffers.size(); ++i )
-    { 
+    {
         buffer_handles[i] = grabber.RegisterBuffer( &buffers[i][0], buffers[i].size() );
         grabber.QueueBuffer( buffer_handles[i], NULL );
     }
@@ -742,7 +742,7 @@ int main( const comma::command_line_options& options )
         tbb::filter_t< ChunkPair, void > write( tbb::filter::serial_in_order, boost::bind( &write_, _1 ) );
         snark::tbb::bursty_pipeline< ChunkPair > pipeline;
         camera.AcquisitionMode.SetValue( Basler_GigECameraParams::AcquisitionMode_Continuous );
-        camera.AcquisitionStart.Execute(); // continuous acquisition mode        
+        camera.AcquisitionStart.Execute(); // continuous acquisition mode
         comma::verbose << "running in chunk mode..." << std::endl;
         pipeline.run( read, write );
         comma::verbose << "shutting down..." << std::endl;
@@ -755,7 +755,7 @@ int main( const comma::command_line_options& options )
         snark::tbb::bursty_reader< Pair > reader( boost::bind( &capture_< Pair >, boost::ref( camera ), boost::ref( grabber ) ), discard );
         snark::imaging::applications::pipeline pipeline( serialization, filters, reader );
         //camera.AcquisitionMode.SetValue( Basler_GigECameraParams::AcquisitionMode_Continuous );
-        camera.AcquisitionStart.Execute(); // continuous acquisition mode        
+        camera.AcquisitionStart.Execute(); // continuous acquisition mode
         comma::verbose << "running..." << std::endl;
         pipeline.run();
         comma::verbose << "shutting down..." << std::endl;
@@ -785,7 +785,7 @@ int main( const comma::command_line_options& options )
     Pylon::CTlFactory& factory = Pylon::CTlFactory::GetInstance();
     Pylon::ITransportLayer* transport_layer( Pylon::CTlFactory::GetInstance().CreateTl( Camera_t::DeviceClass() ));
     if( !transport_layer )
-    { 
+    {
         std::cerr << "basler-cat: failed to create transport layer" << std::endl;
         std::cerr << "            most likely PYLON_ROOT and GENICAM_ROOT_V2_1 environment variables not set" << std::endl;
         std::cerr << "            point them to your pylon installation, e.g:" << std::endl;
@@ -842,7 +842,7 @@ int main( const comma::command_line_options& options )
     camera.Width.SetValue( width );
     unsigned int max_height = camera.Height.GetMax();
     //if( height < 512 ) { std::cerr << "basler-cat: expected height greater than 512, got " << height << std::endl; return 1; }
-        
+
     // todo: is the colour line 2098 * 3 or ( 2098 / 3 ) * 3 ?
     //offset_y *= channels;
     //height *= channels;
@@ -868,7 +868,7 @@ int main( const comma::command_line_options& options )
     //    camera.AcquisitionStop.Execute();
     //    comma::verbose << "acquisition stopped" << std::endl;
     //}
-        
+
     // todo: a hack for now
     camera.ExposureMode.SetValue( Basler_UsbCameraParams::ExposureMode_Timed );
     if( options.exists( "--exposure" )) { camera.ExposureTime.SetValue( options.value< unsigned int >( "--exposure" )); }
@@ -893,7 +893,7 @@ int main( const comma::command_line_options& options )
     grabber.PrepareGrab(); // image size now must not be changed until FinishGrab() is called.
     std::vector< Pylon::StreamBufferHandle > buffer_handles( buffers.size() );
     for( std::size_t i = 0; i < buffers.size(); ++i )
-    { 
+    {
         buffer_handles[i] = grabber.RegisterBuffer( &buffers[i][0], buffers[i].size() );
         grabber.QueueBuffer( buffer_handles[i], NULL );
     }
@@ -907,7 +907,7 @@ int main( const comma::command_line_options& options )
         snark::tbb::bursty_reader< Pair > reader( boost::bind( &capture_< Pair >, boost::ref( camera ), boost::ref( grabber ) ), discard );
         snark::imaging::applications::pipeline pipeline( serialization, filters, reader );
         //camera.AcquisitionMode.SetValue( Basler_UsbCameraParams::AcquisitionMode_Continuous );
-        camera.AcquisitionStart.Execute(); // continuous acquisition mode        
+        camera.AcquisitionStart.Execute(); // continuous acquisition mode
         comma::verbose << "running..." << std::endl;
         pipeline.run();
         comma::verbose << "shutting down..." << std::endl;
