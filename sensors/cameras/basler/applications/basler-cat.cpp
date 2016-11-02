@@ -66,12 +66,12 @@ static void bash_completion( unsigned const ac, char const * const * av )
 
 static void usage( bool verbose = false )
 {
-    std::cerr << "\nacquire images from a basler camera";
-    std::cerr << "\noutput to stdout as serialized cv::Mat";
+    std::cerr << "\nAcquire images from a basler camera";
+    std::cerr << "\nOutput to stdout as serialized cv::Mat";
     std::cerr << "\n";
-    std::cerr << "\nusage: basler-cat [<options>] [<filters>]";
+    std::cerr << "\nUsage: basler-cat [<options>] [<filters>]";
     std::cerr << "\n";
-    std::cerr << "\noptions:";
+    std::cerr << "\nOptions:";
     std::cerr << "\n    --help,-h                 display help message";
     std::cerr << "\n    --address=<address>       camera address; default: first available";
     std::cerr << "\n    --discard                 discard frames, if cannot keep up;";
@@ -114,15 +114,15 @@ static void usage( bool verbose = false )
         std::cerr << snark::cv_mat::filters::usage();
         std::cerr << snark::cv_mat::serialization::options::type_usage();
     }
-    std::cerr << "\nnote: there is a glitch or a subtle feature in basler line camera:";
+    std::cerr << "\nNote: there is a glitch or a subtle feature in basler line camera:";
     std::cerr << "\n    - power-cycle camera";
     std::cerr << "\n    - view colour images: it works";
     std::cerr << "\n    - view grey-scale images: it works";
     std::cerr << "\n    - view colour images: it still displays grey-scale";
     std::cerr << "\n";
-    std::cerr << "\n    even in their native viewer you need to set colour image repeatedly and";
-    std::cerr << "\n    with pure luck it works, but we have not managed to do it in software;";
-    std::cerr << "\n    the remedy: power-cycle the camera";
+    std::cerr << "\n    Even in their native viewer you need to set colour image repeatedly and";
+    std::cerr << "\n    with pure luck it works, but we have not managed to do it in software.";
+    std::cerr << "\n    The remedy: power-cycle the camera";
     std::cerr << "\n" << std::endl;
 }
 
