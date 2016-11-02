@@ -79,6 +79,7 @@ static void usage( bool verbose = false )
     std::cerr << "\n    --buffer=<buffers>        maximum buffer size before discarding frames";
     std::cerr << "\n                              default: unlimited";
     std::cerr << "\n    --list-cameras            output camera list and exit";
+    std::cerr << "\n                              add --verbose for more detail";
     std::cerr << "\n    --fields,-f=<fields>      header fields, possible values:";
     std::cerr << "\n                              possible values: " << possible_header_fields;
     std::cerr << "\n                              default: " << default_header_fields;
@@ -519,6 +520,29 @@ static unsigned int set_pixel_format_( Pylon::CBaslerUsbCamera& camera, Basler_U
 
 } // namespace usb
 
+void list_cameras()
+{
+    Pylon::CTlFactory& factory = Pylon::CTlFactory::GetInstance();
+    Pylon::DeviceInfoList_t devices;
+    factory.EnumerateDevices( devices );
+    Pylon::DeviceInfoList_t::const_iterator it;
+    for( it = devices.begin(); it != devices.end(); ++it )
+    {
+        if( comma::verbose )
+        {
+            std::cerr << "\nVendor:     " << it->GetVendorName();
+            std::cerr << "\nModel:      " << it->GetModelName();
+            std::cerr << "\nVersion:    " << it->GetDeviceVersion();
+            std::cerr << "\nType:       " << it->GetDeviceClass();
+            std::cerr << "\nSerial no.: " << it->GetSerialNumber();
+            std::cerr << "\nFull name:  " << it->GetFullName();
+            std::cerr << std::endl;
+        }
+        else { std::cerr << it->GetFullName() << std::endl; }
+    }
+    if( comma::verbose && !devices.empty() ) { std::cerr << std::endl; }
+}
+
 static unsigned int discard;
 static bool chunk_mode = false;
 static std::string filters;
@@ -529,7 +553,6 @@ int main( const comma::command_line_options& options )
 {
     typedef Pylon::CBaslerGigECamera Camera_t;
 
-    Pylon::PylonAutoInitTerm auto_init_term;
     Pylon::CTlFactory& factory = Pylon::CTlFactory::GetInstance();
     Pylon::ITransportLayer* transport_layer( Pylon::CTlFactory::GetInstance().CreateTl( Camera_t::DeviceClass() ));
     if( !transport_layer )
@@ -540,13 +563,6 @@ int main( const comma::command_line_options& options )
         std::cerr << "            export PYLON_ROOT=/opt/pylon" << std::endl;
         std::cerr << "            export GENICAM_ROOT_V2_1=/opt/pylon/genicam" << std::endl;
         return 1;
-    }
-    if( options.exists( "--list-cameras" ))
-    {
-        Pylon::DeviceInfoList_t devices;
-        factory.EnumerateDevices( devices );
-        for( unsigned int i = 0; i < devices.size(); ++i ) { std::cerr << devices[i].GetFullName() << std::endl; }
-        return 0;
     }
     timeout = options.value< double >( "--timeout", default_timeout ) * 1000.0;
     Camera_t camera;
@@ -803,7 +819,6 @@ int main( const comma::command_line_options& options )
 {
     typedef Pylon::CBaslerUsbCamera Camera_t;
 
-    Pylon::PylonAutoInitTerm auto_init_term;
     Pylon::CTlFactory& factory = Pylon::CTlFactory::GetInstance();
     Pylon::ITransportLayer* transport_layer( Pylon::CTlFactory::GetInstance().CreateTl( Camera_t::DeviceClass() ));
     if( !transport_layer )
@@ -814,13 +829,6 @@ int main( const comma::command_line_options& options )
         std::cerr << "            export PYLON_ROOT=/opt/pylon" << std::endl;
         std::cerr << "            export GENICAM_ROOT_V2_1=/opt/pylon/genicam" << std::endl;
         return 1;
-    }
-    if( options.exists( "--list-cameras" ))
-    {
-        Pylon::DeviceInfoList_t devices;
-        factory.EnumerateDevices( devices );
-        for( unsigned int i = 0; i < devices.size(); ++i ) { std::cerr << devices[i].GetFullName() << std::endl; }
-        return 0;
     }
     timeout = options.value< double >( "--timeout", default_timeout ) * 1000.0;
     Camera_t camera;
@@ -960,6 +968,14 @@ int main( int argc, char** argv )
     {
         comma::command_line_options options( argc, argv, usage );
         if( options.exists( "--bash-completion" ) ) bash_completion( argc, argv );
+
+        Pylon::PylonAutoInitTerm auto_init_term;
+
+        if( options.exists( "--list-cameras" ))
+        {
+            list_cameras();
+            return 0;
+        }
 
         comma::verbose << "PYLON_ROOT=" << ::getenv( "PYLON_ROOT" ) << std::endl;
         comma::verbose << "GENICAM_ROOT_V2_1=" << ::getenv( "GENICAM_ROOT_V2_1" ) << std::endl;
