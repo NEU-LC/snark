@@ -587,7 +587,6 @@ Pylon::IPylonDevice* create_device( const std::string& address )
     }
 }
 
-static unsigned int discard;
 static bool chunk_mode = false;
 static std::string filters;
 
@@ -793,9 +792,12 @@ int main( const comma::command_line_options& options, Pylon::IPylonDevice* devic
         grabber.QueueBuffer( buffer_handles[i], NULL );
     }
 
+
+    unsigned int max_queue_size = options.value< unsigned int >( "--buffer", options.exists( "--discard" ));
+
     if( chunk_mode )
     {
-        snark::tbb::bursty_reader< ChunkPair > read( boost::bind( &capture_< ChunkPair >, boost::ref( camera ), boost::ref( grabber ) ), discard );
+        snark::tbb::bursty_reader< ChunkPair > read( boost::bind( &capture_< ChunkPair >, boost::ref( camera ), boost::ref( grabber ) ), max_queue_size );
         tbb::filter_t< ChunkPair, void > write( tbb::filter::serial_in_order, boost::bind( &write_, _1 ) );
         snark::tbb::bursty_pipeline< ChunkPair > pipeline;
         camera.AcquisitionMode.SetValue( Basler_GigECameraParams::AcquisitionMode_Continuous );
@@ -809,7 +811,7 @@ int main( const comma::command_line_options& options, Pylon::IPylonDevice* devic
     else
     {
         snark::cv_mat::serialization serialization( cv_mat_options );
-        snark::tbb::bursty_reader< Pair > reader( boost::bind( &capture_< Pair >, boost::ref( camera ), boost::ref( grabber ) ), discard );
+        snark::tbb::bursty_reader< Pair > reader( boost::bind( &capture_< Pair >, boost::ref( camera ), boost::ref( grabber ) ), max_queue_size );
         snark::imaging::applications::pipeline pipeline( serialization, filters, reader );
         //camera.AcquisitionMode.SetValue( Basler_GigECameraParams::AcquisitionMode_Continuous );
         camera.AcquisitionStart.Execute(); // continuous acquisition mode
@@ -922,13 +924,15 @@ int main( const comma::command_line_options& options, Pylon::IPylonDevice* devic
         grabber.QueueBuffer( buffer_handles[i], NULL );
     }
 
+    unsigned int max_queue_size = options.value< unsigned int >( "--buffer", options.exists( "--discard" ));
+
     if( chunk_mode )
     {
     }
     else
     {
         snark::cv_mat::serialization serialization( cv_mat_options );
-        snark::tbb::bursty_reader< Pair > reader( boost::bind( &capture_< Pair >, boost::ref( camera ), boost::ref( grabber ) ), discard );
+        snark::tbb::bursty_reader< Pair > reader( boost::bind( &capture_< Pair >, boost::ref( camera ), boost::ref( grabber ) ), max_queue_size );
         snark::imaging::applications::pipeline pipeline( serialization, filters, reader );
         //camera.AcquisitionMode.SetValue( Basler_UsbCameraParams::AcquisitionMode_Continuous );
         camera.AcquisitionStart.Execute(); // continuous acquisition mode
@@ -1020,7 +1024,6 @@ int main( int argc, char** argv )
             csv.full_xpath = true;
             csv.format( format );
         }
-        if( !options.exists( "--buffer" ) && options.exists( "--discard" )) { discard = 1; }
 
         int return_value = 1;
         Pylon::String_t device_class = device->GetDeviceInfo().GetDeviceClass();
