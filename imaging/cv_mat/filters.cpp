@@ -546,7 +546,6 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
                         ofstream_.reset( new std::ofstream( &filename[0] ) );
                         if( !ofstream_->is_open() ) { COMMA_THROW( comma::exception, "failed to open \"" << filename << "\"" ); }
                     }
-                    if( !ofstream_ ) { std::cerr << "oops" << std::endl; }
                     serialization_.write( *ofstream_, m );
                     return m;
                 }
