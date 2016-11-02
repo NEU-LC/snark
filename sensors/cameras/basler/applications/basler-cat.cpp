@@ -30,10 +30,9 @@
 /// @author vsevolod vlaskine
 
 #include <stdlib.h>
-#include <limits>
-#include <boost/program_options.hpp>
 #include <boost/thread/thread_time.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
+#include <comma/application/command_line_options.h>
 #include <comma/application/signal_flag.h>
 #include <comma/csv/stream.h>
 #include <comma/name_value/map.h>
@@ -44,6 +43,68 @@
 #include <pylon/PylonIncludes.h>
 #include <pylon/gige/BaslerGigECamera.h>
 #include <pylon/usb/BaslerUsbCamera.h>
+
+static double default_timeout = 3.0;
+static const char* possible_header_fields = "t,rows,cols,type,size,counters";
+static const char* default_header_fields = "t,rows,cols,type";
+
+static void usage( bool verbose = false )
+{
+    std::cerr << "\nacquire images from a basler camera";
+    std::cerr << "\noutput to stdout as serialized cv::Mat";
+    std::cerr << "\n";
+    std::cerr << "\nusage: basler-cat [<options>] [<filters>]";
+    std::cerr << "\n";
+    std::cerr << "\noptions:";
+    std::cerr << "\n    --help,-h                 display help message";
+    std::cerr << "\n    --address=<address>       camera ip address; default: first available";
+    std::cerr << "\n    --discard                 discard frames, if cannot keep up;";
+    std::cerr << "\n                              same as --buffer=1";
+    std::cerr << "\n    --buffer=<buffers>        maximum buffer size before discarding frames";
+    std::cerr << "\n                              default: unlimited";
+    std::cerr << "\n    --list-cameras            output camera list and exit";
+    std::cerr << "\n    --fields,-f=<fields>      header fields, possible values:";
+    std::cerr << "\n                              possible values: " << possible_header_fields;
+    std::cerr << "\n                              default: " << default_header_fields;
+    std::cerr << "\n    --camera-type=<type>      camera type: gige or usb; default: gige";
+    std::cerr << "\n    --image-type=<type>       image type; default: 3ub; --verbose for more";
+    std::cerr << "\n    --offset-x=<pixels>       offset in pixels in the line";
+    std::cerr << "\n    --offset-y=<pixels>       offset in lines in the frame";
+    std::cerr << "\n    --width=<pixels>          line width in pixels; default: max";
+    std::cerr << "\n    --height=<pixels>         number of lines in frame (in chunk mode always 1)";
+    std::cerr << "\n                              default: max";
+    std::cerr << "\n    --frame-trigger=<trigger> 'line1', 'line2', 'line3', 'encoder'";
+    std::cerr << "\n    --line-trigger=<trigger>  'line1', 'line2', 'line3', 'encoder'";
+    std::cerr << "\n    --line-rate=<num>         line acquisition rate";
+    std::cerr << "\n    --encoder-ticks=<num>     number of encoder ticks until the count resets";
+    std::cerr << "\n                              (reused for line number in frame in chunk mode)";
+    std::cerr << "\n    --header-only             output header only";
+    std::cerr << "\n    --no-header               output image data only";
+    std::cerr << "\n    --packet-size=<bytes>     mtu size on camera side, should not be larger ";
+    std::cerr << "\n                              than your lan and network interface";
+    std::cerr << "\n    --exposure=<num>          exposure";
+    std::cerr << "\n    --gain=<num>              gain";
+    std::cerr << "\n    --timeout=<seconds>       frame acquisition timeout; default " << default_timeout << "s";
+    std::cerr << "\n    --test-colour             output colour test image";
+    std::cerr << "\n    --verbose,-v              be more verbose";
+    std::cerr << "\n";
+    if( verbose )
+    {
+        std::cerr << "\n";
+        std::cerr << snark::cv_mat::filters::usage();
+        std::cerr << snark::cv_mat::serialization::options::type_usage();
+    }
+    std::cerr << "\nnote: there is a glitch or a subtle feature in basler line camera:";
+    std::cerr << "\n    - power-cycle camera";
+    std::cerr << "\n    - view colour images: it works";
+    std::cerr << "\n    - view grey-scale images: it works";
+    std::cerr << "\n    - view colour images: it still displays grey-scale";
+    std::cerr << "\n";
+    std::cerr << "\n    even in their native viewer you need to set colour image repeatedly and";
+    std::cerr << "\n    with pure luck it works, but we have not managed to do it in software;";
+    std::cerr << "\n    the remedy: power-cycle the camera";
+    std::cerr << "\n" << std::endl;
+}
 
 struct ChunkData
 {
@@ -76,7 +137,7 @@ struct Header // quick and dirty
     Header( const snark::cv_mat::serialization::header& header ) : header( header ) {}
 };
 
-static snark::cv_mat::serialization::options options;
+static snark::cv_mat::serialization::options cv_mat_options;
 static comma::csv::options csv;
 static bool verbose;
 static bool is_shutdown = false;
@@ -203,7 +264,7 @@ static P capture_( Pylon::CBaslerGigECamera& camera, Pylon::CBaslerGigECamera::S
             continue;
         }
         P pair;
-        static const snark::cv_mat::serialization::header header = options.get_header();
+        static const snark::cv_mat::serialization::header header = cv_mat_options.get_header();
         pair.second = cv::Mat( result.GetSizeY(), result.GetSizeX(), header.type );
         ::memcpy( pair.second.data, reinterpret_cast< const char* >( result.Buffer() )
                 , pair.second.dataend - pair.second.datastart );
@@ -215,7 +276,7 @@ static P capture_( Pylon::CBaslerGigECamera& camera, Pylon::CBaslerGigECamera::S
                 cv::cvtColor( pair.second, pair.second, CV_RGB2BGR );
                 break;
             default: // quick and dirty for now
-                std::cerr << "basler-cat: cv::mat type " << options.type << " not supported" << std::endl;
+                std::cerr << "basler-cat: cv::mat type " << cv_mat_options.type << " not supported" << std::endl;
         }
         set_( pair.first, t, result, camera );
         grabber.QueueBuffer( result.Handle(), NULL ); // requeue buffer
@@ -230,7 +291,7 @@ static void write_( ChunkPair p )
 {
     if( p.second.size().width == 0 || std::cout.bad() || !std::cout.good() || is_shutdown ) { return; }
     static comma::csv::binary_output_stream< Header > ostream( std::cout, csv );
-    static Header header( options.get_header() );
+    static Header header( cv_mat_options.get_header() );
     header.header.timestamp = p.first.timestamp;
     header.counters.ticks = p.first.ticks;
     static ChunkData first_chunk_data;
@@ -350,7 +411,7 @@ static P capture_( Pylon::CBaslerUsbCamera& camera, Pylon::CBaslerUsbCamera::Str
             continue;
         }
         P pair;
-        static const snark::cv_mat::serialization::header header = options.get_header();
+        static const snark::cv_mat::serialization::header header = cv_mat_options.get_header();
         pair.second = cv::Mat( result.GetSizeY(), result.GetSizeX(), header.type );
         ::memcpy( pair.second.data, reinterpret_cast< const char* >( result.Buffer() )
                 , pair.second.dataend - pair.second.datastart );
@@ -362,7 +423,7 @@ static P capture_( Pylon::CBaslerUsbCamera& camera, Pylon::CBaslerUsbCamera::Str
                 cv::cvtColor( pair.second, pair.second, CV_RGB2BGR );
                 break;
             default: // quick and dirty for now
-                std::cerr << "basler-cat: cv::mat type " << options.type << " not supported" << std::endl;
+                std::cerr << "basler-cat: cv::mat type " << cv_mat_options.type << " not supported" << std::endl;
         }
         set_( pair.first, t, result, camera );
         grabber.QueueBuffer( result.Handle(), NULL ); // requeue buffer
@@ -377,7 +438,7 @@ static void write_( ChunkPair p )
 {
     if( p.second.size().width == 0 || std::cout.bad() || !std::cout.good() || is_shutdown ) { return; }
     static comma::csv::binary_output_stream< Header > ostream( std::cout, csv );
-    static Header header( options.get_header() );
+    static Header header( cv_mat_options.get_header() );
     header.header.timestamp = p.first.timestamp;
     header.counters.ticks = p.first.ticks;
     static ChunkData first_chunk_data;
@@ -443,26 +504,13 @@ static unsigned int set_pixel_format_( Pylon::CBaslerUsbCamera& camera, Basler_U
 
 } // namespace usb
 
-std::string address;
-unsigned int discard;
-unsigned int packet_size;
-unsigned int exposure;
-unsigned int gain;
-unsigned int offset_x;
-unsigned int offset_y;
-unsigned int width;
-unsigned int height;
-std::string frame_trigger;
-std::string line_trigger;
-unsigned int line_rate;
-double timeout_seconds;
-std::string camera_type;
-bool chunk_mode = false;
-std::string filters;
+static unsigned int discard;
+static bool chunk_mode = false;
+static std::string filters;
 
 namespace gige {
 
-int main( const boost::program_options::variables_map& vm )
+int main( const comma::command_line_options& options )
 {
     typedef Pylon::CBaslerGigECamera Camera_t;
 
@@ -478,19 +526,19 @@ int main( const boost::program_options::variables_map& vm )
         std::cerr << "            export GENICAM_ROOT_V2_1=/opt/pylon/genicam" << std::endl;
         return 1;
     }
-    if( vm.count( "list-cameras" ) )
+    if( options.exists( "--list-cameras" ))
     {
         Pylon::DeviceInfoList_t devices;
         factory.EnumerateDevices( devices );
         for( unsigned int i = 0; i < devices.size(); ++i ) { std::cerr << devices[i].GetFullName() << std::endl; }
         return 0;
     }
-    timeout = timeout_seconds * 1000.0;
+    timeout = options.value< double >( "--timeout", default_timeout ) * 1000.0;
     Camera_t camera;
-    if( vm.count( "address" ) )
+    if( options.exists( "--address" ))
     {
         Pylon::CBaslerGigEDeviceInfo info;
-        info.SetIpAddress( address.c_str() );
+        info.SetIpAddress( options.value< std::string >( "--address" ).c_str() );
         camera.Attach( factory.CreateDevice( info ) );
     }
     else
@@ -509,7 +557,7 @@ int main( const boost::program_options::variables_map& vm )
     Camera_t::StreamGrabber_t grabber( camera.GetStreamGrabber( 0 ) );
     grabber.Open();
     unsigned int channels;
-    switch( options.get_header().type ) // quick and dirty
+    switch( cv_mat_options.get_header().type ) // quick and dirty
     {
         case CV_8UC1:
             channels = set_pixel_format_( camera, Basler_GigECameraParams::PixelFormat_Mono8 );
@@ -518,12 +566,14 @@ int main( const boost::program_options::variables_map& vm )
             channels = set_pixel_format_( camera, Basler_GigECameraParams::PixelFormat_RGB8Packed );
             break;
         default:
-            std::cerr << "basler-cat: type \"" << options.type << "\" not implemented or not supported by camera" << std::endl;
+            std::cerr << "basler-cat: type \"" << cv_mat_options.type << "\" not implemented or not supported by camera" << std::endl;
             return 1;
     }
     unsigned int max_width = camera.Width.GetMax();
+    double offset_x = options.value< double >( "--offset-x", 0 );
     if( offset_x >= max_width ) { std::cerr << "basler-cat: expected --offset-x less than " << max_width << ", got " << offset_x << std::endl; return 1; }
     camera.OffsetX.SetValue( offset_x );
+    unsigned int width = options.value< unsigned int >( "--width", max_width );
     width = ( ( unsigned long long )( offset_x ) + width ) < max_width ? width : max_width - offset_x;
     camera.Width.SetValue( width );
     unsigned int max_height = camera.Height.GetMax();
@@ -532,13 +582,15 @@ int main( const boost::program_options::variables_map& vm )
     // todo: is the colour line 2098 * 3 or ( 2098 / 3 ) * 3 ?
     //offset_y *= channels;
     //height *= channels;
-        
+
+    double offset_y = options.value< double >( "--offset-y", 0 );
     if( offset_y >= max_height ) { std::cerr << "basler-cat: expected --offset-y less than " << max_height << ", got " << offset_y << std::endl; return 1; }
     camera.OffsetY.SetValue( offset_y );
+    unsigned int height = options.value< unsigned int >( "--height", max_height );
     height = ( ( unsigned long long )( offset_y ) + height ) < max_height ? height : ( max_height - offset_y );
     camera.Height.SetValue( height );
     if( verbose ) { std::cerr << "basler-cat: set width,height to " << width << "," << height << std::endl; }
-    if( vm.count( "packet-size" ) ) { camera.GevSCPSPacketSize.SetValue( packet_size ); }
+    if( options.exists( "--packet-size" )) { camera.GevSCPSPacketSize.SetValue( options.value< unsigned int >( "--packet-size" )); }
     // todo: giving up... the commented code throws, but failure to stop acquisition, if active
     //       seems to lead to the following scenario:
     //       - power-cycle camera
@@ -556,6 +608,7 @@ int main( const boost::program_options::variables_map& vm )
         
     // todo: a hack for now
     GenApi::IEnumEntry* acquisitionStart = camera.TriggerSelector.GetEntry( Basler_GigECameraParams::TriggerSelector_AcquisitionStart );
+    std::string frame_trigger = options.value< std::string >( "--frame-trigger", "" );
     if( acquisitionStart && GenApi::IsAvailable( acquisitionStart ) )
     {
         camera.TriggerSelector.SetValue( Basler_GigECameraParams::TriggerSelector_AcquisitionStart );
@@ -605,6 +658,7 @@ int main( const boost::program_options::variables_map& vm )
     GenApi::IEnumEntry* lineStart = camera.TriggerSelector.GetEntry( Basler_GigECameraParams::TriggerSelector_LineStart );
     if( lineStart && GenApi::IsAvailable( lineStart ) )
     {
+        std::string line_trigger = options.value< std::string >( "--line-trigger", "" );
         if( line_trigger.empty() )
         {
             camera.TriggerSelector.SetValue( Basler_GigECameraParams::TriggerSelector_LineStart );
@@ -650,9 +704,10 @@ int main( const boost::program_options::variables_map& vm )
         std::cerr << "basler-cat: set chunk mode" << std::endl;
     }
     camera.ExposureMode.SetValue( Basler_GigECameraParams::ExposureMode_Timed );
-    if( vm.count( "exposure" ) ) { camera.ExposureTimeRaw.SetValue( exposure ); } // todo? auto exposure (see ExposureAutoEnums)
-    if( vm.count( "gain" ) )
-    { 
+    if( options.exists( "--exposure" )) { camera.ExposureTimeRaw.SetValue( options.value< unsigned int >( "--exposure" )); } // todo? auto exposure (see ExposureAutoEnums)
+    if( options.exists( "--gain" ))
+    {
+        unsigned int gain = options.value< unsigned int >( "--gain" );
         if(verbose) { std::cerr<<"basler-cat: setting gain="<<gain<<std::endl; }
         camera.GainSelector.SetValue( Basler_GigECameraParams::GainSelector_All );
         camera.GainRaw.SetValue( gain );
@@ -666,8 +721,8 @@ int main( const boost::program_options::variables_map& vm )
             camera.GainRaw.SetValue( gain );
         }
     }
-    if( vm.count( "line-rate" ) ) { camera.AcquisitionLineRateAbs.SetValue( line_rate ); }
-    if( vm.count( "test-colour" ) ) { camera.TestImageSelector.SetValue( Basler_GigECameraParams::TestImageSelector_Testimage6 ); }
+    if( options.exists( "--line-rate" )) { camera.AcquisitionLineRateAbs.SetValue( options.value< unsigned int >( "--line-rate" )); }
+    if( options.exists( "--test-colour" )) { camera.TestImageSelector.SetValue( Basler_GigECameraParams::TestImageSelector_Testimage6 ); }
     else { camera.TestImageSelector.SetValue( Basler_GigECameraParams::TestImageSelector_Off ); }
     unsigned int payload_size = camera.PayloadSize.GetValue();
     if( verbose )
@@ -709,7 +764,7 @@ int main( const boost::program_options::variables_map& vm )
     }
     else
     {
-        snark::cv_mat::serialization serialization( options );
+        snark::cv_mat::serialization serialization( cv_mat_options );
         snark::tbb::bursty_reader< Pair > reader( boost::bind( &capture_< Pair >, boost::ref( camera ), boost::ref( grabber ) ), discard );
         snark::imaging::applications::pipeline pipeline( serialization, filters, reader );
         //camera.AcquisitionMode.SetValue( Basler_GigECameraParams::AcquisitionMode_Continuous );
@@ -735,7 +790,7 @@ int main( const boost::program_options::variables_map& vm )
 
 namespace usb {
 
-int main( const boost::program_options::variables_map& vm )
+int main( const comma::command_line_options& options )
 {
     typedef Pylon::CBaslerUsbCamera Camera_t;
 
@@ -751,19 +806,19 @@ int main( const boost::program_options::variables_map& vm )
         std::cerr << "            export GENICAM_ROOT_V2_1=/opt/pylon/genicam" << std::endl;
         return 1;
     }
-    if( vm.count( "list-cameras" ) )
+    if( options.exists( "--list-cameras" ))
     {
         Pylon::DeviceInfoList_t devices;
         factory.EnumerateDevices( devices );
         for( unsigned int i = 0; i < devices.size(); ++i ) { std::cerr << devices[i].GetFullName() << std::endl; }
         return 0;
     }
-    timeout = timeout_seconds * 1000.0;
+    timeout = options.value< double >( "--timeout", default_timeout ) * 1000.0;
     Camera_t camera;
-    if( vm.count( "address" ) )
+    if( options.exists( "--address" ))
     {
         Pylon::CBaslerUsbDeviceInfo info;
-        info.SetSerialNumber( address.c_str() );
+        info.SetSerialNumber( options.value< std::string >( "--address" ).c_str() );
         camera.Attach( factory.CreateDevice( info ) );
     }
     else
@@ -782,18 +837,20 @@ int main( const boost::program_options::variables_map& vm )
     Camera_t::StreamGrabber_t grabber( camera.GetStreamGrabber( 0 ) );
     grabber.Open();
     unsigned int channels;
-    switch( options.get_header().type ) // quick and dirty
+    switch( cv_mat_options.get_header().type ) // quick and dirty
     {
         case CV_8UC1:
             channels = set_pixel_format_( camera, Basler_UsbCameraParams::PixelFormat_Mono8 );
             break;
         default:
-            std::cerr << "basler-cat: type \"" << options.type << "\" not implemented or not supported by camera" << std::endl;
+            std::cerr << "basler-cat: type \"" << cv_mat_options.type << "\" not implemented or not supported by camera" << std::endl;
             return 1;
     }
     unsigned int max_width = camera.Width.GetMax();
+    double offset_x = options.value< double >( "--offset-x", 0 );
     if( offset_x >= max_width ) { std::cerr << "basler-cat: expected --offset-x less than " << max_width << ", got " << offset_x << std::endl; return 1; }
     camera.OffsetX.SetValue( offset_x );
+    unsigned int width = options.value< unsigned int >( "--width", max_width );
     width = ( ( unsigned long long )( offset_x ) + width ) < max_width ? width : max_width - offset_x;
     camera.Width.SetValue( width );
     unsigned int max_height = camera.Height.GetMax();
@@ -802,9 +859,11 @@ int main( const boost::program_options::variables_map& vm )
     // todo: is the colour line 2098 * 3 or ( 2098 / 3 ) * 3 ?
     //offset_y *= channels;
     //height *= channels;
-        
+
+    double offset_y = options.value< double >( "--offset-y", 0 );
     if( offset_y >= max_height ) { std::cerr << "basler-cat: expected --offset-y less than " << max_height << ", got " << offset_y << std::endl; return 1; }
     camera.OffsetY.SetValue( offset_y );
+    unsigned int height = options.value< unsigned int >( "--height", max_height );
     height = ( ( unsigned long long )( offset_y ) + height ) < max_height ? height : ( max_height - offset_y );
     camera.Height.SetValue( height );
     if( verbose ) { std::cerr << "basler-cat: set width,height to " << width << "," << height << std::endl; }
@@ -825,15 +884,16 @@ int main( const boost::program_options::variables_map& vm )
         
     // todo: a hack for now
     camera.ExposureMode.SetValue( Basler_UsbCameraParams::ExposureMode_Timed );
-    if( vm.count( "exposure" ) ) { camera.ExposureTime.SetValue( exposure ); }
+    if( options.exists( "--exposure" )) { camera.ExposureTime.SetValue( options.value< unsigned int >( "--exposure" )); }
     else { camera.ExposureAuto.SetValue( Basler_UsbCameraParams::ExposureAuto_Once ); }
-    if( vm.count( "gain" ) )
-    { 
+    if( options.exists( "--gain" ) )
+    {
+        unsigned int gain = options.value< unsigned int >( "--gain" );
         if(verbose) { std::cerr<<"basler-cat: setting gain="<<gain<<std::endl; }
         camera.GainSelector.SetValue( Basler_UsbCameraParams::GainSelector_All );
         camera.Gain.SetValue( gain );
     }
-    if( vm.count( "test-colour" ) ) { camera.TestImageSelector.SetValue( Basler_UsbCameraParams::TestImageSelector_Testimage6 ); }
+    if( options.exists( "--test-colour" )) { camera.TestImageSelector.SetValue( Basler_UsbCameraParams::TestImageSelector_Testimage6 ); }
     else { camera.TestImageSelector.SetValue( Basler_UsbCameraParams::TestImageSelector_Off ); }
     unsigned int payload_size = camera.PayloadSize.GetValue();
     if( verbose )
@@ -862,7 +922,7 @@ int main( const boost::program_options::variables_map& vm )
     }
     else
     {
-        snark::cv_mat::serialization serialization( options );
+        snark::cv_mat::serialization serialization( cv_mat_options );
         snark::tbb::bursty_reader< Pair > reader( boost::bind( &capture_< Pair >, boost::ref( camera ), boost::ref( grabber ) ), discard );
         snark::imaging::applications::pipeline pipeline( serialization, filters, reader );
         //camera.AcquisitionMode.SetValue( Basler_UsbCameraParams::AcquisitionMode_Continuous );
@@ -895,64 +955,9 @@ int main( int argc, char** argv )
     ::setenv( "GENICAM_ROOT_V2_1", STRINGIZED( BASLER_PYLON_GENICAM_DIR ), 0 );
     try
     {
-        boost::program_options::options_description description( "options" );
-        description.add_options()
-            ( "help,h", "display help message" )
-            ( "address", boost::program_options::value< std::string >( &address ), "camera ip address; default: connect to the first available camera" )
-            ( "discard", "discard frames, if cannot keep up; same as --buffer=1" )
-            ( "buffer", boost::program_options::value< unsigned int >( &discard )->default_value( 0 ), "maximum buffer size before discarding frames, default: unlimited" )
-            ( "list-cameras", "output camera list and exit" )
-            ( "fields,f", boost::program_options::value< std::string >( &options.fields )->default_value( "t,rows,cols,type" ), "header fields, possible values: t,rows,cols,type,size,counters" )
-            ( "camera-type", boost::program_options::value< std::string >( &camera_type )->default_value( "gige" ), "camera type: gige or usb" )
-            ( "image-type", boost::program_options::value< std::string >( &options.type )->default_value( "3ub" ), "image type, e.g. '3ub'; also see --long-help for details" )
-            ( "offset-x", boost::program_options::value< unsigned int >( &offset_x )->default_value( 0 ), "offset in pixels in the line" )
-            ( "offset-y", boost::program_options::value< unsigned int >( &offset_y )->default_value( 0 ), "offset in lines in the frame" )
-            ( "width", boost::program_options::value< unsigned int >( &width )->default_value( std::numeric_limits< unsigned int >::max() ), "line width in pixels; default: max" )
-            ( "height", boost::program_options::value< unsigned int >( &height )->default_value( std::numeric_limits< unsigned int >::max() ), "number of lines in frame (in chunk mode always 1); default: max" )
-            ( "frame-trigger", boost::program_options::value< std::string >( &frame_trigger ), "'line1', 'line2', 'line3', 'encoder'" ) //; if absent while --line-trigger present, same as --line-trigger" )
-            ( "line-trigger", boost::program_options::value< std::string >( &line_trigger ), "'line1', 'line2', 'line3', 'encoder'" )
-            ( "line-rate", boost::program_options::value< unsigned int >( &line_rate ), "line acquisition rate" )
-            ( "encoder-ticks", boost::program_options::value< unsigned int >( &encoder_ticks ), "number of encoder ticks until the counter resets (reused for line number in frame in chunk mode)" )
-            ( "header-only", "output header only" )
-            ( "no-header", "output image data only" )
-            ( "packet-size", boost::program_options::value< unsigned int >( &packet_size ), "mtu size on camera side, should be not greater than your lan and network interface set to" )
-            ( "exposure", boost::program_options::value< unsigned int >( &exposure ), "exposure" )
-            ( "gain", boost::program_options::value< unsigned int >( &gain ), "gain" )
-            ( "timeout", boost::program_options::value< double >( &timeout_seconds )->default_value( 3.0 ), " frame acquisition timeout" )
-            ( "test-colour", "output colour test image" )
-            ( "verbose,v", "be more verbose" );
-        boost::program_options::variables_map vm;
-        boost::program_options::store( boost::program_options::parse_command_line( argc, argv, description), vm );
-        boost::program_options::parsed_options parsed = boost::program_options::command_line_parser(argc, argv).options( description ).allow_unregistered().run();
-        boost::program_options::notify( vm );
-        if ( vm.count( "help" ) || vm.count( "long-help" ) )
-        {
-            std::cerr << "acquire images from a basler camera (for now gige only)" << std::endl;
-            std::cerr << "output to stdout as serialized cv::Mat" << std::endl;
-            std::cerr << std::endl;
-            std::cerr << "usage: basler-cat [<options>] [<filters>]" << std::endl;
-            std::cerr << std::endl;
-            std::cerr << description << std::endl;
-            if( vm.count( "long-help" ) )
-            {
-                std::cerr << std::endl;
-                std::cerr << snark::cv_mat::filters::usage() << std::endl;
-                std::cerr << std::endl;
-                std::cerr << snark::cv_mat::serialization::options::type_usage() << std::endl;
-            }
-            std::cerr << std::endl;
-            std::cerr << "note: there is a glitch or a subtle feature in basler line camera:" << std::endl;
-            std::cerr << "      - power-cycle camera" << std::endl;
-            std::cerr << "      - view colour images: it works" << std::endl;
-            std::cerr << "      - view grey-scale images: it works" << std::endl;
-            std::cerr << "      - view colour images: it still displays grey-scale" << std::endl;
-            std::cerr << "      even in their native viewer you need to set colour image" << std::endl;
-            std::cerr << "      repeatedly and with pure luck it works, but we have not" << std::endl;
-            std::cerr << "      managed to do it in software; the remedy: power-cycle the camera" << std::endl;
-            std::cerr << std::endl;
-            return 1;
-        }
-        verbose = vm.count( "verbose" );
+        comma::command_line_options options( argc, argv, usage );
+
+        verbose = options.exists( "--verbose" );
         if( verbose )
         {
             std::cerr << "basler-cat: PYLON_ROOT=" << ::getenv( "PYLON_ROOT" ) << std::endl;
@@ -960,9 +965,9 @@ int main( int argc, char** argv )
             std::cerr << "basler-cat: initializing camera..." << std::endl;
         }
 
-        filters = comma::join( boost::program_options::collect_unrecognized( parsed.options, boost::program_options::include_positional ), ';' );
-        options.header_only = vm.count( "header-only" );
-        options.no_header = vm.count( "no-header" );
+        filters = comma::join( options.unnamed( "--help,-h,--verbose,-v,--discard,--list-cameras,--header-only,--no-header,--test-colour", "-.*" ), ';' );
+        cv_mat_options.header_only = options.exists( "--header-only" );
+        cv_mat_options.no_header = options.exists( "--no-header" );
         csv = comma::csv::options( argc, argv );
 
         chunk_mode =    csv.has_field( "counters" ) // quick and dirty
@@ -976,10 +981,10 @@ int main( int argc, char** argv )
                      || csv.has_field( "counters/ticks" );
         if( chunk_mode )
         {
-            if( vm.count( "encoder-ticks" ) == 0 ) { std::cerr << "basler-cat: chunk mode, please specify --encoder-ticks" << std::endl; return 1; }
+            if( !options.exists( "--encoder-ticks" )) { std::cerr << "basler-cat: chunk mode, please specify --encoder-ticks" << std::endl; return 1; }
             if( !filters.empty() ) { std::cerr << "basler-cat: chunk mode, cannot handle filters; use: basler-cat | cv-cat <filters> instead" << std::endl; return 1; }
-            if( height != 1 && height != std::numeric_limits< unsigned int >::max() ) { std::cerr << "basler-cat: only --height=1 implemented in chunk mode" << std::endl; return 1; }
-            height = 1;
+            unsigned int height = options.value< unsigned int >( "--height", 1 );
+            if( height != 1 ) { std::cerr << "basler-cat: only --height=1 implemented in chunk mode" << std::endl; return 1; }
             std::vector< std::string > v = comma::split( csv.fields, ',' );
             std::string format;
             for( unsigned int i = 0; i < v.size(); ++i )
@@ -995,12 +1000,12 @@ int main( int argc, char** argv )
             csv.full_xpath = true;
             csv.format( format );
         }
-        if( !vm.count( "buffer" ) && vm.count( "discard" ) ) { discard = 1; }
+        if( !options.exists( "--buffer" ) && options.exists( "--discard" )) { discard = 1; }
 
-        bool is_gige = ( camera_type == "gige" );
+        bool is_gige = ( options.value< std::string >( "--camera-type", "gige" ) == "gige" );
         int return_value;
-        if( is_gige ) { return_value = gige::main( vm ); }
-        else { return_value = usb::main( vm ); }
+        if( is_gige ) { return_value = gige::main( options ); }
+        else { return_value = usb::main( options ); }
         if( verbose ) { std::cerr << "basler-cat: done" << std::endl; }
         return return_value;
     }
