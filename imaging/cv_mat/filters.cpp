@@ -32,11 +32,15 @@
 #include <sstream>
 #include <boost/array.hpp>
 #include <boost/bind.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/filesystem/operations.hpp>
 #include <boost/lexical_cast.hpp>
-#include <boost/unordered_map.hpp>
+#include <boost/optional.hpp>
+#include <boost/shared_ptr.hpp>
 #include <boost/static_assert.hpp>
+#include <boost/thread.hpp>
 #include <boost/type_traits.hpp>
+#include <boost/unordered_map.hpp>
 #include <comma/base/exception.h>
 #include <comma/base/types.h>
 #include <comma/csv/ascii.h>
@@ -501,6 +505,76 @@ static filters::value_type split_impl_( filters::value_type m )
     return n;
 }
 
+class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex is non-copyable
+{
+    private:
+        class logger
+        {
+            public:
+                logger() : size_( 0 ), count_( 0 ) {}
+                
+                logger( const std::string& filename ) : ofstream_( &filename[0] ), size_( 0 ), count_( 0 ) { if( !ofstream_.is_open() ) { COMMA_THROW( comma::exception, "failed to open \"" << filename << "\"" ); } }
+                
+                logger( const std::string& directory, boost::posix_time::time_duration period ) : directory_( directory ), period_( period ), size_( 0 ), count_( 0 ) {}
+                
+                logger( const std::string& directory, unsigned int size ) : directory_( directory ), size_( size ), count_( 0 ) {}
+                
+                filters::value_type operator()( filters::value_type m )
+                {
+                    if( m.first.is_not_a_date_time() ) { return m; } // quick and dirty, end of stream
+                    boost::mutex::scoped_lock lock( mutex_ ); // somehow, serial_in_order still may have more than one instance of filter run at a time
+                    ++count_;
+                    bool open_file_stream = false;
+                    if( size_ > 0 && count_ == size_ )
+                    {
+                        open_file_stream = true;
+                        count_ = 0;
+                    }
+                    else if( period_ && ( start_.is_not_a_date_time() || ( m.first - start_ ) >= *period_ ) )
+                    {
+                        open_file_stream = true;
+                        start_ = m.first;
+                    }
+                    if( open_file_stream )
+                    {
+                        ofstream_.close();
+                        std::string filename = directory_ + '/' + boost::posix_time::to_iso_string( m.first ) + ".bin";
+                        ofstream_ = std::ofstream( &filename[0] );
+                        if( !ofstream_.is_open() ) { COMMA_THROW( comma::exception, "failed to open \"" << filename << "\"" ); }
+                    }
+                    serialization_.write( ofstream_, m );
+                    return m;
+                }
+                
+            private:
+                boost::mutex mutex_;
+                std::string directory_;
+                std::ofstream ofstream_;
+                snark::cv_mat::serialization serialization_;
+                boost::optional< boost::posix_time::time_duration > period_;
+                boost::posix_time::ptime start_;
+                unsigned int size_;
+                unsigned int count_;
+        };
+        
+        boost::shared_ptr< logger > logger_; // todo: watch performance
+    
+    public:
+        log_impl_() {}
+        
+        log_impl_( const std::string& filename ) : logger_( new logger( filename ) ) {}
+        
+        log_impl_( const std::string& directory, boost::posix_time::time_duration period ) : logger_( new logger( directory, period ) ) {}
+        
+        log_impl_( const std::string& directory, unsigned int size ) : logger_( new logger( directory, size ) ) {}
+        
+        //log_impl_( const log_impl_& rhs ) : logger_( rhs.logger_ ) {}
+        
+        //~log_impl_() { if( logger_ ) { delete logger_; } }
+        
+        filters::value_type operator()( filters::value_type m ) { return logger_->operator()( m ); }
+};
+
 static filters::value_type merge_impl_( filters::value_type m, unsigned int nchannels )
 {
     filters::value_type n;
@@ -587,7 +661,7 @@ static filters::value_type circle_impl_( filters::value_type m, const drawing::c
 
 static filters::value_type rectangle_impl_( filters::value_type m, const drawing::rectangle& rectangle ) { rectangle.draw( m.second ); return m; }
 
-void encode_impl_check_type( const filters::value_type& m, const std::string& type )
+static void encode_impl_check_type( const filters::value_type& m, const std::string& type )
 {
     int channels = m.second.channels();
     int size = m.second.elemSize() / channels;
@@ -921,7 +995,7 @@ class undistort_impl_
         void init_map_( unsigned int rows, unsigned int cols )
         {
             if( !x_.empty() ) { return; }
-            std::ifstream stream( filename_.c_str() );
+            std::ifstream stream( &filename_[0] );
             if( !stream ) { COMMA_THROW( comma::exception, "failed to open undistort map in \"" << filename_ << "\"" ); }
             std::size_t size = rows * cols * 4;
             xbuf_.resize( size );
@@ -1397,8 +1471,7 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
         }
         else if( e[0] == "count" )
         {
-            count_impl_ c;
-            f.push_back( filter( c ) );
+            f.push_back( filter( count_impl_() ) );
         }
         else if( e[0] == "crop" )
         {
@@ -1531,6 +1604,12 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
         else if( e[0] == "flop" )
         {
             f.push_back( filter( boost::bind( &flip_impl_, _1, 1 ) ) );
+        }
+        else if( e[0] == "log" ) // todo: rotate log by size: expose to user
+        {
+            if( e.size() <= 1 ) { COMMA_THROW( comma::exception, "please specify log=<filename> or log=<directory>,<period>" ); }
+            const std::vector< std::string >& w = comma::split( e[1], ',' );
+            f.push_back( filter( w.size() == 1 ? log_impl_( w[0] ) : log_impl_( w[0], boost::posix_time::seconds( boost::lexical_cast< unsigned int >( w[1] ) ) ) ) );
         }
         else if( e[0] == "magnitude" )
         {
