@@ -73,7 +73,7 @@ static void usage( bool verbose = false )
     std::cerr << "\n";
     std::cerr << "\noptions:";
     std::cerr << "\n    --help,-h                 display help message";
-    std::cerr << "\n    --address=<address>       camera ip address; default: first available";
+    std::cerr << "\n    --address=<address>       camera address; default: first available";
     std::cerr << "\n    --discard                 discard frames, if cannot keep up;";
     std::cerr << "\n                              same as --buffer=1";
     std::cerr << "\n    --buffer=<buffers>        maximum buffer size before discarding frames";
@@ -104,6 +104,9 @@ static void usage( bool verbose = false )
     std::cerr << "\n    --timeout=<seconds>       frame acquisition timeout; default " << default_timeout << "s";
     std::cerr << "\n    --test-colour             output colour test image";
     std::cerr << "\n    --verbose,-v              be more verbose";
+    std::cerr << "\n";
+    std::cerr << "\nFor GigE cameras <address> is the device ip address, for USB cameras it is";
+    std::cerr << "\nthe USB address. Both can be determined by --list-cameras --verbose.";
     std::cerr << "\n";
     if( verbose )
     {
@@ -835,7 +838,7 @@ int main( const comma::command_line_options& options )
     if( options.exists( "--address" ))
     {
         Pylon::CBaslerUsbDeviceInfo info;
-        info.SetSerialNumber( options.value< std::string >( "--address" ).c_str() );
+        info.SetFullName( options.value< std::string >( "--address" ).c_str() );
         camera.Attach( factory.CreateDevice( info ) );
     }
     else
