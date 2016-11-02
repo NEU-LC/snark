@@ -42,6 +42,28 @@ static double default_timeout = 3.0;
 static const char* possible_header_fields = "t,rows,cols,type,size,counters";
 static const char* default_header_fields = "t,rows,cols,type";
 
+static void bash_completion( unsigned const ac, char const * const * av )
+{
+    static const char* completion_options =
+        " --help -h --verbose -v"
+        " --address --list-cameras --camera-type"
+        " --discard --buffer"
+        " --fields -f"
+        " --image-type"
+        " --offset-x --offset-y --width --height"
+        " --frame-trigger --line-trigger --line-rate"
+        " --encoder-ticks"
+        " --header-only --no-header"
+        " --packet-size"
+        " --exposure --gain"
+        " --timeout"
+        " --test-colour"
+        ;
+
+    std::cout << completion_options << std::endl;
+    exit( 0 );
+}
+
 static void usage( bool verbose = false )
 {
     std::cerr << "\nacquire images from a basler camera";
@@ -937,6 +959,7 @@ int main( int argc, char** argv )
     try
     {
         comma::command_line_options options( argc, argv, usage );
+        if( options.exists( "--bash-completion" ) ) bash_completion( argc, argv );
 
         comma::verbose << "PYLON_ROOT=" << ::getenv( "PYLON_ROOT" ) << std::endl;
         comma::verbose << "GENICAM_ROOT_V2_1=" << ::getenv( "GENICAM_ROOT_V2_1" ) << std::endl;
