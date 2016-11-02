@@ -29,6 +29,7 @@
 
 /// @author vsevolod vlaskine
 
+#include <boost/regex.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <comma/application/command_line_options.h>
 #include <comma/csv/stream.h>
@@ -46,7 +47,7 @@ static void bash_completion( unsigned const ac, char const * const * av )
 {
     static const char* completion_options =
         " --help -h --verbose -v"
-        " --address --list-cameras --camera-type"
+        " --address --list-cameras"
         " --discard --buffer"
         " --fields -f"
         " --image-type"
@@ -83,7 +84,6 @@ static void usage( bool verbose = false )
     std::cerr << "\n    --fields,-f=<fields>      header fields, possible values:";
     std::cerr << "\n                              possible values: " << possible_header_fields;
     std::cerr << "\n                              default: " << default_header_fields;
-    std::cerr << "\n    --camera-type=<type>      camera type: gige or usb; default: gige";
     std::cerr << "\n    --image-type=<type>       image type; default: 3ub; --verbose for more";
     std::cerr << "\n    --offset-x=<pixels>       offset in pixels in the line";
     std::cerr << "\n    --offset-y=<pixels>       offset in lines in the frame";
@@ -546,44 +546,60 @@ void list_cameras()
     if( comma::verbose && !devices.empty() ) { std::cerr << std::endl; }
 }
 
+bool is_ip_address( std::string str )
+{
+    boost::regex ip_regex( "[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+" ); // somewhat naive
+    return boost::regex_match( str, ip_regex );
+}
+
+Pylon::IPylonDevice* create_device( const std::string& address )
+{
+    Pylon::CTlFactory& factory = Pylon::CTlFactory::GetInstance();
+
+    if( address.empty() )
+    {
+        Pylon::DeviceInfoList_t devices;
+        factory.EnumerateDevices( devices );
+        if( devices.empty() ) { std::cerr << "basler-cat: no camera found" << std::endl; return NULL; }
+        std::cerr << "basler-cat: will connect to the first of " << devices.size()
+                  << " found device(s):" << std::endl;
+        Pylon::DeviceInfoList_t::const_iterator it;
+        for( it = devices.begin(); it != devices.end(); ++it )
+        {
+            std::cerr << "    " << it->GetFullName() << std::endl;
+        }
+        return factory.CreateDevice( devices[0] );
+    }
+    else
+    {
+        if( is_ip_address( address ))
+        {
+            Pylon::CBaslerGigEDeviceInfo gige_device_info;
+            gige_device_info.SetIpAddress( address.c_str() );
+            return factory.CreateDevice( gige_device_info );
+        }
+        else
+        {
+            Pylon::CDeviceInfo device_info;
+            device_info.SetFullName( address.c_str() );
+            return factory.CreateDevice( device_info );
+        }
+    }
+}
+
 static unsigned int discard;
 static bool chunk_mode = false;
 static std::string filters;
 
 namespace gige {
 
-int main( const comma::command_line_options& options )
+int main( const comma::command_line_options& options, Pylon::IPylonDevice* device )
 {
     typedef Pylon::CBaslerGigECamera Camera_t;
 
-    Pylon::CTlFactory& factory = Pylon::CTlFactory::GetInstance();
-    Pylon::ITransportLayer* transport_layer( Pylon::CTlFactory::GetInstance().CreateTl( Camera_t::DeviceClass() ));
-    if( !transport_layer )
-    {
-        std::cerr << "basler-cat: failed to create transport layer" << std::endl;
-        std::cerr << "            most likely PYLON_ROOT and GENICAM_ROOT_V2_1 environment variables not set" << std::endl;
-        std::cerr << "            point them to your pylon installation, e.g:" << std::endl;
-        std::cerr << "            export PYLON_ROOT=/opt/pylon" << std::endl;
-        std::cerr << "            export GENICAM_ROOT_V2_1=/opt/pylon/genicam" << std::endl;
-        return 1;
-    }
     timeout = options.value< double >( "--timeout", default_timeout ) * 1000.0;
     Camera_t camera;
-    if( options.exists( "--address" ))
-    {
-        Pylon::CBaslerGigEDeviceInfo info;
-        info.SetIpAddress( options.value< std::string >( "--address" ).c_str() );
-        camera.Attach( factory.CreateDevice( info ) );
-    }
-    else
-    {
-        Pylon::DeviceInfoList_t devices;
-        factory.EnumerateDevices( devices );
-        if( devices.empty() ) { std::cerr << "basler-cat: no camera found" << std::endl; return 1; }
-        std::cerr << "basler-cat: will connect to the first of " << devices.size() << " found device(s):" << std::endl;
-        for( unsigned int i = 0; i < devices.size(); ++i ) { std::cerr << "    " << devices[i].GetFullName() << std::endl; }
-        camera.Attach( transport_layer->CreateDevice( devices[0] ) );
-    }
+    camera.Attach( device );
     comma::verbose << "initialized camera" << std::endl;
     comma::verbose << "opening camera " << camera.GetDevice()->GetDeviceInfo().GetFullName() << "..." << std::endl;
     camera.Open();
@@ -818,38 +834,13 @@ int main( const comma::command_line_options& options )
 
 namespace usb {
 
-int main( const comma::command_line_options& options )
+int main( const comma::command_line_options& options, Pylon::IPylonDevice* device )
 {
     typedef Pylon::CBaslerUsbCamera Camera_t;
 
-    Pylon::CTlFactory& factory = Pylon::CTlFactory::GetInstance();
-    Pylon::ITransportLayer* transport_layer( Pylon::CTlFactory::GetInstance().CreateTl( Camera_t::DeviceClass() ));
-    if( !transport_layer )
-    {
-        std::cerr << "basler-cat: failed to create transport layer" << std::endl;
-        std::cerr << "            most likely PYLON_ROOT and GENICAM_ROOT_V2_1 environment variables not set" << std::endl;
-        std::cerr << "            point them to your pylon installation, e.g:" << std::endl;
-        std::cerr << "            export PYLON_ROOT=/opt/pylon" << std::endl;
-        std::cerr << "            export GENICAM_ROOT_V2_1=/opt/pylon/genicam" << std::endl;
-        return 1;
-    }
     timeout = options.value< double >( "--timeout", default_timeout ) * 1000.0;
     Camera_t camera;
-    if( options.exists( "--address" ))
-    {
-        Pylon::CBaslerUsbDeviceInfo info;
-        info.SetFullName( options.value< std::string >( "--address" ).c_str() );
-        camera.Attach( factory.CreateDevice( info ) );
-    }
-    else
-    {
-        Pylon::DeviceInfoList_t devices;
-        factory.EnumerateDevices( devices );
-        if( devices.empty() ) { std::cerr << "basler-cat: no camera found" << std::endl; return 1; }
-        std::cerr << "basler-cat: will connect to the first of " << devices.size() << " found device(s):" << std::endl;
-        for( unsigned int i = 0; i < devices.size(); ++i ) { std::cerr << "    " << devices[i].GetFullName() << std::endl; }
-        camera.Attach( transport_layer->CreateDevice( devices[0] ) );
-    }
+    camera.Attach( device );
     comma::verbose << "initialized camera" << std::endl;
     comma::verbose << "opening camera " << camera.GetDevice()->GetDeviceInfo().GetFullName() << "..." << std::endl;
     camera.Open();
@@ -984,6 +975,16 @@ int main( int argc, char** argv )
         comma::verbose << "GENICAM_ROOT_V2_1=" << ::getenv( "GENICAM_ROOT_V2_1" ) << std::endl;
         comma::verbose << "initializing camera..." << std::endl;
 
+        std::string address = options.value< std::string >( "--address", "" );
+        Pylon::IPylonDevice* device = create_device( address );
+        if( !device )
+        {
+            std::cerr << "unable to open camera";
+            if( !address.empty() ) { std::cerr << " for address " << address; }
+            std::cerr << std::endl;
+            return 1;
+        }
+
         filters = comma::join( options.unnamed( "--help,-h,--verbose,-v,--discard,--list-cameras,--header-only,--no-header,--test-colour", "-.*" ), ';' );
         cv_mat_options.header_only = options.exists( "--header-only" );
         cv_mat_options.no_header = options.exists( "--no-header" );
@@ -1021,10 +1022,11 @@ int main( int argc, char** argv )
         }
         if( !options.exists( "--buffer" ) && options.exists( "--discard" )) { discard = 1; }
 
-        bool is_gige = ( options.value< std::string >( "--camera-type", "gige" ) == "gige" );
-        int return_value;
-        if( is_gige ) { return_value = gige::main( options ); }
-        else { return_value = usb::main( options ); }
+        int return_value = 1;
+        Pylon::String_t device_class = device->GetDeviceInfo().GetDeviceClass();
+        if     ( device_class == "BaslerGigE" ) { return_value = gige::main( options, device ); }
+        else if( device_class == "BaslerUsb" )  { return_value = usb::main( options, device ); }
+        else { std::cerr << "basler-cat: unsupported device type of " << device_class << std::endl; }
         comma::verbose << "done" << std::endl;
         return return_value;
     }
