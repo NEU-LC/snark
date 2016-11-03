@@ -698,11 +698,12 @@ void show_config( Pylon::CBaslerUsbCamera::StreamGrabber_t& grabber )
 void run_pipeline( Pylon::CBaslerGigECamera& camera
                  , Pylon::CBaslerGigECamera::StreamGrabber_t& grabber
                  , bool chunk_mode
-                 , unsigned int max_queue_size )
+                 , unsigned int max_queue_size
+                 , unsigned int max_queue_capacity )
 {
     if( chunk_mode )
     {
-        snark::tbb::bursty_reader< ChunkPair > read( boost::bind( &capture_< Pylon::CBaslerGigECamera, ChunkPair >, boost::ref( camera ), boost::ref( grabber ) ), max_queue_size );
+        snark::tbb::bursty_reader< ChunkPair > read( boost::bind( &capture_< Pylon::CBaslerGigECamera, ChunkPair >, boost::ref( camera ), boost::ref( grabber ) ), max_queue_size, max_queue_capacity );
         tbb::filter_t< ChunkPair, void > write( tbb::filter::serial_in_order, boost::bind( &write_, _1 ) );
         snark::tbb::bursty_pipeline< ChunkPair > pipeline;
         camera.AcquisitionMode.SetValue( Basler_GigECameraParams::AcquisitionMode_Continuous );
@@ -716,7 +717,7 @@ void run_pipeline( Pylon::CBaslerGigECamera& camera
     else
     {
         snark::cv_mat::serialization serialization( cv_mat_options );
-        snark::tbb::bursty_reader< Pair > reader( boost::bind( &capture_< Pylon::CBaslerGigECamera, Pair >, boost::ref( camera ), boost::ref( grabber ) ), max_queue_size );
+        snark::tbb::bursty_reader< Pair > reader( boost::bind( &capture_< Pylon::CBaslerGigECamera, Pair >, boost::ref( camera ), boost::ref( grabber ) ), max_queue_size, max_queue_capacity );
         snark::imaging::applications::pipeline pipeline( serialization, filters, reader );
         //camera.AcquisitionMode.SetValue( Basler_GigECameraParams::AcquisitionMode_Continuous );
         camera.AcquisitionStart.Execute(); // continuous acquisition mode
@@ -730,7 +731,8 @@ void run_pipeline( Pylon::CBaslerGigECamera& camera
 void run_pipeline( Pylon::CBaslerUsbCamera& camera
                  , Pylon::CBaslerUsbCamera::StreamGrabber_t& grabber
                  , bool chunk_mode
-                 , unsigned int max_queue_size )
+                 , unsigned int max_queue_size
+                 , unsigned int max_queue_capacity )
 {
     if( chunk_mode )
     {
@@ -739,7 +741,7 @@ void run_pipeline( Pylon::CBaslerUsbCamera& camera
     else
     {
         snark::cv_mat::serialization serialization( cv_mat_options );
-        snark::tbb::bursty_reader< Pair > reader( boost::bind( &capture_< Pylon::CBaslerUsbCamera, Pair >, boost::ref( camera ), boost::ref( grabber ) ), max_queue_size );
+        snark::tbb::bursty_reader< Pair > reader( boost::bind( &capture_< Pylon::CBaslerUsbCamera, Pair >, boost::ref( camera ), boost::ref( grabber ) ), max_queue_size, max_queue_capacity );
         snark::imaging::applications::pipeline pipeline( serialization, filters, reader );
         //camera.AcquisitionMode.SetValue( Basler_UsbCameraParams::AcquisitionMode_Continuous );
         camera.AcquisitionStart.Execute(); // continuous acquisition mode
@@ -837,7 +839,7 @@ int run( T& camera, const comma::command_line_options& options )
 
     unsigned int max_queue_size = options.value< unsigned int >( "--buffer", options.exists( "--discard" ));
 
-    run_pipeline( camera, grabber, chunk_mode, max_queue_size );
+    run_pipeline( camera, grabber, chunk_mode, max_queue_size, max_queue_size * 3 );
 
     comma::verbose << "acquisition stopped" << std::endl;
     is_shutdown = true;
