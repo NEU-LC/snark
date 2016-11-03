@@ -594,16 +594,16 @@ namespace gige {
 
 int main( const comma::command_line_options& options, Pylon::IPylonDevice* device )
 {
-    typedef Pylon::CBaslerGigECamera Camera_t;
+    typedef Pylon::CBaslerGigECamera camera_t;
 
     timeout = options.value< double >( "--timeout", default_timeout ) * 1000.0;
-    Camera_t camera;
+    camera_t camera;
     camera.Attach( device );
     comma::verbose << "initialized camera" << std::endl;
     comma::verbose << "opening camera " << camera.GetDevice()->GetDeviceInfo().GetFullName() << "..." << std::endl;
     camera.Open();
     comma::verbose << "opened camera " << camera.GetDevice()->GetDeviceInfo().GetFullName() << std::endl;
-    Camera_t::StreamGrabber_t grabber( camera.GetStreamGrabber( 0 ) );
+    camera_t::StreamGrabber_t grabber( camera.GetStreamGrabber( 0 ) );
     grabber.Open();
     unsigned int channels;
     switch( cv_mat_options.get_header().type ) // quick and dirty
@@ -838,16 +838,16 @@ namespace usb {
 
 int main( const comma::command_line_options& options, Pylon::IPylonDevice* device )
 {
-    typedef Pylon::CBaslerUsbCamera Camera_t;
+    typedef Pylon::CBaslerUsbCamera camera_t;
 
     timeout = options.value< double >( "--timeout", default_timeout ) * 1000.0;
-    Camera_t camera;
+    camera_t camera;
     camera.Attach( device );
     comma::verbose << "initialized camera" << std::endl;
     comma::verbose << "opening camera " << camera.GetDevice()->GetDeviceInfo().GetFullName() << "..." << std::endl;
     camera.Open();
     comma::verbose << "opened camera " << camera.GetDevice()->GetDeviceInfo().GetFullName() << std::endl;
-    Camera_t::StreamGrabber_t grabber( camera.GetStreamGrabber( 0 ) );
+    camera_t::StreamGrabber_t grabber( camera.GetStreamGrabber( 0 ) );
     grabber.Open();
     unsigned int channels;
     switch( cv_mat_options.get_header().type ) // quick and dirty
