@@ -84,9 +84,7 @@ template < typename T >
 class queue
 {
     public:
-        queue() {}
-        
-        queue( unsigned int capacity ) { queue_.set_capacity( capacity ); }
+        queue( unsigned int capacity = 0 ) { if( capacity > 0 ) { queue_.set_capacity( capacity ); } }
 
         void push( const T& t ) { queue_.push( t ); ++counter_; }
         

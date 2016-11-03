@@ -151,17 +151,7 @@ inline T bursty_reader< T >::read( ::tbb::flow_control& flow )
     }
     if( size_ > 0 )
     {
-        unsigned int n = 0;
-        while( queue_.size() > size_ )
-        {
-            T t;
-            queue_.pop( t );
-            ++n;
-        }
-//         if( n > 0 ) TODO how to warn the user that data is discarded ?
-//         {
-//             std::cerr << "warning: discarded " << n << " frame(s)" << std::endl;
-//         }
+        while( queue_.size() > size_ ) { T t; queue_.pop( t ); }
     }
     T t;
     queue_.pop( t );
@@ -169,7 +159,6 @@ inline T bursty_reader< T >::read( ::tbb::flow_control& flow )
     flow.stop();
     return T();
 }
-
 
 /// push data to the queue in a separate thread
 template < typename T >
