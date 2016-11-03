@@ -965,7 +965,7 @@ int main( int argc, char** argv )
     try
     {
         comma::command_line_options options( argc, argv, usage );
-        if( options.exists( "--bash-completion" ) ) bash_completion( argc, argv );
+        if( options.exists( "--bash-completion" )) bash_completion( argc, argv );
 
         Pylon::PylonAutoInitTerm auto_init_term;
 
