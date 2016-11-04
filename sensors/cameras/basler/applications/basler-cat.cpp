@@ -210,19 +210,19 @@ typedef std::pair< boost::posix_time::ptime, cv::Mat > Pair;
 typedef std::pair< ChunkData, cv::Mat > ChunkPair;
 
 template < typename T >
-static void set_( boost::posix_time::ptime& timestamp
-                , boost::posix_time::ptime& t
-                , const Pylon::GrabResult&
-                , T& )
+static void set( boost::posix_time::ptime& timestamp
+               , boost::posix_time::ptime& t
+               , const Pylon::GrabResult&
+               , T& )
 {
     timestamp = t;
 }
 
 template < typename T >
-static void set_( ChunkData& d
-                , boost::posix_time::ptime& t
-                , const Pylon::GrabResult& result
-                , T& camera )
+static void set( ChunkData& d
+               , boost::posix_time::ptime& t
+               , const Pylon::GrabResult& result
+               , T& camera )
 {
     parser->AttachBuffer( ( unsigned char* ) result.Buffer(), result.GetPayloadSize() );
     d.timestamp = t;
@@ -237,7 +237,7 @@ static void set_( ChunkData& d
 }
 
 template < typename T, typename P >
-static P capture_( T& camera, typename T::StreamGrabber_t& grabber )
+static P capture( T& camera, typename T::StreamGrabber_t& grabber )
 {
     /// @todo if color spatial correction implemented, mind the following:
     ///
@@ -292,14 +292,14 @@ static P capture_( T& camera, typename T::StreamGrabber_t& grabber )
         // quick and dirty for now: rgb are not contiguous in basler camera frame
         if( header.type == CV_8UC3 ) { cv::cvtColor( pair.second, pair.second, CV_RGB2BGR ); }
 
-        set_< T >( pair.first, t, result, camera );
+        set< T >( pair.first, t, result, camera );
         grabber.QueueBuffer( result.Handle(), NULL ); // requeue buffer
         return pair;
     }
     return P();
 }
 
-static void write_( ChunkPair p )
+static void write( ChunkPair p )
 {
     if( p.second.size().width == 0 || std::cout.bad() || !std::cout.good() ) { return; }
     static comma::csv::binary_output_stream< Header > ostream( std::cout, csv );
@@ -356,7 +356,7 @@ pixel_format_desc pixel_format_to_desc( Basler_UsbCameraParams::PixelFormatEnums
 }
 
 template < typename T, typename P >
-static unsigned int set_pixel_format_( T& camera, P type )
+static unsigned int set_pixel_format( T& camera, P type )
 {
     pixel_format_desc pixel_format = pixel_format_to_desc( type );
 
@@ -399,9 +399,9 @@ unsigned int num_channels( Pylon::CBaslerGigECamera& camera, comma::uint32 type 
     switch( type )
     {
         case CV_8UC1:
-            return set_pixel_format_< Pylon::CBaslerGigECamera, Basler_GigECameraParams::PixelFormatEnums >( camera, Basler_GigECameraParams::PixelFormat_Mono8 );
+            return set_pixel_format< Pylon::CBaslerGigECamera, Basler_GigECameraParams::PixelFormatEnums >( camera, Basler_GigECameraParams::PixelFormat_Mono8 );
         case CV_8UC3:
-            return set_pixel_format_< Pylon::CBaslerGigECamera, Basler_GigECameraParams::PixelFormatEnums >( camera, Basler_GigECameraParams::PixelFormat_RGB8Packed );
+            return set_pixel_format< Pylon::CBaslerGigECamera, Basler_GigECameraParams::PixelFormatEnums >( camera, Basler_GigECameraParams::PixelFormat_RGB8Packed );
         default:
             COMMA_THROW( comma::exception, "type \"" << type << "\" not implemented or not supported by camera" );
     }
@@ -412,7 +412,7 @@ unsigned int num_channels( Pylon::CBaslerUsbCamera& camera, comma::uint32 type )
     switch( type )
     {
         case CV_8UC1:
-            return set_pixel_format_< Pylon::CBaslerUsbCamera, Basler_UsbCameraParams::PixelFormatEnums >( camera, Basler_UsbCameraParams::PixelFormat_Mono8 );
+            return set_pixel_format< Pylon::CBaslerUsbCamera, Basler_UsbCameraParams::PixelFormatEnums >( camera, Basler_UsbCameraParams::PixelFormat_Mono8 );
         default:
             COMMA_THROW( comma::exception, "type \"" << type << "\" not implemented or not supported by camera" );
     }
@@ -714,23 +714,23 @@ void run_pipeline( Pylon::CBaslerGigECamera& camera
 {
     if( chunk_mode )
     {
-        snark::tbb::bursty_reader< ChunkPair > read( boost::bind( &capture_< Pylon::CBaslerGigECamera, ChunkPair >, boost::ref( camera ), boost::ref( grabber ) ), max_queue_size, max_queue_capacity );
-        tbb::filter_t< ChunkPair, void > write( tbb::filter::serial_in_order, boost::bind( &write_, _1 ) );
+        snark::tbb::bursty_reader< ChunkPair > reader( boost::bind( &capture< Pylon::CBaslerGigECamera, ChunkPair >, boost::ref( camera ), boost::ref( grabber ) ), max_queue_size, max_queue_capacity );
+        tbb::filter_t< ChunkPair, void > writer( tbb::filter::serial_in_order, boost::bind( &write, _1 ));
         snark::tbb::bursty_pipeline< ChunkPair > pipeline;
         camera.AcquisitionMode = Basler_GigECameraParams::AcquisitionMode_Continuous;
         camera.AcquisitionStart.Execute(); // continuous acquisition mode
         comma::verbose << "running in chunk mode..." << std::endl;
-        pipeline.run( read, write );
+        pipeline.run( reader, writer );
         comma::verbose << "shutting down..." << std::endl;
         camera.AcquisitionStop();
         comma::verbose << "acquisition stopped" << std::endl;
-        read.join();
+        reader.join();
         camera.DestroyChunkParser( parser );
     }
     else
     {
         snark::cv_mat::serialization serialization( cv_mat_options );
-        snark::tbb::bursty_reader< Pair > reader( boost::bind( &capture_< Pylon::CBaslerGigECamera, Pair >, boost::ref( camera ), boost::ref( grabber ) ), max_queue_size, max_queue_capacity );
+        snark::tbb::bursty_reader< Pair > reader( boost::bind( &capture< Pylon::CBaslerGigECamera, Pair >, boost::ref( camera ), boost::ref( grabber ) ), max_queue_size, max_queue_capacity );
         snark::imaging::applications::pipeline pipeline( serialization, filters, reader );
         //camera.AcquisitionMode = Basler_GigECameraParams::AcquisitionMode_Continuous;
         camera.AcquisitionStart.Execute(); // continuous acquisition mode
@@ -756,7 +756,7 @@ void run_pipeline( Pylon::CBaslerUsbCamera& camera
     else
     {
         snark::cv_mat::serialization serialization( cv_mat_options );
-        snark::tbb::bursty_reader< Pair > reader( boost::bind( &capture_< Pylon::CBaslerUsbCamera, Pair >, boost::ref( camera ), boost::ref( grabber ) ), max_queue_size, max_queue_capacity );
+        snark::tbb::bursty_reader< Pair > reader( boost::bind( &capture< Pylon::CBaslerUsbCamera, Pair >, boost::ref( camera ), boost::ref( grabber ) ), max_queue_size, max_queue_capacity );
         snark::imaging::applications::pipeline pipeline( serialization, filters, reader );
         //camera.AcquisitionMode = Basler_UsbCameraParams::AcquisitionMode_Continuous;
         camera.AcquisitionStart.Execute(); // continuous acquisition mode
