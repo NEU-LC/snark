@@ -236,6 +236,17 @@ static void set( ChunkData& d
     parser->DetachBuffer();
 }
 
+void output_result_status( const Pylon::GrabResult& result )
+{
+    std::cerr << "basler-cat: " << result.GetErrorDescription()
+              << " (0x" << std::hex << result.GetErrorCode() << std::dec << ")" << std::endl;
+    std::cerr << "            status: " << ( result.Status() == Pylon::Idle ? "idle" :
+                                             result.Status() == Pylon::Queued ? "queued" :
+                                             result.Status() == Pylon::Grabbed ? "grabbed" :
+                                             result.Status() == Pylon::Canceled ? "canceled" :
+                                             result.Status() == Pylon::Failed ? "failed" : "unknown" ) << std::endl;
+}
+
 template < typename T, typename P >
 static P capture( T& camera, typename T::StreamGrabber_t& grabber )
 {
@@ -272,15 +283,9 @@ static P capture( T& camera, typename T::StreamGrabber_t& grabber )
         grabber.RetrieveResult( result );
         if( !result.Succeeded() )
         {
-            std::cerr << "basler-cat: acquisition failed: "
-                      << result.GetErrorDescription()
-                      << " (0x" << std::hex << result.GetErrorCode() << std::dec << ")" << std::endl;
-            std::cerr << "            status: " << ( result.Status() == Pylon::Idle ? "idle" :
-                                                     result.Status() == Pylon::Queued ? "queued" :
-                                                     result.Status() == Pylon::Grabbed ? "grabbed" :
-                                                     result.Status() == Pylon::Canceled ? "canceled" :
-                                                     result.Status() == Pylon::Failed ? "failed" : "unknown" ) << std::endl;
-            std::cerr << "            run basler-cat --verbose and check your --packet-size settings" << std::endl;
+            std::cerr << "basler-cat: acquisition failed" << std::endl;
+            output_result_status( result );
+            std::cerr << "            run \"basler-cat --verbose\" and check your --packet-size settings" << std::endl;
             continue;
         }
         P pair;
