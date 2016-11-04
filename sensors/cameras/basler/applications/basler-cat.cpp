@@ -32,6 +32,7 @@
 #include <boost/regex.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <comma/application/command_line_options.h>
+#include <comma/application/signal_flag.h>
 #include <comma/csv/stream.h>
 #include "../../../../imaging/cv_mat/pipeline.h"
 #include "../../../../imaging/cv_mat/bursty_pipeline.h"
@@ -255,6 +256,9 @@ static P capture_( T& camera, typename T::StreamGrabber_t& grabber )
     static const unsigned int retries = 10; // quick and dirty: arbitrary
     for( unsigned int i = 0; i < retries; ++i )
     {
+        static comma::signal_flag is_shutdown;
+        if( is_shutdown ) { return P(); }
+
         Pylon::GrabResult result;
         //camera.AcquisitionStart.Execute(); // acquire single image (since acquisition mode set so)
         if( !grabber.GetWaitObject().Wait( timeout ) ) // quick and dirty: arbitrary timeout
