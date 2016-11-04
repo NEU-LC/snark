@@ -27,52 +27,38 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef SNARK_IMAGING_BURSTY_PIPELINE_H_
-#define SNARK_IMAGING_BURSTY_PIPELINE_H_
+#pragma once
 
-#include <tbb/task_scheduler_init.h>
 #include <tbb/pipeline.h>
+#include <tbb/task_scheduler_init.h>
 #include "../../tbb/bursty_reader.h"
 
 namespace snark { namespace tbb {
 
 /// run a tbb pipeline with bursty data using bursty_reader
+/// @todo this class is too trivial; tear down?
 template< typename T >
 class bursty_pipeline
 {
 public:
-    bursty_pipeline( unsigned int numThread = 0 );
-    void run_once( bursty_reader< T >& reader, const ::tbb::filter_t< T, void >& filter );
+    /// constructor
+    /// @param number_of_threads maximum number of threads, 0 means auto
+    bursty_pipeline( unsigned int number_of_threads = 0 );
+    
     void run( bursty_reader< T >& reader, const ::tbb::filter_t< T, void >& filter );
 
 private:
-    unsigned int m_threads;
-    ::tbb::task_scheduler_init m_init;
+    unsigned int number_of_threads_;
 };
 
-/// constructor
-/// @param numThread maximum number of threads, 0 means auto
-template< typename T >
-inline bursty_pipeline< T >::bursty_pipeline( unsigned int numThread )
-    : m_threads( numThread > 0 ? numThread : m_init.default_num_threads() )
-{
-}
 
-/// run the pipeline once
 template< typename T >
-inline void bursty_pipeline< T >::run_once( bursty_reader< T >& reader, const ::tbb::filter_t< T, void >& filter )
-{
-    ::tbb::parallel_pipeline( m_threads, reader.filter() & filter );
-}
+inline bursty_pipeline< T >::bursty_pipeline( unsigned int number_of_threads ) : number_of_threads_( number_of_threads > 0 ? number_of_threads : ::tbb::task_scheduler_init::default_num_threads() ) {}
 
-/// run the pipeline until the reader stops and the queue is empty
 template< typename T >
 inline void bursty_pipeline< T >::run( bursty_reader< T >& reader, const ::tbb::filter_t< T, void >& filter )
 {
-    const ::tbb::filter_t< void, void > f = reader.filter() & filter;
-    while( reader.wait() ) { ::tbb::parallel_pipeline( m_threads, f ); }
+    ::tbb::parallel_pipeline( number_of_threads_, reader.filter() & filter );
 }
 
-} }
-
-#endif // SNARK_IMAGING_BURSTY_PIPELINE_H_
+} } // namespace snark { namespace tbb {

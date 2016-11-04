@@ -357,7 +357,7 @@ int main( int ac, char** av )
         {
             bursty_reader.reset( new snark::tbb::bursty_reader< block_t* >( &read_block_bursty_ ) );
             ::tbb::filter_t< void, void > filters = bursty_reader->filter() & partition_filter & write_filter;
-            while( bursty_reader->wait() ) { ::tbb::parallel_pipeline( 3, filters ); }
+            ::tbb::parallel_pipeline( 3, filters ); // while( bursty_reader->wait() ) { ::tbb::parallel_pipeline( 3, filters ); }
             bursty_reader->join();
         }
         else
