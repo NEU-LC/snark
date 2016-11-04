@@ -48,7 +48,7 @@ namespace tbb {
 template<>
 struct bursty_reader_traits< std::pair< boost::posix_time::ptime, cv::Mat > >
 {
-    static bool valid( const std::pair< boost::posix_time::ptime, cv::Mat >& p ) { return ( p.second.size().width > 0 ); }
+    static bool valid( const std::pair< boost::posix_time::ptime, cv::Mat >& p ) { return ( !p.second.empty() ); }
 };
 
 } // namespace tbb {
