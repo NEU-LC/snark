@@ -227,13 +227,13 @@ static void set_( ChunkData& d
 {
     parser->AttachBuffer( ( unsigned char* ) result.Buffer(), result.GetPayloadSize() );
     d.timestamp = t;
-    d.frames = camera.ChunkFramecounter.GetValue();
-    d.ticks = camera.ChunkTimestamp.GetValue();
-    d.line_trigger_ignored = camera.ChunkLineTriggerIgnoredCounter.GetValue();
-    d.frame_trigger_ignored = camera.ChunkFrameTriggerIgnoredCounter.GetValue();
-    d.line_trigger_end_to_end = camera.ChunkLineTriggerEndToEndCounter.GetValue();
-    d.frame_trigger = camera.ChunkFrameTriggerCounter.GetValue();
-    d.frames_per_trigger = camera.ChunkFramesPerTriggerCounter.GetValue();
+    d.frames = camera.ChunkFramecounter();
+    d.ticks = camera.ChunkTimestamp();
+    d.line_trigger_ignored = camera.ChunkLineTriggerIgnoredCounter();
+    d.frame_trigger_ignored = camera.ChunkFrameTriggerIgnoredCounter();
+    d.line_trigger_end_to_end = camera.ChunkLineTriggerEndToEndCounter();
+    d.frame_trigger = camera.ChunkFrameTriggerCounter();
+    d.frames_per_trigger = camera.ChunkFramesPerTriggerCounter();
     parser->DetachBuffer();
 }
 
@@ -367,7 +367,7 @@ static unsigned int set_pixel_format_( T& camera, P type )
 {
     pixel_format_desc pixel_format = pixel_format_to_desc( type );
 
-    if( camera.PixelFormat.GetValue() == type ) { return pixel_format.channels; }
+    if( camera.PixelFormat() == type ) { return pixel_format.channels; }
     GenApi::NodeList_t entries;
     camera.PixelFormat.GetEntries( entries );
     bool supported = false;
@@ -393,10 +393,10 @@ static unsigned int set_pixel_format_( T& camera, P type )
     static const unsigned int retries = 100; // quick and dirty: arbitrary
     for( unsigned int i = 0; i < retries; ++i )
     {
-        camera.PixelFormat.SetValue( type );
+        camera.PixelFormat = type;
         boost::thread::sleep( boost::posix_time::microsec_clock::universal_time() + boost::posix_time::milliseconds( 10 ) );
     }
-    if( camera.PixelFormat.GetValue() != type ) { COMMA_THROW( comma::exception, "failed to set pixel format after " << retries << " attempts; try again or power-cycle the camera" ); }
+    if( camera.PixelFormat() != type ) { COMMA_THROW( comma::exception, "failed to set pixel format after " << retries << " attempts; try again or power-cycle the camera" ); }
     comma::verbose << "pixel format set to " << pixel_format.name << std::endl;
     return pixel_format.channels;
 }
@@ -503,8 +503,8 @@ bool configure_trigger( Pylon::CBaslerGigECamera& camera, const comma::command_l
     std::string frame_trigger = options.value< std::string >( "--frame-trigger", "" );
     if( acquisitionStart && GenApi::IsAvailable( acquisitionStart ) )
     {
-        camera.TriggerSelector.SetValue( Basler_GigECameraParams::TriggerSelector_AcquisitionStart );
-        camera.TriggerMode.SetValue( frame_trigger.empty() ? Basler_GigECameraParams::TriggerMode_Off : Basler_GigECameraParams::TriggerMode_On );
+        camera.TriggerSelector = Basler_GigECameraParams::TriggerSelector_AcquisitionStart;
+        camera.TriggerMode = ( frame_trigger.empty() ? Basler_GigECameraParams::TriggerMode_Off : Basler_GigECameraParams::TriggerMode_On );
     }
     GenApi::IEnumEntry* frameStart = camera.TriggerSelector.GetEntry( Basler_GigECameraParams::TriggerSelector_FrameStart );
     if( frameStart && GenApi::IsAvailable( frameStart ) )
@@ -512,36 +512,36 @@ bool configure_trigger( Pylon::CBaslerGigECamera& camera, const comma::command_l
         //if( frame_trigger.empty() ) { frame_trigger = line_trigger; }
         if( frame_trigger.empty() )
         {
-            camera.TriggerSelector.SetValue( Basler_GigECameraParams::TriggerSelector_FrameStart );
-            camera.TriggerMode.SetValue( Basler_GigECameraParams::TriggerMode_Off );
+            camera.TriggerSelector = Basler_GigECameraParams::TriggerSelector_FrameStart;
+            camera.TriggerMode = Basler_GigECameraParams::TriggerMode_Off;
         }
         else
         {
-            camera.TriggerSelector.SetValue( Basler_GigECameraParams::TriggerSelector_FrameStart );
-            camera.TriggerMode.SetValue( Basler_GigECameraParams::TriggerMode_On );
+            camera.TriggerSelector = Basler_GigECameraParams::TriggerSelector_FrameStart;
+            camera.TriggerMode = Basler_GigECameraParams::TriggerMode_On;
             Basler_GigECameraParams::TriggerSourceEnums t;
-            if( frame_trigger == "line1" ) { camera.TriggerSource.SetValue( Basler_GigECameraParams::TriggerSource_Line1 ); }
-            if( frame_trigger == "line2" ) { camera.TriggerSource.SetValue( Basler_GigECameraParams::TriggerSource_Line2 ); }
-            if( frame_trigger == "line3" ) { camera.TriggerSource.SetValue( Basler_GigECameraParams::TriggerSource_Line3 ); }
-            else if( frame_trigger == "encoder" ) { camera.TriggerSource.SetValue( Basler_GigECameraParams::TriggerSource_ShaftEncoderModuleOut ); }
+            if( frame_trigger == "line1" ) { camera.TriggerSource = Basler_GigECameraParams::TriggerSource_Line1; }
+            if( frame_trigger == "line2" ) { camera.TriggerSource = Basler_GigECameraParams::TriggerSource_Line2; }
+            if( frame_trigger == "line3" ) { camera.TriggerSource = Basler_GigECameraParams::TriggerSource_Line3; }
+            else if( frame_trigger == "encoder" ) { camera.TriggerSource = Basler_GigECameraParams::TriggerSource_ShaftEncoderModuleOut; }
             else { std::cerr << "basler-cat: frame trigger '" << frame_trigger << "' not implemented or invalid" << std::endl; return false; }
-            camera.TriggerActivation.SetValue( Basler_GigECameraParams::TriggerActivation_RisingEdge );
-            camera.TriggerSelector.SetValue( Basler_GigECameraParams::TriggerSelector_LineStart );
-            camera.TriggerMode.SetValue( Basler_GigECameraParams::TriggerMode_On );
-            camera.TriggerActivation.SetValue( Basler_GigECameraParams::TriggerActivation_RisingEdge );
+            camera.TriggerActivation = Basler_GigECameraParams::TriggerActivation_RisingEdge;
+            camera.TriggerSelector = Basler_GigECameraParams::TriggerSelector_LineStart;
+            camera.TriggerMode = Basler_GigECameraParams::TriggerMode_On;
+            camera.TriggerActivation = Basler_GigECameraParams::TriggerActivation_RisingEdge;
             if( frame_trigger == "encoder" )
             {
                 // todo: make configurable
-                camera.ShaftEncoderModuleLineSelector.SetValue( Basler_GigECameraParams::ShaftEncoderModuleLineSelector_PhaseA );
-                camera.ShaftEncoderModuleLineSource.SetValue( Basler_GigECameraParams::ShaftEncoderModuleLineSource_Line1 );
-                camera.ShaftEncoderModuleLineSelector.SetValue( Basler_GigECameraParams::ShaftEncoderModuleLineSelector_PhaseB );
-                camera.ShaftEncoderModuleLineSource.SetValue( Basler_GigECameraParams::ShaftEncoderModuleLineSource_Line2 );
-                camera.ShaftEncoderModuleCounterMode.SetValue( Basler_GigECameraParams::ShaftEncoderModuleCounterMode_FollowDirection );
-                camera.ShaftEncoderModuleMode.SetValue( Basler_GigECameraParams::ShaftEncoderModuleMode_ForwardOnly );
-                camera.ShaftEncoderModuleCounterMax.SetValue( encoder_ticks - 1 );
+                camera.ShaftEncoderModuleLineSelector = Basler_GigECameraParams::ShaftEncoderModuleLineSelector_PhaseA;
+                camera.ShaftEncoderModuleLineSource = Basler_GigECameraParams::ShaftEncoderModuleLineSource_Line1;
+                camera.ShaftEncoderModuleLineSelector = Basler_GigECameraParams::ShaftEncoderModuleLineSelector_PhaseB;
+                camera.ShaftEncoderModuleLineSource = Basler_GigECameraParams::ShaftEncoderModuleLineSource_Line2;
+                camera.ShaftEncoderModuleCounterMode = Basler_GigECameraParams::ShaftEncoderModuleCounterMode_FollowDirection;
+                camera.ShaftEncoderModuleMode = Basler_GigECameraParams::ShaftEncoderModuleMode_ForwardOnly;
+                camera.ShaftEncoderModuleCounterMax = encoder_ticks - 1;
                 /// @todo compensate for mechanical jitter, if needed
                 ///       see Runner_Users_manual.pdf, 8.3, Case 2
-                camera.ShaftEncoderModuleReverseCounterMax.SetValue( 0 );
+                camera.ShaftEncoderModuleReverseCounterMax = 0;
                 camera.ShaftEncoderModuleCounterReset.Execute();
                 camera.ShaftEncoderModuleReverseCounterReset.Execute();
             }
@@ -553,23 +553,23 @@ bool configure_trigger( Pylon::CBaslerGigECamera& camera, const comma::command_l
         std::string line_trigger = options.value< std::string >( "--line-trigger", "" );
         if( line_trigger.empty() )
         {
-            camera.TriggerSelector.SetValue( Basler_GigECameraParams::TriggerSelector_LineStart );
-            camera.TriggerMode.SetValue( Basler_GigECameraParams::TriggerMode_Off );
+            camera.TriggerSelector = Basler_GigECameraParams::TriggerSelector_LineStart;
+            camera.TriggerMode = Basler_GigECameraParams::TriggerMode_Off;
         }
         else
         {
-            camera.TriggerSelector.SetValue( Basler_GigECameraParams::TriggerSelector_LineStart );
-            camera.TriggerMode.SetValue( Basler_GigECameraParams::TriggerMode_On );
+            camera.TriggerSelector = Basler_GigECameraParams::TriggerSelector_LineStart;
+            camera.TriggerMode = Basler_GigECameraParams::TriggerMode_On;
             Basler_GigECameraParams::TriggerSourceEnums t;
-            if( line_trigger == "line1" ) { camera.TriggerSource.SetValue( Basler_GigECameraParams::TriggerSource_Line1 ); }
-            else if( line_trigger == "line2" ) { camera.TriggerSource.SetValue( Basler_GigECameraParams::TriggerSource_Line2 ); }
-            else if( line_trigger == "line3" ) { camera.TriggerSource.SetValue( Basler_GigECameraParams::TriggerSource_Line3 ); }
-            else if( line_trigger == "encoder" ) { camera.TriggerSource.SetValue( Basler_GigECameraParams::TriggerSource_ShaftEncoderModuleOut ); }
+            if( line_trigger == "line1" ) { camera.TriggerSource = Basler_GigECameraParams::TriggerSource_Line1; }
+            else if( line_trigger == "line2" ) { camera.TriggerSource = Basler_GigECameraParams::TriggerSource_Line2; }
+            else if( line_trigger == "line3" ) { camera.TriggerSource = Basler_GigECameraParams::TriggerSource_Line3; }
+            else if( line_trigger == "encoder" ) { camera.TriggerSource = Basler_GigECameraParams::TriggerSource_ShaftEncoderModuleOut; }
             else { std::cerr << "basler-cat: line trigger '" << line_trigger << "' not implemented or invalid" << std::endl; return false; }
-            camera.TriggerActivation.SetValue( Basler_GigECameraParams::TriggerActivation_RisingEdge );
-            camera.TriggerSelector.SetValue( Basler_GigECameraParams::TriggerSelector_LineStart );
-            camera.TriggerMode.SetValue( Basler_GigECameraParams::TriggerMode_On );
-            camera.TriggerActivation.SetValue( Basler_GigECameraParams::TriggerActivation_RisingEdge );
+            camera.TriggerActivation = Basler_GigECameraParams::TriggerActivation_RisingEdge;
+            camera.TriggerSelector = Basler_GigECameraParams::TriggerSelector_LineStart;
+            camera.TriggerMode = Basler_GigECameraParams::TriggerMode_On;
+            camera.TriggerActivation = Basler_GigECameraParams::TriggerActivation_RisingEdge;
         }
     }
     return true;
@@ -582,59 +582,59 @@ void configure_chunk_mode( Pylon::CBaslerUsbCamera& camera )
 
 void configure_chunk_mode( Pylon::CBaslerGigECamera& camera )
 {
-    camera.ChunkSelector.SetValue( Basler_GigECameraParams::ChunkSelector_Framecounter );
-    camera.ChunkEnable.SetValue( true );
-    camera.ChunkSelector.SetValue( Basler_GigECameraParams::ChunkSelector_Timestamp );
-    camera.ChunkEnable.SetValue( true );
-    camera.ChunkSelector.SetValue( Basler_GigECameraParams::ChunkSelector_LineTriggerIgnoredCounter );
-    camera.ChunkEnable.SetValue( true );
-    camera.ChunkSelector.SetValue( Basler_GigECameraParams::ChunkSelector_FrameTriggerIgnoredCounter );
-    camera.ChunkEnable.SetValue( true );
-    camera.ChunkSelector.SetValue( Basler_GigECameraParams::ChunkSelector_LineTriggerEndToEndCounter );
-    camera.ChunkEnable.SetValue( true );
-    camera.ChunkSelector.SetValue( Basler_GigECameraParams::ChunkSelector_FrameTriggerCounter );
-    camera.ChunkEnable.SetValue( true );
-    camera.ChunkSelector.SetValue( Basler_GigECameraParams::ChunkSelector_FramesPerTriggerCounter );
-    camera.ChunkEnable.SetValue( true );
+    camera.ChunkSelector = Basler_GigECameraParams::ChunkSelector_Framecounter;
+    camera.ChunkEnable = true;
+    camera.ChunkSelector = Basler_GigECameraParams::ChunkSelector_Timestamp;
+    camera.ChunkEnable = true;
+    camera.ChunkSelector = Basler_GigECameraParams::ChunkSelector_LineTriggerIgnoredCounter;
+    camera.ChunkEnable = true;
+    camera.ChunkSelector = Basler_GigECameraParams::ChunkSelector_FrameTriggerIgnoredCounter;
+    camera.ChunkEnable = true;
+    camera.ChunkSelector = Basler_GigECameraParams::ChunkSelector_LineTriggerEndToEndCounter;
+    camera.ChunkEnable = true;
+    camera.ChunkSelector = Basler_GigECameraParams::ChunkSelector_FrameTriggerCounter;
+    camera.ChunkEnable = true;
+    camera.ChunkSelector = Basler_GigECameraParams::ChunkSelector_FramesPerTriggerCounter;
+    camera.ChunkEnable = true;
 }
 
 void set_exposure( Pylon::CBaslerGigECamera& camera, const comma::command_line_options& options )
 {
-    camera.ExposureMode.SetValue( Basler_GigECameraParams::ExposureMode_Timed );
-    if( options.exists( "--exposure" )) { camera.ExposureTimeRaw.SetValue( options.value< unsigned int >( "--exposure" )); } // todo? auto exposure (see ExposureAutoEnums)
+    camera.ExposureMode = Basler_GigECameraParams::ExposureMode_Timed;
+    if( options.exists( "--exposure" )) { camera.ExposureTimeRaw = ( options.value< unsigned int >( "--exposure" )); } // todo? auto exposure (see ExposureAutoEnums)
 }
 
 void set_exposure( Pylon::CBaslerUsbCamera& camera, const comma::command_line_options& options )
 {
-    camera.ExposureMode.SetValue( Basler_UsbCameraParams::ExposureMode_Timed );
-    if( options.exists( "--exposure" )) { camera.ExposureTime.SetValue( options.value< unsigned int >( "--exposure" )); }
-    else { camera.ExposureAuto.SetValue( Basler_UsbCameraParams::ExposureAuto_Once ); }
+    camera.ExposureMode = Basler_UsbCameraParams::ExposureMode_Timed;
+    if( options.exists( "--exposure" )) { camera.ExposureTime = ( options.value< unsigned int >( "--exposure" )); }
+    else { camera.ExposureAuto = Basler_UsbCameraParams::ExposureAuto_Once; }
 }
 
 void set_gain( Pylon::CBaslerGigECamera& camera, unsigned int gain, unsigned int channels )
 {
-    camera.GainSelector.SetValue( Basler_GigECameraParams::GainSelector_All );
-    camera.GainRaw.SetValue( gain );
+    camera.GainSelector = Basler_GigECameraParams::GainSelector_All;
+    camera.GainRaw = gain;
     if( channels == 3 ) // todo: make configurable; also is not setting all not enough?
     {
-        camera.GainSelector.SetValue( Basler_GigECameraParams::GainSelector_Red );
-        camera.GainRaw.SetValue( gain );
-        camera.GainSelector.SetValue( Basler_GigECameraParams::GainSelector_Green );
-        camera.GainRaw.SetValue( gain );
-        camera.GainSelector.SetValue( Basler_GigECameraParams::GainSelector_Blue );
-        camera.GainRaw.SetValue( gain );
+        camera.GainSelector = Basler_GigECameraParams::GainSelector_Red;
+        camera.GainRaw = gain;
+        camera.GainSelector = Basler_GigECameraParams::GainSelector_Green;
+        camera.GainRaw = gain;
+        camera.GainSelector = Basler_GigECameraParams::GainSelector_Blue;
+        camera.GainRaw = gain;
     }
 }
 
 void set_gain( Pylon::CBaslerUsbCamera& camera, unsigned int gain, unsigned int )
 {
-    camera.GainSelector.SetValue( Basler_UsbCameraParams::GainSelector_All );
-    camera.Gain.SetValue( gain );
+    camera.GainSelector = Basler_UsbCameraParams::GainSelector_All;
+    camera.Gain = gain;
 }
 
 void set_line_rate( Pylon::CBaslerGigECamera& camera, unsigned int line_rate )
 {
-    camera.AcquisitionLineRateAbs.SetValue( line_rate );
+    camera.AcquisitionLineRateAbs = line_rate;
 }
 
 void set_line_rate( Pylon::CBaslerUsbCamera& camera, unsigned int )
@@ -644,7 +644,7 @@ void set_line_rate( Pylon::CBaslerUsbCamera& camera, unsigned int )
 
 void set_packet_size( Pylon::CBaslerGigECamera& camera, unsigned int packet_size )
 {
-    camera.GevSCPSPacketSize.SetValue( packet_size );
+    camera.GevSCPSPacketSize = packet_size;
 }
 
 void set_packet_size( Pylon::CBaslerUsbCamera& camera, unsigned int )
@@ -654,45 +654,45 @@ void set_packet_size( Pylon::CBaslerUsbCamera& camera, unsigned int )
 
 void set_socket_buffer_size( Pylon::CBaslerGigECamera::StreamGrabber_t& grabber, unsigned int socket_buffer_size )
 {
-    grabber.SocketBufferSize.SetValue( socket_buffer_size );
+    grabber.SocketBufferSize = socket_buffer_size;
 }
 
 void set_socket_buffer_size( Pylon::CBaslerUsbCamera::StreamGrabber_t&, unsigned int ) {}
 
 void set_test_image( Pylon::CBaslerGigECamera& camera, bool on )
 {
-    if( on ) { camera.TestImageSelector.SetValue( Basler_GigECameraParams::TestImageSelector_Testimage6 ); }
-    else { camera.TestImageSelector.SetValue( Basler_GigECameraParams::TestImageSelector_Off ); }
+    if( on ) { camera.TestImageSelector = Basler_GigECameraParams::TestImageSelector_Testimage6; }
+    else { camera.TestImageSelector = Basler_GigECameraParams::TestImageSelector_Off; }
 }
 
 void set_test_image( Pylon::CBaslerUsbCamera& camera, bool on )
 {
-    if( on ) { camera.TestImageSelector.SetValue( Basler_UsbCameraParams::TestImageSelector_Testimage6 ); }
-    else { camera.TestImageSelector.SetValue( Basler_UsbCameraParams::TestImageSelector_Off ); }
+    if( on ) { camera.TestImageSelector = Basler_UsbCameraParams::TestImageSelector_Testimage6; }
+    else { camera.TestImageSelector = Basler_UsbCameraParams::TestImageSelector_Off; }
 }
 
 void show_config( Pylon::CBaslerGigECamera& camera )
 {
-    comma::verbose << "camera mtu size: " << camera.GevSCPSPacketSize.GetValue() << std::endl;
-    comma::verbose << "exposure: " << camera.ExposureTimeRaw.GetValue() << std::endl;
-    comma::verbose << "payload size: " << camera.PayloadSize.GetValue() << std::endl;
+    comma::verbose << "camera mtu size: " << camera.GevSCPSPacketSize() << std::endl;
+    comma::verbose << "exposure: " << camera.ExposureTimeRaw() << std::endl;
+    comma::verbose << "payload size: " << camera.PayloadSize() << std::endl;
 }
 
 void show_config( Pylon::CBaslerUsbCamera& camera )
 {
-    comma::verbose << "exposure: " << camera.ExposureTime.GetValue() << std::endl;
-    comma::verbose << "payload size: " << camera.PayloadSize.GetValue() << std::endl;
+    comma::verbose << "exposure: " << camera.ExposureTime() << std::endl;
+    comma::verbose << "payload size: " << camera.PayloadSize() << std::endl;
 }
 
 void show_config( Pylon::CBaslerGigECamera::StreamGrabber_t& grabber )
 {
-    comma::verbose << "socket buffer size: " << grabber.SocketBufferSize.GetValue() << std::endl;
-    comma::verbose << "max buffer size: " << grabber.MaxBufferSize.GetValue() << std::endl;
+    comma::verbose << "socket buffer size: " << grabber.SocketBufferSize() << std::endl;
+    comma::verbose << "max buffer size: " << grabber.MaxBufferSize() << std::endl;
 }
 
 void show_config( Pylon::CBaslerUsbCamera::StreamGrabber_t& grabber )
 {
-    comma::verbose << "max buffer size: " << grabber.MaxBufferSize.GetValue() << std::endl;
+    comma::verbose << "max buffer size: " << grabber.MaxBufferSize() << std::endl;
 }
 
 void run_pipeline( Pylon::CBaslerGigECamera& camera
@@ -706,7 +706,7 @@ void run_pipeline( Pylon::CBaslerGigECamera& camera
         snark::tbb::bursty_reader< ChunkPair > read( boost::bind( &capture_< Pylon::CBaslerGigECamera, ChunkPair >, boost::ref( camera ), boost::ref( grabber ) ), max_queue_size, max_queue_capacity );
         tbb::filter_t< ChunkPair, void > write( tbb::filter::serial_in_order, boost::bind( &write_, _1 ) );
         snark::tbb::bursty_pipeline< ChunkPair > pipeline;
-        camera.AcquisitionMode.SetValue( Basler_GigECameraParams::AcquisitionMode_Continuous );
+        camera.AcquisitionMode = Basler_GigECameraParams::AcquisitionMode_Continuous;
         camera.AcquisitionStart.Execute(); // continuous acquisition mode
         comma::verbose << "running in chunk mode..." << std::endl;
         pipeline.run( read, write );
@@ -719,7 +719,7 @@ void run_pipeline( Pylon::CBaslerGigECamera& camera
         snark::cv_mat::serialization serialization( cv_mat_options );
         snark::tbb::bursty_reader< Pair > reader( boost::bind( &capture_< Pylon::CBaslerGigECamera, Pair >, boost::ref( camera ), boost::ref( grabber ) ), max_queue_size, max_queue_capacity );
         snark::imaging::applications::pipeline pipeline( serialization, filters, reader );
-        //camera.AcquisitionMode.SetValue( Basler_GigECameraParams::AcquisitionMode_Continuous );
+        //camera.AcquisitionMode = Basler_GigECameraParams::AcquisitionMode_Continuous;
         camera.AcquisitionStart.Execute(); // continuous acquisition mode
         comma::verbose << "running..." << std::endl;
         pipeline.run();
@@ -743,7 +743,7 @@ void run_pipeline( Pylon::CBaslerUsbCamera& camera
         snark::cv_mat::serialization serialization( cv_mat_options );
         snark::tbb::bursty_reader< Pair > reader( boost::bind( &capture_< Pylon::CBaslerUsbCamera, Pair >, boost::ref( camera ), boost::ref( grabber ) ), max_queue_size, max_queue_capacity );
         snark::imaging::applications::pipeline pipeline( serialization, filters, reader );
-        //camera.AcquisitionMode.SetValue( Basler_UsbCameraParams::AcquisitionMode_Continuous );
+        //camera.AcquisitionMode = Basler_UsbCameraParams::AcquisitionMode_Continuous;
         camera.AcquisitionStart.Execute(); // continuous acquisition mode
         comma::verbose << "running..." << std::endl;
         pipeline.run();
@@ -768,10 +768,10 @@ int run( T& camera, const comma::command_line_options& options )
     unsigned int max_width = camera.Width.GetMax();
     double offset_x = options.value< double >( "--offset-x", 0 );
     if( offset_x >= max_width ) { std::cerr << "basler-cat: expected --offset-x less than " << max_width << ", got " << offset_x << std::endl; return 1; }
-    camera.OffsetX.SetValue( offset_x );
+    camera.OffsetX = offset_x;
     unsigned int width = options.value< unsigned int >( "--width", max_width );
     width = ( ( unsigned long long )( offset_x ) + width ) < max_width ? width : max_width - offset_x;
-    camera.Width.SetValue( width );
+    camera.Width = width;
     unsigned int max_height = camera.Height.GetMax();
     //if( height < 512 ) { std::cerr << "basler-cat: expected height greater than 512, got " << height << std::endl; return 1; }
 
@@ -781,10 +781,10 @@ int run( T& camera, const comma::command_line_options& options )
 
     double offset_y = options.value< double >( "--offset-y", 0 );
     if( offset_y >= max_height ) { std::cerr << "basler-cat: expected --offset-y less than " << max_height << ", got " << offset_y << std::endl; return 1; }
-    camera.OffsetY.SetValue( offset_y );
+    camera.OffsetY = offset_y;
     unsigned int height = options.value< unsigned int >( "--height", max_height );
     height = ( ( unsigned long long )( offset_y ) + height ) < max_height ? height : ( max_height - offset_y );
-    camera.Height.SetValue( height );
+    camera.Height = height;
     comma::verbose << "set width,height to " << width << "," << height << std::endl;
     if( options.exists( "--packet-size" )) { set_packet_size( camera, options.value< unsigned int >( "--packet-size" )); }
     // todo: giving up... the commented code throws, but failure to stop acquisition, if active
@@ -807,7 +807,7 @@ int run( T& camera, const comma::command_line_options& options )
     {
         std::cerr << "basler-cat: setting chunk mode..." << std::endl;
         if( !GenApi::IsWritable( camera.ChunkModeActive )) { std::cerr << "basler-cat: camera does not support chunk features" << std::endl; camera.Close(); return 1; }
-        camera.ChunkModeActive.SetValue( true );
+        camera.ChunkModeActive = true;
         configure_chunk_mode( camera );
         parser = camera.CreateChunkParser();
         if( !parser ) { std::cerr << "basler-cat: failed to create chunk parser" << std::endl; camera.Close(); return 1; }
@@ -824,11 +824,11 @@ int run( T& camera, const comma::command_line_options& options )
     set_test_image( camera, options.exists( "--test-colour" ));
     show_config( camera );
     std::vector< std::vector< char > > buffers( 2 ); // todo? make number of buffers configurable
-    for( std::size_t i = 0; i < buffers.size(); ++i ) { buffers[i].resize( camera.PayloadSize.GetValue() ); }
-    grabber.MaxBufferSize.SetValue( buffers[0].size() );
+    for( std::size_t i = 0; i < buffers.size(); ++i ) { buffers[i].resize( camera.PayloadSize() ); }
+    grabber.MaxBufferSize = buffers[0].size();
     set_socket_buffer_size( grabber, 127 );
     show_config( grabber );
-    grabber.MaxNumBuffer.SetValue( buffers.size() ); // todo: use --buffer value for number of buffered images
+    grabber.MaxNumBuffer = buffers.size(); // todo: use --buffer value for number of buffered images
     grabber.PrepareGrab(); // image size now must not be changed until FinishGrab() is called.
     std::vector< Pylon::StreamBufferHandle > buffer_handles( buffers.size() );
     for( std::size_t i = 0; i < buffers.size(); ++i )
