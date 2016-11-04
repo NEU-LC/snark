@@ -58,7 +58,7 @@ static void bash_completion( unsigned const ac, char const * const * av )
         " --packet-size"
         " --exposure --gain"
         " --timeout"
-        " --test-colour"
+        " --test-image"
         ;
 
     std::cout << completion_options << std::endl;
@@ -102,7 +102,7 @@ static void usage( bool verbose = false )
     std::cerr << "\n    --exposure=[<num>]        exposure";
     std::cerr << "\n    --gain=[<num>]            gain";
     std::cerr << "\n    --timeout=[<seconds>]     frame acquisition timeout; default " << default_timeout << "s";
-    std::cerr << "\n    --test-colour             output colour test image";
+    std::cerr << "\n    --test-image=[<num>]      output test image <num>; possible values: 1-6";
     std::cerr << "\n    --verbose,-v              be more verbose";
     std::cerr << "\n";
     std::cerr << "\nFor GigE cameras <address> is the device ip address, for USB cameras it is";
@@ -659,16 +659,34 @@ void set_socket_buffer_size( Pylon::CBaslerGigECamera::StreamGrabber_t& grabber,
 
 void set_socket_buffer_size( Pylon::CBaslerUsbCamera::StreamGrabber_t&, unsigned int ) {}
 
-void set_test_image( Pylon::CBaslerGigECamera& camera, bool on )
+void set_test_image( Pylon::CBaslerGigECamera& camera, unsigned int test_image_num )
 {
-    if( on ) { camera.TestImageSelector = Basler_GigECameraParams::TestImageSelector_Testimage6; }
-    else { camera.TestImageSelector = Basler_GigECameraParams::TestImageSelector_Off; }
+    switch( test_image_num )
+    {
+        case 0: camera.TestImageSelector = Basler_GigECameraParams::TestImageSelector_Off; break;
+        case 1: camera.TestImageSelector = Basler_GigECameraParams::TestImageSelector_Testimage1; break;
+        case 2: camera.TestImageSelector = Basler_GigECameraParams::TestImageSelector_Testimage2; break;
+        case 3: camera.TestImageSelector = Basler_GigECameraParams::TestImageSelector_Testimage3; break;
+        case 4: camera.TestImageSelector = Basler_GigECameraParams::TestImageSelector_Testimage4; break;
+        case 5: camera.TestImageSelector = Basler_GigECameraParams::TestImageSelector_Testimage5; break;
+        case 6: camera.TestImageSelector = Basler_GigECameraParams::TestImageSelector_Testimage6; break;
+        default: COMMA_THROW( comma::exception, "test image " << test_image_num << " is not supported. Choose a number from 1 to 6" );
+    }
 }
 
-void set_test_image( Pylon::CBaslerUsbCamera& camera, bool on )
+void set_test_image( Pylon::CBaslerUsbCamera& camera, unsigned int test_image_num )
 {
-    if( on ) { camera.TestImageSelector = Basler_UsbCameraParams::TestImageSelector_Testimage6; }
-    else { camera.TestImageSelector = Basler_UsbCameraParams::TestImageSelector_Off; }
+    switch( test_image_num )
+    {
+        case 0: camera.TestImageSelector = Basler_UsbCameraParams::TestImageSelector_Off; break;
+        case 1: camera.TestImageSelector = Basler_UsbCameraParams::TestImageSelector_Testimage1; break;
+        case 2: camera.TestImageSelector = Basler_UsbCameraParams::TestImageSelector_Testimage2; break;
+        case 3: camera.TestImageSelector = Basler_UsbCameraParams::TestImageSelector_Testimage3; break;
+        case 4: camera.TestImageSelector = Basler_UsbCameraParams::TestImageSelector_Testimage4; break;
+        case 5: camera.TestImageSelector = Basler_UsbCameraParams::TestImageSelector_Testimage5; break;
+        case 6: camera.TestImageSelector = Basler_UsbCameraParams::TestImageSelector_Testimage6; break;
+        default: COMMA_THROW( comma::exception, "test image " << test_image_num << " is not supported. Choose a number from 1 to 6" );
+    }
 }
 
 void show_config( Pylon::CBaslerGigECamera& camera )
@@ -821,7 +839,14 @@ int run( T& camera, const comma::command_line_options& options )
         set_gain( camera, gain, channels );
     }
     if( options.exists( "--line-rate" )) { set_line_rate( camera, options.value< unsigned int >( "--line-rate" )); }
-    set_test_image( camera, options.exists( "--test-colour" ));
+    if( GenApi::IsAvailable( camera.TestImageSelector ))
+    {
+        set_test_image( camera, options.value< unsigned int >( "--test-image", 0 ));
+    }
+    else
+    {
+        if( options.exists( "--test-image" )) { COMMA_THROW( comma::exception, "test image is not supported by this camera" ); }
+    }
     show_config( camera );
     std::vector< std::vector< char > > buffers( 2 ); // todo? make number of buffers configurable
     for( std::size_t i = 0; i < buffers.size(); ++i ) { buffers[i].resize( camera.PayloadSize() ); }
@@ -887,7 +912,7 @@ int main( int argc, char** argv )
             return 1;
         }
 
-        filters = comma::join( options.unnamed( "--help,-h,--verbose,-v,--discard,--list-cameras,--header-only,--no-header,--test-colour", "-.*" ), ';' );
+        filters = comma::join( options.unnamed( "--help,-h,--verbose,-v,--discard,--list-cameras,--header-only,--no-header", "-.*" ), ';' );
         cv_mat_options.header_only = options.exists( "--header-only" );
         cv_mat_options.no_header = options.exists( "--no-header" );
         csv = comma::csv::options( argc, argv );
