@@ -159,8 +159,6 @@ struct Header // quick and dirty
 
 static snark::cv_mat::serialization::options cv_mat_options;
 static comma::csv::options csv;
-static bool is_shutdown = false;
-static bool done = false;
 static unsigned int timeout;
 static Pylon::IChunkParser* parser = NULL;
 static unsigned int encoder_ticks;
@@ -255,7 +253,7 @@ static P capture_( T& camera, typename T::StreamGrabber_t& grabber )
     /// each frame transmitted by the camera.
 
     static const unsigned int retries = 10; // quick and dirty: arbitrary
-    for( unsigned int i = 0; !done && i < retries; ++i )
+    for( unsigned int i = 0; i < retries; ++i )
     {
         Pylon::GrabResult result;
         //camera.AcquisitionStart.Execute(); // acquire single image (since acquisition mode set so)
@@ -264,7 +262,6 @@ static P capture_( T& camera, typename T::StreamGrabber_t& grabber )
             std::cerr << "basler-cat: timeout" << std::endl;
             grabber.CancelGrab();
             while( grabber.RetrieveResult( result ) ); // get all buffers back
-            if( is_shutdown ) { done = true; }
             return P();
         }
         boost::posix_time::ptime t = boost::get_system_time();
@@ -299,16 +296,14 @@ static P capture_( T& camera, typename T::StreamGrabber_t& grabber )
         }
         set_< T >( pair.first, t, result, camera );
         grabber.QueueBuffer( result.Handle(), NULL ); // requeue buffer
-        if( is_shutdown ) { done = true; }
         return pair;
     }
-    if( is_shutdown ) { done = true; }
     return P();
 }
 
 static void write_( ChunkPair p )
 {
-    if( p.second.size().width == 0 || std::cout.bad() || !std::cout.good() || is_shutdown ) { return; }
+    if( p.second.size().width == 0 || std::cout.bad() || !std::cout.good() ) { return; }
     static comma::csv::binary_output_stream< Header > ostream( std::cout, csv );
     static Header header( cv_mat_options.get_header() );
     header.header.timestamp = p.first.timestamp;
@@ -730,6 +725,8 @@ void run_pipeline( Pylon::CBaslerGigECamera& camera
         pipeline.run( read, write );
         comma::verbose << "shutting down..." << std::endl;
         camera.AcquisitionStop();
+        comma::verbose << "acquisition stopped" << std::endl;
+        read.join();
         camera.DestroyChunkParser( parser );
     }
     else
@@ -743,6 +740,8 @@ void run_pipeline( Pylon::CBaslerGigECamera& camera
         pipeline.run();
         comma::verbose << "shutting down..." << std::endl;
         camera.AcquisitionStop();
+        comma::verbose << "acquisition stopped" << std::endl;
+        reader.join();
     }
 }
 
@@ -767,6 +766,8 @@ void run_pipeline( Pylon::CBaslerUsbCamera& camera
         pipeline.run();
         comma::verbose << "shutting down..." << std::endl;
         camera.AcquisitionStop();
+        comma::verbose << "acquisition stopped" << std::endl;
+        reader.join();
     }
 }
 
@@ -866,9 +867,6 @@ int run( T& camera, const comma::command_line_options& options )
 
     run_pipeline( camera, grabber, chunk_mode, max_queue_size, max_queue_size * 3 );
 
-    comma::verbose << "acquisition stopped" << std::endl;
-    is_shutdown = true;
-    while( !done ) { boost::thread::sleep( boost::posix_time::microsec_clock::universal_time() + boost::posix_time::milliseconds( 100 ) ); }
     grabber.FinishGrab();
     Pylon::GrabResult result;
     while( grabber.RetrieveResult( result ) ); // get all buffers back
