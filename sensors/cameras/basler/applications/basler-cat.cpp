@@ -288,16 +288,10 @@ static P capture_( T& camera, typename T::StreamGrabber_t& grabber )
         pair.second = cv::Mat( result.GetSizeY(), result.GetSizeX(), header.type );
         ::memcpy( pair.second.data, reinterpret_cast< const char* >( result.Buffer() )
                 , pair.second.dataend - pair.second.datastart );
-        switch( header.type )
-        {
-            case CV_8UC1:
-                break;
-            case CV_8UC3: // quick and dirty for now: rgb are not contiguous in basler camera frame
-                cv::cvtColor( pair.second, pair.second, CV_RGB2BGR );
-                break;
-            default: // quick and dirty for now
-                std::cerr << "basler-cat: cv::mat type " << header.type << " not supported" << std::endl;
-        }
+
+        // quick and dirty for now: rgb are not contiguous in basler camera frame
+        if( header.type == CV_8UC3 ) { cv::cvtColor( pair.second, pair.second, CV_RGB2BGR ); }
+
         set_< T >( pair.first, t, result, camera );
         grabber.QueueBuffer( result.Handle(), NULL ); // requeue buffer
         return pair;
