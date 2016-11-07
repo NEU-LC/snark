@@ -850,7 +850,6 @@ int run( T& camera, const comma::command_line_options& options )
     comma::verbose << "opened camera " << camera.GetDevice()->GetDeviceInfo().GetFullName() << std::endl;
     typename camera_t::StreamGrabber_t grabber( camera.GetStreamGrabber( 0 ) );
     grabber.Open();
-    unsigned int channels = num_channels( camera, cv_mat_options.get_header().type );
 
     camera.OffsetX = 0;                 // reset before we get the maximum width
     unsigned int max_width = camera.Width.GetMax();
@@ -863,14 +862,15 @@ int run( T& camera, const comma::command_line_options& options )
 
     camera.OffsetY = 0;                 // reset before we get the maximum height
     unsigned int max_height = camera.Height.GetMax();
-
-    // todo: is the colour line 2098 * 3 or ( 2098 / 3 ) * 3 ?
-    //offset_y *= channels;
-    //height *= channels;
-
     unsigned int offset_y = options.value< unsigned int >( "--offset-y", 0 );
     if( offset_y >= max_height ) { std::cerr << "basler-cat: expected --offset-y less than " << max_height << ", got " << offset_y << std::endl; return 1; }
     unsigned int height = options.value< unsigned int >( "--height", max_height );
+
+    // todo: is the colour line 2098 * 3 or ( 2098 / 3 ) * 3 ?
+    //unsigned int channels = num_channels( camera, cv_mat_options.get_header().type );
+    //offset_y *= channels;
+    //height *= channels;
+
     if(( height + offset_y ) > max_height ) { height = max_height - offset_y; }
     camera.Height = height;
     camera.OffsetY = offset_y;          // but set _after_ we set the actual height
