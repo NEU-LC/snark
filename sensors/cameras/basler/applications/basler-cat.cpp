@@ -851,6 +851,7 @@ int run( T& camera, const comma::command_line_options& options )
     typename camera_t::StreamGrabber_t grabber( camera.GetStreamGrabber( 0 ) );
     grabber.Open();
     unsigned int channels = num_channels( camera, cv_mat_options.get_header().type );
+
     unsigned int max_width = camera.Width.GetMax();
     double offset_x = options.value< double >( "--offset-x", 0 );
     if( offset_x >= max_width ) { std::cerr << "basler-cat: expected --offset-x less than " << max_width << ", got " << offset_x << std::endl; return 1; }
@@ -858,6 +859,7 @@ int run( T& camera, const comma::command_line_options& options )
     unsigned int width = options.value< unsigned int >( "--width", max_width );
     width = ( ( unsigned long long )( offset_x ) + width ) < max_width ? width : max_width - offset_x;
     camera.Width = width;
+
     unsigned int max_height = camera.Height.GetMax();
     //if( height < 512 ) { std::cerr << "basler-cat: expected height greater than 512, got " << height << std::endl; return 1; }
 
@@ -871,7 +873,9 @@ int run( T& camera, const comma::command_line_options& options )
     unsigned int height = options.value< unsigned int >( "--height", max_height );
     height = ( ( unsigned long long )( offset_y ) + height ) < max_height ? height : ( max_height - offset_y );
     camera.Height = height;
+
     comma::verbose << "set width,height to " << width << "," << height << std::endl;
+
     if( options.exists( "--packet-size" )) { set_packet_size( camera, options.value< unsigned int >( "--packet-size" )); }
     // todo: giving up... the commented code throws, but failure to stop acquisition, if active
     //       seems to lead to the following scenario:
