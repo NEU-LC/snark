@@ -863,7 +863,6 @@ int run( T& camera, const comma::command_line_options& options )
 
     camera.OffsetY = 0;                 // reset before we get the maximum height
     unsigned int max_height = camera.Height.GetMax();
-    //if( height < 512 ) { std::cerr << "basler-cat: expected height greater than 512, got " << height << std::endl; return 1; }
 
     // todo: is the colour line 2098 * 3 or ( 2098 / 3 ) * 3 ?
     //offset_y *= channels;
