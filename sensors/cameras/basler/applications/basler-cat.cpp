@@ -989,6 +989,7 @@ int main( int argc, char** argv )
         if( chunk_mode )
         {
             if( !options.exists( "--encoder-ticks" )) { std::cerr << "basler-cat: chunk mode, please specify --encoder-ticks" << std::endl; return 1; }
+            encoder_ticks = options.value< unsigned int >( "--encoder-ticks" );
             if( !filters.empty() ) { std::cerr << "basler-cat: chunk mode, cannot handle filters; use: basler-cat | cv-cat <filters> instead" << std::endl; return 1; }
             unsigned int height = options.value< unsigned int >( "--height", 1 );
             if( height != 1 ) { std::cerr << "basler-cat: only --height=1 implemented in chunk mode" << std::endl; return 1; }
