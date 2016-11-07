@@ -955,13 +955,13 @@ int main( int argc, char** argv )
         {
             Pylon::CBaslerGigECamera camera;
             camera.Attach( device );
-            return_value = run< Pylon::CBaslerGigECamera >( camera, options );
+            return_value = run( camera, options );
         }
         else if( device_class == "BaslerUsb" )
         {
             Pylon::CBaslerUsbCamera camera;
             camera.Attach( device );
-            return_value = run< Pylon::CBaslerUsbCamera >( camera, options );
+            return_value = run( camera, options );
         }
         else
         {
