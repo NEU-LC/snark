@@ -852,14 +852,16 @@ int run( T& camera, const comma::command_line_options& options )
     grabber.Open();
     unsigned int channels = num_channels( camera, cv_mat_options.get_header().type );
 
+    camera.OffsetX = 0;                 // reset before we get the maximum width
     unsigned int max_width = camera.Width.GetMax();
-    double offset_x = options.value< double >( "--offset-x", 0 );
+    unsigned int offset_x = options.value< unsigned int >( "--offset-x", 0 );
     if( offset_x >= max_width ) { std::cerr << "basler-cat: expected --offset-x less than " << max_width << ", got " << offset_x << std::endl; return 1; }
-    camera.OffsetX = offset_x;
     unsigned int width = options.value< unsigned int >( "--width", max_width );
-    width = ( ( unsigned long long )( offset_x ) + width ) < max_width ? width : max_width - offset_x;
+    if(( width + offset_x ) > max_width ) { width = max_width - offset_x; }
     camera.Width = width;
+    camera.OffsetX = offset_x;          // but set _after_ we set the actual width
 
+    camera.OffsetY = 0;                 // reset before we get the maximum height
     unsigned int max_height = camera.Height.GetMax();
     //if( height < 512 ) { std::cerr << "basler-cat: expected height greater than 512, got " << height << std::endl; return 1; }
 
@@ -867,12 +869,12 @@ int run( T& camera, const comma::command_line_options& options )
     //offset_y *= channels;
     //height *= channels;
 
-    double offset_y = options.value< double >( "--offset-y", 0 );
+    unsigned int offset_y = options.value< unsigned int >( "--offset-y", 0 );
     if( offset_y >= max_height ) { std::cerr << "basler-cat: expected --offset-y less than " << max_height << ", got " << offset_y << std::endl; return 1; }
-    camera.OffsetY = offset_y;
     unsigned int height = options.value< unsigned int >( "--height", max_height );
-    height = ( ( unsigned long long )( offset_y ) + height ) < max_height ? height : ( max_height - offset_y );
+    if(( height + offset_y ) > max_height ) { height = max_height - offset_y; }
     camera.Height = height;
+    camera.OffsetY = offset_y;          // but set _after_ we set the actual height
 
     comma::verbose << "set width,height to " << width << "," << height << std::endl;
 
