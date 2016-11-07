@@ -100,7 +100,7 @@ static void usage( bool verbose = false )
     std::cerr << "\n    --no-header               output image data only";
     std::cerr << "\n    --packet-size=[<bytes>]   mtu size on camera side, should not be larger ";
     std::cerr << "\n                              than your lan and network interface";
-    std::cerr << "\n    --exposure=[<num>]        exposure";
+    std::cerr << "\n    --exposure=[<µs>]         exposure time; \"auto\" to automatically set";
     std::cerr << "\n    --gain=[<num>]            gain";
     std::cerr << "\n    --timeout=[<seconds>]     frame acquisition timeout; default " << default_timeout << "s";
     std::cerr << "\n    --test-image=[<num>]      output test image <num>; possible values: 1-6";
@@ -599,14 +599,37 @@ void configure_chunk_mode( Pylon::CBaslerGigECamera& camera )
 void set_exposure( Pylon::CBaslerGigECamera& camera, const comma::command_line_options& options )
 {
     camera.ExposureMode = Basler_GigECameraParams::ExposureMode_Timed;
-    if( options.exists( "--exposure" )) { camera.ExposureTimeRaw = ( options.value< unsigned int >( "--exposure" )); } // todo? auto exposure (see ExposureAutoEnums)
+    if( options.exists( "--exposure" ))
+    {
+        std::string exposure = options.value< std::string >( "--exposure" );
+        if ( exposure == "auto" )
+        {
+            camera.ExposureAuto = Basler_GigECameraParams::ExposureAuto_Once;
+        }
+        else
+        {
+            camera.ExposureAuto = Basler_GigECameraParams::ExposureAuto_Off;
+            camera.ExposureTimeRaw = boost::lexical_cast< unsigned int >( exposure );
+        }
+    }
 }
 
 void set_exposure( Pylon::CBaslerUsbCamera& camera, const comma::command_line_options& options )
 {
     camera.ExposureMode = Basler_UsbCameraParams::ExposureMode_Timed;
-    if( options.exists( "--exposure" )) { camera.ExposureTime = ( options.value< unsigned int >( "--exposure" )); }
-    else { camera.ExposureAuto = Basler_UsbCameraParams::ExposureAuto_Once; }
+    if( options.exists( "--exposure" ))
+    {
+        std::string exposure = options.value< std::string >( "--exposure" );
+        if ( exposure == "auto" )
+        {
+            camera.ExposureAuto = Basler_UsbCameraParams::ExposureAuto_Once;
+        }
+        else
+        {
+            camera.ExposureAuto = Basler_UsbCameraParams::ExposureAuto_Off;
+            camera.ExposureTime = boost::lexical_cast< unsigned int >( exposure );
+        }
+    }
 }
 
 void set_gain( Pylon::CBaslerGigECamera& camera, unsigned int gain, unsigned int channels )
@@ -687,17 +710,29 @@ void set_test_image( Pylon::CBaslerUsbCamera& camera, unsigned int test_image_nu
     }
 }
 
-void show_config( Pylon::CBaslerGigECamera& camera )
+void show_config( Pylon::CBaslerGigECamera& camera, std::string exposure_option )
 {
-    comma::verbose << "camera mtu size: " << camera.GevSCPSPacketSize() << " bytes" << std::endl;
-    comma::verbose << "       exposure: " << camera.ExposureTimeRaw() << "µs" << std::endl;
-    comma::verbose << "   payload size: " << camera.PayloadSize() << " bytes" << std::endl;
+    if( comma::verbose )
+    {
+        std::cerr << "basler-cat: camera mtu size: " << camera.GevSCPSPacketSize() << " bytes" << std::endl;
+        std::cerr << "basler-cat:        exposure: ";
+        if( exposure_option == "auto" ) { std::cerr << "auto"; }
+        else { std::cerr << camera.ExposureTimeRaw() << "µs"; }
+        std::cerr << std::endl;
+        std::cerr << "basler-cat:    payload size: " << camera.PayloadSize() << " bytes" << std::endl;
+    }
 }
 
-void show_config( Pylon::CBaslerUsbCamera& camera )
+void show_config( Pylon::CBaslerUsbCamera& camera, std::string exposure_option )
 {
-    comma::verbose << "    exposure: " << camera.ExposureTime() << "µs" << std::endl;
-    comma::verbose << "payload size: " << camera.PayloadSize() << " bytes" << std::endl;
+    if( comma::verbose )
+    {
+        std::cerr << "basler-cat:     exposure: ";
+        if( exposure_option == "auto" ) { std::cerr << "auto"; }
+        else { std::cerr << camera.ExposureTime() << "µs"; }
+        std::cerr << std::endl;
+        std::cerr << "basler-cat: payload size: " << camera.PayloadSize() << " bytes" << std::endl;
+    }
 }
 
 void show_config( Pylon::CBaslerGigECamera::StreamGrabber_t& grabber )
@@ -851,7 +886,7 @@ int run( T& camera, const comma::command_line_options& options )
     {
         if( options.exists( "--test-image" )) { COMMA_THROW( comma::exception, "test image is not supported by this camera" ); }
     }
-    show_config( camera );
+    show_config( camera, options.value< std::string >( "--exposure", "" ));
     std::vector< std::vector< char > > buffers( 2 ); // todo? make number of buffers configurable
     for( std::size_t i = 0; i < buffers.size(); ++i ) { buffers[i].resize( camera.PayloadSize() ); }
     grabber.MaxBufferSize = buffers[0].size();
