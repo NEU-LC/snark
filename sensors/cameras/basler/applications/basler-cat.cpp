@@ -101,7 +101,7 @@ static void usage( bool verbose = false )
     std::cerr << "\n    --packet-size=[<bytes>]   mtu size on camera side, should not be larger ";
     std::cerr << "\n                              than your lan and network interface";
     std::cerr << "\n    --exposure=[<µs>]         exposure time; \"auto\" to automatically set";
-    std::cerr << "\n    --gain=[<num>]            gain";
+    std::cerr << "\n    --gain=[<num>]            gain - for USB cameras units are dB";
     std::cerr << "\n    --timeout=[<seconds>]     frame acquisition timeout; default " << default_timeout << "s";
     std::cerr << "\n    --test-image=[<num>]      output test image <num>; possible values: 1-6";
     std::cerr << "\n    --verbose,-v              be more verbose";
@@ -719,6 +719,7 @@ void show_config( Pylon::CBaslerGigECamera& camera, std::string exposure_option 
         if( exposure_option == "auto" ) { std::cerr << "auto"; }
         else { std::cerr << camera.ExposureTimeAbs() << "µs"; }
         std::cerr << std::endl;
+        std::cerr << "basler-cat:            gain: " << camera.GainRaw() << std::endl;
         std::cerr << "basler-cat:    payload size: " << camera.PayloadSize() << " bytes" << std::endl;
     }
 }
@@ -731,6 +732,7 @@ void show_config( Pylon::CBaslerUsbCamera& camera, std::string exposure_option )
         if( exposure_option == "auto" ) { std::cerr << "auto"; }
         else { std::cerr << camera.ExposureTime() << "µs"; }
         std::cerr << std::endl;
+        std::cerr << "basler-cat:         gain: " << camera.Gain() << "dB" << std::endl;
         std::cerr << "basler-cat: payload size: " << camera.PayloadSize() << " bytes" << std::endl;
     }
 }
