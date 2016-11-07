@@ -632,22 +632,13 @@ void set_exposure( Pylon::CBaslerUsbCamera& camera, const comma::command_line_op
     }
 }
 
-void set_gain( Pylon::CBaslerGigECamera& camera, unsigned int gain, unsigned int channels )
+void set_gain( Pylon::CBaslerGigECamera& camera, unsigned int gain )
 {
     camera.GainSelector = Basler_GigECameraParams::GainSelector_All;
     camera.GainRaw = gain;
-    if( channels == 3 ) // todo: make configurable; also is not setting all not enough?
-    {
-        camera.GainSelector = Basler_GigECameraParams::GainSelector_Red;
-        camera.GainRaw = gain;
-        camera.GainSelector = Basler_GigECameraParams::GainSelector_Green;
-        camera.GainRaw = gain;
-        camera.GainSelector = Basler_GigECameraParams::GainSelector_Blue;
-        camera.GainRaw = gain;
-    }
 }
 
-void set_gain( Pylon::CBaslerUsbCamera& camera, unsigned int gain, unsigned int )
+void set_gain( Pylon::CBaslerUsbCamera& camera, unsigned int gain )
 {
     camera.GainSelector = Basler_UsbCameraParams::GainSelector_All;
     camera.Gain = gain;
@@ -877,7 +868,7 @@ int run( T& camera, const comma::command_line_options& options )
     {
         unsigned int gain = options.value< unsigned int >( "--gain" );
         comma::verbose << "setting gain=" << gain << std::endl;
-        set_gain( camera, gain, channels );
+        set_gain( camera, gain );
     }
     if( options.exists( "--line-rate" )) { set_line_rate( camera, options.value< unsigned int >( "--line-rate" )); }
     if( GenApi::IsAvailable( camera.TestImageSelector ))
