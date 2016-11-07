@@ -101,7 +101,8 @@ static void usage( bool verbose = false )
     std::cerr << "\n    --packet-size=[<bytes>]   mtu size on camera side, should not be larger ";
     std::cerr << "\n                              than your lan and network interface";
     std::cerr << "\n    --exposure=[<µs>]         exposure time; \"auto\" to automatically set";
-    std::cerr << "\n    --gain=[<num>]            gain - for USB cameras units are dB";
+    std::cerr << "\n    --gain=[<num>]            gain; \"auto\" to automatically set;";
+    std::cerr << "\n                              for USB cameras units are dB";
     std::cerr << "\n    --timeout=[<seconds>]     frame acquisition timeout; default " << default_timeout << "s";
     std::cerr << "\n    --test-image=[<num>]      output test image <num>; possible values: 1-6";
     std::cerr << "\n    --verbose,-v              be more verbose";
@@ -632,16 +633,40 @@ void set_exposure( Pylon::CBaslerUsbCamera& camera, const comma::command_line_op
     }
 }
 
-void set_gain( Pylon::CBaslerGigECamera& camera, unsigned int gain )
+void set_gain( Pylon::CBaslerGigECamera& camera, const comma::command_line_options& options )
 {
     camera.GainSelector = Basler_GigECameraParams::GainSelector_All;
-    camera.GainRaw = gain;
+    if( options.exists( "--gain" ))
+    {
+        std::string gain = options.value< std::string >( "--gain" );
+        if ( gain == "auto" )
+        {
+            camera.GainAuto = Basler_GigECameraParams::GainAuto_Once;
+        }
+        else
+        {
+            camera.GainAuto = Basler_GigECameraParams::GainAuto_Off;
+            camera.GainRaw = boost::lexical_cast< unsigned int >( gain );
+        }
+    }
 }
 
-void set_gain( Pylon::CBaslerUsbCamera& camera, unsigned int gain )
+void set_gain( Pylon::CBaslerUsbCamera& camera, const comma::command_line_options& options )
 {
     camera.GainSelector = Basler_UsbCameraParams::GainSelector_All;
-    camera.Gain = gain;
+    if( options.exists( "--gain" ))
+    {
+        std::string gain = options.value< std::string >( "--gain" );
+        if ( gain == "auto" )
+        {
+            camera.GainAuto = Basler_UsbCameraParams::GainAuto_Once;
+        }
+        else
+        {
+            camera.GainAuto = Basler_UsbCameraParams::GainAuto_Off;
+            camera.Gain = boost::lexical_cast< unsigned int >( gain );
+        }
+    }
 }
 
 void set_line_rate( Pylon::CBaslerGigECamera& camera, unsigned int line_rate )
@@ -701,29 +726,40 @@ void set_test_image( Pylon::CBaslerUsbCamera& camera, unsigned int test_image_nu
     }
 }
 
-void show_config( Pylon::CBaslerGigECamera& camera, std::string exposure_option )
+void show_config( Pylon::CBaslerGigECamera& camera, const comma::command_line_options& options )
 {
     if( comma::verbose )
     {
         std::cerr << "basler-cat: camera mtu size: " << camera.GevSCPSPacketSize() << " bytes" << std::endl;
+
         std::cerr << "basler-cat:        exposure: ";
-        if( exposure_option == "auto" ) { std::cerr << "auto"; }
+        if( options.value< std::string >( "--exposure", "" ) == "auto" ) { std::cerr << "auto"; }
         else { std::cerr << camera.ExposureTimeAbs() << "µs"; }
         std::cerr << std::endl;
-        std::cerr << "basler-cat:            gain: " << camera.GainRaw() << std::endl;
+
+        std::cerr << "basler-cat:            gain: ";
+        if( options.value< std::string >( "--gain", "" ) == "auto" ) { std::cerr << "auto"; }
+        else { std::cerr << camera.GainRaw(); }
+        std::cerr << std::endl;
+
         std::cerr << "basler-cat:    payload size: " << camera.PayloadSize() << " bytes" << std::endl;
     }
 }
 
-void show_config( Pylon::CBaslerUsbCamera& camera, std::string exposure_option )
+void show_config( Pylon::CBaslerUsbCamera& camera, const comma::command_line_options& options )
 {
     if( comma::verbose )
     {
         std::cerr << "basler-cat:     exposure: ";
-        if( exposure_option == "auto" ) { std::cerr << "auto"; }
+        if( options.value< std::string >( "--exposure", "" ) == "auto" ) { std::cerr << "auto"; }
         else { std::cerr << camera.ExposureTime() << "µs"; }
         std::cerr << std::endl;
-        std::cerr << "basler-cat:         gain: " << camera.Gain() << "dB" << std::endl;
+
+        std::cerr << "basler-cat:         gain: ";
+        if( options.value< std::string >( "--gain", "" ) == "auto" ) { std::cerr << "auto"; }
+        else { std::cerr << camera.Gain() << "dB"; }
+        std::cerr << std::endl;
+
         std::cerr << "basler-cat: payload size: " << camera.PayloadSize() << " bytes" << std::endl;
     }
 }
@@ -864,12 +900,7 @@ int run( T& camera, const comma::command_line_options& options )
         std::cerr << "basler-cat: set chunk mode" << std::endl;
     }
     set_exposure( camera, options );
-    if( options.exists( "--gain" ))
-    {
-        unsigned int gain = options.value< unsigned int >( "--gain" );
-        comma::verbose << "setting gain=" << gain << std::endl;
-        set_gain( camera, gain );
-    }
+    set_gain( camera, options );
     if( options.exists( "--line-rate" )) { set_line_rate( camera, options.value< unsigned int >( "--line-rate" )); }
     if( GenApi::IsAvailable( camera.TestImageSelector ))
     {
@@ -879,7 +910,7 @@ int run( T& camera, const comma::command_line_options& options )
     {
         if( options.exists( "--test-image" )) { COMMA_THROW( comma::exception, "test image is not supported by this camera" ); }
     }
-    show_config( camera, options.value< std::string >( "--exposure", "" ));
+    show_config( camera, options );
     std::vector< std::vector< char > > buffers( 2 ); // todo? make number of buffers configurable
     for( std::size_t i = 0; i < buffers.size(); ++i ) { buffers[i].resize( camera.PayloadSize() ); }
     grabber.MaxBufferSize = buffers[0].size();
