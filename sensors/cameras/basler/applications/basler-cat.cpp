@@ -609,7 +609,7 @@ void set_exposure( Pylon::CBaslerGigECamera& camera, const comma::command_line_o
         else
         {
             camera.ExposureAuto = Basler_GigECameraParams::ExposureAuto_Off;
-            camera.ExposureTimeRaw = boost::lexical_cast< unsigned int >( exposure );
+            camera.ExposureTimeAbs = boost::lexical_cast< unsigned int >( exposure );
         }
     }
 }
@@ -717,7 +717,7 @@ void show_config( Pylon::CBaslerGigECamera& camera, std::string exposure_option 
         std::cerr << "basler-cat: camera mtu size: " << camera.GevSCPSPacketSize() << " bytes" << std::endl;
         std::cerr << "basler-cat:        exposure: ";
         if( exposure_option == "auto" ) { std::cerr << "auto"; }
-        else { std::cerr << camera.ExposureTimeRaw() << "µs"; }
+        else { std::cerr << camera.ExposureTimeAbs() << "µs"; }
         std::cerr << std::endl;
         std::cerr << "basler-cat:    payload size: " << camera.PayloadSize() << " bytes" << std::endl;
     }
