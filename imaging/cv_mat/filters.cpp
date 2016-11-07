@@ -519,19 +519,10 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
                 
                 filters::value_type operator()( filters::value_type m )
                 {
-                    if( m.first.is_not_a_date_time() ) { return m; } // quick and dirty, end of stream
+                    if( m.second.empty() ) { return m; } // quick and dirty, end of stream
                     boost::mutex::scoped_lock lock( mutex_ ); // somehow, serial_in_order still may have more than one instance of filter run at a time
-                    ++count_;
-                    if( size_ > 0 && count_ == size_ )
-                    {
-                        if( ofstream_ ) { ofstream_->close(); ofstream_.reset(); }
-                        count_ = 0;
-                    }
-                    else if( period_ && ( start_.is_not_a_date_time() || ( m.first - start_ ) >= *period_ ) )
-                    {
-                        if( ofstream_ ) { ofstream_->close(); ofstream_.reset(); }
-                        start_ = m.first;
-                    }
+                    update_on_size_();
+                    update_on_time_( m );
                     if( !ofstream_ )
                     {
                         std::string filename = directory_ + '/' + boost::posix_time::to_iso_string( m.first ) + ".bin";
@@ -551,6 +542,25 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
                 boost::posix_time::ptime start_;
                 unsigned int size_;
                 unsigned int count_;
+                
+                void update_on_size_()
+                {
+                    if( size_ == 0 ) { return; }
+                    if( count_ < size_ ) { ++count_; return; }
+                    count_ = 1;
+                    ofstream_->close();
+                    ofstream_.reset();
+                }
+                
+                void update_on_time_( filters::value_type m )
+                {
+                    if( !period_ ) { return; }
+                    if( start_.is_not_a_date_time() ) { start_ = m.first; return; }
+                    if( ( m.first - start_ ) < *period_ ) { return; }
+                    start_ = m.first;
+                    ofstream_->close();
+                    ofstream_.reset();
+                }
         };
         
         boost::shared_ptr< logger > logger_; // todo: watch performance
@@ -1600,7 +1610,7 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
         }
         else if( e[0] == "log" ) // todo: rotate log by size: expose to user
         {
-            if( e.size() <= 1 ) { COMMA_THROW( comma::exception, "please specify log=<filename> or log=<directory>,<period>" ); }
+            if( e.size() <= 1 ) { COMMA_THROW( comma::exception, "please specify log=<filename> or log=<directory>[,<options>]" ); }
             const std::vector< std::string >& w = comma::split( e[1], ',' );
             if( w.size() == 1 )
             {
@@ -1608,9 +1618,22 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
             }
             else
             {
-                double d = boost::lexical_cast< unsigned int >( w[1] );
-                unsigned int seconds = static_cast< unsigned int >( d );
-                f.push_back( filter( log_impl_( w[0], boost::posix_time::seconds( seconds ) + boost::posix_time::microseconds( ( d - seconds ) * 1000000 ) ), false ) );
+                const std::vector< std::string >& u = comma::split( w[1], ':' );
+                if( u.size() <= 1 ) { COMMA_THROW( comma::exception, "log: please specify period:<seconds> or size:<number of frames>" ); }
+                if( u[0] == "period" )
+                {
+                    double d = boost::lexical_cast< double >( u[1] );
+                    unsigned int seconds = static_cast< unsigned int >( d );
+                    f.push_back( filter( log_impl_( w[0], boost::posix_time::seconds( seconds ) + boost::posix_time::microseconds( ( d - seconds ) * 1000000 ) ), false ) );
+                }
+                else if( u[0] == "size" )
+                {
+                    f.push_back( filter( log_impl_( w[0], boost::lexical_cast< unsigned int >( u[1] ) ), false ) );
+                }
+                else
+                {
+                    COMMA_THROW( comma::exception, "log: expected \"period\" or \"size\"; got: \"" << u[0] << "\"" );
+                }
             }
         }
         else if( e[0] == "magnitude" )
@@ -1998,6 +2021,11 @@ static std::string usage_impl_()
     oss << "        inrange=<lower>,<upper>: a band filter on r,g,b or greyscale image; for rgb: <lower>::=<r>,<g>,<b>; <upper>::=<r>,<g>,<b>; see cv::inRange() for detail" << std::endl;
     oss << "        invert: invert image (to negative)" << std::endl;
     oss << "        linear-combination=<k1>,<k2>,<k3>,...[<c>]: output grey-scale image that is linear combination of input channels with given coefficients and optioanl offset" << std::endl;
+    oss << "        log=<options>: write images to files" << std::endl;
+    oss << "            log=<filename>: write images to a single file" << std::endl;
+    oss << "            log=<dirname>,size:<number of frames>: write images to files in a given directory, each file (except possibly the last one) containing <number of frames> frames" << std::endl;
+    oss << "            log=<dirname>,period:<seconds>: write images to files in a given directory, each file containing frames for a given period of time" << std::endl;
+    oss << "                                            e.g. for log=tmp,period:1.5 each file will contain 1.5 seconds worth of images" << std::endl;
     oss << "        magnitude: calculate magnitude for a 2-channel image; see cv::magnitude() for details" << std::endl;
     oss << "        map=<map file>[&<csv options>][&permissive]: map integer values to floating point values read from the map file" << std::endl;
     oss << "             <csv options>: usual csv options for map file, but &-separated (running out of separator characters)" << std::endl;
