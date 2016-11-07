@@ -689,26 +689,26 @@ void set_test_image( Pylon::CBaslerUsbCamera& camera, unsigned int test_image_nu
 
 void show_config( Pylon::CBaslerGigECamera& camera )
 {
-    comma::verbose << "camera mtu size: " << camera.GevSCPSPacketSize() << std::endl;
-    comma::verbose << "exposure: " << camera.ExposureTimeRaw() << std::endl;
-    comma::verbose << "payload size: " << camera.PayloadSize() << std::endl;
+    comma::verbose << "camera mtu size: " << camera.GevSCPSPacketSize() << " bytes" << std::endl;
+    comma::verbose << "       exposure: " << camera.ExposureTimeRaw() << "µs" << std::endl;
+    comma::verbose << "   payload size: " << camera.PayloadSize() << " bytes" << std::endl;
 }
 
 void show_config( Pylon::CBaslerUsbCamera& camera )
 {
-    comma::verbose << "exposure: " << camera.ExposureTime() << std::endl;
-    comma::verbose << "payload size: " << camera.PayloadSize() << std::endl;
+    comma::verbose << "    exposure: " << camera.ExposureTime() << "µs" << std::endl;
+    comma::verbose << "payload size: " << camera.PayloadSize() << " bytes" << std::endl;
 }
 
 void show_config( Pylon::CBaslerGigECamera::StreamGrabber_t& grabber )
 {
-    comma::verbose << "socket buffer size: " << grabber.SocketBufferSize() << std::endl;
-    comma::verbose << "max buffer size: " << grabber.MaxBufferSize() << std::endl;
+    comma::verbose << "socket buffer size: " << grabber.SocketBufferSize() << " bytes" << std::endl;
+    comma::verbose << "   max buffer size: " << grabber.MaxBufferSize() << " bytes" << std::endl;
 }
 
 void show_config( Pylon::CBaslerUsbCamera::StreamGrabber_t& grabber )
 {
-    comma::verbose << "max buffer size: " << grabber.MaxBufferSize() << std::endl;
+    comma::verbose << "max buffer size: " << grabber.MaxBufferSize() << " bytes" << std::endl;
 }
 
 void run_pipeline( Pylon::CBaslerGigECamera& camera
