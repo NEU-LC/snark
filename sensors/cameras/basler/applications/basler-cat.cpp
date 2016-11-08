@@ -280,7 +280,7 @@ static P capture( T& camera, typename T::StreamGrabber_t& grabber )
             while( grabber.RetrieveResult( result ) ); // get all buffers back
             return P();
         }
-        boost::posix_time::ptime t = boost::get_system_time();
+        boost::posix_time::ptime current_time = boost::get_system_time();
         grabber.RetrieveResult( result );
         if( !result.Succeeded() )
         {
@@ -298,7 +298,7 @@ static P capture( T& camera, typename T::StreamGrabber_t& grabber )
         // quick and dirty for now: rgb are not contiguous in basler camera frame
         if( header.type == CV_8UC3 ) { cv::cvtColor( pair.second, pair.second, CV_RGB2BGR ); }
 
-        set< T >( pair.first, t, result, camera );
+        set< T >( pair.first, current_time, result, camera );
         grabber.QueueBuffer( result.Handle(), NULL ); // requeue buffer
         return pair;
     }
