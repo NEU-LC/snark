@@ -136,6 +136,11 @@ class sensors:
 class handler( BaseHTTPServer.BaseHTTPRequestHandler ):
     def do_GET( self ):
         url = urlparse.urlparse( self.path )
+        params = dict(urlparse.parse_qsl(url.query))
+        param_list=[]
+        for key, value in params.iteritems():
+        	param_list.append("=".join([str(key), str(value)]))
+        query = urlparse.urlparse(self.path).query
         sensor = url.path.strip('/')
         client = self.client_address[0]
         sensor_parameters = sensors.get( sensor )
@@ -147,7 +152,9 @@ class handler( BaseHTTPServer.BaseHTTPRequestHandler ):
             signal.signal( signal.SIGPIPE, signal.SIG_DFL )
         #    os.setsid() # using timeout is a safer option to get a process group
         with lock:
-            p = subprocess.Popen( shlex.split( sensor_parameters.command.encode('ascii') ), stdout=subprocess.PIPE, stderr=subprocess.PIPE, preexec_fn=preexec_fn )
+            p = subprocess.Popen( shlex.split( sensor_parameters.command.encode('ascii')), stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, preexec_fn=preexec_fn )
+            p.stdin.write(str('\n'.join(param_list)))
+            p.stdin.write("\n")
             running_subprocesses.append( p )
         output, error = p.communicate()
         status = p.returncode
