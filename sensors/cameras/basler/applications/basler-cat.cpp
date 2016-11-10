@@ -307,7 +307,7 @@ static P capture( T& camera, typename T::StreamGrabber_t& grabber )
 
 static void write( ChunkPair p )
 {
-    if( p.second.empty() || std::cout.bad() || !std::cout.good() ) { return; }
+    if( p.second.empty() || !std::cout.good() ) { return; }
     static comma::csv::binary_output_stream< Header > ostream( std::cout, csv );
     static Header header( cv_mat_options.get_header() );
     header.header.timestamp = p.first.timestamp;
