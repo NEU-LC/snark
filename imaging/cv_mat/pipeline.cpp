@@ -71,7 +71,7 @@ void pipeline::write_( pair p )
         m_reader.stop();
         return;
     }
-    if( !std::cout.good() ) // if( std::cout.bad() || !std::cout.good() || is_shutdown_ )
+    if( !std::cout.good() )
     {
         m_reader.stop();
     }
@@ -82,7 +82,7 @@ void pipeline::write_( pair p )
 
 void pipeline::null_( pair p )
 {
-    if( p.second.empty() || !std::cout.good() ) // if( p.second.empty() || std::cout.bad() || !std::cout.good() || is_shutdown_ )
+    if( p.second.empty() || !std::cout.good() )
     {
         m_reader.stop();
     }
