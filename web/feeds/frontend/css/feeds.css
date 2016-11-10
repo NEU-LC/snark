@@ -12,6 +12,7 @@ body {
 .form-results {
     white-space: pre-wrap;
     margin-top: 5px;
+    color: #e8f7fa !important;
 }
 
 .dg .title {
@@ -86,13 +87,14 @@ body {
 
 .panel.panel-disabled {
     color: #666666;
+    border: medium solid #d20000 !important;
 }
 
 .panel.panel-disabled:hover {
     opacity: 1;
 }
 
-.panel-enabled .status  {
+.panel-enabled .status {
     color: #5cb85c;
 }
 
