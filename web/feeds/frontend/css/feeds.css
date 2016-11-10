@@ -87,7 +87,7 @@ body {
 
 .panel.panel-disabled {
     color: #666666;
-    border: medium solid #d20000 !important;
+    border: medium solid #ff0000 !important;
 }
 
 .panel.panel-disabled:hover {
