@@ -55,7 +55,6 @@ serialization::header::header( const std::pair< boost::posix_time::ptime, cv::Ma
     size( p.second.dataend - p.second.datastart )
 {
 }
-    
 
 serialization::serialization() :
     m_binary( new comma::csv::binary< header >( comma::csv::format::value< header >(), "", false ) ),
