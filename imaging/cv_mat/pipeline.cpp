@@ -77,7 +77,9 @@ void pipeline::write_( pair p )
     }
     comma::synchronized< cv_mat::serialization* >::scoped_transaction t( m_output );
     cv_mat::serialization* s = *t;
-    s->write( std::cout, p );
+    // We use write_to_stdout() rather than write() because we saw issues with using std::cout.
+    // See serialization.cpp for details.
+    s->write_to_stdout( p );
 }
 
 void pipeline::null_( pair p )

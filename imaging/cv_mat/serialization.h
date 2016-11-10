@@ -110,6 +110,9 @@ class serialization
         /// write to stream
         void write( std::ostream& os, const std::pair< boost::posix_time::ptime, cv::Mat >& m, bool flush = true );
 
+        /// c-style write to stdout, to be used if issues seen with write() - see cpp file for details
+        void write_to_stdout( const std::pair< boost::posix_time::ptime, cv::Mat >& m, bool flush = true );
+
     private:
         boost::scoped_ptr< comma::csv::binary< header > > m_binary;
         std::vector< char > m_buffer;
