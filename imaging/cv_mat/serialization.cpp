@@ -28,6 +28,7 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
+#include <stdio.h>
 #include <sstream>
 #include <comma/application/verbose.h>
 #include <comma/base/exception.h>
@@ -55,7 +56,6 @@ serialization::header::header( const std::pair< boost::posix_time::ptime, cv::Ma
     size( p.second.dataend - p.second.datastart )
 {
 }
-    
 
 serialization::serialization() :
     m_binary( new comma::csv::binary< header >( comma::csv::format::value< header >(), "", false ) ),
@@ -185,6 +185,39 @@ void serialization::write( std::ostream& os, const std::pair< boost::posix_time:
     }
     if( !m_headerOnly ) { os.write( reinterpret_cast< const char* >( m.second.datastart ), m.second.dataend - m.second.datastart ); }
     if( flush ) { os.flush(); }
+}
+
+// In testing basler-cat with the Pika XC2 camera we saw issues with the write() method above.
+//
+// Specifically, using a command line like:
+//     basler-cat "log=log.bin" > stdout.bin
+// we would witness stdout.bin as corrupted, log.bin would be fine.
+//
+// Note that on the Pika XC2 the frame rate is high (150fps) and the image size large
+// (2354176 bytes) which might contribute to the problem. The target was an SSD drive.
+//
+// In detail:
+// * sometimes (every few seconds), the header (20 bytes) would be written but the body would not
+// * os.write( body) was called but os.tellp() would indicate that no frames were written
+// * os.fail() and os.bad() were always false
+// * strangely, writing a large (1M) amount of random data to another diskfile stopped the problem
+// * we tried various combinations of flushing data with no success
+// * switching from std::cout.write() to write( 1, ... ) was successful
+//
+// We don't understand why std::cout would exhibit this behaviour so for now we
+// will have a second method (below) that using the c-style write() function.
+// This is used by pipeline::write_()
+
+void serialization::write_to_stdout( const std::pair< boost::posix_time::ptime, cv::Mat >& m, bool flush )
+{
+    if( m_binary )
+    {
+        header h( m );
+        m_binary->put( h, &m_buffer[0] );
+        ::write( 1, &m_buffer[0], m_buffer.size() );
+    }
+    if( !m_headerOnly ) { ::write( 1, reinterpret_cast< const char* >( m.second.datastart ), m.second.dataend - m.second.datastart ); }
+    if( flush ) { ::fflush( stdout ); }
 }
 
 unsigned int type_from_string_( const std::string& t )

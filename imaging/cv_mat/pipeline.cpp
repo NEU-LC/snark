@@ -43,7 +43,7 @@ pipeline::pipeline( cv_mat::serialization& output
                   , const std::string& filters
                   , tbb::bursty_reader< pair >& reader
                   , unsigned int number_of_threads )
-    : m_output( &output )
+    : m_output( output )
     , m_filters( snark::cv_mat::filters::make( filters ) )
     , m_reader( reader )
     , m_pipeline( number_of_threads )
@@ -55,7 +55,7 @@ pipeline::pipeline( cv_mat::serialization& output
                   , const std::vector< cv_mat::filter >& filters
                   , tbb::bursty_reader< pair >& reader
                   , unsigned int number_of_threads )
-    : m_output( &output )
+    : m_output( output )
     , m_filters( filters )
     , m_reader( reader )
     , m_pipeline( number_of_threads )
@@ -66,23 +66,23 @@ pipeline::pipeline( cv_mat::serialization& output
 /// write frame to std out
 void pipeline::write_( pair p )
 {
-    if( p.second.size().width == 0 )
+    if( p.second.empty() )
     {
         m_reader.stop();
         return;
     }
-    if( std::cout.bad() || !std::cout.good() ) // if( std::cout.bad() || !std::cout.good() || is_shutdown_ )
+    if( !std::cout.good() )
     {
         m_reader.stop();
     }
-    comma::synchronized< cv_mat::serialization* >::scoped_transaction t( m_output );
-    cv_mat::serialization* s = *t;
-    s->write( std::cout, p );
+    // We use write_to_stdout() rather than write() because we saw issues with using std::cout.
+    // See serialization.cpp for details.
+    m_output.write_to_stdout( p );
 }
 
 void pipeline::null_( pair p )
 {
-    if( p.second.size().width == 0 || std::cout.bad() || !std::cout.good() ) // if( p.second.size().width == 0 || std::cout.bad() || !std::cout.good() || is_shutdown_ )
+    if( p.second.empty() || !std::cout.good() )
     {
         m_reader.stop();
     }

@@ -29,8 +29,10 @@
 
 #pragma once
 
-#include <boost/thread.hpp>
+#include <boost/bind.hpp>
+#include <boost/function.hpp>
 #include <boost/scoped_ptr.hpp>
+#include <boost/thread.hpp>
 #include <tbb/concurrent_queue.h>
 #include <tbb/pipeline.h>
 #include <tbb/tbb_exception.h>
@@ -113,10 +115,13 @@ inline T bursty_reader< T >::read_( ::tbb::flow_control& flow )
 {
     try
     {
-        if( size_ > 0 ) { while( queue_.size() > size_ ) { T t; queue_.pop( t ); } }
-        T t;
-        queue_.pop( t );
-        if( bursty_reader_traits< T >::valid( t ) ) { return t; }
+        while( true )
+        { 
+            T t;
+            queue_.pop( t );
+            if( !bursty_reader_traits< T >::valid( t ) ) { flow.stop(); return T(); }
+            if( size_ == 0 || queue_.size() < size_ ) { return t; }
+        }
     }
     catch( ::tbb::user_abort& ) {}
     catch( ... ) { flow.stop() ; throw ; }
@@ -124,7 +129,6 @@ inline T bursty_reader< T >::read_( ::tbb::flow_control& flow )
     return T();
 }
 
-/// push data to the queue in a separate thread
 template < typename T >
 inline void bursty_reader< T >::produce_loop_()
 {
@@ -133,19 +137,14 @@ inline void bursty_reader< T >::produce_loop_()
         while( running_ )
         {
             T t = produce_();
-            if( !running_ ) { break; }
-            if( bursty_reader_traits< T >::valid( t ) )
-            {
-                queue_.push( t );
-            }
-            else
-            {
-                queue_.push( T() ); // HACK to signal queue_.wait
-                break;
-            }
+            if( !running_ ) { queue_.push( T() ); break; }
+            queue_.push( t );
+            if( !bursty_reader_traits< T >::valid( t ) ) { break; }
         }
     }
     catch( ::tbb::user_abort& ) {}
+    catch( ... ) { queue_.push( T() ); throw; }
+    queue_.push( T() );
 }
 
 } } // namespace snark { namespace tbb {

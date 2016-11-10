@@ -35,7 +35,6 @@
 #include <winsock2.h>
 #endif
 
-#include <comma/sync/synchronized.h>
 #include "../../tbb/bursty_reader.h"
 #include "bursty_pipeline.h"
 #include "filters.h"
@@ -78,7 +77,7 @@ class pipeline
         void null_( pair p );
         void setup_pipeline_();
 
-        comma::synchronized< cv_mat::serialization* > m_output;
+        cv_mat::serialization& m_output;
         ::tbb::filter_t< pair, void > m_filter;
         std::vector< cv_mat::filter > m_filters;
         tbb::bursty_reader< pair >& m_reader;
