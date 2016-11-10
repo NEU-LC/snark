@@ -833,6 +833,19 @@ dat.controllers.NumberControllerBox = (function (NumberController, dom, common) 
 
         this.__input = document.createElement('input');
         this.__input.setAttribute('type', 'number');
+        if (params.min != undefined) {
+            this.__input.setAttribute('min', params.min);
+        }
+        if (params.max != undefined) {
+            this.__input.setAttribute('max', params.max);
+        }
+        if (params.step != undefined) {
+            this.__input.setAttribute('step', params.step);
+        }
+        if (params.class != undefined) {
+            this.__input.setAttribute('data-wrapper-class', "number-slider");
+            this.domElement.setAttribute('class', params.class);
+        }
 
         // Makes it so manually specified values are not truncated.
 
@@ -943,76 +956,42 @@ dat.controllers.NumberControllerSlider = (function (NumberController, dom, css, 
         NumberControllerSlider.superclass.call(this, object, property, {min: min, max: max, step: step});
 
         var _this = this;
-        //console.log('this = ' + _this + "    " + JSON.stringify(_this));
-        this.__input = document.createElement('input');
-        var slider_name = "slider_" + slider_id;
-        this.__input.setAttribute('name', slider_name);
-        this.__input.setAttribute('id', slider_name);
-        this.__input.setAttribute('type', 'range');
-        this.__input.setAttribute('min', min);
-        this.__input.setAttribute('max', max);
-        //this.__input.setAttribute('data-mini', true);
-        if (step != undefined) {
-            this.__input.setAttribute('step', step);
-        }
-        else {
-            this.__input.setAttribute('step', 1);
-        }
-        this.__input.setAttribute('value', _this.initialValue);
 
-        //this.__input.setAttribute('data-highlight', 'true');
-        //this.__input.setAttribute('data-highlight', 'true');
-        //this.__background = document.createElement('div');
-        //this.__foreground = document.createElement('div');
+        this.__background = document.createElement('div');
+        this.__foreground = document.createElement('div');
 
 
-        //
-        //dom.bind(this.__background, 'mousedown', onMouseDown);
-        //
-        //dom.addClass(this.__background, 'slider');
-        //dom.addClass(this.__foreground, 'slider-fg');
+        dom.bind(this.__background, 'mousedown', onMouseDown);
 
-        //function onMouseDown(e) {
-        //
-        //    dom.bind(window, 'mousemove', onMouseDrag);
-        //    dom.bind(window, 'mouseup', onMouseUp);
-        //
-        //    onMouseDrag(e);
-        //}
-        //
-        //function onMouseDrag(e) {
-        //
-        //    e.preventDefault();
-        //
-        //    var offset = dom.getOffset(_this.__background);
-        //    var width = dom.getWidth(_this.__background);
-        //
-        //    _this.setValue(
-        //        map(e.clientX, offset.left, offset.left + width, _this.__min, _this.__max)
-        //    );
-        //
-        //    return false;
-        //
-        //}
+        dom.addClass(this.__background, 'slider ui-corner-all');
+        dom.addClass(this.__foreground, 'slider-fg');
 
-        //function onMouseUp() {
-        //    dom.unbind(window, 'mousemove', onMouseDrag);
-        //    dom.unbind(window, 'mouseup', onMouseUp);
-        //    if (_this.__onFinishChange) {
-        //        _this.__onFinishChange.call(_this, _this.getValue());
-        //    }
-        //}
+        function onMouseDown(e) {
 
-        dom.bind(this.__input, 'change', onChange);
-        dom.bind(this.__input, 'blur', onBlur);
+            dom.bind(window, 'mousemove', onMouseDrag);
+            dom.bind(window, 'mouseup', onMouseUp);
 
-        function onChange() {
-            var attempted = parseFloat(_this.__input.value);
-            if (!common.isNaN(attempted)) _this.setValue(attempted);
+            onMouseDrag(e);
         }
 
-        function onBlur() {
-            onChange();
+        function onMouseDrag(e) {
+
+            e.preventDefault();
+
+            var offset = dom.getOffset(_this.__background);
+            var width = dom.getWidth(_this.__background);
+
+            _this.setValue(
+                map(e.clientX, offset.left, offset.left + width, _this.__min, _this.__max)
+            );
+
+            return false;
+
+        }
+
+        function onMouseUp() {
+            dom.unbind(window, 'mousemove', onMouseDrag);
+            dom.unbind(window, 'mouseup', onMouseUp);
             if (_this.__onFinishChange) {
                 _this.__onFinishChange.call(_this, _this.getValue());
             }
@@ -1020,12 +999,8 @@ dat.controllers.NumberControllerSlider = (function (NumberController, dom, css, 
 
         this.updateDisplay();
 
-        //this.__background.appendChild(this.__foreground);
-        //this.domElement.appendChild(this.__background);
-        this.domElement.appendChild(this.__input);
-        dom.addClass(this.domElement, 'ui-field-contain');
-
-        slider_id++;
+        this.__background.appendChild(this.__foreground);
+        this.domElement.appendChild(this.__background);
 
     };
 
@@ -1046,7 +1021,7 @@ dat.controllers.NumberControllerSlider = (function (NumberController, dom, css, 
 
             updateDisplay: function () {
                 var pct = (this.getValue() - this.__min) / (this.__max - this.__min);
-                //this.__foreground.style.width = pct * 100 + '%';
+                this.__foreground.style.width = pct * 100 + '%';
                 return NumberControllerSlider.superclass.prototype.updateDisplay.call(this);
             }
 
@@ -1151,9 +1126,6 @@ dat.controllers.BooleanController = (function (Controller, dom, common) {
         this.__checkbox.setAttribute('data-mini', 'true');
         dom.bind(this.__checkbox, 'change', onChange, false);
 
-        dom.bind(this.__checkbox, 'click', function () {
-            _this.setValue(!_this.__prev);
-        });
 
         this.domElement.appendChild(this.__checkbox);
 
@@ -1161,6 +1133,9 @@ dat.controllers.BooleanController = (function (Controller, dom, common) {
         this.updateDisplay();
 
         function onChange() {
+            var curVal = $(this).val();
+            curVal == "off" ? $(this).val("on").flipswitch("refresh") : $(this).val("off").flipswitch("refresh");
+            _this.setValue(!_this.__prev);
 
         }
 
@@ -1582,13 +1557,13 @@ var mobileStyleStr = ".dg {\n  /** Clear list styles */\n  /* Auto-place contain
     //".dg li.folder {\n    padding: 0;\n    border-left: 4px solid rgba(0, 0, 0, 0); }\n  " +
     ".dg li.title {\n    cursor: pointer;\n    margin-left: -4px; display: none; }\n  " +
     //".dg .closed li:not(.title),\n .dg .closed ul li,\n  .dg .closed ul li > * {\n    height: 0;\n    overflow: hidden;\n    border: 0; }\n " +
-    //" .dg .cr {\n    clear: both;\n    padding-left: 3px;\n    height: 27px; }\n " +
+    " .dg .cr {\n    clear: both;\n      }\n " +
     //" .dg .property-name {\n    cursor: default;\n    float: left;\n    clear: left;\n    width: 30%;\n    overflow: hidden;\n    text-overflow: ellipsis; }\n  " +
     //".dg .c {\n    float: left;\n    width: 60%; }\n  .dg .c input[type=text] {\n    border: 0;\n   " +
     //" margin-top: 4px;\n    padding: 3px;\n    width: 100%;\n    float: right; }\n  " +
     //".dg .has-slider input[type=text] {\n    width: 30%;\n    /*display: none;*/\n    margin-left: 0; }\n  " +
-    ".dg .slider {\n  /*   float: left; */\n    width: 66%;\n  margin-left: -5px;\n    margin-right: 0;\n    height: 19px;\n    margin-top: 4px; }\n  ." +
-    "dg .slider-fg {\n    height: 100%; }\n  " +
+    ".dg .slider {\n  border: thin solid gray; \n padding: 0 !important; \n float: left; \n    width: 66%; \n /* margin-left: -5px;\n  */  margin-right: 0;\n    height: 25px;\n    margin-top: 4px; }\n  ." +
+    "dg .slider-fg {\n    height: 100%;\n background: #3388cc;  }\n  " +
     //".dg .c input[type=checkbox] {\n    margin-top: 9px; }\n  " +
     //".dg .c select {\n    margin-top: 5px; }\n " +
     //" .dg .cr.string .property-name  {\n    float: left; }\n  " +
@@ -1638,7 +1613,7 @@ var mobileStyleStr = ".dg {\n  /** Clear list styles */\n  /* Auto-place contain
     //" .dg .c input[type=text]:focus {\n      background: #494949;\n      color: #fff; }\n  " +
     //".dg .c .slider {\n  " +
     //"  background: #303030;\n    cursor: ew-resize; }\n  " +
-    //".dg .c .slider-fg {\n    background: #2fa1d6; }\n  " +
+    // ".dg .slider-fg {\n    background: #2fa1d6; }\n  " +
     //".dg .c .slider:hover {\n    background: #3c3c3c; }\n    .dg .c .slider:hover .slider-fg {\n      background: #44abda; }\n" +
     "";
 
@@ -1916,6 +1891,8 @@ dat.GUI = dat.gui.GUI = (function (css, saveDialogueContents, styleSheet, contro
                     },
                     set: function (v) {
                         params.closed = v;
+                        var parent_elem = _this.domElement.parentNode;
+
                         if (params.closed) {
                             dom.addClass(_this.__ul, GUI.CLASS_CLOSED);
                         } else {
@@ -2735,22 +2712,25 @@ dat.GUI = dat.gui.GUI = (function (css, saveDialogueContents, styleSheet, contro
         // All sliders should be accompanied by a box.
         if (controller instanceof NumberControllerSlider) {
 
-            //var box = new NumberControllerBox(controller.object, controller.property,
-            //    {min: controller.__min, max: controller.__max, step: controller.__step});
-            //
-            //common.each(['updateDisplay', 'onChange', 'onFinishChange'], function (method) {
-            //    var pc = controller[method];
-            //    var pb = box[method];
-            //    controller[method] = box[method] = function () {
-            //        var args = Array.prototype.slice.call(arguments);
-            //        pc.apply(controller, args);
-            //        return pb.apply(box, args);
-            //    }
-            //});
+            var box = new NumberControllerBox(controller.object, controller.property,
+                {
+                    min: controller.__min,
+                    max: controller.__max,
+                    step: controller.__step,
+                    class: "slider-box"
+                });
 
-            //dom.addClass(li, 'ui-slider');
-            controller.domElement.appendChild(controller.domElement.firstElementChild);
-            //controller.domElement.insertBefore(box.domElement, controller.domElement.firstElementChild);
+            common.each(['updateDisplay', 'onChange', 'onFinishChange'], function (method) {
+                var pc = controller[method];
+                var pb = box[method];
+                controller[method] = box[method] = function () {
+                    var args = Array.prototype.slice.call(arguments);
+                    pc.apply(controller, args);
+                    return pb.apply(box, args);
+                }
+            });
+
+            controller.domElement.appendChild(box.domElement, controller.domElement.firstElementChild);
 
         }
         else if (controller instanceof NumberControllerBox) {
@@ -3211,7 +3191,6 @@ dat.GUI = dat.gui.GUI = (function (css, saveDialogueContents, styleSheet, contro
             if (common.isNumber(initialValue)) {
 
                 if (common.isNumber(arguments[2]) && common.isNumber(arguments[3])) {
-
                     // Has min and max.
                     return new NumberControllerSlider(object, property, arguments[2], arguments[3]);
 

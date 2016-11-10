@@ -12,6 +12,24 @@
     text-shadow: none;
 }
 
+.ui-flipswitch {
+    box-sizing: content-box !important;
+}
+
+.number-slider {
+    margin: 0 !important;
+}
+
+.slider-box {
+    width: 30%;
+    margin-left: 5px !important;
+    float: left;
+}
+
+/*div.inline.ui-input-text {*/
+/*width: 50px !important*/
+/*}*/
+
 .close-button, .collapse-button {
     width: 60px;
     /*top: 0px;*/
