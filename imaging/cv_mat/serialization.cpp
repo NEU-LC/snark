@@ -236,7 +236,7 @@ bool serialization::write_( int fd, const void* buf, size_t count )
 
 bool serialization::write_to_stdout( const std::pair< boost::posix_time::ptime, cv::Mat >& m, bool flush )
 {
-    bool success = false;
+    bool success = true;
     if( m_binary )
     {
         header h( m );
