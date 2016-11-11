@@ -183,7 +183,11 @@ void serialization::write( std::ostream& os, const std::pair< boost::posix_time:
         m_binary->put( h, &m_buffer[0] );
         os.write( &m_buffer[0], m_buffer.size() );
     }
-    if( !m_headerOnly ) { os.write( reinterpret_cast< const char* >( m.second.datastart ), m.second.dataend - m.second.datastart ); }
+    if( !m_headerOnly )
+    {
+        os.write( reinterpret_cast< const char* >( m.second.datastart )
+                , m.second.dataend - m.second.datastart );
+    }
     if( flush ) { os.flush(); }
 }
 
@@ -216,7 +220,12 @@ void serialization::write_to_stdout( const std::pair< boost::posix_time::ptime, 
         m_binary->put( h, &m_buffer[0] );
         ::write( 1, &m_buffer[0], m_buffer.size() );
     }
-    if( !m_headerOnly ) { ::write( 1, reinterpret_cast< const char* >( m.second.datastart ), m.second.dataend - m.second.datastart ); }
+    if( !m_headerOnly )
+    {
+        ::write( 1
+               , reinterpret_cast< const char* >( m.second.datastart )
+               , m.second.dataend - m.second.datastart );
+    }
     if( flush ) { ::fflush( stdout ); }
 }
 
