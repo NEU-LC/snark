@@ -57,7 +57,7 @@ static void bash_completion( unsigned const ac, char const * const * av )
         " --encoder-ticks"
         " --header-only --no-header"
         " --packet-size"
-        " --exposure --gain"
+        " --frame-rate --exposure --gain"
         " --timeout"
         " --test-image"
         ;
@@ -100,6 +100,7 @@ static void usage( bool verbose = false )
     std::cerr << "\n    --no-header               output image data only";
     std::cerr << "\n    --packet-size=[<bytes>]   mtu size on camera side, should not be larger ";
     std::cerr << "\n                              than your lan and network interface";
+    std::cerr << "\n    --frame-rate=[<fps>]      set frame rate";
     std::cerr << "\n    --exposure=[<µs>]         exposure time; \"auto\" to automatically set";
     std::cerr << "\n    --gain=[<num>]            gain; \"auto\" to automatically set;";
     std::cerr << "\n                              for USB cameras units are dB";
@@ -597,6 +598,18 @@ void configure_chunk_mode( Pylon::CBaslerGigECamera& camera )
     camera.ChunkEnable = true;
 }
 
+void set_frame_rate( Pylon::CBaslerGigECamera& camera, double frame_rate )
+{
+    camera.AcquisitionFrameRateEnable = true;
+    camera.AcquisitionFrameRateAbs = frame_rate;
+}
+
+void set_frame_rate( Pylon::CBaslerUsbCamera& camera, double frame_rate )
+{
+    camera.AcquisitionFrameRateEnable = true;
+    camera.AcquisitionFrameRate = frame_rate;
+}
+
 void set_exposure( Pylon::CBaslerGigECamera& camera, const comma::command_line_options& options )
 {
     camera.ExposureMode = Basler_GigECameraParams::ExposureMode_Timed;
@@ -742,6 +755,7 @@ void show_config( Pylon::CBaslerGigECamera& camera, const comma::command_line_op
         else { std::cerr << camera.GainRaw(); }
         std::cerr << std::endl;
 
+        std::cerr << "basler-cat:      frame rate: " << camera.ResultingFrameRateAbs() << " fps" << std::endl;
         std::cerr << "basler-cat:    payload size: " << camera.PayloadSize() << " bytes" << std::endl;
     }
 }
@@ -760,6 +774,7 @@ void show_config( Pylon::CBaslerUsbCamera& camera, const comma::command_line_opt
         else { std::cerr << camera.Gain() << "dB"; }
         std::cerr << std::endl;
 
+        std::cerr << "basler-cat:   frame rate: " << camera.ResultingFrameRate() << " fps" << std::endl;
         std::cerr << "basler-cat: payload size: " << camera.PayloadSize() << " bytes" << std::endl;
     }
 }
@@ -904,6 +919,8 @@ int run( T& camera, const comma::command_line_options& options )
         if( !parser ) { std::cerr << "basler-cat: failed to create chunk parser" << std::endl; camera.Close(); return 1; }
         std::cerr << "basler-cat: set chunk mode" << std::endl;
     }
+    if( options.exists( "--frame-rate" )) { set_frame_rate( camera, options.value< double >( "--frame-rate" )); }
+    else { camera.AcquisitionFrameRateEnable = false; }
     set_exposure( camera, options );
     set_gain( camera, options );
     if( options.exists( "--line-rate" )) { set_line_rate( camera, options.value< unsigned int >( "--line-rate" )); }
