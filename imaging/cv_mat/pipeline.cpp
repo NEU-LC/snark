@@ -77,7 +77,7 @@ void pipeline::write_( pair p )
     }
     // We use write_to_stdout() rather than write() because we saw issues with using std::cout.
     // See serialization.cpp for details.
-    m_output.write_to_stdout( p );
+    if( !m_output.write_to_stdout( p )) { m_reader.stop(); }
 }
 
 void pipeline::null_( pair p )

@@ -212,21 +212,45 @@ void serialization::write( std::ostream& os, const std::pair< boost::posix_time:
 // will have a second method (below) that using the c-style write() function.
 // This is used by pipeline::write_()
 
-void serialization::write_to_stdout( const std::pair< boost::posix_time::ptime, cv::Mat >& m, bool flush )
+bool serialization::write_( int fd, const void* buf, size_t count )
 {
+    while( count > 0 )
+    {
+        ssize_t bytes_written = ::write( fd, buf, count );
+        if( bytes_written == -1 )
+        {
+            if( errno != EINTR ) { return false; }
+        }
+        else if( bytes_written == 0 )   // shouldn't occur with stdout
+        {
+            return false;
+        }
+        else
+        {
+            count -= bytes_written;
+            buf = static_cast< const char* >( buf ) + bytes_written;
+        }
+    }
+    return true;
+}
+
+bool serialization::write_to_stdout( const std::pair< boost::posix_time::ptime, cv::Mat >& m, bool flush )
+{
+    bool success = false;
     if( m_binary )
     {
         header h( m );
         m_binary->put( h, &m_buffer[0] );
-        ::write( 1, &m_buffer[0], m_buffer.size() );
+        success = write_( 1, &m_buffer[0], m_buffer.size() );
     }
-    if( !m_headerOnly )
+    if( !m_headerOnly && success )
     {
-        ::write( 1
-               , reinterpret_cast< const char* >( m.second.datastart )
-               , m.second.dataend - m.second.datastart );
+        success = write_( 1
+                        , reinterpret_cast< const char* >( m.second.datastart )
+                        , m.second.dataend - m.second.datastart );
     }
     if( flush ) { ::fflush( stdout ); }
+    return success;
 }
 
 unsigned int type_from_string_( const std::string& t )
