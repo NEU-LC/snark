@@ -745,17 +745,25 @@ void show_config( Pylon::CBaslerGigECamera& camera, const comma::command_line_op
     {
         std::cerr << "basler-cat: camera mtu size: " << camera.GevSCPSPacketSize() << " bytes" << std::endl;
 
+        bool exposure_is_auto = ( options.value< std::string >( "--exposure", "" ) == "auto" );
+        bool gain_is_auto = ( options.value< std::string >( "--gain", "" ) == "auto" );
+
         std::cerr << "basler-cat:        exposure: ";
-        if( options.value< std::string >( "--exposure", "" ) == "auto" ) { std::cerr << "auto"; }
+        if( exposure_is_auto ) { std::cerr << "auto"; }
         else { std::cerr << camera.ExposureTimeAbs() << "µs"; }
         std::cerr << std::endl;
 
         std::cerr << "basler-cat:            gain: ";
-        if( options.value< std::string >( "--gain", "" ) == "auto" ) { std::cerr << "auto"; }
+        if( gain_is_auto ) { std::cerr << "auto"; }
         else { std::cerr << camera.GainRaw(); }
         std::cerr << std::endl;
 
-        std::cerr << "basler-cat:      frame rate: " << camera.ResultingFrameRateAbs() << " fps" << std::endl;
+        // If exposure is set to auto we don't have the correct frame rate yet
+        std::cerr << "basler-cat:   frame rate: ";
+        if( exposure_is_auto ) { std::cerr << "calculating..."; }
+        else { std::cerr << camera.ResultingFrameRateAbs() << " fps"; }
+        std::cerr << std::endl;
+
         std::cerr << "basler-cat:    payload size: " << camera.PayloadSize() << " bytes" << std::endl;
     }
 }
@@ -764,17 +772,25 @@ void show_config( Pylon::CBaslerUsbCamera& camera, const comma::command_line_opt
 {
     if( comma::verbose )
     {
+        bool exposure_is_auto = ( options.value< std::string >( "--exposure", "" ) == "auto" );
+        bool gain_is_auto = ( options.value< std::string >( "--gain", "" ) == "auto" );
+
         std::cerr << "basler-cat:     exposure: ";
-        if( options.value< std::string >( "--exposure", "" ) == "auto" ) { std::cerr << "auto"; }
+        if( exposure_is_auto ) { std::cerr << "auto"; }
         else { std::cerr << camera.ExposureTime() << "µs"; }
         std::cerr << std::endl;
 
         std::cerr << "basler-cat:         gain: ";
-        if( options.value< std::string >( "--gain", "" ) == "auto" ) { std::cerr << "auto"; }
+        if( gain_is_auto ) { std::cerr << "auto"; }
         else { std::cerr << camera.Gain() << "dB"; }
         std::cerr << std::endl;
 
-        std::cerr << "basler-cat:   frame rate: " << camera.ResultingFrameRate() << " fps" << std::endl;
+        // If exposure is set to auto we don't have the correct frame rate yet
+        std::cerr << "basler-cat:   frame rate: ";
+        if( exposure_is_auto ) { std::cerr << "calculating..."; }
+        else { std::cerr << camera.ResultingFrameRate() << " fps"; }
+        std::cerr << std::endl;
+
         std::cerr << "basler-cat: payload size: " << camera.PayloadSize() << " bytes" << std::endl;
     }
 }
