@@ -114,7 +114,7 @@ class serialization
         bool write_to_stdout( const std::pair< boost::posix_time::ptime, cv::Mat >& m, bool flush = true );
 
     private:
-        bool write_( int fd, const void* buf, size_t count );
+        bool write_( int fd, const char* buf, size_t count );
 
         boost::scoped_ptr< comma::csv::binary< header > > m_binary;
         std::vector< char > m_buffer;

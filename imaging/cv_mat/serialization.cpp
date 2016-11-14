@@ -212,7 +212,7 @@ void serialization::write( std::ostream& os, const std::pair< boost::posix_time:
 // will have a second method (below) that using the c-style write() function.
 // This is used by pipeline::write_()
 
-bool serialization::write_( int fd, const void* buf, size_t count )
+bool serialization::write_( int fd, const char* buf, size_t count )
 {
     while( count > 0 )
     {
@@ -228,7 +228,7 @@ bool serialization::write_( int fd, const void* buf, size_t count )
         else
         {
             count -= bytes_written;
-            buf = static_cast< const char* >( buf ) + bytes_written;
+            buf += bytes_written;
         }
     }
     return true;
