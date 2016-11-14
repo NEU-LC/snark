@@ -72,6 +72,8 @@ class pipeline
 
         void run();
 
+        const std::string& error() { return m_error; }
+
     protected:
         void write_( pair p );
         void null_( pair p );
@@ -82,6 +84,7 @@ class pipeline
         std::vector< cv_mat::filter > m_filters;
         tbb::bursty_reader< pair >& m_reader;
         tbb::bursty_pipeline< pair > m_pipeline;
+        std::string m_error;
     };
 
 } } }

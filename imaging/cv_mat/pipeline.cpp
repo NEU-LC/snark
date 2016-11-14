@@ -29,6 +29,7 @@
 
 #include <boost/bind.hpp>
 #include <tbb/tbb_thread.h>
+#include <comma/base/last_error.h>
 #include "pipeline.h"
 
 namespace snark{ namespace imaging { namespace applications {
@@ -77,7 +78,17 @@ void pipeline::write_( pair p )
     }
     // We use write_to_stdout() rather than write() because we saw issues with using std::cout.
     // See serialization.cpp for details.
-    if( !m_output.write_to_stdout( p )) { m_reader.stop(); }
+    try { m_output.write_to_stdout( p ); }
+    catch( const comma::last_error::exception& ex )
+    {
+        if( ex.value != EPIPE ) { m_error = ex.what(); }
+        m_reader.stop();
+    }
+    catch( const comma::exception& ex )
+    {
+        m_error = ex.what();
+        m_reader.stop();
+    }
 }
 
 void pipeline::null_( pair p )
