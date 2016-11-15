@@ -127,7 +127,7 @@ void pipeline::setup_pipeline_()
 }
 
 /// run the pipeline
-void pipeline::run() { m_pipeline.run( m_reader, m_filter ); }
+void pipeline::run() { m_pipeline.run( m_reader, m_filter ); m_reader.join(); }
 
 } } }
 
