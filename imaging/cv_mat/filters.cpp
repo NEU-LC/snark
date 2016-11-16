@@ -409,10 +409,9 @@ struct threshold_t
     enum types { binary = CV_THRESH_BINARY
                , binary_inv = CV_THRESH_BINARY_INV
                , trunc = CV_THRESH_TRUNC
+               //, trunc_inv = CV_THRESH_TRUNC | CV_THRESH_BINARY_INV // == CV_THRESH_TOZERO
                , tozero = CV_THRESH_TOZERO
-               , tozero_inv = CV_THRESH_TOZERO_INV
-               , otsu = CV_THRESH_OTSU 
-               , otsu_inv = (CV_THRESH_OTSU | CV_THRESH_BINARY_INV) };
+               , tozero_inv = CV_THRESH_TOZERO_INV };
 
     static types from_string( const std::string& s )
     {
@@ -421,17 +420,15 @@ struct threshold_t
         if( s == "trunc" ) { return trunc; }
         if( s == "tozero" ) { return tozero; }
         if( s == "tozero_inv" ) { return tozero_inv; }
-        if( s == "otsu" ) { return otsu; }
-        if( s == "otsu_inv" ) { return otsu_inv; }
         COMMA_THROW( comma::exception, "expected threshold type, got: \"" << s << "\"" );
     }
 };
 
-static filters::value_type threshold_impl_( filters::value_type m, double threshold, double max_value, threshold_t::types type )
+static filters::value_type threshold_impl_( filters::value_type m, double threshold, double max_value, threshold_t::types type, bool otsu )
 {
     filters::value_type n;
     n.first = m.first;
-    cv::threshold( m.second, n.second, threshold, max_value, type );
+    cv::threshold( m.second, n.second, threshold, max_value, otsu ? type | CV_THRESH_OTSU : type );
     return n;
 }
 
@@ -1840,7 +1837,7 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
             if( i == 0 ) { COMMA_THROW( comma::exception, "'null' as the only filter is not supported; use cv-cat > /dev/null, if you need" ); }
             f.push_back( filter( NULL ) );
         }
-        else if( e[0] == "brightness" )
+        else if( e[0] == "brightness" || e[0] == "scale" )
         {
             const std::vector< std::string >& s = comma::split( e[1], ',' );
             double scale = boost::lexical_cast< double >( s[0] );
@@ -1936,11 +1933,12 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
         else if( e[0] == "threshold" )
         {
             const std::vector< std::string >& s = comma::split( e[1], ',' );
-            if( s[0].empty() ) { COMMA_THROW( comma::exception, "threshold: expected <threshold>[,<max_value>[,<type>]] got: \"" << v[i] << "\"" ); }
-            double threshold = boost::lexical_cast< double >( s[0] );
+            if( s[0].empty() ) { COMMA_THROW( comma::exception, "threshold: expected <threshold|otsu>[,<maxval>[,<type>]] got: \"" << v[i] << "\"" ); }
+            bool otsu = s[0] == "otsu";
+            double threshold = otsu ? 0 : boost::lexical_cast< double >( s[0] );
             double maxval = s.size() < 2 ? 255 : boost::lexical_cast< double >( s[1] );
             threshold_t::types type = threshold_t::from_string( s.size() < 3 ? "" : s[2] );
-            f.push_back( filter( boost::bind( &threshold_impl_, _1, threshold, maxval, type ) ) );
+            f.push_back( filter( boost::bind( &threshold_impl_, _1, threshold, maxval, type, otsu ) ) );
         }
         else if( e[0] == "linear-combination" )
         {
@@ -1994,10 +1992,10 @@ static std::string usage_impl_()
     oss << "            blur=gaussian,<kernel_size>,<std_size>. Set either std or kernel size to 0 to calculate based on other parameter." << std::endl;
     oss << "            blur=bilateral,<neighbourhood_size>,<sigma_space>,<sigma_colour>; preserves edges" << std::endl;
     oss << "            blur=adaptive-bilateral: <kernel_size>,<sigma_space>,<sigma_colour_max>; preserve edges, automatically calculate sigma_colour (and cap to sigma_colour_max)" << std::endl;
-    oss << "        brightness=<scale>[,<offset>]: output=(scale*input)+offset; default offset=0" << std::endl;
+    oss << "        brightness,scale=<scale>[,<offset>]: output=(scale*input)+offset; default offset=0" << std::endl;
     oss << "        color-map=<type>: take image, apply colour map; see cv::applyColorMap for detail" << std::endl;
     oss << "            <type>: autumn, bone, jet, winter, rainbow, ocean, summer, spring, cool, hsv, pink, hot" << std::endl;
-    oss << "        convert-to,convert_to=<type>[,<scale>[,<offset>]]: convert to given type; should be the same number of channels; see opencv convertTo for details" << std::endl;
+    oss << "        convert-to,convert_to=<type>[,<scale>[,<offset>]]: convert to given type; should be the same number of channels; see opencv convertTo for details; values will not overflow" << std::endl;
 	oss << "        convert-color,convert_color=<from>,<to>: convert from colour space to new colour space (BGR, RGB, Lab, XYZ, Bayer**, GRAY); eg: BGR,GRAY or CV_BGR2GRAY" << std::endl;
     oss << "        count: write frame number on images" << std::endl;
     oss << "        crop=[<x>,<y>],<width>,<height>: crop the portion of the image starting at x,y with size width x height" << std::endl;
@@ -2055,8 +2053,10 @@ static std::string usage_impl_()
     oss << "        remove-mean=<kernel_size>,<ratio>: simple high-pass filter removing <ratio> times the mean component on <kernel_size> scale" << std::endl;
     oss << "        split: split n-channel image into a nx1 grey-scale image" << std::endl;
     oss << "        text=<text>[,x,y][,colour]: print text; default x,y: 10,10; default colour: yellow" << std::endl;
-    oss << "        threshold=<threshold>[,<maxval>,[<type>]]: threshold image; same semantics as cv::threshold()" << std::endl;
-    oss << "            <type>: binary, binary_inv, trunc, tozero, tozero_inv, otsu, otsu_inv" << std::endl;
+    oss << "        threshold=<threshold|otsu>[,<maxval>[,<type>]]: threshold image; same semantics as cv::threshold()" << std::endl;
+    oss << "            <threshold|otsu>: threshold value; if 'otsu' then the optimum threshold value using the Otsu's algorithm is used (only for 8-bit images)" << std::endl;
+    oss << "            <maxval>: maximum value to use with the binary and binary_inv thresholding types (default:255)" << std::endl;
+    oss << "            <type>: binary, binary_inv, trunc, tozero, tozero_inv (default:binary)" << std::endl;
     oss << "        thumb[=<cols>[,<wait-interval>]]: view resized image; a convenience for debugging and filter pipeline monitoring" << std::endl;
     oss << "                                          <cols>: image width in pixels; default: 100" << std::endl;
     oss << "                                          <wait-interval>: a hack for now; milliseconds to wait for image display and key press; default: 1" << std::endl;
