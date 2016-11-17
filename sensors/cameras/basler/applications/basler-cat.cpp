@@ -993,7 +993,18 @@ int run( T& camera, const comma::command_line_options& options )
     int return_value = 0;
 
     set_continuous_acquisition_mode( camera );
-    if( !run_pipeline( camera, grabber, chunk_mode, max_queue_size, max_queue_size * 3 )) { return_value = 1; }
+    try
+    {
+        if( !run_pipeline( camera, grabber, chunk_mode, max_queue_size, max_queue_size * 3 ))
+        {
+            return_value = 1;
+        }
+    }
+    catch( std::exception& ex )
+    {
+        std::cerr << "basler-cat: " << ex.what() << std::endl;
+        return_value = 1;
+    }
 
     grabber.FinishGrab();
     Pylon::GrabResult result;
