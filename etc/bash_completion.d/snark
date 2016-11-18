@@ -16,6 +16,7 @@ _snark_bash_completion()
 }
 
 complete -F _snark_bash_completion basler-cat
+complete -F _snark_bash_completion basler-log
 complete -F _snark_bash_completion geo-sun-position
 complete -F _snark_bash_completion points-align
 complete -F _snark_bash_completion view-points
