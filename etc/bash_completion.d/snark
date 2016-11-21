@@ -1,5 +1,3 @@
-#!/bin/bash 
-
 _snark_bash_completion()
 {
     local cur prev opts
