@@ -48,7 +48,7 @@ static void bash_completion( unsigned const ac, char const * const * av )
 {
     static const char* completion_options =
         " --help -h --verbose -v"
-        " --address --list-cameras"
+        " --address --serial-number --list-cameras"
         " --discard --buffer"
         " --fields -f"
         " --image-type"
@@ -76,6 +76,7 @@ static void usage( bool verbose = false )
     std::cerr << "\nOptions:";
     std::cerr << "\n    --help,-h                 display help message";
     std::cerr << "\n    --address=[<address>]     camera address; default: first available";
+    std::cerr << "\n    --serial-number=[<num>]   camera serial number, alternative to --address";
     std::cerr << "\n    --discard                 discard frames, if cannot keep up;";
     std::cerr << "\n                              same as --buffer=1 (which is not a great setting)";
     std::cerr << "\n    --buffer=[<buffers>]      maximum buffer size before discarding frames";
@@ -109,7 +110,8 @@ static void usage( bool verbose = false )
     std::cerr << "\n    --verbose,-v              be more verbose";
     std::cerr << "\n";
     std::cerr << "\nFor GigE cameras <address> is the device ip address, for USB cameras it is";
-    std::cerr << "\nthe USB address. Both can be determined by --list-cameras --verbose.";
+    std::cerr << "\nthe USB address. Both can be determined by --list-cameras --verbose,";
+    std::cerr << "\nwhich will also show serial numbers if they are available.";
     std::cerr << "\n";
     std::cerr << "\nNote that most parameter settings (exposure, gain, etc) are sticky.";
     std::cerr << "\nThey will persist from one run to the next.";
@@ -457,25 +459,17 @@ bool is_ip_address( std::string str )
     return boost::regex_match( str, ip_regex );
 }
 
-Pylon::IPylonDevice* create_device( const std::string& address )
+Pylon::IPylonDevice* create_device( const std::string& address, const std::string& serial_number )
 {
     Pylon::CTlFactory& factory = Pylon::CTlFactory::GetInstance();
 
-    if( address.empty() )
+    if( !serial_number.empty() )
     {
-        Pylon::DeviceInfoList_t devices;
-        factory.EnumerateDevices( devices );
-        if( devices.empty() ) { std::cerr << "basler-cat: no camera found" << std::endl; return NULL; }
-        std::cerr << "basler-cat: will connect to the first of " << devices.size()
-                  << " found device(s):" << std::endl;
-        Pylon::DeviceInfoList_t::const_iterator it;
-        for( it = devices.begin(); it != devices.end(); ++it )
-        {
-            std::cerr << "    " << it->GetFullName() << std::endl;
-        }
-        return factory.CreateDevice( devices[0] );
+        Pylon::CDeviceInfo device_info;
+        device_info.SetSerialNumber( serial_number.c_str() );
+        return factory.CreateDevice( device_info );
     }
-    else
+    else if( !address.empty() )
     {
         if( is_ip_address( address ))
         {
@@ -489,6 +483,20 @@ Pylon::IPylonDevice* create_device( const std::string& address )
             device_info.SetFullName( address.c_str() );
             return factory.CreateDevice( device_info );
         }
+    }
+    else
+    {
+        Pylon::DeviceInfoList_t devices;
+        factory.EnumerateDevices( devices );
+        if( devices.empty() ) { std::cerr << "basler-cat: no camera found" << std::endl; return NULL; }
+        std::cerr << "basler-cat: will connect to the first of " << devices.size()
+                  << " found device(s):" << std::endl;
+        Pylon::DeviceInfoList_t::const_iterator it;
+        for( it = devices.begin(); it != devices.end(); ++it )
+        {
+            std::cerr << "    " << it->GetFullName() << std::endl;
+        }
+        return factory.CreateDevice( devices[0] );
     }
 }
 
@@ -1040,7 +1048,8 @@ int main( int argc, char** argv )
         comma::verbose << "initializing camera..." << std::endl;
 
         std::string address = options.value< std::string >( "--address", "" );
-        Pylon::IPylonDevice* device = create_device( address );
+        std::string serial_number = options.value< std::string >( "--serial-number", "" );
+        Pylon::IPylonDevice* device = create_device( address, serial_number );
         if( !device )
         {
             std::cerr << "unable to open camera";
