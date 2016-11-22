@@ -1,0 +1,177 @@
+#!/bin/bash
+
+# This file is part of snark, a generic and flexible library for robotics research
+# Copyright (c) 2016 The University of Sydney
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+# 1. Redistributions of source code must retain the above copyright
+#    notice, this list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright
+#    notice, this list of conditions and the following disclaimer in the
+#    documentation and/or other materials provided with the distribution.
+# 3. Neither the name of the University of Sydney nor the
+#    names of its contributors may be used to endorse or promote products
+#    derived from this software without specific prior written permission.
+#
+# NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
+# GRANTED BY THIS LICENSE.  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
+# HOLDERS AND CONTRIBUTORS \"AS IS\" AND ANY EXPRESS OR IMPLIED
+# WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+# BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+# WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+# OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
+# IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+scriptname=$( basename $0 )
+
+source $( type -p comma-application-util ) || { echo "$scriptname: cannot source comma-application-util" >&2; exit 1; }
+source $( type -p comma-resources-util ) || { echo "$scriptname: cannot source comma-resource-util" >&2; exit 1; }
+
+default_sensor_name="basler-aca1300-75gm"
+default_timeout_threshold=2 # time in seconds before interval is considered to be a timeout
+default_stderr="stderr.log"
+
+function description()
+{
+    cat <<EOF
+--help,-h; show this help and exit
+--verbose,-v; show more information
+--sensor=[<name>]; sensor name in config; default: $default_sensor_name
+--timeout-threshold=[<secs>]; elapsed time between samples before it's considered to be a timeout; default: $default_timeout_threshold
+--local; output timestamps in local time; default: utc
+--summary-only; don't process logs; assumes already processed
+--graph; display a graph of timestamp deltas
+--pretty; more human readable formatting
+--stderr=[<file>]; location of captured stderr; default: $default_stderr
+EOF
+}
+
+function usage()
+{
+    cat <<EOF
+
+analyse logs from a basler-log run
+
+usage: $scriptname <log-config> <log-path> [<options>]
+
+options:
+EOF
+    description | sed 's/^/    /g' >&2
+    cat <<EOF >&2
+
+average_period and adjusted_fps are both determined after timeouts are excluded
+
+EOF
+    exit
+}
+
+function say() { echo "$scriptname: $@" >&2; }
+function verbose() { (( options_verbose )) && say "$@"; }
+function die() { say "$@"; exit 1; }
+
+(( $( comma_options_has "--bash-completion" $@ ) )) && { description | comma_options_to_bash_completion; exit 0; }
+
+if (( $( comma_options_has "--help" $@ ) || $( comma_options_has "-h" $@ ) )); then
+    usage
+fi
+
+options="$( description | comma-options-to-name-value "$@" )"
+
+options_sensor_name=$default_sensor_name
+options_timeout_threshold=$default_timeout_threshold
+options_stderr=$default_stderr
+
+comma_path_value_to_var --prefix=options < <( echo "$options" | grep '=' )
+unnamed_options=( $( echo "$options" | grep -v '=' | sed 's/^"//g; s/"$//g' | tr '\n' ' ' ) )
+(( ${#unnamed_options[@]} == 2 )) || die "require log config and log path"
+log_config=${unnamed_options[0]}
+log_path=${unnamed_options[1]}
+
+[[ -f $log_config ]] || die "couldn't find log config: $log_config"
+
+log_drive=$( name-value-get "$options_sensor_name/drive" < $log_config )
+[[ $log_drive ]] || log_drive=.
+log_dir=$log_drive/$log_path/$options_sensor_name
+
+if [[ -f $options_stderr ]]; then
+    have_stderr_stats=1
+    stderr_restarts=$( grep -E "^basler-log: restarting " $options_stderr | wc -l )
+    stderr_fps=$( sed -n -r '0,/^basler-cat: +frame rate:/s/^basler-cat: +frame rate: (.*) fps$/\1/p' $options_stderr )
+fi
+
+cd $log_dir 2>/dev/null || die "couldn't cd to log directory: $log_dir"
+
+verbose "analysing logs in $log_dir"
+
+if (( ! options_summary_only )); then
+    cpus=$( comma_cpu_resources | name-value-get cpu/cpu --from path-value )
+    verbose "extracting timestamps from logs (utilizing $cpus cores)..."
+    ls 20*T*.bin | xargs -P${cpus} -L1 -I'{}' bash -c \
+        "cat '{}' | cv-cat --output=header-only | csv-from-bin t,3ui | cut -f1 -d, > timestamps.'{}'.csv"
+    cat timestamps.*.csv > timestamps.csv
+    rm timestamps.*.csv
+
+    csv-paste <( cat timestamps.csv ) <( tail -n +2 timestamps.csv ) \
+        | csv-eval --fields=a,b --format=2t "c=b-a" > timestamp-diffs.csv
+fi
+
+time_convert=iso
+(( options_local )) && time_convert=local
+
+IFS=, read start end duration < <( cat timestamps.csv | cut -f1 -d, | csv-calc --format=t min,max,diameter \
+    | csv-time --to $time_convert --fields=2t,d )
+
+logs_size=$( ls -l [0-9]*T*.bin | cut -f5 -d' ' | csv-calc sum --format=ul )
+frames=$( cat timestamps.csv | wc -l )
+fps=$( echo "scale=4; ( $frames - 1 ) / $duration" | bc -l )
+
+timeout_microsecs=$( echo "$options_timeout_threshold * 1000000" | bc -l )
+
+timeouts=$( cat timestamp-diffs.csv \
+                | csv-eval --fields a,b,c --format 2t,d --select="c>=$timeout_microsecs" | wc -l )
+average_period=$( cat timestamp-diffs.csv \
+                      | csv-eval --fields a,b,c --format 2t,d --select="c<$timeout_microsecs" \
+                      | cut -f3 -d, | csv-calc mean --format=d )
+average_period=$( echo "$average_period / 1000000" | bc -l )
+adjusted_fps=$( echo "scale=4; 1 / $average_period" | bc -l )
+
+pretty_cmd=cat
+(( options_pretty )) && pretty_cmd="column -t -s="
+{
+    if (( have_stderr_stats )); then
+        echo "stderr/restarts=$stderr_restarts"
+        echo "stderr/fps=$stderr_fps"
+    fi
+    echo "logs/start=$start"
+    echo "logs/end=$end"
+    echo "logs/duration=$duration"
+    echo "logs/frames=$frames"
+    echo "logs/size=$logs_size"
+    echo "logs/fps=$fps"
+    echo "logs/timeouts=$timeouts"
+    echo "logs/average_period=$average_period"
+    echo "logs/adjusted_fps=$adjusted_fps"
+} | $pretty_cmd
+
+if (( options_graph )); then
+    if type -p gnuplot > /dev/null; then
+        cat <<-EOF | gnuplot 
+	set datafile separator ","
+	set timefmt "%Y%m%dT%H%M%S"
+	set xdata time
+	plot 'timestamp-diffs.csv' using 1:3
+	pause mouse
+	EOF
+    elif type -p csv-plot > /dev/null; then
+        cat timestamp-diffs.csv | csv-plot --fields=,,y
+    else
+        say "unable to output graph: can't find csv-plot or gnuplot"
+    fi
+fi
