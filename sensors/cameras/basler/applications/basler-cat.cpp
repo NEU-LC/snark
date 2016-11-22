@@ -109,9 +109,11 @@ static void usage( bool verbose = false )
     std::cerr << "\n    --test-image=[<num>]      output test image <num>; possible values: 1-6";
     std::cerr << "\n    --verbose,-v              be more verbose";
     std::cerr << "\n";
+    std::cerr << "\nBy default basler-cat will connect to the first device it finds. To";
+    std::cerr << "\nchoose a specific camera use the --address or --serial-number options.";
     std::cerr << "\nFor GigE cameras <address> is the device ip address, for USB cameras it is";
-    std::cerr << "\nthe USB address. Both can be determined by --list-cameras --verbose,";
-    std::cerr << "\nwhich will also show serial numbers if they are available.";
+    std::cerr << "\nthe USB address. Detected cameras along with their addresses and serial numbers";
+    std::cerr << "\nare shown by --list-cameras --verbose.";
     std::cerr << "\n";
     std::cerr << "\nNote that most parameter settings (exposure, gain, etc) are sticky.";
     std::cerr << "\nThey will persist from one run to the next.";
