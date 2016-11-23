@@ -432,6 +432,22 @@ unsigned int num_channels( Pylon::CBaslerUsbCamera& camera, comma::uint32 type )
     }
 }
 
+std::string get_address( const Pylon::CDeviceInfo& device_info )
+{
+    std::string full_name = device_info.GetFullName().c_str();
+    std::string device_class = device_info.GetDeviceClass().c_str();
+    if( device_class == "BaslerGigE" )
+    {
+        // It would be nice to use Pylon::CBaslerGigEDeviceInfo::GetAddress()
+        // but casting to that class appears not to work
+        boost::regex address_regex( ".*#([0-9.]+):.*", boost::regex::extended );
+        boost::smatch match;
+        if( boost::regex_match( full_name, match, address_regex )) { return match[1]; }
+    }
+    else if( device_class == "BaslerUsb" ) { return full_name; }
+    return "";
+}
+
 void list_cameras()
 {
     Pylon::CTlFactory& factory = Pylon::CTlFactory::GetInstance();
@@ -447,6 +463,7 @@ void list_cameras()
             std::cerr << "\nVersion:    " << it->GetDeviceVersion();
             std::cerr << "\nType:       " << it->GetDeviceClass();
             std::cerr << "\nSerial no.: " << it->GetSerialNumber();
+            std::cerr << "\nAddress:    " << get_address( *it );
             std::cerr << "\nFull name:  " << it->GetFullName();
             std::cerr << std::endl;
         }
