@@ -101,7 +101,7 @@ static void usage( bool verbose = false )
     std::cerr << "\n    --no-header               output image data only";
     std::cerr << "\n    --packet-size=[<bytes>]   mtu size on camera side, should not be larger ";
     std::cerr << "\n                              than your lan and network interface";
-    std::cerr << "\n    --frame-rate=[<fps>]      set frame rate";
+    std::cerr << "\n    --frame-rate=[<fps>]      set frame rate; limited by exposure";
     std::cerr << "\n    --exposure=[<µs>]         exposure time; \"auto\" to automatically set";
     std::cerr << "\n    --gain=[<num>]            gain; \"auto\" to automatically set;";
     std::cerr << "\n                              for USB cameras units are dB";
