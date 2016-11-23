@@ -814,9 +814,10 @@ void show_config( Pylon::CBaslerGigECamera& camera, const comma::command_line_op
         else { std::cerr << camera.GainRaw(); }
         std::cerr << std::endl;
 
-        // If exposure is set to auto we don't have the correct frame rate yet
+        // If frame rate is not explicitly set and exposure is set to auto
+        // then we won't know the correct frame rate yet
         std::cerr << "basler-cat:   frame rate: ";
-        if( exposure_is_auto ) { std::cerr << "calculating..."; }
+        if( !options.exists( "--frame-rate" ) && exposure_is_auto ) { std::cerr << "calculating..."; }
         else { std::cerr << camera.ResultingFrameRateAbs() << " fps"; }
         std::cerr << std::endl;
 
@@ -841,9 +842,10 @@ void show_config( Pylon::CBaslerUsbCamera& camera, const comma::command_line_opt
         else { std::cerr << camera.Gain() << "dB"; }
         std::cerr << std::endl;
 
-        // If exposure is set to auto we don't have the correct frame rate yet
+        // If frame rate is not explicitly set and exposure is set to auto
+        // then we won't know the correct frame rate yet
         std::cerr << "basler-cat:   frame rate: ";
-        if( exposure_is_auto ) { std::cerr << "calculating..."; }
+        if( !options.exists( "--frame-rate" ) && exposure_is_auto ) { std::cerr << "calculating..."; }
         else { std::cerr << camera.ResultingFrameRate() << " fps"; }
         std::cerr << std::endl;
 
