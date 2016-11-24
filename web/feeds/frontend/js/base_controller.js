@@ -71,10 +71,10 @@ define('base_controller', ['jquery', "jquery_timeago",
     };
 
     base_controller.prototype.initialize_gui = function (width) {
+        globals.stop();
         feeds = {};
         pending = {};
         current_config_file = globals.config_file;
-        globals.stop();
         $('#container').empty();
         try {
             $('#container').sortable('destroy');
@@ -165,10 +165,6 @@ define('base_controller', ['jquery', "jquery_timeago",
 
     base_controller.prototype.add_gui_globals = function () {
         gui.add(globals, 'config_file', config_files).name('config file').onFinishChange(function (value) {
-            for (var id in feeds) {
-                var feed = feeds[id];
-                feed.clear_interval();
-            }
             load_config_fn(globals.config_file);
         });
         var folder = gui.addFolder('globals');
