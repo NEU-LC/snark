@@ -30,7 +30,7 @@ web.frontend.json description:
                 "min_color": "css-color",       // optional, color the value if it is below min, default: orange
                 "max": "<csv max values>",      // optional, csv list of max values, empty allowed, e.g. max value of 5th and 7th fields: ,,,,100,,10
                 "max_color": "css-color",       // optional, color the value if it is above max, default: red
-                "alert": true|false             // optional, alert if values are out of range, default: true
+                "threshold_alert": true|false   // optional, alert if values are out of range, default: false
             },
             "graph":                            // optional, only applicable when "type": "graph"
             {

@@ -165,6 +165,10 @@ define('base_controller', ['jquery', "jquery_timeago",
 
     base_controller.prototype.add_gui_globals = function () {
         gui.add(globals, 'config_file', config_files).name('config file').onFinishChange(function (value) {
+            for (var id in feeds) {
+                var feed = feeds[id];
+                feed.clear_interval();
+            }
             load_config_fn(globals.config_file);
         });
         var folder = gui.addFolder('globals');

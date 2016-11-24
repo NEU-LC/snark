@@ -70,7 +70,7 @@ body {
     border-radius: 10px;
     cursor: move;
     min-width: 275px;
-    border: 2px solid transparent;
+    border: 3px solid transparent;
     box-sizing: border-box;
     opacity: 0.7;
 }
@@ -87,7 +87,7 @@ body {
 
 .panel.panel-disabled {
     color: #666666;
-    border: medium solid #ff0000 !important;
+    border: 3px solid #ff0000 !important;
 }
 
 .panel.panel-disabled:hover {
@@ -324,7 +324,7 @@ table.target {
 }
 
 .panel-placeholder {
-    border: 2px dashed #6a6a6a;
+    border: 3px dashed #6a6a6a;
 }
 
 .transparent {

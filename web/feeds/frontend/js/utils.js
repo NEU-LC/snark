@@ -102,7 +102,8 @@ var globals = {
             oscillator.stop(audio_context.currentTime + 0.2);
         }
     },
-    isMobile: false
+    isMobile: false,
+    timeout: 15000 // load timeout in milliseconds
 };
 var feed_path_to_id = function (feed_path) {
     return feed_path.replace(/\[/g, "_").replace(/\]/g, "_").replace(/\//g, "_");
