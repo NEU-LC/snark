@@ -80,6 +80,15 @@ void usage(bool detail)
     std::cerr << std::endl;
     std::cerr<< "usage: " << comma::verbose.app_name() << " [ <options> ]" << std::endl;
     std::cerr << std::endl;
+    std::cerr<< "output fields:"<< std::endl;
+    std::cerr<< "    t: timestamp"<< std::endl;
+    std::cerr<< "    counter: camera timestamp counter"<< std::endl;
+    std::cerr<< "    block: scan block id"<< std::endl;
+    std::cerr<< "    point: 3d position of point in camera frame"<< std::endl;
+    std::cerr<< "    pixel: 2d position of pixel"<< std::endl;
+    std::cerr<< "    color: rgb color of point"<< std::endl;
+    std::cerr<< "    "<< std::endl;
+    std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    --help,-h: show help" << std::endl;
     std::cerr << "    --output-format: print output format and exit"<<std::endl;
@@ -122,17 +131,17 @@ void usage(bool detail)
     std::cerr << "        " << comma::verbose.app_name() << "  --stream=depth | cv-cat \"brightness=10;resize=2;view;null\" " << std::endl;
     std::cerr << std::endl;
     std::cerr << "    to view points cloud mapped with color:" << std::endl;
-    std::cerr << "        " << comma::verbose.app_name() << " --binary t,ui,3d,3ub --fields t,block,x,y,z,r,g,b | csv-select --binary t,ui,3d,3ub --fields t,,x,y,z \"z;less=4\" | view-points --binary t,ui,3d,3ub --fields t,block,x,y,z,r,g,b" << std::endl;
+    std::cerr << "        " << comma::verbose.app_name() << " --binary t,ui,3d,3ub --fields t,block,point/x,point/y,point/z,color/r,color/g,color/b | csv-select --binary t,ui,3d,3ub --fields t,,x,y,z \"z;less=4\" | view-points --binary t,ui,3d,3ub --fields t,block,x,y,z,r,g,b" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    to view points cloud without color map:"<< std::endl;
-    std::cerr << "        " << comma::verbose.app_name() << " --binary t,ui,3d --fields t,block,x,y,z | csv-select --binary t,ui,3d --fields t,b,x,y,z \"z;less=4\" | view-points --binary t,ui,3d --fields t,block,x,y,z"<< std::endl;
+    std::cerr << "        " << comma::verbose.app_name() << " --binary t,ui,3d --fields t,block,point/x,point/y,point/z | csv-select --binary t,ui,3d --fields t,b,x,y,z \"z;less=4\" | view-points --binary t,ui,3d --fields t,block,x,y,z"<< std::endl;
     std::cerr << std::endl;
     std::cerr << "    to publish points cloud and then view them:"<< std::endl;
-    std::cerr << "        " << comma::verbose.app_name() << " --binary t,ui,3d,3ub --fields t,block,x,y,z,r,g,b --device \"output=tcp:12345\"" << std::endl;
-    std::cerr << "        socat -u tcp:localhost:12345 - | csv-select --binary t,ui,3d,3ub --fields t,,x,y,z \"z;less=4\" | view-points --binary t,ui,3d,3ub --fields t,block,x,y,z,r,g,b" << std::endl;
+    std::cerr << "        " << comma::verbose.app_name() << " --binary t,ui,3d,3ub --fields t,block,point/x,point/y,point/z,color/r,color/g,color/b --device \"output=tcp:12345\"" << std::endl;
+    std::cerr << "        socat -u tcp:localhost:12345 - | csv-select --binary t,ui,3d,3ub --fields t,,point/x,point/y,point/z \"z;less=4\" | view-points --binary t,ui,3d,3ub --fields t,block,x,y,z,r,g,b" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    to publish points cloud from mutliple devices:"<< std::endl;
-    std::cerr << "        " << comma::verbose.app_name() << " --binary t,ui,3d,3ub --fields t,block,x,y,z,r,g,b --device \"port=4-1;output=tcp:12345\" --device \"port=4-2;output=tcp:6789\"" << std::endl;
+    std::cerr << "        " << comma::verbose.app_name() << " --binary t,ui,3d,3ub --fields t,block,point/x,point/y,point/z,color/r,color/g,color/b --device \"port=4-1;output=tcp:12345\" --device \"port=4-2;output=tcp:6789\"" << std::endl;
     std::cerr << std::endl;
 }
 
@@ -165,12 +174,12 @@ struct points_t
         boost::posix_time::ptime t;
         unsigned counter;
         unsigned block;
-        Eigen::Vector3d coordinates;
-        int cx;
-        int cy;
+        Eigen::Vector3d point;
+        Eigen::Vector2i pixel;
         // todo: any more point attributes available?
         //cv::Mat?
         color_t color;
+        output_t() : counter(0), block(0) { }
     };
     
     rs::device& device;
@@ -217,9 +226,8 @@ template <> struct traits< points_t::output_t >
         v.apply( "t", p.t );
         v.apply( "counter", p.counter );
         v.apply( "block", p.block );
-        v.apply( "coordinates", p.coordinates );
-        v.apply( "cx", p.cx );
-        v.apply( "cy", p.cy );
+        v.apply( "point", p.point );
+        v.apply( "pixel", p.pixel );
         v.apply( "color", p.color );
     }
 };
@@ -332,14 +340,13 @@ void points_t::scan(unsigned block)
         bool discard=false;
         if(points_cloud.get(index,point))
         {
-            out.coordinates=Eigen::Vector3d(point.x,point.y,point.z);
+            out.point=Eigen::Vector3d(point.x,point.y,point.z);
             if(has_color)
             {
                 auto color_pixel=points_cloud.project(point);
                 const int cx = (int)std::round(color_pixel.x);
                 const int cy = (int)std::round(color_pixel.y);
-                out.cx=cx;
-                out.cy=cy;
+                out.pixel=Eigen::Vector2i(cx,cy);
                 if(cx < 0 || cy < 0 || cx >= mat.cols || cy >= mat.rows)
                 {
                     if(discard_margin) {discard=true;}
@@ -361,11 +368,11 @@ void points_t::output_format()
 }
 void points_t::output_fields()
 {
-    std::cout<<comma::join( comma::csv::names<points_t::output_t>(false), ',' ) << std::endl;
+    std::cout<<comma::join( comma::csv::names<points_t::output_t>(true), ',' ) << std::endl;
 }
 std::string list::field_names()
 {
-    return comma::join( comma::csv::names<list::output_t>(false), ',' );
+    return comma::join( comma::csv::names<list::output_t>(true), ',' );
 }
 void list::process(rs::context& context, const comma::csv::options& csv)
 {
@@ -567,7 +574,7 @@ int main( int argc, char** argv )
     {
         comma::csv::options csv(options);
         bool do_list=options.exists("--list-devices,--list");
-        //csv.full_xpath=true;
+        csv.full_xpath=true;
         if(options.exists("--output-format"))
         { 
              points_t::output_format();
