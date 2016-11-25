@@ -184,15 +184,20 @@ define('base_controller', ['jquery', "jquery_timeago",
 
 
     base_controller.prototype.load_feed_items = function (frontend_config, path) {
+        if (frontend_config.timeout) {
+            globals.timeout = frontend_config.timeout;
+        }
         var feeds = frontend_config.feeds;
-        if (path.length != 0)
+        if (path.length != 0) {
             path = path + "/";
+        }
         for (var feed_name in feeds) {
             var config = feeds[feed_name];
-            if (Array.isArray(config))
+            if (Array.isArray(config)) {
                 load_feed_array(frontend_config, config, path + feed_name);
-            else
+            } else {
                 add_new_feed(frontend_config, config, path + feed_name);
+            }
         }
     };
 
