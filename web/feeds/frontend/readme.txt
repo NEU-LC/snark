@@ -7,7 +7,8 @@ web.frontend.json description:
     "host": "http://host:port",                 // default feed server, optional
                                                 // if a feed entry in the "feeds" section does not have a url then the url is formed by <host>/<feed-name>
     "websocket": "ws://host:port/endpoint",     // default stream feed server, optional
-    "bing_maps_key": <string>                   // required if using map imagery sets, Bing Maps API key. Get yours at http://bingmapsportal.com/.
+    "bing_maps_key": <string>,                  // required if using map imagery sets, Bing Maps API key. Get yours at http://bingmapsportal.com/.
+    "timeout": <milliseconds>,                  // optional, feed timeout in ms to get new data; default: 60000
     "feeds":
     {
         "<feed-name>":
