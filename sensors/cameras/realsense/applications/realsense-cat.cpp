@@ -85,7 +85,7 @@ void usage(bool detail)
     std::cerr<< "    counter: camera timestamp counter"<< std::endl;
     std::cerr<< "    block: scan block id"<< std::endl;
     std::cerr<< "    point: 3d position of point in camera frame"<< std::endl;
-    std::cerr<< "    pixel: 2d position of pixel"<< std::endl;
+    std::cerr<< "    index: 2d position of pixel in image frame"<< std::endl;
     std::cerr<< "    color: rgb color of point"<< std::endl;
     std::cerr<< "    "<< std::endl;
     std::cerr << std::endl;
@@ -227,7 +227,7 @@ template <> struct traits< points_t::output_t >
         v.apply( "counter", p.counter );
         v.apply( "block", p.block );
         v.apply( "point", p.point );
-        v.apply( "pixel", p.pixel );
+        v.apply( "index", p.pixel );
         v.apply( "color", p.color );
     }
 };
@@ -257,7 +257,7 @@ struct camera_stream
 void points_t::process(std::vector<device_t>& devices,const comma::csv::options& csv)
 {
     comma::verbose<<"points_t::process"<<std::endl;
-    bool has_color=csv.fields.empty() || csv.has_some_of_fields("r,g,b");
+    bool has_color=csv.fields.empty() || csv.has_some_of_fields("color,color/r,color/g,color/b");
     comma::verbose<<"csv.fields "<<csv.fields<<std::endl;
     if(!has_color)
     { comma::verbose<<"not processing color"<<std::endl; }
