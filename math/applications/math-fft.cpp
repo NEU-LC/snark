@@ -45,7 +45,7 @@ bool logarithmic_output=true;
 bool magnitude=false;
 bool real=false;
 bool split=false;
-bool timestamp=false;
+bool tied=true;
 std::size_t bin_size=0;
 boost::optional<double> bin_overlap;
 
@@ -54,7 +54,7 @@ void usage(bool detail)
     std::cerr<<"    perform fft on input data" << std::endl;
     std::cerr << std::endl;
     std::cerr<< "usage: " << comma::verbose.app_name() << " [ <options> ]" << std::endl;
-    std::cerr<< "    output is binary array of pair (real, complex) of double with half the size of input; plus optional timestamp"  << std::endl;
+    std::cerr<< "    output is binary array of pair (real, complex) of double with half the size of input"  << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    --help,-h: show help" << std::endl;
@@ -71,7 +71,7 @@ void usage(bool detail)
     std::cerr << "    --split: output array of real followed by array of complex part; when not specified real and complex parts are interleaved" << std::endl;
     std::cerr << "    --output-size: print size of output record in bytes and exit" << std::endl;
     std::cerr << "    --output-format: print binary format of output and exit" << std::endl;
-    std::cerr << "    --timestamp: prepend timestamp to the output data" << std::endl;
+    std::cerr << "    --untied: don't include input, when not specified, input is prepended to output" << std::endl;
     std::cerr << std::endl;
     if(detail)
     {
@@ -90,27 +90,48 @@ void usage(bool detail)
     exit(0);
 }
 
+// math-fft --fields ,,data --format t,ui,16000f
+// math-fft --fields ,,,,,data --format t,ui,s[$(( 16000 * 4  ))],t,ui,16000f
+
 struct input_t
 {
-    boost::posix_time::ptime time;
     std::vector<double> data;
     input_t() : data(input_size) {}
+};
 
+struct output_t
+{
+    std::vector<double> data;
+    output_t() 
+    {
+        std::size_t len=bin_size;
+        if(magnitude || real) { len/=2; }
+        data.resize(len);
+    }
+    void reset()
+    {
+        memset(&data[0],0,data.size()*sizeof(data[0]));
+    }
 };
 
 namespace comma { namespace visiting {
 
-//alternatively: use snark timing traits.h: {t, data/output_t}
 template <> struct traits< input_t >
 {
     template< typename K, typename V > static void visit( const K& k, input_t& p, V& v )
     {
-        v.apply( "t", p.time );
         v.apply( "data", p.data );
     }
     template< typename K, typename V > static void visit( const K& k, const input_t& p, V& v )
     {
-        v.apply( "t", p.time );
+        v.apply( "data", p.data );
+    }
+};
+
+template <> struct traits< output_t >
+{
+    template< typename K, typename V > static void visit( const K& k, const output_t& p, V& v )
+    {
         v.apply( "data", p.data );
     }
 };
@@ -198,54 +219,45 @@ void calculate(const double* data, std::size_t size, std::vector<double>& output
         }
     }
 }
-void write_timestamp_bin(std::ostream& os, const boost::posix_time::ptime& time)
-{
-    static char buf[comma::csv::format::traits< boost::posix_time::ptime, comma::csv::format::time >::size];
-    comma::csv::format::traits< boost::posix_time::ptime, comma::csv::format::time >::to_bin( time, buf );
-    os.write(buf, sizeof(buf));
-}
+
 struct app
 {
-    std::vector<double> output;
     app()
     {
-        std::size_t len=bin_size;
-        if(magnitude || real) { len/=2; }
-        output.resize(len);
     }
     void process(const comma::csv::options& csv)
     {
+        if(bin_overlap && int(bin_size*(1-*bin_overlap)) <= 0) { COMMA_THROW( comma::exception, "bin size and overlap don't work" ); }
         input_t sample;
         comma::csv::input_stream<input_t> is(std::cin, csv, sample);
+        comma::csv::output_stream<output_t> os(std::cout, csv.binary(), true);
+        comma::csv::tied<input_t, output_t> otied(is,os);
+        output_t output;
         while(std::cin.good())
         {
             //read a record
             const input_t* input=is.read();
-            if(input != NULL)
+            if(!input) { break; }
+            //calculate
+            for(std::size_t bin_offset=0;bin_offset<input_size;bin_offset+=(bin_overlap ? bin_size*(1-*bin_overlap) : bin_size))
             {
-                if(bin_overlap && int(bin_size*(1-*bin_overlap)) <= 0) { COMMA_THROW( comma::exception, "bin size and overlap don't work" ); }
-                for(std::size_t bin_offset=0;bin_offset<input_size;bin_offset+=(bin_overlap ? bin_size*(1-*bin_overlap) : bin_size))
-                {
-                    memset(output.data(),0,output.size()*sizeof(output[0]));
-                    calculate(&input->data.data()[bin_offset], std::min(bin_size,input_size-bin_offset), output);
-                    //write output
-                    write_output(*input);
-                }
+                output.reset();
+                calculate(&input->data[bin_offset], std::min(bin_size,input_size-bin_offset), output.data);
+                //write output
+                if(tied)
+                    otied.append(output);
+                else
+                    os.write(output);
             }
         }
     }
-    void write_output(const input_t& input)
-    {
-        if(timestamp) { write_timestamp_bin(std::cout, input.time); }
-        std::cout.write(reinterpret_cast<const char*>(&output[0]),output.size()*sizeof(double));
-    }
     std::size_t get_output_size()
     {
-        return output.size() + (timestamp ? comma::csv::format::traits< boost::posix_time::ptime, comma::csv::format::time >::size : 0);
+        return output_t().data.size() * comma::csv::format("d").size();
     }
-    std::string get_output_format()
+    void output_format()
     {
-        return (timestamp ? "t," : "") + boost::lexical_cast<std::string>(output.size()) + "d";
+        std::cout<<output_t().data.size()<<"d"<<std::endl;
     }
 };
 
@@ -273,18 +285,18 @@ int main( int argc, char** argv )
         magnitude=options.exists("--magnitude");
         real=options.exists("--real");
         split=options.exists("--split");
-        timestamp=options.exists("--timestamp");
+        tied=!options.exists("--untied");
         bin_size=options.value<std::size_t>("--bin-size", input_size);
         range_check<std::size_t>(bin_size,0,input_size,"bin_size");
         bin_overlap=options.optional<double>("--bin-overlap");
         if(bin_overlap)
             range_check<double>(*bin_overlap,0,1,"bin_overlap");
-        std::vector<std::string> unnamed=options.unnamed("--verbose,-v,--output-size,--output-format,--no-filter,--linear,--timestamp,--magnitude,--real,--split", 
+        std::vector<std::string> unnamed=options.unnamed("--verbose,-v,--output-size,--output-format,--no-filter,--linear,--untied,--magnitude,--real,--split", 
                                                          "--binary,-b,--fields,-f,--delimiter,-d,--size,--bin-size,--bin-overlap");
         if(unnamed.size() != 0) { COMMA_THROW(comma::exception, "invalid option(s): " << unnamed ); }
         app app;
         if(options.exists("--output-size")) { std::cout<< app.get_output_size() << std::endl; return 0; }
-        if(options.exists("--output-format")) { std::cout<< app.get_output_format() << std::endl; return 0; }
+        if(options.exists("--output-format")) { app.output_format(); return 0; }
         app.process(csv);
         return 0;
     }
