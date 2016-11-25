@@ -116,7 +116,7 @@ class grid
                 if( !r.second )
                 {
                     if( permissive_ ) { continue; }
-                    std::cerr << "points-mesh: grid: got duplicated index: " << p->index.x() << "," << p->index.y() << " if it is intended, use --permissive" << std::endl;
+                    std::cerr << "points-mesh: grid: got duplicated index: " << p->index.x() << "," << p->index.y() << "; if it is intended, use --permissive" << std::endl;
                     return 1;
                 }
                 if( istream_.is_binary() )
