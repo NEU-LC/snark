@@ -47,6 +47,10 @@ INSTALL( TARGETS points-align
 
 INSTALL( PROGRAMS examples/points-eigen DESTINATION ${snark_INSTALL_BIN_DIR} )
 
+add_executable( points-mesh points-mesh.cpp )
+target_link_libraries( points-mesh ${comma_ALL_LIBRARIES} ${snark_ALL_EXTERNAL_LIBRARIES} )
+install( TARGETS points-mesh RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
+
 if( USE_CUDA )
     cuda_add_executable( points-join points-join.cpp points-join/points_join_cuda.cu ) # quick and dirty, simplistic for now
 else( USE_CUDA )

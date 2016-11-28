@@ -483,40 +483,47 @@ boost::shared_ptr< snark::graphics::view::Reader > makeReader( const comma::comm
     {
         if( param.options.fields == "" ) { param.options.fields="first,second"; }
     }
+    else if( shape == "triangle" )
+    {
+        if( param.options.fields == "" ) { param.options.fields="corners"; }
+    }
     else
     {
         if( param.options.fields == "" ) { param.options.fields="point,orientation"; param.options.full_xpath = true; }
         #if Qt3D_VERSION==1
-        std::vector< snark::graphics::view::TextureReader::image_options > image_options;
-        std::vector< std::string > v = comma::split( shape, ':' );
-        for( unsigned int i = 0; i < v.size(); ++i )
-        {
-            std::vector< std::string > w = comma::split( v[i], ',' );
-            std::string e = comma::split( w[0], '.' ).back();
-            if( e != "png" && e != "jpg" && e != "jpeg" && e != "bmp" && e != "gif" ) { break; }
-            switch( w.size() )
+            std::vector< snark::graphics::view::TextureReader::image_options > image_options;
+            std::vector< std::string > v = comma::split( shape, ':' );
+            for( unsigned int i = 0; i < v.size(); ++i )
             {
-                case 1: image_options.push_back( snark::graphics::view::TextureReader::image_options( w[0] ) ); break;
-                case 2: image_options.push_back( snark::graphics::view::TextureReader::image_options( w[0], boost::lexical_cast< double >( w[1] ) ) ); break;
-                case 3: image_options.push_back( snark::graphics::view::TextureReader::image_options( w[0], boost::lexical_cast< double >( w[1] ), boost::lexical_cast< double >( w[2] ) ) ); break;
-                default: COMMA_THROW( comma::exception, "expected <image>[,<width>,<height>]; got: " << shape );
+                std::vector< std::string > w = comma::split( v[i], ',' );
+                std::string e = comma::split( w[0], '.' ).back();
+                if( e != "png" && e != "jpg" && e != "jpeg" && e != "bmp" && e != "gif" ) { break; }
+                switch( w.size() )
+                {
+                    case 1: image_options.push_back( snark::graphics::view::TextureReader::image_options( w[0] ) ); break;
+                    case 2: image_options.push_back( snark::graphics::view::TextureReader::image_options( w[0], boost::lexical_cast< double >( w[1] ) ) ); break;
+                    case 3: image_options.push_back( snark::graphics::view::TextureReader::image_options( w[0], boost::lexical_cast< double >( w[1] ), boost::lexical_cast< double >( w[2] ) ) ); break;
+                    default: COMMA_THROW( comma::exception, "expected <image>[,<width>,<height>]; got: " << shape );
+                }
             }
-        }
-        if( image_options.empty() )
-        {
-            model_options m = comma::name_value::parser( ';', '=' ).get< model_options >( properties );
-            m.filename = shape;
-            if( !boost::filesystem::exists( m.filename ) ) { COMMA_THROW( comma::exception, "file does not exist: " << m.filename ); }
-            boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ModelReader( viewer, param, shape, m.flip, m.scale, colored, label ) );
-            reader->show( show );
-            return reader;
-        }
-        else
-        {
-            boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::TextureReader( viewer, param, image_options ) );
-            reader->show( show );
-            return reader;
-        }
+            if( image_options.empty() )
+            {
+                model_options m = comma::name_value::parser( ';', '=' ).get< model_options >( properties );
+                m.filename = shape;
+                if( !boost::filesystem::exists( m.filename ) ) { COMMA_THROW( comma::exception, "file does not exist: " << m.filename ); }
+                boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ModelReader( viewer, param, shape, m.flip, m.scale, colored, label ) );
+                reader->show( show );
+                return reader;
+            }
+            else
+            {
+                boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::TextureReader( viewer, param, image_options ) );
+                reader->show( show );
+                return reader;
+            }
+        #else
+            std::cerr << "view-points: cad models and images are not supported yet for qt version " << Qt3D_VERSION << std::endl;
+            exit( 1 );
         #endif
     }
     std::vector< std::string > v = comma::split( param.options.fields, ',' );
@@ -552,6 +559,16 @@ boost::shared_ptr< snark::graphics::view::Reader > makeReader( const comma::comm
         boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< std::pair< Eigen::Vector3d, Eigen::Vector3d > >( viewer, param, colored, label ) );
         #else
         boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< std::pair< Eigen::Vector3d, Eigen::Vector3d > >( param ) );
+        #endif
+        reader->show( show );
+        return reader;
+    }
+    else if( shape == "triangle" )
+    {
+        #if Qt3D_VERSION==1
+        boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< snark::graphics::view::polygon< 3 > >( viewer, param, colored, label ) );
+        #else
+        boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< snark::graphics::view::polygon< 3 > >( param ) );
         #endif
         reader->show( show );
         return reader;

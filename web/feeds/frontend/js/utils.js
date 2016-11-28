@@ -103,7 +103,7 @@ var globals = {
         }
     },
     isMobile: false,
-    timeout: 15000 // load timeout in milliseconds
+    timeout: 60000 // load timeout in milliseconds
 };
 var feed_path_to_id = function (feed_path) {
     return feed_path.replace(/\[/g, "_").replace(/\]/g, "_").replace(/\//g, "_");

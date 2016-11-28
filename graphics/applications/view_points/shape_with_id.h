@@ -27,12 +27,11 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
 /// @author Vsevolod Vlaskine, Cedric Wohlleber
 
-#ifndef SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_SHAPEWITHID_H_
-#define SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_SHAPEWITHID_H_
+#pragma once
 
+#include <boost/array.hpp>
 #include <boost/optional.hpp>
 #include <boost/static_assert.hpp>
 #include <comma/base/types.h>
@@ -165,7 +164,7 @@ struct Shapetraits< snark::math::closed_interval< double, 3 > >
     static Eigen::Vector3d center( const snark::math::closed_interval< double, 3 >& extents ) { return ( extents.min() + extents.max() ) / 2; }
 };
 
-template<>
+template <>
 struct Shapetraits< std::pair< Eigen::Vector3d, Eigen::Vector3d > >
 {
     static const unsigned int size = 2;
@@ -204,6 +203,54 @@ struct Shapetraits< std::pair< Eigen::Vector3d, Eigen::Vector3d > >
     static const Eigen::Vector3d& somePoint( const std::pair< Eigen::Vector3d, Eigen::Vector3d >& line ) { return line.first; }
 
     static Eigen::Vector3d center( const std::pair< Eigen::Vector3d, Eigen::Vector3d >& line ) { return ( line.first + line.second ) / 2; }
+};
+
+template < std::size_t Size >
+struct polygon
+{
+    boost::array< Eigen::Vector3d, Size > corners;
+};
+
+template < std::size_t Size >
+struct Shapetraits< polygon< Size > >
+{
+    BOOST_STATIC_ASSERT( Size > 2 );
+    static const unsigned int size = Size;
+    #if Qt3D_VERSION==1
+    static void update( const polygon< Size >& e, const Eigen::Vector3d& offset, const QColor4ub& color, unsigned int block, block_buffer< vertex_t >& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents  )
+    #else
+    static void update( const polygon< Size >& e, const Eigen::Vector3d& offset, const qt3d::gl_color_t& color, unsigned int block, block_buffer< vertex_t >& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents  )
+    #endif
+    {
+        for( unsigned int i = 0; i < Size; ++i )
+        {
+            Eigen::Vector3f v = ( e.corners[i] - offset ).template cast< float >();
+            
+            #if Qt3D_VERSION==1
+            buffer.add( vertex_t( QVector3D( v.x(), v.y(), v.z() ), color ), block );
+            #else
+            buffer.add( vertex_t( v, color ), block );
+            #endif
+
+            extents = extents ? extents->hull( snark::math::closed_interval< float, 3 >( v ) ) : snark::math::closed_interval< float, 3 >( v );
+        }
+    }
+
+    #if Qt3D_VERSION==1
+    static void draw( QGLPainter* painter, unsigned int size )
+    {
+        for( unsigned int i = 0; i < size; i += Size ) { painter->draw( QGL::LineLoop, Size, i ); }
+    }
+    #endif
+    
+    static const Eigen::Vector3d& somePoint( const polygon< Size >& c ) { return c.corners[0]; }
+    
+    static Eigen::Vector3d center( const polygon< Size >& c ) // quick and dirty
+    { 
+        Eigen::Vector3d m = Eigen::Vector3d::Zero();
+        for( unsigned int i = 0; i < Size; ++i ) { m += c.corners[i]; }
+        return m / Size;
+    }
 };
 
 template < std::size_t Size >
@@ -548,6 +595,19 @@ template < typename T > struct traits< snark::math::closed_interval< T, 3 > >
     }
 };
 
-} } // namespace comma { namespace visiting {
+template < std::size_t Size > struct traits< snark::graphics::view::polygon< Size > >
+{
+    template < typename Key, class Visitor >
+    static void visit( Key, snark::graphics::view::polygon< Size >& p, Visitor& v )
+    {
+        v.apply( "corners", p.corners );
+    }
 
-#endif /*SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_SHAPEWITHID_H_*/
+    template < typename Key, class Visitor >
+    static void visit( Key, const snark::graphics::view::polygon< Size >& p, Visitor& v )
+    {
+        v.apply( "corners", p.corners );
+    }
+};
+
+} } // namespace comma { namespace visiting {
