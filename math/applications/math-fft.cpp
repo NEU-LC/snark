@@ -73,7 +73,7 @@ void usage(bool detail)
     std::cerr << "    --no-filter: when not specified, filters input using a cut window to get limited output" << std::endl;
     std::cerr << "    --linear: output as linear; when not specified, output will be scaled to lograithm of 10 for magnitude or real part (phase is not affected)" << std::endl;
     std::cerr << "    --split: output array of real followed by array of complex part; when not specified real and complex parts are interleaved" << std::endl;
-    std::cerr << "    --output-size: print size of output record in bytes and exit; depends on input fields" << std::endl;
+    std::cerr << "    --output-size: print size of output data array and exit; e.g. if output format is t,ui,256d, then output size is 256" << std::endl;
     std::cerr << "    --output-format: print binary format of output and exit; depends on input fields and size" << std::endl;
     std::cerr << "    --output-fields: print output fields and exit; depends on input fields and size" << std::endl;
     std::cerr << std::endl;
@@ -110,7 +110,7 @@ struct output_t
     boost::posix_time::ptime t;
     unsigned channel;
     std::vector<double> data;
-    output_t() 
+    output_t() : channel(0)
     {
         std::size_t len=bin_size;
         if(magnitude || real) { len/=2; }
@@ -265,11 +265,11 @@ struct app
     }
     std::size_t get_output_size()
     {
-        return (output_timestamp?comma::csv::format("t").size():0)+(output_channel?comma::csv::format("ui").size():0)+output_t().data.size() * comma::csv::format("d").size();
+        return output_t().data.size();
     }
     void output_format()
     {
-        std::cout<<(output_timestamp?"t,":"")<<(output_channel?"channel,":"")<<output_t().data.size()<<"d"<<std::endl;
+        std::cout<<(output_timestamp?"t,":"")<<(output_channel?"ui,":"")<<output_t().data.size()<<"d"<<std::endl;
     }
     void output_fields()
     {
