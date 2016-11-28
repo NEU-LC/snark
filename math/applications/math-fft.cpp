@@ -45,16 +45,20 @@ bool logarithmic_output=true;
 bool magnitude=false;
 bool real=false;
 bool split=false;
-bool tied=true;
 std::size_t bin_size=0;
 boost::optional<double> bin_overlap;
+bool output_timestamp=true;
+bool output_channel=true;
 
 void usage(bool detail)
 {
     std::cerr<<"    perform fft on input data" << std::endl;
     std::cerr << std::endl;
     std::cerr<< "usage: " << comma::verbose.app_name() << " [ <options> ]" << std::endl;
+    std::cerr << std::endl;
+    std::cerr<< "    input fields: t,channel,data. default fields: data; e.g. to include t and channel specify --fields t,channel,data"  << std::endl;
     std::cerr<< "    output is binary array of pair (real, complex) of double with half the size of input"  << std::endl;
+    std::cerr<< "        it will have timestamp and channel, if they are specified in input fields."  << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    --help,-h: show help" << std::endl;
@@ -69,9 +73,9 @@ void usage(bool detail)
     std::cerr << "    --no-filter: when not specified, filters input using a cut window to get limited output" << std::endl;
     std::cerr << "    --linear: output as linear; when not specified, output will be scaled to lograithm of 10 for magnitude or real part (phase is not affected)" << std::endl;
     std::cerr << "    --split: output array of real followed by array of complex part; when not specified real and complex parts are interleaved" << std::endl;
-    std::cerr << "    --output-size: print size of output record in bytes and exit" << std::endl;
-    std::cerr << "    --output-format: print binary format of output and exit" << std::endl;
-    std::cerr << "    --untied: don't include input, when not specified, input is prepended to output" << std::endl;
+    std::cerr << "    --output-size: print size of output record in bytes and exit; depends on input fields" << std::endl;
+    std::cerr << "    --output-format: print binary format of output and exit; depends on input fields and size" << std::endl;
+    std::cerr << "    --output-fields: print output fields and exit; depends on input fields and size" << std::endl;
     std::cerr << std::endl;
     if(detail)
     {
@@ -85,7 +89,7 @@ void usage(bool detail)
         std::cerr << std::endl;
     }
     std::cerr << "example" << std::endl;
-    std::cerr << "      " << comma::verbose.app_name() << " --binary=\"t,16000f\" --fields=,data --size=16000" << std::endl;
+    std::cerr << "      " << comma::verbose.app_name() << " --binary=\"t,16000f\" --fields=t,data --size=16000" << std::endl;
     std::cerr << std::endl;
     exit(0);
 }
@@ -95,12 +99,16 @@ void usage(bool detail)
 
 struct input_t
 {
+    boost::posix_time::ptime t;
+    unsigned channel;
     std::vector<double> data;
     input_t() : data(input_size) {}
 };
 
 struct output_t
 {
+    boost::posix_time::ptime t;
+    unsigned channel;
     std::vector<double> data;
     output_t() 
     {
@@ -120,10 +128,14 @@ template <> struct traits< input_t >
 {
     template< typename K, typename V > static void visit( const K& k, input_t& p, V& v )
     {
+        v.apply( "t", p.t );
+        v.apply( "channel", p.channel );
         v.apply( "data", p.data );
     }
     template< typename K, typename V > static void visit( const K& k, const input_t& p, V& v )
     {
+        v.apply( "t", p.t );
+        v.apply( "channel", p.channel );
         v.apply( "data", p.data );
     }
 };
@@ -132,6 +144,8 @@ template <> struct traits< output_t >
 {
     template< typename K, typename V > static void visit( const K& k, const output_t& p, V& v )
     {
+        if(output_timestamp) { v.apply( "t", p.t );  }
+        if(output_channel) { v.apply( "channel", p.channel ); }
         v.apply( "data", p.data );
     }
 };
@@ -231,33 +245,35 @@ struct app
         input_t sample;
         comma::csv::input_stream<input_t> is(std::cin, csv, sample);
         comma::csv::output_stream<output_t> os(std::cout, csv.binary(), true);
-        comma::csv::tied<input_t, output_t> otied(is,os);
         output_t output;
         while(std::cin.good())
         {
             //read a record
             const input_t* input=is.read();
             if(!input) { break; }
+            output.t=input->t;
+            output.channel=input->channel;
             //calculate
             for(std::size_t bin_offset=0;bin_offset<input_size;bin_offset+=(bin_overlap ? bin_size*(1-*bin_overlap) : bin_size))
             {
                 output.reset();
                 calculate(&input->data[bin_offset], std::min(bin_size,input_size-bin_offset), output.data);
                 //write output
-                if(tied)
-                    otied.append(output);
-                else
-                    os.write(output);
+                os.write(output);
             }
         }
     }
     std::size_t get_output_size()
     {
-        return output_t().data.size() * comma::csv::format("d").size();
+        return (output_timestamp?comma::csv::format("t").size():0)+(output_channel?comma::csv::format("ui").size():0)+output_t().data.size() * comma::csv::format("d").size();
     }
     void output_format()
     {
-        std::cout<<output_t().data.size()<<"d"<<std::endl;
+        std::cout<<(output_timestamp?"t,":"")<<(output_channel?"channel,":"")<<output_t().data.size()<<"d"<<std::endl;
+    }
+    void output_fields()
+    {
+        std::cout<<comma::join(comma::csv::names< output_t >(true),',')<<std::endl;
     }
 };
 
@@ -279,24 +295,26 @@ int main( int argc, char** argv )
     try
     {
         comma::csv::options csv(options,"data");
+        output_timestamp=csv.has_field("t");
+        output_channel=csv.has_field("channel");
         filter_input= ! options.exists("--no-filter");
         logarithmic_output= ! options.exists("--linear");
         input_size=options.value<std::size_t>("--size");
         magnitude=options.exists("--magnitude");
         real=options.exists("--real");
         split=options.exists("--split");
-        tied=!options.exists("--untied");
         bin_size=options.value<std::size_t>("--bin-size", input_size);
         range_check<std::size_t>(bin_size,0,input_size,"bin_size");
         bin_overlap=options.optional<double>("--bin-overlap");
         if(bin_overlap)
             range_check<double>(*bin_overlap,0,1,"bin_overlap");
-        std::vector<std::string> unnamed=options.unnamed("--verbose,-v,--output-size,--output-format,--no-filter,--linear,--untied,--magnitude,--real,--split", 
+        std::vector<std::string> unnamed=options.unnamed("--verbose,-v,--output-size,--output-format,--output-fields,--no-filter,--linear,--magnitude,--real,--split", 
                                                          "--binary,-b,--fields,-f,--delimiter,-d,--size,--bin-size,--bin-overlap");
         if(unnamed.size() != 0) { COMMA_THROW(comma::exception, "invalid option(s): " << unnamed ); }
         app app;
         if(options.exists("--output-size")) { std::cout<< app.get_output_size() << std::endl; return 0; }
         if(options.exists("--output-format")) { app.output_format(); return 0; }
+        if(options.exists("--output-fields")) { app.output_fields(); return 0; }
         app.process(csv);
         return 0;
     }
