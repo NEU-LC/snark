@@ -72,22 +72,22 @@ require(['jquery', "jquery_ui",
         add_panel(feed_name, feed_path);
         if (type == 'image') {
             var element_str = '<div class="target"/>';
-            controller.prototype.add_poll_body(feed_path, element_str);
+            controller.prototype.add_poll_body(feed_path, element_str, config.form);
             return new ImageFeed(feed_name, feed_path, config);
         } else if (type == 'text' || type == 'csv' || type == 'csv-table') {
-            controller.prototype.add_poll_body(feed_path, '<table class="target"><thead></thead></table>');
+            controller.prototype.add_poll_body(feed_path, '<table class="target"><thead></thead></table>', config.form);
             return type == 'text' ? new TextFeed(feed_name, feed_path, config) : new CsvFeed(feed_name, feed_path, config);
         } else if (type == 'graph') {
-            controller.prototype.add_poll_body(feed_path, '<div class="target graph"><div class="graph-text">&nbsp;</div><div class="graph-y-labels"></div><div class="graph-bars"></div></div>');
+            controller.prototype.add_poll_body(feed_path, '<div class="target graph"><div class="graph-text">&nbsp;</div><div class="graph-y-labels"></div><div class="graph-bars"></div></div>', config.form);
             return new GraphFeed(feed_name, feed_path, config);
         } else if (type == 'stream') {
-            controller.prototype.add_stream_body(feed_path, '<div class="target stream"/>');
+            controller.prototype.add_stream_body(feed_path, '<div class="target stream"/>', config.form);
             return new ImageStreamFeed(feed_name, config);
         } else if (type == 'track') {
-            controller.prototype.add_poll_body(feed_path, '<div class="target"/>');
+            controller.prototype.add_poll_body(feed_path, '<div class="target"/>', config.form);
             return new TrackFeed(feed_name, feed_path, config);
         } else if (type == 'map') {
-            controller.prototype.add_poll_body(feed_path, '<div class="target map"></div>');
+            controller.prototype.add_poll_body(feed_path, '<div class="target map"></div>', config.form);
             return new MapFeed(feed_name, feed_path, config);
         } else if (type == 'form') {
             controller.prototype.add_poll_body(feed_path, '<div class="target form"></div>');

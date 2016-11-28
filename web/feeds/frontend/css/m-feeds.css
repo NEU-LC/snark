@@ -48,6 +48,14 @@ body {
     /*border-right: 2px solid #484848;*/
 }
 
+.target + .tooltip.top > .tooltip-inner {
+    background: #337ab7
+}
+
+.target + .tooltip.top > .tooltip-arrow {
+    border-top-color: #337ab7
+}
+
 .panel {
     display: inline-block;
     margin: 10px;
@@ -184,12 +192,18 @@ form input {
     color: #2c2c2c;
 }
 
-.target {
+.target-container {
     margin-top: 5px;
     background: #181818;
 }
 
-.target:not(:empty) {
+.inputs-group {
+    margin-top: 5px;
+    background: #181818;
+    /*display: none;*/
+}
+
+.target-container:not(:empty) {
     border: 1px solid #2c2c2c;
 }
 

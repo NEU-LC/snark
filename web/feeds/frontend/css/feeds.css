@@ -61,6 +61,14 @@ body {
     border-right: 2px solid #484848;
 }
 
+.target + .tooltip.top > .tooltip-inner {
+    background: #337ab7
+}
+
+.target + .tooltip.top > .tooltip-arrow {
+    border-top-color: #337ab7
+}
+
 .panel {
     display: inline-block;
     margin: 10px;
@@ -186,6 +194,11 @@ body {
 form input {
     margin-bottom: 5px;
     color: #2c2c2c;
+    opacity: 1;
+}
+
+.form:hover {
+    background: #2c2c2c;
 }
 
 .form {
@@ -196,12 +209,18 @@ form label {
     color: #bcdefa;
 }
 
-.target {
+.target-container {
     margin-top: 5px;
     background: #181818;
 }
 
-.target:not(:empty) {
+.inputs-group {
+    margin-top: 5px;
+    background: #181818;
+    /*display: none;*/
+}
+
+.target-container:not(:empty) {
     border: 1px solid #2c2c2c;
 }
 

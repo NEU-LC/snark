@@ -48,26 +48,31 @@ define('base_controller', ['jquery', "jquery_timeago",
         }
     };
 
-    base_controller.prototype.add_poll_body = function (feed_name, element, popup_div) {
+    base_controller.prototype.add_poll_body = function (feed_name, element, fields, popup_div) {
         var id = '#' + feed_path_to_id(feed_name);
         var class_str = globals.isMobile ? '' : ' hideable transparent';
+        var input_fields_link = feed_name + "-fields";
+        var content_html = "";
+        if (fields != undefined) {
+            content_html += '<a data-toggle="collapse" class="text-center" href="#' + input_fields_link + '">Input fields</a>'
+                + '<div class="inputs-group collapse" id="' + input_fields_link + '"></div>';
+        }
         $(id).append(
             '<h3>' + feed_name +
             '  <button class="panel-refresh" title="<kbd>click</kbd>: refresh<br><kbd>shift+click</kbd>: auto refresh"><span class="status text-muted glyphicon glyphicon-stop"></span></button>' +
             '  <button class="panel-settings' + class_str + '" title="settings"><span class="text-muted glyphicon glyphicon-cog"></span></button>' +
             '  <button class="panel-compact' + class_str + '" title="compact"><span class="text-muted glyphicon glyphicon-resize-small"></span></button>' +
-            '</h3>' +
-            '<div class="panel-body">' +
+            '</h3>');
+        $(id).append('<div class="panel-body">' +
             '  <time class="timestring time small">&nbsp;</time>' +
             '  <time class="timeago time small">&nbsp;</time>' +
-            element +
-            '</div>'
+            '<div class="target-container">' +
+            content_html + element + '</div></div>'
         );
         $(id).append(popup_div);
         if (globals.isMobile) {
             $("#popup" + feed_name).popup();
         }
-
     };
 
     base_controller.prototype.initialize_gui = function (width) {
@@ -651,6 +656,14 @@ define('base_controller', ['jquery', "jquery_timeago",
             config.alert = true;
         }
         var feed_obj = create_feed_fn(config.type, feed_name, feed_path, config);
+        if (config.type != 'form') {
+            if (feed_obj.is_feed_inputs()) {
+                feed_obj.input_container.empty();
+                var form_ = $('<form>');
+                feed_obj.load_inputs(form_);
+                feed_obj.input_container.append(form_);
+            }
+        }
         var folder = gui.addFolder(feed_path);
         folder.close();
         folder.add(feed_obj.config, 'url').onFinishChange(function (value) {
