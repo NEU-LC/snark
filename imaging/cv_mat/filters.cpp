@@ -281,15 +281,14 @@ static filters::value_type crop_tile_impl_( filters::value_type input, unsigned 
     return output;
 }
 
-typedef std::pair< unsigned int, unsigned int > column_t;
+typedef std::pair< unsigned int, unsigned int > stripe_t;
 
-static filters::value_type crop_cols_impl_( filters::value_type input, const std::vector< column_t > & cols )
+static unsigned int sum_up( unsigned int v, const stripe_t & s ){ return v + s.second; }
+
+static filters::value_type crop_cols_impl_( filters::value_type input, const std::vector< stripe_t > & cols )
 {
     unsigned int h = input.second.rows;
-    struct nolambdas {
-        static unsigned int op( unsigned int w, const column_t & c ){ return w + c.second; }
-    };
-    unsigned int w = std::accumulate( cols.begin(), cols.end(), 0, nolambdas::op );
+    unsigned int w = std::accumulate( cols.begin(), cols.end(), 0, sum_up );
     filters::value_type output( input.first, cv::Mat( h, w, input.second.type() ) );
     unsigned int offset = 0;
     for( std::size_t i = 0; i < cols.size(); ++i)
@@ -297,6 +296,21 @@ static filters::value_type crop_cols_impl_( filters::value_type input, const std
         cv::Mat tile( output.second, cv::Rect( offset, 0, cols[i].second, h ) );
         cv::Mat( input.second, cv::Rect( cols[i].first, 0, cols[i].second, h ) ).copyTo( tile );
         offset += cols[i].second;
+    }
+    return output;
+}
+
+static filters::value_type crop_rows_impl_( filters::value_type input, const std::vector< stripe_t > & rows )
+{
+    unsigned int w = input.second.cols;
+    unsigned int h = std::accumulate( rows.begin(), rows.end(), 0, sum_up );
+    filters::value_type output( input.first, cv::Mat( h, w, input.second.type() ) );
+    unsigned int offset = 0;
+    for( std::size_t i = 0; i < rows.size(); ++i)
+    {
+        cv::Mat tile( output.second, cv::Rect( 0, offset, w, rows[i].second ) );
+        cv::Mat( input.second, cv::Rect( 0, rows[i].first, w, rows[i].second ) ).copyTo( tile );
+        offset += rows[i].second;
     }
     return output;
 }
@@ -1521,17 +1535,31 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
         {
             if( e.size() < 2 ) { COMMA_THROW( comma::exception, "crop-cols: specify at least one column to extract, e.g. crop-cols=1,10" ); }
             std::vector< std::string > stripes = comma::split( e[1], '|' );
-            std::vector< column_t > cols;
+            std::vector< stripe_t > cols;
             for ( size_t s = 0; s < stripes.size(); ++s )
             {
                 std::vector< std::string > column = comma::split( stripes[s], ',' );
                 if ( column.size() > 2 ) { COMMA_THROW( comma::exception, "crop-cols: expected position,[width]; got " << column.size() << " parameters '" << stripes[s] << "'" ); }
                 unsigned int x = boost::lexical_cast< unsigned int >( column[0] );
                 unsigned int w = ( column.size() == 2 ? boost::lexical_cast< unsigned int >( column[1] ) : 1 );
-                // TODO: check for overlapping x[prev] + w[prev] and x?
                 cols.push_back( std::make_pair( x, w ) );
             }
             f.push_back( filter( boost::bind( &crop_cols_impl_, _1, cols ) ) );
+        }
+        else if( e[0] == "crop-rows" )
+        {
+            if( e.size() < 2 ) { COMMA_THROW( comma::exception, "crop-rows: specify at least one row to extract, e.g. crop-rows=1,10" ); }
+            std::vector< std::string > stripes = comma::split( e[1], '|' );
+            std::vector< stripe_t > rows;
+            for ( size_t s = 0; s < stripes.size(); ++s )
+            {
+                std::vector< std::string > rowblock = comma::split( stripes[s], ',' );
+                if ( rowblock.size() > 2 ) { COMMA_THROW( comma::exception, "crop-rows: expected position,[height]; got " << rowblock.size() << " parameters '" << stripes[s] << "'" ); }
+                unsigned int y = boost::lexical_cast< unsigned int >( rowblock[0] );
+                unsigned int h = ( rowblock.size() == 2 ? boost::lexical_cast< unsigned int >( rowblock[1] ) : 1 );
+                rows.push_back( std::make_pair( y, h ) );
+            }
+            f.push_back( filter( boost::bind( &crop_rows_impl_, _1, rows ) ) );
         }
         else if( e[0] == "crop-tile" )
         {
