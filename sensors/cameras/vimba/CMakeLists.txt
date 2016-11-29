@@ -31,7 +31,7 @@ if( NOT EXISTS ${VIMBA_SDK_ROOT} )
     message( FATAL_ERROR "\nPlease install the Vimba SDK at ${VIMBA_SDK_ROOT} "
         "or set VIMBA_SDK_ROOT to point to the SDK installation directory.\n"
         "The SDK is available from https://www.alliedvision.com/en/products/software.html.\n"
-        "The code in this project has been developed and tested against version 1.4 of the SDK."
+        "The code in this project has been developed and principally tested against version 1.4 of the SDK although it will also build and has been partly tested against version 2.0."
         )
 endif()
 
