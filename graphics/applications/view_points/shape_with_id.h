@@ -253,6 +253,47 @@ struct Shapetraits< polygon< Size > >
     }
 };
 
+template <> struct Shapetraits< polygon< 3 > > // quick and dirty: specialized for triangles, todo: optionally fill triangles ( --shape triangles --fill )
+{
+    static const unsigned int Size = 3;
+    static const unsigned int size = Size;
+    #if Qt3D_VERSION==1
+    static void update( const polygon< Size >& e, const Eigen::Vector3d& offset, const QColor4ub& color, unsigned int block, block_buffer< vertex_t >& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents  )
+    #else
+    static void update( const polygon< Size >& e, const Eigen::Vector3d& offset, const qt3d::gl_color_t& color, unsigned int block, block_buffer< vertex_t >& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents  )
+    #endif
+    {
+        for( unsigned int i = 0; i < Size; ++i )
+        {
+            Eigen::Vector3f v = ( e.corners[i] - offset ).template cast< float >();
+            
+            #if Qt3D_VERSION==1
+            buffer.add( vertex_t( QVector3D( v.x(), v.y(), v.z() ), color ), block );
+            #else
+            buffer.add( vertex_t( v, color ), block );
+            #endif
+
+            extents = extents ? extents->hull( snark::math::closed_interval< float, 3 >( v ) ) : snark::math::closed_interval< float, 3 >( v );
+        }
+    }
+
+    #if Qt3D_VERSION==1
+    static void draw( QGLPainter* painter, unsigned int size )
+    {
+        for( unsigned int i = 0; i < size; i += Size ) { painter->draw( QGL::Triangles, Size, i ); }
+    }
+    #endif
+    
+    static const Eigen::Vector3d& somePoint( const polygon< Size >& c ) { return c.corners[0]; }
+    
+    static Eigen::Vector3d center( const polygon< Size >& c ) // quick and dirty
+    { 
+        Eigen::Vector3d m = Eigen::Vector3d::Zero();
+        for( unsigned int i = 0; i < Size; ++i ) { m += c.corners[i]; }
+        return m / Size;
+    }
+};
+
 template < std::size_t Size >
 struct Ellipse
 {
