@@ -169,6 +169,9 @@ static void output_frame( const snark::vimba::frame& frame
     static std::string ptp_status = "unknown";
     static bool use_ptp = false;
 
+    // Get the current time as soon as possible after entering the callback
+    boost::posix_time::ptime current_time = boost::posix_time::microsec_clock::universal_time();
+
     boost::optional< snark::vimba::attribute > ptp_status_attribute = camera.get_attribute( "PtpStatus" );
     if( ptp_status_attribute && ptp_status_attribute->value_as_string() != ptp_status )
     {
@@ -182,7 +185,7 @@ static void output_frame( const snark::vimba::frame& frame
         ( use_ptp
         ? boost::posix_time::ptime( boost::gregorian::date( 1970, 1, 1 ))
               + boost::posix_time::microseconds( frame.timestamp() / 1000 )
-        : boost::posix_time::microsec_clock::universal_time() );
+        : current_time );
 
     if( frame.status() == VmbFrameStatusComplete )
     {
