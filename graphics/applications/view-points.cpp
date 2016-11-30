@@ -408,8 +408,8 @@ boost::shared_ptr< snark::graphics::view::Reader > makeReader( const comma::comm
         else if( m.exists( "color" ) ) { color = m.value( "color", color ); }
         label = m.value( "label", label );
         show = !m.exists( "hide" );
-        param.pass_through = ( m.exists( "pass-through" ) || m.exists( "pass" ));
-        param.fill = m.exists( "fill" );
+        param.pass_through = param.pass_through || ( m.exists( "pass-through" ) || m.exists( "pass" ));
+        param.fill = param.fill || m.exists( "fill" );
     }
     if( param.pass_through )
     {
