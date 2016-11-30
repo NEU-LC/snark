@@ -30,6 +30,7 @@
 #include <fstream>
 #include <queue>
 #include <sstream>
+#include <numeric>
 #include <boost/array.hpp>
 #include <boost/bind.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
@@ -276,6 +277,40 @@ static filters::value_type crop_tile_impl_( filters::value_type input, unsigned 
         unsigned int y = tiles[i].second * h;
         cv::Mat tile( output.second,  cv::Rect( vertical ? 0 : i*w, vertical ? i*h: 0, w, h ) );
         cv::Mat( input.second, cv::Rect( x, y, w, h ) ).copyTo( tile );
+    }
+    return output;
+}
+
+typedef std::pair< unsigned int, unsigned int > stripe_t;
+
+static unsigned int sum_up( unsigned int v, const stripe_t & s ){ return v + s.second; }
+
+static filters::value_type crop_cols_impl_( filters::value_type input, const std::vector< stripe_t > & cols )
+{
+    unsigned int h = input.second.rows;
+    unsigned int w = std::accumulate( cols.begin(), cols.end(), 0, sum_up );
+    filters::value_type output( input.first, cv::Mat( h, w, input.second.type() ) );
+    unsigned int offset = 0;
+    for( std::size_t i = 0; i < cols.size(); ++i)
+    {
+        cv::Mat tile( output.second, cv::Rect( offset, 0, cols[i].second, h ) );
+        cv::Mat( input.second, cv::Rect( cols[i].first, 0, cols[i].second, h ) ).copyTo( tile );
+        offset += cols[i].second;
+    }
+    return output;
+}
+
+static filters::value_type crop_rows_impl_( filters::value_type input, const std::vector< stripe_t > & rows )
+{
+    unsigned int w = input.second.cols;
+    unsigned int h = std::accumulate( rows.begin(), rows.end(), 0, sum_up );
+    filters::value_type output( input.first, cv::Mat( h, w, input.second.type() ) );
+    unsigned int offset = 0;
+    for( std::size_t i = 0; i < rows.size(); ++i)
+    {
+        cv::Mat tile( output.second, cv::Rect( 0, offset, w, rows[i].second ) );
+        cv::Mat( input.second, cv::Rect( 0, rows[i].first, w, rows[i].second ) ).copyTo( tile );
+        offset += rows[i].second;
     }
     return output;
 }
@@ -1496,6 +1531,36 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
             }
             f.push_back( filter( boost::bind( &crop_impl_, _1, x, y, w, h ) ) );
         }
+        else if( e[0] == "crop-cols" )
+        {
+            if( e.size() < 2 ) { COMMA_THROW( comma::exception, "crop-cols: specify at least one column to extract, e.g. crop-cols=1,10" ); }
+            std::vector< std::string > stripes = comma::split( e[1], '|' );
+            std::vector< stripe_t > cols;
+            for ( size_t s = 0; s < stripes.size(); ++s )
+            {
+                std::vector< std::string > column = comma::split( stripes[s], ',' );
+                if ( column.size() > 2 ) { COMMA_THROW( comma::exception, "crop-cols: expected position,[width]; got " << column.size() << " parameters '" << stripes[s] << "'" ); }
+                unsigned int x = boost::lexical_cast< unsigned int >( column[0] );
+                unsigned int w = ( column.size() == 2 ? boost::lexical_cast< unsigned int >( column[1] ) : 1 );
+                cols.push_back( std::make_pair( x, w ) );
+            }
+            f.push_back( filter( boost::bind( &crop_cols_impl_, _1, cols ) ) );
+        }
+        else if( e[0] == "crop-rows" )
+        {
+            if( e.size() < 2 ) { COMMA_THROW( comma::exception, "crop-rows: specify at least one row to extract, e.g. crop-rows=1,10" ); }
+            std::vector< std::string > stripes = comma::split( e[1], '|' );
+            std::vector< stripe_t > rows;
+            for ( size_t s = 0; s < stripes.size(); ++s )
+            {
+                std::vector< std::string > rowblock = comma::split( stripes[s], ',' );
+                if ( rowblock.size() > 2 ) { COMMA_THROW( comma::exception, "crop-rows: expected position,[height]; got " << rowblock.size() << " parameters '" << stripes[s] << "'" ); }
+                unsigned int y = boost::lexical_cast< unsigned int >( rowblock[0] );
+                unsigned int h = ( rowblock.size() == 2 ? boost::lexical_cast< unsigned int >( rowblock[1] ) : 1 );
+                rows.push_back( std::make_pair( y, h ) );
+            }
+            f.push_back( filter( boost::bind( &crop_rows_impl_, _1, rows ) ) );
+        }
         else if( e[0] == "crop-tile" )
         {
             if( e.size() < 2 ) { COMMA_THROW( comma::exception, "crop-tile: specify number of tiles along x and y, and at least one tile, e.g. crop-tile=1,1,0,0" ); }
@@ -2003,6 +2068,12 @@ static std::string usage_impl_()
     oss << "            <horizontal>: if present, tiles will be stacked horizontally (by default, vertical stacking is used)" << std::endl;
     oss << "            example: \"crop-tile=2,5,1,0,1,4&horizontal\"" << std::endl;
     oss << "            deprecated: old syntax <i>,<j>,<ncols>,<nrows> is used for one tile if i < ncols and j < ncols" << std::endl;
+    oss << "        crop-cols=<x>[,<w>[|<x>[,<w>,...: output an image consisting of (multiple) columns starting at x with width w" << std::endl;
+    oss << "            examples: \"crop-cols=2,10|12,10\"; output an image of width 20 taking 2 width-10 columns starting at 2 and 12" << std::endl;
+    oss << "                      \"crop-cols=2|12,10\"; default width is 1, the output image has width 11" << std::endl;
+    oss << "        crop-rows=<y>[,<h>[|<y>[,<h>,...: output an image consisting of (multiple) row blocks starting at y with height h" << std::endl;
+    oss << "            examples: \"crop-rows=5,10|25,5\"; output an image of height 15 taking 2 row blocks starting at 5 and 25 and with heights 10 and 5, respectively" << std::endl;
+    oss << "                      \"crop-rows=5|25|15\"; default block height is 1, block starts can be out of order" << std::endl;
     oss << "        encode=<format>: encode images to the specified format. <format>: jpg|ppm|png|tiff..., make sure to use --no-header" << std::endl;
     oss << "        equalize-histogram: todo: equalize each channel by its histogram" << std::endl;
     oss << "        fft[=<options>]: do fft on a floating point image" << std::endl;
