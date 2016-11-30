@@ -67,13 +67,13 @@ struct reader_parameters
                      , std::size_t size
                      , unsigned int point_size
                      , bool pass_through
-                     )
+                     , bool fill )
         : options( options )
         , title( title )
         , size( size )
         , point_size( point_size )
         , pass_through( pass_through )
-        , fill( false )
+        , fill( fill )
     {}
 };
 
