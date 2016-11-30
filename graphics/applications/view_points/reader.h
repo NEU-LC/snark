@@ -60,6 +60,7 @@ struct reader_parameters
     std::size_t size;
     unsigned int point_size;
     bool pass_through;
+    bool fill; // quick and dirty
 
     reader_parameters( const comma::csv::options& options
                      , const std::string& title
@@ -72,6 +73,7 @@ struct reader_parameters
         , size( size )
         , point_size( point_size )
         , pass_through( pass_through )
+        , fill( false )
     {}
 };
 

@@ -55,6 +55,7 @@ static void bash_completion( unsigned const ac, char const * const * av )
         " --version"
         " --colour --color -c"
         " --exit-on-end-of-input"
+        " --fill"
         " --label"
         " --no-stdin"
         " --pass-through --pass"
@@ -146,6 +147,7 @@ static void usage()
         "\n"
         "\n      hide: e.g. \"test.csv;hide\": hide the source, when shown first time (useful, when there are very many inputs"
         "\n    --exit-on-end-of-input: exit immediately on end of input stream"
+        "\n    --fill: fill the shape; currently implemented only for triangles"
         "\n    --label <label>: text label displayed next to the latest point"
         "\n    --no-stdin: do not read from stdin"
         "\n    --pass-through,--pass; pass input data to stdout"
@@ -388,7 +390,7 @@ boost::shared_ptr< snark::graphics::view::Reader > makeReader( const comma::comm
                                                           , options.value< std::size_t >( "--size", shape == "point" ? 2000000 : 200000 )
                                                           , options.value( "--point-size,--weight", 1u )
                                                           , options.exists( "--pass-through,--pass" )
-                                                          );
+                                                          , options.exists( "--fill" ) );
     std::string color = options.exists( "--colour" ) ? options.value< std::string >( "--colour" ) : options.value< std::string >( "-c", "-10:10" );
     std::string label = options.value( "--label", std::string() );
     bool show = true;
@@ -407,16 +409,14 @@ boost::shared_ptr< snark::graphics::view::Reader > makeReader( const comma::comm
         label = m.value( "label", label );
         show = !m.exists( "hide" );
         param.pass_through = ( m.exists( "pass-through" ) || m.exists( "pass" ));
+        param.fill = m.exists( "fill" );
     }
     if( param.pass_through )
     {
-        if( data_passed_through )
-        {
-            COMMA_THROW( comma::exception, "only one input stream can be given \"pass-through\" option" );
-        }
+        if( data_passed_through ) { COMMA_THROW( comma::exception, "only one input stream can be given \"pass-through\" option" ); }
         data_passed_through = true;
     }
-    if( param.title == "none" ) param.title = "";
+    if( param.title == "none" ) { param.title = ""; }
     if( !show ) { std::cerr << "view-points: " << ( param.title.empty() ? param.options.filename : param.title )<< " will be hidden on startup; tick the box next to the name to make it visible" << std::endl; }
     #if Qt3D_VERSION==1
     snark::graphics::view::colored* colored = snark::graphics::view::colorFromString( color, param.options.fields, backgroundcolor );
@@ -568,10 +568,11 @@ boost::shared_ptr< snark::graphics::view::Reader > makeReader( const comma::comm
     }
     else if( shape == "triangle" )
     {
+        boost::shared_ptr< snark::graphics::view::Reader > reader;
         #if Qt3D_VERSION==1
-        boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< snark::graphics::view::polygon< 3 > >( viewer, param, colored, label ) );
+        reader.reset( new snark::graphics::view::ShapeReader< snark::graphics::view::loop< 3 > >( viewer, param, colored, label ) );
         #else
-        boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< snark::graphics::view::polygon< 3 > >( param ) );
+        reader.reset( new snark::graphics::view::ShapeReader< snark::graphics::view::loop< 3 > >( param ) );
         #endif
         reader->show( show );
         return reader;
