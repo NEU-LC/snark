@@ -92,13 +92,14 @@ define('FormFeed', ["jquery", "Feed"], function ($) {
                     var url = this_.get_url();
                     if (url != undefined) {
                         $.ajax({
-                            // context: this,
+                            context: this,
                             data: $(this).closest("form").serialize(),
                             url: url
                         }).done(function (data, textStatus, jqXHR) {
+                            var json = $.parseJSON(data);
                             // FormFeed.prototype.onload_(data);
                             // data = JSON.parse('{"output" : {"message": "Done. success", "x": { "a": 0, "b": 1 } },"status" :{"code": 0 , "message": "Success. Added successfully."}}');
-                            this_.onload(data);
+                            this_.onload(json);
                         }).fail(function (jqXHR, textStatus, errorThrown) {
                             FormFeed.prototype.onerror();
                         });
