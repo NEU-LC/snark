@@ -136,7 +136,8 @@ define(['jquery', 'ol', 'Feed', 'utils'], function ($, ol, Feed) {
     MapFeed.prototype.load = function () {
         $.ajax({
             context: this,
-            url: this.get_url()
+            url: this.get_url(),
+            timeout: globals.timeout
         }).done(function (data, textStatus, jqXHR) {
             this.onload(data);
         }).fail(function (jqXHR, textStatus, errorThrown) {

@@ -55,6 +55,7 @@ static void bash_completion( unsigned const ac, char const * const * av )
         " --version"
         " --colour --color -c"
         " --exit-on-end-of-input"
+        " --fill"
         " --label"
         " --no-stdin"
         " --pass-through --pass"
@@ -146,6 +147,7 @@ static void usage()
         "\n"
         "\n      hide: e.g. \"test.csv;hide\": hide the source, when shown first time (useful, when there are very many inputs"
         "\n    --exit-on-end-of-input: exit immediately on end of input stream"
+        "\n    --fill: fill the shape; currently implemented only for triangles"
         "\n    --label <label>: text label displayed next to the latest point"
         "\n    --no-stdin: do not read from stdin"
         "\n    --pass-through,--pass; pass input data to stdout"
@@ -159,10 +161,13 @@ static void usage()
         "\n                     \"ellipse\": e.g. --shape=ellipse --fields=,,center,orientation,minor,major,"
         "\n                                  orientation: roll,pitch,yaw; default: in x,y plane"
         "\n                     \"extents\": e.g. --shape=extents --fields=,,min,max,,,"
+        "\n                     \"label\": e.g. --shape=label --fields=,x,y,z,,,label"
         "\n                     \"line\": e.g. --shape=line --fields=,,first,second,,,"
         "\n                     \"lines\": connect all points of a block from first to the last; fields same as for 'point'"
         "\n                     \"loop\": connect all points of a block; fields same as for 'point'"
-        "\n                     \"label\": e.g. --shape=label --fields=,x,y,z,,,label"
+        "\n                     \"triangle\": e.g. --shape=triangle --fields=,,corners,,,"
+        "\n                                     or --shape=triangle --fields=,,corners[0],,,corners[1],,,corners[2],,,"
+        "\n                                     or --shape=triangle --fields=,,corners[0]/x,,corners[0]/y,,corners[0]/z,,,,corners[1],,,corners[2],,, etc"
         "\n                     \"<model file ( obj, ply... )>[;<options>]\": e.g. --shape=vehicle.obj"
         "\n                     \"    <options>"
         "\n                     \"        flip\": flip the model around the x-axis"
@@ -385,7 +390,7 @@ boost::shared_ptr< snark::graphics::view::Reader > makeReader( const comma::comm
                                                           , options.value< std::size_t >( "--size", shape == "point" ? 2000000 : 200000 )
                                                           , options.value( "--point-size,--weight", 1u )
                                                           , options.exists( "--pass-through,--pass" )
-                                                          );
+                                                          , options.exists( "--fill" ) );
     std::string color = options.exists( "--colour" ) ? options.value< std::string >( "--colour" ) : options.value< std::string >( "-c", "-10:10" );
     std::string label = options.value( "--label", std::string() );
     bool show = true;
@@ -403,17 +408,15 @@ boost::shared_ptr< snark::graphics::view::Reader > makeReader( const comma::comm
         else if( m.exists( "color" ) ) { color = m.value( "color", color ); }
         label = m.value( "label", label );
         show = !m.exists( "hide" );
-        param.pass_through = ( m.exists( "pass-through" ) || m.exists( "pass" ));
+        param.pass_through = param.pass_through || ( m.exists( "pass-through" ) || m.exists( "pass" ));
+        param.fill = param.fill || m.exists( "fill" );
     }
     if( param.pass_through )
     {
-        if( data_passed_through )
-        {
-            COMMA_THROW( comma::exception, "only one input stream can be given \"pass-through\" option" );
-        }
+        if( data_passed_through ) { COMMA_THROW( comma::exception, "only one input stream can be given \"pass-through\" option" ); }
         data_passed_through = true;
     }
-    if( param.title == "none" ) param.title = "";
+    if( param.title == "none" ) { param.title = ""; }
     if( !show ) { std::cerr << "view-points: " << ( param.title.empty() ? param.options.filename : param.title )<< " will be hidden on startup; tick the box next to the name to make it visible" << std::endl; }
     #if Qt3D_VERSION==1
     snark::graphics::view::colored* colored = snark::graphics::view::colorFromString( color, param.options.fields, backgroundcolor );
@@ -483,40 +486,47 @@ boost::shared_ptr< snark::graphics::view::Reader > makeReader( const comma::comm
     {
         if( param.options.fields == "" ) { param.options.fields="first,second"; }
     }
+    else if( shape == "triangle" )
+    {
+        if( param.options.fields == "" ) { param.options.fields="corners"; }
+    }
     else
     {
         if( param.options.fields == "" ) { param.options.fields="point,orientation"; param.options.full_xpath = true; }
         #if Qt3D_VERSION==1
-        std::vector< snark::graphics::view::TextureReader::image_options > image_options;
-        std::vector< std::string > v = comma::split( shape, ':' );
-        for( unsigned int i = 0; i < v.size(); ++i )
-        {
-            std::vector< std::string > w = comma::split( v[i], ',' );
-            std::string e = comma::split( w[0], '.' ).back();
-            if( e != "png" && e != "jpg" && e != "jpeg" && e != "bmp" && e != "gif" ) { break; }
-            switch( w.size() )
+            std::vector< snark::graphics::view::TextureReader::image_options > image_options;
+            std::vector< std::string > v = comma::split( shape, ':' );
+            for( unsigned int i = 0; i < v.size(); ++i )
             {
-                case 1: image_options.push_back( snark::graphics::view::TextureReader::image_options( w[0] ) ); break;
-                case 2: image_options.push_back( snark::graphics::view::TextureReader::image_options( w[0], boost::lexical_cast< double >( w[1] ) ) ); break;
-                case 3: image_options.push_back( snark::graphics::view::TextureReader::image_options( w[0], boost::lexical_cast< double >( w[1] ), boost::lexical_cast< double >( w[2] ) ) ); break;
-                default: COMMA_THROW( comma::exception, "expected <image>[,<width>,<height>]; got: " << shape );
+                std::vector< std::string > w = comma::split( v[i], ',' );
+                std::string e = comma::split( w[0], '.' ).back();
+                if( e != "png" && e != "jpg" && e != "jpeg" && e != "bmp" && e != "gif" ) { break; }
+                switch( w.size() )
+                {
+                    case 1: image_options.push_back( snark::graphics::view::TextureReader::image_options( w[0] ) ); break;
+                    case 2: image_options.push_back( snark::graphics::view::TextureReader::image_options( w[0], boost::lexical_cast< double >( w[1] ) ) ); break;
+                    case 3: image_options.push_back( snark::graphics::view::TextureReader::image_options( w[0], boost::lexical_cast< double >( w[1] ), boost::lexical_cast< double >( w[2] ) ) ); break;
+                    default: COMMA_THROW( comma::exception, "expected <image>[,<width>,<height>]; got: " << shape );
+                }
             }
-        }
-        if( image_options.empty() )
-        {
-            model_options m = comma::name_value::parser( ';', '=' ).get< model_options >( properties );
-            m.filename = shape;
-            if( !boost::filesystem::exists( m.filename ) ) { COMMA_THROW( comma::exception, "file does not exist: " << m.filename ); }
-            boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ModelReader( viewer, param, shape, m.flip, m.scale, colored, label ) );
-            reader->show( show );
-            return reader;
-        }
-        else
-        {
-            boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::TextureReader( viewer, param, image_options ) );
-            reader->show( show );
-            return reader;
-        }
+            if( image_options.empty() )
+            {
+                model_options m = comma::name_value::parser( ';', '=' ).get< model_options >( properties );
+                m.filename = shape;
+                if( !boost::filesystem::exists( m.filename ) ) { COMMA_THROW( comma::exception, "file does not exist: " << m.filename ); }
+                boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ModelReader( viewer, param, shape, m.flip, m.scale, colored, label ) );
+                reader->show( show );
+                return reader;
+            }
+            else
+            {
+                boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::TextureReader( viewer, param, image_options ) );
+                reader->show( show );
+                return reader;
+            }
+        #else
+            std::cerr << "view-points: cad models and images are not supported yet for qt version " << Qt3D_VERSION << std::endl;
+            exit( 1 );
         #endif
     }
     std::vector< std::string > v = comma::split( param.options.fields, ',' );
@@ -552,6 +562,17 @@ boost::shared_ptr< snark::graphics::view::Reader > makeReader( const comma::comm
         boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< std::pair< Eigen::Vector3d, Eigen::Vector3d > >( viewer, param, colored, label ) );
         #else
         boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< std::pair< Eigen::Vector3d, Eigen::Vector3d > >( param ) );
+        #endif
+        reader->show( show );
+        return reader;
+    }
+    else if( shape == "triangle" )
+    {
+        boost::shared_ptr< snark::graphics::view::Reader > reader;
+        #if Qt3D_VERSION==1
+        reader.reset( new snark::graphics::view::ShapeReader< snark::graphics::view::loop< 3 > >( viewer, param, colored, label ) );
+        #else
+        reader.reset( new snark::graphics::view::ShapeReader< snark::graphics::view::loop< 3 > >( param ) );
         #endif
         reader->show( show );
         return reader;

@@ -7,7 +7,8 @@ web.frontend.json description:
     "host": "http://host:port",                 // default feed server, optional
                                                 // if a feed entry in the "feeds" section does not have a url then the url is formed by <host>/<feed-name>
     "websocket": "ws://host:port/endpoint",     // default stream feed server, optional
-    "bing_maps_key": <string>                   // required if using map imagery sets, Bing Maps API key. Get yours at http://bingmapsportal.com/.
+    "bing_maps_key": <string>,                  // required if using map imagery sets, Bing Maps API key. Get yours at http://bingmapsportal.com/.
+    "timeout": <milliseconds>,                  // optional, feed timeout in ms to get new data; default: 60000
     "feeds":
     {
         "<feed-name>":
@@ -30,7 +31,7 @@ web.frontend.json description:
                 "min_color": "css-color",       // optional, color the value if it is below min, default: orange
                 "max": "<csv max values>",      // optional, csv list of max values, empty allowed, e.g. max value of 5th and 7th fields: ,,,,100,,10
                 "max_color": "css-color",       // optional, color the value if it is above max, default: red
-                "alert": true|false             // optional, alert if values are out of range, default: true
+                "threshold_alert": true|false   // optional, alert if values are out of range, default: false
             },
             "graph":                            // optional, only applicable when "type": "graph"
             {

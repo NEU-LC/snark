@@ -22,7 +22,7 @@ HTTP_PLAIN_TEXT = 'text/plain'
 description = "take http requests and serve frames from sensors"
 epilog="""
 examples:
-    {script_name} --config=web.backend.json --robot-config=config.json --publish-config=publish.json --port=8000 --timeout=15
+    %(prog)s --config=web.backend.json --robot-config=config.json --publish-config=publish.json --port=8000 --timeout=15
 
 http requests:
     http://robot:8000/novatel
@@ -35,7 +35,7 @@ notes:
     4) if 'address' and 'port' are given in robot config or publish config,
        the 'command' is assumed to expect data from the given tcp address and port (default address: 'localhost' )
     5) 'timeout' is the number of seconds after which the bash pipeline will time out (default: {timeout} seconds)
-""".format( script_name=script_name, content_type=HTTP_PLAIN_TEXT, timeout=DEFAULT_TIMEOUT ) + \
+""".format( content_type=HTTP_PLAIN_TEXT, timeout=DEFAULT_TIMEOUT ) + \
 """
 web.backend.json:
 {
@@ -71,6 +71,64 @@ config.json:
     "novatel": { "address": "robot", port: "10000" }
     "battery": { "address": "robot", "port": "20000" }
     "sick": { "publisher": { "data": { "address": "robot", "port": "30000" } } }
+}
+"""
+verbose_epilog="""
+web.frontend.json (config for web browser): if snark web feeds is installed: see also /var/www/html/feeds/readme.txt or http://localhost/feeds/readme.txt
+{
+    "host": "http://<snark-webframes host>:<port>",
+    "feeds":
+    {
+        "camera":
+        {
+            "type": "image",
+            "alert": true,
+            "refresh":
+            {
+                "interval": 2,
+                "auto": true
+            }
+        },
+        "stats":
+        {
+            "type": "csv-table",
+            "alert": true,
+            "refresh":
+            {
+                "interval": 2,
+                "auto": true
+            },
+            "csv":
+            {
+                "fields": "t,block,id,x,y,z",
+                "min": ",,,0,,",
+                "max": ",,,10,,",
+                "threshold_alert": true
+            }
+        },
+        "single-stat":
+        {
+            "type": "graph",
+            "alert": true,
+            "refresh":
+            {
+                "interval": 2,
+                "auto": true
+            },
+            "graph":
+            {
+                "min": 0,
+                "max": 10,
+                "units": "m",
+                "thresholds":
+                [
+                    { "value": 5, "color": green },
+                    { "value": 7, "color": orange },
+                    { "value": 9, "color": red, "alert": true },
+                ]
+            }
+        }
+    }
 }
 """
 
@@ -183,15 +241,24 @@ class handler( BaseHTTPServer.BaseHTTPRequestHandler ):
             return BaseHTTPServer.BaseHTTPRequestHandler.log_message(self, format, *a)
 
 
-parser = argparse.ArgumentParser( description=description, epilog=epilog, formatter_class=argparse.RawDescriptionHelpFormatter )
+parser = argparse.ArgumentParser( description=description, epilog=epilog, formatter_class=argparse.RawDescriptionHelpFormatter, add_help=False )
+parser.add_argument( '-h', '--help', help='show this help message and exit', action='store_true' )
 parser.add_argument( '--config', help='web backend config file' )
 parser.add_argument( '--robot-config', help='robot config file' )
 parser.add_argument( '--publish-config', help='publish config file', default=None )
 parser.add_argument( '--port', help='port number for http requests', type=int, default=DEFAULT_PORT )
 parser.add_argument( '--timeout', help='default timeout for frame commands', type=float, default=DEFAULT_TIMEOUT )
-parser.add_argument( '--verbose', help='verbose logging', action='store_true' )
-parser.add_argument("--dry-run",help="don't execute, just read config and print name=commands;content_type and exit",action='store_true')
+parser.add_argument( '-v', '--verbose', help='verbose logging', action='store_true' )
+parser.add_argument( '--dry-run', help='don\'t execute, just read config and print name=commands;content_type and exit', action='store_true' )
 args = parser.parse_args()
+
+if args.help:
+    if args.verbose:
+        parser.epilog += verbose_epilog
+    else:
+        parser.epilog += "\nfor more help run '%(prog)s -h -v'"
+    parser.print_help()
+    sys.exit(0)
 
 def load_config( config_file_name ):
     if not config_file_name: return {}

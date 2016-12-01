@@ -48,7 +48,7 @@ static void bash_completion( unsigned const ac, char const * const * av )
 {
     static const char* completion_options =
         " --help -h --verbose -v"
-        " --address --list-cameras"
+        " --address --serial-number --list-cameras"
         " --discard --buffer"
         " --fields -f"
         " --image-type"
@@ -76,6 +76,7 @@ static void usage( bool verbose = false )
     std::cerr << "\nOptions:";
     std::cerr << "\n    --help,-h                 display help message";
     std::cerr << "\n    --address=[<address>]     camera address; default: first available";
+    std::cerr << "\n    --serial-number=[<num>]   camera serial number, alternative to --address";
     std::cerr << "\n    --discard                 discard frames, if cannot keep up;";
     std::cerr << "\n                              same as --buffer=1 (which is not a great setting)";
     std::cerr << "\n    --buffer=[<buffers>]      maximum buffer size before discarding frames";
@@ -100,7 +101,7 @@ static void usage( bool verbose = false )
     std::cerr << "\n    --no-header               output image data only";
     std::cerr << "\n    --packet-size=[<bytes>]   mtu size on camera side, should not be larger ";
     std::cerr << "\n                              than your lan and network interface";
-    std::cerr << "\n    --frame-rate=[<fps>]      set frame rate";
+    std::cerr << "\n    --frame-rate=[<fps>]      set frame rate; limited by exposure";
     std::cerr << "\n    --exposure=[<µs>]         exposure time; \"auto\" to automatically set";
     std::cerr << "\n    --gain=[<num>]            gain; \"auto\" to automatically set;";
     std::cerr << "\n                              for USB cameras units are dB";
@@ -108,8 +109,11 @@ static void usage( bool verbose = false )
     std::cerr << "\n    --test-image=[<num>]      output test image <num>; possible values: 1-6";
     std::cerr << "\n    --verbose,-v              be more verbose";
     std::cerr << "\n";
+    std::cerr << "\nBy default basler-cat will connect to the first device it finds. To";
+    std::cerr << "\nchoose a specific camera use the --address or --serial-number options.";
     std::cerr << "\nFor GigE cameras <address> is the device ip address, for USB cameras it is";
-    std::cerr << "\nthe USB address. Both can be determined by --list-cameras --verbose.";
+    std::cerr << "\nthe USB address. Detected cameras along with their addresses and serial numbers";
+    std::cerr << "\nare shown by --list-cameras --verbose.";
     std::cerr << "\n";
     std::cerr << "\nNote that most parameter settings (exposure, gain, etc) are sticky.";
     std::cerr << "\nThey will persist from one run to the next.";
@@ -428,6 +432,22 @@ unsigned int num_channels( Pylon::CBaslerUsbCamera& camera, comma::uint32 type )
     }
 }
 
+std::string get_address( const Pylon::CDeviceInfo& device_info )
+{
+    std::string full_name = device_info.GetFullName().c_str();
+    std::string device_class = device_info.GetDeviceClass().c_str();
+    if( device_class == "BaslerGigE" )
+    {
+        // It would be nice to use Pylon::CBaslerGigEDeviceInfo::GetAddress()
+        // but casting to that class appears not to work
+        boost::regex address_regex( ".*#([0-9.]+):.*", boost::regex::extended );
+        boost::smatch match;
+        if( boost::regex_match( full_name, match, address_regex )) { return match[1]; }
+    }
+    else if( device_class == "BaslerUsb" ) { return full_name; }
+    return "";
+}
+
 void list_cameras()
 {
     Pylon::CTlFactory& factory = Pylon::CTlFactory::GetInstance();
@@ -443,6 +463,7 @@ void list_cameras()
             std::cerr << "\nVersion:    " << it->GetDeviceVersion();
             std::cerr << "\nType:       " << it->GetDeviceClass();
             std::cerr << "\nSerial no.: " << it->GetSerialNumber();
+            std::cerr << "\nAddress:    " << get_address( *it );
             std::cerr << "\nFull name:  " << it->GetFullName();
             std::cerr << std::endl;
         }
@@ -457,25 +478,17 @@ bool is_ip_address( std::string str )
     return boost::regex_match( str, ip_regex );
 }
 
-Pylon::IPylonDevice* create_device( const std::string& address )
+Pylon::IPylonDevice* create_device( const std::string& address, const std::string& serial_number )
 {
     Pylon::CTlFactory& factory = Pylon::CTlFactory::GetInstance();
 
-    if( address.empty() )
+    if( !serial_number.empty() )
     {
-        Pylon::DeviceInfoList_t devices;
-        factory.EnumerateDevices( devices );
-        if( devices.empty() ) { std::cerr << "basler-cat: no camera found" << std::endl; return NULL; }
-        std::cerr << "basler-cat: will connect to the first of " << devices.size()
-                  << " found device(s):" << std::endl;
-        Pylon::DeviceInfoList_t::const_iterator it;
-        for( it = devices.begin(); it != devices.end(); ++it )
-        {
-            std::cerr << "    " << it->GetFullName() << std::endl;
-        }
-        return factory.CreateDevice( devices[0] );
+        Pylon::CDeviceInfo device_info;
+        device_info.SetSerialNumber( serial_number.c_str() );
+        return factory.CreateDevice( device_info );
     }
-    else
+    else if( !address.empty() )
     {
         if( is_ip_address( address ))
         {
@@ -489,6 +502,20 @@ Pylon::IPylonDevice* create_device( const std::string& address )
             device_info.SetFullName( address.c_str() );
             return factory.CreateDevice( device_info );
         }
+    }
+    else
+    {
+        Pylon::DeviceInfoList_t devices;
+        factory.EnumerateDevices( devices );
+        if( devices.empty() ) { std::cerr << "basler-cat: no camera found" << std::endl; return NULL; }
+        std::cerr << "basler-cat: will connect to the first of " << devices.size()
+                  << " found device(s):" << std::endl;
+        Pylon::DeviceInfoList_t::const_iterator it;
+        for( it = devices.begin(); it != devices.end(); ++it )
+        {
+            std::cerr << "    " << it->GetFullName() << std::endl;
+        }
+        return factory.CreateDevice( devices[0] );
     }
 }
 
@@ -768,36 +795,16 @@ void set_continuous_acquisition_mode( Pylon::CBaslerUsbCamera& camera )
     set_acquisition_mode( camera, Basler_UsbCameraParams::AcquisitionMode_Continuous );
 }
 
-void show_config( Pylon::CBaslerGigECamera& camera, const comma::command_line_options& options )
-{
-    if( comma::verbose )
-    {
-        std::cerr << "basler-cat: camera mtu size: " << camera.GevSCPSPacketSize() << " bytes" << std::endl;
+double get_exposure_time( const Pylon::CBaslerGigECamera& camera ) { return camera.ExposureTimeAbs(); }
+double get_gain( const Pylon::CBaslerGigECamera& camera ) { return camera.GainRaw(); }
+double get_frame_rate( const Pylon::CBaslerGigECamera& camera ) { return camera.ResultingFrameRateAbs(); }
 
-        bool exposure_is_auto = ( options.value< std::string >( "--exposure", "" ) == "auto" );
-        bool gain_is_auto = ( options.value< std::string >( "--gain", "" ) == "auto" );
+double get_exposure_time( const Pylon::CBaslerUsbCamera& camera ) { return camera.ExposureTime(); }
+double get_gain( const Pylon::CBaslerUsbCamera& camera ) { return camera.Gain(); }
+double get_frame_rate( const Pylon::CBaslerUsbCamera& camera ) { return camera.ResultingFrameRate(); }
 
-        std::cerr << "basler-cat:        exposure: ";
-        if( exposure_is_auto ) { std::cerr << "auto"; }
-        else { std::cerr << camera.ExposureTimeAbs() << "µs"; }
-        std::cerr << std::endl;
-
-        std::cerr << "basler-cat:            gain: ";
-        if( gain_is_auto ) { std::cerr << "auto"; }
-        else { std::cerr << camera.GainRaw(); }
-        std::cerr << std::endl;
-
-        // If exposure is set to auto we don't have the correct frame rate yet
-        std::cerr << "basler-cat:   frame rate: ";
-        if( exposure_is_auto ) { std::cerr << "calculating..."; }
-        else { std::cerr << camera.ResultingFrameRateAbs() << " fps"; }
-        std::cerr << std::endl;
-
-        std::cerr << "basler-cat:    payload size: " << camera.PayloadSize() << " bytes" << std::endl;
-    }
-}
-
-void show_config( Pylon::CBaslerUsbCamera& camera, const comma::command_line_options& options )
+template< typename T >
+void show_config( const T& camera, const comma::command_line_options& options )
 {
     if( comma::verbose )
     {
@@ -806,18 +813,19 @@ void show_config( Pylon::CBaslerUsbCamera& camera, const comma::command_line_opt
 
         std::cerr << "basler-cat:     exposure: ";
         if( exposure_is_auto ) { std::cerr << "auto"; }
-        else { std::cerr << camera.ExposureTime() << "µs"; }
+        else { std::cerr << get_exposure_time( camera ) << "µs"; }
         std::cerr << std::endl;
 
         std::cerr << "basler-cat:         gain: ";
         if( gain_is_auto ) { std::cerr << "auto"; }
-        else { std::cerr << camera.Gain() << "dB"; }
+        else { std::cerr << get_gain( camera ) << "dB"; }
         std::cerr << std::endl;
 
-        // If exposure is set to auto we don't have the correct frame rate yet
+        // If frame rate is not explicitly set and exposure is set to auto
+        // then we won't know the correct frame rate yet
         std::cerr << "basler-cat:   frame rate: ";
-        if( exposure_is_auto ) { std::cerr << "calculating..."; }
-        else { std::cerr << camera.ResultingFrameRate() << " fps"; }
+        if( !options.exists( "--frame-rate" ) && exposure_is_auto ) { std::cerr << "calculating..."; }
+        else { std::cerr << get_frame_rate( camera ) << " fps"; }
         std::cerr << std::endl;
 
         std::cerr << "basler-cat: payload size: " << camera.PayloadSize() << " bytes" << std::endl;
@@ -1040,7 +1048,8 @@ int main( int argc, char** argv )
         comma::verbose << "initializing camera..." << std::endl;
 
         std::string address = options.value< std::string >( "--address", "" );
-        Pylon::IPylonDevice* device = create_device( address );
+        std::string serial_number = options.value< std::string >( "--serial-number", "" );
+        Pylon::IPylonDevice* device = create_device( address, serial_number );
         if( !device )
         {
             std::cerr << "unable to open camera";

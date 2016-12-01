@@ -27,12 +27,11 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
 /// @author Vsevolod Vlaskine, Cedric Wohlleber
 
-#ifndef SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_SHAPEWITHID_H_
-#define SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_SHAPEWITHID_H_
+#pragma once
 
+#include <boost/array.hpp>
 #include <boost/optional.hpp>
 #include <boost/static_assert.hpp>
 #include <comma/base/types.h>
@@ -86,7 +85,7 @@ struct ShapeWithId // quick and dirty
 {
     typedef S Shape;
     ShapeWithId() : shape( detail::shape_traits< S >::zero() ), id( 0 ), block( 0 ) {}
-    ShapeWithId( const S& shape ) : shape( shape ), id( 0 ), block( 0 ) {}
+    ShapeWithId( const S& shape ) : shape( shape ), id( 0 ), block( 0 ), scalar( 0 ), fill( false ) {}
     S shape;
     comma::uint32 id;
     comma::uint32 block;
@@ -97,6 +96,7 @@ struct ShapeWithId // quick and dirty
     #endif
     std::string label;
     double scalar;
+    bool fill; // todo: just a placeholder for now, plug in if possible or tear down
 };
 
 struct how_t { struct points; struct connected; struct loop; }; // quick and dirty; for points only
@@ -143,7 +143,7 @@ struct Shapetraits< snark::math::closed_interval< double, 3 > >
     }
 
     #if Qt3D_VERSION==1
-    static void draw( QGLPainter* painter, unsigned int size )
+    static void draw( QGLPainter* painter, unsigned int size, bool fill )
     {
         const boost::array< unsigned short, 8  > baseIndices = { { 0, 4, 1, 5, 2, 6, 3, 7 } };
         for( unsigned int i = 0; i < size; i += 8 )
@@ -165,7 +165,7 @@ struct Shapetraits< snark::math::closed_interval< double, 3 > >
     static Eigen::Vector3d center( const snark::math::closed_interval< double, 3 >& extents ) { return ( extents.min() + extents.max() ) / 2; }
 };
 
-template<>
+template <>
 struct Shapetraits< std::pair< Eigen::Vector3d, Eigen::Vector3d > >
 {
     static const unsigned int size = 2;
@@ -195,15 +195,57 @@ struct Shapetraits< std::pair< Eigen::Vector3d, Eigen::Vector3d > >
     }
 
     #if Qt3D_VERSION==1
-    static void draw( QGLPainter* painter, unsigned int size )
-    {
-        painter->draw( QGL::Lines, size );
-    }
+    static void draw( QGLPainter* painter, unsigned int size, bool fill ) { painter->draw( QGL::Lines, size ); }
     #endif
 
     static const Eigen::Vector3d& somePoint( const std::pair< Eigen::Vector3d, Eigen::Vector3d >& line ) { return line.first; }
 
     static Eigen::Vector3d center( const std::pair< Eigen::Vector3d, Eigen::Vector3d >& line ) { return ( line.first + line.second ) / 2; }
+};
+
+template < std::size_t Size >
+struct loop { boost::array< Eigen::Vector3d, Size > corners; };
+
+template < std::size_t Size >
+struct Shapetraits< loop< Size > >
+{
+    BOOST_STATIC_ASSERT( Size > 2 );
+    static const unsigned int size = Size;
+    #if Qt3D_VERSION==1
+    static void update( const loop< Size >& e, const Eigen::Vector3d& offset, const QColor4ub& color, unsigned int block, block_buffer< vertex_t >& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents  )
+    #else
+    static void update( const loop< Size >& e, const Eigen::Vector3d& offset, const qt3d::gl_color_t& color, unsigned int block, block_buffer< vertex_t >& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents  )
+    #endif
+    {
+        for( unsigned int i = 0; i < Size; ++i )
+        {
+            Eigen::Vector3f v = ( e.corners[i] - offset ).template cast< float >();
+            
+            #if Qt3D_VERSION==1
+            buffer.add( vertex_t( QVector3D( v.x(), v.y(), v.z() ), color ), block );
+            #else
+            buffer.add( vertex_t( v, color ), block );
+            #endif
+
+            extents = extents ? extents->hull( snark::math::closed_interval< float, 3 >( v ) ) : snark::math::closed_interval< float, 3 >( v );
+        }
+    }
+
+    #if Qt3D_VERSION==1
+    static void draw( QGLPainter* painter, unsigned int size, bool fill )
+    {
+        for( unsigned int i = 0; i < size; i += Size ) { painter->draw( fill && Size == 3 ? QGL::Triangles : QGL::LineLoop, Size, i ); }
+    }
+    #endif
+    
+    static const Eigen::Vector3d& somePoint( const loop< Size >& c ) { return c.corners[0]; }
+    
+    static Eigen::Vector3d center( const loop< Size >& c ) // quick and dirty
+    { 
+        Eigen::Vector3d m = Eigen::Vector3d::Zero();
+        for( unsigned int i = 0; i < Size; ++i ) { m += c.corners[i]; }
+        return m / Size;
+    }
 };
 
 template < std::size_t Size >
@@ -246,7 +288,7 @@ struct Shapetraits< Ellipse< Size > >
     }
 
     #if Qt3D_VERSION==1
-    static void draw( QGLPainter* painter, unsigned int size )
+    static void draw( QGLPainter* painter, unsigned int size, bool fill )
     {
         for( unsigned int i = 0; i < size; i += Size )
         {
@@ -341,7 +383,7 @@ struct Shapetraits< arc< Size > >
     }
 
     #if Qt3D_VERSION==1
-    static void draw( QGLPainter* painter, unsigned int size )
+    static void draw( QGLPainter* painter, unsigned int size, bool fill )
     {
         for( unsigned int i = 0; i < size; i += Size )
         {
@@ -364,7 +406,7 @@ template <> struct draw_traits_< how_t::points >
 {
     static const QGL::DrawingMode drawing_mode = QGL::Points;
 
-    static void draw( QGLPainter* painter, unsigned int size )
+    static void draw( QGLPainter* painter, unsigned int size, bool fill )
     {
         painter->draw( QGL::Points, size );
     }
@@ -374,7 +416,7 @@ template <> struct draw_traits_< how_t::loop >
 {
     static const QGL::DrawingMode drawing_mode = QGL::DrawingMode();
 
-    static void draw( QGLPainter* painter, unsigned int size )
+    static void draw( QGLPainter* painter, unsigned int size, bool fill )
     {
         painter->draw( QGL::LineLoop, size );
     }
@@ -384,7 +426,7 @@ template <> struct draw_traits_< how_t::connected >
 {
     static const QGL::DrawingMode drawing_mode = QGL::DrawingMode();
 
-    static void draw( QGLPainter* painter, unsigned int size )
+    static void draw( QGLPainter* painter, unsigned int size, bool fill )
     {
         painter->draw( QGL::Lines, size );
         if( size > 1 ) { painter->draw( QGL::Lines, size - 1, 1 ); }
@@ -418,10 +460,7 @@ struct Shapetraits< Eigen::Vector3d, How >
     }
 
     #if Qt3D_VERSION==1
-    static void draw( QGLPainter* painter, unsigned int size )
-    {
-        draw_traits_< How >::draw( painter, size );
-    }
+    static void draw( QGLPainter* painter, unsigned int size, bool fill ) { draw_traits_< How >::draw( painter, size, fill ); }
     #endif
 
     static const Eigen::Vector3d& somePoint( const Eigen::Vector3d& point ) { return point; }
@@ -472,6 +511,7 @@ template < typename S > struct traits< snark::graphics::view::ShapeWithId< S > >
         v.apply( "colour", p.color );
         v.apply( "label", p.label );
         v.apply( "scalar", p.scalar );
+        v.apply( "fill", p.fill );
     }
 
     template < typename Key, class Visitor >
@@ -483,6 +523,7 @@ template < typename S > struct traits< snark::graphics::view::ShapeWithId< S > >
         v.apply( "colour", p.color );
         v.apply( "label", p.label );
         v.apply( "scalar", p.scalar );
+        v.apply( "fill", p.fill );
     }
 };
 
@@ -548,6 +589,19 @@ template < typename T > struct traits< snark::math::closed_interval< T, 3 > >
     }
 };
 
-} } // namespace comma { namespace visiting {
+template < std::size_t Size > struct traits< snark::graphics::view::loop< Size > >
+{
+    template < typename Key, class Visitor >
+    static void visit( Key, snark::graphics::view::loop< Size >& p, Visitor& v )
+    {
+        v.apply( "corners", p.corners );
+    }
 
-#endif /*SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_SHAPEWITHID_H_*/
+    template < typename Key, class Visitor >
+    static void visit( Key, const snark::graphics::view::loop< Size >& p, Visitor& v )
+    {
+        v.apply( "corners", p.corners );
+    }
+};
+
+} } // namespace comma { namespace visiting {

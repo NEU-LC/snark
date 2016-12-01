@@ -13,9 +13,11 @@ define(['jquery', 'Feed', 'Grid'], function ($, Feed, Grid) {
         this.loader = new Image();
         var _this = this;
         this.loader.onload = function () {
+            clearTimeout(_this.timer);
             _this.onload(this.src);
         };
         this.loader.onerror = function () {
+            clearTimeout(_this.timer);
             _this.onerror();
         }
     };
@@ -23,6 +25,7 @@ define(['jquery', 'Feed', 'Grid'], function ($, Feed, Grid) {
         this.loader.width_prev = this.loader.width;
         this.loader.height_prev = this.loader.height;
         this.loader.src = this.get_url();
+        this.timer = setTimeout(this.loader.onerror, globals.timeout);
     };
     ImageFeed.prototype.onload_ = function (data) {
         this.img.attr('src', data);

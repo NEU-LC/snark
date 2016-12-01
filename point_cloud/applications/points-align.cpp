@@ -319,10 +319,9 @@ int main( int ac, char** av )
                       << " records" << std::endl;
         }
 
-        if( initial_error )
-            std::cout << error( source, target ) << std::endl;
-        else
-            output_transform( source, target, block, output_csv );
+        if( initial_error ) { std::cout << error( source, target ) << std::endl; }
+        else { output_transform( source, target, block, output_csv ); }
+        return 0;
     }
     catch( std::exception& ex )
     {
@@ -332,5 +331,5 @@ int main( int ac, char** av )
     {
         std::cerr << comma::verbose.app_name() << ": unknown exception" << std::endl;
     }
-    return 0;
+    return 1;
 }
