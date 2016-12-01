@@ -47,10 +47,13 @@ static void usage( bool verbose = false )
     std::cerr << "usage: " << "cat points.csv | points-mesh <operation> [<options>] > mesh.csv" << std::endl;
     std::cerr << std::endl;
     std::cerr << "operations" << std::endl;
-    std::cerr << "    grid" << std::endl;
+    std::cerr << "    grid: each point has pixel index, e.g. as in a point cloud coming from realsense; triangulate neighbour pixels only" << std::endl;
+    std::cerr << "        fields" << std::endl;
+    std::cerr << "            index/x, index/y: pixel coordinates" << std::endl;
+    std::cerr << "            block: block number" << std::endl;
+    std::cerr << "            default: index/x,index/y" << std::endl;
     std::cerr << "        options" << std::endl;
     std::cerr << "            --input-fields: todo: output input fields and exit" << std::endl;
-    std::cerr << "            todo..." << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    --help,-h:       show this help; --help --verbose for more help" << std::endl;
@@ -75,7 +78,12 @@ class grid
             input() : index( Eigen::Vector2i::Zero() ), block( 0 ) {}
         };
         
-        static int run( const comma::command_line_options& options ) { grid g( options ); return g.read_(); }
+        static int run( const comma::command_line_options& options )
+        {
+            if( options.exists( "--input-fields" ) ) { std::cout << comma::join( comma::csv::names< grid::input >( true ), ',' ) << std::endl; return 0; }
+            grid g( options );
+            return g.read_();
+        }
                 
     private:
         comma::csv::options csv_;
