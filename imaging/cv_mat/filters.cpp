@@ -320,12 +320,15 @@ static const int bands_to_cols_method_default = CV_REDUCE_AVG;
 static filters::value_type bands_to_cols_impl_( filters::value_type input, const std::vector< stripe_t > & bands, int cv_reduce_method )
 {
     unsigned int h = input.second.rows;
-    filters::value_type output( input.first, cv::Mat( h, bands.size(), input.second.type() ) );
+    unsigned int output_type = cv_reduce_method == CV_REDUCE_SUM
+                             ? CV_MAKETYPE( CV_32S, input.second.channels() )
+                             : input.second.type() ;
+    filters::value_type output( input.first, cv::Mat( h, bands.size(), output_type ) );
     for( std::size_t i = 0; i < bands.size(); ++i)
     {
         cv::Mat intile( input.second, cv::Rect( bands[i].first, 0, bands[i].second, h ) );
         cv::Mat outtile( output.second, cv::Rect( i, 0, 1, h ) );
-        cv::reduce( intile, outtile, 1, cv_reduce_method );
+        cv::reduce( intile, outtile, 1, cv_reduce_method, output_type );
     }
     return output;
 }
