@@ -31,9 +31,13 @@ define('Feed', ["jquery", "jquery_timeago", "utils"], function ($) {
 
     Feed.prototype.reset = function () {
         if (this.config.refresh.auto) {
+            $(this.input_container).find("input[type=text]").attr("readonly", "readonly");
+            $(this.input_container).find("input[type=text]").attr("title", "readonly");
             this.refresh();
         } else {
             this.clear_interval();
+            $(this.input_container).find("input[type=text]").removeAttr("readonly");
+            $(this.input_container).find("input[type=text]").removeAttr("title");
         }
     };
 
@@ -146,18 +150,22 @@ define('Feed', ["jquery", "jquery_timeago", "utils"], function ($) {
 
 
     Feed.prototype.load_inputs = function (container) {
+        var is_disabled = false;
+        if (this.config.refresh.auto) {
+            is_disabled = true;
+        }
         for (var field in this.fields) {
             var row = $('<div>', {
                 class: "form"
             });
-            var each = $('<div>', {
-                class: " form-inline"
-            });
-            var label = $('<span>',
+            var label = $('<label>',
                 {
                     text: field,
-                    class: "basic-add-on label"
+                    class: "col-sm-3 "
                 });
+            var each = $('<div>', {
+                class: " col-sm-9"
+            });
             var input = $('<input>',
                 {
                     type: 'text',
@@ -165,9 +173,12 @@ define('Feed', ["jquery", "jquery_timeago", "utils"], function ($) {
                     name: field,
                     value: this.fields[field]
                 });
-
-            each.append(label).append(input);
-            row.append(each);
+            if (is_disabled) {
+                $(input).prop('readonly', "readonly");
+                $(input).prop('title', "readonly");
+            }
+            each.append(input);
+            row.append(label).append(each);
             container.append(row);
             // this.target.append(row);
         }

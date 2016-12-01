@@ -136,12 +136,6 @@ body {
     border-radius: 0;
 }
 
-.form-results {
-    white-space: pre-wrap;
-    margin-top: 5px;
-    color: #e8f7fa !important;
-}
-
 .panel h3 {
     margin: 10px 17px 0 0;
     white-space: nowrap;
@@ -181,30 +175,6 @@ body {
     border: 1px solid transparent;
     margin: 1px;
     padding: 0;
-}
-
-.form {
-    overflow: auto;
-}
-
-form input {
-    margin-bottom: 5px;
-    color: #2c2c2c;
-}
-
-.target-container {
-    margin-top: 5px;
-    background: #181818;
-}
-
-.inputs-group {
-    margin-top: 5px;
-    background: #181818;
-    /*display: none;*/
-}
-
-.target-container:not(:empty) {
-    border: 1px solid #2c2c2c;
 }
 
 ul.target li {
@@ -296,7 +266,7 @@ table.target {
 }
 
 .target th {
-    color: #6789ef;
+    color: #337ab7;
 }
 
 .text-center {
@@ -362,3 +332,61 @@ html .ui-first-child a {
 .result-panel {
     background-color: #2c2c2c;
 }
+
+.target-container a, .result-panel label {
+    color: #337ab7;
+    font-weight: bold;
+}
+
+.target-container {
+    margin-top: 5px;
+    background: #181818;
+}
+
+label.error-message {
+    color: #ff0000;
+    font-size: 14px;
+    font-weight: bold;
+    border: 1px solid #545454;
+    margin-left: 10px;
+    margin-top: 10px;
+}
+
+label.success-message {
+    color: #bcdefa;
+    font-size: 14px;
+    font-weight: bold;
+    border: 1px solid #545454;
+    margin-top: 10px;
+    margin-left: 10px;
+}
+
+.form-results {
+    white-space: pre-wrap;
+    margin-top: 5px;
+    color: #e8f7fa !important;
+}
+
+form input {
+    margin-bottom: 5px;
+    color: #2c2c2c;
+}
+
+.form {
+    overflow: auto;
+}
+
+form label {
+    color: #bcdefa;
+}
+
+.inputs-group {
+    margin-top: 5px;
+    background: #181818;
+    /*display: none;*/
+}
+
+.target-container:not(:empty) {
+    border: 1px solid #2c2c2c;
+}
+
