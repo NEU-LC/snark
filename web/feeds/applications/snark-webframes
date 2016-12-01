@@ -137,10 +137,14 @@ class handler( BaseHTTPServer.BaseHTTPRequestHandler ):
     def do_GET( self ):
         url = urlparse.urlparse( self.path )
         params = dict(urlparse.parse_qsl(url.query))
+        # print("params %s \n" % params)
+        if params.has_key('_'):
+            del params['_']
         param_list=[]
         for key, value in params.iteritems():
-        	param_list.append("=".join([str(key), str(value)]))
+            param_list.append("=".join([str(key), str(value)]))
         query = urlparse.urlparse(self.path).query
+        #print("param_list %s \n" % param_list)
         sensor = url.path.strip('/')
         client = self.client_address[0]
         sensor_parameters = sensors.get( sensor )
@@ -157,7 +161,10 @@ class handler( BaseHTTPServer.BaseHTTPRequestHandler ):
             p.stdin.write("\n")
             running_subprocesses.append( p )
         output, error = p.communicate()
+        # print("output=%s " % output)
+        # print("error=%s " % error)
         status = p.returncode
+        # print("status=%s " % status)
         with lock: running_subprocesses.remove( p )
         if status != 0:
             # error is not included in message due problems with the html format for special symbols (using cgi.escape didn't help completely)
