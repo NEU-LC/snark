@@ -43,6 +43,7 @@
 #include <boost/thread.hpp>
 #include <boost/type_traits.hpp>
 #include <boost/unordered_map.hpp>
+#include <boost/assign/list_of.hpp>
 #include <comma/base/exception.h>
 #include <comma/base/types.h>
 #include <comma/csv/ascii.h>
@@ -1581,7 +1582,7 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
         }
         else if( e[0] == "bands-to-cols" )
         {
-            // rhs looks like "12,23|50,30|100|method:average"
+            // rhs looks like "12,23|50,30|100|method:average|output-depth:d"
             // the '|'-separated entries shall be either:
             // - comma-separated pairs of integers, or
             // - a single integer, or
@@ -1599,29 +1600,17 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
                     if ( setting.size() != 2 ) { COMMA_THROW( comma::exception, "bands-to-cols: expected keyword:value; got " << setting.size() << " parameters '" << stripes[s] << "'" ); }
                     if ( setting[0] == "method" )
                     {
-                        if ( setting[1] == "average" ) {
-                            cv_reduce_method = CV_REDUCE_AVG;
-                        } else if ( setting[1] == "sum" ) {
-                            cv_reduce_method = CV_REDUCE_SUM;
-                        } else if ( setting[1] == "min" ) {
-                            cv_reduce_method = CV_REDUCE_MIN;
-                        } else if ( setting[1] == "max" ) {
-                            cv_reduce_method = CV_REDUCE_MAX;
-                        } else {
-                            COMMA_THROW( comma::exception, "bands-to-cols: the method is not one of [average,sum,min,max]" );
-                        }
+                        static std::map< std::string, int > methods = boost::assign::map_list_of ( "average", CV_REDUCE_AVG ) ( "sum", CV_REDUCE_SUM ) ( "min", CV_REDUCE_MIN ) ( "max", CV_REDUCE_MAX );
+                        std::map< std::string, int >::const_iterator found = methods.find( setting[1] );
+                        if ( found == methods.end() ) { COMMA_THROW( comma::exception, "bands-to-cols: the method is not one of [average,sum,min,max]" ); }
+                        cv_reduce_method = found->second;
                     }
                     else if ( setting[0] == "output-depth" )
                     {
-                        if ( setting[1] == "CV_32S" || setting[1] == "i" ) {
-                            cv_reduce_dtype = CV_32S;
-                        } else if ( setting[1] == "CV_32F" || setting[1] == "f" ) {
-                            cv_reduce_dtype = CV_32F;
-                        } else if ( setting[1] == "CV_64F" || setting[1] == "d" ) {
-                            cv_reduce_dtype = CV_64F;
-                        } else {
-                            COMMA_THROW( comma::exception, "bands-to-cols: the output-depth is not one of [i,f,d] or [CV_32S,CV_32F,CV_64F]" );
-                        }
+                        static std::map< std::string, int > depths = boost::assign::map_list_of ( "CV_32S", CV_32S ) ( "i", CV_32S ) ( "CV_32F", CV_32F ) ( "f", CV_32F ) ( "CV_64F", CV_64F ) ( "d", CV_64F );
+                        std::map< std::string, int >::const_iterator found = depths.find( setting[1] );
+                        if ( found == depths.end() ) { COMMA_THROW( comma::exception, "bands-to-cols: the output-depth is not one of [i,f,d] or [CV_32S,CV_32F,CV_64F]" ); }
+                        cv_reduce_dtype = found->second;
                     }
                     else
                     {
