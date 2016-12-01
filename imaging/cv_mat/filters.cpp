@@ -320,15 +320,11 @@ static const int bands_to_cols_method_default = CV_REDUCE_AVG;
 static filters::value_type bands_to_cols_impl_( filters::value_type input, const std::vector< stripe_t > & bands, int cv_reduce_method )
 {
     unsigned int h = input.second.rows;
-    std::cerr << "
-    std::cerr << "bands_to_cols_impl_: invoked for " << bands.size() << " bands and " << cv_reduce_method << " method, column hight " << h << std::endl;
-    filters::value_type output( input.first, cv::Mat( bands.size(), h, input.second.type() ) );
+    filters::value_type output( input.first, cv::Mat( h, bands.size(), input.second.type() ) );
     for( std::size_t i = 0; i < bands.size(); ++i)
     {
-        std::cerr << bands[i].first << "," << bands[i].second << std::endl;
         cv::Mat intile( input.second, cv::Rect( bands[i].first, 0, bands[i].second, h ) );
         cv::Mat outtile( output.second, cv::Rect( i, 0, 1, h ) );
-        std::cerr << "calling reduce" << std::endl;
         cv::reduce( intile, outtile, 1, cv_reduce_method );
     }
     return output;
@@ -1593,10 +1589,8 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
             int cv_reduce_method = bands_to_cols_method_default;
             for ( size_t s = 0; s < stripes.size(); ++s )
             {
-                std::cerr << "stripe " << s << std::endl;
                 if ( stripes[s].find( ":" ) != std::string::npos )
                 {
-                    std::cerr << "setting " << stripes[s] << std::endl;
                     std::vector< std::string > setting = comma::split( stripes[s], ':' );
                     if ( setting.size() != 2 ) { COMMA_THROW( comma::exception, "bands-to-cols: expected keyword:value; got " << setting.size() << " parameters '" << stripes[s] << "'" ); }
                     if ( setting[0] != "method" ) { COMMA_THROW( comma::exception, "bands-to-cols: the keyword '" << setting[0] << "' is not one of [method]" ); }
@@ -1619,7 +1613,6 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
                     unsigned int y = boost::lexical_cast< unsigned int >( rowblock[0] );
                     unsigned int h = ( rowblock.size() == 2 ? boost::lexical_cast< unsigned int >( rowblock[1] ) : 1 );
                     bands.push_back( std::make_pair( y, h ) );
-                    std::cerr << "band " << y << "," << h << std::endl;
                 }
             }
             if ( bands.empty() ) { COMMA_THROW( comma::exception, "bands-to-cols: specify at least one band" ); }
