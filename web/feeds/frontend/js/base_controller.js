@@ -656,7 +656,7 @@ define('base_controller', ['jquery', "jquery_timeago",
             config.alert = true;
         }
         var feed_obj = create_feed_fn(config.type, feed_name, feed_path, config);
-        if (config.type != 'form') {
+        if (config.type != 'form' && config.type != 'stream') {
             if (feed_obj.is_feed_inputs()) {
                 feed_obj.input_container.empty();
                 var form_ = $('<form>');
