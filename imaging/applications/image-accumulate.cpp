@@ -73,6 +73,7 @@ void usage()
     std::cerr << "    --dirty,--do-not-clean: do not clean the current image from the rows from previous blocks" << std::endl;
     std::cerr << "                            (useful, e.g. when sparce data accumulate over time)" << std::endl;
     std::cerr << "    --fields,-f=<fields>: " << std::endl;
+    std::cerr << "        t: timestamp" << std::endl;
     std::cerr << "        block: block id (e.g. revolution)" << std::endl;
     std::cerr << "             if absent, block size from --size will be used" << std::endl;
     std::cerr << "             to identify blocks" << std::endl;
@@ -85,7 +86,7 @@ void usage()
     std::cerr << "                   e.g. for block size 1000, angle precision will be 2 * pi / 1000 in the image" << std::endl;
     std::cerr << "                   see --size option" << std::endl;
     std::cerr << "        values: vector values" << std::endl;
-    std::cerr << "        default: block,row,values" << std::endl;
+    std::cerr << "        default: values" << std::endl;
     std::cerr << "    --fps=<value>: if present, update image <value> frames per second" << std::endl;
     std::cerr << "                   if absent, update on every new revolution (then revolution and sweep fields have to be present)" << std::endl;
     std::cerr << "    --id=<id>[,<options>]: if id field present, channel id to output, e.g: --id=1 --id=\"3;scale=1,5\" --id=4" << std::endl;
@@ -118,7 +119,7 @@ void usage()
 
 struct input
 {
-    boost::posix_time::ptime timestamp;
+    boost::posix_time::ptime t;
     unsigned int block;
     unsigned int row;
     double angle;
@@ -126,7 +127,7 @@ struct input
     std::vector< double > values;
     input() : block( 0 ), row( 0 ), angle( 0 ), id( 0 ) 
     {
-        timestamp=boost::posix_time::microsec_clock::universal_time();
+        t=boost::posix_time::microsec_clock::universal_time();
     }
 };
 
@@ -137,7 +138,7 @@ template <> struct traits< input >
     template< typename K, typename V >
     static void visit( const K& k, const input& t, V& v )
     {
-        v.apply( "timestamp", t.timestamp );
+        v.apply( "t", t.t );
         v.apply( "block", t.block );
         v.apply( "row", t.row );
         v.apply( "angle", t.angle );
@@ -148,7 +149,7 @@ template <> struct traits< input >
     template< typename K, typename V >
     static void visit( const K& k, input& t, V& v )
     {
-        v.apply( "timestamp", t.timestamp );
+        v.apply( "t", t.t );
         v.apply( "block", t.block );
         v.apply( "row", t.row );
         v.apply( "angle", t.angle );
@@ -426,7 +427,7 @@ class channel
                     || ( !has_block && row_count_ >= block_size )
                     || ( p && block_ && *block_ != p->block ) )
                 {
-                    output_once_( p->timestamp );
+                    output_once_( p->t );
                     image.setTo( 0 );
                     row_count_ = 0;
                 }
