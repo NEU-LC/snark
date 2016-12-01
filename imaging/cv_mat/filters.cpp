@@ -316,20 +316,28 @@ static filters::value_type crop_rows_impl_( filters::value_type input, const std
     return output;
 }
 
-static const int bands_to_cols_method_default = CV_REDUCE_AVG;
+static const int bands_method_default = CV_REDUCE_AVG;
 
-static filters::value_type bands_to_cols_impl_( filters::value_type input, const std::vector< stripe_t > & bands, int cv_reduce_method, int cv_reduce_dtype = -1 )
+static filters::value_type bands_to_cols_impl_( filters::value_type input, bool bands_to_cols, const std::vector< stripe_t > & bands, int cv_reduce_method, int cv_reduce_dtype = -1 )
 {
+    unsigned int w = input.second.cols;
     unsigned int h = input.second.rows;
     unsigned int output_type = cv_reduce_dtype >= 0
                              ? CV_MAKETYPE( CV_MAT_DEPTH( cv_reduce_dtype ), input.second.channels() )
                              : input.second.type() ;
-    filters::value_type output( input.first, cv::Mat( h, bands.size(), output_type ) );
+    filters::value_type output( input.first, cv::Mat( bands_to_cols ? h : bands.size()
+                                                    , bands_to_cols ? bands.size() : w
+                                                    , output_type ) );
     for( std::size_t i = 0; i < bands.size(); ++i)
     {
-        cv::Mat intile( input.second, cv::Rect( bands[i].first, 0, bands[i].second, h ) );
-        cv::Mat outtile( output.second, cv::Rect( i, 0, 1, h ) );
-        cv::reduce( intile, outtile, 1, cv_reduce_method, output_type );
+        cv::Mat intile( input.second, bands_to_cols
+                                    ? cv::Rect( bands[i].first, 0, bands[i].second, h )
+                                    : cv::Rect( 0, bands[i].first, w, bands[i].second ) );
+        cv::Mat outtile( output.second, bands_to_cols
+                                      ? cv::Rect( i, 0, 1, h )
+                                      : cv::Rect( 0, i, w, 1 ) );
+        int cv_reduce_dim = bands_to_cols ? 1 : 0 ;
+        cv::reduce( intile, outtile, cv_reduce_dim, cv_reduce_method, output_type );
     }
     return output;
 }
@@ -1580,54 +1588,56 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
             }
             f.push_back( filter( boost::bind( &crop_rows_impl_, _1, rows ) ) );
         }
-        else if( e[0] == "bands-to-cols" )
+        else if( e[0] == "bands-to-cols" || e[0] == "bands-to-rows" )
         {
             // rhs looks like "12,23|50,30|100|method:average|output-depth:d"
             // the '|'-separated entries shall be either:
             // - comma-separated pairs of integers, or
             // - a single integer, or
             // - colon-separated words with a known keyword on the left and one of the known enumeration names on the right
-            if( e.size() < 2 ) { COMMA_THROW( comma::exception, "bands-to-cols: specify at least one band to extract, e.g. bands-to-cols=1,10" ); }
+            const bool bands_to_cols = e[0] == "bands-to-cols";
+            const std::string & op_name = bands_to_cols ? "bands-to-cols" : "bands-to-rows";
+            if( e.size() < 2 ) { COMMA_THROW( comma::exception, op_name << ": specify at least one band to extract, e.g. " << op_name << "=1,10" ); }
             std::vector< std::string > stripes = comma::split( e[1], '|' );
             std::vector< stripe_t > bands;
-            int cv_reduce_method = bands_to_cols_method_default;
+            int cv_reduce_method = bands_method_default;
             int cv_reduce_dtype = -1;
             for ( size_t s = 0; s < stripes.size(); ++s )
             {
                 if ( stripes[s].find( ":" ) != std::string::npos )
                 {
                     std::vector< std::string > setting = comma::split( stripes[s], ':' );
-                    if ( setting.size() != 2 ) { COMMA_THROW( comma::exception, "bands-to-cols: expected keyword:value; got " << setting.size() << " parameters '" << stripes[s] << "'" ); }
+                    if ( setting.size() != 2 ) { COMMA_THROW( comma::exception, op_name << ": expected keyword:value; got " << setting.size() << " parameters '" << stripes[s] << "'" ); }
                     if ( setting[0] == "method" )
                     {
                         static std::map< std::string, int > methods = boost::assign::map_list_of ( "average", CV_REDUCE_AVG ) ( "sum", CV_REDUCE_SUM ) ( "min", CV_REDUCE_MIN ) ( "max", CV_REDUCE_MAX );
                         std::map< std::string, int >::const_iterator found = methods.find( setting[1] );
-                        if ( found == methods.end() ) { COMMA_THROW( comma::exception, "bands-to-cols: the method is not one of [average,sum,min,max]" ); }
+                        if ( found == methods.end() ) { COMMA_THROW( comma::exception, op_name << ": the method is not one of [average,sum,min,max]" ); }
                         cv_reduce_method = found->second;
                     }
                     else if ( setting[0] == "output-depth" )
                     {
                         static std::map< std::string, int > depths = boost::assign::map_list_of ( "CV_32S", CV_32S ) ( "i", CV_32S ) ( "CV_32F", CV_32F ) ( "f", CV_32F ) ( "CV_64F", CV_64F ) ( "d", CV_64F );
                         std::map< std::string, int >::const_iterator found = depths.find( setting[1] );
-                        if ( found == depths.end() ) { COMMA_THROW( comma::exception, "bands-to-cols: the output-depth is not one of [i,f,d] or [CV_32S,CV_32F,CV_64F]" ); }
+                        if ( found == depths.end() ) { COMMA_THROW( comma::exception, op_name << ": the output-depth is not one of [i,f,d] or [CV_32S,CV_32F,CV_64F]" ); }
                         cv_reduce_dtype = found->second;
                     }
                     else
                     {
-                        COMMA_THROW( comma::exception, "bands-to-cols: the keyword '" << setting[0] << "' is not one of [method,output-depth]" );
+                        COMMA_THROW( comma::exception, op_name << ": the keyword '" << setting[0] << "' is not one of [method,output-depth]" );
                     }
                 }
                 else
                 {
                     std::vector< std::string > rowblock = comma::split( stripes[s], ',' );
-                    if ( rowblock.size() > 2 ) { COMMA_THROW( comma::exception, "bands-to-cols: expected position,[width]; got " << rowblock.size() << " parameters '" << stripes[s] << "'" ); }
+                    if ( rowblock.size() > 2 ) { COMMA_THROW( comma::exception, op_name << ": expected position,[width]; got " << rowblock.size() << " parameters '" << stripes[s] << "'" ); }
                     unsigned int y = boost::lexical_cast< unsigned int >( rowblock[0] );
                     unsigned int h = ( rowblock.size() == 2 ? boost::lexical_cast< unsigned int >( rowblock[1] ) : 1 );
                     bands.push_back( std::make_pair( y, h ) );
                 }
             }
-            if ( bands.empty() ) { COMMA_THROW( comma::exception, "bands-to-cols: specify at least one band" ); }
-            f.push_back( filter( boost::bind( &bands_to_cols_impl_, _1, bands, cv_reduce_method, cv_reduce_dtype ) ) );
+            if ( bands.empty() ) { COMMA_THROW( comma::exception, op_name << ": specify at least one band" ); }
+            f.push_back( filter( boost::bind( &bands_to_cols_impl_, _1, bands_to_cols, bands, cv_reduce_method, cv_reduce_dtype ) ) );
         }
         else if( e[0] == "crop-tile" )
         {
