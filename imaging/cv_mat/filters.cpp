@@ -2152,14 +2152,14 @@ static std::string usage_impl_()
     oss << "        crop-rows=<y>[,<h>[|<y>[,<h>,...: output an image consisting of (multiple) row blocks starting at y with height h" << std::endl;
     oss << "            examples: \"crop-rows=5,10|25,5\"; output an image of height 15 taking 2 row blocks starting at 5 and 25 and with heights 10 and 5, respectively" << std::endl;
     oss << "                      \"crop-rows=5|25|15\"; default block height is 1, block starts can be out of order" << std::endl;
-    oss << "        bands-to-cols=\"x,[w[,x,w]][|method:<method-name>|output-depth:<depth>]\" take a number of columns (bands) from the input, process together by method," << std::endl;
+    oss << "        bands-to-cols=x,[w[,x,w]][|method:<method-name>|output-depth:<depth>]; take a number of columns (bands) from the input, process together by method," << std::endl;
     oss << "            write into the output, one band (a range of columns) reduced into one column; supported methods: average (default), sum, min, max; the sum method" << std::endl;
     oss << "            requires the explicit output-depth parameter (one of i,f,d or CV_32S, CV_32F, CV_64F) if the input has low depth" << std::endl;
     oss << "            examples: \"bands-to-cols=12,23|50,30|45,60|100|method:average\"; output an image of 4 columns containing the average" << std::endl;
     oss << "                          of columns 12-34 (i.e., 12 + 23 - 1), 50-79, 45-104 (overlap is OK), and 100 (default width is 1) from the original image" << std::endl;
     oss << "                      \"bands-to-cols=12,23|50,30|45,60|100|method:sum|output-depth:d\"; same bands but output an image of 4 columns containing the sum" << std::endl;
     oss << "                          of the columns data from the original image; use CV_64F depth (double) as the output format" << std::endl;
-    oss << "        bands-to-rows\"x,[w[,x,w]][|method:<method-name>|output-depth:<depth>]\"; same as bands-to-cols but operate on rows of input instead of columns" << std::endl;
+    oss << "        bands-to-rows x,[w[,x,w]][|method:<method-name>|output-depth:<depth>]; same as bands-to-cols but operate on rows of input instead of columns" << std::endl;
     oss << "        encode=<format>: encode images to the specified format. <format>: jpg|ppm|png|tiff..., make sure to use --no-header" << std::endl;
     oss << "        equalize-histogram: todo: equalize each channel by its histogram" << std::endl;
     oss << "        fft[=<options>]: do fft on a floating point image" << std::endl;
