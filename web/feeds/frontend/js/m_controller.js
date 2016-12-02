@@ -85,22 +85,22 @@ require(['jquery', 'jquery_mobile', "jquery_timeago", "bootstrap",
             var popup_div = '<div data-role="popup" id="popup' + feed_name + '" data-overlay-theme="b" data-theme="b" data-corners="false">' +
                 '<a href="#" data-rel="back" class="ui-btn ui-corner-all ui-shadow ui-btn-a ui-icon-delete ui-btn-icon-notext ui-btn-right">Close</a><img class="popphoto" style="max-height:512px;" >' +
                 '</div>';
-            m_controller.prototype.add_poll_body(feed_path, element_str, popup_div);
+            m_controller.prototype.add_poll_body(feed_path, element_str, popup_div, config.form);
             return new ImageFeed(feed_name, feed_path, config);
         } else if (type == 'text' || type == 'csv' || type == 'csv-table') {
-            m_controller.prototype.add_poll_body(feed_path, '<table class="target"><thead></thead></table>');
+            m_controller.prototype.add_poll_body(feed_path, '<table class="target"><thead></thead></table>', config.form);
             return type == 'text' ? new TextFeed(feed_name, feed_path, config) : new CsvFeed(feed_name, feed_path, config);
         } else if (type == 'graph') {
-            m_controller.prototype.add_poll_body(feed_path, '<div class="target graph"><div class="graph-text">&nbsp;</div><div class="graph-y-labels"></div><div class="graph-bars"></div></div>');
+            m_controller.prototype.add_poll_body(feed_path, '<div class="target graph"><div class="graph-text">&nbsp;</div><div class="graph-y-labels"></div><div class="graph-bars"></div></div>', config.form);
             return new GraphFeed(feed_name, feed_path, config);
         } else if (type == 'stream') {
-            m_controller.prototype.add_stream_body(feed_path, '<div class="target stream"/>');
+            m_controller.prototype.add_stream_body(feed_path, '<div class="target stream"/>', config.form);
             return new ImageStreamFeed(feed_name, config);
         } else if (type == 'track') {
-            m_controller.prototype.add_poll_body(feed_path, '<div class="target"/>');
+            m_controller.prototype.add_poll_body(feed_path, '<div class="target"/>', config.form);
             return new TrackFeed(feed_name, feed_path, config);
         } else if (type == 'map') {
-            m_controller.prototype.add_poll_body(feed_path, '<div class="target map"></div>');
+            m_controller.prototype.add_poll_body(feed_path, '<div class="target map"></div>', config.form);
             return new MapFeed(feed_name, feed_path, config);
         } else if (type == 'form') {
             m_controller.prototype.add_poll_body(feed_path, '<div class="target form"></div>');

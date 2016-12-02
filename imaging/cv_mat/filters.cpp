@@ -44,6 +44,7 @@
 #include <boost/thread.hpp>
 #include <boost/type_traits.hpp>
 #include <boost/unordered_map.hpp>
+#include <boost/assign/list_of.hpp>
 #include <comma/base/exception.h>
 #include <comma/base/types.h>
 #include <comma/csv/ascii.h>
@@ -312,6 +313,32 @@ static filters::value_type crop_rows_impl_( filters::value_type input, const std
         cv::Mat tile( output.second, cv::Rect( 0, offset, w, rows[i].second ) );
         cv::Mat( input.second, cv::Rect( 0, rows[i].first, w, rows[i].second ) ).copyTo( tile );
         offset += rows[i].second;
+    }
+    return output;
+}
+
+static const int bands_method_default = CV_REDUCE_AVG;
+
+static filters::value_type bands_to_cols_impl_( filters::value_type input, bool bands_to_cols, const std::vector< stripe_t > & bands, int cv_reduce_method, int cv_reduce_dtype = -1 )
+{
+    unsigned int w = input.second.cols;
+    unsigned int h = input.second.rows;
+    unsigned int output_type = cv_reduce_dtype >= 0
+                             ? CV_MAKETYPE( CV_MAT_DEPTH( cv_reduce_dtype ), input.second.channels() )
+                             : input.second.type() ;
+    filters::value_type output( input.first, cv::Mat( bands_to_cols ? h : bands.size()
+                                                    , bands_to_cols ? bands.size() : w
+                                                    , output_type ) );
+    for( std::size_t i = 0; i < bands.size(); ++i)
+    {
+        cv::Mat intile( input.second, bands_to_cols
+                                    ? cv::Rect( bands[i].first, 0, bands[i].second, h )
+                                    : cv::Rect( 0, bands[i].first, w, bands[i].second ) );
+        cv::Mat outtile( output.second, bands_to_cols
+                                      ? cv::Rect( i, 0, 1, h )
+                                      : cv::Rect( 0, i, w, 1 ) );
+        int cv_reduce_dim = bands_to_cols ? 1 : 0 ;
+        cv::reduce( intile, outtile, cv_reduce_dim, cv_reduce_method, output_type );
     }
     return output;
 }
@@ -1576,6 +1603,57 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
             }
             f.push_back( filter( boost::bind( &crop_rows_impl_, _1, rows ) ) );
         }
+        else if( e[0] == "bands-to-cols" || e[0] == "bands-to-rows" )
+        {
+            // rhs looks like "12,23|50,30|100|method:average|output-depth:d"
+            // the '|'-separated entries shall be either:
+            // - comma-separated pairs of integers, or
+            // - a single integer, or
+            // - colon-separated words with a known keyword on the left and one of the known enumeration names on the right
+            const bool bands_to_cols = e[0] == "bands-to-cols";
+            const std::string & op_name = bands_to_cols ? "bands-to-cols" : "bands-to-rows";
+            if( e.size() < 2 ) { COMMA_THROW( comma::exception, op_name << ": specify at least one band to extract, e.g. " << op_name << "=1,10" ); }
+            std::vector< std::string > stripes = comma::split( e[1], '|' );
+            std::vector< stripe_t > bands;
+            int cv_reduce_method = bands_method_default;
+            int cv_reduce_dtype = -1;
+            for ( size_t s = 0; s < stripes.size(); ++s )
+            {
+                if ( stripes[s].find( ":" ) != std::string::npos )
+                {
+                    std::vector< std::string > setting = comma::split( stripes[s], ':' );
+                    if ( setting.size() != 2 ) { COMMA_THROW( comma::exception, op_name << ": expected keyword:value; got " << setting.size() << " parameters '" << stripes[s] << "'" ); }
+                    if ( setting[0] == "method" )
+                    {
+                        static std::map< std::string, int > methods = boost::assign::map_list_of ( "average", CV_REDUCE_AVG ) ( "sum", CV_REDUCE_SUM ) ( "min", CV_REDUCE_MIN ) ( "max", CV_REDUCE_MAX );
+                        std::map< std::string, int >::const_iterator found = methods.find( setting[1] );
+                        if ( found == methods.end() ) { COMMA_THROW( comma::exception, op_name << ": the method is not one of [average,sum,min,max]" ); }
+                        cv_reduce_method = found->second;
+                    }
+                    else if ( setting[0] == "output-depth" )
+                    {
+                        static std::map< std::string, int > depths = boost::assign::map_list_of ( "CV_32S", CV_32S ) ( "i", CV_32S ) ( "CV_32F", CV_32F ) ( "f", CV_32F ) ( "CV_64F", CV_64F ) ( "d", CV_64F );
+                        std::map< std::string, int >::const_iterator found = depths.find( setting[1] );
+                        if ( found == depths.end() ) { COMMA_THROW( comma::exception, op_name << ": the output-depth is not one of [i,f,d] or [CV_32S,CV_32F,CV_64F]" ); }
+                        cv_reduce_dtype = found->second;
+                    }
+                    else
+                    {
+                        COMMA_THROW( comma::exception, op_name << ": the keyword '" << setting[0] << "' is not one of [method,output-depth]" );
+                    }
+                }
+                else
+                {
+                    std::vector< std::string > rowblock = comma::split( stripes[s], ',' );
+                    if ( rowblock.size() > 2 ) { COMMA_THROW( comma::exception, op_name << ": expected position,[width]; got " << rowblock.size() << " parameters '" << stripes[s] << "'" ); }
+                    unsigned int y = boost::lexical_cast< unsigned int >( rowblock[0] );
+                    unsigned int h = ( rowblock.size() == 2 ? boost::lexical_cast< unsigned int >( rowblock[1] ) : 1 );
+                    bands.push_back( std::make_pair( y, h ) );
+                }
+            }
+            if ( bands.empty() ) { COMMA_THROW( comma::exception, op_name << ": specify at least one band" ); }
+            f.push_back( filter( boost::bind( &bands_to_cols_impl_, _1, bands_to_cols, bands, cv_reduce_method, cv_reduce_dtype ) ) );
+        }
         else if( e[0] == "crop-tile" )
         {
             if( e.size() < 2 ) { COMMA_THROW( comma::exception, "crop-tile: specify number of tiles along x and y, and at least one tile, e.g. crop-tile=1,1,0,0" ); }
@@ -2095,6 +2173,14 @@ static std::string usage_impl_()
     oss << "        crop-rows=<y>[,<h>[|<y>[,<h>,...: output an image consisting of (multiple) row blocks starting at y with height h" << std::endl;
     oss << "            examples: \"crop-rows=5,10|25,5\"; output an image of height 15 taking 2 row blocks starting at 5 and 25 and with heights 10 and 5, respectively" << std::endl;
     oss << "                      \"crop-rows=5|25|15\"; default block height is 1, block starts can be out of order" << std::endl;
+    oss << "        bands-to-cols=\"x,[w[,x,w]][|method:<method-name>|output-depth:<depth>]\" take a number of columns (bands) from the input, process together by method," << std::endl;
+    oss << "            write into the output, one band (a range of columns) reduced into one column; supported methods: average (default), sum, min, max; the sum method" << std::endl;
+    oss << "            requires the explicit output-depth parameter (one of i,f,d or CV_32S, CV_32F, CV_64F) if the input has low depth" << std::endl;
+    oss << "            examples: \"bands-to-cols=12,23|50,30|45,60|100|method:average\"; output an image of 4 columns containing the average" << std::endl;
+    oss << "                          of columns 12-34 (i.e., 12 + 23 - 1), 50-79, 45-104 (overlap is OK), and 100 (default width is 1) from the original image" << std::endl;
+    oss << "                      \"bands-to-cols=12,23|50,30|45,60|100|method:sum|output-depth:d\"; same bands but output an image of 4 columns containing the sum" << std::endl;
+    oss << "                          of the columns data from the original image; use CV_64F depth (double) as the output format" << std::endl;
+    oss << "        bands-to-rows\"x,[w[,x,w]][|method:<method-name>|output-depth:<depth>]\"; same as bands-to-cols but operate on rows of input instead of columns" << std::endl;
     oss << "        encode=<format>: encode images to the specified format. <format>: jpg|ppm|png|tiff..., make sure to use --no-header" << std::endl;
     oss << "        equalize-histogram: todo: equalize each channel by its histogram" << std::endl;
     oss << "        fft[=<options>]: do fft on a floating point image" << std::endl;
