@@ -27,10 +27,11 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include <algorithm>
 #include <fstream>
+#include <numeric>
 #include <queue>
 #include <sstream>
-#include <numeric>
 #include <boost/array.hpp>
 #include <boost/bind.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
@@ -389,6 +390,14 @@ static filters::value_type colour_map_impl_( filters::value_type m, int type )
     filters::value_type n;
     n.first = m.first;
     cv::applyColorMap( m.second, n.second, type );
+    return n;
+}
+
+static filters::value_type mask_impl_( filters::value_type m, boost::function< filters::value_type( filters::value_type ) > mask )
+{
+    filters::value_type n;
+    n.first = m.first;
+    m.second.copyTo( n.second, mask( n ).second );
     return n;
 }
 
@@ -1477,6 +1486,12 @@ static filters::value_type remove_mean_impl_(const filters::value_type m, const 
     return n;
 }
 
+boost::function< filter::input_type( filter::input_type ) > make_filter_functor( const std::vector< std::string >& e )
+{
+    COMMA_THROW( comma::exception, "todo" );
+    COMMA_THROW( comma::exception, "expected filter, got: \"" << comma::join( e, ';' ) << "\"" );
+}
+
 std::vector< filter > filters::make( const std::string& how, unsigned int default_delay )
 {
     std::vector< std::string > v = comma::split( how, ';' );
@@ -1768,6 +1783,16 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
             }
             f.push_back( filter( boost::bind( &resize_impl_, _1, width, height, w, h, interpolation ) ) );
         }
+        else if( e[0] == "mask" )
+        {
+            if( e.size() == 1 ) { COMMA_THROW( comma::exception, "mask: please specify mask filters" ); }
+            if( e.size() > 2 ) { COMMA_THROW( comma::exception, "mask: expected 1 parameter; got: " << v[i] ); }
+            std::string filter_string = e[1];
+            const std::vector< std::string > w = comma::split( filter_string, '|' ); // quick and dirty, running out of delimiters
+            boost::function< filter::input_type( filter::input_type ) > g;
+            for( unsigned int k = 0; k < w.size(); ++k ) { g = boost::bind( make_filter_functor( comma::split( w[i], ':' ) ), boost::bind( g, _1 ) ); }
+            f.push_back( filter( boost::bind( &mask_impl_, _1, g ) ) );
+        }
         else if( e[0] == "max" ) // todo: remove this filter; not thread-safe, should be run with --threads=1
         {
             f.push_back( filter( max_impl_( boost::lexical_cast< unsigned int >( e[1] ), true ), false ) );
@@ -1807,14 +1832,10 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
         else if(e[0]=="normalize")
         {
             //const std::vector< std::string >& s = comma::split( e[1], ',' );
-            if(e[1]=="max")
-                f.push_back(filter(&normalize_max_impl_));
-            else if(e[1]=="sum")
-                f.push_back( filter( &normalize_sum_impl_) );
-            else if(e[1]=="all")
-                f.push_back( filter( &normalize_cv_impl_) );
-            else
-                { COMMA_THROW( comma::exception, "expected max or sum option for normalize, got" << e[1] ); }
+            if(e[1]=="max") { f.push_back(filter(&normalize_max_impl_)); }
+            else if(e[1]=="sum") { f.push_back( filter( &normalize_sum_impl_) ); }
+            else if(e[1]=="all") { f.push_back( filter( &normalize_cv_impl_) ); }
+            else { COMMA_THROW( comma::exception, "expected max or sum option for normalize, got" << e[1] ); }
         }
         else if(e[0]=="equalize-histogram")
         {
@@ -2032,7 +2053,7 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
             if( !vf ) { COMMA_THROW( comma::exception, "expected filter, got \"" << v[i] << "\"" ); }
             f.push_back( *vf );
         }
-        modified = ( v[i] != "view" && v[i] != "thumb" && v[i] != "split" && v[i]!="unpack12" );
+        modified = e[0] != "view" && e[0] != "thumb" && e[0] != "split" && e[0] !="unpack12";
     }
     return f;
 }
