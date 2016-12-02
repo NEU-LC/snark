@@ -1515,7 +1515,12 @@ static filters::value_type remove_mean_impl_(const filters::value_type m, const 
 
 boost::function< filter::input_type( filter::input_type ) > make_filter_functor( const std::vector< std::string >& e )
 {
-    COMMA_THROW( comma::exception, "todo" );
+    if( e[0] == "convert-color" || e[0] == "convert_color" )
+    {
+        if( e.size() == 1 ) { COMMA_THROW( comma::exception, "convert-color: please specify conversion" ); }
+        return boost::bind( &cvt_color_impl_, _1, cvt_color_type_from_string( e[1] ) );
+    }
+    if( e[0] == "count" ) { return count_impl_(); }
     COMMA_THROW( comma::exception, "expected filter, got: \"" << comma::join( e, ';' ) << "\"" );
 }
 
@@ -1535,20 +1540,11 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
             unsigned int which = boost::lexical_cast< unsigned int >( e[1] ) + 45u; // HACK, bayer as unsigned int, but I don't find enum { BG2RGB, GB2BGR ... } more usefull
             f.push_back( filter( boost::bind( &cvt_color_impl_, _1, which ) ) );
         }
-        else if( e[0] == "convert-color" || e[0] == "convert_color" )
-        {
-            unsigned int which = cvt_color_type_from_string(e[1]);
-            f.push_back( filter( boost::bind( &cvt_color_impl_, _1, which ) ) );
-        }
         else if( e[0] == "unpack12" )
         {
             if( modified ) { COMMA_THROW( comma::exception, "cannot covert from 12 bit packed after transforms: " << name ); }
             if(e.size()!=1) { COMMA_THROW( comma::exception, "unexpected arguement: "<<e[1]); }
-            f.push_back( filter(boost::bind(&unpack12_impl_, _1 )) );
-        }
-        else if( e[0] == "count" )
-        {
-            f.push_back( filter( count_impl_() ) );
+            f.push_back( filter( boost::bind( &unpack12_impl_, _1 ) ) );
         }
         else if( e[0] == "crop" )
         {
@@ -2128,8 +2124,7 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
         else
         {
             const boost::optional< filter >& vf = imaging::vegetation::filters::make( v[i] );
-            if( !vf ) { COMMA_THROW( comma::exception, "expected filter, got \"" << v[i] << "\"" ); }
-            f.push_back( *vf );
+            f.push_back( vf ? *vf : filter( make_filter_functor( e ) ) );
         }
         modified = e[0] != "view" && e[0] != "thumb" && e[0] != "split" && e[0] !="unpack12";
     }
