@@ -105,7 +105,7 @@ require(['jquery', "jquery_ui",
     function initialize(frontend_config) {
         controller.prototype.initialize_gui(500);
         controller.prototype.add_gui_globals();
-        controller.prototype.load_feed_items(frontend_config, "");
+        controller.prototype.load_feed_items(frontend_config, frontend_config.feeds, "");
         controller.prototype.initialize_load_config();
         controller.prototype.init_actions();
     }

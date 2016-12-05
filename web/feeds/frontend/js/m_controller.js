@@ -118,7 +118,7 @@ require(['jquery', 'jquery_mobile', "jquery_timeago", "bootstrap",
     function initialize(frontend_config) {
         m_controller.prototype.initialize_gui(300);
         m_controller.prototype.add_gui_globals();
-        m_controller.prototype.load_feed_items(frontend_config, "");
+        m_controller.prototype.load_feed_items(frontend_config, frontend_config.feeds, "");
         // Global navmenu panel
         $("#main_menu_list").enhanceWithin();
         //$("#main_menu_list").trigger('create');
