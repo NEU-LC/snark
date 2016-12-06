@@ -342,6 +342,34 @@ static filters::value_type bands_to_cols_impl_( filters::value_type input, bool 
     return output;
 }
 
+static filters::value_type channels_to_cols_impl_( filters::value_type input, bool channels_to_cols_ )
+{
+    unsigned int w = input.second.cols;
+    unsigned int h = input.second.rows;
+
+    unsigned int input_c = input.second.channels();
+    unsigned int output_t = CV_MAKETYPE( input.second.depth(), 1 );
+    filters::value_type output( input.first, cv::Mat( h, input_c * w, output_t ) );
+
+    std::vector< int > from_to;
+    from_to.reserve( 2 * input_c );
+    for ( size_t i = 0; i < input_c; ++i ) { from_to.push_back( i ); from_to.push_back( i ); }
+
+    std::vector< cv::Mat > src( 1 );
+    std::vector< cv::Mat > dst( input_c );
+    for ( unsigned int ipos = 0; ipos < w; ++ipos )
+    {
+        for( size_t i = 0; i < input_c; ++i )
+        {
+            dst[i] = cv::Mat( output.second, cv::Rect( ipos * input_c + i, 0, 1, h ) );
+        }
+        src[0] = cv::Mat( input.second, cv::Rect( ipos, 0, 1, h ) );
+        cv::mixChannels( src, dst, &from_to[0], input_c );
+    }
+
+    return output;
+}
+
 class accumulate_impl_
 {
     public:
@@ -1638,6 +1666,11 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
             }
             if ( bands.empty() ) { COMMA_THROW( comma::exception, op_name << ": specify at least one band" ); }
             f.push_back( filter( boost::bind( &bands_to_cols_impl_, _1, bands_to_cols, bands, cv_reduce_method, cv_reduce_dtype ) ) );
+        }
+        else if( e[0] == "channels-to-cols" || e[0] == "channels-to-rows" )
+        {
+            const bool channels_to_cols = e[0] == "channels-to-cols";
+            f.push_back( filter( boost::bind( &channels_to_cols_impl_, _1, channels_to_cols ) ) );
         }
         else if( e[0] == "crop-tile" )
         {
