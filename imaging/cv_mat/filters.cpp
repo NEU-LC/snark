@@ -1513,13 +1513,11 @@ struct load_impl_
         const std::vector< std::string >& v = comma::split( filename, '.' );
         if( v.back() == "bin" ) // quick and dirty
         {
-            std::cerr << "--> load: a" << std::endl;
-            std::ifstream ifs( filename );
+            std::ifstream ifs( &filename[0] );
             if( !ifs.is_open() ) { COMMA_THROW( comma::exception, "failed to open \"" << filename << "\"" ); }
             serialization s;
             value = s.read( ifs );
             ifs.close();
-            std::cerr << "--> load: z" << std::endl;
         }
         else
         {
