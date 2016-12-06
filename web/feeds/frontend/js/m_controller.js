@@ -95,7 +95,7 @@ require(['jquery', 'jquery_mobile', "jquery_timeago", "bootstrap",
             return new GraphFeed(feed_name, feed_path, config);
         } else if (type == 'stream') {
             m_controller.prototype.add_stream_body(feed_path, '<div class="target stream"/>', config.form);
-            return new ImageStreamFeed(feed_name, config);
+            return new ImageStreamFeed(feed_name, feed_path, config);
         } else if (type == 'track') {
             m_controller.prototype.add_poll_body(feed_path, '<div class="target"/>', config.form);
             return new TrackFeed(feed_name, feed_path, config);
