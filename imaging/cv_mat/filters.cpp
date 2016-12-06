@@ -1767,6 +1767,11 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
             const bool channels_to_cols = e[0] == "channels-to-cols";
             f.push_back( filter( boost::bind( &channels_to_cols_impl_, _1, channels_to_cols ) ) );
         }
+        else if( e[0] == "swap-channels" )
+        {
+            COMMA_THROW( comma::exception, "NYI" );
+            // use cv::reshape or cv::mixChannels
+        }
         else if( e[0] == "crop-tile" )
         {
             if( e.size() < 2 ) { COMMA_THROW( comma::exception, "crop-tile: specify number of tiles along x and y, and at least one tile, e.g. crop-tile=1,1,0,0" ); }
