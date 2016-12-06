@@ -349,7 +349,9 @@ static filters::value_type channels_to_cols_impl_( filters::value_type input, bo
 
     unsigned int input_c = input.second.channels();
     unsigned int output_t = CV_MAKETYPE( input.second.depth(), 1 );
-    filters::value_type output( input.first, cv::Mat( h, input_c * w, output_t ) );
+    filters::value_type output( input.first, cv::Mat( channels_to_cols ? h : input_c * h
+                                                    , channels_to_cols ? input_c * w : w
+                                                    , output_t ) );
 
     std::vector< int > from_to;
     from_to.reserve( 2 * input_c );
@@ -357,13 +359,17 @@ static filters::value_type channels_to_cols_impl_( filters::value_type input, bo
 
     std::vector< cv::Mat > src( 1 );
     std::vector< cv::Mat > dst( input_c );
-    for ( unsigned int ipos = 0; ipos < w; ++ipos )
+    for ( unsigned int ipos = 0; ipos < ( channels_to_cols ? w : h ) ; ++ipos )
     {
         for( size_t i = 0; i < input_c; ++i )
         {
-            dst[i] = cv::Mat( output.second, cv::Rect( ipos * input_c + i, 0, 1, h ) );
+            dst[i] = cv::Mat( output.second, channels_to_cols
+                                           ? cv::Rect( ipos * input_c + i, 0, 1, h )
+                                           : cv::Rect( 0, ipos * input_c + i, w, 1 ) );
         }
-        src[0] = cv::Mat( input.second, cv::Rect( ipos, 0, 1, h ) );
+        src[0] = cv::Mat( input.second, channels_to_cols
+                                      ? cv::Rect( ipos, 0, 1, h )
+                                      : cv::Rect( 0, ipos, w, 1 ) );
         cv::mixChannels( src, dst, &from_to[0], input_c );
     }
 
