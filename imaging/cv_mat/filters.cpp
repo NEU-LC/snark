@@ -342,7 +342,50 @@ static filters::value_type bands_to_cols_impl_( filters::value_type input, bool 
     return output;
 }
 
-static filters::value_type channels_to_cols_impl_( filters::value_type input, bool channels_to_cols_ )
+static filters::value_type cols_to_channels_impl_( filters::value_type input, bool cols_to_channels, const std::vector< unsigned int > & values, double padding_value, unsigned int repeat )
+{
+    if ( input.second.channels() != 1 ) { COMMA_THROW( comma::exception, "input image for cols-to-channels operation must have a single channel" ); }
+    std::string element = cols_to_channels ? "column" : "row";
+
+    unsigned int w = input.second.cols;
+    unsigned int h = input.second.rows;
+
+    unsigned int min_element = *std::min_element( values.begin(), values.end() );
+    if ( min_element >= w ) { COMMA_THROW( comma::exception, "the first output " << element << " is outside of the input image" ); }
+    unsigned int output_w = repeat ? ( w - min_element ) / repeat : 1;
+    unsigned int output_h = h;
+    unsigned int output_c = values.size() == 2 ? 3 : values.size();
+    unsigned int output_t = CV_MAKETYPE( input.second.depth(), output_c );
+    filters::value_type output( input.first, cv::Mat( output_h, output_w, output_t ) );
+
+    std::vector< int > from_to;
+    from_to.reserve( 2 * output_c );
+    for ( size_t i = 0; i < output_c; ++i ) { from_to.push_back( i ); from_to.push_back( i ); }
+
+    std::vector< cv::Mat > src( output_c );
+    std::vector< cv::Mat > dst( 1 );
+    cv::Mat padding = cv::Mat::ones( input.second.rows, 1, input.second.type() ) * padding_value; // instantiation is lazy
+    std::vector< unsigned int > indices( values );
+    for( size_t i = indices.size(); i < output_c; ++i ) { src[i] = padding; }
+    for ( unsigned int opos = 0; opos < output_w; ++opos )
+    {
+        for( size_t i = 0; i < indices.size(); ++i )
+        {
+            unsigned int j = indices[i];
+            if ( j >= w ) {
+                src[i] = padding;
+            } else {
+                src[i] = cv::Mat( input.second, cv::Rect( j, 0, 1, h ) );
+            }
+            indices[i] += repeat;
+        }
+        dst[0] = cv::Mat( output.second, cv::Rect( opos, 0, 1, h ) );
+        cv::mixChannels( src, dst, &from_to[0], output_c );
+    }
+    return output;
+}
+
+static filters::value_type channels_to_cols_impl_( filters::value_type input, bool channels_to_cols )
 {
     unsigned int w = input.second.cols;
     unsigned int h = input.second.rows;
@@ -1672,6 +1715,52 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
             }
             if ( bands.empty() ) { COMMA_THROW( comma::exception, op_name << ": specify at least one band" ); }
             f.push_back( filter( boost::bind( &bands_to_cols_impl_, _1, bands_to_cols, bands, cv_reduce_method, cv_reduce_dtype ) ) );
+        }
+        else if( e[0] == "cols-to-channels" || e[0] == "rows-to-channels" )
+        {
+            // rhs looks like "cols-to-channels=1,4,5[|pad:value|repeat:step]"
+            // the '|'-separated entries shall be either:
+            // - a comma-separated lists of integers, or
+            // - a single integer, or
+            // - colon-separated words with a known keyword on the left and one of the known enumeration names on the right
+            const bool cols_to_channels = e[0] == "cols-to-channels";
+            const std::string & op_name = cols_to_channels ? "cols-to-channels" : "rows-to-channels";
+            const std::string & op_what = cols_to_channels ? "column" : "row";
+            if( e.size() < 2 ) { COMMA_THROW( comma::exception, op_name << ": specify at least one column or column list to extract, e.g. " << op_name << "=1,10" ); }
+            std::vector< std::string > inputs = comma::split( e[1], '|' );
+            std::vector< unsigned int > values;
+            double padding = 0.0;
+            unsigned int repeat = 0;
+            for ( size_t s = 0; s < inputs.size(); ++s )
+            {
+                if ( inputs[s].find( ":" ) != std::string::npos )
+                {
+                    std::vector< std::string > setting = comma::split( inputs[s], ':' );
+                    if ( setting.size() != 2 ) { COMMA_THROW( comma::exception, op_name << ": expected keyword:value; got " << setting.size() << " parameters '" << inputs[s] << "'" ); }
+                    if ( setting[0] == "pad" )
+                    {
+                        padding = boost::lexical_cast< double >( setting[1] );
+                    }
+                    else if ( setting[0] == "repeat" )
+                    {
+                        repeat = boost::lexical_cast< unsigned int >( setting[1] );
+                    }
+                    else
+                    {
+                        COMMA_THROW( comma::exception, op_name << ": the keyword '" << setting[0] << "' is not one of [pad,repeat]" );
+                    }
+                }
+                else
+                {
+                    std::vector< std::string > vstrings = comma::split( inputs[s], ',' );
+                    if ( vstrings.size() > 4 ) { COMMA_THROW( comma::exception, op_name << ": can store up to 4 " << op_what << "s into channels, got " << vstrings.size() << " inputs '" << inputs[s] << "'" ); }
+                    values.reserve( vstrings.size() );
+                    for ( size_t i = 0; i < vstrings.size(); ++i ) { values.push_back( boost::lexical_cast< unsigned int >( vstrings[i] ) ); }
+                }
+            }
+            if ( values.empty() ) { COMMA_THROW( comma::exception, op_name << ": specify at least one " << op_what << " to store as channel" ); }
+            if ( values.size() > 4 ) { COMMA_THROW( comma::exception, op_name << ": can have at most 4 output channels" ); }
+            f.push_back( filter( boost::bind( &cols_to_channels_impl_, _1, cols_to_channels, values, padding, repeat ) ) );
         }
         else if( e[0] == "channels-to-cols" || e[0] == "channels-to-rows" )
         {
