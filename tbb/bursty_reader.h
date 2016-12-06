@@ -136,7 +136,7 @@ inline void bursty_reader< T >::produce_loop_()
     {
         while( running_ )
         {
-            T t = produce_();
+            T t = produce_(); // attention: if produce is blocking, it may, well, block on join(), if no new data is coming... something to fix or parametrize (e.g. with timed wait)?
             if( !running_ ) { queue_.push( T() ); break; }
             queue_.push( t );
             if( !bursty_reader_traits< T >::valid( t ) ) { break; }

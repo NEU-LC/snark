@@ -27,9 +27,7 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
 #include "disparity.h"
-#include <boost/thread/thread_time.hpp>
 
 namespace snark { namespace imaging {
 

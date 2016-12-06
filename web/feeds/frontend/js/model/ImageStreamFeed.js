@@ -1,7 +1,8 @@
 define(['jquery', 'Grid'], function ($, Grid) {
 
-    var ImageStreamFeed = function (feed_name, config) {
+    var ImageStreamFeed = function (feed_name, feed_path, config) {
         this.feed_name = feed_name;
+        this.feed_path = feed_path;
         this.config = config;
         this.id = '#' + this.feed_name;
         this.el = $(this.id);
@@ -80,7 +81,7 @@ define(['jquery', 'Grid'], function ($, Grid) {
     ImageStreamFeed.prototype.started = function () {
         this.control.removeClass('text-muted glyphicon-stop').addClass('text-success glyphicon-refresh');
         this.el.removeClass('panel-disabled').addClass('panel-enabled');
-        var gui_folder = $(gui.__folders[this.feed_name].__ul);
+        var gui_folder = $(gui.__folders[this.feed_path].__ul);
         if (globals.isMobile) {
             gui_folder.closest('li').find('a.ui-collapsible-heading-toggle').first().removeClass('panel-disabled').addClass('panel-enabled');
         } else {
@@ -91,7 +92,7 @@ define(['jquery', 'Grid'], function ($, Grid) {
     ImageStreamFeed.prototype.stopped = function () {
         this.control.removeClass('text-success glyphicon-refresh').addClass('text-muted glyphicon-stop');
         this.el.removeClass('panel-enabled').addClass('panel-disabled');
-        var gui_folder = $(gui.__folders[this.feed_name].__ul);
+        var gui_folder = $(gui.__folders[this.feed_path].__ul);
         if (globals.isMobile) {
             gui_folder.closest('li').find('a.ui-collapsible-heading-toggle').removeClass('panel-enabled').addClass('panel-disabled');
         } else {

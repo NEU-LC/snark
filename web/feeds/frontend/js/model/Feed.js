@@ -93,7 +93,7 @@ define('Feed', ["jquery", "jquery_timeago", "utils"], function ($) {
         this.interval = setInterval(this.preload.bind(this), this.config.refresh.interval * 1000);
         this.status.removeClass('text-muted glyphicon-stop').addClass('text-success glyphicon-refresh');
         this.el.removeClass('panel-disabled').addClass('panel-enabled');
-        var gui_folder = $(gui.__folders[this.feed_name].__ul);
+        var gui_folder = $(gui.__folders[this.feed_path].__ul);
         if (globals.isMobile) {
             gui_folder.closest('li').find('a.ui-collapsible-heading-toggle').first().removeClass('panel-disabled').addClass('panel-enabled');
         } else {
@@ -108,7 +108,7 @@ define('Feed', ["jquery", "jquery_timeago", "utils"], function ($) {
         if (!this.target.hasClass('form')) {
             this.status.removeClass('text-success glyphicon-refresh').addClass('text-muted glyphicon-stop');
             this.el.removeClass('panel-enabled').addClass('panel-disabled');
-            var gui_folder = $(gui.__folders[this.feed_name].__ul);
+            var gui_folder = $(gui.__folders[this.feed_path].__ul);
             if (globals.isMobile) {
                 gui_folder.closest('li').find('a.ui-collapsible-heading-toggle').removeClass('panel-enabled').addClass('panel-disabled');
             } else {

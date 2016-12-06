@@ -115,39 +115,39 @@ static cv_mat::filters::value_type exponential_combination_impl_( const cv_mat::
     if( m.second.channels() != static_cast< int >( powers.size() ) ) { COMMA_THROW( comma::exception, "exponential-combination: the number of powers does not match the number of channels; channels = " << m.second.channels() << ", powers = " << powers.size() ); }
     int single_type=cv_mat::single_channel_type(m.second.type());
     if( single_type != CV_32FC1 && single_type != CV_64FC1) { COMMA_THROW( comma::exception, "expected image type CV_32FC1 or CV_64FC1; got: " << cv_mat::type_as_string( m.second.type() ) << "single type: " <<cv_mat::type_as_string(single_type) ); }
-    int chs=m.second.channels();
+    unsigned int chs=m.second.channels();
     cv::Mat result( m.second.rows,m.second.cols, single_type== CV_32FC1? CV_32FC1:CV_64FC1 );
     //split
     std::vector<cv::Mat> planes;
     planes.reserve(chs);
-    for(int i=0;i<chs;i++)
-        planes.push_back(cv::Mat(1,1,single_type));
+    for(unsigned int i=0;i<chs;i++) { planes.push_back(cv::Mat(1,1,single_type)); }
     cv::split(m.second,planes);
     //calc exponent
-    for(int i=0;i<chs;i++)
-        cv::pow(planes[i],powers[i],planes[i]);
+    for(unsigned int i=0;i<chs;i++) { cv::pow(planes[i],powers[i],planes[i]); }
     //combine
     result.setTo(cv::Scalar(1,1,1,1));
-    for(int i=0;i<chs;i++)
-        cv::multiply(result,planes[i],result);
+    for(unsigned int i=0;i<chs;i++) { cv::multiply(result,planes[i],result); }
     return cv_mat::filters::value_type(m.first, result);
+}
+
+boost::function< cv_mat::filters::value_type( cv_mat::filters::value_type ) > filters::make_functor( const std::vector< std::string >& e )
+{
+    if( e[0] == "ndvi" ) { return boost::bind( &ndvi_impl_, _1 ); }
+    if( e[0]=="exponential-combination" )
+    {
+        const std::vector< std::string >& s = comma::split( e[1], ',' );
+        if( s[0].empty() ) { COMMA_THROW( comma::exception, "exponential-combination: expected powers got: \"" << e[1] << "\"" ); }
+        std::vector< double > power( s.size() );
+        for( unsigned int j = 0; j < s.size(); ++j ) { power[j] = boost::lexical_cast< double >( s[j] ); }
+        return boost::bind( &exponential_combination_impl_, _1, power );
+    }
+    return NULL;
 }
 
 boost::optional< cv_mat::filter > filters::make( const std::string& what )
 {
-    std::vector< std::string > v = comma::split( what, '=' );
-    if( v[0] == "ndvi" )
-    { 
-        return cv_mat::filter( boost::bind( &ndvi_impl_, _1 ) );
-    }
-    else if(v[0]=="exponential-combination")
-    {
-        const std::vector< std::string >& s = comma::split( v[1], ',' );
-        if( s[0].empty() ) { COMMA_THROW( comma::exception, "exponential-combination: expected powers got: \"" << v[1] << "\"" ); }
-        std::vector< double > power( s.size() );
-        for( unsigned int j = 0; j < s.size(); ++j ) { power[j] = boost::lexical_cast< double >( s[j] ); }
-        return cv_mat::filter( boost::bind( &exponential_combination_impl_, _1, power ) );
-    }
+    boost::function< cv_mat::filters::value_type( cv_mat::filters::value_type ) > functor = make_functor( what );
+    if( functor ) { return cv_mat::filter( functor ); }
     return boost::none;
 }
 
