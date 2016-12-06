@@ -203,7 +203,7 @@ static boost::unordered_map< std::string, unsigned int > cvt_color_types_ = fill
 unsigned int cvt_color_type_from_string( const std::string& t ) // to avoid compilation warning
 {
     boost::unordered_map< std::string, unsigned int >::const_iterator it = cvt_color_types_.find( t );
-    if (it == cvt_color_types_.end()) { COMMA_THROW(comma::exception, "unknown conversion enum '" << t << "' for convert-color"); } 
+    if (it == cvt_color_types_.end()) { COMMA_THROW(comma::exception, "unknown conversion enum '" << t << "' for convert-color"); }
     return it->second;
 }
 
@@ -211,7 +211,7 @@ static filters::value_type cvt_color_impl_( filters::value_type m, unsigned int 
 {
     filters::value_type n;
     n.first = m.first;
-    cv::cvtColor( m.second, n.second, which ); 
+    cv::cvtColor( m.second, n.second, which );
     return n;
 }
 
@@ -328,7 +328,7 @@ static filters::value_type bands_to_cols_impl_( filters::value_type input, bool 
     filters::value_type output( input.first, cv::Mat( bands_to_cols ? h : bands.size()
                                                     , bands_to_cols ? bands.size() : w
                                                     , output_type ) );
-    for( std::size_t i = 0; i < bands.size(); ++i)
+    for( std::size_t i = 0; i < bands.size(); ++i )
     {
         cv::Mat intile( input.second, bands_to_cols
                                     ? cv::Rect( bands[i].first, 0, bands[i].second, h )
@@ -601,15 +601,15 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
         {
             public:
                 logger() : size_( 0 ), count_( 0 ) {}
-                
+
                 logger( const std::string& filename ) : ofstream_( new std::ofstream( &filename[0] ) ), serialization_( "t,rows,cols,type", comma::csv::format( "t,3ui" ) ), size_( 0 ), count_( 0 ) { if( !ofstream_->is_open() ) { COMMA_THROW( comma::exception, "failed to open \"" << filename << "\"" ); } }
-                
+
                 logger( const std::string& directory, boost::posix_time::time_duration period ) : directory_( directory ), serialization_( "t,rows,cols,type", comma::csv::format( "t,3ui" ) ), period_( period ), size_( 0 ), count_( 0 ) {}
-                
+
                 logger( const std::string& directory, unsigned int size ) : directory_( directory ), serialization_( "t,rows,cols,type", comma::csv::format( "t,3ui" ) ), size_( size ), count_( 0 ) {}
-                
+
                 ~logger() { if( ofstream_ ) { ofstream_->close(); } }
-                
+
                 filters::value_type operator()( filters::value_type m )
                 {
                     if( m.second.empty() ) { return m; } // quick and dirty, end of stream
@@ -625,7 +625,7 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
                     serialization_.write( *ofstream_, m );
                     return m;
                 }
-                
+
             private:
                 boost::mutex mutex_;
                 std::string directory_;
@@ -635,7 +635,7 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
                 boost::posix_time::ptime start_;
                 unsigned int size_;
                 unsigned int count_;
-                
+
                 void update_on_size_()
                 {
                     if( size_ == 0 ) { return; }
@@ -644,7 +644,7 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
                     ofstream_->close();
                     ofstream_.reset();
                 }
-                
+
                 void update_on_time_( filters::value_type m )
                 {
                     if( !period_ ) { return; }
@@ -655,18 +655,18 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
                     ofstream_.reset();
                 }
         };
-        
+
         boost::shared_ptr< logger > logger_; // todo: watch performance
-    
+
     public:
         log_impl_() {}
-        
+
         log_impl_( const std::string& filename ) : logger_( new logger( filename ) ) {}
-        
+
         log_impl_( const std::string& directory, boost::posix_time::time_duration period ) : logger_( new logger( directory, period ) ) {}
-        
+
         log_impl_( const std::string& directory, unsigned int size ) : logger_( new logger( directory, size ) ) {}
-        
+
         filters::value_type operator()( filters::value_type m ) { return logger_->operator()( m ); }
 };
 
@@ -721,7 +721,7 @@ static filters::value_type cross_impl_( filters::value_type m, boost::optional< 
 }
 
 namespace drawing {
-    
+
 struct shape
 {
     cv::Scalar color;
@@ -749,7 +749,7 @@ struct rectangle : public shape
     rectangle( const cv::Point& upper_left, const cv::Point& lower_right, const cv::Scalar& color, int thickness = 1, int line_type = 8, int shift = 0 ) : shape( color, thickness, line_type, shift ), upper_left( upper_left ), lower_right( lower_right ) {}
     void draw( cv::Mat m ) const { cv::rectangle( m, upper_left, lower_right, color, thickness, line_type, shift ); }
 };
-    
+
 } // namespace drawing {
 
 static filters::value_type circle_impl_( filters::value_type m, const drawing::circle& circle ) { circle.draw( m.second ); return m; }
@@ -1367,7 +1367,7 @@ static double max_value(int depth)
         case CV_32S: return depth_traits< CV_32S >::max_value();
         case CV_32F: return depth_traits< CV_32F >::max_value();
         case CV_64F: return depth_traits< CV_64F >::max_value();
-        default: { COMMA_THROW(comma::exception, "invalid depth: "<<depth ); } 
+        default: { COMMA_THROW(comma::exception, "invalid depth: "<<depth ); }
     }
 }
 
@@ -1398,7 +1398,7 @@ struct overlay_impl_
 //         comma::verbose<<"mat rows,cols,type;channels,depth "<<mat.rows<<","<<mat.cols<<","<<type_as_string(mat.type())<<";"<<mat.channels()<<","<<mat.depth()<<std::endl;
 //         comma::verbose<<"overlay rows,cols,type;channels,depth "<<overlay.rows<<","<<overlay.cols<<","<<type_as_string(overlay.type())<<";"<<overlay.channels()<<","<<overlay.depth()<<std::endl;
         if(mat.channels()!=overlay.channels()-1) { COMMA_THROW(comma::exception, "mat's channels ("<<mat.channels()<<") should be one less than overlay's channel: "<<overlay.channels()); }
-        if(mat.depth() != overlay.depth()) 
+        if(mat.depth() != overlay.depth())
         {
             comma::verbose<<"converting overlay from depth "<<overlay.depth()<<" to "<<mat.depth()<<std::endl;
             overlay=convert_and_scale(overlay, mat.depth());
@@ -2049,7 +2049,7 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
         {
             const std::vector< std::string >& s = comma::split( e[1], ',' );
             if( s.size() < 2 ) { COMMA_THROW( comma::exception, "expected blur=<blur_type>,<blur_type_parameters>" ); }
-            
+
             blur_t params;
             params.blur_type = blur_t::from_string(s[0]);
             if (s[0] == "box")
@@ -2073,7 +2073,7 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
                 { COMMA_THROW( comma::exception, "blur=bilateral expected 3 parameters" ); }
                 params.neighbourhood_size = boost::lexical_cast< int >( s[1] );
                 params.sigma_space = boost::lexical_cast< double >( s[2] );
-                params.sigma_colour = boost::lexical_cast< double >( s[3] ); 
+                params.sigma_colour = boost::lexical_cast< double >( s[3] );
             }
             else if (s[0] == "adaptive-bilateral")
             {
