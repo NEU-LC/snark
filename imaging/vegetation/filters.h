@@ -27,10 +27,10 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef SNARK_IMAGING_VEGETATION_FILTERS_H_
-#define SNARK_IMAGING_VEGETATION_FILTERS_H_
+#pragma once
 
 #include <boost/optional.hpp>
+#include <comma/string/split.h>
 #include "../cv_mat/filters.h"
 
 namespace snark { namespace imaging { namespace vegetation {
@@ -41,10 +41,14 @@ struct filters
     /// take name-value string, return filter
     static boost::optional< cv_mat::filter > make( const std::string& what );
     
+    /// take name-value string, return functor
+    static boost::function< cv_mat::filters::value_type( cv_mat::filters::value_type ) > make_functor( const std::string& v, char equal_sign = '=' ) { return make_functor( comma::split( v, equal_sign ) ); }
+    
+    /// take name-value vector, return functor
+    static boost::function< cv_mat::filters::value_type( cv_mat::filters::value_type ) > make_functor( const std::vector< std::string >& e );
+    
     /// return usage for all filters
     static const std::string& usage();
 };
     
 } } }  // namespace snark { namespace imaging { namespace vegetation {
-
-#endif // SNARK_IMAGING_VEGETATION_FILTERS_H_

@@ -1513,7 +1513,7 @@ static filters::value_type remove_mean_impl_(const filters::value_type m, const 
     return n;
 }
 
-boost::function< filter::input_type( filter::input_type ) > make_filter_functor( const std::vector< std::string >& e )
+static boost::function< filter::input_type( filter::input_type ) > make_filter_functor( const std::vector< std::string >& e )
 {
     if( e[0] == "convert-color" || e[0] == "convert_color" )
     {
