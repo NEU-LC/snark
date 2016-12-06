@@ -1504,6 +1504,33 @@ static filters::value_type inrange_impl_( const filters::value_type m, const cv:
     return n;
 }
 
+struct load_impl_
+{
+    filters::value_type value;
+    
+    load_impl_( const std::string& filename )
+    {
+        const std::vector< std::string >& v = comma::split( filename, '.' );
+        if( v.back() == "bin" ) // quick and dirty
+        {
+            std::cerr << "--> load: a" << std::endl;
+            std::ifstream ifs( filename );
+            if( !ifs.is_open() ) { COMMA_THROW( comma::exception, "failed to open \"" << filename << "\"" ); }
+            serialization s;
+            value = s.read( ifs );
+            ifs.close();
+            std::cerr << "--> load: z" << std::endl;
+        }
+        else
+        {
+            value.second = cv::imread( filename, -1 );
+            if( value.second.data == NULL ) { COMMA_THROW( comma::exception, "failed to load image file: \""<< filename << "\"" ); }
+        }
+    }
+    
+    filters::value_type operator()( filters::value_type ) { return value; }
+};
+
 static filters::value_type remove_mean_impl_(const filters::value_type m, const cv::Size kernel_size, const double ratio )
 {
     filters::value_type n;
@@ -1890,6 +1917,11 @@ static boost::function< filter::input_type( filter::input_type ) > make_filter_f
         }
         else { COMMA_THROW( comma::exception, "invalid blur type" ); }
         return boost::bind( &blur_impl_, _1, params );
+    }
+    if( e[0] == "load" )
+    {
+        if( e.size() < 2 ) { COMMA_THROW( comma::exception, "please specify filename load=<filename>" ); }
+        return load_impl_( e[1] );
     }
     if( e[0] == "map" )
     {
