@@ -1515,15 +1515,15 @@ struct load_impl_
         {
             std::ifstream ifs( &filename[0] );
             if( !ifs.is_open() ) { COMMA_THROW( comma::exception, "failed to open \"" << filename << "\"" ); }
-            serialization s;
+            serialization s( "t,rows,cols,type", comma::csv::format( "t,3ui" ) ); // quick and dirty
             value = s.read( ifs );
             ifs.close();
         }
         else
         {
             value.second = cv::imread( filename, -1 );
-            if( value.second.data == NULL ) { COMMA_THROW( comma::exception, "failed to load image file: \""<< filename << "\"" ); }
         }
+        if( value.second.data == NULL ) { COMMA_THROW( comma::exception, "failed to load image from file \""<< filename << "\"" ); }
     }
     
     filters::value_type operator()( filters::value_type ) { return value; }
@@ -1822,8 +1822,8 @@ static boost::function< filter::input_type( filter::input_type ) > make_filter_f
         if( e.size() > 2 ) { COMMA_THROW( comma::exception, "mask: expected 1 parameter; got: " << comma::join( e, '=' ) ); }
         std::string filter_string = e[1];
         const std::vector< std::string > w = comma::split( filter_string, '|' ); // quick and dirty, running out of delimiters
-        boost::function< filter::input_type( filter::input_type ) > g;
-        for( unsigned int k = 0; k < w.size(); ++k ) { g = boost::bind( make_filter_functor( comma::split( w[k], ':' ) ), boost::bind( g, _1 ) ); }
+        boost::function< filter::input_type( filter::input_type ) > g = make_filter_functor( comma::split( w[0], ':' ) );
+        for( unsigned int k = 1; k < w.size(); ++k ) { g = boost::bind( make_filter_functor( comma::split( w[k], ':' ) ), boost::bind( g, _1 ) ); }
         return boost::bind( &mask_impl_, _1, g );
     }
     else if( e[0] == "timestamp" ) { return &timestamp_impl_; }

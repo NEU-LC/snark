@@ -138,10 +138,7 @@ std::size_t serialization::size( const cv::Mat& m ) const
     return headerSize + ( m.dataend - m.datastart );
 }
 
-std::size_t serialization::size( const std::pair< boost::posix_time::ptime, cv::Mat >& m ) const
-{
-    return size( m.second );
-}
+std::size_t serialization::size( const std::pair< boost::posix_time::ptime, cv::Mat >& m ) const { return size( m.second ); }
 
 std::pair< boost::posix_time::ptime, cv::Mat > serialization::read( std::istream& is )
 {
