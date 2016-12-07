@@ -62,6 +62,9 @@ EOF
 This command uses the log filter to directly log to a file without using stdout.
 For high data throughput this is more efficient.
 
+example:
+    $scriptname --config=config.json --period=60
+
 EOF
     exit
 }
