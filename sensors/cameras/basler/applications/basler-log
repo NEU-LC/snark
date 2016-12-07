@@ -139,7 +139,11 @@ command="basler-cat log=.,period:$options_period;null $args"
 
 verbose "executing \"$command\""
 
-while : ; do
+shutdown=0
+
+trap "shutdown=1" INT TERM HUP PIPE
+
+while (( ! shutdown )); do
     $command
-    say "restarting ${command%% *}"
+    (( shutdown )) || say "restarting ${command%% *}"
 done
