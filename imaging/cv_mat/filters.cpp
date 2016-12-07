@@ -2112,6 +2112,8 @@ static boost::function< filter::input_type( filter::input_type ) > make_filter_f
         }
         return overlay_impl_( s[0], x, y );
     }
+    boost::function< cv_mat::filters::value_type( cv_mat::filters::value_type ) > functor = imaging::vegetation::filters::make_functor( e );
+    if( functor ) { return functor; }
     COMMA_THROW( comma::exception, "expected filter, got: \"" << comma::join( e, '=' ) << "\"" );
 }
 
@@ -2267,8 +2269,7 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
         }
         else
         {
-            const boost::optional< filter >& vf = imaging::vegetation::filters::make( v[i] );
-            f.push_back( vf ? *vf : filter( make_filter_functor( e ) ) );
+            f.push_back( filter( make_filter_functor( e ) ) );
         }
         modified = e[0] != "view" && e[0] != "thumb" && e[0] != "split" && e[0] !="unpack12";
     }
@@ -2352,12 +2353,26 @@ static std::string usage_impl_()
     oss << "        inrange=<lower>,<upper>: a band filter on r,g,b or greyscale image; for rgb: <lower>::=<r>,<g>,<b>; <upper>::=<r>,<g>,<b>; see cv::inRange() for detail" << std::endl;
     oss << "        invert: invert image (to negative)" << std::endl;
     oss << "        linear-combination=<k1>,<k2>,<k3>,...[<c>]: output grey-scale image that is linear combination of input channels with given coefficients and optioanl offset" << std::endl;
+    oss << "        load=<filename>: load image from file instead of taking an image on stdin; the main meaningful use would be in association with mask filter" << std::endl;
+    oss << "                         supported file types by filename extension:" << std::endl;
+    oss << "                             - .bin: file is in cv-cat binary format: <t>,<rows>,<cols>,<type>,<image data>" << std::endl;
+    oss << "                             - otherwise whatever cv::imread supports" << std::endl;
     oss << "        log=<options>: write images to files" << std::endl;
     oss << "            log=<filename>: write images to a single file" << std::endl;
     oss << "            log=<dirname>,size:<number of frames>: write images to files in a given directory, each file (except possibly the last one) containing <number of frames> frames" << std::endl;
     oss << "            log=<dirname>,period:<seconds>: write images to files in a given directory, each file containing frames for a given period of time" << std::endl;
     oss << "                                            e.g. for log=tmp,period:1.5 each file will contain 1.5 seconds worth of images" << std::endl;
     oss << "        magnitude: calculate magnitude for a 2-channel image; see cv::magnitude() for details" << std::endl;
+    oss << "        mask=<mask>: apply mask to image (see cv::copyTo for details)" << std::endl;
+    oss << "                     <mask>: any sequence of cv-cat filters that outputs a single-channel image of the same dimensions as the images on stdin" << std::endl;
+    oss << "                             the separator between the filters is '|'" << std::endl;
+    oss << "                             the equal sign for a filter is ':'" << std::endl;
+    oss << "                     examples" << std::endl;
+    oss << "                         apply a constant mask from a file" << std::endl;
+    oss << "                             cat images.bin | cv-cat 'mask=load:mask.bin' > masked.bin" << std::endl;
+    oss << "                             cat images.bin | cv-cat 'mask=load:mask.png' > masked.bin" << std::endl;
+    oss << "                         extract pixels brighter than 100" << std::endl;
+    oss << "                             cat images.bin | cv-cat 'mask=convert-color:BGR,GRAY|threshold=otsu,100' > masked.bin" << std::endl;
     oss << "        map=<map file>[&<csv options>][&permissive]: map integer values to floating point values read from the map file" << std::endl;
     oss << "             <csv options>: usual csv options for map file, but &-separated (running out of separator characters)" << std::endl;
     oss << "                  fields: key,value; default: value" << std::endl;

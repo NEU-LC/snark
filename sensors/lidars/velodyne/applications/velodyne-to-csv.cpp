@@ -55,22 +55,37 @@
 
 //#include <google/profiler.h>
 
-using namespace snark;
-
-struct adjusted_time_t
+class adjust_timestamp
 {
-    enum { none=0, average, hard };
-    static unsigned from_string(const std::string& s);
-    static snark::timing::adjusted_time_config config_default();
-    adjusted_time_t();
-    boost::posix_time::ptime adjust_timestamp(boost::posix_time::ptime t);
+public:
+    static unsigned const DEFAULT_PERIOD = 288;
+    static unsigned const DEFAULT_THRESHOLD = 550;
+    static unsigned const DEFAULT_RESET = 300;
+
+    enum mode_kind { none = 0, average, hard };
+
+    class mode
+    {
+    private:
+        adjust_timestamp::mode_kind m_kind;
+
+    public:
+        mode( void ) : m_kind( adjust_timestamp::none ) {}
+        mode( std::string const& i_mode_string );
+
+        adjust_timestamp::mode_kind kind( void ) const { return m_kind; }
+    };
+
+    boost::posix_time::ptime operator()( boost::posix_time::ptime t );
+
+    adjust_timestamp( std::string const& i_mode_string, unsigned const i_adjusted_threshold, unsigned const i_adjusted_reset );
+
+private:
+    mode mode_;
     snark::timing::clocked_time_stamp adjusted_timestamp_;
     snark::timing::periodic_time_stamp periodic_time_stamp_;
     boost::posix_time::ptime last_timestamp_;
 };
-
-unsigned adjusted_time_mode=adjusted_time_t::none;
-snark::timing::adjusted_time_config adjusted_time_config=adjusted_time_t::config_default();
 
 static void usage( bool )
 {
@@ -114,12 +129,12 @@ static void usage( bool )
     std::cerr << "            'average': adjust total deviation" << std::endl;
     std::cerr << "            'hard': use closest point as base then add period for later points" << std::endl;
     std::cerr << "        when using on log files, the timestamps may change depending on start of data" << std::endl;
-    std::cerr << "    --adjusted-time-threshold=<threshold>: upper bound for adjusting timestamp, only effective with --adjusted-time; unit: microseconds, default: "<< adjusted_time_config.threshold.total_microseconds() << std::endl;
+    std::cerr << "    --adjusted-time-threshold=<threshold>: upper bound for adjusting timestamp, only effective with --adjusted-time; unit: microseconds, default: "<< adjust_timestamp::DEFAULT_THRESHOLD << std::endl;
     std::cerr << "        if input timestamp is greater than period * ticks + <threshold>, it will reset adjusted time and the input timestamp will be used without change" << std::endl;
-    std::cerr << "    --adjusted-time-reset=<reset>: reset adjusted time after this time, only effective with --adjusted-time; unit: seconds, default: "<< adjusted_time_config.reset.total_seconds() << std::endl;
+    std::cerr << "    --adjusted-time-reset=<reset>: reset adjusted time after this time, only effective with --adjusted-time; unit: seconds, default: "<< adjust_timestamp::DEFAULT_RESET << std::endl;
     std::cerr << "        if input timestamp + <reset> is greater than last reset time, it will reset adjusted time and the input timestamp will be used without change" << std::endl;
-    std::cerr << "    default output columns: " << comma::join( comma::csv::names< velodyne_point >(), ',' ) << std::endl;
-    std::cerr << "    default binary format: " << comma::csv::format::value< velodyne_point >() << std::endl;
+    std::cerr << "    default output columns: " << comma::join( comma::csv::names< snark::velodyne_point >(), ',' ) << std::endl;
+    std::cerr << "    default binary format: " << comma::csv::format::value< snark::velodyne_point >() << std::endl;
     std::cerr << std::endl;
     std::cerr << "examples:" << std::endl;
     std::cerr << "    output csv points to file:" << std::endl;
@@ -143,49 +158,42 @@ static void usage( bool )
     exit( 0 );
 }
 
-
-adjusted_time_t::adjusted_time_t():
-    adjusted_timestamp_(adjusted_time_config.period)
-    , periodic_time_stamp_(adjusted_time_config)
+adjust_timestamp::mode::mode( std::string const& i_mode_string )
+: m_kind( adjust_timestamp::none )
 {
+    if( i_mode_string.empty() ) { m_kind = adjust_timestamp::none; }
     
+    else if( i_mode_string == "average" ) { m_kind = adjust_timestamp::average; }
+
+    else if( i_mode_string == "hard" ) { m_kind = adjust_timestamp::hard; }
+
+    else { COMMA_THROW(comma::exception, "invalid name for adjusted time: "<< i_mode_string <<" (valid values: average, hard)"); }
 }
-boost::posix_time::ptime adjusted_time_t::adjust_timestamp(boost::posix_time::ptime timestamp)
+
+adjust_timestamp::adjust_timestamp( std::string const& i_mode_string, unsigned const i_adjusted_threshold, unsigned const i_adjusted_reset )
+: mode_( i_mode_string )
+, adjusted_timestamp_( boost::posix_time::microseconds( DEFAULT_PERIOD ) )
+, periodic_time_stamp_( boost::posix_time::microseconds( DEFAULT_PERIOD ), boost::posix_time::microseconds( i_adjusted_threshold ), boost::posix_time::seconds( i_adjusted_reset ) )
 {
-    if(!adjusted_time_mode)
-        return timestamp;
-    if( ! last_timestamp_.is_not_a_date_time() && 
-        (timestamp - last_timestamp_) > adjusted_time_config.threshold )
+}
+
+boost::posix_time::ptime adjust_timestamp::operator()( boost::posix_time::ptime timestamp )
+{
+    if( adjust_timestamp::none == mode_.kind() ) { return timestamp; }
+
+    if( !last_timestamp_.is_not_a_date_time() && ( timestamp - last_timestamp_ ) > periodic_time_stamp_.adjusted_threshold() )
     {
-            adjusted_timestamp_.reset();
-            //periodic_time_stamp_.reset();
+        adjusted_timestamp_.reset();
+        //periodic_time_stamp_.reset();
     }
-    last_timestamp_=timestamp;
-    switch(adjusted_time_mode)
+    last_timestamp_ = timestamp;
+
+    switch( mode_.kind() )
     {
-        case adjusted_time_t::average:
-            return adjusted_timestamp_.adjusted(timestamp);
-        case adjusted_time_t::hard:
-            return periodic_time_stamp_.adjusted(timestamp);
-        default: { COMMA_THROW(comma::exception, "invalid adjust time mode "<< adjusted_time_mode ); }
+        case adjust_timestamp::average: return adjusted_timestamp_.adjusted( timestamp );
+        case adjust_timestamp::hard: return periodic_time_stamp_.adjusted( timestamp );
+        default: { COMMA_THROW(comma::exception, "invalid adjust time mode "<< mode_.kind() ); }
     }
-}
-unsigned adjusted_time_t::from_string(const std::string& s)
-{
-    if(s.empty())
-        return none;
-    if(s=="average")
-        return average;
-    if(s=="hard")
-        return hard;
-    COMMA_THROW(comma::exception, "invalid name for adjusted time: "<<s<<" (valid values: average, hard)");
-}
-snark::timing::adjusted_time_config adjusted_time_t::config_default()
-{
-    return snark::timing::adjusted_time_config(
-        boost::posix_time::microseconds(288), 
-        boost::posix_time::microseconds(550), 
-        boost::posix_time::seconds(300) );
 }
 
 static std::string fields_( const std::string& s ) // parsing fields, quick and dirty
@@ -207,7 +215,7 @@ static std::string fields_( const std::string& s ) // parsing fields, quick and 
 static comma::csv::format format_( const std::string& s, const std::string& fields )
 {
     if( !s.empty() ) { try { return comma::csv::format( s ); } catch( ... ) {} }
-    if( fields.empty() ) { return comma::csv::format::value< velodyne_point >(); }
+    if( fields.empty() ) { return comma::csv::format::value< snark::velodyne_point >(); }
     std::vector< std::string > v = comma::split( fields, ',' );
     comma::csv::format format;
     for( std::size_t i = 0; i < v.size(); ++i )
@@ -230,11 +238,11 @@ int main( int ac, char** av )
     try
     {
         comma::command_line_options options( ac, av, usage );
-        if( options.exists( "--output-fields" ) ) {std::cout << comma::join( comma::csv::names< velodyne_point >(), ',' ) << std::endl; return 0; }
+        if( options.exists( "--output-fields" ) ) {std::cout << comma::join( comma::csv::names< snark::velodyne_point >(), ',' ) << std::endl; return 0; }
         std::string fields = fields_( options.value< std::string >( "--fields", "" ) );
         comma::csv::format format = format_( options.value< std::string >( "--binary,-b", "" ), fields );
         if( options.exists( "--format" ) ) { std::cout << format.string(); exit( 0 ); }
-        velodyne::db db( options.value< std::string >( "--db", "/usr/local/etc/db.xml" ) );
+        snark::velodyne::db db( options.value< std::string >( "--db", "/usr/local/etc/db.xml" ) );
         bool outputInvalidpoints = options.exists( "--output-invalid-points" );
         boost::optional< std::size_t > from;
         boost::optional< std::size_t > to;
@@ -256,42 +264,41 @@ int main( int ac, char** av )
         double min_range = options.value( "--min-range", 0.0 );
         bool raw_intensity=options.exists( "--raw-intensity" );
         bool legacy = options.exists( "--legacy");
-        adjusted_time_mode=adjusted_time_t::from_string(options.value<std::string>("--adjusted-time",""));
-        adjusted_time_config.threshold=boost::posix_time::microseconds(options.value<unsigned>("--adjusted-time-threshold",adjusted_time_config.threshold.total_microseconds()));
-        adjusted_time_config.reset=boost::posix_time::seconds(options.value<unsigned>("--adjusted-time-reset",adjusted_time_config.reset.total_seconds()));
+        adjust_timestamp adjust_timestamp_functor( options.value<std::string>("--adjusted-time","")
+                                                 , options.value<unsigned>("--adjusted-time-threshold", adjust_timestamp::DEFAULT_THRESHOLD )
+                                                 , options.value<unsigned>("--adjusted-time-reset", adjust_timestamp::DEFAULT_RESET ) );
         //use old algorithm for old database
         if (!legacy && db.version == 0){legacy=true; std::cerr<<"velodyne-to-csv: using legacy option for old database"<<std::endl;}
         if(legacy && db.version > 0){std::cerr<<"velodyne-to-csv: using new calibration with legacy option"<<std::endl;}
-        velodyne::calculator* calculator = NULL;
-        velodyne::stream* s = NULL;
+        snark::velodyne::calculator* calculator = NULL;
+        snark::velodyne::stream* s = NULL;
         if( options.exists( "--puck" ) )
         {
-            calculator= new velodyne::puck::calculator;
-            if( options.exists( "--pcap" ) ) { s = new velodyne::puck::stream< snark::pcap_reader >( new snark::pcap_reader, outputInvalidpoints ); }
-            else if( options.exists( "--thin" ) ) { s = new velodyne::puck::stream< snark::thin_reader >( new snark::thin_reader, outputInvalidpoints ); }
-            else if( options.exists( "--udp-port" ) ) { s = new velodyne::puck::stream< snark::udp_reader >( new snark::udp_reader( options.value< unsigned short >( "--udp-port" ) ), outputInvalidpoints ); }
-            else if( options.exists( "--proprietary,-q" ) ) { s = new velodyne::puck::stream< snark::proprietary_reader >( new snark::proprietary_reader, outputInvalidpoints ); }
-            else { s = new velodyne::puck::stream< snark::stream_reader >( new snark::stream_reader, outputInvalidpoints ); }
+            calculator= new snark::velodyne::puck::calculator;
+            if( options.exists( "--pcap" ) ) { s = new snark::velodyne::puck::stream< snark::pcap_reader >( new snark::pcap_reader, outputInvalidpoints ); }
+            else if( options.exists( "--thin" ) ) { s = new snark::velodyne::puck::stream< snark::thin_reader >( new snark::thin_reader, outputInvalidpoints ); }
+            else if( options.exists( "--udp-port" ) ) { s = new snark::velodyne::puck::stream< snark::udp_reader >( new snark::udp_reader( options.value< unsigned short >( "--udp-port" ) ), outputInvalidpoints ); }
+            else if( options.exists( "--proprietary,-q" ) ) { s = new snark::velodyne::puck::stream< snark::proprietary_reader >( new snark::proprietary_reader, outputInvalidpoints ); }
+            else { s = new snark::velodyne::puck::stream< snark::stream_reader >( new snark::stream_reader, outputInvalidpoints ); }
         }
         else
         {
-            calculator = new velodyne::db_calculator( db );
-            if( options.exists( "--pcap" ) ) { s = new velodyne::hdl64::stream< snark::pcap_reader >( new snark::pcap_reader, outputInvalidpoints, legacy ); }
-            else if( options.exists( "--thin" ) ) { s = new velodyne::hdl64::stream< snark::thin_reader >( new snark::thin_reader, outputInvalidpoints, legacy ); }
-            else if( options.exists( "--udp-port" ) ) { s = new velodyne::hdl64::stream< snark::udp_reader >( new snark::udp_reader( options.value< unsigned short >( "--udp-port" ) ), outputInvalidpoints, legacy ); }
-            else if( options.exists( "--proprietary,-q" ) ) { s = new velodyne::hdl64::stream< snark::proprietary_reader >( new snark::proprietary_reader, outputInvalidpoints, legacy ); }
-            else { s = new velodyne::hdl64::stream< snark::stream_reader >( new snark::stream_reader, outputInvalidpoints, legacy ); }
+            calculator = new snark::velodyne::db_calculator( db );
+            if( options.exists( "--pcap" ) ) { s = new snark::velodyne::hdl64::stream< snark::pcap_reader >( new snark::pcap_reader, outputInvalidpoints, legacy ); }
+            else if( options.exists( "--thin" ) ) { s = new snark::velodyne::hdl64::stream< snark::thin_reader >( new snark::thin_reader, outputInvalidpoints, legacy ); }
+            else if( options.exists( "--udp-port" ) ) { s = new snark::velodyne::hdl64::stream< snark::udp_reader >( new snark::udp_reader( options.value< unsigned short >( "--udp-port" ) ), outputInvalidpoints, legacy ); }
+            else if( options.exists( "--proprietary,-q" ) ) { s = new snark::velodyne::hdl64::stream< snark::proprietary_reader >( new snark::proprietary_reader, outputInvalidpoints, legacy ); }
+            else { s = new snark::velodyne::hdl64::stream< snark::stream_reader >( new snark::stream_reader, outputInvalidpoints, legacy ); }
         }
-        velodyne_stream v( s, calculator, from, to, raw_intensity );
-        adjusted_time_t adjusted_time;
+        snark::velodyne_stream v( s, calculator, from, to, raw_intensity );
         comma::signal_flag is_shutdown;
-        comma::csv::output_stream< velodyne_point > ostream( std::cout, csv );
+        comma::csv::output_stream< snark::velodyne_point > ostream( std::cout, csv );
         //Profilerstart( "velodyne-to-csv.prof" );{
         while( !is_shutdown && v.read() )
         { 
             if( v.point().range < min_range ) { continue; }
             snark::velodyne_point p = v.point();
-            p.timestamp=adjusted_time.adjust_timestamp(p.timestamp);
+            p.timestamp = adjust_timestamp_functor( p.timestamp );
             ostream.write( p );
         }
         //Profilerstop(); }
