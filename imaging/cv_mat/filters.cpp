@@ -352,9 +352,13 @@ static filters::value_type cols_to_channels_impl_( filters::value_type input, bo
     unsigned int h = input.second.rows;
 
     unsigned int min_element = *std::min_element( values.begin(), values.end() );
-    if ( min_element >= w ) { COMMA_THROW( comma::exception, "the first output " << element << " is outside of the input image" ); }
-    unsigned int output_w = repeat ? ( w - min_element ) / repeat : 1;
-    unsigned int output_h = h;
+    if ( min_element >= ( cols_to_channels ? w : h ) ) { COMMA_THROW( comma::exception, "the first output " << element << " is outside of the input image" ); }
+    unsigned int output_w = cols_to_channels
+                          ? ( repeat ? ( w - min_element ) / repeat : 1 )
+                          : w ;
+    unsigned int output_h = cols_to_channels
+                          ? h
+                          : ( repeat ? ( h - min_element ) / repeat : 1 ) ;
     unsigned int output_c = values.size() == 2 ? 3 : values.size();
     unsigned int output_t = CV_MAKETYPE( input.second.depth(), output_c );
     filters::value_type output( input.first, cv::Mat( output_h, output_w, output_t ) );
@@ -365,22 +369,28 @@ static filters::value_type cols_to_channels_impl_( filters::value_type input, bo
 
     std::vector< cv::Mat > src( output_c );
     std::vector< cv::Mat > dst( 1 );
-    cv::Mat padding = cv::Mat::ones( input.second.rows, 1, input.second.type() ) * padding_value; // instantiation is lazy
+    cv::Mat padding = ( cols_to_channels
+                      ? cv::Mat::ones( h, 1, input.second.type() )
+                      : cv::Mat::ones( 1, w, input.second.type() ) ) * padding_value; // instantiation is lazy
     std::vector< unsigned int > indices( values );
     for( size_t i = indices.size(); i < output_c; ++i ) { src[i] = padding; }
-    for ( unsigned int opos = 0; opos < output_w; ++opos )
+    for ( unsigned int opos = 0; opos < ( cols_to_channels ? output_w : output_h ) ; ++opos )
     {
         for( size_t i = 0; i < indices.size(); ++i )
         {
             unsigned int j = indices[i];
-            if ( j >= w ) {
+            if ( j >= ( cols_to_channels ? w : h ) ) {
                 src[i] = padding;
             } else {
-                src[i] = cv::Mat( input.second, cv::Rect( j, 0, 1, h ) );
+                src[i] = cols_to_channels
+                       ? cv::Mat( input.second, cv::Rect( j, 0, 1, h ) )
+                       : cv::Mat( input.second, cv::Rect( 0, j, w, 1 ) ) ;
             }
             indices[i] += repeat;
         }
-        dst[0] = cv::Mat( output.second, cv::Rect( opos, 0, 1, h ) );
+        dst[0] = cols_to_channels
+               ? cv::Mat( output.second, cv::Rect( opos, 0, 1, h ) )
+               : cv::Mat( output.second, cv::Rect( 0, opos, w, 1 ) ) ;
         cv::mixChannels( src, dst, &from_to[0], output_c );
     }
     return output;
