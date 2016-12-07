@@ -1969,6 +1969,8 @@ static boost::function< filter::input_type( filter::input_type ) > make_filter_f
         }
         return overlay_impl_( s[0], x, y );
     }
+    boost::function< cv_mat::filters::value_type( cv_mat::filters::value_type ) > functor = imaging::vegetation::filters::make_functor( e );
+    if( functor ) { return functor; }
     COMMA_THROW( comma::exception, "expected filter, got: \"" << comma::join( e, '=' ) << "\"" );
 }
 
@@ -2124,8 +2126,7 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
         }
         else
         {
-            const boost::optional< filter >& vf = imaging::vegetation::filters::make( v[i] );
-            f.push_back( vf ? *vf : filter( make_filter_functor( e ) ) );
+            f.push_back( filter( make_filter_functor( e ) ) );
         }
         modified = e[0] != "view" && e[0] != "thumb" && e[0] != "split" && e[0] !="unpack12";
     }
