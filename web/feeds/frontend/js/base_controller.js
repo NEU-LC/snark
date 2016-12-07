@@ -69,9 +69,11 @@ define('base_controller', ['jquery', "jquery_timeago",
             '<div class="target-container">' +
             content_html + element + '</div></div>'
         );
-        $(id).append(popup_div);
-        if (globals.isMobile) {
-            $("#popup" + feed_name).popup();
+        if (popup_div != undefined) {
+            $(id).append(popup_div);
+            if (globals.isMobile) {
+                $("#popup" + feed_name).popup();
+            }
         }
     };
 
@@ -188,11 +190,11 @@ define('base_controller', ['jquery', "jquery_timeago",
     };
 
 
-    base_controller.prototype.load_feed_items = function (frontend_config, path) {
+    base_controller.prototype.load_feed_items = function (frontend_config, feeds, path) {
         if (frontend_config.timeout) {
             globals.timeout = frontend_config.timeout;
         }
-        var feeds = frontend_config.feeds;
+        // var feeds = frontend_config.feeds;
         if (path.length != 0) {
             path = path + "/";
         }
@@ -760,7 +762,7 @@ define('base_controller', ['jquery', "jquery_timeago",
 
     function load_feed_array(frontend_config, feeds, path) {
         for (var i = 0; i < feeds.length; i++) {
-            load_feed_items(frontend_config, feeds[i], path + "[" + i + "]");
+            base_controller.prototype.load_feed_items(frontend_config, feeds[i], path + "[" + i + "]");
         }
     }
 
