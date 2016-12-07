@@ -1547,7 +1547,7 @@ template < unsigned int Depth > static cv::Mat lut_matrix_gamma_( double gamma )
     double scale = std::abs( gamma_traits< Depth >::max );
     for( unsigned int i = 0, j = gamma_traits< Depth >::min; i <= num_states; i++, j++ )
     {
-    	ptr[i] = std::pow( j / scale, 1.0 / gamma ) * scale;
+        ptr[i] = std::pow( j / scale, 1.0 / gamma ) * scale;
     }
     return lut_matrix;
 }
@@ -1555,8 +1555,8 @@ template < unsigned int Depth > static cv::Mat lut_matrix_gamma_( double gamma )
 template < unsigned int Depth >
 static filters::value_type gamma_( const filters::value_type m, const double gamma )
 {
-	static double gamma_ = gamma;
-	if( gamma_ != gamma ) { COMMA_THROW( comma::exception, "multiple filters with different gamma values: todo" ); }
+    static double gamma_ = gamma;
+    if( gamma_ != gamma ) { COMMA_THROW( comma::exception, "multiple filters with different gamma values: todo" ); }
     static cv::Mat lut_matrix = lut_matrix_gamma_<Depth>( gamma );
     cv::LUT( m.second, lut_matrix, m.second );
     return m;
@@ -2289,7 +2289,7 @@ static std::string usage_impl_()
     oss << "        color-map=<type>: take image, apply colour map; see cv::applyColorMap for detail" << std::endl;
     oss << "            <type>: autumn, bone, jet, winter, rainbow, ocean, summer, spring, cool, hsv, pink, hot" << std::endl;
     oss << "        convert-to,convert_to=<type>[,<scale>[,<offset>]]: convert to given type; should be the same number of channels; see opencv convertTo for details; values will not overflow" << std::endl;
-	oss << "        convert-color,convert_color=<from>,<to>: convert from colour space to new colour space (BGR, RGB, Lab, XYZ, Bayer**, GRAY); eg: BGR,GRAY or CV_BGR2GRAY" << std::endl;
+    oss << "        convert-color,convert_color=<from>,<to>: convert from colour space to new colour space (BGR, RGB, Lab, XYZ, Bayer**, GRAY); eg: BGR,GRAY or CV_BGR2GRAY" << std::endl;
     oss << "        count: write frame number on images" << std::endl;
     oss << "        crop=[<x>,<y>],<width>,<height>: crop the portion of the image starting at x,y with size width x height" << std::endl;
     oss << "        crop-tile=<ncols>,<nrows>,<i>,<j>,...[&horizontal]: divide the image into a grid of tiles (ncols-by-nrows), and output an image made of the croped tiles defined by i,j (count from zero)" << std::endl;
@@ -2309,7 +2309,7 @@ static std::string usage_impl_()
     oss << "                          of columns 12-34 (i.e., 12 + 23 - 1), 50-79, 45-104 (overlap is OK), and 100 (default width is 1) from the original image" << std::endl;
     oss << "                      \"bands-to-cols=12,23|50,30|45,60|100|method:sum|output-depth:d\"; same bands but output an image of 4 columns containing the sum" << std::endl;
     oss << "                          of the columns data from the original image; use CV_64F depth (double) as the output format" << std::endl;
-    oss << "        bands-to-rows x,[w[,x,w]][|method:<method-name>|output-depth:<depth>]; same as bands-to-cols but operate on rows of input instead of columns" << std::endl;
+    oss << "        bands-to-rows=x,[w[,x,w]][|method:<method-name>|output-depth:<depth>]; same as bands-to-cols but operate on rows of input instead of columns" << std::endl;
     oss << "        cols-to-channels=1,4,5[|pad:value|repeat:step]; stores the listed columns as channels in the output file; input shall be a single-channel stream" << std::endl;
     oss << "            up to 4 channels are supported; if 1, 3, or 4 columns are specified, the output would have 1, 3, or 4 channels respectively" << std::endl;
     oss << "            in case of 2 columns, a third empty (zero) channel is added; use the \"pad:value\" option to specify the fill value other then zero" << std::endl;
