@@ -109,6 +109,9 @@ static void usage( bool verbose = false )
     std::cerr << "\n    --test-image=[<num>]      output test image <num>; possible values: 1-6";
     std::cerr << "\n    --verbose,-v              be more verbose";
     std::cerr << "\n";
+    std::cerr << "\nFilters:";
+    std::cerr << "\n    See \"cv-cat --help --verbose\" for a list of supported filters.";
+    std::cerr << "\n";
     std::cerr << "\nBy default basler-cat will connect to the first device it finds. To";
     std::cerr << "\nchoose a specific camera use the --address or --serial-number options.";
     std::cerr << "\nFor GigE cameras <address> is the device ip address, for USB cameras it is";
