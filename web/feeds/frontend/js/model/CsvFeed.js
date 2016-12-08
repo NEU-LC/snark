@@ -77,6 +77,15 @@ define('CsvFeed', ["jquery", 'TextFeed'], function ($, Feed, TextFeed) {
                     }
                 }
             }
+            var column_is_number = new Array(columns);
+            for (var i in data) {
+                for (var j = 0; j < data[i].length; ++j) {
+                    if (data[i][j].match(/^\d+$/)) {
+                        column_is_number[j] = true;
+                    }
+                }
+            }
+
             for (var i in data) {
                 data_color[i] = new Array(data[i].length);
                 for (var j in data[i]) {
@@ -108,7 +117,7 @@ define('CsvFeed', ["jquery", 'TextFeed'], function ($, Feed, TextFeed) {
                     var tr = $('<tr>');
                     for (var j in data[i]) {
                         var td = $('<td>');
-                        if (!column_has_space[j]) {
+                        if ((!column_has_space[j]) && column_is_number[j]) {
                             td.addClass('text-right');
                         }
                         var pre = $('<pre>');
