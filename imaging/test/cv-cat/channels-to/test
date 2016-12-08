@@ -1,0 +1,108 @@
+#!/bin/bash
+
+source $( which comma-application-util ) || exit 1
+
+output_dir="output"
+mkdir -p "$output_dir" || exit 1
+
+function generate()
+{
+    local nx=$1
+    local ny=$2
+    python -c "
+import math
+
+def generate( nx, ny ):
+    dx = 1. / float(nx)
+    dy = 1. / float(ny)
+    for ix in range( nx ):
+        for iy in range( ny ):
+            vr = ix * dx
+            vg = iy * dy
+            vb = math.sqrt( 2. * ( math.pow( vr - 0.5, 2 ) + math.pow( vg - 0.5, 2 ) ) )
+            print '%d,%d,%d,%d,%d' % ( ix, iy, int(255*vr), int(255*vg), int(255*vb) )
+
+if __name__ == '__main__':
+    generate($nx, $ny)
+"
+}
+export -f generate
+declare -r generate
+
+function extract_column_channel()
+{
+    gawk -F, --assign channel=$1 'BEGIN{ OFS=","; }{ if ( ( NR - 1 - channel ) % 3 == 0 ) { print $1,($2 - channel)/3,$3,$4; } }'
+}
+export -f extract_column_channel
+declare -r extract_column_channel
+
+function extract_row_channel()
+{
+    gawk -F, --assign channel=$1 --assign ncols=$2 'BEGIN{ OFS=","; }{ ic = int( ( NR - 1 ) / ncols ); nc = ic % 3; if ( nc == channel ) { print $1,$2,($3 - channel)/3,$4; } }'
+}
+export -f extract_row_channel
+declare -r extract_row_channel
+
+nx=64
+ny=48
+echo "nx=$nx"
+echo "ny=$ny"
+
+image_png="$output_dir/image.png"
+image_csv="$output_dir/image.csv"
+image_to_cols="$output_dir/channels-to-cols.csv"
+image_to_rows="$output_dir/channels-to-rows.csv"
+
+generate $nx $ny \
+    | image-from-csv --fields=x,y,r,g,b --output="rows=$ny;cols=$nx;type=3ub" \
+    | cv-cat --output no-header "encode=png" > "$image_png"
+comma_status_ok || exit 1
+
+cv-cat --file "$image_png" \
+    | image-to-csv > "$image_csv"
+comma_status_ok || exit 1
+
+cat "$image_csv" \
+    | csv-shuffle --fields="time,x,y,r,g,b" --output-fields="x,y,r,g,b" \
+    | name-value-from-csv "x,y,channel[0],channel[1],channel[2]" --indices=x,y \
+    | sed 's@^@original/@;s@"@@g'
+comma_status_ok || exit 1
+
+cv-cat --file "$image_png" \
+    | cv-cat "channels-to-cols" \
+    | image-to-csv > "$image_to_cols"
+comma_status_ok || exit 1
+
+cv-cat --file "$image_png" \
+    | cv-cat "channels-to-rows" \
+    | image-to-csv > "$image_to_rows"
+comma_status_ok || exit 1
+
+for channel in 0 1 2 ; do
+    # this is more for visualization, not testing as such
+    cat "$image_to_cols" \
+        | extract_column_channel $channel \
+        | image-from-csv --fields t,x,y,grey --output="rows=$ny;cols=$nx;type=ub" \
+        | cv-cat --output no-header "encode=png" > "$output_dir/from_cols_channel_${channel}.png"
+    comma_status_ok || exit 1
+    cat "$image_to_rows" \
+        | extract_row_channel $channel $nx \
+        | image-from-csv --fields t,x,y,grey --output="rows=$ny;cols=$nx;type=ub" \
+        | cv-cat --output no-header "encode=png" > "$output_dir/from_rows_channel_${channel}.png"
+    comma_status_ok || exit 1
+
+    cat "$image_to_cols" \
+        | extract_column_channel $channel \
+        | csv-shuffle --fields t,x,y,grey --output-fields="x,y,grey" \
+        | name-value-from-csv --fields x,y,value --indices="x,y" \
+        | sed "s@^@to/column/channel[$channel]/@" \
+        | sed 's@"@@g'
+    comma_status_ok || exit 1
+    cat "$image_to_rows" \
+        | extract_row_channel $channel $nx \
+        | csv-shuffle --fields t,x,y,grey --output-fields="x,y,grey" \
+        | name-value-from-csv --fields x,y,value --indices="x,y" \
+        | sed "s@^@to/row/channel[$channel]/@" \
+        | sed 's@"@@g'
+    comma_status_ok || exit 1
+done

@@ -204,7 +204,7 @@ static boost::unordered_map< std::string, unsigned int > cvt_color_types_ = fill
 unsigned int cvt_color_type_from_string( const std::string& t ) // to avoid compilation warning
 {
     boost::unordered_map< std::string, unsigned int >::const_iterator it = cvt_color_types_.find( t );
-    if (it == cvt_color_types_.end()) { COMMA_THROW(comma::exception, "unknown conversion enum '" << t << "' for convert-color"); } 
+    if (it == cvt_color_types_.end()) { COMMA_THROW(comma::exception, "unknown conversion enum '" << t << "' for convert-color"); }
     return it->second;
 }
 
@@ -212,7 +212,7 @@ static filters::value_type cvt_color_impl_( filters::value_type m, unsigned int 
 {
     filters::value_type n;
     n.first = m.first;
-    cv::cvtColor( m.second, n.second, which ); 
+    cv::cvtColor( m.second, n.second, which );
     return n;
 }
 
@@ -329,7 +329,7 @@ static filters::value_type bands_to_cols_impl_( filters::value_type input, bool 
     filters::value_type output( input.first, cv::Mat( bands_to_cols ? h : bands.size()
                                                     , bands_to_cols ? bands.size() : w
                                                     , output_type ) );
-    for( std::size_t i = 0; i < bands.size(); ++i)
+    for( std::size_t i = 0; i < bands.size(); ++i )
     {
         cv::Mat intile( input.second, bands_to_cols
                                     ? cv::Rect( bands[i].first, 0, bands[i].second, h )
@@ -340,6 +340,93 @@ static filters::value_type bands_to_cols_impl_( filters::value_type input, bool 
         int cv_reduce_dim = bands_to_cols ? 1 : 0 ;
         cv::reduce( intile, outtile, cv_reduce_dim, cv_reduce_method, output_type );
     }
+    return output;
+}
+
+static filters::value_type cols_to_channels_impl_( filters::value_type input, bool cols_to_channels, const std::vector< unsigned int > & values, double padding_value, unsigned int repeat )
+{
+    if ( input.second.channels() != 1 ) { COMMA_THROW( comma::exception, "input image for cols-to-channels operation must have a single channel" ); }
+    std::string element = cols_to_channels ? "column" : "row";
+
+    unsigned int w = input.second.cols;
+    unsigned int h = input.second.rows;
+
+    unsigned int min_element = *std::min_element( values.begin(), values.end() );
+    if ( min_element >= ( cols_to_channels ? w : h ) ) { COMMA_THROW( comma::exception, "the first output " << element << " is outside of the input image" ); }
+    unsigned int output_w = cols_to_channels
+                          ? ( repeat ? ( w - min_element ) / repeat : 1 )
+                          : w ;
+    unsigned int output_h = cols_to_channels
+                          ? h
+                          : ( repeat ? ( h - min_element ) / repeat : 1 ) ;
+    unsigned int output_c = values.size() == 2 ? 3 : values.size();
+    unsigned int output_t = CV_MAKETYPE( input.second.depth(), output_c );
+    filters::value_type output( input.first, cv::Mat( output_h, output_w, output_t ) );
+
+    std::vector< int > from_to;
+    from_to.reserve( 2 * output_c );
+    for ( size_t i = 0; i < output_c; ++i ) { from_to.push_back( i ); from_to.push_back( i ); }
+
+    std::vector< cv::Mat > src( output_c );
+    std::vector< cv::Mat > dst( 1 );
+    cv::Mat padding = ( cols_to_channels
+                      ? cv::Mat::ones( h, 1, input.second.type() )
+                      : cv::Mat::ones( 1, w, input.second.type() ) ) * padding_value; // instantiation is lazy
+    std::vector< unsigned int > indices( values );
+    for( size_t i = indices.size(); i < output_c; ++i ) { src[i] = padding; }
+    for ( unsigned int opos = 0; opos < ( cols_to_channels ? output_w : output_h ) ; ++opos )
+    {
+        for( size_t i = 0; i < indices.size(); ++i )
+        {
+            unsigned int j = indices[i];
+            if ( j >= ( cols_to_channels ? w : h ) ) {
+                src[i] = padding;
+            } else {
+                src[i] = cols_to_channels
+                       ? cv::Mat( input.second, cv::Rect( j, 0, 1, h ) )
+                       : cv::Mat( input.second, cv::Rect( 0, j, w, 1 ) ) ;
+            }
+            indices[i] += repeat;
+        }
+        dst[0] = cols_to_channels
+               ? cv::Mat( output.second, cv::Rect( opos, 0, 1, h ) )
+               : cv::Mat( output.second, cv::Rect( 0, opos, w, 1 ) ) ;
+        cv::mixChannels( src, dst, &from_to[0], output_c );
+    }
+    return output;
+}
+
+static filters::value_type channels_to_cols_impl_( filters::value_type input, bool channels_to_cols )
+{
+    unsigned int w = input.second.cols;
+    unsigned int h = input.second.rows;
+
+    unsigned int input_c = input.second.channels();
+    unsigned int output_t = CV_MAKETYPE( input.second.depth(), 1 );
+    filters::value_type output( input.first, cv::Mat( channels_to_cols ? h : input_c * h
+                                                    , channels_to_cols ? input_c * w : w
+                                                    , output_t ) );
+
+    std::vector< int > from_to;
+    from_to.reserve( 2 * input_c );
+    for ( size_t i = 0; i < input_c; ++i ) { from_to.push_back( i ); from_to.push_back( i ); }
+
+    std::vector< cv::Mat > src( 1 );
+    std::vector< cv::Mat > dst( input_c );
+    for ( unsigned int ipos = 0; ipos < ( channels_to_cols ? w : h ) ; ++ipos )
+    {
+        for( size_t i = 0; i < input_c; ++i )
+        {
+            dst[i] = cv::Mat( output.second, channels_to_cols
+                                           ? cv::Rect( ipos * input_c + i, 0, 1, h )
+                                           : cv::Rect( 0, ipos * input_c + i, w, 1 ) );
+        }
+        src[0] = cv::Mat( input.second, channels_to_cols
+                                      ? cv::Rect( ipos, 0, 1, h )
+                                      : cv::Rect( 0, ipos, w, 1 ) );
+        cv::mixChannels( src, dst, &from_to[0], input_c );
+    }
+
     return output;
 }
 
@@ -576,15 +663,15 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
         {
             public:
                 logger() : size_( 0 ), count_( 0 ) {}
-                
+
                 logger( const std::string& filename ) : ofstream_( new std::ofstream( &filename[0] ) ), serialization_( "t,rows,cols,type", comma::csv::format( "t,3ui" ) ), size_( 0 ), count_( 0 ) { if( !ofstream_->is_open() ) { COMMA_THROW( comma::exception, "failed to open \"" << filename << "\"" ); } }
-                
+
                 logger( const std::string& directory, boost::posix_time::time_duration period ) : directory_( directory ), serialization_( "t,rows,cols,type", comma::csv::format( "t,3ui" ) ), period_( period ), size_( 0 ), count_( 0 ) {}
-                
+
                 logger( const std::string& directory, unsigned int size ) : directory_( directory ), serialization_( "t,rows,cols,type", comma::csv::format( "t,3ui" ) ), size_( size ), count_( 0 ) {}
-                
+
                 ~logger() { if( ofstream_ ) { ofstream_->close(); } }
-                
+
                 filters::value_type operator()( filters::value_type m )
                 {
                     if( m.second.empty() ) { return m; } // quick and dirty, end of stream
@@ -600,7 +687,7 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
                     serialization_.write( *ofstream_, m );
                     return m;
                 }
-                
+
             private:
                 boost::mutex mutex_;
                 std::string directory_;
@@ -610,7 +697,7 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
                 boost::posix_time::ptime start_;
                 unsigned int size_;
                 unsigned int count_;
-                
+
                 void update_on_size_()
                 {
                     if( size_ == 0 ) { return; }
@@ -619,7 +706,7 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
                     ofstream_->close();
                     ofstream_.reset();
                 }
-                
+
                 void update_on_time_( filters::value_type m )
                 {
                     if( !period_ ) { return; }
@@ -630,18 +717,18 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
                     ofstream_.reset();
                 }
         };
-        
+
         boost::shared_ptr< logger > logger_; // todo: watch performance
-    
+
     public:
         log_impl_() {}
-        
+
         log_impl_( const std::string& filename ) : logger_( new logger( filename ) ) {}
-        
+
         log_impl_( const std::string& directory, boost::posix_time::time_duration period ) : logger_( new logger( directory, period ) ) {}
-        
+
         log_impl_( const std::string& directory, unsigned int size ) : logger_( new logger( directory, size ) ) {}
-        
+
         filters::value_type operator()( filters::value_type m ) { return logger_->operator()( m ); }
 };
 
@@ -696,7 +783,7 @@ static filters::value_type cross_impl_( filters::value_type m, boost::optional< 
 }
 
 namespace drawing {
-    
+
 struct shape
 {
     cv::Scalar color;
@@ -724,7 +811,7 @@ struct rectangle : public shape
     rectangle( const cv::Point& upper_left, const cv::Point& lower_right, const cv::Scalar& color, int thickness = 1, int line_type = 8, int shift = 0 ) : shape( color, thickness, line_type, shift ), upper_left( upper_left ), lower_right( lower_right ) {}
     void draw( cv::Mat m ) const { cv::rectangle( m, upper_left, lower_right, color, thickness, line_type, shift ); }
 };
-    
+
 } // namespace drawing {
 
 static filters::value_type circle_impl_( filters::value_type m, const drawing::circle& circle ) { circle.draw( m.second ); return m; }
@@ -1342,7 +1429,7 @@ static double max_value(int depth)
         case CV_32S: return depth_traits< CV_32S >::max_value();
         case CV_32F: return depth_traits< CV_32F >::max_value();
         case CV_64F: return depth_traits< CV_64F >::max_value();
-        default: { COMMA_THROW(comma::exception, "invalid depth: "<<depth ); } 
+        default: { COMMA_THROW(comma::exception, "invalid depth: "<<depth ); }
     }
 }
 
@@ -1373,7 +1460,7 @@ struct overlay_impl_
 //         comma::verbose<<"mat rows,cols,type;channels,depth "<<mat.rows<<","<<mat.cols<<","<<type_as_string(mat.type())<<";"<<mat.channels()<<","<<mat.depth()<<std::endl;
 //         comma::verbose<<"overlay rows,cols,type;channels,depth "<<overlay.rows<<","<<overlay.cols<<","<<type_as_string(overlay.type())<<";"<<overlay.channels()<<","<<overlay.depth()<<std::endl;
         if(mat.channels()!=overlay.channels()-1) { COMMA_THROW(comma::exception, "mat's channels ("<<mat.channels()<<") should be one less than overlay's channel: "<<overlay.channels()); }
-        if(mat.depth() != overlay.depth()) 
+        if(mat.depth() != overlay.depth())
         {
             comma::verbose<<"converting overlay from depth "<<overlay.depth()<<" to "<<mat.depth()<<std::endl;
             overlay=convert_and_scale(overlay, mat.depth());
@@ -1470,7 +1557,7 @@ template < unsigned int Depth > static cv::Mat lut_matrix_gamma_( double gamma )
     double scale = std::abs( gamma_traits< Depth >::max );
     for( unsigned int i = 0, j = gamma_traits< Depth >::min; i <= num_states; i++, j++ )
     {
-    	ptr[i] = std::pow( j / scale, 1.0 / gamma ) * scale;
+        ptr[i] = std::pow( j / scale, 1.0 / gamma ) * scale;
     }
     return lut_matrix;
 }
@@ -1478,8 +1565,8 @@ template < unsigned int Depth > static cv::Mat lut_matrix_gamma_( double gamma )
 template < unsigned int Depth >
 static filters::value_type gamma_( const filters::value_type m, const double gamma )
 {
-	static double gamma_ = gamma;
-	if( gamma_ != gamma ) { COMMA_THROW( comma::exception, "multiple filters with different gamma values: todo" ); }
+    static double gamma_ = gamma;
+    if( gamma_ != gamma ) { COMMA_THROW( comma::exception, "multiple filters with different gamma values: todo" ); }
     static cv::Mat lut_matrix = lut_matrix_gamma_<Depth>( gamma );
     cv::LUT( m.second, lut_matrix, m.second );
     return m;
@@ -1680,6 +1767,62 @@ static boost::function< filter::input_type( filter::input_type ) > make_filter_f
         }
         if( number_of_tile_cols == 0 || number_of_tile_rows == 0 ) { COMMA_THROW( comma::exception, "crop-tile: expected positive number of tiles along x and y, got " << number_of_tile_cols << "," << number_of_tile_rows ); }
         return boost::bind( &crop_tile_impl_, _1, number_of_tile_cols, number_of_tile_rows, tiles, vertical );
+    }
+    if( e[0] == "cols-to-channels" || e[0] == "rows-to-channels" )
+    {
+        // rhs looks like "cols-to-channels=1,4,5[|pad:value|repeat:step]"
+        // the '|'-separated entries shall be either:
+        // - a comma-separated lists of integers, or
+        // - a single integer, or
+        // - colon-separated words with a known keyword on the left and one of the known enumeration names on the right
+        const bool cols_to_channels = e[0] == "cols-to-channels";
+        const std::string & op_name = cols_to_channels ? "cols-to-channels" : "rows-to-channels";
+        const std::string & op_what = cols_to_channels ? "column" : "row";
+        if( e.size() < 2 ) { COMMA_THROW( comma::exception, op_name << ": specify at least one column or column list to extract, e.g. " << op_name << "=1,10" ); }
+        std::vector< std::string > inputs = comma::split( e[1], '|' );
+        std::vector< unsigned int > values;
+        double padding = 0.0;
+        unsigned int repeat = 0;
+        for ( size_t s = 0; s < inputs.size(); ++s )
+        {
+            if ( inputs[s].find( ":" ) != std::string::npos )
+            {
+                std::vector< std::string > setting = comma::split( inputs[s], ':' );
+                if ( setting.size() != 2 ) { COMMA_THROW( comma::exception, op_name << ": expected keyword:value; got " << setting.size() << " parameters '" << inputs[s] << "'" ); }
+                if ( setting[0] == "pad" )
+                {
+                    padding = boost::lexical_cast< double >( setting[1] );
+                }
+                else if ( setting[0] == "repeat" )
+                {
+                    repeat = boost::lexical_cast< unsigned int >( setting[1] );
+                }
+                else
+                {
+                    COMMA_THROW( comma::exception, op_name << ": the keyword '" << setting[0] << "' is not one of [pad,repeat]" );
+                }
+            }
+            else
+            {
+                std::vector< std::string > vstrings = comma::split( inputs[s], ',' );
+                if ( vstrings.size() > 4 ) { COMMA_THROW( comma::exception, op_name << ": can store up to 4 " << op_what << "s into channels, got " << vstrings.size() << " inputs '" << inputs[s] << "'" ); }
+                values.reserve( vstrings.size() );
+                for ( size_t i = 0; i < vstrings.size(); ++i ) { values.push_back( boost::lexical_cast< unsigned int >( vstrings[i] ) ); }
+            }
+        }
+        if ( values.empty() ) { COMMA_THROW( comma::exception, op_name << ": specify at least one " << op_what << " to store as channel" ); }
+        if ( values.size() > 4 ) { COMMA_THROW( comma::exception, op_name << ": can have at most 4 output channels" ); }
+        return boost::bind( &cols_to_channels_impl_, _1, cols_to_channels, values, padding, repeat );
+    }
+    if( e[0] == "channels-to-cols" || e[0] == "channels-to-rows" )
+    {
+        const bool channels_to_cols = e[0] == "channels-to-cols";
+        return boost::bind( &channels_to_cols_impl_, _1, channels_to_cols );
+    }
+    if( e[0] == "swap-channels" )
+    {
+        COMMA_THROW( comma::exception, "NYI" );
+        // use cv::reshape or cv::mixChannels
     }
     if( e[0] == "accumulate" )
     {
@@ -2145,14 +2288,14 @@ static std::string usage_impl_()
     oss << "    cv::Mat image filters usage (';'-separated):" << std::endl;
     oss << "        accumulate=<n>: accumulate the last n images and concatenate them vertically (useful for slit-scan and spectral cameras like pika2)" << std::endl;
     oss << "            example: cat slit-scan.bin | cv-cat \"accumulate=400;view;null\"" << std::endl;
-    oss << "        bands-to-cols=\"x,[w[,x,w]][|method:<method-name>|output-depth:<depth>]\" take a number of columns (bands) from the input, process together by method," << std::endl;
+    oss << "        bands-to-cols=x,[w[,x,w]][|method:<method-name>|output-depth:<depth>]; take a number of columns (bands) from the input, process together by method," << std::endl;
     oss << "            write into the output, one band (a range of columns) reduced into one column; supported methods: average (default), sum, min, max; the sum method" << std::endl;
     oss << "            requires the explicit output-depth parameter (one of i,f,d or CV_32S, CV_32F, CV_64F) if the input has low depth" << std::endl;
     oss << "            examples: \"bands-to-cols=12,23|50,30|45,60|100|method:average\"; output an image of 4 columns containing the average" << std::endl;
     oss << "                          of columns 12-34 (i.e., 12 + 23 - 1), 50-79, 45-104 (overlap is OK), and 100 (default width is 1) from the original image" << std::endl;
     oss << "                      \"bands-to-cols=12,23|50,30|45,60|100|method:sum|output-depth:d\"; same bands but output an image of 4 columns containing the sum" << std::endl;
     oss << "                          of the columns data from the original image; use CV_64F depth (double) as the output format" << std::endl;
-    oss << "        bands-to-rows\"x,[w[,x,w]][|method:<method-name>|output-depth:<depth>]\"; same as bands-to-cols but operate on rows of input instead of columns" << std::endl;
+    oss << "        bands-to-rows=x,[w[,x,w]][|method:<method-name>|output-depth:<depth>]; same as bands-to-cols but operate on rows of input instead of columns" << std::endl;
     oss << "        bayer=<mode>: convert from bayer, <mode>=1-4 (see also convert-color)" << std::endl;
     oss << "        blur=<type>,<parameters>: apply a blur to the image (positive and odd kernel sizes)" << std::endl;
     oss << "            blur=box,<kernel_size> " << std::endl;
@@ -2164,7 +2307,7 @@ static std::string usage_impl_()
     oss << "        color-map=<type>: take image, apply colour map; see cv::applyColorMap for detail" << std::endl;
     oss << "            <type>: autumn, bone, jet, winter, rainbow, ocean, summer, spring, cool, hsv, pink, hot" << std::endl;
     oss << "        convert-to,convert_to=<type>[,<scale>[,<offset>]]: convert to given type; should be the same number of channels; see opencv convertTo for details; values will not overflow" << std::endl;
-	oss << "        convert-color,convert_color=<from>,<to>: convert from colour space to new colour space (BGR, RGB, Lab, XYZ, Bayer**, GRAY); eg: BGR,GRAY or CV_BGR2GRAY" << std::endl;
+    oss << "        convert-color,convert_color=<from>,<to>: convert from colour space to new colour space (BGR, RGB, Lab, XYZ, Bayer**, GRAY); eg: BGR,GRAY or CV_BGR2GRAY" << std::endl;
     oss << "        count: write frame number on images" << std::endl;
     oss << "        crop=[<x>,<y>],<width>,<height>: crop the portion of the image starting at x,y with size width x height" << std::endl;
     oss << "        crop-tile=<ncols>,<nrows>,<i>,<j>,...[&horizontal]: divide the image into a grid of tiles (ncols-by-nrows), and output an image made of the croped tiles defined by i,j (count from zero)" << std::endl;
@@ -2177,6 +2320,22 @@ static std::string usage_impl_()
     oss << "        crop-rows=<y>[,<h>[|<y>[,<h>,...: output an image consisting of (multiple) row blocks starting at y with height h" << std::endl;
     oss << "            examples: \"crop-rows=5,10|25,5\"; output an image of height 15 taking 2 row blocks starting at 5 and 25 and with heights 10 and 5, respectively" << std::endl;
     oss << "                      \"crop-rows=5|25|15\"; default block height is 1, block starts can be out of order" << std::endl;
+    oss << "        cols-to-channels=1,4,5[|pad:value|repeat:step]; stores the listed columns as channels in the output file; input shall be a single-channel stream" << std::endl;
+    oss << "            up to 4 channels are supported; if 1, 3, or 4 columns are specified, the output would have 1, 3, or 4 channels respectively" << std::endl;
+    oss << "            in case of 2 columns, a third empty (zero) channel is added; use the \"pad:value\" option to specify the fill value other then zero" << std::endl;
+    oss << "            the repeat option applies the transformation periodically, first for the specified columns, then for columns incremented by one step, and so on; see the examples" << std::endl;
+    oss << "            examples: \"cols-to-channels=6,4|pad:128\"; put column 6 into the R channel, column 4 into the G channel, and fill the B channel with 128" << std::endl;
+    oss << "                      \"cols-to-channels=0,1,2|repeat:3\"; store columns 0,1,2 as RGB channels of column 0 of the output file, then columns 3,4,5 as RGB" << std::endl;
+    oss << "                      channels of column 1 of the output file, etc.; conversion stops when all input column indices exceed the image width" << std::endl;
+    oss << "                      if one of the input columns exceed the image width, the respective output channel is filled with zeros (or the padding value)" << std::endl;
+    oss << "        rows-to-channels=1,4,5[|pad:value|repeat:step]; same as cols-to-channels but operates on rows" << std::endl;
+    oss << "        channels-to-cols; opposite to cols-to-channels; unwrap all channels as columns" << std::endl;
+    oss << "            example: \"channels-to-cols\" over a 3-channel image: RGB channels of column 0 become columns 0 (single-channel), 1, and 2, RGB channels" << std::endl;
+    oss << "            of column 1 become columns 3,4,5, and so on" << std::endl;
+    oss << "        channels-to-rows; same as channels-to-cols but operates over rows" << std::endl;
+    oss << "        swap-channels=2,1,0,3; re-order channels; arguments shall be integers from 0 to the total number of input channels" << std::endl;
+    oss << "            the number of arguments shall be the same as the number of input channels" << std::endl;
+    oss << "            example: \"swap-channels=2,1,0\"; revert the order of RGB channels with R becoming B and B becoming R; G is mapped onto itself" << std::endl;
     oss << "        encode=<format>: encode images to the specified format. <format>: jpg|ppm|png|tiff..., make sure to use --no-header" << std::endl;
     oss << "        equalize-histogram: todo: equalize each channel by its histogram" << std::endl;
     oss << "        fft[=<options>]: do fft on a floating point image" << std::endl;
