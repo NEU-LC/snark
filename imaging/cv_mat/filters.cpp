@@ -507,11 +507,11 @@ static filters::value_type colour_map_impl_( filters::value_type m, int type )
     return n;
 }
 
-static filters::value_type mask_impl_( filters::value_type m, boost::function< filters::value_type( filters::value_type ) > mask )
+static filters::value_type mask_impl_( filters::value_type m, boost::function< filters::value_type( filters::value_type ) > mask ) // have to pass mask by value, since filter functors may change on call
 {
     filters::value_type n;
     n.first = m.first;
-    m.second.copyTo( n.second, mask( n ).second );
+    m.second.copyTo( n.second, mask( m ).second );
     return n;
 }
 
@@ -532,7 +532,7 @@ struct blur_t
         if( s == "median") { return median; }
         if( s == "bilateral") { return bilateral; }
         if( s == "adaptive-bilateral") { return adaptive_bilateral; }
-        COMMA_THROW( comma::exception, "unexpected blur type" );
+        COMMA_THROW( comma::exception, "expected blur type; got: \"" << s << "\"" );
     }
     blur_t() : neighbourhood_size(0), sigma_colour(0), sigma_space(0) {}
 };
