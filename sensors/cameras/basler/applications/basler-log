@@ -59,8 +59,11 @@ EOF
 
 <config> is the file:path to the specific sensor config.
 
-This command uses the log filter to directly log to a file without using stdout.
-For high data throughput this is more efficient.
+This command uses the log filter to directly log to a file.
+For high throughput data this is more efficient than using stdout.
+
+example:
+    $scriptname --config=config.json --period=60
 
 EOF
     exit
@@ -139,7 +142,11 @@ command="basler-cat log=.,period:$options_period;null $args"
 
 verbose "executing \"$command\""
 
-while : ; do
+shutdown=0
+
+trap "shutdown=1" INT TERM HUP PIPE
+
+while (( ! shutdown )); do
     $command
-    say "restarting ${command%% *}"
+    (( shutdown )) || say "restarting ${command%% *}"
 done

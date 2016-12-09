@@ -1,0 +1,7 @@
+#python
+
+for ic in range(3):
+    for ix in range(nx):
+        for iy in range(ny):
+            expect original/x[ix]/y[iy]/channel[ic] == to/column/channel[ic]/x[ix]/y[iy]/value
+            expect original/x[ix]/y[iy]/channel[ic] == to/row/channel[ic]/x[ix]/y[iy]/value

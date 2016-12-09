@@ -1,0 +1,14 @@
+#!/bin/bash
+
+source $( type -p comma-application-util )
+
+count=0
+name-value-to-csv --fields rows,cols,mask,pixels --prefix=images --delimiter='@' \
+    | while read line ; do
+          IFS='@' read rows cols mask pixels <<< "$line"
+          size=$(( $rows * $cols ))
+          masked="$( echo "$pixels" | csv-to-bin ${size}ub | cv-cat --input "no-header;rows=$rows;cols=$cols;type=$type" "mask=$mask" | csv-from-bin ${size}ub ; comma_status_ok || exit 1 )"
+          echo "images[$count]/status=$?"
+          echo "images[$count]/masked=\"$masked\""
+          (( ++count ))
+      done

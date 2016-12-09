@@ -18,6 +18,8 @@ INSTALL(
     ARCHIVE DESTINATION ${snark_INSTALL_LIB_DIR} COMPONENT Development # .a, .lib
 )
 
+ADD_SUBDIRECTORY( applications )
+
 IF( snark_BUILD_TESTS )
     ADD_SUBDIRECTORY( test )
 ENDIF( snark_BUILD_TESTS )

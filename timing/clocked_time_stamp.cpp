@@ -36,101 +36,71 @@ namespace snark{ namespace timing {
 /// assumptions:
 /// - the system performance is enough to catch up at least once in a while
 /// - here we discount the lower latency boundary below which the system cannot go
-class clocked_time_stamp::impl
-{
-    public:
-        impl( boost::posix_time::time_duration period )
-            : m_period( period )
-            , m_first( true )
-            , m_totalDeviation( boost::posix_time::seconds( 0 ) )
-        {
-        }
-        
-        boost::posix_time::ptime adjusted( boost::posix_time::ptime t, std::size_t ticks  )
-        {
-            assert( ticks );
-            if( m_first )
-            {
-                m_first = false;
-            }
-            else
-            {
-                // nothing more than t - t0 - sum( periods )
-                m_totalDeviation += ( t - m_last - m_period * ticks );
-                // whenever we get a better approximation, we take it as a better approximation
-                if( m_totalDeviation.is_negative() ) { m_totalDeviation = boost::posix_time::seconds( 0 ); }
-            }
-            m_last = t;
-            // first m_totalDeviation = 0, i.e. we consider t the best approximation available
-            return t - m_totalDeviation;
-        }
-        
-        boost::posix_time::ptime adjusted( boost::posix_time::ptime t, boost::posix_time::time_duration period, std::size_t ticks  )
-        {
-            m_period = period;
-            return adjusted( t, ticks );
-        }
-        
-        void reset()
-        {
-            m_first = true;
-            m_totalDeviation = boost::posix_time::seconds( 0 );
-        }
-        
-        boost::posix_time::time_duration m_period;
-        bool m_first;
-        boost::posix_time::ptime m_last;
-        boost::posix_time::time_duration m_totalDeviation;
-};
 
 clocked_time_stamp::clocked_time_stamp( boost::posix_time::time_duration period )
+: m_first( true )
+, m_period( period )
+, m_totalDeviation( boost::posix_time::seconds( 0 ) )
 {
-    m_pimpl = new impl( period );
 }
 
-clocked_time_stamp::~clocked_time_stamp()
-{
-    delete m_pimpl;
-}
-        
 boost::posix_time::ptime clocked_time_stamp::adjusted( const boost::posix_time::ptime& t, std::size_t ticks )
 {
-    return m_pimpl->adjusted( t, ticks );
+    assert( ticks );
+    if( m_first ) { m_first = false; }
+    else
+    {
+        // nothing more than t - t0 - sum( periods )
+        m_totalDeviation += ( t - m_last - m_period * ticks );
+        // whenever we get a better approximation, we take it as a better approximation
+        if( m_totalDeviation.is_negative() ) { m_totalDeviation = boost::posix_time::seconds( 0 ); }
+    }
+    m_last = t;
+    // first m_totalDeviation = 0, i.e. we consider t the best approximation available
+    return t - m_totalDeviation;
 }
 
 boost::posix_time::ptime clocked_time_stamp::adjusted( const boost::posix_time::ptime& t, boost::posix_time::time_duration period, std::size_t ticks )
 {
-    return m_pimpl->adjusted( t, period, ticks );
+    m_period = period;
+    return adjusted( t, ticks );
 }
 
-boost::posix_time::time_duration clocked_time_stamp::period() const { return m_pimpl->m_period; }
-
-void clocked_time_stamp::reset(){m_pimpl->reset();}
-
-/***************************************************************************************************/
-
-periodic_time_stamp::periodic_time_stamp(const adjusted_time_config& config) : config_(config) { }
-boost::posix_time::ptime periodic_time_stamp::adjusted(const boost::posix_time::ptime& timestamp,std::size_t ticks)
+void clocked_time_stamp::reset( void )
 {
-    boost::posix_time::ptime newt;
-    newt=timestamp;
-    if(!last_.is_not_a_date_time() && (timestamp-last_reset_)<config_.reset)
+    m_first = true;
+    m_totalDeviation = boost::posix_time::seconds( 0 );
+}
+
+/***************************periodic_time_stamp*****************************************************/
+
+periodic_time_stamp::periodic_time_stamp( boost::posix_time::time_duration const& i_adjusted_period
+                                        , boost::posix_time::time_duration const& i_adjusted_threshold
+                                        , boost::posix_time::time_duration const& i_adjusted_reset )
+    : adjusted_period_( i_adjusted_period )
+    , adjusted_threshold_( i_adjusted_threshold )
+    , adjusted_reset_( i_adjusted_reset )
+{
+}
+
+boost::posix_time::ptime periodic_time_stamp::adjusted( const boost::posix_time::ptime& timestamp,std::size_t ticks )
+{
+    boost::posix_time::ptime newt = timestamp;
+
+    if( !last_.is_not_a_date_time() && ( timestamp - last_reset_ ) < adjusted_reset_ )
     {
-        boost::posix_time::time_duration delta=timestamp-last_;
-        if( delta > config_.period * ticks && delta < config_.period * ticks + config_.threshold )
-        {
-            newt=last_+config_.period*ticks;
-        }
+        boost::posix_time::time_duration delta = timestamp - last_;
+
+        if( delta > adjusted_period_ * ticks && delta < adjusted_period_ * ticks + adjusted_threshold_ )
+        { newt = last_ + adjusted_period_ * ticks; }
         else
-                last_reset_=timestamp;
+        { last_reset_ = timestamp; }
     }
-    else
-        last_reset_=timestamp;
-    last_=newt;
+    else { last_reset_ = timestamp; }
+
+    last_ = newt;
     return newt;
 }
-void periodic_time_stamp::reset() { last_ = boost::posix_time::not_a_date_time; }
-const adjusted_time_config& periodic_time_stamp::config() const { return config_; }
-    
+
 } } // namespace snark{ namespace timing
 

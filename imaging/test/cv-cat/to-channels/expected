@@ -1,0 +1,7 @@
+#python
+
+for ic in range(3):
+    for ix in range(nx):
+        for iy in range(ny):
+            expect direct/x[ix]/y[iy]/channel[ic] == from/columns/x[ix]/y[iy]/channel[ic]
+            expect direct/x[ix]/y[iy]/channel[ic] == from/rows/x[ix]/y[iy]/channel[ic]

@@ -34,19 +34,9 @@
 #ifndef WIN32
 #include <stdlib.h>
 #endif
-#include <boost/noncopyable.hpp>
 #include "../timing/time.h"
 
 namespace snark{ namespace timing {
-
-struct adjusted_time_config
-{
-    boost::posix_time::time_duration period;
-    boost::posix_time::time_duration threshold;
-    boost::posix_time::time_duration reset;
-    adjusted_time_config() { }
-    adjusted_time_config(boost::posix_time::time_duration p, boost::posix_time::time_duration th, boost::posix_time::time_duration r) : period(p), threshold(th), reset(r) { }
-};
 
 /// Helps calculate a better approximation for the timestamp that happens
 /// with a very precise frequency (e.g. laser firing).
@@ -60,48 +50,60 @@ struct adjusted_time_config
 /// - The event frequency is stable enough, e.g. it's a bus clock
 /// - Minimum system latency is reasonably stable
 /// - System performance is enough to catch up at least once in a while 
-class clocked_time_stamp : public boost::noncopyable
+class clocked_time_stamp
 {
-    public:
-        /// constructor, takes event period
-        clocked_time_stamp( boost::posix_time::time_duration period );
+public:
+    /// constructor, takes event period
+    clocked_time_stamp( boost::posix_time::time_duration period );
+    
+    /// take event reception timestamp and return adjusted timestamp;
+    /// ticks are the number of clock cycles between this event and the previous one
+    boost::posix_time::ptime adjusted( const boost::posix_time::ptime& t, std::size_t ticks = 1 );
+    
+    /// take event reception timestamp and return adjusted timestamp,
+    /// using new value for the period;
+    /// ticks are the number of clock cycles between this event and the previous one
+    /// @note: this method accounts for small slow variations
+    ///        of the period over long time, for example variations of
+    ///        clocking frequency due to the change of the ambient
+    ///        temperature
+    boost::posix_time::ptime adjusted( const boost::posix_time::ptime& t, boost::posix_time::time_duration period, std::size_t ticks = 1 );
+    
+    /// return current period
+    boost::posix_time::time_duration period( void ) const { return m_period; }
+    
+    /// reset the approximation
+    void reset( void );
         
-        /// destructor
-        ~clocked_time_stamp();
-        
-        /// take event reception timestamp and return adjusted timestamp;
-        /// ticks are the number of clock cycles between this event and the previous one
-        boost::posix_time::ptime adjusted( const boost::posix_time::ptime& t, std::size_t ticks = 1 );
-        
-        /// take event reception timestamp and return adjusted timestamp,
-        /// using new value for the period;
-        /// ticks are the number of clock cycles between this event and the previous one
-        /// @note: this method accounts for small slow variations
-        ///        of the period over long time, for example variations of
-        ///        clocking frequency due to the change of the ambient
-        ///        temperature
-        boost::posix_time::ptime adjusted( const boost::posix_time::ptime& t, boost::posix_time::time_duration period, std::size_t ticks = 1 );
-        
-        /// return current period
-        boost::posix_time::time_duration period() const;
-        
-        /// reset the approximation
-        void reset();
-            
-    private:
-        class impl;
-        impl* m_pimpl;
+private:
+    bool m_first;
+    boost::posix_time::time_duration m_period;
+    boost::posix_time::ptime m_last;
+    boost::posix_time::time_duration m_totalDeviation;
 };
 
 class periodic_time_stamp
 {
 public:
-    periodic_time_stamp(const adjusted_time_config& config);
-    boost::posix_time::ptime adjusted(const boost::posix_time::ptime& t,std::size_t ticks=1);
-    void reset();
-    const adjusted_time_config& config() const;
+    periodic_time_stamp( boost::posix_time::time_duration const& i_adjusted_period
+                       , boost::posix_time::time_duration const& i_adjusted_threshold
+                       , boost::posix_time::time_duration const& i_adjusted_reset );
+    boost::posix_time::ptime adjusted( const boost::posix_time::ptime& t,std::size_t ticks = 1 );
+
+    void reset( void ) { last_ = boost::posix_time::not_a_date_time; }
+
+    boost::posix_time::time_duration const& adjusted_period( void ) { return adjusted_period_; }
+
+    boost::posix_time::time_duration const& adjusted_threshold( void ) { return adjusted_threshold_; }
+
+    boost::posix_time::time_duration const& adjusted_reset( void ) { return adjusted_reset_; }
+
 private:
-    adjusted_time_config config_;
+
+    boost::posix_time::time_duration adjusted_period_;
+    boost::posix_time::time_duration adjusted_threshold_;
+    boost::posix_time::time_duration adjusted_reset_;
+
     boost::posix_time::ptime last_;
     boost::posix_time::ptime last_reset_;
 };

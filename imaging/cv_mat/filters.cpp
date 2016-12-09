@@ -204,7 +204,7 @@ static boost::unordered_map< std::string, unsigned int > cvt_color_types_ = fill
 unsigned int cvt_color_type_from_string( const std::string& t ) // to avoid compilation warning
 {
     boost::unordered_map< std::string, unsigned int >::const_iterator it = cvt_color_types_.find( t );
-    if (it == cvt_color_types_.end()) { COMMA_THROW(comma::exception, "unknown conversion enum '" << t << "' for convert-color"); } 
+    if (it == cvt_color_types_.end()) { COMMA_THROW(comma::exception, "unknown conversion enum '" << t << "' for convert-color"); }
     return it->second;
 }
 
@@ -212,7 +212,7 @@ static filters::value_type cvt_color_impl_( filters::value_type m, unsigned int 
 {
     filters::value_type n;
     n.first = m.first;
-    cv::cvtColor( m.second, n.second, which ); 
+    cv::cvtColor( m.second, n.second, which );
     return n;
 }
 
@@ -329,7 +329,7 @@ static filters::value_type bands_to_cols_impl_( filters::value_type input, bool 
     filters::value_type output( input.first, cv::Mat( bands_to_cols ? h : bands.size()
                                                     , bands_to_cols ? bands.size() : w
                                                     , output_type ) );
-    for( std::size_t i = 0; i < bands.size(); ++i)
+    for( std::size_t i = 0; i < bands.size(); ++i )
     {
         cv::Mat intile( input.second, bands_to_cols
                                     ? cv::Rect( bands[i].first, 0, bands[i].second, h )
@@ -340,6 +340,93 @@ static filters::value_type bands_to_cols_impl_( filters::value_type input, bool 
         int cv_reduce_dim = bands_to_cols ? 1 : 0 ;
         cv::reduce( intile, outtile, cv_reduce_dim, cv_reduce_method, output_type );
     }
+    return output;
+}
+
+static filters::value_type cols_to_channels_impl_( filters::value_type input, bool cols_to_channels, const std::vector< unsigned int > & values, double padding_value, unsigned int repeat )
+{
+    if ( input.second.channels() != 1 ) { COMMA_THROW( comma::exception, "input image for cols-to-channels operation must have a single channel" ); }
+    std::string element = cols_to_channels ? "column" : "row";
+
+    unsigned int w = input.second.cols;
+    unsigned int h = input.second.rows;
+
+    unsigned int min_element = *std::min_element( values.begin(), values.end() );
+    if ( min_element >= ( cols_to_channels ? w : h ) ) { COMMA_THROW( comma::exception, "the first output " << element << " is outside of the input image" ); }
+    unsigned int output_w = cols_to_channels
+                          ? ( repeat ? ( w - min_element ) / repeat : 1 )
+                          : w ;
+    unsigned int output_h = cols_to_channels
+                          ? h
+                          : ( repeat ? ( h - min_element ) / repeat : 1 ) ;
+    unsigned int output_c = values.size() == 2 ? 3 : values.size();
+    unsigned int output_t = CV_MAKETYPE( input.second.depth(), output_c );
+    filters::value_type output( input.first, cv::Mat( output_h, output_w, output_t ) );
+
+    std::vector< int > from_to;
+    from_to.reserve( 2 * output_c );
+    for ( size_t i = 0; i < output_c; ++i ) { from_to.push_back( i ); from_to.push_back( i ); }
+
+    std::vector< cv::Mat > src( output_c );
+    std::vector< cv::Mat > dst( 1 );
+    cv::Mat padding = ( cols_to_channels
+                      ? cv::Mat::ones( h, 1, input.second.type() )
+                      : cv::Mat::ones( 1, w, input.second.type() ) ) * padding_value; // instantiation is lazy
+    std::vector< unsigned int > indices( values );
+    for( size_t i = indices.size(); i < output_c; ++i ) { src[i] = padding; }
+    for ( unsigned int opos = 0; opos < ( cols_to_channels ? output_w : output_h ) ; ++opos )
+    {
+        for( size_t i = 0; i < indices.size(); ++i )
+        {
+            unsigned int j = indices[i];
+            if ( j >= ( cols_to_channels ? w : h ) ) {
+                src[i] = padding;
+            } else {
+                src[i] = cols_to_channels
+                       ? cv::Mat( input.second, cv::Rect( j, 0, 1, h ) )
+                       : cv::Mat( input.second, cv::Rect( 0, j, w, 1 ) ) ;
+            }
+            indices[i] += repeat;
+        }
+        dst[0] = cols_to_channels
+               ? cv::Mat( output.second, cv::Rect( opos, 0, 1, h ) )
+               : cv::Mat( output.second, cv::Rect( 0, opos, w, 1 ) ) ;
+        cv::mixChannels( src, dst, &from_to[0], output_c );
+    }
+    return output;
+}
+
+static filters::value_type channels_to_cols_impl_( filters::value_type input, bool channels_to_cols )
+{
+    unsigned int w = input.second.cols;
+    unsigned int h = input.second.rows;
+
+    unsigned int input_c = input.second.channels();
+    unsigned int output_t = CV_MAKETYPE( input.second.depth(), 1 );
+    filters::value_type output( input.first, cv::Mat( channels_to_cols ? h : input_c * h
+                                                    , channels_to_cols ? input_c * w : w
+                                                    , output_t ) );
+
+    std::vector< int > from_to;
+    from_to.reserve( 2 * input_c );
+    for ( size_t i = 0; i < input_c; ++i ) { from_to.push_back( i ); from_to.push_back( i ); }
+
+    std::vector< cv::Mat > src( 1 );
+    std::vector< cv::Mat > dst( input_c );
+    for ( unsigned int ipos = 0; ipos < ( channels_to_cols ? w : h ) ; ++ipos )
+    {
+        for( size_t i = 0; i < input_c; ++i )
+        {
+            dst[i] = cv::Mat( output.second, channels_to_cols
+                                           ? cv::Rect( ipos * input_c + i, 0, 1, h )
+                                           : cv::Rect( 0, ipos * input_c + i, w, 1 ) );
+        }
+        src[0] = cv::Mat( input.second, channels_to_cols
+                                      ? cv::Rect( ipos, 0, 1, h )
+                                      : cv::Rect( 0, ipos, w, 1 ) );
+        cv::mixChannels( src, dst, &from_to[0], input_c );
+    }
+
     return output;
 }
 
@@ -420,11 +507,11 @@ static filters::value_type colour_map_impl_( filters::value_type m, int type )
     return n;
 }
 
-static filters::value_type mask_impl_( filters::value_type m, boost::function< filters::value_type( filters::value_type ) > mask )
+static filters::value_type mask_impl_( filters::value_type m, boost::function< filters::value_type( filters::value_type ) > mask ) // have to pass mask by value, since filter functors may change on call
 {
     filters::value_type n;
     n.first = m.first;
-    m.second.copyTo( n.second, mask( n ).second );
+    m.second.copyTo( n.second, mask( m ).second );
     return n;
 }
 
@@ -445,7 +532,7 @@ struct blur_t
         if( s == "median") { return median; }
         if( s == "bilateral") { return bilateral; }
         if( s == "adaptive-bilateral") { return adaptive_bilateral; }
-        COMMA_THROW( comma::exception, "unexpected blur type" );
+        COMMA_THROW( comma::exception, "expected blur type; got: \"" << s << "\"" );
     }
     blur_t() : neighbourhood_size(0), sigma_colour(0), sigma_space(0) {}
 };
@@ -576,15 +663,15 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
         {
             public:
                 logger() : size_( 0 ), count_( 0 ) {}
-                
+
                 logger( const std::string& filename ) : ofstream_( new std::ofstream( &filename[0] ) ), serialization_( "t,rows,cols,type", comma::csv::format( "t,3ui" ) ), size_( 0 ), count_( 0 ) { if( !ofstream_->is_open() ) { COMMA_THROW( comma::exception, "failed to open \"" << filename << "\"" ); } }
-                
+
                 logger( const std::string& directory, boost::posix_time::time_duration period ) : directory_( directory ), serialization_( "t,rows,cols,type", comma::csv::format( "t,3ui" ) ), period_( period ), size_( 0 ), count_( 0 ) {}
-                
+
                 logger( const std::string& directory, unsigned int size ) : directory_( directory ), serialization_( "t,rows,cols,type", comma::csv::format( "t,3ui" ) ), size_( size ), count_( 0 ) {}
-                
+
                 ~logger() { if( ofstream_ ) { ofstream_->close(); } }
-                
+
                 filters::value_type operator()( filters::value_type m )
                 {
                     if( m.second.empty() ) { return m; } // quick and dirty, end of stream
@@ -600,7 +687,7 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
                     serialization_.write( *ofstream_, m );
                     return m;
                 }
-                
+
             private:
                 boost::mutex mutex_;
                 std::string directory_;
@@ -610,7 +697,7 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
                 boost::posix_time::ptime start_;
                 unsigned int size_;
                 unsigned int count_;
-                
+
                 void update_on_size_()
                 {
                     if( size_ == 0 ) { return; }
@@ -619,7 +706,7 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
                     ofstream_->close();
                     ofstream_.reset();
                 }
-                
+
                 void update_on_time_( filters::value_type m )
                 {
                     if( !period_ ) { return; }
@@ -630,18 +717,18 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
                     ofstream_.reset();
                 }
         };
-        
+
         boost::shared_ptr< logger > logger_; // todo: watch performance
-    
+
     public:
         log_impl_() {}
-        
+
         log_impl_( const std::string& filename ) : logger_( new logger( filename ) ) {}
-        
+
         log_impl_( const std::string& directory, boost::posix_time::time_duration period ) : logger_( new logger( directory, period ) ) {}
-        
+
         log_impl_( const std::string& directory, unsigned int size ) : logger_( new logger( directory, size ) ) {}
-        
+
         filters::value_type operator()( filters::value_type m ) { return logger_->operator()( m ); }
 };
 
@@ -696,7 +783,7 @@ static filters::value_type cross_impl_( filters::value_type m, boost::optional< 
 }
 
 namespace drawing {
-    
+
 struct shape
 {
     cv::Scalar color;
@@ -724,7 +811,7 @@ struct rectangle : public shape
     rectangle( const cv::Point& upper_left, const cv::Point& lower_right, const cv::Scalar& color, int thickness = 1, int line_type = 8, int shift = 0 ) : shape( color, thickness, line_type, shift ), upper_left( upper_left ), lower_right( lower_right ) {}
     void draw( cv::Mat m ) const { cv::rectangle( m, upper_left, lower_right, color, thickness, line_type, shift ); }
 };
-    
+
 } // namespace drawing {
 
 static filters::value_type circle_impl_( filters::value_type m, const drawing::circle& circle ) { circle.draw( m.second ); return m; }
@@ -1342,7 +1429,7 @@ static double max_value(int depth)
         case CV_32S: return depth_traits< CV_32S >::max_value();
         case CV_32F: return depth_traits< CV_32F >::max_value();
         case CV_64F: return depth_traits< CV_64F >::max_value();
-        default: { COMMA_THROW(comma::exception, "invalid depth: "<<depth ); } 
+        default: { COMMA_THROW(comma::exception, "invalid depth: "<<depth ); }
     }
 }
 
@@ -1373,7 +1460,7 @@ struct overlay_impl_
 //         comma::verbose<<"mat rows,cols,type;channels,depth "<<mat.rows<<","<<mat.cols<<","<<type_as_string(mat.type())<<";"<<mat.channels()<<","<<mat.depth()<<std::endl;
 //         comma::verbose<<"overlay rows,cols,type;channels,depth "<<overlay.rows<<","<<overlay.cols<<","<<type_as_string(overlay.type())<<";"<<overlay.channels()<<","<<overlay.depth()<<std::endl;
         if(mat.channels()!=overlay.channels()-1) { COMMA_THROW(comma::exception, "mat's channels ("<<mat.channels()<<") should be one less than overlay's channel: "<<overlay.channels()); }
-        if(mat.depth() != overlay.depth()) 
+        if(mat.depth() != overlay.depth())
         {
             comma::verbose<<"converting overlay from depth "<<overlay.depth()<<" to "<<mat.depth()<<std::endl;
             overlay=convert_and_scale(overlay, mat.depth());
@@ -1470,7 +1557,7 @@ template < unsigned int Depth > static cv::Mat lut_matrix_gamma_( double gamma )
     double scale = std::abs( gamma_traits< Depth >::max );
     for( unsigned int i = 0, j = gamma_traits< Depth >::min; i <= num_states; i++, j++ )
     {
-    	ptr[i] = std::pow( j / scale, 1.0 / gamma ) * scale;
+        ptr[i] = std::pow( j / scale, 1.0 / gamma ) * scale;
     }
     return lut_matrix;
 }
@@ -1478,8 +1565,8 @@ template < unsigned int Depth > static cv::Mat lut_matrix_gamma_( double gamma )
 template < unsigned int Depth >
 static filters::value_type gamma_( const filters::value_type m, const double gamma )
 {
-	static double gamma_ = gamma;
-	if( gamma_ != gamma ) { COMMA_THROW( comma::exception, "multiple filters with different gamma values: todo" ); }
+    static double gamma_ = gamma;
+    if( gamma_ != gamma ) { COMMA_THROW( comma::exception, "multiple filters with different gamma values: todo" ); }
     static cv::Mat lut_matrix = lut_matrix_gamma_<Depth>( gamma );
     cv::LUT( m.second, lut_matrix, m.second );
     return m;
@@ -1504,6 +1591,31 @@ static filters::value_type inrange_impl_( const filters::value_type m, const cv:
     return n;
 }
 
+struct load_impl_
+{
+    filters::value_type value;
+    
+    load_impl_( const std::string& filename )
+    {
+        const std::vector< std::string >& v = comma::split( filename, '.' );
+        if( v.back() == "bin" ) // quick and dirty
+        {
+            std::ifstream ifs( &filename[0] );
+            if( !ifs.is_open() ) { COMMA_THROW( comma::exception, "failed to open \"" << filename << "\"" ); }
+            serialization s( "t,rows,cols,type", comma::csv::format( "t,3ui" ) ); // quick and dirty
+            value = s.read( ifs );
+            ifs.close();
+        }
+        else
+        {
+            value.second = cv::imread( filename, -1 );
+        }
+        if( value.second.data == NULL ) { COMMA_THROW( comma::exception, "failed to load image from file \""<< filename << "\"" ); }
+    }
+    
+    filters::value_type operator()( filters::value_type ) { return value; }
+};
+
 static filters::value_type remove_mean_impl_(const filters::value_type m, const cv::Size kernel_size, const double ratio )
 {
     filters::value_type n;
@@ -1513,7 +1625,7 @@ static filters::value_type remove_mean_impl_(const filters::value_type m, const 
     return n;
 }
 
-boost::function< filter::input_type( filter::input_type ) > make_filter_functor( const std::vector< std::string >& e )
+static boost::function< filter::input_type( filter::input_type ) > make_filter_functor( const std::vector< std::string >& e )
 {
     if( e[0] == "convert-color" || e[0] == "convert_color" )
     {
@@ -1521,7 +1633,488 @@ boost::function< filter::input_type( filter::input_type ) > make_filter_functor(
         return boost::bind( &cvt_color_impl_, _1, cvt_color_type_from_string( e[1] ) );
     }
     if( e[0] == "count" ) { return count_impl_(); }
-    COMMA_THROW( comma::exception, "expected filter, got: \"" << comma::join( e, ';' ) << "\"" );
+    if( e[0] == "crop" )
+    {
+        unsigned int x = 0;
+        unsigned int y = 0;
+        unsigned int w, h;
+        std::vector< std::string > s = comma::split( e[1], ',' );
+        switch( s.size() )
+        {
+            case 2:
+                w = boost::lexical_cast< unsigned int >( s[0] );
+                h = boost::lexical_cast< unsigned int >( s[1] );
+                break;
+            case 4:
+                x = boost::lexical_cast< unsigned int >( s[0] );
+                y = boost::lexical_cast< unsigned int >( s[1] );
+                w = boost::lexical_cast< unsigned int >( s[2] );
+                h = boost::lexical_cast< unsigned int >( s[3] );
+                break;
+            default:
+                COMMA_THROW( comma::exception, "expected crop=[x,y,]width,height, got \"" << comma::join( e, '=' ) << "\"" );
+        }
+        return boost::bind( &crop_impl_, _1, x, y, w, h );
+    }
+    if( e[0] == "crop-cols" )
+    {
+        if( e.size() < 2 ) { COMMA_THROW( comma::exception, "crop-cols: specify at least one column to extract, e.g. crop-cols=1,10" ); }
+        std::vector< std::string > stripes = comma::split( e[1], '|' );
+        std::vector< stripe_t > cols;
+        for ( size_t s = 0; s < stripes.size(); ++s )
+        {
+            std::vector< std::string > column = comma::split( stripes[s], ',' );
+            if ( column.size() > 2 ) { COMMA_THROW( comma::exception, "crop-cols: expected position,[width]; got " << column.size() << " parameters '" << stripes[s] << "'" ); }
+            unsigned int x = boost::lexical_cast< unsigned int >( column[0] );
+            unsigned int w = ( column.size() == 2 ? boost::lexical_cast< unsigned int >( column[1] ) : 1 );
+            cols.push_back( std::make_pair( x, w ) );
+        }
+        return boost::bind( &crop_cols_impl_, _1, cols );
+    }
+    if( e[0] == "crop-rows" )
+    {
+        if( e.size() < 2 ) { COMMA_THROW( comma::exception, "crop-rows: specify at least one row to extract, e.g. crop-rows=1,10" ); }
+        std::vector< std::string > stripes = comma::split( e[1], '|' );
+        std::vector< stripe_t > rows;
+        for ( size_t s = 0; s < stripes.size(); ++s )
+        {
+            std::vector< std::string > rowblock = comma::split( stripes[s], ',' );
+            if ( rowblock.size() > 2 ) { COMMA_THROW( comma::exception, "crop-rows: expected position,[height]; got " << rowblock.size() << " parameters '" << stripes[s] << "'" ); }
+            unsigned int y = boost::lexical_cast< unsigned int >( rowblock[0] );
+            unsigned int h = ( rowblock.size() == 2 ? boost::lexical_cast< unsigned int >( rowblock[1] ) : 1 );
+            rows.push_back( std::make_pair( y, h ) );
+        }
+        return boost::bind( &crop_rows_impl_, _1, rows );
+    }
+    if( e[0] == "bands-to-cols" || e[0] == "bands-to-rows" )
+    {
+        // rhs looks like "12,23|50,30|100|method:average|output-depth:d"
+        // the '|'-separated entries shall be either:
+        // - comma-separated pairs of integers, or
+        // - a single integer, or
+        // - colon-separated words with a known keyword on the left and one of the known enumeration names on the right
+        const bool bands_to_cols = e[0] == "bands-to-cols";
+        const std::string & op_name = bands_to_cols ? "bands-to-cols" : "bands-to-rows";
+        if( e.size() < 2 ) { COMMA_THROW( comma::exception, op_name << ": specify at least one band to extract, e.g. " << op_name << "=1,10" ); }
+        std::vector< std::string > stripes = comma::split( e[1], '|' );
+        std::vector< stripe_t > bands;
+        int cv_reduce_method = bands_method_default;
+        int cv_reduce_dtype = -1;
+        for ( size_t s = 0; s < stripes.size(); ++s )
+        {
+            if ( stripes[s].find( ":" ) != std::string::npos )
+            {
+                std::vector< std::string > setting = comma::split( stripes[s], ':' );
+                if ( setting.size() != 2 ) { COMMA_THROW( comma::exception, op_name << ": expected keyword:value; got " << setting.size() << " parameters '" << stripes[s] << "'" ); }
+                if ( setting[0] == "method" )
+                {
+                    static std::map< std::string, int > methods = boost::assign::map_list_of ( "average", CV_REDUCE_AVG ) ( "sum", CV_REDUCE_SUM ) ( "min", CV_REDUCE_MIN ) ( "max", CV_REDUCE_MAX );
+                    std::map< std::string, int >::const_iterator found = methods.find( setting[1] );
+                    if ( found == methods.end() ) { COMMA_THROW( comma::exception, op_name << ": the method is not one of [average,sum,min,max]" ); }
+                    cv_reduce_method = found->second;
+                }
+                else if ( setting[0] == "output-depth" )
+                {
+                    static std::map< std::string, int > depths = boost::assign::map_list_of ( "CV_32S", CV_32S ) ( "i", CV_32S ) ( "CV_32F", CV_32F ) ( "f", CV_32F ) ( "CV_64F", CV_64F ) ( "d", CV_64F );
+                    std::map< std::string, int >::const_iterator found = depths.find( setting[1] );
+                    if ( found == depths.end() ) { COMMA_THROW( comma::exception, op_name << ": the output-depth is not one of [i,f,d] or [CV_32S,CV_32F,CV_64F]" ); }
+                    cv_reduce_dtype = found->second;
+                }
+                else
+                {
+                    COMMA_THROW( comma::exception, op_name << ": the keyword '" << setting[0] << "' is not one of [method,output-depth]" );
+                }
+            }
+            else
+            {
+                std::vector< std::string > rowblock = comma::split( stripes[s], ',' );
+                if ( rowblock.size() > 2 ) { COMMA_THROW( comma::exception, op_name << ": expected position,[width]; got " << rowblock.size() << " parameters '" << stripes[s] << "'" ); }
+                unsigned int y = boost::lexical_cast< unsigned int >( rowblock[0] );
+                unsigned int h = ( rowblock.size() == 2 ? boost::lexical_cast< unsigned int >( rowblock[1] ) : 1 );
+                bands.push_back( std::make_pair( y, h ) );
+            }
+        }
+        if ( bands.empty() ) { COMMA_THROW( comma::exception, op_name << ": specify at least one band" ); }
+        return boost::bind( &bands_to_cols_impl_, _1, bands_to_cols, bands, cv_reduce_method, cv_reduce_dtype );
+    }
+    if( e[0] == "crop-tile" )
+    {
+        if( e.size() < 2 ) { COMMA_THROW( comma::exception, "crop-tile: specify number of tiles along x and y, and at least one tile, e.g. crop-tile=1,1,0,0" ); }
+        std::vector< std::string > items = comma::split( e[1], '&' );
+        bool vertical = std::find( items.begin()+1, items.end(), "horizontal" ) == items.end();
+        std::vector< std::string > s = comma::split( items[0], ',' );
+        if( s.size() < 4 ) { COMMA_THROW( comma::exception, "crop-tile: expected number of tiles along x and y, and at least one tile, got " << e[1] ); }
+        if( s.size()%2 != 0 ) { COMMA_THROW( comma::exception, "crop-tile: expected number of tiles along x and y, followed by pairs of integers representing tiles, got " << e[1] ); }
+        std::vector< unsigned int > v( s.size() );
+        for( std::size_t i=0; i < s.size(); ++i ) { v[i] = boost::lexical_cast< unsigned int >( s[i] ); }
+        unsigned int number_of_tile_cols, number_of_tile_rows;
+        std::vector< tile_t > tiles;
+        if( v.size() == 4 && v[0] < v[2] && v[1] < v[3]) // for backward compatibility only
+        {
+            number_of_tile_cols = v[2];
+            number_of_tile_rows = v[3];
+            tiles.push_back( tile_t( v[0], v[1] ) );
+        }
+        else
+        {
+            number_of_tile_cols = v[0];
+            number_of_tile_rows = v[1];
+            for( std::size_t i=2; i < v.size()-1; i+=2 )
+            {
+                if( v[i] >= number_of_tile_cols || v[i+1] >= number_of_tile_rows ) { COMMA_THROW( comma::exception, "crop-tile: encountered an invalid tile " << v[i] << "," << v[i+1] ); }
+                tiles.push_back( tile_t( v[i], v[i+1] ) );
+            }
+        }
+        if( number_of_tile_cols == 0 || number_of_tile_rows == 0 ) { COMMA_THROW( comma::exception, "crop-tile: expected positive number of tiles along x and y, got " << number_of_tile_cols << "," << number_of_tile_rows ); }
+        return boost::bind( &crop_tile_impl_, _1, number_of_tile_cols, number_of_tile_rows, tiles, vertical );
+    }
+    if( e[0] == "cols-to-channels" || e[0] == "rows-to-channels" )
+    {
+        // rhs looks like "cols-to-channels=1,4,5[|pad:value|repeat:step]"
+        // the '|'-separated entries shall be either:
+        // - a comma-separated lists of integers, or
+        // - a single integer, or
+        // - colon-separated words with a known keyword on the left and one of the known enumeration names on the right
+        const bool cols_to_channels = e[0] == "cols-to-channels";
+        const std::string & op_name = cols_to_channels ? "cols-to-channels" : "rows-to-channels";
+        const std::string & op_what = cols_to_channels ? "column" : "row";
+        if( e.size() < 2 ) { COMMA_THROW( comma::exception, op_name << ": specify at least one column or column list to extract, e.g. " << op_name << "=1,10" ); }
+        std::vector< std::string > inputs = comma::split( e[1], '|' );
+        std::vector< unsigned int > values;
+        double padding = 0.0;
+        unsigned int repeat = 0;
+        for ( size_t s = 0; s < inputs.size(); ++s )
+        {
+            if ( inputs[s].find( ":" ) != std::string::npos )
+            {
+                std::vector< std::string > setting = comma::split( inputs[s], ':' );
+                if ( setting.size() != 2 ) { COMMA_THROW( comma::exception, op_name << ": expected keyword:value; got " << setting.size() << " parameters '" << inputs[s] << "'" ); }
+                if ( setting[0] == "pad" )
+                {
+                    padding = boost::lexical_cast< double >( setting[1] );
+                }
+                else if ( setting[0] == "repeat" )
+                {
+                    repeat = boost::lexical_cast< unsigned int >( setting[1] );
+                }
+                else
+                {
+                    COMMA_THROW( comma::exception, op_name << ": the keyword '" << setting[0] << "' is not one of [pad,repeat]" );
+                }
+            }
+            else
+            {
+                std::vector< std::string > vstrings = comma::split( inputs[s], ',' );
+                if ( vstrings.size() > 4 ) { COMMA_THROW( comma::exception, op_name << ": can store up to 4 " << op_what << "s into channels, got " << vstrings.size() << " inputs '" << inputs[s] << "'" ); }
+                values.reserve( vstrings.size() );
+                for ( size_t i = 0; i < vstrings.size(); ++i ) { values.push_back( boost::lexical_cast< unsigned int >( vstrings[i] ) ); }
+            }
+        }
+        if ( values.empty() ) { COMMA_THROW( comma::exception, op_name << ": specify at least one " << op_what << " to store as channel" ); }
+        if ( values.size() > 4 ) { COMMA_THROW( comma::exception, op_name << ": can have at most 4 output channels" ); }
+        return boost::bind( &cols_to_channels_impl_, _1, cols_to_channels, values, padding, repeat );
+    }
+    if( e[0] == "channels-to-cols" || e[0] == "channels-to-rows" )
+    {
+        const bool channels_to_cols = e[0] == "channels-to-cols";
+        return boost::bind( &channels_to_cols_impl_, _1, channels_to_cols );
+    }
+    if( e[0] == "swap-channels" )
+    {
+        COMMA_THROW( comma::exception, "NYI" );
+        // use cv::reshape or cv::mixChannels
+    }
+    if( e[0] == "accumulate" )
+    {
+        unsigned int how_many = boost::lexical_cast< unsigned int >( e[1] );
+        if ( how_many == 0 ) { COMMA_THROW( comma::exception, "expected positive number of images to accumulate in accumulate filter, got " << how_many ); }
+        return accumulate_impl_( how_many );
+    }
+    if( e[0] == "cross" )
+    {
+        boost::optional< Eigen::Vector2i > center;
+        if( e.size() > 1 )
+        {
+            center = Eigen::Vector2i( 0, 0 );
+            std::vector< std::string > s = comma::split( e[1], ',' );
+            if( s.size() < 2 ) { COMMA_THROW( comma::exception, "expected cross-hair x,y; got \"" << e[1] << "\"" ); }
+            center->x() = boost::lexical_cast< unsigned int >( s[0] );
+            center->y() = boost::lexical_cast< unsigned int >( s[1] );
+        }
+        return boost::bind( &cross_impl_, _1, center );
+    }
+    if( e[0] == "circle" ) // todo: quick and dirty, implement using traits
+    {
+        boost::array< int, 9 > p = {{ 0, 0, 0, 0, 0, 0, 1, 8, 0 }};
+        const std::vector< std::string > v = comma::split( e[1], ',' );
+        for( unsigned int i = 0; i < v.size(); ++i ) { if( !v[i].empty() ) { p[i] = boost::lexical_cast< int >( v[i] ); } }
+        return boost::bind( &circle_impl_, _1, drawing::circle( cv::Point( p[0], p[1] ), p[2], cv::Scalar( p[5], p[4], p[3] ), p[6], p[7], p[8] ) );
+    }
+    if( e[0] == "rectangle" || e[0] == "box" ) // todo: quick and dirty, implement using traits
+    {
+        boost::array< int, 10 > p = {{ 0, 0, 0, 0, 0, 0, 0, 1, 8, 0 }};
+        const std::vector< std::string > v = comma::split( e[1], ',' );
+        for( unsigned int i = 0; i < v.size(); ++i ) { if( !v[i].empty() ) { p[i] = boost::lexical_cast< int >( v[i] ); } }
+        return boost::bind( &rectangle_impl_, _1, drawing::rectangle( cv::Point( p[0], p[1] ), cv::Point( p[2], p[3] ), cv::Scalar( p[6], p[5], p[4] ), p[7], p[8], p[9] ) );
+    }
+    if( e[0] == "gamma" ) { return boost::bind( &gamma_impl_, _1, boost::lexical_cast< double >( e[1] ) ); }
+    if( e[0] == "remove-mean")
+    {
+        std::vector< std::string > s = comma::split( e[1], ',' );
+        if( s.size() != 2 ) { COMMA_THROW( comma::exception, "remove-mean expected 2 parameters" ); }
+        unsigned int neighbourhood_size = boost::lexical_cast< unsigned int >( s[0] );
+        cv::Size kernel_size(neighbourhood_size, neighbourhood_size);
+        double ratio = boost::lexical_cast< double >( s[1] );
+        return boost::bind( &remove_mean_impl_, _1, kernel_size, ratio );
+    }
+    if( e[0] == "fft" )
+    {
+        bool direct = true;
+        bool complex = true;
+        bool magnitude = false;
+        bool log_scale = false;
+        bool normalize = false;
+        if( e.size() > 1 )
+        {
+            const std::vector< std::string >& w = comma::split( e[1], ',' );
+            for( unsigned int i = 0; i < w.size(); ++i )
+            {
+                if( w[i] == "direct" ) { direct = true; }
+                else if( w[i] == "inverse" ) { direct = false; }
+                else if( w[i] == "complex" ) { complex = true; }
+                else if( w[i] == "real" ) { complex = false; }
+                else if( w[i] == "magnitude" ) { magnitude = true; }
+                else if( w[i] == "normalize" ) { normalize = true; }
+                else if( w[i] == "log" || w[i] == "log-scale" ) { log_scale = true; }
+            }
+        }
+        return boost::bind( &fft_impl_, _1, direct, complex, magnitude, log_scale, normalize );
+    }
+    if( e[0] == "flip" ) { return boost::bind( &flip_impl_, _1, 0 ); }
+    if( e[0] == "flop" ) { return boost::bind( &flip_impl_, _1, 1 ); }
+    if( e[0] == "magnitude" ) { return boost::bind( &magnitude_impl_, _1 ); }
+    if( e[0] == "text" )
+    {
+        if( e.size() <= 1 ) { COMMA_THROW( comma::exception, "text: expected text value" ); }
+        std::vector< std::string > w = comma::split( e[1], ',' );
+        cv::Point p( 10, 10 );
+        if( w.size() >= 3 ) { p = cv::Point( boost::lexical_cast< unsigned int >( w[1] ), boost::lexical_cast< unsigned int >( w[2] ) ); }
+        cv::Scalar s( 0, 255, 255 );
+        if( w.size() >= 4 )
+        {
+            if( w[3] == "red" ) { s = cv::Scalar( 0, 0, 255 ); }
+            else if( w[3] == "green" ) { s = cv::Scalar( 0, 255, 0 ); }
+            else if( w[3] == "blue" ) { s = cv::Scalar( 255, 0, 0 ); }
+            else if( w[3] == "white" ) { s = cv::Scalar( 255, 255, 255 ); }
+            else if( w[3] == "black" ) { s = cv::Scalar( 0, 0, 0 ); }
+            else if( w[3] == "yellow" ) { s = cv::Scalar( 0, 255, 255 ); }
+            else { COMMA_THROW( comma::exception, "expected colour of text in \"" << comma::join( e, '=' ) << "\", got '" << w[3] << "'" ); }
+        }
+        return boost::bind( &text_impl_, _1, w[0], p, s );
+    }
+    if( e[0] == "convert-to" || e[0] == "convert_to" )
+    {
+        if( e.size() <= 1 ) { COMMA_THROW( comma::exception, "convert-to: expected options, got none" ); }
+        const std::vector< std::string >& w = comma::split( e[1], ',' );
+        boost::unordered_map< std::string, int >::const_iterator it = types_.find( w[0] );
+        if( it == types_.end() ) { COMMA_THROW( comma::exception, "convert-to: expected target type, got \"" << w[0] << "\"" ); }
+        double scale = w.size() > 1 ? boost::lexical_cast< double >( w[1] ) : 1.0;
+        double offset = w.size() > 2 ? boost::lexical_cast< double >( w[2] ) : 0.0;
+        return boost::bind( &convert_to_impl_, _1, it->second, scale, offset );
+    }
+    if( e[0] == "resize" )
+    {
+        unsigned int width = 0;
+        unsigned int height = 0;
+        double w = 0;
+        double h = 0;
+        const std::vector< std::string >& r = comma::split( e[1], ',' );
+        int interpolation = cv::INTER_LINEAR;
+        unsigned int size = r.size();
+        if( r.size() > 1 && r.back()[0] >= 'a' && r.back()[0] <= 'z' )
+        {
+            if( r.back() == "nearest" ) { interpolation = cv::INTER_NEAREST; }
+            else if( r.back() == "linear" ) { interpolation = cv::INTER_LINEAR; }
+            else if( r.back() == "area" ) { interpolation = cv::INTER_AREA; }
+            else if( r.back() == "cubic" ) { interpolation = cv::INTER_CUBIC; }
+            else if( r.back() == "lanczos4" ) { interpolation = cv::INTER_LANCZOS4; }
+            else { COMMA_THROW( comma::exception, "resize: expected interpolation type, got: \"" << e[1] << "\"" ); }
+            --size;
+        }
+        else if( r.size() == 3 ) { interpolation = boost::lexical_cast< int >( r[3] ); }
+        switch( size )
+        {
+            case 1:
+                w = h = boost::lexical_cast< double >( r[0] );
+                break;
+            case 2:
+            case 3:
+                try { width = boost::lexical_cast< unsigned int >( r[0] ); }
+                catch ( ... ) { w = boost::lexical_cast< double >( r[0] ); }
+                try { height = boost::lexical_cast< unsigned int >( r[1] ); }
+                catch ( ... ) { h = boost::lexical_cast< double >( r[1] ); }
+                break;
+            default:
+                COMMA_THROW( comma::exception, "expected resize=<width>,<height>, got: \"" << e[1] << "\"" );
+        }
+        return boost::bind( &resize_impl_, _1, width, height, w, h, interpolation );
+    }
+    if( e[0] == "mask" )
+    {
+        if( e.size() == 1 ) { COMMA_THROW( comma::exception, "mask: please specify mask filters" ); }
+        if( e.size() > 2 ) { COMMA_THROW( comma::exception, "mask: expected 1 parameter; got: " << comma::join( e, '=' ) ); }
+        std::string filter_string = e[1];
+        const std::vector< std::string > w = comma::split( filter_string, '|' ); // quick and dirty, running out of delimiters
+        boost::function< filter::input_type( filter::input_type ) > g = make_filter_functor( comma::split( w[0], ':' ) );
+        for( unsigned int k = 1; k < w.size(); ++k ) { g = boost::bind( make_filter_functor( comma::split( w[k], ':' ) ), boost::bind( g, _1 ) ); }
+        return boost::bind( &mask_impl_, _1, g );
+    }
+    else if( e[0] == "timestamp" ) { return &timestamp_impl_; }
+    else if( e[0] == "transpose" ) { return &transpose_impl_; }
+    else if( e[0] == "split" ) { return &split_impl_; }
+    else if( e[0] == "merge" )
+    {
+        unsigned int default_number_of_channels = 3;
+        unsigned int nchannels = e.size() == 1 ? default_number_of_channels : boost::lexical_cast< unsigned int >( e[1] );
+        if ( nchannels == 0 ) { COMMA_THROW( comma::exception, "expected positive number of channels in merge filter, got " << nchannels ); }
+        return boost::bind( &merge_impl_, _1, nchannels );
+    }
+    if( e[0] == "undistort" ) { return undistort_impl_( e[1] ); }
+    if( e[0] == "invert" )
+    {
+        if( e.size() == 1 ) { return &invert_impl_; }
+        else if( e[1] == "brightness" ) { return &invert_brightness_impl_; } // quick and dirty, a secret option
+    }
+    if(e[0]=="normalize")
+    {
+        if(e[1]=="max") { return &normalize_max_impl_; }
+        else if(e[1]=="sum") { return &normalize_sum_impl_; }
+        else if(e[1]=="all") { return &normalize_cv_impl_; }
+        else { COMMA_THROW( comma::exception, "expected max or sum option for normalize, got" << e[1] ); }
+    }
+    if( e[0]=="equalize-histogram" ) { return &equalize_histogram_impl_; }
+    if( e[0] == "brightness" || e[0] == "scale" )
+    {
+        const std::vector< std::string >& s = comma::split( e[1], ',' );
+        double scale = boost::lexical_cast< double >( s[0] );
+        double offset = s.size() == 1 ? 0.0 : boost::lexical_cast< double >( s[1] );
+        return boost::bind( &brightness_impl_, _1, scale, offset );
+    }
+    if( e[0] == "color-map" )
+    {
+        if( e.size() != 2 ) { COMMA_THROW( comma::exception, "expected colour-map=<type>; got: \"" << e[1] << "\"" ); }
+        int type;
+        if( e[1] == "autumn" ) { type = cv::COLORMAP_AUTUMN; }
+        else if( e[1] == "bone" ) { type = cv::COLORMAP_BONE; }
+        else if( e[1] == "jet" ) { type = cv::COLORMAP_JET; }
+        else if( e[1] == "winter" ) { type = cv::COLORMAP_WINTER; }
+        else if( e[1] == "rainbow" ) { type = cv::COLORMAP_RAINBOW; }
+        else if( e[1] == "ocean" ) { type = cv::COLORMAP_OCEAN; }
+        else if( e[1] == "summer" ) { type = cv::COLORMAP_SUMMER; }
+        else if( e[1] == "spring" ) { type = cv::COLORMAP_SPRING; }
+        else if( e[1] == "cool" ) { type = cv::COLORMAP_COOL; }
+        else if( e[1] == "hsv" ) { type = cv::COLORMAP_HSV; }
+        else if( e[1] == "pink" ) { type = cv::COLORMAP_PINK; }
+        else if( e[1] == "hot" ) { type = cv::COLORMAP_HOT; }
+        else { COMMA_THROW( comma::exception, "expected colour-map type; got: \"" << e[1] << "\"" ); }
+        return boost::bind( &colour_map_impl_, _1, type );
+    }
+    if( e[0] == "blur" )
+    {
+        const std::vector< std::string >& s = comma::split( e[1], ',' );
+        if( s.size() < 2 ) { COMMA_THROW( comma::exception, "expected blur=<blur_type>,<blur_type_parameters>" ); }
+        
+        blur_t params;
+        params.blur_type = blur_t::from_string(s[0]);
+        if (s[0] == "box")
+        {
+            params.kernel_size.height = params.kernel_size.width = boost::lexical_cast< int >( s[1] );
+        }
+        else if (s[0] == "gaussian")
+        {
+            if (s.size() != 3) { COMMA_THROW( comma::exception, "expected blur=gaussian,kernel_size,std" ); }
+            params.kernel_size.width = params.kernel_size.height = boost::lexical_cast< int >( s[1] );
+            params.std.x = params.std.y = boost::lexical_cast< double >( s[2] );
+        }
+        else if (s[0] == "median")
+        {
+            if (s.size() != 2) { COMMA_THROW( comma::exception, "blur=median,kernel_size" ); }
+            params.neighbourhood_size = boost::lexical_cast< int >( s[1] );
+        }
+        else if (s[0] == "bilateral")
+        {
+            if (s.size() != 4) // nsize,std_space,std_colour
+            { COMMA_THROW( comma::exception, "blur=bilateral expected 3 parameters" ); }
+            params.neighbourhood_size = boost::lexical_cast< int >( s[1] );
+            params.sigma_space = boost::lexical_cast< double >( s[2] );
+            params.sigma_colour = boost::lexical_cast< double >( s[3] ); 
+        }
+        else if (s[0] == "adaptive-bilateral")
+        {
+            if (s.size() != 4) { COMMA_THROW( comma::exception, "expected blur=adaptive-bilateral,kernel_size,std_space,std_colour_max" ); }
+            params.kernel_size.width = params.kernel_size.height = boost::lexical_cast< int >( s[1] );
+            params.sigma_space = boost::lexical_cast< double >( s[2] );
+            params.sigma_colour = boost::lexical_cast< double >( s[3] ); // max sigma color
+        }
+        else { COMMA_THROW( comma::exception, "invalid blur type" ); }
+        return boost::bind( &blur_impl_, _1, params );
+    }
+    if( e[0] == "load" )
+    {
+        if( e.size() < 2 ) { COMMA_THROW( comma::exception, "please specify filename load=<filename>" ); }
+        return load_impl_( e[1] );
+    }
+    if( e[0] == "map" )
+    {
+        if( e.size() < 2 ) { COMMA_THROW( comma::exception, "expected file name with the map, e.g. map=f.csv" ); }
+        std::stringstream s; s << e[1]; for( std::size_t i = 2; i < e.size(); ++i ) { s << "=" << e[i]; }
+        std::string map_filter_options = s.str();
+        std::vector< std::string > items = comma::split( map_filter_options, '&' );
+        bool permissive = std::find( items.begin()+1, items.end(), "permissive" ) != items.end();
+        return map_impl_( map_filter_options, permissive );
+    }
+    if( e[0] == "inrange" )
+    {
+        const std::vector< std::string >& s = comma::split( e[1], ',' );
+        if( s.size() < 2 || s.size() % 2 != 0 ) { COMMA_THROW( comma::exception, "inrange: expected <upper>,<lower> got: \"" << comma::join( e, '=' ) << "\"" ); }
+        cv::Scalar lower = scalar_from_strings( &s[0], s.size() / 2 );
+        cv::Scalar upper = scalar_from_strings( &s[ s.size() / 2 ], s.size() / 2 );
+        return boost::bind( &inrange_impl_, _1, lower, upper );
+    }
+    if( e[0] == "threshold" )
+    {
+        const std::vector< std::string >& s = comma::split( e[1], ',' );
+        if( s[0].empty() ) { COMMA_THROW( comma::exception, "threshold: expected <threshold|otsu>[,<maxval>[,<type>]] got: \"" << comma::join( e, '=' ) << "\"" ); }
+        bool otsu = s[0] == "otsu";
+        double threshold = otsu ? 0 : boost::lexical_cast< double >( s[0] );
+        double maxval = s.size() < 2 ? 255 : boost::lexical_cast< double >( s[1] );
+        threshold_t::types type = threshold_t::from_string( s.size() < 3 ? "" : s[2] );
+        return boost::bind( &threshold_impl_, _1, threshold, maxval, type, otsu );
+    }
+    if( e[0] == "linear-combination" )
+    {
+        const std::vector< std::string >& s = comma::split( e[1], ',' );
+        if( s[0].empty() ) { COMMA_THROW( comma::exception, "linear-combination: expected coefficients got: \"" << comma::join( e, '=' ) << "\"" ); }
+        std::vector< double > coefficients( s.size() );
+        for( unsigned int j = 0; j < s.size(); ++j ) { coefficients[j] = boost::lexical_cast< double >( s[j] ); }
+        return boost::bind( &linear_combination_impl_, _1, coefficients );
+    }
+    if( e[0] == "overlay" )
+    {
+        if( e.size() != 2 ) { COMMA_THROW( comma::exception, "expected file name (and optional x,y) with the overlay, e.g. overlay=a.svg" ); }
+        std::vector< std::string > s = comma::split( e[1], ',' );
+        if(s.size()!=1 && s.size()!=3) { COMMA_THROW( comma::exception, "expected one or three parameters (file[,x,y]); found " << s.size() ); }
+        int x=0, y=0;
+        if(s.size()>1)
+        {
+            x=boost::lexical_cast<int>(s[1]);
+            y=boost::lexical_cast<int>(s[2]);
+        }
+        return overlay_impl_( s[0], x, y );
+    }
+    boost::function< cv_mat::filters::value_type( cv_mat::filters::value_type ) > functor = imaging::vegetation::filters::make_functor( e );
+    if( functor ) { return functor; }
+    COMMA_THROW( comma::exception, "expected filter, got: \"" << comma::join( e, '=' ) << "\"" );
 }
 
 std::vector< filter > filters::make( const std::string& how, unsigned int default_delay )
@@ -1545,219 +2138,6 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
             if( modified ) { COMMA_THROW( comma::exception, "cannot covert from 12 bit packed after transforms: " << name ); }
             if(e.size()!=1) { COMMA_THROW( comma::exception, "unexpected arguement: "<<e[1]); }
             f.push_back( filter( boost::bind( &unpack12_impl_, _1 ) ) );
-        }
-        else if( e[0] == "crop" )
-        {
-            unsigned int x = 0;
-            unsigned int y = 0;
-            unsigned int w, h;
-            std::vector< std::string > s = comma::split( e[1], ',' );
-            switch( s.size() )
-            {
-                case 2:
-                    w = boost::lexical_cast< unsigned int >( s[0] );
-                    h = boost::lexical_cast< unsigned int >( s[1] );
-                    break;
-                case 4:
-                    x = boost::lexical_cast< unsigned int >( s[0] );
-                    y = boost::lexical_cast< unsigned int >( s[1] );
-                    w = boost::lexical_cast< unsigned int >( s[2] );
-                    h = boost::lexical_cast< unsigned int >( s[3] );
-                    break;
-                default:
-                    COMMA_THROW( comma::exception, "expected crop=[x,y,]width,height, got \"" << v[i] << "\"" );
-            }
-            f.push_back( filter( boost::bind( &crop_impl_, _1, x, y, w, h ) ) );
-        }
-        else if( e[0] == "crop-cols" )
-        {
-            if( e.size() < 2 ) { COMMA_THROW( comma::exception, "crop-cols: specify at least one column to extract, e.g. crop-cols=1,10" ); }
-            std::vector< std::string > stripes = comma::split( e[1], '|' );
-            std::vector< stripe_t > cols;
-            for ( size_t s = 0; s < stripes.size(); ++s )
-            {
-                std::vector< std::string > column = comma::split( stripes[s], ',' );
-                if ( column.size() > 2 ) { COMMA_THROW( comma::exception, "crop-cols: expected position,[width]; got " << column.size() << " parameters '" << stripes[s] << "'" ); }
-                unsigned int x = boost::lexical_cast< unsigned int >( column[0] );
-                unsigned int w = ( column.size() == 2 ? boost::lexical_cast< unsigned int >( column[1] ) : 1 );
-                cols.push_back( std::make_pair( x, w ) );
-            }
-            f.push_back( filter( boost::bind( &crop_cols_impl_, _1, cols ) ) );
-        }
-        else if( e[0] == "crop-rows" )
-        {
-            if( e.size() < 2 ) { COMMA_THROW( comma::exception, "crop-rows: specify at least one row to extract, e.g. crop-rows=1,10" ); }
-            std::vector< std::string > stripes = comma::split( e[1], '|' );
-            std::vector< stripe_t > rows;
-            for ( size_t s = 0; s < stripes.size(); ++s )
-            {
-                std::vector< std::string > rowblock = comma::split( stripes[s], ',' );
-                if ( rowblock.size() > 2 ) { COMMA_THROW( comma::exception, "crop-rows: expected position,[height]; got " << rowblock.size() << " parameters '" << stripes[s] << "'" ); }
-                unsigned int y = boost::lexical_cast< unsigned int >( rowblock[0] );
-                unsigned int h = ( rowblock.size() == 2 ? boost::lexical_cast< unsigned int >( rowblock[1] ) : 1 );
-                rows.push_back( std::make_pair( y, h ) );
-            }
-            f.push_back( filter( boost::bind( &crop_rows_impl_, _1, rows ) ) );
-        }
-        else if( e[0] == "bands-to-cols" || e[0] == "bands-to-rows" )
-        {
-            // rhs looks like "12,23|50,30|100|method:average|output-depth:d"
-            // the '|'-separated entries shall be either:
-            // - comma-separated pairs of integers, or
-            // - a single integer, or
-            // - colon-separated words with a known keyword on the left and one of the known enumeration names on the right
-            const bool bands_to_cols = e[0] == "bands-to-cols";
-            const std::string & op_name = bands_to_cols ? "bands-to-cols" : "bands-to-rows";
-            if( e.size() < 2 ) { COMMA_THROW( comma::exception, op_name << ": specify at least one band to extract, e.g. " << op_name << "=1,10" ); }
-            std::vector< std::string > stripes = comma::split( e[1], '|' );
-            std::vector< stripe_t > bands;
-            int cv_reduce_method = bands_method_default;
-            int cv_reduce_dtype = -1;
-            for ( size_t s = 0; s < stripes.size(); ++s )
-            {
-                if ( stripes[s].find( ":" ) != std::string::npos )
-                {
-                    std::vector< std::string > setting = comma::split( stripes[s], ':' );
-                    if ( setting.size() != 2 ) { COMMA_THROW( comma::exception, op_name << ": expected keyword:value; got " << setting.size() << " parameters '" << stripes[s] << "'" ); }
-                    if ( setting[0] == "method" )
-                    {
-                        static std::map< std::string, int > methods = boost::assign::map_list_of ( "average", CV_REDUCE_AVG ) ( "sum", CV_REDUCE_SUM ) ( "min", CV_REDUCE_MIN ) ( "max", CV_REDUCE_MAX );
-                        std::map< std::string, int >::const_iterator found = methods.find( setting[1] );
-                        if ( found == methods.end() ) { COMMA_THROW( comma::exception, op_name << ": the method is not one of [average,sum,min,max]" ); }
-                        cv_reduce_method = found->second;
-                    }
-                    else if ( setting[0] == "output-depth" )
-                    {
-                        static std::map< std::string, int > depths = boost::assign::map_list_of ( "CV_32S", CV_32S ) ( "i", CV_32S ) ( "CV_32F", CV_32F ) ( "f", CV_32F ) ( "CV_64F", CV_64F ) ( "d", CV_64F );
-                        std::map< std::string, int >::const_iterator found = depths.find( setting[1] );
-                        if ( found == depths.end() ) { COMMA_THROW( comma::exception, op_name << ": the output-depth is not one of [i,f,d] or [CV_32S,CV_32F,CV_64F]" ); }
-                        cv_reduce_dtype = found->second;
-                    }
-                    else
-                    {
-                        COMMA_THROW( comma::exception, op_name << ": the keyword '" << setting[0] << "' is not one of [method,output-depth]" );
-                    }
-                }
-                else
-                {
-                    std::vector< std::string > rowblock = comma::split( stripes[s], ',' );
-                    if ( rowblock.size() > 2 ) { COMMA_THROW( comma::exception, op_name << ": expected position,[width]; got " << rowblock.size() << " parameters '" << stripes[s] << "'" ); }
-                    unsigned int y = boost::lexical_cast< unsigned int >( rowblock[0] );
-                    unsigned int h = ( rowblock.size() == 2 ? boost::lexical_cast< unsigned int >( rowblock[1] ) : 1 );
-                    bands.push_back( std::make_pair( y, h ) );
-                }
-            }
-            if ( bands.empty() ) { COMMA_THROW( comma::exception, op_name << ": specify at least one band" ); }
-            f.push_back( filter( boost::bind( &bands_to_cols_impl_, _1, bands_to_cols, bands, cv_reduce_method, cv_reduce_dtype ) ) );
-        }
-        else if( e[0] == "crop-tile" )
-        {
-            if( e.size() < 2 ) { COMMA_THROW( comma::exception, "crop-tile: specify number of tiles along x and y, and at least one tile, e.g. crop-tile=1,1,0,0" ); }
-            std::vector< std::string > items = comma::split( e[1], '&' );
-            bool vertical = std::find( items.begin()+1, items.end(), "horizontal" ) == items.end();
-            std::vector< std::string > s = comma::split( items[0], ',' );
-            if( s.size() < 4 ) { COMMA_THROW( comma::exception, "crop-tile: expected number of tiles along x and y, and at least one tile, got " << e[1] ); }
-            if( s.size()%2 != 0 ) { COMMA_THROW( comma::exception, "crop-tile: expected number of tiles along x and y, followed by pairs of integers representing tiles, got " << e[1] ); }
-            std::vector< unsigned int > v( s.size() );
-            for( std::size_t i=0; i < s.size(); ++i ) { v[i] = boost::lexical_cast< unsigned int >( s[i] ); }
-            unsigned int number_of_tile_cols, number_of_tile_rows;
-            std::vector< tile_t > tiles;
-            if( v.size() == 4 && v[0] < v[2] && v[1] < v[3]) // for backward compatibility only
-            {
-                number_of_tile_cols = v[2];
-                number_of_tile_rows = v[3];
-                tiles.push_back( tile_t( v[0], v[1] ) );
-            }
-            else
-            {
-                number_of_tile_cols = v[0];
-                number_of_tile_rows = v[1];
-                for( std::size_t i=2; i < v.size()-1; i+=2 )
-                {
-                    if( v[i] >= number_of_tile_cols || v[i+1] >= number_of_tile_rows ) { COMMA_THROW( comma::exception, "crop-tile: encountered an invalid tile " << v[i] << "," << v[i+1] ); }
-                    tiles.push_back( tile_t( v[i], v[i+1] ) );
-                }
-            }
-            if( number_of_tile_cols == 0 || number_of_tile_rows == 0 ) { COMMA_THROW( comma::exception, "crop-tile: expected positive number of tiles along x and y, got " << number_of_tile_cols << "," << number_of_tile_rows ); }
-            f.push_back( filter( boost::bind( &crop_tile_impl_, _1, number_of_tile_cols, number_of_tile_rows, tiles, vertical ) ) );
-        }
-        else if( e[0] == "accumulate" )
-        {
-            unsigned int how_many = boost::lexical_cast< unsigned int >( e[1] );
-            if ( how_many == 0 ) { COMMA_THROW( comma::exception, "expected positive number of images to accumulate in accumulate filter, got " << how_many ); }
-            f.push_back( filter( accumulate_impl_( how_many ) ) );
-        }
-        else if( e[0] == "cross" )
-        {
-            boost::optional< Eigen::Vector2i > center;
-            if( e.size() > 1 )
-            {
-                center = Eigen::Vector2i( 0, 0 );
-                std::vector< std::string > s = comma::split( e[1], ',' );
-                if( s.size() < 2 ) { COMMA_THROW( comma::exception, "expected cross-hair x,y; got \"" << e[1] << "\"" ); }
-                center->x() = boost::lexical_cast< unsigned int >( s[0] );
-                center->y() = boost::lexical_cast< unsigned int >( s[1] );
-            }
-            f.push_back( filter( boost::bind( &cross_impl_, _1, center ) ) );
-        }
-        else if( e[0] == "circle" ) // todo: quick and dirty, implement using traits
-        {
-            boost::array< int, 9 > p = {{ 0, 0, 0, 0, 0, 0, 1, 8, 0 }};
-            const std::vector< std::string > v = comma::split( e[1], ',' );
-            for( unsigned int i = 0; i < v.size(); ++i ) { if( !v[i].empty() ) { p[i] = boost::lexical_cast< int >( v[i] ); } }
-            f.push_back( filter( boost::bind( &circle_impl_, _1, drawing::circle( cv::Point( p[0], p[1] ), p[2], cv::Scalar( p[5], p[4], p[3] ), p[6], p[7], p[8] ) ) ) );
-        }
-        else if( e[0] == "rectangle" || e[0] == "box" ) // todo: quick and dirty, implement using traits
-        {
-            boost::array< int, 10 > p = {{ 0, 0, 0, 0, 0, 0, 0, 1, 8, 0 }};
-            const std::vector< std::string > v = comma::split( e[1], ',' );
-            for( unsigned int i = 0; i < v.size(); ++i ) { if( !v[i].empty() ) { p[i] = boost::lexical_cast< int >( v[i] ); } }
-            f.push_back( filter( boost::bind( &rectangle_impl_, _1, drawing::rectangle( cv::Point( p[0], p[1] ), cv::Point( p[2], p[3] ), cv::Scalar( p[6], p[5], p[4] ), p[7], p[8], p[9] ) ) ) );
-        }
-        else if( e[0] == "gamma")
-        {
-            double gamma = boost::lexical_cast< double >( e[1] );
-            f.push_back( filter( boost::bind( &gamma_impl_, _1, gamma ) ) );
-        }
-        else if( e[0] == "remove-mean")
-        {
-            std::vector< std::string > s = comma::split( e[1], ',' );
-            if( s.size() != 2 ) { COMMA_THROW( comma::exception, "remove-mean expected 2 parameters" ); }
-            unsigned int neighbourhood_size = boost::lexical_cast< unsigned int >( s[0] );
-            cv::Size kernel_size(neighbourhood_size, neighbourhood_size);
-            double ratio = boost::lexical_cast< double >( s[1] );
-            f.push_back( filter( boost::bind( &remove_mean_impl_, _1, kernel_size, ratio ) ) );
-        }
-        else if( e[0] == "fft" )
-        {
-            bool direct = true;
-            bool complex = true;
-            bool magnitude = false;
-            bool log_scale = false;
-            bool normalize = false;
-            if( e.size() > 1 )
-            {
-                const std::vector< std::string >& w = comma::split( e[1], ',' );
-                for( unsigned int i = 0; i < w.size(); ++i )
-                {
-                    if( w[i] == "direct" ) { direct = true; }
-                    else if( w[i] == "inverse" ) { direct = false; }
-                    else if( w[i] == "complex" ) { complex = true; }
-                    else if( w[i] == "real" ) { complex = false; }
-                    else if( w[i] == "magnitude" ) { magnitude = true; }
-                    else if( w[i] == "normalize" ) { normalize = true; }
-                    else if( w[i] == "log" || w[i] == "log-scale" ) { log_scale = true; }
-                }
-            }
-            f.push_back( filter( boost::bind( &fft_impl_, _1, direct, complex, magnitude, log_scale, normalize ) ) );
-        }
-        else if( e[0] == "flip" )
-        {
-            f.push_back( filter( boost::bind( &flip_impl_, _1, 0 ) ) );
-        }
-        else if( e[0] == "flop" )
-        {
-            f.push_back( filter( boost::bind( &flip_impl_, _1, 1 ) ) );
         }
         else if( e[0] == "log" ) // todo: rotate log by size: expose to user
         {
@@ -1787,86 +2167,6 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
                 }
             }
         }
-        else if( e[0] == "magnitude" )
-        {
-            f.push_back( filter( boost::bind( &magnitude_impl_, _1 ) ) );
-        }
-        else if( e[0] == "text" )
-        {
-            if( e.size() <= 1 ) { COMMA_THROW( comma::exception, "expected text value" ); }
-            std::vector< std::string > w = comma::split( e[1], ',' );
-            cv::Point p( 10, 10 );
-            if( w.size() >= 3 ) { p = cv::Point( boost::lexical_cast< unsigned int >( w[1] ), boost::lexical_cast< unsigned int >( w[2] ) ); }
-            cv::Scalar s( 0, 255, 255 );
-            if( w.size() >= 4 )
-            {
-                if( w[3] == "red" ) { s = cv::Scalar( 0, 0, 255 ); }
-                else if( w[3] == "green" ) { s = cv::Scalar( 0, 255, 0 ); }
-                else if( w[3] == "blue" ) { s = cv::Scalar( 255, 0, 0 ); }
-                else if( w[3] == "white" ) { s = cv::Scalar( 255, 255, 255 ); }
-                else if( w[3] == "black" ) { s = cv::Scalar( 0, 0, 0 ); }
-                else if( w[3] == "yellow" ) { s = cv::Scalar( 0, 255, 255 ); }
-                else { COMMA_THROW( comma::exception, "expected colour of text in \"" << v[i] << "\", got '" << w[3] << "'" ); }
-            }
-            f.push_back( filter( boost::bind( &text_impl_, _1, w[0], p, s ) ) );
-        }
-        else if( e[0] == "convert-to" || e[0] == "convert_to" )
-        {
-            if( e.size() <= 1 ) { COMMA_THROW( comma::exception, "convert-to: expected options, got none" ); }
-            const std::vector< std::string >& w = comma::split( e[1], ',' );
-            boost::unordered_map< std::string, int >::const_iterator it = types_.find( w[0] );
-            if( it == types_.end() ) { COMMA_THROW( comma::exception, "convert-to: expected target type, got \"" << w[0] << "\"" ); }
-            double scale = w.size() > 1 ? boost::lexical_cast< double >( w[1] ) : 1.0;
-            double offset = w.size() > 2 ? boost::lexical_cast< double >( w[2] ) : 0.0;
-            f.push_back( filter( boost::bind( &convert_to_impl_, _1, it->second, scale, offset ) ) );
-        }
-        else if( e[0] == "resize" )
-        {
-            unsigned int width = 0;
-            unsigned int height = 0;
-            double w = 0;
-            double h = 0;
-            const std::vector< std::string >& r = comma::split( e[1], ',' );
-            int interpolation = cv::INTER_LINEAR;
-            unsigned int size = r.size();
-            if( r.size() > 1 && r.back()[0] >= 'a' && r.back()[0] <= 'z' )
-            {
-                if( r.back() == "nearest" ) { interpolation = cv::INTER_NEAREST; }
-                else if( r.back() == "linear" ) { interpolation = cv::INTER_LINEAR; }
-                else if( r.back() == "area" ) { interpolation = cv::INTER_AREA; }
-                else if( r.back() == "cubic" ) { interpolation = cv::INTER_CUBIC; }
-                else if( r.back() == "lanczos4" ) { interpolation = cv::INTER_LANCZOS4; }
-                else COMMA_THROW( comma::exception, "resize: expected interpolation type, got: \"" << e[1] << "\"" );
-                --size;
-            }
-            else if( r.size() == 3 ) { interpolation = boost::lexical_cast< int >( r[3] ); }
-            switch( size )
-            {
-                case 1:
-                    w = h = boost::lexical_cast< double >( r[0] );
-                    break;
-                case 2:
-                case 3:
-                    try { width = boost::lexical_cast< unsigned int >( r[0] ); }
-                    catch ( ... ) { w = boost::lexical_cast< double >( r[0] ); }
-                    try { height = boost::lexical_cast< unsigned int >( r[1] ); }
-                    catch ( ... ) { h = boost::lexical_cast< double >( r[1] ); }
-                    break;
-                default:
-                    COMMA_THROW( comma::exception, "expected resize=<width>,<height>, got: \"" << e[1] << "\"" );
-            }
-            f.push_back( filter( boost::bind( &resize_impl_, _1, width, height, w, h, interpolation ) ) );
-        }
-        else if( e[0] == "mask" )
-        {
-            if( e.size() == 1 ) { COMMA_THROW( comma::exception, "mask: please specify mask filters" ); }
-            if( e.size() > 2 ) { COMMA_THROW( comma::exception, "mask: expected 1 parameter; got: " << v[i] ); }
-            std::string filter_string = e[1];
-            const std::vector< std::string > w = comma::split( filter_string, '|' ); // quick and dirty, running out of delimiters
-            boost::function< filter::input_type( filter::input_type ) > g;
-            for( unsigned int k = 0; k < w.size(); ++k ) { g = boost::bind( make_filter_functor( comma::split( w[i], ':' ) ), boost::bind( g, _1 ) ); }
-            f.push_back( filter( boost::bind( &mask_impl_, _1, g ) ) );
-        }
         else if( e[0] == "max" ) // todo: remove this filter; not thread-safe, should be run with --threads=1
         {
             f.push_back( filter( max_impl_( boost::lexical_cast< unsigned int >( e[1] ), true ), false ) );
@@ -1874,46 +2174,6 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
         else if( e[0] == "min" ) // todo: remove this filter; not thread-safe, should be run with --threads=1
         {
             f.push_back( filter( max_impl_( boost::lexical_cast< unsigned int >( e[1] ), false ), false ) );
-        }
-        else if( e[0] == "timestamp" )
-        {
-            f.push_back( filter( &timestamp_impl_ ) );
-        }
-        else if( e[0] == "transpose" )
-        {
-            f.push_back( filter( &transpose_impl_ ) );
-        }
-        else if( e[0] == "split" )
-        {
-            f.push_back( filter( &split_impl_ ) );
-        }
-        else if( e[0] == "merge" )
-        {
-            unsigned int default_number_of_channels = 3;
-            unsigned int nchannels = e.size() == 1 ? default_number_of_channels : boost::lexical_cast< unsigned int >( e[1] );
-            if ( nchannels == 0 ) { COMMA_THROW( comma::exception, "expected positive number of channels in merge filter, got " << nchannels ); }
-            f.push_back( filter( boost::bind( &merge_impl_, _1, nchannels ) ) );
-        }
-        else if( e[0] == "undistort" )
-        {
-            f.push_back( filter( undistort_impl_( e[1] ) ) );
-        }
-        else if( e[0] == "invert" )
-        {
-            if( e.size() == 1 ) { f.push_back( filter( &invert_impl_ ) ); }
-            else if( e[1] == "brightness" ) { f.push_back( filter( &invert_brightness_impl_ ) ); } // quick and dirty, a secret option
-        }
-        else if(e[0]=="normalize")
-        {
-            //const std::vector< std::string >& s = comma::split( e[1], ',' );
-            if(e[1]=="max") { f.push_back(filter(&normalize_max_impl_)); }
-            else if(e[1]=="sum") { f.push_back( filter( &normalize_sum_impl_) ); }
-            else if(e[1]=="all") { f.push_back( filter( &normalize_cv_impl_) ); }
-            else { COMMA_THROW( comma::exception, "expected max or sum option for normalize, got" << e[1] ); }
-        }
-        else if(e[0]=="equalize-histogram")
-        {
-            f.push_back(filter(&equalize_histogram_impl_));
         }
         else if( e[0] == "view" )
         {
@@ -1997,81 +2257,6 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
             if( i == 0 ) { COMMA_THROW( comma::exception, "'null' as the only filter is not supported; use cv-cat > /dev/null, if you need" ); }
             f.push_back( filter( NULL ) );
         }
-        else if( e[0] == "brightness" || e[0] == "scale" )
-        {
-            const std::vector< std::string >& s = comma::split( e[1], ',' );
-            double scale = boost::lexical_cast< double >( s[0] );
-            double offset = s.size() == 1 ? 0.0 : boost::lexical_cast< double >( s[1] );
-            f.push_back( filter( boost::bind( &brightness_impl_, _1, scale, offset ) ) );
-        }
-        else if( e[0] == "color-map" )
-        {
-            if( e.size() != 2 ) { COMMA_THROW( comma::exception, "expected colour-map=<type>; got: \"" << e[1] << "\"" ); }
-            int type;
-            if( e[1] == "autumn" ) { type = cv::COLORMAP_AUTUMN; }
-            else if( e[1] == "bone" ) { type = cv::COLORMAP_BONE; }
-            else if( e[1] == "jet" ) { type = cv::COLORMAP_JET; }
-            else if( e[1] == "winter" ) { type = cv::COLORMAP_WINTER; }
-            else if( e[1] == "rainbow" ) { type = cv::COLORMAP_RAINBOW; }
-            else if( e[1] == "ocean" ) { type = cv::COLORMAP_OCEAN; }
-            else if( e[1] == "summer" ) { type = cv::COLORMAP_SUMMER; }
-            else if( e[1] == "spring" ) { type = cv::COLORMAP_SPRING; }
-            else if( e[1] == "cool" ) { type = cv::COLORMAP_COOL; }
-            else if( e[1] == "hsv" ) { type = cv::COLORMAP_HSV; }
-            else if( e[1] == "pink" ) { type = cv::COLORMAP_PINK; }
-            else if( e[1] == "hot" ) { type = cv::COLORMAP_HOT; }
-            else { COMMA_THROW( comma::exception, "expected colour-map type; got: \"" << e[1] << "\"" ); }
-            f.push_back( filter( boost::bind( &colour_map_impl_, _1, type ) ) );
-        }
-        else if( e[0] == "blur" )
-        {
-            const std::vector< std::string >& s = comma::split( e[1], ',' );
-            if( s.size() < 2 ) { COMMA_THROW( comma::exception, "expected blur=<blur_type>,<blur_type_parameters>" ); }
-            
-            blur_t params;
-            params.blur_type = blur_t::from_string(s[0]);
-            if (s[0] == "box")
-        	{
-        		params.kernel_size.height = params.kernel_size.width = boost::lexical_cast< int >( s[1] );
-        	}
-            else if (s[0] == "gaussian")
-            {
-                if (s.size() != 3) { COMMA_THROW( comma::exception, "expected blur=gaussian,kernel_size,std" ); }
-                params.kernel_size.width = params.kernel_size.height = boost::lexical_cast< int >( s[1] );
-                params.std.x = params.std.y = boost::lexical_cast< double >( s[2] );
-            }
-            else if (s[0] == "median")
-            {
-                if (s.size() != 2) { COMMA_THROW( comma::exception, "blur=median,kernel_size" ); }
-                params.neighbourhood_size = boost::lexical_cast< int >( s[1] );
-            }
-            else if (s[0] == "bilateral")
-            {
-                if (s.size() != 4) // nsize,std_space,std_colour
-                { COMMA_THROW( comma::exception, "blur=bilateral expected 3 parameters" ); }
-                params.neighbourhood_size = boost::lexical_cast< int >( s[1] );
-                params.sigma_space = boost::lexical_cast< double >( s[2] );
-                params.sigma_colour = boost::lexical_cast< double >( s[3] ); 
-            }
-            else if (s[0] == "adaptive-bilateral")
-            {
-                if (s.size() != 4) { COMMA_THROW( comma::exception, "expected blur=adaptive-bilateral,kernel_size,std_space,std_colour_max" ); }
-                params.kernel_size.width = params.kernel_size.height = boost::lexical_cast< int >( s[1] );
-                params.sigma_space = boost::lexical_cast< double >( s[2] );
-                params.sigma_colour = boost::lexical_cast< double >( s[3] ); // max sigma color
-	        }
-            else { COMMA_THROW( comma::exception, "invalid blur type" ); }
-            f.push_back( filter( boost::bind( &blur_impl_, _1, params) ) );
-        }
-        else if( e[0] == "map" )
-        {
-            if( e.size() < 2 ) { COMMA_THROW( comma::exception, "expected file name with the map, e.g. map=f.csv" ); }
-            std::stringstream s; s << e[1]; for( std::size_t i = 2; i < e.size(); ++i ) { s << "=" << e[i]; }
-            std::string map_filter_options = s.str();
-            std::vector< std::string > items = comma::split( map_filter_options, '&' );
-            bool permissive = std::find( items.begin()+1, items.end(), "permissive" ) != items.end();
-            f.push_back( filter( map_impl_( map_filter_options, permissive ) ) );
-        }
         else if ( e[0] == "head" )
         {
             if( i < v.size() - 1 )
@@ -2082,49 +2267,9 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
             unsigned int n = e.size() < 2 ? 1 : boost::lexical_cast< unsigned int >( e[1] );
             f.push_back( filter( boost::bind( &head_impl_, _1, n ), false ) );
         }
-        else if( e[0] == "inrange" )
-        {
-            const std::vector< std::string >& s = comma::split( e[1], ',' );
-            if( s.size() < 2 || s.size() % 2 != 0 ) { COMMA_THROW( comma::exception, "inrange: expected <upper>,<lower> got: \"" << v[i] << "\"" ); }
-            cv::Scalar lower = scalar_from_strings( &s[0], s.size() / 2 );
-            cv::Scalar upper = scalar_from_strings( &s[ s.size() / 2 ], s.size() / 2 );
-            f.push_back( filter( boost::bind( &inrange_impl_, _1, lower, upper ) ) );
-        }
-        else if( e[0] == "threshold" )
-        {
-            const std::vector< std::string >& s = comma::split( e[1], ',' );
-            if( s[0].empty() ) { COMMA_THROW( comma::exception, "threshold: expected <threshold|otsu>[,<maxval>[,<type>]] got: \"" << v[i] << "\"" ); }
-            bool otsu = s[0] == "otsu";
-            double threshold = otsu ? 0 : boost::lexical_cast< double >( s[0] );
-            double maxval = s.size() < 2 ? 255 : boost::lexical_cast< double >( s[1] );
-            threshold_t::types type = threshold_t::from_string( s.size() < 3 ? "" : s[2] );
-            f.push_back( filter( boost::bind( &threshold_impl_, _1, threshold, maxval, type, otsu ) ) );
-        }
-        else if( e[0] == "linear-combination" )
-        {
-            const std::vector< std::string >& s = comma::split( e[1], ',' );
-            if( s[0].empty() ) { COMMA_THROW( comma::exception, "linear-combination: expected coefficients got: \"" << v[i] << "\"" ); }
-            std::vector< double > coefficients( s.size() );
-            for( unsigned int j = 0; j < s.size(); ++j ) { coefficients[j] = boost::lexical_cast< double >( s[j] ); }
-            f.push_back( filter( boost::bind( &linear_combination_impl_, _1, coefficients ) ) );
-        }
-        else if( e[0] == "overlay" )
-        {
-            if( e.size() != 2 ) { COMMA_THROW( comma::exception, "expected file name (and optional x,y) with the overlay, e.g. overlay=a.svg" ); }
-            std::vector< std::string > s = comma::split( e[1], ',' );
-            if(s.size()!=1 && s.size()!=3) { COMMA_THROW( comma::exception, "expected one or three parameters (file[,x,y]); found " << s.size() ); }
-            int x=0, y=0;
-            if(s.size()>1)
-            {
-                x=boost::lexical_cast<int>(s[1]);
-                y=boost::lexical_cast<int>(s[2]);
-            }
-            f.push_back( filter( overlay_impl_( s[0], x, y ) ) );
-        }
         else
         {
-            const boost::optional< filter >& vf = imaging::vegetation::filters::make( v[i] );
-            f.push_back( vf ? *vf : filter( make_filter_functor( e ) ) );
+            f.push_back( filter( make_filter_functor( e ) ) );
         }
         modified = e[0] != "view" && e[0] != "thumb" && e[0] != "split" && e[0] !="unpack12";
     }
@@ -2143,8 +2288,15 @@ static std::string usage_impl_()
     oss << "    cv::Mat image filters usage (';'-separated):" << std::endl;
     oss << "        accumulate=<n>: accumulate the last n images and concatenate them vertically (useful for slit-scan and spectral cameras like pika2)" << std::endl;
     oss << "            example: cat slit-scan.bin | cv-cat \"accumulate=400;view;null\"" << std::endl;
+    oss << "        bands-to-cols=x,[w[,x,w]][|method:<method-name>|output-depth:<depth>]; take a number of columns (bands) from the input, process together by method," << std::endl;
+    oss << "            write into the output, one band (a range of columns) reduced into one column; supported methods: average (default), sum, min, max; the sum method" << std::endl;
+    oss << "            requires the explicit output-depth parameter (one of i,f,d or CV_32S, CV_32F, CV_64F) if the input has low depth" << std::endl;
+    oss << "            examples: \"bands-to-cols=12,23|50,30|45,60|100|method:average\"; output an image of 4 columns containing the average" << std::endl;
+    oss << "                          of columns 12-34 (i.e., 12 + 23 - 1), 50-79, 45-104 (overlap is OK), and 100 (default width is 1) from the original image" << std::endl;
+    oss << "                      \"bands-to-cols=12,23|50,30|45,60|100|method:sum|output-depth:d\"; same bands but output an image of 4 columns containing the sum" << std::endl;
+    oss << "                          of the columns data from the original image; use CV_64F depth (double) as the output format" << std::endl;
+    oss << "        bands-to-rows=x,[w[,x,w]][|method:<method-name>|output-depth:<depth>]; same as bands-to-cols but operate on rows of input instead of columns" << std::endl;
     oss << "        bayer=<mode>: convert from bayer, <mode>=1-4 (see also convert-color)" << std::endl;
-    oss << "        unpack12: convert from 12-bit packed (2 pixels in 3 bytes) to 16UC1; use before other filters" << std::endl;
     oss << "        blur=<type>,<parameters>: apply a blur to the image (positive and odd kernel sizes)" << std::endl;
     oss << "            blur=box,<kernel_size> " << std::endl;
     oss << "            blur=median,<kernel_size>" << std::endl;
@@ -2155,7 +2307,7 @@ static std::string usage_impl_()
     oss << "        color-map=<type>: take image, apply colour map; see cv::applyColorMap for detail" << std::endl;
     oss << "            <type>: autumn, bone, jet, winter, rainbow, ocean, summer, spring, cool, hsv, pink, hot" << std::endl;
     oss << "        convert-to,convert_to=<type>[,<scale>[,<offset>]]: convert to given type; should be the same number of channels; see opencv convertTo for details; values will not overflow" << std::endl;
-	oss << "        convert-color,convert_color=<from>,<to>: convert from colour space to new colour space (BGR, RGB, Lab, XYZ, Bayer**, GRAY); eg: BGR,GRAY or CV_BGR2GRAY" << std::endl;
+    oss << "        convert-color,convert_color=<from>,<to>: convert from colour space to new colour space (BGR, RGB, Lab, XYZ, Bayer**, GRAY); eg: BGR,GRAY or CV_BGR2GRAY" << std::endl;
     oss << "        count: write frame number on images" << std::endl;
     oss << "        crop=[<x>,<y>],<width>,<height>: crop the portion of the image starting at x,y with size width x height" << std::endl;
     oss << "        crop-tile=<ncols>,<nrows>,<i>,<j>,...[&horizontal]: divide the image into a grid of tiles (ncols-by-nrows), and output an image made of the croped tiles defined by i,j (count from zero)" << std::endl;
@@ -2168,14 +2320,22 @@ static std::string usage_impl_()
     oss << "        crop-rows=<y>[,<h>[|<y>[,<h>,...: output an image consisting of (multiple) row blocks starting at y with height h" << std::endl;
     oss << "            examples: \"crop-rows=5,10|25,5\"; output an image of height 15 taking 2 row blocks starting at 5 and 25 and with heights 10 and 5, respectively" << std::endl;
     oss << "                      \"crop-rows=5|25|15\"; default block height is 1, block starts can be out of order" << std::endl;
-    oss << "        bands-to-cols=\"x,[w[,x,w]][|method:<method-name>|output-depth:<depth>]\" take a number of columns (bands) from the input, process together by method," << std::endl;
-    oss << "            write into the output, one band (a range of columns) reduced into one column; supported methods: average (default), sum, min, max; the sum method" << std::endl;
-    oss << "            requires the explicit output-depth parameter (one of i,f,d or CV_32S, CV_32F, CV_64F) if the input has low depth" << std::endl;
-    oss << "            examples: \"bands-to-cols=12,23|50,30|45,60|100|method:average\"; output an image of 4 columns containing the average" << std::endl;
-    oss << "                          of columns 12-34 (i.e., 12 + 23 - 1), 50-79, 45-104 (overlap is OK), and 100 (default width is 1) from the original image" << std::endl;
-    oss << "                      \"bands-to-cols=12,23|50,30|45,60|100|method:sum|output-depth:d\"; same bands but output an image of 4 columns containing the sum" << std::endl;
-    oss << "                          of the columns data from the original image; use CV_64F depth (double) as the output format" << std::endl;
-    oss << "        bands-to-rows\"x,[w[,x,w]][|method:<method-name>|output-depth:<depth>]\"; same as bands-to-cols but operate on rows of input instead of columns" << std::endl;
+    oss << "        cols-to-channels=1,4,5[|pad:value|repeat:step]; stores the listed columns as channels in the output file; input shall be a single-channel stream" << std::endl;
+    oss << "            up to 4 channels are supported; if 1, 3, or 4 columns are specified, the output would have 1, 3, or 4 channels respectively" << std::endl;
+    oss << "            in case of 2 columns, a third empty (zero) channel is added; use the \"pad:value\" option to specify the fill value other then zero" << std::endl;
+    oss << "            the repeat option applies the transformation periodically, first for the specified columns, then for columns incremented by one step, and so on; see the examples" << std::endl;
+    oss << "            examples: \"cols-to-channels=6,4|pad:128\"; put column 6 into the R channel, column 4 into the G channel, and fill the B channel with 128" << std::endl;
+    oss << "                      \"cols-to-channels=0,1,2|repeat:3\"; store columns 0,1,2 as RGB channels of column 0 of the output file, then columns 3,4,5 as RGB" << std::endl;
+    oss << "                      channels of column 1 of the output file, etc.; conversion stops when all input column indices exceed the image width" << std::endl;
+    oss << "                      if one of the input columns exceed the image width, the respective output channel is filled with zeros (or the padding value)" << std::endl;
+    oss << "        rows-to-channels=1,4,5[|pad:value|repeat:step]; same as cols-to-channels but operates on rows" << std::endl;
+    oss << "        channels-to-cols; opposite to cols-to-channels; unwrap all channels as columns" << std::endl;
+    oss << "            example: \"channels-to-cols\" over a 3-channel image: RGB channels of column 0 become columns 0 (single-channel), 1, and 2, RGB channels" << std::endl;
+    oss << "            of column 1 become columns 3,4,5, and so on" << std::endl;
+    oss << "        channels-to-rows; same as channels-to-cols but operates over rows" << std::endl;
+    oss << "        swap-channels=2,1,0,3; re-order channels; arguments shall be integers from 0 to the total number of input channels" << std::endl;
+    oss << "            the number of arguments shall be the same as the number of input channels" << std::endl;
+    oss << "            example: \"swap-channels=2,1,0\"; revert the order of RGB channels with R becoming B and B becoming R; G is mapped onto itself" << std::endl;
     oss << "        encode=<format>: encode images to the specified format. <format>: jpg|ppm|png|tiff..., make sure to use --no-header" << std::endl;
     oss << "        equalize-histogram: todo: equalize each channel by its histogram" << std::endl;
     oss << "        fft[=<options>]: do fft on a floating point image" << std::endl;
@@ -2192,12 +2352,26 @@ static std::string usage_impl_()
     oss << "        inrange=<lower>,<upper>: a band filter on r,g,b or greyscale image; for rgb: <lower>::=<r>,<g>,<b>; <upper>::=<r>,<g>,<b>; see cv::inRange() for detail" << std::endl;
     oss << "        invert: invert image (to negative)" << std::endl;
     oss << "        linear-combination=<k1>,<k2>,<k3>,...[<c>]: output grey-scale image that is linear combination of input channels with given coefficients and optioanl offset" << std::endl;
+    oss << "        load=<filename>: load image from file instead of taking an image on stdin; the main meaningful use would be in association with mask filter" << std::endl;
+    oss << "                         supported file types by filename extension:" << std::endl;
+    oss << "                             - .bin: file is in cv-cat binary format: <t>,<rows>,<cols>,<type>,<image data>" << std::endl;
+    oss << "                             - otherwise whatever cv::imread supports" << std::endl;
     oss << "        log=<options>: write images to files" << std::endl;
     oss << "            log=<filename>: write images to a single file" << std::endl;
     oss << "            log=<dirname>,size:<number of frames>: write images to files in a given directory, each file (except possibly the last one) containing <number of frames> frames" << std::endl;
     oss << "            log=<dirname>,period:<seconds>: write images to files in a given directory, each file containing frames for a given period of time" << std::endl;
     oss << "                                            e.g. for log=tmp,period:1.5 each file will contain 1.5 seconds worth of images" << std::endl;
     oss << "        magnitude: calculate magnitude for a 2-channel image; see cv::magnitude() for details" << std::endl;
+    oss << "        mask=<mask>: apply mask to image (see cv::copyTo for details)" << std::endl;
+    oss << "                     <mask>: any sequence of cv-cat filters that outputs a single-channel image of the same dimensions as the images on stdin" << std::endl;
+    oss << "                             the separator between the filters is '|'" << std::endl;
+    oss << "                             the equal sign for a filter is ':'" << std::endl;
+    oss << "                     examples" << std::endl;
+    oss << "                         apply a constant mask from a file" << std::endl;
+    oss << "                             cat images.bin | cv-cat 'mask=load:mask.bin' > masked.bin" << std::endl;
+    oss << "                             cat images.bin | cv-cat 'mask=load:mask.png' > masked.bin" << std::endl;
+    oss << "                         extract pixels brighter than 100" << std::endl;
+    oss << "                             cat images.bin | cv-cat 'mask=convert-color:BGR,GRAY|threshold=otsu,100' > masked.bin" << std::endl;
     oss << "        map=<map file>[&<csv options>][&permissive]: map integer values to floating point values read from the map file" << std::endl;
     oss << "             <csv options>: usual csv options for map file, but &-separated (running out of separator characters)" << std::endl;
     oss << "                  fields: key,value; default: value" << std::endl;
@@ -2236,6 +2410,7 @@ static std::string usage_impl_()
     oss << "        timestamp: write timestamp on images" << std::endl;
     oss << "        transpose: transpose the image (swap rows and columns)" << std::endl;
     oss << "        undistort=<undistort map file>: undistort" << std::endl;
+    oss << "        unpack12: convert from 12-bit packed (2 pixels in 3 bytes) to 16UC1; use before other filters" << std::endl;
     oss << "        view[=<wait-interval>]: view image; press <space> to save image (timestamp or system time as filename); <esc>: to close" << std::endl;
     oss << "                                <wait-interval>: a hack for now; milliseconds to wait for image display and key press; default 1" << std::endl;
     oss << std::endl;

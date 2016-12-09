@@ -1,0 +1,129 @@
+#include <boost/optional.hpp>
+#include <comma/application/command_line_options.h>
+#include <comma/base/exception.h>
+#include <comma/base/types.h>
+#include <comma/csv/format.h>
+#include <comma/csv/names.h>
+#include <comma/csv/stream.h>
+#include <comma/string/string.h>
+#include <comma/visiting/traits.h>
+
+#include "../clocked_time_stamp.h"
+
+struct timestamp_io
+{
+    boost::posix_time::ptime timestamp;
+    timestamp_io() {}
+    timestamp_io( boost::posix_time::ptime const& i_timestamp ) : timestamp( i_timestamp ) {}
+};
+
+namespace comma { namespace visiting {
+
+template <> struct traits< timestamp_io >
+{
+    template < typename K, typename V > static void visit( const K&, const timestamp_io& p, V& v ) { v.apply( "t", p.timestamp ); }
+    template < typename K, typename V > static void visit( const K&, timestamp_io& p, V& v ) { v.apply( "t", p.timestamp ); }
+};
+
+} } // namespace comma { namespace visiting {
+
+// todo
+// DONE - --period, --threshold, and --reset: use seconds
+// DONE - options per operation
+// - github.com/acfr/snark/wiki: add to the list of applications
+// - demo for Zhe
+//
+
+static void usage( bool )
+{
+    std::cerr << std::endl;
+    std::cerr << "Takes timestamped csv stream and outputs the stream with the adjusted timestamps, to stdout" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "Usage:" << std::endl;
+    std::cerr << "    csv-time-adjust <operation> <options> < <input_stream>" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "Operation:" << std::endl;
+    std::cerr << "    clocked: adjust for total deviation." << std::endl;
+    std::cerr << "        Options:" << std::endl;
+    std::cerr << "            --period=<seconds>: interval of the signal, in seconds." << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    periodic: use closest point as base and add periods for later points." << std::endl;
+    std::cerr << "        Options:" << std::endl;
+    std::cerr << "            --period=<seconds>: interval of the signal, in seconds." << std::endl;
+    std::cerr << "            --reset=[<seconds>]: time interval to periodically reset adjusted time, in seconds." << std::endl;
+    std::cerr << "            --threshold=[<seconds>]: upper bound for reseting adjusted timestamp, in seconds." << std::endl;
+    // options for periodic: todo
+    std::cerr << std::endl;
+    std::cerr << "Common options:" << std::endl;
+    std::cerr << "    --help,-h: display instructions on using this program and exit." << std::endl;
+    std::cerr << "    --fields=[<fields>]: input fields; default t." << std::endl;
+    std::cerr << "    --binary=[<format>]: binary format of input fields" << std::endl;
+    std::cerr << "    --replace: flag to change the timestamps in place rather than appending the adjusted timestamps." << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "Examples:" << std::endl;
+    std::cerr << "    cat timestamped_data.csv | csv-time-adjust clocked --fields=t,a,b --period=200" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    csv-time-adjust periodic --fields=t,a,b --period=200 --threshold=500 --reset=500 < timestamped_data.csv" << std::endl;
+    std::cerr << std::endl;
+}
+
+bool check_mode_clocked_else_periodic( std::string const& i_mode_string )
+{
+    if( "clocked" == i_mode_string ) { return true; }
+    if( "periodic" != i_mode_string ) { COMMA_THROW( comma::exception, "Expected either 'clocked' or 'periodic' for operation. Got: '" << i_mode_string << '"'); }
+    return false;
+}
+
+int main( int ac, char** av )
+{
+    try
+    {
+        comma::command_line_options options( ac, av, usage );
+        bool const is_inplace = options.exists( "--replace" );
+
+        std::vector< std::string > unnamed = options.unnamed( "", "--binary,-b,--format,--fields,-f,--period,--threshold,--reset,--replace" );
+        if( unnamed.empty() ) { std::cerr << comma::verbose.app_name() << ": please specify operations" << std::endl; exit( 1 ); }
+        if( 1 < unnamed.size() ) { std::cerr << comma::verbose.app_name() << ": Only one operation allowed. Got multiple: " << comma::join( unnamed, ',' ) << std::endl; }
+        bool const is_clocked_else_periodic = check_mode_clocked_else_periodic( unnamed.front() );
+
+        boost::optional< snark::timing::clocked_time_stamp > clocked_timestamp;
+        boost::optional< snark::timing::periodic_time_stamp > periodic_timestamp;
+
+        if( is_clocked_else_periodic )
+        {
+            clocked_timestamp = snark::timing::clocked_time_stamp( boost::posix_time::seconds( options.value<unsigned>("--period" ) ) );
+        }
+        else
+        {
+            periodic_timestamp = snark::timing::periodic_time_stamp( boost::posix_time::seconds( options.value<unsigned>("--period" ) )
+                                                                   , boost::posix_time::seconds( options.value<unsigned>("--threshold" ) )
+                                                                   , boost::posix_time::seconds( options.value<unsigned>("--reset" ) ) );
+        }
+
+        comma::csv::options csv( options );
+#ifdef WIN32
+        if( csv.binary() ) { _setmode( _fileno( stdin ), _O_BINARY ); _setmode( _fileno( stdout ), _O_BINARY ); }
+#endif
+        comma::csv::input_stream< timestamp_io > istream( std::cin, csv );
+        comma::csv::output_stream< timestamp_io > ostream( std::cout, csv );
+        comma::csv::tied< timestamp_io, timestamp_io > tied( istream, ostream );
+        while( std::cin.good() && !std::cin.eof() )
+        {
+            const timestamp_io* p = istream.read();
+            if( !p ) { break; }
+            timestamp_io q = *p;
+            q.timestamp =  is_clocked_else_periodic  ? clocked_timestamp->adjusted( p->timestamp ) : periodic_timestamp->adjusted( p->timestamp );
+            if( is_inplace )
+            {
+                if( csv.binary() ) { ostream.write( q, istream.binary().last() ); }
+                else { ostream.write( q, istream.ascii().last() ); }
+            }
+            else { tied.append( q ); }
+        }
+        return 0;
+    }
+    catch( std::exception& ex ) { std::cerr << "csv-time-adjust: " << ex.what() << std::endl; }
+    catch( ... ) { std::cerr << "csv-time-adjust: unknown exception" << std::endl; }
+    return 1;
+} 
+
