@@ -1,0 +1,11 @@
+images[0]/pixels=100,200,200,100,100,200,200,100,100,200,200,100,100,200,200,100
+images[0]/rows=4
+images[0]/cols=4
+images[0]/type=ub
+images[0]/mask=threshold:150|invert
+
+images[1]/pixels=1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1
+images[1]/rows=4
+images[1]/cols=4
+images[1]/type=ub
+images[1]/mask=load:mask.bin
