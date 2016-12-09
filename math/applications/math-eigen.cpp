@@ -40,8 +40,8 @@
 #include <comma/base/types.h>
 #include <comma/csv/stream.h>
 #include <comma/string/string.h>
-#include <comma/visiting/traits.h>
-#include "../../visiting/eigen.h"
+#include "../../visiting/traits.h"
+#include "../rotation_matrix.h"
 
 void usage( bool verbose )
 {
@@ -132,15 +132,6 @@ struct single_line_output_t
 
 } } // namespace snark { namespace eigen {
 
-struct rotation_t
-{
-    double roll;
-    double pitch;
-    double yaw;
-    
-    rotation_t() : roll( 0 ), pitch( 0 ), yaw( 0 ) {}
-};
-
 namespace comma { namespace visiting {
 
 template <> struct traits< snark::eigen::input_t >
@@ -178,42 +169,28 @@ template <> struct traits< snark::eigen::single_line_output_t >
     }
 };
 
-template <> struct traits< rotation_t >
-{
-    template < typename K, typename V > static void visit( const K&, rotation_t& p, V& v )
-    {
-        v.apply( "roll", p.roll );
-        v.apply( "pitch", p.pitch );
-        v.apply( "yaw", p.yaw );
-    }
-
-    template < typename K, typename V > static void visit( const K&, const rotation_t& p, V& v )
-    {
-        v.apply( "roll", p.roll );
-        v.apply( "pitch", p.pitch );
-        v.apply( "yaw", p.yaw );
-    }
-};
-
 } } // namespace comma { namespace visiting {
 
 namespace rotation {
 
 template < typename T > struct traits;
 
-template <> struct traits< rotation_t >
+template <> struct traits< snark::roll_pitch_yaw >
 {
-    static rotation_t zero() { return rotation_t(); }
+    static snark::roll_pitch_yaw zero() { return snark::roll_pitch_yaw(); }
+    static snark::roll_pitch_yaw get( const snark::rotation_matrix& m ) { return m.roll_pitch_yaw(); }
 };
 
 template < typename T > struct traits< Eigen::AngleAxis< T > >
 {
     static Eigen::AngleAxis< T > zero() { Eigen::AngleAxis< T > a( 0, Eigen::Matrix< T, 3, 1 >::Zero() ); return a; }
+    static Eigen::AngleAxis< T > get( const snark::rotation_matrix& m ) { return Eigen::AngleAxis< T >( m.rotation() ); }
 };
 
 template < typename T > struct traits< Eigen::Quaternion< T > >
 {
     static Eigen::Quaternion< T > zero() { Eigen::Quaternion< T > q( 0, 0, 0, 0 ); return q; }
+    static Eigen::Quaternion< T > get( const snark::rotation_matrix& m ) { return m.quaternion(); }
 };
     
 template < typename From, typename To >
@@ -227,16 +204,11 @@ static int run( const comma::command_line_options& options )
     comma::csv::options output_csv;
     if( csv.binary() ) { output_csv.format( comma::csv::format::value< To >() ); }
     comma::csv::output_stream< To > ostream( std::cout, output_csv );
-    
-    std::cerr << "math-eigen: rotation: todo" << std::endl; return 1;
-    
     while( istream.ready() || std::cin.good() )
     {
         const From* p = istream.read();
         if( !p ) { break; }
-        To q;
-        // todo: calculate q
-        comma::csv::append( istream, ostream, q );
+        comma::csv::append( istream, ostream, rotation::traits< To >::get( snark::rotation_matrix( *p ) ) );
     }
     return 0;
 }
@@ -244,7 +216,7 @@ static int run( const comma::command_line_options& options )
 template < typename From >
 static int run( const comma::command_line_options& options, const std::string& to )
 {
-    if( to == "euler" || to == "rpy" || to == "roll,pitch,yaw" ) { return rotation::run< From, rotation_t >( options ); }
+    if( to == "euler" || to == "rpy" || to == "roll,pitch,yaw" ) { return rotation::run< From, snark::roll_pitch_yaw >( options ); }
     if( to == "angle-axis" || to == "axis-angle" ) { return rotation::run< From, Eigen::AngleAxis< double > >( options ); }
     if( to == "quaternion" ) { return rotation::run< From, Eigen::Quaternion< double > >( options ); }
     std::cerr << "math-eigen: rotation: expected valid value for --to; got --to=\"" << to << "\"" << std::endl;
@@ -382,7 +354,7 @@ int main( int ac, char** av )
         {
             std::string from = options.value< std::string >( "--from", "euler" );
             std::string to = options.value< std::string >( "--to", "euler" );
-            if( from == "euler" || from == "rpy" || from == "roll,pitch,yaw" ) { return rotation::run< rotation_t >( options, to ); }
+            if( from == "euler" || from == "rpy" || from == "roll,pitch,yaw" ) { return rotation::run< snark::roll_pitch_yaw >( options, to ); }
             if( from == "angle-axis" || from == "axis-angle" ) { return rotation::run< Eigen::AngleAxis< double > >( options, to ); }
             if( from == "quaternion" ) { return rotation::run< Eigen::Quaternion< double > >( options, to ); }
             std::cerr << "math-eigen: rotation: expected valid value for --from; got --from=\"" << to << "\"" << std::endl;

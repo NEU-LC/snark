@@ -41,6 +41,8 @@ static void usage( bool verbose )
     std::cerr << std::endl;
     std::cerr << "convert between different representations of rotation" << std::endl;
     std::cerr << std::endl;
+    std::cerr << "DEPRECATED; WILL BE REMOVED SOON; please use math-eigen rotation instead" << std::endl;
+    std::cerr << std::endl;
     std::cerr << "options:" << std::endl;
     std::cerr << "    --from: input type" << std::endl;
     std::cerr << "    --to: desired output type" << std::endl;
