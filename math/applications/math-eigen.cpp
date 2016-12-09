@@ -41,13 +41,16 @@
 #include <comma/csv/stream.h>
 #include <comma/string/string.h>
 #include <comma/visiting/traits.h>
+#include "../../visiting/eigen.h"
 
 void usage( bool verbose )
 {
     std::cerr << std::endl;
     std::cerr << "simple wrapper for eigen library operations" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "usage: cat sample.csv | math-eigen [<options>]" << std::endl;
+    std::cerr << "usage: cat sample.csv | math-eigen <operation> [<options>]" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "<operation>: eigen, rotation" << std::endl;
     std::cerr << std::endl;
     std::cerr << "operations" << std::endl;
     std::cerr << "    eigen (default): calculate eigen vector and eigen values on a sample" << std::endl;
@@ -69,6 +72,18 @@ void usage( bool verbose )
     std::cerr << "                                                         vector[0],vector[1],...,value[0],value[1],...,block" << std::endl;
     std::cerr << "            --size: a hint of number of elements in the data vector, ignored, if data indices" << std::endl;
     std::cerr << "                    specified, e.g. data[0],data[1],data[2]" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    rotation: convert rotation from representation to another, append the result to stdin data, output to stdout" << std::endl;
+    std::cerr << "        options" << std::endl;
+    std::cerr << "            --from=<what>: input representation; default euler" << std::endl;
+    std::cerr << "            --to=<what>: output representation; default euler" << std::endl;
+    std::cerr << "                <what>" << std::endl;
+    std::cerr << "                    euler;rpy;roll,pitch,yaw: euler angles, i.e. roll, pitch, yaw" << std::endl;
+    std::cerr << "                    axis-angle,angle-axis: angle-axis" << std::endl;
+    std::cerr << "                    quaternion: quaternion" << std::endl;
+    std::cerr << "            --input-fields: print input fields to stdout and exit" << std::endl;
+    std::cerr << "            --output-fields: print output fields to stdout and exit" << std::endl;
+    std::cerr << "            --output-format: print binary output format to stdout and exit" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    --help,-h: show this help; --help --verbose: more help" << std::endl;
@@ -117,6 +132,15 @@ struct single_line_output_t
 
 } } // namespace snark { namespace eigen {
 
+struct rotation_t
+{
+    double roll;
+    double pitch;
+    double yaw;
+    
+    rotation_t() : roll( 0 ), pitch( 0 ), yaw( 0 ) {}
+};
+
 namespace comma { namespace visiting {
 
 template <> struct traits< snark::eigen::input_t >
@@ -154,18 +178,59 @@ template <> struct traits< snark::eigen::single_line_output_t >
     }
 };
 
+template <> struct traits< rotation_t >
+{
+    template < typename K, typename V > static void visit( const K&, rotation_t& p, V& v )
+    {
+        v.apply( "roll", p.roll );
+        v.apply( "pitch", p.pitch );
+        v.apply( "yaw", p.yaw );
+    }
+
+    template < typename K, typename V > static void visit( const K&, const rotation_t& p, V& v )
+    {
+        v.apply( "roll", p.roll );
+        v.apply( "pitch", p.pitch );
+        v.apply( "yaw", p.yaw );
+    }
+};
+
 } } // namespace comma { namespace visiting {
+
+namespace rotation {
+
+template < typename From, typename To >
+static int run( const comma::command_line_options& options )
+{
+    if( options.exists( "--input-fields" ) ) { std::cout << comma::join( comma::csv::names< From >( false ), ',' ) << std::endl; return 0; }
+    if( options.exists( "--output-fields" ) ) { std::cout << comma::join( comma::csv::names< To >( false ), ',' ) << std::endl; return 0; }
+    if( options.exists( "--output-format" ) ) { std::cout << comma::csv::format::value< To >() << std::endl; return 0; }
+    comma::csv::options csv( options );
+    std::cerr << "math-eigen: rotation: todo" << std::endl; return 1;
+}
+    
+template < typename From >
+static int run( const comma::command_line_options& options, const std::string& to )
+{
+    if( to == "euler" || to == "rpy" || to == "roll,pitch,yaw" ) { return rotation::run< From, rotation_t >( options ); }
+    if( to == "angle-axis" || to == "axis-angle" ) { return rotation::run< From, Eigen::AngleAxis< double > >( options ); }
+    if( to == "quaternion" ) { return rotation::run< From, Eigen::Quaternion< double > >( options ); }
+    std::cerr << "math-eigen: rotation: expected valid value for --to; got --to=\"" << to << "\"" << std::endl;
+    return 1;
+}
+
+} // namespace rotation {
 
 int main( int ac, char** av )
 {
     try
     {
         comma::command_line_options options( ac, av, usage );
-        comma::csv::options csv( options );
         const std::vector< std::string >& unnamed = options.unnamed( "--flush,--normalize,-n,--sort,-s,--ascending,--rsort,--descending,--single-line-output,--single-line,--single,--verbose,-v" );
         std::string operation = unnamed.empty() ? std::string( "eigen" ) : unnamed[0];
         if( operation == "eigen" )
         {
+            comma::csv::options csv( options );
             size = options.optional< unsigned int >( "--size" );
             bool single_line_output = options.exists( "--single-line-output,--single-line,--single" );
             if( csv.fields.empty() ) { csv.fields = "data"; }
@@ -280,6 +345,16 @@ int main( int ac, char** av )
                 buffer.push_back( *p );
             }
             return 0;
+        }
+        if( operation == "rotation" )
+        {
+            std::string from = options.value< std::string >( "--from", "euler" );
+            std::string to = options.value< std::string >( "--to", "euler" );
+            if( from == "euler" || from == "rpy" || from == "roll,pitch,yaw" ) { return rotation::run< rotation_t >( options, to ); }
+            if( from == "angle-axis" || from == "axis-angle" ) { return rotation::run< Eigen::AngleAxis< double > >( options, to ); }
+            if( from == "quaternion" ) { return rotation::run< Eigen::Quaternion< double > >( options, to ); }
+            std::cerr << "math-eigen: rotation: expected valid value for --from; got --from=\"" << to << "\"" << std::endl;
+            return 1;
         }
         std::cerr << "math-eigen: expected operation, got \"" << operation << "\"" << std::endl;
     }
