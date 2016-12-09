@@ -199,6 +199,23 @@ template <> struct traits< rotation_t >
 
 namespace rotation {
 
+template < typename T > struct traits;
+
+template <> struct traits< rotation_t >
+{
+    static rotation_t zero() { return rotation_t(); }
+};
+
+template < typename T > struct traits< Eigen::AngleAxis< T > >
+{
+    static Eigen::AngleAxis< T > zero() { Eigen::AngleAxis< T > a( 0, Eigen::Matrix< T, 3, 1 >::Zero() ); return a; }
+};
+
+template < typename T > struct traits< Eigen::Quaternion< T > >
+{
+    static Eigen::Quaternion< T > zero() { Eigen::Quaternion< T > q( 0, 0, 0, 0 ); return q; }
+};
+    
 template < typename From, typename To >
 static int run( const comma::command_line_options& options )
 {
@@ -206,7 +223,22 @@ static int run( const comma::command_line_options& options )
     if( options.exists( "--output-fields" ) ) { std::cout << comma::join( comma::csv::names< To >( false ), ',' ) << std::endl; return 0; }
     if( options.exists( "--output-format" ) ) { std::cout << comma::csv::format::value< To >() << std::endl; return 0; }
     comma::csv::options csv( options );
+    comma::csv::input_stream< From > istream( std::cin, csv, rotation::traits< From >::zero() );
+    comma::csv::options output_csv;
+    if( csv.binary() ) { output_csv.format( comma::csv::format::value< To >() ); }
+    comma::csv::output_stream< To > ostream( std::cout, output_csv );
+    
     std::cerr << "math-eigen: rotation: todo" << std::endl; return 1;
+    
+    while( istream.ready() || std::cin.good() )
+    {
+        const From* p = istream.read();
+        if( !p ) { break; }
+        To q;
+        // todo: calculate q
+        comma::csv::append( istream, ostream, q );
+    }
+    return 0;
 }
     
 template < typename From >
