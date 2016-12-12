@@ -136,6 +136,9 @@ static void usage( bool verbose = false )
     std::cerr << "\n    Even in their native viewer you need to set colour image repeatedly and";
     std::cerr << "\n    with pure luck it works, but we have not managed to do it in software.";
     std::cerr << "\n    The remedy: power-cycle the camera";
+    std::cerr << "\n";
+    std::cerr << "\nExample:";
+    std::cerr << "\n    $ basler-cat \"resize=0.5;timestamp;view;null\"";
     std::cerr << "\n" << std::endl;
 }
 
