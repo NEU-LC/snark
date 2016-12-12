@@ -80,6 +80,7 @@ void usage( bool verbose )
     std::cerr << "                <what>" << std::endl;
     std::cerr << "                    euler;rpy;roll,pitch,yaw: euler angles, i.e. roll, pitch, yaw" << std::endl;
     std::cerr << "                    axis-angle,angle-axis: angle-axis" << std::endl;
+    std::cerr << "                    axis-angle-scaled: rotation axis with the norm equal to rotation angle" << std::endl;
     std::cerr << "                    quaternion: quaternion" << std::endl;
     std::cerr << "            --input-fields: print input fields to stdout and exit" << std::endl;
     std::cerr << "            --output-fields: print output fields to stdout and exit" << std::endl;
@@ -187,6 +188,12 @@ template < typename T > struct traits< Eigen::AngleAxis< T > >
     static Eigen::AngleAxis< T > get( const snark::rotation_matrix& m ) { return Eigen::AngleAxis< T >( m.rotation() ); }
 };
 
+template <> struct traits< Eigen::Vector3d >
+{
+    static Eigen::Vector3d zero() { return Eigen::Vector3d::Zero(); }
+    static Eigen::Vector3d get( const snark::rotation_matrix& m ) { const Eigen::AngleAxis< double > a( m.rotation() ); return a.axis() * a.angle(); }
+};
+
 template < typename T > struct traits< Eigen::Quaternion< T > >
 {
     static Eigen::Quaternion< T > zero() { Eigen::Quaternion< T > q( 0, 0, 0, 0 ); return q; }
@@ -218,6 +225,7 @@ static int run( const comma::command_line_options& options, const std::string& t
 {
     if( to == "euler" || to == "rpy" || to == "roll,pitch,yaw" ) { return rotation::run< From, snark::roll_pitch_yaw >( options ); }
     if( to == "angle-axis" || to == "axis-angle" ) { return rotation::run< From, Eigen::AngleAxis< double > >( options ); }
+    if( to == "axis-angle-scaled" ) { return rotation::run< From, Eigen::Vector3d >( options ); }
     if( to == "quaternion" ) { return rotation::run< From, Eigen::Quaternion< double > >( options ); }
     std::cerr << "math-eigen: rotation: expected valid value for --to; got --to=\"" << to << "\"" << std::endl;
     return 1;
@@ -356,6 +364,7 @@ int main( int ac, char** av )
             std::string to = options.value< std::string >( "--to", "euler" );
             if( from == "euler" || from == "rpy" || from == "roll,pitch,yaw" ) { return rotation::run< snark::roll_pitch_yaw >( options, to ); }
             if( from == "angle-axis" || from == "axis-angle" ) { return rotation::run< Eigen::AngleAxis< double > >( options, to ); }
+            if( from == "axis-angle-scaled" ) { return rotation::run< Eigen::Vector3d >( options, to ); }
             if( from == "quaternion" ) { return rotation::run< Eigen::Quaternion< double > >( options, to ); }
             std::cerr << "math-eigen: rotation: expected valid value for --from; got --from=\"" << to << "\"" << std::endl;
             return 1;

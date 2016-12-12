@@ -11,10 +11,6 @@ ADD_EXECUTABLE( math-rad2deg math-rad2deg.cpp )
 TARGET_LINK_LIBRARIES( math-rad2deg ${comma_ALL_LIBRARIES} ${snark_ALL_EXTERNAL_LIBRARIES} )
 INSTALL( TARGETS math-rad2deg RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
 
-ADD_EXECUTABLE( math-rotation-convert math-rotation-convert.cpp )
-TARGET_LINK_LIBRARIES( math-rotation-convert snark_math ${comma_ALL_LIBRARIES} ${snark_ALL_EXTERNAL_LIBRARIES} )
-INSTALL( TARGETS math-rotation-convert RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
-
 IF( CMAKE_SIZEOF_VOID_P EQUAL 4 )
     # disable eigen vectorization on 32 bit machines
     # see http://eigen.tuxfamily.org/index.php?title=FAQ#Vectorization
