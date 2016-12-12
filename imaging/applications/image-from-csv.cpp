@@ -81,6 +81,7 @@ static void usage( bool verbose )
               << std::endl
               << "options" << std::endl
               << "    --help,-h: show help; --help --verbose: more help" << std::endl
+              << "    --from,--begin,--origin=[<x>,<y>]: offset pixel coordinates by a given offset; default: 0,0" << std::endl
               << "    --output: output options, same as --input for image-to-csv or cv-cat (see --help --verbose)" << std::endl
               << "    --verbose,-v: more output" << std::endl
               << std::endl
@@ -104,12 +105,12 @@ static void usage( bool verbose )
     exit( 0 );
 }
 
-static void set_pixel( cv::Mat& m, const input_t& v ) // quick and dirty; reimplement as templates
+static void set_pixel( cv::Mat& m, const input_t& v, const std::pair< double, double >& offset ) // quick and dirty; reimplement as templates
 {
-    int x = std::floor( v.x + 0.5 );
-    int y = std::floor( v.y + 0.5 );
-    if( v.x < 0 || v.x >= m.cols ) { return; }
-    if( v.y < 0 || v.y >= m.rows ) { return; }
+    int x = std::floor( v.x + 0.5 - offset.first );
+    int y = std::floor( v.y + 0.5 - offset.second );
+    if( x < 0 || x >= m.cols ) { return; }
+    if( y < 0 || y >= m.rows ) { return; }
     switch( m.type() )
     {
         case CV_8UC1:
@@ -160,6 +161,10 @@ int main( int ac, char** av )
         }
         csv.fields = comma::join( v, ',' );
         if( has_alpha ) { std::cerr << "image-to-csv: alpha support: todo" << std::endl; return 1; }
+        std::string offset_string = options.value< std::string >( "--from,--begin,--origin", "0,0" );
+        const std::vector< std::string >& w = comma::split( offset_string, ',' );
+        if( w.size() != 2 ) { std::cerr << "image-to-csv: --from: expected <x>,<y>; got: \"" << offset_string << "\"" << std::endl; return 1; }
+        std::pair< double, double > offset( boost::lexical_cast< double >( w[0] ), boost::lexical_cast< double >( w[1] ) ); // todo: quick and dirty; use better types
         if( is_greyscale && has_alpha ) { std::cerr << "image-to-csv: warning: found alpha channel for a greyscale image; not implemented; ignored" << std::endl; }
         sample.channels.resize( is_greyscale ? 1 : has_alpha ? 4 : 3 );
         snark::cv_mat::serialization::options output_options = comma::name_value::parser( ';', '=' ).get< snark::cv_mat::serialization::options >( options.value<std::string>("--output" ) );
@@ -172,7 +177,7 @@ int main( int ac, char** av )
         {
             std::pair< boost::posix_time::ptime, cv::Mat > pair;
             pair.second = cv::Mat::zeros( output_options.rows, output_options.cols, type );
-            if( last ) { set_pixel( pair.second, *last ); }
+            if( last ) { set_pixel( pair.second, *last, offset ); }
             while( is.ready() || std::cin.good() )
             {
                 const input_t* p = is.read();
@@ -186,7 +191,7 @@ int main( int ac, char** av )
                     break;
                 }
                 if( !p ) { break; }
-                set_pixel( pair.second, *p );
+                set_pixel( pair.second, *p, offset );
             }
         }
         return 0;
