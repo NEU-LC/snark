@@ -1,0 +1,7 @@
+# make sure mask filter is plugged throughout
+
+images[0]/masked="100,0,0,100,100,0,0,100,100,0,0,100,100,0,0,100"
+images[0]/status=0
+
+images[1]/status=0
+images[1]/masked="0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1"
