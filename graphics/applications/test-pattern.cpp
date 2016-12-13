@@ -67,7 +67,7 @@ static void usage( bool verbose = false )
     exit( 0 );
 }
 
-float p2c( float p, float width, float thickness )
+float point_to_color( float p, float width, float thickness )
 {
     return fabs( p / ( width + thickness ));
 }
@@ -139,9 +139,9 @@ int main( int argc, char** argv )
             {
                 Eigen::Vector3f p = make_point( width, thickness );
                 output_t vertex( p, snark::graphics::qt3d::gl_color_t
-                               ( p2c( p.x(), width, thickness )
-                               , p2c( p.y(), width, thickness )
-                               , p2c( p.z(), width, thickness ), 1.0 ));
+                                        ( point_to_color( p.x(), width, thickness )
+                                        , point_to_color( p.y(), width, thickness )
+                                        , point_to_color( p.z(), width, thickness ), 1.0 ));
                 ostream.write( vertex );
             }
         }
