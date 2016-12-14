@@ -20,5 +20,6 @@ complete -F _snark_bash_completion basler-log
 complete -F _snark_bash_completion basler-log-summary
 complete -F _snark_bash_completion geo-sun-position
 complete -F _snark_bash_completion points-align
+complete -F _snark_bash_completion test-pattern
 complete -F _snark_bash_completion view-points
 complete -F _snark_bash_completion vimba-cat
