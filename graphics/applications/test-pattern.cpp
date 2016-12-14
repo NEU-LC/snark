@@ -34,7 +34,7 @@
 #include <comma/application/command_line_options.h>
 #include <comma/application/verbose.h>
 #include <comma/csv/stream.h>
-#include "../qt3d/qt3d_v2/types.h"
+#include "../../visiting/eigen.h"
 
 static void bash_completion( unsigned const ac, char const * const * av )
 {
@@ -67,9 +67,9 @@ static void usage( bool verbose = false )
     exit( 0 );
 }
 
-float point_to_color( float p, float width, float thickness )
+unsigned char point_to_color( float p, float width, float thickness )
 {
-    return fabs( p / ( width + thickness ));
+    return (unsigned char)( fabs( p / ( width + thickness )) * 256 );
 }
 
 float random( float min, float max )
@@ -101,6 +101,89 @@ Eigen::Vector3f make_point( float width, float thickness )
     return Eigen::Vector3f( x, y, z );
 }
 
+struct color_t
+{
+    // Use the view-points standard for colour
+    boost::array< unsigned char, 4 > rgba;
+
+    color_t()
+    {
+        rgba[0] = 0; rgba[1] = 0; rgba[2] = 0; rgba[3] = 255;
+    }
+
+    color_t( unsigned char red, unsigned char green, unsigned char blue, unsigned char alpha )
+    {
+        rgba[0] = red; rgba[1] = green; rgba[2] = blue; rgba[3] = alpha;
+    }
+
+    color_t( const color_t& color ) : rgba( color.rgba ) {}
+
+    unsigned char red() const   { return rgba[0]; }
+    unsigned char green() const { return rgba[1]; }
+    unsigned char blue() const  { return rgba[2]; }
+    unsigned char alpha() const { return rgba[3]; }
+};
+
+// Define our own vertex type using our colour type.
+// A more flexible alternative is to use snark::graphics::qt3d::vertex_t
+// but this type works better with view-points.
+struct vertex_t
+{
+    Eigen::Vector3f position;
+    color_t color;
+
+    vertex_t() {}
+    vertex_t( const Eigen::Vector3f& position, const color_t& color )
+        : position( position ), color( color ) {}
+};
+
+namespace comma { namespace visiting {
+
+template <> struct traits< color_t >
+{
+    template < typename Key, class Visitor >
+    static void visit( Key, color_t& p, Visitor& v )
+    {
+        unsigned char red   = 0;
+        unsigned char green = 0;
+        unsigned char blue  = 0;
+        unsigned char alpha = 255;
+        v.apply( "r", red );
+        v.apply( "g", green );
+        v.apply( "b", blue );
+        v.apply( "a", alpha );
+        p = color_t( red, green, blue, alpha );
+    }
+
+    template < typename Key, class Visitor >
+    static void visit( Key, const color_t& p, Visitor& v )
+    {
+        v.apply( "r", p.red() );
+        v.apply( "g", p.green() );
+        v.apply( "b", p.blue() );
+        v.apply( "a", p.alpha() );
+    }
+};
+
+template <> struct traits< vertex_t >
+{
+    template < typename Key, class Visitor >
+    static void visit( Key, vertex_t& p, Visitor& v )
+    {
+        v.apply( "position", p.position );
+        v.apply( "color", p.color );
+    }
+
+    template < typename Key, class Visitor >
+    static void visit( Key, const vertex_t& p, Visitor& v )
+    {
+        v.apply( "position", p.position );
+        v.apply( "color", p.color );
+    }
+};
+
+} } // namespace comma { namespace visiting {
+
 int main( int argc, char** argv )
 {
     try
@@ -108,22 +191,20 @@ int main( int argc, char** argv )
         comma::command_line_options options( argc, argv, usage );
         if( options.exists( "--bash-completion" )) { bash_completion( argc, argv ); }
 
-        typedef snark::graphics::qt3d::vertex_t output_t;
-
         if( options.exists( "--output-fields" ))
         {
-            std::cout << comma::join( comma::csv::names< output_t >( false ), ',' ) << std::endl;
+            std::cout << comma::join( comma::csv::names< vertex_t >( false ), ',' ) << std::endl;
             exit( 0 );
         }
         if( options.exists( "--output-format" ))
         {
-            std::cout << comma::csv::format::value< output_t >() << std::endl;
+            std::cout << comma::csv::format::value< vertex_t >() << std::endl;
             exit( 0 );
         }
 
         comma::csv::options output_csv;
-        if( options.exists( "--binary,-b" )) { output_csv.format( comma::csv::format::value< output_t >() ); }
-        comma::csv::output_stream< output_t > ostream( std::cout, output_csv );
+        if( options.exists( "--binary,-b" )) { output_csv.format( comma::csv::format::value< vertex_t >() ); }
+        comma::csv::output_stream< vertex_t > ostream( std::cout, output_csv );
 
         std::vector< std::string > unnamed = options.unnamed( "--help,h", "-.*,--.*" );
         std::string mode = unnamed[0];
@@ -138,10 +219,10 @@ int main( int argc, char** argv )
             for( unsigned int i = 0; i < num_points; i++ )
             {
                 Eigen::Vector3f p = make_point( width, thickness );
-                output_t vertex( p, snark::graphics::qt3d::gl_color_t
-                                        ( point_to_color( p.x(), width, thickness )
-                                        , point_to_color( p.y(), width, thickness )
-                                        , point_to_color( p.z(), width, thickness ), 1.0 ));
+                vertex_t vertex( p, color_t( point_to_color( p.x(), width, thickness )
+                                           , point_to_color( p.y(), width, thickness )
+                                           , point_to_color( p.z(), width, thickness )
+                                           , 255 ));
                 ostream.write( vertex );
             }
         }
