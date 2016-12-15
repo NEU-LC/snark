@@ -161,10 +161,10 @@ define('Feed', ["jquery", "jquery_timeago", "utils"], function ($) {
             var label = $('<label>',
                 {
                     text: field,
-                    class: "col-sm-3 "
+                    class: "col-sm-4 "
                 });
             var each = $('<div>', {
-                class: " col-sm-9"
+                class: " col-sm-8"
             });
             var input = $('<input>',
                 {
@@ -179,7 +179,7 @@ define('Feed', ["jquery", "jquery_timeago", "utils"], function ($) {
             }
             each.append(input);
             row.append(label).append(each);
-            container.append(row);
+            container.append(row).append($('<div>', {class: "clear"}));
             // this.target.append(row);
         }
     };

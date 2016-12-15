@@ -319,6 +319,10 @@ div.target > canvas {
     height: 100%;
 }
 
+.clear {
+    clear: both;
+}
+
 canvas.grid {
     position: absolute;
     top: 0;
@@ -390,3 +394,9 @@ form label {
     border: 1px solid #2c2c2c;
 }
 
+.ui-btn-active {
+    background-image: none !important;
+    background: none !important;
+    color: #333 !important;
+    border: none !important;
+}

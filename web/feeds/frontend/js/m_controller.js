@@ -57,6 +57,7 @@ require(['jquery', 'jquery_mobile', "jquery_timeago", "bootstrap",
     var MapFeed = require('MapFeed');
     // var MapOptions = require('MapOptions');
     // var GridOptions = require('GridOptions');
+    var StartStopFeed = require('StartStopFeed');
 
     var m_controller = function (container_width) {
         this.base = base_controller;
@@ -85,7 +86,7 @@ require(['jquery', 'jquery_mobile', "jquery_timeago", "bootstrap",
             var popup_div = '<div data-role="popup" id="popup' + feed_name + '" data-overlay-theme="b" data-theme="b" data-corners="false">' +
                 '<a href="#" data-rel="back" class="ui-btn ui-corner-all ui-shadow ui-btn-a ui-icon-delete ui-btn-icon-notext ui-btn-right">Close</a><img class="popphoto" style="max-height:512px;" >' +
                 '</div>';
-            m_controller.prototype.add_poll_body(feed_path, element_str, popup_div, config.form);
+            m_controller.prototype.add_poll_body(feed_path, element_str, config.form, popup_div);
             return new ImageFeed(feed_name, feed_path, config);
         } else if (type == 'text' || type == 'csv' || type == 'csv-table') {
             m_controller.prototype.add_poll_body(feed_path, '<table class="target"><thead></thead></table>', config.form);
@@ -105,6 +106,9 @@ require(['jquery', 'jquery_mobile', "jquery_timeago", "bootstrap",
         } else if (type == 'form') {
             m_controller.prototype.add_poll_body(feed_path, '<div class="target form"></div>');
             return new FormFeed(feed_name, feed_path, config);
+        } else if (type == 'start_stop') {
+            m_controller.prototype.add_poll_body(feed_path, '<div class="target form"></div>');
+            return new StartStopFeed(feed_name, feed_path, config);
         }
         throw 'unrecognised feed type: ' + type;
     };
