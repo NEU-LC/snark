@@ -40,14 +40,17 @@
 #include <comma/base/types.h>
 #include <comma/csv/stream.h>
 #include <comma/string/string.h>
-#include <comma/visiting/traits.h>
+#include "../../visiting/traits.h"
+#include "../rotation_matrix.h"
 
 void usage( bool verbose )
 {
     std::cerr << std::endl;
     std::cerr << "simple wrapper for eigen library operations" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "usage: cat sample.csv | math-eigen [<options>]" << std::endl;
+    std::cerr << "usage: cat sample.csv | math-eigen <operation> [<options>]" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "<operation>: eigen, rotation" << std::endl;
     std::cerr << std::endl;
     std::cerr << "operations" << std::endl;
     std::cerr << "    eigen (default): calculate eigen vector and eigen values on a sample" << std::endl;
@@ -69,6 +72,19 @@ void usage( bool verbose )
     std::cerr << "                                                         vector[0],vector[1],...,value[0],value[1],...,block" << std::endl;
     std::cerr << "            --size: a hint of number of elements in the data vector, ignored, if data indices" << std::endl;
     std::cerr << "                    specified, e.g. data[0],data[1],data[2]" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    rotation: convert rotation from representation to another, append the result to stdin data, output to stdout" << std::endl;
+    std::cerr << "        options" << std::endl;
+    std::cerr << "            --from=<what>: input representation; default euler" << std::endl;
+    std::cerr << "            --to=<what>: output representation; default euler" << std::endl;
+    std::cerr << "                <what>" << std::endl;
+    std::cerr << "                    euler;rpy;roll,pitch,yaw: euler angles, i.e. roll, pitch, yaw" << std::endl;
+    std::cerr << "                    axis-angle,angle-axis: angle-axis" << std::endl;
+    std::cerr << "                    axis-angle-scaled: rotation axis with the norm equal to rotation angle" << std::endl;
+    std::cerr << "                    quaternion: quaternion" << std::endl;
+    std::cerr << "            --input-fields: print input fields to stdout and exit" << std::endl;
+    std::cerr << "            --output-fields: print output fields to stdout and exit" << std::endl;
+    std::cerr << "            --output-format: print binary output format to stdout and exit" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    --help,-h: show this help; --help --verbose: more help" << std::endl;
@@ -156,16 +172,77 @@ template <> struct traits< snark::eigen::single_line_output_t >
 
 } } // namespace comma { namespace visiting {
 
+namespace rotation {
+
+template < typename T > struct traits;
+
+template <> struct traits< snark::roll_pitch_yaw >
+{
+    static snark::roll_pitch_yaw zero() { return snark::roll_pitch_yaw(); }
+    static snark::roll_pitch_yaw get( const snark::rotation_matrix& m ) { return m.roll_pitch_yaw(); }
+};
+
+template < typename T > struct traits< Eigen::AngleAxis< T > >
+{
+    static Eigen::AngleAxis< T > zero() { Eigen::AngleAxis< T > a( 0, Eigen::Matrix< T, 3, 1 >::Zero() ); return a; }
+    static Eigen::AngleAxis< T > get( const snark::rotation_matrix& m ) { return Eigen::AngleAxis< T >( m.rotation() ); }
+};
+
+template <> struct traits< Eigen::Vector3d >
+{
+    static Eigen::Vector3d zero() { return Eigen::Vector3d::Zero(); }
+    static Eigen::Vector3d get( const snark::rotation_matrix& m ) { const Eigen::AngleAxis< double > a( m.rotation() ); return a.axis() * a.angle(); }
+};
+
+template < typename T > struct traits< Eigen::Quaternion< T > >
+{
+    static Eigen::Quaternion< T > zero() { Eigen::Quaternion< T > q( 0, 0, 0, 0 ); return q; }
+    static Eigen::Quaternion< T > get( const snark::rotation_matrix& m ) { return m.quaternion(); }
+};
+    
+template < typename From, typename To >
+static int run( const comma::command_line_options& options )
+{
+    if( options.exists( "--input-fields" ) ) { std::cout << comma::join( comma::csv::names< From >( false ), ',' ) << std::endl; return 0; }
+    if( options.exists( "--output-fields" ) ) { std::cout << comma::join( comma::csv::names< To >( false ), ',' ) << std::endl; return 0; }
+    if( options.exists( "--output-format" ) ) { std::cout << comma::csv::format::value< To >() << std::endl; return 0; }
+    comma::csv::options csv( options );
+    comma::csv::input_stream< From > istream( std::cin, csv, rotation::traits< From >::zero() );
+    comma::csv::options output_csv;
+    if( csv.binary() ) { output_csv.format( comma::csv::format::value< To >() ); }
+    comma::csv::output_stream< To > ostream( std::cout, output_csv );
+    while( istream.ready() || std::cin.good() )
+    {
+        const From* p = istream.read();
+        if( !p ) { break; }
+        comma::csv::append( istream, ostream, rotation::traits< To >::get( snark::rotation_matrix( *p ) ) );
+    }
+    return 0;
+}
+    
+template < typename From >
+static int run( const comma::command_line_options& options, const std::string& to )
+{
+    if( to == "euler" || to == "rpy" || to == "roll,pitch,yaw" ) { return rotation::run< From, snark::roll_pitch_yaw >( options ); }
+    if( to == "angle-axis" || to == "axis-angle" ) { return rotation::run< From, Eigen::AngleAxis< double > >( options ); }
+    if( to == "axis-angle-scaled" ) { return rotation::run< From, Eigen::Vector3d >( options ); }
+    if( to == "quaternion" ) { return rotation::run< From, Eigen::Quaternion< double > >( options ); }
+    std::cerr << "math-eigen: rotation: expected valid value for --to; got --to=\"" << to << "\"" << std::endl;
+    return 1;
+}
+
+} // namespace rotation {
+
 int main( int ac, char** av )
 {
     try
     {
         comma::command_line_options options( ac, av, usage );
-        comma::csv::options csv( options );
         const std::vector< std::string >& unnamed = options.unnamed( "--flush,--normalize,-n,--sort,-s,--ascending,--rsort,--descending,--single-line-output,--single-line,--single,--verbose,-v" );
         std::string operation = unnamed.empty() ? std::string( "eigen" ) : unnamed[0];
         if( operation == "eigen" )
         {
+            comma::csv::options csv( options );
             size = options.optional< unsigned int >( "--size" );
             bool single_line_output = options.exists( "--single-line-output,--single-line,--single" );
             if( csv.fields.empty() ) { csv.fields = "data"; }
@@ -280,6 +357,17 @@ int main( int ac, char** av )
                 buffer.push_back( *p );
             }
             return 0;
+        }
+        if( operation == "rotation" )
+        {
+            std::string from = options.value< std::string >( "--from", "euler" );
+            std::string to = options.value< std::string >( "--to", "euler" );
+            if( from == "euler" || from == "rpy" || from == "roll,pitch,yaw" ) { return rotation::run< snark::roll_pitch_yaw >( options, to ); }
+            if( from == "angle-axis" || from == "axis-angle" ) { return rotation::run< Eigen::AngleAxis< double > >( options, to ); }
+            if( from == "axis-angle-scaled" ) { return rotation::run< Eigen::Vector3d >( options, to ); }
+            if( from == "quaternion" ) { return rotation::run< Eigen::Quaternion< double > >( options, to ); }
+            std::cerr << "math-eigen: rotation: expected valid value for --from; got --from=\"" << to << "\"" << std::endl;
+            return 1;
         }
         std::cerr << "math-eigen: expected operation, got \"" << operation << "\"" << std::endl;
     }

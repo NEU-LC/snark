@@ -11,10 +11,6 @@ ADD_EXECUTABLE( math-rad2deg math-rad2deg.cpp )
 TARGET_LINK_LIBRARIES( math-rad2deg ${comma_ALL_LIBRARIES} ${snark_ALL_EXTERNAL_LIBRARIES} )
 INSTALL( TARGETS math-rad2deg RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
 
-ADD_EXECUTABLE( math-rotation-convert math-rotation-convert.cpp )
-TARGET_LINK_LIBRARIES( math-rotation-convert snark_math ${comma_ALL_LIBRARIES} ${snark_ALL_EXTERNAL_LIBRARIES} )
-INSTALL( TARGETS math-rotation-convert RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
-
 IF( CMAKE_SIZEOF_VOID_P EQUAL 4 )
     # disable eigen vectorization on 32 bit machines
     # see http://eigen.tuxfamily.org/index.php?title=FAQ#Vectorization
@@ -40,7 +36,7 @@ TARGET_LINK_LIBRARIES( ellipsoid-calc snark_math_spherical_geometry ${comma_ALL_
 INSTALL( TARGETS ellipsoid-calc RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
 
 add_executable( math-eigen math-eigen.cpp )
-target_link_libraries( math-eigen ${comma_ALL_LIBRARIES} ${snark_ALL_EXTERNAL_LIBRARIES} )
+target_link_libraries( math-eigen snark_math ${comma_ALL_LIBRARIES} ${snark_ALL_EXTERNAL_LIBRARIES} )
 install( TARGETS math-eigen RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
 
 if(snark_build_math_fft)

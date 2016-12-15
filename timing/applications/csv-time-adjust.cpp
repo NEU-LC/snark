@@ -74,6 +74,11 @@ bool check_mode_clocked_else_periodic( std::string const& i_mode_string )
     return false;
 }
 
+long to_microseconds( double const i_seconds )
+{
+    return ( long )( i_seconds * 1000000 );
+}
+
 int main( int ac, char** av )
 {
     try
@@ -91,13 +96,13 @@ int main( int ac, char** av )
 
         if( is_clocked_else_periodic )
         {
-            clocked_timestamp = snark::timing::clocked_time_stamp( boost::posix_time::seconds( options.value<unsigned>("--period" ) ) );
+            clocked_timestamp = snark::timing::clocked_time_stamp( boost::posix_time::microseconds( to_microseconds( options.value< double >("--period" ) ) ) );
         }
         else
         {
-            periodic_timestamp = snark::timing::periodic_time_stamp( boost::posix_time::seconds( options.value<unsigned>("--period" ) )
-                                                                   , boost::posix_time::seconds( options.value<unsigned>("--threshold" ) )
-                                                                   , boost::posix_time::seconds( options.value<unsigned>("--reset" ) ) );
+            periodic_timestamp = snark::timing::periodic_time_stamp( boost::posix_time::microseconds( to_microseconds( options.value< double >("--period" ) ) )
+                                                                   , boost::posix_time::microseconds( to_microseconds( options.value< double >("--threshold" ) ) )
+                                                                   , boost::posix_time::microseconds( to_microseconds( options.value< double >("--reset" ) ) ) );
         }
 
         comma::csv::options csv( options );

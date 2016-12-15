@@ -109,6 +109,9 @@ static void usage( bool verbose = false )
     std::cerr << "\n    --test-image=[<num>]      output test image <num>; possible values: 1-6";
     std::cerr << "\n    --verbose,-v              be more verbose";
     std::cerr << "\n";
+    std::cerr << "\nFilters:";
+    std::cerr << "\n    See \"cv-cat --help --verbose\" for a list of supported filters.";
+    std::cerr << "\n";
     std::cerr << "\nBy default basler-cat will connect to the first device it finds. To";
     std::cerr << "\nchoose a specific camera use the --address or --serial-number options.";
     std::cerr << "\nFor GigE cameras <address> is the device ip address, for USB cameras it is";
@@ -133,6 +136,9 @@ static void usage( bool verbose = false )
     std::cerr << "\n    Even in their native viewer you need to set colour image repeatedly and";
     std::cerr << "\n    with pure luck it works, but we have not managed to do it in software.";
     std::cerr << "\n    The remedy: power-cycle the camera";
+    std::cerr << "\n";
+    std::cerr << "\nExample:";
+    std::cerr << "\n    $ basler-cat \"resize=0.5;timestamp;view;null\"";
     std::cerr << "\n" << std::endl;
 }
 
@@ -507,13 +513,22 @@ Pylon::IPylonDevice* create_device( const std::string& address, const std::strin
     {
         Pylon::DeviceInfoList_t devices;
         factory.EnumerateDevices( devices );
-        if( devices.empty() ) { std::cerr << "basler-cat: no camera found" << std::endl; return NULL; }
-        std::cerr << "basler-cat: will connect to the first of " << devices.size()
-                  << " found device(s):" << std::endl;
-        Pylon::DeviceInfoList_t::const_iterator it;
-        for( it = devices.begin(); it != devices.end(); ++it )
+        std::cerr << "basler-cat: ";
+        switch( devices.size() )
         {
-            std::cerr << "    " << it->GetFullName() << std::endl;
+            case 0:
+                std::cerr << "no camera found" << std::endl;
+                return NULL;
+            case 1:
+                std::cerr << "found 1 device: " << devices[0].GetFullName() << std::endl;
+                break;
+            default:
+                std::cerr << "will connect to the first of " << devices.size() << " found devices:" << std::endl;
+                Pylon::DeviceInfoList_t::const_iterator it;
+                for( it = devices.begin(); it != devices.end(); ++it )
+                {
+                    std::cerr << "    " << it->GetFullName() << std::endl;
+                }
         }
         return factory.CreateDevice( devices[0] );
     }
@@ -1052,7 +1067,7 @@ int main( int argc, char** argv )
         Pylon::IPylonDevice* device = create_device( address, serial_number );
         if( !device )
         {
-            std::cerr << "unable to open camera";
+            std::cerr << "basler-cat: unable to open camera";
             if( !address.empty() ) { std::cerr << " for address " << address; }
             std::cerr << std::endl;
             return 1;
