@@ -21,6 +21,21 @@ define('StartStopFeed', ["jquery", "FormFeed"], function ($) {
             {class: "col-sm-1"}))
     };
 
+    StartStopFeed.prototype.addListeners = function () {
+        var this_ = this;
+        $($(this.form).find("input[type=text]")).on("input", function () {
+            $(this_.form).find("button[name=start]").removeAttr('disabled');
+        });
+        // $.ajax({
+        //     context: this,
+        //     url: this.get_url()
+        // }).done(function (data, textStatus, jqXHR) {
+        //     this.onload(data);
+        // }).fail(function (jqXHR, textStatus, errorThrown) {
+        //     this.onerror();
+        // });
+    };
+
     var add_button = function (this_, name, style, command) {
 
         var btn = $('<button/>',
