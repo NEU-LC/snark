@@ -179,12 +179,12 @@ class grid
                 iterator_ right_up = voxel_map_.find( i );
                 if( right_up == voxel_map_.end() )
                 {
-                    if( right != voxel_map_.end() && up != voxel_map_.end() ) { output_( it, right, up ); }
+                    if( right != voxel_map_.end() && up != voxel_map_.end() ) { output_( it, up, right ); }
                 }
                 else
                 {
-                    if( right != voxel_map_.end() ) { output_( it, right, right_up ); }
-                    if( up != voxel_map_.end() ) { output_( it, right_up, up ); }
+                    if( right != voxel_map_.end() ) { output_( it, right_up, right ); }
+                    if( up != voxel_map_.end() ) { output_( it, up, right_up ); }
                 }
             }
             voxel_map_.clear();
