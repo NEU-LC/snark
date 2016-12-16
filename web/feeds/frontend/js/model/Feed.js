@@ -161,10 +161,10 @@ define('Feed', ["jquery", "jquery_timeago", "utils"], function ($) {
             var label = $('<label>',
                 {
                     text: field,
-                    class: "col-sm-3 "
+                    class: "col-sm-4 "
                 });
             var each = $('<div>', {
-                class: " col-sm-9"
+                class: " col-sm-8"
             });
             var input = $('<input>',
                 {
@@ -179,7 +179,7 @@ define('Feed', ["jquery", "jquery_timeago", "utils"], function ($) {
             }
             each.append(input);
             row.append(label).append(each);
-            container.append(row);
+            container.append(row).append($('<div>', {class: "clear"}));
             // this.target.append(row);
         }
     };
@@ -196,7 +196,7 @@ define('Feed', ["jquery", "jquery_timeago", "utils"], function ($) {
 
     Feed.prototype.is_feed_inputs = function () {
         var size = Object.keys(this.fields).length;
-        return size > 0 && this.config.type != "form";
+        return size > 0 && (this.config.type != "form" && this.config.type != "start_stop");
     };
     Feed.prototype.update_time = function () {
         var timestring = this.refresh_time.toString();
@@ -231,14 +231,15 @@ define('Feed', ["jquery", "jquery_timeago", "utils"], function ($) {
     };
     Feed.prototype.get_url = function () {
         var url = this.config.url;
-        $.ajaxSetup({cache: false});
+        var timestamp = new Date().getTime();
+        url = url + (url.indexOf('?') < 0 ? '?_=' : '&_=') + timestamp;
         if (this.is_feed_inputs()) {
             var params = $(this.input_container).find("form").serialize();
-            url = url + (url.indexOf('?') < 0 ? '?' : '&') + params;
+            if (params.length > 0) {
+                url = url + (url.indexOf('?') < 0 ? ' ' : '&') + params;
+            }
         }
-        return url;//+ (url.indexOf('?') < 0 ? '?q=' : '&q=') + Math.random();
-
-        // return url;+ (url.indexOf('?') < 0 ? '?q=' : '&q=') + Math.random();
+        return url;
     };
     Feed.prototype.alert = function (on) {
         var gui_element = gui.__folders[this.feed_path];

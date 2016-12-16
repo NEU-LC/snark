@@ -39,6 +39,7 @@ require(['jquery', "jquery_ui",
     // var MapOptions = require('MapOptions');
     // var GridOptions = require('GridOptions');
     var FormFeed = require('FormFeed');
+    var StartStopFeed = require('StartStopFeed');
     var base_controller = require('base_controller');
 
     var controller = function (container_width) {
@@ -92,7 +93,11 @@ require(['jquery', "jquery_ui",
         } else if (type == 'form') {
             controller.prototype.add_poll_body(feed_path, '<div class="target form"></div>');
             return new FormFeed(feed_name, feed_path, config);
+        } else if (type == 'start_stop') {
+            controller.prototype.add_poll_body(feed_path, '<div class="target form"></div>');
+            return new StartStopFeed(feed_name, feed_path, config);
         }
+
         throw 'unrecognised feed type: ' + type;
     };
 

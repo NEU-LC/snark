@@ -18,7 +18,7 @@ define('base_controller', ['jquery', "jquery_timeago",
     "bootstrap", "ol", 'utils',
     "Feed", "CsvFeed",
     'TextFeed', 'ImageFeed',
-    'GraphFeed', 'ImageStreamFeed', 'TrackFeed', 'TrackOptions', 'MapFeed', 'FormFeed', 'MapOptions', 'GridOptions'], function ($) {
+    'GraphFeed', 'ImageStreamFeed', 'TrackFeed', 'TrackOptions', 'MapFeed', 'FormFeed', 'StartStopFeed', 'MapOptions', 'GridOptions'], function ($) {
 
     var Feed = require('Feed');
     // var TextFeed = require('TextFeed');
@@ -230,12 +230,12 @@ define('base_controller', ['jquery', "jquery_timeago",
         });
 
         $('.panel').on('mouseover', function () {
-            $(this).find('.hideable').removeClass('transparent');
-            $(this).find('div button').addClass('button-shadow');
+            $(this).find('h3').find('.hideable').removeClass('transparent');
+            $(this).find('h3').find('div button').addClass('button-shadow');
         });
         $('.panel').on('mouseout', function () {
-            $(this).find('.hideable').addClass('transparent');
-            $(this).find('div button').removeClass('button-shadow');
+            $(this).find('h3').find('.hideable').addClass('transparent');
+            $(this).find('h3').find('div button').removeClass('button-shadow');
         });
 
         $('.panel button').tooltip({html: true});

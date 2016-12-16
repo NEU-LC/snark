@@ -48,12 +48,17 @@ static void usage( bool verbose = false )
     std::cerr << std::endl;
     std::cerr << "operations" << std::endl;
     std::cerr << "    grid: each point has pixel index, e.g. as in a point cloud coming from realsense; triangulate neighbour pixels only" << std::endl;
+    std::cerr << "          triangle points output order is such that the triangle normal would point towards the viewer" << std::endl;
+    std::cerr << "          according the right-hand screw rule" << std::endl;
+    std::cerr << "          by default, pixel indices are counted from the top-left corner of an image" << std::endl;
+    std::cerr << std::endl;
     std::cerr << "        fields" << std::endl;
     std::cerr << "            index/x, index/y: pixel coordinates" << std::endl;
     std::cerr << "            block: block number" << std::endl;
     std::cerr << "            default: index/x,index/y" << std::endl;
     std::cerr << "        options" << std::endl;
-    std::cerr << "            --input-fields: todo: output input fields and exit" << std::endl;
+    std::cerr << "            --input-fields: output input fields and exit" << std::endl;
+    std::cerr << "            --reverse: invert order of triangle corners in the output, i.e. 'pixels' will be counted from bottom-left corner" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    --help,-h:       show this help; --help --verbose for more help" << std::endl;
@@ -89,6 +94,7 @@ class grid
         comma::csv::options csv_;
         comma::csv::input_stream< input > istream_;
         bool permissive_;
+        bool reverse_;
         typedef std::string voxel_;
         typedef snark::voxel_map< voxel_, 2 > voxel_map_t_;
         typedef voxel_map_t_::const_iterator iterator_;
@@ -108,6 +114,7 @@ class grid
             : csv_( make_csv_options_( options ) )
             , istream_( std::cin, csv_ )
             , permissive_( options.exists( "--permissive" ) )
+            , reverse_( options.exists( "--reverse" ) )
             , voxel_map_( resolution_( options.value< double >( "--resolution", 1 ) ) ) // quick and dirty: does not matter for now, but may be used in future
         {
         }
@@ -140,8 +147,10 @@ class grid
             return 0;
         }
         
-        void output_( const iterator_& a, const iterator_& b, const iterator_& c )
+        void output_( const iterator_& c1, const iterator_& b, const iterator_& c3 )
         {
+            const iterator_& a = reverse_ ? c3 : c1;
+            const iterator_& c = reverse_ ? c1 : c3;
             if( csv_.binary() )
             {
                 std::cout.write( &a->second[0], csv_.format().size() );
@@ -170,12 +179,12 @@ class grid
                 iterator_ right_up = voxel_map_.find( i );
                 if( right_up == voxel_map_.end() )
                 {
-                    if( right != voxel_map_.end() && up != voxel_map_.end() ) { output_( it, right, up ); }
+                    if( right != voxel_map_.end() && up != voxel_map_.end() ) { output_( it, up, right ); }
                 }
                 else
                 {
-                    if( right != voxel_map_.end() ) { output_( it, right, right_up ); }
-                    if( up != voxel_map_.end() ) { output_( it, right_up, up ); }
+                    if( right != voxel_map_.end() ) { output_( it, right_up, right ); }
+                    if( up != voxel_map_.end() ) { output_( it, up, right_up ); }
                 }
             }
             voxel_map_.clear();

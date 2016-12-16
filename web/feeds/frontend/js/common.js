@@ -62,6 +62,7 @@ require.config({
         TrackOptions: 'js/model/TrackOptions',
         MapFeed: 'js/model/MapFeed',
         FormFeed: 'js/model/FormFeed',
+        StartStopFeed: 'js/model/StartStopFeed',
         MapOptions: 'js/model/MapOptions',
         Grid: 'js/model/Grid',
         GridOptions: 'js/model/GridOptions',
