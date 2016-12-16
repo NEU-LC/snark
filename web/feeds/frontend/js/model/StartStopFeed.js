@@ -25,6 +25,7 @@ define('StartStopFeed', ["jquery", "FormFeed"], function ($) {
         var this_ = this;
         $($(this.form).find("input[type=text]")).on("input", function () {
             $(this_.form).find("button[name=start]").removeAttr('disabled');
+            $(this_.form).find("button[name=clear]").removeAttr('disabled');
         });
         // $.ajax({
         //     context: this,
@@ -59,10 +60,12 @@ define('StartStopFeed', ["jquery", "FormFeed"], function ($) {
                                 $(this).attr("disabled", "disabled");
                                 var btn_name = $(this).attr("name");
                                 if (btn_name == "stop") {
-                                    $(this_.start_btn).removeAttr("disabled");
+                                    $(this_.form).find("button[name=start]").removeAttr("disabled");
+                                    $(this_.form).find("button[name=clear]").removeAttr("disabled");
                                 }
                                 else {
-                                    $(this_.stop_btn).removeAttr("disabled");
+                                    $(this_.form).find("button[name=stop]").removeAttr("disabled");
+                                    $(this_.form).find("button[name=clear]").attr("disabled", "disabled");
                                 }
                             }
                         }).fail(function (jqXHR, textStatus, errorThrown) {
@@ -80,10 +83,12 @@ define('StartStopFeed', ["jquery", "FormFeed"], function ($) {
             if (data.running.status == "1") {
                 $(this.form).find("input[type=text]").attr("readonly", "readonly");
                 $(this.form).find("button[name=start]").attr('disabled', "disabled");
+                $(this.form).find("button[name=clear]").attr('disabled', "disabled");
                 $(this.form).find("button[name=stop]").removeAttr('disabled');
             }
             else {
                 $(this.form).find("button[name=stop]").attr('disabled', "disabled");
+                $(this.form).find("button[name=clear]").removeAttr('disabled');
                 $(this.form).find("button[name=start]").removeAttr('disabled');
                 $(this.form).find("input[type=text]").removeAttr("readonly");
             }

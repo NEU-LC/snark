@@ -41,6 +41,7 @@ define('FormFeed', ["jquery", "Feed"], function ($) {
         var clear = $('<button/>',
             {
                 text: 'Clear',
+                name: 'clear',
                 type: 'button',
                 class: "btn btn-default col-sm-3",
                 click: function () {
