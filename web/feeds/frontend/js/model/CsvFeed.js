@@ -125,7 +125,6 @@ define('CsvFeed', ["jquery", 'TextFeed'], function ($, Feed, TextFeed) {
                             pre.css('color', data_color[i][j]);
                         }
                         if (column_is_number[j] && globals.isMobile) {
-                            console.log(parseFloat(data[i][j]).toFixed(3));
                             data[i][j] = parseFloat(data[i][j]).toFixed(3);
                         }
                         tr.append(td.append(pre.text(data[i][j])));
