@@ -231,7 +231,7 @@ define('Feed', ["jquery", "jquery_timeago", "utils"], function ($) {
     };
     Feed.prototype.get_url = function () {
         var url = this.config.url;
-        var timestamp = parseInt(new Date().getTime().toString());
+        var timestamp = new Date().getTime();
         url = url + (url.indexOf('?') < 0 ? '?_=' : '&_=') + timestamp;
         if (this.is_feed_inputs()) {
             var params = $(this.input_container).find("form").serialize();
