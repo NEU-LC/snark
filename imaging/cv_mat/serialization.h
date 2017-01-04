@@ -72,6 +72,7 @@ class serialization
             static std::string usage();
             static std::string type_usage();
         };
+        
 
         /// default constructor
         serialization();
@@ -94,7 +95,7 @@ class serialization
         
         /// deserialize header only
         header get_header( const char* buf ) const;
-
+        
         /// return usage
         static const std::string& usage();
 
@@ -106,6 +107,13 @@ class serialization
 
         /// read from stream, if eof, return empty cv::Mat
         std::pair< boost::posix_time::ptime, cv::Mat > read( std::istream& is );
+        
+        /// return last header buffer after read()
+        const char* header_buffer() const; // todo
+        
+        /// return last header buffer after read()
+        template < typename T >
+        T header_as() const; // todo
 
         /// write to stream
         void write( std::ostream& os, const std::pair< boost::posix_time::ptime, cv::Mat >& m, bool flush = true );
