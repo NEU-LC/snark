@@ -3,8 +3,6 @@
  */
 define('FormFeed', ["jquery", "Feed"], function ($) {
     var Feed = require('Feed');
-    var space = $('<label/>',
-        {class: "col-sm-2"});
     var FormFeed = function (feed_name, feed_path, config) {
         this.base = Feed;
         config.alert = false;
@@ -22,6 +20,7 @@ define('FormFeed', ["jquery", "Feed"], function ($) {
     FormFeed.prototype = Object.create(Feed.prototype);
 
     FormFeed.prototype.init = function () {
+        this.el.removeClass('panel-disabled').addClass('panel-enabled');
         this.target.empty();
         this.form.empty();
         this.load_inputs(this.form);
@@ -34,8 +33,8 @@ define('FormFeed', ["jquery", "Feed"], function ($) {
         //     alert("Handler for .submit() called.");
         //     event.preventDefault();
         // });
-        var buttons = $('<div>', {class: "col-sm-12"});
-        this.add_buttons(buttons);
+        var buttons_div = $('<div>', {class: "col-sm-12"});
+        this.add_buttons(buttons_div);
         // var num = this.buttons.length;
 
         var clear = $('<button/>',
@@ -60,8 +59,8 @@ define('FormFeed', ["jquery", "Feed"], function ($) {
 
         // form.append(combo).append("<br>");
         // form.append(input).append("<br>");
-        buttons.append(clear);
-        this.form.append(buttons);
+        buttons_div.append(clear);
+        this.form.append(buttons_div);
         $(this.form).append($('<div>', {class: "clear"}));
         this.target.append(this.form);
 
@@ -80,6 +79,7 @@ define('FormFeed', ["jquery", "Feed"], function ($) {
 
     };
     FormFeed.prototype.add_buttons = function (container) {
+        var this_ = this;
         var submit = $('<button/>',
             {
                 value: "submit",
@@ -104,7 +104,9 @@ define('FormFeed', ["jquery", "Feed"], function ($) {
                     }
                 }
             });
-        container.append(submit).append(space)
+        container.append(submit);
+        container.append($('<label/>',
+            {class: "col-sm-2"}));
     };
 
     FormFeed.prototype.addListeners = function () {
@@ -152,9 +154,14 @@ define('FormFeed', ["jquery", "Feed"], function ($) {
         $(this.form).find(".result-panel").remove();
         if (data.output != undefined) {
             var output = data.output;
+            // output = output.replace(/"/g, " ");
+            // output = output.replace(/\n/g, " ");
             var panel = $('<div>', {class: "panel result-panel"});
             panel.append($('<label>', {class: "", text: "Output"}));
-            panel.append($('<div>', {class: "form-results", text: JSON.stringify(output, null, 4)}));
+            var output_div = $('<div>', {class: "form-results"});
+            output_div.append($('<pre>', {text: output}));
+            panel.append(output_div); //JSON.stringify(output, null, 4)
+
             panel.append($('<div>', {class: "clearfix"}));
             $(this.form).append(panel);
             $(this.form).append($('<div>', {class: "clear"}));
