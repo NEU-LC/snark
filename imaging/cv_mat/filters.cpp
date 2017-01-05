@@ -698,7 +698,7 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
                             std::string index_file = directory + "/index.bin";
                             filestream.reset( new std::ofstream( &index_file[0] ) );
                             if( !filestream->is_open() ) { COMMA_THROW( comma::exception, "failed to open \"" << index_file << "\"" ); }
-                            csv_stream.reset( new comma::csv::binary_output_stream<indexer>(filestream) );
+                            csv_stream.reset( new comma::csv::binary_output_stream<indexer>(*filestream) );
                         }
                     }
                     
