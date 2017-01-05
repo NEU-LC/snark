@@ -80,50 +80,6 @@ struct map_input_t
     value_type value;
 };
 
-struct log_index_t
-{
-    boost::posix_time::ptime t;
-    comma::uint16 file;
-    comma::uint64 offset;
-    
-    log_index_t() : t ( boost::date_time::not_a_date_time ), file ( 0 ), offset( 0 ) {}
-};
-
-namespace comma { namespace visiting {
-
-template <> struct traits< map_input_t >
-{
-    template< typename K, typename V > static void visit( const K&, map_input_t& t, V& v )
-    {
-        v.apply( "key", t.key );
-        v.apply( "value", t.value );
-    }
-    template< typename K, typename V > static void visit( const K&, const map_input_t& t, V& v )
-    {
-        v.apply( "key", t.key );
-        v.apply( "value", t.value );
-    }
-};
-
-template <> struct traits< log_index_t >
-{
-    template < typename K, typename V > static void visit( const K&, const log_index_t& t, V& v )
-    {
-        v.apply( "t", t.t );
-        v.apply( "file", t.file );
-        v.apply( "offset", t.offset );
-    }
-
-    template < typename K, typename V > static void visit( const K&, log_index_t& t, V& v )
-    {
-        v.apply( "t", t.t );
-        v.apply( "file", t.file );
-        v.apply( "offset", t.offset );
-    }
-};
-
-} } // namespace comma { namespace visiting {
-
 namespace snark{ namespace cv_mat {
 
 static boost::unordered_map< std::string, int > fill_types_()
@@ -683,58 +639,25 @@ static filters::value_type split_impl_( filters::value_type m )
 }
 
 class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex is non-copyable
-{
-    public:
-        log_impl_() {}
-
-        log_impl_( const std::string& filename, bool index ) : logger_( new logger( filename, index ) ) {}
-
-        log_impl_( const std::string& directory, boost::posix_time::time_duration period, bool index ) : logger_( new logger( directory, period, index ) ) {}
-
-        log_impl_( const std::string& directory, unsigned int size, bool index ) : logger_( new logger( directory, size, index ) ) {}
-
-        filters::value_type operator()( filters::value_type m ) { return logger_->operator()( m ); }
-    
+{    
     private:
         class logger
         {
             public:
                 logger() : size_( 0 ), count_( 0 ) {}
 
-                logger( const std::string& filename, bool index ) : ofstream_( new std::ofstream( &filename[0] ) ), serialization_( "t,rows,cols,type", comma::csv::format( "t,3ui" ) ), size_( 0 ), count_( 0 ) 
+                logger( const std::string& filename ) : ofstream_( new std::ofstream( &filename[0] ) ), serialization_( "t,rows,cols,type", comma::csv::format( "t,3ui" ) ), size_( 0 ), count_( 0 ) 
                 { 
                     if( !ofstream_->is_open() ) { COMMA_THROW( comma::exception, "failed to open \"" << filename << "\"" ); } 
-                    if ( index )
-                    {
-                        std::string index_file = boost::filesystem::path(filename).parent_path().generic_string();
-                        if (index_file.empty()) { index_file = "index.bin"; }
-                        else { index_file = index_file + "/index.bin"; }
-                        index_stream_.reset(new std::ofstream( &index_file[0] ));
-                    }
                 }
 
-                logger( const std::string& directory, boost::posix_time::time_duration period, bool index ) : directory_( directory ), serialization_( "t,rows,cols,type", comma::csv::format( "t,3ui" ) ), period_( period ), size_( 0 ), count_( 0 )
-                {
-                    if ( index )
-                    {
-                        std::string index_file = directory + "/index.bin";
-                        index_stream_.reset(new std::ofstream( &index_file[0] ));
-                    }
-                }
+                logger( const std::string& directory, boost::posix_time::time_duration period, bool index ) : directory_( directory ), serialization_( "t,rows,cols,type", comma::csv::format( "t,3ui" ) ), period_( period ), size_( 0 ), count_( 0 ), index_(index, directory) { }
 
-                logger( const std::string& directory, unsigned int size, bool index ) : directory_( directory ), serialization_( "t,rows,cols,type", comma::csv::format( "t,3ui" ) ), size_( size ), count_( 0 )
-                {
-                    if ( index )
-                    {
-                        std::string index_file = directory + "/index.bin";
-                        index_stream_.reset(new std::ofstream( &index_file[0] ));
-                    }
-                }
+                logger( const std::string& directory, unsigned int size, bool index ) : directory_( directory ), serialization_( "t,rows,cols,type", comma::csv::format( "t,3ui" ) ), size_( size ), count_( 0 ), index_(index, directory) { }
 
                 ~logger()
                 { 
                     if( ofstream_ ) { ofstream_->close(); }
-                    if( index_stream_ ) { index_stream_->close(); } 
                 }
 
                 filters::value_type operator()( filters::value_type m )
@@ -750,16 +673,58 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
                         if( !ofstream_->is_open() ) { COMMA_THROW( comma::exception, "failed to open \"" << filename << "\"" ); }
                     }
                     serialization_.write( *ofstream_, m );
-                    if (index_stream_)
-                    {
-                        index_.t = m.first;
-                        write_index();
-                        index_.offset += serialization_.size(m);
-                    }
+                    index_.write(m);
+                    index_.increment_offset(serialization_.size(m));
                     return m;
                 }
                 
             private:
+                
+                struct indexer
+                {
+                    boost::posix_time::ptime t;
+                    comma::uint16 file;
+                    comma::uint64 offset;
+                    
+                    boost::scoped_ptr< std::ofstream > filestream;
+                    boost::scoped_ptr< comma::csv::binary_output_stream< indexer > > csv_stream;
+                    
+                    indexer() {}
+                    
+                    indexer( bool enable, const std::string& directory ) : t ( boost::date_time::not_a_date_time ), file ( 0 ), offset( 0 )
+                    {
+                        if (enable) 
+                        {
+                            std::string index_file = directory + "/index.bin";
+                            filestream.reset( new std::ofstream( &index_file[0] ) );
+                            if( !filestream->is_open() ) { COMMA_THROW( comma::exception, "failed to open \"" << index_file << "\"" ); }
+                            csv_stream.reset( new comma::csv::binary_output_stream<indexer>(filestream) );
+                        }
+                    }
+                    
+                    ~indexer() { if ( filestream ) { filestream->close(); } }
+                    
+                    void increment_file()
+                    {
+                        file++;
+                        offset = 0;
+                    }
+                    
+                    void increment_offset(std::size_t size)
+                    {
+                        offset += size;
+                    }
+                    
+                    void write(const filters::value_type& m)
+                    {
+                        if (csv_stream)
+                        {
+                            t = m.first;
+                            csv_stream->write(*this);
+                        }
+                    }
+                };
+                
                 boost::mutex mutex_;
                 std::string directory_;
                 boost::scoped_ptr< std::ofstream > ofstream_;
@@ -768,18 +733,8 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
                 boost::posix_time::ptime start_;
                 unsigned int size_;
                 unsigned int count_;
-                log_index_t index_;
-                boost::scoped_ptr< std::ofstream > index_stream_;
+                indexer index_;
 
-                void write_index()
-                {
-                    int size = comma::csv::format(comma::csv::format::value< log_index_t >()).size();
-                    std::vector<char> buf( size );
-                    comma::csv::binary< log_index_t >().put(index_, &buf[0] );
-                    index_stream_->write(&buf[0], size);
-                    index_stream_->flush();
-                }
-                
                 void update_on_size_()
                 {
                     if( size_ == 0 ) { return; }
@@ -787,7 +742,7 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
                     count_ = 1;
                     ofstream_->close();
                     ofstream_.reset();
-                    if (index_stream_) {++index_.file; index_.offset = 0; }
+                    index_.increment_file();
                 }
 
                 void update_on_time_( filters::value_type m )
@@ -798,11 +753,22 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
                     start_ = m.first;
                     ofstream_->close();
                     ofstream_.reset();
-                    if (index_stream_) {++index_.file; index_.offset = 0;}
+                    index_.increment_file();
                 }
         };
 
         boost::shared_ptr< logger > logger_; // todo: watch performance
+        
+    public:
+        log_impl_() {}
+
+        log_impl_( const std::string& filename ) : logger_( new logger( filename ) ) {}
+
+        log_impl_( const std::string& directory, boost::posix_time::time_duration period, bool index ) : logger_( new logger( directory, period, index ) ) {}
+
+        log_impl_( const std::string& directory, unsigned int size, bool index ) : logger_( new logger( directory, size, index ) ) {}
+
+        filters::value_type operator()( filters::value_type m ) { return logger_->operator()( m ); }
 };
 
 static filters::value_type merge_impl_( filters::value_type m, unsigned int nchannels )
@@ -2251,9 +2217,15 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
                 unsigned int seconds = static_cast< unsigned int >( *period );
                 f.push_back( filter( log_impl_( file, boost::posix_time::seconds( seconds ) + boost::posix_time::microseconds( ( *period - seconds ) * 1000000 ), index ), false ) ); 
             }
-            else if ( size ) { f.push_back( filter( log_impl_( file, *size, index), false ) ); } 
-            else { f.push_back( filter( log_impl_( file, index ), false ) ); }
-            
+            else if ( size )
+            { 
+                f.push_back( filter( log_impl_( file, *size, index), false ) );
+            } 
+            else
+            { 
+                if( index ) { COMMA_THROW( comma::exception, "log: index should be specified with directory and period or size, not with filename" );  }
+                f.push_back( filter( log_impl_( file ), false ) );
+            }
         }
         else if( e[0] == "max" ) // todo: remove this filter; not thread-safe, should be run with --threads=1
         {
@@ -2531,3 +2503,38 @@ const std::string& filters::usage()
 }
 
 } } // namespace snark{ namespace cv_mat {
+
+namespace comma { namespace visiting {
+
+template <> struct traits< map_input_t >
+{
+    template< typename K, typename V > static void visit( const K&, map_input_t& t, V& v )
+    {
+        v.apply( "key", t.key );
+        v.apply( "value", t.value );
+    }
+    template< typename K, typename V > static void visit( const K&, const map_input_t& t, V& v )
+    {
+        v.apply( "key", t.key );
+        v.apply( "value", t.value );
+    }
+};
+
+template <> struct traits< snark::cv_mat::log_impl_::logger::indexer >
+{
+    template < typename K, typename V > static void visit( const K&, const snark::cv_mat::log_impl_::logger::indexer& t, V& v )
+    {
+        v.apply( "t", t.t );
+        v.apply( "file", t.file );
+        v.apply( "offset", t.offset );
+    }
+
+    template < typename K, typename V > static void visit( const K&, snark::cv_mat::log_impl_::logger::indexer& t, V& v )
+    {
+        v.apply( "t", t.t );
+        v.apply( "file", t.file );
+        v.apply( "offset", t.offset );
+    }
+};
+
+} } // namespace comma { namespace visiting {
