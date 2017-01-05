@@ -715,17 +715,24 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
 
                 logger( const std::string& directory, boost::posix_time::time_duration period, bool index ) : directory_( directory ), serialization_( "t,rows,cols,type", comma::csv::format( "t,3ui" ) ), period_( period ), size_( 0 ), count_( 0 )
                 {
-                    std::string index_file = directory + "/index.bin";
-                    index_stream_.reset(new std::ofstream( &index_file[0] ));
+                    if ( index )
+                    {
+                        std::string index_file = directory + "/index.bin";
+                        index_stream_.reset(new std::ofstream( &index_file[0] ));
+                    }
                 }
 
                 logger( const std::string& directory, unsigned int size, bool index ) : directory_( directory ), serialization_( "t,rows,cols,type", comma::csv::format( "t,3ui" ) ), size_( size ), count_( 0 )
                 {
-                    std::string index_file = directory + "/index.bin";
-                    index_stream_.reset(new std::ofstream( &index_file[0] ));
+                    if ( index )
+                    {
+                        std::string index_file = directory + "/index.bin";
+                        index_stream_.reset(new std::ofstream( &index_file[0] ));
+                    }
                 }
 
-                ~logger() { 
+                ~logger()
+                { 
                     if( ofstream_ ) { ofstream_->close(); }
                     if( index_stream_ ) { index_stream_->close(); } 
                 }
