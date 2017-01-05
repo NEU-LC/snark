@@ -165,6 +165,8 @@ define('FormFeed', ["jquery", "Feed"], function ($) {
             panel.append($('<div>', {class: "clearfix"}));
             $(this.form).append(panel);
             $(this.form).append($('<div>', {class: "clear"}));
+            panel = $(this.form).find(".form-results");
+            $(panel).scrollTop($(panel)[0].scrollHeight);
         }
         if (data.status != undefined) {
             var status = data.status;
