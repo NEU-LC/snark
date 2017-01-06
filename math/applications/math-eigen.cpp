@@ -82,6 +82,7 @@ void usage( bool verbose )
     std::cerr << "                    axis-angle,angle-axis: angle-axis" << std::endl;
     std::cerr << "                    axis-angle-scaled: rotation axis with the norm equal to rotation angle" << std::endl;
     std::cerr << "                    quaternion: quaternion" << std::endl;
+    std::cerr << "                    rotation-matrix,matrix: rotation matrix" << std::endl;
     std::cerr << "            --input-fields: print input fields to stdout and exit" << std::endl;
     std::cerr << "            --output-fields: print output fields to stdout and exit" << std::endl;
     std::cerr << "            --output-format: print binary output format to stdout and exit" << std::endl;
@@ -199,6 +200,12 @@ template < typename T > struct traits< Eigen::Quaternion< T > >
     static Eigen::Quaternion< T > zero() { Eigen::Quaternion< T > q( 0, 0, 0, 0 ); return q; }
     static Eigen::Quaternion< T > get( const snark::rotation_matrix& m ) { return m.quaternion(); }
 };
+
+template <> struct traits< Eigen::Matrix< double, 3, 3 > >
+{
+    static Eigen::Matrix< double, 3, 3 > zero() { return Eigen::Matrix< double, 3, 3 >::Zero(); }
+    static Eigen::Matrix< double, 3, 3 > get( const snark::rotation_matrix& m ) { return Eigen::Matrix< double, 3, 3 >( m.rotation() ); }
+};
     
 template < typename From, typename To >
 static int run( const comma::command_line_options& options )
@@ -207,9 +214,11 @@ static int run( const comma::command_line_options& options )
     if( options.exists( "--output-fields" ) ) { std::cout << comma::join( comma::csv::names< To >( false ), ',' ) << std::endl; return 0; }
     if( options.exists( "--output-format" ) ) { std::cout << comma::csv::format::value< To >() << std::endl; return 0; }
     comma::csv::options csv( options );
+    csv.full_xpath = true;
     comma::csv::input_stream< From > istream( std::cin, csv, rotation::traits< From >::zero() );
     comma::csv::options output_csv;
     if( csv.binary() ) { output_csv.format( comma::csv::format::value< To >() ); }
+    output_csv.full_xpath = true;
     comma::csv::output_stream< To > ostream( std::cout, output_csv );
     while( istream.ready() || std::cin.good() )
     {
@@ -227,6 +236,7 @@ static int run( const comma::command_line_options& options, const std::string& t
     if( to == "angle-axis" || to == "axis-angle" ) { return rotation::run< From, Eigen::AngleAxis< double > >( options ); }
     if( to == "axis-angle-scaled" ) { return rotation::run< From, Eigen::Vector3d >( options ); }
     if( to == "quaternion" ) { return rotation::run< From, Eigen::Quaternion< double > >( options ); }
+    if( to == "rotation-matrix" || to == "matrix" ) { return rotation::run< From, Eigen::Matrix< double, 3, 3 > >( options ); }
     std::cerr << "math-eigen: rotation: expected valid value for --to; got --to=\"" << to << "\"" << std::endl;
     return 1;
 }
@@ -366,7 +376,8 @@ int main( int ac, char** av )
             if( from == "angle-axis" || from == "axis-angle" ) { return rotation::run< Eigen::AngleAxis< double > >( options, to ); }
             if( from == "axis-angle-scaled" ) { return rotation::run< Eigen::Vector3d >( options, to ); }
             if( from == "quaternion" ) { return rotation::run< Eigen::Quaternion< double > >( options, to ); }
-            std::cerr << "math-eigen: rotation: expected valid value for --from; got --from=\"" << to << "\"" << std::endl;
+            if( from == "rotation-matrix" || from == "matrix" ) { return rotation::run< Eigen::Matrix< double, 3, 3 > >( options, to ); }
+            std::cerr << "math-eigen: rotation: expected valid value for --from; got --from=\"" << from << "\"" << std::endl;
             return 1;
         }
         std::cerr << "math-eigen: expected operation, got \"" << operation << "\"" << std::endl;

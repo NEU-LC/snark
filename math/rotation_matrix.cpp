@@ -27,6 +27,7 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include <comma/math/compare.h>
 #include "rotation_matrix.h"
 
 namespace snark {
@@ -42,10 +43,10 @@ Eigen::Vector3d rotation_matrix::angle_axis() const
 
 Eigen::Vector3d rotation_matrix::roll_pitch_yaw( const ::Eigen::Matrix3d& m )
 {
-    double roll;
-    double pitch=std::asin( -m(2,0) );
-    double yaw;
-    if( m(2,0)==1 || m(2,0)==-1 )
+    double roll = 0;
+    double pitch = std::asin( -m(2,0) );
+    double yaw = 0;
+    if( comma::math::equal( std::abs( m(2,0) ), 1 ) )
     {
         roll=0;
         yaw=std::atan2( m(1,2), m(0,2) );
@@ -55,8 +56,7 @@ Eigen::Vector3d rotation_matrix::roll_pitch_yaw( const ::Eigen::Matrix3d& m )
         roll=std::atan2( m(2,1), m(2,2) );
         yaw=std::atan2( m(1,0), m(0,0) );
     }
-    Eigen::Vector3d rpy;
-    rpy << roll, pitch, yaw;
+    Eigen::Vector3d rpy( roll, pitch, yaw );
     return rpy;
 }
 
