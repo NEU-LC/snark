@@ -655,10 +655,7 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
 
                 logger( const std::string& directory, unsigned int size, bool index ) : directory_( directory ), serialization_( "t,rows,cols,type", comma::csv::format( "t,3ui" ) ), size_( size ), count_( 0 ), index_(index, directory) { }
 
-                ~logger()
-                { 
-                    if( ofstream_ ) { ofstream_->close(); }
-                }
+                ~logger() { if( ofstream_ ) { ofstream_->close(); } }
 
                 filters::value_type operator()( filters::value_type m )
                 {
@@ -673,55 +670,39 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
                         if( !ofstream_->is_open() ) { COMMA_THROW( comma::exception, "failed to open \"" << filename << "\"" ); }
                     }
                     serialization_.write( *ofstream_, m );
-                    index_.write(m);
-                    index_.increment_offset(serialization_.size(m));
+                    index_.write( m, serialization_.size( m ) );
                     return m;
                 }
                 
             private:
-                
                 struct indexer
                 {
                     boost::posix_time::ptime t;
                     comma::uint16 file;
                     comma::uint64 offset;
-                    
                     boost::scoped_ptr< std::ofstream > filestream;
                     boost::scoped_ptr< comma::csv::binary_output_stream< indexer > > csv_stream;
                     
-                    indexer() {}
+                    indexer() : file( 0 ), offset( 0 ) {}
                     
-                    indexer( bool enable, const std::string& directory ) : t ( boost::date_time::not_a_date_time ), file ( 0 ), offset( 0 )
+                    indexer( bool enabled, const std::string& directory ) : file ( 0 ), offset( 0 )
                     {
-                        if (enable) 
-                        {
-                            std::string index_file = directory + "/index.bin";
-                            filestream.reset( new std::ofstream( &index_file[0] ) );
-                            if( !filestream->is_open() ) { COMMA_THROW( comma::exception, "failed to open \"" << index_file << "\"" ); }
-                            csv_stream.reset( new comma::csv::binary_output_stream<indexer>(*filestream) );
-                        }
+                        if( !enabled ) { return; }
+                        std::string index_file = directory + "/index.bin";
+                        filestream.reset( new std::ofstream( &index_file[0] ) );
+                        if( !filestream->is_open() ) { COMMA_THROW( comma::exception, "failed to open \"" << index_file << "\"" ); }
+                        csv_stream.reset( new comma::csv::binary_output_stream< indexer >( *filestream ) );
                     }
                     
                     ~indexer() { if ( filestream ) { filestream->close(); } }
                     
-                    void increment_file()
-                    {
-                        file++;
-                        offset = 0;
-                    }
+                    void increment_file() { ++file; offset = 0; }
                     
-                    void increment_offset(std::size_t size)
+                    void write( const filters::value_type& m, std::size_t size )
                     {
+                        t = m.first;
+                        if( csv_stream ) { csv_stream->write( *this ); }
                         offset += size;
-                    }
-                    
-                    void write(const filters::value_type& m)
-                    {
-                        if (csv_stream)
-                        {
-                            t = m.first;
-                            csv_stream->write(*this);
-                        }
                     }
                 };
                 
