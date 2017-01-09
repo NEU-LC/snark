@@ -2460,7 +2460,6 @@ static std::string usage_impl_()
     oss << "                      \"cols-to-channels=0,1,2|repeat:3\"; store columns 0,1,2 as RGB channels of column 0 of the output file, then columns 3,4,5 as RGB" << std::endl;
     oss << "                      channels of column 1 of the output file, etc.; conversion stops when all input column indices exceed the image width" << std::endl;
     oss << "                      if one of the input columns exceed the image width, the respective output channel is filled with zeros (or the padding value)" << std::endl;
-    oss << "        rows-to-channels=1,4,5[|pad:value|repeat:step]; same as cols-to-channels but operates on rows" << std::endl;
     oss << std::endl;
     oss << "        crop-cols=<x>[,<w>[|<x>[,<w>,...: output an image consisting of (multiple) columns starting at x with width w" << std::endl;
     oss << "            examples: \"crop-cols=2,10|12,10\"; output an image of width 20 taking 2 width-10 columns starting at 2 and 12" << std::endl;
@@ -2469,7 +2468,10 @@ static std::string usage_impl_()
     oss << "            examples: \"crop-rows=5,10|25,5\"; output an image of height 15 taking 2 row blocks starting at 5 and 25 and with heights 10 and 5, respectively" << std::endl;
     oss << "                      \"crop-rows=5|25|15\"; default block height is 1, block starts can be out of order" << std::endl;
     oss << std::endl;
+    oss << "        rows-to-channels=1,4,5[|pad:value|repeat:step]; same as cols-to-channels but operates on rows" << std::endl;
+    oss << std::endl;
     oss << "        swap-channels=2,1,0,3; re-order channels; arguments shall be integers from 0 to the total number of input channels" << std::endl;
+    oss << "            NYI - for now a placeholder only, possibly can be achieved by other operations" << std::endl;
     oss << "            the number of arguments shall be the same as the number of input channels" << std::endl;
     oss << "            example: \"swap-channels=2,1,0\"; revert the order of RGB channels with R becoming B and B becoming R; G is mapped onto itself" << std::endl;
     oss << std::endl;
