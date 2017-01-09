@@ -8,66 +8,19 @@ define('FormFeed', ["jquery", "Feed"], function ($) {
         config.alert = false;
         this.base(feed_name, feed_path, config);
         this.fields = [];
-        this.buttons = [];
+        // this.buttons = [];
         this.form = $('<form>');
         this.extract_fields(config.form);
         this.ok_label = this.config.ok_label != undefined ? this.config.ok_label : "Submit";
+        this.init();
+        this.addListeners();
 
     };
 
     FormFeed.prototype = Object.create(Feed.prototype);
 
-    // FormFeed.prototype.extract_fields = function (form_elements) {
-    //     if (form_elements != undefined) {
-    //
-    //         if (form_elements['buttons'] != undefined) {
-    //             if (form_elements['input'] != undefined) {
-    //                 this.populate_path_values(form_elements['input'], "");
-    //             }
-    //             this.buttons = form_elements['buttons'];
-    //         }
-    //         else {
-    //             this.populate_path_values(form_elements, "");
-    //         }
-    //     }
-    //     console.log(this.fields);
-    // };
-
-
-    // FormFeed.prototype.populate_path_values = function (form_elements, prefix) {
-    //     for (var element in form_elements) {
-    //         var value = form_elements[element];
-    //         var type = typeof value;
-    //         if (type == "object") {
-    //             var p = get_prefix(element, prefix);
-    //             this.populate_path_values(value, p);
-    //         }
-    //         else if (type = "string") {
-    //             var p = get_prefix(element, prefix);
-    //             this.fields[p] = value;
-    //         }
-    //         // console.log(element + " typeof " + (typeof element) + "   type= " + type);
-    //     }
-    // };
-
-    // var get_prefix = function (key, prefix) {
-    //     var p;
-    //     if (prefix.length > 0) {
-    //         var type = typeof prefix;
-    //         if (isNaN(key)) {
-    //             p = prefix + "/" + key;
-    //         }
-    //         else {
-    //             p = prefix + "[" + key + "]";
-    //         }
-    //     }
-    //     else {
-    //         p = key;
-    //     }
-    //     return p;
-    // };
-
     FormFeed.prototype.init = function () {
+        this.el.removeClass('panel-disabled').addClass('panel-enabled');
         this.target.empty();
         this.form.empty();
         this.load_inputs(this.form);
@@ -80,12 +33,57 @@ define('FormFeed', ["jquery", "Feed"], function ($) {
         //     alert("Handler for .submit() called.");
         //     event.preventDefault();
         // });
-        var buttons = $('<div>', {class: "col-sm-12"});
+        var buttons_div = $('<div>', {class: "col-sm-12"});
+        this.add_buttons(buttons_div);
+        // var num = this.buttons.length;
 
-        var num = this.buttons.length;
-        var submit = $('<input/>',
+        var clear = $('<button/>',
             {
-                value: this.ok_label,
+                text: 'Clear',
+                name: 'clear',
+                type: 'button',
+                class: "btn btn-default col-sm-3",
+                click: function () {
+                    $($(this).closest("form").find("input[type=text]")).each(function () {
+                        $(this).val('');
+                    });
+                    $($(this).closest("form").find("button")).each(function () {
+                        $(this).attr('disabled', "disabled");
+                    });
+                    // $($(this).closest("form").find("button")).each(function () {
+                    //     $(this).attr('disabled', "disabled");
+                    // });
+                }
+            });
+
+
+        // form.append(combo).append("<br>");
+        // form.append(input).append("<br>");
+        buttons_div.append(clear);
+        this.form.append(buttons_div);
+        $(this.form).append($('<div>', {class: "clear"}));
+        this.target.append(this.form);
+
+        var size = Object.keys(this.fields).length;
+        if (size > 0) {
+            this.target.width(400);
+        }
+        else {
+            $(this.target).css("min-width", function () {
+                return 200;
+            });
+        }
+        $(this.target).css("min-height", function () {
+            return 100;
+        });
+
+    };
+    FormFeed.prototype.add_buttons = function (container) {
+        var this_ = this;
+        var submit = $('<button/>',
+            {
+                value: "submit",
+                text: this.ok_label,
                 class: "btn btn-primary col-sm-7",
                 click: function (event) {
                     event.preventDefault();
@@ -99,49 +97,24 @@ define('FormFeed', ["jquery", "Feed"], function ($) {
                             var json = $.parseJSON(data);
                             // FormFeed.prototype.onload_(data);
                             // data = JSON.parse('{"output" : {"message": "Done. success", "x": { "a": 0, "b": 1 } },"status" :{"code": 0 , "message": "Success. Added successfully."}}');
-                            this_.onload(json);
+                            this_.update_output(json);
                         }).fail(function (jqXHR, textStatus, errorThrown) {
                             FormFeed.prototype.onerror();
                         });
                     }
                 }
             });
-
-        var clear = $('<button/>',
-            {
-                text: 'Clear',
-                type: 'button',
-                class: "btn btn-default col-sm-3",
-                click: function () {
-                    $($(this).closest("form").find("input[type=text]")).each(function () {
-                        $(this).val('');
-                    });
-                }
-            });
-        var space = $('<label/>',
-            {class: "col-sm-2"});
-        // form.append(combo).append("<br>");
-        // form.append(input).append("<br>");
-        buttons.append(submit).append(space).append(clear);
-        this.form.append(buttons);
-        $(this.form).append($('<div>', {class: "clear"}));
-        this.target.append(this.form);
-        if (this.fields.length > 0) {
-            this.target.width(500);
-        }
-        else {
-            $(this.target).css("min-height", function () {
-                return 80;
-            });
-            $(this.target).css("min-width", function () {
-                return 200;
-            });
-        }
+        container.append(submit);
+        container.append($('<label/>',
+            {class: "col-sm-2"}));
     };
 
-    FormFeed.prototype.load = function () {
-        this.init();
-
+    FormFeed.prototype.addListeners = function () {
+        $($(this.form).find("input[type=text]")).on("input", function () {
+            $($(this).closest("form").find("button")).each(function () {
+                $(this).removeAttr('disabled');
+            });
+        });
         // $.ajax({
         //     context: this,
         //     url: this.get_url()
@@ -152,7 +125,27 @@ define('FormFeed', ["jquery", "Feed"], function ($) {
         // });
     };
 
-    FormFeed.prototype.onload_ = function (data) {
+    FormFeed.prototype.load = function () {
+        $.ajax({
+            context: this,
+            url: this.get_url(),
+            data: $(this.target).find("form").serialize(),
+            timeout: globals.timeout
+        }).done(function (data, textStatus, jqXHR) {
+            this.onload(data);
+        }).fail(function (jqXHR, textStatus, errorThrown) {
+            this.onerror();
+        });
+        // $.ajax({
+        //     context: this,
+        //     url: this.get_url()
+        // }).done(function (data, textStatus, jqXHR) {
+        //     this.onload(data);
+        // }).fail(function (jqXHR, textStatus, errorThrown) {
+        //     this.onerror();
+        // });
+    };
+    FormFeed.prototype.update_output = function (data) {
         // this.target.height(100);
         // data = data.replace(/\n/g, '<br/>');
         this.el.removeClass('panel-disabled');
@@ -161,12 +154,19 @@ define('FormFeed', ["jquery", "Feed"], function ($) {
         $(this.form).find(".result-panel").remove();
         if (data.output != undefined) {
             var output = data.output;
+            // output = output.replace(/"/g, " ");
+            // output = output.replace(/\n/g, " ");
             var panel = $('<div>', {class: "panel result-panel"});
             panel.append($('<label>', {class: "", text: "Output"}));
-            panel.append($('<div>', {class: "form-results", text: JSON.stringify(output, null, 4)}));
+            var output_div = $('<div>', {class: "form-results"});
+            output_div.append($('<pre>', {text: output}));
+            panel.append(output_div); //JSON.stringify(output, null, 4)
+
             panel.append($('<div>', {class: "clearfix"}));
             $(this.form).append(panel);
             $(this.form).append($('<div>', {class: "clear"}));
+            panel = $(this.form).find(".form-results");
+            $(panel).scrollTop($(panel)[0].scrollHeight);
         }
         if (data.status != undefined) {
             var status = data.status;
@@ -191,5 +191,16 @@ define('FormFeed', ["jquery", "Feed"], function ($) {
         }
 
     };
+    FormFeed.prototype.update_ui = function (data) {
+    };
+    FormFeed.prototype.onload_ = function (data) {
+        if (data != undefined) {
+            var json = $.parseJSON(data);
+            if (json != undefined && json.status != undefined && json.status.code != undefined && json.status.code == 0) {
+                this.update_ui(json);
+            }
+        }
+    };
+
     return FormFeed;
 });

@@ -80,7 +80,7 @@ define('CsvFeed', ["jquery", 'TextFeed'], function ($, Feed, TextFeed) {
             var column_is_number = new Array(columns);
             for (var i in data) {
                 for (var j = 0; j < data[i].length; ++j) {
-                    if (data[i][j].match(/^\d+$/)) {
+                    if (data[i][j].match(/^[+-]?\d+(\.\d+)?$/)) {
                         column_is_number[j] = true;
                     }
                 }
@@ -123,6 +123,9 @@ define('CsvFeed', ["jquery", 'TextFeed'], function ($, Feed, TextFeed) {
                         var pre = $('<pre>');
                         if (data_color[i][j]) {
                             pre.css('color', data_color[i][j]);
+                        }
+                        if (column_is_number[j] && globals.isMobile) {
+                            data[i][j] = parseFloat(data[i][j]).toFixed(3);
                         }
                         tr.append(td.append(pre.text(data[i][j])));
                     }

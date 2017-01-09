@@ -11,9 +11,6 @@ ENDIF( WIN32 OR APPLE )
 #
 # If you have multiple Qt installations you can choose between them by setting
 # QT_QMAKE_EXECUTABLE, either via ccmake or cmake -DQT_QMAKE_EXECUTABLE=...
-#
-# ccmake has a variable snark_QT_VERSION, this shows the version that we have
-# determined after applying the above logic (ie, it's read-only)
 
 if( NOT DEFINED QT_QMAKE_EXECUTABLE )
     find_program( QT_QMAKE_EXECUTABLE NAMES qmake )
