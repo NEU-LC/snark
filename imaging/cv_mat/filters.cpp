@@ -1844,12 +1844,6 @@ static boost::function< filter::input_type( filter::input_type ) > make_filter_f
         COMMA_THROW( comma::exception, "NYI" );
         // use cv::reshape or cv::mixChannels
     }
-    if( e[0] == "accumulate" )
-    {
-        unsigned int how_many = boost::lexical_cast< unsigned int >( e[1] );
-        if ( how_many == 0 ) { COMMA_THROW( comma::exception, "expected positive number of images to accumulate in accumulate filter, got " << how_many ); }
-        return accumulate_impl_( how_many );
-    }
     if( e[0] == "cross" )
     {
         boost::optional< Eigen::Vector2i > center;
@@ -2147,7 +2141,13 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
     for( std::size_t i = 0; i < v.size(); name += ( i > 0 ? ";" : "" ) + v[i], ++i )
     {
         std::vector< std::string > e = comma::split( v[i], '=' );
-        if( e[0] == "bayer" ) // kept for backwards-compatibility, use convert-color=BayerBG,BGR etc..
+        if( e[0] == "accumulate" )
+        {
+            unsigned int how_many = boost::lexical_cast< unsigned int >( e[1] );
+            if ( how_many == 0 ) { COMMA_THROW( comma::exception, "expected positive number of images to accumulate in accumulate filter, got " << how_many ); }
+            f.push_back( filter( accumulate_impl_( how_many ), false ) );
+        }
+        else if( e[0] == "bayer" ) // kept for backwards-compatibility, use convert-color=BayerBG,BGR etc..
         {
             if( modified ) { COMMA_THROW( comma::exception, "cannot covert from bayer after transforms: " << name ); }
             unsigned int which = boost::lexical_cast< unsigned int >( e[1] ) + 45u; // HACK, bayer as unsigned int, but I don't find enum { BG2RGB, GB2BGR ... } more usefull
@@ -2192,7 +2192,6 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
                     COMMA_THROW( comma::exception, "log: expected \"index\", \"period\" or \"size\"; got: \"" << u[0] << "\"" );
                 }
             }
-            
             if (period) 
             {   
                 unsigned int seconds = static_cast< unsigned int >( *period );
