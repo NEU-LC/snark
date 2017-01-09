@@ -131,6 +131,9 @@ serialization::header serialization::get_header( const char* buf ) const
     return m_header;
 }
 
+const char* serialization::header_buffer() const { return &m_buffer[0]; }
+
+
 std::size_t serialization::size( const cv::Mat& m ) const
 {
     unsigned int headerSize = 0;

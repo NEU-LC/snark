@@ -701,7 +701,11 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
                     void write( const filters::value_type& m, std::size_t size )
                     {
                         t = m.first;
-                        if( csv_stream ) { csv_stream->write( *this ); }
+                        if( csv_stream ) 
+                        { 
+                            csv_stream->write( *this );
+                            csv_stream->flush(); 
+                        }
                         offset += size;
                     }
                 };
