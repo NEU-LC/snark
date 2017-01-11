@@ -353,7 +353,6 @@ static void angle_axis_for_pairs()
     {
         const point_pair_t* p = istream.read();
         if( !p ) { break; }
-
         Eigen::AngleAxis< double > angle_axis( Eigen::Quaternion< double >::FromTwoVectors( p->first, p->second ));
         tied.append( angle_axis );
     }
