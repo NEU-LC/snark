@@ -100,7 +100,7 @@ class camera
                 void trigger();
 
                 /// return the images and timestamp
-                frames_pair read();
+                frames_pair read( bool use_software_trigger = true );
                 
                 /// return true, if multicam status is ok
                 bool good() const;
