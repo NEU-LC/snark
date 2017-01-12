@@ -297,7 +297,7 @@ table.target {
     font-family: monospace;
     border-radius: 0;
     word-wrap: normal;
-    white-space: pre-wrap;
+    white-space: pre;
 }
 
 .panel-placeholder {
@@ -336,7 +336,10 @@ canvas.grid {
 
 .result-panel {
     background-color: #2c2c2c;
-    width: 380px;
+    margin-right: 0px;
+    margin-left: 0px;
+    padding-right: 10px;
+    /*width: 380px;*/
 }
 
 .target-container a, .result-panel label {
