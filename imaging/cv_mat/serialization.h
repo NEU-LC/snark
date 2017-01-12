@@ -110,10 +110,6 @@ class serialization
         
         /// return last header buffer after read()
         const char* header_buffer() const; // todo
-        
-        /// return last header buffer after read()
-        template < typename T >
-        T header_as() const; // todo
 
         /// write to stream
         void write( std::ostream& os, const std::pair< boost::posix_time::ptime, cv::Mat >& m, bool flush = true );
