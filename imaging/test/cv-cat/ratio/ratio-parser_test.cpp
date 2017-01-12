@@ -29,13 +29,20 @@
 
 #include "../../../../imaging/cv_mat/ratio.h"
 
-#include <comma/application/command_line_options.h>
+#include <gtest/gtest.h>
+
+#include <boost/assign.hpp>
 
 #include <iostream>
+
+using namespace snark::cv_mat;
+using boost::spirit::ascii::space;
+typedef std::string::const_iterator iterator_type;
 
 namespace
 {
 
+#if 0
     void usage( bool verbose = false )
     {
         std::cerr << comma::verbose.app_name() << " a ratio parser using Boost::Spirit\n";
@@ -107,56 +114,102 @@ namespace
         std::cerr << std::endl;
         exit( 0 );
     }
+#endif
+
+    template< typename T >
+    bool process( const ratio::parser< iterator_type, T > & parser
+                , const std::string & input
+                , T & result )
+    {
+        iterator_type begin = input.begin();
+        iterator_type end = input.end();
+        bool status = phrase_parse( begin, end, parser, space, result );
+        return status && ( begin == end );
+    }
+
+    void verify( const ratio::combination & c, const std::vector< double > & expected )
+    {
+        EXPECT_EQ( expected.size(), ratio::channel::NUM_CHANNELS ); // self-check
+        for ( int ci = ratio::channel::constant; ci != ratio::channel::NUM_CHANNELS ; ++ci )
+        {
+            EXPECT_EQ( c.terms[ci].value, expected[ci] );
+        }
+    }
 
 } // namespace anonymous
 
-int main( int argc, char** argv ) try
+TEST( ratio, term )
 {
-    using namespace snark::cv_mat;
-
-    comma::command_line_options options( argc, argv, usage );
-    std::cout << "\nA ratio parser using Boost::Spirit...\n\n";
-
-    std::cout
-        << "enter a combination of channels of the form "
-        << "\"Ar + Bg + Cb + Da + F\", where A, B, C, D and F are constants\n";
-    std::cout << "or type [q or Q] to quit\n\n";
-
-    using boost::spirit::ascii::space;
-    typedef std::string::iterator iterator_type;
     ratio::rules< iterator_type > rules;
-    typedef ratio::parser< iterator_type, ratio::combination > combination_parser;
-    typedef ratio::parser< iterator_type, ratio::term > term_parser;
+    ratio::parser< iterator_type, ratio::term > parser( rules.term_ );
+    ratio::term v;
 
-    combination_parser parser( rules.combination_ );
-    term_parser tparser( rules.term_ );
-    std::string str;
-    std::string separator( "-------------------------" );
-    while ( getline( std::cin, str ) )
     {
-        if ( str.empty() || str[0] == 'q' || str[0] == 'Q' ) { break; }
-
-        ratio::combination c;
-        iterator_type begin = str.begin();
-        iterator_type end = str.end();
-        bool r = phrase_parse( begin, end, parser, space, c );
-
-        if ( !r ) { std::cerr << "parsing failed\n" << separator << std::endl; continue; }
-        if ( begin != end ) { std::cerr << "parsing failed, incomplete\n" << separator << std::endl; continue; }
-        std::cerr << "parsing succeeded\n";
-        std::cerr << "got: " << c << '\n' << separator << std::endl;
+        std::string input = "3b";
+        EXPECT_TRUE( process( parser, input, v ) );
+        EXPECT_EQ( v.value, 3.0 );
+        EXPECT_EQ( v.c, ratio::channel::blue );
     }
 
-    std::cerr << "Bye..." << std::endl;
-    return 0;
+    {
+        std::string input = "-2* g";
+        EXPECT_TRUE( process( parser, input, v ) );
+        EXPECT_EQ( v.value, -2.0 );
+        EXPECT_EQ( v.c, ratio::channel::green );
+    }
+
+    {
+        std::string input = "r";
+        EXPECT_TRUE( process( parser, input, v ) );
+        EXPECT_EQ( v.value, 1.0 );
+        EXPECT_EQ( v.c, ratio::channel::red );
+    }
+
+    {
+        std::string input = "-2";
+        EXPECT_TRUE( process( parser, input, v ) );
+        EXPECT_EQ( v.value, -2.0 );
+        EXPECT_EQ( v.c, ratio::channel::constant );
+    }
+
+    {
+        std::string input = "2h";
+        EXPECT_FALSE( process( parser, input, v ) );
+    }
+
+    {
+        std::string input = "2 + g";
+        EXPECT_FALSE( process( parser, input, v ) );
+    }
 }
-catch( std::exception& ex )
+
+TEST( ratio, combination )
 {
-    std::cerr << comma::verbose.app_name() << ": " << ex.what() << std::endl;
-    return 1;
+    ratio::rules< iterator_type > rules;
+    ratio::parser< iterator_type, ratio::combination > parser( rules.combination_ );
+    ratio::combination v;
+
+    {
+        std::string input = "3b";
+        EXPECT_TRUE( process( parser, input, v ) );
+        verify( v, boost::assign::list_of( 0.0 )( 0.0 )(0.0)(3.0)(0.0) );
+    }
+
+    {
+        std::string input = "1 + r - 3*a";
+        EXPECT_TRUE( process( parser, input, v ) );
+        verify( v, boost::assign::list_of( 1.0 )( 1.0 )(0.0)(0.0)(-3.0) );
+    }
+
+    {
+        std::string input = "g - a + b";
+        EXPECT_TRUE( process( parser, input, v ) );
+        verify( v, boost::assign::list_of( 0.0 )( 0.0 )(1.0)(1.0)(-1.0) );
+    }
 }
-catch( ... )
+
+int main( int argc, char* argv[] )
 {
-    std::cerr << comma::verbose.app_name() << ": unknown exception" << std::endl;
-    return 1;
+    ::testing::InitGoogleTest( &argc, argv );
+    return RUN_ALL_TESTS();
 }
