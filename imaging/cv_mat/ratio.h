@@ -131,6 +131,8 @@ namespace ratio
         parser( const qi::rule< Iterator, What(), ascii::space_type > & start ) : parser::base_type( start ) {}
     };
 
+    void usage( std::ostream & o, bool verbose = false );
+
 } // namespace ratio
 
 } }  // namespace snark { namespace cv_mat {
