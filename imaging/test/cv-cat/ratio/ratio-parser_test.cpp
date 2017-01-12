@@ -124,9 +124,12 @@ int main( int argc, char** argv ) try
 
     using boost::spirit::ascii::space;
     typedef std::string::iterator iterator_type;
-    typedef ratio::combination_parser< iterator_type > combination_parser;
+    ratio::rules< iterator_type > rules;
+    typedef ratio::parser< iterator_type, ratio::combination > combination_parser;
+    typedef ratio::parser< iterator_type, ratio::term > term_parser;
 
-    combination_parser parser;
+    combination_parser parser( rules.combination_ );
+    term_parser tparser( rules.term_ );
     std::string str;
     std::string separator( "-------------------------" );
     while ( getline( std::cin, str ) )

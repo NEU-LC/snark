@@ -96,34 +96,39 @@ namespace ratio
         return o;
     }
 
-    template <typename Iterator>
-    struct combination_parser : qi::grammar< Iterator, ratio::combination(), ascii::space_type >
+    template< typename Iterator >
+    struct rules
     {
-        combination_parser() : combination_parser::base_type( start )
+        rules()
         {
             using qi::double_;
             using qi::_1;
             using qi::lit;
-            using ascii::space;
-            using phoenix::ref;
             using phoenix::bind;
             using qi::_val;
             using qi::eps;
 
-            channel = eps[ _val = ratio::channel() ] >> ( lit('r')[ _val = channel::red ] | lit('g')[ _val = channel::green ] | lit('b')[ _val = channel::blue ] | lit('a')[ _val = channel::alpha ] );
-            term = eps[ _val = ratio::term( 1.0, channel::constant) ] >>
+            channel_ = eps[ _val = ratio::channel() ] >> ( lit('r')[ _val = channel::red ] | lit('g')[ _val = channel::green ] | lit('b')[ _val = channel::blue ] | lit('a')[ _val = channel::alpha ] );
+            term_ = eps[ _val = ratio::term( 1.0, channel::constant) ] >>
                 (
-                        double_[ bind( &term::value, _val ) = _1 ] >> -lit('*') >> -channel[ bind( &term::c, _val ) = _1 ]
-                    |   channel[ bind( &term::c, _val ) = _1 ]
-                    |   lit('+')[ bind( &term::value, _val ) = 1 ] >> -( double_[ bind( &term::value, _val ) *= _1 ] >> -lit('*') ) >> channel[ bind( &term::c, _val ) = _1 ]
-                    |   lit('-')[ bind( &term::value, _val ) = -1 ] >> -( double_[ bind( &term::value, _val ) *= _1 ] >> -lit('*') ) >> channel[ bind( &term::c, _val ) = _1 ]
+                        double_[ bind( &term::value, _val ) = _1 ] >> -lit('*') >> -channel_[ bind( &term::c, _val ) = _1 ]
+                    |   channel_[ bind( &term::c, _val ) = _1 ]
+                    |   lit('+')[ bind( &term::value, _val ) = 1 ] >> -( double_[ bind( &term::value, _val ) *= _1 ] >> -lit('*') ) >> channel_[ bind( &term::c, _val ) = _1 ]
+                    |   lit('-')[ bind( &term::value, _val ) = -1 ] >> -( double_[ bind( &term::value, _val ) *= _1 ] >> -lit('*') ) >> channel_[ bind( &term::c, _val ) = _1 ]
                 );
-            start = eps[ _val = ratio::combination() ] >> *( term[ bind( &combination::update, _val, _1 ) ] );
+            combination_ = eps[ _val = ratio::combination() ] >> *( term_[ bind( &combination::update, _val, _1 ) ] );
         }
 
-        qi::rule< Iterator, ratio::channel(), ascii::space_type > channel;
-        qi::rule< Iterator, ratio::term(), ascii::space_type > term;
-        qi::rule< Iterator, ratio::combination(), ascii::space_type > start;
+        qi::rule< Iterator, ratio::channel(), ascii::space_type > channel_;
+        qi::rule< Iterator, ratio::term(), ascii::space_type > term_;
+        qi::rule< Iterator, ratio::combination(), ascii::space_type > combination_;
+
+    };
+
+    template< typename Iterator, typename What >
+    struct parser : qi::grammar< Iterator, What(), ascii::space_type >
+    {
+        parser( const qi::rule< Iterator, What(), ascii::space_type > & start ) : parser::base_type( start ) {}
     };
 
 } // namespace ratio
