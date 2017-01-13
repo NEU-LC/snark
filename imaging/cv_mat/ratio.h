@@ -72,7 +72,7 @@ namespace ratios
         term( double v_ = 0.0, channel c_ = channel::NUM_CHANNELS ) : value( v_ ), c( c_ ) {}
     };
 
-    term abs( const term & t ) { return term( std::abs( t.value ), t.c ); }
+    inline term abs( const term & t ) { return term( std::abs( t.value ), t.c ); }
 
     std::ostream & operator<<( std::ostream & o, const term & t );
 
@@ -96,7 +96,7 @@ namespace ratios
         std::vector< term > terms;
     };
 
-    std::ostream & operator<<( std::ostream & o, const combination & c )
+    inline std::ostream & operator<<( std::ostream & o, const combination & c )
     {
         c.print( o );
         return o;
@@ -114,7 +114,7 @@ namespace ratios
         std::string stringify( ) const;
     };
 
-    std::ostream & operator<<( std::ostream & o, const ratio & r )
+    inline std::ostream & operator<<( std::ostream & o, const ratio & r )
     {
         o << r.numerator << "/" << r.denominator;
         return o;
