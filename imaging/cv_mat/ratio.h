@@ -140,7 +140,7 @@ namespace ratios
                     |   lit('+')[ bind( &term::value, _val ) = 1 ] >> -( double_[ bind( &term::value, _val ) *= _1 ] >> -lit('*') ) >> channel_[ bind( &term::c, _val ) = _1 ]
                     |   lit('-')[ bind( &term::value, _val ) = -1 ] >> -( double_[ bind( &term::value, _val ) *= _1 ] >> -lit('*') ) >> channel_[ bind( &term::c, _val ) = _1 ]
                 );
-            combination_ = eps[ _val = ratios::combination() ] >> *( term_[ bind( &combination::update, _val, _1 ) ] );
+            combination_ = eps[ _val = ratios::combination() ] >> +( term_[ bind( &combination::update, _val, _1 ) ] );
         }
 
         qi::rule< Iterator, ratios::channel(), ascii::space_type > channel_;
