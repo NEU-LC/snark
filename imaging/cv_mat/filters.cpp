@@ -179,6 +179,8 @@ static boost::unordered_map< std::string, unsigned int > fill_cvt_color_types_()
     types[ "CV_BayerGB2GRAY" ] = types[ "BayerGB,GRAY" ] = CV_BayerGB2GRAY;
     types[ "CV_BayerRG2GRAY" ] = types[ "BayerRG,GRAY" ] = CV_BayerRG2GRAY;
     types[ "CV_BayerGR2GRAY" ] = types[ "BayerGR,GRAY" ] = CV_BayerGR2GRAY;
+    types[ "CV_BGR2RGB" ] = types[ "BGR,RGB" ] = CV_BGR2RGB;
+    types[ "CV_RGB2BGR" ] = types[ "RGB,BGR" ] = CV_RGB2BGR;
     return types;
 }
 
