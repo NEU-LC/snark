@@ -42,7 +42,7 @@
 
 namespace snark{ namespace cv_mat {
 
-namespace ratio
+namespace ratios
 {
     namespace qi = boost::spirit::qi;
     namespace ascii = boost::spirit::ascii;
@@ -108,20 +108,20 @@ namespace ratio
             using qi::_val;
             using qi::eps;
 
-            channel_ = eps[ _val = ratio::channel() ] >> ( lit('r')[ _val = channel::red ] | lit('g')[ _val = channel::green ] | lit('b')[ _val = channel::blue ] | lit('a')[ _val = channel::alpha ] );
-            term_ = eps[ _val = ratio::term( 1.0, channel::constant) ] >>
+            channel_ = eps[ _val = ratios::channel() ] >> ( lit('r')[ _val = channel::red ] | lit('g')[ _val = channel::green ] | lit('b')[ _val = channel::blue ] | lit('a')[ _val = channel::alpha ] );
+            term_ = eps[ _val = ratios::term( 1.0, channel::constant) ] >>
                 (
                         double_[ bind( &term::value, _val ) = _1 ] >> -lit('*') >> -channel_[ bind( &term::c, _val ) = _1 ]
                     |   channel_[ bind( &term::c, _val ) = _1 ]
                     |   lit('+')[ bind( &term::value, _val ) = 1 ] >> -( double_[ bind( &term::value, _val ) *= _1 ] >> -lit('*') ) >> channel_[ bind( &term::c, _val ) = _1 ]
                     |   lit('-')[ bind( &term::value, _val ) = -1 ] >> -( double_[ bind( &term::value, _val ) *= _1 ] >> -lit('*') ) >> channel_[ bind( &term::c, _val ) = _1 ]
                 );
-            combination_ = eps[ _val = ratio::combination() ] >> *( term_[ bind( &combination::update, _val, _1 ) ] );
+            combination_ = eps[ _val = ratios::combination() ] >> *( term_[ bind( &combination::update, _val, _1 ) ] );
         }
 
-        qi::rule< Iterator, ratio::channel(), ascii::space_type > channel_;
-        qi::rule< Iterator, ratio::term(), ascii::space_type > term_;
-        qi::rule< Iterator, ratio::combination(), ascii::space_type > combination_;
+        qi::rule< Iterator, ratios::channel(), ascii::space_type > channel_;
+        qi::rule< Iterator, ratios::term(), ascii::space_type > term_;
+        qi::rule< Iterator, ratios::combination(), ascii::space_type > combination_;
 
     };
 
@@ -133,6 +133,6 @@ namespace ratio
 
     void usage( std::ostream & o, bool verbose = false );
 
-} // namespace ratio
+} // namespace ratios
 
 } }  // namespace snark { namespace cv_mat {

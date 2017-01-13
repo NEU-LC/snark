@@ -33,7 +33,7 @@
 
 namespace snark{ namespace cv_mat {
 
-namespace ratio
+namespace ratios
 {
 
     std::ostream & operator<<( std::ostream & o, const channel & c )
@@ -155,6 +155,7 @@ namespace ratio
         o << "        b - g + 1 + r                -->  1,1,-1,1,0 / 1,0,0,0,0\n";
         o << std::endl;
     }
-}
+
+} // namespace ratios
 
 } }  // namespace snark { namespace cv_mat {

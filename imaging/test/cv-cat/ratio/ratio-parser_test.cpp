@@ -117,7 +117,7 @@ namespace
 #endif
 
     template< typename T >
-    bool process( const ratio::parser< iterator_type, T > & parser
+    bool process( const ratios::parser< iterator_type, T > & parser
                 , const std::string & input
                 , T & result )
     {
@@ -127,10 +127,10 @@ namespace
         return status && ( begin == end );
     }
 
-    void verify( const ratio::combination & c, const std::vector< double > & expected )
+    void verify( const ratios::combination & c, const std::vector< double > & expected )
     {
-        EXPECT_EQ( expected.size(), ratio::channel::NUM_CHANNELS ); // self-check
-        for ( int ci = ratio::channel::constant; ci != ratio::channel::NUM_CHANNELS ; ++ci )
+        EXPECT_EQ( expected.size(), ratios::channel::NUM_CHANNELS ); // self-check
+        for ( int ci = ratios::channel::constant; ci != ratios::channel::NUM_CHANNELS ; ++ci )
         {
             EXPECT_EQ( c.terms[ci].value, expected[ci] );
         }
@@ -140,36 +140,36 @@ namespace
 
 TEST( ratio, term )
 {
-    ratio::rules< iterator_type > rules;
-    ratio::parser< iterator_type, ratio::term > parser( rules.term_ );
-    ratio::term v;
+    ratios::rules< iterator_type > rules;
+    ratios::parser< iterator_type, ratios::term > parser( rules.term_ );
+    ratios::term v;
 
     {
         std::string input = "3b";
         EXPECT_TRUE( process( parser, input, v ) );
         EXPECT_EQ( v.value, 3.0 );
-        EXPECT_EQ( v.c, ratio::channel::blue );
+        EXPECT_EQ( v.c, ratios::channel::blue );
     }
 
     {
         std::string input = "-2* g";
         EXPECT_TRUE( process( parser, input, v ) );
         EXPECT_EQ( v.value, -2.0 );
-        EXPECT_EQ( v.c, ratio::channel::green );
+        EXPECT_EQ( v.c, ratios::channel::green );
     }
 
     {
         std::string input = "r";
         EXPECT_TRUE( process( parser, input, v ) );
         EXPECT_EQ( v.value, 1.0 );
-        EXPECT_EQ( v.c, ratio::channel::red );
+        EXPECT_EQ( v.c, ratios::channel::red );
     }
 
     {
         std::string input = "-2";
         EXPECT_TRUE( process( parser, input, v ) );
         EXPECT_EQ( v.value, -2.0 );
-        EXPECT_EQ( v.c, ratio::channel::constant );
+        EXPECT_EQ( v.c, ratios::channel::constant );
     }
 
     {
@@ -185,9 +185,9 @@ TEST( ratio, term )
 
 TEST( ratio, combination )
 {
-    ratio::rules< iterator_type > rules;
-    ratio::parser< iterator_type, ratio::combination > parser( rules.combination_ );
-    ratio::combination v;
+    ratios::rules< iterator_type > rules;
+    ratios::parser< iterator_type, ratios::combination > parser( rules.combination_ );
+    ratios::combination v;
 
     {
         std::string input = "3b";
