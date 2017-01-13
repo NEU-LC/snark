@@ -80,7 +80,8 @@ namespace ratios
     {
         const static double epsilon;
 
-        combination();
+        explicit combination();
+        explicit combination( const term & t );
 
         void update( const term & t );
 

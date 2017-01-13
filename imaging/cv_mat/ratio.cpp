@@ -81,6 +81,17 @@ namespace ratios
         }
     }
 
+    combination::combination( const term & t )
+    {
+        terms.reserve( channel::NUM_CHANNELS );
+        for ( int ci = channel::constant; ci != channel::NUM_CHANNELS ; ++ci )
+        {
+            channel::channel_types c = static_cast< channel::channel_types >( ci );
+            terms.push_back( term( 0.0, c ) );
+        }
+        terms[ t.c ] = t;
+    }
+
     void combination::update( const term & t )
     {
         std::vector< term >::iterator i = terms.begin() + ( t.c - channel::constant );
