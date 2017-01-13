@@ -230,6 +230,28 @@ TEST( ratios, combination )
     }
 }
 
+TEST( ratios, ratio )
+{
+    ratios::rules< iterator_type > rules;
+    ratios::parser< iterator_type, ratios::combination > parser( rules.combination_ );
+    ratios::ratio v;
+
+    {
+        v = ratios::ratio( boost::assign::list_of(0.0)(1.0)(0.0)(0.0)(0.0), boost::assign::list_of(2.0)(0.0)(0.0)(0.0)(0.0) );
+        EXPECT_EQ( v.stringify(), "r / 2" );
+    }
+
+    {
+        v = ratios::ratio( boost::assign::list_of(0.0)(1.0)(-1.0)(0.0)(0.0), boost::assign::list_of(2.0)(0.0)(0.0)(0.0)(0.0) );
+        EXPECT_EQ( v.stringify(), "( r - g ) / 2" );
+    }
+
+    {
+        v = ratios::ratio( boost::assign::list_of(0.0)(1.0)(0.0)(-3.0)(0.0), boost::assign::list_of(1.0)(0.0)(0.0)(0.0)(0.0) );
+        EXPECT_EQ( v.stringify(), "r - 3b" );
+    }
+}
+
 int main( int argc, char* argv[] )
 {
     ::testing::InitGoogleTest( &argc, argv );

@@ -30,6 +30,7 @@
 #include "ratio.h"
 
 #include <comma/application/verbose.h>
+#include <comma/base/exception.h>
 
 namespace snark{ namespace cv_mat {
 
@@ -100,6 +101,11 @@ namespace ratios
         return std::accumulate( terms.begin(), terms.end(), 0, counter::non_zero );
     }
 
+    bool combination::unity() const
+    {
+        return terms[0].value == 1.0 && non_zero_term_count() == 1;
+    }
+
     std::string combination::stringify( ) const
     {
         std::ostringstream o;
@@ -127,6 +133,30 @@ namespace ratios
     }
 
     const double combination::epsilon = 1.0e-10;
+
+    ratio::ratio( const std::vector< double > & n, const std::vector< double > & d )
+    {
+        if ( n.size() != channel::NUM_CHANNELS ) { COMMA_THROW( comma::exception, "expected numerator vector of size " << channel::NUM_CHANNELS << ", got " << n.size() ); }
+        if ( d.size() != channel::NUM_CHANNELS ) { COMMA_THROW( comma::exception, "expected denominator vector of size " << channel::NUM_CHANNELS << ", got " << d.size() ); }
+        for ( int ci = channel::constant; ci != channel::NUM_CHANNELS ; ++ci )
+        {
+            numerator.terms[ci].value = n[ci];
+            denominator.terms[ci].value = d[ci];
+        }
+    }
+
+    std::string ratio::stringify( ) const
+    {
+        bool divide = !denominator.unity();
+        bool nbrackets = ( numerator.non_zero_term_count() > 1 ) && divide;
+        bool dbrackets = ( denominator.non_zero_term_count() > 1 );
+        std::string rv = ( nbrackets ? "( " : "" ) + numerator.stringify() + ( nbrackets ? " )" : "" );
+        if ( divide )
+        {
+            rv += std::string(" / ") + ( dbrackets ? "( " : "" ) + denominator.stringify() + ( dbrackets ? " )" : "" );
+        }
+        return rv;
+    }
 
     void usage( std::ostream & o, bool verbose )
     {
