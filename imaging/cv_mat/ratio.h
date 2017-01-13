@@ -141,12 +141,18 @@ namespace ratios
                     |   lit('-')[ bind( &term::value, _val ) = -1 ] >> -( double_[ bind( &term::value, _val ) *= _1 ] >> -lit('*') ) >> channel_[ bind( &term::c, _val ) = _1 ]
                 );
             combination_ = eps[ _val = ratios::combination() ] >> +( term_[ bind( &combination::update, _val, _1 ) ] );
+            ratio_ = eps[ _val = ratios::ratio() ] >>
+                (
+                        combination_[ bind( &ratio::numerator, _val ) = _1, bind( &ratio::denominator, _val ) ]
+                    |   lit('(') >> combination_[ bind( &ratio::numerator, _val ) = _1 ] >> lit(')') >> *( lit('/') >> lit('(') >> combination_[ bind( &ratio::denominator, _val ) = _1 ] >> lit(')') )
+                    // |   term_[ bind( &combination::update, _val, _1 ) ] >> lit('/') >> lit('(') >> combination_[ bind( &ratio::denominator, _val ) = _1 ] >> lit(')')
+                );
         }
 
         qi::rule< Iterator, ratios::channel(), ascii::space_type > channel_;
         qi::rule< Iterator, ratios::term(), ascii::space_type > term_;
         qi::rule< Iterator, ratios::combination(), ascii::space_type > combination_;
-
+        qi::rule< Iterator, ratios::ratio(), ascii::space_type > ratio_;
     };
 
     template< typename Iterator, typename What >

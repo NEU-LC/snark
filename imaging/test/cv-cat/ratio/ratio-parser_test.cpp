@@ -136,6 +136,12 @@ namespace
         }
     }
 
+    void verify( const ratios::ratio & r, const std::vector< double > & expected_numerator, const std::vector< double > & expected_denominator )
+    {
+        verify( r.numerator, expected_numerator );
+        verify( r.denominator, expected_denominator );
+    }
+
 } // namespace anonymous
 
 TEST( ratios, term )
@@ -233,7 +239,7 @@ TEST( ratios, combination )
 TEST( ratios, ratio )
 {
     ratios::rules< iterator_type > rules;
-    ratios::parser< iterator_type, ratios::combination > parser( rules.combination_ );
+    ratios::parser< iterator_type, ratios::ratio > parser( rules.ratio_ );
     ratios::ratio v;
 
     {
@@ -249,6 +255,27 @@ TEST( ratios, ratio )
     {
         v = ratios::ratio( boost::assign::list_of(0.0)(1.0)(0.0)(-3.0)(0.0), boost::assign::list_of(1.0)(0.0)(0.0)(0.0)(0.0) );
         EXPECT_EQ( v.stringify(), "r - 3b" );
+    }
+
+    {
+        std::string input = "r - b";
+        EXPECT_TRUE( process( parser, input, v ) );
+        verify( v, boost::assign::list_of(0.0)(1.0)(0.0)(-1.0)(0.0), boost::assign::list_of(1.0)(0.0)(0.0)(0.0)(0.0) );
+        EXPECT_EQ( v.stringify(), "r - b" );
+    }
+
+    {
+        std::string input = "(r - b)";
+        EXPECT_TRUE( process( parser, input, v ) );
+        verify( v, boost::assign::list_of(0.0)(1.0)(0.0)(-1.0)(0.0), boost::assign::list_of(1.0)(0.0)(0.0)(0.0)(0.0) );
+        EXPECT_EQ( v.stringify(), "r - b" );
+    }
+
+    {
+        std::string input = "(r - b)/(2.1g + a)";
+        EXPECT_TRUE( process( parser, input, v ) );
+        verify( v, boost::assign::list_of(0.0)(1.0)(0.0)(-1.0)(0.0), boost::assign::list_of(0.0)(0.0)(2.1)(0.0)(1.0) );
+        EXPECT_EQ( v.stringify(), "( r - b ) / ( 2.1g + a )" );
     }
 }
 
