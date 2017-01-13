@@ -196,6 +196,12 @@ TEST( ratio, combination )
     }
 
     {
+        std::string input = "-3.5b";
+        EXPECT_TRUE( process( parser, input, v ) );
+        verify( v, boost::assign::list_of( 0.0 )( 0.0 )(0.0)(-3.5)(0.0) );
+    }
+
+    {
         std::string input = "1 + r - 3*a";
         EXPECT_TRUE( process( parser, input, v ) );
         verify( v, boost::assign::list_of( 1.0 )( 1.0 )(0.0)(0.0)(-3.0) );
@@ -205,6 +211,17 @@ TEST( ratio, combination )
         std::string input = "g - a + b";
         EXPECT_TRUE( process( parser, input, v ) );
         verify( v, boost::assign::list_of( 0.0 )( 0.0 )(1.0)(1.0)(-1.0) );
+    }
+
+    {
+        std::string input = "g - a + b/2";
+        EXPECT_FALSE( process( parser, input, v ) );
+    }
+
+    {
+        std::string input = ".0g";
+        EXPECT_TRUE( process( parser, input, v ) );
+        verify( v, boost::assign::list_of( 0.0 )( 0.0 )(0.0)(0.0)(0.0) );
     }
 }
 
