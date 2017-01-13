@@ -44,9 +44,9 @@ static void usage( bool verbose=false )
     std::cerr << "    --input=<options>; default values for image header; e.g. --input=\"rows=1000;cols=500;type=ub\"" << std::endl;
     std::cerr << "    --input-fields; output header fields and exit" << std::endl;
     std::cerr << "    --input-format; output header format and exit" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "  roi" << std::endl;
-    std::cerr << "    --no-partial; if specified, roi region that are partialy outside of the image are also set to 0." << std::endl;
+//     std::cerr << std::endl;
+//     std::cerr << "  roi" << std::endl;
+//     std::cerr << "    --no-partial; if specified, roi region that are partialy outside of the image are also set to 0." << std::endl;
     std::cerr << std::endl;
     std::cerr << "examples" << std::endl;
     std::cerr << "  roi" << std::endl;
@@ -158,8 +158,6 @@ int main( int ac, char** av )
 //         typedef comma::math::closed_interval<int> interval_t;
         extents_t ext;
         cv::Mat mask;
-//         interval_t image_width(0,0);
-//         interval_t image_height(0,0);
         comma::uint64 count = 0;
         while( std::cin.good() && !std::cin.eof() )
         {
@@ -170,18 +168,17 @@ int main( int ac, char** av )
             ++count;
             
             binary.get( ext, serialization.header_buffer() );
-            if(verbose && mask.rows == 0) 
+            if(verbose && mask.rows == 0) // Will only trigger once
             {
                 serialization::header header = serialization.get_header( serialization.header_buffer());
                 std::cerr << name << "min & max: " << ext.min << " " << ext.max << std::endl;
                 std::cerr << name << "rows & cols: " << header.rows << ' ' << header.cols << std::endl;
             }
             
+            // If image size changed
             if( mask.rows != mat.rows || mask.cols != mat.cols ) 
             {
                 mask = cv::Mat::ones(mat.rows, mat.cols, CV_8U); // all ones, must be CV_U8 for setTo
-//                 image_width  = interval_t(0, mat.cols-1);
-//                 image_height = interval_t(0, mat.rows-1);
             }
             
             int width = ext.max.x - ext.min.x;
@@ -191,27 +188,6 @@ int main( int ac, char** av )
                 std::cerr << name << "roi's width and height can not be negative. Failed on image/frame number: " << count 
                     << ", min: " << ext.min << ", max: " << ext.max << ", width: " << width << ", height: " << height << std::endl; return 1;
             }
-            
-//             interval_t roi_width(ext.min.x, ext.max.x);
-//             interval_t roi_height(ext.min.y, ext.max.y);
-//             
-//             if( image_width.contains(roi_width) && image_height.contains(roi_height) )
-//             {
-//             
-//                 if( !no_partial )
-//                 {
-//                     if(roi_width.min() < image_width.min() ) { roi_width = interval_t(image_width.min(), roi_width.max()); }
-//                     if(roi_width.max() > image_width.max() ) { roi_width = interval_t(roi_width.min(), image_width.max()); }
-//                     
-//                     if(roi_height.min() < image_height.min() ) { roi_height = interval_t(image_height.min(), roi_height.max()); }
-//                     if(roi_height.max() > image_height.max() ) { roi_height = interval_t(roi_height.min(), image_height.max()); }
-//                 }
-//                 mask( cv::Rect( roi_width.min(), roi_height.min(), roi_width.size() , roi_height.size() ) ) = cv::Scalar(0);
-//                 mat.setTo( cv::Scalar(0), mask );
-//                 // set mask to all ones again
-//                 mask( cv::Rect( roi_width.min(), roi_height.min(), roi_width.size() , roi_height.size() ) ) = cv::Scalar(1);
-//             }
-//             else { mat.setTo( cv::Scalar(0), mask ); }  // ROI outside of image, set all to black
             
             
             bool used_mask = false;
