@@ -81,7 +81,7 @@ namespace ratios
         const static double epsilon;
 
         explicit combination();
-        explicit combination( const term & t );
+        combination( const term & t );
 
         void update( const term & t );
 
@@ -143,9 +143,10 @@ namespace ratios
             combination_ = eps[ _val = ratios::combination() ] >> +( term_[ bind( &combination::update, _val, _1 ) ] );
             ratio_ = eps[ _val = ratios::ratio() ] >>
                 (
-                        combination_[ bind( &ratio::numerator, _val ) = _1, bind( &ratio::denominator, _val ) ]
-                    |   lit('(') >> combination_[ bind( &ratio::numerator, _val ) = _1 ] >> lit(')') >> *( lit('/') >> lit('(') >> combination_[ bind( &ratio::denominator, _val ) = _1 ] >> lit(')') )
-                    // |   term_[ bind( &combination::update, _val, _1 ) ] >> lit('/') >> lit('(') >> combination_[ bind( &ratio::denominator, _val ) = _1 ] >> lit(')')
+                        lit('(') >> combination_[ bind( &ratio::numerator, _val ) = _1 ] >> lit(')') >> *( lit('/') >> lit('(') >> combination_[ bind( &ratio::denominator, _val ) = _1 ] >> lit(')') )
+                    |   term_[ bind( &ratio::numerator, _val ) = _1 ] >> lit('/') >> lit('(') >> combination_[ bind( &ratio::denominator, _val ) = _1 ] >> lit(')')
+                    |   term_[ bind( &ratio::numerator, _val ) = _1 ] >> lit('/') >> term_[ bind( &ratio::denominator, _val ) = _1 ]
+                    |   combination_[ bind( &ratio::numerator, _val ) = _1 ]
                 );
         }
 
