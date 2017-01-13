@@ -107,8 +107,9 @@ namespace ratios
         combination numerator;
         combination denominator;
 
-        ratio() {}
-        ratio( const std::vector< double > & n, const std::vector< double > & d );
+        explicit ratio() { denominator.terms[0].value = 1.0; }
+        explicit ratio( const std::vector< double > & n, const std::vector< double > & d );
+
         // pretty-printer
         std::string stringify( ) const;
     };
