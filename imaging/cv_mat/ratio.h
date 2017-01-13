@@ -133,7 +133,7 @@ namespace ratios
             using qi::eps;
 
             channel_ = eps[ _val = ratios::channel() ] >> ( lit('r')[ _val = channel::red ] | lit('g')[ _val = channel::green ] | lit('b')[ _val = channel::blue ] | lit('a')[ _val = channel::alpha ] );
-            term_ = eps[ _val = ratios::term( 1.0, channel::constant) ] >>
+            term_ = eps[ _val = ratios::term( 1.0, channel::constant ) ] >>
                 (
                         double_[ bind( &term::value, _val ) = _1 ] >> -lit('*') >> -channel_[ bind( &term::c, _val ) = _1 ]
                     |   channel_[ bind( &term::c, _val ) = _1 ]
