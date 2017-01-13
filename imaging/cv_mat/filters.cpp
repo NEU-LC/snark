@@ -66,6 +66,7 @@
 #include "../../timing/timestamped.h"
 #include "../../timing/traits.h"
 #include "filters.h"
+#include "ratio.h"
 #include "serialization.h"
 #include "traits.h"
 #include "depth_traits.h"
@@ -2403,6 +2404,8 @@ static std::string usage_impl_()
     oss << "            normalize=all: normalize each pixel by max of all channels (see cv::normalize with NORM_INF)" << std::endl;
     oss << "        null: same as linux /dev/null (since windows does not have it)" << std::endl;
     oss << "        overlay=<image_file>[,x,y]: overlay image_file on top of current stream at optional x,y location; overlay image should have alpha channel" << std::endl;
+    oss << "        ratio=(<a1>r + <a2>g + ... + <ac>)/(<b1>r + <b2>g + ... + <bc>): output grey-scale image that is a ratio of linear combinations of input channels" << std::endl;
+    oss << "            with given coefficients and offsets; see below for the detailed explanation of the ratio syntax" << std::endl;
     oss << "        resize=<factor>[,<interpolation>]; resize=<width>,<height>[,<interpolation>]" << std::endl;
     oss << "            <interpolation>: nearest, linear, area, cubic, lanczos4; default: linear" << std::endl;
     oss << "                             in format <width>,<height>,<interpolation> corresponding numeric values can be used: " << cv::INTER_NEAREST << ", " << cv::INTER_LINEAR << ", " << cv::INTER_AREA << ", " << cv::INTER_CUBIC << ", " << cv::INTER_LANCZOS4 << std::endl;
@@ -2487,6 +2490,9 @@ static std::string usage_impl_()
     oss << "                                     if not present, defaults will be used" << std::endl;
     oss << std::endl;
     oss << snark::imaging::vegetation::filters::usage() << std::endl;
+    oss << std::endl;
+    oss << "    input syntax for the ratio operation:" << std::endl;
+    snark::cv_mat::ratios::ratio::describe_syntax( oss, 8 );
     return oss.str();
 }
 

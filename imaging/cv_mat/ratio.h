@@ -112,6 +112,8 @@ namespace ratios
 
         // pretty-printer
         std::string stringify( ) const;
+
+        static std::ostream & describe_syntax( std::ostream & o, size_t offset = 0 );
     };
 
     inline std::ostream & operator<<( std::ostream & o, const ratio & r )
@@ -161,8 +163,6 @@ namespace ratios
     {
         parser( const qi::rule< Iterator, What(), ascii::space_type > & start ) : parser::base_type( start ) {}
     };
-
-    void usage( std::ostream & o, bool verbose = false );
 
 } // namespace ratios
 

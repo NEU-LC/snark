@@ -29,7 +29,6 @@
 
 #include "ratio.h"
 
-#include <comma/application/verbose.h>
 #include <comma/base/exception.h>
 
 namespace snark{ namespace cv_mat {
@@ -169,48 +168,48 @@ namespace ratios
         return rv;
     }
 
-    void usage( std::ostream & o, bool verbose )
+    std::ostream & ratio::describe_syntax( std::ostream & o, size_t offset )
     {
-        o << comma::verbose.app_name() << ": this help describes input format for ratio operation\n";
-        o << "\n";
-        o << "    input string specifies a ratio of linear combinations of signal channels in algebraic form\n";
-        o << "    one of the following formats can be used:\n";
-        o << "            ( linear combination ) / ( linear combination )\n";
-        o << "        here 'linear combination' is in the form Ar + Bg + Cb + Da + F, where A, B, C, D, F\n";
-        o << "        are floating-point constants and r, g, b, a are channel names; a multiplication sign '*'\n";
-        o << "        is allowed between the constant and channel name; the F term gives a constant offset\n";
-        o << "        to be added to the output\n";
-        o << "            term / ( linear combination )\n";
-        o << "        here 'term' is either A or Ac, where A is a constant and c is one of channel names\n";
-        o << "        for a single term, surrounding brackets are optional, 'term' is the same as '(term)'\n";
-        o << "            ( linear combination ) / term\n";
-        o << "            term / term\n";
-        o << "            linear combination\n";
-        o << "        here the linear combination becomes the ratio numerator, while the denominator is set to 1\n";
-        o << "        brackets are optional around the numerator-only linear combination\n";
-        o << "\n";
-        o << "    the input is parsed into two lists of coefficients for the numerator and denominator\n";
-        o << "\n";
-        o << "examples (outputs are shown after --> arrows as ratios of comma-separated lists of coefficients,\n";
-        o << "for the numerator and denominator)\n";
-        o << "    ratios are composed of linear combinations in the natural way\n";
-        o << "        ( a +2*b - 3r ) / ( r + b )  -->  0,-3,0,2,1 / 0,1,0,1,0\n";
-        o << "        a / ( r + b )                -->  0,0,0,0,1 / 0,1,0,1,0\n";
-        o << "        (3a + 4*b) / g               -->  0,0,0,4,3 / 0,0,1,0,0\n";
-        o << "        3a / g                       -->  0,0,0,0,3 / 0,0,1,0,0\n";
-        o << "    terms and signs between them may be separated by spaces\n";
-        o << "    brackets are optional for single terms and are mandatory for multi-term linear combinations\n";
-        o << "    with one exception, numerator-only input\n";
-        o << "        3a + b / g                   -->  error!\n";
-        o << "        3a + b                       -->  0,0,0,1,3 / 1,0,0,0,0\n";
-        o << "    multiplication signs are optional and multipliers of 1 or -1 can be omitted\n";
-        o << "        ( 2*b - a ) / 2              -->  0,0,0,2,-1 / 2,0,0,0,0\n";
-        o << "    leading '+' sign is ignored; arbitrary floating-point notation is supported\n";
-        o << "        +2*b - 1.3e-4r               -->  0,-1.3e-4,0,2,0 / 1,0,0,0,0\n";
-        o << "    order of channel terms does not matter\n";
-        o << "        1 + r - g + b                -->  1,1,-1,1,0 / 1,0,0,0,0\n";
-        o << "        b - g + 1 + r                -->  1,1,-1,1,0 / 1,0,0,0,0\n";
-        o << std::endl;
+        std::string w( offset, ' ' );
+        o << w << "the input string specifies a ratio of linear combinations of signal channels in algebraic form\n";
+        o << w << "\n";
+        o << w << "one of the following notations can be used:\n";
+        o << w << "        ( linear combination ) / ( linear combination )\n";
+        o << w << "    here 'linear combination' is in the form Ar + Bg + Cb + Da + F, where A, B, C, D, F\n";
+        o << w << "    are floating-point constants and r, g, b, a are symbolic channel names; the multiplication\n";
+        o << w << "    sign '*' is allowed between the constant and channel name; the F term gives a fixed offset\n";
+        o << w << "    to be added to the output\n";
+        o << w << "        term / ( linear combination )\n";
+        o << w << "    here 'term' is either A or Ac, where A is a constant and c is one of the channel names\n";
+        o << w << "    for a single term, surrounding brackets are optional, 'term' is the same as '(term)'\n";
+        o << w << "        ( linear combination ) / term\n";
+        o << w << "        term / term\n";
+        o << w << "        linear combination\n";
+        o << w << "    here the linear combination becomes the ratio numerator, while the denominator is set to 1\n";
+        o << w << "    brackets are optional around a numerator-only linear combination\n";
+        o << w << "\n";
+        o << w << "    the input is parsed into two lists of coefficients for the numerator and denominator\n";
+        o << w << "\n";
+        o << w << "examples (outputs are shown after --> arrows as ratios of comma-separated lists of coefficients,\n";
+        o << w << "for the numerator and denominator)\n";
+        o << w << "    ratios are composed of linear combinations in the natural way\n";
+        o << w << "        ( a +2*b - 3r ) / ( r + b )  -->  0,-3,0,2,1 / 0,1,0,1,0\n";
+        o << w << "        a / ( r + b )                -->  0,0,0,0,1 / 0,1,0,1,0\n";
+        o << w << "        (3a + 4*b) / g               -->  0,0,0,4,3 / 0,0,1,0,0\n";
+        o << w << "        3a / g                       -->  0,0,0,0,3 / 0,0,1,0,0\n";
+        o << w << "    terms and signs between them may be separated by spaces\n";
+        o << w << "    brackets are optional for single terms and are mandatory for multi-term linear combinations\n";
+        o << w << "    with one exception, numerator-only input\n";
+        o << w << "        3a + b / g                   -->  error!\n";
+        o << w << "        3a + b                       -->  0,0,0,1,3 / 1,0,0,0,0\n";
+        o << w << "    multiplication signs are optional and multipliers of 1 or -1 can be omitted\n";
+        o << w << "        ( 2*b - a ) / 2              -->  0,0,0,2,-1 / 2,0,0,0,0\n";
+        o << w << "    leading '+' sign is ignored; arbitrary floating-point notation is supported\n";
+        o << w << "        +2*b - 1.3e-4r               -->  0,-1.3e-4,0,2,0 / 1,0,0,0,0\n";
+        o << w << "    order of channel terms does not matter\n";
+        o << w << "        1 + r - g + b                -->  1,1,-1,1,0 / 1,0,0,0,0\n";
+        o << w << "        b - g + 1 + r                -->  1,1,-1,1,0 / 1,0,0,0,0\n";
+        return o;
     }
 
 } // namespace ratios
