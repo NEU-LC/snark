@@ -193,9 +193,9 @@ struct points_t
     ::writer<output_t> writer;
     
     points_t(device_t& device,bool has_color,const comma::csv::options& csv);
-    void scan(unsigned block);
+    void scan(unsigned block, bool output_image);
     //process points cloud
-    static void process(std::vector<device_t>& devices,const comma::csv::options& csv);
+    static void process(std::vector<device_t>& devices,const comma::csv::options& csv, bool output_image);
     static void output_format();
     static void output_fields();
 };
@@ -370,7 +370,7 @@ struct camera_stream
     }
 };
 
-void points_t::process(std::vector<device_t>& devices,const comma::csv::options& csv)
+void points_t::process(std::vector<device_t>& devices,const comma::csv::options& csv, bool output_image = false)
 {
     comma::verbose<<"points_t::process"<<std::endl;
     bool has_color=csv.fields.empty() || csv.has_some_of_fields("color,color/r,color/g,color/b");
@@ -389,7 +389,7 @@ void points_t::process(std::vector<device_t>& devices,const comma::csv::options&
         run_stream runner(*devices[0].device);
         for(unsigned block=0;!signaled;block++)
         {
-            all[0]->scan(block);
+            all[0]->scan(block, output_image);
         }
     }
     else
@@ -400,7 +400,7 @@ void points_t::process(std::vector<device_t>& devices,const comma::csv::options&
             for(unsigned i=0;i<all.size()&&!signaled;i++)
             {
                 run_stream runner(*devices[i].device);
-                all[i]->scan(block++);
+                all[i]->scan(block++, output_image);
             }
         }
     }
@@ -439,7 +439,7 @@ points_t::points_t(device_t& dev,bool has_color, const comma::csv::options& csv)
     comma::verbose<<"points_t(has_color: "<<has_color<<") done "<<std::endl;
 }
 
-void points_t::scan(unsigned block)
+void points_t::scan(unsigned block, bool output_image = false)
 {
     if(!device.is_streaming()) { COMMA_THROW(comma::exception, "device not streaming" ); }
     device.wait_for_frames();
@@ -478,12 +478,18 @@ void points_t::scan(unsigned block)
             if(!discard)
             {
                 if (logging) { logging->write(out); }
-                writer.write(out);
+                if ( !output_image ) { writer.write(out); }
                 num_output++;
             }
         }
     }
     if (logging) { logging->index_.write_block(out.t, num_output); }
+    if (output_image) 
+    { 
+        snark::cv_mat::serialization::options opt;
+        snark::cv_mat::serialization serializer(opt);
+        serializer.write(std::cout,pair) ;
+    }
 }
 
 void points_t::output_format()
@@ -791,7 +797,7 @@ int main( int argc, char** argv )
         }
         else
         {
-            points_t::process(selected,csv);
+            points_t::process(selected,csv, options.exists("--output-image"));
         }
         return 0;
     }
