@@ -138,7 +138,7 @@ namespace
 
 } // namespace anonymous
 
-TEST( ratio, term )
+TEST( ratios, term )
 {
     ratios::rules< iterator_type > rules;
     ratios::parser< iterator_type, ratios::term > parser( rules.term_ );
@@ -183,7 +183,7 @@ TEST( ratio, term )
     }
 }
 
-TEST( ratio, combination )
+TEST( ratios, combination )
 {
     ratios::rules< iterator_type > rules;
     ratios::parser< iterator_type, ratios::combination > parser( rules.combination_ );
@@ -192,28 +192,28 @@ TEST( ratio, combination )
     {
         std::string input = "3b";
         EXPECT_TRUE( process( parser, input, v ) );
-        verify( v, boost::assign::list_of( 0.0 )( 0.0 )(0.0)(3.0)(0.0) );
+        verify( v, boost::assign::list_of(0.0)(0.0)(0.0)(3.0)(0.0) );
         EXPECT_EQ( v.stringify(), "3b" );
     }
 
     {
         std::string input = "-3.5b";
         EXPECT_TRUE( process( parser, input, v ) );
-        verify( v, boost::assign::list_of( 0.0 )( 0.0 )(0.0)(-3.5)(0.0) );
+        verify( v, boost::assign::list_of(0.0)(0.0)(0.0)(-3.5)(0.0) );
         EXPECT_EQ( v.stringify(), "-3.5b" );
     }
 
     {
         std::string input = "1 + r - 3*a";
         EXPECT_TRUE( process( parser, input, v ) );
-        verify( v, boost::assign::list_of( 1.0 )( 1.0 )(0.0)(0.0)(-3.0) );
+        verify( v, boost::assign::list_of(1.0)(1.0)(0.0)(0.0)(-3.0) );
         EXPECT_EQ( v.stringify(), "1 + r - 3a" );
     }
 
     {
         std::string input = "g - a + b";
         EXPECT_TRUE( process( parser, input, v ) );
-        verify( v, boost::assign::list_of( 0.0 )( 0.0 )(1.0)(1.0)(-1.0) );
+        verify( v, boost::assign::list_of(0.0)(0.0)(1.0)(1.0)(-1.0) );
         EXPECT_EQ( v.stringify(), "g + b - a" );
     }
 
@@ -225,7 +225,7 @@ TEST( ratio, combination )
     {
         std::string input = ".0g";
         EXPECT_TRUE( process( parser, input, v ) );
-        verify( v, boost::assign::list_of( 0.0 )( 0.0 )(0.0)(0.0)(0.0) );
+        verify( v, boost::assign::list_of(0.0)(0.0)(0.0)(0.0)(0.0) );
         EXPECT_EQ( v.stringify(), "0" );
     }
 }
