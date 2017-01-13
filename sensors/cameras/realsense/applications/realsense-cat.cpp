@@ -36,6 +36,7 @@
 #include <comma/csv/stream.h>
 #include <comma/io/stream.h>
 #include <comma/io/publisher.h>
+#include <opencv2/imgproc/imgproc.hpp>
 #include "../../../../imaging/cv_mat/serialization.h"
 #include "../realsense.h"
 #include "../traits.h"
@@ -364,6 +365,7 @@ struct camera_stream
         {
             if(!device.is_streaming()) { COMMA_THROW(comma::exception, "device not streaming" ); }
             device.wait_for_frames();
+            // todo: instead of using image_args, get device format and then convert to BGR
             serializer.write(std::cout,stream.get_frame());
         }
         comma::verbose<<"signaled!"<<std::endl;
@@ -488,6 +490,8 @@ void points_t::scan(unsigned block, bool output_image = false)
     { 
         snark::cv_mat::serialization::options opt;
         snark::cv_mat::serialization serializer(opt);
+        // image is always RGB in points mode, convert to BGR so the output image is consistent with cv-cat
+        cv::cvtColor(pair.second, pair.second, CV_RGB2BGR); 
         serializer.write(std::cout,pair) ;
     }
 }
