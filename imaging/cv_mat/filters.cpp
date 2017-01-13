@@ -1445,6 +1445,59 @@ static filters::value_type linear_combination_impl_( const filters::value_type m
     COMMA_THROW( comma::exception, "linear-combination: unrecognised image type " << m.second.type() );
 }
 
+template< typename T >
+static void ratio( const tbb::blocked_range< std::size_t >& r, const cv::Mat& m, const std::vector< double >& numerator, const std::vector< double >& denominator, cv::Mat& result )
+{
+    const unsigned int channels = m.channels();
+    const unsigned int cols = m.cols * channels;
+    static const T highest = std::numeric_limits< T >::max();
+    static const T lowest = std::numeric_limits< T >::is_integer ? std::numeric_limits< T >::min() : -highest;
+    for( unsigned int i = r.begin(); i < r.end(); ++i )
+    {
+        const T* in = m.ptr< T >(i);
+        T* out = result.ptr< T >(i);
+        for( unsigned int j = 0; j < cols; j += channels )
+        {
+            double n = numerator[0];
+            double d = denominator[0];
+            for( unsigned int k = 0; k < channels; ++k ) {
+                n += *in * numerator[k + 1];
+                d += *in++ * denominator[k + 1];
+            }
+            double value = n / d;
+            *out++ = value > highest ? highest : value < lowest ? lowest : value;
+        }
+    }
+}
+
+template< int Depth >
+static filters::value_type per_element_ratio( const filters::value_type m, const std::vector< double >& numerator, const std::vector< double > & denominator )
+{
+    typedef typename depth_traits< Depth >::value_t value_t;
+    cv::Mat result( m.second.size(), single_channel_type( m.second.type() ) );
+    tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, m.second.rows ), boost::bind( &ratio< value_t >, _1, m.second, numerator, denominator, boost::ref( result ) ) );
+    return filters::value_type( m.first, result );
+}
+
+static filters::value_type ratio_impl_( const filters::value_type m, const std::vector< double >& numerator, const std::vector< double >& denominator )
+{
+    if( numerator.size() != denominator.size() )
+        { COMMA_THROW( comma::exception, "ratio: the number of numerator " << numerator.size() << " and denominator " << denominator.size() << " coefficients differs" ); }
+    if( numerator.size() < static_cast< size_t >( m.second.channels() ) + 1 )
+        { COMMA_THROW( comma::exception, "ratio: the number of coefficients is not one off the number of channels; channels = " << m.second.channels() << ", coefficients = " << numerator.size() ); }
+    switch( m.second.depth() )
+    {
+        case CV_8U : return per_element_ratio< CV_8U  >( m, numerator, denominator );
+        case CV_8S : return per_element_ratio< CV_8S  >( m, numerator, denominator );
+        case CV_16U: return per_element_ratio< CV_16U >( m, numerator, denominator );
+        case CV_16S: return per_element_ratio< CV_16S >( m, numerator, denominator );
+        case CV_32S: return per_element_ratio< CV_32S >( m, numerator, denominator );
+        case CV_32F: return per_element_ratio< CV_32F >( m, numerator, denominator );
+        case CV_64F: return per_element_ratio< CV_64F >( m, numerator, denominator );
+    }
+    COMMA_THROW( comma::exception, "ratio: unrecognised image type " << m.second.type() );
+}
+
 static double max_value(int depth)
 {
     switch(depth)
@@ -2119,6 +2172,23 @@ static boost::function< filter::input_type( filter::input_type ) > make_filter_f
         std::vector< double > coefficients( s.size() );
         for( unsigned int j = 0; j < s.size(); ++j ) { coefficients[j] = boost::lexical_cast< double >( s[j] ); }
         return boost::bind( &linear_combination_impl_, _1, coefficients );
+    }
+    if( e[0] == "ratio" )
+    {
+        typedef std::string::const_iterator iterator_type;
+        ratios::rules< iterator_type > rules;
+        ratios::parser< iterator_type, ratios::ratio > parser( rules.ratio_ );
+        ratios::ratio r;
+        iterator_type begin = e[1].begin();
+        iterator_type end = e[1].end();
+        bool status = phrase_parse( begin, end, parser, boost::spirit::ascii::space, r );
+        if ( !status || ( begin != end ) )
+            { COMMA_THROW( comma::exception, "ratio: expected the ratio expression, got: \"" << comma::join( e, '=' ) << "\"" ); }
+        std::vector< double > numerator( r.numerator.terms.size() );
+        for( size_t j = 0; j < r.numerator.terms.size(); ++j ) { numerator[j] = r.numerator.terms[j].value; }
+        std::vector< double > denominator( r.denominator.terms.size() );
+        for( size_t j = 0; j < r.denominator.terms.size(); ++j ) { denominator[j] = r.denominator.terms[j].value; }
+        return boost::bind( &ratio_impl_, _1, numerator, denominator );
     }
     if( e[0] == "overlay" )
     {
