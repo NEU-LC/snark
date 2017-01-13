@@ -59,11 +59,12 @@ int main( int argc, char** argv )
         unsigned int discard;
         boost::program_options::options_description description( "options" );
         std::vector<snark::cameras::flycapture::camera::multicam::camera_pair> cameras;
+        std::string use_software_trigger_option;
 
         description.add_options()
             ( "help,h", "display help message" )
             ( "camera", boost::program_options::value< std::vector<std::string> >(), "a camera_string specifying the serial to connect to as well as any attributes to set" )
-            ( "trigger", boost::program_options::value< std::string >(), "sets trigger type software|hardware" )
+            ( "trigger", boost::program_options::value< std::string >( &use_software_trigger_option )->default_value( "software" ), "sets trigger type software|hardware" )
             ( "fields,f", boost::program_options::value< std::string >( &fields )->default_value( "t,rows,cols,type" ), "header fields, possible values: t,rows,cols,type,size" )
             ( "list-cameras", "list all cameras and exit" )
             ( "list-attributes", "output current camera attributes" )
@@ -143,17 +144,13 @@ int main( int argc, char** argv )
             cameras.push_back( std::make_pair(serial, attributes) );
         }
 
-        bool use_software_trigger = true;
-        if( vm.count( "trigger") )
+        if( use_software_trigger_option != "software" && use_software_trigger_option != "hardware" )
         {
-            std::string trigger_type = vm[ "trigger" ].as< std::string >();
-            if( trigger_type != "software" && trigger_type != "hardware" )
-            {
-                std::cerr << "expected --trigger set as hardware or software, got " << trigger_type << std::endl;
-                exit( 1 );
-            }
-            if( trigger_type == "hardware" ){ use_software_trigger = false; }
+            std::cerr << "expected --trigger set as hardware or software, got " << use_software_trigger_option << std::endl;
+            exit( 1 );
         }
+        bool use_software_trigger;
+        use_software_trigger_option == "hardware" ? use_software_trigger = false : use_software_trigger = true;
         
         if ( vm.count( "discard" ) ) { discard = 1; }
         discard_more_than = discard;
