@@ -72,6 +72,8 @@ namespace ratios
         term( double v_ = 0.0, channel c_ = channel::NUM_CHANNELS ) : value( v_ ), c( c_ ) {}
     };
 
+    term abs( const term & t ) { return term( std::abs( t.value ), t.c ); }
+
     std::ostream & operator<<( std::ostream & o, const term & t );
 
     struct combination
@@ -81,6 +83,8 @@ namespace ratios
         combination();
 
         void update( const term & t );
+
+        size_t non_zero_term_count() const;
 
         // pretty-printer
         std::string stringify( ) const;

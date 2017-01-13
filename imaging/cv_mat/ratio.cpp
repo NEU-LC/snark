@@ -87,17 +87,33 @@ namespace ratios
         if ( std::abs( i->value ) < epsilon ) { i->value = 0.0; }
     }
 
+    size_t combination::non_zero_term_count() const
+    {
+        // no c++-11
+        struct counter
+        {
+            static size_t non_zero( size_t count, const term& t )
+            {
+                return count + ( t.value != 0.0 );
+            }
+        };
+        return std::accumulate( terms.begin(), terms.end(), 0, counter::non_zero );
+    }
+
     std::string combination::stringify( ) const
     {
         std::ostringstream o;
         std::vector< term >::const_iterator i = terms.begin();
-        // constant term is always the first; optionally output zero
-        while ( i != terms.end() )
+        size_t ncount = non_zero_term_count();
+        bool previous = false;
+        for ( std::vector< term >::const_iterator i = terms.begin(); i != terms.end(); ++i )
         {
-            bool separate = false;
-            if ( i->value != 0.0 || terms.size() == 1 ) { o << *i; separate = true; }
-            ++i;
-            if ( separate && i != terms.end() ) { o << " "; }
+            // constant term is always the first; optionally output zero
+            if ( i->value != 0.0 || ( i == terms.begin() && ncount == 0 ) )
+            {
+                if ( previous ) { o << ( i->value > 0.0 ? " + " : " - " ) << abs(*i); } else { o << *i; }
+                previous = true;
+            }
         }
         return o.str();
     }
