@@ -110,6 +110,7 @@ void usage(bool detail)
     std::cerr << "        <directory>: write logs to this directory" << std::endl;
     std::cerr << "        period=<seconds>: period after which to start a new log file" << std::endl;
     std::cerr << "        index: write index file containing timestamp,file_number,file_offset for each frame" << std::endl;
+    std::cerr << "    --output-image-from-points: instead of points data, output the camera stream to stdout" << std::endl;
     std::cerr << "    --verbose,-v: show detailed messages" << std::endl;
     std::cerr << "    --options,--camera-options=<options>: set options for all devices, <options> is a comma serparated list of <option_name>=<value>"<<std::endl;
     std::cerr << "    --list-options: list device options and exit"<<std::endl;
@@ -801,7 +802,7 @@ int main( int argc, char** argv )
         }
         else
         {
-            points_t::process(selected,csv, options.exists("--output-image"));
+            points_t::process(selected,csv, options.exists("--output-image-from-points"));
         }
         return 0;
     }
