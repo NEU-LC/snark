@@ -217,6 +217,27 @@ TEST( ratios, ratio )
         verify( v, boost::assign::list_of(0.0)(1.0)(0.0)(0.0)(0.0), boost::assign::list_of(0.0)(0.0)(2.1)(0.0)(0.0) );
         EXPECT_EQ( v.stringify(), "r / 2.1g" );
     }
+
+    {
+        std::string input = "( r + b ) / 0.1*g";
+        EXPECT_TRUE( process( parser, input, v ) );
+        verify( v, boost::assign::list_of(0.0)(1.0)(0.0)(1.0)(0.0), boost::assign::list_of(0.0)(0.0)(0.1)(0.0)(0.0) );
+        EXPECT_EQ( v.stringify(), "( r + b ) / 0.1g" );
+    }
+
+    {
+        std::string input = "( r + b ) / 2";
+        EXPECT_TRUE( process( parser, input, v ) );
+        verify( v, boost::assign::list_of(0.0)(1.0)(0.0)(1.0)(0.0), boost::assign::list_of(2.0)(0.0)(0.0)(0.0)(0.0) );
+        EXPECT_EQ( v.stringify(), "( r + b ) / 2" );
+    }
+
+    {
+        std::string input = "( r + b ) / ( g )";
+        EXPECT_TRUE( process( parser, input, v ) );
+        verify( v, boost::assign::list_of(0.0)(1.0)(0.0)(1.0)(0.0), boost::assign::list_of(0.0)(0.0)(1.0)(0.0)(0.0) );
+        EXPECT_EQ( v.stringify(), "( r + b ) / g" );
+    }
 }
 
 int main( int argc, char* argv[] )

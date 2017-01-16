@@ -145,9 +145,11 @@ namespace ratios
             combination_ = eps[ _val = ratios::combination() ] >> +( term_[ bind( &combination::update, _val, _1 ) ] );
             ratio_ = eps[ _val = ratios::ratio() ] >>
                 (
-                        lit('(') >> combination_[ bind( &ratio::numerator, _val ) = _1 ] >> lit(')') >> *( lit('/') >> lit('(') >> combination_[ bind( &ratio::denominator, _val ) = _1 ] >> lit(')') )
+                        lit('(') >> combination_[ bind( &ratio::numerator, _val ) = _1 ] >> lit(')') >> lit('/') >> lit('(') >> combination_[ bind( &ratio::denominator, _val ) = _1 ] >> lit(')')
+                    |   lit('(') >> combination_[ bind( &ratio::numerator, _val ) = _1 ] >> lit(')') >> lit('/') >> term_[ bind( &ratio::denominator, _val ) = _1 ]
                     |   term_[ bind( &ratio::numerator, _val ) = _1 ] >> lit('/') >> lit('(') >> combination_[ bind( &ratio::denominator, _val ) = _1 ] >> lit(')')
                     |   term_[ bind( &ratio::numerator, _val ) = _1 ] >> lit('/') >> term_[ bind( &ratio::denominator, _val ) = _1 ]
+                    |   lit('(') >> combination_[ bind( &ratio::numerator, _val ) = _1 ] >> lit(')')
                     |   combination_[ bind( &ratio::numerator, _val ) = _1 ]
                 );
         }
