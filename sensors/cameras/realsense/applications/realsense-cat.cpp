@@ -452,7 +452,7 @@ void points_t::scan(unsigned block, bool output_image = false)
     out.block=block;
     std::pair<boost::posix_time::ptime,cv::Mat> pair;
     if(has_color) { pair=color.get_frame(); }
-    cv::Mat& mat=pair.second;
+    const cv::Mat& mat=pair.second;
     rs::float3 point;
     std::size_t num_output = 0;
     for(unsigned index=0;index<points_cloud.count();index++)
