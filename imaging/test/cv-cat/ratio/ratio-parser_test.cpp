@@ -105,6 +105,27 @@ TEST( ratios, term )
     }
 
     {
+        std::string input = "- 2";
+        EXPECT_TRUE( process( parser, input, v ) );
+        EXPECT_EQ( v.value, -2.0 );
+        EXPECT_EQ( v.c, ratios::channel::constant );
+    }
+
+    {
+        std::string input = "2";
+        EXPECT_TRUE( process( parser, input, v ) );
+        EXPECT_EQ( v.value, 2.0 );
+        EXPECT_EQ( v.c, ratios::channel::constant );
+    }
+
+    {
+        std::string input = "+2";
+        EXPECT_TRUE( process( parser, input, v ) );
+        EXPECT_EQ( v.value, 2.0 );
+        EXPECT_EQ( v.c, ratios::channel::constant );
+    }
+
+    {
         std::string input = "2h";
         EXPECT_FALSE( process( parser, input, v ) );
     }
@@ -159,6 +180,20 @@ TEST( ratios, combination )
         EXPECT_TRUE( process( parser, input, v ) );
         verify( v, boost::assign::list_of(0.0)(0.0)(0.0)(0.0)(0.0) );
         EXPECT_EQ( v.stringify(), "0" );
+    }
+
+    {
+        std::string input = "2 + g";
+        EXPECT_TRUE( process( parser, input, v ) );
+        verify( v, boost::assign::list_of(2.0)(0.0)(1.0)(0.0)(0.0) );
+        EXPECT_EQ( v.stringify(), "2 + g" );
+    }
+
+    {
+        std::string input = "g + 2";
+        EXPECT_TRUE( process( parser, input, v ) );
+        verify( v, boost::assign::list_of(2.0)(0.0)(1.0)(0.0)(0.0) );
+        EXPECT_EQ( v.stringify(), "2 + g" );
     }
 }
 
@@ -237,6 +272,20 @@ TEST( ratios, ratio )
         EXPECT_TRUE( process( parser, input, v ) );
         verify( v, boost::assign::list_of(0.0)(1.0)(0.0)(1.0)(0.0), boost::assign::list_of(0.0)(0.0)(1.0)(0.0)(0.0) );
         EXPECT_EQ( v.stringify(), "( r + b ) / g" );
+    }
+
+    {
+        std::string input = "( 10 + r ) / b";
+        EXPECT_TRUE( process( parser, input, v ) );
+        verify( v, boost::assign::list_of(10.0)(1.0)(0.0)(0.0)(0.0), boost::assign::list_of(0.0)(0.0)(0.0)(1.0)(0.0) );
+        EXPECT_EQ( v.stringify(), "( 10 + r ) / b" );
+    }
+
+    {
+        std::string input = "( r + 10 ) / b";
+        EXPECT_TRUE( process( parser, input, v ) );
+        verify( v, boost::assign::list_of(10.0)(1.0)(0.0)(0.0)(0.0), boost::assign::list_of(0.0)(0.0)(0.0)(1.0)(0.0) );
+        EXPECT_EQ( v.stringify(), "( 10 + r ) / b" );
     }
 }
 

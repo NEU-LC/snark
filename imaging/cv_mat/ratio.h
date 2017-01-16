@@ -137,10 +137,13 @@ namespace ratios
             channel_ = eps[ _val = ratios::channel() ] >> ( lit('r')[ _val = channel::red ] | lit('g')[ _val = channel::green ] | lit('b')[ _val = channel::blue ] | lit('a')[ _val = channel::alpha ] );
             term_ = eps[ _val = ratios::term( 1.0, channel::constant ) ] >>
                 (
-                        double_[ bind( &term::value, _val ) = _1 ] >> -lit('*') >> -channel_[ bind( &term::c, _val ) = _1 ]
+                        double_[ bind( &term::value, _val ) = _1 ] >> -lit('*') >> channel_[ bind( &term::c, _val ) = _1 ]
                     |   channel_[ bind( &term::c, _val ) = _1 ]
                     |   lit('+')[ bind( &term::value, _val ) = 1 ] >> -( double_[ bind( &term::value, _val ) *= _1 ] >> -lit('*') ) >> channel_[ bind( &term::c, _val ) = _1 ]
                     |   lit('-')[ bind( &term::value, _val ) = -1 ] >> -( double_[ bind( &term::value, _val ) *= _1 ] >> -lit('*') ) >> channel_[ bind( &term::c, _val ) = _1 ]
+                    |   lit('+')[ bind( &term::value, _val ) = 1 ] >> double_[ bind( &term::value, _val ) *= _1 ]
+                    |   lit('-')[ bind( &term::value, _val ) = -1 ] >> double_[ bind( &term::value, _val ) *= _1 ]
+                    |   double_[ bind( &term::value, _val ) = _1 ]
                 );
             combination_ = eps[ _val = ratios::combination() ] >> +( term_[ bind( &combination::update, _val, _1 ) ] );
             ratio_ = eps[ _val = ratios::ratio() ] >>
