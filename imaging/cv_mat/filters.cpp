@@ -1398,54 +1398,6 @@ filters::value_type fft_impl_( filters::value_type m, bool direct, bool complex,
 }
 
 template< typename T >
-static void dot( const tbb::blocked_range< std::size_t >& r, const cv::Mat& m, const std::vector< double >& coefficients, cv::Mat& result )
-{
-    const unsigned int channels = m.channels();
-    const unsigned int cols = m.cols * channels;
-    static const T max = std::numeric_limits< T >::max();
-    static const T lowest = std::numeric_limits< T >::is_integer ? std::numeric_limits< T >::min() : -max;
-    double offset = coefficients.size() > channels ? coefficients[coefficients.size()-1]:0;
-    for( unsigned int i = r.begin(); i < r.end(); ++i )
-    {
-        const T* in = m.ptr< T >(i);
-        T* out = result.ptr< T >(i);
-        for( unsigned int j = 0; j < cols; j += channels )
-        {
-            double dot = 0;
-            for( unsigned int k = 0; k < channels; ++k ) { dot += *in++ * coefficients[k]; }
-            dot+=offset;
-            *out++ = dot > max ? max : dot < lowest ? lowest : dot;
-        }
-    }
-}
-
-template< int Depth >
-static filters::value_type per_element_dot( const filters::value_type m, const std::vector< double >& coefficients )
-{
-    typedef typename depth_traits< Depth >::value_t value_t;
-    cv::Mat result( m.second.size(), single_channel_type( m.second.type() ) );
-    tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, m.second.rows ), boost::bind( &dot< value_t >, _1, m.second, coefficients, boost::ref( result ) ) );
-    return filters::value_type( m.first, result );
-}
-
-static filters::value_type linear_combination_impl_( const filters::value_type m, const std::vector< double >& coefficients )
-{
-    if( m.second.channels() != static_cast< int >( coefficients.size() ) && static_cast< int >( coefficients.size() ) != m.second.channels()+1 )
-        { COMMA_THROW( comma::exception, "linear-combination: the number of coefficients does not match the number of channels; channels = " << m.second.channels() << ", coefficients = " << coefficients.size() ); }
-    switch( m.second.depth() )
-    {
-        case CV_8U : return per_element_dot< CV_8U  >( m, coefficients );
-        case CV_8S : return per_element_dot< CV_8S  >( m, coefficients );
-        case CV_16U: return per_element_dot< CV_16U >( m, coefficients );
-        case CV_16S: return per_element_dot< CV_16S >( m, coefficients );
-        case CV_32S: return per_element_dot< CV_32S >( m, coefficients );
-        case CV_32F: return per_element_dot< CV_32F >( m, coefficients );
-        case CV_64F: return per_element_dot< CV_64F >( m, coefficients );
-    }
-    COMMA_THROW( comma::exception, "linear-combination: unrecognised image type " << m.second.type() );
-}
-
-template< typename T >
 static void ratio( const tbb::blocked_range< std::size_t >& r, const cv::Mat& m, const std::vector< double >& numerator, const std::vector< double >& denominator, cv::Mat& result )
 {
     const unsigned int channels = m.channels();
@@ -1464,7 +1416,7 @@ static void ratio( const tbb::blocked_range< std::size_t >& r, const cv::Mat& m,
                 n += *in * numerator[k + 1];
                 d += *in++ * denominator[k + 1];
             }
-            double value = n / d;
+            double value = ( d == 0 ? highest : n / d );
             *out++ = value > highest ? highest : value < lowest ? lowest : value;
         }
     }
@@ -1479,12 +1431,29 @@ static filters::value_type per_element_ratio( const filters::value_type m, const
     return filters::value_type( m.first, result );
 }
 
-static filters::value_type ratio_impl_( const filters::value_type m, const std::vector< double >& numerator, const std::vector< double >& denominator )
+static filters::value_type ratio_impl_( const filters::value_type m, std::vector< double >& numerator, const std::vector< double >& denominator, bool linear_combination_style = false )
 {
+    if ( linear_combination_style ) {
+        if ( numerator.size() > static_cast< size_t >( m.second.channels() ) ) {
+            double constant = numerator.back();
+            numerator.pop_back();
+            numerator.insert( numerator.begin(), constant );
+        } else if ( numerator.size() == static_cast< size_t >( m.second.channels() ) ) {
+            numerator.insert( numerator.begin(), 0.0 );
+        } else {
+            COMMA_THROW( comma::exception, "linear-combination: the number of coefficients does not match the number of channels; channels " << m.second.channels() << ", coefficients " << numerator.size() );
+        }
+        while ( numerator.size() < ratios::ratio::num_channels() ) { numerator.push_back( 0.0 ); }
+    }
     if( numerator.size() != denominator.size() )
         { COMMA_THROW( comma::exception, "ratio: the number of numerator " << numerator.size() << " and denominator " << denominator.size() << " coefficients differs" ); }
-    if( numerator.size() < static_cast< size_t >( m.second.channels() ) + 1 )
-        { COMMA_THROW( comma::exception, "ratio: the number of coefficients is not one off the number of channels; channels = " << m.second.channels() << ", coefficients = " << numerator.size() ); }
+    // the coefficients are always constant,r,g,b,a (some of the values can be zero); it is ok to have fewer channels than coefficients as long as all the unused coefficients are zero
+    for ( size_t n = static_cast< size_t >( m.second.channels() ) + 1 ; n < numerator.size(); ++n ) {
+        if ( numerator[n] != 0.0 || denominator[n] != 0.0 ) {
+            const std::string & what = numerator[n] != 0.0 ? "numerator" : "denominator";
+            COMMA_THROW( comma::exception, "ratio: have " << m.second.channels() << " channel(s) only, requested non-zero " << what << " coefficient for channel " << n - 1 );
+        }
+    }
     switch( m.second.depth() )
     {
         case CV_8U : return per_element_ratio< CV_8U  >( m, numerator, denominator );
@@ -1495,7 +1464,7 @@ static filters::value_type ratio_impl_( const filters::value_type m, const std::
         case CV_32F: return per_element_ratio< CV_32F >( m, numerator, denominator );
         case CV_64F: return per_element_ratio< CV_64F >( m, numerator, denominator );
     }
-    COMMA_THROW( comma::exception, "ratio: unrecognised image type " << m.second.type() );
+    COMMA_THROW( comma::exception, ( linear_combination_style ? "linear-combination" : "ratio" ) << ": unrecognised image type " << m.second.type() );
 }
 
 static double max_value(int depth)
@@ -2171,7 +2140,7 @@ static boost::function< filter::input_type( filter::input_type ) > make_filter_f
         if( s[0].empty() ) { COMMA_THROW( comma::exception, "linear-combination: expected coefficients got: \"" << comma::join( e, '=' ) << "\"" ); }
         std::vector< double > coefficients( s.size() );
         for( unsigned int j = 0; j < s.size(); ++j ) { coefficients[j] = boost::lexical_cast< double >( s[j] ); }
-        return boost::bind( &linear_combination_impl_, _1, coefficients );
+        return boost::bind( &ratio_impl_, _1, coefficients, boost::assign::list_of(1)(0)(0)(0)(0), true );
     }
     if( e[0] == "ratio" )
     {
@@ -2188,7 +2157,7 @@ static boost::function< filter::input_type( filter::input_type ) > make_filter_f
         for( size_t j = 0; j < r.numerator.terms.size(); ++j ) { numerator[j] = r.numerator.terms[j].value; }
         std::vector< double > denominator( r.denominator.terms.size() );
         for( size_t j = 0; j < r.denominator.terms.size(); ++j ) { denominator[j] = r.denominator.terms[j].value; }
-        return boost::bind( &ratio_impl_, _1, numerator, denominator );
+        return boost::bind( &ratio_impl_, _1, numerator, denominator, false );
     }
     if( e[0] == "overlay" )
     {
