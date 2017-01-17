@@ -1398,54 +1398,6 @@ filters::value_type fft_impl_( filters::value_type m, bool direct, bool complex,
 }
 
 template< typename T >
-static void dot( const tbb::blocked_range< std::size_t >& r, const cv::Mat& m, const std::vector< double >& coefficients, cv::Mat& result )
-{
-    const unsigned int channels = m.channels();
-    const unsigned int cols = m.cols * channels;
-    static const T max = std::numeric_limits< T >::max();
-    static const T lowest = std::numeric_limits< T >::is_integer ? std::numeric_limits< T >::min() : -max;
-    double offset = coefficients.size() > channels ? coefficients[coefficients.size()-1]:0;
-    for( unsigned int i = r.begin(); i < r.end(); ++i )
-    {
-        const T* in = m.ptr< T >(i);
-        T* out = result.ptr< T >(i);
-        for( unsigned int j = 0; j < cols; j += channels )
-        {
-            double dot = 0;
-            for( unsigned int k = 0; k < channels; ++k ) { dot += *in++ * coefficients[k]; }
-            dot+=offset;
-            *out++ = dot > max ? max : dot < lowest ? lowest : dot;
-        }
-    }
-}
-
-template< int Depth >
-static filters::value_type per_element_dot( const filters::value_type m, const std::vector< double >& coefficients )
-{
-    typedef typename depth_traits< Depth >::value_t value_t;
-    cv::Mat result( m.second.size(), single_channel_type( m.second.type() ) );
-    tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, m.second.rows ), boost::bind( &dot< value_t >, _1, m.second, coefficients, boost::ref( result ) ) );
-    return filters::value_type( m.first, result );
-}
-
-static filters::value_type linear_combination_impl_( const filters::value_type m, const std::vector< double >& coefficients )
-{
-    if( m.second.channels() != static_cast< int >( coefficients.size() ) && static_cast< int >( coefficients.size() ) != m.second.channels()+1 )
-        { COMMA_THROW( comma::exception, "linear-combination: the number of coefficients does not match the number of channels; channels = " << m.second.channels() << ", coefficients = " << coefficients.size() ); }
-    switch( m.second.depth() )
-    {
-        case CV_8U : return per_element_dot< CV_8U  >( m, coefficients );
-        case CV_8S : return per_element_dot< CV_8S  >( m, coefficients );
-        case CV_16U: return per_element_dot< CV_16U >( m, coefficients );
-        case CV_16S: return per_element_dot< CV_16S >( m, coefficients );
-        case CV_32S: return per_element_dot< CV_32S >( m, coefficients );
-        case CV_32F: return per_element_dot< CV_32F >( m, coefficients );
-        case CV_64F: return per_element_dot< CV_64F >( m, coefficients );
-    }
-    COMMA_THROW( comma::exception, "linear-combination: unrecognised image type " << m.second.type() );
-}
-
-template< typename T >
 static void ratio( const tbb::blocked_range< std::size_t >& r, const cv::Mat& m, const std::vector< double >& numerator, const std::vector< double >& denominator, cv::Mat& result )
 {
     const unsigned int channels = m.channels();
