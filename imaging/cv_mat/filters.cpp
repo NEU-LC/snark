@@ -1479,8 +1479,20 @@ static filters::value_type per_element_ratio( const filters::value_type m, const
     return filters::value_type( m.first, result );
 }
 
-static filters::value_type ratio_impl_( const filters::value_type m, const std::vector< double >& numerator, const std::vector< double >& denominator )
+static filters::value_type ratio_impl_( const filters::value_type m, std::vector< double >& numerator, const std::vector< double >& denominator, bool linear_combination_style = false )
 {
+    if ( linear_combination_style ) {
+        if ( numerator.size() > static_cast< size_t >( m.second.channels() ) ) {
+            double constant = numerator.back();
+            numerator.pop_back();
+            numerator.insert( numerator.begin(), constant );
+        } else if ( numerator.size() == static_cast< size_t >( m.second.channels() ) ) {
+            numerator.insert( numerator.begin(), 0.0 );
+        } else {
+            COMMA_THROW( comma::exception, "linear-combination: the number of coefficients does not match the number of channels; channels " << m.second.channels() << ", coefficients " << numerator.size() );
+        }
+        while ( numerator.size() < ratios::ratio::num_channels() ) { numerator.push_back( 0.0 ); }
+    }
     if( numerator.size() != denominator.size() )
         { COMMA_THROW( comma::exception, "ratio: the number of numerator " << numerator.size() << " and denominator " << denominator.size() << " coefficients differs" ); }
     // the coefficients are always constant,r,g,b,a (some of the values can be zero); it is ok to have fewer channels than coefficients as long as all the unused coefficients are zero
@@ -2176,7 +2188,7 @@ static boost::function< filter::input_type( filter::input_type ) > make_filter_f
         if( s[0].empty() ) { COMMA_THROW( comma::exception, "linear-combination: expected coefficients got: \"" << comma::join( e, '=' ) << "\"" ); }
         std::vector< double > coefficients( s.size() );
         for( unsigned int j = 0; j < s.size(); ++j ) { coefficients[j] = boost::lexical_cast< double >( s[j] ); }
-        return boost::bind( &linear_combination_impl_, _1, coefficients );
+        return boost::bind( &ratio_impl_, _1, coefficients, boost::assign::list_of(1)(0)(0)(0)(0), true );
     }
     if( e[0] == "ratio" )
     {
@@ -2193,7 +2205,7 @@ static boost::function< filter::input_type( filter::input_type ) > make_filter_f
         for( size_t j = 0; j < r.numerator.terms.size(); ++j ) { numerator[j] = r.numerator.terms[j].value; }
         std::vector< double > denominator( r.denominator.terms.size() );
         for( size_t j = 0; j < r.denominator.terms.size(); ++j ) { denominator[j] = r.denominator.terms[j].value; }
-        return boost::bind( &ratio_impl_, _1, numerator, denominator );
+        return boost::bind( &ratio_impl_, _1, numerator, denominator, false );
     }
     if( e[0] == "overlay" )
     {
