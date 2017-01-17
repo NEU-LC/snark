@@ -1512,7 +1512,7 @@ static filters::value_type ratio_impl_( const filters::value_type m, std::vector
         case CV_32F: return per_element_ratio< CV_32F >( m, numerator, denominator );
         case CV_64F: return per_element_ratio< CV_64F >( m, numerator, denominator );
     }
-    COMMA_THROW( comma::exception, "ratio: unrecognised image type " << m.second.type() );
+    COMMA_THROW( comma::exception, ( linear_combination_style ? "linear-combination" : "ratio" ) << ": unrecognised image type " << m.second.type() );
 }
 
 static double max_value(int depth)
