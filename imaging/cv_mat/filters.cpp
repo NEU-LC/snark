@@ -1416,6 +1416,7 @@ static void ratio( const tbb::blocked_range< std::size_t >& r, const cv::Mat& m,
                 n += *in * numerator[k + 1];
                 d += *in++ * denominator[k + 1];
             }
+            // TODO: do not divide by zero
             double value = n / d;
             *out++ = value > highest ? highest : value < lowest ? lowest : value;
         }
