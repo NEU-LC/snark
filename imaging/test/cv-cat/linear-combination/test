@@ -1,0 +1,107 @@
+#!/bin/bash
+
+scriptname=$( basename "$0" )
+
+source $( which comma-application-util ) || { echo "$scriptname: cannot source 'comma-application-util'" >&2; exit 1 ; }
+comma_path_value_to_var --prefix=input
+
+combinations=()
+i=0
+while true ; do
+    vname="input_combination_$i"
+    eval input_combination=\$$vname
+    [[ -n "$input_combination" ]] || break
+    combinations+=( "$input_combination" )
+    (( ++i ))
+done
+for n in ${!combinations[@]} ; do
+    echo "combination[$n]/expr=\"${combinations[$n]}\""
+done
+
+output_dir="output"
+mkdir -p "$output_dir" || { echo "$scriptname: cannot create directory '$output_dir'" >&2; exit 1 ; }
+
+function generate()
+{
+    local nx=$1
+    local ny=$2
+    local t=$3
+    python -c "
+import math
+
+def generate( nx, ny, t, r, g, b ):
+    dy = 1. / float(ny)
+    for ix in range( nx ):
+        for iy in range( ny ):
+            print '%s,%d,%d,%d,%d,%d' % ( t, ix, iy, r, g, b )
+
+if __name__ == '__main__':
+    generate($nx, $ny, '$t', $red, $green, $blue)
+"
+}
+export -f generate
+declare -r generate
+
+function csv_to_path_value()
+{
+    local image=$1
+    local what=$2
+    cat "$image" \
+        | csv-shuffle --fields="time,x,y,r,g,b" --output-fields="x,y,r,g,b" \
+        | name-value-from-csv "x,y,channel[0],channel[1],channel[2]" --indices=x,y \
+        | sed "s@^@$what/@" \
+        | sed 's@"@@g'
+    comma_status_ok
+}
+export -f csv_to_path_value
+declare -r csv_to_path_value
+
+nx=64
+ny=48
+timestamp="20161206T160000"
+echo "nx=$nx"
+echo "ny=$ny"
+echo "timestamp=\"$timestamp\""
+
+image_png="$output_dir/image.png"
+image_csv="$output_dir/image.csv"
+
+export red=50
+export green=25
+export blue=10
+declare -r red green blue
+echo "red=$red"
+echo "green=$green"
+echo "blue=$blue"
+
+fields="t,x,y,b,g,r"
+otype="3ub"
+
+generate $nx $ny $timestamp \
+    | image-from-csv --fields=$fields --output="rows=$ny;cols=$nx;type=$otype" \
+    | cv-cat --output no-header "encode=png" > "$image_png"
+comma_status_ok || { echo "$scriptname: pipeline to create '$image_png' failed" >&2; exit 1 ; }
+
+cv-cat --file "$image_png" \
+    | image-to-csv > "$image_csv"
+comma_status_ok || { echo "$scriptname: pipeline to create '$image_csv' failed" >&2; exit 1 ; }
+
+for k in "${!combinations[@]}" ; do
+    combination=${combinations[$k]}
+    odir="$output_dir/$k"
+    mkdir -p "$odir" || { echo "$scriptname: cannot create directory '$odir'" >&2; exit 1 ; }
+
+    generate $nx $ny $timestamp \
+        | image-from-csv --fields=$fields --output="rows=$ny;cols=$nx;type=$otype" \
+        | ( cd "$odir"; cv-cat "linear-combination=${combination};file=png;null" )
+    comma_status_ok || { echo "$scriptname: pipeline to create '$odir/$timestamp.png' failed" >&2; exit 1 ; }
+    [[ -f "$odir/$timestamp.png" ]] || { echo "$scriptname: file '$odir/$timestamp.png' not found" >&2; exit 1; }
+
+    cv-cat --file "$odir/$timestamp.png" \
+        | image-to-csv > "$odir/$timestamp.csv"
+    comma_status_ok || { echo "$scriptname: pipeline to create '$odir/$timestamp.csv' failed" >&2; exit 1 ; }
+    [[ -f "$odir/$timestamp.csv" ]] || { echo "$scriptname: file '$odir/$timestamp.csv' not found" >&2; exit 1; }
+
+    opath=$( printf "combination[%d]" $k )
+    csv_to_path_value "$odir/$timestamp.csv" "$opath" || { echo "$scriptname: conversion of '$odir/$timestamp.csv' to path-value failed" >&2; exit 1 ; }
+done

@@ -1,0 +1,14 @@
+#python
+
+r = red
+g = green
+b = blue
+
+# note: check is manual, use the same coefficients in the input file
+#
+# all other elements are the same, check only one
+value = red + 2*green + 3*blue
+expect value == combination[0]/x[0]/y[0]/channel[0]
+
+value = red + 2*green + 3*blue + 4
+expect value == combination[1]/x[0]/y[0]/channel[0]
