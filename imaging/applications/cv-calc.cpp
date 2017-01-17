@@ -44,9 +44,9 @@ static void usage( bool verbose=false )
     std::cerr << "    --input=<options>; default values for image header; e.g. --input=\"rows=1000;cols=500;type=ub\"" << std::endl;
     std::cerr << "    --input-fields; output header fields and exit" << std::endl;
     std::cerr << "    --input-format; output header format and exit" << std::endl;
-//     std::cerr << std::endl;
-//     std::cerr << "  roi" << std::endl;
-//     std::cerr << "    --no-partial; if specified, roi region that are partialy outside of the image are also set to 0." << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "  roi" << std::endl;
+    std::cerr << "    --show-partial; by default no partial roi is shown in image. Use option to change behaviour." << std::endl;
     std::cerr << std::endl;
     std::cerr << "examples" << std::endl;
     std::cerr << "  roi" << std::endl;
@@ -130,7 +130,7 @@ int main( int ac, char** av )
     
     verbose = options.exists("--verbose,-v");
     
-    std::vector< std::string > ops = options.unnamed("-h,--help,-v,--verbose,--flush,--input-fields,--input-format,--output-fields,--output-format,--no-partial", "--fields,--binary,--input");
+    std::vector< std::string > ops = options.unnamed("-h,--help,-v,--verbose,--flush,--input-fields,--input-format,--output-fields,--output-format,--show-partial", "--fields,--binary,--input");
     if( ops.empty() ) { std::cerr << name << "please specify an operation." << std::endl; usage(false);  }
     if( ops.size() > 1 ) { std::cerr << name << "please specify only one operation." << std::endl; usage(false); }
     std::string operation = ops.front();
@@ -153,9 +153,10 @@ int main( int ac, char** av )
         
         comma::csv::binary< extents_t > binary( csv );
         bool flush = options.exists("--flush");
-//         bool no_partial = options.exists("--no-partial");
+        bool show_partial = options.exists("--show-partial");
         
-//         typedef comma::math::closed_interval<int> interval_t;
+        if( verbose ) { std::cerr << name << "show partial: " << show_partial << std::endl; }
+        
         extents_t ext;
         cv::Mat mask;
         comma::uint64 count = 0;
@@ -181,6 +182,23 @@ int main( int ac, char** av )
                 mask = cv::Mat::ones(mat.rows, mat.cols, CV_8U); // all ones, must be CV_U8 for setTo
             }
             
+            // roi not in image at all
+            if( ext.max.x < 0 || ext.min.x >= mat.cols || ext.max.y < 0 || ext.min.y >= mat.rows )
+            {
+                mat.setTo( cv::Scalar(0), mask );
+                serialization.write(std::cout, p, flush );
+                continue;
+            }
+            
+            // Clip roi to fit in the image
+            if( show_partial )
+            {
+                if( ext.min.x < 0 ) { ext.min.x = 0; }
+                if( ext.max.x >= mat.cols ) { ext.max.x = mat.cols-1; }
+                if( ext.min.y < 0 ) { ext.min.y = 0; }
+                if( ext.max.y >= mat.rows ) { ext.max.y = mat.rows-1; }
+            }
+            
             int width = ext.max.x - ext.min.x;
             int height = ext.max.y - ext.min.y;
             // Mask to set anything not in the ROI to 0
@@ -188,7 +206,6 @@ int main( int ac, char** av )
                 std::cerr << name << "roi's width and height can not be negative. Failed on image/frame number: " << count 
                     << ", min: " << ext.min << ", max: " << ext.max << ", width: " << width << ", height: " << height << std::endl; return 1;
             }
-            
             
             bool used_mask = false;
             if( ext.min.x >= 0 && ext.min.y >=0 
