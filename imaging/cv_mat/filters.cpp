@@ -1483,8 +1483,13 @@ static filters::value_type ratio_impl_( const filters::value_type m, const std::
 {
     if( numerator.size() != denominator.size() )
         { COMMA_THROW( comma::exception, "ratio: the number of numerator " << numerator.size() << " and denominator " << denominator.size() << " coefficients differs" ); }
-    if( numerator.size() < static_cast< size_t >( m.second.channels() ) + 1 )
-        { COMMA_THROW( comma::exception, "ratio: the number of coefficients is not one off the number of channels; channels = " << m.second.channels() << ", coefficients = " << numerator.size() ); }
+    // the coefficients are always constant,r,g,b,a (some of the values can be zero); it is ok to have fewer channels than coefficients as long as all the unused coefficients are zero
+    for ( size_t n = static_cast< size_t >( m.second.channels() ) + 1 ; n < numerator.size(); ++n ) {
+        if ( numerator[n] != 0.0 || denominator[n] != 0.0 ) {
+            const std::string & what = numerator[n] != 0.0 ? "numerator" : "denominator";
+            COMMA_THROW( comma::exception, "ratio: have " << m.second.channels() << " channel(s) only, requested non-zero " << what << " coefficient for channel " << n - 1 );
+        }
+    }
     switch( m.second.depth() )
     {
         case CV_8U : return per_element_ratio< CV_8U  >( m, numerator, denominator );
