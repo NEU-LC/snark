@@ -642,8 +642,18 @@ static filters::value_type split_impl_( filters::value_type m )
 }
 
 class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex is non-copyable
-{    
-    private:
+{            
+    public:
+        log_impl_() {}
+
+        log_impl_( const std::string& filename ) : logger_( new logger( filename ) ) {}
+
+        log_impl_( const std::string& directory, boost::posix_time::time_duration period, bool index ) : logger_( new logger( directory, period, index ) ) {}
+
+        log_impl_( const std::string& directory, unsigned int size, bool index ) : logger_( new logger( directory, size, index ) ) {}
+
+        filters::value_type operator()( filters::value_type m ) { return logger_->operator()( m ); }
+        
         class logger
         {
             public:
@@ -677,7 +687,6 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
                     return m;
                 }
                 
-            private:
                 struct indexer
                 {
                     boost::posix_time::ptime t;
@@ -713,6 +722,7 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
                     }
                 };
                 
+            private:
                 boost::mutex mutex_;
                 std::string directory_;
                 boost::scoped_ptr< std::ofstream > ofstream_;
@@ -744,19 +754,9 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
                     index_.increment_file();
                 }
         };
-
-        boost::shared_ptr< logger > logger_; // todo: watch performance
         
-    public:
-        log_impl_() {}
-
-        log_impl_( const std::string& filename ) : logger_( new logger( filename ) ) {}
-
-        log_impl_( const std::string& directory, boost::posix_time::time_duration period, bool index ) : logger_( new logger( directory, period, index ) ) {}
-
-        log_impl_( const std::string& directory, unsigned int size, bool index ) : logger_( new logger( directory, size, index ) ) {}
-
-        filters::value_type operator()( filters::value_type m ) { return logger_->operator()( m ); }
+    private:
+        boost::shared_ptr< logger > logger_; // todo: watch performance
 };
 
 static filters::value_type merge_impl_( filters::value_type m, unsigned int nchannels )
