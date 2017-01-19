@@ -85,10 +85,10 @@ void dc1394::manage_strobe_at_stop()
 
 /// constructor
 /// @param config camera config
-dc1394::dc1394( const snark::camera::dc1394::config& config, const snark::camera::dc1394::strobe& strobe ):
-      m_config( config )
+dc1394::dc1394( const snark::camera::dc1394::config& c, const snark::camera::dc1394::strobe& s ):
+      m_config( c )
     , m_epoch( timing::epoch )
-    , m_strobe( strobe )
+    , m_strobe( s )
 {
     //memset( &m_output_frame, 0, sizeof( m_output_frame ) );
     //m_output_frame.color_coding = DC1394_COLOR_CODING_RGB8;

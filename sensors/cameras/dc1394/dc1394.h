@@ -115,7 +115,7 @@ public:
         else { COMMA_THROW( comma::exception, "expected strobe command to be \"on\", \"off\" or \"auto\", got " << s ); }
     }
 
-    dc1394( const config& config = config(), const strobe& strobe = strobe() );
+    dc1394( const config& c = config(), const strobe& s = strobe() );
     ~dc1394();
 
     const cv::Mat& read();
