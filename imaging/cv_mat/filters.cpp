@@ -888,10 +888,7 @@ static filters::value_type histogram_impl_( filters::value_type m )
     for( int r = 0; r < m.second.rows; ++r )
     {
         const unsigned char* p = m.second.ptr< unsigned char >( r );
-        for( int c = 0; c < m.second.cols; ++c )
-        {
-            for( unsigned int i = 0; i < channels.size(); ++channels[i][p[c]], ++i, ++p );
-        }
+        for( int c = 0; c < m.second.cols; ++c ) { for( unsigned int i = 0; i < channels.size(); ++channels[i][*p], ++i, ++p ); }
     }
     serialization::header h;
     h.timestamp = m.first;
@@ -2517,7 +2514,7 @@ static std::string usage_impl_()
     oss << "        rectangle,box=<x>,<y>,<x>,<y>[,<r>,<g>,<b>,<thickness>,<line_type>,<shift>]: draw rectangle; see cv::rectangle for details on parameters and defaults" << std::endl;
     oss << std::endl;
     oss << "    cv::Mat image operations:" << std::endl;
-    oss << "        histogram: calculate image histogram and output in binary format: t,3ui,256ui for ub images; t,3ui,256ui,256ui,256ui for 3ub images, etc" << std::endl;
+    oss << "        histogram: calculate image histogram and output in binary format: t,3ui,256ui for ub images; for 3ub images as b,g,r: t,3ui,256ui,256ui,256ui, etc" << std::endl;
     oss << "        simple-blob[=<parameters>]: wraps cv::SimpleBlobDetector, outputs as csv key points timestamped by image timestamp" << std::endl;
     oss << "            <parameters>" << std::endl;
     oss << "                output-binary: output key points as binary" << std::endl;
