@@ -29,12 +29,21 @@
 
 #pragma once
 
-#include <comma/csv/stream.h>
-#include <comma/math/compare.h>
-#include "../../../visiting/eigen.h"
+#include <string>
+#include <comma/application/command_line_options.h>
 
-namespace snark { namespace points_calc {
+namespace snark { namespace points_calc { namespace projection { namespace onto_plane {
 
+std::string input_fields();
 
+std::string input_format();
     
-} } // namespace snark { namespace points_calc {
+std::string output_fields();
+
+std::string output_format();
+
+std::string usage();
+    
+int run( const comma::command_line_options& options );
+
+} } } } // namespace snark { namespace points_calc { namespace projection { namespace onto_plane {

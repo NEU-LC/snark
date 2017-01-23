@@ -42,7 +42,7 @@
 #include "../voxel_map.h"
 #include "../../visiting/eigen.h"
 #include "points-calc/plane_intersection.h"
-#include "points-calc/project.h"
+#include "points-calc/projection.h"
 #include "points-calc/vector_calc.h"
 
 static comma::csv::options csv;
