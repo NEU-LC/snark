@@ -79,12 +79,17 @@ serialization::serialization( const serialization::options& options )
     if( options.no_header && options.header_only ) { COMMA_THROW( comma::exception, "cannot have no-header and header-only at the same time" ); }
     std::string fields = options.fields.empty() ? std::string( "t,rows,cols,type" ) : options.fields;
     std::vector< std::string > v = comma::split( fields, "," );
+    
     comma::csv::format format;
-    for( unsigned int i = 0; i < v.size(); ++i )
+    if( options.format.elements().empty() )
     {
-        if( v[i] == "t" ) { format += "t"; }
-        else { format += "ui"; }
+        for( unsigned int i = 0; i < v.size(); ++i )
+        {
+            if( v[i] == "t" ) { format += "t"; }
+            else { format += "ui"; }
+        }
     }
+    else { format = options.format; } 
     m_buffer.resize( format.size() );
     m_headerOnly = options.header_only;
     m_header = options.get_header();
