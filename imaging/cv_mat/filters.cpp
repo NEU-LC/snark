@@ -66,7 +66,7 @@
 #include "../../timing/timestamped.h"
 #include "../../timing/traits.h"
 #include "filters.h"
-#include "ratio.h"
+#include "detail/ratio.h"
 #include "serialization.h"
 #include "traits.h"
 #include "depth_traits.h"
