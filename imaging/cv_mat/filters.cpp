@@ -2478,7 +2478,7 @@ static std::string usage_impl_()
     oss << "                          of columns 12-34 (i.e., 12 + 23 - 1), 50-79, 45-104 (overlap is OK), and 100 (default width is 1) from the original image" << std::endl;
     oss << "                      \"bands-to-cols=12,23|50,30|45,60|100|method:sum|output-depth:d\"; same bands but output an image of 4 columns containing the sum" << std::endl;
     oss << "                          of the columns data from the original image; use CV_64F depth (double) as the output format" << std::endl;
-    oss << "        bands-to-rows=x,[w[,x,w]][|method:<method-name>|output-depth:<depth>]; same as bands-to-cols but operate on rows of input instead of columns" << std::endl;
+    oss << "        bands-to-rows=x,[w[|x,w]][|method:<method-name>|output-depth:<depth>]; same as bands-to-cols but operate on rows of input instead of columns" << std::endl;
     oss << std::endl;
     oss << "        channels-to-cols; opposite to cols-to-channels; unwrap all channels as columns" << std::endl;
     oss << "            example: \"channels-to-cols\" over a 3-channel image: RGB channels of column 0 become columns 0 (single-channel), 1, and 2, RGB channels" << std::endl;
