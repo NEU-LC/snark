@@ -34,16 +34,38 @@
 
 namespace snark { namespace points_calc { namespace projection { namespace onto_plane {
 
-std::string input_fields();
+struct traits
+{
+    static std::string input_fields();
 
-std::string input_format();
-    
-std::string output_fields();
+    static std::string input_format();
+        
+    static std::string output_fields();
 
-std::string output_format();
+    static std::string output_format();
 
-std::string usage();
-    
-int run( const comma::command_line_options& options );
+    static std::string usage();
+        
+    static int run( const comma::command_line_options& options );
+};
 
 } } } } // namespace snark { namespace points_calc { namespace projection { namespace onto_plane {
+
+namespace snark { namespace points_calc { namespace projection { namespace onto_line {
+
+struct traits
+{
+    static std::string input_fields();
+
+    static std::string input_format();
+        
+    static std::string output_fields();
+
+    static std::string output_format();
+
+    static std::string usage();
+        
+    static int run( const comma::command_line_options& options );
+};
+
+} } } } // namespace snark { namespace points_calc { namespace projection { namespace onto_line {
