@@ -117,7 +117,7 @@ int main( int argc, char** argv )
         boost::program_options::options_description description( "options" );
         std::string help_command;
         description.add_options()
-            ( "help,h", boost::program_options::value< std::string >( &help_command )->default_value( "" )->implicit_value( "" ), "display help message; if '--help command' is specified, focus on the 'command'-specific help" )
+            ( "help,h", boost::program_options::value< std::string >( &help_command )->implicit_value( "" ), "display help message; if '--help command' is specified, focus on the 'command'-specific help" )
             ( "verbose,v", "more output; --help --verbose: more help" )
             ( "discard,d", "discard frames, if cannot keep up; same as --buffer=1" )
             ( "camera", "use first available opencv-supported camera" )
