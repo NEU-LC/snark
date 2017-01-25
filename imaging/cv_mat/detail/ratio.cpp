@@ -172,7 +172,7 @@ namespace ratios
     {
         std::ostringstream o; 
         std::string w( offset, ' ' );
-        o << w << "input syntax for the ratio operation:" << std::endl;
+        o << w << "input syntax for the ratio and linear-combination operations:" << std::endl;
         w = std::string( offset + 4, ' ' );
         o << w << "the input string specifies a ratio of linear combinations of signal channels in algebraic form\n";
         o << w << "\n";
@@ -212,6 +212,10 @@ namespace ratios
         o << w << "    order of channel terms does not matter\n";
         o << w << "        1 + r - g + b                -->  1,1,-1,1,0 / 1,0,0,0,0\n";
         o << w << "        b - g + 1 + r                -->  1,1,-1,1,0 / 1,0,0,0,0\n";
+        o << w << "\n";
+        o << w << "for the linear-combination operation, only the numerator part is expected without brackets\n";
+        o << w << "examples (outputs are shown after --> arrows as ratios of comma-separated lists of coefficients)\n";
+        o << w << "    -r +2g - b                       -->  0,-1,2,-1,0\n";
         return o.str();
     }
 

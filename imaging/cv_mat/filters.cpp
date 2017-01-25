@@ -1428,27 +1428,15 @@ static filters::value_type per_element_ratio( const filters::value_type m, const
     return filters::value_type( m.first, result );
 }
 
-static filters::value_type ratio_impl_( const filters::value_type m, std::vector< double >& numerator, const std::vector< double >& denominator, bool linear_combination_style = false )
+static filters::value_type ratio_impl_( const filters::value_type m, const std::vector< double >& numerator, const std::vector< double >& denominator, const std::string & opname )
 {
-    if ( linear_combination_style ) {
-        if ( numerator.size() > static_cast< size_t >( m.second.channels() ) ) {
-            double constant = numerator.back();
-            numerator.pop_back();
-            numerator.insert( numerator.begin(), constant );
-        } else if ( numerator.size() == static_cast< size_t >( m.second.channels() ) ) {
-            numerator.insert( numerator.begin(), 0.0 );
-        } else {
-            COMMA_THROW( comma::exception, "linear-combination: the number of coefficients does not match the number of channels; channels " << m.second.channels() << ", coefficients " << numerator.size() );
-        }
-        while ( numerator.size() < ratios::ratio::num_channels() ) { numerator.push_back( 0.0 ); }
-    }
     if( numerator.size() != denominator.size() )
-        { COMMA_THROW( comma::exception, "ratio: the number of numerator " << numerator.size() << " and denominator " << denominator.size() << " coefficients differs" ); }
+        { COMMA_THROW( comma::exception, opname << ": the number of numerator " << numerator.size() << " and denominator " << denominator.size() << " coefficients differs" ); }
     // the coefficients are always constant,r,g,b,a (some of the values can be zero); it is ok to have fewer channels than coefficients as long as all the unused coefficients are zero
     for ( size_t n = static_cast< size_t >( m.second.channels() ) + 1 ; n < numerator.size(); ++n ) {
         if ( numerator[n] != 0.0 || denominator[n] != 0.0 ) {
             const std::string & what = numerator[n] != 0.0 ? "numerator" : "denominator";
-            COMMA_THROW( comma::exception, "ratio: have " << m.second.channels() << " channel(s) only, requested non-zero " << what << " coefficient for channel " << n - 1 );
+            COMMA_THROW( comma::exception, opname << ": have " << m.second.channels() << " channel(s) only, requested non-zero " << what << " coefficient for channel " << n - 1 );
         }
     }
     switch( m.second.depth() )
@@ -1461,7 +1449,7 @@ static filters::value_type ratio_impl_( const filters::value_type m, std::vector
         case CV_32F: return per_element_ratio< CV_32F >( m, numerator, denominator );
         case CV_64F: return per_element_ratio< CV_64F >( m, numerator, denominator );
     }
-    COMMA_THROW( comma::exception, ( linear_combination_style ? "linear-combination" : "ratio" ) << ": unrecognised image type " << m.second.type() );
+    COMMA_THROW( comma::exception, opname << ": unrecognised image type " << m.second.type() );
 }
 
 static double max_value(int depth)
@@ -2131,15 +2119,7 @@ static boost::function< filter::input_type( filter::input_type ) > make_filter_f
         threshold_t::types type = threshold_t::from_string( s.size() < 3 ? "" : s[2] );
         return boost::bind( &threshold_impl_, _1, threshold, maxval, type, otsu );
     }
-    if( e[0] == "linear-combination" )
-    {
-        const std::vector< std::string >& s = comma::split( e[1], ',' );
-        if( s[0].empty() ) { COMMA_THROW( comma::exception, "linear-combination: expected coefficients got: \"" << comma::join( e, '=' ) << "\"" ); }
-        std::vector< double > coefficients( s.size() );
-        for( unsigned int j = 0; j < s.size(); ++j ) { coefficients[j] = boost::lexical_cast< double >( s[j] ); }
-        return boost::bind( &ratio_impl_, _1, coefficients, boost::assign::list_of(1)(0)(0)(0)(0), true );
-    }
-    if( e[0] == "ratio" )
+    if( e[0] == "linear-combination" || e[0] == "ratio" )
     {
         typedef std::string::const_iterator iterator_type;
         ratios::rules< iterator_type > rules;
@@ -2148,13 +2128,13 @@ static boost::function< filter::input_type( filter::input_type ) > make_filter_f
         iterator_type begin = e[1].begin();
         iterator_type end = e[1].end();
         bool status = phrase_parse( begin, end, parser, boost::spirit::ascii::space, r );
-        if ( !status || ( begin != end ) )
-            { COMMA_THROW( comma::exception, "ratio: expected the ratio expression, got: \"" << comma::join( e, '=' ) << "\"" ); }
+        if ( !status || ( begin != end ) ) { COMMA_THROW( comma::exception, e[0] << ": expected a " << e[0] << " expression, got: \"" << comma::join( e, '=' ) << "\"" ); }
+        if ( e[0] == "linear-combination" && !r.denominator.unity() ) { COMMA_THROW( comma::exception, e[0] << ": expected a linear combination expression, got a ratio" ); }
         std::vector< double > numerator( r.numerator.terms.size() );
         for( size_t j = 0; j < r.numerator.terms.size(); ++j ) { numerator[j] = r.numerator.terms[j].value; }
         std::vector< double > denominator( r.denominator.terms.size() );
         for( size_t j = 0; j < r.denominator.terms.size(); ++j ) { denominator[j] = r.denominator.terms[j].value; }
-        return boost::bind( &ratio_impl_, _1, numerator, denominator, false );
+        return boost::bind( &ratio_impl_, _1, numerator, denominator, e[0] );
     }
     if( e[0] == "overlay" )
     {
@@ -2507,14 +2487,15 @@ static std::string usage_impl_()
     oss << std::endl;
     oss << "    operations combining the data of multiple channels:" << std::endl;
     oss << "        ratio=(<a1>r + <a2>g + ... + <ac>)/(<b1>r + <b2>g + ... + <bc>): output grey-scale image that is a ratio of linear combinations of input channels" << std::endl;
-    oss << "            with given coefficients and offsets; see below for examples, use '--help filters::ratio' for a detailed explanation of the ratio syntax" << std::endl;
+    oss << "            with given coefficients and offsets; see below for examples, use '--help filters::ratio' for the detailed explanation of the syntax and examples" << std::endl;
     oss << "            the naming convention does not depend on the actual image channels: 'r' in the ratio expression is always interpreted as channel[0]," << std::endl;
     oss << "            'g' as channel[1], etc.; in particular, grey-scaled images have a single channel that shall be referred to as 'r', e.g., ratio=r / ( r + 1 )" << std::endl;
     oss << "            examples: \"ratio=( r + g + b ) / ( 1 + a )\"; output a grey-scale image equal to the sum of the first 3 channels" << std::endl;
     oss << "                          divided by the offset 4th channel" << std::endl;
     oss << "                      \"ratio=( r - b ) / ( r + b )\"; output normalized difference of channels 'r' and 'g'" << std::endl;
-    oss << "        linear-combination=<k1>,<k2>,<k3>,...[<c>]: output grey-scale image that is linear combination of input channels with given coefficients and optional offset" << std::endl;
-    oss << "            example: \"linear-combination=-1,2,-1\"; same as \"ratio=-r+2g-b\", highlights the green channel" << std::endl;
+    oss << "        linear-combination=<a1>r + <a2>g + ... + <ac>: output grey-scale image that is linear combination of input channels with given coefficients and optional offset" << std::endl;
+    oss << "            example: \"linear-combination=-r+2g-b\", highlights the green channel" << std::endl;
+    oss << "            naming conventions are the same as for the ratio operation; use '--help filters::linear-combination' for more examples and a detailed syntax explanation" << std::endl;
     oss << std::endl;
     oss << "    basic drawing on images" << std::endl;
     oss << "        cross[=<x>,<y>]: draw cross-hair at x,y; default: at image center" << std::endl;
@@ -2546,7 +2527,7 @@ const std::string& filters::usage( const std::string & operation )
     }
     else
     {
-        if ( operation == "ratio" )
+        if ( operation == "ratio" || operation == "linear-combination" )
         {
             static const std::string s = snark::cv_mat::ratios::ratio::describe_syntax();
             return s;
