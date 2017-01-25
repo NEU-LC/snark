@@ -2528,16 +2528,29 @@ static std::string usage_impl_()
     oss << "                                     if not present, defaults will be used" << std::endl;
     oss << std::endl;
     oss << snark::imaging::vegetation::filters::usage() << std::endl;
-    oss << std::endl;
-    oss << "    input syntax for the ratio operation:" << std::endl;
-    snark::cv_mat::ratios::ratio::describe_syntax( oss, 8 );
     return oss.str();
 }
 
-const std::string& filters::usage()
+const std::string& filters::usage( const std::string & operation )
 {
-    static const std::string s = usage_impl_();
-    return s;
+    if ( operation.empty() )
+    {
+        static const std::string s = usage_impl_();
+        return s;
+    }
+    else
+    {
+        if ( operation == "ratio" )
+        {
+            static const std::string s = snark::cv_mat::ratios::ratio::describe_syntax();
+            return s;
+        }
+        else
+        {
+            static std::string s = "filters: no specific help is available for the '" + operation + "' operation";
+            return s;
+        }
+    }
 }
 
 } } // namespace snark{ namespace cv_mat {

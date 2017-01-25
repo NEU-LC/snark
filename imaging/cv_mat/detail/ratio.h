@@ -115,7 +115,7 @@ namespace ratios
         // pretty-printer
         std::string stringify( ) const;
 
-        static std::ostream & describe_syntax( std::ostream & o, size_t offset = 0 );
+        static std::string describe_syntax( size_t offset = 0 );
     };
 
     inline std::ostream & operator<<( std::ostream & o, const ratio & r )

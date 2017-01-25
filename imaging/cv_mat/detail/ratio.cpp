@@ -168,9 +168,12 @@ namespace ratios
         return rv;
     }
 
-    std::ostream & ratio::describe_syntax( std::ostream & o, size_t offset )
+    std::string ratio::describe_syntax( size_t offset )
     {
+        std::ostringstream o; 
         std::string w( offset, ' ' );
+        o << w << "input syntax for the ratio operation:" << std::endl;
+        w = std::string( offset + 4, ' ' );
         o << w << "the input string specifies a ratio of linear combinations of signal channels in algebraic form\n";
         o << w << "\n";
         o << w << "one of the following notations can be used:\n";
@@ -209,7 +212,7 @@ namespace ratios
         o << w << "    order of channel terms does not matter\n";
         o << w << "        1 + r - g + b                -->  1,1,-1,1,0 / 1,0,0,0,0\n";
         o << w << "        b - g + 1 + r                -->  1,1,-1,1,0 / 1,0,0,0,0\n";
-        return o;
+        return o.str();
     }
 
     // explicit instantiations
