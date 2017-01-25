@@ -27,7 +27,7 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "ratio.h"
+#include "ratio-impl.h"
 
 #include <comma/base/exception.h>
 
@@ -211,6 +211,10 @@ namespace ratios
         o << w << "        b - g + 1 + r                -->  1,1,-1,1,0 / 1,0,0,0,0\n";
         return o;
     }
+
+    // explicit instantiations
+    template class rules< std::string::const_iterator >;
+    template class rules< std::string::iterator >;
 
 } // namespace ratios
 
