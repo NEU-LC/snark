@@ -140,6 +140,7 @@ int main( int argc, char** argv )
         if ( vm.count( "help" ) )
         {
             std::string command = vm[ "help" ].as< std::string >();
+            if ( ! command.empty() ) { std::cerr << snark::cv_mat::command_specific_help( "cv-cat", command ) << std::endl; return 0; }
             std::cerr << "acquire images using opencv, apply filters and output with header" << std::endl;
             if( !vm.count( "verbose" ) ) { std::cerr << "see --help --verbose for filters usage" << std::endl; }
             std::cerr << std::endl;

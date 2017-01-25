@@ -2441,7 +2441,7 @@ static std::string usage_impl_()
     oss << "        null: same as linux /dev/null (since windows does not have it)" << std::endl;
     oss << "        overlay=<image_file>[,x,y]: overlay image_file on top of current stream at optional x,y location; overlay image should have alpha channel" << std::endl;
     oss << "        ratio=(<a1>r + <a2>g + ... + <ac>)/(<b1>r + <b2>g + ... + <bc>): output grey-scale image that is a ratio of linear combinations of input channels" << std::endl;
-    oss << "            with given coefficients and offsets; see below for examples, use '--verbose --help ratio' for a detailed explanation of the ratio syntax" << std::endl;
+    oss << "            with given coefficients and offsets; see below for examples, use '--help filters::ratio' for a detailed explanation of the ratio syntax" << std::endl;
     oss << "            the naming convention does not depend on the actual image channels: 'r' in the ratio expression is always interpreted as channel[0]," << std::endl;
     oss << "            'g' as channel[1], etc.; in particular, grey-scaled images have a single channel that shall be referred to as 'r', e.g., ratio=r / ( r + 1 )" << std::endl;
     oss << "        resize=<factor>[,<interpolation>]; resize=<width>,<height>[,<interpolation>]" << std::endl;
