@@ -643,6 +643,7 @@ int main( int ac, char** av )
         if( operations.size() != 1 ) { std::cerr << "points-calc: expected one operation, got " << operations.size() << ": " << comma::join( operations, ' ' ) << std::endl; return 1; }
         const std::string& operation = operations[0];
         if( operation == "projection-onto-plane" ) { return run< snark::points_calc::projection::onto_plane::traits >( options ); }
+        if( operation == "projection-onto-line" ) { return run< snark::points_calc::projection::onto_line::traits >( options ); }
         if( vector_calc::has_operation( operation ) ) { vector_calc::process(operation, options, csv); return 0; }
         if( operation == "plane-intersection" ) { plane_intersection::process(options, csv); return 0; }
         if( operation == "distance" )

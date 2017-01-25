@@ -274,7 +274,8 @@ template < typename Line > static int run_impl( const comma::csv::options& csv, 
         projection::line line( p->line );
         const Eigen::Vector3d& n = line.vector.normalized();
         double dot = ( line.point - *p ).dot( n );
-        output o( line.point - n * dot, std::abs( dot ) );
+        const Eigen::Vector3d& intersection = line.point - n * dot;
+        output o( intersection, ( *p - intersection ).norm() );
         
         // todo: fill o.where
         
