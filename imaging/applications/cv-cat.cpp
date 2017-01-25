@@ -42,6 +42,7 @@
 #include <comma/name_value/parser.h>
 #include <comma/application/verbose.h>
 #include "../cv_mat/pipeline.h"
+#include "../cv_mat/detail/help.h"
 
 typedef std::pair< boost::posix_time::ptime, cv::Mat > pair;
 using snark::tbb::bursty_reader;
@@ -114,8 +115,9 @@ int main( int argc, char** argv )
         unsigned int number_of_threads = 0;
         unsigned int number_of_frames_to_skip = 0;
         boost::program_options::options_description description( "options" );
+        std::string help_command;
         description.add_options()
-            ( "help,h", "display help message" )
+            ( "help,h", boost::program_options::value< std::string >( &help_command )->default_value( "" )->implicit_value( "" ), "display help message; if '--help command' is specified, focus on the 'command'-specific help" )
             ( "verbose,v", "more output; --help --verbose: more help" )
             ( "discard,d", "discard frames, if cannot keep up; same as --buffer=1" )
             ( "camera", "use first available opencv-supported camera" )
@@ -137,6 +139,7 @@ int main( int argc, char** argv )
         comma::verbose.init(vm.count( "verbose" ), argv[0]);
         if ( vm.count( "help" ) )
         {
+            std::string command = vm[ "help" ].as< std::string >();
             std::cerr << "acquire images using opencv, apply filters and output with header" << std::endl;
             if( !vm.count( "verbose" ) ) { std::cerr << "see --help --verbose for filters usage" << std::endl; }
             std::cerr << std::endl;
