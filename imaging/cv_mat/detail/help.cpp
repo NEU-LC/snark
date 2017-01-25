@@ -52,7 +52,10 @@ namespace snark{ namespace cv_mat {
     {
         std::vector< std::string > tokens;
         boost::split( tokens, command, boost::is_any_of(":"), boost::token_compress_on );
-        if ( tokens.size() != 2 ) { COMMA_THROW( comma::exception, "expected input for command-specific help in the form <domain>::<command>, got '" << command << "'" ); }
+        if ( tokens.size() == 1 ) { tokens.insert( tokens.begin(), "filters" ); }
+        if ( tokens.size() != 2 ) {
+            COMMA_THROW( comma::exception, "expected input for command-specific help in the form [<domain>::]<command> (default domain: filters), got '" << command << "'" );
+        }
         std::map< std::string, helper >::const_iterator hi = helpers.find( tokens[0] );
         if ( hi == helpers.end() ) { return application + ": no specific help available for '" + command + "'"; }
         return hi->second( tokens[1] );
