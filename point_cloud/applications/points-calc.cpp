@@ -42,7 +42,7 @@
 #include "../voxel_map.h"
 #include "../../visiting/eigen.h"
 #include "points-calc/plane_intersection.h"
-#include "points-calc/projection.h"
+#include "points-calc/project.h"
 #include "points-calc/vector_calc.h"
 
 static comma::csv::options csv;
@@ -78,7 +78,8 @@ static void usage( bool more = false )
     std::cerr << "    nearest-point,nearest-any" << std::endl;
     std::cerr << "    nearest" << std::endl;
     std::cerr << "    plane-intersection" << std::endl;
-    std::cerr << "    projection-onto-plane" << std::endl;
+    std::cerr << "    project-onto-line" << std::endl;
+    std::cerr << "    project-onto-plane" << std::endl;
     std::cerr << "    thin" << std::endl;
     vector_calc::usage_list_operations();
     std::cerr << std::endl;
@@ -177,7 +178,9 @@ static void usage( bool more = false )
     std::cerr << "        options:" << std::endl;
     std::cerr << "            --point,--to=<x>,<y>,<z>" << std::endl;
     std::cerr << std::endl;
-    std::cerr << snark::points_calc::projection::onto_plane::traits::usage() << std::endl;
+    std::cerr << snark::points_calc::project::onto_line::traits::usage() << std::endl;
+    std::cerr << std::endl;
+    std::cerr << snark::points_calc::project::onto_plane::traits::usage() << std::endl;
     std::cerr << std::endl;
     std::cerr << "    thin: read input data and thin them down by the given --resolution" << std::endl;
     std::cerr << std::endl;
@@ -642,8 +645,8 @@ int main( int ac, char** av )
         const std::vector< std::string >& operations = options.unnamed( "--verbose,-v,--trace,--no-antialiasing,--next,--unit,--output-full-record,--full-record,--full,--flush", "-.*" );
         if( operations.size() != 1 ) { std::cerr << "points-calc: expected one operation, got " << operations.size() << ": " << comma::join( operations, ' ' ) << std::endl; return 1; }
         const std::string& operation = operations[0];
-        if( operation == "projection-onto-plane" ) { return run< snark::points_calc::projection::onto_plane::traits >( options ); }
-        if( operation == "projection-onto-line" ) { return run< snark::points_calc::projection::onto_line::traits >( options ); }
+        if( operation == "project-onto-line" ) { return run< snark::points_calc::project::onto_line::traits >( options ); }
+        if( operation == "project-onto-plane" ) { return run< snark::points_calc::project::onto_plane::traits >( options ); }
         if( vector_calc::has_operation( operation ) ) { vector_calc::process(operation, options, csv); return 0; }
         if( operation == "plane-intersection" ) { plane_intersection::process(options, csv); return 0; }
         if( operation == "distance" )

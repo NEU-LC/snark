@@ -32,7 +32,7 @@
 #include <string>
 #include <comma/application/command_line_options.h>
 
-namespace snark { namespace points_calc { namespace projection { namespace onto_plane {
+namespace snark { namespace points_calc { namespace project { namespace onto_plane {
 
 struct traits
 {
@@ -49,9 +49,9 @@ struct traits
     static int run( const comma::command_line_options& options );
 };
 
-} } } } // namespace snark { namespace points_calc { namespace projection { namespace onto_plane {
+} } } } // namespace snark { namespace points_calc { namespace project { namespace onto_plane {
 
-namespace snark { namespace points_calc { namespace projection { namespace onto_line {
+namespace snark { namespace points_calc { namespace project { namespace onto_line {
 
 struct traits
 {
@@ -68,4 +68,4 @@ struct traits
     static int run( const comma::command_line_options& options );
 };
 
-} } } } // namespace snark { namespace points_calc { namespace projection { namespace onto_line {
+} } } } // namespace snark { namespace points_calc { namespace project { namespace onto_line {
