@@ -179,14 +179,12 @@ static void usage( bool more = false )
     std::cerr << "            --point,--to=<x>,<y>,<z>" << std::endl;
     std::cerr << std::endl;
     std::cerr << snark::points_calc::project::onto_line::traits::usage() << std::endl;
-    std::cerr << std::endl;
     std::cerr << snark::points_calc::project::onto_plane::traits::usage() << std::endl;
-    std::cerr << std::endl;
+    std::cerr << snark::points_calc::plane_intersection::traits::usage() << std::endl;
     std::cerr << "    thin: read input data and thin them down by the given --resolution" << std::endl;
     std::cerr << std::endl;
     std::cerr << "        input fields: " << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
     std::cerr << std::endl;
-    plane_intersection::usage();
     vector_calc::usage();
     exit( 0 );
 }
@@ -648,7 +646,7 @@ int main( int ac, char** av )
         if( operation == "project-onto-line" ) { return run< snark::points_calc::project::onto_line::traits >( options ); }
         if( operation == "project-onto-plane" ) { return run< snark::points_calc::project::onto_plane::traits >( options ); }
         if( vector_calc::has_operation( operation ) ) { vector_calc::process(operation, options, csv); return 0; }
-        if( operation == "plane-intersection" ) { plane_intersection::process(options, csv); return 0; }
+        if( operation == "plane-intersection" ) { snark::points_calc::plane_intersection::traits::process(options, csv); return 0; }
         if( operation == "distance" )
         {
             if( options.exists("--output-fields" )){ std::cout << "distance" << std::endl; return 0; }
