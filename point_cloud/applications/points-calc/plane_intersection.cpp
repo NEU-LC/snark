@@ -191,15 +191,15 @@ std::string traits::usage()
     std::ostringstream oss;
     oss
         << "    plane-intersection: read points and plane from stdin, output intersection of the ray with the plane" << std::endl
-        << "        input fields: " << comma::join( comma::csv::names<::plane_intersection::input_t>(true), ',' ) << std::endl
+        << "        input fields: " << comma::join( comma::csv::names< ::plane_intersection::input_t >(true), ',' ) << std::endl
         << "            first and second are two points on the line; the plane passes through the plane/point and is perpendicular to the direction vector plane/normal" << std::endl
         << std::endl;
     oss
         << "        options:" << std::endl
         << "            --discard-collinear: don't output records when line is in parallel with plane (when not sepcified it outputs <inf,inf,inf>)" << std::endl
-        << "            --plane=<" << comma::join( comma::csv::names<::plane_intersection::plane_t>(true), ',') <<  ">: default values for plane" << std::endl
-        << "                if --plane specified, default fields for input are: " << comma::join( comma::csv::names<::plane_intersection::line_t>(true), ',') <<  std::endl
-        << "            --line=<" << comma::join( comma::csv::names<::plane_intersection::line_t>(true), ',') <<  ">: default values for line" << std::endl
+        << "            --plane=<" << comma::join( comma::csv::names< ::plane_intersection::plane_t >(true), ',') <<  ">: default values for plane" << std::endl
+        << "                if --plane specified, default fields for input are: " << comma::join( comma::csv::names< ::plane_intersection::line_t >(true), ',') <<  std::endl
+        << "            --line=<" << comma::join( comma::csv::names< ::plane_intersection::line_t >(true), ',') <<  ">: default values for line" << std::endl
         << "            --input-fields: print default input field names" << std::endl
         << "            --output-fields: print output field names" << std::endl
         << "            --output-format: print output fields format" << std::endl
