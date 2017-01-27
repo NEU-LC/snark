@@ -31,6 +31,8 @@
 #include <comma/math/compare.h>
 #include "../../../visiting/eigen.h"
 #include "project.h"
+#include "traits.h"
+#include "types.h"
 
 namespace snark { namespace points_calc { namespace project {
 
@@ -59,10 +61,10 @@ namespace onto_plane {
     
 struct input : public Eigen::Vector3d
 {
-    project::plane plane;
+    points_calc::plane plane;
     
     input() : Eigen::Vector3d( Eigen::Vector3d::Zero() ) {}
-    input( const Eigen::Vector3d& v, const project::plane& p ) : Eigen::Vector3d( v ), plane( p ) {}
+    input( const Eigen::Vector3d& v, const points_calc::plane& p ) : Eigen::Vector3d( v ), plane( p ) {}
 };
 
 struct output : public Eigen::Vector3d
@@ -76,7 +78,7 @@ struct output : public Eigen::Vector3d
 
 namespace onto_line {
 
-template < typename Line = project::line > struct input : public Eigen::Vector3d
+template < typename Line = points_calc::line > struct input : public Eigen::Vector3d
 {
     Line line;
     
@@ -99,21 +101,6 @@ struct output : public Eigen::Vector3d
 
 namespace comma { namespace visiting {
 
-template <> struct traits< snark::points_calc::project::plane >
-{
-    template< typename K, typename V > static void visit( const K&, snark::points_calc::project::plane& t, V& v )
-    {
-        v.apply( "point", t.point );
-        v.apply( "normal", t.normal );
-    }
-    
-    template< typename K, typename V > static void visit( const K&, const snark::points_calc::project::plane& t, V& v )
-    {
-        v.apply( "point", t.point );
-        v.apply( "normal", t.normal );
-    }
-};
-
 template <> struct traits< snark::points_calc::project::onto_plane::input >
 {
     template< typename K, typename V > static void visit( const K& k, snark::points_calc::project::onto_plane::input& t, V& v )
@@ -135,21 +122,6 @@ template <> struct traits< snark::points_calc::project::onto_plane::output >
     {
         traits< Eigen::Vector3d >::visit( k, t, v );
         v.apply( "dot", t.dot );
-    }
-};
-
-template <> struct traits< snark::points_calc::project::line >
-{
-    template< typename K, typename V > static void visit( const K& k, snark::points_calc::project::line& t, V& v )
-    {
-        v.apply( "point", t.point );
-        v.apply( "vector", t.vector );
-    }
-    
-    template< typename K, typename V > static void visit( const K& k, const snark::points_calc::project::line& t, V& v )
-    {
-        v.apply( "point", t.point );
-        v.apply( "vector", t.vector );
     }
 };
 
@@ -215,7 +187,7 @@ int traits::run( const comma::command_line_options& options )
 {
     comma::csv::options csv( options );
     csv.full_xpath = true;
-    comma::csv::input_stream< input > istream( std::cin, csv, input( vector_( "--v", options ), plane( vector_( "--plane-point,--point", options ), vector_( "--plane-normal,--normal", options ) ) ) );
+    comma::csv::input_stream< input > istream( std::cin, csv, input( vector_( "--v", options ), points_calc::plane( vector_( "--plane-point,--point", options ), vector_( "--plane-normal,--normal", options ) ) ) );
     comma::csv::options output_csv;
     output_csv.full_xpath = true;
     if( csv.binary() ) { output_csv.format( output_format() ); }
@@ -236,9 +208,9 @@ int traits::run( const comma::command_line_options& options )
 
 namespace snark { namespace points_calc { namespace project { namespace onto_line {
 
-std::string traits::input_fields() { return comma::join( comma::csv::names< input< project::line > >( true ), ',' ); }
+std::string traits::input_fields() { return comma::join( comma::csv::names< input< points_calc::line > >( true ), ',' ); }
 
-std::string traits::input_format() { return comma::csv::format::value< input< project::line > >(); }
+std::string traits::input_format() { return comma::csv::format::value< input< points_calc::line > >(); }
     
 std::string traits::output_fields() { return comma::join( comma::csv::names< output >( true ), ',' ); }
 
@@ -254,8 +226,8 @@ std::string traits::usage()
         << "            --line-second,--second=<x,y,z>: second point of the line" << std::endl
         << "            --line-vector,--vector=<x,y,z>: vector parallel to line" << std::endl
         << "        input fields" << std::endl
-        << "            point,vector line definition (default): " << comma::join( comma::csv::names< input< project::line > >( true ), ',' ) << std::endl
-        << "            first,second point line definition: " << comma::join( comma::csv::names< input< project::line::pair > >( true ), ',' ) << std::endl
+        << "            point,vector line definition (default): " << comma::join( comma::csv::names< input< points_calc::line > >( true ), ',' ) << std::endl
+        << "            first,second point line definition: " << comma::join( comma::csv::names< input< points_calc::line::pair > >( true ), ',' ) << std::endl
         << "        where flag" << std::endl
         << "            -1: projection is before the first point defining the line (line/point)" << std::endl
         << "            0: projection is between first and second point defining the line" << std::endl
@@ -276,7 +248,7 @@ template < typename Line > static int run_impl( const comma::csv::options& csv, 
     {
         const input_t* p = istream.read();
         if( !p ) { break; }
-        project::line line( p->line );
+        points_calc::line line( p->line );
         const Eigen::Vector3d& n = line.vector.normalized();
         double dot = ( line.point - *p ).dot( n );
         const Eigen::Vector3d& intersection = line.point - n * dot;
@@ -299,12 +271,12 @@ int traits::run( const comma::command_line_options& options )
     const std::vector< std::string >& v = comma::split( csv.fields, ',' );
     bool as_pair = false;
     for( unsigned int i = 0; i < v.size() && !as_pair; ++i ) { as_pair =    v[i] == "line/first" || v[i] == "line/first/x" || v[i] == "line/first/y" || v[i] == "line/first/z" || v[i] == "line/second" || v[i] == "line/second/x" || v[i] == "line/second/y" || v[i] == "line/second/z"; }
-    project::line line;
+    points_calc::line line;
     line.point = vector_( "--line-point,--point,--line-first,--first", options );
     line.vector = options.exists( "--line-vector,--vector" ) ? vector_( "--line-vector,--vector", options ) : ( vector_( "--line-second,--second", options ) - line.point );
     input<> sample( vector_( "--v", options ), line );
-    if( as_pair ) { return run_impl< project::line::pair >( csv, input< project::line::pair >( sample, std::make_pair( sample.line.point, sample.line.point + sample.line.vector ) ) ); }
-    else { return run_impl< project::line >( csv, sample ); }
+    if( as_pair ) { return run_impl< points_calc::line::pair >( csv, input< points_calc::line::pair >( sample, std::make_pair( sample.line.point, sample.line.point + sample.line.vector ) ) ); }
+    else { return run_impl< points_calc::line >( csv, sample ); }
 }
 
 } } } } // namespace snark { namespace points_calc { namespace project { namespace onto_line {

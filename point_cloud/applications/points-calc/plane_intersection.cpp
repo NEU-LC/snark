@@ -203,15 +203,6 @@ std::string traits::usage()
         << "            --input-fields: print default input field names" << std::endl
         << "            --output-fields: print output field names" << std::endl
         << "            --output-format: print output fields format" << std::endl
-        << "        trajectory options" << std::endl
-        << "            --threshold=<distance>: any separation between contiguous points of trajectory greater than threshold will be treated as a gap in the" << std::endl
-        << "                                    trajectory (no intersections will lie in the gaps)" << std::endl
-        << "            --with-trajectory,--trajectory: input points are a trajectory; for each intersection with the trajectory, output the adjacent points" << std::endl
-        << "                                            between which intersection is, the intersection point, and the direction of intersection (-1,0,+1)," << std::endl
-        << "                                            where 0 indicates that both adjacent points are on the plane, +1 if the trajectory's direction is " << std::endl 
-        << "                                            the same as normal of the plane, and -1 otherwise" << std::endl
-        << "        fields: run points-calc plane-intersection --with-trajectory --input-fields" << std::endl
-        << "                block field: todo" << std::endl
         << std::endl;
     oss
         << "        example:" << std::endl
