@@ -308,6 +308,11 @@ static filters::value_type bands_to_cols_impl_( filters::value_type input, bool 
 {
     unsigned int w = input.second.cols;
     unsigned int h = input.second.rows;
+    static std::set< int > good_input_depths = boost::assign::list_of( CV_8U )( CV_16U )( CV_16S )( CV_32F )( CV_64F );
+    if ( good_input_depths.find( input.second.depth() ) == good_input_depths.end() )
+    {
+        COMMA_THROW( comma::exception, "depth of the " << type_as_string( input.second.type() ) << " image type is not supported by cv::reduce; consider 'convert-to' before processing" );
+    }
     unsigned int output_type = cv_reduce_dtype >= 0
                              ? CV_MAKETYPE( CV_MAT_DEPTH( cv_reduce_dtype ), input.second.channels() )
                              : input.second.type() ;
@@ -1751,7 +1756,7 @@ static boost::function< filter::input_type( filter::input_type ) > make_filter_f
                 {
                     static std::map< std::string, int > depths = boost::assign::map_list_of ( "CV_32S", CV_32S ) ( "i", CV_32S ) ( "CV_32F", CV_32F ) ( "f", CV_32F ) ( "CV_64F", CV_64F ) ( "d", CV_64F );
                     std::map< std::string, int >::const_iterator found = depths.find( setting[1] );
-                    if ( found == depths.end() ) { COMMA_THROW( comma::exception, op_name << ": the output-depth is not one of [i,f,d] or [CV_32S,CV_32F,CV_64F]" ); }
+                    if ( found == depths.end() ) { COMMA_THROW( comma::exception, op_name << ": the output-depth '" << setting[1] << "' is not one of [i,f,d] or [CV_32S,CV_32F,CV_64F]" ); }
                     cv_reduce_dtype = found->second;
                 }
                 else
