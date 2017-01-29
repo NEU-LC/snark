@@ -1,0 +1,54 @@
+#!/bin/bash
+
+scriptname=$( basename "$0" )
+
+source $( which comma-application-util ) || { echo "$scritpname: cannot source 'comma-application-util'" >&2 ; exit 1 ; }
+
+output_dir="output"
+mkdir -p "$output_dir" || { echo "$scriptname: cannot create '$output_dir' directory" >&2 ; exit 1 ; }
+
+infile="data/lena512color.tiff"
+[[ -s "$infile" ]] || { echo "$scriptname: input file '$infile' not found or empty" >&2 ; exit 1 ; }
+
+lena_csv="$output_dir/"$( basename "$infile" .tiff )".csv"
+timestamp="20170101T000000"
+cv-cat --file "$infile" \
+    | image-to-csv \
+    | csv-paste - "value=$timestamp" \
+    | csv-shuffle --fields=,x,y,r,g,b,t --output-fields=t,x,y,r,g,b > "$lena_csv"
+comma_status_ok || { echo "$scriptname: cannot create '$lena_csv'" >&2 ; exit 1; }
+
+cols=( 0 10 123 316 )
+otypes=( "3ub" "3w" "3f" "3d" )
+
+# manual averaging using csv-calc
+for column in ${cols[@]} ; do
+    cat "$lena_csv" \
+        | csv-select --fields=t,x,y,r,g,b "x;equals=$column" \
+        | csv-shuffle --fields=t,x,y,r,g,b --output-fields=r,g,b \
+        | csv-calc --fields=r,g,b --format=d,d,d mean \
+        | csv-paste "value=$column" - \
+        | name-value-from-csv "column,average/red,average/green,average/blue" --indices=column \
+        | sed 's@^@manual/@' \
+        | sed 's@"@@g'
+    comma_status_ok || { echo "$scriptname: direct calculation of $column column average failed" >&2 ; exit 1; }
+done
+
+for ktype in ${!otypes[@]} ; do
+    odepth=""
+    otype=${otypes[$ktype]}
+    [[ "$otype" == "3ub" ]] || { odepth="|output-depth:d"; }
+    for column in ${cols[@]} ; do
+        cv-cat --file "$infile" \
+            | cv-cat "convert-to=$otype" \
+            | cv-cat "bands-to-rows=0,512|method:average${odepth}" \
+            | image-to-csv \
+            | csv-select --fields=t,x,y,r,g,b "x;equals=$column" \
+            | csv-shuffle --fields=t,x,y,r,g,b --output-fields=r,g,b \
+            | csv-paste "value=$column,$ktype" - \
+            | name-value-from-csv "column,precision,average/red,average/green,average/blue" --indices=column,precision \
+            | sed 's@^@bulk/@' \
+            | sed 's@"@@g'
+        comma_status_ok || { echo "$scriptname: bands-to-rows calculation of $column column average in $otype precision failed" >&2 ; exit 1; }
+    done
+done
