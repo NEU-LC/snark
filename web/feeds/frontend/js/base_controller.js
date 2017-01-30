@@ -105,6 +105,7 @@ define('base_controller', ['jquery', "jquery_timeago",
         if (!current_config_file) {
             return;
         }
+        document.title = " Feeds - " + current_config_file.substr(current_config_file.indexOf("/") + 1);
         load_gui_config(current_config_file);
         load_layout(current_config_file);
 
