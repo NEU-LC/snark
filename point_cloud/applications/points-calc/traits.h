@@ -53,14 +53,14 @@ template <> struct traits< snark::points_calc::line >
 {
     template< typename K, typename V > static void visit( const K& k, snark::points_calc::line& t, V& v )
     {
-        v.apply( "point", t.point );
-        v.apply( "vector", t.vector );
+        v.apply( "origin", t.origin );
+        v.apply( "direction", t.direction );
     }
     
     template< typename K, typename V > static void visit( const K& k, const snark::points_calc::line& t, V& v )
     {
-        v.apply( "point", t.point );
-        v.apply( "vector", t.vector );
+        v.apply( "origin", t.origin );
+        v.apply( "direction", t.direction );
     }
 };
 

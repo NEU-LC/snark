@@ -35,23 +35,23 @@ namespace snark { namespace points_calc {
 
 struct plane
 {
-    Eigen::Vector3d point;
     Eigen::Vector3d normal;
+    Eigen::Vector3d point;
     
-    plane() : point( Eigen::Vector3d::Zero() ), normal( Eigen::Vector3d::Zero() ) {}
-    plane( const Eigen::Vector3d& point, const Eigen::Vector3d& normal ) : point( point ), normal( normal ) {}
+    plane() : normal( Eigen::Vector3d::Zero() ), point( Eigen::Vector3d::Zero() ) {}
+    plane( const Eigen::Vector3d& normal, const Eigen::Vector3d& point ) : normal( normal ), point( point ) {}
 };
 
 struct line
 {
     typedef std::pair< Eigen::Vector3d, Eigen::Vector3d > pair;
     
-    Eigen::Vector3d point;
-    Eigen::Vector3d vector;
+    Eigen::Vector3d origin;
+    Eigen::Vector3d direction;
     
-    line() : point( Eigen::Vector3d::Zero() ), vector( Eigen::Vector3d::Zero() ) {}
-    line( const Eigen::Vector3d& point, const Eigen::Vector3d& vector ) : point( point ), vector( vector ) {}
-    line( const pair& p ) : point( p.first ), vector( p.second - p.first ) {}
+    line() : origin( Eigen::Vector3d::Zero() ), direction( Eigen::Vector3d::Zero() ) {}
+    line( const Eigen::Vector3d& origin, const Eigen::Vector3d& direction ) : origin( origin ), direction( direction ) {}
+    line( const pair& p ) : origin( p.first ), direction( p.second - p.first ) {}
 };
 
 } } // namespace snark { namespace points_calc {

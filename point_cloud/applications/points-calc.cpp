@@ -42,6 +42,7 @@
 #include "../voxel_map.h"
 #include "../../visiting/eigen.h"
 #include "points-calc/plane_intersection.h"
+#include "points-calc/plane_intersection_with_trajectory.h"
 #include "points-calc/project.h"
 #include "points-calc/vector_calc.h"
 
@@ -78,6 +79,7 @@ static void usage( bool more = false )
     std::cerr << "    nearest-point,nearest-any" << std::endl;
     std::cerr << "    nearest" << std::endl;
     std::cerr << "    plane-intersection" << std::endl;
+    std::cerr << "    plane-intersection-with-trajectory" << std::endl;
     std::cerr << "    project-onto-line" << std::endl;
     std::cerr << "    project-onto-plane" << std::endl;
     std::cerr << "    thin" << std::endl;
@@ -181,6 +183,7 @@ static void usage( bool more = false )
     std::cerr << snark::points_calc::project::onto_line::traits::usage() << std::endl;
     std::cerr << snark::points_calc::project::onto_plane::traits::usage() << std::endl;
     std::cerr << snark::points_calc::plane_intersection::traits::usage() << std::endl;
+    std::cerr << snark::points_calc::plane_intersection_with_trajectory::traits::usage() << std::endl;
     std::cerr << "    thin: read input data and thin them down by the given --resolution" << std::endl;
     std::cerr << std::endl;
     std::cerr << "        input fields: " << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
@@ -645,6 +648,7 @@ int main( int ac, char** av )
         const std::string& operation = operations[0];
         if( operation == "project-onto-line" ) { return run< snark::points_calc::project::onto_line::traits >( options ); }
         if( operation == "project-onto-plane" ) { return run< snark::points_calc::project::onto_plane::traits >( options ); }
+        if( operation == "plane-intersection-with-trajectory" ) { return run< snark::points_calc::plane_intersection_with_trajectory::traits >( options ); }
         if( vector_calc::has_operation( operation ) ) { vector_calc::process(operation, options, csv); return 0; }
         if( operation == "plane-intersection" ) { snark::points_calc::plane_intersection::traits::process(options, csv); return 0; }
         if( operation == "distance" )

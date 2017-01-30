@@ -36,15 +36,6 @@
 
 namespace snark { namespace points_calc { namespace project {
 
-struct plane
-{
-    Eigen::Vector3d point;
-    Eigen::Vector3d normal;
-    
-    plane() : point( Eigen::Vector3d::Zero() ), normal( Eigen::Vector3d::Zero() ) {}
-    plane( const Eigen::Vector3d& point, const Eigen::Vector3d& normal ) : point( point ), normal( normal ) {}
-};
-
 struct line
 {
     typedef std::pair< Eigen::Vector3d, Eigen::Vector3d > pair;
@@ -63,7 +54,7 @@ struct input : public Eigen::Vector3d
 {
     points_calc::plane plane;
     
-    input() : Eigen::Vector3d( Eigen::Vector3d::Zero() ) {}
+    input() : Eigen::Vector3d( Eigen::Vector3d::Zero() ), plane( Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero() ) {}
     input( const Eigen::Vector3d& v, const points_calc::plane& p ) : Eigen::Vector3d( v ), plane( p ) {}
 };
 
@@ -187,7 +178,7 @@ int traits::run( const comma::command_line_options& options )
 {
     comma::csv::options csv( options );
     csv.full_xpath = true;
-    comma::csv::input_stream< input > istream( std::cin, csv, input( vector_( "--v", options ), points_calc::plane( vector_( "--plane-point,--point", options ), vector_( "--plane-normal,--normal", options ) ) ) );
+    comma::csv::input_stream< input > istream( std::cin, csv, input( vector_( "--v", options ), points_calc::plane( vector_( "--plane-normal,--normal", options ), vector_( "--plane-point,--point", options ) ) ) );
     comma::csv::options output_csv;
     output_csv.full_xpath = true;
     if( csv.binary() ) { output_csv.format( output_format() ); }
@@ -197,9 +188,8 @@ int traits::run( const comma::command_line_options& options )
     {
         const input* p = istream.read();
         if( !p ) { break; }
-        const Eigen::Vector3d& n = p->plane.normal.normalized();
-        double dot = ( *p - p->plane.point ).dot( n );
-        tied.append( output( *p - n * dot, dot ) );
+        const Eigen::Vector3d& projection = Eigen::Hyperplane< double, 3 >( p->plane.normal, p->plane.point ).projection( *p );
+        tied.append( output( projection, ( *p - projection ).dot( p->plane.normal.normalized() ) ) );
     }
     return 0;
 }
@@ -222,11 +212,11 @@ std::string traits::usage()
     oss << "    project-onto-line: output project of point onto line, distance to it, and flag indicating where projection is relative to the points defining line" << std::endl
         << "        options" << std::endl
         << "            --v=<x,y,z>: point to project" << std::endl
-        << "            --line-point,--point,--line-first,--first=<x,y,z>: first point on the line" << std::endl
+        << "            --line-origin,--origin,--line-point,--point,--line-first,--first=<x,y,z>: first point on the line" << std::endl
         << "            --line-second,--second=<x,y,z>: second point of the line" << std::endl
-        << "            --line-vector,--vector=<x,y,z>: vector parallel to line" << std::endl
+        << "            --line-direction,--direction,--line-vector,--vector=<x,y,z>: vector parallel to line" << std::endl
         << "        input fields" << std::endl
-        << "            point,vector line definition (default): " << comma::join( comma::csv::names< input< points_calc::line > >( true ), ',' ) << std::endl
+        << "            origin,direction line definition (default): " << comma::join( comma::csv::names< input< points_calc::line > >( true ), ',' ) << std::endl
         << "            first,second point line definition: " << comma::join( comma::csv::names< input< points_calc::line::pair > >( true ), ',' ) << std::endl
         << "        where flag" << std::endl
         << "            -1: projection is before the first point defining the line (line/point)" << std::endl
@@ -249,12 +239,12 @@ template < typename Line > static int run_impl( const comma::csv::options& csv, 
         const input_t* p = istream.read();
         if( !p ) { break; }
         points_calc::line line( p->line );
-        const Eigen::Vector3d& n = line.vector.normalized();
-        double dot = ( line.point - *p ).dot( n );
-        const Eigen::Vector3d& intersection = line.point - n * dot;
-        int where = comma::math::less( 0, ( line.point - intersection ).dot( line.vector ) )
+        const Eigen::Vector3d& n = line.direction.normalized();
+        double dot = ( line.origin - *p ).dot( n );
+        const Eigen::Vector3d& intersection = line.origin - n * dot;
+        int where = comma::math::less( 0, ( line.origin - intersection ).dot( line.direction ) )
                   ? output::before
-                  : comma::math::less( ( line.point + line.vector - intersection ).dot( line.vector ), 0 )
+                  : comma::math::less( ( line.origin + line.direction - intersection ).dot( line.direction ), 0 )
                   ? output::after
                   : output::inside;
         tied.append( output( intersection, ( *p - intersection ).norm(), where ) );
@@ -264,7 +254,7 @@ template < typename Line > static int run_impl( const comma::csv::options& csv, 
 
 int traits::run( const comma::command_line_options& options )
 {
-    options.assert_mutually_exclusive( "--line-second,--second", "--line-vector,--vector" );
+    options.assert_mutually_exclusive( "--line-second,--second", "--line-direction,--direction,--line-vector,--vector" );
     
     comma::csv::options csv( options );
     csv.full_xpath = true;
@@ -272,10 +262,10 @@ int traits::run( const comma::command_line_options& options )
     bool as_pair = false;
     for( unsigned int i = 0; i < v.size() && !as_pair; ++i ) { as_pair =    v[i] == "line/first" || v[i] == "line/first/x" || v[i] == "line/first/y" || v[i] == "line/first/z" || v[i] == "line/second" || v[i] == "line/second/x" || v[i] == "line/second/y" || v[i] == "line/second/z"; }
     points_calc::line line;
-    line.point = vector_( "--line-point,--point,--line-first,--first", options );
-    line.vector = options.exists( "--line-vector,--vector" ) ? vector_( "--line-vector,--vector", options ) : ( vector_( "--line-second,--second", options ) - line.point );
+    line.origin = vector_( "--line-point,--point,--line-origin,--origin,--line-first,--first", options );
+    line.direction = options.exists( "--line-direction,--direction,--line-vector,--vector" ) ? vector_( "--line-direction,--direction--line-vector,--vector", options ) : ( vector_( "--line-second,--second", options ) - line.origin );
     input<> sample( vector_( "--v", options ), line );
-    if( as_pair ) { return run_impl< points_calc::line::pair >( csv, input< points_calc::line::pair >( sample, std::make_pair( sample.line.point, sample.line.point + sample.line.vector ) ) ); }
+    if( as_pair ) { return run_impl< points_calc::line::pair >( csv, input< points_calc::line::pair >( sample, std::make_pair( sample.line.origin, sample.line.origin + sample.line.direction ) ) ); }
     else { return run_impl< points_calc::line >( csv, sample ); }
 }
 

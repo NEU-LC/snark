@@ -120,23 +120,51 @@ int traits::run( const comma::command_line_options& options )
 {
     comma::csv::options csv( options );
     csv.full_xpath = true;
-    comma::csv::input_stream< input > istream( std::cin, csv, input( vector_( "--v", options ), points_calc::plane( vector_( "--plane-point,--point", options ), vector_( "--plane-normal,--normal", options ) ) ) );
+    if( csv.fields.empty() ) { csv.fields = "x,y,z"; }
+    comma::csv::input_stream< input > istream( std::cin, csv, input( vector_( "--v", options ), points_calc::plane( vector_( "--plane-normal,--normal", options ), vector_( "--plane-point,--point", options ) ) ) );
     comma::csv::options output_csv;
     output_csv.full_xpath = true;
+    output_csv.delimiter = csv.delimiter;
     if( csv.binary() ) { output_csv.format( output_format() ); }
     comma::csv::output_stream< output > ostream( std::cout, output_csv );
+    boost::optional< double > threshold = options.optional< double >( "--threshold" );
     input last;
     std::string last_record;
     while( istream.ready() || std::cin.good() )
     {
         const input* p = istream.read();
         if( !p ) { break; }
-        const Eigen::Vector3d& n = p->plane.normal.normalized();
-        double dot = ( *p - p->plane.point ).dot( n );
-        
-        
-        // todo: output //tied.append( output( *p - n * dot, dot ) );
-        
+        if( last_record.empty() )
+        {
+            last = *p;
+            if( csv.binary() ) { last_record.resize( csv.format().size() ); ::memcpy( &last_record[0], istream.binary().last(), csv.format().size() ); }
+            else { last_record = comma::join( istream.ascii().last(), csv.delimiter ); }
+            continue;
+        }
+        if( last.block != p->block || ( threshold && ( *p - last ).norm() > *threshold ) ) { last = *p; continue; }
+        double dot = ( *p - p->plane.point ).dot( p->plane.normal );
+        double last_dot = ( last - p->plane.point ).dot( p->plane.normal );
+        if( dot * last_dot > 0 ) { continue; } // points on the same side of the plane
+        output o(   comma::math::equal( dot, 0 ) && comma::math::equal( last_dot, 0 )
+                  ? static_cast< Eigen::Vector3d >( last )
+                  : Eigen::ParametrizedLine< double, 3 >::Through( last, *p ).intersectionPoint( Eigen::Hyperplane< double, 3 >( p->plane.normal, p->plane.point ) )
+                  , !comma::math::equal( last_dot, 0 )
+                  ? ( last_dot < 0 ? 1 : -1 )
+                  : !comma::math::equal( dot, 0 ) ? ( dot > 0 ? 1 : -1 ) : 0 );
+        if( csv.binary() )
+        {
+            std::cout.write( &last_record[0], output_csv.format().size() );
+            std::cout.write( istream.binary().last(), output_csv.format().size() );
+            const std::vector< char >& v = ostream.binary().binary().put( o ); // quick and dirty; watch performance
+            std::cout.write( &v[0], v.size() );
+        }
+        else
+        {
+            std::cout << last_record
+                      << csv.delimiter << comma::join( istream.ascii().last(), csv.delimiter )
+                      << csv.delimiter << ostream.ascii().ascii().put( o ) << std::endl;
+        }
+        if( csv.flush ) { std::cout.flush(); }
     }
     return 0;
 }
