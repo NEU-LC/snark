@@ -61,6 +61,7 @@ cd $output_dir
 
 fields="x,y,z"
 
+# read test input and assign to variables
 comma_path_value_to_var
 
 if [[ $reference =~ "random" ]]; then
