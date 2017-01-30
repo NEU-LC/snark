@@ -208,8 +208,10 @@ double error( Eigen::MatrixXd source
     return ( estimate * source - target ).norm() / target.norm();
 }
 
-void output_transform( Eigen::MatrixXd source, Eigen::MatrixXd target
-                     , comma::uint32 block, comma::csv::options output_csv )
+void output_transform( Eigen::MatrixXd source
+                     , Eigen::MatrixXd target
+                     , comma::uint32 block
+                     , comma::csv::options output_csv )
 {
     comma::verbose << "loaded " << target.cols() << " pairs of points" << std::endl;
 
