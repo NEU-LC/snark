@@ -1464,7 +1464,7 @@ static filters::value_type ratio_impl_( const filters::value_type m, const std::
         }
     }
     int otype = single_channel_type( m.second.type() );
-    if ( opname == "ratio" && otype != CV_64FC1 ) { otype = CV_32FC1; }
+    if ( otype != CV_64FC1 ) { otype = CV_32FC1; }
     switch( m.second.depth() )
     {
         case CV_8U : return per_element_ratio_selector< CV_8U  >( m, numerator, denominator, otype, opname );
@@ -2519,11 +2519,10 @@ static std::string usage_impl_()
     oss << "            examples: \"ratio=( r + g + b ) / ( 1 + a )\"; output a grey-scale image equal to the sum of the first 3 channels" << std::endl;
     oss << "                          divided by the offset 4th channel" << std::endl;
     oss << "                      \"ratio=( r - b ) / ( r + b )\"; output normalized difference of channels 'r' and 'g'" << std::endl;
-    oss << "            output of the ratio operation has floating point (CV_32F) precision unless the input is already in doubles (if so, precision is unchanged)" << std::endl;
     oss << "        linear-combination=<a1>r + <a2>g + ... + <ac>: output grey-scale image that is linear combination of input channels with given coefficients and optional offset" << std::endl;
     oss << "            example: \"linear-combination=-r+2g-b\", highlights the green channel" << std::endl;
     oss << "            naming conventions are the same as for the ratio operation; use '--help filters::linear-combination' for more examples and a detailed syntax explanation" << std::endl;
-    oss << "            output of the linear-combination operation has the same precision as input; increase precision explicitly to avoid overflows" << std::endl;
+    oss << "        output of the ratio and linear-combination operations has floating point (CV_32F) precision unless the input is already in doubles (if so, precision is unchanged)" << std::endl;
     oss << std::endl;
     oss << "    basic drawing on images" << std::endl;
     oss << "        cross[=<x>,<y>]: draw cross-hair at x,y; default: at image center" << std::endl;
