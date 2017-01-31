@@ -63,6 +63,7 @@ cd $output_dir
 comma_path_value_to_var --prefix=input
 
 fields=${input_fields:-x,y,z}
+scale=${input_scale:-1}
 
 if [[ $input_reference =~ "random" ]]; then
     num_points=${input_reference#random }
@@ -83,7 +84,14 @@ frame=$( echo $input_frame,$scalar | points-calc scale --fields=$frame_format,sc
 perturbation_fn=cat
 [[ $input_perturbation ]] && perturbation_fn="perturb $input_perturbation"
 
-cat reference.csv | points-frame --to $frame --fields=$fields | $perturbation_fn > source.csv
+points_calc_scale_fields=$( csv-fields rename --fields x,y,z --to v/x,v/y,v/z <<< $fields )
+
+cat reference.csv \
+    | points-frame --to $frame --fields=$fields \
+    | points-calc scale --scalar $scale --invert --fields=$points_calc_scale_fields \
+    | csv-shuffle --fields=$( csv-fields rename --fields x,y,z --to orig/x,orig/y,orig/z <<< $fields),x,y,z --output-fields=$fields \
+    | $perturbation_fn \
+    > source.csv
 
 pasted_input_fields=$( pair_fields $fields )
 pasted_output_fields=$( echo $pasted_input_fields | csv-fields cut --fields first/block )
@@ -102,15 +110,21 @@ if [[ $input_mode == "binary" ]]; then
 fi
 
 transform_with_error=$( cat combined.csv | $binary_input_transform \
-    | points-align $binary_option --fields=$combined_fields --output-error )
+    | points-align $input_args $binary_option --fields=$combined_fields --output-error )
 echo "exit_code=$?"
 
-transform=$( echo $transform_with_error \
-    | csv-shuffle --fields $( points-align --output-fields --output-error --fields=$combined_fields ) \
-                  --output $( points-align --output-fields ) )
+output_fields=$( points-align --output-fields --output-error --fields=$combined_fields )
 
-cat source.csv | points-frame --from $transform --fields=$fields > recreated.csv
+transform=$( echo $transform_with_error | csv-shuffle --fields $output_fields --output "x,y,z,roll,pitch,yaw" )
+scale=$( echo $transform_with_error | csv-shuffle --fields $output_fields --output "scale" )
 
+cat source.csv \
+    | points-calc scale --scalar $scale --fields=$points_calc_scale_fields \
+    | csv-shuffle --fields=$( csv-fields rename --fields x,y,z --to orig/x,orig/y,orig/z <<< $fields),x,y,z --output-fields=$fields \
+    | points-frame --from $transform --fields=$fields \
+    > recreated.csv
+
+echo "output=$transform_with_error" >&2
 echo -e "$transform_with_error" \
     | name-value-from-csv $( points-align --output-fields --output-error --fields=$combined_fields ) --prefix transform --line-number\
     | csv-quote --delimiter='=' --fields=,value

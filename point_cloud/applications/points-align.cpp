@@ -45,8 +45,80 @@ struct input_points
     input_points() : block( 0 ) {}
 };
 
+struct output_t
+{
+    comma::uint32 block;
+    snark::applications::position position;
+    double scale;
+    double error;
+
+    output_t() : block( 0 ), scale( 1 ), error( 0 ) {}
+    output_t( comma::uint32 block
+            , const snark::applications::position& position
+            , double scale
+            , double error )
+        : block( block )
+        , position( position )
+        , scale( scale )
+        , error( error )
+    {}
+};
+
+namespace comma { namespace visiting {
+
+template <> struct traits< input_points >
+{
+    template < typename K, typename V > static void visit( const K&, input_points& p, V& v )
+    {
+        v.apply( "block", p.block );
+        v.apply( "first", p.points.first );
+        v.apply( "second", p.points.second );
+    }
+
+    template < typename K, typename V > static void visit( const K&, const input_points& p, V& v )
+    {
+        v.apply( "block", p.block );
+        v.apply( "first", p.points.first );
+        v.apply( "second", p.points.second );
+    }
+};
+
+template <> struct traits< output_t >
+{
+    template < typename Key, class Visitor >
+    static void visit( const Key&, output_t& p, Visitor& v )
+    {
+        v.apply( "block", p.block );
+        v.apply( "x", p.position.coordinates.x() );
+        v.apply( "y", p.position.coordinates.y() );
+        v.apply( "z", p.position.coordinates.z() );
+        v.apply( "roll", p.position.orientation.x() );
+        v.apply( "pitch", p.position.orientation.y() );
+        v.apply( "yaw", p.position.orientation.z() );
+        v.apply( "scale", p.scale );
+        v.apply( "error", p.error );
+    }
+
+    template < typename Key, class Visitor >
+    static void visit( const Key&, const output_t& p, Visitor& v )
+    {
+        v.apply( "block", p.block );
+        v.apply( "x", p.position.coordinates.x() );
+        v.apply( "y", p.position.coordinates.y() );
+        v.apply( "z", p.position.coordinates.z() );
+        v.apply( "roll", p.position.orientation.x() );
+        v.apply( "pitch", p.position.orientation.y() );
+        v.apply( "yaw", p.position.orientation.z() );
+        v.apply( "scale", p.scale );
+        v.apply( "error", p.error );
+    }
+};
+
+} } // namespace comma { namespace visiting {
+
 static const std::string default_fields = comma::join( comma::csv::names< point_pair_t >(), ',' );
-static const std::string standard_output_fields = comma::join( comma::csv::names< snark::applications::position >(), ',' );
+static const std::string standard_output_fields = "x,y,z,roll,pitch,yaw,scale";
+static const std::string standard_output_format = "d,d,d,d,d,d,d";
 
 static void bash_completion( unsigned const ac, char const * const * av )
 {
@@ -119,70 +191,6 @@ static void usage( bool verbose = false )
     exit( 0 );
 }
 
-struct position_with_error
-{
-    comma::uint32 block;
-    snark::applications::position position;
-    double error;
-
-    position_with_error() : block( 0 ), error( 0 ) {}
-    position_with_error( comma::uint32 block, const snark::applications::position& position, double error )
-        : block( block )
-        , position( position )
-        , error( error )
-    {}
-};
-
-namespace comma { namespace visiting {
-
-template <> struct traits< input_points >
-{
-    template < typename K, typename V > static void visit( const K&, input_points& p, V& v )
-    {
-        v.apply( "block", p.block );
-        v.apply( "first", p.points.first );
-        v.apply( "second", p.points.second );
-    }
-
-    template < typename K, typename V > static void visit( const K&, const input_points& p, V& v )
-    {
-        v.apply( "block", p.block );
-        v.apply( "first", p.points.first );
-        v.apply( "second", p.points.second );
-    }
-};
-
-template <> struct traits< position_with_error >
-{
-    template < typename Key, class Visitor >
-    static void visit( const Key&, position_with_error& p, Visitor& v )
-    {
-        v.apply( "block", p.block );
-        v.apply( "x", p.position.coordinates.x() );
-        v.apply( "y", p.position.coordinates.y() );
-        v.apply( "z", p.position.coordinates.z() );
-        v.apply( "roll", p.position.orientation.x() );
-        v.apply( "pitch", p.position.orientation.y() );
-        v.apply( "yaw", p.position.orientation.z() );
-        v.apply( "error", p.error );
-    }
-
-    template < typename Key, class Visitor >
-    static void visit( const Key&, const position_with_error& p, Visitor& v )
-    {
-        v.apply( "block", p.block );
-        v.apply( "x", p.position.coordinates.x() );
-        v.apply( "y", p.position.coordinates.y() );
-        v.apply( "z", p.position.coordinates.z() );
-        v.apply( "roll", p.position.orientation.x() );
-        v.apply( "pitch", p.position.orientation.y() );
-        v.apply( "yaw", p.position.orientation.z() );
-        v.apply( "error", p.error );
-    }
-};
-
-} } // namespace comma { namespace visiting {
-
 std::string get_output_fields( comma::csv::options csv_options, bool output_error )
 {
     std::string output_fields( standard_output_fields );
@@ -193,7 +201,7 @@ std::string get_output_fields( comma::csv::options csv_options, bool output_erro
 
 std::string get_output_format( comma::csv::options csv_options, bool output_error )
 {
-    std::string output_format( comma::csv::format::value< snark::applications::position >() );
+    std::string output_format( standard_output_format );
     if( output_error ) { output_format += ",d"; }
     if( csv_options.has_field( "block" )) { output_format = output_format + ",ui"; }
     return output_format;
@@ -229,6 +237,13 @@ void output_transform( Eigen::MatrixXd source
 
     Eigen::Matrix3d rotation( estimate.block< 3, 3 >( 0, 0 ));
     Eigen::Vector3d translation( estimate.block< 3, 1 >( 0, 3 ));
+    double scale = 1.0f;
+
+    if( with_scaling )
+    {
+        scale = cbrt( rotation.determinant() );
+        rotation /= scale;
+    }
 
     Eigen::Vector3d orientation( snark::rotation_matrix::roll_pitch_yaw( rotation ));
 
@@ -236,11 +251,13 @@ void output_transform( Eigen::MatrixXd source
     comma::verbose << "translation ( " << comma::join( translation, ',' ) << " )" << std::endl;
     comma::verbose << "orientation (rad) ( " << comma::join( orientation, ',' ) << " )" << std::endl;
     comma::verbose << "orientation (deg) ( " << comma::join( orientation * 180 / M_PI, ',' ) << " )" << std::endl;
+    comma::verbose << "scale=" << scale << std::endl;
 
-    comma::csv::output_stream< position_with_error > ostream( std::cout, output_csv );
-    ostream.write( position_with_error( block
-                                      , snark::applications::position( translation, orientation )
-                                      , error( source, target, estimate )));
+    comma::csv::output_stream< output_t > ostream( std::cout, output_csv );
+    ostream.write( output_t( block
+                           , snark::applications::position( translation, orientation )
+                           , scale
+                           , error( source, target, estimate )));
 }
 
 int main( int ac, char** av )

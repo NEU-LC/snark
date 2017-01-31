@@ -1,0 +1,3 @@
+# We need at least three points for a distinct solution
+reference="1,2,3\\n4,5,8\\n6,12,13"
+frame="0,0,0,0,0,0"
