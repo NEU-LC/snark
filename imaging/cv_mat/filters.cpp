@@ -1435,7 +1435,7 @@ static filters::value_type per_element_ratio( const filters::value_type m, const
 }
 
 template< int DepthIn >
-static filters::value_type per_element_ratio_wrapper( const filters::value_type m, const std::vector< double >& numerator, const std::vector< double > & denominator, int otype, const std::string & opname )
+static filters::value_type per_element_ratio_selector( const filters::value_type m, const std::vector< double >& numerator, const std::vector< double > & denominator, int otype, const std::string & opname )
 {
     switch( otype )
     {
@@ -1464,13 +1464,13 @@ static filters::value_type ratio_impl_( const filters::value_type m, const std::
     int otype = single_channel_type( ratio_output_type == -1 ? m.second.type() : ratio_output_type );
     switch( m.second.depth() )
     {
-        case CV_8U : return per_element_ratio_wrapper< CV_8U  >( m, numerator, denominator, otype, opname );
-        case CV_8S : return per_element_ratio_wrapper< CV_8S  >( m, numerator, denominator, otype, opname );
-        case CV_16U: return per_element_ratio_wrapper< CV_16U >( m, numerator, denominator, otype, opname );
-        case CV_16S: return per_element_ratio_wrapper< CV_16S >( m, numerator, denominator, otype, opname );
-        case CV_32S: return per_element_ratio_wrapper< CV_32S >( m, numerator, denominator, otype, opname );
-        case CV_32F: return per_element_ratio_wrapper< CV_32F >( m, numerator, denominator, otype, opname );
-        case CV_64F: return per_element_ratio_wrapper< CV_64F >( m, numerator, denominator, otype, opname );
+        case CV_8U : return per_element_ratio_selector< CV_8U  >( m, numerator, denominator, otype, opname );
+        case CV_8S : return per_element_ratio_selector< CV_8S  >( m, numerator, denominator, otype, opname );
+        case CV_16U: return per_element_ratio_selector< CV_16U >( m, numerator, denominator, otype, opname );
+        case CV_16S: return per_element_ratio_selector< CV_16S >( m, numerator, denominator, otype, opname );
+        case CV_32S: return per_element_ratio_selector< CV_32S >( m, numerator, denominator, otype, opname );
+        case CV_32F: return per_element_ratio_selector< CV_32F >( m, numerator, denominator, otype, opname );
+        case CV_64F: return per_element_ratio_selector< CV_64F >( m, numerator, denominator, otype, opname );
     }
     COMMA_THROW( comma::exception, opname << ": unrecognised input image type " << m.second.type() );
 }
