@@ -42,7 +42,8 @@
 #include "../voxel_map.h"
 #include "../../visiting/eigen.h"
 #include "points-calc/plane_intersection.h"
-#include "points-calc/projection.h"
+#include "points-calc/plane_intersection_with_trajectory.h"
+#include "points-calc/project.h"
 #include "points-calc/vector_calc.h"
 
 static comma::csv::options csv;
@@ -78,6 +79,9 @@ static void usage( bool more = false )
     std::cerr << "    nearest-point,nearest-any" << std::endl;
     std::cerr << "    nearest" << std::endl;
     std::cerr << "    plane-intersection" << std::endl;
+    std::cerr << "    plane-intersection-with-trajectory" << std::endl;
+    std::cerr << "    project-onto-line" << std::endl;
+    std::cerr << "    project-onto-plane" << std::endl;
     std::cerr << "    thin" << std::endl;
     vector_calc::usage_list_operations();
     std::cerr << std::endl;
@@ -176,11 +180,14 @@ static void usage( bool more = false )
     std::cerr << "        options:" << std::endl;
     std::cerr << "            --point,--to=<x>,<y>,<z>" << std::endl;
     std::cerr << std::endl;
+    std::cerr << snark::points_calc::project::onto_line::traits::usage() << std::endl;
+    std::cerr << snark::points_calc::project::onto_plane::traits::usage() << std::endl;
+    std::cerr << snark::points_calc::plane_intersection::traits::usage() << std::endl;
+    std::cerr << snark::points_calc::plane_intersection_with_trajectory::traits::usage() << std::endl;
     std::cerr << "    thin: read input data and thin them down by the given --resolution" << std::endl;
     std::cerr << std::endl;
     std::cerr << "        input fields: " << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
     std::cerr << std::endl;
-    plane_intersection::usage();
     vector_calc::usage();
     exit( 0 );
 }
@@ -618,29 +625,32 @@ struct record
 
 } // namespace remove_outliers {
 
+template < typename Traits > static int run( const comma::command_line_options& options )
+{
+    if( options.exists( "--input-fields" ) ) { std::cout << Traits::input_fields() << std::endl; return 0; }
+    if( options.exists( "--input-format" ) ) { std::cout << Traits::input_format() << std::endl; return 0; }
+    if( options.exists( "--output-fields" ) ) { std::cout << Traits::output_fields() << std::endl; return 0; }
+    if( options.exists( "--output-format" ) ) { std::cout << Traits::output_format() << std::endl; return 0; }
+    return Traits::run( options );
+}
+
 int main( int ac, char** av )
 {
     try
     {
-        comma::command_line_options options( ac, av );
+        comma::command_line_options options( ac, av, usage );
         verbose = options.exists( "--verbose,-v" );
-        if( options.exists( "--help,-h" ) ) { usage( verbose ); }
         csv = comma::csv::options( options );
         csv.full_xpath = true;
         ascii = comma::csv::ascii< Eigen::Vector3d >( "x,y,z", csv.delimiter );
-        const std::vector< std::string >& operations = options.unnamed( "--verbose,-v,--trace,--no-antialiasing,--next,--unit,--output-full-record,--full-record,--full,--flush", "-.*" );
+        const std::vector< std::string >& operations = options.unnamed( "--verbose,-v,--trace,--no-antialiasing,--next,--unit,--output-full-record,--full-record,--full,--flush,--with-trajectory,--trajectory", "-.*" );
         if( operations.size() != 1 ) { std::cerr << "points-calc: expected one operation, got " << operations.size() << ": " << comma::join( operations, ' ' ) << std::endl; return 1; }
         const std::string& operation = operations[0];
-        if (vector_calc::has_operation(operation))
-        {
-            vector_calc::process(operation, options, csv);
-            return 0;
-        }
-        if( operation == "plane-intersection" )
-        {
-            plane_intersection::process(options, csv);
-            return 0;
-        }
+        if( operation == "project-onto-line" ) { return run< snark::points_calc::project::onto_line::traits >( options ); }
+        if( operation == "project-onto-plane" ) { return run< snark::points_calc::project::onto_plane::traits >( options ); }
+        if( operation == "plane-intersection-with-trajectory" ) { return run< snark::points_calc::plane_intersection_with_trajectory::traits >( options ); }
+        if( vector_calc::has_operation( operation ) ) { vector_calc::process(operation, options, csv); return 0; }
+        if( operation == "plane-intersection" ) { snark::points_calc::plane_intersection::traits::process(options, csv); return 0; }
         if( operation == "distance" )
         {
             if( options.exists("--output-fields" )){ std::cout << "distance" << std::endl; return 0; }
@@ -1077,16 +1087,10 @@ int main( int ac, char** av )
             if( verbose ) { std::cerr << "points-calc: done!" << std::endl; }
             return 0;
         }
-        std::cerr << "points-calc: please specify an operation" << std::endl;
+        std::cerr << "points-calc: expected operation, got: \"" << operation << "\"" << std::endl;
         return 1;
     }
-    catch( std::exception& ex )
-    {
-        std::cerr << "points-calc: " << ex.what() << std::endl;
-    }
-    catch( ... )
-    {
-        std::cerr << "points-calc: unknown exception" << std::endl;
-    }
+    catch( std::exception& ex ) { std::cerr << "points-calc: " << ex.what() << std::endl; }
+    catch( ... ) { std::cerr << "points-calc: unknown exception" << std::endl; }
     return 1;
 }

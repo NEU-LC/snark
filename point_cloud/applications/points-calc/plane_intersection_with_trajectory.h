@@ -31,14 +31,22 @@
 
 #include <string>
 #include <comma/application/command_line_options.h>
-#include <comma/csv/options.h>
 
-namespace snark { namespace points_calc { namespace plane_intersection {
-    
+namespace snark { namespace points_calc { namespace plane_intersection_with_trajectory {
+
 struct traits
 {
+    static std::string input_fields();
+
+    static std::string input_format();
+        
+    static std::string output_fields();
+
+    static std::string output_format();
+
     static std::string usage();
-    static void process( const comma::command_line_options& options, const comma::csv::options& csv );
+        
+    static int run( const comma::command_line_options& options );
 };
 
-} } } // namespace snark { namespace points_calc { namespace plane_intersection {
+} } } // namespace snark { namespace points_calc { namespace project {  namespace plane_intersection_with_trajectory {

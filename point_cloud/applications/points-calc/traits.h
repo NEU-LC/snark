@@ -29,16 +29,39 @@
 
 #pragma once
 
-#include <string>
-#include <comma/application/command_line_options.h>
-#include <comma/csv/options.h>
+#include "../../../visiting/eigen.h"
+#include "types.h"
 
-namespace snark { namespace points_calc { namespace plane_intersection {
-    
-struct traits
+namespace comma { namespace visiting {
+
+template <> struct traits< snark::points_calc::plane >
 {
-    static std::string usage();
-    static void process( const comma::command_line_options& options, const comma::csv::options& csv );
+    template< typename K, typename V > static void visit( const K&, snark::points_calc::plane& t, V& v )
+    {
+        v.apply( "point", t.point );
+        v.apply( "normal", t.normal );
+    }
+    
+    template< typename K, typename V > static void visit( const K&, const snark::points_calc::plane& t, V& v )
+    {
+        v.apply( "point", t.point );
+        v.apply( "normal", t.normal );
+    }
 };
 
-} } } // namespace snark { namespace points_calc { namespace plane_intersection {
+template <> struct traits< snark::points_calc::line >
+{
+    template< typename K, typename V > static void visit( const K& k, snark::points_calc::line& t, V& v )
+    {
+        v.apply( "origin", t.origin );
+        v.apply( "direction", t.direction );
+    }
+    
+    template< typename K, typename V > static void visit( const K& k, const snark::points_calc::line& t, V& v )
+    {
+        v.apply( "origin", t.origin );
+        v.apply( "direction", t.direction );
+    }
+};
+
+} } // namespace comma { namespace visiting {

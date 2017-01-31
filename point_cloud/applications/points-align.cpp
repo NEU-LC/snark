@@ -1,5 +1,5 @@
 // This file is part of snark, a generic and flexible library for robotics research
-// Copyright (c) 2011 The University of Sydney
+// Copyright (c) 2016 The University of Sydney
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -56,6 +56,7 @@ static void bash_completion( unsigned const ac, char const * const * av )
         " --output-fields"
         " --output-error"
         " --initial-error"
+        " --with-scaling"
         ;
 
     std::cout << completion_options << std::endl;
@@ -89,6 +90,7 @@ static void usage( bool verbose = false )
     std::cerr << "    --output-format: show output format and exit" << std::endl;
     std::cerr << "    --output-error:  include the error estimate in output" << std::endl;
     std::cerr << "    --initial-error: don't run alignment, just output initial error" << std::endl;
+    std::cerr << "    --with-scaling:  allow Umeyama algorithm to use scaling" << std::endl;
     std::cerr << std::endl;
     std::cerr << "examples: " << std::endl;
     std::cerr << "    -- output the " << standard_output_fields << " transform --" << std::endl;
@@ -108,6 +110,9 @@ static void usage( bool verbose = false )
         std::cerr << std::endl;
         std::cerr << "    See http://eigen.tuxfamily.org/dox/group__Geometry__Module.html" << std::endl;
         std::cerr << "    for implementation details." << std::endl;
+        std::cerr << std::endl;
+        std::cerr << "    Note that the --with-scaling option sets the with_scaling argument of" << std::endl;
+        std::cerr << "    Eigen::umeyama() to true. By default we set it to false." << std::endl;
         std::cerr << std::endl;
     }
     exit( 0 );
@@ -208,12 +213,16 @@ double error( Eigen::MatrixXd source
     return ( estimate * source - target ).norm() / target.norm();
 }
 
-void output_transform( Eigen::MatrixXd source, Eigen::MatrixXd target
-                     , comma::uint32 block, comma::csv::options output_csv )
+void output_transform( Eigen::MatrixXd source
+                     , Eigen::MatrixXd target
+                     , bool with_scaling
+                     , comma::uint32 block
+                     , comma::csv::options output_csv )
 {
     comma::verbose << "loaded " << target.cols() << " pairs of points" << std::endl;
+    comma::verbose << "computing Umeyama estimate " << ( with_scaling ? "with" : "without" ) << " scaling" << std::endl;
 
-    Eigen::Matrix4d estimate = Eigen::umeyama( source, target );
+    Eigen::Matrix4d estimate = Eigen::umeyama( source, target, with_scaling );
 
     comma::verbose << "umeyama estimate\n" << estimate << std::endl;
 
@@ -271,6 +280,7 @@ int main( int ac, char** av )
         Eigen::MatrixXd target( 3, 0 );
         unsigned int block = 0;
         unsigned int discarded_records = 0;
+        bool with_scaling = options.exists( "--with-scaling" );
 
         comma::csv::input_stream< input_points > istream( std::cin, csv );
         while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
@@ -296,7 +306,7 @@ int main( int ac, char** av )
                 if( initial_error )
                     std::cout << error( source, target ) << std::endl;
                 else
-                    output_transform( source, target, block, output_csv );
+                    output_transform( source, target, with_scaling, block, output_csv );
                 source.resize( Eigen::NoChange, 0 );
                 target.resize( Eigen::NoChange, 0 );
                 block = p->block;
@@ -320,7 +330,7 @@ int main( int ac, char** av )
         }
 
         if( initial_error ) { std::cout << error( source, target ) << std::endl; }
-        else { output_transform( source, target, block, output_csv ); }
+        else { output_transform( source, target, with_scaling, block, output_csv ); }
         return 0;
     }
     catch( std::exception& ex )

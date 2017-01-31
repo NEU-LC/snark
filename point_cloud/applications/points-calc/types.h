@@ -29,16 +29,29 @@
 
 #pragma once
 
-#include <string>
-#include <comma/application/command_line_options.h>
-#include <comma/csv/options.h>
+#include <Eigen/Core>
 
-namespace snark { namespace points_calc { namespace plane_intersection {
-    
-struct traits
+namespace snark { namespace points_calc {
+
+struct plane
 {
-    static std::string usage();
-    static void process( const comma::command_line_options& options, const comma::csv::options& csv );
+    Eigen::Vector3d normal;
+    Eigen::Vector3d point;
+    
+    plane() : normal( Eigen::Vector3d::Zero() ), point( Eigen::Vector3d::Zero() ) {}
+    plane( const Eigen::Vector3d& normal, const Eigen::Vector3d& point ) : normal( normal ), point( point ) {}
 };
 
-} } } // namespace snark { namespace points_calc { namespace plane_intersection {
+struct line
+{
+    typedef std::pair< Eigen::Vector3d, Eigen::Vector3d > pair;
+    
+    Eigen::Vector3d origin;
+    Eigen::Vector3d direction;
+    
+    line() : origin( Eigen::Vector3d::Zero() ), direction( Eigen::Vector3d::Zero() ) {}
+    line( const Eigen::Vector3d& origin, const Eigen::Vector3d& direction ) : origin( origin ), direction( direction ) {}
+    line( const pair& p ) : origin( p.first ), direction( p.second - p.first ) {}
+};
+
+} } // namespace snark { namespace points_calc {
