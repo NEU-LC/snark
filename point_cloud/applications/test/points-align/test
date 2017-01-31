@@ -101,7 +101,7 @@ if [[ $mode == "binary" ]]; then
 fi
 
 transform_with_error=$( cat combined.csv | $binary_input_transform \
-    | points-align $binary_option --fields=$combined_fields --output-error )
+    | points-align --with-scaling $binary_option --fields=$combined_fields --output-error )
 echo "exit_code=$?"
 
 transform=$( echo $transform_with_error \
