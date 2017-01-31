@@ -1399,17 +1399,17 @@ filters::value_type fft_impl_( filters::value_type m, bool direct, bool complex,
     }
 }
 
-template< typename T >
+template< typename Tin, typename Tout >
 static void ratio( const tbb::blocked_range< std::size_t >& r, const cv::Mat& m, const std::vector< double >& numerator, const std::vector< double >& denominator, cv::Mat& result )
 {
     const unsigned int channels = m.channels();
     const unsigned int cols = m.cols * channels;
-    static const T highest = std::numeric_limits< T >::max();
-    static const T lowest = std::numeric_limits< T >::is_integer ? std::numeric_limits< T >::min() : -highest;
+    static const Tout highest = std::numeric_limits< Tout >::max();
+    static const Tout lowest = std::numeric_limits< Tout >::is_integer ? std::numeric_limits< Tout >::min() : -highest;
     for( unsigned int i = r.begin(); i < r.end(); ++i )
     {
-        const T* in = m.ptr< T >(i);
-        T* out = result.ptr< T >(i);
+        const Tin* in = m.ptr< Tin >(i);
+        Tout* out = result.ptr< Tout >(i);
         for( unsigned int j = 0; j < cols; j += channels )
         {
             double n = numerator[0];
@@ -1424,16 +1424,33 @@ static void ratio( const tbb::blocked_range< std::size_t >& r, const cv::Mat& m,
     }
 }
 
-template< int Depth >
+template< int DepthIn, int DepthOut >
 static filters::value_type per_element_ratio( const filters::value_type m, const std::vector< double >& numerator, const std::vector< double > & denominator )
 {
-    typedef typename depth_traits< Depth >::value_t value_t;
-    cv::Mat result( m.second.size(), single_channel_type( m.second.type() ) );
-    tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, m.second.rows ), boost::bind( &ratio< value_t >, _1, m.second, numerator, denominator, boost::ref( result ) ) );
+    typedef typename depth_traits< DepthIn >::value_t value_in_t;
+    typedef typename depth_traits< DepthOut >::value_t value_out_t;
+    cv::Mat result( m.second.size(), DepthOut );
+    tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, m.second.rows ), boost::bind( &ratio< value_in_t, value_out_t >, _1, m.second, numerator, denominator, boost::ref( result ) ) );
     return filters::value_type( m.first, result );
 }
 
-static filters::value_type ratio_impl_( const filters::value_type m, const std::vector< double >& numerator, const std::vector< double >& denominator, const std::string & opname )
+template< int DepthIn >
+static filters::value_type per_element_ratio_wrapper( const filters::value_type m, const std::vector< double >& numerator, const std::vector< double > & denominator, int otype, const std::string & opname )
+{
+    switch( otype )
+    {
+        case CV_8U : return per_element_ratio< DepthIn, CV_8U  >( m, numerator, denominator );
+        case CV_8S : return per_element_ratio< DepthIn, CV_8S  >( m, numerator, denominator );
+        case CV_16U: return per_element_ratio< DepthIn, CV_16U >( m, numerator, denominator );
+        case CV_16S: return per_element_ratio< DepthIn, CV_16S >( m, numerator, denominator );
+        case CV_32S: return per_element_ratio< DepthIn, CV_32S >( m, numerator, denominator );
+        case CV_32F: return per_element_ratio< DepthIn, CV_32F >( m, numerator, denominator );
+        case CV_64F: return per_element_ratio< DepthIn, CV_64F >( m, numerator, denominator );
+    }
+    COMMA_THROW( comma::exception, opname << ": unrecognised output image type " << otype );
+}
+
+static filters::value_type ratio_impl_( const filters::value_type m, const std::vector< double >& numerator, const std::vector< double >& denominator, int ratio_output_type, const std::string & opname )
 {
     if( numerator.size() != denominator.size() )
         { COMMA_THROW( comma::exception, opname << ": the number of numerator " << numerator.size() << " and denominator " << denominator.size() << " coefficients differs" ); }
@@ -1444,17 +1461,18 @@ static filters::value_type ratio_impl_( const filters::value_type m, const std::
             COMMA_THROW( comma::exception, opname << ": have " << m.second.channels() << " channel(s) only, requested non-zero " << what << " coefficient for channel " << n - 1 );
         }
     }
+    int otype = single_channel_type( ratio_output_type == -1 ? m.second.type() : ratio_output_type );
     switch( m.second.depth() )
     {
-        case CV_8U : return per_element_ratio< CV_8U  >( m, numerator, denominator );
-        case CV_8S : return per_element_ratio< CV_8S  >( m, numerator, denominator );
-        case CV_16U: return per_element_ratio< CV_16U >( m, numerator, denominator );
-        case CV_16S: return per_element_ratio< CV_16S >( m, numerator, denominator );
-        case CV_32S: return per_element_ratio< CV_32S >( m, numerator, denominator );
-        case CV_32F: return per_element_ratio< CV_32F >( m, numerator, denominator );
-        case CV_64F: return per_element_ratio< CV_64F >( m, numerator, denominator );
+        case CV_8U : return per_element_ratio_wrapper< CV_8U  >( m, numerator, denominator, otype, opname );
+        case CV_8S : return per_element_ratio_wrapper< CV_8S  >( m, numerator, denominator, otype, opname );
+        case CV_16U: return per_element_ratio_wrapper< CV_16U >( m, numerator, denominator, otype, opname );
+        case CV_16S: return per_element_ratio_wrapper< CV_16S >( m, numerator, denominator, otype, opname );
+        case CV_32S: return per_element_ratio_wrapper< CV_32S >( m, numerator, denominator, otype, opname );
+        case CV_32F: return per_element_ratio_wrapper< CV_32F >( m, numerator, denominator, otype, opname );
+        case CV_64F: return per_element_ratio_wrapper< CV_64F >( m, numerator, denominator, otype, opname );
     }
-    COMMA_THROW( comma::exception, opname << ": unrecognised image type " << m.second.type() );
+    COMMA_THROW( comma::exception, opname << ": unrecognised input image type " << m.second.type() );
 }
 
 static double max_value(int depth)
@@ -2126,12 +2144,23 @@ static boost::function< filter::input_type( filter::input_type ) > make_filter_f
     }
     if( e[0] == "linear-combination" || e[0] == "ratio" )
     {
+        std::vector< std::string > inputs = comma::split( e[1], '|' );
+        if ( inputs.size() > 2 ) { COMMA_THROW( comma::exception, e[0] << ": operation takes at most one setting, \"output-depth\", got '" << e[1] << "'" ); }
+        int ratio_output_type = -1; // same as input
+        if ( inputs.size() == 2 ) {
+            std::vector< std::string > setting = comma::split( inputs[1], ':' );
+            if ( setting.size() != 2 ) { COMMA_THROW( comma::exception, e[0] << ": expected keyword:value setting; got " << setting.size() << " parameters '" << inputs[1] << "'" ); }
+            if ( setting[0] != "output-depth" ) { COMMA_THROW( comma::exception, e[0] << ": expected \"output-depth\", got '" << setting[0] << "'" ); }
+            boost::unordered_map< std::string, int >::const_iterator found = types_.find( setting[1] );
+            if ( found == types_.end() ) { COMMA_THROW( comma::exception, e[0] << ": the output-depth '" << setting[1] << "' is not know, see the list of opencv data types" ); }
+            ratio_output_type = found->second;
+        }
         typedef std::string::const_iterator iterator_type;
         ratios::rules< iterator_type > rules;
         ratios::parser< iterator_type, ratios::ratio > parser( rules.ratio_ );
         ratios::ratio r;
-        iterator_type begin = e[1].begin();
-        iterator_type end = e[1].end();
+        iterator_type begin = inputs[0].begin();
+        iterator_type end = inputs[0].end();
         bool status = phrase_parse( begin, end, parser, boost::spirit::ascii::space, r );
         if ( !status || ( begin != end ) ) { COMMA_THROW( comma::exception, e[0] << ": expected a " << e[0] << " expression, got: \"" << comma::join( e, '=' ) << "\"" ); }
         if ( e[0] == "linear-combination" && !r.denominator.unity() ) { COMMA_THROW( comma::exception, e[0] << ": expected a linear combination expression, got a ratio" ); }
@@ -2139,7 +2168,7 @@ static boost::function< filter::input_type( filter::input_type ) > make_filter_f
         for( size_t j = 0; j < r.numerator.terms.size(); ++j ) { numerator[j] = r.numerator.terms[j].value; }
         std::vector< double > denominator( r.denominator.terms.size() );
         for( size_t j = 0; j < r.denominator.terms.size(); ++j ) { denominator[j] = r.denominator.terms[j].value; }
-        return boost::bind( &ratio_impl_, _1, numerator, denominator, e[0] );
+        return boost::bind( &ratio_impl_, _1, numerator, denominator, ratio_output_type, e[0] );
     }
     if( e[0] == "overlay" )
     {
