@@ -188,8 +188,9 @@ int traits::run( const comma::command_line_options& options )
     {
         const input* p = istream.read();
         if( !p ) { break; }
-        const Eigen::Vector3d& projection = Eigen::Hyperplane< double, 3 >( p->plane.normal, p->plane.point ).projection( *p );
-        tied.append( output( projection, ( *p - projection ).dot( p->plane.normal.normalized() ) ) );
+        const Eigen::Vector3d& n = p->plane.normal.normalized();
+        const Eigen::Vector3d& projection = Eigen::Hyperplane< double, 3 >( n, p->plane.point ).projection( *p );
+        tied.append( output( projection, ( *p - projection ).dot( n ) ) );
     }
     return 0;
 }
