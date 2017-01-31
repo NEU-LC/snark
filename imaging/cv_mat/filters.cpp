@@ -501,7 +501,9 @@ static filters::value_type mask_impl_( filters::value_type m, boost::function< f
 {
     filters::value_type n;
     n.first = m.first;
-    m.second.copyTo( n.second, mask( m ).second );
+    const cv::Mat & f = mask( m ).second;
+    if ( f.depth() != CV_8U ) { COMMA_THROW( comma::exception, "the mask type is " << type_as_string( f.type() ) << ", must have CV_8U depth; use convert-to explicitly" ); }
+    m.second.copyTo( n.second, f );
     return n;
 }
 
