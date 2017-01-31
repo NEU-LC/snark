@@ -144,7 +144,7 @@ int traits::run( const comma::command_line_options& options )
                 {
                     output o(   comma::math::equal( dot, 0 ) && comma::math::equal( last_dot, 0 )
                             ? static_cast< Eigen::Vector3d >( last )
-                            : Eigen::ParametrizedLine< double, 3 >::Through( last, *p ).intersectionPoint( Eigen::Hyperplane< double, 3 >( p->plane.normal, p->plane.point ) )
+                            : Eigen::ParametrizedLine< double, 3 >::Through( last, *p ).intersectionPoint( Eigen::Hyperplane< double, 3 >( p->plane.normal.normalized(), p->plane.point ) )
                             , !comma::math::equal( last_dot, 0 )
                             ? ( last_dot < 0 ? 1 : -1 )
                             : !comma::math::equal( dot, 0 ) ? ( dot > 0 ? 1 : -1 ) : 0 );
