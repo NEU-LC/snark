@@ -27,17 +27,15 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#pragma once
-
 #include <comma/csv/stream.h>
 #include <comma/math/compare.h>
 #include "../../../visiting/eigen.h"
+#include "plane_intersection.h"
 
 struct plane_intersection
 {
     typedef Eigen::Vector3d output_t;
     typedef Eigen::Vector3d vector;
-    static void usage();
     //updates csv with default fields if --plane option specified
     static void process(const comma::command_line_options& options, comma::csv::options csv);
     static inline vector zero() { return Eigen::Vector3d::Zero(); }
@@ -111,36 +109,15 @@ template <> struct traits< plane_intersection::input_t >
 
 } } // namespace comma { namespace visiting {
 
-void plane_intersection::usage()
-{
-    std::cerr
-        << "    plane-intersection: read points and plane from stdin, output intersection of the ray with the plane" << std::endl
-        << "        input fields: " << comma::join( comma::csv::names<plane_intersection::input_t>(true), ',' ) << std::endl
-        << "            first and second are two points on the line; the plane passes through the plane/point and is perpendicular to the direction vector plane/normal" << std::endl
-        << std::endl;
-    std::cerr
-        << "        options:" << std::endl
-        << "            --plane=<" << comma::join( comma::csv::names<plane_intersection::plane_t>(true), ',') <<  ">: default values for plane" << std::endl
-        << "                if --plane specified, default fields for input are: " << comma::join( comma::csv::names<plane_intersection::line_t>(true), ',') <<  std::endl
-        << "            --line=<" << comma::join( comma::csv::names<plane_intersection::line_t>(true), ',') <<  ">: default values for line" << std::endl
-        << "            --input-fields: print default input field names" << std::endl
-        << "            --output-fields: print output field names" << std::endl
-        << "            --output-format: print output fields format" << std::endl
-        << "            --discard-collinear: don't output records when line is in parallel with plane (when not sepcified it outputs <inf,inf,inf>)" << std::endl
-        << std::endl;
-    std::cerr
-        << "        example:" << std::endl
-        << "            to find intersection of a line going from 0,0,0 to 1,1,1 and a plane at 0,0,4 perpendicular to z axis:" << std::endl
-        << "                echo 1,1,1,4 | points-calc plane-intersection --plane=0,0,0,0,0,1 --fields=second,plane/point/z" << std::endl
-        << "            outputs:  1,1,1,4,4,4,4" << std::endl
-        << std::endl;
-}
+// todo:
+//     trajectory
+//         input/output fields
 
 void plane_intersection::process(const comma::command_line_options& options, comma::csv::options csv)
 {
-    if(options.exists("--input-fields")) { std::cout<<comma::join( comma::csv::names<plane_intersection::input_t>(true), ',' ) << std::endl; return; }
-    if(options.exists("--output-fields")){std::cout<<comma::join( comma::csv::names<plane_intersection::output_t>(false), ',' ) << std::endl; return; }
-    if(options.exists("--output-format")){std::cout<<comma::csv::format::value<plane_intersection::output_t>() << std::endl; return; }
+    if(options.exists( "--input-fields" ) ) { std::cout<<comma::join( comma::csv::names<plane_intersection::input_t>(true), ',' ) << std::endl; return; }
+    if(options.exists( "--output-fields" ) ) { std::cout<<comma::join( comma::csv::names<plane_intersection::output_t>(false), ',' ) << std::endl; return; }
+    if(options.exists( "--output-format" ) ) { std::cout<<comma::csv::format::value<plane_intersection::output_t>() << std::endl; return; }
     boost::optional<std::string> plane_option=options.optional<std::string>("--plane");
     plane_t default_plane=comma::csv::ascii<plane_t>().get(options.optional<std::string>("--plane"));
     line_t default_line=comma::csv::ascii<line_t>().get(options.optional<std::string>("--line"));
@@ -206,3 +183,35 @@ void plane_intersection::run( const comma::csv::options& csv_opt, const plane_in
         if( condition( rec->line.points, intersection ) ) { tied.append( intersection ); }
     }
 }
+
+namespace snark { namespace points_calc { namespace plane_intersection {
+
+std::string traits::usage()
+{
+    std::ostringstream oss;
+    oss
+        << "    plane-intersection: read points and plane from stdin, output intersection of the ray with the plane" << std::endl
+        << "        input fields: " << comma::join( comma::csv::names< ::plane_intersection::input_t >(true), ',' ) << std::endl
+        << "            first and second are two points on the line; the plane passes through the plane/point and is perpendicular to the direction vector plane/normal" << std::endl
+        << std::endl;
+    oss
+        << "        options:" << std::endl
+        << "            --discard-collinear: don't output records when line is in parallel with plane (when not sepcified it outputs <inf,inf,inf>)" << std::endl
+        << "            --plane=<" << comma::join( comma::csv::names< ::plane_intersection::plane_t >(true), ',') <<  ">: default values for plane" << std::endl
+        << "                if --plane specified, default fields for input are: " << comma::join( comma::csv::names< ::plane_intersection::line_t >(true), ',') <<  std::endl
+        << "            --line=<" << comma::join( comma::csv::names< ::plane_intersection::line_t >(true), ',') <<  ">: default values for line" << std::endl
+        << "            --input-fields: print default input field names" << std::endl
+        << "            --output-fields: print output field names" << std::endl
+        << "            --output-format: print output fields format" << std::endl
+        << std::endl;
+    oss
+        << "        example:" << std::endl
+        << "            to find intersection of a line going from 0,0,0 to 1,1,1 and a plane at 0,0,4 perpendicular to z axis:" << std::endl
+        << "                echo 1,1,1,4 | points-calc plane-intersection --plane=0,0,0,0,0,1 --fields=second,plane/point/z" << std::endl
+        << "            outputs:  1,1,1,4,4,4,4" << std::endl;
+    return oss.str();
+}
+
+void traits::process( const comma::command_line_options& options, const comma::csv::options& csv ) { ::plane_intersection::process( options, csv ); }
+
+} } } // namespace snark { namespace points_calc { namespace plane_intersection {

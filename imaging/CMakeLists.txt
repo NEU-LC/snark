@@ -8,8 +8,8 @@ FILE( GLOB includes ${SOURCE_CODE_BASE_DIR}/${PROJECT}/*.h )
 FILE( GLOB camera_source ${SOURCE_CODE_BASE_DIR}/${PROJECT}/camera/*.cpp )
 FILE( GLOB camera_includes ${SOURCE_CODE_BASE_DIR}/${PROJECT}/camera/*.h )
 
-FILE( GLOB cvmat_source ${SOURCE_CODE_BASE_DIR}/${PROJECT}/cv_mat/*.cpp )
-FILE( GLOB cvmat_includes ${SOURCE_CODE_BASE_DIR}/${PROJECT}/cv_mat/*.h )
+FILE( GLOB cvmat_source ${SOURCE_CODE_BASE_DIR}/${PROJECT}/cv_mat/*.cpp ${SOURCE_CODE_BASE_DIR}/${PROJECT}/cv_mat/detail/*.cpp )
+FILE( GLOB cvmat_includes ${SOURCE_CODE_BASE_DIR}/${PROJECT}/cv_mat/*.h ${SOURCE_CODE_BASE_DIR}/${PROJECT}/cv_mat/detail/*.h )
 
 FILE( GLOB stereo_source ${SOURCE_CODE_BASE_DIR}/${PROJECT}/stereo/*.cpp )
 FILE( GLOB stereo_includes ${SOURCE_CODE_BASE_DIR}/${PROJECT}/stereo/*.h )
@@ -44,3 +44,6 @@ IF( snark_BUILD_APPLICATIONS )
     ADD_SUBDIRECTORY( examples )
 ENDIF( snark_BUILD_APPLICATIONS )
 
+IF( snark_BUILD_TESTS )
+    ADD_SUBDIRECTORY( test )
+ENDIF( snark_BUILD_TESTS )

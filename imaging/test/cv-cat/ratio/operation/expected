@@ -1,0 +1,11 @@
+#python
+
+r = red
+g = green
+b = blue
+
+for jf in range(number_of(formula)):
+    f = formula[jf]/expr
+    value = eval( f )
+    # all other elements are the same, check only one
+    expect value == formula[jf]/x[0]/y[0]/channel[0]

@@ -29,47 +29,39 @@
 
 #pragma once
 
-#include <vector>
-#include <boost/function.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
+#include "../../../visiting/eigen.h"
+#include "types.h"
 
-#include <opencv2/core/core.hpp>
+namespace comma { namespace visiting {
 
-namespace snark{ namespace cv_mat {
-
-template < typename Output = cv::Mat >
-struct operation
+template <> struct traits< snark::points_calc::plane >
 {
-    typedef std::pair< boost::posix_time::ptime, cv::Mat > input_type;
-    typedef std::pair< boost::posix_time::ptime, Output > output_type;
-    typedef input_type value_type; // quick and dirty for now
-    operation( boost::function< output_type( value_type ) > f, bool p = true ): filter_function( f ), parallel( p ) {}
-    boost::function< output_type( value_type ) > filter_function;
-    bool parallel;
+    template< typename K, typename V > static void visit( const K&, snark::points_calc::plane& t, V& v )
+    {
+        v.apply( "point", t.point );
+        v.apply( "normal", t.normal );
+    }
+    
+    template< typename K, typename V > static void visit( const K&, const snark::points_calc::plane& t, V& v )
+    {
+        v.apply( "point", t.point );
+        v.apply( "normal", t.normal );
+    }
 };
 
-typedef operation<> filter;
-
-/// filter pipeline helpers
-struct filters
+template <> struct traits< snark::points_calc::line >
 {
-    /// value type
-    typedef std::pair< boost::posix_time::ptime, cv::Mat > value_type;
-
-    /// return filters from name-value string
-    static std::vector< filter > make( const std::string& how, unsigned int default_delay = 1 );
-
-    /// apply filters (a helper)
-    static value_type apply( std::vector< filter >& filters, value_type m );
-
-    /// return filter usage
-    static const std::string& usage( const std::string & operation = "" );
+    template< typename K, typename V > static void visit( const K& k, snark::points_calc::line& t, V& v )
+    {
+        v.apply( "origin", t.origin );
+        v.apply( "direction", t.direction );
+    }
+    
+    template< typename K, typename V > static void visit( const K& k, const snark::points_calc::line& t, V& v )
+    {
+        v.apply( "origin", t.origin );
+        v.apply( "direction", t.direction );
+    }
 };
 
-/// a helper: e.g. take CV_8UC3, return CV_8UC1
-int single_channel_type( int t );
-std::string type_as_string( int t );
-
-inline bool is_empty( filters::value_type m ) { return ( m.first == boost::posix_time::not_a_date_time ) && m.second.empty(); }
-
-} }  // namespace snark { namespace cv_mat {
+} } // namespace comma { namespace visiting {

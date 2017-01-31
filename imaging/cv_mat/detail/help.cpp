@@ -27,49 +27,38 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#pragma once
+#include "help.h"
+#include "../filters.h"
+
+#include <comma/base/exception.h>
+
+#include <boost/assign/list_of.hpp>
+#include <boost/algorithm/string/split.hpp>
+#include <boost/algorithm/string/classification.hpp>
 
 #include <vector>
-#include <boost/function.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
+#include <map>
 
-#include <opencv2/core/core.hpp>
+namespace {
+
+    typedef const std::string & ( *helper )( const std::string & input );
+    static std::map< std::string, helper > helpers = boost::assign::map_list_of( "filters", snark::cv_mat::filters::usage );
+
+} // anonymous
 
 namespace snark{ namespace cv_mat {
 
-template < typename Output = cv::Mat >
-struct operation
-{
-    typedef std::pair< boost::posix_time::ptime, cv::Mat > input_type;
-    typedef std::pair< boost::posix_time::ptime, Output > output_type;
-    typedef input_type value_type; // quick and dirty for now
-    operation( boost::function< output_type( value_type ) > f, bool p = true ): filter_function( f ), parallel( p ) {}
-    boost::function< output_type( value_type ) > filter_function;
-    bool parallel;
-};
-
-typedef operation<> filter;
-
-/// filter pipeline helpers
-struct filters
-{
-    /// value type
-    typedef std::pair< boost::posix_time::ptime, cv::Mat > value_type;
-
-    /// return filters from name-value string
-    static std::vector< filter > make( const std::string& how, unsigned int default_delay = 1 );
-
-    /// apply filters (a helper)
-    static value_type apply( std::vector< filter >& filters, value_type m );
-
-    /// return filter usage
-    static const std::string& usage( const std::string & operation = "" );
-};
-
-/// a helper: e.g. take CV_8UC3, return CV_8UC1
-int single_channel_type( int t );
-std::string type_as_string( int t );
-
-inline bool is_empty( filters::value_type m ) { return ( m.first == boost::posix_time::not_a_date_time ) && m.second.empty(); }
+    std::string command_specific_help( const std::string & application, const std::string & command )
+    {
+        std::vector< std::string > tokens;
+        boost::split( tokens, command, boost::is_any_of(":"), boost::token_compress_on );
+        if ( tokens.size() == 1 ) { tokens.insert( tokens.begin(), "filters" ); }
+        if ( tokens.size() != 2 ) {
+            COMMA_THROW( comma::exception, "expected input for command-specific help in the form [<domain>::]<command> (default domain: filters), got '" << command << "'" );
+        }
+        std::map< std::string, helper >::const_iterator hi = helpers.find( tokens[0] );
+        if ( hi == helpers.end() ) { return application + ": no specific help available for '" + command + "'"; }
+        return hi->second( tokens[1] );
+    }
 
 } }  // namespace snark { namespace cv_mat {

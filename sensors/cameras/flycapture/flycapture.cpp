@@ -68,6 +68,7 @@ namespace snark{ namespace cameras{ namespace flycapture{
         }
         else if( result == FlyCapture2::PGRERROR_IMAGE_CONSISTENCY_ERROR )
         {
+            // todo: no output to stderr in libraries!
 //report damaged frame and try again
             std::cerr << "snark_flycapture error: " << result.GetDescription() << ". Retrying..." << std::endl;
             return false; 
@@ -76,6 +77,7 @@ namespace snark{ namespace cameras{ namespace flycapture{
             || ( result == FlyCapture2::PGRERROR_ISOCH_ALREADY_STARTED )
             || ( result == FlyCapture2::PGRERROR_ISOCH_NOT_STARTED ) )
         {
+            // todo: no output to stderr in libraries!
 //These are errors that result in a retry
             std::cerr << "snark_flycapture error: " << result.GetDescription() << ". Restarting camera." << std::endl;
             handle->StopCapture();

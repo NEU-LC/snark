@@ -29,47 +29,43 @@
 
 #pragma once
 
-#include <vector>
-#include <boost/function.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
+#include <string>
+#include <comma/application/command_line_options.h>
 
-#include <opencv2/core/core.hpp>
+namespace snark { namespace points_calc { namespace project { namespace onto_plane {
 
-namespace snark{ namespace cv_mat {
-
-template < typename Output = cv::Mat >
-struct operation
+struct traits
 {
-    typedef std::pair< boost::posix_time::ptime, cv::Mat > input_type;
-    typedef std::pair< boost::posix_time::ptime, Output > output_type;
-    typedef input_type value_type; // quick and dirty for now
-    operation( boost::function< output_type( value_type ) > f, bool p = true ): filter_function( f ), parallel( p ) {}
-    boost::function< output_type( value_type ) > filter_function;
-    bool parallel;
+    static std::string input_fields();
+
+    static std::string input_format();
+        
+    static std::string output_fields();
+
+    static std::string output_format();
+
+    static std::string usage();
+        
+    static int run( const comma::command_line_options& options );
 };
 
-typedef operation<> filter;
+} } } } // namespace snark { namespace points_calc { namespace project { namespace onto_plane {
 
-/// filter pipeline helpers
-struct filters
+namespace snark { namespace points_calc { namespace project { namespace onto_line {
+
+struct traits
 {
-    /// value type
-    typedef std::pair< boost::posix_time::ptime, cv::Mat > value_type;
+    static std::string input_fields();
 
-    /// return filters from name-value string
-    static std::vector< filter > make( const std::string& how, unsigned int default_delay = 1 );
+    static std::string input_format();
+        
+    static std::string output_fields();
 
-    /// apply filters (a helper)
-    static value_type apply( std::vector< filter >& filters, value_type m );
+    static std::string output_format();
 
-    /// return filter usage
-    static const std::string& usage( const std::string & operation = "" );
+    static std::string usage();
+        
+    static int run( const comma::command_line_options& options );
 };
 
-/// a helper: e.g. take CV_8UC3, return CV_8UC1
-int single_channel_type( int t );
-std::string type_as_string( int t );
-
-inline bool is_empty( filters::value_type m ) { return ( m.first == boost::posix_time::not_a_date_time ) && m.second.empty(); }
-
-} }  // namespace snark { namespace cv_mat {
+} } } } // namespace snark { namespace points_calc { namespace project { namespace onto_line {

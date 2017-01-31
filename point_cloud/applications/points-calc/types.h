@@ -29,47 +29,29 @@
 
 #pragma once
 
-#include <vector>
-#include <boost/function.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
+#include <Eigen/Core>
 
-#include <opencv2/core/core.hpp>
+namespace snark { namespace points_calc {
 
-namespace snark{ namespace cv_mat {
-
-template < typename Output = cv::Mat >
-struct operation
+struct plane
 {
-    typedef std::pair< boost::posix_time::ptime, cv::Mat > input_type;
-    typedef std::pair< boost::posix_time::ptime, Output > output_type;
-    typedef input_type value_type; // quick and dirty for now
-    operation( boost::function< output_type( value_type ) > f, bool p = true ): filter_function( f ), parallel( p ) {}
-    boost::function< output_type( value_type ) > filter_function;
-    bool parallel;
+    Eigen::Vector3d normal;
+    Eigen::Vector3d point;
+    
+    plane() : normal( Eigen::Vector3d::Zero() ), point( Eigen::Vector3d::Zero() ) {}
+    plane( const Eigen::Vector3d& normal, const Eigen::Vector3d& point ) : normal( normal ), point( point ) {}
 };
 
-typedef operation<> filter;
-
-/// filter pipeline helpers
-struct filters
+struct line
 {
-    /// value type
-    typedef std::pair< boost::posix_time::ptime, cv::Mat > value_type;
-
-    /// return filters from name-value string
-    static std::vector< filter > make( const std::string& how, unsigned int default_delay = 1 );
-
-    /// apply filters (a helper)
-    static value_type apply( std::vector< filter >& filters, value_type m );
-
-    /// return filter usage
-    static const std::string& usage( const std::string & operation = "" );
+    typedef std::pair< Eigen::Vector3d, Eigen::Vector3d > pair;
+    
+    Eigen::Vector3d origin;
+    Eigen::Vector3d direction;
+    
+    line() : origin( Eigen::Vector3d::Zero() ), direction( Eigen::Vector3d::Zero() ) {}
+    line( const Eigen::Vector3d& origin, const Eigen::Vector3d& direction ) : origin( origin ), direction( direction ) {}
+    line( const pair& p ) : origin( p.first ), direction( p.second - p.first ) {}
 };
 
-/// a helper: e.g. take CV_8UC3, return CV_8UC1
-int single_channel_type( int t );
-std::string type_as_string( int t );
-
-inline bool is_empty( filters::value_type m ) { return ( m.first == boost::posix_time::not_a_date_time ) && m.second.empty(); }
-
-} }  // namespace snark { namespace cv_mat {
+} } // namespace snark { namespace points_calc {

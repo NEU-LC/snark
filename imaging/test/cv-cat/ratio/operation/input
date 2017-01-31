@@ -1,0 +1,5 @@
+formulae_0="r + b"
+formulae_1="r - g"
+formulae_2="( r + 20 ) / b"
+formulae_3="( r + 50 ) / ( g - b )"
+formulae_4="50000 / ( r + 2*g - b )"
