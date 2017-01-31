@@ -1450,7 +1450,7 @@ static filters::value_type per_element_ratio_selector( const filters::value_type
     COMMA_THROW( comma::exception, opname << ": unrecognised output image type " << otype );
 }
 
-static filters::value_type ratio_impl_( const filters::value_type m, const std::vector< double >& numerator, const std::vector< double >& denominator, int ratio_output_type, const std::string & opname )
+static filters::value_type ratio_impl_( const filters::value_type m, const std::vector< double >& numerator, const std::vector< double >& denominator, const std::string & opname )
 {
     if( numerator.size() != denominator.size() )
         { COMMA_THROW( comma::exception, opname << ": the number of numerator " << numerator.size() << " and denominator " << denominator.size() << " coefficients differs" ); }
@@ -1461,7 +1461,8 @@ static filters::value_type ratio_impl_( const filters::value_type m, const std::
             COMMA_THROW( comma::exception, opname << ": have " << m.second.channels() << " channel(s) only, requested non-zero " << what << " coefficient for channel " << n - 1 );
         }
     }
-    int otype = single_channel_type( ratio_output_type == -1 ? m.second.type() : ratio_output_type );
+    int otype = single_channel_type( m.second.type() );
+    if ( opname == "ratio" && otype != CV_64FC1 ) { otype = CV_32FC1; }
     switch( m.second.depth() )
     {
         case CV_8U : return per_element_ratio_selector< CV_8U  >( m, numerator, denominator, otype, opname );
@@ -2144,23 +2145,12 @@ static boost::function< filter::input_type( filter::input_type ) > make_filter_f
     }
     if( e[0] == "linear-combination" || e[0] == "ratio" )
     {
-        std::vector< std::string > inputs = comma::split( e[1], '|' );
-        if ( inputs.size() > 2 ) { COMMA_THROW( comma::exception, e[0] << ": operation takes at most one setting, \"output-depth\", got '" << e[1] << "'" ); }
-        int ratio_output_type = -1; // same as input
-        if ( inputs.size() == 2 ) {
-            std::vector< std::string > setting = comma::split( inputs[1], ':' );
-            if ( setting.size() != 2 ) { COMMA_THROW( comma::exception, e[0] << ": expected keyword:value setting; got " << setting.size() << " parameters '" << inputs[1] << "'" ); }
-            if ( setting[0] != "output-depth" ) { COMMA_THROW( comma::exception, e[0] << ": expected \"output-depth\", got '" << setting[0] << "'" ); }
-            boost::unordered_map< std::string, int >::const_iterator found = types_.find( setting[1] );
-            if ( found == types_.end() ) { COMMA_THROW( comma::exception, e[0] << ": the output-depth '" << setting[1] << "' is not know, see the list of opencv data types" ); }
-            ratio_output_type = found->second;
-        }
         typedef std::string::const_iterator iterator_type;
         ratios::rules< iterator_type > rules;
         ratios::parser< iterator_type, ratios::ratio > parser( rules.ratio_ );
         ratios::ratio r;
-        iterator_type begin = inputs[0].begin();
-        iterator_type end = inputs[0].end();
+        iterator_type begin = e[1].begin();
+        iterator_type end = e[1].end();
         bool status = phrase_parse( begin, end, parser, boost::spirit::ascii::space, r );
         if ( !status || ( begin != end ) ) { COMMA_THROW( comma::exception, e[0] << ": expected a " << e[0] << " expression, got: \"" << comma::join( e, '=' ) << "\"" ); }
         if ( e[0] == "linear-combination" && !r.denominator.unity() ) { COMMA_THROW( comma::exception, e[0] << ": expected a linear combination expression, got a ratio" ); }
@@ -2168,7 +2158,7 @@ static boost::function< filter::input_type( filter::input_type ) > make_filter_f
         for( size_t j = 0; j < r.numerator.terms.size(); ++j ) { numerator[j] = r.numerator.terms[j].value; }
         std::vector< double > denominator( r.denominator.terms.size() );
         for( size_t j = 0; j < r.denominator.terms.size(); ++j ) { denominator[j] = r.denominator.terms[j].value; }
-        return boost::bind( &ratio_impl_, _1, numerator, denominator, ratio_output_type, e[0] );
+        return boost::bind( &ratio_impl_, _1, numerator, denominator, e[0] );
     }
     if( e[0] == "overlay" )
     {
