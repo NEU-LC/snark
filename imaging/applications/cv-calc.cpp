@@ -51,6 +51,7 @@ static void usage( bool verbose=false )
     std::cerr << std::endl;
     std::cerr << "  roi" << std::endl;
     std::cerr << "    --show-partial; by default no partial roi is shown in image. Use option to change behaviour." << std::endl;
+    std::cerr << "    --row-image,--line-image; image consists of many one pixel rows e.g. each row represents different frequency in Hyperspec camera." << std::endl;
     std::cerr << std::endl;
     std::cerr << "examples" << std::endl;
     std::cerr << "  header" << std::endl;
@@ -127,6 +128,28 @@ template <> struct traits< Ark::Applications::extents >
 typedef Ark::Applications::extents extents_t;
 
 static bool verbose = false;
+
+/// Returns true if any roi pixel is set
+bool set_roi_in_mask( bool is_row_image, int rows, int cols, bool show_partial, 
+                      cv::Mat& mask, extents_t& e )
+{
+    // roi not in image at all
+    if( e.max.x < 0 || e.min.x >= cols || e.max.y < 0 || e.min.y >= rows )
+    {
+        return false;
+    }
+    
+    // Clip roi to fit in the image
+    if( show_partial )
+    {
+        if( e.min.x < 0 ) { e.min.x = 0; }
+        if( e.max.x >= cols ) { e.max.x = cols-1; }
+        if( e.min.y < 0 ) { e.min.y = 0; }
+        if( e.max.y >= rows ) { e.max.y = rows-1; }
+    }
+    
+    return true;
+}
 
 int main( int ac, char** av )
 {
