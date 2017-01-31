@@ -1399,17 +1399,19 @@ filters::value_type fft_impl_( filters::value_type m, bool direct, bool complex,
     }
 }
 
-template< typename Tin, typename Tout >
+template< int DepthIn, int DepthOut >
 static void ratio( const tbb::blocked_range< std::size_t >& r, const cv::Mat& m, const std::vector< double >& numerator, const std::vector< double >& denominator, cv::Mat& result )
 {
+    typedef typename depth_traits< DepthIn >::value_t value_in_t;
+    typedef typename depth_traits< DepthOut >::value_t value_out_t;
     const unsigned int channels = m.channels();
     const unsigned int cols = m.cols * channels;
-    static const Tout highest = std::numeric_limits< Tout >::max();
-    static const Tout lowest = std::numeric_limits< Tout >::is_integer ? std::numeric_limits< Tout >::min() : -highest;
+    static const value_out_t highest = std::numeric_limits< value_out_t >::max();
+    static const value_out_t lowest = std::numeric_limits< value_out_t >::is_integer ? std::numeric_limits< value_out_t >::min() : -highest;
     for( unsigned int i = r.begin(); i < r.end(); ++i )
     {
-        const Tin* in = m.ptr< Tin >(i);
-        Tout* out = result.ptr< Tout >(i);
+        const value_in_t* in = m.ptr< value_in_t >(i);
+        value_out_t* out = result.ptr< value_out_t >(i);
         for( unsigned int j = 0; j < cols; j += channels )
         {
             double n = numerator[0];
@@ -1427,10 +1429,8 @@ static void ratio( const tbb::blocked_range< std::size_t >& r, const cv::Mat& m,
 template< int DepthIn, int DepthOut >
 static filters::value_type per_element_ratio( const filters::value_type m, const std::vector< double >& numerator, const std::vector< double > & denominator )
 {
-    typedef typename depth_traits< DepthIn >::value_t value_in_t;
-    typedef typename depth_traits< DepthOut >::value_t value_out_t;
     cv::Mat result( m.second.size(), DepthOut );
-    tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, m.second.rows ), boost::bind( &ratio< value_in_t, value_out_t >, _1, m.second, numerator, denominator, boost::ref( result ) ) );
+    tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, m.second.rows ), boost::bind( &ratio< DepthIn, DepthOut >, _1, m.second, numerator, denominator, boost::ref( result ) ) );
     return filters::value_type( m.first, result );
 }
 
