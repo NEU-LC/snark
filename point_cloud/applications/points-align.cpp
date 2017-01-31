@@ -54,6 +54,7 @@ static void bash_completion( unsigned const ac, char const * const * av )
         " --help -h"
         " --verbose -v"
         " --output-fields"
+        " --output-format"
         " --output-error"
         " --initial-error"
         " --with-scaling"
