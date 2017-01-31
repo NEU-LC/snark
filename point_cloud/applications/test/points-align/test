@@ -59,29 +59,29 @@ output_dir=output
 [[ -d $output_dir ]] || mkdir $output_dir
 cd $output_dir
 
-fields="x,y,z"
-
 # read test input and assign to variables
-comma_path_value_to_var
+comma_path_value_to_var --prefix=input
 
-if [[ $reference =~ "random" ]]; then
-    num_points=${reference#random }
+fields=${input_fields:-x,y,z}
+
+if [[ $input_reference =~ "random" ]]; then
+    num_points=${input_reference#random }
     random_cloud $num_points 100 10 10 > reference.csv
 else
-    echo -e $reference > reference.csv
+    echo -e $input_reference > reference.csv
 fi
 
 # Treat displacement and rotation as vectors to convert from degrees to radians
 scalar=$( echo "3.14159265359 / 180" | bc -l )
 frame_format=u/x,u/y,u/z,v/x,v/y,v/z
-frame=$( echo $frame,$scalar | points-calc scale --fields=$frame_format,scalar \
+frame=$( echo $input_frame,$scalar | points-calc scale --fields=$frame_format,scalar \
              | csv-shuffle --fields=$frame_format,scalar,x,y,z \
                            --output=u/x,u/y,u/z,x,y,z )
 
 # Generate the source frame, which we'll try to align with the reference,
 # and optionally perturb it a little
 perturbation_fn=cat
-[[ $perturbation ]] && perturbation_fn="perturb $perturbation"
+[[ $input_perturbation ]] && perturbation_fn="perturb $input_perturbation"
 
 cat reference.csv | points-frame --to $frame --fields=$fields | $perturbation_fn > source.csv
 
@@ -96,7 +96,7 @@ combined_fields=$( echo $pasted_output_fields | csv-fields rename --fields secon
 
 binary_input_transform=cat
 binary_option=
-if [[ $mode == "binary" ]]; then
+if [[ $input_mode == "binary" ]]; then
     binary_input_transform="csv-to-bin 6d"
     binary_option="--binary=6d"
 fi
