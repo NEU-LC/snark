@@ -134,37 +134,40 @@ int traits::run( const comma::command_line_options& options )
     {
         const input* p = istream.read();
         if( !p ) { break; }
-        if( last_record.empty() )
+        if( !last_record.empty() )
         {
-            last = *p;
-            if( csv.binary() ) { last_record.resize( csv.format().size() ); ::memcpy( &last_record[0], istream.binary().last(), csv.format().size() ); }
-            else { last_record = comma::join( istream.ascii().last(), csv.delimiter ); }
-            continue;
+            if( last.block == p->block && ( !threshold || ( *p - last ).norm() <= *threshold ) )
+            {
+                double dot = ( *p - p->plane.point ).dot( p->plane.normal );
+                double last_dot = ( last - p->plane.point ).dot( p->plane.normal );
+                if( dot * last_dot <= 0 ) // points on the different sides of the plane
+                {
+                    output o(   comma::math::equal( dot, 0 ) && comma::math::equal( last_dot, 0 )
+                            ? static_cast< Eigen::Vector3d >( last )
+                            : Eigen::ParametrizedLine< double, 3 >::Through( last, *p ).intersectionPoint( Eigen::Hyperplane< double, 3 >( p->plane.normal, p->plane.point ) )
+                            , !comma::math::equal( last_dot, 0 )
+                            ? ( last_dot < 0 ? 1 : -1 )
+                            : !comma::math::equal( dot, 0 ) ? ( dot > 0 ? 1 : -1 ) : 0 );
+                    if( csv.binary() )
+                    {
+                        std::cout.write( &last_record[0], output_csv.format().size() );
+                        std::cout.write( istream.binary().last(), output_csv.format().size() );
+                        const std::vector< char >& v = ostream.binary().binary().put( o ); // quick and dirty; watch performance
+                        std::cout.write( &v[0], v.size() );
+                    }
+                    else
+                    {
+                        std::cout << last_record
+                                << csv.delimiter << comma::join( istream.ascii().last(), csv.delimiter )
+                                << csv.delimiter << ostream.ascii().ascii().put( o ) << std::endl;
+                    }
+                    if( csv.flush ) { std::cout.flush(); }
+                }
+            }
         }
-        if( last.block != p->block || ( threshold && ( *p - last ).norm() > *threshold ) ) { last = *p; continue; }
-        double dot = ( *p - p->plane.point ).dot( p->plane.normal );
-        double last_dot = ( last - p->plane.point ).dot( p->plane.normal );
-        if( dot * last_dot > 0 ) { continue; } // points on the same side of the plane
-        output o(   comma::math::equal( dot, 0 ) && comma::math::equal( last_dot, 0 )
-                  ? static_cast< Eigen::Vector3d >( last )
-                  : Eigen::ParametrizedLine< double, 3 >::Through( last, *p ).intersectionPoint( Eigen::Hyperplane< double, 3 >( p->plane.normal, p->plane.point ) )
-                  , !comma::math::equal( last_dot, 0 )
-                  ? ( last_dot < 0 ? 1 : -1 )
-                  : !comma::math::equal( dot, 0 ) ? ( dot > 0 ? 1 : -1 ) : 0 );
-        if( csv.binary() )
-        {
-            std::cout.write( &last_record[0], output_csv.format().size() );
-            std::cout.write( istream.binary().last(), output_csv.format().size() );
-            const std::vector< char >& v = ostream.binary().binary().put( o ); // quick and dirty; watch performance
-            std::cout.write( &v[0], v.size() );
-        }
-        else
-        {
-            std::cout << last_record
-                      << csv.delimiter << comma::join( istream.ascii().last(), csv.delimiter )
-                      << csv.delimiter << ostream.ascii().ascii().put( o ) << std::endl;
-        }
-        if( csv.flush ) { std::cout.flush(); }
+        last = *p;
+        if( csv.binary() ) { last_record.resize( csv.format().size() ); ::memcpy( &last_record[0], istream.binary().last(), csv.format().size() ); }
+        else { last_record = comma::join( istream.ascii().last(), csv.delimiter ); }
     }
     return 0;
 }
