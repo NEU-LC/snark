@@ -93,7 +93,7 @@ for k in "${!combinations[@]}" ; do
 
     generate $nx $ny $timestamp \
         | image-from-csv --fields=$fields --output="rows=$ny;cols=$nx;type=$otype" \
-        | ( cd "$odir"; cv-cat "linear-combination=${combination};file=png;null" )
+        | ( cd "$odir"; cv-cat "linear-combination=${combination};convert-to=ub;file=png;null" )
     comma_status_ok || { echo "$scriptname: pipeline to create '$odir/$timestamp.png' failed" >&2; exit 1 ; }
     [[ -f "$odir/$timestamp.png" ]] || { echo "$scriptname: file '$odir/$timestamp.png' not found" >&2; exit 1; }
 
