@@ -334,6 +334,9 @@ static void usage()
         << comma::csv::options::usage()
         << usage_csv_options
         << usage_examples 
+        #if Qt3D_VERSION==2
+        << usage_qt55_warning
+        #endif
         << std::endl;
     exit( 1 );
 }
