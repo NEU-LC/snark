@@ -332,7 +332,6 @@ namespace snark{ namespace cameras{ namespace flycapture{
         impl( std::vector<camera_pair>& camera_pairs, boost::optional< std::vector< unsigned int > > offsets )
         : good( false )
         {
-            if( offsets ){ apply_offsets( *offsets ); }
             for (camera_pair& pair : camera_pairs)
             {
                 uint serial = pair.first;
@@ -340,6 +339,7 @@ namespace snark{ namespace cameras{ namespace flycapture{
                 cameras_.push_back(std::unique_ptr<camera::impl>(new camera::impl(serial, attributes)));
             }
             if (cameras_.size()) { good = true; }
+            if( offsets ){ apply_offsets( *offsets ); }
         }
 
         ~impl()
