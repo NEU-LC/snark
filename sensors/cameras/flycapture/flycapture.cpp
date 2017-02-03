@@ -327,9 +327,10 @@ namespace snark{ namespace cameras{ namespace flycapture{
     class camera::multicam::impl
     {
     public:
-        impl(std::vector<camera_pair>& camera_pairs)
+        impl( std::vector<camera_pair>& camera_pairs, boost::optional<std::vector<uint>> offsets )
         : good( false )
         {
+            if( offsets ){ pimpl_->apply_offsets( *offsets ); }
             for (camera_pair& pair : camera_pairs)
             {
                 uint serial = pair.first;
@@ -348,6 +349,18 @@ namespace snark{ namespace cameras{ namespace flycapture{
             if (good) { 
                 for (auto& camera : cameras_)
                 { camera->software_trigger(false); }
+            }
+        }
+
+        void apply_offsets( const std::vector< unsigned int > offsets )
+        {
+            if( offsets.size() && cameras_.size() != offsets.size() )
+            {
+                COMMA_THROW(comma::exception, "offset size should be 0 or equal to camera array size");
+            }
+            for( unsigned int i = 0; i < offsets.size(); ++i )
+            {
+                for ( unsigned int j = 0; j < offsets[i]; ++j){ const auto pair = cameras_[i]->read(); }
             }
         }
 
@@ -377,7 +390,7 @@ namespace snark{ namespace cameras{ namespace flycapture{
     
 } } } //namespace snark{ namespace cameras{ namespace flycapture{
 
-    namespace snark{ namespace cameras{ namespace flycapture{
+    namespace snark{ namespace cameras{ namespace flycapture {
 
 // flycapture class
 
@@ -400,8 +413,8 @@ namespace snark{ namespace cameras{ namespace flycapture{
         camera::attributes_type camera::attributes() const { return get_attributes( pimpl_->handle() ); }
 
 // camera::multicam class
-        camera::multicam::multicam(std::vector<camera_pair>& cameras)
-        : pimpl_( new multicam::impl( cameras ) )
+        camera::multicam::multicam( std::vector<camera_pair>& cameras, boost::optional<std::vector<uint>> offsets )
+        : pimpl_( new multicam::impl( cameras, offsets ) )
         {
         }
 
