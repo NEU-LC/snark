@@ -63,7 +63,7 @@ struct filters
     static value_type apply( std::vector< filter >& filters, value_type m );
 
     /// return filter usage
-    static const std::string& usage();
+    static const std::string& usage( const std::string & operation = "" );
 };
 
 /// a helper: e.g. take CV_8UC3, return CV_8UC1

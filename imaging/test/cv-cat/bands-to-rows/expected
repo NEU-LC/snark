@@ -1,0 +1,13 @@
+#python
+
+o = manual/column
+columns = o.keys()
+
+o = bulk/column[columns[0]]/precision
+precisions = o.keys()
+
+for c in columns:
+    for p in precisions:
+        expect round(manual/column[c]/average/red)   == round(bulk/column[c]/precision[p]/average/red)   +/- 1
+        expect round(manual/column[c]/average/green) == round(bulk/column[c]/precision[p]/average/green) +/- 1
+        expect round(manual/column[c]/average/blue)  == round(bulk/column[c]/precision[p]/average/blue)  +/- 1

@@ -36,6 +36,7 @@
 #include <comma/csv/stream.h>
 #include <comma/io/stream.h>
 #include <comma/io/publisher.h>
+#include <opencv2/imgproc/imgproc.hpp>
 #include "../../../../imaging/cv_mat/serialization.h"
 #include "../realsense.h"
 #include "../traits.h"
@@ -109,6 +110,7 @@ void usage(bool detail)
     std::cerr << "        <directory>: write logs to this directory" << std::endl;
     std::cerr << "        period=<seconds>: period after which to start a new log file" << std::endl;
     std::cerr << "        index: write index file containing timestamp,file_number,file_offset for each frame" << std::endl;
+    std::cerr << "    --output-image-from-points: instead of points data, output the camera stream to stdout" << std::endl;
     std::cerr << "    --verbose,-v: show detailed messages" << std::endl;
     std::cerr << "    --options,--camera-options=<options>: set options for all devices, <options> is a comma serparated list of <option_name>=<value>"<<std::endl;
     std::cerr << "    --list-options: list device options and exit"<<std::endl;
@@ -193,9 +195,9 @@ struct points_t
     ::writer<output_t> writer;
     
     points_t(device_t& device,bool has_color,const comma::csv::options& csv);
-    void scan(unsigned block);
+    void scan(unsigned block, bool output_image);
     //process points cloud
-    static void process(std::vector<device_t>& devices,const comma::csv::options& csv);
+    static void process(std::vector<device_t>& devices,const comma::csv::options& csv, bool output_image);
     static void output_format();
     static void output_fields();
 };
@@ -364,13 +366,14 @@ struct camera_stream
         {
             if(!device.is_streaming()) { COMMA_THROW(comma::exception, "device not streaming" ); }
             device.wait_for_frames();
+            // todo: instead of using image_args, get device format and then convert to BGR
             serializer.write(std::cout,stream.get_frame());
         }
         comma::verbose<<"signaled!"<<std::endl;
     }
 };
 
-void points_t::process(std::vector<device_t>& devices,const comma::csv::options& csv)
+void points_t::process(std::vector<device_t>& devices,const comma::csv::options& csv, bool output_image = false)
 {
     comma::verbose<<"points_t::process"<<std::endl;
     bool has_color=csv.fields.empty() || csv.has_some_of_fields("color,color/r,color/g,color/b");
@@ -389,7 +392,7 @@ void points_t::process(std::vector<device_t>& devices,const comma::csv::options&
         run_stream runner(*devices[0].device);
         for(unsigned block=0;!signaled;block++)
         {
-            all[0]->scan(block);
+            all[0]->scan(block, output_image);
         }
     }
     else
@@ -400,7 +403,7 @@ void points_t::process(std::vector<device_t>& devices,const comma::csv::options&
             for(unsigned i=0;i<all.size()&&!signaled;i++)
             {
                 run_stream runner(*devices[i].device);
-                all[i]->scan(block++);
+                all[i]->scan(block++, output_image);
             }
         }
     }
@@ -439,7 +442,7 @@ points_t::points_t(device_t& dev,bool has_color, const comma::csv::options& csv)
     comma::verbose<<"points_t(has_color: "<<has_color<<") done "<<std::endl;
 }
 
-void points_t::scan(unsigned block)
+void points_t::scan(unsigned block, bool output_image = false)
 {
     if(!device.is_streaming()) { COMMA_THROW(comma::exception, "device not streaming" ); }
     device.wait_for_frames();
@@ -450,7 +453,7 @@ void points_t::scan(unsigned block)
     out.block=block;
     std::pair<boost::posix_time::ptime,cv::Mat> pair;
     if(has_color) { pair=color.get_frame(); }
-    cv::Mat& mat=pair.second;
+    const cv::Mat& mat=pair.second;
     rs::float3 point;
     std::size_t num_output = 0;
     for(unsigned index=0;index<points_cloud.count();index++)
@@ -478,12 +481,20 @@ void points_t::scan(unsigned block)
             if(!discard)
             {
                 if (logging) { logging->write(out); }
-                writer.write(out);
+                if ( !output_image ) { writer.write(out); }
                 num_output++;
             }
         }
     }
     if (logging) { logging->index_.write_block(out.t, num_output); }
+    if (output_image) 
+    { 
+        snark::cv_mat::serialization::options opt;
+        snark::cv_mat::serialization serializer(opt);
+        // image is always RGB in points mode, convert to BGR so the output image is consistent with cv-cat
+        cv::cvtColor(pair.second, pair.second, CV_RGB2BGR); 
+        serializer.write(std::cout,pair) ;
+    }
 }
 
 void points_t::output_format()
@@ -791,7 +802,7 @@ int main( int argc, char** argv )
         }
         else
         {
-            points_t::process(selected,csv);
+            points_t::process(selected,csv, options.exists("--output-image-from-points"));
         }
         return 0;
     }

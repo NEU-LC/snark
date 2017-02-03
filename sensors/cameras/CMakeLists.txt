@@ -25,6 +25,10 @@ if( snark_build_sensors_jai )
     add_subdirectory( jai )
 endif( snark_build_sensors_jai )
 
+if( snark_build_sensors_kinect )
+    add_subdirectory( kinect )
+endif( snark_build_sensors_kinect )
+
 IF( snark_build_sensors_vimba )
     ADD_SUBDIRECTORY( vimba )
 ENDIF( snark_build_sensors_vimba )

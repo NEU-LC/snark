@@ -10,6 +10,7 @@ define('FormFeed', ["jquery", "Feed"], function ($) {
         this.fields = [];
         // this.buttons = [];
         this.form = $('<form>');
+        this.width = this.config.width != undefined ? this.config.width : 400;
         this.extract_fields(config.form);
         this.ok_label = this.config.ok_label != undefined ? this.config.ok_label : "Submit";
         this.init();
@@ -66,7 +67,7 @@ define('FormFeed', ["jquery", "Feed"], function ($) {
 
         var size = Object.keys(this.fields).length;
         if (size > 0) {
-            this.target.width(400);
+            this.target.width(this_.width);
         }
         else {
             $(this.target).css("min-width", function () {
@@ -154,9 +155,7 @@ define('FormFeed', ["jquery", "Feed"], function ($) {
         $(this.form).find(".result-panel").remove();
         if (data.output != undefined) {
             var output = data.output;
-            // output = output.replace(/"/g, " ");
-            // output = output.replace(/\n/g, " ");
-            var panel = $('<div>', {class: "panel result-panel"});
+            var panel = $('<div>', {class: "panel result-panel col-sm-12"});
             panel.append($('<label>', {class: "", text: "Output"}));
             var output_div = $('<div>', {class: "form-results"});
             output_div.append($('<pre>', {text: output}));

@@ -66,6 +66,7 @@
 #include "../../timing/timestamped.h"
 #include "../../timing/traits.h"
 #include "filters.h"
+#include "detail/ratio.h"
 #include "serialization.h"
 #include "traits.h"
 #include "depth_traits.h"
@@ -179,6 +180,8 @@ static boost::unordered_map< std::string, unsigned int > fill_cvt_color_types_()
     types[ "CV_BayerGB2GRAY" ] = types[ "BayerGB,GRAY" ] = CV_BayerGB2GRAY;
     types[ "CV_BayerRG2GRAY" ] = types[ "BayerRG,GRAY" ] = CV_BayerRG2GRAY;
     types[ "CV_BayerGR2GRAY" ] = types[ "BayerGR,GRAY" ] = CV_BayerGR2GRAY;
+    types[ "CV_BGR2RGB" ] = types[ "BGR,RGB" ] = CV_BGR2RGB;
+    types[ "CV_RGB2BGR" ] = types[ "RGB,BGR" ] = CV_RGB2BGR;
     return types;
 }
 
@@ -305,6 +308,11 @@ static filters::value_type bands_to_cols_impl_( filters::value_type input, bool 
 {
     unsigned int w = input.second.cols;
     unsigned int h = input.second.rows;
+    static std::set< int > good_input_depths = boost::assign::list_of( CV_8U )( CV_16U )( CV_16S )( CV_32F )( CV_64F );
+    if ( good_input_depths.find( input.second.depth() ) == good_input_depths.end() )
+    {
+        COMMA_THROW( comma::exception, "depth of the " << type_as_string( input.second.type() ) << " image type is not supported by cv::reduce; consider 'convert-to' before processing" );
+    }
     unsigned int output_type = cv_reduce_dtype >= 0
                              ? CV_MAKETYPE( CV_MAT_DEPTH( cv_reduce_dtype ), input.second.channels() )
                              : input.second.type() ;
@@ -493,7 +501,9 @@ static filters::value_type mask_impl_( filters::value_type m, boost::function< f
 {
     filters::value_type n;
     n.first = m.first;
-    m.second.copyTo( n.second, mask( m ).second );
+    const cv::Mat & f = mask( m ).second;
+    if ( f.depth() != CV_8U ) { COMMA_THROW( comma::exception, "the mask type is " << type_as_string( f.type() ) << ", must have CV_8U depth; use convert-to explicitly" ); }
+    m.second.copyTo( n.second, f );
     return n;
 }
 
@@ -639,8 +649,18 @@ static filters::value_type split_impl_( filters::value_type m )
 }
 
 class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex is non-copyable
-{    
-    private:
+{            
+    public:
+        log_impl_() {}
+
+        log_impl_( const std::string& filename ) : logger_( new logger( filename ) ) {}
+
+        log_impl_( const std::string& directory, boost::posix_time::time_duration period, bool index ) : logger_( new logger( directory, period, index ) ) {}
+
+        log_impl_( const std::string& directory, unsigned int size, bool index ) : logger_( new logger( directory, size, index ) ) {}
+
+        filters::value_type operator()( filters::value_type m ) { return logger_->operator()( m ); }
+        
         class logger
         {
             public:
@@ -674,7 +694,6 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
                     return m;
                 }
                 
-            private:
                 struct indexer
                 {
                     boost::posix_time::ptime t;
@@ -710,6 +729,7 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
                     }
                 };
                 
+            private:
                 boost::mutex mutex_;
                 std::string directory_;
                 boost::scoped_ptr< std::ofstream > ofstream_;
@@ -741,19 +761,9 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
                     index_.increment_file();
                 }
         };
-
-        boost::shared_ptr< logger > logger_; // todo: watch performance
         
-    public:
-        log_impl_() {}
-
-        log_impl_( const std::string& filename ) : logger_( new logger( filename ) ) {}
-
-        log_impl_( const std::string& directory, boost::posix_time::time_duration period, bool index ) : logger_( new logger( directory, period, index ) ) {}
-
-        log_impl_( const std::string& directory, unsigned int size, bool index ) : logger_( new logger( directory, size, index ) ) {}
-
-        filters::value_type operator()( filters::value_type m ) { return logger_->operator()( m ); }
+    private:
+        boost::shared_ptr< logger > logger_; // todo: watch performance
 };
 
 static filters::value_type merge_impl_( filters::value_type m, unsigned int nchannels )
@@ -885,10 +895,7 @@ static filters::value_type histogram_impl_( filters::value_type m )
     for( int r = 0; r < m.second.rows; ++r )
     {
         const unsigned char* p = m.second.ptr< unsigned char >( r );
-        for( int c = 0; c < m.second.cols; ++c )
-        {
-            for( unsigned int i = 0; i < channels.size(); ++channels[i][p[c]], ++i, ++p );
-        }
+        for( int c = 0; c < m.second.cols; ++c ) { for( unsigned int i = 0; i < channels.size(); ++channels[i][*p], ++i, ++p ); }
     }
     serialization::header h;
     h.timestamp = m.first;
@@ -1394,52 +1401,81 @@ filters::value_type fft_impl_( filters::value_type m, bool direct, bool complex,
     }
 }
 
-template< typename T >
-static void dot( const tbb::blocked_range< std::size_t >& r, const cv::Mat& m, const std::vector< double >& coefficients, cv::Mat& result )
+template< int DepthIn, int DepthOut >
+static void ratio( const tbb::blocked_range< std::size_t >& r, const cv::Mat& m, const std::vector< double >& numerator, const std::vector< double >& denominator, cv::Mat& result )
 {
+    typedef typename depth_traits< DepthIn >::value_t value_in_t;
+    typedef typename depth_traits< DepthOut >::value_t value_out_t;
     const unsigned int channels = m.channels();
     const unsigned int cols = m.cols * channels;
-    static const T max = std::numeric_limits< T >::max();
-    static const T lowest = std::numeric_limits< T >::is_integer ? std::numeric_limits< T >::min() : -max;
-    double offset = coefficients.size() > channels ? coefficients[coefficients.size()-1]:0;
+    static const value_out_t highest = std::numeric_limits< value_out_t >::max();
+    static const value_out_t lowest = std::numeric_limits< value_out_t >::is_integer ? std::numeric_limits< value_out_t >::min() : -highest;
     for( unsigned int i = r.begin(); i < r.end(); ++i )
     {
-        const T* in = m.ptr< T >(i);
-        T* out = result.ptr< T >(i);
+        const value_in_t* in = m.ptr< value_in_t >(i);
+        value_out_t* out = result.ptr< value_out_t >(i);
         for( unsigned int j = 0; j < cols; j += channels )
         {
-            double dot = 0;
-            for( unsigned int k = 0; k < channels; ++k ) { dot += *in++ * coefficients[k]; }
-            dot+=offset;
-            *out++ = dot > max ? max : dot < lowest ? lowest : dot;
+            double n = numerator[0];
+            double d = denominator[0];
+            for( unsigned int k = 0; k < channels; ++k ) {
+                n += *in * numerator[k + 1];
+                d += *in++ * denominator[k + 1];
+            }
+            double value = ( d == 0 ? ( n == 0 ? 0 : highest ) : n / d );
+            *out++ = value > highest ? highest : value < lowest ? lowest : value;
         }
     }
 }
 
-template< int Depth >
-static filters::value_type per_element_dot( const filters::value_type m, const std::vector< double >& coefficients )
+template< int DepthIn, int DepthOut >
+static filters::value_type per_element_ratio( const filters::value_type m, const std::vector< double >& numerator, const std::vector< double > & denominator )
 {
-    typedef typename depth_traits< Depth >::value_t value_t;
-    cv::Mat result( m.second.size(), single_channel_type( m.second.type() ) );
-    tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, m.second.rows ), boost::bind( &dot< value_t >, _1, m.second, coefficients, boost::ref( result ) ) );
+    cv::Mat result( m.second.size(), DepthOut );
+    tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, m.second.rows ), boost::bind( &ratio< DepthIn, DepthOut >, _1, m.second, numerator, denominator, boost::ref( result ) ) );
     return filters::value_type( m.first, result );
 }
 
-static filters::value_type linear_combination_impl_( const filters::value_type m, const std::vector< double >& coefficients )
+template< int DepthIn >
+static filters::value_type per_element_ratio_selector( const filters::value_type m, const std::vector< double >& numerator, const std::vector< double > & denominator, int otype, const std::string & opname )
 {
-    if( m.second.channels() != static_cast< int >( coefficients.size() ) && static_cast< int >( coefficients.size() ) != m.second.channels()+1 )
-        { COMMA_THROW( comma::exception, "linear-combination: the number of coefficients does not match the number of channels; channels = " << m.second.channels() << ", coefficients = " << coefficients.size() ); }
+    switch( otype )
+    {
+        case CV_8U : return per_element_ratio< DepthIn, CV_8U  >( m, numerator, denominator );
+        case CV_8S : return per_element_ratio< DepthIn, CV_8S  >( m, numerator, denominator );
+        case CV_16U: return per_element_ratio< DepthIn, CV_16U >( m, numerator, denominator );
+        case CV_16S: return per_element_ratio< DepthIn, CV_16S >( m, numerator, denominator );
+        case CV_32S: return per_element_ratio< DepthIn, CV_32S >( m, numerator, denominator );
+        case CV_32F: return per_element_ratio< DepthIn, CV_32F >( m, numerator, denominator );
+        case CV_64F: return per_element_ratio< DepthIn, CV_64F >( m, numerator, denominator );
+    }
+    COMMA_THROW( comma::exception, opname << ": unrecognised output image type " << otype );
+}
+
+static filters::value_type ratio_impl_( const filters::value_type m, const std::vector< double >& numerator, const std::vector< double >& denominator, const std::string & opname )
+{
+    if( numerator.size() != denominator.size() )
+        { COMMA_THROW( comma::exception, opname << ": the number of numerator " << numerator.size() << " and denominator " << denominator.size() << " coefficients differs" ); }
+    // the coefficients are always constant,r,g,b,a (some of the values can be zero); it is ok to have fewer channels than coefficients as long as all the unused coefficients are zero
+    for ( size_t n = static_cast< size_t >( m.second.channels() ) + 1 ; n < numerator.size(); ++n ) {
+        if ( numerator[n] != 0.0 || denominator[n] != 0.0 ) {
+            const std::string & what = numerator[n] != 0.0 ? "numerator" : "denominator";
+            COMMA_THROW( comma::exception, opname << ": have " << m.second.channels() << " channel(s) only, requested non-zero " << what << " coefficient for channel " << n - 1 );
+        }
+    }
+    int otype = single_channel_type( m.second.type() );
+    if ( otype != CV_64FC1 ) { otype = CV_32FC1; }
     switch( m.second.depth() )
     {
-        case CV_8U : return per_element_dot< CV_8U  >( m, coefficients );
-        case CV_8S : return per_element_dot< CV_8S  >( m, coefficients );
-        case CV_16U: return per_element_dot< CV_16U >( m, coefficients );
-        case CV_16S: return per_element_dot< CV_16S >( m, coefficients );
-        case CV_32S: return per_element_dot< CV_32S >( m, coefficients );
-        case CV_32F: return per_element_dot< CV_32F >( m, coefficients );
-        case CV_64F: return per_element_dot< CV_64F >( m, coefficients );
+        case CV_8U : return per_element_ratio_selector< CV_8U  >( m, numerator, denominator, otype, opname );
+        case CV_8S : return per_element_ratio_selector< CV_8S  >( m, numerator, denominator, otype, opname );
+        case CV_16U: return per_element_ratio_selector< CV_16U >( m, numerator, denominator, otype, opname );
+        case CV_16S: return per_element_ratio_selector< CV_16S >( m, numerator, denominator, otype, opname );
+        case CV_32S: return per_element_ratio_selector< CV_32S >( m, numerator, denominator, otype, opname );
+        case CV_32F: return per_element_ratio_selector< CV_32F >( m, numerator, denominator, otype, opname );
+        case CV_64F: return per_element_ratio_selector< CV_64F >( m, numerator, denominator, otype, opname );
     }
-    COMMA_THROW( comma::exception, "linear-combination: unrecognised image type " << m.second.type() );
+    COMMA_THROW( comma::exception, opname << ": unrecognised input image type " << m.second.type() );
 }
 
 static double max_value(int depth)
@@ -1741,7 +1777,7 @@ static boost::function< filter::input_type( filter::input_type ) > make_filter_f
                 {
                     static std::map< std::string, int > depths = boost::assign::map_list_of ( "CV_32S", CV_32S ) ( "i", CV_32S ) ( "CV_32F", CV_32F ) ( "f", CV_32F ) ( "CV_64F", CV_64F ) ( "d", CV_64F );
                     std::map< std::string, int >::const_iterator found = depths.find( setting[1] );
-                    if ( found == depths.end() ) { COMMA_THROW( comma::exception, op_name << ": the output-depth is not one of [i,f,d] or [CV_32S,CV_32F,CV_64F]" ); }
+                    if ( found == depths.end() ) { COMMA_THROW( comma::exception, op_name << ": the output-depth '" << setting[1] << "' is not one of [i,f,d] or [CV_32S,CV_32F,CV_64F]" ); }
                     cv_reduce_dtype = found->second;
                 }
                 else
@@ -2109,13 +2145,22 @@ static boost::function< filter::input_type( filter::input_type ) > make_filter_f
         threshold_t::types type = threshold_t::from_string( s.size() < 3 ? "" : s[2] );
         return boost::bind( &threshold_impl_, _1, threshold, maxval, type, otsu );
     }
-    if( e[0] == "linear-combination" )
+    if( e[0] == "linear-combination" || e[0] == "ratio" )
     {
-        const std::vector< std::string >& s = comma::split( e[1], ',' );
-        if( s[0].empty() ) { COMMA_THROW( comma::exception, "linear-combination: expected coefficients got: \"" << comma::join( e, '=' ) << "\"" ); }
-        std::vector< double > coefficients( s.size() );
-        for( unsigned int j = 0; j < s.size(); ++j ) { coefficients[j] = boost::lexical_cast< double >( s[j] ); }
-        return boost::bind( &linear_combination_impl_, _1, coefficients );
+        typedef std::string::const_iterator iterator_type;
+        ratios::rules< iterator_type > rules;
+        ratios::parser< iterator_type, ratios::ratio > parser( rules.ratio_ );
+        ratios::ratio r;
+        iterator_type begin = e[1].begin();
+        iterator_type end = e[1].end();
+        bool status = phrase_parse( begin, end, parser, boost::spirit::ascii::space, r );
+        if ( !status || ( begin != end ) ) { COMMA_THROW( comma::exception, e[0] << ": expected a " << e[0] << " expression, got: \"" << comma::join( e, '=' ) << "\"" ); }
+        if ( e[0] == "linear-combination" && !r.denominator.unity() ) { COMMA_THROW( comma::exception, e[0] << ": expected a linear combination expression, got a ratio" ); }
+        std::vector< double > numerator( r.numerator.terms.size() );
+        for( size_t j = 0; j < r.numerator.terms.size(); ++j ) { numerator[j] = r.numerator.terms[j].value; }
+        std::vector< double > denominator( r.denominator.terms.size() );
+        for( size_t j = 0; j < r.denominator.terms.size(); ++j ) { denominator[j] = r.denominator.terms[j].value; }
+        return boost::bind( &ratio_impl_, _1, numerator, denominator, e[0] );
     }
     if( e[0] == "overlay" )
     {
@@ -2332,14 +2377,6 @@ static std::string usage_impl_()
     oss << "    cv::Mat image filters usage (';'-separated):" << std::endl;
     oss << "        accumulate=<n>: accumulate the last n images and concatenate them vertically (useful for slit-scan and spectral cameras like pika2)" << std::endl;
     oss << "            example: cat slit-scan.bin | cv-cat \"accumulate=400;view;null\"" << std::endl;
-    oss << "        bands-to-cols=x,[w[,x,w]][|method:<method-name>|output-depth:<depth>]; take a number of columns (bands) from the input, process together by method," << std::endl;
-    oss << "            write into the output, one band (a range of columns) reduced into one column; supported methods: average (default), sum, min, max; the sum method" << std::endl;
-    oss << "            requires the explicit output-depth parameter (one of i,f,d or CV_32S, CV_32F, CV_64F) if the input has low depth" << std::endl;
-    oss << "            examples: \"bands-to-cols=12,23|50,30|45,60|100|method:average\"; output an image of 4 columns containing the average" << std::endl;
-    oss << "                          of columns 12-34 (i.e., 12 + 23 - 1), 50-79, 45-104 (overlap is OK), and 100 (default width is 1) from the original image" << std::endl;
-    oss << "                      \"bands-to-cols=12,23|50,30|45,60|100|method:sum|output-depth:d\"; same bands but output an image of 4 columns containing the sum" << std::endl;
-    oss << "                          of the columns data from the original image; use CV_64F depth (double) as the output format" << std::endl;
-    oss << "        bands-to-rows=x,[w[,x,w]][|method:<method-name>|output-depth:<depth>]; same as bands-to-cols but operate on rows of input instead of columns" << std::endl;
     oss << "        bayer=<mode>: convert from bayer, <mode>=1-4 (see also convert-color)" << std::endl;
     oss << "        blur=<type>,<parameters>: apply a blur to the image (positive and odd kernel sizes)" << std::endl;
     oss << "            blur=box,<kernel_size> " << std::endl;
@@ -2373,7 +2410,6 @@ static std::string usage_impl_()
     oss << "        head=<n>: output <n> frames and exit" << std::endl;
     oss << "        inrange=<lower>,<upper>: a band filter on r,g,b or greyscale image; for rgb: <lower>::=<r>,<g>,<b>; <upper>::=<r>,<g>,<b>; see cv::inRange() for detail" << std::endl;
     oss << "        invert: invert image (to negative)" << std::endl;
-    oss << "        linear-combination=<k1>,<k2>,<k3>,...[<c>]: output grey-scale image that is linear combination of input channels with given coefficients and optioanl offset" << std::endl;
     oss << "        load=<filename>: load image from file instead of taking an image on stdin; the main meaningful use would be in association with mask filter" << std::endl;
     oss << "                         supported file types by filename extension:" << std::endl;
     oss << "                             - .bin: file is in cv-cat binary format: <t>,<rows>,<cols>,<type>,<image data>" << std::endl;
@@ -2445,7 +2481,7 @@ static std::string usage_impl_()
     oss << "                          of columns 12-34 (i.e., 12 + 23 - 1), 50-79, 45-104 (overlap is OK), and 100 (default width is 1) from the original image" << std::endl;
     oss << "                      \"bands-to-cols=12,23|50,30|45,60|100|method:sum|output-depth:d\"; same bands but output an image of 4 columns containing the sum" << std::endl;
     oss << "                          of the columns data from the original image; use CV_64F depth (double) as the output format" << std::endl;
-    oss << "        bands-to-rows=x,[w[,x,w]][|method:<method-name>|output-depth:<depth>]; same as bands-to-cols but operate on rows of input instead of columns" << std::endl;
+    oss << "        bands-to-rows=x,[w[|x,w]][|method:<method-name>|output-depth:<depth>]; same as bands-to-cols but operate on rows of input instead of columns" << std::endl;
     oss << std::endl;
     oss << "        channels-to-cols; opposite to cols-to-channels; unwrap all channels as columns" << std::endl;
     oss << "            example: \"channels-to-cols\" over a 3-channel image: RGB channels of column 0 become columns 0 (single-channel), 1, and 2, RGB channels" << std::endl;
@@ -2475,13 +2511,26 @@ static std::string usage_impl_()
     oss << "            the number of arguments shall be the same as the number of input channels" << std::endl;
     oss << "            example: \"swap-channels=2,1,0\"; revert the order of RGB channels with R becoming B and B becoming R; G is mapped onto itself" << std::endl;
     oss << std::endl;
+    oss << "    operations combining the data of multiple channels:" << std::endl;
+    oss << "        ratio=(<a1>r + <a2>g + ... + <ac>)/(<b1>r + <b2>g + ... + <bc>): output grey-scale image that is a ratio of linear combinations of input channels" << std::endl;
+    oss << "            with given coefficients and offsets; see below for examples, use '--help filters::ratio' for the detailed explanation of the syntax and examples" << std::endl;
+    oss << "            the naming convention does not depend on the actual image channels: 'r' in the ratio expression is always interpreted as channel[0]," << std::endl;
+    oss << "            'g' as channel[1], etc.; in particular, grey-scaled images have a single channel that shall be referred to as 'r', e.g., ratio=r / ( r + 1 )" << std::endl;
+    oss << "            examples: \"ratio=( r + g + b ) / ( 1 + a )\"; output a grey-scale image equal to the sum of the first 3 channels" << std::endl;
+    oss << "                          divided by the offset 4th channel" << std::endl;
+    oss << "                      \"ratio=( r - b ) / ( r + b )\"; output normalized difference of channels 'r' and 'g'" << std::endl;
+    oss << "        linear-combination=<a1>r + <a2>g + ... + <ac>: output grey-scale image that is linear combination of input channels with given coefficients and optional offset" << std::endl;
+    oss << "            example: \"linear-combination=-r+2g-b\", highlights the green channel" << std::endl;
+    oss << "            naming conventions are the same as for the ratio operation; use '--help filters::linear-combination' for more examples and a detailed syntax explanation" << std::endl;
+    oss << "        output of the ratio and linear-combination operations has floating point (CV_32F) precision unless the input is already in doubles (if so, precision is unchanged)" << std::endl;
+    oss << std::endl;
     oss << "    basic drawing on images" << std::endl;
     oss << "        cross[=<x>,<y>]: draw cross-hair at x,y; default: at image center" << std::endl;
     oss << "        circle=<x>,<y>,<radius>[,<r>,<g>,<b>,<thickness>,<line_type>,<shift>]: draw circle; see cv::circle for details on parameters and defaults" << std::endl;
     oss << "        rectangle,box=<x>,<y>,<x>,<y>[,<r>,<g>,<b>,<thickness>,<line_type>,<shift>]: draw rectangle; see cv::rectangle for details on parameters and defaults" << std::endl;
     oss << std::endl;
     oss << "    cv::Mat image operations:" << std::endl;
-    oss << "        histogram: calculate image histogram and output in binary format: t,3ui,256ui for ub images; t,3ui,256ui,256ui,256ui for 3ub images, etc" << std::endl;
+    oss << "        histogram: calculate image histogram and output in binary format: t,3ui,256ui for ub images; for 3ub images as b,g,r: t,3ui,256ui,256ui,256ui, etc" << std::endl;
     oss << "        simple-blob[=<parameters>]: wraps cv::SimpleBlobDetector, outputs as csv key points timestamped by image timestamp" << std::endl;
     oss << "            <parameters>" << std::endl;
     oss << "                output-binary: output key points as binary" << std::endl;
@@ -2496,10 +2545,26 @@ static std::string usage_impl_()
     return oss.str();
 }
 
-const std::string& filters::usage()
+const std::string& filters::usage( const std::string & operation )
 {
-    static const std::string s = usage_impl_();
-    return s;
+    if ( operation.empty() )
+    {
+        static const std::string s = usage_impl_();
+        return s;
+    }
+    else
+    {
+        if ( operation == "ratio" || operation == "linear-combination" )
+        {
+            static const std::string s = snark::cv_mat::ratios::ratio::describe_syntax();
+            return s;
+        }
+        else
+        {
+            static std::string s = "filters: no specific help is available for the '" + operation + "' operation";
+            return s;
+        }
+    }
 }
 
 } } // namespace snark{ namespace cv_mat {

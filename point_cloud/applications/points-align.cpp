@@ -1,5 +1,5 @@
 // This file is part of snark, a generic and flexible library for robotics research
-// Copyright (c) 2011 The University of Sydney
+// Copyright (c) 2016 The University of Sydney
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -45,8 +45,80 @@ struct input_points
     input_points() : block( 0 ) {}
 };
 
+struct output_t
+{
+    comma::uint32 block;
+    snark::applications::position position;
+    double scale;
+    double error;
+
+    output_t() : block( 0 ), scale( 1 ), error( 0 ) {}
+    output_t( comma::uint32 block
+            , const snark::applications::position& position
+            , double scale
+            , double error )
+        : block( block )
+        , position( position )
+        , scale( scale )
+        , error( error )
+    {}
+};
+
+namespace comma { namespace visiting {
+
+template <> struct traits< input_points >
+{
+    template < typename K, typename V > static void visit( const K&, input_points& p, V& v )
+    {
+        v.apply( "block", p.block );
+        v.apply( "first", p.points.first );
+        v.apply( "second", p.points.second );
+    }
+
+    template < typename K, typename V > static void visit( const K&, const input_points& p, V& v )
+    {
+        v.apply( "block", p.block );
+        v.apply( "first", p.points.first );
+        v.apply( "second", p.points.second );
+    }
+};
+
+template <> struct traits< output_t >
+{
+    template < typename Key, class Visitor >
+    static void visit( const Key&, output_t& p, Visitor& v )
+    {
+        v.apply( "block", p.block );
+        v.apply( "x", p.position.coordinates.x() );
+        v.apply( "y", p.position.coordinates.y() );
+        v.apply( "z", p.position.coordinates.z() );
+        v.apply( "roll", p.position.orientation.x() );
+        v.apply( "pitch", p.position.orientation.y() );
+        v.apply( "yaw", p.position.orientation.z() );
+        v.apply( "scale", p.scale );
+        v.apply( "error", p.error );
+    }
+
+    template < typename Key, class Visitor >
+    static void visit( const Key&, const output_t& p, Visitor& v )
+    {
+        v.apply( "block", p.block );
+        v.apply( "x", p.position.coordinates.x() );
+        v.apply( "y", p.position.coordinates.y() );
+        v.apply( "z", p.position.coordinates.z() );
+        v.apply( "roll", p.position.orientation.x() );
+        v.apply( "pitch", p.position.orientation.y() );
+        v.apply( "yaw", p.position.orientation.z() );
+        v.apply( "scale", p.scale );
+        v.apply( "error", p.error );
+    }
+};
+
+} } // namespace comma { namespace visiting {
+
 static const std::string default_fields = comma::join( comma::csv::names< point_pair_t >(), ',' );
-static const std::string standard_output_fields = comma::join( comma::csv::names< snark::applications::position >(), ',' );
+static const std::string standard_output_fields = "x,y,z,roll,pitch,yaw,scale";
+static const std::string standard_output_format = "d,d,d,d,d,d,d";
 
 static void bash_completion( unsigned const ac, char const * const * av )
 {
@@ -54,8 +126,10 @@ static void bash_completion( unsigned const ac, char const * const * av )
         " --help -h"
         " --verbose -v"
         " --output-fields"
+        " --output-format"
         " --output-error"
         " --initial-error"
+        " --with-scaling"
         ;
 
     std::cout << completion_options << std::endl;
@@ -89,6 +163,7 @@ static void usage( bool verbose = false )
     std::cerr << "    --output-format: show output format and exit" << std::endl;
     std::cerr << "    --output-error:  include the error estimate in output" << std::endl;
     std::cerr << "    --initial-error: don't run alignment, just output initial error" << std::endl;
+    std::cerr << "    --with-scaling:  allow Umeyama algorithm to use scaling" << std::endl;
     std::cerr << std::endl;
     std::cerr << "examples: " << std::endl;
     std::cerr << "    -- output the " << standard_output_fields << " transform --" << std::endl;
@@ -109,73 +184,12 @@ static void usage( bool verbose = false )
         std::cerr << "    See http://eigen.tuxfamily.org/dox/group__Geometry__Module.html" << std::endl;
         std::cerr << "    for implementation details." << std::endl;
         std::cerr << std::endl;
+        std::cerr << "    Note that the --with-scaling option sets the with_scaling argument of" << std::endl;
+        std::cerr << "    Eigen::umeyama() to true. By default we set it to false." << std::endl;
+        std::cerr << std::endl;
     }
     exit( 0 );
 }
-
-struct position_with_error
-{
-    comma::uint32 block;
-    snark::applications::position position;
-    double error;
-
-    position_with_error() : block( 0 ), error( 0 ) {}
-    position_with_error( comma::uint32 block, const snark::applications::position& position, double error )
-        : block( block )
-        , position( position )
-        , error( error )
-    {}
-};
-
-namespace comma { namespace visiting {
-
-template <> struct traits< input_points >
-{
-    template < typename K, typename V > static void visit( const K&, input_points& p, V& v )
-    {
-        v.apply( "block", p.block );
-        v.apply( "first", p.points.first );
-        v.apply( "second", p.points.second );
-    }
-
-    template < typename K, typename V > static void visit( const K&, const input_points& p, V& v )
-    {
-        v.apply( "block", p.block );
-        v.apply( "first", p.points.first );
-        v.apply( "second", p.points.second );
-    }
-};
-
-template <> struct traits< position_with_error >
-{
-    template < typename Key, class Visitor >
-    static void visit( const Key&, position_with_error& p, Visitor& v )
-    {
-        v.apply( "block", p.block );
-        v.apply( "x", p.position.coordinates.x() );
-        v.apply( "y", p.position.coordinates.y() );
-        v.apply( "z", p.position.coordinates.z() );
-        v.apply( "roll", p.position.orientation.x() );
-        v.apply( "pitch", p.position.orientation.y() );
-        v.apply( "yaw", p.position.orientation.z() );
-        v.apply( "error", p.error );
-    }
-
-    template < typename Key, class Visitor >
-    static void visit( const Key&, const position_with_error& p, Visitor& v )
-    {
-        v.apply( "block", p.block );
-        v.apply( "x", p.position.coordinates.x() );
-        v.apply( "y", p.position.coordinates.y() );
-        v.apply( "z", p.position.coordinates.z() );
-        v.apply( "roll", p.position.orientation.x() );
-        v.apply( "pitch", p.position.orientation.y() );
-        v.apply( "yaw", p.position.orientation.z() );
-        v.apply( "error", p.error );
-    }
-};
-
-} } // namespace comma { namespace visiting {
 
 std::string get_output_fields( comma::csv::options csv_options, bool output_error )
 {
@@ -187,7 +201,7 @@ std::string get_output_fields( comma::csv::options csv_options, bool output_erro
 
 std::string get_output_format( comma::csv::options csv_options, bool output_error )
 {
-    std::string output_format( comma::csv::format::value< snark::applications::position >() );
+    std::string output_format( standard_output_format );
     if( output_error ) { output_format += ",d"; }
     if( csv_options.has_field( "block" )) { output_format = output_format + ",ui"; }
     return output_format;
@@ -208,17 +222,28 @@ double error( Eigen::MatrixXd source
     return ( estimate * source - target ).norm() / target.norm();
 }
 
-void output_transform( Eigen::MatrixXd source, Eigen::MatrixXd target
-                     , comma::uint32 block, comma::csv::options output_csv )
+void output_transform( Eigen::MatrixXd source
+                     , Eigen::MatrixXd target
+                     , bool with_scaling
+                     , comma::uint32 block
+                     , comma::csv::options output_csv )
 {
     comma::verbose << "loaded " << target.cols() << " pairs of points" << std::endl;
+    comma::verbose << "computing Umeyama estimate " << ( with_scaling ? "with" : "without" ) << " scaling" << std::endl;
 
-    Eigen::Matrix4d estimate = Eigen::umeyama( source, target );
+    Eigen::Matrix4d estimate = Eigen::umeyama( source, target, with_scaling );
 
     comma::verbose << "umeyama estimate\n" << estimate << std::endl;
 
     Eigen::Matrix3d rotation( estimate.block< 3, 3 >( 0, 0 ));
     Eigen::Vector3d translation( estimate.block< 3, 1 >( 0, 3 ));
+    double scale = 1.0f;
+
+    if( with_scaling )
+    {
+        scale = cbrt( rotation.determinant() );
+        rotation /= scale;
+    }
 
     Eigen::Vector3d orientation( snark::rotation_matrix::roll_pitch_yaw( rotation ));
 
@@ -226,11 +251,13 @@ void output_transform( Eigen::MatrixXd source, Eigen::MatrixXd target
     comma::verbose << "translation ( " << comma::join( translation, ',' ) << " )" << std::endl;
     comma::verbose << "orientation (rad) ( " << comma::join( orientation, ',' ) << " )" << std::endl;
     comma::verbose << "orientation (deg) ( " << comma::join( orientation * 180 / M_PI, ',' ) << " )" << std::endl;
+    comma::verbose << "scale=" << scale << std::endl;
 
-    comma::csv::output_stream< position_with_error > ostream( std::cout, output_csv );
-    ostream.write( position_with_error( block
-                                      , snark::applications::position( translation, orientation )
-                                      , error( source, target, estimate )));
+    comma::csv::output_stream< output_t > ostream( std::cout, output_csv );
+    ostream.write( output_t( block
+                           , snark::applications::position( translation, orientation )
+                           , scale
+                           , error( source, target, estimate )));
 }
 
 int main( int ac, char** av )
@@ -271,6 +298,7 @@ int main( int ac, char** av )
         Eigen::MatrixXd target( 3, 0 );
         unsigned int block = 0;
         unsigned int discarded_records = 0;
+        bool with_scaling = options.exists( "--with-scaling" );
 
         comma::csv::input_stream< input_points > istream( std::cin, csv );
         while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
@@ -296,7 +324,7 @@ int main( int ac, char** av )
                 if( initial_error )
                     std::cout << error( source, target ) << std::endl;
                 else
-                    output_transform( source, target, block, output_csv );
+                    output_transform( source, target, with_scaling, block, output_csv );
                 source.resize( Eigen::NoChange, 0 );
                 target.resize( Eigen::NoChange, 0 );
                 block = p->block;
@@ -320,7 +348,7 @@ int main( int ac, char** av )
         }
 
         if( initial_error ) { std::cout << error( source, target ) << std::endl; }
-        else { output_transform( source, target, block, output_csv ); }
+        else { output_transform( source, target, with_scaling, block, output_csv ); }
         return 0;
     }
     catch( std::exception& ex )

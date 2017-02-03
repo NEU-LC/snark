@@ -1,0 +1,3 @@
+# note: check is manual, reproduce these coefficients in the expected file
+combination_0="r+2g+3b"
+combination_1="r+2g+3b+4"
