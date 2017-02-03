@@ -186,6 +186,11 @@ void gl_widget::paintGL()
                     , QString("centre of rotation: %1 %2 %3").arg( centre_of_rotation_.x() )
                                                              .arg( centre_of_rotation_.y() )
                                                              .arg( centre_of_rotation_.z() ));
+
+    painter.setPen( Qt::red );
+    painter.setFont( QFont( "Arial", 10 ));
+    painter.drawText( rect(), Qt::AlignHCenter | Qt::AlignTop
+                    , QString("Warning: Qt3D v2 support is incomplete"));
 }
 
 void gl_widget::set_projection()
