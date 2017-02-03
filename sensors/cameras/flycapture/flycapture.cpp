@@ -329,10 +329,10 @@ namespace snark{ namespace cameras{ namespace flycapture{
     class camera::multicam::impl
     {
     public:
-        impl( std::vector<camera_pair>& camera_pairs, boost::optional<std::vector<uint>> offsets )
+        impl( std::vector<camera_pair>& camera_pairs, boost::optional< std::vector< unsigned int > > offsets )
         : good( false )
         {
-            if( offsets ){ pimpl_->apply_offsets( *offsets ); }
+            if( offsets ){ apply_offsets( *offsets ); }
             for (camera_pair& pair : camera_pairs)
             {
                 uint serial = pair.first;
