@@ -1760,43 +1760,56 @@ static boost::function< filter::input_type( filter::input_type ) > make_filter_f
         const bool bands_to_cols = e[0] == "bands-to-cols";
         const std::string & op_name = bands_to_cols ? "bands-to-cols" : "bands-to-rows";
         if( e.size() < 2 ) { COMMA_THROW( comma::exception, op_name << ": specify at least one band to extract, e.g. " << op_name << "=1,10" ); }
-        std::vector< std::string > stripes = comma::split( e[1], '|' );
+        // iterate over pair of integers until all taken; then iterate over "name:value" pairs
         std::vector< stripe_t > bands;
+        std::istringstream is( e[1] );
+        std::string token;
+        while ( true ) {
+            if ( !std::getline( is, token, ',' ) ) { break; }
+            if ( token.empty() ) { COMMA_THROW( comma::exception, "empty comma-separated field in '" << e[1] << "'" ); }
+            unsigned int y;
+            try {
+                y = boost::lexical_cast< int >( token );
+            } catch ( boost::bad_lexical_cast ) {
+                break; // possibly a keyword
+            }
+            unsigned int h;
+            std::getline( is, token, ',' );
+            try {
+                h = boost::lexical_cast< int >( token );
+            } catch ( boost::bad_lexical_cast ) {
+                COMMA_THROW( comma::exception, "expected <position>,<size> (integers) pairs, got " << e[1] );
+            }
+            bands.push_back( std::make_pair( y, h ) );
+        }
+        // the rest of the string shall be comma-separated name:value pairs
         int cv_reduce_method = bands_method_default;
         int cv_reduce_dtype = -1;
-        for ( size_t s = 0; s < stripes.size(); ++s )
+        while ( !token.empty() )  // on EOF (no settings), get here with empty token; this is OK
         {
-            if ( stripes[s].find( ":" ) != std::string::npos )
+            std::vector< std::string > setting = comma::split( token, ':' );
+            if ( setting.size() != 2 ) { COMMA_THROW( comma::exception, op_name << ": expected keyword:value; got " << setting.size() << " parameters '" << token << "'" ); }
+            if ( setting[0] == "method" )
             {
-                std::vector< std::string > setting = comma::split( stripes[s], ':' );
-                if ( setting.size() != 2 ) { COMMA_THROW( comma::exception, op_name << ": expected keyword:value; got " << setting.size() << " parameters '" << stripes[s] << "'" ); }
-                if ( setting[0] == "method" )
-                {
-                    static std::map< std::string, int > methods = boost::assign::map_list_of ( "average", CV_REDUCE_AVG ) ( "sum", CV_REDUCE_SUM ) ( "min", CV_REDUCE_MIN ) ( "max", CV_REDUCE_MAX );
-                    std::map< std::string, int >::const_iterator found = methods.find( setting[1] );
-                    if ( found == methods.end() ) { COMMA_THROW( comma::exception, op_name << ": the method is not one of [average,sum,min,max]" ); }
-                    cv_reduce_method = found->second;
-                }
-                else if ( setting[0] == "output-depth" )
-                {
-                    static std::map< std::string, int > depths = boost::assign::map_list_of ( "CV_32S", CV_32S ) ( "i", CV_32S ) ( "CV_32F", CV_32F ) ( "f", CV_32F ) ( "CV_64F", CV_64F ) ( "d", CV_64F );
-                    std::map< std::string, int >::const_iterator found = depths.find( setting[1] );
-                    if ( found == depths.end() ) { COMMA_THROW( comma::exception, op_name << ": the output-depth '" << setting[1] << "' is not one of [i,f,d] or [CV_32S,CV_32F,CV_64F]" ); }
-                    cv_reduce_dtype = found->second;
-                }
-                else
-                {
-                    COMMA_THROW( comma::exception, op_name << ": the keyword '" << setting[0] << "' is not one of [method,output-depth]" );
-                }
+                static std::map< std::string, int > methods = boost::assign::map_list_of ( "average", CV_REDUCE_AVG ) ( "sum", CV_REDUCE_SUM ) ( "min", CV_REDUCE_MIN ) ( "max", CV_REDUCE_MAX );
+                std::map< std::string, int >::const_iterator found = methods.find( setting[1] );
+                if ( found == methods.end() ) { COMMA_THROW( comma::exception, op_name << ": the method is not one of [average,sum,min,max]" ); }
+                cv_reduce_method = found->second;
+            }
+            else if ( setting[0] == "output-depth" )
+            {
+                // the permitted list is very restrictive and explicit
+                static std::map< std::string, int > depths = boost::assign::map_list_of ( "CV_32S", CV_32S ) ( "i", CV_32S ) ( "CV_32F", CV_32F ) ( "f", CV_32F ) ( "CV_64F", CV_64F ) ( "d", CV_64F );
+                std::map< std::string, int >::const_iterator found = depths.find( setting[1] );
+                if ( found == depths.end() ) { COMMA_THROW( comma::exception, op_name << ": the output-depth '" << setting[1] << "' is not one of [i,f,d] or [CV_32S,CV_32F,CV_64F]" ); }
+                cv_reduce_dtype = found->second;
             }
             else
             {
-                std::vector< std::string > rowblock = comma::split( stripes[s], ',' );
-                if ( rowblock.size() > 2 ) { COMMA_THROW( comma::exception, op_name << ": expected position,[width]; got " << rowblock.size() << " parameters '" << stripes[s] << "'" ); }
-                unsigned int y = boost::lexical_cast< unsigned int >( rowblock[0] );
-                unsigned int h = ( rowblock.size() == 2 ? boost::lexical_cast< unsigned int >( rowblock[1] ) : 1 );
-                bands.push_back( std::make_pair( y, h ) );
+                COMMA_THROW( comma::exception, op_name << ": the keyword '" << setting[0] << "' is not one of [method,output-depth]" );
             }
+            if ( !std::getline( is, token, ',' ) ) { break; }
+            if ( token.empty() ) { COMMA_THROW( comma::exception, "empty comma-separated field in '" << e[1] << "'" ); }
         }
         if ( bands.empty() ) { COMMA_THROW( comma::exception, op_name << ": specify at least one band" ); }
         return boost::bind( &bands_to_cols_impl_, _1, bands_to_cols, bands, cv_reduce_method, cv_reduce_dtype );
