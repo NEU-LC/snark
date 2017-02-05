@@ -73,13 +73,17 @@
 #include "../vegetation/filters.h"
 #include "tbb/parallel_reduce.h"
 
-struct map_input_t
-{
-    typedef double value_type;
-    typedef comma::int32 key_type;
-    key_type key;
-    value_type value;
-};
+namespace {
+
+    struct map_input_t
+    {
+        typedef double value_type;
+        typedef comma::int32 key_type;
+        key_type key;
+        value_type value;
+    };
+
+} // anonymous
 
 namespace snark{ namespace cv_mat {
 
