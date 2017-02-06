@@ -329,7 +329,7 @@ namespace snark{ namespace cameras{ namespace flycapture{
     class camera::multicam::impl
     {
     public:
-        impl( std::vector<camera_pair>& camera_pairs, boost::optional< std::vector< unsigned int > > offsets )
+        impl( std::vector<camera_pair>& camera_pairs, const std::vector< unsigned int >& offsets )
         : good( false )
         {
             for (camera_pair& pair : camera_pairs)
@@ -339,7 +339,7 @@ namespace snark{ namespace cameras{ namespace flycapture{
                 cameras_.push_back(std::unique_ptr<camera::impl>(new camera::impl(serial, attributes)));
             }
             if (cameras_.size()) { good = true; }
-            if( offsets ){ apply_offsets( *offsets ); }
+            apply_offsets( *offsets );
         }
 
         ~impl()
@@ -354,12 +354,10 @@ namespace snark{ namespace cameras{ namespace flycapture{
             }
         }
 
-        void apply_offsets( const std::vector< unsigned int > offsets )
+        void apply_offsets( const std::vector< unsigned int >& offsets )
         {
-            if( offsets.size() && cameras_.size() != offsets.size() )
-            {
-                COMMA_THROW(comma::exception, "offset size should be 0 or equal to camera array size");
-            }
+            if( offsets.empty() ) { return; }
+            if( cameras_.size() != offsets.size() ) { COMMA_THROW( comma::exception, "expected offsets number equal to number of cameras: " << cameras_.size() << "; got: " << offsets.size() ); }
             for( unsigned int i = 0; i < offsets.size(); ++i )
             {
                 for ( unsigned int j = 0; j < offsets[i]; ++j){ const auto pair = cameras_[i]->read(); }
