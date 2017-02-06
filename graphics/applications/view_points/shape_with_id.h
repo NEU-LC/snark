@@ -452,7 +452,12 @@ struct Shapetraits< Eigen::Vector3d, How >
         #if Qt3D_VERSION==1
         buffer.add( vertex_t( QVector3D( point.x(), point.y(), point.z() ), color ), block );
         #else
-        buffer.add( vertex_t( Eigen::Vector3f( point.x(), point.y(), point.z() ), color ), block );
+        buffer.add( vertex_t( Eigen::Vector3f( point.x(), point.y(), point.z() )
+                            , qt3d::gl_color_t( color.red()   / 255.0f
+                                              , color.green() / 255.0f
+                                              , color.blue()  / 255.0f
+                                              , color.alpha() / 255.0f ))
+                  , block );
         #endif
         extents = extents
                 ? extents->hull( point.cast< float >() )

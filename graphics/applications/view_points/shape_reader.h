@@ -210,18 +210,12 @@ inline bool ShapeReader< S, How >::read_once()
         #if Qt3D_VERSION==1
         const Eigen::Vector3d& center = Shapetraits< S, How >::center( v.shape );
         v.color = m_colored->color( center, p->id, p->scalar, p->color );
-        //#else
-        // TODO v2: set the color - needs a v2 version of colored.h
-        //v.color = qt3d::gl_color_t( 0.5, 0.5, 0.5, 1.0 );
         #endif
         boost::mutex::scoped_lock lock( m_mutex );
         m_deque.push_back( v );
         m_point = Shapetraits< S, How >::somePoint( v.shape );
         #if Qt3D_VERSION==1
         m_color = v.color;
-        //#else
-        // TODO v2: set the color
-        //m_color = v.color;
         #endif
         return true;
     }
