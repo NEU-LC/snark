@@ -55,9 +55,9 @@ struct gl_color_t
     gl_color_t( const QColor& color )
     {
         rgba[0] = static_cast< GLfloat >( color.redF() );
-        rgba[0] = static_cast< GLfloat >( color.greenF() );
-        rgba[0] = static_cast< GLfloat >( color.blueF() );
-        rgba[0] = static_cast< GLfloat >( color.alphaF() );
+        rgba[1] = static_cast< GLfloat >( color.greenF() );
+        rgba[2] = static_cast< GLfloat >( color.blueF() );
+        rgba[3] = static_cast< GLfloat >( color.alphaF() );
     }
 
     gl_color_t( const gl_color_t& color ) : rgba( color.rgba ) {}
