@@ -2522,7 +2522,7 @@ static std::string usage_impl_()
     oss << "            examples: \"crop-rows=5,10|25,5\"; output an image of height 15 taking 2 row blocks starting at 5 and 25 and with heights 10 and 5, respectively" << std::endl;
     oss << "                      \"crop-rows=5|25|15\"; default block height is 1, block starts can be out of order" << std::endl;
     oss << std::endl;
-    oss << "        rows-to-channels=1,4,5[|pad:value|repeat:step]; same as cols-to-channels but operates on rows" << std::endl;
+    oss << "        rows-to-channels=1,4,5[,pad:value,repeat:step]; same as cols-to-channels but operates on rows" << std::endl;
     oss << std::endl;
     oss << "        swap-channels=2,1,0,3; re-order channels; arguments shall be integers from 0 to the total number of input channels" << std::endl;
     oss << "            NYI - for now a placeholder only, possibly can be achieved by other operations" << std::endl;
