@@ -1769,14 +1769,14 @@ static boost::function< filter::input_type( filter::input_type ) > make_filter_f
             unsigned int y;
             try {
                 y = boost::lexical_cast< int >( stripes[s] );
-            } catch ( boost::bad_lexical_cast ) {
+            } catch ( boost::bad_lexical_cast & ) {
                 break; // possibly a keyword, not an error
             }
             if ( ! (++s < stripes.size() ) ) { COMMA_THROW( comma::exception, op_name << ": expected <int, int> pairs, got a single int in '" << e[1] << "'" ); }
             unsigned int h;
             try {
                 h = boost::lexical_cast< int >( stripes[s] );
-            } catch ( boost::bad_lexical_cast ) {
+            } catch ( boost::bad_lexical_cast & ) {
                 COMMA_THROW( comma::exception, op_name << ": expected <position>,<size> integer pairs, got " << e[1] );
             }
             bands.push_back( std::make_pair( y, h ) );
