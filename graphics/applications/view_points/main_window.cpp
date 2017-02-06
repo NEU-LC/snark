@@ -80,7 +80,7 @@ MainWindow::MainWindow( const std::string& title, Viewer* viewer )
 #if QT_VERSION >= 0x050000
     layout->addWidget( QWidget::createWindowContainer( viewer ), 0, 1 );
 #else
-  layout->addWidget( viewer, 0, 1 );
+    layout->addWidget( viewer, 0, 1 );
 #endif
     layout->setColumnStretch( 0, 0 );
     layout->setColumnStretch( 1, 1 );
