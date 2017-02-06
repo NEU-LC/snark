@@ -1847,45 +1847,46 @@ static boost::function< filter::input_type( filter::input_type ) > make_filter_f
     }
     if( e[0] == "cols-to-channels" || e[0] == "rows-to-channels" )
     {
-        // rhs looks like "cols-to-channels=1,4,5[|pad:value|repeat:step]"
-        // the '|'-separated entries shall be either:
-        // - a comma-separated lists of integers, or
-        // - a single integer, or
+        // rhs looks like "cols-to-channels=1,4,5[,pad:value,repeat:step]"
+        // the ','-separated entries shall be either:
+        // - integers, or
         // - colon-separated words with a known keyword on the left and one of the known enumeration names on the right
         const bool cols_to_channels = e[0] == "cols-to-channels";
         const std::string & op_name = cols_to_channels ? "cols-to-channels" : "rows-to-channels";
         const std::string & op_what = cols_to_channels ? "column" : "row";
         if( e.size() < 2 ) { COMMA_THROW( comma::exception, op_name << ": specify at least one column or column list to extract, e.g. " << op_name << "=1,10" ); }
-        std::vector< std::string > inputs = comma::split( e[1], '|' );
+        std::vector< std::string > inputs = comma::split( e[1], ',' );
         std::vector< unsigned int > values;
         double padding = 0.0;
         unsigned int repeat = 0;
-        for ( size_t s = 0; s < inputs.size(); ++s )
+        size_t s = 0;
+        // first, iterate over column number, then, over options
+        while ( s < inputs.size() )
         {
-            if ( inputs[s].find( ":" ) != std::string::npos )
+            try {
+                values.push_back( boost::lexical_cast< unsigned int >( inputs[s] ) );
+            } catch ( boost::bad_lexical_cast & ) {
+                break; // maybe an option
+            }
+            ++s;
+        }
+        while ( s < inputs.size() )
+        {
+            std::vector< std::string > setting = comma::split( inputs[s], ':' );
+            if ( setting.size() != 2 ) { COMMA_THROW( comma::exception, op_name << ": expected keyword:value; got " << setting.size() << " parameter '" << inputs[s] << "'" ); }
+            if ( setting[0] == "pad" )
             {
-                std::vector< std::string > setting = comma::split( inputs[s], ':' );
-                if ( setting.size() != 2 ) { COMMA_THROW( comma::exception, op_name << ": expected keyword:value; got " << setting.size() << " parameters '" << inputs[s] << "'" ); }
-                if ( setting[0] == "pad" )
-                {
-                    padding = boost::lexical_cast< double >( setting[1] );
-                }
-                else if ( setting[0] == "repeat" )
-                {
-                    repeat = boost::lexical_cast< unsigned int >( setting[1] );
-                }
-                else
-                {
-                    COMMA_THROW( comma::exception, op_name << ": the keyword '" << setting[0] << "' is not one of [pad,repeat]" );
-                }
+                padding = boost::lexical_cast< double >( setting[1] );
+            }
+            else if ( setting[0] == "repeat" )
+            {
+                repeat = boost::lexical_cast< unsigned int >( setting[1] );
             }
             else
             {
-                std::vector< std::string > vstrings = comma::split( inputs[s], ',' );
-                if ( vstrings.size() > 4 ) { COMMA_THROW( comma::exception, op_name << ": can store up to 4 " << op_what << "s into channels, got " << vstrings.size() << " inputs '" << inputs[s] << "'" ); }
-                values.reserve( vstrings.size() );
-                for ( size_t i = 0; i < vstrings.size(); ++i ) { values.push_back( boost::lexical_cast< unsigned int >( vstrings[i] ) ); }
+                COMMA_THROW( comma::exception, op_name << ": the keyword '" << setting[0] << "' is not one of [pad,repeat]" );
             }
+            ++s;
         }
         if ( values.empty() ) { COMMA_THROW( comma::exception, op_name << ": specify at least one " << op_what << " to store as channel" ); }
         if ( values.size() > 4 ) { COMMA_THROW( comma::exception, op_name << ": can have at most 4 output channels" ); }
@@ -2505,12 +2506,12 @@ static std::string usage_impl_()
     oss << "            of column 1 become columns 3,4,5, and so on" << std::endl;
     oss << "        channels-to-rows; same as channels-to-cols but operates over rows" << std::endl;
     oss << std::endl;
-    oss << "        cols-to-channels=1,4,5[|pad:value|repeat:step]; opposite to channels-to-cols; stores the listed columns as channels in the output file" << std::endl;
+    oss << "        cols-to-channels=i,j,k[,pad:value,repeat:step]; opposite to channels-to-cols; stores the listed columns as channels in the output file" << std::endl;
     oss << "            input shall be a single-channel stream; up to 4 channels are supported; if 1, 3, or 4 columns are specified, the output would have 1, 3, or 4 channels respectively" << std::endl;
     oss << "            in case of 2 columns, a third empty (zero) channel is added; use the \"pad:value\" option to specify the fill value other then zero" << std::endl;
     oss << "            the repeat option applies the transformation periodically, first for the specified columns, then for columns incremented by one step, and so on; see the examples" << std::endl;
-    oss << "            examples: \"cols-to-channels=6,4|pad:128\"; put column 6 into the R channel, column 4 into the G channel, and fill the B channel with 128" << std::endl;
-    oss << "                      \"cols-to-channels=0,1,2|repeat:3\"; store columns 0,1,2 as RGB channels of column 0 of the output file, then columns 3,4,5 as RGB" << std::endl;
+    oss << "            examples: \"cols-to-channels=6,4,pad:128\"; put column 6 into the R channel, column 4 into the G channel, and fill the B channel with 128" << std::endl;
+    oss << "                      \"cols-to-channels=0,1,2,repeat:3\"; store columns 0,1,2 as RGB channels of column 0 of the output file, then columns 3,4,5 as RGB" << std::endl;
     oss << "                      channels of column 1 of the output file, etc.; conversion stops when all input column indices exceed the image width" << std::endl;
     oss << "                      if one of the input columns exceed the image width, the respective output channel is filled with zeros (or the padding value)" << std::endl;
     oss << std::endl;
