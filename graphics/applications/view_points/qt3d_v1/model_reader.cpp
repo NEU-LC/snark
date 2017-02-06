@@ -62,7 +62,7 @@ void ModelReader::start()
     if( m_file.substr( m_file.size() - 3, 3 ) == "ply" )
     {
         boost::optional< QColor4ub > color;
-        if( dynamic_cast< const Fixed* >( colored_ ) ) { color = colored_->color( Eigen::Vector3d( 0, 0, 0 ), 0, 0, QColor4ub() ); } // quick and dirty
+        if( dynamic_cast< const fixed* >( colored_ ) ) { color = colored_->color( Eigen::Vector3d( 0, 0, 0 ), 0, 0, QColor4ub() ); } // quick and dirty
         m_plyLoader = PlyLoader( m_file, color, scale_ );
     }
     if( !m_plyLoader )

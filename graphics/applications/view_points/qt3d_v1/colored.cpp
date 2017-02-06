@@ -104,17 +104,17 @@ static QColor4ub add( const QColor4ub& a, const QColor4ub& b )
 }
 
 
-Fixed::Fixed( const std::string& name ) : m_color( color_from_name( name ) ) {}
+fixed::fixed( const std::string& name ) : color_( color_from_name( name ) ) {}
 
-QColor4ub Fixed::color( const Eigen::Vector3d&, comma::uint32, double, const QColor4ub& ) const { return m_color; }
+QColor4ub fixed::color( const Eigen::Vector3d&, comma::uint32, double, const QColor4ub& ) const { return color_; }
 
-ByHeight::ByHeight( double from
-                  , double to
-                  , const QColor4ub& from_color
-                  , const QColor4ub& to_color
-                  , bool cyclic
-                  , bool linear
-                  , bool sharp )
+by_height::by_height( double from
+                    , double to
+                    , const QColor4ub& from_color
+                    , const QColor4ub& to_color
+                    , bool cyclic
+                    , bool linear
+                    , bool sharp )
     : from( from )
     , to( to )
     , sum( to + from )
@@ -132,7 +132,7 @@ ByHeight::ByHeight( double from
     average_color.setAlpha( ( from_color.alpha() / 2 ) + ( to_color.alpha() / 2 ) );
 }
 
-QColor4ub ByHeight::color( const Eigen::Vector3d& point, comma::uint32, double, const QColor4ub& ) const
+QColor4ub by_height::color( const Eigen::Vector3d& point, comma::uint32, double, const QColor4ub& ) const
 {
     if( cyclic )
     {
@@ -179,7 +179,7 @@ QColor4ub ByHeight::color( const Eigen::Vector3d& point, comma::uint32, double, 
     }
 }
 
-ByScalar::ByScalar( double from, double to, const QColor4ub& from_color, const QColor4ub& to_color )
+by_scalar::by_scalar( double from, double to, const QColor4ub& from_color, const QColor4ub& to_color )
     : from( from )
     , to( to )
     , diff( to - from )
@@ -188,7 +188,7 @@ ByScalar::ByScalar( double from, double to, const QColor4ub& from_color, const Q
 {
 }
 
-ByScalar::ByScalar( double from, double to, const snark::render::colour_map::values& map )
+by_scalar::by_scalar( double from, double to, const snark::render::colour_map::values& map )
     : from( from )
     , to( to )
     , diff( to - from )
@@ -196,7 +196,7 @@ ByScalar::ByScalar( double from, double to, const snark::render::colour_map::val
 {
 }
 
-QColor4ub ByScalar::color( const Eigen::Vector3d& point, comma::uint32, double scalar, const QColor4ub& ) const
+QColor4ub by_scalar::color( const Eigen::Vector3d& point, comma::uint32, double scalar, const QColor4ub& ) const
 {
     (void)point;
     double v = ( scalar - from ) / diff;
@@ -220,23 +220,23 @@ static boost::array< unsigned int, 256 > colorIndices = colorInit();
 
 } // namespace impl {
 
-ById::ById( const QColor4ub& backgroundcolor )
-    : m_background( backgroundcolor )
-    , m_hasScalar( false )
+by_id::by_id( const QColor4ub& backgroundcolor )
+    : background_( backgroundcolor )
+    , has_scalar_( false )
 {
 }
 
-ById::ById( const QColor4ub& backgroundcolor
+by_id::by_id( const QColor4ub& backgroundcolor
           , double from
           , double to )
-    : m_background( backgroundcolor )
-    , m_hasScalar( true )
-    , m_from( from )
-    , m_diff( to - from )
+    : background_( backgroundcolor )
+    , has_scalar_( true )
+    , from_( from )
+    , diff_( to - from )
 {
 }
 
-QColor4ub ById::color( const Eigen::Vector3d&, comma::uint32 id, double scalar, const QColor4ub& ) const // quick and dirty
+QColor4ub by_id::color( const Eigen::Vector3d&, comma::uint32 id, double scalar, const QColor4ub& ) const // quick and dirty
 {
     static const float b = 0.95f;
     unsigned char i = ( id & 0xff ) + ( ( id & 0xff00 ) >> 16 );
@@ -252,18 +252,18 @@ QColor4ub ById::color( const Eigen::Vector3d&, comma::uint32 id, double scalar, 
         case 4 : color = QColor4ub::fromRgbF( h, b, a ); break;
         default: color = QColor4ub::fromRgbF( a, h, b ); break;
     }
-    if( !m_hasScalar ) { return color; }
-    double v = ( scalar - m_from ) / m_diff;
+    if( !has_scalar_ ) { return color; }
+    double v = ( scalar - from_ ) / diff_;
     v = ( v < 0 ? 0 : v > 1 ? 1 : v );
-    return add( multiply( color, v ), multiply( m_background, 1 - v ) );
+    return add( multiply( color, v ), multiply( background_, 1 - v ) );
 }
 
-QColor4ub ByRGB::color( const Eigen::Vector3d& , comma::uint32, double, const QColor4ub& c ) const
+QColor4ub by_rgb::color( const Eigen::Vector3d& , comma::uint32, double, const QColor4ub& c ) const
 {
     return c;
 }
 
-colored* colorFromString( const std::string& s, const std::string& fields, const QColor4ub& backgroundcolor )
+colored* color_from_string( const std::string& s, const std::string& fields, const QColor4ub& backgroundcolor )
 {
     std::vector< std::string > f = comma::split( fields, ',' );
     bool hasId = false;
@@ -297,16 +297,16 @@ colored* colorFromString( const std::string& s, const std::string& fields, const
                     from = boost::lexical_cast< double >( v[0] );
                     to = boost::lexical_cast< double >( v[1] );
                 }
-                c = new snark::graphics::view::ById( backgroundcolor, from, to );
+                c = new snark::graphics::view::by_id( backgroundcolor, from, to );
             }
             else
             {
-                c = new snark::graphics::view::ById( backgroundcolor );
+                c = new snark::graphics::view::by_id( backgroundcolor );
             }
         }
         else if( r || g || b || a )
         {
-            c = new snark::graphics::view::ByRGB;
+            c = new snark::graphics::view::by_rgb;
         }
         else if( hasScalar )
         {
@@ -377,12 +377,12 @@ colored* colorFromString( const std::string& s, const std::string& fields, const
                         COMMA_THROW( comma::exception, "expected range (e.g. -5:20,red:blue or 3:10), or colour map name, got " << s );
                 }
             }
-            c = map ? new snark::graphics::view::ByScalar( from, to, *map )
-                    : new snark::graphics::view::ByScalar( from, to, from_color, to_color );
+            c = map ? new snark::graphics::view::by_scalar( from, to, *map )
+                    : new snark::graphics::view::by_scalar( from, to, from_color, to_color );
         }
         else
         {
-            c = new snark::graphics::view::Fixed( s );
+            c = new snark::graphics::view::fixed( s );
         }
     }
     catch( ... )
@@ -419,7 +419,7 @@ colored* colorFromString( const std::string& s, const std::string& fields, const
             }
         }
         if( !from ) { from = cyclic ? 1 : 0; }
-        c = new snark::graphics::view::ByHeight( *from, to, from_color, to_color, cyclic, linear,sharp );
+        c = new snark::graphics::view::by_height( *from, to, from_color, to_color, cyclic, linear, sharp );
     }
     return c;
 }

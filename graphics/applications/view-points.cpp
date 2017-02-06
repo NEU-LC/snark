@@ -422,7 +422,7 @@ boost::shared_ptr< snark::graphics::view::Reader > makeReader( const comma::comm
     if( param.title == "none" ) { param.title = ""; }
     if( !show ) { std::cerr << "view-points: " << ( param.title.empty() ? param.options.filename : param.title )<< " will be hidden on startup; tick the box next to the name to make it visible" << std::endl; }
     #if Qt3D_VERSION==1
-    snark::graphics::view::colored* colored = snark::graphics::view::colorFromString( color, param.options.fields, backgroundcolor );
+    snark::graphics::view::colored* colored = snark::graphics::view::color_from_string( color, param.options.fields, backgroundcolor );
     #endif
     if( shape == "point" )
     {
