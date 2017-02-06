@@ -72,26 +72,28 @@ void gl_widget::cleanup()
 // used in the shader code (model and view combined in the mv_matrix) see
 // http://www.opengl-tutorial.org/beginners-tutorials/tutorial-3-matrices/
 
-static const char *vertex_shader_source =
-    "#version 150\n"
-    "in vec4 vertex;\n"
-    "in vec4 color;\n"
-    "out vec4 vert_color;\n"
-    "uniform mat4 projection_matrix;\n"
-    "uniform mat4 mv_matrix;\n"
-    "void main() {\n"
-    "   vert_color = color;\n"
-    "   gl_Position = projection_matrix * mv_matrix * vertex;\n"
-    "}\n";
+static const char *vertex_shader_source = R"(
+    #version 150
+    in vec4 vertex;
+    in vec4 color;
+    out vec4 vert_color;
+    uniform mat4 projection_matrix;
+    uniform mat4 mv_matrix;
+    void main() {
+       vert_color = color;
+       gl_Position = projection_matrix * mv_matrix * vertex;
+    }
+)";
 
 // TODO: support alpha
-static const char *fragment_shader_source =
-    "#version 150\n"
-    "in highp vec4 vert_color;\n"
-    "out highp vec4 frag_color;\n"
-    "void main() {\n"
-    "   frag_color = clamp( vert_color, 0.0, 1.0 );\n"
-    "}\n";
+static const char *fragment_shader_source = R"(
+    #version 150
+    in highp vec4 vert_color;
+    out highp vec4 frag_color;
+    void main() {
+       frag_color = clamp( vert_color, 0.0, 1.0 );
+    }
+)";
 
 void gl_widget::initializeGL()
 {
