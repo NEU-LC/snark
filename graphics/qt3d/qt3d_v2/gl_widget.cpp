@@ -125,7 +125,7 @@ void gl_widget::initializeGL()
     // at all. Nonetheless the below code works in all cases and makes
     // sure there is a VAO when one is needed.
     vao_.create();
-    QOpenGLVertexArrayObject::Binder vaoBinder( &vao_ );
+    QOpenGLVertexArrayObject::Binder vao_binder( &vao_ );
 
     // Setup our vertex buffer object.
     vbo_.create();
@@ -168,7 +168,7 @@ void gl_widget::paintGL()
     glEnable( GL_DEPTH_TEST );
     glEnable( GL_CULL_FACE );
 
-    QOpenGLVertexArrayObject::Binder vaoBinder( &vao_ );
+    QOpenGLVertexArrayObject::Binder vao_binder( &vao_ );
     program_->bind();
     program_->setUniformValue( projection_matrix_location_, projection_ );
     program_->setUniformValue( mv_matrix_location_, camera_ * world_ );
@@ -178,7 +178,7 @@ void gl_widget::paintGL()
     glDisable( GL_DEPTH_TEST );
 
     program_->release();
-    vaoBinder.release();
+    vao_binder.release();
 
     painter.endNativePainting();
 
