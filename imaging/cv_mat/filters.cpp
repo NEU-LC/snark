@@ -1720,35 +1720,21 @@ static boost::function< filter::input_type( filter::input_type ) > make_filter_f
         }
         return boost::bind( &crop_impl_, _1, x, y, w, h );
     }
-    if( e[0] == "crop-cols" )
+    if( e[0] == "crop-cols" || e[0] == "crop-rows" )
     {
-        if( e.size() < 2 ) { COMMA_THROW( comma::exception, "crop-cols: specify at least one column to extract, e.g. crop-cols=1,10" ); }
-        std::vector< std::string > stripes = comma::split( e[1], '|' );
-        std::vector< stripe_t > cols;
-        for ( size_t s = 0; s < stripes.size(); ++s )
+        const std::string & op_name = e[0];
+        const std::string & what = ( e[0] == "crop-cols" ? "column" : "row" );
+        if( e.size() < 2 ) { COMMA_THROW( comma::exception, op_name << ": specify at least one " << what << " to extract, e.g. " << op_name << "=1,10" ); }
+        std::vector< std::string > inputs = comma::split( e[1], ',' );
+        if ( inputs.size() % 2 ) { COMMA_THROW( comma::exception, op_name << ": must provide an even number of integers in <" << what << ">,<size> pairs" ); }
+        std::vector< stripe_t > stripes;
+        for ( size_t s = 0; s < inputs.size(); ++s, ++s )
         {
-            std::vector< std::string > column = comma::split( stripes[s], ',' );
-            if ( column.size() > 2 ) { COMMA_THROW( comma::exception, "crop-cols: expected position,[width]; got " << column.size() << " parameters '" << stripes[s] << "'" ); }
-            unsigned int x = boost::lexical_cast< unsigned int >( column[0] );
-            unsigned int w = ( column.size() == 2 ? boost::lexical_cast< unsigned int >( column[1] ) : 1 );
-            cols.push_back( std::make_pair( x, w ) );
+            unsigned int x = boost::lexical_cast< unsigned int >( inputs[s] );
+            unsigned int w = boost::lexical_cast< unsigned int >( inputs[s+1] );
+            stripes.push_back( std::make_pair( x, w ) );
         }
-        return boost::bind( &crop_cols_impl_, _1, cols );
-    }
-    if( e[0] == "crop-rows" )
-    {
-        if( e.size() < 2 ) { COMMA_THROW( comma::exception, "crop-rows: specify at least one row to extract, e.g. crop-rows=1,10" ); }
-        std::vector< std::string > stripes = comma::split( e[1], '|' );
-        std::vector< stripe_t > rows;
-        for ( size_t s = 0; s < stripes.size(); ++s )
-        {
-            std::vector< std::string > rowblock = comma::split( stripes[s], ',' );
-            if ( rowblock.size() > 2 ) { COMMA_THROW( comma::exception, "crop-rows: expected position,[height]; got " << rowblock.size() << " parameters '" << stripes[s] << "'" ); }
-            unsigned int y = boost::lexical_cast< unsigned int >( rowblock[0] );
-            unsigned int h = ( rowblock.size() == 2 ? boost::lexical_cast< unsigned int >( rowblock[1] ) : 1 );
-            rows.push_back( std::make_pair( y, h ) );
-        }
-        return boost::bind( &crop_rows_impl_, _1, rows );
+        return boost::bind( ( e[0] == "crop-cols" ? &crop_cols_impl_ : &crop_rows_impl_), _1, stripes );
     }
     if( e[0] == "bands-to-cols" || e[0] == "bands-to-rows" )
     {
@@ -2515,12 +2501,12 @@ static std::string usage_impl_()
     oss << "                      channels of column 1 of the output file, etc.; conversion stops when all input column indices exceed the image width" << std::endl;
     oss << "                      if one of the input columns exceed the image width, the respective output channel is filled with zeros (or the padding value)" << std::endl;
     oss << std::endl;
-    oss << "        crop-cols=<x>[,<w>[|<x>[,<w>,...: output an image consisting of (multiple) columns starting at x with width w" << std::endl;
-    oss << "            examples: \"crop-cols=2,10|12,10\"; output an image of width 20 taking 2 width-10 columns starting at 2 and 12" << std::endl;
-    oss << "                      \"crop-cols=2|12,10\"; default width is 1, the output image has width 11" << std::endl;
-    oss << "        crop-rows=<y>[,<h>[|<y>[,<h>,...: output an image consisting of (multiple) row blocks starting at y with height h" << std::endl;
-    oss << "            examples: \"crop-rows=5,10|25,5\"; output an image of height 15 taking 2 row blocks starting at 5 and 25 and with heights 10 and 5, respectively" << std::endl;
-    oss << "                      \"crop-rows=5|25|15\"; default block height is 1, block starts can be out of order" << std::endl;
+    oss << "        crop-cols=<x>,<w>[,<x>,<w>,...]: output an image consisting of (multiple) columns starting at x with width w" << std::endl;
+    oss << "            examples: \"crop-cols=2,10,12,10\"; output an image of width 20 taking 2 width-10 columns starting at 2 and 12" << std::endl;
+    oss << "                      \"crop-cols=2,1,12,10\"; width is 1, the output image has width 11" << std::endl;
+    oss << "        crop-rows=<y>,<h>[,<y>,<h>,...]: output an image consisting of (multiple) row blocks starting at y with height h" << std::endl;
+    oss << "            examples: \"crop-rows=5,10,25,5\"; output an image of height 15 taking 2 row blocks starting at 5 and 25 and with heights 10 and 5, respectively" << std::endl;
+    oss << "                      \"crop-rows=5,1,25,1,15,1\"; block height is 1, block starts can be out of order" << std::endl;
     oss << std::endl;
     oss << "        rows-to-channels=1,4,5[,pad:value,repeat:step]; same as cols-to-channels but operates on rows" << std::endl;
     oss << std::endl;
