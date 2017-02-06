@@ -496,7 +496,7 @@ boost::shared_ptr< snark::graphics::view::Reader > makeReader( const comma::comm
     else
     {
         if( param.options.fields == "" ) { param.options.fields="point,orientation"; param.options.full_xpath = true; }
-        #if Qt3D_VERSION==1
+#if Qt3D_VERSION==1
             std::vector< snark::graphics::view::TextureReader::image_options > image_options;
             std::vector< std::string > v = comma::split( shape, ':' );
             for( unsigned int i = 0; i < v.size(); ++i )
@@ -527,10 +527,10 @@ boost::shared_ptr< snark::graphics::view::Reader > makeReader( const comma::comm
                 reader->show( show );
                 return reader;
             }
-        #else
+#else
             std::cerr << "view-points: cad models and images are not supported yet for qt version " << Qt3D_VERSION << std::endl;
             exit( 1 );
-        #endif
+#endif
     }
     std::vector< std::string > v = comma::split( param.options.fields, ',' );
     for( std::size_t i = 0; i < v.size(); ++i )
@@ -605,23 +605,29 @@ boost::shared_ptr< snark::graphics::view::Reader > makeReader( const comma::comm
     COMMA_THROW( comma::exception, "expected shape, got \"" << shape << "\"" ); // never here
 }
 
+void version()
+{
+    std::cerr << "Using Qt version " << QT_VERSION_STR << std::endl;
+}
+
 int main( int argc, char** argv )
 {
     try
     {
         comma::command_line_options options( argc, argv );
         if( options.exists( "--bash-completion" ) ) bash_completion( argc, argv );
-        if( options.exists( "--version" )) { std::cerr << "Using Qt version " << QT_VERSION_STR << std::endl; exit(0); }
+        if( options.exists( "--version" )) { version(); exit(0); }
         if( options.exists( "--help" ) || options.exists( "-h" ) ) { usage(); }
         comma::csv::options csvOptions( argc, argv );
         std::vector< std::string > properties = options.unnamed( "--z-is-up,--orthographic,--flush,--no-stdin,--output-camera-config,--output-camera,--pass-through,--pass,--exit-on-end-of-input"
                 , "--binary,--bin,-b,--fields,--size,--delimiter,-d,--colour,-c,--point-size,--weight,--background-colour,--scene-center,--center,--scene-radius,--radius,--shape,--label,--title,--camera,--camera-position,--camera-config,--fov,--model,--full-xpath" );
-        #if Qt3D_VERSION==1
+
+#if Qt3D_VERSION==1
         QColor4ub backgroundcolor( QColor( QString( options.value< std::string >( "--background-colour", "#000000" ).c_str() ) ) );
         boost::optional< comma::csv::options > camera_csv;
         boost::optional< Eigen::Vector3d > cameraposition;
         boost::optional< Eigen::Vector3d > cameraorientation;
-        #endif
+#endif
 
         snark::graphics::qt3d::camera_options camera_options
             ( options.exists( "--orthographic" )
@@ -653,7 +659,7 @@ int main( int argc, char** argv )
             }
         }
 
-        #if Qt3D_VERSION==1
+#if Qt3D_VERSION==1
         QApplication application( argc, argv );
         if( options.exists( "--camera-position" ) )
         {
@@ -680,14 +686,15 @@ int main( int argc, char** argv )
                 catch( ... ) {}
             }
         }
-        #endif
+#endif
         boost::optional< double > scene_radius = options.optional< double >( "--scene-radius,--radius" );
         boost::optional< Eigen::Vector3d > scene_center;
         boost::optional< std::string > s = options.optional< std::string >( "--scene-center,--center" );
         if( s ) { scene_center = comma::csv::ascii< Eigen::Vector3d >( "x,y,z", ',' ).get( *s ); }
         boost::property_tree::ptree camera_config; // quick and dirty
         if( options.exists( "--camera-config" ) ) { boost::property_tree::read_json( options.value< std::string >( "--camera-config" ), camera_config ); }
-        #if Qt3D_VERSION==1
+
+#if Qt3D_VERSION==1
         snark::graphics::view::Viewer* viewer = new snark::graphics::view::Viewer( backgroundcolor
                                                                                  , camera_options
                                                                                  , options.exists( "--exit-on-end-of-input" )
@@ -722,7 +729,8 @@ int main( int argc, char** argv )
         application.exec();
         delete viewer;
         return 0;       // We never actually reach this line because we raise SIGINT when closing
-        #else
+
+#elif Qt3D_VERSION==2
 
         std::vector< boost::shared_ptr< snark::graphics::view::Reader > > readers;
         bool stdinAdded = false;
@@ -751,7 +759,9 @@ int main( int argc, char** argv )
         main_window.show();
         return app.exec();
 
-        #endif
+#else
+#error Qt3D_VERSION must be 1 or 2
+#endif
     }
     catch( std::exception& ex )
     {
