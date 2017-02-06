@@ -37,11 +37,11 @@ done
 for ktype in ${!otypes[@]} ; do
     odepth=""
     otype=${otypes[$ktype]}
-    [[ "$otype" == "3ub" ]] || { odepth="|output-depth:d"; }
+    [[ "$otype" == "3ub" ]] || { odepth=",output-depth:d"; }
     for column in ${cols[@]} ; do
         cv-cat --file "$infile" \
             | cv-cat "convert-to=$otype" \
-            | cv-cat "bands-to-rows=0,512|method:average${odepth}" \
+            | cv-cat "bands-to-rows=0,512,method:average${odepth}" \
             | image-to-csv \
             | csv-select --fields=t,x,y,r,g,b "x;equals=$column" \
             | csv-shuffle --fields=t,x,y,r,g,b --output-fields=r,g,b \
