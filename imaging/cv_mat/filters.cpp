@@ -1752,10 +1752,9 @@ static boost::function< filter::input_type( filter::input_type ) > make_filter_f
     }
     if( e[0] == "bands-to-cols" || e[0] == "bands-to-rows" )
     {
-        // rhs looks like "12,23|50,30|100|method:average|output-depth:d"
-        // the '|'-separated entries shall be either:
-        // - comma-separated pairs of integers, or
-        // - a single integer, or
+        // rhs looks like "12,23,50,30,100,1,method:average,output-depth:d"
+        // the ','-separated entries shall be either:
+        // - integers always coming in pairs, or
         // - colon-separated words with a known keyword on the left and one of the known enumeration names on the right
         const bool bands_to_cols = e[0] == "bands-to-cols";
         const std::string & op_name = bands_to_cols ? "bands-to-cols" : "bands-to-rows";
