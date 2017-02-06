@@ -222,8 +222,8 @@ static void usage()
         "\n        block: if present, clear screen once block id changes (%ui in binary)"
         qt55_unsupported_marker_end
         "\n        r,g,b: if present, specify RGB colour (0-255; %uc in binary)"
-        qt55_unsupported_marker_start
         "\n        a: if present, specifies colour transparency (0-255, %uc in binary); default 255"
+        qt55_unsupported_marker_start
         "\n        scalar: if present, colour by scalar"
         "\n                  use --colour=<from>:<to>[,<from colour>:<to colour>]"
         "\n                  default: 0:1,red:blue"
