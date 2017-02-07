@@ -242,8 +242,8 @@ by_id::by_id( const color_t& backgroundcolor )
 }
 
 by_id::by_id( const color_t& backgroundcolor
-          , double from
-          , double to )
+            , double from
+            , double to )
     : background_( backgroundcolor )
     , has_scalar_( true )
     , from_( from )
