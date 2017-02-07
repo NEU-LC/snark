@@ -313,15 +313,10 @@ colored* color_from_string( const std::string& s, const std::string& fields, con
         {
             if( hasScalar )
             {
-                double from = 0;
-                double to = 1;
-                if( s != "" )
-                {
-                    std::vector< std::string > v = comma::split( s, ':' );
-                    if( v.size() != 2 ) { COMMA_THROW( comma::exception, "expected range (-5:20), got " << s ); }
-                    from = boost::lexical_cast< double >( v[0] );
-                    to = boost::lexical_cast< double >( v[1] );
-                }
+                std::vector< std::string > v = comma::split( comma::split( s, ',' )[0], ':' );
+                if( v.size() != 2 ) { COMMA_THROW( comma::exception, "expected range (-5:20), got " << s ); }
+                double from = boost::lexical_cast< double >( v[0] );
+                double to = boost::lexical_cast< double >( v[1] );
                 c = new snark::graphics::view::by_id( backgroundcolor, from, to );
             }
             else
@@ -335,17 +330,15 @@ colored* color_from_string( const std::string& s, const std::string& fields, con
         }
         else if( hasScalar )
         {
-            color_t from_color = color_from_name( "magenta" );
-            color_t to_color = color_from_name( "cyan" );
+            color_t from_color, to_color;
             double from = 0;
-            double to = 1;
+            double to = 0;
             boost::optional< snark::render::colour_map::values > map;
-            if( s != "" )
+
+            std::vector< std::string > v = comma::split( s, ',' );
+            switch( v.size() )
             {
-                std::vector< std::string > v = comma::split( s, ',' );
-                switch( v.size() )
-                {
-                    case 1:
+                case 1:
                     {
                         std::vector< std::string > w = comma::split( v[0], ':' );
                         switch( w.size() )
@@ -374,7 +367,7 @@ colored* color_from_string( const std::string& s, const std::string& fields, con
                         }
                         break;
                     }
-                    case 2:
+                case 2:
                     {
                         std::vector< std::string > w = comma::split( v[0], ':' );
                         from = boost::lexical_cast< double >( w[0] );
@@ -398,9 +391,8 @@ colored* color_from_string( const std::string& s, const std::string& fields, con
                         }
                         break;
                     }
-                    default:
-                        COMMA_THROW( comma::exception, "expected range (e.g. -5:20,red:blue or 3:10), or colour map name, got " << s );
-                }
+                default:
+                    COMMA_THROW( comma::exception, "expected range (e.g. -5:20,red:blue or 3:10), or colour map name, got " << s );
             }
             c = map ? new snark::graphics::view::by_scalar( from, to, *map )
                     : new snark::graphics::view::by_scalar( from, to, from_color, to_color );

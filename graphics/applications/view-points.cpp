@@ -392,7 +392,8 @@ boost::shared_ptr< snark::graphics::view::Reader > makeReader( const comma::comm
                                                           , options.value( "--point-size,--weight", 1u )
                                                           , options.exists( "--pass-through,--pass" )
                                                           , options.exists( "--fill" ) );
-    std::string color = options.exists( "--colour" ) ? options.value< std::string >( "--colour" ) : options.value< std::string >( "-c", "-10:10" );
+    std::string color = options.exists( "--colour" ) ? options.value< std::string >( "--colour" ) : options.value< std::string >( "-c", "0:1,cyan:magenta" );
+    if( comma::split( color, ',' ).size() == 1 && !isalpha( color[0] )) { color += ",cyan:magenta"; }
     std::string label = options.value( "--label", std::string() );
     bool show = true;
     if( properties != "" )
