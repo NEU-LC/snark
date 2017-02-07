@@ -227,4 +227,21 @@ boost::optional< point_and_id > Viewer::pointSelection( const QPoint& point, boo
 
 void Viewer::handleId( comma::uint32 id ) { m_id = id; }
 
+void Viewer::set_selection_id(comma::uint32 n)
+{
+    m_id=n;
+    for( auto& i : m_datasets)
+    {
+        if( i->selection().points().empty() ) { continue; }
+        for(auto& j : m_datasets)
+        {
+            if( !j->writable() || !j->visible() ) { continue; }
+            j->label( i->selection().points(), *m_id );
+            std::cerr << "label-points: label_num: labeled selection with id " << *m_id << " in " << j->filename() << std::endl;
+        }
+        i->selection().clear();
+    }
+    update();
+}
+
 } } } // namespace snark { namespace graphics { namespace view {

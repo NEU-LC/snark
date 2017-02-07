@@ -223,17 +223,7 @@ void Fill::onMousePress( QMouseEvent* e )
     }
     else
     {
-        for( std::size_t i = 0; i < m_viewer.datasets().size(); ++i )
-        {
-            if( m_viewer.dataset( i ).selection().points().empty() ) { continue; }
-            for( std::size_t j = 0; j < m_viewer.datasets().size(); ++j )
-            {
-                if( !m_viewer.dataset( j ).writable() || !m_viewer.dataset( j ).visible() ) { continue; }
-                m_viewer.dataset( j ).label( m_viewer.dataset( i ).selection().points(), *m_viewer.m_id );
-                std::cerr << "label-points: labeled selection with id " << *m_viewer.m_id << " in " << m_viewer.dataset( j ).filename() << std::endl;
-            }
-            m_viewer.dataset( i ).selection().clear();
-        }
+        m_viewer.set_selection_id(*m_viewer.m_id);
     }
     m_viewer.update();
 }

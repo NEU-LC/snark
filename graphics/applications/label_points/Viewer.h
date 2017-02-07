@@ -90,6 +90,7 @@ class Viewer : public qt3d::view
         Dataset& dataset( std::size_t index ); // quick and dirty
         const Dataset& dataset( std::size_t index ) const; // quick and dirty
         bool verbose() const { return verbose_; }
+        void set_selection_id(comma::uint32 id);
 
     public slots:
         void handleId( comma::uint32 id );
