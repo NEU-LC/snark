@@ -87,7 +87,7 @@ for cols in "" "columns" "rows" ; do
         odir="$output_dir/columns"
         kx=$(( nx * 3 ))
         ky=$ny
-        cmd="cols-to-channels=0,1,2|repeat:3|pad:12;"
+        cmd="cols-to-channels=0,1,2,repeat:3,pad:12;"
         fields="t,x,y,grey"
         otype="ub"
     fi
@@ -95,7 +95,7 @@ for cols in "" "columns" "rows" ; do
         odir="$output_dir/rows"
         kx=$nx
         ky=$(( ny * 3 ))
-        cmd="rows-to-channels=0,1,2|repeat:3|pad:12;"
+        cmd="rows-to-channels=0,1,2,repeat:3,pad:12;"
         fields="t,x,y,grey"
         otype="ub"
     fi

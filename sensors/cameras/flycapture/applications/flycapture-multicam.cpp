@@ -157,8 +157,7 @@ int main( int argc, char** argv )
         {
             for( auto offset_str : comma::split( offsets_option, "," ) )
             {
-                unsigned int offset = boost::lexical_cast< unsigned int >( offset_str );
-                offsets.push_back( offset );
+                offsets.push_back( boost::lexical_cast< unsigned int >( offset_str ) );
             }
         }
 
