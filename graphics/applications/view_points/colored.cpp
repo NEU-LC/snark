@@ -388,7 +388,7 @@ colored* color_from_string( const std::string& s, const std::string& fields, con
     catch( ... )
     {
         std::vector< std::string > v = comma::split( s, ',' );
-        boost::optional< double > from;
+        double from = 0;
         double to = 1;
         QColor4ub from_color = color_from_name( "red" );
         QColor4ub to_color = color_from_name( "yellow" );
@@ -400,7 +400,7 @@ colored* color_from_string( const std::string& s, const std::string& fields, con
             if( v[i].empty() ) { continue; }
             else if( v[i] == "sharp" ) { sharp = true; }
             else if( v[i] == "smooth" ) { sharp = false; }
-            else if( v[i] == "cyclic" ) { cyclic = true; }
+            else if( v[i] == "cyclic" ) { cyclic = true; from = 1; }
             else if( v[i] == "linear" ) { linear = true; }
             else if( v[i] == "quadratic" ) { linear = false; }
             else
@@ -418,8 +418,7 @@ colored* color_from_string( const std::string& s, const std::string& fields, con
                 }
             }
         }
-        if( !from ) { from = cyclic ? 1 : 0; }
-        c = new snark::graphics::view::by_height( *from, to, from_color, to_color, cyclic, linear, sharp );
+        c = new snark::graphics::view::by_height( from, to, from_color, to_color, cyclic, linear, sharp );
     }
     return c;
 }
