@@ -39,21 +39,21 @@
 
 namespace snark { namespace graphics { namespace view {
 
-static QColor4ub color_from_name( const std::string& name )
+static color_t color_from_name( const std::string& name )
 {
-         if( name == "black" ) { return QColor4ub( Qt::black ); }
-    else if( name == "white" ) { return QColor4ub( Qt::white ); }
-    else if( name == "red" ) { return QColor4ub( Qt::red ); }
-    else if( name == "green" ) { return QColor4ub( Qt::green ); }
-    else if( name == "blue" ) { return QColor4ub( Qt::blue ); }
-    else if( name == "yellow" ) { return QColor4ub( Qt::yellow ); }
-    else if( name == "magenta" ) { return QColor4ub( Qt::magenta ); }
-    else if( name == "cyan" ) { return QColor4ub( Qt::cyan ); }
-    else if( name == "grey" ) { return QColor4ub( Qt::gray ); }
-    else if( name == "pink" ) { return QColor4ub( 255, 128, 128 ); }
-    else if( name == "orange" ) { return QColor4ub( 255, 128, 0 ); }
-    else if( name == "salad" ) { return QColor4ub( 128, 255, 128 ); }
-    else if( name == "sky" ) { return QColor4ub( 128, 128, 255 ); }
+         if( name == "black" )   { return color_t( Qt::black ); }
+    else if( name == "white" )   { return color_t( Qt::white ); }
+    else if( name == "red" )     { return color_t( Qt::red ); }
+    else if( name == "green" )   { return color_t( Qt::green ); }
+    else if( name == "blue" )    { return color_t( Qt::blue ); }
+    else if( name == "yellow" )  { return color_t( Qt::yellow ); }
+    else if( name == "magenta" ) { return color_t( Qt::magenta ); }
+    else if( name == "cyan" )    { return color_t( Qt::cyan ); }
+    else if( name == "grey" )    { return color_t( Qt::gray ); }
+    else if( name == "pink" )    { return color_t( 255, 128, 128 ); }
+    else if( name == "orange" )  { return color_t( 255, 128, 0 ); }
+    else if( name == "salad" )   { return color_t( 128, 255, 128 ); }
+    else if( name == "sky" )     { return color_t( 128, 128, 255 ); }
     else
     {
         const std::vector< std::string >& v = comma::split( name, ',' );
@@ -61,8 +61,13 @@ static QColor4ub color_from_name( const std::string& name )
         {
             switch( v.size() )
             {
-                case 3: return QColor4ub( boost::lexical_cast< unsigned int >( v[0] ), boost::lexical_cast< unsigned int >( v[1] ), boost::lexical_cast< unsigned int >( v[2] ) );
-                case 4: return QColor4ub( boost::lexical_cast< unsigned int >( v[0] ), boost::lexical_cast< unsigned int >( v[1] ), boost::lexical_cast< unsigned int >( v[2] ), boost::lexical_cast< unsigned int >( v[3] ) );
+                case 3: return color_t( boost::lexical_cast< int >( v[0] )
+                                      , boost::lexical_cast< int >( v[1] )
+                                      , boost::lexical_cast< int >( v[2] ) );
+                case 4: return color_t( boost::lexical_cast< int >( v[0] )
+                                      , boost::lexical_cast< int >( v[1] )
+                                      , boost::lexical_cast< int >( v[2] )
+                                      , boost::lexical_cast< int >( v[3] ) );
                 default: COMMA_THROW( comma::exception, "expected color, got " << name );
             }
         }
@@ -73,15 +78,20 @@ static QColor4ub color_from_name( const std::string& name )
     }
 }
 
-static QColor4ub multiply( const QColor4ub& color, double scalar )
+static color_t multiply( const color_t& color, double scalar )
 {
+#if Qt3D_VERSION==1
     double red = scalar * color.redF();
     double green = scalar * color.greenF();
     double blue = scalar * color.blueF();
     double alpha = scalar * color.alphaF();
-    return QColor4ub::fromRgbF( red, green, blue, alpha );
+    return color_t::fromRgbF( red, green, blue, alpha );
+#else
+    return color * scalar;
+#endif
 }
 
+#if Qt3D_VERSION==1
 static unsigned int threshold( unsigned int i, unsigned int threshold )
 {
     if( i > threshold )
@@ -93,25 +103,30 @@ static unsigned int threshold( unsigned int i, unsigned int threshold )
         return i;
     }
 }
+#endif
 
-static QColor4ub add( const QColor4ub& a, const QColor4ub& b )
+static color_t add( const color_t& a, const color_t& b )
 {
+#if Qt3D_VERSION==1
     unsigned int red = threshold( a.red() + b.red(), 255 );
     unsigned int green = threshold( a.green() + b.green(), 255 );
     unsigned int blue = threshold( a.blue() + b.blue(), 255 );
     unsigned int alpha = threshold( a.alpha() + b.alpha(), 255 );
-    return QColor4ub( red, green, blue, alpha );
+    return color_t( red, green, blue, alpha );
+#else
+    return a + b;
+#endif
 }
 
 
 fixed::fixed( const std::string& name ) : color_( color_from_name( name ) ) {}
 
-QColor4ub fixed::color( const Eigen::Vector3d&, comma::uint32, double, const QColor4ub& ) const { return color_; }
+color_t fixed::color( const Eigen::Vector3d&, comma::uint32, double, const color_t& ) const { return color_; }
 
 by_height::by_height( double from
                     , double to
-                    , const QColor4ub& from_color
-                    , const QColor4ub& to_color
+                    , const color_t& from_color
+                    , const color_t& to_color
                     , bool cyclic
                     , bool linear
                     , bool sharp )
@@ -126,13 +141,13 @@ by_height::by_height( double from
     , linear( linear )
     , sharp( sharp )
 {
-    average_color.setRed( ( from_color.red() / 2 ) + ( to_color.red() / 2 ) );
-    average_color.setGreen( ( from_color.green() / 2 ) + ( to_color.green() / 2 ) );
-    average_color.setBlue( ( from_color.blue() / 2 ) + ( to_color.blue() / 2 ) );
-    average_color.setAlpha( ( from_color.alpha() / 2 ) + ( to_color.alpha() / 2 ) );
+    average_color = color_t( from_color.red() / 2   + to_color.red() / 2
+                           , from_color.green() / 2 + to_color.green() / 2
+                           , from_color.blue() / 2  + to_color.blue() / 2
+                           , from_color.alpha() / 2 + to_color.alpha() / 2 );
 }
 
-QColor4ub by_height::color( const Eigen::Vector3d& point, comma::uint32, double, const QColor4ub& ) const
+color_t by_height::color( const Eigen::Vector3d& point, comma::uint32, double, const color_t& ) const
 {
     if( cyclic )
     {
@@ -179,7 +194,7 @@ QColor4ub by_height::color( const Eigen::Vector3d& point, comma::uint32, double,
     }
 }
 
-by_scalar::by_scalar( double from, double to, const QColor4ub& from_color, const QColor4ub& to_color )
+by_scalar::by_scalar( double from, double to, const color_t& from_color, const color_t& to_color )
     : from( from )
     , to( to )
     , diff( to - from )
@@ -196,14 +211,14 @@ by_scalar::by_scalar( double from, double to, const snark::render::colour_map::v
 {
 }
 
-QColor4ub by_scalar::color( const Eigen::Vector3d& point, comma::uint32, double scalar, const QColor4ub& ) const
+color_t by_scalar::color( const Eigen::Vector3d& point, comma::uint32, double scalar, const color_t& ) const
 {
     (void)point;
     double v = ( scalar - from ) / diff;
     v = ( v < 0 ? 0 : v > 1 ? 1 : v );
     if( !map ) { return add( multiply( from_color, 1 - v ), multiply( to_color, v ) ); }
     unsigned int i = v * 255;
-    return QColor4ub( ( *map )[i][0], ( *map )[i][1], ( *map )[i][2], 255 );
+    return color_t( ( *map )[i][0], ( *map )[i][1], ( *map )[i][2], 255 );
 }
 
 namespace impl {
@@ -220,13 +235,13 @@ static boost::array< unsigned int, 256 > colorIndices = colorInit();
 
 } // namespace impl {
 
-by_id::by_id( const QColor4ub& backgroundcolor )
+by_id::by_id( const color_t& backgroundcolor )
     : background_( backgroundcolor )
     , has_scalar_( false )
 {
 }
 
-by_id::by_id( const QColor4ub& backgroundcolor
+by_id::by_id( const color_t& backgroundcolor
           , double from
           , double to )
     : background_( backgroundcolor )
@@ -236,34 +251,44 @@ by_id::by_id( const QColor4ub& backgroundcolor
 {
 }
 
-QColor4ub by_id::color( const Eigen::Vector3d&, comma::uint32 id, double scalar, const QColor4ub& ) const // quick and dirty
+color_t by_id::color( const Eigen::Vector3d&, comma::uint32 id, double scalar, const color_t& ) const // quick and dirty
 {
     static const float b = 0.95f;
     unsigned char i = ( id & 0xff ) + ( ( id & 0xff00 ) >> 16 );
     const float h = b * float( impl::colorIndices[ i ] ) / 255;
     const float a = 0.3f * float( 255 - impl::colorIndices[ i ] ) / 255;
-    QColor4ub color;
+    color_t color;
     switch( ( i * 13 + impl::colorIndex ) % 6 )
     {
-        case 0 : color = QColor4ub::fromRgbF( b, h, a ); break;
-        case 1 : color = QColor4ub::fromRgbF( a, b, h ); break;
-        case 2 : color = QColor4ub::fromRgbF( h, a, b ); break;
-        case 3 : color = QColor4ub::fromRgbF( b, a, h ); break;
-        case 4 : color = QColor4ub::fromRgbF( h, b, a ); break;
-        default: color = QColor4ub::fromRgbF( a, h, b ); break;
+#if Qt3D_VERSION==1
+        case 0 : color = color_t::fromRgbF( b, h, a ); break;
+        case 1 : color = color_t::fromRgbF( a, b, h ); break;
+        case 2 : color = color_t::fromRgbF( h, a, b ); break;
+        case 3 : color = color_t::fromRgbF( b, a, h ); break;
+        case 4 : color = color_t::fromRgbF( h, b, a ); break;
+        default: color = color_t::fromRgbF( a, h, b ); break;
+#else
+        case 0 : color = color_t( b, h, a ); break;
+        case 1 : color = color_t( a, b, h ); break;
+        case 2 : color = color_t( h, a, b ); break;
+        case 3 : color = color_t( b, a, h ); break;
+        case 4 : color = color_t( h, b, a ); break;
+        default: color = color_t( a, h, b ); break;
+#endif
     }
     if( !has_scalar_ ) { return color; }
+    // TODO: this is very slow for qt3d v2, see test colour/id-scalar
     double v = ( scalar - from_ ) / diff_;
     v = ( v < 0 ? 0 : v > 1 ? 1 : v );
     return add( multiply( color, v ), multiply( background_, 1 - v ) );
 }
 
-QColor4ub by_rgb::color( const Eigen::Vector3d& , comma::uint32, double, const QColor4ub& c ) const
+color_t by_rgb::color( const Eigen::Vector3d& , comma::uint32, double, const color_t& c ) const
 {
     return c;
 }
 
-colored* color_from_string( const std::string& s, const std::string& fields, const QColor4ub& backgroundcolor )
+colored* color_from_string( const std::string& s, const std::string& fields, const color_t& backgroundcolor )
 {
     std::vector< std::string > f = comma::split( fields, ',' );
     bool hasId = false;
@@ -310,8 +335,8 @@ colored* color_from_string( const std::string& s, const std::string& fields, con
         }
         else if( hasScalar )
         {
-            QColor4ub from_color = color_from_name( "magenta" );
-            QColor4ub to_color = color_from_name( "cyan" );
+            color_t from_color = color_from_name( "magenta" );
+            color_t to_color = color_from_name( "cyan" );
             double from = 0;
             double to = 1;
             boost::optional< snark::render::colour_map::values > map;
@@ -390,8 +415,8 @@ colored* color_from_string( const std::string& s, const std::string& fields, con
         std::vector< std::string > v = comma::split( s, ',' );
         double from = 0;
         double to = 1;
-        QColor4ub from_color = color_from_name( "red" );
-        QColor4ub to_color = color_from_name( "yellow" );
+        color_t from_color = color_from_name( "red" );
+        color_t to_color = color_from_name( "yellow" );
         bool sharp = false;
         bool cyclic = false;
         bool linear = true;

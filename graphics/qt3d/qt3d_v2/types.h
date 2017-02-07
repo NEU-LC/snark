@@ -47,9 +47,22 @@ struct gl_color_t
         rgba[0] = 0.0; rgba[1] = 0.0; rgba[2] = 0.0; rgba[3] = 1.0;
     }
 
-    gl_color_t( GLfloat red, GLfloat green, GLfloat blue, GLfloat alpha )
+    gl_color_t( GLfloat red, GLfloat green, GLfloat blue, GLfloat alpha=1.0f )
     {
         rgba[0] = red; rgba[1] = green; rgba[2] = blue; rgba[3] = alpha;
+    }
+
+    gl_color_t( double red, double green, double blue, double alpha )
+    {
+        rgba[0] = red; rgba[1] = green; rgba[2] = blue; rgba[3] = alpha;
+    }
+
+    gl_color_t( int red, int green, int blue, int alpha=255 )
+    {
+        rgba[0] = red   / 255.0f;
+        rgba[1] = green / 255.0f;
+        rgba[2] = blue  / 255.0f;
+        rgba[3] = alpha / 255.0f;
     }
 
     gl_color_t( const QColor& color )
@@ -67,6 +80,22 @@ struct gl_color_t
     GLfloat blue() const  { return rgba[2]; }
     GLfloat alpha() const { return rgba[3]; }
 };
+
+inline gl_color_t operator+( const gl_color_t& lhs, const gl_color_t& rhs )
+{
+    return gl_color_t( std::min( lhs.red()   + rhs.red(), 1.0f )
+                     , std::min( lhs.green() + rhs.green(), 1.0f )
+                     , std::min( lhs.blue()  + rhs.blue(), 1.0f )
+                     , std::min( lhs.alpha() + rhs.alpha(), 1.0f ));
+}
+
+inline gl_color_t operator*( const gl_color_t& color, double scalar )
+{
+    return gl_color_t( color.red()   * scalar
+                     , color.green() * scalar
+                     , color.blue()  * scalar
+                     , color.alpha() * scalar );
+}
 
 struct vertex_t
 {
@@ -89,10 +118,10 @@ template <> struct traits< snark::graphics::qt3d::gl_color_t >
     template < typename Key, class Visitor >
     static void visit( Key, snark::graphics::qt3d::gl_color_t& p, Visitor& v )
     {
-        GLfloat red   = 0.0f;
-        GLfloat green = 0.0f;
-        GLfloat blue  = 0.0f;
-        GLfloat alpha = 1.0f;
+        int red   = 0;
+        int green = 0;
+        int blue  = 0;
+        int alpha = 255;
         v.apply( "r", red );
         v.apply( "g", green );
         v.apply( "b", blue );

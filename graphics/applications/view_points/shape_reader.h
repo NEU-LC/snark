@@ -51,7 +51,7 @@ class ShapeReader : public Reader
         #if Qt3D_VERSION==1
         ShapeReader( QGLView& viewer, const reader_parameters& params, colored* c, const std::string& label, const S& sample = ShapeWithId< S >().shape );
         #else
-        ShapeReader( const reader_parameters& params, const S& sample = ShapeWithId< S >().shape );
+        ShapeReader( const reader_parameters& params, colored* c, const S& sample = ShapeWithId< S >().shape );
         #endif
 
         void start();
@@ -99,8 +99,8 @@ ShapeReader< S, How >::ShapeReader( QGLView& viewer, const reader_parameters& pa
 }
 #else
 template< typename S, typename How >
-ShapeReader< S, How >::ShapeReader( const reader_parameters& params, const S& sample  )
-    : Reader( params )
+ShapeReader< S, How >::ShapeReader( const reader_parameters& params, colored* c, const S& sample  )
+    : Reader( params, c )
     , buffer_( size * Shapetraits< S, How >::size )
     , sample_( sample )
 {
@@ -207,10 +207,8 @@ inline bool ShapeReader< S, How >::read_once()
         }
         if( m_passed ) { m_passed->write(); }
         ShapeWithId< S > v = *p;
-        #if Qt3D_VERSION==1
         const Eigen::Vector3d& center = Shapetraits< S, How >::center( v.shape );
         v.color = m_colored->color( center, p->id, p->scalar, p->color );
-        #endif
         boost::mutex::scoped_lock lock( m_mutex );
         m_deque.push_back( v );
         m_point = Shapetraits< S, How >::somePoint( v.shape );

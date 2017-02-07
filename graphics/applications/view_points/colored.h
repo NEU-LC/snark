@@ -34,53 +34,63 @@
 #define SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_COLORED_H_
 
 #include <string>
+#if Qt3D_VERSION==1
 #include <Qt3D/qcolor4ub.h>
-#include "../../../../render/colour_map.h"
-#include "../point_with_id.h"
+#else
+#include "../../../graphics/qt3d/qt3d_v2/types.h"
+#endif
+#include "../../../render/colour_map.h"
+#include "point_with_id.h"
 
 namespace snark { namespace graphics { namespace view {
 
+#if Qt3D_VERSION==1
+typedef QColor4ub color_t;
+#else
+typedef qt3d::gl_color_t color_t;
+#endif
+
 struct colored
 {
-    virtual ~colored() {}
-    virtual QColor4ub color( const Eigen::Vector3d& point
-                           , comma::uint32 id
-                           , double scalar
-                           , const QColor4ub& c ) const = 0;
+    virtual color_t color( const Eigen::Vector3d& point
+                         , comma::uint32 id
+                         , double scalar
+                         , const color_t& c ) const = 0;
 
+    virtual ~colored() {}
 };
 
 class fixed : public colored
 {
     public:
         fixed( const std::string& name );
-        QColor4ub color( const Eigen::Vector3d& point
-                       , comma::uint32 id
-                       , double scalar
-                       , const QColor4ub& c ) const;
+        virtual color_t color( const Eigen::Vector3d& point
+                             , comma::uint32 id
+                             , double scalar
+                             , const color_t& c ) const;
 
     private:
-        QColor4ub color_;
+        color_t color_;
 };
 
 struct by_height : public colored // todo: refactor and merge with byscalar
 {
     by_height( double from
              , double to
-             , const QColor4ub& from_color = QColor4ub( 255, 0, 0 )
-             , const QColor4ub& to_color = QColor4ub( 0, 0, 255 )
+             , const color_t& from_color = color_t( 255, 0, 0 )
+             , const color_t& to_color = color_t( 0, 0, 255 )
              , bool cyclic = false
              , bool linear = true
              , bool sharp = false );
 
     double from, to, sum, diff, middle;
-    QColor4ub from_color, to_color, average_color;
+    color_t from_color, to_color, average_color;
     bool cyclic, linear, sharp;
 
-    QColor4ub color( const Eigen::Vector3d& point
-                   , comma::uint32 id
-                   , double scalar
-                   , const QColor4ub& c ) const;
+    virtual color_t color( const Eigen::Vector3d& point
+                         , comma::uint32 id
+                         , double scalar
+                         , const color_t& c ) const;
 };
 
 class by_scalar : public colored
@@ -88,39 +98,41 @@ class by_scalar : public colored
     public:
         by_scalar( double from
                  , double to
-                 , const QColor4ub& from_color
-                 , const QColor4ub& to_color );
+                 , const color_t& from_color
+                 , const color_t& to_color );
 
         by_scalar( double from
                  , double to
                  , const snark::render::colour_map::values& map );
 
-        QColor4ub color( const Eigen::Vector3d& point
-                       , comma::uint32 id
-                       , double scalar
-                       , const QColor4ub& c ) const;
+        virtual color_t color( const Eigen::Vector3d& point
+                             , comma::uint32 id
+                             , double scalar
+                             , const color_t& c ) const;
 
     protected:
         double from, to, diff;
         boost::optional< snark::render::colour_map::values > map;
-        QColor4ub from_color;
-        QColor4ub to_color;
+        color_t from_color;
+        color_t to_color;
 };
 
 class by_id : public colored
 {
     public:
-        by_id( const QColor4ub& backgroundcolor );
+        by_id( const color_t& backgroundcolor );
 
-        by_id( const QColor4ub& backgroundcolor
+        by_id( const color_t& backgroundcolor
              , double from
              , double to );
-        QColor4ub color( const Eigen::Vector3d& point
-                       , comma::uint32 id
-                       , double scalar
-                       , const QColor4ub& c ) const;
+
+        virtual color_t color( const Eigen::Vector3d& point
+                             , comma::uint32 id
+                             , double scalar
+                             , const color_t& c ) const;
+
     private:
-        const QColor4ub background_;
+        const color_t background_;
         bool has_scalar_;
         double from_;
         double diff_;
@@ -128,13 +140,13 @@ class by_id : public colored
 
 struct by_rgb : public colored
 {
-    QColor4ub color( const Eigen::Vector3d& point
-                   , comma::uint32 id
-                   , double scalar
-                   , const QColor4ub& c ) const;
+    virtual color_t color( const Eigen::Vector3d& point
+                         , comma::uint32 id
+                         , double scalar
+                         , const color_t& c ) const;
 };
 
-colored* color_from_string( const std::string& s, const std::string& fields, const QColor4ub& backgroundcolor );
+colored* color_from_string( const std::string& s, const std::string& fields, const color_t& backgroundcolor );
 
 } } } // namespace snark { namespace graphics { namespace view {
 
