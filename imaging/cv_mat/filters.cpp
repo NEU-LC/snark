@@ -73,13 +73,17 @@
 #include "../vegetation/filters.h"
 #include "tbb/parallel_reduce.h"
 
-struct map_input_t
-{
-    typedef double value_type;
-    typedef comma::int32 key_type;
-    key_type key;
-    value_type value;
-};
+namespace {
+
+    struct map_input_t
+    {
+        typedef double value_type;
+        typedef comma::int32 key_type;
+        key_type key;
+        value_type value;
+    };
+
+} // anonymous
 
 namespace snark{ namespace cv_mat {
 
@@ -1716,83 +1720,82 @@ static boost::function< filter::input_type( filter::input_type ) > make_filter_f
         }
         return boost::bind( &crop_impl_, _1, x, y, w, h );
     }
-    if( e[0] == "crop-cols" )
+    if( e[0] == "crop-cols" || e[0] == "crop-rows" )
     {
-        if( e.size() < 2 ) { COMMA_THROW( comma::exception, "crop-cols: specify at least one column to extract, e.g. crop-cols=1,10" ); }
-        std::vector< std::string > stripes = comma::split( e[1], '|' );
-        std::vector< stripe_t > cols;
-        for ( size_t s = 0; s < stripes.size(); ++s )
+        const std::string & op_name = e[0];
+        const std::string & what = ( e[0] == "crop-cols" ? "column" : "row" );
+        if( e.size() < 2 ) { COMMA_THROW( comma::exception, op_name << ": specify at least one " << what << " to extract, e.g. " << op_name << "=1,10" ); }
+        std::vector< std::string > inputs = comma::split( e[1], ',' );
+        if ( inputs.size() % 2 ) { COMMA_THROW( comma::exception, op_name << ": must provide an even number of integers in <" << what << ">,<size> pairs" ); }
+        std::vector< stripe_t > stripes;
+        for ( size_t s = 0; s < inputs.size(); ++s, ++s )
         {
-            std::vector< std::string > column = comma::split( stripes[s], ',' );
-            if ( column.size() > 2 ) { COMMA_THROW( comma::exception, "crop-cols: expected position,[width]; got " << column.size() << " parameters '" << stripes[s] << "'" ); }
-            unsigned int x = boost::lexical_cast< unsigned int >( column[0] );
-            unsigned int w = ( column.size() == 2 ? boost::lexical_cast< unsigned int >( column[1] ) : 1 );
-            cols.push_back( std::make_pair( x, w ) );
+            unsigned int x = boost::lexical_cast< unsigned int >( inputs[s] );
+            unsigned int w = boost::lexical_cast< unsigned int >( inputs[s+1] );
+            stripes.push_back( std::make_pair( x, w ) );
         }
-        return boost::bind( &crop_cols_impl_, _1, cols );
-    }
-    if( e[0] == "crop-rows" )
-    {
-        if( e.size() < 2 ) { COMMA_THROW( comma::exception, "crop-rows: specify at least one row to extract, e.g. crop-rows=1,10" ); }
-        std::vector< std::string > stripes = comma::split( e[1], '|' );
-        std::vector< stripe_t > rows;
-        for ( size_t s = 0; s < stripes.size(); ++s )
-        {
-            std::vector< std::string > rowblock = comma::split( stripes[s], ',' );
-            if ( rowblock.size() > 2 ) { COMMA_THROW( comma::exception, "crop-rows: expected position,[height]; got " << rowblock.size() << " parameters '" << stripes[s] << "'" ); }
-            unsigned int y = boost::lexical_cast< unsigned int >( rowblock[0] );
-            unsigned int h = ( rowblock.size() == 2 ? boost::lexical_cast< unsigned int >( rowblock[1] ) : 1 );
-            rows.push_back( std::make_pair( y, h ) );
-        }
-        return boost::bind( &crop_rows_impl_, _1, rows );
+        return boost::bind( ( e[0] == "crop-cols" ? &crop_cols_impl_ : &crop_rows_impl_), _1, stripes );
     }
     if( e[0] == "bands-to-cols" || e[0] == "bands-to-rows" )
     {
-        // rhs looks like "12,23|50,30|100|method:average|output-depth:d"
-        // the '|'-separated entries shall be either:
-        // - comma-separated pairs of integers, or
-        // - a single integer, or
+        // rhs looks like "12,23,50,30,100,1,method:average,output-depth:d"
+        // the ','-separated entries shall be either:
+        // - integers always coming in pairs, or
         // - colon-separated words with a known keyword on the left and one of the known enumeration names on the right
         const bool bands_to_cols = e[0] == "bands-to-cols";
         const std::string & op_name = bands_to_cols ? "bands-to-cols" : "bands-to-rows";
         if( e.size() < 2 ) { COMMA_THROW( comma::exception, op_name << ": specify at least one band to extract, e.g. " << op_name << "=1,10" ); }
-        std::vector< std::string > stripes = comma::split( e[1], '|' );
+        std::vector< std::string > stripes = comma::split( e[1], ',' );
         std::vector< stripe_t > bands;
+        // iterate over pair of integers until all taken; then iterate over "name:value" pairs
+        size_t s = 0;
+        while ( s < stripes.size() )
+        {
+            if ( stripes[s].empty() ) { COMMA_THROW( comma::exception, op_name << ": empty comma-separated field in '" << e[1] << "'" ); }
+            unsigned int y;
+            try {
+                y = boost::lexical_cast< int >( stripes[s] );
+            } catch ( boost::bad_lexical_cast & ) {
+                break; // possibly a keyword, not an error
+            }
+            if ( ! (++s < stripes.size() ) ) { COMMA_THROW( comma::exception, op_name << ": expected <int, int> pairs, got a single int in '" << e[1] << "'" ); }
+            unsigned int h;
+            try {
+                h = boost::lexical_cast< int >( stripes[s] );
+            } catch ( boost::bad_lexical_cast & ) {
+                COMMA_THROW( comma::exception, op_name << ": expected <position>,<size> integer pairs, got " << e[1] );
+            }
+            bands.push_back( std::make_pair( y, h ) );
+            ++s;
+        }
+        // the rest of the string shall be comma-separated name:value pairs
         int cv_reduce_method = bands_method_default;
         int cv_reduce_dtype = -1;
-        for ( size_t s = 0; s < stripes.size(); ++s )
+        while ( s < stripes.size() )
         {
-            if ( stripes[s].find( ":" ) != std::string::npos )
+            if ( stripes[s].empty() ) { COMMA_THROW( comma::exception, op_name << ": empty comma-separated field in '" << e[1] << "'" ); }
+            std::vector< std::string > setting = comma::split( stripes[s], ':' );
+            if ( setting.size() != 2 ) { COMMA_THROW( comma::exception, op_name << ": expected keyword:value; got " << setting.size() << " parameter '" << stripes[s] << "'" ); }
+            if ( setting[0] == "method" )
             {
-                std::vector< std::string > setting = comma::split( stripes[s], ':' );
-                if ( setting.size() != 2 ) { COMMA_THROW( comma::exception, op_name << ": expected keyword:value; got " << setting.size() << " parameters '" << stripes[s] << "'" ); }
-                if ( setting[0] == "method" )
-                {
-                    static std::map< std::string, int > methods = boost::assign::map_list_of ( "average", CV_REDUCE_AVG ) ( "sum", CV_REDUCE_SUM ) ( "min", CV_REDUCE_MIN ) ( "max", CV_REDUCE_MAX );
-                    std::map< std::string, int >::const_iterator found = methods.find( setting[1] );
-                    if ( found == methods.end() ) { COMMA_THROW( comma::exception, op_name << ": the method is not one of [average,sum,min,max]" ); }
-                    cv_reduce_method = found->second;
-                }
-                else if ( setting[0] == "output-depth" )
-                {
-                    static std::map< std::string, int > depths = boost::assign::map_list_of ( "CV_32S", CV_32S ) ( "i", CV_32S ) ( "CV_32F", CV_32F ) ( "f", CV_32F ) ( "CV_64F", CV_64F ) ( "d", CV_64F );
-                    std::map< std::string, int >::const_iterator found = depths.find( setting[1] );
-                    if ( found == depths.end() ) { COMMA_THROW( comma::exception, op_name << ": the output-depth '" << setting[1] << "' is not one of [i,f,d] or [CV_32S,CV_32F,CV_64F]" ); }
-                    cv_reduce_dtype = found->second;
-                }
-                else
-                {
-                    COMMA_THROW( comma::exception, op_name << ": the keyword '" << setting[0] << "' is not one of [method,output-depth]" );
-                }
+                static std::map< std::string, int > methods = boost::assign::map_list_of ( "average", CV_REDUCE_AVG ) ( "sum", CV_REDUCE_SUM ) ( "min", CV_REDUCE_MIN ) ( "max", CV_REDUCE_MAX );
+                std::map< std::string, int >::const_iterator found = methods.find( setting[1] );
+                if ( found == methods.end() ) { COMMA_THROW( comma::exception, op_name << ": the method is not one of [average,sum,min,max]" ); }
+                cv_reduce_method = found->second;
+            }
+            else if ( setting[0] == "output-depth" )
+            {
+                // the permitted list is very restrictive and explicit
+                static std::map< std::string, int > depths = boost::assign::map_list_of ( "CV_32S", CV_32S ) ( "i", CV_32S ) ( "CV_32F", CV_32F ) ( "f", CV_32F ) ( "CV_64F", CV_64F ) ( "d", CV_64F );
+                std::map< std::string, int >::const_iterator found = depths.find( setting[1] );
+                if ( found == depths.end() ) { COMMA_THROW( comma::exception, op_name << ": the output-depth '" << setting[1] << "' is not one of [i,f,d] or [CV_32S,CV_32F,CV_64F]" ); }
+                cv_reduce_dtype = found->second;
             }
             else
             {
-                std::vector< std::string > rowblock = comma::split( stripes[s], ',' );
-                if ( rowblock.size() > 2 ) { COMMA_THROW( comma::exception, op_name << ": expected position,[width]; got " << rowblock.size() << " parameters '" << stripes[s] << "'" ); }
-                unsigned int y = boost::lexical_cast< unsigned int >( rowblock[0] );
-                unsigned int h = ( rowblock.size() == 2 ? boost::lexical_cast< unsigned int >( rowblock[1] ) : 1 );
-                bands.push_back( std::make_pair( y, h ) );
+                COMMA_THROW( comma::exception, op_name << ": the keyword '" << setting[0] << "' is not one of [method,output-depth]" );
             }
+            ++s;
         }
         if ( bands.empty() ) { COMMA_THROW( comma::exception, op_name << ": specify at least one band" ); }
         return boost::bind( &bands_to_cols_impl_, _1, bands_to_cols, bands, cv_reduce_method, cv_reduce_dtype );
@@ -1830,45 +1833,46 @@ static boost::function< filter::input_type( filter::input_type ) > make_filter_f
     }
     if( e[0] == "cols-to-channels" || e[0] == "rows-to-channels" )
     {
-        // rhs looks like "cols-to-channels=1,4,5[|pad:value|repeat:step]"
-        // the '|'-separated entries shall be either:
-        // - a comma-separated lists of integers, or
-        // - a single integer, or
+        // rhs looks like "cols-to-channels=1,4,5[,pad:value,repeat:step]"
+        // the ','-separated entries shall be either:
+        // - integers, or
         // - colon-separated words with a known keyword on the left and one of the known enumeration names on the right
         const bool cols_to_channels = e[0] == "cols-to-channels";
         const std::string & op_name = cols_to_channels ? "cols-to-channels" : "rows-to-channels";
         const std::string & op_what = cols_to_channels ? "column" : "row";
         if( e.size() < 2 ) { COMMA_THROW( comma::exception, op_name << ": specify at least one column or column list to extract, e.g. " << op_name << "=1,10" ); }
-        std::vector< std::string > inputs = comma::split( e[1], '|' );
+        std::vector< std::string > inputs = comma::split( e[1], ',' );
         std::vector< unsigned int > values;
         double padding = 0.0;
         unsigned int repeat = 0;
-        for ( size_t s = 0; s < inputs.size(); ++s )
+        size_t s = 0;
+        // first, iterate over column number, then, over options
+        while ( s < inputs.size() )
         {
-            if ( inputs[s].find( ":" ) != std::string::npos )
+            try {
+                values.push_back( boost::lexical_cast< unsigned int >( inputs[s] ) );
+            } catch ( boost::bad_lexical_cast & ) {
+                break; // maybe an option
+            }
+            ++s;
+        }
+        while ( s < inputs.size() )
+        {
+            std::vector< std::string > setting = comma::split( inputs[s], ':' );
+            if ( setting.size() != 2 ) { COMMA_THROW( comma::exception, op_name << ": expected keyword:value; got " << setting.size() << " parameter '" << inputs[s] << "'" ); }
+            if ( setting[0] == "pad" )
             {
-                std::vector< std::string > setting = comma::split( inputs[s], ':' );
-                if ( setting.size() != 2 ) { COMMA_THROW( comma::exception, op_name << ": expected keyword:value; got " << setting.size() << " parameters '" << inputs[s] << "'" ); }
-                if ( setting[0] == "pad" )
-                {
-                    padding = boost::lexical_cast< double >( setting[1] );
-                }
-                else if ( setting[0] == "repeat" )
-                {
-                    repeat = boost::lexical_cast< unsigned int >( setting[1] );
-                }
-                else
-                {
-                    COMMA_THROW( comma::exception, op_name << ": the keyword '" << setting[0] << "' is not one of [pad,repeat]" );
-                }
+                padding = boost::lexical_cast< double >( setting[1] );
+            }
+            else if ( setting[0] == "repeat" )
+            {
+                repeat = boost::lexical_cast< unsigned int >( setting[1] );
             }
             else
             {
-                std::vector< std::string > vstrings = comma::split( inputs[s], ',' );
-                if ( vstrings.size() > 4 ) { COMMA_THROW( comma::exception, op_name << ": can store up to 4 " << op_what << "s into channels, got " << vstrings.size() << " inputs '" << inputs[s] << "'" ); }
-                values.reserve( vstrings.size() );
-                for ( size_t i = 0; i < vstrings.size(); ++i ) { values.push_back( boost::lexical_cast< unsigned int >( vstrings[i] ) ); }
+                COMMA_THROW( comma::exception, op_name << ": the keyword '" << setting[0] << "' is not one of [pad,repeat]" );
             }
+            ++s;
         }
         if ( values.empty() ) { COMMA_THROW( comma::exception, op_name << ": specify at least one " << op_what << " to store as channel" ); }
         if ( values.size() > 4 ) { COMMA_THROW( comma::exception, op_name << ": can have at most 4 output channels" ); }
@@ -2474,37 +2478,37 @@ static std::string usage_impl_()
     oss << "                                <wait-interval>: a hack for now; milliseconds to wait for image display and key press; default 1" << std::endl;
     oss << std::endl;
     oss << "    operations on subsets of columns, rows, or channels:" << std::endl;
-    oss << "        bands-to-cols=x,[w[,x,w]][|method:<method-name>|output-depth:<depth>]; take a number of columns (bands) from the input, process together by method," << std::endl;
+    oss << "        bands-to-cols=x,w[,x,w][,method:<method-name>,output-depth:<depth>]; take a number of columns (bands) from the input, process together by method," << std::endl;
     oss << "            write into the output, one band (a range of columns) reduced into one column; supported methods: average (default), sum, min, max; the sum method" << std::endl;
     oss << "            requires the explicit output-depth parameter (one of i,f,d or CV_32S, CV_32F, CV_64F) if the input has low depth" << std::endl;
-    oss << "            examples: \"bands-to-cols=12,23|50,30|45,60|100|method:average\"; output an image of 4 columns containing the average" << std::endl;
-    oss << "                          of columns 12-34 (i.e., 12 + 23 - 1), 50-79, 45-104 (overlap is OK), and 100 (default width is 1) from the original image" << std::endl;
-    oss << "                      \"bands-to-cols=12,23|50,30|45,60|100|method:sum|output-depth:d\"; same bands but output an image of 4 columns containing the sum" << std::endl;
+    oss << "            examples: \"bands-to-cols=12,23,50,30,45,60,100,1,method:average\"; output an image of 4 columns containing the average" << std::endl;
+    oss << "                          of columns 12-34 (i.e., 12 + 23 - 1), 50-79, 45-104 (overlap is OK), and 100 (width is 1) from the original image" << std::endl;
+    oss << "                      \"bands-to-cols=12,23,50,30,45,60,100,1,method:sum,output-depth:d\"; same bands but output an image of 4 columns containing the sum" << std::endl;
     oss << "                          of the columns data from the original image; use CV_64F depth (double) as the output format" << std::endl;
-    oss << "        bands-to-rows=x,[w[|x,w]][|method:<method-name>|output-depth:<depth>]; same as bands-to-cols but operate on rows of input instead of columns" << std::endl;
+    oss << "        bands-to-rows=x,w[,x,w][,method:<method-name>,output-depth:<depth>]; same as bands-to-cols but operate on rows of input instead of columns" << std::endl;
     oss << std::endl;
     oss << "        channels-to-cols; opposite to cols-to-channels; unwrap all channels as columns" << std::endl;
     oss << "            example: \"channels-to-cols\" over a 3-channel image: RGB channels of column 0 become columns 0 (single-channel), 1, and 2, RGB channels" << std::endl;
     oss << "            of column 1 become columns 3,4,5, and so on" << std::endl;
     oss << "        channels-to-rows; same as channels-to-cols but operates over rows" << std::endl;
     oss << std::endl;
-    oss << "        cols-to-channels=1,4,5[|pad:value|repeat:step]; opposite to channels-to-cols; stores the listed columns as channels in the output file" << std::endl;
+    oss << "        cols-to-channels=i,j,k[,pad:value,repeat:step]; opposite to channels-to-cols; stores the listed columns as channels in the output file" << std::endl;
     oss << "            input shall be a single-channel stream; up to 4 channels are supported; if 1, 3, or 4 columns are specified, the output would have 1, 3, or 4 channels respectively" << std::endl;
     oss << "            in case of 2 columns, a third empty (zero) channel is added; use the \"pad:value\" option to specify the fill value other then zero" << std::endl;
     oss << "            the repeat option applies the transformation periodically, first for the specified columns, then for columns incremented by one step, and so on; see the examples" << std::endl;
-    oss << "            examples: \"cols-to-channels=6,4|pad:128\"; put column 6 into the R channel, column 4 into the G channel, and fill the B channel with 128" << std::endl;
-    oss << "                      \"cols-to-channels=0,1,2|repeat:3\"; store columns 0,1,2 as RGB channels of column 0 of the output file, then columns 3,4,5 as RGB" << std::endl;
+    oss << "            examples: \"cols-to-channels=6,4,pad:128\"; put column 6 into the R channel, column 4 into the G channel, and fill the B channel with 128" << std::endl;
+    oss << "                      \"cols-to-channels=0,1,2,repeat:3\"; store columns 0,1,2 as RGB channels of column 0 of the output file, then columns 3,4,5 as RGB" << std::endl;
     oss << "                      channels of column 1 of the output file, etc.; conversion stops when all input column indices exceed the image width" << std::endl;
     oss << "                      if one of the input columns exceed the image width, the respective output channel is filled with zeros (or the padding value)" << std::endl;
     oss << std::endl;
-    oss << "        crop-cols=<x>[,<w>[|<x>[,<w>,...: output an image consisting of (multiple) columns starting at x with width w" << std::endl;
-    oss << "            examples: \"crop-cols=2,10|12,10\"; output an image of width 20 taking 2 width-10 columns starting at 2 and 12" << std::endl;
-    oss << "                      \"crop-cols=2|12,10\"; default width is 1, the output image has width 11" << std::endl;
-    oss << "        crop-rows=<y>[,<h>[|<y>[,<h>,...: output an image consisting of (multiple) row blocks starting at y with height h" << std::endl;
-    oss << "            examples: \"crop-rows=5,10|25,5\"; output an image of height 15 taking 2 row blocks starting at 5 and 25 and with heights 10 and 5, respectively" << std::endl;
-    oss << "                      \"crop-rows=5|25|15\"; default block height is 1, block starts can be out of order" << std::endl;
+    oss << "        crop-cols=<x>,<w>[,<x>,<w>,...]: output an image consisting of (multiple) columns starting at x with width w" << std::endl;
+    oss << "            examples: \"crop-cols=2,10,12,10\"; output an image of width 20 taking 2 width-10 columns starting at 2 and 12" << std::endl;
+    oss << "                      \"crop-cols=2,1,12,10\"; width is 1, the output image has width 11" << std::endl;
+    oss << "        crop-rows=<y>,<h>[,<y>,<h>,...]: output an image consisting of (multiple) row blocks starting at y with height h" << std::endl;
+    oss << "            examples: \"crop-rows=5,10,25,5\"; output an image of height 15 taking 2 row blocks starting at 5 and 25 and with heights 10 and 5, respectively" << std::endl;
+    oss << "                      \"crop-rows=5,1,25,1,15,1\"; block height is 1, block starts can be out of order" << std::endl;
     oss << std::endl;
-    oss << "        rows-to-channels=1,4,5[|pad:value|repeat:step]; same as cols-to-channels but operates on rows" << std::endl;
+    oss << "        rows-to-channels=1,4,5[,pad:value,repeat:step]; same as cols-to-channels but operates on rows" << std::endl;
     oss << std::endl;
     oss << "        swap-channels=2,1,0,3; re-order channels; arguments shall be integers from 0 to the total number of input channels" << std::endl;
     oss << "            NYI - for now a placeholder only, possibly can be achieved by other operations" << std::endl;
