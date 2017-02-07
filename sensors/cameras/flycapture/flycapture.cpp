@@ -339,7 +339,7 @@ namespace snark{ namespace cameras{ namespace flycapture{
                 cameras_.push_back(std::unique_ptr<camera::impl>(new camera::impl(serial, attributes)));
             }
             if (cameras_.size()) { good = true; }
-            apply_offsets( *offsets );
+            apply_offsets( offsets );
         }
 
         ~impl()
@@ -413,10 +413,7 @@ namespace snark{ namespace cameras{ namespace flycapture{
         camera::attributes_type camera::attributes() const { return get_attributes( pimpl_->handle() ); }
 
 // camera::multicam class
-        camera::multicam::multicam( std::vector<camera_pair>& cameras, boost::optional<std::vector<uint>> offsets )
-        : pimpl_( new multicam::impl( cameras, offsets ) )
-        {
-        }
+        camera::multicam::multicam( std::vector<camera_pair>& cameras, const std::vector< unsigned int >& offsets ) : pimpl_( new multicam::impl( cameras, offsets ) ) {}
 
         camera::multicam::~multicam() { delete pimpl_; }
 
