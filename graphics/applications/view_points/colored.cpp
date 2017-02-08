@@ -305,7 +305,7 @@ colored* color_from_string( const std::string& s, const std::string& fields, con
         if( f[i] == "b" ) { b = true; }
         if( f[i] == "a" ) { a = true; }
     }
-    snark::graphics::view::colored* c;
+    colored* c;
     try
     {
         if( hasId )
@@ -316,16 +316,16 @@ colored* color_from_string( const std::string& s, const std::string& fields, con
                 if( v.size() != 2 ) { COMMA_THROW( comma::exception, "expected range (-5:20), got " << s ); }
                 double from = boost::lexical_cast< double >( v[0] );
                 double to = boost::lexical_cast< double >( v[1] );
-                c = new snark::graphics::view::by_id( backgroundcolor, from, to );
+                c = new by_id( backgroundcolor, from, to );
             }
             else
             {
-                c = new snark::graphics::view::by_id( backgroundcolor );
+                c = new by_id( backgroundcolor );
             }
         }
         else if( r || g || b || a )
         {
-            c = new snark::graphics::view::by_rgb;
+            c = new by_rgb;
         }
         else if( hasScalar )
         {
@@ -393,12 +393,12 @@ colored* color_from_string( const std::string& s, const std::string& fields, con
                 default:
                     COMMA_THROW( comma::exception, "expected range (e.g. -5:20,red:blue or 3:10), or colour map name, got " << s );
             }
-            c = map ? new snark::graphics::view::by_scalar( from, to, *map )
-                    : new snark::graphics::view::by_scalar( from, to, from_color, to_color );
+            c = map ? new by_scalar( from, to, *map )
+                    : new by_scalar( from, to, from_color, to_color );
         }
         else
         {
-            c = new snark::graphics::view::fixed( s );
+            c = new fixed( s );
         }
     }
     catch( ... )
@@ -434,7 +434,7 @@ colored* color_from_string( const std::string& s, const std::string& fields, con
                 }
             }
         }
-        c = new snark::graphics::view::by_height( from, to, from_color, to_color, cyclic, linear, sharp );
+        c = new by_height( from, to, from_color, to_color, cyclic, linear, sharp );
     }
     return c;
 }
