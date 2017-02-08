@@ -392,7 +392,9 @@ boost::shared_ptr< snark::graphics::view::Reader > makeReader( const comma::comm
                                                           , options.value( "--point-size,--weight", 1u )
                                                           , options.exists( "--pass-through,--pass" )
                                                           , options.exists( "--fill" ) );
-    std::string color = options.exists( "--colour" ) ? options.value< std::string >( "--colour" ) : options.value< std::string >( "-c", "0:1,cyan:magenta" );
+    std::string color = options.exists( "--colour" ) ? options.value< std::string >( "--colour" )
+                      : options.exists( "--color" ) ? options.value< std::string >( "--color" )
+                      : options.value< std::string >( "-c", "0:1,cyan:magenta" );
     if( comma::split( color, ',' ).size() == 1 && !isalpha( color[0] )) { color += ",cyan:magenta"; }
     std::string label = options.value( "--label", std::string() );
     bool show = true;
@@ -617,7 +619,7 @@ int main( int argc, char** argv )
         if( options.exists( "--help" ) || options.exists( "-h" ) ) { usage(); }
         comma::csv::options csvOptions( argc, argv );
         std::vector< std::string > properties = options.unnamed( "--z-is-up,--orthographic,--flush,--no-stdin,--output-camera-config,--output-camera,--pass-through,--pass,--exit-on-end-of-input"
-                , "--binary,--bin,-b,--fields,--size,--delimiter,-d,--colour,-c,--point-size,--weight,--background-colour,--scene-center,--center,--scene-radius,--radius,--shape,--label,--title,--camera,--camera-position,--camera-config,--fov,--model,--full-xpath" );
+                , "--binary,--bin,-b,--fields,--size,--delimiter,-d,--colour,--color,-c,--point-size,--weight,--background-colour,--scene-center,--center,--scene-radius,--radius,--shape,--label,--title,--camera,--camera-position,--camera-config,--fov,--model,--full-xpath" );
 
 #if Qt3D_VERSION==1
         QColor4ub background_color( QColor( QString( options.value< std::string >( "--background-colour", "#000000" ).c_str() ) ) );
