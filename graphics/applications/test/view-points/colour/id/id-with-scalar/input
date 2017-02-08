@@ -1,0 +1,4 @@
+instruction=
+expected="a striped cube fading away on one side"
+input="test-pattern cube 20000 0.1 0.01 | csv-eval --fields=x,y 'id=round((x+0.11)/0.22*13); scalar=(y+0.11)/0.22'"
+args="--fields=x,y,z,,,,,id,scalar --colour=0:1"

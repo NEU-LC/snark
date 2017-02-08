@@ -1,0 +1,21 @@
+#!/bin/bash
+
+source $(type -p comma-application-util)
+
+comma_path_value_to_var
+
+if [[ $input ]]; then
+    eval "$input" | setsid view-points $args &
+else
+    setsid view-points $args &
+fi
+pid=$!
+
+[[ $instruction ]] && dialog_test="$instruction\n\n"
+dialog_test+="Do you see $expected?"
+
+zenity --question --text="$dialog_test"
+result=$?
+
+kill $pid
+exit $result
