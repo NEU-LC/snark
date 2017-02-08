@@ -225,7 +225,7 @@ static void usage()
         "\n        a: if present, specifies colour transparency (0-255, %uc in binary); default 255"
         "\n        scalar: if present, colour by scalar"
         "\n                  use --colour=<from>:<to>[,<from colour>:<to colour>]"
-        "\n                  default: 0:1,red:blue"
+        "\n                  default: 0:1,cyan:magenta"
         "\n                  todo: implement for shapes (currently works only for points)"
         qt55_unsupported_marker_start
         "\n        label: text label (currenly implemented for ascii only)"
