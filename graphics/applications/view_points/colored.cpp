@@ -277,7 +277,6 @@ color_t by_id::color( const Eigen::Vector3d&, comma::uint32 id, double scalar, c
 #endif
     }
     if( !has_scalar_ ) { return color; }
-    // TODO: this is very slow for qt3d v2, see test colour/id-scalar
     double v = ( scalar - from_ ) / diff_;
     v = ( v < 0 ? 0 : v > 1 ? 1 : v );
     return add( multiply( color, v ), multiply( background_, 1 - v ) );
