@@ -80,6 +80,7 @@ void gl_widget::cleanup()
 // used in the shader code (model and view combined in the mv_matrix) see
 // http://www.opengl-tutorial.org/beginners-tutorials/tutorial-3-matrices/
 
+// TODO: might be good (necessary) to make these shaders work with an older GLSL version. Perhaps 1.20.
 static const char *vertex_shader_source = R"(
     #version 150
     in vec4 vertex;

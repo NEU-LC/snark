@@ -733,6 +733,8 @@ int main( int argc, char** argv )
 
 #elif Qt3D_VERSION==2
 
+        // TODO: readers are currently not parallel
+        // TODO: for qt3dv1 implementation see Viewer::initializeGL() and, e.g. ShapeReader::start()
         std::vector< boost::shared_ptr< snark::graphics::view::Reader > > readers;
         bool stdinAdded = false;
         for( unsigned int i = 0; i < properties.size(); ++i )
