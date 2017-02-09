@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source $(type -p comma-application-util)
+source $( type -p comma-application-util )
 
 comma_path_value_to_var
 
