@@ -36,13 +36,21 @@
 
 namespace snark { namespace graphics { namespace qt3d {
 
-gl_widget::gl_widget( buffer_provider* buffer, const camera_options& camera_options, QWidget *parent )
+gl_widget::gl_widget( std::vector< boost::shared_ptr< buffer_provider > > buffers
+                    , const camera_options& camera_options
+                    , QWidget *parent )
     : QOpenGLWidget( parent )
-    , buffer_( buffer )
+    , buffers_( buffers )
+    , total_buffer_size_( 0 )
     , program_( 0 )
     , camera_options_( camera_options )
     , size_( 0.4f )
-{}
+{
+    for( unsigned int i = 0; i < buffers_.size(); ++i )
+    {
+        total_buffer_size_ += buffers_[i].get()->buffer_size();
+    }
+}
 
 gl_widget::~gl_widget()
 {
@@ -130,7 +138,14 @@ void gl_widget::initializeGL()
     // Setup our vertex buffer object.
     vbo_.create();
     vbo_.bind();
-    vbo_.allocate( buffer_->buffer_data(), buffer_->buffer_size() * sizeof( vertex_t ));
+    vbo_.allocate( total_buffer_size_ * sizeof( vertex_t ));
+
+    for( unsigned int i = 0, offset = 0; i < buffers_.size(); ++i )
+    {
+        std::size_t data_size = buffers_[i].get()->buffer_size() * sizeof( vertex_t );
+        vbo_.write( offset, buffers_[i].get()->buffer_data(), data_size );
+        offset += data_size;
+    }
 
     // Store the vertex attribute bindings for the program.
     setup_vertex_attribs();
@@ -176,7 +191,7 @@ void gl_widget::paintGL()
     program_->setUniformValue( projection_matrix_location_, projection_ );
     program_->setUniformValue( mv_matrix_location_, camera_ * world_ );
 
-    glDrawArrays( GL_POINTS, 0, buffer_->buffer_size() );
+    glDrawArrays( GL_POINTS, 0, total_buffer_size_ );
 
     glDisable( GL_DEPTH_TEST );
 

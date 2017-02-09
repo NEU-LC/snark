@@ -196,9 +196,11 @@ void MainWindow::keyPressEvent(QKeyEvent *e)
 
 namespace snark { namespace graphics { namespace view {
 
-main_window::main_window( Reader* reader, const qt3d::camera_options& camera_options )
+main_window::main_window( std::vector< boost::shared_ptr< snark::graphics::view::Reader > > readers
+                        , const qt3d::camera_options& camera_options )
+    : buffers_( readers.begin(), readers.end() )
 {
-    gl_widget_ = new qt3d::gl_widget( reader, camera_options, this );
+    gl_widget_ = new qt3d::gl_widget( buffers_, camera_options, this );
     setCentralWidget( gl_widget_ );
 }
 

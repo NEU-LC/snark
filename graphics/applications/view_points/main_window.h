@@ -110,10 +110,12 @@ class main_window : public QMainWindow
     Q_OBJECT
 
     public:
-        main_window( Reader* reader, const qt3d::camera_options& camera_options );
+        main_window( std::vector< boost::shared_ptr< snark::graphics::view::Reader > > readers
+                   , const qt3d::camera_options& camera_options );
         ~main_window();
 
     private:
+        std::vector< boost::shared_ptr< snark::graphics::qt3d::buffer_provider > > buffers_;
         qt3d::gl_widget* gl_widget_;
 };
 

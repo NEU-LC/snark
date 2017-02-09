@@ -266,11 +266,11 @@ static void usage()
         "\n"
         "\n    each point has an individual color:"
         "\n        cat xyzrgb.csv | view-points --fields=\"x,y,z,r,g,b\""
-        qt55_unsupported_marker_start
         "\n"
         "\n    view multiple files"
         "\n        view-points \"raw.csv;colour=0:20\" \"partitioned.csv;fields=x,y,z,id;point-size=2\""
         "\n"
+        qt55_unsupported_marker_start
         "\n    view multiple files with titles"
         "\n        view-points \"raw.csv;colour=0:20;title=raw\" \"partitioned.csv;fields=x,y,z,id;point-size=2;title=partitioned\""
         "\n"
@@ -754,8 +754,7 @@ int main( int argc, char** argv )
         }
 
         QApplication app(argc, argv);
-        // TODO: currently just loads the first reader
-        snark::graphics::view::main_window main_window( readers[0].get(), camera_options );
+        snark::graphics::view::main_window main_window( readers, camera_options );
         main_window.resize( main_window.sizeHint() );
         main_window.show();
         return app.exec();
