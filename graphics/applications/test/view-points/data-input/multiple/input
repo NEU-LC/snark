@@ -1,0 +1,5 @@
+instruction=
+expected="two cubes"
+input=
+files="<( test-pattern cube 10000 0.5 0.01 | points-frame --fields x,y,z --from -1,0,0 ) <( test-pattern cube 10000 0.5 0.01 | points-frame --fields x,y,z --from 1,0,0 )"
+args="--no-stdin"
