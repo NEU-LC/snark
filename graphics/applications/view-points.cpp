@@ -149,7 +149,9 @@ static void usage()
         "\n    --exit-on-end-of-input: exit immediately on end of input stream"
         "\n    --fill: fill the shape; currently implemented only for triangles"
         "\n    --label <label>: text label displayed next to the latest point"
+        qt55_unsupported_marker_end
         "\n    --no-stdin: do not read from stdin"
+        qt55_unsupported_marker_start
         "\n    --pass-through,--pass; pass input data to stdout"
         "\n    --point-size,--weight <point size>: default: 1"
         "\n    --shape <shape>: \"point\", \"extents\", \"line\", \"label\"; default \"point\""
