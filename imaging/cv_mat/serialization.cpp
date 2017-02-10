@@ -301,6 +301,9 @@ std::string serialization::options::usage()
     std::stringstream stream;
     stream << "cv::mat serialization options: ';'-separated name=value options" << std::endl;
     stream << "    fields=<fields>; default: t,cols,rows,type" << std::endl;
+    stream << "        note: shall describe only the image header, not the data" << std::endl;
+    stream << "    binary=<format>; default: t,3ui" << std::endl;
+    stream << "        note: shall describe only the image header, not the data" << std::endl;
     stream << "    header-only: if present, output only header (output only)" << std::endl;
     stream << "    no-header: if present, no header" << std::endl;
     stream << "    rows=<rows>: default number of rows (input only)" << std::endl;

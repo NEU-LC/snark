@@ -77,7 +77,7 @@ elseif( QT_VERSION_MAJOR EQUAL 5 )
     else()
         # 3D libraries changed significantly with Qt5.5
         set( Qt3D_VERSION 2 )
-        message( WARNING "\nQt ${snark_qt_version} includes Qt3D version 2.\nview-points support for Qt3D version 2 is experimental and incomplete\nConsider using Qt4 (by setting QT_QMAKE_EXECUTABLE to the Qt4 qmake)" )
+        message( WARNING "\nQt ${snark_qt_version} includes Qt3D version 2.\nview-points support for Qt3D version 2 is experimental and incomplete\nConsider using Qt4 (by setting QT_QMAKE_EXECUTABLE to the path to the Qt4 qmake, typically /usr/bin/qmake)" )
         find_package( Qt5 COMPONENTS 3DCore REQUIRED )
 
         if( QT_VERSION_MINOR GREATER 6 )

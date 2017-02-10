@@ -1,0 +1,4 @@
+instruction=
+expected="a cube transitioning from magenta to cyan"
+input="test-pattern cube 20000 0.5 0.01 | csv-eval --fields=,,z 'z=(z+0.5)/1.02'"
+args="--fields=x,y,z"

@@ -1,0 +1,4 @@
+instruction=
+expected="a cube with colour transitioning from white to red"
+input="test-pattern cube 20000 0.1 0.01 | csv-eval --fields=x 'scalar=(x+0.11)/0.22'"
+args="--fields=x,y,z,,,,,scalar --colour=0:1,hot"

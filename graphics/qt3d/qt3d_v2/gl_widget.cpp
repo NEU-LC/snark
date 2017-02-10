@@ -36,13 +36,21 @@
 
 namespace snark { namespace graphics { namespace qt3d {
 
-gl_widget::gl_widget( buffer_provider* buffer, const camera_options& camera_options, QWidget *parent )
+gl_widget::gl_widget( std::vector< boost::shared_ptr< buffer_provider > > buffers
+                    , const camera_options& camera_options
+                    , QWidget *parent )
     : QOpenGLWidget( parent )
-    , buffer_( buffer )
+    , buffers_( buffers )
+    , total_buffer_size_( 0 )
     , program_( 0 )
     , camera_options_( camera_options )
     , size_( 0.4f )
-{}
+{
+    for( unsigned int i = 0; i < buffers_.size(); ++i )
+    {
+        total_buffer_size_ += buffers_[i].get()->buffer_size();
+    }
+}
 
 gl_widget::~gl_widget()
 {
@@ -72,26 +80,29 @@ void gl_widget::cleanup()
 // used in the shader code (model and view combined in the mv_matrix) see
 // http://www.opengl-tutorial.org/beginners-tutorials/tutorial-3-matrices/
 
-static const char *vertex_shader_source =
-    "#version 150\n"
-    "in vec4 vertex;\n"
-    "in vec4 color;\n"
-    "out vec4 vert_color;\n"
-    "uniform mat4 projection_matrix;\n"
-    "uniform mat4 mv_matrix;\n"
-    "void main() {\n"
-    "   vert_color = color;\n"
-    "   gl_Position = projection_matrix * mv_matrix * vertex;\n"
-    "}\n";
+// TODO: might be good (necessary) to make these shaders work with an older GLSL version. Perhaps 1.20.
+static const char *vertex_shader_source = R"(
+    #version 150
+    in vec4 vertex;
+    in vec4 color;
+    out vec4 vert_color;
+    uniform mat4 projection_matrix;
+    uniform mat4 mv_matrix;
+    void main() {
+       vert_color = color;
+       gl_Position = projection_matrix * mv_matrix * vertex;
+    }
+)";
 
 // TODO: support alpha
-static const char *fragment_shader_source =
-    "#version 150\n"
-    "in highp vec4 vert_color;\n"
-    "out highp vec4 frag_color;\n"
-    "void main() {\n"
-    "   frag_color = clamp( vert_color, 0.0, 1.0 );\n"
-    "}\n";
+static const char *fragment_shader_source = R"(
+    #version 150
+    in highp vec4 vert_color;
+    out highp vec4 frag_color;
+    void main() {
+       frag_color = clamp( vert_color, 0.0, 1.0 );
+    }
+)";
 
 void gl_widget::initializeGL()
 {
@@ -123,12 +134,19 @@ void gl_widget::initializeGL()
     // at all. Nonetheless the below code works in all cases and makes
     // sure there is a VAO when one is needed.
     vao_.create();
-    QOpenGLVertexArrayObject::Binder vaoBinder( &vao_ );
+    QOpenGLVertexArrayObject::Binder vao_binder( &vao_ );
 
     // Setup our vertex buffer object.
     vbo_.create();
     vbo_.bind();
-    vbo_.allocate( buffer_->buffer_data(), buffer_->buffer_size() * sizeof( vertex_t ));
+    vbo_.allocate( total_buffer_size_ * sizeof( vertex_t ));
+
+    for( unsigned int i = 0, offset = 0; i < buffers_.size(); ++i )
+    {
+        std::size_t data_size = buffers_[i].get()->buffer_size() * sizeof( vertex_t );
+        vbo_.write( offset, buffers_[i].get()->buffer_data(), data_size );
+        offset += data_size;
+    }
 
     // Store the vertex attribute bindings for the program.
     setup_vertex_attribs();
@@ -164,19 +182,22 @@ void gl_widget::paintGL()
 
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
     glEnable( GL_DEPTH_TEST );
+    glEnable( GL_BLEND );
+    glBlendEquation( GL_FUNC_ADD );
+    glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
     glEnable( GL_CULL_FACE );
 
-    QOpenGLVertexArrayObject::Binder vaoBinder( &vao_ );
+    QOpenGLVertexArrayObject::Binder vao_binder( &vao_ );
     program_->bind();
     program_->setUniformValue( projection_matrix_location_, projection_ );
     program_->setUniformValue( mv_matrix_location_, camera_ * world_ );
 
-    glDrawArrays( GL_POINTS, 0, buffer_->buffer_size() );
+    glDrawArrays( GL_POINTS, 0, total_buffer_size_ );
 
     glDisable( GL_DEPTH_TEST );
 
     program_->release();
-    vaoBinder.release();
+    vao_binder.release();
 
     painter.endNativePainting();
 

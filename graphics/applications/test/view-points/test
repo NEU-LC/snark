@@ -1,0 +1,25 @@
+#!/bin/bash
+
+source $( type -p comma-application-util )
+
+comma_path_value_to_var
+
+cmd="view-points $files $args"
+
+if [[ $input ]]; then
+    eval $input | eval $cmd &
+else
+    eval $cmd &
+fi
+eval_pid=$!
+
+[[ $instruction ]] && dialog_test="$instruction\n\n"
+dialog_test+="Do you see $expected?"
+
+zenity --question --text="$dialog_test"
+result=$?
+
+# view-points is the child of eval
+kill $( pgrep -P $eval_pid )
+wait $eval_pid
+exit $result
