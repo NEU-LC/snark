@@ -1,0 +1,68 @@
+#!/usr/bin/python
+import rospy
+import sys
+from sensor_msgs.msg import PointCloud
+from sensor_msgs.msg import PointCloud2
+import sensor_msgs.point_cloud2 as pc2
+import comma
+
+def convert_time(stamp):
+    return stamp.secs*1000000+stamp.nsecs/1000
+
+class point_cloud:
+    _binary="t,ui,3d"
+    _fields="t,block,x,y,z"
+    record_t=comma.csv.struct(_fields, *comma.csv.format.to_numpy(_binary))
+    @staticmethod
+    def binary():
+        return point_cloud._binary
+    @staticmethod
+    def fields():
+        return point_cloud._fields
+    @staticmethod
+    def subscribe(topic,callback):
+        return rospy.Subscriber(topic,PointCloud,callback)
+    @staticmethod
+    def convert(msg,callback):
+        for i in range(0,len(msg.values),3):
+            r=point_cloud.record_t()
+            r['t']=convert_time(msg.header.stamp)
+            r['block']=msg.seq
+            r['x']=msg.values[i]
+            r['y']=msg.values[i+1]
+            r['z']=msg.values[i+2]
+            callback(r)
+
+class point_cloud2:
+    _binary="t,3d"
+    _fields="t,x,y,z"
+    record_t=comma.csv.struct(_fields, *comma.csv.format.to_numpy(_binary))
+    @staticmethod
+    def binary():
+        return point_cloud2._binary
+    @staticmethod
+    def fields():
+        return point_cloud2._fields
+    @staticmethod
+    def record_type():
+        return point_cloud2.record_t
+    @staticmethod
+    def subscribe(topic,callback):
+        return rospy.Subscriber(topic,PointCloud2,callback)
+    @staticmethod
+    def convert(msg,callback):
+        t=convert_time(msg.header.stamp)
+        points=pc2.read_points(msg,skip_nans=True,field_names=('x','y','z'))
+        for i in points:
+            r=point_cloud2.record_t()
+            r['t']=t
+            r['x']=i[0]
+            r['y']=i[1]
+            r['z']=i[2]
+            callback(r)
+            
+def msg_map():
+    return {
+        'sensor_msgs/PointCloud':point_cloud,
+        'sensor_msgs/PointCloud2':point_cloud2
+        }

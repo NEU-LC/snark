@@ -1,0 +1,96 @@
+#!/usr/bin/python
+import rostopic
+import rospy
+import rosgraph
+import sys
+import argparse
+import time
+
+execfile('/usr/local/bin/ros_msg_to_csv')
+
+help_description='listen to a ros topic, convert the data to csv and write to stdout'
+help_example="""
+example
+    ros-to-csv /laser/points | view-points --fields t,,x,y,z
+
+"""
+
+def parse_args():
+    parser=argparse.ArgumentParser(description=help_description,epilog=help_example,formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument('--list',help='get list of topics',action='store_true')
+    parser.add_argument('--type',help='get message type of a topic',action='store_true')
+    parser.add_argument('--topic',help='topic to listen to')
+    parser.add_argument('--flush',help='flush stdout after each image frame write',action='store_true')
+    parser.add_argument('--binary',help='csv output will be binary',action='store_true')
+    return parser.parse_args()
+
+args=parse_args()
+
+if args.list:
+    master=rosgraph.masterapi.Master('/rostopic')
+    topics=master.getPublishedTopics('/')
+    for i in topics:
+        print i[0]
+        #print "%s,%s"%(i[0],i[1])
+    sys.exit()
+
+if not args.topic:
+    print >>sys.stderr, "error: --topic must be specified"
+    sys.exit(1)
+    
+def message_type(topic):
+    master=rosgraph.masterapi.Master('/rostopic')
+    topics=master.getPublishedTopics('/')
+    for i in topics:
+        if i[0]==topic:
+            return i[1]
+    return None
+    
+if args.type:
+    msg_type=message_type(args.topic)
+    if msg_type:
+        print msg_type
+        sys.exit()
+    #master=rosgraph.masterapi.Master('/rostopic')
+    #topics=master.getPublishedTopics('/')
+    #for i in topics:
+        #if i[0]==args.topic:
+            #print i[1]
+            #sys.exit()
+    print >>sys.stderr, "topic not found:",args.topic
+    sys.exit(1)
+    
+
+shutdown=False
+
+data_t=int
+
+msg_map=msg_map()
+converter=msg_map[message_type(args.topic)]
+ostream=comma.csv.stream(converter.record_type(),binary=args.binary,flush=args.flush)
+
+def writer(p):
+    ostream.write(p)
+
+def callback(msg):
+    global shutdown
+    #print 'callbakc'
+    converter.convert(msg,writer)
+    #shutdown=True
+#def callback(msg):
+    #global shutdown
+    #try:
+    #except SystemExit:
+        #shutdown=True
+    #except:
+        #shutdown=True
+        #sys.stderr.write("exception!\n")
+        #traceback.print_exc()
+        
+
+rospy.init_node('listener',anonymous=True,disable_signals=True)
+subscription=converter.subscribe(args.topic,callback)
+#converter=converter_t(args.topic,callback)
+while not shutdown:
+    time.sleep(0.001)
+rospy.signal_shutdown('shutdown')
