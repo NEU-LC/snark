@@ -2184,7 +2184,8 @@ static boost::function< filter::input_type( filter::input_type ) > make_filter_f
     COMMA_THROW( comma::exception, "expected filter, got: \"" << comma::join( e, '=' ) << "\"" );
 }
 
-std::vector< filter > filters::make( const std::string& how, unsigned int default_delay )
+template < typename H >
+std::vector< filter > impl::filters< H >::make( const std::string& how, unsigned int default_delay )
 {
     std::vector< std::string > v = comma::split( how, ';' );
     std::vector< filter > f;
@@ -2369,7 +2370,8 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
     return f;
 }
 
-filters::value_type filters::apply( std::vector< filter >& filters, filters::value_type m )
+template < typename H >
+typename impl::filters< H >::value_type impl::filters< H >::apply( std::vector< filter >& filters, typename impl::filters< H >::value_type m )
 {
     for( std::size_t i = 0; i < filters.size(); m = filters[ i++ ].filter_function( m ) );
     return m;
@@ -2549,7 +2551,8 @@ static std::string usage_impl_()
     return oss.str();
 }
 
-const std::string& filters::usage( const std::string & operation )
+template < typename H >
+const std::string& impl::filters< H >::usage( const std::string & operation )
 {
     if ( operation.empty() )
     {
@@ -2570,6 +2573,9 @@ const std::string& filters::usage( const std::string & operation )
         }
     }
 }
+
+template class impl::filters< boost::posix_time::ptime >;
+// template class impl::filters< std::vector< char > >;
 
 } } // namespace snark{ namespace cv_mat {
 

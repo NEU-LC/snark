@@ -55,6 +55,9 @@ class serialization
             header();
             header( const cv::Mat& m );
             header( const std::pair< boost::posix_time::ptime, cv::Mat >& p ); /// constructor
+            header( const boost::posix_time::ptime& t, const cv::Mat & p ); /// constructor
+            
+            typedef std::vector< char > buffer_t;
         };
         
         /// options, a helper class
@@ -118,11 +121,16 @@ class serialization
 
         /// c-style write to stdout, to be used if issues seen with write() - see cpp file for details
         void write_to_stdout( const std::pair< boost::posix_time::ptime, cv::Mat >& m, bool flush = true );
+        
+        /// write to stream
+        void write( std::ostream& os, const std::pair< header::buffer_t, cv::Mat >& m, bool flush = true );
+        
+        /// c-style write to stdout, to be used if issues seen with write() - see cpp file for details
+        void write_to_stdout( const std::pair< header::buffer_t, cv::Mat >& m, bool flush = true );
 
     private:
-        void write_( int fd, const char* buf, size_t count );
-
         boost::scoped_ptr< comma::csv::binary< header > > m_binary;
+        boost::scoped_ptr< comma::csv::binary< header > > m_binary_no_timestamp; // timestamp will not be set
         std::vector< char > m_buffer;
         bool m_headerOnly;
         header m_header; /// default header
