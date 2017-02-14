@@ -2281,7 +2281,7 @@ static functor_type make_filter_functor( const std::vector< std::string >& e )
         }
         return overlay_impl_< H >( s[0], x, y );
     }
-    boost::function< value_type_t( value_type_t ) > functor = imaging::vegetation::filters::make_functor( e );
+    boost::function< value_type_t( value_type_t ) > functor = imaging::vegetation::impl::filters< H >::make_functor( e );
     if( functor ) { return functor; }
     COMMA_THROW( comma::exception, "expected filter, got: \"" << comma::join( e, '=' ) << "\"" );
 }
@@ -2483,6 +2483,7 @@ typename impl::filters< H >::value_type impl::filters< H >::apply( std::vector< 
     return m;
 }
 
+template < typename H >
 static std::string usage_impl_()
 {
     std::ostringstream oss;
@@ -2653,7 +2654,7 @@ static std::string usage_impl_()
     oss << "                                     e.g: my-params.txt:blob" << std::endl;
     oss << "                                     if not present, defaults will be used" << std::endl;
     oss << std::endl;
-    oss << snark::imaging::vegetation::filters::usage() << std::endl;
+    oss << snark::imaging::vegetation::impl::filters< H >::usage() << std::endl;
     return oss.str();
 }
 
@@ -2662,7 +2663,7 @@ const std::string& impl::filters< H >::usage( const std::string & operation )
 {
     if ( operation.empty() )
     {
-        static const std::string s = usage_impl_();
+        static const std::string s = usage_impl_< H >();
         return s;
     }
     else

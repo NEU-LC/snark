@@ -36,19 +36,28 @@
 namespace snark { namespace imaging { namespace vegetation {
 
 /// filter pipeline helpers
+namespace impl {
+    
+template < typename H=boost::posix_time::ptime >
 struct filters
 {
+    typedef cv_mat::operation< cv::Mat, H > filter;
+    typedef typename cv_mat::impl::filters< H >::value_type value_type;
     /// take name-value string, return filter
-    static boost::optional< cv_mat::filter > make( const std::string& what );
+    static boost::optional< filter > make( const std::string& what );
     
     /// take name-value string, return functor
-    static boost::function< cv_mat::filters::value_type( cv_mat::filters::value_type ) > make_functor( const std::string& v, char equal_sign = '=' ) { return make_functor( comma::split( v, equal_sign ) ); }
+    static boost::function< value_type( value_type ) > make_functor( const std::string& v, char equal_sign = '=' ) { return make_functor( comma::split( v, equal_sign ) ); }
     
     /// take name-value vector, return functor
-    static boost::function< cv_mat::filters::value_type( cv_mat::filters::value_type ) > make_functor( const std::vector< std::string >& e );
+    static boost::function< value_type( value_type ) > make_functor( const std::vector< std::string >& e );
     
     /// return usage for all filters
     static const std::string& usage();
 };
+
+} // namespace impl {
+
+typedef impl::filters< > filters;
     
 } } }  // namespace snark { namespace imaging { namespace vegetation {
