@@ -2185,10 +2185,10 @@ static boost::function< filter::input_type( filter::input_type ) > make_filter_f
 }
 
 template < typename H >
-std::vector< filter > impl::filters< H >::make( const std::string& how, unsigned int default_delay )
+std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make( const std::string& how, unsigned int default_delay )
 {
     std::vector< std::string > v = comma::split( how, ';' );
-    std::vector< filter > f;
+    std::vector< filter_type > f;
     if( how == "" ) { return f; }
     std::string name;
     bool modified = false;
@@ -2199,19 +2199,19 @@ std::vector< filter > impl::filters< H >::make( const std::string& how, unsigned
         {
             unsigned int how_many = boost::lexical_cast< unsigned int >( e[1] );
             if ( how_many == 0 ) { COMMA_THROW( comma::exception, "expected positive number of images to accumulate in accumulate filter, got " << how_many ); }
-            f.push_back( filter( accumulate_impl_( how_many ), false ) );
+            f.push_back( filter_type( accumulate_impl_( how_many ), false ) );
         }
         else if( e[0] == "bayer" ) // kept for backwards-compatibility, use convert-color=BayerBG,BGR etc..
         {
             if( modified ) { COMMA_THROW( comma::exception, "cannot covert from bayer after transforms: " << name ); }
             unsigned int which = boost::lexical_cast< unsigned int >( e[1] ) + 45u; // HACK, bayer as unsigned int, but I don't find enum { BG2RGB, GB2BGR ... } more usefull
-            f.push_back( filter( boost::bind( &cvt_color_impl_, _1, which ) ) );
+            f.push_back( filter_type( boost::bind( &cvt_color_impl_, _1, which ) ) );
         }
         else if( e[0] == "unpack12" )
         {
             if( modified ) { COMMA_THROW( comma::exception, "cannot covert from 12 bit packed after transforms: " << name ); }
             if(e.size()!=1) { COMMA_THROW( comma::exception, "unexpected arguement: "<<e[1]); }
-            f.push_back( filter( boost::bind( &unpack12_impl_, _1 ) ) );
+            f.push_back( filter_type( boost::bind( &unpack12_impl_, _1 ) ) );
         }
         else if( e[0] == "log" ) // todo: rotate log by size: expose to user
         {
@@ -2249,30 +2249,30 @@ std::vector< filter > impl::filters< H >::make( const std::string& how, unsigned
             if (period) 
             {   
                 unsigned int seconds = static_cast< unsigned int >( *period );
-                f.push_back( filter( log_impl_( file, boost::posix_time::seconds( seconds ) + boost::posix_time::microseconds( ( *period - seconds ) * 1000000 ), index ), false ) ); 
+                f.push_back( filter_type( log_impl_( file, boost::posix_time::seconds( seconds ) + boost::posix_time::microseconds( ( *period - seconds ) * 1000000 ), index ), false ) ); 
             }
             else if ( size )
             { 
-                f.push_back( filter( log_impl_( file, *size, index), false ) );
+                f.push_back( filter_type( log_impl_( file, *size, index), false ) );
             } 
             else
             { 
                 if( index ) { COMMA_THROW( comma::exception, "log: index should be specified with directory and period or size, not with filename" );  }
-                f.push_back( filter( log_impl_( file ), false ) );
+                f.push_back( filter_type( log_impl_( file ), false ) );
             }
         }
         else if( e[0] == "max" ) // todo: remove this filter; not thread-safe, should be run with --threads=1
         {
-            f.push_back( filter( max_impl_( boost::lexical_cast< unsigned int >( e[1] ), true ), false ) );
+            f.push_back( filter_type( max_impl_( boost::lexical_cast< unsigned int >( e[1] ), true ), false ) );
         }
         else if( e[0] == "min" ) // todo: remove this filter; not thread-safe, should be run with --threads=1
         {
-            f.push_back( filter( max_impl_( boost::lexical_cast< unsigned int >( e[1] ), false ), false ) );
+            f.push_back( filter_type( max_impl_( boost::lexical_cast< unsigned int >( e[1] ), false ), false ) );
         }
         else if( e[0] == "view" )
         {
             unsigned int delay = e.size() == 1 ? default_delay : boost::lexical_cast< unsigned int >( e[1] );
-            f.push_back( filter( boost::bind( &view_impl_, _1, name, delay ), false ) );
+            f.push_back( filter_type( boost::bind( &view_impl_, _1, name, delay ), false ) );
         }
         else if( e[0] == "thumb" )
         {
@@ -2284,7 +2284,7 @@ std::vector< filter > impl::filters< H >::make( const std::string& how, unsigned
                 if( v.size() >= 1 ) { cols = boost::lexical_cast< unsigned int >( v[0] ); }
                 if( v.size() >= 2 ) { delay = boost::lexical_cast< unsigned int >( v[1] ); }
             }
-            f.push_back( filter( boost::bind( &thumb_impl_, _1, name, cols, delay ), false ) );
+            f.push_back( filter_type( boost::bind( &thumb_impl_, _1, name, cols, delay ), false ) );
         }
         else if( e[0] == "encode" )
         {
@@ -2295,25 +2295,25 @@ std::vector< filter > impl::filters< H >::make( const std::string& how, unsigned
             }
             if( e.size() < 2 ) { COMMA_THROW( comma::exception, "expected encoding type like jpg, ppm, etc" ); }
             std::string s = e[1];
-            f.push_back( filter( boost::bind( &encode_impl_, _1, s ) ) );
+            f.push_back( filter_type( boost::bind( &encode_impl_, _1, s ) ) );
         }
         else if( e[0] == "grab" )
         {
             if( e.size() < 2 ) { COMMA_THROW( comma::exception, "expected encoding type like jpg, ppm, etc" ); }
             std::string s = e[1];
-            f.push_back( filter( boost::bind( &grab_impl_, _1, s ) ) );
+            f.push_back( filter_type( boost::bind( &grab_impl_, _1, s ) ) );
         }
         else if( e[0] == "file" )
         {
             if( e.size() < 2 ) { COMMA_THROW( comma::exception, "expected file type like jpg, ppm, etc" ); }
             std::string s = e[1];
-            f.push_back( filter( boost::bind( &file_impl_, _1, s ) ) );
+            f.push_back( filter_type( boost::bind( &file_impl_, _1, s ) ) );
         }
         else if( e[0] == "histogram" )
         {
             if( i < v.size() - 1 ) { COMMA_THROW( comma::exception, "expected 'histogram' as the last filter, got \"" << how << "\"" ); }
-            f.push_back( filter( boost::bind( &histogram_impl_, _1 ) ) );
-            f.push_back( filter( NULL ) ); // quick and dirty
+            f.push_back( filter_type( boost::bind( &histogram_impl_, _1 ) ) );
+            f.push_back( filter_type( NULL ) ); // quick and dirty
         }
         else if( e[0] == "simple-blob" )
         {
@@ -2342,14 +2342,14 @@ std::vector< filter > impl::filters< H >::make( const std::string& how, unsigned
                     if( t.size() > 1 ) { path = s[1]; }
                 }
             }
-            f.push_back( filter( boost::bind( &simple_blob_impl_, _1, cv_read_< cv::SimpleBlobDetector::Params >( config, path ), binary ) ) );
-            f.push_back( filter( NULL ) ); // quick and dirty
+            f.push_back( filter_type( boost::bind( &simple_blob_impl_, _1, cv_read_< cv::SimpleBlobDetector::Params >( config, path ), binary ) ) );
+            f.push_back( filter_type( NULL ) ); // quick and dirty
         }
         else if( e[0] == "null" )
         {
             if( i < v.size() - 1 ) { COMMA_THROW( comma::exception, "expected 'null' as the last filter, got \"" << how << "\"" ); }
             if( i == 0 ) { COMMA_THROW( comma::exception, "'null' as the only filter is not supported; use cv-cat > /dev/null, if you need" ); }
-            f.push_back( filter( NULL ) );
+            f.push_back( filter_type( NULL ) );
         }
         else if ( e[0] == "head" )
         {
@@ -2359,11 +2359,11 @@ std::vector< filter > impl::filters< H >::make( const std::string& how, unsigned
                 if( next_filter != "null" && next_filter != "encode" ) { COMMA_THROW( comma::exception, "cannot have a filter after head unless next filter is null or encode" ); }
             }
             unsigned int n = e.size() < 2 ? 1 : boost::lexical_cast< unsigned int >( e[1] );
-            f.push_back( filter( boost::bind( &head_impl_, _1, n ), false ) );
+            f.push_back( filter_type( boost::bind( &head_impl_, _1, n ), false ) );
         }
         else
         {
-            f.push_back( filter( make_filter_functor( e ) ) );
+            f.push_back( filter_type( make_filter_functor( e ) ) );
         }
         modified = e[0] != "view" && e[0] != "thumb" && e[0] != "split" && e[0] !="unpack12";
     }
@@ -2371,7 +2371,7 @@ std::vector< filter > impl::filters< H >::make( const std::string& how, unsigned
 }
 
 template < typename H >
-typename impl::filters< H >::value_type impl::filters< H >::apply( std::vector< filter >& filters, typename impl::filters< H >::value_type m )
+typename impl::filters< H >::value_type impl::filters< H >::apply( std::vector< filter_type >& filters, typename impl::filters< H >::value_type m )
 {
     for( std::size_t i = 0; i < filters.size(); m = filters[ i++ ].filter_function( m ) );
     return m;

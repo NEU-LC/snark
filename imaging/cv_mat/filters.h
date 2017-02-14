@@ -57,12 +57,13 @@ struct filters
 {
     /// value type
     typedef std::pair< H, cv::Mat > value_type;
+    typedef operation< cv::Mat, H > filter_type;
     
     /// return filters from name-value string
-    static std::vector< filter > make( const std::string& how, unsigned int default_delay = 1 );
+    static std::vector< filter_type > make( const std::string& how, unsigned int default_delay = 1 );
     
     /// apply filters (a helper)
-    static value_type apply( std::vector< filter >& filters, value_type m );
+    static value_type apply( std::vector< filter_type >& filters, value_type m );
     
     /// return filter usage
     static const std::string& usage( const std::string & operation = "" );
@@ -71,7 +72,6 @@ struct filters
 } // namespace impl {
 
 typedef impl::filters<> filters;
-typedef impl::filters<> filters_t;
 typedef impl::filters< std::vector< char > > filters_with_header; // todo: a better name
 
 /// a helper: e.g. take CV_8UC3, return CV_8UC1
