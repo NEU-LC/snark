@@ -358,7 +358,7 @@ void MainWindow::keyPressEvent(QKeyEvent *e)
 {
     if (e->key() == Qt::Key_Escape)
         close();
-    else if(e->key()>=Qt::Key_0 && e->key()<=Qt::Key_9 && e->modifiers()&Qt::ControlModifier)
+    else if(e->key()>=Qt::Key_0 && e->key()<=Qt::Key_9)
     {
         unsigned n=unsigned(e->key()-Qt::Key_0);
         std::cerr<<"label-points: ctrl-<number> key pressed; setting current selection id to "<<n<<std::endl;
