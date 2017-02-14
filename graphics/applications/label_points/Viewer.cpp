@@ -229,6 +229,7 @@ void Viewer::handleId( comma::uint32 id ) { m_id = id; }
 
 void Viewer::set_selection_id(comma::uint32 n)
 {
+    bool res=false;
     typedef std::vector< boost::shared_ptr< Dataset > > V;
     m_id=n;
     for( V::iterator ii = m_datasets.begin(); ii < m_datasets.end(); ++ii )
@@ -241,10 +242,12 @@ void Viewer::set_selection_id(comma::uint32 n)
             if( !j->writable() || !j->visible() ) { continue; }
             j->label( i->selection().points(), *m_id );
             std::cerr << "label-points: label_num: labeled selection with id " << *m_id << " in " << j->filename() << std::endl;
+            res=true;
         }
         i->selection().clear();
     }
     update();
+    if(!res) { std::cerr << "label-points: label_num: selection empty" << std::endl;}
 }
 
 } } } // namespace snark { namespace graphics { namespace view {

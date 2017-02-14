@@ -287,8 +287,9 @@ color_t by_rgb::color( const Eigen::Vector3d& , comma::uint32, double, const col
     return c;
 }
 
-colored* color_from_string( const std::string& s, const std::string& fields, const color_t& backgroundcolor )
+colored* color_from_string( const std::string& t, const std::string& fields, const color_t& backgroundcolor )
 {
+    std::string s = t.empty() ? std::string( "0:1,cyan:magenta" ) : t;
     std::vector< std::string > f = comma::split( fields, ',' );
     bool hasId = false;
     for( unsigned int i = 0; !hasId && i < f.size(); ++i ) { hasId = f[i] == "id"; } // quick and dirty
@@ -357,6 +358,8 @@ colored* color_from_string( const std::string& s, const std::string& fields, con
                                 }
                                 else
                                 {
+                                    from_color = color_from_name( "cyan" );
+                                    to_color = color_from_name( "magenta" );
                                     from = boost::lexical_cast< double >( w[0] );
                                     to = boost::lexical_cast< double >( w[1] );
                                 }

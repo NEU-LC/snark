@@ -64,12 +64,15 @@ void usage( bool verbose )
     std::cerr << "                   warning: can be lots of output on large files" << std::endl;
     std::cerr << "    --output-fields: output fields for points selected with a pipette tool (default: x,y,z,id)" << std::endl;
     std::cerr << "    --show-output-format: show binary output format and exit" << std::endl;
-    if( verbose )
-    {
-        std::cerr << "csv options" << std::endl;
-        std::cerr << comma::csv::options::usage() << std::endl;
-    }
     std::cerr << std::endl;
+    std::cerr << "hot keys" << std::endl;
+    std::cerr << "    ctrl-<number>: set selection id; e.g. ctrl-5 will set the current selection id to 5" << std::endl;
+    std::cerr << "    <number>: same as ctlr-<number>, if id text is disabled (by unchecking the box next to it)" << std::endl;
+    std::cerr << "                          added for better ergonomics" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "csv options" << std::endl;
+    if( verbose ) { std::cerr << comma::csv::options::usage()<< std::endl; }
+    else { std::cerr << "    run label-points --help --verbose for more info..." << std::endl; }
     std::cerr << "<fields>: x,y,z,id" << std::endl;
     std::cerr << "    default: x,y,z,id" << std::endl;
     std::cerr << std::endl;
