@@ -43,6 +43,7 @@ IdEdit::IdEdit( Viewer* viewer )
     : m_viewer( viewer )
     , m_edit( new QLineEdit )
     , m_size( new QLabel )
+    ,m_check(new QCheckBox("enabled"))
 {
     QPalette p = palette();
     p.setColor( QPalette::Normal, QPalette::Text, QColor( 255, 255, 255 ) );
@@ -54,15 +55,28 @@ IdEdit::IdEdit( Viewer* viewer )
     m_edit->setSizePolicy( policy );
     connect( m_edit, SIGNAL( returnPressed() ), this, SLOT( handleReturnPressed() ) );
     connect( this, SIGNAL( valueChanged( comma::uint32 ) ), this, SLOT( setValue( comma::uint32 ) ) );
+    connect(m_check, SIGNAL(stateChanged(int)),this,SLOT(checked(int)));
+    
     QLabel* label = new QLabel( "id:" );
     label->setMargin( 5 );
     m_size->setMargin( 5 );
     QHBoxLayout* layout = new QHBoxLayout;
+    
+    m_check->setCheckState(Qt::Checked);
+    m_check->setToolTip("check to enable id edit box, uncheck to disable it; if disabled, you can set selection id by pressing number keys");
+    
     layout->addWidget( label );
     layout->addWidget( m_edit );
+    layout->addWidget(m_check);
     layout->addWidget( m_size );
     setLayout( layout );
     setToolTip( "numeric id, e.g. 123<br>\"min\" for min id<br>\"max\" for max id<br>\"new\" (Ctrl-N) for max id + 1" );
+}
+
+void IdEdit::checked(int state)
+{
+    if(state==Qt::Checked) { m_edit->setEnabled(true); }
+    else if(state==Qt::Unchecked) { m_edit->setEnabled(false); }
 }
 
 void IdEdit::handleReturnPressed()
