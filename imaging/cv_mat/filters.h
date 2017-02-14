@@ -49,6 +49,7 @@ struct operation
 };
 
 typedef operation<> filter;
+typedef operation< cv::Mat, std::vector< char > > filter_with_header;
 
 namespace impl {
 

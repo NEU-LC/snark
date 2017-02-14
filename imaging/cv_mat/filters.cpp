@@ -196,14 +196,18 @@ unsigned int cvt_color_type_from_string( const std::string& t ) // to avoid comp
     if (it == cvt_color_types_.end()) { COMMA_THROW(comma::exception, "unknown conversion enum '" << t << "' for convert-color"); }
     return it->second;
 }
-
-static filters::value_type cvt_color_impl_( filters::value_type m, unsigned int which )
-{
-    filters::value_type n;
-    n.first = m.first;
-    cv::cvtColor( m.second, n.second, which );
-    return n;
-}
+template < typename H >
+struct cvt_color_impl_ {
+    typedef typename impl::filters< H >::value_type value_type;
+    
+    value_type operator()( value_type m, unsigned int which )
+    {
+        value_type n;
+        n.first = m.first;
+        cv::cvtColor( m.second, n.second, which );
+        return n;
+    }
+};
 
 static cv::Scalar scalar_from_strings( const std::string* begin, unsigned int size )
 {
@@ -241,7 +245,19 @@ static filters::value_type unpack12_impl_( filters::value_type m )
     return filters::value_type(m.first, mat);
 }
 
-static filters::value_type head_impl_( filters::value_type m, unsigned int number_of_frames )
+// template < typename H >
+// struct head_impl_ {
+//     typedef typename impl::filters< H >::value_type value_type;
+//     value_type operator()( value_type m, unsigned int number_of_frames )
+//     {
+//         static unsigned int frame_number = 0;
+//         if( frame_number < number_of_frames ) { frame_number++; return m; } else { return filters::value_type(); }
+//     }
+//     
+// };
+
+template < typename H >
+static typename impl::filters< H >::value_type head_impl_( typename impl::filters< H >::value_type m, unsigned int number_of_frames )
 {
     static unsigned int frame_number = 0;
     if( frame_number < number_of_frames ) { frame_number++; return m; } else { return filters::value_type(); }
@@ -1689,12 +1705,23 @@ static filters::value_type remove_mean_impl_(const filters::value_type m, const 
     return n;
 }
 
-static boost::function< filter::input_type( filter::input_type ) > make_filter_functor( const std::vector< std::string >& e )
+template < typename O, typename H >
+struct make_filter {
+    typedef typename impl::filters< H >::value_type value_type_t;
+    typedef operation< O, H > filter;
+    typedef operation< O, H > filter_type;
+    typedef typename filter_type::input_type input_type;
+    typedef typename filter_type::output_type output_type;
+    typedef boost::function< input_type( input_type ) > functor_type;
+static functor_type make_filter_functor( const std::vector< std::string >& e )
 {
+//     typedef typename impl::filters< H >::value_type value_type_t;
+//     typedef operation< O, H > filter;
+    
     if( e[0] == "convert-color" || e[0] == "convert_color" )
     {
         if( e.size() == 1 ) { COMMA_THROW( comma::exception, "convert-color: please specify conversion" ); }
-        return boost::bind( &cvt_color_impl_, _1, cvt_color_type_from_string( e[1] ) );
+        return boost::bind< value_type_t >( cvt_color_impl_< H >(), _1, cvt_color_type_from_string( e[1] ) );
     }
     if( e[0] == "count" ) { return count_impl_(); }
     if( e[0] == "crop" )
@@ -2023,8 +2050,8 @@ static boost::function< filter::input_type( filter::input_type ) > make_filter_f
         if( e.size() > 2 ) { COMMA_THROW( comma::exception, "mask: expected 1 parameter; got: " << comma::join( e, '=' ) ); }
         std::string filter_string = e[1];
         const std::vector< std::string > w = comma::split( filter_string, '|' ); // quick and dirty, running out of delimiters
-        boost::function< filter::input_type( filter::input_type ) > g = make_filter_functor( comma::split( w[0], ':' ) );
-        for( unsigned int k = 1; k < w.size(); ++k ) { g = boost::bind( make_filter_functor( comma::split( w[k], ':' ) ), boost::bind( g, _1 ) ); }
+        functor_type g = make_filter< O, H >::make_filter_functor( comma::split( w[0], ':' ) );
+        for( unsigned int k = 1; k < w.size(); ++k ) { g = boost::bind( make_filter< O, H >::make_filter_functor( comma::split( w[k], ':' ) ), boost::bind( g, _1 ) ); }
         return boost::bind( &mask_impl_, _1, g );
     }
     else if( e[0] == "timestamp" ) { return &timestamp_impl_; }
@@ -2183,10 +2210,14 @@ static boost::function< filter::input_type( filter::input_type ) > make_filter_f
     if( functor ) { return functor; }
     COMMA_THROW( comma::exception, "expected filter, got: \"" << comma::join( e, '=' ) << "\"" );
 }
+};
 
 template < typename H >
 std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make( const std::string& how, unsigned int default_delay )
 {
+    typedef typename impl::filters< H >::value_type value_type_t;
+    typedef typename impl::filters< H >::filter_type filter_type;
+    
     std::vector< std::string > v = comma::split( how, ';' );
     std::vector< filter_type > f;
     if( how == "" ) { return f; }
@@ -2205,7 +2236,7 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
         {
             if( modified ) { COMMA_THROW( comma::exception, "cannot covert from bayer after transforms: " << name ); }
             unsigned int which = boost::lexical_cast< unsigned int >( e[1] ) + 45u; // HACK, bayer as unsigned int, but I don't find enum { BG2RGB, GB2BGR ... } more usefull
-            f.push_back( filter_type( boost::bind( &cvt_color_impl_, _1, which ) ) );
+            f.push_back( filter_type( boost::bind< value_type_t >( cvt_color_impl_< H >(), _1, which ) ) );
         }
         else if( e[0] == "unpack12" )
         {
@@ -2359,11 +2390,13 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
                 if( next_filter != "null" && next_filter != "encode" ) { COMMA_THROW( comma::exception, "cannot have a filter after head unless next filter is null or encode" ); }
             }
             unsigned int n = e.size() < 2 ? 1 : boost::lexical_cast< unsigned int >( e[1] );
-            f.push_back( filter_type( boost::bind( &head_impl_, _1, n ), false ) );
+            //f.push_back( filter_type( boost::bind< value_type_t >( head_impl_< H >(), _1, n ), false ) );
+            f.push_back( filter_type( boost::bind< value_type_t >( head_impl_< H >, _1, n ), false ) );
         }
         else
         {
-            f.push_back( filter_type( make_filter_functor( e ) ) );
+            typename make_filter< cv::Mat, H >::functor_type g = make_filter< cv::Mat, H >::make_filter_functor( e );
+            f.push_back( filter_type( g ) );
         }
         modified = e[0] != "view" && e[0] != "thumb" && e[0] != "split" && e[0] !="unpack12";
     }
