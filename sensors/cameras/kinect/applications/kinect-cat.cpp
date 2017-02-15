@@ -389,6 +389,9 @@ int main( int ac, char** av )
 
         snark::cv_mat::serialization serialization( fields, format, header_only );
 
+        libfreenect2::Registration* registration = new libfreenect2::Registration(dev->getIrCameraParams(), dev->getColorCameraParams());
+        libfreenect2::Frame depth_undistorted(512, 424, 4);
+
         
     
         int first_timestamp = true;
@@ -407,8 +410,9 @@ int main( int ac, char** av )
             libfreenect2::Frame *ir = frames[libfreenect2::Frame::Ir];
             libfreenect2::Frame *depth = frames[libfreenect2::Frame::Depth];
 
-
             boost::posix_time::ptime timestamp1 = boost::posix_time::microsec_clock::universal_time();
+
+            registration->undistortDepth( depth, &depth_undistorted );
 
             cv::Mat irMat = cv::Mat(
                     height_ir, width_ir,
@@ -417,8 +421,13 @@ int main( int ac, char** av )
                     height_ir, width_ir,
                     CV_32FC1, depth->data);
 
+            cv::Mat depthMat_undistorted = cv::Mat(
+                    height_ir, width_ir,
+                    CV_32FC1, depth_undistorted.data);
+
             cv::Mat A = cv::Mat::ones(height_ir, width_ir, CV_32FC1) / 1000;
             cv::Mat depthMat_si = depthMat.mul(A); //depth in m instead of mm
+            cv::Mat depthMat_undistorted_si = depthMat_undistorted.mul(A); //depth in m instead of mm
 
             cv::Mat B = cv::Mat::ones(height_ir, width_ir, CV_32FC1) / 65535;
             cv::Mat irMat_01 = irMat.mul(B); //intensity values between 0 and 1
@@ -427,7 +436,8 @@ int main( int ac, char** av )
             
             std::vector<cv::Mat> channels;
             channels.push_back(irMat_01);
-            channels.push_back(depthMat_si);
+            channels.push_back(depthMat_undistorted_si);
+            //channels.push_back(depthMat_si);
             cv::merge(channels, frame);
 
 
