@@ -1,0 +1,19 @@
+default/instruction=
+default/expected="a line of points smoothly transitioning from cyan to magenta"
+default/command="( echo 0,0,0 ; echo 1,1,0.2 ; echo 2,2,0.4 ; echo 3,3,0.6 ; echo 4,4,0.8 ; echo 5,5,1 ) | view-points --fields=label,x,scalar --weight=10"
+
+option[0]/instruction=
+option[0]/expected="a line of points smoothly transitioning from cyan to magenta"
+option[0]/command="( echo 0,0,0 ; echo 1,1,0.1 ; echo 2,2,0.2 ; echo 3,3,0.3 ; echo 4,4,0.4 ; echo 5,5,0.5 ) | view-points --fields=label,x,scalar --weight=10 --colour=0:0.5"
+
+option[1]/instruction=
+option[1]/expected="a line of points smoothly transitioning from red to yellow"
+option[1]/command="( echo 0,0,0 ; echo 1,1,0.1 ; echo 2,2,0.2 ; echo 3,3,0.3 ; echo 4,4,0.4 ; echo 5,5,0.5 ) | view-points --fields=label,x,scalar --weight=10 --colour=0:0.5,red:yellow"
+
+option[2]/instruction=
+option[2]/expected="a line of points smoothly transitioning from cyan to magenta"
+option[2]/command="( echo 0,0,0 ; echo 1,1,0.1 ; echo 2,2,0.2 ; echo 3,3,0.3 ; echo 4,4,0.4 ; echo 5,5,0.5 ) | view-points "-;colour=0:0.5" --fields=label,x,scalar --weight=10"
+
+option[3]/instruction=
+option[3]/expected="a line of points smoothly transitioning from red to yellow"
+option[3]/command="( echo 0,0,0 ; echo 1,1,0.1 ; echo 2,2,0.2 ; echo 3,3,0.3 ; echo 4,4,0.4 ; echo 5,5,0.5 ) | view-points "-;colour=0:0.5,red:yellow" --fields=label,x,scalar --weight=10"
