@@ -1,4 +1,4 @@
 instruction="move the scroll wheel back and forth"
 expected="a cube zooming in and out"
-input="test-pattern cube 20000 0.1 0.01"
+input="snark-graphics-test-pattern cube 20000 0.1 0.01"
 args="--fields=x,y,z,r,g,b,a"
