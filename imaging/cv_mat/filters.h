@@ -36,6 +36,11 @@
 #include <opencv2/core/core.hpp>
 
 namespace snark{ namespace cv_mat {
+    
+struct header {
+    boost::posix_time::ptime timestamp;
+    std::vector< char > buffer;
+};
 
 template < typename Output = cv::Mat, typename H = boost::posix_time::ptime >
 struct operation
