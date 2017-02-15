@@ -250,7 +250,7 @@ template < typename H >
 static typename impl::filters< H >::value_type head_impl_( typename impl::filters< H >::value_type m, unsigned int number_of_frames )
 {
     static unsigned int frame_number = 0;
-    if( frame_number < number_of_frames ) { frame_number++; return m; } else { return filters::value_type(); }
+    if( frame_number < number_of_frames ) { frame_number++; return m; } else { return typename impl::filters< H >::value_type(); }
 }
 
 template < typename H >
@@ -545,15 +545,19 @@ static typename impl::filters< H >::value_type colour_map_impl_( typename impl::
 }
 
 template < typename H >
-static typename impl::filters< H >::value_type mask_impl_( typename impl::filters< H >::value_type m, boost::function< typename impl::filters< H >::value_type( filters::value_type ) > mask ) // have to pass mask by value, since filter functors may change on call
-{
-    filters::value_type n;
-    n.first = m.first;
-    const cv::Mat & f = mask( m ).second;
-    if ( f.depth() != CV_8U ) { COMMA_THROW( comma::exception, "the mask type is " << type_as_string( f.type() ) << ", must have CV_8U depth; use convert-to explicitly" ); }
-    m.second.copyTo( n.second, f );
-    return n;
-}
+struct mask_impl_ {
+    typedef typename impl::filters< H >::value_type value_type; 
+    value_type operator()( value_type m, boost::function< value_type( value_type ) > mask ) // have to pass mask by value, since filter functors may change on call
+    {
+        value_type n;
+        n.first = m.first;
+        const cv::Mat & f = mask( m ).second;
+        if ( f.depth() != CV_8U ) { COMMA_THROW( comma::exception, "the mask type is " << type_as_string( f.type() ) << ", must have CV_8U depth; use convert-to explicitly" ); }
+        m.second.copyTo( n.second, f );
+        return n;
+    }
+    
+};
 
 struct blur_t
 {
@@ -739,12 +743,13 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
                     update_on_time_( m );
                     if( !ofstream_ )
                     {
-                        std::string filename = directory_ + '/' + boost::posix_time::to_iso_string( m.first ) + ".bin";
+                        std::string filename = directory_ + '/' + boost::posix_time::to_iso_string( header_traits< H >::timestamp(m.first) ) + ".bin";
                         ofstream_.reset( new std::ofstream( &filename[0] ) );
                         if( !ofstream_->is_open() ) { COMMA_THROW( comma::exception, "failed to open \"" << filename << "\"" ); }
                     }
-                    serialization_.write( *ofstream_, m );
-                    index_.write( m, serialization_.size( m ) );
+                    writer< H >::write( serialization_, *ofstream_, m );
+//                     index_.write( m, serialization_.size( m ) );
+                    index_.write( m, writer< H >::size( serialization_, m ) );
                     return m;
                 }
                 
@@ -773,7 +778,7 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
                     
                     void write( const value_type& m, std::size_t size )
                     {
-                        t = m.first;
+                        t = header_traits< H >::timestamp( m.first );
                         if( csv_stream ) 
                         { 
                             csv_stream->write( *this );
@@ -807,9 +812,10 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
                 void update_on_time_( value_type m )
                 {
                     if( !period_ ) { return; }
-                    if( start_.is_not_a_date_time() ) { start_ = m.first; return; }
-                    if( ( m.first - start_ ) < *period_ ) { return; }
-                    start_ = m.first;
+                    boost::posix_time::ptime t = header_traits< H >::timestamp( m.first );
+                    if( start_.is_not_a_date_time() ) { start_ = t; return; }
+                    if( ( t - start_ ) < *period_ ) { return; }
+                    start_ = t;
                     ofstream_->close();
                     ofstream_.reset();
                     index_.increment_file();
@@ -841,7 +847,8 @@ static typename impl::filters< H >::value_type view_impl_( typename impl::filter
     if( c == ' ' )
     {
         std::stringstream filename;
-        filename <<  boost::posix_time::to_iso_string( m.first.is_not_a_date_time() ? boost::posix_time::microsec_clock::universal_time() : m.first ) << ".ppm";
+        boost::posix_time::ptime t = header_traits< H >::timestamp( m.first );
+        filename <<  boost::posix_time::to_iso_string( t.is_not_a_date_time() ? boost::posix_time::microsec_clock::universal_time() : t ) << ".ppm";
         cv::imwrite( filename.str(), m.second );
     }
     return m;
@@ -927,7 +934,7 @@ static void encode_impl_check_type( const typename impl::filters< H >::value_typ
 template < typename H >
 static typename impl::filters< H >::value_type encode_impl_( typename impl::filters< H >::value_type m, const std::string& type )
 {
-    if( is_empty( m ) ) { return m; }
+    if( is_empty< H >( m ) ) { return m; }
     encode_impl_check_type< H >( m, type );
     std::vector< unsigned char > buffer;
     std::string format = "." + type;
@@ -962,7 +969,7 @@ static typename impl::filters< H >::value_type histogram_impl_( typename impl::f
         for( int c = 0; c < mat.cols; ++c ) { for( unsigned int i = 0; i < channels.size(); ++channels[i][*p], ++i, ++p ); }
     }
     serialization::header h;
-    h.timestamp = m.first;
+    h.timestamp = header_traits< H >::timestamp( m.first );
     h.rows = m.second.rows;
     h.cols = m.second.cols;
     h.type = m.second.type();
@@ -998,14 +1005,15 @@ static typename impl::filters< H >::value_type simple_blob_impl_( typename impl:
     std::vector< cv::KeyPoint > key_points;
     detector.detect( m.second, key_points );
     static comma::csv::output_stream< snark::timestamped< cv::KeyPoint > > os( std::cout, make_csv_options_< snark::timestamped< cv::KeyPoint > >( binary ) );
-    for( unsigned int i = 0; i < key_points.size(); ++i ) { os.write( snark::timestamped< cv::KeyPoint >( m.first, key_points[i] ) ); }
+    for( unsigned int i = 0; i < key_points.size(); ++i ) { os.write( snark::timestamped< cv::KeyPoint >( header_traits< H >::timestamp( m.first ), key_points[i] ) ); }
     return m;
 }
 
 template < typename H >
 static typename impl::filters< H >::value_type grab_impl_( typename impl::filters< H >::value_type m, const std::string& type )
 {
-    std::string filename = boost::posix_time::to_iso_string( m.first.is_not_a_date_time() ? boost::posix_time::microsec_clock::universal_time() : m.first );
+    boost::posix_time::ptime t = header_traits< H >::timestamp( m.first );
+    std::string filename = boost::posix_time::to_iso_string( t.is_not_a_date_time() ? boost::posix_time::microsec_clock::universal_time() : t );
     filename += "." + type;
     cv::imwrite( filename, m.second );
     return typename impl::filters< H >::value_type(); // HACK to notify application to exit
@@ -1015,7 +1023,8 @@ template < typename H >
 static typename impl::filters< H >::value_type file_impl_( typename impl::filters< H >::value_type m, const std::string& type )
 {
     encode_impl_check_type< H >( m, type );
-    std::string filename = boost::posix_time::to_iso_string( m.first.is_not_a_date_time() ? boost::posix_time::microsec_clock::universal_time() : m.first );
+    boost::posix_time::ptime t = header_traits< H >::timestamp( m.first );
+    std::string filename = boost::posix_time::to_iso_string( t.is_not_a_date_time() ? boost::posix_time::microsec_clock::universal_time() : t );
     filename += "." + type;
     cv::imwrite( filename, m.second );
     return m;
@@ -1025,7 +1034,7 @@ template < typename H >
 static typename impl::filters< H >::value_type timestamp_impl_( typename impl::filters< H >::value_type m )
 {
     cv::rectangle( m.second, cv::Point( 5, 5 ), cv::Point( 228, 25 ), cv::Scalar( 0xffff, 0xffff, 0xffff ), CV_FILLED, CV_AA );
-    cv::putText( m.second, boost::posix_time::to_iso_string( m.first ), cv::Point( 10, 20 ), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar( 0, 0, 0 ), 1, CV_AA );
+    cv::putText( m.second, boost::posix_time::to_iso_string( header_traits< H >::timestamp(m.first) ), cv::Point( 10, 20 ), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar( 0, 0, 0 ), 1, CV_AA );
     return m;
 }
 
@@ -1714,8 +1723,8 @@ template < unsigned int Depth > static cv::Mat lut_matrix_gamma_( double gamma )
     return lut_matrix;
 }
 
-template < unsigned int Depth >
-static filters::value_type gamma_( const filters::value_type m, const double gamma )
+template < typename H, unsigned int Depth >
+static typename impl::filters< H >::value_type gamma_( const typename impl::filters< H >::value_type m, const double gamma )
 {
     static double gamma_ = gamma;
     if( gamma_ != gamma ) { COMMA_THROW( comma::exception, "multiple filters with different gamma values: todo" ); }
@@ -1729,7 +1738,7 @@ static typename impl::filters< H >::value_type gamma_impl_(const typename impl::
 {
     switch( m.second.depth() )
     {
-        case CV_8U: { return gamma_< CV_8U >( m, gamma ); break; }
+        case CV_8U: { return gamma_< H, CV_8U >( m, gamma ); break; }
         default: break;
     }
     COMMA_THROW(comma::exception, "gamma is unimplemented for types other than CV_8U, CV_8S");
@@ -1759,7 +1768,7 @@ struct load_impl_
             std::ifstream ifs( &filename[0] );
             if( !ifs.is_open() ) { COMMA_THROW( comma::exception, "failed to open \"" << filename << "\"" ); }
             serialization s( "t,rows,cols,type", comma::csv::format( "t,3ui" ) ); // quick and dirty
-            value = s.read( ifs );
+            value = reader< H >::read( s, ifs );
             ifs.close();
         }
         else
@@ -2127,7 +2136,7 @@ static functor_type make_filter_functor( const std::vector< std::string >& e )
         const std::vector< std::string > w = comma::split( filter_string, '|' ); // quick and dirty, running out of delimiters
         functor_type g = make_filter< O, H >::make_filter_functor( comma::split( w[0], ':' ) );
         for( unsigned int k = 1; k < w.size(); ++k ) { g = boost::bind( make_filter< O, H >::make_filter_functor( comma::split( w[k], ':' ) ), boost::bind( g, _1 ) ); }
-        return boost::bind< value_type_t >( mask_impl_< H >, _1, g );
+        return boost::bind< value_type_t >( mask_impl_< H >(), _1, g );
     }
     else if( e[0] == "timestamp" ) { return timestamp_impl_< H >; }
     else if( e[0] == "transpose" ) { return transpose_impl_< H >; }
@@ -2681,8 +2690,6 @@ const std::string& impl::filters< H >::usage( const std::string & operation )
     }
 }
 
-template class impl::filters< boost::posix_time::ptime >;
-// template class impl::filters< std::vector< char > >;
 
 } } // namespace snark{ namespace cv_mat {
 
@@ -2720,6 +2727,26 @@ struct traits< typename snark::cv_mat::log_impl_< boost::posix_time::ptime >::lo
     }
 };
 
+template < >
+struct traits< typename snark::cv_mat::log_impl_< snark::cv_mat::header_type >::logger::indexer >
+{
+    template < typename K, typename V > static void visit( const K&, const typename snark::cv_mat::log_impl_< snark::cv_mat::header_type >::logger::indexer& t, V& v )
+    {
+        v.apply( "t", t.t );
+        v.apply( "file", t.file );
+        v.apply( "offset", t.offset );
+    }
+
+    template < typename K, typename V > static void visit( const K&, typename snark::cv_mat::log_impl_< snark::cv_mat::header_type >::logger::indexer& t, V& v )
+    {
+        v.apply( "t", t.t );
+        v.apply( "file", t.file );
+        v.apply( "offset", t.offset );
+    }
+};
 //TODO traits for template type needed
 
 } } // namespace comma { namespace visiting {
+
+template class snark::cv_mat::impl::filters< boost::posix_time::ptime >;
+template class snark::cv_mat::impl::filters< snark::cv_mat::header_type >;

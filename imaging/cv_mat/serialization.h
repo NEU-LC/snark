@@ -109,12 +109,14 @@ class serialization
 
         /// same as above
         std::size_t size( const std::pair< boost::posix_time::ptime, cv::Mat >& m ) const;
+        std::size_t size( const std::pair< header::buffer_t, cv::Mat >& m ) const;
 
         /// read from stream, if eof, return empty cv::Mat
         std::pair< boost::posix_time::ptime, cv::Mat > read( std::istream& is );
         
         /// return last header buffer after read()
         const char* header_buffer() const; // todo
+        const std::vector< char >& header_vector() const; // todo
 
         /// write to stream
         void write( std::ostream& os, const std::pair< boost::posix_time::ptime, cv::Mat >& m, bool flush = true );

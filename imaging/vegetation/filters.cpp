@@ -153,7 +153,7 @@ template < typename H >
 boost::optional< typename impl::filters< H >::filter > impl::filters< H >::make( const std::string& what )
 {
     boost::function< value_type( value_type ) > functor = make_functor( what );
-    if( functor ) { return cv_mat::filter( functor ); }
+    if( functor ) { return filter( functor ); }
     return boost::none;
 }
 
@@ -174,5 +174,6 @@ const std::string& impl::filters< H >::usage()
 }
 
 template class impl::filters< boost::posix_time::ptime >;
+template class impl::filters< cv_mat::header_type >;
 
 } } } // namespace snark { namespace imaging { namespace vegetation {

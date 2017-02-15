@@ -148,6 +148,7 @@ serialization::header serialization::get_header( const char* buf ) const
 }
 
 const char* serialization::header_buffer() const { return &m_buffer[0]; }
+const std::vector< char >& serialization::header_vector() const { return m_buffer; }
 
 
 std::size_t serialization::size( const cv::Mat& m ) const
@@ -156,6 +157,12 @@ std::size_t serialization::size( const cv::Mat& m ) const
     if( m_binary ) { headerSize = m_binary->format().size(); }
     return headerSize + ( m.dataend - m.datastart );
 }
+
+std::size_t serialization::size(const std::pair< serialization::header::buffer_t, cv::Mat >& m) const
+{
+    return size(m.second);
+}
+
 
 std::size_t serialization::size( const std::pair< boost::posix_time::ptime, cv::Mat >& m ) const { return size( m.second ); }
 
