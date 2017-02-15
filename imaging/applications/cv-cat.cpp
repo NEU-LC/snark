@@ -237,7 +237,7 @@ int main( int argc, char** argv )
             reader.reset( new bursty_reader< pair >( boost::bind( &read, boost::ref( input ), boost::ref( rate ) ), discard, capacity ) );
         }
         const unsigned int default_delay = vm.count( "file" ) == 0 ? 1 : 200; // HACK to make view work on single files
-        snark::imaging::applications::pipeline pipeline( output, snark::cv_mat::filters::make( filters, default_delay ), *reader, number_of_threads );
+        snark::imaging::applications::pipeline pipeline( output, snark::cv_mat::filters::make( filters, input.input_binary(), default_delay ), *reader, number_of_threads );
         pipeline.run();
         if( vm.count( "stay" ) ) { while( !is_shutdown ) { boost::this_thread::sleep( boost::posix_time::seconds( 1 ) ); } }
         return 0;

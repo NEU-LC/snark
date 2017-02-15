@@ -60,6 +60,8 @@ class serialization
             typedef std::vector< char > buffer_t;
         };
         
+        typedef boost::shared_ptr< comma::csv::binary< header > > binary_type;
+        
         /// options, a helper class
         struct options
         {
@@ -129,10 +131,12 @@ class serialization
         
         /// c-style write to stdout, to be used if issues seen with write() - see cpp file for details
         void write_to_stdout( const std::pair< header::buffer_t, cv::Mat >& m, bool flush = true );
+        
+        const binary_type& input_binary() const { return m_binary; }
 
     private:
-        boost::scoped_ptr< comma::csv::binary< header > > m_binary;
-        boost::scoped_ptr< comma::csv::binary< header > > m_binary_no_timestamp; // timestamp will not be set
+        boost::shared_ptr< comma::csv::binary< header > > m_binary;
+        boost::shared_ptr< comma::csv::binary< header > > m_binary_no_timestamp; // timestamp will not be set
         std::vector< char > m_buffer;
         bool m_headerOnly;
         header m_header; /// default header

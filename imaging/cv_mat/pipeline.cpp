@@ -46,9 +46,10 @@ template < typename H >
 pipeline< H >::pipeline( cv_mat::serialization& output
                   , const std::string& filters
                   , tbb::bursty_reader< pair >& reader
+                  , cv_mat::serialization::binary_type binary
                   , unsigned int number_of_threads )
     : m_output( output )
-    , m_filters( filters_type::make( filters ) )
+    , m_filters( filters_type::make( filters, binary ) )
     , m_reader( reader )
     , m_pipeline( number_of_threads )
 {

@@ -104,7 +104,7 @@ struct filters
     typedef operation< cv::Mat, H > filter_type;
     
     /// return filters from name-value string
-    static std::vector< filter_type > make( const std::string& how, unsigned int default_delay = 1 );
+    static std::vector< filter_type > make( const std::string& how, const serialization::binary_type& binary, unsigned int default_delay = 1 );
     
     /// apply filters (a helper)
     static value_type apply( std::vector< filter_type >& filters, value_type m );

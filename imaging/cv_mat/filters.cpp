@@ -2297,7 +2297,8 @@ static functor_type make_filter_functor( const std::vector< std::string >& e )
 };
 
 template < typename H >
-std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make( const std::string& how, unsigned int default_delay )
+std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make( const std::string& how
+                                                                , const serialization::binary_type& binary, unsigned int default_delay )
 {
     typedef typename impl::filters< H >::value_type value_type_t;
     typedef typename impl::filters< H >::filter_type filter_type;
