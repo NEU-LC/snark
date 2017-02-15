@@ -1,0 +1,40 @@
+#!/usr/bin/python
+import rospy
+import sys
+import argparse
+from sensor_msgs.msg import PointCloud
+#import ros_msg_to_csv
+import rosmsg
+
+execfile('/usr/local/bin/ros_msg_to_csv')
+
+help_description='print format and field information for a ros message type'
+help_example="""
+example
+    ros-to-format --list
+    ros-to-format --message_type sensor_msgs/PointCloud --format
+    ros-to-format --message_type sensor_msgs/PointCloud --fields
+
+    to get list of all ros message types:
+        rosmsg list
+"""
+def parse_args():
+    parser=argparse.ArgumentParser(description=help_description,epilog=help_example,formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument('--message-type', '--message','--type',help='message type name e.g. sensor_msgs/PointCloud')
+    parser.add_argument('--format',help='print format of message',action='store_true')
+    parser.add_argument('--fields',help='print fields of message',action='store_true')
+    parser.add_argument('--list',help='print list of message types (only implemented types are listed)',action='store_true')
+    return parser.parse_args()
+
+args=parse_args()
+
+msg_map=msg_map()
+if args.format:
+    print msg_map[args.message_type].binary()
+elif args.fields:
+    print msg_map[args.message_type].fields()
+elif args.list:
+    for i in msg_map.iterkeys():
+        print i
+else:
+    print >> sys.stderr, 'error: at least one operation must be specified'

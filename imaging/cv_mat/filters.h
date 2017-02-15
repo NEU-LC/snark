@@ -37,11 +37,11 @@
 
 namespace snark{ namespace cv_mat {
 
-template < typename Output = cv::Mat >
+template < typename Output = cv::Mat, typename H = boost::posix_time::ptime >
 struct operation
 {
-    typedef std::pair< boost::posix_time::ptime, cv::Mat > input_type;
-    typedef std::pair< boost::posix_time::ptime, Output > output_type;
+    typedef std::pair< H, cv::Mat > input_type;
+    typedef std::pair< H, Output > output_type;
     typedef input_type value_type; // quick and dirty for now
     operation( boost::function< output_type( value_type ) > f, bool p = true ): filter_function( f ), parallel( p ) {}
     boost::function< output_type( value_type ) > filter_function;
@@ -49,22 +49,31 @@ struct operation
 };
 
 typedef operation<> filter;
+typedef operation< cv::Mat, std::vector< char > > filter_with_header;
 
-/// filter pipeline helpers
+namespace impl {
+
+template < typename H = boost::posix_time::ptime >
 struct filters
 {
     /// value type
-    typedef std::pair< boost::posix_time::ptime, cv::Mat > value_type;
-
+    typedef std::pair< H, cv::Mat > value_type;
+    typedef operation< cv::Mat, H > filter_type;
+    
     /// return filters from name-value string
-    static std::vector< filter > make( const std::string& how, unsigned int default_delay = 1 );
-
+    static std::vector< filter_type > make( const std::string& how, unsigned int default_delay = 1 );
+    
     /// apply filters (a helper)
-    static value_type apply( std::vector< filter >& filters, value_type m );
-
+    static value_type apply( std::vector< filter_type >& filters, value_type m );
+    
     /// return filter usage
     static const std::string& usage( const std::string & operation = "" );
 };
+
+} // namespace impl {
+
+typedef impl::filters<> filters;
+typedef impl::filters< std::vector< char > > filters_with_header; // todo: a better name
 
 /// a helper: e.g. take CV_8UC3, return CV_8UC1
 int single_channel_type( int t );

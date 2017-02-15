@@ -73,13 +73,17 @@
 #include "../vegetation/filters.h"
 #include "tbb/parallel_reduce.h"
 
-struct map_input_t
-{
-    typedef double value_type;
-    typedef comma::int32 key_type;
-    key_type key;
-    value_type value;
-};
+namespace {
+
+    struct map_input_t
+    {
+        typedef double value_type;
+        typedef comma::int32 key_type;
+        key_type key;
+        value_type value;
+    };
+
+} // anonymous
 
 namespace snark{ namespace cv_mat {
 
@@ -192,14 +196,18 @@ unsigned int cvt_color_type_from_string( const std::string& t ) // to avoid comp
     if (it == cvt_color_types_.end()) { COMMA_THROW(comma::exception, "unknown conversion enum '" << t << "' for convert-color"); }
     return it->second;
 }
-
-static filters::value_type cvt_color_impl_( filters::value_type m, unsigned int which )
-{
-    filters::value_type n;
-    n.first = m.first;
-    cv::cvtColor( m.second, n.second, which );
-    return n;
-}
+template < typename H >
+struct cvt_color_impl_ {
+    typedef typename impl::filters< H >::value_type value_type;
+    
+    value_type operator()( value_type m, unsigned int which )
+    {
+        value_type n;
+        n.first = m.first;
+        cv::cvtColor( m.second, n.second, which );
+        return n;
+    }
+};
 
 static cv::Scalar scalar_from_strings( const std::string* begin, unsigned int size )
 {
@@ -214,7 +222,8 @@ static cv::Scalar scalar_from_strings( const std::string* begin, unsigned int si
     COMMA_THROW( comma::exception, "expected a scalar of the size up to 4, got: " << size << " elements" );
 }
 
-static filters::value_type unpack12_impl_( filters::value_type m )
+template < typename H >
+static typename impl::filters< H >::value_type unpack12_impl_( typename impl::filters< H >::value_type m )
 {
     //if(m.second.channels()!=1) { COMMA_THROW( comma::exception, "expected one channel input, got: ", m.second.channels() );}
     if(m.second.type()!=CV_8UC1 && m.second.type()!=CV_16UC1) { COMMA_THROW( comma::exception, "expected CV_8UC1("<<int(CV_8UC1)<<") or CV_16UC1("<<int(CV_16UC1)<<") , got: "<< m.second.type() );}
@@ -234,197 +243,230 @@ static filters::value_type unpack12_impl_( filters::value_type m )
             //out_ptr[col++] = (unsigned(ptr[i+2])<<4 | unsigned(ptr[i+1]&0x0F) >> 4) << 4;
         }
    }
-    return filters::value_type(m.first, mat);
+    return typename impl::filters< H >::value_type(m.first, mat);
 }
 
-static filters::value_type head_impl_( filters::value_type m, unsigned int number_of_frames )
+template < typename H >
+static typename impl::filters< H >::value_type head_impl_( typename impl::filters< H >::value_type m, unsigned int number_of_frames )
 {
     static unsigned int frame_number = 0;
     if( frame_number < number_of_frames ) { frame_number++; return m; } else { return filters::value_type(); }
 }
 
-static filters::value_type crop_impl_( filters::value_type m, unsigned int x, unsigned int y, unsigned int w, unsigned int h )
+template < typename H >
+static typename impl::filters< H >::value_type crop_impl_( typename impl::filters< H >::value_type m, unsigned int x, unsigned int y, unsigned int w, unsigned int h )
 {
     cv::Mat cropped;
     m.second( cv::Rect( x, y, w, h ) ).copyTo( cropped );
-    return filters::value_type( m.first, cropped );
+    return typename impl::filters< H >::value_type( m.first, cropped );
 }
 
 typedef std::pair< unsigned int, unsigned int > tile_t;
 
-static filters::value_type crop_tile_impl_( filters::value_type input, unsigned int number_of_tile_cols, unsigned int number_of_tile_rows, const std::vector< tile_t >& tiles, bool vertical )
-{
-    unsigned int w = input.second.cols / number_of_tile_cols;
-    unsigned int h = input.second.rows / number_of_tile_rows;
-    unsigned int s = tiles.size();
-    filters::value_type output( input.first, cv::Mat( vertical ? h*s : h, vertical ? w : w*s, input.second.type() ) );
-    for( std::size_t i = 0; i < tiles.size(); ++i)
+template < typename H >
+struct crop_tile_impl_ {
+    typedef typename impl::filters< H >::value_type value_type;
+    value_type operator()( value_type input, unsigned int number_of_tile_cols, unsigned int number_of_tile_rows, const std::vector< tile_t >& tiles, bool vertical )
     {
-        unsigned int x = tiles[i].first * w;
-        unsigned int y = tiles[i].second * h;
-        cv::Mat tile( output.second,  cv::Rect( vertical ? 0 : i*w, vertical ? i*h: 0, w, h ) );
-        cv::Mat( input.second, cv::Rect( x, y, w, h ) ).copyTo( tile );
+        unsigned int w = input.second.cols / number_of_tile_cols;
+        unsigned int h = input.second.rows / number_of_tile_rows;
+        unsigned int s = tiles.size();
+        value_type output( input.first, cv::Mat( vertical ? h*s : h, vertical ? w : w*s, input.second.type() ) );
+        for( std::size_t i = 0; i < tiles.size(); ++i)
+        {
+            unsigned int x = tiles[i].first * w;
+            unsigned int y = tiles[i].second * h;
+            cv::Mat tile( output.second,  cv::Rect( vertical ? 0 : i*w, vertical ? i*h: 0, w, h ) );
+            cv::Mat( input.second, cv::Rect( x, y, w, h ) ).copyTo( tile );
+        }
+        return output;
     }
-    return output;
-}
+};
 
 typedef std::pair< unsigned int, unsigned int > stripe_t;
 
 static unsigned int sum_up( unsigned int v, const stripe_t & s ){ return v + s.second; }
 
-static filters::value_type crop_cols_impl_( filters::value_type input, const std::vector< stripe_t > & cols )
-{
-    unsigned int h = input.second.rows;
-    unsigned int w = std::accumulate( cols.begin(), cols.end(), 0, sum_up );
-    filters::value_type output( input.first, cv::Mat( h, w, input.second.type() ) );
-    unsigned int offset = 0;
-    for( std::size_t i = 0; i < cols.size(); ++i)
+template < typename H >
+struct crop_cols_impl_ {
+    typedef typename impl::filters< H >::value_type value_type;
+    
+    value_type operator()( value_type input, const std::vector< stripe_t > & cols )
     {
-        cv::Mat tile( output.second, cv::Rect( offset, 0, cols[i].second, h ) );
-        cv::Mat( input.second, cv::Rect( cols[i].first, 0, cols[i].second, h ) ).copyTo( tile );
-        offset += cols[i].second;
+        unsigned int h = input.second.rows;
+        unsigned int w = std::accumulate( cols.begin(), cols.end(), 0, sum_up );
+        value_type output( input.first, cv::Mat( h, w, input.second.type() ) );
+        unsigned int offset = 0;
+        for( std::size_t i = 0; i < cols.size(); ++i)
+        {
+            cv::Mat tile( output.second, cv::Rect( offset, 0, cols[i].second, h ) );
+            cv::Mat( input.second, cv::Rect( cols[i].first, 0, cols[i].second, h ) ).copyTo( tile );
+            offset += cols[i].second;
+        }
+        return output;
     }
-    return output;
-}
+};
 
-static filters::value_type crop_rows_impl_( filters::value_type input, const std::vector< stripe_t > & rows )
-{
-    unsigned int w = input.second.cols;
-    unsigned int h = std::accumulate( rows.begin(), rows.end(), 0, sum_up );
-    filters::value_type output( input.first, cv::Mat( h, w, input.second.type() ) );
-    unsigned int offset = 0;
-    for( std::size_t i = 0; i < rows.size(); ++i)
+template < typename H >
+struct crop_rows_impl_ {
+    typedef typename impl::filters< H >::value_type value_type;
+    
+    value_type operator()( value_type input, const std::vector< stripe_t > & rows )
     {
-        cv::Mat tile( output.second, cv::Rect( 0, offset, w, rows[i].second ) );
-        cv::Mat( input.second, cv::Rect( 0, rows[i].first, w, rows[i].second ) ).copyTo( tile );
-        offset += rows[i].second;
+        unsigned int w = input.second.cols;
+        unsigned int h = std::accumulate( rows.begin(), rows.end(), 0, sum_up );
+        value_type output( input.first, cv::Mat( h, w, input.second.type() ) );
+        unsigned int offset = 0;
+        for( std::size_t i = 0; i < rows.size(); ++i)
+        {
+            cv::Mat tile( output.second, cv::Rect( 0, offset, w, rows[i].second ) );
+            cv::Mat( input.second, cv::Rect( 0, rows[i].first, w, rows[i].second ) ).copyTo( tile );
+            offset += rows[i].second;
+        }
+        return output;
     }
-    return output;
-}
+};
 
 static const int bands_method_default = CV_REDUCE_AVG;
 
-static filters::value_type bands_to_cols_impl_( filters::value_type input, bool bands_to_cols, const std::vector< stripe_t > & bands, int cv_reduce_method, int cv_reduce_dtype = -1 )
-{
-    unsigned int w = input.second.cols;
-    unsigned int h = input.second.rows;
-    static std::set< int > good_input_depths = boost::assign::list_of( CV_8U )( CV_16U )( CV_16S )( CV_32F )( CV_64F );
-    if ( good_input_depths.find( input.second.depth() ) == good_input_depths.end() )
+template < typename H >
+struct bands_to_cols_impl_ {
+    typedef typename impl::filters< H >::value_type value_type;
+    
+    value_type operator()( value_type input, bool bands_to_cols, const std::vector< stripe_t > & bands, int cv_reduce_method, int cv_reduce_dtype = -1 )
     {
-        COMMA_THROW( comma::exception, "depth of the " << type_as_string( input.second.type() ) << " image type is not supported by cv::reduce; consider 'convert-to' before processing" );
-    }
-    unsigned int output_type = cv_reduce_dtype >= 0
-                             ? CV_MAKETYPE( CV_MAT_DEPTH( cv_reduce_dtype ), input.second.channels() )
-                             : input.second.type() ;
-    filters::value_type output( input.first, cv::Mat( bands_to_cols ? h : bands.size()
-                                                    , bands_to_cols ? bands.size() : w
-                                                    , output_type ) );
-    for( std::size_t i = 0; i < bands.size(); ++i )
-    {
-        cv::Mat intile( input.second, bands_to_cols
-                                    ? cv::Rect( bands[i].first, 0, bands[i].second, h )
-                                    : cv::Rect( 0, bands[i].first, w, bands[i].second ) );
-        cv::Mat outtile( output.second, bands_to_cols
-                                      ? cv::Rect( i, 0, 1, h )
-                                      : cv::Rect( 0, i, w, 1 ) );
-        int cv_reduce_dim = bands_to_cols ? 1 : 0 ;
-        cv::reduce( intile, outtile, cv_reduce_dim, cv_reduce_method, output_type );
-    }
-    return output;
-}
-
-static filters::value_type cols_to_channels_impl_( filters::value_type input, bool cols_to_channels, const std::vector< unsigned int > & values, double padding_value, unsigned int repeat )
-{
-    if ( input.second.channels() != 1 ) { COMMA_THROW( comma::exception, "input image for cols-to-channels operation must have a single channel" ); }
-    std::string element = cols_to_channels ? "column" : "row";
-
-    unsigned int w = input.second.cols;
-    unsigned int h = input.second.rows;
-
-    unsigned int min_element = *std::min_element( values.begin(), values.end() );
-    if ( min_element >= ( cols_to_channels ? w : h ) ) { COMMA_THROW( comma::exception, "the first output " << element << " is outside of the input image" ); }
-    unsigned int output_w = cols_to_channels
-                          ? ( repeat ? ( w - min_element ) / repeat : 1 )
-                          : w ;
-    unsigned int output_h = cols_to_channels
-                          ? h
-                          : ( repeat ? ( h - min_element ) / repeat : 1 ) ;
-    unsigned int output_c = values.size() == 2 ? 3 : values.size();
-    unsigned int output_t = CV_MAKETYPE( input.second.depth(), output_c );
-    filters::value_type output( input.first, cv::Mat( output_h, output_w, output_t ) );
-
-    std::vector< int > from_to;
-    from_to.reserve( 2 * output_c );
-    for ( size_t i = 0; i < output_c; ++i ) { from_to.push_back( i ); from_to.push_back( i ); }
-
-    std::vector< cv::Mat > src( output_c );
-    std::vector< cv::Mat > dst( 1 );
-    cv::Mat padding = ( cols_to_channels
-                      ? cv::Mat::ones( h, 1, input.second.type() )
-                      : cv::Mat::ones( 1, w, input.second.type() ) ) * padding_value; // instantiation is lazy
-    std::vector< unsigned int > indices( values );
-    for( size_t i = indices.size(); i < output_c; ++i ) { src[i] = padding; }
-    for ( unsigned int opos = 0; opos < ( cols_to_channels ? output_w : output_h ) ; ++opos )
-    {
-        for( size_t i = 0; i < indices.size(); ++i )
+        unsigned int w = input.second.cols;
+        unsigned int h = input.second.rows;
+        static std::set< int > good_input_depths = boost::assign::list_of( CV_8U )( CV_16U )( CV_16S )( CV_32F )( CV_64F );
+        if ( good_input_depths.find( input.second.depth() ) == good_input_depths.end() )
         {
-            unsigned int j = indices[i];
-            if ( j >= ( cols_to_channels ? w : h ) ) {
-                src[i] = padding;
-            } else {
-                src[i] = cols_to_channels
-                       ? cv::Mat( input.second, cv::Rect( j, 0, 1, h ) )
-                       : cv::Mat( input.second, cv::Rect( 0, j, w, 1 ) ) ;
+            COMMA_THROW( comma::exception, "depth of the " << type_as_string( input.second.type() ) << " image type is not supported by cv::reduce; consider 'convert-to' before processing" );
+        }
+        unsigned int output_type = cv_reduce_dtype >= 0
+                                 ? CV_MAKETYPE( CV_MAT_DEPTH( cv_reduce_dtype ), input.second.channels() )
+                                 : input.second.type() ;
+        value_type output( input.first, cv::Mat( bands_to_cols ? h : bands.size()
+                                                        , bands_to_cols ? bands.size() : w
+                                                        , output_type ) );
+        for( std::size_t i = 0; i < bands.size(); ++i )
+        {
+            cv::Mat intile( input.second, bands_to_cols
+                                        ? cv::Rect( bands[i].first, 0, bands[i].second, h )
+                                        : cv::Rect( 0, bands[i].first, w, bands[i].second ) );
+            cv::Mat outtile( output.second, bands_to_cols
+                                          ? cv::Rect( i, 0, 1, h )
+                                          : cv::Rect( 0, i, w, 1 ) );
+            int cv_reduce_dim = bands_to_cols ? 1 : 0 ;
+            cv::reduce( intile, outtile, cv_reduce_dim, cv_reduce_method, output_type );
+        }
+        return output;
+    }
+};
+
+template < typename H >
+struct cols_to_channels_impl_ {
+    typedef typename impl::filters< H >::value_type value_type;
+    
+    value_type operator()( value_type input, bool cols_to_channels, const std::vector< unsigned int > & values, double padding_value, unsigned int repeat )
+    {
+        if ( input.second.channels() != 1 ) { COMMA_THROW( comma::exception, "input image for cols-to-channels operation must have a single channel" ); }
+        std::string element = cols_to_channels ? "column" : "row";
+    
+        unsigned int w = input.second.cols;
+        unsigned int h = input.second.rows;
+    
+        unsigned int min_element = *std::min_element( values.begin(), values.end() );
+        if ( min_element >= ( cols_to_channels ? w : h ) ) { COMMA_THROW( comma::exception, "the first output " << element << " is outside of the input image" ); }
+        unsigned int output_w = cols_to_channels
+                              ? ( repeat ? ( w - min_element ) / repeat : 1 )
+                              : w ;
+        unsigned int output_h = cols_to_channels
+                              ? h
+                              : ( repeat ? ( h - min_element ) / repeat : 1 ) ;
+        unsigned int output_c = values.size() == 2 ? 3 : values.size();
+        unsigned int output_t = CV_MAKETYPE( input.second.depth(), output_c );
+        value_type output( input.first, cv::Mat( output_h, output_w, output_t ) );
+    
+        std::vector< int > from_to;
+        from_to.reserve( 2 * output_c );
+        for ( size_t i = 0; i < output_c; ++i ) { from_to.push_back( i ); from_to.push_back( i ); }
+    
+        std::vector< cv::Mat > src( output_c );
+        std::vector< cv::Mat > dst( 1 );
+        cv::Mat padding = ( cols_to_channels
+                          ? cv::Mat::ones( h, 1, input.second.type() )
+                          : cv::Mat::ones( 1, w, input.second.type() ) ) * padding_value; // instantiation is lazy
+        std::vector< unsigned int > indices( values );
+        for( size_t i = indices.size(); i < output_c; ++i ) { src[i] = padding; }
+        for ( unsigned int opos = 0; opos < ( cols_to_channels ? output_w : output_h ) ; ++opos )
+        {
+            for( size_t i = 0; i < indices.size(); ++i )
+            {
+                unsigned int j = indices[i];
+                if ( j >= ( cols_to_channels ? w : h ) ) {
+                    src[i] = padding;
+                } else {
+                    src[i] = cols_to_channels
+                           ? cv::Mat( input.second, cv::Rect( j, 0, 1, h ) )
+                           : cv::Mat( input.second, cv::Rect( 0, j, w, 1 ) ) ;
+                }
+                indices[i] += repeat;
             }
-            indices[i] += repeat;
+            dst[0] = cols_to_channels
+                   ? cv::Mat( output.second, cv::Rect( opos, 0, 1, h ) )
+                   : cv::Mat( output.second, cv::Rect( 0, opos, w, 1 ) ) ;
+            cv::mixChannels( src, dst, &from_to[0], output_c );
         }
-        dst[0] = cols_to_channels
-               ? cv::Mat( output.second, cv::Rect( opos, 0, 1, h ) )
-               : cv::Mat( output.second, cv::Rect( 0, opos, w, 1 ) ) ;
-        cv::mixChannels( src, dst, &from_to[0], output_c );
+        return output;
     }
-    return output;
-}
+};
 
-static filters::value_type channels_to_cols_impl_( filters::value_type input, bool channels_to_cols )
-{
-    unsigned int w = input.second.cols;
-    unsigned int h = input.second.rows;
-
-    unsigned int input_c = input.second.channels();
-    unsigned int output_t = CV_MAKETYPE( input.second.depth(), 1 );
-    filters::value_type output( input.first, cv::Mat( channels_to_cols ? h : input_c * h
-                                                    , channels_to_cols ? input_c * w : w
-                                                    , output_t ) );
-
-    std::vector< int > from_to;
-    from_to.reserve( 2 * input_c );
-    for ( size_t i = 0; i < input_c; ++i ) { from_to.push_back( i ); from_to.push_back( i ); }
-
-    std::vector< cv::Mat > src( 1 );
-    std::vector< cv::Mat > dst( input_c );
-    for ( unsigned int ipos = 0; ipos < ( channels_to_cols ? w : h ) ; ++ipos )
+template < typename H >
+struct channels_to_cols_impl_ {
+    typedef typename impl::filters< H >::value_type value_type;
+    
+    value_type operator()( value_type input, bool channels_to_cols )
     {
-        for( size_t i = 0; i < input_c; ++i )
+        unsigned int w = input.second.cols;
+        unsigned int h = input.second.rows;
+    
+        unsigned int input_c = input.second.channels();
+        unsigned int output_t = CV_MAKETYPE( input.second.depth(), 1 );
+        value_type output( input.first, cv::Mat( channels_to_cols ? h : input_c * h
+                                                        , channels_to_cols ? input_c * w : w
+                                                        , output_t ) );
+    
+        std::vector< int > from_to;
+        from_to.reserve( 2 * input_c );
+        for ( size_t i = 0; i < input_c; ++i ) { from_to.push_back( i ); from_to.push_back( i ); }
+    
+        std::vector< cv::Mat > src( 1 );
+        std::vector< cv::Mat > dst( input_c );
+        for ( unsigned int ipos = 0; ipos < ( channels_to_cols ? w : h ) ; ++ipos )
         {
-            dst[i] = cv::Mat( output.second, channels_to_cols
-                                           ? cv::Rect( ipos * input_c + i, 0, 1, h )
-                                           : cv::Rect( 0, ipos * input_c + i, w, 1 ) );
+            for( size_t i = 0; i < input_c; ++i )
+            {
+                dst[i] = cv::Mat( output.second, channels_to_cols
+                                               ? cv::Rect( ipos * input_c + i, 0, 1, h )
+                                               : cv::Rect( 0, ipos * input_c + i, w, 1 ) );
+            }
+            src[0] = cv::Mat( input.second, channels_to_cols
+                                          ? cv::Rect( ipos, 0, 1, h )
+                                          : cv::Rect( 0, ipos, w, 1 ) );
+            cv::mixChannels( src, dst, &from_to[0], input_c );
         }
-        src[0] = cv::Mat( input.second, channels_to_cols
-                                      ? cv::Rect( ipos, 0, 1, h )
-                                      : cv::Rect( 0, ipos, w, 1 ) );
-        cv::mixChannels( src, dst, &from_to[0], input_c );
+    
+        return output;
     }
+};
 
-    return output;
-}
-
+template < typename H >
 class accumulate_impl_
 {
     public:
+        typedef typename impl::filters< H >::value_type value_type;
         accumulate_impl_( unsigned int how_many ) : how_many_ ( how_many ), defined_ ( false ) {}
-        filters::value_type operator()( filters::value_type input )
+        value_type operator()( value_type input )
         {
             if( !defined_ )
             {
@@ -441,7 +483,7 @@ class accumulate_impl_
             if( input.second.cols != cols_ ) { COMMA_THROW( comma::exception, "accumulate: expected input image with " << cols_ << " columns, got " << input.second.cols << " columns"); }
             if( input.second.rows != h_ ) { COMMA_THROW( comma::exception, "accumulate: expected input image with " << h_ << " rows, got " << input.second.rows << " rows"); }
             if( input.second.type() != type_ ) { COMMA_THROW( comma::exception, "accumulate: expected input image of type " << type_ << ", got type " << input.second.type() << " rows"); }
-            filters::value_type output( input.first, cv::Mat( accumulated_image_.size(), accumulated_image_.type() ) );
+            value_type output( input.first, cv::Mat( accumulated_image_.size(), accumulated_image_.type() ) );
             cv::Mat new_data( output.second, rect_for_new_data_ );
             input.second.copyTo( new_data );
             cv::Mat old_data( output.second, rect_for_old_data_ );
@@ -457,47 +499,53 @@ class accumulate_impl_
         cv::Mat accumulated_image_;
 };
 
-static filters::value_type convert_to_impl_( filters::value_type m, int type, double scale, double offset )
+template < typename H >
+static typename impl::filters< H >::value_type convert_to_impl_( typename impl::filters< H >::value_type m, int type, double scale, double offset )
 {
-    filters::value_type n;
+    typename impl::filters< H >::value_type n;
     n.first = m.first;
     m.second.convertTo( n.second, type, scale, offset );
     return n;
 }
 
-static filters::value_type flip_impl_( filters::value_type m, int how )
+template < typename H >
+static typename impl::filters< H >::value_type flip_impl_( typename impl::filters< H >::value_type m, int how )
 {
-    filters::value_type n;
+    typename impl::filters< H >::value_type n;
     n.first = m.first;
     cv::flip( m.second, n.second, how );
     return n;
 }
 
-static filters::value_type resize_impl_( filters::value_type m, unsigned int width, unsigned int height, double w, double h, int interpolation )
+template < typename H >
+static typename impl::filters< H >::value_type resize_impl_( typename impl::filters< H >::value_type m, unsigned int width, unsigned int height, double w, double h, int interpolation )
 {
-    filters::value_type n;
+    typename impl::filters< H >::value_type n;
     n.first = m.first;
     cv::resize( m.second, n.second, cv::Size( width ? width : m.second.cols * w, height ? height : m.second.rows * h ), 0, 0, interpolation );
     return n;
 }
 
-static filters::value_type brightness_impl_( filters::value_type m, double scale, double offset )
+template < typename H >
+static typename impl::filters< H >::value_type brightness_impl_( typename impl::filters< H >::value_type m, double scale, double offset )
 {
-    filters::value_type n;
+    typename impl::filters< H >::value_type n;
     n.first = m.first;
     n.second = (m.second * scale) + offset;
     return n;
 }
 
-static filters::value_type colour_map_impl_( filters::value_type m, int type )
+template < typename H >
+static typename impl::filters< H >::value_type colour_map_impl_( typename impl::filters< H >::value_type m, int type )
 {
-    filters::value_type n;
+    typename impl::filters< H >::value_type n;
     n.first = m.first;
     cv::applyColorMap( m.second, n.second, type );
     return n;
 }
 
-static filters::value_type mask_impl_( filters::value_type m, boost::function< filters::value_type( filters::value_type ) > mask ) // have to pass mask by value, since filter functors may change on call
+template < typename H >
+static typename impl::filters< H >::value_type mask_impl_( typename impl::filters< H >::value_type m, boost::function< typename impl::filters< H >::value_type( filters::value_type ) > mask ) // have to pass mask by value, since filter functors may change on call
 {
     filters::value_type n;
     n.first = m.first;
@@ -529,9 +577,10 @@ struct blur_t
     blur_t() : neighbourhood_size(0), sigma_colour(0), sigma_space(0) {}
 };
 
-static filters::value_type blur_impl_( filters::value_type m, blur_t params )
+template < typename H >
+static typename impl::filters< H >::value_type blur_impl_( typename impl::filters< H >::value_type m, blur_t params )
 {
-    filters::value_type n;
+    typename impl::filters< H >::value_type n;
     n.first = m.first;
     switch( params.blur_type )
     {
@@ -574,17 +623,19 @@ struct threshold_t
     }
 };
 
-static filters::value_type threshold_impl_( filters::value_type m, double threshold, double max_value, threshold_t::types type, bool otsu )
+template < typename H >
+static typename impl::filters< H >::value_type threshold_impl_( typename impl::filters< H >::value_type m, double threshold, double max_value, threshold_t::types type, bool otsu )
 {
-    filters::value_type n;
+    typename impl::filters< H >::value_type n;
     n.first = m.first;
     cv::threshold( m.second, n.second, threshold, max_value, otsu ? type | CV_THRESH_OTSU : type );
     return n;
 }
 
-static filters::value_type transpose_impl_( filters::value_type m )
+template < typename H >
+static typename impl::filters< H >::value_type transpose_impl_( typename impl::filters< H >::value_type m )
 {
-    filters::value_type n;
+    typename impl::filters< H >::value_type n;
     n.first = m.first;
     cv::transpose( m.second, n.second );
     return n;
@@ -633,9 +684,10 @@ int single_channel_type( int t )
     return CV_8UC1;
 }
 
-static filters::value_type split_impl_( filters::value_type m )
+template < typename H >
+static typename impl::filters< H >::value_type split_impl_( typename impl::filters< H >::value_type m )
 {
-    filters::value_type n;
+    typename impl::filters< H >::value_type n;
     n.first = m.first;
     n.second = cv::Mat( m.second.rows * m.second.channels(), m.second.cols, single_channel_type( m.second.type() ) ); // todo: check number of channels!
     std::vector< cv::Mat > channels;
@@ -648,9 +700,11 @@ static filters::value_type split_impl_( filters::value_type m )
     return n;
 }
 
+template < typename H >
 class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex is non-copyable
 {            
     public:
+        typedef typename impl::filters< H >::value_type value_type;
         log_impl_() {}
 
         log_impl_( const std::string& filename ) : logger_( new logger( filename ) ) {}
@@ -659,7 +713,7 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
 
         log_impl_( const std::string& directory, unsigned int size, bool index ) : logger_( new logger( directory, size, index ) ) {}
 
-        filters::value_type operator()( filters::value_type m ) { return logger_->operator()( m ); }
+        value_type operator()( value_type m ) { return logger_->operator()( m ); }
         
         class logger
         {
@@ -677,7 +731,7 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
 
                 ~logger() { if( ofstream_ ) { ofstream_->close(); } }
 
-                filters::value_type operator()( filters::value_type m )
+                value_type operator()( value_type m )
                 {
                     if( m.second.empty() ) { return m; } // quick and dirty, end of stream
                     boost::mutex::scoped_lock lock( mutex_ ); // somehow, serial_in_order still may have more than one instance of filter run at a time
@@ -717,7 +771,7 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
                     
                     void increment_file() { ++file; offset = 0; }
                     
-                    void write( const filters::value_type& m, std::size_t size )
+                    void write( const value_type& m, std::size_t size )
                     {
                         t = m.first;
                         if( csv_stream ) 
@@ -750,7 +804,7 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
                     index_.increment_file();
                 }
 
-                void update_on_time_( filters::value_type m )
+                void update_on_time_( value_type m )
                 {
                     if( !period_ ) { return; }
                     if( start_.is_not_a_date_time() ) { start_ = m.first; return; }
@@ -766,9 +820,10 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
         boost::shared_ptr< logger > logger_; // todo: watch performance
 };
 
-static filters::value_type merge_impl_( filters::value_type m, unsigned int nchannels )
+template < typename H >
+static typename impl::filters< H >::value_type merge_impl_( typename impl::filters< H >::value_type m, unsigned int nchannels )
 {
-    filters::value_type n;
+    typename impl::filters< H >::value_type n;
     n.first = m.first;
     if( m.second.rows % nchannels != 0 ) { COMMA_THROW( comma::exception, "merge: expected " << nchannels << " horizontal strips of equal height, got " << m.second.rows << " rows, which is not a multiple of " << nchannels ); }
     std::vector< cv::Mat > channels( nchannels );
@@ -777,11 +832,12 @@ static filters::value_type merge_impl_( filters::value_type m, unsigned int ncha
     return n;
 }
 
-static filters::value_type view_impl_( filters::value_type m, std::string name, unsigned int delay )
+template < typename H >
+static typename impl::filters< H >::value_type view_impl_( typename impl::filters< H >::value_type m, std::string name, unsigned int delay )
 {
     cv::imshow( &name[0], m.second );
     char c = cv::waitKey( delay );
-    if( c == 27 ) { return filters::value_type(); } // HACK to notify application to exit
+    if( c == 27 ) { return typename impl::filters< H >::value_type(); } // HACK to notify application to exit
     if( c == ' ' )
     {
         std::stringstream filename;
@@ -791,7 +847,8 @@ static filters::value_type view_impl_( filters::value_type m, std::string name, 
     return m;
 }
 
-static filters::value_type thumb_impl_( filters::value_type m, std::string name, unsigned int cols = 100, unsigned int delay = 1 )
+template < typename H >
+static typename impl::filters< H >::value_type thumb_impl_( typename impl::filters< H >::value_type m, std::string name, unsigned int cols = 100, unsigned int delay = 1 )
 {
     cv::Mat n;
     unsigned int rows = m.second.rows * ( double( cols ) / m.second.cols );
@@ -799,10 +856,11 @@ static filters::value_type thumb_impl_( filters::value_type m, std::string name,
     cv::resize( m.second, n, cv::Size( cols, rows ) );
     cv::imshow( &name[0], n );
     char c = cv::waitKey( delay );
-    return c == 27 ? filters::value_type() : m; // HACK to notify application to exit
+    return c == 27 ? typename impl::filters< H >::value_type() : m; // HACK to notify application to exit
 }
 
-static filters::value_type cross_impl_( filters::value_type m, boost::optional< Eigen::Vector2i > xy ) // todo: move to draw
+template < typename H >
+static typename impl::filters< H >::value_type cross_impl_( typename impl::filters< H >::value_type m, boost::optional< Eigen::Vector2i > xy ) // todo: move to draw
 {
     if( !xy )
     {
@@ -848,11 +906,14 @@ struct rectangle : public shape
 
 } // namespace drawing {
 
-static filters::value_type circle_impl_( filters::value_type m, const drawing::circle& circle ) { circle.draw( m.second ); return m; }
+template < typename H >
+static typename impl::filters< H >::value_type circle_impl_( typename impl::filters< H >::value_type m, const drawing::circle& circle ) { circle.draw( m.second ); return m; }
 
-static filters::value_type rectangle_impl_( filters::value_type m, const drawing::rectangle& rectangle ) { rectangle.draw( m.second ); return m; }
+template < typename H >
+static typename impl::filters< H >::value_type rectangle_impl_( typename impl::filters< H >::value_type m, const drawing::rectangle& rectangle ) { rectangle.draw( m.second ); return m; }
 
-static void encode_impl_check_type( const filters::value_type& m, const std::string& type )
+template < typename H >
+static void encode_impl_check_type( const typename impl::filters< H >::value_type& m, const std::string& type )
 {
     int channels = m.second.channels();
     int size = m.second.elemSize() / channels;
@@ -863,14 +924,15 @@ static void encode_impl_check_type( const filters::value_type& m, const std::str
     if( size == 2 && !( type == "tiff" || type == "tif" || type == "png" || type == "jp2" ) ) { COMMA_THROW( comma::exception, "cannot convert 16-bit image to type " << type << "; use tif or png instead" ); }
 }
 
-static filters::value_type encode_impl_( filters::value_type m, const std::string& type )
+template < typename H >
+static typename impl::filters< H >::value_type encode_impl_( typename impl::filters< H >::value_type m, const std::string& type )
 {
     if( is_empty( m ) ) { return m; }
-    encode_impl_check_type( m, type );
+    encode_impl_check_type< H >( m, type );
     std::vector< unsigned char > buffer;
     std::string format = "." + type;
     cv::imencode( format, m.second, buffer );
-    filters::value_type p;
+    typename impl::filters< H >::value_type p;
     p.first = m.first;
     p.second = cv::Mat( buffer.size(), 1, CV_8UC1 );
     ::memcpy( p.second.data, &buffer[0] , buffer.size() );
@@ -885,17 +947,19 @@ static comma::csv::options make_header_csv()
     return csv;
 }
 
-static filters::value_type histogram_impl_( filters::value_type m )
+template < typename H >
+static typename impl::filters< H >::value_type histogram_impl_( typename impl::filters< H >::value_type m )
 {
     static comma::csv::output_stream< serialization::header > os( std::cout, make_header_csv() ); // todo: quick and dirty; generalize imaging::serialization::pipeline
     if( single_channel_type( m.second.type() ) != CV_8UC1 ) { std::cerr << "cv-cat: histogram: expected an unsigned char image type; got " << type_as_string( m.second.type() ) << std::endl; exit( 1 ); }
     typedef boost::array< comma::uint32, 256 > channel_t;
     std::vector< channel_t > channels( m.second.channels() );
     for( unsigned int i = 0; i < channels.size(); ++i ) { ::memset( ( char* )( &channels[i][0] ), 0, sizeof( comma::uint32 ) * 256 ); }
+    cv::Mat mat = m.second;
     for( int r = 0; r < m.second.rows; ++r )
     {
-        const unsigned char* p = m.second.ptr< unsigned char >( r );
-        for( int c = 0; c < m.second.cols; ++c ) { for( unsigned int i = 0; i < channels.size(); ++channels[i][*p], ++i, ++p ); }
+        const unsigned char* p = mat.ptr< unsigned char >( r );
+        for( int c = 0; c < mat.cols; ++c ) { for( unsigned int i = 0; i < channels.size(); ++channels[i][*p], ++i, ++p ); }
     }
     serialization::header h;
     h.timestamp = m.first;
@@ -927,7 +991,8 @@ template < typename T > static T cv_read_( const std::string& filename = "", con
     return t;
 }
 
-static filters::value_type simple_blob_impl_( filters::value_type m, const cv::SimpleBlobDetector::Params& params, bool binary )
+template < typename H >
+static typename impl::filters< H >::value_type simple_blob_impl_( typename impl::filters< H >::value_type m, const cv::SimpleBlobDetector::Params& params, bool binary )
 {
     static cv::SimpleBlobDetector detector( params ); // quick and dirty
     std::vector< cv::KeyPoint > key_points;
@@ -937,37 +1002,42 @@ static filters::value_type simple_blob_impl_( filters::value_type m, const cv::S
     return m;
 }
 
-static filters::value_type grab_impl_( filters::value_type m, const std::string& type )
+template < typename H >
+static typename impl::filters< H >::value_type grab_impl_( typename impl::filters< H >::value_type m, const std::string& type )
 {
     std::string filename = boost::posix_time::to_iso_string( m.first.is_not_a_date_time() ? boost::posix_time::microsec_clock::universal_time() : m.first );
     filename += "." + type;
     cv::imwrite( filename, m.second );
-    return filters::value_type(); // HACK to notify application to exit
+    return typename impl::filters< H >::value_type(); // HACK to notify application to exit
 }
 
-static filters::value_type file_impl_( filters::value_type m, const std::string& type )
+template < typename H >
+static typename impl::filters< H >::value_type file_impl_( typename impl::filters< H >::value_type m, const std::string& type )
 {
-    encode_impl_check_type( m, type );
+    encode_impl_check_type< H >( m, type );
     std::string filename = boost::posix_time::to_iso_string( m.first.is_not_a_date_time() ? boost::posix_time::microsec_clock::universal_time() : m.first );
     filename += "." + type;
     cv::imwrite( filename, m.second );
     return m;
 }
 
-static filters::value_type timestamp_impl_( filters::value_type m )
+template < typename H >
+static typename impl::filters< H >::value_type timestamp_impl_( typename impl::filters< H >::value_type m )
 {
     cv::rectangle( m.second, cv::Point( 5, 5 ), cv::Point( 228, 25 ), cv::Scalar( 0xffff, 0xffff, 0xffff ), CV_FILLED, CV_AA );
     cv::putText( m.second, boost::posix_time::to_iso_string( m.first ), cv::Point( 10, 20 ), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar( 0, 0, 0 ), 1, CV_AA );
     return m;
 }
 
+template < typename H >
 struct count_impl_
 {
     count_impl_() : count( 0 ) {}
 
     unsigned int count;
+    typedef typename impl::filters< H >::value_type value_type;
 
-    filters::value_type operator()( filters::value_type m )
+    value_type operator()( value_type m )
     {
         cv::rectangle( m.second, cv::Point( 5, 5 ), cv::Point( 80, 25 ), cv::Scalar( 0xffff, 0xffff, 0xffff ), CV_FILLED, CV_AA );
         cv::putText( m.second, boost::lexical_cast< std::string >( count++ ), cv::Point( 10, 20 ), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar( 0, 0, 0 ), 1, CV_AA );
@@ -975,14 +1045,16 @@ struct count_impl_
     }
 };
 
-static filters::value_type invert_impl_( filters::value_type m )
+template < typename H >
+static typename impl::filters< H >::value_type invert_impl_( typename impl::filters< H >::value_type m )
 {
     if( m.second.type() != CV_8UC1 && m.second.type() != CV_8UC2 && m.second.type() != CV_8UC3 && m.second.type() != CV_8UC4 ) { COMMA_THROW( comma::exception, "expected image type ub, 2ub, 3ub, 4ub; got: " << type_as_string( m.second.type() ) ); }
     for( unsigned char* c = m.second.datastart; c < m.second.dataend; *c = 255 - *c, ++c );
     return m;
 }
 
-static filters::value_type invert_brightness_impl_( filters::value_type m )
+template < typename H >
+static typename impl::filters< H >::value_type invert_brightness_impl_( typename impl::filters< H >::value_type m )
 {
     if( m.second.type() != CV_8UC3 ) { COMMA_THROW( comma::exception, "expected image type 3ub; got: " << type_as_string( m.second.type() ) ); }
     cv::Mat n;
@@ -992,7 +1064,8 @@ static filters::value_type invert_brightness_impl_( filters::value_type m )
     return m;
 }
 
-static filters::value_type equalize_histogram_impl_(filters::value_type m)
+template < typename H >
+static typename impl::filters< H >::value_type equalize_histogram_impl_(typename impl::filters< H >::value_type m)
 {
     if( single_channel_type(m.second.type()) != CV_8UC1 ) { COMMA_THROW( comma::exception, "expected image type ub, 2ub, 3ub, 4ub; got: " << type_as_string( m.second.type() ) ); }
     int chs=m.second.channels();
@@ -1011,7 +1084,9 @@ static filters::value_type equalize_histogram_impl_(filters::value_type m)
     cv::merge(planes,m.second);
     return m;
 }
-static filters::value_type normalize_cv_impl_( filters::value_type m )
+
+template < typename H >
+static typename impl::filters< H >::value_type normalize_cv_impl_( typename impl::filters< H >::value_type m )
 {
     //std::cerr<<"my type: "<<m.second.type()<<" ,CV_8UC3: "<<int(CV_8UC3)<<" ,CV_32FC3: "<<int(CV_32FC3)<<" ,CV_8UC1: "<<CV_8UC1<<std::endl;
     cv::normalize(m.second,m.second,1,0,cv::NORM_INF,CV_32FC(m.second.channels()));
@@ -1144,32 +1219,38 @@ struct filter_table_t
 };
 static filter_table_t filter_table;
 
-static filters::value_type normalize_max_impl_( filters::value_type m )
+template < typename H >
+static typename impl::filters< H >::value_type normalize_max_impl_( typename impl::filters< H >::value_type m )
 {
     filter_table_t::filter_i& filter=filter_table.filter(m.second.depth());
-    return filters::value_type(m.first, filter.normalize_max(m.second));
-}
-static filters::value_type normalize_sum_impl_( filters::value_type m )
-{
-    filter_table_t::filter_i& filter=filter_table.filter(m.second.depth());
-    return filters::value_type(m.first, filter.normalize_sum(m.second));
+    return typename impl::filters< H >::value_type(m.first, filter.normalize_max(m.second));
 }
 
-static filters::value_type text_impl_( filters::value_type m, const std::string& s, const cv::Point& origin, const cv::Scalar& colour )
+template < typename H >
+static typename impl::filters< H >::value_type normalize_sum_impl_( typename impl::filters< H >::value_type m )
+{
+    filter_table_t::filter_i& filter=filter_table.filter(m.second.depth());
+    return typename impl::filters< H >::value_type(m.first, filter.normalize_sum(m.second));
+}
+
+template < typename H >
+static typename impl::filters< H >::value_type text_impl_( typename impl::filters< H >::value_type m, const std::string& s, const cv::Point& origin, const cv::Scalar& colour )
 {
     cv::putText( m.second, s, origin, cv::FONT_HERSHEY_SIMPLEX, 1.0, colour, 1, CV_AA );
     return m;
 }
 
+template < typename H >
 class undistort_impl_
 {
     public:
+        typedef typename impl::filters< H >::value_type value_type;
         undistort_impl_( const std::string& filename ) : filename_( filename ) {}
 
-        filters::value_type operator()( filters::value_type m )
+        value_type operator()( value_type m )
         {
             init_map_( m.second.rows, m.second.cols );
-            filters::value_type n( m.first, cv::Mat( m.second.size(), m.second.type(), cv::Scalar::all(0) ) );
+            value_type n( m.first, cv::Mat( m.second.size(), m.second.type(), cv::Scalar::all(0) ) );
             cv::remap( m.second, n.second, x_, y_, cv::INTER_LINEAR, cv::BORDER_TRANSPARENT );
             return n;
         }
@@ -1199,17 +1280,19 @@ class undistort_impl_
         }
 };
 
+template < typename H >
 class max_impl_ // experimental, to debug
 {
     public:
+        typedef typename impl::filters< H >::value_type value_type;
         max_impl_( unsigned int size, bool is_max ) : size_( size ), is_max_( is_max ) {}
 
-        filters::value_type operator()( filters::value_type m )
+        value_type operator()( value_type m )
         {
             if( deque_.size() == size_ ) { deque_.pop_front(); }
-            deque_.push_back( filters::value_type() );
+            deque_.push_back( value_type() );
             m.second.copyTo( deque_.back().second );
-            filters::value_type s( m.first, cv::Mat( m.second.rows, m.second.cols, m.second.type() ) );
+            value_type s( m.first, cv::Mat( m.second.rows, m.second.cols, m.second.type() ) );
             ::memset( m.second.datastart, 0, m.second.rows * m.second.cols * m.second.channels() );
             static unsigned int count = 0;
             for( unsigned int i = 0; i < deque_.size(); ++i )
@@ -1224,11 +1307,13 @@ class max_impl_ // experimental, to debug
     private:
         unsigned int size_;
         bool is_max_;
-        std::deque< filters::value_type > deque_; // use vector?
+        std::deque< value_type > deque_; // use vector?
 };
 
+template < typename H >
 class map_impl_
 {
+    typedef typename impl::filters< H >::value_type value_type;
     typedef int key_type;
     typedef double output_value_type;
     public:
@@ -1257,10 +1342,10 @@ class map_impl_
             }
         }
 
-        filters::value_type operator()( filters::value_type m )
+        value_type operator()( value_type m )
         {
-            if( m.second.channels() != 1 ) { std::cerr << "map filter: expected single channel cv type, got " << m.second.channels() << " channels" << std::endl; return filters::value_type(); }
-            filters::value_type n( m.first, cv::Mat( m.second.size(), cv::DataType< output_value_type >::type ) );
+            if( m.second.channels() != 1 ) { std::cerr << "map filter: expected single channel cv type, got " << m.second.channels() << " channels" << std::endl; return value_type(); }
+            value_type n( m.first, cv::Mat( m.second.size(), cv::DataType< output_value_type >::type ) );
             try
             {
                 switch( m.second.type() )
@@ -1270,9 +1355,9 @@ class map_impl_
                     case cv::DataType< char >::type : apply_map< char >( m.second, n.second ); break;
                     case cv::DataType< comma::int16 >::type : apply_map< comma::int16 >( m.second, n.second ); break;
                     case cv::DataType< comma::int32 >::type : apply_map< comma::int32 >( m.second, n.second ); break;
-                    default: std::cerr << "map filter: expected integer cv type, got " << m.second.type() << std::endl; return filters::value_type();
+                    default: std::cerr << "map filter: expected integer cv type, got " << m.second.type() << std::endl; return value_type();
                 }
-            } catch ( std::out_of_range ) { return filters::value_type(); }
+            } catch ( std::out_of_range ) { return value_type(); }
             return n;
         }
 
@@ -1301,20 +1386,22 @@ class map_impl_
         }
 };
 
-static filters::value_type magnitude_impl_( filters::value_type m )
+template < typename H >
+static typename impl::filters< H >::value_type magnitude_impl_( typename impl::filters< H >::value_type m )
 {
-    if( m.second.channels() != 2 ) { std::cerr << "cv filters: magnitude: expected 2 channels, got " << m.second.channels() << std::endl; return filters::value_type(); }
+    if( m.second.channels() != 2 ) { std::cerr << "cv filters: magnitude: expected 2 channels, got " << m.second.channels() << std::endl; return typename impl::filters< H >::value_type(); }
     boost::array< cv::Mat, 2 > planes;
-    filters::value_type n;
+    typename impl::filters< H >::value_type n;
     n.first = m.first;
     cv::split( m.second, &planes[0] );
     cv::magnitude( planes[0], planes[1], n.second );
     return n;
 }
 
-static filters::value_type convert( filters::value_type m, bool scale, bool complex, bool magnitude, bool log_scale, bool normalize )
+template < typename H >
+static typename impl::filters< H >::value_type convert( typename impl::filters< H >::value_type m, bool scale, bool complex, bool magnitude, bool log_scale, bool normalize )
 {
-    filters::value_type n;
+    typename impl::filters< H >::value_type n;
     n.first = m.first;
     cv::dft( m.second, n.second, ( scale ? cv::DFT_SCALE : cv::DFT_INVERSE ) | ( complex ? cv::DFT_COMPLEX_OUTPUT : cv::DFT_REAL_OUTPUT ) );
     if( !magnitude ) { return n; }
@@ -1330,22 +1417,22 @@ static filters::value_type convert( filters::value_type m, bool scale, bool comp
     return n;
 }
 
-template < typename T, int Type >
-static filters::value_type convert( filters::value_type m, bool magnitude, bool log_scale, bool normalize )
+template < typename H, typename T, int Type >
+static typename impl::filters< H >::value_type convert( typename impl::filters< H >::value_type m, bool magnitude, bool log_scale, bool normalize )
 {
     cv::Mat padded;
     int padded_rows = cv::getOptimalDFTSize( m.second.rows );
     int padded_cols = cv::getOptimalDFTSize( m.second.cols );
     cv::copyMakeBorder( m.second, padded, 0, padded_rows - m.second.rows, 0, padded_cols - m.second.cols, cv::BORDER_CONSTANT, cv::Scalar::all( 0 ) );
     boost::array< cv::Mat, 2 > planes = {{ cv::Mat_< T >( padded ), cv::Mat::zeros( padded.size(), Type ) }};
-    filters::value_type p;
+    typename impl::filters< H >::value_type p;
     p.first = m.first;
     cv::merge( &planes[0], 2, p.second );
     cv::dft( p.second, p.second );
     if( !magnitude ) { return p; }
     cv::split( p.second, &planes[0] );
     cv::magnitude( planes[0], planes[1], planes[0] );
-    filters::value_type n;
+    typename impl::filters< H >::value_type n;
     n.first = m.first;
     n.second = planes[0];
     if( log_scale )
@@ -1375,29 +1462,30 @@ static filters::value_type convert( filters::value_type m, bool magnitude, bool 
     return n;
 }
 
-filters::value_type fft_impl_( filters::value_type m, bool direct, bool complex, bool magnitude, bool log_scale, bool normalize )
+template < typename H >
+typename impl::filters< H >::value_type fft_impl_( typename impl::filters< H >::value_type m, bool direct, bool complex, bool magnitude, bool log_scale, bool normalize )
 {
     switch( m.second.type() )
     {
         case CV_32FC1:
             //return convert< float, CV_32FC1 >( m, magnitude, log_scale, normalize );
         case CV_32FC2:
-            return convert( m, direct, complex, magnitude, log_scale, normalize );
+            return convert< H >( m, direct, complex, magnitude, log_scale, normalize );
         case CV_32FC3:
         case CV_32FC4:
             std::cerr << "fft: multichannel image support: todo, got: " << type_as_string( m.second.type() ) << std::endl;
-            return filters::value_type();
+            return typename impl::filters< H >::value_type();
         case CV_64FC1:
             //return convert< double, CV_64FC1 >( m, magnitude, log_scale, normalize, normalize );
         case CV_64FC2:
-            return convert( m, direct, complex, magnitude, log_scale, normalize );
+            return convert< H >( m, direct, complex, magnitude, log_scale, normalize );
         case CV_64FC3:
         case CV_64FC4:
             std::cerr << "fft: multichannel image support: todo, got: " << type_as_string( m.second.type() ) << std::endl;
-            return filters::value_type();
+            return typename impl::filters< H >::value_type();
         default:
             std::cerr << "fft: expected a floating-point image type, got: " << type_as_string( m.second.type() ) << std::endl;
-            return filters::value_type();
+            return typename impl::filters< H >::value_type();
     }
 }
 
@@ -1428,31 +1516,32 @@ static void ratio( const tbb::blocked_range< std::size_t >& r, const cv::Mat& m,
     }
 }
 
-template< int DepthIn, int DepthOut >
-static filters::value_type per_element_ratio( const filters::value_type m, const std::vector< double >& numerator, const std::vector< double > & denominator )
+template< typename H, int DepthIn, int DepthOut >
+static typename impl::filters< H >::value_type per_element_ratio( const typename impl::filters< H >::value_type m, const std::vector< double >& numerator, const std::vector< double > & denominator )
 {
     cv::Mat result( m.second.size(), DepthOut );
     tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, m.second.rows ), boost::bind( &ratio< DepthIn, DepthOut >, _1, m.second, numerator, denominator, boost::ref( result ) ) );
-    return filters::value_type( m.first, result );
+    return typename impl::filters< H >::value_type( m.first, result );
 }
 
-template< int DepthIn >
-static filters::value_type per_element_ratio_selector( const filters::value_type m, const std::vector< double >& numerator, const std::vector< double > & denominator, int otype, const std::string & opname )
+template< typename H, int DepthIn >
+static typename impl::filters< H >::value_type per_element_ratio_selector( const typename impl::filters< H >::value_type m, const std::vector< double >& numerator, const std::vector< double > & denominator, int otype, const std::string & opname )
 {
     switch( otype )
     {
-        case CV_8U : return per_element_ratio< DepthIn, CV_8U  >( m, numerator, denominator );
-        case CV_8S : return per_element_ratio< DepthIn, CV_8S  >( m, numerator, denominator );
-        case CV_16U: return per_element_ratio< DepthIn, CV_16U >( m, numerator, denominator );
-        case CV_16S: return per_element_ratio< DepthIn, CV_16S >( m, numerator, denominator );
-        case CV_32S: return per_element_ratio< DepthIn, CV_32S >( m, numerator, denominator );
-        case CV_32F: return per_element_ratio< DepthIn, CV_32F >( m, numerator, denominator );
-        case CV_64F: return per_element_ratio< DepthIn, CV_64F >( m, numerator, denominator );
+        case CV_8U : return per_element_ratio< H, DepthIn, CV_8U  >( m, numerator, denominator );
+        case CV_8S : return per_element_ratio< H, DepthIn, CV_8S  >( m, numerator, denominator );
+        case CV_16U: return per_element_ratio< H, DepthIn, CV_16U >( m, numerator, denominator );
+        case CV_16S: return per_element_ratio< H, DepthIn, CV_16S >( m, numerator, denominator );
+        case CV_32S: return per_element_ratio< H, DepthIn, CV_32S >( m, numerator, denominator );
+        case CV_32F: return per_element_ratio< H, DepthIn, CV_32F >( m, numerator, denominator );
+        case CV_64F: return per_element_ratio< H, DepthIn, CV_64F >( m, numerator, denominator );
     }
     COMMA_THROW( comma::exception, opname << ": unrecognised output image type " << otype );
 }
 
-static filters::value_type ratio_impl_( const filters::value_type m, const std::vector< double >& numerator, const std::vector< double >& denominator, const std::string & opname )
+template < typename H >
+static typename impl::filters< H >::value_type ratio_impl_( const typename impl::filters< H >::value_type m, const std::vector< double >& numerator, const std::vector< double >& denominator, const std::string & opname )
 {
     if( numerator.size() != denominator.size() )
         { COMMA_THROW( comma::exception, opname << ": the number of numerator " << numerator.size() << " and denominator " << denominator.size() << " coefficients differs" ); }
@@ -1467,13 +1556,13 @@ static filters::value_type ratio_impl_( const filters::value_type m, const std::
     if ( otype != CV_64FC1 ) { otype = CV_32FC1; }
     switch( m.second.depth() )
     {
-        case CV_8U : return per_element_ratio_selector< CV_8U  >( m, numerator, denominator, otype, opname );
-        case CV_8S : return per_element_ratio_selector< CV_8S  >( m, numerator, denominator, otype, opname );
-        case CV_16U: return per_element_ratio_selector< CV_16U >( m, numerator, denominator, otype, opname );
-        case CV_16S: return per_element_ratio_selector< CV_16S >( m, numerator, denominator, otype, opname );
-        case CV_32S: return per_element_ratio_selector< CV_32S >( m, numerator, denominator, otype, opname );
-        case CV_32F: return per_element_ratio_selector< CV_32F >( m, numerator, denominator, otype, opname );
-        case CV_64F: return per_element_ratio_selector< CV_64F >( m, numerator, denominator, otype, opname );
+        case CV_8U : return per_element_ratio_selector< H, CV_8U  >( m, numerator, denominator, otype, opname );
+        case CV_8S : return per_element_ratio_selector< H, CV_8S  >( m, numerator, denominator, otype, opname );
+        case CV_16U: return per_element_ratio_selector< H, CV_16U >( m, numerator, denominator, otype, opname );
+        case CV_16S: return per_element_ratio_selector< H, CV_16S >( m, numerator, denominator, otype, opname );
+        case CV_32S: return per_element_ratio_selector< H, CV_32S >( m, numerator, denominator, otype, opname );
+        case CV_32F: return per_element_ratio_selector< H, CV_32F >( m, numerator, denominator, otype, opname );
+        case CV_64F: return per_element_ratio_selector< H, CV_64F >( m, numerator, denominator, otype, opname );
     }
     COMMA_THROW( comma::exception, opname << ": unrecognised input image type " << m.second.type() );
 }
@@ -1501,12 +1590,15 @@ static cv::Mat convert_and_scale(const cv::Mat& m, int depth)
     return result;
 }
 
+template < typename H >
 struct overlay_impl_
 {
     int x;
     int y;
     cv::Mat overlay;
     int alpha;
+    typedef typename impl::filters< H >::value_type value_type;
+    
     overlay_impl_(const std::string& image_file, int a, int b) : x(a), y(b), alpha(0)
     {
 //         comma::verbose<<"overlay_impl_: image_file "<<image_file<<std::endl;
@@ -1514,7 +1606,7 @@ struct overlay_impl_
         overlay=cv::imread(image_file,-1);
         if(overlay.data==NULL) { COMMA_THROW( comma::exception, "failed to load image file: "<<image_file); }
     }
-    filters::value_type operator()( filters::value_type m )
+    value_type operator()( value_type m )
     {
         cv::Mat& mat=m.second;
 //         comma::verbose<<"mat rows,cols,type;channels,depth "<<mat.rows<<","<<mat.cols<<","<<type_as_string(mat.type())<<";"<<mat.channels()<<","<<mat.depth()<<std::endl;
@@ -1537,7 +1629,7 @@ struct overlay_impl_
             case CV_64F: process<CV_64F>(mat, overlay, x, y, result); break;
             default: { COMMA_THROW( comma::exception, "invalid depth: " << mat.depth()); }
         }
-        return filters::value_type(m.first, result);
+        return value_type(m.first, result);
     }
     template<int Depth> static void process(const cv::Mat& mat, const cv::Mat& overlay, int x, int y, cv::Mat& result)
     {
@@ -1632,7 +1724,8 @@ static filters::value_type gamma_( const filters::value_type m, const double gam
     return m;
 }
 
-static filters::value_type gamma_impl_(const filters::value_type m, const double gamma )
+template < typename H >
+static typename impl::filters< H >::value_type gamma_impl_(const typename impl::filters< H >::value_type m, const double gamma )
 {
     switch( m.second.depth() )
     {
@@ -1642,18 +1735,21 @@ static filters::value_type gamma_impl_(const filters::value_type m, const double
     COMMA_THROW(comma::exception, "gamma is unimplemented for types other than CV_8U, CV_8S");
 }
 
-static filters::value_type inrange_impl_( const filters::value_type m, const cv::Scalar& lower, const cv::Scalar& upper )
+template < typename H >
+static typename impl::filters< H >::value_type inrange_impl_( const typename impl::filters< H >::value_type m, const cv::Scalar& lower, const cv::Scalar& upper )
 {
-    filters::value_type n;
+    typename impl::filters< H >::value_type n;
     n.first = m.first;
     n.second = cv::Mat( m.second.rows, m.second.cols, single_channel_type( m.second.type() ) );
     cv::inRange( m.second, lower, upper, n.second );
     return n;
 }
 
+template < typename H >
 struct load_impl_
 {
-    filters::value_type value;
+    typedef typename impl::filters< H >::value_type value_type;
+    value_type value;
     
     load_impl_( const std::string& filename )
     {
@@ -1673,26 +1769,35 @@ struct load_impl_
         if( value.second.data == NULL ) { COMMA_THROW( comma::exception, "failed to load image from file \""<< filename << "\"" ); }
     }
     
-    filters::value_type operator()( filters::value_type ) { return value; }
+    value_type operator()( value_type ) { return value; }
 };
 
-static filters::value_type remove_mean_impl_(const filters::value_type m, const cv::Size kernel_size, const double ratio )
+template < typename H >
+static typename impl::filters< H >::value_type remove_mean_impl_(const typename impl::filters< H >::value_type m, const cv::Size kernel_size, const double ratio )
 {
-    filters::value_type n;
+    typename impl::filters< H >::value_type n;
     n.first = m.first;
     cv::GaussianBlur(m.second, n.second, kernel_size, 0, 0);
     n.second = m.second - ratio * n.second;
     return n;
 }
 
-static boost::function< filter::input_type( filter::input_type ) > make_filter_functor( const std::vector< std::string >& e )
+template < typename O, typename H >
+struct make_filter {
+    typedef typename impl::filters< H >::value_type value_type_t;
+    typedef operation< O, H > filter;
+    typedef operation< O, H > filter_type;
+    typedef typename filter_type::input_type input_type;
+    typedef typename filter_type::output_type output_type;
+    typedef boost::function< input_type( input_type ) > functor_type;
+static functor_type make_filter_functor( const std::vector< std::string >& e )
 {
     if( e[0] == "convert-color" || e[0] == "convert_color" )
     {
         if( e.size() == 1 ) { COMMA_THROW( comma::exception, "convert-color: please specify conversion" ); }
-        return boost::bind( &cvt_color_impl_, _1, cvt_color_type_from_string( e[1] ) );
+        return boost::bind< value_type_t >( cvt_color_impl_< H >(), _1, cvt_color_type_from_string( e[1] ) );
     }
-    if( e[0] == "count" ) { return count_impl_(); }
+    if( e[0] == "count" ) { return count_impl_< H >(); }
     if( e[0] == "crop" )
     {
         unsigned int x = 0;
@@ -1714,88 +1819,88 @@ static boost::function< filter::input_type( filter::input_type ) > make_filter_f
             default:
                 COMMA_THROW( comma::exception, "expected crop=[x,y,]width,height, got \"" << comma::join( e, '=' ) << "\"" );
         }
-        return boost::bind( &crop_impl_, _1, x, y, w, h );
+        return boost::bind< value_type_t >( crop_impl_< H >, _1, x, y, w, h );
     }
-    if( e[0] == "crop-cols" )
+    if( e[0] == "crop-cols" || e[0] == "crop-rows" )
     {
-        if( e.size() < 2 ) { COMMA_THROW( comma::exception, "crop-cols: specify at least one column to extract, e.g. crop-cols=1,10" ); }
-        std::vector< std::string > stripes = comma::split( e[1], '|' );
-        std::vector< stripe_t > cols;
-        for ( size_t s = 0; s < stripes.size(); ++s )
+        const std::string & op_name = e[0];
+        const std::string & what = ( e[0] == "crop-cols" ? "column" : "row" );
+        if( e.size() < 2 ) { COMMA_THROW( comma::exception, op_name << ": specify at least one " << what << " to extract, e.g. " << op_name << "=1,10" ); }
+        std::vector< std::string > inputs = comma::split( e[1], ',' );
+        if ( inputs.size() % 2 ) { COMMA_THROW( comma::exception, op_name << ": must provide an even number of integers in <" << what << ">,<size> pairs" ); }
+        std::vector< stripe_t > stripes;
+        for ( size_t s = 0; s < inputs.size(); ++s, ++s )
         {
-            std::vector< std::string > column = comma::split( stripes[s], ',' );
-            if ( column.size() > 2 ) { COMMA_THROW( comma::exception, "crop-cols: expected position,[width]; got " << column.size() << " parameters '" << stripes[s] << "'" ); }
-            unsigned int x = boost::lexical_cast< unsigned int >( column[0] );
-            unsigned int w = ( column.size() == 2 ? boost::lexical_cast< unsigned int >( column[1] ) : 1 );
-            cols.push_back( std::make_pair( x, w ) );
+            unsigned int x = boost::lexical_cast< unsigned int >( inputs[s] );
+            unsigned int w = boost::lexical_cast< unsigned int >( inputs[s+1] );
+            stripes.push_back( std::make_pair( x, w ) );
         }
-        return boost::bind( &crop_cols_impl_, _1, cols );
-    }
-    if( e[0] == "crop-rows" )
-    {
-        if( e.size() < 2 ) { COMMA_THROW( comma::exception, "crop-rows: specify at least one row to extract, e.g. crop-rows=1,10" ); }
-        std::vector< std::string > stripes = comma::split( e[1], '|' );
-        std::vector< stripe_t > rows;
-        for ( size_t s = 0; s < stripes.size(); ++s )
-        {
-            std::vector< std::string > rowblock = comma::split( stripes[s], ',' );
-            if ( rowblock.size() > 2 ) { COMMA_THROW( comma::exception, "crop-rows: expected position,[height]; got " << rowblock.size() << " parameters '" << stripes[s] << "'" ); }
-            unsigned int y = boost::lexical_cast< unsigned int >( rowblock[0] );
-            unsigned int h = ( rowblock.size() == 2 ? boost::lexical_cast< unsigned int >( rowblock[1] ) : 1 );
-            rows.push_back( std::make_pair( y, h ) );
-        }
-        return boost::bind( &crop_rows_impl_, _1, rows );
+        if ( e[0] == "crop-cols" ) { return boost::bind< value_type_t >( crop_cols_impl_< H >(), _1, stripes ); }
+        else { return boost::bind< value_type_t >( crop_rows_impl_< H >(), _1, stripes ); }
     }
     if( e[0] == "bands-to-cols" || e[0] == "bands-to-rows" )
     {
-        // rhs looks like "12,23|50,30|100|method:average|output-depth:d"
-        // the '|'-separated entries shall be either:
-        // - comma-separated pairs of integers, or
-        // - a single integer, or
+        // rhs looks like "12,23,50,30,100,1,method:average,output-depth:d"
+        // the ','-separated entries shall be either:
+        // - integers always coming in pairs, or
         // - colon-separated words with a known keyword on the left and one of the known enumeration names on the right
         const bool bands_to_cols = e[0] == "bands-to-cols";
         const std::string & op_name = bands_to_cols ? "bands-to-cols" : "bands-to-rows";
         if( e.size() < 2 ) { COMMA_THROW( comma::exception, op_name << ": specify at least one band to extract, e.g. " << op_name << "=1,10" ); }
-        std::vector< std::string > stripes = comma::split( e[1], '|' );
+        std::vector< std::string > stripes = comma::split( e[1], ',' );
         std::vector< stripe_t > bands;
+        // iterate over pair of integers until all taken; then iterate over "name:value" pairs
+        size_t s = 0;
+        while ( s < stripes.size() )
+        {
+            if ( stripes[s].empty() ) { COMMA_THROW( comma::exception, op_name << ": empty comma-separated field in '" << e[1] << "'" ); }
+            unsigned int y;
+            try {
+                y = boost::lexical_cast< int >( stripes[s] );
+            } catch ( boost::bad_lexical_cast & ) {
+                break; // possibly a keyword, not an error
+            }
+            if ( ! (++s < stripes.size() ) ) { COMMA_THROW( comma::exception, op_name << ": expected <int, int> pairs, got a single int in '" << e[1] << "'" ); }
+            unsigned int h;
+            try {
+                h = boost::lexical_cast< int >( stripes[s] );
+            } catch ( boost::bad_lexical_cast & ) {
+                COMMA_THROW( comma::exception, op_name << ": expected <position>,<size> integer pairs, got " << e[1] );
+            }
+            bands.push_back( std::make_pair( y, h ) );
+            ++s;
+        }
+        // the rest of the string shall be comma-separated name:value pairs
         int cv_reduce_method = bands_method_default;
         int cv_reduce_dtype = -1;
-        for ( size_t s = 0; s < stripes.size(); ++s )
+        while ( s < stripes.size() )
         {
-            if ( stripes[s].find( ":" ) != std::string::npos )
+            if ( stripes[s].empty() ) { COMMA_THROW( comma::exception, op_name << ": empty comma-separated field in '" << e[1] << "'" ); }
+            std::vector< std::string > setting = comma::split( stripes[s], ':' );
+            if ( setting.size() != 2 ) { COMMA_THROW( comma::exception, op_name << ": expected keyword:value; got " << setting.size() << " parameter '" << stripes[s] << "'" ); }
+            if ( setting[0] == "method" )
             {
-                std::vector< std::string > setting = comma::split( stripes[s], ':' );
-                if ( setting.size() != 2 ) { COMMA_THROW( comma::exception, op_name << ": expected keyword:value; got " << setting.size() << " parameters '" << stripes[s] << "'" ); }
-                if ( setting[0] == "method" )
-                {
-                    static std::map< std::string, int > methods = boost::assign::map_list_of ( "average", CV_REDUCE_AVG ) ( "sum", CV_REDUCE_SUM ) ( "min", CV_REDUCE_MIN ) ( "max", CV_REDUCE_MAX );
-                    std::map< std::string, int >::const_iterator found = methods.find( setting[1] );
-                    if ( found == methods.end() ) { COMMA_THROW( comma::exception, op_name << ": the method is not one of [average,sum,min,max]" ); }
-                    cv_reduce_method = found->second;
-                }
-                else if ( setting[0] == "output-depth" )
-                {
-                    static std::map< std::string, int > depths = boost::assign::map_list_of ( "CV_32S", CV_32S ) ( "i", CV_32S ) ( "CV_32F", CV_32F ) ( "f", CV_32F ) ( "CV_64F", CV_64F ) ( "d", CV_64F );
-                    std::map< std::string, int >::const_iterator found = depths.find( setting[1] );
-                    if ( found == depths.end() ) { COMMA_THROW( comma::exception, op_name << ": the output-depth '" << setting[1] << "' is not one of [i,f,d] or [CV_32S,CV_32F,CV_64F]" ); }
-                    cv_reduce_dtype = found->second;
-                }
-                else
-                {
-                    COMMA_THROW( comma::exception, op_name << ": the keyword '" << setting[0] << "' is not one of [method,output-depth]" );
-                }
+                static std::map< std::string, int > methods = boost::assign::map_list_of ( "average", CV_REDUCE_AVG ) ( "sum", CV_REDUCE_SUM ) ( "min", CV_REDUCE_MIN ) ( "max", CV_REDUCE_MAX );
+                std::map< std::string, int >::const_iterator found = methods.find( setting[1] );
+                if ( found == methods.end() ) { COMMA_THROW( comma::exception, op_name << ": the method is not one of [average,sum,min,max]" ); }
+                cv_reduce_method = found->second;
+            }
+            else if ( setting[0] == "output-depth" )
+            {
+                // the permitted list is very restrictive and explicit
+                static std::map< std::string, int > depths = boost::assign::map_list_of ( "CV_32S", CV_32S ) ( "i", CV_32S ) ( "CV_32F", CV_32F ) ( "f", CV_32F ) ( "CV_64F", CV_64F ) ( "d", CV_64F );
+                std::map< std::string, int >::const_iterator found = depths.find( setting[1] );
+                if ( found == depths.end() ) { COMMA_THROW( comma::exception, op_name << ": the output-depth '" << setting[1] << "' is not one of [i,f,d] or [CV_32S,CV_32F,CV_64F]" ); }
+                cv_reduce_dtype = found->second;
             }
             else
             {
-                std::vector< std::string > rowblock = comma::split( stripes[s], ',' );
-                if ( rowblock.size() > 2 ) { COMMA_THROW( comma::exception, op_name << ": expected position,[width]; got " << rowblock.size() << " parameters '" << stripes[s] << "'" ); }
-                unsigned int y = boost::lexical_cast< unsigned int >( rowblock[0] );
-                unsigned int h = ( rowblock.size() == 2 ? boost::lexical_cast< unsigned int >( rowblock[1] ) : 1 );
-                bands.push_back( std::make_pair( y, h ) );
+                COMMA_THROW( comma::exception, op_name << ": the keyword '" << setting[0] << "' is not one of [method,output-depth]" );
             }
+            ++s;
         }
         if ( bands.empty() ) { COMMA_THROW( comma::exception, op_name << ": specify at least one band" ); }
-        return boost::bind( &bands_to_cols_impl_, _1, bands_to_cols, bands, cv_reduce_method, cv_reduce_dtype );
+        return boost::bind< value_type_t >( bands_to_cols_impl_< H >(), _1, bands_to_cols, bands, cv_reduce_method, cv_reduce_dtype );
     }
     if( e[0] == "crop-tile" )
     {
@@ -1826,58 +1931,59 @@ static boost::function< filter::input_type( filter::input_type ) > make_filter_f
             }
         }
         if( number_of_tile_cols == 0 || number_of_tile_rows == 0 ) { COMMA_THROW( comma::exception, "crop-tile: expected positive number of tiles along x and y, got " << number_of_tile_cols << "," << number_of_tile_rows ); }
-        return boost::bind( &crop_tile_impl_, _1, number_of_tile_cols, number_of_tile_rows, tiles, vertical );
+        return boost::bind< value_type_t >( crop_tile_impl_< H >(), _1, number_of_tile_cols, number_of_tile_rows, tiles, vertical );
     }
     if( e[0] == "cols-to-channels" || e[0] == "rows-to-channels" )
     {
-        // rhs looks like "cols-to-channels=1,4,5[|pad:value|repeat:step]"
-        // the '|'-separated entries shall be either:
-        // - a comma-separated lists of integers, or
-        // - a single integer, or
+        // rhs looks like "cols-to-channels=1,4,5[,pad:value,repeat:step]"
+        // the ','-separated entries shall be either:
+        // - integers, or
         // - colon-separated words with a known keyword on the left and one of the known enumeration names on the right
         const bool cols_to_channels = e[0] == "cols-to-channels";
         const std::string & op_name = cols_to_channels ? "cols-to-channels" : "rows-to-channels";
         const std::string & op_what = cols_to_channels ? "column" : "row";
         if( e.size() < 2 ) { COMMA_THROW( comma::exception, op_name << ": specify at least one column or column list to extract, e.g. " << op_name << "=1,10" ); }
-        std::vector< std::string > inputs = comma::split( e[1], '|' );
+        std::vector< std::string > inputs = comma::split( e[1], ',' );
         std::vector< unsigned int > values;
         double padding = 0.0;
         unsigned int repeat = 0;
-        for ( size_t s = 0; s < inputs.size(); ++s )
+        size_t s = 0;
+        // first, iterate over column number, then, over options
+        while ( s < inputs.size() )
         {
-            if ( inputs[s].find( ":" ) != std::string::npos )
+            try {
+                values.push_back( boost::lexical_cast< unsigned int >( inputs[s] ) );
+            } catch ( boost::bad_lexical_cast & ) {
+                break; // maybe an option
+            }
+            ++s;
+        }
+        while ( s < inputs.size() )
+        {
+            std::vector< std::string > setting = comma::split( inputs[s], ':' );
+            if ( setting.size() != 2 ) { COMMA_THROW( comma::exception, op_name << ": expected keyword:value; got " << setting.size() << " parameter '" << inputs[s] << "'" ); }
+            if ( setting[0] == "pad" )
             {
-                std::vector< std::string > setting = comma::split( inputs[s], ':' );
-                if ( setting.size() != 2 ) { COMMA_THROW( comma::exception, op_name << ": expected keyword:value; got " << setting.size() << " parameters '" << inputs[s] << "'" ); }
-                if ( setting[0] == "pad" )
-                {
-                    padding = boost::lexical_cast< double >( setting[1] );
-                }
-                else if ( setting[0] == "repeat" )
-                {
-                    repeat = boost::lexical_cast< unsigned int >( setting[1] );
-                }
-                else
-                {
-                    COMMA_THROW( comma::exception, op_name << ": the keyword '" << setting[0] << "' is not one of [pad,repeat]" );
-                }
+                padding = boost::lexical_cast< double >( setting[1] );
+            }
+            else if ( setting[0] == "repeat" )
+            {
+                repeat = boost::lexical_cast< unsigned int >( setting[1] );
             }
             else
             {
-                std::vector< std::string > vstrings = comma::split( inputs[s], ',' );
-                if ( vstrings.size() > 4 ) { COMMA_THROW( comma::exception, op_name << ": can store up to 4 " << op_what << "s into channels, got " << vstrings.size() << " inputs '" << inputs[s] << "'" ); }
-                values.reserve( vstrings.size() );
-                for ( size_t i = 0; i < vstrings.size(); ++i ) { values.push_back( boost::lexical_cast< unsigned int >( vstrings[i] ) ); }
+                COMMA_THROW( comma::exception, op_name << ": the keyword '" << setting[0] << "' is not one of [pad,repeat]" );
             }
+            ++s;
         }
         if ( values.empty() ) { COMMA_THROW( comma::exception, op_name << ": specify at least one " << op_what << " to store as channel" ); }
         if ( values.size() > 4 ) { COMMA_THROW( comma::exception, op_name << ": can have at most 4 output channels" ); }
-        return boost::bind( &cols_to_channels_impl_, _1, cols_to_channels, values, padding, repeat );
+        return boost::bind< value_type_t >( cols_to_channels_impl_< H >(), _1, cols_to_channels, values, padding, repeat );
     }
     if( e[0] == "channels-to-cols" || e[0] == "channels-to-rows" )
     {
         const bool channels_to_cols = e[0] == "channels-to-cols";
-        return boost::bind( &channels_to_cols_impl_, _1, channels_to_cols );
+        return boost::bind< value_type_t >( channels_to_cols_impl_< H >(), _1, channels_to_cols );
     }
     if( e[0] == "swap-channels" )
     {
@@ -1895,23 +2001,23 @@ static boost::function< filter::input_type( filter::input_type ) > make_filter_f
             center->x() = boost::lexical_cast< unsigned int >( s[0] );
             center->y() = boost::lexical_cast< unsigned int >( s[1] );
         }
-        return boost::bind( &cross_impl_, _1, center );
+        return boost::bind< value_type_t >( cross_impl_< H >, _1, center );
     }
     if( e[0] == "circle" ) // todo: quick and dirty, implement using traits
     {
         boost::array< int, 9 > p = {{ 0, 0, 0, 0, 0, 0, 1, 8, 0 }};
         const std::vector< std::string > v = comma::split( e[1], ',' );
         for( unsigned int i = 0; i < v.size(); ++i ) { if( !v[i].empty() ) { p[i] = boost::lexical_cast< int >( v[i] ); } }
-        return boost::bind( &circle_impl_, _1, drawing::circle( cv::Point( p[0], p[1] ), p[2], cv::Scalar( p[5], p[4], p[3] ), p[6], p[7], p[8] ) );
+        return boost::bind< value_type_t >( circle_impl_< H >, _1, drawing::circle( cv::Point( p[0], p[1] ), p[2], cv::Scalar( p[5], p[4], p[3] ), p[6], p[7], p[8] ) );
     }
     if( e[0] == "rectangle" || e[0] == "box" ) // todo: quick and dirty, implement using traits
     {
         boost::array< int, 10 > p = {{ 0, 0, 0, 0, 0, 0, 0, 1, 8, 0 }};
         const std::vector< std::string > v = comma::split( e[1], ',' );
         for( unsigned int i = 0; i < v.size(); ++i ) { if( !v[i].empty() ) { p[i] = boost::lexical_cast< int >( v[i] ); } }
-        return boost::bind( &rectangle_impl_, _1, drawing::rectangle( cv::Point( p[0], p[1] ), cv::Point( p[2], p[3] ), cv::Scalar( p[6], p[5], p[4] ), p[7], p[8], p[9] ) );
+        return boost::bind< value_type_t >( rectangle_impl_< H >, _1, drawing::rectangle( cv::Point( p[0], p[1] ), cv::Point( p[2], p[3] ), cv::Scalar( p[6], p[5], p[4] ), p[7], p[8], p[9] ) );
     }
-    if( e[0] == "gamma" ) { return boost::bind( &gamma_impl_, _1, boost::lexical_cast< double >( e[1] ) ); }
+    if( e[0] == "gamma" ) { return boost::bind< value_type_t >( gamma_impl_< H >, _1, boost::lexical_cast< double >( e[1] ) ); }
     if( e[0] == "remove-mean")
     {
         std::vector< std::string > s = comma::split( e[1], ',' );
@@ -1919,7 +2025,7 @@ static boost::function< filter::input_type( filter::input_type ) > make_filter_f
         unsigned int neighbourhood_size = boost::lexical_cast< unsigned int >( s[0] );
         cv::Size kernel_size(neighbourhood_size, neighbourhood_size);
         double ratio = boost::lexical_cast< double >( s[1] );
-        return boost::bind( &remove_mean_impl_, _1, kernel_size, ratio );
+        return boost::bind< value_type_t >( remove_mean_impl_< H >, _1, kernel_size, ratio );
     }
     if( e[0] == "fft" )
     {
@@ -1942,11 +2048,11 @@ static boost::function< filter::input_type( filter::input_type ) > make_filter_f
                 else if( w[i] == "log" || w[i] == "log-scale" ) { log_scale = true; }
             }
         }
-        return boost::bind( &fft_impl_, _1, direct, complex, magnitude, log_scale, normalize );
+        return boost::bind< value_type_t >( fft_impl_< H >, _1, direct, complex, magnitude, log_scale, normalize );
     }
-    if( e[0] == "flip" ) { return boost::bind( &flip_impl_, _1, 0 ); }
-    if( e[0] == "flop" ) { return boost::bind( &flip_impl_, _1, 1 ); }
-    if( e[0] == "magnitude" ) { return boost::bind( &magnitude_impl_, _1 ); }
+    if( e[0] == "flip" ) { return boost::bind< value_type_t >( flip_impl_< H >, _1, 0 ); }
+    if( e[0] == "flop" ) { return boost::bind< value_type_t >( flip_impl_< H >, _1, 1 ); }
+    if( e[0] == "magnitude" ) { return boost::bind< value_type_t >( magnitude_impl_< H >, _1 ); }
     if( e[0] == "text" )
     {
         if( e.size() <= 1 ) { COMMA_THROW( comma::exception, "text: expected text value" ); }
@@ -1964,7 +2070,7 @@ static boost::function< filter::input_type( filter::input_type ) > make_filter_f
             else if( w[3] == "yellow" ) { s = cv::Scalar( 0, 255, 255 ); }
             else { COMMA_THROW( comma::exception, "expected colour of text in \"" << comma::join( e, '=' ) << "\", got '" << w[3] << "'" ); }
         }
-        return boost::bind( &text_impl_, _1, w[0], p, s );
+        return boost::bind< value_type_t >( text_impl_< H >, _1, w[0], p, s );
     }
     if( e[0] == "convert-to" || e[0] == "convert_to" )
     {
@@ -1974,7 +2080,7 @@ static boost::function< filter::input_type( filter::input_type ) > make_filter_f
         if( it == types_.end() ) { COMMA_THROW( comma::exception, "convert-to: expected target type, got \"" << w[0] << "\"" ); }
         double scale = w.size() > 1 ? boost::lexical_cast< double >( w[1] ) : 1.0;
         double offset = w.size() > 2 ? boost::lexical_cast< double >( w[2] ) : 0.0;
-        return boost::bind( &convert_to_impl_, _1, it->second, scale, offset );
+        return boost::bind< value_type_t >( convert_to_impl_< H >, _1, it->second, scale, offset );
     }
     if( e[0] == "resize" )
     {
@@ -2011,7 +2117,7 @@ static boost::function< filter::input_type( filter::input_type ) > make_filter_f
             default:
                 COMMA_THROW( comma::exception, "expected resize=<width>,<height>, got: \"" << e[1] << "\"" );
         }
-        return boost::bind( &resize_impl_, _1, width, height, w, h, interpolation );
+        return boost::bind< value_type_t >( resize_impl_< H >, _1, width, height, w, h, interpolation );
     }
     if( e[0] == "mask" )
     {
@@ -2019,40 +2125,40 @@ static boost::function< filter::input_type( filter::input_type ) > make_filter_f
         if( e.size() > 2 ) { COMMA_THROW( comma::exception, "mask: expected 1 parameter; got: " << comma::join( e, '=' ) ); }
         std::string filter_string = e[1];
         const std::vector< std::string > w = comma::split( filter_string, '|' ); // quick and dirty, running out of delimiters
-        boost::function< filter::input_type( filter::input_type ) > g = make_filter_functor( comma::split( w[0], ':' ) );
-        for( unsigned int k = 1; k < w.size(); ++k ) { g = boost::bind( make_filter_functor( comma::split( w[k], ':' ) ), boost::bind( g, _1 ) ); }
-        return boost::bind( &mask_impl_, _1, g );
+        functor_type g = make_filter< O, H >::make_filter_functor( comma::split( w[0], ':' ) );
+        for( unsigned int k = 1; k < w.size(); ++k ) { g = boost::bind( make_filter< O, H >::make_filter_functor( comma::split( w[k], ':' ) ), boost::bind( g, _1 ) ); }
+        return boost::bind< value_type_t >( mask_impl_< H >, _1, g );
     }
-    else if( e[0] == "timestamp" ) { return &timestamp_impl_; }
-    else if( e[0] == "transpose" ) { return &transpose_impl_; }
-    else if( e[0] == "split" ) { return &split_impl_; }
+    else if( e[0] == "timestamp" ) { return timestamp_impl_< H >; }
+    else if( e[0] == "transpose" ) { return transpose_impl_< H >; }
+    else if( e[0] == "split" ) { return split_impl_< H >; }
     else if( e[0] == "merge" )
     {
         unsigned int default_number_of_channels = 3;
         unsigned int nchannels = e.size() == 1 ? default_number_of_channels : boost::lexical_cast< unsigned int >( e[1] );
         if ( nchannels == 0 ) { COMMA_THROW( comma::exception, "expected positive number of channels in merge filter, got " << nchannels ); }
-        return boost::bind( &merge_impl_, _1, nchannels );
+        return boost::bind< value_type_t >( merge_impl_< H >, _1, nchannels );
     }
-    if( e[0] == "undistort" ) { return undistort_impl_( e[1] ); }
+    if( e[0] == "undistort" ) { return undistort_impl_< H >( e[1] ); }
     if( e[0] == "invert" )
     {
-        if( e.size() == 1 ) { return &invert_impl_; }
-        else if( e[1] == "brightness" ) { return &invert_brightness_impl_; } // quick and dirty, a secret option
+        if( e.size() == 1 ) { return invert_impl_< H >; }
+        else if( e[1] == "brightness" ) { return invert_brightness_impl_< H >; } // quick and dirty, a secret option
     }
     if(e[0]=="normalize")
     {
-        if(e[1]=="max") { return &normalize_max_impl_; }
-        else if(e[1]=="sum") { return &normalize_sum_impl_; }
-        else if(e[1]=="all") { return &normalize_cv_impl_; }
+        if(e[1]=="max") { return normalize_max_impl_< H >; }
+        else if(e[1]=="sum") { return normalize_sum_impl_< H >; }
+        else if(e[1]=="all") { return normalize_cv_impl_< H >; }
         else { COMMA_THROW( comma::exception, "expected max or sum option for normalize, got" << e[1] ); }
     }
-    if( e[0]=="equalize-histogram" ) { return &equalize_histogram_impl_; }
+    if( e[0]=="equalize-histogram" ) { return equalize_histogram_impl_< H >; }
     if( e[0] == "brightness" || e[0] == "scale" )
     {
         const std::vector< std::string >& s = comma::split( e[1], ',' );
         double scale = boost::lexical_cast< double >( s[0] );
         double offset = s.size() == 1 ? 0.0 : boost::lexical_cast< double >( s[1] );
-        return boost::bind( &brightness_impl_, _1, scale, offset );
+        return boost::bind< value_type_t >( brightness_impl_< H >, _1, scale, offset );
     }
     if( e[0] == "color-map" )
     {
@@ -2071,7 +2177,7 @@ static boost::function< filter::input_type( filter::input_type ) > make_filter_f
         else if( e[1] == "pink" ) { type = cv::COLORMAP_PINK; }
         else if( e[1] == "hot" ) { type = cv::COLORMAP_HOT; }
         else { COMMA_THROW( comma::exception, "expected colour-map type; got: \"" << e[1] << "\"" ); }
-        return boost::bind( &colour_map_impl_, _1, type );
+        return boost::bind< value_type_t >( colour_map_impl_< H >, _1, type );
     }
     if( e[0] == "blur" )
     {
@@ -2111,12 +2217,12 @@ static boost::function< filter::input_type( filter::input_type ) > make_filter_f
             params.sigma_colour = boost::lexical_cast< double >( s[3] ); // max sigma color
         }
         else { COMMA_THROW( comma::exception, "invalid blur type" ); }
-        return boost::bind( &blur_impl_, _1, params );
+        return boost::bind< value_type_t >( blur_impl_< H >, _1, params );
     }
     if( e[0] == "load" )
     {
         if( e.size() < 2 ) { COMMA_THROW( comma::exception, "please specify filename load=<filename>" ); }
-        return load_impl_( e[1] );
+        return load_impl_< H >( e[1] );
     }
     if( e[0] == "map" )
     {
@@ -2125,7 +2231,7 @@ static boost::function< filter::input_type( filter::input_type ) > make_filter_f
         std::string map_filter_options = s.str();
         std::vector< std::string > items = comma::split( map_filter_options, '&' );
         bool permissive = std::find( items.begin()+1, items.end(), "permissive" ) != items.end();
-        return map_impl_( map_filter_options, permissive );
+        return map_impl_< H >( map_filter_options, permissive );
     }
     if( e[0] == "inrange" )
     {
@@ -2133,7 +2239,7 @@ static boost::function< filter::input_type( filter::input_type ) > make_filter_f
         if( s.size() < 2 || s.size() % 2 != 0 ) { COMMA_THROW( comma::exception, "inrange: expected <upper>,<lower> got: \"" << comma::join( e, '=' ) << "\"" ); }
         cv::Scalar lower = scalar_from_strings( &s[0], s.size() / 2 );
         cv::Scalar upper = scalar_from_strings( &s[ s.size() / 2 ], s.size() / 2 );
-        return boost::bind( &inrange_impl_, _1, lower, upper );
+        return boost::bind< value_type_t >( inrange_impl_< H >, _1, lower, upper );
     }
     if( e[0] == "threshold" )
     {
@@ -2143,7 +2249,7 @@ static boost::function< filter::input_type( filter::input_type ) > make_filter_f
         double threshold = otsu ? 0 : boost::lexical_cast< double >( s[0] );
         double maxval = s.size() < 2 ? 255 : boost::lexical_cast< double >( s[1] );
         threshold_t::types type = threshold_t::from_string( s.size() < 3 ? "" : s[2] );
-        return boost::bind( &threshold_impl_, _1, threshold, maxval, type, otsu );
+        return boost::bind< value_type_t >( threshold_impl_< H >, _1, threshold, maxval, type, otsu );
     }
     if( e[0] == "linear-combination" || e[0] == "ratio" )
     {
@@ -2160,7 +2266,7 @@ static boost::function< filter::input_type( filter::input_type ) > make_filter_f
         for( size_t j = 0; j < r.numerator.terms.size(); ++j ) { numerator[j] = r.numerator.terms[j].value; }
         std::vector< double > denominator( r.denominator.terms.size() );
         for( size_t j = 0; j < r.denominator.terms.size(); ++j ) { denominator[j] = r.denominator.terms[j].value; }
-        return boost::bind( &ratio_impl_, _1, numerator, denominator, e[0] );
+        return boost::bind< value_type_t >( ratio_impl_< H >, _1, numerator, denominator, e[0] );
     }
     if( e[0] == "overlay" )
     {
@@ -2173,17 +2279,22 @@ static boost::function< filter::input_type( filter::input_type ) > make_filter_f
             x=boost::lexical_cast<int>(s[1]);
             y=boost::lexical_cast<int>(s[2]);
         }
-        return overlay_impl_( s[0], x, y );
+        return overlay_impl_< H >( s[0], x, y );
     }
-    boost::function< cv_mat::filters::value_type( cv_mat::filters::value_type ) > functor = imaging::vegetation::filters::make_functor( e );
+    boost::function< value_type_t( value_type_t ) > functor = imaging::vegetation::impl::filters< H >::make_functor( e );
     if( functor ) { return functor; }
     COMMA_THROW( comma::exception, "expected filter, got: \"" << comma::join( e, '=' ) << "\"" );
 }
+};
 
-std::vector< filter > filters::make( const std::string& how, unsigned int default_delay )
+template < typename H >
+std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make( const std::string& how, unsigned int default_delay )
 {
+    typedef typename impl::filters< H >::value_type value_type_t;
+    typedef typename impl::filters< H >::filter_type filter_type;
+    
     std::vector< std::string > v = comma::split( how, ';' );
-    std::vector< filter > f;
+    std::vector< filter_type > f;
     if( how == "" ) { return f; }
     std::string name;
     bool modified = false;
@@ -2194,19 +2305,19 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
         {
             unsigned int how_many = boost::lexical_cast< unsigned int >( e[1] );
             if ( how_many == 0 ) { COMMA_THROW( comma::exception, "expected positive number of images to accumulate in accumulate filter, got " << how_many ); }
-            f.push_back( filter( accumulate_impl_( how_many ), false ) );
+            f.push_back( filter_type( accumulate_impl_< H >( how_many ), false ) );
         }
         else if( e[0] == "bayer" ) // kept for backwards-compatibility, use convert-color=BayerBG,BGR etc..
         {
             if( modified ) { COMMA_THROW( comma::exception, "cannot covert from bayer after transforms: " << name ); }
             unsigned int which = boost::lexical_cast< unsigned int >( e[1] ) + 45u; // HACK, bayer as unsigned int, but I don't find enum { BG2RGB, GB2BGR ... } more usefull
-            f.push_back( filter( boost::bind( &cvt_color_impl_, _1, which ) ) );
+            f.push_back( filter_type( boost::bind< value_type_t >( cvt_color_impl_< H >(), _1, which ) ) );
         }
         else if( e[0] == "unpack12" )
         {
             if( modified ) { COMMA_THROW( comma::exception, "cannot covert from 12 bit packed after transforms: " << name ); }
             if(e.size()!=1) { COMMA_THROW( comma::exception, "unexpected arguement: "<<e[1]); }
-            f.push_back( filter( boost::bind( &unpack12_impl_, _1 ) ) );
+            f.push_back( filter_type( boost::bind< value_type_t >( unpack12_impl_< H >, _1 ) ) );
         }
         else if( e[0] == "log" ) // todo: rotate log by size: expose to user
         {
@@ -2244,30 +2355,30 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
             if (period) 
             {   
                 unsigned int seconds = static_cast< unsigned int >( *period );
-                f.push_back( filter( log_impl_( file, boost::posix_time::seconds( seconds ) + boost::posix_time::microseconds( ( *period - seconds ) * 1000000 ), index ), false ) ); 
+                f.push_back( filter_type( log_impl_< H >( file, boost::posix_time::seconds( seconds ) + boost::posix_time::microseconds( ( *period - seconds ) * 1000000 ), index ), false ) ); 
             }
             else if ( size )
             { 
-                f.push_back( filter( log_impl_( file, *size, index), false ) );
+                f.push_back( filter_type( log_impl_< H >( file, *size, index), false ) );
             } 
             else
             { 
                 if( index ) { COMMA_THROW( comma::exception, "log: index should be specified with directory and period or size, not with filename" );  }
-                f.push_back( filter( log_impl_( file ), false ) );
+                f.push_back( filter_type( log_impl_< H >( file ), false ) );
             }
         }
         else if( e[0] == "max" ) // todo: remove this filter; not thread-safe, should be run with --threads=1
         {
-            f.push_back( filter( max_impl_( boost::lexical_cast< unsigned int >( e[1] ), true ), false ) );
+            f.push_back( filter_type( max_impl_< H >( boost::lexical_cast< unsigned int >( e[1] ), true ), false ) );
         }
         else if( e[0] == "min" ) // todo: remove this filter; not thread-safe, should be run with --threads=1
         {
-            f.push_back( filter( max_impl_( boost::lexical_cast< unsigned int >( e[1] ), false ), false ) );
+            f.push_back( filter_type( max_impl_< H >( boost::lexical_cast< unsigned int >( e[1] ), false ), false ) );
         }
         else if( e[0] == "view" )
         {
             unsigned int delay = e.size() == 1 ? default_delay : boost::lexical_cast< unsigned int >( e[1] );
-            f.push_back( filter( boost::bind( &view_impl_, _1, name, delay ), false ) );
+            f.push_back( filter_type( boost::bind< value_type_t >( view_impl_< H >, _1, name, delay ), false ) );
         }
         else if( e[0] == "thumb" )
         {
@@ -2279,7 +2390,7 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
                 if( v.size() >= 1 ) { cols = boost::lexical_cast< unsigned int >( v[0] ); }
                 if( v.size() >= 2 ) { delay = boost::lexical_cast< unsigned int >( v[1] ); }
             }
-            f.push_back( filter( boost::bind( &thumb_impl_, _1, name, cols, delay ), false ) );
+            f.push_back( filter_type( boost::bind< value_type_t >( thumb_impl_< H >, _1, name, cols, delay ), false ) );
         }
         else if( e[0] == "encode" )
         {
@@ -2290,25 +2401,25 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
             }
             if( e.size() < 2 ) { COMMA_THROW( comma::exception, "expected encoding type like jpg, ppm, etc" ); }
             std::string s = e[1];
-            f.push_back( filter( boost::bind( &encode_impl_, _1, s ) ) );
+            f.push_back( filter_type( boost::bind< value_type_t >( encode_impl_< H >, _1, s ) ) );
         }
         else if( e[0] == "grab" )
         {
             if( e.size() < 2 ) { COMMA_THROW( comma::exception, "expected encoding type like jpg, ppm, etc" ); }
             std::string s = e[1];
-            f.push_back( filter( boost::bind( &grab_impl_, _1, s ) ) );
+            f.push_back( filter_type( boost::bind< value_type_t >( grab_impl_< H >, _1, s ) ) );
         }
         else if( e[0] == "file" )
         {
             if( e.size() < 2 ) { COMMA_THROW( comma::exception, "expected file type like jpg, ppm, etc" ); }
             std::string s = e[1];
-            f.push_back( filter( boost::bind( &file_impl_, _1, s ) ) );
+            f.push_back( filter_type( boost::bind< value_type_t >( file_impl_< H >, _1, s ) ) );
         }
         else if( e[0] == "histogram" )
         {
             if( i < v.size() - 1 ) { COMMA_THROW( comma::exception, "expected 'histogram' as the last filter, got \"" << how << "\"" ); }
-            f.push_back( filter( boost::bind( &histogram_impl_, _1 ) ) );
-            f.push_back( filter( NULL ) ); // quick and dirty
+            f.push_back( filter_type( boost::bind< value_type_t >( histogram_impl_< H >, _1 ) ) );
+            f.push_back( filter_type( NULL ) ); // quick and dirty
         }
         else if( e[0] == "simple-blob" )
         {
@@ -2337,14 +2448,14 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
                     if( t.size() > 1 ) { path = s[1]; }
                 }
             }
-            f.push_back( filter( boost::bind( &simple_blob_impl_, _1, cv_read_< cv::SimpleBlobDetector::Params >( config, path ), binary ) ) );
-            f.push_back( filter( NULL ) ); // quick and dirty
+            f.push_back( filter_type( boost::bind< value_type_t >( simple_blob_impl_< H >, _1, cv_read_< cv::SimpleBlobDetector::Params >( config, path ), binary ) ) );
+            f.push_back( filter_type( NULL ) ); // quick and dirty
         }
         else if( e[0] == "null" )
         {
             if( i < v.size() - 1 ) { COMMA_THROW( comma::exception, "expected 'null' as the last filter, got \"" << how << "\"" ); }
             if( i == 0 ) { COMMA_THROW( comma::exception, "'null' as the only filter is not supported; use cv-cat > /dev/null, if you need" ); }
-            f.push_back( filter( NULL ) );
+            f.push_back( filter_type( NULL ) );
         }
         else if ( e[0] == "head" )
         {
@@ -2354,23 +2465,25 @@ std::vector< filter > filters::make( const std::string& how, unsigned int defaul
                 if( next_filter != "null" && next_filter != "encode" ) { COMMA_THROW( comma::exception, "cannot have a filter after head unless next filter is null or encode" ); }
             }
             unsigned int n = e.size() < 2 ? 1 : boost::lexical_cast< unsigned int >( e[1] );
-            f.push_back( filter( boost::bind( &head_impl_, _1, n ), false ) );
+            f.push_back( filter_type( boost::bind< value_type_t >( head_impl_< H >, _1, n ), false ) );
         }
         else
         {
-            f.push_back( filter( make_filter_functor( e ) ) );
+            f.push_back( filter_type( make_filter< cv::Mat, H >::make_filter_functor(e) ) );
         }
         modified = e[0] != "view" && e[0] != "thumb" && e[0] != "split" && e[0] !="unpack12";
     }
     return f;
 }
 
-filters::value_type filters::apply( std::vector< filter >& filters, filters::value_type m )
+template < typename H >
+typename impl::filters< H >::value_type impl::filters< H >::apply( std::vector< filter_type >& filters, typename impl::filters< H >::value_type m )
 {
     for( std::size_t i = 0; i < filters.size(); m = filters[ i++ ].filter_function( m ) );
     return m;
 }
 
+template < typename H >
 static std::string usage_impl_()
 {
     std::ostringstream oss;
@@ -2474,37 +2587,37 @@ static std::string usage_impl_()
     oss << "                                <wait-interval>: a hack for now; milliseconds to wait for image display and key press; default 1" << std::endl;
     oss << std::endl;
     oss << "    operations on subsets of columns, rows, or channels:" << std::endl;
-    oss << "        bands-to-cols=x,[w[,x,w]][|method:<method-name>|output-depth:<depth>]; take a number of columns (bands) from the input, process together by method," << std::endl;
+    oss << "        bands-to-cols=x,w[,x,w][,method:<method-name>,output-depth:<depth>]; take a number of columns (bands) from the input, process together by method," << std::endl;
     oss << "            write into the output, one band (a range of columns) reduced into one column; supported methods: average (default), sum, min, max; the sum method" << std::endl;
     oss << "            requires the explicit output-depth parameter (one of i,f,d or CV_32S, CV_32F, CV_64F) if the input has low depth" << std::endl;
-    oss << "            examples: \"bands-to-cols=12,23|50,30|45,60|100|method:average\"; output an image of 4 columns containing the average" << std::endl;
-    oss << "                          of columns 12-34 (i.e., 12 + 23 - 1), 50-79, 45-104 (overlap is OK), and 100 (default width is 1) from the original image" << std::endl;
-    oss << "                      \"bands-to-cols=12,23|50,30|45,60|100|method:sum|output-depth:d\"; same bands but output an image of 4 columns containing the sum" << std::endl;
+    oss << "            examples: \"bands-to-cols=12,23,50,30,45,60,100,1,method:average\"; output an image of 4 columns containing the average" << std::endl;
+    oss << "                          of columns 12-34 (i.e., 12 + 23 - 1), 50-79, 45-104 (overlap is OK), and 100 (width is 1) from the original image" << std::endl;
+    oss << "                      \"bands-to-cols=12,23,50,30,45,60,100,1,method:sum,output-depth:d\"; same bands but output an image of 4 columns containing the sum" << std::endl;
     oss << "                          of the columns data from the original image; use CV_64F depth (double) as the output format" << std::endl;
-    oss << "        bands-to-rows=x,[w[|x,w]][|method:<method-name>|output-depth:<depth>]; same as bands-to-cols but operate on rows of input instead of columns" << std::endl;
+    oss << "        bands-to-rows=x,w[,x,w][,method:<method-name>,output-depth:<depth>]; same as bands-to-cols but operate on rows of input instead of columns" << std::endl;
     oss << std::endl;
     oss << "        channels-to-cols; opposite to cols-to-channels; unwrap all channels as columns" << std::endl;
     oss << "            example: \"channels-to-cols\" over a 3-channel image: RGB channels of column 0 become columns 0 (single-channel), 1, and 2, RGB channels" << std::endl;
     oss << "            of column 1 become columns 3,4,5, and so on" << std::endl;
     oss << "        channels-to-rows; same as channels-to-cols but operates over rows" << std::endl;
     oss << std::endl;
-    oss << "        cols-to-channels=1,4,5[|pad:value|repeat:step]; opposite to channels-to-cols; stores the listed columns as channels in the output file" << std::endl;
+    oss << "        cols-to-channels=i,j,k[,pad:value,repeat:step]; opposite to channels-to-cols; stores the listed columns as channels in the output file" << std::endl;
     oss << "            input shall be a single-channel stream; up to 4 channels are supported; if 1, 3, or 4 columns are specified, the output would have 1, 3, or 4 channels respectively" << std::endl;
     oss << "            in case of 2 columns, a third empty (zero) channel is added; use the \"pad:value\" option to specify the fill value other then zero" << std::endl;
     oss << "            the repeat option applies the transformation periodically, first for the specified columns, then for columns incremented by one step, and so on; see the examples" << std::endl;
-    oss << "            examples: \"cols-to-channels=6,4|pad:128\"; put column 6 into the R channel, column 4 into the G channel, and fill the B channel with 128" << std::endl;
-    oss << "                      \"cols-to-channels=0,1,2|repeat:3\"; store columns 0,1,2 as RGB channels of column 0 of the output file, then columns 3,4,5 as RGB" << std::endl;
+    oss << "            examples: \"cols-to-channels=6,4,pad:128\"; put column 6 into the R channel, column 4 into the G channel, and fill the B channel with 128" << std::endl;
+    oss << "                      \"cols-to-channels=0,1,2,repeat:3\"; store columns 0,1,2 as RGB channels of column 0 of the output file, then columns 3,4,5 as RGB" << std::endl;
     oss << "                      channels of column 1 of the output file, etc.; conversion stops when all input column indices exceed the image width" << std::endl;
     oss << "                      if one of the input columns exceed the image width, the respective output channel is filled with zeros (or the padding value)" << std::endl;
     oss << std::endl;
-    oss << "        crop-cols=<x>[,<w>[|<x>[,<w>,...: output an image consisting of (multiple) columns starting at x with width w" << std::endl;
-    oss << "            examples: \"crop-cols=2,10|12,10\"; output an image of width 20 taking 2 width-10 columns starting at 2 and 12" << std::endl;
-    oss << "                      \"crop-cols=2|12,10\"; default width is 1, the output image has width 11" << std::endl;
-    oss << "        crop-rows=<y>[,<h>[|<y>[,<h>,...: output an image consisting of (multiple) row blocks starting at y with height h" << std::endl;
-    oss << "            examples: \"crop-rows=5,10|25,5\"; output an image of height 15 taking 2 row blocks starting at 5 and 25 and with heights 10 and 5, respectively" << std::endl;
-    oss << "                      \"crop-rows=5|25|15\"; default block height is 1, block starts can be out of order" << std::endl;
+    oss << "        crop-cols=<x>,<w>[,<x>,<w>,...]: output an image consisting of (multiple) columns starting at x with width w" << std::endl;
+    oss << "            examples: \"crop-cols=2,10,12,10\"; output an image of width 20 taking 2 width-10 columns starting at 2 and 12" << std::endl;
+    oss << "                      \"crop-cols=2,1,12,10\"; width is 1, the output image has width 11" << std::endl;
+    oss << "        crop-rows=<y>,<h>[,<y>,<h>,...]: output an image consisting of (multiple) row blocks starting at y with height h" << std::endl;
+    oss << "            examples: \"crop-rows=5,10,25,5\"; output an image of height 15 taking 2 row blocks starting at 5 and 25 and with heights 10 and 5, respectively" << std::endl;
+    oss << "                      \"crop-rows=5,1,25,1,15,1\"; block height is 1, block starts can be out of order" << std::endl;
     oss << std::endl;
-    oss << "        rows-to-channels=1,4,5[|pad:value|repeat:step]; same as cols-to-channels but operates on rows" << std::endl;
+    oss << "        rows-to-channels=1,4,5[,pad:value,repeat:step]; same as cols-to-channels but operates on rows" << std::endl;
     oss << std::endl;
     oss << "        swap-channels=2,1,0,3; re-order channels; arguments shall be integers from 0 to the total number of input channels" << std::endl;
     oss << "            NYI - for now a placeholder only, possibly can be achieved by other operations" << std::endl;
@@ -2541,15 +2654,16 @@ static std::string usage_impl_()
     oss << "                                     e.g: my-params.txt:blob" << std::endl;
     oss << "                                     if not present, defaults will be used" << std::endl;
     oss << std::endl;
-    oss << snark::imaging::vegetation::filters::usage() << std::endl;
+    oss << snark::imaging::vegetation::impl::filters< H >::usage() << std::endl;
     return oss.str();
 }
 
-const std::string& filters::usage( const std::string & operation )
+template < typename H >
+const std::string& impl::filters< H >::usage( const std::string & operation )
 {
     if ( operation.empty() )
     {
-        static const std::string s = usage_impl_();
+        static const std::string s = usage_impl_< H >();
         return s;
     }
     else
@@ -2566,6 +2680,9 @@ const std::string& filters::usage( const std::string & operation )
         }
     }
 }
+
+template class impl::filters< boost::posix_time::ptime >;
+// template class impl::filters< std::vector< char > >;
 
 } } // namespace snark{ namespace cv_mat {
 
@@ -2585,21 +2702,24 @@ template <> struct traits< map_input_t >
     }
 };
 
-template <> struct traits< snark::cv_mat::log_impl_::logger::indexer >
+template < >
+struct traits< typename snark::cv_mat::log_impl_< boost::posix_time::ptime >::logger::indexer >
 {
-    template < typename K, typename V > static void visit( const K&, const snark::cv_mat::log_impl_::logger::indexer& t, V& v )
+    template < typename K, typename V > static void visit( const K&, const typename snark::cv_mat::log_impl_< boost::posix_time::ptime >::logger::indexer& t, V& v )
     {
         v.apply( "t", t.t );
         v.apply( "file", t.file );
         v.apply( "offset", t.offset );
     }
 
-    template < typename K, typename V > static void visit( const K&, snark::cv_mat::log_impl_::logger::indexer& t, V& v )
+    template < typename K, typename V > static void visit( const K&, typename snark::cv_mat::log_impl_< boost::posix_time::ptime >::logger::indexer& t, V& v )
     {
         v.apply( "t", t.t );
         v.apply( "file", t.file );
         v.apply( "offset", t.offset );
     }
 };
+
+//TODO traits for template type needed
 
 } } // namespace comma { namespace visiting {

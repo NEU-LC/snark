@@ -41,9 +41,20 @@
 namespace snark { namespace graphics { namespace view {
 
 #if Qt3D_VERSION==1
-Reader::Reader( QGLView& viewer, const reader_parameters& params, colored* c, const std::string& label, const Eigen::Vector3d& offset )
+Reader::Reader( QGLView& viewer
+              , const reader_parameters& params
+              , colored* c
+              , const std::string& label
+              , const Eigen::Vector3d& offset )
+#else
+Reader::Reader( const reader_parameters& params
+              , colored* c
+              , const Eigen::Vector3d& offset )
+#endif
     : reader_parameters( params )
+    #if Qt3D_VERSION==1
     , m_viewer( viewer )
+    #endif
     , m_num_points( 0 )
     , m_colored( c )
     , m_shutdown( false )
@@ -53,23 +64,11 @@ Reader::Reader( QGLView& viewer, const reader_parameters& params, colored* c, co
     , m_pass_through( params.pass_through ? &std::cout : 0 )
     , updated_( false )
     , id_( 0 )
+    #if Qt3D_VERSION==1
     , m_label( label )
+    #endif
     , m_offset( offset )
 {}
-#else
-Reader::Reader( const reader_parameters& params, const Eigen::Vector3d& offset )
-    : reader_parameters( params )
-    , m_num_points( 0 )
-    , m_shutdown( false )
-    , m_isStdIn( options.filename == "-" )
-    , m_show( true )
-    , m_istream( options.filename, options.binary() ? comma::io::mode::binary : comma::io::mode::ascii, comma::io::mode::non_blocking )
-    , m_pass_through( params.pass_through ? &std::cout : 0 )
-    , updated_( false )
-    , id_( 0 )
-    , m_offset( offset )
-{}
-#endif
 
 void Reader::shutdown()
 {

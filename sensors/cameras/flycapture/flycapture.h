@@ -91,7 +91,7 @@ class camera
                 typedef std::pair<boost::posix_time::ptime, std::vector<cv::Mat>> frames_pair;
 
                 /// constructor: start capture, call multicam on frame update
-                multicam( std::vector<camera_pair>& cameras );
+                multicam( std::vector<camera_pair>& cameras, const std::vector< unsigned int >& offsets );
 
                 /// destructor: stop capture
                 ~multicam();

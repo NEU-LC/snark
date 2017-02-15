@@ -39,6 +39,7 @@
 #include <QFrame>
 #include <QLabel>
 #include <QLineEdit>
+#include <QCheckBox>
 #ifndef Q_MOC_RUN
 #include <comma/base/types.h>
 #endif
@@ -60,12 +61,14 @@ class IdEdit : public QFrame
     public slots:
         void setValue( comma::uint32 );
         void handleReturnPressed();
+        void checked(int);
 
     private:
         Viewer* m_viewer;
         boost::optional< comma::uint32 > m_id;
         QLineEdit* m_edit;
         QLabel* m_size;
+        QCheckBox* m_check;
 };
 
 } } } // namespace snark { namespace graphics { namespace view {

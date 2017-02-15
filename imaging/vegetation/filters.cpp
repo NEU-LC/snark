@@ -82,15 +82,17 @@ template < typename T > static void set_ndvi_pixel_( cv::Mat& red, const cv::Mat
 //     }
 }
     
-static cv_mat::filters::value_type ndvi_impl_( cv_mat::filters::value_type m ) // too quick, too dirty?
+template < typename H >
+static typename impl::filters< H >::value_type ndvi_impl_( typename impl::filters< H >::value_type m ) // too quick, too dirty?
 {
-    if( m.second.channels() != 4 ) { std::cerr << "cv vegetation filters: expected 4 channels, got " << m.second.channels() << std::endl; return cv_mat::filters::value_type(); }
+    typedef typename  impl::filters< H >::value_type value_type;
+    if( m.second.channels() != 4 ) { std::cerr << "cv vegetation filters: expected 4 channels, got " << m.second.channels() << std::endl; return value_type(); }
     switch( m.second.type() )
     {
         case CV_32FC4: break; //type = CV_32FC3; break;
         case CV_8SC4: //type = CV_8SC3; break;
         case CV_8UC4: //type = CV_8UC3; break;
-        default: std::cerr << "cv vegetation filters: expected type CV_32FC4; got: " << m.second.type() << std::endl; return cv_mat::filters::value_type();
+        default: std::cerr << "cv vegetation filters: expected type CV_32FC4; got: " << m.second.type() << std::endl; return value_type();
     }
     cv::Mat split( m.second.rows * m.second.channels(), m.second.cols, cv_mat::single_channel_type( m.second.type() ) ); // todo: check number of channels!
     std::vector< cv::Mat > channels;
@@ -107,11 +109,13 @@ static cv_mat::filters::value_type ndvi_impl_( cv_mat::filters::value_type m ) /
         case CV_8UC1: //set_ndvi_pixel_< char >( channels[2], channels[3] ); break;
         default: break; // never here
     }
-    return cv_mat::filters::value_type( m.first, channels[2] );
+    return value_type( m.first, channels[2] );
 }
 
-static cv_mat::filters::value_type exponential_combination_impl_( const cv_mat::filters::value_type m, const std::vector< double >& powers)
+template < typename H >
+static typename impl::filters< H >::value_type exponential_combination_impl_( const typename impl::filters< H >::value_type m, const std::vector< double >& powers)
 {
+    typedef typename  impl::filters< H >::value_type value_type;
     if( m.second.channels() != static_cast< int >( powers.size() ) ) { COMMA_THROW( comma::exception, "exponential-combination: the number of powers does not match the number of channels; channels = " << m.second.channels() << ", powers = " << powers.size() ); }
     int single_type=cv_mat::single_channel_type(m.second.type());
     if( single_type != CV_32FC1 && single_type != CV_64FC1) { COMMA_THROW( comma::exception, "expected image type CV_32FC1 or CV_64FC1; got: " << cv_mat::type_as_string( m.second.type() ) << "single type: " <<cv_mat::type_as_string(single_type) ); }
@@ -127,26 +131,28 @@ static cv_mat::filters::value_type exponential_combination_impl_( const cv_mat::
     //combine
     result.setTo(cv::Scalar(1,1,1,1));
     for(unsigned int i=0;i<chs;i++) { cv::multiply(result,planes[i],result); }
-    return cv_mat::filters::value_type(m.first, result);
+    return value_type(m.first, result);
 }
 
-boost::function< cv_mat::filters::value_type( cv_mat::filters::value_type ) > filters::make_functor( const std::vector< std::string >& e )
+template < typename H >
+boost::function< typename impl::filters< H >::value_type( typename impl::filters< H >::value_type ) > impl::filters< H >::make_functor( const std::vector< std::string >& e )
 {
-    if( e[0] == "ndvi" ) { return boost::bind( &ndvi_impl_, _1 ); }
+    if( e[0] == "ndvi" ) { return boost::bind< value_type >( ndvi_impl_< H >, _1 ); }
     if( e[0]=="exponential-combination" )
     {
         const std::vector< std::string >& s = comma::split( e[1], ',' );
         if( s[0].empty() ) { COMMA_THROW( comma::exception, "exponential-combination: expected powers got: \"" << e[1] << "\"" ); }
         std::vector< double > power( s.size() );
         for( unsigned int j = 0; j < s.size(); ++j ) { power[j] = boost::lexical_cast< double >( s[j] ); }
-        return boost::bind( &exponential_combination_impl_, _1, power );
+        return boost::bind< value_type >( exponential_combination_impl_< H >, _1, power );
     }
     return NULL;
 }
 
-boost::optional< cv_mat::filter > filters::make( const std::string& what )
+template < typename H >
+boost::optional< typename impl::filters< H >::filter > impl::filters< H >::make( const std::string& what )
 {
-    boost::function< cv_mat::filters::value_type( cv_mat::filters::value_type ) > functor = make_functor( what );
+    boost::function< value_type( value_type ) > functor = make_functor( what );
     if( functor ) { return cv_mat::filter( functor ); }
     return boost::none;
 }
@@ -160,10 +166,13 @@ static std::string usage_impl_()
     return oss.str();
 }
 
-const std::string& filters::usage()
+template < typename H >
+const std::string& impl::filters< H >::usage()
 {
     static const std::string s = usage_impl_();
     return s;
 }
+
+template class impl::filters< boost::posix_time::ptime >;
 
 } } } // namespace snark { namespace imaging { namespace vegetation {

@@ -56,16 +56,19 @@ int main( int argc, char** argv )
     {
         std::vector<std::string> camera_strings;
         std::string fields;
+        std::string offsets_option;
         unsigned int discard;
         boost::program_options::options_description description( "options" );
         std::vector<snark::cameras::flycapture::camera::multicam::camera_pair> cameras;
         std::string use_software_trigger_option;
+        std::vector< unsigned int > offsets;
 
         description.add_options()
             ( "help,h", "display help message" )
             ( "camera", boost::program_options::value< std::vector<std::string> >(), "a camera_string specifying the serial to connect to as well as any attributes to set" )
             ( "trigger", boost::program_options::value< std::string >( &use_software_trigger_option )->default_value( "software" ), "sets trigger type software|hardware" )
             ( "fields,f", boost::program_options::value< std::string >( &fields )->default_value( "t,rows,cols,type" ), "header fields, possible values: t,rows,cols,type,size" )
+            ( "offsets,o", boost::program_options::value< std::string >( &offsets_option ), "frame offsets for each camera to eliminate frame offset and synchronise frames e.g. --offsets=0,1 to offset second camera" )
             ( "list-cameras", "list all cameras and exit" )
             ( "list-attributes", "output current camera attributes" )
             ( "verbose,v", "be more verbose" )
@@ -149,6 +152,15 @@ int main( int argc, char** argv )
             std::cerr << "expected --trigger set as hardware or software, got " << use_software_trigger_option << std::endl;
             exit( 1 );
         }
+
+        if( vm.count( "offsets" ) )
+        {
+            for( auto offset_str : comma::split( offsets_option, "," ) )
+            {
+                offsets.push_back( boost::lexical_cast< unsigned int >( offset_str ) );
+            }
+        }
+
         bool use_software_trigger;
         use_software_trigger_option == "hardware" ? use_software_trigger = false : use_software_trigger = true;
         
@@ -169,7 +181,7 @@ int main( int argc, char** argv )
         { serialization.reset( new snark::cv_mat::serialization( fields, format, vm.count( "header" ) ) ); }       
         
         if( verbose ) { std::cerr << "flycapture-multicam: connecting..." << std::endl; }
-        multicam.reset( new snark::cameras::flycapture::camera::multicam( cameras ) );
+        multicam.reset( new snark::cameras::flycapture::camera::multicam( cameras, offsets ) );
         if( verbose ) { std::cerr << "flycapture-multicam: connected" << std::endl; }
 
         static std::unique_ptr<cv::Mat>  output_image;

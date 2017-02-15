@@ -329,7 +329,7 @@ namespace snark{ namespace cameras{ namespace flycapture{
     class camera::multicam::impl
     {
     public:
-        impl(std::vector<camera_pair>& camera_pairs)
+        impl( std::vector<camera_pair>& camera_pairs, const std::vector< unsigned int >& offsets )
         : good( false )
         {
             for (camera_pair& pair : camera_pairs)
@@ -339,6 +339,7 @@ namespace snark{ namespace cameras{ namespace flycapture{
                 cameras_.push_back(std::unique_ptr<camera::impl>(new camera::impl(serial, attributes)));
             }
             if (cameras_.size()) { good = true; }
+            apply_offsets( offsets );
         }
 
         ~impl()
@@ -350,6 +351,16 @@ namespace snark{ namespace cameras{ namespace flycapture{
             if (good) { 
                 for (auto& camera : cameras_)
                 { camera->software_trigger(false); }
+            }
+        }
+
+        void apply_offsets( const std::vector< unsigned int >& offsets )
+        {
+            if( offsets.empty() ) { return; }
+            if( cameras_.size() != offsets.size() ) { COMMA_THROW( comma::exception, "expected offsets number equal to number of cameras: " << cameras_.size() << "; got: " << offsets.size() ); }
+            for( unsigned int i = 0; i < offsets.size(); ++i )
+            {
+                for ( unsigned int j = 0; j < offsets[i]; ++j){ const auto pair = cameras_[i]->read(); }
             }
         }
 
@@ -379,7 +390,7 @@ namespace snark{ namespace cameras{ namespace flycapture{
     
 } } } //namespace snark{ namespace cameras{ namespace flycapture{
 
-    namespace snark{ namespace cameras{ namespace flycapture{
+    namespace snark{ namespace cameras{ namespace flycapture {
 
 // flycapture class
 
@@ -402,10 +413,7 @@ namespace snark{ namespace cameras{ namespace flycapture{
         camera::attributes_type camera::attributes() const { return get_attributes( pimpl_->handle() ); }
 
 // camera::multicam class
-        camera::multicam::multicam(std::vector<camera_pair>& cameras)
-        : pimpl_( new multicam::impl( cameras ) )
-        {
-        }
+        camera::multicam::multicam( std::vector<camera_pair>& cameras, const std::vector< unsigned int >& offsets ) : pimpl_( new multicam::impl( cameras, offsets ) ) {}
 
         camera::multicam::~multicam() { delete pimpl_; }
 

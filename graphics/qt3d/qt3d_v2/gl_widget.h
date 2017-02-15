@@ -31,6 +31,7 @@
 #define SNARK_GRAPHICS_QT3D_GLWIDGET_H_
 
 #include <boost/optional.hpp>
+#include <boost/shared_ptr.hpp>
 #include <QOpenGLWidget>
 #include <QOpenGLFunctions>
 #include <QOpenGLVertexArrayObject>
@@ -48,7 +49,9 @@ class gl_widget : public QOpenGLWidget, protected QOpenGLFunctions
     Q_OBJECT
 
     public:
-        gl_widget( buffer_provider* buffer, const camera_options& camera_options, QWidget *parent = 0 );
+        gl_widget( std::vector< boost::shared_ptr< buffer_provider > > buffers
+                 , const camera_options& camera_options
+                 , QWidget *parent = 0 );
         ~gl_widget();
 
         QSize minimumSizeHint() const Q_DECL_OVERRIDE;
@@ -75,7 +78,8 @@ class gl_widget : public QOpenGLWidget, protected QOpenGLFunctions
         boost::optional< QVector3D > pixel_nearest_centre( const std::vector< float >& depth, int search_width );
 
         QPoint last_pos_;
-        buffer_provider* buffer_;
+        std::vector< boost::shared_ptr< buffer_provider > > buffers_;
+        std::size_t total_buffer_size_;
         QOpenGLVertexArrayObject vao_;
         QOpenGLBuffer vbo_;
         QOpenGLShaderProgram *program_;
