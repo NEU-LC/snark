@@ -139,6 +139,7 @@ template < typename H >
 void pipeline< H >::run() { m_pipeline.run( m_reader, m_filter ); m_reader.join(); }
 
 template class pipeline< boost::posix_time::ptime >;
+template class pipeline< snark::cv_mat::serialization::header::buffer_t >;
 
 } //namespace impl {
 

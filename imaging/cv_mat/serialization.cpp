@@ -89,7 +89,7 @@ serialization::serialization( const serialization::options& options )
     std::vector< std::string > v = comma::split( fields, "," );
     
     std::vector< std::string > no_timestamp;
-    for( unsigned int i = 0; i < v.size(); ++i ) { if( v[i] == "t" ) { no_timestamp.push_back(v[i]); } }
+    for( unsigned int i = 0; i < v.size(); ++i ) { no_timestamp.push_back( v[i] != "t" ? v[i] : std::string() ); } // blank out timestamp field
     
     comma::csv::format format;
     if( options.format.elements().empty() )
@@ -207,24 +207,6 @@ std::pair< serialization::header::buffer_t, cv::Mat > serialization::read_with_h
     
     return std::pair< header::buffer_t, cv::Mat >( m_buffer, p.second );
 }
-
-
-// void serialization::write( std::ostream& os, const std::pair< boost::posix_time::ptime, cv::Mat >& m, bool flush )
-// {
-//     if( m_binary )
-//     {
-//         header h( m );
-//         m_binary->put( h, &m_buffer[0] );
-//         os.write( &m_buffer[0], m_buffer.size() );
-//     }
-//     if( !m_headerOnly )
-//     {
-//         os.write( reinterpret_cast< const char* >( m.second.datastart )
-//                 , m.second.dataend - m.second.datastart );
-//     }
-//     if( flush ) { os.flush(); }
-// }
-// - replace timestamp fields with empty field
 
 void serialization::write( std::ostream& os, const std::pair< boost::posix_time::ptime, cv::Mat >& m, bool flush )
 {

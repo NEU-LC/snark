@@ -44,7 +44,8 @@
 #include "../cv_mat/pipeline.h"
 #include "../cv_mat/detail/help.h"
 
-typedef std::pair< boost::posix_time::ptime, cv::Mat > pair;
+typedef std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat > pair;
+typedef snark::cv_mat::serialization::binary_type binary_type;
 using snark::tbb::bursty_reader;
 
 class rate_limit /// timer class, sleeping if faster than the specified fps
@@ -70,30 +71,44 @@ class rate_limit /// timer class, sleeping if faster than the specified fps
 
 static comma::signal_flag is_shutdown( comma::signal_flag::hard );
 
-static pair capture( cv::VideoCapture& capture, rate_limit& rate )
+static pair capture( cv::VideoCapture& capture, rate_limit& rate, const binary_type& binary )
 {
     cv::Mat image;
     capture >> image;
     rate.wait();
-    return std::make_pair( boost::posix_time::microsec_clock::universal_time(), image );
+    
+    snark::cv_mat::serialization::header h(image);
+    h.timestamp = boost::posix_time::microsec_clock::universal_time();
+    
+    static snark::cv_mat::serialization::header::buffer_t buffer( binary->format().size() );
+    
+    binary->put( h, &buffer[0] );
+    return std::make_pair( buffer , image );
 }
 
-static pair output_single_image( const cv::Mat& image )
+static pair output_single_image( const cv::Mat& image, const binary_type& binary )
 {
     static bool done = false;
     if( done ) { return pair(); }
     done = true;
-    return std::make_pair( boost::posix_time::microsec_clock::universal_time(), image );
+    
+    snark::cv_mat::serialization::header h(image);
+    h.timestamp = boost::posix_time::microsec_clock::universal_time();
+    
+    static snark::cv_mat::serialization::header::buffer_t buffer( binary->format().size() );
+    
+    binary->put( h, &buffer[0] );
+    return std::make_pair( buffer, image );
 }
 
 static pair read( snark::cv_mat::serialization& input, rate_limit& rate )
 {
     if( is_shutdown || std::cin.eof() || std::cin.bad() || !std::cin.good() ) { return pair(); }
     rate.wait();
-    return input.read( std::cin );
+    return input.read_with_header( std::cin );
 }
 
-void skip( unsigned int number_of_frames_to_skip, cv::VideoCapture& video_capture, rate_limit& rate ) { for( unsigned int i=0; i<number_of_frames_to_skip; i++ ) { capture( video_capture, rate ); } }
+void skip( unsigned int number_of_frames_to_skip, cv::VideoCapture& video_capture, rate_limit& rate, const binary_type& binary ) { for( unsigned int i=0; i<number_of_frames_to_skip; i++ ) { capture( video_capture, rate, binary ); } }
 void skip( unsigned int number_of_frames_to_skip, snark::cv_mat::serialization& input, rate_limit& rate ) { for( unsigned int i=0; i<number_of_frames_to_skip; i++ ) { read( input, rate ); } }
 
 int main( int argc, char** argv )
@@ -211,25 +226,34 @@ int main( int argc, char** argv )
         snark::cv_mat::serialization output( output_options );
         boost::scoped_ptr< bursty_reader< pair > > reader;
         cv::Mat image;
+        
+        typedef snark::cv_mat::serialization serialization;
+        typedef snark::imaging::applications::pipeline_with_header pipeline_with_header;
+        typedef snark::cv_mat::filters_with_header filters_with_header;
+        
         if( vm.count( "file" ) )
         {
+            //TODO file can have custom header fields?
+            const serialization::binary_type& input_binary = serialization( serialization::options() ).input_binary();    // default header fields
             if( !vm.count( "video" ) ) { image = cv::imread( name ); }
             if( image.data )
             {
-                reader.reset( new bursty_reader< pair >( boost::bind( &output_single_image, boost::cref( image ) ), discard, capacity ) );
+                reader.reset( new bursty_reader< pair >( boost::bind( &output_single_image, boost::cref( image ), boost::cref(input_binary) ), discard, capacity ) );
             }
             else
             {
                 video_capture.open( name );
-                skip( number_of_frames_to_skip, video_capture, rate );
-                reader.reset( new bursty_reader< pair >( boost::bind( &capture, boost::ref( video_capture ), boost::ref( rate ) ), discard, capacity ) );
+                skip( number_of_frames_to_skip, video_capture, rate, input_binary );
+                reader.reset( new bursty_reader< pair >( boost::bind( &capture, boost::ref( video_capture ), boost::ref( rate ), boost::cref(input_binary) ), discard, capacity ) );
             }
         }
         else if( vm.count( "camera" ) || vm.count( "id" ) )
         {
+            const serialization::binary_type& input_binary = serialization( serialization::options() ).input_binary();    // default header fields
+            
             video_capture.open( device );
-            skip( number_of_frames_to_skip, video_capture, rate );
-            reader.reset( new bursty_reader< pair >( boost::bind( &capture, boost::ref( video_capture ), boost::ref( rate ) ), discard ) );
+            skip( number_of_frames_to_skip, video_capture, rate, input_binary );
+            reader.reset( new bursty_reader< pair >( boost::bind( &capture, boost::ref( video_capture ), boost::ref( rate ), boost::cref(input_binary) ), discard ) );
         }
         else
         {
@@ -237,7 +261,7 @@ int main( int argc, char** argv )
             reader.reset( new bursty_reader< pair >( boost::bind( &read, boost::ref( input ), boost::ref( rate ) ), discard, capacity ) );
         }
         const unsigned int default_delay = vm.count( "file" ) == 0 ? 1 : 200; // HACK to make view work on single files
-        snark::imaging::applications::pipeline pipeline( output, snark::cv_mat::filters::make( filters, input.input_binary(), default_delay ), *reader, number_of_threads );
+        pipeline_with_header pipeline( output, filters_with_header::make( filters, input.input_binary(), default_delay ), *reader, number_of_threads );
         pipeline.run();
         if( vm.count( "stay" ) ) { while( !is_shutdown ) { boost::this_thread::sleep( boost::posix_time::seconds( 1 ) ); } }
         return 0;
