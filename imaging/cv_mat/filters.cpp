@@ -709,13 +709,14 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
 {            
     public:
         typedef typename impl::filters< H >::value_type value_type;
+        typedef serialization::binary_type binary_type;
         log_impl_() {}
 
-        log_impl_( const std::string& filename ) : logger_( new logger( filename ) ) {}
+        log_impl_( const std::string& filename, const binary_type& binary ) : logger_( new logger( filename, binary ) ) {}
 
-        log_impl_( const std::string& directory, boost::posix_time::time_duration period, bool index ) : logger_( new logger( directory, period, index ) ) {}
+        log_impl_( const std::string& directory, boost::posix_time::time_duration period, bool index, const binary_type& binary ) : logger_( new logger( directory, period, index, binary ) ) {}
 
-        log_impl_( const std::string& directory, unsigned int size, bool index ) : logger_( new logger( directory, size, index ) ) {}
+        log_impl_( const std::string& directory, unsigned int size, bool index, const binary_type& binary ) : logger_( new logger( directory, size, index, binary ) ) {}
 
         value_type operator()( value_type m ) { return logger_->operator()( m ); }
         
@@ -724,14 +725,20 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
             public:
                 logger() : size_( 0 ), count_( 0 ) {}
 
-                logger( const std::string& filename ) : ofstream_( new std::ofstream( &filename[0] ) ), serialization_( "t,rows,cols,type", comma::csv::format( "t,3ui" ) ), size_( 0 ), count_( 0 ) 
+                logger( const std::string& filename, const binary_type& binary ) 
+                    : ofstream_( new std::ofstream( &filename[0] ) )
+                    , serialization_( "t,rows,cols,type", comma::csv::format( "t,3ui" ) ), size_( 0 ), count_( 0 ), binary_(binary) 
                 { 
                     if( !ofstream_->is_open() ) { COMMA_THROW( comma::exception, "failed to open \"" << filename << "\"" ); } 
                 }
 
-                logger( const std::string& directory, boost::posix_time::time_duration period, bool index ) : directory_( directory ), serialization_( "t,rows,cols,type", comma::csv::format( "t,3ui" ) ), period_( period ), size_( 0 ), count_( 0 ), index_(index, directory) { }
+                logger( const std::string& directory, boost::posix_time::time_duration period, bool index, const binary_type& binary ) 
+                    : directory_( directory ), serialization_( "t,rows,cols,type", comma::csv::format( "t,3ui" ) )
+                    , period_( period ), size_( 0 ), count_( 0 ), index_(index, directory, binary), binary_(binary) { }
 
-                logger( const std::string& directory, unsigned int size, bool index ) : directory_( directory ), serialization_( "t,rows,cols,type", comma::csv::format( "t,3ui" ) ), size_( size ), count_( 0 ), index_(index, directory) { }
+                logger( const std::string& directory, unsigned int size, bool index, const binary_type& binary ) 
+                    : directory_( directory ), serialization_( "t,rows,cols,type", comma::csv::format( "t,3ui" ) )
+                    , size_( size ), count_( 0 ), index_(index, directory, binary), binary_(binary) { }
 
                 ~logger() { if( ofstream_ ) { ofstream_->close(); } }
 
@@ -743,13 +750,14 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
                     update_on_time_( m );
                     if( !ofstream_ )
                     {
-                        std::string filename = directory_ + '/' + boost::posix_time::to_iso_string( header_traits< H >::timestamp(m.first) ) + ".bin";
+                        std::string filename = directory_ + '/' + header_traits< H >::filename(m.first, binary_, "bin");
                         ofstream_.reset( new std::ofstream( &filename[0] ) );
                         if( !ofstream_->is_open() ) { COMMA_THROW( comma::exception, "failed to open \"" << filename << "\"" ); }
                     }
-                    writer< H >::write( serialization_, *ofstream_, m );
-//                     index_.write( m, serialization_.size( m ) );
-                    index_.write( m, writer< H >::size( serialization_, m ) );
+                    serialization_.write(*ofstream_, m);
+//                     writer< H >::write( serialization_, *ofstream_, m );
+                    index_.write( m, serialization_.size( m ) );
+//                     index_.write( m, writer< H >::size( serialization_, m ) );
                     return m;
                 }
                 
@@ -760,10 +768,11 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
                     comma::uint64 offset;
                     boost::scoped_ptr< std::ofstream > filestream;
                     boost::scoped_ptr< comma::csv::binary_output_stream< indexer > > csv_stream;
+                    binary_type binary_;
                     
                     indexer() : file( 0 ), offset( 0 ) {}
                     
-                    indexer( bool enabled, const std::string& directory ) : file ( 0 ), offset( 0 )
+                    indexer( bool enabled, const std::string& directory, const binary_type& binary ) : file ( 0 ), offset( 0 ), binary_(binary)
                     {
                         if( !enabled ) { return; }
                         std::string index_file = directory + "/index.bin";
@@ -778,7 +787,7 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
                     
                     void write( const value_type& m, std::size_t size )
                     {
-                        t = header_traits< H >::timestamp( m.first );
+                        t = header_traits< H >::timestamp( m.first, binary_ );
                         if( csv_stream ) 
                         { 
                             csv_stream->write( *this );
@@ -798,6 +807,7 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
                 unsigned int size_;
                 unsigned int count_;
                 indexer index_;
+                binary_type binary_;
 
                 void update_on_size_()
                 {
@@ -812,7 +822,7 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
                 void update_on_time_( value_type m )
                 {
                     if( !period_ ) { return; }
-                    boost::posix_time::ptime t = header_traits< H >::timestamp( m.first );
+                    boost::posix_time::ptime t = header_traits< H >::timestamp( m.first, binary_ );
                     if( start_.is_not_a_date_time() ) { start_ = t; return; }
                     if( ( t - start_ ) < *period_ ) { return; }
                     start_ = t;
@@ -839,18 +849,12 @@ static typename impl::filters< H >::value_type merge_impl_( typename impl::filte
 }
 
 template < typename H >
-static typename impl::filters< H >::value_type view_impl_( typename impl::filters< H >::value_type m, std::string name, unsigned int delay )
+static typename impl::filters< H >::value_type view_impl_( typename impl::filters< H >::value_type m, std::string name, unsigned int delay, const serialization::binary_type& binary )
 {
     cv::imshow( &name[0], m.second );
     char c = cv::waitKey( delay );
     if( c == 27 ) { return typename impl::filters< H >::value_type(); } // HACK to notify application to exit
-    if( c == ' ' )
-    {
-        std::stringstream filename;
-        boost::posix_time::ptime t = header_traits< H >::timestamp( m.first );
-        filename <<  boost::posix_time::to_iso_string( t.is_not_a_date_time() ? boost::posix_time::microsec_clock::universal_time() : t ) << ".ppm";
-        cv::imwrite( filename.str(), m.second );
-    }
+    if( c == ' ' ) { cv::imwrite( header_traits< H >::filename( m.first, binary, "ppm" ), m.second ); }
     return m;
 }
 
@@ -932,19 +936,26 @@ static void encode_impl_check_type( const typename impl::filters< H >::value_typ
 }
 
 template < typename H >
-static typename impl::filters< H >::value_type encode_impl_( typename impl::filters< H >::value_type m, const std::string& type )
-{
-    if( is_empty< H >( m ) ) { return m; }
-    encode_impl_check_type< H >( m, type );
-    std::vector< unsigned char > buffer;
-    std::string format = "." + type;
-    cv::imencode( format, m.second, buffer );
-    typename impl::filters< H >::value_type p;
-    p.first = m.first;
-    p.second = cv::Mat( buffer.size(), 1, CV_8UC1 );
-    ::memcpy( p.second.data, &buffer[0] , buffer.size() );
-    return p;
-}
+struct encode_impl_ { 
+    typedef typename impl::filters< H >::value_type value_type;
+    serialization::binary_type binary_;
+    
+    encode_impl_< H >( const serialization::binary_type& b ) : binary_(b) {}
+    value_type operator()( const value_type& m, const std::string& type )
+    {
+        if( is_empty< H >( m, binary_ ) ) { return m; }
+        encode_impl_check_type< H >( m, type );
+        std::vector< unsigned char > buffer;
+        std::string format = "." + type;
+        cv::imencode( format, m.second, buffer );
+        typename impl::filters< H >::value_type p;
+        p.first = m.first;
+        p.second = cv::Mat( buffer.size(), 1, CV_8UC1 );
+        ::memcpy( p.second.data, &buffer[0] , buffer.size() );
+        return p;
+    }
+
+};
 
 static comma::csv::options make_header_csv()
 {
@@ -955,7 +966,7 @@ static comma::csv::options make_header_csv()
 }
 
 template < typename H >
-static typename impl::filters< H >::value_type histogram_impl_( typename impl::filters< H >::value_type m )
+static typename impl::filters< H >::value_type histogram_impl_( typename impl::filters< H >::value_type m, const serialization::binary_type& binary )
 {
     static comma::csv::output_stream< serialization::header > os( std::cout, make_header_csv() ); // todo: quick and dirty; generalize imaging::serialization::pipeline
     if( single_channel_type( m.second.type() ) != CV_8UC1 ) { std::cerr << "cv-cat: histogram: expected an unsigned char image type; got " << type_as_string( m.second.type() ) << std::endl; exit( 1 ); }
@@ -969,7 +980,7 @@ static typename impl::filters< H >::value_type histogram_impl_( typename impl::f
         for( int c = 0; c < mat.cols; ++c ) { for( unsigned int i = 0; i < channels.size(); ++channels[i][*p], ++i, ++p ); }
     }
     serialization::header h;
-    h.timestamp = header_traits< H >::timestamp( m.first );
+    h.timestamp = header_traits< H >::timestamp( m.first, binary );
     h.rows = m.second.rows;
     h.cols = m.second.cols;
     h.type = m.second.type();
@@ -999,44 +1010,51 @@ template < typename T > static T cv_read_( const std::string& filename = "", con
 }
 
 template < typename H >
-static typename impl::filters< H >::value_type simple_blob_impl_( typename impl::filters< H >::value_type m, const cv::SimpleBlobDetector::Params& params, bool binary )
-{
-    static cv::SimpleBlobDetector detector( params ); // quick and dirty
-    std::vector< cv::KeyPoint > key_points;
-    detector.detect( m.second, key_points );
-    static comma::csv::output_stream< snark::timestamped< cv::KeyPoint > > os( std::cout, make_csv_options_< snark::timestamped< cv::KeyPoint > >( binary ) );
-    for( unsigned int i = 0; i < key_points.size(); ++i ) { os.write( snark::timestamped< cv::KeyPoint >( header_traits< H >::timestamp( m.first ), key_points[i] ) ); }
-    return m;
-}
+struct simple_blob_impl_ {
+    typedef typename impl::filters< H >::value_type value_type; 
+    serialization::binary_type binary_;
+    
+    simple_blob_impl_< H >( const serialization::binary_type& binary ) : binary_(binary) {}
+    value_type operator()( const value_type& m, const cv::SimpleBlobDetector::Params& params, bool is_binary )
+    {
+        static cv::SimpleBlobDetector detector( params ); // quick and dirty
+        std::vector< cv::KeyPoint > key_points;
+        detector.detect( m.second, key_points );
+        static comma::csv::output_stream< snark::timestamped< cv::KeyPoint > > os( std::cout, make_csv_options_< snark::timestamped< cv::KeyPoint > >( is_binary ) );
+        for( unsigned int i = 0; i < key_points.size(); ++i ) { os.write( snark::timestamped< cv::KeyPoint >( header_traits< H >::timestamp( m.first, binary_ ), key_points[i] ) ); }
+        return m;
+    }
+};
 
 template < typename H >
-static typename impl::filters< H >::value_type grab_impl_( typename impl::filters< H >::value_type m, const std::string& type )
+static typename impl::filters< H >::value_type grab_impl_( typename impl::filters< H >::value_type m, const std::string& type, const serialization::binary_type& binary )
 {
-    boost::posix_time::ptime t = header_traits< H >::timestamp( m.first );
-    std::string filename = boost::posix_time::to_iso_string( t.is_not_a_date_time() ? boost::posix_time::microsec_clock::universal_time() : t );
-    filename += "." + type;
-    cv::imwrite( filename, m.second );
+    cv::imwrite( header_traits< H >::filename( m.first, binary, type ), m.second );
     return typename impl::filters< H >::value_type(); // HACK to notify application to exit
 }
 
 template < typename H >
-static typename impl::filters< H >::value_type file_impl_( typename impl::filters< H >::value_type m, const std::string& type )
+static typename impl::filters< H >::value_type file_impl_( typename impl::filters< H >::value_type m, const std::string& type, const serialization::binary_type& binary )
 {
     encode_impl_check_type< H >( m, type );
-    boost::posix_time::ptime t = header_traits< H >::timestamp( m.first );
-    std::string filename = boost::posix_time::to_iso_string( t.is_not_a_date_time() ? boost::posix_time::microsec_clock::universal_time() : t );
-    filename += "." + type;
-    cv::imwrite( filename, m.second );
+    cv::imwrite( header_traits< H >::filename( m.first, binary, type ), m.second );
     return m;
 }
 
 template < typename H >
-static typename impl::filters< H >::value_type timestamp_impl_( typename impl::filters< H >::value_type m )
-{
-    cv::rectangle( m.second, cv::Point( 5, 5 ), cv::Point( 228, 25 ), cv::Scalar( 0xffff, 0xffff, 0xffff ), CV_FILLED, CV_AA );
-    cv::putText( m.second, boost::posix_time::to_iso_string( header_traits< H >::timestamp(m.first) ), cv::Point( 10, 20 ), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar( 0, 0, 0 ), 1, CV_AA );
-    return m;
-}
+struct timestamp_impl_ {
+    typedef typename impl::filters< H >::value_type value_type;
+    
+    serialization::binary_type binary_;
+    timestamp_impl_< H >( const serialization::binary_type& binary ) : binary_(binary) {}
+    
+    value_type operator()( value_type m )
+    {
+        cv::rectangle( m.second, cv::Point( 5, 5 ), cv::Point( 228, 25 ), cv::Scalar( 0xffff, 0xffff, 0xffff ), CV_FILLED, CV_AA );
+        cv::putText( m.second, boost::posix_time::to_iso_string( header_traits< H >::timestamp(m.first, binary_) ), cv::Point( 10, 20 ), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar( 0, 0, 0 ), 1, CV_AA );
+        return m;
+    }
+};
 
 template < typename H >
 struct count_impl_
@@ -1055,7 +1073,7 @@ struct count_impl_
 };
 
 template < typename H >
-static typename impl::filters< H >::value_type invert_impl_( typename impl::filters< H >::value_type m )
+static typename impl::filters< H >::value_type invert_impl_( const typename impl::filters< H >::value_type& m )
 {
     if( m.second.type() != CV_8UC1 && m.second.type() != CV_8UC2 && m.second.type() != CV_8UC3 && m.second.type() != CV_8UC4 ) { COMMA_THROW( comma::exception, "expected image type ub, 2ub, 3ub, 4ub; got: " << type_as_string( m.second.type() ) ); }
     for( unsigned char* c = m.second.datastart; c < m.second.dataend; *c = 255 - *c, ++c );
@@ -1799,7 +1817,8 @@ struct make_filter {
     typedef typename filter_type::input_type input_type;
     typedef typename filter_type::output_type output_type;
     typedef boost::function< input_type( input_type ) > functor_type;
-static functor_type make_filter_functor( const std::vector< std::string >& e )
+    typedef serialization::binary_type binary_type;
+static functor_type make_filter_functor( const std::vector< std::string >& e, const binary_type& binary )
 {
     if( e[0] == "convert-color" || e[0] == "convert_color" )
     {
@@ -2134,11 +2153,11 @@ static functor_type make_filter_functor( const std::vector< std::string >& e )
         if( e.size() > 2 ) { COMMA_THROW( comma::exception, "mask: expected 1 parameter; got: " << comma::join( e, '=' ) ); }
         std::string filter_string = e[1];
         const std::vector< std::string > w = comma::split( filter_string, '|' ); // quick and dirty, running out of delimiters
-        functor_type g = make_filter< O, H >::make_filter_functor( comma::split( w[0], ':' ) );
-        for( unsigned int k = 1; k < w.size(); ++k ) { g = boost::bind( make_filter< O, H >::make_filter_functor( comma::split( w[k], ':' ) ), boost::bind( g, _1 ) ); }
+        functor_type g = make_filter< O, H >::make_filter_functor( comma::split( w[0], ':' ), binary );
+        for( unsigned int k = 1; k < w.size(); ++k ) { g = boost::bind( make_filter< O, H >::make_filter_functor( comma::split( w[k], ':' ), binary ), boost::bind( g, _1 ) ); }
         return boost::bind< value_type_t >( mask_impl_< H >(), _1, g );
     }
-    else if( e[0] == "timestamp" ) { return timestamp_impl_< H >; }
+    else if( e[0] == "timestamp" ) { return timestamp_impl_< H >( binary ); }
     else if( e[0] == "transpose" ) { return transpose_impl_< H >; }
     else if( e[0] == "split" ) { return split_impl_< H >; }
     else if( e[0] == "merge" )
@@ -2365,16 +2384,16 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
             if (period) 
             {   
                 unsigned int seconds = static_cast< unsigned int >( *period );
-                f.push_back( filter_type( log_impl_< H >( file, boost::posix_time::seconds( seconds ) + boost::posix_time::microseconds( ( *period - seconds ) * 1000000 ), index ), false ) ); 
+                f.push_back( filter_type( log_impl_< H >( file, boost::posix_time::seconds( seconds ) + boost::posix_time::microseconds( ( *period - seconds ) * 1000000 ), index, binary ), false ) ); 
             }
             else if ( size )
             { 
-                f.push_back( filter_type( log_impl_< H >( file, *size, index), false ) );
+                f.push_back( filter_type( log_impl_< H >( file, *size, index, binary), false ) );
             } 
             else
             { 
                 if( index ) { COMMA_THROW( comma::exception, "log: index should be specified with directory and period or size, not with filename" );  }
-                f.push_back( filter_type( log_impl_< H >( file ), false ) );
+                f.push_back( filter_type( log_impl_< H >( file, binary ), false ) );
             }
         }
         else if( e[0] == "max" ) // todo: remove this filter; not thread-safe, should be run with --threads=1
@@ -2388,7 +2407,7 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
         else if( e[0] == "view" )
         {
             unsigned int delay = e.size() == 1 ? default_delay : boost::lexical_cast< unsigned int >( e[1] );
-            f.push_back( filter_type( boost::bind< value_type_t >( view_impl_< H >, _1, name, delay ), false ) );
+            f.push_back( filter_type( boost::bind< value_type_t >( view_impl_< H >, _1, name, delay, binary ), false ) );
         }
         else if( e[0] == "thumb" )
         {
@@ -2411,24 +2430,24 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
             }
             if( e.size() < 2 ) { COMMA_THROW( comma::exception, "expected encoding type like jpg, ppm, etc" ); }
             std::string s = e[1];
-            f.push_back( filter_type( boost::bind< value_type_t >( encode_impl_< H >, _1, s ) ) );
+            f.push_back( filter_type( boost::bind< value_type_t >( encode_impl_< H >( binary ), _1, s ) ) );
         }
         else if( e[0] == "grab" )
         {
             if( e.size() < 2 ) { COMMA_THROW( comma::exception, "expected encoding type like jpg, ppm, etc" ); }
             std::string s = e[1];
-            f.push_back( filter_type( boost::bind< value_type_t >( grab_impl_< H >, _1, s ) ) );
+            f.push_back( filter_type( boost::bind< value_type_t >( grab_impl_< H >, _1, s, binary ) ) );
         }
         else if( e[0] == "file" )
         {
             if( e.size() < 2 ) { COMMA_THROW( comma::exception, "expected file type like jpg, ppm, etc" ); }
             std::string s = e[1];
-            f.push_back( filter_type( boost::bind< value_type_t >( file_impl_< H >, _1, s ) ) );
+            f.push_back( filter_type( boost::bind< value_type_t >( file_impl_< H >, _1, s, binary ) ) );
         }
         else if( e[0] == "histogram" )
         {
             if( i < v.size() - 1 ) { COMMA_THROW( comma::exception, "expected 'histogram' as the last filter, got \"" << how << "\"" ); }
-            f.push_back( filter_type( boost::bind< value_type_t >( histogram_impl_< H >, _1 ) ) );
+            f.push_back( filter_type( boost::bind< value_type_t >( histogram_impl_< H >, _1, binary ) ) );
             f.push_back( filter_type( NULL ) ); // quick and dirty
         }
         else if( e[0] == "simple-blob" )
@@ -2436,12 +2455,12 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
             if( i < v.size() - 1 ) { COMMA_THROW( comma::exception, "expected 'simple-blob' as the last filter, got \"" << how << "\"" ); }
             std::vector< std::string > s;
             if( e.size() > 1 ) { s = comma::split( e[1], ',' ); }
-            bool binary = false;
+            bool is_binary = false;
             std::string config;
             std::string path;
             for( unsigned int i = 0; i < s.size(); ++i )
             {
-                if( s[i] == "output-binary" ) { binary = true; }
+                if( s[i] == "output-binary" ) { is_binary = true; }
                 if( s[i] == "output-fields" ) { std::cout << comma::join( comma::csv::names< snark::timestamped< cv::KeyPoint > >( false ), ',' ) << std::endl; exit( 0 ); }
                 if( s[i] == "output-format" ) { std::cout << comma::csv::format::value< snark::timestamped< cv::KeyPoint > >() << std::endl; exit( 0 ); }
                 if( s[i] == "output-default-params" || s[i] == "default-params" )
@@ -2458,7 +2477,7 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
                     if( t.size() > 1 ) { path = s[1]; }
                 }
             }
-            f.push_back( filter_type( boost::bind< value_type_t >( simple_blob_impl_< H >, _1, cv_read_< cv::SimpleBlobDetector::Params >( config, path ), binary ) ) );
+            f.push_back( filter_type( boost::bind< value_type_t >( simple_blob_impl_< H >(binary), _1, cv_read_< cv::SimpleBlobDetector::Params >( config, path ), is_binary ) ) );
             f.push_back( filter_type( NULL ) ); // quick and dirty
         }
         else if( e[0] == "null" )
@@ -2479,7 +2498,7 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
         }
         else
         {
-            f.push_back( filter_type( make_filter< cv::Mat, H >::make_filter_functor(e) ) );
+            f.push_back( filter_type( make_filter< cv::Mat, H >::make_filter_functor(e, binary) ) );
         }
         modified = e[0] != "view" && e[0] != "thumb" && e[0] != "split" && e[0] !="unpack12";
     }

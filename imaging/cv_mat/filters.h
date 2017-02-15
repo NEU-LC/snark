@@ -38,18 +38,34 @@
 
 namespace snark{ namespace cv_mat {
     
-struct header {
-    boost::posix_time::ptime timestamp;
-    std::vector< char > buffer;
-    header() {}
-    header(boost::posix_time::ptime t, const std::vector< char >& b ) : timestamp(t), buffer(b) {}
-};
-
-typedef header header_type;
+typedef serialization::header::buffer_t header_type;
 
 template < typename T > struct header_traits;
-template <> struct header_traits< boost::posix_time::ptime > { static boost::posix_time::ptime timestamp( boost::posix_time::ptime t ) { return t; } };
-template <> struct header_traits< header > { static boost::posix_time::ptime timestamp( const header& h ) { return h.timestamp; } };
+template <> struct header_traits< boost::posix_time::ptime > { 
+    static boost::posix_time::ptime timestamp( boost::posix_time::ptime t, const serialization::binary_type& binary ) { return t; } 
+    static std::string filename( boost::posix_time::ptime t, const serialization::binary_type& binary, const std::string& extension ) 
+    { 
+        std::ostringstream ss;
+        ss << boost::posix_time::to_iso_string(t) << '.' << extension; 
+        return ss.str();
+    } 
+};
+template <> struct header_traits< header_type > { 
+    static boost::posix_time::ptime timestamp( const header_type& h, const serialization::binary_type& binary ) 
+    { 
+        serialization::header d;
+        if( !binary ) { return boost::posix_time::microsec_clock::universal_time(); }
+        
+        binary->get( d, &h[0] );
+        return d.timestamp;
+    } 
+    static std::string filename( const header_type& t, const serialization::binary_type& binary, const std::string& extension ) 
+    { 
+        std::ostringstream ss;
+        ss << boost::posix_time::to_iso_string( header_traits< header_type >::timestamp(t, binary) ) << '.' << extension; 
+        return ss.str();
+    } 
+};
 
 template < typename T > struct reader;
 template < > struct reader< boost::posix_time::ptime > { 
@@ -60,24 +76,8 @@ template < > struct reader< header_type > {
     static type read( serialization& s, std::istream& is ) 
     { 
         std::pair< boost::posix_time::ptime, cv::Mat > value = s.read(is); 
-        return type( header(value.first, s.header_vector()), value.second );
+        return type( s.header_vector(), value.second );
     } 
-};
-
-template < typename T > struct writer;
-template < > struct writer< boost::posix_time::ptime > { 
-    typedef std::pair< boost::posix_time::ptime, cv::Mat > type;
-    
-    static void write( serialization& s, std::ostream& os, const type& m ) { return s.write(os, m); } 
-    static std::size_t size( const serialization& s, const type& m ) { return s.size( m ); }
-};
-template < > struct writer< header_type > { 
-    typedef std::pair< header_type, cv::Mat > type;
-    typedef std::pair< serialization::header::buffer_t, cv::Mat > buffer_type;
-    static void write( serialization& s, std::ostream& os, const type& m ) { 
-        s.write( os, std::pair< serialization::header::buffer_t, cv::Mat >( m.first.buffer, m.second ) );
-    } 
-    static std::size_t size( const serialization& s, const type& m ) { return s.size( buffer_type( m.first.buffer, m.second ) ); }
 };
 
 template < typename Output = cv::Mat, typename H = boost::posix_time::ptime >
@@ -123,6 +123,6 @@ int single_channel_type( int t );
 std::string type_as_string( int t );
 
 template < typename H >
-bool is_empty( typename impl::filters< H >::value_type m ) { return ( header_traits< H >::timestamp( m.first ) == boost::posix_time::not_a_date_time ) && m.second.empty(); }
+bool is_empty( typename impl::filters< H >::value_type m, const serialization::binary_type& binary ) { return ( header_traits< H >::timestamp( m.first, binary ) == boost::posix_time::not_a_date_time ) && m.second.empty(); }
 
 } }  // namespace snark { namespace cv_mat {
