@@ -64,20 +64,20 @@ void sigint_handler(int s)
 static void usage( bool verbose )
 {
     std::cerr << std::endl;
-    std::cerr << "acquire data from kinect camera, output to stdout as ascii (default) or binary" << std::endl;
+    std::cerr << "kinect-cat: acquire data from kinect camera, output to stdout as ascii (default) or binary" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "usage: kinect-cat [<options>]" << std::endl;
+    std::cerr << "kinect-cat: usage: kinect-cat [<options>]" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "options" << std::endl;
-    std::cerr << "    --as-binary: output binary in default format; a convenience option" << std::endl;
-    std::cerr << "    --output-fields; print default output fields to stdout and exit" << std::endl;
-    std::cerr << "    --output-format; print default output format to stdout and exit" << std::endl;
-    std::cerr << "    --version=[<version>]; kinect version; default: 2" << std::endl;
-    std::cerr << "    --verbose; more info output" << std::endl;
+    std::cerr << "kinect-cat: options" << std::endl;
+    std::cerr << "kinect-cat:     --as-binary: output binary in default format; a convenience option" << std::endl;
+    std::cerr << "kinect-cat:     --output-fields; print default output fields to stdout and exit" << std::endl;
+    std::cerr << "kinect-cat:     --output-format; print default output format to stdout and exit" << std::endl;
+    std::cerr << "kinect-cat:     --version=[<version>]; kinect version; default: 2" << std::endl;
+    std::cerr << "kinect-cat:     --verbose; more info output" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "csv options" << std::endl;
+    std::cerr << "kinect-cat: csv options" << std::endl;
     if( verbose ) { std::cerr << comma::csv::options::usage() << std::endl; }
-    else { std::cerr << "    run kinect-cat --help --verbose for details..." << std::endl; }
+    else { std::cerr << "kinect-cat:     run kinect-cat --help --verbose for details..." << std::endl; }
     std::cerr << std::endl;
 }
 
@@ -184,7 +184,7 @@ int main( int ac, char** av )
     {
         comma::command_line_options options( ac, av, usage );
         std::string version = options.value< std::string >( "--version", "2" );
-        if( version != "2" ) { std::cerr << "kinect-cat: only version 2 is supported for now; got: \"" << version << "\"" << std::endl; return 1; }
+        if( version != "2" ) { std::cerr << "kinect-cat: kinect-cat: only version 2 is supported for now; got: \"" << version << "\"" << std::endl; return 1; }
         if( options.exists( "--output-fields" ) ) { std::cout << comma::join( comma::csv::names< snark::kinect::point >( true ), ',' ) << std::endl; return 0; }
         if( options.exists( "--output-format" ) ) { std::cout << comma::csv::format::value< snark::kinect::point >() << std::endl; return 0; }
         comma::csv::options csv( options );
@@ -204,8 +204,8 @@ int main( int ac, char** av )
         /// [discovery]
         if(freenect2.enumerateDevices() == 0)
         {
-            std::cerr << "no device connected!" << std::endl;
-            return -1;
+            std::cerr << "kinect-cat: no device connected!" << std::endl;
+            return 1;
         }
 
 
@@ -221,11 +221,11 @@ int main( int ac, char** av )
             int number_devices = freenect2.enumerateDevices();
             std::cerr << number_devices << " kinects found" << std::endl;
             for(int i = 0; i < number_devices; ++i){
-                std::cerr << "Kinect " << i << " serial: " << freenect2.getDeviceSerialNumber(i) << std::endl;
+                std::cerr << "kinect-cat: Kinect " << i << " serial: " << freenect2.getDeviceSerialNumber(i) << std::endl;
 
             }
 
-            return -1;
+            return 1;
         }
 
 
@@ -249,16 +249,13 @@ int main( int ac, char** av )
 
         if(dev == 0)
         {
-            std::cerr << "failure opening device!" << std::endl;
-            return -1;
+            std::cerr << "kinect-cat: failure opening device!" << std::endl;
+            return 1;
         }
 
-        signal(SIGINT,sigint_handler);
-    
+        signal(SIGINT,sigint_handler); // todo: use comma:signal_flag
 
-
-
-        bool enable_rgb = true;
+        bool enable_rgb = false;
         bool enable_depth = true;
         /// [listeners]
         int types = 0;
@@ -283,7 +280,7 @@ int main( int ac, char** av )
         else
         {
         if (!dev->startStreams(enable_rgb, enable_depth))
-          return -1;
+          return 1;
         }
         const int width_ir = 512;
         const int height_ir = 424;
@@ -298,11 +295,7 @@ int main( int ac, char** av )
         std::string        fields = "t,rows,cols,type";
         bool               header_only = false;
 
-        comma::csv::format format;
-        format += "t";
-        format += "ui";
-        format += "ui";
-        format += "ui";
+        comma::csv::format format( "t,3ui" );
 
         if( options.exists( "--no-header" ))
         {
@@ -316,17 +309,17 @@ int main( int ac, char** av )
         if( options.exists( "--get-intrinsics" )){
             libfreenect2::Freenect2Device::IrCameraParams ir_params = dev->getIrCameraParams();
             // put these parameters in json block "kinect"
-            std::cout << "fx: " << ir_params.fx << std::endl; ///< Focal length x (pixel)
-            std::cout << "fy: " << ir_params.fy << std::endl; ///< Focal length y (pixel)
-            std::cout << "cx: " << ir_params.cx << std::endl; ///< Principal point x (pixel)
-            std::cout << "cy: " << ir_params.cy << std::endl; ///< Principal point y (pixel)
+            std::cout << "fx=" << ir_params.fx << std::endl; ///< Focal length x (pixel)
+            std::cout << "fy=" << ir_params.fy << std::endl; ///< Focal length y (pixel)
+            std::cout << "cx=" << ir_params.cx << std::endl; ///< Principal point x (pixel)
+            std::cout << "cy=" << ir_params.cy << std::endl; ///< Principal point y (pixel)
 
-            std::cout << "k1: " << ir_params.k1 << std::endl; ///< Radial distortion coefficient, 1st-order
-            std::cout << "k2: " << ir_params.k2 << std::endl; ///< Radial distortion coefficient, 2nd-order
-            std::cout << "k3: " << ir_params.k3 << std::endl; ///< Radial distortion coefficient, 3rd-order
+            std::cout << "k1=" << ir_params.k1 << std::endl; ///< Radial distortion coefficient, 1st-order
+            std::cout << "k2=" << ir_params.k2 << std::endl; ///< Radial distortion coefficient, 2nd-order
+            std::cout << "k3=" << ir_params.k3 << std::endl; ///< Radial distortion coefficient, 3rd-order
 
-            std::cout << "p1: " << ir_params.p1 << std::endl; ///< Tangential distortion coefficient
-            std::cout << "p2: " << ir_params.p2 << std::endl; ///< Tangential distortion coefficient
+            std::cout << "p1=" << ir_params.p1 << std::endl; ///< Tangential distortion coefficient
+            std::cout << "p2=" << ir_params.p2 << std::endl; ///< Tangential distortion coefficient
            
 
             // put these parameters in json block "metric"
@@ -341,7 +334,7 @@ int main( int ac, char** av )
 
             dev->stop();
             dev->close();
-            return -1;
+            return 0;
         }
 
         if( options.exists( "--get-extrinsics" )){
@@ -355,34 +348,34 @@ int main( int ac, char** av )
      */
     ///@{
 
-            std::cout << "shift_d: " << color_params.shift_d << std::endl;
-            std::cout << "shift_m: " << color_params.shift_m << std::endl;
+            std::cout << "shift_d=" << color_params.shift_d << std::endl;
+            std::cout << "shift_m=" << color_params.shift_m << std::endl;
             
-            std::cout << "mx_x3y0: " << color_params.mx_x3y0 << std::endl;
-            std::cout << "mx_x0y3: " << color_params.mx_x0y3 << std::endl;
-            std::cout << "mx_x2y1: " << color_params.mx_x2y1 << std::endl;
-            std::cout << "mx_x1y2: " << color_params.mx_x1y2 << std::endl;
-            std::cout << "mx_x2y0: " << color_params.mx_x2y1 << std::endl;
-            std::cout << "mx_x0y2: " << color_params.mx_x1y2 << std::endl;
-            std::cout << "mx_x1y1: " << color_params.mx_x2y1 << std::endl;
-            std::cout << "mx_x1y0: " << color_params.mx_x1y2 << std::endl;
-            std::cout << "mx_x0y1: " << color_params.mx_x2y1 << std::endl;
-            std::cout << "mx_x0y0: " << color_params.mx_x1y2 << std::endl;
+            std::cout << "mx_x3y0=" << color_params.mx_x3y0 << std::endl;
+            std::cout << "mx_x0y3=" << color_params.mx_x0y3 << std::endl;
+            std::cout << "mx_x2y1=" << color_params.mx_x2y1 << std::endl;
+            std::cout << "mx_x1y2=" << color_params.mx_x1y2 << std::endl;
+            std::cout << "mx_x2y0=" << color_params.mx_x2y1 << std::endl;
+            std::cout << "mx_x0y2=" << color_params.mx_x1y2 << std::endl;
+            std::cout << "mx_x1y1=" << color_params.mx_x2y1 << std::endl;
+            std::cout << "mx_x1y0=" << color_params.mx_x1y2 << std::endl;
+            std::cout << "mx_x0y1=" << color_params.mx_x2y1 << std::endl;
+            std::cout << "mx_x0y0=" << color_params.mx_x1y2 << std::endl;
 
-            std::cout << "my_x3y0: " << color_params.mx_x3y0 << std::endl;
-            std::cout << "my_x0y3: " << color_params.mx_x0y3 << std::endl;
-            std::cout << "my_x2y1: " << color_params.mx_x2y1 << std::endl;
-            std::cout << "my_x1y2: " << color_params.mx_x1y2 << std::endl;
-            std::cout << "my_x2y0: " << color_params.mx_x2y1 << std::endl;
-            std::cout << "my_x0y2: " << color_params.mx_x1y2 << std::endl;
-            std::cout << "my_x1y1: " << color_params.mx_x2y1 << std::endl;
-            std::cout << "my_x1y0: " << color_params.mx_x1y2 << std::endl;
-            std::cout << "my_x0y1: " << color_params.mx_x2y1 << std::endl;
-            std::cout << "my_x0y0: " << color_params.mx_x1y2 << std::endl;
+            std::cout << "my_x3y0=" << color_params.mx_x3y0 << std::endl;
+            std::cout << "my_x0y3=" << color_params.mx_x0y3 << std::endl;
+            std::cout << "my_x2y1=" << color_params.mx_x2y1 << std::endl;
+            std::cout << "my_x1y2=" << color_params.mx_x1y2 << std::endl;
+            std::cout << "my_x2y0=" << color_params.mx_x2y1 << std::endl;
+            std::cout << "my_x0y2=" << color_params.mx_x1y2 << std::endl;
+            std::cout << "my_x1y1=" << color_params.mx_x2y1 << std::endl;
+            std::cout << "my_x1y0=" << color_params.mx_x1y2 << std::endl;
+            std::cout << "my_x0y1=" << color_params.mx_x2y1 << std::endl;
+            std::cout << "my_x0y0=" << color_params.mx_x1y2 << std::endl;
 
             dev->stop();
             dev->close();
-            return -1;
+            return 0;
         }
 
 
@@ -402,8 +395,8 @@ int main( int ac, char** av )
         {
             if (!listener.waitForNewFrame(frames, 10*1000)) // 10 seconds
             {
-              std::cerr << "timeout!" << std::endl;
-              return -1;
+              std::cerr << "kinect-cat: timeout!" << std::endl;
+              return 1;
             }
 
             //libfreenect2::Frame *rgb = frames[libfreenect2::Frame::Color];
@@ -491,7 +484,7 @@ int main( int ac, char** av )
         return 0;
 
     }
-    catch( std::exception& ex ) { std::cerr << "kinect-cat: " << ex.what() << std::endl; }
-    catch( ... ) { std::cerr << "kinect-cat: unknown exception" << std::endl; }
+    catch( std::exception& ex ) { std::cerr << "kinect-cat: kinect-cat: " << ex.what() << std::endl; }
+    catch( ... ) { std::cerr << "kinect-cat: kinect-cat: unknown exception" << std::endl; }
     return 1;
 }
