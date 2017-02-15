@@ -199,6 +199,16 @@ std::pair< boost::posix_time::ptime, cv::Mat > serialization::read( std::istream
     return count < int( size ) ? std::pair< boost::posix_time::ptime, cv::Mat >() : p;
 }
 
+std::pair< serialization::header::buffer_t, cv::Mat > serialization::read_with_header(std::istream& is)
+{
+    std::pair< boost::posix_time::ptime, cv::Mat > p = read(is);
+    
+    if( !m_binary ) { m_binary->put( m_header, &m_buffer[0] ); }
+    
+    return std::pair< header::buffer_t, cv::Mat >( m_buffer, p.second );
+}
+
+
 // void serialization::write( std::ostream& os, const std::pair< boost::posix_time::ptime, cv::Mat >& m, bool flush )
 // {
 //     if( m_binary )

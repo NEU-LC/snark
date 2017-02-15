@@ -73,11 +73,7 @@ template < > struct reader< boost::posix_time::ptime > {
 };
 template < > struct reader< header_type > { 
     typedef std::pair< header_type, cv::Mat > type;
-    static type read( serialization& s, std::istream& is ) 
-    { 
-        std::pair< boost::posix_time::ptime, cv::Mat > value = s.read(is); 
-        return type( s.header_vector(), value.second );
-    } 
+    static type read( serialization& s, std::istream& is ) { return s.read_with_header( is ); }
 };
 
 template < typename Output = cv::Mat, typename H = boost::posix_time::ptime >

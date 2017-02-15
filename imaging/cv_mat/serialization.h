@@ -115,6 +115,7 @@ class serialization
 
         /// read from stream, if eof, return empty cv::Mat
         std::pair< boost::posix_time::ptime, cv::Mat > read( std::istream& is );
+        std::pair< header::buffer_t, cv::Mat > read_with_header( std::istream& is );
         
         /// return last header buffer after read()
         const char* header_buffer() const; // todo
