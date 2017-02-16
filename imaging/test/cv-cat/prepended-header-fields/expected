@@ -1,0 +1,4 @@
+fields/prepended/explicit_fields/output="blah,7,7,5.5,20170101T020001,2,3,0,0,1,2,3,4,5"
+fields/prepended/explicit_fields/status=0
+fields/prepended/blank_fields/output="blah,7,7,5.5,20170101T020001,2,3,0,0,1,2,3,4,5"
+fields/prepended/blank_fields/status=0

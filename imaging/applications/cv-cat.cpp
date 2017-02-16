@@ -41,6 +41,7 @@
 #include <comma/application/signal_flag.h>
 #include <comma/name_value/parser.h>
 #include <comma/application/verbose.h>
+#include <comma/csv/binary.h>
 #include "../cv_mat/pipeline.h"
 #include "../cv_mat/detail/help.h"
 
@@ -71,18 +72,20 @@ class rate_limit /// timer class, sleeping if faster than the specified fps
 
 static comma::signal_flag is_shutdown( comma::signal_flag::hard );
 
+typedef snark::cv_mat::serialization::header header;
 static pair capture( cv::VideoCapture& capture, rate_limit& rate, const binary_type& binary )
 {
     cv::Mat image;
     capture >> image;
     rate.wait();
     
-    snark::cv_mat::serialization::header h(image);
-    h.timestamp = boost::posix_time::microsec_clock::universal_time();
-    
+//     static comma::csv::binary< header > default_binary( "t,3ui", "t,rows,cols,type" );
     static snark::cv_mat::serialization::header::buffer_t buffer( binary->format().size() );
     
+    header h(image);
+    h.timestamp = boost::posix_time::microsec_clock::universal_time();
     binary->put( h, &buffer[0] );
+    
     return std::make_pair( buffer , image );
 }
 
@@ -92,12 +95,13 @@ static pair output_single_image( const cv::Mat& image, const binary_type& binary
     if( done ) { return pair(); }
     done = true;
     
-    snark::cv_mat::serialization::header h(image);
-    h.timestamp = boost::posix_time::microsec_clock::universal_time();
-    
+//     static comma::csv::binary< header > default_binary( "t,3ui", "t,rows,cols,type" );
     static snark::cv_mat::serialization::header::buffer_t buffer( binary->format().size() );
     
+    header h(image);
+    h.timestamp = boost::posix_time::microsec_clock::universal_time();
     binary->put( h, &buffer[0] );
+    
     return std::make_pair( buffer, image );
 }
 
@@ -233,27 +237,23 @@ int main( int argc, char** argv )
         
         if( vm.count( "file" ) )
         {
-            //TODO file can have custom header fields?
-            const serialization::binary_type& input_binary = serialization( serialization::options() ).input_binary();    // default header fields
             if( !vm.count( "video" ) ) { image = cv::imread( name ); }
             if( image.data )
             {
-                reader.reset( new bursty_reader< pair >( boost::bind( &output_single_image, boost::cref( image ), boost::cref(input_binary) ), discard, capacity ) );
+                reader.reset( new bursty_reader< pair >( boost::bind( &output_single_image, boost::cref( image ), boost::cref(input.input_binary()) ), discard, capacity ) );
             }
             else
             {
                 video_capture.open( name );
-                skip( number_of_frames_to_skip, video_capture, rate, input_binary );
-                reader.reset( new bursty_reader< pair >( boost::bind( &capture, boost::ref( video_capture ), boost::ref( rate ), boost::cref(input_binary) ), discard, capacity ) );
+                skip( number_of_frames_to_skip, video_capture, rate, input.input_binary() );
+                reader.reset( new bursty_reader< pair >( boost::bind( &capture, boost::ref( video_capture ), boost::ref( rate ), boost::cref(input.input_binary()) ), discard, capacity ) );
             }
         }
         else if( vm.count( "camera" ) || vm.count( "id" ) )
         {
-            const serialization::binary_type& input_binary = serialization( serialization::options() ).input_binary();    // default header fields
-            
             video_capture.open( device );
-            skip( number_of_frames_to_skip, video_capture, rate, input_binary );
-            reader.reset( new bursty_reader< pair >( boost::bind( &capture, boost::ref( video_capture ), boost::ref( rate ), boost::cref(input_binary) ), discard ) );
+            skip( number_of_frames_to_skip, video_capture, rate, input.input_binary() );
+            reader.reset( new bursty_reader< pair >( boost::bind( &capture, boost::ref( video_capture ), boost::ref( rate ), boost::cref(input.input_binary()) ), discard ) );
         }
         else
         {

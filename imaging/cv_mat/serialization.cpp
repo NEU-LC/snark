@@ -103,8 +103,11 @@ serialization::serialization( const serialization::options& options )
     m_buffer.resize( format.size() );
     m_headerOnly = options.header_only;
     m_header = options.get_header();
-    if( !options.no_header ) { m_binary.reset( new comma::csv::binary< header >( format.string(), fields, false, m_header ) ); }
-    if( !options.no_header ) { m_binary_no_timestamp.reset( new comma::csv::binary< header >( format.string(), comma::join(no_timestamp, ','), false, m_header ) ); }
+    if( !options.no_header )
+    { 
+        m_binary.reset( new comma::csv::binary< header >( format.string(), fields, false, m_header ) );
+        m_binary_no_timestamp.reset( new comma::csv::binary< header >( format.string(), comma::join(no_timestamp, ','), false, m_header ) ); 
+    }
 }
 
 std::size_t serialization::put( const std::pair< boost::posix_time::ptime, cv::Mat >& p, char* buf ) const
@@ -202,8 +205,6 @@ std::pair< boost::posix_time::ptime, cv::Mat > serialization::read( std::istream
 std::pair< serialization::header::buffer_t, cv::Mat > serialization::read_with_header(std::istream& is)
 {
     std::pair< boost::posix_time::ptime, cv::Mat > p = read(is);
-    
-    if( !m_binary ) { m_binary->put( m_header, &m_buffer[0] ); }
     
     return std::pair< header::buffer_t, cv::Mat >( m_buffer, p.second );
 }
