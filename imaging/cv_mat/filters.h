@@ -53,9 +53,9 @@ template <> struct header_traits< boost::posix_time::ptime > {
 template <> struct header_traits< header_type > { 
     static boost::posix_time::ptime timestamp( const header_type& h, const serialization::binary_type& binary ) 
     { 
-        serialization::header d;
         if( !binary ) { return boost::posix_time::microsec_clock::universal_time(); }
         
+        static serialization::header d;
         binary->get( d, &h[0] );
         return d.timestamp;
     } 
@@ -68,13 +68,8 @@ template <> struct header_traits< header_type > {
 };
 
 template < typename T > struct reader;
-template < > struct reader< boost::posix_time::ptime > { 
-    static std::pair< boost::posix_time::ptime, cv::Mat > read( serialization& s, std::istream& is ) { return s.read(is); } 
-};
-template < > struct reader< header_type > { 
-    typedef std::pair< header_type, cv::Mat > type;
-    static type read( serialization& s, std::istream& is ) { return s.read_with_header( is ); }
-};
+template < > struct reader< boost::posix_time::ptime > { static std::pair< boost::posix_time::ptime, cv::Mat > read( serialization& s, std::istream& is ) { return s.read(is); } };
+template < > struct reader< header_type > { static std::pair< header_type, cv::Mat > read( serialization& s, std::istream& is ) { return s.read_with_header( is ); } };
 
 template < typename Output = cv::Mat, typename H = boost::posix_time::ptime >
 struct operation

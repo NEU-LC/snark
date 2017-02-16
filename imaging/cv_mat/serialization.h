@@ -118,8 +118,7 @@ class serialization
         std::pair< header::buffer_t, cv::Mat > read_with_header( std::istream& is );
         
         /// return last header buffer after read()
-        const char* header_buffer() const; // todo
-        const std::vector< char >& header_vector() const; // todo
+        const char* header_buffer() const;
 
         /// write to stream
         void write( std::ostream& os, const std::pair< boost::posix_time::ptime, cv::Mat >& m, bool flush = true );
@@ -137,7 +136,7 @@ class serialization
 
     private:
         boost::shared_ptr< comma::csv::binary< header > > m_binary;
-        boost::shared_ptr< comma::csv::binary< header > > m_binary_no_timestamp; // timestamp will not be set
+        boost::shared_ptr< comma::csv::binary< header > > m_binary_no_timestamp; // ignores timestamp 't' field
         std::vector< char > m_buffer;
         bool m_headerOnly;
         header m_header; /// default header
