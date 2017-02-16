@@ -109,7 +109,7 @@ static pair read( snark::cv_mat::serialization& input, rate_limit& rate )
 {
     if( is_shutdown || std::cin.eof() || std::cin.bad() || !std::cin.good() ) { return pair(); }
     rate.wait();
-    return input.read_with_header( std::cin );
+    return input.read< snark::cv_mat::serialization::header::buffer_t >( std::cin );
 }
 
 void skip( unsigned int number_of_frames_to_skip, cv::VideoCapture& video_capture, rate_limit& rate, const binary_type& binary ) { for( unsigned int i=0; i<number_of_frames_to_skip; i++ ) { capture( video_capture, rate, binary ); } }
@@ -231,7 +231,6 @@ int main( int argc, char** argv )
         boost::scoped_ptr< bursty_reader< pair > > reader;
         cv::Mat image;
         
-        typedef snark::cv_mat::serialization serialization;
         typedef snark::imaging::applications::pipeline_with_header pipeline_with_header;
         typedef snark::cv_mat::filters_with_header filters_with_header;
         

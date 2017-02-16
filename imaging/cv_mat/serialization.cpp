@@ -69,6 +69,7 @@ serialization::header::header( const boost::posix_time::ptime& t, const cv::Mat 
 
 serialization::serialization() :
     m_binary( new comma::csv::binary< header >( comma::csv::format::value< header >(), "", false ) ),
+    // todo m_binary_no_timestamp.reset( new comma::csv::binary< header >( format.string(), comma::join(no_timestamp, ','), false, m_
     m_buffer( m_binary->format().size() ),
     m_headerOnly( false )
 {
@@ -79,8 +80,21 @@ serialization::serialization( const std::string& fields, const comma::csv::forma
     m_headerOnly( headerOnly ),
     m_header( default_header )
 {
-    if( !fields.empty() ) { m_binary.reset( new comma::csv::binary< header >( format.string(), fields, false, default_header ) ); }
+    if( !fields.empty() )
+    { 
+        m_binary.reset( new comma::csv::binary< header >( format.string(), fields, false, default_header ) );
+        // todo: m_binary_no_timestamp.reset...
+    }
 }
+
+// todo
+// - m_binary_no_timestamp: inizialize wherever m_binary gets initialized
+// - binary_type
+//   - revert to scoped_ptr
+//   - serialization::header_binary(): redefine: { return m_binary ? m_binary.get() : NULL; }
+// - filters::make: don't pass binary, pass functor instead
+// - revert changes in cameras
+// - add to generic backlog: tear down support for < t, cv::mat > altogether and get rid of templates?
 
 serialization::serialization( const serialization::options& options )
 {
@@ -167,44 +181,40 @@ std::size_t serialization::size(const std::pair< serialization::header::buffer_t
 
 std::size_t serialization::size( const std::pair< boost::posix_time::ptime, cv::Mat >& m ) const { return size( m.second ); }
 
-std::pair< boost::posix_time::ptime, cv::Mat > serialization::read( std::istream& is )
+template <>
+std::pair< serialization::header::buffer_t, cv::Mat > serialization::read< serialization::header::buffer_t >( std::istream& is )
 {
-    header h;
-    std::pair< boost::posix_time::ptime, cv::Mat > p;
+    std::pair< serialization::header::buffer_t, cv::Mat > p;
     if( m_binary )
     {
         is.read( &m_buffer[0], m_buffer.size() );
         int count = is.gcount();
         if( count <= 0 ) { return p; }
         if( count < int( m_buffer.size() ) ) { COMMA_THROW( comma::exception, "expected " << m_buffer.size() << " bytes, got " << count ); }        
-        m_binary->get( h, &m_buffer[0] );
+        m_binary->get( m_header, &m_buffer[0] );
     }
-    else
-    {
-        h = m_header;
-    }
-    p.first = h.timestamp;
+    p.first = m_buffer;
     try
     {
-        p.second = cv::Mat( h.rows, h.cols, h.type );
+        p.second = cv::Mat( m_header.rows, m_header.cols, m_header.type );
     }
     catch( cv::Exception& ex )
     {
         std::cerr << comma::verbose.app_name() << ": caught cv::Exception: " << ex.what() << std::endl;
-        return std::pair< boost::posix_time::ptime, cv::Mat >();
+        return std::pair< serialization::header::buffer_t, cv::Mat >();
     }
     std::size_t size = p.second.dataend - p.second.datastart;
     // todo: accumulate
     is.read( const_cast< char* >( reinterpret_cast< const char* >( p.second.datastart ) ), size ); // quick and dirty
     int count = is.gcount();
-    return count < int( size ) ? std::pair< boost::posix_time::ptime, cv::Mat >() : p;
+    return count < int( size ) ? std::pair< serialization::header::buffer_t, cv::Mat >() : p;
 }
 
-std::pair< serialization::header::buffer_t, cv::Mat > serialization::read_with_header(std::istream& is)
+template <>
+std::pair< boost::posix_time::ptime, cv::Mat > serialization::read< boost::posix_time::ptime >( std::istream& is )
 {
-    std::pair< boost::posix_time::ptime, cv::Mat > p = read(is);
-    
-    return std::pair< header::buffer_t, cv::Mat >( m_buffer, p.second );
+    std::pair< serialization::header::buffer_t, cv::Mat > p = read< serialization::header::buffer_t >( is );
+    return std::make_pair( m_header.timestamp, p.second );
 }
 
 void serialization::write( std::ostream& os, const std::pair< boost::posix_time::ptime, cv::Mat >& m, bool flush )

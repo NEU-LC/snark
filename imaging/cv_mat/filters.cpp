@@ -87,6 +87,40 @@ namespace {
 
 namespace snark{ namespace cv_mat {
 
+template < typename T > struct header_traits;
+template <> struct header_traits< boost::posix_time::ptime > { 
+    static boost::posix_time::ptime timestamp( boost::posix_time::ptime t, const serialization::binary_type& binary ) { return t; } 
+    static std::string filename( boost::posix_time::ptime t, const serialization::binary_type& binary, const std::string& extension ) 
+    { 
+        std::ostringstream ss;
+        ss << boost::posix_time::to_iso_string(t) << '.' << extension; 
+        return ss.str();
+    } 
+};
+template <> struct header_traits< header_type > { 
+    static boost::posix_time::ptime timestamp( const header_type& h, const serialization::binary_type& binary ) 
+    { 
+        if( !binary ) { return boost::posix_time::microsec_clock::universal_time(); }
+        
+        static serialization::header d;
+        binary->get( d, &h[0] );
+        return d.timestamp;
+    } 
+    static std::string filename( const header_type& t, const serialization::binary_type& binary, const std::string& extension ) 
+    { 
+        std::ostringstream ss;
+        ss << boost::posix_time::to_iso_string( header_traits< header_type >::timestamp(t, binary) ) << '.' << extension; 
+        return ss.str();
+    } 
+};
+
+template < typename T > struct reader;
+template < > struct reader< boost::posix_time::ptime > { static std::pair< boost::posix_time::ptime, cv::Mat > read( serialization& s, std::istream& is ) { return s.read< boost::posix_time::ptime >(is); } };
+template < > struct reader< header_type > { static std::pair< header_type, cv::Mat > read( serialization& s, std::istream& is ) { return s.read< header_type >( is ); } };
+
+template < typename H >
+static bool is_empty( typename impl::filters< H >::value_type m, const serialization::binary_type& binary ) { return ( header_traits< H >::timestamp( m.first, binary ) == boost::posix_time::not_a_date_time ) && m.second.empty(); }
+
 static boost::unordered_map< std::string, int > fill_types_()
 {
     boost::unordered_map< std::string, int > types;
@@ -2313,6 +2347,29 @@ static functor_type make_filter_functor( const std::vector< std::string >& e, co
     COMMA_THROW( comma::exception, "expected filter, got: \"" << comma::join( e, '=' ) << "\"" );
 }
 };
+
+template < typename H > struct time_traits
+{
+    static boost::posix_time::ptime pass_time( const H& h ) { COMMA_THROW( comma::exception, "cannot make timestamp out of header without binary serializer" ); }
+};
+
+template <> struct time_traits< boost::posix_time::ptime >
+{
+    static boost::posix_time::ptime pass_time( const boost::posix_time::ptime& t ) { return t; }
+};
+
+template < typename H >
+std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make( const std::string& how, const boost::function< boost::posix_time::ptime( H ) >& get_timestamp, unsigned int default_delay )
+{
+    // todo
+    COMMA_THROW( comma::exception, "todo" );
+}
+
+template < typename H >
+std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make( const std::string& how, unsigned int default_delay )
+{
+    return impl::filters< H >::make( how, boost::bind( &time_traits< H >::pass_time, _1 ), default_delay );
+}
 
 template < typename H >
 std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make( const std::string& how

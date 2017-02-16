@@ -114,9 +114,9 @@ class serialization
         std::size_t size( const std::pair< header::buffer_t, cv::Mat >& m ) const;
 
         /// read from stream, if eof, return empty cv::Mat
-        std::pair< boost::posix_time::ptime, cv::Mat > read( std::istream& is );
-        std::pair< header::buffer_t, cv::Mat > read_with_header( std::istream& is );
-        
+        template < typename H >
+        std::pair< H, cv::Mat > read( std::istream& is );
+                
         /// return last header buffer after read()
         const char* header_buffer() const;
 
