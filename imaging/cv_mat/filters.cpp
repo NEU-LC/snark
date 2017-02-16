@@ -1812,7 +1812,6 @@ static typename impl::filters< H >::value_type remove_mean_impl_(const typename 
 template < typename O, typename H >
 struct make_filter {
     typedef typename impl::filters< H >::value_type value_type_t;
-    typedef operation< O, H > filter;
     typedef operation< O, H > filter_type;
     typedef typename filter_type::input_type input_type;
     typedef typename filter_type::output_type output_type;

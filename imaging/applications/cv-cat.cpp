@@ -240,20 +240,20 @@ int main( int argc, char** argv )
             if( !vm.count( "video" ) ) { image = cv::imread( name ); }
             if( image.data )
             {
-                reader.reset( new bursty_reader< pair >( boost::bind( &output_single_image, boost::cref( image ), boost::cref(input.input_binary()) ), discard, capacity ) );
+                reader.reset( new bursty_reader< pair >( boost::bind( &output_single_image, boost::cref( image ), boost::cref(input.header_binary()) ), discard, capacity ) );
             }
             else
             {
                 video_capture.open( name );
-                skip( number_of_frames_to_skip, video_capture, rate, input.input_binary() );
-                reader.reset( new bursty_reader< pair >( boost::bind( &capture, boost::ref( video_capture ), boost::ref( rate ), boost::cref(input.input_binary()) ), discard, capacity ) );
+                skip( number_of_frames_to_skip, video_capture, rate, input.header_binary() );
+                reader.reset( new bursty_reader< pair >( boost::bind( &capture, boost::ref( video_capture ), boost::ref( rate ), boost::cref(input.header_binary()) ), discard, capacity ) );
             }
         }
         else if( vm.count( "camera" ) || vm.count( "id" ) )
         {
             video_capture.open( device );
-            skip( number_of_frames_to_skip, video_capture, rate, input.input_binary() );
-            reader.reset( new bursty_reader< pair >( boost::bind( &capture, boost::ref( video_capture ), boost::ref( rate ), boost::cref(input.input_binary()) ), discard ) );
+            skip( number_of_frames_to_skip, video_capture, rate, input.header_binary() );
+            reader.reset( new bursty_reader< pair >( boost::bind( &capture, boost::ref( video_capture ), boost::ref( rate ), boost::cref(input.header_binary()) ), discard ) );
         }
         else
         {
@@ -261,7 +261,7 @@ int main( int argc, char** argv )
             reader.reset( new bursty_reader< pair >( boost::bind( &read, boost::ref( input ), boost::ref( rate ) ), discard, capacity ) );
         }
         const unsigned int default_delay = vm.count( "file" ) == 0 ? 1 : 200; // HACK to make view work on single files
-        pipeline_with_header pipeline( output, filters_with_header::make( filters, input.input_binary(), default_delay ), *reader, number_of_threads );
+        pipeline_with_header pipeline( output, filters_with_header::make( filters, input.header_binary(), default_delay ), *reader, number_of_threads );
         pipeline.run();
         if( vm.count( "stay" ) ) { while( !is_shutdown ) { boost::this_thread::sleep( boost::posix_time::seconds( 1 ) ); } }
         return 0;

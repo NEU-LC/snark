@@ -132,7 +132,7 @@ class serialization
         /// c-style write to stdout, to be used if issues seen with write() - see cpp file for details
         void write_to_stdout( const std::pair< header::buffer_t, cv::Mat >& m, bool flush = true );
         
-        const binary_type& input_binary() const { return m_binary; }
+        const binary_type& header_binary() const { return m_binary; }
 
     private:
         boost::shared_ptr< comma::csv::binary< header > > m_binary;

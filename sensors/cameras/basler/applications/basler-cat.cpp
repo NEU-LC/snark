@@ -894,7 +894,7 @@ bool run_simple_pipeline( C& camera
     bool error = false;
     snark::cv_mat::serialization serialization( cv_mat_options );
     snark::tbb::bursty_reader< Pair > reader( boost::bind( &capture< C, Pair >, boost::ref( camera ), boost::ref( grabber ) ), max_queue_size, max_queue_capacity );
-    snark::imaging::applications::pipeline pipeline( serialization, filters, reader, serialization.input_binary() );
+    snark::imaging::applications::pipeline pipeline( serialization, filters, reader, serialization.header_binary() );
     camera.AcquisitionStart.Execute();
     comma::verbose << "running..." << std::endl;
     pipeline.run();

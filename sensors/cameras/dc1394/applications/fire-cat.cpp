@@ -203,7 +203,7 @@ int main( int argc, char** argv )
         if( trigger_strobe_and_exit ) { return 0; }
         if( vm.count( "list-attributes" ) ) { camera.list_attributes(); return 0; }
         reader.reset( new snark::tbb::bursty_reader< Pair >( boost::bind( &capture, boost::ref( camera ) ), discard ) );
-        snark::imaging::applications::pipeline pipeline( *serialization, filters, *reader, serialization->input_binary() );
+        snark::imaging::applications::pipeline pipeline( *serialization, filters, *reader, serialization->header_binary() );
         pipeline.run();
         return 0;
     }
