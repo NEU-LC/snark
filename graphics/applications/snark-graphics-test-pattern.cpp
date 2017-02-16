@@ -207,6 +207,11 @@ int main( int argc, char** argv )
         comma::csv::output_stream< vertex_t > ostream( std::cout, output_csv );
 
         std::vector< std::string > unnamed = options.unnamed( "--help,h", "-.*,--.*" );
+        if( unnamed.empty() )
+        {
+            std::cerr << "Usage: " << comma::verbose.app_name() << " <mode> [<options>]" << std::endl;
+            exit( 1 );
+        }
         std::string mode = unnamed[0];
 
         if( mode == "cube" )
