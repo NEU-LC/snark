@@ -69,7 +69,7 @@ serialization::header::header( const boost::posix_time::ptime& t, const cv::Mat 
 
 serialization::serialization() :
     m_binary( new comma::csv::binary< header >( comma::csv::format::value< header >(), "", false ) ),
-    // todo m_binary_no_timestamp.reset( new comma::csv::binary< header >( format.string(), comma::join(no_timestamp, ','), false, m_
+    m_binary_no_timestamp( new comma::csv::binary< header >( "t,3ui", ",rows,cols,type", false ) ),
     m_buffer( m_binary->format().size() ),
     m_headerOnly( false )
 {
@@ -83,7 +83,10 @@ serialization::serialization( const std::string& fields, const comma::csv::forma
     if( !fields.empty() )
     { 
         m_binary.reset( new comma::csv::binary< header >( format.string(), fields, false, default_header ) );
-        // todo: m_binary_no_timestamp.reset...
+        std::vector< std::string > v = comma::split(fields, ',');
+        std::vector< std::string > no_timestamp;
+        for( unsigned int i = 0; i < v.size(); ++i ) { no_timestamp.push_back( v[i] != "t" ? v[i] : std::string() ); } // blank out timestamp field
+        m_binary_no_timestamp.reset( new comma::csv::binary< header >( format.string(), comma::join(no_timestamp, ','), false, m_header ) ); 
     }
 }
 
