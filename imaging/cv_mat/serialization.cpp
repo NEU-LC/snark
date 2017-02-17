@@ -68,7 +68,7 @@ serialization::header::header( const boost::posix_time::ptime& t, const cv::Mat 
 }
 
 serialization::serialization() :
-    m_binary( new comma::csv::binary< header >( comma::csv::format::value< header >(), "", false ) ),
+    m_binary( new comma::csv::binary< header >( "t,3ui", "", false ) ),
     m_binary_no_timestamp( new comma::csv::binary< header >( "t,3ui", ",rows,cols,type", false ) ),
     m_buffer( m_binary->format().size() ),
     m_headerOnly( false )
@@ -91,12 +91,12 @@ serialization::serialization( const std::string& fields, const comma::csv::forma
 }
 
 // todo
-// - m_binary_no_timestamp: inizialize wherever m_binary gets initialized
-// - binary_type
-//   - revert to scoped_ptr
-//   - serialization::header_binary(): redefine: { return m_binary ? m_binary.get() : NULL; }
-// - filters::make: don't pass binary, pass functor instead
-// - revert changes in cameras
+// done - m_binary_no_timestamp: inizialize wherever m_binary gets initialized
+// done- binary_type
+// done  - revert to scoped_ptr
+// done  - serialization::header_binary(): redefine: { return m_binary ? m_binary.get() : NULL; }
+// done - filters::make: don't pass binary, pass functor instead
+// done - revert changes in cameras
 // - add to generic backlog: tear down support for < t, cv::mat > altogether and get rid of templates?
 
 serialization::serialization( const serialization::options& options )

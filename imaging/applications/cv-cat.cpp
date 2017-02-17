@@ -46,7 +46,6 @@
 #include "../cv_mat/detail/help.h"
 
 typedef std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat > pair;
-typedef snark::cv_mat::serialization::binary_type binary_type;
 typedef snark::cv_mat::serialization serialization;
 using snark::tbb::bursty_reader;
 
@@ -116,7 +115,7 @@ static pair read( snark::cv_mat::serialization& input, rate_limit& rate )
 void skip( unsigned int number_of_frames_to_skip, cv::VideoCapture& video_capture, rate_limit& rate ) { for( unsigned int i=0; i<number_of_frames_to_skip; i++ ) { capture( video_capture, rate ); } }
 void skip( unsigned int number_of_frames_to_skip, snark::cv_mat::serialization& input, rate_limit& rate ) { for( unsigned int i=0; i<number_of_frames_to_skip; i++ ) { read( input, rate ); } }
 
-static boost::posix_time::ptime get_timestamp_from_header( const header::buffer_t& h, const serialization::header_binary_type* pbinary )
+static boost::posix_time::ptime get_timestamp_from_header( const header::buffer_t& h, const comma::csv::binary< header >* pbinary )
 {
     
     if( pbinary == NULL ) { return boost::posix_time::microsec_clock::universal_time(); }
