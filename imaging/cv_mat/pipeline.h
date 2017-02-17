@@ -73,7 +73,6 @@ class pipeline
         pipeline( cv_mat::serialization& output
                 , const std::string& filters
                 , tbb::bursty_reader< pair >& reader
-                , cv_mat::serialization::binary_type binary
                 , unsigned int number_of_threads = 0 );
         
         pipeline( cv_mat::serialization& output
