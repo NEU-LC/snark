@@ -73,34 +73,34 @@ class rate_limit /// timer class, sleeping if faster than the specified fps
 static comma::signal_flag is_shutdown( comma::signal_flag::hard );
 
 typedef snark::cv_mat::serialization::header header;
-static pair capture( cv::VideoCapture& capture, rate_limit& rate, const binary_type& binary )
+static pair capture( cv::VideoCapture& capture, rate_limit& rate )
 {
     cv::Mat image;
     capture >> image;
     rate.wait();
     
-//     static comma::csv::binary< header > default_binary( "t,3ui", "t,rows,cols,type" );
-    static snark::cv_mat::serialization::header::buffer_t buffer( binary->format().size() );
+    static comma::csv::binary< header > default_binary( "t,3ui", "t,rows,cols,type" );
+    static snark::cv_mat::serialization::header::buffer_t buffer( default_binary.format().size() );
     
     header h(image);
     h.timestamp = boost::posix_time::microsec_clock::universal_time();
-    binary->put( h, &buffer[0] );
+    default_binary.put( h, &buffer[0] );
     
     return std::make_pair( buffer , image );
 }
 
-static pair output_single_image( const cv::Mat& image, const binary_type& binary )
+static pair output_single_image( const cv::Mat& image )
 {
     static bool done = false;
     if( done ) { return pair(); }
     done = true;
     
-//     static comma::csv::binary< header > default_binary( "t,3ui", "t,rows,cols,type" );
-    static snark::cv_mat::serialization::header::buffer_t buffer( binary->format().size() );
+    static comma::csv::binary< header > default_binary( "t,3ui", "t,rows,cols,type" );
+    static snark::cv_mat::serialization::header::buffer_t buffer( default_binary.format().size() );
     
     header h(image);
     h.timestamp = boost::posix_time::microsec_clock::universal_time();
-    binary->put( h, &buffer[0] );
+    default_binary.put( h, &buffer[0] );
     
     return std::make_pair( buffer, image );
 }
@@ -112,7 +112,7 @@ static pair read( snark::cv_mat::serialization& input, rate_limit& rate )
     return input.read< snark::cv_mat::serialization::header::buffer_t >( std::cin );
 }
 
-void skip( unsigned int number_of_frames_to_skip, cv::VideoCapture& video_capture, rate_limit& rate, const binary_type& binary ) { for( unsigned int i=0; i<number_of_frames_to_skip; i++ ) { capture( video_capture, rate, binary ); } }
+void skip( unsigned int number_of_frames_to_skip, cv::VideoCapture& video_capture, rate_limit& rate ) { for( unsigned int i=0; i<number_of_frames_to_skip; i++ ) { capture( video_capture, rate ); } }
 void skip( unsigned int number_of_frames_to_skip, snark::cv_mat::serialization& input, rate_limit& rate ) { for( unsigned int i=0; i<number_of_frames_to_skip; i++ ) { read( input, rate ); } }
 
 int main( int argc, char** argv )
@@ -239,20 +239,20 @@ int main( int argc, char** argv )
             if( !vm.count( "video" ) ) { image = cv::imread( name ); }
             if( image.data )
             {
-                reader.reset( new bursty_reader< pair >( boost::bind( &output_single_image, boost::cref( image ), boost::cref(input.header_binary()) ), discard, capacity ) );
+                reader.reset( new bursty_reader< pair >( boost::bind( &output_single_image, boost::cref( image ) ), discard, capacity ) );
             }
             else
             {
                 video_capture.open( name );
-                skip( number_of_frames_to_skip, video_capture, rate, input.header_binary() );
-                reader.reset( new bursty_reader< pair >( boost::bind( &capture, boost::ref( video_capture ), boost::ref( rate ), boost::cref(input.header_binary()) ), discard, capacity ) );
+                skip( number_of_frames_to_skip, video_capture, rate );
+                reader.reset( new bursty_reader< pair >( boost::bind( &capture, boost::ref( video_capture ), boost::ref( rate ) ), discard, capacity ) );
             }
         }
         else if( vm.count( "camera" ) || vm.count( "id" ) )
         {
             video_capture.open( device );
-            skip( number_of_frames_to_skip, video_capture, rate, input.header_binary() );
-            reader.reset( new bursty_reader< pair >( boost::bind( &capture, boost::ref( video_capture ), boost::ref( rate ), boost::cref(input.header_binary()) ), discard ) );
+            skip( number_of_frames_to_skip, video_capture, rate );
+            reader.reset( new bursty_reader< pair >( boost::bind( &capture, boost::ref( video_capture ), boost::ref( rate ) ), discard ) );
         }
         else
         {
