@@ -89,12 +89,6 @@ serialization::serialization( const std::string& fields, const comma::csv::forma
     }
 }
 
-// todo
-// done- binary_type
-// done - filters::make: don't pass binary, pass functor instead
-// done - revert changes in cameras
-// - add to generic backlog: tear down support for < t, cv::mat > altogether and get rid of templates?
-
 serialization::serialization( const serialization::options& options )
 {
     if( options.no_header && options.header_only ) { COMMA_THROW( comma::exception, "cannot have no-header and header-only at the same time" ); }
@@ -224,7 +218,7 @@ void serialization::write( std::ostream& os, const std::pair< header::buffer_t, 
 {
     if( m_binary )
     {
-        m_buffer = m.first;
+        m_buffer = m.first;     // TBD This forces the output fields to be the same as the input fields
         m_binary_no_timestamp->put( serialization::header( m.second ), &m_buffer[0] );
         os.write( &m_buffer[0], m_buffer.size() );
     }
@@ -269,7 +263,8 @@ void serialization::write_to_stdout(const std::pair< serialization::header::buff
 {
     if( m_binary )
     {
-        m_buffer = m.first;
+        // Should not assign, two buffers of different sizes
+        m_buffer = m.first;     // TBD This forces the output fields to be the same as the input fields
         m_binary_no_timestamp->put( serialization::header( m.second ), &m_buffer[0] );
         write_( 1, &m_buffer[0], m_buffer.size() );
     }
