@@ -2359,7 +2359,7 @@ template <> struct time_traits< boost::posix_time::ptime >
 };
 
 template < typename H >
-std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make( const std::string& how, const boost::function< boost::posix_time::ptime( H ) >& get_timestamp, unsigned int default_delay )
+std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make( const std::string& how, const get_timestamp_functor& get_timestamp, unsigned int default_delay )
 {
     // todo
     COMMA_THROW( comma::exception, "todo" );

@@ -61,6 +61,7 @@ class serialization
         };
         
         typedef boost::shared_ptr< comma::csv::binary< header > > binary_type;
+        typedef comma::csv::binary< header > header_binary_type;
         
         /// options, a helper class
         struct options
@@ -133,9 +134,13 @@ class serialization
         void write_to_stdout( const std::pair< header::buffer_t, cv::Mat >& m, bool flush = true );
         
         const binary_type& header_binary() const { return m_binary; }
+        
+        /// Returns the C-style pointer to the header's binary, NULL if no-header specified in serialisation
+        const header_binary_type* get_header_binary() const { return ( m_binary ? m_binary.get() : NULL ); }
 
     private:
         boost::shared_ptr< comma::csv::binary< header > > m_binary;
+        /// Same header binary as m_binary, however it ignores the timestamp field 't'
         boost::shared_ptr< comma::csv::binary< header > > m_binary_no_timestamp; // ignores timestamp 't' field
         std::vector< char > m_buffer;
         bool m_headerOnly;

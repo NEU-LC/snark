@@ -62,11 +62,12 @@ struct filters
     /// value type
     typedef std::pair< H, cv::Mat > value_type;
     typedef operation< cv::Mat, H > filter_type;
+    typedef boost::function< boost::posix_time::ptime( H ) > get_timestamp_functor;
     
     /// return filters from name-value string
     static std::vector< filter_type > make( const std::string& how, const serialization::binary_type& binary, unsigned int default_delay = 1 );
     
-    static std::vector< filter_type > make( const std::string& how, const boost::function< boost::posix_time::ptime( H ) >& get_timestamp, unsigned int default_delay = 1 );
+    static std::vector< filter_type > make( const std::string& how, const get_timestamp_functor& get_timestamp, unsigned int default_delay = 1 );
     
     static std::vector< filter_type > make( const std::string& how, unsigned int default_delay = 1 );
     

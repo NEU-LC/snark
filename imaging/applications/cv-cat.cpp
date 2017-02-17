@@ -47,6 +47,7 @@
 
 typedef std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat > pair;
 typedef snark::cv_mat::serialization::binary_type binary_type;
+typedef snark::cv_mat::serialization serialization;
 using snark::tbb::bursty_reader;
 
 class rate_limit /// timer class, sleeping if faster than the specified fps
@@ -114,6 +115,16 @@ static pair read( snark::cv_mat::serialization& input, rate_limit& rate )
 
 void skip( unsigned int number_of_frames_to_skip, cv::VideoCapture& video_capture, rate_limit& rate ) { for( unsigned int i=0; i<number_of_frames_to_skip; i++ ) { capture( video_capture, rate ); } }
 void skip( unsigned int number_of_frames_to_skip, snark::cv_mat::serialization& input, rate_limit& rate ) { for( unsigned int i=0; i<number_of_frames_to_skip; i++ ) { read( input, rate ); } }
+
+static boost::posix_time::ptime get_timestamp_from_header( const header::buffer_t& h, const serialization::header_binary_type* pbinary )
+{
+    
+    if( pbinary == NULL ) { return boost::posix_time::microsec_clock::universal_time(); }
+        
+    static snark::cv_mat::serialization::header d;
+    pbinary->get( d, &h[0] );
+    return d.timestamp;
+}
 
 int main( int argc, char** argv )
 {
@@ -260,7 +271,7 @@ int main( int argc, char** argv )
             reader.reset( new bursty_reader< pair >( boost::bind( &read, boost::ref( input ), boost::ref( rate ) ), discard, capacity ) );
         }
         const unsigned int default_delay = vm.count( "file" ) == 0 ? 1 : 200; // HACK to make view work on single files
-        pipeline_with_header pipeline( output, filters_with_header::make( filters, input.header_binary(), default_delay ), *reader, number_of_threads );
+        pipeline_with_header pipeline( output, filters_with_header::make( filters, boost::bind( &get_timestamp_from_header, _1, input.get_header_binary() ), default_delay ), *reader, number_of_threads );
         pipeline.run();
         if( vm.count( "stay" ) ) { while( !is_shutdown ) { boost::this_thread::sleep( boost::posix_time::seconds( 1 ) ); } }
         return 0;
