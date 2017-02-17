@@ -78,7 +78,6 @@ class serialization
             static std::string type_usage();
         };
         
-
         /// default constructor
         serialization();
 
@@ -106,8 +105,6 @@ class serialization
 
         /// return necessary buffer size
         std::size_t size( const cv::Mat& m ) const;
-
-        /// same as above
         std::size_t size( const std::pair< boost::posix_time::ptime, cv::Mat >& m ) const;
         std::size_t size( const std::pair< header::buffer_t, cv::Mat >& m ) const;
 
@@ -130,8 +127,8 @@ class serialization
         /// c-style write to stdout, to be used if issues seen with write() - see cpp file for details
         void write_to_stdout( const std::pair< header::buffer_t, cv::Mat >& m, bool flush = true );
         
-        /// Returns the C-style pointer to the header's binary, NULL if no-header specified in serialisation
-        const comma::csv::binary< header >* get_header_binary() const { return ( m_binary ? m_binary.get() : NULL ); }
+        /// Returns the C-style pointer to the header's binary serializer, NULL if no-header specified in serialisation
+        const comma::csv::binary< header >* header_binary() const;
 
     private:
         boost::scoped_ptr< comma::csv::binary< header > > m_binary;

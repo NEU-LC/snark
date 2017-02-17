@@ -84,17 +84,13 @@ serialization::serialization( const std::string& fields, const comma::csv::forma
     { 
         m_binary.reset( new comma::csv::binary< header >( format.string(), fields, false, default_header ) );
         std::vector< std::string > v = comma::split(fields, ',');
-        std::vector< std::string > no_timestamp;
-        for( unsigned int i = 0; i < v.size(); ++i ) { no_timestamp.push_back( v[i] != "t" ? v[i] : std::string() ); } // blank out timestamp field
-        m_binary_no_timestamp.reset( new comma::csv::binary< header >( format.string(), comma::join(no_timestamp, ','), false, m_header ) ); 
+        for( unsigned int i = 0; i < v.size(); ++i ) { if( v[i] == "t" ) { v[i] = ""; } }
+        m_binary_no_timestamp.reset( new comma::csv::binary< header >( format.string(), comma::join( v, ',' ), false, m_header ) ); 
     }
 }
 
 // todo
-// done - m_binary_no_timestamp: inizialize wherever m_binary gets initialized
 // done- binary_type
-// done  - revert to scoped_ptr
-// done  - serialization::header_binary(): redefine: { return m_binary ? m_binary.get() : NULL; }
 // done - filters::make: don't pass binary, pass functor instead
 // done - revert changes in cameras
 // - add to generic backlog: tear down support for < t, cv::mat > altogether and get rid of templates?
@@ -104,28 +100,21 @@ serialization::serialization( const serialization::options& options )
     if( options.no_header && options.header_only ) { COMMA_THROW( comma::exception, "cannot have no-header and header-only at the same time" ); }
     std::string fields = options.fields.empty() ? std::string( "t,rows,cols,type" ) : options.fields;
     std::vector< std::string > v = comma::split( fields, "," );
-    
-    std::vector< std::string > no_timestamp;
-    for( unsigned int i = 0; i < v.size(); ++i ) { no_timestamp.push_back( v[i] != "t" ? v[i] : std::string() ); } // blank out timestamp field
-    
     comma::csv::format format;
-    if( options.format.elements().empty() )
-    {
-        for( unsigned int i = 0; i < v.size(); ++i )
-        {
-            if( v[i] == "t" ) { format += "t"; } else { format += "ui"; }
-        }
-    }
+    if( options.format.elements().empty() ) { for( unsigned int i = 0; i < v.size(); ++i ) { if( v[i] == "t" ) { format += "t"; } else { format += "ui"; } } }
     else { format = options.format; } 
     m_buffer.resize( format.size() );
     m_headerOnly = options.header_only;
     m_header = options.get_header();
     if( !options.no_header )
     { 
+        for( unsigned int i = 0; i < v.size(); ++i ) { if( v[i] == "t" ) { v[i] = ""; } }
         m_binary.reset( new comma::csv::binary< header >( format.string(), fields, false, m_header ) );
-        m_binary_no_timestamp.reset( new comma::csv::binary< header >( format.string(), comma::join(no_timestamp, ','), false, m_header ) ); 
+        m_binary_no_timestamp.reset( new comma::csv::binary< header >( format.string(), comma::join(v, ','), false, m_header ) ); 
     }
 }
+
+const comma::csv::binary< serialization::header >* serialization::header_binary() const { return m_binary ? m_binary.get() : NULL; }
 
 std::size_t serialization::put( const std::pair< boost::posix_time::ptime, cv::Mat >& p, char* buf ) const
 {

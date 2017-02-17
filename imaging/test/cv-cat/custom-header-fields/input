@@ -1,0 +1,2 @@
+fields/custom/explicit_fields="echo blah,7,7,5.5,20170101T020001,2,3,0,0,1,2,3,4,5 | csv-to-bin 's[4],2ui,d,t,3ui,6ub' | cv-cat --input "fields=a,b,c,d,t,rows,cols,type;binary=s[4],2ui,d,t,3ui"  | csv-from-bin 's[4],2ui,d,t,3ui,6ub'"
+fields/custom/blank_fields="echo blah,7,7,5.5,20170101T020001,2,3,0,0,1,2,3,4,5 | csv-to-bin 's[4],2ui,d,t,3ui,6ub' | cv-cat --input "fields=a,,,,t,rows,cols,type;binary=s[4],2ui,d,t,3ui"  | csv-from-bin 's[4],2ui,d,t,3ui,6ub'"

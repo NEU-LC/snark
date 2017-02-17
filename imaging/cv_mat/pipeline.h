@@ -44,12 +44,13 @@ namespace snark {
 
 namespace tbb {
 
-template<>
+template <>
 struct bursty_reader_traits< std::pair< boost::posix_time::ptime, cv::Mat > >
 {
     static bool valid( const std::pair< boost::posix_time::ptime, cv::Mat >& p ) { return ( !p.second.empty() ); }
 };
-template<>
+
+template <>
 struct bursty_reader_traits< std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat > >
 {
     static bool valid( const std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat >& p ) { return ( !p.second.empty() ); }

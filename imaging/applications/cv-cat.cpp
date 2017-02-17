@@ -117,12 +117,10 @@ void skip( unsigned int number_of_frames_to_skip, snark::cv_mat::serialization& 
 
 static boost::posix_time::ptime get_timestamp_from_header( const header::buffer_t& h, const comma::csv::binary< header >* pbinary )
 {
-    
+    // a use case could be: generate-our-smart-images-in-realtime | cv-cat ... will timestamp images with system time
     if( pbinary == NULL ) { return boost::posix_time::microsec_clock::universal_time(); }
-        
-    static snark::cv_mat::serialization::header d;
-    pbinary->get( d, &h[0] );
-    return d.timestamp;
+    snark::cv_mat::serialization::header d;
+    return pbinary->get( d, &h[0] ).timestamp;
 }
 
 int main( int argc, char** argv )
@@ -270,7 +268,7 @@ int main( int argc, char** argv )
             reader.reset( new bursty_reader< pair >( boost::bind( &read, boost::ref( input ), boost::ref( rate ) ), discard, capacity ) );
         }
         const unsigned int default_delay = vm.count( "file" ) == 0 ? 1 : 200; // HACK to make view work on single files
-        pipeline_with_header pipeline( output, filters_with_header::make( filters, boost::bind( &get_timestamp_from_header, _1, input.get_header_binary() ), default_delay ), *reader, number_of_threads );
+        pipeline_with_header pipeline( output, filters_with_header::make( filters, boost::bind( &get_timestamp_from_header, _1, input.header_binary() ), default_delay ), *reader, number_of_threads );
         pipeline.run();
         if( vm.count( "stay" ) ) { while( !is_shutdown ) { boost::this_thread::sleep( boost::posix_time::seconds( 1 ) ); } }
         return 0;
