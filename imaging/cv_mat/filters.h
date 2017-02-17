@@ -65,10 +65,9 @@ struct filters
     typedef boost::function< boost::posix_time::ptime( H ) > get_timestamp_functor;
     
     /// return filters from name-value string
-    static std::vector< filter_type > make( const std::string& how, const serialization::binary_type& binary, unsigned int default_delay = 1 );
-    
     static std::vector< filter_type > make( const std::string& how, const get_timestamp_functor& get_timestamp, unsigned int default_delay = 1 );
     
+    /// return filters from name-value string, backward compatible, supports H=boost::posix_time::ptime only
     static std::vector< filter_type > make( const std::string& how, unsigned int default_delay = 1 );
     
     /// apply filters (a helper)
