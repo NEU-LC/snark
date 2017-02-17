@@ -60,7 +60,7 @@ class serialization
             typedef std::vector< char > buffer_t;
         };
         
-        /// type for binary of the header
+        typedef boost::shared_ptr< comma::csv::binary< header > > binary_type;
         typedef comma::csv::binary< header > header_binary_type;
         
         /// options, a helper class
@@ -133,14 +133,15 @@ class serialization
         /// c-style write to stdout, to be used if issues seen with write() - see cpp file for details
         void write_to_stdout( const std::pair< header::buffer_t, cv::Mat >& m, bool flush = true );
         
+        const binary_type& header_binary() const { return m_binary; }
+        
         /// Returns the C-style pointer to the header's binary, NULL if no-header specified in serialisation
-        // The pointer is valid as long as serialisation object exists
-        const header_binary_type* header_binary() const { return ( m_binary ? m_binary.get() : NULL ); }
+        const header_binary_type* get_header_binary() const { return ( m_binary ? m_binary.get() : NULL ); }
 
     private:
-        boost::scoped_ptr< comma::csv::binary< header > > m_binary;
+        boost::shared_ptr< comma::csv::binary< header > > m_binary;
         /// Same header binary as m_binary, however it ignores the timestamp field 't'
-        boost::scoped_ptr< comma::csv::binary< header > > m_binary_no_timestamp; // ignores timestamp 't' field
+        boost::shared_ptr< comma::csv::binary< header > > m_binary_no_timestamp; // ignores timestamp 't' field
         std::vector< char > m_buffer;
         bool m_headerOnly;
         header m_header; /// default header
