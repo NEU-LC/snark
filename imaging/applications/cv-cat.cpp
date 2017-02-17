@@ -46,7 +46,6 @@
 #include "../cv_mat/detail/help.h"
 
 typedef std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat > pair;
-typedef snark::cv_mat::serialization::binary_type binary_type;
 typedef snark::cv_mat::serialization serialization;
 using snark::tbb::bursty_reader;
 
@@ -271,7 +270,7 @@ int main( int argc, char** argv )
             reader.reset( new bursty_reader< pair >( boost::bind( &read, boost::ref( input ), boost::ref( rate ) ), discard, capacity ) );
         }
         const unsigned int default_delay = vm.count( "file" ) == 0 ? 1 : 200; // HACK to make view work on single files
-        pipeline_with_header pipeline( output, filters_with_header::make( filters, boost::bind( &get_timestamp_from_header, _1, input.get_header_binary() ), default_delay ), *reader, number_of_threads );
+        pipeline_with_header pipeline( output, filters_with_header::make( filters, boost::bind( &get_timestamp_from_header, _1, input.header_binary() ), default_delay ), *reader, number_of_threads );
         pipeline.run();
         if( vm.count( "stay" ) ) { while( !is_shutdown ) { boost::this_thread::sleep( boost::posix_time::seconds( 1 ) ); } }
         return 0;

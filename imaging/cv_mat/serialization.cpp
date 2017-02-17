@@ -95,8 +95,8 @@ serialization::serialization( const std::string& fields, const comma::csv::forma
 // - binary_type
 //   - revert to scoped_ptr
 //   - serialization::header_binary(): redefine: { return m_binary ? m_binary.get() : NULL; }
-// - filters::make: don't pass binary, pass functor instead
-// - revert changes in cameras
+// done - filters::make: don't pass binary, pass functor instead
+// done - revert changes in cameras
 // - add to generic backlog: tear down support for < t, cv::mat > altogether and get rid of templates?
 
 serialization::serialization( const serialization::options& options )
