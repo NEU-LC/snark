@@ -18,7 +18,7 @@ define('base_controller', ['jquery', "jquery_timeago",
     "bootstrap", "ol", 'utils',
     "Feed", "CsvFeed",
     'TextFeed', 'ImageFeed',
-    'GraphFeed', 'ImageStreamFeed', 'TrackFeed', 'TrackOptions', 'MapFeed', 'FormFeed', 'StartStopFeed', 'MapOptions', 'GridOptions'], function ($) {
+    'GraphFeed', 'ImageStreamFeed', 'TrackFeed', 'TrackOptions', 'MapFeed', 'StartStopFeed', 'MapOptions', 'GridOptions'], function ($) {
 
     var Feed = require('Feed');
     // var TextFeed = require('TextFeed');
@@ -54,8 +54,10 @@ define('base_controller', ['jquery', "jquery_timeago",
         var input_fields_link = feed_name + "-fields";
         var content_html = "";
         if (fields != undefined) {
-            content_html += '<a data-toggle="collapse" class="text-center" href="#' + input_fields_link + '">Input fields</a>'
-                + '<div class="inputs-group collapse" id="' + input_fields_link + '"></div>';
+            // content_html += '<a data-toggle="collapse" class="text-center" href="#' + input_fields_link + '">Input fields</a>'
+            //     + '<div class="inputs-group collapse" id="' + input_fields_link + '"></div>';
+            //content_html += '<div class="inputs-group " id="' + input_fields_link + '"></div>';
+
         }
         $(id).append(
             '<h3>' + feed_name +
@@ -664,14 +666,17 @@ define('base_controller', ['jquery', "jquery_timeago",
             config.alert = true;
         }
         var feed_obj = create_feed_fn(config.type, feed_name, feed_path, config);
-        if (config.type != 'form' && config.type != 'stream') {
-            if (feed_obj.is_feed_inputs()) {
-                feed_obj.input_container.empty();
-                var form_ = $('<form>');
-                feed_obj.load_inputs(form_);
-                feed_obj.input_container.append(form_);
-            }
-        }
+        // if (config.type != 'form' && config.type != 'stream') {
+        //     if (feed_obj.is_feed_inputs()) {
+        //         feed_obj.input_container.empty();
+        //         feed_obj.init();
+        //         feed_obj.addListeners();
+        //
+        //         var form_ = $('<form>');
+        //         feed_obj.load_inputs(form_);
+        //         feed_obj.input_container.append(form_);
+        //     }
+        // }
         var folder = gui.addFolder(feed_path);
         folder.close();
         folder.add(feed_obj.config, 'url').onFinishChange(function (value) {

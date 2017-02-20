@@ -17,16 +17,44 @@ define('Feed', ["jquery", "jquery_timeago", "utils"], function ($) {
         this.target = $(this.id + ' .target');
         this.input_container = $(this.id + ' .inputs-group');
         this.hint = this.config.hint != undefined ? this.config.hint : "";
+        this.width = this.config.width != undefined ? this.config.width : 400;
         this.interval = null;
         this.refresh_time = null;
         this.show = true;
         this.isMobile = false;
         this.fields = [];
+        this.form = $('<form>', {onSubmit: "return false"});
+        if (this.form_show_buttons == undefined) {
+            this.form_show_buttons = false;
+        }
+        // if(this.config.type == "start_stop" || this.form_show_buttons != undefined){
+        //     this.form_show_buttons = true;
+        // }
+        // else{
+        //     this.form_show_buttons = false;
+        // }
+
+        this.width = this.config.width != undefined ? this.config.width : 400;
         if (config.form != undefined) {
             this.extract_fields(config.form);
+            var input_fields_link = this.feed_name + "-fields";
+            if (!this.form_show_buttons) {
+                var content_html = '<a data-toggle="collapse" class="text-center" href="#' + input_fields_link + '">Input fields</a>'
+                    + '<div class="inputs-group collapse" id="' + input_fields_link + '"></div>';
+                $(content_html).insertBefore(this.target);
+                this.input_container = $(this.id + ' .inputs-group');
+            }
+            else {
+                var content_html = '<div class="inputs-group form" id="' + input_fields_link + '"></div>';
+                $(content_html).insertBefore(this.target);
+                this.input_container = $(this.id + ' .inputs-group');
+            }
+            this.ok_label = this.config.ok_label != undefined ? this.config.ok_label : "Submit";
         }
-
-
+        if (this.is_add_form()) {
+            this.init_form();
+            this.addListeners();
+        }
     };
 
     Feed.prototype.reset = function () {
@@ -44,15 +72,23 @@ define('Feed', ["jquery", "jquery_timeago", "utils"], function ($) {
     Feed.prototype.extract_fields = function (form_elements) {
         if (form_elements != undefined) {
 
-            if (form_elements['buttons'] != undefined) {
-                if (form_elements['input'] != undefined) {
-                    this.populate_path_values(form_elements['input'], "");
-                }
+            if (form_elements['fields'] != undefined) {
+                this.populate_path_values(form_elements['fields'], "");
                 // this.buttons = form_elements['buttons'];
             }
-            else {
-                this.populate_path_values(form_elements, "");
+            if (form_elements['buttons'] != undefined) {
+                var buttons_config = form_elements['buttons'];
+                if (buttons_config['show'] != undefined) {
+                    if (buttons_config['show'] == "true") {
+                        this.form_show_buttons = true;
+                    }
+                }
+                //
+                // this.buttons = form_elements['buttons'];
             }
+            // else {
+            //     this.populate_path_values(form_elements, "");
+            // }
         }
     };
 
@@ -70,6 +106,150 @@ define('Feed', ["jquery", "jquery_timeago", "utils"], function ($) {
             }
             // console.log(element + " typeof " + (typeof element) + "   type= " + type);
         }
+    };
+    Feed.prototype.add_form = function () {
+        if (this.form_show_buttons) {
+            this.input_container.append(this.form);
+        }
+        else {
+            this.input_container.append(this.form);
+        }
+    };
+    Feed.prototype.init_form = function () {
+        this.input_container.empty();
+
+        this.el.removeClass('panel-disabled').addClass('panel-enabled');
+        // this.target.empty();
+        this.form.empty();
+        this.load_inputs(this.form);
+
+        var this_ = this;
+
+        // var combo = $('<select>');
+        //
+        // $("form").submit(function (event) {
+        //     alert("Handler for .submit() called.");
+        //     event.preventDefault();
+        // });
+        if (this.form_show_buttons) {
+            var buttons_div = $('<div>', {class: "col-sm-12"});
+            this.add_buttons(buttons_div);
+            var clear = $('<button/>',
+                {
+                    text: 'Clear',
+                    name: 'clear',
+                    type: 'button',
+                    class: "btn btn-default col-sm-3",
+                    click: function () {
+                        $($(this).closest("form").find("input[type=text]")).each(function () {
+                            $(this).val('');
+                        });
+                        $($(this).closest("form").find("button")).each(function () {
+                            $(this).attr('disabled', "disabled");
+                        });
+                        // $($(this).closest("form").find("button")).each(function () {
+                        //     $(this).attr('disabled', "disabled");
+                        // });
+                    }
+                });
+            buttons_div.append(clear);
+            this.form.append(buttons_div);
+        }
+        // var num = this.buttons.length;
+
+
+        // form.append(combo).append("<br>");
+        // form.append(input).append("<br>");
+        $(this.form).append($('<div>', {class: "clear"}));
+        this.add_form();
+        if (this.config.type == "start_stop") {
+            this.target.append(this.form);
+        }
+        else {
+            if (this.form_show_buttons) {
+                this.input_container.append(this.form);
+            }
+            else {
+                this.input_container.append(this.form);
+            }
+        }
+
+        var size = Object.keys(this.fields).length;
+        if (size > 0) {
+            this.target.width(this_.width);
+        }
+        else {
+            $(this.target).css("min-width", function () {
+                return 200;
+            });
+        }
+
+
+    };
+    // $(function () {
+    //     $.ajaxSetup({
+    //         error: function (jqXHR, exception) {
+    //             if (jqXHR.status === 0) {
+    //                 console.log('Not connect.\n Verify Network.');
+    //             } else if (jqXHR.status == 404) {
+    //                 console.log('Requested page not found. [404]');
+    //             } else if (jqXHR.status == 500) {
+    //                 console.log('Internal Server Error [500].');
+    //             } else if (exception === 'parsererror') {
+    //                 console.log('Requested JSON parse failed.');
+    //             } else if (exception === 'timeout') {
+    //                 console.log('Time out error.');
+    //             } else if (exception === 'abort') {
+    //                 console.log('Ajax request aborted.');
+    //             } else {
+    //                 console.log('Uncaught Error.\n' + jqXHR.responseText);
+    //             }
+    //         }
+    //     });
+    // });
+    Feed.prototype.add_buttons = function (container) {
+        this.refresh_time = new Date();
+
+        var this_ = this;
+        var submit = $('<button/>',
+            {
+                value: "submit",
+                text: this.ok_label,
+                class: "btn btn-primary col-sm-7",
+                click: function (event) {
+                    event.preventDefault();
+                    var url = this_.get_url();
+                    if (url != undefined) {
+                        $.ajax({
+                            type: "GET",
+                            crossDomain: true,
+                            context: this,
+                            data: $(this).closest("form").serialize(),
+                            url: url
+                            // error: function (request, status, error) {
+                            // }
+                        }).done(function (data, textStatus, jqXHR) {
+                            // var json = $.parseJSON(data);
+                            // Feed.prototype.onload_(data);
+                            // data = JSON.parse('{"output" : {"message": "Done. success", "x": { "a": 0, "b": 1 } },"status" :{"code": 0 , "message": "Success. Added successfully."}}');
+                            this_.onload(data);
+                        }).fail(function (jqXHR, textStatus, errorThrown) {
+                            // console.log(jqXHR);
+                            this_.update_error(this_, errorThrown);
+                        });
+                    }
+                }
+            });
+        container.append(submit);
+        container.append($('<label/>',
+            {class: "col-sm-2"}));
+    };
+    Feed.prototype.addListeners = function () {
+        $($(this.form).find("input[type=text]")).on("input", function () {
+            $($(this).closest("form").find("button")).each(function () {
+                $(this).removeAttr('disabled');
+            });
+        });
     };
 
     var get_prefix = function (key, prefix) {
@@ -105,7 +285,7 @@ define('Feed', ["jquery", "jquery_timeago", "utils"], function ($) {
     Feed.prototype.clear_interval = function () {
         clearInterval(this.interval);
         delete pending[this.feed_name];
-        if (!this.target.hasClass('form')) {
+        if (!(this.target.hasClass('form') || this.input_container.hasClass("form"))) {
             this.status.removeClass('text-success glyphicon-refresh').addClass('text-muted glyphicon-stop');
             this.el.removeClass('panel-enabled').addClass('panel-disabled');
             var gui_folder = $(gui.__folders[this.feed_path].__ul);
@@ -120,10 +300,12 @@ define('Feed', ["jquery", "jquery_timeago", "utils"], function ($) {
         }
     };
     Feed.prototype.refresh = function () {
-        this.clear_interval();
-        this.preload();
-        if (this.config.refresh.auto) {
-            this.set_interval();
+        if (!this.form_show_buttons || (this.form_show_buttons && this.config.refresh.auto)) {
+            this.clear_interval();
+            this.preload();
+            if (this.config.refresh.auto) {
+                this.set_interval();
+            }
         }
         if (this.hint != "") {
             $(this.target).attr("rel", "tooltip");
@@ -193,10 +375,14 @@ define('Feed', ["jquery", "jquery_timeago", "utils"], function ($) {
         this.status.fadeTo(1000, 0.4);
         this.load();
     };
+    Feed.prototype.is_add_form = function () {
+        var size = Object.keys(this.fields).length;
+        return size > 0 && (this.config.type != "form" && this.config.type != 'stream');
+    };
 
     Feed.prototype.is_feed_inputs = function () {
         var size = Object.keys(this.fields).length;
-        return size > 0 && (this.config.type != "form" && this.config.type != "start_stop");
+        return size > 0 && (this.config.type != "form" && this.config.type != "start_stop" && this.config.type != 'stream');
     };
     Feed.prototype.update_time = function () {
         var timestring = this.refresh_time.toString();
@@ -212,6 +398,7 @@ define('Feed', ["jquery", "jquery_timeago", "utils"], function ($) {
         this.timeago.attr('datetime', this.refresh_time.toISOString()).timeago('updateFromDOM');
     };
     Feed.prototype.onload = function (data) {
+        this.removeOldStatus();
         this.update_time();
         this.status.finish().fadeTo(0, 1);
         if (this.config.alert) {
@@ -228,6 +415,24 @@ define('Feed', ["jquery", "jquery_timeago", "utils"], function ($) {
         if (this.config.alert) {
             this.alert(true);
         }
+    };
+    Feed.prototype.removeOldStatus = function () {
+        $(this.form).find(".error-message").remove();
+        this.el.removeClass('panel-disabled');
+    };
+    Feed.prototype.update_error = function (this_, error) {
+        this_.update_time();
+        this.status.finish().fadeTo(0, 1);
+        this.onload_();
+        $(this.form).find(".error-message").remove();
+        this.el.addClass('panel-disabled');
+        $(this.form).append($('<label>', {
+            class: "error-message col-sm-11 ",
+            text: (status.message ? status.message : "Error : " + error)
+        }));
+        $(this.form).append($('<div>', {class: "clear"}));
+
+
     };
     Feed.prototype.get_url = function () {
         var url = this.config.url;

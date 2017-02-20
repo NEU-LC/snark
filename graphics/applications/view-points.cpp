@@ -376,20 +376,20 @@ static bool data_passed_through = false;
 
 // quick and dirty, todo: a proper structure, as well as a visitor for command line options
 #if Qt3D_VERSION==1
-boost::shared_ptr< snark::graphics::view::Reader > makeReader( QGLView& viewer
+boost::shared_ptr< snark::graphics::view::Reader > make_reader( QGLView& viewer
                                                              , const comma::command_line_options& options
-                                                             , const comma::csv::options& csvOptions
+                                                             , const comma::csv::options& csv_options
                                                              , const std::string& properties = "" )
 #else
-boost::shared_ptr< snark::graphics::view::Reader > makeReader( const comma::command_line_options& options
-                                                             , const comma::csv::options& csvOptions
+boost::shared_ptr< snark::graphics::view::Reader > make_reader( const comma::command_line_options& options
+                                                             , const comma::csv::options& csv_options
                                                              , const std::string& properties = "" )
 #endif
 {
     snark::graphics::view::color_t background_color( QColor( QString( options.value< std::string >( "--background-colour", "#000000" ).c_str() ) ) );
     std::string shape = options.value< std::string >( "--shape", "point" );
-    snark::graphics::view::Reader::reader_parameters param( csvOptions
-                                                          , options.value( "--title", csvOptions.filename )
+    snark::graphics::view::Reader::reader_parameters param( csv_options
+                                                          , options.value( "--title", csv_options.filename )
                                                           , options.value< std::size_t >( "--size", shape == "point" ? 2000000 : 200000 )
                                                           , options.value( "--point-size,--weight", 1u )
                                                           , options.exists( "--pass-through,--pass" )
@@ -402,7 +402,7 @@ boost::shared_ptr< snark::graphics::view::Reader > makeReader( const comma::comm
     if( properties != "" )
     {
         comma::name_value::parser nameValue( "filename", ';', '=', false );
-        param.options = nameValue.get( properties, csvOptions );
+        param.options = nameValue.get( properties, csv_options );
         comma::name_value::map m( properties, "filename", ';', '=' );
         param.size = m.value( "size", param.size );
         param.point_size = m.value( "point-size", param.point_size );
@@ -618,7 +618,7 @@ int main( int argc, char** argv )
         if( options.exists( "--bash-completion" ) ) bash_completion( argc, argv );
         if( options.exists( "--version" )) { version(); exit(0); }
         if( options.exists( "--help" ) || options.exists( "-h" ) ) { usage(); }
-        comma::csv::options csvOptions( argc, argv );
+        comma::csv::options csv_options( argc, argv );
         std::vector< std::string > properties = options.unnamed( "--z-is-up,--orthographic,--flush,--no-stdin,--output-camera-config,--output-camera,--pass-through,--pass,--exit-on-end-of-input"
                 , "--binary,--bin,-b,--fields,--size,--delimiter,-d,--colour,--color,-c,--point-size,--weight,--background-colour,--scene-center,--center,--scene-radius,--radius,--shape,--label,--title,--camera,--camera-position,--camera-config,--fov,--model,--full-xpath" );
 
@@ -659,6 +659,7 @@ int main( int argc, char** argv )
             }
         }
 
+        bool camera_position_from_stdin = false;
 #if Qt3D_VERSION==1
         QApplication application( argc, argv );
         if( options.exists( "--camera-position" ) )
@@ -682,6 +683,7 @@ int main( int argc, char** argv )
                     camera_csv = parser.get< comma::csv::options >( position );
                     camera_csv->full_xpath = false;
                     if( camera_csv->fields.empty() ) { camera_csv->fields = "x,y,z,roll,pitch,yaw"; }
+                    camera_position_from_stdin = camera_csv->filename == "-";
                 }
                 catch( ... ) {}
             }
@@ -705,27 +707,24 @@ int main( int argc, char** argv )
                                                                                  , scene_center
                                                                                  , scene_radius
                                                                                  , options.exists( "--output-camera-config,--output-camera" ) );
-        bool stdinAdded = false;
+        bool stdin_explicitly_defined = false;
         for( unsigned int i = 0; i < properties.size(); ++i )
         {
-            if( comma::split( properties[i], ';' )[0] == "-" ) { stdinAdded = true; }
-            viewer->readers.push_back( makeReader( *viewer, options, csvOptions, properties[i] ) );
+            if( comma::split( properties[i], ';' )[0] == "-" ) { stdin_explicitly_defined = true; }
+            viewer->readers.push_back( make_reader( *viewer, options, csv_options, properties[i] ) );
         }
-        if( !stdinAdded && !options.exists( "--no-stdin" ) )
+        if( !stdin_explicitly_defined && !options.exists( "--no-stdin" ) && !camera_position_from_stdin )
         {
-            csvOptions.filename = "-";
-            viewer->readers.push_back( makeReader( *viewer, options, csvOptions ) );
+            csv_options.filename = "-";
+            viewer->readers.push_back( make_reader( *viewer, options, csv_options ) );
         }
         if( data_passed_through )
         {
             viewer->inhibit_stdout();
-            if( options.exists( "--output-camera-config,--output-camera" ))
-            {
-                COMMA_THROW( comma::exception, "cannot use --output-camera-config whilst \"pass-through\" option is in use" );
-            }
+            if( options.exists( "--output-camera-config,--output-camera" ) ) { COMMA_THROW( comma::exception, "cannot use --output-camera-config whilst \"pass-through\" option is in use" ); }
         }
-        snark::graphics::view::MainWindow mainWindow( comma::join( argv, argc, ' ' ), viewer );
-        mainWindow.show();
+        snark::graphics::view::MainWindow main_window( comma::join( argv, argc, ' ' ), viewer );
+        main_window.show();
         application.exec();
         delete viewer;
         return 0;       // We never actually reach this line because we raise SIGINT when closing
@@ -735,25 +734,23 @@ int main( int argc, char** argv )
         // TODO: readers are currently not parallel
         // TODO: for qt3dv1 implementation see Viewer::initializeGL() and, e.g. ShapeReader::start()
         std::vector< boost::shared_ptr< snark::graphics::view::Reader > > readers;
-        bool stdinAdded = false;
+        bool stdin_explicitly_defined = false;
         for( unsigned int i = 0; i < properties.size(); ++i )
         {
-            if( comma::split( properties[i], ';' )[0] == "-" ) { stdinAdded = true; }
-            readers.push_back( makeReader( options, csvOptions, properties[i] ));
+            if( comma::split( properties[i], ';' )[0] == "-" ) { stdin_explicitly_defined = true; }
+            readers.push_back( make_reader( options, csv_options, properties[i] ));
         }
-        if( !stdinAdded && !options.exists( "--no-stdin" ))
+        if( !stdin_explicitly_defined && !options.exists( "--no-stdin" ) && !camera_position_from_stdin )
         {
-            csvOptions.filename = "-";
-            readers.push_back( makeReader( options, csvOptions ));
+            csv_options.filename = "-";
+            readers.push_back( make_reader( options, csv_options ));
         }
-
         for( unsigned int i = 0; i < readers.size(); ++i )
         {
             while( readers[i]->read_once() );
-            Eigen::Vector3d offset;
+            Eigen::Vector3d offset = Eigen::Vector3d::Zero(); // todo: this does not look right: this will initialize readers with incorrect offset
             readers[i]->update( offset );
         }
-
         QApplication app(argc, argv);
         snark::graphics::view::main_window main_window( readers, camera_options );
         main_window.resize( main_window.sizeHint() );
@@ -764,13 +761,7 @@ int main( int argc, char** argv )
 #error Qt3D_VERSION must be 1 or 2
 #endif
     }
-    catch( std::exception& ex )
-    {
-        std::cerr << "view-points: " << ex.what() << std::endl;
-    }
-    catch( ... )
-    {
-        std::cerr << "view-points: unknown exception" << std::endl;
-    }
+    catch( std::exception& ex ) { std::cerr << "view-points: " << ex.what() << std::endl; }
+    catch( ... ) { std::cerr << "view-points: unknown exception" << std::endl; }
     return 1;
 }
