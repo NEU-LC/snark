@@ -498,8 +498,9 @@ struct point
     Eigen::Vector3d coordinates;
     double scalar;
     comma::uint32 id;
+    comma::uint32 block;
     
-    point() : coordinates( 0, 0, 0 ), scalar( 0 ) {}
+    point() : coordinates( 0, 0, 0 ), scalar( 0 ), id( 0 ), block( 0 ) {}
     point( const Eigen::Vector3d& coordinates, double scalar ) : coordinates( coordinates ), scalar( scalar ) {}
 };
 
@@ -590,6 +591,7 @@ template <> struct traits< local_operation::point >
         v.apply( "coordinates", t.coordinates );
         v.apply( "scalar", t.scalar );
         v.apply( "id", t.id );
+        //v.apply( "block", t.block );
     }
     
     template< typename K, typename V > static void visit( const K&, local_operation::point& t, V& v )
@@ -597,6 +599,7 @@ template <> struct traits< local_operation::point >
         v.apply( "coordinates", t.coordinates );
         v.apply( "scalar", t.scalar );
         v.apply( "id", t.id );
+        //v.apply( "block", t.block );
     }
 };
 
