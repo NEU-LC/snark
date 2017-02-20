@@ -35,3 +35,11 @@ fields/custom_output_format[0]="echo 20170102T001122,2,3,0,0,1,2,3,4,5 | csv-to-
 # - tests: check whether output header fields are set correctly
 #   - when images size gets changed
 #   - when image type gets changed
+
+fields/convert_to="echo 20170102T001122,2,3,0,0,1,2,3,4,5 | csv-to-bin t,3ui,6ub | cv-cat 'convert_to=f'  | csv-from-bin t,3ui,6f"
+fields/resize="echo 20170102T001122,2,3,0,0,1,2,3,4,5 | csv-to-bin t,3ui,6ub | cv-cat 'resize=4,6'  | csv-from-bin t,3ui,24ub"
+fields/convert_and_resize="echo 20170102T001122,2,3,0,0,1,2,3,4,5 | csv-to-bin t,3ui,6ub | cv-cat 'convert_to=f;resize=4,6'  | csv-from-bin t,3ui,24f"
+
+fields/custom/convert_to="echo blah,7,7,5.5,20170101T020001,2,3,0,0,1,2,3,4,5 | csv-to-bin 's[4],2ui,d,t,3ui,6ub' | cv-cat --input 'fields=a,b,c,d,t,rows,cols,type;binary=s[4],2ui,d,t,3ui' convert_to=d  | csv-from-bin 's[4],2ui,d,t,3ui,6d'"
+fields/custom/resize="echo blah,7,7,5.5,20170101T020001,2,3,0,0,1,2,3,4,5 | csv-to-bin 's[4],2ui,d,t,3ui,6ub' | cv-cat --input 'fields=a,b,c,d,t,rows,cols,type;binary=s[4],2ui,d,t,3ui' resize=3,4  | csv-from-bin 's[4],2ui,d,t,3ui,12ub'"
+fields/custom/convert_and_resize="echo blah,7,7,5.5,20170101T020001,2,3,0,0,1,2,3,4,5 | csv-to-bin 's[4],2ui,d,t,3ui,6ub' | cv-cat --input 'fields=a,b,c,d,t,rows,cols,type;binary=s[4],2ui,d,t,3ui' 'resize=3,4;convert_to=d'  | csv-from-bin 's[4],2ui,d,t,3ui,12d'"
