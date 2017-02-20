@@ -27,6 +27,8 @@ fields/no_input_header[1]/output="19700101T000000,2,3,0"
 fields/no_input_header[1]/status=0
 fields/no_input_header[2]/output="19700101T000000,2,3,0,0,1,2,3,4,5"
 fields/no_input_header[2]/status=0
+fields/no_input_header[3]/output=""
+fields/no_input_header[3]/status=1
 
 
 fields/custom/explicit_fields/output="blah,7,7,5.5,20170101T020001,2,3,0,0,1,2,3,4,5"
@@ -78,3 +80,10 @@ fields/custom/resize/output="blah,7,7,5.5,20170101T020001,4,3,0,0,1,2,1,2,3,2,3,
 fields/custom/resize/status=0
 fields/custom/convert_and_resize/output="blah,7,7,5.5,20170101T020001,4,3,6,0,1,2,1,2,3,2,3,4,3,4,5"
 fields/custom/convert_and_resize/status=0
+
+fields/custom/missing_binary[0]/output=""
+fields/custom/missing_binary[0]/status=1
+fields/custom/missing_binary[1]/output=""
+fields/custom/missing_binary[1]/status=1
+fields/custom/missing_binary[2]/output=""
+fields/custom/missing_binary[2]/status=1

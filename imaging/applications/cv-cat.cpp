@@ -122,6 +122,14 @@ static boost::posix_time::ptime get_timestamp_from_header( const snark::cv_mat::
     return pbinary->get( d, &h[0] ).timestamp;
 }
 
+static bool has_custom_fields( const std::string& fields )
+{
+    std::vector< std::string > v = comma::split(fields, ',');
+    if( v.size() > snark::cv_mat::serialization::header::fields_num ) { return true; }  // If it has more fields than the default
+    for( unsigned int i = 0; i < v.size(); ++i ) { if( v[i] != "t" && v[i] != "rows" && v[i] != "cols" && v[i] != "type" ) { return true; } } 
+    return false;
+}
+
 int main( int argc, char** argv )
 {
     try
@@ -228,7 +236,7 @@ int main( int argc, char** argv )
         snark::cv_mat::serialization::options output_options = output_options_string.empty() ? input_options : comma::name_value::parser( ';', '=' ).get< snark::cv_mat::serialization::options >( output_options_string );
         if( input_options.no_header && !output_options.fields.empty() && input_options.fields != output_options.fields ) {
             if( output_options.fields != snark::cv_mat::serialization::header::default_fields() ) {
-                std::cerr << "cv-cat: when --input has no-header option, --output fields can only be fields=" << snark::cv_mat::serialization::header::default_fields() << std::endl; return 1;
+                std::cerr << "cv-cat: when --input has no-header option, --output fields can only be fields=" << snark::cv_mat::serialization::header::default_fields() << ", got: " << output_options.fields << std::endl; return 1;
             }
         }
         else { if( !output_options.fields.empty() && input_options.fields != output_options.fields ) { std::cerr << "cv-cat: customised output header fields not supported (todo); got: input fields: \"" << input_options.fields << "\" output fields: \"" << output_options.fields << "\"" << std::endl; return 1; } }
@@ -236,6 +244,11 @@ int main( int argc, char** argv )
         if( output_options.fields.empty() ) { output_options.fields = input_options.fields; }
         if( !output_options.format.elements().empty() && input_options.format.string() != output_options.format.string() ) { std::cerr << "cv-cat: customised output header format not supported (todo); got: input format: \"" << input_options.format.string() << "\" output format: \"" << output_options.format.string() << "\"" << std::endl; return 1; }
         if( output_options.format.elements().empty() ) { output_options.format = input_options.format; };
+        
+        // This is needed because if binary is not set, serialization assumes standard fields and guess every field to be ui, very confusing for the user
+        if( !input_options.fields.empty() && has_custom_fields(input_options.fields) && input_options.format.elements().empty() ) {
+            std::cerr << "cv-cat: non default field detected in --input, please specify binary format for fields: " << input_options.fields << std::endl; return 1 ;
+        }
         
         const std::vector< std::string >& filterStrings = boost::program_options::collect_unrecognized( parsed.options, boost::program_options::include_positional );
         std::string filters;

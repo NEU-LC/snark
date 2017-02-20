@@ -13,6 +13,8 @@ fields/no_input_header[0]="echo 0,1,2,3,4,5 | csv-to-bin 6ub | cv-cat --input 'r
 fields/no_input_header[1]="echo 0,1,2,3,4,5 | csv-to-bin 6ub | cv-cat --input 'rows=2;cols=3;type=ub;no-header' --output header-only | csv-from-bin t,3ui"
 # If input is no-header, the user may specify default output fields t,rows,cols,type
 fields/no_input_header[2]="echo 0,1,2,3,4,5 | csv-to-bin 6ub | cv-cat --input 'rows=2;cols=3;type=ub;no-header' --output "fields=t,rows,cols,type" | csv-from-bin t,3ui,6ub"
+# Negative test 
+fields/no_input_header[3]="echo 0,1,2,3,4,5 | csv-to-bin 6ub | cv-cat --input 'rows=2;cols=3;type=ub;no-header' --output 'fields=t,rows,cols'"
 #### Custom header fields
 fields/custom/explicit_fields="echo blah,7,7,5.5,20170101T020001,2,3,0,0,1,2,3,4,5 | csv-to-bin 's[4],2ui,d,t,3ui,6ub' | cv-cat --input 'fields=a,b,c,d,t,rows,cols,type;binary=s[4],2ui,d,t,3ui'  | csv-from-bin 's[4],2ui,d,t,3ui,6ub'"
 fields/custom/blank_fields="echo blah,7,7,5.5,20170101T020001,2,3,0,0,1,2,3,4,5 | csv-to-bin 's[4],2ui,d,t,3ui,6ub' | cv-cat --input 'fields=a,,,,t,rows,cols,type;binary=s[4],2ui,d,t,3ui'  | csv-from-bin 's[4],2ui,d,t,3ui,6ub'"
@@ -43,3 +45,8 @@ fields/convert_and_resize="echo 20170102T001122,2,3,0,0,1,2,3,4,5 | csv-to-bin t
 fields/custom/convert_to="echo blah,7,7,5.5,20170101T020001,2,3,0,0,1,2,3,4,5 | csv-to-bin 's[4],2ui,d,t,3ui,6ub' | cv-cat --input 'fields=a,b,c,d,t,rows,cols,type;binary=s[4],2ui,d,t,3ui' convert_to=d  | csv-from-bin 's[4],2ui,d,t,3ui,6d'"
 fields/custom/resize="echo blah,7,7,5.5,20170101T020001,2,3,0,0,1,2,3,4,5 | csv-to-bin 's[4],2ui,d,t,3ui,6ub' | cv-cat --input 'fields=a,b,c,d,t,rows,cols,type;binary=s[4],2ui,d,t,3ui' resize=3,4  | csv-from-bin 's[4],2ui,d,t,3ui,12ub'"
 fields/custom/convert_and_resize="echo blah,7,7,5.5,20170101T020001,2,3,0,0,1,2,3,4,5 | csv-to-bin 's[4],2ui,d,t,3ui,6ub' | cv-cat --input 'fields=a,b,c,d,t,rows,cols,type;binary=s[4],2ui,d,t,3ui' 'resize=3,4;convert_to=d'  | csv-from-bin 's[4],2ui,d,t,3ui,12d'"
+
+# For custom fields, binary format must be set for --input
+fields/custom/missing_binary[0]="echo blah,7,7,5.5,20170101T020001,2,3,0,0,1,2,3,4,5 | csv-to-bin 's[4],2ui,d,t,3ui,6ub' | cv-cat --input 'fields=a,b,c,d,t,rows,cols,type'"
+fields/custom/missing_binary[1]="echo blah,20170101T020001,2,3,0,0,1,2,3,4,5 | csv-to-bin 's[4],t,3ui,6ub' | cv-cat --input 'fields=a,t,rows,cols,type'"
+fields/custom/missing_binary[2]="echo blah,20170101T020001,2,3,0,0,1,2,3,4,5 | csv-to-bin 's[4],t,3ui,6ub' | cv-cat --input 'fields=,t,rows,cols,type'"
