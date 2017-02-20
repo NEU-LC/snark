@@ -46,7 +46,7 @@
 #include "../cv_mat/detail/help.h"
 
 typedef std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat > pair;
-typedef snark::cv_mat::serialization::binary_type binary_type;
+typedef snark::cv_mat::serialization serialization;
 using snark::tbb::bursty_reader;
 
 class rate_limit /// timer class, sleeping if faster than the specified fps
@@ -72,35 +72,34 @@ class rate_limit /// timer class, sleeping if faster than the specified fps
 
 static comma::signal_flag is_shutdown( comma::signal_flag::hard );
 
-typedef snark::cv_mat::serialization::header header;
-static pair capture( cv::VideoCapture& capture, rate_limit& rate, const binary_type& binary )
+static pair capture( cv::VideoCapture& capture, rate_limit& rate )
 {
     cv::Mat image;
     capture >> image;
     rate.wait();
     
-//     static comma::csv::binary< header > default_binary( "t,3ui", "t,rows,cols,type" );
-    static snark::cv_mat::serialization::header::buffer_t buffer( binary->format().size() );
+    static comma::csv::binary< snark::cv_mat::serialization::header > default_binary( "t,3ui", "t,rows,cols,type" );
+    static snark::cv_mat::serialization::header::buffer_t buffer( default_binary.format().size() );
     
-    header h(image);
+    snark::cv_mat::serialization::header h(image);
     h.timestamp = boost::posix_time::microsec_clock::universal_time();
-    binary->put( h, &buffer[0] );
+    default_binary.put( h, &buffer[0] );
     
     return std::make_pair( buffer , image );
 }
 
-static pair output_single_image( const cv::Mat& image, const binary_type& binary )
+static pair output_single_image( const cv::Mat& image )
 {
     static bool done = false;
     if( done ) { return pair(); }
     done = true;
     
-//     static comma::csv::binary< header > default_binary( "t,3ui", "t,rows,cols,type" );
-    static snark::cv_mat::serialization::header::buffer_t buffer( binary->format().size() );
+    static comma::csv::binary< snark::cv_mat::serialization::header > default_binary( "t,3ui", "t,rows,cols,type" );
+    static snark::cv_mat::serialization::header::buffer_t buffer( default_binary.format().size() );
     
-    header h(image);
+    snark::cv_mat::serialization::header h(image);
     h.timestamp = boost::posix_time::microsec_clock::universal_time();
-    binary->put( h, &buffer[0] );
+    default_binary.put( h, &buffer[0] );
     
     return std::make_pair( buffer, image );
 }
@@ -109,11 +108,19 @@ static pair read( snark::cv_mat::serialization& input, rate_limit& rate )
 {
     if( is_shutdown || std::cin.eof() || std::cin.bad() || !std::cin.good() ) { return pair(); }
     rate.wait();
-    return input.read_with_header( std::cin );
+    return input.read< snark::cv_mat::serialization::header::buffer_t >( std::cin );
 }
 
-void skip( unsigned int number_of_frames_to_skip, cv::VideoCapture& video_capture, rate_limit& rate, const binary_type& binary ) { for( unsigned int i=0; i<number_of_frames_to_skip; i++ ) { capture( video_capture, rate, binary ); } }
+void skip( unsigned int number_of_frames_to_skip, cv::VideoCapture& video_capture, rate_limit& rate ) { for( unsigned int i=0; i<number_of_frames_to_skip; i++ ) { capture( video_capture, rate ); } }
 void skip( unsigned int number_of_frames_to_skip, snark::cv_mat::serialization& input, rate_limit& rate ) { for( unsigned int i=0; i<number_of_frames_to_skip; i++ ) { read( input, rate ); } }
+
+static boost::posix_time::ptime get_timestamp_from_header( const snark::cv_mat::serialization::header::buffer_t& h, const comma::csv::binary< snark::cv_mat::serialization::header >* pbinary )
+{
+    // a use case could be: generate-our-smart-images-in-realtime | cv-cat ... will timestamp images with system time
+    if( pbinary == NULL ) { return boost::posix_time::microsec_clock::universal_time(); }
+    snark::cv_mat::serialization::header d;
+    return pbinary->get( d, &h[0] ).timestamp;
+}
 
 int main( int argc, char** argv )
 {
@@ -165,6 +172,12 @@ int main( int argc, char** argv )
             std::cerr << std::endl;
             std::cerr << "usage: cv-cat [options] [<filters>]\n" << std::endl;
             std::cerr << "output header format: fields: t,rows,cols,type; binary: t,3ui\n" << std::endl;
+            std::cerr << "                note: only the following scenarios are currently supported:" << std::endl;
+            std::cerr << "                      - input has no header (no-header option), output has default header fields (t,rows,cols,type)" << std::endl;
+            std::cerr << "                      - input has no header (no-header option), output has no header (no-header option)" << std::endl;
+            std::cerr << "                      - input has arbitrary fields, input header fields are the same as output header fields" << std::endl;
+            std::cerr << "                      - input has arbitrary fields, output has no header (no-header option)" << std::endl;
+            std::cerr << "                      anything more sophisticated than that can be easily achieved e.g. by piping cv-cat to csv-shuffle" << std::endl;
             std::cerr << description << std::endl;
             std::cerr << std::endl;
             std::cerr << "examples" << std::endl;
@@ -215,14 +228,15 @@ int main( int argc, char** argv )
         snark::cv_mat::serialization::options output_options = output_options_string.empty()
                                                              ? input_options
                                                              : comma::name_value::parser( ';', '=' ).get< snark::cv_mat::serialization::options >( output_options_string );
-        std::vector< std::string > filterStrings = boost::program_options::collect_unrecognized( parsed.options, boost::program_options::include_positional );
+        if( !output_options.fields.empty() && input_options.fields != output_options.fields ) { std::cerr << "cv-cat: customised output header fields not supported (todo); got: input fields: \"" << input_options.fields << "\" output fields: \"" << output_options.fields << "\"" << std::endl; return 1; }
+        if( output_options.fields.empty() ) { output_options.fields = input_options.fields; }
+        if( !output_options.format.elements().empty() && input_options.format.string() != output_options.format.string() ) { std::cerr << "cv-cat: customised output header format not supported (todo); got: input format: \"" << input_options.format.string() << "\" output format: \"" << output_options.format.string() << "\"" << std::endl; return 1; }
+        if( output_options.format.elements().empty() ) { output_options.format = input_options.format; };
+        const std::vector< std::string >& filterStrings = boost::program_options::collect_unrecognized( parsed.options, boost::program_options::include_positional );
         std::string filters;
         if( filterStrings.size() == 1 ) { filters = filterStrings[0]; }
         if( filterStrings.size() > 1 ) { std::cerr << "please provide filters as a single name-value string" << std::endl; return 1; }
-        if( filters.find( "encode" ) != filters.npos && !output_options.no_header )
-        {
-            std::cerr << "encoding image and not using no-header, are you sure ?" << std::endl;
-        }
+        if( filters.find( "encode" ) != filters.npos && !output_options.no_header ) { std::cerr << "cv-cat: warning: encoding image and not using no-header, are you sure?" << std::endl; }
         if( vm.count( "camera" ) ) { device = 0; }
         rate_limit rate( fps );
         cv::VideoCapture video_capture;
@@ -231,7 +245,6 @@ int main( int argc, char** argv )
         boost::scoped_ptr< bursty_reader< pair > > reader;
         cv::Mat image;
         
-        typedef snark::cv_mat::serialization serialization;
         typedef snark::imaging::applications::pipeline_with_header pipeline_with_header;
         typedef snark::cv_mat::filters_with_header filters_with_header;
         
@@ -240,20 +253,20 @@ int main( int argc, char** argv )
             if( !vm.count( "video" ) ) { image = cv::imread( name ); }
             if( image.data )
             {
-                reader.reset( new bursty_reader< pair >( boost::bind( &output_single_image, boost::cref( image ), boost::cref(input.header_binary()) ), discard, capacity ) );
+                reader.reset( new bursty_reader< pair >( boost::bind( &output_single_image, boost::cref( image ) ), discard, capacity ) );
             }
             else
             {
                 video_capture.open( name );
-                skip( number_of_frames_to_skip, video_capture, rate, input.header_binary() );
-                reader.reset( new bursty_reader< pair >( boost::bind( &capture, boost::ref( video_capture ), boost::ref( rate ), boost::cref(input.header_binary()) ), discard, capacity ) );
+                skip( number_of_frames_to_skip, video_capture, rate );
+                reader.reset( new bursty_reader< pair >( boost::bind( &capture, boost::ref( video_capture ), boost::ref( rate ) ), discard, capacity ) );
             }
         }
         else if( vm.count( "camera" ) || vm.count( "id" ) )
         {
             video_capture.open( device );
-            skip( number_of_frames_to_skip, video_capture, rate, input.header_binary() );
-            reader.reset( new bursty_reader< pair >( boost::bind( &capture, boost::ref( video_capture ), boost::ref( rate ), boost::cref(input.header_binary()) ), discard ) );
+            skip( number_of_frames_to_skip, video_capture, rate );
+            reader.reset( new bursty_reader< pair >( boost::bind( &capture, boost::ref( video_capture ), boost::ref( rate ) ), discard ) );
         }
         else
         {
@@ -261,7 +274,7 @@ int main( int argc, char** argv )
             reader.reset( new bursty_reader< pair >( boost::bind( &read, boost::ref( input ), boost::ref( rate ) ), discard, capacity ) );
         }
         const unsigned int default_delay = vm.count( "file" ) == 0 ? 1 : 200; // HACK to make view work on single files
-        pipeline_with_header pipeline( output, filters_with_header::make( filters, input.header_binary(), default_delay ), *reader, number_of_threads );
+        pipeline_with_header pipeline( output, filters_with_header::make( filters, boost::bind( &get_timestamp_from_header, _1, input.header_binary() ), default_delay ), *reader, number_of_threads );
         pipeline.run();
         if( vm.count( "stay" ) ) { while( !is_shutdown ) { boost::this_thread::sleep( boost::posix_time::seconds( 1 ) ); } }
         return 0;

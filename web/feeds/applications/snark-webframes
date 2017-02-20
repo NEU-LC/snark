@@ -192,6 +192,14 @@ class sensors:
         return self._parameters.get( name )
 
 class handler( BaseHTTPServer.BaseHTTPRequestHandler ):
+    def do_OPTIONS(self):
+        self.send_response(200, "ok")
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
+        self.send_header("Access-Control-Allow-Headers", "X-Requested-With")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.end_headers()
+
     def do_GET( self ):
         url = urlparse.urlparse( self.path )
         params = dict(urlparse.parse_qsl(url.query))
@@ -219,22 +227,30 @@ class handler( BaseHTTPServer.BaseHTTPRequestHandler ):
             p.stdin.write("\n")
             running_subprocesses.append( p )
         output, error = p.communicate()
-        # print("output=%s " % output)
-        # print("error=%s " % error)
+        #print("output=%s " % output)
+        #print("error=%s " % error)
         status = p.returncode
         # print("status=%s " % status)
         with lock: running_subprocesses.remove( p )
         if status != 0:
             # error is not included in message due problems with the html format for special symbols (using cgi.escape didn't help completely)
-            message = "%s: request '%s' for sensor '%s' in web config '%s' failed" % ( script_name, sensor_parameters.command, sensor, args.config )
-            self.send_error( httplib.INTERNAL_SERVER_ERROR, message )
-            return
-        self.send_response( httplib.OK )
-        self.send_header( 'Content-type', sensor_parameters.content_type )
-        self.send_header( 'Content-length', len( output ) )
-        self.send_header( 'Access-Control-Allow-Origin', '*' )
-        self.end_headers()
-        self.wfile.write( output )
+            if error:
+                error = error.strip().decode('ascii')
+                self.send_response( httplib.INTERNAL_SERVER_ERROR, error )
+                self.send_header( 'Access-Control-Allow-Origin', '*' )
+                self.end_headers()
+                return
+            else:
+                message = "%s: request '%s' for sensor '%s' in web config '%s' failed" % ( script_name, sensor_parameters.command, sensor, args.config )
+                self.send_error( httplib.INTERNAL_SERVER_ERROR, message )
+                return
+        else:
+            self.send_response( httplib.OK )
+            self.send_header( 'Content-type', sensor_parameters.content_type )
+            self.send_header( 'Content-length', len( output ) )
+            self.send_header( 'Access-Control-Allow-Origin', '*' )
+            self.end_headers()
+            self.wfile.write( output )
 
     def log_message(self, format, *a):
         if args.verbose:
