@@ -6,7 +6,7 @@ define('TextFeed', ["jquery", "Feed"], function ($) {
     var TextFeed = function (feed_name, feed_path, config) {
         this.base = Feed;
         this.base(feed_name, feed_path, config);
-        this.height = this.config.height != undefined ? this.config.height : 400;
+        this.height = this.config.height != undefined ? this.config.height : 0;
     };
     TextFeed.prototype = Object.create(Feed.prototype);
     TextFeed.prototype.load = function () {
