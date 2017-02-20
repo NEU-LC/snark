@@ -68,7 +68,7 @@ serialization::header::header( const boost::posix_time::ptime& t, const cv::Mat 
 }
 
 serialization::serialization() :
-    m_binary( new comma::csv::binary< header >( "t,3ui", "", false ) ),
+    m_binary( new comma::csv::binary< header >( "t,3ui", header::default_fields(), false ) ),
     m_binary_no_timestamp( new comma::csv::binary< header >( "t,3ui", ",rows,cols,type", false ) ),
     m_buffer( m_binary->format().size() ),
     m_headerOnly( false )
@@ -220,7 +220,7 @@ void serialization::write( std::ostream& os, const std::pair< header::buffer_t, 
 {
     if( m_binary )
     {
-        m_buffer = m.first;     // TBD This forces the output fields to be the same as the input fields
+        m_buffer = m.first;     // This forces the output fields to be the same as the input fields
         if( m_binary_no_timestamp ) { m_binary_no_timestamp->put( serialization::header( m.second ), &m_buffer[0] ); }
         os.write( &m_buffer[0], m_buffer.size() );
     }
@@ -265,15 +265,13 @@ void serialization::write_to_stdout(const std::pair< serialization::header::buff
 {
     if( m_binary )
     {
-        // Should not assign, two buffers of different sizes
-        m_buffer = m.first;     // TBD This forces the output fields to be the same as the input fields
+        m_buffer = m.first;     // This forces the output fields to be the same as the input fields
         if( m_binary_no_timestamp ) { m_binary_no_timestamp->put( serialization::header( m.second ), &m_buffer[0] ); }
         write_( 1, &m_buffer[0], m_buffer.size() );
     }
     if( !m_headerOnly ) { write_( 1, reinterpret_cast< const char* >( m.second.datastart ), m.second.dataend - m.second.datastart ); }
     if( flush ) { ::fflush( stdout ); }
 }
-
 
 void serialization::write_to_stdout( const std::pair< boost::posix_time::ptime, cv::Mat >& m, bool flush )
 {

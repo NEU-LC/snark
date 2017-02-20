@@ -56,6 +56,7 @@ class serialization
             header( const cv::Mat& m );
             header( const std::pair< boost::posix_time::ptime, cv::Mat >& p ); /// constructor
             header( const boost::posix_time::ptime& t, const cv::Mat & p ); /// constructor
+            static const char* default_fields() { return "t,rows,cols,type"; }
             
             typedef std::vector< char > buffer_t;
         };

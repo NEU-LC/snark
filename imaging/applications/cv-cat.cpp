@@ -72,17 +72,16 @@ class rate_limit /// timer class, sleeping if faster than the specified fps
 
 static comma::signal_flag is_shutdown( comma::signal_flag::hard );
 
-typedef snark::cv_mat::serialization::header header;
 static pair capture( cv::VideoCapture& capture, rate_limit& rate )
 {
     cv::Mat image;
     capture >> image;
     rate.wait();
     
-    static comma::csv::binary< header > default_binary( "t,3ui", "t,rows,cols,type" );
+    static comma::csv::binary< snark::cv_mat::serialization::header > default_binary( "t,3ui", "t,rows,cols,type" );
     static snark::cv_mat::serialization::header::buffer_t buffer( default_binary.format().size() );
     
-    header h(image);
+    snark::cv_mat::serialization::header h(image);
     h.timestamp = boost::posix_time::microsec_clock::universal_time();
     default_binary.put( h, &buffer[0] );
     
@@ -95,10 +94,10 @@ static pair output_single_image( const cv::Mat& image )
     if( done ) { return pair(); }
     done = true;
     
-    static comma::csv::binary< header > default_binary( "t,3ui", "t,rows,cols,type" );
+    static comma::csv::binary< snark::cv_mat::serialization::header > default_binary( "t,3ui", "t,rows,cols,type" );
     static snark::cv_mat::serialization::header::buffer_t buffer( default_binary.format().size() );
     
-    header h(image);
+    snark::cv_mat::serialization::header h(image);
     h.timestamp = boost::posix_time::microsec_clock::universal_time();
     default_binary.put( h, &buffer[0] );
     
@@ -115,19 +114,12 @@ static pair read( snark::cv_mat::serialization& input, rate_limit& rate )
 void skip( unsigned int number_of_frames_to_skip, cv::VideoCapture& video_capture, rate_limit& rate ) { for( unsigned int i=0; i<number_of_frames_to_skip; i++ ) { capture( video_capture, rate ); } }
 void skip( unsigned int number_of_frames_to_skip, snark::cv_mat::serialization& input, rate_limit& rate ) { for( unsigned int i=0; i<number_of_frames_to_skip; i++ ) { read( input, rate ); } }
 
-static boost::posix_time::ptime get_timestamp_from_header( const header::buffer_t& h, const comma::csv::binary< header >* pbinary )
+static boost::posix_time::ptime get_timestamp_from_header( const snark::cv_mat::serialization::header::buffer_t& h, const comma::csv::binary< snark::cv_mat::serialization::header >* pbinary )
 {
     // a use case could be: generate-our-smart-images-in-realtime | cv-cat ... will timestamp images with system time
     if( pbinary == NULL ) { return boost::posix_time::microsec_clock::universal_time(); }
     snark::cv_mat::serialization::header d;
     return pbinary->get( d, &h[0] ).timestamp;
-}
-
-static bool has_custom_fields( const std::string& fields )
-{
-    std::vector< std::string > v = comma::split(fields, ',');
-    for( unsigned int i = 0; i < v.size(); ++i ) { if( v[i] != "t" || v[i] != "rows" || v[i] != "cols" || v[i] != "type" ) { return true; } } 
-    return false;
 }
 
 int main( int argc, char** argv )
@@ -180,6 +172,12 @@ int main( int argc, char** argv )
             std::cerr << std::endl;
             std::cerr << "usage: cv-cat [options] [<filters>]\n" << std::endl;
             std::cerr << "output header format: fields: t,rows,cols,type; binary: t,3ui\n" << std::endl;
+            std::cerr << "                note: only the following scenarios are currently supported:" << std::endl;
+            std::cerr << "                      - input has no header (no-header option), output has default header fields (t,rows,cols,type)" << std::endl;
+            std::cerr << "                      - input has no header (no-header option), output has no header (no-header option)" << std::endl;
+            std::cerr << "                      - input has arbitrary fields, input header fields are the same as output header fields" << std::endl;
+            std::cerr << "                      - input has arbitrary fields, output has no header (no-header option)" << std::endl;
+            std::cerr << "                      anything more sophisticated than that can be easily achieved e.g. by piping cv-cat to csv-shuffle" << std::endl;
             std::cerr << description << std::endl;
             std::cerr << std::endl;
             std::cerr << "examples" << std::endl;
@@ -230,20 +228,19 @@ int main( int argc, char** argv )
         snark::cv_mat::serialization::options output_options = output_options_string.empty()
                                                              ? input_options
                                                              : comma::name_value::parser( ';', '=' ).get< snark::cv_mat::serialization::options >( output_options_string );
-        std::vector< std::string > filterStrings = boost::program_options::collect_unrecognized( parsed.options, boost::program_options::include_positional );
+        if( !output_options.fields.empty() && input_options.fields != output_options.fields ) { std::cerr << "cv-cat: customised output header fields not supported (todo); got: input fields: \"" << input_options.fields << "\" output fields: \"" << output_options.fields << "\"" << std::endl; return 1; }
+        if( output_options.fields.empty() ) { output_options.fields = input_options.fields; }
+        if( !output_options.format.elements().empty() && input_options.format.string() != output_options.format.string() ) { std::cerr << "cv-cat: customised output header format not supported (todo); got: input format: \"" << input_options.format.string() << "\" output format: \"" << output_options.format.string() << "\"" << std::endl; return 1; }
+        if( output_options.format.elements().empty() ) { output_options.format = input_options.format; };
+        const std::vector< std::string >& filterStrings = boost::program_options::collect_unrecognized( parsed.options, boost::program_options::include_positional );
         std::string filters;
         if( filterStrings.size() == 1 ) { filters = filterStrings[0]; }
         if( filterStrings.size() > 1 ) { std::cerr << "please provide filters as a single name-value string" << std::endl; return 1; }
-        if( filters.find( "encode" ) != filters.npos && !output_options.no_header )
-        {
-            std::cerr << "encoding image and not using no-header, are you sure ?" << std::endl;
-        }
+        if( filters.find( "encode" ) != filters.npos && !output_options.no_header ) { std::cerr << "cv-cat: warning: encoding image and not using no-header, are you sure?" << std::endl; }
         if( vm.count( "camera" ) ) { device = 0; }
         rate_limit rate( fps );
         cv::VideoCapture video_capture;
         snark::cv_mat::serialization input( input_options );
-        if( has_custom_fields( input_options.fields ) ) { output_options.fields = input_options.fields; }
-        output_options.format = input_options.format;
         snark::cv_mat::serialization output( output_options );
         boost::scoped_ptr< bursty_reader< pair > > reader;
         cv::Mat image;

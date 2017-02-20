@@ -2,11 +2,11 @@ fields/custom/explicit_fields="echo blah,7,7,5.5,20170101T020001,2,3,0,0,1,2,3,4
 fields/custom/blank_fields="echo blah,7,7,5.5,20170101T020001,2,3,0,0,1,2,3,4,5 | csv-to-bin 's[4],2ui,d,t,3ui,6ub' | cv-cat --input "fields=a,,,,t,rows,cols,type;binary=s[4],2ui,d,t,3ui"  | csv-from-bin 's[4],2ui,d,t,3ui,6ub'"
 fields/custom/no_input_header="echo 7,7,0,1,2,3,4,5 | csv-to-bin 2ui,6ub | cv-cat --input "fields=a,b;rows=2;cols=3;type=ub" | csv-from-bin 2ui,6ub"
 # Input has no default header fields
-fields/custom/header_only="echo 7,7,0,1,2,3,4,5 | csv-to-bin 2d,6ub | cv-cat --input "fields=a,b;binary=2d;rows=2;cols=3;type=ub" --output "header-only;binary=2d;fields=2d" | csv-from-bin 2d"
+fields/custom/header_only="echo 7,7,0,1,2,3,4,5 | csv-to-bin 2d,6ub | cv-cat --input "fields=a,b;binary=2d;rows=2;cols=3;type=ub" --output "header-only" | csv-from-bin 2d"
 fields/custom/no_header="echo 7,7,0,1,2,3,4,5 | csv-to-bin 2d,6ub | cv-cat --input "fields=a,b;binary=2d;rows=2;cols=3;type=ub" --output "no-header" | csv-from-bin 6ub"
 fields/custom/partial_header/timestamp_only="echo 7,7,20171122T114433,0,1,2,3,4,5 | csv-to-bin 2d,t,6ub | cv-cat --input "fields=a,b,t;binary=2d,t;rows=2;cols=3;type=ub" | csv-from-bin 2d,t,6ub"
 fields/custom/partial_header/cols_only="echo 5.5,5.5,3,0,1,2,3,4,5 | csv-to-bin 2d,ui,6ub | cv-cat --input "fields=a,b,cols;binary=2d,ui;rows=2;type=ub" | csv-from-bin 2d,ui,6ub"
-fields/custom/partial_header/header_only="echo 5.5,20170102T001122,0,1,2,3,4,5 | csv-to-bin d,t,6ub | cv-cat --input "fields=a,t;binary=d,t;rows=2;cols=3;type=ub" --output "header-only;fields=a,t;binary=d,t" | csv-from-bin d,t"
+fields/custom/partial_header/header_only="echo 5.5,20170102T001122,0,1,2,3,4,5 | csv-to-bin d,t,6ub | cv-cat --input "fields=a,t;binary=d,t;rows=2;cols=3;type=ub" --output "header-only" | csv-from-bin d,t"
 # Standard header fields: t,rows,cols,type
 fields/header_only="echo 20170102T001122,2,3,0,0,1,2,3,4,5 | csv-to-bin t,3ui,6ub | cv-cat --output "header-only" | csv-from-bin t,3ui"
 fields/no_header="echo 20170102T001122,2,3,0,0,1,2,3,4,5 | csv-to-bin t,3ui,6ub | cv-cat --output "no-header" | csv-from-bin 6ub"
