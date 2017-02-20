@@ -85,7 +85,8 @@ serialization::serialization( const std::string& fields, const comma::csv::forma
         m_binary.reset( new comma::csv::binary< header >( format.string(), fields, false, default_header ) );
         std::vector< std::string > v = comma::split(fields, ',');
         for( unsigned int i = 0; i < v.size(); ++i ) { if( v[i] == "t" ) { v[i] = ""; } }
-        m_binary_no_timestamp.reset( new comma::csv::binary< header >( format.string(), comma::join( v, ',' ), false, m_header ) ); 
+        std::string no_timestamp_fields = comma::join( v, ',' );
+        if( !no_timestamp_fields.empty() ) { m_binary_no_timestamp.reset( new comma::csv::binary< header >( format.string(), comma::join( v, ',' ), false, m_header ) );  }
     }
 }
 
@@ -102,9 +103,10 @@ serialization::serialization( const serialization::options& options )
     m_header = options.get_header();
     if( !options.no_header )
     { 
-        for( unsigned int i = 0; i < v.size(); ++i ) { if( v[i] == "t" ) { v[i] = ""; } }
         m_binary.reset( new comma::csv::binary< header >( format.string(), fields, false, m_header ) );
-        m_binary_no_timestamp.reset( new comma::csv::binary< header >( format.string(), comma::join(v, ','), false, m_header ) ); 
+        for( unsigned int i = 0; i < v.size(); ++i ) { if( v[i] == "t" ) { v[i] = ""; } } 
+        std::string no_timestamp_fields = comma::join( v, ',' );
+        if( !no_timestamp_fields.empty() ) { m_binary_no_timestamp.reset( new comma::csv::binary< header >( format.string(), no_timestamp_fields, false, m_header ) ); }
     }
 }
 
@@ -219,7 +221,7 @@ void serialization::write( std::ostream& os, const std::pair< header::buffer_t, 
     if( m_binary )
     {
         m_buffer = m.first;     // TBD This forces the output fields to be the same as the input fields
-        m_binary_no_timestamp->put( serialization::header( m.second ), &m_buffer[0] );
+        if( m_binary_no_timestamp ) { m_binary_no_timestamp->put( serialization::header( m.second ), &m_buffer[0] ); }
         os.write( &m_buffer[0], m_buffer.size() );
     }
     if( !m_headerOnly ) { os.write( reinterpret_cast< const char* >( m.second.datastart ), m.second.dataend - m.second.datastart ); }
@@ -265,7 +267,7 @@ void serialization::write_to_stdout(const std::pair< serialization::header::buff
     {
         // Should not assign, two buffers of different sizes
         m_buffer = m.first;     // TBD This forces the output fields to be the same as the input fields
-        m_binary_no_timestamp->put( serialization::header( m.second ), &m_buffer[0] );
+        if( m_binary_no_timestamp ) { m_binary_no_timestamp->put( serialization::header( m.second ), &m_buffer[0] ); }
         write_( 1, &m_buffer[0], m_buffer.size() );
     }
     if( !m_headerOnly ) { write_( 1, reinterpret_cast< const char* >( m.second.datastart ), m.second.dataend - m.second.datastart ); }
