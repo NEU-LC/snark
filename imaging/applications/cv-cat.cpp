@@ -123,6 +123,13 @@ static boost::posix_time::ptime get_timestamp_from_header( const header::buffer_
     return pbinary->get( d, &h[0] ).timestamp;
 }
 
+static bool has_custom_fields( const std::string& fields )
+{
+    std::vector< std::string > v = comma::split(fields, ',');
+    for( unsigned int i = 0; i < v.size(); ++i ) { if( v[i] != "t" || v[i] != "rows" || v[i] != "cols" || v[i] != "type" ) { return true; } } 
+    return false;
+}
+
 int main( int argc, char** argv )
 {
     try
@@ -235,6 +242,8 @@ int main( int argc, char** argv )
         rate_limit rate( fps );
         cv::VideoCapture video_capture;
         snark::cv_mat::serialization input( input_options );
+        if( has_custom_fields( input_options.fields ) ) { output_options.fields = input_options.fields; }
+        output_options.format = input_options.format;
         snark::cv_mat::serialization output( output_options );
         boost::scoped_ptr< bursty_reader< pair > > reader;
         cv::Mat image;
