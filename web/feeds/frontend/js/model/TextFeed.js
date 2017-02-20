@@ -47,9 +47,14 @@ define('TextFeed', ["jquery", "Feed"], function ($) {
                 $(panel).css("overflow", "auto");
             }
             var this_ = this;
+            var height = 100;
+            if (this.height > 0) {
+                height = this.height;
+            }
             $(panel).css("max-height", function () {
-                return this_.height;
+                return height;
             });
+
             this.draw();
             $(panel).scrollTop($(panel)[0].scrollHeight);
         }
