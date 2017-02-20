@@ -1,0 +1,11 @@
+# test that the points-calc nearest-<extremum> only selects from its own block
+
+nearest/min[0]/block=1
+nearest/min[0]/point/id=0
+nearest/min[0]/extremum/id=1
+nearest/min[0]/extremum/distance=1.414 +/- 0.01
+nearest/min[1]/block=1
+nearest/min[1]/point/id=1
+nearest/min[1]/extremum/id=1
+nearest/min[1]/extremum/distance=0
+

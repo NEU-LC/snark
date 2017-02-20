@@ -32,7 +32,6 @@ define('base_controller', ['jquery', "jquery_timeago",
     // var TrackOptions = require('TrackOptions');
     // var MapOptions = require('MapOptions');
     // var GridOptions = require('GridOptions');
-    // var FormFeed = require('FormFeed');
     var load_config_fn;
     var create_feed_fn;
     var current_config_file;
