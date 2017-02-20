@@ -68,7 +68,7 @@ define('StartStopFeed', ["jquery", "Feed"], function ($) {
         };
 
         // StartStopFeed.prototype.load = function () {
-        //     FormFeed.prototype.load.call(this);
+        //     Feed.prototype.load.call(this);
         // };
         StartStopFeed.prototype.load = function () {
             $.ajax({
