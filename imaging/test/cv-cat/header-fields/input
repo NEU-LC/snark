@@ -9,10 +9,10 @@ fields/partial_header/timestamp_only[2]="echo 20170102T001122,0,1,2,3,4,5 | csv-
 fields/partial_header/timestamp_and_type[0]="echo 20170102T001122,0,0,1,2,3,4,5 | csv-to-bin t,ui,6ub | cv-cat --input 'fields=t,type;rows=2;cols=3' --output header-only | csv-from-bin t,ui"
 fields/partial_header/timestamp_and_type[1]="echo 20170102T001122,0,0,1,2,3,4,5 | csv-to-bin t,ui,6ub | cv-cat --input 'fields=t,type;rows=2;cols=3' --output no-header | csv-from-bin 6ub"
 fields/partial_header/timestamp_and_type[2]="echo 20170102T001122,0,0,1,2,3,4,5 | csv-to-bin t,ui,6ub | cv-cat --input 'fields=t,type;rows=2;cols=3' | csv-from-bin t,ui,6ub"
-fields/no_input_header[0]="echo 0,1,2,3,4,5 | csv-to-bin 6ub | cv-cat --input 'rows=2;cols=3;type=ub;no-header' | csv-from-bin t,3ui,6ub"
+fields/no_input_header[0]="echo 0,1,2,3,4,5 | csv-to-bin 6ub | cv-cat --input 'rows=2;cols=3;type=ub;no-header' | csv-from-bin 6ub"
 fields/no_input_header[1]="echo 0,1,2,3,4,5 | csv-to-bin 6ub | cv-cat --input 'rows=2;cols=3;type=ub;no-header' --output header-only | csv-from-bin t,3ui"
 # If input is no-header, the user may specify default output fields t,rows,cols,type
-fields/no_input_header[2]="echo 0,1,2,3,4,5 | csv-to-bin 6ub | cv-cat --input 'rows=2;cols=3;type=ub;no-header' --output "fields=t,rows,cols,type" | csv-from-bin 6ub"
+fields/no_input_header[2]="echo 0,1,2,3,4,5 | csv-to-bin 6ub | cv-cat --input 'rows=2;cols=3;type=ub;no-header' --output "fields=t,rows,cols,type" | csv-from-bin t,3ui,6ub"
 #### Custom header fields
 fields/custom/explicit_fields="echo blah,7,7,5.5,20170101T020001,2,3,0,0,1,2,3,4,5 | csv-to-bin 's[4],2ui,d,t,3ui,6ub' | cv-cat --input 'fields=a,b,c,d,t,rows,cols,type;binary=s[4],2ui,d,t,3ui'  | csv-from-bin 's[4],2ui,d,t,3ui,6ub'"
 fields/custom/blank_fields="echo blah,7,7,5.5,20170101T020001,2,3,0,0,1,2,3,4,5 | csv-to-bin 's[4],2ui,d,t,3ui,6ub' | cv-cat --input 'fields=a,,,,t,rows,cols,type;binary=s[4],2ui,d,t,3ui'  | csv-from-bin 's[4],2ui,d,t,3ui,6ub'"

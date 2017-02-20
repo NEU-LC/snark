@@ -173,7 +173,7 @@ int main( int argc, char** argv )
             std::cerr << "usage: cv-cat [options] [<filters>]\n" << std::endl;
             std::cerr << "output header format: fields: t,rows,cols,type; binary: t,3ui\n" << std::endl;
             std::cerr << "                note: only the following scenarios are currently supported:" << std::endl;
-            std::cerr << "                      - input has no header (no-header option), output has default header fields (t,rows,cols,type)" << std::endl;
+            std::cerr << "                      - input has no header (no-header option), output has default header fields (fields=t,rows,cols,type)" << std::endl;
             std::cerr << "                      - input has no header (no-header option), output has no header (no-header option)" << std::endl;
             std::cerr << "                      - input has arbitrary fields, input header fields are the same as output header fields" << std::endl;
             std::cerr << "                      - input has arbitrary fields, output has no header (no-header option)" << std::endl;
@@ -225,12 +225,14 @@ int main( int argc, char** argv )
         if( vm.count( "file" ) + vm.count( "camera" ) + vm.count( "id" ) > 1 ) { std::cerr << "cv-cat: --file, --camera, and --id are mutually exclusive" << std::endl; return 1; }
         if( vm.count( "discard" ) ) { discard = 1; }
         snark::cv_mat::serialization::options input_options = comma::name_value::parser( ';', '=' ).get< snark::cv_mat::serialization::options >( input_options_string );
-        snark::cv_mat::serialization::options output_options = comma::name_value::parser( ';', '=' ).get< snark::cv_mat::serialization::options >( output_options_string );
-//         if( input_options.no_header && output_options.fields == snark::cv_mat::serialization::header::default_fields() ) {}
-//         else {
-//             if( !output_options.fields.empty() && input_options.fields != output_options.fields ) { std::cerr << "cv-cat: customised output header fields not supported (todo); got: input fields: \"" << input_options.fields << "\" output fields: \"" << output_options.fields << "\"" << std::endl; return 1; }
-//         }
-        if( !output_options.fields.empty() && input_options.fields != output_options.fields ) { std::cerr << "cv-cat: customised output header fields not supported (todo); got: input fields: \"" << input_options.fields << "\" output fields: \"" << output_options.fields << "\"" << std::endl; return 1; }
+        snark::cv_mat::serialization::options output_options = output_options_string.empty() ? input_options : comma::name_value::parser( ';', '=' ).get< snark::cv_mat::serialization::options >( output_options_string );
+        if( input_options.no_header && !output_options.fields.empty() && input_options.fields != output_options.fields ) {
+            if( output_options.fields != snark::cv_mat::serialization::header::default_fields() ) {
+                std::cerr << "cv-cat: when --input has no-header option, --output fields can only be fields=" << snark::cv_mat::serialization::header::default_fields() << std::endl; return 1;
+            }
+        }
+        else { if( !output_options.fields.empty() && input_options.fields != output_options.fields ) { std::cerr << "cv-cat: customised output header fields not supported (todo); got: input fields: \"" << input_options.fields << "\" output fields: \"" << output_options.fields << "\"" << std::endl; return 1; } }
+        // output fields and format will be empty when the user specifies only --output no-header or --output header-only
         if( output_options.fields.empty() ) { output_options.fields = input_options.fields; }
         if( !output_options.format.elements().empty() && input_options.format.string() != output_options.format.string() ) { std::cerr << "cv-cat: customised output header format not supported (todo); got: input format: \"" << input_options.format.string() << "\" output format: \"" << output_options.format.string() << "\"" << std::endl; return 1; }
         if( output_options.format.elements().empty() ) { output_options.format = input_options.format; };
