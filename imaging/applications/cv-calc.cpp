@@ -175,7 +175,7 @@ int main( int ac, char** av )
         
         if( std::cin.good() && !std::cin.eof() )
         {
-            std::pair< boost::posix_time::ptime, cv::Mat > p = serialization.read(std::cin);
+            std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat > p = serialization.read< snark::cv_mat::serialization::header::buffer_t >(std::cin);
             if( p.second.empty() ) { std::cerr << name << "failed to read input stream" << std::endl; exit(1); }
             
             comma::csv::options out;
@@ -189,7 +189,7 @@ int main( int ac, char** av )
     {
         if( std::cin.good() && !std::cin.eof() )
         {
-            std::pair< boost::posix_time::ptime, cv::Mat > p = serialization.read(std::cin);
+            std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat > p = serialization.read< snark::cv_mat::serialization::header::buffer_t >(std::cin);
             if( p.second.empty() ) { std::cerr << name << "failed to read input stream" << std::endl; exit(1); }
             
             serialization::header header = serialization.get_header( serialization.header_buffer());
@@ -214,7 +214,7 @@ int main( int ac, char** av )
         comma::uint64 count = 0;
         while( std::cin.good() && !std::cin.eof() )
         {
-            std::pair< boost::posix_time::ptime, cv::Mat > p = serialization.read(std::cin);
+            std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat > p = serialization.read< snark::cv_mat::serialization::header::buffer_t >(std::cin);
             cv::Mat& mat = p.second;
             if( mat.empty() ) { break; }
             
