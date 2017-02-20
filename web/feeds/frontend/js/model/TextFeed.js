@@ -30,20 +30,33 @@ define('TextFeed', ["jquery", "Feed"], function ($) {
         }
         var orig_data = data;
         data = data ? data : '&nbsp;';
-        this.target.append('<tr><td><pre class="text-pre">' + data + '</pre></td></tr>');
-        var this_ = this;
-        var panel = $(this.target).find(".text-pre");
-        if (orig_data) {
-            $(panel).css("overflow-y", "scroll");
+
+        if (this.form_show_buttons) {
+            var panel = $(this.target).find(".text-pre");
+            if (panel.length > 0) {
+                $(panel).html(data);
+            }
+            else {
+                this.target.append('<tr><td><pre class="text-pre">' + data + '</pre></td></tr>');
+                panel = $(this.target).find(".text-pre");
+            }
+            if (orig_data) {
+                $(panel).css("overflow-y", "scroll");
+            }
+            else {
+                $(panel).css("overflow", "auto");
+            }
+            var this_ = this;
+            $(panel).css("max-height", function () {
+                return this_.height;
+            });
+            this.draw();
+            $(panel).scrollTop($(panel)[0].scrollHeight);
         }
         else {
-            $(panel).css("overflow", "auto");
+            this.target.append('<tr><td><pre>' + data + '</pre></td></tr>');
+            this.draw();
         }
-        $(panel).css("max-height", function () {
-            return this_.height;
-        });
-        this.draw();
-        $(panel).scrollTop($(panel)[0].scrollHeight);
     };
     TextFeed.prototype.draw = function () {
         while (this.target.find('tbody tr').length > this.config.text.show_items) {
