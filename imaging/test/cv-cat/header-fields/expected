@@ -37,7 +37,7 @@ fields/partial_header/timestamp_only/status=0
 fields/partial_header/no_header/output="0,1,2,3,4,5"
 fields/partial_header/no_header/status=0
 
-fields/partial_header/timestamp_and_type/output="20170102T001122,2"
+fields/partial_header/timestamp_and_type/output="20170102T001122,0"
 fields/partial_header/timestamp_and_type/status=0
 
 fields/no_input_header/output="0,1,2,3,4,5"
