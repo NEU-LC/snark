@@ -225,13 +225,16 @@ int main( int argc, char** argv )
         if( vm.count( "file" ) + vm.count( "camera" ) + vm.count( "id" ) > 1 ) { std::cerr << "cv-cat: --file, --camera, and --id are mutually exclusive" << std::endl; return 1; }
         if( vm.count( "discard" ) ) { discard = 1; }
         snark::cv_mat::serialization::options input_options = comma::name_value::parser( ';', '=' ).get< snark::cv_mat::serialization::options >( input_options_string );
-        snark::cv_mat::serialization::options output_options = output_options_string.empty()
-                                                             ? input_options
-                                                             : comma::name_value::parser( ';', '=' ).get< snark::cv_mat::serialization::options >( output_options_string );
+        snark::cv_mat::serialization::options output_options = comma::name_value::parser( ';', '=' ).get< snark::cv_mat::serialization::options >( output_options_string );
+//         if( input_options.no_header && output_options.fields == snark::cv_mat::serialization::header::default_fields() ) {}
+//         else {
+//             if( !output_options.fields.empty() && input_options.fields != output_options.fields ) { std::cerr << "cv-cat: customised output header fields not supported (todo); got: input fields: \"" << input_options.fields << "\" output fields: \"" << output_options.fields << "\"" << std::endl; return 1; }
+//         }
         if( !output_options.fields.empty() && input_options.fields != output_options.fields ) { std::cerr << "cv-cat: customised output header fields not supported (todo); got: input fields: \"" << input_options.fields << "\" output fields: \"" << output_options.fields << "\"" << std::endl; return 1; }
         if( output_options.fields.empty() ) { output_options.fields = input_options.fields; }
         if( !output_options.format.elements().empty() && input_options.format.string() != output_options.format.string() ) { std::cerr << "cv-cat: customised output header format not supported (todo); got: input format: \"" << input_options.format.string() << "\" output format: \"" << output_options.format.string() << "\"" << std::endl; return 1; }
         if( output_options.format.elements().empty() ) { output_options.format = input_options.format; };
+        
         const std::vector< std::string >& filterStrings = boost::program_options::collect_unrecognized( parsed.options, boost::program_options::include_positional );
         std::string filters;
         if( filterStrings.size() == 1 ) { filters = filterStrings[0]; }
