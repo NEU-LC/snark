@@ -44,12 +44,13 @@ namespace snark {
 
 namespace tbb {
 
-template<>
+template <>
 struct bursty_reader_traits< std::pair< boost::posix_time::ptime, cv::Mat > >
 {
     static bool valid( const std::pair< boost::posix_time::ptime, cv::Mat >& p ) { return ( !p.second.empty() ); }
 };
-template<>
+
+template <>
 struct bursty_reader_traits< std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat > >
 {
     static bool valid( const std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat >& p ) { return ( !p.second.empty() ); }
@@ -73,7 +74,6 @@ class pipeline
         pipeline( cv_mat::serialization& output
                 , const std::string& filters
                 , tbb::bursty_reader< pair >& reader
-                , cv_mat::serialization::binary_type binary
                 , unsigned int number_of_threads = 0 );
         
         pipeline( cv_mat::serialization& output

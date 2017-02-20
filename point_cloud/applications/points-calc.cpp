@@ -34,6 +34,7 @@
 #include <iostream>
 #include <limits>
 #include <boost/optional.hpp>
+#include <boost/unordered_set.hpp>
 #include <comma/application/command_line_options.h>
 #include <comma/application/signal_flag.h>
 #include <comma/csv/stream.h>
@@ -164,6 +165,7 @@ static void usage( bool more = false )
     std::cerr << "    nearest-min: for each point, output nearest minimums inside of given radius" << std::endl;
     std::cerr << "    nearest-max: for each point, output local maximums inside of given radius" << std::endl;
     std::cerr << "        options" << std::endl;
+    std::cerr << "            --output-extremums-only,--output-extremums,--extremums: output only unique the extremum records associated with points" << std::endl;
     std::cerr << "            --output-full-record,--full-record,--full: instead of reference_id and distance, output full" << std::endl;
     std::cerr << "                                                       extremum record, discard points with no extremum nearby" << std::endl;
     std::cerr << "            --radius=<metres>: radius of the local region to search" << std::endl;
@@ -580,6 +582,88 @@ static void update_nearest( record* i, record* j, double radius, double sign, bo
     }
 }
 
+static void process_nearest_extremum_block( std::deque< local_operation::record >& records
+                                          , snark::math::closed_interval< double, 3 > const&  extents
+                                          , Eigen::Vector3d const&  resolution
+                                          , double const sign
+                                          , double const radius
+                                          , bool const any )
+{
+    if( verbose ) { std::cerr << "points-calc: loading " << records.size() << " points into grid..." << std::endl; }
+    typedef std::vector< local_operation::record* > voxel_t; // todo: is vector a good container? use deque
+    typedef snark::voxel_map< voxel_t, 3 > grid_t;
+
+    grid_t grid( extents.min(), resolution );
+    for( std::size_t i = 0; i < records.size(); ++i ) { ( grid.touch_at( records[i].point.coordinates ) )->second.push_back( &records[i] ); }
+    for( grid_t::iterator it = grid.begin(); it != grid.end(); ++it )
+    {
+	grid_t::index_type i;
+	for( i[0] = it->first[0] - 1; i[0] < it->first[0] + 2; ++i[0] )
+	{
+	    for( i[1] = it->first[1] - 1; i[1] < it->first[1] + 2; ++i[1] )
+	    {
+		for( i[2] = it->first[2] - 1; i[2] < it->first[2] + 2; ++i[2] )
+		{
+		    grid_t::iterator git = grid.find( i );
+		    if( git == grid.end() ) { continue; }
+		    for( std::size_t n = 0; n < it->second.size(); ++n )
+		    {
+			for( std::size_t k = 0; k < git->second.size(); ++k )
+			{
+			    local_operation::update_nearest( it->second[n], git->second[k], radius, sign, any );
+			}
+		    }
+		}
+	    }
+	}
+    }
+}
+
+static void output_nearest_extremum_block( const std::deque< local_operation::record >& records
+                                         , comma::csv::options const& output_csv
+                                         , std::string const& endl
+                                         , std::string const& delimiter
+                                         , bool output_full_record
+                                         , bool output_extremums_only )
+{
+    if( output_full_record )
+    {
+        unsigned int discarded = 0;
+        for( std::size_t i = 0; i < records.size(); ++i )
+        {
+            if( !records[i].reference_record ) { ++discarded; continue; }
+            std::cout.write( &records[i].line[0], records[i].line.size() );
+            std::cout.write( &delimiter[0], delimiter.size() );
+            std::cout.write( &records[i].reference_record->line[0], records[i].reference_record->line.size() );
+            std::cout.write( &endl[0], endl.size() );
+            if( csv.flush ) { std::cout.flush(); }
+        }
+        if( verbose ) { std::cerr << "points-calc: discarded " << discarded << " point(s) of " << records.size() << std::endl; }
+        return;
+    }
+    if( output_extremums_only )
+    {
+        boost::unordered_set< comma::uint32 > ids;
+        for( std::size_t i = 0; i < records.size(); ++i )
+        {
+            if( !records[i].reference_record ) { continue; }
+            if( ids.find( records[i].reference_record->point.id ) != ids.end() ) { continue; }
+            ids.insert( records[i].reference_record->point.id );
+            std::cout.write( &records[i].reference_record->line[0], records[i].reference_record->line.size() );
+            std::cout.write( &endl[0], endl.size() );
+            if( csv.flush ) { std::cout.flush(); }
+        }
+        return;
+    }
+    comma::csv::output_stream< local_operation::output > ostream( std::cout, output_csv );
+    for( std::size_t i = 0; i < records.size(); ++i )
+    {
+        std::cout.write( &records[i].line[0], records[i].line.size() );
+        std::cout.write( &delimiter[0], delimiter.size() );
+        ostream.write( records[i].output() );
+    }
+}
+
 } // namespace local_operation {
 
 namespace comma { namespace visiting {
@@ -591,7 +675,7 @@ template <> struct traits< local_operation::point >
         v.apply( "coordinates", t.coordinates );
         v.apply( "scalar", t.scalar );
         v.apply( "id", t.id );
-        //v.apply( "block", t.block );
+        v.apply( "block", t.block );
     }
     
     template< typename K, typename V > static void visit( const K&, local_operation::point& t, V& v )
@@ -599,7 +683,7 @@ template <> struct traits< local_operation::point >
         v.apply( "coordinates", t.coordinates );
         v.apply( "scalar", t.scalar );
         v.apply( "id", t.id );
-        //v.apply( "block", t.block );
+        v.apply( "block", t.block );
     }
 };
 
@@ -909,22 +993,55 @@ int main( int ac, char** av )
         }
         if( operation == "nearest-max" || operation == "nearest-min" || operation == "nearest-any" || operation == "nearest-point" )
         {
+            std::deque< local_operation::record > records;
             double sign = operation == "nearest-max" ? 1 : -1;
             bool any = operation == "nearest-any" || operation == "nearest-point";
             if( csv.fields.empty() ) { csv.fields = any ? "x,y,z" : "x,y,z,scalar"; }
             csv.full_xpath = false;
             bool has_id = csv.has_field( "id" );
             comma::csv::input_stream< local_operation::point > istream( std::cin, csv );
-            std::deque< local_operation::record > records;
             double radius = options.value< double >( "--radius" );
             Eigen::Vector3d resolution( radius, radius, radius );
             snark::math::closed_interval< double, 3 > extents;
             comma::uint32 id = 0;
-            if( verbose ) { std::cerr << "points-calc: reading input points..." << std::endl; }
+            comma::uint32 block = 0;
+            if( verbose ) { std::cerr << "points-calc " << operation << ": reading input points of block: " << block << std::endl; }
+#ifdef WIN32
+            _setmode( _fileno( stdout ), _O_BINARY );
+#endif
+            options.assert_mutually_exclusive( "--output-full-record,--full-record,--full", "--output-extremums-only,--output-extremums,--extremums" );
+            bool const output_full_record = options.exists( "--output-full-record,--full-record,--full" );
+            bool output_extremums_only = options.exists( "--output-extremums-only,--output-extremums,--extremums" );
+            std::string endl;
+            std::string delimiter;
+            comma::csv::options output_csv;
+            if( csv.binary() )
+            {
+                output_csv.format( "ui,d" );
+            }
+            else
+            {
+                std::ostringstream oss;
+                oss << std::endl;
+                endl = oss.str();
+                delimiter = std::string( 1, csv.delimiter );
+            }
+            output_csv.flush = csv.flush;
             while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
             {
                 const local_operation::point* p = istream.read();
+                if ( !p || block != p->block )
+                {
+                    if( verbose ) { std::cerr << "points-calc " << operation << ": processing points of block: " << block << std::endl; }
+                    local_operation::process_nearest_extremum_block( records, extents, resolution, sign, radius, any );
+                    if( verbose ) { std::cerr << "points-calc " << operation << ": outputing points of block: " << block << std::endl; }
+                    output_nearest_extremum_block( records, output_csv, endl, delimiter, output_full_record, output_extremums_only );
+                    extents = snark::math::closed_interval< double, 3 >();
+                    records.clear();
+                    if( verbose ) { std::cerr << "points-calc " << operation << ": reading input points of block: " << block << std::endl; }
+                }
                 if( !p ) { break; }
+                block = p->block;
                 std::string line;
                 if( csv.binary() ) // quick and dirty
                 {
@@ -941,78 +1058,6 @@ int main( int ac, char** av )
                 records.back().reference_record = &records.back();
                 extents.set_hull( p->coordinates );
             }
-            if( verbose ) { std::cerr << "points-calc: loading " << records.size() << " points into grid..." << std::endl; }
-            typedef std::vector< local_operation::record* > voxel_t; // todo: is vector a good container? use deque
-            typedef snark::voxel_map< voxel_t, 3 > grid_t;
-            grid_t grid( extents.min(), resolution );
-            for( std::size_t i = 0; i < records.size(); ++i ) { ( grid.touch_at( records[i].point.coordinates ) )->second.push_back( &records[i] ); }
-            if( verbose ) { std::cerr << "points-calc: searching for " << operation << "..." << std::endl; }
-            for( grid_t::iterator it = grid.begin(); it != grid.end(); ++it )
-            {
-                grid_t::index_type i;
-                for( i[0] = it->first[0] - 1; i[0] < it->first[0] + 2; ++i[0] )
-                {
-                    for( i[1] = it->first[1] - 1; i[1] < it->first[1] + 2; ++i[1] )
-                    {
-                        for( i[2] = it->first[2] - 1; i[2] < it->first[2] + 2; ++i[2] )
-                        {
-                            grid_t::iterator git = grid.find( i );
-                            if( git == grid.end() ) { continue; }
-                            for( std::size_t n = 0; n < it->second.size(); ++n )
-                            {                            
-                                for( std::size_t k = 0; k < git->second.size(); ++k )
-                                {
-                                    local_operation::update_nearest( it->second[n], git->second[k], radius, sign, any );
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            #ifdef WIN32
-            _setmode( _fileno( stdout ), _O_BINARY );
-            #endif
-            if( verbose ) { std::cerr << "points-calc: " << operation << ": outputting..." << std::endl; }
-            std::string endl;
-            std::string delimiter;
-            comma::csv::options output_csv;
-            if( csv.binary() )
-            {
-                output_csv.format( "ui,d" );
-            }
-            else
-            {
-                std::ostringstream oss;
-                oss << std::endl;
-                endl = oss.str();
-                delimiter = std::string( 1, csv.delimiter );
-            }
-            output_csv.flush = csv.flush;
-            if( options.exists( "--output-full-record,--full-record,--full" ) )
-            {
-                unsigned int discarded = 0;
-                for( std::size_t i = 0; i < records.size(); ++i )
-                {
-                    if( !records[i].reference_record ) { ++discarded; continue; }
-                    std::cout.write( &records[i].line[0], records[i].line.size() );
-                    std::cout.write( &delimiter[0], delimiter.size() );
-                    std::cout.write( &records[i].reference_record->line[0], records[i].reference_record->line.size() );
-                    std::cout.write( &endl[0], endl.size() );
-                    if( csv.flush ) { std::cout.flush(); }
-                }
-                if( verbose ) { std::cerr << "points-calc: " << operation << ": discarded " << discarded << " point(s) of " << records.size() << std::endl; }
-            }
-            else
-            {
-                comma::csv::output_stream< local_operation::output > ostream( std::cout, output_csv );
-                for( std::size_t i = 0; i < records.size(); ++i )
-                {
-                    std::cout.write( &records[i].line[0], records[i].line.size() );
-                    std::cout.write( &delimiter[0], delimiter.size() );
-                    ostream.write( records[i].output() );
-                }
-            }
-            if( verbose ) { std::cerr << "points-calc: " << operation << ": done!" << std::endl; }
             return 0;
         }
         if( operation == "find-outliers" )
