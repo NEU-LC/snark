@@ -68,8 +68,8 @@ serialization::header::header( const boost::posix_time::ptime& t, const cv::Mat 
 }
 
 serialization::serialization() :
-    m_binary( new comma::csv::binary< header >( "t,3ui", header::default_fields(), false ) ),
-    m_binary_no_timestamp( new comma::csv::binary< header >( "t,3ui", ",rows,cols,type", false ) ),
+    m_binary( new comma::csv::binary< header >( header::default_format(), header::default_fields(), false ) ),
+    m_binary_no_timestamp( new comma::csv::binary< header >( header::default_format(), ",rows,cols,type", false ) ),
     m_buffer( m_binary->format().size() ),
     m_headerOnly( false )
 {
@@ -93,7 +93,7 @@ serialization::serialization( const std::string& fields, const comma::csv::forma
 serialization::serialization( const serialization::options& options )
 {
     if( options.no_header && options.header_only ) { COMMA_THROW( comma::exception, "cannot have no-header and header-only at the same time" ); }
-    std::string fields = options.fields.empty() ? std::string( "t,rows,cols,type" ) : options.fields;
+    std::string fields = options.fields.empty() ? header::default_fields() : options.fields;
     std::vector< std::string > v = comma::split( fields, "," );
     comma::csv::format format;
     if( options.format.elements().empty() ) { for( unsigned int i = 0; i < v.size(); ++i ) { if( v[i] == "t" ) { format += "t"; } else { format += "ui"; } } }
@@ -101,6 +101,12 @@ serialization::serialization( const serialization::options& options )
     m_buffer.resize( format.size() );
     m_headerOnly = options.header_only;
     m_header = options.get_header();
+    if( fields == header::default_fields() ) 
+    {
+        // make sure that the default timestamp (if not read from input) is not-a-date-time, and not 19700101T00000
+        comma::csv::binary< serialization::header > binary( format.string(), fields );
+        binary.put( m_header, &m_buffer[0]);
+    }
     if( !options.no_header )
     { 
         m_binary.reset( new comma::csv::binary< header >( format.string(), fields, false, m_header ) );
