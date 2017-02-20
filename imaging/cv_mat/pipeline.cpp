@@ -33,6 +33,8 @@
 #include "pipeline.h"
 
 namespace snark{ namespace imaging { namespace applications {
+    
+namespace impl {
 
 /// constructor
 /// @param fields csv output fields
@@ -40,20 +42,23 @@ namespace snark{ namespace imaging { namespace applications {
 /// @param filters string describing the filters
 /// @param size max buffer size
 /// @param mode output mode
-pipeline::pipeline( cv_mat::serialization& output
+template < typename H >
+pipeline< H >::pipeline( cv_mat::serialization& output
                   , const std::string& filters
                   , tbb::bursty_reader< pair >& reader
+                  , cv_mat::serialization::binary_type binary
                   , unsigned int number_of_threads )
     : m_output( output )
-    , m_filters( snark::cv_mat::filters::make( filters ) )
+    , m_filters( filters_type::make( filters, binary ) )
     , m_reader( reader )
     , m_pipeline( number_of_threads )
 {
     setup_pipeline_();
 }
 
-pipeline::pipeline( cv_mat::serialization& output
-                  , const std::vector< cv_mat::filter >& filters
+template < typename H >
+pipeline< H >::pipeline( cv_mat::serialization& output
+                  , const std::vector< filter_type >& filters
                   , tbb::bursty_reader< pair >& reader
                   , unsigned int number_of_threads )
     : m_output( output )
@@ -65,7 +70,8 @@ pipeline::pipeline( cv_mat::serialization& output
 }
 
 /// write frame to std out
-void pipeline::write_( pair p )
+template < typename H >
+void pipeline< H >::write_( pair p )
 {
     if( p.second.empty() )
     {
@@ -91,7 +97,8 @@ void pipeline::write_( pair p )
     }
 }
 
-void pipeline::null_( pair p )
+template < typename H >
+void pipeline< H >::null_( pair p )
 {
     if( p.second.empty() || !std::cout.good() )
     {
@@ -101,11 +108,12 @@ void pipeline::null_( pair p )
 
 /// setup the pipeline
 /// @param filters name-value string describing the filters
-void pipeline::setup_pipeline_()
+template < typename H >
+void pipeline< H >::setup_pipeline_()
 {
     if( m_filters.empty() )
     {
-        m_filter = ::tbb::filter_t< pair, void >( ::tbb::filter::serial_in_order, boost::bind( &pipeline::write_, this, _1 ) );
+        m_filter = ::tbb::filter_t< pair, void >( ::tbb::filter::serial_in_order, boost::bind( &pipeline< H >::write_, this, _1 ) );
     }
     else
     {
@@ -122,12 +130,18 @@ void pipeline::setup_pipeline_()
             ::tbb::filter_t< pair, pair > filter( mode, boost::bind( m_filters[i].filter_function, _1 ) );
             all_filters = i == 0 ? filter : ( all_filters & filter );
         }
-        m_filter = all_filters & ::tbb::filter_t< pair, void >( ::tbb::filter::serial_in_order, boost::bind( has_null ? &pipeline::null_ : &pipeline::write_, this, _1 ) );
+        m_filter = all_filters & ::tbb::filter_t< pair, void >( ::tbb::filter::serial_in_order, boost::bind( has_null ? &pipeline< H >::null_ : &pipeline< H >::write_, this, _1 ) );
     }
 }
 
 /// run the pipeline
-void pipeline::run() { m_pipeline.run( m_reader, m_filter ); m_reader.join(); }
+template < typename H >
+void pipeline< H >::run() { m_pipeline.run( m_reader, m_filter ); m_reader.join(); }
+
+template class pipeline< boost::posix_time::ptime >;
+template class pipeline< snark::cv_mat::serialization::header::buffer_t >;
+
+} //namespace impl {
 
 } } }
 

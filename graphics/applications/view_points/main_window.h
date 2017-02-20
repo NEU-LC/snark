@@ -94,8 +94,9 @@ class CheckBox : public QCheckBox // quick and dirty
 
 #elif Qt3D_VERSION==2
 
-#include <QMainWindow>
 #include "../../qt3d/qt3d_v2/gl_widget.h"
+#include <QMainWindow>
+#include <QKeyEvent>
 
 namespace snark { namespace graphics { namespace qt3d {
 class camera_options;
@@ -117,6 +118,8 @@ class main_window : public QMainWindow
     private:
         std::vector< boost::shared_ptr< snark::graphics::qt3d::buffer_provider > > buffers_;
         qt3d::gl_widget* gl_widget_;
+        
+        void keyPressEvent( QKeyEvent *e );
 };
 
 } } } // namespace snark { namespace graphics { namespace view {

@@ -60,6 +60,8 @@ class serialization
             typedef std::vector< char > buffer_t;
         };
         
+        typedef boost::shared_ptr< comma::csv::binary< header > > binary_type;
+        
         /// options, a helper class
         struct options
         {
@@ -109,12 +111,14 @@ class serialization
 
         /// same as above
         std::size_t size( const std::pair< boost::posix_time::ptime, cv::Mat >& m ) const;
+        std::size_t size( const std::pair< header::buffer_t, cv::Mat >& m ) const;
 
         /// read from stream, if eof, return empty cv::Mat
         std::pair< boost::posix_time::ptime, cv::Mat > read( std::istream& is );
+        std::pair< header::buffer_t, cv::Mat > read_with_header( std::istream& is );
         
         /// return last header buffer after read()
-        const char* header_buffer() const; // todo
+        const char* header_buffer() const;
 
         /// write to stream
         void write( std::ostream& os, const std::pair< boost::posix_time::ptime, cv::Mat >& m, bool flush = true );
@@ -127,10 +131,12 @@ class serialization
         
         /// c-style write to stdout, to be used if issues seen with write() - see cpp file for details
         void write_to_stdout( const std::pair< header::buffer_t, cv::Mat >& m, bool flush = true );
+        
+        const binary_type& header_binary() const { return m_binary; }
 
     private:
-        boost::scoped_ptr< comma::csv::binary< header > > m_binary;
-        boost::scoped_ptr< comma::csv::binary< header > > m_binary_no_timestamp; // timestamp will not be set
+        boost::shared_ptr< comma::csv::binary< header > > m_binary;
+        boost::shared_ptr< comma::csv::binary< header > > m_binary_no_timestamp; // ignores timestamp 't' field
         std::vector< char > m_buffer;
         bool m_headerOnly;
         header m_header; /// default header

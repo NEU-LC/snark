@@ -209,6 +209,14 @@ main_window::~main_window()
     delete gl_widget_;
 }
 
+void main_window::keyPressEvent(QKeyEvent *e)
+{
+    if (e->key() == Qt::Key_Escape)
+        close();
+    else
+        QWidget::keyPressEvent(e);
+}
+
 } } } // namespace snark { namespace graphics { namespace view {
 
 #else

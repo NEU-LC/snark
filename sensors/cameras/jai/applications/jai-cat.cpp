@@ -215,7 +215,7 @@ int main( int argc, char** argv )
         camera->start_acquisition();
         if( verbose ) { std::cerr << "jai-cat: data acquisition: started" << std::endl; }
         reader.reset( new snark::tbb::bursty_reader< pair_t >( boost::bind( &capture, boost::ref( stream ) ), discard ) );
-        snark::imaging::applications::pipeline pipeline( *serialization, filters, *reader );
+        snark::imaging::applications::pipeline pipeline( *serialization, filters, *reader, serialization->header_binary() );
         pipeline.run();
         return 0;
     }

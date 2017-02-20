@@ -150,7 +150,7 @@ int main( int argc, char** argv )
             serialization.reset( new snark::cv_mat::serialization( fields, format, vm.count( "header" ) ) );
         }
         reader.reset( new snark::tbb::bursty_reader< Pair >( boost::bind( &capture, boost::ref( camera ) ), discard ) );
-        snark::imaging::applications::pipeline pipeline( *serialization, filters, *reader );
+        snark::imaging::applications::pipeline pipeline( *serialization, filters, *reader, serialization->header_binary() );
         pipeline.run();
         return 0;
     }

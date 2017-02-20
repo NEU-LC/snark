@@ -94,7 +94,6 @@ static const char *vertex_shader_source = R"(
     }
 )";
 
-// TODO: support alpha
 static const char *fragment_shader_source = R"(
     #version 150
     in highp vec4 vert_color;

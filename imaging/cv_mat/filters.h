@@ -34,8 +34,42 @@
 #include <boost/date_time/posix_time/posix_time.hpp>
 
 #include <opencv2/core/core.hpp>
+#include "serialization.h"
 
 namespace snark{ namespace cv_mat {
+    
+typedef serialization::header::buffer_t header_type;
+
+template < typename T > struct header_traits;
+template <> struct header_traits< boost::posix_time::ptime > { 
+    static boost::posix_time::ptime timestamp( boost::posix_time::ptime t, const serialization::binary_type& binary ) { return t; } 
+    static std::string filename( boost::posix_time::ptime t, const serialization::binary_type& binary, const std::string& extension ) 
+    { 
+        std::ostringstream ss;
+        ss << boost::posix_time::to_iso_string(t) << '.' << extension; 
+        return ss.str();
+    } 
+};
+template <> struct header_traits< header_type > { 
+    static boost::posix_time::ptime timestamp( const header_type& h, const serialization::binary_type& binary ) 
+    { 
+        if( !binary ) { return boost::posix_time::microsec_clock::universal_time(); }
+        
+        static serialization::header d;
+        binary->get( d, &h[0] );
+        return d.timestamp;
+    } 
+    static std::string filename( const header_type& t, const serialization::binary_type& binary, const std::string& extension ) 
+    { 
+        std::ostringstream ss;
+        ss << boost::posix_time::to_iso_string( header_traits< header_type >::timestamp(t, binary) ) << '.' << extension; 
+        return ss.str();
+    } 
+};
+
+template < typename T > struct reader;
+template < > struct reader< boost::posix_time::ptime > { static std::pair< boost::posix_time::ptime, cv::Mat > read( serialization& s, std::istream& is ) { return s.read(is); } };
+template < > struct reader< header_type > { static std::pair< header_type, cv::Mat > read( serialization& s, std::istream& is ) { return s.read_with_header( is ); } };
 
 template < typename Output = cv::Mat, typename H = boost::posix_time::ptime >
 struct operation
@@ -49,6 +83,7 @@ struct operation
 };
 
 typedef operation<> filter;
+typedef operation< cv::Mat, header_type > filter_with_header;
 
 namespace impl {
 
@@ -57,12 +92,13 @@ struct filters
 {
     /// value type
     typedef std::pair< H, cv::Mat > value_type;
+    typedef operation< cv::Mat, H > filter_type;
     
     /// return filters from name-value string
-    static std::vector< filter > make( const std::string& how, unsigned int default_delay = 1 );
+    static std::vector< filter_type > make( const std::string& how, const serialization::binary_type& binary, unsigned int default_delay = 1 );
     
     /// apply filters (a helper)
-    static value_type apply( std::vector< filter >& filters, value_type m );
+    static value_type apply( std::vector< filter_type >& filters, value_type m );
     
     /// return filter usage
     static const std::string& usage( const std::string & operation = "" );
@@ -71,13 +107,13 @@ struct filters
 } // namespace impl {
 
 typedef impl::filters<> filters;
-typedef impl::filters<> filters_t;
-typedef impl::filters< std::vector< char > > filters_with_header; // todo: a better name
+typedef impl::filters< header_type > filters_with_header; // todo: a better name
 
 /// a helper: e.g. take CV_8UC3, return CV_8UC1
 int single_channel_type( int t );
 std::string type_as_string( int t );
 
-inline bool is_empty( filters::value_type m ) { return ( m.first == boost::posix_time::not_a_date_time ) && m.second.empty(); }
+template < typename H >
+bool is_empty( typename impl::filters< H >::value_type m, const serialization::binary_type& binary ) { return ( header_traits< H >::timestamp( m.first, binary ) == boost::posix_time::not_a_date_time ) && m.second.empty(); }
 
 } }  // namespace snark { namespace cv_mat {
