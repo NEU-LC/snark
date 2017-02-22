@@ -35,7 +35,6 @@
 #include <boost/bimap.hpp>
 #include <boost/bind.hpp>
 #include <comma/base/exception.h>
-#include <comma/application/signal_flag.h>
 #include <comma/csv/stream.h>
 #include <comma/string/string.h>
 #include "flycapture.h"
