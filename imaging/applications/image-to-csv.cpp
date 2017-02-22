@@ -47,6 +47,7 @@ snark::cv_mat::serialization::header header;
 comma::csv::options csv;
 std::size_t channels=3;
 int depth=0;
+bool output_non_zeroes;
 
 struct app_t
 {
@@ -113,6 +114,7 @@ static void usage(bool detail)
                     << "    --output-format: output format string and exit need to feed in image header through stdin or specify --input options" << std::endl
                     << "    --output-header-fields: output header fields and exit" << std::endl
                     << "    --output-header-format: output header format and exit" << std::endl
+                    << "    --output-non-zero: output only values with non-zero data" << std::endl
                     << "    --input: input options if image has no header (see details)" << std::endl
                     << std::endl;
     if(detail)
@@ -139,6 +141,13 @@ void read_header()
     if( !p ) { exit( 0 ); }
     header = *p;
 }
+
+bool zeroes(char* p, std::size_t size)
+{
+    for ( char* i = p; i < p + size; ++i ) { if (*i != 0) { return false; } }
+    return true;
+}
+
 template<typename T>
 void output_t<T>::output_fields()
 {
@@ -166,11 +175,18 @@ bool output_t<T>::process_image()
         char* ptr=&buffer[0];
         for(comma::uint32 i=0;i<header.cols;i++)
         {
-            out.x=i;
-            out.y=j;
-            std::memcpy(&out.channels[0], ptr, size);
-            ptr+=size;
-            os.write(out);
+            if (output_non_zeroes && zeroes(ptr, size))
+            {
+                ptr+=size;
+            }
+            else
+            {
+                out.x=i;
+                out.y=j;
+                std::memcpy(&out.channels[0], ptr, size);
+                os.write(out);
+                ptr+=size;
+            }
         }
     }
     return true;
@@ -254,7 +270,7 @@ int main( int ac, char** av )
             channels=CV_MAT_CN(header.type);
         depth=CV_MAT_DEPTH(header.type);
         *cverbose<<app_name<<": type: "<<header.type<<" channels: "<<channels<<" depth: "<<int(CV_MAT_DEPTH(header.type))<<std::endl;
-        std::vector< std::string > unnamed = options.unnamed( "--output-fields,--output-format,--verbose,-v,--output-header-fields,--output-header-format,--flush", 
+        std::vector< std::string > unnamed = options.unnamed( "--output-fields,--output-format,--verbose,-v,--output-header-fields,--output-header-format,--output-non-zero,--flush", 
                                                               "--input,--channels,--binary,-b,--fields,-f,--precision,--quote,--delimiter,-d");
         if(!unnamed.empty())
         {
@@ -267,6 +283,9 @@ int main( int ac, char** av )
         if (options.exists("--output-format")) { g.app->output_format(); exit(0); }
         if (options.exists("--output-header-fields")) { std::cout<<comma::join( comma::csv::names< snark::cv_mat::serialization::header >(input_options.fields), ','  ) << std::endl; exit(0); }
         if (options.exists("--output-header-format")) { std::cout<<comma::csv::format::value< snark::cv_mat::serialization::header >(input_options.fields, false) << std::endl; exit(0); }
+        
+        output_non_zeroes = options.exists("--output-non-zero");
+        
         process();
         return 0;
     }

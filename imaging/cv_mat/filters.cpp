@@ -2516,9 +2516,9 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
             for( unsigned int i = 0; i < s.size(); ++i )
             {
                 if( s[i] == "output-binary" ) { is_binary = true; }
-                if( s[i] == "output-fields" ) { std::cout << comma::join( comma::csv::names< snark::timestamped< cv::KeyPoint > >( false ), ',' ) << std::endl; exit( 0 ); }
-                if( s[i] == "output-format" ) { std::cout << comma::csv::format::value< snark::timestamped< cv::KeyPoint > >() << std::endl; exit( 0 ); }
-                if( s[i] == "output-default-params" || s[i] == "default-params" )
+                else if( s[i] == "output-fields" ) { std::cout << comma::join( comma::csv::names< snark::timestamped< cv::KeyPoint > >( false ), ',' ) << std::endl; exit( 0 ); }
+                else if( s[i] == "output-format" ) { std::cout << comma::csv::format::value< snark::timestamped< cv::KeyPoint > >() << std::endl; exit( 0 ); }
+                else if( s[i] == "output-default-params" || s[i] == "default-params" )
                 {
                     cv::FileStorage fs( "dummy", cv::FileStorage::WRITE | cv::FileStorage::MEMORY | cv::FileStorage::FORMAT_XML );
                     cv::SimpleBlobDetector::Params().write( fs );
