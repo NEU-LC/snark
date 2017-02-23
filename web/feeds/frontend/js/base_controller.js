@@ -196,6 +196,12 @@ define('base_controller', ['jquery', "jquery_timeago",
         if (frontend_config.timeout) {
             globals.timeout = frontend_config.timeout;
         }
+        if (frontend_config.host) {
+            globals.host = frontend_config.host;
+        }
+        if (frontend_config.port) {
+            globals.port = frontend_config.port;
+        }
         // var feeds = frontend_config.feeds;
         if (path.length != 0) {
             path = path + "/";
@@ -573,6 +579,9 @@ define('base_controller', ['jquery', "jquery_timeago",
         $(grid_folder.domElement).closest('li.folder').find('li.title').addClass('subfolder');
     }
 
+    function is_host_contains_port(uri) {
+        return new RegExp(":([0-9]+)", 'g').test(uri);
+    }
 
     function add_new_feed(frontend_config, config, feed_path) {
         var grid_types = ['image', 'stream', 'track'];
@@ -605,7 +614,23 @@ define('base_controller', ['jquery', "jquery_timeago",
                 config.refresh.interval = 2;
             }
             if (!('url' in config)) {
-                config.url = frontend_config.host + '/' + feed_path;
+                var host;
+                if (!globals.host.startsWith("http://")) {
+                    globals.host = "http://" + globals.host;
+                }
+                if (is_host_contains_port(globals.host)) {
+                    host = globals.host;
+                } else {
+                    host = globals.host + ":" + globals.port;
+                }
+                // if (globals.host.indexOf(":") > 0) {
+                //     host = globals.host;
+                // }
+                //
+                if (!host.endsWith("/")) {
+                    host = host + "/";
+                }
+                config.url = host + feed_path;
             }
         }
         if (config.type == 'text') {

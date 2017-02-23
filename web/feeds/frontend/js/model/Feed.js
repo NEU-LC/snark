@@ -186,27 +186,7 @@ define('Feed', ["jquery", "jquery_timeago", "utils"], function ($) {
 
 
     };
-    // $(function () {
-    //     $.ajaxSetup({
-    //         error: function (jqXHR, exception) {
-    //             if (jqXHR.status === 0) {
-    //                 console.log('Not connect.\n Verify Network.');
-    //             } else if (jqXHR.status == 404) {
-    //                 console.log('Requested page not found. [404]');
-    //             } else if (jqXHR.status == 500) {
-    //                 console.log('Internal Server Error [500].');
-    //             } else if (exception === 'parsererror') {
-    //                 console.log('Requested JSON parse failed.');
-    //             } else if (exception === 'timeout') {
-    //                 console.log('Time out error.');
-    //             } else if (exception === 'abort') {
-    //                 console.log('Ajax request aborted.');
-    //             } else {
-    //                 console.log('Uncaught Error.\n' + jqXHR.responseText);
-    //             }
-    //         }
-    //     });
-    // });
+
     Feed.prototype.add_buttons = function (container) {
         this.refresh_time = new Date();
 
@@ -398,8 +378,8 @@ define('Feed', ["jquery", "jquery_timeago", "utils"], function ($) {
         this.timeago.attr('datetime', this.refresh_time.toISOString()).timeago('updateFromDOM');
     };
     Feed.prototype.onload = function (data) {
-        if(this.form_show_buttons){
-        this.removeOldStatus();
+        if (this.form_show_buttons) {
+            this.removeOldStatus();
         }
         this.update_time();
         this.status.finish().fadeTo(0, 1);
@@ -424,6 +404,9 @@ define('Feed', ["jquery", "jquery_timeago", "utils"], function ($) {
     };
     Feed.prototype.update_error = function (this_, error) {
         this_.update_time();
+        if (error.trim().length == 0) {
+            error = "Please check configuration!! "
+        }
         this.status.finish().fadeTo(0, 1);
         this.onload_();
         $(this.form).find(".error-message").remove();
