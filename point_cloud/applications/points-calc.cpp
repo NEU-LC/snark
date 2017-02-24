@@ -1034,7 +1034,7 @@ int main( int ac, char** av )
                 {
                     if( verbose ) { std::cerr << "points-calc " << operation << ": processing points of block: " << block << std::endl; }
                     local_operation::process_nearest_extremum_block( records, extents, resolution, sign, radius, any );
-                    if( verbose ) { std::cerr << "points-calc " << operation << ": outputing points of block: " << block << std::endl; }
+                    if( verbose ) { std::cerr << "points-calc " << operation << ": outputting points of block: " << block << std::endl; }
                     output_nearest_extremum_block( records, output_csv, endl, delimiter, output_full_record, output_extremums_only );
                     extents = snark::math::closed_interval< double, 3 >();
                     records.clear();
