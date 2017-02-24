@@ -37,7 +37,6 @@
 #include "../traits.h"
 #include <comma/name_value/parser.h>
 #include <comma/csv/options.h>
-#include <comma/application/signal_flag.h>
 #include <comma/name_value/serialize.h>
 #include <comma/application/verbose.h>
 #include <comma/csv/stream.h>

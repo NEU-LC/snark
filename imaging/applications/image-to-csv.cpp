@@ -30,7 +30,6 @@
 #include <iostream>
 #include <vector>
 #include <comma/application/command_line_options.h>
-#include <comma/application/signal_flag.h>
 #include <comma/base/exception.h>
 #include <comma/csv/stream.h>
 #include <boost/test/utils/nullstream.hpp>
