@@ -45,8 +45,14 @@
 #else
 #include <QQuaternion>
 #include "../../../math/interval.h"
-#include "../../qt3d/qt3d_v2/buffer_provider.h"
-#include "../../qt3d/qt3d_v2/types.h"
+#include "../../qt3d/qt3d_v2/gl/shapes.h"
+#include <memory>
+#endif
+
+#if Qt3D_VERSION==1
+typedef QColor4ub color_t;
+#else
+typedef snark::graphics::qt3d::gl::color_t color_t;
 #endif
 
 namespace snark { namespace graphics { namespace view {
@@ -78,9 +84,6 @@ struct reader_parameters
 };
 
 class Reader : public reader_parameters
-             #if Qt3D_VERSION==2
-             , public qt3d::buffer_provider
-             #endif
 {
     public:
         #if Qt3D_VERSION==1
@@ -113,6 +116,12 @@ class Reader : public reader_parameters
         void shutdown();
         void read();
 
+#if Qt3D_VERSION==2
+public:
+    virtual std::shared_ptr<snark::graphics::qt3d::gl::shape> make_shape(){return std::shared_ptr<snark::graphics::qt3d::gl::shape>();};
+    virtual void update_shape(){};
+#endif
+             
     protected:
         bool updatePoint( const Eigen::Vector3d& offset );
         #if Qt3D_VERSION==1
@@ -140,11 +149,7 @@ class Reader : public reader_parameters
         bool updated_; // quick and dirty, terrible
         boost::optional< Eigen::Vector3d > m_orientation;
         comma::uint32 id_; // todo: quick and dirty; replace m_point, m_orientation, etc with PointWithId point_;
-        #if Qt3D_VERSION==1
-        QColor4ub m_color;
-        #else
-        qt3d::gl_color_t m_color;
-        #endif
+        color_t m_color;
         std::string m_label;
         Eigen::Vector3d m_translation;
         Eigen::Vector3d m_offset;

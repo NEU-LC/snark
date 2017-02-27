@@ -37,18 +37,18 @@
 #if Qt3D_VERSION==1
 #include <Qt3D/qcolor4ub.h>
 #else
-#include "../../../graphics/qt3d/qt3d_v2/types.h"
+#include "../../../graphics/qt3d/qt3d_v2/gl/types.h"
 #endif
 #include "../../../render/colour_map.h"
 #include "point_with_id.h"
 
-namespace snark { namespace graphics { namespace view {
-
 #if Qt3D_VERSION==1
 typedef QColor4ub color_t;
 #else
-typedef qt3d::gl_color_t color_t;
+typedef snark::graphics::qt3d::gl::color_t color_t;
 #endif
+
+namespace snark { namespace graphics { namespace view {
 
 struct colored
 {

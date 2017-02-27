@@ -31,48 +31,39 @@
 #include <QOpenGLShaderProgram>
 #include <QPainter>
 #include <math.h>
-#include "gl_widget.h"
+#include "widget.h"
 #include "types.h"
 
-namespace snark { namespace graphics { namespace qt3d {
+namespace snark { namespace graphics { namespace qt3d { namespace gl {
 
-gl_widget::gl_widget( std::vector< boost::shared_ptr< buffer_provider > > buffers
-                    , const camera_options& camera_options
-                    , QWidget *parent )
-    : QOpenGLWidget( parent )
-    , buffers_( buffers )
-    , total_buffer_size_( 0 )
-    , program_( 0 )
-    , camera_options_( camera_options )
-    , size_( 0.4f )
+widget::widget(const camera_options& camera_options, QWidget *parent )
+    : QOpenGLWidget( parent ), program_( 0 ), camera_options_( camera_options ), size_( 0.4f )
 {
-    for( unsigned int i = 0; i < buffers_.size(); ++i )
-    {
-        total_buffer_size_ += buffers_[i].get()->buffer_size();
-    }
 }
-
-gl_widget::~gl_widget()
+widget::~widget()
 {
     cleanup();
 }
 
-QSize gl_widget::minimumSizeHint() const
+QSize widget::minimumSizeHint() const
 {
     return QSize( 50, 50 );
 }
 
-QSize gl_widget::sizeHint() const
+QSize widget::sizeHint() const
 {
     return QSize( 400, 400 );
 }
 
-void gl_widget::cleanup()
+void widget::cleanup()
 {
     makeCurrent();
-    vbo_.destroy();
-    delete program_;
-    program_ = 0;
+    for(auto& i : shapes) { i->destroy(); }
+    if(program_)
+    {
+        delete program_;
+        program_ = 0;
+    }
     doneCurrent();
 }
 
@@ -85,12 +76,14 @@ static const char *vertex_shader_source = R"(
     #version 150
     in vec4 vertex;
     in vec4 color;
+    in float point_size;
     out vec4 vert_color;
     uniform mat4 projection_matrix;
     uniform mat4 mv_matrix;
     void main() {
        vert_color = color;
        gl_Position = projection_matrix * mv_matrix * vertex;
+       gl_PointSize=point_size;
     }
 )";
 
@@ -102,8 +95,16 @@ static const char *fragment_shader_source = R"(
        frag_color = clamp( vert_color, 0.0, 1.0 );
     }
 )";
+void widget::begin_update()
+{
+    makeCurrent();
+}
+void widget::end_update()
+{
+    doneCurrent();
+}
 
-void gl_widget::initializeGL()
+void widget::initializeGL()
 {
     // In this example the widget's corresponding top-level window can change
     // several times during the widget's lifetime. Whenever this happens, the
@@ -112,45 +113,24 @@ void gl_widget::initializeGL()
     // aboutToBeDestroyed() signal, instead of the destructor. The emission of
     // the signal will be followed by an invocation of initializeGL() where we
     // can recreate all resources.
-    connect( context(), &QOpenGLContext::aboutToBeDestroyed, this, &gl_widget::cleanup );
+    connect( context(), &QOpenGLContext::aboutToBeDestroyed, this, &widget::cleanup );
 
     initializeOpenGLFunctions();
     glClearColor( 0, 0, 0, 1 );
-
-    program_ = new QOpenGLShaderProgram;
+    program_ = new QOpenGLShaderProgram();
     program_->addShaderFromSourceCode( QOpenGLShader::Vertex, vertex_shader_source );
     program_->addShaderFromSourceCode( QOpenGLShader::Fragment, fragment_shader_source );
     program_->bindAttributeLocation( "vertex", 0 );
     program_->bindAttributeLocation( "color", 1 );
+    program_->bindAttributeLocation("point_size",2);
     program_->link();
 
     program_->bind();
     projection_matrix_location_ = program_->uniformLocation( "projection_matrix" );
     mv_matrix_location_ = program_->uniformLocation( "mv_matrix" );
 
-    // Create a vertex array object. In OpenGL ES 2.0 and OpenGL 2.x
-    // implementations this is optional and support may not be present
-    // at all. Nonetheless the below code works in all cases and makes
-    // sure there is a VAO when one is needed.
-    vao_.create();
-    QOpenGLVertexArrayObject::Binder vao_binder( &vao_ );
-
-    // Setup our vertex buffer object.
-    vbo_.create();
-    vbo_.bind();
-    vbo_.allocate( total_buffer_size_ * sizeof( vertex_t ));
-
-    for( unsigned int i = 0, offset = 0; i < buffers_.size(); ++i )
-    {
-        std::size_t data_size = buffers_[i].get()->buffer_size() * sizeof( vertex_t );
-        vbo_.write( offset, buffers_[i].get()->buffer_data(), data_size );
-        offset += data_size;
-    }
-
-    // Store the vertex attribute bindings for the program.
-    setup_vertex_attribs();
-
-    program_->release();
+    for(auto& i : shapes) { i->init(); }
+//     program_->release();
 
     // The camera always points along the z-axis. Pan moves the camera in x,y
     // coordinates and zoom moves in and out on the z-axis.
@@ -161,20 +141,10 @@ void gl_widget::initializeGL()
 
     world_.setToIdentity();
     world_.translate( centre_of_rotation_ );
+    init();
 }
 
-void gl_widget::setup_vertex_attribs()
-{
-    vbo_.bind();
-    QOpenGLFunctions* f = QOpenGLContext::currentContext()->functions();
-    f->glEnableVertexAttribArray( 0 );
-    f->glEnableVertexAttribArray( 1 );
-    f->glVertexAttribPointer( 0, 3, GL_FLOAT, GL_FALSE, sizeof( vertex_t ), reinterpret_cast<void *>( offsetof( vertex_t, position )));
-    f->glVertexAttribPointer( 1, 4, GL_FLOAT, GL_FALSE, sizeof( vertex_t ), reinterpret_cast<void *>( offsetof( vertex_t, color )));
-    vbo_.release();
-}
-
-void gl_widget::paintGL()
+void widget::paintGL()
 {
     QPainter painter( this );
     painter.beginNativePainting();
@@ -182,21 +152,24 @@ void gl_widget::paintGL()
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
     glEnable( GL_DEPTH_TEST );
     glEnable( GL_BLEND );
+//     glEnable(GL_VERTEX_PROGRAM_POINT_SIZE); //use gl_PointSize from shader
+//     glHint(GL_POINT_SMOOTH, GL_NICEST);
+//     glEnable(GL_POINT_SMOOTH);  //circular point, otherwise draws square points
     glBlendEquation( GL_FUNC_ADD );
     glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
     glEnable( GL_CULL_FACE );
 
-    QOpenGLVertexArrayObject::Binder vao_binder( &vao_ );
+    
+//     QOpenGLVertexArrayObject::Binder binder(&(shapes[0]->vao));
     program_->bind();
     program_->setUniformValue( projection_matrix_location_, projection_ );
     program_->setUniformValue( mv_matrix_location_, camera_ * world_ );
 
-    glDrawArrays( GL_POINTS, 0, total_buffer_size_ );
+    for(auto& i : shapes) { i->paint(); }
 
     glDisable( GL_DEPTH_TEST );
 
     program_->release();
-    vao_binder.release();
 
     painter.endNativePainting();
 
@@ -213,7 +186,7 @@ void gl_widget::paintGL()
                     , QString("Warning: Qt3D v2 support is incomplete"));
 }
 
-void gl_widget::set_projection()
+void widget::set_projection()
 {
     double aspect_ratio = (double) width() / height();
     projection_.setToIdentity();
@@ -223,17 +196,17 @@ void gl_widget::set_projection()
         projection_.perspective( camera_options_.field_of_view, aspect_ratio, 0.01f, 100.0f );
 }
 
-void gl_widget::resizeGL( int w, int h )
+void widget::resizeGL( int w, int h )
 {
     set_projection();
 }
 
-void gl_widget::mousePressEvent( QMouseEvent *event )
+void widget::mousePressEvent( QMouseEvent *event )
 {
     last_pos_ = event->pos();
 }
 
-void gl_widget::mouseMoveEvent( QMouseEvent *event )
+void widget::mouseMoveEvent( QMouseEvent *event )
 {
     float dx = event->x() - last_pos_.x();
     float dy = event->y() - last_pos_.y();
@@ -257,7 +230,7 @@ void gl_widget::mouseMoveEvent( QMouseEvent *event )
     last_pos_ = event->pos();
 }
 
-void gl_widget::mouseDoubleClickEvent( QMouseEvent *event )
+void widget::mouseDoubleClickEvent( QMouseEvent *event )
 {
     if( event->button() == Qt::LeftButton )
     {
@@ -266,7 +239,7 @@ void gl_widget::mouseDoubleClickEvent( QMouseEvent *event )
     }
 }
 
-void gl_widget::wheelEvent( QWheelEvent *event )
+void widget::wheelEvent( QWheelEvent *event )
 {
     if( camera_options_.orthographic )
     {
@@ -284,7 +257,7 @@ static const int pixel_search_width = 15;
 
 // Take a 2d point on the viewport and determine the corresponding 3d point in space.
 // The 2d point has to correspond to a pixel (or be close to one).
-boost::optional< QVector3D > gl_widget::viewport_to_3d( const QPoint& viewport_point )
+boost::optional< QVector3D > widget::viewport_to_3d( const QPoint& viewport_point )
 {
     boost::optional< QVector3D > pixel = pixel_at_point( viewport_point, pixel_search_width );
     if( pixel )
@@ -301,7 +274,7 @@ boost::optional< QVector3D > gl_widget::viewport_to_3d( const QPoint& viewport_p
 
 // Take a viewport location and return the nearest active pixel within a square search area.
 // Also converting from Qt coordinates (0,0 at top left) to OpenGL (0,0 at bottom left)
-boost::optional< QVector3D > gl_widget::pixel_at_point( const QPoint& viewport_point
+boost::optional< QVector3D > widget::pixel_at_point( const QPoint& viewport_point
                                                       , int search_width )
 {
     std::vector< float > depth( search_width * search_width );
@@ -323,7 +296,7 @@ boost::optional< QVector3D > gl_widget::pixel_at_point( const QPoint& viewport_p
 // Given a vector of pixel depths, representing a square search area,
 // find the entry nearest the centre with a value less than 1.
 // A value of 1 represents an empty pixel.
-boost::optional< QVector3D > gl_widget::pixel_nearest_centre( const std::vector< float >& depth
+boost::optional< QVector3D > widget::pixel_nearest_centre( const std::vector< float >& depth
                                                             , int search_width )
 {
     // distance represents the distance of the pixel from the centre of the search area
@@ -349,4 +322,4 @@ boost::optional< QVector3D > gl_widget::pixel_nearest_centre( const std::vector<
     return best_offset;
 }
 
-} } } // namespace snark { namespace graphics { namespace qt3d {
+} } } } // namespace snark { namespace graphics { namespace qt3d { namespace gl {
