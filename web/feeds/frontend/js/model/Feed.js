@@ -215,6 +215,9 @@ define('Feed', ["jquery", "jquery_timeago", "utils"], function ($) {
                             this_.onload(data);
                         }).fail(function (jqXHR, textStatus, errorThrown) {
                             // console.log(jqXHR);
+                            if (jqXHR.readyState == 0) {
+                                errorThrown = "Connection Refused."
+                            }
                             this_.update_error(this_, errorThrown);
                         });
                     }
