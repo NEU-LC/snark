@@ -51,6 +51,7 @@ static void usage( bool verbose=false )
     std::cerr << std::endl;
     std::cerr << "  roi" << std::endl;
     std::cerr << "    --show-partial; by default no partial roi is shown in image. Use option to change behaviour." << std::endl;
+    std::cerr << "    --discard; discards frames where the roi is not seen." << std::endl;
     std::cerr << std::endl;
     std::cerr << "examples" << std::endl;
     std::cerr << "  header" << std::endl;
@@ -140,9 +141,9 @@ int main( int ac, char** av )
     
     verbose = options.exists("--verbose,-v");
     
-    std::vector< std::string > ops = options.unnamed("-h,--help,-v,--verbose,--flush,--input-fields,--input-format,--output-fields,--output-format,--show-partial", "--fields,--binary,--input");
+    std::vector< std::string > ops = options.unnamed("-h,--help,-v,--verbose,--flush,--input-fields,--input-format,--output-fields,--output-format,--show-partial,--discard", "--fields,--binary,--input");
     if( ops.empty() ) { std::cerr << name << "please specify an operation." << std::endl; usage(false);  }
-    if( ops.size() > 1 ) { std::cerr << name << "please specify only one operation." << std::endl; usage(false); }
+    if( ops.size() > 1 ) { std::cerr << name << "please specify only one operation, got " << comma::join( ops, ' ' ) << std::endl; usage(false); }
     std::string operation = ops.front();
     
     if( operation == "header" || operation == "format" )
@@ -175,7 +176,7 @@ int main( int ac, char** av )
         
         if( std::cin.good() && !std::cin.eof() )
         {
-            std::pair< boost::posix_time::ptime, cv::Mat > p = serialization.read(std::cin);
+            std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat > p = serialization.read< snark::cv_mat::serialization::header::buffer_t >(std::cin);
             if( p.second.empty() ) { std::cerr << name << "failed to read input stream" << std::endl; exit(1); }
             
             comma::csv::options out;
@@ -189,7 +190,7 @@ int main( int ac, char** av )
     {
         if( std::cin.good() && !std::cin.eof() )
         {
-            std::pair< boost::posix_time::ptime, cv::Mat > p = serialization.read(std::cin);
+            std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat > p = serialization.read< snark::cv_mat::serialization::header::buffer_t >(std::cin);
             if( p.second.empty() ) { std::cerr << name << "failed to read input stream" << std::endl; exit(1); }
             
             serialization::header header = serialization.get_header( serialization.header_buffer());
@@ -214,7 +215,7 @@ int main( int ac, char** av )
         comma::uint64 count = 0;
         while( std::cin.good() && !std::cin.eof() )
         {
-            std::pair< boost::posix_time::ptime, cv::Mat > p = serialization.read(std::cin);
+            std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat > p = serialization.read< snark::cv_mat::serialization::header::buffer_t >(std::cin);
             cv::Mat& mat = p.second;
             if( mat.empty() ) { break; }
             
@@ -229,18 +230,11 @@ int main( int ac, char** av )
             }
             
             // If image size changed
-            if( mask.rows != mat.rows || mask.cols != mat.cols ) 
-            {
-                mask = cv::Mat::ones(mat.rows, mat.cols, CV_8U); // all ones, must be CV_U8 for setTo
-            }
+            if( mask.rows != mat.rows || mask.cols != mat.cols ) { mask = cv::Mat::ones(mat.rows, mat.cols, CV_8U); }  // all ones, must be CV_U8 for setTo
             
             // roi not in image at all
-            if( ext.max.x < 0 || ext.min.x >= mat.cols || ext.max.y < 0 || ext.min.y >= mat.rows )
-            {
-                mat.setTo( cv::Scalar(0), mask );
-                serialization.write(std::cout, p, flush );
-                continue;
-            }
+            if( ext.max.x < 0 || ext.min.x >= mat.cols || ext.max.y < 0 || ext.min.y >= mat.rows ) { continue; }
+                
             
             // Clip roi to fit in the image
             if( show_partial )
@@ -259,20 +253,15 @@ int main( int ac, char** av )
                     << ", min: " << ext.min << ", max: " << ext.max << ", width: " << width << ", height: " << height << std::endl; return 1;
             }
             
-            bool used_mask = false;
             if( ext.min.x >= 0 && ext.min.y >=0 
                 && (ext.min.x + width < mat.cols) && (ext.min.y + height < mat.rows) 
             ) 
             {
                 mask( cv::Rect( ext.min.x, ext.min.y, width , height ) ) = cv::Scalar(0);
-                used_mask = true;
+                mat.setTo( cv::Scalar(0), mask );
+                mask( cv::Rect( ext.min.x, ext.min.y, width , height ) ) = cv::Scalar(1);
+                serialization.write(std::cout, p, flush );
             }
-            
-            mat.setTo( cv::Scalar(0), mask );
-            
-            if( used_mask ) { mask( cv::Rect( ext.min.x, ext.min.y, width , height ) ) = cv::Scalar(1); }
-            
-            serialization.write(std::cout, p, flush );
         }
     }
     else { std::cerr << name << " unknown operation: " << operation << std::endl; return 1; }

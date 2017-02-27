@@ -398,7 +398,9 @@ define('Feed', ["jquery", "jquery_timeago", "utils"], function ($) {
         this.timeago.attr('datetime', this.refresh_time.toISOString()).timeago('updateFromDOM');
     };
     Feed.prototype.onload = function (data) {
+        if(this.form_show_buttons){
         this.removeOldStatus();
+        }
         this.update_time();
         this.status.finish().fadeTo(0, 1);
         if (this.config.alert) {

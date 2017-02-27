@@ -1,0 +1,26 @@
+# test the point-cal extremum calculations
+# - check that it considers the extremum within radius
+# - check that it ignores the extremum outside radius
+
+# check that it considers the extremum within radius
+nearest/min/radius_3[0]/point/id=0
+nearest/min/radius_3[0]/extremum/id=2
+nearest/min/radius_3[0]/extremum/distance=2.82 +/- 0.01
+nearest/min/radius_3[1]/point/id=1
+nearest/min/radius_3[1]/extremum/id=2
+nearest/min/radius_3[1]/extremum/distance=2.828 +/- 0.01
+nearest/min/radius_3[2]/point/id=2
+nearest/min/radius_3[2]/extremum/id=2
+nearest/min/radius_3[2]/extremum/distance=0
+
+
+# check that it ignores the extremum outside radius
+nearest/min/radius_2[0]/point/id=0
+nearest/min/radius_2[0]/extremum/id=1
+nearest/min/radius_2[0]/extremum/distance=0
+nearest/min/radius_2[1]/point/id=1
+nearest/min/radius_2[1]/extremum/id=1
+nearest/min/radius_2[1]/extremum/distance=0
+nearest/min/radius_2[2]/point/id=2
+nearest/min/radius_2[2]/extremum/id=2
+nearest/min/radius_2[2]/extremum/distance=0

@@ -1,0 +1,10 @@
+#!/bin/bash
+
+readonly output_dir=output
+
+mkdir -p $output_dir
+
+points-calc nearest-min --fields=block,id,x,y,scalar --radius=3 \
+    | name-value-from-csv --fields=block,point/id,,,,extremum/id,extremum/distance --prefix=nearest/min --line-number \
+    | csv-quote --unquote --delimiter='='
+

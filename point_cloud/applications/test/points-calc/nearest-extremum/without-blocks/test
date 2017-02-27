@@ -1,0 +1,16 @@
+#!/bin/bash
+
+readonly output_dir=output
+readonly input_file=$output_dir/input.backup
+
+mkdir -p $output_dir
+cat > $input_file
+
+{
+points-calc nearest-min --fields=id,x,y,scalar --radius=3 < "$input_file" \
+    | name-value-from-csv --fields=point/id,,,,extremum/id,extremum/distance --prefix=nearest/min/radius_3 --line-number
+
+points-calc nearest-min --fields=id,x,y,scalar --radius=2 < "$input_file" \
+    | name-value-from-csv --fields=point/id,,,,extremum/id,extremum/distance --prefix=nearest/min/radius_2 --line-number
+
+} | csv-quote --unquote --delimiter='='
