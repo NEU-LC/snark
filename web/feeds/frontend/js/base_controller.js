@@ -196,11 +196,23 @@ define('base_controller', ['jquery', "jquery_timeago",
         if (frontend_config.timeout) {
             globals.timeout = frontend_config.timeout;
         }
+        var is_host_specified = false;
         if (frontend_config.host) {
             globals.host = frontend_config.host;
+            is_host_specified = true;
         }
+        var is_port_specified = false;
         if (frontend_config.port) {
             globals.port = frontend_config.port;
+            is_port_specified = true;
+        }
+
+        if (!is_host_specified && !is_port_specified) {
+            $('#container').empty();
+            $('#container').append('<p>Please specify either Host or Port in frontend configuration.</p>');
+            $('#container').append('<p>see: <a href="readme.txt">readme.txt</a></p>');
+            $('#container').append('<p>see: <a href="examples/web.frontend.json">examples/web.frontend.json</a></p>');
+            return;
         }
         // var feeds = frontend_config.feeds;
         if (path.length != 0) {
