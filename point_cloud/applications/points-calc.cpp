@@ -597,25 +597,25 @@ static void process_nearest_extremum_block( std::deque< local_operation::record 
     for( std::size_t i = 0; i < records.size(); ++i ) { ( grid.touch_at( records[i].point.coordinates ) )->second.push_back( &records[i] ); }
     for( grid_t::iterator it = grid.begin(); it != grid.end(); ++it )
     {
-	grid_t::index_type i;
-	for( i[0] = it->first[0] - 1; i[0] < it->first[0] + 2; ++i[0] )
-	{
-	    for( i[1] = it->first[1] - 1; i[1] < it->first[1] + 2; ++i[1] )
-	    {
-		for( i[2] = it->first[2] - 1; i[2] < it->first[2] + 2; ++i[2] )
-		{
-		    grid_t::iterator git = grid.find( i );
-		    if( git == grid.end() ) { continue; }
-		    for( std::size_t n = 0; n < it->second.size(); ++n )
-		    {
-			for( std::size_t k = 0; k < git->second.size(); ++k )
-			{
-			    local_operation::update_nearest( it->second[n], git->second[k], radius, sign, any );
-			}
-		    }
-		}
-	    }
-	}
+        grid_t::index_type i;
+        for( i[0] = it->first[0] - 1; i[0] < it->first[0] + 2; ++i[0] )
+        {
+            for( i[1] = it->first[1] - 1; i[1] < it->first[1] + 2; ++i[1] )
+            {
+                for( i[2] = it->first[2] - 1; i[2] < it->first[2] + 2; ++i[2] )
+                {
+                    grid_t::iterator git = grid.find( i );
+                    if( git == grid.end() ) { continue; }
+                    for( std::size_t n = 0; n < it->second.size(); ++n )
+                    {
+                        for( std::size_t k = 0; k < git->second.size(); ++k )
+                        {
+                            local_operation::update_nearest( it->second[n], git->second[k], radius, sign, any );
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -1034,7 +1034,7 @@ int main( int ac, char** av )
                 {
                     if( verbose ) { std::cerr << "points-calc " << operation << ": processing points of block: " << block << std::endl; }
                     local_operation::process_nearest_extremum_block( records, extents, resolution, sign, radius, any );
-                    if( verbose ) { std::cerr << "points-calc " << operation << ": outputing points of block: " << block << std::endl; }
+                    if( verbose ) { std::cerr << "points-calc " << operation << ": outputting points of block: " << block << std::endl; }
                     output_nearest_extremum_block( records, output_csv, endl, delimiter, output_full_record, output_extremums_only );
                     extents = snark::math::closed_interval< double, 3 >();
                     records.clear();

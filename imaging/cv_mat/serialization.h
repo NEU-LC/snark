@@ -57,7 +57,10 @@ class serialization
             header( const std::pair< boost::posix_time::ptime, cv::Mat >& p ); /// constructor
             header( const boost::posix_time::ptime& t, const cv::Mat & p ); /// constructor
             static const char* default_fields() { return "t,rows,cols,type"; }
+            static const char* default_format() { return "t,3ui"; }
+            static const std::size_t fields_num = 4;  // ignore size field
             
+            // TBD This can be wrapped in a smart share pointer as it it often copied e.g. cv::Mat is also a smart pointer
             typedef std::vector< char > buffer_t;
         };
         

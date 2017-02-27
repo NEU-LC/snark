@@ -68,11 +68,13 @@ serialization::header::header( const boost::posix_time::ptime& t, const cv::Mat 
 }
 
 serialization::serialization() :
-    m_binary( new comma::csv::binary< header >( "t,3ui", header::default_fields(), false ) ),
-    m_binary_no_timestamp( new comma::csv::binary< header >( "t,3ui", ",rows,cols,type", false ) ),
+    m_binary( new comma::csv::binary< header >( header::default_format(), header::default_fields(), false ) ),
+    m_binary_no_timestamp( new comma::csv::binary< header >( header::default_format(), ",rows,cols,type", false ) ),
     m_buffer( m_binary->format().size() ),
     m_headerOnly( false )
 {
+    // make sure that the default timestamp (if not read from input) is not-a-date-time, and not 19700101T00000
+    m_binary->put( m_header, &m_buffer[0]);
 }
 
 serialization::serialization( const std::string& fields, const comma::csv::format& format, bool headerOnly, const header& default_header ):
@@ -88,12 +90,15 @@ serialization::serialization( const std::string& fields, const comma::csv::forma
         std::string no_timestamp_fields = comma::join( v, ',' );
         if( !no_timestamp_fields.empty() ) { m_binary_no_timestamp.reset( new comma::csv::binary< header >( format.string(), comma::join( v, ',' ), false, m_header ) );  }
     }
+    
+    // make sure that the default timestamp (if not read from input) is not-a-date-time, and not 19700101T00000
+    ( !fields.empty() ? *m_binary : comma::csv::binary< serialization::header >( format.string(), fields ) ).put( m_header, &m_buffer[0]);
 }
 
 serialization::serialization( const serialization::options& options )
 {
     if( options.no_header && options.header_only ) { COMMA_THROW( comma::exception, "cannot have no-header and header-only at the same time" ); }
-    std::string fields = options.fields.empty() ? std::string( "t,rows,cols,type" ) : options.fields;
+    std::string fields = options.fields.empty() ? header::default_fields() : options.fields;
     std::vector< std::string > v = comma::split( fields, "," );
     comma::csv::format format;
     if( options.format.elements().empty() ) { for( unsigned int i = 0; i < v.size(); ++i ) { if( v[i] == "t" ) { format += "t"; } else { format += "ui"; } } }
@@ -108,6 +113,9 @@ serialization::serialization( const serialization::options& options )
         std::string no_timestamp_fields = comma::join( v, ',' );
         if( !no_timestamp_fields.empty() ) { m_binary_no_timestamp.reset( new comma::csv::binary< header >( format.string(), no_timestamp_fields, false, m_header ) ); }
     }
+    
+    // make sure that the default timestamp (if not read from input) is not-a-date-time, and not 19700101T00000
+    ( !options.no_header ? *m_binary : comma::csv::binary< serialization::header >( format.string(), fields ) ).put( m_header, &m_buffer[0]);
 }
 
 const comma::csv::binary< serialization::header >* serialization::header_binary() const { return m_binary ? m_binary.get() : NULL; }

@@ -44,7 +44,14 @@
 #include <Qt3D/qglpainter.h>
 #else
 #include <Eigen/Core>
-#include "../../../graphics/qt3d/qt3d_v2/types.h"
+#include "../../../graphics/qt3d/qt3d_v2/gl/shapes.h"
+#endif
+#include <memory>
+
+#if Qt3D_VERSION==1
+typedef QColor4ub color_t;
+#else
+typedef snark::graphics::qt3d::gl::color_t color_t;
 #endif
 
 namespace snark { namespace graphics { namespace view {
@@ -59,17 +66,7 @@ struct vertex_t
         : position( position ), color( color ) {}
 };
 #else
-struct vertex_t
-{
-    Eigen::Vector3f position;
-    qt3d::gl_color_t color;
-
-    vertex_t() {}
-    vertex_t( const Eigen::Vector3f& position, const qt3d::gl_color_t& color )
-        : position( position ), color( color ) {}
-    vertex_t( const Eigen::Vector3f& position, const QColor& color )
-        : position( position ), color( color ) {}
-};
+typedef qt3d::gl::vertex_t vertex_t;
 #endif
 
 namespace detail {
@@ -89,11 +86,7 @@ struct ShapeWithId // quick and dirty
     S shape;
     comma::uint32 id;
     comma::uint32 block;
-    #if Qt3D_VERSION==1
-    QColor4ub color;
-    #else
-    qt3d::gl_color_t color;
-    #endif
+    color_t color;
     std::string label;
     double scalar;
     bool fill; // todo: just a placeholder for now, plug in if possible or tear down
@@ -108,10 +101,19 @@ template<>
 struct Shapetraits< snark::math::closed_interval< double, 3 > >
 {
     static const unsigned int size = 8;
+        
+#if Qt3D_VERSION==2
+    static std::shared_ptr<snark::graphics::qt3d::gl::shape> make_shape(unsigned point_size)
+    {
+        return std::shared_ptr<snark::graphics::qt3d::gl::shape>();
+    }
+#endif
+
     #if Qt3D_VERSION==1
     static void update( const snark::math::closed_interval< double, 3 >& e, const Eigen::Vector3d& offset, const QColor4ub& color, unsigned int block, block_buffer< vertex_t >& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents  )
     #else
-    static void update( const snark::math::closed_interval< double, 3 >& e, const Eigen::Vector3d& offset, const qt3d::gl_color_t& color, unsigned int block, block_buffer< vertex_t >& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents  )
+    static void update( const snark::math::closed_interval< double, 3 >& e, const Eigen::Vector3d& offset, const color_t& color, unsigned int block, 
+                        block_buffer< vertex_t >& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents)
     #endif
     {
         Eigen::Vector3f min = ( e.min() - offset ).cast< float >();
@@ -169,10 +171,19 @@ template <>
 struct Shapetraits< std::pair< Eigen::Vector3d, Eigen::Vector3d > >
 {
     static const unsigned int size = 2;
+    
+#if Qt3D_VERSION==2
+    static std::shared_ptr<snark::graphics::qt3d::gl::shape> make_shape(unsigned point_size)
+    {
+        return std::shared_ptr<snark::graphics::qt3d::gl::shape>();
+    }
+#endif
+
     #if Qt3D_VERSION==1
     static void update( const std::pair< Eigen::Vector3d, Eigen::Vector3d >& p, const Eigen::Vector3d& offset, const QColor4ub& color, unsigned int block, block_buffer< vertex_t >& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents  )
     #else
-    static void update( const std::pair< Eigen::Vector3d, Eigen::Vector3d >& p, const Eigen::Vector3d& offset, const qt3d::gl_color_t& color, unsigned int block, block_buffer< vertex_t >& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents  )
+    static void update( const std::pair< Eigen::Vector3d, Eigen::Vector3d >& p, const Eigen::Vector3d& offset, const color_t& color, unsigned int block, 
+                        block_buffer< vertex_t >& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents)
     #endif
     {
         Eigen::Vector3f first = ( p.first - offset ).cast< float >();
@@ -211,10 +222,19 @@ struct Shapetraits< loop< Size > >
 {
     BOOST_STATIC_ASSERT( Size > 2 );
     static const unsigned int size = Size;
+    
+#if Qt3D_VERSION==2
+    static std::shared_ptr<snark::graphics::qt3d::gl::shape> make_shape(unsigned point_size)
+    {
+        return std::shared_ptr<snark::graphics::qt3d::gl::shape>();
+    }
+#endif
+
     #if Qt3D_VERSION==1
     static void update( const loop< Size >& e, const Eigen::Vector3d& offset, const QColor4ub& color, unsigned int block, block_buffer< vertex_t >& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents  )
     #else
-    static void update( const loop< Size >& e, const Eigen::Vector3d& offset, const qt3d::gl_color_t& color, unsigned int block, block_buffer< vertex_t >& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents  )
+    static void update( const loop< Size >& e, const Eigen::Vector3d& offset, const color_t& color, unsigned int block, 
+                        block_buffer< vertex_t >& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents)
     #endif
     {
         for( unsigned int i = 0; i < Size; ++i )
@@ -262,10 +282,19 @@ template < std::size_t Size >
 struct Shapetraits< Ellipse< Size > >
 {
     static const unsigned int size = Size;
+    
+#if Qt3D_VERSION==2
+    static std::shared_ptr<snark::graphics::qt3d::gl::shape> make_shape(unsigned point_size)
+    {
+        return std::shared_ptr<snark::graphics::qt3d::gl::shape>();
+    }
+#endif
+
     #if Qt3D_VERSION==1
     static void update( const Ellipse< Size >& ellipse, const Eigen::Vector3d& offset, const QColor4ub& color, unsigned int block, block_buffer< vertex_t >& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents  )
     #else
-    static void update( const Ellipse< Size >& ellipse, const Eigen::Vector3d& offset, const qt3d::gl_color_t& color, unsigned int block, block_buffer< vertex_t >& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents  )
+    static void update( const Ellipse< Size >& ellipse, const Eigen::Vector3d& offset, const color_t& color, unsigned int block, 
+                        block_buffer< vertex_t >& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents)
     #endif
     {
         Eigen::Vector3d c = ellipse.center - offset;
@@ -318,11 +347,19 @@ struct Shapetraits< arc< Size > >
     static const unsigned int size = Size;
 
     BOOST_STATIC_ASSERT( Size % 2 == 0 ); // quick and dirty: for simplicity support only only even sizes
+    
+#if Qt3D_VERSION==2
+    static std::shared_ptr<snark::graphics::qt3d::gl::shape> make_shape(unsigned point_size)
+    {
+        return std::shared_ptr<snark::graphics::qt3d::gl::shape>();
+    }
+#endif
 
     #if Qt3D_VERSION==1
     static void update( const arc< Size >& a, const Eigen::Vector3d& offset, const QColor4ub& color, unsigned int block, block_buffer< vertex_t >& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents  )
     #else
-    static void update( const arc< Size >& a, const Eigen::Vector3d& offset, const qt3d::gl_color_t& color, unsigned int block, block_buffer< vertex_t >& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents  )
+    static void update( const arc< Size >& a, const Eigen::Vector3d& offset, const color_t& color, unsigned int block, 
+                        block_buffer< vertex_t >& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents)
     #endif
     {
         if( ( a.begin - a.end ).squaredNorm() < ( 0.001 * 0.001 ) ) // real quick and dirty: if begin and end coincide
@@ -442,17 +479,26 @@ struct Shapetraits< Eigen::Vector3d, How >
     #endif
     static const unsigned int size = 1;
 
+    
+#if Qt3D_VERSION==2
+    static std::shared_ptr<snark::graphics::qt3d::gl::shape> make_shape(unsigned point_size)
+    {
+        return std::shared_ptr<snark::graphics::qt3d::gl::shape>(new snark::graphics::qt3d::gl::shapes::point(point_size));
+    }
+#endif
+
     #if Qt3D_VERSION==1
     static void update( const Eigen::Vector3d& p, const Eigen::Vector3d& offset, const QColor4ub& color, unsigned int block, block_buffer< vertex_t >& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents  )
     #else
-    static void update( const Eigen::Vector3d& p, const Eigen::Vector3d& offset, const qt3d::gl_color_t& color, unsigned int block, block_buffer< vertex_t >& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents  )
+    static void update( const Eigen::Vector3d& p, const Eigen::Vector3d& offset, const color_t& color, unsigned int block, 
+                        block_buffer< vertex_t >& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents)
     #endif
     {
         Eigen::Vector3d point = p - offset;
         #if Qt3D_VERSION==1
         buffer.add( vertex_t( QVector3D( point.x(), point.y(), point.z() ), color ), block );
         #else
-        buffer.add( vertex_t( Eigen::Vector3f( point.x(), point.y(), point.z() ), color ), block );
+        buffer.add( vertex_t( Eigen::Vector3f( point.x(), point.y(), point.z() ), color), block );
         #endif
         extents = extents
                 ? extents->hull( point.cast< float >() )
