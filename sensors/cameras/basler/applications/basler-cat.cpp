@@ -191,6 +191,8 @@ struct Header // quick and dirty
 
 static snark::cv_mat::serialization::options cv_mat_options;
 static snark::cv_mat::serialization::header cv_mat_header;
+static unsigned int number_of_channels; // quick and dirty
+static unsigned int x_factor; // quick and dirty
 static comma::csv::options csv;
 static unsigned int timeout;
 static Pylon::IChunkParser* parser = NULL;
@@ -311,10 +313,10 @@ static P capture( T& camera, typename T::StreamGrabber_t& grabber )
             continue;
         }
         P pair;
-        pair.second = cv::Mat( result.GetSizeY(), result.GetSizeX(), cv_mat_header.type );
+        pair.second = cv::Mat( result.GetSizeY(), result.GetSizeX() / x_factor, cv_mat_header.type );
         ::memcpy( pair.second.data, reinterpret_cast< const char* >( result.Buffer() ), pair.second.dataend - pair.second.datastart );
         // quick and dirty for now: rgb are not contiguous in basler camera frame
-        if( cv_mat_header.type == CV_8UC3 || cv_mat_header.type == CV_16UC3 ) { cv::cvtColor( pair.second, pair.second, CV_RGB2BGR ); }
+        if( number_of_channels == 3 ) { cv::cvtColor( pair.second, pair.second, CV_RGB2BGR ); }
         set< T >( pair.first, current_time, result, camera );
         grabber.QueueBuffer( result.Handle(), NULL ); // requeue buffer
         return pair;
@@ -389,6 +391,18 @@ template <> struct pixel_format< Pylon::CBaslerUsbCamera > // todo: support more
         }
     }
     
+    static unsigned int x_factor( type_t format )
+    {
+        switch( format )
+        {
+            case Basler_UsbCameraParams::PixelFormat_Mono8: return 1;
+            case Basler_UsbCameraParams::PixelFormat_Mono10: return 1;
+            case Basler_UsbCameraParams::PixelFormat_Mono12: return 1;
+            case Basler_UsbCameraParams::PixelFormat_Mono12p: return 2;
+            default: COMMA_THROW( comma::exception, "pixel format " << format << " not implemented" );
+        }
+    }
+    
     static const char* to_image_type_string( type_t format )
     {
         switch( format )
@@ -430,6 +444,16 @@ template <> struct pixel_format< Pylon::CBaslerGigECamera > // todo: support mor
         {
             case Basler_GigECameraParams::PixelFormat_Mono8: return 1;
             case Basler_GigECameraParams::PixelFormat_RGB8Packed: return 3;
+            default: COMMA_THROW( comma::exception, "pixel format " << format << " not implemented" );
+        }
+    }
+    
+    static unsigned int x_factor( type_t format )
+    {
+        switch( format )
+        {
+            case Basler_GigECameraParams::PixelFormat_Mono8: return 1;
+            case Basler_GigECameraParams::PixelFormat_RGB8Packed: return 1;
             default: COMMA_THROW( comma::exception, "pixel format " << format << " not implemented" );
         }
     }
@@ -480,6 +504,17 @@ static void set_pixel_format( T& camera, P type )
     if( camera.PixelFormat() != type ) { COMMA_THROW( comma::exception, "failed to set pixel format after " << retries << " attempts; try again or power-cycle the camera" ); }
     comma::verbose << "pixel format set to " << pixel_format< T >::to_string( type ) << std::endl;
     return;
+}
+
+template < typename T >
+static void set_pixel_format( T& camera, const comma::command_line_options& options )
+{
+    std::string pixel_format_string = options.value< std::string >( "--pixel-format", "" );
+    typename ::pixel_format< T >::type_t pixel_format = pixel_format_string.empty() ? camera.PixelFormat() : ::pixel_format< T >::from_string( pixel_format_string );
+    set_pixel_format( camera, pixel_format );
+    cv_mat_options.type = ::pixel_format< T >::to_image_type_string( pixel_format );
+    number_of_channels = ::pixel_format< T >::channels( pixel_format );
+    x_factor = ::pixel_format< T >::x_factor( pixel_format );
 }
 
 static std::string get_address( const Pylon::CDeviceInfo& device_info )
@@ -906,10 +941,7 @@ static int run( T& camera, const comma::command_line_options& options )
     comma::verbose << "opening camera " << camera.GetDevice()->GetDeviceInfo().GetFullName() << "..." << std::endl;
     camera.Open();
     comma::verbose << "opened camera " << camera.GetDevice()->GetDeviceInfo().GetFullName() << std::endl;    
-    std::string pixel_format_string = options.value< std::string >( "--pixel-format", "" );
-    typename ::pixel_format< camera_t >::type_t pixel_format = pixel_format_string.empty() ? camera.PixelFormat() : ::pixel_format< camera_t >::from_string( pixel_format_string );
-    set_pixel_format( camera, pixel_format );
-    cv_mat_options.type = ::pixel_format< camera_t >::to_image_type_string( pixel_format );
+    set_pixel_format( camera, options );
     cv_mat_header = cv_mat_options.get_header();
     typename camera_t::StreamGrabber_t grabber( camera.GetStreamGrabber( 0 ) );
     grabber.Open();
