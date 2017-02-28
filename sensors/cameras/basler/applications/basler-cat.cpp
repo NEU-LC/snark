@@ -312,7 +312,7 @@ static P capture( T& camera, typename T::StreamGrabber_t& grabber )
             continue;
         }
         P pair;
-        pair.second = cv::Mat( result.GetSizeY(), is_packed ? ( ( result.GetSizeX() * 3 ) / 2 ) : result.GetSizeX(), cv_mat_header.type ); // todo: seriously quick and dirty, does not scale to Mono10p; implement packed bytes layout properly 
+        pair.second = cv::Mat( result.GetSizeY(), is_packed ? ( ( result.GetSizeX() * 2 ) / 3 ) : result.GetSizeX(), cv_mat_header.type ); // todo: seriously quick and dirty, does not scale to Mono10p; implement packed bytes layout properly 
         ::memcpy( pair.second.data, reinterpret_cast< const char* >( result.Buffer() ), pair.second.dataend - pair.second.datastart );
         // quick and dirty for now: rgb are not contiguous in basler camera frame
         if( cv_mat_header.type == CV_8UC3 || cv_mat_header.type == CV_16UC3 ) { cv::cvtColor( pair.second, pair.second, CV_RGB2BGR ); }
