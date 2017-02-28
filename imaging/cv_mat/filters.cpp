@@ -2485,7 +2485,7 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
             }
             if( e.size() < 2 ) { COMMA_THROW( comma::exception, "expected encoding type like jpg, ppm, etc" ); }
             std::string s = e[1];
-            f.push_back( filter_type( boost::bind< value_type_t >( encode_impl_< H >( get_timestamp ), _1, s ) ) );
+            f.push_back( filter_type( boost::bind< value_type_t >( encode_impl_< H >( get_timestamp ), _1, s ), false ) );
         }
         else if( e[0] == "grab" )
         {
@@ -2502,7 +2502,7 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
         else if( e[0] == "histogram" )
         {
             if( i < v.size() - 1 ) { COMMA_THROW( comma::exception, "expected 'histogram' as the last filter, got \"" << how << "\"" ); }
-            f.push_back( filter_type( boost::bind< value_type_t >( histogram_impl_< H >(get_timestamp), _1 ) ) );
+            f.push_back( filter_type( boost::bind< value_type_t >( histogram_impl_< H >(get_timestamp), _1 ), false ) );
             f.push_back( filter_type( NULL ) ); // quick and dirty
         }
         else if( e[0] == "simple-blob" )
@@ -2532,7 +2532,7 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
                     if( t.size() > 1 ) { path = s[1]; }
                 }
             }
-            f.push_back( filter_type( boost::bind< value_type_t >( simple_blob_impl_< H >(get_timestamp), _1, cv_read_< cv::SimpleBlobDetector::Params >( config, path ), is_binary ) ) );
+            f.push_back( filter_type( boost::bind< value_type_t >( simple_blob_impl_< H >(get_timestamp), _1, cv_read_< cv::SimpleBlobDetector::Params >( config, path ), is_binary ), false ) );
             f.push_back( filter_type( NULL ) ); // quick and dirty
         }
         else if( e[0] == "null" )
