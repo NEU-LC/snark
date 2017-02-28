@@ -191,8 +191,7 @@ struct Header // quick and dirty
 
 static snark::cv_mat::serialization::options cv_mat_options;
 static snark::cv_mat::serialization::header cv_mat_header;
-static unsigned int number_of_channels; // quick and dirty
-static unsigned int x_factor; // quick and dirty
+static bool is_packed; // quick and dirty
 static comma::csv::options csv;
 static unsigned int timeout;
 static Pylon::IChunkParser* parser = NULL;
@@ -313,10 +312,10 @@ static P capture( T& camera, typename T::StreamGrabber_t& grabber )
             continue;
         }
         P pair;
-        pair.second = cv::Mat( result.GetSizeY(), result.GetSizeX() / x_factor, cv_mat_header.type );
+        pair.second = cv::Mat( result.GetSizeY(), is_packed ? ( ( result.GetSizeX() * 3 ) / 2 ) : result.GetSizeX(), cv_mat_header.type ); // todo: seriously quick and dirty, does not scale to Mono10p; implement packed bytes layout properly 
         ::memcpy( pair.second.data, reinterpret_cast< const char* >( result.Buffer() ), pair.second.dataend - pair.second.datastart );
         // quick and dirty for now: rgb are not contiguous in basler camera frame
-        if( number_of_channels == 3 ) { cv::cvtColor( pair.second, pair.second, CV_RGB2BGR ); }
+        if( cv_mat_header.type == CV_8UC3 || cv_mat_header.type == CV_16UC3 ) { cv::cvtColor( pair.second, pair.second, CV_RGB2BGR ); }
         set< T >( pair.first, current_time, result, camera );
         grabber.QueueBuffer( result.Handle(), NULL ); // requeue buffer
         return pair;
@@ -391,14 +390,14 @@ template <> struct pixel_format< Pylon::CBaslerUsbCamera > // todo: support more
         }
     }
     
-    static unsigned int x_factor( type_t format )
+    static bool is_packed( type_t format )
     {
         switch( format )
         {
-            case Basler_UsbCameraParams::PixelFormat_Mono8: return 1;
-            case Basler_UsbCameraParams::PixelFormat_Mono10: return 1;
-            case Basler_UsbCameraParams::PixelFormat_Mono12: return 1;
-            case Basler_UsbCameraParams::PixelFormat_Mono12p: return 2;
+            case Basler_UsbCameraParams::PixelFormat_Mono8: return false;
+            case Basler_UsbCameraParams::PixelFormat_Mono10: return false;
+            case Basler_UsbCameraParams::PixelFormat_Mono12: return false;
+            case Basler_UsbCameraParams::PixelFormat_Mono12p: return true;
             default: COMMA_THROW( comma::exception, "pixel format " << format << " not implemented" );
         }
     }
@@ -411,7 +410,7 @@ template <> struct pixel_format< Pylon::CBaslerUsbCamera > // todo: support more
             case Basler_UsbCameraParams::PixelFormat_Mono10: return "uw";
             //case Basler_UsbCameraParams::PixelFormat_Mono10p: return "uw";
             case Basler_UsbCameraParams::PixelFormat_Mono12: return "uw";
-            case Basler_UsbCameraParams::PixelFormat_Mono12p: return "3ub"; // quick and dirty
+            case Basler_UsbCameraParams::PixelFormat_Mono12p: return "ub"; // quick and dirty
             default: COMMA_THROW( comma::exception, "pixel format " << format << " not implemented" );
         }
     }
@@ -448,12 +447,12 @@ template <> struct pixel_format< Pylon::CBaslerGigECamera > // todo: support mor
         }
     }
     
-    static unsigned int x_factor( type_t format )
+    static bool is_packed( type_t format )
     {
         switch( format )
         {
-            case Basler_GigECameraParams::PixelFormat_Mono8: return 1;
-            case Basler_GigECameraParams::PixelFormat_RGB8Packed: return 1;
+            case Basler_GigECameraParams::PixelFormat_Mono8: return false;
+            case Basler_GigECameraParams::PixelFormat_RGB8Packed: return false;
             default: COMMA_THROW( comma::exception, "pixel format " << format << " not implemented" );
         }
     }
@@ -513,8 +512,7 @@ static void set_pixel_format( T& camera, const comma::command_line_options& opti
     typename ::pixel_format< T >::type_t pixel_format = pixel_format_string.empty() ? camera.PixelFormat() : ::pixel_format< T >::from_string( pixel_format_string );
     set_pixel_format( camera, pixel_format );
     cv_mat_options.type = ::pixel_format< T >::to_image_type_string( pixel_format );
-    number_of_channels = ::pixel_format< T >::channels( pixel_format );
-    x_factor = ::pixel_format< T >::x_factor( pixel_format );
+    is_packed = ::pixel_format< T >::is_packed( pixel_format );
 }
 
 static std::string get_address( const Pylon::CDeviceInfo& device_info )
