@@ -113,7 +113,7 @@ static void usage( bool verbose = false )
     std::cerr << "\n                                         Mono10: stdout output format: uw";
     std::cerr << "\n                                         Mono10p: stdout output format: uw (packed format; todo)";
     std::cerr << "\n                                         Mono12: stdout output format: uw";
-    std::cerr << "\n                                         Mono12p: stdout output format: uw (packed format; todo)";
+    std::cerr << "\n                                         Mono12p: stdout output format: 3ub (apply unpack12 to get 16-bit padded image)";
     std::cerr << "\n                                     default: use the current camera setting";
     std::cerr << "\n                                     format names correspond to enum found in basler header files";
     std::cerr << "\n    --offset-x=[<pixels>]        offset in pixels in the line; todo: make sure it works on images with more than 1 channel";
@@ -395,9 +395,9 @@ template <> struct pixel_format< Pylon::CBaslerUsbCamera > // todo: support more
         {
             case Basler_UsbCameraParams::PixelFormat_Mono8: return "ub";
             case Basler_UsbCameraParams::PixelFormat_Mono10: return "uw";
-            case Basler_UsbCameraParams::PixelFormat_Mono10p: return "uw";
+            //case Basler_UsbCameraParams::PixelFormat_Mono10p: return "uw";
             case Basler_UsbCameraParams::PixelFormat_Mono12: return "uw";
-            case Basler_UsbCameraParams::PixelFormat_Mono12p: return "uw";
+            case Basler_UsbCameraParams::PixelFormat_Mono12p: return "3ub"; // quick and dirty
             default: COMMA_THROW( comma::exception, "pixel format " << format << " not implemented" );
         }
     }
