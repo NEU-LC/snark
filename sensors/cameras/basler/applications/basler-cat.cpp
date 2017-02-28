@@ -97,7 +97,7 @@ static void usage( bool verbose = false )
     std::cerr << "\n    --test-image=[<num>]         output test image <num>; possible values: 1-6";
     std::cerr << "\n    --verbose,-v                 be more verbose";
     std::cerr << "\n";
-    std::cerr << "image options\n";
+    std::cerr << "\nimage options";
     std::cerr << "\n    --fields,-f=[<fields>]       header fields, possible values:";
     std::cerr << "\n                                 possible values: " << possible_header_fields;
     std::cerr << "\n                                 default: " << default_header_fields;
@@ -120,7 +120,7 @@ static void usage( bool verbose = false )
     std::cerr << "\n    --offset-y=[<pixels>]        offset in lines in the frame; todo: make sure it works on images with more than 1 channel";
     std::cerr << "\n    --width=[<pixels>]           line width in pixels; default: max";
     std::cerr << "\n";
-    std::cerr << "camera settings options\n";
+    std::cerr << "\ncamera settings options";
     std::cerr << "\n    --frame-rate=[<fps>]         set frame rate; limited by exposure";
     std::cerr << "\n    --exposure=[<µs>]            exposure time; \"auto\" to automatically set";
     std::cerr << "\n    --gain=[<num>]               gain; \"auto\" to automatically set;";
@@ -137,7 +137,6 @@ static void usage( bool verbose = false )
     std::cerr << "\n";
     std::cerr << "\nNote that most parameter settings (exposure, gain, etc) are sticky.";
     std::cerr << "\nThey will persist from one run to the next.";
-    std::cerr << "\n";
     if( verbose )
     {
         std::cerr << "\n";
