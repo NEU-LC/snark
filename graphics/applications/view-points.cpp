@@ -381,12 +381,13 @@ boost::shared_ptr< snark::graphics::view::Reader > make_reader( QGLView& viewer
                                                              , const comma::csv::options& csv_options
                                                              , const std::string& properties = "" )
 #else
-boost::shared_ptr< snark::graphics::view::Reader > make_reader( const comma::command_line_options& options
+std::unique_ptr< snark::graphics::view::Reader > make_reader( const comma::command_line_options& options
                                                              , const comma::csv::options& csv_options
                                                              , const std::string& properties = "" )
 #endif
 {
-    snark::graphics::view::color_t background_color( QColor( QString( options.value< std::string >( "--background-colour", "#000000" ).c_str() ) ) );
+    //snark::graphics::view::color_t 
+    QColor background_color( QColor( QString( options.value< std::string >( "--background-colour", "#000000" ).c_str() ) ) );
     std::string shape = options.value< std::string >( "--shape", "point" );
     snark::graphics::view::Reader::reader_parameters param( csv_options
                                                           , options.value( "--title", csv_options.filename )
@@ -433,7 +434,7 @@ boost::shared_ptr< snark::graphics::view::Reader > make_reader( const comma::com
         #if Qt3D_VERSION==1
         boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< Eigen::Vector3d >( viewer, param, colored, label ) );
         #else
-        boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< Eigen::Vector3d >( param, colored ) );
+        std::unique_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< Eigen::Vector3d >( param, colored ) );
         #endif
         reader->show( show );
         return reader;
@@ -444,7 +445,7 @@ boost::shared_ptr< snark::graphics::view::Reader > make_reader( const comma::com
         #if Qt3D_VERSION==1
         boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< Eigen::Vector3d, snark::graphics::view::how_t::loop >( viewer, param, colored, label ) );
         #else
-        boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< Eigen::Vector3d, snark::graphics::view::how_t::loop >( param, colored ) );
+        std::unique_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< Eigen::Vector3d, snark::graphics::view::how_t::loop >( param, colored ) );
         #endif
         reader->show( show );
         return reader;
@@ -455,7 +456,7 @@ boost::shared_ptr< snark::graphics::view::Reader > make_reader( const comma::com
         #if Qt3D_VERSION==1
         boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< Eigen::Vector3d, snark::graphics::view::how_t::connected >( viewer, param, colored, label ) );
         #else
-        boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< Eigen::Vector3d, snark::graphics::view::how_t::connected >( param, colored ) );
+        std::unique_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< Eigen::Vector3d, snark::graphics::view::how_t::connected >( param, colored ) );
         #endif
         reader->show( show );
         return reader;
@@ -554,7 +555,7 @@ boost::shared_ptr< snark::graphics::view::Reader > make_reader( const comma::com
         #if Qt3D_VERSION==1
         boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< snark::math::closed_interval< double, 3 > >( viewer, param, colored, label, snark::math::closed_interval< double, 3 >( Eigen::Vector3d( 0, 0, 0 ), Eigen::Vector3d( 0, 0, 0 ) ) ) );
         #else
-        boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< snark::math::closed_interval< double, 3 > >( param, colored, snark::math::closed_interval< double, 3 >( Eigen::Vector3d( 0, 0, 0 ), Eigen::Vector3d( 0, 0, 0 ) ) ) );
+        std::unique_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< snark::math::closed_interval< double, 3 > >( param, colored, snark::math::closed_interval< double, 3 >( Eigen::Vector3d( 0, 0, 0 ), Eigen::Vector3d( 0, 0, 0 ) ) ) );
         #endif
         reader->show( show );
         return reader;
@@ -564,18 +565,17 @@ boost::shared_ptr< snark::graphics::view::Reader > make_reader( const comma::com
         #if Qt3D_VERSION==1
         boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< std::pair< Eigen::Vector3d, Eigen::Vector3d > >( viewer, param, colored, label ) );
         #else
-        boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< std::pair< Eigen::Vector3d, Eigen::Vector3d > >( param, colored ) );
+        std::unique_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< std::pair< Eigen::Vector3d, Eigen::Vector3d > >( param, colored ) );
         #endif
         reader->show( show );
         return reader;
     }
     else if( shape == "triangle" )
     {
-        boost::shared_ptr< snark::graphics::view::Reader > reader;
         #if Qt3D_VERSION==1
-        reader.reset( new snark::graphics::view::ShapeReader< snark::graphics::view::loop< 3 > >( viewer, param, colored, label ) );
+        boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< snark::graphics::view::loop< 3 > >( viewer, param, colored, label ) );
         #else
-        reader.reset( new snark::graphics::view::ShapeReader< snark::graphics::view::loop< 3 > >( param, colored ) );
+        std::unique_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< snark::graphics::view::loop< 3 > >( param, colored ) );
         #endif
         reader->show( show );
         return reader;
@@ -585,7 +585,7 @@ boost::shared_ptr< snark::graphics::view::Reader > make_reader( const comma::com
         #if Qt3D_VERSION==1
         boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< snark::graphics::view::Ellipse< 25 > >( viewer, param, colored, label ) );
         #else
-        boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< snark::graphics::view::Ellipse< 25 > >( param, colored ) );
+        std::unique_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< snark::graphics::view::Ellipse< 25 > >( param, colored ) );
         #endif
         reader->show( show );
         return reader;
@@ -597,7 +597,7 @@ boost::shared_ptr< snark::graphics::view::Reader > make_reader( const comma::com
         #if Qt3D_VERSION==1
         boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< snark::graphics::view::arc< 20 > >( viewer, param, colored, label, sample ) );
         #else
-        boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< snark::graphics::view::arc< 20 > >( param, colored, sample ) );
+        std::unique_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< snark::graphics::view::arc< 20 > >( param, colored, sample ) );
         #endif
         reader->show( show );
         return reader;
@@ -733,26 +733,26 @@ int main( int argc, char** argv )
 
         // TODO: readers are currently not parallel
         // TODO: for qt3dv1 implementation see Viewer::initializeGL() and, e.g. ShapeReader::start()
-        std::vector< boost::shared_ptr< snark::graphics::view::Reader > > readers;
+        QApplication app(argc, argv);
+        snark::graphics::view::main_window main_window;
+        snark::graphics::view::controller controller(camera_options,&main_window);
         bool stdin_explicitly_defined = false;
         for( unsigned int i = 0; i < properties.size(); ++i )
         {
             if( comma::split( properties[i], ';' )[0] == "-" ) { stdin_explicitly_defined = true; }
-            readers.push_back( make_reader( options, csv_options, properties[i] ));
+            controller.add(make_reader( options, csv_options, properties[i] ));
         }
         if( !stdin_explicitly_defined && !options.exists( "--no-stdin" ) && !camera_position_from_stdin )
         {
             csv_options.filename = "-";
-            readers.push_back( make_reader( options, csv_options ));
+            controller.add(make_reader( options, csv_options ));
         }
-        for( unsigned int i = 0; i < readers.size(); ++i )
+        for(auto& i : controller.readers)
         {
-            while( readers[i]->read_once() );
+            while( i->read_once() );
             Eigen::Vector3d offset = Eigen::Vector3d::Zero(); // todo: this does not look right: this will initialize readers with incorrect offset
-            readers[i]->update( offset );
+            i->update( offset );
         }
-        QApplication app(argc, argv);
-        snark::graphics::view::main_window main_window( readers, camera_options );
         main_window.resize( main_window.sizeHint() );
         main_window.show();
         return app.exec();

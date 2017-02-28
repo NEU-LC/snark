@@ -27,37 +27,36 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef SNARK_GRAPHICS_QT3D_TYPES_H_
-#define SNARK_GRAPHICS_QT3D_TYPES_H_
+#pragma once
 
 #include <boost/array.hpp>
 #include <Eigen/Core>
 #include <QColor>
 #include <GL/gl.h>
-#include "../../../visiting/eigen.h"
+#include "../../../../visiting/eigen.h"
 
-namespace snark { namespace graphics { namespace qt3d {
+namespace snark { namespace graphics { namespace qt3d { namespace gl {
 
-struct gl_color_t
+struct color_t
 {
     boost::array< GLfloat, 4 > rgba;
 
-    gl_color_t()
+    color_t()
     {
         rgba[0] = 0.0; rgba[1] = 0.0; rgba[2] = 0.0; rgba[3] = 1.0;
     }
 
-    gl_color_t( GLfloat red, GLfloat green, GLfloat blue, GLfloat alpha=1.0f )
+    color_t( GLfloat red, GLfloat green, GLfloat blue, GLfloat alpha=1.0f )
     {
         rgba[0] = red; rgba[1] = green; rgba[2] = blue; rgba[3] = alpha;
     }
 
-    gl_color_t( double red, double green, double blue, double alpha )
+    color_t( double red, double green, double blue, double alpha )
     {
         rgba[0] = red; rgba[1] = green; rgba[2] = blue; rgba[3] = alpha;
     }
 
-    gl_color_t( int red, int green, int blue, int alpha=255 )
+    color_t( int red, int green, int blue, int alpha=255 )
     {
         rgba[0] = red   / 255.0f;
         rgba[1] = green / 255.0f;
@@ -65,7 +64,7 @@ struct gl_color_t
         rgba[3] = alpha / 255.0f;
     }
 
-    gl_color_t( const QColor& color )
+    color_t( const QColor& color )
     {
         rgba[0] = static_cast< GLfloat >( color.redF() );
         rgba[1] = static_cast< GLfloat >( color.greenF() );
@@ -73,7 +72,7 @@ struct gl_color_t
         rgba[3] = static_cast< GLfloat >( color.alphaF() );
     }
 
-    gl_color_t( const gl_color_t& color ) : rgba( color.rgba ) {}
+    color_t( const color_t& color ) : rgba( color.rgba ) {}
 
     GLfloat red() const   { return rgba[0]; }
     GLfloat green() const { return rgba[1]; }
@@ -81,17 +80,17 @@ struct gl_color_t
     GLfloat alpha() const { return rgba[3]; }
 };
 
-inline gl_color_t operator+( const gl_color_t& lhs, const gl_color_t& rhs )
+inline color_t operator+( const color_t& lhs, const color_t& rhs )
 {
-    return gl_color_t( std::min( lhs.red()   + rhs.red(), 1.0f )
+    return color_t( std::min( lhs.red()   + rhs.red(), 1.0f )
                      , std::min( lhs.green() + rhs.green(), 1.0f )
                      , std::min( lhs.blue()  + rhs.blue(), 1.0f )
                      , std::min( lhs.alpha() + rhs.alpha(), 1.0f ));
 }
 
-inline gl_color_t operator*( const gl_color_t& color, double scalar )
+inline color_t operator*( const color_t& color, double scalar )
 {
-    return gl_color_t( color.red()   * scalar
+    return color_t( color.red()   * scalar
                      , color.green() * scalar
                      , color.blue()  * scalar
                      , color.alpha() * scalar );
@@ -100,23 +99,24 @@ inline gl_color_t operator*( const gl_color_t& color, double scalar )
 struct vertex_t
 {
     Eigen::Vector3f position;
-    gl_color_t color;
+    color_t color;
+    GLfloat point_size;
 
-    vertex_t() {}
-    vertex_t( const Eigen::Vector3f& position, const gl_color_t& color )
-        : position( position ), color( color ) {}
-    vertex_t( const Eigen::Vector3f& position, const QColor& color )
-        : position( position ), color( color ) {}
+    vertex_t():point_size(1) {}
+    vertex_t( const Eigen::Vector3f& position, const color_t& color,GLfloat point_size=1)
+        : position( position ), color( color ),point_size(point_size) {}
+//     vertex_t( const Eigen::Vector3f& position, const QColor& color )
+//         : position( position ), color( color ),point_size(5) {}
 };
 
-} } } // namespace snark { namespace graphics { namespace qt3d {
+} } } } // namespace snark { namespace graphics { namespace qt3d { namespace gl {
 
 namespace comma { namespace visiting {
 
-template <> struct traits< snark::graphics::qt3d::gl_color_t >
+template <> struct traits< snark::graphics::qt3d::gl::color_t >
 {
     template < typename Key, class Visitor >
-    static void visit( Key, snark::graphics::qt3d::gl_color_t& p, Visitor& v )
+    static void visit( Key, snark::graphics::qt3d::gl::color_t& p, Visitor& v )
     {
         int red   = 0;
         int green = 0;
@@ -126,11 +126,11 @@ template <> struct traits< snark::graphics::qt3d::gl_color_t >
         v.apply( "g", green );
         v.apply( "b", blue );
         v.apply( "a", alpha );
-        p = snark::graphics::qt3d::gl_color_t( red, green, blue, alpha );
+        p = snark::graphics::qt3d::gl::color_t( red, green, blue, alpha );
     }
 
     template < typename Key, class Visitor >
-    static void visit( Key, const snark::graphics::qt3d::gl_color_t& p, Visitor& v )
+    static void visit( Key, const snark::graphics::qt3d::gl::color_t& p, Visitor& v )
     {
         v.apply( "r", p.red() );
         v.apply( "g", p.green() );
@@ -139,23 +139,22 @@ template <> struct traits< snark::graphics::qt3d::gl_color_t >
     }
 };
 
-template <> struct traits< snark::graphics::qt3d::vertex_t >
-{
-    template < typename Key, class Visitor >
-    static void visit( Key, snark::graphics::qt3d::vertex_t& p, Visitor& v )
-    {
-        v.apply( "position", p.position );
-        v.apply( "color", p.color );
-    }
-
-    template < typename Key, class Visitor >
-    static void visit( Key, const snark::graphics::qt3d::vertex_t& p, Visitor& v )
-    {
-        v.apply( "position", p.position );
-        v.apply( "color", p.color );
-    }
-};
+// template <> struct traits< snark::graphics::qt3d::vertex_t >
+// {
+//     template < typename Key, class Visitor >
+//     static void visit( Key, snark::graphics::qt3d::vertex_t& p, Visitor& v )
+//     {
+//         v.apply( "position", p.position );
+//         v.apply( "color", p.color );
+//     }
+// 
+//     template < typename Key, class Visitor >
+//     static void visit( Key, const snark::graphics::qt3d::vertex_t& p, Visitor& v )
+//     {
+//         v.apply( "position", p.position );
+//         v.apply( "color", p.color );
+//     }
+// };
 
 } } // namespace comma { namespace visiting {
 
-#endif /*SNARK_GRAPHICS_QT3D_TYPES_H_*/

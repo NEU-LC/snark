@@ -38,7 +38,7 @@
 #if Qt3D_VERSION==1
 #include <Qt3D/qcolor4ub.h>
 #else
-#include "../../../graphics/qt3d/qt3d_v2/types.h"
+#include "../../../graphics/qt3d/qt3d_v2/gl/types.h"
 #endif
 #include "shape_with_id.h"
 
@@ -54,7 +54,7 @@ struct PointWithId // quick and dirty
     #if Qt3D_VERSION==1
     QColor4ub color;
     #else
-    qt3d::gl_color_t color;
+    qt3d::gl::color_t color;
     #endif
     std::string label;
     double scalar;

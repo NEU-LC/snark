@@ -196,19 +196,27 @@ void MainWindow::keyPressEvent(QKeyEvent *e)
 
 namespace snark { namespace graphics { namespace view {
 
-main_window::main_window( std::vector< boost::shared_ptr< snark::graphics::view::Reader > > readers
-                        , const qt3d::camera_options& camera_options )
-    : buffers_( readers.begin(), readers.end() )
+controller::controller(const qt3d::camera_options& camera_options,QMainWindow* parent) : qt3d::gl::widget(camera_options,parent)
 {
-    gl_widget_ = new qt3d::gl_widget( buffers_, camera_options, this );
-    setCentralWidget( gl_widget_ );
+    parent->setCentralWidget(this);
+}
+void controller::add(std::unique_ptr<snark::graphics::view::Reader>&& reader)
+{
+    std::shared_ptr<snark::graphics::qt3d::gl::shape> shape=reader->make_shape();
+    if(shape)
+        shapes.push_back(shape);
+    readers.push_back(std::move(reader));
+}
+void controller::init()
+{
+    begin_update();
+    for(auto& i : readers) { i->update_shape(); }
+    end_update();
 }
 
-main_window::~main_window()
+main_window::main_window()
 {
-    delete gl_widget_;
 }
-
 void main_window::keyPressEvent(QKeyEvent *e)
 {
     if (e->key() == Qt::Key_Escape)
