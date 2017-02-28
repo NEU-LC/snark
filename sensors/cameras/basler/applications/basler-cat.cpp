@@ -110,11 +110,11 @@ static void usage( bool verbose = false )
     std::cerr << "\n                                         RGB8: stdout output format: 3ub";
     std::cerr << "\n                                     usb cameras";
     std::cerr << "\n                                         Mono8: stdout output format: ub";
-    std::cerr << "\n                                         Mono10: stdout output format: uw (todo)";
-    std::cerr << "\n                                         Mono10p: stdout output format: uw (todo)";
-    std::cerr << "\n                                         Mono12: stdout output format: uw (todo)";
-    std::cerr << "\n                                         Mono12p: stdout output format: uw (todo)";
-    std::cerr << "\n                                     default: Mono8";
+    std::cerr << "\n                                         Mono10: stdout output format: uw";
+    std::cerr << "\n                                         Mono10p: stdout output format: uw (packed format; todo)";
+    std::cerr << "\n                                         Mono12: stdout output format: uw";
+    std::cerr << "\n                                         Mono12p: stdout output format: uw (packed format; todo)";
+    std::cerr << "\n                                     default: use the current camera setting";
     std::cerr << "\n                                     format names correspond to enum found in basler header files";
     std::cerr << "\n    --offset-x=[<pixels>]        offset in pixels in the line; todo: make sure it works on images with more than 1 channel";
     std::cerr << "\n    --offset-y=[<pixels>]        offset in lines in the frame; todo: make sure it works on images with more than 1 channel";
@@ -899,21 +899,20 @@ template< typename T >
 static int run( T& camera, const comma::command_line_options& options )
 {
     typedef T camera_t;
-
     cv_mat_options.header_only = options.exists( "--header-only" );
     cv_mat_options.no_header = options.exists( "--no-header" );
-    typename ::pixel_format< camera_t >::type_t pixel_format = ::pixel_format< camera_t >::from_string( options.value< std::string >( "--pixel-format", "Mono8" ) );
-    cv_mat_options.type = ::pixel_format< camera_t >::to_image_type_string( pixel_format );
-    cv_mat_header = cv_mat_options.get_header();
     timeout = options.value< double >( "--timeout", default_timeout ) * 1000.0;
     comma::verbose << "initialized camera" << std::endl;
     comma::verbose << "opening camera " << camera.GetDevice()->GetDeviceInfo().GetFullName() << "..." << std::endl;
     camera.Open();
-    comma::verbose << "opened camera " << camera.GetDevice()->GetDeviceInfo().GetFullName() << std::endl;
-    set_pixel_format( camera, pixel_format ); // todo: debug; is it the right place?
+    comma::verbose << "opened camera " << camera.GetDevice()->GetDeviceInfo().GetFullName() << std::endl;    
+    std::string pixel_format_string = options.value< std::string >( "--pixel-format", "" );
+    typename ::pixel_format< camera_t >::type_t pixel_format = pixel_format_string.empty() ? camera.PixelFormat() : ::pixel_format< camera_t >::from_string( pixel_format_string );
+    set_pixel_format( camera, pixel_format );
+    cv_mat_options.type = ::pixel_format< camera_t >::to_image_type_string( pixel_format );
+    cv_mat_header = cv_mat_options.get_header();
     typename camera_t::StreamGrabber_t grabber( camera.GetStreamGrabber( 0 ) );
     grabber.Open();
-
     camera.OffsetX = 0;                 // reset before we get the maximum width
     unsigned int max_width = camera.Width.GetMax();
     unsigned int offset_x = options.value< unsigned int >( "--offset-x", 0 );
@@ -922,7 +921,6 @@ static int run( T& camera, const comma::command_line_options& options )
     if(( width + offset_x ) > max_width ) { width = max_width - offset_x; }
     camera.Width = width;
     camera.OffsetX = offset_x;          // but set _after_ we set the actual width
-
     camera.OffsetY = 0;                 // reset before we get the maximum height
     unsigned int max_height = camera.Height.GetMax();
     unsigned int offset_y = options.value< unsigned int >( "--offset-y", 0 );
