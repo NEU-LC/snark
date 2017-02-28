@@ -87,8 +87,13 @@ namespace {
 
 namespace snark{ namespace cv_mat {
 
+template < typename H > struct empty;
+
+template < > struct empty< boost::posix_time::ptime > { static bool is_empty( const boost::posix_time::ptime& t ) { return t.is_not_a_date_time(); } };
+template < > struct empty< std::vector< char > > { static bool is_empty( const std::vector< char >& v ) { return v.empty(); } };
+
 template < typename H >
-static bool is_empty( typename impl::filters< H >::value_type m, const typename impl::filters< H >::get_timestamp_functor& get_timestamp ) { return ( m.second.empty() && get_timestamp( m.first ) == boost::posix_time::not_a_date_time ); }
+static bool is_empty( typename impl::filters< H >::value_type m, const typename impl::filters< H >::get_timestamp_functor& get_timestamp ) { return ( m.second.empty() && ( empty< H >::is_empty(m.first) || get_timestamp(m.first) == boost::posix_time::not_a_date_time ) ); }
 
 static std::string make_filename( const boost::posix_time::ptime& t, const std::string& extension )
 {
