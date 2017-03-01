@@ -45,6 +45,8 @@
 #include <boost/type_traits.hpp>
 #include <boost/unordered_map.hpp>
 #include <boost/assign/list_of.hpp>
+#include <boost/mpl/list.hpp>
+#include <boost/mpl/for_each.hpp>
 #include <comma/base/exception.h>
 #include <comma/base/types.h>
 #include <comma/csv/ascii.h>
@@ -81,6 +83,67 @@ namespace {
         typedef comma::int32 key_type;
         key_type key;
         value_type value;
+    };
+
+    struct normalization
+    {
+        typedef std::pair< int, int > key_t;            // from type, to type
+        typedef std::pair< double, double > scaling_t;  // scale, offset
+        typedef boost::unordered_map< key_t, scaling_t > map_t;
+        template < int From, int To >
+        struct factors
+        {
+            typedef snark::cv_mat::depth_traits< From > from;
+            typedef snark::cv_mat::depth_traits< To > to;
+            static double scale() {
+                return ( to::max_value() - to::min_value() ) / ( from::max_value() - from::min_value() );
+            }
+            static double offset() {
+                return ( to::min_value() * from::max_value() - to::max_value() * from::min_value() ) / ( from::max_value() - from::min_value() );
+            }
+        };
+        template< int From >
+        struct factors< From, From >
+        {
+            static double scale() { return 1.0; }
+            static double offset() { return 0.0; }
+        };
+        typedef boost::mpl::list< snark::cv_mat::depth_traits< CV_8U >::value_t
+                                , snark::cv_mat::depth_traits< CV_8S >::value_t
+                                , snark::cv_mat::depth_traits< CV_16U >::value_t
+                                , snark::cv_mat::depth_traits< CV_16S >::value_t
+                                , snark::cv_mat::depth_traits< CV_32S >::value_t
+                                , snark::cv_mat::depth_traits< CV_32F >::value_t
+                                , snark::cv_mat::depth_traits< CV_64F >::value_t > data_types;
+        template< int from >
+        struct inner
+        {
+            inner( map_t & m ) : m_( m ) {}
+            template< typename kind >
+            void operator()( kind )
+            {
+                enum { value = snark::cv_mat::traits_to_depth< kind >::value };
+                m_[ std::make_pair( from, int( value ) ) ] = std::make_pair( factors< from, int( value ) >::scale(), factors< from, int( value ) >::offset() );
+            }
+            map_t & m_;
+        };
+        struct outer
+        {
+            outer( map_t & m ) : m_( m ) {}
+            template< typename kind >
+            void operator()( kind )
+            {
+                enum { value = snark::cv_mat::traits_to_depth< kind >::value };
+                boost::mpl::for_each< data_types >( inner< int( value ) >( m_ ) );
+            }
+            map_t & m_;
+        };
+        static map_t create_map()
+        {
+            map_t m;
+            boost::mpl::for_each< data_types >( outer( m ) );
+            return m;
+        }
     };
 
 } // anonymous
@@ -515,11 +578,18 @@ class accumulate_impl_
 };
 
 template < typename H >
-static typename impl::filters< H >::value_type convert_to_impl_( typename impl::filters< H >::value_type m, int type, double scale, double offset )
+static typename impl::filters< H >::value_type convert_to_impl_( typename impl::filters< H >::value_type m, int type, boost::optional< double > scale, boost::optional< double > offset )
 {
     typename impl::filters< H >::value_type n;
     n.first = m.first;
-    m.second.convertTo( n.second, type, scale, offset );
+    if ( !scale ) {
+        static const normalization::map_t & map = normalization::create_map();
+        normalization::map_t::const_iterator s = map.find( std::make_pair( m.second.depth(), n.second.depth() ) );
+        if ( s == map.end() ) { COMMA_THROW( comma::exception, "cannot find normalization scaling from type " << type_as_string( m.second.type() ) << " to type " << type_as_string( type ) ); }
+        scale = s->second.first;
+        offset = s->second.second;
+    }
+    m.second.convertTo( n.second, type, *scale, *offset );
     return n;
 }
 
@@ -2149,8 +2219,18 @@ static functor_type make_filter_functor( const std::vector< std::string >& e, co
         const std::vector< std::string >& w = comma::split( e[1], ',' );
         boost::unordered_map< std::string, int >::const_iterator it = types_.find( w[0] );
         if( it == types_.end() ) { COMMA_THROW( comma::exception, "convert-to: expected target type, got \"" << w[0] << "\"" ); }
-        double scale = w.size() > 1 ? boost::lexical_cast< double >( w[1] ) : 1.0;
-        double offset = w.size() > 2 ? boost::lexical_cast< double >( w[2] ) : 0.0;
+        boost::optional< double > scale( 1.0 );
+        boost::optional< double > offset( 0.0 );
+        if ( w.size() > 1 ) {
+            if ( w[1] == "normalize" ) {
+                if ( w.size() != 2 ) { COMMA_THROW( comma::exception, "normalized scale takes no extra parameters" ); } 
+                scale = boost::none;
+                offset = boost::none;
+            } else {
+                scale = boost::lexical_cast< double >( w[1] );
+            }
+        }
+        if ( w.size() > 2 ) { offset = boost::lexical_cast< double >( w[2] ); }
         return boost::bind< value_type_t >( convert_to_impl_< H >, _1, it->second, scale, offset );
     }
     if( e[0] == "resize" )
