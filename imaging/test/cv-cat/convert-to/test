@@ -1,0 +1,40 @@
+#!/bin/bash
+
+scriptname=$( basename "$0" )
+
+datadir="data"
+image_csv="$datadir/image.csv"
+[[ -r "$image_csv" ]] || { echo "$scriptname: cannot find input file '$image_csv'" >&2; exit 1; }
+
+output_dir="output"
+mkdir -p "$output_dir" || { echo "$scriptname: cannot create output directory '$output_dir'" >&2; exit 1; }
+
+function get_dimensions()
+{
+    local nx ny
+    IFS=, read nx ny < <( cat "$1" | csv-shuffle --fields=t,x,y,r,g,b --output-fields=x,y | csv-calc --format d,d max )
+    echo $(( ++nx )) $(( ++ny ))
+}
+
+function output_name_values()
+{
+    csv-shuffle --fields=t,x,y,r,g,b --output-fields=x,y,r,g,b | name-value-from-csv --fields=x,y,r,g,b --indices=x,y
+}
+
+read nx ny < <( get_dimensions "$image_csv" )
+
+cat "$image_csv" | output_name_values | sed 's@^@original/@'
+
+depths=( "ub" "b" "uw" "w" "i" "f" "d" )
+
+for depth in ${depths[@]} ; do
+    outfile="$output_dir/${depth}.csv"
+    prefix="ub2${depth}"
+    cat "$image_csv" \
+        | image-from-csv --fields t,x,y,b,g,r --output="rows=$ny;cols=$nx;type=3ub" \
+        | cv-cat "convert-to=$depth,normalize" \
+        | image-to-csv \
+        | tee "$outfile" \
+        | output_name_values \
+        | sed "s@^@$prefix/@"
+done

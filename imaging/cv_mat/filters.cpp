@@ -584,7 +584,7 @@ static typename impl::filters< H >::value_type convert_to_impl_( typename impl::
     n.first = m.first;
     if ( !scale ) {
         static const normalization::map_t & map = normalization::create_map();
-        normalization::map_t::const_iterator s = map.find( std::make_pair( m.second.depth(), n.second.depth() ) );
+        normalization::map_t::const_iterator s = map.find( std::make_pair( m.second.depth(), CV_MAT_DEPTH( type ) ) );
         if ( s == map.end() ) { COMMA_THROW( comma::exception, "cannot find normalization scaling from type " << type_as_string( m.second.type() ) << " to type " << type_as_string( type ) ); }
         scale = s->second.first;
         offset = s->second.second;
