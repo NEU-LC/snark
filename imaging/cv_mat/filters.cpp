@@ -819,7 +819,7 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
                 unsigned int size_;
                 unsigned int count_;
                 indexer index_;
-                const get_timestamp_functor& get_timestamp_;
+                const get_timestamp_functor get_timestamp_;
 
                 void update_on_size_()
                 {
@@ -864,7 +864,7 @@ template < typename H >
 struct view_impl_ {
     typedef typename impl::filters< H >::value_type value_type; 
     typedef typename impl::filters< H >::get_timestamp_functor get_timestamp_functor;
-    const get_timestamp_functor& get_timestamp_;
+    const get_timestamp_functor get_timestamp_;
     
     view_impl_< H >( const get_timestamp_functor& get_timestmap ) : get_timestamp_(get_timestmap) {}
     value_type operator()( value_type m, std::string name, unsigned int delay )
@@ -958,7 +958,7 @@ template < typename H >
 struct encode_impl_ { 
     typedef typename impl::filters< H >::value_type value_type;
     typedef typename impl::filters< H >::get_timestamp_functor get_timestamp_functor;
-    const get_timestamp_functor& get_timestamp_;
+    const get_timestamp_functor get_timestamp_;
     
     encode_impl_< H >( const get_timestamp_functor& gt ) : get_timestamp_(gt) {}
     value_type operator()( const value_type& m, const std::string& type )
@@ -989,7 +989,7 @@ template < typename H >
 struct histogram_impl_ {
     typedef typename impl::filters< H >::value_type value_type;
     typedef typename impl::filters< H >::get_timestamp_functor get_timestamp_functor;
-    const get_timestamp_functor& get_timestamp_;
+    const get_timestamp_functor get_timestamp_;
     
     histogram_impl_( const get_timestamp_functor& gt ) : get_timestamp_(gt) {}
     
@@ -1041,7 +1041,7 @@ template < typename H >
 struct simple_blob_impl_ {
     typedef typename impl::filters< H >::value_type value_type; 
     typedef typename impl::filters< H >::get_timestamp_functor get_timestamp_functor;
-    const get_timestamp_functor& get_timestamp_;
+    const get_timestamp_functor get_timestamp_;
     
     simple_blob_impl_< H >( const get_timestamp_functor& get_timestmap ) : get_timestamp_(get_timestmap) {}
     value_type operator()( const value_type& m, const cv::SimpleBlobDetector::Params& params, bool is_binary )
@@ -1059,7 +1059,7 @@ template < typename H >
 struct grab_impl_ {
     typedef typename impl::filters< H >::value_type value_type; 
     typedef typename impl::filters< H >::get_timestamp_functor get_timestamp_functor;
-    const get_timestamp_functor& get_timestamp_;
+    const get_timestamp_functor get_timestamp_;
     
     grab_impl_< H >( const get_timestamp_functor& get_timestmap ) : get_timestamp_(get_timestmap) {}
     value_type operator()( value_type m, const std::string& type )
@@ -1073,7 +1073,7 @@ template < typename H >
 struct file_impl_ {
     typedef typename impl::filters< H >::value_type value_type; 
     typedef typename impl::filters< H >::get_timestamp_functor get_timestamp_functor;
-    const get_timestamp_functor& get_timestamp_;
+    const get_timestamp_functor get_timestamp_;
     
     file_impl_< H >( const get_timestamp_functor& get_timestmap ) : get_timestamp_(get_timestmap) {}
     value_type operator()( value_type m, const std::string& type )
@@ -1088,7 +1088,7 @@ template < typename H >
 struct timestamp_impl_ {
     typedef typename impl::filters< H >::value_type value_type;
     typedef typename impl::filters< H >::get_timestamp_functor get_timestamp_functor;
-    const get_timestamp_functor& get_timestamp_;
+    const get_timestamp_functor get_timestamp_;
     
     timestamp_impl_< H >( const get_timestamp_functor& gt ) : get_timestamp_(gt) {}
     
