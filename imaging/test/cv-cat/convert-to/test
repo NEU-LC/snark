@@ -66,3 +66,5 @@ for from in ${other_depths[@]} ; do
     done
 done
 
+# for now conversions to signed 32-bit integers do not work
+echo "iworks=0"
