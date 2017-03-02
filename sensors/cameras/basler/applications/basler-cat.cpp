@@ -97,7 +97,7 @@ static void usage( bool verbose = false )
     std::cerr << "\n    --test-image=[<num>]         output test image <num>; possible values: 1-6";
     std::cerr << "\n    --verbose,-v                 be more verbose";
     std::cerr << "\n";
-    std::cerr << "image options\n";
+    std::cerr << "\nimage options";
     std::cerr << "\n    --fields,-f=[<fields>]       header fields, possible values:";
     std::cerr << "\n                                 possible values: " << possible_header_fields;
     std::cerr << "\n                                 default: " << default_header_fields;
@@ -110,17 +110,17 @@ static void usage( bool verbose = false )
     std::cerr << "\n                                         RGB8: stdout output format: 3ub";
     std::cerr << "\n                                     usb cameras";
     std::cerr << "\n                                         Mono8: stdout output format: ub";
-    std::cerr << "\n                                         Mono10: stdout output format: uw (todo)";
-    std::cerr << "\n                                         Mono10p: stdout output format: uw (todo)";
-    std::cerr << "\n                                         Mono12: stdout output format: uw (todo)";
-    std::cerr << "\n                                         Mono12p: stdout output format: uw (todo)";
-    std::cerr << "\n                                     default: Mono8";
+    std::cerr << "\n                                         Mono10: stdout output format: uw";
+    std::cerr << "\n                                         Mono10p: stdout output format: uw (packed format; todo)";
+    std::cerr << "\n                                         Mono12: stdout output format: uw";
+    std::cerr << "\n                                         Mono12p: stdout output format: 3ub (apply unpack12 to get 16-bit padded image)";
+    std::cerr << "\n                                     default: use the current camera setting";
     std::cerr << "\n                                     format names correspond to enum found in basler header files";
     std::cerr << "\n    --offset-x=[<pixels>]        offset in pixels in the line; todo: make sure it works on images with more than 1 channel";
     std::cerr << "\n    --offset-y=[<pixels>]        offset in lines in the frame; todo: make sure it works on images with more than 1 channel";
     std::cerr << "\n    --width=[<pixels>]           line width in pixels; default: max";
     std::cerr << "\n";
-    std::cerr << "camera settings options\n";
+    std::cerr << "\ncamera settings options";
     std::cerr << "\n    --frame-rate=[<fps>]         set frame rate; limited by exposure";
     std::cerr << "\n    --exposure=[<µs>]            exposure time; \"auto\" to automatically set";
     std::cerr << "\n    --gain=[<num>]               gain; \"auto\" to automatically set;";
@@ -137,7 +137,6 @@ static void usage( bool verbose = false )
     std::cerr << "\n";
     std::cerr << "\nNote that most parameter settings (exposure, gain, etc) are sticky.";
     std::cerr << "\nThey will persist from one run to the next.";
-    std::cerr << "\n";
     if( verbose )
     {
         std::cerr << "\n";
@@ -192,6 +191,7 @@ struct Header // quick and dirty
 
 static snark::cv_mat::serialization::options cv_mat_options;
 static snark::cv_mat::serialization::header cv_mat_header;
+static bool is_packed; // quick and dirty
 static comma::csv::options csv;
 static unsigned int timeout;
 static Pylon::IChunkParser* parser = NULL;
@@ -312,7 +312,7 @@ static P capture( T& camera, typename T::StreamGrabber_t& grabber )
             continue;
         }
         P pair;
-        pair.second = cv::Mat( result.GetSizeY(), result.GetSizeX(), cv_mat_header.type );
+        pair.second = cv::Mat( result.GetSizeY(), is_packed ? ( ( result.GetSizeX() * 3 ) / 2 ) : result.GetSizeX(), cv_mat_header.type ); // todo: seriously quick and dirty, does not scale to Mono10p; implement packed bytes layout properly 
         ::memcpy( pair.second.data, reinterpret_cast< const char* >( result.Buffer() ), pair.second.dataend - pair.second.datastart );
         // quick and dirty for now: rgb are not contiguous in basler camera frame
         if( cv_mat_header.type == CV_8UC3 || cv_mat_header.type == CV_16UC3 ) { cv::cvtColor( pair.second, pair.second, CV_RGB2BGR ); }
@@ -390,15 +390,27 @@ template <> struct pixel_format< Pylon::CBaslerUsbCamera > // todo: support more
         }
     }
     
+    static bool is_packed( type_t format )
+    {
+        switch( format )
+        {
+            case Basler_UsbCameraParams::PixelFormat_Mono8: return false;
+            case Basler_UsbCameraParams::PixelFormat_Mono10: return false;
+            case Basler_UsbCameraParams::PixelFormat_Mono12: return false;
+            case Basler_UsbCameraParams::PixelFormat_Mono12p: return true;
+            default: COMMA_THROW( comma::exception, "pixel format " << format << " not implemented" );
+        }
+    }
+    
     static const char* to_image_type_string( type_t format )
     {
         switch( format )
         {
             case Basler_UsbCameraParams::PixelFormat_Mono8: return "ub";
             case Basler_UsbCameraParams::PixelFormat_Mono10: return "uw";
-            case Basler_UsbCameraParams::PixelFormat_Mono10p: return "uw";
+            //case Basler_UsbCameraParams::PixelFormat_Mono10p: return "uw";
             case Basler_UsbCameraParams::PixelFormat_Mono12: return "uw";
-            case Basler_UsbCameraParams::PixelFormat_Mono12p: return "uw";
+            case Basler_UsbCameraParams::PixelFormat_Mono12p: return "ub"; // quick and dirty
             default: COMMA_THROW( comma::exception, "pixel format " << format << " not implemented" );
         }
     }
@@ -431,6 +443,16 @@ template <> struct pixel_format< Pylon::CBaslerGigECamera > // todo: support mor
         {
             case Basler_GigECameraParams::PixelFormat_Mono8: return 1;
             case Basler_GigECameraParams::PixelFormat_RGB8Packed: return 3;
+            default: COMMA_THROW( comma::exception, "pixel format " << format << " not implemented" );
+        }
+    }
+    
+    static bool is_packed( type_t format )
+    {
+        switch( format )
+        {
+            case Basler_GigECameraParams::PixelFormat_Mono8: return false;
+            case Basler_GigECameraParams::PixelFormat_RGB8Packed: return false;
             default: COMMA_THROW( comma::exception, "pixel format " << format << " not implemented" );
         }
     }
@@ -481,6 +503,16 @@ static void set_pixel_format( T& camera, P type )
     if( camera.PixelFormat() != type ) { COMMA_THROW( comma::exception, "failed to set pixel format after " << retries << " attempts; try again or power-cycle the camera" ); }
     comma::verbose << "pixel format set to " << pixel_format< T >::to_string( type ) << std::endl;
     return;
+}
+
+template < typename T >
+static void set_pixel_format( T& camera, const comma::command_line_options& options )
+{
+    std::string pixel_format_string = options.value< std::string >( "--pixel-format", "" );
+    typename ::pixel_format< T >::type_t pixel_format = pixel_format_string.empty() ? camera.PixelFormat() : ::pixel_format< T >::from_string( pixel_format_string );
+    set_pixel_format( camera, pixel_format );
+    cv_mat_options.type = ::pixel_format< T >::to_image_type_string( pixel_format );
+    is_packed = ::pixel_format< T >::is_packed( pixel_format );
 }
 
 static std::string get_address( const Pylon::CDeviceInfo& device_info )
@@ -900,21 +932,17 @@ template< typename T >
 static int run( T& camera, const comma::command_line_options& options )
 {
     typedef T camera_t;
-
     cv_mat_options.header_only = options.exists( "--header-only" );
     cv_mat_options.no_header = options.exists( "--no-header" );
-    typename ::pixel_format< camera_t >::type_t pixel_format = ::pixel_format< camera_t >::from_string( options.value< std::string >( "--pixel-format", "Mono8" ) );
-    cv_mat_options.type = ::pixel_format< camera_t >::to_image_type_string( pixel_format );
-    cv_mat_header = cv_mat_options.get_header();
     timeout = options.value< double >( "--timeout", default_timeout ) * 1000.0;
     comma::verbose << "initialized camera" << std::endl;
     comma::verbose << "opening camera " << camera.GetDevice()->GetDeviceInfo().GetFullName() << "..." << std::endl;
     camera.Open();
-    comma::verbose << "opened camera " << camera.GetDevice()->GetDeviceInfo().GetFullName() << std::endl;
-    set_pixel_format( camera, pixel_format ); // todo: debug; is it the right place?
+    comma::verbose << "opened camera " << camera.GetDevice()->GetDeviceInfo().GetFullName() << std::endl;    
+    set_pixel_format( camera, options );
+    cv_mat_header = cv_mat_options.get_header();
     typename camera_t::StreamGrabber_t grabber( camera.GetStreamGrabber( 0 ) );
     grabber.Open();
-
     camera.OffsetX = 0;                 // reset before we get the maximum width
     unsigned int max_width = camera.Width.GetMax();
     unsigned int offset_x = options.value< unsigned int >( "--offset-x", 0 );
@@ -923,7 +951,6 @@ static int run( T& camera, const comma::command_line_options& options )
     if(( width + offset_x ) > max_width ) { width = max_width - offset_x; }
     camera.Width = width;
     camera.OffsetX = offset_x;          // but set _after_ we set the actual width
-
     camera.OffsetY = 0;                 // reset before we get the maximum height
     unsigned int max_height = camera.Height.GetMax();
     unsigned int offset_y = options.value< unsigned int >( "--offset-y", 0 );

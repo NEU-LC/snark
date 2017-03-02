@@ -87,8 +87,13 @@ namespace {
 
 namespace snark{ namespace cv_mat {
 
+template < typename H > struct empty;
+
+template < > struct empty< boost::posix_time::ptime > { static bool is_empty( const boost::posix_time::ptime& t ) { return t.is_not_a_date_time(); } };
+template < > struct empty< std::vector< char > > { static bool is_empty( const std::vector< char >& v ) { return v.empty(); } };
+
 template < typename H >
-static bool is_empty( typename impl::filters< H >::value_type m, const typename impl::filters< H >::get_timestamp_functor& get_timestamp ) { return ( m.second.empty() && get_timestamp( m.first ) == boost::posix_time::not_a_date_time ); }
+static bool is_empty( typename impl::filters< H >::value_type m, const typename impl::filters< H >::get_timestamp_functor& get_timestamp ) { return ( m.second.empty() && ( empty< H >::is_empty(m.first) || get_timestamp(m.first) == boost::posix_time::not_a_date_time ) ); }
 
 static std::string make_filename( const boost::posix_time::ptime& t, const std::string& extension )
 {
@@ -814,7 +819,7 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
                 unsigned int size_;
                 unsigned int count_;
                 indexer index_;
-                const get_timestamp_functor& get_timestamp_;
+                const get_timestamp_functor get_timestamp_;
 
                 void update_on_size_()
                 {
@@ -859,7 +864,7 @@ template < typename H >
 struct view_impl_ {
     typedef typename impl::filters< H >::value_type value_type; 
     typedef typename impl::filters< H >::get_timestamp_functor get_timestamp_functor;
-    const get_timestamp_functor& get_timestamp_;
+    const get_timestamp_functor get_timestamp_;
     
     view_impl_< H >( const get_timestamp_functor& get_timestmap ) : get_timestamp_(get_timestmap) {}
     value_type operator()( value_type m, std::string name, unsigned int delay )
@@ -953,7 +958,7 @@ template < typename H >
 struct encode_impl_ { 
     typedef typename impl::filters< H >::value_type value_type;
     typedef typename impl::filters< H >::get_timestamp_functor get_timestamp_functor;
-    const get_timestamp_functor& get_timestamp_;
+    const get_timestamp_functor get_timestamp_;
     
     encode_impl_< H >( const get_timestamp_functor& gt ) : get_timestamp_(gt) {}
     value_type operator()( const value_type& m, const std::string& type )
@@ -984,7 +989,7 @@ template < typename H >
 struct histogram_impl_ {
     typedef typename impl::filters< H >::value_type value_type;
     typedef typename impl::filters< H >::get_timestamp_functor get_timestamp_functor;
-    const get_timestamp_functor& get_timestamp_;
+    const get_timestamp_functor get_timestamp_;
     
     histogram_impl_( const get_timestamp_functor& gt ) : get_timestamp_(gt) {}
     
@@ -1036,7 +1041,7 @@ template < typename H >
 struct simple_blob_impl_ {
     typedef typename impl::filters< H >::value_type value_type; 
     typedef typename impl::filters< H >::get_timestamp_functor get_timestamp_functor;
-    const get_timestamp_functor& get_timestamp_;
+    const get_timestamp_functor get_timestamp_;
     
     simple_blob_impl_< H >( const get_timestamp_functor& get_timestmap ) : get_timestamp_(get_timestmap) {}
     value_type operator()( const value_type& m, const cv::SimpleBlobDetector::Params& params, bool is_binary )
@@ -1054,7 +1059,7 @@ template < typename H >
 struct grab_impl_ {
     typedef typename impl::filters< H >::value_type value_type; 
     typedef typename impl::filters< H >::get_timestamp_functor get_timestamp_functor;
-    const get_timestamp_functor& get_timestamp_;
+    const get_timestamp_functor get_timestamp_;
     
     grab_impl_< H >( const get_timestamp_functor& get_timestmap ) : get_timestamp_(get_timestmap) {}
     value_type operator()( value_type m, const std::string& type )
@@ -1068,7 +1073,7 @@ template < typename H >
 struct file_impl_ {
     typedef typename impl::filters< H >::value_type value_type; 
     typedef typename impl::filters< H >::get_timestamp_functor get_timestamp_functor;
-    const get_timestamp_functor& get_timestamp_;
+    const get_timestamp_functor get_timestamp_;
     
     file_impl_< H >( const get_timestamp_functor& get_timestmap ) : get_timestamp_(get_timestmap) {}
     value_type operator()( value_type m, const std::string& type )
@@ -1083,7 +1088,7 @@ template < typename H >
 struct timestamp_impl_ {
     typedef typename impl::filters< H >::value_type value_type;
     typedef typename impl::filters< H >::get_timestamp_functor get_timestamp_functor;
-    const get_timestamp_functor& get_timestamp_;
+    const get_timestamp_functor get_timestamp_;
     
     timestamp_impl_< H >( const get_timestamp_functor& gt ) : get_timestamp_(gt) {}
     
@@ -2370,9 +2375,7 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
 }
 
 template < typename H >
-std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make( const std::string& how
-                                                                , const get_timestamp_functor& get_timestamp
-                                                                , unsigned int default_delay )
+std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make( const std::string& how, const get_timestamp_functor& get_timestamp, unsigned int default_delay )
 {
     typedef typename impl::filters< H >::value_type value_type_t;
     typedef typename impl::filters< H >::filter_type filter_type;
@@ -2396,6 +2399,11 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
             if( modified ) { COMMA_THROW( comma::exception, "cannot covert from bayer after transforms: " << name ); }
             unsigned int which = boost::lexical_cast< unsigned int >( e[1] ) + 45u; // HACK, bayer as unsigned int, but I don't find enum { BG2RGB, GB2BGR ... } more usefull
             f.push_back( filter_type( boost::bind< value_type_t >( cvt_color_impl_< H >(), _1, which ) ) );
+        }
+        else if( e[0] == "unpack" )
+        {
+            if( modified ) { COMMA_THROW( comma::exception, "cannot covert from 12 bit packed after transforms: " << name ); }
+            COMMA_THROW( comma::exception, "todo" );
         }
         else if( e[0] == "unpack12" )
         {
@@ -2485,7 +2493,7 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
             }
             if( e.size() < 2 ) { COMMA_THROW( comma::exception, "expected encoding type like jpg, ppm, etc" ); }
             std::string s = e[1];
-            f.push_back( filter_type( boost::bind< value_type_t >( encode_impl_< H >( get_timestamp ), _1, s ) ) );
+            f.push_back( filter_type( boost::bind< value_type_t >( encode_impl_< H >( get_timestamp ), _1, s ), false ) );
         }
         else if( e[0] == "grab" )
         {
@@ -2502,7 +2510,7 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
         else if( e[0] == "histogram" )
         {
             if( i < v.size() - 1 ) { COMMA_THROW( comma::exception, "expected 'histogram' as the last filter, got \"" << how << "\"" ); }
-            f.push_back( filter_type( boost::bind< value_type_t >( histogram_impl_< H >(get_timestamp), _1 ) ) );
+            f.push_back( filter_type( boost::bind< value_type_t >( histogram_impl_< H >(get_timestamp), _1 ), false ) );
             f.push_back( filter_type( NULL ) ); // quick and dirty
         }
         else if( e[0] == "simple-blob" )
@@ -2532,7 +2540,7 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
                     if( t.size() > 1 ) { path = s[1]; }
                 }
             }
-            f.push_back( filter_type( boost::bind< value_type_t >( simple_blob_impl_< H >(get_timestamp), _1, cv_read_< cv::SimpleBlobDetector::Params >( config, path ), is_binary ) ) );
+            f.push_back( filter_type( boost::bind< value_type_t >( simple_blob_impl_< H >(get_timestamp), _1, cv_read_< cv::SimpleBlobDetector::Params >( config, path ), is_binary ), false ) );
             f.push_back( filter_type( NULL ) ); // quick and dirty
         }
         else if( e[0] == "null" )
@@ -2666,6 +2674,7 @@ static std::string usage_impl_()
     oss << "        timestamp: write timestamp on images" << std::endl;
     oss << "        transpose: transpose the image (swap rows and columns)" << std::endl;
     oss << "        undistort=<undistort map file>: undistort" << std::endl;
+    oss << "        unpack=<how>: not implemented, todo; <how>: todo: come up with good semantics" << std::endl;
     oss << "        unpack12: convert from 12-bit packed (2 pixels in 3 bytes) to 16UC1; use before other filters" << std::endl;
     oss << "        view[=<wait-interval>]: view image; press <space> to save image (timestamp or system time as filename); <esc>: to close" << std::endl;
     oss << "                                <wait-interval>: a hack for now; milliseconds to wait for image display and key press; default 1" << std::endl;

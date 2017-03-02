@@ -116,6 +116,7 @@ void skip( unsigned int number_of_frames_to_skip, snark::cv_mat::serialization& 
 
 static boost::posix_time::ptime get_timestamp_from_header( const snark::cv_mat::serialization::header::buffer_t& h, const comma::csv::binary< snark::cv_mat::serialization::header >* pbinary )
 {
+    if( h.empty() ) { return boost::posix_time::not_a_date_time; }
     // a use case could be: generate-our-smart-images-in-realtime | cv-cat ... will timestamp images with system time
     if( pbinary == NULL ) { return boost::posix_time::microsec_clock::universal_time(); }
     snark::cv_mat::serialization::header d;
