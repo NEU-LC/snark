@@ -1,0 +1,83 @@
+#python
+
+expect ub2ub/r/min == 0
+expect ub2ub/g/min == 0
+expect ub2ub/b/min == 0
+expect ub2ub/r/max == 255
+expect ub2ub/g/max == 255
+expect ub2ub/b/max == 255
+
+expect ub2b/r/min == -128
+expect ub2b/g/min == -128
+expect ub2b/b/min == -128
+expect ub2b/r/max == 127
+expect ub2b/g/max == 127
+expect ub2b/b/max == 127
+
+expect ub2uw/r/min == 0
+expect ub2uw/g/min == 0
+expect ub2uw/b/min == 0
+expect ub2uw/r/max == 2**16 - 1
+expect ub2uw/g/max == 2**16 - 1
+expect ub2uw/b/max == 2**16 - 1
+
+expect ub2w/r/min == -2**15
+expect ub2w/g/min == -2**15
+expect ub2w/b/min == -2**15
+expect ub2w/r/max == 2**15 - 1
+expect ub2w/g/max == 2**15 - 1
+expect ub2w/b/max == 2**15 - 1
+
+expect ub2i/r/min == -2**31
+expect ub2i/g/min == -2**31
+expect ub2i/b/min == -2**31
+expect ub2i/r/max == 2**31 - 1
+expect ub2i/g/max == 2**31 - 1
+expect ub2i/b/max == 2**31 - 1
+
+for name in [ ub2f, ub2d ]:
+    expect name/r/min == 0
+    expect name/g/min == 0
+    expect name/b/min == 0
+    expect name/r/max == 1
+    expect name/g/max == 1
+    expect name/b/max == 1
+
+udepths = { "ub": 8, "uw": 16 }
+sdepths = { "b": 8, "w": 16, "i": 32 }
+fdepths = [ "f", "d" ]
+
+for f in sorted(udepths.keys()) + sorted(sdepths.keys()) + fdepths:
+    for t in sorted(udepths.keys()):
+        lower = 0
+        upper = 2**udepths[t] - 1
+        name = f + "2" + t
+        o = locals()[ name ]
+        expect o.r.min == lower
+        expect o.r.max == upper
+        expect o.g.min == lower
+        expect o.g.max == upper
+        expect o.b.min == lower
+        expect o.b.max == upper
+    for t in sorted(sdepths.keys()):
+        lower = -2**(sdepths[t] - 1)
+        upper = 2**(sdepths[t] - 1) - 1
+        name = f + "2" + t
+        o = locals()[ name ]
+        expect o.r.min == lower
+        expect o.r.max == upper
+        expect o.g.min == lower
+        expect o.g.max == upper
+        expect o.b.min == lower
+        expect o.b.max == upper
+    for t in fdepths:
+        lower = 0
+        upper = 1
+        name = f + "2" + t
+        o = locals()[ name ]
+        expect o.r.min == lower
+        expect o.r.max == upper
+        expect o.g.min == lower
+        expect o.g.max == upper
+        expect o.b.min == lower
+        expect o.b.max == upper

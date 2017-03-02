@@ -27,14 +27,42 @@ cat "$image_csv" | output_name_values | sed 's@^@original/@'
 
 depths=( "ub" "b" "uw" "w" "i" "f" "d" )
 
+# conversions from ub
 for depth in ${depths[@]} ; do
-    outfile="$output_dir/${depth}.csv"
+    out_csv="$output_dir/${depth}.csv"
+    out_bin="$output_dir/${depth}.bin"
     prefix="ub2${depth}"
     cat "$image_csv" \
         | image-from-csv --fields t,x,y,b,g,r --output="rows=$ny;cols=$nx;type=3ub" \
         | cv-cat "convert-to=$depth,normalize" \
+        | tee "$out_bin" \
         | image-to-csv \
-        | tee "$outfile" \
+        | tee "$out_csv" \
         | output_name_values \
-        | sed "s@^@$prefix/@"
+        | sed "s@^@$prefix/@" \
+        | sed 's@"@@g'
+    cat "$out_csv" \
+        | csv-shuffle --fields=t,x,y,r,g,b --output-fields=r,g,b \
+        | csv-calc --format=d,d,d min,max \
+        | name-value-from-csv --fields=r/min,g/min,b/min,r/max,g/max,b/max --prefix="$prefix" \
+        | sed 's@"@@g'
 done
+
+# conversions from all other (generated) formats
+other_depths=( ${depths[@]:1} )
+for from in ${other_depths[@]} ; do
+    for to in ${depths[@]} ; do
+        infile="$output_dir/${from}.bin"
+        prefix="${from}2${to}"
+        out_csv="$output_dir/${prefix}.csv"
+        [[ -f "$out_csv" ]] && continue
+        cat "$infile" \
+            | cv-cat "convert-to=$to,normalize" \
+            | image-to-csv \
+            | csv-shuffle --fields=t,x,y,r,g,b --output-fields=r,g,b \
+            | csv-calc --format=d,d,d min,max \
+            | name-value-from-csv --fields=r/min,g/min,b/min,r/max,g/max,b/max --prefix="$prefix" \
+            | sed 's@"@@g'
+    done
+done
+
