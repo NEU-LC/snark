@@ -154,7 +154,7 @@ int main( int ac, char** av )
         if( options.exists("--input-fields") ) { std::cout << "t,rows,cols,type" << std::endl;  exit(0); }
         if( options.exists("--input-format") ) { std::cout << "t,3ui" << std::endl;  exit(0); }
     }
-    else if( operation == "mask" )
+    else if( operation == "roi" )
     {
         if( csv.fields.empty() ) { csv.fields = default_input_fields ; }
         if( !csv.binary() ) { csv.format("4i,t,3ui"); }
