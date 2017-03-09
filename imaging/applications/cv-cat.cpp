@@ -77,14 +77,14 @@ static pair capture( cv::VideoCapture& capture, rate_limit& rate )
     cv::Mat image;
     capture >> image;
     rate.wait();
-    
+
     static comma::csv::binary< snark::cv_mat::serialization::header > default_binary( "t,3ui", "t,rows,cols,type" );
     static snark::cv_mat::serialization::header::buffer_t buffer( default_binary.format().size() );
-    
+
     snark::cv_mat::serialization::header h(image);
     h.timestamp = boost::posix_time::microsec_clock::universal_time();
     default_binary.put( h, &buffer[0] );
-    
+
     return std::make_pair( buffer , image );
 }
 
@@ -93,14 +93,14 @@ static pair output_single_image( const cv::Mat& image )
     static bool done = false;
     if( done ) { return pair(); }
     done = true;
-    
+
     static comma::csv::binary< snark::cv_mat::serialization::header > default_binary( "t,3ui", "t,rows,cols,type" );
     static snark::cv_mat::serialization::header::buffer_t buffer( default_binary.format().size() );
-    
+
     snark::cv_mat::serialization::header h(image);
     h.timestamp = boost::posix_time::microsec_clock::universal_time();
     default_binary.put( h, &buffer[0] );
-    
+
     return std::make_pair( buffer, image );
 }
 
@@ -127,7 +127,7 @@ static bool has_custom_fields( const std::string& fields )
 {
     std::vector< std::string > v = comma::split(fields, ',');
     if( v.size() > snark::cv_mat::serialization::header::fields_num ) { return true; }  // If it has more fields than the default
-    for( unsigned int i = 0; i < v.size(); ++i ) { if( v[i] != "t" && v[i] != "rows" && v[i] != "cols" && v[i] != "type" ) { return true; } } 
+    for( unsigned int i = 0; i < v.size(); ++i ) { if( v[i] != "t" && v[i] != "rows" && v[i] != "cols" && v[i] != "type" ) { return true; } }
     return false;
 }
 
@@ -245,12 +245,12 @@ int main( int argc, char** argv )
         if( output_options.fields.empty() ) { output_options.fields = input_options.fields; }
         if( !output_options.format.elements().empty() && input_options.format.string() != output_options.format.string() ) { std::cerr << "cv-cat: customised output header format not supported (todo); got: input format: \"" << input_options.format.string() << "\" output format: \"" << output_options.format.string() << "\"" << std::endl; return 1; }
         if( output_options.format.elements().empty() ) { output_options.format = input_options.format; };
-        
+
         // This is needed because if binary is not set, serialization assumes standard fields and guess every field to be ui, very confusing for the user
         if( !input_options.fields.empty() && has_custom_fields(input_options.fields) && input_options.format.elements().empty() ) {
             std::cerr << "cv-cat: non default field detected in --input, please specify binary format for fields: " << input_options.fields << std::endl; return 1 ;
         }
-        
+
         const std::vector< std::string >& filterStrings = boost::program_options::collect_unrecognized( parsed.options, boost::program_options::include_positional );
         std::string filters;
         if( filterStrings.size() == 1 ) { filters = filterStrings[0]; }
@@ -263,10 +263,10 @@ int main( int argc, char** argv )
         snark::cv_mat::serialization output( output_options );
         boost::scoped_ptr< bursty_reader< pair > > reader;
         cv::Mat image;
-        
+
         typedef snark::imaging::applications::pipeline_with_header pipeline_with_header;
         typedef snark::cv_mat::filters_with_header filters_with_header;
-        
+
         if( vm.count( "file" ) )
         {
             if( !vm.count( "video" ) ) { image = cv::imread( name ); }
