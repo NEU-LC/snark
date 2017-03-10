@@ -300,6 +300,58 @@ static cv::Scalar scalar_from_strings( const std::string* begin, unsigned int si
     COMMA_THROW( comma::exception, "expected a scalar of the size up to 4, got: " << size << " elements" );
 }
 
+namespace unpack
+{
+    inline unsigned fetch_by_format(char c,const unsigned char* ptr)
+    {
+        if(c=='0') { return 0; }
+        c-='a';
+        unsigned index=c/2;
+        if(c%2) { return ptr[index]>>4; } //msb
+        else { return ptr[index]&0xF; } //lsb
+    }
+
+    unsigned unpack_pixel(const std::string& format, const unsigned char* ptr)
+    {
+        unsigned out=0;
+        for(unsigned i=0;i<format.size();i++)
+        {
+            unsigned n=fetch_by_format(format[i],ptr);
+            out=(out<<4)+n;
+        }
+        return out;
+    }
+
+    template < typename H >
+    static typename impl::filters< H >::value_type unpack_impl_( typename impl::filters< H >::value_type m,const std::vector< std::string >& args )
+    {
+        if(args.size()!=3) { COMMA_THROW( comma::exception, "expected three arguements, got:"<<args.size());}
+        if(args[0]!="12") { COMMA_THROW( comma::exception, "only 12 bit unpack is supported, got:"<<args[0]); }
+        for(unsigned i=1;i<=2;i++)
+        {
+            auto pos=args[i].find_first_not_of("abcdef0");
+            if(pos!=std::string::npos) { COMMA_THROW( comma::exception, "pixel format "<<(i-1)<<" contains invalid characters: "<<args[i][pos]);}
+        }
+        if(m.second.type()!=CV_8UC1 && m.second.type()!=CV_16UC1) { COMMA_THROW( comma::exception, "expected CV_8UC1("<<int(CV_8UC1)<<") or CV_16UC1("<<int(CV_16UC1)<<") , got: "<< m.second.type() );}
+        //number of bytes
+        int size=m.second.cols;
+        if(m.second.type()==CV_16UC1){size*=2;}
+        if(size%3!=0) { COMMA_THROW( comma::exception, "size is not divisible by three: "<<size);}
+        cv::Mat mat(m.second.rows, (2*size)/3, CV_16UC1);
+        for(int j=0;j<m.second.rows;j++)
+        {
+            const unsigned char* ptr=m.second.ptr(j);
+            unsigned short* out_ptr=mat.ptr<unsigned short>(j);
+            for(int col=0, i=0;i<size;i+=3)
+            {
+                out_ptr[col++]=unpack_pixel(args[1],ptr+i);
+                out_ptr[col++]=unpack_pixel(args[2],ptr+i);
+            }
+        }
+        return typename impl::filters< H >::value_type(m.first, mat);
+    }
+};
+
 template < typename H >
 static typename impl::filters< H >::value_type unpack12_impl_( typename impl::filters< H >::value_type m )
 {
@@ -2482,8 +2534,9 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
         }
         else if( e[0] == "unpack" )
         {
-            if( modified ) { COMMA_THROW( comma::exception, "cannot covert from 12 bit packed after transforms: " << name ); }
-            COMMA_THROW( comma::exception, "todo" );
+            if(e.size()<2) { COMMA_THROW( comma::exception, "missing arguements"); }
+            const std::vector< std::string >& w=comma::split(e[1],',');
+            f.push_back( filter_type( boost::bind< value_type_t >( unpack::unpack_impl_< H >, _1, w ) ) );
         }
         else if( e[0] == "unpack12" )
         {
@@ -2754,8 +2807,11 @@ static std::string usage_impl_()
     oss << "        timestamp: write timestamp on images" << std::endl;
     oss << "        transpose: transpose the image (swap rows and columns)" << std::endl;
     oss << "        undistort=<undistort map file>: undistort" << std::endl;
-    oss << "        unpack=<how>: not implemented, todo; <how>: todo: come up with good semantics" << std::endl;
-    oss << "        unpack12: convert from 12-bit packed (2 pixels in 3 bytes) to 16UC1; use before other filters" << std::endl;
+    oss << "        unpack=<bits>,<format>: unpack compressed pixel formats, example: unpack=12,cba0,fed0" << std::endl;
+    oss << "            <bits>: number of bits, currently only 12 is supported" << std::endl;
+    oss << "            <format>: output pixels format in base 4 notation, containting letters 'a' to 'f' and '0'" << std::endl;
+    oss << "                where 'a' is 4-bit LSB of byte 0, 'b' is 4-bit MSB of byte 0, 'c' is 4-bit LSB of byte 1, etc and '0' means 4-bit zero" << std::endl;
+    oss << "        unpack12: convert from 12-bit packed (2 pixels in 3 bytes) to 16UC1; use before other filters; equivalent to unpack=12,bad0,fec0" << std::endl;
     oss << "        view[=<wait-interval>]: view image; press <space> to save image (timestamp or system time as filename); <esc>: to close" << std::endl;
     oss << "                                <wait-interval>: a hack for now; milliseconds to wait for image display and key press; default 1" << std::endl;
     oss << std::endl;
