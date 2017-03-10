@@ -321,7 +321,7 @@ namespace unpack
         }
         return out;
     }
-
+    
     template < typename H >
     static typename impl::filters< H >::value_type unpack_impl_( typename impl::filters< H >::value_type m,const std::vector< std::string >& args )
     {
@@ -329,7 +329,7 @@ namespace unpack
         if(args[0]!="12") { COMMA_THROW( comma::exception, "only 12 bit unpack is supported, got:"<<args[0]); }
         for(unsigned i=1;i<=2;i++)
         {
-            auto pos=args[i].find_first_not_of("abcdef0");
+            std::size_t pos=args[i].find_first_not_of("abcdef0");
             if(pos!=std::string::npos) { COMMA_THROW( comma::exception, "pixel format "<<(i-1)<<" contains invalid characters: "<<args[i][pos]);}
         }
         if(m.second.type()!=CV_8UC1 && m.second.type()!=CV_16UC1) { COMMA_THROW( comma::exception, "expected CV_8UC1("<<int(CV_8UC1)<<") or CV_16UC1("<<int(CV_16UC1)<<") , got: "<< m.second.type() );}
