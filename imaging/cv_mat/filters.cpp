@@ -313,7 +313,7 @@ struct unpack_impl_
         transform(unsigned index,unsigned n,unsigned m):index(index),n(n),m(m){}
 //         inline unsigned fix(const unsigned char* ptr) { return ((ptr[index]>>n)&0xF)<<m; }
     };
-    std::vector<std::vector<transform>> transforms;
+    std::vector<std::vector<transform> > transforms;
     unpack_impl_(const std::string& s)
     {
         std::vector<std::string> args=comma::split(s,',');
