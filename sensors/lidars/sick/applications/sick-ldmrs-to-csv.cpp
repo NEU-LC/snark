@@ -134,15 +134,14 @@ int main( int ac, char** av )
         _setmode( _fileno( stdin ), _O_BINARY );
         #endif
         snark::sick::ibeo::protocol protocol( std::cin );
-        comma::signal_flag is_shutdown;
         while( !std::cin.eof() )
         {
-            if( is_shutdown ) { std::cerr << "sick-ldmrs-to-csv: caught signal, exit" << std::endl; return 1; }
             const snark::sick::ibeo::scan_packet* p;
             try { p = protocol.readscan(); }
             catch( snark::sick::ibeo::protocol::faultException& ex ) { std::cerr << "sick-ldmrs-to-csv: " << ex.what() << std::endl; continue; }
             catch( comma::exception& ex ) { std::cerr << "sick-ldmrs-to-csv: " << ex.what() << std::endl; continue; }
             if( p == NULL ) { std::cerr << "sick-ldmrs-to-csv: done" << std::endl; return 0; }
+
             std::size_t count = p->packet_scan.scan_header.points_count();
             snark::sick::ibeo::scan::timestamps timestamps( p->packet_scan );
             csv_point point;
