@@ -300,38 +300,51 @@ static cv::Scalar scalar_from_strings( const std::string* begin, unsigned int si
     COMMA_THROW( comma::exception, "expected a scalar of the size up to 4, got: " << size << " elements" );
 }
 
-namespace unpack
+template < typename H >
+struct unpack_impl_
 {
-    inline unsigned fetch_by_format(char c,const unsigned char* ptr)
+    typedef typename impl::filters< H >::value_type value_type;
+    struct transform
     {
-        if(c=='0') { return 0; }
-        c-='a';
-        unsigned index=c/2;
-        if(c%2) { return ptr[index]>>4; } //msb
-        else { return ptr[index]&0xF; } //lsb
-    }
-
-    unsigned unpack_pixel(const std::string& format, const unsigned char* ptr)
+        unsigned index;
+        unsigned n;
+        unsigned m;
+        transform():index(0),n(0),m(0) {}
+        transform(unsigned index,unsigned n,unsigned m):index(index),n(n),m(m){}
+//         inline unsigned fix(const unsigned char* ptr) { return ((ptr[index]>>n)&0xF)<<m; }
+    };
+    std::vector<std::vector<transform>> transforms;
+    unpack_impl_(const std::string& s)
     {
-        unsigned out=0;
-        for(unsigned i=0;i<format.size();i++)
-        {
-            unsigned n=fetch_by_format(format[i],ptr);
-            out=(out<<4)+n;
-        }
-        return out;
-    }
-    
-    template < typename H >
-    static typename impl::filters< H >::value_type unpack_impl_( typename impl::filters< H >::value_type m,const std::vector< std::string >& args )
-    {
+        std::vector<std::string> args=comma::split(s,',');
         if(args.size()!=3) { COMMA_THROW( comma::exception, "expected three arguements, got:"<<args.size());}
         if(args[0]!="12") { COMMA_THROW( comma::exception, "only 12 bit unpack is supported, got:"<<args[0]); }
         for(unsigned i=1;i<=2;i++)
         {
-            std::size_t pos=args[i].find_first_not_of("abcdef0");
-            if(pos!=std::string::npos) { COMMA_THROW( comma::exception, "pixel format "<<(i-1)<<" contains invalid characters: "<<args[i][pos]);}
+            transforms.push_back(parse(args[i]));
         }
+    }
+    static std::vector<transform> parse(const std::string& format)
+    {
+        std::size_t pos=format.find_first_not_of("abcdef0");
+        if(pos!=std::string::npos) { COMMA_THROW( comma::exception, "pixel format  contains invalid characters: "<<format[pos]);}
+        std::vector<transform> fx;
+        unsigned digit=format.size()-1;
+        for(unsigned i=0;i<format.size();i++,digit--)
+        {
+            char c=format[i];
+            if(c!='0')  //case '0': do nothing
+            {
+                c-='a';
+                unsigned index=c/2;
+                if(c%2) { fx.push_back(transform(index,4,digit*4)); } //msb
+                else { fx.push_back(transform(index,0,digit*4)); } //lsb
+            }
+        }
+        return fx;
+    }
+    value_type operator()( value_type m)
+    {
         if(m.second.type()!=CV_8UC1 && m.second.type()!=CV_16UC1) { COMMA_THROW( comma::exception, "expected CV_8UC1("<<int(CV_8UC1)<<") or CV_16UC1("<<int(CV_16UC1)<<") , got: "<< m.second.type() );}
         //number of bytes
         int size=m.second.cols;
@@ -344,11 +357,19 @@ namespace unpack
             unsigned short* out_ptr=mat.ptr<unsigned short>(j);
             for(int col=0, i=0;i<size;i+=3)
             {
-                out_ptr[col++]=unpack_pixel(args[1],ptr+i);
-                out_ptr[col++]=unpack_pixel(args[2],ptr+i);
+                for(std::size_t t=0;t<transforms.size();t++)
+                {
+                    unsigned out=0;
+                    std::vector<transform>& fx=transforms[t];
+                    for(unsigned k=0;k<fx.size();k++)
+                    {
+                        out+=((ptr[i+fx[k].index]>>fx[k].n)&0xF)<<fx[k].m;
+                    }
+                    out_ptr[col++]=out;
+                }
             }
         }
-        return typename impl::filters< H >::value_type(m.first, mat);
+        return value_type(m.first, mat);
     }
 };
 
@@ -2535,8 +2556,7 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
         else if( e[0] == "unpack" )
         {
             if(e.size()<2) { COMMA_THROW( comma::exception, "missing arguements"); }
-            const std::vector< std::string >& w=comma::split(e[1],',');
-            f.push_back( filter_type( boost::bind< value_type_t >( unpack::unpack_impl_< H >, _1, w ) ) );
+            f.push_back( filter_type(unpack_impl_<H>(e[1])) );
         }
         else if( e[0] == "unpack12" )
         {
