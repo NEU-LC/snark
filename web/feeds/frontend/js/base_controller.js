@@ -201,9 +201,6 @@ define('base_controller', ['jquery', "jquery_timeago",
             globals.host = frontend_config.host;
             is_host_specified = true;
         }
-        else {
-            globals.host = window.location.hostname;
-        }
         var is_port_specified = false;
         if (frontend_config.port) {
             globals.port = frontend_config.port;
