@@ -45,6 +45,8 @@
 #include <boost/type_traits.hpp>
 #include <boost/unordered_map.hpp>
 #include <boost/assign/list_of.hpp>
+#include <boost/mpl/list.hpp>
+#include <boost/mpl/for_each.hpp>
 #include <comma/base/exception.h>
 #include <comma/base/types.h>
 #include <comma/csv/ascii.h>
@@ -81,6 +83,67 @@ namespace {
         typedef comma::int32 key_type;
         key_type key;
         value_type value;
+    };
+
+    struct normalization
+    {
+        typedef std::pair< int, int > key_t;            // from type, to type
+        typedef std::pair< double, double > scaling_t;  // scale, offset
+        typedef boost::unordered_map< key_t, scaling_t > map_t;
+        template < int From, int To >
+        struct factors
+        {
+            typedef snark::cv_mat::depth_traits< From > from;
+            typedef snark::cv_mat::depth_traits< To > to;
+            static double scale() {
+                return ( to::max_value() - to::min_value() ) / ( from::max_value() - from::min_value() );
+            }
+            static double offset() {
+                return ( to::min_value() * from::max_value() - to::max_value() * from::min_value() ) / ( from::max_value() - from::min_value() );
+            }
+        };
+        template< int From >
+        struct factors< From, From >
+        {
+            static double scale() { return 1.0; }
+            static double offset() { return 0.0; }
+        };
+        typedef boost::mpl::list< snark::cv_mat::depth_traits< CV_8U >::value_t
+                                , snark::cv_mat::depth_traits< CV_8S >::value_t
+                                , snark::cv_mat::depth_traits< CV_16U >::value_t
+                                , snark::cv_mat::depth_traits< CV_16S >::value_t
+                                , snark::cv_mat::depth_traits< CV_32S >::value_t
+                                , snark::cv_mat::depth_traits< CV_32F >::value_t
+                                , snark::cv_mat::depth_traits< CV_64F >::value_t > data_types;
+        template< int from >
+        struct inner
+        {
+            inner( map_t & m ) : m_( m ) {}
+            template< typename kind >
+            void operator()( kind )
+            {
+                enum { value = snark::cv_mat::traits_to_depth< kind >::value };
+                m_[ std::make_pair( from, int( value ) ) ] = std::make_pair( factors< from, int( value ) >::scale(), factors< from, int( value ) >::offset() );
+            }
+            map_t & m_;
+        };
+        struct outer
+        {
+            outer( map_t & m ) : m_( m ) {}
+            template< typename kind >
+            void operator()( kind )
+            {
+                enum { value = snark::cv_mat::traits_to_depth< kind >::value };
+                boost::mpl::for_each< data_types >( inner< int( value ) >( m_ ) );
+            }
+            map_t & m_;
+        };
+        static map_t create_map()
+        {
+            map_t m;
+            boost::mpl::for_each< data_types >( outer( m ) );
+            return m;
+        }
     };
 
 } // anonymous
@@ -236,6 +299,79 @@ static cv::Scalar scalar_from_strings( const std::string* begin, unsigned int si
     }
     COMMA_THROW( comma::exception, "expected a scalar of the size up to 4, got: " << size << " elements" );
 }
+
+template < typename H >
+struct unpack_impl_
+{
+    typedef typename impl::filters< H >::value_type value_type;
+    struct transform
+    {
+        unsigned index;
+        unsigned n;
+        unsigned m;
+        transform():index(0),n(0),m(0) {}
+        transform(unsigned index,unsigned n,unsigned m):index(index),n(n),m(m){}
+//         inline unsigned fix(const unsigned char* ptr) { return ((ptr[index]>>n)&0xF)<<m; }
+    };
+    std::vector<std::vector<transform> > transforms;
+    unpack_impl_(const std::string& s)
+    {
+        std::vector<std::string> args=comma::split(s,',');
+        if(args.size()!=3) { COMMA_THROW( comma::exception, "expected three arguements, got:"<<args.size());}
+        if(args[0]!="12") { COMMA_THROW( comma::exception, "only 12 bit unpack is supported, got:"<<args[0]); }
+        for(unsigned i=1;i<=2;i++)
+        {
+            transforms.push_back(parse(args[i]));
+        }
+    }
+    static std::vector<transform> parse(const std::string& format)
+    {
+        std::size_t pos=format.find_first_not_of("abcdef0");
+        if(pos!=std::string::npos) { COMMA_THROW( comma::exception, "pixel format  contains invalid characters: "<<format[pos]);}
+        std::vector<transform> fx;
+        unsigned digit=format.size()-1;
+        for(unsigned i=0;i<format.size();i++,digit--)
+        {
+            char c=format[i];
+            if(c!='0')  //case '0': do nothing
+            {
+                c-='a';
+                unsigned index=c/2;
+                if(c%2) { fx.push_back(transform(index,4,digit*4)); } //msb
+                else { fx.push_back(transform(index,0,digit*4)); } //lsb
+            }
+        }
+        return fx;
+    }
+    value_type operator()( value_type m)
+    {
+        if(m.second.type()!=CV_8UC1 && m.second.type()!=CV_16UC1) { COMMA_THROW( comma::exception, "expected CV_8UC1("<<int(CV_8UC1)<<") or CV_16UC1("<<int(CV_16UC1)<<") , got: "<< m.second.type() );}
+        //number of bytes
+        int size=m.second.cols;
+        if(m.second.type()==CV_16UC1){size*=2;}
+        if(size%3!=0) { COMMA_THROW( comma::exception, "size is not divisible by three: "<<size);}
+        cv::Mat mat(m.second.rows, (2*size)/3, CV_16UC1);
+        for(int j=0;j<m.second.rows;j++)
+        {
+            const unsigned char* ptr=m.second.ptr(j);
+            unsigned short* out_ptr=mat.ptr<unsigned short>(j);
+            for(int col=0, i=0;i<size;i+=3)
+            {
+                for(std::size_t t=0;t<transforms.size();t++)
+                {
+                    unsigned out=0;
+                    std::vector<transform>& fx=transforms[t];
+                    for(unsigned k=0;k<fx.size();k++)
+                    {
+                        out+=((ptr[i+fx[k].index]>>fx[k].n)&0xF)<<fx[k].m;
+                    }
+                    out_ptr[col++]=out;
+                }
+            }
+        }
+        return value_type(m.first, mat);
+    }
+};
 
 template < typename H >
 static typename impl::filters< H >::value_type unpack12_impl_( typename impl::filters< H >::value_type m )
@@ -515,11 +651,18 @@ class accumulate_impl_
 };
 
 template < typename H >
-static typename impl::filters< H >::value_type convert_to_impl_( typename impl::filters< H >::value_type m, int type, double scale, double offset )
+static typename impl::filters< H >::value_type convert_to_impl_( typename impl::filters< H >::value_type m, int type, boost::optional< double > scale, boost::optional< double > offset )
 {
     typename impl::filters< H >::value_type n;
     n.first = m.first;
-    m.second.convertTo( n.second, type, scale, offset );
+    if ( !scale ) {
+        static const normalization::map_t & map = normalization::create_map();
+        normalization::map_t::const_iterator s = map.find( std::make_pair( m.second.depth(), CV_MAT_DEPTH( type ) ) );
+        if ( s == map.end() ) { COMMA_THROW( comma::exception, "cannot find normalization scaling from type " << type_as_string( m.second.type() ) << " to type " << type_as_string( type ) ); }
+        scale = s->second.first;
+        offset = s->second.second;
+    }
+    m.second.convertTo( n.second, type, *scale, *offset );
     return n;
 }
 
@@ -2149,8 +2292,18 @@ static functor_type make_filter_functor( const std::vector< std::string >& e, co
         const std::vector< std::string >& w = comma::split( e[1], ',' );
         boost::unordered_map< std::string, int >::const_iterator it = types_.find( w[0] );
         if( it == types_.end() ) { COMMA_THROW( comma::exception, "convert-to: expected target type, got \"" << w[0] << "\"" ); }
-        double scale = w.size() > 1 ? boost::lexical_cast< double >( w[1] ) : 1.0;
-        double offset = w.size() > 2 ? boost::lexical_cast< double >( w[2] ) : 0.0;
+        boost::optional< double > scale( 1.0 );
+        boost::optional< double > offset( 0.0 );
+        if ( w.size() > 1 ) {
+            if ( w[1] == "normalize" ) {
+                if ( w.size() != 2 ) { COMMA_THROW( comma::exception, "normalized scale takes no extra parameters" ); } 
+                scale = boost::none;
+                offset = boost::none;
+            } else {
+                scale = boost::lexical_cast< double >( w[1] );
+            }
+        }
+        if ( w.size() > 2 ) { offset = boost::lexical_cast< double >( w[2] ); }
         return boost::bind< value_type_t >( convert_to_impl_< H >, _1, it->second, scale, offset );
     }
     if( e[0] == "resize" )
@@ -2402,8 +2555,8 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
         }
         else if( e[0] == "unpack" )
         {
-            if( modified ) { COMMA_THROW( comma::exception, "cannot covert from 12 bit packed after transforms: " << name ); }
-            COMMA_THROW( comma::exception, "todo" );
+            if(e.size()<2) { COMMA_THROW( comma::exception, "missing arguements"); }
+            f.push_back( filter_type(unpack_impl_<H>(e[1])) );
         }
         else if( e[0] == "unpack12" )
         {
@@ -2674,8 +2827,11 @@ static std::string usage_impl_()
     oss << "        timestamp: write timestamp on images" << std::endl;
     oss << "        transpose: transpose the image (swap rows and columns)" << std::endl;
     oss << "        undistort=<undistort map file>: undistort" << std::endl;
-    oss << "        unpack=<how>: not implemented, todo; <how>: todo: come up with good semantics" << std::endl;
-    oss << "        unpack12: convert from 12-bit packed (2 pixels in 3 bytes) to 16UC1; use before other filters" << std::endl;
+    oss << "        unpack=<bits>,<format>: unpack compressed pixel formats, example: unpack=12,cba0,fed0" << std::endl;
+    oss << "            <bits>: number of bits, currently only 12 is supported" << std::endl;
+    oss << "            <format>: output pixels format in base 4 notation, containting letters 'a' to 'f' and '0'" << std::endl;
+    oss << "                where 'a' is 4-bit LSB of byte 0, 'b' is 4-bit MSB of byte 0, 'c' is 4-bit LSB of byte 1, etc and '0' means 4-bit zero" << std::endl;
+    oss << "        unpack12: convert from 12-bit packed (2 pixels in 3 bytes) to 16UC1; use before other filters; equivalent to unpack=12,bad0,fec0" << std::endl;
     oss << "        view[=<wait-interval>]: view image; press <space> to save image (timestamp or system time as filename); <esc>: to close" << std::endl;
     oss << "                                <wait-interval>: a hack for now; milliseconds to wait for image display and key press; default 1" << std::endl;
     oss << std::endl;
