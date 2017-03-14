@@ -235,12 +235,11 @@ class handler( BaseHTTPServer.BaseHTTPRequestHandler ):
         if status != 0:
             # error is not included in message due problems with the html format for special symbols (using cgi.escape didn't help completely)
             if error:
-                error = error.strip().decode('ascii')
-                self.send_response( httplib.INTERNAL_SERVER_ERROR, error )
+                message = error.strip().decode('ascii')
             else:
                 message = "%s: request '%s' for sensor '%s' in web config '%s' failed" % ( script_name, sensor_parameters.command, sensor, args.config )
-                self.send_error( httplib.INTERNAL_SERVER_ERROR, message )
 
+            self.send_response( httplib.INTERNAL_SERVER_ERROR, message )
             self.send_header( 'Access-Control-Allow-Origin', '*' )
             self.end_headers()
             return
