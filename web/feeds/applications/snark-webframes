@@ -237,13 +237,13 @@ class handler( BaseHTTPServer.BaseHTTPRequestHandler ):
             if error:
                 error = error.strip().decode('ascii')
                 self.send_response( httplib.INTERNAL_SERVER_ERROR, error )
-                self.send_header( 'Access-Control-Allow-Origin', '*' )
-                self.end_headers()
-                return
             else:
                 message = "%s: request '%s' for sensor '%s' in web config '%s' failed" % ( script_name, sensor_parameters.command, sensor, args.config )
                 self.send_error( httplib.INTERNAL_SERVER_ERROR, message )
-                return
+
+            self.send_header( 'Access-Control-Allow-Origin', '*' )
+            self.end_headers()
+            return
         else:
             self.send_response( httplib.OK )
             self.send_header( 'Content-type', sensor_parameters.content_type )
