@@ -43,7 +43,10 @@ static void usage( bool verbose )
     std::cerr << std::endl;
     std::cerr << "take mavlink input on stdin, output as csv" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "usage: cat mavlink.bin | mavlink-to-csv [<options>] > mavlink.csv" << std::endl;
+    std::cerr << "usage: cat mavlink.bin | mavlink-to-csv <operation> [<options>] > mavlink.csv" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "operations" << std::endl;
+    std::cerr << "    navigation,nav,navigation-solution,nav-solution: output navigation solution" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    --strict: exit on parsing errors" << std::endl;
@@ -113,13 +116,44 @@ struct orientation
     
 struct pose : public Eigen::Vector3d, public orientation { pose(): Eigen::Vector3d( Eigen::Vector3d::Zero() ) {} };
 
-struct output : public snark::spherical::coordinates, public orientation
+struct navigation_solution
 {
-    boost::posix_time::ptime t;
-    comma::uint32 milliseconds_from_boot;
-    double altitude;
-    double relative_altitude;
-    pose velocity;
+    struct output : public snark::spherical::coordinates, public orientation
+    {
+        boost::posix_time::ptime t;
+        comma::uint32 milliseconds_from_boot;
+        double altitude;
+        double relative_altitude;
+        double heading;
+        pose velocity;
+    };
+    
+    static void update( output& o, const attitude_t& attitude )
+    {
+        o.milliseconds_from_boot = attitude.time_boot_ms;
+        o.roll = attitude.roll;
+        o.pitch = attitude.pitch;
+        o.yaw = attitude.yaw;
+        o.velocity.roll = attitude.rollspeed;
+        o.velocity.pitch = attitude.pitchspeed;
+        o.velocity.yaw = attitude.yawspeed;
+    }
+    
+    static void update( output& o, const global_position_t& global_position )
+    {
+        o.milliseconds_from_boot = global_position.time_boot_ms;
+        o.latitude = global_position.latitude;
+        o.longitude = global_position.longitude;
+        o.altitude = global_position.altitude;
+        o.altitude = global_position.relative_altitude;
+        o.velocity.x() = global_position.vx;
+        o.velocity.y() = global_position.vy;
+        o.velocity.z() = global_position.vz;
+        o.heading = global_position.heading;
+    }
+    
+    template < typename T > static void update( output&, const T& ) {}
+    
 };
 
 } } // namespace snark { namespace mavlink {
@@ -128,8 +162,7 @@ namespace comma { namespace visiting {
 
 template <> struct traits< snark::mavlink::orientation >
 {
-    template < typename Key, class Visitor >
-    static void visit( const Key&, const snark::mavlink::orientation& p, Visitor& v )
+    template < typename Key, class Visitor > static void visit( const Key&, const snark::mavlink::orientation& p, Visitor& v )
     {
         v.apply( "roll", p.roll );
         v.apply( "pitch", p.pitch );
@@ -139,24 +172,23 @@ template <> struct traits< snark::mavlink::orientation >
 
 template <> struct traits< snark::mavlink::pose >
 {
-    template < typename Key, class Visitor >
-    static void visit( const Key& k, const snark::mavlink::pose& t, Visitor& v )
+    template < typename Key, class Visitor > static void visit( const Key& k, const snark::mavlink::pose& t, Visitor& v )
     {
         traits< Eigen::Vector3d >::visit( k, t, v );
         traits< snark::mavlink::orientation >::visit( k, t, v );
     }
 };
 
-template <> struct traits< snark::mavlink::output >
+template <> struct traits< snark::mavlink::navigation_solution::output >
 {
-    template < typename Key, class Visitor >
-    static void visit( const Key& k, const snark::mavlink::output& t, Visitor& v )
+    template < typename Key, class Visitor > static void visit( const Key& k, const snark::mavlink::navigation_solution::output& t, Visitor& v )
     {
         v.apply( "t", t.t );
         v.apply( "milliseconds_from_boot", t.milliseconds_from_boot );
         traits< snark::spherical::coordinates >::visit( k, t, v );
         v.apply( "altitude", t.altitude );
         v.apply( "relative_altitude", t.relative_altitude );
+        v.apply( "heading", t.heading );
         traits< snark::mavlink::orientation >::visit( k, t, v );
         v.apply( "velocity", t.velocity );
     }
@@ -164,70 +196,65 @@ template <> struct traits< snark::mavlink::output >
 
 } } // namespace comma { namespace visiting {
 
+template < typename T >
+static int run( const comma::command_line_options& options )
+{
+    typedef typename T::output output_t;
+    if( options.exists( "--output-fields" ) ) { std::cout << comma::join( comma::csv::names< output_t >( true ), ',' ) << std::endl; return 0; }
+    if( options.exists( "--output-format" ) ) { std::cout << comma::csv::format::value< output_t >() << std::endl; return 0; }
+    bool strict = options.exists( "--strict" );
+    bool verbose = options.exists( "--verbose,-v" );
+    comma::csv::options csv( options );
+    csv.full_xpath = true;
+    comma::csv::output_stream< output_t > ostream( std::cout, csv ); // todo: output only on change
+    output_t output;
+    while( std::cin.good() )
+    {
+        char c;
+        std::cin.read( &c, 1 );
+        mavlink_message_t message;
+        mavlink_status_t status;
+        output.t = boost::posix_time::microsec_clock::universal_time();
+        if( mavlink_parse_char( MAVLINK_COMM_0, static_cast< unsigned char >( c ), &message, &status ) )
+        {
+            switch( message.msgid )
+            {
+                case MAVLINK_MSG_ID_ATTITUDE:
+                    {
+                        mavlink_attitude_t m;
+                        mavlink_msg_attitude_decode( &message, &m );
+                        T::update( output, attitude_t( m ) );
+                    }
+                    break;
+                case MAVLINK_MSG_ID_GLOBAL_POSITION_INT:
+                    {
+                        mavlink_global_position_int_t m;
+                        mavlink_msg_global_position_int_decode( &message, &m );
+                        T::update( output, global_position_t( m ) );
+                    }
+                    break;
+                default:
+                    break;
+            }
+            ostream.write( output );
+        }
+        else
+        {
+            if( verbose || strict ) { std::cerr << "mavlink-to-csv: failed to parse mavlink message, discarded" << std::endl; if( strict ) { return 1; } }
+        }
+    }
+    return 0;
+}
+
 int main( int ac, char *av[] )
 {
     try
     {
         comma::command_line_options options( ac, av, usage );
-        if( options.exists( "--output-fields" ) ) { std::cout << comma::join( comma::csv::names< snark::mavlink::output >( true ), ',' ) << std::endl; return 0; }
-        if( options.exists( "--output-format" ) ) { std::cout << comma::csv::format::value< snark::mavlink::output >() << std::endl; return 0; }
-        bool strict = options.exists( "--strict" );
-        bool verbose = options.exists( "--verbose,-v" );
-        comma::csv::options csv( options );
-        csv.full_xpath = true;
-        comma::csv::output_stream< snark::mavlink::output > ostream( std::cout, csv ); // todo: output only on change
-        snark::mavlink::output output;
-        while( std::cin.good() )
-        {
-            char c;
-            std::cin.read( &c, 1 );
-            mavlink_message_t message;
-            mavlink_status_t status;
-            output.t = boost::posix_time::microsec_clock::universal_time();
-            if( mavlink_parse_char( MAVLINK_COMM_0, static_cast< unsigned char >( c ), &message, &status ) )
-            {
-                switch( message.msgid )
-                {
-                    case MAVLINK_MSG_ID_ATTITUDE:
-                        {
-                            mavlink_attitude_t m;
-                            mavlink_msg_attitude_decode( &message, &m );
-                            attitude_t attitude( m );
-                            output.milliseconds_from_boot = attitude.time_boot_ms;
-                            output.roll = attitude.roll;
-                            output.pitch = attitude.pitch;
-                            output.yaw = attitude.yaw;
-                            output.velocity.roll = attitude.rollspeed;
-                            output.velocity.pitch = attitude.pitchspeed;
-                            output.velocity.yaw = attitude.yawspeed;
-                        }
-                        break;
-                    case MAVLINK_MSG_ID_GLOBAL_POSITION_INT:
-                        {
-                            mavlink_global_position_int_t m;
-                            mavlink_msg_global_position_int_decode( &message, &m );
-                            global_position_t global_position( m );
-                            output.milliseconds_from_boot = global_position.time_boot_ms;
-                            output.latitude = global_position.latitude;
-                            output.longitude = global_position.longitude;
-                            output.altitude = global_position.altitude;
-                            output.altitude = global_position.relative_altitude;
-                            output.velocity.x() = global_position.vx;
-                            output.velocity.y() = global_position.vy;
-                            output.velocity.z() = global_position.vz;
-                        }
-                        break;
-                    default:
-                        break;
-                }
-                ostream.write( output );
-            }
-            else
-            {
-                if( verbose || strict ) { std::cerr << "mavlink-to-csv: failed to parse mavlink message, discarded" << std::endl; if( strict ) { return 1; } }
-            }
-        }
-        return 0;
+        const std::vector< std::string >& unnamed = options.unnamed( "--flush,--strict,--verbose,-v,--output-fields,--output-format", "-.*" );
+        if( unnamed.empty() ) { std::cerr << "mavlink-to-csv: please specify operation" << std::endl; return 1; }
+        if( unnamed[0] == "navigation" || unnamed[0] == "navigation-solution" || unnamed[0] == "nav" || unnamed[0] == "nav-solution" ) { return run< snark::mavlink::navigation_solution >( options ); }
+        std::cerr << "mavlink-to-csv: expected operation, got: \"" << unnamed[0] << "\"" << std::endl;
     }
     catch( std::exception& ex ) { std::cerr << "mavlink-to-csv: " << ex.what() << std::endl; }
     catch( ... ) { std::cerr << "mavlink-to-csv: unknown exception" << std::endl; }
