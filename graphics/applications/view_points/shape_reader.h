@@ -66,6 +66,14 @@ class ShapeReader : public Reader
         #endif
         bool empty() const;
 
+#if Qt3D_VERSION==2
+public:
+    std::shared_ptr<snark::graphics::qt3d::gl::shape> make_shape();
+    void update_shape();
+private:
+    std::shared_ptr<snark::graphics::qt3d::gl::shape> shape;
+#endif
+
     private:
         typedef std::deque< ShapeWithId< S > > deque_t_;
         deque_t_ m_deque;
@@ -87,6 +95,19 @@ class ShapeReader : public Reader
         #endif
         ShapeWithId< S > sample_;
 };
+#if Qt3D_VERSION==2
+template< typename S, typename How >
+std::shared_ptr<snark::graphics::qt3d::gl::shape> ShapeReader< S, How >::make_shape()
+{
+    shape=Shapetraits< S, How >::make_shape(point_size);
+    return shape;
+}
+template< typename S, typename How >
+void ShapeReader< S, How >::update_shape()
+{
+    if(shape) { shape->update(buffer_.values().data(),buffer_.size()); }
+}
+#endif
 
 #if Qt3D_VERSION==1
 template< typename S, typename How >

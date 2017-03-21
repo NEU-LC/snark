@@ -216,6 +216,10 @@ namespace ratios
         o << w << "for the linear-combination operation, only the numerator part is expected without brackets\n";
         o << w << "examples (outputs are shown after --> arrows as ratios of comma-separated lists of coefficients)\n";
         o << w << "    -r +2g - b                       -->  0,-1,2,-1,0\n";
+        o << w << "\n";
+        o << w << "ratios and linear combinations are cumulative, i.e., repeated terms for the same channels\n";
+        o << w << "are accumulated:\n";
+        o << w << "    -r +2r - r                       -->  0,0,0,0,0\n";
         return o.str();
     }
 

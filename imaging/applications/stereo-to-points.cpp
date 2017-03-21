@@ -30,7 +30,6 @@
 
 #include <iostream>
 #include <boost/program_options.hpp>
-#include <comma/application/signal_flag.h>
 #include <opencv2/highgui/highgui.hpp>
 #include "stereo/parameters.h"
 #include "stereo/stereo.h"

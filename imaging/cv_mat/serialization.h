@@ -56,7 +56,11 @@ class serialization
             header( const cv::Mat& m );
             header( const std::pair< boost::posix_time::ptime, cv::Mat >& p ); /// constructor
             header( const boost::posix_time::ptime& t, const cv::Mat & p ); /// constructor
+            static const char* default_fields() { return "t,rows,cols,type"; }
+            static const char* default_format() { return "t,3ui"; }
+            static const std::size_t fields_num = 4;  // ignore size field
             
+            // TBD This can be wrapped in a smart share pointer as it it often copied e.g. cv::Mat is also a smart pointer
             typedef std::vector< char > buffer_t;
         };
         
@@ -78,7 +82,6 @@ class serialization
             static std::string type_usage();
         };
         
-
         /// default constructor
         serialization();
 
@@ -106,15 +109,15 @@ class serialization
 
         /// return necessary buffer size
         std::size_t size( const cv::Mat& m ) const;
-
-        /// same as above
         std::size_t size( const std::pair< boost::posix_time::ptime, cv::Mat >& m ) const;
+        std::size_t size( const std::pair< header::buffer_t, cv::Mat >& m ) const;
 
         /// read from stream, if eof, return empty cv::Mat
-        std::pair< boost::posix_time::ptime, cv::Mat > read( std::istream& is );
-        
+        template < typename H >
+        std::pair< H, cv::Mat > read( std::istream& is );
+                
         /// return last header buffer after read()
-        const char* header_buffer() const; // todo
+        const char* header_buffer() const;
 
         /// write to stream
         void write( std::ostream& os, const std::pair< boost::posix_time::ptime, cv::Mat >& m, bool flush = true );
@@ -127,10 +130,14 @@ class serialization
         
         /// c-style write to stdout, to be used if issues seen with write() - see cpp file for details
         void write_to_stdout( const std::pair< header::buffer_t, cv::Mat >& m, bool flush = true );
+        
+        /// Returns the C-style pointer to the header's binary serializer, NULL if no-header specified in serialisation
+        const comma::csv::binary< header >* header_binary() const;
 
     private:
         boost::scoped_ptr< comma::csv::binary< header > > m_binary;
-        boost::scoped_ptr< comma::csv::binary< header > > m_binary_no_timestamp; // timestamp will not be set
+        /// Same header binary as m_binary, however it ignores the timestamp field 't'
+        boost::scoped_ptr< comma::csv::binary< header > > m_binary_no_timestamp; // ignores timestamp 't' field
         std::vector< char > m_buffer;
         bool m_headerOnly;
         header m_header; /// default header

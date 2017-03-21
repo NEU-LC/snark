@@ -32,7 +32,6 @@
 #include <iostream>
 #include <boost/shared_ptr.hpp>
 #include <comma/application/command_line_options.h>
-#include <comma/application/signal_flag.h>
 #include <comma/csv/options.h>
 #include <comma/csv/traits.h>
 #include <comma/name_value/parser.h>

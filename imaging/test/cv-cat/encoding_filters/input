@@ -1,0 +1,9 @@
+head_and_encode[0]="mkdir -p output;for i in {1..2} ; do cv-cat --file ACFR_Logo.png ; done | cv-cat "head=1;encode=png"  --output no-header >output/1.png; cmp output/1.png ACFR_Logo.png"
+head_and_encode[1]="mkdir -p output;for i in {1..2} ; do cv-cat --file ACFR_Logo.png ; done | cv-cat "head=1" | cv-cat "encode=png" --output no-header >output/1.png ;  cmp output/1.png ACFR_Logo.png"
+
+header_only="cat timestamped_logo.bin | csv-bin-cut 't,3ui,s[171948]' --fields 1-4 | csv-from-bin t,3ui"
+file_impl[0]="mkdir -p output; cd output; cv-cat 'file=png;null' <../timestamped_logo.bin; cd - >&2; cmp output/20170302T023032.649884.png ACFR_Logo.png"
+file_impl[1]="mkdir -p output; cd output; cv-cat 'file=jpg;null' <../timestamped_logo.bin; cd - >&2; cmp output/20170302T023032.649884.jpg ACFR_Logo.jpg"
+grab_impl[0]="mkdir -p output; cd output; cv-cat 'file=png;null' <../timestamped_logo.bin; cd - >&2; cmp output/20170302T023032.649884.png ACFR_Logo.png"
+grab_impl[1]="mkdir -p output; cd output; cv-cat 'file=jpg;null' <../timestamped_logo.bin; cd - >&2; cmp output/20170302T023032.649884.jpg ACFR_Logo.jpg"
+grab_impl[2]="mkdir -p output; cd output; cv-cat 'file=ppm;null' <../timestamped_logo.bin; cd - >&2; [[ -s output/20170302T023032.649884.ppm ]]"

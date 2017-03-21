@@ -18,7 +18,7 @@ define('base_controller', ['jquery', "jquery_timeago",
     "bootstrap", "ol", 'utils',
     "Feed", "CsvFeed",
     'TextFeed', 'ImageFeed',
-    'GraphFeed', 'ImageStreamFeed', 'TrackFeed', 'TrackOptions', 'MapFeed', 'FormFeed', 'StartStopFeed', 'MapOptions', 'GridOptions'], function ($) {
+    'GraphFeed', 'ImageStreamFeed', 'TrackFeed', 'TrackOptions', 'MapFeed', 'StartStopFeed', 'MapOptions', 'GridOptions'], function ($) {
 
     var Feed = require('Feed');
     // var TextFeed = require('TextFeed');
@@ -32,7 +32,6 @@ define('base_controller', ['jquery', "jquery_timeago",
     // var TrackOptions = require('TrackOptions');
     // var MapOptions = require('MapOptions');
     // var GridOptions = require('GridOptions');
-    // var FormFeed = require('FormFeed');
     var load_config_fn;
     var create_feed_fn;
     var current_config_file;
@@ -54,8 +53,10 @@ define('base_controller', ['jquery', "jquery_timeago",
         var input_fields_link = feed_name + "-fields";
         var content_html = "";
         if (fields != undefined) {
-            content_html += '<a data-toggle="collapse" class="text-center" href="#' + input_fields_link + '">Input fields</a>'
-                + '<div class="inputs-group collapse" id="' + input_fields_link + '"></div>';
+            // content_html += '<a data-toggle="collapse" class="text-center" href="#' + input_fields_link + '">Input fields</a>'
+            //     + '<div class="inputs-group collapse" id="' + input_fields_link + '"></div>';
+            //content_html += '<div class="inputs-group " id="' + input_fields_link + '"></div>';
+
         }
         $(id).append(
             '<h3>' + feed_name +
@@ -194,6 +195,24 @@ define('base_controller', ['jquery', "jquery_timeago",
     base_controller.prototype.load_feed_items = function (frontend_config, feeds, path) {
         if (frontend_config.timeout) {
             globals.timeout = frontend_config.timeout;
+        }
+        var is_host_specified = false;
+        if (frontend_config.host) {
+            globals.host = frontend_config.host;
+            is_host_specified = true;
+        }
+        var is_port_specified = false;
+        if (frontend_config.port) {
+            globals.port = frontend_config.port;
+            is_port_specified = true;
+        }
+
+        if (!is_host_specified && !is_port_specified) {
+            $('#container').empty();
+            $('#container').append('<p>Please specify either Host or Port in frontend configuration.</p>');
+            $('#container').append('<p>see: <a href="readme.txt">readme.txt</a></p>');
+            $('#container').append('<p>see: <a href="examples/web.frontend.json">examples/web.frontend.json</a></p>');
+            return;
         }
         // var feeds = frontend_config.feeds;
         if (path.length != 0) {
@@ -572,6 +591,9 @@ define('base_controller', ['jquery', "jquery_timeago",
         $(grid_folder.domElement).closest('li.folder').find('li.title').addClass('subfolder');
     }
 
+    function is_host_contains_port(uri) {
+        return new RegExp(":([0-9]+)", 'g').test(uri);
+    }
 
     function add_new_feed(frontend_config, config, feed_path) {
         var grid_types = ['image', 'stream', 'track'];
@@ -604,7 +626,23 @@ define('base_controller', ['jquery', "jquery_timeago",
                 config.refresh.interval = 2;
             }
             if (!('url' in config)) {
-                config.url = frontend_config.host + '/' + feed_path;
+                var host;
+                if (!globals.host.startsWith("http://")) {
+                    globals.host = "http://" + globals.host;
+                }
+                if (is_host_contains_port(globals.host)) {
+                    host = globals.host;
+                } else {
+                    host = globals.host + ":" + globals.port;
+                }
+                // if (globals.host.indexOf(":") > 0) {
+                //     host = globals.host;
+                // }
+                //
+                if (!host.endsWith("/")) {
+                    host = host + "/";
+                }
+                config.url = host + feed_path;
             }
         }
         if (config.type == 'text') {
@@ -664,14 +702,17 @@ define('base_controller', ['jquery', "jquery_timeago",
             config.alert = true;
         }
         var feed_obj = create_feed_fn(config.type, feed_name, feed_path, config);
-        if (config.type != 'form' && config.type != 'stream') {
-            if (feed_obj.is_feed_inputs()) {
-                feed_obj.input_container.empty();
-                var form_ = $('<form>');
-                feed_obj.load_inputs(form_);
-                feed_obj.input_container.append(form_);
-            }
-        }
+        // if (config.type != 'form' && config.type != 'stream') {
+        //     if (feed_obj.is_feed_inputs()) {
+        //         feed_obj.input_container.empty();
+        //         feed_obj.init();
+        //         feed_obj.addListeners();
+        //
+        //         var form_ = $('<form>');
+        //         feed_obj.load_inputs(form_);
+        //         feed_obj.input_container.append(form_);
+        //     }
+        // }
         var folder = gui.addFolder(feed_path);
         folder.close();
         folder.add(feed_obj.config, 'url').onFinishChange(function (value) {

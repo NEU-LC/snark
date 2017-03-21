@@ -34,8 +34,11 @@
 #include <boost/date_time/posix_time/posix_time.hpp>
 
 #include <opencv2/core/core.hpp>
+#include "serialization.h"
 
 namespace snark{ namespace cv_mat {
+    
+typedef serialization::header::buffer_t header_type;
 
 template < typename Output = cv::Mat, typename H = boost::posix_time::ptime >
 struct operation
@@ -49,7 +52,7 @@ struct operation
 };
 
 typedef operation<> filter;
-typedef operation< cv::Mat, std::vector< char > > filter_with_header;
+typedef operation< cv::Mat, header_type > filter_with_header;
 
 namespace impl {
 
@@ -59,8 +62,12 @@ struct filters
     /// value type
     typedef std::pair< H, cv::Mat > value_type;
     typedef operation< cv::Mat, H > filter_type;
+    typedef boost::function< boost::posix_time::ptime( const H& ) > get_timestamp_functor;
     
     /// return filters from name-value string
+    static std::vector< filter_type > make( const std::string& how, const get_timestamp_functor& get_timestamp, unsigned int default_delay = 1 );
+    
+    /// return filters from name-value string, backward compatible, supports H=boost::posix_time::ptime only
     static std::vector< filter_type > make( const std::string& how, unsigned int default_delay = 1 );
     
     /// apply filters (a helper)
@@ -73,12 +80,10 @@ struct filters
 } // namespace impl {
 
 typedef impl::filters<> filters;
-typedef impl::filters< std::vector< char > > filters_with_header; // todo: a better name
+typedef impl::filters< header_type > filters_with_header; // todo: a better name
 
 /// a helper: e.g. take CV_8UC3, return CV_8UC1
 int single_channel_type( int t );
 std::string type_as_string( int t );
-
-inline bool is_empty( filters::value_type m ) { return ( m.first == boost::posix_time::not_a_date_time ) && m.second.empty(); }
 
 } }  // namespace snark { namespace cv_mat {

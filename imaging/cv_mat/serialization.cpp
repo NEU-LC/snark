@@ -68,10 +68,13 @@ serialization::header::header( const boost::posix_time::ptime& t, const cv::Mat 
 }
 
 serialization::serialization() :
-    m_binary( new comma::csv::binary< header >( comma::csv::format::value< header >(), "", false ) ),
+    m_binary( new comma::csv::binary< header >( header::default_format(), header::default_fields(), false ) ),
+    m_binary_no_timestamp( new comma::csv::binary< header >( header::default_format(), ",rows,cols,type", false ) ),
     m_buffer( m_binary->format().size() ),
     m_headerOnly( false )
 {
+    // make sure that the default timestamp (if not read from input) is not-a-date-time, and not 19700101T00000
+    m_binary->put( m_header, &m_buffer[0]);
 }
 
 serialization::serialization( const std::string& fields, const comma::csv::format& format, bool headerOnly, const header& default_header ):
@@ -79,33 +82,43 @@ serialization::serialization( const std::string& fields, const comma::csv::forma
     m_headerOnly( headerOnly ),
     m_header( default_header )
 {
-    if( !fields.empty() ) { m_binary.reset( new comma::csv::binary< header >( format.string(), fields, false, default_header ) ); }
+    if( !fields.empty() )
+    { 
+        m_binary.reset( new comma::csv::binary< header >( format.string(), fields, false, default_header ) );
+        std::vector< std::string > v = comma::split(fields, ',');
+        for( unsigned int i = 0; i < v.size(); ++i ) { if( v[i] == "t" ) { v[i] = ""; } }
+        std::string no_timestamp_fields = comma::join( v, ',' );
+        if( !no_timestamp_fields.empty() ) { m_binary_no_timestamp.reset( new comma::csv::binary< header >( format.string(), comma::join( v, ',' ), false, m_header ) );  }
+    }
+    
+    // make sure that the default timestamp (if not read from input) is not-a-date-time, and not 19700101T00000
+    ( !fields.empty() ? *m_binary : comma::csv::binary< serialization::header >( format.string(), fields ) ).put( m_header, &m_buffer[0]);
 }
 
 serialization::serialization( const serialization::options& options )
 {
     if( options.no_header && options.header_only ) { COMMA_THROW( comma::exception, "cannot have no-header and header-only at the same time" ); }
-    std::string fields = options.fields.empty() ? std::string( "t,rows,cols,type" ) : options.fields;
+    std::string fields = options.fields.empty() ? header::default_fields() : options.fields;
     std::vector< std::string > v = comma::split( fields, "," );
-    
-    std::vector< std::string > no_timestamp;
-    for( unsigned int i = 0; i < v.size(); ++i ) { if( v[i] == "t" ) { no_timestamp.push_back(v[i]); } }
-    
     comma::csv::format format;
-    if( options.format.elements().empty() )
-    {
-        for( unsigned int i = 0; i < v.size(); ++i )
-        {
-            if( v[i] == "t" ) { format += "t"; } else { format += "ui"; }
-        }
-    }
+    if( options.format.elements().empty() ) { for( unsigned int i = 0; i < v.size(); ++i ) { if( v[i] == "t" ) { format += "t"; } else { format += "ui"; } } }
     else { format = options.format; } 
     m_buffer.resize( format.size() );
     m_headerOnly = options.header_only;
     m_header = options.get_header();
-    if( !options.no_header ) { m_binary.reset( new comma::csv::binary< header >( format.string(), fields, false, m_header ) ); }
-    if( !options.no_header ) { m_binary_no_timestamp.reset( new comma::csv::binary< header >( format.string(), comma::join(no_timestamp, ','), false, m_header ) ); }
+    if( !options.no_header )
+    { 
+        m_binary.reset( new comma::csv::binary< header >( format.string(), fields, false, m_header ) );
+        for( unsigned int i = 0; i < v.size(); ++i ) { if( v[i] == "t" ) { v[i] = ""; } } 
+        std::string no_timestamp_fields = comma::join( v, ',' );
+        if( !no_timestamp_fields.empty() ) { m_binary_no_timestamp.reset( new comma::csv::binary< header >( format.string(), no_timestamp_fields, false, m_header ) ); }
+    }
+    
+    // make sure that the default timestamp (if not read from input) is not-a-date-time, and not 19700101T00000
+    ( !options.no_header ? *m_binary : comma::csv::binary< serialization::header >( format.string(), fields ) ).put( m_header, &m_buffer[0]);
 }
+
+const comma::csv::binary< serialization::header >* serialization::header_binary() const { return m_binary ? m_binary.get() : NULL; }
 
 std::size_t serialization::put( const std::pair< boost::posix_time::ptime, cv::Mat >& p, char* buf ) const
 {
@@ -149,7 +162,6 @@ serialization::header serialization::get_header( const char* buf ) const
 
 const char* serialization::header_buffer() const { return &m_buffer[0]; }
 
-
 std::size_t serialization::size( const cv::Mat& m ) const
 {
     unsigned int headerSize = 0;
@@ -157,57 +169,49 @@ std::size_t serialization::size( const cv::Mat& m ) const
     return headerSize + ( m.dataend - m.datastart );
 }
 
+std::size_t serialization::size(const std::pair< serialization::header::buffer_t, cv::Mat >& m) const
+{
+    return size(m.second);
+}
+
+
 std::size_t serialization::size( const std::pair< boost::posix_time::ptime, cv::Mat >& m ) const { return size( m.second ); }
 
-std::pair< boost::posix_time::ptime, cv::Mat > serialization::read( std::istream& is )
+template <>
+std::pair< serialization::header::buffer_t, cv::Mat > serialization::read< serialization::header::buffer_t >( std::istream& is )
 {
-    header h;
-    std::pair< boost::posix_time::ptime, cv::Mat > p;
+    std::pair< serialization::header::buffer_t, cv::Mat > p;
     if( m_binary )
     {
         is.read( &m_buffer[0], m_buffer.size() );
         int count = is.gcount();
         if( count <= 0 ) { return p; }
         if( count < int( m_buffer.size() ) ) { COMMA_THROW( comma::exception, "expected " << m_buffer.size() << " bytes, got " << count ); }        
-        m_binary->get( h, &m_buffer[0] );
+        m_binary->get( m_header, &m_buffer[0] );
     }
-    else
-    {
-        h = m_header;
-    }
-    p.first = h.timestamp;
+    p.first = m_buffer;
     try
     {
-        p.second = cv::Mat( h.rows, h.cols, h.type );
+        p.second = cv::Mat( m_header.rows, m_header.cols, m_header.type );
     }
     catch( cv::Exception& ex )
     {
         std::cerr << comma::verbose.app_name() << ": caught cv::Exception: " << ex.what() << std::endl;
-        return std::pair< boost::posix_time::ptime, cv::Mat >();
+        return std::pair< serialization::header::buffer_t, cv::Mat >();
     }
     std::size_t size = p.second.dataend - p.second.datastart;
     // todo: accumulate
     is.read( const_cast< char* >( reinterpret_cast< const char* >( p.second.datastart ) ), size ); // quick and dirty
     int count = is.gcount();
-    return count < int( size ) ? std::pair< boost::posix_time::ptime, cv::Mat >() : p;
+    return count < int( size ) ? std::pair< serialization::header::buffer_t, cv::Mat >() : p;
 }
 
-// void serialization::write( std::ostream& os, const std::pair< boost::posix_time::ptime, cv::Mat >& m, bool flush )
-// {
-//     if( m_binary )
-//     {
-//         header h( m );
-//         m_binary->put( h, &m_buffer[0] );
-//         os.write( &m_buffer[0], m_buffer.size() );
-//     }
-//     if( !m_headerOnly )
-//     {
-//         os.write( reinterpret_cast< const char* >( m.second.datastart )
-//                 , m.second.dataend - m.second.datastart );
-//     }
-//     if( flush ) { os.flush(); }
-// }
-// - replace timestamp fields with empty field
+template <>
+std::pair< boost::posix_time::ptime, cv::Mat > serialization::read< boost::posix_time::ptime >( std::istream& is )
+{
+    std::pair< serialization::header::buffer_t, cv::Mat > p = read< serialization::header::buffer_t >( is );
+    return std::make_pair( m_header.timestamp, p.second );
+}
 
 void serialization::write( std::ostream& os, const std::pair< boost::posix_time::ptime, cv::Mat >& m, bool flush )
 {
@@ -224,8 +228,8 @@ void serialization::write( std::ostream& os, const std::pair< header::buffer_t, 
 {
     if( m_binary )
     {
-        m_buffer = m.first;
-        m_binary_no_timestamp->put( serialization::header( m.second ), &m_buffer[0] );
+        m_buffer = m.first;     // This forces the output fields to be the same as the input fields
+        if( m_binary_no_timestamp ) { m_binary_no_timestamp->put( serialization::header( m.second ), &m_buffer[0] ); }
         os.write( &m_buffer[0], m_buffer.size() );
     }
     if( !m_headerOnly ) { os.write( reinterpret_cast< const char* >( m.second.datastart ), m.second.dataend - m.second.datastart ); }
@@ -269,14 +273,13 @@ void serialization::write_to_stdout(const std::pair< serialization::header::buff
 {
     if( m_binary )
     {
-        m_buffer = m.first;
-        m_binary_no_timestamp->put( serialization::header( m.second ), &m_buffer[0] );
+        m_buffer = m.first;     // This forces the output fields to be the same as the input fields
+        if( m_binary_no_timestamp ) { m_binary_no_timestamp->put( serialization::header( m.second ), &m_buffer[0] ); }
         write_( 1, &m_buffer[0], m_buffer.size() );
     }
     if( !m_headerOnly ) { write_( 1, reinterpret_cast< const char* >( m.second.datastart ), m.second.dataend - m.second.datastart ); }
     if( flush ) { ::fflush( stdout ); }
 }
-
 
 void serialization::write_to_stdout( const std::pair< boost::posix_time::ptime, cv::Mat >& m, bool flush )
 {

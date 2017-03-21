@@ -15,7 +15,7 @@ define('GraphFeed', ["jquery", "Feed"], function ($) {
         this.set_labels();
     };
     GraphFeed.prototype = Object.create(Feed.prototype);
-    GraphFeed.prototype.set_labels = function() {
+    GraphFeed.prototype.set_labels = function () {
         this.y_labels.empty();
         this.bars.empty();
         this.bars.append('<div class="graph-bar-col"><span class="graph-bar-bottom"></span><span class="graph-bar-top"></span></div>');
@@ -43,12 +43,12 @@ define('GraphFeed', ["jquery", "Feed"], function ($) {
             span.appendTo(_this.y_labels);
         });
         if (!got_max) {
-            var span = $('<span class="graph-y-label">' + this.config.graph.max +  _this.config.graph.units +'</span>');
+            var span = $('<span class="graph-y-label">' + this.config.graph.max + _this.config.graph.units + '</span>');
             span.css('top', _this.get_bar_height(this.config.graph.max) - 9);
             span.appendTo(this.y_labels);
         }
         {
-            var span = $('<span class="graph-y-label">' + this.config.graph.min +  _this.config.graph.units +'</span>');
+            var span = $('<span class="graph-y-label">' + this.config.graph.min + _this.config.graph.units + '</span>');
             span.css('top', _this.get_bar_height(this.config.graph.min) - 9);
             span.appendTo(this.y_labels);
         }
@@ -68,6 +68,7 @@ define('GraphFeed', ["jquery", "Feed"], function ($) {
     GraphFeed.prototype.load = function () {
         $.ajax({
             context: this,
+            crossDomain: true,
             url: this.get_url(),
             timeout: globals.timeout
         }).done(function (data, textStatus, jqXHR) {

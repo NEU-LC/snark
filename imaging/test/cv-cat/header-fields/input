@@ -1,0 +1,47 @@
+#### Standard header fields: t,rows,cols,type
+fields/header_only="echo 20170102T001122,2,3,0,0,1,2,3,4,5 | csv-to-bin t,3ui,6ub | cv-cat --output header-only | csv-from-bin t,3ui"
+fields/no_header="echo 20170102T001122,2,3,0,0,1,2,3,4,5 | csv-to-bin t,3ui,6ub | cv-cat --output no-header | csv-from-bin 6ub"
+fields/all_fields="echo 20170102T001122,2,3,0,0,1,2,3,4,5 | csv-to-bin t,3ui,6ub | cv-cat  | csv-from-bin t,3ui,6ub"
+# Partial input header
+fields/partial_header/timestamp_only[0]="echo 20170102T001122,0,1,2,3,4,5 | csv-to-bin t,6ub | cv-cat --input 'fields=t;rows=2;cols=3;type=ub' --output header-only | csv-from-bin t"
+fields/partial_header/timestamp_only[1]="echo 20170102T001122,0,1,2,3,4,5 | csv-to-bin t,6ub | cv-cat --input 'fields=t;rows=2;cols=3;type=ub' --output no-header | csv-from-bin 6ub"
+fields/partial_header/timestamp_only[2]="echo 20170102T001122,0,1,2,3,4,5 | csv-to-bin t,6ub | cv-cat --input 'fields=t;rows=2;cols=3;type=ub' | csv-from-bin t,6ub"
+fields/partial_header/timestamp_and_type[0]="echo 20170102T001122,0,0,1,2,3,4,5 | csv-to-bin t,ui,6ub | cv-cat --input 'fields=t,type;rows=2;cols=3' --output header-only | csv-from-bin t,ui"
+fields/partial_header/timestamp_and_type[1]="echo 20170102T001122,0,0,1,2,3,4,5 | csv-to-bin t,ui,6ub | cv-cat --input 'fields=t,type;rows=2;cols=3' --output no-header | csv-from-bin 6ub"
+fields/partial_header/timestamp_and_type[2]="echo 20170102T001122,0,0,1,2,3,4,5 | csv-to-bin t,ui,6ub | cv-cat --input 'fields=t,type;rows=2;cols=3' | csv-from-bin t,ui,6ub"
+fields/no_input_header[0]="echo 0,1,2,3,4,5 | csv-to-bin 6ub | cv-cat --input 'rows=2;cols=3;type=ub;no-header' | csv-from-bin 6ub"
+fields/no_input_header[1]="echo 0,1,2,3,4,5 | csv-to-bin 6ub | cv-cat --input 'rows=2;cols=3;type=ub;no-header' --output header-only | csv-from-bin t,3ui"
+# If input is no-header, the user may specify default output fields t,rows,cols,type
+fields/no_input_header[2]="echo 0,1,2,3,4,5 | csv-to-bin 6ub | cv-cat --input 'rows=2;cols=3;type=ub;no-header' --output "fields=t,rows,cols,type" | csv-from-bin t,3ui,6ub"
+# Negative test 
+fields/no_input_header[3]="echo 0,1,2,3,4,5 | csv-to-bin 6ub | cv-cat --input 'rows=2;cols=3;type=ub;no-header' --output 'fields=t,rows,cols'"
+ 
+#### Custom header fields
+fields/custom/explicit_fields="echo blah,7,7,5.5,20170101T020001,2,3,0,0,1,2,3,4,5 | csv-to-bin 's[4],2ui,d,t,3ui,6ub' | cv-cat --input 'fields=a,b,c,d,t,rows,cols,type;binary=s[4],2ui,d,t,3ui'  | csv-from-bin 's[4],2ui,d,t,3ui,6ub'"
+fields/custom/blank_fields="echo blah,7,7,5.5,20170101T020001,2,3,0,0,1,2,3,4,5 | csv-to-bin 's[4],2ui,d,t,3ui,6ub' | cv-cat --input 'fields=a,,,,t,rows,cols,type;binary=s[4],2ui,d,t,3ui'  | csv-from-bin 's[4],2ui,d,t,3ui,6ub'"
+fields/custom/no_input_header[0]="echo 7,7,0,1,2,3,4,5 | csv-to-bin 2d,6ub | cv-cat --input 'fields=a,b;binary=2d;rows=2;cols=3;type=ub' | csv-from-bin 2d,6ub"
+fields/custom/no_input_header[1]="echo 7,7,0,1,2,3,4,5 | csv-to-bin 2d,6ub | cv-cat --input 'fields=a,b;binary=2d;rows=2;cols=3;type=ub' --output header-only | csv-from-bin 2d"
+fields/custom/no_input_header[2]="echo 7,7,0,1,2,3,4,5 | csv-to-bin 2d,6ub | cv-cat --input 'fields=a,b;binary=2d;rows=2;cols=3;type=ub' --output no-header | csv-from-bin 6ub"
+fields/custom/partial_header/timestamp_only[0]="echo 7,7,20171122T114433,0,1,2,3,4,5 | csv-to-bin 2d,t,6ub | cv-cat --input 'fields=a,b,t;binary=2d,t;rows=2;cols=3;type=ub' | csv-from-bin 2d,t,6ub"
+fields/custom/partial_header/timestamp_only[1]="echo 7,7,20171122T114433,0,1,2,3,4,5 | csv-to-bin 2d,t,6ub | cv-cat --input 'fields=a,b,t;binary=2d,t;rows=2;cols=3;type=ub' --output header-only | csv-from-bin 2d,t"
+fields/custom/partial_header/timestamp_only[2]="echo 7,7,20171122T114433,0,1,2,3,4,5 | csv-to-bin 2d,t,6ub | cv-cat --input 'fields=a,b,t;binary=2d,t;rows=2;cols=3;type=ub' --output no-header | csv-from-bin 6ub"
+fields/custom/partial_header/cols_only[0]="echo 5.5,5.5,3,0,1,2,3,4,5 | csv-to-bin 2d,ui,6ub | cv-cat --input 'fields=a,b,cols;binary=2d,ui;rows=2;type=ub' | csv-from-bin 2d,ui,6ub"
+fields/custom/partial_header/cols_only[1]="echo 5.5,5.5,3,0,1,2,3,4,5 | csv-to-bin 2d,ui,6ub | cv-cat --input 'fields=a,b,cols;binary=2d,ui;rows=2;type=ub' --output header-only | csv-from-bin 2d,ui"
+fields/custom/partial_header/cols_only[2]="echo 5.5,5.5,3,0,1,2,3,4,5 | csv-to-bin 2d,ui,6ub | cv-cat --input 'fields=a,b,cols;binary=2d,ui;rows=2;type=ub' --output no-header | csv-from-bin 6ub"
+ 
+# Header updating test
+fields/convert_to="echo 20170102T001122,2,3,0,0,1,2,3,4,5 | csv-to-bin t,3ui,6ub | cv-cat 'convert_to=f'  | csv-from-bin t,3ui,6f"
+fields/resize="echo 20170102T001122,2,3,0,0,1,2,3,4,5 | csv-to-bin t,3ui,6ub | cv-cat 'resize=4,6'  | csv-from-bin t,3ui,24ub"
+fields/convert_and_resize="echo 20170102T001122,2,3,0,0,1,2,3,4,5 | csv-to-bin t,3ui,6ub | cv-cat 'convert_to=f;resize=4,6'  | csv-from-bin t,3ui,24f"
+fields/custom/convert_to="echo blah,7,7,5.5,20170101T020001,2,3,0,0,1,2,3,4,5 | csv-to-bin 's[4],2ui,d,t,3ui,6ub' | cv-cat --input 'fields=a,b,c,d,t,rows,cols,type;binary=s[4],2ui,d,t,3ui' convert_to=d  | csv-from-bin 's[4],2ui,d,t,3ui,6d'"
+fields/custom/resize="echo blah,7,7,5.5,20170101T020001,2,3,0,0,1,2,3,4,5 | csv-to-bin 's[4],2ui,d,t,3ui,6ub' | cv-cat --input 'fields=a,b,c,d,t,rows,cols,type;binary=s[4],2ui,d,t,3ui' resize=3,4  | csv-from-bin 's[4],2ui,d,t,3ui,12ub'"
+fields/custom/convert_and_resize="echo blah,7,7,5.5,20170101T020001,2,3,0,0,1,2,3,4,5 | csv-to-bin 's[4],2ui,d,t,3ui,6ub' | cv-cat --input 'fields=a,b,c,d,t,rows,cols,type;binary=s[4],2ui,d,t,3ui' 'resize=3,4;convert_to=d'  | csv-from-bin 's[4],2ui,d,t,3ui,12d'"
+ 
+#### Negative tests
+fields/custom_output_fields[0]="echo 20170102T001122,2,3,0,0,1,2,3,4,5 | csv-to-bin t,3ui,6ub | cv-cat --output 'header-only;fields=t,rows'"
+fields/custom_output_fields[1]="echo 20170102T001122,2,3,0,0,1,2,3,4,5 | csv-to-bin t,3ui,6ub | cv-cat --output 'fields=t,rows'"
+fields/custom_output_format[0]="echo 20170102T001122,2,3,0,0,1,2,3,4,5 | csv-to-bin t,3ui,6ub | cv-cat --output 'binary=t,3d'"
+# For custom fields, binary format must be set for --input
+fields/custom/missing_binary[0]="echo blah,7,7,5.5,20170101T020001,2,3,0,0,1,2,3,4,5 | csv-to-bin 's[4],2ui,d,t,3ui,6ub' | cv-cat --input 'fields=a,b,c,d,t,rows,cols,type'"
+fields/custom/missing_binary[1]="echo blah,20170101T020001,2,3,0,0,1,2,3,4,5 | csv-to-bin 's[4],t,3ui,6ub' | cv-cat --input 'fields=a,t,rows,cols,type'"
+fields/custom/missing_binary[2]="echo blah,20170101T020001,2,3,0,0,1,2,3,4,5 | csv-to-bin 's[4],t,3ui,6ub' | cv-cat --input 'fields=,t,rows,cols,type'"

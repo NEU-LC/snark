@@ -106,6 +106,8 @@ var globals = {
         }
     },
     isMobile: false,
+    host: window.location.hostname,
+    port: 7000,
     timeout: 60000 // load timeout in milliseconds
 };
 var feed_path_to_id = function (feed_path) {

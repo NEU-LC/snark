@@ -44,21 +44,32 @@ namespace snark {
 
 namespace tbb {
 
-template<>
+template <>
 struct bursty_reader_traits< std::pair< boost::posix_time::ptime, cv::Mat > >
 {
     static bool valid( const std::pair< boost::posix_time::ptime, cv::Mat >& p ) { return ( !p.second.empty() ); }
 };
 
+template <>
+struct bursty_reader_traits< std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat > >
+{
+    static bool valid( const std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat >& p ) { return ( !p.second.empty() ); }
+};
+
 } // namespace tbb {
 
 namespace imaging { namespace applications {
+    
+namespace impl {
 
 /// base class for video processing, capture images in a serarate thread, apply filters, serialize to stdout
+template < typename H=boost::posix_time::ptime >
 class pipeline
 {
     public:
-        typedef std::pair< boost::posix_time::ptime, cv::Mat > pair;
+        typedef std::pair< H, cv::Mat > pair;
+        typedef snark::cv_mat::impl::filters< H > filters_type;
+        typedef snark::cv_mat::operation< cv::Mat, H > filter_type;
         
         pipeline( cv_mat::serialization& output
                 , const std::string& filters
@@ -66,7 +77,7 @@ class pipeline
                 , unsigned int number_of_threads = 0 );
         
         pipeline( cv_mat::serialization& output
-                , const std::vector< cv_mat::filter >& filters
+                , const std::vector< filter_type >& filters
                 , tbb::bursty_reader< pair >& reader
                 , unsigned int number_of_threads = 0 );
 
@@ -81,12 +92,20 @@ class pipeline
 
         cv_mat::serialization& m_output;
         ::tbb::filter_t< pair, void > m_filter;
-        std::vector< cv_mat::filter > m_filters;
+        std::vector< filter_type > m_filters;
         tbb::bursty_reader< pair >& m_reader;
         tbb::bursty_pipeline< pair > m_pipeline;
         std::string m_error;
-    };
+};
 
-} } }
+} // namespace impl {
+
+typedef impl::pipeline<> pipeline;
+typedef impl::pipeline< snark::cv_mat::serialization::header::buffer_t > pipeline_with_header;
+    
+    
+} }  // namespace imaging { namespace applications {
+    
+} // namespace snark
 
 #endif // SNARK_IMAGING_APPLICATIONS_PIPELINE_H_
