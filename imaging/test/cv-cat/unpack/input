@@ -1,4 +1,4 @@
-test[0]=" echo 1,2,3 | csv-to-bin 3ub | cv-cat --input 'rows=1;cols=3;no-header;type=ub' --output no-header unpack=12,bad0,fec0 | csv-from-bin 2uw"
-test[1]=" echo 33,67,101 | csv-to-bin 3ub | cv-cat --input 'rows=1;cols=3;no-header;type=ub' --output no-header unpack=12,bad0,fec0 | csv-from-bin 2uw"
-test[2]=" echo 33,67,101 | csv-to-bin 3ub | cv-cat --input 'rows=1;cols=3;no-header;type=ub' --output no-header unpack=12,a,b | csv-from-bin 2uw"
-test[3]=" echo 33,67,101 | csv-to-bin 3ub | cv-cat --input 'rows=1;cols=3;no-header;type=ub' --output no-header unpack=12,d,e | csv-from-bin 2uw"
+test[0]=" echo 1,2,3 | csv-to-bin 3ub | cv-cat --input 'rows=1;cols=3;no-header;type=ub' --output no-header unpack=12,abc0,efd0 | csv-from-bin 2uw"
+test[1]=" echo 33,67,101 | csv-to-bin 3ub | cv-cat --input 'rows=1;cols=3;no-header;type=ub' --output no-header unpack=12,abc0,efd0 | csv-from-bin 2uw"
+test[2]=" echo 33,67,101 | csv-to-bin 3ub | cv-cat --input 'rows=1;cols=3;no-header;type=ub' --output no-header unpack=12,b,a | csv-from-bin 2uw"
+test[3]=" echo 33,67,101 | csv-to-bin 3ub | cv-cat --input 'rows=1;cols=3;no-header;type=ub' --output no-header unpack=12,c,f | csv-from-bin 2uw"

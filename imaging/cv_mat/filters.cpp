@@ -337,7 +337,7 @@ struct unpack_impl_
             {
                 c-='a';
                 unsigned index=c/2;
-                if(c%2) { fx.push_back(transform(index,4,digit*4)); } //msb
+                if(!(c%2)) { fx.push_back(transform(index,4,digit*4)); } //msb
                 else { fx.push_back(transform(index,0,digit*4)); } //lsb
             }
         }
@@ -2830,8 +2830,9 @@ static std::string usage_impl_()
     oss << "        unpack=<bits>,<format>: unpack compressed pixel formats, example: unpack=12,cba0,fed0" << std::endl;
     oss << "            <bits>: number of bits, currently only 12 is supported" << std::endl;
     oss << "            <format>: output pixels format in base 4 notation, containting letters 'a' to 'f' and '0'" << std::endl;
-    oss << "                where 'a' is 4-bit LSB of byte 0, 'b' is 4-bit MSB of byte 0, 'c' is 4-bit LSB of byte 1, etc and '0' means 4-bit zero" << std::endl;
-    oss << "        unpack12: convert from 12-bit packed (2 pixels in 3 bytes) to 16UC1; use before other filters; equivalent to unpack=12,bad0,fec0" << std::endl;
+    oss << "                where 'b' is 4-bit LSB of byte 0, 'a' is 4-bit MSB of byte 0, 'd' is 4-bit LSB of byte 1, etc and '0' means 4-bit zero" << std::endl;
+    oss << "                ATTENTION: base 4 notation looks swapped compared to byte order (because common PC architecture is little endian)" << std::endl;
+    oss << "        unpack12: convert from 12-bit packed (2 pixels in 3 bytes) to 16UC1; use before other filters; equivalent to unpack=12,abc0,efd0" << std::endl;
     oss << "        view[=<wait-interval>]: view image; press <space> to save image (timestamp or system time as filename); <esc>: to close" << std::endl;
     oss << "                                <wait-interval>: a hack for now; milliseconds to wait for image display and key press; default 1" << std::endl;
     oss << std::endl;
