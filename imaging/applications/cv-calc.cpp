@@ -161,6 +161,7 @@ int main( int ac, char** av )
         if( options.exists("--input-fields,--output-fields") ) { std::cout << comma::join( comma::csv::names<extents>(), ',' ) << "," << "t,rows,cols,type" << std::endl;  exit(0); }
         if( options.exists("--input-format,--output-format") ) { std::cout << comma::csv::format::value<extents>() << "," << "t,3ui" << std::endl;  exit(0); }
     }
+    else { std::cerr << name << " unknown operation: " << operation << std::endl; return 1; }
     
     if( verbose )
     {
