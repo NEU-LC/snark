@@ -134,6 +134,8 @@ public:
         #if Qt3D_VERSION==1
         friend class Viewer;
         QGLView& m_viewer;
+#else
+        friend class controller;
         #endif
         boost::optional< snark::math::closed_interval< float, 3 > > m_extents;
         unsigned int m_num_points;
