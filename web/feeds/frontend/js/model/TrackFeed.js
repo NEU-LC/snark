@@ -1,6 +1,6 @@
 define(['jquery', 'Feed', 'Grid', 'utils'], function ($, Feed, Grid) {
 
-    var TrackPoint = function(x, y, alpha) {
+    var TrackPoint = function (x, y, alpha) {
         this.x = x;
         this.y = y;
         this.alpha = alpha || TrackPoint.DEFAULT_ALPHA;
@@ -10,7 +10,7 @@ define(['jquery', 'Feed', 'Grid', 'utils'], function ($, Feed, Grid) {
     var TrackFeed = function (feed_name, feed_path, config) {
         this.base = Feed;
         this.base(feed_name, feed_path, config);
-        this.canvas = $('<canvas>', { class: 'track' }).appendTo(this.target);
+        this.canvas = $('<canvas>', {class: 'track'}).appendTo(this.target);
         this.ctx = this.canvas[0].getContext('2d');
         this.points = [];
 
@@ -33,21 +33,21 @@ define(['jquery', 'Feed', 'Grid', 'utils'], function ($, Feed, Grid) {
     };
 
     TrackFeed.prototype = Object.create(Feed.prototype);
-    TrackFeed.prototype.reset_draw_interval = function() {
+    TrackFeed.prototype.reset_draw_interval = function () {
         if (this.draw_interval) {
             clearInterval(this.draw_interval);
             this.draw_interval = null;
         }
         this.draw_interval = setInterval(this.draw.bind(this), this.config.track.draw_interval);
     }
-    TrackFeed.prototype.set_background = function() {
+    TrackFeed.prototype.set_background = function () {
         if (!this.config.track.image) {
             this.target.css('background', '');
             return;
         }
         this.image_loader.src = this.config.track.image;
     }
-    TrackFeed.prototype.set_extent = function() {
+    TrackFeed.prototype.set_extent = function () {
         var extent = this.config.track.extent;
         this.extent = undefined;
         if (extent) {
@@ -67,7 +67,7 @@ define(['jquery', 'Feed', 'Grid', 'utils'], function ($, Feed, Grid) {
         }
     }
 
-    TrackFeed.prototype.resize = function() {
+    TrackFeed.prototype.resize = function () {
         if (this.target.resizable('instance')) {
             this.target.resizable('destroy');
         }
@@ -85,10 +85,10 @@ define(['jquery', 'Feed', 'Grid', 'utils'], function ($, Feed, Grid) {
             }
         });
     }
-    TrackFeed.prototype.min_scale = function() {
+    TrackFeed.prototype.min_scale = function () {
         return 269 / this.original_height * 100;
     }
-    TrackFeed.prototype.draw = function() {
+    TrackFeed.prototype.draw = function () {
         this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
         var _this = this;
         this.points = this.points.filter(function (point) {
@@ -105,7 +105,7 @@ define(['jquery', 'Feed', 'Grid', 'utils'], function ($, Feed, Grid) {
             return point.alpha > 0;
         });
     }
-    TrackFeed.prototype.remove_trail = function() {
+    TrackFeed.prototype.remove_trail = function () {
         if (this.points.length > 1) {
             this.points = [this.points.pop()];
         }
@@ -113,6 +113,7 @@ define(['jquery', 'Feed', 'Grid', 'utils'], function ($, Feed, Grid) {
     TrackFeed.prototype.load = function () {
         $.ajax({
             context: this,
+            crossDomain: true,
             url: this.get_url(),
             timeout: globals.timeout
         }).done(function (data, textStatus, jqXHR) {
@@ -122,11 +123,13 @@ define(['jquery', 'Feed', 'Grid', 'utils'], function ($, Feed, Grid) {
         });
     };
     TrackFeed.prototype.onload_ = function (data) {
-        if (!data) { return; }
+        if (!data) {
+            return;
+        }
         var p = data.split(',').map(Number);
         var point = new TrackPoint(p[0], p[1]);
         if (this.extent) {
-            point.x = this.ctx.canvas.width * (point.x - this.extent[0]) / (this.extent[2] - this.extent[0]) ;
+            point.x = this.ctx.canvas.width * (point.x - this.extent[0]) / (this.extent[2] - this.extent[0]);
             point.y = this.ctx.canvas.height * (1 - (point.y - this.extent[1]) / (this.extent[3] - this.extent[1]));
         }
         if (this.config.track.trail) {

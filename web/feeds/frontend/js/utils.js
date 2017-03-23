@@ -106,7 +106,7 @@ var globals = {
         }
     },
     isMobile: false,
-    host: "localhost",
+    host: window.location.hostname,
     port: 7000,
     timeout: 60000 // load timeout in milliseconds
 };

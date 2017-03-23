@@ -42,7 +42,7 @@ IF(NOT CMAKE_BUILD_TYPE)
       FORCE)
 ENDIF(NOT CMAKE_BUILD_TYPE)
 
-option( USE_CXX11 "build with C++11 support" OFF )
+option( USE_CXX11 "build with C++11 support" ON )
 if( USE_CXX11 )
     if( UNIX )
         # A much better way to do this is with CXX_STANDARD but that requires CMake 3.1

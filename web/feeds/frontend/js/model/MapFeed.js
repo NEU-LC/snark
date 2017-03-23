@@ -10,7 +10,7 @@ define(['jquery', 'ol', 'Feed', 'utils'], function ($, ol, Feed) {
     };
 
     MapFeed.prototype = Object.create(Feed.prototype);
-    MapFeed.prototype.init_map = function() {
+    MapFeed.prototype.init_map = function () {
         this.feature_source = new ol.source.Vector();
         this.feature_layer = new ol.layer.Vector({
             source: this.feature_source
@@ -31,7 +31,7 @@ define(['jquery', 'ol', 'Feed', 'utils'], function ($, ol, Feed) {
             }
         });
     }
-    MapFeed.prototype.set_base_layer = function() {
+    MapFeed.prototype.set_base_layer = function () {
         this.map.removeLayer(this.base_layer);
         var image = this.config.map.image;
         if (this.config.map.image) {
@@ -48,7 +48,7 @@ define(['jquery', 'ol', 'Feed', 'utils'], function ($, ol, Feed) {
         }
         this.set_base_tile();
     }
-    MapFeed.prototype.set_base_tile = function() {
+    MapFeed.prototype.set_base_tile = function () {
         if (!this.config.map.bing_maps_key) {
             console.error('require "bing_maps_key" in config');
             return;
@@ -71,7 +71,7 @@ define(['jquery', 'ol', 'Feed', 'utils'], function ($, ol, Feed) {
         this.map.getLayers().insertAt(0, this.base_layer);
         this.map.setView(this.view);
     }
-    MapFeed.prototype.set_base_image = function(source, extent, projection) {
+    MapFeed.prototype.set_base_image = function (source, extent, projection) {
         this.projection = projection || ol.proj.get('EPSG:3857');
         this.base_layer = new ol.layer.Image({
             source: new ol.source.ImageStatic({
@@ -91,7 +91,7 @@ define(['jquery', 'ol', 'Feed', 'utils'], function ($, ol, Feed) {
         this.map.getLayers().insertAt(0, this.base_layer);
         this.map.setView(this.view);
     }
-    MapFeed.prototype.set_base_image_load = function(source, extent) {
+    MapFeed.prototype.set_base_image_load = function (source, extent) {
         var image = new Image();
         var feed = this;
         image.onload = function () {
@@ -117,14 +117,14 @@ define(['jquery', 'ol', 'Feed', 'utils'], function ($, ol, Feed) {
         };
         image.src = source;
     }
-    MapFeed.prototype.reset_draw_interval = function() {
+    MapFeed.prototype.reset_draw_interval = function () {
         if (this.draw_interval) {
             clearInterval(this.draw_interval);
             this.draw_interval = null;
         }
         this.draw_interval = setInterval(this.draw.bind(this), this.config.map.draw_interval);
     }
-    MapFeed.prototype.draw = function() {
+    MapFeed.prototype.draw = function () {
         var feed = this;
         var features = this.feature_source.getFeatures().filter(function (feature) {
             feature.alpha -= feed.config.map.alpha_step;
@@ -136,6 +136,7 @@ define(['jquery', 'ol', 'Feed', 'utils'], function ($, ol, Feed) {
     MapFeed.prototype.load = function () {
         $.ajax({
             context: this,
+            crossDomain: true,
             url: this.get_url(),
             timeout: globals.timeout
         }).done(function (data, textStatus, jqXHR) {
@@ -145,8 +146,12 @@ define(['jquery', 'ol', 'Feed', 'utils'], function ($, ol, Feed) {
         });
     };
     MapFeed.prototype.onload_ = function (data) {
-        if (!data) { return; }
-        if (!this.base_layer)  { return; }
+        if (!data) {
+            return;
+        }
+        if (!this.base_layer) {
+            return;
+        }
         var point = data.split(',').map(Number);
         var coordinates = this.projection.getCode() == 'EPSG:3857' ? ol.proj.transform(point, 'EPSG:4326', 'EPSG:3857') : point;
         var feature = new ol.Feature(new ol.geom.Point(coordinates));

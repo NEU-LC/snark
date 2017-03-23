@@ -248,7 +248,7 @@ void widget::wheelEvent( QWheelEvent *event )
     }
     else
     {
-        camera_.translate( 0, 0, 0.0005f * event->delta() );
+        camera_.translate( 0, 0, 0.01f * event->delta() );
     }
     update();
 }

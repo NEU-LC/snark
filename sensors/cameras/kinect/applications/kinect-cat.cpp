@@ -43,23 +43,12 @@
 #include <libfreenect2/packet_pipeline.h>
 #include <libfreenect2/logger.h>
 #include <cv.h>
+#include <comma/application/signal_flag.h>
 #include <snark/imaging/cv_mat/serialization.h>
 #include <comma/name_value/ptree.h>
 #include <comma/name_value/serialize.h>
 #include <snark/imaging/camera/pinhole.h>
 #include <snark/imaging/camera/traits.h>
-#include <signal.h>
-
-
-bool protonect_shutdown = false; ///< Whether the running application should shut down.
-
-void sigint_handler(int s)
-{
-  protonect_shutdown = true;
-}
-
-
-
 
 static void usage( bool verbose )
 {
@@ -195,6 +184,20 @@ int main( int ac, char** av )
 
         libfreenect2::setGlobalLogger(libfreenect2::createConsoleLogger(libfreenect2::Logger::None));
         /// [context]
+
+        // struct device
+        // {
+        //     libfreenect2::Freenect2 freenect2;
+        //     libfreenect2::Freenect2Device *dev = NULL;
+        //     libfreenect2::PacketPipeline *pipeline = 0;
+
+        //     device( ??? ) { ... }
+
+        //     void close() { ... }
+        //     ~device() { close(); /* anything else to clean up? */ }
+        // };
+
+
         libfreenect2::Freenect2 freenect2;
         libfreenect2::Freenect2Device *dev = 0;
         libfreenect2::PacketPipeline *pipeline = 0;
@@ -205,7 +208,7 @@ int main( int ac, char** av )
         if(freenect2.enumerateDevices() == 0)
         {
             std::cerr << "kinect-cat: no device connected!" << std::endl;
-            return 1;
+            return 0;
         }
 
 
@@ -225,9 +228,44 @@ int main( int ac, char** av )
 
             }
 
-            return 1;
+            return 0;
         }
 
+        int deviceId = -1;
+        if( options.exists( "--cuda" ))
+        {
+            std::cerr << "kinect-cat: here, pipeline: " << pipeline << std::endl;
+            if(!pipeline)
+            {
+                //std::cerr << "kinect-cat: Using cuda pipeline" << std::endl;
+                pipeline = new libfreenect2::CudaPacketPipeline(deviceId);
+                std::cerr << "kinect-cat: Using cuda pipeline" << std::endl;
+            }
+        }
+        else if( options.exists( "--cl" ))
+        {
+            if(!pipeline)
+            {
+                pipeline = new libfreenect2::OpenCLPacketPipeline(deviceId);
+                std::cerr << "kinect-cat: Using cl pipeline" << std::endl;
+            }
+        }
+        // else if( options.exists( "--gl" ))
+        // {
+        //     if(!pipeline)
+        //     {
+        //         pipeline = new libfreenect2::OpenGLPacketPipeline(deviceId);
+        //         std::cerr << "kinect-cat: Using gl pipeline" << std::endl;
+        //     }
+        // }
+        else
+        {
+            if(!pipeline)
+            {
+                pipeline = new libfreenect2::CpuPacketPipeline();
+                std::cerr << "kinect-cat: Using cpu pipeline" << std::endl;
+            }
+        }
 
         if (serial == "")
         {
@@ -250,10 +288,8 @@ int main( int ac, char** av )
         if(dev == 0)
         {
             std::cerr << "kinect-cat: failure opening device!" << std::endl;
-            return 1;
+            return 0;
         }
-
-        signal(SIGINT,sigint_handler); // todo: use comma:signal_flag
 
         bool enable_rgb = false;
         bool enable_depth = true;
@@ -274,13 +310,15 @@ int main( int ac, char** av )
         /// [start]
         if (enable_rgb && enable_depth)
         {
-        if (!dev->start())
-          return -1;
+            if (!dev->start()) 
+            { 
+                return 0;
+            }
         }
         else
         {
         if (!dev->startStreams(enable_rgb, enable_depth))
-          return 1;
+          return 0;
         }
         const int width_ir = 512;
         const int height_ir = 424;
@@ -306,7 +344,7 @@ int main( int ac, char** av )
             header_only = ( options.exists( "--header" ));
         }
 
-        if( options.exists( "--get-intrinsics" )){
+        if( options.exists( "--get-intrinsics" )){ // todo: --get-intrinsics; --get-pinhole-config
             libfreenect2::Freenect2Device::IrCameraParams ir_params = dev->getIrCameraParams();
             // put these parameters in json block "kinect"
             std::cout << "fx=" << ir_params.fx << std::endl; ///< Focal length x (pixel)
@@ -320,8 +358,10 @@ int main( int ac, char** av )
 
             std::cout << "p1=" << ir_params.p1 << std::endl; ///< Tangential distortion coefficient
             std::cout << "p2=" << ir_params.p2 << std::endl; ///< Tangential distortion coefficient
-           
-
+            return 0;
+        }
+        if( options.exists( "--get-intrinsics-as-pinhole-config" )){ // todo: --get-intrinsics; --get-pinhole-config
+            libfreenect2::Freenect2Device::IrCameraParams ir_params = dev->getIrCameraParams();
             // put these parameters in json block "metric"
             snark::camera::pinhole::config_t config;
             double px_pitch = 10 * 0.000001; //10 um 
@@ -391,12 +431,13 @@ int main( int ac, char** av )
         boost::posix_time::ptime libfreenect2_time_at_offset;
         uint libfreenect2_offset = 0;
         /// [loop start]
-        while(!protonect_shutdown)
+        comma::signal_flag is_shutdown;
+        while(!is_shutdown)
         {
             if (!listener.waitForNewFrame(frames, 10*1000)) // 10 seconds
             {
               std::cerr << "kinect-cat: timeout!" << std::endl;
-              return 1;
+              return 0;
             }
 
             //libfreenect2::Frame *rgb = frames[libfreenect2::Frame::Color];

@@ -46,6 +46,8 @@
 #include "view_points/qt3d_v1/viewer.h"
 #include "view_points/qt3d_v1/model_reader.h"
 #include "view_points/qt3d_v1/texture_reader.h"
+#else
+#include "view_points/controller.h"
 #endif
 
 static void bash_completion( unsigned const ac, char const * const * av )
@@ -624,10 +626,10 @@ int main( int argc, char** argv )
 
 #if Qt3D_VERSION==1
         QColor4ub background_color( QColor( QString( options.value< std::string >( "--background-colour", "#000000" ).c_str() ) ) );
+#endif
         boost::optional< comma::csv::options > camera_csv;
         boost::optional< Eigen::Vector3d > cameraposition;
         boost::optional< Eigen::Vector3d > cameraorientation;
-#endif
 
         snark::graphics::qt3d::camera_options camera_options
             ( options.exists( "--orthographic" )
@@ -688,11 +690,11 @@ int main( int argc, char** argv )
                 catch( ... ) {}
             }
         }
-#endif
         boost::optional< double > scene_radius = options.optional< double >( "--scene-radius,--radius" );
         boost::optional< Eigen::Vector3d > scene_center;
         boost::optional< std::string > s = options.optional< std::string >( "--scene-center,--center" );
         if( s ) { scene_center = comma::csv::ascii< Eigen::Vector3d >( "x,y,z", ',' ).get( *s ); }
+#endif
         boost::property_tree::ptree camera_config; // quick and dirty
         if( options.exists( "--camera-config" ) ) { boost::property_tree::read_json( options.value< std::string >( "--camera-config" ), camera_config ); }
 
@@ -731,11 +733,18 @@ int main( int argc, char** argv )
 
 #elif Qt3D_VERSION==2
 
+        color_t background_color;
+        double scene_radius=options.value<double>("--scene-radius,--radius",10);
+        QVector3D scene_center(0,0,0);
+        boost::optional< std::string > s = options.optional< std::string >( "--scene-center,--center" );
+        if( s ) { scene_center = comma::csv::ascii< QVector3D >( "x,y,z", ',' ).get( *s ); }
+
         // TODO: readers are currently not parallel
         // TODO: for qt3dv1 implementation see Viewer::initializeGL() and, e.g. ShapeReader::start()
         QApplication app(argc, argv);
         snark::graphics::view::main_window main_window;
-        snark::graphics::view::controller controller(camera_options,&main_window);
+        snark::graphics::view::controller controller(background_color, camera_options, options.exists( "--exit-on-end-of-input" ), camera_csv, cameraposition, cameraorientation, 
+                                                     options.exists( "--camera-config" ) ? &camera_config : NULL, scene_center, scene_radius, options.exists( "--output-camera-config,--output-camera" ),&main_window );
         bool stdin_explicitly_defined = false;
         for( unsigned int i = 0; i < properties.size(); ++i )
         {
@@ -747,12 +756,17 @@ int main( int argc, char** argv )
             csv_options.filename = "-";
             controller.add(make_reader( options, csv_options ));
         }
-        for(auto& i : controller.readers)
+        if( data_passed_through )
         {
-            while( i->read_once() );
-            Eigen::Vector3d offset = Eigen::Vector3d::Zero(); // todo: this does not look right: this will initialize readers with incorrect offset
-            i->update( offset );
+            controller.inhibit_stdout();
+            if( options.exists( "--output-camera-config,--output-camera" ) ) { COMMA_THROW( comma::exception, "cannot use --output-camera-config whilst \"pass-through\" option is in use" ); }
         }
+//         for(auto& i : controller.readers)
+//         {
+//             while( i->read_once() );
+//             Eigen::Vector3d offset = Eigen::Vector3d::Zero(); // todo: this does not look right: this will initialize readers with incorrect offset
+//             i->update( offset );
+//         }
         main_window.resize( main_window.sizeHint() );
         main_window.show();
         return app.exec();

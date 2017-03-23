@@ -97,12 +97,6 @@ class CheckBox : public QCheckBox // quick and dirty
 #include "../../qt3d/qt3d_v2/gl/widget.h"
 #include <QMainWindow>
 #include <QKeyEvent>
-#include <vector>
-#include <memory>
-
-namespace snark { namespace graphics { namespace qt3d {
-class camera_options;
-} } }
 
 namespace snark { namespace graphics { namespace view {
 
@@ -115,16 +109,6 @@ public:
     main_window();
 private:
     void keyPressEvent( QKeyEvent *e );
-};
-
-class controller : public qt3d::gl::widget
-{
-public:
-    std::vector< std::unique_ptr< snark::graphics::view::Reader > > readers;
-    controller(const qt3d::camera_options& camera_options,QMainWindow* parent=NULL);
-    void add(std::unique_ptr<snark::graphics::view::Reader>&& reader);
-protected:
-    void init();
 };
 
 } } } // namespace snark { namespace graphics { namespace view {

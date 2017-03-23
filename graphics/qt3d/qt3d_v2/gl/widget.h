@@ -72,7 +72,7 @@ protected:
     void mouseDoubleClickEvent( QMouseEvent *event ) Q_DECL_OVERRIDE;
     void wheelEvent( QWheelEvent *event ) Q_DECL_OVERRIDE;
 
-private:
+protected:
     void set_projection();
 
     boost::optional< QVector3D > viewport_to_3d( const QPoint& point_2d );
