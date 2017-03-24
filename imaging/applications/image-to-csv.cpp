@@ -39,14 +39,14 @@
 #include <memory>
 
 static const char* app_name="image-to-csv";
-boost::onullstream nullstream;
-std::ostream* cverbose=&nullstream;
-snark::cv_mat::serialization::options input_options;
-snark::cv_mat::serialization::header header;
-comma::csv::options csv;
-std::size_t channels=3;
-int depth=0;
-bool output_non_zeroes;
+static boost::onullstream nullstream;
+static std::ostream* cverbose=&nullstream;
+static snark::cv_mat::serialization::options input_options;
+static snark::cv_mat::serialization::header header;
+static comma::csv::options csv;
+static std::size_t channels=3;
+static int depth=0;
+static bool output_non_zeroes;
 
 struct app_t
 {
@@ -63,10 +63,7 @@ struct output_t:public app_t
     int x;
     int y;
     std::vector<T> channels;
-    output_t() : x(0), y(0), channels(::channels)
-    {
-        
-    }
+    output_t() : x(0), y(0), channels(::channels) {}
     virtual void output_fields();
     virtual void output_format();
     virtual bool process_image();
@@ -76,17 +73,7 @@ namespace comma { namespace visiting {
 
 template <typename T> struct traits< output_t<T> >
 {
-    template < typename K, typename V >
-    static void visit( const K&, output_t<T>& r, V& v )
-    {
-        v.apply( "t", r.t );
-        v.apply( "x", r.x );
-        v.apply( "y", r.y );
-        v.apply( "channels", r.channels );
-    }
-
-    template < typename K, typename V >
-    static void visit( const K&, const output_t<T>& r, V& v )
+    template < typename K, typename V > static void visit( const K&, const output_t<T>& r, V& v )
     {
         v.apply( "t", r.t );
         v.apply( "x", r.x );
@@ -130,7 +117,7 @@ static void usage(bool detail)
     exit(0);
 }
 
-void read_header()
+static void read_header()
 {
     comma::csv::options csvh;
     csvh.fields=input_options.fields;
@@ -141,22 +128,12 @@ void read_header()
     header = *p;
 }
 
-bool zeroes(char* p, std::size_t size)
-{
-    for ( char* i = p; i < p + size; ++i ) { if (*i != 0) { return false; } }
-    return true;
-}
+static bool zeroes(char* p, std::size_t size) { for ( char* i = p; i < p + size; ++i ) { if (*i != 0) { return false; } } return true; }
 
-template<typename T>
-void output_t<T>::output_fields()
-{
-    std::cout<<comma::join( comma::csv::names< output_t<T> >(), ','  ) << std::endl;
-}
-template<typename T>
-void output_t<T>::output_format()
-{
-    std::cout<<comma::csv::format::value< output_t<T> >(csv.fields, false) << std::endl;
-}
+template<typename T> void output_t<T>::output_fields() { std::cout<<comma::join( comma::csv::names< output_t<T> >(), ','  ) << std::endl; }
+
+template<typename T> void output_t<T>::output_format() { std::cout<<comma::csv::format::value< output_t<T> >(csv.fields, false) << std::endl; }
+
 template<typename T>
 bool output_t<T>::process_image()
 {
@@ -197,29 +174,14 @@ struct get_app
     {
         switch(depth)
         {
-            case CV_8U:
-                app=new output_t<unsigned char>();
-                break;
-            case CV_8S:
-                app=new output_t<char>();
-                break;
-            case CV_16U:
-                app=new output_t<comma::uint16>();
-                break;
-            case CV_16S:
-                app=new output_t<comma::int16>();
-                break;
-            case CV_32S:
-                app=new output_t<comma::uint32>();
-                break;
-            case CV_32F:
-                app=new output_t<float>();
-                break;
-            case CV_64F:
-                app=new output_t<double>();
-                break;
-            default:
-                COMMA_THROW(comma::exception, "unsupported depth " <<  depth);
+            case CV_8U: app=new output_t<unsigned char>(); break;
+            case CV_8S: app=new output_t<char>(); break;
+            case CV_16U: app=new output_t<comma::uint16>(); break;
+            case CV_16S: app=new output_t<comma::int16>(); break;
+            case CV_32S: app=new output_t<comma::uint32>(); break;
+            case CV_32F: app=new output_t<float>(); break;
+            case CV_64F: app=new output_t<double>(); break;
+            default: COMMA_THROW(comma::exception, "unsupported depth " <<  depth);
         }
     }
     ~get_app()
@@ -232,7 +194,7 @@ struct get_app
     }
 };
 
-void process()
+static void process()
 {
     #ifdef WIN32
     _setmode( _fileno( stdin ), _O_BINARY );
@@ -273,19 +235,11 @@ int main( int ac, char** av )
         if (options.exists("--output-format")) { g.app->output_format(); exit(0); }
         if (options.exists("--output-header-fields")) { std::cout<<comma::join( comma::csv::names< snark::cv_mat::serialization::header >(input_options.fields), ','  ) << std::endl; exit(0); }
         if (options.exists("--output-header-format")) { std::cout<<comma::csv::format::value< snark::cv_mat::serialization::header >(input_options.fields, false) << std::endl; exit(0); }
-        
         output_non_zeroes = options.exists("--output-non-zero");
-        
         process();
         return 0;
     }
-    catch( std::exception& ex )
-    {
-        std::cerr << "image-to-csv: " << ex.what() << std::endl;
-    }
-    catch( ... )
-    {
-        std::cerr << "image-to-csv: unknown exception" << std::endl;
-    }
+    catch( std::exception& ex ) { std::cerr << "image-to-csv: " << ex.what() << std::endl; }
+    catch( ... ) { std::cerr << "image-to-csv: unknown exception" << std::endl; }
     return 1;
 }
