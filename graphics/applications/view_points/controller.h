@@ -43,6 +43,13 @@
 #endif
 #include "camera_reader.h"
 
+// todo
+// - rename controller into something more meaningful; what does controller control?
+// - add doxygen documentation (a line or two)
+// - more color_t definition into a proper namespace (currently it is not namespaced at all)
+// - what is the difference between view class and controller class? why one needs to be derived from the other? can it be just one class?
+// - since all gets refactored anyway, move traits to traits.h to improve compilation time
+
 typedef snark::graphics::qt3d::gl::color_t color_t;
 
 namespace snark { namespace graphics { namespace qt3d {
