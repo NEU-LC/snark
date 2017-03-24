@@ -108,13 +108,18 @@ static void usage(bool detail)
                     << "options" << std::endl
                     << "    --help,-h: show help" << std::endl
                     << "    --verbose,-v: show detailed messages" << std::endl
-                    << "    --channels=<n>: specify single channel type in input options and number of channels here; e.g. for image without header --input=\"type=0\" --channels=256" << std::endl
                     << "    --output-fields: output fields and exit need to feed in image header through stdin or specify --input options" << std::endl
                     << "    --output-format: output format string and exit need to feed in image header through stdin or specify --input options" << std::endl
                     << "    --output-header-fields: output header fields and exit" << std::endl
                     << "    --output-header-format: output header format and exit" << std::endl
                     << "    --output-non-zero: output only values with non-zero data" << std::endl
                     << "    --input: input options if image has no header (see details)" << std::endl
+                    << std::endl
+                    << "deprecated" << std::endl
+                    << "    --channels=<n>: number of channels, example: " << std::endl
+                    << "        deprecated: --input=\"no-header;type=0\" --channels=3" << std::endl
+                    << "        new usage: --input=\"no-header;type=3ub\"" << std::endl
+                    << "    " << std::endl
                     << std::endl;
     if(detail)
     {
