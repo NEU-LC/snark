@@ -258,25 +258,16 @@ int main( int ac, char** av )
     {
         comma::command_line_options options( ac, av, usage );
         cverbose =  options.exists( "--verbose,-v" ) ? &std::cerr : &nullstream;
-        
         input_options = comma::name_value::parser( ';', '=' ).get< snark::cv_mat::serialization::options >( options.value<std::string>("--input", "") );
         if(input_options.fields.empty()) { input_options.fields = "t,rows,cols,type"; }
         csv=comma::csv::options(options);
         header=input_options.get_header();
-        if(options.exists("--channels"))
-            channels=options.value<int>("--channels");
-        else
-            channels=CV_MAT_CN(header.type);
-        depth=CV_MAT_DEPTH(header.type);
+        channels = options.value< int >( "--channels", CV_MAT_CN( header.type ) );
+        depth = CV_MAT_DEPTH( header.type );
         *cverbose<<app_name<<": type: "<<header.type<<" channels: "<<channels<<" depth: "<<int(CV_MAT_DEPTH(header.type))<<std::endl;
         std::vector< std::string > unnamed = options.unnamed( "--output-fields,--output-format,--verbose,-v,--output-header-fields,--output-header-format,--output-non-zero,--flush", 
                                                               "--input,--channels,--binary,-b,--fields,-f,--precision,--quote,--delimiter,-d");
-        if(!unnamed.empty())
-        {
-            std::cerr<<"invalid option"<<((unnamed.size()>1)?"s":"")<<": "<< comma::join(unnamed, ',') <<std::endl;
-            return 1;
-        }
-        
+        if(!unnamed.empty()) { std::cerr<<"invalid option"<<((unnamed.size()>1)?"s":"")<<": "<< comma::join(unnamed, ',') <<std::endl; return 1; }
         get_app g;
         if (options.exists("--output-fields")) { g.app->output_fields();exit(0); }
         if (options.exists("--output-format")) { g.app->output_format(); exit(0); }
