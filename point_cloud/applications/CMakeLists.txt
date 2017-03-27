@@ -10,7 +10,6 @@ ADD_EXECUTABLE( points-calc points-calc.cpp ${points_calc_source} )
 ADD_EXECUTABLE( points-detect-change points-detect-change.cpp )
 ADD_EXECUTABLE( points-foreground-partitions points-foreground-partitions.cpp )
 ADD_EXECUTABLE( points-rays points-rays.cpp )
-ADD_EXECUTABLE( points-slice points-slice.cpp )
 ADD_EXECUTABLE( points-to-centroids points-to-centroids.cpp )
 ADD_EXECUTABLE( points-to-partitions points-to-partitions.cpp )
 ADD_EXECUTABLE( points-to-voxels points-to-voxels.cpp )
@@ -22,7 +21,6 @@ TARGET_LINK_LIBRARIES( points-calc snark_math snark_point_cloud ${comma_ALL_LIBR
 TARGET_LINK_LIBRARIES( points-detect-change snark_math ${comma_ALL_LIBRARIES} ) #profiler )
 TARGET_LINK_LIBRARIES( points-foreground-partitions snark_point_cloud ${comma_ALL_LIBRARIES} tbb )
 TARGET_LINK_LIBRARIES( points-rays snark_math snark_math_spherical_geometry ${comma_ALL_LIBRARIES} tbb ) #profiler )
-TARGET_LINK_LIBRARIES( points-slice snark_math ${comma_ALL_LIBRARIES} )
 TARGET_LINK_LIBRARIES( points-to-centroids snark_point_cloud ${comma_ALL_LIBRARIES} tbb )
 TARGET_LINK_LIBRARIES( points-to-partitions snark_point_cloud ${comma_ALL_LIBRARIES} tbb )
 TARGET_LINK_LIBRARIES( points-to-voxels snark_point_cloud ${comma_ALL_LIBRARIES} ${snark_ALL_EXTERNAL_LIBRARIES} )
@@ -36,7 +34,6 @@ ENDIF( PROFILE )
 INSTALL( TARGETS points-align
                  points-calc
                  points-detect-change
-                 points-slice
                  points-to-partitions
                  points-foreground-partitions
                  points-rays

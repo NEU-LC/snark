@@ -301,6 +301,73 @@ static cv::Scalar scalar_from_strings( const std::string* begin, unsigned int si
 }
 
 template < typename H >
+struct pack_impl_
+{
+    typedef typename impl::filters< H >::value_type value_type;
+
+    struct transform
+    {
+        unsigned int index;
+        unsigned int right_shift;
+        unsigned int left_shift;
+        transform() : index(0), right_shift(0), left_shift(0) {}
+        transform( unsigned int index, unsigned int right_shift, unsigned int left_shift ) : index(index), right_shift(right_shift), left_shift(left_shift) {}
+    };
+
+    std::vector< std::vector< transform > > transforms;
+
+    pack_impl_( const std::string& s )
+    {
+        std::vector< std::string > args = comma::split( s, ',' );
+        if( args[0] == "12" ) { if( args.size() != 4 ) { COMMA_THROW( comma::exception, "pack 12-bit expects four arguments, got: " << args.size() ); } }
+        else { COMMA_THROW( comma::exception, "only 12-bit packing is supported, got: " << args[0] ); }
+        for( unsigned i = 1; i < args.size(); ++i ) { transforms.push_back( parse( args[i] ) ); }
+    }
+
+    static std::vector< transform > parse( const std::string& format )
+    {
+        if( format.size() > 2 ) { COMMA_THROW( comma::exception, "expected 2 or less quadbits, got: " << format << ", quadbits: " << format.size() ); }
+        std::size_t pos = format.find_first_not_of( "abcdefgh0" );
+        if( pos != std::string::npos ) { COMMA_THROW( comma::exception, "pixel format contains invalid characters: " << format[pos] ); }
+        std::vector< transform > fx;
+        for( unsigned i = 0; i < format.size(); ++i )
+        {
+            if( format[i] == '0' ) { continue; }
+            unsigned int c = format[i] - 'a';
+            fx.push_back( transform( c / 4, ( 3 - c % 4 ) * 4, ( format.size() - 1 - i ) * 4 ) );
+        }
+        return fx;
+    }
+
+    value_type operator()( const value_type m )
+    {
+        if( m.second.type() != CV_16UC1 ) { COMMA_THROW( comma::exception, "pack expects CV_16UC1(" << (int) CV_16UC1 << "), got: " << m.second.type() ); }
+        if( m.second.cols % 2 ) { COMMA_THROW( comma::exception, "column size is not divisible by 2: " << m.second.cols ); }
+        cv::Mat mat( m.second.rows, m.second.cols / 2 * 3, CV_8UC1 );
+        for( int row = 0; row < m.second.rows; ++row )
+        {
+            //const comma::uint16 *in = m.second.ptr< comma::uint16 >( row );
+            const comma::uint16 *in = reinterpret_cast< const comma::uint16 * >( m.second.ptr( row ) );
+            unsigned char *out = mat.ptr< unsigned char >( row );
+            for( int col = 0; col < m.second.cols; col += 2 )
+            {
+                for( std::size_t t = 0; t < transforms.size(); ++t )
+                {
+                    std::vector< transform > &fx = transforms[t];
+                    unsigned char value = 0;
+                    for( std::size_t i = 0; i < fx.size(); ++i )
+                    {
+                        value += ( in[ col + fx[i].index ] >> fx[i].right_shift & 0xF ) << fx[i].left_shift;
+                    }
+                    *out++ = value;
+                }
+            }
+        }
+        return value_type( m.first, mat );
+    }
+};
+
+template < typename H >
 struct unpack_impl_
 {
     typedef typename impl::filters< H >::value_type value_type;
@@ -2553,6 +2620,11 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
             unsigned int which = boost::lexical_cast< unsigned int >( e[1] ) + 45u; // HACK, bayer as unsigned int, but I don't find enum { BG2RGB, GB2BGR ... } more usefull
             f.push_back( filter_type( boost::bind< value_type_t >( cvt_color_impl_< H >(), _1, which ) ) );
         }
+        else if( e[0] == "pack" )
+        {
+            if( e.size() < 2 ) { COMMA_THROW( comma::exception, "missing arguments" ); }
+            f.push_back( filter_type( pack_impl_< H >( e[1] ) ) );
+        }
         else if( e[0] == "unpack" )
         {
             if(e.size()<2) { COMMA_THROW( comma::exception, "missing arguements"); }
@@ -2803,6 +2875,10 @@ static std::string usage_impl_()
     oss << "            normalize=all: normalize each pixel by max of all channels (see cv::normalize with NORM_INF)" << std::endl;
     oss << "        null: same as linux /dev/null (since windows does not have it)" << std::endl;
     oss << "        overlay=<image_file>[,x,y]: overlay image_file on top of current stream at optional x,y location; overlay image should have alpha channel" << std::endl;
+    oss << "        pack=<bits>,<format>: pack pixel data in specified bits, example: pack=12,cd,hb,fg" << std::endl;
+    oss << "            <bits>: number of bits, currently only 12-bit packing from 16-bit is supported (pack 2 pixels into 3 bytes)" << std::endl;
+    oss << "            <format>: output pixel formats in quadbits named a,b,c,d,e,f,g,h" << std::endl;
+    oss << "                where 'a' is most significant quadbit, 'd' is least significant quadbit, 'e' is most significant quadbit, 'h' is least significant quadbit" << std::endl;
     oss << "        resize=<factor>[,<interpolation>]; resize=<width>,<height>[,<interpolation>]" << std::endl;
     oss << "            <interpolation>: nearest, linear, area, cubic, lanczos4; default: linear" << std::endl;
     oss << "                             in format <width>,<height>,<interpolation> corresponding numeric values can be used: " << cv::INTER_NEAREST << ", " << cv::INTER_LINEAR << ", " << cv::INTER_AREA << ", " << cv::INTER_CUBIC << ", " << cv::INTER_LANCZOS4 << std::endl;

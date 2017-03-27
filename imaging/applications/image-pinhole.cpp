@@ -125,11 +125,11 @@ int main( int ac, char** av )
         const std::vector< std::string >& unnamed = options.unnamed( "--input-fields,--output-fields,--output-format,--verbose,-v,--flush,--clip,--keep,--normalize", "-.*" );
         if( unnamed.empty() ) { std::cerr << "image-pinhole: please specify operation" << std::endl; return 1; }
         std::string operation = unnamed[0];
-        snark::camera::pinhole pinhole( make_config( options.value< std::string >( "--camera-config,--camera,--config,-c" ) ) );
         comma::csv::options csv( options );
         if( operation == "to-cartesian" )
         {
             output_details< Eigen::Vector2d, Eigen::Vector3d >( options );
+            snark::camera::pinhole pinhole( make_config( options.value< std::string >( "--camera-config,--camera,--config,-c" ) ) );
             comma::csv::input_stream< Eigen::Vector2d > is( std::cin, csv );
             comma::csv::output_stream< Eigen::Vector3d > os( std::cout, csv.binary(), false, csv.flush );
             comma::csv::tied< Eigen::Vector2d, Eigen::Vector3d > tied( is, os );
@@ -146,6 +146,7 @@ int main( int ac, char** av )
         if( operation == "to-pixels" )
         {
             output_details< Eigen::Vector2d, Eigen::Vector2d >( options );
+            snark::camera::pinhole pinhole( make_config( options.value< std::string >( "--camera-config,--camera,--config,-c" ) ) );
             comma::csv::input_stream< Eigen::Vector2d > is( std::cin, csv );
             comma::csv::output_stream< Eigen::Vector2d > os( std::cout, csv.binary(), false, csv.flush );
             comma::csv::tied< Eigen::Vector2d, Eigen::Vector2d > tied( is, os );
@@ -168,6 +169,7 @@ int main( int ac, char** av )
         if( operation == "undistort" )
         {
             output_details< Eigen::Vector2d, Eigen::Vector2d >( options );
+            snark::camera::pinhole pinhole( make_config( options.value< std::string >( "--camera-config,--camera,--config,-c" ) ) );
             comma::csv::input_stream< Eigen::Vector2d > is( std::cin, csv );
             comma::csv::output_stream< Eigen::Vector2d > os( std::cout, csv.binary(), false, csv.flush );
             comma::csv::tied< Eigen::Vector2d, Eigen::Vector2d > tied( is, os );
@@ -182,6 +184,7 @@ int main( int ac, char** av )
         if( operation == "distort" )
         {
             output_details< Eigen::Vector2d, Eigen::Vector2d >( options );
+            snark::camera::pinhole pinhole( make_config( options.value< std::string >( "--camera-config,--camera,--config,-c" ) ) );
             comma::csv::input_stream< Eigen::Vector2d > is( std::cin, csv );
             comma::csv::output_stream< Eigen::Vector2d > os( std::cout, csv.binary(), false, csv.flush );
             comma::csv::tied< Eigen::Vector2d, Eigen::Vector2d > tied( is, os );
@@ -195,6 +198,7 @@ int main( int ac, char** av )
         }
         if( operation=="distortion-map" )
         {
+            snark::camera::pinhole pinhole( make_config( options.value< std::string >( "--camera-config,--camera,--config,-c" ) ) );
             if( !pinhole.distortion_map() ) { std::cerr << "image-pinhole: no distortion specified in config" << std::endl; return 1; }
             pinhole.distortion_map()->write( std::cout );
             return 0;
