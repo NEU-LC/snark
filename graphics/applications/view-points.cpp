@@ -50,6 +50,10 @@
 #include "view_points/controller.h"
 #endif
 
+#if Qt3D_VERSION==2
+#include "view_points/traits.h"
+#endif
+
 static void bash_completion( unsigned const ac, char const * const * av )
 {
     static const char * completion_options =
@@ -739,12 +743,10 @@ int main( int argc, char** argv )
         boost::optional< std::string > s = options.optional< std::string >( "--scene-center,--center" );
         if( s ) { scene_center = comma::csv::ascii< QVector3D >( "x,y,z", ',' ).get( *s ); }
 
-        // TODO: readers are currently not parallel
-        // TODO: for qt3dv1 implementation see Viewer::initializeGL() and, e.g. ShapeReader::start()
         QApplication app(argc, argv);
         snark::graphics::view::main_window main_window;
-        snark::graphics::view::controller controller(background_color, camera_options, options.exists( "--exit-on-end-of-input" ), camera_csv, cameraposition, cameraorientation, 
-                                                     options.exists( "--camera-config" ) ? &camera_config : NULL, scene_center, scene_radius, options.exists( "--output-camera-config,--output-camera" ),&main_window );
+        snark::graphics::view::controller controller(&main_window, background_color, camera_options, options.exists( "--exit-on-end-of-input" ), camera_csv, cameraposition, cameraorientation, 
+                                                     options.exists( "--camera-config" ) ? &camera_config : NULL, scene_center, scene_radius, options.exists( "--output-camera-config,--output-camera" ));
         bool stdin_explicitly_defined = false;
         for( unsigned int i = 0; i < properties.size(); ++i )
         {
@@ -761,12 +763,6 @@ int main( int argc, char** argv )
             controller.inhibit_stdout();
             if( options.exists( "--output-camera-config,--output-camera" ) ) { COMMA_THROW( comma::exception, "cannot use --output-camera-config whilst \"pass-through\" option is in use" ); }
         }
-//         for(auto& i : controller.readers)
-//         {
-//             while( i->read_once() );
-//             Eigen::Vector3d offset = Eigen::Vector3d::Zero(); // todo: this does not look right: this will initialize readers with incorrect offset
-//             i->update( offset );
-//         }
         main_window.resize( main_window.sizeHint() );
         main_window.show();
         return app.exec();

@@ -1,5 +1,5 @@
 // This file is part of snark, a generic and flexible library for robotics research
-// Copyright (c) 2016 The University of Sydney
+// Copyright (c) 2017 The University of Sydney
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -29,9 +29,14 @@
 
 #pragma once
 
-#if Qt3D_VERSION==2
+#if Qt3D_VERSION==1
+#include "qt3d_v1/viewer.h"
 
-#include "../../qt3d/qt3d_v2/gl/widget.h"
+#elif Qt3D_VERSION==2
+#include "qt3d_v2/viewer.h"
+
+#endif
+
 #include <QMainWindow>
 #include <vector>
 #include <memory>
@@ -42,86 +47,42 @@
 #include "boost/scoped_ptr.hpp"
 #endif
 #include "camera_reader.h"
-
-// todo
-// - rename controller into something more meaningful; what does controller control?
-// - add doxygen documentation (a line or two)
-// - more color_t definition into a proper namespace (currently it is not namespaced at all)
-// - what is the difference between view class and controller class? why one needs to be derived from the other? can it be just one class?
-// - since all gets refactored anyway, move traits to traits.h to improve compilation time
-
-typedef snark::graphics::qt3d::gl::color_t color_t;
-
-namespace snark { namespace graphics { namespace qt3d {
-class camera_options;
-} } }
+#include "types.h"
 
 namespace snark { namespace graphics { namespace view {
 
-class view : public qt3d::gl::widget
-{
-protected:
-    QVector3D scene_center;
-    double scene_radius;
-    bool scene_radius_fixed_;
-    bool scene_center_fixed_;
-public:
-    view(const color_t& background_color, const qt3d::camera_options& camera_options, const QVector3D& scene_center, double scene_radius,QMainWindow* parent=NULL) : 
-        qt3d::gl::widget(camera_options,parent),
-        scene_center(scene_center),
-        scene_radius(scene_radius)
-        {
-            scene_radius_fixed_=false;
-            scene_center_fixed_=false;
-        }
-    view(const qt3d::camera_options& camera_options,QMainWindow* parent=NULL) : qt3d::gl::widget(camera_options,parent) { }
-//     double scene_radius() const { return scene_radius_; }
-protected:
-    void updateView( const QVector3D& min, const QVector3D& max )
-    {
-        if( !scene_radius_fixed_ ) { scene_radius = 0.5 * ( max - min ).length(); }
-        if( !scene_center_fixed_ ) { scene_center = 0.5 * ( min + max ); }
-//         updateZFar();
-    }
-    void lookAtCenter()
-    {
-        double r = 1.5 * scene_radius;
-        QVector3D eye( scene_center.x() + r, scene_center.y() + r, scene_center.z() - r );
-//         camera_.setToIdentity();
-//         camera_.lookAt(eye,scene_center,QVector3D(0,0,-1));
-    }
-    boost::optional< Eigen::Vector3d > m_offset;
+#if Qt3D_VERSION==1
+typedef Viewer viewer_t;
+#elif Qt3D_VERSION==2
+typedef qt3d_v2::viewer viewer_t;
+#endif
 
-//from QGLView
-//     QGLCamera * camera() const;
-};
-    
-class controller : public view
+/**
+ * manages readers and camera
+ * contains a viewer which performs the rendering and is Qt3d version dependant
+ */
+class controller : public  controller_base
 {
-    Q_OBJECT
 public:
+    viewer_t* viewer;
     std::vector< std::unique_ptr< snark::graphics::view::Reader > > readers;
-    controller(const qt3d::camera_options& camera_options,QMainWindow* parent=NULL);
     /// @todo split into several constructors; make camera configuration a separate class
-    controller( const color_t& background_color, const qt3d::camera_options& camera_options, bool exit_on_end_of_input
+    controller(QMainWindow* parent, const color_t& background_color, const qt3d::camera_options& camera_options, bool exit_on_end_of_input
               , boost::optional< comma::csv::options > cameracsv //= boost::optional< comma::csv::options >()
               , boost::optional< Eigen::Vector3d > cameraposition //= boost::optional< Eigen::Vector3d >()
               , boost::optional< Eigen::Vector3d > cameraorientation //= boost::optional< Eigen::Vector3d >()
               , boost::property_tree::ptree* camera_config //= NULL // massively quick and dirty
               , const QVector3D& scene_center
               , double scene_radius
-              , bool output_camera_position = false,QMainWindow* parent=NULL );
+              , bool output_camera_position = false);
+    ~controller();
     void inhibit_stdout() { m_stdout_allowed = false; }
-    void shutdown();
-private slots:
+    void shutdown(bool kill=true);
+    void tick() { read(); }
+
     void read();
 
 private:
-//         void initializeGL( QGLPainter *painter );
-//         void paintGL( QGLPainter *painter );
-    void setCameraPosition( const Eigen::Vector3d& position, const Eigen::Vector3d& orientation );
-//     virtual void mouse_double_right_click_event( QMouseEvent *e );
-    
     bool m_shutdown;
     bool m_lookAt;
     boost::scoped_ptr< CameraReader > m_cameraReader;
@@ -134,40 +95,9 @@ private:
     
 public:
     void add(std::unique_ptr<snark::graphics::view::Reader>&& reader);
-    
-protected:
-    //should be called once when opengl is setup
     void init();
     void update_shapes();
 };
-
     
 } } } // namespace snark { namespace graphics { namespace view {
     
-namespace comma { namespace visiting {
-
-template <> struct traits< QVector3D >
-{
-    template < typename Key, class Visitor >
-    static void visit( Key, QVector3D& p, Visitor& v )
-    {
-        double d;
-        d= p.x(); v.apply( "x", d ); p.setX( d );
-        d = p.y(); v.apply( "y", d ); p.setY( d );
-        d = p.z(); v.apply( "z", d ); p.setZ( d );
-    }
-
-    template < typename Key, class Visitor >
-    static void visit( Key, const QVector3D& p, Visitor& v )
-    {
-        v.apply( "x", p.x() );
-        v.apply( "y", p.y() );
-        v.apply( "z", p.z() );
-    }
-};
-
-    
-} } // namespace comma { namespace visiting {
-   
-
-#endif
