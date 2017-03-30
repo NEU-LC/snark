@@ -2622,13 +2622,13 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
         }
         else if( e[0] == "pack" )
         {
-            if( e.size() < 2 ) { COMMA_THROW( comma::exception, "missing arguments" ); }
+            if( e.size() < 2 ) { COMMA_THROW( comma::exception, "pack: missing arguments" ); }
             f.push_back( filter_type( pack_impl_< H >( e[1] ) ) );
         }
         else if( e[0] == "unpack" )
         {
-            if(e.size()<2) { COMMA_THROW( comma::exception, "missing arguements"); }
-            f.push_back( filter_type(unpack_impl_<H>(e[1])) );
+            if( e.size() < 2 ) { COMMA_THROW( comma::exception, "unpack: missing arguements"); }
+            f.push_back( filter_type( unpack_impl_< H >( e[1] ) ) );
         }
         else if( e[0] == "unpack12" )
         {
