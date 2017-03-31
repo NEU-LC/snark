@@ -51,6 +51,8 @@ static void usage( bool verbose )
     std::cerr << "options" << std::endl;
     std::cerr << "    --strict: exit on parsing errors" << std::endl;
     std::cerr << "    --verbose,-v: more output" << std::endl;
+    std::cerr << "    --output-fields: show output fields of given operation and exit." << std::endl;
+    std::cerr << "    --output-format: show binary format of the output of given operation and exit." << std::endl;
     std::cerr << std::endl;
     std::cerr << "binary options:" << std::endl;
     if( verbose ) { std::cerr << comma::csv::options::usage() << std::endl; } else { std::cerr << "    run mavlink-to-csv --help --verbose for more..." << std::endl; }

@@ -48,12 +48,7 @@
 #include "../../qt3d/qt3d_v2/gl/shapes.h"
 #include <memory>
 #endif
-
-#if Qt3D_VERSION==1
-typedef QColor4ub color_t;
-#else
-typedef snark::graphics::qt3d::gl::color_t color_t;
-#endif
+#include "types.h"
 
 namespace snark { namespace graphics { namespace view {
 

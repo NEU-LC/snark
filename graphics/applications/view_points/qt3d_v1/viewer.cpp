@@ -143,7 +143,7 @@ void Viewer::read()
     }
     if( !m_cameraReader && m_cameraposition )
     {
-        setCameraPosition( *m_cameraposition, *m_cameraorientation );
+        set_camera_position( *m_cameraposition, *m_cameraorientation );
         m_cameraposition.reset();
         m_cameraorientation.reset();
     }
@@ -155,7 +155,7 @@ void Viewer::read()
         {
             m_cameraposition = position;
             m_cameraorientation = orientation;
-            setCameraPosition( position, orientation );
+            set_camera_position( position, orientation );
         }
     }
     else if( readers[0]->m_extents && readers[0]->m_num_points > 0 && ( m_shutdown || ready_to_look || readers[0]->m_num_points >= readers[0]->size / 10 ) )
@@ -187,7 +187,7 @@ void Viewer::paintGL( QGLPainter *painter )
     if( camera_position_output_ && m_stdout_allowed ) { camera_position_output_->write(); }
 }
 
-void Viewer::setCameraPosition ( const Eigen::Vector3d& position, const Eigen::Vector3d& orientation )
+void Viewer::set_camera_position ( const Eigen::Vector3d& position, const Eigen::Vector3d& orientation )
 {
     Eigen::Vector3d p = position - *m_offset;
     camera()->setUpVector( QVector3D( 0, 0, m_z_up ? 1 : -1 ) );

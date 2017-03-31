@@ -39,30 +39,21 @@
 #include <comma/name_value/ptree.h>
 #include <comma/visiting/apply.h>
 #endif
-#include <QTimer>
 
 #if Qt3D_VERSION==2
 
-
 namespace snark { namespace graphics { namespace view {
 
-controller::controller(const qt3d::camera_options& camera_options,QMainWindow* parent) : view(camera_options,parent)
-{
-    parent->setCentralWidget(this);
-}
 void controller::add(std::unique_ptr<snark::graphics::view::Reader>&& reader)
 {
+#if Qt3D_VERSION==2
     std::shared_ptr<snark::graphics::qt3d::gl::shape> shape=reader->make_shape();
     if(shape)
-        shapes.push_back(shape);
+        viewer->shapes.push_back(shape);
+#endif
     readers.push_back(std::move(reader));
 }
-// void controller::init()
-// {
-//     begin_update();
-//     for(auto& i : readers) { i->update_shape(); }
-//     end_update();
-// }
+
 void controller::init()
 {
     if( m_cameraReader ) { m_cameraReader->start(); }
@@ -71,12 +62,14 @@ void controller::init()
 
 void controller::update_shapes()
 {
-    begin_update();
+#if Qt3D_VERSION==2
+    viewer->begin_update();
     for(auto& i : readers) { i->update_shape(); }
-    end_update();
+    viewer->end_update();
+#endif
 }
 
-controller::controller( const color_t& background_color
+controller::controller(QMainWindow* parent, const color_t& background_color
               , const qt3d::camera_options& camera_options
               , bool exit_on_end_of_input
               , boost::optional< comma::csv::options > camera_csv
@@ -85,19 +78,21 @@ controller::controller( const color_t& background_color
               , boost::property_tree::ptree* camera_config
               , const QVector3D& scene_center
               , double scene_radius
-              , bool output_camera_position,QMainWindow* parent )
-    : view( background_color, camera_options, scene_center, scene_radius,parent)
-    , m_lookAt( false )
+              , bool output_camera_position)
+    : m_lookAt( false )
     , m_cameraposition( cameraposition )
     , m_cameraorientation( cameraorientation )
     , m_stdout_allowed( true )
     , m_exit_on_end_of_input( exit_on_end_of_input )
 {
-    parent->setCentralWidget(this);
+#if Qt3D_VERSION==1
+//     viewer=new viewer_t(background_color, camera_options, scene_center, scene_radius,parent);
+    COMMA_THROW( comma::exception," not implemented ");
+#elif Qt3D_VERSION==2
+    viewer=new viewer_t(this,background_color, camera_options, scene_center, scene_radius,parent);
+    parent->setCentralWidget(viewer);
+#endif
 //     if( output_camera_position ) { camera_position_output_.reset( new camera_position_output( *this ) ); }
-    QTimer* timer = new QTimer( this );
-    timer->start( 40 );
-    connect( timer, SIGNAL( timeout() ), this, SLOT( read() ) );
     if( camera_csv ) { m_cameraReader.reset( new CameraReader( *camera_csv ) ); }
     if( camera_config )
     {
@@ -107,33 +102,45 @@ controller::controller( const color_t& background_color
     m_cameraFixed = m_cameraposition || m_cameraReader || camera_config;
 }
 
-void controller::shutdown()
+controller::~controller()
+{
+    //don't delete viewer it will be deleted by main window
+    viewer->reset_handler();
+//     delete viewer;
+//     viewer=NULL;
+    shutdown(false);
+}
+
+void controller::shutdown(bool kill)
 {
     m_shutdown = true;
+    if(kill)
+    {
     #ifdef WIN32
-    ::raise( SIGTERM ); // according to windows docs, SIGINT does not work on windows
+        ::raise( SIGTERM ); // according to windows docs, SIGINT does not work on windows
     #else // #ifdef WIN32
-    ::raise( SIGINT ); // quick and dirty... or maybe not so dirty: to interrupt blocking read() in reader threads, if closed from qt window
+        ::raise( SIGINT ); // quick and dirty... or maybe not so dirty: to interrupt blocking read() in reader threads, if closed from qt window
     #endif // #ifdef WIN32
+    }
     if( m_cameraReader ) { m_cameraReader->shutdown(); }
     for(auto& i : readers) { i->shutdown(); }
 }
 
-
 void controller::read()
 {
-    for( unsigned int i = 0; !m_offset && i < readers.size(); ++i )
+//     if(viewer==NULL) return;
+    for( unsigned int i = 0; !viewer->m_offset && i < readers.size(); ++i )
     {
         if( readers[i]->empty() ) { continue; }
         Eigen::Vector3d p = readers[i]->somePoint();
-        m_offset = std::fabs( p.x() ) > 1000 || std::fabs( p.y() ) > 1000 || std::fabs( p.z() ) > 1000 ? p : Eigen::Vector3d( 0, 0, 0 );
-        std::cerr << "view-points: reader no. " << i << " scene offset (" << m_offset->transpose() << "); scene radius: " << scene_radius << std::endl;
+        viewer->m_offset = std::fabs( p.x() ) > 1000 || std::fabs( p.y() ) > 1000 || std::fabs( p.z() ) > 1000 ? p : Eigen::Vector3d( 0, 0, 0 );
+        std::cerr << "view-points: reader no. " << i << " scene offset (" << viewer->m_offset->transpose() << "); scene radius: " << viewer->scene_radius << std::endl;
     }
-    if( !m_offset ) { return; }
+    if( !viewer->m_offset ) { return; }
     bool need_update = false;
     for( unsigned int i = 0; i < readers.size(); ++i )
     {
-        if( readers[i]->update( *m_offset ) > 0 ) { need_update = true; };
+        if( readers[i]->update( *viewer->m_offset ) > 0 ) { need_update = true; };
     }
     m_shutdown = true;
     bool ready_to_look = true;
@@ -144,7 +151,7 @@ void controller::read()
     }
     if( !m_cameraReader && m_cameraposition )
     {
-        setCameraPosition( *m_cameraposition, *m_cameraorientation );
+        viewer->set_camera_position( *m_cameraposition, *m_cameraorientation );
         m_cameraposition.reset();
         m_cameraorientation.reset();
     }
@@ -156,33 +163,28 @@ void controller::read()
         {
             m_cameraposition = position;
             m_cameraorientation = orientation;
-            setCameraPosition( position, orientation );
+            viewer->set_camera_position( position, orientation );
         }
     }
     else if( readers[0]->m_extents && readers[0]->m_num_points > 0 && ( m_shutdown || ready_to_look || readers[0]->m_num_points >= readers[0]->size / 10 ) )
     {
         QVector3D min( readers[0]->m_extents->min().x(), readers[0]->m_extents->min().y(), readers[0]->m_extents->min().z() );
         QVector3D max( readers[0]->m_extents->max().x(), readers[0]->m_extents->max().y(), readers[0]->m_extents->max().z() );
-        updateView( min, max );
+        viewer->update_view( min, max );
         if( !m_cameraFixed && !m_lookAt )
         {
             m_lookAt = true;
-            lookAtCenter();
+            viewer->look_at_center();
         }
     }
     if( need_update )
     {
         update_shapes();
-        update();
+        viewer->update();
     }
     if( m_shutdown && m_exit_on_end_of_input ) { shutdown(); }
 }
 
-void controller::setCameraPosition( const Eigen::Vector3d& position, const Eigen::Vector3d& orientation )
-{
-    //to do
-}
-
 } } } // namespace snark { namespace graphics { namespace view {
-    
+
 #endif

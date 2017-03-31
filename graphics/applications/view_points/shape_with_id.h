@@ -47,12 +47,7 @@
 #include "../../../graphics/qt3d/qt3d_v2/gl/shapes.h"
 #endif
 #include <memory>
-
-#if Qt3D_VERSION==1
-typedef QColor4ub color_t;
-#else
-typedef snark::graphics::qt3d::gl::color_t color_t;
-#endif
+#include "types.h"
 
 namespace snark { namespace graphics { namespace view {
 
@@ -469,6 +464,38 @@ template <> struct draw_traits_< how_t::connected >
         if( size > 1 ) { painter->draw( QGL::Lines, size - 1, 1 ); }
     }
 };
+#elif Qt3D_VERSION==2
+typedef std::shared_ptr<snark::graphics::qt3d::gl::shape> gl_shape_ptr_t;
+
+template<typename T> struct how_traits
+{
+//     static gl_shape_ptr_t make_shape(unsigned point_size) { return gl_shape_ptr_t(); }
+};
+template<> struct how_traits<how_t::points>
+{
+    typedef snark::graphics::qt3d::gl::shapes::point shape_t;
+    static gl_shape_ptr_t make_shape(unsigned point_size)
+    {
+        return gl_shape_ptr_t(new shape_t(point_size));
+    }
+};
+template<> struct how_traits<how_t::loop>
+{
+    typedef snark::graphics::qt3d::gl::shapes::line_loop shape_t;
+    static gl_shape_ptr_t make_shape(unsigned point_size)
+    {
+        return gl_shape_ptr_t(new shape_t());
+    }
+};
+template<> struct how_traits<how_t::connected>
+{
+    typedef snark::graphics::qt3d::gl::shapes::line_strip shape_t;
+    static gl_shape_ptr_t make_shape(unsigned point_size)
+    {
+        return gl_shape_ptr_t(new shape_t());
+    }
+};
+
 #endif
 
 template< typename How >
@@ -481,9 +508,9 @@ struct Shapetraits< Eigen::Vector3d, How >
 
     
 #if Qt3D_VERSION==2
-    static std::shared_ptr<snark::graphics::qt3d::gl::shape> make_shape(unsigned point_size)
+    static gl_shape_ptr_t make_shape(unsigned point_size)
     {
-        return std::shared_ptr<snark::graphics::qt3d::gl::shape>(new snark::graphics::qt3d::gl::shapes::point(point_size));
+        return how_traits<How>::make_shape(point_size);
     }
 #endif
 

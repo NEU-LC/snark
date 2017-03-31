@@ -34,19 +34,9 @@
 #define SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_COLORED_H_
 
 #include <string>
-#if Qt3D_VERSION==1
-#include <Qt3D/qcolor4ub.h>
-#else
-#include "../../../graphics/qt3d/qt3d_v2/gl/types.h"
-#endif
+#include "types.h"
 #include "../../../render/colour_map.h"
 #include "point_with_id.h"
-
-#if Qt3D_VERSION==1
-typedef QColor4ub color_t;
-#else
-typedef snark::graphics::qt3d::gl::color_t color_t;
-#endif
 
 namespace snark { namespace graphics { namespace view {
 

@@ -77,7 +77,7 @@ class Viewer : public qt3d::view
     private:
         void initializeGL( QGLPainter *painter );
         void paintGL( QGLPainter *painter );
-        void setCameraPosition( const Eigen::Vector3d& position, const Eigen::Vector3d& orientation );
+        void set_camera_position( const Eigen::Vector3d& position, const Eigen::Vector3d& orientation );
         virtual void mouse_double_right_click_event( QMouseEvent *e );
 
         bool m_shutdown;
@@ -100,6 +100,8 @@ class Viewer : public qt3d::view
         boost::scoped_ptr< camera_position_output > camera_position_output_;
         bool m_stdout_allowed;
         bool m_exit_on_end_of_input;
+        void look_at_center() { lookAtCenter(); }
+        void update_view(const QVector3D& min, const QVector3D& max) { updateView(min,max); }
 };
 
 } } } // namespace snark { namespace graphics { namespace view {
