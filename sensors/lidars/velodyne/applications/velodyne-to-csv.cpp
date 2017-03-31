@@ -117,6 +117,7 @@ static void usage( bool )
     std::cerr << "    --fields <fields>: e.g. t,x,y,z,scan" << std::endl;
     std::cerr << "    --format: output full binary format and exit (see examples)" << std::endl;
     std::cerr << "    --min-range=<value>: do not output points closer than <value>; default 0" << std::endl;
+    std::cerr << "    --max-range=<value>: do not output points farther away than <value>; default output all points" << std::endl;
     std::cerr << "    --output-invalid-points: output also invalid laser returns" << std::endl;
     std::cerr << "    --scans [<from>]:[<to>] : output only scans in given range" << std::endl;
     std::cerr << "                               e.g. 1:3 for scans 1, 2, 3" << std::endl;
@@ -262,6 +263,7 @@ int main( int ac, char** av )
         options.assert_mutually_exclusive( "--pcap,--thin,--udp-port,--proprietary,-q" );
         options.assert_mutually_exclusive( "--puck,--db" );
         double min_range = options.value( "--min-range", 0.0 );
+        boost::optional<double> max_range=options.optional<double>("--max-range");
         bool raw_intensity=options.exists( "--raw-intensity" );
         bool legacy = options.exists( "--legacy");
         adjust_timestamp adjust_timestamp_functor( options.value<std::string>("--adjusted-time","")
@@ -297,6 +299,7 @@ int main( int ac, char** av )
         while( !is_shutdown && v.read() )
         { 
             if( v.point().range < min_range ) { continue; }
+            if( max_range && v.point().range > *max_range ) { continue; }
             snark::velodyne_point p = v.point();
             p.timestamp = adjust_timestamp_functor( p.timestamp );
             ostream.write( p );
