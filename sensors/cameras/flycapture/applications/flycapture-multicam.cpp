@@ -60,6 +60,7 @@ int main( int argc, char** argv )
         unsigned int discard;
         boost::program_options::options_description description( "options" );
         std::vector<snark::cameras::flycapture::camera::multicam::camera_pair> cameras;
+        std::string timestamp_time_option;
         std::string use_software_trigger_option;
         std::vector< unsigned int > offsets;
 
@@ -69,6 +70,7 @@ int main( int argc, char** argv )
             ( "trigger", boost::program_options::value< std::string >( &use_software_trigger_option )->default_value( "software" ), "sets trigger type software|hardware" )
             ( "fields,f", boost::program_options::value< std::string >( &fields )->default_value( "t,rows,cols,type" ), "header fields, possible values: t,rows,cols,type,size" )
             ( "offsets,o", boost::program_options::value< std::string >( &offsets_option ), "frame offsets for each camera to eliminate frame offset and synchronise frames e.g. --offsets=0,1 to offset second camera" )
+            ( "timestamp", boost::program_options::value< std::string >( &timestamp_time_option )->default_value( "before" ), "when to take the timestamp of the frame (before or after reading data from the camera, or the average of the two)" )
             ( "list-cameras", "list all cameras and exit" )
             ( "list-attributes", "output current camera attributes" )
             ( "verbose,v", "be more verbose" )
@@ -163,6 +165,10 @@ int main( int argc, char** argv )
 
         bool use_software_trigger;
         use_software_trigger_option == "hardware" ? use_software_trigger = false : use_software_trigger = true;
+        snark::cameras::flycapture::moment when( timestamp_time_option );
+        if ( use_software_trigger && when.value != snark::cameras::flycapture::moment::none ) {
+            COMMA_THROW( comma::exception, "cannot specify timestamp capture moment when using software trigger" );
+        }
         
         if ( vm.count( "discard" ) ) { discard = 1; }
         discard_more_than = discard;
@@ -188,7 +194,7 @@ int main( int argc, char** argv )
         // Initialise output image, assumes all images of same type
         {
             int rows = 0, cols = 0, type = 0;
-            for (auto& frame : multicam->read( use_software_trigger ).second)
+            for (auto& frame : multicam->read( when, use_software_trigger ).second)
             {
                 rows += frame.rows;
                 cols = std::max(cols, frame.cols);
@@ -201,7 +207,7 @@ int main( int argc, char** argv )
 
         while( !is_shutdown && running )
         {
-            auto frames_pair = multicam->read( use_software_trigger );
+            auto frames_pair = multicam->read( when, use_software_trigger );
             int y = 0;
             for (uint camera_number = 0; camera_number < frames_pair.second.size(); ++camera_number)
             {

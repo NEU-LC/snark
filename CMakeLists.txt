@@ -359,6 +359,18 @@ IF( snark_build_sensors_asd )
                              optimized snark_asd )
 ENDIF( snark_build_sensors_asd )
 
+if( snark_build_sensors_kinect )
+  find_path( LIBUSB_INCLUDE_DIR  NAMES libusb.h  PATH_SUFFIXES "include" "libusb" "libusb-1.0")
+
+  # todo: find usb library
+  #find_library( LIBUSB_LIBRARY NAMES usb PATH_SUFFIXES "lib" "lib32" "lib64" "x86_64-linux-gnu" )
+  find_library( LIBUSB_LIBRARY NAMES usb HINTS /usr/lib/x86_64-linux-gnu )
+
+  
+  find_package( OpenCL REQUIRED )
+  find_package( freenect2 REQUIRED )
+endif( snark_build_sensors_kinect )
+
 SET( snark_ALL_LIBRARIES ${snark_ALL_LIBRARIES} debug snark_math-d
                          optimized snark_math
                          debug snark_math_spherical_geometry-d

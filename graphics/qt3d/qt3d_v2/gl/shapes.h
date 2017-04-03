@@ -82,6 +82,30 @@ protected:
     void paint();
 };
 
+class lines : public shape
+{
+public:
+    lines();
+protected:
+    void paint();
+};
+
+class line_strip : public shape
+{
+public:
+    line_strip();
+protected:
+    void paint();
+};
+
+class line_loop : public shape
+{
+public:
+    line_loop();
+protected:
+    void paint();
+};
+
 } // namespace shapes {
 
 } } } } // namespace snark { namespace graphics { namespace qt3d { namespace gl {

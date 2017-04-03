@@ -116,6 +116,11 @@ static void usage( bool more = false )
     std::cerr << "            --next: for subsequent points only, distance to next point is appended" << std::endl;
     std::cerr << "                    (default: distance to previous point is appended)" << std::endl;
     std::cerr << "                    fake zero is appended to the final point (since there is no next point)" << std::endl;
+    std::cerr << "            --propagate: if the current point is the same as previous, output distance from one step before" << std::endl;
+    std::cerr << "                    e.g: ( echo 0,0,0 ; echo 0,0,1 ; echo 0,0,1 ) | points-calc distance --propagate" << std::endl;
+    std::cerr << "                         0,0,0,0" << std::endl;
+    std::cerr << "                         0,0,1,1" << std::endl;
+    std::cerr << "                         0,0,1,1" << std::endl;
     std::cerr << std::endl;
     std::cerr << "        input fields: " << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
     std::cerr << std::endl;
@@ -194,16 +199,19 @@ static void usage( bool more = false )
     exit( 0 );
 }
 
-static void calculate_distance( bool cumulative )
+static void calculate_distance( bool cumulative, bool propagate = false )
 {
     comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, csv );
     boost::optional< Eigen::Vector3d > last;
     double distance = 0;
+    double previous_norm = 0;
+    if( cumulative && propagate ) { std::cerr << "points-calc: cumulative distance or propagate are mutually exclusive" << std::endl; exit( 1 ); }
     while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
     {
         const Eigen::Vector3d* p = istream.read();
         if( !p ) { break; }
         double norm = last ? ( *p - *last ).norm() : 0;
+        if( propagate ) { if( comma::math::equal( norm, 0 ) ) { norm = previous_norm; } else { previous_norm = norm; } }
         distance = cumulative ? distance + norm : norm;
         last = *p;
         if( csv.binary() )
@@ -219,10 +227,11 @@ static void calculate_distance( bool cumulative )
     }
 }
 
-static void calculate_distance_next()
+static void calculate_distance_next( bool propagate )
 {
     comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, csv );
     boost::optional< Eigen::Vector3d > last;
+    double previous_norm = 0;
     while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
     {
         const Eigen::Vector3d* p = istream.read();
@@ -230,6 +239,7 @@ static void calculate_distance_next()
         if( last )
         {
             double distance = ( *p - *last ).norm();
+            if( propagate ) { if( comma::math::equal( distance, 0 ) ) { distance = previous_norm; } else { previous_norm = distance; } }
             if( csv.binary() )
             {
                 std::cout.write( reinterpret_cast< const char* >( &distance ), sizeof( double ) );
@@ -257,14 +267,16 @@ static void calculate_distance_next()
     }
 }
 
-static void calculate_distance_for_pairs()
+static void calculate_distance_for_pairs( bool propagate )
 {
     comma::csv::input_stream< point_pair_t > istream( std::cin, csv );
+    double previous_norm = 0;
     while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
     {
         const point_pair_t* p = istream.read();
         if( !p ) { break; }
         double norm = ( p->first - p->second ).norm();
+        if( propagate ) { if( comma::math::equal( norm, 0 ) ) { norm = previous_norm; } else { previous_norm = norm; } }
         if( csv.binary() )
         {
             std::cout.write( istream.binary().last(), istream.binary().binary().format().size() );
@@ -742,16 +754,17 @@ int main( int ac, char** av )
         {
             if( options.exists("--output-fields" )){ std::cout << "distance" << std::endl; return 0; }
             if( options.exists("--output-format" )){ std::cout << "d" << std::endl; return 0; }
+            bool propagate = options.exists( "--propagate" );
             if(    csv.has_field( "first" )   || csv.has_field( "second" )
                 || csv.has_field( "first/x" ) || csv.has_field( "second/x" )
                 || csv.has_field( "first/y" ) || csv.has_field( "second/y" )
                 || csv.has_field( "first/z" ) || csv.has_field( "second/z" ) )
             {
-                calculate_distance_for_pairs();
+                calculate_distance_for_pairs( propagate );
                 return 0;
             }
-            if ( options.exists( "--next" ) ) { calculate_distance_next(); }
-            else { calculate_distance( false ); }
+            if ( options.exists( "--next" ) ) { calculate_distance_next( propagate ); }
+            else { calculate_distance( false, propagate ); }
             return 0;
         }
         if( operation == "cumulative-distance" )
