@@ -43,6 +43,31 @@
 
 namespace snark { namespace cameras { namespace flycapture {
 
+struct moment {
+    // possible values for the '--timestamp=' option
+    enum moments {
+        none = 0,
+        before,
+        after,
+        average
+    };
+
+    moments value;
+    moment( const std::string & s = "none" ) : value( s == "before" ? before : ( s == "after" ? after : ( s == "average" ? average : none ) ) ) {}
+
+    operator std::string() const
+    {
+        switch( value )
+        {
+            case(before) : return "before";
+            case(after)  : return "after";
+            case(average): return "average";
+            case(none)   : return "none";
+        }
+    }
+    static std::string list() { return "none,before,after,average"; }
+};
+
 /// image acquisition from flycapture camera
 class camera
 {
@@ -100,7 +125,7 @@ class camera
                 void trigger();
 
                 /// return the images and timestamp
-                frames_pair read( bool use_software_trigger = true );
+                frames_pair read( const snark::cameras::flycapture::moment & when, bool use_software_trigger = true );
                 
                 /// return true, if multicam status is ok
                 bool good() const;
