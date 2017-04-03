@@ -363,7 +363,7 @@ namespace snark{ namespace cameras{ namespace flycapture{
             }
         }
 
-        camera::multicam::frames_pair read( bool use_software_trigger )
+        camera::multicam::frames_pair read( const snark::cameras::flycapture::moment & when, bool use_software_trigger )
         {
             if (!good) { COMMA_THROW(comma::exception, "multicam read without good cameras"); }
             camera::multicam::frames_pair image_tuple;
@@ -374,12 +374,16 @@ namespace snark{ namespace cameras{ namespace flycapture{
                 boost::posix_time::ptime end = boost::posix_time::microsec_clock::universal_time();
                 timestamp = midpoint(timestamp, end);
             }
-            image_tuple.first = timestamp;
+            bool first = true;
             for (auto& camera : cameras_)
             {
                 const auto pair = camera->read();
+                if ( first && when.value == snark::cameras::flycapture::moment::camera ) { first = false; timestamp = boost::posix_time::microsec_clock::universal_time(); }
                 image_tuple.second.push_back(pair.second);
             }
+            if ( when.value == snark::cameras::flycapture::moment::after ) { timestamp = boost::posix_time::microsec_clock::universal_time(); }
+            if ( when.value == snark::cameras::flycapture::moment::average ) { timestamp = timestamp + ( boost::posix_time::microsec_clock::universal_time() - timestamp ) / 2.0; }
+            image_tuple.first = timestamp;
             return image_tuple;
         }
 
@@ -423,8 +427,8 @@ namespace snark{ namespace cameras{ namespace flycapture{
         void camera::multicam::trigger()
         { pimpl_->trigger(); }
 
-        camera::multicam::frames_pair camera::multicam::read( bool use_software_trigger )
-        { return pimpl_->read( use_software_trigger ); }
+        camera::multicam::frames_pair camera::multicam::read( const snark::cameras::flycapture::moment & when, bool use_software_trigger )
+        { return pimpl_->read( when, use_software_trigger ); }
 
 } } } //namespace snark{ namespace cameras{ namespace flycapture{
 

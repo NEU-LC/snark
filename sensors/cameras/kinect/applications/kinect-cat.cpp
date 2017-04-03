@@ -31,6 +31,7 @@
 
 #include <Eigen/Core>
 #include <comma/application/command_line_options.h>
+#include <comma/base/types.h>
 #include <comma/csv/stream.h>
 #include <comma/csv/traits.h>
 #include <comma/string/string.h>
@@ -49,6 +50,7 @@
 #include <comma/name_value/serialize.h>
 #include <snark/imaging/camera/pinhole.h>
 #include <snark/imaging/camera/traits.h>
+#include <cmath>
 
 static void usage( bool verbose )
 {
@@ -234,12 +236,20 @@ int main( int ac, char** av )
         int deviceId = -1;
         if( options.exists( "--cuda" ))
         {
-            std::cerr << "kinect-cat: here, pipeline: " << pipeline << std::endl;
+            //std::cerr << "kinect-cat: here, pipeline: " << pipeline << std::endl;
             if(!pipeline)
             {
                 //std::cerr << "kinect-cat: Using cuda pipeline" << std::endl;
                 pipeline = new libfreenect2::CudaPacketPipeline(deviceId);
                 std::cerr << "kinect-cat: Using cuda pipeline" << std::endl;
+            }
+        }
+        else if( options.exists( "--cudakde" ))
+        {
+            if(!pipeline)
+            {
+                pipeline = new libfreenect2::CudaKdePacketPipeline(deviceId);
+                std::cerr << "kinect-cat: Using cudakde pipeline" << std::endl;
             }
         }
         else if( options.exists( "--cl" ))
@@ -248,6 +258,14 @@ int main( int ac, char** av )
             {
                 pipeline = new libfreenect2::OpenCLPacketPipeline(deviceId);
                 std::cerr << "kinect-cat: Using cl pipeline" << std::endl;
+            }
+        }
+        else if( options.exists( "--clkde" ))
+        {
+            if(!pipeline)
+            {
+                pipeline = new libfreenect2::OpenCLKdePacketPipeline(deviceId);
+                std::cerr << "kinect-cat: Using clkde pipeline" << std::endl;
             }
         }
         // else if( options.exists( "--gl" ))
@@ -291,6 +309,17 @@ int main( int ac, char** av )
             return 0;
         }
 
+        bool outputpcl = false;
+        bool outputz = false;
+        if( options.exists( "--output-pcl" ))
+        {
+        	outputpcl = true;
+        }
+        else if( options.exists( "--output-z" ))
+        {
+        	outputz = true;
+        }
+
         bool enable_rgb = false;
         bool enable_depth = true;
         /// [listeners]
@@ -331,9 +360,16 @@ int main( int ac, char** av )
         ///
         ///
         std::string        fields = "t,rows,cols,type";
+        if(outputpcl) { fields = "t"; }
         bool               header_only = false;
 
         comma::csv::format format( "t,3ui" );
+
+        // if(outputpcl) 
+        // { 
+        // 	comma::csv::format formatpcl( "t");
+        // 	format = formatpcl;
+        // }
 
         if( options.exists( "--no-header" ))
         {
@@ -432,8 +468,9 @@ int main( int ac, char** av )
         uint libfreenect2_offset = 0;
         /// [loop start]
         comma::signal_flag is_shutdown;
-        while(!is_shutdown)
+        while( !is_shutdown )
         {
+        	std::cerr << "--> 0: is_shutdown: " << ( is_shutdown ? "set" : "not set" ) << std::endl;
             if (!listener.waitForNewFrame(frames, 10*1000)) // 10 seconds
             {
               std::cerr << "kinect-cat: timeout!" << std::endl;
@@ -459,19 +496,56 @@ int main( int ac, char** av )
                     height_ir, width_ir,
                     CV_32FC1, depth_undistorted.data);
 
+            cv::Mat depthMat_range = cv::Mat(height_ir, width_ir, CV_16UC1);
+            cv::Mat depthMat_x = cv::Mat(height_ir, width_ir, CV_16UC1);
+            cv::Mat depthMat_y = cv::Mat(height_ir, width_ir, CV_16UC1);
+            cv::Mat depthMat_z = cv::Mat(height_ir, width_ir, CV_16UC1);
+            float x, y, z;
+            for (unsigned int r=0; r<height_ir; ++r)
+            {
+    			for (unsigned int c=0; c<width_ir; ++c)
+    			{
+    				registration->getPointXYZ(&depth_undistorted, r, c, x,y,z);
+    				if(std::isnan(x)) { x = 0.;}
+    				if(std::isnan(y)) { y = 0.;}
+    				if(std::isnan(z)) { z = 0.;}
+    				float range = sqrt(x *x + y * y + z * z);
+    				if(std::isnan(range)) { range = 0.;}
+    				
+    				depthMat_range.at<comma::int16>(r, c) = comma::int16(range * 1000);
+    				depthMat_x.at<comma::int16>(r, c) = comma::int16(x * 1000);
+    				depthMat_y.at<comma::int16>(r, c) = comma::int16(y * 1000);
+    				depthMat_z.at<comma::int16>(r, c) = comma::int16(z * 1000);
+
+    			}
+            }
+      
+
             cv::Mat A = cv::Mat::ones(height_ir, width_ir, CV_32FC1) / 1000;
-            cv::Mat depthMat_si = depthMat.mul(A); //depth in m instead of mm
+            // cv::Mat depthMat_si = depthMat.mul(A); //depth in m instead of mm
             cv::Mat depthMat_undistorted_si = depthMat_undistorted.mul(A); //depth in m instead of mm
+            cv::Mat depthMat_undistorted_uint16 = cv::Mat(height_ir, width_ir, CV_16UC1);
+            depthMat_undistorted.convertTo(depthMat_undistorted_uint16, CV_16UC1);
 
-            cv::Mat B = cv::Mat::ones(height_ir, width_ir, CV_32FC1) / 65535;
-            cv::Mat irMat_01 = irMat.mul(B); //intensity values between 0 and 1
+            // cv::Mat B = cv::Mat::ones(height_ir, width_ir, CV_32FC1) / 65535;
+            // cv::Mat irMat_01 = irMat.mul(B); //intensity values between 0 and 1
+            cv::Mat irMat_uint16 = cv::Mat(height_ir, width_ir, CV_16UC1);
+            irMat.convertTo(irMat_uint16, CV_16UC1);
 
-            cv::Mat frame(height_ir, width_ir, CV_32FC2); // 2 channel image
+            //depthMat_range.convertTo(depthMat_range_uint16, CV_16UC1);
+
+            cv::Mat frame(height_ir, width_ir, CV_16UC3); // 2 channel image
+            // cv::Mat frame(height_ir, width_ir, CV_32FC3); // 2 channel image
             
             std::vector<cv::Mat> channels;
-            channels.push_back(irMat_01);
-            channels.push_back(depthMat_undistorted_si);
-            //channels.push_back(depthMat_si);
+            // channels.push_back(irMat_01);
+            channels.push_back(irMat_uint16);
+            channels.push_back(depthMat_undistorted_uint16);
+            // channels.push_back(depthMat_si);
+            channels.push_back(depthMat_range);
+            // channels.push_back(depthMat_x);
+            // channels.push_back(depthMat_y);
+            // channels.push_back(depthMat_z);
             cv::merge(channels, frame);
 
 
@@ -492,8 +566,11 @@ int main( int ac, char** av )
             // pair.first = timestamp2; // I don't trust this timestamp as I get framerates >30 Hz
             pair.first = timestamp1; // here I get very close to 30 Hz
             pair.second = frame;
-            serialization.write_to_stdout(pair, true);
-
+            // todo: investigate
+            // the following is the right way of doing it (see note in imaging/cv_mat/serialization.cpp),
+            // but it blocks most of the time on signal in a very strange way:
+            // serialization.write_to_stdout(pair, true);
+            serialization.write( std::cout, pair, true );
 
 // content of libfreenect2::Frame
 //            size_t width;           ///< Length of a line (in pixels).
@@ -511,11 +588,13 @@ int main( int ac, char** av )
             listener.release(frames);
 
         }
-
+        std::cerr << "kinect-cat: stopping..." << std::endl;
         // these should be closed on SIGINT
         /// [stop]
         dev->stop();
+        std::cerr << "kinect-cat: closing..." << std::endl;
         dev->close();
+        std::cerr << "done" << std::endl;
         /// [stop]
 
 //        while( camera.read() && std::cout.good() ) // todo? if too slow, parallelize reading frame and output with tbb
@@ -527,5 +606,10 @@ int main( int ac, char** av )
     }
     catch( std::exception& ex ) { std::cerr << "kinect-cat: kinect-cat: " << ex.what() << std::endl; }
     catch( ... ) { std::cerr << "kinect-cat: kinect-cat: unknown exception" << std::endl; }
+
+
+    // todo? if dev is open, do you need to stop and close it before exiting?
+
+
     return 1;
 }
