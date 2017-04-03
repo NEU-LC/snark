@@ -139,15 +139,16 @@ static void usage( bool more = false )
     std::cerr << "                   unless --no-antialiasing defined, will not remove points" << std::endl;
     std::cerr << "                   on the border of a denser cloud" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "        input fields" << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
+    std::cerr << "        input fields: " << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
     std::cerr << std::endl;
-    std::cerr << "        output: input line with appended 0 for outliers, 1 for non-outliers" << std::endl;
+    std::cerr << "        output: input line with appended 0 for outliers, 1 for non-outliers (unless --discard is specified)" << std::endl;
     std::cerr << "                binary output: flag as unsigned byte (ub)" << std::endl;
     std::cerr << std::endl;
     std::cerr << "        options" << std::endl;
     std::cerr << "            --resolution=<resolution>: size of the voxel to remove outliers" << std::endl;
     std::cerr << "            --min-number-of-points-per-voxel,--size=<number>: min number of points for a voxel to keep" << std::endl;
     std::cerr << "            --no-antialiasing: don't check neighbour voxels, which is faster, but may remove points in borderline voxels" << std::endl;
+    std::cerr << "            --discard: discards records that are outliers; output: same as input" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    local-min: deprecated for now, use nearest-min; output local minimums inside of given radius" << std::endl;
     std::cerr << "    local-max: deprecated for now, use nearest-min; output local maximums inside of given radius" << std::endl;
@@ -1079,6 +1080,7 @@ int main( int ac, char** av )
             double r = options.value< double >( "--resolution" );
             Eigen::Vector3d resolution( r, r, r );
             bool no_antialiasing = options.exists( "--no-antialiasing" );            
+            bool discard=options.exists("--discard");
             comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, csv );
             std::deque< remove_outliers::record > records;
             snark::math::closed_interval< double, 3 > extents;
@@ -1139,11 +1141,17 @@ int main( int ac, char** av )
             for( std::size_t i = 0; i < records.size(); ++i )
             {
                 char valid = records[i].rejected ? 0 : 1;
-                std::cout.write( &records[i].line[0], records[i].line.size() );
-                std::cout.write( &delimiter[0], delimiter.size() );
-                std::cout.write( &valid, 1 );
-                std::cout.write( &endl[0], endl.size() );
-                if( csv.flush ) { std::cout.flush(); }
+                if(!discard || valid)
+                {
+                    std::cout.write( &records[i].line[0], records[i].line.size() );
+                    if(!discard)
+                    {
+                        std::cout.write( &delimiter[0], delimiter.size() );
+                        std::cout.write( &valid, 1 );
+                    }
+                    std::cout.write( &endl[0], endl.size() );
+                    if( csv.flush ) { std::cout.flush(); }
+                }
             }
             if( verbose ) { std::cerr << "points-calc: done!" << std::endl; }
             return 0;
