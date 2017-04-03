@@ -49,11 +49,12 @@ struct moment {
         none = 0,
         before,
         after,
-        average
+        average,
+        camera
     };
 
     moments value;
-    moment( const std::string & s = "none" ) : value( s == "before" ? before : ( s == "after" ? after : ( s == "average" ? average : none ) ) ) {}
+    moment( const std::string & s = "none" ) : value( s == "before" ? before : ( s == "after" ? after : ( s == "average" ? average : ( s == "camera" ? camera : none ) ) ) ) {}
 
     operator std::string() const
     {
@@ -62,10 +63,11 @@ struct moment {
             case(before) : return "before";
             case(after)  : return "after";
             case(average): return "average";
+            case(camera): return "camera";
             case(none)   : return "none";
         }
     }
-    static std::string list() { return "none,before,after,average"; }
+    static std::string list() { return "none,before,after,average,camera"; }
 };
 
 /// image acquisition from flycapture camera
