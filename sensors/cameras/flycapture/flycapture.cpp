@@ -374,14 +374,14 @@ namespace snark{ namespace cameras{ namespace flycapture{
                 boost::posix_time::ptime end = boost::posix_time::microsec_clock::universal_time();
                 timestamp = midpoint(timestamp, end);
             }
-            if ( when.value == snark::cameras::flycapture::moment::after ) { timestamp = boost::posix_time::microsec_clock::universal_time(); }
-            if ( when.value == snark::cameras::flycapture::moment::average ) { timestamp = timestamp + ( boost::posix_time::microsec_clock::universal_time() - timestamp ) / 2.0; }
-            image_tuple.first = timestamp;
             for (auto& camera : cameras_)
             {
                 const auto pair = camera->read();
                 image_tuple.second.push_back(pair.second);
             }
+            if ( when.value == snark::cameras::flycapture::moment::after ) { timestamp = boost::posix_time::microsec_clock::universal_time(); }
+            if ( when.value == snark::cameras::flycapture::moment::average ) { timestamp = timestamp + ( boost::posix_time::microsec_clock::universal_time() - timestamp ) / 2.0; }
+            image_tuple.first = timestamp;
             return image_tuple;
         }
 
